@@ -73,6 +73,7 @@ export const SettingsPage: FC = () => {
       elevation={0} 
       sx={{ 
         height: '100%',
+        width: '100%',
         overflow: 'auto',
         p: 3,
         '&::-webkit-scrollbar': {
