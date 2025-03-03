@@ -5,10 +5,10 @@
        src="./resources/local-operator-icon-2-light-clear.png">
 </picture>
 
-<h1 align="center">Local Operator: On-device Agentic Task Execution</h1>
+<h1 align="center">Local Operator: On-device AI Agent Environment</h1>
 <div align="center">
-  <h2>🤖 Your Personal Python AI Environment</h2>
-  <p><i>Code execution on your device through natural conversation</i></p>
+  <h2>🤖 Your Personal Assistant that Gets Things Done with Python</h2>
+  <p><i>Real-time code execution on your device through natural conversation</i></p>
 </div>
 
 **<span style="color: #38C96A">Local Operator</span>** empowers you to run Python code safely on your own machine through an intuitive chat interface. The AI agent:
@@ -26,15 +26,18 @@ This project is proudly open source under the MIT license. We believe AI tools s
 > "Democratizing AI-powered productivity, one conversation at a time."
 
 <div align="center">
+  <a href="https://github.com/damianvtran/local-operator">Agent Backend</a> •
   <a href="https://local-operator.com">Learn More</a> •
   <a href="https://github.com/damianvtran/local-operator/tree/main/examples/notebooks">Examples</a>
 </div>
 
-## Overview
+## 💡 Overview
 
 The Local Operator UI is a user interface for managing and interacting with the Local Operator agent environment. It is built using Electron, React, and TypeScript, leveraging modern web technologies for a rich and responsive user experience.
 
-## Getting Started
+👉 For the agent environment CLI and Server backend, see the [Local Operator GitHub repository](https://github.com/damianvtran/local-operator).
+
+## 🚀 Getting Started
 
 ### Prerequisites
 
