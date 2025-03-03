@@ -1,0 +1,20 @@
+{
+  "name": "electron-app",
+  "version": "1.0.0",
+  "description": "Electron app boilerplate with TypeScript",
+  "main": "dist/main.js",
+  "license": "MIT",
+  "author": "Damian Tran <damianvtran@gmail.com>",
+  "scripts": {
+    "build": "npx tsc",
+    "start": "yarn build && electron ."
+  },
+  "dependencies": {
+    "electron": "^25.3.1"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "tsc": "^2.0.4",
+    "typescript": "^5.8.2"
+  }
+}
