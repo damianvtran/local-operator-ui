@@ -5,10 +5,10 @@ import { library } from '@fortawesome/fontawesome-svg-core';
 import { fas } from '@fortawesome/free-solid-svg-icons';
 import { fab } from '@fortawesome/free-brands-svg-icons';
 
-import Navigation from '@components/navigation';
-import ChatSidebar from '@components/chat-sidebar';
+import { Navigation } from '@components/navigation';
+import { ChatSidebar } from '@components/chat/chat-sidebar';
 import { ChatPage } from '@components/chat/chat-page';
-import Settings from '@components/settings';
+import { SettingsPage } from '@components/settings';
 
 library.add(fas, fab);
 
@@ -60,7 +60,7 @@ const App: FC = () => {
         {currentView === 'chat' ? (
           <ChatPage conversationId={selectedConversation} />
         ) : (
-          <Settings />
+          <SettingsPage />
         )}
       </Box>
     </Box>

@@ -33,7 +33,7 @@ const defaultSettings = {
   email: 'user@example.com'
 };
 
-const Settings: FC = () => {
+export const SettingsPage: FC = () => {
   const [settings, setSettings] = useState(defaultSettings);
   const [isSaved, setIsSaved] = useState(false);
   
@@ -279,4 +279,3 @@ const Settings: FC = () => {
   );
 };
 
-export default Settings;

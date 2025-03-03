@@ -9,7 +9,7 @@ import { LoadingIndicator } from './loading-indicator';
 import { useScrollToBottom } from '@hooks/useScrollToBottom';
 import { mockMessages, type Message } from './types';
 
-interface ChatProps {
+type ChatProps = {
   conversationId: string;
 }
 

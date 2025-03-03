@@ -23,7 +23,7 @@ import {
 
 // Mock data for conversations
 // In a real app, this would come from the backend
-interface Conversation {
+type Conversation = {
   id: string;
   agentName: string;
   lastMessage: string;
@@ -51,12 +51,12 @@ const mockConversations: Conversation[] = [
   }
 ];
 
-interface ChatSidebarProps {
+type ChatSidebarProps = {
   selectedConversation: string;
   onSelectConversation: (id: string) => void;
 }
 
-const ChatSidebar: FC<ChatSidebarProps> = ({ 
+export const ChatSidebar: FC<ChatSidebarProps> = ({ 
   selectedConversation, 
   onSelectConversation 
 }) => {
@@ -199,5 +199,3 @@ const ChatSidebar: FC<ChatSidebarProps> = ({
     </Paper>
   );
 };
-
-export default ChatSidebar;
