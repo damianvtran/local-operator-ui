@@ -11,7 +11,7 @@ import {
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faHistory } from '@fortawesome/free-solid-svg-icons';
 
-interface HistorySettingsProps {
+type HistorySettingsProps = {
   maxConversationHistory: number;
   maxLearningsHistory: number;
   detailedHistoryMode: boolean;

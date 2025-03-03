@@ -3,7 +3,7 @@ import { Box, Button } from '@mui/material';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faSave } from '@fortawesome/free-solid-svg-icons';
 
-interface SaveButtonProps {
+type SaveButtonProps = {
   isSaved: boolean;
   onSave: () => void;
 }

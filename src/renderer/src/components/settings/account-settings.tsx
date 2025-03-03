@@ -11,7 +11,7 @@ import {
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faUser } from '@fortawesome/free-solid-svg-icons';
 
-interface AccountSettingsProps {
+type AccountSettingsProps = {
   username: string;
   email: string;
   onInputChange: (e: ChangeEvent<HTMLInputElement>) => void;

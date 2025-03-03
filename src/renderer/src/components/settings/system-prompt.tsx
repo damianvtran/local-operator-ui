@@ -9,9 +9,8 @@ import {
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faRobot } from '@fortawesome/free-solid-svg-icons';
 
-interface SystemPromptProps {
+type SystemPromptProps = {
   systemPrompt: string;
-  defaultSystemPrompt: string;
   onInputChange: (e: ChangeEvent<HTMLInputElement>) => void;
   onReset: () => void;
 }
