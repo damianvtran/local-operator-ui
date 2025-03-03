@@ -22,6 +22,7 @@
 		"paths": {
 			"@assets/*": ["src/assets/*"],
 			"@components/*": ["src/components/*"],
+			"@resources/*": ["resources/*"],
 			"*": ["node_modules/*", "src/types/*"]
 		}
 	},
