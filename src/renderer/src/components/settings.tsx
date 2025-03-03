@@ -6,7 +6,6 @@ import {
   Typography, 
   TextField, 
   Button, 
-  Divider, 
   Switch, 
   FormControlLabel,
   Slider,

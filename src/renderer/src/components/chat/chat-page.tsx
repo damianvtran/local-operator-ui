@@ -13,7 +13,7 @@ interface ChatProps {
   conversationId: string;
 }
 
-export const ChatPage: FC<ChatProps> = ({ conversationId }) => {
+export const ChatPage: FC<ChatProps> = () => {
   const [messages, setMessages] = useState<Message[]>(mockMessages);
   const [isLoading, setIsLoading] = useState(false);
   

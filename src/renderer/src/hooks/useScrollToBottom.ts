@@ -13,7 +13,7 @@ export const useScrollToBottom = (dependencies: DependencyList = []) => {
     if (ref.current) {
       ref.current.scrollIntoView({ behavior: 'smooth' });
     }
-  }, dependencies); // biome-ignore lint/correctness/useExhaustiveDependencies: Dependencies are passed explicitly
+  }, dependencies);
   
   return ref;
 };
