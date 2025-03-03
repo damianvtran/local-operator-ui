@@ -3,7 +3,7 @@ import { Box, Typography, Avatar, CircularProgress } from '@mui/material';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faRobot } from '@fortawesome/free-solid-svg-icons';
 
-const LoadingIndicator: FC = () => {
+export const LoadingIndicator: FC = () => {
   return (
     <Box 
       sx={{ 
@@ -40,5 +40,3 @@ const LoadingIndicator: FC = () => {
     </Box>
   );
 };
-
-export default LoadingIndicator;

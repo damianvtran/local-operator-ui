@@ -2,22 +2,18 @@ import { useState } from 'react';
 import type { FC } from 'react';
 import { Box, Paper, Divider } from '@mui/material';
 
-// Import components
-import { 
-  ChatHeader, 
-  MessageItem, 
-  MessageInput, 
-  LoadingIndicator,
-  useScrollToBottom,
-  mockMessages,
-  type Message
-} from './chat/index';
+import { ChatHeader } from './chat-header';
+import { MessageItem } from './message-item';
+import { MessageInput } from './message-input';
+import { LoadingIndicator } from './loading-indicator';
+import { useScrollToBottom } from '@hooks/useScrollToBottom';
+import { mockMessages, type Message } from './types';
 
 interface ChatProps {
   conversationId: string;
 }
 
-const Chat: FC<ChatProps> = ({ conversationId }) => {
+export const ChatPage: FC<ChatProps> = ({ conversationId }) => {
   const [messages, setMessages] = useState<Message[]>(mockMessages);
   const [isLoading, setIsLoading] = useState(false);
   
@@ -108,5 +104,3 @@ const Chat: FC<ChatProps> = ({ conversationId }) => {
     </Paper>
   );
 };
-
-export default Chat;

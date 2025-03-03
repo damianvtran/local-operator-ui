@@ -8,7 +8,7 @@ type ChatHeaderProps = {
   description?: string;
 }
 
-const ChatHeader: FC<ChatHeaderProps> = ({ 
+export const ChatHeader: FC<ChatHeaderProps> = ({ 
   agentName = 'Local Operator',
   description = 'Your on-device AI assistant'
 }) => {
@@ -39,5 +39,3 @@ const ChatHeader: FC<ChatHeaderProps> = ({
     </Box>
   );
 };
-
-export default ChatHeader;

@@ -15,7 +15,8 @@ export default defineConfig({
       alias: {
         '@renderer': resolve('src/renderer/src'),
         '@components': resolve('src/renderer/src/components'),
-        '@assets': resolve('src/renderer/src/assets')
+        '@assets': resolve('src/renderer/src/assets'),
+        '@hooks': resolve('src/renderer/src/hooks')
       }
     },
     plugins: [react(), tsconfigPaths()]

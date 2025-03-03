@@ -7,7 +7,7 @@ import { fab } from '@fortawesome/free-brands-svg-icons';
 
 import Navigation from '@components/navigation';
 import ChatSidebar from '@components/chat-sidebar';
-import Chat from '@components/chat';
+import { ChatPage } from '@components/chat/chat-page';
 import Settings from '@components/settings';
 
 library.add(fas, fab);
@@ -58,7 +58,7 @@ const App: FC = () => {
         
         {/* Main Content (Chat or Settings) */}
         {currentView === 'chat' ? (
-          <Chat conversationId={selectedConversation} />
+          <ChatPage conversationId={selectedConversation} />
         ) : (
           <Settings />
         )}

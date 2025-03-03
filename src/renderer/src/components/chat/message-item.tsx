@@ -5,11 +5,11 @@ import { faUser, faRobot } from '@fortawesome/free-solid-svg-icons';
 import MarkdownRenderer from './markdown-renderer';
 import type { Message } from './types';
 
-interface MessageItemProps {
+type MessageItemProps = {
   message: Message;
 }
 
-const MessageItem: FC<MessageItemProps> = ({ message }) => {
+export const MessageItem: FC<MessageItemProps> = ({ message }) => {
   const isUser = message.role === 'user';
   
   return (
@@ -90,5 +90,3 @@ const MessageItem: FC<MessageItemProps> = ({ message }) => {
     </Box>
   );
 };
-
-export default MessageItem;

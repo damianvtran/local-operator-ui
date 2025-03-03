@@ -1,12 +1,12 @@
 import type { FC } from 'react';
 import { Box } from '@mui/material';
 
-interface MarkdownRendererProps {
+type MarkdownRendererProps = {
   content: string;
 }
 
 // Simple markdown parser
-const parseMarkdown = (text: string): string => {
+export const parseMarkdown = (text: string): string => {
   // Replace code blocks
   let parsedText = text.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
   

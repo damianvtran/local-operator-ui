@@ -10,12 +10,12 @@ import {
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPaperPlane, faPaperclip } from '@fortawesome/free-solid-svg-icons';
 
-interface MessageInputProps {
+type MessageInputProps = {
   onSendMessage: (content: string, file: File | null) => void;
   isLoading: boolean;
 }
 
-const MessageInput: FC<MessageInputProps> = ({ onSendMessage, isLoading }) => {
+export const MessageInput: FC<MessageInputProps> = ({ onSendMessage, isLoading }) => {
   const [newMessage, setNewMessage] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -136,5 +136,3 @@ const MessageInput: FC<MessageInputProps> = ({ onSendMessage, isLoading }) => {
     </Box>
   );
 };
-
-export default MessageInput;
