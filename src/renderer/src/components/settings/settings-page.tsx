@@ -1,27 +1,13 @@
 import { useState } from 'react';
 import type { FC, ChangeEvent } from 'react';
-import { 
-  Box, 
-  Paper, 
-  Typography, 
-  TextField, 
-  Button, 
-  Switch, 
-  FormControlLabel,
-  Slider,
-  Card,
-  CardContent,
-  Avatar,
-  Stack
-} from '@mui/material';
+import { Paper, Typography } from '@mui/material';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { 
-  faUser, 
-  faSave, 
-  faRobot, 
-  faHistory, 
-  faGear
-} from '@fortawesome/free-solid-svg-icons';
+import { faGear } from '@fortawesome/free-solid-svg-icons';
+
+import { AccountSettings } from './account-settings';
+import { SystemPrompt } from './system-prompt';
+import { HistorySettings } from './history-settings';
+import { SaveButton } from './save-button';
 
 // Default settings
 const defaultSettings = {
@@ -74,6 +60,14 @@ export const SettingsPage: FC = () => {
     }, 3000);
   };
   
+  const handleResetSystemPrompt = () => {
+    setSettings(prev => ({
+      ...prev,
+      systemPrompt: defaultSettings.systemPrompt
+    }));
+    setIsSaved(false);
+  };
+  
   return (
     <Paper 
       elevation={0} 
@@ -95,187 +89,31 @@ export const SettingsPage: FC = () => {
         Settings
       </Typography>
       
-      {/* Account Settings */}
-      <Card sx={{ mb: 4, bgcolor: 'background.paper', borderRadius: 2 }}>
-        <CardContent>
-          <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-            <FontAwesomeIcon icon={faUser} />
-            Account Preferences
-          </Typography>
-          
-          <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-            <Avatar 
-              sx={{ 
-                width: 64, 
-                height: 64, 
-                bgcolor: 'primary.dark',
-                mr: 2
-              }}
-            >
-              <FontAwesomeIcon icon={faUser} size="lg" />
-            </Avatar>
-            
-            <Stack spacing={0.5}>
-              <Typography variant="body1" fontWeight={500}>
-                {settings.username}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                {settings.email}
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                Local User Account
-              </Typography>
-            </Stack>
-          </Box>
-          
-          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-            <TextField
-              label="Username"
-              name="username"
-              value={settings.username}
-              onChange={handleInputChange}
-              variant="outlined"
-              size="small"
-              sx={{ flexGrow: 1, minWidth: '200px' }}
-            />
-            
-            <TextField
-              label="Email"
-              name="email"
-              value={settings.email}
-              onChange={handleInputChange}
-              variant="outlined"
-              size="small"
-              sx={{ flexGrow: 1, minWidth: '200px' }}
-            />
-          </Box>
-        </CardContent>
-      </Card>
+      <AccountSettings 
+        username={settings.username}
+        email={settings.email}
+        onInputChange={handleInputChange}
+      />
       
-      {/* System Prompt */}
-      <Card sx={{ mb: 4, bgcolor: 'background.paper', borderRadius: 2 }}>
-        <CardContent>
-          <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-            <FontAwesomeIcon icon={faRobot} />
-            System Prompt
-          </Typography>
-          
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            The system prompt defines how Local Operator behaves and responds to your messages.
-          </Typography>
-          
-          <TextField
-            label="System Prompt"
-            name="systemPrompt"
-            value={settings.systemPrompt}
-            onChange={handleInputChange}
-            variant="outlined"
-            multiline
-            rows={6}
-            fullWidth
-            sx={{ mb: 2 }}
-          />
-          
-          <Button 
-            variant="outlined" 
-            size="small"
-            onClick={() => {
-              setSettings(prev => ({
-                ...prev,
-                systemPrompt: defaultSettings.systemPrompt
-              }));
-              setIsSaved(false);
-            }}
-          >
-            Reset to Default
-          </Button>
-        </CardContent>
-      </Card>
+      <SystemPrompt 
+        systemPrompt={settings.systemPrompt}
+        defaultSystemPrompt={defaultSettings.systemPrompt}
+        onInputChange={handleInputChange}
+        onReset={handleResetSystemPrompt}
+      />
       
-      {/* History Settings */}
-      <Card sx={{ mb: 4, bgcolor: 'background.paper', borderRadius: 2 }}>
-        <CardContent>
-          <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-            <FontAwesomeIcon icon={faHistory} />
-            History Settings
-          </Typography>
-          
-          <Box sx={{ mb: 3 }}>
-            <Typography variant="body2" gutterBottom>
-              Maximum Conversation History
-            </Typography>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Slider
-                value={settings.maxConversationHistory}
-                onChange={handleSliderChange('maxConversationHistory')}
-                min={10}
-                max={200}
-                step={10}
-                valueLabelDisplay="auto"
-                sx={{ flexGrow: 1 }}
-              />
-              <Typography variant="body2" sx={{ minWidth: '40px', textAlign: 'right' }}>
-                {settings.maxConversationHistory}
-              </Typography>
-            </Box>
-            <Typography variant="caption" color="text.secondary">
-              Number of messages to keep in conversation history
-            </Typography>
-          </Box>
-          
-          <Box sx={{ mb: 3 }}>
-            <Typography variant="body2" gutterBottom>
-              Maximum Learnings History
-            </Typography>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Slider
-                value={settings.maxLearningsHistory}
-                onChange={handleSliderChange('maxLearningsHistory')}
-                min={10}
-                max={500}
-                step={10}
-                valueLabelDisplay="auto"
-                sx={{ flexGrow: 1 }}
-              />
-              <Typography variant="body2" sx={{ minWidth: '40px', textAlign: 'right' }}>
-                {settings.maxLearningsHistory}
-              </Typography>
-            </Box>
-            <Typography variant="caption" color="text.secondary">
-              Number of learnings to retain for context
-            </Typography>
-          </Box>
-          
-          <FormControlLabel
-            control={
-              <Switch
-                checked={settings.detailedHistoryMode}
-                onChange={handleSwitchChange}
-                name="detailedHistoryMode"
-                color="primary"
-              />
-            }
-            label="Detailed Conversation History Mode"
-          />
-          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', ml: 2 }}>
-            When enabled, Local Operator will retain more detailed context from your conversations
-          </Typography>
-        </CardContent>
-      </Card>
+      <HistorySettings 
+        maxConversationHistory={settings.maxConversationHistory}
+        maxLearningsHistory={settings.maxLearningsHistory}
+        detailedHistoryMode={settings.detailedHistoryMode}
+        onSliderChange={handleSliderChange}
+        onSwitchChange={handleSwitchChange}
+      />
       
-      {/* Save Button */}
-      <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-        <Button
-          variant="contained"
-          color="primary"
-          startIcon={<FontAwesomeIcon icon={faSave} />}
-          onClick={handleSave}
-          sx={{ px: 3 }}
-        >
-          {isSaved ? 'Saved!' : 'Save Settings'}
-        </Button>
-      </Box>
+      <SaveButton 
+        isSaved={isSaved}
+        onSave={handleSave}
+      />
     </Paper>
   );
 };
-
