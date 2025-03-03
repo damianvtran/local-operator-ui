@@ -1,7 +1,7 @@
-export { default as ChatHeader } from './ChatHeader';
-export { default as LoadingIndicator } from './LoadingIndicator';
-export { default as MarkdownRenderer } from './MarkdownRenderer';
-export { default as MessageInput } from './MessageInput';
-export { default as MessageItem } from './MessageItem';
-export { useScrollToBottom } from './useScrollToBottom';
+export { default as ChatHeader } from './chat-header';
+export { default as LoadingIndicator } from './loading-indicator';
+export { default as MarkdownRenderer } from './markdown-renderer';
+export { default as MessageInput } from './message-input';
+export { default as MessageItem } from './message-item';
+export { useScrollToBottom } from '../../hooks/useScrollToBottom';
 export * from './types';

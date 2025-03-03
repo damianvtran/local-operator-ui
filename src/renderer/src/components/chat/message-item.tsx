@@ -2,7 +2,7 @@ import type { FC } from 'react';
 import { Box, Typography, Avatar } from '@mui/material';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faUser, faRobot } from '@fortawesome/free-solid-svg-icons';
-import MarkdownRenderer from './MarkdownRenderer';
+import MarkdownRenderer from './markdown-renderer';
 import type { Message } from './types';
 
 interface MessageItemProps {
