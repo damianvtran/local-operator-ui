@@ -5,10 +5,10 @@ import { library } from '@fortawesome/fontawesome-svg-core';
 import { fas } from '@fortawesome/free-solid-svg-icons';
 import { fab } from '@fortawesome/free-brands-svg-icons';
 
-import { Navigation } from '@components/navigation';
+import { NavigationBar } from '@renderer/components/navigation/navigation-bar';
 import { ChatSidebar } from '@components/chat/chat-sidebar';
 import { ChatPage } from '@components/chat/chat-page';
-import { SettingsPage } from '@components/settings';
+import { SettingsPage } from '@renderer/components/settings/settings-page';
 
 library.add(fas, fab);
 
@@ -39,7 +39,7 @@ const App: FC = () => {
       <CssBaseline />
       
       {/* Top Navigation Bar */}
-      <Navigation 
+      <NavigationBar 
         currentView={currentView} 
         onNavigate={handleNavigate} 
       />

@@ -24,7 +24,7 @@ type NavigationProps = {
   onNavigate: (view: string) => void;
 }
 
-export const Navigation: React.FC<NavigationProps> = ({ currentView, onNavigate }) => {
+export const NavigationBar: React.FC<NavigationProps> = ({ currentView, onNavigate }) => {
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
   
