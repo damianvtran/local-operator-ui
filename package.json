@@ -7,6 +7,7 @@
   "author": "Damian Tran <damianvtran@gmail.com>",
   "scripts": {
     "build": "npx tsc",
+    "postbuild": "cp dist/renderer.js public/ && cp dist/preload.js public/",
     "start": "yarn build && electron ."
   },
   "dependencies": {
