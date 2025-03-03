@@ -82,7 +82,7 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
     >
       <Box sx={{ p: 2 }}>
         <Typography variant="h6" sx={{ mb: 2, fontWeight: 500 }}>
-          Conversations
+          Agents
         </Typography>
         
         <TextField
