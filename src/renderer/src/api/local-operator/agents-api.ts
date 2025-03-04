@@ -7,7 +7,8 @@ import type {
   CRUDResponse, 
   AgentDetails, 
   AgentListResult,
-  AgentGetConversationResult
+  AgentGetConversationResult,
+  AgentExecutionHistoryResult
 } from './types';
 
 /**
@@ -188,5 +189,40 @@ export const AgentsApi = {
     }
 
     return response.json() as Promise<CRUDResponse<AgentGetConversationResult>>;
+  },
+
+  /**
+   * Get agent execution history
+   * Retrieve the execution history for a specific agent.
+   *
+   * @param baseUrl - The base URL of the Local Operator API
+   * @param agentId - ID of the agent to get execution history for
+   * @param page - Page number (default: 1)
+   * @param perPage - Number of executions per page (default: 10)
+   * @returns Promise resolving to the agent execution history
+   * @throws Error if the request fails
+   */
+  async getAgentExecutionHistory(
+    baseUrl: string,
+    agentId: string,
+    page = 1,
+    perPage = 10
+  ): Promise<CRUDResponse<AgentExecutionHistoryResult>> {
+    const url = new URL(`${baseUrl}/v1/agents/${agentId}/history`);
+    url.searchParams.append('page', page.toString());
+    url.searchParams.append('per_page', perPage.toString());
+
+    const response = await fetch(url.toString(), {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Get agent execution history request failed: ${response.status} ${response.statusText}`);
+    }
+
+    return response.json() as Promise<CRUDResponse<AgentExecutionHistoryResult>>;
   },
 };

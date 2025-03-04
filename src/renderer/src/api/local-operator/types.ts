@@ -328,3 +328,49 @@ export type JobCleanupResult = {
   /** Number of jobs removed */
   removed_count: number;
 };
+
+/**
+ * Agent execution history record
+ */
+export type AgentExecutionRecord = {
+  /** Code that was executed */
+  code: string;
+  /** Standard output from the execution */
+  stdout: string;
+  /** Standard error output from the execution */
+  stderr: string;
+  /** Logging information */
+  logging: string;
+  /** Status message about the execution */
+  message: string;
+  /** Formatted print output */
+  formatted_print: string;
+  /** Role of the execution (e.g., system) */
+  role: string;
+  /** Execution status (success, error, etc.) */
+  status: string;
+  /** Timestamp of when the execution occurred */
+  timestamp: string;
+};
+
+/**
+ * Agent execution history result
+ */
+export type AgentExecutionHistoryResult = {
+  /** ID of the agent */
+  agent_id: string;
+  /** List of execution records */
+  history: AgentExecutionRecord[];
+  /** Timestamp of the first execution */
+  first_execution_datetime: string;
+  /** Timestamp of the last execution */
+  last_execution_datetime: string;
+  /** Current page number */
+  page: number;
+  /** Number of executions per page */
+  per_page: number;
+  /** Total number of executions */
+  total: number;
+  /** Number of executions returned */
+  count: number;
+};
