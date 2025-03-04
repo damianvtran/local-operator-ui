@@ -2,7 +2,7 @@ import type { FC } from 'react';
 import { Box, Typography, Avatar } from '@mui/material';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faUser, faRobot } from '@fortawesome/free-solid-svg-icons';
-import MarkdownRenderer from './markdown-renderer';
+import { MarkdownRenderer } from './markdown-renderer';
 import type { Message } from './types';
 
 type MessageItemProps = {
@@ -39,7 +39,8 @@ export const MessageItem: FC<MessageItemProps> = ({ message }) => {
       
       <Box 
         sx={{ 
-          maxWidth: '70%',
+          maxWidth: { xs: '85%', sm: '75%', md: '65%' },
+          width: 'auto',
           bgcolor: isUser 
             ? 'primary.dark' 
             : 'background.paper',
@@ -47,7 +48,9 @@ export const MessageItem: FC<MessageItemProps> = ({ message }) => {
           borderRadius: 2,
           border: isUser 
             ? 'none'
-            : '1px solid rgba(255, 255, 255, 0.1)'
+            : '1px solid rgba(255, 255, 255, 0.1)',
+          wordBreak: 'break-word',
+          overflowWrap: 'break-word'
         }}
       >
         {/* Render attachments if any */}

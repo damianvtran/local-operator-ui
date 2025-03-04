@@ -81,7 +81,7 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
     <Paper
       elevation={0}
       sx={{
-        width: 280,
+        width: '100%',
         height: '100%',
         borderRight: '1px solid rgba(255, 255, 255, 0.1)',
         display: 'flex',

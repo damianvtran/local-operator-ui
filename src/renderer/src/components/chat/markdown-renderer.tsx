@@ -35,18 +35,22 @@ export const parseMarkdown = (text: string): string => {
   return parsedText;
 };
 
-const MarkdownRenderer: FC<MarkdownRendererProps> = ({ content }) => {
+export const MarkdownRenderer: FC<MarkdownRendererProps> = ({ content }) => {
   return (
     <Box 
       // biome-ignore lint/security/noDangerouslySetInnerHtml: <explanation>
       dangerouslySetInnerHTML={{ __html: parseMarkdown(content) }}
       sx={{
+        wordBreak: 'break-word',
+        overflowWrap: 'break-word',
         '& code': {
           fontFamily: 'monospace',
           backgroundColor: 'rgba(0, 0, 0, 0.2)',
           padding: '2px 4px',
           borderRadius: '4px',
-          fontSize: '0.9em'
+          fontSize: '0.9em',
+          whiteSpace: 'pre-wrap',
+          wordBreak: 'break-word'
         },
         '& pre': {
           backgroundColor: 'rgba(0, 0, 0, 0.2)',
@@ -55,7 +59,12 @@ const MarkdownRenderer: FC<MarkdownRendererProps> = ({ content }) => {
           overflowX: 'auto',
           fontFamily: 'monospace',
           fontSize: '0.9em',
-          margin: '8px 0'
+          margin: '8px 0',
+          maxWidth: '100%'
+        },
+        '& pre code': {
+          whiteSpace: 'pre-wrap',
+          wordBreak: 'break-word'
         },
         '& h1, & h2, & h3': {
           margin: '16px 0 8px 0'

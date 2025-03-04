@@ -51,20 +51,24 @@ const App: FC = () => {
         flexGrow: 1,
         overflow: 'hidden'
       }}>
-        {/* Left Sidebar (always visible) */}
-        <ChatSidebar 
-          selectedConversation={selectedConversation}
-          onSelectConversation={handleSelectConversation}
-        />
+        {/* Left Sidebar (always visible with fixed width) */}
+        <Box sx={{ flexShrink: 0, width: 280 }}>
+          <ChatSidebar 
+            selectedConversation={selectedConversation}
+            onSelectConversation={handleSelectConversation}
+          />
+        </Box>
         
-        {/* Main Content (Chat, Settings, or Agents) */}
-        {currentView === 'chat' ? (
-          <ChatPage conversationId={selectedConversation} />
-        ) : currentView === 'settings' ? (
-          <SettingsPage />
-        ) : (
-          <AgentsPage />
-        )}
+        {/* Main Content (Chat, Settings, or Agents) - Flex grow to fill available space */}
+        <Box sx={{ flexGrow: 1, overflow: 'hidden' }}>
+          {currentView === 'chat' ? (
+            <ChatPage conversationId={selectedConversation} />
+          ) : currentView === 'settings' ? (
+            <SettingsPage />
+          ) : (
+            <AgentsPage />
+          )}
+        </Box>
       </Box>
     </Box>
   );
