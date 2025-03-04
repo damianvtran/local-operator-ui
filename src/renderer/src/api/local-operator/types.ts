@@ -160,6 +160,8 @@ export type AgentCreate = {
   hosting?: string;
   /** The model to use for the agent. Defaults to 'openai/gpt-4o-mini'. */
   model?: string;
+  /** The description of the agent. */
+  description?: string;
 };
 
 /**
@@ -177,6 +179,8 @@ export type AgentUpdate = {
   hosting?: string;
   /** The model to use for the agent. Defaults to 'openai/gpt-4o-mini'. */
   model?: string;
+  /** The description of the agent. */
+  description?: string;
 };
 
 /**
@@ -240,23 +244,30 @@ export type AgentListResult = {
 };
 
 /**
- * Agent details
+ * Detailed information about an AI agent
+ * Contains all properties needed to identify, display, and interact with an agent
  */
 export type AgentDetails = {
-  /** Agent ID */
+  /** Unique identifier for the agent */
   id: string;
-  /** Agent name */
+  /** Display name of the agent */
   name: string;
-  /** Creation date */
+  /** ISO timestamp when the agent was created */
   created_date: string;
-  /** Agent version */
+  /** Version string of the agent software */
   version: string;
-  /** Security prompt */
+  /** Security constraints applied to the agent */
   security_prompt: string;
-  /** Hosting environment */
+  /** Provider/platform where the agent is hosted (e.g., 'openrouter') */
   hosting: string;
-  /** Model name */
+  /** Full model identifier including provider and model name (e.g., 'openai/gpt-4o-mini') */
   model: string;
+  /** Human-readable description of the agent's purpose and capabilities */
+  description: string;
+  /** Content of the most recent message from this agent */
+  last_message?: string;
+  /** ISO timestamp of when the last message was sent */
+  last_message_datetime?: string;
 };
 
 /**

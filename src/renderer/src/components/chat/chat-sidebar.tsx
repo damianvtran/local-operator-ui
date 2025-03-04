@@ -1,5 +1,5 @@
 import type { FC, ChangeEvent } from 'react';
-import { useState, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   Box,
   List,
@@ -22,8 +22,11 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faSearch,
   faRobot,
+  faClock,
+  faCommentSlash,
 } from '@fortawesome/free-solid-svg-icons';
 import { useAgents } from '@renderer/hooks/useAgents';
+import { format } from 'date-fns';
 
 type ChatSidebarProps = {
   selectedConversation: string;
@@ -56,6 +59,23 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
   const filteredAgents = agents.filter((agent) =>
     agent.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const formatDateTime = (dateTimeString?: string) => {
+    if (!dateTimeString) return '';
+    try {
+      const date = new Date(dateTimeString);
+      return format(date, 'MMM d, h:mm a');
+    } catch (error) {
+      return '';
+    }
+  };
+
+  const truncateMessage = (message?: string, maxLength = 60) => {
+    if (!message) return '';
+    return message.length > maxLength
+      ? `${message.substring(0, maxLength)}...`
+      : message;
+  };
 
   return (
     <Paper
@@ -168,18 +188,68 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
                 <ListItemText
                   primary={agent.name}
                   secondary={
-                    <Typography
-                      variant="body2"
-                      sx={{
-                        color: 'text.secondary',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                        maxWidth: '120px',
-                      }}
-                    >
-                      {'Description'}
-                    </Typography>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', mt: 0.5 }}>
+                      {agent.last_message ? (
+                        <>
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              color: 'text.secondary',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                              maxWidth: '160px',
+                              mb: 0.5,
+                            }}
+                          >
+                            {truncateMessage(agent.last_message)}
+                          </Typography>
+                          {agent.last_message_datetime && (
+                            <Box 
+                              sx={{ 
+                                display: 'flex', 
+                                alignItems: 'center',
+                                color: 'text.disabled',
+                                fontSize: '0.75rem',
+                              }}
+                            >
+                              <FontAwesomeIcon 
+                                icon={faClock} 
+                                size="xs" 
+                                style={{ marginRight: '4px' }} 
+                              />
+                              <Box 
+                                component="span" 
+                                title={new Date(agent.last_message_datetime).toLocaleString()}
+                                sx={{ 
+                                  cursor: 'help',
+                                  '&:hover': { textDecoration: 'underline' }
+                                }}
+                              >
+                                {formatDateTime(agent.last_message_datetime)}
+                              </Box>
+                            </Box>
+                          )}
+                        </>
+                      ) : (
+                        <Box 
+                          sx={{ 
+                            display: 'flex', 
+                            alignItems: 'center',
+                            color: 'text.disabled',
+                            fontSize: '0.75rem',
+                            fontStyle: 'italic',
+                          }}
+                        >
+                          <FontAwesomeIcon 
+                            icon={faCommentSlash} 
+                            size="xs" 
+                            style={{ marginRight: '4px' }} 
+                          />
+                          <Typography variant="body2">No messages yet</Typography>
+                        </Box>
+                      )}
+                    </Box>
                   }
                   primaryTypographyProps={{
                     fontWeight: 500,
