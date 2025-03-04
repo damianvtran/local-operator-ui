@@ -20,6 +20,9 @@
       ],
       "@hooks/*": [
         "src/renderer/src/hooks/*"
+      ],
+      "@api/*": [
+        "src/renderer/src/api/*"
       ]
     }
   }

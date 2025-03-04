@@ -1,0 +1,311 @@
+/**
+ * Local Operator API Types
+ * Generated from OpenAPI specification v0.3.7
+ */
+
+/**
+ * Enum representing the different roles in a conversation with an AI model.
+ * Used to track who sent each message in the conversation history.
+ * Maps to the standard roles used by LangChain message types.
+ */
+export type ConversationRole = 
+  | "system" 
+  | "user" 
+  | "assistant" 
+  | "human" 
+  | "ai" 
+  | "function" 
+  | "tool" 
+  | "chat";
+
+/**
+ * Enum representing the possible states of a job.
+ */
+export type JobStatus = 
+  | "pending" 
+  | "processing" 
+  | "completed" 
+  | "failed" 
+  | "cancelled";
+
+/**
+ * A record of a conversation with an AI model.
+ */
+export type ConversationRecord = {
+  /** The content of the message */
+  content: string;
+  /** The role of the sender of the message */
+  role: ConversationRole;
+  /** Whether this message should be summarized */
+  should_summarize?: boolean;
+  /** Whether this message is temporary/ephemeral */
+  ephemeral?: boolean;
+  /** Whether this message has been summarized */
+  summarized?: boolean;
+  /** Whether this message is a system prompt */
+  is_system_prompt?: boolean;
+  /** When this message was created */
+  timestamp?: string;
+};
+
+/**
+ * Options for controlling the chat generation.
+ */
+export type ChatOptions = {
+  /** 
+   * Controls randomness in responses. Higher values like 0.8 make output more
+   * random, while lower values like 0.2 make it more focused and deterministic.
+   * Default: 0.8
+   */
+  temperature?: number;
+  /**
+   * Controls cumulative probability of tokens to sample from. Higher values (0.95) keep
+   * more options, lower values (0.1) are more selective. Default: 0.9
+   */
+  top_p?: number;
+  /**
+   * Limits tokens to sample from at each step. Lower values (10) are more selective,
+   * higher values (100) allow more variety. Default: 40
+   */
+  top_k?: number;
+  /**
+   * Maximum tokens to generate. Model may generate fewer if response completes
+   * before reaching limit. Default: 4096
+   */
+  max_tokens?: number;
+  /**
+   * List of strings that will stop generation when encountered. Default: None
+   */
+  stop?: string[];
+  /**
+   * Reduces repetition by lowering likelihood of repeated tokens.
+   * Range from -2.0 to 2.0. Default: 0.0
+   */
+  frequency_penalty?: number;
+  /**
+   * Increases diversity by lowering likelihood of prompt tokens.
+   * Range from -2.0 to 2.0. Default: 0.0
+   */
+  presence_penalty?: number;
+  /**
+   * Random number seed for deterministic generation. Default: None
+   */
+  seed?: number;
+};
+
+/**
+ * Request body for chat generation endpoint.
+ */
+export type ChatRequest = {
+  /** Name of the hosting service to use for generation */
+  hosting: string;
+  /** Name of the model to use for generation */
+  model: string;
+  /** The prompt to generate a response for */
+  prompt: string;
+  /** Whether to stream the response token by token. Default: False */
+  stream?: boolean;
+  /** Optional list of previous messages for context */
+  context?: ConversationRecord[];
+  /** Optional generation parameters to override defaults */
+  options?: ChatOptions;
+};
+
+/**
+ * Statistics about token usage for the chat request.
+ */
+export type ChatStats = {
+  /** Total number of tokens used in prompt and completion */
+  total_tokens: number;
+  /** Number of tokens in the prompt */
+  prompt_tokens: number;
+  /** Number of tokens in the completion */
+  completion_tokens: number;
+};
+
+/**
+ * Response from chat generation endpoint.
+ */
+export type ChatResponse = {
+  /** The generated text response */
+  response: string;
+  /** List of all messages including the new response */
+  context: ConversationRecord[];
+  /** Token usage statistics */
+  stats: ChatStats;
+};
+
+/**
+ * Response from health check endpoint.
+ */
+export type HealthCheckResponse = {
+  /** HTTP status code */
+  status: number;
+  /** Health check message */
+  message: string;
+};
+
+/**
+ * Data required to create a new agent.
+ */
+export type AgentCreate = {
+  /** Agent's name */
+  name: string;
+  /** 
+   * The security prompt for the agent. Allows a user to explicitly specify 
+   * the security context for the agent's code security checks.
+   */
+  security_prompt?: string;
+  /** The hosting environment for the agent. Defaults to 'openrouter'. */
+  hosting?: string;
+  /** The model to use for the agent. Defaults to 'openai/gpt-4o-mini'. */
+  model?: string;
+};
+
+/**
+ * Data for updating an existing agent.
+ */
+export type AgentUpdate = {
+  /** Agent's name */
+  name?: string;
+  /** 
+   * The security prompt for the agent. Allows a user to explicitly specify 
+   * the security context for the agent's code security checks.
+   */
+  security_prompt?: string;
+  /** The hosting environment for the agent. Defaults to 'openrouter'. */
+  hosting?: string;
+  /** The model to use for the agent. Defaults to 'openai/gpt-4o-mini'. */
+  model?: string;
+};
+
+/**
+ * Schema for getting an agent conversation.
+ */
+export type AgentGetConversationResult = {
+  /** ID of the agent involved in the conversation */
+  agent_id: string;
+  /** Date of the last message in the conversation */
+  last_message_datetime: string;
+  /** Date of the first message in the conversation */
+  first_message_datetime: string;
+  /** List of messages in the conversation */
+  messages?: ConversationRecord[];
+};
+
+/**
+ * Standard response schema for CRUD operations.
+ */
+export type CRUDResponse<T = unknown> = {
+  /** HTTP status code */
+  status: number;
+  /** Outcome message of the operation */
+  message: string;
+  /** The resulting data, which can be an object, paginated list, or empty. */
+  result?: T;
+};
+
+/**
+ * Validation error details
+ */
+export type ValidationError = {
+  /** Location of the error */
+  loc: (string | number)[];
+  /** Error message */
+  msg: string;
+  /** Error type */
+  type: string;
+};
+
+/**
+ * HTTP validation error response
+ */
+export type HTTPValidationError = {
+  /** List of validation errors */
+  detail: ValidationError[];
+};
+
+/**
+ * Agent list response
+ */
+export type AgentListResult = {
+  /** Total number of agents */
+  total: number;
+  /** Current page number */
+  page: number;
+  /** Number of agents per page */
+  per_page: number;
+  /** List of agents */
+  agents: AgentDetails[];
+};
+
+/**
+ * Agent details
+ */
+export type AgentDetails = {
+  /** Agent ID */
+  id: string;
+  /** Agent name */
+  name: string;
+  /** Creation date */
+  created_date: string;
+  /** Agent version */
+  version: string;
+  /** Security prompt */
+  security_prompt: string;
+  /** Hosting environment */
+  hosting: string;
+  /** Model name */
+  model: string;
+};
+
+/**
+ * Job details
+ */
+export type JobDetails = {
+  /** Job ID */
+  id: string;
+  /** Associated agent ID */
+  agent_id: string;
+  /** Job status */
+  status: JobStatus;
+  /** Original prompt */
+  prompt: string;
+  /** Model used */
+  model: string;
+  /** Hosting environment */
+  hosting: string;
+  /** Creation timestamp */
+  created_at: string;
+  /** Start timestamp */
+  started_at?: string;
+  /** Completion timestamp */
+  completed_at?: string;
+  /** Job result (for completed jobs) */
+  result?: {
+    /** Generated response */
+    response: string;
+    /** Conversation context */
+    context: ConversationRecord[];
+    /** Token usage statistics */
+    stats: ChatStats;
+  };
+};
+
+/**
+ * Job list response
+ */
+export type JobListResult = {
+  /** List of jobs */
+  jobs: JobDetails[];
+  /** Total count of jobs matching criteria */
+  count: number;
+};
+
+/**
+ * Job cleanup result
+ */
+export type JobCleanupResult = {
+  /** Number of jobs removed */
+  removed_count: number;
+};
