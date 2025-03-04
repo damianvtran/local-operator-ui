@@ -39,7 +39,8 @@
     "electron-debug": "^3.2.0",
     "electron-log": "^4.4.8",
     "electron-updater": "^6.1.4",
-    "styled-components": "^6.1.14"
+    "styled-components": "^6.1.14",
+    "zod": "^3.24.2"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
