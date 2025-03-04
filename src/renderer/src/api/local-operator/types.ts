@@ -195,6 +195,14 @@ export type AgentGetConversationResult = {
   first_message_datetime: string;
   /** List of messages in the conversation */
   messages?: ConversationRecord[];
+  /** Current page number */
+  page: number;
+  /** Number of messages per page */
+  per_page: number;
+  /** Total number of messages in the conversation */
+  total: number;
+  /** Total number of messages queried */
+  count: number;
 };
 
 /**
