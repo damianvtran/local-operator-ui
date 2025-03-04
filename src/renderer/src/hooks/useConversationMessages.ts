@@ -96,7 +96,6 @@ export const useConversationMessages = (
         }
         
         const page = pageParam as number;
-        console.log(`Fetching messages for conversation ${conversationId}, page ${page}`);
         
         // Call the API to get conversation messages
         const response = await AgentsApi.getAgentConversation(
@@ -105,7 +104,7 @@ export const useConversationMessages = (
           page,
           pageSize
         );
-        
+
         if (response.status >= 400) {
           throw new Error(response.message || 'Failed to fetch conversation messages');
         }
@@ -113,7 +112,6 @@ export const useConversationMessages = (
         const result = response.result;
         
         if (!result) {
-          console.log('No result returned from API');
           return {
             messages: [],
             page: 1,
@@ -124,7 +122,6 @@ export const useConversationMessages = (
         
         // Convert API messages to UI messages
         const messages = (result.messages || []).map(convertToMessage);
-        console.log(`Fetched ${messages.length} messages for page ${page}`);
         
         // Calculate total pages
         const totalPages = Math.ceil(result.total / pageSize);
@@ -140,7 +137,6 @@ export const useConversationMessages = (
           ? error.message 
           : 'An unknown error occurred while fetching conversation messages';
         
-        console.error('Error fetching messages:', error);
         toast.error(errorMessage);
         throw error;
       }
@@ -194,7 +190,6 @@ export const useConversationMessages = (
     
     // Collect all messages from all pages
     const allMessages = data.pages.flatMap((page) => page.messages);
-    console.log(`Updating store with ${allMessages.length} messages for conversation ${conversationId}`);
     
     // Get existing messages from the store
     const existingMessages = getMessages(conversationId);
@@ -217,13 +212,11 @@ export const useConversationMessages = (
         
         // Update the store
         setMessages(conversationId, uniqueMessages);
-        console.log(`Updated store with ${uniqueMessages.length} messages (${latestPageMessages.length} new)`);
       }
     } 
     // If this is the first fetch and we have messages, set them in the store
     else if (existingMessages.length === 0 && allMessages.length > 0) {
       setMessages(conversationId, allMessages);
-      console.log(`Set ${allMessages.length} messages in store (initial fetch)`);
     }
   }, [data, conversationId, setMessages, getMessages]);
   

@@ -51,7 +51,6 @@ export const SettingsPage: FC = () => {
   
   const handleSave = () => {
     // In a real app, this would save to localStorage or backend
-    console.log('Saving settings:', settings);
     setIsSaved(true);
     
     // Reset saved status after 3 seconds

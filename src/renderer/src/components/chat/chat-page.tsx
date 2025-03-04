@@ -12,7 +12,7 @@ import { useScrollToBottom } from '@hooks/useScrollToBottom';
 import { useConversationMessages } from '@hooks/useConversationMessages';
 import { useChatStore } from '@renderer/store/chat-store';
 import type { Message } from './types';
-import { createLocalOperatorClient, AgentsApi } from '@renderer/api/local-operator';
+import { createLocalOperatorClient } from '@renderer/api/local-operator';
 import { apiConfig } from '@renderer/config';
 
 type ChatProps = {
@@ -25,35 +25,8 @@ export const ChatPage: FC<ChatProps> = ({ conversationId }) => {
   // Initialize the API client (memoized to prevent recreation on every render)
   const apiClient = useMemo(() => createLocalOperatorClient(apiConfig.baseUrl), []);
   
-  // Log the conversation ID for debugging
-  console.log('ChatPage - conversationId:', conversationId);
-  
   // Get the chat store functions
-  const { getMessages, setMessages } = useChatStore();
-  
-  // Add a test message if we have a conversation ID and no messages
-  React.useEffect(() => {
-    if (conversationId) {
-      const existingMessages = getMessages(conversationId);
-      console.log('Existing messages:', existingMessages);
-      
-      if (existingMessages.length === 0) {
-        console.log('Adding test message to conversation:', conversationId);
-        const testMessage: Message = {
-          id: 'test-message',
-          role: 'assistant',
-          content: 'This is a test message to verify rendering.',
-          timestamp: new Date(),
-        };
-        
-        // Force immediate update of the store
-        setMessages(conversationId, [testMessage]);
-        
-        // Log the messages after setting them
-        console.log('Messages after setting test message:', getMessages(conversationId));
-      }
-    }
-  }, [conversationId, getMessages, setMessages]);
+  const { getMessages } = useChatStore();
   
   // Only fetch messages if we have a valid conversation ID
   const {
@@ -68,9 +41,6 @@ export const ChatPage: FC<ChatProps> = ({ conversationId }) => {
 
   // We no longer need to directly fetch messages from the API
   // The useConversationMessages hook handles this for us
-  
-  // Log the messages for debugging
-  console.log('ChatPage - messages:', messages);
   
   // Get the addMessage function from the chat store
   const { addMessage } = useChatStore();
