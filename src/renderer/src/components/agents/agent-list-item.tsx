@@ -4,6 +4,7 @@
  * Displays a single agent in the list with basic information
  */
 
+import React from 'react';
 import type { FC } from 'react';
 import { Box, Typography, Card, CardContent, Chip } from '@mui/material';
 import type { AgentDetails } from '@renderer/api/local-operator/types';
@@ -56,14 +57,23 @@ export const AgentListItem: FC<AgentListItemProps> = ({
             size="small" 
             color="primary" 
             variant="outlined"
+            title="AI model powering this agent"
           />
         </Box>
         
         <Box sx={{ display: 'flex', gap: 2, mb: 1 }}>
-          <Typography variant="body2" color="text.secondary">
+          <Typography 
+            variant="body2" 
+            color="text.secondary"
+            title="Unique identifier for this agent"
+          >
             ID: {agent.id}
           </Typography>
-          <Typography variant="body2" color="text.secondary">
+          <Typography 
+            variant="body2" 
+            color="text.secondary"
+            title="When this agent was created"
+          >
             Created: {createdDate}
           </Typography>
         </Box>
@@ -74,12 +84,14 @@ export const AgentListItem: FC<AgentListItemProps> = ({
             size="small" 
             color="secondary" 
             variant="outlined"
+            title="Agent version number"
           />
           <Chip 
             label={agent.hosting} 
             size="small" 
             color="info" 
             variant="outlined"
+            title="Where this agent is hosted"
           />
         </Box>
       </CardContent>

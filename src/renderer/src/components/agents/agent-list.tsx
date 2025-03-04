@@ -116,7 +116,17 @@ export const AgentList: FC<AgentListProps> = ({
           </Typography>
         </Box>
       ) : (
-        <Box sx={{ flexGrow: 1, overflow: 'auto' }}>
+        <Box sx={{ 
+          flexGrow: 1, 
+          overflow: 'auto',
+          '&::-webkit-scrollbar': {
+            width: '8px',
+          },
+          '&::-webkit-scrollbar-thumb': {
+            backgroundColor: 'rgba(255, 255, 255, 0.1)',
+            borderRadius: '4px',
+          },
+        }}>
           {agents.map((agent) => (
             <AgentListItem 
               key={agent.id}
