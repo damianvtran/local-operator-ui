@@ -25,7 +25,7 @@ import {
   faClock,
   faCommentSlash,
 } from '@fortawesome/free-solid-svg-icons';
-import { useAgents } from '@renderer/hooks/useAgents';
+import { useAgents } from '@renderer/hooks/use-agents';
 import { format } from 'date-fns';
 
 type ChatSidebarProps = {

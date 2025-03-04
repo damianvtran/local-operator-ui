@@ -15,7 +15,7 @@ import {
   Pagination,
   Paper
 } from '@mui/material';
-import { useAgents } from '@renderer/hooks/useAgents';
+import { useAgents } from '@renderer/hooks/use-agents';
 import { AgentListItem } from './agent-list-item';
 import type { AgentDetails } from '@renderer/api/local-operator/types';
 
