@@ -165,17 +165,31 @@ export const AgentsPage: FC = () => {
                   >
                     {selectedAgent.name}
                   </Typography>
+                  
                   <Chip 
                     size="small" 
-                    label={selectedAgent.hosting} 
+                    label={selectedAgent.hosting || "Default Hosting"} 
                     color="primary" 
                     variant="outlined"
                     icon={<FontAwesomeIcon icon={faServer} />}
                     title="Agent hosting type"
                     sx={{
-                      borderRadius: 2,
-                      fontWeight: 500,
-                      px: 0.5
+                      borderRadius: 2.5,
+                      fontWeight: 600,
+                      px: 1.5,
+                      py: 0.75,
+                      height: 32,
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+                      '& .MuiChip-label': { 
+                        px: 1.5,
+                        ml: 0.5,
+                        letterSpacing: '0.01em'
+                      },
+                      '& .MuiChip-icon': {
+                        ml: 1.25,
+                        mr: -0.25,
+                        opacity: 0.9
+                      }
                     }}
                   />
                 </Box>
@@ -302,7 +316,7 @@ export const AgentsPage: FC = () => {
                         <Typography variant="body2" title="AI model powering this agent">
                           <Box component="span" sx={{ color: 'text.secondary', mr: 1 }}>Model:</Box>
                           <Box component="span" sx={{ fontWeight: 500 }}>
-                            {selectedAgent.model}
+                            {selectedAgent.model || "Default"}
                           </Box>
                         </Typography>
                       </Box>
