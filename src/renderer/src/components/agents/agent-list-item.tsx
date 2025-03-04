@@ -90,6 +90,31 @@ export const AgentListItem: FC<AgentListItemProps> = ({
             />
           )}
         </Box>
+        <Typography 
+          variant="body2" 
+          sx={{ 
+            mb: 2,
+            lineHeight: 1.5,
+            color: 'text.primary',
+            backgroundColor: (theme) => alpha(theme.palette.background.default, 0.5),
+            p: 1.5,
+            borderRadius: 1,
+            borderLeft: (theme) => `3px solid ${alpha(theme.palette.primary.main, 0.6)}`,
+            maxHeight: '80px',
+            overflow: 'auto',
+            '&::-webkit-scrollbar': {
+              width: '4px',
+            },
+            '&::-webkit-scrollbar-thumb': {
+              backgroundColor: 'rgba(255, 255, 255, 0.1)',
+              borderRadius: '4px',
+            },
+            fontStyle: agent.description ? 'normal' : 'italic',
+            opacity: agent.description ? 1 : 0.7,
+          }}
+        >
+          {agent.description || 'No description available'}
+        </Typography>
         
         <Box sx={{ 
           display: 'flex', 
