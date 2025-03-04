@@ -17,7 +17,8 @@ export default defineConfig({
         '@components': resolve('src/renderer/src/components'),
         '@assets': resolve('src/renderer/src/assets'),
         '@hooks': resolve('src/renderer/src/hooks'),
-        '@api': resolve('src/renderer/src/api')
+        '@api': resolve('src/renderer/src/api'),
+        '@store': resolve('src/renderer/src/store')
       }
     },
     plugins: [react(), tsconfigPaths()]

@@ -23,6 +23,9 @@
       ],
       "@api/*": [
         "src/renderer/src/api/*"
+      ],
+      "@store/*": [
+        "src/renderer/src/store/*"
       ]
     }
   }
