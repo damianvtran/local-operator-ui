@@ -15,7 +15,7 @@ library.add(fas, fab);
 
 const App: FC = () => {
   const [currentView, setCurrentView] = useState<'chat' | 'settings' | 'agents'>('chat');
-  const [selectedConversation, setSelectedConversation] = useState('1');
+  const [selectedConversation, setSelectedConversation] = useState<string | undefined>(undefined);
   
   // Handle navigation between views
   const handleNavigate = (view: string) => {

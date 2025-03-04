@@ -29,7 +29,7 @@ import { useAgents } from '@renderer/hooks/useAgents';
 import { format } from 'date-fns';
 
 type ChatSidebarProps = {
-  selectedConversation: string;
+  selectedConversation?: string;
   onSelectConversation: (id: string) => void;
 };
 
@@ -188,12 +188,14 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
                 <ListItemText
                   primary={agent.name}
                   secondary={
-                    <Box sx={{ display: 'flex', flexDirection: 'column', mt: 0.5 }}>
+                    <span style={{ display: 'block', marginTop: '4px' }}>
                       {agent.last_message ? (
                         <>
                           <Typography
                             variant="body2"
+                            component="span"
                             sx={{
+                              display: 'block',
                               color: 'text.secondary',
                               overflow: 'hidden',
                               textOverflow: 'ellipsis',
@@ -205,11 +207,11 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
                             {truncateMessage(agent.last_message)}
                           </Typography>
                           {agent.last_message_datetime && (
-                            <Box 
-                              sx={{ 
+                            <span
+                              style={{ 
                                 display: 'flex', 
                                 alignItems: 'center',
-                                color: 'text.disabled',
+                                color: 'rgba(255, 255, 255, 0.5)',
                                 fontSize: '0.75rem',
                               }}
                             >
@@ -218,25 +220,23 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
                                 size="xs" 
                                 style={{ marginRight: '4px' }} 
                               />
-                              <Box 
-                                component="span" 
+                              <span 
                                 title={new Date(agent.last_message_datetime).toLocaleString()}
-                                sx={{ 
+                                style={{ 
                                   cursor: 'help',
-                                  '&:hover': { textDecoration: 'underline' }
                                 }}
                               >
                                 {formatDateTime(agent.last_message_datetime)}
-                              </Box>
-                            </Box>
+                              </span>
+                            </span>
                           )}
                         </>
                       ) : (
-                        <Box 
-                          sx={{ 
+                        <span
+                          style={{ 
                             display: 'flex', 
                             alignItems: 'center',
-                            color: 'text.disabled',
+                            color: 'rgba(255, 255, 255, 0.5)',
                             fontSize: '0.75rem',
                             fontStyle: 'italic',
                           }}
@@ -246,10 +246,10 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
                             size="xs" 
                             style={{ marginRight: '4px' }} 
                           />
-                          <Typography variant="body2">No messages yet</Typography>
-                        </Box>
+                          <span>No messages yet</span>
+                        </span>
                       )}
-                    </Box>
+                    </span>
                   }
                   primaryTypographyProps={{
                     fontWeight: 500,

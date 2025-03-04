@@ -36,14 +36,17 @@
     "@fortawesome/react-fontawesome": "^0.2.2",
     "@mui/material": "^6.4.2",
     "@tanstack/react-query": "^5.67.1",
+    "@tanstack/react-query-devtools": "^5.67.1",
     "date-fns": "^4.1.0",
     "electron": "^25.3.1",
     "electron-debug": "^3.2.0",
     "electron-log": "^4.4.8",
     "electron-updater": "^6.1.4",
+    "react-error-boundary": "^5.0.0",
     "react-toastify": "^11.0.5",
     "styled-components": "^6.1.14",
-    "zod": "^3.24.2"
+    "zod": "^3.24.2",
+    "zustand": "^5.0.3"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
