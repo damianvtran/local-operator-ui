@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import type { FC } from 'react';
 import { Box, CssBaseline } from '@mui/material';
 import { library } from '@fortawesome/fontawesome-svg-core';
@@ -9,17 +9,18 @@ import { NavigationBar } from '@renderer/components/navigation/navigation-bar';
 import { ChatSidebar } from '@components/chat/chat-sidebar';
 import { ChatPage } from '@components/chat/chat-page';
 import { SettingsPage } from '@renderer/components/settings/settings-page';
+import { AgentsPage } from '@renderer/components/agents/agents-page';
 
 library.add(fas, fab);
 
 const App: FC = () => {
-  const [currentView, setCurrentView] = useState<'chat' | 'settings'>('chat');
+  const [currentView, setCurrentView] = useState<'chat' | 'settings' | 'agents'>('chat');
   const [selectedConversation, setSelectedConversation] = useState('1');
   
   // Handle navigation between views
   const handleNavigate = (view: string) => {
-    if (view === 'chat' || view === 'settings') {
-      setCurrentView(view);
+    if (view === 'chat' || view === 'settings' || view === 'agents') {
+      setCurrentView(view as 'chat' | 'settings' | 'agents');
     }
   };
   
@@ -56,11 +57,13 @@ const App: FC = () => {
           onSelectConversation={handleSelectConversation}
         />
         
-        {/* Main Content (Chat or Settings) */}
+        {/* Main Content (Chat, Settings, or Agents) */}
         {currentView === 'chat' ? (
           <ChatPage conversationId={selectedConversation} />
-        ) : (
+        ) : currentView === 'settings' ? (
           <SettingsPage />
+        ) : (
+          <AgentsPage />
         )}
       </Box>
     </Box>

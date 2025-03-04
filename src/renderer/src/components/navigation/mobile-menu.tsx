@@ -1,7 +1,7 @@
 import React from 'react';
 import { Box, IconButton, Menu, MenuItem } from '@mui/material';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faGear, faMessage, faEllipsisVertical } from '@fortawesome/free-solid-svg-icons';
+import { faGear, faMessage, faEllipsisVertical, faRobot } from '@fortawesome/free-solid-svg-icons';
 
 type MobileMenuProps = {
   onNavigate: (view: string) => void;
@@ -39,6 +39,9 @@ export const MobileMenu: React.FC<MobileMenuProps> = ({ onNavigate }) => {
       >
         <MenuItem onClick={() => { handleClose(); onNavigate('chat'); }}>
           <FontAwesomeIcon icon={faMessage} style={{ marginRight: 8 }} /> Chat
+        </MenuItem>
+        <MenuItem onClick={() => { handleClose(); onNavigate('agents'); }}>
+          <FontAwesomeIcon icon={faRobot} style={{ marginRight: 8 }} /> Agents
         </MenuItem>
         <MenuItem onClick={() => { handleClose(); onNavigate('settings'); }}>
           <FontAwesomeIcon icon={faGear} style={{ marginRight: 8 }} /> Settings

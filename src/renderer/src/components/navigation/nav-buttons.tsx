@@ -1,7 +1,7 @@
 import type React from 'react';
 import { Box, Button } from '@mui/material';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faGear, faMessage } from '@fortawesome/free-solid-svg-icons';
+import { faGear, faMessage, faRobot } from '@fortawesome/free-solid-svg-icons';
 
 type NavButtonsProps = {
   currentView: string;
@@ -24,6 +24,16 @@ export const NavButtons: React.FC<NavButtonsProps> = ({ currentView, onNavigate 
         }}
       >
         Chat
+      </Button>
+      <Button 
+        variant="nav"
+        startIcon={<FontAwesomeIcon icon={faRobot} />}
+        onClick={() => onNavigate('agents')}
+        sx={{ 
+          backgroundColor: currentView === 'agents' ? 'rgba(255,255,255,0.05)' : 'transparent'
+        }}
+      >
+        Agents
       </Button>
       <Button 
         variant="nav"

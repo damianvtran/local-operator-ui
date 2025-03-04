@@ -35,10 +35,12 @@
     "@fortawesome/free-solid-svg-icons": "^6.7.2",
     "@fortawesome/react-fontawesome": "^0.2.2",
     "@mui/material": "^6.4.2",
+    "@tanstack/react-query": "^5.67.1",
     "electron": "^25.3.1",
     "electron-debug": "^3.2.0",
     "electron-log": "^4.4.8",
     "electron-updater": "^6.1.4",
+    "react-toastify": "^11.0.5",
     "styled-components": "^6.1.14",
     "zod": "^3.24.2"
   },
