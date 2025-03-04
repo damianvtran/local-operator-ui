@@ -6,7 +6,7 @@
 
 import React, { useState } from 'react';
 import type { FC } from 'react';
-import { Box, Container, Grid, Paper, Typography } from '@mui/material';
+import { Box, Grid, Paper, Typography } from '@mui/material';
 import { AgentList } from './agent-list';
 import type { AgentDetails } from '@renderer/api/local-operator/types';
 

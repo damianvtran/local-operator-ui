@@ -4,8 +4,8 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'react-toastify';
-import type { AgentDetails, AgentListResult, CRUDResponse } from '@renderer/api/local-operator/types';
-import { AgentsApi, createLocalOperatorClient } from '@renderer/api/local-operator';
+import type { AgentDetails } from '@renderer/api/local-operator/types';
+import { AgentsApi } from '@renderer/api/local-operator';
 import { apiConfig } from '@renderer/config';
 
 /**
