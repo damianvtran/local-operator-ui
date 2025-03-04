@@ -6,7 +6,7 @@
 
 import React from 'react';
 import type { FC } from 'react';
-import { Box, Typography, Card, CardContent, Chip } from '@mui/material';
+import { Box, Typography, Card, CardContent, Chip, alpha } from '@mui/material';
 import type { AgentDetails } from '@renderer/api/local-operator/types';
 
 type AgentListItemProps = {
@@ -35,37 +35,74 @@ export const AgentListItem: FC<AgentListItemProps> = ({
       onClick={onClick}
       data-testid={`agent-item-${agent.id}`}
       sx={{
-        marginBottom: 2,
+        marginBottom: 2.5,
         cursor: 'pointer',
-        transition: 'all 0.2s ease',
+        transition: 'all 0.2s ease-in-out',
+        borderRadius: 2,
+        backgroundColor: (theme) => isSelected 
+          ? alpha(theme.palette.primary.main, 0.08)
+          : theme.palette.background.paper,
         border: isSelected 
-          ? (theme) => `2px solid ${theme.palette.primary.main}` 
-          : '2px solid transparent',
+          ? (theme) => `1px solid ${theme.palette.primary.main}` 
+          : '1px solid transparent',
         '&:hover': {
-          boxShadow: 3,
-          transform: 'translateY(-2px)',
+          boxShadow: (theme) => `0 8px 16px ${alpha(theme.palette.common.black, 0.08)}`,
+          transform: 'translateY(-3px)',
+          backgroundColor: (theme) => !isSelected 
+            ? alpha(theme.palette.background.default, 0.7)
+            : alpha(theme.palette.primary.main, 0.12),
         },
+        position: 'relative',
+        overflow: 'hidden',
       }}
     >
-      <CardContent>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
-          <Typography variant="h6" component="h3" sx={{ fontWeight: 'bold' }}>
+      <CardContent sx={{ p: 2.5 }}>
+        <Box sx={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center', 
+          mb: 1.5 
+        }}>
+          <Typography 
+            variant="h6" 
+            component="h3" 
+            sx={{ 
+              fontWeight: 600,
+              fontSize: '1.1rem',
+              lineHeight: 1.2,
+              color: (theme) => isSelected ? theme.palette.primary.main : 'inherit'
+            }}
+          >
             {agent.name}
           </Typography>
-          <Chip 
-            label={agent.model} 
-            size="small" 
-            color="primary" 
-            variant="outlined"
-            title="AI model powering this agent"
-          />
+          {agent.model && (
+            <Chip 
+              label={agent.model} 
+              size="small" 
+              color="primary" 
+              variant="outlined"
+              title="AI model powering this agent"
+              sx={{ 
+                fontWeight: 500,
+                borderRadius: 1,
+                '& .MuiChip-label': { px: 1 }
+              }}
+            />
+          )}
         </Box>
         
-        <Box sx={{ display: 'flex', gap: 2, mb: 1 }}>
+        <Box sx={{ 
+          display: 'flex', 
+          flexWrap: 'wrap',
+          gap: 2, 
+          mb: 2,
+          opacity: 0.8
+        }}>
           <Typography 
             variant="body2" 
             color="text.secondary"
             title="Unique identifier for this agent"
+            sx={{ fontSize: '0.8rem' }}
           >
             ID: {agent.id}
           </Typography>
@@ -73,26 +110,43 @@ export const AgentListItem: FC<AgentListItemProps> = ({
             variant="body2" 
             color="text.secondary"
             title="When this agent was created"
+            sx={{ fontSize: '0.8rem' }}
           >
             Created: {createdDate}
           </Typography>
         </Box>
         
-        <Box sx={{ display: 'flex', gap: 1 }}>
+        <Box sx={{ 
+          display: 'flex', 
+          gap: 1.5,
+          flexWrap: 'wrap'
+        }}>
           <Chip 
             label={`v${agent.version}`} 
             size="small" 
             color="secondary" 
             variant="outlined"
             title="Agent version number"
+            sx={{ 
+              borderRadius: 1,
+              height: 24,
+              '& .MuiChip-label': { px: 1 }
+            }}
           />
-          <Chip 
-            label={agent.hosting} 
-            size="small" 
-            color="info" 
-            variant="outlined"
-            title="Where this agent is hosted"
-          />
+          {agent.hosting && (
+            <Chip 
+              label={agent.hosting} 
+              size="small" 
+              color="info" 
+              variant="outlined"
+              title="Where this agent is hosted"
+              sx={{ 
+                borderRadius: 1,
+                height: 24,
+                '& .MuiChip-label': { px: 1 }
+              }}
+            />
+          )}
         </Box>
       </CardContent>
     </Card>

@@ -60,16 +60,39 @@ export const AgentList: FC<AgentListProps> = ({
     <Paper 
       elevation={0} 
       sx={{ 
-        p: 2, 
+        p: { xs: 2, sm: 3 }, 
         height: '100%', 
         display: 'flex', 
         flexDirection: 'column',
-        borderRadius: 2,
-        bgcolor: 'background.paper'
+        borderRadius: 3,
+        bgcolor: 'background.paper',
+        boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
+        transition: 'box-shadow 0.3s ease-in-out',
+        '&:hover': {
+          boxShadow: '0 6px 25px rgba(0,0,0,0.08)',
+        },
       }}
     >
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-        <Typography variant="h5" component="h2" sx={{ fontWeight: 'bold' }}>
+      <Box 
+        sx={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center', 
+          mb: 3,
+          pb: 2,
+          borderBottom: '1px solid',
+          borderColor: 'divider'
+        }}
+      >
+        <Typography 
+          variant="h5" 
+          component="h2" 
+          sx={{ 
+            fontWeight: 700,
+            fontSize: { xs: '1.25rem', sm: '1.5rem' },
+            letterSpacing: '-0.01em'
+          }}
+        >
           Agents
         </Typography>
         
@@ -79,21 +102,48 @@ export const AgentList: FC<AgentListProps> = ({
           onClick={() => refetch()} 
           disabled={isLoading || isFetching}
           size="small"
+          sx={{
+            borderRadius: 2,
+            textTransform: 'none',
+            px: 2,
+            fontWeight: 500,
+            transition: 'all 0.2s',
+            '&:hover': {
+              transform: 'translateY(-2px)',
+            }
+          }}
         >
           {isFetching ? 'Refreshing...' : 'Refresh'}
         </Button>
       </Box>
       
       {isLoading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flexGrow: 1 }}>
-          <CircularProgress />
+        <Box 
+          sx={{ 
+            display: 'flex', 
+            justifyContent: 'center', 
+            alignItems: 'center', 
+            flexGrow: 1,
+            py: 6
+          }}
+        >
+          <CircularProgress size={40} thickness={4} />
         </Box>
       ) : isError ? (
         <Alert 
           severity="error" 
-          sx={{ mb: 2 }}
+          sx={{ 
+            mb: 2,
+            borderRadius: 2,
+            boxShadow: '0 2px 10px rgba(0,0,0,0.08)'
+          }}
           action={
-            <Button color="inherit" size="small" onClick={() => refetch()}>
+            <Button 
+              color="inherit" 
+              size="small" 
+              onClick={() => refetch()}
+              sx={{ fontWeight: 500 }}
+            >
               Retry
             </Button>
           }
@@ -108,10 +158,22 @@ export const AgentList: FC<AgentListProps> = ({
             alignItems: 'center', 
             justifyContent: 'center',
             flexGrow: 1,
-            p: 3
+            p: 4,
+            my: 4,
+            borderRadius: 3,
+            bgcolor: 'background.default'
           }}
         >
-          <Typography variant="body1" color="text.secondary" sx={{ mb: 2, textAlign: 'center' }}>
+          <Typography 
+            variant="body1" 
+            color="text.secondary" 
+            sx={{ 
+              mb: 2, 
+              textAlign: 'center',
+              maxWidth: '80%',
+              lineHeight: 1.6
+            }}
+          >
             No agents found. Create a new agent to get started.
           </Typography>
         </Box>
@@ -119,12 +181,21 @@ export const AgentList: FC<AgentListProps> = ({
         <Box sx={{ 
           flexGrow: 1, 
           overflow: 'auto',
+          px: 0.5,
+          py: 1,
+          mx: -0.5,
           '&::-webkit-scrollbar': {
-            width: '8px',
+            width: '6px',
+          },
+          '&::-webkit-scrollbar-track': {
+            backgroundColor: 'transparent',
           },
           '&::-webkit-scrollbar-thumb': {
-            backgroundColor: 'rgba(255, 255, 255, 0.1)',
-            borderRadius: '4px',
+            backgroundColor: 'rgba(0, 0, 0, 0.1)',
+            borderRadius: '10px',
+            '&:hover': {
+              backgroundColor: 'rgba(0, 0, 0, 0.2)',
+            }
           },
         }}>
           {agents.map((agent) => (
@@ -137,12 +208,27 @@ export const AgentList: FC<AgentListProps> = ({
           ))}
           
           {agents.length > perPage && (
-            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+            <Box sx={{ 
+              display: 'flex', 
+              justifyContent: 'center', 
+              mt: 3,
+              pt: 2,
+              borderTop: '1px solid',
+              borderColor: 'divider'
+            }}>
               <Pagination 
                 count={Math.ceil(agents.length / perPage)} 
                 page={page} 
                 onChange={handlePageChange} 
                 color="primary" 
+                size="medium"
+                shape="rounded"
+                sx={{
+                  '& .MuiPaginationItem-root': {
+                    borderRadius: 1.5,
+                    mx: 0.5
+                  }
+                }}
               />
             </Box>
           )}
