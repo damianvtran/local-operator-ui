@@ -17,6 +17,7 @@ import {
   Alert,
   Button,
   Pagination,
+  Tooltip,
 } from '@mui/material';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
@@ -123,21 +124,33 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
           <Typography variant="h6" sx={{ fontWeight: 500 }}>
             Agents
           </Typography>
-          <Button
-            variant="contained"
-            color="primary"
-            size="small"
-            startIcon={<FontAwesomeIcon icon={faPlus} />}
-            onClick={handleOpenCreateDialog}
-            sx={{
-              borderRadius: 1.5,
-              textTransform: 'none',
-              fontWeight: 500,
-              px: 1.5,
-            }}
-          >
-            New Agent
-          </Button>
+          {/* @ts-ignore - MUI Tooltip requires children but we're providing it */}
+          <Tooltip title="Create a new agent" arrow placement="top">
+            <Button
+              variant="outlined"
+              color="primary"
+              size="small"
+              startIcon={<FontAwesomeIcon icon={faPlus} />}
+              onClick={handleOpenCreateDialog}
+              sx={{
+                borderRadius: 2,
+                textTransform: 'none',
+                fontWeight: 600,
+                px: 2,
+                py: 0.8,
+                transition: 'all 0.2s ease-in-out',
+                '&:hover': {
+                  boxShadow: '0 2px 8px rgba(56, 201, 106, 0.2)',
+                  transform: 'translateY(-1px)',
+                },
+                '&:active': {
+                  transform: 'translateY(0)',
+                },
+              }}
+            >
+              New Agent
+            </Button>
+          </Tooltip>
         </Box>
 
         <TextField
