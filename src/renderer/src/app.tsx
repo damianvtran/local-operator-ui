@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { FC } from 'react';
 import { Box, CssBaseline } from '@mui/material';
 import { library } from '@fortawesome/fontawesome-svg-core';
@@ -15,6 +15,7 @@ library.add(fas, fab);
 const App: FC = () => {
   const [currentView, setCurrentView] = useState<'chat' | 'settings' | 'agents'>('chat');
   const [selectedConversation, setSelectedConversation] = useState<string | undefined>(undefined);
+  const [selectedAgentForSettings, setSelectedAgentForSettings] = useState<string | undefined>(undefined);
   
   // Handle navigation between views
   const handleNavigate = (view: string) => {
@@ -22,6 +23,19 @@ const App: FC = () => {
       setCurrentView(view as 'chat' | 'settings' | 'agents');
     }
   };
+  
+  // Handle navigation to agent settings
+  const handleNavigateToAgentSettings = (agentId: string) => {
+    setSelectedAgentForSettings(agentId);
+    setCurrentView('agents');
+  };
+  
+  // Reset selectedAgentForSettings when leaving the agents page
+  useEffect(() => {
+    if (currentView !== 'agents') {
+      setSelectedAgentForSettings(undefined);
+    }
+  }, [currentView]);
   
   // Handle selecting a conversation
   const handleSelectConversation = (id: string) => {
@@ -55,11 +69,15 @@ const App: FC = () => {
             conversationId={selectedConversation} 
             onSelectConversation={handleSelectConversation}
             selectedConversation={selectedConversation}
+            onNavigateToAgentSettings={handleNavigateToAgentSettings}
           />
         ) : currentView === 'settings' ? (
           <SettingsPage />
         ) : (
-          <AgentsPage />
+          <AgentsPage 
+            key={selectedAgentForSettings} 
+            initialSelectedAgentId={selectedAgentForSettings}
+          />
         )}
       </Box>
     </Box>

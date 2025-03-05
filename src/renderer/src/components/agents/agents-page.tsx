@@ -4,7 +4,7 @@
  * Main page for displaying and managing agents with enhanced UI/UX
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { FC } from 'react';
 import { 
   Box, 
@@ -28,14 +28,32 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { AgentList } from './agent-list';
 import type { AgentDetails } from '@renderer/api/local-operator/types';
+import { useAgent } from '@renderer/hooks/use-agents';
+
+type AgentsPageProps = {
+  /**
+   * Optional ID of an agent to select when the page loads
+   */
+  initialSelectedAgentId?: string;
+};
 
 /**
  * Agents Page Component
  * 
  * Main page for displaying and managing agents with enhanced UI/UX
  */
-export const AgentsPage: FC = () => {
+export const AgentsPage: FC<AgentsPageProps> = ({ initialSelectedAgentId }) => {
   const [selectedAgent, setSelectedAgent] = useState<AgentDetails | null>(null);
+  
+  // Fetch the agent details if initialSelectedAgentId is provided
+  const { data: initialAgent } = useAgent(initialSelectedAgentId);
+  
+  // Set the selected agent when initialAgent changes
+  useEffect(() => {
+    if (initialAgent) {
+      setSelectedAgent(initialAgent);
+    }
+  }, [initialAgent]);
   
   const handleSelectAgent = (agent: AgentDetails) => {
     setSelectedAgent(agent);

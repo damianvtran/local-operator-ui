@@ -8,7 +8,7 @@ import {
   Typography,
 } from '@mui/material';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faEllipsisVertical, faTrash } from '@fortawesome/free-solid-svg-icons';
+import { faEllipsisVertical, faTrash, faGear } from '@fortawesome/free-solid-svg-icons';
 import { ConfirmationModal } from './confirmation-modal';
 import { useDeleteAgent } from '@renderer/hooks/use-agent-mutations';
 
@@ -29,18 +29,30 @@ type AgentOptionsMenuProps = {
    * Optional styles for the menu button
    */
   buttonSx?: Record<string, unknown>;
+  /**
+   * Whether the current page is the agents page
+   * If true, the "View Agent Settings" option will not be shown
+   */
+  isAgentsPage?: boolean;
+  /**
+   * Optional callback for navigating to agent settings
+   * This should navigate to the Agents page with this agent selected
+   */
+  onViewAgentSettings?: () => void;
 };
 
 /**
  * Agent Options Menu Component
  * 
- * Provides a menu with options for an agent, including deletion
+ * Provides a menu with options for an agent, including deletion and settings navigation
  */
 export const AgentOptionsMenu: FC<AgentOptionsMenuProps> = ({
   agentId,
   agentName,
   onAgentDeleted,
   buttonSx = {},
+  isAgentsPage = false,
+  onViewAgentSettings,
 }) => {
   const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -132,6 +144,27 @@ export const AgentOptionsMenu: FC<AgentOptionsMenuProps> = ({
           },
         }}
       >
+        {/* View Agent Settings option - only shown when not on the agents page */}
+        {!isAgentsPage && onViewAgentSettings && (
+          <MenuItem 
+            onClick={() => {
+              onViewAgentSettings();
+              handleCloseMenu();
+            }}
+            sx={{ 
+              py: 1.5,
+              '&:hover': {
+                backgroundColor: 'rgba(56, 201, 106, 0.08)',
+              },
+            }}
+          >
+            <ListItemIcon sx={{ color: 'primary.main', minWidth: 36 }}>
+              <FontAwesomeIcon icon={faGear} size="sm" />
+            </ListItemIcon>
+            <Typography variant="body2">View Agent Settings</Typography>
+          </MenuItem>
+        )}
+        
         <MenuItem 
           onClick={handleOpenDeleteConfirmation}
           sx={{ 

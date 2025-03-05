@@ -34,6 +34,7 @@ import { format } from 'date-fns';
 type ChatSidebarProps = {
   selectedConversation?: string;
   onSelectConversation: (id: string) => void;
+  onNavigateToAgentSettings?: (agentId: string) => void;
 };
 
 /**
@@ -44,6 +45,7 @@ type ChatSidebarProps = {
 export const ChatSidebar: FC<ChatSidebarProps> = ({
   selectedConversation,
   onSelectConversation,
+  onNavigateToAgentSettings,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [page, setPage] = useState(1);
@@ -211,6 +213,8 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
                 <AgentOptionsMenu
                   agentId={agent.id}
                   agentName={agent.name}
+                  isAgentsPage={false} // This is not the agents page, so we can show the settings option
+                  onViewAgentSettings={onNavigateToAgentSettings ? () => onNavigateToAgentSettings(agent.id) : undefined}
                   onAgentDeleted={(deletedId) => {
                     // If the deleted agent was selected, clear the selection
                     if (selectedConversation === deletedId) {

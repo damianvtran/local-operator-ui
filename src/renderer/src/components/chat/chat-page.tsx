@@ -28,6 +28,8 @@ type ChatProps = {
   onSelectConversation: (id: string) => void;
   /** Currently selected conversation ID */
   selectedConversation?: string;
+  /** Callback for navigating to agent settings */
+  onNavigateToAgentSettings?: (agentId: string) => void;
 }
 
 /**
@@ -38,7 +40,8 @@ type ChatProps = {
 export const ChatPage: FC<ChatProps> = ({ 
   conversationId, 
   onSelectConversation, 
-  selectedConversation 
+  selectedConversation,
+  onNavigateToAgentSettings
 }) => {
   const [activeTab, setActiveTab] = useState<'chat' | 'raw'>('chat');
   
@@ -155,6 +158,7 @@ export const ChatPage: FC<ChatProps> = ({
         <ChatSidebar 
           selectedConversation={selectedConversation}
           onSelectConversation={onSelectConversation}
+          onNavigateToAgentSettings={onNavigateToAgentSettings}
         />
       </Box>
       

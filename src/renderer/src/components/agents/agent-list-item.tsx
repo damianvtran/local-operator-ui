@@ -101,6 +101,7 @@ export const AgentListItem: FC<AgentListItemProps> = ({
               agentId={agent.id}
               agentName={agent.name}
               onAgentDeleted={onAgentDeleted}
+              isAgentsPage={true} // This is the agents page, so we don't need to show the settings option
               buttonSx={{
                 '.MuiListItem-root:hover &': {
                   opacity: 0.6,
