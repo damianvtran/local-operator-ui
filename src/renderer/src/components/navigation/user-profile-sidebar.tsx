@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useUserStore } from '@renderer/store/user-store';
 import type React from 'react';
 import type { FC } from 'react';
 import { 
@@ -40,10 +41,10 @@ export const UserProfileSidebar: FC<UserProfileSidebarProps> = ({
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
   
-  // Mock user data - in a real app, this would come from a user context or API
-  // If these values are undefined, they won't be displayed
-  const userName = "User"; // Replace with actual user name if available
-  const userEmail = "user@example.com"; // Replace with actual email if available
+  // Get user profile from the store
+  const { profile } = useUserStore();
+  const userName = profile.name;
+  const userEmail = profile.email;
   
   const handleClick = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);

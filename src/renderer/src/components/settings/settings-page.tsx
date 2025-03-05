@@ -20,8 +20,11 @@ import {
   faCloudUploadAlt,
   faInfoCircle,
   faSave,
-  faListAlt
+  faListAlt,
+  faUser,
+  faEnvelope
 } from '@fortawesome/free-solid-svg-icons';
+import { useUserStore } from '@renderer/store/user-store';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { PageHeader } from '../common/page-header';
 import { EditableField } from '../common/editable-field';
@@ -35,6 +38,7 @@ export const SettingsPage: FC = () => {
   const { data: config, isLoading, error, refetch } = useConfig();
   const updateConfigMutation = useUpdateConfig();
   const [savingField, setSavingField] = useState<string | null>(null);
+  const userStore = useUserStore();
   
   // Handle updating a specific field
   const handleUpdateField = async (field: keyof ConfigUpdate, value: string | number | boolean) => {
@@ -100,6 +104,53 @@ export const SettingsPage: FC = () => {
         <Grid container spacing={4}>
           {/* Left Column */}
           <Grid item xs={12} md={6}>
+            {/* User Profile Settings */}
+            <Card sx={{ mb: 4, bgcolor: 'background.paper', borderRadius: 2, boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+              <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+                <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <FontAwesomeIcon icon={faUser} />
+                  User Profile
+                </Typography>
+                
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                  Update your user profile information displayed in the application.
+                </Typography>
+                
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                  <EditableField
+                    value={userStore.profile.name}
+                    label="Display Name"
+                    placeholder="Enter your name..."
+                    icon={<FontAwesomeIcon icon={faUser} />}
+                    isSaving={savingField === 'user_name'}
+                    onSave={async (value) => {
+                      setSavingField('user_name');
+                      try {
+                        userStore.updateName(value);
+                      } finally {
+                        setSavingField(null);
+                      }
+                    }}
+                  />
+                  
+                  <EditableField
+                    value={userStore.profile.email}
+                    label="Email Address"
+                    placeholder="Enter your email..."
+                    icon={<FontAwesomeIcon icon={faEnvelope} />}
+                    isSaving={savingField === 'user_email'}
+                    onSave={async (value) => {
+                      setSavingField('user_email');
+                      try {
+                        userStore.updateEmail(value);
+                      } finally {
+                        setSavingField(null);
+                      }
+                    }}
+                  />
+                </Box>
+              </CardContent>
+            </Card>
             {/* Model Settings */}
             <Card sx={{ mb: 4, bgcolor: 'background.paper', borderRadius: 2, boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
               <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
