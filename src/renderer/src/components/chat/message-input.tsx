@@ -5,10 +5,12 @@ import {
   TextField, 
   Button, 
   IconButton, 
-  Typography 
+  Typography,
+  alpha,
+  Tooltip
 } from '@mui/material';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faPaperPlane, faPaperclip } from '@fortawesome/free-solid-svg-icons';
+import { faPaperPlane, faPaperclip, faTimes } from '@fortawesome/free-solid-svg-icons';
 
 type MessageInputProps = {
   onSendMessage: (content: string, file: File | null) => void;
@@ -54,10 +56,12 @@ export const MessageInput: FC<MessageInputProps> = ({ onSendMessage, isLoading }
       component="form" 
       onSubmit={handleSubmit}
       sx={{ 
-        p: 2, 
+        p: 2.5, 
         display: 'flex', 
-        alignItems: 'center',
-        gap: 1
+        alignItems: 'flex-end',
+        gap: 1.5,
+        borderTop: (theme) => `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+        backgroundColor: (theme) => alpha(theme.palette.background.paper, 0.4),
       }}
     >
       {/* Hidden file input */}
@@ -70,18 +74,30 @@ export const MessageInput: FC<MessageInputProps> = ({ onSendMessage, isLoading }
       />
       
       {/* Attachment button */}
-      <IconButton 
-        onClick={triggerFileInput}
-        color="primary"
-        sx={{ 
-          bgcolor: 'rgba(255, 255, 255, 0.05)',
-          '&:hover': {
-            bgcolor: 'rgba(255, 255, 255, 0.1)'
-          }
-        }}
-      >
-        <FontAwesomeIcon icon={faPaperclip} />
-      </IconButton>
+      <Tooltip title="Attach file">
+        <IconButton 
+          onClick={triggerFileInput}
+          color="primary"
+          size="medium"
+          aria-label="Attach file"
+          sx={{ 
+            bgcolor: (theme) => alpha(theme.palette.primary.main, 0.08),
+            width: 44,
+            height: 44,
+            borderRadius: 2.5,
+            transition: 'all 0.2s ease-in-out',
+            '&:hover': {
+              bgcolor: (theme) => alpha(theme.palette.primary.main, 0.15),
+              transform: 'translateY(-2px)'
+            },
+            '&:active': {
+              transform: 'translateY(0px)'
+            }
+          }}
+        >
+          <FontAwesomeIcon icon={faPaperclip} />
+        </IconButton>
+      </Tooltip>
       
       {/* Text input */}
       <TextField
@@ -95,11 +111,19 @@ export const MessageInput: FC<MessageInputProps> = ({ onSendMessage, isLoading }
         variant="outlined"
         InputProps={{
           sx: {
-            borderRadius: 2,
-            backgroundColor: 'rgba(255, 255, 255, 0.05)',
+            borderRadius: 2.5,
+            backgroundColor: (theme) => alpha(theme.palette.background.paper, 0.6),
+            border: (theme) => `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+            transition: 'all 0.2s ease-in-out',
             '&.Mui-focused': {
-              backgroundColor: 'rgba(255, 255, 255, 0.07)'
-            }
+              backgroundColor: (theme) => alpha(theme.palette.background.paper, 0.8),
+              boxShadow: (theme) => `0 0 0 3px ${alpha(theme.palette.primary.main, 0.15)}`
+            },
+            '&:hover': {
+              backgroundColor: (theme) => alpha(theme.palette.background.paper, 0.7),
+            },
+            padding: '12px 16px',
+            fontSize: '0.95rem'
           }
         }}
       />
@@ -109,40 +133,74 @@ export const MessageInput: FC<MessageInputProps> = ({ onSendMessage, isLoading }
         <Box sx={{ 
           display: 'flex', 
           alignItems: 'center', 
-          bgcolor: 'rgba(255, 255, 255, 0.05)',
-          borderRadius: 1,
-          px: 1,
-          py: 0.5
+          bgcolor: (theme) => alpha(theme.palette.primary.main, 0.08),
+          borderRadius: 2,
+          px: 1.5,
+          py: 0.75,
+          border: (theme) => `1px solid ${alpha(theme.palette.primary.main, 0.2)}`,
+          height: 44
         }}>
-          <Typography variant="caption" noWrap sx={{ maxWidth: 100 }}>
+          <Typography 
+            variant="caption" 
+            noWrap 
+            sx={{ 
+              maxWidth: 120,
+              fontWeight: 500,
+              color: 'primary.main'
+            }}
+          >
             {selectedFile.name}
           </Typography>
           <IconButton 
             size="small" 
             onClick={() => setSelectedFile(null)}
-            sx={{ ml: 0.5 }}
+            aria-label="Remove file"
+            sx={{ 
+              ml: 0.5,
+              color: 'primary.main',
+              '&:hover': {
+                backgroundColor: (theme) => alpha(theme.palette.primary.main, 0.15)
+              }
+            }}
           >
-            &times;
+            <FontAwesomeIcon icon={faTimes} size="xs" />
           </IconButton>
         </Box>
       )}
       
       {/* Send button */}
-      <Button
-        type="submit"
-        variant="contained"
-        color="primary"
-        disabled={isLoading || (!newMessage.trim() && !selectedFile)}
-        sx={{ 
-          borderRadius: 2,
-          minWidth: 'auto',
-          width: 40,
-          height: 40,
-          p: 0
-        }}
-      >
-        <FontAwesomeIcon icon={faPaperPlane} />
-      </Button>
+      <Tooltip title="Send message">
+        <span>
+          <Button
+            type="submit"
+            variant="contained"
+            color="primary"
+            disabled={isLoading || (!newMessage.trim() && !selectedFile)}
+            aria-label="Send message"
+            sx={{ 
+              borderRadius: 2.5,
+              minWidth: 'auto',
+              width: 44,
+              height: 44,
+              p: 0,
+              boxShadow: 2,
+              transition: 'all 0.2s ease-in-out',
+              '&:not(:disabled):hover': {
+                transform: 'translateY(-2px)',
+                boxShadow: 4
+              },
+              '&:not(:disabled):active': {
+                transform: 'translateY(0px)'
+              },
+              '&.Mui-disabled': {
+                backgroundColor: (theme) => alpha(theme.palette.action.disabled, 0.2)
+              }
+            }}
+          >
+            <FontAwesomeIcon icon={faPaperPlane} />
+          </Button>
+        </span>
+      </Tooltip>
     </Box>
   );
 };
