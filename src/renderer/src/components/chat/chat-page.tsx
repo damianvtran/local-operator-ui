@@ -154,8 +154,9 @@ const LoadingBox = styled(Box)({
 
 const EmptyMessagesBox = styled(Box)({
   textAlign: 'center',
-  color: 'text.secondary',
-  padding: 32
+  color: 'rgba(255, 255, 255, 0.7)',
+  padding: 32,
+  fontSize: '0.9rem'
 });
 
 const RawInfoContainer = styled(Box)({
@@ -405,6 +406,7 @@ export const ChatPage: FC<ChatProps> = ({
                       ))
                     ) : (
                       <EmptyMessagesBox>
+                        <FontAwesomeIcon icon={faCommentDots} style={{ fontSize: '2rem', opacity: 0.5, marginBottom: '1rem' }} />
                         <Typography variant="body1">
                           No messages yet. Start a conversation!
                         </Typography>

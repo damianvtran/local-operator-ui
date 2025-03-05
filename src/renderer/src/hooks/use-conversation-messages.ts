@@ -187,6 +187,20 @@ export const useConversationMessages = (
     }
   }, [isAtTop, hasNextPage, isFetchingNextPage, fetchNextPage]);
   
+  // Clear the store when the conversation ID changes
+  const previousConversationIdRef = useRef<string | undefined>(conversationId);
+  
+  useEffect(() => {
+    // If the conversation ID has changed, clear the store
+    if (conversationId !== previousConversationIdRef.current && previousConversationIdRef.current) {
+      // Clear the messages for the previous conversation
+      setMessages(conversationId || '', []);
+    }
+    
+    // Update the ref
+    previousConversationIdRef.current = conversationId;
+  }, [conversationId, setMessages]);
+  
   // Update the store with fetched messages
   useEffect(() => {
     // Skip if no conversation ID or no data
@@ -219,7 +233,7 @@ export const useConversationMessages = (
       }
     } 
     // If this is the first fetch and we have messages, set them in the store
-    else if (existingMessages.length === 0 && allMessages.length > 0) {
+    else if (allMessages.length > 0) {
       setMessages(conversationId, allMessages);
     }
   }, [data, conversationId, setMessages, getMessages]);
@@ -231,21 +245,10 @@ export const useConversationMessages = (
     return conversationId ? getMessages(conversationId) : [];
   }, [conversationId, getMessages, lastUpdated]);
   
-  // Get messages from the API
-  const apiMessages = useMemo(() => {
-    return data?.pages.flatMap((page) => page.messages) || [];
-  }, [data]);
-  
-  // Combine messages from store and API
+  // Use messages from the store (which will be populated from API data)
   const messages = useMemo(() => {
-    // If we have messages in the store, use those
-    if (storeMessages.length > 0) {
-      return storeMessages;
-    }
-    
-    // Otherwise, use messages from the API
-    return apiMessages;
-  }, [storeMessages, apiMessages]);
+    return storeMessages;
+  }, [storeMessages]);
   
   return {
     messages,
