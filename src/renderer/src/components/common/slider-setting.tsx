@@ -262,7 +262,7 @@ export const SliderSetting: FC<SliderSettingProps> = ({
           />
         </Box>
         
-        <Box sx={{ display: 'flex', alignItems: 'center', minWidth: '100px' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', minWidth: unit ? '130px' : '100px' }}>
           {isSaving ? (
             <CircularProgress size={24} sx={{ mr: 1 }} />
           ) : (
@@ -279,18 +279,31 @@ export const SliderSetting: FC<SliderSettingProps> = ({
                 min,
                 max,
                 step,
-                style: { textAlign: 'right' }
+                style: { 
+                  textAlign: 'right',
+                  paddingRight: unit ? '8px' : '0'
+                }
               }}
               InputProps={{
                 endAdornment: unit ? (
-                  <InputAdornment position="end">{unit}</InputAdornment>
+                  <InputAdornment position="end">
+                    <Typography variant="caption" sx={{ fontSize: '0.9rem', ml: -0.5, mr: 1.5 }}>
+                      {unit}
+                    </Typography>
+                  </InputAdornment>
                 ) : undefined,
+                sx: {
+                  pr: unit ? 0.5 : 1
+                }
               }}
               sx={{
-                width: unit ? '100px' : '80px',
+                width: unit ? '130px' : '100px',
                 '& .MuiOutlinedInput-root': {
                   borderRadius: 1.5,
                 },
+                '& .MuiInputAdornment-root': {
+                  marginLeft: 0
+                }
               }}
             />
           )}
