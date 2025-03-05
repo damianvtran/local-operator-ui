@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, type KeyboardEvent } from 'react';
 import type { FC, FormEvent, ChangeEvent } from 'react';
 import { 
   Box, 
@@ -40,6 +40,15 @@ export const MessageInput: FC<MessageInputProps> = ({ onSendMessage, isLoading }
     fileInputRef.current?.click();
   };
   
+  const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      if (newMessage.trim() || selectedFile) {
+        handleSubmit(e as unknown as FormEvent);
+      }
+    }
+  };
+  
   return (
     <Box 
       component="form" 
@@ -77,9 +86,10 @@ export const MessageInput: FC<MessageInputProps> = ({ onSendMessage, isLoading }
       {/* Text input */}
       <TextField
         fullWidth
-        placeholder="Type a message..."
+        placeholder="✨ Type to Chat! Press ↵ to send, Shift+↵ for new line 📝"
         value={newMessage}
         onChange={(e) => setNewMessage(e.target.value)}
+        onKeyDown={handleKeyDown}
         multiline
         maxRows={4}
         variant="outlined"
