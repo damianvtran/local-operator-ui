@@ -103,12 +103,31 @@ export type ChatRequest = {
   model: string;
   /** The prompt to generate a response for */
   prompt: string;
-  /** Whether to stream the response token by token. Default: False */
-  stream?: boolean;
   /** Optional list of previous messages for context */
   context?: ConversationRecord[];
   /** Optional generation parameters to override defaults */
   options?: ChatOptions;
+};
+
+/**
+ * Request body for agent chat generation endpoint.
+ */
+export type AgentChatRequest = {
+  /** Name of the hosting service to use for generation */
+  hosting: string;
+  /** Name of the model to use for generation */
+  model: string;
+  /** The prompt to generate a response for */
+  prompt: string;
+  /** Whether to stream the response token by token. Default: False */
+  stream?: boolean;
+  /** Optional generation parameters to override defaults */
+  options?: ChatOptions;
+  /**
+   * Whether to persist the conversation history by continuously updating the agent's
+   * conversation history with each new message. Default: False
+   */
+  persist_conversation?: boolean;
 };
 
 /**

@@ -1,7 +1,7 @@
 /**
  * Local Operator API - Chat Endpoints
  */
-import type { ChatRequest, ChatResponse } from './types';
+import type { AgentChatRequest, ChatRequest, ChatResponse, JobDetails } from './types';
 
 /**
  * Chat API client for the Local Operator API
@@ -62,28 +62,65 @@ export const ChatApi = {
   /**
    * Process chat request asynchronously
    * Accepts a prompt and optional context/configuration, starts an asynchronous job to process the request
-   * and returns a job ID.
+   * and returns job details.
    * 
    * @param baseUrl - The base URL of the Local Operator API
    * @param request - The chat request
-   * @returns Promise resolving to the job ID
+   * @returns Promise resolving to the job details
+   * @throws Error if the request fails
    */
-  async processChatAsync(baseUrl: string, request: ChatRequest): Promise<string> {
-    const response = await fetch(`${baseUrl}/v1/chat/async`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-      body: JSON.stringify(request),
-    });
+  async processChatAsync(baseUrl: string, request: ChatRequest): Promise<JobDetails> {
+    try {
+      const response = await fetch(`${baseUrl}/v1/chat/async`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify(request),
+      });
 
-    if (!response.ok) {
-      throw new Error(`Async chat request failed: ${response.status} ${response.statusText}`);
+      if (!response.ok) {
+        throw new Error(`Async chat request failed: ${response.status} ${response.statusText}`);
+      }
+
+      return await response.json() as JobDetails;
+    } catch (error) {
+      console.error('Error in processChatAsync:', error);
+      throw error;
     }
+  },
 
-    const result = await response.json();
-    // The API doesn't specify the exact response format, but we assume it contains a job ID
-    return result.job_id || result.id;
+  /**
+   * Process agent chat request asynchronously.
+   * Accepts a prompt and optional context/configuration, retrieves the specified agent from the registry,
+   * starts an asynchronous job to process the request and returns job details.
+   *
+   * @param baseUrl - The base URL of the Local Operator API
+   * @param agentId - ID of the agent to use for the chat
+   * @param request - The agent chat request
+   * @returns Promise resolving to the job details
+   * @throws Error if the request fails
+   */
+  async processAgentChatAsync(baseUrl: string, agentId: string, request: AgentChatRequest): Promise<JobDetails> {
+    try {
+      const response = await fetch(`${baseUrl}/v1/chat/agents/${agentId}/async`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify(request),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Async agent chat request failed: ${response.status} ${response.statusText}`);
+      }
+
+      return await response.json() as JobDetails;
+    } catch (error) {
+      console.error('Error in processAgentChatAsync:', error);
+      throw error;
+    }
   },
 };
