@@ -4,6 +4,66 @@
  */
 
 /**
+ * Configuration metadata
+ */
+export type ConfigMetadata = {
+  /** When the configuration was created */
+  created_at: string;
+  /** When the configuration was last modified */
+  last_modified: string;
+  /** Description of the configuration */
+  description: string;
+};
+
+/**
+ * Configuration values
+ */
+export type ConfigValues = {
+  /** Maximum number of messages to keep in conversation history */
+  conversation_length: number;
+  /** Maximum number of messages to show in detail view */
+  detail_length: number;
+  /** Maximum number of learning history items to keep */
+  max_learnings_history: number;
+  /** Hosting provider (e.g., 'openrouter') */
+  hosting: string;
+  /** Model name to use (e.g., 'openai/gpt-4o-mini') */
+  model_name: string;
+  /** Whether to automatically save conversations */
+  auto_save_conversation: boolean;
+};
+
+/**
+ * Configuration response
+ */
+export type ConfigResponse = {
+  /** Configuration version */
+  version: string;
+  /** Configuration metadata */
+  metadata: ConfigMetadata;
+  /** Configuration values */
+  values: ConfigValues;
+};
+
+/**
+ * Configuration update request
+ */
+export type ConfigUpdate = {
+  /** Maximum number of messages to keep in conversation history */
+  conversation_length?: number;
+  /** Maximum number of messages to show in detail view */
+  detail_length?: number;
+  /** Maximum number of learning history items to keep */
+  max_learnings_history?: number;
+  /** Hosting provider (e.g., 'openrouter') */
+  hosting?: string;
+  /** Model name to use (e.g., 'openai/gpt-4o-mini') */
+  model_name?: string;
+  /** Whether to automatically save conversations */
+  auto_save_conversation?: boolean;
+};
+
+/**
  * Enum representing the different roles in a conversation with an AI model.
  * Used to track who sent each message in the conversation history.
  * Maps to the standard roles used by LangChain message types.
@@ -400,4 +460,22 @@ export type AgentExecutionHistoryResult = {
   total: number;
   /** Number of executions returned */
   count: number;
+};
+
+/**
+ * Credential list result
+ */
+export type CredentialListResult = {
+  /** List of credential keys */
+  keys: string[];
+};
+
+/**
+ * Credential update request
+ */
+export type CredentialUpdate = {
+  /** Credential key */
+  key: string;
+  /** Credential value */
+  value: string;
 };

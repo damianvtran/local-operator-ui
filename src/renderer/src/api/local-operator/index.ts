@@ -7,12 +7,16 @@ import { HealthApi as HealthApiImpl } from './health-api';
 import { ChatApi as ChatApiImpl } from './chat-api';
 import { AgentsApi as AgentsApiImpl } from './agents-api';
 import { JobsApi as JobsApiImpl } from './jobs-api';
+import { ConfigApi as ConfigApiImpl } from './config-api';
+import { CredentialsApi as CredentialsApiImpl } from './credentials-api';
 
 // Export all API clients
 export { HealthApi } from './health-api';
 export { ChatApi } from './chat-api';
 export { AgentsApi } from './agents-api';
 export { JobsApi } from './jobs-api';
+export { ConfigApi } from './config-api';
+export { CredentialsApi } from './credentials-api';
 
 // Export all types
 export * from './types';
@@ -81,6 +85,20 @@ export class LocalOperatorClient {
    */
   get jobs(): BoundApi<ApiWithBaseUrl<typeof JobsApiImpl>> {
     return this.bindBaseUrlToApi(JobsApiImpl);
+  }
+
+  /**
+   * Get the Config API client with methods bound to the base URL
+   */
+  get config(): BoundApi<ApiWithBaseUrl<typeof ConfigApiImpl>> {
+    return this.bindBaseUrlToApi(ConfigApiImpl);
+  }
+
+  /**
+   * Get the Credentials API client with methods bound to the base URL
+   */
+  get credentials(): BoundApi<ApiWithBaseUrl<typeof CredentialsApiImpl>> {
+    return this.bindBaseUrlToApi(CredentialsApiImpl);
   }
 
   /**
