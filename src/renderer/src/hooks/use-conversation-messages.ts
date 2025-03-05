@@ -27,12 +27,12 @@ type PaginatedMessagesResponse = {
 };
 
 /**
- * Convert a ConversationRecord from the API to a Message for the UI
+ * Convert a AgentExecutionRecord from the API to a Message for the UI
  * 
- * @param record - The conversation record from the API
+ * @param record - The agent execution record from the API
  * @returns The converted message for the UI
  */
-const convertToMessage = (record: AgentExecutionRecord): Message => {
+export const convertToMessage = (record: AgentExecutionRecord): Message => {
   // Determine the role based on the API role
   const role: 'user' | 'assistant' = 
     record.role === 'user' || record.role === 'human' 
@@ -40,7 +40,7 @@ const convertToMessage = (record: AgentExecutionRecord): Message => {
       : 'assistant';
   
   return {
-    id: record.timestamp || uuidv4(),
+    id: record.id,
     role,
     message: record.message,
     code: record.code,
@@ -259,15 +259,3 @@ export const useConversationMessages = (
     refetch
   };
 };
-/**
- * Generate a UUID v4 string
- * 
- * @returns A UUID v4 string
- */
-function uuidv4(): string {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0;
-    const v = c === 'x' ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
-}

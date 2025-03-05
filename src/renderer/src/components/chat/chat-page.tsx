@@ -3,7 +3,7 @@ import type { FC } from 'react';
 import { Box, Paper, Divider, CircularProgress, Typography, Tabs, Tab } from '@mui/material';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faRobot, faArrowRight, faCode, faCommentDots } from '@fortawesome/free-solid-svg-icons';
-
+import { v4 as uuidv4 } from 'uuid';
 import { ChatHeader } from './chat-header';
 import { MessageItem } from './message-item';
 import { MessageInput } from './message-input';
@@ -66,7 +66,7 @@ export const ChatPage: FC<ChatProps> = ({ conversationId }) => {
     
     // Create a new user message
     const userMessage: Message = {
-      id: Date.now().toString(),
+      id: uuidv4(),
       role: 'user',
       message: content,
       timestamp: new Date(),
@@ -86,10 +86,12 @@ export const ChatPage: FC<ChatProps> = ({ conversationId }) => {
         model: 'google/gemini-2.0-flash-001', // Default model
         prompt: content,
         persist_conversation: true, // Persist conversation history
+        user_message_id: userMessage.id,
       });
       
       // Store the job ID for polling
-      setCurrentJobId(jobDetails.id);
+      // The API returns a CRUDResponse<JobDetails> where the actual job details are in the result property
+      setCurrentJobId(jobDetails.result.id);
       
       // Note: We don't add the assistant message here
       // It will be added when the job completes (in the useJobPolling hook)

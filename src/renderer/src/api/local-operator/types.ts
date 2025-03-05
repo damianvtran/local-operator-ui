@@ -128,6 +128,12 @@ export type AgentChatRequest = {
    * conversation history with each new message. Default: False
    */
   persist_conversation?: boolean;
+  /**
+   * The ID of the user message that this job is responding to.  This will assign
+   * the ID to the new message in the conversation history such that it will not be
+   * duplicated on refresh.
+   */
+  user_message_id?: string;
 };
 
 /**
@@ -352,6 +358,8 @@ export type JobCleanupResult = {
  * Agent execution history record
  */
 export type AgentExecutionRecord = {
+  /** ID of the execution, this is a uuidv4 string */
+  id: string;
   /** Code that was executed */
   code: string;
   /** Standard output from the execution */
