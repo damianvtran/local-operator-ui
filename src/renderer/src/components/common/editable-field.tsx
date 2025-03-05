@@ -172,7 +172,7 @@ export const EditableField: FC<EditableFieldProps> = ({
       if (editValue !== originalValue) {
         handleSave();
       }
-    } else if (e.key === 'Enter' && e.shiftKey && multiline) {
+    } else if (e.key === 'Enter' && e.ctrlKey && multiline) {
       e.preventDefault();
       if (editValue !== originalValue) {
         handleSave();

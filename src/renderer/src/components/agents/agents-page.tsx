@@ -140,75 +140,24 @@ export const AgentsPage: FC<AgentsPageProps> = ({ initialSelectedAgentId }) => {
                   display: 'flex', 
                   alignItems: 'center', 
                   justifyContent: 'space-between',
-                  mb: 3 
+                  mb: 3,
+                  gap: 3
                 }}>
-                  <EditableField
-                    value={selectedAgent.name}
-                    label="Agent Name"
-                    placeholder="Enter agent name..."
-                    icon={<FontAwesomeIcon icon={faRobot} />}
-                    isSaving={savingField === 'name'}
-                    onSave={async (value) => {
-                      if (!value.trim()) {
-                        toast.error('Agent name cannot be empty');
-                        return;
-                      }
-                      setSavingField('name');
-                      try {
-                        const update: AgentUpdate = { name: value };
-                        await updateAgentMutation.mutateAsync({ 
-                          agentId: selectedAgent.id, 
-                          update 
-                        });
-                        // Explicitly refetch the agent data to update the UI
-                        if (selectedAgent.id === initialSelectedAgentId) {
-                          await refetchAgent();
-                        }
-                      } catch (error) {
-                        // Error is already handled in the mutation
-                      } finally {
-                        setSavingField(null);
-                      }
-                    }}
-                  />
-                  
-                  <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                  <Box sx={{ width: '100%' }}>
                     <EditableField
-                      value={selectedAgent.hosting || ""}
-                      label="Hosting"
-                      placeholder="Enter hosting..."
-                      icon={<FontAwesomeIcon icon={faServer} />}
-                      isSaving={savingField === 'hosting'}
-                      onSave={async (value) => {
-                        setSavingField('hosting');
-                        try {
-                          const update: AgentUpdate = { hosting: value };
-                          await updateAgentMutation.mutateAsync({ 
-                            agentId: selectedAgent.id, 
-                            update 
-                          });
-                          // Explicitly refetch the agent data to update the UI
-                          if (selectedAgent.id === initialSelectedAgentId) {
-                            await refetchAgent();
-                          }
-                        } catch (error) {
-                          // Error is already handled in the mutation
-                        } finally {
-                          setSavingField(null);
-                        }
-                      }}
-                    />
-                    
-                    <EditableField
-                      value={selectedAgent.model || ""}
-                      label="Model"
-                      placeholder="Enter model..."
+                      value={selectedAgent.name}
+                      label="Agent Name"
+                      placeholder="Enter agent name..."
                       icon={<FontAwesomeIcon icon={faRobot} />}
-                      isSaving={savingField === 'model'}
+                      isSaving={savingField === 'name'}
                       onSave={async (value) => {
-                        setSavingField('model');
+                        if (!value.trim()) {
+                          toast.error('Agent name cannot be empty');
+                          return;
+                        }
+                        setSavingField('name');
                         try {
-                          const update: AgentUpdate = { model: value };
+                          const update: AgentUpdate = { name: value };
                           await updateAgentMutation.mutateAsync({ 
                             agentId: selectedAgent.id, 
                             update 
@@ -224,6 +173,64 @@ export const AgentsPage: FC<AgentsPageProps> = ({ initialSelectedAgentId }) => {
                         }
                       }}
                     />
+                  </Box>
+                  
+                  <Box sx={{ display: 'flex', gap: 3, alignItems: 'center' }}>
+                    <Box sx={{ width: '220px' }}>
+                      <EditableField
+                        value={selectedAgent.hosting || ""}
+                        label="Hosting"
+                        placeholder="Default"
+                        icon={<FontAwesomeIcon icon={faServer} />}
+                        isSaving={savingField === 'hosting'}
+                        onSave={async (value) => {
+                          setSavingField('hosting');
+                          try {
+                            const update: AgentUpdate = { hosting: value };
+                            await updateAgentMutation.mutateAsync({ 
+                              agentId: selectedAgent.id, 
+                              update 
+                            });
+                            // Explicitly refetch the agent data to update the UI
+                            if (selectedAgent.id === initialSelectedAgentId) {
+                              await refetchAgent();
+                            }
+                          } catch (error) {
+                            // Error is already handled in the mutation
+                          } finally {
+                            setSavingField(null);
+                          }
+                        }}
+                      />
+                    </Box>
+                    
+                    <Box sx={{ width: '220px' }}>
+                      <EditableField
+                        value={selectedAgent.model || ""}
+                        label="Model"
+                        placeholder="Default"
+                        icon={<FontAwesomeIcon icon={faRobot} />}
+                        isSaving={savingField === 'model'}
+                        onSave={async (value) => {
+                          setSavingField('model');
+                          try {
+                            const update: AgentUpdate = { model: value };
+                            await updateAgentMutation.mutateAsync({ 
+                              agentId: selectedAgent.id, 
+                              update 
+                            });
+                            // Explicitly refetch the agent data to update the UI
+                            if (selectedAgent.id === initialSelectedAgentId) {
+                              await refetchAgent();
+                            }
+                          } catch (error) {
+                            // Error is already handled in the mutation
+                          } finally {
+                            setSavingField(null);
+                          }
+                        }}
+                      />
+                    </Box>
                   </Box>
                 </Box>
                 
