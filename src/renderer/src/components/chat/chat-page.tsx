@@ -10,17 +10,16 @@ import { MessageInput } from './message-input';
 import { LoadingIndicator } from './loading-indicator';
 import { useScrollToBottom } from '@hooks/use-scroll-to-bottom';
 import { useConversationMessages } from '@hooks/use-conversation-messages';
+import { useJobPolling } from '@hooks/use-job-polling';
 import { useChatStore } from '@store/chat-store';
 import type { Message } from './types';
 import { createLocalOperatorClient } from '@renderer/api/local-operator';
 import { apiConfig } from '@renderer/config';
-
 type ChatProps = {
   conversationId?: string;
 }
 
 export const ChatPage: FC<ChatProps> = ({ conversationId }) => {
-  const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'chat' | 'raw'>('chat');
   
   // Initialize the API client (memoized to prevent recreation on every render)
@@ -49,6 +48,18 @@ export const ChatPage: FC<ChatProps> = ({ conversationId }) => {
   // Use custom hook to scroll to bottom when messages change
   const messagesEndRef = useScrollToBottom([messages.length]);
   
+  // Use the job polling hook
+  const {
+    currentJobId,
+    setCurrentJobId,
+    jobStatus,
+    isLoading,
+    setIsLoading,
+  } = useJobPolling({
+    conversationId,
+    addMessage,
+  });
+
   // Handle sending a new message
   const handleSendMessage = async (content: string, file: File | null) => {
     if (!conversationId) return;
@@ -69,42 +80,36 @@ export const ChatPage: FC<ChatProps> = ({ conversationId }) => {
     setIsLoading(true);
     
     try {
-      // Send message to the API
-      const response = await apiClient.chat.processChat(apiConfig.baseUrl, {
+      // Send message to the API using processAgentChatAsync from AgentsApi
+      const jobDetails = await apiClient.chat.processAgentChatAsync(conversationId, {
         hosting: 'openrouter', // Default hosting
-        model: 'openai/gpt-4o-mini', // Default model
+        model: 'google/gemini-2.0-flash-001', // Default model
         prompt: content,
-        context: messages.map(msg => ({
-          content: msg.content,
-          role: msg.role === 'user' ? 'user' : 'assistant',
-          timestamp: msg.timestamp.toISOString(),
-        })),
+        persist_conversation: true, // Persist conversation history
       });
       
-      // Create assistant message from response
-      const assistantMessage: Message = {
-        id: Date.now().toString(),
-        role: 'assistant',
-        message: response.response,
-        timestamp: new Date(),
-      };
+      // Store the job ID for polling
+      setCurrentJobId(jobDetails.id);
       
-      // Add assistant message to chat store
-      addMessage(conversationId, assistantMessage);
+      // Note: We don't add the assistant message here
+      // It will be added when the job completes (in the useJobPolling hook)
     } catch (error) {
       console.error('Error sending message:', error);
-      
       // Add error message
       const errorMessage: Message = {
         id: Date.now().toString(),
         role: 'assistant',
         message: 'Sorry, there was an error processing your request. Please try again.',
+        stderr: error instanceof Error 
+          ? `${error.message}\n${error.stack || ''}` 
+          : 'Unknown error occurred',
         timestamp: new Date(),
+        status: 'error'
       };
       
       // Add error message to chat store
       addMessage(conversationId, errorMessage);
-    } finally {
+      
       // Clear loading state
       setIsLoading(false);
     }
@@ -316,8 +321,8 @@ export const ChatPage: FC<ChatProps> = ({ conversationId }) => {
                 </Box>
               )}
               
-              {/* Loading indicator for new message */}
-              {isLoading && <LoadingIndicator />}
+          {/* Loading indicator for new message */}
+          {isLoading && <LoadingIndicator status={jobStatus} />}
               
               {/* Invisible element to scroll to */}
               <div ref={messagesEndRef} />
@@ -357,6 +362,9 @@ export const ChatPage: FC<ChatProps> = ({ conversationId }) => {
 Messages count: ${messages.length}
 Has more messages: ${hasMoreMessages ? 'Yes' : 'No'}
 Loading more: ${isFetchingMore ? 'Yes' : 'No'}
+Current job ID: ${currentJobId || 'None'}
+Job status: ${jobStatus || 'None'}
+Is loading: ${isLoading ? 'Yes' : 'No'}
 Store messages: ${JSON.stringify(getMessages(conversationId || ''), null, 2)}`}
             </Typography>
           </Box>

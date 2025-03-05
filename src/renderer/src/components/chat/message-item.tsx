@@ -115,10 +115,10 @@ export const MessageItem: FC<MessageItemProps> = ({ message }) => {
               style={atomOneDark}
               customStyle={{
                 borderRadius: '8px',
-                margin: 0,
                 fontSize: '0.85rem',
                 width: '100%',
-                boxShadow: '0 2px 6px rgba(0, 0, 0, 0.2)'
+                boxShadow: '0 2px 6px rgba(0, 0, 0, 0.2)',
+                padding: '0.75rem'
               }}
               wrapLines={true}
               wrapLongLines={true}
@@ -143,12 +143,14 @@ export const MessageItem: FC<MessageItemProps> = ({ message }) => {
                 p: 1.5,
                 maxHeight: '300px',
                 overflow: 'auto',
-                whiteSpace: 'pre-wrap',
+                whiteSpace: 'pre',
                 width: '100%',
                 boxShadow: '0 2px 6px rgba(0, 0, 0, 0.15)',
                 color: 'inherit',
+                overflowX: 'auto',
                 '&::-webkit-scrollbar': {
                   width: '6px',
+                  height: '6px',
                 },
                 '&::-webkit-scrollbar-thumb': {
                   backgroundColor: 'rgba(255, 255, 255, 0.1)',

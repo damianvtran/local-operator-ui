@@ -1,7 +1,7 @@
 /**
  * Local Operator API - Chat Endpoints
  */
-import type { AgentChatRequest, ChatRequest, ChatResponse, JobDetails } from './types';
+import type { AgentChatRequest, ChatRequest, ChatResponse, JobDetails, CRUDResponse } from './types';
 
 /**
  * Chat API client for the Local Operator API
@@ -15,7 +15,7 @@ export const ChatApi = {
    * @param request - The chat request
    * @returns Promise resolving to the chat response
    */
-  async processChat(baseUrl: string, request: ChatRequest): Promise<ChatResponse> {
+  async processChat(baseUrl: string, request: ChatRequest): Promise<CRUDResponse<ChatResponse>> {
     const response = await fetch(`${baseUrl}/v1/chat`, {
       method: 'POST',
       headers: {
@@ -29,7 +29,7 @@ export const ChatApi = {
       throw new Error(`Chat request failed: ${response.status} ${response.statusText}`);
     }
 
-    return response.json() as Promise<ChatResponse>;
+    return response.json() as Promise<CRUDResponse<ChatResponse>>;
   },
 
   /**
@@ -42,7 +42,7 @@ export const ChatApi = {
    * @param request - The chat request
    * @returns Promise resolving to the chat response
    */
-  async chatWithAgent(baseUrl: string, agentId: string, request: ChatRequest): Promise<ChatResponse> {
+  async chatWithAgent(baseUrl: string, agentId: string, request: ChatRequest): Promise<CRUDResponse<ChatResponse>> {
     const response = await fetch(`${baseUrl}/v1/chat/agents/${agentId}`, {
       method: 'POST',
       headers: {
@@ -56,7 +56,7 @@ export const ChatApi = {
       throw new Error(`Chat with agent request failed: ${response.status} ${response.statusText}`);
     }
 
-    return response.json() as Promise<ChatResponse>;
+    return response.json() as Promise<CRUDResponse<ChatResponse>>;
   },
 
   /**
@@ -69,7 +69,7 @@ export const ChatApi = {
    * @returns Promise resolving to the job details
    * @throws Error if the request fails
    */
-  async processChatAsync(baseUrl: string, request: ChatRequest): Promise<JobDetails> {
+  async processChatAsync(baseUrl: string, request: ChatRequest): Promise<CRUDResponse<JobDetails>> {
     try {
       const response = await fetch(`${baseUrl}/v1/chat/async`, {
         method: 'POST',
@@ -84,7 +84,7 @@ export const ChatApi = {
         throw new Error(`Async chat request failed: ${response.status} ${response.statusText}`);
       }
 
-      return await response.json() as JobDetails;
+      return await response.json() as CRUDResponse<JobDetails>;
     } catch (error) {
       console.error('Error in processChatAsync:', error);
       throw error;
@@ -102,7 +102,7 @@ export const ChatApi = {
    * @returns Promise resolving to the job details
    * @throws Error if the request fails
    */
-  async processAgentChatAsync(baseUrl: string, agentId: string, request: AgentChatRequest): Promise<JobDetails> {
+  async processAgentChatAsync(baseUrl: string, agentId: string, request: AgentChatRequest): Promise<CRUDResponse<JobDetails>> {
     try {
       const response = await fetch(`${baseUrl}/v1/chat/agents/${agentId}/async`, {
         method: 'POST',
@@ -117,7 +117,7 @@ export const ChatApi = {
         throw new Error(`Async agent chat request failed: ${response.status} ${response.statusText}`);
       }
 
-      return await response.json() as JobDetails;
+      return await response.json() as CRUDResponse<JobDetails>;
     } catch (error) {
       console.error('Error in processAgentChatAsync:', error);
       throw error;

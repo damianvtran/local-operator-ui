@@ -8,7 +8,7 @@ import type {
   AgentDetails, 
   AgentListResult,
   AgentGetConversationResult,
-  AgentExecutionHistoryResult
+  AgentExecutionHistoryResult,
 } from './types';
 
 /**

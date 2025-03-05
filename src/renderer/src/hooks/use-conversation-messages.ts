@@ -5,7 +5,7 @@
 import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { toast } from 'react-toastify';
-import { AgentsApi } from '@renderer/api/local-operator';
+import { createLocalOperatorClient } from '@renderer/api/local-operator';
 import { apiConfig } from '@renderer/config';
 import type { AgentExecutionRecord } from '@renderer/api/local-operator/types';
 import type { Message } from '@renderer/components/chat/types';
@@ -101,9 +101,9 @@ export const useConversationMessages = (
         
         const page = pageParam as number;
         
-        // Call the API to get conversation messages
-        const response = await AgentsApi.getAgentExecutionHistory(
-          apiConfig.baseUrl,
+        // Use the properly typed client
+        const client = createLocalOperatorClient(apiConfig.baseUrl);
+        const response = await client.agents.getAgentExecutionHistory(
           conversationId,
           page,
           pageSize
@@ -259,7 +259,15 @@ export const useConversationMessages = (
     refetch
   };
 };
+/**
+ * Generate a UUID v4 string
+ * 
+ * @returns A UUID v4 string
+ */
 function uuidv4(): string {
-  throw new Error('Function not implemented.');
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
 }
-

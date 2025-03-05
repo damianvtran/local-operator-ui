@@ -3,10 +3,10 @@
  * Generated from OpenAPI specification v0.3.7
  */
 
-import { HealthApi } from './health-api';
-import { ChatApi } from './chat-api';
-import { AgentsApi } from './agents-api';
-import { JobsApi } from './jobs-api';
+import { HealthApi as HealthApiImpl } from './health-api';
+import { ChatApi as ChatApiImpl } from './chat-api';
+import { AgentsApi as AgentsApiImpl } from './agents-api';
+import { JobsApi as JobsApiImpl } from './jobs-api';
 
 // Export all API clients
 export { HealthApi } from './health-api';
@@ -17,12 +17,30 @@ export { JobsApi } from './jobs-api';
 // Export all types
 export * from './types';
 
-// Type for API methods
-type ApiMethod = (...args: unknown[]) => Promise<unknown>;
+/**
+ * Type for a function that takes a base URL as its first parameter
+ * T represents the original function type without the baseUrl parameter
+ */
+type WithBaseUrl<T extends (...args: unknown[]) => unknown> = 
+  (baseUrl: string, ...args: Parameters<T>) => ReturnType<T>;
+
+/**
+ * Type for an API client with methods that take a base URL as their first parameter
+ */
+type ApiWithBaseUrl<T> = {
+  [K in keyof T]: T[K] extends (...args: unknown[]) => unknown ? WithBaseUrl<T[K]> : T[K];
+};
+
+/**
+ * Type for a bound API client where the base URL is already provided
+ */
+type BoundApi<T> = {
+  [K in keyof T]: T[K] extends (baseUrl: string, ...args: infer P) => infer R ? (...args: P) => R : T[K];
+};
 
 /**
  * LocalOperatorClient - Main client for the Local Operator API
- * Provides a unified interface to all API endpoints
+ * Provides a unified interface to all API endpoints with proper typing
  */
 export class LocalOperatorClient {
   private baseUrl: string;
@@ -38,63 +56,58 @@ export class LocalOperatorClient {
   }
 
   /**
-   * Get the Health API client
+   * Get the Health API client with methods bound to the base URL
    */
-  get health() {
-    const api = { ...HealthApi };
-    // Bind the base URL to all methods
-    for (const key of Object.keys(api)) {
-      const typedKey = key as keyof typeof HealthApi;
-      const method = api[typedKey] as ApiMethod;
-      (api as Record<string, ApiMethod>)[key] = (...args: unknown[]) => 
-        method(this.baseUrl, ...args);
-    }
-    return api;
+  get health(): BoundApi<ApiWithBaseUrl<typeof HealthApiImpl>> {
+    return this.bindBaseUrlToApi(HealthApiImpl);
   }
 
   /**
-   * Get the Chat API client
+   * Get the Chat API client with methods bound to the base URL
    */
-  get chat() {
-    const api = { ...ChatApi };
-    // Bind the base URL to all methods
-    for (const key of Object.keys(api)) {
-      const typedKey = key as keyof typeof ChatApi;
-      const method = api[typedKey] as ApiMethod;
-      (api as Record<string, ApiMethod>)[key] = (...args: unknown[]) => 
-        method(this.baseUrl, ...args);
-    }
-    return api;
+  get chat(): BoundApi<ApiWithBaseUrl<typeof ChatApiImpl>> {
+    return this.bindBaseUrlToApi(ChatApiImpl);
   }
 
   /**
-   * Get the Agents API client
+   * Get the Agents API client with methods bound to the base URL
    */
-  get agents() {
-    const api = { ...AgentsApi };
-    // Bind the base URL to all methods
-    for (const key of Object.keys(api)) {
-      const typedKey = key as keyof typeof AgentsApi;
-      const method = api[typedKey] as ApiMethod;
-      (api as Record<string, ApiMethod>)[key] = (...args: unknown[]) => 
-        method(this.baseUrl, ...args);
-    }
-    return api;
+  get agents(): BoundApi<ApiWithBaseUrl<typeof AgentsApiImpl>> {
+    return this.bindBaseUrlToApi(AgentsApiImpl);
   }
 
   /**
-   * Get the Jobs API client
+   * Get the Jobs API client with methods bound to the base URL
    */
-  get jobs() {
-    const api = { ...JobsApi };
-    // Bind the base URL to all methods
+  get jobs(): BoundApi<ApiWithBaseUrl<typeof JobsApiImpl>> {
+    return this.bindBaseUrlToApi(JobsApiImpl);
+  }
+
+  /**
+   * Bind the base URL to all methods of an API client
+   * 
+   * @param api - The API client to bind the base URL to
+   * @returns A new API client with all methods bound to the base URL
+   */
+  private bindBaseUrlToApi<T extends object>(api: T): BoundApi<ApiWithBaseUrl<T>> {
+    const boundApi = {} as BoundApi<ApiWithBaseUrl<T>>;
+    
     for (const key of Object.keys(api)) {
-      const typedKey = key as keyof typeof JobsApi;
-      const method = api[typedKey] as ApiMethod;
-      (api as Record<string, ApiMethod>)[key] = (...args: unknown[]) => 
-        method(this.baseUrl, ...args);
+      const typedKey = key as keyof T;
+      const method = api[typedKey];
+      
+      if (typeof method === 'function') {
+        // Create a new function that calls the original with the base URL
+        boundApi[typedKey] = ((...args: unknown[]) => 
+          (method as (...params: unknown[]) => unknown)(this.baseUrl, ...args)
+        ) as BoundApi<ApiWithBaseUrl<T>>[keyof T];
+      } else {
+        // Copy non-function properties as-is
+        boundApi[typedKey] = method as BoundApi<ApiWithBaseUrl<T>>[keyof T];
+      }
     }
-    return api;
+    
+    return boundApi;
   }
 }
 

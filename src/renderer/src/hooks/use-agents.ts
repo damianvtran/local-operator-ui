@@ -5,7 +5,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'react-toastify';
 import type { AgentDetails } from '@renderer/api/local-operator/types';
-import { AgentsApi } from '@renderer/api/local-operator';
+import { createLocalOperatorClient } from '@renderer/api/local-operator';
 import { apiConfig } from '@renderer/config';
 
 /**
@@ -25,12 +25,9 @@ export const useAgents = (page = 1, perPage = 10) => {
     queryKey: [...agentsQueryKey, page, perPage],
     queryFn: async () => {
       try {
-        // Call the API directly to avoid type issues with the client wrapper
-        const response = await AgentsApi.listAgents(
-          apiConfig.baseUrl,
-          page,
-          perPage
-        );
+        // Use the properly typed client
+        const client = createLocalOperatorClient(apiConfig.baseUrl);
+        const response = await client.agents.listAgents(page, perPage);
         
         if (response.status >= 400) {
           throw new Error(response.message || 'Failed to fetch agents');
@@ -62,11 +59,9 @@ export const useAgent = (agentId: string | undefined) => {
       if (!agentId) return null;
       
       try {
-        // Call the API directly to avoid type issues with the client wrapper
-        const response = await AgentsApi.getAgent(
-          apiConfig.baseUrl,
-          agentId
-        );
+        // Use the properly typed client
+        const client = createLocalOperatorClient(apiConfig.baseUrl);
+        const response = await client.agents.getAgent(agentId);
         
         if (response.status >= 400) {
           throw new Error(response.message || `Failed to fetch agent ${agentId}`);
