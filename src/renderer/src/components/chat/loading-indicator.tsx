@@ -8,8 +8,12 @@ import type { JobStatus } from '@renderer/api/local-operator/types';
  * Loading indicator component that displays the current status of a job
  * 
  * @param status - Optional job status to display
+ * @param agentName - Optional agent name to display
  */
-export const LoadingIndicator: FC<{ status?: JobStatus | null }> = ({ status }) => {
+export const LoadingIndicator: FC<{ 
+  status?: JobStatus | null;
+  agentName?: string;
+}> = ({ status, agentName = 'Agent' }) => {
   return (
     <Box 
       sx={{ 
@@ -40,7 +44,7 @@ export const LoadingIndicator: FC<{ status?: JobStatus | null }> = ({ status }) 
       >
         <CircularProgress size={16} color="primary" />
         <Typography variant="body2">
-          {status ? `Local Operator is ${getStatusText(status)}...` : 'Local Operator is thinking...'}
+          {status ? `${agentName} is ${getStatusText(status)}...` : `${agentName} is thinking...`}
         </Typography>
       </Box>
     </Box>
@@ -58,13 +62,13 @@ const getStatusText = (status: JobStatus): string => {
     case 'pending':
       return 'waiting to start';
     case 'processing':
-      return 'processing your request';
+      return 'working on it';
     case 'completed':
       return 'finishing up';
     case 'failed':
       return 'having trouble';
     case 'cancelled':
-      return 'cancelled';
+      return 'was cancelled';
     default:
       return 'thinking';
   }

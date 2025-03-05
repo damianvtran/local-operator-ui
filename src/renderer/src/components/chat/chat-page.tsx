@@ -13,6 +13,7 @@ import { useScrollToBottom } from '@hooks/use-scroll-to-bottom';
 import { useConversationMessages } from '@hooks/use-conversation-messages';
 import { useJobPolling } from '@hooks/use-job-polling';
 import { useChatStore } from '@store/chat-store';
+import { useAgent } from '@hooks/use-agents';
 import type { Message } from './types';
 import { createLocalOperatorClient } from '@renderer/api/local-operator';
 import { apiConfig } from '@renderer/config';
@@ -47,6 +48,11 @@ export const ChatPage: FC<ChatProps> = ({
   // Get the chat store functions
   const { getMessages } = useChatStore();
   
+  // Fetch agent details for the current conversation
+  const {
+    data: agentData,
+  } = useAgent(conversationId);
+
   // Only fetch messages if we have a valid conversation ID
   const {
     messages,
@@ -229,7 +235,10 @@ export const ChatPage: FC<ChatProps> = ({
             }}
           >
             {/* Chat header */}
-            <ChatHeader agentName={`Agent ${conversationId}`} description="Conversation with this agent" />
+            <ChatHeader 
+              agentName={agentData?.name || `Agent ${conversationId}`} 
+              description={agentData?.description || "Conversation with this agent"} 
+            />
             
             {/* Tabs for chat and raw */}
             <Tabs 
@@ -354,7 +363,7 @@ export const ChatPage: FC<ChatProps> = ({
                     )}
                     
                     {/* Loading indicator for new message */}
-                    {isLoading && <LoadingIndicator status={jobStatus} />}
+                    {isLoading && <LoadingIndicator status={jobStatus} agentName={agentData?.name} />}
                     
                     {/* Invisible element to scroll to */}
                     <div ref={messagesEndRef} />
