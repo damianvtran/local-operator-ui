@@ -4,7 +4,7 @@
  * Displays a list of agents with loading, error, and empty states
  */
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import type { FC, ChangeEvent } from 'react';
 import { 
   Box, 
@@ -45,6 +45,10 @@ export const AgentList: FC<AgentListProps> = ({
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const perPage = 10;
   
+  // Store previous agents data to prevent UI flicker during refetches
+  const [stableAgents, setStableAgents] = useState<AgentDetails[]>([]);
+  const prevFetchingRef = useRef(false);
+  
   const { 
     data: agents = [], 
     isLoading, 
@@ -52,6 +56,21 @@ export const AgentList: FC<AgentListProps> = ({
     refetch,
     isFetching
   } = useAgents(page, perPage);
+  
+  // Update stable agents when data changes and not during refetches
+  useEffect(() => {
+    // Only update stable agents when we have data and we're not in a refetching state
+    // or when we're transitioning from fetching to not fetching (completed refetch)
+    if (agents.length > 0 && (!isFetching || (prevFetchingRef.current && !isFetching))) {
+      setStableAgents(agents);
+    }
+    
+    // Store current fetching state for next render
+    prevFetchingRef.current = isFetching;
+  }, [agents, isFetching]);
+  
+  // Use stable agents for rendering to prevent UI flicker
+  const displayAgents = isFetching && stableAgents.length > 0 ? stableAgents : agents;
   
   const handlePageChange = (_event: ChangeEvent<unknown>, value: number) => {
     setPage(value);
@@ -164,25 +183,46 @@ export const AgentList: FC<AgentListProps> = ({
             New Agent
           </Button>
           
-          <Button 
-            variant="outlined" 
-            color="primary" 
-            onClick={() => refetch()} 
-            disabled={isLoading || isFetching}
-            size="small"
-            sx={{
-              borderRadius: 2,
-              textTransform: 'none',
-              px: 2,
-              fontWeight: 500,
-              transition: 'all 0.2s',
-              '&:hover': {
-                transform: 'translateY(-2px)',
-              }
-            }}
-          >
-            {isFetching ? 'Refreshing...' : 'Refresh'}
-          </Button>
+          <Box sx={{ position: 'relative' }}>
+            <Button 
+              variant="outlined" 
+              color="primary" 
+              onClick={() => refetch()} 
+              disabled={isLoading || isFetching}
+              size="small"
+              sx={{
+                borderRadius: 2,
+                textTransform: 'none',
+                px: 2,
+                fontWeight: 500,
+                transition: 'all 0.2s',
+                '&:hover': {
+                  transform: 'translateY(-2px)',
+                },
+                // Show subtle loading indicator for refetches when we already have data
+                ...(isFetching && stableAgents.length > 0 ? {
+                  backgroundColor: (theme) => alpha(theme.palette.primary.main, 0.04),
+                } : {})
+              }}
+            >
+              {isFetching ? 'Refreshing...' : 'Refresh'}
+            </Button>
+            
+            {/* Small loading indicator for refetches when we already have data */}
+            {isFetching && stableAgents.length > 0 && (
+              <CircularProgress 
+                size={16} 
+                thickness={4} 
+                sx={{ 
+                  position: 'absolute',
+                  top: -6,
+                  right: -6,
+                  color: 'primary.main',
+                  opacity: 0.8
+                }} 
+              />
+            )}
+          </Box>
         </Box>
       </Box>
       
@@ -193,8 +233,8 @@ export const AgentList: FC<AgentListProps> = ({
         position: 'relative',
         minHeight: '300px' // Ensure minimum height to prevent layout shifts
       }}>
-        {/* Loading overlay that doesn't affect layout */}
-        {(isLoading || isFetching) && (
+        {/* Loading overlay that doesn't affect layout - only show full overlay on initial load */}
+        {(isLoading || (isFetching && stableAgents.length === 0)) && (
           <Box 
             sx={{ 
               position: 'absolute',
@@ -235,7 +275,7 @@ export const AgentList: FC<AgentListProps> = ({
           >
             Failed to load agents. Please try again.
           </Alert>
-        ) : agents.length === 0 ? (
+        ) : displayAgents.length === 0 ? (
           <Box 
             sx={{ 
               display: 'flex', 
@@ -283,7 +323,7 @@ export const AgentList: FC<AgentListProps> = ({
               }
             },
           }}>
-            {agents.map((agent) => (
+            {displayAgents.map((agent) => (
               <AgentListItem 
                 key={agent.id}
                 agent={agent}
@@ -302,7 +342,7 @@ export const AgentList: FC<AgentListProps> = ({
               />
             ))}
             
-            {agents.length > perPage && (
+            {displayAgents.length > perPage && (
               <Box sx={{ 
                 display: 'flex', 
                 justifyContent: 'center', 
@@ -312,7 +352,7 @@ export const AgentList: FC<AgentListProps> = ({
                 borderColor: 'divider'
               }}>
                 <Pagination 
-                  count={Math.ceil(agents.length / perPage)} 
+                  count={Math.ceil(displayAgents.length / perPage)} 
                   page={page} 
                   onChange={handlePageChange} 
                   color="primary" 

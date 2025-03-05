@@ -43,6 +43,10 @@ export const useAgents = (page = 1, perPage = 10) => {
         throw error;
       }
     },
+    // Prevent automatic refetches on window focus
+    refetchOnWindowFocus: false,
+    // Prevent stale time to avoid unnecessary refetches
+    staleTime: 5000,
   });
 };
 
