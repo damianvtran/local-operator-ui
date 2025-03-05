@@ -7,6 +7,7 @@
 import React from 'react';
 import type { FC } from 'react';
 import { Box, Typography, Card, CardContent, Chip, alpha } from '@mui/material';
+import { styled } from '@mui/material/styles';
 import { AgentOptionsMenu } from '@renderer/components/common/agent-options-menu';
 import type { AgentDetails } from '@renderer/api/local-operator/types';
 
@@ -20,6 +21,129 @@ type AgentListItemProps = {
   /** Optional callback when an agent is deleted */
   onAgentDeleted?: (agentId: string) => void;
 };
+
+interface StyledComponentProps {
+  isSelected?: boolean;
+}
+
+const StyledCard = styled(Card, {
+  shouldForwardProp: (prop) => prop !== 'isSelected'
+})<StyledComponentProps>(({ theme, isSelected }) => ({
+  marginBottom: 20,
+  cursor: 'pointer',
+  transition: 'background-color 0.2s ease-in-out, border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
+  borderRadius: 8,
+  backgroundColor: isSelected 
+    ? alpha(theme.palette.primary.main, 0.08)
+    : theme.palette.background.paper,
+  border: isSelected 
+    ? `1px solid ${theme.palette.primary.main}` 
+    : '1px solid transparent',
+  '&:hover': {
+    boxShadow: `0 4px 12px ${alpha(theme.palette.common.black, 0.08)}`,
+    backgroundColor: !isSelected 
+      ? alpha(theme.palette.background.default, 0.7)
+      : alpha(theme.palette.primary.main, 0.12),
+  },
+  position: 'relative',
+  overflow: 'visible',
+  willChange: 'background-color, border-color, box-shadow'
+}));
+
+const StyledCardContent = styled(CardContent)({
+  padding: 20,
+});
+
+const HeaderContainer = styled(Box)({
+  display: 'flex', 
+  justifyContent: 'space-between', 
+  alignItems: 'center', 
+  marginBottom: 12
+});
+
+const AgentTitle = styled(Typography, {
+  shouldForwardProp: (prop) => prop !== 'isSelected'
+})<StyledComponentProps>(({ theme, isSelected }) => ({
+  fontWeight: 600,
+  fontSize: '1.1rem',
+  lineHeight: 1.2,
+  color: isSelected ? theme.palette.primary.main : 'inherit'
+}));
+
+const HeaderActionsContainer = styled(Box)({
+  display: 'flex', 
+  alignItems: 'center', 
+  gap: 8
+});
+
+const ModelChip = styled(Chip)({
+  fontWeight: 500,
+  borderRadius: 8,
+  '& .MuiChip-label': { 
+    paddingLeft: 8, 
+    paddingRight: 8 
+  }
+});
+
+const MenuContainer = styled(Box)({
+  width: 32,
+  height: 32,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  position: 'relative',
+  zIndex: 1,
+});
+
+const DescriptionText = styled(Typography, {
+  shouldForwardProp: (prop) => prop !== 'hasDescription'
+})<{ hasDescription: boolean }>(({ theme, hasDescription }) => ({
+  marginBottom: 16,
+  lineHeight: 1.5,
+  color: 'text.primary',
+  backgroundColor: alpha(theme.palette.background.default, 0.5),
+  padding: 12,
+  borderRadius: 8,
+  borderLeft: `3px solid ${alpha(theme.palette.primary.main, 0.6)}`,
+  maxHeight: '80px',
+  overflow: 'auto',
+  '&::-webkit-scrollbar': {
+    width: '4px',
+  },
+  '&::-webkit-scrollbar-thumb': {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: '4px',
+  },
+  fontStyle: hasDescription ? 'normal' : 'italic',
+  opacity: hasDescription ? 1 : 0.7,
+}));
+
+const MetadataContainer = styled(Box)({
+  display: 'flex', 
+  flexWrap: 'wrap',
+  gap: 16, 
+  marginBottom: 16,
+  opacity: 0.8
+});
+
+const MetadataText = styled(Typography)({
+  fontSize: '0.8rem'
+});
+
+const TagsContainer = styled(Box)({
+  display: 'flex', 
+  gap: 12,
+  flexWrap: 'wrap'
+});
+
+const TagChip = styled(Chip)({
+  borderRadius: 8,
+  height: 24,
+  '& .MuiChip-label': { 
+    paddingLeft: 8, 
+    paddingRight: 8 
+  }
+});
 
 /**
  * Agent List Item Component
@@ -35,85 +159,37 @@ export const AgentListItem: FC<AgentListItemProps> = ({
   const createdDate = new Date(agent.created_date).toLocaleDateString();
   
   return (
-    <Card 
+    <StyledCard 
+      isSelected={isSelected}
       onClick={onClick}
       data-testid={`agent-item-${agent.id}`}
-      sx={{
-        marginBottom: 2.5,
-        cursor: 'pointer',
-        // Use a more subtle transition that won't cause layout shifts
-        transition: 'background-color 0.2s ease-in-out, border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
-        borderRadius: 2,
-        backgroundColor: (theme) => isSelected 
-          ? alpha(theme.palette.primary.main, 0.08)
-          : theme.palette.background.paper,
-        border: isSelected 
-          ? (theme) => `1px solid ${theme.palette.primary.main}` 
-          : '1px solid transparent',
-        '&:hover': {
-          boxShadow: (theme) => `0 4px 12px ${alpha(theme.palette.common.black, 0.08)}`,
-          // Remove transform to prevent layout shifts
-          backgroundColor: (theme) => !isSelected 
-            ? alpha(theme.palette.background.default, 0.7)
-            : alpha(theme.palette.primary.main, 0.12),
-        },
-        position: 'relative',
-        overflow: 'visible',
-        // Add will-change to optimize rendering performance
-        willChange: 'background-color, border-color, box-shadow'
-      }}
     >
-      <CardContent sx={{ p: 2.5 }}>
-        <Box sx={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center', 
-          mb: 1.5 
-        }}>
-          <Typography 
+      <StyledCardContent>
+        <HeaderContainer>
+          <AgentTitle 
             variant="h6" 
-            component="h3" 
-            sx={{ 
-              fontWeight: 600,
-              fontSize: '1.1rem',
-              lineHeight: 1.2,
-              color: (theme) => isSelected ? theme.palette.primary.main : 'inherit'
-            }}
+            isSelected={isSelected}
           >
             {agent.name}
-          </Typography>
+          </AgentTitle>
           
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <HeaderActionsContainer>
             {agent.model && (
-              <Chip 
+              <ModelChip 
                 label={agent.model} 
                 size="small" 
                 color="primary" 
                 variant="outlined"
                 title="AI model powering this agent"
-                sx={{ 
-                  fontWeight: 500,
-                  borderRadius: 1,
-                  '& .MuiChip-label': { px: 1 }
-                }}
               />
             )}
             
-            {/* Agent Options Menu */}
-            <Box sx={{
-              width: 32,
-              height: 32,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              position: 'relative',
-              zIndex: 1,
-            }}>
+            <MenuContainer>
               <AgentOptionsMenu
                 agentId={agent.id}
                 agentName={agent.name}
                 onAgentDeleted={onAgentDeleted}
-                isAgentsPage={true} // This is the agents page, so we don't need to show the settings option
+                isAgentsPage={true}
                 buttonSx={{
                   '.MuiListItem-root:hover &': {
                     opacity: 0.6,
@@ -128,94 +204,53 @@ export const AgentListItem: FC<AgentListItemProps> = ({
                   minWidth: 'unset',
                 }}
               />
-            </Box>
-          </Box>
-        </Box>
+            </MenuContainer>
+          </HeaderActionsContainer>
+        </HeaderContainer>
         
-        <Typography 
+        <DescriptionText 
           variant="body2" 
-          sx={{ 
-            mb: 2,
-            lineHeight: 1.5,
-            color: 'text.primary',
-            backgroundColor: (theme) => alpha(theme.palette.background.default, 0.5),
-            p: 1.5,
-            borderRadius: 1,
-            borderLeft: (theme) => `3px solid ${alpha(theme.palette.primary.main, 0.6)}`,
-            maxHeight: '80px',
-            overflow: 'auto',
-            '&::-webkit-scrollbar': {
-              width: '4px',
-            },
-            '&::-webkit-scrollbar-thumb': {
-              backgroundColor: 'rgba(255, 255, 255, 0.1)',
-              borderRadius: '4px',
-            },
-            fontStyle: agent.description ? 'normal' : 'italic',
-            opacity: agent.description ? 1 : 0.7,
-          }}
+          hasDescription={!!agent.description}
         >
           {agent.description || 'No description available'}
-        </Typography>
+        </DescriptionText>
         
-        <Box sx={{ 
-          display: 'flex', 
-          flexWrap: 'wrap',
-          gap: 2, 
-          mb: 2,
-          opacity: 0.8
-        }}>
-          <Typography 
+        <MetadataContainer>
+          <MetadataText 
             variant="body2" 
             color="text.secondary"
             title="Unique identifier for this agent"
-            sx={{ fontSize: '0.8rem' }}
           >
             ID: {agent.id}
-          </Typography>
-          <Typography 
+          </MetadataText>
+          <MetadataText 
             variant="body2" 
             color="text.secondary"
             title="When this agent was created"
-            sx={{ fontSize: '0.8rem' }}
           >
             Created: {createdDate}
-          </Typography>
-        </Box>
+          </MetadataText>
+        </MetadataContainer>
         
-        <Box sx={{ 
-          display: 'flex', 
-          gap: 1.5,
-          flexWrap: 'wrap'
-        }}>
-          <Chip 
+        <TagsContainer>
+          <TagChip 
             label={`v${agent.version}`} 
             size="small" 
             color="secondary" 
             variant="outlined"
             title="Agent version number"
-            sx={{ 
-              borderRadius: 1,
-              height: 24,
-              '& .MuiChip-label': { px: 1 }
-            }}
           />
           {agent.hosting && (
-            <Chip 
+            <TagChip 
               label={agent.hosting} 
               size="small" 
               color="info" 
               variant="outlined"
               title="Where this agent is hosted"
-              sx={{ 
-                borderRadius: 1,
-                height: 24,
-                '& .MuiChip-label': { px: 1 }
-              }}
             />
           )}
-        </Box>
-      </CardContent>
-    </Card>
+        </TagsContainer>
+      </StyledCardContent>
+    </StyledCard>
   );
 };

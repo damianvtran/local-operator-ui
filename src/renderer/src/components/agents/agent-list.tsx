@@ -24,6 +24,7 @@ import { CreateAgentDialog } from '@renderer/components/common/create-agent-dial
 import type { AgentDetails } from '@renderer/api/local-operator/types';
 import { createLocalOperatorClient } from '@renderer/api/local-operator';
 import { apiConfig } from '@renderer/config';
+import { styled } from '@mui/material/styles';
 
 type AgentListProps = {
   /** Handler for when an agent is selected */
@@ -31,6 +32,183 @@ type AgentListProps = {
   /** Currently selected agent ID */
   selectedAgentId?: string;
 };
+
+const StyledPaper = styled(Paper)(({ theme }) => ({
+  padding: theme.spacing(3),
+  [theme.breakpoints.down('sm')]: {
+    padding: theme.spacing(2),
+  },
+  height: '100%',
+  display: 'flex',
+  flexDirection: 'column',
+  borderRadius: 16,
+  backgroundColor: theme.palette.background.paper,
+  boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
+  transition: 'box-shadow 0.3s ease-in-out',
+  '&:hover': {
+    boxShadow: '0 6px 25px rgba(0,0,0,0.08)',
+  },
+}));
+
+const HeaderContainer = styled(Box)(({ theme }) => ({
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  marginBottom: theme.spacing(3),
+  paddingBottom: theme.spacing(2),
+  borderBottom: '1px solid',
+  borderColor: theme.palette.divider
+}));
+
+const HeaderTitle = styled(Typography)(({ theme }) => ({
+  fontWeight: 700,
+  fontSize: '1.5rem',
+  [theme.breakpoints.down('sm')]: {
+    fontSize: '1.25rem',
+  },
+  letterSpacing: '-0.01em'
+}));
+
+const ButtonsContainer = styled(Box)({
+  display: 'flex',
+  gap: 8
+});
+
+const CreateButton = styled(Button)(({ theme }) => ({
+  borderRadius: 8,
+  textTransform: 'none',
+  paddingLeft: theme.spacing(2),
+  paddingRight: theme.spacing(2),
+  fontWeight: 500,
+  minWidth: '110px',
+  transition: 'all 0.2s',
+  '&:hover': {
+    transform: 'translateY(-2px)',
+  }
+}));
+
+const RefreshButton = styled(Button, {
+  shouldForwardProp: (prop) => prop !== 'isFetching'
+})<{ isFetching?: boolean }>(({ theme, isFetching }) => ({
+  borderRadius: 8,
+  textTransform: 'none',
+  paddingLeft: theme.spacing(2),
+  paddingRight: theme.spacing(2),
+  fontWeight: 500,
+  minWidth: '80px',
+  position: 'relative',
+  transition: 'all 0.2s',
+  '&:hover': {
+    transform: 'translateY(-2px)',
+  },
+  ...(isFetching ? {
+    backgroundColor: alpha(theme.palette.primary.main, 0.04),
+  } : {})
+}));
+
+const LoadingIndicator = styled(Box)(({ theme }) => ({
+  width: '100%',
+  height: 2,
+  position: 'absolute',
+  bottom: 0,
+  left: 0,
+  backgroundColor: theme.palette.primary.main,
+  animation: 'pulse 1.5s infinite',
+  '@keyframes pulse': {
+    '0%': { opacity: 0.4 },
+    '50%': { opacity: 0.8 },
+    '100%': { opacity: 0.4 }
+  }
+}));
+
+const ContentContainer = styled(Box)({
+  flexGrow: 1,
+  display: 'flex',
+  flexDirection: 'column',
+  position: 'relative',
+  minHeight: '300px'
+});
+
+const LoadingOverlay = styled(Box)(({ theme }) => ({
+  position: 'absolute',
+  top: 0,
+  left: 0,
+  right: 0,
+  bottom: 0,
+  display: 'flex',
+  justifyContent: 'center',
+  alignItems: 'center',
+  backgroundColor: alpha(theme.palette.background.paper, 0.7),
+  zIndex: 1,
+  borderRadius: 16
+}));
+
+const StyledAlert = styled(Alert)(({ theme }) => ({
+  marginBottom: theme.spacing(2),
+  borderRadius: 16,
+  boxShadow: '0 2px 10px rgba(0,0,0,0.08)'
+}));
+
+const EmptyStateContainer = styled(Box)(({ theme }) => ({
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  justifyContent: 'center',
+  flexGrow: 1,
+  padding: theme.spacing(4),
+  marginTop: theme.spacing(4),
+  marginBottom: theme.spacing(4),
+  borderRadius: 24,
+  backgroundColor: theme.palette.background.default
+}));
+
+const EmptyStateText = styled(Typography)(({ theme }) => ({
+  marginBottom: theme.spacing(2),
+  textAlign: 'center',
+  maxWidth: '80%',
+  lineHeight: 1.6
+}));
+
+const AgentListContainer = styled(Box)({
+  flexGrow: 1,
+  overflow: 'auto',
+  paddingLeft: 4,
+  paddingRight: 4,
+  paddingTop: 8,
+  paddingBottom: 8,
+  marginLeft: -4,
+  marginRight: -4,
+  '&::-webkit-scrollbar': {
+    width: '6px',
+  },
+  '&::-webkit-scrollbar-track': {
+    backgroundColor: 'transparent',
+  },
+  '&::-webkit-scrollbar-thumb': {
+    backgroundColor: 'rgba(0, 0, 0, 0.1)',
+    borderRadius: '10px',
+    '&:hover': {
+      backgroundColor: 'rgba(0, 0, 0, 0.2)',
+    }
+  },
+});
+
+const PaginationContainer = styled(Box)(({ theme }) => ({
+  display: 'flex',
+  justifyContent: 'center',
+  marginTop: theme.spacing(3),
+  paddingTop: theme.spacing(2),
+  borderTop: '1px solid',
+  borderColor: theme.palette.divider
+}));
+
+const StyledPagination = styled(Pagination)({
+  '& .MuiPaginationItem-root': {
+    borderRadius: 12,
+    marginLeft: 4,
+    marginRight: 4
+  }
+});
 
 /**
  * Agent List Component
@@ -123,166 +301,64 @@ export const AgentList: FC<AgentListProps> = ({
   };
   
   return (
-    <Paper 
-      elevation={0} 
-      sx={{ 
-        p: { xs: 2, sm: 3 }, 
-        height: '100%', 
-        display: 'flex', 
-        flexDirection: 'column',
-        borderRadius: 3,
-        bgcolor: 'background.paper',
-        boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
-        transition: 'box-shadow 0.3s ease-in-out',
-        '&:hover': {
-          boxShadow: '0 6px 25px rgba(0,0,0,0.08)',
-        },
-      }}
-    >
-      <Box 
-        sx={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center', 
-          mb: 3,
-          pb: 2,
-          borderBottom: '1px solid',
-          borderColor: 'divider'
-        }}
-      >
-        <Typography 
-          variant="h5" 
-          component="h2" 
-          sx={{ 
-            fontWeight: 700,
-            fontSize: { xs: '1.25rem', sm: '1.5rem' },
-            letterSpacing: '-0.01em'
-          }}
-        >
+    <StyledPaper elevation={0}>
+      <HeaderContainer>
+        <HeaderTitle variant="h5">
           Agents
-        </Typography>
+        </HeaderTitle>
         
-        <Box sx={{ display: 'flex', gap: 1 }}>
-          <Button 
-            variant="contained" 
-            color="primary" 
+        <ButtonsContainer>
+          <CreateButton
+            variant="contained"
+            color="primary"
             size="small"
             startIcon={<FontAwesomeIcon icon={faPlus} />}
             onClick={handleOpenCreateDialog}
-            sx={{
-              borderRadius: 2,
-              textTransform: 'none',
-              px: 2,
-              fontWeight: 500,
-              minWidth: '110px', // Fixed width to prevent layout shifts
-              transition: 'all 0.2s',
-              '&:hover': {
-                transform: 'translateY(-2px)',
-              }
-            }}
           >
             New Agent
-          </Button>
+          </CreateButton>
           
-          <Button 
-            variant="outlined" 
-            color="primary" 
-            onClick={() => refetch()} 
+          <RefreshButton
+            variant="outlined"
+            color="primary"
+            onClick={() => refetch()}
             disabled={isLoading || isFetching}
             size="small"
-            sx={{
-              borderRadius: 2,
-              textTransform: 'none',
-              px: 2,
-              fontWeight: 500,
-              minWidth: '80px', // Fixed width to prevent layout shifts
-              position: 'relative', // For the loading indicator
-              transition: 'all 0.2s',
-              '&:hover': {
-                transform: 'translateY(-2px)',
-              },
-              // Show subtle loading indicator for refetches when we already have data
-              ...(isFetching ? {
-                backgroundColor: (theme) => alpha(theme.palette.primary.main, 0.04),
-              } : {})
-            }}
+            isFetching={isFetching}
           >
-            {/* Keep text consistent to prevent layout shifts */}
             Refresh
             
             {/* Inline loading indicator that doesn't affect layout */}
             {isFetching && (
-              <Box 
-                sx={{ 
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  pointerEvents: 'none' // Allow clicks to pass through
-                }}
-              >
-                <Box 
-                  sx={{ 
-                    width: '100%',
-                    height: 2,
-                    position: 'absolute',
-                    bottom: 0,
-                    left: 0,
-                    backgroundColor: 'primary.main',
-                    animation: 'pulse 1.5s infinite',
-                    '@keyframes pulse': {
-                      '0%': { opacity: 0.4 },
-                      '50%': { opacity: 0.8 },
-                      '100%': { opacity: 0.4 }
-                    }
-                  }}
-                />
+              <Box sx={{ 
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                pointerEvents: 'none'
+              }}>
+                <LoadingIndicator />
               </Box>
             )}
-          </Button>
-        </Box>
-      </Box>
+          </RefreshButton>
+        </ButtonsContainer>
+      </HeaderContainer>
       
-      <Box sx={{ 
-        flexGrow: 1, 
-        display: 'flex',
-        flexDirection: 'column',
-        position: 'relative',
-        minHeight: '300px' // Ensure minimum height to prevent layout shifts
-      }}>
+      <ContentContainer>
         {/* Loading overlay that doesn't affect layout - only show full overlay on initial load */}
         {(isLoading || (isFetching && stableAgents.length === 0)) && (
-          <Box 
-            sx={{ 
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              display: 'flex', 
-              justifyContent: 'center', 
-              alignItems: 'center',
-              backgroundColor: (theme) => alpha(theme.palette.background.paper, 0.7),
-              zIndex: 1,
-              borderRadius: 2
-            }}
-          >
+          <LoadingOverlay>
             <CircularProgress size={40} thickness={4} />
-          </Box>
+          </LoadingOverlay>
         )}
         
         {isError ? (
-          <Alert 
-            severity="error" 
-            sx={{ 
-              mb: 2,
-              borderRadius: 2,
-              boxShadow: '0 2px 10px rgba(0,0,0,0.08)'
-            }}
+          <StyledAlert
+            severity="error"
             action={
               <Button 
                 color="inherit" 
@@ -295,55 +371,15 @@ export const AgentList: FC<AgentListProps> = ({
             }
           >
             Failed to load agents. Please try again.
-          </Alert>
+          </StyledAlert>
         ) : displayAgents.length === 0 ? (
-          <Box 
-            sx={{ 
-              display: 'flex', 
-              flexDirection: 'column', 
-              alignItems: 'center', 
-              justifyContent: 'center',
-              flexGrow: 1,
-              p: 4,
-              my: 4,
-              borderRadius: 3,
-              bgcolor: 'background.default'
-            }}
-          >
-            <Typography 
-              variant="body1" 
-              color="text.secondary" 
-              sx={{ 
-                mb: 2, 
-                textAlign: 'center',
-                maxWidth: '80%',
-                lineHeight: 1.6
-              }}
-            >
+          <EmptyStateContainer>
+            <EmptyStateText variant="body1" color="text.secondary">
               No agents found. Create a new agent to get started.
-            </Typography>
-          </Box>
+            </EmptyStateText>
+          </EmptyStateContainer>
         ) : (
-          <Box sx={{ 
-            flexGrow: 1, 
-            overflow: 'auto',
-            px: 0.5,
-            py: 1,
-            mx: -0.5,
-            '&::-webkit-scrollbar': {
-              width: '6px',
-            },
-            '&::-webkit-scrollbar-track': {
-              backgroundColor: 'transparent',
-            },
-            '&::-webkit-scrollbar-thumb': {
-              backgroundColor: 'rgba(0, 0, 0, 0.1)',
-              borderRadius: '10px',
-              '&:hover': {
-                backgroundColor: 'rgba(0, 0, 0, 0.2)',
-              }
-            },
-          }}>
+          <AgentListContainer>
             {displayAgents.map((agent) => (
               <AgentListItem 
                 key={agent.id}
@@ -364,33 +400,20 @@ export const AgentList: FC<AgentListProps> = ({
             ))}
             
             {displayAgents.length > perPage && (
-              <Box sx={{ 
-                display: 'flex', 
-                justifyContent: 'center', 
-                mt: 3,
-                pt: 2,
-                borderTop: '1px solid',
-                borderColor: 'divider'
-              }}>
-                <Pagination 
-                  count={Math.ceil(displayAgents.length / perPage)} 
-                  page={page} 
-                  onChange={handlePageChange} 
-                  color="primary" 
+              <PaginationContainer>
+                <StyledPagination
+                  count={Math.ceil(displayAgents.length / perPage)}
+                  page={page}
+                  onChange={handlePageChange}
+                  color="primary"
                   size="medium"
                   shape="rounded"
-                  sx={{
-                    '& .MuiPaginationItem-root': {
-                      borderRadius: 1.5,
-                      mx: 0.5
-                    }
-                  }}
                 />
-              </Box>
+              </PaginationContainer>
             )}
-          </Box>
+          </AgentListContainer>
         )}
-      </Box>
+      </ContentContainer>
       
       {/* Create Agent Dialog */}
       <CreateAgentDialog
@@ -398,6 +421,6 @@ export const AgentList: FC<AgentListProps> = ({
         onClose={handleCloseCreateDialog}
         onAgentCreated={handleAgentCreated}
       />
-    </Paper>
+    </StyledPaper>
   );
 };
