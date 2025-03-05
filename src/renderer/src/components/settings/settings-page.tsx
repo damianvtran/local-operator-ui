@@ -181,7 +181,7 @@ export const SettingsPage: FC = () => {
                 <SliderSetting
                   value={config.values.conversation_length}
                   label="Maximum Conversation History"
-                  description="Number of messages to keep in conversation history for context"
+                  description="Number of messages to keep in conversation history for context.  More messages will make the agents have longer memory but more expensive to run."
                   min={10}
                   max={200}
                   step={10}
@@ -196,7 +196,7 @@ export const SettingsPage: FC = () => {
                 <SliderSetting
                   value={config.values.detail_length}
                   label="Detail View Length"
-                  description="Maximum number of messages to show in the detailed conversation view"
+                  description="Maximum number of messages to show in the detailed conversation view.  Messages beyond this limit will be summarized.  Shortening this will decrease costs but some important details could get lost from earlier messages."
                   min={10}
                   max={100}
                   step={5}
@@ -211,9 +211,9 @@ export const SettingsPage: FC = () => {
                 <SliderSetting
                   value={config.values.max_learnings_history}
                   label="Maximum Learnings History"
-                  description="Number of learning items to retain for context and personalization"
+                  description="Number of learning items to retain for context and personalization.  More items will make the agents acquire a longer history of knowledge from your conversations but more expensive to run."
                   min={10}
-                  max={500}
+                  max={100}
                   step={10}
                   unit="items"
                   icon={faDatabase}
