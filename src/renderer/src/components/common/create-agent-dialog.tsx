@@ -10,6 +10,7 @@ import {
   Typography,
   Box,
   CircularProgress,
+  styled,
 } from '@mui/material';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faRobot } from '@fortawesome/free-solid-svg-icons';
@@ -30,6 +31,51 @@ type CreateAgentDialogProps = {
    */
   onAgentCreated?: (agentId: string) => void;
 };
+
+const StyledDialog = styled(Dialog)({
+  '& .MuiPaper-root': {
+    borderRadius: 16,
+    backgroundColor: 'background.paper',
+    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
+    maxWidth: '500px',
+    width: '100%',
+  },
+});
+
+const IconContainer = styled(Box)({
+  display: 'flex',
+  alignItems: 'center',
+});
+
+const StyledIcon = styled(FontAwesomeIcon)(({ theme }) => ({
+  color: theme.palette.primary.main,
+  marginRight: '12px',
+  fontSize: '1.2rem',
+}));
+
+const FormContainer = styled(Box)({
+  marginTop: 8,
+});
+
+const NameField = styled(TextField)({
+  marginBottom: 16,
+});
+
+const ActionButton = styled(Button)({
+  borderRadius: 12,
+  textTransform: 'none',
+  fontWeight: 500,
+});
+
+const CancelButton = styled(ActionButton)({});
+
+const CreateButton = styled(ActionButton)({
+  marginLeft: 8,
+});
+
+const DialogActionsStyled = styled(DialogActions)({
+  padding: '0 24px 24px 24px',
+});
 
 /**
  * Dialog for creating a new agent
@@ -80,36 +126,20 @@ export const CreateAgentDialog: FC<CreateAgentDialogProps> = ({
   const isSubmitDisabled = isLoading || !name.trim();
   
   return (
-    <Dialog
+    <StyledDialog
       open={open}
       onClose={onClose}
-      PaperProps={{
-        sx: {
-          borderRadius: 2,
-          bgcolor: 'background.paper',
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
-          maxWidth: '500px',
-          width: '100%',
-        },
-      }}
     >
       <form onSubmit={handleSubmit}>
         <DialogTitle>
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <FontAwesomeIcon
-              icon={faRobot}
-              style={{
-                color: 'primary.main',
-                marginRight: '12px',
-                fontSize: '1.2rem',
-              }}
-            />
+          <IconContainer>
+            <StyledIcon icon={faRobot} />
             <Typography variant="h6">Create New Agent</Typography>
-          </Box>
+          </IconContainer>
         </DialogTitle>
         <DialogContent>
-          <Box sx={{ mt: 1 }}>
-            <TextField
+          <FormContainer>
+            <NameField
               autoFocus
               margin="dense"
               id="name"
@@ -121,7 +151,6 @@ export const CreateAgentDialog: FC<CreateAgentDialogProps> = ({
               onChange={(e) => setName(e.target.value)}
               required
               disabled={isLoading}
-              sx={{ mb: 2 }}
             />
             <TextField
               margin="dense"
@@ -136,41 +165,30 @@ export const CreateAgentDialog: FC<CreateAgentDialogProps> = ({
               multiline
               rows={3}
             />
-          </Box>
+          </FormContainer>
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 3 }}>
-          <Button
+        <DialogActionsStyled>
+          <CancelButton
             onClick={onClose}
             variant="outlined"
             color="inherit"
             disabled={isLoading}
-            sx={{
-              borderRadius: 1.5,
-              textTransform: 'none',
-              fontWeight: 500,
-            }}
           >
             Cancel
-          </Button>
-          <Button
+          </CancelButton>
+          <CreateButton
             type="submit"
             variant="contained"
             color="primary"
             disabled={isSubmitDisabled}
-            sx={{
-              borderRadius: 1.5,
-              textTransform: 'none',
-              fontWeight: 500,
-              ml: 1,
-            }}
             startIcon={
               isLoading ? <CircularProgress size={20} color="inherit" /> : null
             }
           >
             Create Agent
-          </Button>
-        </DialogActions>
+          </CreateButton>
+        </DialogActionsStyled>
       </form>
-    </Dialog>
+    </StyledDialog>
   );
 };

@@ -6,6 +6,7 @@ import {
   MenuItem,
   ListItemIcon,
   Typography,
+  styled,
 } from '@mui/material';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faEllipsisVertical, faTrash, faGear } from '@fortawesome/free-solid-svg-icons';
@@ -40,6 +41,43 @@ type AgentOptionsMenuProps = {
    */
   onViewAgentSettings?: () => void;
 };
+
+const OptionsIconButton = styled(IconButton)({
+  opacity: 0,
+  transition: 'opacity 0.2s',
+  '&:hover': { 
+    opacity: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+  },
+});
+
+const OptionsMenu = styled(Menu)({
+  '& .MuiPaper-root': {
+    minWidth: 150,
+    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
+    borderRadius: 12,
+  },
+});
+
+const SettingsMenuItem = styled(MenuItem)(({ theme }) => ({
+  padding: theme.spacing(1.5, 2),
+  '&:hover': {
+    backgroundColor: 'rgba(56, 201, 106, 0.08)',
+  },
+}));
+
+const DeleteMenuItem = styled(MenuItem)(({ theme }) => ({
+  padding: theme.spacing(1.5, 2),
+  color: theme.palette.error.main,
+  '&:hover': {
+    backgroundColor: 'rgba(211, 47, 47, 0.08)',
+  },
+}));
+
+const MenuItemIcon = styled(ListItemIcon)(({ theme, color }) => ({
+  color: color === 'error' ? theme.palette.error.main : theme.palette.primary.main,
+  minWidth: 36,
+}));
 
 /**
  * Agent Options Menu Component
@@ -105,25 +143,16 @@ export const AgentOptionsMenu: FC<AgentOptionsMenuProps> = ({
   
   return (
     <>
-      <IconButton
+      <OptionsIconButton
         size="small"
         aria-label="agent options"
         onClick={handleOpenMenu}
-        sx={{
-          opacity: 0,
-          transition: 'opacity 0.2s',
-          '&:hover': { 
-            opacity: 1,
-            backgroundColor: 'rgba(255, 255, 255, 0.08)',
-          },
-          ...buttonSx,
-        }}
+        sx={buttonSx}
       >
         <FontAwesomeIcon icon={faEllipsisVertical} size="sm" />
-      </IconButton>
+      </OptionsIconButton>
       
-      {/* Agent Options Menu */}
-      <Menu
+      <OptionsMenu
         anchorEl={menuAnchorEl}
         open={isMenuOpen}
         onClose={handleCloseMenu}
@@ -136,51 +165,29 @@ export const AgentOptionsMenu: FC<AgentOptionsMenuProps> = ({
           vertical: 'top',
           horizontal: 'right',
         }}
-        PaperProps={{
-          sx: {
-            minWidth: 150,
-            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
-            borderRadius: 1.5,
-          },
-        }}
       >
         {/* View Agent Settings option - only shown when not on the agents page */}
         {!isAgentsPage && onViewAgentSettings && (
-          <MenuItem 
+          <SettingsMenuItem 
             onClick={() => {
               onViewAgentSettings();
               handleCloseMenu();
             }}
-            sx={{ 
-              py: 1.5,
-              '&:hover': {
-                backgroundColor: 'rgba(56, 201, 106, 0.08)',
-              },
-            }}
           >
-            <ListItemIcon sx={{ color: 'primary.main', minWidth: 36 }}>
+            <MenuItemIcon>
               <FontAwesomeIcon icon={faGear} size="sm" />
-            </ListItemIcon>
+            </MenuItemIcon>
             <Typography variant="body2">View Agent Settings</Typography>
-          </MenuItem>
+          </SettingsMenuItem>
         )}
         
-        <MenuItem 
-          onClick={handleOpenDeleteConfirmation}
-          sx={{ 
-            color: 'error.main',
-            py: 1.5,
-            '&:hover': {
-              backgroundColor: 'rgba(211, 47, 47, 0.08)',
-            },
-          }}
-        >
-          <ListItemIcon sx={{ color: 'error.main', minWidth: 36 }}>
+        <DeleteMenuItem onClick={handleOpenDeleteConfirmation}>
+          <MenuItemIcon color="error">
             <FontAwesomeIcon icon={faTrash} size="sm" />
-          </ListItemIcon>
+          </MenuItemIcon>
           <Typography variant="body2">Delete Agent</Typography>
-        </MenuItem>
-      </Menu>
+        </DeleteMenuItem>
+      </OptionsMenu>
       
       {/* Delete Confirmation Modal */}
       <ConfirmationModal

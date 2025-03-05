@@ -9,6 +9,7 @@ import {
   Button,
   Typography,
   Box,
+  styled,
 } from '@mui/material';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faExclamationTriangle } from '@fortawesome/free-solid-svg-icons';
@@ -48,6 +49,46 @@ type ConfirmationModalProps = {
   onCancel: () => void;
 };
 
+const StyledDialog = styled(Dialog)({
+  '& .MuiPaper-root': {
+    borderRadius: 16,
+    backgroundColor: 'background.paper',
+    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
+    maxWidth: '400px',
+    width: '100%',
+  },
+});
+
+const WarningBox = styled(Box)({
+  display: 'flex',
+  alignItems: 'center',
+  marginBottom: 8,
+});
+
+const WarningIcon = styled(FontAwesomeIcon)(({ theme }) => ({
+  color: theme.palette.error.main,
+  marginRight: 8,
+  fontSize: '1.2rem',
+}));
+
+const ActionButton = styled(Button)(() => ({
+  borderRadius: 12,
+  textTransform: 'none',
+  fontWeight: 500,
+}));
+
+const CancelButton = styled(ActionButton)({
+  marginRight: 8,
+});
+
+const ConfirmButton = styled(ActionButton)({
+  marginLeft: 8,
+});
+
+const DialogActionsStyled = styled(DialogActions)({
+  padding: '0 24px 24px 24px',
+});
+
 /**
  * A reusable confirmation modal component
  * 
@@ -64,38 +105,21 @@ export const ConfirmationModal: FC<ConfirmationModalProps> = ({
   onCancel,
 }) => {
   return (
-    <Dialog
+    <StyledDialog
       open={open}
       onClose={onCancel}
       aria-labelledby="confirmation-dialog-title"
       aria-describedby="confirmation-dialog-description"
-      PaperProps={{
-        sx: {
-          borderRadius: 2,
-          bgcolor: 'background.paper',
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
-          maxWidth: '400px',
-          width: '100%',
-        },
-      }}
     >
       <DialogTitle id="confirmation-dialog-title" sx={{ pb: 1 }}>
-        {isDangerous && (
-          <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-            <FontAwesomeIcon
-              icon={faExclamationTriangle}
-              style={{
-                color: 'error.main',
-                marginRight: '8px',
-                fontSize: '1.2rem',
-              }}
-            />
+        {isDangerous ? (
+          <WarningBox>
+            <WarningIcon icon={faExclamationTriangle} />
             <Typography variant="h6" component="span" color="error">
               {title}
             </Typography>
-          </Box>
-        )}
-        {!isDangerous && (
+          </WarningBox>
+        ) : (
           <Typography variant="h6" component="span">
             {title}
           </Typography>
@@ -106,34 +130,23 @@ export const ConfirmationModal: FC<ConfirmationModalProps> = ({
           {message}
         </DialogContentText>
       </DialogContent>
-      <DialogActions sx={{ px: 3, pb: 3 }}>
-        <Button
+      <DialogActionsStyled>
+        <CancelButton
           onClick={onCancel}
           variant="outlined"
           color="inherit"
-          sx={{
-            borderRadius: 1.5,
-            textTransform: 'none',
-            fontWeight: 500,
-          }}
         >
           {cancelText}
-        </Button>
-        <Button
+        </CancelButton>
+        <ConfirmButton
           onClick={onConfirm}
           variant="contained"
           color={isDangerous ? 'error' : 'primary'}
           autoFocus
-          sx={{
-            borderRadius: 1.5,
-            textTransform: 'none',
-            fontWeight: 500,
-            ml: 1,
-          }}
         >
           {confirmText}
-        </Button>
-      </DialogActions>
-    </Dialog>
+        </ConfirmButton>
+      </DialogActionsStyled>
+    </StyledDialog>
   );
 };
