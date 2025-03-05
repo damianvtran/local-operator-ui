@@ -88,10 +88,10 @@ export const NavButtons: React.FC<NavButtonsProps> = ({ currentView, onNavigate 
     >
       <NavButton
         icon={faCode}
-        label="Execution History"
-        view="execution-history"
-        isActive={currentView === 'execution-history'}
-        onClick={() => onNavigate('execution-history')}
+        label="Chat"
+        view="chat"
+        isActive={currentView === 'chat'}
+        onClick={() => onNavigate('chat')}
       />
       <NavButton
         icon={faRobot}

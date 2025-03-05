@@ -20,17 +20,19 @@ export const MessageItem: FC<MessageItemProps> = ({ message }) => {
         display: 'flex',
         flexDirection: isUser ? 'row-reverse' : 'row',
         alignItems: 'flex-start',
-        gap: 2
+        gap: 2,
+        mb: 2
       }}
     >
       <Avatar 
         sx={{ 
           bgcolor: isUser 
-            ? 'primary.dark' 
+            ? 'rgba(66, 133, 244, 0.9)' 
             : 'rgba(56, 201, 106, 0.2)',
           color: isUser 
             ? 'white' 
-            : 'primary.main'
+            : 'primary.main',
+          boxShadow: isUser ? '0 2px 8px rgba(66, 133, 244, 0.25)' : 'none'
         }}
       >
         <FontAwesomeIcon 
@@ -40,20 +42,38 @@ export const MessageItem: FC<MessageItemProps> = ({ message }) => {
       </Avatar>
       
       <Paper 
-        elevation={1}
+        elevation={isUser ? 2 : 1}
         sx={{ 
           maxWidth: { xs: '85%', sm: '75%', md: '65%' },
           width: 'auto',
           bgcolor: isUser 
-            ? 'primary.dark' 
+            ? 'rgba(66, 133, 244, 0.15)' 
             : 'background.paper',
           p: 2,
           borderRadius: 2,
           border: isUser 
-            ? 'none'
+            ? '1px solid rgba(66, 133, 244, 0.3)'
             : '1px solid rgba(255, 255, 255, 0.1)',
           wordBreak: 'break-word',
-          overflowWrap: 'break-word'
+          overflowWrap: 'break-word',
+          boxShadow: isUser 
+            ? '0 4px 12px rgba(0, 0, 0, 0.15)' 
+            : '0 2px 8px rgba(0, 0, 0, 0.1)',
+          color: isUser ? 'text.primary' : 'inherit',
+          position: 'relative',
+          '&::after': isUser ? {
+            content: '""',
+            position: 'absolute',
+            top: '12px',
+            right: '-8px',
+            width: '16px',
+            height: '16px',
+            backgroundColor: 'rgba(66, 133, 244, 0.15)',
+            borderRight: '1px solid rgba(66, 133, 244, 0.3)',
+            borderTop: '1px solid rgba(66, 133, 244, 0.3)',
+            transform: 'rotate(45deg)',
+            zIndex: -1
+          } : {}
         }}
       >
         {/* Render attachments if any */}
@@ -69,7 +89,8 @@ export const MessageItem: FC<MessageItemProps> = ({ message }) => {
                   maxWidth: '100%', 
                   maxHeight: 200, 
                   borderRadius: 1,
-                  mb: 1
+                  mb: 1,
+                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)'
                 }}
               />
             ))}
@@ -82,7 +103,7 @@ export const MessageItem: FC<MessageItemProps> = ({ message }) => {
             <MarkdownRenderer content={message.message} />
           </Box>
         )}
-        
+
         {/* Render code with syntax highlighting */}
         {message.code && (
           <Box sx={{ mb: message.stdout || message.stderr || message.logging ? 2 : 0, width: '100%' }}>
@@ -90,14 +111,17 @@ export const MessageItem: FC<MessageItemProps> = ({ message }) => {
               Code
             </Typography>
             <SyntaxHighlighter
-              language="javascript"
+              language="python"
               style={atomOneDark}
               customStyle={{
                 borderRadius: '8px',
                 margin: 0,
                 fontSize: '0.85rem',
                 width: '100%',
+                boxShadow: '0 2px 6px rgba(0, 0, 0, 0.2)'
               }}
+              wrapLines={true}
+              wrapLongLines={true}
             >
               {message.code}
             </SyntaxHighlighter>
@@ -117,10 +141,12 @@ export const MessageItem: FC<MessageItemProps> = ({ message }) => {
                 backgroundColor: 'rgba(0, 0, 0, 0.3)',
                 borderRadius: '8px',
                 p: 1.5,
-                maxHeight: '200px',
+                maxHeight: '300px',
                 overflow: 'auto',
                 whiteSpace: 'pre-wrap',
                 width: '100%',
+                boxShadow: '0 2px 6px rgba(0, 0, 0, 0.15)',
+                color: 'inherit',
                 '&::-webkit-scrollbar': {
                   width: '6px',
                 },
@@ -138,7 +164,7 @@ export const MessageItem: FC<MessageItemProps> = ({ message }) => {
         {/* Render stderr */}
         {message.stderr && message.stderr !== "[No error output]" && (
           <Box sx={{ mb: message.logging ? 2 : 0, width: '100%' }}>
-            <Typography variant="caption" sx={{ display: 'block', mb: 0.5, color: 'error.light' }}>
+            <Typography variant="caption" sx={{ display: 'block', mb: 0.5, color: isUser ? 'error.main' : 'error.light' }}>
               Error
             </Typography>
             <Box
@@ -151,8 +177,9 @@ export const MessageItem: FC<MessageItemProps> = ({ message }) => {
                 maxHeight: '200px',
                 overflow: 'auto',
                 whiteSpace: 'pre-wrap',
-                color: 'error.light',
+                color: isUser ? 'error.main' : 'error.light',
                 width: '100%',
+                boxShadow: '0 2px 6px rgba(0, 0, 0, 0.15)',
                 '&::-webkit-scrollbar': {
                   width: '6px',
                 },
@@ -183,8 +210,9 @@ export const MessageItem: FC<MessageItemProps> = ({ message }) => {
                 maxHeight: '200px',
                 overflow: 'auto',
                 whiteSpace: 'pre-wrap',
-                color: 'info.light',
+                color: isUser ? 'info.main' : 'info.light',
                 width: '100%',
+                boxShadow: '0 2px 6px rgba(0, 0, 0, 0.15)',
                 '&::-webkit-scrollbar': {
                   width: '6px',
                 },
@@ -215,6 +243,7 @@ export const MessageItem: FC<MessageItemProps> = ({ message }) => {
                   ? 'success.dark'
                   : 'info.dark',
               color: 'white',
+              boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
             }}
           >
             {message.status}
