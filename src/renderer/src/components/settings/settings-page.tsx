@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import type { FC, ChangeEvent } from 'react';
-import { Paper, Typography } from '@mui/material';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { Paper } from '@mui/material';
 import { faGear } from '@fortawesome/free-solid-svg-icons';
+import { PageHeader } from '../common/page-header';
 
 import { AccountSettings } from './account-settings';
 import { SystemPrompt } from './system-prompt';
@@ -84,10 +84,11 @@ export const SettingsPage: FC = () => {
         },
       }}
     >
-      <Typography variant="h5" sx={{ mb: 3, fontWeight: 600 }}>
-        <FontAwesomeIcon icon={faGear} style={{ marginRight: 12 }} />
-        Settings
-      </Typography>
+      <PageHeader
+        title="Settings"
+        icon={faGear}
+        subtitle="Configure your application preferences and settings"
+      />
       
       <AccountSettings 
         username={settings.username}

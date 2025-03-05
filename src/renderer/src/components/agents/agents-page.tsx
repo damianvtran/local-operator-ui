@@ -15,6 +15,7 @@ import {
   IconButton,
   alpha
 } from '@mui/material';
+import { PageHeader } from '../common/page-header';
 import { toast } from 'react-toastify';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
@@ -87,58 +88,11 @@ export const AgentsPage: FC<AgentsPageProps> = ({ initialSelectedAgentId }) => {
         gap: 2
       }}
     >
-      <Box sx={{ 
-        display: 'flex', 
-        alignItems: 'center', 
-        mb: 1,
-        pb: 2,
-        borderBottom: '1px solid',
-        borderColor: 'divider'
-      }}>
-        <FontAwesomeIcon 
-          icon={faRobot} 
-          size="lg" 
-          style={{ 
-            marginRight: 16, 
-            color: '#f2f2f3' 
-          }} 
-        />
-        <Typography 
-          variant="h4" 
-          component="h1" 
-          sx={{ 
-            fontWeight: 700,
-            letterSpacing: '-0.02em'
-          }}
-        >
-          Agent Management
-        </Typography>
-        <IconButton 
-          size="small" 
-          sx={{ 
-            ml: 1.5,
-            color: 'primary.main',
-            '&:hover': {
-              backgroundColor: (theme) => alpha(theme.palette.primary.main, 0.08)
-            }
-          }}
-          title="Manage your AI agents and view their configurations"
-        >
-          <FontAwesomeIcon icon={faInfoCircle} size="xs" />
-        </IconButton>
-      </Box>
-      
-      <Typography 
-        variant="subtitle1" 
-        color="text.secondary" 
-        sx={{ 
-          mb: 3,
-          maxWidth: '800px',
-          lineHeight: 1.5
-        }}
-      >
-        View, configure and manage your AI agents from a central dashboard
-      </Typography>
+      <PageHeader
+        title="Agent Management"
+        icon={faRobot}
+        subtitle="View, configure and manage your AI agents from a central dashboard"
+      />
       
       <Grid container spacing={4} sx={{ flexGrow: 1, overflow: 'hidden' }}>
         {/* Agent List */}
