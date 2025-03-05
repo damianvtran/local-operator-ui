@@ -1,4 +1,4 @@
-import type { FC, ChangeEvent } from 'react';
+import type { FC, ChangeEvent, MouseEvent } from 'react';
 import React, { useState, useCallback } from 'react';
 import {
   Box,
@@ -24,8 +24,13 @@ import {
   faRobot,
   faClock,
   faCommentSlash,
+  faPlus,
+  faTrash,
 } from '@fortawesome/free-solid-svg-icons';
 import { useAgents } from '@renderer/hooks/use-agents';
+import { useDeleteAgent } from '@renderer/hooks/use-agent-mutations';
+import { CreateAgentDialog } from './create-agent-dialog';
+import { ConfirmationModal } from '@renderer/components/common/confirmation-modal';
 import { format } from 'date-fns';
 
 type ChatSidebarProps = {
@@ -39,7 +44,13 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [page, setPage] = useState(1);
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [deleteAgentId, setDeleteAgentId] = useState<string | null>(null);
+  const [deleteAgentName, setDeleteAgentName] = useState('');
   const perPage = 10;
+
+  // Delete agent mutation
+  const deleteAgentMutation = useDeleteAgent();
 
   const {
     data: agents = [],
@@ -55,6 +66,48 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
   const handleSelectConversation = useCallback((agentId: string) => {
     onSelectConversation(agentId);
   }, [onSelectConversation]);
+  
+  // Handler for opening the create agent dialog
+  const handleOpenCreateDialog = useCallback(() => {
+    setIsCreateDialogOpen(true);
+  }, []);
+  
+  // Handler for closing the create agent dialog
+  const handleCloseCreateDialog = useCallback(() => {
+    setIsCreateDialogOpen(false);
+  }, []);
+  
+  // Handler for opening the delete confirmation modal
+  const handleOpenDeleteConfirmation = useCallback((e: MouseEvent, agentId: string, agentName: string) => {
+    e.stopPropagation(); // Prevent triggering the ListItemButton click
+    setDeleteAgentId(agentId);
+    setDeleteAgentName(agentName);
+  }, []);
+  
+  // Handler for closing the delete confirmation modal
+  const handleCloseDeleteConfirmation = useCallback(() => {
+    setDeleteAgentId(null);
+    setDeleteAgentName('');
+  }, []);
+  
+  // Handler for confirming agent deletion
+  const handleConfirmDelete = useCallback(async () => {
+    if (!deleteAgentId) return;
+    
+    try {
+      await deleteAgentMutation.mutateAsync(deleteAgentId);
+      // If the deleted agent was selected, clear the selection
+      if (selectedConversation === deleteAgentId) {
+        onSelectConversation('');
+      }
+    } catch (error) {
+      // Error is handled in the mutation
+      console.error('Failed to delete agent:', error);
+    } finally {
+      // Close the confirmation modal
+      handleCloseDeleteConfirmation();
+    }
+  }, [deleteAgentId, deleteAgentMutation, selectedConversation, onSelectConversation, handleCloseDeleteConfirmation]);
 
   const filteredAgents = agents.filter((agent) =>
     agent.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -89,9 +142,26 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
       }}
     >
       <Box sx={{ p: 2 }}>
-        <Typography variant="h6" sx={{ mb: 2, fontWeight: 500 }}>
-          Agents
-        </Typography>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Typography variant="h6" sx={{ fontWeight: 500 }}>
+            Agents
+          </Typography>
+          <Button
+            variant="contained"
+            color="primary"
+            size="small"
+            startIcon={<FontAwesomeIcon icon={faPlus} />}
+            onClick={handleOpenCreateDialog}
+            sx={{
+              borderRadius: 1.5,
+              textTransform: 'none',
+              fontWeight: 500,
+              px: 1.5,
+            }}
+          >
+            New Agent
+          </Button>
+        </Box>
 
         <TextField
           fullWidth
@@ -159,7 +229,27 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
           }}
         >
           {filteredAgents.map((agent) => (
-            <ListItem key={agent.id} disablePadding>
+            <ListItem 
+              key={agent.id} 
+              disablePadding
+              secondaryAction={
+                <Button
+                  size="small"
+                  color="error"
+                  variant="text"
+                  aria-label="delete agent"
+                  onClick={(e) => handleOpenDeleteConfirmation(e, agent.id, agent.name)}
+                  sx={{ 
+                    minWidth: 'auto', 
+                    opacity: 0.7,
+                    '&:hover': { opacity: 1 },
+                    mr: 0.5,
+                  }}
+                >
+                  <FontAwesomeIcon icon={faTrash} size="sm" />
+                </Button>
+              }
+            >
               <ListItemButton
                 selected={selectedConversation === agent.id}
                 onClick={() => handleSelectConversation(agent.id)}
@@ -167,6 +257,7 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
                   mx: 1,
                   borderRadius: 2,
                   mb: 0.5,
+                  pr: 5, // Make room for the delete button
                   '&.Mui-selected': {
                     backgroundColor: 'rgba(56, 201, 106, 0.1)',
                     '&:hover': {
@@ -272,6 +363,33 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
           )}
         </List>
       )}
+      
+      {/* Create Agent Dialog */}
+      <CreateAgentDialog
+        open={isCreateDialogOpen}
+        onClose={handleCloseCreateDialog}
+      />
+      
+      {/* Delete Confirmation Modal */}
+      <ConfirmationModal
+        open={!!deleteAgentId}
+        title="Delete Agent"
+        message={
+          <>
+            <Typography variant="body1" gutterBottom>
+              Are you sure you want to delete the agent "{deleteAgentName}"?
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              This action cannot be undone. All conversations with this agent will be permanently deleted.
+            </Typography>
+          </>
+        }
+        confirmText="Delete"
+        cancelText="Cancel"
+        isDangerous
+        onConfirm={handleConfirmDelete}
+        onCancel={handleCloseDeleteConfirmation}
+      />
     </Paper>
   );
 };
