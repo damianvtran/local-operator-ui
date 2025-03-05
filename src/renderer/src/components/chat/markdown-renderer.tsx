@@ -7,6 +7,10 @@ type MarkdownRendererProps = {
 
 // Simple markdown parser
 export const parseMarkdown = (text: string): string => {
+  if (!text) {
+    return '';
+  }
+
   // Replace code blocks
   let parsedText = text.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
   

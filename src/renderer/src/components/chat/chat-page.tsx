@@ -56,7 +56,7 @@ export const ChatPage: FC<ChatProps> = ({ conversationId }) => {
     const userMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
-      content,
+      message: content,
       timestamp: new Date(),
       attachments: file ? [URL.createObjectURL(file)] : undefined
     };
@@ -84,7 +84,7 @@ export const ChatPage: FC<ChatProps> = ({ conversationId }) => {
       const assistantMessage: Message = {
         id: Date.now().toString(),
         role: 'assistant',
-        content: response.response,
+        message: response.response,
         timestamp: new Date(),
       };
       
@@ -97,7 +97,7 @@ export const ChatPage: FC<ChatProps> = ({ conversationId }) => {
       const errorMessage: Message = {
         id: Date.now().toString(),
         role: 'assistant',
-        content: 'Sorry, there was an error processing your request. Please try again.',
+        message: 'Sorry, there was an error processing your request. Please try again.',
         timestamp: new Date(),
       };
       

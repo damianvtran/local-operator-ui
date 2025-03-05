@@ -1,7 +1,7 @@
 import type React from 'react';
 import { Box, Button, alpha } from '@mui/material';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faGear, faMessage, faRobot } from '@fortawesome/free-solid-svg-icons';
+import { faGear, faCode, faRobot } from '@fortawesome/free-solid-svg-icons';
 
 type NavButtonsProps = {
   currentView: string;
@@ -13,7 +13,7 @@ type NavButtonsProps = {
  * Extracted for better maintainability and consistent styling
  */
 type NavButtonProps = {
-  icon: typeof faMessage | typeof faRobot | typeof faGear;
+  icon: typeof faCode | typeof faRobot | typeof faGear;
   label: string;
   view: string;
   isActive: boolean;
@@ -87,11 +87,11 @@ export const NavButtons: React.FC<NavButtonsProps> = ({ currentView, onNavigate 
       }}
     >
       <NavButton
-        icon={faMessage}
-        label="Chat"
-        view="chat"
-        isActive={currentView === 'chat'}
-        onClick={() => onNavigate('chat')}
+        icon={faCode}
+        label="Execution History"
+        view="execution-history"
+        isActive={currentView === 'execution-history'}
+        onClick={() => onNavigate('execution-history')}
       />
       <NavButton
         icon={faRobot}

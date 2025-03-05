@@ -7,7 +7,7 @@ import { useInfiniteQuery } from '@tanstack/react-query';
 import { toast } from 'react-toastify';
 import { AgentsApi } from '@renderer/api/local-operator';
 import { apiConfig } from '@renderer/config';
-import type { ConversationRecord } from '@renderer/api/local-operator/types';
+import type { AgentExecutionRecord } from '@renderer/api/local-operator/types';
 import type { Message } from '@renderer/components/chat/types';
 import { useChatStore } from '@renderer/store/chat-store';
 
@@ -32,7 +32,7 @@ type PaginatedMessagesResponse = {
  * @param record - The conversation record from the API
  * @returns The converted message for the UI
  */
-const convertToMessage = (record: ConversationRecord): Message => {
+const convertToMessage = (record: AgentExecutionRecord): Message => {
   // Determine the role based on the API role
   const role: 'user' | 'assistant' = 
     record.role === 'user' || record.role === 'human' 
@@ -40,9 +40,13 @@ const convertToMessage = (record: ConversationRecord): Message => {
       : 'assistant';
   
   return {
-    id: record.timestamp || Date.now().toString(),
+    id: record.timestamp || uuidv4(),
     role,
-    content: record.content,
+    message: record.message,
+    code: record.code,
+    stdout: record.stdout,
+    stderr: record.stderr,
+    logging: record.logging,
     timestamp: record.timestamp ? new Date(record.timestamp) : new Date(),
   };
 };
@@ -98,7 +102,7 @@ export const useConversationMessages = (
         const page = pageParam as number;
         
         // Call the API to get conversation messages
-        const response = await AgentsApi.getAgentConversation(
+        const response = await AgentsApi.getAgentExecutionHistory(
           apiConfig.baseUrl,
           conversationId,
           page,
@@ -121,7 +125,7 @@ export const useConversationMessages = (
         }
         
         // Convert API messages to UI messages
-        const messages = (result.messages || []).map(convertToMessage);
+        const messages = (result.history || []).map(convertToMessage);
         
         // Calculate total pages
         const totalPages = Math.ceil(result.total / pageSize);
@@ -204,10 +208,10 @@ export const useConversationMessages = (
         // Create a new array with the new messages at the beginning
         const updatedMessages = [...latestPageMessages, ...existingMessages];
         
-        // Remove duplicates by ID
+        // Remove duplicates by timestamp
         const uniqueMessages = updatedMessages.filter(
           (message, index, self) => 
-            index === self.findIndex((m) => m.id === message.id)
+            index === self.findIndex((m) => m.timestamp === message.timestamp)
         );
         
         // Update the store
@@ -255,3 +259,7 @@ export const useConversationMessages = (
     refetch
   };
 };
+function uuidv4(): string {
+  throw new Error('Function not implemented.');
+}
+

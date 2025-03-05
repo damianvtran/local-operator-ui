@@ -1,7 +1,7 @@
 import React from 'react';
 import { Box, IconButton, Menu, MenuItem, alpha } from '@mui/material';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faGear, faMessage, faEllipsisVertical, faRobot } from '@fortawesome/free-solid-svg-icons';
+import { faGear, faCode, faEllipsisVertical, faRobot } from '@fortawesome/free-solid-svg-icons';
 
 type MobileMenuProps = {
   currentView: string;
@@ -87,26 +87,26 @@ export const MobileMenu: React.FC<MobileMenuProps> = ({ currentView, onNavigate 
         anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
       >
         <MenuItem 
-          onClick={() => handleNavigate('chat')}
+          onClick={() => handleNavigate('execution-history')}
           sx={{ 
             py: 1.5,
             borderRadius: 1,
             mx: 1,
             my: 0.5,
-            backgroundColor: currentView === 'chat' ? alpha('#38C96A', 0.08) : 'transparent',
+            backgroundColor: currentView === 'execution-history' ? alpha('#38C96A', 0.08) : 'transparent',
             '&:hover': {
-              backgroundColor: currentView === 'chat' ? alpha('#38C96A', 0.12) : 'rgba(255,255,255,0.05)',
+              backgroundColor: currentView === 'execution-history' ? alpha('#38C96A', 0.12) : 'rgba(255,255,255,0.05)',
             }
           }}
         >
           <FontAwesomeIcon 
-            icon={faMessage} 
+            icon={faCode} 
             style={{ 
               marginRight: 12,
-              color: currentView === 'chat' ? '#38C96A' : 'inherit'
+              color: currentView === 'execution-history' ? '#38C96A' : 'inherit'
             }} 
           /> 
-          Chat
+          Execution History
         </MenuItem>
         <MenuItem 
           onClick={() => handleNavigate('agents')}
