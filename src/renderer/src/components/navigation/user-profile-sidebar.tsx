@@ -8,6 +8,7 @@ import {
   Divider, 
   Menu, 
   MenuItem, 
+  Tooltip, 
   Typography, 
   alpha 
 } from '@mui/material';
@@ -102,45 +103,26 @@ export const UserProfileSidebar: FC<UserProfileSidebarProps> = ({
         onClick={handleClick}
       >
         {!expanded ? (
-          <div 
-            style={{ position: 'relative' }}
-            data-tooltip="Account Settings"
-            className="custom-tooltip"
+          // @ts-ignore - MUI Tooltip requires children but we're providing it
+          <Tooltip
+            title="Account Settings"
+            placement="right"
+            arrow
+            sx={{
+              '& .MuiTooltip-tooltip': {
+                backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                color: 'white',
+                fontSize: 12,
+                borderRadius: 1,
+                padding: '5px 10px',
+              },
+              '& .MuiTooltip-arrow': {
+                color: 'rgba(0, 0, 0, 0.8)',
+              },
+            }}
           >
-            <style jsx>{`
-              .custom-tooltip {
-                position: relative;
-              }
-              .custom-tooltip:hover::after {
-                content: attr(data-tooltip);
-                position: absolute;
-                left: 100%;
-                top: 50%;
-                transform: translateY(-50%);
-                margin-left: 10px;
-                padding: 5px 10px;
-                background-color: rgba(0, 0, 0, 0.8);
-                color: white;
-                border-radius: 4px;
-                font-size: 12px;
-                white-space: nowrap;
-                z-index: 1000;
-              }
-              .custom-tooltip:hover::before {
-                content: '';
-                position: absolute;
-                left: 100%;
-                top: 50%;
-                transform: translateY(-50%);
-                border-width: 5px;
-                border-style: solid;
-                border-color: transparent rgba(0, 0, 0, 0.8) transparent transparent;
-                margin-left: 0px;
-                z-index: 1000;
-              }
-            `}</style>
             <Box>{avatarComponent}</Box>
-          </div>
+          </Tooltip>
         ) : (
           avatarComponent
         )}
