@@ -5,7 +5,7 @@ import { library } from '@fortawesome/fontawesome-svg-core';
 import { fas } from '@fortawesome/free-solid-svg-icons';
 import { fab } from '@fortawesome/free-brands-svg-icons';
 
-import { NavigationBar } from '@renderer/components/navigation/navigation-bar';
+import { SidebarNavigation } from '@renderer/components/navigation/sidebar-navigation';
 import { ChatPage } from '@components/chat/chat-page';
 import { SettingsPage } from '@renderer/components/settings/settings-page';
 import { AgentsPage } from '@renderer/components/agents/agents-page';
@@ -31,15 +31,14 @@ const App: FC = () => {
   
   return (
     <Box sx={{ 
-      display: 'flex', 
-      flexDirection: 'column', 
+      display: 'flex',
       height: '100vh',
       overflow: 'hidden'
     }}>
       <CssBaseline />
       
-      {/* Top Navigation Bar */}
-      <NavigationBar 
+      {/* Sidebar Navigation */}
+      <SidebarNavigation 
         currentView={currentView} 
         onNavigate={handleNavigate} 
       />
@@ -47,7 +46,9 @@ const App: FC = () => {
       {/* Main Content Area */}
       <Box sx={{ 
         flexGrow: 1,
-        overflow: 'hidden'
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column'
       }}>
         {currentView === 'chat' ? (
           <ChatPage 
