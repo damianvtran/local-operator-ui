@@ -43,7 +43,7 @@ export const ChatApi = {
    * @returns Promise resolving to the chat response
    */
   async chatWithAgent(baseUrl: string, agentId: string, request: ChatRequest): Promise<ChatResponse> {
-    const response = await fetch(`${baseUrl}/v1/chat/agents/${agentId}/sync`, {
+    const response = await fetch(`${baseUrl}/v1/chat/agents/${agentId}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
