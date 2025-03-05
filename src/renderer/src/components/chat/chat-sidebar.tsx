@@ -77,14 +77,12 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
   
   // Handler for when an agent is created
   const handleAgentCreated = useCallback((agentId: string) => {
-    refetch();
+    // Immediately select the newly created agent
+    onSelectConversation(agentId);
     
-    // Select the newly created agent if found
-    const newAgent = agents.find(agent => agent.id === agentId);
-    if (newAgent) {
-      onSelectConversation(agentId);
-    }
-  }, [agents, onSelectConversation, refetch]);
+    // Then refetch the agents list to update the UI
+    refetch();
+  }, [onSelectConversation, refetch]);
 
   const filteredAgents = agents.filter((agent) =>
     agent.name.toLowerCase().includes(searchQuery.toLowerCase())

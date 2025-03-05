@@ -21,6 +21,8 @@ import { useAgents } from '@renderer/hooks/use-agents';
 import { AgentListItem } from './agent-list-item';
 import { CreateAgentDialog } from '@renderer/components/common/create-agent-dialog';
 import type { AgentDetails } from '@renderer/api/local-operator/types';
+import { createLocalOperatorClient } from '@renderer/api/local-operator';
+import { apiConfig } from '@renderer/config';
 
 type AgentListProps = {
   /** Handler for when an agent is selected */
@@ -72,15 +74,32 @@ export const AgentList: FC<AgentListProps> = ({
   
   // Handler for when an agent is created
   const handleAgentCreated = (agentId: string) => {
-    refetch();
-    
-    // Select the newly created agent if a selection handler is provided
-    if (onSelectAgent) {
-      const newAgent = agents.find(agent => agent.id === agentId);
-      if (newAgent) {
-        onSelectAgent(newAgent);
+    // Fetch the agent details to get the full agent object
+    const fetchAndSelectAgent = async () => {
+      try {
+        // Create a client to fetch the agent details directly
+        const client = createLocalOperatorClient(apiConfig.baseUrl);
+        const response = await client.agents.getAgent(agentId);
+        
+        if (response.status >= 400) {
+          throw new Error(response.message || `Failed to fetch agent ${agentId}`);
+        }
+        
+        // Select the newly created agent if a selection handler is provided
+        if (response.result && onSelectAgent) {
+          onSelectAgent(response.result);
+        }
+        
+        // Then refetch the agents list to update the UI
+        refetch();
+      } catch (error) {
+        console.error('Error fetching agent details:', error);
+        // Still refetch the list even if there was an error
+        refetch();
       }
-    }
+    };
+    
+    fetchAndSelectAgent();
   };
   
   return (
@@ -253,7 +272,16 @@ export const AgentList: FC<AgentListProps> = ({
               agent={agent}
               isSelected={agent.id === selectedAgentId}
               onClick={() => handleSelectAgent(agent)}
-              onAgentDeleted={() => refetch()}
+              onAgentDeleted={(deletedId) => {
+                // If the deleted agent was selected, clear the selection
+                if (deletedId === selectedAgentId && onSelectAgent) {
+                  // Set selected agent to null
+                  // Using undefined here since the function expects AgentDetails
+                  // but we want to clear the selection
+                  onSelectAgent(undefined as unknown as AgentDetails);
+                }
+                refetch();
+              }}
             />
           ))}
           
