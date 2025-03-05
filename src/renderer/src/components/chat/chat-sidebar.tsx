@@ -1,4 +1,4 @@
-import type { FC, ChangeEvent, MouseEvent } from 'react';
+import type { FC, ChangeEvent } from 'react';
 import React, { useState, useCallback } from 'react';
 import {
   Box,
@@ -17,10 +17,6 @@ import {
   Alert,
   Button,
   Pagination,
-  IconButton,
-  Menu,
-  MenuItem,
-  ListItemIcon,
 } from '@mui/material';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
@@ -29,13 +25,10 @@ import {
   faClock,
   faCommentSlash,
   faPlus,
-  faTrash,
-  faEllipsisVertical,
 } from '@fortawesome/free-solid-svg-icons';
 import { useAgents } from '@renderer/hooks/use-agents';
-import { useDeleteAgent } from '@renderer/hooks/use-agent-mutations';
-import { CreateAgentDialog } from './create-agent-dialog';
-import { ConfirmationModal } from '@renderer/components/common/confirmation-modal';
+import { CreateAgentDialog } from '@renderer/components/common/create-agent-dialog';
+import { AgentOptionsMenu } from '@renderer/components/common/agent-options-menu';
 import { format } from 'date-fns';
 
 type ChatSidebarProps = {
@@ -43,6 +36,11 @@ type ChatSidebarProps = {
   onSelectConversation: (id: string) => void;
 };
 
+/**
+ * Chat Sidebar Component
+ * 
+ * Displays a list of agents with search, create, and delete functionality
+ */
 export const ChatSidebar: FC<ChatSidebarProps> = ({
   selectedConversation,
   onSelectConversation,
@@ -50,17 +48,7 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [page, setPage] = useState(1);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [deleteAgentId, setDeleteAgentId] = useState<string | null>(null);
-  const [deleteAgentName, setDeleteAgentName] = useState('');
-  const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
-  const [currentAgent, setCurrentAgent] = useState<{ id: string; name: string } | null>(null);
   const perPage = 10;
-  
-  // Whether the menu is open
-  const isMenuOpen = Boolean(menuAnchorEl);
-
-  // Delete agent mutation
-  const deleteAgentMutation = useDeleteAgent();
 
   const {
     data: agents = [],
@@ -87,52 +75,16 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
     setIsCreateDialogOpen(false);
   }, []);
   
-  // Handler for opening the menu
-  const handleOpenMenu = useCallback((e: MouseEvent, agent: { id: string; name: string }) => {
-    e.stopPropagation(); // Prevent triggering the ListItemButton click
-    setMenuAnchorEl(e.currentTarget as HTMLElement);
-    setCurrentAgent(agent);
-  }, []);
-  
-  // Handler for closing the menu
-  const handleCloseMenu = useCallback(() => {
-    setMenuAnchorEl(null);
-    setCurrentAgent(null);
-  }, []);
-  
-  // Handler for opening the delete confirmation modal from the menu
-  const handleOpenDeleteConfirmation = useCallback(() => {
-    if (!currentAgent) return;
+  // Handler for when an agent is created
+  const handleAgentCreated = useCallback((agentId: string) => {
+    refetch();
     
-    setDeleteAgentId(currentAgent.id);
-    setDeleteAgentName(currentAgent.name);
-    handleCloseMenu();
-  }, [currentAgent, handleCloseMenu]);
-  
-  // Handler for closing the delete confirmation modal
-  const handleCloseDeleteConfirmation = useCallback(() => {
-    setDeleteAgentId(null);
-    setDeleteAgentName('');
-  }, []);
-  
-  // Handler for confirming agent deletion
-  const handleConfirmDelete = useCallback(async () => {
-    if (!deleteAgentId) return;
-    
-    try {
-      await deleteAgentMutation.mutateAsync(deleteAgentId);
-      // If the deleted agent was selected, clear the selection
-      if (selectedConversation === deleteAgentId) {
-        onSelectConversation('');
-      }
-    } catch (error) {
-      // Error is handled in the mutation
-      console.error('Failed to delete agent:', error);
-    } finally {
-      // Close the confirmation modal
-      handleCloseDeleteConfirmation();
+    // Select the newly created agent if found
+    const newAgent = agents.find(agent => agent.id === agentId);
+    if (newAgent) {
+      onSelectConversation(agentId);
     }
-  }, [deleteAgentId, deleteAgentMutation, selectedConversation, onSelectConversation, handleCloseDeleteConfirmation]);
+  }, [agents, onSelectConversation, refetch]);
 
   const filteredAgents = agents.filter((agent) =>
     agent.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -258,13 +210,17 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
               key={agent.id} 
               disablePadding
               secondaryAction={
-                <IconButton
-                  size="small"
-                  aria-label="agent options"
-                  onClick={(e) => handleOpenMenu(e, { id: agent.id, name: agent.name })}
-                  sx={{ 
-                    opacity: 0,
-                    transition: 'opacity 0.2s',
+                <AgentOptionsMenu
+                  agentId={agent.id}
+                  agentName={agent.name}
+                  onAgentDeleted={(deletedId) => {
+                    // If the deleted agent was selected, clear the selection
+                    if (selectedConversation === deletedId) {
+                      onSelectConversation('');
+                    }
+                    refetch();
+                  }}
+                  buttonSx={{
                     mr: 0.5,
                     width: 32,
                     height: 32,
@@ -272,10 +228,6 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
                     display: 'flex',
                     justifyContent: 'center',
                     alignItems: 'center',
-                    '&:hover': { 
-                      opacity: 1,
-                      backgroundColor: 'rgba(255, 255, 255, 0.08)',
-                    },
                     '.MuiListItem-root:hover &': {
                       opacity: 0.6,
                     },
@@ -283,9 +235,7 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
                       opacity: 0.6,
                     },
                   }}
-                >
-                  <FontAwesomeIcon icon={faEllipsisVertical} size="sm" />
-                </IconButton>
+                />
               }
             >
               <ListItemButton
@@ -295,7 +245,7 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
                   mx: 1,
                   borderRadius: 2,
                   mb: 0.5,
-                  pr: 5, // Make room for the delete button
+                  pr: 5, // Make room for the options menu
                   '&.Mui-selected': {
                     backgroundColor: 'rgba(56, 201, 106, 0.1)',
                     '&:hover': {
@@ -406,65 +356,7 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
       <CreateAgentDialog
         open={isCreateDialogOpen}
         onClose={handleCloseCreateDialog}
-      />
-      
-      {/* Agent Options Menu */}
-      <Menu
-        anchorEl={menuAnchorEl}
-        open={isMenuOpen}
-        onClose={handleCloseMenu}
-        anchorOrigin={{
-          vertical: 'top',
-          horizontal: 'right',
-        }}
-        transformOrigin={{
-          vertical: 'top',
-          horizontal: 'right',
-        }}
-        PaperProps={{
-          sx: {
-            minWidth: 150,
-            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
-            borderRadius: 1.5,
-          },
-        }}
-      >
-        <MenuItem 
-          onClick={handleOpenDeleteConfirmation}
-          sx={{ 
-            color: 'error.main',
-            py: 1.5,
-            '&:hover': {
-              backgroundColor: 'rgba(211, 47, 47, 0.08)',
-            },
-          }}
-        >
-          <ListItemIcon sx={{ color: 'error.main', minWidth: 36 }}>
-            <FontAwesomeIcon icon={faTrash} size="sm" />
-          </ListItemIcon>
-          <Typography variant="body2">Delete Agent</Typography>
-        </MenuItem>
-      </Menu>
-      
-      {/* Delete Confirmation Modal */}
-      <ConfirmationModal
-        open={!!deleteAgentId}
-        title="Delete Agent"
-        message={
-          <>
-            <Typography variant="body1" gutterBottom>
-              Are you sure you want to delete the agent "{deleteAgentName}"?
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              This action cannot be undone. All conversations with this agent will be permanently deleted.
-            </Typography>
-          </>
-        }
-        confirmText="Delete"
-        cancelText="Cancel"
-        isDangerous
-        onConfirm={handleConfirmDelete}
-        onCancel={handleCloseDeleteConfirmation}
+        onAgentCreated={handleAgentCreated}
       />
     </Paper>
   );

@@ -7,6 +7,7 @@
 import React from 'react';
 import type { FC } from 'react';
 import { Box, Typography, Card, CardContent, Chip, alpha } from '@mui/material';
+import { AgentOptionsMenu } from '@renderer/components/common/agent-options-menu';
 import type { AgentDetails } from '@renderer/api/local-operator/types';
 
 type AgentListItemProps = {
@@ -16,6 +17,8 @@ type AgentListItemProps = {
   isSelected?: boolean;
   /** Click handler for the agent item */
   onClick?: () => void;
+  /** Optional callback when an agent is deleted */
+  onAgentDeleted?: (agentId: string) => void;
 };
 
 /**
@@ -26,7 +29,8 @@ type AgentListItemProps = {
 export const AgentListItem: FC<AgentListItemProps> = ({ 
   agent, 
   isSelected = false,
-  onClick 
+  onClick,
+  onAgentDeleted
 }) => {
   const createdDate = new Date(agent.created_date).toLocaleDateString();
   
@@ -75,21 +79,40 @@ export const AgentListItem: FC<AgentListItemProps> = ({
           >
             {agent.name}
           </Typography>
-          {agent.model && (
-            <Chip 
-              label={agent.model} 
-              size="small" 
-              color="primary" 
-              variant="outlined"
-              title="AI model powering this agent"
-              sx={{ 
-                fontWeight: 500,
-                borderRadius: 1,
-                '& .MuiChip-label': { px: 1 }
+          
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            {agent.model && (
+              <Chip 
+                label={agent.model} 
+                size="small" 
+                color="primary" 
+                variant="outlined"
+                title="AI model powering this agent"
+                sx={{ 
+                  fontWeight: 500,
+                  borderRadius: 1,
+                  '& .MuiChip-label': { px: 1 }
+                }}
+              />
+            )}
+            
+            {/* Agent Options Menu */}
+            <AgentOptionsMenu
+              agentId={agent.id}
+              agentName={agent.name}
+              onAgentDeleted={onAgentDeleted}
+              buttonSx={{
+                '.MuiListItem-root:hover &': {
+                  opacity: 0.6,
+                },
+                '.MuiCard-root:hover &': {
+                  opacity: 0.6,
+                },
               }}
             />
-          )}
+          </Box>
         </Box>
+        
         <Typography 
           variant="body2" 
           sx={{ 

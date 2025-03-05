@@ -15,8 +15,11 @@ import {
   Pagination,
   Paper
 } from '@mui/material';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faPlus } from '@fortawesome/free-solid-svg-icons';
 import { useAgents } from '@renderer/hooks/use-agents';
 import { AgentListItem } from './agent-list-item';
+import { CreateAgentDialog } from '@renderer/components/common/create-agent-dialog';
 import type { AgentDetails } from '@renderer/api/local-operator/types';
 
 type AgentListProps = {
@@ -36,6 +39,7 @@ export const AgentList: FC<AgentListProps> = ({
   selectedAgentId
 }) => {
   const [page, setPage] = useState(1);
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const perPage = 10;
   
   const { 
@@ -53,6 +57,29 @@ export const AgentList: FC<AgentListProps> = ({
   const handleSelectAgent = (agent: AgentDetails) => {
     if (onSelectAgent) {
       onSelectAgent(agent);
+    }
+  };
+  
+  // Handler for opening the create agent dialog
+  const handleOpenCreateDialog = () => {
+    setIsCreateDialogOpen(true);
+  };
+  
+  // Handler for closing the create agent dialog
+  const handleCloseCreateDialog = () => {
+    setIsCreateDialogOpen(false);
+  };
+  
+  // Handler for when an agent is created
+  const handleAgentCreated = (agentId: string) => {
+    refetch();
+    
+    // Select the newly created agent if a selection handler is provided
+    if (onSelectAgent) {
+      const newAgent = agents.find(agent => agent.id === agentId);
+      if (newAgent) {
+        onSelectAgent(newAgent);
+      }
     }
   };
   
@@ -96,25 +123,47 @@ export const AgentList: FC<AgentListProps> = ({
           Agents
         </Typography>
         
-        <Button 
-          variant="outlined" 
-          color="primary" 
-          onClick={() => refetch()} 
-          disabled={isLoading || isFetching}
-          size="small"
-          sx={{
-            borderRadius: 2,
-            textTransform: 'none',
-            px: 2,
-            fontWeight: 500,
-            transition: 'all 0.2s',
-            '&:hover': {
-              transform: 'translateY(-2px)',
-            }
-          }}
-        >
-          {isFetching ? 'Refreshing...' : 'Refresh'}
-        </Button>
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <Button 
+            variant="contained" 
+            color="primary" 
+            size="small"
+            startIcon={<FontAwesomeIcon icon={faPlus} />}
+            onClick={handleOpenCreateDialog}
+            sx={{
+              borderRadius: 2,
+              textTransform: 'none',
+              px: 2,
+              fontWeight: 500,
+              transition: 'all 0.2s',
+              '&:hover': {
+                transform: 'translateY(-2px)',
+              }
+            }}
+          >
+            New Agent
+          </Button>
+          
+          <Button 
+            variant="outlined" 
+            color="primary" 
+            onClick={() => refetch()} 
+            disabled={isLoading || isFetching}
+            size="small"
+            sx={{
+              borderRadius: 2,
+              textTransform: 'none',
+              px: 2,
+              fontWeight: 500,
+              transition: 'all 0.2s',
+              '&:hover': {
+                transform: 'translateY(-2px)',
+              }
+            }}
+          >
+            {isFetching ? 'Refreshing...' : 'Refresh'}
+          </Button>
+        </Box>
       </Box>
       
       {isLoading ? (
@@ -204,6 +253,7 @@ export const AgentList: FC<AgentListProps> = ({
               agent={agent}
               isSelected={agent.id === selectedAgentId}
               onClick={() => handleSelectAgent(agent)}
+              onAgentDeleted={() => refetch()}
             />
           ))}
           
@@ -234,6 +284,13 @@ export const AgentList: FC<AgentListProps> = ({
           )}
         </Box>
       )}
+      
+      {/* Create Agent Dialog */}
+      <CreateAgentDialog
+        open={isCreateDialogOpen}
+        onClose={handleCloseCreateDialog}
+        onAgentCreated={handleAgentCreated}
+      />
     </Paper>
   );
 };

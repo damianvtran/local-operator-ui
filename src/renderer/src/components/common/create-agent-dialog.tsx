@@ -25,14 +25,21 @@ type CreateAgentDialogProps = {
    * Callback when the dialog is closed
    */
   onClose: () => void;
+  /**
+   * Optional callback when an agent is successfully created
+   */
+  onAgentCreated?: (agentId: string) => void;
 };
 
 /**
  * Dialog for creating a new agent
+ * 
+ * Reusable component that can be used in different parts of the application
  */
 export const CreateAgentDialog: FC<CreateAgentDialogProps> = ({
   open,
   onClose,
+  onAgentCreated,
 }) => {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -52,10 +59,16 @@ export const CreateAgentDialog: FC<CreateAgentDialogProps> = ({
     };
     
     try {
-      await createAgentMutation.mutateAsync(newAgent);
+      const result = await createAgentMutation.mutateAsync(newAgent);
       // Reset form and close dialog on success
       setName('');
       setDescription('');
+      
+      // Call the onAgentCreated callback if provided
+      if (onAgentCreated && result?.id) {
+        onAgentCreated(result.id);
+      }
+      
       onClose();
     } catch (error) {
       // Error is handled in the mutation
