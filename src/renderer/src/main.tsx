@@ -34,8 +34,8 @@ document.addEventListener('DOMContentLoaded', () => {
             theme="dark"
             aria-label="toast-notifications"
           />
-          {/* React Query DevTools - only in development */}
-          {process.env.NODE_ENV !== 'production' && <ReactQueryDevtools initialIsOpen={false} />}
+          {/* React Query DevTools - only in development (positioned at bottom left) */}
+          {process.env.NODE_ENV !== 'production' && <ReactQueryDevtools initialIsOpen={false} position="left" buttonPosition="bottom-left" />}
         </ThemeProvider>
       </QueryClientProvider>
     </React.StrictMode>
