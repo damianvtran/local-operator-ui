@@ -62,7 +62,7 @@ const getStatusText = (status: JobStatus): string => {
     case 'pending':
       return 'waiting to start';
     case 'processing':
-      return 'working on it';
+      return 'thinking';
     case 'completed':
       return 'finishing up';
     case 'failed':
