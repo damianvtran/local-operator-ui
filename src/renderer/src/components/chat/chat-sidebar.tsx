@@ -19,6 +19,7 @@ import {
   Pagination,
   Tooltip,
 } from '@mui/material';
+import { styled } from '@mui/material/styles';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faSearch,
@@ -31,6 +32,142 @@ import { useAgents } from '@renderer/hooks/use-agents';
 import { CreateAgentDialog } from '@renderer/components/common/create-agent-dialog';
 import { AgentOptionsMenu } from '@renderer/components/common/agent-options-menu';
 import { format } from 'date-fns';
+
+const SidebarContainer = styled(Paper)({
+  width: '100%',
+  height: '100%',
+  borderRight: '1px solid rgba(255, 255, 255, 0.1)',
+  display: 'flex',
+  flexDirection: 'column',
+});
+
+const HeaderContainer = styled(Box)({
+  padding: 16,
+});
+
+const HeaderRow = styled(Box)({
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  marginBottom: 16,
+});
+
+const Title = styled(Typography)({
+  fontWeight: 500,
+});
+
+const NewAgentButton = styled(Button)(({ theme }) => ({
+  borderRadius: 16,
+  textTransform: 'none',
+  fontWeight: 600,
+  paddingLeft: 16,
+  paddingRight: 16,
+  paddingTop: 6.4,
+  paddingBottom: 6.4,
+  transition: 'all 0.2s ease-in-out',
+  '&:hover': {
+    boxShadow: `0 2px 8px ${theme.palette.primary.main}33`,
+    transform: 'translateY(-1px)',
+  },
+  '&:active': {
+    transform: 'translateY(0)',
+  },
+}));
+
+const SearchField = styled(TextField)({
+  marginBottom: 16,
+  '& .MuiOutlinedInput-root': {
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+  },
+});
+
+const StyledDivider = styled(Divider)({
+  opacity: 0.1,
+});
+
+const LoadingContainer = styled(Box)({
+  display: 'flex',
+  justifyContent: 'center',
+  alignItems: 'center',
+  flexGrow: 1,
+});
+
+const ErrorAlert = styled(Alert)({
+  marginBottom: 16,
+  borderRadius: 16,
+  boxShadow: '0 2px 10px rgba(0,0,0,0.08)',
+});
+
+const EmptyStateContainer = styled(Box)({
+  padding: 24,
+  textAlign: 'center',
+});
+
+const AgentsList = styled(List)({
+  overflow: 'auto',
+  flexGrow: 1,
+  '&::-webkit-scrollbar': {
+    width: '8px',
+  },
+  '&::-webkit-scrollbar-thumb': {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: '4px',
+  },
+});
+
+const AgentListItemButton = styled(ListItemButton)({
+  margin: '0 8px',
+  borderRadius: 16,
+  marginBottom: 4,
+  paddingRight: 40,
+  '&.Mui-selected': {
+    backgroundColor: 'rgba(56, 201, 106, 0.1)',
+    '&:hover': {
+      backgroundColor: 'rgba(56, 201, 106, 0.15)',
+    },
+  },
+});
+
+const AgentAvatar = styled(Avatar)(({ theme }) => ({
+  backgroundColor: 'rgba(56, 201, 106, 0.2)',
+  color: theme.palette.primary.main,
+}));
+
+const MessagePreview = styled(Typography)({
+  display: 'block',
+  color: 'text.secondary',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
+  maxWidth: '160px',
+  marginBottom: 4,
+});
+
+const TimeStampContainer = styled('span')({
+  display: 'flex',
+  alignItems: 'center',
+  color: 'rgba(255, 255, 255, 0.5)',
+  fontSize: '0.75rem',
+});
+
+const TimeStampText = styled('span')({
+  cursor: 'help',
+});
+
+const NoMessagesContainer = styled('span')({
+  display: 'flex',
+  alignItems: 'center',
+  color: 'rgba(255, 255, 255, 0.5)',
+  fontSize: '0.75rem',
+  fontStyle: 'italic',
+});
+
+const PaginationContainer = styled(Box)({
+  display: 'flex',
+  justifyContent: 'center',
+  marginTop: 24,
+});
 
 type ChatSidebarProps = {
   selectedConversation?: string;
@@ -68,22 +205,16 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
     onSelectConversation(agentId);
   }, [onSelectConversation]);
   
-  // Handler for opening the create agent dialog
   const handleOpenCreateDialog = useCallback(() => {
     setIsCreateDialogOpen(true);
   }, []);
   
-  // Handler for closing the create agent dialog
   const handleCloseCreateDialog = useCallback(() => {
     setIsCreateDialogOpen(false);
   }, []);
   
-  // Handler for when an agent is created
   const handleAgentCreated = useCallback((agentId: string) => {
-    // Immediately select the newly created agent
     onSelectConversation(agentId);
-    
-    // Then refetch the agents list to update the UI
     refetch();
   }, [onSelectConversation, refetch]);
 
@@ -109,51 +240,27 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
   };
 
   return (
-    <Paper
-      elevation={0}
-      sx={{
-        width: '100%',
-        height: '100%',
-        borderRight: '1px solid rgba(255, 255, 255, 0.1)',
-        display: 'flex',
-        flexDirection: 'column',
-      }}
-    >
-      <Box sx={{ p: 2 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-          <Typography variant="h6" sx={{ fontWeight: 500 }}>
+    <SidebarContainer elevation={0}>
+      <HeaderContainer>
+        <HeaderRow>
+          <Title variant="h6">
             Agents
-          </Typography>
+          </Title>
           {/* @ts-ignore - MUI Tooltip requires children but we're providing it */}
           <Tooltip title="Create a new agent" arrow placement="top">
-            <Button
+            <NewAgentButton
               variant="outlined"
               color="primary"
               size="small"
               startIcon={<FontAwesomeIcon icon={faPlus} />}
               onClick={handleOpenCreateDialog}
-              sx={{
-                borderRadius: 2,
-                textTransform: 'none',
-                fontWeight: 600,
-                px: 2,
-                py: 0.8,
-                transition: 'all 0.2s ease-in-out',
-                '&:hover': {
-                  boxShadow: '0 2px 8px rgba(56, 201, 106, 0.2)',
-                  transform: 'translateY(-1px)',
-                },
-                '&:active': {
-                  transform: 'translateY(0)',
-                },
-              }}
             >
               New Agent
-            </Button>
+            </NewAgentButton>
           </Tooltip>
-        </Box>
+        </HeaderRow>
 
-        <TextField
+        <SearchField
           fullWidth
           size="small"
           placeholder="Search agents"
@@ -166,30 +273,18 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
               </InputAdornment>
             ),
           }}
-          sx={{
-            mb: 2,
-            '& .MuiOutlinedInput-root': {
-              borderRadius: 2,
-              backgroundColor: 'rgba(255, 255, 255, 0.05)',
-            },
-          }}
         />
-      </Box>
+      </HeaderContainer>
 
-      <Divider sx={{ opacity: 0.1 }} />
+      <StyledDivider />
 
       {isLoading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flexGrow: 1 }}>
+        <LoadingContainer>
           <CircularProgress size={40} thickness={4} />
-        </Box>
+        </LoadingContainer>
       ) : isError ? (
-        <Alert
+        <ErrorAlert
           severity="error"
-          sx={{
-            mb: 2,
-            borderRadius: 2,
-            boxShadow: '0 2px 10px rgba(0,0,0,0.08)',
-          }}
           action={
             <Button color="inherit" size="small" onClick={() => refetch()} sx={{ fontWeight: 500 }}>
               Retry
@@ -197,27 +292,15 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
           }
         >
           Failed to load agents. Please try again.
-        </Alert>
+        </ErrorAlert>
       ) : agents.length === 0 ? (
-        <Box sx={{ p: 3, textAlign: 'center' }}>
+        <EmptyStateContainer>
           <Typography variant="body2" color="text.secondary">
             No agents found
           </Typography>
-        </Box>
+        </EmptyStateContainer>
       ) : (
-        <List
-          sx={{
-            overflow: 'auto',
-            flexGrow: 1,
-            '&::-webkit-scrollbar': {
-              width: '8px',
-            },
-            '&::-webkit-scrollbar-thumb': {
-              backgroundColor: 'rgba(255, 255, 255, 0.1)',
-              borderRadius: '4px',
-            },
-          }}
-        >
+        <AgentsList>
           {filteredAgents.map((agent) => (
             <ListItem 
               key={agent.id} 
@@ -226,10 +309,9 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
                 <AgentOptionsMenu
                   agentId={agent.id}
                   agentName={agent.name}
-                  isAgentsPage={false} // This is not the agents page, so we can show the settings option
+                  isAgentsPage={false}
                   onViewAgentSettings={onNavigateToAgentSettings ? () => onNavigateToAgentSettings(agent.id) : undefined}
                   onAgentDeleted={(deletedId) => {
-                    // If the deleted agent was selected, clear the selection
                     if (selectedConversation === deletedId) {
                       onSelectConversation('');
                     }
@@ -253,31 +335,14 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
                 />
               }
             >
-              <ListItemButton
+              <AgentListItemButton
                 selected={selectedConversation === agent.id}
                 onClick={() => handleSelectConversation(agent.id)}
-                sx={{
-                  mx: 1,
-                  borderRadius: 2,
-                  mb: 0.5,
-                  pr: 5, // Make room for the options menu
-                  '&.Mui-selected': {
-                    backgroundColor: 'rgba(56, 201, 106, 0.1)',
-                    '&:hover': {
-                      backgroundColor: 'rgba(56, 201, 106, 0.15)',
-                    },
-                  },
-                }}
               >
                 <ListItemAvatar>
-                  <Avatar
-                    sx={{
-                      bgcolor: 'rgba(56, 201, 106, 0.2)',
-                      color: 'primary.main',
-                    }}
-                  >
+                  <AgentAvatar>
                     <FontAwesomeIcon icon={faRobot} />
-                  </Avatar>
+                  </AgentAvatar>
                 </ListItemAvatar>
                 <ListItemText
                   primary={agent.name}
@@ -285,63 +350,31 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
                     <span style={{ display: 'block', marginTop: '4px' }}>
                       {agent.last_message ? (
                         <>
-                          <Typography
-                            variant="body2"
-                            component="span"
-                            sx={{
-                              display: 'block',
-                              color: 'text.secondary',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap',
-                              maxWidth: '160px',
-                              mb: 0.5,
-                            }}
-                          >
+                          <MessagePreview variant="body2">
                             {truncateMessage(agent.last_message)}
-                          </Typography>
+                          </MessagePreview>
                           {agent.last_message_datetime && (
-                            <span
-                              style={{ 
-                                display: 'flex', 
-                                alignItems: 'center',
-                                color: 'rgba(255, 255, 255, 0.5)',
-                                fontSize: '0.75rem',
-                              }}
-                            >
+                            <TimeStampContainer>
                               <FontAwesomeIcon 
                                 icon={faClock} 
                                 size="xs" 
                                 style={{ marginRight: '4px' }} 
                               />
-                              <span 
-                                title={new Date(agent.last_message_datetime).toLocaleString()}
-                                style={{ 
-                                  cursor: 'help',
-                                }}
-                              >
+                              <TimeStampText title={new Date(agent.last_message_datetime).toLocaleString()}>
                                 {formatDateTime(agent.last_message_datetime)}
-                              </span>
-                            </span>
+                              </TimeStampText>
+                            </TimeStampContainer>
                           )}
                         </>
                       ) : (
-                        <span
-                          style={{ 
-                            display: 'flex', 
-                            alignItems: 'center',
-                            color: 'rgba(255, 255, 255, 0.5)',
-                            fontSize: '0.75rem',
-                            fontStyle: 'italic',
-                          }}
-                        >
+                        <NoMessagesContainer>
                           <FontAwesomeIcon 
                             icon={faCommentSlash} 
                             size="xs" 
                             style={{ marginRight: '4px' }} 
                           />
                           <span>No messages yet</span>
-                        </span>
+                        </NoMessagesContainer>
                       )}
                     </span>
                   }
@@ -350,11 +383,11 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
                     variant: 'body1',
                   }}
                 />
-              </ListItemButton>
+              </AgentListItemButton>
             </ListItem>
           ))}
           {agents.length > perPage && (
-            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
+            <PaginationContainer>
               <Pagination
                 count={Math.ceil(agents.length / perPage)}
                 page={page}
@@ -362,17 +395,16 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
                 color="primary"
                 size="medium"
               />
-            </Box>
+            </PaginationContainer>
           )}
-        </List>
+        </AgentsList>
       )}
       
-      {/* Create Agent Dialog */}
       <CreateAgentDialog
         open={isCreateDialogOpen}
         onClose={handleCloseCreateDialog}
         onAgentCreated={handleAgentCreated}
       />
-    </Paper>
+    </SidebarContainer>
   );
 };

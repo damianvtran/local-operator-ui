@@ -5,7 +5,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import type { FC, ChangeEvent, KeyboardEvent } from 'react';
+import type { FC, ChangeEvent, KeyboardEvent, SyntheticEvent } from 'react';
 import { 
   Box, 
   Typography, 
@@ -113,12 +113,15 @@ export const SliderSetting: FC<SliderSettingProps> = ({
   /**
    * Handles slider change completion
    */
-  const handleSliderChangeCommitted = async (_: Event | null, newValue: number | number[]) => {
+  const handleSliderChangeCommitted = (
+    _: Event | SyntheticEvent<Element, Event>,
+    newValue: number | number[]
+  ) => {
     if (isSaving) return;
     
     const numValue = newValue as number;
     try {
-      await onChange(numValue);
+      void onChange(numValue);
     } catch (error) {
       // If there's an error, revert the UI state
       setSliderValue(value);

@@ -119,7 +119,12 @@ export const ChatPage: FC<ChatProps> = ({
       
       // Store the job ID for polling
       // The API returns a CRUDResponse<JobDetails> where the actual job details are in the result property
-      setCurrentJobId(jobDetails.result.id);
+      if (jobDetails.result?.id) {
+        setCurrentJobId(jobDetails.result.id);
+      } else {
+        console.error('Job details missing ID:', jobDetails);
+        throw new Error('Failed to get job ID from response');
+      }
       
       // Note: We don't add the assistant message here
       // It will be added when the job completes (in the useJobPolling hook)
