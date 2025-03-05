@@ -205,14 +205,37 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = ({
           sx={{ 
             display: 'flex', 
             alignItems: 'center', 
-            justifyContent: expanded ? 'space-between' : 'center',
+            justifyContent: 'center',
             padding: theme.spacing(2),
             mb: 2
           }}
         >
           <CollapsibleAppLogo expanded={expanded} />
-          
-          {/* Toggle Button */}
+        </Box>
+
+        {/* Navigation Items */}
+        <List sx={{ px: 1 }}>
+          {navItems.map(renderNavItem)}
+        </List>
+      </Box>
+
+      {/* User Profile and Toggle Button at Bottom */}
+      <Box>
+        {/* User Profile */}
+        <UserProfileSidebar 
+          expanded={expanded} 
+          onNavigate={onNavigate} 
+        />
+        
+        {/* Toggle Button - Now positioned below user profile */}
+        <Box 
+          sx={{ 
+            display: 'flex', 
+            justifyContent: 'center',
+            mt: 1,
+            mb: 2
+          }}
+        >
           <IconButton 
             onClick={toggleSidebar}
             size="small"
@@ -227,8 +250,8 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = ({
                 backgroundColor: 'rgba(255,255,255,0.1)',
                 transform: 'scale(1.05)',
               },
-              ...(expanded ? {} : { mx: 'auto', mt: 1 }),
             }}
+            title={expanded ? "Collapse sidebar" : "Expand sidebar"}
           >
             <FontAwesomeIcon 
               icon={expanded ? faChevronLeft : faChevronRight} 
@@ -236,19 +259,6 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = ({
             />
           </IconButton>
         </Box>
-
-        {/* Navigation Items */}
-        <List sx={{ px: 1 }}>
-          {navItems.map(renderNavItem)}
-        </List>
-      </Box>
-
-      {/* User Profile at Bottom */}
-      <Box sx={{ mt: 'auto', mb: 2 }}>
-        <UserProfileSidebar 
-          expanded={expanded} 
-          onNavigate={onNavigate} 
-        />
       </Box>
     </Drawer>
   );
