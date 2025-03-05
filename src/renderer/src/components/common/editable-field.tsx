@@ -14,7 +14,8 @@ import {
   IconButton,
   CircularProgress,
   alpha,
-  Button
+  Button,
+  styled
 } from '@mui/material';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPen, faCheck, faTimes, faEraser } from '@fortawesome/free-solid-svg-icons';
@@ -61,6 +62,108 @@ type EditableFieldProps = {
    */
   isSaving?: boolean;
 };
+
+const FieldContainer = styled(Box)({
+  marginBottom: 24,
+});
+
+const FieldLabel = styled(Typography)(({ theme }) => ({
+  marginBottom: 8,
+  display: 'flex',
+  alignItems: 'center',
+  color: theme.palette.text.secondary,
+  fontWeight: 600,
+}));
+
+const LabelIcon = styled(Box)({
+  marginRight: 12,
+  opacity: 0.8,
+});
+
+const StyledTextField = styled(TextField)(({ theme }) => ({
+  '& .MuiOutlinedInput-root': {
+    borderRadius: 8,
+    backgroundColor: alpha(theme.palette.background.default, 0.7),
+  }
+}));
+
+const ActionButtonsContainer = styled(Box)({
+  position: 'absolute',
+  top: 8,
+  right: 8,
+  display: 'flex',
+  gap: 4,
+  zIndex: 10,
+});
+
+const ActionIconButton = styled(IconButton)({
+  padding: 4,
+});
+
+const SaveButton = styled(ActionIconButton)(({ theme }) => ({
+  color: theme.palette.success.main,
+}));
+
+const CancelButton = styled(ActionIconButton)(({ theme }) => ({
+  color: theme.palette.error.main,
+}));
+
+const ClearButton = styled(Button)(({ theme }) => ({
+  backgroundColor: theme.palette.warning.main,
+  color: 'white',
+  minWidth: 'auto',
+  padding: '2px 8px',
+  '&:hover': {
+    backgroundColor: theme.palette.warning.dark,
+  },
+  zIndex: 20,
+}));
+
+const DisplayContainer = styled(Box, {
+  shouldForwardProp: (prop) => prop !== 'multiline',
+})<{ multiline?: boolean }>(({ theme, multiline }) => ({
+  padding: 16,
+  borderRadius: 8,
+  backgroundColor: alpha(theme.palette.background.default, 0.7),
+  position: 'relative',
+  minHeight: multiline ? '100px' : '40px',
+  display: 'flex',
+  alignItems: multiline ? 'flex-start' : 'center',
+  transition: 'all 0.2s ease',
+  cursor: 'pointer',
+  '&:hover': {
+    backgroundColor: alpha(theme.palette.background.default, 0.9),
+    '& .edit-button': {
+      opacity: 1,
+    }
+  }
+}));
+
+const DisplayText = styled(Typography, {
+  shouldForwardProp: (prop) => prop !== 'multiline',
+})<{ multiline?: boolean }>(({ multiline }) => ({
+  whiteSpace: multiline ? 'pre-wrap' : 'normal',
+  fontFamily: multiline ? '"Roboto Mono", monospace' : 'inherit',
+  fontSize: '0.875rem',
+  lineHeight: 1.6,
+  wordBreak: 'break-word',
+  paddingRight: 32,
+}));
+
+const PlaceholderText = styled(Typography)(({ theme }) => ({
+  color: theme.palette.text.disabled,
+  fontStyle: 'italic',
+}));
+
+const EditButton = styled(IconButton)(({ theme }) => ({
+  position: 'absolute',
+  top: 8,
+  right: 8,
+  color: theme.palette.primary.main,
+  opacity: 0,
+  transition: 'opacity 0.2s ease',
+  padding: 4,
+}));
 
 /**
  * Editable Field Component
@@ -172,7 +275,7 @@ export const EditableField: FC<EditableFieldProps> = ({
       if (editValue !== originalValue) {
         handleSave();
       }
-    } else if (e.key === 'Enter' && e.ctrlKey && multiline) {
+    } else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && multiline) {
       e.preventDefault();
       if (editValue !== originalValue) {
         handleSave();
@@ -219,24 +322,15 @@ export const EditableField: FC<EditableFieldProps> = ({
   const hasChanged = editValue !== originalValue;
   
   return (
-    <Box sx={{ mb: 3 }}>
-      <Typography 
-        variant="subtitle2" 
-        sx={{ 
-          mb: 1, 
-          display: 'flex', 
-          alignItems: 'center',
-          color: 'text.secondary',
-          fontWeight: 600
-        }}
-      >
-        {icon && <Box sx={{ mr: 1.5, opacity: 0.8 }}>{icon}</Box>}
+    <FieldContainer>
+      <FieldLabel variant="subtitle2">
+        {icon && <LabelIcon>{icon}</LabelIcon>}
         {label}
-      </Typography>
+      </FieldLabel>
       
       {isEditing ? (
         <Box sx={{ position: 'relative' }}>
-          <TextField
+          <StyledTextField
             fullWidth
             variant="outlined"
             value={editValue}
@@ -248,157 +342,80 @@ export const EditableField: FC<EditableFieldProps> = ({
             placeholder={placeholder}
             inputRef={inputRef}
             size="small"
-            sx={{
-              '& .MuiOutlinedInput-root': {
-                borderRadius: 2,
-                backgroundColor: (theme) => alpha(theme.palette.background.default, 0.7),
-              }
-            }}
           />
-          <Box 
-            ref={actionButtonsRef}
-            sx={{ 
-              position: 'absolute', 
-              top: 8, 
-              right: 8, 
-              display: 'flex',
-              gap: 0.5,
-              zIndex: 10
-            }}
-          >
+          <ActionButtonsContainer ref={actionButtonsRef}>
             {isSaving || isClearing ? (
               <CircularProgress size={20} />
             ) : (
               <>
                 {hasChanged ? (
                   <>
-                    <IconButton 
+                    <SaveButton 
                       size="small" 
                       onClick={handleSave}
-                      sx={{ 
-                        color: 'success.main',
-                        p: 0.5
-                      }}
                       title="Save changes"
                     >
                       <FontAwesomeIcon icon={faCheck} size="xs" />
-                    </IconButton>
-                    <IconButton 
+                    </SaveButton>
+                    <CancelButton 
                       size="small" 
                       onClick={handleCancel}
-                      sx={{ 
-                        color: 'error.main',
-                        p: 0.5
-                      }}
                       title="Cancel"
                     >
                       <FontAwesomeIcon icon={faTimes} size="xs" />
-                    </IconButton>
+                    </CancelButton>
                   </>
                 ) : (
-                  <IconButton 
+                  <CancelButton 
                     size="small" 
                     onClick={handleCancel}
-                    sx={{ 
-                      color: 'error.main',
-                      p: 0.5
-                    }}
                     title="Cancel"
                   >
                     <FontAwesomeIcon icon={faTimes} size="xs" />
-                  </IconButton>
+                  </CancelButton>
                 )}
                 
-                <Button
+                <ClearButton
                   variant="contained"
                   size="small"
                   onClick={clearField}
-                  sx={{
-                    backgroundColor: 'warning.main',
-                    color: 'white',
-                    minWidth: 'auto',
-                    p: '2px 8px',
-                    '&:hover': {
-                      backgroundColor: 'warning.dark',
-                    },
-                    zIndex: 20 // Ensure it's above everything else
-                  }}
                   title="Clear field"
                   startIcon={<FontAwesomeIcon icon={faEraser} size="xs" />}
                 >
                   Clear
-                </Button>
+                </ClearButton>
               </>
             )}
-          </Box>
+          </ActionButtonsContainer>
         </Box>
       ) : (
-        <Box 
+        <DisplayContainer 
           onClick={handleEdit}
-          sx={{ 
-            p: 2,
-            borderRadius: 2,
-            backgroundColor: (theme) => alpha(theme.palette.background.default, 0.7),
-            position: 'relative',
-            minHeight: multiline ? '100px' : '40px',
-            display: 'flex',
-            alignItems: multiline ? 'flex-start' : 'center',
-            transition: 'all 0.2s ease',
-            cursor: 'pointer',
-            '&:hover': {
-              backgroundColor: (theme) => alpha(theme.palette.background.default, 0.9),
-              '& .edit-button': {
-                opacity: 1,
-              }
-            }
-          }}
+          multiline={multiline}
         >
           {displayValue ? (
-            <Typography 
+            <DisplayText 
               variant="body2" 
-              component={multiline ? 'pre' : 'p'}
-              sx={{ 
-                whiteSpace: multiline ? 'pre-wrap' : 'normal',
-                fontFamily: multiline ? '"Roboto Mono", monospace' : 'inherit',
-                fontSize: '0.875rem',
-                lineHeight: 1.6,
-                wordBreak: 'break-word',
-                pr: 4
-              }}
+              sx={{ whiteSpace: multiline ? 'pre-wrap' : 'normal' }}
             >
               {displayValue}
-            </Typography>
+            </DisplayText>
           ) : (
-            <Typography 
-              variant="body2" 
-              sx={{ 
-                color: 'text.disabled',
-                fontStyle: 'italic'
-              }}
-            >
+            <PlaceholderText variant="body2">
               {placeholder}
-            </Typography>
+            </PlaceholderText>
           )}
           
-          <IconButton 
+          <EditButton 
             className="edit-button"
             size="small" 
             onClick={handleEdit}
-            sx={{ 
-              position: 'absolute',
-              top: 8,
-              right: 8,
-              color: 'primary.main',
-              opacity: 0,
-              transition: 'opacity 0.2s ease',
-              p: 0.5
-            }}
             title="Edit"
           >
             <FontAwesomeIcon icon={faPen} size="xs" />
-          </IconButton>
-        </Box>
+          </EditButton>
+        </DisplayContainer>
       )}
-    </Box>
+    </FieldContainer>
   );
 };
