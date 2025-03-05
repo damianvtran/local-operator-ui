@@ -7,8 +7,9 @@ import {
   IconButton, 
   Typography,
   alpha,
-  Tooltip
+  Tooltip,
 } from '@mui/material';
+import { styled } from '@mui/material/styles';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPaperPlane, faPaperclip, faTimes } from '@fortawesome/free-solid-svg-icons';
 
@@ -16,6 +17,112 @@ type MessageInputProps = {
   onSendMessage: (content: string, file: File | null) => void;
   isLoading: boolean;
 }
+
+const FormContainer = styled('form')(({ theme }) => ({
+  padding: theme.spacing(4),
+  display: 'flex',
+  alignItems: 'center',
+  gap: theme.spacing(2),
+  borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+  backgroundColor: alpha(theme.palette.background.paper, 0.4),
+  minHeight: 100,
+}));
+
+const AttachmentButton = styled(IconButton)(({ theme }) => ({
+  backgroundColor: alpha(theme.palette.primary.main, 0.08),
+  width: 52,
+  height: 52,
+  borderRadius: theme.shape.borderRadius * 1.5,
+  marginRight: theme.spacing(1),
+  transition: 'all 0.2s ease-in-out',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  '&:hover': {
+    backgroundColor: alpha(theme.palette.primary.main, 0.15),
+    transform: 'translateY(-2px)'
+  },
+  '&:active': {
+    transform: 'translateY(0px)'
+  }
+}));
+
+const StyledTextField = styled(TextField)(({ theme }) => ({
+  flex: 1,
+  '& .MuiOutlinedInput-root': {
+    borderRadius: theme.shape.borderRadius * 1.5,
+    backgroundColor: alpha(theme.palette.background.paper, 0.6),
+    border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+    transition: 'all 0.2s ease-in-out',
+    '&.Mui-focused': {
+      backgroundColor: alpha(theme.palette.background.paper, 0.8),
+      boxShadow: `0 0 0 3px ${alpha(theme.palette.primary.main, 0.15)}`
+    },
+    '&:hover': {
+      backgroundColor: alpha(theme.palette.background.paper, 0.7),
+    },
+    padding: '14px 18px',
+    fontSize: '1rem',
+    minHeight: 48,
+    display: 'flex',
+    alignItems: 'center'
+  }
+}));
+
+const FilePreviewContainer = styled(Box)(({ theme }) => ({
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  backgroundColor: alpha(theme.palette.primary.main, 0.08),
+  borderRadius: theme.shape.borderRadius,
+  padding: theme.spacing(1, 2),
+  border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`,
+  height: 48,
+  margin: theme.spacing(0, 1)
+}));
+
+const FileNameText = styled(Typography)({
+  maxWidth: 150,
+  fontWeight: 500,
+  color: 'primary.main',
+  display: 'flex',
+  alignItems: 'center'
+});
+
+const RemoveFileButton = styled(IconButton)(({ theme }) => ({
+  marginLeft: theme.spacing(1),
+  color: 'primary.main',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  '&:hover': {
+    backgroundColor: alpha(theme.palette.primary.main, 0.15)
+  }
+}));
+
+const SendButton = styled(Button)(({ theme }) => ({
+  borderRadius: theme.shape.borderRadius * 1.5,
+  minWidth: 'auto',
+  width: 48,
+  height: 48,
+  padding: 0,
+  marginLeft: theme.spacing(1),
+  boxShadow: theme.shadows[2],
+  transition: 'all 0.2s ease-in-out',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  '&:not(:disabled):hover': {
+    transform: 'translateY(-2px)',
+    boxShadow: theme.shadows[4]
+  },
+  '&:not(:disabled):active': {
+    transform: 'translateY(0px)'
+  },
+  '&.Mui-disabled': {
+    backgroundColor: alpha(theme.palette.action.disabled, 0.2)
+  }
+}));
 
 export const MessageInput: FC<MessageInputProps> = ({ onSendMessage, isLoading }) => {
   const [newMessage, setNewMessage] = useState('');
@@ -52,19 +159,7 @@ export const MessageInput: FC<MessageInputProps> = ({ onSendMessage, isLoading }
   };
   
   return (
-    <Box 
-      component="form" 
-      onSubmit={handleSubmit}
-      sx={{ 
-        p: 2.5, 
-        display: 'flex', 
-        alignItems: 'flex-end',
-        gap: 1.5,
-        borderTop: (theme) => `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-        backgroundColor: (theme) => alpha(theme.palette.background.paper, 0.4),
-      }}
-    >
-      {/* Hidden file input */}
+    <FormContainer onSubmit={handleSubmit}>
       <input
         type="file"
         ref={fileInputRef}
@@ -73,35 +168,18 @@ export const MessageInput: FC<MessageInputProps> = ({ onSendMessage, isLoading }
         accept="image/*,.pdf,.doc,.docx,.txt"
       />
       
-      {/* Attachment button */}
-      {/* @ts-ignore - MUI Tooltip requires children but we're providing it */}
       <Tooltip title="Attach file">
-        <IconButton 
+        <AttachmentButton 
           onClick={triggerFileInput}
           color="primary"
           size="medium"
           aria-label="Attach file"
-          sx={{ 
-            bgcolor: (theme) => alpha(theme.palette.primary.main, 0.08),
-            width: 44,
-            height: 44,
-            borderRadius: 2.5,
-            transition: 'all 0.2s ease-in-out',
-            '&:hover': {
-              bgcolor: (theme) => alpha(theme.palette.primary.main, 0.15),
-              transform: 'translateY(-2px)'
-            },
-            '&:active': {
-              transform: 'translateY(0px)'
-            }
-          }}
         >
           <FontAwesomeIcon icon={faPaperclip} />
-        </IconButton>
+        </AttachmentButton>
       </Tooltip>
       
-      {/* Text input */}
-      <TextField
+      <StyledTextField
         fullWidth
         placeholder="✨ Type to Chat! Press ↵ to send, Shift+↵ for new line 📝"
         value={newMessage}
@@ -110,99 +188,36 @@ export const MessageInput: FC<MessageInputProps> = ({ onSendMessage, isLoading }
         multiline
         maxRows={4}
         variant="outlined"
-        InputProps={{
-          sx: {
-            borderRadius: 2.5,
-            backgroundColor: (theme) => alpha(theme.palette.background.paper, 0.6),
-            border: (theme) => `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-            transition: 'all 0.2s ease-in-out',
-            '&.Mui-focused': {
-              backgroundColor: (theme) => alpha(theme.palette.background.paper, 0.8),
-              boxShadow: (theme) => `0 0 0 3px ${alpha(theme.palette.primary.main, 0.15)}`
-            },
-            '&:hover': {
-              backgroundColor: (theme) => alpha(theme.palette.background.paper, 0.7),
-            },
-            padding: '12px 16px',
-            fontSize: '0.95rem'
-          }
-        }}
       />
       
-      {/* Selected file preview */}
       {selectedFile && (
-        <Box sx={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          bgcolor: (theme) => alpha(theme.palette.primary.main, 0.08),
-          borderRadius: 2,
-          px: 1.5,
-          py: 0.75,
-          border: (theme) => `1px solid ${alpha(theme.palette.primary.main, 0.2)}`,
-          height: 44
-        }}>
-          <Typography 
-            variant="caption" 
-            noWrap 
-            sx={{ 
-              maxWidth: 120,
-              fontWeight: 500,
-              color: 'primary.main'
-            }}
-          >
+        <FilePreviewContainer>
+          <FileNameText variant="caption" noWrap>
             {selectedFile.name}
-          </Typography>
-          <IconButton 
+          </FileNameText>
+          <RemoveFileButton 
             size="small" 
             onClick={() => setSelectedFile(null)}
             aria-label="Remove file"
-            sx={{ 
-              ml: 0.5,
-              color: 'primary.main',
-              '&:hover': {
-                backgroundColor: (theme) => alpha(theme.palette.primary.main, 0.15)
-              }
-            }}
           >
             <FontAwesomeIcon icon={faTimes} size="xs" />
-          </IconButton>
-        </Box>
+          </RemoveFileButton>
+        </FilePreviewContainer>
       )}
       
-      {/* Send button */}
-      {/* @ts-ignore - MUI Tooltip requires children but we're providing it */}
       <Tooltip title="Send message">
         <span>
-          <Button
+          <SendButton
             type="submit"
             variant="contained"
             color="primary"
             disabled={isLoading || (!newMessage.trim() && !selectedFile)}
             aria-label="Send message"
-            sx={{ 
-              borderRadius: 2.5,
-              minWidth: 'auto',
-              width: 44,
-              height: 44,
-              p: 0,
-              boxShadow: 2,
-              transition: 'all 0.2s ease-in-out',
-              '&:not(:disabled):hover': {
-                transform: 'translateY(-2px)',
-                boxShadow: 4
-              },
-              '&:not(:disabled):active': {
-                transform: 'translateY(0px)'
-              },
-              '&.Mui-disabled': {
-                backgroundColor: (theme) => alpha(theme.palette.action.disabled, 0.2)
-              }
-            }}
           >
             <FontAwesomeIcon icon={faPaperPlane} />
-          </Button>
+          </SendButton>
         </span>
       </Tooltip>
-    </Box>
+    </FormContainer>
   );
 };
