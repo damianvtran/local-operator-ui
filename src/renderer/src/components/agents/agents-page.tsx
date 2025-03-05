@@ -4,7 +4,7 @@
  * Main page for displaying and managing agents with enhanced UI/UX
  */
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import type { FC } from 'react';
 import { 
   Box, 
@@ -12,10 +12,10 @@ import {
   Paper, 
   Typography, 
   Divider, 
-  Chip,
   IconButton,
   alpha
 } from '@mui/material';
+import { toast } from 'react-toastify';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
   faInfoCircle, 
@@ -24,11 +24,14 @@ import {
   faRobot, 
   faServer,
   faShieldAlt,
-  faIdCard
+  faIdCard,
+  faTag
 } from '@fortawesome/free-solid-svg-icons';
 import { AgentList } from './agent-list';
-import type { AgentDetails } from '@renderer/api/local-operator/types';
+import type { AgentDetails, AgentUpdate } from '@renderer/api/local-operator/types';
 import { useAgent } from '@renderer/hooks/use-agents';
+import { useUpdateAgent } from '@renderer/hooks/use-update-agent';
+import { EditableField } from '../common/editable-field';
 
 type AgentsPageProps = {
   /**
@@ -44,16 +47,29 @@ type AgentsPageProps = {
  */
 export const AgentsPage: FC<AgentsPageProps> = ({ initialSelectedAgentId }) => {
   const [selectedAgent, setSelectedAgent] = useState<AgentDetails | null>(null);
+  const [savingField, setSavingField] = useState<string | null>(null);
   
   // Fetch the agent details if initialSelectedAgentId is provided
-  const { data: initialAgent } = useAgent(initialSelectedAgentId);
+  const { data: initialAgent, refetch: refetchAgent } = useAgent(initialSelectedAgentId);
+  const updateAgentMutation = useUpdateAgent();
   
-  // Set the selected agent when initialAgent changes
+  // Set the selected agent when initialAgent changes, but only if it's not already selected
+  // This prevents unnecessary re-renders during refetches
   useEffect(() => {
-    if (initialAgent) {
+    if (initialAgent && (!selectedAgent || selectedAgent.id !== initialAgent.id)) {
       setSelectedAgent(initialAgent);
+    } else if (initialAgent && selectedAgent && selectedAgent.id === initialAgent.id) {
+      // If the same agent is already selected, just update its properties
+      // This maintains UI consistency during refetches
+      setSelectedAgent(prevAgent => {
+        if (!prevAgent) return initialAgent;
+        return {
+          ...prevAgent,
+          ...initialAgent
+        };
+      });
     }
-  }, [initialAgent]);
+  }, [initialAgent, selectedAgent]);
   
   const handleSelectAgent = (agent: AgentDetails) => {
     setSelectedAgent(agent);
@@ -172,44 +188,89 @@ export const AgentsPage: FC<AgentsPageProps> = ({ initialSelectedAgentId }) => {
                   justifyContent: 'space-between',
                   mb: 3 
                 }}>
-                  <Typography 
-                    variant="h5" 
-                    component="h2" 
-                    sx={{ 
-                      fontWeight: 700, 
-                      letterSpacing: '-0.01em',
-                      color: 'primary.main'
-                    }}
-                  >
-                    {selectedAgent.name}
-                  </Typography>
-                  
-                  <Chip 
-                    size="small" 
-                    label={selectedAgent.hosting || "Default Hosting"} 
-                    color="primary" 
-                    variant="outlined"
-                    icon={<FontAwesomeIcon icon={faServer} />}
-                    title="Agent hosting type"
-                    sx={{
-                      borderRadius: 2.5,
-                      fontWeight: 600,
-                      px: 1.5,
-                      py: 0.75,
-                      height: 32,
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
-                      '& .MuiChip-label': { 
-                        px: 1.5,
-                        ml: 0.5,
-                        letterSpacing: '0.01em'
-                      },
-                      '& .MuiChip-icon': {
-                        ml: 1.25,
-                        mr: -0.25,
-                        opacity: 0.9
+                  <EditableField
+                    value={selectedAgent.name}
+                    label="Agent Name"
+                    placeholder="Enter agent name..."
+                    icon={<FontAwesomeIcon icon={faRobot} />}
+                    isSaving={savingField === 'name'}
+                    onSave={async (value) => {
+                      if (!value.trim()) {
+                        toast.error('Agent name cannot be empty');
+                        return;
+                      }
+                      setSavingField('name');
+                      try {
+                        const update: AgentUpdate = { name: value };
+                        await updateAgentMutation.mutateAsync({ 
+                          agentId: selectedAgent.id, 
+                          update 
+                        });
+                        // Explicitly refetch the agent data to update the UI
+                        if (selectedAgent.id === initialSelectedAgentId) {
+                          await refetchAgent();
+                        }
+                      } catch (error) {
+                        // Error is already handled in the mutation
+                      } finally {
+                        setSavingField(null);
                       }
                     }}
                   />
+                  
+                  <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                    <EditableField
+                      value={selectedAgent.hosting || ""}
+                      label="Hosting"
+                      placeholder="Enter hosting..."
+                      icon={<FontAwesomeIcon icon={faServer} />}
+                      isSaving={savingField === 'hosting'}
+                      onSave={async (value) => {
+                        setSavingField('hosting');
+                        try {
+                          const update: AgentUpdate = { hosting: value };
+                          await updateAgentMutation.mutateAsync({ 
+                            agentId: selectedAgent.id, 
+                            update 
+                          });
+                          // Explicitly refetch the agent data to update the UI
+                          if (selectedAgent.id === initialSelectedAgentId) {
+                            await refetchAgent();
+                          }
+                        } catch (error) {
+                          // Error is already handled in the mutation
+                        } finally {
+                          setSavingField(null);
+                        }
+                      }}
+                    />
+                    
+                    <EditableField
+                      value={selectedAgent.model || ""}
+                      label="Model"
+                      placeholder="Enter model..."
+                      icon={<FontAwesomeIcon icon={faRobot} />}
+                      isSaving={savingField === 'model'}
+                      onSave={async (value) => {
+                        setSavingField('model');
+                        try {
+                          const update: AgentUpdate = { model: value };
+                          await updateAgentMutation.mutateAsync({ 
+                            agentId: selectedAgent.id, 
+                            update 
+                          });
+                          // Explicitly refetch the agent data to update the UI
+                          if (selectedAgent.id === initialSelectedAgentId) {
+                            await refetchAgent();
+                          }
+                        } catch (error) {
+                          // Error is already handled in the mutation
+                        } finally {
+                          setSavingField(null);
+                        }
+                      }}
+                    />
+                  </Box>
                 </Box>
                 
                 <Divider sx={{ mb: 4 }} />
@@ -234,6 +295,34 @@ export const AgentsPage: FC<AgentsPageProps> = ({ initialSelectedAgentId }) => {
                     />
                     Agent Information
                   </Typography>
+                  
+                  <EditableField
+                    value={selectedAgent.description || ""}
+                    label="Description"
+                    placeholder="Enter agent description..."
+                    icon={<FontAwesomeIcon icon={faTag} />}
+                    multiline
+                    rows={3}
+                    isSaving={savingField === 'description'}
+                    onSave={async (value) => {
+                      setSavingField('description');
+                      try {
+                        const update: AgentUpdate = { description: value };
+                        await updateAgentMutation.mutateAsync({ 
+                          agentId: selectedAgent.id, 
+                          update 
+                        });
+                        // Explicitly refetch the agent data to update the UI
+                        if (selectedAgent.id === initialSelectedAgentId) {
+                          await refetchAgent();
+                        }
+                      } catch (error) {
+                        // Error is already handled in the mutation
+                      } finally {
+                        setSavingField(null);
+                      }
+                    }}
+                  />
                   
                   <Grid container spacing={3}>
                     <Grid item xs={12} sm={6}>
@@ -342,78 +431,67 @@ export const AgentsPage: FC<AgentsPageProps> = ({ initialSelectedAgentId }) => {
                   </Grid>
                 </Box>
                 
-                {selectedAgent.security_prompt && (
-                  <Box sx={{ mt: 2 }}>
-                    <Typography 
-                      variant="subtitle1" 
+                <Box sx={{ mt: 2 }}>
+                  <Typography 
+                    variant="subtitle1" 
+                    sx={{ 
+                      fontWeight: 600, 
+                      mb: 2,
+                      display: 'flex',
+                      alignItems: 'center',
+                      color: 'text.primary'
+                    }}
+                  >
+                    <FontAwesomeIcon 
+                      icon={faShieldAlt} 
+                      style={{ 
+                        marginRight: 10,
+                        color: '#f2f2f3'
+                      }} 
+                    />
+                    Security Prompt
+                    <IconButton 
+                      size="small" 
                       sx={{ 
-                        fontWeight: 600, 
-                        mb: 2,
-                        display: 'flex',
-                        alignItems: 'center',
-                        color: 'text.primary'
-                      }}
-                    >
-                      <FontAwesomeIcon 
-                        icon={faShieldAlt} 
-                        style={{ 
-                          marginRight: 10,
-                          color: '#f2f2f3'
-                        }} 
-                      />
-                      Security Prompt
-                      <IconButton 
-                        size="small" 
-                        sx={{ 
-                          ml: 1,
-                          color: 'primary.main',
-                          '&:hover': {
-                            backgroundColor: (theme) => alpha(theme.palette.primary.main, 0.08)
-                          }
-                        }}
-                        title="Security instructions that guide the agent's behavior and limitations"
-                      >
-                        <FontAwesomeIcon icon={faInfoCircle} size="xs" />
-                      </IconButton>
-                    </Typography>
-                    <Paper 
-                      variant="outlined" 
-                      sx={{ 
-                        p: 3, 
-                        bgcolor: (theme) => alpha(theme.palette.background.default, 0.5),
-                        maxHeight: '250px',
-                        overflow: 'auto',
-                        borderRadius: 2,
-                        borderColor: (theme) => alpha(theme.palette.primary.main, 0.2),
-                        transition: 'all 0.2s ease',
+                        ml: 1,
+                        color: 'primary.main',
                         '&:hover': {
-                          boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
-                          borderColor: 'primary.main',
-                        },
-                        '&::-webkit-scrollbar': {
-                          width: '6px',
-                        },
-                        '&::-webkit-scrollbar-thumb': {
-                          backgroundColor: 'rgba(0, 0, 0, 0.1)',
-                          borderRadius: '3px',
-                        },
+                          backgroundColor: (theme) => alpha(theme.palette.primary.main, 0.08)
+                        }
                       }}
+                      title="Security instructions that guide the agent's behavior and limitations"
                     >
-                      <Typography 
-                        variant="body2" 
-                        component="pre" 
-                        sx={{ 
-                          whiteSpace: 'pre-wrap',
-                          fontFamily: '"Roboto Mono", monospace',
-                          fontSize: '0.875rem',
-                          lineHeight: 1.6
-                        }}
-                      >
-                        {selectedAgent.security_prompt}
-                      </Typography>
-                    </Paper>
-                  </Box>
-                )}
+                      <FontAwesomeIcon icon={faInfoCircle} size="xs" />
+                    </IconButton>
+                  </Typography>
+                  
+                  <EditableField
+                    value={selectedAgent.security_prompt || ""}
+                    label=""
+                    placeholder="Enter security prompt..."
+                    multiline
+                    rows={6}
+                    isSaving={savingField === 'security_prompt'}
+                    onSave={async (value) => {
+                      setSavingField('security_prompt');
+                      try {
+                        const update: AgentUpdate = { security_prompt: value };
+                        await updateAgentMutation.mutateAsync({ 
+                          agentId: selectedAgent.id, 
+                          update 
+                        });
+                        // Explicitly refetch the agent data to update the UI
+                        if (selectedAgent.id === initialSelectedAgentId) {
+                          await refetchAgent();
+                        }
+                      } catch (error) {
+                        // Error is already handled in the mutation
+                      } finally {
+                        setSavingField(null);
+                      }
+                    }}
+                  />
+                </Box>
               </Box>
             ) : (
               <Box 

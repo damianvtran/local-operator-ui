@@ -41,7 +41,8 @@ export const AgentListItem: FC<AgentListItemProps> = ({
       sx={{
         marginBottom: 2.5,
         cursor: 'pointer',
-        transition: 'all 0.2s ease-in-out',
+        // Use a more subtle transition that won't cause layout shifts
+        transition: 'background-color 0.2s ease-in-out, border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
         borderRadius: 2,
         backgroundColor: (theme) => isSelected 
           ? alpha(theme.palette.primary.main, 0.08)
@@ -50,14 +51,16 @@ export const AgentListItem: FC<AgentListItemProps> = ({
           ? (theme) => `1px solid ${theme.palette.primary.main}` 
           : '1px solid transparent',
         '&:hover': {
-          boxShadow: (theme) => `0 8px 16px ${alpha(theme.palette.common.black, 0.08)}`,
-          transform: 'translateY(-3px)',
+          boxShadow: (theme) => `0 4px 12px ${alpha(theme.palette.common.black, 0.08)}`,
+          // Remove transform to prevent layout shifts
           backgroundColor: (theme) => !isSelected 
             ? alpha(theme.palette.background.default, 0.7)
             : alpha(theme.palette.primary.main, 0.12),
         },
         position: 'relative',
         overflow: 'visible',
+        // Add will-change to optimize rendering performance
+        willChange: 'background-color, border-color, box-shadow'
       }}
     >
       <CardContent sx={{ p: 2.5 }}>

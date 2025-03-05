@@ -13,7 +13,8 @@ import {
   Button, 
   Alert, 
   Pagination,
-  Paper
+  Paper,
+  alpha
 } from '@mui/material';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPlus } from '@fortawesome/free-solid-svg-icons';
@@ -185,133 +186,150 @@ export const AgentList: FC<AgentListProps> = ({
         </Box>
       </Box>
       
-      {isLoading ? (
-        <Box 
-          sx={{ 
-            display: 'flex', 
-            justifyContent: 'center', 
-            alignItems: 'center', 
-            flexGrow: 1,
-            py: 6
-          }}
-        >
-          <CircularProgress size={40} thickness={4} />
-        </Box>
-      ) : isError ? (
-        <Alert 
-          severity="error" 
-          sx={{ 
-            mb: 2,
-            borderRadius: 2,
-            boxShadow: '0 2px 10px rgba(0,0,0,0.08)'
-          }}
-          action={
-            <Button 
-              color="inherit" 
-              size="small" 
-              onClick={() => refetch()}
-              sx={{ fontWeight: 500 }}
-            >
-              Retry
-            </Button>
-          }
-        >
-          Failed to load agents. Please try again.
-        </Alert>
-      ) : agents.length === 0 ? (
-        <Box 
-          sx={{ 
-            display: 'flex', 
-            flexDirection: 'column', 
-            alignItems: 'center', 
-            justifyContent: 'center',
-            flexGrow: 1,
-            p: 4,
-            my: 4,
-            borderRadius: 3,
-            bgcolor: 'background.default'
-          }}
-        >
-          <Typography 
-            variant="body1" 
-            color="text.secondary" 
+      <Box sx={{ 
+        flexGrow: 1, 
+        display: 'flex',
+        flexDirection: 'column',
+        position: 'relative',
+        minHeight: '300px' // Ensure minimum height to prevent layout shifts
+      }}>
+        {/* Loading overlay that doesn't affect layout */}
+        {(isLoading || isFetching) && (
+          <Box 
             sx={{ 
-              mb: 2, 
-              textAlign: 'center',
-              maxWidth: '80%',
-              lineHeight: 1.6
-            }}
-          >
-            No agents found. Create a new agent to get started.
-          </Typography>
-        </Box>
-      ) : (
-        <Box sx={{ 
-          flexGrow: 1, 
-          overflow: 'auto',
-          px: 0.5,
-          py: 1,
-          mx: -0.5,
-          '&::-webkit-scrollbar': {
-            width: '6px',
-          },
-          '&::-webkit-scrollbar-track': {
-            backgroundColor: 'transparent',
-          },
-          '&::-webkit-scrollbar-thumb': {
-            backgroundColor: 'rgba(0, 0, 0, 0.1)',
-            borderRadius: '10px',
-            '&:hover': {
-              backgroundColor: 'rgba(0, 0, 0, 0.2)',
-            }
-          },
-        }}>
-          {agents.map((agent) => (
-            <AgentListItem 
-              key={agent.id}
-              agent={agent}
-              isSelected={agent.id === selectedAgentId}
-              onClick={() => handleSelectAgent(agent)}
-              onAgentDeleted={(deletedId) => {
-                // If the deleted agent was selected, clear the selection
-                if (deletedId === selectedAgentId && onSelectAgent) {
-                  // Set selected agent to null
-                  // Using undefined here since the function expects AgentDetails
-                  // but we want to clear the selection
-                  onSelectAgent(undefined as unknown as AgentDetails);
-                }
-                refetch();
-              }}
-            />
-          ))}
-          
-          {agents.length > perPage && (
-            <Box sx={{ 
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
               display: 'flex', 
               justifyContent: 'center', 
-              mt: 3,
-              pt: 2,
-              borderTop: '1px solid',
-              borderColor: 'divider'
-            }}>
-              <Pagination 
-                count={Math.ceil(agents.length / perPage)} 
-                page={page} 
-                onChange={handlePageChange} 
-                color="primary" 
-                size="medium"
-                shape="rounded"
-                sx={{
-                  '& .MuiPaginationItem-root': {
-                    borderRadius: 1.5,
-                    mx: 0.5
+              alignItems: 'center',
+              backgroundColor: (theme) => alpha(theme.palette.background.paper, 0.7),
+              zIndex: 1,
+              borderRadius: 2
+            }}
+          >
+            <CircularProgress size={40} thickness={4} />
+          </Box>
+        )}
+        
+        {isError ? (
+          <Alert 
+            severity="error" 
+            sx={{ 
+              mb: 2,
+              borderRadius: 2,
+              boxShadow: '0 2px 10px rgba(0,0,0,0.08)'
+            }}
+            action={
+              <Button 
+                color="inherit" 
+                size="small" 
+                onClick={() => refetch()}
+                sx={{ fontWeight: 500 }}
+              >
+                Retry
+              </Button>
+            }
+          >
+            Failed to load agents. Please try again.
+          </Alert>
+        ) : agents.length === 0 ? (
+          <Box 
+            sx={{ 
+              display: 'flex', 
+              flexDirection: 'column', 
+              alignItems: 'center', 
+              justifyContent: 'center',
+              flexGrow: 1,
+              p: 4,
+              my: 4,
+              borderRadius: 3,
+              bgcolor: 'background.default'
+            }}
+          >
+            <Typography 
+              variant="body1" 
+              color="text.secondary" 
+              sx={{ 
+                mb: 2, 
+                textAlign: 'center',
+                maxWidth: '80%',
+                lineHeight: 1.6
+              }}
+            >
+              No agents found. Create a new agent to get started.
+            </Typography>
+          </Box>
+        ) : (
+          <Box sx={{ 
+            flexGrow: 1, 
+            overflow: 'auto',
+            px: 0.5,
+            py: 1,
+            mx: -0.5,
+            '&::-webkit-scrollbar': {
+              width: '6px',
+            },
+            '&::-webkit-scrollbar-track': {
+              backgroundColor: 'transparent',
+            },
+            '&::-webkit-scrollbar-thumb': {
+              backgroundColor: 'rgba(0, 0, 0, 0.1)',
+              borderRadius: '10px',
+              '&:hover': {
+                backgroundColor: 'rgba(0, 0, 0, 0.2)',
+              }
+            },
+          }}>
+            {agents.map((agent) => (
+              <AgentListItem 
+                key={agent.id}
+                agent={agent}
+                isSelected={agent.id === selectedAgentId}
+                onClick={() => handleSelectAgent(agent)}
+                onAgentDeleted={(deletedId) => {
+                  // If the deleted agent was selected, clear the selection
+                  if (deletedId === selectedAgentId && onSelectAgent) {
+                    // Set selected agent to null
+                    // Using undefined here since the function expects AgentDetails
+                    // but we want to clear the selection
+                    onSelectAgent(undefined as unknown as AgentDetails);
                   }
+                  refetch();
                 }}
               />
-            </Box>
-          )}
-        </Box>
-      )}
+            ))}
+            
+            {agents.length > perPage && (
+              <Box sx={{ 
+                display: 'flex', 
+                justifyContent: 'center', 
+                mt: 3,
+                pt: 2,
+                borderTop: '1px solid',
+                borderColor: 'divider'
+              }}>
+                <Pagination 
+                  count={Math.ceil(agents.length / perPage)} 
+                  page={page} 
+                  onChange={handlePageChange} 
+                  color="primary" 
+                  size="medium"
+                  shape="rounded"
+                  sx={{
+                    '& .MuiPaginationItem-root': {
+                      borderRadius: 1.5,
+                      mx: 0.5
+                    }
+                  }}
+                />
+              </Box>
+            )}
+          </Box>
+        )}
+      </Box>
       
       {/* Create Agent Dialog */}
       <CreateAgentDialog
