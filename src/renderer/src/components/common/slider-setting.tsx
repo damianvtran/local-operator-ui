@@ -14,7 +14,8 @@ import {
   alpha, 
   CircularProgress,
   Paper,
-  InputAdornment
+  InputAdornment,
+  styled
 } from '@mui/material';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import type { IconDefinition } from '@fortawesome/free-solid-svg-icons';
@@ -71,6 +72,103 @@ type SliderSettingProps = {
    */
   isSaving?: boolean;
 };
+
+const SettingContainer = styled(Paper)(({ theme }) => ({
+  padding: theme.spacing(2.5),
+  borderRadius: theme.shape.borderRadius * 2,
+  backgroundColor: alpha(theme.palette.background.default, 0.7),
+  transition: 'all 0.2s ease',
+  marginBottom: theme.spacing(2),
+  '&:hover': {
+    backgroundColor: alpha(theme.palette.background.default, 0.9),
+    boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+  }
+}));
+
+const LabelWrapper = styled(Box)({
+  marginBottom: 8
+});
+
+const LabelText = styled(Typography)(({ theme }) => ({
+  marginBottom: 4,
+  display: 'flex',
+  alignItems: 'center',
+  color: theme.palette.text.primary,
+  fontWeight: 600
+}));
+
+const IconWrapper = styled(Box)(({ theme }) => ({
+  marginRight: theme.spacing(1.5),
+  opacity: 0.8
+}));
+
+const DescriptionText = styled(Typography)(({ theme }) => ({
+  fontSize: '0.875rem',
+  lineHeight: 1.5,
+  marginBottom: theme.spacing(2)
+}));
+
+const SliderContainer = styled(Box)({
+  flexGrow: 1
+});
+
+const StyledSlider = styled(Slider)({
+  '& .MuiSlider-thumb': {
+    width: 14,
+    height: 14,
+    transition: '0.2s cubic-bezier(.47,1.64,.41,.8)',
+    '&:before': {
+      boxShadow: '0 2px 12px 0 rgba(0,0,0,0.4)',
+    },
+    '&:hover, &.Mui-focusVisible': {
+      boxShadow: '0px 0px 0px 8px rgb(255 255 255 / 16%)',
+    },
+    '&.Mui-active': {
+      width: 20,
+      height: 20,
+    },
+  },
+  '& .MuiSlider-rail': {
+    opacity: 0.28,
+  },
+});
+
+const InputContainer = styled(Box, {
+  shouldForwardProp: (prop) => prop !== 'hasUnit'
+})<{ hasUnit?: boolean }>(({ hasUnit }) => ({
+  display: 'flex',
+  alignItems: 'center',
+  minWidth: hasUnit ? '130px' : '100px'
+}));
+
+const StyledTextField = styled(TextField, {
+  shouldForwardProp: (prop) => prop !== 'hasUnit'
+})<{ hasUnit?: boolean }>(({ theme, hasUnit }) => ({
+  width: hasUnit ? '130px' : '100px',
+  '& .MuiOutlinedInput-root': {
+    borderRadius: theme.shape.borderRadius * 1.5,
+  },
+  '& .MuiInputAdornment-root': {
+    marginLeft: 0
+  }
+}));
+
+const UnitText = styled(Typography)({
+  fontSize: '0.9rem',
+  marginLeft: -4,
+  marginRight: 12
+});
+
+const MinMaxContainer = styled(Box)({
+  display: 'flex',
+  justifyContent: 'space-between',
+  marginTop: 8
+});
+
+const MinMaxText = styled(Typography)({
+  variant: 'caption',
+  color: 'text.secondary'
+});
 
 /**
  * Slider Setting Component
@@ -188,53 +286,23 @@ export const SliderSetting: FC<SliderSettingProps> = ({
   };
   
   return (
-    <Paper
-      elevation={0}
-      sx={{
-        p: 2.5,
-        borderRadius: 2,
-        bgcolor: (theme) => alpha(theme.palette.background.default, 0.7),
-        transition: 'all 0.2s ease',
-        '&:hover': {
-          bgcolor: (theme) => alpha(theme.palette.background.default, 0.9),
-          boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
-        },
-        mb: 2
-      }}
-    >
-      <Box sx={{ mb: 1 }}>
-        <Typography 
-          variant="subtitle2" 
-          sx={{ 
-            mb: 0.5, 
-            display: 'flex', 
-            alignItems: 'center',
-            color: 'text.primary',
-            fontWeight: 600
-          }}
-        >
-          {icon && <Box sx={{ mr: 1.5, opacity: 0.8 }}><FontAwesomeIcon icon={icon} /></Box>}
+    <SettingContainer elevation={0}>
+      <LabelWrapper>
+        <LabelText variant="subtitle2">
+          {icon && <IconWrapper><FontAwesomeIcon icon={icon} /></IconWrapper>}
           {label}
-        </Typography>
+        </LabelText>
         
         {description && (
-          <Typography 
-            variant="body2" 
-            color="text.secondary"
-            sx={{ 
-              fontSize: '0.875rem',
-              lineHeight: 1.5,
-              mb: 2
-            }}
-          >
+          <DescriptionText variant="body2" color="text.secondary">
             {description}
-          </Typography>
+          </DescriptionText>
         )}
-      </Box>
+      </LabelWrapper>
       
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-        <Box sx={{ flexGrow: 1 }}>
-          <Slider
+        <SliderContainer>
+          <StyledSlider
             value={sliderValue}
             min={min}
             max={max}
@@ -242,34 +310,15 @@ export const SliderSetting: FC<SliderSettingProps> = ({
             onChange={handleSliderChange}
             onChangeCommitted={handleSliderChangeCommitted}
             disabled={isSaving}
-            sx={{
-              '& .MuiSlider-thumb': {
-                width: 14,
-                height: 14,
-                transition: '0.2s cubic-bezier(.47,1.64,.41,.8)',
-                '&:before': {
-                  boxShadow: '0 2px 12px 0 rgba(0,0,0,0.4)',
-                },
-                '&:hover, &.Mui-focusVisible': {
-                  boxShadow: '0px 0px 0px 8px rgb(255 255 255 / 16%)',
-                },
-                '&.Mui-active': {
-                  width: 20,
-                  height: 20,
-                },
-              },
-              '& .MuiSlider-rail': {
-                opacity: 0.28,
-              },
-            }}
           />
-        </Box>
+        </SliderContainer>
         
-        <Box sx={{ display: 'flex', alignItems: 'center', minWidth: unit ? '130px' : '100px' }}>
+        <InputContainer hasUnit={!!unit}>
           {isSaving ? (
             <CircularProgress size={24} sx={{ mr: 1 }} />
           ) : (
-            <TextField
+            <StyledTextField
+              hasUnit={!!unit}
               value={inputValue}
               onChange={handleInputChange}
               onBlur={handleInputBlur}
@@ -290,33 +339,22 @@ export const SliderSetting: FC<SliderSettingProps> = ({
               InputProps={{
                 endAdornment: unit ? (
                   <InputAdornment position="end">
-                    <Typography variant="caption" sx={{ fontSize: '0.9rem', ml: -0.5, mr: 1.5 }}>
-                      {unit}
-                    </Typography>
+                    <UnitText variant="caption">{unit}</UnitText>
                   </InputAdornment>
                 ) : undefined,
                 sx: {
                   pr: unit ? 0.5 : 1
                 }
               }}
-              sx={{
-                width: unit ? '130px' : '100px',
-                '& .MuiOutlinedInput-root': {
-                  borderRadius: 1.5,
-                },
-                '& .MuiInputAdornment-root': {
-                  marginLeft: 0
-                }
-              }}
             />
           )}
-        </Box>
+        </InputContainer>
       </Box>
       
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
-        <Typography variant="caption" color="text.secondary">{min}</Typography>
-        <Typography variant="caption" color="text.secondary">{max}</Typography>
-      </Box>
-    </Paper>
+      <MinMaxContainer>
+        <MinMaxText variant="caption" color="text.secondary">{min}</MinMaxText>
+        <MinMaxText variant="caption" color="text.secondary">{max}</MinMaxText>
+      </MinMaxContainer>
+    </SettingContainer>
   );
 };

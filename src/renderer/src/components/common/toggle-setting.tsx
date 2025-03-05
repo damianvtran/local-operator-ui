@@ -12,7 +12,8 @@ import {
   Switch, 
   alpha, 
   CircularProgress,
-  Paper
+  Paper,
+  styled
 } from '@mui/material';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import type { IconDefinition } from '@fortawesome/free-solid-svg-icons';
@@ -50,6 +51,59 @@ type ToggleSettingProps = {
   isSaving?: boolean;
 };
 
+const SettingContainer = styled(Paper)(({ theme }) => ({
+  padding: theme.spacing(2.5),
+  borderRadius: theme.shape.borderRadius * 2,
+  backgroundColor: alpha(theme.palette.background.default, 0.7),
+  transition: 'all 0.2s ease',
+  '&:hover': {
+    backgroundColor: alpha(theme.palette.background.default, 0.9),
+    boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+  },
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  marginBottom: theme.spacing(2)
+}));
+
+const ContentBox = styled(Box)({
+  flexGrow: 1
+});
+
+const LabelText = styled(Typography)(({ theme }) => ({
+  marginBottom: theme.spacing(0.5),
+  display: 'flex',
+  alignItems: 'center',
+  color: theme.palette.text.primary,
+  fontWeight: 600
+}));
+
+const IconWrapper = styled(Box)(({ theme }) => ({
+  marginRight: theme.spacing(1.5),
+  opacity: 0.8
+}));
+
+const DescriptionText = styled(Typography)(({ theme }) => ({
+  fontSize: '0.875rem',
+  lineHeight: 1.5,
+  maxWidth: '90%',
+  color: theme.palette.text.secondary
+}));
+
+const ControlBox = styled(Box)({
+  display: 'flex',
+  alignItems: 'center'
+});
+
+const StyledSwitch = styled(Switch)(({ theme }) => ({
+  '& .MuiSwitch-switchBase.Mui-checked': {
+    color: theme.palette.primary.main,
+  },
+  '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
+    backgroundColor: theme.palette.primary.main,
+  },
+}));
+
 /**
  * Toggle Setting Component
  * 
@@ -86,72 +140,31 @@ export const ToggleSetting: FC<ToggleSettingProps> = ({
   };
   
   return (
-    <Paper
-      elevation={0}
-      sx={{
-        p: 2.5,
-        borderRadius: 2,
-        bgcolor: (theme) => alpha(theme.palette.background.default, 0.7),
-        transition: 'all 0.2s ease',
-        '&:hover': {
-          bgcolor: (theme) => alpha(theme.palette.background.default, 0.9),
-          boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
-        },
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        mb: 2
-      }}
-    >
-      <Box sx={{ flexGrow: 1 }}>
-        <Typography 
-          variant="subtitle2" 
-          sx={{ 
-            mb: 0.5, 
-            display: 'flex', 
-            alignItems: 'center',
-            color: 'text.primary',
-            fontWeight: 600
-          }}
-        >
-          {icon && <Box sx={{ mr: 1.5, opacity: 0.8 }}><FontAwesomeIcon icon={icon} /></Box>}
+    <SettingContainer elevation={0}>
+      <ContentBox>
+        <LabelText variant="subtitle2">
+          {icon && <IconWrapper><FontAwesomeIcon icon={icon} /></IconWrapper>}
           {label}
-        </Typography>
+        </LabelText>
         
         {description && (
-          <Typography 
-            variant="body2" 
-            color="text.secondary"
-            sx={{ 
-              fontSize: '0.875rem',
-              lineHeight: 1.5,
-              maxWidth: '90%'
-            }}
-          >
+          <DescriptionText variant="body2">
             {description}
-          </Typography>
+          </DescriptionText>
         )}
-      </Box>
+      </ContentBox>
       
-      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+      <ControlBox>
         {isSaving ? (
           <CircularProgress size={24} sx={{ mr: 1 }} />
         ) : (
-          <Switch
+          <StyledSwitch
             checked={isOn}
             onChange={handleToggle}
             color="primary"
-            sx={{
-              '& .MuiSwitch-switchBase.Mui-checked': {
-                color: 'primary.main',
-              },
-              '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
-                backgroundColor: 'primary.main',
-              },
-            }}
           />
         )}
-      </Box>
-    </Paper>
+      </ControlBox>
+    </SettingContainer>
   );
 };

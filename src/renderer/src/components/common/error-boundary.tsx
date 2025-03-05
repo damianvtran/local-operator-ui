@@ -1,5 +1,5 @@
 import type React from 'react';
-import type { ReactNode } from 'react';
+import type { ReactNode, ErrorInfo } from 'react';
 import { ErrorBoundary as ReactErrorBoundary, type FallbackProps } from 'react-error-boundary';
 import { Box, Typography, Button, Paper } from '@mui/material';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -107,7 +107,7 @@ const ErrorFallback = ({ error, resetErrorBoundary }: FallbackProps) => {
  */
 export const ErrorBoundary: React.FC<ErrorBoundaryProps> = ({ children, fallback }) => {
   // Log errors to console
-  const onError = (error: Error, info: { componentStack: string }) => {
+  const onError = (error: Error, info: ErrorInfo) => {
     console.error('Error caught by ErrorBoundary:', error, info);
   };
 
