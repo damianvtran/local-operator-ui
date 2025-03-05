@@ -17,6 +17,10 @@ import {
   Alert,
   Button,
   Pagination,
+  IconButton,
+  Menu,
+  MenuItem,
+  ListItemIcon,
 } from '@mui/material';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
@@ -26,6 +30,7 @@ import {
   faCommentSlash,
   faPlus,
   faTrash,
+  faEllipsisVertical,
 } from '@fortawesome/free-solid-svg-icons';
 import { useAgents } from '@renderer/hooks/use-agents';
 import { useDeleteAgent } from '@renderer/hooks/use-agent-mutations';
@@ -47,7 +52,12 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [deleteAgentId, setDeleteAgentId] = useState<string | null>(null);
   const [deleteAgentName, setDeleteAgentName] = useState('');
+  const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
+  const [currentAgent, setCurrentAgent] = useState<{ id: string; name: string } | null>(null);
   const perPage = 10;
+  
+  // Whether the menu is open
+  const isMenuOpen = Boolean(menuAnchorEl);
 
   // Delete agent mutation
   const deleteAgentMutation = useDeleteAgent();
@@ -77,12 +87,27 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
     setIsCreateDialogOpen(false);
   }, []);
   
-  // Handler for opening the delete confirmation modal
-  const handleOpenDeleteConfirmation = useCallback((e: MouseEvent, agentId: string, agentName: string) => {
+  // Handler for opening the menu
+  const handleOpenMenu = useCallback((e: MouseEvent, agent: { id: string; name: string }) => {
     e.stopPropagation(); // Prevent triggering the ListItemButton click
-    setDeleteAgentId(agentId);
-    setDeleteAgentName(agentName);
+    setMenuAnchorEl(e.currentTarget as HTMLElement);
+    setCurrentAgent(agent);
   }, []);
+  
+  // Handler for closing the menu
+  const handleCloseMenu = useCallback(() => {
+    setMenuAnchorEl(null);
+    setCurrentAgent(null);
+  }, []);
+  
+  // Handler for opening the delete confirmation modal from the menu
+  const handleOpenDeleteConfirmation = useCallback(() => {
+    if (!currentAgent) return;
+    
+    setDeleteAgentId(currentAgent.id);
+    setDeleteAgentName(currentAgent.name);
+    handleCloseMenu();
+  }, [currentAgent, handleCloseMenu]);
   
   // Handler for closing the delete confirmation modal
   const handleCloseDeleteConfirmation = useCallback(() => {
@@ -233,21 +258,34 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
               key={agent.id} 
               disablePadding
               secondaryAction={
-                <Button
+                <IconButton
                   size="small"
-                  color="error"
-                  variant="text"
-                  aria-label="delete agent"
-                  onClick={(e) => handleOpenDeleteConfirmation(e, agent.id, agent.name)}
+                  aria-label="agent options"
+                  onClick={(e) => handleOpenMenu(e, { id: agent.id, name: agent.name })}
                   sx={{ 
-                    minWidth: 'auto', 
-                    opacity: 0.7,
-                    '&:hover': { opacity: 1 },
+                    opacity: 0,
+                    transition: 'opacity 0.2s',
                     mr: 0.5,
+                    width: 32,
+                    height: 32,
+                    borderRadius: '8px',
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    '&:hover': { 
+                      opacity: 1,
+                      backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                    },
+                    '.MuiListItem-root:hover &': {
+                      opacity: 0.6,
+                    },
+                    '.MuiListItemButton-root.Mui-selected + .MuiListItemSecondaryAction-root &': {
+                      opacity: 0.6,
+                    },
                   }}
                 >
-                  <FontAwesomeIcon icon={faTrash} size="sm" />
-                </Button>
+                  <FontAwesomeIcon icon={faEllipsisVertical} size="sm" />
+                </IconButton>
               }
             >
               <ListItemButton
@@ -369,6 +407,44 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
         open={isCreateDialogOpen}
         onClose={handleCloseCreateDialog}
       />
+      
+      {/* Agent Options Menu */}
+      <Menu
+        anchorEl={menuAnchorEl}
+        open={isMenuOpen}
+        onClose={handleCloseMenu}
+        anchorOrigin={{
+          vertical: 'top',
+          horizontal: 'right',
+        }}
+        transformOrigin={{
+          vertical: 'top',
+          horizontal: 'right',
+        }}
+        PaperProps={{
+          sx: {
+            minWidth: 150,
+            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
+            borderRadius: 1.5,
+          },
+        }}
+      >
+        <MenuItem 
+          onClick={handleOpenDeleteConfirmation}
+          sx={{ 
+            color: 'error.main',
+            py: 1.5,
+            '&:hover': {
+              backgroundColor: 'rgba(211, 47, 47, 0.08)',
+            },
+          }}
+        >
+          <ListItemIcon sx={{ color: 'error.main', minWidth: 36 }}>
+            <FontAwesomeIcon icon={faTrash} size="sm" />
+          </ListItemIcon>
+          <Typography variant="body2">Delete Agent</Typography>
+        </MenuItem>
+      </Menu>
       
       {/* Delete Confirmation Modal */}
       <ConfirmationModal
