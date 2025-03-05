@@ -3,6 +3,7 @@
  */
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import type { QueryKey } from '@tanstack/react-query';
 import { toast } from 'react-toastify';
 import type { AgentCreate } from '@renderer/api/local-operator/types';
 import { createLocalOperatorClient } from '@renderer/api/local-operator';
@@ -76,7 +77,9 @@ export const useDeleteAgent = () => {
         throw error;
       }
     },
-    onSuccess: () => {
+    onSuccess: (_data, agentId) => {
+      // Remove cached agent details to clear state before refetch
+      queryClient.removeQueries({ queryKey: [...agentsQueryKey, agentId] as QueryKey, exact: true });
       // Invalidate agents query to refetch the list
       queryClient.invalidateQueries({ queryKey: agentsQueryKey });
       toast.success('Agent deleted successfully');
