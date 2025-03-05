@@ -57,7 +57,7 @@ const Title = styled(Typography)({
 });
 
 const NewAgentButton = styled(Button)(({ theme }) => ({
-  borderRadius: 16,
+  borderRadius: 8,
   textTransform: 'none',
   fontWeight: 600,
   paddingLeft: 16,
@@ -77,7 +77,7 @@ const NewAgentButton = styled(Button)(({ theme }) => ({
 const SearchField = styled(TextField)({
   marginBottom: 16,
   '& .MuiOutlinedInput-root': {
-    borderRadius: 16,
+    borderRadius: 8,
     backgroundColor: 'rgba(255, 255, 255, 0.05)',
   },
 });
@@ -118,7 +118,7 @@ const AgentsList = styled(List)({
 
 const AgentListItemButton = styled(ListItemButton)({
   margin: '0 8px',
-  borderRadius: 16,
+  borderRadius: 8,
   marginBottom: 4,
   paddingRight: 40,
   '&.Mui-selected': {

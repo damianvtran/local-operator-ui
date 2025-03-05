@@ -129,6 +129,7 @@ const MessagesContainer = styled(Box)({
   display: 'flex',
   flexDirection: 'column',
   gap: 16,
+  backgroundColor: 'rgba(0, 0, 0, 0.2)',
   '&::-webkit-scrollbar': {
     width: '8px',
   },

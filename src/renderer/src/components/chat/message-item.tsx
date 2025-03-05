@@ -51,7 +51,7 @@ const StyledPaper = styled(Paper)(({ theme }) => ({
   },
   width: 'auto',
   padding: 16,
-  borderRadius: 16,
+  borderRadius: 8,
   wordBreak: 'break-word',
   overflowWrap: 'break-word',
   position: 'relative',

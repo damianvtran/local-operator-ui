@@ -41,7 +41,7 @@ const StyledPaper = styled(Paper)(({ theme }) => ({
   height: '100%',
   display: 'flex',
   flexDirection: 'column',
-  borderRadius: 16,
+  borderRadius: 8,
   backgroundColor: theme.palette.background.paper,
   boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
   transition: 'box-shadow 0.3s ease-in-out',

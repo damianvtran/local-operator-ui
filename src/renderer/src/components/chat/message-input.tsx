@@ -19,7 +19,7 @@ type MessageInputProps = {
 }
 
 const FormContainer = styled('form')(({ theme }) => ({
-  padding: theme.spacing(4),
+  padding: theme.spacing(3),
   display: 'flex',
   alignItems: 'center',
   gap: theme.spacing(2),

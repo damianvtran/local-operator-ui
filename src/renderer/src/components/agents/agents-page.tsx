@@ -13,8 +13,10 @@ import {
   Typography, 
   Divider, 
   IconButton,
-  alpha
+  alpha,
+  Tooltip,
 } from '@mui/material';
+import { styled } from '@mui/material/styles';
 import { PageHeader } from '../common/page-header';
 import { toast } from 'react-toastify';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -26,7 +28,8 @@ import {
   faServer,
   faShieldAlt,
   faIdCard,
-  faTag
+  faTag,
+  faArrowLeft
 } from '@fortawesome/free-solid-svg-icons';
 import { AgentList } from './agent-list';
 import type { AgentDetails, AgentUpdate } from '@renderer/api/local-operator/types';
@@ -40,6 +43,138 @@ type AgentsPageProps = {
    */
   initialSelectedAgentId?: string;
 };
+
+const PageContainer = styled(Box)(({ theme }) => ({
+  flexGrow: 1, 
+  height: '100%', 
+  overflow: 'hidden',
+  display: 'flex',
+  flexDirection: 'column',
+  padding: theme.spacing(4),
+  gap: theme.spacing(2),
+  [theme.breakpoints.down('sm')]: {
+    padding: theme.spacing(2),
+  },
+  [theme.breakpoints.between('sm', 'md')]: {
+    padding: theme.spacing(3),
+  },
+}));
+
+const DetailsPaper = styled(Paper)(({ theme }) => ({
+  padding: theme.spacing(4), 
+  height: '100%', 
+  borderRadius: 8,
+  backgroundColor: theme.palette.background.default,
+  display: 'flex',
+  flexDirection: 'column',
+  transition: 'all 0.25s ease',
+  boxShadow: '0 4px 20px rgba(0,0,0,0.06)',
+  '&:hover': {
+    boxShadow: '0 8px 30px rgba(0,0,0,0.08)',
+  },
+  overflow: 'hidden'
+}));
+
+const ScrollableContent = styled(Box)({
+  display: 'flex', 
+  flexDirection: 'column', 
+  height: '100%',
+  overflow: 'auto',
+  '&::-webkit-scrollbar': {
+    width: '6px',
+  },
+  '&::-webkit-scrollbar-track': {
+    backgroundColor: 'transparent',
+  },
+  '&::-webkit-scrollbar-thumb': {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: '10px',
+    '&:hover': {
+      backgroundColor: 'rgba(0, 0, 0, 0.2)',
+    }
+  },
+});
+
+const HeaderContainer = styled(Box)(({ theme }) => ({
+  display: 'flex', 
+  alignItems: 'center', 
+  justifyContent: 'space-between',
+  marginBottom: theme.spacing(2),
+  gap: theme.spacing(2)
+}));
+
+const SectionTitle = styled(Typography)(({ theme }) => ({
+  fontWeight: 600, 
+  marginBottom: theme.spacing(2), 
+  display: 'flex', 
+  alignItems: 'center',
+  color: theme.palette.text.primary
+}));
+
+const TitleIcon = styled(FontAwesomeIcon)({
+  marginRight: 10,
+  color: '#f2f2f3'
+});
+
+const InfoCard = styled(Box)(({ theme }) => ({
+  display: 'flex', 
+  alignItems: 'center', 
+  marginBottom: theme.spacing(2),
+  padding: theme.spacing(2),
+  borderRadius: 16,
+  backgroundColor: alpha(theme.palette.background.default, 0.7)
+}));
+
+const CardIcon = styled(FontAwesomeIcon)({
+  marginRight: 12, 
+  opacity: 0.8,
+  color: '#f2f2f3'
+});
+
+const LabelText = styled(Box)(({ theme }) => ({
+  color: theme.palette.text.secondary, 
+  marginRight: theme.spacing(1)
+}));
+
+const ValueText = styled(Box)({
+  fontWeight: 500
+});
+
+const MonospaceValueText = styled(ValueText)({
+  fontFamily: 'monospace'
+});
+
+const InfoButton = styled(IconButton)(({ theme }) => ({
+  marginLeft: theme.spacing(1),
+  color: theme.palette.primary.main,
+  '&:hover': {
+    backgroundColor: alpha(theme.palette.primary.main, 0.08)
+  }
+}));
+
+const EmptyStateContainer = styled(Box)(({ theme }) => ({
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  justifyContent: 'center',
+  flexGrow: 1,
+  padding: theme.spacing(4),
+  background: `linear-gradient(180deg, ${alpha(theme.palette.background.default, 0)} 0%, ${alpha(theme.palette.background.paper, 0.05)} 100%)`,
+  borderRadius: 16,
+}));
+
+const PlaceholderIcon = styled(FontAwesomeIcon)({
+  fontSize: '3rem',
+  marginBottom: '1rem',
+  opacity: 0.5
+});
+
+const DirectionIndicator = styled(Box)(({ theme }) => ({
+  display: 'flex',
+  alignItems: 'center',
+  color: theme.palette.primary.main,
+  opacity: 0.7
+}));
 
 /**
  * Agents Page Component
@@ -77,17 +212,7 @@ export const AgentsPage: FC<AgentsPageProps> = ({ initialSelectedAgentId }) => {
   };
   
   return (
-    <Box 
-      sx={{ 
-        flexGrow: 1, 
-        height: '100%', 
-        overflow: 'hidden',
-        display: 'flex',
-        flexDirection: 'column',
-        p: { xs: 2, sm: 3, md: 4 },
-        gap: 2
-      }}
-    >
+    <PageContainer>
       <PageHeader
         title="Agent Management"
         icon={faRobot}
@@ -105,44 +230,10 @@ export const AgentsPage: FC<AgentsPageProps> = ({ initialSelectedAgentId }) => {
         
         {/* Agent Details */}
         <Grid item xs={12} md={7} lg={8} sx={{ height: '100%' }}>
-          <Paper 
-            elevation={0} 
-            sx={{ 
-              p: 4, 
-              height: '100%', 
-              borderRadius: 3,
-              bgcolor: 'background.paper',
-              display: 'flex',
-              flexDirection: 'column',
-              transition: 'all 0.25s ease',
-              boxShadow: '0 4px 20px rgba(0,0,0,0.06)',
-              '&:hover': {
-                boxShadow: '0 8px 30px rgba(0,0,0,0.08)',
-              },
-              overflow: 'hidden'
-            }}
-          >
+          <DetailsPaper>
             {selectedAgent ? (
-              <Box sx={{ 
-                display: 'flex', 
-                flexDirection: 'column', 
-                height: '100%',
-                overflow: 'auto',
-                '&::-webkit-scrollbar': {
-                  width: '8px',
-                },
-                '&::-webkit-scrollbar-thumb': {
-                  backgroundColor: 'rgba(0, 0, 0, 0.1)',
-                  borderRadius: '4px',
-                },
-              }}>
-                <Box sx={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'space-between',
-                  mb: 3,
-                  gap: 3
-                }}>
+              <ScrollableContent>
+                <HeaderContainer>
                   <Box sx={{ width: '100%' }}>
                     <EditableField
                       value={selectedAgent.name}
@@ -232,30 +323,15 @@ export const AgentsPage: FC<AgentsPageProps> = ({ initialSelectedAgentId }) => {
                       />
                     </Box>
                   </Box>
-                </Box>
+                </HeaderContainer>
                 
-                <Divider sx={{ mb: 4 }} />
+                <Divider sx={{ mb: 3 }} />
                 
-                <Box sx={{ mb: 4 }}>
-                  <Typography 
-                    variant="subtitle1" 
-                    sx={{ 
-                      fontWeight: 600, 
-                      mb: 3, 
-                      display: 'flex', 
-                      alignItems: 'center',
-                      color: 'text.primary'
-                    }}
-                  >
-                    <FontAwesomeIcon 
-                      icon={faInfoCircle} 
-                      style={{ 
-                        marginRight: 10,
-                        color: '#f2f2f3'
-                      }} 
-                    />
+                <Box sx={{ mb: 3 }}>
+                  <SectionTitle variant="subtitle1">
+                    <TitleIcon icon={faInfoCircle} />
                     Agent Information
-                  </Typography>
+                  </SectionTitle>
                   
                   <EditableField
                     value={selectedAgent.description || ""}
@@ -287,144 +363,54 @@ export const AgentsPage: FC<AgentsPageProps> = ({ initialSelectedAgentId }) => {
                   
                   <Grid container spacing={3}>
                     <Grid item xs={12} sm={6}>
-                      <Box sx={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        mb: 2,
-                        p: 2,
-                        borderRadius: 2,
-                        bgcolor: (theme) => alpha(theme.palette.background.default, 0.7)
-                      }}>
-                        <FontAwesomeIcon 
-                          icon={faIdCard} 
-                          style={{ 
-                            marginRight: 12, 
-                            opacity: 0.8,
-                            color: '#f2f2f3'
-                          }} 
-                        />
+                      <InfoCard>
+                        <CardIcon icon={faIdCard} />
                         <Typography variant="body2" title="Unique identifier for this agent">
-                          <Box component="span" sx={{ color: 'text.secondary', mr: 1 }}>ID:</Box>
-                          <Box component="span" sx={{ fontFamily: 'monospace', fontWeight: 500 }}>
+                          <LabelText>ID</LabelText>
+                          <MonospaceValueText>
                             {selectedAgent.id}
-                          </Box>
+                          </MonospaceValueText>
                         </Typography>
-                      </Box>
+                      </InfoCard>
                     </Grid>
                     
                     <Grid item xs={12} sm={6}>
-                      <Box sx={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        mb: 2,
-                        p: 2,
-                        borderRadius: 2,
-                        bgcolor: (theme) => alpha(theme.palette.background.default, 0.7)
-                      }}>
-                        <FontAwesomeIcon 
-                          icon={faCalendarAlt} 
-                          style={{ 
-                            marginRight: 12, 
-                            opacity: 0.8,
-                            color: '#f2f2f3'
-                          }} 
-                        />
+                      <InfoCard>
+                        <CardIcon icon={faCalendarAlt} />
                         <Typography variant="body2" title="When this agent was created">
-                          <Box component="span" sx={{ color: 'text.secondary', mr: 1 }}>Created:</Box>
-                          <Box component="span" sx={{ fontWeight: 500 }}>
+                          <LabelText>Created</LabelText>
+                          <ValueText>
                             {new Date(selectedAgent.created_date).toLocaleString()}
-                          </Box>
+                          </ValueText>
                         </Typography>
-                      </Box>
+                      </InfoCard>
                     </Grid>
                     
                     <Grid item xs={12} sm={6}>
-                      <Box sx={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        mb: 2,
-                        p: 2,
-                        borderRadius: 2,
-                        bgcolor: (theme) => alpha(theme.palette.background.default, 0.7)
-                      }}>
-                        <FontAwesomeIcon 
-                          icon={faCodeBranch} 
-                          style={{ 
-                            marginRight: 12, 
-                            opacity: 0.8,
-                            color: '#f2f2f3'
-                          }} 
-                        />
+                      <InfoCard>
+                        <CardIcon icon={faCodeBranch} />
                         <Typography variant="body2" title="Agent version number">
-                          <Box component="span" sx={{ color: 'text.secondary', mr: 1 }}>Version:</Box>
-                          <Box component="span" sx={{ fontWeight: 500 }}>
+                          <LabelText>Version</LabelText>
+                          <ValueText>
                             {selectedAgent.version}
-                          </Box>
+                          </ValueText>
                         </Typography>
-                      </Box>
+                      </InfoCard>
                     </Grid>
                     
-                    <Grid item xs={12} sm={6}>
-                      <Box sx={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        mb: 2,
-                        p: 2,
-                        borderRadius: 2,
-                        bgcolor: (theme) => alpha(theme.palette.background.default, 0.7)
-                      }}>
-                        <FontAwesomeIcon 
-                          icon={faRobot} 
-                          style={{ 
-                            marginRight: 12, 
-                            opacity: 0.8,
-                            color: '#f2f2f3'
-                          }} 
-                        />
-                        <Typography variant="body2" title="AI model powering this agent">
-                          <Box component="span" sx={{ color: 'text.secondary', mr: 1 }}>Model:</Box>
-                          <Box component="span" sx={{ fontWeight: 500 }}>
-                            {selectedAgent.model || "Default"}
-                          </Box>
-                        </Typography>
-                      </Box>
-                    </Grid>
                   </Grid>
                 </Box>
                 
-                <Box sx={{ mt: 2 }}>
-                  <Typography 
-                    variant="subtitle1" 
-                    sx={{ 
-                      fontWeight: 600, 
-                      mb: 2,
-                      display: 'flex',
-                      alignItems: 'center',
-                      color: 'text.primary'
-                    }}
-                  >
-                    <FontAwesomeIcon 
-                      icon={faShieldAlt} 
-                      style={{ 
-                        marginRight: 10,
-                        color: '#f2f2f3'
-                      }} 
-                    />
+                <Box sx={{ mt: 1 }}>
+                  <SectionTitle variant="subtitle1">
+                    <TitleIcon icon={faShieldAlt} />
                     Security Prompt
-                    <IconButton 
-                      size="small" 
-                      sx={{ 
-                        ml: 1,
-                        color: 'primary.main',
-                        '&:hover': {
-                          backgroundColor: (theme) => alpha(theme.palette.primary.main, 0.08)
-                        }
-                      }}
-                      title="Security instructions that guide the agent's behavior and limitations"
-                    >
-                      <FontAwesomeIcon icon={faInfoCircle} size="xs" />
-                    </IconButton>
-                  </Typography>
+                    <Tooltip title="Security instructions that guide the agent's behavior and limitations" arrow placement="top">
+                      <InfoButton size="small">
+                        <FontAwesomeIcon icon={faInfoCircle} size="xs" />
+                      </InfoButton>
+                    </Tooltip>
+                  </SectionTitle>
                   
                   <EditableField
                     value={selectedAgent.security_prompt || ""}
@@ -453,54 +439,27 @@ export const AgentsPage: FC<AgentsPageProps> = ({ initialSelectedAgentId }) => {
                     }}
                   />
                 </Box>
-              </Box>
+              </ScrollableContent>
             ) : (
-              <Box 
-                sx={{ 
-                  display: 'flex', 
-                  flexDirection: 'column', 
-                  alignItems: 'center', 
-                  justifyContent: 'center',
-                  flexGrow: 1,
-                  p: 4,
-                  opacity: 0.8
-                }}
-              >
-                <FontAwesomeIcon 
-                  icon={faRobot} 
-                  size="4x" 
-                  style={{ 
-                    opacity: 0.3, 
-                    marginBottom: 24,
-                    color: '#f2f2f3'
-                  }} 
-                />
-                <Typography 
-                  variant="h6" 
-                  color="text.secondary" 
-                  sx={{ 
-                    textAlign: 'center', 
-                    mb: 2,
-                    fontWeight: 600
-                  }}
-                >
+              <EmptyStateContainer>
+                <PlaceholderIcon icon={faRobot} />
+                <Typography variant="h6" sx={{ mb: 1, fontWeight: 500 }}>
                   No Agent Selected
                 </Typography>
-                <Typography 
-                  variant="body1" 
-                  color="text.secondary" 
-                  sx={{ 
-                    textAlign: 'center',
-                    maxWidth: '400px'
-                  }}
-                >
+                <Typography variant="body2" color="text.secondary" align="center" sx={{ mb: 2, maxWidth: 500 }}>
                   Select an agent from the list to view its configuration and details
                 </Typography>
-              </Box>
+                <DirectionIndicator>
+                  <FontAwesomeIcon icon={faArrowLeft} style={{ marginRight: '0.5rem' }} />
+                  <Typography variant="body2">
+                    Select an Agent
+                  </Typography>
+                </DirectionIndicator>
+              </EmptyStateContainer>
             )}
-          </Paper>
+          </DetailsPaper>
         </Grid>
       </Grid>
-    </Box>
+    </PageContainer>
   );
 };
