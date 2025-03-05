@@ -1,8 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import type { FC } from 'react';
-import { Box, Paper, Divider, CircularProgress, Typography } from '@mui/material';
+import { Box, Paper, Divider, CircularProgress, Typography, Tabs, Tab } from '@mui/material';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faRobot, faArrowRight } from '@fortawesome/free-solid-svg-icons';
+import { faRobot, faArrowRight, faCode, faCommentDots } from '@fortawesome/free-solid-svg-icons';
 
 import { ChatHeader } from './chat-header';
 import { MessageItem } from './message-item';
@@ -21,6 +21,7 @@ type ChatProps = {
 
 export const ChatPage: FC<ChatProps> = ({ conversationId }) => {
   const [isLoading, setIsLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState<'chat' | 'raw'>('chat');
   
   // Initialize the API client (memoized to prevent recreation on every render)
   const apiClient = useMemo(() => createLocalOperatorClient(apiConfig.baseUrl), []);
@@ -122,21 +123,21 @@ export const ChatPage: FC<ChatProps> = ({ conversationId }) => {
           borderRadius: 0,
           justifyContent: 'center',
           alignItems: 'center',
-          p: 4,
+          p: 3,
         }}
       >
         <FontAwesomeIcon 
           icon={faRobot} 
           style={{ 
-            fontSize: '4rem', 
-            marginBottom: '1.5rem',
+            fontSize: '3rem', 
+            marginBottom: '1rem',
             opacity: 0.5,
           }} 
         />
-        <Typography variant="h5" sx={{ mb: 2, fontWeight: 500 }}>
+        <Typography variant="h6" sx={{ mb: 1, fontWeight: 500 }}>
           No Agent Selected
         </Typography>
-        <Typography variant="body1" color="text.secondary" align="center" sx={{ mb: 3, maxWidth: 500 }}>
+        <Typography variant="body2" color="text.secondary" align="center" sx={{ mb: 2, maxWidth: 500 }}>
           Select an agent from the sidebar to start a conversation.
         </Typography>
         <Box sx={{ 
@@ -193,93 +194,174 @@ export const ChatPage: FC<ChatProps> = ({ conversationId }) => {
       {/* Chat header */}
       <ChatHeader agentName={`Agent ${conversationId}`} description="Conversation with this agent" />
       
-      {/* Messages container */}
-      <Box 
-        ref={messagesContainerRef}
+      {/* Tabs for chat and raw */}
+      <Tabs 
+        value={activeTab} 
+        onChange={(_, newValue) => setActiveTab(newValue)}
         sx={{ 
-          flexGrow: 1, 
-          overflow: 'auto', 
-          p: 2,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 2,
-          '&::-webkit-scrollbar': {
-            width: '8px',
-          },
-          '&::-webkit-scrollbar-thumb': {
-            backgroundColor: 'rgba(255, 255, 255, 0.1)',
-            borderRadius: '4px',
-          },
+          borderBottom: 1, 
+          borderColor: 'divider',
+          minHeight: '42px',
+          '& .MuiTabs-indicator': {
+            height: 2,
+            borderRadius: '2px 2px 0 0'
+          }
+        }}
+        variant="fullWidth"
+        TabIndicatorProps={{
+          style: {
+            transition: 'all 0.3s ease'
+          }
         }}
       >
-        {/* Loading more messages indicator */}
-        {isFetchingMore && (
+        <Tab 
+          icon={<FontAwesomeIcon icon={faCommentDots} />}
+          iconPosition="start"
+          label="Chat" 
+          value="chat" 
+          sx={{ 
+            minHeight: '42px', 
+            py: 0.5,
+            textTransform: 'none',
+            fontSize: '0.85rem',
+            fontWeight: 500,
+            transition: 'all 0.2s ease',
+            opacity: activeTab === 'chat' ? 1 : 0.7,
+            '&:hover': {
+              opacity: 1,
+              backgroundColor: 'rgba(255, 255, 255, 0.05)'
+            },
+            '& .MuiTab-iconWrapper': {
+              mr: 0.75,
+              fontSize: '0.9rem'
+            }
+          }} 
+        />
+        <Tab 
+          icon={<FontAwesomeIcon icon={faCode} />}
+          iconPosition="start"
+          label="Raw" 
+          value="raw" 
+          sx={{ 
+            minHeight: '42px',
+            py: 0.5,
+            textTransform: 'none',
+            fontSize: '0.85rem',
+            fontWeight: 500,
+            transition: 'all 0.2s ease',
+            opacity: activeTab === 'raw' ? 1 : 0.7,
+            '&:hover': {
+              opacity: 1,
+              backgroundColor: 'rgba(255, 255, 255, 0.05)'
+            },
+            '& .MuiTab-iconWrapper': {
+              mr: 0.75,
+              fontSize: '0.9rem'
+            }
+          }} 
+        />
+      </Tabs>
+      
+      {activeTab === 'chat' ? (
+        /* Messages container */
+        <Box 
+          ref={messagesContainerRef}
+          sx={{ 
+            flexGrow: 1, 
+            overflow: 'auto', 
+            p: 2,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 2,
+            '&::-webkit-scrollbar': {
+              width: '8px',
+            },
+            '&::-webkit-scrollbar-thumb': {
+              backgroundColor: 'rgba(255, 255, 255, 0.1)',
+              borderRadius: '4px',
+            },
+          }}
+        >
+          {/* Loading more messages indicator */}
+          {isFetchingMore && (
+            <Box sx={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              padding: 2,
+              color: 'rgba(255, 255, 255, 0.7)'
+            }}>
+              <CircularProgress size={20} sx={{ mr: 1 }} />
+              Loading more messages...
+            </Box>
+          )}
+          
+          {/* Show loading indicator when initially loading messages */}
+          {isLoadingMessages && !messages.length ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+              <CircularProgress />
+            </Box>
+          ) : (
+            <>
+              {/* Render messages */}
+              {messages.length > 0 ? (
+                messages.map((message) => (
+                  <MessageItem key={message.id} message={message} />
+                ))
+              ) : (
+                <Box sx={{ textAlign: 'center', color: 'text.secondary', p: 4 }}>
+                  <Typography variant="body1">
+                    No messages yet. Start a conversation!
+                  </Typography>
+                </Box>
+              )}
+              
+              {/* Loading indicator for new message */}
+              {isLoading && <LoadingIndicator />}
+              
+              {/* Invisible element to scroll to */}
+              <div ref={messagesEndRef} />
+            </>
+          )}
+        </Box>
+      ) : (
+        /* Raw information tab */
+        <Box 
+          sx={{ 
+            flexGrow: 1, 
+            overflow: 'auto', 
+            p: 3,
+            bgcolor: 'rgba(0, 0, 0, 0.2)',
+            '&::-webkit-scrollbar': {
+              width: '8px',
+            },
+            '&::-webkit-scrollbar-thumb': {
+              backgroundColor: 'rgba(255, 255, 255, 0.1)',
+              borderRadius: '4px',
+            },
+          }}
+        >
+          <Typography variant="h6" gutterBottom sx={{ color: 'primary.main' }}>
+            Raw Information
+          </Typography>
           <Box sx={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center', 
-            padding: 2,
-            color: 'rgba(255, 255, 255, 0.7)'
+            p: 2, 
+            bgcolor: 'rgba(0, 0, 0, 0.3)', 
+            borderRadius: 1,
+            fontFamily: 'monospace',
+            whiteSpace: 'pre-wrap',
+            overflow: 'auto',
           }}>
-            <CircularProgress size={20} sx={{ mr: 1 }} />
-            Loading more messages...
-          </Box>
-        )}
-        
-        {/* Show loading indicator when initially loading messages */}
-        {isLoadingMessages && !messages.length ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-            <CircularProgress />
-          </Box>
-        ) : (
-          <>
-            {/* Debug info */}
-            {process.env.NODE_ENV !== 'production' && (
-              <Box sx={{ 
-                p: 2, 
-                mb: 2, 
-                bgcolor: 'rgba(0, 0, 0, 0.2)', 
-                borderRadius: 1,
-                fontSize: '0.75rem',
-                fontFamily: 'monospace',
-                whiteSpace: 'pre-wrap',
-                overflow: 'auto',
-                maxHeight: '200px'
-              }}>
-                <Typography variant="subtitle2" gutterBottom>
-                  Debug Info:
-                </Typography>
-                <Typography variant="body2" component="pre" sx={{ fontSize: '0.7rem' }}>
-                  {`Conversation ID: ${conversationId}
+            <Typography variant="body2" component="pre" sx={{ fontSize: '0.8rem' }}>
+              {`Conversation ID: ${conversationId}
 Messages count: ${messages.length}
 Has more messages: ${hasMoreMessages ? 'Yes' : 'No'}
 Loading more: ${isFetchingMore ? 'Yes' : 'No'}
 Store messages: ${JSON.stringify(getMessages(conversationId || ''), null, 2)}`}
-                </Typography>
-              </Box>
-            )}
-            
-            {/* Render messages */}
-            {messages.length > 0 ? (
-              messages.map((message) => (
-                <MessageItem key={message.id} message={message} />
-              ))
-            ) : (
-              <Box sx={{ textAlign: 'center', color: 'text.secondary', p: 4 }}>
-                <Typography variant="body1">
-                  No messages yet. Start a conversation!
-                </Typography>
-              </Box>
-            )}
-            
-            {/* Loading indicator for new message */}
-            {isLoading && <LoadingIndicator />}
-            
-            {/* Invisible element to scroll to */}
-            <div ref={messagesEndRef} />
-          </>
-        )}
-      </Box>
+            </Typography>
+          </Box>
+        </Box>
+      )}
       
       <Divider sx={{ opacity: 0.1 }} />
       
