@@ -174,6 +174,7 @@ export const AgentList: FC<AgentListProps> = ({
               textTransform: 'none',
               px: 2,
               fontWeight: 500,
+              minWidth: '110px', // Fixed width to prevent layout shifts
               transition: 'all 0.2s',
               '&:hover': {
                 transform: 'translateY(-2px)',
@@ -183,46 +184,66 @@ export const AgentList: FC<AgentListProps> = ({
             New Agent
           </Button>
           
-          <Box sx={{ position: 'relative' }}>
-            <Button 
-              variant="outlined" 
-              color="primary" 
-              onClick={() => refetch()} 
-              disabled={isLoading || isFetching}
-              size="small"
-              sx={{
-                borderRadius: 2,
-                textTransform: 'none',
-                px: 2,
-                fontWeight: 500,
-                transition: 'all 0.2s',
-                '&:hover': {
-                  transform: 'translateY(-2px)',
-                },
-                // Show subtle loading indicator for refetches when we already have data
-                ...(isFetching && stableAgents.length > 0 ? {
-                  backgroundColor: (theme) => alpha(theme.palette.primary.main, 0.04),
-                } : {})
-              }}
-            >
-              {isFetching ? 'Refreshing...' : 'Refresh'}
-            </Button>
+          <Button 
+            variant="outlined" 
+            color="primary" 
+            onClick={() => refetch()} 
+            disabled={isLoading || isFetching}
+            size="small"
+            sx={{
+              borderRadius: 2,
+              textTransform: 'none',
+              px: 2,
+              fontWeight: 500,
+              minWidth: '80px', // Fixed width to prevent layout shifts
+              position: 'relative', // For the loading indicator
+              transition: 'all 0.2s',
+              '&:hover': {
+                transform: 'translateY(-2px)',
+              },
+              // Show subtle loading indicator for refetches when we already have data
+              ...(isFetching ? {
+                backgroundColor: (theme) => alpha(theme.palette.primary.main, 0.04),
+              } : {})
+            }}
+          >
+            {/* Keep text consistent to prevent layout shifts */}
+            Refresh
             
-            {/* Small loading indicator for refetches when we already have data */}
-            {isFetching && stableAgents.length > 0 && (
-              <CircularProgress 
-                size={16} 
-                thickness={4} 
+            {/* Inline loading indicator that doesn't affect layout */}
+            {isFetching && (
+              <Box 
                 sx={{ 
                   position: 'absolute',
-                  top: -6,
-                  right: -6,
-                  color: 'primary.main',
-                  opacity: 0.8
-                }} 
-              />
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  pointerEvents: 'none' // Allow clicks to pass through
+                }}
+              >
+                <Box 
+                  sx={{ 
+                    width: '100%',
+                    height: 2,
+                    position: 'absolute',
+                    bottom: 0,
+                    left: 0,
+                    backgroundColor: 'primary.main',
+                    animation: 'pulse 1.5s infinite',
+                    '@keyframes pulse': {
+                      '0%': { opacity: 0.4 },
+                      '50%': { opacity: 0.8 },
+                      '100%': { opacity: 0.4 }
+                    }
+                  }}
+                />
+              </Box>
             )}
-          </Box>
+          </Button>
         </Box>
       </Box>
       
