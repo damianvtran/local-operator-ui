@@ -8,6 +8,7 @@ import {
   ListItemButton, 
   ListItemIcon, 
   ListItemText, 
+  Tooltip, 
   alpha, 
   useTheme 
 } from '@mui/material';
@@ -128,46 +129,29 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = ({
     // If sidebar is collapsed, use custom tooltip
     if (!expanded) {
       return (
-        <Box 
+        // @ts-ignore - MUI Tooltip requires children but we're providing it
+        <Tooltip
           key={item.view}
-          sx={{ position: 'relative' }}
-          className="custom-tooltip"
-          data-tooltip={item.label}
+          title={item.label}
+          placement="right"
+          arrow
+          sx={{
+            '& .MuiTooltip-tooltip': {
+              backgroundColor: 'rgba(0, 0, 0, 0.8)',
+              color: 'white',
+              fontSize: 12,
+              borderRadius: 1,
+              padding: '5px 10px',
+            },
+            '& .MuiTooltip-arrow': {
+              color: 'rgba(0, 0, 0, 0.8)',
+            },
+          }}
         >
-          <style jsx>{`
-            .custom-tooltip {
-              position: relative;
-            }
-            .custom-tooltip:hover::after {
-              content: attr(data-tooltip);
-              position: absolute;
-              left: 100%;
-              top: 50%;
-              transform: translateY(-50%);
-              margin-left: 10px;
-              padding: 5px 10px;
-              background-color: rgba(0, 0, 0, 0.8);
-              color: white;
-              border-radius: 4px;
-              font-size: 12px;
-              white-space: nowrap;
-              z-index: 1000;
-            }
-            .custom-tooltip:hover::before {
-              content: '';
-              position: absolute;
-              left: 100%;
-              top: 50%;
-              transform: translateY(-50%);
-              border-width: 5px;
-              border-style: solid;
-              border-color: transparent rgba(0, 0, 0, 0.8) transparent transparent;
-              margin-left: 0px;
-              z-index: 1000;
-            }
-          `}</style>
-          {navButton}
-        </Box>
+          <Box sx={{ position: 'relative' }}>
+            {navButton}
+          </Box>
+        </Tooltip>
       );
     }
 
