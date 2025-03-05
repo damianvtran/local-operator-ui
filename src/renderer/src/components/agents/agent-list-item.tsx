@@ -57,7 +57,7 @@ export const AgentListItem: FC<AgentListItemProps> = ({
             : alpha(theme.palette.primary.main, 0.12),
         },
         position: 'relative',
-        overflow: 'hidden',
+        overflow: 'visible',
       }}
     >
       <CardContent sx={{ p: 2.5 }}>
@@ -97,20 +97,35 @@ export const AgentListItem: FC<AgentListItemProps> = ({
             )}
             
             {/* Agent Options Menu */}
-            <AgentOptionsMenu
-              agentId={agent.id}
-              agentName={agent.name}
-              onAgentDeleted={onAgentDeleted}
-              isAgentsPage={true} // This is the agents page, so we don't need to show the settings option
-              buttonSx={{
-                '.MuiListItem-root:hover &': {
-                  opacity: 0.6,
-                },
-                '.MuiCard-root:hover &': {
-                  opacity: 0.6,
-                },
-              }}
-            />
+            <Box sx={{
+              width: 32,
+              height: 32,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              position: 'relative',
+              zIndex: 1,
+            }}>
+              <AgentOptionsMenu
+                agentId={agent.id}
+                agentName={agent.name}
+                onAgentDeleted={onAgentDeleted}
+                isAgentsPage={true} // This is the agents page, so we don't need to show the settings option
+                buttonSx={{
+                  '.MuiListItem-root:hover &': {
+                    opacity: 0.6,
+                  },
+                  '.MuiCard-root:hover &': {
+                    opacity: 0.6,
+                  },
+                  width: '100%',
+                  height: '100%',
+                  borderRadius: '8px',
+                  padding: 0,
+                  minWidth: 'unset',
+                }}
+              />
+            </Box>
           </Box>
         </Box>
         
