@@ -6,7 +6,6 @@ import { fas } from '@fortawesome/free-solid-svg-icons';
 import { fab } from '@fortawesome/free-brands-svg-icons';
 
 import { NavigationBar } from '@renderer/components/navigation/navigation-bar';
-import { ChatSidebar } from '@components/chat/chat-sidebar';
 import { ChatPage } from '@components/chat/chat-page';
 import { SettingsPage } from '@renderer/components/settings/settings-page';
 import { AgentsPage } from '@renderer/components/agents/agents-page';
@@ -47,28 +46,20 @@ const App: FC = () => {
       
       {/* Main Content Area */}
       <Box sx={{ 
-        display: 'flex', 
         flexGrow: 1,
         overflow: 'hidden'
       }}>
-        {/* Left Sidebar (always visible with fixed width) */}
-        <Box sx={{ flexShrink: 0, width: 280 }}>
-          <ChatSidebar 
-            selectedConversation={selectedConversation}
+        {currentView === 'chat' ? (
+          <ChatPage 
+            conversationId={selectedConversation} 
             onSelectConversation={handleSelectConversation}
+            selectedConversation={selectedConversation}
           />
-        </Box>
-        
-        {/* Main Content (Chat, Settings, or Agents) - Flex grow to fill available space */}
-        <Box sx={{ flexGrow: 1, overflow: 'hidden' }}>
-          {currentView === 'chat' ? (
-            <ChatPage conversationId={selectedConversation} />
-          ) : currentView === 'settings' ? (
-            <SettingsPage />
-          ) : (
-            <AgentsPage />
-          )}
-        </Box>
+        ) : currentView === 'settings' ? (
+          <SettingsPage />
+        ) : (
+          <AgentsPage />
+        )}
       </Box>
     </Box>
   );
