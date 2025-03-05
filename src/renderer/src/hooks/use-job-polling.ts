@@ -2,7 +2,7 @@
  * Custom hook for polling job status using React Query
  * Handles polling for job status and provides state for tracking job progress
  */
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { JobStatus, JobDetails } from '@renderer/api/local-operator/types';
 import type { Message } from '@renderer/components/chat/types';
@@ -39,6 +39,7 @@ export const useJobPolling = ({
   const [isLoading, setIsLoading] = useState(false);
   const queryClient = useQueryClient();
   const { getMessages, setMessages } = useChatStore();
+  const lastProcessedJobDataRef = useRef<string | null>(null);
   
   /**
    * Update conversation messages from execution history
@@ -136,7 +137,7 @@ export const useJobPolling = ({
   }, [conversationId, addMessage, updateConversationMessages]);
 
   // Use React Query to poll for job status
-  const { data: jobData, error } = useQuery({
+  const { data: jobData, error, dataUpdatedAt } = useQuery({
     queryKey: ['job', currentJobId],
     queryFn: async () => {
       if (!currentJobId) return null;
@@ -148,37 +149,54 @@ export const useJobPolling = ({
     },
     // Only run the query if we have a job ID
     enabled: !!currentJobId,
-    // Poll every 2 seconds
-    refetchInterval: currentJobId ? 2000 : false,
+    // Poll every 1 second while job is active
+    refetchInterval: currentJobId ? 1000 : false,
+    // Force refetch on interval regardless of window focus
+    refetchIntervalInBackground: true,
     // Don't refetch on window focus while polling
     refetchOnWindowFocus: false,
     // Don't cache the result
     gcTime: 0,
     staleTime: 0,
+    // Retry failed requests to ensure polling continues
+    retry: true,
+    retryDelay: 1000,
   });
 
   // Process job data when it changes
   useEffect(() => {
     if (!jobData || !conversationId) return;
     
-    // Update messages on each poll to show real-time progress
-    if (jobData.status === 'processing') {
-      console.log('Processing job:', jobData);
-      updateConversationMessages(conversationId);
-    }
+    // Create a unique identifier for the current job data to detect changes
+    const jobDataSignature = `${jobData.id}-${jobData.status}-${dataUpdatedAt}`;
     
-    // If job is completed or failed, handle it
-    if (jobData.status === 'completed' || jobData.status === 'failed') {
-      handleJobCompletion(jobData);
+    // Only process if this is new data
+    if (jobDataSignature !== lastProcessedJobDataRef.current) {
+      // Update the reference to the last processed job data
+      lastProcessedJobDataRef.current = jobDataSignature;
+      
+      // Update messages on each poll to show real-time progress
+      if (jobData.status === 'processing') {
+        updateConversationMessages(conversationId);
+      }
+      
+      // If job is completed or failed, handle it
+      if (jobData.status === 'completed' || jobData.status === 'failed') {
+        handleJobCompletion(jobData);
+      }
     }
-  }, [jobData, handleJobCompletion, conversationId, updateConversationMessages]);
+  }, [jobData, dataUpdatedAt, handleJobCompletion, conversationId, updateConversationMessages]);
 
   // Log any errors
   useEffect(() => {
     if (error) {
       console.error('Error polling job status:', error);
+      // Force refetch on error to ensure polling continues
+      if (currentJobId) {
+        queryClient.invalidateQueries({ queryKey: ['job', currentJobId] });
+      }
     }
-  }, [error]);
+  }, [error, currentJobId, queryClient]);
 
   return {
     currentJobId,
