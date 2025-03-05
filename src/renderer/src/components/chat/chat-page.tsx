@@ -240,7 +240,7 @@ export const ChatPage: FC<ChatProps> = ({
           >
             {/* Chat header */}
             <ChatHeader 
-              agentName={agentData?.name || `Agent ${conversationId}`} 
+              agentName={agentData?.name || ""} 
               description={agentData?.description || "Conversation with this agent"} 
             />
             
