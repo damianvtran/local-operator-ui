@@ -6,7 +6,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import type React from 'react';
-import type { FC, ChangeEvent, FocusEvent } from 'react';
+import type { FC, ChangeEvent, FocusEvent, KeyboardEvent } from 'react';
 import { 
   TextField, 
   Typography, 
@@ -161,6 +161,26 @@ export const EditableField: FC<EditableFieldProps> = ({
   };
   
   /**
+   * Handles key press events in the text field.
+   * Saves the value when Enter is pressed if there are changes.
+   * 
+   * @param e - The keyboard event.
+   */
+  const handleKeyPress = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && !multiline) {
+      e.preventDefault();
+      if (editValue !== originalValue) {
+        handleSave();
+      }
+    } else if (e.key === 'Enter' && e.shiftKey && multiline) {
+      e.preventDefault();
+      if (editValue !== originalValue) {
+        handleSave();
+      }
+    }
+  };
+  
+  /**
    * Clears the field by forcing its value to empty and calling onSave.
    * This function bypasses change detection and clears regardless of current value.
    * 
@@ -222,6 +242,7 @@ export const EditableField: FC<EditableFieldProps> = ({
             value={editValue}
             onChange={handleChange}
             onBlur={handleBlur}
+            onKeyPress={handleKeyPress}
             multiline={multiline}
             rows={multiline ? rows : undefined}
             placeholder={placeholder}
