@@ -194,7 +194,7 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 	const [searchQuery, setSearchQuery] = useState("");
 	const [page, setPage] = useState(1);
 	const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-	const perPage = 10;
+	const perPage = 50;
 
 	const {
 		data: agents = [],

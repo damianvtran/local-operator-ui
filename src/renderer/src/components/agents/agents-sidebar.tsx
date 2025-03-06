@@ -196,7 +196,7 @@ export const AgentsSidebar: FC<AgentsSidebarProps> = ({
 	const [searchQuery, setSearchQuery] = useState("");
 	const [page, setPage] = useState(1);
 	const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-	const perPage = 10;
+	const perPage = 50;
 
 	// Store previous agents data to prevent UI flicker during refetches
 	const [stableAgents, setStableAgents] = useState<AgentDetails[]>([]);
