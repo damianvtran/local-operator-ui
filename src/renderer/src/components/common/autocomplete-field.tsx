@@ -181,7 +181,6 @@ export const AutocompleteField = ({
 	isSaving = false,
 	helperText,
 	groupBy,
-	filterOptions,
 	allowFreeText = true,
 }: AutocompleteFieldProps) => {
 	const [inputValue, setInputValue] = useState(value);
