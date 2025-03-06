@@ -10,9 +10,6 @@ import {
   Alert,
   Box,
   styled,
-  List,
-  ListItem,
-  ListItemText,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -31,7 +28,9 @@ import {
   faEdit, 
   faPlus, 
   faInfoCircle,
-  faLock
+  faLock,
+  faKey,
+  faCheck
 } from '@fortawesome/free-solid-svg-icons';
 import { useCredentials } from '@renderer/hooks/use-credentials';
 import { useUpdateCredential } from '@renderer/hooks/use-update-credential';
@@ -60,29 +59,69 @@ const LoadingContainer = styled(Box)(() => ({
   minHeight: 240,
 }));
 
-const StyledListItem = styled(ListItem)(() => ({
+const CredentialCard = styled(Paper)(({ theme }) => ({
+  padding: theme.spacing(2),
+  height: '100%',
+  display: 'flex',
+  flexDirection: 'column',
   borderRadius: 8,
-  marginBottom: 8,
-  backgroundColor: 'rgba(0, 0, 0, 0.03)',
+  transition: 'all 0.2s ease-in-out',
+  backgroundColor: 'rgba(0, 0, 0, 0.02)',
   '&:hover': {
-    backgroundColor: 'rgba(0, 0, 0, 0.05)',
+    backgroundColor: 'rgba(0, 0, 0, 0.04)',
+    transform: 'translateY(-2px)',
+    boxShadow: '0 6px 20px rgba(0,0,0,0.08)',
   },
 }));
 
 const CredentialName = styled(Typography)(() => ({
   fontWeight: 500,
-}));
-
-const AddButtonContainer = styled(Box)(() => ({
   display: 'flex',
-  justifyContent: 'center',
-  marginTop: 16,
+  alignItems: 'center',
+  gap: 8,
 }));
 
-const StyledPaper = styled(Paper)(({ theme }) => ({
-  padding: theme.spacing(2),
+const CredentialKey = styled(Typography)(({ theme }) => ({
+  color: theme.palette.text.secondary,
+  fontSize: '0.85rem',
+  marginTop: 4,
+}));
+
+const CredentialDescription = styled(Typography)(({ theme }) => ({
+  color: theme.palette.text.secondary,
+  marginTop: 8,
+  marginBottom: 16,
+  flexGrow: 1,
+}));
+
+const CredentialActions = styled(Box)(() => ({
+  display: 'flex',
+  justifyContent: 'flex-end',
+  marginTop: 'auto',
+}));
+
+const SectionTitle = styled(Typography)(({ theme }) => ({
+  marginTop: theme.spacing(4),
   marginBottom: theme.spacing(2),
-  backgroundColor: 'rgba(0, 0, 0, 0.02)',
+  fontWeight: 500,
+}));
+
+const SectionDescription = styled(Typography)(({ theme }) => ({
+  marginBottom: theme.spacing(3),
+  color: theme.palette.text.secondary,
+}));
+
+const EmptyStateContainer = styled(Box)(({ theme }) => ({
+  padding: theme.spacing(4),
+  textAlign: 'center',
+  backgroundColor: 'rgba(0, 0, 0, 0.01)',
+  borderRadius: 8,
+  marginBottom: theme.spacing(4),
+}));
+
+const EmptyStateIcon = styled(Box)(() => ({
+  marginBottom: 16,
+  opacity: 0.5,
 }));
 
 /**
@@ -349,87 +388,136 @@ export const Credentials: FC = () => {
     <StyledCard>
       <StyledCardContent>
         
-        {/* Current Credentials */}
+        {/* Configured Credentials */}
+        <SectionTitle variant="h6">
+          Configured Credentials
+        </SectionTitle>
+        <SectionDescription variant="body2">
+          These API credentials are currently configured and available for use.
+        </SectionDescription>
+        
         {existingKeys.length > 0 ? (
-          <List>
+          <Grid container spacing={3}>
             {existingKeys.map((key) => {
               const credInfo = getCredentialInfo(key);
               return (
-                <StyledListItem
-                  key={key}
-                  secondaryAction={
-                    <IconButton 
-                      edge="end" 
-                      aria-label="edit"
-                      onClick={() => handleEditCredential(key)}
-                    >
-                      <FontAwesomeIcon icon={faEdit} />
-                    </IconButton>
-                  }
-                >
-                  <ListItemText
-                    primary={
-                      <Box display="flex" alignItems="center" gap={1}>
-                        <FontAwesomeIcon icon={faLock} />
-                        <CredentialName>{credInfo.name}</CredentialName>
-                        <Tooltip title={credInfo.description}>
-                          <IconButton size="small">
-                            <FontAwesomeIcon icon={faInfoCircle} size="xs" />
-                          </IconButton>
-                        </Tooltip>
-                      </Box>
-                    }
-                    secondary={`Key: ${key}`}
-                  />
-                </StyledListItem>
+                <Grid item xs={12} sm={6} md={4} key={key}>
+                  <CredentialCard elevation={1}>
+                    <CredentialName>
+                      <FontAwesomeIcon icon={faLock} />
+                      {credInfo.name}
+                      <Tooltip title={credInfo.description}>
+                        <IconButton size="small">
+                          <FontAwesomeIcon icon={faInfoCircle} size="xs" />
+                        </IconButton>
+                      </Tooltip>
+                    </CredentialName>
+                    <CredentialKey>
+                      {key}
+                    </CredentialKey>
+                    <CredentialDescription variant="body2">
+                      {credInfo.description}
+                    </CredentialDescription>
+                    <CredentialActions>
+                      <Button 
+                        variant="outlined" 
+                        size="small"
+                        startIcon={<FontAwesomeIcon icon={faEdit} />}
+                        onClick={() => handleEditCredential(key)}
+                      >
+                        Update
+                      </Button>
+                    </CredentialActions>
+                  </CredentialCard>
+                </Grid>
               );
             })}
-          </List>
+          </Grid>
         ) : (
-          <Alert severity="info" sx={{ mb: 2 }}>
-            No credentials configured yet. Add your first credential to get started.
-          </Alert>
+          <EmptyStateContainer>
+            <EmptyStateIcon>
+              <FontAwesomeIcon icon={faKey} size="2x" />
+            </EmptyStateIcon>
+            <Typography variant="h6" gutterBottom>
+              No Credentials Configured
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              You haven't set up any API credentials yet. Add credentials from the available options below.
+            </Typography>
+          </EmptyStateContainer>
         )}
         
         {/* Available Credentials */}
-        {availableCredentials.length > 0 && (
-          <>
-            <Typography variant="h6" sx={{ mt: 4, mb: 2 }}>
-              Available Credentials
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              These are common API credentials you can add to enhance functionality.
-            </Typography>
-            
-            <Grid container spacing={2}>
-              {availableCredentials.map((cred) => (
-                <Grid item xs={12} md={6} key={cred.key}>
-                  <StyledPaper>
-                    <Typography variant="subtitle1" fontWeight="500">
-                      {cred.name}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary" sx={{ mt: 1, mb: 2 }}>
-                      {cred.description}
-                    </Typography>
+        <SectionTitle variant="h6">
+          Available Credentials
+        </SectionTitle>
+        <SectionDescription variant="body2">
+          These are common API credentials you can configure to enhance functionality.
+        </SectionDescription>
+        
+        {availableCredentials.length > 0 ? (
+          <Grid container spacing={3}>
+            {availableCredentials.map((cred) => (
+              <Grid item xs={12} sm={6} md={4} key={cred.key}>
+                <CredentialCard elevation={1}>
+                  <CredentialName>
+                    <FontAwesomeIcon icon={faKey} />
+                    {cred.name}
+                  </CredentialName>
+                  <CredentialKey>
+                    {cred.key}
+                  </CredentialKey>
+                  <CredentialDescription variant="body2">
+                    {cred.description}
+                  </CredentialDescription>
+                  <CredentialActions>
                     <Button 
                       variant="outlined" 
                       size="small"
+                      color="primary"
                       startIcon={<FontAwesomeIcon icon={faPlus} />}
                       onClick={() => {
                         setCurrentCredential(cred.key);
                         setAddDialogOpen(true);
                       }}
                     >
-                      Add Credential
+                      Configure
                     </Button>
-                  </StyledPaper>
-                </Grid>
-              ))}
-            </Grid>
-          </>
+                    {cred.url && (
+                      <Tooltip title={`Get your ${cred.name}`}>
+                        <IconButton 
+                          size="small" 
+                          sx={{ ml: 1 }}
+                          component="a"
+                          href={cred.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <FontAwesomeIcon icon={faInfoCircle} />
+                        </IconButton>
+                      </Tooltip>
+                    )}
+                  </CredentialActions>
+                </CredentialCard>
+              </Grid>
+            ))}
+          </Grid>
+        ) : (
+          <EmptyStateContainer>
+            <EmptyStateIcon>
+              <FontAwesomeIcon icon={faCheck} size="2x" />
+            </EmptyStateIcon>
+            <Typography variant="h6" gutterBottom>
+              All Available Credentials Configured
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              You've configured all the common API credentials. You can still add custom credentials if needed.
+            </Typography>
+          </EmptyStateContainer>
         )}
         
-        <AddButtonContainer>
+        {/* Add Custom Credential Button */}
+        <Box display="flex" justifyContent="center" mt={4}>
           <Button
             variant="contained"
             color="primary"
@@ -438,7 +526,7 @@ export const Credentials: FC = () => {
           >
             Add Custom Credential
           </Button>
-        </AddButtonContainer>
+        </Box>
         
         {/* Edit Credential Dialog */}
         <CredentialDialog
