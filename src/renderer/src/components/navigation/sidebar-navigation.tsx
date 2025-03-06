@@ -20,13 +20,16 @@ import {
 	alpha,
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
+import { useCurrentView } from "@renderer/hooks/use-route-params";
 import React, { useState } from "react";
 import type { FC } from "react";
+import { useNavigate } from "react-router-dom";
 
-type SidebarNavigationProps = {
-	currentView: string;
-	onNavigate: (view: string) => void;
-};
+/**
+ * Props for the SidebarNavigation component
+ * No props needed as we use React Router hooks internally
+ */
+type SidebarNavigationProps = Record<string, never>;
 
 const StyledDrawer = styled(Drawer, {
 	shouldForwardProp: (prop) => prop !== "width",
@@ -156,15 +159,12 @@ const ToggleButton = styled(IconButton)(() => ({
 
 /**
  * SidebarNavigation component that provides a collapsible sidebar for application navigation
- *
- * @param currentView - The current active view/page
- * @param onNavigate - Function to handle navigation between views
+ * Uses React Router for navigation
  */
-export const SidebarNavigation: FC<SidebarNavigationProps> = ({
-	currentView,
-	onNavigate,
-}) => {
+export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 	const [expanded, setExpanded] = useState(true);
+	const navigate = useNavigate();
+	const currentView = useCurrentView();
 
 	const toggleSidebar = () => {
 		setExpanded(!expanded);
@@ -175,30 +175,35 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = ({
 		{
 			icon: faCode,
 			label: "Chat",
-			view: "chat",
+			path: "/chat",
 			isActive: currentView === "chat",
 		},
 		{
 			icon: faRobot,
 			label: "Agents",
-			view: "agents",
+			path: "/agents",
 			isActive: currentView === "agents",
 		},
 		{
 			icon: faGear,
 			label: "Settings",
-			view: "settings",
+			path: "/settings",
 			isActive: currentView === "settings",
 		},
 	];
 
 	const drawerWidth = expanded ? 240 : 72;
 
+	// Handle navigation
+	const handleNavigate = (path: string) => {
+		navigate(path);
+	};
+
 	// Render a navigation item with or without tooltip based on sidebar state
 	const renderNavItem = (item: (typeof navItems)[0]) => {
 		const navButton = (
 			<NavItemButton
-				onClick={() => onNavigate(item.view)}
+				onClick={() => handleNavigate(item.path)}
 				isActive={item.isActive}
 				isExpanded={expanded}
 			>
@@ -222,7 +227,7 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = ({
 		if (!expanded) {
 			return (
 				<StyledTooltip
-					key={item.view}
+					key={item.path}
 					title={item.label}
 					placement="right"
 					arrow
@@ -233,7 +238,7 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = ({
 		}
 
 		// Otherwise return just the button
-		return <Box key={item.view}>{navButton}</Box>;
+		return <Box key={item.path}>{navButton}</Box>;
 	};
 
 	return (
@@ -251,7 +256,7 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = ({
 			{/* User Profile and Toggle Button at Bottom */}
 			<Box>
 				{/* User Profile */}
-				<UserProfileSidebar expanded={expanded} onNavigate={onNavigate} />
+				<UserProfileSidebar expanded={expanded} />
 
 				{/* Toggle Button - Now positioned below user profile */}
 				<ToggleButtonContainer>

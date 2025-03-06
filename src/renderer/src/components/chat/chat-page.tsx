@@ -9,6 +9,7 @@ import { useAgent } from "@hooks/use-agents";
 import { useConversationMessages } from "@hooks/use-conversation-messages";
 import { useJobPolling } from "@hooks/use-job-polling";
 import { useScrollToBottom } from "@hooks/use-scroll-to-bottom";
+import { useAgentRouteParam } from "@renderer/hooks/use-route-params";
 import {
 	Box,
 	CircularProgress,
@@ -24,6 +25,7 @@ import { apiConfig } from "@renderer/config";
 import { useChatStore } from "@store/chat-store";
 import React, { useState, useMemo } from "react";
 import type { FC } from "react";
+import { useNavigate } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
 import { ChatHeader } from "./chat-header";
 import { ChatOptionsSidebar } from "./chat-options-sidebar";
@@ -35,17 +37,9 @@ import type { Message } from "./types";
 
 /**
  * Props for the ChatPage component
+ * No props needed as we use React Router hooks internally
  */
-type ChatProps = {
-	/** ID of the current conversation */
-	conversationId?: string;
-	/** Callback for when a conversation is selected */
-	onSelectConversation: (id: string) => void;
-	/** Currently selected conversation ID */
-	selectedConversation?: string;
-	/** Callback for navigating to agent settings */
-	onNavigateToAgentSettings?: (agentId: string) => void;
-};
+type ChatProps = Record<string, never>;
 
 const Container = styled(Box)({
 	display: "flex",
@@ -206,13 +200,16 @@ const StyledDivider = styled(Divider)({
  * Chat Page Component
  *
  * Displays the chat interface with a sidebar for agent selection and a main area for messages
+ * Uses React Router for navigation and state management
  */
-export const ChatPage: FC<ChatProps> = ({
-	conversationId,
-	onSelectConversation,
-	selectedConversation,
-	onNavigateToAgentSettings,
-}) => {
+export const ChatPage: FC<ChatProps> = () => {
+	// Get agent ID from URL parameters using custom hook
+	const { agentId, navigateToAgent } = useAgentRouteParam();
+	const navigate = useNavigate();
+	
+	// Use the agent ID from URL as the conversation ID
+	const conversationId = agentId;
+	const selectedConversation = agentId;
 	const [activeTab, setActiveTab] = useState<"chat" | "raw">("chat");
 	const [isOptionsSidebarOpen, setIsOptionsSidebarOpen] = useState(false);
 
@@ -262,6 +259,16 @@ export const ChatPage: FC<ChatProps> = ({
 			conversationId,
 			addMessage,
 		});
+
+	// Handle selecting a conversation
+	const handleSelectConversation = (id: string) => {
+		navigateToAgent(id, 'chat');
+	};
+
+	// Handle navigating to agent settings
+	const handleNavigateToAgentSettings = (agentId: string) => {
+		navigate(`/agents/${agentId}`);
+	};
 
 	// Handle sending a new message
 	const handleSendMessage = async (content: string, file: File | null) => {
@@ -360,8 +367,8 @@ export const ChatPage: FC<ChatProps> = ({
 			<SidebarContainer>
 				<ChatSidebar
 					selectedConversation={selectedConversation}
-					onSelectConversation={onSelectConversation}
-					onNavigateToAgentSettings={onNavigateToAgentSettings}
+					onSelectConversation={handleSelectConversation}
+					onNavigateToAgentSettings={handleNavigateToAgentSettings}
 				/>
 			</SidebarContainer>
 

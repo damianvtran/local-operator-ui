@@ -3,8 +3,9 @@ import { fab } from "@fortawesome/free-brands-svg-icons";
 import { fas } from "@fortawesome/free-solid-svg-icons";
 import { Box, CssBaseline } from "@mui/material";
 import { styled } from "@mui/material/styles";
-import React, { useState, useEffect } from "react";
+import React from "react";
 import type { FC } from "react";
+import { Routes, Route, Navigate } from "react-router-dom";
 
 import { ChatPage } from "@components/chat/chat-page";
 import { AgentsPage } from "@renderer/components/agents/agents-page";
@@ -26,70 +27,39 @@ const MainContent = styled(Box)(() => ({
 	flexDirection: "column",
 }));
 
+/**
+ * Main application component
+ * 
+ * Handles routing and layout for the entire application
+ */
 const App: FC = () => {
-	const [currentView, setCurrentView] = useState<
-		"chat" | "settings" | "agents"
-	>("chat");
-	const [selectedConversation, setSelectedConversation] = useState<
-		string | undefined
-	>(undefined);
-	const [selectedAgentForSettings, setSelectedAgentForSettings] = useState<
-		string | undefined
-	>(undefined);
-
-	// Handle navigation between views
-	const handleNavigate = (view: string) => {
-		if (view === "chat" || view === "settings" || view === "agents") {
-			setCurrentView(view as "chat" | "settings" | "agents");
-		}
-	};
-
-	// Handle navigation to agent settings
-	const handleNavigateToAgentSettings = (agentId: string) => {
-		setSelectedAgentForSettings(agentId);
-		setCurrentView("agents");
-	};
-
-	// Reset selectedAgentForSettings when leaving the agents page
-	useEffect(() => {
-		if (currentView !== "agents") {
-			setSelectedAgentForSettings(undefined);
-		}
-	}, [currentView]);
-
-	// Handle selecting a conversation
-	const handleSelectConversation = (id: string) => {
-		setSelectedConversation(id);
-		setCurrentView("chat"); // Switch to chat view when selecting a conversation
-	};
-
 	return (
 		<AppContainer>
 			<CssBaseline />
 
 			{/* Sidebar Navigation */}
-			<SidebarNavigation
-				currentView={currentView}
-				onNavigate={handleNavigate}
-			/>
+			<SidebarNavigation />
 
 			{/* Main Content Area */}
 			<MainContent>
-				{currentView === "chat" ? (
-					<ChatPage
-						conversationId={selectedConversation}
-						onSelectConversation={handleSelectConversation}
-						selectedConversation={selectedConversation}
-						onNavigateToAgentSettings={handleNavigateToAgentSettings}
-					/>
-				) : currentView === "settings" ? (
-					<SettingsPage />
-				) : (
-					<AgentsPage
-						key={selectedAgentForSettings}
-						initialSelectedAgentId={selectedAgentForSettings}
-					/>
-				)}
+				<Routes>
+					{/* Redirect root to chat */}
+					<Route path="/" element={<Navigate to="/chat" replace />} />
+					
+					{/* Chat routes */}
+					<Route path="/chat" element={<ChatPage />} />
+					<Route path="/chat/:agentId" element={<ChatPage />} />
+					
+					{/* Agents routes */}
+					<Route path="/agents" element={<AgentsPage />} />
+					<Route path="/agents/:agentId" element={<AgentsPage />} />
+					
+					{/* Settings route */}
+					<Route path="/settings" element={<SettingsPage />} />
+					
+					{/* Fallback route - redirect to chat */}
+					<Route path="*" element={<Navigate to="/chat" replace />} />
+				</Routes>
 			</MainContent>
 		</AppContainer>
 	);

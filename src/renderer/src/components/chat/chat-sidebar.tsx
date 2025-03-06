@@ -169,9 +169,15 @@ const PaginationContainer = styled(Box)({
 	marginTop: 24,
 });
 
+/**
+ * Props for the ChatSidebar component
+ */
 type ChatSidebarProps = {
+	/** Currently selected conversation ID */
 	selectedConversation?: string;
+	/** Callback for when a conversation is selected */
 	onSelectConversation: (id: string) => void;
+	/** Callback for navigating to agent settings */
 	onNavigateToAgentSettings?: (agentId: string) => void;
 };
 
@@ -179,6 +185,7 @@ type ChatSidebarProps = {
  * Chat Sidebar Component
  *
  * Displays a list of agents with search, create, and delete functionality
+ * Uses React Router for navigation
  */
 export const ChatSidebar: FC<ChatSidebarProps> = ({
 	selectedConversation,

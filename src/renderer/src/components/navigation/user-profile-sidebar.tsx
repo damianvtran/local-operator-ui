@@ -20,10 +20,15 @@ import { useUserStore } from "@renderer/store/user-store";
 import { useState } from "react";
 import type React from "react";
 import type { FC } from "react";
+import { useNavigate } from "react-router-dom";
 
+/**
+ * Props for the UserProfileSidebar component
+ */
 type UserProfileSidebarProps = {
+	/** Whether the sidebar is expanded or collapsed */
 	expanded: boolean;
-	onNavigate: (view: string) => void;
+	/** Whether to display authentication-related menu items (default: false) */
 	useAuth?: boolean;
 };
 
@@ -170,16 +175,13 @@ const StyledTooltip = styled(Tooltip)(() => ({
 /**
  * UserProfileSidebar component displays user information at the bottom of the sidebar
  * Shows only the avatar when collapsed, and user details when expanded
- *
- * @param expanded - Whether the sidebar is expanded or collapsed
- * @param onNavigate - Function to handle navigation between views
- * @param useAuth - Whether to display authentication-related menu items (default: false)
+ * Uses React Router for navigation
  */
 export const UserProfileSidebar: FC<UserProfileSidebarProps> = ({
 	expanded,
-	onNavigate,
 	useAuth = false,
 }) => {
+	const navigate = useNavigate();
 	const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 	const open = Boolean(anchorEl);
 
@@ -192,7 +194,7 @@ export const UserProfileSidebar: FC<UserProfileSidebarProps> = ({
 		if (useAuth) {
 			setAnchorEl(event.currentTarget);
 		} else {
-			onNavigate("settings");
+			navigate("/settings");
 		}
 	};
 
@@ -200,9 +202,9 @@ export const UserProfileSidebar: FC<UserProfileSidebarProps> = ({
 		setAnchorEl(null);
 	};
 
-	const handleNavigate = (view: string) => {
+	const handleNavigate = (path: string) => {
 		handleClose();
-		onNavigate(view);
+		navigate(path);
 	};
 
 	// Get user initials from name or use default icon
@@ -260,7 +262,7 @@ export const UserProfileSidebar: FC<UserProfileSidebarProps> = ({
 					transformOrigin={{ horizontal: "right", vertical: "top" }}
 					anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
 				>
-					<MenuItemStyled onClick={() => handleNavigate("settings")}>
+					<MenuItemStyled onClick={() => handleNavigate("/settings")}>
 						<IconWrapper>
 							<FontAwesomeIcon icon={faGear} />
 						</IconWrapper>
