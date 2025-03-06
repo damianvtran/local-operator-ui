@@ -17,10 +17,10 @@ export const agentsQueryKey = ["agents"];
  * Hook for fetching agents from the Local Operator API
  *
  * @param page - Page number (default: 1)
- * @param perPage - Number of agents per page (default: 10)
+ * @param perPage - Number of agents per page (default: 50)
  * @returns Query result with agents data, loading state, error state, and refetch function
  */
-export const useAgents = (page = 1, perPage = 10) => {
+export const useAgents = (page = 1, perPage = 50) => {
 	return useQuery({
 		queryKey: [...agentsQueryKey, page, perPage],
 		queryFn: async () => {

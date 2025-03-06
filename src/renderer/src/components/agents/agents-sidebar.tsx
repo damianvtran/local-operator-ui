@@ -23,7 +23,6 @@ import {
 	ListItemAvatar,
 	ListItemButton,
 	ListItemText,
-	Pagination,
 	Paper,
 	TextField,
 	Tooltip,
@@ -31,9 +30,11 @@ import {
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import { AgentOptionsMenu } from "@renderer/components/common/agent-options-menu";
+import { CompactPagination } from "@renderer/components/common/compact-pagination";
 import { CreateAgentDialog } from "@renderer/components/common/create-agent-dialog";
 import type { AgentDetails } from "@renderer/api/local-operator/types";
 import { useAgents } from "@renderer/hooks/use-agents";
+import { usePaginationParams } from "@renderer/hooks/use-pagination-params";
 import { queryClient } from "@renderer/api/query-client";
 import { createLocalOperatorClient } from "@renderer/api/local-operator";
 import { apiConfig } from "@renderer/config";
@@ -141,12 +142,6 @@ const AgentAvatar = styled(Avatar)(({ theme }) => ({
 	color: theme.palette.primary.main,
 }));
 
-const PaginationContainer = styled(Box)({
-	display: "flex",
-	justifyContent: "center",
-	marginTop: 24,
-});
-
 const CreationDateText = styled(Typography)({
 	display: "flex",
 	alignItems: "center",
@@ -194,10 +189,12 @@ export const AgentsSidebar: FC<AgentsSidebarProps> = ({
 	onSelectAgent,
 }) => {
 	const [searchQuery, setSearchQuery] = useState("");
-	const [page, setPage] = useState(1);
 	const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 	const perPage = 50;
-
+	
+	// Use the pagination hook to get and set the page from URL
+	const { page, setPage } = usePaginationParams();
+	
 	// Store previous agents data to prevent UI flicker during refetches
 	const [stableAgents, setStableAgents] = useState<AgentDetails[]>([]);
 	const prevFetchingRef = useRef(false);
@@ -233,7 +230,7 @@ export const AgentsSidebar: FC<AgentsSidebarProps> = ({
 		(_event: ChangeEvent<unknown>, value: number) => {
 			setPage(value);
 		},
-		[],
+		[setPage],
 	);
 
 	const handleSelectAgent = useCallback(
@@ -432,17 +429,6 @@ export const AgentsSidebar: FC<AgentsSidebarProps> = ({
 							</AgentListItemButton>
 						</ListItem>
 					))}
-					{displayAgents.length > perPage && (
-						<PaginationContainer>
-							<Pagination
-								count={Math.ceil(displayAgents.length / perPage)}
-								page={page}
-								onChange={handlePageChange}
-								color="primary"
-								size="medium"
-							/>
-						</PaginationContainer>
-					)}
 				</AgentsList>
 			)}
 
@@ -450,6 +436,13 @@ export const AgentsSidebar: FC<AgentsSidebarProps> = ({
 				open={isCreateDialogOpen}
 				onClose={handleCloseCreateDialog}
 				onAgentCreated={handleAgentCreated}
+			/>
+			
+			{/* Compact pagination at the bottom of the sidebar */}
+			<CompactPagination
+				page={page}
+				count={Math.max(1, Math.ceil(displayAgents.length / perPage))}
+				onChange={(newPage) => handlePageChange({} as ChangeEvent<unknown>, newPage)}
 			/>
 		</SidebarContainer>
 	);
