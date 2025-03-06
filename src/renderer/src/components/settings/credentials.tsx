@@ -30,7 +30,8 @@ import {
   faInfoCircle,
   faLock,
   faKey,
-  faCheck
+  faCheck,
+  faTrash
 } from '@fortawesome/free-solid-svg-icons';
 import { useCredentials } from '@renderer/hooks/use-credentials';
 import { useUpdateCredential } from '@renderer/hooks/use-update-credential';
@@ -98,6 +99,7 @@ const CredentialActions = styled(Box)(() => ({
   display: 'flex',
   justifyContent: 'flex-end',
   marginTop: 'auto',
+  gap: 8,
 }));
 
 const SectionTitle = styled(Typography)(({ theme }) => ({
@@ -153,15 +155,33 @@ const CREDENTIAL_MANIFEST = [
     url: 'https://console.mistral.ai/api-keys/'
   },
   {
+    key: 'KIMI_API_KEY',
+    name: 'Kimi API Key',
+    description: 'API key for Kimi AI, providing advanced language models with strong reasoning capabilities.',
+    url: 'https://kimi.moonshot.cn/'
+  },
+  {
+    key: 'ALIBABA_API_KEY',
+    name: 'Alibaba API Key',
+    description: 'API key for Alibaba Cloud AI models, offering a range of language and vision capabilities.',
+    url: 'https://www.alibabacloud.com/product/ai'
+  },
+  {
+    key: 'GOOGLE_AI_API_KEY',
+    name: 'Google AI Studio API Key',
+    description: 'API key for Google AI Studio, providing access to Gemini and other Google AI models.',
+    url: 'https://aistudio.google.com/'
+  },
+  {
     key: 'SERP_API_KEY',
     name: 'SERP API Key',
-    description: 'API key for Search Engine Results Page API, allowing access to search engine data.',
+    description: 'API key for Search Engine Results Page API, allowing access to search engine data.  Allows your agents to search the web for information.',
     url: 'https://serpapi.com/dashboard'
   },
   {
     key: 'TAVILY_API_KEY',
     name: 'Tavily API Key',
-    description: 'API key for Tavily, a search API designed specifically for AI applications.',
+    description: 'API key for Tavily, a search API designed specifically for AI applications.  Allows your agents to search the web for information.',
     url: 'https://tavily.com/#api'
   }
 ];
@@ -353,6 +373,18 @@ export const Credentials: FC = () => {
     }
   };
   
+  const handleClearCredential = async (key: string) => {
+    try {
+      await updateCredentialMutation.mutateAsync({
+        key,
+        value: ''
+      });
+      await refetch();
+    } catch (error) {
+      console.error('Error clearing credential:', error);
+    }
+  };
+  
   // Loading state
   if (isLoading) {
     return (
@@ -426,6 +458,15 @@ export const Credentials: FC = () => {
                         onClick={() => handleEditCredential(key)}
                       >
                         Update
+                      </Button>
+                      <Button 
+                        variant="outlined" 
+                        size="small"
+                        color="error"
+                        startIcon={<FontAwesomeIcon icon={faTrash} />}
+                        onClick={() => handleClearCredential(key)}
+                      >
+                        Clear
                       </Button>
                     </CredentialActions>
                   </CredentialCard>
