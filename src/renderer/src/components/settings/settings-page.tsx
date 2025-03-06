@@ -12,6 +12,7 @@ import {
   Container
 } from '@mui/material';
 import { SystemPrompt } from './system-prompt';
+import { Credentials } from './credentials';
 import { styled } from '@mui/material/styles';
 import { 
   faGear, 
@@ -24,7 +25,8 @@ import {
   faSave,
   faListAlt,
   faUser,
-  faEnvelope
+  faEnvelope,
+  faKey
 } from '@fortawesome/free-solid-svg-icons';
 import { useUserStore } from '@renderer/store/user-store';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -399,6 +401,18 @@ export const SettingsPage: FC = () => {
           </Grid>
         </Grid>
       </StyledContainer>
+      
+      {/* API Credentials Section */}
+      <Box mt={6} mb={4}>
+        <Typography variant="h5" fontWeight="500" display="flex" alignItems="center" gap={2}>
+          <FontAwesomeIcon icon={faKey} />
+          API Credentials
+        </Typography>
+        <Typography variant="body1" color="text.secondary" mt={1} mb={3}>
+          Manage your API keys for various services and integrations
+        </Typography>
+        <Credentials />
+      </Box>
     </StyledPaper>
   );
 };
