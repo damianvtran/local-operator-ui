@@ -136,13 +136,25 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 
 	// Convert models to autocomplete options
 	const modelOptions: ModelOption[] = useMemo(() => {
+		// Start with Default option
+		const options: ModelOption[] = [
+			{
+				id: "",
+				name: "Default",
+				description: "Clear model selection",
+				model: undefined,
+			}
+		];
+		
 		// Map available models to autocomplete options
-		const options: ModelOption[] = availableModels.map((model) => ({
-			id: model.id,
-			name: model.name,
-			description: model.description,
-			model,
-		}));
+		availableModels.forEach((model) => {
+			options.push({
+				id: model.id,
+				name: model.name,
+				description: model.description,
+				model,
+			});
+		});
 
 		// Check if the current value exists in the available models
 		const modelExists = availableModels.some((model) => 

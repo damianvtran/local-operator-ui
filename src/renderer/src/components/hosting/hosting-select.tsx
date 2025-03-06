@@ -146,13 +146,25 @@ export const HostingSelect: FC<HostingSelectProps> = ({
 
 	// Convert hosting providers to autocomplete options
 	const hostingOptions: HostingOption[] = useMemo(() => {
+		// Start with Default option
+		const options: HostingOption[] = [
+			{
+				id: "",
+				name: "Default",
+				description: "Clear hosting provider selection",
+				provider: undefined,
+			}
+		];
+		
 		// Map available hosting providers to options
-		const options = availableHostingProviders.map((provider) => ({
-			id: provider.id,
-			name: provider.name,
-			description: provider.description,
-			provider,
-		}));
+		availableHostingProviders.forEach((provider) => {
+			options.push({
+				id: provider.id,
+				name: provider.name,
+				description: provider.description,
+				provider,
+			});
+		});
 
 		// If the current value is not in the available options, add it as a custom option
 		if (
