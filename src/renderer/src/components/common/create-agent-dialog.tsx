@@ -5,6 +5,7 @@ import {
 	TextField,
 	Typography,
 	styled,
+	alpha,
 } from "@mui/material";
 import {
 	BaseDialog,
@@ -38,14 +39,43 @@ const StyledIcon = styled(FontAwesomeIcon)(({ theme }) => ({
 	fontSize: "1.2rem",
 }));
 
-const NameField = styled(TextField)({
-	marginBottom: 16,
+const StyledTextField = styled(TextField)(({ theme }) => ({
+	"& .MuiOutlinedInput-root": {
+		borderRadius: 8,
+		transition: "all 0.2s ease-in-out",
+		fontSize: "0.95rem",
+		"&:hover .MuiOutlinedInput-notchedOutline": {
+			borderColor: alpha(theme.palette.primary.main, 0.5),
+		},
+		"&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+			borderColor: theme.palette.primary.main,
+			borderWidth: 1,
+			boxShadow: `0 0 0 3px ${alpha(theme.palette.primary.main, 0.15)}`,
+		},
+	},
+	"& .MuiInputLabel-root": {
+		fontSize: "0.9rem",
+	},
+	"& .MuiInputBase-input": {
+		padding: "12px 14px",
+	},
+}));
+
+const NameField = styled(StyledTextField)({
+	marginBottom: 12,
+	"& .MuiInputLabel-root": {
+		transform: "translate(12px, 12px) scale(1)",
+	},
+	"& .MuiInputLabel-shrink": {
+		transform: "translate(14px, -9px) scale(0.75)",
+	},
 });
 
 const Subtitle = styled(Typography)(({ theme }) => ({
 	color: theme.palette.text.secondary,
 	fontSize: "0.875rem",
 	marginTop: 4,
+	marginBottom: 16,
 }));
 
 /**
@@ -148,8 +178,9 @@ export const CreateAgentDialog: FC<CreateAgentDialogProps> = ({
 						onChange={(e) => setName(e.target.value)}
 						required
 						disabled={isLoading}
+						placeholder="Enter a name for your agent"
 					/>
-					<TextField
+					<StyledTextField
 						margin="dense"
 						id="description"
 						label="Description (optional)"
@@ -160,7 +191,8 @@ export const CreateAgentDialog: FC<CreateAgentDialogProps> = ({
 						onChange={(e) => setDescription(e.target.value)}
 						disabled={isLoading}
 						multiline
-						rows={3}
+						rows={2}
+						placeholder="Describe what this agent does"
 					/>
 				</FormContainer>
 			</form>
