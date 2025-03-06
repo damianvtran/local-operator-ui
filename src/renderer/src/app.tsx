@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import type { FC } from 'react';
 import { Box, CssBaseline } from '@mui/material';
+import { styled } from '@mui/material/styles';
 import { library } from '@fortawesome/fontawesome-svg-core';
 import { fas } from '@fortawesome/free-solid-svg-icons';
 import { fab } from '@fortawesome/free-brands-svg-icons';
@@ -11,6 +12,19 @@ import { SettingsPage } from '@renderer/components/settings/settings-page';
 import { AgentsPage } from '@renderer/components/agents/agents-page';
 
 library.add(fas, fab);
+
+const AppContainer = styled(Box)(() => ({
+  display: 'flex',
+  height: '100vh',
+  overflow: 'hidden'
+}));
+
+const MainContent = styled(Box)(() => ({
+  flexGrow: 1,
+  overflow: 'hidden',
+  display: 'flex',
+  flexDirection: 'column'
+}));
 
 const App: FC = () => {
   const [currentView, setCurrentView] = useState<'chat' | 'settings' | 'agents'>('chat');
@@ -44,11 +58,7 @@ const App: FC = () => {
   };
   
   return (
-    <Box sx={{ 
-      display: 'flex',
-      height: '100vh',
-      overflow: 'hidden'
-    }}>
+    <AppContainer>
       <CssBaseline />
       
       {/* Sidebar Navigation */}
@@ -58,12 +68,7 @@ const App: FC = () => {
       />
       
       {/* Main Content Area */}
-      <Box sx={{ 
-        flexGrow: 1,
-        overflow: 'hidden',
-        display: 'flex',
-        flexDirection: 'column'
-      }}>
+      <MainContent>
         {currentView === 'chat' ? (
           <ChatPage 
             conversationId={selectedConversation} 
@@ -79,8 +84,8 @@ const App: FC = () => {
             initialSelectedAgentId={selectedAgentForSettings}
           />
         )}
-      </Box>
-    </Box>
+      </MainContent>
+    </AppContainer>
   );
 };
 
