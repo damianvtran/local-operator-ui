@@ -11,7 +11,7 @@ import { styled } from "@mui/material/styles";
 import type { AgentDetails } from "@renderer/api/local-operator/types";
 import { useAgent } from "@renderer/hooks/use-agents";
 import { useAgentRouteParam } from "@renderer/hooks/use-route-params";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import type { FC } from "react";
 import { PageHeader } from "../common/page-header";
 import { AgentList } from "./agent-list";
@@ -47,39 +47,39 @@ const PageContainer = styled(Box)(({ theme }) => ({
  */
 export const AgentsPage: FC<AgentsPageProps> = () => {
 	const { agentId, navigateToAgent } = useAgentRouteParam();
+	// Use a ref to track the previous agent ID to prevent unnecessary renders
+	const prevAgentIdRef = useRef<string | undefined>(agentId);
+	
+	// Maintain stable agent state to prevent flickering during transitions
 	const [selectedAgent, setSelectedAgent] = useState<AgentDetails | null>(null);
 
 	// Fetch the agent details if agentId is provided from URL
 	const { data: initialAgent, refetch: refetchAgent } = useAgent(agentId);
 
-	// Set the selected agent when initialAgent changes, but only if it's not already selected
-	// This prevents unnecessary re-renders during refetches
+	// Update selected agent when URL changes or when agent data is refreshed
 	useEffect(() => {
-		if (
-			initialAgent &&
-			(!selectedAgent || selectedAgent.id !== initialAgent.id)
-		) {
-			setSelectedAgent(initialAgent);
-		} else if (
-			initialAgent &&
-			selectedAgent &&
-			selectedAgent.id === initialAgent.id
-		) {
-			// If the same agent is already selected, just update its properties
-			// This maintains UI consistency during refetches
-			setSelectedAgent((prevAgent) => {
-				if (!prevAgent) return initialAgent;
-				return {
-					...prevAgent,
-					...initialAgent,
-				};
-			});
+		// Only update if we have agent data
+		if (initialAgent) {
+			// If this is a new agent selection (URL changed)
+			if (agentId !== prevAgentIdRef.current) {
+				// Update the ref to track the new agent ID
+				prevAgentIdRef.current = agentId;
+				// Set the new agent directly
+				setSelectedAgent(initialAgent);
+			} else {
+				// Same agent, just update properties without triggering a full re-render
+				setSelectedAgent(prev => {
+					if (!prev || prev.id !== initialAgent.id) return initialAgent;
+					return { ...prev, ...initialAgent };
+				});
+			}
 		}
-	}, [initialAgent, selectedAgent]);
+	}, [initialAgent, agentId]);
 
 	const handleSelectAgent = (agent: AgentDetails) => {
+		// First update local state to prevent flickering
 		setSelectedAgent(agent);
-		// Update URL to reflect selected agent
+		// Then update URL (this will trigger a re-render, but our useEffect will handle it properly)
 		navigateToAgent(agent.id, 'agents');
 	};
 
@@ -102,11 +102,17 @@ export const AgentsPage: FC<AgentsPageProps> = () => {
 
 				{/* Agent Details */}
 				<Grid item xs={12} md={7} lg={8} sx={{ height: "100%" }}>
-					<AgentSettings
-						selectedAgent={selectedAgent}
-						refetchAgent={refetchAgent}
-						initialSelectedAgentId={agentId}
-					/>
+					<Box sx={{ 
+						height: "100%", 
+						transition: "opacity 0.15s ease-in-out",
+						opacity: selectedAgent ? 1 : 0.7
+					}}>
+						<AgentSettings
+							selectedAgent={selectedAgent}
+							refetchAgent={refetchAgent}
+							initialSelectedAgentId={agentId}
+						/>
+					</Box>
 				</Grid>
 			</Grid>
 		</PageContainer>
