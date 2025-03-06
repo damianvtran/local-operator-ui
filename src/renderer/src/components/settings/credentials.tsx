@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { FC } from 'react';
 import { 
   Typography, 
@@ -224,19 +224,34 @@ const CredentialDialog: FC<CredentialDialogProps> = ({
   const [useCustomKey, setUseCustomKey] = useState(false);
   
   // Reset state when dialog opens
-  useState(() => {
+  useEffect(() => {
     if (open) {
       setKey(initialKey);
+      // Always initialize with empty value for better UX
       setValue('');
-      setCustomKey('');
-      setUseCustomKey(!CREDENTIAL_MANIFEST.some(cred => cred.key === initialKey) && initialKey !== '');
+      
+      // Check if the credential is in the manifest
+      const isInManifest = CREDENTIAL_MANIFEST.some(cred => cred.key === initialKey);
+      
+      // If updating a credential that's not in the manifest, set customKey to initialKey
+      if (!isInManifest && initialKey) {
+        setCustomKey(initialKey);
+      } else {
+        setCustomKey('');
+      }
+      
+      setUseCustomKey(!isInManifest && initialKey !== '');
     }
-  });
+  }, [open, initialKey]);
   
   const handleSave = () => {
     const finalKey = useCustomKey ? customKey : key;
-    if (!finalKey) return;
+    if (!finalKey) {
+      console.error('No key provided for credential');
+      return;
+    }
     
+    console.log('Saving credential:', { key: finalKey, value });
     onSave({
       key: finalKey,
       value
@@ -244,9 +259,13 @@ const CredentialDialog: FC<CredentialDialogProps> = ({
   };
   
   const isExistingKey = (k: string) => existingKeys.includes(k) && k !== initialKey;
-  const isValidKey = useCustomKey 
-    ? customKey.trim() !== '' && !isExistingKey(customKey)
-    : key !== '' && !isExistingKey(key);
+  // For updates (initialKey exists), we only need to validate the value
+  // For new credentials, we need to validate both key and value
+  const isValidKey = initialKey 
+    ? true 
+    : useCustomKey 
+      ? customKey.trim() !== '' && !isExistingKey(customKey)
+      : key !== '' && !isExistingKey(key);
   
   const selectedCredential = CREDENTIAL_MANIFEST.find(cred => cred.key === key);
   
@@ -323,16 +342,25 @@ const CredentialDialog: FC<CredentialDialogProps> = ({
           type="password"
           value={value}
           onChange={(e) => setValue(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && isValidKey && value.trim() && !isSaving) {
+              handleSave();
+            }
+          }}
           required
         />
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>Cancel</Button>
         <Button 
-          onClick={handleSave} 
+          onClick={() => {
+            if (isValidKey && value.trim() && !isSaving) {
+              handleSave();
+            }
+          }} 
           variant="contained" 
           color="primary"
-          disabled={!isValidKey || !value || isSaving}
+          disabled={!isValidKey || !value.trim() || isSaving}
         >
           {isSaving ? <CircularProgress size={24} /> : 'Save'}
         </Button>
@@ -363,11 +391,16 @@ export const Credentials: FC = () => {
   };
   
   const handleSaveCredential = async (update: CredentialUpdate) => {
+    console.log('handleSaveCredential called with:', update);
     try {
+      console.log('Calling updateCredentialMutation.mutateAsync');
       await updateCredentialMutation.mutateAsync(update);
+      console.log('updateCredentialMutation.mutateAsync completed successfully');
       setEditDialogOpen(false);
       setAddDialogOpen(false);
+      console.log('Refetching credentials');
       await refetch();
+      console.log('Refetch completed');
     } catch (error) {
       console.error('Error saving credential:', error);
     }
