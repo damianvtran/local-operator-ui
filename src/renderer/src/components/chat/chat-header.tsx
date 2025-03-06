@@ -1,16 +1,30 @@
 import type { FC } from 'react';
-import { Box, Typography, Avatar } from '@mui/material';
+import { Box, Typography, Avatar, IconButton, Tooltip, alpha } from '@mui/material';
+import { styled } from '@mui/material/styles';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faRobot } from '@fortawesome/free-solid-svg-icons';
+import { faRobot, faSliders } from '@fortawesome/free-solid-svg-icons';
 
 type ChatHeaderProps = {
   agentName?: string;
   description?: string;
+  onOpenOptions?: () => void;
 }
+
+const OptionsButton = styled(IconButton)(({ theme }) => ({
+  marginLeft: 'auto',
+  color: theme.palette.text.secondary,
+  transition: 'all 0.2s ease',
+  '&:hover': {
+    backgroundColor: alpha(theme.palette.primary.main, 0.08),
+    color: theme.palette.primary.main,
+    transform: 'translateY(-1px)',
+  },
+}));
 
 export const ChatHeader: FC<ChatHeaderProps> = ({ 
   agentName = 'Local Operator',
-  description = 'Your on-device AI assistant'
+  description = 'Your on-device AI assistant',
+  onOpenOptions
 }) => {
   return (
     <Box sx={{ 
@@ -36,6 +50,15 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
           {description}
         </Typography>
       </Box>
+      
+      {onOpenOptions && (
+        /* @ts-ignore - Tooltip has issues with TypeScript but works fine */
+        <Tooltip title="Chat Options" arrow placement="top">
+          <OptionsButton onClick={onOpenOptions} size="medium">
+            <FontAwesomeIcon icon={faSliders} />
+          </OptionsButton>
+        </Tooltip>
+      )}
     </Box>
   );
 };

@@ -9,6 +9,7 @@ import { MessageItem } from './message-item';
 import { MessageInput } from './message-input';
 import { LoadingIndicator } from './loading-indicator';
 import { ChatSidebar } from './chat-sidebar';
+import { ChatOptionsSidebar } from './chat-options-sidebar';
 import { useScrollToBottom } from '@hooks/use-scroll-to-bottom';
 import { useConversationMessages } from '@hooks/use-conversation-messages';
 import { useJobPolling } from '@hooks/use-job-polling';
@@ -199,6 +200,15 @@ export const ChatPage: FC<ChatProps> = ({
   onNavigateToAgentSettings
 }) => {
   const [activeTab, setActiveTab] = useState<'chat' | 'raw'>('chat');
+  const [isOptionsSidebarOpen, setIsOptionsSidebarOpen] = useState(false);
+  
+  const handleOpenOptions = () => {
+    setIsOptionsSidebarOpen(true);
+  };
+  
+  const handleCloseOptions = () => {
+    setIsOptionsSidebarOpen(false);
+  };
   
   // Initialize the API client (memoized to prevent recreation on every render)
   const apiClient = useMemo(() => createLocalOperatorClient(apiConfig.baseUrl), []);
@@ -264,12 +274,30 @@ export const ChatPage: FC<ChatProps> = ({
     
     try {
       // Send message to the API using processAgentChatAsync from AgentsApi
+      // Prepare options from agent settings
+      const options = {
+        temperature: agentData?.temperature,
+        top_p: agentData?.top_p,
+        top_k: agentData?.top_k,
+        max_tokens: agentData?.max_tokens,
+        stop: agentData?.stop,
+        frequency_penalty: agentData?.frequency_penalty,
+        presence_penalty: agentData?.presence_penalty,
+        seed: agentData?.seed,
+      };
+      
+      // Filter out undefined values
+      const filteredOptions = Object.fromEntries(
+        Object.entries(options).filter(([_, value]) => value !== undefined && value !== null)
+      );
+      
       const jobDetails = await apiClient.chat.processAgentChatAsync(conversationId, {
-        hosting: 'openrouter', // Default hosting
-        model: 'google/gemini-2.0-flash-001', // Default model
+        hosting: agentData?.hosting || 'openrouter', // Use agent's hosting or default
+        model: agentData?.model || 'google/gemini-2.0-flash-001', // Use agent's model or default
         prompt: content,
         persist_conversation: true, // Persist conversation history
         user_message_id: userMessage.id,
+        options: Object.keys(filteredOptions).length > 0 ? filteredOptions : undefined,
       });
       
       // Store the job ID for polling
@@ -353,6 +381,14 @@ export const ChatPage: FC<ChatProps> = ({
             <ChatHeader 
               agentName={agentData?.name || ""} 
               description={agentData?.description || "Conversation with this agent"} 
+              onOpenOptions={handleOpenOptions}
+            />
+            
+            {/* Chat Options Sidebar */}
+            <ChatOptionsSidebar
+              open={isOptionsSidebarOpen}
+              onClose={handleCloseOptions}
+              agentId={conversationId}
             />
             
             {/* Tabs for chat and raw */}
