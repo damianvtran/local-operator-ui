@@ -41,6 +41,7 @@ type CredentialsSectionProps = {
   children: ReactNode;
   isEmpty?: boolean;
   emptyStateType?: 'noCredentials' | 'allConfigured';
+  isFirstSection?: boolean;
 };
 
 /**
@@ -52,11 +53,12 @@ export const CredentialsSection: FC<CredentialsSectionProps> = ({
   description,
   children,
   isEmpty = false,
-  emptyStateType = 'noCredentials'
+  emptyStateType = 'noCredentials',
+  isFirstSection = false
 }) => {
   return (
     <>
-      <SectionTitle variant="h6">
+      <SectionTitle variant="h6" sx={{ mt: isFirstSection ? 1 : 4 }}>
         {title}
       </SectionTitle>
       <SectionDescription variant="body2">

@@ -102,6 +102,7 @@ export const Credentials: FC = () => {
           description="These API credentials are currently configured and available for use."
           isEmpty={existingKeys.length === 0}
           emptyStateType="noCredentials"
+          isFirstSection={true}
         >
           {existingKeys.map((key) => (
             <Grid item xs={12} sm={6} md={4} key={key}>
