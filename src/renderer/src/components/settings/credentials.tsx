@@ -251,7 +251,6 @@ const CredentialDialog: FC<CredentialDialogProps> = ({
       return;
     }
     
-    console.log('Saving credential:', { key: finalKey, value });
     onSave({
       key: finalKey,
       value
@@ -391,16 +390,11 @@ export const Credentials: FC = () => {
   };
   
   const handleSaveCredential = async (update: CredentialUpdate) => {
-    console.log('handleSaveCredential called with:', update);
     try {
-      console.log('Calling updateCredentialMutation.mutateAsync');
       await updateCredentialMutation.mutateAsync(update);
-      console.log('updateCredentialMutation.mutateAsync completed successfully');
       setEditDialogOpen(false);
       setAddDialogOpen(false);
-      console.log('Refetching credentials');
       await refetch();
-      console.log('Refetch completed');
     } catch (error) {
       console.error('Error saving credential:', error);
     }
