@@ -5,7 +5,7 @@ import {
 	faRobot,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useAgent } from "@hooks/use-agents";
+import { useAgent, useAgents } from "@hooks/use-agents";
 import { useConversationMessages } from "@hooks/use-conversation-messages";
 import { useJobPolling } from "@hooks/use-job-polling";
 import { useScrollToBottom } from "@hooks/use-scroll-to-bottom";
@@ -205,16 +205,35 @@ const StyledDivider = styled(Divider)({
  */
 export const ChatPage: FC<ChatProps> = () => {
 	// Get agent ID from URL parameters using custom hook
-	const { agentId, navigateToAgent } = useAgentRouteParam();
+	const { agentId, navigateToAgent, clearAgentId } = useAgentRouteParam();
 	const navigate = useNavigate();
 	
 	// Get agent selection store functions
-	const { setLastChatAgentId, getLastAgentId } = useAgentSelectionStore();
+	const { setLastChatAgentId, getLastAgentId, clearLastAgentId } = useAgentSelectionStore();
+	
+	// Fetch all agents to check if the selected agent exists
+	const { data: agents = [] } = useAgents();
 	
 	// Use the agent ID from URL or the last selected agent ID
 	const effectiveAgentId = agentId || getLastAgentId('chat');
 	const conversationId = effectiveAgentId || undefined;
 	const selectedConversation = effectiveAgentId || undefined;
+	
+	// Check if the selected agent exists in the list of agents
+	useEffect(() => {
+		if (effectiveAgentId && agents.length > 0) {
+			const agentExists = agents.some(agent => agent.id === effectiveAgentId);
+			
+			if (!agentExists) {
+				// If the agent doesn't exist, clear the selection and navigate to the chat page without an agent
+				// Use a timeout to break the render cycle and prevent infinite loops
+				setTimeout(() => {
+					clearLastAgentId('chat');
+					clearAgentId('chat');
+				}, 0);
+			}
+		}
+	}, [effectiveAgentId, agents]);  // Remove clearLastAgentId and clearAgentId from dependencies
 	
 	// Update the last selected agent ID when the agent ID changes
 	useEffect(() => {

@@ -254,14 +254,41 @@ export const AgentsSidebar: FC<AgentsSidebarProps> = ({
 			const fetchAndSelectAgent = async () => {
 				try {
 					// Refetch the agents list to update the UI
-					await refetch();
+					const result = await refetch();
+					
+					// Get the updated agents list from the refetch result
+					const updatedAgents = result.data || [];
 					
 					// Find the newly created agent in the updated list
-					const createdAgent = agents.find(agent => agent.id === agentId);
+					const createdAgent = updatedAgents.find(agent => agent.id === agentId);
 					
 					// Select the newly created agent if found
 					if (createdAgent && onSelectAgent) {
 						onSelectAgent(createdAgent);
+					} else {
+						// If the agent wasn't found in the updated list, use the API directly
+						// to get the agent details and select it
+						const { useAgent } = await import('@renderer/hooks/use-agents');
+						const { queryClient } = await import('@renderer/api/query-client');
+						
+						// Prefetch the agent details
+						await queryClient.prefetchQuery({
+							queryKey: ['agents', agentId],
+							queryFn: async () => {
+								const { createLocalOperatorClient } = await import('@renderer/api/local-operator');
+								const { apiConfig } = await import('@renderer/config');
+								const client = createLocalOperatorClient(apiConfig.baseUrl);
+								const response = await client.agents.getAgent(agentId);
+								return response.result;
+							}
+						});
+						
+						// Get the agent details from the cache
+						const agentDetails = queryClient.getQueryData(['agents', agentId]);
+						
+						if (agentDetails && onSelectAgent) {
+							onSelectAgent(agentDetails as AgentDetails);
+						}
 					}
 				} catch (error) {
 					console.error("Error fetching agent details:", error);
@@ -272,7 +299,7 @@ export const AgentsSidebar: FC<AgentsSidebarProps> = ({
 
 			fetchAndSelectAgent();
 		},
-		[agents, onSelectAgent, refetch],
+		[onSelectAgent, refetch],
 	);
 
 	const filteredAgents = displayAgents.filter((agent) =>

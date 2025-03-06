@@ -10,7 +10,7 @@ import { faRobot } from "@fortawesome/free-solid-svg-icons";
 import { Box } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import type { AgentDetails } from "@renderer/api/local-operator/types";
-import { useAgent } from "@renderer/hooks/use-agents";
+import { useAgent, useAgents } from "@renderer/hooks/use-agents";
 import { useAgentRouteParam } from "@renderer/hooks/use-route-params";
 import { useAgentSelectionStore } from "@renderer/store/agent-selection-store";
 import { useEffect, useState, useRef } from "react";
@@ -72,12 +72,15 @@ const AgentDetailsContainer = styled(Box)({
  * Layout follows the pattern of other pages with a sidebar and content area
  */
 export const AgentsPage: FC<AgentsPageProps> = () => {
-	const { agentId, navigateToAgent } = useAgentRouteParam();
+	const { agentId, navigateToAgent, clearAgentId } = useAgentRouteParam();
 	// Use a ref to track the previous agent ID to prevent unnecessary renders
 	const prevAgentIdRef = useRef<string | undefined>(agentId);
 	
 	// Get agent selection store functions
-	const { setLastAgentsPageAgentId, getLastAgentId } = useAgentSelectionStore();
+	const { setLastAgentsPageAgentId, getLastAgentId, clearLastAgentId } = useAgentSelectionStore();
+	
+	// Fetch all agents to check if the selected agent exists
+	const { data: agents = [] } = useAgents();
 	
 	// Use the agent ID from URL or the last selected agent ID
 	const effectiveAgentId = agentId || getLastAgentId('agents');
@@ -87,6 +90,23 @@ export const AgentsPage: FC<AgentsPageProps> = () => {
 
 	// Fetch the agent details if agentId is provided from URL
 	const { data: initialAgent, refetch: refetchAgent } = useAgent(effectiveAgentId || undefined);
+	
+	// Check if the selected agent exists in the list of agents
+	useEffect(() => {
+		if (effectiveAgentId && agents.length > 0) {
+			const agentExists = agents.some(agent => agent.id === effectiveAgentId);
+			
+			if (!agentExists) {
+				// If the agent doesn't exist, clear the selection and navigate to the agents page without an agent
+				// Use a timeout to break the render cycle and prevent infinite loops
+				setTimeout(() => {
+					clearLastAgentId('agents');
+					clearAgentId('agents');
+					setSelectedAgent(null);
+				}, 0);
+			}
+		}
+	}, [effectiveAgentId, agents]);  // Remove clearLastAgentId and clearAgentId from dependencies
 	
 	// Update the last selected agent ID when the agent ID changes
 	useEffect(() => {

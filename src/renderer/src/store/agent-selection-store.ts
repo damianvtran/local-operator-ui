@@ -40,6 +40,12 @@ type AgentSelectionState = {
    * @returns The last selected agent ID for the page or null if none exists
    */
   getLastAgentId: (page: 'chat' | 'agents') => string | null;
+  
+  /**
+   * Clear the last selected agent ID for a specific page
+   * @param page - The page to clear the agent ID for ('chat' or 'agents')
+   */
+  clearLastAgentId: (page: 'chat' | 'agents') => void;
 };
 
 /**
@@ -64,6 +70,14 @@ export const useAgentSelectionStore = create<AgentSelectionState>()(
         return page === 'chat' 
           ? get().lastChatAgentId 
           : get().lastAgentsPageAgentId;
+      },
+      
+      clearLastAgentId: (page) => {
+        if (page === 'chat') {
+          set({ lastChatAgentId: null });
+        } else {
+          set({ lastAgentsPageAgentId: null });
+        }
       },
     }),
     {

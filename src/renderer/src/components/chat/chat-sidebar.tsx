@@ -227,8 +227,34 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 
 	const handleAgentCreated = useCallback(
 		(agentId: string) => {
-			onSelectConversation(agentId);
-			refetch();
+			// Fetch the agent details to get the full agent object
+			const fetchAndSelectAgent = async () => {
+				try {
+					// Refetch the agents list to update the UI
+					const result = await refetch();
+					
+					// Get the updated agents list from the refetch result
+					const updatedAgents = result.data || [];
+					
+					// Find the newly created agent in the updated list
+					const createdAgent = updatedAgents.find(agent => agent.id === agentId);
+					
+					// Select the newly created agent if found
+					if (createdAgent) {
+						onSelectConversation(agentId);
+					} else {
+						// If the agent wasn't found in the updated list, still select it
+						// The agent details will be fetched when needed
+						onSelectConversation(agentId);
+					}
+				} catch (error) {
+					console.error("Error fetching agent details:", error);
+					// Still select the agent even if there was an error
+					onSelectConversation(agentId);
+				}
+			};
+
+			fetchAndSelectAgent();
 		},
 		[onSelectConversation, refetch],
 	);
