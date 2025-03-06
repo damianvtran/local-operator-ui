@@ -10,6 +10,7 @@ import { useConversationMessages } from "@hooks/use-conversation-messages";
 import { useJobPolling } from "@hooks/use-job-polling";
 import { useScrollToBottom } from "@hooks/use-scroll-to-bottom";
 import { useAgentRouteParam } from "@renderer/hooks/use-route-params";
+import { useAgentSelectionStore } from "@renderer/store/agent-selection-store";
 import {
 	Box,
 	CircularProgress,
@@ -23,7 +24,7 @@ import {
 import { createLocalOperatorClient } from "@renderer/api/local-operator";
 import { apiConfig } from "@renderer/config";
 import { useChatStore } from "@store/chat-store";
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import type { FC } from "react";
 import { useNavigate } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
@@ -207,9 +208,20 @@ export const ChatPage: FC<ChatProps> = () => {
 	const { agentId, navigateToAgent } = useAgentRouteParam();
 	const navigate = useNavigate();
 	
-	// Use the agent ID from URL as the conversation ID
-	const conversationId = agentId;
-	const selectedConversation = agentId;
+	// Get agent selection store functions
+	const { setLastChatAgentId, getLastAgentId } = useAgentSelectionStore();
+	
+	// Use the agent ID from URL or the last selected agent ID
+	const effectiveAgentId = agentId || getLastAgentId('chat');
+	const conversationId = effectiveAgentId || undefined;
+	const selectedConversation = effectiveAgentId || undefined;
+	
+	// Update the last selected agent ID when the agent ID changes
+	useEffect(() => {
+		if (agentId) {
+			setLastChatAgentId(agentId);
+		}
+	}, [agentId, setLastChatAgentId]);
 	const [activeTab, setActiveTab] = useState<"chat" | "raw">("chat");
 	const [isOptionsSidebarOpen, setIsOptionsSidebarOpen] = useState(false);
 
@@ -262,6 +274,7 @@ export const ChatPage: FC<ChatProps> = () => {
 
 	// Handle selecting a conversation
 	const handleSelectConversation = (id: string) => {
+		setLastChatAgentId(id);
 		navigateToAgent(id, 'chat');
 	};
 

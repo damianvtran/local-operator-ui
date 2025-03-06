@@ -11,6 +11,7 @@ import { styled } from "@mui/material/styles";
 import type { AgentDetails } from "@renderer/api/local-operator/types";
 import { useAgent } from "@renderer/hooks/use-agents";
 import { useAgentRouteParam } from "@renderer/hooks/use-route-params";
+import { useAgentSelectionStore } from "@renderer/store/agent-selection-store";
 import { useEffect, useState, useRef } from "react";
 import type { FC } from "react";
 import { PageHeader } from "../common/page-header";
@@ -50,11 +51,24 @@ export const AgentsPage: FC<AgentsPageProps> = () => {
 	// Use a ref to track the previous agent ID to prevent unnecessary renders
 	const prevAgentIdRef = useRef<string | undefined>(agentId);
 	
+	// Get agent selection store functions
+	const { setLastAgentsPageAgentId, getLastAgentId } = useAgentSelectionStore();
+	
+	// Use the agent ID from URL or the last selected agent ID
+	const effectiveAgentId = agentId || getLastAgentId('agents');
+	
 	// Maintain stable agent state to prevent flickering during transitions
 	const [selectedAgent, setSelectedAgent] = useState<AgentDetails | null>(null);
 
 	// Fetch the agent details if agentId is provided from URL
-	const { data: initialAgent, refetch: refetchAgent } = useAgent(agentId);
+	const { data: initialAgent, refetch: refetchAgent } = useAgent(effectiveAgentId || undefined);
+	
+	// Update the last selected agent ID when the agent ID changes
+	useEffect(() => {
+		if (agentId) {
+			setLastAgentsPageAgentId(agentId);
+		}
+	}, [agentId, setLastAgentsPageAgentId]);
 
 	// Update selected agent when URL changes or when agent data is refreshed
 	useEffect(() => {
@@ -79,6 +93,8 @@ export const AgentsPage: FC<AgentsPageProps> = () => {
 	const handleSelectAgent = (agent: AgentDetails) => {
 		// First update local state to prevent flickering
 		setSelectedAgent(agent);
+		// Update the last selected agent ID
+		setLastAgentsPageAgentId(agent.id);
 		// Then update URL (this will trigger a re-render, but our useEffect will handle it properly)
 		navigateToAgent(agent.id, 'agents');
 	};
