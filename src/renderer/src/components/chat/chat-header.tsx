@@ -20,6 +20,8 @@ type ChatHeaderProps = {
 const OptionsButton = styled(IconButton)(({ theme }) => ({
 	marginLeft: "auto",
 	color: theme.palette.text.secondary,
+	width: "60px",
+	height: "60px",
 	transition: "all 0.2s ease",
 	"&:hover": {
 		backgroundColor: alpha(theme.palette.primary.main, 0.08),

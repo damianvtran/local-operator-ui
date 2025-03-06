@@ -78,6 +78,8 @@ const HeaderTitle = styled(Box)({
 
 const CloseButton = styled(IconButton)(({ theme }) => ({
 	color: theme.palette.text.secondary,
+	width: 36,
+	height: 36,
 	"&:hover": {
 		backgroundColor: alpha(theme.palette.primary.main, 0.08),
 	},
@@ -270,7 +272,7 @@ export const ChatOptionsSidebar: FC<ChatOptionsSidebarProps> = ({
 						</Typography>
 					</HeaderTitle>
 					<CloseButton onClick={onClose} size="large">
-						<FontAwesomeIcon icon={faTimes} />
+						<FontAwesomeIcon icon={faTimes} size="xs" />
 					</CloseButton>
 				</SidebarHeader>
 
