@@ -393,10 +393,12 @@ export const AgentsSidebar: FC<AgentsSidebarProps> = ({
 											<DescriptionText>
 												{agent.description || "No description"}
 											</DescriptionText>
-											<CreationDateText>
-												<FontAwesomeIcon icon={faClock} size="xs" />
-												Created: {formatDate(agent.created_date)}
-											</CreationDateText>
+											<Tooltip title="Creation date" arrow placement="bottom-start">
+												<CreationDateText>
+													<FontAwesomeIcon icon={faClock} size="xs" />
+													{formatDate(agent.created_date)}
+												</CreationDateText>
+											</Tooltip>
 										</>
 									}
 									primaryTypographyProps={{
