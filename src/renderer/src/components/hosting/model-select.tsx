@@ -321,7 +321,7 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 	// Extract provider from model ID (e.g., "openai/gpt-4" -> "openai")
 	const getProviderFromId = (id: string): string => {
 		const providerMatch = id.match(/^([^/]+)\//);
-		return providerMatch ? providerMatch[1] : "Other";
+		return providerMatch ? providerMatch[1] : "";
 	};
 
 	return (
