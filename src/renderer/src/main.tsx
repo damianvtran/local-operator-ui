@@ -7,6 +7,7 @@ import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import "./assets/fonts/fonts.css";
 import { queryClient } from "./api/query-client";
 import App from "./app";
 import { ErrorBoundary } from "./components/common/error-boundary";

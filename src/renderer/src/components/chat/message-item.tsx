@@ -5,6 +5,7 @@ import { styled } from "@mui/material/styles";
 import type { FC } from "react";
 import SyntaxHighlighter from "react-syntax-highlighter";
 import { atomOneDark } from "react-syntax-highlighter/dist/esm/styles/hljs";
+import { createGlobalStyle } from "styled-components";
 import { MarkdownRenderer } from "./markdown-renderer";
 import type { Message } from "./types";
 
@@ -188,6 +189,13 @@ const LogContainer = styled(Box, {
 	},
 }));
 
+// Global style to ensure Roboto Mono is applied to syntax highlighter
+const SyntaxHighlighterStyles = createGlobalStyle`
+  .react-syntax-highlighter-code-block * {
+    font-family: 'Roboto Mono', monospace !important;
+  }
+`;
+
 const StatusIndicator = styled(Box, {
 	shouldForwardProp: (prop) => prop !== "status",
 })<{ status?: string }>(({ status }) => ({
@@ -266,6 +274,7 @@ export const MessageItem: FC<MessageItemProps> = ({ message }) => {
 							mb: message.stdout || message.stderr || message.logging ? 2 : 0,
 						}}
 					>
+						<SyntaxHighlighterStyles />
 						<SectionLabel variant="caption">Code</SectionLabel>
 						<SyntaxHighlighter
 							language="python"
@@ -277,6 +286,12 @@ export const MessageItem: FC<MessageItemProps> = ({ message }) => {
 								boxShadow: "0 2px 6px rgba(0, 0, 0, 0.2)",
 								padding: "0.75rem",
 							}}
+							codeTagProps={{
+								style: {
+									fontFamily: '"Roboto Mono", monospace !important',
+								},
+							}}
+							className="react-syntax-highlighter-code-block"
 							wrapLines={true}
 							wrapLongLines={true}
 						>
