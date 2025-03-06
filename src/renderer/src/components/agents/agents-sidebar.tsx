@@ -44,7 +44,7 @@ import React, { useState, useCallback, useRef, useEffect } from "react";
 const SidebarContainer = styled(Paper)(() => ({
 	width: "100%",
 	height: "100%",
-	borderRadius: 8,
+  borderRight: "1px solid rgba(255, 255, 255, 0.08)",
 	backgroundColor: "background.paper",
 	display: "flex",
 	flexDirection: "column",
