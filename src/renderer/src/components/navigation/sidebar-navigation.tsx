@@ -10,8 +10,8 @@ import {
   ListItemText, 
   Tooltip, 
   alpha, 
-  useTheme 
 } from '@mui/material';
+import { styled } from '@mui/material/styles';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
   faChevronLeft, 
@@ -28,6 +28,128 @@ type SidebarNavigationProps = {
   onNavigate: (view: string) => void;
 };
 
+const StyledDrawer = styled(Drawer, {
+  shouldForwardProp: (prop) => prop !== 'width'
+})<{ width: number }>(({ theme, width }) => ({
+  width,
+  flexShrink: 0,
+  '& .MuiDrawer-paper': {
+    width,
+    boxSizing: 'border-box',
+    background: '#0a0a0a',
+    borderRight: '1px solid rgba(255,255,255,0.08)',
+    boxShadow: '0 4px 20px rgba(0,0,0,0.2)',
+    transition: theme.transitions.create('width', {
+      easing: theme.transitions.easing.sharp,
+      duration: theme.transitions.duration.enteringScreen,
+    }),
+    overflowX: 'hidden',
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'space-between',
+  }
+}));
+
+const LogoContainer = styled(Box)(({ theme }) => ({
+  display: 'flex', 
+  alignItems: 'center', 
+  justifyContent: 'center',
+  padding: theme.spacing(3),
+  marginBottom: theme.spacing(1)
+}));
+
+const NavList = styled(List)(({ theme }) => ({
+  paddingLeft: theme.spacing(1.5),
+  paddingRight: theme.spacing(1.5)
+}));
+
+const NavItemButton = styled(ListItemButton, {
+  shouldForwardProp: (prop) => !['isActive', 'isExpanded'].includes(prop as string)
+})<{ isActive: boolean; isExpanded: boolean }>(({ isActive, isExpanded }) => ({
+  borderRadius: 8,
+  marginBottom: 8,
+  paddingTop: 12,
+  paddingBottom: 12,
+  minHeight: 48,  
+  justifyContent: isExpanded ? 'initial' : 'center',
+  color: isActive ? '#38C96A' : 'rgba(255,255,255,0.85)',
+  backgroundColor: isActive ? alpha('#38C96A', 0.1) : 'transparent',
+  transition: 'all 0.2s ease-out',
+  position: 'relative',
+  overflow: 'hidden',
+  '&:hover': {
+    backgroundColor: isActive ? alpha('#38C96A', 0.15) : 'rgba(255,255,255,0.07)',
+    transform: 'translateX(4px)',
+  },
+  ...(isActive && {
+    '&::before': {
+      content: '""',
+      position: 'absolute',
+      left: 0,
+      top: '50%',
+      transform: 'translateY(-50%)',
+      width: 4,
+      height: '60%',
+      backgroundColor: '#38C96A',
+      borderRadius: '0 4px 4px 0',
+    }
+  })
+}));
+
+const NavItemIcon = styled(ListItemIcon, {
+  shouldForwardProp: (prop) => !['isActive', 'isExpanded'].includes(prop as string)
+})<{ isActive: boolean; isExpanded: boolean }>(({ isActive, isExpanded }) => ({
+  minWidth: isExpanded ? 40 : 0,
+  width: 24,
+  marginRight: isExpanded ? 16 : 'auto',
+  justifyContent: 'center',
+  color: isActive ? '#38C96A' : 'inherit',
+  display: 'flex',
+  alignItems: 'center',
+  transition: 'transform 0.2s ease, color 0.2s ease',
+  ...(isActive && {
+    transform: 'scale(1.1)',
+  })
+}));
+
+const StyledTooltip = styled(Tooltip)(() => ({
+  '& .MuiTooltip-tooltip': {
+    backgroundColor: '#1E1E1E',
+    color: 'white',
+    fontSize: 12,
+    fontWeight: 500,
+    borderRadius: 8,
+    padding: '8px 14px',
+    boxShadow: '0 4px 14px rgba(0, 0, 0, 0.3)',
+    border: '1px solid rgba(255,255,255,0.1)',
+  },
+  '& .MuiTooltip-arrow': {
+    color: '#1E1E1E',
+  },
+}));
+
+const ToggleButtonContainer = styled(Box)(({ theme }) => ({
+  display: 'flex',
+  justifyContent: 'center',
+  marginTop: theme.spacing(1),
+  marginBottom: theme.spacing(2)
+}));
+
+const ToggleButton = styled(IconButton)(() => ({
+  borderRadius: '50%',
+  backgroundColor: 'rgba(255,255,255,0.05)',
+  border: '1px solid rgba(255,255,255,0.1)',
+  width: 36,
+  height: 36,
+  transition: 'all 0.2s ease-out',
+  '&:hover': {
+    backgroundColor: 'rgba(56, 201, 106, 0.1)',
+    borderColor: 'rgba(56, 201, 106, 0.3)',
+    transform: 'scale(1.05)',
+    boxShadow: '0 2px 8px rgba(56, 201, 106, 0.2)',
+  },
+}));
+
 /**
  * SidebarNavigation component that provides a collapsible sidebar for application navigation
  * 
@@ -38,7 +160,6 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = ({
   currentView, 
   onNavigate 
 }) => {
-  const theme = useTheme();
   const [expanded, setExpanded] = useState(true);
 
   const toggleSidebar = () => {
@@ -72,86 +193,43 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = ({
   // Render a navigation item with or without tooltip based on sidebar state
   const renderNavItem = (item: typeof navItems[0]) => {
     const navButton = (
-      <ListItemButton
+      <NavItemButton
         onClick={() => onNavigate(item.view)}
-        sx={{
-          borderRadius: 2,
-          mb: 0.5,
-          py: 1.2,
-          minHeight: 48,
-          justifyContent: expanded ? 'initial' : 'center',
-          color: item.isActive ? 'primary.main' : 'text.primary',
-          backgroundColor: item.isActive ? alpha('#38C96A', 0.08) : 'transparent',
-          transition: 'all 0.3s ease',
-          '&:hover': {
-            backgroundColor: item.isActive ? alpha('#38C96A', 0.12) : 'rgba(255,255,255,0.05)',
-            transform: 'translateX(5px)',
-          },
-          ...(item.isActive && {
-            '&::before': {
-              content: '""',
-              position: 'absolute',
-              left: -4,
-              top: '50%',
-              transform: 'translateY(-50%)',
-              width: 4,
-              height: '60%',
-              backgroundColor: 'primary.main',
-              borderRadius: '0 4px 4px 0',
-            }
-          })
-        }}
+        isActive={item.isActive}
+        isExpanded={expanded}
       >
-        <ListItemIcon
-          sx={{
-            minWidth: expanded ? 36 : 0,
-            width: 24,
-            mr: expanded ? 2 : 'auto',
-            justifyContent: 'center',
-            color: item.isActive ? 'primary.main' : 'inherit',
-            display: 'flex',
-            alignItems: 'center',
-          }}
+        <NavItemIcon
+          isActive={item.isActive}
+          isExpanded={expanded}
         >
           <FontAwesomeIcon icon={item.icon} fixedWidth />
-        </ListItemIcon>
+        </NavItemIcon>
         {expanded && (
           <ListItemText 
             primary={item.label} 
             primaryTypographyProps={{
-              fontWeight: item.isActive ? 500 : 400,
+              fontWeight: item.isActive ? 600 : 500,
+              letterSpacing: item.isActive ? '0.02em' : 'normal',
+              fontSize: '0.95rem',
             }}
           />
         )}
-      </ListItemButton>
+      </NavItemButton>
     );
 
     // If sidebar is collapsed, use custom tooltip
     if (!expanded) {
       return (
-        // @ts-ignore - MUI Tooltip requires children but we're providing it
-        <Tooltip
+        <StyledTooltip
           key={item.view}
           title={item.label}
           placement="right"
           arrow
-          sx={{
-            '& .MuiTooltip-tooltip': {
-              backgroundColor: 'rgba(0, 0, 0, 0.8)',
-              color: 'white',
-              fontSize: 12,
-              borderRadius: 1,
-              padding: '5px 10px',
-            },
-            '& .MuiTooltip-arrow': {
-              color: 'rgba(0, 0, 0, 0.8)',
-            },
-          }}
         >
           <Box sx={{ position: 'relative' }}>
             {navButton}
           </Box>
-        </Tooltip>
+        </StyledTooltip>
       );
     }
 
@@ -160,47 +238,20 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = ({
   };
 
   return (
-    <Drawer
+    <StyledDrawer
       variant="permanent"
-      sx={{
-        width: drawerWidth,
-        flexShrink: 0,
-        '& .MuiDrawer-paper': {
-          width: drawerWidth,
-          boxSizing: 'border-box',
-          background: 'rgba(10,10,10,0.85)',
-          backdropFilter: 'blur(12px)',
-          borderRight: '1px solid rgba(255,255,255,0.06)',
-          boxShadow: '0 4px 30px rgba(0,0,0,0.1)',
-          transition: theme.transitions.create('width', {
-            easing: theme.transitions.easing.sharp,
-            duration: theme.transitions.duration.enteringScreen,
-          }),
-          overflowX: 'hidden',
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'space-between',
-        },
-      }}
+      width={drawerWidth}
     >
       <Box>
         {/* App Logo */}
-        <Box 
-          sx={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center',
-            padding: theme.spacing(2),
-            mb: 2
-          }}
-        >
+        <LogoContainer>
           <CollapsibleAppLogo expanded={expanded} />
-        </Box>
+        </LogoContainer>
 
         {/* Navigation Items */}
-        <List sx={{ px: 1 }}>
+        <NavList>
           {navItems.map(renderNavItem)}
-        </List>
+        </NavList>
       </Box>
 
       {/* User Profile and Toggle Button at Bottom */}
@@ -212,38 +263,19 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = ({
         />
         
         {/* Toggle Button - Now positioned below user profile */}
-        <Box 
-          sx={{ 
-            display: 'flex', 
-            justifyContent: 'center',
-            mt: 1,
-            mb: 2
-          }}
-        >
-          <IconButton 
+        <ToggleButtonContainer>
+          <ToggleButton 
             onClick={toggleSidebar}
             size="small"
-            sx={{
-              borderRadius: '50%',
-              backgroundColor: 'rgba(255,255,255,0.05)',
-              border: '1px solid rgba(255,255,255,0.1)',
-              width: 28,
-              height: 28,
-              transition: 'all 0.2s ease',
-              '&:hover': {
-                backgroundColor: 'rgba(255,255,255,0.1)',
-                transform: 'scale(1.05)',
-              },
-            }}
             title={expanded ? "Collapse sidebar" : "Expand sidebar"}
           >
             <FontAwesomeIcon 
               icon={expanded ? faChevronLeft : faChevronRight} 
               size="xs" 
             />
-          </IconButton>
-        </Box>
+          </ToggleButton>
+        </ToggleButtonContainer>
       </Box>
-    </Drawer>
+    </StyledDrawer>
   );
 };
