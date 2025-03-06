@@ -106,11 +106,11 @@ const AttachmentImage = styled("img")({
 	boxShadow: "0 2px 8px rgba(0, 0, 0, 0.15)",
 });
 
-const SectionLabel = styled(Typography)({
+const SectionLabel = styled(Typography)(({ theme }) => ({
 	display: "block",
 	marginBottom: 4,
-	color: "text.secondary",
-});
+	color: theme.palette.text.secondary,
+}));
 
 const CodeContainer = styled(Box)({
 	marginBottom: 16,
@@ -219,11 +219,11 @@ const StatusIndicator = styled(Box, {
 
 const Timestamp = styled(Typography, {
 	shouldForwardProp: (prop) => prop !== "isUser",
-})<StyledComponentProps>(({ isUser }) => ({
+})<StyledComponentProps>(({ isUser, theme }) => ({
 	display: "block",
 	marginTop: 8,
 	textAlign: isUser ? "left" : "right",
-	color: "text.secondary",
+	color: theme.palette.text.secondary,
 	fontSize: "0.7rem",
 }));
 
