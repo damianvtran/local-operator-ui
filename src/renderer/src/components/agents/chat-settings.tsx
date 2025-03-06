@@ -206,7 +206,7 @@ export const ChatSettings: FC<ChatSettingsProps> = ({
         <UnsetSliderSetting
           label="Temperature"
           description="Controls randomness in responses (0.0-1.0). Higher values make output more random."
-          defaultValue={0.8}
+          defaultValue={0.2}
           onSetValue={async (value) => {
             setSavingField('temperature');
             try {
@@ -235,7 +235,7 @@ export const ChatSettings: FC<ChatSettingsProps> = ({
         />
       ) : (
         <SliderSetting
-          value={localAgent.temperature ?? 0.8}
+          value={localAgent.temperature ?? 0.2}
           label="Temperature"
           description="Controls randomness in responses (0.0-1.0). Higher values make output more random."
           min={0}
