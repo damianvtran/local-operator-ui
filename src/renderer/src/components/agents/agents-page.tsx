@@ -3,10 +3,11 @@
  *
  * Main page for displaying and managing agents with enhanced UI/UX
  * Uses React Router for navigation and state management
+ * Layout follows the pattern of other pages with a sidebar and content area
  */
 
 import { faRobot } from "@fortawesome/free-solid-svg-icons";
-import { Box, Grid } from "@mui/material";
+import { Box } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import type { AgentDetails } from "@renderer/api/local-operator/types";
 import { useAgent } from "@renderer/hooks/use-agents";
@@ -15,8 +16,8 @@ import { useAgentSelectionStore } from "@renderer/store/agent-selection-store";
 import { useEffect, useState, useRef } from "react";
 import type { FC } from "react";
 import { PageHeader } from "../common/page-header";
-import { AgentList } from "./agent-list";
 import { AgentSettings } from "./agent-settings";
+import { AgentsSidebar } from "./agents-sidebar";
 
 /**
  * Props for the AgentsPage component
@@ -24,10 +25,27 @@ import { AgentSettings } from "./agent-settings";
  */
 type AgentsPageProps = Record<string, never>;
 
-const PageContainer = styled(Box)(({ theme }) => ({
+const Container = styled(Box)({
+	display: "flex",
+	height: "100%",
+	width: "100%",
+	overflow: "hidden",
+});
+
+const SidebarContainer = styled(Box)({
+	flexShrink: 0,
+	width: 280,
+	height: "100%",
+});
+
+const ContentContainer = styled(Box)({
 	flexGrow: 1,
 	height: "100%",
 	overflow: "hidden",
+});
+
+const ContentInnerContainer = styled(Box)(({ theme }) => ({
+	height: "100%",
 	display: "flex",
 	flexDirection: "column",
 	padding: theme.spacing(4),
@@ -40,11 +58,18 @@ const PageContainer = styled(Box)(({ theme }) => ({
 	},
 }));
 
+const AgentDetailsContainer = styled(Box)({
+	flexGrow: 1,
+	overflow: "hidden",
+	transition: "opacity 0.15s ease-in-out",
+});
+
 /**
  * Agents Page Component
  *
  * Main page for displaying and managing agents with enhanced UI/UX
  * Uses React Router for navigation and state management
+ * Layout follows the pattern of other pages with a sidebar and content area
  */
 export const AgentsPage: FC<AgentsPageProps> = () => {
 	const { agentId, navigateToAgent } = useAgentRouteParam();
@@ -100,37 +125,33 @@ export const AgentsPage: FC<AgentsPageProps> = () => {
 	};
 
 	return (
-		<PageContainer>
-			<PageHeader
-				title="Agent Management"
-				icon={faRobot}
-				subtitle="View, configure and manage your AI agents from a central dashboard"
-			/>
+		<Container>
+			{/* Agents Sidebar - fixed width */}
+			<SidebarContainer>
+				<AgentsSidebar
+					selectedAgentId={selectedAgent?.id}
+					onSelectAgent={handleSelectAgent}
+				/>
+			</SidebarContainer>
 
-			<Grid container spacing={4} sx={{ flexGrow: 1, overflow: "hidden" }}>
-				{/* Agent List */}
-				<Grid item xs={12} md={5} lg={4} sx={{ height: "100%" }}>
-					<AgentList
-						onSelectAgent={handleSelectAgent}
-						selectedAgentId={selectedAgent?.id}
+			{/* Content Area */}
+			<ContentContainer>
+				<ContentInnerContainer>
+					<PageHeader
+						title="Agent Management"
+						icon={faRobot}
+						subtitle="View, configure and manage your AI agents from a central dashboard"
 					/>
-				</Grid>
 
-				{/* Agent Details */}
-				<Grid item xs={12} md={7} lg={8} sx={{ height: "100%" }}>
-					<Box sx={{ 
-						height: "100%", 
-						transition: "opacity 0.15s ease-in-out",
-						opacity: selectedAgent ? 1 : 0.7
-					}}>
+					<AgentDetailsContainer sx={{ opacity: selectedAgent ? 1 : 0.7 }}>
 						<AgentSettings
 							selectedAgent={selectedAgent}
 							refetchAgent={refetchAgent}
 							initialSelectedAgentId={agentId}
 						/>
-					</Box>
-				</Grid>
-			</Grid>
-		</PageContainer>
+					</AgentDetailsContainer>
+				</ContentInnerContainer>
+			</ContentContainer>
+		</Container>
 	);
 };
