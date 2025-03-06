@@ -5,6 +5,7 @@
  */
 
 import type { FC } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Box, 
   Typography, 
@@ -150,7 +151,9 @@ const UnsetSliderSetting: FC<UnsetSliderSettingProps> = ({
         <Button 
           variant="outlined" 
           size="small" 
-          onClick={() => void onSetValue(defaultValue)}
+          onClick={async () => {
+            await onSetValue(defaultValue);
+          }}
         >
           Set to default ({defaultValue})
         </Button>
@@ -172,6 +175,13 @@ export const ChatSettings: FC<ChatSettingsProps> = ({
   refetchAgent, 
   initialSelectedAgentId 
 }) => {
+  // Create a local copy of the agent data that we can update immediately
+  const [localAgent, setLocalAgent] = useState<AgentDetails>(selectedAgent);
+  
+  // Update local agent when selectedAgent changes
+  useEffect(() => {
+    setLocalAgent(selectedAgent);
+  }, [selectedAgent]);
   return (
     <Box sx={{ mt: 4, mb: 3 }}>
       <SectionTitle variant="subtitle1">
@@ -192,7 +202,7 @@ export const ChatSettings: FC<ChatSettingsProps> = ({
         </Typography>
       </Box>
       
-      {selectedAgent.temperature === null ? (
+      {localAgent.temperature === null ? (
         <UnsetSliderSetting
           label="Temperature"
           description="Controls randomness in responses (0.0-1.0). Higher values make output more random."
@@ -205,6 +215,14 @@ export const ChatSettings: FC<ChatSettingsProps> = ({
                 agentId: selectedAgent.id, 
                 update 
               });
+              
+              // Update local state immediately
+              setLocalAgent(prev => ({
+                ...prev,
+                temperature: value
+              }));
+              
+              // Also refresh the agent data
               if (selectedAgent.id === initialSelectedAgentId && refetchAgent) {
                 await refetchAgent();
               }
@@ -217,7 +235,7 @@ export const ChatSettings: FC<ChatSettingsProps> = ({
         />
       ) : (
         <SliderSetting
-          value={selectedAgent.temperature ?? 0.8}
+          value={localAgent.temperature ?? 0.8}
           label="Temperature"
           description="Controls randomness in responses (0.0-1.0). Higher values make output more random."
           min={0}
@@ -244,7 +262,7 @@ export const ChatSettings: FC<ChatSettingsProps> = ({
         />
       )}
       
-      {selectedAgent.top_p === null ? (
+      {localAgent.top_p === null ? (
         <UnsetSliderSetting
           label="Top P"
           description="Controls cumulative probability of tokens to sample from (0.0-1.0)."
@@ -257,6 +275,14 @@ export const ChatSettings: FC<ChatSettingsProps> = ({
                 agentId: selectedAgent.id, 
                 update 
               });
+              
+              // Update local state immediately
+              setLocalAgent(prev => ({
+                ...prev,
+                top_p: value
+              }));
+              
+              // Also refresh the agent data
               if (selectedAgent.id === initialSelectedAgentId && refetchAgent) {
                 await refetchAgent();
               }
@@ -269,7 +295,7 @@ export const ChatSettings: FC<ChatSettingsProps> = ({
         />
       ) : (
         <SliderSetting
-          value={selectedAgent.top_p ?? 0.9}
+          value={localAgent.top_p ?? 0.9}
           label="Top P"
           description="Controls cumulative probability of tokens to sample from (0.0-1.0)."
           min={0}
@@ -296,7 +322,7 @@ export const ChatSettings: FC<ChatSettingsProps> = ({
         />
       )}
       
-      {selectedAgent.top_k === null ? (
+      {localAgent.top_k === null ? (
         <UnsetSliderSetting
           label="Top K"
           description="Limits tokens to sample from at each step."
@@ -309,6 +335,14 @@ export const ChatSettings: FC<ChatSettingsProps> = ({
                 agentId: selectedAgent.id, 
                 update 
               });
+              
+              // Update local state immediately
+              setLocalAgent(prev => ({
+                ...prev,
+                top_k: value
+              }));
+              
+              // Also refresh the agent data
               if (selectedAgent.id === initialSelectedAgentId && refetchAgent) {
                 await refetchAgent();
               }
@@ -321,7 +355,7 @@ export const ChatSettings: FC<ChatSettingsProps> = ({
         />
       ) : (
         <SliderSetting
-          value={selectedAgent.top_k ?? 40}
+          value={localAgent.top_k ?? 40}
           label="Top K"
           description="Limits tokens to sample from at each step."
           min={1}
@@ -348,7 +382,7 @@ export const ChatSettings: FC<ChatSettingsProps> = ({
         />
       )}
       
-      {selectedAgent.max_tokens === null ? (
+      {localAgent.max_tokens === null ? (
         <UnsetSliderSetting
           label="Max Tokens"
           description="Maximum tokens to generate in response."
@@ -361,6 +395,14 @@ export const ChatSettings: FC<ChatSettingsProps> = ({
                 agentId: selectedAgent.id, 
                 update 
               });
+              
+              // Update local state immediately
+              setLocalAgent(prev => ({
+                ...prev,
+                max_tokens: value
+              }));
+              
+              // Also refresh the agent data
               if (selectedAgent.id === initialSelectedAgentId && refetchAgent) {
                 await refetchAgent();
               }
@@ -373,7 +415,7 @@ export const ChatSettings: FC<ChatSettingsProps> = ({
         />
       ) : (
         <SliderSetting
-          value={selectedAgent.max_tokens ?? 4096}
+          value={localAgent.max_tokens ?? 4096}
           label="Max Tokens"
           description="Maximum tokens to generate in response."
           min={1}
@@ -400,7 +442,7 @@ export const ChatSettings: FC<ChatSettingsProps> = ({
         />
       )}
       
-      {selectedAgent.stop === null ? (
+      {localAgent.stop === null ? (
         <UnsetContainer elevation={0}>
           <LabelWrapper>
             <LabelText variant="subtitle2">
@@ -418,23 +460,28 @@ export const ChatSettings: FC<ChatSettingsProps> = ({
             <Button 
               variant="outlined" 
               size="small" 
-              onClick={() => {
+              onClick={async () => {
                 setSavingField('stop');
                 try {
                   const update: AgentUpdate = { stop: [] };
-                  void updateAgentMutation.mutateAsync({ 
+                  await updateAgentMutation.mutateAsync({ 
                     agentId: selectedAgent.id, 
                     update 
-                  }).then(() => {
-                    if (selectedAgent.id === initialSelectedAgentId && refetchAgent) {
-                      return refetchAgent();
-                    }
-                    return Promise.resolve();
-                  }).finally(() => {
-                    setSavingField(null);
                   });
+                  
+                  // Update local state immediately
+                  setLocalAgent(prev => ({
+                    ...prev,
+                    stop: []
+                  }));
+                  
+                  // Also refresh the agent data
+                  if (selectedAgent.id === initialSelectedAgentId && refetchAgent) {
+                    await refetchAgent();
+                  }
                 } catch (error) {
                   // Error is already handled in the mutation
+                } finally {
                   setSavingField(null);
                 }
               }}
@@ -445,7 +492,7 @@ export const ChatSettings: FC<ChatSettingsProps> = ({
         </UnsetContainer>
       ) : (
         <EditableField
-          value={selectedAgent.stop?.join('\n') || ""}
+          value={localAgent.stop?.join('\n') || ""}
           label="Stop Sequences"
           placeholder="Enter stop sequences (one per line)..."
           icon={<FontAwesomeIcon icon={faGear} />}
@@ -481,7 +528,7 @@ export const ChatSettings: FC<ChatSettingsProps> = ({
         />
       )}
       
-      {selectedAgent.frequency_penalty === null ? (
+      {localAgent.frequency_penalty === null ? (
         <UnsetSliderSetting
           label="Frequency Penalty"
           description="Reduces repetition by lowering likelihood of repeated tokens (-2.0 to 2.0)."
@@ -494,6 +541,14 @@ export const ChatSettings: FC<ChatSettingsProps> = ({
                 agentId: selectedAgent.id, 
                 update 
               });
+              
+              // Update local state immediately
+              setLocalAgent(prev => ({
+                ...prev,
+                frequency_penalty: value
+              }));
+              
+              // Also refresh the agent data
               if (selectedAgent.id === initialSelectedAgentId && refetchAgent) {
                 await refetchAgent();
               }
@@ -506,7 +561,7 @@ export const ChatSettings: FC<ChatSettingsProps> = ({
         />
       ) : (
         <SliderSetting
-          value={selectedAgent.frequency_penalty ?? 0}
+          value={localAgent.frequency_penalty ?? 0}
           label="Frequency Penalty"
           description="Reduces repetition by lowering likelihood of repeated tokens (-2.0 to 2.0)."
           min={-2}
@@ -533,7 +588,7 @@ export const ChatSettings: FC<ChatSettingsProps> = ({
         />
       )}
       
-      {selectedAgent.presence_penalty === null ? (
+      {localAgent.presence_penalty === null ? (
         <UnsetSliderSetting
           label="Presence Penalty"
           description="Increases diversity by lowering likelihood of prompt tokens (-2.0 to 2.0)."
@@ -546,6 +601,14 @@ export const ChatSettings: FC<ChatSettingsProps> = ({
                 agentId: selectedAgent.id, 
                 update 
               });
+              
+              // Update local state immediately
+              setLocalAgent(prev => ({
+                ...prev,
+                presence_penalty: value
+              }));
+              
+              // Also refresh the agent data
               if (selectedAgent.id === initialSelectedAgentId && refetchAgent) {
                 await refetchAgent();
               }
@@ -558,7 +621,7 @@ export const ChatSettings: FC<ChatSettingsProps> = ({
         />
       ) : (
         <SliderSetting
-          value={selectedAgent.presence_penalty ?? 0}
+          value={localAgent.presence_penalty ?? 0}
           label="Presence Penalty"
           description="Increases diversity by lowering likelihood of prompt tokens (-2.0 to 2.0)."
           min={-2}
@@ -585,7 +648,7 @@ export const ChatSettings: FC<ChatSettingsProps> = ({
         />
       )}
       
-      {selectedAgent.seed === null ? (
+      {localAgent.seed === null ? (
         <UnsetContainer elevation={0}>
           <LabelWrapper>
             <LabelText variant="subtitle2">
@@ -603,24 +666,29 @@ export const ChatSettings: FC<ChatSettingsProps> = ({
             <Button 
               variant="outlined" 
               size="small" 
-              onClick={() => {
+              onClick={async () => {
                 setSavingField('seed');
                 try {
                   // Set to a default seed value, e.g., 42
                   const update: AgentUpdate = { seed: 42 };
-                  void updateAgentMutation.mutateAsync({ 
+                  await updateAgentMutation.mutateAsync({ 
                     agentId: selectedAgent.id, 
                     update 
-                  }).then(() => {
-                    if (selectedAgent.id === initialSelectedAgentId && refetchAgent) {
-                      return refetchAgent();
-                    }
-                    return Promise.resolve();
-                  }).finally(() => {
-                    setSavingField(null);
                   });
+                  
+                  // Update local state immediately
+                  setLocalAgent(prev => ({
+                    ...prev,
+                    seed: 42
+                  }));
+                  
+                  // Also refresh the agent data
+                  if (selectedAgent.id === initialSelectedAgentId && refetchAgent) {
+                    await refetchAgent();
+                  }
                 } catch (error) {
                   // Error is already handled in the mutation
+                } finally {
                   setSavingField(null);
                 }
               }}
@@ -631,7 +699,7 @@ export const ChatSettings: FC<ChatSettingsProps> = ({
         </UnsetContainer>
       ) : (
         <EditableField
-          value={selectedAgent.seed?.toString() || ""}
+          value={localAgent.seed?.toString() || ""}
           label="Seed"
           placeholder="Random number seed for deterministic generation"
           icon={<FontAwesomeIcon icon={faGear} />}
