@@ -12,6 +12,7 @@ import {
   Typography, 
   alpha 
 } from '@mui/material';
+import { styled } from '@mui/material/styles';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
   faGear, 
@@ -25,6 +26,145 @@ type UserProfileSidebarProps = {
   onNavigate: (view: string) => void;
   useAuth?: boolean;
 };
+
+const ProfileContainer = styled(Box)(() => ({
+  display: 'flex',
+  flexDirection: 'column',
+}));
+
+const ProfileDivider = styled(Divider, {
+  shouldForwardProp: (prop) => prop !== 'expanded'
+})<{ expanded: boolean }>(({ expanded }) => ({
+  margin: '8px 0',
+  borderColor: 'rgba(255,255,255,0.08)',
+  marginLeft: expanded ? 16 : 8,
+  marginRight: expanded ? 16 : 8,
+}));
+
+const ProfileBox = styled(Box, {
+  shouldForwardProp: (prop) => prop !== 'expanded'
+})<{ expanded: boolean }>(({ expanded }) => ({
+  display: 'flex',
+  alignItems: 'center',
+  padding: '8px 16px',
+  cursor: 'pointer',
+  borderRadius: 8,
+  marginLeft: expanded ? 8 : 'auto',
+  marginRight: expanded ? 8 : 'auto',
+  transition: 'all 0.2s ease',
+  '&:hover': {
+    backgroundColor: 'rgba(255,255,255,0.05)',
+  }
+}));
+
+const UserAvatar = styled(Avatar)(() => ({
+  width: 36,
+  height: 36,
+  backgroundColor: 'primary.main',
+  transition: 'all 0.3s ease',
+  '&:hover': {
+    boxShadow: '0 0 15px rgba(56, 201, 106, 0.5)',
+  }
+}));
+
+const UserInitials = styled('span')(() => ({
+  fontSize: '0.95rem',
+  fontWeight: 500,
+}));
+
+const UserInfoContainer = styled(Box)(() => ({
+  marginLeft: 12,
+  overflow: 'hidden',
+}));
+
+const UserName = styled(Typography)(() => ({
+  fontWeight: 500,
+  whiteSpace: 'nowrap',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+}));
+
+const UserEmail = styled(Typography)(() => ({
+  color: 'text.secondary',
+  whiteSpace: 'nowrap',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  display: 'block',
+}));
+
+const StyledMenu = styled(Menu)(({ theme }) => ({
+  '& .MuiPaper-root': {
+    marginTop: theme.spacing(1.5),
+    backgroundColor: 'background.paper',
+    backgroundImage: 'linear-gradient(rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.03))',
+    backdropFilter: 'blur(20px)',
+    border: '1px solid rgba(255, 255, 255, 0.08)',
+    borderRadius: 16,
+    minWidth: 200,
+    overflow: 'visible',
+    boxShadow: theme.shadows[3],
+    '&:before': {
+      content: '""',
+      display: 'block',
+      position: 'absolute',
+      top: 0,
+      right: 14,
+      width: 10,
+      height: 10,
+      bgcolor: 'background.paper',
+      transform: 'translateY(-50%) rotate(45deg)',
+      zIndex: 0,
+      borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+      borderLeft: '1px solid rgba(255, 255, 255, 0.08)',
+    },
+  }
+}));
+
+const MenuItemStyled = styled(MenuItem)(() => ({
+  padding: '12px 12px',
+  borderRadius: 8,
+  margin: '4px 8px',
+  transition: 'all 0.2s ease',
+  '&:hover': {
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    transform: 'translateX(5px)',
+  }
+}));
+
+const MenuItemDanger = styled(MenuItemStyled)(() => ({
+  color: alpha('#ff6b6b', 0.9),
+  '&:hover': {
+    backgroundColor: alpha('#ff6b6b', 0.1),
+    transform: 'translateX(5px)',
+  }
+}));
+
+const MenuDivider = styled(Box)(() => ({
+  borderTop: '1px solid rgba(255,255,255,0.08)',
+  margin: '8px 0',
+}));
+
+const IconWrapper = styled('span')(() => ({
+  marginRight: 12,
+  width: 16,
+  height: 16,
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+}));
+
+const StyledTooltip = styled(Tooltip)(() => ({
+  '& .MuiTooltip-tooltip': {
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    color: 'white',
+    fontSize: 12,
+    borderRadius: 8,
+    padding: '5px 10px',
+  },
+  '& .MuiTooltip-arrow': {
+    color: 'rgba(0, 0, 0, 0.8)',
+  },
+}));
 
 /**
  * UserProfileSidebar component displays user information at the bottom of the sidebar
@@ -48,7 +188,11 @@ export const UserProfileSidebar: FC<UserProfileSidebarProps> = ({
   const userEmail = profile.email;
   
   const handleClick = (event: React.MouseEvent<HTMLElement>) => {
-    setAnchorEl(event.currentTarget);
+    if (useAuth) {
+      setAnchorEl(event.currentTarget);
+    } else {
+      onNavigate('settings');
+    }
   };
   
   const handleClose = () => {
@@ -60,218 +204,92 @@ export const UserProfileSidebar: FC<UserProfileSidebarProps> = ({
     onNavigate(view);
   };
 
+  // Get user initials from name or use default icon
+  const getUserInitials = (): string | null => {
+    if (!userName) return null;
+    
+    return userName
+      .split(' ')
+      .map(part => part.charAt(0))
+      .join('')
+      .toUpperCase()
+      .substring(0, 2);
+  };
+
+  const userInitials = getUserInitials();
+
   // Avatar component that will be wrapped in a tooltip if sidebar is collapsed
   const avatarComponent = (
-    <Avatar 
-      sx={{ 
-        width: 36, 
-        height: 36, 
-        bgcolor: 'primary.main',
-        boxShadow: '0 0 10px rgba(56, 201, 106, 0.3)',
-        transition: 'all 0.3s ease',
-        '&:hover': {
-          boxShadow: '0 0 15px rgba(56, 201, 106, 0.5)',
-        }
-      }}
-    >
-      <FontAwesomeIcon icon={faUser} size="sm" />
-    </Avatar>
+    <UserAvatar>
+      {userInitials ? (
+        <UserInitials>{userInitials}</UserInitials>
+      ) : (
+        <FontAwesomeIcon icon={faUser} size="sm" />
+      )}
+    </UserAvatar>
   );
 
   return (
-    <Box>
-      <Divider sx={{ 
-        my: 1, 
-        borderColor: 'rgba(255,255,255,0.08)',
-        mx: expanded ? 2 : 1
-      }} />
+    <ProfileContainer>
+      <ProfileDivider expanded={expanded} />
       
-      <Box 
-        sx={{ 
-          display: 'flex', 
-          alignItems: 'center',
-          px: 2,
-          py: 1,
-          cursor: 'pointer',
-          borderRadius: 2,
-          mx: expanded ? 1 : 'auto',
-          transition: 'all 0.2s ease',
-          '&:hover': {
-            backgroundColor: 'rgba(255,255,255,0.05)',
-          }
-        }}
-        onClick={handleClick}
-      >
+      <ProfileBox expanded={expanded} onClick={handleClick}>
         {!expanded ? (
-          // @ts-ignore - MUI Tooltip requires children but we're providing it
-          <Tooltip
+          <StyledTooltip
             title="Account Settings"
             placement="right"
             arrow
-            sx={{
-              '& .MuiTooltip-tooltip': {
-                backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                color: 'white',
-                fontSize: 12,
-                borderRadius: 1,
-                padding: '5px 10px',
-              },
-              '& .MuiTooltip-arrow': {
-                color: 'rgba(0, 0, 0, 0.8)',
-              },
-            }}
           >
             <Box>{avatarComponent}</Box>
-          </Tooltip>
+          </StyledTooltip>
         ) : (
           avatarComponent
         )}
         
         {expanded && userName && (
-          <Box sx={{ ml: 1.5, overflow: 'hidden' }}>
-            <Typography 
-              variant="subtitle2" 
-              sx={{ 
-                fontWeight: 500,
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis'
-              }}
-            >
+          <UserInfoContainer>
+            <UserName variant="subtitle2">
               {userName}
-            </Typography>
+            </UserName>
             {userEmail && (
-              <Typography 
-                variant="caption" 
-                sx={{ 
-                  color: 'text.secondary',
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  display: 'block'
-                }}
-              >
+              <UserEmail variant="caption">
                 {userEmail}
-              </Typography>
+              </UserEmail>
             )}
-          </Box>
+          </UserInfoContainer>
         )}
-      </Box>
+      </ProfileBox>
       
-      <Menu
-        anchorEl={anchorEl}
-        id="account-menu"
-        open={open}
-        onClose={handleClose}
-        PaperProps={{
-          elevation: 3,
-          sx: {
-            mt: 1.5,
-            backgroundColor: 'background.paper',
-            backgroundImage: 'linear-gradient(rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.03))',
-            backdropFilter: 'blur(20px)',
-            border: '1px solid rgba(255, 255, 255, 0.08)',
-            borderRadius: 2,
-            minWidth: 200,
-            overflow: 'visible',
-            '&:before': {
-              content: '""',
-              display: 'block',
-              position: 'absolute',
-              top: 0,
-              right: 14,
-              width: 10,
-              height: 10,
-              bgcolor: 'background.paper',
-              transform: 'translateY(-50%) rotate(45deg)',
-              zIndex: 0,
-              borderTop: '1px solid rgba(255, 255, 255, 0.08)',
-              borderLeft: '1px solid rgba(255, 255, 255, 0.08)',
-            },
-          },
-        }}
-        transformOrigin={{ horizontal: 'right', vertical: 'top' }}
-        anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
-      >
-        <MenuItem 
-          onClick={() => handleNavigate('settings')}
-          sx={{ 
-            py: 1.5,
-            borderRadius: 1,
-            mx: 1,
-            my: 0.5,
-            transition: 'all 0.2s ease',
-            '&:hover': {
-              backgroundColor: 'rgba(255,255,255,0.05)',
-              transform: 'translateX(5px)',
-            }
-          }}
+      {useAuth ? (
+        <StyledMenu
+          anchorEl={anchorEl}
+          id="account-menu"
+          open={open}
+          onClose={handleClose}
+          transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+          anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
         >
-          <FontAwesomeIcon 
-            icon={faGear} 
-            style={{ 
-              marginRight: 12,
-              width: 16,
-              height: 16,
-            }} 
-          /> 
-          Settings
-        </MenuItem>
-        {useAuth && (
-          <>
-            <MenuItem 
-              onClick={handleClose}
-              sx={{ 
-                py: 1.5,
-                borderRadius: 1,
-                mx: 1,
-                my: 0.5,
-                transition: 'all 0.2s ease',
-                '&:hover': {
-                  backgroundColor: 'rgba(255,255,255,0.05)',
-                  transform: 'translateX(5px)',
-                }
-              }}
-            >
-              <FontAwesomeIcon 
-                icon={faShield} 
-                style={{ 
-                  marginRight: 12,
-                  width: 16,
-                  height: 16,
-                }} 
-              /> 
-              Privacy & Security
-            </MenuItem>
-            <Box sx={{ borderTop: '1px solid rgba(255,255,255,0.08)', my: 1 }} />
-            <MenuItem 
-              onClick={handleClose}
-              sx={{ 
-                py: 1.5,
-                borderRadius: 1,
-                mx: 1,
-                my: 0.5,
-                color: alpha('#ff6b6b', 0.9),
-                transition: 'all 0.2s ease',
-                '&:hover': {
-                  backgroundColor: alpha('#ff6b6b', 0.1),
-                  transform: 'translateX(5px)',
-                }
-              }}
-            >
-              <FontAwesomeIcon 
-                icon={faSignOut} 
-                style={{ 
-                  marginRight: 12,
-                  width: 16,
-                  height: 16,
-                }} 
-              /> 
-              Sign out
-            </MenuItem>
-          </>
-        )}
-      </Menu>
-    </Box>
+          <MenuItemStyled onClick={() => handleNavigate('settings')}>
+            <IconWrapper>
+              <FontAwesomeIcon icon={faGear} />
+            </IconWrapper>
+            Settings
+          </MenuItemStyled>
+          <MenuItemStyled onClick={handleClose}>
+            <IconWrapper>
+              <FontAwesomeIcon icon={faShield} />
+            </IconWrapper>
+            Privacy & Security
+          </MenuItemStyled>
+          <MenuDivider />
+          <MenuItemDanger onClick={handleClose}>
+            <IconWrapper>
+              <FontAwesomeIcon icon={faSignOut} />
+            </IconWrapper>
+            Sign out
+          </MenuItemDanger>
+        </StyledMenu>
+      ) : null}
+    </ProfileContainer>
   );
 };
