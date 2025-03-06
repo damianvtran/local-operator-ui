@@ -90,6 +90,14 @@ const StyledAutocomplete = styled(Autocomplete)(({ theme }) => ({
 	"& .MuiOutlinedInput-root": {
 		borderRadius: 8,
 		backgroundColor: alpha(theme.palette.background.default, 0.7),
+		padding: "16px",
+		transition: "all 0.2s ease",
+		"&:hover": {
+			backgroundColor: alpha(theme.palette.background.default, 0.9),
+		},
+	},
+	"& .MuiInputBase-root": {
+		minHeight: "54px",
 	},
 }));
 
@@ -374,6 +382,10 @@ export const HostingSelect: FC<HostingSelectProps> = ({
 						}}
 						InputProps={{
 							...params.InputProps,
+							sx: {
+								fontSize: "0.875rem",
+								lineHeight: 1.6,
+							},
 							endAdornment: (
 								<>
 									{isSaving || isSubmitting ? (
