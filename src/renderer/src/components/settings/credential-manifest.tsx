@@ -6,7 +6,7 @@ export const CREDENTIAL_MANIFEST = [
 		key: "OPENAI_API_KEY",
 		name: "OpenAI API Key",
 		description:
-			"API key for accessing OpenAI models like GPT-4, GPT-3.5-Turbo, and DALL-E.",
+			"API key for accessing OpenAI models like GPT-4o, o3-mini, and GPT-4.5.",
 		url: "https://platform.openai.com/api-keys",
 	},
 	{
@@ -41,7 +41,7 @@ export const CREDENTIAL_MANIFEST = [
 		key: "ALIBABA_CLOUD_API_KEY",
 		name: "Alibaba Cloud API Key",
 		description:
-			"API key for Alibaba Cloud AI models, offering a range of language and vision capabilities.",
+			"API key for Alibaba Cloud AI models, offering a range of language and vision capabilities such as Qwen.",
 		url: "https://www.alibabacloud.com/product/ai",
 	},
 	{
@@ -55,7 +55,7 @@ export const CREDENTIAL_MANIFEST = [
 		key: "ANTHROPIC_API_KEY",
 		name: "Anthropic API Key",
 		description:
-			"API key for Anthropic's Claude models, known for their helpful, harmless, and honest AI capabilities.",
+			"API key for Anthropic's Claude models, known for agentic code generation capabilities.",
 		url: "https://console.anthropic.com/settings/keys",
 	},
 	{
