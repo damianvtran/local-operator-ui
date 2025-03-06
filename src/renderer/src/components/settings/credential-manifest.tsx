@@ -13,7 +13,7 @@ export const CREDENTIAL_MANIFEST = [
 		key: "OPENROUTER_API_KEY",
 		name: "OpenRouter API Key",
 		description:
-			"API key for OpenRouter, which provides access to various AI models from different providers.",
+			"API key for OpenRouter, which provides access to various AI models from different providers.  Getting an openrouter key allows you to simultaneously access many models from different providers.",
 		url: "https://openrouter.ai/keys",
 	},
 	{
@@ -50,6 +50,13 @@ export const CREDENTIAL_MANIFEST = [
 		description:
 			"API key for Google AI Studio, providing access to Gemini and other Google AI models.",
 		url: "https://aistudio.google.com/",
+	},
+	{
+		key: "ANTHROPIC_API_KEY",
+		name: "Anthropic API Key",
+		description:
+			"API key for Anthropic's Claude models, known for their helpful, harmless, and honest AI capabilities.",
+		url: "https://console.anthropic.com/settings/keys",
 	},
 	{
 		key: "SERP_API_KEY",
