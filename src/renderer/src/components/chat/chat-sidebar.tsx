@@ -357,10 +357,8 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 											? () => onNavigateToAgentSettings(agent.id)
 											: undefined
 									}
-									onAgentDeleted={(deletedId) => {
-										if (selectedConversation === deletedId) {
-											onSelectConversation("");
-										}
+									onAgentDeleted={() => {
+										// Just refetch the agents list
 										refetch();
 									}}
 									buttonSx={{

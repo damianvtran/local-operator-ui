@@ -34,6 +34,9 @@ import { AgentOptionsMenu } from "@renderer/components/common/agent-options-menu
 import { CreateAgentDialog } from "@renderer/components/common/create-agent-dialog";
 import type { AgentDetails } from "@renderer/api/local-operator/types";
 import { useAgents } from "@renderer/hooks/use-agents";
+import { queryClient } from "@renderer/api/query-client";
+import { createLocalOperatorClient } from "@renderer/api/local-operator";
+import { apiConfig } from "@renderer/config";
 import type { ChangeEvent, FC } from "react";
 import React, { useState, useCallback, useRef, useEffect } from "react";
 
@@ -268,15 +271,11 @@ export const AgentsSidebar: FC<AgentsSidebarProps> = ({
 					} else {
 						// If the agent wasn't found in the updated list, use the API directly
 						// to get the agent details and select it
-						const { useAgent } = await import('@renderer/hooks/use-agents');
-						const { queryClient } = await import('@renderer/api/query-client');
 						
 						// Prefetch the agent details
 						await queryClient.prefetchQuery({
 							queryKey: ['agents', agentId],
 							queryFn: async () => {
-								const { createLocalOperatorClient } = await import('@renderer/api/local-operator');
-								const { apiConfig } = await import('@renderer/config');
 								const client = createLocalOperatorClient(apiConfig.baseUrl);
 								const response = await client.agents.getAgent(agentId);
 								return response.result;
@@ -378,11 +377,8 @@ export const AgentsSidebar: FC<AgentsSidebarProps> = ({
 									agentId={agent.id}
 									agentName={agent.name}
 									isAgentsPage={true}
-									onAgentDeleted={(deletedId) => {
-										if (selectedAgentId === deletedId) {
-											// If the deleted agent was selected, clear the selection
-											onSelectAgent(undefined as unknown as AgentDetails);
-										}
+									onAgentDeleted={() => {
+										// Just refetch the agents list
 										refetch();
 									}}
 									buttonSx={{

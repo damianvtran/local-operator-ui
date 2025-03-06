@@ -13,6 +13,7 @@ import {
 	styled,
 } from "@mui/material";
 import { useDeleteAgent } from "@renderer/hooks/use-agent-mutations";
+import { useAgentSelectionStore } from "@renderer/store/agent-selection-store";
 import type { FC, MouseEvent } from "react";
 import React, { useState } from "react";
 import { ConfirmationModal } from "./confirmation-modal";
@@ -128,10 +129,16 @@ export const AgentOptionsMenu: FC<AgentOptionsMenuProps> = ({
 		setIsDeleteModalOpen(false);
 	};
 
+	// Get the clearAgentFromAllPages function from the agent selection store
+	const { clearAgentFromAllPages } = useAgentSelectionStore();
+
 	// Handler for confirming agent deletion
 	const handleConfirmDelete = async () => {
 		try {
 			await deleteAgentMutation.mutateAsync(agentId);
+
+			// Clear the agent from all selection stores
+			clearAgentFromAllPages(agentId);
 
 			// Call the onAgentDeleted callback if provided
 			if (onAgentDeleted) {

@@ -46,6 +46,13 @@ type AgentSelectionState = {
    * @param page - The page to clear the agent ID for ('chat' or 'agents')
    */
   clearLastAgentId: (page: 'chat' | 'agents') => void;
+  
+  /**
+   * Clear an agent ID from all pages if it matches the given ID
+   * This is useful when an agent is deleted to ensure it's removed from all stores
+   * @param agentId - The agent ID to clear
+   */
+  clearAgentFromAllPages: (agentId: string) => void;
 };
 
 /**
@@ -77,6 +84,26 @@ export const useAgentSelectionStore = create<AgentSelectionState>()(
           set({ lastChatAgentId: null });
         } else {
           set({ lastAgentsPageAgentId: null });
+        }
+      },
+      
+      clearAgentFromAllPages: (agentId) => {
+        const state = get();
+        const updates: Partial<Pick<AgentSelectionState, 'lastChatAgentId' | 'lastAgentsPageAgentId'>> = {};
+        
+        // Check if the agent is selected in the chat page
+        if (state.lastChatAgentId === agentId) {
+          updates.lastChatAgentId = null;
+        }
+        
+        // Check if the agent is selected in the agents page
+        if (state.lastAgentsPageAgentId === agentId) {
+          updates.lastAgentsPageAgentId = null;
+        }
+        
+        // Only update state if there are changes
+        if (Object.keys(updates).length > 0) {
+          set(updates);
         }
       },
     }),
