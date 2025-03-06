@@ -11,6 +11,7 @@ import {
   Grid,
   Container
 } from '@mui/material';
+import { styled } from '@mui/material/styles';
 import { 
   faGear, 
   faServer, 
@@ -33,6 +34,93 @@ import { ToggleSetting } from '../common/toggle-setting';
 import { useConfig } from '@renderer/hooks/use-config';
 import { useUpdateConfig } from '@renderer/hooks/use-update-config';
 import type { ConfigUpdate } from '@renderer/api/local-operator/types';
+
+const StyledPaper = styled(Paper)(({ theme }) => ({
+  height: '100%',
+  width: '100%',
+  overflow: 'auto',
+  [theme.breakpoints.down('sm')]: {
+    padding: 16,
+  },
+  [theme.breakpoints.up('sm')]: {
+    padding: 24,
+  },
+  [theme.breakpoints.up('md')]: {
+    padding: 32,
+  },
+  '&::-webkit-scrollbar': {
+    width: '8px',
+  },
+  '&::-webkit-scrollbar-thumb': {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: '4px',
+  },
+}));
+
+const LoadingContainer = styled(Box)(() => ({
+  display: 'flex',
+  justifyContent: 'center',
+  alignItems: 'center',
+  height: '100%',
+}));
+
+const ErrorContainer = styled(Box)(() => ({
+  padding: 24,
+}));
+
+const StyledContainer = styled(Container)(() => ({
+  marginTop: 16,
+}));
+
+const StyledCard = styled(Card)(() => ({
+  marginBottom: 32,
+  backgroundColor: 'background.paper',
+  borderRadius: 8,
+  boxShadow: '0 4px 20px rgba(0,0,0,0.06)',
+}));
+
+const CardTitle = styled(Typography)(() => ({
+  marginBottom: 16,
+  display: 'flex',
+  alignItems: 'center',
+  gap: 8,
+}));
+
+const CardDescription = styled(Typography)(() => ({
+  marginBottom: 24,
+  color: 'text.secondary',
+}));
+
+const FieldsContainer = styled(Box)(() => ({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 4,
+}));
+
+const InfoBox = styled(Box)(() => ({
+  padding: 16,
+  borderRadius: 8,
+  backgroundColor: 'background.default',
+  height: '100%',
+}));
+
+const InfoLabel = styled(Typography)(() => ({
+  color: 'text.secondary',
+  marginBottom: 8,
+}));
+
+const InfoValue = styled(Typography)(() => ({
+  fontWeight: 500,
+}));
+
+const StyledCardContent = styled(CardContent)(({ theme }) => ({
+  [theme.breakpoints.down('sm')]: {
+    padding: 16,
+  },
+  [theme.breakpoints.up('sm')]: {
+    padding: 24,
+  },
+}));
 
 export const SettingsPage: FC = () => {
   const { data: config, isLoading, error, refetch } = useConfig();
@@ -61,62 +149,47 @@ export const SettingsPage: FC = () => {
 
   if (isLoading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+      <LoadingContainer>
         <CircularProgress />
-      </Box>
+      </LoadingContainer>
     );
   }
 
   if (error || !config) {
     return (
-      <Box sx={{ p: 3 }}>
+      <ErrorContainer>
         <Alert severity="error">
           Failed to load configuration. Please try again later.
         </Alert>
-      </Box>
+      </ErrorContainer>
     );
   }
 
   return (
-    <Paper 
-      elevation={0} 
-      sx={{ 
-        height: '100%',
-        width: '100%',
-        overflow: 'auto',
-        p: { xs: 2, sm: 3, md: 4 },
-        '&::-webkit-scrollbar': {
-          width: '8px',
-        },
-        '&::-webkit-scrollbar-thumb': {
-          backgroundColor: 'rgba(255, 255, 255, 0.1)',
-          borderRadius: '4px',
-        },
-      }}
-    >
+    <StyledPaper elevation={0}>
       <PageHeader
         title="Settings"
         icon={faGear}
         subtitle="Configure your application preferences and settings"
       />
       
-      <Container maxWidth="lg" disableGutters sx={{ mt: 2 }}>
+      <StyledContainer maxWidth="lg" disableGutters>
         <Grid container spacing={4}>
           {/* Left Column */}
           <Grid item xs={12} md={6}>
             {/* User Profile Settings */}
-            <Card sx={{ mb: 4, bgcolor: 'background.paper', borderRadius: 2, boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
-              <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
-                <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+            <StyledCard>
+              <StyledCardContent>
+                <CardTitle variant="h6">
                   <FontAwesomeIcon icon={faUser} />
                   User Profile
-                </Typography>
+                </CardTitle>
                 
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                <CardDescription variant="body2">
                   Update your user profile information displayed in the application.
-                </Typography>
+                </CardDescription>
                 
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                <FieldsContainer>
                   <EditableField
                     value={userStore.profile.name}
                     label="Display Name"
@@ -148,22 +221,22 @@ export const SettingsPage: FC = () => {
                       }
                     }}
                   />
-                </Box>
-              </CardContent>
-            </Card>
+                </FieldsContainer>
+              </StyledCardContent>
+            </StyledCard>
             {/* Model Settings */}
-            <Card sx={{ mb: 4, bgcolor: 'background.paper', borderRadius: 2, boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
-              <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
-                <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+            <StyledCard>
+              <StyledCardContent>
+                <CardTitle variant="h6">
                   <FontAwesomeIcon icon={faRobot} />
                   Model Settings
-                </Typography>
+                </CardTitle>
                 
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                <CardDescription variant="body2">
                   Configure the AI model and hosting provider used for generating responses.
-                </Typography>
+                </CardDescription>
                 
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                <FieldsContainer>
                   <EditableField
                     value={config.values.hosting}
                     label="Hosting Provider"
@@ -185,21 +258,21 @@ export const SettingsPage: FC = () => {
                       await handleUpdateField('model_name', value);
                     }}
                   />
-                </Box>
-              </CardContent>
-            </Card>
+                </FieldsContainer>
+              </StyledCardContent>
+            </StyledCard>
             
             {/* Auto-Save Settings */}
-            <Card sx={{ mb: 4, bgcolor: 'background.paper', borderRadius: 2, boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
-              <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
-                <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+            <StyledCard>
+              <StyledCardContent>
+                <CardTitle variant="h6">
                   <FontAwesomeIcon icon={faSave} />
                   Auto-Save Settings
-                </Typography>
+                </CardTitle>
                 
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                <CardDescription variant="body2">
                   Control whether conversations are automatically saved for future reference.
-                </Typography>
+                </CardDescription>
                 
                 <ToggleSetting
                   value={config.values.auto_save_conversation}
@@ -211,23 +284,23 @@ export const SettingsPage: FC = () => {
                     await handleUpdateField('auto_save_conversation', value);
                   }}
                 />
-              </CardContent>
-            </Card>
+              </StyledCardContent>
+            </StyledCard>
           </Grid>
           
           {/* Right Column */}
           <Grid item xs={12} md={6}>
             {/* History Settings */}
-            <Card sx={{ mb: 4, bgcolor: 'background.paper', borderRadius: 2, boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
-              <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
-                <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+            <StyledCard>
+              <StyledCardContent>
+                <CardTitle variant="h6">
                   <FontAwesomeIcon icon={faHistory} />
                   History Settings
-                </Typography>
+                </CardTitle>
                 
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                <CardDescription variant="body2">
                   Configure how much conversation history is retained and displayed.
-                </Typography>
+                </CardDescription>
                 
                 <SliderSetting
                   value={config.values.conversation_length}
@@ -273,75 +346,55 @@ export const SettingsPage: FC = () => {
                     await handleUpdateField('max_learnings_history', value);
                   }}
                 />
-              </CardContent>
-            </Card>
+              </StyledCardContent>
+            </StyledCard>
             
             {/* Configuration Metadata */}
-            <Card sx={{ mb: 4, bgcolor: 'background.paper', borderRadius: 2, boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
-              <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
-                <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+            <StyledCard>
+              <StyledCardContent>
+                <CardTitle variant="h6">
                   <FontAwesomeIcon icon={faInfoCircle} />
                   Configuration Information
-                </Typography>
+                </CardTitle>
                 
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                <CardDescription variant="body2">
                   System information about the current configuration.
-                </Typography>
+                </CardDescription>
                 
                 <Grid container spacing={2}>
                   <Grid item xs={12} sm={6}>
-                    <Box sx={{ 
-                      p: 2, 
-                      borderRadius: 2, 
-                      bgcolor: 'background.default',
-                      height: '100%'
-                    }}>
-                      <Typography variant="subtitle2" color="text.secondary" gutterBottom>Version</Typography>
-                      <Typography variant="body1" fontWeight={500}>{config.version}</Typography>
-                    </Box>
+                    <InfoBox>
+                      <InfoLabel variant="subtitle2">Version</InfoLabel>
+                      <InfoValue variant="body1">{config.version}</InfoValue>
+                    </InfoBox>
                   </Grid>
                   
                   <Grid item xs={12} sm={6}>
-                    <Box sx={{ 
-                      p: 2, 
-                      borderRadius: 2, 
-                      bgcolor: 'background.default',
-                      height: '100%'
-                    }}>
-                      <Typography variant="subtitle2" color="text.secondary" gutterBottom>Created At</Typography>
-                      <Typography variant="body1" fontWeight={500}>{new Date(config.metadata.created_at).toLocaleString()}</Typography>
-                    </Box>
+                    <InfoBox>
+                      <InfoLabel variant="subtitle2">Created At</InfoLabel>
+                      <InfoValue variant="body1">{new Date(config.metadata.created_at).toLocaleString()}</InfoValue>
+                    </InfoBox>
                   </Grid>
                   
                   <Grid item xs={12} sm={6}>
-                    <Box sx={{ 
-                      p: 2, 
-                      borderRadius: 2, 
-                      bgcolor: 'background.default',
-                      height: '100%'
-                    }}>
-                      <Typography variant="subtitle2" color="text.secondary" gutterBottom>Last Modified</Typography>
-                      <Typography variant="body1" fontWeight={500}>{new Date(config.metadata.last_modified).toLocaleString()}</Typography>
-                    </Box>
+                    <InfoBox>
+                      <InfoLabel variant="subtitle2">Last Modified</InfoLabel>
+                      <InfoValue variant="body1">{new Date(config.metadata.last_modified).toLocaleString()}</InfoValue>
+                    </InfoBox>
                   </Grid>
                   
                   <Grid item xs={12} sm={6}>
-                    <Box sx={{ 
-                      p: 2, 
-                      borderRadius: 2, 
-                      bgcolor: 'background.default',
-                      height: '100%'
-                    }}>
-                      <Typography variant="subtitle2" color="text.secondary" gutterBottom>Description</Typography>
-                      <Typography variant="body1" fontWeight={500}>{config.metadata.description || "No description available"}</Typography>
-                    </Box>
+                    <InfoBox>
+                      <InfoLabel variant="subtitle2">Description</InfoLabel>
+                      <InfoValue variant="body1">{config.metadata.description || "No description available"}</InfoValue>
+                    </InfoBox>
                   </Grid>
                 </Grid>
-              </CardContent>
-            </Card>
+              </StyledCardContent>
+            </StyledCard>
           </Grid>
         </Grid>
-      </Container>
-    </Paper>
+      </StyledContainer>
+    </StyledPaper>
   );
 };
