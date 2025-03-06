@@ -247,6 +247,22 @@ export type AgentCreate = {
   model?: string;
   /** The description of the agent. */
   description?: string;
+  /** Controls randomness in responses (0.0-1.0). Higher values make output more random. */
+  temperature?: number;
+  /** Controls cumulative probability of tokens to sample from (0.0-1.0). */
+  top_p?: number;
+  /** Limits tokens to sample from at each step. */
+  top_k?: number;
+  /** Maximum tokens to generate. */
+  max_tokens?: number;
+  /** List of strings that will stop generation when encountered. */
+  stop?: string[];
+  /** Reduces repetition by lowering likelihood of repeated tokens (-2.0 to 2.0). */
+  frequency_penalty?: number;
+  /** Increases diversity by lowering likelihood of prompt tokens (-2.0 to 2.0). */
+  presence_penalty?: number;
+  /** Random number seed for deterministic generation. */
+  seed?: number;
 };
 
 /**
@@ -266,6 +282,22 @@ export type AgentUpdate = {
   model?: string;
   /** The description of the agent. */
   description?: string;
+  /** Controls randomness in responses (0.0-1.0). Higher values make output more random. */
+  temperature?: number;
+  /** Controls cumulative probability of tokens to sample from (0.0-1.0). */
+  top_p?: number;
+  /** Limits tokens to sample from at each step. */
+  top_k?: number;
+  /** Maximum tokens to generate. */
+  max_tokens?: number;
+  /** List of strings that will stop generation when encountered. */
+  stop?: string[];
+  /** Reduces repetition by lowering likelihood of repeated tokens (-2.0 to 2.0). */
+  frequency_penalty?: number;
+  /** Increases diversity by lowering likelihood of prompt tokens (-2.0 to 2.0). */
+  presence_penalty?: number;
+  /** Random number seed for deterministic generation. */
+  seed?: number;
 };
 
 /**
@@ -361,6 +393,22 @@ export type AgentDetails = {
   last_message?: string;
   /** ISO timestamp of when the last message was sent */
   last_message_datetime?: string;
+  /** Controls randomness in responses (0.0-1.0) */
+  temperature?: number;
+  /** Controls cumulative probability of tokens to sample from (0.0-1.0) */
+  top_p?: number;
+  /** Limits tokens to sample from at each step */
+  top_k?: number;
+  /** Maximum tokens to generate in response */
+  max_tokens?: number;
+  /** List of strings that will stop generation when encountered */
+  stop?: string[];
+  /** Reduces repetition by lowering likelihood of repeated tokens (-2.0 to 2.0) */
+  frequency_penalty?: number;
+  /** Increases diversity by lowering likelihood of prompt tokens (-2.0 to 2.0) */
+  presence_penalty?: number;
+  /** Random number seed for deterministic generation */
+  seed?: number;
 };
 
 /**
