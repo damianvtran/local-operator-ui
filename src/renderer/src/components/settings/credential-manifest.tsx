@@ -38,14 +38,14 @@ export const CREDENTIAL_MANIFEST = [
 		url: "https://kimi.moonshot.cn/",
 	},
 	{
-		key: "ALIBABA_API_KEY",
-		name: "Alibaba API Key",
+		key: "ALIBABA_CLOUD_API_KEY",
+		name: "Alibaba Cloud API Key",
 		description:
 			"API key for Alibaba Cloud AI models, offering a range of language and vision capabilities.",
 		url: "https://www.alibabacloud.com/product/ai",
 	},
 	{
-		key: "GOOGLE_AI_API_KEY",
+		key: "GOOGLE_AI_STUDIO_API_KEY",
 		name: "Google AI Studio API Key",
 		description:
 			"API key for Google AI Studio, providing access to Gemini and other Google AI models.",
