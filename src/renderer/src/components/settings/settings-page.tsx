@@ -149,6 +149,7 @@ export const SettingsPage: FC = () => {
   const [savingField, setSavingField] = useState<string | null>(null);
   const userStore = useUserStore();
   const [activeSection, setActiveSection] = useState<string>('general');
+  const [isScrolling, setIsScrolling] = useState(false);
   
   // Refs for scrolling to sections
   const generalSectionRef = useRef<HTMLDivElement>(null);
@@ -162,7 +163,12 @@ export const SettingsPage: FC = () => {
   
   // Handle section selection
   const handleSelectSection = (sectionId: string) => {
+    // Set active section immediately
     setActiveSection(sectionId);
+    
+    // Disable scroll event handling during programmatic scrolling
+    setIsScrolling(true);
+    
     const ref = sectionRefs[sectionId];
     if (ref?.current) {
       // Get the scrollable container
@@ -178,9 +184,20 @@ export const SettingsPage: FC = () => {
           top: scrollTop - 80, // Offset for header
           behavior: 'smooth'
         });
+        
+        // Re-enable scroll event handling after animation completes
+        // Typical smooth scroll animation takes about 500ms
+        setTimeout(() => {
+          setIsScrolling(false);
+        }, 600);
       } else {
         // Fallback to default scrollIntoView if container not found
         ref.current.scrollIntoView({ behavior: 'smooth' });
+        
+        // Re-enable scroll event handling after animation completes
+        setTimeout(() => {
+          setIsScrolling(false);
+        }, 600);
       }
     }
   };
@@ -188,6 +205,9 @@ export const SettingsPage: FC = () => {
   // Update active section based on scroll position
   useEffect(() => {
     const handleScroll = (e: Event) => {
+      // Skip scroll handling if we're programmatically scrolling
+      if (isScrolling) return;
+      
       // Get the scrollable container
       const container = e.target as HTMLElement;
       const scrollPosition = container.scrollTop + 100; // Add offset for header
@@ -211,7 +231,7 @@ export const SettingsPage: FC = () => {
       return () => contentContainer.removeEventListener('scroll', handleScroll);
     }
     return undefined;
-  }, [sectionRefs]);
+  }, [sectionRefs, isScrolling]);
   
   // Handle updating a specific field
   const handleUpdateField = async (field: keyof ConfigUpdate, value: string | number | boolean) => {
