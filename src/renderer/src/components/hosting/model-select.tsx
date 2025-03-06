@@ -15,9 +15,10 @@ import {
 	Typography,
 	alpha,
 	styled,
+	createFilterOptions,
 } from "@mui/material";
 import type { FC, SyntheticEvent } from "react";
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import {
 	getHostingProviderById,
 	getModelsForHostingProvider,
@@ -117,21 +118,20 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 	isSaving = false,
 	allowCustom = true,
 }) => {
-	// State for tracking input value and editing state
-	const [inputValue, setInputValue] = useState(value || "");
+	// State for tracking if user is typing or just clicking
+	const [isUserTyping, setIsUserTyping] = useState(false);
+	const [inputValue, setInputValue] = useState("");
 	const [isSubmitting, setIsSubmitting] = useState(false);
+	
+	// Flag to track if the dropdown should show all options (no filtering)
+	const showAllOptions = useRef(false);
 
 	// Get available models for the selected hosting provider
 	const availableModels = useMemo(() => {
-		// Ensure we have a valid hosting ID before fetching models
 		if (!hostingId) {
 			return [];
 		}
-		
-		// Get models for the selected hosting provider
-		const models = getModelsForHostingProvider(hostingId);
-		
-		return models;
+		return getModelsForHostingProvider(hostingId);
 	}, [hostingId]);
 
 	// Convert models to autocomplete options
@@ -162,7 +162,7 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 		}
 
 		return options;
-	}, [availableModels, value, hostingId]);
+	}, [availableModels, value]);
 
 	// Helper text to show when no models are available
 	const helperText = useMemo(() => {
@@ -207,22 +207,14 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 		};
 	}, [value, modelOptions, hostingId]);
 
-	// Reset input value when value prop changes
+	// Update input value when selected option changes
 	useEffect(() => {
-		// Find the option that matches the current value
-		const option = modelOptions.find(opt => opt.id === value);
-		if (option) {
-			// If found, update the input value to match
-			setInputValue(option.name);
-		} else if (value) {
-			// If not found but value exists, set input to value
-			setInputValue(value);
+		if (selectedOption) {
+			setInputValue(selectedOption.name);
 		} else {
-			// If no value, clear input
 			setInputValue("");
 		}
-		
-	}, [value, modelOptions]);
+	}, [selectedOption]);
 
 	// Handle option change
 	const handleChange = async (
@@ -236,6 +228,12 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 			// Type assertion since we know the structure
 			const option = newValue as ModelOption;
 			await onSave(option.id);
+			
+			// User has selected an option, so they're no longer typing
+			setIsUserTyping(false);
+			
+			// When a selection is made, set the input value to the display name
+			setInputValue(option.name);
 		} catch (error) {
 			console.error("Error saving model:", error);
 		} finally {
@@ -245,7 +243,33 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 
 	// Handle input change
 	const handleInputChange = (_event: SyntheticEvent, newInputValue: string) => {
+		// Set flag when user is actively typing
+		if (newInputValue !== selectedOption?.name) {
+			setIsUserTyping(true);
+			showAllOptions.current = false;
+		}
+		
 		setInputValue(newInputValue);
+	};
+
+	// Handle dropdown open
+	const handleOpen = () => {
+		// If user clicks to open without typing, show all options
+		if (!isUserTyping && selectedOption) {
+			showAllOptions.current = true;
+		}
+	};
+
+	// Handle dropdown close
+	const handleClose = () => {
+		// Reset show all options flag
+		showAllOptions.current = false;
+		
+		// If dropdown is closed without selecting, reset to selected option
+		if (isUserTyping && selectedOption) {
+			setInputValue(selectedOption.name);
+			setIsUserTyping(false);
+		}
 	};
 
 	// Handle custom value submission (when allowCustom is true)
@@ -265,6 +289,7 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 			try {
 				setIsSubmitting(true);
 				await onSave(inputValue.trim());
+				setIsUserTyping(false);
 			} catch (error) {
 				console.error("Error saving custom model:", error);
 			} finally {
@@ -289,12 +314,26 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 			</FieldLabel>
 			
 			<StyledAutocomplete
-				key={`model-select-${value}-${hostingId}-${modelOptions.length}`}
+				key={`model-select-${hostingId}-${modelOptions.length}`}
 				value={selectedOption}
 				inputValue={inputValue}
 				onChange={handleChange}
 				onInputChange={handleInputChange}
+				onOpen={handleOpen}
+				onClose={handleClose}
 				options={modelOptions}
+				selectOnFocus
+				clearOnBlur={false}
+				openOnFocus
+				filterOptions={(options, params) => {
+					// If showing all options (clicked to open without typing), don't filter
+					if (showAllOptions.current) {
+						return options;
+					}
+					
+					// Otherwise use default filtering
+					return createFilterOptions()(options, params);
+				}}
 				getOptionLabel={(option) => (option as ModelOption).name}
 				isOptionEqualToValue={(option, value) => 
 					(option as ModelOption).id === (value as ModelOption).id
@@ -339,6 +378,13 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 							),
 						}}
 						onKeyDown={handleCustomSubmit}
+						onFocus={() => {
+							// On focus, if we have a selected value and user is not typing,
+							// set flag to show all options
+							if (selectedOption && !isUserTyping) {
+								showAllOptions.current = true;
+							}
+						}}
 					/>
 				)}
 			/>

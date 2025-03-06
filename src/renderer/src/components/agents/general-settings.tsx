@@ -169,7 +169,9 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 				<Grid container spacing={2}>
 					<Grid item xs={12} md={6}>
 						<HostingSelect
-							key={`hosting-select-${selectedAgent.id}-${selectedAgent.hosting || ""}`}
+							// Modified key to not include the selectedAgent.id, so it doesn't re-render and reset when agent changes
+							// This allows users to select a different hosting provider after making an initial selection
+							key={`hosting-select-${selectedAgent.hosting || ""}`}
 							value={selectedAgent.hosting || ""}
 							isSaving={savingField === "hosting"}
 							onSave={async (value) => {
@@ -214,7 +216,9 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 
 					<Grid item xs={12} md={6}>
 						<ModelSelect
-							key={`model-select-${selectedAgent.id}-${currentHosting}`}
+							// Modified key to not include the selectedAgent.id, so it doesn't re-render and reset when agent changes
+							// This allows users to select a different model after making an initial selection
+							key={`model-select-${currentHosting}`}
 							value={selectedAgent.model || ""}
 							hostingId={currentHosting}
 							isSaving={savingField === "model"}
