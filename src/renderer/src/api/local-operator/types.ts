@@ -479,3 +479,21 @@ export type CredentialUpdate = {
   /** Credential value */
   value: string;
 };
+
+/**
+ * System prompt response
+ */
+export type SystemPromptResponse = {
+  /** The content of the system prompt */
+  content: string;
+  /** When the system prompt was last modified */
+  last_modified: string;
+};
+
+/**
+ * System prompt update request
+ */
+export type SystemPromptUpdate = {
+  /** The new content for the system prompt */
+  content: string;
+};

@@ -1,7 +1,13 @@
 /**
  * Local Operator API - Configuration Endpoints
  */
-import type { ConfigResponse, ConfigUpdate, CRUDResponse } from './types';
+import type { 
+  ConfigResponse, 
+  ConfigUpdate, 
+  CRUDResponse, 
+  SystemPromptResponse, 
+  SystemPromptUpdate 
+} from './types';
 
 /**
  * Config API client for the Local Operator API
@@ -52,5 +58,52 @@ export const ConfigApi = {
     }
 
     return response.json() as Promise<CRUDResponse<ConfigResponse>>;
+  },
+
+  /**
+   * Get system prompt
+   * Retrieve the current system prompt content.
+   * 
+   * @param baseUrl - The base URL of the Local Operator API
+   * @returns Promise resolving to the system prompt response
+   */
+  async getSystemPrompt(baseUrl: string): Promise<CRUDResponse<SystemPromptResponse>> {
+    const response = await fetch(`${baseUrl}/v1/config/system-prompt`, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Get system prompt request failed: ${response.status} ${response.statusText}`);
+    }
+
+    return response.json() as Promise<CRUDResponse<SystemPromptResponse>>;
+  },
+
+  /**
+   * Update system prompt
+   * Update the system prompt content.
+   * 
+   * @param baseUrl - The base URL of the Local Operator API
+   * @param systemPromptUpdate - The new system prompt content
+   * @returns Promise resolving to the updated system prompt response
+   */
+  async updateSystemPrompt(baseUrl: string, systemPromptUpdate: SystemPromptUpdate): Promise<CRUDResponse<SystemPromptResponse>> {
+    const response = await fetch(`${baseUrl}/v1/config/system-prompt`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify(systemPromptUpdate),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Update system prompt request failed: ${response.status} ${response.statusText}`);
+    }
+
+    return response.json() as Promise<CRUDResponse<SystemPromptResponse>>;
   },
 };

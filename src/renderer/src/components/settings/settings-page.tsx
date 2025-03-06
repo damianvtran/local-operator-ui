@@ -11,6 +11,7 @@ import {
   Grid,
   Container
 } from '@mui/material';
+import { SystemPrompt } from './system-prompt';
 import { styled } from '@mui/material/styles';
 import { 
   faGear, 
@@ -261,6 +262,9 @@ export const SettingsPage: FC = () => {
                 </FieldsContainer>
               </StyledCardContent>
             </StyledCard>
+            
+            {/* System Prompt Settings */}
+            <SystemPrompt />
             
             {/* Auto-Save Settings */}
             <StyledCard>
