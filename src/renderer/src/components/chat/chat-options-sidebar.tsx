@@ -304,8 +304,6 @@ export const ChatOptionsSidebar: FC<ChatOptionsSidebarProps> = ({
                   if (refetchAgent) {
                     await refetchAgent();
                   }
-                  
-                  toast.success("Hosting provider updated");
                 } catch (error) {
                   // Error is already handled in the mutation
                 } finally {
@@ -340,8 +338,6 @@ export const ChatOptionsSidebar: FC<ChatOptionsSidebarProps> = ({
                     if (refetchAgent) {
                       await refetchAgent();
                     }
-                    
-                    toast.success("Model updated");
                   } catch (error) {
                     // Error is already handled in the mutation
                   } finally {
@@ -395,8 +391,6 @@ export const ChatOptionsSidebar: FC<ChatOptionsSidebarProps> = ({
                   if (refetchAgent) {
                     await refetchAgent();
                   }
-                  
-                  toast.success("Temperature updated");
                 } catch (error) {
                   // Error is already handled in the mutation
                 } finally {
@@ -432,8 +426,6 @@ export const ChatOptionsSidebar: FC<ChatOptionsSidebarProps> = ({
                   if (refetchAgent) {
                     await refetchAgent();
                   }
-                  
-                  toast.success("Temperature updated");
                 } catch (error) {
                   // Error is already handled in the mutation
                 } finally {
@@ -467,8 +459,6 @@ export const ChatOptionsSidebar: FC<ChatOptionsSidebarProps> = ({
                   if (refetchAgent) {
                     await refetchAgent();
                   }
-                  
-                  toast.success("Top P updated");
                 } catch (error) {
                   // Error is already handled in the mutation
                 } finally {
@@ -505,7 +495,6 @@ export const ChatOptionsSidebar: FC<ChatOptionsSidebarProps> = ({
                     await refetchAgent();
                   }
                   
-                  toast.success("Top P updated");
                 } catch (error) {
                   // Error is already handled in the mutation
                 } finally {
@@ -540,7 +529,6 @@ export const ChatOptionsSidebar: FC<ChatOptionsSidebarProps> = ({
                     await refetchAgent();
                   }
                   
-                  toast.success("Top K updated");
                 } catch (error) {
                   // Error is already handled in the mutation
                 } finally {
@@ -577,7 +565,6 @@ export const ChatOptionsSidebar: FC<ChatOptionsSidebarProps> = ({
                     await refetchAgent();
                   }
                   
-                  toast.success("Top K updated");
                 } catch (error) {
                   // Error is already handled in the mutation
                 } finally {
@@ -612,7 +599,6 @@ export const ChatOptionsSidebar: FC<ChatOptionsSidebarProps> = ({
                     await refetchAgent();
                   }
                   
-                  toast.success("Max tokens updated");
                 } catch (error) {
                   // Error is already handled in the mutation
                 } finally {
@@ -649,7 +635,6 @@ export const ChatOptionsSidebar: FC<ChatOptionsSidebarProps> = ({
                     await refetchAgent();
                   }
                   
-                  toast.success("Max tokens updated");
                 } catch (error) {
                   // Error is already handled in the mutation
                 } finally {
@@ -697,7 +682,6 @@ export const ChatOptionsSidebar: FC<ChatOptionsSidebarProps> = ({
                         await refetchAgent();
                       }
                       
-                      toast.success("Stop sequences updated");
                     } catch (error) {
                       // Error is already handled in the mutation
                     } finally {
@@ -747,7 +731,6 @@ export const ChatOptionsSidebar: FC<ChatOptionsSidebarProps> = ({
                     await refetchAgent();
                   }
                   
-                  toast.success("Stop sequences updated");
                 } catch (error) {
                   // Error is already handled in the mutation
                 } finally {
@@ -782,7 +765,6 @@ export const ChatOptionsSidebar: FC<ChatOptionsSidebarProps> = ({
                     await refetchAgent();
                   }
                   
-                  toast.success("Frequency penalty updated");
                 } catch (error) {
                   // Error is already handled in the mutation
                 } finally {
@@ -819,7 +801,6 @@ export const ChatOptionsSidebar: FC<ChatOptionsSidebarProps> = ({
                     await refetchAgent();
                   }
                   
-                  toast.success("Frequency penalty updated");
                 } catch (error) {
                   // Error is already handled in the mutation
                 } finally {
@@ -854,7 +835,6 @@ export const ChatOptionsSidebar: FC<ChatOptionsSidebarProps> = ({
                     await refetchAgent();
                   }
                   
-                  toast.success("Presence penalty updated");
                 } catch (error) {
                   // Error is already handled in the mutation
                 } finally {
@@ -891,7 +871,6 @@ export const ChatOptionsSidebar: FC<ChatOptionsSidebarProps> = ({
                     await refetchAgent();
                   }
                   
-                  toast.success("Presence penalty updated");
                 } catch (error) {
                   // Error is already handled in the mutation
                 } finally {
@@ -940,7 +919,6 @@ export const ChatOptionsSidebar: FC<ChatOptionsSidebarProps> = ({
                         await refetchAgent();
                       }
                       
-                      toast.success("Seed updated");
                     } catch (error) {
                       // Error is already handled in the mutation
                     } finally {
@@ -987,7 +965,6 @@ export const ChatOptionsSidebar: FC<ChatOptionsSidebarProps> = ({
                     await refetchAgent();
                   }
                   
-                  toast.success("Seed updated");
                 } catch (error) {
                   // Error is already handled in the mutation
                 } finally {
