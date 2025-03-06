@@ -1,17 +1,18 @@
 import { faRobot } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
-	Box,
-	Button,
 	CircularProgress,
-	Dialog,
-	DialogActions,
-	DialogContent,
-	DialogTitle,
 	TextField,
 	Typography,
 	styled,
 } from "@mui/material";
+import {
+	BaseDialog,
+	FormContainer,
+	PrimaryButton,
+	SecondaryButton,
+	TitleContainer,
+} from "./base-dialog";
 import type { AgentCreate } from "@renderer/api/local-operator/types";
 import { useCreateAgent } from "@renderer/hooks/use-agent-mutations";
 import type { FC, FormEvent } from "react";
@@ -32,50 +33,20 @@ type CreateAgentDialogProps = {
 	onAgentCreated?: (agentId: string) => void;
 };
 
-const StyledDialog = styled(Dialog)({
-	"& .MuiPaper-root": {
-		borderRadius: 16,
-		backgroundColor: "background.paper",
-		boxShadow: "0 8px 32px rgba(0, 0, 0, 0.2)",
-		maxWidth: "500px",
-		width: "100%",
-	},
-});
-
-const IconContainer = styled(Box)({
-	display: "flex",
-	alignItems: "center",
-});
-
 const StyledIcon = styled(FontAwesomeIcon)(({ theme }) => ({
 	color: theme.palette.primary.main,
-	marginRight: "12px",
 	fontSize: "1.2rem",
 }));
-
-const FormContainer = styled(Box)({
-	marginTop: 8,
-});
 
 const NameField = styled(TextField)({
 	marginBottom: 16,
 });
 
-const ActionButton = styled(Button)({
-	borderRadius: 12,
-	textTransform: "none",
-	fontWeight: 500,
-});
-
-const CancelButton = styled(ActionButton)({});
-
-const CreateButton = styled(ActionButton)({
-	marginLeft: 8,
-});
-
-const DialogActionsStyled = styled(DialogActions)({
-	padding: "0 24px 24px 24px",
-});
+const Subtitle = styled(Typography)(({ theme }) => ({
+	color: theme.palette.text.secondary,
+	fontSize: "0.875rem",
+	marginTop: 4,
+}));
 
 /**
  * Dialog for creating a new agent
@@ -125,67 +96,74 @@ export const CreateAgentDialog: FC<CreateAgentDialogProps> = ({
 	const isLoading = createAgentMutation.isPending;
 	const isSubmitDisabled = isLoading || !name.trim();
 
+	const dialogTitle = (
+		<TitleContainer>
+			<StyledIcon icon={faRobot} />
+			Create New Agent
+		</TitleContainer>
+	);
+
+	const dialogActions = (
+		<>
+			<SecondaryButton
+				onClick={onClose}
+				variant="outlined"
+				disabled={isLoading}
+			>
+				Cancel
+			</SecondaryButton>
+			<PrimaryButton
+				type="submit"
+				form="create-agent-form"
+				disabled={isSubmitDisabled}
+				startIcon={
+					isLoading ? <CircularProgress size={20} color="inherit" /> : null
+				}
+			>
+				Create Agent
+			</PrimaryButton>
+		</>
+	);
+
 	return (
-		<StyledDialog open={open} onClose={onClose}>
-			<form onSubmit={handleSubmit}>
-				<DialogTitle>
-					<IconContainer>
-						<StyledIcon icon={faRobot} />
-						<Typography variant="h6">Create New Agent</Typography>
-					</IconContainer>
-				</DialogTitle>
-				<DialogContent>
-					<FormContainer>
-						<NameField
-							autoFocus
-							margin="dense"
-							id="name"
-							label="Agent Name"
-							type="text"
-							fullWidth
-							variant="outlined"
-							value={name}
-							onChange={(e) => setName(e.target.value)}
-							required
-							disabled={isLoading}
-						/>
-						<TextField
-							margin="dense"
-							id="description"
-							label="Description (optional)"
-							type="text"
-							fullWidth
-							variant="outlined"
-							value={description}
-							onChange={(e) => setDescription(e.target.value)}
-							disabled={isLoading}
-							multiline
-							rows={3}
-						/>
-					</FormContainer>
-				</DialogContent>
-				<DialogActionsStyled>
-					<CancelButton
-						onClick={onClose}
+		<BaseDialog
+			open={open}
+			onClose={onClose}
+			title={dialogTitle}
+			actions={dialogActions}
+			maxWidth="sm"
+		>
+			<Subtitle>Configure your new AI assistant with a name and optional description</Subtitle>
+			<form id="create-agent-form" onSubmit={handleSubmit}>
+				<FormContainer>
+					<NameField
+						autoFocus
+						margin="dense"
+						id="name"
+						label="Agent Name"
+						type="text"
+						fullWidth
 						variant="outlined"
-						color="inherit"
+						value={name}
+						onChange={(e) => setName(e.target.value)}
+						required
 						disabled={isLoading}
-					>
-						Cancel
-					</CancelButton>
-					<CreateButton
-						type="submit"
-						variant="contained"
-						color="primary"
-						disabled={isSubmitDisabled}
-						startIcon={
-							isLoading ? <CircularProgress size={20} color="inherit" /> : null
-						}
-					>
-						Create Agent
-					</CreateButton>
-				</DialogActionsStyled>
+					/>
+					<TextField
+						margin="dense"
+						id="description"
+						label="Description (optional)"
+						type="text"
+						fullWidth
+						variant="outlined"
+						value={description}
+						onChange={(e) => setDescription(e.target.value)}
+						disabled={isLoading}
+						multiline
+						rows={3}
+					/>
+				</FormContainer>
 			</form>
-		</StyledDialog>
+		</BaseDialog>
 	);
 };

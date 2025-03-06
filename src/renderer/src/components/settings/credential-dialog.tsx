@@ -1,12 +1,7 @@
 import { CREDENTIAL_MANIFEST } from "@components/settings/credential-manifest";
 import {
 	Box,
-	Button,
 	CircularProgress,
-	Dialog,
-	DialogActions,
-	DialogContent,
-	DialogTitle,
 	FormControl,
 	InputLabel,
 	MenuItem,
@@ -14,6 +9,12 @@ import {
 	TextField,
 	Typography,
 } from "@mui/material";
+import {
+	BaseDialog,
+	FormContainer,
+	PrimaryButton,
+	SecondaryButton,
+} from "@renderer/components/common/base-dialog";
 import type { CredentialUpdate } from "@renderer/api/local-operator/types";
 import { useEffect, useState } from "react";
 import type { FC } from "react";
@@ -97,15 +98,39 @@ export const CredentialDialog: FC<CredentialDialogProps> = ({
 		(cred) => cred.key === key,
 	);
 
+	const dialogTitle = initialKey ? "Update Credential" : "Add New Credential";
+
+	const dialogActions = (
+		<>
+			<SecondaryButton onClick={onClose} variant="outlined">
+				Cancel
+			</SecondaryButton>
+			<PrimaryButton
+				onClick={() => {
+					if (isValidKey && value.trim() && !isSaving) {
+						handleSave();
+					}
+				}}
+				disabled={!isValidKey || !value.trim() || isSaving}
+			>
+				{isSaving ? <CircularProgress size={24} /> : "Save"}
+			</PrimaryButton>
+		</>
+	);
+
 	return (
-		<Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-			<DialogTitle>
-				{initialKey ? "Update Credential" : "Add New Credential"}
-			</DialogTitle>
-			<DialogContent>
+		<BaseDialog
+			open={open}
+			onClose={onClose}
+			title={dialogTitle}
+			actions={dialogActions}
+			maxWidth="sm"
+			fullWidth
+		>
+			<FormContainer>
 				{!initialKey && (
 					<>
-						<FormControl fullWidth margin="normal">
+						<FormControl fullWidth>
 							<InputLabel id="credential-key-label">Credential Type</InputLabel>
 							<Select
 								labelId="credential-key-label"
@@ -136,7 +161,6 @@ export const CredentialDialog: FC<CredentialDialogProps> = ({
 
 						{useCustomKey && (
 							<TextField
-								margin="normal"
 								label="Custom Credential Key"
 								fullWidth
 								value={customKey}
@@ -151,7 +175,7 @@ export const CredentialDialog: FC<CredentialDialogProps> = ({
 						)}
 
 						{selectedCredential && (
-							<Box mt={2} mb={2}>
+							<Box mt={1} mb={1}>
 								<Typography variant="body2" color="text.secondary">
 									{selectedCredential.description}
 								</Typography>
@@ -172,7 +196,6 @@ export const CredentialDialog: FC<CredentialDialogProps> = ({
 				)}
 
 				<TextField
-					margin="normal"
 					label="Credential Value"
 					fullWidth
 					type="password"
@@ -185,22 +208,7 @@ export const CredentialDialog: FC<CredentialDialogProps> = ({
 					}}
 					required
 				/>
-			</DialogContent>
-			<DialogActions>
-				<Button onClick={onClose}>Cancel</Button>
-				<Button
-					onClick={() => {
-						if (isValidKey && value.trim() && !isSaving) {
-							handleSave();
-						}
-					}}
-					variant="contained"
-					color="primary"
-					disabled={!isValidKey || !value.trim() || isSaving}
-				>
-					{isSaving ? <CircularProgress size={24} /> : "Save"}
-				</Button>
-			</DialogActions>
-		</Dialog>
+			</FormContainer>
+		</BaseDialog>
 	);
 };

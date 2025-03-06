@@ -1,18 +1,18 @@
 import { faExclamationTriangle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
-	Box,
-	Button,
-	Dialog,
-	DialogActions,
-	DialogContent,
 	DialogContentText,
-	DialogTitle,
 	Typography,
 	styled,
 } from "@mui/material";
+import {
+	BaseDialog,
+	DangerButton,
+	PrimaryButton,
+	SecondaryButton,
+	TitleContainer,
+} from "./base-dialog";
 import type { FC, ReactNode } from "react";
-import React from "react";
 
 type ConfirmationModalProps = {
 	/**
@@ -49,45 +49,10 @@ type ConfirmationModalProps = {
 	onCancel: () => void;
 };
 
-const StyledDialog = styled(Dialog)({
-	"& .MuiPaper-root": {
-		borderRadius: 16,
-		backgroundColor: "background.paper",
-		boxShadow: "0 8px 32px rgba(0, 0, 0, 0.2)",
-		maxWidth: "400px",
-		width: "100%",
-	},
-});
-
-const WarningBox = styled(Box)({
-	display: "flex",
-	alignItems: "center",
-	marginBottom: 8,
-});
-
 const WarningIcon = styled(FontAwesomeIcon)(({ theme }) => ({
 	color: theme.palette.error.main,
-	marginRight: 8,
 	fontSize: "1.2rem",
 }));
-
-const ActionButton = styled(Button)(() => ({
-	borderRadius: 12,
-	textTransform: "none",
-	fontWeight: 500,
-}));
-
-const CancelButton = styled(ActionButton)({
-	marginRight: 8,
-});
-
-const ConfirmButton = styled(ActionButton)({
-	marginLeft: 8,
-});
-
-const DialogActionsStyled = styled(DialogActions)({
-	padding: "0 24px 24px 24px",
-});
 
 /**
  * A reusable confirmation modal component
@@ -104,45 +69,49 @@ export const ConfirmationModal: FC<ConfirmationModalProps> = ({
 	onConfirm,
 	onCancel,
 }) => {
+	const dialogTitle = isDangerous ? (
+		<TitleContainer>
+			<WarningIcon icon={faExclamationTriangle} />
+			<Typography variant="h6" component="span" color="error">
+				{title}
+			</Typography>
+		</TitleContainer>
+	) : (
+		title
+	);
+
+	const dialogActions = (
+		<>
+			<SecondaryButton onClick={onCancel} variant="outlined">
+				{cancelText}
+			</SecondaryButton>
+			{isDangerous ? (
+				<DangerButton onClick={onConfirm} autoFocus>
+					{confirmText}
+				</DangerButton>
+			) : (
+				<PrimaryButton onClick={onConfirm} autoFocus>
+					{confirmText}
+				</PrimaryButton>
+			)}
+		</>
+	);
+
 	return (
-		<StyledDialog
+		<BaseDialog
 			open={open}
 			onClose={onCancel}
-			aria-labelledby="confirmation-dialog-title"
-			aria-describedby="confirmation-dialog-description"
+			title={dialogTitle}
+			actions={dialogActions}
+			maxWidth="xs"
+			dialogProps={{
+				"aria-labelledby": "confirmation-dialog-title",
+				"aria-describedby": "confirmation-dialog-description",
+			}}
 		>
-			<DialogTitle id="confirmation-dialog-title" sx={{ pb: 1 }}>
-				{isDangerous ? (
-					<WarningBox>
-						<WarningIcon icon={faExclamationTriangle} />
-						<Typography variant="h6" component="span" color="error">
-							{title}
-						</Typography>
-					</WarningBox>
-				) : (
-					<Typography variant="h6" component="span">
-						{title}
-					</Typography>
-				)}
-			</DialogTitle>
-			<DialogContent>
-				<DialogContentText id="confirmation-dialog-description">
-					{message}
-				</DialogContentText>
-			</DialogContent>
-			<DialogActionsStyled>
-				<CancelButton onClick={onCancel} variant="outlined" color="inherit">
-					{cancelText}
-				</CancelButton>
-				<ConfirmButton
-					onClick={onConfirm}
-					variant="contained"
-					color={isDangerous ? "error" : "primary"}
-					autoFocus
-				>
-					{confirmText}
-				</ConfirmButton>
-			</DialogActionsStyled>
-		</StyledDialog>
+			<DialogContentText id="confirmation-dialog-description">
+				{message}
+			</DialogContentText>
+		</BaseDialog>
 	);
 };
