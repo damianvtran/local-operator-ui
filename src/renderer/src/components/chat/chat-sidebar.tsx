@@ -12,7 +12,6 @@ import {
 	Box,
 	Button,
 	CircularProgress,
-	Divider,
 	InputAdornment,
 	List,
 	ListItem,
@@ -33,17 +32,20 @@ import { format } from "date-fns";
 import type { ChangeEvent, FC } from "react";
 import React, { useState, useCallback } from "react";
 
-const SidebarContainer = styled(Paper)({
+const SidebarContainer = styled(Paper)(() => ({
 	width: "100%",
 	height: "100%",
-	borderRight: "1px solid rgba(255, 255, 255, 0.1)",
+	borderRadius: 8,
+	backgroundColor: "background.paper",
 	display: "flex",
 	flexDirection: "column",
-});
+	overflow: "hidden",
+}));
 
-const HeaderContainer = styled(Box)({
-	padding: 16,
-});
+const SidebarHeader = styled(Box)(({ theme }) => ({
+	padding: theme.spacing(3),
+	borderBottom: "1px solid rgba(255,255,255,0.08)",
+}));
 
 const HeaderRow = styled(Box)({
 	display: "flex",
@@ -52,8 +54,9 @@ const HeaderRow = styled(Box)({
 	marginBottom: 16,
 });
 
-const Title = styled(Typography)({
-	fontWeight: 500,
+const SidebarTitle = styled(Typography)({
+	fontWeight: 600,
+	fontSize: "1rem",
 });
 
 const NewAgentButton = styled(Button)(({ theme }) => ({
@@ -75,15 +78,10 @@ const NewAgentButton = styled(Button)(({ theme }) => ({
 }));
 
 const SearchField = styled(TextField)({
-	marginBottom: 16,
 	"& .MuiOutlinedInput-root": {
 		borderRadius: 8,
 		backgroundColor: "rgba(255, 255, 255, 0.05)",
 	},
-});
-
-const StyledDivider = styled(Divider)({
-	opacity: 0.1,
 });
 
 const LoadingContainer = styled(Box)({
@@ -107,6 +105,7 @@ const EmptyStateContainer = styled(Box)({
 const AgentsList = styled(List)({
 	overflow: "auto",
 	flexGrow: 1,
+	padding: "8px",
 	"&::-webkit-scrollbar": {
 		width: "8px",
 	},
@@ -257,9 +256,9 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 
 	return (
 		<SidebarContainer elevation={0}>
-			<HeaderContainer>
+			<SidebarHeader>
 				<HeaderRow>
-					<Title variant="h6">Agents</Title>
+					<SidebarTitle variant="subtitle1">Agents</SidebarTitle>
 					{/* @ts-ignore - MUI Tooltip requires children but we're providing it */}
 					<Tooltip title="Create a new agent" arrow placement="top">
 						<NewAgentButton
@@ -288,9 +287,7 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 						),
 					}}
 				/>
-			</HeaderContainer>
-
-			<StyledDivider />
+			</SidebarHeader>
 
 			{isLoading ? (
 				<LoadingContainer>
