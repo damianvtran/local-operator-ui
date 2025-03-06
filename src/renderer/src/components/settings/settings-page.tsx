@@ -9,7 +9,6 @@ import {
 	faListAlt,
 	faRobot,
 	faSave,
-	faServer,
 	faUser,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -32,6 +31,7 @@ import { useUserStore } from "@renderer/store/user-store";
 import { useEffect, useRef, useState } from "react";
 import type { FC, RefObject } from "react";
 import { EditableField } from "../common/editable-field";
+import { HostingSelect, ModelSelect } from "../hosting";
 import { PageHeader } from "../common/page-header";
 import { SliderSetting } from "../common/slider-setting";
 import { ToggleSetting } from "../common/toggle-setting";
@@ -366,26 +366,24 @@ export const SettingsPage: FC = () => {
 										</CardDescription>
 
 										<FieldsContainer>
-											<EditableField
+											<HostingSelect
 												value={config.values.hosting}
-												label="Hosting Provider"
-												placeholder="Enter hosting provider..."
-												icon={<FontAwesomeIcon icon={faServer} />}
 												isSaving={savingField === "hosting"}
 												onSave={async (value) => {
 													await handleUpdateField("hosting", value);
 												}}
+												filterByCredentials={true}
+												allowCustom={true}
 											/>
 
-											<EditableField
+											<ModelSelect
 												value={config.values.model_name}
-												label="Model Name"
-												placeholder="Enter model name..."
-												icon={<FontAwesomeIcon icon={faRobot} />}
+												hostingId={config.values.hosting}
 												isSaving={savingField === "model_name"}
 												onSave={async (value) => {
 													await handleUpdateField("model_name", value);
 												}}
+												allowCustom={true}
 											/>
 										</FieldsContainer>
 									</StyledCardContent>
