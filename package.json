@@ -21,10 +21,10 @@
     "start": "electron-vite preview",
     "dev": "electron-vite dev",
     "prebuild": "electron-vite build",
-    "lint": "npx @biomejs/biome check .",
-    "lint:fix": "npx @biomejs/biome check --apply .",
-    "format": "npx @biomejs/biome format .",
-    "format:fix": "npx @biomejs/biome format --write ."
+    "lint": "npx @biomejs/biome check src",
+    "lint:fix": "npx @biomejs/biome check --apply src",
+    "format": "npx @biomejs/biome format src",
+    "format:fix": "npx @biomejs/biome format --write src"
   },
   "dependencies": {
     "@electron-toolkit/utils": "^4.0.0",
