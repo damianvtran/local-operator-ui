@@ -10,11 +10,11 @@ import {
 	faIdCard,
 	faInfoCircle,
 	faRobot,
-	faServer,
 	faTag,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, Divider, Grid, Typography, alpha } from "@mui/material";
+import { HostingSelect, ModelSelect } from "../hosting";
 import { styled } from "@mui/material/styles";
 import type {
 	AgentDetails,
@@ -22,6 +22,7 @@ import type {
 } from "@renderer/api/local-operator/types";
 import type { useUpdateAgent } from "@renderer/hooks/use-update-agent";
 import type { FC } from "react";
+import { useState } from "react";
 import { toast } from "react-toastify";
 import { EditableField } from "../common/editable-field";
 
@@ -119,6 +120,10 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 	refetchAgent,
 	initialSelectedAgentId,
 }) => {
+	// Track the current hosting provider to detect changes
+	// Initialize with selectedAgent.hosting and don't update it in a useEffect
+	// This prevents flickering when the hosting changes
+	const [currentHosting, setCurrentHosting] = useState<string>(selectedAgent.hosting || "");
 	return (
 		<>
 			<HeaderContainer>
@@ -135,13 +140,17 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 								return;
 							}
 							setSavingField("name");
+							
 							try {
 								const update: AgentUpdate = { name: value };
+								
+								// Perform the API update
 								await updateAgentMutation.mutateAsync({
 									agentId: selectedAgent.id,
 									update,
 								});
-								// Explicitly refetch the agent data to update the UI
+								
+								// Only refetch if needed (when viewing the current agent)
 								if (
 									selectedAgent.id === initialSelectedAgentId &&
 									refetchAgent
@@ -157,23 +166,34 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 					/>
 				</Box>
 
-				<Box sx={{ display: "flex", gap: 3, alignItems: "center" }}>
-					<Box sx={{ width: "220px" }}>
-						<EditableField
+				<Grid container spacing={2}>
+					<Grid item xs={12} md={6}>
+						<HostingSelect
+							key={`hosting-select-${selectedAgent.id}-${selectedAgent.hosting || ""}`}
 							value={selectedAgent.hosting || ""}
-							label="Hosting"
-							placeholder="Default"
-							icon={<FontAwesomeIcon icon={faServer} />}
 							isSaving={savingField === "hosting"}
 							onSave={async (value) => {
 								setSavingField("hosting");
+								
+								// Update the local state immediately to prevent flickering
+								// This ensures the ModelSelect component gets the new hosting value right away
+								setCurrentHosting(value);
+								
 								try {
-									const update: AgentUpdate = { hosting: value };
+									// Update both hosting and reset model to ensure compatibility
+									const update: AgentUpdate = { 
+										hosting: value,
+										// Clear model when hosting changes to avoid incompatible models
+										model: "" 
+									};
+									
+									// Perform the API update
 									await updateAgentMutation.mutateAsync({
 										agentId: selectedAgent.id,
 										update,
 									});
-									// Explicitly refetch the agent data to update the UI
+									
+									// Only refetch if needed (when viewing the current agent)
 									if (
 										selectedAgent.id === initialSelectedAgentId &&
 										refetchAgent
@@ -182,29 +202,35 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 									}
 								} catch (error) {
 									// Error is already handled in the mutation
+									// Revert the local state if there's an error
+									setCurrentHosting(selectedAgent.hosting || "");
 								} finally {
 									setSavingField(null);
 								}
 							}}
+							filterByCredentials={false}
 						/>
-					</Box>
+					</Grid>
 
-					<Box sx={{ width: "220px" }}>
-						<EditableField
+					<Grid item xs={12} md={6}>
+						<ModelSelect
+							key={`model-select-${selectedAgent.id}-${currentHosting}`}
 							value={selectedAgent.model || ""}
-							label="Model"
-							placeholder="Default"
-							icon={<FontAwesomeIcon icon={faRobot} />}
+							hostingId={currentHosting}
 							isSaving={savingField === "model"}
 							onSave={async (value) => {
 								setSavingField("model");
+								
 								try {
 									const update: AgentUpdate = { model: value };
+									
+									// Perform the API update
 									await updateAgentMutation.mutateAsync({
 										agentId: selectedAgent.id,
 										update,
 									});
-									// Explicitly refetch the agent data to update the UI
+									
+									// Only refetch if needed (when viewing the current agent)
 									if (
 										selectedAgent.id === initialSelectedAgentId &&
 										refetchAgent
@@ -218,8 +244,8 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 								}
 							}}
 						/>
-					</Box>
-				</Box>
+					</Grid>
+				</Grid>
 			</HeaderContainer>
 
 			<Divider sx={{ mb: 3 }} />
@@ -240,13 +266,17 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 					isSaving={savingField === "description"}
 					onSave={async (value) => {
 						setSavingField("description");
+						
 						try {
 							const update: AgentUpdate = { description: value };
+							
+							// Perform the API update
 							await updateAgentMutation.mutateAsync({
 								agentId: selectedAgent.id,
 								update,
 							});
-							// Explicitly refetch the agent data to update the UI
+							
+							// Only refetch if needed (when viewing the current agent)
 							if (selectedAgent.id === initialSelectedAgentId && refetchAgent) {
 								await refetchAgent();
 							}
