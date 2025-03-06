@@ -61,8 +61,7 @@ export const StyledDialog = styled(Dialog)(({ theme }) => ({
 	},
 	"& .MuiPaper-root": {
 		borderRadius: 8,
-		backgroundColor: alpha(theme.palette.background.paper, 0.95),
-		backdropFilter: "blur(10px)",
+		backgroundColor: alpha(theme.palette.background.paper, 0.9),
 		boxShadow: `0 10px 40px ${alpha(theme.palette.common.black, 0.4)}`,
 		border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
 		[theme.breakpoints.up('xs')]: {
@@ -78,12 +77,17 @@ export const StyledDialog = styled(Dialog)(({ theme }) => ({
 	"& .MuiDialogTitle-root": {
 		padding: "20px 24px 12px 24px",
 		borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+		backgroundColor: theme.palette.background.default,
 	},
 	"& .MuiDialogContent-root": {
 		padding: "16px 24px",
+		backgroundColor: theme.palette.background.default,
 		"&:first-of-type": {
 			paddingTop: 16,
 		},
+	},
+	"& .MuiDialogActions-root": {
+		backgroundColor: theme.palette.background.default,
 	},
 }));
 
