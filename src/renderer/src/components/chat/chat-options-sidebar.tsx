@@ -8,7 +8,6 @@
 import {
 	faGear,
 	faInfoCircle,
-	faRobot,
 	faServer,
 	faSliders,
 	faTimes,
@@ -36,6 +35,7 @@ import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { EditableField } from "../common/editable-field";
 import { SliderSetting } from "../common/slider-setting";
+import { HostingSelect, ModelSelect } from "../hosting";
 
 type ChatOptionsSidebarProps = {
 	/**
@@ -292,11 +292,8 @@ export const ChatOptionsSidebar: FC<ChatOptionsSidebarProps> = ({
 					</SectionTitle>
 
 					<ModelHostingSection>
-						<EditableField
+						<HostingSelect
 							value={localAgent.hosting || ""}
-							label="Hosting Provider"
-							placeholder="Default"
-							icon={<FontAwesomeIcon icon={faServer} />}
 							isSaving={savingField === "hosting"}
 							onSave={async (value) => {
 								setSavingField("hosting");
@@ -329,44 +326,40 @@ export const ChatOptionsSidebar: FC<ChatOptionsSidebarProps> = ({
 							}}
 						/>
 
-						<Box sx={{ mt: 2 }}>
-							<EditableField
-								value={localAgent.model || ""}
-								label="Model"
-								placeholder="Default"
-								icon={<FontAwesomeIcon icon={faRobot} />}
-								isSaving={savingField === "model"}
-								onSave={async (value) => {
-									setSavingField("model");
-									try {
-										const update: AgentUpdate = { model: value };
-										await updateAgentMutation.mutateAsync({
-											agentId: localAgent.id,
-											update,
-										});
+						<ModelSelect
+							value={localAgent.model || ""}
+							hostingId={localAgent.hosting || ""}
+							isSaving={savingField === "model"}
+							onSave={async (value) => {
+								setSavingField("model");
+								try {
+									const update: AgentUpdate = { model: value };
+									await updateAgentMutation.mutateAsync({
+										agentId: localAgent.id,
+										update,
+									});
 
-										// Update local state immediately
-										setLocalAgent((prev) =>
-											prev
-												? {
-														...prev,
-														model: value,
-													}
-												: null,
-										);
+									// Update local state immediately
+									setLocalAgent((prev) =>
+										prev
+											? {
+													...prev,
+													model: value,
+												}
+											: null,
+									);
 
-										// Also refresh the agent data
-										if (refetchAgent) {
-											await refetchAgent();
-										}
-									} catch (error) {
-										// Error is already handled in the mutation
-									} finally {
-										setSavingField(null);
+									// Also refresh the agent data
+									if (refetchAgent) {
+										await refetchAgent();
 									}
-								}}
-							/>
-						</Box>
+								} catch (error) {
+									// Error is already handled in the mutation
+								} finally {
+									setSavingField(null);
+								}
+							}}
+						/>
 					</ModelHostingSection>
 
 					{/* Chat Settings Section */}
