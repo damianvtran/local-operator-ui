@@ -13,9 +13,9 @@ type MessageItemProps = {
 	message: Message;
 };
 
-interface StyledComponentProps {
+type StyledComponentProps = {
 	isUser: boolean;
-}
+};
 
 const MessageContainer = styled(Box, {
 	shouldForwardProp: (prop) => prop !== "isUser",
