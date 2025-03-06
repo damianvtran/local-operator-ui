@@ -42,6 +42,14 @@ import type { ConfigUpdate } from '@renderer/api/local-operator/types';
 const StyledPaper = styled(Paper)(({ theme }) => ({
   height: '100%',
   width: '100%',
+  display: 'flex',
+  [theme.breakpoints.down('md')]: {
+    flexDirection: 'column',
+  },
+}));
+
+const ContentContainer = styled(Box)(({ theme }) => ({
+  flexGrow: 1,
   overflow: 'auto',
   [theme.breakpoints.down('sm')]: {
     padding: 16,
@@ -58,6 +66,15 @@ const StyledPaper = styled(Paper)(({ theme }) => ({
   '&::-webkit-scrollbar-thumb': {
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
     borderRadius: '4px',
+  },
+}));
+
+const SidebarContainer = styled(Box)(({ theme }) => ({
+  width: 280,
+  padding: theme.spacing(2),
+  [theme.breakpoints.down('md')]: {
+    width: '100%',
+    padding: theme.spacing(2, 2, 0, 2),
   },
 }));
 
@@ -147,13 +164,33 @@ export const SettingsPage: FC = () => {
   const handleSelectSection = (sectionId: string) => {
     setActiveSection(sectionId);
     const ref = sectionRefs[sectionId];
-    ref?.current?.scrollIntoView({ behavior: 'smooth' });
+    if (ref?.current) {
+      // Get the scrollable container
+      const contentContainer = document.querySelector('[data-settings-content]');
+      if (contentContainer) {
+        // Calculate the scroll position
+        const containerRect = contentContainer.getBoundingClientRect();
+        const elementRect = ref.current.getBoundingClientRect();
+        const scrollTop = elementRect.top - containerRect.top + contentContainer.scrollTop;
+        
+        // Scroll to the element
+        contentContainer.scrollTo({
+          top: scrollTop - 80, // Offset for header
+          behavior: 'smooth'
+        });
+      } else {
+        // Fallback to default scrollIntoView if container not found
+        ref.current.scrollIntoView({ behavior: 'smooth' });
+      }
+    }
   };
   
   // Update active section based on scroll position
   useEffect(() => {
-    const handleScroll = () => {
-      const scrollPosition = window.scrollY + 100; // Add offset for header
+    const handleScroll = (e: Event) => {
+      // Get the scrollable container
+      const container = e.target as HTMLElement;
+      const scrollPosition = container.scrollTop + 100; // Add offset for header
       
       // Find the section that is currently in view
       for (const [sectionId, ref] of Object.entries(sectionRefs)) {
@@ -167,8 +204,13 @@ export const SettingsPage: FC = () => {
       }
     };
     
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    // Get the scrollable container
+    const contentContainer = document.querySelector('[data-settings-content]');
+    if (contentContainer) {
+      contentContainer.addEventListener('scroll', handleScroll);
+      return () => contentContainer.removeEventListener('scroll', handleScroll);
+    }
+    return undefined;
   }, [sectionRefs]);
   
   // Handle updating a specific field
@@ -210,266 +252,264 @@ export const SettingsPage: FC = () => {
 
   return (
     <StyledPaper elevation={0}>
-      <PageHeader
-        title="Settings"
-        icon={faGear}
-        subtitle="Configure your application preferences and settings"
-      />
+      {/* Settings Sidebar - Fixed on the left */}
+      <SidebarContainer>
+        <SettingsSidebar
+          activeSection={activeSection}
+          onSelectSection={handleSelectSection}
+          sections={DEFAULT_SETTINGS_SECTIONS}
+        />
+      </SidebarContainer>
       
-      <StyledContainer maxWidth="lg" disableGutters>
-        <Grid container spacing={4}>
-          {/* Settings Sidebar */}
-          <Grid item xs={12} md={3}>
-            <SettingsSidebar
-              activeSection={activeSection}
-              onSelectSection={handleSelectSection}
-              sections={DEFAULT_SETTINGS_SECTIONS}
-            />
-          </Grid>
-          
-          {/* Settings Content */}
-          <Grid item xs={12} md={9}>
-            {/* General Settings Section */}
-            <Box ref={generalSectionRef}>
-              <Grid container spacing={4}>
-                {/* Left Column */}
-                <Grid item xs={12} md={6}>
-                  {/* User Profile Settings */}
-                  <StyledCard>
-                    <StyledCardContent>
-                      <CardTitle variant="h6">
-                        <FontAwesomeIcon icon={faUser} />
-                        User Profile
-                      </CardTitle>
-                      
-                      <CardDescription variant="body2">
-                        Update your user profile information displayed in the application.
-                      </CardDescription>
-                      
-                      <FieldsContainer>
-                        <EditableField
-                          value={userStore.profile.name}
-                          label="Display Name"
-                          placeholder="Enter your name..."
-                          icon={<FontAwesomeIcon icon={faUser} />}
-                          isSaving={savingField === 'user_name'}
-                          onSave={async (value) => {
-                            setSavingField('user_name');
-                            try {
-                              userStore.updateName(value);
-                            } finally {
-                              setSavingField(null);
-                            }
-                          }}
-                        />
-                        
-                        <EditableField
-                          value={userStore.profile.email}
-                          label="Email Address"
-                          placeholder="Enter your email..."
-                          icon={<FontAwesomeIcon icon={faEnvelope} />}
-                          isSaving={savingField === 'user_email'}
-                          onSave={async (value) => {
-                            setSavingField('user_email');
-                            try {
-                              userStore.updateEmail(value);
-                            } finally {
-                              setSavingField(null);
-                            }
-                          }}
-                        />
-                      </FieldsContainer>
-                    </StyledCardContent>
-                  </StyledCard>
-                  {/* Model Settings */}
-                  <StyledCard>
-                    <StyledCardContent>
-                      <CardTitle variant="h6">
-                        <FontAwesomeIcon icon={faRobot} />
-                        Model Settings
-                      </CardTitle>
-                      
-                      <CardDescription variant="body2">
-                        Configure the AI model and hosting provider used for generating responses.
-                      </CardDescription>
-                      
-                      <FieldsContainer>
-                        <EditableField
-                          value={config.values.hosting}
-                          label="Hosting Provider"
-                          placeholder="Enter hosting provider..."
-                          icon={<FontAwesomeIcon icon={faServer} />}
-                          isSaving={savingField === 'hosting'}
-                          onSave={async (value) => {
-                            await handleUpdateField('hosting', value);
-                          }}
-                        />
-                        
-                        <EditableField
-                          value={config.values.model_name}
-                          label="Model Name"
-                          placeholder="Enter model name..."
-                          icon={<FontAwesomeIcon icon={faRobot} />}
-                          isSaving={savingField === 'model_name'}
-                          onSave={async (value) => {
-                            await handleUpdateField('model_name', value);
-                          }}
-                        />
-                      </FieldsContainer>
-                    </StyledCardContent>
-                  </StyledCard>
-                  
-                  {/* System Prompt Settings */}
-                  <SystemPrompt />
-                  
-                  {/* Auto-Save Settings */}
-                  <StyledCard>
-                    <StyledCardContent>
-                      <CardTitle variant="h6">
-                        <FontAwesomeIcon icon={faSave} />
-                        Auto-Save Settings
-                      </CardTitle>
-                      
-                      <CardDescription variant="body2">
-                        Control whether conversations are automatically saved for future reference.
-                      </CardDescription>
-                      
-                      <ToggleSetting
-                        value={config.values.auto_save_conversation}
-                        label="Auto-Save Conversations"
-                        description="When enabled, all conversations will be automatically saved to your history"
-                        icon={faCloudUploadAlt}
-                        isSaving={savingField === 'auto_save_conversation'}
-                        onChange={async (value) => {
-                          await handleUpdateField('auto_save_conversation', value);
+      {/* Scrollable Content Area */}
+      <ContentContainer data-settings-content>
+        <PageHeader
+          title="Settings"
+          icon={faGear}
+          subtitle="Configure your application preferences and settings"
+        />
+        
+        <StyledContainer maxWidth="lg" disableGutters>
+          {/* General Settings Section */}
+          <Box ref={generalSectionRef}>
+            <Grid container spacing={4}>
+              {/* Left Column */}
+              <Grid item xs={12} md={6}>
+                {/* User Profile Settings */}
+                <StyledCard>
+                  <StyledCardContent>
+                    <CardTitle variant="h6">
+                      <FontAwesomeIcon icon={faUser} />
+                      User Profile
+                    </CardTitle>
+                    
+                    <CardDescription variant="body2">
+                      Update your user profile information displayed in the application.
+                    </CardDescription>
+                    
+                    <FieldsContainer>
+                      <EditableField
+                        value={userStore.profile.name}
+                        label="Display Name"
+                        placeholder="Enter your name..."
+                        icon={<FontAwesomeIcon icon={faUser} />}
+                        isSaving={savingField === 'user_name'}
+                        onSave={async (value) => {
+                          setSavingField('user_name');
+                          try {
+                            userStore.updateName(value);
+                          } finally {
+                            setSavingField(null);
+                          }
                         }}
                       />
-                    </StyledCardContent>
-                  </StyledCard>
-                </Grid>
+                      
+                      <EditableField
+                        value={userStore.profile.email}
+                        label="Email Address"
+                        placeholder="Enter your email..."
+                        icon={<FontAwesomeIcon icon={faEnvelope} />}
+                        isSaving={savingField === 'user_email'}
+                        onSave={async (value) => {
+                          setSavingField('user_email');
+                          try {
+                            userStore.updateEmail(value);
+                          } finally {
+                            setSavingField(null);
+                          }
+                        }}
+                      />
+                    </FieldsContainer>
+                  </StyledCardContent>
+                </StyledCard>
+                {/* Model Settings */}
+                <StyledCard>
+                  <StyledCardContent>
+                    <CardTitle variant="h6">
+                      <FontAwesomeIcon icon={faRobot} />
+                      Model Settings
+                    </CardTitle>
+                    
+                    <CardDescription variant="body2">
+                      Configure the AI model and hosting provider used for generating responses.
+                    </CardDescription>
+                    
+                    <FieldsContainer>
+                      <EditableField
+                        value={config.values.hosting}
+                        label="Hosting Provider"
+                        placeholder="Enter hosting provider..."
+                        icon={<FontAwesomeIcon icon={faServer} />}
+                        isSaving={savingField === 'hosting'}
+                        onSave={async (value) => {
+                          await handleUpdateField('hosting', value);
+                        }}
+                      />
+                      
+                      <EditableField
+                        value={config.values.model_name}
+                        label="Model Name"
+                        placeholder="Enter model name..."
+                        icon={<FontAwesomeIcon icon={faRobot} />}
+                        isSaving={savingField === 'model_name'}
+                        onSave={async (value) => {
+                          await handleUpdateField('model_name', value);
+                        }}
+                      />
+                    </FieldsContainer>
+                  </StyledCardContent>
+                </StyledCard>
                 
-                {/* Right Column */}
-                <Grid item xs={12} md={6}>
-                  {/* History Settings */}
-                  <StyledCard>
-                    <StyledCardContent>
-                      <CardTitle variant="h6">
-                        <FontAwesomeIcon icon={faHistory} />
-                        History Settings
-                      </CardTitle>
-                      
-                      <CardDescription variant="body2">
-                        Configure how much conversation history is retained and displayed.
-                      </CardDescription>
-                      
-                      <SliderSetting
-                        value={config.values.conversation_length}
-                        label="Maximum Conversation History"
-                        description="Number of messages to keep in conversation history for context.  More messages will make the agents have longer memory but more expensive to run."
-                        min={10}
-                        max={200}
-                        step={10}
-                        unit="msgs"
-                        icon={faHistory}
-                        isSaving={savingField === 'conversation_length'}
-                        onChange={async (value) => {
-                          await handleUpdateField('conversation_length', value);
-                        }}
-                      />
-                      
-                      <SliderSetting
-                        value={config.values.detail_length}
-                        label="Detail View Length"
-                        description="Maximum number of messages to show in the detailed conversation view.  Messages beyond this limit will be summarized.  Shortening this will decrease costs but some important details could get lost from earlier messages."
-                        min={10}
-                        max={100}
-                        step={5}
-                        unit="msgs"
-                        icon={faListAlt}
-                        isSaving={savingField === 'detail_length'}
-                        onChange={async (value) => {
-                          await handleUpdateField('detail_length', value);
-                        }}
-                      />
-                      
-                      <SliderSetting
-                        value={config.values.max_learnings_history}
-                        label="Maximum Learnings History"
-                        description="Number of learning items to retain for context and personalization.  More items will make the agents acquire a longer history of knowledge from your conversations but more expensive to run."
-                        min={10}
-                        max={100}
-                        step={10}
-                        unit="items"
-                        icon={faDatabase}
-                        isSaving={savingField === 'max_learnings_history'}
-                        onChange={async (value) => {
-                          await handleUpdateField('max_learnings_history', value);
-                        }}
-                      />
-                    </StyledCardContent>
-                  </StyledCard>
-                  
-                  {/* Configuration Metadata */}
-                  <StyledCard>
-                    <StyledCardContent>
-                      <CardTitle variant="h6">
-                        <FontAwesomeIcon icon={faInfoCircle} />
-                        Configuration Information
-                      </CardTitle>
-                      
-                      <CardDescription variant="body2">
-                        System information about the current configuration.
-                      </CardDescription>
-                      
-                      <Grid container spacing={2}>
-                        <Grid item xs={12} sm={6}>
-                          <InfoBox>
-                            <InfoLabel variant="subtitle2">Version</InfoLabel>
-                            <InfoValue variant="body1">{config.version}</InfoValue>
-                          </InfoBox>
-                        </Grid>
-                        
-                        <Grid item xs={12} sm={6}>
-                          <InfoBox>
-                            <InfoLabel variant="subtitle2">Created At</InfoLabel>
-                            <InfoValue variant="body1">{new Date(config.metadata.created_at).toLocaleString()}</InfoValue>
-                          </InfoBox>
-                        </Grid>
-                        
-                        <Grid item xs={12} sm={6}>
-                          <InfoBox>
-                            <InfoLabel variant="subtitle2">Last Modified</InfoLabel>
-                            <InfoValue variant="body1">{new Date(config.metadata.last_modified).toLocaleString()}</InfoValue>
-                          </InfoBox>
-                        </Grid>
-                        
-                        <Grid item xs={12} sm={6}>
-                          <InfoBox>
-                            <InfoLabel variant="subtitle2">Description</InfoLabel>
-                            <InfoValue variant="body1">{config.metadata.description || "No description available"}</InfoValue>
-                          </InfoBox>
-                        </Grid>
-                      </Grid>
-                    </StyledCardContent>
-                  </StyledCard>
-                </Grid>
+                {/* System Prompt Settings */}
+                <SystemPrompt />
+                
+                {/* Auto-Save Settings */}
+                <StyledCard>
+                  <StyledCardContent>
+                    <CardTitle variant="h6">
+                      <FontAwesomeIcon icon={faSave} />
+                      Auto-Save Settings
+                    </CardTitle>
+                    
+                    <CardDescription variant="body2">
+                      Control whether conversations are automatically saved for future reference.
+                    </CardDescription>
+                    
+                    <ToggleSetting
+                      value={config.values.auto_save_conversation}
+                      label="Auto-Save Conversations"
+                      description="When enabled, all conversations will be automatically saved to your history"
+                      icon={faCloudUploadAlt}
+                      isSaving={savingField === 'auto_save_conversation'}
+                      onChange={async (value) => {
+                        await handleUpdateField('auto_save_conversation', value);
+                      }}
+                    />
+                  </StyledCardContent>
+                </StyledCard>
               </Grid>
-            </Box>
-            
-            {/* API Credentials Section */}
-            <Box mt={6} mb={4} ref={credentialsSectionRef}>
-              <Typography variant="h5" fontWeight="500" display="flex" alignItems="center" gap={2}>
-                <FontAwesomeIcon icon={faKey} />
-                API Credentials
-              </Typography>
-              <Typography variant="body1" color="text.secondary" mt={1} mb={3}>
-                Manage your API keys for various services and integrations
-              </Typography>
-              <Credentials />
-            </Box>
-          </Grid>
-        </Grid>
-      </StyledContainer>
+              
+              {/* Right Column */}
+              <Grid item xs={12} md={6}>
+                {/* History Settings */}
+                <StyledCard>
+                  <StyledCardContent>
+                    <CardTitle variant="h6">
+                      <FontAwesomeIcon icon={faHistory} />
+                      History Settings
+                    </CardTitle>
+                    
+                    <CardDescription variant="body2">
+                      Configure how much conversation history is retained and displayed.
+                    </CardDescription>
+                    
+                    <SliderSetting
+                      value={config.values.conversation_length}
+                      label="Maximum Conversation History"
+                      description="Number of messages to keep in conversation history for context.  More messages will make the agents have longer memory but more expensive to run."
+                      min={10}
+                      max={200}
+                      step={10}
+                      unit="msgs"
+                      icon={faHistory}
+                      isSaving={savingField === 'conversation_length'}
+                      onChange={async (value) => {
+                        await handleUpdateField('conversation_length', value);
+                      }}
+                    />
+                    
+                    <SliderSetting
+                      value={config.values.detail_length}
+                      label="Detail View Length"
+                      description="Maximum number of messages to show in the detailed conversation view.  Messages beyond this limit will be summarized.  Shortening this will decrease costs but some important details could get lost from earlier messages."
+                      min={10}
+                      max={100}
+                      step={5}
+                      unit="msgs"
+                      icon={faListAlt}
+                      isSaving={savingField === 'detail_length'}
+                      onChange={async (value) => {
+                        await handleUpdateField('detail_length', value);
+                      }}
+                    />
+                    
+                    <SliderSetting
+                      value={config.values.max_learnings_history}
+                      label="Maximum Learnings History"
+                      description="Number of learning items to retain for context and personalization.  More items will make the agents acquire a longer history of knowledge from your conversations but more expensive to run."
+                      min={10}
+                      max={100}
+                      step={10}
+                      unit="items"
+                      icon={faDatabase}
+                      isSaving={savingField === 'max_learnings_history'}
+                      onChange={async (value) => {
+                        await handleUpdateField('max_learnings_history', value);
+                      }}
+                    />
+                  </StyledCardContent>
+                </StyledCard>
+                
+                {/* Configuration Metadata */}
+                <StyledCard>
+                  <StyledCardContent>
+                    <CardTitle variant="h6">
+                      <FontAwesomeIcon icon={faInfoCircle} />
+                      Configuration Information
+                    </CardTitle>
+                    
+                    <CardDescription variant="body2">
+                      System information about the current configuration.
+                    </CardDescription>
+                    
+                    <Grid container spacing={2}>
+                      <Grid item xs={12} sm={6}>
+                        <InfoBox>
+                          <InfoLabel variant="subtitle2">Version</InfoLabel>
+                          <InfoValue variant="body1">{config.version}</InfoValue>
+                        </InfoBox>
+                      </Grid>
+                      
+                      <Grid item xs={12} sm={6}>
+                        <InfoBox>
+                          <InfoLabel variant="subtitle2">Created At</InfoLabel>
+                          <InfoValue variant="body1">{new Date(config.metadata.created_at).toLocaleString()}</InfoValue>
+                        </InfoBox>
+                      </Grid>
+                      
+                      <Grid item xs={12} sm={6}>
+                        <InfoBox>
+                          <InfoLabel variant="subtitle2">Last Modified</InfoLabel>
+                          <InfoValue variant="body1">{new Date(config.metadata.last_modified).toLocaleString()}</InfoValue>
+                        </InfoBox>
+                      </Grid>
+                      
+                      <Grid item xs={12} sm={6}>
+                        <InfoBox>
+                          <InfoLabel variant="subtitle2">Description</InfoLabel>
+                          <InfoValue variant="body1">{config.metadata.description || "No description available"}</InfoValue>
+                        </InfoBox>
+                      </Grid>
+                    </Grid>
+                  </StyledCardContent>
+                </StyledCard>
+              </Grid>
+            </Grid>
+          </Box>
+          
+          {/* API Credentials Section */}
+          <Box mt={6} mb={4} ref={credentialsSectionRef}>
+            <Typography variant="h5" fontWeight="500" display="flex" alignItems="center" gap={2}>
+              <FontAwesomeIcon icon={faKey} />
+              API Credentials
+            </Typography>
+            <Typography variant="body1" color="text.secondary" mt={1} mb={3}>
+              Manage your API keys for various services and integrations
+            </Typography>
+            <Credentials />
+          </Box>
+        </StyledContainer>
+      </ContentContainer>
     </StyledPaper>
   );
 };
