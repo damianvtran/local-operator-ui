@@ -19,7 +19,6 @@ export const useInitializeModels = () => {
 	// Initialize models on mount
 	useEffect(() => {
 		// Models will be loaded automatically by the useModels hook
-		console.log("Initializing models store...");
 	}, []);
 
 	return {

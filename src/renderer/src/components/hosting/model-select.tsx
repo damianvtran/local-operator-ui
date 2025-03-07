@@ -143,9 +143,6 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 		// Get models for the selected hosting provider
 		const models = getModelsForHostingProvider(hostingId);
 		
-		// Log for debugging
-		console.log(`Models for provider ${hostingId}:`, models);
-		
 		return models;
 	}, [hostingId]);
 

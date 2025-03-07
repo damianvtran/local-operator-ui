@@ -299,7 +299,6 @@ export const EditableField: FC<EditableFieldProps> = ({
 		e.preventDefault();
 		e.stopPropagation();
 
-		console.log("Clear button clicked");
 		setIsClearing(true);
 
 		// Force the field to be empty first
@@ -309,7 +308,6 @@ export const EditableField: FC<EditableFieldProps> = ({
 		setTimeout(() => {
 			onSave("")
 				.then(() => {
-					console.log("Field cleared successfully");
 					// Update all state variables
 					setDisplayValue("");
 					setOriginalValue("");

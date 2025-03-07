@@ -50,9 +50,6 @@ export const useRecentDirectoriesStore = create<RecentDirectoriesState>()(
           return;
         }
         
-        // Log for debugging
-        console.log('Adding to recent directories:', path);
-        
         set((state) => {
           // Filter out the path if it already exists to avoid duplicates
           const filteredDirectories = state.recentDirectories.filter(
@@ -64,9 +61,6 @@ export const useRecentDirectoriesStore = create<RecentDirectoriesState>()(
             path,
             ...filteredDirectories,
           ].slice(0, MAX_RECENT_DIRECTORIES);
-          
-          // Log the updated list
-          console.log('Updated recent directories:', newRecentDirectories);
           
           return {
             recentDirectories: newRecentDirectories,
