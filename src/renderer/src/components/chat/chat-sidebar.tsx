@@ -22,6 +22,7 @@ import {
 	TextField,
 	Tooltip,
 	Typography,
+	alpha,
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import { AgentOptionsMenu } from "@renderer/components/common/agent-options-menu";
@@ -78,12 +79,29 @@ const NewAgentButton = styled(Button)(({ theme }) => ({
 	},
 }));
 
-const SearchField = styled(TextField)({
+const SearchField = styled(TextField)(({ theme }) => ({
 	"& .MuiOutlinedInput-root": {
-		borderRadius: 8,
-		backgroundColor: "rgba(255, 255, 255, 0.05)",
+		borderRadius: theme.shape.borderRadius * 1.5,
+		backgroundColor: alpha(theme.palette.background.paper, 0.6),
+		border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+		transition: "all 0.2s ease-in-out",
+		"&.Mui-focused": {
+			backgroundColor: alpha(theme.palette.background.paper, 0.8),
+			boxShadow: `0 0 0 3px ${alpha(theme.palette.primary.main, 0.15)}`,
+		},
+		"&:hover": {
+			backgroundColor: alpha(theme.palette.background.paper, 0.7),
+		},
+		padding: "8px 12px",
+		fontSize: "0.875rem",
 	},
-});
+	"& .MuiInputBase-input": {
+		fontSize: "0.875rem",
+	},
+	"& .MuiInputAdornment-root": {
+		color: alpha(theme.palette.text.primary, 0.6),
+	},
+}));
 
 const LoadingContainer = styled(Box)({
 	display: "flex",
