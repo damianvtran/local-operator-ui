@@ -73,7 +73,7 @@ export const useModels = ({ autoFetch = true } = {}) => {
 	const convertToManifestModel = (model: typeof models[0]) => {
 		return {
 			id: model.id,
-			name: model.name || model.id,
+			name: model.name || model.info.name || model.id,
 			description: model.info.description,
 			contextWindow: model.info.context_window || undefined,
 			maxOutputTokens: model.info.max_tokens || undefined,

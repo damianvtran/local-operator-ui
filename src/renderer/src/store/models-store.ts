@@ -34,7 +34,7 @@ type ModelsState = {
 	/** Fetch model providers and models from the API */
 	fetchModels: (baseUrl: string, force?: boolean) => Promise<void>;
 	/** Get models for a specific provider */
-	getModelsForProvider: (provider: string) => ModelDetails[];
+	getModelsForProvider: (providerId: string) => ModelDetails[];
 	/** Reset the store to its initial state */
 	reset: () => void;
 };
@@ -104,11 +104,11 @@ export const useModelsStore = create<ModelsState>()(
 			/**
 			 * Get models for a specific provider
 			 * 
-			 * @param provider - Provider ID to filter by
+			 * @param providerId - Provider ID to filter by
 			 * @returns Array of models for the specified provider
 			 */
-			getModelsForProvider: (provider: string) => {
-				return get().models.filter((model) => model.provider === provider);
+			getModelsForProvider: (providerId: string) => {
+				return get().models.filter((model) => model.provider === providerId);
 			},
 
 			/**

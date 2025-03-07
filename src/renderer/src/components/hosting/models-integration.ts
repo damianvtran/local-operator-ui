@@ -47,17 +47,17 @@ export const useEnhancedHostingProviders = () => {
 		// Add any new providers from the API that don't exist in the static list
 		for (const apiProvider of apiProviders) {
 			const existingProviderIndex = enhancedProviders.findIndex(
-				(provider) => provider.id === apiProvider
+				(provider) => provider.id === apiProvider.id
 			);
 
 			if (existingProviderIndex === -1) {
 				// This is a new provider from the API, add it
 				enhancedProviders.push({
-					id: apiProvider,
-					name: apiProvider.charAt(0).toUpperCase() + apiProvider.slice(1),
-					description: `Models from ${apiProvider}`,
-					url: "",
-					requiredCredentials: [],
+					id: apiProvider.id,
+					name: apiProvider.name,
+					description: apiProvider.description,
+					url: apiProvider.url,
+					requiredCredentials: apiProvider.requiredCredentials,
 					supportedModels: [],
 				});
 			}

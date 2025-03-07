@@ -10,7 +10,18 @@ import type { CRUDResponse } from "./types";
 /**
  * Type definition for a model provider
  */
-export type Provider = string;
+export type Provider = {
+	/** Unique identifier for the provider */
+	id: string;
+	/** Display name for the provider */
+	name: string;
+	/** Description of the provider */
+	description: string;
+	/** URL to the provider's platform */
+	url: string;
+	/** List of required credential keys */
+	requiredCredentials: string[];
+};
 
 /**
  * Response for listing model providers
@@ -24,6 +35,10 @@ export type ProviderListResponse = {
  * Model information including pricing and capabilities
  */
 export type ModelInfo = {
+	/** Unique identifier for the model */
+	id: string;
+	/** Display name of the model */
+	name: string;
 	/** Price per million tokens for input/prompt */
 	input_price?: number;
 	/** Price per million tokens for output/completion */
