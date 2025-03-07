@@ -1,9 +1,7 @@
 import {
 	faClock,
 	faCommentSlash,
-	faPlus,
 	faRobot,
-	faSearch,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -12,22 +10,20 @@ import {
 	Box,
 	Button,
 	CircularProgress,
-	InputAdornment,
 	List,
 	ListItem,
 	ListItemAvatar,
 	ListItemButton,
 	ListItemText,
 	Paper,
-	TextField,
 	Tooltip,
 	Typography,
-	alpha,
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import { AgentOptionsMenu } from "@renderer/components/common/agent-options-menu";
 import { CompactPagination } from "@renderer/components/common/compact-pagination";
 import { CreateAgentDialog } from "@renderer/components/common/create-agent-dialog";
+import { SidebarHeader } from "@renderer/components/common/sidebar-header";
 import { useAgents } from "@renderer/hooks/use-agents";
 import { usePaginationParams } from "@renderer/hooks/use-pagination-params";
 import { format } from "date-fns";
@@ -42,65 +38,6 @@ const SidebarContainer = styled(Paper)(() => ({
 	display: "flex",
 	flexDirection: "column",
 	overflow: "hidden",
-}));
-
-const SidebarHeader = styled(Box)(({ theme }) => ({
-	padding: theme.spacing(3),
-	borderBottom: "1px solid rgba(255,255,255,0.08)",
-}));
-
-const HeaderRow = styled(Box)({
-	display: "flex",
-	justifyContent: "space-between",
-	alignItems: "center",
-	marginBottom: 16,
-});
-
-const SidebarTitle = styled(Typography)({
-	fontWeight: 600,
-	fontSize: "1rem",
-});
-
-const NewAgentButton = styled(Button)(({ theme }) => ({
-	borderRadius: 8,
-	textTransform: "none",
-	fontWeight: 600,
-	paddingLeft: 16,
-	paddingRight: 16,
-	paddingTop: 6.4,
-	paddingBottom: 6.4,
-	transition: "all 0.2s ease-in-out",
-	"&:hover": {
-		boxShadow: `0 2px 8px ${theme.palette.primary.main}33`,
-		transform: "translateY(-1px)",
-	},
-	"&:active": {
-		transform: "translateY(0)",
-	},
-}));
-
-const SearchField = styled(TextField)(({ theme }) => ({
-	"& .MuiOutlinedInput-root": {
-		borderRadius: theme.shape.borderRadius * 1.5,
-		backgroundColor: alpha(theme.palette.background.paper, 0.6),
-		border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-		transition: "all 0.2s ease-in-out",
-		"&.Mui-focused": {
-			backgroundColor: alpha(theme.palette.background.paper, 0.8),
-			boxShadow: `0 0 0 3px ${alpha(theme.palette.primary.main, 0.15)}`,
-		},
-		"&:hover": {
-			backgroundColor: alpha(theme.palette.background.paper, 0.7),
-		},
-		padding: "8px 12px",
-		fontSize: "0.875rem",
-	},
-	"& .MuiInputBase-input": {
-		fontSize: "0.875rem",
-	},
-	"& .MuiInputAdornment-root": {
-		color: alpha(theme.palette.text.primary, 0.6),
-	},
 }));
 
 const LoadingContainer = styled(Box)({
@@ -294,38 +231,12 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 
 	return (
 		<SidebarContainer elevation={0}>
-			<SidebarHeader>
-				<HeaderRow>
-					<SidebarTitle variant="subtitle1">Agents</SidebarTitle>
-					{/* @ts-ignore - MUI Tooltip requires children but we're providing it */}
-					<Tooltip title="Create a new agent" arrow placement="top">
-						<NewAgentButton
-							variant="outlined"
-							color="primary"
-							size="small"
-							startIcon={<FontAwesomeIcon icon={faPlus} />}
-							onClick={handleOpenCreateDialog}
-						>
-							New Agent
-						</NewAgentButton>
-					</Tooltip>
-				</HeaderRow>
-
-				<SearchField
-					fullWidth
-					size="small"
-					placeholder="Search agents"
-					value={searchQuery}
-					onChange={(e) => setSearchQuery(e.target.value)}
-					InputProps={{
-						startAdornment: (
-							<InputAdornment position="start">
-								<FontAwesomeIcon icon={faSearch} size="sm" />
-							</InputAdornment>
-						),
-					}}
-				/>
-			</SidebarHeader>
+			<SidebarHeader
+				title="Agents"
+				searchQuery={searchQuery}
+				onSearchChange={(query) => setSearchQuery(query)}
+				onNewAgentClick={handleOpenCreateDialog}
+			/>
 
 			{isLoading ? (
 				<LoadingContainer>
