@@ -178,6 +178,8 @@ export const MessageInput: FC<MessageInputProps> = ({
 		fileInputRef.current?.click();
 	};
 
+	const isInputDisabled = Boolean(isLoading && currentJobId);
+
 	return (
 		<FormContainer onSubmit={handleSubmit}>
 			<input
@@ -186,22 +188,30 @@ export const MessageInput: FC<MessageInputProps> = ({
 				onChange={handleFileSelect}
 				style={{ display: "none" }}
 				accept="image/*,.pdf,.doc,.docx,.txt"
+				disabled={isInputDisabled}
 			/>
 
 			<Tooltip title="Attach file">
-				<AttachmentButton
-					onClick={triggerFileInput}
-					color="primary"
-					size="medium"
-					aria-label="Attach file"
-				>
-					<FontAwesomeIcon icon={faPaperclip} />
-				</AttachmentButton>
+				<span>
+					<AttachmentButton
+						onClick={triggerFileInput}
+						color="primary"
+						size="medium"
+						aria-label="Attach file"
+						disabled={isInputDisabled}
+					>
+						<FontAwesomeIcon icon={faPaperclip} />
+					</AttachmentButton>
+				</span>
 			</Tooltip>
 
 			<StyledTextField
 				fullWidth
-				placeholder="✨ Type to Chat! Press ↵ to send, Shift+↵ for new line 📝"
+				placeholder={
+					isInputDisabled
+						? "⌛ Agent is busy..."
+						: "✨ Type to Chat! Press ↵ to send, Shift+↵ for new line 📝"
+				}
 				value={newMessage}
 				onChange={(e) => setNewMessage(e.target.value)}
 				onKeyDown={handleKeyDown}
@@ -209,6 +219,7 @@ export const MessageInput: FC<MessageInputProps> = ({
 				maxRows={4}
 				variant="outlined"
 				inputRef={textareaRef}
+				disabled={isInputDisabled}
 			/>
 
 			{selectedFile && (
@@ -220,6 +231,7 @@ export const MessageInput: FC<MessageInputProps> = ({
 						size="small"
 						onClick={() => setSelectedFile(null)}
 						aria-label="Remove file"
+						disabled={isInputDisabled}
 					>
 						<FontAwesomeIcon icon={faTimes} size="xs" />
 					</RemoveFileButton>
