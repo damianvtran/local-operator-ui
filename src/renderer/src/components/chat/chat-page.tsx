@@ -213,7 +213,7 @@ export const ChatPage: FC<ChatProps> = () => {
 	
 	// Fetch all agents to check if the selected agent exists
 	// Set up periodic refetch every 5 seconds to check for new messages
-	const { data: agents = [] } = useAgents(1, 50, 5000); // 5000ms = 5 seconds
+	const { data: agents = [] } = useAgents(1, 50, 10000); // 10000ms = 10 seconds
 	
 	// Use the agent ID from URL or the last selected agent ID
 	const effectiveAgentId = agentId || getLastAgentId('chat');
