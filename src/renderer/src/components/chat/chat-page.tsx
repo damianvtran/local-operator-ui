@@ -592,6 +592,8 @@ Store messages: ${JSON.stringify(getMessages(conversationId || ""), null, 2)}`}
 						<MessageInput
 							onSendMessage={handleSendMessage}
 							isLoading={isLoading}
+							conversationId={conversationId}
+							messages={messages}
 						/>
 					</ChatContainer>
 				)}

@@ -14,12 +14,16 @@ import {
 	alpha,
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
-import { type KeyboardEvent, useRef, useState } from "react";
+import type { Message } from "@renderer/components/chat/types";
+import { useMessageInput } from "@renderer/hooks/use-message-input";
+import { useRef, useState } from "react";
 import type { ChangeEvent, FC, FormEvent } from "react";
 
 type MessageInputProps = {
 	onSendMessage: (content: string, file: File | null) => void;
 	isLoading: boolean;
+	conversationId?: string;
+	messages: Message[];
 };
 
 const FormContainer = styled("form")(({ theme }) => ({
@@ -131,19 +135,32 @@ const SendButton = styled(Button)(({ theme }) => ({
 export const MessageInput: FC<MessageInputProps> = ({
 	onSendMessage,
 	isLoading,
+	conversationId,
+	messages,
 }) => {
-	const [newMessage, setNewMessage] = useState("");
 	const [selectedFile, setSelectedFile] = useState<File | null>(null);
 	const fileInputRef = useRef<HTMLInputElement>(null);
 
+	// Use our custom hook for message input handling
+	const {
+		inputValue: newMessage,
+		setInputValue: setNewMessage,
+		handleKeyDown,
+		handleSubmit: submitMessage,
+		textareaRef,
+	} = useMessageInput({
+		conversationId,
+		messages,
+		onSubmit: (message) => {
+			onSendMessage(message, selectedFile);
+			setSelectedFile(null);
+		},
+	});
+
 	const handleSubmit = (e: FormEvent) => {
 		e.preventDefault();
-
 		if (!newMessage.trim() && !selectedFile) return;
-
-		onSendMessage(newMessage, selectedFile);
-		setNewMessage("");
-		setSelectedFile(null);
+		submitMessage();
 	};
 
 	const handleFileSelect = (e: ChangeEvent<HTMLInputElement>) => {
@@ -154,15 +171,6 @@ export const MessageInput: FC<MessageInputProps> = ({
 
 	const triggerFileInput = () => {
 		fileInputRef.current?.click();
-	};
-
-	const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
-		if (e.key === "Enter" && !e.shiftKey) {
-			e.preventDefault();
-			if (newMessage.trim() || selectedFile) {
-				handleSubmit(e as unknown as FormEvent);
-			}
-		}
 	};
 
 	return (
@@ -195,6 +203,7 @@ export const MessageInput: FC<MessageInputProps> = ({
 				multiline
 				maxRows={4}
 				variant="outlined"
+				inputRef={textareaRef}
 			/>
 
 			{selectedFile && (
