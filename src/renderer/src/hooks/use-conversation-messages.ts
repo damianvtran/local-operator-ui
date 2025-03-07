@@ -65,9 +65,24 @@ export const useConversationMessages = (
 
 	// Track if we're at the top of the messages container
 	const [isAtTop, setIsAtTop] = useState(false);
+	
+	// Track if we're preserving scroll position during loading
+	const [preserveScroll, setPreserveScroll] = useState(false);
+	
+	// Store the scroll position before loading more messages
+	const scrollPositionBeforeLoadRef = useRef<number>(0);
 
-	// Get messages and lastUpdated from the store
-	const { getMessages, setMessages, lastUpdated } = useChatStore();
+	// Get store functions
+	const { 
+		getMessages, 
+		addMessages, 
+		setMessages, 
+		lastUpdated,
+		updatePagination,
+		getPagination,
+		updateScrollPosition,
+		getScrollPosition
+	} = useChatStore();
 
 	// Infinite query for fetching messages with pagination
 	const {
@@ -125,6 +140,9 @@ export const useConversationMessages = (
 
 				// Calculate total pages
 				const totalPages = Math.ceil(result.total / pageSize);
+				
+				// Update pagination state in the store
+				updatePagination(conversationId, result.page, totalPages, result.page < totalPages);
 
 				return {
 					messages,
@@ -153,17 +171,26 @@ export const useConversationMessages = (
 
 	// Handle scroll events to detect when user scrolls to the top
 	const handleScroll = useCallback(() => {
-		if (!messagesContainerRef.current) return;
+		if (!messagesContainerRef.current || !conversationId) return;
 
-		const { scrollTop } = messagesContainerRef.current;
+		const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current;
+		
+		// Save current scroll position to the store
+		updateScrollPosition(conversationId, scrollTop);
 
-		// Check if we're at the top of the container
-		if (scrollTop === 0) {
+		// Get current pagination state
+		const paginationState = getPagination(conversationId);
+		
+		// Check if we're at the top of the container and there are more pages to load
+		if (scrollTop === 0 && paginationState.hasMore) {
+			// Save the current scroll position before loading more messages
+			scrollPositionBeforeLoadRef.current = scrollHeight - clientHeight;
+			setPreserveScroll(true);
 			setIsAtTop(true);
 		} else {
 			setIsAtTop(false);
 		}
-	}, []);
+	}, [conversationId, updateScrollPosition, getPagination]);
 
 	// Set up scroll event listener
 	useEffect(() => {
@@ -184,6 +211,42 @@ export const useConversationMessages = (
 		}
 	}, [isAtTop, hasNextPage, isFetchingNextPage, fetchNextPage]);
 
+	// Restore scroll position after loading more messages
+	useEffect(() => {
+		if (preserveScroll && !isFetchingNextPage && messagesContainerRef.current) {
+			// Wait for the DOM to update
+			setTimeout(() => {
+				if (messagesContainerRef.current) {
+					// Calculate new position - we want to maintain the same relative position
+					// after new messages are loaded at the top
+					const newScrollTop = messagesContainerRef.current.scrollHeight - scrollPositionBeforeLoadRef.current;
+					
+					// Set the scroll position
+					messagesContainerRef.current.scrollTop = newScrollTop > 0 ? newScrollTop : 0;
+					
+					// Reset the preserve scroll flag
+					setPreserveScroll(false);
+				}
+			}, 50);
+		}
+	}, [preserveScroll, isFetchingNextPage]);
+
+	// Restore saved scroll position when switching back to a conversation
+	useEffect(() => {
+		if (conversationId && messagesContainerRef.current && !isLoading) {
+			const savedPosition = getScrollPosition(conversationId);
+			
+			if (savedPosition !== undefined) {
+				// Wait for the DOM to update
+				setTimeout(() => {
+					if (messagesContainerRef.current) {
+						messagesContainerRef.current.scrollTop = savedPosition;
+					}
+				}, 50);
+			}
+		}
+	}, [conversationId, isLoading, getScrollPosition]);
+
 	// Clear the store when the conversation ID changes
 	const previousConversationIdRef = useRef<string | undefined>(conversationId);
 
@@ -193,50 +256,36 @@ export const useConversationMessages = (
 			conversationId !== previousConversationIdRef.current &&
 			previousConversationIdRef.current
 		) {
-			// Clear the messages for the previous conversation
-			setMessages(conversationId || "", []);
+			// We don't need to clear messages anymore since we want to preserve them
+			// when switching between conversations
 		}
 
 		// Update the ref
 		previousConversationIdRef.current = conversationId;
-	}, [conversationId, setMessages]);
+	}, [conversationId]);
 
 	// Update the store with fetched messages
 	useEffect(() => {
 		// Skip if no conversation ID or no data
 		if (!conversationId || !data?.pages) return;
 
-		// Collect all messages from all pages
-		const allMessages = data.pages.flatMap((page) => page.messages);
-
-		// Get existing messages from the store
-		const existingMessages = getMessages(conversationId);
-
-		// If we have more than one page, we need to merge the messages
-		if (data.pages.length > 1) {
-			// Get the latest page of messages
-			const latestPageMessages = data.pages[data.pages.length - 1].messages;
-
-			// Add the new messages to the store (prepend them since they're older)
-			if (latestPageMessages.length > 0) {
-				// Create a new array with the new messages at the beginning
-				const updatedMessages = [...latestPageMessages, ...existingMessages];
-
-				// Remove duplicates by timestamp
-				const uniqueMessages = updatedMessages.filter(
-					(message, index, self) =>
-						index === self.findIndex((m) => m.timestamp === message.timestamp),
-				);
-
-				// Update the store
-				setMessages(conversationId, uniqueMessages);
+		// Process each page of messages
+		data.pages.forEach((page) => {
+			// If this is a new page (not the first page), prepend the messages
+			if (page.page > 1) {
+				addMessages(conversationId, page.messages, true); // prepend = true
+			} else {
+				// For the first page, we might need to set the messages if they don't exist
+				const existingMessages = getMessages(conversationId);
+				if (existingMessages.length === 0) {
+					setMessages(conversationId, page.messages);
+				} else {
+					// Otherwise, merge with existing messages
+					addMessages(conversationId, page.messages, false); // append = false
+				}
 			}
-		}
-		// If this is the first fetch and we have messages, set them in the store
-		else if (allMessages.length > 0) {
-			setMessages(conversationId, allMessages);
-		}
-	}, [data, conversationId, setMessages, getMessages]);
+		});
+	}, [data, conversationId, addMessages, setMessages, getMessages]);
 
 	// Get messages from the store
 	// Include lastUpdated in dependencies to trigger re-renders when the store is updated
@@ -250,15 +299,22 @@ export const useConversationMessages = (
 		return storeMessages;
 	}, [storeMessages]);
 
+	// Get pagination info from the store
+	const pagination = useMemo(() => {
+		return conversationId ? getPagination(conversationId) : { currentPage: 1, totalPages: 1, hasMore: false };
+	}, [conversationId, getPagination, lastUpdated]);
+
 	return {
 		messages,
 		isLoading,
 		isError,
 		error,
 		isFetchingMore: isFetchingNextPage,
-		hasMoreMessages: hasNextPage,
+		hasMoreMessages: pagination.hasMore,
 		fetchMoreMessages: fetchNextPage,
 		messagesContainerRef,
 		refetch,
+		currentPage: pagination.currentPage,
+		totalPages: pagination.totalPages,
 	};
 };

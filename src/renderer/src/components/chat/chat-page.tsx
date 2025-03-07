@@ -251,9 +251,6 @@ export const ChatPage: FC<ChatProps> = () => {
 	// Get the addMessage function from the chat store
 	const { addMessage } = useChatStore();
 
-	// Use custom hook to scroll to bottom when messages change
-	const messagesEndRef = useScrollToBottom([messages.length]);
-
 	// Use the job polling hook
 	const { 
 		currentJobId, 
@@ -265,6 +262,14 @@ export const ChatPage: FC<ChatProps> = () => {
 		conversationId,
 		addMessage,
 	});
+	
+	// Use custom hook to scroll to bottom when messages change or when a new message is added
+	// Only scrolls to bottom if user is already near the bottom
+	const messagesEndRef = useScrollToBottom([
+		messages.length, 
+		isLoading, 
+		currentJobId
+	], 300); // 300px threshold
 	
 	// Check if the selected agent exists in the list of agents
 	useEffect(() => {
@@ -283,9 +288,18 @@ export const ChatPage: FC<ChatProps> = () => {
 	}, [effectiveAgentId, agents, clearLastAgentId, clearAgentId]);
 
 	// Update the last selected agent ID when the agent ID changes
+	// Also force scroll to bottom when changing agents
 	useEffect(() => {
 		if (agentId) {
 			setLastChatAgentId(agentId);
+			
+			// Force scroll to bottom when changing agents
+			// Use a small timeout to ensure the DOM has updated
+			setTimeout(() => {
+				if (messagesContainerRef.current) {
+					messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+				}
+			}, 100);
 		}
 	}, [agentId, setLastChatAgentId]);
 	
@@ -313,6 +327,13 @@ export const ChatPage: FC<ChatProps> = () => {
 	const handleSelectConversation = (id: string) => {
 		setLastChatAgentId(id);
 		navigateToAgent(id, 'chat');
+		
+		// Force scroll to bottom when selecting a conversation
+		setTimeout(() => {
+			if (messagesContainerRef.current) {
+				messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+			}
+		}, 100);
 	};
 
 	// Handle navigating to agent settings

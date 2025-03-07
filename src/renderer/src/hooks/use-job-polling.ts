@@ -282,9 +282,10 @@ export const useJobPolling = ({
 		retryDelay: 1000,
 	});
 
+  
 	// Process job data when it changes
 	useEffect(() => {
-		if (!jobData || !conversationId) return;
+		if (!jobData || !conversationId) return undefined;
 
 		// Create a unique identifier for the current job data to detect changes
 		const jobDataSignature = `${jobData.id}-${jobData.status}-${dataUpdatedAt}`;
@@ -294,16 +295,25 @@ export const useJobPolling = ({
 			// Update the reference to the last processed job data
 			lastProcessedJobDataRef.current = jobDataSignature;
 
-			// Update messages on each poll to show real-time progress
+			// Update messages on each poll to show real-time progress, but with debounce
+			// to prevent too frequent updates that cause flickering
 			if (jobData.status === "processing") {
-				updateConversationMessages(conversationId);
+				// Use a debounced update to prevent flickering
+				const debounceTimeout = setTimeout(() => {
+					updateConversationMessages(conversationId);
+				}, 500); // 500ms debounce
+				
+				// Clean up timeout if component unmounts or job data changes again
+				return () => clearTimeout(debounceTimeout);
 			}
 
-			// If job is completed or failed, handle it
+			// If job is completed or failed, handle it immediately
 			if (jobData.status === "completed" || jobData.status === "failed") {
 				handleJobCompletion(jobData);
 			}
 		}
+		
+		return undefined;
 	}, [
 		jobData,
 		dataUpdatedAt,
