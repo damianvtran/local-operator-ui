@@ -123,7 +123,7 @@ const DEFAULT_DIRECTORIES: DirectoryInfo[] = [
 const DirectoryChip = styled(Chip)(({ theme }) => ({
   backgroundColor: alpha(theme.palette.primary.main, 0.06),
   color: theme.palette.text.secondary,
-  borderRadius: "16px",
+  borderRadius: "8px",
   padding: "0 12px",
   height: "32px",
   maxWidth: "260px",
@@ -155,21 +155,23 @@ const DirectoryChip = styled(Chip)(({ theme }) => ({
 
 const DirectoryTextField = styled(TextField)(({ theme }) => ({
   "& .MuiInputBase-root": {
-    backgroundColor: alpha(theme.palette.background.default, 0.9),
-    borderRadius: "12px",
-    padding: "0 6px",
-    height: "24px",
-    fontSize: "0.75rem",
+    backgroundColor: alpha(theme.palette.background.default, 0.06),
+    borderRadius: "8px",
+    padding: "0 12px",
+    height: "32px",
+    maxWidth: "260px",
     color: theme.palette.text.primary,
-    boxShadow: `0 2px 4px ${alpha(theme.palette.common.black, 0.1)}`,
+    border: `1px solid ${alpha(theme.palette.common.white, 0.2)}`,
   },
   "& .MuiOutlinedInput-notchedOutline": {
     border: "none",
   },
   "& .MuiInputBase-input": {
-    padding: "3px 6px",
+    padding: "0 6px",
+    fontSize: "0.85rem",
+    letterSpacing: "0.01em",
     "&::placeholder": {
-      fontSize: "0.7rem",
+      fontSize: "0.85rem",
       opacity: 0.7,
     },
   },
