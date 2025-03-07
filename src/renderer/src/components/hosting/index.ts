@@ -7,3 +7,4 @@
 export * from './hosting-model-manifest';
 export * from './hosting-select';
 export * from './model-select';
+export * from './models-integration';

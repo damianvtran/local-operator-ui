@@ -9,6 +9,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 
 import { ChatPage } from "@components/chat/chat-page";
 import { AgentsPage } from "@renderer/components/agents/agents-page";
+import { ModelsInitializer } from "@renderer/components/common/models-initializer";
 import { SidebarNavigation } from "@renderer/components/navigation/sidebar-navigation";
 import { SettingsPage } from "@renderer/components/settings/settings-page";
 
@@ -36,6 +37,9 @@ const App: FC = () => {
 	return (
 		<AppContainer>
 			<CssBaseline />
+			
+			{/* Initialize models store */}
+			<ModelsInitializer />
 
 			{/* Sidebar Navigation */}
 			<SidebarNavigation />
