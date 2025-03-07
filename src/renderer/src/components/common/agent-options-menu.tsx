@@ -29,6 +29,7 @@ type AgentOptionsMenuProps = {
 	agentName: string;
 	/**
 	 * Optional callback when an agent is deleted
+	 * @param agentId - The ID of the deleted agent
 	 */
 	onAgentDeleted?: (agentId: string) => void;
 	/**

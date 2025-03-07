@@ -355,8 +355,13 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 											? () => onNavigateToAgentSettings(agent.id)
 											: undefined
 									}
-									onAgentDeleted={() => {
-										// Just refetch the agents list
+									onAgentDeleted={(deletedAgentId) => {
+										// Check if the deleted agent is the currently selected one
+										if (selectedConversation === deletedAgentId) {
+											// If so, clear the selection by calling the parent's onSelectConversation with null
+											onSelectConversation("");
+										}
+										// Refetch the agents list
 										refetch();
 									}}
 									buttonSx={{

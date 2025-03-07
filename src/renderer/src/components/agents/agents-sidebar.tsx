@@ -374,8 +374,14 @@ export const AgentsSidebar: FC<AgentsSidebarProps> = ({
 									agentId={agent.id}
 									agentName={agent.name}
 									isAgentsPage={true}
-									onAgentDeleted={() => {
-										// Just refetch the agents list
+									onAgentDeleted={(deletedAgentId) => {
+										// Check if the deleted agent is the currently selected one
+										if (selectedAgentId === deletedAgentId) {
+											// If the selected agent was deleted, we don't need to do anything here
+											// The parent component (AgentsPage) will handle clearing the selection
+											// when it detects the agent no longer exists
+										}
+										// Refetch the agents list
 										refetch();
 									}}
 									buttonSx={{
