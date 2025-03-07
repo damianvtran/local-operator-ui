@@ -18,9 +18,10 @@ export const agentsQueryKey = ["agents"];
  *
  * @param page - Page number (default: 1)
  * @param perPage - Number of agents per page (default: 50)
+ * @param refetchInterval - Interval in milliseconds to refetch agents (default: 0, no refetch)
  * @returns Query result with agents data, loading state, error state, and refetch function
  */
-export const useAgents = (page = 1, perPage = 50) => {
+export const useAgents = (page = 1, perPage = 50, refetchInterval = 0) => {
 	return useQuery({
 		queryKey: [...agentsQueryKey, page, perPage],
 		queryFn: async () => {
@@ -46,6 +47,10 @@ export const useAgents = (page = 1, perPage = 50) => {
 		},
 		// Prevent automatic refetches on window focus
 		refetchOnWindowFocus: false,
+		// Set refetch interval if provided
+		refetchInterval: refetchInterval,
+		// Enable background refetching if interval is set
+		refetchIntervalInBackground: refetchInterval > 0,
 		// Prevent stale time to avoid unnecessary refetches
 		staleTime: 5000,
 	});

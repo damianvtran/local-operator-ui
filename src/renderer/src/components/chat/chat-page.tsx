@@ -212,7 +212,8 @@ export const ChatPage: FC<ChatProps> = () => {
 	const { setLastChatAgentId, getLastAgentId, clearLastAgentId } = useAgentSelectionStore();
 	
 	// Fetch all agents to check if the selected agent exists
-	const { data: agents = [] } = useAgents();
+	// Set up periodic refetch every 5 seconds to check for new messages
+	const { data: agents = [] } = useAgents(1, 50, 5000); // 5000ms = 5 seconds
 	
 	// Use the agent ID from URL or the last selected agent ID
 	const effectiveAgentId = agentId || getLastAgentId('chat');

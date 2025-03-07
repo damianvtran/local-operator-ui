@@ -11,6 +11,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { convertToMessage } from "./use-conversation-messages";
 import { conversationMessagesQueryKey } from "./use-conversation-messages";
+import { agentsQueryKey } from "./use-agents";
 
 type UseJobPollingParams = {
 	conversationId?: string;
@@ -91,6 +92,11 @@ export const useJobPolling = ({
 					queryClient.invalidateQueries({
 						queryKey: [...conversationMessagesQueryKey, agentId],
 					});
+					
+					// Invalidate the agents query to update the sidebar with the latest message
+					queryClient.invalidateQueries({
+						queryKey: agentsQueryKey,
+					});
 				}
 
 				return true;
@@ -137,6 +143,11 @@ export const useJobPolling = ({
 
 				addMessage(conversationId, errorMessage);
 			}
+
+			// Invalidate the agents query to update the sidebar with the latest message
+			queryClient.invalidateQueries({
+				queryKey: agentsQueryKey,
+			});
 
 			// Clear job tracking
 			setCurrentJobId(null);

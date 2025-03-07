@@ -193,12 +193,13 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 	// Use the pagination hook to get and set the page from URL
 	const { page, setPage } = usePaginationParams();
 	
+	// Set up periodic refetch every 5 seconds to check for new messages
 	const {
 		data: agents = [],
 		isLoading,
 		isError,
 		refetch,
-	} = useAgents(page, perPage);
+	} = useAgents(page, perPage, 5000); // 5000ms = 5 seconds
 
 	const handlePageChange = useCallback(
 		(_event: ChangeEvent<unknown>, value: number) => {
