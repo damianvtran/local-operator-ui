@@ -3,6 +3,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Avatar, Box, Paper, Typography } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import type { FC } from "react";
+import { memo, useMemo } from "react";
 import SyntaxHighlighter from "react-syntax-highlighter";
 import { atomOneDark } from "react-syntax-highlighter/dist/esm/styles/hljs";
 import { createGlobalStyle } from "styled-components";
@@ -227,8 +228,20 @@ const Timestamp = styled(Typography, {
 	fontSize: "0.7rem",
 }));
 
-export const MessageItem: FC<MessageItemProps> = ({ message }) => {
+/**
+ * Memoized message item component to prevent unnecessary re-renders
+ * Only re-renders when the message content changes
+ */
+export const MessageItem: FC<MessageItemProps> = memo(({ message }) => {
 	const isUser = message.role === "user";
+	
+	// Memoize the formatted timestamp to prevent recalculation on re-renders
+	const formattedTimestamp = useMemo(() => {
+		return message.timestamp.toLocaleTimeString([], {
+			hour: "2-digit",
+			minute: "2-digit",
+		});
+	}, [message.timestamp]);
 
 	return (
 		<MessageContainer isUser={isUser}>
@@ -338,12 +351,17 @@ export const MessageItem: FC<MessageItemProps> = ({ message }) => {
 
 				{/* Message timestamp */}
 				<Timestamp variant="caption" isUser={isUser}>
-					{message.timestamp.toLocaleTimeString([], {
-						hour: "2-digit",
-						minute: "2-digit",
-					})}
+					{formattedTimestamp}
 				</Timestamp>
 			</MessagePaper>
 		</MessageContainer>
 	);
-};
+}, (prevProps, nextProps) => {
+	// Custom comparison function for memo
+	// Only re-render if the message ID or content has changed
+	return (
+		prevProps.message.id === nextProps.message.id &&
+		prevProps.message.message === nextProps.message.message &&
+		prevProps.message.status === nextProps.message.status
+	);
+});

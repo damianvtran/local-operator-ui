@@ -1,10 +1,14 @@
 import { Box } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import type { FC } from "react";
+import { memo, useMemo } from "react";
 
 type MarkdownRendererProps = {
 	content: string;
 };
+
+// Cache for parsed markdown to avoid re-parsing the same content
+const markdownCache = new Map<string, string>();
 
 const MarkdownContent = styled(Box)({
 	wordBreak: "break-word",
@@ -90,13 +94,23 @@ const MarkdownContent = styled(Box)({
 });
 
 /**
- * Parses markdown text into HTML
+ * Parses markdown text into HTML with caching for better performance
  * @param text - The markdown text to parse
  * @returns Parsed HTML string
  */
 export const parseMarkdown = (text: string): string => {
 	if (!text) {
 		return "";
+	}
+	
+	// Check if we already parsed this exact text
+	if (markdownCache.has(text)) {
+		return markdownCache.get(text)!;
+	}
+	
+	// If cache is getting too large, clear it to prevent memory issues
+	if (markdownCache.size > 500) {
+		markdownCache.clear();
 	}
 
 	// Replace code blocks
@@ -186,6 +200,9 @@ export const parseMarkdown = (text: string): string => {
 
 	// Replace line breaks
 	parsedText = parsedText.replace(/\n/g, "<br />");
+	
+	// Store the result in cache
+	markdownCache.set(text, parsedText);
 
 	return parsedText;
 };
@@ -250,15 +267,19 @@ const processNestedList = (listHtml: string): string => {
 };
 
 /**
- * Component for rendering markdown content with styled HTML
+ * Memoized component for rendering markdown content with styled HTML
+ * Only re-renders when the content changes
  */
-export const MarkdownRenderer: FC<MarkdownRendererProps> = ({ content }) => {
+export const MarkdownRenderer: FC<MarkdownRendererProps> = memo(({ content }) => {
+	// Memoize the parsed HTML to prevent re-parsing on every render
+	const parsedHtml = useMemo(() => parseMarkdown(content), [content]);
+	
 	return (
 		<MarkdownContent
 			// biome-ignore lint/security/noDangerouslySetInnerHtml: <explanation>
-			dangerouslySetInnerHTML={{ __html: parseMarkdown(content) }}
+			dangerouslySetInnerHTML={{ __html: parsedHtml }}
 		/>
 	);
-};
+});
 
 export default MarkdownRenderer;

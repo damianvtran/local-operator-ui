@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import type { DependencyList } from "react";
 
 /**
  * Custom hook to scroll to the bottom of a container when the content changes
  * Only scrolls to bottom if the user is already near the bottom
+ * Optimized to reduce unnecessary re-renders and calculations
  * 
  * @param dependencies - Array of dependencies that trigger scrolling when changed
  * @param threshold - Distance from bottom (in pixels) to consider "near bottom" (default: 300)
@@ -13,55 +14,93 @@ export const useScrollToBottom = (dependencies: DependencyList = [], threshold =
 	const ref = useRef<HTMLDivElement>(null);
 	const containerRef = useRef<HTMLDivElement | null>(null);
 	const [shouldScrollToBottom, setShouldScrollToBottom] = useState(true);
+	
+	// Use a ref to track the last scroll position to avoid unnecessary state updates
+	const lastScrollPositionRef = useRef<number>(0);
+	const scrollTimeoutRef = useRef<number | null>(null);
 
-	// Check if user is near bottom when scrolling
-	const handleScroll = () => {
+	// Throttled scroll handler to improve performance
+	// Only updates state if the scroll position has changed significantly
+	const handleScroll = useCallback(() => {
 		if (!containerRef.current) return;
 		
-		const { scrollTop, scrollHeight, clientHeight } = containerRef.current;
-		const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+		// Clear any pending timeout
+		if (scrollTimeoutRef.current !== null) {
+			window.clearTimeout(scrollTimeoutRef.current);
+		}
 		
-		// Only auto-scroll if user is near the bottom
-		setShouldScrollToBottom(distanceFromBottom <= threshold);
-	};
+		// Debounce the scroll event to reduce calculations
+		scrollTimeoutRef.current = window.setTimeout(() => {
+			if (!containerRef.current) return;
+			
+			const { scrollTop, scrollHeight, clientHeight } = containerRef.current;
+			const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+			
+			// Only update state if the scroll position has changed significantly
+			// or if the shouldScrollToBottom value would change
+			const currentShouldScroll = distanceFromBottom <= threshold;
+			if (
+				Math.abs(lastScrollPositionRef.current - scrollTop) > 50 || 
+				currentShouldScroll !== shouldScrollToBottom
+			) {
+				lastScrollPositionRef.current = scrollTop;
+				setShouldScrollToBottom(currentShouldScroll);
+			}
+			
+			scrollTimeoutRef.current = null;
+		}, 100); // 100ms debounce
+	}, [threshold, shouldScrollToBottom]);
 
-	// Set up scroll event listener
+	// Set up scroll event listener with passive option for better performance
 	useEffect(() => {
 		const container = containerRef.current;
 		if (!container) return;
 
-		container.addEventListener("scroll", handleScroll);
+		// Use passive: true for better scroll performance
+		container.addEventListener("scroll", handleScroll, { passive: true });
 		return () => {
+			if (scrollTimeoutRef.current !== null) {
+				window.clearTimeout(scrollTimeoutRef.current);
+			}
 			container.removeEventListener("scroll", handleScroll);
 		};
-	}, []);
+	}, [handleScroll]);
 
-	// Scroll to bottom when dependencies change, but only if shouldScrollToBottom is true
+	// Memoize the scroll to bottom effect
 	useEffect(() => {
-		if (ref.current && shouldScrollToBottom) {
-			ref.current.scrollIntoView({ behavior: "smooth" });
-		}
+		// Skip if we shouldn't scroll to bottom
+		if (!shouldScrollToBottom || !ref.current) return;
+		
+		// Use requestAnimationFrame for smoother scrolling
+		const animationFrame = requestAnimationFrame(() => {
+			if (ref.current) {
+				ref.current.scrollIntoView({ behavior: "smooth" });
+			}
+		});
+		
+		return () => cancelAnimationFrame(animationFrame);
 	// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [...dependencies, shouldScrollToBottom]);
 
 	// Set containerRef to the parent of the ref element
+	// This only needs to run once after the ref is set
 	useEffect(() => {
-		if (ref.current) {
-			// Find the scrollable parent
-			let parent = ref.current.parentElement;
-			while (parent) {
-				const { overflow, overflowY } = window.getComputedStyle(parent);
-				if (
-					overflow === "auto" || 
-					overflow === "scroll" || 
-					overflowY === "auto" || 
-					overflowY === "scroll"
-				) {
-					containerRef.current = parent as HTMLDivElement;
-					break;
-				}
-				parent = parent.parentElement;
+		if (!ref.current) return;
+		
+		// Find the scrollable parent
+		let parent = ref.current.parentElement;
+		while (parent) {
+			const { overflow, overflowY } = window.getComputedStyle(parent);
+			if (
+				overflow === "auto" || 
+				overflow === "scroll" || 
+				overflowY === "auto" || 
+				overflowY === "scroll"
+			) {
+				containerRef.current = parent as HTMLDivElement;
+				break;
 			}
+			parent = parent.parentElement;
 		}
 	}, []);
 

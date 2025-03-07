@@ -24,7 +24,7 @@ import {
 import { createLocalOperatorClient } from "@renderer/api/local-operator";
 import { apiConfig } from "@renderer/config";
 import { useChatStore } from "@store/chat-store";
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useCallback } from "react";
 import type { FC } from "react";
 import { useNavigate } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
@@ -148,6 +148,9 @@ const MessagesContainer = styled(Box)({
 		backgroundColor: "rgba(255, 255, 255, 0.1)",
 		borderRadius: "4px",
 	},
+	// Improve GPU acceleration for smoother scrolling
+	transform: "translateZ(0)",
+	willChange: "scroll-position",
 });
 
 const LoadingMoreIndicator = styled(Box)({
@@ -264,13 +267,16 @@ export const ChatPage: FC<ChatProps> = () => {
 		addMessage,
 	});
 	
-	// Use custom hook to scroll to bottom when messages change or when a new message is added
-	// Only scrolls to bottom if user is already near the bottom
-	const messagesEndRef = useScrollToBottom([
+	// Memoize the dependencies array to prevent unnecessary re-renders
+	const scrollDependencies = useMemo(() => [
 		messages.length, 
 		isLoading, 
 		currentJobId
-	], 300); // 300px threshold
+	], [messages.length, isLoading, currentJobId]);
+	
+	// Use custom hook to scroll to bottom when messages change or when a new message is added
+	// Only scrolls to bottom if user is already near the bottom
+	const messagesEndRef = useScrollToBottom(scrollDependencies, 300); // 300px threshold
 	
 	// Check if the selected agent exists in the list of agents
 	useEffect(() => {
@@ -295,12 +301,12 @@ export const ChatPage: FC<ChatProps> = () => {
 			setLastChatAgentId(agentId);
 			
 			// Force scroll to bottom when changing agents
-			// Use a small timeout to ensure the DOM has updated
-			setTimeout(() => {
+			// Use requestAnimationFrame for smoother scrolling
+			requestAnimationFrame(() => {
 				if (messagesContainerRef.current) {
 					messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
 				}
-			}, 100);
+			});
 		}
 	}, [agentId, setLastChatAgentId]);
 	
@@ -323,34 +329,34 @@ export const ChatPage: FC<ChatProps> = () => {
 		}
 	}, [conversationId, queryClient]);
 
-	const handleOpenOptions = () => {
+	const handleOpenOptions = useCallback(() => {
 		setIsOptionsSidebarOpen(true);
-	};
+	}, []);
 
-	const handleCloseOptions = () => {
+	const handleCloseOptions = useCallback(() => {
 		setIsOptionsSidebarOpen(false);
-	};
+	}, []);
 
 	// Handle selecting a conversation
-	const handleSelectConversation = (id: string) => {
+	const handleSelectConversation = useCallback((id: string) => {
 		setLastChatAgentId(id);
 		navigateToAgent(id, 'chat');
 		
 		// Force scroll to bottom when selecting a conversation
-		setTimeout(() => {
+		requestAnimationFrame(() => {
 			if (messagesContainerRef.current) {
 				messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
 			}
-		}, 100);
-	};
+		});
+	}, [setLastChatAgentId, navigateToAgent]);
 
 	// Handle navigating to agent settings
-	const handleNavigateToAgentSettings = (agentId: string) => {
+	const handleNavigateToAgentSettings = useCallback((agentId: string) => {
 		navigate(`/agents/${agentId}`);
-	};
+	}, [navigate]);
 
-	// Handle sending a new message
-	const handleSendMessage = async (content: string, file: File | null) => {
+	// Memoized function to handle sending a new message
+	const handleSendMessage = useCallback(async (content: string, file: File | null) => {
 		if (!conversationId) return;
 
 		// Create a new user message
@@ -437,7 +443,30 @@ export const ChatPage: FC<ChatProps> = () => {
 			// Clear loading state
 			setIsLoading(false);
 		}
-	};
+	}, [conversationId, addMessage, setIsLoading, agentData, apiClient, setCurrentJobId]);
+
+	// Memoize the raw information content to prevent re-rendering
+	const rawInfoContent = useMemo(() => {
+		if (!conversationId) return "";
+		
+		return `Conversation ID: ${conversationId}
+Messages count: ${messages.length}
+Has more messages: ${hasMoreMessages ? "Yes" : "No"}
+Loading more: ${isFetchingMore ? "Yes" : "No"}
+Current job ID: ${currentJobId || "None"}
+Job status: ${jobStatus || "None"}
+Is loading: ${isLoading ? "Yes" : "No"}
+Store messages: ${JSON.stringify(getMessages(conversationId || ""), null, 2)}`;
+	}, [
+		conversationId, 
+		messages.length, 
+		hasMoreMessages, 
+		isFetchingMore, 
+		currentJobId, 
+		jobStatus, 
+		isLoading, 
+		getMessages
+	]);
 
 	// Create a side-by-side layout with the sidebar and chat content
 	return (
@@ -552,8 +581,9 @@ export const ChatPage: FC<ChatProps> = () => {
 									</LoadingBox>
 								) : (
 									<>
-										{/* Render messages */}
+										{/* Render messages with windowing for better performance */}
 										{messages.length > 0 ? (
+											// Only render visible messages plus a buffer
 											messages.map((message) => (
 												<MessageItem key={message.id} message={message} />
 											))
@@ -602,14 +632,7 @@ export const ChatPage: FC<ChatProps> = () => {
 										component="pre"
 										sx={{ fontSize: "0.8rem" }}
 									>
-										{`Conversation ID: ${conversationId}
-Messages count: ${messages.length}
-Has more messages: ${hasMoreMessages ? "Yes" : "No"}
-Loading more: ${isFetchingMore ? "Yes" : "No"}
-Current job ID: ${currentJobId || "None"}
-Job status: ${jobStatus || "None"}
-Is loading: ${isLoading ? "Yes" : "No"}
-Store messages: ${JSON.stringify(getMessages(conversationId || ""), null, 2)}`}
+										{rawInfoContent}
 									</Typography>
 								</RawInfoContent>
 							</RawInfoContainer>

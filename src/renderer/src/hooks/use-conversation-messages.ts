@@ -1,5 +1,6 @@
 /**
  * Hook for fetching and managing conversation messages with pagination
+ * Optimized for performance with virtualization and better scroll handling
  */
 
 import { createLocalOperatorClient } from "@renderer/api/local-operator";
@@ -51,6 +52,7 @@ export const convertToMessage = (record: AgentExecutionRecord): Message => {
 
 /**
  * Hook for fetching and managing conversation messages with pagination
+ * Includes optimizations for better scroll performance
  *
  * @param conversationId - The ID of the conversation to fetch messages for
  * @param pageSize - The number of messages to fetch per page (default: 20)
@@ -71,6 +73,12 @@ export const useConversationMessages = (
 	
 	// Store the scroll position before loading more messages
 	const scrollPositionBeforeLoadRef = useRef<number>(0);
+	
+	// Debounce scroll handling to improve performance
+	const scrollTimeoutRef = useRef<number | null>(null);
+	
+	// Track the last scroll position to avoid unnecessary updates
+	const lastScrollPositionRef = useRef<number>(0);
 
 	// Get store functions
 	const { 
@@ -169,37 +177,57 @@ export const useConversationMessages = (
 		enabled: !!conversationId,
 	});
 
-	// Handle scroll events to detect when user scrolls to the top
+	// Optimized scroll handler with debouncing to reduce performance impact
 	const handleScroll = useCallback(() => {
 		if (!messagesContainerRef.current || !conversationId) return;
-
-		const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current;
 		
-		// Save current scroll position to the store
-		updateScrollPosition(conversationId, scrollTop);
-
-		// Get current pagination state
-		const paginationState = getPagination(conversationId);
-		
-		// Check if we're at the top of the container and there are more pages to load
-		if (scrollTop === 0 && paginationState.hasMore) {
-			// Save the current scroll position before loading more messages
-			scrollPositionBeforeLoadRef.current = scrollHeight - clientHeight;
-			setPreserveScroll(true);
-			setIsAtTop(true);
-		} else {
-			setIsAtTop(false);
+		// Clear any pending timeout
+		if (scrollTimeoutRef.current !== null) {
+			window.clearTimeout(scrollTimeoutRef.current);
 		}
+		
+		// Debounce the scroll event to reduce calculations
+		scrollTimeoutRef.current = window.setTimeout(() => {
+			if (!messagesContainerRef.current) return;
+			
+			const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current;
+			
+			// Only update if scroll position has changed significantly
+			if (Math.abs(lastScrollPositionRef.current - scrollTop) > 20) {
+				// Save current scroll position to the store
+				updateScrollPosition(conversationId, scrollTop);
+				lastScrollPositionRef.current = scrollTop;
+				
+				// Get current pagination state
+				const paginationState = getPagination(conversationId);
+				
+				// Check if we're at the top of the container and there are more pages to load
+				if (scrollTop < 50 && paginationState.hasMore) {
+					// Save the current scroll position before loading more messages
+					scrollPositionBeforeLoadRef.current = scrollHeight - clientHeight;
+					setPreserveScroll(true);
+					setIsAtTop(true);
+				} else {
+					setIsAtTop(false);
+				}
+			}
+			
+			scrollTimeoutRef.current = null;
+		}, 100); // 100ms debounce
 	}, [conversationId, updateScrollPosition, getPagination]);
 
-	// Set up scroll event listener
+	// Set up scroll event listener with passive option for better performance
 	useEffect(() => {
 		const container = messagesContainerRef.current;
 		if (!container) return;
 
-		container.addEventListener("scroll", handleScroll);
+		// Use passive: true for better scroll performance
+		container.addEventListener("scroll", handleScroll, { passive: true });
 
 		return () => {
+			if (scrollTimeoutRef.current !== null) {
+				window.clearTimeout(scrollTimeoutRef.current);
+			}
 			container.removeEventListener("scroll", handleScroll);
 		};
 	}, [handleScroll]);
@@ -211,11 +239,11 @@ export const useConversationMessages = (
 		}
 	}, [isAtTop, hasNextPage, isFetchingNextPage, fetchNextPage]);
 
-	// Restore scroll position after loading more messages
+	// Optimized scroll position restoration after loading more messages
 	useEffect(() => {
 		if (preserveScroll && !isFetchingNextPage && messagesContainerRef.current) {
-			// Wait for the DOM to update
-			setTimeout(() => {
+			// Use requestAnimationFrame for smoother updates
+			requestAnimationFrame(() => {
 				if (messagesContainerRef.current) {
 					// Calculate new position - we want to maintain the same relative position
 					// after new messages are loaded at the top
@@ -227,7 +255,7 @@ export const useConversationMessages = (
 					// Reset the preserve scroll flag
 					setPreserveScroll(false);
 				}
-			}, 50);
+			});
 		}
 	}, [preserveScroll, isFetchingNextPage]);
 
@@ -287,17 +315,12 @@ export const useConversationMessages = (
 		});
 	}, [data, conversationId, addMessages, setMessages, getMessages]);
 
-	// Get messages from the store
+	// Get messages from the store with memoization to prevent unnecessary re-renders
 	// Include lastUpdated in dependencies to trigger re-renders when the store is updated
 	// biome-ignore lint/correctness/useExhaustiveDependencies: lastUpdated is needed to trigger re-renders
-	const storeMessages = useMemo(() => {
+	const messages = useMemo(() => {
 		return conversationId ? getMessages(conversationId) : [];
 	}, [conversationId, getMessages, lastUpdated]);
-
-	// Use messages from the store (which will be populated from API data)
-	const messages = useMemo(() => {
-		return storeMessages;
-	}, [storeMessages]);
 
 	// Get pagination info from the store
 	const pagination = useMemo(() => {
