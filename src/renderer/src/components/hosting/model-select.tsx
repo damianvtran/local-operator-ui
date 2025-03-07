@@ -24,6 +24,7 @@ import {
 	getModelsForHostingProvider,
 	type Model,
 } from "./hosting-model-manifest";
+import ReactMarkdown from "react-markdown";
 
 /**
  * Type for model option in the autocomplete
@@ -108,9 +109,19 @@ const OptionLabel = styled(Typography)({
 	fontWeight: 500,
 });
 
-const OptionDescription = styled(Typography)(({ theme }) => ({
+const OptionDescription = styled(Box)(({ theme }) => ({
 	fontSize: "0.75rem",
 	color: theme.palette.text.secondary,
+	"& a": {
+		color: theme.palette.primary.main,
+		textDecoration: "none",
+		"&:hover": {
+			textDecoration: "underline",
+		},
+	},
+	"& p": {
+		margin: 0,
+	},
 }));
 
 /**
@@ -130,7 +141,7 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 	const [isUserTyping, setIsUserTyping] = useState(false);
 	const [inputValue, setInputValue] = useState("");
 	const [isSubmitting, setIsSubmitting] = useState(false);
-	
+
 	// Flag to track if the dropdown should show all options (no filtering)
 	const showAllOptions = useRef(false);
 
@@ -139,10 +150,10 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 		if (!hostingId) {
 			return [];
 		}
-		
+
 		// Get models for the selected hosting provider
 		const models = getModelsForHostingProvider(hostingId);
-		
+
 		return models;
 	}, [hostingId]);
 
@@ -155,18 +166,17 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 				name: "Default",
 				description: "Clear model selection",
 				model: undefined,
-			}
+			},
 		];
-		
 		// Map available models to autocomplete options
-		availableModels.forEach((model) => {
+		for (const model of availableModels) {
 			options.push({
 				id: model.id,
 				name: model.name,
 				description: model.description,
 				model,
 			});
-		});
+		}
 
 		// Check if the current value exists in the available models
 		const modelExists = availableModels.some((model) => {
@@ -174,28 +184,26 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 			if (model.id === value) {
 				return true;
 			}
-			
+
 			// Check with provider prefix
-			// If value has a provider prefix (e.g., "openai/gpt-4")
-			if (value && value.includes('/')) {
-				// Check if model.id ends with the model part of the value
-				return model.id.endsWith(value.split('/')[1]);
+			if (value?.includes("/")) {
+				return model.id?.endsWith(value.split("/")[1]);
 			}
-			
+
 			// If value doesn't have a provider prefix, check if model.id ends with value
 			// or if model.id without provider prefix equals value
-			if (value && !value.includes('/')) {
+			if (value && !value.includes("/")) {
 				// If model.id has a provider prefix
-				if (model.id.includes('/')) {
+				if (model.id.includes("/")) {
 					return model.id.endsWith(`/${value}`);
 				}
 				// If neither has a provider prefix, just compare directly
 				return model.id === value;
 			}
-			
+
 			return false;
 		});
-		
+
 		// If the current value is not in the available options, add it as a custom option
 		if (value && value.trim() !== "" && !modelExists) {
 			options.push({
@@ -224,25 +232,26 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 	// Find the current selected option
 	const selectedOption = useMemo(() => {
 		if (!value || value.trim() === "") return null;
-		
+
 		// Check if the value exists exactly in the available options
-		const exactMatch = modelOptions.find(option => option.id === value);
+		const exactMatch = modelOptions.find((option) => option.id === value);
 		if (exactMatch) {
 			return exactMatch;
 		}
-		
+
 		// Check if the value is a model name without provider prefix
-		if (!value.includes('/') && hostingId) {
+		if (!value.includes("/") && hostingId) {
 			// Try to find a model with this name in the current hosting provider
-			const matchByName = modelOptions.find(option => 
-				option.id.endsWith(`/${value}`) || 
-				option.name.toLowerCase() === value.toLowerCase()
+			const matchByName = modelOptions.find(
+				(option) =>
+					option.id.endsWith(`/${value}`) ||
+					option.name.toLowerCase() === value.toLowerCase(),
 			);
 			if (matchByName) {
 				return matchByName;
 			}
 		}
-		
+
 		// Return a custom option if no match is found
 		return {
 			id: value,
@@ -262,21 +271,18 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 	}, [selectedOption]);
 
 	// Handle option change
-	const handleChange = async (
-		_event: SyntheticEvent,
-		newValue: unknown,
-	) => {
+	const handleChange = async (_event: SyntheticEvent, newValue: unknown) => {
 		if (!newValue) return;
-		
+
 		try {
 			setIsSubmitting(true);
 			// Type assertion since we know the structure
 			const option = newValue as ModelOption;
 			await onSave(option.id);
-			
+
 			// User has selected an option, so they're no longer typing
 			setIsUserTyping(false);
-			
+
 			// When a selection is made, set the input value to the display name
 			setInputValue(option.name);
 		} catch (error) {
@@ -293,7 +299,7 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 			setIsUserTyping(true);
 			showAllOptions.current = false;
 		}
-		
+
 		setInputValue(newInputValue);
 	};
 
@@ -309,7 +315,7 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 	const handleClose = () => {
 		// Reset show all options flag
 		showAllOptions.current = false;
-		
+
 		// If dropdown is closed without selecting, reset to selected option
 		if (isUserTyping && selectedOption) {
 			setInputValue(selectedOption.name);
@@ -320,12 +326,12 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 	// Handle custom value submission (when allowCustom is true)
 	const handleCustomSubmit = async (event: React.KeyboardEvent) => {
 		if (!allowCustom || event.key !== "Enter" || !inputValue.trim()) return;
-		
+
 		// Check if the input value matches any existing option
 		const matchingOption = modelOptions.find(
-			option => option.name.toLowerCase() === inputValue.toLowerCase()
+			(option) => option.name.toLowerCase() === inputValue.toLowerCase(),
 		);
-		
+
 		if (matchingOption) {
 			// If there's a match, use that option's ID
 			await handleChange(event as unknown as SyntheticEvent, matchingOption);
@@ -357,7 +363,7 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 				</LabelIcon>
 				Model
 			</FieldLabel>
-			
+
 			<StyledAutocomplete
 				key={`model-select-${hostingId}-${modelOptions.length}`}
 				value={selectedOption}
@@ -375,12 +381,12 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 					if (showAllOptions.current) {
 						return options;
 					}
-					
+
 					// Otherwise use default filtering
 					return createFilterOptions()(options, params);
 				}}
 				getOptionLabel={(option) => (option as ModelOption).name}
-				isOptionEqualToValue={(option, value) => 
+				isOptionEqualToValue={(option, value) =>
 					(option as ModelOption).id === (value as ModelOption).id
 				}
 				groupBy={(option) => getProviderFromId((option as ModelOption).id)}
@@ -389,7 +395,23 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 						<OptionContainer>
 							<OptionLabel>{(option as ModelOption).name}</OptionLabel>
 							{(option as ModelOption).description && (
-								<OptionDescription>{(option as ModelOption).description}</OptionDescription>
+								<OptionDescription>
+									<ReactMarkdown
+										components={{
+											a: ({ href, children }) => (
+												<a
+													href={href}
+													target="_blank"
+													rel="noopener noreferrer"
+												>
+													{children}
+												</a>
+											),
+										}}
+									>
+										{(option as ModelOption).description}
+									</ReactMarkdown>
+								</OptionDescription>
 							)}
 						</OptionContainer>
 					</li>
@@ -404,10 +426,10 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 						helperText={helperText}
 						FormHelperTextProps={{
 							sx: {
-								fontSize: '0.7rem',
+								fontSize: "0.7rem",
 								mt: 0.5,
 								opacity: 0.8,
-								fontStyle: 'italic',
+								fontStyle: "italic",
 							},
 						}}
 						InputProps={{
