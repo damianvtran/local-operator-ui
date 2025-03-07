@@ -323,7 +323,13 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 										<span style={{ display: "block", marginTop: "4px" }}>
 											{agent.last_message ? (
 												<>
-													<Tooltip title={truncateMessage(agent.last_message, 500)} arrow placement="bottom-start">
+													<Tooltip 
+														title={truncateMessage(agent.last_message, 500)} 
+														arrow 
+														placement="bottom-start"
+														enterDelay={1500}
+														leaveDelay={200}
+													>
 														<MessagePreview variant="body2">
 															{truncateMessage(agent.last_message, 60)}
 														</MessagePreview>
