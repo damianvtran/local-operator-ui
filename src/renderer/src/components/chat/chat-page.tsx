@@ -1,208 +1,31 @@
-import {
-	faArrowRight,
-	faCode,
-	faCommentDots,
-	faRobot,
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { createLocalOperatorClient } from "@renderer/api/local-operator";
+import { JobsApi } from "@renderer/api/local-operator/jobs-api";
+import type { JobStatus } from "@renderer/api/local-operator/types";
 import { useAgent, useAgents } from "@hooks/use-agents";
 import { useConversationMessages, conversationMessagesQueryKey } from "@hooks/use-conversation-messages";
 import { useJobPolling } from "@hooks/use-job-polling";
 import { useScrollToBottom } from "@hooks/use-scroll-to-bottom";
 import { useAgentRouteParam } from "@renderer/hooks/use-route-params";
 import { useAgentSelectionStore } from "@renderer/store/agent-selection-store";
-import {
-	Box,
-	CircularProgress,
-	Divider,
-	Paper,
-	Tab,
-	Tabs,
-	Typography,
-	styled,
-} from "@mui/material";
-import { createLocalOperatorClient } from "@renderer/api/local-operator";
-import { JobsApi } from "@renderer/api/local-operator/jobs-api";
 import { apiConfig } from "@renderer/config";
 import { useChatStore } from "@store/chat-store";
+import { useQueryClient } from "@tanstack/react-query";
 import React, { useState, useMemo, useEffect, useCallback } from "react";
 import type { FC } from "react";
 import { useNavigate } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
-import { ChatHeader } from "./chat-header";
-import { ChatOptionsSidebar } from "./chat-options-sidebar";
+import { ChatLayout } from "@renderer/components/common/layout/chat-layout";
 import { ChatSidebar } from "./chat-sidebar";
-import { LoadingIndicator } from "./loading-indicator";
-import { MessageInput } from "./message-input";
-import { MessageItem } from "./message-item";
-import { ScrollToBottomButton } from "./scroll-to-bottom-button";
+import { ChatContent } from "./chat-content";
+import { PlaceholderView } from "./placeholder-view";
+import { ErrorView } from "./error-view";
 import type { Message } from "./types";
-import { useQueryClient } from "@tanstack/react-query";
 
 /**
  * Props for the ChatPage component
  * No props needed as we use React Router hooks internally
  */
 type ChatProps = Record<string, never>;
-
-const Container = styled(Box)({
-	display: "flex",
-	height: "100%",
-	width: "100%",
-	overflow: "hidden",
-});
-
-const SidebarContainer = styled(Box)({
-	flexShrink: 0,
-	width: 280,
-	height: "100%",
-});
-
-const ContentContainer = styled(Box)({
-	flexGrow: 1,
-	height: "100%",
-	overflow: "hidden",
-});
-
-const PlaceholderContainer = styled(Paper)({
-	display: "flex",
-	flexDirection: "column",
-	height: "100%",
-	flexGrow: 1,
-	borderRadius: 0,
-	justifyContent: "center",
-	alignItems: "center",
-	padding: 24,
-});
-
-const PlaceholderIcon = styled(FontAwesomeIcon)({
-	fontSize: "3rem",
-	marginBottom: "1rem",
-	opacity: 0.5,
-});
-
-const DirectionIndicator = styled(Box)(({ theme }) => ({
-	display: "flex",
-	alignItems: "center",
-	color: theme.palette.primary.main,
-	opacity: 0.7,
-}));
-
-const ErrorContainer = styled(Paper)({
-	display: "flex",
-	flexDirection: "column",
-	height: "100%",
-	flexGrow: 1,
-	borderRadius: 0,
-	justifyContent: "center",
-	alignItems: "center",
-});
-
-const ChatContainer = styled(Paper)({
-	display: "flex",
-	flexDirection: "column",
-	height: "100%",
-	flexGrow: 1,
-	borderRadius: 0,
-});
-
-const StyledTabs = styled(Tabs)(() => ({
-	borderBottom: "1px solid rgba(255, 255, 255, 0.05)",
-	minHeight: "42px",
-	"& .MuiTabs-indicator": {
-		height: 2,
-		borderRadius: "2px 2px 0 0",
-	},
-}));
-
-const StyledTab = styled(Tab, {
-	shouldForwardProp: (prop) => prop !== "isActive",
-})<{ isActive?: boolean }>(({ isActive }) => ({
-	minHeight: "42px",
-	padding: "4px 0",
-	textTransform: "none",
-	fontSize: "0.85rem",
-	fontWeight: 500,
-	transition: "all 0.2s ease",
-	opacity: isActive ? 1 : 0.7,
-	"&:hover": {
-		opacity: 1,
-		backgroundColor: "rgba(255, 255, 255, 0.05)",
-	},
-	"& .MuiTab-iconWrapper": {
-		marginRight: 6,
-		fontSize: "0.9rem",
-	},
-}));
-
-const MessagesContainer = styled(Box)({
-	flexGrow: 1,
-	overflow: "auto",
-	padding: 16,
-	display: "flex",
-	flexDirection: "column",
-	gap: 16,
-	backgroundColor: "rgba(0, 0, 0, 0.2)",
-	position: "relative", // Add position relative for absolute positioning of children
-	"&::-webkit-scrollbar": {
-		width: "8px",
-	},
-	"&::-webkit-scrollbar-thumb": {
-		backgroundColor: "rgba(255, 255, 255, 0.1)",
-		borderRadius: "4px",
-	},
-	// Improve GPU acceleration for smoother scrolling
-	transform: "translateZ(0)",
-	willChange: "scroll-position",
-});
-
-const LoadingMoreIndicator = styled(Box)({
-	display: "flex",
-	alignItems: "center",
-	justifyContent: "center",
-	padding: 16,
-	color: "rgba(255, 255, 255, 0.7)",
-});
-
-const LoadingBox = styled(Box)({
-	display: "flex",
-	justifyContent: "center",
-	padding: 32,
-});
-
-const EmptyMessagesBox = styled(Box)({
-	textAlign: "center",
-	color: "rgba(255, 255, 255, 0.7)",
-	padding: 32,
-	fontSize: "0.9rem",
-});
-
-const RawInfoContainer = styled(Box)({
-	flexGrow: 1,
-	overflow: "auto",
-	padding: 24,
-	backgroundColor: "rgba(0, 0, 0, 0.2)",
-	"&::-webkit-scrollbar": {
-		width: "8px",
-	},
-	"&::-webkit-scrollbar-thumb": {
-		backgroundColor: "rgba(255, 255, 255, 0.1)",
-		borderRadius: "4px",
-	},
-});
-
-const RawInfoContent = styled(Box)({
-	padding: 16,
-	backgroundColor: "rgba(0, 0, 0, 0.3)",
-	borderRadius: 4,
-	fontFamily: "monospace",
-	whiteSpace: "pre-wrap",
-	overflow: "auto",
-});
-
-const StyledDivider = styled(Divider)({
-	opacity: 0.1,
-});
 
 /**
  * Chat Page Component
@@ -515,195 +338,64 @@ Store messages: ${JSON.stringify(getMessages(conversationId || ""), null, 2)}`;
 		getMessages
 	]);
 
-	// Create a side-by-side layout with the sidebar and chat content
+	// Handle tab change
+	const handleTabChange = useCallback((newTab: "chat" | "raw") => {
+		setActiveTab(newTab);
+	}, []);
+
+	// Render the appropriate content based on the state
+	const renderContent = () => {
+		if (!conversationId) {
+			return (
+				<PlaceholderView
+					title="No Agent Selected"
+					description="Select an agent from the sidebar to start a conversation."
+					directionText="Choose an agent from the list"
+				/>
+			);
+		}
+
+		if (isError) {
+			return <ErrorView message={error?.message || ""} />;
+		}
+
+		return (
+			<ChatContent
+				activeTab={activeTab}
+				onTabChange={handleTabChange}
+				agentName={agentData?.name || ""}
+				description={agentData?.description || "Conversation with this agent"}
+				onOpenOptions={handleOpenOptions}
+				isOptionsSidebarOpen={isOptionsSidebarOpen}
+				onCloseOptions={handleCloseOptions}
+				agentId={conversationId}
+				messages={messages}
+				isLoading={isLoading}
+				isLoadingMessages={isLoadingMessages}
+				isFetchingMore={isFetchingMore}
+				isFarFromBottom={isFarFromBottom}
+				jobStatus={jobStatus as JobStatus | null}
+				messagesContainerRef={messagesContainerRef}
+				messagesEndRef={messagesEndRef}
+				scrollToBottom={scrollToBottom}
+				rawInfoContent={rawInfoContent}
+				onSendMessage={handleSendMessage}
+				currentJobId={currentJobId}
+				onCancelJob={handleCancelJob}
+			/>
+		);
+	};
+
 	return (
-		<Container>
-			{/* Chat Sidebar - fixed width */}
-			<SidebarContainer>
+		<ChatLayout
+			sidebar={
 				<ChatSidebar
 					selectedConversation={selectedConversation}
 					onSelectConversation={handleSelectConversation}
 					onNavigateToAgentSettings={handleNavigateToAgentSettings}
 				/>
-			</SidebarContainer>
-
-			{/* Chat Content Area */}
-			<ContentContainer>
-				{/* Show placeholder when no conversation is selected */}
-				{!conversationId ? (
-					<PlaceholderContainer elevation={0}>
-						<PlaceholderIcon icon={faRobot} />
-						<Typography variant="h6" sx={{ mb: 1, fontWeight: 500 }}>
-							No Agent Selected
-						</Typography>
-						<Typography
-							variant="body2"
-							color="text.secondary"
-							align="center"
-							sx={{ mb: 2, maxWidth: 500 }}
-						>
-							Select an agent from the sidebar to start a conversation.
-						</Typography>
-						<DirectionIndicator>
-							<FontAwesomeIcon
-								icon={faArrowRight}
-								style={{ transform: "rotate(180deg)", marginRight: "0.5rem" }}
-							/>
-							<Typography variant="body2">
-								Choose an agent from the list
-							</Typography>
-						</DirectionIndicator>
-					</PlaceholderContainer>
-				) : isError ? (
-					// Show error state if there was an error loading messages
-					<ErrorContainer elevation={0}>
-						<Typography variant="h6" color="error">
-							Error loading messages
-						</Typography>
-						<Typography variant="body2" color="text.secondary">
-							{error?.message || "An unknown error occurred"}
-						</Typography>
-					</ErrorContainer>
-				) : (
-					// Show chat content when a conversation is selected and there are no errors
-					<ChatContainer elevation={0}>
-						{/* Scroll to bottom button */}
-						<ScrollToBottomButton 
-							visible={isFarFromBottom} 
-							onClick={scrollToBottom} 
-						/>
-						{/* Chat header */}
-						<ChatHeader
-							agentName={agentData?.name || ""}
-							description={
-								agentData?.description || "Conversation with this agent"
-							}
-							onOpenOptions={handleOpenOptions}
-						/>
-
-						{/* Chat Options Sidebar */}
-						<ChatOptionsSidebar
-							open={isOptionsSidebarOpen}
-							onClose={handleCloseOptions}
-							agentId={conversationId}
-						/>
-
-						{/* Tabs for chat and raw */}
-						<StyledTabs
-							value={activeTab}
-							onChange={(_, newValue) => setActiveTab(newValue)}
-							variant="fullWidth"
-							TabIndicatorProps={{
-								style: {
-									transition: "all 0.3s ease",
-								},
-							}}
-						>
-							<StyledTab
-								icon={<FontAwesomeIcon icon={faCommentDots} />}
-								iconPosition="start"
-								label="Chat"
-								value="chat"
-								isActive={activeTab === "chat"}
-							/>
-							<StyledTab
-								icon={<FontAwesomeIcon icon={faCode} />}
-								iconPosition="start"
-								label="Raw"
-								value="raw"
-								isActive={activeTab === "raw"}
-							/>
-						</StyledTabs>
-
-						{activeTab === "chat" ? (
-							/* Messages container */
-							<MessagesContainer ref={messagesContainerRef}>
-								{/* Loading more messages indicator */}
-								{isFetchingMore && (
-									<LoadingMoreIndicator>
-										<CircularProgress size={20} sx={{ mr: 1 }} />
-										Loading more messages...
-									</LoadingMoreIndicator>
-								)}
-
-								{/* Show loading indicator when initially loading messages */}
-								{isLoadingMessages && !messages.length ? (
-									<LoadingBox>
-										<CircularProgress />
-									</LoadingBox>
-								) : (
-									<>
-										{/* Render messages with windowing for better performance */}
-										{messages.length > 0 ? (
-											// Only render visible messages plus a buffer
-											messages.map((message) => (
-												<MessageItem key={message.id} message={message} />
-											))
-										) : (
-											<EmptyMessagesBox>
-												<FontAwesomeIcon
-													icon={faCommentDots}
-													style={{
-														fontSize: "2rem",
-														opacity: 0.5,
-														marginBottom: "1rem",
-													}}
-												/>
-												<Typography variant="body1">
-													No messages yet. Start a conversation!
-												</Typography>
-											</EmptyMessagesBox>
-										)}
-
-										{/* Loading indicator for new message */}
-										{isLoading && (
-											<LoadingIndicator
-												status={jobStatus}
-												agentName={agentData?.name}
-											/>
-										)}
-
-										{/* Invisible element to scroll to */}
-										<div ref={messagesEndRef} />
-									</>
-								)}
-							</MessagesContainer>
-						) : (
-							/* Raw information tab */
-							<RawInfoContainer>
-								<Typography
-									variant="h6"
-									gutterBottom
-									sx={{ color: "primary.main" }}
-								>
-									Raw Information
-								</Typography>
-								<RawInfoContent>
-									<Typography
-										variant="body2"
-										component="pre"
-										sx={{ fontSize: "0.8rem" }}
-									>
-										{rawInfoContent}
-									</Typography>
-								</RawInfoContent>
-							</RawInfoContainer>
-						)}
-
-						<StyledDivider />
-
-						{/* Message input */}
-						<MessageInput
-							onSendMessage={handleSendMessage}
-							isLoading={isLoading}
-							conversationId={conversationId}
-							messages={messages}
-							currentJobId={currentJobId}
-							onCancelJob={handleCancelJob}
-						/>
-					</ChatContainer>
-				)}
-			</ContentContainer>
-		</Container>
+			}
+			content={renderContent()}
+		/>
 	);
 };
