@@ -8,16 +8,40 @@ import type { DependencyList } from "react";
  * 
  * @param dependencies - Array of dependencies that trigger scrolling when changed
  * @param threshold - Distance from bottom (in pixels) to consider "near bottom" (default: 300)
- * @returns A ref to attach to the element to scroll to
+ * @param screenHeightThreshold - Number of screen heights to consider "far from bottom" for showing the scroll button (default: 1)
+ * @returns An object containing:
+ *   - ref: A ref to attach to the element to scroll to
+ *   - isNearBottom: Whether the user is near the bottom
+ *   - isFarFromBottom: Whether the user is far enough from the bottom to show the scroll button
+ *   - scrollToBottom: Function to manually scroll to the bottom
  */
-export const useScrollToBottom = (dependencies: DependencyList = [], threshold = 300) => {
+export const useScrollToBottom = (
+  dependencies: DependencyList = [], 
+  threshold = 300,
+  screenHeightThreshold = 1
+) => {
 	const ref = useRef<HTMLDivElement>(null);
 	const containerRef = useRef<HTMLDivElement | null>(null);
 	const [shouldScrollToBottom, setShouldScrollToBottom] = useState(true);
+	const [isFarFromBottom, setIsFarFromBottom] = useState(false);
 	
 	// Use a ref to track the last scroll position to avoid unnecessary state updates
 	const lastScrollPositionRef = useRef<number>(0);
 	const scrollTimeoutRef = useRef<number | null>(null);
+
+	/**
+	 * Function to manually scroll to the bottom
+	 * Uses requestAnimationFrame for smoother scrolling
+	 */
+	const scrollToBottom = useCallback(() => {
+		if (!ref.current) return;
+		
+		requestAnimationFrame(() => {
+			if (ref.current) {
+				ref.current.scrollIntoView({ behavior: "smooth" });
+			}
+		});
+	}, []);
 
 	// Throttled scroll handler to improve performance
 	// Only updates state if the scroll position has changed significantly
@@ -39,17 +63,25 @@ export const useScrollToBottom = (dependencies: DependencyList = [], threshold =
 			// Only update state if the scroll position has changed significantly
 			// or if the shouldScrollToBottom value would change
 			const currentShouldScroll = distanceFromBottom <= threshold;
+			
+			// Check if user is far enough from bottom to show the scroll button
+			// Use screen height as a reference for better UX
+			// Make it more sensitive by using a lower threshold
+			const isFarEnough = distanceFromBottom > clientHeight;
+			
 			if (
 				Math.abs(lastScrollPositionRef.current - scrollTop) > 50 || 
-				currentShouldScroll !== shouldScrollToBottom
+				currentShouldScroll !== shouldScrollToBottom ||
+				isFarEnough !== isFarFromBottom
 			) {
 				lastScrollPositionRef.current = scrollTop;
 				setShouldScrollToBottom(currentShouldScroll);
+				setIsFarFromBottom(isFarEnough);
 			}
 			
 			scrollTimeoutRef.current = null;
 		}, 100); // 100ms debounce
-	}, [threshold, shouldScrollToBottom]);
+	}, [threshold, shouldScrollToBottom, isFarFromBottom, screenHeightThreshold]);
 
 	// Set up scroll event listener with passive option for better performance
 	useEffect(() => {
@@ -104,5 +136,10 @@ export const useScrollToBottom = (dependencies: DependencyList = [], threshold =
 		}
 	}, []);
 
-	return ref;
+	return {
+		ref,
+		isNearBottom: shouldScrollToBottom,
+		isFarFromBottom,
+		scrollToBottom
+	};
 };

@@ -35,6 +35,7 @@ import { ChatSidebar } from "./chat-sidebar";
 import { LoadingIndicator } from "./loading-indicator";
 import { MessageInput } from "./message-input";
 import { MessageItem } from "./message-item";
+import { ScrollToBottomButton } from "./scroll-to-bottom-button";
 import type { Message } from "./types";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -142,6 +143,7 @@ const MessagesContainer = styled(Box)({
 	flexDirection: "column",
 	gap: 16,
 	backgroundColor: "rgba(0, 0, 0, 0.2)",
+	position: "relative", // Add position relative for absolute positioning of children
 	"&::-webkit-scrollbar": {
 		width: "8px",
 	},
@@ -277,7 +279,11 @@ export const ChatPage: FC<ChatProps> = () => {
 	
 	// Use custom hook to scroll to bottom when messages change or when a new message is added
 	// Only scrolls to bottom if user is already near the bottom
-	const messagesEndRef = useScrollToBottom(scrollDependencies, 300); // 300px threshold
+	const { 
+		ref: messagesEndRef, 
+		isFarFromBottom, 
+		scrollToBottom 
+	} = useScrollToBottom(scrollDependencies, 150);
 	
 	// Check if the selected agent exists in the list of agents
 	useEffect(() => {
@@ -561,6 +567,11 @@ Store messages: ${JSON.stringify(getMessages(conversationId || ""), null, 2)}`;
 				) : (
 					// Show chat content when a conversation is selected and there are no errors
 					<ChatContainer elevation={0}>
+						{/* Scroll to bottom button */}
+						<ScrollToBottomButton 
+							visible={isFarFromBottom} 
+							onClick={scrollToBottom} 
+						/>
 						{/* Chat header */}
 						<ChatHeader
 							agentName={agentData?.name || ""}
