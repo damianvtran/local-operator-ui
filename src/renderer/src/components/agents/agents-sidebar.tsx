@@ -205,7 +205,7 @@ export const AgentsSidebar: FC<AgentsSidebarProps> = ({
 		isError,
 		refetch,
 		isFetching,
-	} = useAgents(page, perPage);
+	} = useAgents(page, perPage, 0, searchQuery); // Pass searchQuery as the name parameter
 
 	// Update stable agents when data changes and not during refetches
 	useEffect(() => {
@@ -298,10 +298,7 @@ export const AgentsSidebar: FC<AgentsSidebarProps> = ({
 		[onSelectAgent, refetch],
 	);
 
-	const filteredAgents = displayAgents.filter((agent) =>
-		agent.name.toLowerCase().includes(searchQuery.toLowerCase()),
-	);
-
+	// No need for client-side filtering since we're using the server-side filter
 	return (
 		<SidebarContainer elevation={0}>
 			<SidebarHeader>
@@ -365,7 +362,7 @@ export const AgentsSidebar: FC<AgentsSidebarProps> = ({
 				</EmptyStateContainer>
 			) : (
 				<AgentsList>
-					{filteredAgents.map((agent) => (
+					{displayAgents.map((agent) => (
 						<ListItem
 							key={agent.id}
 							disablePadding

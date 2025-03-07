@@ -192,12 +192,13 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 	const { page, setPage } = usePaginationParams();
 	
 	// Set up periodic refetch every 5 seconds to check for new messages
+	// Pass the search query as the name parameter
 	const {
 		data: agents = [],
 		isLoading,
 		isError,
 		refetch,
-	} = useAgents(page, perPage, 5000); // 5000ms = 5 seconds
+	} = useAgents(page, perPage, 5000, searchQuery); // 5000ms = 5 seconds
 
 	const handlePageChange = useCallback(
 		(_event: ChangeEvent<unknown>, value: number) => {
@@ -255,10 +256,7 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 		[onSelectConversation, refetch],
 	);
 
-	const filteredAgents = agents.filter((agent) =>
-		agent.name.toLowerCase().includes(searchQuery.toLowerCase()),
-	);
-
+	// No need for client-side filtering since we're using the server-side filter
 	const formatDateTime = (dateTimeString?: string) => {
 		if (!dateTimeString) return "";
 		try {
@@ -339,7 +337,7 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 				</EmptyStateContainer>
 			) : (
 				<AgentsList>
-					{filteredAgents.map((agent) => (
+					{agents.map((agent) => (
 						<ListItem
 							key={agent.id}
 							disablePadding

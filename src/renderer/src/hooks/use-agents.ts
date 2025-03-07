@@ -19,16 +19,17 @@ export const agentsQueryKey = ["agents"];
  * @param page - Page number (default: 1)
  * @param perPage - Number of agents per page (default: 50)
  * @param refetchInterval - Interval in milliseconds to refetch agents (default: 0, no refetch)
+ * @param name - Optional name query to search agents by name
  * @returns Query result with agents data, loading state, error state, and refetch function
  */
-export const useAgents = (page = 1, perPage = 50, refetchInterval = 0) => {
+export const useAgents = (page = 1, perPage = 50, refetchInterval = 0, name?: string) => {
 	return useQuery({
-		queryKey: [...agentsQueryKey, page, perPage],
+		queryKey: [...agentsQueryKey, page, perPage, name],
 		queryFn: async () => {
 			try {
 				// Use the properly typed client
 				const client = createLocalOperatorClient(apiConfig.baseUrl);
-				const response = await client.agents.listAgents(page, perPage);
+				const response = await client.agents.listAgents(page, perPage, name);
 
 				if (response.status >= 400) {
 					throw new Error(response.message || "Failed to fetch agents");

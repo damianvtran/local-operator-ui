@@ -22,16 +22,23 @@ export const AgentsApi = {
 	 * @param baseUrl - The base URL of the Local Operator API
 	 * @param page - Page number (default: 1)
 	 * @param perPage - Number of agents per page (default: 10)
+	 * @param name - Optional name query to search agents by name
 	 * @returns Promise resolving to the agents list response
 	 */
 	async listAgents(
 		baseUrl: string,
 		page = 1,
 		perPage = 10,
+		name?: string,
 	): Promise<CRUDResponse<AgentListResult>> {
 		const url = new URL(`${baseUrl}/v1/agents`);
 		url.searchParams.append("page", page.toString());
 		url.searchParams.append("per_page", perPage.toString());
+		
+		// Add name parameter if provided
+		if (name) {
+			url.searchParams.append("name", name);
+		}
 
 		const response = await fetch(url.toString(), {
 			method: "GET",
