@@ -359,31 +359,32 @@ Store messages: ${JSON.stringify(getMessages(conversationId || ""), null, 2)}`;
 			return <ErrorView message={error?.message || ""} />;
 		}
 
-		return (
-			<ChatContent
-				activeTab={activeTab}
-				onTabChange={handleTabChange}
-				agentName={agentData?.name || ""}
-				description={agentData?.description || "Conversation with this agent"}
-				onOpenOptions={handleOpenOptions}
-				isOptionsSidebarOpen={isOptionsSidebarOpen}
-				onCloseOptions={handleCloseOptions}
-				agentId={conversationId}
-				messages={messages}
-				isLoading={isLoading}
-				isLoadingMessages={isLoadingMessages}
-				isFetchingMore={isFetchingMore}
-				isFarFromBottom={isFarFromBottom}
-				jobStatus={jobStatus as JobStatus | null}
-				messagesContainerRef={messagesContainerRef}
-				messagesEndRef={messagesEndRef}
-				scrollToBottom={scrollToBottom}
-				rawInfoContent={rawInfoContent}
-				onSendMessage={handleSendMessage}
-				currentJobId={currentJobId}
-				onCancelJob={handleCancelJob}
-			/>
-		);
+			return (
+				<ChatContent
+					activeTab={activeTab}
+					onTabChange={handleTabChange}
+					agentName={agentData?.name || ""}
+					description={agentData?.description || "Conversation with this agent"}
+					onOpenOptions={handleOpenOptions}
+					isOptionsSidebarOpen={isOptionsSidebarOpen}
+					onCloseOptions={handleCloseOptions}
+					agentId={conversationId}
+					messages={messages}
+					isLoading={isLoading}
+					isLoadingMessages={isLoadingMessages}
+					isFetchingMore={isFetchingMore}
+					isFarFromBottom={isFarFromBottom}
+					jobStatus={jobStatus as JobStatus | null}
+					messagesContainerRef={messagesContainerRef}
+					messagesEndRef={messagesEndRef}
+					scrollToBottom={scrollToBottom}
+					rawInfoContent={rawInfoContent}
+					onSendMessage={handleSendMessage}
+					currentJobId={currentJobId}
+					onCancelJob={handleCancelJob}
+					agentData={agentData}
+				/>
+			);
 	};
 
 	return (

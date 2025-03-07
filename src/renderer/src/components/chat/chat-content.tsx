@@ -3,13 +3,14 @@ import type { FC } from "react";
 import { ChatHeader } from "./chat-header";
 import { ChatOptionsSidebar } from "./chat-options-sidebar";
 import { ChatTabs } from "./chat-tabs";
+import { ChatUtilities } from "./chat-utilities";
 import { MessageInput } from "./message-input";
 import { MessagesView } from "./messages-view";
 import { RawInfoView } from "./raw-info-view";
 import { ScrollToBottomButton } from "./scroll-to-bottom-button";
 import { StyledDivider } from "@renderer/components/common/chat-layout";
 import type { Message } from "./types";
-import type { JobStatus } from "@renderer/api/local-operator/types";
+import type { AgentDetails, JobStatus } from "@renderer/api/local-operator/types";
 
 /**
  * Props for the ChatContent component
@@ -36,6 +37,7 @@ type ChatContentProps = {
   onSendMessage: (content: string, file: File | null) => void;
   currentJobId: string | null;
   onCancelJob: (jobId: string) => void;
+  agentData?: AgentDetails | null;
 };
 
 const ChatContainer = styled(Paper)({
@@ -73,6 +75,7 @@ export const ChatContent: FC<ChatContentProps> = ({
   onSendMessage,
   currentJobId,
   onCancelJob,
+  agentData,
 }) => {
   return (
     <ChatContainer elevation={0}>
@@ -129,6 +132,12 @@ export const ChatContent: FC<ChatContentProps> = ({
         messages={messages}
         currentJobId={currentJobId}
         onCancelJob={onCancelJob}
+      />
+      
+      {/* Chat utilities section */}
+      <ChatUtilities 
+        agentId={agentId}
+        agentData={agentData}
       />
     </ChatContainer>
   );
