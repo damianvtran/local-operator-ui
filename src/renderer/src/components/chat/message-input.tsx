@@ -2,6 +2,7 @@ import {
 	faPaperPlane,
 	faPaperclip,
 	faTimes,
+	faStop,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -24,6 +25,8 @@ type MessageInputProps = {
 	isLoading: boolean;
 	conversationId?: string;
 	messages: Message[];
+	currentJobId?: string | null;
+	onCancelJob?: (jobId: string) => void;
 };
 
 const FormContainer = styled("form")(({ theme }) => ({
@@ -137,6 +140,8 @@ export const MessageInput: FC<MessageInputProps> = ({
 	isLoading,
 	conversationId,
 	messages,
+	currentJobId,
+	onCancelJob,
 }) => {
 	const [selectedFile, setSelectedFile] = useState<File | null>(null);
 	const fileInputRef = useRef<HTMLInputElement>(null);
@@ -221,19 +226,35 @@ export const MessageInput: FC<MessageInputProps> = ({
 				</FilePreviewContainer>
 			)}
 
-			<Tooltip title="Send message">
-				<span>
-					<SendButton
-						type="submit"
-						variant="contained"
-						color="primary"
-						disabled={isLoading || (!newMessage.trim() && !selectedFile)}
-						aria-label="Send message"
-					>
-						<FontAwesomeIcon icon={faPaperPlane} />
-					</SendButton>
-				</span>
-			</Tooltip>
+			{isLoading && currentJobId ? (
+				<Tooltip title="Stop agent">
+					<span>
+						<SendButton
+							type="button"
+							variant="contained"
+							color="error"
+							onClick={() => onCancelJob?.(currentJobId)}
+							aria-label="Stop agent"
+						>
+							<FontAwesomeIcon icon={faStop} />
+						</SendButton>
+					</span>
+				</Tooltip>
+			) : (
+				<Tooltip title="Send message">
+					<span>
+						<SendButton
+							type="submit"
+							variant="contained"
+							color="primary"
+							disabled={isLoading || (!newMessage.trim() && !selectedFile)}
+							aria-label="Send message"
+						>
+							<FontAwesomeIcon icon={faPaperPlane} />
+						</SendButton>
+					</span>
+				</Tooltip>
+			)}
 		</FormContainer>
 	);
 };

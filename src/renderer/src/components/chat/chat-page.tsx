@@ -22,6 +22,7 @@ import {
 	styled,
 } from "@mui/material";
 import { createLocalOperatorClient } from "@renderer/api/local-operator";
+import { JobsApi } from "@renderer/api/local-operator/jobs-api";
 import { apiConfig } from "@renderer/config";
 import { useChatStore } from "@store/chat-store";
 import React, { useState, useMemo, useEffect, useCallback } from "react";
@@ -355,6 +356,46 @@ export const ChatPage: FC<ChatProps> = () => {
 		navigate(`/agents/${agentId}`);
 	}, [navigate]);
 
+	// Handle job cancellation
+	const handleCancelJob = useCallback(async (jobId: string) => {
+		if (!jobId) return;
+		
+		try {
+			// Call the cancelJob API
+			await JobsApi.cancelJob(apiConfig.baseUrl, jobId);
+			
+			// Clear the current job ID and loading state
+			setCurrentJobId(null);
+			setIsLoading(false);
+			
+			// Add a system message indicating the job was cancelled
+			if (conversationId) {
+				const cancelMessage: Message = {
+					id: Date.now().toString(),
+					role: "system",
+					message: "Job cancelled by user.",
+					timestamp: new Date(),
+				};
+				
+				addMessage(conversationId, cancelMessage);
+			}
+		} catch (error) {
+			console.error("Error cancelling job:", error);
+			// Show error message if cancellation fails
+			if (conversationId) {
+				const errorMessage: Message = {
+					id: Date.now().toString(),
+					role: "system",
+					message: "Failed to cancel job. Please try again.",
+					timestamp: new Date(),
+					status: "error",
+				};
+				
+				addMessage(conversationId, errorMessage);
+			}
+		}
+	}, [addMessage, conversationId, setCurrentJobId, setIsLoading]);
+	
 	// Memoized function to handle sending a new message
 	const handleSendMessage = useCallback(async (content: string, file: File | null) => {
 		if (!conversationId) return;
@@ -646,6 +687,8 @@ Store messages: ${JSON.stringify(getMessages(conversationId || ""), null, 2)}`;
 							isLoading={isLoading}
 							conversationId={conversationId}
 							messages={messages}
+							currentJobId={currentJobId}
+							onCancelJob={handleCancelJob}
 						/>
 					</ChatContainer>
 				)}
