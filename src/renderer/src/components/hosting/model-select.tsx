@@ -139,7 +139,14 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 		if (!hostingId) {
 			return [];
 		}
-		return getModelsForHostingProvider(hostingId);
+		
+		// Get models for the selected hosting provider
+		const models = getModelsForHostingProvider(hostingId);
+		
+		// Log for debugging
+		console.log(`Models for provider ${hostingId}:`, models);
+		
+		return models;
 	}, [hostingId]);
 
 	// Convert models to autocomplete options
@@ -165,11 +172,32 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 		});
 
 		// Check if the current value exists in the available models
-		const modelExists = availableModels.some((model) => 
-			model.id === value || 
-			// Also check without provider prefix (e.g., "gpt-4" matches "openai/gpt-4")
-			(value && value.includes('/') ? model.id.endsWith(value.split('/')[1]) : false)
-		);
+		const modelExists = availableModels.some((model) => {
+			// Exact match
+			if (model.id === value) {
+				return true;
+			}
+			
+			// Check with provider prefix
+			// If value has a provider prefix (e.g., "openai/gpt-4")
+			if (value && value.includes('/')) {
+				// Check if model.id ends with the model part of the value
+				return model.id.endsWith(value.split('/')[1]);
+			}
+			
+			// If value doesn't have a provider prefix, check if model.id ends with value
+			// or if model.id without provider prefix equals value
+			if (value && !value.includes('/')) {
+				// If model.id has a provider prefix
+				if (model.id.includes('/')) {
+					return model.id.endsWith(`/${value}`);
+				}
+				// If neither has a provider prefix, just compare directly
+				return model.id === value;
+			}
+			
+			return false;
+		});
 		
 		// If the current value is not in the available options, add it as a custom option
 		if (value && value.trim() !== "" && !modelExists) {

@@ -21,7 +21,7 @@ import type { FC, SyntheticEvent } from "react";
 import { useMemo, useState, useEffect, useRef } from "react";
 import { useCredentials } from "@renderer/hooks/use-credentials";
 import {
-	HOSTING_PROVIDERS,
+	getHostingProviders,
 	getAvailableHostingProviders,
 	getHostingProviderById,
 	type HostingProvider,
@@ -147,7 +147,7 @@ export const HostingSelect: FC<HostingSelectProps> = ({
 	// Get available hosting providers based on user credentials
 	const availableHostingProviders = useMemo(() => {
 		if (!filterByCredentials) {
-			return HOSTING_PROVIDERS;
+			return getHostingProviders();
 		}
 		return getAvailableHostingProviders(userCredentials);
 	}, [userCredentials, filterByCredentials]);

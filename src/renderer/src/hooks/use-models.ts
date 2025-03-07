@@ -64,25 +64,6 @@ export const useModels = ({ autoFetch = true } = {}) => {
 		return models.find((model) => model.id === modelId);
 	};
 
-	/**
-	 * Convert API model details to the format used in the hosting-model-manifest
-	 * 
-	 * @param model - Model details from the API
-	 * @returns Converted model in the hosting-model-manifest format
-	 */
-	const convertToManifestModel = (model: typeof models[0]) => {
-		return {
-			id: model.id,
-			name: model.name || model.info.name || model.id,
-			description: model.info.description,
-			contextWindow: model.info.context_window || undefined,
-			maxOutputTokens: model.info.max_tokens || undefined,
-			supportsImages: model.info.supports_images || undefined,
-			inputPrice: model.info.input_price,
-			outputPrice: model.info.output_price,
-		};
-	};
-
 	return {
 		providers,
 		models,
@@ -93,6 +74,5 @@ export const useModels = ({ autoFetch = true } = {}) => {
 		getModelsForProvider,
 		getModelById,
 		refreshModels,
-		convertToManifestModel,
 	};
 };
