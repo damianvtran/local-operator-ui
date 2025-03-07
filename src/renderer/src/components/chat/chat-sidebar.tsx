@@ -137,11 +137,9 @@ const AgentAvatar = styled(Avatar)(({ theme }) => ({
 const MessagePreview = styled(Typography)({
 	display: "block",
 	color: "text.secondary",
-	overflow: "hidden",
-	textOverflow: "ellipsis",
-	whiteSpace: "nowrap",
-	maxWidth: "160px",
+	maxWidth: "100%",
 	marginBottom: 4,
+  fontSize: "0.75rem",
 });
 
 const TimeStampContainer = styled("span")({
@@ -398,9 +396,11 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 										<span style={{ display: "block", marginTop: "4px" }}>
 											{agent.last_message ? (
 												<>
-													<MessagePreview variant="body2">
-														{truncateMessage(agent.last_message)}
-													</MessagePreview>
+													<Tooltip title={truncateMessage(agent.last_message, 500)} arrow placement="bottom-start">
+														<MessagePreview variant="body2">
+															{truncateMessage(agent.last_message, 60)}
+														</MessagePreview>
+													</Tooltip>
 													{agent.last_message_datetime && (
 														<TimeStampContainer>
 															<FontAwesomeIcon
