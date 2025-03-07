@@ -217,136 +217,141 @@ const Timestamp = styled(Typography, {
  * Memoized message item component to prevent unnecessary re-renders
  * Only re-renders when the message content changes
  */
-export const MessageItem: FC<MessageItemProps> = memo(({ message }) => {
-	const isUser = message.role === "user";
-	
-	// Memoize the formatted timestamp to prevent recalculation on re-renders
-	const formattedTimestamp = useMemo(() => {
-		return message.timestamp.toLocaleTimeString([], {
-			hour: "2-digit",
-			minute: "2-digit",
-		});
-	}, [message.timestamp]);
+export const MessageItem: FC<MessageItemProps> = memo(
+	({ message }) => {
+		const isUser = message.role === "user";
 
-	return (
-		<MessageContainer isUser={isUser}>
-			<UserAvatar isUser={isUser}>
-				<FontAwesomeIcon icon={isUser ? faUser : faRobot} size="sm" />
-			</UserAvatar>
+		// Memoize the formatted timestamp to prevent recalculation on re-renders
+		const formattedTimestamp = useMemo(() => {
+			return message.timestamp.toLocaleTimeString([], {
+				hour: "2-digit",
+				minute: "2-digit",
+			});
+		}, [message.timestamp]);
 
-			<MessagePaper elevation={isUser ? 2 : 1} isUser={isUser}>
-				{/* Render attachments if any */}
-				{message.attachments && message.attachments.length > 0 && (
-					<Box sx={{ mb: 2 }}>
-						{message.attachments.map((attachment) => (
-							<AttachmentImage
-								key={`${message.id}-${attachment}`}
-								src={attachment}
-								alt="Attachment"
-							/>
-						))}
-					</Box>
-				)}
+		return (
+			<MessageContainer isUser={isUser}>
+				<UserAvatar isUser={isUser}>
+					<FontAwesomeIcon icon={isUser ? faUser : faRobot} size="sm" />
+				</UserAvatar>
 
-				{/* Render message content with markdown support */}
-				{message.message && (
-					<Box
-						sx={{
-							mb:
-								message.code ||
-								message.stdout ||
-								message.stderr ||
-								message.logging
-									? 2
-									: 0,
-						}}
-					>
-						<MarkdownRenderer content={message.message} />
-					</Box>
-				)}
+				<MessagePaper elevation={isUser ? 2 : 1} isUser={isUser}>
+					{/* Render attachments if any */}
+					{message.attachments && message.attachments.length > 0 && (
+						<Box sx={{ mb: 2 }}>
+							{message.attachments.map((attachment) => (
+								<AttachmentImage
+									key={`${message.id}-${attachment}`}
+									src={attachment}
+									alt="Attachment"
+								/>
+							))}
+						</Box>
+					)}
 
-				{/* Render code with syntax highlighting */}
-				{message.code && (
-					<CodeContainer
-						sx={{
-							mb: message.stdout || message.stderr || message.logging ? 2 : 0,
-						}}
-					>
-						<SyntaxHighlighterStyles />
-						<SectionLabel variant="caption">Code</SectionLabel>
-						<SyntaxHighlighter
-							language="python"
-							style={atomOneDark}
-							customStyle={{
-								borderRadius: "8px",
-								fontSize: "0.85rem",
-								width: "100%",
-								boxShadow: "0 2px 6px rgba(0, 0, 0, 0.2)",
-								padding: "0.75rem",
+					{/* Render message content with markdown support */}
+					{message.message && (
+						<Box
+							sx={{
+								mb:
+									message.code ||
+									message.stdout ||
+									message.stderr ||
+									message.logging
+										? 2
+										: 0,
 							}}
-							codeTagProps={{
-								style: {
-									fontFamily: '"Roboto Mono", monospace !important',
-								},
+						>
+							<MarkdownRenderer content={message.message} />
+						</Box>
+					)}
+
+					{/* Render code with syntax highlighting */}
+					{message.code && (
+						<CodeContainer
+							sx={{
+								mb: message.stdout || message.stderr || message.logging ? 2 : 0,
 							}}
-							className="react-syntax-highlighter-code-block"
-							wrapLines={true}
-							wrapLongLines={true}
 						>
-							{message.code}
-						</SyntaxHighlighter>
-					</CodeContainer>
-				)}
+							<SyntaxHighlighterStyles />
+							<SectionLabel variant="caption">Code</SectionLabel>
+							<SyntaxHighlighter
+								language="python"
+								style={atomOneDark}
+								customStyle={{
+									borderRadius: "8px",
+									fontSize: "0.85rem",
+									width: "100%",
+									boxShadow: "0 2px 6px rgba(0, 0, 0, 0.2)",
+									padding: "0.75rem",
+								}}
+								codeTagProps={{
+									style: {
+										fontFamily: '"Roboto Mono", monospace !important',
+									},
+								}}
+								className="react-syntax-highlighter-code-block"
+								wrapLines={true}
+								wrapLongLines={true}
+							>
+								{message.code}
+							</SyntaxHighlighter>
+						</CodeContainer>
+					)}
 
-				{/* Render stdout */}
-				{message.stdout && (
-					<CodeContainer sx={{ mb: message.stderr || message.logging ? 2 : 0 }}>
-						<SectionLabel variant="caption">Output</SectionLabel>
-						<OutputContainer>{message.stdout}</OutputContainer>
-					</CodeContainer>
-				)}
-
-				{/* Render stderr */}
-				{message.stderr && message.stderr !== "[No error output]" && (
-					<CodeContainer sx={{ mb: message.logging ? 2 : 0 }}>
-						<SectionLabel
-							variant="caption"
-							sx={{ color: isUser ? "error.main" : "error.light" }}
+					{/* Render stdout */}
+					{message.stdout && (
+						<CodeContainer
+							sx={{ mb: message.stderr || message.logging ? 2 : 0 }}
 						>
-							Error
-						</SectionLabel>
-						<ErrorContainer isUser={isUser}>{message.stderr}</ErrorContainer>
-					</CodeContainer>
-				)}
+							<SectionLabel variant="caption">Output</SectionLabel>
+							<OutputContainer>{message.stdout}</OutputContainer>
+						</CodeContainer>
+					)}
 
-				{/* Render logging */}
-				{message.logging && message.logging !== "[No logger output]" && (
-					<CodeContainer sx={{ mb: message.formatted_print ? 2 : 0 }}>
-						<SectionLabel variant="caption">Logs</SectionLabel>
-						<LogContainer isUser={isUser}>{message.logging}</LogContainer>
-					</CodeContainer>
-				)}
+					{/* Render stderr */}
+					{message.stderr && message.stderr !== "[No error output]" && (
+						<CodeContainer sx={{ mb: message.logging ? 2 : 0 }}>
+							<SectionLabel
+								variant="caption"
+								sx={{ color: isUser ? "error.main" : "error.light" }}
+							>
+								Error
+							</SectionLabel>
+							<ErrorContainer isUser={isUser}>{message.stderr}</ErrorContainer>
+						</CodeContainer>
+					)}
 
-				{/* Status indicator if present */}
-				{message.status && (
-					<StatusIndicator status={message.status}>
-						{message.status}
-					</StatusIndicator>
-				)}
+					{/* Render logging */}
+					{message.logging && message.logging !== "[No logger output]" && (
+						<CodeContainer sx={{ mb: message.formatted_print ? 2 : 0 }}>
+							<SectionLabel variant="caption">Logs</SectionLabel>
+							<LogContainer isUser={isUser}>{message.logging}</LogContainer>
+						</CodeContainer>
+					)}
 
-				{/* Message timestamp */}
-				<Timestamp variant="caption" isUser={isUser}>
-					{formattedTimestamp}
-				</Timestamp>
-			</MessagePaper>
-		</MessageContainer>
-	);
-}, (prevProps, nextProps) => {
-	// Custom comparison function for memo
-	// Only re-render if the message ID or content has changed
-	return (
-		prevProps.message.id === nextProps.message.id &&
-		prevProps.message.message === nextProps.message.message &&
-		prevProps.message.status === nextProps.message.status
-	);
-});
+					{/* Status indicator if present */}
+					{message.status && (
+						<StatusIndicator status={message.status}>
+							{message.status}
+						</StatusIndicator>
+					)}
+
+					{/* Message timestamp */}
+					<Timestamp variant="caption" isUser={isUser}>
+						{formattedTimestamp}
+					</Timestamp>
+				</MessagePaper>
+			</MessageContainer>
+		);
+	},
+	(prevProps, nextProps) => {
+		// Custom comparison function for memo
+		// Only re-render if the message ID or content has changed
+		return (
+			prevProps.message.id === nextProps.message.id &&
+			prevProps.message.message === nextProps.message.message &&
+			prevProps.message.status === nextProps.message.status
+		);
+	},
+);

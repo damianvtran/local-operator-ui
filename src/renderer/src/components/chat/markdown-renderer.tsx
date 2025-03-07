@@ -1,14 +1,12 @@
 import { Box } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import type { FC } from "react";
-import { memo, useMemo } from "react";
+import { memo } from "react";
+import ReactMarkdown from "react-markdown";
 
 type MarkdownRendererProps = {
 	content: string;
 };
-
-// Cache for parsed markdown to avoid re-parsing the same content
-const markdownCache = new Map<string, string>();
 
 const MarkdownContent = styled(Box)({
 	wordBreak: "break-word",
@@ -91,195 +89,36 @@ const MarkdownContent = styled(Box)({
 		content: '""',
 		marginTop: "8px",
 	},
+	"& p:first-of-type": {
+		marginTop: "2px",
+	},
+	"& p": {
+		margin: "8px 0",
+	},
 });
-
-/**
- * Parses markdown text into HTML with caching for better performance
- * @param text - The markdown text to parse
- * @returns Parsed HTML string
- */
-export const parseMarkdown = (text: string): string => {
-	if (!text) {
-		return "";
-	}
-	
-	// Check if we already parsed this exact text
-	if (markdownCache.has(text)) {
-		return markdownCache.get(text)!;
-	}
-	
-	// If cache is getting too large, clear it to prevent memory issues
-	if (markdownCache.size > 500) {
-		markdownCache.clear();
-	}
-
-	// Replace code blocks
-	let parsedText = text.replace(
-		/```([\s\S]*?)```/g,
-		"<pre><code>$1</code></pre>",
-	);
-
-	// Replace inline code
-	parsedText = parsedText.replace(/`([^`]+)`/g, "<code>$1</code>");
-
-	// Replace headings
-	parsedText = parsedText.replace(/^# (.*$)/gm, "<h1>$1</h1>");
-	parsedText = parsedText.replace(/^## (.*$)/gm, "<h2>$1</h2>");
-	parsedText = parsedText.replace(/^### (.*$)/gm, "<h3>$1</h3>");
-
-	// Replace bold and italic
-	parsedText = parsedText.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
-	parsedText = parsedText.replace(/\*(.*?)\*/g, "<em>$1</em>");
-
-	// Process nested lists with proper indentation
-	// First, identify list items with their indentation level
-	const lines = parsedText.split("\n");
-	let inList = false;
-	let listHtml = "";
-	const processedLines: string[] = [];
-
-	for (let i = 0; i < lines.length; i++) {
-		const line = lines[i];
-		const bulletMatch = line.match(/^(\s*)- (.*$)/);
-		const numberedMatch = line.match(/^(\s*)(\d+)\. (.*$)/);
-
-		if (bulletMatch || numberedMatch) {
-			if (!inList) {
-				inList = true;
-				listHtml = "";
-			}
-
-			const indent = bulletMatch
-				? bulletMatch[1].length
-				: numberedMatch
-					? numberedMatch[1].length
-					: 0;
-			const content = bulletMatch
-				? bulletMatch[2]
-				: numberedMatch
-					? numberedMatch[3]
-					: "";
-
-			// Add the list item with proper indentation
-			listHtml += `<li data-indent="${indent}">${content}</li>`;
-
-			// Check if this is the last list item
-			const nextLine = i < lines.length - 1 ? lines[i + 1] : "";
-			const nextIsListItem = nextLine.match(/^\s*(-|\d+\.) /);
-
-			if (!nextIsListItem && inList) {
-				// Process the accumulated list HTML with proper nesting
-				const processedList = processNestedList(listHtml);
-				processedLines.push(processedList);
-				inList = false;
-			}
-		} else if (inList) {
-			// End of list
-			const processedList = processNestedList(listHtml);
-			processedLines.push(processedList);
-			inList = false;
-			processedLines.push(line);
-		} else {
-			processedLines.push(line);
-		}
-	}
-
-	// If we're still in a list at the end, process it
-	if (inList) {
-		const processedList = processNestedList(listHtml);
-		processedLines.push(processedList);
-	}
-
-	parsedText = processedLines.join("\n");
-
-	// Replace links
-	parsedText = parsedText.replace(
-		/\[(.*?)\]\((.*?)\)/g,
-		'<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>',
-	);
-
-	// Replace line breaks
-	parsedText = parsedText.replace(/\n/g, "<br />");
-	
-	// Store the result in cache
-	markdownCache.set(text, parsedText);
-
-	return parsedText;
-};
-
-/**
- * Processes list items with indentation into properly nested HTML lists
- * @param listHtml - HTML string containing list items with data-indent attributes
- * @returns Properly nested HTML list
- */
-const processNestedList = (listHtml: string): string => {
-	// Parse the list items
-	const parser = new DOMParser();
-	const doc = parser.parseFromString(`<div>${listHtml}</div>`, "text/html");
-	const items = Array.from(doc.querySelectorAll("li"));
-
-	if (items.length === 0) return "";
-
-	// Determine if the list is ordered or unordered based on the first item
-	const firstItem = items[0];
-	const isOrdered = !firstItem.textContent?.trim().startsWith("-");
-
-	// Build the nested list structure
-	const rootList = document.createElement(isOrdered ? "ol" : "ul");
-	const listStack = [{ element: rootList, indent: -1 }];
-	for (const item of items) {
-		const indent = Number.parseInt(item.getAttribute("data-indent") || "0", 10);
-		item.removeAttribute("data-indent");
-
-		// Find the appropriate parent list based on indentation
-		while (
-			listStack.length > 1 &&
-			listStack[listStack.length - 1].indent >= indent
-		) {
-			listStack.pop();
-		}
-
-		const currentParent = listStack[listStack.length - 1].element;
-
-		// Check if this item starts a new sublist
-		const nextItem = items[items.indexOf(item) + 1];
-		const nextIndent = nextItem
-			? Number.parseInt(nextItem.getAttribute("data-indent") || "0", 10)
-			: -1;
-
-		if (nextIndent > indent) {
-			// This item will contain a sublist
-			currentParent.appendChild(item);
-
-			// Determine if the next list is ordered or unordered
-			const nextIsOrdered = nextItem.textContent?.trim().match(/^\d+\./);
-			const subList = document.createElement(nextIsOrdered ? "ol" : "ul");
-			item.appendChild(subList);
-
-			listStack.push({ element: subList, indent });
-		} else {
-			// Regular list item
-			currentParent.appendChild(item);
-		}
-	}
-
-	return rootList.outerHTML;
-};
 
 /**
  * Memoized component for rendering markdown content with styled HTML
  * Only re-renders when the content changes
  */
-export const MarkdownRenderer: FC<MarkdownRendererProps> = memo(({ content }) => {
-	// Memoize the parsed HTML to prevent re-parsing on every render
-	const parsedHtml = useMemo(() => parseMarkdown(content), [content]);
-	
-	return (
-		<MarkdownContent
-			// biome-ignore lint/security/noDangerouslySetInnerHtml: <explanation>
-			dangerouslySetInnerHTML={{ __html: parsedHtml }}
-		/>
-	);
-});
+export const MarkdownRenderer: FC<MarkdownRendererProps> = memo(
+	({ content }) => {
+		return (
+			<MarkdownContent>
+				<ReactMarkdown
+					components={{
+						a: ({ href, children }) => (
+							<a href={href} target="_blank" rel="noopener noreferrer">
+								{children}
+							</a>
+						),
+					}}
+				>
+					{content.trim()}
+				</ReactMarkdown>
+			</MarkdownContent>
+		);
+	},
+);
 
 export default MarkdownRenderer;
