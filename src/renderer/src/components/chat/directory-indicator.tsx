@@ -1,4 +1,25 @@
-import { faFolder, faFolderOpen, faPen } from "@fortawesome/free-solid-svg-icons";
+import { 
+  faFolder, 
+  faFolderOpen, 
+  faPen,
+  faHome,
+  faDownload,
+  faFileAlt,
+  faDesktop,
+  faImage,
+  faMusic,
+  faVideo,
+  faLaptop,
+  faServer,
+  faDatabase,
+  faUsers,
+  faArchive,
+  faBook,
+  faHdd,
+  faNetworkWired,
+  faBoxOpen,
+  faBox
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   Box,
@@ -14,7 +35,8 @@ import {
 } from "@mui/material";
 import type { AgentUpdate } from "@renderer/api/local-operator/types";
 import { useUpdateAgent } from "@renderer/hooks/use-update-agent";
-import { useState, useRef, useCallback, type FC } from "react";
+import { useState, useRef, useCallback, useEffect, type FC } from "react";
+import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 
 /**
  * Props for the DirectoryIndicator component
@@ -26,63 +48,142 @@ type DirectoryIndicatorProps = {
   currentWorkingDirectory?: string;
 };
 
+type DirectoryInfo = {
+  name: string;
+  path: string;
+  icon: IconDefinition;
+};
+
 /**
- * Default directories to offer as quick selections
+ * Maps directory names to appropriate FontAwesome icons
  */
-const DEFAULT_DIRECTORIES = [
-  { name: "Home", path: "/Users/damiantran" },
-  { name: "Downloads", path: "/Users/damiantran/Downloads" },
-  { name: "Documents", path: "/Users/damiantran/Documents" },
-  { name: "Desktop", path: "/Users/damiantran/Desktop" },
+const getDirectoryIcon = (name: string, path: string): IconDefinition => {
+  const lowerName = name.toLowerCase();
+  const lowerPath = path.toLowerCase();
+
+  if (name === "Home" || path === "~") return faHome;
+  if (lowerName.includes("download")) return faDownload;
+  if (lowerName.includes("document")) return faFileAlt;
+  if (lowerName.includes("desktop")) return faDesktop;
+  if (lowerName.includes("picture")) return faImage;
+  if (lowerName.includes("music")) return faMusic;
+  if (lowerName.includes("video")) return faVideo;
+  if (lowerName.includes("program")) return faLaptop;
+  if (lowerName.includes("user")) return faUsers;
+  if (lowerPath.includes("programdata")) return faDatabase;
+  if (lowerName.includes("application")) return faBoxOpen;
+  if (lowerName.includes("library")) return faBook;
+  if (lowerName.includes("volume")) return faHdd;
+  if (lowerName.includes("etc")) return faServer;
+  if (lowerName.includes("usr")) return faUsers;
+  if (lowerName.includes("var")) return faDatabase;
+  if (lowerName.includes("opt")) return faBox;
+  if (lowerName.includes("mnt")) return faHdd;
+  if (lowerName.includes("media")) return faArchive;
+  if (lowerName.includes("srv")) return faNetworkWired;
+
+  return faFolder;
+};
+
+/**
+ * Default directories to offer as quick selections based on OS
+ */
+const DEFAULT_DIRECTORIES: DirectoryInfo[] = [
+  { name: "Home", path: "~", icon: faHome },
+  { name: "Downloads", path: "~/Downloads", icon: faDownload },
+  { name: "Documents", path: "~/Documents", icon: faFileAlt },
+  { name: "Desktop", path: "~/Desktop", icon: faDesktop },
+  { name: "Pictures", path: "~/Pictures", icon: faImage },
+  { name: "Music", path: "~/Music", icon: faMusic },
+  { name: "Videos", path: "~/Videos", icon: faVideo },
+  ...(navigator.userAgent.indexOf("Win") !== -1 ? [
+    { name: "Program Files", path: "C:\\Program Files", icon: faLaptop },
+    { name: "Program Files (x86)", path: "C:\\Program Files (x86)", icon: faLaptop },
+    { name: "Users", path: "C:\\Users", icon: faUsers },
+    { name: "ProgramData", path: "C:\\ProgramData", icon: faDatabase }
+  ] : navigator.userAgent.indexOf("Mac") !== -1 ? [
+    { name: "Applications", path: "/Applications", icon: faBoxOpen },
+    { name: "Library", path: "~/Library", icon: faBook },
+    { name: "Users", path: "/Users", icon: faUsers },
+    { name: "Volumes", path: "/Volumes", icon: faHdd }
+  ] : [
+    { name: "etc", path: "/etc", icon: faServer },
+    { name: "usr", path: "/usr", icon: faUsers },
+    { name: "var", path: "/var", icon: faDatabase },
+    { name: "opt", path: "/opt", icon: faBox },
+    { name: "mnt", path: "/mnt", icon: faHdd },
+    { name: "media", path: "/media", icon: faArchive },
+    { name: "srv", path: "/srv", icon: faNetworkWired }
+  ]).map(dir => ({
+    ...dir,
+    icon: getDirectoryIcon(dir.name, dir.path)
+  }))
 ];
 
 const DirectoryChip = styled(Chip)(({ theme }) => ({
-  backgroundColor: alpha(theme.palette.primary.main, 0.08),
+  backgroundColor: alpha(theme.palette.primary.main, 0.06),
   color: theme.palette.text.secondary,
-  borderRadius: "14px",
-  padding: "0 8px",
-  height: "28px",
-  maxWidth: "280px",
-  transition: "all 0.2s ease",
+  borderRadius: "16px",
+  padding: "0 12px",
+  height: "32px",
+  maxWidth: "260px",
+  transition: "all 0.15s ease",
   "& .MuiChip-label": {
-    padding: "0 8px",
+    padding: "0 6px",
     overflow: "hidden",
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
-    fontSize: "0.75rem",
+    fontSize: "0.85rem",
+    letterSpacing: "0.01em",
   },
   "& .MuiChip-deleteIcon": {
-    fontSize: "0.65rem",
-    margin: "0 4px 0 -4px",
-    color: alpha(theme.palette.text.primary, 0.5),
+    fontSize: "0.85rem",
+    margin: "0 3px 0 0",
+    color: alpha(theme.palette.text.primary, 0.4),
   },
   "& .MuiChip-icon": {
-    fontSize: "0.75rem",
-    margin: "0 -4px 0 4px",
-    color: alpha(theme.palette.text.primary, 0.7),
+    fontSize: "0.85rem",
+    margin: "0 3px 0 3px",
+    color: alpha(theme.palette.text.primary, 0.6),
   },
   "&:hover": {
-    backgroundColor: alpha(theme.palette.primary.main, 0.12),
+    backgroundColor: alpha(theme.palette.primary.main, 0.1),
     color: theme.palette.text.primary,
+    transform: "translateY(-1px)",
   },
 }));
 
 const DirectoryTextField = styled(TextField)(({ theme }) => ({
   "& .MuiInputBase-root": {
-    backgroundColor: alpha(theme.palette.primary.main, 0.1),
-    borderRadius: "16px",
-    padding: "0 8px",
-    height: "28px",
-    fontSize: "0.8125rem",
+    backgroundColor: alpha(theme.palette.background.default, 0.9),
+    borderRadius: "12px",
+    padding: "0 6px",
+    height: "24px",
+    fontSize: "0.75rem",
     color: theme.palette.text.primary,
+    boxShadow: `0 2px 4px ${alpha(theme.palette.common.black, 0.1)}`,
   },
   "& .MuiOutlinedInput-notchedOutline": {
     border: "none",
   },
   "& .MuiInputBase-input": {
-    padding: "4px 8px",
+    padding: "3px 6px",
+    "&::placeholder": {
+      fontSize: "0.7rem",
+      opacity: 0.7,
+    },
   },
 }));
+
+const MenuItemIcon = styled(Box)({
+  width: "20px",
+  height: "20px",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  marginRight: "8px",
+  opacity: 0.7,
+});
 
 /**
  * DirectoryIndicator Component
@@ -98,23 +199,23 @@ export const DirectoryIndicator: FC<DirectoryIndicatorProps> = ({
   const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const updateAgent = useUpdateAgent();
+
+  useEffect(() => {
+    setDirectory(currentWorkingDirectory || "");
+  }, [currentWorkingDirectory]);
   
-  // Handle opening the directory menu
   const handleOpenMenu = useCallback((event: React.MouseEvent<HTMLElement>) => {
     setMenuAnchorEl(event.currentTarget);
   }, []);
   
-  // Handle closing the directory menu
   const handleCloseMenu = useCallback(() => {
     setMenuAnchorEl(null);
   }, []);
   
-  // Handle selecting a directory from the menu
   const handleSelectDirectory = useCallback((path: string) => {
     setDirectory(path);
     handleCloseMenu();
     
-    // Update the agent's working directory
     updateAgent.mutate({
       agentId,
       update: {
@@ -123,18 +224,14 @@ export const DirectoryIndicator: FC<DirectoryIndicatorProps> = ({
     });
   }, [agentId, updateAgent, handleCloseMenu]);
   
-  // Handle starting to edit the directory
   const handleStartEdit = useCallback((event?: React.MouseEvent) => {
-    // Stop propagation to prevent the menu from opening
     if (event) {
       event.stopPropagation();
     }
     
-    // Close the menu if it's open
     setMenuAnchorEl(null);
     
     setIsEditing(true);
-    // Focus the input after rendering
     setTimeout(() => {
       if (inputRef.current) {
         inputRef.current.focus();
@@ -142,11 +239,9 @@ export const DirectoryIndicator: FC<DirectoryIndicatorProps> = ({
     }, 0);
   }, []);
   
-  // Handle finishing editing the directory
   const handleFinishEdit = useCallback(() => {
     setIsEditing(false);
     
-    // Only update if the directory has changed
     if (directory !== currentWorkingDirectory) {
       updateAgent.mutate({
         agentId,
@@ -157,7 +252,6 @@ export const DirectoryIndicator: FC<DirectoryIndicatorProps> = ({
     }
   }, [agentId, directory, currentWorkingDirectory, updateAgent]);
   
-  // Handle key press in the directory input
   const handleKeyPress = useCallback((e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
       handleFinishEdit();
@@ -167,21 +261,17 @@ export const DirectoryIndicator: FC<DirectoryIndicatorProps> = ({
     }
   }, [handleFinishEdit, currentWorkingDirectory]);
   
-  // Format the directory for display
   const formatDirectory = (dir: string) => {
-    // Replace home directory with ~
     if (dir.startsWith("/Users/damiantran")) {
       return dir.replace("/Users/damiantran", "~");
     }
     return dir;
   };
   
-  // If no directory is set, show a placeholder
   if (!currentWorkingDirectory && !isEditing) {
     return (
       <Box sx={{ display: "flex", alignItems: "center", ml: 1 }}>
-        {/* @ts-ignore - Tooltip has issues with TypeScript but works fine */}
-        <Tooltip title="Set working directory" arrow placement="bottom">
+        <Tooltip title="Set working directory" arrow placement="right">
           <DirectoryChip
             icon={<FontAwesomeIcon icon={faFolder} size="sm" />}
             label="No working directory set"
@@ -210,8 +300,7 @@ export const DirectoryIndicator: FC<DirectoryIndicatorProps> = ({
         </ClickAwayListener>
       ) : (
         <>
-          {/* @ts-ignore - Tooltip has issues with TypeScript but works fine */}
-          <Tooltip title="Change working directory" arrow placement="bottom">
+          <Tooltip title="Change working directory" arrow placement="right">
             <DirectoryChip
               icon={<FontAwesomeIcon icon={faFolderOpen} size="sm" />}
               label={formatDirectory(currentWorkingDirectory || "")}
@@ -278,11 +367,9 @@ export const DirectoryIndicator: FC<DirectoryIndicatorProps> = ({
                 onClick={() => handleSelectDirectory(dir.path)}
                 dense
               >
-                <FontAwesomeIcon 
-                  icon={faFolder} 
-                  size="sm" 
-                  style={{ marginRight: "8px", opacity: 0.7 }} 
-                />
+                <MenuItemIcon>
+                  <FontAwesomeIcon icon={dir.icon} size="sm" />
+                </MenuItemIcon>
                 <Typography variant="body2">{dir.name}</Typography>
                 <Typography 
                   variant="caption" 
