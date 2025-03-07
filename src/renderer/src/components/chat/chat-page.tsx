@@ -258,6 +258,7 @@ export const ChatPage: FC<ChatProps> = () => {
 		jobStatus, 
 		isLoading, 
 		setIsLoading,
+		checkForActiveJobs,
 	} = useJobPolling({
 		conversationId,
 		addMessage,
@@ -303,7 +304,14 @@ export const ChatPage: FC<ChatProps> = () => {
 		}
 	}, [agentId, setLastChatAgentId]);
 	
-	// The job polling hook now handles checking for active jobs when the conversation ID changes
+	// Check for active jobs on initial page load
+	useEffect(() => {
+		if (conversationId) {
+			// Check for active jobs for the current agent
+			// The checkForActiveJobs function will update the loading state and set the current job ID if needed
+			checkForActiveJobs(conversationId);
+		}
+	}, [conversationId, checkForActiveJobs]);
 	
 	// Refetch messages when the conversation ID changes
 	useEffect(() => {
