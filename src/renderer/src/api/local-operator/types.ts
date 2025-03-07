@@ -409,6 +409,8 @@ export type AgentDetails = {
 	presence_penalty?: number;
 	/** Random number seed for deterministic generation */
 	seed?: number;
+	/** Current working directory of the agent */
+	current_working_directory?: string;
 };
 
 /**
