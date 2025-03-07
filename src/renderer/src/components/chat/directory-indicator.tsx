@@ -18,13 +18,15 @@ import {
   faHdd,
   faNetworkWired,
   faBoxOpen,
-  faBox
+  faBox,
+  faClock
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   Box,
   Chip,
   ClickAwayListener,
+  Divider,
   Menu,
   MenuItem,
   TextField,
@@ -35,7 +37,8 @@ import {
 } from "@mui/material";
 import type { AgentUpdate } from "@renderer/api/local-operator/types";
 import { useUpdateAgent } from "@renderer/hooks/use-update-agent";
-import { useState, useRef, useCallback, useEffect, type FC } from "react";
+import { useRecentDirectoriesStore } from "@renderer/store/recent-directories-store";
+import { useState, useRef, useCallback, useEffect, type FC, useMemo } from "react";
 import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 
 /**
@@ -214,9 +217,22 @@ export const DirectoryIndicator: FC<DirectoryIndicatorProps> = ({
     setMenuAnchorEl(null);
   }, []);
   
+  const { recentDirectories, addRecentDirectory } = useRecentDirectoriesStore();
+  
+  /**
+   * Filter out recent directories that are already in DEFAULT_DIRECTORIES
+   */
+  const filteredRecentDirectories = useMemo(() => {
+    const defaultPaths = DEFAULT_DIRECTORIES.map(dir => dir.path);
+    return recentDirectories.filter(path => !defaultPaths.includes(path));
+  }, [recentDirectories]);
+  
   const handleSelectDirectory = useCallback((path: string) => {
     setDirectory(path);
     handleCloseMenu();
+    
+    // Add to recent directories
+    addRecentDirectory(path);
     
     updateAgent.mutate({
       agentId,
@@ -224,7 +240,7 @@ export const DirectoryIndicator: FC<DirectoryIndicatorProps> = ({
         current_working_directory: path,
       } as AgentUpdate,
     });
-  }, [agentId, updateAgent, handleCloseMenu]);
+  }, [agentId, updateAgent, handleCloseMenu, addRecentDirectory]);
   
   const handleStartEdit = useCallback((event?: React.MouseEvent) => {
     if (event) {
@@ -245,6 +261,9 @@ export const DirectoryIndicator: FC<DirectoryIndicatorProps> = ({
     setIsEditing(false);
     
     if (directory !== currentWorkingDirectory) {
+      // Add to recent directories when manually entering a path
+      addRecentDirectory(directory);
+      
       updateAgent.mutate({
         agentId,
         update: {
@@ -252,7 +271,7 @@ export const DirectoryIndicator: FC<DirectoryIndicatorProps> = ({
         } as AgentUpdate,
       });
     }
-  }, [agentId, directory, currentWorkingDirectory, updateAgent]);
+  }, [agentId, directory, currentWorkingDirectory, updateAgent, addRecentDirectory]);
   
   const handleKeyPress = useCallback((e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
@@ -352,6 +371,15 @@ export const DirectoryIndicator: FC<DirectoryIndicatorProps> = ({
               },
             }}
           >
+            {/* Custom directory option */}
+            <Typography 
+              variant="caption" 
+              color="text.secondary" 
+              sx={{ px: 2, py: 0.5, display: 'block' }}
+            >
+              Custom Directory
+            </Typography>
+            
             <MenuItem 
               onClick={(e) => {
                 e.stopPropagation();
@@ -360,8 +388,53 @@ export const DirectoryIndicator: FC<DirectoryIndicatorProps> = ({
               }} 
               dense
             >
-              <Typography variant="body2">Custom directory...</Typography>
+              <Typography variant="body2">Enter custom path...</Typography>
             </MenuItem>
+            
+            {/* Recent directories section - always show the section */}
+            <Divider sx={{ my: 1 }} />
+            
+            <Typography 
+              variant="caption" 
+              color="text.secondary" 
+              sx={{ px: 2, py: 0.5, display: 'block' }}
+            >
+              Recent Directories
+            </Typography>
+            
+            {filteredRecentDirectories.length > 0 ? (
+              filteredRecentDirectories.map((path) => (
+                <MenuItem 
+                  key={`recent-${path}`} 
+                  onClick={() => handleSelectDirectory(path)}
+                  dense
+                >
+                  <MenuItemIcon>
+                    <FontAwesomeIcon icon={faClock} size="sm" />
+                  </MenuItemIcon>
+                  <Typography variant="body2">
+                    {formatDirectory(path)}
+                  </Typography>
+                </MenuItem>
+              ))
+            ) : (
+              <MenuItem disabled dense>
+                <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                  No recent directories
+                </Typography>
+              </MenuItem>
+            )}
+            
+            {/* Default directories section */}
+            <Divider sx={{ my: 1 }} />
+            
+            <Typography 
+              variant="caption" 
+              color="text.secondary" 
+              sx={{ px: 2, py: 0.5, display: 'block' }}
+            >
+              Default Directories
+            </Typography>
             
             {DEFAULT_DIRECTORIES.map((dir) => (
               <MenuItem 
