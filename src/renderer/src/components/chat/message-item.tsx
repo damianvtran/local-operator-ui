@@ -77,21 +77,6 @@ const MessagePaper: FC<{
 					? "0 4px 12px rgba(0, 0, 0, 0.15)"
 					: "0 2px 8px rgba(0, 0, 0, 0.1)",
 				color: isUser ? (theme) => theme.palette.text.primary : "inherit",
-				"&::after": isUser
-					? {
-							content: '""',
-							position: "absolute",
-							top: "12px",
-							right: "-8px",
-							width: "16px",
-							height: "16px",
-							backgroundColor: "rgba(66, 133, 244, 0.15)",
-							borderRight: "1px solid rgba(66, 133, 244, 0.3)",
-							borderTop: "1px solid rgba(66, 133, 244, 0.3)",
-							transform: "rotate(45deg)",
-							zIndex: -1,
-						}
-					: undefined,
 			}}
 		>
 			{children}
