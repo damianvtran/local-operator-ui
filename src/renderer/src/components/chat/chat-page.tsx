@@ -6,7 +6,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useAgent, useAgents } from "@hooks/use-agents";
-import { useConversationMessages } from "@hooks/use-conversation-messages";
+import { useConversationMessages, conversationMessagesQueryKey } from "@hooks/use-conversation-messages";
 import { useJobPolling } from "@hooks/use-job-polling";
 import { useScrollToBottom } from "@hooks/use-scroll-to-bottom";
 import { useAgentRouteParam } from "@renderer/hooks/use-route-params";
@@ -35,6 +35,7 @@ import { LoadingIndicator } from "./loading-indicator";
 import { MessageInput } from "./message-input";
 import { MessageItem } from "./message-item";
 import type { Message } from "./types";
+import { useQueryClient } from "@tanstack/react-query";
 
 /**
  * Props for the ChatPage component
@@ -207,6 +208,7 @@ export const ChatPage: FC<ChatProps> = () => {
 	// Get agent ID from URL parameters using custom hook
 	const { agentId, navigateToAgent, clearAgentId } = useAgentRouteParam();
 	const navigate = useNavigate();
+	const queryClient = useQueryClient();
 	
 	// Get agent selection store functions
 	const { setLastChatAgentId, getLastAgentId, clearLastAgentId } = useAgentSelectionStore();
@@ -220,38 +222,8 @@ export const ChatPage: FC<ChatProps> = () => {
 	const conversationId = effectiveAgentId || undefined;
 	const selectedConversation = effectiveAgentId || undefined;
 	
-	// Check if the selected agent exists in the list of agents
-	useEffect(() => {
-		if (effectiveAgentId && agents.length > 0) {
-			const agentExists = agents.some(agent => agent.id === effectiveAgentId);
-			
-			if (!agentExists) {
-				// If the agent doesn't exist, clear the selection and navigate to the chat page without an agent
-				// Use a timeout to break the render cycle and prevent infinite loops
-				setTimeout(() => {
-					clearLastAgentId('chat');
-					clearAgentId('chat');
-				}, 0);
-			}
-		}
-	}, [effectiveAgentId, agents]);  // Remove clearLastAgentId and clearAgentId from dependencies
-	
-	// Update the last selected agent ID when the agent ID changes
-	useEffect(() => {
-		if (agentId) {
-			setLastChatAgentId(agentId);
-		}
-	}, [agentId, setLastChatAgentId]);
 	const [activeTab, setActiveTab] = useState<"chat" | "raw">("chat");
 	const [isOptionsSidebarOpen, setIsOptionsSidebarOpen] = useState(false);
-
-	const handleOpenOptions = () => {
-		setIsOptionsSidebarOpen(true);
-	};
-
-	const handleCloseOptions = () => {
-		setIsOptionsSidebarOpen(false);
-	};
 
 	// Initialize the API client (memoized to prevent recreation on every render)
 	const apiClient = useMemo(
@@ -276,9 +248,6 @@ export const ChatPage: FC<ChatProps> = () => {
 		messagesContainerRef,
 	} = useConversationMessages(conversationId);
 
-	// We no longer need to directly fetch messages from the API
-	// The useConversationMessages hook handles this for us
-
 	// Get the addMessage function from the chat store
 	const { addMessage } = useChatStore();
 
@@ -286,11 +255,59 @@ export const ChatPage: FC<ChatProps> = () => {
 	const messagesEndRef = useScrollToBottom([messages.length]);
 
 	// Use the job polling hook
-	const { currentJobId, setCurrentJobId, jobStatus, isLoading, setIsLoading } =
-		useJobPolling({
-			conversationId,
-			addMessage,
-		});
+	const { 
+		currentJobId, 
+		setCurrentJobId, 
+		jobStatus, 
+		isLoading, 
+		setIsLoading,
+	} = useJobPolling({
+		conversationId,
+		addMessage,
+	});
+	
+	// Check if the selected agent exists in the list of agents
+	useEffect(() => {
+		if (effectiveAgentId && agents.length > 0) {
+			const agentExists = agents.some(agent => agent.id === effectiveAgentId);
+			
+			if (!agentExists) {
+				// If the agent doesn't exist, clear the selection and navigate to the chat page without an agent
+				// Use a timeout to break the render cycle and prevent infinite loops
+				setTimeout(() => {
+					clearLastAgentId('chat');
+					clearAgentId('chat');
+				}, 0);
+			}
+		}
+	}, [effectiveAgentId, agents, clearLastAgentId, clearAgentId]);
+
+	// Update the last selected agent ID when the agent ID changes
+	useEffect(() => {
+		if (agentId) {
+			setLastChatAgentId(agentId);
+		}
+	}, [agentId, setLastChatAgentId]);
+	
+	// The job polling hook now handles checking for active jobs when the conversation ID changes
+	
+	// Refetch messages when the conversation ID changes
+	useEffect(() => {
+		if (conversationId) {
+			// Refetch messages to ensure we have the latest conversation
+			queryClient.invalidateQueries({
+				queryKey: [...conversationMessagesQueryKey, conversationId],
+			});
+		}
+	}, [conversationId, queryClient]);
+
+	const handleOpenOptions = () => {
+		setIsOptionsSidebarOpen(true);
+	};
+
+	const handleCloseOptions = () => {
+		setIsOptionsSidebarOpen(false);
+	};
 
 	// Handle selecting a conversation
 	const handleSelectConversation = (id: string) => {
