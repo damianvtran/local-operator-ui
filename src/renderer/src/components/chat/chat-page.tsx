@@ -14,7 +14,7 @@ import React, { useState, useMemo, useEffect, useCallback } from "react";
 import type { FC } from "react";
 import { useNavigate } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
-import { ChatLayout } from "@renderer/components/common/layout/chat-layout";
+import { ChatLayout } from "@renderer/components/common/chat-layout";
 import { ChatSidebar } from "./chat-sidebar";
 import { ChatContent } from "./chat-content";
 import { PlaceholderView } from "./placeholder-view";

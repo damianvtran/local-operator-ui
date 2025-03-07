@@ -7,7 +7,7 @@ import { MessageInput } from "./message-input";
 import { MessagesView } from "./messages-view";
 import { RawInfoView } from "./raw-info-view";
 import { ScrollToBottomButton } from "./scroll-to-bottom-button";
-import { StyledDivider } from "@renderer/components/common/layout/chat-layout";
+import { StyledDivider } from "@renderer/components/common/chat-layout";
 import type { Message } from "./types";
 import type { JobStatus } from "@renderer/api/local-operator/types";
 
