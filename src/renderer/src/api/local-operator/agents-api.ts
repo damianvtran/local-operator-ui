@@ -34,7 +34,7 @@ export const AgentsApi = {
 		const url = new URL(`${baseUrl}/v1/agents`);
 		url.searchParams.append("page", page.toString());
 		url.searchParams.append("per_page", perPage.toString());
-		
+
 		// Add name parameter if provided
 		if (name) {
 			url.searchParams.append("name", name);
@@ -244,5 +244,37 @@ export const AgentsApi = {
 		return response.json() as Promise<
 			CRUDResponse<AgentExecutionHistoryResult>
 		>;
+	},
+
+	/**
+	 * Clear agent conversation
+	 * Clear the conversation history for a specific agent.
+	 *
+	 * @param baseUrl - The base URL of the Local Operator API
+	 * @param agentId - ID of the agent to clear conversation for
+	 * @returns Promise resolving to the clear conversation response
+	 * @throws Error if the request fails
+	 */
+	async clearAgentConversation(
+		baseUrl: string,
+		agentId: string,
+	): Promise<CRUDResponse> {
+		const response = await fetch(
+			`${baseUrl}/v1/agents/${agentId}/conversation`,
+			{
+				method: "DELETE",
+				headers: {
+					Accept: "application/json",
+				},
+			},
+		);
+
+		if (!response.ok) {
+			throw new Error(
+				`Clear agent conversation request failed: ${response.status} ${response.statusText}`,
+			);
+		}
+
+		return response.json() as Promise<CRUDResponse>;
 	},
 };
