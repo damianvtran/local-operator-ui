@@ -3,6 +3,8 @@
  */
 import { createLocalOperatorClient } from "@renderer/api/local-operator";
 import { apiConfig } from "@renderer/config";
+import { useChatStore } from "@renderer/store/chat-store";
+import { useMessageHistoryStore } from "@renderer/store/message-history-store";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-toastify";
 
@@ -13,6 +15,10 @@ import { toast } from "react-toastify";
  */
 export const useClearAgentConversation = () => {
 	const queryClient = useQueryClient();
+	const clearChatMessages = useChatStore((state) => state.clearConversation);
+	const clearMessageHistory = useMessageHistoryStore(
+		(state) => state.clearConversationHistory,
+	);
 
 	return useMutation({
 		mutationFn: async ({ agentId }: { agentId: string }) => {
@@ -24,6 +30,12 @@ export const useClearAgentConversation = () => {
 			queryClient.invalidateQueries({
 				queryKey: ["agent", variables.agentId, "conversation"],
 			});
+
+			// Clear messages from the chat store
+			clearChatMessages(variables.agentId);
+
+			// Clear message history for the conversation
+			clearMessageHistory(variables.agentId);
 
 			// Show success toast
 			toast.success("Conversation cleared successfully");

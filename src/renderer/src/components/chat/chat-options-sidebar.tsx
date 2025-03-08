@@ -5,14 +5,16 @@
  * for the currently selected agent.
  */
 
-import { faTimes } from "@fortawesome/free-solid-svg-icons";
+import { faTimes, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Drawer, Typography } from "@mui/material";
+import { Box, Button, Drawer, Typography, alpha, styled } from "@mui/material";
 import type { AgentDetails } from "@renderer/api/local-operator/types";
 import { useAgent } from "@renderer/hooks/use-agents";
+import { useClearAgentConversation } from "@renderer/hooks/use-clear-agent-conversation";
 import { useUpdateAgent } from "@renderer/hooks/use-update-agent";
 import type { FC } from "react";
 import { useEffect, useState } from "react";
+import { ConfirmationModal } from "../common/confirmation-modal";
 import {
 	CloseButton,
 	HeaderTitle,
@@ -38,6 +40,64 @@ type ChatOptionsSidebarProps = {
 	 * ID of the current agent/conversation
 	 */
 	agentId?: string;
+};
+
+/**
+ * Styled component for the clear conversation button
+ */
+const ClearConversationButton = styled(Button)(({ theme }) => ({
+	backgroundColor: theme.palette.error.main,
+	color: theme.palette.error.contrastText,
+	marginTop: theme.spacing(3),
+	marginBottom: theme.spacing(2),
+	borderRadius: theme.shape.borderRadius,
+	textTransform: "none",
+	fontWeight: 500,
+	"&:hover": {
+		backgroundColor: theme.palette.error.dark,
+		boxShadow: `0 4px 12px ${alpha(theme.palette.error.main, 0.4)}`,
+	},
+	transition: "all 0.2s ease-in-out",
+}));
+
+/**
+ * Clear Conversation Section Component
+ *
+ * Displays a button to clear the conversation history and a confirmation dialog
+ */
+const ClearConversationSection: FC<{
+	agentId: string;
+}> = ({ agentId }) => {
+	const [isConfirmationOpen, setIsConfirmationOpen] = useState(false);
+	const clearConversationMutation = useClearAgentConversation();
+
+	const handleClearConversation = () => {
+		clearConversationMutation.mutate({ agentId });
+		setIsConfirmationOpen(false);
+	};
+
+	return (
+		<Box>
+			<ClearConversationButton
+				fullWidth
+				startIcon={<FontAwesomeIcon icon={faTrash} />}
+				onClick={() => setIsConfirmationOpen(true)}
+			>
+				Clear Conversation
+			</ClearConversationButton>
+
+			<ConfirmationModal
+				open={isConfirmationOpen}
+				title="Clear Conversation"
+				message="Are you sure you want to clear this conversation? This action cannot be undone and all messages will be permanently deleted."
+				confirmText="Clear"
+				cancelText="Cancel"
+				isDangerous
+				onConfirm={handleClearConversation}
+				onCancel={() => setIsConfirmationOpen(false)}
+			/>
+		</Box>
+	);
 };
 
 /**
@@ -122,6 +182,9 @@ export const ChatOptionsSidebar: FC<ChatOptionsSidebarProps> = ({
 						refetchAgent={refetchAgent}
 						updateAgentMutation={updateAgentMutation}
 					/>
+
+					{/* Clear Conversation Section */}
+					{agentId && <ClearConversationSection agentId={agentId} />}
 				</SidebarContent>
 			</SidebarContainer>
 		</Drawer>
