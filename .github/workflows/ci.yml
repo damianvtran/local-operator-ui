@@ -32,5 +32,10 @@ jobs:
         run: yarn lint
       
       - name: Run yarn audit
-        run: yarn audit
-        continue-on-error: true # Prevent audit from failing the workflow, but still report issues
+        run: |
+          if [[ $(yarn audit | grep "critical" |  wc -l | tr -d ' ') -gt 0 ]]; then
+            echo "critical vulnerability found"
+            exit 1
+          else
+            exit 0
+          fi
