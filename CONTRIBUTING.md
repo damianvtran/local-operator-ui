@@ -176,7 +176,7 @@ Once approved and merged, maintainers will package changes into releases with th
 2. Create a git tag with prefix `v` (for example `v0.2.0`)
 3. Push the tag to the upstream repository on the commit to release on `main`
 4. Create a release from the tag on GitHub with a concise release name and a description of the changes
-5. CD will trigger on release creation and build the application for distribution
+5. CD will trigger on release creation and build the application for distribution on `npm`
 
 **For pre-release versions**:
 

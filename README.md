@@ -69,153 +69,7 @@ npm install -g local-operator-ui
 local-operator-ui
 ```
 
-### Development Setup
-
-If you want to contribute or modify the application, follow these steps:
-
-**Clone the repository:**
-
-```bash
-git clone https://github.com/local-operator/local-operator-ui.git
-cd local-operator-ui
-```
-
-**Install dependencies:**
-
-```bash
-yarn install
-```
-
-**Configure environment variables:**
-
-Copy the `.env.template` file to `.env` and update the values as needed:
-
-```bash
-cp .env.template .env
-```
-
-The main environment variable is:
-
-- `VITE_LOCAL_OPERATOR_API_URL`: URL of the Local Operator backend API (default: `http://localhost:1111`)
-
-### Development
-
-For local development, follow these steps:
-
-**Start the development server:**
-
-```bash
-yarn dev
-```
-
-This command will start the Electron application in development mode, with hot reloading enabled for both the main process and the renderer process.
-
-### Production
-
-To build and run the application in production mode:
-
-**Build and start the application:**
-
-```bash
-yarn start
-```
-
-This command will run the pre-build script and then start the Electron application in production mode, loading the compiled assets.
-
-## 🏗️ Project Structure
-
-The project follows a modular architecture with clear separation of concerns:
-
-```
-local-operator-ui/
-├── .github/                    # GitHub configuration
-│   └── workflows/              # GitHub Actions workflows
-│       ├── ci.yml              # CI workflow configuration
-│       └── release.yml         # Release workflow configuration
-├── resources/                  # Application resources (icons, images)
-├── src/                        # Source code
-│   ├── main/                   # Electron main process
-│   │   └── index.ts            # Main process entry point
-│   ├── preload/                # Electron preload scripts
-│   │   ├── index.d.ts          # Type definitions
-│   │   └── index.ts            # Preload script
-│   └── renderer/               # Renderer process (React application)
-│       ├── index.html          # HTML template
-│       └── src/                # React application source
-│           ├── api/            # API clients and utilities
-│           │   ├── query-client.ts                # React Query client setup
-│           │   └── local-operator/               # Local Operator API client
-│           │       ├── agents-api.ts             # Agents API endpoints
-│           │       ├── chat-api.ts               # Chat API endpoints
-│           │       ├── config-api.ts             # Config API endpoints
-│           │       ├── credentials-api.ts        # Credentials API endpoints
-│           │       ├── health-api.ts             # Health API endpoints
-│           │       ├── jobs-api.ts               # Jobs API endpoints
-│           │       ├── types.ts                  # API type definitions
-│           │       └── index.ts                  # API client exports
-│           ├── assets/         # Static assets
-│           ├── components/     # React components
-│           │   ├── agents/     # Agent management components
-│           │   ├── chat/       # Chat interface components
-│           │   ├── common/     # Shared/common components
-│           │   ├── navigation/ # Navigation components
-│           │   └── settings/   # Settings components
-│           ├── hooks/          # Custom React hooks
-│           ├── store/          # State management (Zustand)
-│           ├── app.tsx         # Main application component
-│           ├── config.ts       # Application configuration
-│           ├── main.tsx        # Application entry point
-│           ├── theme.ts        # MUI theme configuration
-│           └── vite-env.d.ts   # Vite environment type definitions
-├── .env.template               # Environment variables template
-├── biome.json                  # Biome configuration
-├── electron.vite.config.js     # Electron Vite configuration
-├── eslint.config.js            # ESLint configuration
-├── GITHUB_ACTIONS.md           # GitHub Actions documentation
-├── package.json                # Project dependencies and scripts
-├── tsconfig.json               # TypeScript configuration
-└── README.md                   # Project documentation
-```
-
-### Key Directories
-
-- **src/main**: Contains the Electron main process code
-- **src/preload**: Contains the Electron preload scripts
-- **src/renderer**: Contains the React application code
-  - **api**: API clients for communicating with the Local Operator backend
-  - **components**: React components organized by feature
-  - **hooks**: Custom React hooks for data fetching and state management
-  - **store**: Global state management using Zustand
-
-## 🛠️ Technology Stack
-
-The Local Operator UI is built with the following technologies:
-
-### Core Technologies
-
-- **Electron**: Cross-platform desktop application framework
-- **React**: UI library for building component-based interfaces
-- **TypeScript**: Typed superset of JavaScript for improved developer experience
-- **Vite**: Modern frontend build tool
-
-### UI Framework and Styling
-
-- **Material UI (MUI)**: React component library implementing Google's Material Design
-- **Styled Components**: CSS-in-JS library for component styling
-- **Emotion**: CSS-in-JS library used by MUI
-- **FontAwesome**: Icon library
-
-### State Management and Data Fetching
-
-- **Zustand**: Lightweight state management library
-- **React Query**: Data fetching and caching library
-- **Zod**: TypeScript-first schema validation
-
-### Development Tools
-
-- **Biome**: Fast linter and formatter for JavaScript and TypeScript
-- **ESLint**: JavaScript and TypeScript linter
-- **TypeScript**: Static type checking
+After installation, the application will automatically connect to the Local Operator backend API at `http://localhost:1111` by default.
 
 ## ✨ Features
 
@@ -248,67 +102,9 @@ The Local Operator UI provides a comprehensive interface for interacting with AI
 - Real-time status updates for long-running operations
 - Error handling and retry mechanisms
 
-## 🧪 Testing
-
-The project uses Jest for testing. To run tests:
-
-```bash
-yarn test
-```
-
-## 🔄 Continuous Integration and Deployment
-
-This project uses GitHub Actions for continuous integration and automated publishing to npm. The workflows include:
-
-- **CI**: Runs Biome linting and security audits on pushes to `main` and `dev-*` branches
-- **Release**: Automatically publishes the package to npm when a new GitHub Release is created
-
-For detailed information on setting up and using these workflows, see [GITHUB_ACTIONS.md](./GITHUB_ACTIONS.md).
-
-## 🔧 Linting and Formatting
-
-The project uses Biome for linting and formatting. To lint and format the code:
-
-```bash
-# Check for linting issues
-yarn lint
-
-# Fix linting issues
-yarn lint:fix
-
-# Format code
-yarn format
-
-# Fix formatting issues
-yarn format:fix
-```
-
 ## 🤝 Contributing
 
-Contributions are welcome! Here's how you can contribute:
-
-1. Fork the repository
-2. Create a new branch (`git checkout -b feature/your-feature-name`)
-3. Make your changes
-4. Run tests and linting (`yarn test && yarn lint`)
-5. Commit your changes (`git commit -m 'Add some feature'`)
-6. Push to the branch (`git push origin feature/your-feature-name`)
-7. Open a Pull Request
-
-Please ensure your code follows the project's coding standards:
-
-- Use TypeScript for all new code
-- Follow the existing code style and patterns
-- Write tests for new features
-- Update documentation as needed
-
-### Code Style Guidelines
-
-- Use `type` instead of `interface` for type definitions
-- Use kebab-case for file names and PascalCase for component names
-- Use named exports instead of default exports
-- Include JSDoc documentation where appropriate
-- Follow Biome linting conventions
+Contributions are welcome! Please see our [Contributing Guide](./CONTRIBUTING.md) for details on how to get started with development, code style guidelines, and our contribution process.
 
 ## 🐛 Troubleshooting
 
@@ -316,8 +112,8 @@ Please ensure your code follows the project's coding standards:
 
 #### Application fails to connect to the backend
 
-- Ensure the Local Operator backend is running
-- Check that the `VITE_LOCAL_OPERATOR_API_URL` environment variable is set correctly
+- Ensure the Local Operator backend is running and hosting on `http://localhost:1111`
+- Check that the `VITE_LOCAL_OPERATOR_API_URL` environment variable has not been set to a different URL.  This value is set automatically to `http://localhost:1111` if a custom `.env` doesn't specify otherwise.
 - Verify network connectivity between the UI and the backend
 
 #### Development server crashes
