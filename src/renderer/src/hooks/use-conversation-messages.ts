@@ -47,6 +47,7 @@ export const convertToMessage = (record: AgentExecutionRecord): Message => {
 		stderr: record.stderr,
 		logging: record.logging,
 		timestamp: record.timestamp ? new Date(record.timestamp) : new Date(),
+		files: record.files,
 	};
 };
 

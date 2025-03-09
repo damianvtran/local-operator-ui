@@ -496,6 +496,8 @@ export type AgentExecutionRecord = {
 	status: string;
 	/** Timestamp of when the execution occurred */
 	timestamp: string;
+	/** Files associated with the execution */
+	files: string[];
 };
 
 /**

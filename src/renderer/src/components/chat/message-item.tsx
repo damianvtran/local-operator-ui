@@ -3,7 +3,9 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Avatar, Box, Paper, Typography } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import type { FC } from "react";
-import { memo, useMemo } from "react";
+import { memo, useCallback, useMemo } from "react";
+import { createLocalOperatorClient } from "../../api/local-operator";
+import { apiConfig } from "../../config";
 import SyntaxHighlighter from "react-syntax-highlighter";
 import { atomOneDark } from "react-syntax-highlighter/dist/esm/styles/hljs";
 import { createGlobalStyle } from "styled-components";
@@ -91,6 +93,65 @@ const AttachmentImage = styled("img")({
 	marginBottom: 8,
 	boxShadow: "0 2px 8px rgba(0, 0, 0, 0.15)",
 });
+
+/**
+ * Checks if a file is an image based on its extension
+ * @param path - The file path or URL to check
+ * @returns True if the file is an image, false otherwise
+ */
+const isImage = (path: string): boolean => {
+	const imageExtensions = [
+		".jpg",
+		".jpeg",
+		".png",
+		".gif",
+		".webp",
+		".bmp",
+		".svg",
+		".tiff",
+		".tif",
+		".ico",
+		".heic",
+		".heif",
+		".avif",
+		".jfif",
+		".pjpeg",
+		".pjp",
+	];
+	const lowerPath = path.toLowerCase();
+	return imageExtensions.some((ext) => lowerPath.endsWith(ext));
+};
+
+/**
+ * Extracts the filename from a path
+ * @param path - The file path or URL
+ * @returns The extracted filename
+ */
+const getFileName = (path: string): string => {
+	// Handle both local paths and URLs
+	const parts = path.split(/[/\\]/);
+	return parts[parts.length - 1];
+};
+
+/**
+ * Gets the appropriate URL for an attachment
+ * Uses the static image endpoint for local image files
+ * @param client - The Local Operator client
+ * @param path - The file path or URL
+ * @returns The URL to access the attachment
+ */
+const getAttachmentUrl = (
+	client: ReturnType<typeof createLocalOperatorClient>,
+	path: string,
+): string => {
+	// If it's an image and looks like a local file path
+	if (isImage(path) && !path.startsWith("http")) {
+		// Use the static image endpoint
+		return client.static.getImageUrl(path);
+	}
+	// Otherwise return the original path
+	return path;
+};
 
 const SectionLabel = styled(Typography)(({ theme }) => ({
 	display: "block",
@@ -221,6 +282,11 @@ export const MessageItem: FC<MessageItemProps> = memo(
 	({ message }) => {
 		const isUser = message.role === "user";
 
+		// Create a Local Operator client using the API config
+		const client = useMemo(() => {
+			return createLocalOperatorClient(apiConfig.baseUrl);
+		}, []);
+
 		// Memoize the formatted timestamp to prevent recalculation on re-renders
 		const formattedTimestamp = useMemo(() => {
 			return message.timestamp.toLocaleTimeString([], {
@@ -228,6 +294,12 @@ export const MessageItem: FC<MessageItemProps> = memo(
 				minute: "2-digit",
 			});
 		}, [message.timestamp]);
+
+		// Get the URL for an attachment
+		const getUrl = useCallback(
+			(path: string) => getAttachmentUrl(client, path),
+			[client],
+		);
 
 		return (
 			<MessageContainer isUser={isUser}>
@@ -237,13 +309,13 @@ export const MessageItem: FC<MessageItemProps> = memo(
 
 				<MessagePaper elevation={isUser ? 2 : 1} isUser={isUser}>
 					{/* Render attachments if any */}
-					{message.attachments && message.attachments.length > 0 && (
+					{message.files && message.files.length > 0 && (
 						<Box sx={{ mb: 2 }}>
-							{message.attachments.map((attachment) => (
+							{message.files.map((file) => (
 								<AttachmentImage
-									key={`${message.id}-${attachment}`}
-									src={attachment}
-									alt="Attachment"
+									key={`${message.id}-${file}`}
+									src={getUrl(file)}
+									alt={getFileName(file)}
 								/>
 							))}
 						</Box>

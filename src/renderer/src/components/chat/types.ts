@@ -5,7 +5,7 @@ export type Message = {
 	id: string;
 	role: MessageRole;
 	timestamp: Date;
-	attachments?: string[]; // URLs to attachments
+	files?: string[]; // URLs to attachments
 	code?: string;
 	stdout?: string;
 	stderr?: string;

@@ -252,7 +252,7 @@ export const ChatPage: FC<ChatProps> = () => {
 				role: "user",
 				message: content,
 				timestamp: new Date(),
-				attachments: attachments.length > 0 ? attachments : undefined,
+				files: attachments.length > 0 ? attachments : undefined,
 			};
 
 			// Add user message to chat store
