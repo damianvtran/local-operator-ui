@@ -32,7 +32,6 @@
 	"scripts": {
 		"start": "electron-vite preview",
 		"dev": "electron-vite dev",
-		"prebuild": "electron-vite build",
 		"build": "electron-vite build",
 		"lint": "npx @biomejs/biome check src",
 		"lint:fix": "npx @biomejs/biome check --apply src",
