@@ -1,8 +1,11 @@
 {
 	"name": "local-operator-ui",
-	"version": "0.1.0-beta.2",
+	"version": "0.1.0-beta.3",
 	"description": "User interface for the Local Operator agent environment",
 	"main": "./out/main/index.js",
+	"bin": {
+		"local-operator-ui": "./out/main/index.js"
+	},
 	"license": "MIT",
 	"author": {
 		"name": "Damian Tran",
@@ -37,7 +40,8 @@
 		"lint:fix": "npx @biomejs/biome check --apply src",
 		"format": "npx @biomejs/biome format src",
 		"format:fix": "npx @biomejs/biome format --write src",
-		"prepublishOnly": "npm run build"
+		"prepublishOnly": "npm run build",
+		"postinstall": "chmod +x ./out/main/index.js"
 	},
 	"dependencies": {
 		"@electron-toolkit/utils": "^4.0.0",
