@@ -27,6 +27,26 @@ jobs:
       - name: Run Biome lint
         run: yarn lint
   
+  check-types:
+    name: Type Checking
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.13.1'
+          cache: 'yarn'
+      
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+      
+      - name: Check TypeScript types
+        run: yarn check-types
+  
   audit:
     name: Security Audit
     runs-on: ubuntu-latest
