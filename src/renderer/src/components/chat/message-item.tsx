@@ -92,11 +92,18 @@ const AttachmentImage = styled("img")({
 	borderRadius: 8,
 	marginBottom: 8,
 	boxShadow: "0 2px 8px rgba(0, 0, 0, 0.15)",
+	cursor: "pointer",
+	transition: "transform 0.2s ease, box-shadow 0.2s ease",
+	"&:hover": {
+		transform: "scale(1.02)",
+		boxShadow: "0 4px 12px rgba(0, 0, 0, 0.25)",
+	},
 });
 
 /**
  * Styled component for non-image file attachments
  * Displays a file icon and filename in a container
+ * Includes interactive styling to indicate clickability
  */
 const FileAttachment = styled(Box)(() => ({
 	display: "flex",
@@ -108,14 +115,24 @@ const FileAttachment = styled(Box)(() => ({
 	boxShadow: "0 1px 4px rgba(0, 0, 0, 0.1)",
 	width: "fit-content",
 	maxWidth: "100%",
+	cursor: "pointer",
+	transition: "all 0.2s ease",
 	"&:hover": {
 		backgroundColor: "rgba(0, 0, 0, 0.15)",
+		transform: "translateY(-1px)",
+		boxShadow: "0 2px 5px rgba(0, 0, 0, 0.15)",
+	},
+	"&:active": {
+		transform: "translateY(0)",
+		boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)",
 	},
 }));
 
 const FileIcon = styled(Box)(({ theme }) => ({
 	marginRight: 8,
 	color: theme.palette.primary.main,
+	display: "flex",
+	alignItems: "center",
 }));
 
 const FileName = styled(Typography)({
@@ -124,7 +141,20 @@ const FileName = styled(Typography)({
 	textOverflow: "ellipsis",
 	whiteSpace: "nowrap",
 	maxWidth: "100%",
+	textDecoration: "none",
+	"&:hover": {
+		textDecoration: "underline",
+	},
 });
+
+/**
+ * Checks if a file is a web URL
+ * @param path - The file path or URL to check
+ * @returns True if the path is a web URL, false otherwise
+ */
+const isWebUrl = (path: string): boolean => {
+	return path.startsWith("http://") || path.startsWith("https://");
+};
 
 /**
  * Checks if a file is an image based on its extension
@@ -335,6 +365,45 @@ export const MessageItem: FC<MessageItemProps> = memo(
 			[client],
 		);
 
+		/**
+		 * Handles clicking on a file attachment
+		 * Opens local files with the system's default application
+		 * Opens web URLs in the default browser
+		 * @param filePath - The path or URL of the file to open
+		 */
+		const handleFileClick = useCallback((filePath: string) => {
+			try {
+				// If it's a web URL
+				if (isWebUrl(filePath)) {
+					// Open in default browser
+					window.api.openExternal(filePath);
+				} else {
+					// It's a local file, open with default application
+					// Remove file:// prefix if present
+					const normalizedPath = filePath.startsWith("file://")
+						? filePath.substring(7)
+						: filePath;
+
+					window.api.openFile(normalizedPath);
+				}
+			} catch (error) {
+				console.error("Error opening file:", error);
+				// Could add a toast notification here to inform the user
+			}
+		}, []);
+
+		/**
+		 * Handles clicking on an image attachment
+		 * Opens the image file with the system's default application
+		 * @param filePath - The path or URL of the image to open
+		 */
+		const handleImageClick = useCallback(
+			(filePath: string) => {
+				handleFileClick(filePath);
+			},
+			[handleFileClick],
+		);
+
 		return (
 			<MessageContainer isUser={isUser}>
 				<UserAvatar isUser={isUser}>
@@ -352,6 +421,8 @@ export const MessageItem: FC<MessageItemProps> = memo(
 										key={`${message.id}-${file}`}
 										src={getUrl(file)}
 										alt={getFileName(file)}
+										onClick={() => handleImageClick(file)}
+										title={`Click to open ${getFileName(file)}`}
 									/>
 								))}
 						</Box>
@@ -451,7 +522,11 @@ export const MessageItem: FC<MessageItemProps> = memo(
 							{message.files
 								.filter((file) => !isImage(file))
 								.map((file) => (
-									<FileAttachment key={`${message.id}-${file}`}>
+									<FileAttachment
+										key={`${message.id}-${file}`}
+										onClick={() => handleFileClick(file)}
+										title={`Click to open ${getFileName(file)}`}
+									>
 										<FileIcon>
 											<FontAwesomeIcon icon={faFile} size="sm" />
 										</FileIcon>
