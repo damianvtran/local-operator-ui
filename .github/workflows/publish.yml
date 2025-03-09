@@ -1,12 +1,12 @@
-name: Release
+name: Publish
 
 on:
   release:
     types: [published]
 
 jobs:
-  publish:
-    name: Build and Publish
+  npm-publish:
+    name: Build and Publish to NPM
     runs-on: ubuntu-latest
     
     steps:

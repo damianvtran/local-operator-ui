@@ -1,11 +1,7 @@
-name: CI
+name: Pre-Release CI Testing
 
 on:
   push:
-    branches:
-      - main
-      - 'dev-*'
-  pull_request:
     branches:
       - main
       - 'dev-*'
