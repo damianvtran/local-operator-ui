@@ -72,3 +72,48 @@ jobs:
           else
             exit 0
           fi
+  
+  npx-sanity-check:
+    name: NPX Sanity Check
+    runs-on: ubuntu-latest
+    needs:
+      - lint
+      - check-types
+      - audit
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.13.1'
+      
+      - name: Build and pack
+        run: |
+          yarn install --frozen-lockfile
+          yarn build
+          npm pack
+      
+      - name: Install and run with npx
+        run: |
+          # Start the app with npx in the background
+          npx ./local-operator-ui-*.tgz &
+          NPX_PID=$!
+          
+          # Give the app some time to start up
+          sleep 3
+          
+          # Check if process is still running (no immediate crash)
+          if ps -p $NPX_PID > /dev/null; then
+            echo "Application started successfully with npx"
+            # Kill the process
+            kill $NPX_PID
+            # Wait for process to terminate
+            wait $NPX_PID || true
+            exit 0
+          else
+            echo "Application failed to start with npx"
+            exit 1
+          fi
