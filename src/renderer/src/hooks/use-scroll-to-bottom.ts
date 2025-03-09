@@ -45,6 +45,7 @@ export const useScrollToBottom = (
 
 	// Throttled scroll handler to improve performance
 	// Only updates state if the scroll position has changed significantly
+	// biome-ignore lint/correctness/useExhaustiveDependencies: screenHeightThreshold is not used in the function body
 	const handleScroll = useCallback(() => {
 		if (!containerRef.current) return;
 

@@ -188,7 +188,8 @@ export const AutocompleteField = ({
 	const [originalValue, setOriginalValue] = useState(value);
 	const [isEditing, setIsEditing] = useState(false);
 
-	// Update the edit value when the value or options prop changes
+	// Update the edit value when the value prop changes
+	// biome-ignore lint/correctness/useExhaustiveDependencies: options.length is intentionally included to reset state when options change
 	useEffect(() => {
 		setEditValue(value);
 		setInputValue(value);

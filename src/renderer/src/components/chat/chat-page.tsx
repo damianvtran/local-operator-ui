@@ -129,6 +129,7 @@ export const ChatPage: FC<ChatProps> = () => {
 
 	// Update the last selected agent ID when the agent ID changes
 	// Also force scroll to bottom when changing agents
+	// biome-ignore lint/correctness/useExhaustiveDependencies: messagesContainerRef.current is intentionally omitted to prevent infinite loops
 	useEffect(() => {
 		if (agentId) {
 			setLastChatAgentId(agentId);
@@ -172,6 +173,7 @@ export const ChatPage: FC<ChatProps> = () => {
 	}, []);
 
 	// Handle selecting a conversation
+	// biome-ignore lint/correctness/useExhaustiveDependencies: messagesContainerRef.current is intentionally omitted to prevent infinite loops
 	const handleSelectConversation = useCallback(
 		(id: string) => {
 			setLastChatAgentId(id);

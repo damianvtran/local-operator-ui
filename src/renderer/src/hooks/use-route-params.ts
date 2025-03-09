@@ -57,9 +57,13 @@ export const useCurrentView = () => {
 
 	if (path.startsWith("/chat")) {
 		return "chat";
-	} else if (path.startsWith("/agents")) {
+	}
+
+	if (path.startsWith("/agents")) {
 		return "agents";
-	} else if (path.startsWith("/settings")) {
+	}
+
+	if (path.startsWith("/settings")) {
 		return "settings";
 	}
 

@@ -95,6 +95,7 @@ export const AgentsPage: FC<AgentsPageProps> = () => {
 	);
 
 	// Check if the selected agent exists in the list of agents
+	// biome-ignore lint/correctness/useExhaustiveDependencies: clearLastAgentId and clearAgentId are intentionally omitted to prevent infinite loops
 	useEffect(() => {
 		if (effectiveAgentId && agents.length > 0) {
 			const agentExists = agents.some((agent) => agent.id === effectiveAgentId);

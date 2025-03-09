@@ -216,6 +216,7 @@ export const useJobPolling = ({
 	);
 
 	// Handle job completion
+	// biome-ignore lint/correctness/useExhaustiveDependencies: queryClient.invalidateQueries is intentionally omitted to prevent infinite loops
 	const handleJobCompletion = useCallback(
 		async (job: JobDetails) => {
 			if (!conversationId) return;

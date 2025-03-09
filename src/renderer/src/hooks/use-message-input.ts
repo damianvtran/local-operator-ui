@@ -203,6 +203,7 @@ export const useMessageInput = ({
 	);
 
 	// Reset input and history when conversation changes
+	// biome-ignore lint/correctness/useExhaustiveDependencies: conversationId is intentionally the only dependency to reset state when conversation changes
 	useEffect(() => {
 		setInputValue("");
 		setHistoryIndex(null);

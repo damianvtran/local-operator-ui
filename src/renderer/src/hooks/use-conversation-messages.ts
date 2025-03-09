@@ -307,7 +307,7 @@ export const useConversationMessages = (
 		if (!conversationId || !data?.pages) return;
 
 		// Process each page of messages
-		data.pages.forEach((page) => {
+		for (const page of data.pages) {
 			// If this is a new page (not the first page), prepend the messages
 			if (page.page > 1) {
 				addMessages(conversationId, page.messages, true); // prepend = true
@@ -321,7 +321,7 @@ export const useConversationMessages = (
 					addMessages(conversationId, page.messages, false); // append = false
 				}
 			}
-		});
+		}
 	}, [data, conversationId, addMessages, setMessages, getMessages]);
 
 	// Get messages from the store with memoization to prevent unnecessary re-renders
@@ -336,7 +336,7 @@ export const useConversationMessages = (
 		return conversationId
 			? getPagination(conversationId)
 			: { currentPage: 1, totalPages: 1, hasMore: false };
-	}, [conversationId, getPagination, lastUpdated]);
+	}, [conversationId, getPagination]);
 
 	return {
 		messages,

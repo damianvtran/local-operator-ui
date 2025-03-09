@@ -254,7 +254,7 @@ export const useUserMessageHistory = (
 		// Get the previous message
 		const previousMessage = getPreviousMessage(currentSequenceId);
 
-		if (previousMessage && previousMessage.id) {
+		if (previousMessage?.id) {
 			// Update the current sequence ID
 			setCurrentSequenceId(conversationId, previousMessage.id);
 
@@ -286,7 +286,7 @@ export const useUserMessageHistory = (
 		// Get the next message
 		const nextMessage = getNextMessage(currentSequenceId);
 
-		if (nextMessage && nextMessage.id) {
+		if (nextMessage?.id) {
 			// Update the current sequence ID
 			setCurrentSequenceId(conversationId, nextMessage.id);
 

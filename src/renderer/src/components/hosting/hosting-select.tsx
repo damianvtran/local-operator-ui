@@ -165,14 +165,14 @@ export const HostingSelect: FC<HostingSelectProps> = ({
 		];
 
 		// Map available hosting providers to options
-		availableHostingProviders.forEach((provider) => {
+		for (const provider of availableHostingProviders) {
 			options.push({
 				id: provider.id,
 				name: provider.name,
 				description: provider.description,
 				provider,
 			});
-		});
+		}
 
 		// If the current value is not in the available options, add it as a custom option
 		if (
