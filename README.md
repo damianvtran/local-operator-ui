@@ -104,6 +104,10 @@ The project follows a modular architecture with clear separation of concerns:
 
 ```
 local-operator-ui/
+├── .github/                    # GitHub configuration
+│   └── workflows/              # GitHub Actions workflows
+│       ├── ci.yml              # CI workflow configuration
+│       └── release.yml         # Release workflow configuration
 ├── resources/                  # Application resources (icons, images)
 ├── src/                        # Source code
 │   ├── main/                   # Electron main process
@@ -143,6 +147,7 @@ local-operator-ui/
 ├── biome.json                  # Biome configuration
 ├── electron.vite.config.js     # Electron Vite configuration
 ├── eslint.config.js            # ESLint configuration
+├── GITHUB_ACTIONS.md           # GitHub Actions documentation
 ├── package.json                # Project dependencies and scripts
 ├── tsconfig.json               # TypeScript configuration
 └── README.md                   # Project documentation
@@ -226,6 +231,15 @@ The project uses Jest for testing. To run tests:
 ```bash
 yarn test
 ```
+
+## 🔄 Continuous Integration and Deployment
+
+This project uses GitHub Actions for continuous integration and automated publishing to npm. The workflows include:
+
+- **CI**: Runs Biome linting and security audits on pushes to `main` and `dev-*` branches
+- **Release**: Automatically publishes the package to npm when a new GitHub Release is created
+
+For detailed information on setting up and using these workflows, see [GITHUB_ACTIONS.md](./GITHUB_ACTIONS.md).
 
 ## 🔧 Linting and Formatting
 
