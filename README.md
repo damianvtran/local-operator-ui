@@ -44,11 +44,11 @@ The Local Operator UI is a user interface for managing and interacting with the 
 Before you begin, ensure you have the following installed:
 
 - **Node.js**: Version 22.13.1 or higher. It's recommended to use [nvm](https://github.com/nvm-sh/nvm) for managing Node.js versions.
-- **Local Operator Backend**: The UI connects to the Local Operator backend API. See the [Local Operator GitHub repository](https://github.com/damianvtran/local-operator) for installation instructions.
+- **Local Operator Backend**: The UI connects to the Local Operator backend API. See the [Local Operator GitHub repository](https://github.com/damianvtran/local-operator) for installation instructions.  Install it globally or in a virtual environment with `pip install local-operator` and then boot it up on `localhost:1111` with `local-operator serve`.
 
 ### NPM Installation
 
-You can install and run Local Operator UI directly using npx:
+You can install and run Local Operator UI directly using [npx](https://docs.n8n.io/hosting/installation/npm/).
 
 ```bash
 # Install and run in one command
@@ -59,7 +59,7 @@ This will download and execute the latest version of the Local Operator UI, laun
 
 ### Manual Installation
 
-Alternatively, you can install the package globally:
+Alternatively, without npx, you can install the package globally with standard npm:
 
 ```bash
 # Install globally

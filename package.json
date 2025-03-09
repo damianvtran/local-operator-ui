@@ -27,7 +27,15 @@
 	"bugs": {
 		"url": "https://github.com/damianvtran/local-operator-ui/issues"
 	},
-	"keywords": ["local-operator", "agent", "ui", "electron", "react"],
+	"keywords": [
+		"local-operator",
+		"agent",
+		"python",
+		"tool use",
+		"ui",
+		"electron",
+		"react"
+	],
 	"files": ["out", "bin", "LICENSE", "README.md"],
 	"publishConfig": {
 		"access": "public"
