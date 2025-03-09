@@ -132,12 +132,13 @@ export const MessageInput: FC<MessageInputProps> = ({
 	const handleFileSelect = (e: ChangeEvent<HTMLInputElement>) => {
 		if (e.target.files && e.target.files.length > 0) {
 			const newAttachments = Array.from(e.target.files).map((file) => {
-				// Use the actual file path with file:// protocol
+				// Use the actual file path without file:// protocol
 				// @ts-ignore - path is available in Electron but not in standard web File API
 				const filePath = file.path;
 				if (filePath) {
-					// Convert to file:// URL format
-					return `file://${filePath}`;
+					// Return the file path directly without file:// protocol
+					// This is what the backend expects
+					return filePath;
 				}
 				// Fallback to object URL if path is not available
 				return URL.createObjectURL(file);

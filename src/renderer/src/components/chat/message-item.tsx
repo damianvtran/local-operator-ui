@@ -178,8 +178,10 @@ const getAttachmentUrl = (
 ): string => {
 	// If it's an image and looks like a local file path
 	if (isImage(path) && !path.startsWith("http")) {
+		// Check if path already has file:// protocol
+		const normalizedPath = path.startsWith("file://") ? path : `file://${path}`;
 		// Use the static image endpoint
-		return client.static.getImageUrl(path);
+		return client.static.getImageUrl(normalizedPath);
 	}
 	// Otherwise return the original path
 	return path;
