@@ -3,6 +3,9 @@
 	"version": "0.1.0-beta.4",
 	"description": "User interface for the Local Operator agent environment",
 	"main": "./out/main/index.js",
+	"bin": {
+		"local-operator-ui": "./bin/local-operator-ui.js"
+	},
 	"license": "MIT",
 	"author": {
 		"name": "Damian Tran",
@@ -25,17 +28,15 @@
 		"url": "https://github.com/damianvtran/local-operator-ui/issues"
 	},
 	"keywords": ["local-operator", "agent", "ui", "electron", "react"],
-	"files": ["out", "LICENSE", "README.md"],
+	"files": ["out", "bin", "LICENSE", "README.md"],
 	"publishConfig": {
 		"access": "public"
-	},
-	"bin": {
-		"local-operator-ui": "./out/main/index.js"
 	},
 	"scripts": {
 		"start": "electron-vite preview",
 		"dev": "electron-vite dev",
-		"build": "electron-vite build && chmod +x ./out/main/index.js",
+		"build": "electron-vite build",
+		"postbuild": "chmod +x ./bin/local-operator-ui.js",
 		"lint": "npx @biomejs/biome check src",
 		"lint:fix": "npx @biomejs/biome check --apply src",
 		"format": "npx @biomejs/biome format src",
