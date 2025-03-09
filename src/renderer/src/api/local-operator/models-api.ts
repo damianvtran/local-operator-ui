@@ -1,6 +1,6 @@
 /**
  * Models API Client
- * 
+ *
  * This module provides functions for interacting with the Local Operator API's model endpoints.
  * It includes methods for listing model providers and retrieving available models.
  */
@@ -83,7 +83,7 @@ export type ModelListResponse = {
 
 /**
  * List all available model providers
- * 
+ *
  * @param baseUrl - Base URL of the Local Operator API
  * @returns Promise resolving to a list of model providers
  */
@@ -91,17 +91,17 @@ export const listProviders = async (
 	baseUrl: string,
 ): Promise<CRUDResponse<ProviderListResponse>> => {
 	const response = await fetch(`${baseUrl}/v1/models/providers`);
-	
+
 	if (!response.ok) {
 		throw new Error(`Failed to list providers: ${response.statusText}`);
 	}
-	
+
 	return response.json();
 };
 
 /**
  * List all available models, optionally filtered by provider
- * 
+ *
  * @param baseUrl - Base URL of the Local Operator API
  * @param provider - Optional provider to filter models by
  * @returns Promise resolving to a list of models
@@ -111,17 +111,17 @@ export const listModels = async (
 	provider?: string,
 ): Promise<CRUDResponse<ModelListResponse>> => {
 	const url = new URL(`${baseUrl}/v1/models`);
-	
+
 	if (provider) {
 		url.searchParams.append("provider", provider);
 	}
-	
+
 	const response = await fetch(url.toString());
-	
+
 	if (!response.ok) {
 		throw new Error(`Failed to list models: ${response.statusText}`);
 	}
-	
+
 	return response.json();
 };
 

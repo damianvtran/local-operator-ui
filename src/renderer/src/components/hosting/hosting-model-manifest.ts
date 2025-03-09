@@ -3,12 +3,15 @@
  *
  * This file defines the available hosting providers and the models they support.
  * It also maps which credentials are required for each hosting provider.
- * 
+ *
  * The data is now dynamically fetched from the models API instead of being hard-coded.
  */
 
+import type {
+	ModelDetails,
+	Provider,
+} from "@renderer/api/local-operator/models-api";
 import { useModelsStore } from "@renderer/store/models-store";
-import type { ModelDetails, Provider } from "@renderer/api/local-operator/models-api";
 
 /**
  * Type definition for a model
@@ -52,7 +55,7 @@ export type HostingProvider = {
 
 /**
  * Convert API model details to the format used in the hosting-model-manifest
- * 
+ *
  * @param model - Model details from the API
  * @returns Converted model in the hosting-model-manifest format
  */
@@ -71,14 +74,14 @@ const convertToManifestModel = (model: ModelDetails): Model => {
 
 /**
  * Convert API provider to the format used in the hosting-model-manifest
- * 
+ *
  * @param provider - Provider from the API
  * @param models - Models for this provider
  * @returns Converted provider in the hosting-model-manifest format
  */
 const convertToManifestProvider = (
-	provider: Provider, 
-	models: ModelDetails[]
+	provider: Provider,
+	models: ModelDetails[],
 ): HostingProvider => {
 	return {
 		id: provider.id,
@@ -92,21 +95,23 @@ const convertToManifestProvider = (
 
 /**
  * Get hosting providers from the models store
- * 
+ *
  * @returns Array of hosting providers
  */
 export const getHostingProviders = (): HostingProvider[] => {
 	const store = useModelsStore.getState();
 	const { providers, models, isInitialized } = store;
-	
+
 	// If the store is not initialized yet, return an empty array
 	if (!isInitialized || providers.length === 0) {
 		return [];
 	}
-	
+
 	// Convert API providers to manifest format
 	return providers.map((provider) => {
-		const providerModels = models.filter((model) => model.provider === provider.id);
+		const providerModels = models.filter(
+			(model) => model.provider === provider.id,
+		);
 		return convertToManifestProvider(provider, providerModels);
 	});
 };

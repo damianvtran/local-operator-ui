@@ -14,17 +14,17 @@ import {
 	TextField,
 	Typography,
 	alpha,
-	styled,
 	createFilterOptions,
+	styled,
 } from "@mui/material";
 import type { FC, SyntheticEvent } from "react";
-import { useMemo, useState, useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import ReactMarkdown from "react-markdown";
 import {
+	type Model,
 	getHostingProviderById,
 	getModelsForHostingProvider,
-	type Model,
 } from "./hosting-model-manifest";
-import ReactMarkdown from "react-markdown";
 
 /**
  * Type for model option in the autocomplete

@@ -14,7 +14,6 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, Divider, Grid, Typography, alpha } from "@mui/material";
-import { HostingSelect, ModelSelect } from "../hosting";
 import { styled } from "@mui/material/styles";
 import type {
 	AgentDetails,
@@ -25,6 +24,7 @@ import type { FC } from "react";
 import { useState } from "react";
 import { toast } from "react-toastify";
 import { EditableField } from "../common/editable-field";
+import { HostingSelect, ModelSelect } from "../hosting";
 
 type GeneralSettingsProps = {
 	/**
@@ -123,7 +123,9 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 	// Track the current hosting provider to detect changes
 	// Initialize with selectedAgent.hosting and don't update it in a useEffect
 	// This prevents flickering when the hosting changes
-	const [currentHosting, setCurrentHosting] = useState<string>(selectedAgent.hosting || "");
+	const [currentHosting, setCurrentHosting] = useState<string>(
+		selectedAgent.hosting || "",
+	);
 	return (
 		<>
 			<HeaderContainer>
@@ -140,16 +142,16 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 								return;
 							}
 							setSavingField("name");
-							
+
 							try {
 								const update: AgentUpdate = { name: value };
-								
+
 								// Perform the API update
 								await updateAgentMutation.mutateAsync({
 									agentId: selectedAgent.id,
 									update,
 								});
-								
+
 								// Only refetch if needed (when viewing the current agent)
 								if (
 									selectedAgent.id === initialSelectedAgentId &&
@@ -176,25 +178,25 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 							isSaving={savingField === "hosting"}
 							onSave={async (value) => {
 								setSavingField("hosting");
-								
+
 								// Update the local state immediately to prevent flickering
 								// This ensures the ModelSelect component gets the new hosting value right away
 								setCurrentHosting(value);
-								
+
 								try {
 									// Update both hosting and reset model to ensure compatibility
-									const update: AgentUpdate = { 
+									const update: AgentUpdate = {
 										hosting: value,
 										// Clear model when hosting changes to avoid incompatible models
-										model: "" 
+										model: "",
 									};
-									
+
 									// Perform the API update
 									await updateAgentMutation.mutateAsync({
 										agentId: selectedAgent.id,
 										update,
 									});
-									
+
 									// Only refetch if needed (when viewing the current agent)
 									if (
 										selectedAgent.id === initialSelectedAgentId &&
@@ -224,16 +226,16 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 							isSaving={savingField === "model"}
 							onSave={async (value) => {
 								setSavingField("model");
-								
+
 								try {
 									const update: AgentUpdate = { model: value };
-									
+
 									// Perform the API update
 									await updateAgentMutation.mutateAsync({
 										agentId: selectedAgent.id,
 										update,
 									});
-									
+
 									// Only refetch if needed (when viewing the current agent)
 									if (
 										selectedAgent.id === initialSelectedAgentId &&
@@ -270,16 +272,16 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 					isSaving={savingField === "description"}
 					onSave={async (value) => {
 						setSavingField("description");
-						
+
 						try {
 							const update: AgentUpdate = { description: value };
-							
+
 							// Perform the API update
 							await updateAgentMutation.mutateAsync({
 								agentId: selectedAgent.id,
 								update,
 							});
-							
+
 							// Only refetch if needed (when viewing the current agent)
 							if (selectedAgent.id === initialSelectedAgentId && refetchAgent) {
 								await refetchAgent();

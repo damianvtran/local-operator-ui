@@ -7,70 +7,70 @@ import type { FC } from "react";
  * Props for the ChatTabs component
  */
 type ChatTabsProps = {
-  activeTab: "chat" | "raw";
-  onChange: (newTab: "chat" | "raw") => void;
+	activeTab: "chat" | "raw";
+	onChange: (newTab: "chat" | "raw") => void;
 };
 
 const StyledTabs = styled(Tabs)(() => ({
-  borderBottom: "1px solid rgba(255, 255, 255, 0.05)",
-  minHeight: "42px",
-  "& .MuiTabs-indicator": {
-    height: 2,
-    borderRadius: "2px 2px 0 0",
-  },
+	borderBottom: "1px solid rgba(255, 255, 255, 0.05)",
+	minHeight: "42px",
+	"& .MuiTabs-indicator": {
+		height: 2,
+		borderRadius: "2px 2px 0 0",
+	},
 }));
 
 const StyledTab = styled(Tab, {
-  shouldForwardProp: (prop) => prop !== "isActive",
+	shouldForwardProp: (prop) => prop !== "isActive",
 })<{ isActive?: boolean }>(({ isActive }) => ({
-  minHeight: "42px",
-  padding: "4px 0",
-  textTransform: "none",
-  fontSize: "0.85rem",
-  fontWeight: 500,
-  transition: "all 0.2s ease",
-  opacity: isActive ? 1 : 0.7,
-  "&:hover": {
-    opacity: 1,
-    backgroundColor: "rgba(255, 255, 255, 0.05)",
-  },
-  "& .MuiTab-iconWrapper": {
-    marginRight: 6,
-    fontSize: "0.9rem",
-  },
+	minHeight: "42px",
+	padding: "4px 0",
+	textTransform: "none",
+	fontSize: "0.85rem",
+	fontWeight: 500,
+	transition: "all 0.2s ease",
+	opacity: isActive ? 1 : 0.7,
+	"&:hover": {
+		opacity: 1,
+		backgroundColor: "rgba(255, 255, 255, 0.05)",
+	},
+	"& .MuiTab-iconWrapper": {
+		marginRight: 6,
+		fontSize: "0.9rem",
+	},
 }));
 
 /**
  * ChatTabs Component
- * 
+ *
  * Displays tabs for switching between chat and raw views
  */
 export const ChatTabs: FC<ChatTabsProps> = ({ activeTab, onChange }) => {
-  return (
-    <StyledTabs
-      value={activeTab}
-      onChange={(_, newValue) => onChange(newValue)}
-      variant="fullWidth"
-      TabIndicatorProps={{
-        style: {
-          transition: "all 0.3s ease",
-        },
-      }}
-    >
-      <StyledTab
-        icon={<FontAwesomeIcon icon={faCommentDots} />}
-        iconPosition="start"
-        label="Chat"
-        value="chat"
-        isActive={activeTab === "chat"}
-      />
-      <StyledTab
-        icon={<FontAwesomeIcon icon={faCode} />}
-        iconPosition="start"
-        label="Raw"
-        value="raw"
-        isActive={activeTab === "raw"}
-      />
-    </StyledTabs>
-  );
+	return (
+		<StyledTabs
+			value={activeTab}
+			onChange={(_, newValue) => onChange(newValue)}
+			variant="fullWidth"
+			TabIndicatorProps={{
+				style: {
+					transition: "all 0.3s ease",
+				},
+			}}
+		>
+			<StyledTab
+				icon={<FontAwesomeIcon icon={faCommentDots} />}
+				iconPosition="start"
+				label="Chat"
+				value="chat"
+				isActive={activeTab === "chat"}
+			/>
+			<StyledTab
+				icon={<FontAwesomeIcon icon={faCode} />}
+				iconPosition="start"
+				label="Raw"
+				value="raw"
+				isActive={activeTab === "raw"}
+			/>
+		</StyledTabs>
+	);
 };

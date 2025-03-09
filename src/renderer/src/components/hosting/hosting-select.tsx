@@ -14,17 +14,17 @@ import {
 	TextField,
 	Typography,
 	alpha,
-	styled,
 	createFilterOptions,
+	styled,
 } from "@mui/material";
-import type { FC, SyntheticEvent } from "react";
-import { useMemo, useState, useEffect, useRef } from "react";
 import { useCredentials } from "@renderer/hooks/use-credentials";
+import type { FC, SyntheticEvent } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
-	getHostingProviders,
+	type HostingProvider,
 	getAvailableHostingProviders,
 	getHostingProviderById,
-	type HostingProvider,
+	getHostingProviders,
 } from "./hosting-model-manifest";
 
 /**
@@ -140,7 +140,7 @@ export const HostingSelect: FC<HostingSelectProps> = ({
 	const [isUserTyping, setIsUserTyping] = useState(false);
 	const [inputValue, setInputValue] = useState("");
 	const [isSubmitting, setIsSubmitting] = useState(false);
-	
+
 	// Flag to track if the dropdown should show all options (no filtering)
 	const showAllOptions = useRef(false);
 
@@ -161,9 +161,9 @@ export const HostingSelect: FC<HostingSelectProps> = ({
 				name: "Default",
 				description: "Clear hosting provider selection",
 				provider: undefined,
-			}
+			},
 		];
-		
+
 		// Map available hosting providers to options
 		availableHostingProviders.forEach((provider) => {
 			options.push({
@@ -220,13 +220,15 @@ export const HostingSelect: FC<HostingSelectProps> = ({
 	// Find the current selected option
 	const selectedOption = useMemo(() => {
 		if (!value) return null;
-		
-		return hostingOptions.find(option => option.id === value) || {
-			id: value,
-			name: value,
-			description: "Custom hosting provider",
-			provider: undefined,
-		};
+
+		return (
+			hostingOptions.find((option) => option.id === value) || {
+				id: value,
+				name: value,
+				description: "Custom hosting provider",
+				provider: undefined,
+			}
+		);
 	}, [value, hostingOptions]);
 
 	// Update input value when selected option changes
@@ -239,21 +241,18 @@ export const HostingSelect: FC<HostingSelectProps> = ({
 	}, [selectedOption]);
 
 	// Handle option change
-	const handleChange = async (
-		_event: SyntheticEvent,
-		newValue: unknown,
-	) => {
+	const handleChange = async (_event: SyntheticEvent, newValue: unknown) => {
 		if (!newValue) return;
-		
+
 		try {
 			setIsSubmitting(true);
 			// Type assertion since we know the structure
 			const option = newValue as HostingOption;
 			await onSave(option.id);
-			
+
 			// User has selected an option, so they're no longer typing
 			setIsUserTyping(false);
-			
+
 			// When a selection is made, set the input value to the display name
 			setInputValue(option.name);
 		} catch (error) {
@@ -270,7 +269,7 @@ export const HostingSelect: FC<HostingSelectProps> = ({
 			setIsUserTyping(true);
 			showAllOptions.current = false;
 		}
-		
+
 		setInputValue(newInputValue);
 	};
 
@@ -286,7 +285,7 @@ export const HostingSelect: FC<HostingSelectProps> = ({
 	const handleClose = () => {
 		// Reset show all options flag
 		showAllOptions.current = false;
-		
+
 		// If dropdown is closed without selecting, reset to selected option
 		if (isUserTyping && selectedOption) {
 			setInputValue(selectedOption.name);
@@ -297,12 +296,12 @@ export const HostingSelect: FC<HostingSelectProps> = ({
 	// Handle custom value submission (when allowCustom is true)
 	const handleCustomSubmit = async (event: React.KeyboardEvent) => {
 		if (!allowCustom || event.key !== "Enter" || !inputValue.trim()) return;
-		
+
 		// Check if the input value matches any existing option
 		const matchingOption = hostingOptions.find(
-			option => option.name.toLowerCase() === inputValue.toLowerCase()
+			(option) => option.name.toLowerCase() === inputValue.toLowerCase(),
 		);
-		
+
 		if (matchingOption) {
 			// If there's a match, use that option's ID
 			await handleChange(event as unknown as SyntheticEvent, matchingOption);
@@ -328,7 +327,7 @@ export const HostingSelect: FC<HostingSelectProps> = ({
 				</LabelIcon>
 				Hosting Provider
 			</FieldLabel>
-			
+
 			<StyledAutocomplete
 				key={`hosting-select-${hostingOptions.length}`}
 				value={selectedOption}
@@ -346,12 +345,12 @@ export const HostingSelect: FC<HostingSelectProps> = ({
 					if (showAllOptions.current) {
 						return options;
 					}
-					
+
 					// Otherwise use default filtering
 					return createFilterOptions()(options, params);
 				}}
 				getOptionLabel={(option) => (option as HostingOption).name}
-				isOptionEqualToValue={(option, value) => 
+				isOptionEqualToValue={(option, value) =>
 					(option as HostingOption).id === (value as HostingOption).id
 				}
 				renderOption={(props, option) => (
@@ -359,7 +358,9 @@ export const HostingSelect: FC<HostingSelectProps> = ({
 						<OptionContainer>
 							<OptionLabel>{(option as HostingOption).name}</OptionLabel>
 							{(option as HostingOption).description && (
-								<OptionDescription>{(option as HostingOption).description}</OptionDescription>
+								<OptionDescription>
+									{(option as HostingOption).description}
+								</OptionDescription>
 							)}
 						</OptionContainer>
 					</li>
@@ -374,10 +375,10 @@ export const HostingSelect: FC<HostingSelectProps> = ({
 						helperText={helperText}
 						FormHelperTextProps={{
 							sx: {
-								fontSize: '0.7rem',
+								fontSize: "0.7rem",
 								mt: 0.5,
 								opacity: 0.8,
-								fontStyle: 'italic',
+								fontStyle: "italic",
 							},
 						}}
 						InputProps={{

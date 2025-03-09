@@ -203,7 +203,7 @@ export const AutocompleteField = ({
 		newValue: unknown,
 	) => {
 		let newEditValue = "";
-		
+
 		// Determine the new value based on the type
 		if (typeof newValue === "string") {
 			newEditValue = newValue;
@@ -224,7 +224,7 @@ export const AutocompleteField = ({
 			newEditValue = "";
 			setIsEditing(true);
 		}
-		
+
 		setEditValue(newEditValue);
 	};
 
@@ -330,10 +330,10 @@ export const AutocompleteField = ({
 							helperText={helperText}
 							FormHelperTextProps={{
 								sx: {
-									fontSize: '0.7rem',
+									fontSize: "0.7rem",
 									mt: 0.5,
 									opacity: 0.8,
-									fontStyle: 'italic',
+									fontStyle: "italic",
 								},
 							}}
 							fullWidth

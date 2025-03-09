@@ -15,10 +15,10 @@ import type {
 	AgentDetails,
 	AgentUpdate,
 } from "@renderer/api/local-operator/types";
-import type { UseMutationResult } from "@tanstack/react-query";
+import { updateAgentSetting } from "@renderer/components/chat/chat-options-utils";
 import { EditableField } from "@renderer/components/common/editable-field";
 import { SliderSetting } from "@renderer/components/common/slider-setting";
-import { updateAgentSetting } from "@renderer/components/chat/chat-options-utils";
+import type { UseMutationResult } from "@tanstack/react-query";
 import type { FC } from "react";
 import { toast } from "react-toastify";
 import {

@@ -67,29 +67,29 @@ export const useConversationMessages = (
 
 	// Track if we're at the top of the messages container
 	const [isAtTop, setIsAtTop] = useState(false);
-	
+
 	// Track if we're preserving scroll position during loading
 	const [preserveScroll, setPreserveScroll] = useState(false);
-	
+
 	// Store the scroll position before loading more messages
 	const scrollPositionBeforeLoadRef = useRef<number>(0);
-	
+
 	// Debounce scroll handling to improve performance
 	const scrollTimeoutRef = useRef<number | null>(null);
-	
+
 	// Track the last scroll position to avoid unnecessary updates
 	const lastScrollPositionRef = useRef<number>(0);
 
 	// Get store functions
-	const { 
-		getMessages, 
-		addMessages, 
-		setMessages, 
+	const {
+		getMessages,
+		addMessages,
+		setMessages,
 		lastUpdated,
 		updatePagination,
 		getPagination,
 		updateScrollPosition,
-		getScrollPosition
+		getScrollPosition,
 	} = useChatStore();
 
 	// Infinite query for fetching messages with pagination
@@ -148,9 +148,14 @@ export const useConversationMessages = (
 
 				// Calculate total pages
 				const totalPages = Math.ceil(result.total / pageSize);
-				
+
 				// Update pagination state in the store
-				updatePagination(conversationId, result.page, totalPages, result.page < totalPages);
+				updatePagination(
+					conversationId,
+					result.page,
+					totalPages,
+					result.page < totalPages,
+				);
 
 				return {
 					messages,
@@ -180,27 +185,28 @@ export const useConversationMessages = (
 	// Optimized scroll handler with debouncing to reduce performance impact
 	const handleScroll = useCallback(() => {
 		if (!messagesContainerRef.current || !conversationId) return;
-		
+
 		// Clear any pending timeout
 		if (scrollTimeoutRef.current !== null) {
 			window.clearTimeout(scrollTimeoutRef.current);
 		}
-		
+
 		// Debounce the scroll event to reduce calculations
 		scrollTimeoutRef.current = window.setTimeout(() => {
 			if (!messagesContainerRef.current) return;
-			
-			const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current;
-			
+
+			const { scrollTop, scrollHeight, clientHeight } =
+				messagesContainerRef.current;
+
 			// Only update if scroll position has changed significantly
 			if (Math.abs(lastScrollPositionRef.current - scrollTop) > 20) {
 				// Save current scroll position to the store
 				updateScrollPosition(conversationId, scrollTop);
 				lastScrollPositionRef.current = scrollTop;
-				
+
 				// Get current pagination state
 				const paginationState = getPagination(conversationId);
-				
+
 				// Check if we're at the top of the container and there are more pages to load
 				if (scrollTop < 50 && paginationState.hasMore) {
 					// Save the current scroll position before loading more messages
@@ -211,7 +217,7 @@ export const useConversationMessages = (
 					setIsAtTop(false);
 				}
 			}
-			
+
 			scrollTimeoutRef.current = null;
 		}, 100); // 100ms debounce
 	}, [conversationId, updateScrollPosition, getPagination]);
@@ -247,11 +253,14 @@ export const useConversationMessages = (
 				if (messagesContainerRef.current) {
 					// Calculate new position - we want to maintain the same relative position
 					// after new messages are loaded at the top
-					const newScrollTop = messagesContainerRef.current.scrollHeight - scrollPositionBeforeLoadRef.current;
-					
+					const newScrollTop =
+						messagesContainerRef.current.scrollHeight -
+						scrollPositionBeforeLoadRef.current;
+
 					// Set the scroll position
-					messagesContainerRef.current.scrollTop = newScrollTop > 0 ? newScrollTop : 0;
-					
+					messagesContainerRef.current.scrollTop =
+						newScrollTop > 0 ? newScrollTop : 0;
+
 					// Reset the preserve scroll flag
 					setPreserveScroll(false);
 				}
@@ -263,7 +272,7 @@ export const useConversationMessages = (
 	useEffect(() => {
 		if (conversationId && messagesContainerRef.current && !isLoading) {
 			const savedPosition = getScrollPosition(conversationId);
-			
+
 			if (savedPosition !== undefined) {
 				// Wait for the DOM to update
 				setTimeout(() => {
@@ -324,7 +333,9 @@ export const useConversationMessages = (
 
 	// Get pagination info from the store
 	const pagination = useMemo(() => {
-		return conversationId ? getPagination(conversationId) : { currentPage: 1, totalPages: 1, hasMore: false };
+		return conversationId
+			? getPagination(conversationId)
+			: { currentPage: 1, totalPages: 1, hasMore: false };
 	}, [conversationId, getPagination, lastUpdated]);
 
 	return {

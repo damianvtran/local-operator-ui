@@ -2,6 +2,7 @@
  * Styled components for the Chat Options Sidebar
  */
 
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
 	Box,
 	IconButton,
@@ -10,7 +11,6 @@ import {
 	alpha,
 	styled,
 } from "@mui/material";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 export const SidebarContainer = styled(Box)(({ theme }) => ({
 	width: 380,

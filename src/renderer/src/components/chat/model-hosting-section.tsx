@@ -11,14 +11,14 @@ import type {
 	AgentDetails,
 	AgentUpdate,
 } from "@renderer/api/local-operator/types";
-import type { UseMutationResult } from "@tanstack/react-query";
-import { HostingSelect, ModelSelect } from "@renderer/components/hosting";
 import { updateAgentSetting } from "@renderer/components/chat/chat-options-utils";
+import { HostingSelect, ModelSelect } from "@renderer/components/hosting";
+import type { UseMutationResult } from "@tanstack/react-query";
 import type { FC } from "react";
 import {
 	InfoButton,
-	ModelHostingSection as StyledModelHostingSection,
 	SectionTitle,
+	ModelHostingSection as StyledModelHostingSection,
 	TitleIcon,
 } from "./chat-options-sidebar-styled";
 

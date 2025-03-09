@@ -13,7 +13,7 @@ import type { AgentDetails } from "@renderer/api/local-operator/types";
 import { useAgent, useAgents } from "@renderer/hooks/use-agents";
 import { useAgentRouteParam } from "@renderer/hooks/use-route-params";
 import { useAgentSelectionStore } from "@renderer/store/agent-selection-store";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { FC } from "react";
 import { PageHeader } from "../common/page-header";
 import { AgentSettings } from "./agent-settings";
@@ -75,39 +75,42 @@ export const AgentsPage: FC<AgentsPageProps> = () => {
 	const { agentId, navigateToAgent, clearAgentId } = useAgentRouteParam();
 	// Use a ref to track the previous agent ID to prevent unnecessary renders
 	const prevAgentIdRef = useRef<string | undefined>(agentId);
-	
+
 	// Get agent selection store functions
-	const { setLastAgentsPageAgentId, getLastAgentId, clearLastAgentId } = useAgentSelectionStore();
-	
+	const { setLastAgentsPageAgentId, getLastAgentId, clearLastAgentId } =
+		useAgentSelectionStore();
+
 	// Fetch all agents to check if the selected agent exists
 	const { data: agents = [] } = useAgents();
-	
+
 	// Use the agent ID from URL or the last selected agent ID
-	const effectiveAgentId = agentId || getLastAgentId('agents');
-	
+	const effectiveAgentId = agentId || getLastAgentId("agents");
+
 	// Maintain stable agent state to prevent flickering during transitions
 	const [selectedAgent, setSelectedAgent] = useState<AgentDetails | null>(null);
 
 	// Fetch the agent details if agentId is provided from URL
-	const { data: initialAgent, refetch: refetchAgent } = useAgent(effectiveAgentId || undefined);
-	
+	const { data: initialAgent, refetch: refetchAgent } = useAgent(
+		effectiveAgentId || undefined,
+	);
+
 	// Check if the selected agent exists in the list of agents
 	useEffect(() => {
 		if (effectiveAgentId && agents.length > 0) {
-			const agentExists = agents.some(agent => agent.id === effectiveAgentId);
-			
+			const agentExists = agents.some((agent) => agent.id === effectiveAgentId);
+
 			if (!agentExists) {
 				// If the agent doesn't exist, clear the selection and navigate to the agents page without an agent
 				// Use a timeout to break the render cycle and prevent infinite loops
 				setTimeout(() => {
-					clearLastAgentId('agents');
-					clearAgentId('agents');
+					clearLastAgentId("agents");
+					clearAgentId("agents");
 					setSelectedAgent(null);
 				}, 0);
 			}
 		}
-	}, [effectiveAgentId, agents]);  // Remove clearLastAgentId and clearAgentId from dependencies
-	
+	}, [effectiveAgentId, agents]); // Remove clearLastAgentId and clearAgentId from dependencies
+
 	// Update the last selected agent ID when the agent ID changes
 	useEffect(() => {
 		if (agentId) {
@@ -127,7 +130,7 @@ export const AgentsPage: FC<AgentsPageProps> = () => {
 				setSelectedAgent(initialAgent);
 			} else {
 				// Same agent, just update properties without triggering a full re-render
-				setSelectedAgent(prev => {
+				setSelectedAgent((prev) => {
 					if (!prev || prev.id !== initialAgent.id) return initialAgent;
 					return { ...prev, ...initialAgent };
 				});
@@ -141,7 +144,7 @@ export const AgentsPage: FC<AgentsPageProps> = () => {
 		// Update the last selected agent ID
 		setLastAgentsPageAgentId(agent.id);
 		// Then update URL (this will trigger a re-render, but our useEffect will handle it properly)
-		navigateToAgent(agent.id, 'agents');
+		navigateToAgent(agent.id, "agents");
 	};
 
 	return (

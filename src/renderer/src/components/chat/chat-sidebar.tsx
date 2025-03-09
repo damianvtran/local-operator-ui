@@ -33,7 +33,7 @@ import React, { useState, useCallback } from "react";
 const SidebarContainer = styled(Paper)(() => ({
 	width: "100%",
 	height: "100%",
-  borderRight: "1px solid rgba(255, 255, 255, 0.08)",
+	borderRight: "1px solid rgba(255, 255, 255, 0.08)",
 	backgroundColor: "background.paper",
 	display: "flex",
 	flexDirection: "column",
@@ -94,7 +94,7 @@ const MessagePreview = styled(Typography)({
 	color: "text.secondary",
 	maxWidth: "100%",
 	marginBottom: 4,
-  fontSize: "0.75rem",
+	fontSize: "0.75rem",
 });
 
 const TimeStampContainer = styled("span")({
@@ -142,10 +142,10 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 	const [searchQuery, setSearchQuery] = useState("");
 	const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 	const perPage = 50;
-	
+
 	// Use the pagination hook to get and set the page from URL
 	const { page, setPage } = usePaginationParams();
-	
+
 	// Set up periodic refetch every 5 seconds to check for new messages
 	// Pass the search query as the name parameter
 	const {
@@ -184,13 +184,15 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 				try {
 					// Refetch the agents list to update the UI
 					const result = await refetch();
-					
+
 					// Get the updated agents list from the refetch result
 					const updatedAgents = result.data || [];
-					
+
 					// Find the newly created agent in the updated list
-					const createdAgent = updatedAgents.find(agent => agent.id === agentId);
-					
+					const createdAgent = updatedAgents.find(
+						(agent) => agent.id === agentId,
+					);
+
 					// Select the newly created agent if found
 					if (createdAgent) {
 						onSelectConversation(agentId);
@@ -323,9 +325,9 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 										<span style={{ display: "block", marginTop: "4px" }}>
 											{agent.last_message ? (
 												<>
-													<Tooltip 
-														title={truncateMessage(agent.last_message, 500)} 
-														arrow 
+													<Tooltip
+														title={truncateMessage(agent.last_message, 500)}
+														arrow
 														placement="bottom-start"
 														enterDelay={1500}
 														leaveDelay={200}
@@ -379,12 +381,14 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 				onClose={handleCloseCreateDialog}
 				onAgentCreated={handleAgentCreated}
 			/>
-			
+
 			{/* Compact pagination at the bottom of the sidebar */}
 			<CompactPagination
 				page={page}
 				count={Math.max(1, Math.ceil(agents.length / perPage))}
-				onChange={(newPage) => handlePageChange({} as ChangeEvent<unknown>, newPage)}
+				onChange={(newPage) =>
+					handlePageChange({} as ChangeEvent<unknown>, newPage)
+				}
 			/>
 		</SidebarContainer>
 	);

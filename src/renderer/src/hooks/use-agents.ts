@@ -22,7 +22,12 @@ export const agentsQueryKey = ["agents"];
  * @param name - Optional name query to search agents by name
  * @returns Query result with agents data, loading state, error state, and refetch function
  */
-export const useAgents = (page = 1, perPage = 50, refetchInterval = 0, name?: string) => {
+export const useAgents = (
+	page = 1,
+	perPage = 50,
+	refetchInterval = 0,
+	name?: string,
+) => {
 	return useQuery({
 		queryKey: [...agentsQueryKey, page, perPage, name],
 		queryFn: async () => {
@@ -84,19 +89,21 @@ export const useAgent = (agentId: string | undefined) => {
 			} catch (error) {
 				// Check if this is a 404 error (agent not found)
 				// This can happen when an agent is deleted while it's selected
-				const is404Error = error instanceof Error && 
-					(error.message.includes("404") || error.message.includes("not found"));
-				
+				const is404Error =
+					error instanceof Error &&
+					(error.message.includes("404") ||
+						error.message.includes("not found"));
+
 				if (!is404Error) {
 					// Only show toast for non-404 errors
 					const errorMessage =
 						error instanceof Error
 							? error.message
 							: `An unknown error occurred while fetching agent ${agentId}`;
-					
+
 					toast.error(errorMessage);
 				}
-				
+
 				throw error;
 			}
 		},

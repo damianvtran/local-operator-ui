@@ -6,8 +6,8 @@ import {
 	DialogContent,
 	DialogTitle,
 	Typography,
-	styled,
 	alpha,
+	styled,
 } from "@mui/material";
 import type { FC, ReactNode } from "react";
 
@@ -64,14 +64,14 @@ export const StyledDialog = styled(Dialog)(({ theme }) => ({
 		backgroundColor: alpha(theme.palette.background.paper, 0.9),
 		boxShadow: `0 10px 40px ${alpha(theme.palette.common.black, 0.4)}`,
 		border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-		[theme.breakpoints.up('xs')]: {
-			minWidth: '300px',
+		[theme.breakpoints.up("xs")]: {
+			minWidth: "300px",
 		},
-		[theme.breakpoints.up('sm')]: {
-			minWidth: '400px',
+		[theme.breakpoints.up("sm")]: {
+			minWidth: "400px",
 		},
-		[theme.breakpoints.up('md')]: {
-			minWidth: '500px',
+		[theme.breakpoints.up("md")]: {
+			minWidth: "500px",
 		},
 	},
 	"& .MuiDialogTitle-root": {
@@ -122,7 +122,7 @@ export const TitleContainer = styled(Box)({
 
 /**
  * Base dialog component with consistent styling
- * 
+ *
  * This component provides a foundation for all dialogs in the application
  * to ensure a consistent look and feel.
  */
@@ -146,7 +146,9 @@ export const BaseDialog: FC<BaseDialogProps> = ({
 		>
 			<DialogTitle>
 				{typeof title === "string" ? (
-					<Typography variant="h6" fontWeight={600}>{title}</Typography>
+					<Typography variant="h6" fontWeight={600}>
+						{title}
+					</Typography>
 				) : (
 					title
 				)}

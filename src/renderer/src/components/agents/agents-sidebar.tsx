@@ -4,10 +4,7 @@
  * Displays a list of agents with search, create, and delete functionality
  */
 
-import {
-	faRobot,
-	faClock,
-} from "@fortawesome/free-solid-svg-icons";
+import { faClock, faRobot } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
 	Alert,
@@ -25,29 +22,28 @@ import {
 	Typography,
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
+import { createLocalOperatorClient } from "@renderer/api/local-operator";
+import type { AgentDetails } from "@renderer/api/local-operator/types";
+import { queryClient } from "@renderer/api/query-client";
 import { AgentOptionsMenu } from "@renderer/components/common/agent-options-menu";
 import { CompactPagination } from "@renderer/components/common/compact-pagination";
 import { CreateAgentDialog } from "@renderer/components/common/create-agent-dialog";
 import { SidebarHeader } from "@renderer/components/common/sidebar-header";
-import type { AgentDetails } from "@renderer/api/local-operator/types";
+import { apiConfig } from "@renderer/config";
 import { useAgents } from "@renderer/hooks/use-agents";
 import { usePaginationParams } from "@renderer/hooks/use-pagination-params";
-import { queryClient } from "@renderer/api/query-client";
-import { createLocalOperatorClient } from "@renderer/api/local-operator";
-import { apiConfig } from "@renderer/config";
 import type { ChangeEvent, FC } from "react";
 import React, { useState, useCallback, useRef, useEffect } from "react";
 
 const SidebarContainer = styled(Paper)(() => ({
 	width: "100%",
 	height: "100%",
-  borderRight: "1px solid rgba(255, 255, 255, 0.08)",
+	borderRight: "1px solid rgba(255, 255, 255, 0.08)",
 	backgroundColor: "background.paper",
 	display: "flex",
 	flexDirection: "column",
 	overflow: "hidden",
 }));
-
 
 const LoadingContainer = styled(Box)({
 	display: "flex",
@@ -147,10 +143,10 @@ export const AgentsSidebar: FC<AgentsSidebarProps> = ({
 	const [searchQuery, setSearchQuery] = useState("");
 	const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 	const perPage = 50;
-	
+
 	// Use the pagination hook to get and set the page from URL
 	const { page, setPage } = usePaginationParams();
-	
+
 	// Store previous agents data to prevent UI flicker during refetches
 	const [stableAgents, setStableAgents] = useState<AgentDetails[]>([]);
 	const prevFetchingRef = useRef(false);
@@ -211,33 +207,35 @@ export const AgentsSidebar: FC<AgentsSidebarProps> = ({
 				try {
 					// Refetch the agents list to update the UI
 					const result = await refetch();
-					
+
 					// Get the updated agents list from the refetch result
 					const updatedAgents = result.data || [];
-					
+
 					// Find the newly created agent in the updated list
-					const createdAgent = updatedAgents.find(agent => agent.id === agentId);
-					
+					const createdAgent = updatedAgents.find(
+						(agent) => agent.id === agentId,
+					);
+
 					// Select the newly created agent if found
 					if (createdAgent && onSelectAgent) {
 						onSelectAgent(createdAgent);
 					} else {
 						// If the agent wasn't found in the updated list, use the API directly
 						// to get the agent details and select it
-						
+
 						// Prefetch the agent details
 						await queryClient.prefetchQuery({
-							queryKey: ['agents', agentId],
+							queryKey: ["agents", agentId],
 							queryFn: async () => {
 								const client = createLocalOperatorClient(apiConfig.baseUrl);
 								const response = await client.agents.getAgent(agentId);
 								return response.result;
-							}
+							},
 						});
-						
+
 						// Get the agent details from the cache
-						const agentDetails = queryClient.getQueryData(['agents', agentId]);
-						
+						const agentDetails = queryClient.getQueryData(["agents", agentId]);
+
 						if (agentDetails && onSelectAgent) {
 							onSelectAgent(agentDetails as AgentDetails);
 						}
@@ -346,7 +344,11 @@ export const AgentsSidebar: FC<AgentsSidebarProps> = ({
 											<DescriptionText>
 												{agent.description || "No description"}
 											</DescriptionText>
-											<Tooltip title="Creation date" arrow placement="bottom-start">
+											<Tooltip
+												title="Creation date"
+												arrow
+												placement="bottom-start"
+											>
 												<CreationDateText>
 													<FontAwesomeIcon icon={faClock} size="xs" />
 													{formatDate(agent.created_date)}
@@ -370,12 +372,14 @@ export const AgentsSidebar: FC<AgentsSidebarProps> = ({
 				onClose={handleCloseCreateDialog}
 				onAgentCreated={handleAgentCreated}
 			/>
-			
+
 			{/* Compact pagination at the bottom of the sidebar */}
 			<CompactPagination
 				page={page}
 				count={Math.max(1, Math.ceil(displayAgents.length / perPage))}
-				onChange={(newPage) => handlePageChange({} as ChangeEvent<unknown>, newPage)}
+				onChange={(newPage) =>
+					handlePageChange({} as ChangeEvent<unknown>, newPage)
+				}
 			/>
 		</SidebarContainer>
 	);

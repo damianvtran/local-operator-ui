@@ -4,9 +4,13 @@ import {
 	CircularProgress,
 	TextField,
 	Typography,
-	styled,
 	alpha,
+	styled,
 } from "@mui/material";
+import type { AgentCreate } from "@renderer/api/local-operator/types";
+import { useCreateAgent } from "@renderer/hooks/use-agent-mutations";
+import type { FC, FormEvent } from "react";
+import { useState } from "react";
 import {
 	BaseDialog,
 	FormContainer,
@@ -14,10 +18,6 @@ import {
 	SecondaryButton,
 	TitleContainer,
 } from "./base-dialog";
-import type { AgentCreate } from "@renderer/api/local-operator/types";
-import { useCreateAgent } from "@renderer/hooks/use-agent-mutations";
-import type { FC, FormEvent } from "react";
-import { useState } from "react";
 
 type CreateAgentDialogProps = {
 	/**
@@ -163,7 +163,9 @@ export const CreateAgentDialog: FC<CreateAgentDialogProps> = ({
 			actions={dialogActions}
 			maxWidth="sm"
 		>
-			<Subtitle>Configure your new AI assistant with a name and optional description</Subtitle>
+			<Subtitle>
+				Configure your new AI assistant with a name and optional description
+			</Subtitle>
 			<form id="create-agent-form" onSubmit={handleSubmit}>
 				<FormContainer>
 					<NameField

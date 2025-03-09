@@ -5,7 +5,7 @@ import { Box, CssBaseline } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import React from "react";
 import type { FC } from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Navigate, Route, Routes } from "react-router-dom";
 
 import { ChatPage } from "@components/chat/chat-page";
 import { AgentsPage } from "@renderer/components/agents/agents-page";
@@ -30,14 +30,14 @@ const MainContent = styled(Box)(() => ({
 
 /**
  * Main application component
- * 
+ *
  * Handles routing and layout for the entire application
  */
 const App: FC = () => {
 	return (
 		<AppContainer>
 			<CssBaseline />
-			
+
 			{/* Initialize models store */}
 			<ModelsInitializer />
 
@@ -49,18 +49,18 @@ const App: FC = () => {
 				<Routes>
 					{/* Redirect root to chat */}
 					<Route path="/" element={<Navigate to="/chat" replace />} />
-					
+
 					{/* Chat routes */}
 					<Route path="/chat" element={<ChatPage />} />
 					<Route path="/chat/:agentId" element={<ChatPage />} />
-					
+
 					{/* Agents routes */}
 					<Route path="/agents" element={<AgentsPage />} />
 					<Route path="/agents/:agentId" element={<AgentsPage />} />
-					
+
 					{/* Settings route */}
 					<Route path="/settings" element={<SettingsPage />} />
-					
+
 					{/* Fallback route - redirect to chat */}
 					<Route path="*" element={<Navigate to="/chat" replace />} />
 				</Routes>

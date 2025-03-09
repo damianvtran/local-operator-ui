@@ -9,9 +9,9 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
  * Handles polling for job status and provides state for tracking job progress
  */
 import { useCallback, useEffect, useRef, useState } from "react";
+import { agentsQueryKey } from "./use-agents";
 import { convertToMessage } from "./use-conversation-messages";
 import { conversationMessagesQueryKey } from "./use-conversation-messages";
-import { agentsQueryKey } from "./use-agents";
 
 type UseJobPollingParams = {
 	conversationId?: string;
@@ -44,51 +44,57 @@ export const useJobPolling = ({
 	const lastProcessedJobDataRef = useRef<string | null>(null);
 	const client = createLocalOperatorClient(apiConfig.baseUrl);
 	const previousConversationIdRef = useRef<string | undefined>(conversationId);
-	
+
 	/**
 	 * Check if an agent has any active jobs
-	 * 
+	 *
 	 * @param agentId - The agent ID to check for active jobs
 	 * @returns Promise that resolves to true if the agent has active jobs, false otherwise
 	 */
-	const checkForActiveJobs = useCallback(async (agentId: string): Promise<boolean> => {
-		if (!agentId) return false;
+	const checkForActiveJobs = useCallback(
+		async (agentId: string): Promise<boolean> => {
+			if (!agentId) return false;
 
-		try {
-			// Get active jobs for this agent (pending or processing)
-			const pendingResponse = await client.jobs.listJobs(agentId, "pending");
-			const processingResponse = await client.jobs.listJobs(agentId, "processing");
-			
-			const pendingJobs = pendingResponse.result?.jobs || [];
-			const processingJobs = processingResponse.result?.jobs || [];
-			
-			// If there are any active jobs, update the current job ID and loading state
-			const activeJobs = [...pendingJobs, ...processingJobs];
-			
-			if (activeJobs.length > 0) {
-				// Use the most recent job
-				const mostRecentJob = activeJobs.sort((a, b) => {
-					const dateA = new Date(a.created_at || 0);
-					const dateB = new Date(b.created_at || 0);
-					return dateB.getTime() - dateA.getTime();
-				})[0];
-				
-				// Only update if this is a different job than we're currently tracking
-				if (mostRecentJob.id !== currentJobId) {
-					setCurrentJobId(mostRecentJob.id);
-					setIsLoading(true);
+			try {
+				// Get active jobs for this agent (pending or processing)
+				const pendingResponse = await client.jobs.listJobs(agentId, "pending");
+				const processingResponse = await client.jobs.listJobs(
+					agentId,
+					"processing",
+				);
+
+				const pendingJobs = pendingResponse.result?.jobs || [];
+				const processingJobs = processingResponse.result?.jobs || [];
+
+				// If there are any active jobs, update the current job ID and loading state
+				const activeJobs = [...pendingJobs, ...processingJobs];
+
+				if (activeJobs.length > 0) {
+					// Use the most recent job
+					const mostRecentJob = activeJobs.sort((a, b) => {
+						const dateA = new Date(a.created_at || 0);
+						const dateB = new Date(b.created_at || 0);
+						return dateB.getTime() - dateA.getTime();
+					})[0];
+
+					// Only update if this is a different job than we're currently tracking
+					if (mostRecentJob.id !== currentJobId) {
+						setCurrentJobId(mostRecentJob.id);
+						setIsLoading(true);
+					}
+
+					return true;
 				}
-				
-				return true;
+
+				return false;
+			} catch (error) {
+				console.error("Error checking for active jobs:", error);
+				return false;
 			}
-			
-			return false;
-		} catch (error) {
-			console.error("Error checking for active jobs:", error);
-			return false;
-		}
-	}, [client.jobs, currentJobId]);
-	
+		},
+		[client.jobs, currentJobId],
+	);
+
 	// Reset loading state and job ID when switching agents
 	useEffect(() => {
 		// If the conversation ID has changed, reset the loading state and job ID
@@ -96,22 +102,28 @@ export const useJobPolling = ({
 			// Reset the loading state and job ID
 			setIsLoading(false);
 			setCurrentJobId(null);
-			
+
 			// If we have a new conversation ID, check for active jobs
 			if (conversationId) {
 				// We need to check for active jobs for the new agent
 				const checkNewAgentJobs = async () => {
 					try {
 						// Get active jobs for this agent (pending or processing)
-						const pendingResponse = await client.jobs.listJobs(conversationId, "pending");
-						const processingResponse = await client.jobs.listJobs(conversationId, "processing");
-						
+						const pendingResponse = await client.jobs.listJobs(
+							conversationId,
+							"pending",
+						);
+						const processingResponse = await client.jobs.listJobs(
+							conversationId,
+							"processing",
+						);
+
 						const pendingJobs = pendingResponse.result?.jobs || [];
 						const processingJobs = processingResponse.result?.jobs || [];
-						
+
 						// If there are any active jobs, update the current job ID and loading state
 						const activeJobs = [...pendingJobs, ...processingJobs];
-						
+
 						if (activeJobs.length > 0) {
 							// Use the most recent job
 							const mostRecentJob = activeJobs.sort((a, b) => {
@@ -119,7 +131,7 @@ export const useJobPolling = ({
 								const dateB = new Date(b.created_at || 0);
 								return dateB.getTime() - dateA.getTime();
 							})[0];
-							
+
 							// Set the current job ID and loading state
 							setCurrentJobId(mostRecentJob.id);
 							setIsLoading(true);
@@ -128,11 +140,11 @@ export const useJobPolling = ({
 						console.error("Error checking for active jobs:", error);
 					}
 				};
-				
+
 				checkNewAgentJobs();
 			}
 		}
-		
+
 		// Update the ref
 		previousConversationIdRef.current = conversationId;
 	}, [conversationId, client.jobs]);
@@ -187,7 +199,7 @@ export const useJobPolling = ({
 					queryClient.invalidateQueries({
 						queryKey: [...conversationMessagesQueryKey, agentId],
 					});
-					
+
 					// Invalidate the agents query to update the sidebar with the latest message
 					queryClient.invalidateQueries({
 						queryKey: agentsQueryKey,
@@ -282,7 +294,6 @@ export const useJobPolling = ({
 		retryDelay: 1000,
 	});
 
-  
 	// Process job data when it changes
 	useEffect(() => {
 		if (!jobData || !conversationId) return undefined;
@@ -302,7 +313,7 @@ export const useJobPolling = ({
 				const debounceTimeout = setTimeout(() => {
 					updateConversationMessages(conversationId);
 				}, 500); // 500ms debounce
-				
+
 				// Clean up timeout if component unmounts or job data changes again
 				return () => clearTimeout(debounceTimeout);
 			}
@@ -312,7 +323,7 @@ export const useJobPolling = ({
 				handleJobCompletion(jobData);
 			}
 		}
-		
+
 		return undefined;
 	}, [
 		jobData,

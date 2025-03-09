@@ -1,8 +1,8 @@
 import {
 	faPaperPlane,
 	faPaperclip,
-	faTimes,
 	faStop,
+	faTimes,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {

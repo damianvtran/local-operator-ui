@@ -9,13 +9,13 @@ import {
 	TextField,
 	Typography,
 } from "@mui/material";
+import type { CredentialUpdate } from "@renderer/api/local-operator/types";
 import {
 	BaseDialog,
 	FormContainer,
 	PrimaryButton,
 	SecondaryButton,
 } from "@renderer/components/common/base-dialog";
-import type { CredentialUpdate } from "@renderer/api/local-operator/types";
 import { useEffect, useState } from "react";
 import type { FC } from "react";
 

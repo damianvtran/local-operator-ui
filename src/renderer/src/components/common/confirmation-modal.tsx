@@ -1,10 +1,7 @@
 import { faExclamationTriangle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
-	DialogContentText,
-	Typography,
-	styled,
-} from "@mui/material";
+import { DialogContentText, Typography, styled } from "@mui/material";
+import type { FC, ReactNode } from "react";
 import {
 	BaseDialog,
 	DangerButton,
@@ -12,7 +9,6 @@ import {
 	SecondaryButton,
 	TitleContainer,
 } from "./base-dialog";
-import type { FC, ReactNode } from "react";
 
 type ConfirmationModalProps = {
 	/**

@@ -1,14 +1,17 @@
 /**
  * Models Store
- * 
+ *
  * This module provides a store for managing model providers and models data.
  * It handles fetching, caching, and persisting the data to localStorage.
  */
 
+import { createLocalOperatorClient } from "@renderer/api/local-operator";
+import type {
+	ModelDetails,
+	Provider,
+} from "@renderer/api/local-operator/models-api";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { createLocalOperatorClient } from "@renderer/api/local-operator";
-import type { ModelDetails, Provider } from "@renderer/api/local-operator/models-api";
 
 /**
  * Time interval for auto-refreshing models data (15 minutes)
@@ -54,7 +57,7 @@ export const useModelsStore = create<ModelsState>()(
 
 			/**
 			 * Fetch model providers and models from the API
-			 * 
+			 *
 			 * @param baseUrl - Base URL of the Local Operator API
 			 * @param force - Whether to force a refresh even if the data is recent
 			 */
@@ -103,7 +106,7 @@ export const useModelsStore = create<ModelsState>()(
 
 			/**
 			 * Get models for a specific provider
-			 * 
+			 *
 			 * @param providerId - Provider ID to filter by
 			 * @returns Array of models for the specified provider
 			 */

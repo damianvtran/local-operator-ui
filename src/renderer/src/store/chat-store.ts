@@ -16,17 +16,17 @@ type ConversationPaginationState = {
 	 * Current page number
 	 */
 	currentPage: number;
-	
+
 	/**
 	 * Total number of pages
 	 */
 	totalPages: number;
-	
+
 	/**
 	 * Whether there are more pages to load
 	 */
 	hasMore: boolean;
-	
+
 	/**
 	 * Last scroll position
 	 */
@@ -91,7 +91,7 @@ type ChatState = {
 	 * @returns The messages for the conversation or an empty array if none exist
 	 */
 	getMessages: (conversationId: string) => Message[];
-	
+
 	/**
 	 * Update pagination state for a conversation
 	 * @param conversationId - The ID of the conversation
@@ -105,14 +105,14 @@ type ChatState = {
 		totalPages: number,
 		hasMore: boolean,
 	) => void;
-	
+
 	/**
 	 * Get pagination state for a conversation
 	 * @param conversationId - The ID of the conversation
 	 * @returns The pagination state or default values if none exists
 	 */
 	getPagination: (conversationId: string) => ConversationPaginationState;
-	
+
 	/**
 	 * Update scroll position for a conversation
 	 * @param conversationId - The ID of the conversation
@@ -122,7 +122,7 @@ type ChatState = {
 		conversationId: string,
 		scrollPosition: number,
 	) => void;
-	
+
 	/**
 	 * Get saved scroll position for a conversation
 	 * @param conversationId - The ID of the conversation
@@ -143,27 +143,35 @@ export const useChatStore = create<ChatState>((set, get) => ({
 		set((state) => {
 			const existingMessages =
 				state.messagesByConversation[conversationId] || [];
-				
+
 			// Create a map of existing message IDs for quick lookup
-			const existingMessageIds = new Set(existingMessages.map(msg => msg.id));
-			
+			const existingMessageIds = new Set(existingMessages.map((msg) => msg.id));
+
 			// Filter out duplicate messages
-			const uniqueNewMessages = messages.filter(msg => !existingMessageIds.has(msg.id));
-			
+			const uniqueNewMessages = messages.filter(
+				(msg) => !existingMessageIds.has(msg.id),
+			);
+
 			// If there are no unique new messages, return the current state
 			if (uniqueNewMessages.length === 0) {
 				return state;
 			}
-			
+
 			// Sort messages by timestamp to ensure correct order
 			const allMessages = prepend
 				? [...uniqueNewMessages, ...existingMessages]
 				: [...existingMessages, ...uniqueNewMessages];
-				
+
 			// Sort by timestamp (oldest first)
 			const sortedMessages = [...allMessages].sort((a, b) => {
-				const timeA = a.timestamp instanceof Date ? a.timestamp.getTime() : new Date(a.timestamp).getTime();
-				const timeB = b.timestamp instanceof Date ? b.timestamp.getTime() : new Date(b.timestamp).getTime();
+				const timeA =
+					a.timestamp instanceof Date
+						? a.timestamp.getTime()
+						: new Date(a.timestamp).getTime();
+				const timeB =
+					b.timestamp instanceof Date
+						? b.timestamp.getTime()
+						: new Date(b.timestamp).getTime();
 				return timeA - timeB;
 			});
 
@@ -181,11 +189,17 @@ export const useChatStore = create<ChatState>((set, get) => ({
 		set((state) => {
 			// Sort messages by timestamp (oldest first)
 			const sortedMessages = [...messages].sort((a, b) => {
-				const timeA = a.timestamp instanceof Date ? a.timestamp.getTime() : new Date(a.timestamp).getTime();
-				const timeB = b.timestamp instanceof Date ? b.timestamp.getTime() : new Date(b.timestamp).getTime();
+				const timeA =
+					a.timestamp instanceof Date
+						? a.timestamp.getTime()
+						: new Date(a.timestamp).getTime();
+				const timeB =
+					b.timestamp instanceof Date
+						? b.timestamp.getTime()
+						: new Date(b.timestamp).getTime();
 				return timeA - timeB;
 			});
-			
+
 			return {
 				messagesByConversation: {
 					...state.messagesByConversation,
@@ -200,9 +214,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
 		set((state) => {
 			const existingMessages =
 				state.messagesByConversation[conversationId] || [];
-				
+
 			// Check if message with this ID already exists
-			if (existingMessages.some(msg => msg.id === message.id)) {
+			if (existingMessages.some((msg) => msg.id === message.id)) {
 				return state;
 			}
 
@@ -218,8 +232,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
 	clearConversation: (conversationId) => {
 		set((state) => {
-			const { [conversationId]: _, ...restMessages } = state.messagesByConversation;
-			const { [conversationId]: __, ...restPagination } = state.paginationByConversation;
+			const { [conversationId]: _, ...restMessages } =
+				state.messagesByConversation;
+			const { [conversationId]: __, ...restPagination } =
+				state.paginationByConversation;
 
 			return {
 				messagesByConversation: restMessages,
@@ -232,15 +248,17 @@ export const useChatStore = create<ChatState>((set, get) => ({
 	getMessages: (conversationId) => {
 		return get().messagesByConversation[conversationId] || [];
 	},
-	
+
 	updatePagination: (conversationId, page, totalPages, hasMore) => {
 		set((state) => {
-			const existingPagination = state.paginationByConversation[conversationId] || {
+			const existingPagination = state.paginationByConversation[
+				conversationId
+			] || {
 				currentPage: 1,
 				totalPages: 1,
 				hasMore: false,
 			};
-			
+
 			return {
 				paginationByConversation: {
 					...state.paginationByConversation,
@@ -255,23 +273,27 @@ export const useChatStore = create<ChatState>((set, get) => ({
 			};
 		});
 	},
-	
+
 	getPagination: (conversationId) => {
-		return get().paginationByConversation[conversationId] || {
-			currentPage: 1,
-			totalPages: 1,
-			hasMore: false,
-		};
+		return (
+			get().paginationByConversation[conversationId] || {
+				currentPage: 1,
+				totalPages: 1,
+				hasMore: false,
+			}
+		);
 	},
-	
+
 	updateScrollPosition: (conversationId, scrollPosition) => {
 		set((state) => {
-			const existingPagination = state.paginationByConversation[conversationId] || {
+			const existingPagination = state.paginationByConversation[
+				conversationId
+			] || {
 				currentPage: 1,
 				totalPages: 1,
 				hasMore: false,
 			};
-			
+
 			return {
 				paginationByConversation: {
 					...state.paginationByConversation,
@@ -283,7 +305,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
 			};
 		});
 	},
-	
+
 	getScrollPosition: (conversationId) => {
 		return get().paginationByConversation[conversationId]?.scrollPosition;
 	},
