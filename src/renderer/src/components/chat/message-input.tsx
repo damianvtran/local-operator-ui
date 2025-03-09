@@ -2,26 +2,18 @@ import {
 	faPaperPlane,
 	faPaperclip,
 	faStop,
-	faTimes,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
-	Box,
-	Button,
-	IconButton,
-	TextField,
-	Tooltip,
-	Typography,
-	alpha,
-} from "@mui/material";
+import { Button, IconButton, TextField, Tooltip, alpha } from "@mui/material";
 import { styled } from "@mui/material/styles";
+import { AttachmentsPreview } from "@renderer/components/chat/attachments-preview";
 import type { Message } from "@renderer/components/chat/types";
 import { useMessageInput } from "@renderer/hooks/use-message-input";
 import { useRef, useState } from "react";
 import type { ChangeEvent, FC, FormEvent } from "react";
 
 type MessageInputProps = {
-	onSendMessage: (content: string, file: File | null) => void;
+	onSendMessage: (content: string, attachments: string[]) => void;
 	isLoading: boolean;
 	conversationId?: string;
 	messages: Message[];
@@ -80,37 +72,6 @@ const StyledTextField = styled(TextField)(({ theme }) => ({
 	},
 }));
 
-const FilePreviewContainer = styled(Box)(({ theme }) => ({
-	display: "flex",
-	alignItems: "center",
-	justifyContent: "center",
-	backgroundColor: alpha(theme.palette.primary.main, 0.08),
-	borderRadius: theme.shape.borderRadius,
-	padding: theme.spacing(1, 2),
-	border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`,
-	height: 48,
-	margin: theme.spacing(0, 1),
-}));
-
-const FileNameText = styled(Typography)({
-	maxWidth: 150,
-	fontWeight: 500,
-	color: "primary.main",
-	display: "flex",
-	alignItems: "center",
-});
-
-const RemoveFileButton = styled(IconButton)(({ theme }) => ({
-	marginLeft: theme.spacing(1),
-	color: "primary.main",
-	display: "flex",
-	alignItems: "center",
-	justifyContent: "center",
-	"&:hover": {
-		backgroundColor: alpha(theme.palette.primary.main, 0.15),
-	},
-}));
-
 const SendButton = styled(Button)(({ theme }) => ({
 	borderRadius: theme.shape.borderRadius * 1.5,
 	minWidth: "auto",
@@ -143,7 +104,7 @@ export const MessageInput: FC<MessageInputProps> = ({
 	currentJobId,
 	onCancelJob,
 }) => {
-	const [selectedFile, setSelectedFile] = useState<File | null>(null);
+	const [attachments, setAttachments] = useState<string[]>([]);
 	const fileInputRef = useRef<HTMLInputElement>(null);
 
 	// Use our custom hook for message input handling
@@ -157,21 +118,49 @@ export const MessageInput: FC<MessageInputProps> = ({
 		conversationId,
 		messages,
 		onSubmit: (message) => {
-			onSendMessage(message, selectedFile);
-			setSelectedFile(null);
+			onSendMessage(message, attachments);
+			setAttachments([]);
 		},
 	});
 
 	const handleSubmit = (e: FormEvent) => {
 		e.preventDefault();
-		if (!newMessage.trim() && !selectedFile) return;
+		if (!newMessage.trim() && attachments.length === 0) return;
 		submitMessage();
 	};
 
 	const handleFileSelect = (e: ChangeEvent<HTMLInputElement>) => {
 		if (e.target.files && e.target.files.length > 0) {
-			setSelectedFile(e.target.files[0]);
+			const newAttachments = Array.from(e.target.files).map((file) => {
+				// Use the actual file path with file:// protocol
+				// @ts-ignore - path is available in Electron but not in standard web File API
+				const filePath = file.path;
+				if (filePath) {
+					// Convert to file:// URL format
+					return `file://${filePath}`;
+				}
+				// Fallback to object URL if path is not available
+				return URL.createObjectURL(file);
+			});
+			setAttachments((prev) => [...prev, ...newAttachments]);
+
+			// Reset the file input so the same file can be selected again
+			if (fileInputRef.current) {
+				fileInputRef.current.value = "";
+			}
 		}
+	};
+
+	const handleRemoveAttachment = (index: number) => {
+		setAttachments((prev) => {
+			const newAttachments = [...prev];
+			// Revoke the object URL to avoid memory leaks if it's a blob URL
+			if (newAttachments[index].startsWith("blob:")) {
+				URL.revokeObjectURL(newAttachments[index]);
+			}
+			newAttachments.splice(index, 1);
+			return newAttachments;
+		});
 	};
 
 	const triggerFileInput = () => {
@@ -181,92 +170,88 @@ export const MessageInput: FC<MessageInputProps> = ({
 	const isInputDisabled = Boolean(isLoading && currentJobId);
 
 	return (
-		<FormContainer onSubmit={handleSubmit}>
-			<input
-				type="file"
-				ref={fileInputRef}
-				onChange={handleFileSelect}
-				style={{ display: "none" }}
-				accept="image/*,.pdf,.doc,.docx,.txt"
-				disabled={isInputDisabled}
-			/>
+		<>
+			<FormContainer onSubmit={handleSubmit}>
+				<input
+					type="file"
+					ref={fileInputRef}
+					onChange={handleFileSelect}
+					style={{ display: "none" }}
+					accept="image/*,.pdf,.doc,.docx,.txt"
+					disabled={isInputDisabled}
+					multiple
+				/>
 
-			<Tooltip title="Attach file">
-				<span>
-					<AttachmentButton
-						onClick={triggerFileInput}
-						color="primary"
-						size="medium"
-						aria-label="Attach file"
-						disabled={isInputDisabled}
-					>
-						<FontAwesomeIcon icon={faPaperclip} />
-					</AttachmentButton>
-				</span>
-			</Tooltip>
-
-			<StyledTextField
-				fullWidth
-				placeholder={
-					isInputDisabled
-						? "⌛ Agent is busy..."
-						: "✨ Type to Chat! Press ↵ to send, Shift+↵ for new line 📝"
-				}
-				value={newMessage}
-				onChange={(e) => setNewMessage(e.target.value)}
-				onKeyDown={handleKeyDown}
-				multiline
-				maxRows={4}
-				variant="outlined"
-				inputRef={textareaRef}
-				disabled={isInputDisabled}
-			/>
-
-			{selectedFile && (
-				<FilePreviewContainer>
-					<FileNameText variant="caption" noWrap>
-						{selectedFile.name}
-					</FileNameText>
-					<RemoveFileButton
-						size="small"
-						onClick={() => setSelectedFile(null)}
-						aria-label="Remove file"
-						disabled={isInputDisabled}
-					>
-						<FontAwesomeIcon icon={faTimes} size="xs" />
-					</RemoveFileButton>
-				</FilePreviewContainer>
-			)}
-
-			{isLoading && currentJobId ? (
-				<Tooltip title="Stop agent">
+				<Tooltip title="Attach file">
 					<span>
-						<SendButton
-							type="button"
-							variant="contained"
-							color="error"
-							onClick={() => onCancelJob?.(currentJobId)}
-							aria-label="Stop agent"
-						>
-							<FontAwesomeIcon icon={faStop} />
-						</SendButton>
-					</span>
-				</Tooltip>
-			) : (
-				<Tooltip title="Send message">
-					<span>
-						<SendButton
-							type="submit"
-							variant="contained"
+						<AttachmentButton
+							onClick={triggerFileInput}
 							color="primary"
-							disabled={isLoading || (!newMessage.trim() && !selectedFile)}
-							aria-label="Send message"
+							size="medium"
+							aria-label="Attach file"
+							disabled={isInputDisabled}
 						>
-							<FontAwesomeIcon icon={faPaperPlane} />
-						</SendButton>
+							<FontAwesomeIcon icon={faPaperclip} />
+						</AttachmentButton>
 					</span>
 				</Tooltip>
+
+				<StyledTextField
+					fullWidth
+					placeholder={
+						isInputDisabled
+							? "⌛ Agent is busy..."
+							: "✨ Type to Chat! Press ↵ to send, Shift+↵ for new line 📝"
+					}
+					value={newMessage}
+					onChange={(e) => setNewMessage(e.target.value)}
+					onKeyDown={handleKeyDown}
+					multiline
+					maxRows={4}
+					variant="outlined"
+					inputRef={textareaRef}
+					disabled={isInputDisabled}
+				/>
+
+				{isLoading && currentJobId ? (
+					<Tooltip title="Stop agent">
+						<span>
+							<SendButton
+								type="button"
+								variant="contained"
+								color="error"
+								onClick={() => onCancelJob?.(currentJobId)}
+								aria-label="Stop agent"
+							>
+								<FontAwesomeIcon icon={faStop} />
+							</SendButton>
+						</span>
+					</Tooltip>
+				) : (
+					<Tooltip title="Send message">
+						<span>
+							<SendButton
+								type="submit"
+								variant="contained"
+								color="primary"
+								disabled={
+									isLoading || (!newMessage.trim() && attachments.length === 0)
+								}
+								aria-label="Send message"
+							>
+								<FontAwesomeIcon icon={faPaperPlane} />
+							</SendButton>
+						</span>
+					</Tooltip>
+				)}
+			</FormContainer>
+			{attachments.length > 0 && (
+				<AttachmentsPreview
+					attachments={attachments}
+					onRemoveAttachment={handleRemoveAttachment}
+					disabled={isInputDisabled}
+				/>
 			)}
-		</FormContainer>
+		</>
 	);
 };

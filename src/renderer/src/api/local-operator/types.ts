@@ -163,10 +163,15 @@ export type ChatRequest = {
 	model: string;
 	/** The prompt to generate a response for */
 	prompt: string;
+	/** Whether to stream the response token by token. Default: False */
+	stream?: boolean;
 	/** Optional list of previous messages for context */
 	context?: ConversationRecord[];
 	/** Optional generation parameters to override defaults */
 	options?: ChatOptions;
+	/** Optional list of file paths (local or remote) to be used in the analysis.
+	 * These files are expected to be publicly accessible. */
+	attachments?: string[];
 };
 
 /**
@@ -194,6 +199,9 @@ export type AgentChatRequest = {
 	 * duplicated on refresh.
 	 */
 	user_message_id?: string;
+	/** Optional list of file paths (local or remote) to be used in the analysis.
+	 * These files are expected to be publicly accessible. */
+	attachments?: string[];
 };
 
 /**

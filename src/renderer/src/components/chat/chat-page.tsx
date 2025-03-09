@@ -243,7 +243,7 @@ export const ChatPage: FC<ChatProps> = () => {
 
 	// Memoized function to handle sending a new message
 	const handleSendMessage = useCallback(
-		async (content: string, file: File | null) => {
+		async (content: string, attachments: string[]) => {
 			if (!conversationId) return;
 
 			// Create a new user message
@@ -252,7 +252,7 @@ export const ChatPage: FC<ChatProps> = () => {
 				role: "user",
 				message: content,
 				timestamp: new Date(),
-				attachments: file ? [URL.createObjectURL(file)] : undefined,
+				attachments: attachments.length > 0 ? attachments : undefined,
 			};
 
 			// Add user message to chat store
@@ -294,6 +294,7 @@ export const ChatPage: FC<ChatProps> = () => {
 							Object.keys(filteredOptions).length > 0
 								? filteredOptions
 								: undefined,
+						attachments: attachments.length > 0 ? attachments : undefined,
 					},
 				);
 

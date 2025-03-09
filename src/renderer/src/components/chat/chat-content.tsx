@@ -37,7 +37,7 @@ type ChatContentProps = {
 	messagesEndRef: React.RefObject<HTMLDivElement>;
 	scrollToBottom: () => void;
 	rawInfoContent: string;
-	onSendMessage: (content: string, file: File | null) => void;
+	onSendMessage: (content: string, attachments: string[]) => void;
 	currentJobId: string | null;
 	onCancelJob: (jobId: string) => void;
 	agentData?: AgentDetails | null;
