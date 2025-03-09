@@ -1,4 +1,4 @@
-import { faRobot, faUser } from "@fortawesome/free-solid-svg-icons";
+import { faRobot, faUser, faFile } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Avatar, Box, Paper, Typography } from "@mui/material";
 import { styled } from "@mui/material/styles";
@@ -92,6 +92,38 @@ const AttachmentImage = styled("img")({
 	borderRadius: 8,
 	marginBottom: 8,
 	boxShadow: "0 2px 8px rgba(0, 0, 0, 0.15)",
+});
+
+/**
+ * Styled component for non-image file attachments
+ * Displays a file icon and filename in a container
+ */
+const FileAttachment = styled(Box)(() => ({
+	display: "flex",
+	alignItems: "center",
+	padding: "8px 12px",
+	marginTop: 8,
+	backgroundColor: "rgba(0, 0, 0, 0.1)",
+	borderRadius: 8,
+	boxShadow: "0 1px 4px rgba(0, 0, 0, 0.1)",
+	width: "fit-content",
+	maxWidth: "100%",
+	"&:hover": {
+		backgroundColor: "rgba(0, 0, 0, 0.15)",
+	},
+}));
+
+const FileIcon = styled(Box)(({ theme }) => ({
+	marginRight: 8,
+	color: theme.palette.primary.main,
+}));
+
+const FileName = styled(Typography)({
+	fontSize: "0.85rem",
+	overflow: "hidden",
+	textOverflow: "ellipsis",
+	whiteSpace: "nowrap",
+	maxWidth: "100%",
 });
 
 /**
@@ -308,16 +340,18 @@ export const MessageItem: FC<MessageItemProps> = memo(
 				</UserAvatar>
 
 				<MessagePaper elevation={isUser ? 2 : 1} isUser={isUser}>
-					{/* Render attachments if any */}
+					{/* Render image attachments if any */}
 					{message.files && message.files.length > 0 && (
 						<Box sx={{ mb: 2 }}>
-							{message.files.map((file) => (
-								<AttachmentImage
-									key={`${message.id}-${file}`}
-									src={getUrl(file)}
-									alt={getFileName(file)}
-								/>
-							))}
+							{message.files
+								.filter((file) => isImage(file))
+								.map((file) => (
+									<AttachmentImage
+										key={`${message.id}-${file}`}
+										src={getUrl(file)}
+										alt={getFileName(file)}
+									/>
+								))}
 						</Box>
 					)}
 
@@ -407,6 +441,22 @@ export const MessageItem: FC<MessageItemProps> = memo(
 						<StatusIndicator status={message.status}>
 							{message.status}
 						</StatusIndicator>
+					)}
+
+					{/* Render non-image file attachments if any */}
+					{message.files && message.files.length > 0 && (
+						<Box sx={{ mt: 2 }}>
+							{message.files
+								.filter((file) => !isImage(file))
+								.map((file) => (
+									<FileAttachment key={`${message.id}-${file}`}>
+										<FileIcon>
+											<FontAwesomeIcon icon={faFile} size="sm" />
+										</FileIcon>
+										<FileName variant="body2">{getFileName(file)}</FileName>
+									</FileAttachment>
+								))}
+						</Box>
 					)}
 
 					{/* Message timestamp */}
