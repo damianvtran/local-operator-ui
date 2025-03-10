@@ -1,6 +1,6 @@
 # Contributing to Local Operator UI
 
-Thank you for your interest in contributing to Local Operator UI! We welcome all contributions, including bug reports, feature requests, documentation improvements, and code contributions. By participating in this project, you agree to abide by its [MIT License](LICENSE).
+Thank you for your interest in contributing to Local Operator UI! We welcome all contributions, including bug reports, feature requests, documentation improvements, and code contributions. By participating in this project, you agree to abide by its [GPL-3.0 License](LICENSE).
 
 ## Project Structure
 
