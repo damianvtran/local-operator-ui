@@ -6,7 +6,7 @@
 	"bin": {
 		"local-operator-ui": "./bin/local-operator-ui.js"
 	},
-	"license": "MIT",
+	"license": "GPL-3.0-or-later",
 	"author": {
 		"name": "Damian Tran",
 		"email": "damianvtran@gmail.com",

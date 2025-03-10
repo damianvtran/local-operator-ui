@@ -1,3 +1,5 @@
+import { faTimes } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
 	Box,
 	IconButton,
@@ -7,8 +9,6 @@ import {
 	alpha,
 	styled,
 } from "@mui/material";
-import { faTimes } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import type { FC } from "react";
 import { useCallback, useMemo } from "react";
 import { createLocalOperatorClient } from "../../api/local-operator";

@@ -1,14 +1,14 @@
-import { faRobot, faUser, faFile } from "@fortawesome/free-solid-svg-icons";
+import { faFile, faRobot, faUser } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Avatar, Box, Paper, Typography } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import type { FC } from "react";
 import { memo, useCallback, useMemo } from "react";
-import { createLocalOperatorClient } from "../../api/local-operator";
-import { apiConfig } from "../../config";
 import SyntaxHighlighter from "react-syntax-highlighter";
 import { atomOneDark } from "react-syntax-highlighter/dist/esm/styles/hljs";
 import { createGlobalStyle } from "styled-components";
+import { createLocalOperatorClient } from "../../api/local-operator";
+import { apiConfig } from "../../config";
 import { MarkdownRenderer } from "./markdown-renderer";
 import type { Message } from "./types";
 
