@@ -16,13 +16,18 @@ type ScrollToBottomButtonProps = {
 	 * Callback function to scroll to the bottom
 	 */
 	onClick: () => void;
+
+	/**
+	 * Optional className for additional styling
+	 */
+	className?: string;
 };
 
 const ButtonContainer = styled(Box)(() => ({
-	position: "fixed",
-	bottom: 200,
+	position: "absolute",
+	top: -60, // Position above the message input
 	right: 20,
-	zIndex: 1000,
+	zIndex: 2000,
 	display: "flex",
 	justifyContent: "center",
 	alignItems: "center",
@@ -66,10 +71,14 @@ const StyledButton = styled(IconButton)(({ theme }) => ({
  *
  * A modern, minimalist button that appears when the user scrolls up in chat.
  * Features smooth animations and glass-morphism styling.
+ *
+ * The button is now positioned absolutely within its container, allowing it to
+ * move with the container rather than being fixed on the screen.
  */
 export const ScrollToBottomButton: FC<ScrollToBottomButtonProps> = ({
 	visible,
 	onClick,
+	className,
 }) => {
 	const handleClick = useCallback(() => {
 		onClick();
@@ -77,7 +86,7 @@ export const ScrollToBottomButton: FC<ScrollToBottomButtonProps> = ({
 
 	return (
 		<Fade in={visible} timeout={200}>
-			<ButtonContainer>
+			<ButtonContainer className={className}>
 				<StyledButton
 					aria-label="Scroll to bottom"
 					onClick={handleClick}

@@ -7,6 +7,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Button, IconButton, TextField, Tooltip, alpha } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import { AttachmentsPreview } from "@renderer/components/chat/attachments-preview";
+import { ScrollToBottomButton } from "@renderer/components/chat/scroll-to-bottom-button";
 import type { Message } from "@renderer/components/chat/types";
 import { useMessageInput } from "@renderer/hooks/use-message-input";
 import { useRef, useState } from "react";
@@ -19,6 +20,8 @@ type MessageInputProps = {
 	messages: Message[];
 	currentJobId?: string | null;
 	onCancelJob?: (jobId: string) => void;
+	isFarFromBottom?: boolean;
+	scrollToBottom?: () => void;
 };
 
 const FormContainer = styled("form")(({ theme }) => ({
@@ -29,6 +32,7 @@ const FormContainer = styled("form")(({ theme }) => ({
 	borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
 	backgroundColor: alpha(theme.palette.background.paper, 0.4),
 	minHeight: 100,
+	position: "relative", // Add position relative for the scroll button
 }));
 
 const AttachmentButton = styled(IconButton)(({ theme }) => ({
@@ -103,6 +107,8 @@ export const MessageInput: FC<MessageInputProps> = ({
 	messages,
 	currentJobId,
 	onCancelJob,
+	isFarFromBottom = false,
+	scrollToBottom = () => {},
 }) => {
 	const [attachments, setAttachments] = useState<string[]>([]);
 	const fileInputRef = useRef<HTMLInputElement>(null);
@@ -173,6 +179,11 @@ export const MessageInput: FC<MessageInputProps> = ({
 	return (
 		<>
 			<FormContainer onSubmit={handleSubmit}>
+				{/* Scroll to bottom button */}
+				<ScrollToBottomButton
+					visible={isFarFromBottom}
+					onClick={scrollToBottom}
+				/>
 				<input
 					type="file"
 					ref={fileInputRef}

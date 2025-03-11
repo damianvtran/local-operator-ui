@@ -12,7 +12,6 @@ import { ChatUtilities } from "./chat-utilities";
 import { MessageInput } from "./message-input";
 import { MessagesView } from "./messages-view";
 import { RawInfoView } from "./raw-info-view";
-import { ScrollToBottomButton } from "./scroll-to-bottom-button";
 import type { Message } from "./types";
 
 /**
@@ -82,12 +81,6 @@ export const ChatContent: FC<ChatContentProps> = ({
 }) => {
 	return (
 		<ChatContainer elevation={0}>
-			{/* Scroll to bottom button */}
-			<ScrollToBottomButton
-				visible={isFarFromBottom}
-				onClick={scrollToBottom}
-			/>
-
 			{/* Chat header */}
 			<ChatHeader
 				agentName={agentName}
@@ -132,6 +125,8 @@ export const ChatContent: FC<ChatContentProps> = ({
 				messages={messages}
 				currentJobId={currentJobId}
 				onCancelJob={onCancelJob}
+				isFarFromBottom={isFarFromBottom}
+				scrollToBottom={scrollToBottom}
 			/>
 
 			{/* Chat utilities section */}

@@ -8,17 +8,18 @@ import type { DependencyList } from "react";
  *
  * @param dependencies - Array of dependencies that trigger scrolling when changed
  * @param threshold - Distance from bottom (in pixels) to consider "near bottom" (default: 300)
- * @param screenHeightThreshold - Number of screen heights to consider "far from bottom" for showing the scroll button (default: 1)
+ * @param buttonThreshold - Distance from bottom (in pixels) to show the scroll button (default: 100)
  * @returns An object containing:
  *   - ref: A ref to attach to the element to scroll to
  *   - isNearBottom: Whether the user is near the bottom
  *   - isFarFromBottom: Whether the user is far enough from the bottom to show the scroll button
  *   - scrollToBottom: Function to manually scroll to the bottom
+ *   - containerRef: A ref to the scrollable container
  */
 export const useScrollToBottom = (
 	dependencies: DependencyList = [],
 	threshold = 300,
-	screenHeightThreshold = 1,
+	buttonThreshold = 50, // Reduced from 100 to make the button appear more readily
 ) => {
 	const ref = useRef<HTMLDivElement>(null);
 	const containerRef = useRef<HTMLDivElement | null>(null);
@@ -28,6 +29,9 @@ export const useScrollToBottom = (
 	// Use a ref to track the last scroll position to avoid unnecessary state updates
 	const lastScrollPositionRef = useRef<number>(0);
 	const scrollTimeoutRef = useRef<number | null>(null);
+
+	// Track if we're currently processing a scroll event
+	const isProcessingScrollRef = useRef<boolean>(false);
 
 	/**
 	 * Function to manually scroll to the bottom
@@ -43,9 +47,39 @@ export const useScrollToBottom = (
 		});
 	}, []);
 
+	/**
+	 * Function to check if we should show the scroll button
+	 * This is called both on scroll events and when dependencies change
+	 */
+	const checkScrollPosition = useCallback(() => {
+		if (!containerRef.current || isProcessingScrollRef.current) return;
+
+		isProcessingScrollRef.current = true;
+
+		const { scrollTop, scrollHeight, clientHeight } = containerRef.current;
+		const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+
+		// Only update state if the scroll position has changed significantly
+		// or if the shouldScrollToBottom value would change
+		const currentShouldScroll = distanceFromBottom <= threshold;
+
+		// Show the button when we're more than buttonThreshold pixels from the bottom
+		const shouldShowButton = distanceFromBottom > buttonThreshold;
+
+		if (
+			Math.abs(lastScrollPositionRef.current - scrollTop) > 20 ||
+			currentShouldScroll !== shouldScrollToBottom ||
+			shouldShowButton !== isFarFromBottom
+		) {
+			lastScrollPositionRef.current = scrollTop;
+			setShouldScrollToBottom(currentShouldScroll);
+			setIsFarFromBottom(shouldShowButton);
+		}
+
+		isProcessingScrollRef.current = false;
+	}, [threshold, buttonThreshold, shouldScrollToBottom, isFarFromBottom]);
+
 	// Throttled scroll handler to improve performance
-	// Only updates state if the scroll position has changed significantly
-	// biome-ignore lint/correctness/useExhaustiveDependencies: screenHeightThreshold is not used in the function body
 	const handleScroll = useCallback(() => {
 		if (!containerRef.current) return;
 
@@ -56,33 +90,10 @@ export const useScrollToBottom = (
 
 		// Debounce the scroll event to reduce calculations
 		scrollTimeoutRef.current = window.setTimeout(() => {
-			if (!containerRef.current) return;
-
-			const { scrollTop, scrollHeight, clientHeight } = containerRef.current;
-			const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
-
-			// Only update state if the scroll position has changed significantly
-			// or if the shouldScrollToBottom value would change
-			const currentShouldScroll = distanceFromBottom <= threshold;
-
-			// Check if user is far enough from bottom to show the scroll button
-			// Use screen height as a reference for better UX
-			// Make it more sensitive by using a lower threshold
-			const isFarEnough = distanceFromBottom > clientHeight;
-
-			if (
-				Math.abs(lastScrollPositionRef.current - scrollTop) > 50 ||
-				currentShouldScroll !== shouldScrollToBottom ||
-				isFarEnough !== isFarFromBottom
-			) {
-				lastScrollPositionRef.current = scrollTop;
-				setShouldScrollToBottom(currentShouldScroll);
-				setIsFarFromBottom(isFarEnough);
-			}
-
+			checkScrollPosition();
 			scrollTimeoutRef.current = null;
-		}, 100); // 100ms debounce
-	}, [threshold, shouldScrollToBottom, isFarFromBottom, screenHeightThreshold]);
+		}, 50); // 50ms debounce (reduced from 100ms for more responsive updates)
+	}, [checkScrollPosition]);
 
 	// Set up scroll event listener with passive option for better performance
 	useEffect(() => {
@@ -91,13 +102,27 @@ export const useScrollToBottom = (
 
 		// Use passive: true for better scroll performance
 		container.addEventListener("scroll", handleScroll, { passive: true });
+
+		// Initial check of scroll position
+		checkScrollPosition();
+
 		return () => {
 			if (scrollTimeoutRef.current !== null) {
 				window.clearTimeout(scrollTimeoutRef.current);
 			}
 			container.removeEventListener("scroll", handleScroll);
 		};
-	}, [handleScroll]);
+	}, [handleScroll, checkScrollPosition]);
+
+	// Check scroll position when dependencies change
+	useEffect(() => {
+		// Use requestAnimationFrame to ensure DOM has updated
+		const animationFrame = requestAnimationFrame(() => {
+			checkScrollPosition();
+		});
+
+		return () => cancelAnimationFrame(animationFrame);
+	}, [...dependencies, checkScrollPosition]);
 
 	// Memoize the scroll to bottom effect
 	useEffect(() => {
@@ -112,8 +137,7 @@ export const useScrollToBottom = (
 		});
 
 		return () => cancelAnimationFrame(animationFrame);
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [...dependencies, shouldScrollToBottom]);
+	}, [...dependencies, shouldScrollToBottom]); // eslint-disable-line react-hooks/exhaustive-deps
 
 	// Set containerRef to the parent of the ref element
 	// This only needs to run once after the ref is set
@@ -131,14 +155,18 @@ export const useScrollToBottom = (
 				overflowY === "scroll"
 			) {
 				containerRef.current = parent as HTMLDivElement;
+
+				// Initial check after finding the container
+				checkScrollPosition();
 				break;
 			}
 			parent = parent.parentElement;
 		}
-	}, []);
+	}, [checkScrollPosition]);
 
 	return {
 		ref,
+		containerRef,
 		isNearBottom: shouldScrollToBottom,
 		isFarFromBottom,
 		scrollToBottom,
