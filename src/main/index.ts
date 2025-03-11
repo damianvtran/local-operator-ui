@@ -1,6 +1,6 @@
 import { join } from "node:path";
 import { electronApp, is, optimizer } from "@electron-toolkit/utils";
-import { BrowserWindow, app, shell } from "electron";
+import { BrowserWindow, app, shell, ipcMain } from "electron";
 import icon from "../../resources/icon.png?asset";
 
 function createWindow(): void {
@@ -47,6 +47,23 @@ app.whenReady().then(() => {
 	// see https://github.com/alex8088/electron-toolkit/tree/master/packages/utils
 	app.on("browser-window-created", (_, window) => {
 		optimizer.watchWindowShortcuts(window);
+	});
+
+	// Add IPC handlers for opening files and URLs
+	ipcMain.handle("open-file", async (_, filePath) => {
+		try {
+			await shell.openPath(filePath);
+		} catch (error) {
+			console.error("Error opening file:", error);
+		}
+	});
+
+	ipcMain.handle("open-external", async (_, url) => {
+		try {
+			await shell.openExternal(url);
+		} catch (error) {
+			console.error("Error opening URL:", error);
+		}
 	});
 
 	// IPC test
