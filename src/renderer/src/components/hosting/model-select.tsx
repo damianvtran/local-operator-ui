@@ -349,10 +349,26 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 		}
 	};
 
-	// Extract provider from model ID (e.g., "openai/gpt-4" -> "openai")
+	/**
+	 * Extract provider from model ID (e.g., "openai/gpt-4" -> "openai")
+	 * This function is used to group models in the dropdown by their provider
+	 *
+	 * @param id - The model ID to extract the provider from
+	 * @returns The provider part of the model ID, or an empty string if no provider is found
+	 */
 	const getProviderFromId = (id: string): string => {
-		const providerMatch = id.match(/^([^/]+)\//);
-		return providerMatch ? providerMatch[1] : "";
+		// Handle empty or invalid IDs
+		if (!id || typeof id !== "string") return "";
+
+		// Extract the provider part (everything before the first slash)
+		// This ensures all models from the same provider are grouped together
+		// regardless of their model name
+		const slashIndex = id.indexOf("/");
+		if (slashIndex > 0) {
+			return id.substring(0, slashIndex);
+		}
+
+		return "";
 	};
 
 	return (
