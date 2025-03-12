@@ -32,7 +32,7 @@ import { CREDENTIAL_MANIFEST } from "@renderer/components/settings/credential-ma
 import { useCredentials } from "@renderer/hooks/use-credentials";
 import { useUpdateCredential } from "@renderer/hooks/use-update-credential";
 import type { FC } from "react";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
 	EmojiContainer,
 	FormContainer,

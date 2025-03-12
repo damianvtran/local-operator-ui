@@ -15,8 +15,8 @@ import {
 	Paper,
 	Typography,
 	alpha,
-	styled,
 	keyframes,
+	styled,
 } from "@mui/material";
 
 // Animation keyframes

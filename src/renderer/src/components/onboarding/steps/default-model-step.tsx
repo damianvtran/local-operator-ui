@@ -6,6 +6,13 @@
  */
 
 import {
+	faBrain,
+	faCheck,
+	faRobot,
+	faWandMagicSparkles,
+} from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
 	Alert,
 	Box,
 	FormControl,
@@ -17,19 +24,12 @@ import {
 	Typography,
 	alpha,
 } from "@mui/material";
-import {
-	faCheck,
-	faRobot,
-	faBrain,
-	faWandMagicSparkles,
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useConfig } from "@renderer/hooks/use-config";
 import { useCredentials } from "@renderer/hooks/use-credentials";
 import { useModels } from "@renderer/hooks/use-models";
 import { useUpdateConfig } from "@renderer/hooks/use-update-config";
 import type { FC } from "react";
-import { useEffect, useMemo, useState, useRef, useCallback } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
 	EmojiContainer,
 	FormContainer,

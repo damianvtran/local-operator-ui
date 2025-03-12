@@ -10,8 +10,8 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { ChatPage } from "@components/chat/chat-page";
 import { AgentsPage } from "@renderer/components/agents/agents-page";
 import { ModelsInitializer } from "@renderer/components/common/models-initializer";
-import { OnboardingModal } from "@renderer/components/onboarding";
 import { SidebarNavigation } from "@renderer/components/navigation/sidebar-navigation";
+import { OnboardingModal } from "@renderer/components/onboarding";
 import { SettingsPage } from "@renderer/components/settings/settings-page";
 import { useCheckFirstTimeUser } from "@renderer/hooks/use-check-first-time-user";
 

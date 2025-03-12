@@ -6,9 +6,9 @@
  * 2. Whether the onboarding has been explicitly completed before
  */
 
-import { useCredentials } from "./use-credentials";
 import { useOnboardingStore } from "@renderer/store/onboarding-store";
 import { useEffect } from "react";
+import { useCredentials } from "./use-credentials";
 
 /**
  * Hook to check if the user is a first-time user and activate onboarding if needed

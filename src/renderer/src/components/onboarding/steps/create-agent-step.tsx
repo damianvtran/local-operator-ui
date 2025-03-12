@@ -7,9 +7,9 @@
 
 import {
 	faCheck,
-	faRobot,
 	faLightbulb,
 	faMagicWandSparkles,
+	faRobot,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -29,7 +29,7 @@ import {
 	useOnboardingStore,
 } from "@renderer/store/onboarding-store";
 import type { FC } from "react";
-import { useState, useRef } from "react";
+import { useRef, useState } from "react";
 import {
 	EmojiContainer,
 	FormContainer,

@@ -29,11 +29,11 @@ import {
 	StepDot,
 	StepIndicatorContainer,
 } from "./onboarding-styled";
-import { UserProfileStep } from "./steps/user-profile-step";
+import { CreateAgentStep } from "./steps/create-agent-step";
+import { DefaultModelStep } from "./steps/default-model-step";
 import { ModelCredentialStep } from "./steps/model-credential-step";
 import { SearchApiStep } from "./steps/search-api-step";
-import { DefaultModelStep } from "./steps/default-model-step";
-import { CreateAgentStep } from "./steps/create-agent-step";
+import { UserProfileStep } from "./steps/user-profile-step";
 import { WelcomeStep } from "./steps/welcome-step";
 
 /**
