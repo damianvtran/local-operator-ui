@@ -7,9 +7,9 @@
  * It requires the 'sharp' image processing library.
  *
  * Usage:
- *   node generate-icons.js [source-image]
+ *   node generate-icons.js <source-image>
  *
- * If no source image is provided, it will use resources/icon.png by default.
+ * The source image is required and cannot be the same as the output icon.png.
  *
  * Installation:
  *   npm install --save-dev sharp
@@ -20,9 +20,28 @@ const path = require("node:path");
 const sharp = require("sharp");
 
 // Configuration
-const sourceImage =
-	process.argv[2] || path.join(__dirname, "../resources/icon.png");
+const defaultIconPath = path.join(__dirname, "../resources/icon.png");
+const sourceImage = process.argv[2];
 const outputDir = path.join(__dirname, "../resources");
+
+// Validate source image
+if (!sourceImage) {
+	console.error("Error: Source image is required.");
+	console.error("Usage: node generate-icons.js <source-image>");
+	process.exit(1);
+}
+
+// Check if source image is the same as output icon.png
+const absoluteSourcePath = path.resolve(sourceImage);
+const absoluteIconPath = path.resolve(defaultIconPath);
+
+if (absoluteSourcePath === absoluteIconPath) {
+	console.error(
+		"Error: Source image cannot be the same as the output icon.png.",
+	);
+	console.error("Please provide a different source image.");
+	process.exit(1);
+}
 
 // Ensure output directory exists
 if (!fs.existsSync(outputDir)) {
@@ -40,8 +59,8 @@ const icons = [
 	{ size: 512, name: "icon-512x512.png" },
 	{ size: 1024, name: "icon-1024x1024.png" },
 
-	// Windows icons
-	{ size: 256, name: "icon.ico", format: "ico" },
+	// Windows icons - using toBuffer for ICO format
+	{ size: 256, name: "icon.ico", isIco: true },
 
 	// Linux icons
 	{ size: 512, name: "icon.png" },
@@ -55,7 +74,7 @@ const icons = [
 ];
 
 // Generate icons
-async function generateIcons() {
+const generateIcons = async () => {
 	console.log(`Generating icons from ${sourceImage}...`);
 
 	try {
@@ -71,20 +90,26 @@ async function generateIcons() {
 		// Generate each icon
 		for (const icon of icons) {
 			const size = icon.size * (icon.scale || 1);
-			const format = icon.format || "png";
 			const outputPath = path.join(outputDir, icon.name);
 
 			console.log(`Generating ${outputPath} (${size}x${size})...`);
 
-			// Resize and save
-			await image
-				.clone()
-				.resize(size, size, {
-					fit: "contain",
-					background: { r: 0, g: 0, b: 0, alpha: 0 },
-				})
-				.toFormat(format)
-				.toFile(outputPath);
+			// Resize the image
+			const resized = image.clone().resize(size, size, {
+				fit: "contain",
+				background: { r: 0, g: 0, b: 0, alpha: 0 },
+			});
+
+			// Handle ICO format separately using toBuffer and fs.writeFile
+			if (icon.isIco) {
+				const pngBuffer = await resized.png().toBuffer();
+				const toIco = require("to-ico");
+				const icoBuffer = await toIco(pngBuffer);
+				fs.writeFileSync(outputPath, icoBuffer);
+			} else {
+				// For other formats, use toFile directly
+				await resized.toFile(outputPath);
+			}
 		}
 
 		console.log("Icon generation complete!");
@@ -92,7 +117,7 @@ async function generateIcons() {
 		console.error("Error generating icons:", error);
 		process.exit(1);
 	}
-}
+};
 
 // Run the icon generation
 generateIcons();
