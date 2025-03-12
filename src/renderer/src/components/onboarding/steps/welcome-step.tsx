@@ -1,15 +1,16 @@
 /**
  * Welcome Step Component
  *
- * First step in the onboarding process that introduces the user to the app.
+ * First step in the onboarding process that introduces the user to the app
+ * with an exciting and engaging presentation.
  */
 
 import { Box, Typography } from "@mui/material";
 import type { FC } from "react";
 import {
+	EmojiContainer,
 	SectionContainer,
 	SectionDescription,
-	SectionTitle,
 } from "../onboarding-styled";
 
 /**
@@ -17,39 +18,70 @@ import {
  */
 export const WelcomeStep: FC = () => {
 	return (
-		<Box>
-			<Typography variant="body1" paragraph>
-				Welcome to Local Operator! Let's set up your environment so you can
-				start working with AI agents.
+		<Box sx={{ animation: "fadeIn 0.6s ease-out" }}>
+			<Typography
+				variant="body1"
+				paragraph
+				sx={{
+					fontSize: "1.1rem",
+					fontWeight: 500,
+					lineHeight: 1.6,
+				}}
+			>
+				<EmojiContainer>🚀</EmojiContainer> Welcome to Local Operator! We're
+				thrilled to have you here! Let's set up your AI environment so you can
+				start creating amazing things with AI agents.
 			</Typography>
 
-			<Typography variant="body1" paragraph>
+			<Typography
+				variant="body1"
+				paragraph
+				sx={{
+					fontSize: "1.05rem",
+					mb: 3,
+				}}
+			>
 				This quick setup will guide you through:
 			</Typography>
 
 			<SectionContainer>
-				<SectionTitle>What we'll cover:</SectionTitle>
 				<SectionDescription>
-					<Box component="ul" sx={{ pl: 2, mt: 0 }}>
-						<Box component="li" sx={{ mb: 1 }}>
-							Setting up your user profile
+					<Box sx={{ mt: 0 }}>
+						<Box sx={{ mb: 1.5, display: "flex", alignItems: "flex-start" }}>
+							<EmojiContainer>👤</EmojiContainer> Setting up your personalized
+							user profile
 						</Box>
-						<Box component="li" sx={{ mb: 1 }}>
-							Adding your first AI model provider credential
+						<Box sx={{ mb: 1.5, display: "flex", alignItems: "flex-start" }}>
+							<EmojiContainer>🔑</EmojiContainer> Adding your first AI model
+							provider credential
 						</Box>
-						<Box component="li" sx={{ mb: 1 }}>
-							Optionally enabling web search capabilities
+						<Box sx={{ mb: 1.5, display: "flex", alignItems: "flex-start" }}>
+							<EmojiContainer>🔍</EmojiContainer> Supercharging your AI with web
+							search capabilities
 						</Box>
-						<Box component="li" sx={{ mb: 1 }}>
-							Selecting your default model
+						<Box sx={{ mb: 1.5, display: "flex", alignItems: "flex-start" }}>
+							<EmojiContainer>🤖</EmojiContainer> Selecting your perfect default
+							AI model
 						</Box>
-						<Box component="li">Creating your first agent</Box>
+						<Box sx={{ display: "flex", alignItems: "flex-start" }}>
+							<EmojiContainer>✨</EmojiContainer> Creating your first
+							intelligent AI assistant
+						</Box>
 					</Box>
 				</SectionDescription>
 			</SectionContainer>
 
-			<Typography variant="body2" sx={{ mt: 2, fontStyle: "italic" }}>
-				You can always change these settings later in the Settings page.
+			<Typography
+				variant="body2"
+				sx={{
+					mt: 3,
+					fontStyle: "italic",
+					display: "flex",
+					alignItems: "center",
+				}}
+			>
+				<EmojiContainer>💡</EmojiContainer> Don't worry! You can always
+				customize these settings later in the Settings page.
 			</Typography>
 		</Box>
 	);

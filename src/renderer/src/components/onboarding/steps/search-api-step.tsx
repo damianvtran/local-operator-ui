@@ -1,10 +1,17 @@
 /**
  * Search API Step Component
  *
- * Fourth step in the onboarding process that allows the user to optionally add a search API key.
+ * Fourth step in the onboarding process that allows the user to optionally add a search API key
+ * with an exciting and engaging interface.
  */
 
-import { faCheck, faExternalLinkAlt } from "@fortawesome/free-solid-svg-icons";
+import {
+	faCheck,
+	faExternalLinkAlt,
+	faGlobe,
+	faKey,
+	faSearch,
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
 	Alert,
@@ -19,6 +26,7 @@ import {
 	type SelectChangeEvent,
 	TextField,
 	Typography,
+	alpha,
 } from "@mui/material";
 import { CREDENTIAL_MANIFEST } from "@renderer/components/settings/credential-manifest";
 import { useCredentials } from "@renderer/hooks/use-credentials";
@@ -26,6 +34,7 @@ import { useUpdateCredential } from "@renderer/hooks/use-update-credential";
 import type { FC } from "react";
 import { useEffect, useState, useRef } from "react";
 import {
+	EmojiContainer,
 	FormContainer,
 	SectionContainer,
 	SectionDescription,
@@ -139,21 +148,66 @@ export const SearchApiStep: FC = () => {
 		<SectionContainer>
 			<SectionTitle>Enable Web Search (Optional)</SectionTitle>
 			<SectionDescription>
-				Adding a search API key allows your agents to search the web for
-				information. This step is optional, and you can always add it later.
+				<EmojiContainer>🌐</EmojiContainer> Supercharge your AI agents with the
+				ability to search the web for real-time information! This optional
+				feature gives your AI assistants access to the latest data from across
+				the internet.
 			</SectionDescription>
 
 			<FormContainer>
-				<FormControl fullWidth variant="outlined">
+				<Box
+					sx={{
+						p: 2,
+						mb: 3,
+						borderRadius: 2,
+						background: (theme) =>
+							`linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.05)} 0%, ${alpha(theme.palette.info.main, 0.1)} 100%)`,
+						border: (theme) =>
+							`1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
+						display: "flex",
+						alignItems: "center",
+					}}
+				>
+					<FontAwesomeIcon
+						icon={faGlobe}
+						style={{
+							fontSize: "1.5rem",
+							marginRight: "12px",
+							color: "#3f51b5",
+						}}
+					/>
+					<Typography variant="body2">
+						<Box component="span" sx={{ fontWeight: 600 }}>
+							Web-enabled AI is more powerful!
+						</Box>{" "}
+						Your agents can find current information, research topics, and
+						provide up-to-date answers.
+					</Typography>
+				</Box>
+
+				<FormControl
+					fullWidth
+					variant="outlined"
+					sx={{
+						"& .MuiOutlinedInput-root": {
+							"&.Mui-focused fieldset": {
+								borderColor: "primary.main",
+								borderWidth: 2,
+							},
+						},
+					}}
+				>
 					<InputLabel id="search-api-select-label">
-						Search API Provider
+						<Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+							<EmojiContainer>🔎</EmojiContainer> Search API Provider
+						</Box>
 					</InputLabel>
 					<Select
 						labelId="search-api-select-label"
 						id="search-api-select"
 						value={selectedCredential}
 						onChange={handleCredentialChange}
-						label="Search API Provider"
+						label="🔎 Search API Provider"
 					>
 						{searchApiCredentials.map((cred) => (
 							<MenuItem key={cred.key} value={cred.key}>
@@ -162,22 +216,56 @@ export const SearchApiStep: FC = () => {
 						))}
 					</Select>
 					<FormHelperText>
-						Select a search API provider to add your API key
+						<Box sx={{ display: "flex", alignItems: "center" }}>
+							<FontAwesomeIcon
+								icon={faSearch}
+								style={{
+									marginRight: "6px",
+									fontSize: "0.8rem",
+									color: "#666",
+								}}
+							/>
+							Choose your preferred search provider
+						</Box>
 					</FormHelperText>
 				</FormControl>
 
 				{selectedCredentialInfo && (
-					<Box sx={{ mt: 2 }}>
-						<Typography variant="body2" sx={{ mb: 1 }}>
+					<Box
+						sx={{
+							mt: 2,
+							p: 2,
+							borderRadius: 2,
+							border: (theme) =>
+								`1px solid ${alpha(theme.palette.primary.main, 0.2)}`,
+							background: (theme) => alpha(theme.palette.background.paper, 0.5),
+						}}
+					>
+						<Typography
+							variant="body2"
+							sx={{ mb: 1, display: "flex", alignItems: "center" }}
+						>
+							<EmojiContainer>💡</EmojiContainer>{" "}
 							{selectedCredentialInfo.description}
 						</Typography>
 						<Link
 							href={selectedCredentialInfo.url}
 							target="_blank"
 							rel="noopener noreferrer"
-							sx={{ display: "inline-flex", alignItems: "center", mb: 2 }}
+							sx={{
+								display: "inline-flex",
+								alignItems: "center",
+								mb: 1,
+								color: "primary.main",
+								fontWeight: 500,
+								"&:hover": {
+									textDecoration: "none",
+									color: "primary.dark",
+								},
+							}}
 						>
-							Get {selectedCredentialInfo.name}{" "}
+							<EmojiContainer>🔗</EmojiContainer> Get{" "}
+							{selectedCredentialInfo.name}{" "}
 							<FontAwesomeIcon
 								icon={faExternalLinkAlt}
 								style={{ marginLeft: "4px", fontSize: "0.8rem" }}
@@ -190,9 +278,17 @@ export const SearchApiStep: FC = () => {
 					<Alert
 						severity="success"
 						icon={<FontAwesomeIcon icon={faCheck} />}
-						sx={{ mb: 2 }}
+						sx={{
+							mb: 2,
+							animation: "fadeIn 0.5s ease-out",
+							border: (theme) =>
+								`1px solid ${alpha(theme.palette.success.main, 0.5)}`,
+						}}
 					>
-						Search API credential saved successfully
+						<Box sx={{ display: "flex", alignItems: "center" }}>
+							<EmojiContainer>🎉</EmojiContainer> Search API credential saved
+							successfully! Your AI can now explore the web!
+						</Box>
 					</Alert>
 				)}
 
@@ -206,7 +302,7 @@ export const SearchApiStep: FC = () => {
 					helperText={
 						error || "Enter your API key for the selected provider (optional)"
 					}
-					placeholder="Enter API key"
+					placeholder="Enter your API key here"
 					type="password"
 					onBlur={handleSaveCredential}
 					onKeyDown={(e) => {
@@ -221,15 +317,48 @@ export const SearchApiStep: FC = () => {
 						}
 					}}
 					InputProps={{
+						startAdornment: (
+							<FontAwesomeIcon
+								icon={faKey}
+								style={{ marginRight: "10px", color: "#666" }}
+							/>
+						),
 						endAdornment: isSaving ? <CircularProgress size={20} /> : null,
 					}}
 					disabled={isSaving}
+					sx={{
+						"& .MuiOutlinedInput-root": {
+							"&.Mui-focused fieldset": {
+								borderColor: "primary.main",
+								borderWidth: 2,
+							},
+						},
+					}}
 				/>
 
-				<Typography variant="body2" sx={{ mt: 2, fontStyle: "italic" }}>
-					You can skip this step if you don't want to enable web search
-					capabilities.
-				</Typography>
+				<Box
+					sx={{
+						mt: 3,
+						p: 2,
+						borderRadius: 2,
+						background: (theme) => alpha(theme.palette.info.light, 0.1),
+						border: (theme) =>
+							`1px dashed ${alpha(theme.palette.info.main, 0.3)}`,
+						display: "flex",
+						alignItems: "center",
+					}}
+				>
+					<EmojiContainer style={{ fontSize: "1.2rem", marginRight: "8px" }}>
+						💫
+					</EmojiContainer>
+					<Typography
+						variant="body2"
+						sx={{ fontStyle: "italic", color: "text.secondary" }}
+					>
+						This step is completely optional! You can skip it now and add search
+						capabilities later in Settings if you prefer.
+					</Typography>
+				</Box>
 			</FormContainer>
 		</SectionContainer>
 	);

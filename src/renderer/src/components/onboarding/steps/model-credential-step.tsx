@@ -1,10 +1,16 @@
 /**
  * Model Credential Step Component
  *
- * Third step in the onboarding process that allows the user to add their first model provider credential.
+ * Third step in the onboarding process that allows the user to add their first model provider credential
+ * with an exciting and engaging interface.
  */
 
-import { faCheck, faExternalLinkAlt } from "@fortawesome/free-solid-svg-icons";
+import {
+	faCheck,
+	faExternalLinkAlt,
+	faKey,
+	faShieldAlt,
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
 	Alert,
@@ -19,6 +25,7 @@ import {
 	type SelectChangeEvent,
 	TextField,
 	Typography,
+	alpha,
 } from "@mui/material";
 import { CREDENTIAL_MANIFEST } from "@renderer/components/settings/credential-manifest";
 import { useCredentials } from "@renderer/hooks/use-credentials";
@@ -27,6 +34,7 @@ import { useUpdateCredential } from "@renderer/hooks/use-update-credential";
 import type { FC } from "react";
 import { useEffect, useState, useRef } from "react";
 import {
+	EmojiContainer,
 	FormContainer,
 	SectionContainer,
 	SectionDescription,
@@ -146,19 +154,36 @@ export const ModelCredentialStep: FC = () => {
 		<SectionContainer>
 			<SectionTitle>Add Model Provider Credential</SectionTitle>
 			<SectionDescription>
-				To use AI models, you need to add at least one model provider API key.
-				This key will be stored locally and used to access the models.
+				<EmojiContainer>✨</EmojiContainer> To unlock the power of AI models,
+				you need to add at least one model provider API key. Your key will be
+				securely stored on your device and used to access amazing AI
+				capabilities!
 			</SectionDescription>
 
 			<FormContainer>
-				<FormControl fullWidth variant="outlined">
-					<InputLabel id="credential-select-label">Model Provider</InputLabel>
+				<FormControl
+					fullWidth
+					variant="outlined"
+					sx={{
+						"& .MuiOutlinedInput-root": {
+							"&.Mui-focused fieldset": {
+								borderColor: "primary.main",
+								borderWidth: 2,
+							},
+						},
+					}}
+				>
+					<InputLabel id="credential-select-label">
+						<Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+							<EmojiContainer>🤖</EmojiContainer> Model Provider
+						</Box>
+					</InputLabel>
 					<Select
 						labelId="credential-select-label"
 						id="credential-select"
 						value={selectedCredential}
 						onChange={handleCredentialChange}
-						label="Model Provider"
+						label="🤖 Model Provider"
 					>
 						{modelProviderCredentials.map((cred) => (
 							<MenuItem key={cred.key} value={cred.key}>
@@ -167,22 +192,55 @@ export const ModelCredentialStep: FC = () => {
 						))}
 					</Select>
 					<FormHelperText>
-						Select a model provider to add your API key
+						<Box sx={{ display: "flex", alignItems: "center" }}>
+							<FontAwesomeIcon
+								icon={faShieldAlt}
+								style={{
+									marginRight: "6px",
+									fontSize: "0.8rem",
+									color: "#666",
+								}}
+							/>
+							Select your preferred AI model provider
+						</Box>
 					</FormHelperText>
 				</FormControl>
 
 				{selectedCredentialInfo && (
-					<Box sx={{ mt: 2 }}>
-						<Typography variant="body2" sx={{ mb: 1 }}>
+					<Box
+						sx={{
+							mt: 2,
+							p: 2,
+							borderRadius: 2,
+							border: (theme) =>
+								`1px solid ${alpha(theme.palette.primary.main, 0.2)}`,
+							background: (theme) => alpha(theme.palette.background.paper, 0.5),
+						}}
+					>
+						<Typography
+							variant="body2"
+							sx={{ mb: 1, display: "flex", alignItems: "center" }}
+						>
 							{selectedCredentialInfo.description}
 						</Typography>
 						<Link
 							href={selectedCredentialInfo.url}
 							target="_blank"
 							rel="noopener noreferrer"
-							sx={{ display: "inline-flex", alignItems: "center", mb: 2 }}
+							sx={{
+								display: "inline-flex",
+								alignItems: "center",
+								mb: 1,
+								color: "primary.main",
+								fontWeight: 500,
+								"&:hover": {
+									textDecoration: "none",
+									color: "primary.dark",
+								},
+							}}
 						>
-							Get {selectedCredentialInfo.name}{" "}
+							<EmojiContainer>🔗</EmojiContainer> Get{" "}
+							{selectedCredentialInfo.name}{" "}
 							<FontAwesomeIcon
 								icon={faExternalLinkAlt}
 								style={{ marginLeft: "4px", fontSize: "0.8rem" }}
@@ -195,9 +253,17 @@ export const ModelCredentialStep: FC = () => {
 					<Alert
 						severity="success"
 						icon={<FontAwesomeIcon icon={faCheck} />}
-						sx={{ mb: 2 }}
+						sx={{
+							mb: 2,
+							animation: "fadeIn 0.5s ease-out",
+							border: (theme) =>
+								`1px solid ${alpha(theme.palette.success.main, 0.5)}`,
+						}}
 					>
-						Credential saved successfully
+						<Box sx={{ display: "flex", alignItems: "center" }}>
+							<EmojiContainer>🎉</EmojiContainer> Credential saved successfully!
+							You're one step closer to AI magic!
+						</Box>
 					</Alert>
 				)}
 
@@ -208,8 +274,10 @@ export const ModelCredentialStep: FC = () => {
 					value={credentialValue}
 					onChange={handleCredentialValueChange}
 					error={!!error}
-					helperText={error || "Enter your API key for the selected provider"}
-					placeholder="Enter API key"
+					helperText={
+						error || "Enter your API key to connect with powerful AI models"
+					}
+					placeholder="Enter your API key here"
 					required
 					type="password"
 					onBlur={handleSaveCredential}
@@ -225,10 +293,44 @@ export const ModelCredentialStep: FC = () => {
 						}
 					}}
 					InputProps={{
+						startAdornment: (
+							<FontAwesomeIcon
+								icon={faKey}
+								style={{ marginRight: "10px", color: "#666" }}
+							/>
+						),
 						endAdornment: isSaving ? <CircularProgress size={20} /> : null,
 					}}
 					disabled={isSaving}
+					sx={{
+						"& .MuiOutlinedInput-root": {
+							"&.Mui-focused fieldset": {
+								borderColor: "primary.main",
+								borderWidth: 2,
+							},
+						},
+					}}
 				/>
+
+				<Box
+					sx={{
+						mt: 2,
+						display: "flex",
+						alignItems: "center",
+						p: 1.5,
+						borderRadius: 1,
+						background: (theme) => alpha(theme.palette.info.main, 0.05),
+					}}
+				>
+					<EmojiContainer>🔒</EmojiContainer>
+					<Typography
+						variant="body2"
+						sx={{ color: "text.secondary", fontStyle: "italic" }}
+					>
+						Your API keys are stored securely on your device and are never
+						shared with anyone.
+					</Typography>
+				</Box>
 			</FormContainer>
 		</SectionContainer>
 	);

@@ -1,7 +1,8 @@
 /**
  * Default Model Step Component
  *
- * Fifth step in the onboarding process that allows the user to select a default model.
+ * Fifth step in the onboarding process that allows the user to select a default model
+ * with an exciting and engaging interface.
  */
 
 import {
@@ -14,8 +15,14 @@ import {
 	Select,
 	type SelectChangeEvent,
 	Typography,
+	alpha,
 } from "@mui/material";
-import { faCheck } from "@fortawesome/free-solid-svg-icons";
+import {
+	faCheck,
+	faRobot,
+	faBrain,
+	faWandMagicSparkles,
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useConfig } from "@renderer/hooks/use-config";
 import { useCredentials } from "@renderer/hooks/use-credentials";
@@ -24,6 +31,7 @@ import { useUpdateConfig } from "@renderer/hooks/use-update-config";
 import type { FC } from "react";
 import { useEffect, useMemo, useState, useRef, useCallback } from "react";
 import {
+	EmojiContainer,
 	FormContainer,
 	SectionContainer,
 	SectionDescription,
@@ -210,17 +218,79 @@ export const DefaultModelStep: FC = () => {
 		<SectionContainer>
 			<SectionTitle>Choose Your Default Model</SectionTitle>
 			<SectionDescription>
-				Select a default model and provider that will be used for all agents.
-				You can change this setting for individual agents later.
+				<EmojiContainer>✨</EmojiContainer> Select your preferred AI model and
+				provider that will power all your agents. Don't worry, you can always
+				customize this for individual agents later!
 			</SectionDescription>
+
+			<Box
+				sx={{
+					p: 2,
+					mb: 3,
+					borderRadius: 2,
+					background: (theme) =>
+						`linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.05)} 0%, ${alpha(theme.palette.secondary.main, 0.05)} 100%)`,
+					border: (theme) =>
+						`1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
+					display: "flex",
+					alignItems: "center",
+				}}
+			>
+				<FontAwesomeIcon
+					icon={faBrain}
+					style={{
+						fontSize: "1.5rem",
+						marginRight: "12px",
+						color: "#7e57c2",
+					}}
+				/>
+				<Typography variant="body2">
+					<Box component="span" sx={{ fontWeight: 600 }}>
+						Choose wisely!
+					</Box>{" "}
+					Different models have different capabilities, strengths, and
+					specialties. Pick the one that best suits your needs.
+				</Typography>
+			</Box>
 
 			<FormContainer>
 				{isLoading ? (
-					<Typography>Loading available models...</Typography>
+					<Box sx={{ display: "flex", justifyContent: "center", p: 3 }}>
+						<Typography sx={{ display: "flex", alignItems: "center" }}>
+							<EmojiContainer
+								style={{
+									marginRight: "8px",
+									animation: "pulse 1.5s infinite ease-in-out",
+								}}
+							>
+								⏳
+							</EmojiContainer>
+							Loading available AI models...
+						</Typography>
+					</Box>
 				) : (
 					<>
-						<FormControl fullWidth variant="outlined">
-							<InputLabel id="provider-select-label">Model Provider</InputLabel>
+						<FormControl
+							fullWidth
+							variant="outlined"
+							sx={{
+								"& .MuiOutlinedInput-root": {
+									"&.Mui-focused fieldset": {
+										borderColor: "primary.main",
+										borderWidth: 2,
+									},
+								},
+							}}
+						>
+							<InputLabel id="provider-select-label">
+								<Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+									<FontAwesomeIcon
+										icon={faRobot}
+										style={{ fontSize: "0.9rem" }}
+									/>
+									Model Provider
+								</Box>
+							</InputLabel>
 							<Select
 								labelId="provider-select-label"
 								id="provider-select"
@@ -235,19 +305,41 @@ export const DefaultModelStep: FC = () => {
 								))}
 							</Select>
 							<FormHelperText>
-								Select a model provider from those you have credentials for
+								Choose your AI provider from the ones you've added credentials
+								for
 							</FormHelperText>
 						</FormControl>
 
 						{selectedProvider && (
-							<FormControl fullWidth variant="outlined">
-								<InputLabel id="model-select-label">Model</InputLabel>
+							<FormControl
+								fullWidth
+								variant="outlined"
+								sx={{
+									mt: 2,
+									"& .MuiOutlinedInput-root": {
+										"&.Mui-focused fieldset": {
+											borderColor: "primary.main",
+											borderWidth: 2,
+										},
+									},
+									animation: "fadeIn 0.5s ease-out",
+								}}
+							>
+								<InputLabel id="model-select-label">
+									<Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+										<FontAwesomeIcon
+											icon={faWandMagicSparkles}
+											style={{ fontSize: "0.9rem" }}
+										/>
+										AI Model
+									</Box>
+								</InputLabel>
 								<Select
 									labelId="model-select-label"
 									id="model-select"
 									value={selectedModel}
 									onChange={handleModelChange}
-									label="Model"
+									label="AI Model"
 								>
 									{availableModels.map((model) => (
 										<MenuItem key={model.id} value={model.id}>
@@ -256,7 +348,7 @@ export const DefaultModelStep: FC = () => {
 									))}
 								</Select>
 								<FormHelperText>
-									Select a model from the chosen provider
+									Select the specific AI model you want to use
 								</FormHelperText>
 							</FormControl>
 						)}
@@ -265,32 +357,78 @@ export const DefaultModelStep: FC = () => {
 							<Alert
 								severity="success"
 								icon={<FontAwesomeIcon icon={faCheck} />}
-								sx={{ mt: 2, mb: 2 }}
+								sx={{
+									mt: 3,
+									mb: 2,
+									animation: "fadeIn 0.5s ease-out",
+									border: (theme) =>
+										`1px solid ${alpha(theme.palette.success.main, 0.5)}`,
+								}}
 							>
-								Default model configuration saved successfully
+								<Box sx={{ display: "flex", alignItems: "center" }}>
+									<EmojiContainer>🎉</EmojiContainer> Default model
+									configuration saved successfully! Your AI is ready to go!
+								</Box>
 							</Alert>
 						)}
 
 						{selectedProvider && selectedModel && (
-							<Box sx={{ mt: 2 }}>
-								<Typography variant="body2">
-									You've selected{" "}
-									<strong>
+							<Box
+								sx={{
+									mt: 3,
+									p: 2.5,
+									borderRadius: 2,
+									background: (theme) =>
+										alpha(theme.palette.success.light, 0.1),
+									border: (theme) =>
+										`1px solid ${alpha(theme.palette.success.main, 0.2)}`,
+									animation: "fadeIn 0.5s ease-out",
+								}}
+							>
+								<Typography
+									variant="body2"
+									sx={{
+										display: "flex",
+										alignItems: "center",
+										fontWeight: 500,
+									}}
+								>
+									<EmojiContainer
+										style={{ marginRight: "8px", fontSize: "1.2rem" }}
+									>
+										🚀
+									</EmojiContainer>
+									Great choice! You've selected{" "}
+									<Box
+										component="span"
+										sx={{
+											fontWeight: 700,
+											color: "primary.main",
+											mx: 0.5,
+										}}
+									>
 										{
 											availableModels.find(
 												(model) => model.id === selectedModel,
 											)?.name
 										}
-									</strong>{" "}
+									</Box>{" "}
 									from{" "}
-									<strong>
+									<Box
+										component="span"
+										sx={{
+											fontWeight: 700,
+											color: "primary.main",
+											mx: 0.5,
+										}}
+									>
 										{
 											availableProviders.find(
 												(provider) => provider.id === selectedProvider,
 											)?.name
 										}
-									</strong>{" "}
-									as your default model.
+									</Box>{" "}
+									as your default AI model.
 								</Typography>
 							</Box>
 						)}

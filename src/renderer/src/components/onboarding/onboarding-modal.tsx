@@ -62,21 +62,21 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 	const stepTitle = useMemo(() => {
 		switch (currentStep) {
 			case OnboardingStep.WELCOME:
-				return "Welcome to Local Operator";
+				return "👋 Welcome to Local Operator";
 			case OnboardingStep.USER_PROFILE:
-				return "Set Up Your Profile";
+				return "👤 Set Up Your Profile";
 			case OnboardingStep.MODEL_CREDENTIAL:
-				return "Add Model Provider Credential";
+				return "🔑 Add Model Provider Credential";
 			case OnboardingStep.SEARCH_API:
-				return "Enable Web Search (Optional)";
+				return "🔍 Enable Web Search (Optional)";
 			case OnboardingStep.DEFAULT_MODEL:
-				return "Choose Your Default Model";
+				return "🤖 Choose Your Default Model";
 			case OnboardingStep.CREATE_AGENT:
-				return "Create Your First Agent";
+				return "✨ Create Your First Agent";
 			case OnboardingStep.CONGRATULATIONS:
-				return "Setup Complete!";
+				return "🎉 Setup Complete!";
 			default:
-				return "First-Time Setup";
+				return "🚀 First-Time Setup";
 		}
 	}, [currentStep]);
 
@@ -103,11 +103,12 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 						<CongratulationsIcon>
 							<FontAwesomeIcon icon={faCheck} />
 						</CongratulationsIcon>
-						<CongratulationsTitle>You're all set!</CongratulationsTitle>
+						<CongratulationsTitle>🎉 You're all set! 🚀</CongratulationsTitle>
 						<CongratulationsMessage>
-							Your Local Operator is now configured and ready to use. You can
-							start chatting with your agent or explore more features in the
-							settings.
+							Amazing! Your Local Operator is now configured and ready to use.
+							You can start chatting with your new AI assistant right away or
+							explore more exciting features in the settings. Get ready for an
+							incredible AI experience!
 						</CongratulationsMessage>
 					</CongratulationsContainer>
 				);
@@ -209,7 +210,9 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 	 * Get the text for the next button
 	 */
 	const nextButtonText =
-		currentStep === OnboardingStep.CONGRATULATIONS ? "Get Started" : "Next";
+		currentStep === OnboardingStep.CONGRATULATIONS
+			? "🚀 Get Started"
+			: "Next →";
 
 	/**
 	 * Render the step indicators

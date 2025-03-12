@@ -1,12 +1,26 @@
 /**
  * Create Agent Step Component
  *
- * Sixth step in the onboarding process that allows the user to create their first agent.
+ * Sixth step in the onboarding process that allows the user to create their first AI agent
+ * with an exciting and engaging interface.
  */
 
-import { faCheck } from "@fortawesome/free-solid-svg-icons";
+import {
+	faCheck,
+	faRobot,
+	faLightbulb,
+	faMagicWandSparkles,
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Alert, Button, CircularProgress, TextField } from "@mui/material";
+import {
+	Alert,
+	Box,
+	Button,
+	CircularProgress,
+	TextField,
+	Typography,
+	alpha,
+} from "@mui/material";
 import { useCreateAgent } from "@renderer/hooks/use-agent-mutations";
 import { useConfig } from "@renderer/hooks/use-config";
 import { useAgentSelectionStore } from "@renderer/store/agent-selection-store";
@@ -17,6 +31,7 @@ import {
 import type { FC } from "react";
 import { useState, useRef } from "react";
 import {
+	EmojiContainer,
 	FormContainer,
 	SectionContainer,
 	SectionDescription,
@@ -113,46 +128,127 @@ export const CreateAgentStep: FC = () => {
 
 	return (
 		<SectionContainer>
-			<SectionTitle>Create Your First Agent</SectionTitle>
+			<SectionTitle>Create Your First AI Assistant</SectionTitle>
 			<SectionDescription>
-				Create your first AI agent with a name and optional description. This
-				agent will use the default model and provider you selected.
+				<EmojiContainer>🤖</EmojiContainer> It's time to create your very first
+				AI assistant! Give it a name and personality that reflects what you want
+				it to help you with. This is where the magic begins!
 			</SectionDescription>
 
-			<FormContainer>
-				<TextField
-					label="Agent Name"
-					variant="outlined"
-					fullWidth
-					value={name}
-					onChange={handleNameChange}
-					error={!!nameError}
-					helperText={nameError || "Enter a name for your agent"}
-					placeholder="My First Agent"
-					required
-					disabled={isSaving}
+			<Box
+				sx={{
+					p: 2,
+					mb: 3,
+					borderRadius: 2,
+					background: (theme) =>
+						`linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.05)} 0%, ${alpha(theme.palette.secondary.main, 0.05)} 100%)`,
+					border: (theme) =>
+						`1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
+					display: "flex",
+					alignItems: "center",
+				}}
+			>
+				<FontAwesomeIcon
+					icon={faLightbulb}
+					style={{
+						fontSize: "1.5rem",
+						marginRight: "12px",
+						color: "#ff9800",
+					}}
 				/>
+				<Typography variant="body2">
+					<Box component="span" sx={{ fontWeight: 600 }}>
+						Pro tip!
+					</Box>{" "}
+					Give your agent a descriptive name and purpose. For example, "Research
+					Assistant" or "Creative Writing Partner" will help you remember what
+					it's designed to do.
+				</Typography>
+			</Box>
 
-				<TextField
-					label="Description (Optional)"
-					variant="outlined"
-					fullWidth
-					value={description}
-					onChange={handleDescriptionChange}
-					helperText="Describe what this agent does"
-					placeholder="A helpful assistant for..."
-					multiline
-					rows={2}
-					disabled={isSaving}
-				/>
+			<FormContainer>
+				<Box sx={{ position: "relative" }}>
+					<TextField
+						label="Agent Name"
+						variant="outlined"
+						fullWidth
+						value={name}
+						onChange={handleNameChange}
+						error={!!nameError}
+						helperText={nameError || "Give your AI assistant a memorable name"}
+						placeholder="My Awesome Assistant"
+						required
+						disabled={isSaving}
+						InputProps={{
+							startAdornment: (
+								<FontAwesomeIcon
+									icon={faRobot}
+									style={{ marginRight: "10px", color: "#666" }}
+								/>
+							),
+						}}
+						sx={{
+							"& .MuiOutlinedInput-root": {
+								"&.Mui-focused fieldset": {
+									borderColor: "primary.main",
+									borderWidth: 2,
+								},
+							},
+						}}
+					/>
+				</Box>
+
+				<Box sx={{ position: "relative" }}>
+					<TextField
+						label="Description (Optional)"
+						variant="outlined"
+						fullWidth
+						value={description}
+						onChange={handleDescriptionChange}
+						helperText="Describe what your AI assistant will help you with"
+						placeholder="A helpful assistant for research, writing, coding..."
+						multiline
+						rows={3}
+						disabled={isSaving}
+						InputProps={{
+							startAdornment: (
+								<FontAwesomeIcon
+									icon={faLightbulb}
+									style={{
+										marginRight: "10px",
+										marginTop: "16px",
+										color: "#666",
+									}}
+								/>
+							),
+						}}
+						sx={{
+							"& .MuiOutlinedInput-root": {
+								"&.Mui-focused fieldset": {
+									borderColor: "primary.main",
+									borderWidth: 2,
+								},
+							},
+						}}
+					/>
+				</Box>
 
 				{saveSuccess && (
 					<Alert
 						severity="success"
 						icon={<FontAwesomeIcon icon={faCheck} />}
-						sx={{ mt: 2, mb: 2 }}
+						sx={{
+							mt: 2,
+							mb: 2,
+							animation: "fadeIn 0.5s ease-out",
+							border: (theme) =>
+								`1px solid ${alpha(theme.palette.success.main, 0.5)}`,
+						}}
 					>
-						Agent created successfully
+						<Box sx={{ display: "flex", alignItems: "center" }}>
+							<EmojiContainer>🎉</EmojiContainer> Your AI assistant has been
+							created successfully! Get ready for amazing conversations!
+						</Box>
 					</Alert>
 				)}
 
@@ -162,10 +258,46 @@ export const CreateAgentStep: FC = () => {
 					fullWidth
 					onClick={handleCreateAgent}
 					disabled={!name.trim() || !!nameError || isSaving}
-					sx={{ mt: 2 }}
+					startIcon={<FontAwesomeIcon icon={faMagicWandSparkles} />}
+					sx={{
+						mt: 3,
+						py: 1.5,
+						fontSize: "1rem",
+						fontWeight: 600,
+						borderRadius: 2,
+						background: (theme) =>
+							`linear-gradient(90deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+						boxShadow: (theme) =>
+							`0 4px 15px ${alpha(theme.palette.primary.main, 0.4)}`,
+						"&:hover": {
+							background: (theme) =>
+								`linear-gradient(90deg, ${theme.palette.primary.dark}, ${theme.palette.secondary.dark})`,
+							boxShadow: (theme) =>
+								`0 6px 20px ${alpha(theme.palette.primary.main, 0.6)}`,
+							transform: "translateY(-2px)",
+						},
+						transition: "all 0.3s ease",
+					}}
 				>
-					{isSaving ? <CircularProgress size={24} /> : "Create Agent"}
+					{isSaving ? <CircularProgress size={24} /> : "Create My AI Assistant"}
 				</Button>
+
+				<Box
+					sx={{
+						mt: 2,
+						display: "flex",
+						alignItems: "center",
+						justifyContent: "center",
+					}}
+				>
+					<EmojiContainer>💫</EmojiContainer>
+					<Typography
+						variant="body2"
+						sx={{ color: "text.secondary", fontStyle: "italic" }}
+					>
+						This is the final step before your AI journey begins!
+					</Typography>
+				</Box>
 			</FormContainer>
 		</SectionContainer>
 	);

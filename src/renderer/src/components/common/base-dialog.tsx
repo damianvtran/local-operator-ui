@@ -85,6 +85,14 @@ export const StyledDialog = styled(Dialog)(({ theme }) => ({
 		"&:first-of-type": {
 			paddingTop: 16,
 		},
+		overflow: "auto",
+		"&::-webkit-scrollbar": {
+			width: "8px",
+		},
+		"&::-webkit-scrollbar-thumb": {
+			backgroundColor: "rgba(255, 255, 255, 0.1)",
+			borderRadius: "4px",
+		},
 	},
 	"& .MuiDialogActions-root": {
 		backgroundColor: theme.palette.background.default,
