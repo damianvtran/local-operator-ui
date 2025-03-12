@@ -20,6 +20,7 @@ import {
 import type { FC, SyntheticEvent } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
+import { useModels } from "@renderer/hooks/use-models";
 import {
 	type Model,
 	getHostingProviderById,
@@ -156,6 +157,25 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 
 		return models;
 	}, [hostingId]);
+
+	// Force refresh models when hosting provider changes
+	const { refreshModels } = useModels();
+	const previousHostingIdRef = useRef<string | null>(null);
+
+	useEffect(() => {
+		// Only refresh if hostingId has changed and is not null
+		if (hostingId && previousHostingIdRef.current !== hostingId) {
+			previousHostingIdRef.current = hostingId;
+			// Use a timeout to prevent immediate re-renders
+			const timeoutId = setTimeout(() => {
+				refreshModels();
+			}, 0);
+
+			return () => clearTimeout(timeoutId);
+		}
+
+		return undefined;
+	}, [hostingId, refreshModels]);
 
 	// Convert models to autocomplete options
 	const modelOptions: ModelOption[] = useMemo(() => {

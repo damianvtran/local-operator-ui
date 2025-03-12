@@ -385,51 +385,56 @@ export const DefaultModelStep: FC = () => {
 									animation: "fadeIn 0.5s ease-out",
 								}}
 							>
-								<Typography
-									variant="body2"
-									sx={{
-										display: "flex",
-										alignItems: "center",
-										fontWeight: 500,
-									}}
-								>
+								<Box sx={{ display: "flex", alignItems: "flex-start" }}>
 									<EmojiContainer
-										style={{ marginRight: "8px", fontSize: "1.2rem" }}
+										style={{
+											marginRight: "8px",
+											fontSize: "1.2rem",
+											flexShrink: 0,
+										}}
 									>
 										🚀
 									</EmojiContainer>
-									Great choice! You've selected{" "}
-									<Box
-										component="span"
+									<Typography
+										variant="body2"
 										sx={{
-											fontWeight: 700,
-											color: "primary.main",
-											mx: 0.5,
+											fontWeight: 500,
+											whiteSpace: "normal",
 										}}
 									>
-										{
-											availableModels.find(
-												(model) => model.id === selectedModel,
-											)?.name
-										}
-									</Box>{" "}
-									from{" "}
-									<Box
-										component="span"
-										sx={{
-											fontWeight: 700,
-											color: "primary.main",
-											mx: 0.5,
-										}}
-									>
-										{
-											availableProviders.find(
-												(provider) => provider.id === selectedProvider,
-											)?.name
-										}
-									</Box>{" "}
-									as your default AI model.
-								</Typography>
+										Great choice! You've selected{" "}
+										<Box
+											component="span"
+											sx={{
+												fontWeight: 700,
+												color: "primary.main",
+												display: "inline",
+											}}
+										>
+											{
+												availableModels.find(
+													(model) => model.id === selectedModel,
+												)?.name
+											}
+										</Box>{" "}
+										from{" "}
+										<Box
+											component="span"
+											sx={{
+												fontWeight: 700,
+												color: "primary.main",
+												display: "inline",
+											}}
+										>
+											{
+												availableProviders.find(
+													(provider) => provider.id === selectedProvider,
+												)?.name
+											}
+										</Box>{" "}
+										as your default AI model.
+									</Typography>
+								</Box>
 							</Box>
 						)}
 					</>
