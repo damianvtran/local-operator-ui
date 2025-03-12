@@ -57,13 +57,21 @@ jobs:
       - name: Install dependencies
         run: yarn install --frozen-lockfile
       
+      - name: Setup code signing
+        run: |
+          echo "${{ secrets.CSC_CONTENT }}" | base64 --decode > certificate.p12
+          export CSC_LINK="./certificate.p12"
+      
       - name: Build macOS app
         run: yarn dist:mac
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_CONTENT: ${{ secrets.CSC_CONTENT }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          NOTARIZE: true
       
       - name: Upload macOS artifacts
         uses: actions/upload-artifact@v4
@@ -92,12 +100,18 @@ jobs:
       - name: Install dependencies
         run: yarn install --frozen-lockfile
       
+      - name: Setup code signing (Windows)
+        shell: bash
+        run: |
+          echo "${{ secrets.CSC_CONTENT }}" | base64 -d > certificate.p12
+          echo "CSC_LINK=./certificate.p12" >> $GITHUB_ENV
+      
       - name: Build Windows app
         run: yarn dist:win
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CSC_LINK: ${{ secrets.WINDOWS_CERT_BASE64 }}
-          CSC_KEY_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}
+          CSC_CONTENT: ${{ secrets.CSC_CONTENT }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
       
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4

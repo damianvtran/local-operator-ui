@@ -55,44 +55,33 @@ yarn dist:all
 
 ## Code Signing
 
-### macOS
+Code signing and notarization are essential for distributing desktop applications. For detailed information about the code signing and notarization process, see the [CODE_SIGNING.md](./docs/CODE_SIGNING.md) document.
 
-Code signing and notarization are required for macOS applications to run without security warnings.
+### Environment Variables
 
-#### Prerequisites
+The following environment variables are used for code signing across all platforms:
 
-1. An Apple Developer account (<https://developer.apple.com/programs/>)
-2. A Developer ID certificate
-3. App-specific password for your Apple ID
+- `CSC_CONTENT`: Base64-encoded signing certificate (p12 file)
+- `CSC_KEY_PASSWORD`: Password for the signing certificate
 
-#### Environment Variables
-
-Set the following environment variables for macOS builds:
+For macOS notarization, additional variables are required:
 
 - `APPLE_ID`: Your Apple ID email
 - `APPLE_ID_PASSWORD`: App-specific password for your Apple ID
 - `APPLE_TEAM_ID`: Your Apple Developer Team ID
+- `NOTARIZE`: Set to "true" to enable notarization (optional)
 
-You can set these variables in your CI/CD pipeline or locally before building.
+You can set these variables in your CI/CD pipeline or locally in a `.env.build` file before building.
 
-### Windows
+### Local Development Setup
 
-Windows code signing requires a valid code signing certificate.
+For local development and testing with code signing:
 
-#### Prerequisites
+1. Create a `.env.build` file in the project root (see `.env.build.example` for reference)
+2. Add your code signing credentials to this file
+3. Run the build command for your platform (e.g., `yarn dist:mac`)
 
-1. A code signing certificate (e.g., from DigiCert, Sectigo)
-
-#### Environment Variables
-
-Set the following environment variables for Windows builds:
-
-- `CSC_LINK`: Path to your certificate file or Base64-encoded certificate
-- `CSC_KEY_PASSWORD`: Password for your certificate
-
-### Linux
-
-Linux builds typically don't require code signing, but you can configure signing if needed.
+The build process will automatically use the credentials from your `.env.build` file.
 
 ## Continuous Integration
 

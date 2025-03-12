@@ -81,7 +81,17 @@ Pre-built desktop applications are available for macOS, Windows, and Linux. Visi
 
 ### Building from Source
 
-If you want to build the application from source, see the [BUILD.md](./BUILD.md) file for detailed instructions.
+If you want to build the application from source, see the [BUILD.md](./docs/BUILD.md) file for detailed instructions.
+
+### Code Signing and Notarization
+
+All desktop applications are code signed and notarized to ensure security and trust:
+
+- **macOS**: Applications are signed with an Apple Developer ID and notarized with Apple's notarization service
+- **Windows**: Applications are signed with a trusted code signing certificate
+- **Linux**: While code signing is less common on Linux, packages are built with integrity checks
+
+For detailed information about the code signing and notarization process, see the [CODE_SIGNING.md](./docs/CODE_SIGNING.md) document.
 
 ## ✨ Features
 
