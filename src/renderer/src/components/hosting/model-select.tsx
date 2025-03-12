@@ -17,10 +17,10 @@ import {
 	createFilterOptions,
 	styled,
 } from "@mui/material";
+import { useModels } from "@renderer/hooks/use-models";
 import type { FC, SyntheticEvent } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
-import { useModels } from "@renderer/hooks/use-models";
 import {
 	type Model,
 	getHostingProviderById,
