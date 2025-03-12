@@ -8,9 +8,12 @@
  * - APPLE_TEAM_ID: Your Apple Developer Team ID
  *
  * These variables are loaded from .env.build file in the root of the project.
+ *
+ * Note: This script uses @electron/notarize which uses notarytool instead of the
+ * deprecated altool for notarization.
  */
 
-const { notarize } = require("electron-notarize");
+const { notarize } = require("@electron/notarize");
 const path = require("node:path");
 const fs = require("node:fs");
 const dotenv = require("dotenv");
@@ -66,8 +69,9 @@ module.exports = async (params) => {
 	}
 
 	try {
-		// Notarize the app
+		// Notarize the app using notarytool (via @electron/notarize)
 		await notarize({
+			tool: "notarytool",
 			appBundleId: params.packager.appInfo.appId,
 			appPath: appPath,
 			appleId: process.env.APPLE_ID,

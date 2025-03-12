@@ -41,7 +41,7 @@ The following environment variables are used for code signing:
 
 3. **Notarization (macOS only)**:
    - After signing, the `scripts/notarize.js` script is executed (configured in package.json)
-   - This script submits the app to Apple for notarization
+   - This script submits the app to Apple for notarization using `notarytool` (via `@electron/notarize`)
    - The notarization process requires `APPLE_ID`, `APPLE_ID_PASSWORD`, and `APPLE_TEAM_ID`
 
 ## Setting Up for Local Development
@@ -102,8 +102,13 @@ Set up the following secrets in your GitHub repository:
    - Verify your Apple credentials are correct
    - Ensure the app has the proper entitlements (see `build/entitlements.mac.plist`)
    - Check the notarization logs for specific errors
+   - For development builds, the app uses an ad-hoc signature (`"identity": null` in package.json) and skips signature verification (`skipVerify: true` in notarize.js)
 
-3. **Windows signing fails**:
+3. **Code signing errors**:
+   - If you see "code has no resources but signature indicates they must be present", ensure you're using the correct signing identity or use ad-hoc signing for development
+   - For production builds, ensure you have a valid Developer ID certificate
+
+4. **Windows signing fails**:
    - Ensure your certificate is valid for code signing
    - Verify the certificate password is correct
 
