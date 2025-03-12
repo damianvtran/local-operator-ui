@@ -51,7 +51,15 @@
 		"format": "npx @biomejs/biome format src",
 		"format:fix": "npx @biomejs/biome format --write src",
 		"prepublishOnly": "npm run build",
-		"check-types": "tsc --noEmit"
+		"check-types": "tsc --noEmit",
+		"pack": "electron-builder --dir",
+		"dist": "electron-builder",
+		"dist:mac": "electron-builder --mac",
+		"dist:win": "electron-builder --win",
+		"dist:linux": "electron-builder --linux",
+		"dist:all": "electron-builder -mwl",
+		"release": "electron-builder --publish always",
+		"generate-icons": "node scripts/generate-icons.js"
 	},
 	"dependencies": {
 		"@electron-toolkit/utils": "^4.0.0",
@@ -89,10 +97,13 @@
 		"@types/react": "18.3.18",
 		"@types/react-dom": "18.3.5",
 		"@vitejs/plugin-react": "^4.3.4",
+		"electron-builder": "^24.13.3",
+		"electron-notarize": "^1.2.2",
 		"eslint": "^9.17.0",
 		"eslint-plugin-react-hooks": "^5.0.0",
 		"eslint-plugin-react-refresh": "^0.4.16",
 		"jest": "^29.7.0",
+		"sharp": "^0.33.2",
 		"tsc": "^2.0.4",
 		"typescript": "^5.8.2",
 		"typescript-eslint": "^8.18.2",
@@ -109,16 +120,78 @@
 	"build": {
 		"appId": "com.local-operator",
 		"productName": "Local Operator",
+		"copyright": "Copyright © 2024 Damian Tran",
+		"asar": true,
+		"files": ["out/**/*", "bin/**/*", "LICENSE", "README.md"],
+		"directories": {
+			"output": "dist",
+			"buildResources": "resources"
+		},
+		"afterSign": "scripts/notarize.js",
 		"mac": {
 			"icon": "resources/icon-180x180.png",
-			"category": "public.app-category.developer-tools"
+			"category": "public.app-category.developer-tools",
+			"hardenedRuntime": true,
+			"gatekeeperAssess": false,
+			"entitlements": "build/entitlements.mac.plist",
+			"entitlementsInherit": "build/entitlements.mac.plist",
+			"target": ["dmg", "zip"],
+			"artifactName": "${productName}-${version}-${arch}.${ext}"
+		},
+		"dmg": {
+			"contents": [
+				{
+					"x": 130,
+					"y": 220
+				},
+				{
+					"x": 410,
+					"y": 220,
+					"type": "link",
+					"path": "/Applications"
+				}
+			],
+			"window": {
+				"width": 540,
+				"height": 380
+			}
 		},
 		"win": {
-			"icon": "resources/icon-180x180.png"
+			"icon": "resources/icon-180x180.png",
+			"target": [
+				{
+					"target": "nsis",
+					"arch": ["x64", "arm64"]
+				},
+				{
+					"target": "portable",
+					"arch": ["x64", "arm64"]
+				}
+			],
+			"artifactName": "${productName}-${version}-${arch}.${ext}"
+		},
+		"nsis": {
+			"oneClick": false,
+			"perMachine": false,
+			"allowToChangeInstallationDirectory": true,
+			"deleteAppDataOnUninstall": true
 		},
 		"linux": {
 			"icon": "resources/icon-180x180.png",
-			"category": "Development"
+			"category": "Development",
+			"target": ["deb", "AppImage", "rpm"],
+			"artifactName": "${productName}-${version}-${arch}.${ext}",
+			"desktop": {
+				"Name": "Local Operator",
+				"Comment": "AI Agent Assistants On Your Device",
+				"Categories": "Development;Utility"
+			}
+		},
+		"publish": {
+			"provider": "github",
+			"owner": "damianvtran",
+			"repo": "local-operator-ui",
+			"releaseType": "release"
 		}
 	}
 }

@@ -71,6 +71,18 @@ local-operator-ui
 
 After installation, the application will automatically connect to the Local Operator backend API at `http://localhost:1111` by default.
 
+### Desktop Applications
+
+Pre-built desktop applications are available for macOS, Windows, and Linux. Visit the [Releases](https://github.com/damianvtran/local-operator-ui/releases) page to download the latest version for your platform.
+
+- **macOS**: Download the `.dmg` file and drag the application to your Applications folder.
+- **Windows**: Download the `.exe` installer and follow the installation prompts.
+- **Linux**: Download the appropriate package (`.deb`, `.rpm`, or `.AppImage`) for your distribution.
+
+### Building from Source
+
+If you want to build the application from source, see the [BUILD.md](./BUILD.md) file for detailed instructions.
+
 ## ✨ Features
 
 The Local Operator UI provides a comprehensive interface for interacting with AI agents:
