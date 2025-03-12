@@ -4,10 +4,12 @@
  * Fourth step in the onboarding process that allows the user to optionally add a search API key.
  */
 
-import { faExternalLinkAlt } from "@fortawesome/free-solid-svg-icons";
+import { faCheck, faExternalLinkAlt } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
+	Alert,
 	Box,
+	CircularProgress,
 	FormControl,
 	FormHelperText,
 	InputLabel,
@@ -22,7 +24,7 @@ import { CREDENTIAL_MANIFEST } from "@renderer/components/settings/credential-ma
 import { useCredentials } from "@renderer/hooks/use-credentials";
 import { useUpdateCredential } from "@renderer/hooks/use-update-credential";
 import type { FC } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import {
 	FormContainer,
 	SectionContainer,
@@ -45,6 +47,11 @@ export const SearchApiStep: FC = () => {
 	);
 	const [credentialValue, setCredentialValue] = useState("");
 	const [error, setError] = useState("");
+	const [isSaving, setIsSaving] = useState(false);
+	const [saveSuccess, setSaveSuccess] = useState(false);
+
+	// Reference to store the timeout ID for clearing
+	const successTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
 	// Get existing credentials and update mutation
 	const { data: credentialsData } = useCredentials();
@@ -52,18 +59,20 @@ export const SearchApiStep: FC = () => {
 
 	// Set the credential value if it already exists
 	useEffect(() => {
-		if (credentialsData?.keys.includes(selectedCredential)) {
+		// Only show the "already set" error if we haven't just saved successfully
+		if (credentialsData?.keys.includes(selectedCredential) && !saveSuccess) {
 			setError("This credential is already set");
 		} else {
 			setError("");
 		}
-	}, [selectedCredential, credentialsData]);
+	}, [selectedCredential, credentialsData, saveSuccess]);
 
 	// Handle credential selection change
 	const handleCredentialChange = (event: SelectChangeEvent) => {
 		setSelectedCredential(event.target.value);
 		setCredentialValue("");
 		setError("");
+		setSaveSuccess(false);
 	};
 
 	// Handle credential value change
@@ -74,34 +83,52 @@ export const SearchApiStep: FC = () => {
 		if (event.target.value.trim()) {
 			setError("");
 		}
+		setSaveSuccess(false);
 	};
 
-	// Save the credential when the value changes and is valid
-	useEffect(() => {
-		const saveCredential = async () => {
-			if (
-				selectedCredential &&
-				credentialValue.trim() &&
-				!credentialsData?.keys.includes(selectedCredential)
-			) {
-				try {
-					await updateCredentialMutation.mutateAsync({
-						key: selectedCredential,
-						value: credentialValue.trim(),
-					});
-				} catch (err) {
-					console.error("Failed to save credential:", err);
+	// Save the credential when the input field loses focus (blur event)
+	const handleSaveCredential = async () => {
+		if (
+			selectedCredential &&
+			credentialValue.trim() &&
+			!credentialsData?.keys.includes(selectedCredential) &&
+			!isSaving
+		) {
+			try {
+				setIsSaving(true);
+				setSaveSuccess(false);
+				await updateCredentialMutation.mutateAsync({
+					key: selectedCredential,
+					value: credentialValue.trim(),
+				});
+				setSaveSuccess(true);
+
+				// Clear any existing timeout
+				if (successTimeoutRef.current) {
+					clearTimeout(successTimeoutRef.current);
 				}
+
+				// Set a timeout to hide the success message after 3 seconds
+				successTimeoutRef.current = setTimeout(() => {
+					setSaveSuccess(false);
+				}, 3000);
+			} catch (err) {
+				console.error("Failed to save credential:", err);
+				setSaveSuccess(false);
+			} finally {
+				setIsSaving(false);
+			}
+		}
+	};
+
+	// Clean up the timeout when the component unmounts
+	useEffect(() => {
+		return () => {
+			if (successTimeoutRef.current) {
+				clearTimeout(successTimeoutRef.current);
 			}
 		};
-
-		saveCredential();
-	}, [
-		selectedCredential,
-		credentialValue,
-		credentialsData,
-		updateCredentialMutation,
-	]);
+	}, []);
 
 	// Get the selected credential info
 	const selectedCredentialInfo = CREDENTIAL_MANIFEST.find(
@@ -159,6 +186,16 @@ export const SearchApiStep: FC = () => {
 					</Box>
 				)}
 
+				{saveSuccess && (
+					<Alert
+						severity="success"
+						icon={<FontAwesomeIcon icon={faCheck} />}
+						sx={{ mb: 2 }}
+					>
+						Search API credential saved successfully
+					</Alert>
+				)}
+
 				<TextField
 					label="API Key"
 					variant="outlined"
@@ -171,6 +208,22 @@ export const SearchApiStep: FC = () => {
 					}
 					placeholder="Enter API key"
 					type="password"
+					onBlur={handleSaveCredential}
+					onKeyDown={(e) => {
+						if (
+							e.key === "Enter" &&
+							selectedCredential &&
+							credentialValue.trim() &&
+							!error &&
+							!isSaving
+						) {
+							handleSaveCredential();
+						}
+					}}
+					InputProps={{
+						endAdornment: isSaving ? <CircularProgress size={20} /> : null,
+					}}
+					disabled={isSaving}
 				/>
 
 				<Typography variant="body2" sx={{ mt: 2, fontStyle: "italic" }}>
