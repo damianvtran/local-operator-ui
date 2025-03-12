@@ -10,8 +10,10 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { ChatPage } from "@components/chat/chat-page";
 import { AgentsPage } from "@renderer/components/agents/agents-page";
 import { ModelsInitializer } from "@renderer/components/common/models-initializer";
+import { OnboardingModal } from "@renderer/components/onboarding";
 import { SidebarNavigation } from "@renderer/components/navigation/sidebar-navigation";
 import { SettingsPage } from "@renderer/components/settings/settings-page";
+import { useCheckFirstTimeUser } from "@renderer/hooks/use-check-first-time-user";
 
 library.add(fas, fab);
 
@@ -34,12 +36,18 @@ const MainContent = styled(Box)(() => ({
  * Handles routing and layout for the entire application
  */
 const App: FC = () => {
+	// Check if this is a first-time user
+	const { isOnboardingActive } = useCheckFirstTimeUser();
+
 	return (
 		<AppContainer>
 			<CssBaseline />
 
 			{/* Initialize models store */}
 			<ModelsInitializer />
+
+			{/* First-time setup onboarding */}
+			<OnboardingModal open={isOnboardingActive} />
 
 			{/* Sidebar Navigation */}
 			<SidebarNavigation />
