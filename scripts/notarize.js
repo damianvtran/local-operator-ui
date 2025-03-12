@@ -7,18 +7,33 @@
  * - APPLE_ID_PASSWORD: App-specific password for your Apple ID
  * - APPLE_TEAM_ID: Your Apple Developer Team ID
  *
- * You can set these environment variables in your CI/CD pipeline or locally.
- * For local development, you can create a .env file in the root of the project.
+ * These variables are loaded from .env.build file in the root of the project.
  */
 
 const { notarize } = require("electron-notarize");
 const path = require("node:path");
 const fs = require("node:fs");
+const dotenv = require("dotenv");
+
+// Load environment variables from .env.build file
+const envPath = path.resolve(process.cwd(), ".env.build");
+if (fs.existsSync(envPath)) {
+	const envConfig = dotenv.parse(fs.readFileSync(envPath));
+	for (const key in envConfig) {
+		process.env[key] = envConfig[key];
+	}
+}
 
 module.exports = async (params) => {
 	// Only notarize the app on macOS
 	if (process.platform !== "darwin") {
 		console.log("Skipping notarization: not macOS");
+		return;
+	}
+
+	// Skip notarization if NOTARIZE is not set to true
+	if (process.env.NOTARIZE !== "true") {
+		console.log("Skipping notarization: NOTARIZE not set to true");
 		return;
 	}
 
@@ -32,7 +47,7 @@ module.exports = async (params) => {
 			"Skipping notarization: required environment variables missing",
 		);
 		console.log(
-			"To enable notarization, set APPLE_ID, APPLE_ID_PASSWORD, and APPLE_TEAM_ID environment variables",
+			"To enable notarization, set APPLE_ID, APPLE_ID_PASSWORD, and APPLE_TEAM_ID in .env.build file",
 		);
 		return;
 	}

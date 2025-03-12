@@ -119,9 +119,9 @@
 		"node": ">=22.13.1"
 	},
 	"build": {
-		"appId": "com.local-operator",
+		"appId": "com.local-operator.app",
 		"productName": "Local Operator",
-		"copyright": "Copyright © 2024 Damian Tran",
+		"copyright": "Copyright © 2025 Damian Tran",
 		"asar": true,
 		"files": ["out/**/*", "bin/**/*", "LICENSE", "README.md"],
 		"directories": {
@@ -130,6 +130,7 @@
 		},
 		"afterSign": "scripts/notarize.js",
 		"mac": {
+			"notarize": false,
 			"icon": "resources/icon-512x512.png",
 			"category": "public.app-category.developer-tools",
 			"hardenedRuntime": true,
