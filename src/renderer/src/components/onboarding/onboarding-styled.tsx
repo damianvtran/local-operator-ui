@@ -229,7 +229,7 @@ export const SectionDescription = styled(Typography)(({ theme }) => ({
 /**
  * Form container
  */
-export const FormContainer = styled(Box)(({ theme }) => ({
+export const FormContainer = styled(Box)(() => ({
 	display: "flex",
 	flexDirection: "column",
 	gap: 24,
@@ -237,7 +237,6 @@ export const FormContainer = styled(Box)(({ theme }) => ({
 		transition: "transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out",
 		"&:focus-within": {
 			transform: "translateY(-2px)",
-			boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.1)}`,
 		},
 	},
 }));
