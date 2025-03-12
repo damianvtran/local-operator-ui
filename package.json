@@ -1,6 +1,7 @@
 {
 	"name": "local-operator-ui",
 	"version": "0.1.1",
+	"productName": "Local Operator",
 	"description": "User interface for the Local Operator agent environment",
 	"main": "./out/main/index.js",
 	"bin": {
@@ -104,5 +105,20 @@
 	},
 	"engines": {
 		"node": ">=22.13.1"
+	},
+	"build": {
+		"appId": "com.local-operator",
+		"productName": "Local Operator",
+		"mac": {
+			"icon": "resources/icon-180x180.png",
+			"category": "public.app-category.developer-tools"
+		},
+		"win": {
+			"icon": "resources/icon-180x180.png"
+		},
+		"linux": {
+			"icon": "resources/icon-180x180.png",
+			"category": "Development"
+		}
 	}
 }
