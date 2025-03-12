@@ -19,6 +19,7 @@ import {
 } from "@renderer/store/onboarding-store";
 import type { FC, ReactNode } from "react";
 import { useCallback, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import {
 	CongratulationsContainer,
 	CongratulationsIcon,
@@ -53,6 +54,7 @@ type OnboardingModalProps = {
 export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 	const { currentStep, setCurrentStep, completeOnboarding } =
 		useOnboardingStore();
+	const navigate = useNavigate();
 
 	/**
 	 * Get the title for the current step
@@ -137,13 +139,25 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 			case OnboardingStep.CREATE_AGENT:
 				setCurrentStep(OnboardingStep.CONGRATULATIONS);
 				break;
-			case OnboardingStep.CONGRATULATIONS:
+			case OnboardingStep.CONGRATULATIONS: {
 				completeOnboarding();
+				// Navigate to the chat view with the newly created agent after completing onboarding
+				const createdAgentId = sessionStorage.getItem(
+					"onboarding_created_agent_id",
+				);
+				if (createdAgentId) {
+					navigate(`/chat/${createdAgentId}`);
+					// Clear the stored agent ID
+					sessionStorage.removeItem("onboarding_created_agent_id");
+				} else {
+					navigate("/chat");
+				}
 				break;
+			}
 			default:
 				break;
 		}
-	}, [currentStep, setCurrentStep, completeOnboarding]);
+	}, [currentStep, setCurrentStep, completeOnboarding, navigate]);
 
 	/**
 	 * Handle moving to the previous step

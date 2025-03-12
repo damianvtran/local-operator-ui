@@ -9,6 +9,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Alert, Button, CircularProgress, TextField } from "@mui/material";
 import { useCreateAgent } from "@renderer/hooks/use-agent-mutations";
 import { useConfig } from "@renderer/hooks/use-config";
+import { useAgentSelectionStore } from "@renderer/store/agent-selection-store";
 import {
 	OnboardingStep,
 	useOnboardingStore,
@@ -42,6 +43,7 @@ export const CreateAgentStep: FC = () => {
 
 	// Create agent mutation
 	const createAgentMutation = useCreateAgent();
+	const { setLastChatAgentId } = useAgentSelectionStore();
 
 	// Handle name change
 	const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -73,12 +75,20 @@ export const CreateAgentStep: FC = () => {
 				setIsSaving(true);
 				setSaveSuccess(false);
 
-				await createAgentMutation.mutateAsync({
+				const result = await createAgentMutation.mutateAsync({
 					name: name.trim(),
 					description: description.trim() || undefined,
 					hosting: configData.values.hosting,
 					model: configData.values.model_name,
 				});
+
+				// Set the newly created agent as the selected agent
+				if (result?.id) {
+					setLastChatAgentId(result.id);
+
+					// Store the agent ID to navigate to after onboarding completes
+					sessionStorage.setItem("onboarding_created_agent_id", result.id);
+				}
 
 				setSaveSuccess(true);
 
