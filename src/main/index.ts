@@ -1,10 +1,12 @@
 import { join } from "node:path";
 import { electronApp, is, optimizer } from "@electron-toolkit/utils";
-import { BrowserWindow, app, ipcMain, shell } from "electron";
-import icon from "../../resources/icon-180x180.png?asset";
+import { BrowserWindow, app, ipcMain, shell, nativeImage } from "electron";
+import icon from "../../resources/icon-180x180-dark.png?asset";
 
 // Set application name
-app.name = "Local Operator";
+app.setName("Local Operator");
+const image = nativeImage.createFromPath(icon);
+app.dock.setIcon(image);
 
 function createWindow(): void {
 	// Create the browser window.
