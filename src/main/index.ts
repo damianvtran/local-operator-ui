@@ -2,6 +2,7 @@ import { join } from "node:path";
 import { electronApp, is, optimizer } from "@electron-toolkit/utils";
 import { BrowserWindow, app, ipcMain, shell, nativeImage } from "electron";
 import icon from "../../resources/icon-180x180-dark.png?asset";
+import { BackendServiceManager, BackendInstaller } from "./backend";
 
 // Set application name
 app.setName("Local Operator");
@@ -41,10 +42,14 @@ function createWindow(): void {
 	}
 }
 
+// Initialize backend service manager and installer
+const backendService = new BackendServiceManager();
+const backendInstaller = new BackendInstaller();
+
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
 	// Set app user model id for windows
 	electronApp.setAppUserModelId("com.local-operator");
 
@@ -72,7 +77,36 @@ app.whenReady().then(() => {
 		}
 	});
 
-	// IPC test
+	// Check if backend manager is disabled via environment variable
+	const isBackendManagerDisabled =
+		process.env.VITE_DISABLE_BACKEND_MANAGER === "true";
+
+	if (!isBackendManagerDisabled) {
+		// Check if an external backend is already running
+		const hasExternalBackend = await backendService.checkExistingBackend();
+
+		if (!hasExternalBackend) {
+			// Check if local-operator command exists globally
+			const hasGlobalCommand = await backendService.checkLocalOperatorExists();
+
+			// If local-operator doesn't exist globally and our backend is not installed
+			if (!hasGlobalCommand && !(await backendInstaller.isInstalled())) {
+				// Install backend
+				const installSuccess = await backendInstaller.install();
+				// If installation was cancelled, quit the app
+				if (!installSuccess) {
+					console.log("Backend installation cancelled by user, quitting app");
+					app.quit();
+					return; // Exit early to prevent window creation
+				}
+			}
+
+			// Start our backend service
+			await backendService.start();
+		}
+	}
+
+	// Create the main window
 	createWindow();
 
 	app.on("activate", () => {
@@ -89,6 +123,30 @@ app.on("window-all-closed", () => {
 	if (process.platform !== "darwin") {
 		app.quit();
 	}
+});
+
+// Stop backend service when app is quitting
+app.on("will-quit", async (event) => {
+	// Check if backend manager is disabled
+	const isBackendManagerDisabled =
+		process.env.VITE_DISABLE_BACKEND_MANAGER === "true";
+
+	if (!isBackendManagerDisabled) {
+		event.preventDefault();
+		try {
+			await backendService.stop();
+		} catch (error) {
+			console.error("Error stopping backend service:", error);
+		} finally {
+			// Ensure app quits even if there was an error stopping the service
+			setTimeout(() => app.exit(), 100);
+		}
+	}
+});
+
+// Handle before-quit event to ensure proper cleanup
+app.on("before-quit", () => {
+	console.log("App is about to quit");
 });
 
 // In this file you can include the rest of your app"s specific main process

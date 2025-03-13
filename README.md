@@ -44,7 +44,8 @@ The Local Operator UI is a user interface for managing and interacting with the 
 Before you begin, ensure you have the following installed:
 
 - **Node.js**: Version 22.13.1 or higher. It's recommended to use [nvm](https://github.com/nvm-sh/nvm) for managing Node.js versions.
-- **Local Operator Backend**: The UI connects to the Local Operator backend API. See the [Local Operator GitHub repository](https://github.com/damianvtran/local-operator) for installation instructions.  Install it globally or in a virtual environment with `pip install local-operator` and then boot it up on `localhost:1111` with `local-operator serve`.
+
+The Local Operator backend is now bundled with the application and will be installed automatically when you first run the application. If you prefer to use an existing Local Operator backend installation, the application will detect it and use it instead.
 
 ### NPM Installation
 
@@ -124,6 +125,13 @@ The Local Operator UI provides a comprehensive interface for interacting with AI
 - Real-time status updates for long-running operations
 - Error handling and retry mechanisms
 
+### Bundled Backend
+
+- The Local Operator backend is now bundled with the application
+- Automatic installation of the backend when first running the application
+- Automatic detection and use of existing backend installations
+- Cross-platform support for Windows, macOS, and Linux
+
 ## 🤝 Contributing
 
 Contributions are welcome! Please see our [Contributing Guide](./CONTRIBUTING.md) for details on how to get started with development, code style guidelines, and our contribution process.
@@ -134,9 +142,17 @@ Contributions are welcome! Please see our [Contributing Guide](./CONTRIBUTING.md
 
 #### Application fails to connect to the backend
 
-- Ensure the Local Operator backend is running and hosting on `http://localhost:1111`
-- Check that the `VITE_LOCAL_OPERATOR_API_URL` environment variable has not been set to a different URL.  This value is set automatically to `http://localhost:1111` if a custom `.env` doesn't specify otherwise.
+- The application will automatically install and start the Local Operator backend if it's not already running
+- If you have an existing backend running on `http://localhost:1111`, the application will use that instead
+- Check that the `VITE_LOCAL_OPERATOR_API_URL` environment variable has not been set to a different URL. This value is set automatically to `http://localhost:1111` if a custom `.env` doesn't specify otherwise
+- If you want to disable the automatic backend management, set the `VITE_DISABLE_BACKEND_MANAGER` environment variable to `true`
 - Verify network connectivity between the UI and the backend
+
+#### Backend installation fails
+
+- Check the application logs for error messages
+- Ensure you have Python 3.12 installed or that pyenv can be installed on your system
+- Try installing the backend manually with `pip install local-operator` and then start it with `local-operator serve`
 
 #### Development server crashes
 
