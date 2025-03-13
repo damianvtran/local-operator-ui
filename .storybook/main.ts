@@ -1,5 +1,5 @@
 import type { StorybookConfig } from "@storybook/react-vite";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 
 /**
  * This function is used to resolve the absolute path of a package.
@@ -32,6 +32,21 @@ const config: StorybookConfig = {
 		config.esbuild = {
 			...config.esbuild,
 			jsx: "automatic",
+		};
+
+		// Add path aliases to match electron.vite.config.js and tsconfig.app.json
+		config.resolve = {
+			...config.resolve,
+			alias: {
+				...config.resolve?.alias,
+				"@renderer": resolve("src/renderer/src"),
+				"@components": resolve("src/renderer/src/components"),
+				"@assets": resolve("src/renderer/src/assets"),
+				"@hooks": resolve("src/renderer/src/hooks"),
+				"@api": resolve("src/renderer/src/api"),
+				"@store": resolve("src/renderer/src/store"),
+				"@resources": resolve("resources"),
+			},
 		};
 
 		return config;

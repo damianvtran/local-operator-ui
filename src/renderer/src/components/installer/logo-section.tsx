@@ -1,6 +1,7 @@
 import { Box, Typography, useTheme } from "@mui/material";
 import type React from "react";
 import { LogoContainer } from "./installer-styled";
+import logo from "@assets/clear-icon-with-text.png";
 
 /**
  * LogoSection component
@@ -15,7 +16,7 @@ export const LogoSection: React.FC = () => {
 			<LogoContainer>
 				<Box
 					component="img"
-					src="../../resources/local-operator-icon-2-dark-clear.png"
+					src={logo}
 					alt="Local Operator Logo"
 					sx={{
 						width: "auto",
