@@ -466,7 +466,6 @@ export class BackendServiceManager {
 
 			return response.ok;
 		} catch (error) {
-			console.error("Health check failed:", error);
 			return false;
 		}
 	}

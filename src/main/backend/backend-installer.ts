@@ -3,6 +3,7 @@
  *
  * This module is responsible for installing the Local Operator backend.
  * It handles checking if the backend is installed and installing it if needed.
+ * Includes crash logging to a persistent location.
  */
 
 import { spawn } from "node:child_process";
@@ -12,6 +13,7 @@ import { app, dialog as electronDialog } from "electron";
 import { macosScript, linuxScript, windowsScript } from "./scripts";
 import { writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
+import { logger } from "./logger";
 
 /**
  * Progress window HTML template
@@ -266,10 +268,10 @@ export class BackendInstaller {
 				? join(process.cwd(), "resources")
 				: join(process.resourcesPath);
 
-		console.log(
+		logger.info(
 			`Backend Installer initialized. Virtual environment path: ${this.venvPath}`,
 		);
-		console.log(`Resources path: ${this.resourcesPath}`);
+		logger.info(`Resources path: ${this.resourcesPath}`);
 	}
 
 	/**
@@ -280,7 +282,7 @@ export class BackendInstaller {
 		try {
 			// Check if virtual environment exists
 			if (!fs.existsSync(this.venvPath)) {
-				console.log(`Virtual environment not found at ${this.venvPath}`);
+				logger.info(`Virtual environment not found at ${this.venvPath}`);
 				return false;
 			}
 
@@ -291,16 +293,16 @@ export class BackendInstaller {
 					: join(this.venvPath, "bin", "local-operator");
 
 			if (!fs.existsSync(localOperatorPath)) {
-				console.log(
+				logger.info(
 					`local-operator executable not found at ${localOperatorPath}`,
 				);
 				return false;
 			}
 
-			console.log("Backend is installed");
+			logger.info("Backend is installed");
 			return true;
 		} catch (error) {
-			console.error("Error checking if backend is installed:", error);
+			logger.error("Error checking if backend is installed:", error);
 			return false;
 		}
 	}
@@ -324,7 +326,7 @@ export class BackendInstaller {
 
 			if (response === 1) {
 				// User cancelled installation
-				console.log("User cancelled backend installation");
+				logger.info("User cancelled backend installation");
 				// Exit the app when installation is cancelled
 				setTimeout(() => {
 					app.exit(0);
@@ -361,7 +363,7 @@ export class BackendInstaller {
 				fs.chmodSync(scriptPath, "755");
 			}
 
-			console.log(`Created and running installation script: ${scriptPath}`);
+			logger.info(`Created and running installation script: ${scriptPath}`);
 
 			// Create a progress dialog using BrowserWindow (truly non-modal)
 			const { BrowserWindow } = require("electron");
@@ -397,7 +399,7 @@ export class BackendInstaller {
 			const { ipcMain } = require("electron");
 			const cancelHandler = () => {
 				installationCancelled = true;
-				console.log("Installation cancelled by user from progress dialog");
+				logger.info("Installation cancelled by user from progress dialog");
 				killInstallProcess();
 			};
 
@@ -407,7 +409,7 @@ export class BackendInstaller {
 			progressWindow.on("close", () => {
 				if (!installationCancelled && !installationCompleted) {
 					installationCancelled = true;
-					console.log(
+					logger.info(
 						"Installation cancelled by user closing the progress window",
 					);
 					killInstallProcess();
@@ -417,7 +419,7 @@ export class BackendInstaller {
 			// Function to kill the installation process
 			const killInstallProcess = () => {
 				if (installProcess && !installProcess.killed) {
-					console.log("Terminating installation process");
+					logger.info("Terminating installation process");
 
 					try {
 						// Kill the process and its children
@@ -438,7 +440,7 @@ export class BackendInstaller {
 							}
 						}
 					} catch (error) {
-						console.error("Error killing installation process:", error);
+						logger.error("Error killing installation process:", error);
 					}
 
 					// Only exit the app if this was a user-initiated cancellation
@@ -485,12 +487,17 @@ export class BackendInstaller {
 					}
 
 					installProcess.on("error", (error) => {
-						console.error(`Installation error: ${error}`);
+						logger.error(
+							`Installation error: ${error instanceof Error ? error.message : String(error)}`,
+						);
+						if (error instanceof Error) {
+							logger.exception(error, "Installation Process");
+						}
 						resolve(false);
 					});
 
 					installProcess.on("exit", (code) => {
-						console.log(`Installation process exited with code ${code}`);
+						logger.info(`Installation process exited with code ${code}`);
 
 						// Mark installation as completed
 						installationCompleted = true;
@@ -503,7 +510,7 @@ export class BackendInstaller {
 						}
 					});
 				} catch (error) {
-					console.error("Error spawning installation process:", error);
+					logger.error("Error running installation script:", error);
 					resolve(false);
 				}
 			});
@@ -519,13 +526,13 @@ export class BackendInstaller {
 
 			// If installation was cancelled, exit the app
 			if (installationCancelled) {
-				console.log("Installation was cancelled, exiting app");
+				logger.info("Installation was cancelled, exiting app");
 				app.exit(1);
 				return false;
 			}
 
 			if (result) {
-				console.log("Backend installation completed successfully");
+				logger.info("Backend installation completed successfully");
 
 				// Show success dialog
 				await electronDialog.showMessageBox({
@@ -540,7 +547,7 @@ export class BackendInstaller {
 			}
 
 			// Installation failed
-			console.error("Backend installation failed");
+			logger.error("Backend installation failed");
 
 			// Show error dialog
 			electronDialog.showErrorBox(
@@ -550,12 +557,18 @@ export class BackendInstaller {
 
 			return false;
 		} catch (error) {
-			console.error("Error installing backend:", error);
+			logger.error(
+				"Error installing backend:",
+				error instanceof Error ? error.message : String(error),
+			);
+			if (error instanceof Error) {
+				logger.exception(error, "Backend Installation");
+			}
 
 			// Show error dialog
 			electronDialog.showErrorBox(
 				"Installation Error",
-				`❌ Error installing the Local Operator backend: ${error}`,
+				`❌ Error installing the Local Operator backend: ${error instanceof Error ? error.message : String(error)}`,
 			);
 
 			return false;

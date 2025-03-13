@@ -17,6 +17,8 @@ VENV_NAME="local-operator-venv"
 APP_DATA_DIR="$HOME/Library/Application Support/$APP_NAME"
 VENV_PATH="$APP_DATA_DIR/$VENV_NAME"
 LOG_FILE="$APP_DATA_DIR/backend-install.log"
+HOMEBREW_PKG_URL="https://github.com/Homebrew/brew/releases/download/4.4.24/Homebrew-4.4.24.pkg"
+HOMEBREW_PKG_PATH="/tmp/Homebrew.pkg"
 
 # Create app data directory if it doesn't exist
 mkdir -p "$APP_DATA_DIR"
@@ -33,7 +35,15 @@ command_exists() {
 # Install Homebrew if not installed
 if ! command_exists brew; then
   echo "Installing Homebrew..."
-  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+  # Download the Homebrew pkg installer
+  curl -L "$HOMEBREW_PKG_URL" -o "$HOMEBREW_PKG_PATH"
+  
+  # Install the pkg
+  echo "Running Homebrew installer. This may require administrator privileges..."
+  sudo installer -pkg "$HOMEBREW_PKG_PATH" -target /
+  
+  # Clean up the downloaded file
+  rm -f "$HOMEBREW_PKG_PATH"
   
   # Add Homebrew to PATH
   if [[ -f ~/.zshrc ]]; then
