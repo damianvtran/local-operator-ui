@@ -1,4 +1,3 @@
-// This import is only for TypeScript and will be removed at runtime
 import React from "react";
 import type { Meta, StoryObj } from "@storybook/react";
 import { ThemeProvider } from "@mui/material/styles";
@@ -16,6 +15,18 @@ const meta = {
 	component: InstallerContent,
 	parameters: {
 		layout: "fullscreen",
+		viewport: {
+			defaultViewport: "custom",
+			viewports: {
+				custom: {
+					name: "Installer Window",
+					styles: {
+						width: "1380px",
+						height: "800px",
+					},
+				},
+			},
+		},
 	},
 	decorators: [
 		(Story) => (
