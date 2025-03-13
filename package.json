@@ -137,10 +137,11 @@
 			"gatekeeperAssess": false,
 			"entitlements": "build/entitlements.mac.plist",
 			"entitlementsInherit": "build/entitlements.mac.plist",
-			"target": ["dmg", "zip"],
+			"target": ["dmg"],
 			"artifactName": "${name}-${version}-${arch}.${ext}"
 		},
 		"dmg": {
+			"sign": false,
 			"contents": [
 				{
 					"x": 130,
