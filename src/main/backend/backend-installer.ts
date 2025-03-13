@@ -289,24 +289,6 @@ export class BackendInstaller {
 			join(process.resourcesPath, "python", "bin", "python3"),
 			// In development (standalone Python)
 			join(process.cwd(), "resources", "python", "bin", "python3"),
-			// Legacy Python.framework paths (for backward compatibility)
-			join(
-				process.resourcesPath,
-				"Python.framework",
-				"Versions",
-				"Current",
-				"bin",
-				"python3",
-			),
-			join(
-				process.cwd(),
-				"resources",
-				"Python.framework",
-				"Versions",
-				"Current",
-				"bin",
-				"python3",
-			),
 		];
 
 		// Add Windows-specific paths
@@ -548,15 +530,19 @@ export class BackendInstaller {
 
 					if (installProcess.stdout) {
 						installProcess.stdout.on("data", (data) => {
-							stdout += data.toString();
-							console.log(`Installation stdout: ${data}`);
+							const output = data.toString();
+							stdout += output;
+							console.log(`Installation stdout: ${output}`);
+							logger.info(`Installation stdout: ${output}`);
 						});
 					}
 
 					if (installProcess.stderr) {
 						installProcess.stderr.on("data", (data) => {
-							stderr += data.toString();
-							console.error(`Installation stderr: ${data}`);
+							const output = data.toString();
+							stderr += output;
+							console.error(`Installation stderr: ${output}`);
+							logger.error(`Installation stderr: ${output}`);
 						});
 					}
 
