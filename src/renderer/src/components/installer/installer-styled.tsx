@@ -1,5 +1,5 @@
 import { Box, Typography } from "@mui/material";
-import { styled, keyframes } from "@mui/material/styles";
+import { keyframes, styled } from "@mui/material/styles";
 
 /**
  * Container for the installer app

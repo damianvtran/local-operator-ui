@@ -1,10 +1,10 @@
-import React from "react";
-import type { Meta, StoryObj } from "@storybook/react";
-import { ThemeProvider } from "@mui/material/styles";
 import { CssBaseline } from "@mui/material";
+import { ThemeProvider } from "@mui/material/styles";
+import type { Meta, StoryObj } from "@storybook/react";
+import React from "react";
+import theme from "../../theme";
 import { InstallerContent } from "./installer-content";
 import { AppContainer } from "./installer-styled";
-import theme from "../../theme";
 
 /**
  * The InstallerContent component displays a modern, full-screen installation experience

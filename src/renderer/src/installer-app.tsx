@@ -1,8 +1,8 @@
-import type React from "react";
-import { ThemeProvider } from "@mui/material/styles";
 import { CssBaseline } from "@mui/material";
-import { AppContainer } from "./components/installer/installer-styled";
+import { ThemeProvider } from "@mui/material/styles";
+import type React from "react";
 import { InstallerContent } from "./components/installer/installer-content";
+import { AppContainer } from "./components/installer/installer-styled";
 import theme from "./theme";
 
 /**

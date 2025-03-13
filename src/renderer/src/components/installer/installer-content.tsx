@@ -1,13 +1,13 @@
 import type React from "react";
+import { FeatureCarousel } from "./feature-carousel";
+import { InstallationProgress } from "./installation-progress";
 import {
 	BackgroundPattern,
 	FeatureSection,
 	InstallerLayout,
 	ProgressSection,
 } from "./installer-styled";
-import { FeatureCarousel } from "./feature-carousel";
 import { LogoSection } from "./logo-section";
-import { InstallationProgress } from "./installation-progress";
 
 /**
  * InstallerContent component
