@@ -60,7 +60,9 @@
 		"dist:all": "yarn build && electron-builder -mwl",
 		"release": "yarn build && electron-builder --publish always",
 		"generate-icons": "node scripts/generate-icons.js",
-		"setup-python": "./scripts/setup-python-resource.sh"
+		"setup-python": "./scripts/setup-python-resource.sh",
+		"storybook": "storybook dev -p 6006",
+		"build-storybook": "storybook build"
 	},
 	"dependencies": {
 		"@electron-toolkit/utils": "^4.0.0",
@@ -91,9 +93,17 @@
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^1.9.4",
+		"@chromatic-com/storybook": "^3.2.5",
 		"@electron-toolkit/preload": "^3.0.1",
 		"@electron-toolkit/tsconfig": "^1.0.1",
 		"@electron/notarize": "^2.5.0",
+		"@storybook/addon-essentials": "^8.6.4",
+		"@storybook/addon-interactions": "^8.6.4",
+		"@storybook/addon-onboarding": "^8.6.4",
+		"@storybook/blocks": "^8.6.4",
+		"@storybook/react": "^8.6.4",
+		"@storybook/react-vite": "^8.6.4",
+		"@storybook/test": "^8.6.4",
 		"@types/react": "18.3.18",
 		"@types/react-dom": "18.3.5",
 		"@vitejs/plugin-react": "^4.3.4",
@@ -103,8 +113,10 @@
 		"eslint": "^9.17.0",
 		"eslint-plugin-react-hooks": "^5.0.0",
 		"eslint-plugin-react-refresh": "^0.4.16",
+		"eslint-plugin-storybook": "^0.11.4",
 		"jest": "^29.7.0",
 		"sharp": "^0.33.2",
+		"storybook": "^8.6.4",
 		"to-ico": "^1.1.5",
 		"tsc": "^2.0.4",
 		"typescript": "^5.8.2",
@@ -204,5 +216,8 @@
 			"repo": "local-operator-ui",
 			"releaseType": "release"
 		}
+	},
+	"eslintConfig": {
+		"extends": ["plugin:storybook/recommended"]
 	}
 }
