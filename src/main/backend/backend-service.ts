@@ -26,6 +26,8 @@ export class BackendServiceManager {
 	private appDataPath = app.getPath("userData");
 	private venvPath: string;
 	private healthCheckInterval: NodeJS.Timeout | null = null;
+	private exitPromise: Promise<void> | null = null;
+	private exitResolve: (() => void) | null = null;
 
 	/**
 	 * Constructor
@@ -200,9 +202,12 @@ export class BackendServiceManager {
 					`Starting backend service with global command: ${cmd} ${args.join(" ")}`,
 				);
 
+				// Create the process with proper options to ensure it terminates with the parent
 				this.process = spawn(cmd, args, {
-					detached: false,
+					detached: false, // Ensure process is not detached from parent
 					stdio: "pipe",
+					// On Windows, we need to create a new process group to ensure proper termination
+					...(process.platform === "win32" ? { windowsHide: true } : {}),
 				});
 			} else {
 				// Local-operator not found globally, use virtual environment
@@ -235,9 +240,12 @@ export class BackendServiceManager {
 					`Starting backend service with venv: ${cmd} ${args.join(" ")}`,
 				);
 
+				// Create the process with proper options to ensure it terminates with the parent
 				this.process = spawn(cmd, args, {
-					detached: false,
+					detached: false, // Ensure process is not detached from parent
 					stdio: "pipe",
+					// On Windows, we need to create a new process group to ensure proper termination
+					...(process.platform === "win32" ? { windowsHide: true } : {}),
 				});
 			}
 
@@ -259,6 +267,12 @@ export class BackendServiceManager {
 				console.log(`Backend process exited with code ${code}`);
 				this.isRunning = false;
 				this.process = null;
+
+				// Resolve the exit promise if it exists
+				if (this.exitResolve) {
+					this.exitResolve();
+					this.exitResolve = null;
+				}
 
 				// Show error dialog if the process exited unexpectedly
 				if (code !== 0 && code !== null) {
@@ -327,9 +341,15 @@ export class BackendServiceManager {
 			console.log("Stopping backend service...");
 
 			// Create a promise that resolves when the process exits
-			const exitPromise = new Promise<void>((resolve) => {
+			// Store this promise so it can be awaited from outside
+			this.exitPromise = new Promise<void>((resolve) => {
+				this.exitResolve = resolve;
+
 				if (!this.process) {
-					resolve();
+					if (this.exitResolve) {
+						this.exitResolve();
+						this.exitResolve = null;
+					}
 					return;
 				}
 
@@ -337,7 +357,12 @@ export class BackendServiceManager {
 					console.log("Backend process exited");
 					this.process = null;
 					this.isRunning = false;
-					resolve();
+
+					// Resolve the exit promise
+					if (this.exitResolve) {
+						this.exitResolve();
+						this.exitResolve = null;
+					}
 				});
 			});
 
@@ -370,24 +395,50 @@ export class BackendServiceManager {
 								"Backend process did not exit in time, force killing",
 							);
 							try {
-								this.process.kill("SIGKILL");
+								// Force kill the process
+								if (process.platform === "win32" && this.process.pid) {
+									// On Windows, use taskkill with /F for force
+									spawn("taskkill", [
+										"/pid",
+										this.process.pid.toString(),
+										"/f",
+										"/t",
+									]);
+								} else if (this.process) {
+									// On Unix, use SIGKILL
+									this.process.kill("SIGKILL");
+								}
 							} catch (error) {
 								console.error("Error force killing process:", error);
 							}
+
+							// Even if force kill fails, mark process as stopped
 							this.process = null;
 							this.isRunning = false;
+
+							// Resolve the exit promise
+							if (this.exitResolve) {
+								this.exitResolve();
+								this.exitResolve = null;
+							}
 						}
 						resolve();
-					}, 3000); // Reduced timeout to 3 seconds for faster app exit
+					}, 5000); // Increased timeout to 5 seconds to give more time for graceful exit
 				});
 
 				// Wait for either the process to exit or the timeout
-				await Promise.race([exitPromise, timeoutPromise]);
+				await Promise.race([this.exitPromise, timeoutPromise]);
 			} catch (error) {
 				console.error("Error stopping backend process:", error);
 				// Ensure process is marked as stopped even if there was an error
 				this.process = null;
 				this.isRunning = false;
+
+				// Resolve the exit promise
+				if (this.exitResolve) {
+					this.exitResolve();
+					this.exitResolve = null;
+				}
 			}
 
 			console.log("Backend service stopped");
@@ -451,6 +502,22 @@ export class BackendServiceManager {
 				}
 			}
 		}, 30000); // Check every 30 seconds
+	}
+
+	/**
+	 * Get the port number used by the backend service
+	 * @returns The port number
+	 */
+	getPort(): number {
+		return this.port;
+	}
+
+	/**
+	 * Check if the backend service is using an external backend
+	 * @returns True if using an external backend, false if we started our own
+	 */
+	isUsingExternalBackend(): boolean {
+		return this.isExternalBackend;
 	}
 }
 

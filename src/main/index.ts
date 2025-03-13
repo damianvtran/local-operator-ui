@@ -131,22 +131,127 @@ app.on("will-quit", async (event) => {
 	const isBackendManagerDisabled =
 		process.env.VITE_DISABLE_BACKEND_MANAGER === "true";
 
-	if (!isBackendManagerDisabled) {
+	// Only stop the backend service if we started it ourselves
+	if (!isBackendManagerDisabled && !backendService.isUsingExternalBackend()) {
 		event.preventDefault();
 		try {
+			console.log("App is quitting, stopping our backend service...");
+			// Stop the backend service and wait for it to fully terminate
 			await backendService.stop();
+			console.log("Backend service successfully stopped");
 		} catch (error) {
 			console.error("Error stopping backend service:", error);
 		} finally {
 			// Ensure app quits even if there was an error stopping the service
-			setTimeout(() => app.exit(), 100);
+			// Use a longer timeout to ensure the process has time to fully terminate
+			console.log("Exiting application...");
+			setTimeout(() => {
+				console.log("Forcing app exit");
+				app.exit(0);
+			}, 1000); // Increased timeout to 1 second
 		}
+	} else if (
+		!isBackendManagerDisabled &&
+		backendService.isUsingExternalBackend()
+	) {
+		console.log("Using external backend, skipping termination on app quit");
 	}
 });
 
 // Handle before-quit event to ensure proper cleanup
 app.on("before-quit", () => {
 	console.log("App is about to quit");
+});
+
+// Add a failsafe to ensure child processes are terminated when the app exits
+process.on("exit", () => {
+	console.log("Process exit event detected, ensuring backend is terminated");
+	// This is a synchronous event, so we can't use async/await here
+	try {
+		// Force kill any remaining child processes, but ONLY if we started our own backend
+		// and not if we're using an external backend
+		if (
+			!process.env.VITE_DISABLE_BACKEND_MANAGER &&
+			!backendService.isUsingExternalBackend()
+		) {
+			console.log("Forcing termination of our backend process");
+
+			// Use a more robust approach that doesn't rely on accessing private properties
+			// Kill any processes that might be running on our port
+			const port = backendService.getPort();
+			console.log(`Ensuring no processes are running on port ${port}`);
+
+			if (process.platform === "win32") {
+				// On Windows, find and kill processes using our port
+				try {
+					require("node:child_process").spawnSync("cmd.exe", [
+						"/c",
+						`for /f \"tokens=5\" %a in ('netstat -ano ^| findstr :${port}') do taskkill /F /PID %a`,
+					]);
+				} catch (err) {
+					// Ignore errors, this is a best-effort cleanup
+				}
+			} else {
+				// On Unix systems, find and kill processes using our port
+				try {
+					require("node:child_process").spawnSync("bash", [
+						"-c",
+						`lsof -i:${port} -t | xargs -r kill -9`,
+					]);
+				} catch (err) {
+					// Ignore errors, this is a best-effort cleanup
+				}
+			}
+		} else if (
+			!process.env.VITE_DISABLE_BACKEND_MANAGER &&
+			backendService.isUsingExternalBackend()
+		) {
+			console.log("Using external backend, skipping force termination");
+		}
+	} catch (error) {
+		console.error("Error in exit handler:", error);
+	}
+});
+
+// Handle uncaught exceptions to ensure backend is terminated
+process.on("uncaughtException", (error) => {
+	console.error("Uncaught exception:", error);
+
+	// Only attempt to stop the backend service if we started it ourselves
+	if (
+		backendService &&
+		!process.env.VITE_DISABLE_BACKEND_MANAGER &&
+		!backendService.isUsingExternalBackend()
+	) {
+		console.log(
+			"Attempting to stop our backend service due to uncaught exception",
+		);
+		backendService
+			.stop()
+			.catch((stopError) => {
+				console.error("Error stopping backend service:", stopError);
+			})
+			.finally(() => {
+				// Force exit after a timeout
+				setTimeout(() => {
+					console.log("Forcing app exit after uncaught exception");
+					process.exit(1);
+				}, 1000);
+			});
+	} else if (
+		backendService &&
+		!process.env.VITE_DISABLE_BACKEND_MANAGER &&
+		backendService.isUsingExternalBackend()
+	) {
+		console.log(
+			"Using external backend, skipping termination on uncaught exception",
+		);
+		// Just exit without stopping the external backend
+		process.exit(1);
+	} else {
+		// If no backend service or disabled, just exit
+		process.exit(1);
+	}
 });
 
 // In this file you can include the rest of your app"s specific main process
