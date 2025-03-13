@@ -37,7 +37,7 @@
 		"electron",
 		"react"
 	],
-	"files": ["out", "bin", "resources/scripts", "LICENSE", "README.md"],
+	"files": ["out", "bin", "LICENSE", "README.md"],
 	"publishConfig": {
 		"access": "public"
 	},
@@ -123,13 +123,7 @@
 		"productName": "Local Operator",
 		"copyright": "Copyright © 2025 Damian Tran",
 		"asar": true,
-		"files": [
-			"out/**/*",
-			"bin/**/*",
-			"resources/scripts/**/*",
-			"LICENSE",
-			"README.md"
-		],
+		"files": ["out/**/*", "bin/**/*", "LICENSE", "README.md"],
 		"directories": {
 			"output": "dist",
 			"buildResources": "resources"

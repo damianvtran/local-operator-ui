@@ -1,4 +1,10 @@
-#!/bin/bash
+/**
+ * macOS Installation Script
+ *
+ * This module exports the installation script for macOS as a string.
+ */
+
+export const macosScript = `#!/bin/bash
 # Local Operator Backend Installation Script for macOS
 # This script installs pyenv, Python 3.12, and sets up a virtual environment for the Local Operator backend.
 
@@ -95,3 +101,4 @@ else
 fi
 
 echo "$(date): Installation completed successfully."
+`;

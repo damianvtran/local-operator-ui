@@ -9,6 +9,9 @@ import { spawn } from "node:child_process";
 import fs from "node:fs";
 import { join } from "node:path";
 import { app, dialog as electronDialog } from "electron";
+import { macosScript, linuxScript, windowsScript } from "./scripts";
+import { writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 
 /**
  * Progress window HTML template
@@ -329,40 +332,36 @@ export class BackendInstaller {
 				return false;
 			}
 
-			// Run platform-specific installation script
+			// Create temporary script file based on platform
 			let scriptPath: string;
 			let cmd: string;
 			let args: string[];
+			const tempDir = tmpdir();
 
 			// Set platform-specific script and command
 			if (process.platform === "win32") {
-				scriptPath = join(
-					this.resourcesPath,
-					"scripts",
-					"install-backend-windows.ps1",
-				);
+				scriptPath = join(tempDir, "install-backend-windows.ps1");
+				writeFileSync(scriptPath, windowsScript);
 				cmd = "powershell.exe";
 				args = ["-ExecutionPolicy", "Bypass", "-File", scriptPath];
 			} else if (process.platform === "darwin") {
-				scriptPath = join(
-					this.resourcesPath,
-					"scripts",
-					"install-backend-macos.sh",
-				);
+				scriptPath = join(tempDir, "install-backend-macos.sh");
+				writeFileSync(scriptPath, macosScript);
 				cmd = "bash";
 				args = [scriptPath];
+				// Make the script executable
+				fs.chmodSync(scriptPath, "755");
 			} else {
 				// Linux
-				scriptPath = join(
-					this.resourcesPath,
-					"scripts",
-					"install-backend-linux.sh",
-				);
+				scriptPath = join(tempDir, "install-backend-linux.sh");
+				writeFileSync(scriptPath, linuxScript);
 				cmd = "bash";
 				args = [scriptPath];
+				// Make the script executable
+				fs.chmodSync(scriptPath, "755");
 			}
 
-			console.log(`Running installation script: ${scriptPath}`);
+			console.log(`Created and running installation script: ${scriptPath}`);
 
 			// Create a progress dialog using BrowserWindow (truly non-modal)
 			const { BrowserWindow } = require("electron");
