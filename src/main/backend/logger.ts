@@ -6,10 +6,10 @@
  * Supports multiple log files for different components of the application.
  */
 
-import { app } from "electron";
-import { join } from "node:path";
-import electronLog, { type ElectronLog } from "electron-log";
 import fs from "node:fs";
+import { join } from "node:path";
+import { app } from "electron";
+import electronLog, { type ElectronLog } from "electron-log";
 
 /**
  * Log file types

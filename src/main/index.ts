@@ -1,8 +1,8 @@
 import { join } from "node:path";
 import { electronApp, is, optimizer } from "@electron-toolkit/utils";
-import { BrowserWindow, app, ipcMain, shell, nativeImage } from "electron";
+import { BrowserWindow, app, ipcMain, nativeImage, shell } from "electron";
 import icon from "../../resources/icon-180x180-dark.png?asset";
-import { BackendServiceManager, BackendInstaller } from "./backend";
+import { BackendInstaller, BackendServiceManager } from "./backend";
 
 // Set application name
 app.setName("Local Operator");

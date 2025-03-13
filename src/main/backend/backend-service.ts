@@ -5,13 +5,13 @@
  * It handles starting, stopping, and monitoring the health of the backend service.
  */
 
-import { spawn, type ChildProcess, exec } from "node:child_process";
-import { join } from "node:path";
-import { app, dialog as electronDialog } from "electron";
-import { promisify } from "node:util";
-import { logger, LogFileType } from "./logger";
+import { type ChildProcess, exec, spawn } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
+import { join } from "node:path";
+import { promisify } from "node:util";
+import { app, dialog as electronDialog } from "electron";
+import { LogFileType, logger } from "./logger";
 
 const execPromise = promisify(exec);
 

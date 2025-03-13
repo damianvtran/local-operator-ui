@@ -3,8 +3,8 @@ import CssBaseline from "@mui/material/CssBaseline";
 import React from "react";
 import ReactDOM from "react-dom/client";
 import "./assets/fonts/fonts.css";
-import { InstallerApp } from "./installer-app";
 import { ErrorBoundary } from "./components/common/error-boundary";
+import { InstallerApp } from "./installer-app";
 import theme from "./theme";
 
 document.addEventListener("DOMContentLoaded", () => {

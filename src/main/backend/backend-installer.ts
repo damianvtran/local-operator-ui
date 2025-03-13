@@ -8,17 +8,17 @@
 
 import { spawn } from "node:child_process";
 import fs from "node:fs";
-import { join } from "node:path";
-import { app, dialog as electronDialog, BrowserWindow } from "electron";
-import { is } from "@electron-toolkit/utils";
-import {
-	macosInstallScript,
-	linuxInstallScript,
-	windowsInstallScript,
-} from "./scripts";
 import { writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { logger, LogFileType } from "./logger";
+import { join } from "node:path";
+import { is } from "@electron-toolkit/utils";
+import { BrowserWindow, app, dialog as electronDialog } from "electron";
+import { LogFileType, logger } from "./logger";
+import {
+	linuxInstallScript,
+	macosInstallScript,
+	windowsInstallScript,
+} from "./scripts";
 
 /**
  * Backend Installer class
