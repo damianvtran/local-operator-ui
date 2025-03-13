@@ -84,6 +84,27 @@ Pre-built desktop applications are available for macOS, Windows, and Linux. Visi
 
 If you want to build the application from source, see the [BUILD.md](./docs/BUILD.md) file for detailed instructions.
 
+#### Python Bundling
+
+For macOS builds, we now bundle a standalone Python directly with the application instead of requiring Homebrew installation. This approach:
+
+- Eliminates the need for admin privileges during installation
+- Makes the application more self-contained
+- Works offline
+- Provides a more reliable user experience
+- Supports installation of Python packages via pip
+
+To set up the standalone Python for development:
+
+```bash
+# Run the setup script to download and configure standalone Python
+yarn setup-python-standalone
+```
+
+This uses [python-build-standalone](https://github.com/indygreg/python-build-standalone), the same approach used by Datasette Desktop and PyOxidizer.
+
+For more details, see the [PYTHON_BUNDLING.md](./docs/PYTHON_BUNDLING.md) documentation.
+
 ### Code Signing and Notarization
 
 All desktop applications are code signed and notarized to ensure security and trust:
@@ -151,8 +172,9 @@ Contributions are welcome! Please see our [Contributing Guide](./CONTRIBUTING.md
 #### Backend installation fails
 
 - Check the application logs for error messages
-- Ensure you have Python 3.12 installed or that pyenv can be installed on your system
-- Try installing the backend manually with `pip install local-operator` and then start it with `local-operator serve`
+- For macOS, the application now uses a bundled Python framework instead of requiring Homebrew and pyenv
+- If you encounter issues with the bundled Python, see the [PYTHON_BUNDLING.md](./docs/PYTHON_BUNDLING.md) documentation
+- As a fallback, you can try installing the backend manually with `pip install local-operator` and then start it with `local-operator serve`
 
 #### Development server crashes
 

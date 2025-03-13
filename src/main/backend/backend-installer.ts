@@ -236,6 +236,7 @@ export class BackendInstaller {
 	private appDataPath = app.getPath("userData");
 	private venvPath: string;
 	private resourcesPath: string;
+	private pythonPath: string | null = null;
 
 	/**
 	 * Constructor
@@ -268,10 +269,65 @@ export class BackendInstaller {
 				? join(process.cwd(), "resources")
 				: join(process.resourcesPath);
 
+		// Find Python executable
+		this.pythonPath = this.findPython();
+
 		logger.info(
 			`Backend Installer initialized. Virtual environment path: ${this.venvPath}`,
 		);
 		logger.info(`Resources path: ${this.resourcesPath}`);
+		logger.info(`Python path: ${this.pythonPath || "Not found"}`);
+	}
+
+	/**
+	 * Find Python executable
+	 * @returns Path to Python executable or null if not found
+	 */
+	private findPython(): string | null {
+		const possibilities = [
+			// In packaged app (standalone Python)
+			join(process.resourcesPath, "python", "bin", "python3"),
+			// In development (standalone Python)
+			join(process.cwd(), "resources", "python", "bin", "python3"),
+			// Legacy Python.framework paths (for backward compatibility)
+			join(
+				process.resourcesPath,
+				"Python.framework",
+				"Versions",
+				"Current",
+				"bin",
+				"python3",
+			),
+			join(
+				process.cwd(),
+				"resources",
+				"Python.framework",
+				"Versions",
+				"Current",
+				"bin",
+				"python3",
+			),
+		];
+
+		// Add Windows-specific paths
+		if (process.platform === "win32") {
+			possibilities.push(
+				// In packaged app (Windows)
+				join(process.resourcesPath, "python", "python.exe"),
+				// In development (Windows)
+				join(process.cwd(), "resources", "python", "python.exe"),
+			);
+		}
+
+		for (const path of possibilities) {
+			if (fs.existsSync(path)) {
+				logger.info(`Found Python at ${path}`);
+				return path;
+			}
+		}
+
+		logger.warn(`Could not find Python, checked: ${possibilities.join(", ")}`);
+		return null;
 	}
 
 	/**
@@ -464,9 +520,27 @@ export class BackendInstaller {
 			// Run installation script
 			const result = await new Promise<boolean>((resolve) => {
 				try {
+					// Set environment variables for the installation script
+					const env = { ...process.env };
+
+					// Pass the resources path to the script for finding bundled Python
+					env.ELECTRON_RESOURCE_PATH = this.resourcesPath;
+
+					// Log the resources path for debugging
+					logger.info(
+						`Setting ELECTRON_RESOURCE_PATH to ${this.resourcesPath}`,
+					);
+
+					// If we found Python, pass its path directly
+					if (this.pythonPath) {
+						env.PYTHON_BIN = this.pythonPath;
+						logger.info(`Setting PYTHON_BIN to ${this.pythonPath}`);
+					}
+
 					installProcess = spawn(cmd, args, {
 						detached: process.platform !== "win32", // Detach on Unix-like systems for process group
 						stdio: "pipe",
+						env, // Pass environment variables to the script
 					});
 
 					let stdout = "";

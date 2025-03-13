@@ -59,7 +59,8 @@
 		"dist:linux": "yarn build && electron-builder --linux",
 		"dist:all": "yarn build && electron-builder -mwl",
 		"release": "yarn build && electron-builder --publish always",
-		"generate-icons": "node scripts/generate-icons.js"
+		"generate-icons": "node scripts/generate-icons.js",
+		"setup-python": "./scripts/setup-python-resource.sh"
 	},
 	"dependencies": {
 		"@electron-toolkit/utils": "^4.0.0",
@@ -128,6 +129,13 @@
 			"output": "dist",
 			"buildResources": "resources"
 		},
+		"extraResources": [
+			{
+				"from": "resources/python",
+				"to": "python",
+				"filter": ["**/*"]
+			}
+		],
 		"afterSign": "scripts/notarize.js",
 		"mac": {
 			"notarize": false,
