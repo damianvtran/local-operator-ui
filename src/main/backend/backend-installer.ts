@@ -11,6 +11,219 @@ import { join } from "node:path";
 import { app, dialog as electronDialog } from "electron";
 
 /**
+ * Progress window HTML template
+ * Contains the UI for the installation progress window
+ */
+const progressHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #38C96A;
+      --primary-dark: #16B34A;
+      --primary-light: #68D88E;
+      --secondary: #26BC85;
+      --background: #0A0A0A;
+      --card-bg: #141414;
+      --text-primary: #F9FAFB;
+      --text-secondary: #9CA3AF;
+      --border-color: rgba(255, 255, 255, 0.1);
+      --danger: #EF4444;
+      --danger-hover: #DC2626;
+      --box-shadow: 0 12px 48px rgba(0, 0, 0, 0.5);
+    }
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: system-ui, Inter, -apple-system, BlinkMacSystemFont, sans-serif;
+      padding: 32px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+      background-color: var(--background);
+      color: var(--text-primary);
+      font-size: 16px;
+    }
+    
+    .container {
+      width: 100%;
+      max-width: 520px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+    
+    .title {
+      margin: 0;
+      font-weight: 600;
+      font-size: 1.4rem;
+      text-align: center;
+      margin-bottom: 16px;
+      letter-spacing: 0.02em;
+      background: linear-gradient(90deg, rgba(255,255,255,0.95), rgba(255,255,255,0.85));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-shadow: 0 0 30px rgba(255,255,255,0.1);
+    }
+    
+    .emoji {
+      font-size: 1.6rem;
+      margin-right: 8px;
+      vertical-align: middle;
+    }
+    
+    p {
+      margin: 0;
+      color: var(--text-secondary);
+      text-align: center;
+      font-size: 0.875rem;
+      line-height: 1.5;
+      padding: 0 8px;
+    }
+    
+    button {
+      padding: 8px 16px;
+      background-color: var(--danger);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 500;
+      font-size: 0.875rem;
+      transition: all 0.2s ease-in-out;
+      align-self: center;
+      margin-top: 24px;
+      text-transform: none;
+    }
+    
+    button:hover {
+      background-color: var(--danger-hover);
+      box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+    }
+    
+    .progress-container {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      margin-top: 8px;
+    }
+    
+    .progress {
+      width: 100%;
+      height: 6px;
+      background-color: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+      overflow: hidden;
+      position: relative;
+      margin: 8px 0;
+    }
+    
+    .progress-bar {
+      height: 100%;
+      background-color: var(--primary);
+      border-radius: 4px;
+      animation: progress-animation 2s infinite ease-in-out;
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 30%;
+    }
+    
+    .card {
+      background-color: var(--card-bg);
+      border-radius: 12px;
+      border: 1px solid var(--border-color);
+      padding: 24px;
+      box-shadow: var(--box-shadow);
+      backdrop-filter: blur(8px);
+    }
+    
+    .spinner-container {
+      display: flex;
+      justify-content: center;
+      margin: 24px 0;
+    }
+    
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid rgba(56, 201, 106, 0.2);
+      border-radius: 50%;
+      border-top-color: var(--primary);
+      animation: spin 1s ease-in-out infinite;
+    }
+    
+    .title-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 16px;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    
+    @keyframes progress-animation {
+      0% {
+        left: -30%;
+      }
+      100% {
+        left: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <div class="title-container">
+        <span class="title">🚀 Setting Up Your Environment</span>
+      </div>
+      
+      <div class="progress-container">
+        <p>We're preparing the magic behind the scenes! This one-time setup ensures you'll have the best experience with Local Operator.</p>
+        
+        <div class="progress">
+          <div class="progress-bar"></div>
+        </div>
+      </div>
+      
+      <div class="spinner-container">
+        <div class="spinner"></div>
+      </div>
+      
+      <button id="cancelBtn">Cancel Setup</button>
+    </div>
+  </div>
+  
+  <script>
+    const { ipcRenderer } = require('electron');
+    document.getElementById('cancelBtn').addEventListener('click', () => {
+      ipcRenderer.send('cancel-installation');
+    });
+  </script>
+</body>
+</html>
+`;
+
+/**
  * Backend Installer class
  * Manages the installation of the Local Operator backend
  */
@@ -98,10 +311,10 @@ export class BackendInstaller {
 			// Show installation dialog
 			const { response } = await electronDialog.showMessageBox({
 				type: "info",
-				title: "Local Operator Backend Installation",
+				title: "First-Time Setup Required",
 				message:
-					"The Local Operator backend needs to be installed. This may take a few minutes.",
-				buttons: ["Install", "Cancel"],
+					"🚀 Local Operator needs to set up some components to work properly. This one-time process will take just a few moments.",
+				buttons: ["Set Up Now", "Cancel"],
 				defaultId: 0,
 				cancelId: 1,
 			});
@@ -154,13 +367,13 @@ export class BackendInstaller {
 			// Create a progress dialog using BrowserWindow (truly non-modal)
 			const { BrowserWindow } = require("electron");
 			const progressWindow = new BrowserWindow({
-				width: 500,
-				height: 360,
+				width: 640,
+				height: 480,
 				resizable: false,
 				minimizable: false,
 				maximizable: false,
 				fullscreenable: false,
-				title: "Installing Local Operator Backend",
+				title: "Setting Up Local Operator",
 				backgroundColor: "#0A0A0A", // Match app's background color
 				webPreferences: {
 					nodeIntegration: true,
@@ -168,108 +381,7 @@ export class BackendInstaller {
 				},
 			});
 
-			// HTML content for the progress window styled to match the app's theme
-			const progressHtml = `
-				<!DOCTYPE html>
-				<html>
-				<head>
-					<style>
-						body {
-							font-family: system-ui, Inter, -apple-system, BlinkMacSystemFont, sans-serif;
-							padding: 32px;
-							display: flex;
-							flex-direction: column;
-							align-items: center;
-							justify-content: center;
-							height: 100vh;
-							margin: 0;
-							background-color: #0A0A0A; /* Match app's background.default */
-							color: #F9FAFB; /* Match app's text.primary */
-						}
-						.container {
-							width: 100%;
-							max-width: 440px;
-							display: flex;
-							flex-direction: column;
-							gap: 24px;
-						}
-						h2 {
-							margin: 0;
-							font-weight: 600;
-							font-size: 1.5rem;
-							text-align: center;
-						}
-						p {
-							margin: 0;
-							color: #9CA3AF; /* Match app's text.secondary */
-							text-align: center;
-							font-size: 0.95rem;
-						}
-						button {
-							padding: 10px 20px;
-							background-color: #E74C3C; /* Red for danger */
-							color: white;
-							border: none;
-							border-radius: 6px;
-							cursor: pointer;
-							font-weight: 500;
-							font-size: 0.95rem;
-							transition: all 0.2s ease-in-out;
-							align-self: center;
-							margin-top: 8px;
-						}
-						button:hover {
-							background-color: #C0392B;
-							box-shadow: 0 4px 12px rgba(231, 76, 60, 0.4);
-						}
-						.progress-container {
-							width: 100%;
-							display: flex;
-							flex-direction: column;
-							gap: 12px;
-						}
-						.progress {
-							width: 100%;
-							height: 8px;
-							background-color: rgba(255, 255, 255, 0.1);
-							border-radius: 4px;
-							overflow: hidden;
-						}
-						.card {
-							background-color: #141414; /* Match app's background.paper */
-							border-radius: 12px;
-							border: 1px solid rgba(255, 255, 255, 0.1);
-							padding: 24px;
-							box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
-						}
-						@keyframes progress {
-							0% { width: 0%; }
-							100% { width: 100%; }
-						}
-					</style>
-				</head>
-				<body>
-					<div class="container">
-						<div class="card">
-							<h2>Installing Local Operator Backend</h2>
-							
-							<div class="progress-container">
-								<p>This process may take a few minutes. Please wait while the backend is being installed.</p>
-							</div>
-							
-							<button id="cancelBtn">Cancel Installation</button>
-						</div>
-					</div>
-					
-					<script>
-						const { ipcRenderer } = require('electron');
-						document.getElementById('cancelBtn').addEventListener('click', () => {
-							ipcRenderer.send('cancel-installation');
-						});
-					</script>
-				</body>
-				</html>
-			`;
+			// Use the HTML template defined at the top of the file
 
 			// Load the HTML content
 			progressWindow.loadURL(
@@ -279,6 +391,7 @@ export class BackendInstaller {
 
 			// Track installation state
 			let installationCancelled = false;
+			let installationCompleted = false;
 			let installProcess: ReturnType<typeof spawn> | null = null;
 
 			// Set up IPC handler for cancel button
@@ -290,6 +403,17 @@ export class BackendInstaller {
 			};
 
 			ipcMain.on("cancel-installation", cancelHandler);
+
+			// Handle window close as cancellation only if installation is still in progress
+			progressWindow.on("close", () => {
+				if (!installationCancelled && !installationCompleted) {
+					installationCancelled = true;
+					console.log(
+						"Installation cancelled by user closing the progress window",
+					);
+					killInstallProcess();
+				}
+			});
 
 			// Function to kill the installation process
 			const killInstallProcess = () => {
@@ -318,10 +442,14 @@ export class BackendInstaller {
 						console.error("Error killing installation process:", error);
 					}
 
-					// Force quit the app after a short delay
-					setTimeout(() => {
-						app.exit(1);
-					}, 1000);
+					// Only exit the app if this was a user-initiated cancellation
+					// This prevents app exit when the window is closed after successful installation
+					if (installationCancelled && !installationCompleted) {
+						// Force quit the app after a short delay
+						setTimeout(() => {
+							app.exit(1);
+						}, 1000);
+					}
 				}
 			};
 
@@ -365,6 +493,9 @@ export class BackendInstaller {
 					installProcess.on("exit", (code) => {
 						console.log(`Installation process exited with code ${code}`);
 
+						// Mark installation as completed
+						installationCompleted = true;
+
 						// If installation was cancelled, always return false
 						if (installationCancelled) {
 							resolve(false);
@@ -382,8 +513,10 @@ export class BackendInstaller {
 			ipcMain.removeListener("cancel-installation", cancelHandler);
 			app.removeListener("before-quit", appQuitHandler);
 
-			// Close the progress window
-			progressWindow.close();
+			// Close the progress window if it's still open
+			if (!progressWindow.isDestroyed()) {
+				progressWindow.close();
+			}
 
 			// If installation was cancelled, exit the app
 			if (installationCancelled) {
@@ -398,9 +531,10 @@ export class BackendInstaller {
 				// Show success dialog
 				await electronDialog.showMessageBox({
 					type: "info",
-					title: "Installation Complete",
-					message: "The Local Operator backend was installed successfully.",
-					buttons: ["OK"],
+					title: "Setup Complete",
+					message:
+						"✅ Local Operator is ready to use! Everything has been set up successfully.",
+					buttons: ["Let's Go!"],
 				});
 
 				return true;
@@ -411,8 +545,8 @@ export class BackendInstaller {
 
 			// Show error dialog
 			electronDialog.showErrorBox(
-				"Installation Failed",
-				"Failed to install the Local Operator backend. Please check the logs for more information.",
+				"Setup Failed",
+				"❌ We couldn't complete the setup process. Please try restarting the application or contact support if the problem persists.",
 			);
 
 			return false;
@@ -422,7 +556,7 @@ export class BackendInstaller {
 			// Show error dialog
 			electronDialog.showErrorBox(
 				"Installation Error",
-				`Error installing the Local Operator backend: ${error}`,
+				`❌ Error installing the Local Operator backend: ${error}`,
 			);
 
 			return false;
