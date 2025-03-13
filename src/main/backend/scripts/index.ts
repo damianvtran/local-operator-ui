@@ -5,10 +5,10 @@
  * Scripts are imported as raw strings from .sh files.
  */
 
-import macosScriptRaw from "./macos-script.sh?raw";
-import linuxScriptRaw from "./linux-script.sh?raw";
-import windowsScriptRaw from "./windows-script.sh?raw";
+import macosInstallScriptRaw from "./macos-install-script.sh?raw";
+import linuxInstallScriptRaw from "./linux-install-script.sh?raw";
+import windowsInstallScriptRaw from "./windows-install-script.ps1?raw";
 
-export const macosScript = macosScriptRaw;
-export const linuxScript = linuxScriptRaw;
-export const windowsScript = windowsScriptRaw;
+export const macosInstallScript = macosInstallScriptRaw;
+export const linuxInstallScript = linuxInstallScriptRaw;
+export const windowsInstallScript = windowsInstallScriptRaw;

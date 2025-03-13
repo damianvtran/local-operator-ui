@@ -8,7 +8,7 @@ import react from "@vitejs/plugin-react";
 import tsconfigPaths from "vite-tsconfig-paths";
 
 export default defineConfig({
-	assetsInclude: ["**/*.sh"],
+	assetsInclude: ["**/*.sh", "**/*.ps1"],
 	main: {
 		plugins: [externalizeDepsPlugin(), bytecodePlugin()],
 	},

@@ -10,7 +10,11 @@ import { spawn } from "node:child_process";
 import fs from "node:fs";
 import { join } from "node:path";
 import { app, dialog as electronDialog } from "electron";
-import { macosScript, linuxScript, windowsScript } from "./scripts";
+import {
+	macosInstallScript,
+	linuxInstallScript,
+	windowsInstallScript,
+} from "./scripts";
 import { writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { logger, LogFileType } from "./logger";
@@ -399,12 +403,12 @@ export class BackendInstaller {
 			// Set platform-specific script and command
 			if (process.platform === "win32") {
 				scriptPath = join(tempDir, "install-backend-windows.ps1");
-				writeFileSync(scriptPath, windowsScript);
+				writeFileSync(scriptPath, windowsInstallScript);
 				cmd = "powershell.exe";
 				args = ["-ExecutionPolicy", "Bypass", "-File", scriptPath];
 			} else if (process.platform === "darwin") {
 				scriptPath = join(tempDir, "install-backend-macos.sh");
-				writeFileSync(scriptPath, macosScript);
+				writeFileSync(scriptPath, macosInstallScript);
 				cmd = "bash";
 				args = [scriptPath];
 				// Make the script executable
@@ -412,7 +416,7 @@ export class BackendInstaller {
 			} else {
 				// Linux
 				scriptPath = join(tempDir, "install-backend-linux.sh");
-				writeFileSync(scriptPath, linuxScript);
+				writeFileSync(scriptPath, linuxInstallScript);
 				cmd = "bash";
 				args = [scriptPath];
 				// Make the script executable
