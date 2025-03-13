@@ -27,5 +27,17 @@ export default defineConfig({
 			},
 		},
 		plugins: [react(), tsconfigPaths()],
+		input: {
+			index: resolve(__dirname, "src/renderer/index.html"),
+			installer: resolve(__dirname, "src/renderer/installer.html"),
+		},
+		build: {
+			rollupOptions: {
+				input: {
+					index: resolve(__dirname, "src/renderer/index.html"),
+					installer: resolve(__dirname, "src/renderer/installer.html"),
+				},
+			},
+		},
 	},
 });

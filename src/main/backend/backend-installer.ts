@@ -9,7 +9,8 @@
 import { spawn } from "node:child_process";
 import fs from "node:fs";
 import { join } from "node:path";
-import { app, dialog as electronDialog } from "electron";
+import { app, dialog as electronDialog, BrowserWindow } from "electron";
+import { is } from "@electron-toolkit/utils";
 import {
 	macosInstallScript,
 	linuxInstallScript,
@@ -18,219 +19,6 @@ import {
 import { writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { logger, LogFileType } from "./logger";
-
-/**
- * Progress window HTML template
- * Contains the UI for the installation progress window
- */
-const progressHtml = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <!-- Google Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <style>
-    :root {
-      --primary: #38C96A;
-      --primary-dark: #16B34A;
-      --primary-light: #68D88E;
-      --secondary: #26BC85;
-      --background: #0A0A0A;
-      --card-bg: #141414;
-      --text-primary: #F9FAFB;
-      --text-secondary: #9CA3AF;
-      --border-color: rgba(255, 255, 255, 0.1);
-      --danger: #EF4444;
-      --danger-hover: #DC2626;
-      --box-shadow: 0 12px 48px rgba(0, 0, 0, 0.5);
-    }
-    
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-    
-    body {
-      font-family: system-ui, Inter, -apple-system, BlinkMacSystemFont, sans-serif;
-      padding: 32px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-      margin: 0;
-      background-color: var(--background);
-      color: var(--text-primary);
-      font-size: 16px;
-    }
-    
-    .container {
-      width: 100%;
-      max-width: 520px;
-      display: flex;
-      flex-direction: column;
-      gap: 24px;
-    }
-    
-    .title {
-      margin: 0;
-      font-weight: 600;
-      font-size: 1.4rem;
-      text-align: center;
-      margin-bottom: 16px;
-      letter-spacing: 0.02em;
-      background: linear-gradient(90deg, rgba(255,255,255,0.95), rgba(255,255,255,0.85));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      text-shadow: 0 0 30px rgba(255,255,255,0.1);
-    }
-    
-    .emoji {
-      font-size: 1.6rem;
-      margin-right: 8px;
-      vertical-align: middle;
-    }
-    
-    p {
-      margin: 0;
-      color: var(--text-secondary);
-      text-align: center;
-      font-size: 0.875rem;
-      line-height: 1.5;
-      padding: 0 8px;
-    }
-    
-    button {
-      padding: 8px 16px;
-      background-color: var(--danger);
-      color: white;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      font-weight: 500;
-      font-size: 0.875rem;
-      transition: all 0.2s ease-in-out;
-      align-self: center;
-      margin-top: 24px;
-      text-transform: none;
-    }
-    
-    button:hover {
-      background-color: var(--danger-hover);
-      box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
-    }
-    
-    .progress-container {
-      width: 100%;
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-      margin-top: 8px;
-    }
-    
-    .progress {
-      width: 100%;
-      height: 6px;
-      background-color: rgba(255, 255, 255, 0.1);
-      border-radius: 4px;
-      overflow: hidden;
-      position: relative;
-      margin: 8px 0;
-    }
-    
-    .progress-bar {
-      height: 100%;
-      background-color: var(--primary);
-      border-radius: 4px;
-      animation: progress-animation 2s infinite ease-in-out;
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 30%;
-    }
-    
-    .card {
-      background-color: var(--card-bg);
-      border-radius: 12px;
-      border: 1px solid var(--border-color);
-      padding: 24px;
-      box-shadow: var(--box-shadow);
-      backdrop-filter: blur(8px);
-    }
-    
-    .spinner-container {
-      display: flex;
-      justify-content: center;
-      margin: 24px 0;
-    }
-    
-    .spinner {
-      width: 40px;
-      height: 40px;
-      border: 3px solid rgba(56, 201, 106, 0.2);
-      border-radius: 50%;
-      border-top-color: var(--primary);
-      animation: spin 1s ease-in-out infinite;
-    }
-    
-    .title-container {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-bottom: 16px;
-    }
-    
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-    
-    @keyframes progress-animation {
-      0% {
-        left: -30%;
-      }
-      100% {
-        left: 100%;
-      }
-    }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="card">
-      <div class="title-container">
-        <span class="title">🚀 Setting Up Your Environment</span>
-      </div>
-      
-      <div class="progress-container">
-        <p>We're preparing the magic behind the scenes! This one-time setup ensures you'll have the best experience with Local Operator.</p>
-        
-        <div class="progress">
-          <div class="progress-bar"></div>
-        </div>
-      </div>
-      
-      <div class="spinner-container">
-        <div class="spinner"></div>
-      </div>
-      
-      <button id="cancelBtn">Cancel Setup</button>
-    </div>
-  </div>
-  
-  <script>
-    const { ipcRenderer } = require('electron');
-    document.getElementById('cancelBtn').addEventListener('click', () => {
-      ipcRenderer.send('cancel-installation');
-    });
-  </script>
-</body>
-</html>
-`;
 
 /**
  * Backend Installer class
@@ -429,7 +217,6 @@ export class BackendInstaller {
 			);
 
 			// Create a progress dialog using BrowserWindow (truly non-modal)
-			const { BrowserWindow } = require("electron");
 			const progressWindow = new BrowserWindow({
 				width: 640,
 				height: 480,
@@ -440,17 +227,21 @@ export class BackendInstaller {
 				title: "Setting Up Local Operator",
 				backgroundColor: "#0A0A0A", // Match app's background color
 				webPreferences: {
-					nodeIntegration: true,
-					contextIsolation: false,
+					preload: join(__dirname, "../preload/index.js"),
+					sandbox: false,
 				},
 			});
 
-			// Use the HTML template defined at the top of the file
-
-			// Load the HTML content
-			progressWindow.loadURL(
-				`data:text/html;charset=utf-8,${encodeURIComponent(progressHtml)}`,
-			);
+			// Load the installer HTML file
+			if (is.dev && process.env.ELECTRON_RENDERER_URL) {
+				// In development mode, use the dev server URL
+				progressWindow.loadURL(
+					`${process.env.ELECTRON_RENDERER_URL}/installer`,
+				);
+			} else {
+				// In production mode, load the file directly
+				progressWindow.loadFile(join(__dirname, "../renderer/installer.html"));
+			}
 			progressWindow.setMenuBarVisibility(false);
 
 			// Track installation state
