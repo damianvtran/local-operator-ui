@@ -13,7 +13,7 @@ import { app, dialog as electronDialog } from "electron";
 import { macosScript, linuxScript, windowsScript } from "./scripts";
 import { writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { logger } from "./logger";
+import { logger, LogFileType } from "./logger";
 
 /**
  * Progress window HTML template
@@ -274,9 +274,13 @@ export class BackendInstaller {
 
 		logger.info(
 			`Backend Installer initialized. Virtual environment path: ${this.venvPath}`,
+			LogFileType.INSTALLER,
 		);
-		logger.info(`Resources path: ${this.resourcesPath}`);
-		logger.info(`Python path: ${this.pythonPath || "Not found"}`);
+		logger.info(`Resources path: ${this.resourcesPath}`, LogFileType.INSTALLER);
+		logger.info(
+			`Python path: ${this.pythonPath || "Not found"}`,
+			LogFileType.INSTALLER,
+		);
 	}
 
 	/**
@@ -303,12 +307,15 @@ export class BackendInstaller {
 
 		for (const path of possibilities) {
 			if (fs.existsSync(path)) {
-				logger.info(`Found Python at ${path}`);
+				logger.info(`Found Python at ${path}`, LogFileType.INSTALLER);
 				return path;
 			}
 		}
 
-		logger.warn(`Could not find Python, checked: ${possibilities.join(", ")}`);
+		logger.warn(
+			`Could not find Python, checked: ${possibilities.join(", ")}`,
+			LogFileType.INSTALLER,
+		);
 		return null;
 	}
 
@@ -320,7 +327,10 @@ export class BackendInstaller {
 		try {
 			// Check if virtual environment exists
 			if (!fs.existsSync(this.venvPath)) {
-				logger.info(`Virtual environment not found at ${this.venvPath}`);
+				logger.info(
+					`Virtual environment not found at ${this.venvPath}`,
+					LogFileType.INSTALLER,
+				);
 				return false;
 			}
 
@@ -333,14 +343,19 @@ export class BackendInstaller {
 			if (!fs.existsSync(localOperatorPath)) {
 				logger.info(
 					`local-operator executable not found at ${localOperatorPath}`,
+					LogFileType.INSTALLER,
 				);
 				return false;
 			}
 
-			logger.info("Backend is installed");
+			logger.info("Backend is installed", LogFileType.INSTALLER);
 			return true;
 		} catch (error) {
-			logger.error("Error checking if backend is installed:", error);
+			logger.error(
+				"Error checking if backend is installed:",
+				LogFileType.INSTALLER,
+				error,
+			);
 			return false;
 		}
 	}
@@ -364,7 +379,10 @@ export class BackendInstaller {
 
 			if (response === 1) {
 				// User cancelled installation
-				logger.info("User cancelled backend installation");
+				logger.info(
+					"User cancelled backend installation",
+					LogFileType.INSTALLER,
+				);
 				// Exit the app when installation is cancelled
 				setTimeout(() => {
 					app.exit(0);
@@ -401,7 +419,10 @@ export class BackendInstaller {
 				fs.chmodSync(scriptPath, "755");
 			}
 
-			logger.info(`Created and running installation script: ${scriptPath}`);
+			logger.info(
+				`Created and running installation script: ${scriptPath}`,
+				LogFileType.INSTALLER,
+			);
 
 			// Create a progress dialog using BrowserWindow (truly non-modal)
 			const { BrowserWindow } = require("electron");
@@ -437,7 +458,10 @@ export class BackendInstaller {
 			const { ipcMain } = require("electron");
 			const cancelHandler = () => {
 				installationCancelled = true;
-				logger.info("Installation cancelled by user from progress dialog");
+				logger.info(
+					"Installation cancelled by user from progress dialog",
+					LogFileType.INSTALLER,
+				);
 				killInstallProcess();
 			};
 
@@ -449,6 +473,7 @@ export class BackendInstaller {
 					installationCancelled = true;
 					logger.info(
 						"Installation cancelled by user closing the progress window",
+						LogFileType.INSTALLER,
 					);
 					killInstallProcess();
 				}
@@ -457,7 +482,10 @@ export class BackendInstaller {
 			// Function to kill the installation process
 			const killInstallProcess = () => {
 				if (installProcess && !installProcess.killed) {
-					logger.info("Terminating installation process");
+					logger.info(
+						"Terminating installation process",
+						LogFileType.INSTALLER,
+					);
 
 					try {
 						// Kill the process and its children
@@ -478,7 +506,11 @@ export class BackendInstaller {
 							}
 						}
 					} catch (error) {
-						logger.error("Error killing installation process:", error);
+						logger.error(
+							"Error killing installation process:",
+							LogFileType.INSTALLER,
+							error,
+						);
 					}
 
 					// Only exit the app if this was a user-initiated cancellation
@@ -511,12 +543,16 @@ export class BackendInstaller {
 					// Log the resources path for debugging
 					logger.info(
 						`Setting ELECTRON_RESOURCE_PATH to ${this.resourcesPath}`,
+						LogFileType.INSTALLER,
 					);
 
 					// If we found Python, pass its path directly
 					if (this.pythonPath) {
 						env.PYTHON_BIN = this.pythonPath;
-						logger.info(`Setting PYTHON_BIN to ${this.pythonPath}`);
+						logger.info(
+							`Setting PYTHON_BIN to ${this.pythonPath}`,
+							LogFileType.INSTALLER,
+						);
 					}
 
 					installProcess = spawn(cmd, args, {
@@ -533,7 +569,10 @@ export class BackendInstaller {
 							const output = data.toString();
 							stdout += output;
 							console.log(`Installation stdout: ${output}`);
-							logger.info(`Installation stdout: ${output}`);
+							logger.info(
+								`Installation stdout: ${output}`,
+								LogFileType.INSTALLER,
+							);
 						});
 					}
 
@@ -542,22 +581,33 @@ export class BackendInstaller {
 							const output = data.toString();
 							stderr += output;
 							console.error(`Installation stderr: ${output}`);
-							logger.error(`Installation stderr: ${output}`);
+							logger.error(
+								`Installation stderr: ${output}`,
+								LogFileType.INSTALLER,
+							);
 						});
 					}
 
 					installProcess.on("error", (error) => {
 						logger.error(
 							`Installation error: ${error instanceof Error ? error.message : String(error)}`,
+							LogFileType.INSTALLER,
 						);
 						if (error instanceof Error) {
-							logger.exception(error, "Installation Process");
+							logger.exception(
+								error,
+								LogFileType.INSTALLER,
+								"Installation Process",
+							);
 						}
 						resolve(false);
 					});
 
 					installProcess.on("exit", (code) => {
-						logger.info(`Installation process exited with code ${code}`);
+						logger.info(
+							`Installation process exited with code ${code}`,
+							LogFileType.INSTALLER,
+						);
 
 						// Mark installation as completed
 						installationCompleted = true;
@@ -570,7 +620,11 @@ export class BackendInstaller {
 						}
 					});
 				} catch (error) {
-					logger.error("Error running installation script:", error);
+					logger.error(
+						"Error running installation script:",
+						LogFileType.INSTALLER,
+						error,
+					);
 					resolve(false);
 				}
 			});
@@ -586,13 +640,19 @@ export class BackendInstaller {
 
 			// If installation was cancelled, exit the app
 			if (installationCancelled) {
-				logger.info("Installation was cancelled, exiting app");
+				logger.info(
+					"Installation was cancelled, exiting app",
+					LogFileType.INSTALLER,
+				);
 				app.exit(1);
 				return false;
 			}
 
 			if (result) {
-				logger.info("Backend installation completed successfully");
+				logger.info(
+					"Backend installation completed successfully",
+					LogFileType.INSTALLER,
+				);
 
 				// Show success dialog
 				await electronDialog.showMessageBox({
@@ -607,7 +667,7 @@ export class BackendInstaller {
 			}
 
 			// Installation failed
-			logger.error("Backend installation failed");
+			logger.error("Backend installation failed", LogFileType.INSTALLER);
 
 			// Show error dialog
 			electronDialog.showErrorBox(
@@ -619,10 +679,11 @@ export class BackendInstaller {
 		} catch (error) {
 			logger.error(
 				"Error installing backend:",
+				LogFileType.INSTALLER,
 				error instanceof Error ? error.message : String(error),
 			);
 			if (error instanceof Error) {
-				logger.exception(error, "Backend Installation");
+				logger.exception(error, LogFileType.INSTALLER, "Backend Installation");
 			}
 
 			// Show error dialog

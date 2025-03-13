@@ -9,6 +9,7 @@ import { spawn, type ChildProcess, exec } from "node:child_process";
 import { join } from "node:path";
 import { app, dialog as electronDialog } from "electron";
 import { promisify } from "node:util";
+import { logger, LogFileType } from "./logger";
 
 const execPromise = promisify(exec);
 
@@ -55,10 +56,14 @@ export class BackendServiceManager {
 		}
 
 		// Log initialization status
-		console.log(
+		logger.info(
 			`Backend Service Manager initialized. Disabled: ${this.isDisabled}`,
+			LogFileType.BACKEND,
 		);
-		console.log(`Virtual environment path: ${this.venvPath}`);
+		logger.info(
+			`Virtual environment path: ${this.venvPath}`,
+			LogFileType.BACKEND,
+		);
 	}
 
 	/**
@@ -72,16 +77,25 @@ export class BackendServiceManager {
 					? "where local-operator"
 					: "which local-operator";
 
-			console.log(`Checking if local-operator command exists: ${command}`);
+			logger.info(
+				`Checking if local-operator command exists: ${command}`,
+				LogFileType.BACKEND,
+			);
 
 			const { stdout } = await execPromise(command);
 
 			if (stdout.trim()) {
-				console.log(`local-operator command found at: ${stdout.trim()}`);
+				logger.info(
+					`local-operator command found at: ${stdout.trim()}`,
+					LogFileType.BACKEND,
+				);
 				return true;
 			}
 		} catch (error) {
-			console.log("local-operator command not found globally");
+			logger.info(
+				"local-operator command not found globally",
+				LogFileType.BACKEND,
+			);
 		}
 
 		return false;
@@ -93,14 +107,18 @@ export class BackendServiceManager {
 	 */
 	async checkExistingBackend(): Promise<boolean> {
 		if (this.isDisabled) {
-			console.log(
+			logger.info(
 				"Backend Service Manager is disabled. Assuming external backend is available.",
+				LogFileType.BACKEND,
 			);
 			return true;
 		}
 
 		try {
-			console.log(`Checking for external backend at ${this.backendUrl}/health`);
+			logger.info(
+				`Checking for external backend at ${this.backendUrl}/health`,
+				LogFileType.BACKEND,
+			);
 
 			// Set a shorter timeout for the fetch request
 			const controller = new AbortController();
@@ -114,12 +132,16 @@ export class BackendServiceManager {
 
 			clearTimeout(timeoutId);
 
-			console.log(
+			logger.info(
 				`External backend health check response status: ${response.status}`,
+				LogFileType.BACKEND,
 			);
 
 			if (response.ok) {
-				console.log("External backend detected and healthy");
+				logger.info(
+					"External backend detected and healthy",
+					LogFileType.BACKEND,
+				);
 				this.isExternalBackend = true;
 				return true;
 			}
@@ -128,7 +150,10 @@ export class BackendServiceManager {
 			try {
 				if (this.backendUrl.includes("127.0.0.1")) {
 					const altUrl = "http://localhost:1111";
-					console.log(`Trying alternative URL: ${altUrl}/health`);
+					logger.info(
+						`Trying alternative URL: ${altUrl}/health`,
+						LogFileType.BACKEND,
+					);
 
 					const controller = new AbortController();
 					const timeoutId = setTimeout(() => controller.abort(), 5000);
@@ -141,26 +166,39 @@ export class BackendServiceManager {
 
 					clearTimeout(timeoutId);
 
-					console.log(
+					logger.info(
 						`Alternative URL health check response status: ${response.status}`,
+						LogFileType.BACKEND,
 					);
 
 					if (response.ok) {
 						// Update the URL for future requests
 						this.backendUrl = altUrl;
-						console.log(
+						logger.info(
 							"External backend detected and healthy using alternative URL",
+							LogFileType.BACKEND,
 						);
 						this.isExternalBackend = true;
 						return true;
 					}
 				}
 			} catch (altError) {
-				console.error("Error checking alternative backend URL:", altError);
+				logger.error(
+					"Error checking alternative backend URL:",
+					LogFileType.BACKEND,
+					altError,
+				);
 			}
 
-			console.error("Error checking external backend:", error);
-			console.log("No external backend detected or backend is not healthy");
+			logger.error(
+				"Error checking external backend:",
+				LogFileType.BACKEND,
+				error,
+			);
+			logger.info(
+				"No external backend detected or backend is not healthy",
+				LogFileType.BACKEND,
+			);
 		}
 
 		return false;
@@ -172,8 +210,9 @@ export class BackendServiceManager {
 	 */
 	async start(): Promise<boolean> {
 		if (this.isDisabled) {
-			console.log(
+			logger.info(
 				"Backend Service Manager is disabled. Skipping backend start.",
+				LogFileType.BACKEND,
 			);
 			return true;
 		}
@@ -189,7 +228,10 @@ export class BackendServiceManager {
 		try {
 			// Check if local-operator command exists globally
 			if (await this.checkLocalOperatorExists()) {
-				console.log("Using globally installed local-operator command");
+				logger.info(
+					"Using globally installed local-operator command",
+					LogFileType.BACKEND,
+				);
 
 				// Run local-operator serve directly
 				const cmd = process.platform === "win32" ? "cmd.exe" : "bash";
@@ -198,8 +240,9 @@ export class BackendServiceManager {
 						? ["/c", `local-operator serve --port ${this.port}`]
 						: ["-c", `local-operator serve --port ${this.port}`];
 
-				console.log(
+				logger.info(
 					`Starting backend service with global command: ${cmd} ${args.join(" ")}`,
+					LogFileType.BACKEND,
 				);
 
 				// Create the process with proper options to ensure it terminates with the parent
@@ -211,8 +254,9 @@ export class BackendServiceManager {
 				});
 			} else {
 				// Local-operator not found globally, use virtual environment
-				console.log(
+				logger.info(
 					"Global local-operator not found, using virtual environment",
+					LogFileType.BACKEND,
 				);
 
 				// Platform-specific activation of virtual environment
@@ -236,8 +280,9 @@ export class BackendServiceManager {
 					];
 				}
 
-				console.log(
+				logger.info(
 					`Starting backend service with venv: ${cmd} ${args.join(" ")}`,
+					LogFileType.BACKEND,
 				);
 
 				// Create the process with proper options to ensure it terminates with the parent
@@ -252,19 +297,22 @@ export class BackendServiceManager {
 			// Log output
 			if (this.process.stdout) {
 				this.process.stdout.on("data", (data) => {
-					console.log(`Backend stdout: ${data}`);
+					logger.info(`Backend stdout: ${data}`, LogFileType.BACKEND);
 				});
 			}
 
 			if (this.process.stderr) {
 				this.process.stderr.on("data", (data) => {
-					console.error(`Backend stderr: ${data}`);
+					logger.error(`Backend stderr: ${data}`, LogFileType.BACKEND);
 				});
 			}
 
 			// Handle process exit
 			this.process.on("exit", (code) => {
-				console.log(`Backend process exited with code ${code}`);
+				logger.info(
+					`Backend process exited with code ${code}`,
+					LogFileType.BACKEND,
+				);
 				this.isRunning = false;
 				this.process = null;
 
@@ -299,7 +347,10 @@ export class BackendServiceManager {
 				attempts++;
 			}
 
-			console.error("Failed to start backend service after multiple attempts");
+			logger.error(
+				"Failed to start backend service after multiple attempts",
+				LogFileType.BACKEND,
+			);
 
 			// Show error dialog
 			electronDialog.showErrorBox(
@@ -309,7 +360,11 @@ export class BackendServiceManager {
 
 			return false;
 		} catch (error) {
-			console.error("Error starting backend service:", error);
+			logger.error(
+				"Error starting backend service:",
+				LogFileType.BACKEND,
+				error,
+			);
 
 			// Show error dialog
 			electronDialog.showErrorBox(
@@ -333,12 +388,15 @@ export class BackendServiceManager {
 		}
 
 		if (this.isDisabled || this.isExternalBackend) {
-			console.log("Skipping backend stop (disabled or external backend)");
+			logger.info(
+				"Skipping backend stop (disabled or external backend)",
+				LogFileType.BACKEND,
+			);
 			return;
 		}
 
 		if (this.process && this.isRunning) {
-			console.log("Stopping backend service...");
+			logger.info("Stopping backend service...", LogFileType.BACKEND);
 
 			// Create a promise that resolves when the process exits
 			// Store this promise so it can be awaited from outside
@@ -354,7 +412,7 @@ export class BackendServiceManager {
 				}
 
 				this.process.once("exit", () => {
-					console.log("Backend process exited");
+					logger.info("Backend process exited", LogFileType.BACKEND);
 					this.process = null;
 					this.isRunning = false;
 
@@ -371,8 +429,9 @@ export class BackendServiceManager {
 				if (process.platform === "win32") {
 					// Windows: send CTRL+C signal via taskkill
 					if (this.process.pid) {
-						console.log(
+						logger.info(
 							`Terminating Windows process with PID ${this.process.pid}`,
+							LogFileType.BACKEND,
 						);
 						spawn("taskkill", [
 							"/pid",
@@ -383,7 +442,10 @@ export class BackendServiceManager {
 					}
 				} else {
 					// Unix: send SIGTERM
-					console.log("Sending SIGTERM to backend process");
+					logger.info(
+						"Sending SIGTERM to backend process",
+						LogFileType.BACKEND,
+					);
 					this.process.kill("SIGTERM");
 				}
 
@@ -391,8 +453,9 @@ export class BackendServiceManager {
 				const timeoutPromise = new Promise<void>((resolve) => {
 					setTimeout(() => {
 						if (this.process) {
-							console.log(
+							logger.info(
 								"Backend process did not exit in time, force killing",
+								LogFileType.BACKEND,
 							);
 							try {
 								// Force kill the process
@@ -409,7 +472,11 @@ export class BackendServiceManager {
 									this.process.kill("SIGKILL");
 								}
 							} catch (error) {
-								console.error("Error force killing process:", error);
+								logger.error(
+									"Error force killing process:",
+									LogFileType.BACKEND,
+									error,
+								);
 							}
 
 							// Even if force kill fails, mark process as stopped
@@ -429,7 +496,11 @@ export class BackendServiceManager {
 				// Wait for either the process to exit or the timeout
 				await Promise.race([this.exitPromise, timeoutPromise]);
 			} catch (error) {
-				console.error("Error stopping backend process:", error);
+				logger.error(
+					"Error stopping backend process:",
+					LogFileType.BACKEND,
+					error,
+				);
 				// Ensure process is marked as stopped even if there was an error
 				this.process = null;
 				this.isRunning = false;
@@ -441,7 +512,7 @@ export class BackendServiceManager {
 				}
 			}
 
-			console.log("Backend service stopped");
+			logger.info("Backend service stopped", LogFileType.BACKEND);
 		}
 	}
 
@@ -462,7 +533,10 @@ export class BackendServiceManager {
 
 			clearTimeout(timeoutId);
 
-			console.log(`Backend health check response status: ${response.status}`);
+			logger.info(
+				`Backend health check response status: ${response.status}`,
+				LogFileType.BACKEND,
+			);
 
 			return response.ok;
 		} catch (error) {
@@ -485,7 +559,7 @@ export class BackendServiceManager {
 			const isHealthy = await this.checkHealth();
 
 			if (!isHealthy) {
-				console.log("Backend health check failed");
+				logger.info("Backend health check failed", LogFileType.BACKEND);
 
 				if (this.isExternalBackend) {
 					// External backend is no longer healthy

@@ -3,12 +3,21 @@
  *
  * This module provides logging functionality for the application.
  * It uses electron-log to save logs to a persistent location.
+ * Supports multiple log files for different components of the application.
  */
 
 import { app } from "electron";
 import { join } from "node:path";
-import electronLog from "electron-log";
+import electronLog, { type ElectronLog } from "electron-log";
 import fs from "node:fs";
+
+/**
+ * Log file types
+ */
+export enum LogFileType {
+	INSTALLER = "backend-installer.log",
+	BACKEND = "backend-service.log",
+}
 
 /**
  * Logger class
@@ -17,7 +26,7 @@ import fs from "node:fs";
 export class Logger {
 	private static instance: Logger;
 	private logPath: string;
-	private logger: typeof electronLog;
+	private loggers: Map<LogFileType, ElectronLog>;
 
 	/**
 	 * Private constructor to enforce singleton pattern
@@ -49,30 +58,42 @@ export class Logger {
 			fs.mkdirSync(this.logPath, { recursive: true });
 		}
 
-		// Configure electron-log
-		this.logger = electronLog;
+		// Initialize loggers map
+		this.loggers = new Map();
 
-		// Set log file path
-		this.logger.transports.file.resolvePath = () =>
-			join(this.logPath, "backend-installer.log");
+		// Create and configure loggers for each log file type
+		for (const logFileType of Object.values(LogFileType)) {
+			// Configure a new logger instance
+			const logger = electronLog.create(`logger-${logFileType}`) as ElectronLog;
 
-		// Configure log level and format
-		this.logger.transports.file.level = "debug";
-		this.logger.transports.file.format =
-			"[{y}-{m}-{d} {h}:{i}:{s}.{ms}] [{level}] {text}";
+			// Set log file path
+			logger.transports.file.resolvePath = () =>
+				join(this.logPath, logFileType);
 
-		// Set max log file size (10MB) and keep last 5 log files
-		this.logger.transports.file.maxSize = 10 * 1024 * 1024;
+			// Configure log level and format
+			logger.transports.file.level = "debug";
+			logger.transports.file.format =
+				"[{y}-{m}-{d} {h}:{i}:{s}.{ms}] [{level}] {text}";
 
-		// Also log to console in development mode
-		if (process.env.NODE_ENV === "development") {
-			this.logger.transports.console.level = "debug";
-		} else {
-			this.logger.transports.console.level = "info";
+			// Set max log file size (10MB)
+			logger.transports.file.maxSize = 10 * 1024 * 1024;
+
+			// Also log to console in development mode
+			if (process.env.NODE_ENV === "development") {
+				logger.transports.console.level = "debug";
+			} else {
+				logger.transports.console.level = "info";
+			}
+
+			// Add logger to map
+			this.loggers.set(logFileType, logger);
 		}
 
-		this.logger.info("Logger initialized");
-		this.logger.info(`Log path: ${this.logPath}`);
+		// Log initialization
+		this.getLogger(LogFileType.INSTALLER).info("Logger initialized");
+		this.getLogger(LogFileType.INSTALLER).info(`Log path: ${this.logPath}`);
+		this.getLogger(LogFileType.BACKEND).info("Backend logger initialized");
+		this.getLogger(LogFileType.BACKEND).info(`Log path: ${this.logPath}`);
 	}
 
 	/**
@@ -87,53 +108,94 @@ export class Logger {
 	}
 
 	/**
+	 * Get a specific logger instance
+	 * @param logType The type of log file to use
+	 * @returns The logger instance for the specified log file
+	 */
+	private getLogger(logType: LogFileType): ElectronLog {
+		const logger =
+			this.loggers.get(logType) || this.loggers.get(LogFileType.INSTALLER);
+		if (!logger) {
+			// This should never happen as we initialize all loggers in the constructor
+			throw new Error(`Logger for ${logType} not found`);
+		}
+		return logger;
+	}
+
+	/**
 	 * Log an info message
 	 * @param message The message to log
+	 * @param logType The type of log file to use (defaults to INSTALLER)
 	 * @param optionalParams Optional parameters to log
 	 */
-	public info(message: string, ...optionalParams: unknown[]): void {
-		this.logger.info(message, ...optionalParams);
+	public info(
+		message: string,
+		logType: LogFileType = LogFileType.INSTALLER,
+		...optionalParams: unknown[]
+	): void {
+		this.getLogger(logType).info(message, ...optionalParams);
 	}
 
 	/**
 	 * Log a warning message
 	 * @param message The message to log
+	 * @param logType The type of log file to use (defaults to INSTALLER)
 	 * @param optionalParams Optional parameters to log
 	 */
-	public warn(message: string, ...optionalParams: unknown[]): void {
-		this.logger.warn(message, ...optionalParams);
+	public warn(
+		message: string,
+		logType: LogFileType = LogFileType.INSTALLER,
+		...optionalParams: unknown[]
+	): void {
+		this.getLogger(logType).warn(message, ...optionalParams);
 	}
 
 	/**
 	 * Log an error message
 	 * @param message The message to log
+	 * @param logType The type of log file to use (defaults to INSTALLER)
 	 * @param optionalParams Optional parameters to log
 	 */
-	public error(message: string, ...optionalParams: unknown[]): void {
-		this.logger.error(message, ...optionalParams);
+	public error(
+		message: string,
+		logType: LogFileType = LogFileType.INSTALLER,
+		...optionalParams: unknown[]
+	): void {
+		this.getLogger(logType).error(message, ...optionalParams);
 	}
 
 	/**
 	 * Log a debug message
 	 * @param message The message to log
+	 * @param logType The type of log file to use (defaults to INSTALLER)
 	 * @param optionalParams Optional parameters to log
 	 */
-	public debug(message: string, ...optionalParams: unknown[]): void {
-		this.logger.debug(message, ...optionalParams);
+	public debug(
+		message: string,
+		logType: LogFileType = LogFileType.INSTALLER,
+		...optionalParams: unknown[]
+	): void {
+		this.getLogger(logType).debug(message, ...optionalParams);
 	}
 
 	/**
 	 * Log an exception
 	 * @param error The error to log
+	 * @param logType The type of log file to use (defaults to INSTALLER)
 	 * @param context Optional context information
 	 */
-	public exception(error: Error, context?: string): void {
+	public exception(
+		error: Error,
+		logType: LogFileType = LogFileType.INSTALLER,
+		context?: string,
+	): void {
+		const logger = this.getLogger(logType);
 		if (context) {
-			this.logger.error(`[${context}] ${error.message}`);
-			this.logger.error(error.stack);
+			logger.error(`[${context}] ${error.message}`);
+			logger.error(error.stack);
 		} else {
-			this.logger.error(error.message);
-			this.logger.error(error.stack);
+			logger.error(error.message);
+			logger.error(error.stack);
 		}
 	}
 
