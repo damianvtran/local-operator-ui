@@ -139,8 +139,66 @@ app.on("will-quit", async (event) => {
 			// Stop the backend service and wait for it to fully terminate
 			await backendService.stop();
 			console.log("Backend service successfully stopped");
+
+			// Add an additional targeted cleanup as a failsafe
+			console.log(
+				"Performing additional cleanup to ensure complete termination",
+			);
+
+			if (process.platform === "win32") {
+				// On Windows, look for processes with "local-operator serve" in the command line
+				try {
+					require("node:child_process").execSync(
+						`wmic process where "commandline like '%local-operator serve%'" call terminate`,
+						{ stdio: "ignore" },
+					);
+				} catch (err) {
+					// Ignore errors, this is a best-effort cleanup
+				}
+			} else {
+				// On Unix systems, look for processes with "local-operator serve" in the command line
+				try {
+					require("node:child_process").execSync(
+						`ps aux | grep "local-operator serve" | grep -v grep | awk '{print $2}' | xargs -r kill -15`,
+						{ stdio: "ignore" },
+					);
+				} catch (err) {
+					// Ignore errors, this is a best-effort cleanup
+				}
+			}
 		} catch (error) {
 			console.error("Error stopping backend service:", error);
+
+			// If the normal stop failed, try the targeted approach
+			console.log("Trying alternative termination approach");
+
+			if (process.platform === "win32") {
+				// On Windows, look for processes with "local-operator serve" in the command line
+				try {
+					require("node:child_process").execSync(
+						`wmic process where "commandline like '%local-operator serve%'" call terminate`,
+						{ stdio: "ignore" },
+					);
+				} catch (err) {
+					// Ignore errors, this is a best-effort cleanup
+				}
+			} else {
+				// On Unix systems, look for processes with "local-operator serve" in the command line
+				try {
+					require("node:child_process").execSync(
+						`ps aux | grep "local-operator serve" | grep -v grep | awk '{print $2}' | xargs -r kill -15`,
+						{ stdio: "ignore" },
+					);
+
+					// Give processes a moment to terminate gracefully before force killing
+					require("node:child_process").execSync(
+						`sleep 1 && ps aux | grep "local-operator serve" | grep -v grep | awk '{print $2}' | xargs -r kill -9`,
+						{ stdio: "ignore" },
+					);
+				} catch (err) {
+					// Ignore errors, this is a best-effort cleanup
+				}
+			}
 		} finally {
 			// Ensure app quits even if there was an error stopping the service
 			// Use a longer timeout to ensure the process has time to fully terminate
@@ -176,27 +234,35 @@ process.on("exit", () => {
 		) {
 			console.log("Forcing termination of our backend process");
 
-			// Use a more robust approach that doesn't rely on accessing private properties
-			// Kill any processes that might be running on our port
-			const port = backendService.getPort();
-			console.log(`Ensuring no processes are running on port ${port}`);
+			// Use a more targeted approach to avoid affecting other services
+			// We'll only try to find and terminate processes that look like our backend
+			console.log(
+				"Performing final cleanup of any remaining backend processes",
+			);
 
 			if (process.platform === "win32") {
-				// On Windows, find and kill processes using our port
+				// On Windows, look for processes with "local-operator serve" in the command line
 				try {
+					// First try a more targeted approach that won't affect other services
 					require("node:child_process").spawnSync("cmd.exe", [
 						"/c",
-						`for /f \"tokens=5\" %a in ('netstat -ano ^| findstr :${port}') do taskkill /F /PID %a`,
+						`wmic process where "commandline like '%local-operator serve%'" call terminate`,
 					]);
 				} catch (err) {
 					// Ignore errors, this is a best-effort cleanup
 				}
 			} else {
-				// On Unix systems, find and kill processes using our port
+				// On Unix systems, look for processes with "local-operator serve" in the command line
 				try {
 					require("node:child_process").spawnSync("bash", [
 						"-c",
-						`lsof -i:${port} -t | xargs -r kill -9`,
+						`ps aux | grep "local-operator serve" | grep -v grep | awk '{print $2}' | xargs -r kill -15`,
+					]);
+
+					// Give processes a moment to terminate gracefully before force killing
+					require("node:child_process").spawnSync("bash", [
+						"-c",
+						`sleep 1 && ps aux | grep "local-operator serve" | grep -v grep | awk '{print $2}' | xargs -r kill -9`,
 					]);
 				} catch (err) {
 					// Ignore errors, this is a best-effort cleanup
@@ -226,10 +292,43 @@ process.on("uncaughtException", (error) => {
 		console.log(
 			"Attempting to stop our backend service due to uncaught exception",
 		);
+
+		// First try the normal stop method
 		backendService
 			.stop()
 			.catch((stopError) => {
 				console.error("Error stopping backend service:", stopError);
+
+				// If normal stop fails, try the more targeted approach
+				console.log("Trying alternative termination approach");
+
+				if (process.platform === "win32") {
+					// On Windows, look for processes with "local-operator serve" in the command line
+					try {
+						require("node:child_process").spawnSync("cmd.exe", [
+							"/c",
+							`wmic process where "commandline like '%local-operator serve%'" call terminate`,
+						]);
+					} catch (err) {
+						// Ignore errors, this is a best-effort cleanup
+					}
+				} else {
+					// On Unix systems, look for processes with "local-operator serve" in the command line
+					try {
+						require("node:child_process").spawnSync("bash", [
+							"-c",
+							`ps aux | grep "local-operator serve" | grep -v grep | awk '{print $2}' | xargs -r kill -15`,
+						]);
+
+						// Give processes a moment to terminate gracefully before force killing
+						require("node:child_process").spawnSync("bash", [
+							"-c",
+							`sleep 1 && ps aux | grep "local-operator serve" | grep -v grep | awk '{print $2}' | xargs -r kill -9`,
+						]);
+					} catch (err) {
+						// Ignore errors, this is a best-effort cleanup
+					}
+				}
 			})
 			.finally(() => {
 				// Force exit after a timeout
