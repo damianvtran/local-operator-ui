@@ -18,6 +18,7 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const sharp = require("sharp");
+const { Resvg } = require("@resvg/resvg-js");
 
 // Configuration
 const defaultIconPath = path.join(__dirname, "../resources/icon.png");
@@ -100,11 +101,30 @@ const generateIcons = async () => {
 				background: { r: 0, g: 0, b: 0, alpha: 0 },
 			});
 
-			// Handle ICO format separately using toBuffer and fs.writeFile
+			// Handle ICO format separately
 			if (icon.isIco) {
-				const pngBuffer = await resized.png().toBuffer();
-				const toIco = require("to-ico");
-				const icoBuffer = await toIco(pngBuffer);
+				// Convert to PNG first (not SVG which was causing the error)
+				const pngBuffer = await resized.toFormat("png").toBuffer();
+
+				// Create a simple ICO format (basic implementation)
+				const icoHeader = Buffer.alloc(22);
+				// ICO header (6 bytes)
+				icoHeader.writeUInt16LE(0, 0); // Reserved, must be 0
+				icoHeader.writeUInt16LE(1, 2); // Image type: 1 for ICO
+				icoHeader.writeUInt16LE(1, 4); // Number of images
+
+				// Directory entry (16 bytes)
+				icoHeader.writeUInt8(size > 255 ? 0 : size, 6); // Width (0 means 256)
+				icoHeader.writeUInt8(size > 255 ? 0 : size, 7); // Height (0 means 256)
+				icoHeader.writeUInt8(0, 8); // Color palette
+				icoHeader.writeUInt8(0, 9); // Reserved
+				icoHeader.writeUInt16LE(1, 10); // Color planes
+				icoHeader.writeUInt16LE(32, 12); // Bits per pixel
+				icoHeader.writeUInt32LE(pngBuffer.length, 14); // Size of image data
+				icoHeader.writeUInt32LE(22, 18); // Offset to image data
+
+				// Combine header and PNG data
+				const icoBuffer = Buffer.concat([icoHeader, pngBuffer]);
 				fs.writeFileSync(outputPath, icoBuffer);
 			} else {
 				// For other formats, use toFile directly
