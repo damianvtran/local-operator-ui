@@ -12,8 +12,8 @@ app.dock.setIcon(image);
 function createWindow(): void {
 	// Create the browser window.
 	const mainWindow = new BrowserWindow({
-		width: 1200,
-		height: 800,
+		width: 1380,
+		height: 900,
 		show: false,
 		autoHideMenuBar: true,
 		title: "Local Operator",

@@ -218,8 +218,8 @@ export class BackendInstaller {
 
 			// Create a progress dialog using BrowserWindow (truly non-modal)
 			const progressWindow = new BrowserWindow({
-				width: 640,
-				height: 480,
+				width: 1380,
+				height: 800,
 				resizable: false,
 				minimizable: false,
 				maximizable: false,
