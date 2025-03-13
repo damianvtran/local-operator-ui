@@ -7,3 +7,4 @@
 export * from "./backend-service";
 export * from "./backend-installer";
 export * from "./logger";
+export * from "./config";

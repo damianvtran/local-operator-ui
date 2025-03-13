@@ -12,6 +12,7 @@ import { join } from "node:path";
 import { promisify } from "node:util";
 import { app, dialog as electronDialog } from "electron";
 import { LogFileType, logger } from "./logger";
+import { backendConfig } from "./config";
 
 const execPromise = promisify(exec);
 
@@ -23,9 +24,9 @@ export class BackendServiceManager {
 	private process: ChildProcess | null = null;
 	private isRunning = false;
 	private isExternalBackend = false;
-	private isDisabled = process.env.VITE_DISABLE_BACKEND_MANAGER === "true";
-	private port = 1111;
-	private backendUrl = `http://127.0.0.1:${this.port}`; // Use explicit IPv4 address instead of localhost
+	private isDisabled = backendConfig.VITE_DISABLE_BACKEND_MANAGER === "true";
+	private port: number;
+	private backendUrl: string;
 	private appDataPath = app.getPath("userData");
 	private venvPath: string;
 	private healthCheckInterval: NodeJS.Timeout | null = null;
@@ -37,6 +38,30 @@ export class BackendServiceManager {
 	 * Constructor
 	 */
 	constructor() {
+		// Extract port from API URL
+		try {
+			const apiUrl = new URL(backendConfig.VITE_LOCAL_OPERATOR_API_URL);
+			this.port = Number.parseInt(apiUrl.port, 10) || 1111; // Default to 1111 if port is not specified
+
+			// Use explicit IPv4 address instead of localhost for better compatibility
+			this.backendUrl = `http://127.0.0.1:${this.port}`;
+
+			logger.info(
+				`Backend service configured with port ${this.port} and URL ${this.backendUrl}`,
+				LogFileType.BACKEND,
+			);
+		} catch (error) {
+			// Fallback to default values if URL parsing fails
+			this.port = 1111;
+			this.backendUrl = `http://127.0.0.1:${this.port}`;
+
+			logger.error(
+				`Error parsing API URL, using default port ${this.port}`,
+				LogFileType.BACKEND,
+				error,
+			);
+		}
+
 		// Set platform-specific virtual environment path
 		if (process.platform === "win32") {
 			this.venvPath = join(this.appDataPath, "local-operator-venv");
