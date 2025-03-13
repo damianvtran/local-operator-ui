@@ -10,6 +10,8 @@ import { join } from "node:path";
 import { app, dialog as electronDialog } from "electron";
 import { promisify } from "node:util";
 import { logger, LogFileType } from "./logger";
+import fs from "node:fs";
+import os from "node:os";
 
 const execPromise = promisify(exec);
 
@@ -29,6 +31,7 @@ export class BackendServiceManager {
 	private healthCheckInterval: NodeJS.Timeout | null = null;
 	private exitPromise: Promise<void> | null = null;
 	private exitResolve: (() => void) | null = null;
+	private shellEnv: Record<string, string | undefined> = {};
 
 	/**
 	 * Constructor
@@ -55,6 +58,9 @@ export class BackendServiceManager {
 			);
 		}
 
+		// Load shell environment variables
+		this.loadShellEnvironment();
+
 		// Log initialization status
 		logger.info(
 			`Backend Service Manager initialized. Disabled: ${this.isDisabled}`,
@@ -64,6 +70,194 @@ export class BackendServiceManager {
 			`Virtual environment path: ${this.venvPath}`,
 			LogFileType.BACKEND,
 		);
+	}
+
+	/**
+	 * Load shell environment variables from user's shell configuration files
+	 * This ensures that programs like gh and brew that are in the PATH are available to the backend service
+	 */
+	private async loadShellEnvironment(): Promise<void> {
+		try {
+			// Start with current process environment
+			this.shellEnv = { ...process.env };
+
+			// Platform-specific shell environment loading
+			if (process.platform === "darwin") {
+				// macOS: Source .zshrc or .bash_profile
+				await this.loadMacOSEnvironment();
+			} else if (process.platform === "linux") {
+				// Linux: Source .bashrc or .zshrc
+				await this.loadLinuxEnvironment();
+			} else if (process.platform === "win32") {
+				// Windows: Load from registry and user profile
+				await this.loadWindowsEnvironment();
+			} else {
+				logger.error(
+					"Unsupported platform for shell environment loading",
+					LogFileType.BACKEND,
+				);
+			}
+
+			// Log the PATH environment variable to verify it's loaded correctly
+			logger.info(
+				`Shell environment variables loaded successfully. PATH: ${this.shellEnv.PATH || this.shellEnv.Path || "(not set)"}`,
+				LogFileType.BACKEND,
+			);
+		} catch (error) {
+			logger.error(
+				"Error loading shell environment variables:",
+				LogFileType.BACKEND,
+				error,
+			);
+		}
+	}
+
+	/**
+	 * Load environment variables from macOS shell configuration files
+	 */
+	private async loadMacOSEnvironment(): Promise<void> {
+		const home = os.homedir();
+		const possibleFiles = [
+			join(home, ".zshrc"),
+			join(home, ".bash_profile"),
+			join(home, ".bashrc"),
+			join(home, ".profile"),
+		];
+
+		// Find the first shell config file that exists
+		let shellConfigFile: string | null = null;
+		for (const file of possibleFiles) {
+			if (fs.existsSync(file)) {
+				shellConfigFile = file;
+				break;
+			}
+		}
+
+		if (!shellConfigFile) {
+			logger.info(
+				"No shell configuration file found on macOS",
+				LogFileType.BACKEND,
+			);
+			return;
+		}
+
+		try {
+			// Execute a command that sources the shell config file and prints the environment
+			const { stdout } = await execPromise(
+				`source "${shellConfigFile}" && env`,
+				{ shell: "/bin/bash" },
+			);
+
+			// Parse the environment variables
+			const envVars = stdout.split("\n");
+			for (const line of envVars) {
+				const match = line.match(/^([^=]+)=(.*)$/);
+				if (match) {
+					const [, key, value] = match;
+					this.shellEnv[key] = value;
+				}
+			}
+
+			logger.info(
+				`Loaded environment variables from ${shellConfigFile}`,
+				LogFileType.BACKEND,
+			);
+		} catch (error) {
+			logger.error(
+				`Error loading environment from ${shellConfigFile}:`,
+				LogFileType.BACKEND,
+				error,
+			);
+		}
+	}
+
+	/**
+	 * Load environment variables from Linux shell configuration files
+	 */
+	private async loadLinuxEnvironment(): Promise<void> {
+		const home = os.homedir();
+		const possibleFiles = [
+			join(home, ".bashrc"),
+			join(home, ".zshrc"),
+			join(home, ".profile"),
+		];
+
+		// Find the first shell config file that exists
+		let shellConfigFile: string | null = null;
+		for (const file of possibleFiles) {
+			if (fs.existsSync(file)) {
+				shellConfigFile = file;
+				break;
+			}
+		}
+
+		if (!shellConfigFile) {
+			logger.info(
+				"No shell configuration file found on Linux",
+				LogFileType.BACKEND,
+			);
+			return;
+		}
+
+		try {
+			// Execute a command that sources the shell config file and prints the environment
+			const { stdout } = await execPromise(
+				`bash -c "source \\"${shellConfigFile}\\" && env"`,
+				{ shell: "/bin/bash" },
+			);
+
+			// Parse the environment variables
+			const envVars = stdout.split("\n");
+			for (const line of envVars) {
+				const match = line.match(/^([^=]+)=(.*)$/);
+				if (match) {
+					const [, key, value] = match;
+					this.shellEnv[key] = value;
+				}
+			}
+
+			logger.info(
+				`Loaded environment variables from ${shellConfigFile}`,
+				LogFileType.BACKEND,
+			);
+		} catch (error) {
+			logger.error(
+				`Error loading environment from ${shellConfigFile}:`,
+				LogFileType.BACKEND,
+				error,
+			);
+		}
+	}
+
+	/**
+	 * Load environment variables from Windows user profile
+	 */
+	private async loadWindowsEnvironment(): Promise<void> {
+		try {
+			// On Windows, we can use the 'set' command to get environment variables
+			const { stdout } = await execPromise("set", { shell: "cmd.exe" });
+
+			// Parse the environment variables
+			const envVars = stdout.split("\r\n");
+			for (const line of envVars) {
+				const match = line.match(/^([^=]+)=(.*)$/);
+				if (match) {
+					const [, key, value] = match;
+					this.shellEnv[key] = value;
+				}
+			}
+
+			logger.info(
+				"Loaded environment variables from Windows user profile",
+				LogFileType.BACKEND,
+			);
+		} catch (error) {
+			logger.error(
+				"Error loading environment from Windows user profile:",
+				LogFileType.BACKEND,
+				error,
+			);
+		}
 	}
 
 	/**
@@ -249,6 +443,7 @@ export class BackendServiceManager {
 				this.process = spawn(cmd, args, {
 					detached: false, // Ensure process is not detached from parent
 					stdio: "pipe",
+					env: this.shellEnv, // Use shell environment variables
 					// On Windows, we need to create a new process group to ensure proper termination
 					...(process.platform === "win32" ? { windowsHide: true } : {}),
 				});
@@ -289,6 +484,7 @@ export class BackendServiceManager {
 				this.process = spawn(cmd, args, {
 					detached: false, // Ensure process is not detached from parent
 					stdio: "pipe",
+					env: this.shellEnv, // Use shell environment variables
 					// On Windows, we need to create a new process group to ensure proper termination
 					...(process.platform === "win32" ? { windowsHide: true } : {}),
 				});
