@@ -1,10 +1,4 @@
-/**
- * Linux Installation Script
- *
- * This module exports the installation script for Linux as a string.
- */
-
-export const linuxScript = `#!/bin/bash
+#!/bin/bash
 # Local Operator Backend Installation Script for Linux
 # This script installs pyenv, Python 3.12, and sets up a virtual environment for the Local Operator backend.
 
@@ -125,4 +119,3 @@ else
 fi
 
 echo "$(date): Installation completed successfully."
-`;

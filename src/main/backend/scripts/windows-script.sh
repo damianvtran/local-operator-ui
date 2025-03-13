@@ -1,10 +1,4 @@
-/**
- * Windows Installation Script
- *
- * This module exports the installation script for Windows as a string.
- */
-
-export const windowsScript = `# Local Operator Backend Installation Script for Windows
+# Local Operator Backend Installation Script for Windows
 # This script installs pyenv-win, Python 3.12, and sets up a virtual environment for the Local Operator backend.
 
 # Configuration
@@ -143,4 +137,3 @@ try {
 
 Write-Output "$(Get-Date): Installation completed successfully."
 Stop-Transcript
-`;
