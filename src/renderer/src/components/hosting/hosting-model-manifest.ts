@@ -33,6 +33,11 @@ export type Model = {
 	inputPrice?: number;
 	/** Optional output price per million tokens */
 	outputPrice?: number;
+	/**
+	 * Flag indicating if the model is recommended for general use.
+	 * This is determined by community usage and feedback.
+	 */
+	recommended: boolean;
 };
 
 /**
@@ -69,6 +74,7 @@ const convertToManifestModel = (model: ModelDetails): Model => {
 		supportsImages: model.info.supports_images || undefined,
 		inputPrice: model.info.input_price,
 		outputPrice: model.info.output_price,
+		recommended: model.info.recommended || false,
 	};
 };
 

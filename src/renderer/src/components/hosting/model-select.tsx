@@ -5,13 +5,14 @@
  * Filters available options based on the selected hosting provider.
  */
 
-import { faRobot } from "@fortawesome/free-solid-svg-icons";
+import { faRobot, faStar } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
 	Autocomplete,
 	Box,
 	CircularProgress,
 	TextField,
+	Tooltip,
 	Typography,
 	alpha,
 	createFilterOptions,
@@ -35,6 +36,7 @@ type ModelOption = {
 	name: string;
 	description?: string;
 	model?: Model | undefined;
+	recommended?: boolean;
 };
 
 type ModelSelectProps = {
@@ -106,9 +108,21 @@ const OptionContainer = styled(Box)({
 	width: "100%",
 });
 
+const OptionLabelContainer = styled(Box)({
+	display: "flex",
+	alignItems: "center",
+	gap: "8px",
+});
+
 const OptionLabel = styled(Typography)({
 	fontWeight: 500,
 });
+
+const RecommendedStar = styled(Box)(({ theme }) => ({
+	color: theme.palette.warning.main,
+	display: "flex",
+	alignItems: "center",
+}));
 
 const OptionDescription = styled(Box)(({ theme }) => ({
 	fontSize: "0.75rem",
@@ -195,6 +209,7 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 				name: model.name,
 				description: model.description,
 				model,
+				recommended: model.recommended,
 			});
 		}
 
@@ -429,7 +444,16 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 				renderOption={(props, option) => (
 					<li {...props}>
 						<OptionContainer>
-							<OptionLabel>{(option as ModelOption).name}</OptionLabel>
+							<OptionLabelContainer>
+								<OptionLabel>{(option as ModelOption).name}</OptionLabel>
+								{(option as ModelOption).recommended && (
+									<Tooltip title="Recommended based on community usage and feedback">
+										<RecommendedStar>
+											<FontAwesomeIcon icon={faStar} size="xs" />
+										</RecommendedStar>
+									</Tooltip>
+								)}
+							</OptionLabelContainer>
 							{(option as ModelOption).description && (
 								<OptionDescription>
 									<ReactMarkdown
