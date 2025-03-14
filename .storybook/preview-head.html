@@ -1,0 +1,10 @@
+<script>
+  // Mock the window.api.ipcRenderer for Storybook
+  window.api = {
+    ipcRenderer: {
+      send: (channel, ...args) => {
+        console.log(`IPC message sent to channel "${channel}" with args:`, args);
+      }
+    }
+  };
+</script>

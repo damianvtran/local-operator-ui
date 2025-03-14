@@ -103,7 +103,7 @@ jobs:
           NPX_PID=$!
           
           # Give the app some time to start up
-          sleep 3
+          sleep 15
           
           # Check if process is still running (no immediate crash)
           if ps -p $NPX_PID > /dev/null; then

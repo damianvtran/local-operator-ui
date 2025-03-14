@@ -6,6 +6,29 @@ const api = {
 	// Add methods to open files and URLs
 	openFile: (filePath: string) => ipcRenderer.invoke("open-file", filePath),
 	openExternal: (url: string) => ipcRenderer.invoke("open-external", url),
+
+	// Add methods for installer
+	ipcRenderer: {
+		send: (channel: string, ...args: unknown[]) => {
+			const validChannels = ["cancel-installation"];
+			if (validChannels.includes(channel)) {
+				ipcRenderer.send(channel, ...args);
+			}
+		},
+		on: (channel: string, func: (...args: unknown[]) => void) => {
+			const validChannels = ["installation-progress"];
+			if (validChannels.includes(channel)) {
+				// Remove existing listeners to avoid duplicates
+				ipcRenderer.removeAllListeners(channel);
+				// Add the new listener
+				ipcRenderer.on(channel, (_, ...args) => func(...args));
+				return () => {
+					ipcRenderer.removeAllListeners(channel);
+				};
+			}
+			return undefined;
+		},
+	},
 };
 
 // Use `contextBridge` APIs to expose Electron APIs to

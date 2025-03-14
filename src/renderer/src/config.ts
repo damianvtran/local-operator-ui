@@ -11,6 +11,12 @@ const envSchema = z.object({
 		.optional()
 		.default("http://localhost:1111"),
 
+	// Backend service manager configuration
+	VITE_DISABLE_BACKEND_MANAGER: z
+		.enum(["true", "false"])
+		.optional()
+		.default("false"),
+
 	// Logging
 	VITE_LOG_LEVEL: z
 		.enum(["debug", "info", "warn", "error"])

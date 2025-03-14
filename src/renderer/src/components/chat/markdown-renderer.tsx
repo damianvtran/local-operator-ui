@@ -1,7 +1,7 @@
 import { Box } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import type { FC } from "react";
-import { memo } from "react";
+import { memo, useMemo } from "react";
 import ReactMarkdown from "react-markdown";
 
 type MarkdownRendererProps = {
@@ -98,11 +98,37 @@ const MarkdownContent = styled(Box)({
 });
 
 /**
+ * Converts plain URLs in text to markdown links if they're not already part of a markdown link,
+ * ensuring that trailing quotes and sentence punctuation remain outside the hyperlink.
+ *
+ * @param text - The text to process.
+ * @returns Text with plain URLs converted to markdown links, preserving trailing punctuation.
+ */
+const convertUrlsToMarkdownLinks = (text: string): string => {
+	// Regex to match URLs that are not already part of markdown links.
+	// Captures optional trailing punctuation (e.g., commas, periods, quotes, and parentheses)
+	// in a separate group so that only the URL itself is hyperlinked.
+	const urlRegex = /(?<!\]\()(https?:\/\/\S+?)([,.;:!?"'\)\]]+)?(?=\s|$)/g;
+
+	// Replace plain URLs with markdown links, appending any captured trailing punctuation.
+	return text.replace(
+		urlRegex,
+		(_match, url, punctuation) => `[${url}](${url})${punctuation || ""}`,
+	);
+};
+
+/**
  * Memoized component for rendering markdown content with styled HTML
  * Only re-renders when the content changes
+ * Automatically converts plain URLs to clickable links
  */
 export const MarkdownRenderer: FC<MarkdownRendererProps> = memo(
 	({ content }) => {
+		// Process the content to convert plain URLs to markdown links
+		const processedContent = useMemo(() => {
+			return convertUrlsToMarkdownLinks(content.trim());
+		}, [content]);
+
 		return (
 			<MarkdownContent>
 				<ReactMarkdown
@@ -114,7 +140,7 @@ export const MarkdownRenderer: FC<MarkdownRendererProps> = memo(
 						),
 					}}
 				>
-					{content.trim()}
+					{processedContent}
 				</ReactMarkdown>
 			</MarkdownContent>
 		);
