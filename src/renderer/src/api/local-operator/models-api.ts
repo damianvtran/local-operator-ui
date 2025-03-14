@@ -61,7 +61,7 @@ export type ModelInfo = {
 	 * Whether the model is recommended for general use.  This
 	 * is determined by community usage and feedback.
 	 */
-	recommended?: boolean;
+	recommended: boolean;
 };
 
 /**
@@ -85,6 +85,9 @@ export type ModelListResponse = {
 	/** List of available models */
 	models: ModelDetails[];
 };
+
+export type ModelSortKey = "id" | "name" | "provider" | "recommended";
+export type ModelSortDirection = "ascending" | "descending";
 
 /**
  * List all available model providers
@@ -114,8 +117,8 @@ export const listProviders = async (
 export const listModels = async (
 	baseUrl: string,
 	provider?: string,
-	sort?: "id" | "name" | "provider" | "recommended",
-	direction?: "ascending" | "descending",
+	sort?: ModelSortKey,
+	direction?: ModelSortDirection,
 ): Promise<CRUDResponse<ModelListResponse>> => {
 	const url = new URL(`${baseUrl}/v1/models`);
 
