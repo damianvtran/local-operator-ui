@@ -11,8 +11,8 @@ import os from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import { app, dialog as electronDialog } from "electron";
-import { LogFileType, logger } from "./logger";
 import { backendConfig } from "./config";
+import { LogFileType, logger } from "./logger";
 
 const execPromise = promisify(exec);
 

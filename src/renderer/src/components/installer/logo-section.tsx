@@ -1,7 +1,7 @@
+import logo from "@assets/clear-icon-with-text.png";
 import { Box, Typography, useTheme } from "@mui/material";
 import type React from "react";
 import { LogoContainer } from "./installer-styled";
-import logo from "@assets/clear-icon-with-text.png";
 
 /**
  * LogoSection component

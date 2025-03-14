@@ -6,10 +6,10 @@
  * type-safe access to configuration values.
  */
 
-import { config as dotenvConfig } from "dotenv";
 import { join } from "node:path";
+import { config as dotenvConfig } from "dotenv";
 import { z } from "zod";
-import { logger, LogFileType } from "./logger";
+import { LogFileType, logger } from "./logger";
 
 // Load environment variables from .env file
 const envResult = dotenvConfig({ path: join(process.cwd(), ".env") });
