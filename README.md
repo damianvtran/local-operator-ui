@@ -44,7 +44,8 @@ The Local Operator UI is a user interface for managing and interacting with the 
 Before you begin, ensure you have the following installed:
 
 - **Node.js**: Version 22.13.1 or higher. It's recommended to use [nvm](https://github.com/nvm-sh/nvm) for managing Node.js versions.
-- **Local Operator Backend**: The UI connects to the Local Operator backend API. See the [Local Operator GitHub repository](https://github.com/damianvtran/local-operator) for installation instructions.  Install it globally or in a virtual environment with `pip install local-operator` and then boot it up on `localhost:1111` with `local-operator serve`.
+
+The Local Operator backend is now bundled with the application and will be installed automatically when you first run the application. If you prefer to use an existing Local Operator backend installation, the application will detect it and use it instead.
 
 ### NPM Installation
 
@@ -70,6 +71,49 @@ local-operator-ui
 ```
 
 After installation, the application will automatically connect to the Local Operator backend API at `http://localhost:1111` by default.
+
+### Desktop Applications
+
+Pre-built desktop applications are available for macOS, Windows, and Linux. Visit the [Releases](https://github.com/damianvtran/local-operator-ui/releases) page to download the latest version for your platform.
+
+- **macOS**: Download the `.dmg` file and drag the application to your Applications folder.
+- **Windows**: Download the `.exe` installer and follow the installation prompts.
+- **Linux**: Download the appropriate package (`.deb`, `.rpm`, or `.AppImage`) for your distribution.
+
+### Building from Source
+
+If you want to build the application from source, see the [BUILD.md](./docs/BUILD.md) file for detailed instructions.
+
+#### Python Bundling
+
+For macOS builds, we now bundle a standalone Python directly with the application instead of requiring Homebrew installation. This approach:
+
+- Eliminates the need for admin privileges during installation
+- Makes the application more self-contained
+- Works offline
+- Provides a more reliable user experience
+- Supports installation of Python packages via pip
+
+To set up the standalone Python for development:
+
+```bash
+# Run the setup script to download and configure standalone Python
+yarn setup-python-standalone
+```
+
+This uses [python-build-standalone](https://github.com/indygreg/python-build-standalone), the same approach used by Datasette Desktop and PyOxidizer.
+
+For more details, see the [PYTHON_BUNDLING.md](./docs/PYTHON_BUNDLING.md) documentation.
+
+### Code Signing and Notarization
+
+All desktop applications are code signed and notarized to ensure security and trust:
+
+- **macOS**: Applications are signed with an Apple Developer ID and notarized with Apple's notarization service
+- **Windows**: Applications are signed with a trusted code signing certificate
+- **Linux**: While code signing is less common on Linux, packages are built with integrity checks
+
+For detailed information about the code signing and notarization process, see the [CODE_SIGNING.md](./docs/CODE_SIGNING.md) document.
 
 ## ✨ Features
 
@@ -102,6 +146,13 @@ The Local Operator UI provides a comprehensive interface for interacting with AI
 - Real-time status updates for long-running operations
 - Error handling and retry mechanisms
 
+### Bundled Backend
+
+- The Local Operator backend is now bundled with the application
+- Automatic installation of the backend when first running the application
+- Automatic detection and use of existing backend installations
+- Cross-platform support for Windows, macOS, and Linux
+
 ## 🤝 Contributing
 
 Contributions are welcome! Please see our [Contributing Guide](./CONTRIBUTING.md) for details on how to get started with development, code style guidelines, and our contribution process.
@@ -112,9 +163,18 @@ Contributions are welcome! Please see our [Contributing Guide](./CONTRIBUTING.md
 
 #### Application fails to connect to the backend
 
-- Ensure the Local Operator backend is running and hosting on `http://localhost:1111`
-- Check that the `VITE_LOCAL_OPERATOR_API_URL` environment variable has not been set to a different URL.  This value is set automatically to `http://localhost:1111` if a custom `.env` doesn't specify otherwise.
+- The application will automatically install and start the Local Operator backend if it's not already running
+- If you have an existing backend running on `http://localhost:1111`, the application will use that instead
+- Check that the `VITE_LOCAL_OPERATOR_API_URL` environment variable has not been set to a different URL. This value is set automatically to `http://localhost:1111` if a custom `.env` doesn't specify otherwise
+- If you want to disable the automatic backend management, set the `VITE_DISABLE_BACKEND_MANAGER` environment variable to `true`
 - Verify network connectivity between the UI and the backend
+
+#### Backend installation fails
+
+- Check the application logs for error messages
+- For macOS, the application now uses a bundled Python framework instead of requiring Homebrew and pyenv
+- If you encounter issues with the bundled Python, see the [PYTHON_BUNDLING.md](./docs/PYTHON_BUNDLING.md) documentation
+- As a fallback, you can try installing the backend manually with `pip install local-operator` and then start it with `local-operator serve`
 
 #### Development server crashes
 

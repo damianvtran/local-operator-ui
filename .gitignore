@@ -1,8 +1,50 @@
+# Dependencies
 node_modules/
+
+# Build outputs
 dist/
 out/
-*.log
-.DS_Store
+release/
+*.app
+*.exe
+*.dmg
+*.deb
+*.AppImage
+*.rpm
+*.msi
+*.zip
+
+# Environment files
 .env
-coverage/
+.env.*
+!.env.*.example
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS specific
+.DS_Store
+Thumbs.db
+
+# IDE
 .vscode/
+.idea/
+*.swp
+*.swo
+
+# Testing
+coverage/
+
+# Certificates and keys
+*.p12
+*.pfx
+*.key
+*.crt
+*.pem
+
+resources/python
+
+*storybook.log
