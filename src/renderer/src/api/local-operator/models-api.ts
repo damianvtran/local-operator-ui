@@ -57,6 +57,11 @@ export type ModelInfo = {
 	cache_reads_price?: number | null;
 	/** Description of the model's capabilities */
 	description?: string;
+	/**
+	 * Whether the model is recommended for general use.  This
+	 * is determined by community usage and feedback.
+	 */
+	recommended?: boolean;
 };
 
 /**
@@ -109,11 +114,21 @@ export const listProviders = async (
 export const listModels = async (
 	baseUrl: string,
 	provider?: string,
+	sort?: "id" | "name" | "provider" | "recommended",
+	direction?: "ascending" | "descending",
 ): Promise<CRUDResponse<ModelListResponse>> => {
 	const url = new URL(`${baseUrl}/v1/models`);
 
 	if (provider) {
 		url.searchParams.append("provider", provider);
+	}
+
+	if (sort) {
+		url.searchParams.append("sort", sort);
+	}
+
+	if (direction) {
+		url.searchParams.append("direction", direction);
 	}
 
 	const response = await fetch(url.toString());
