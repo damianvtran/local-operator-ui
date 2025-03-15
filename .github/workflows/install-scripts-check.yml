@@ -1,0 +1,107 @@
+name: Installation Scripts Sanity Check
+
+on:
+  push:
+    branches:
+      - 'dev-*'
+      - 'main'
+    paths:
+      - 'src/main/backend/scripts/**'
+
+jobs:
+  linux-install-check:
+    name: Linux Installation Script Check
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup environment
+        run: |
+          mkdir -p ~/.config/local-operator
+          echo "Running installation script sanity check for Linux"
+      
+      - name: Run Linux installation script
+        run: |
+          chmod +x src/main/backend/scripts/linux-install-script.sh
+          bash src/main/backend/scripts/linux-install-script.sh
+      
+      - name: Verify local-operator installation
+        run: |
+          source ~/.config/local-operator/local-operator-venv/bin/activate
+          local-operator --version
+          if [ $? -ne 0 ]; then
+            echo "Error: local-operator command failed"
+            exit 1
+          fi
+          echo "Linux installation script check passed!"
+
+  windows-install-check:
+    name: Windows Installation Script Check
+    runs-on: windows-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup environment
+        shell: pwsh
+        run: |
+          $AppDataDir = "$env:APPDATA\Local Operator"
+          New-Item -ItemType Directory -Path $AppDataDir -Force | Out-Null
+          Write-Output "Running installation script sanity check for Windows"
+      
+      - name: Run Windows installation script
+        shell: pwsh
+        run: |
+          Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+          .\src\main\backend\scripts\windows-install-script.ps1
+      
+      - name: Verify local-operator installation
+        shell: pwsh
+        run: |
+          $VenvPath = "$env:APPDATA\Local Operator\local-operator-venv"
+          & "$VenvPath\Scripts\Activate.ps1"
+          $version = & local-operator --version
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "Error: local-operator command failed"
+            exit 1
+          }
+          Write-Output $version
+          Write-Output "Windows installation script check passed!"
+
+  macos-install-check:
+    name: macOS Installation Script Check
+    runs-on: macos-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup environment
+        run: |
+          mkdir -p "$HOME/Library/Application Support/Local Operator"
+          echo "Running installation script sanity check for macOS"
+      
+      - name: Setup Python
+        run: |
+          # Create a simple Python installation to simulate the bundled Python
+          mkdir -p resources/python/bin
+          ln -s $(which python3) resources/python/bin/python3
+          chmod +x resources/python/bin/python3
+      
+      - name: Run macOS installation script
+        run: |
+          chmod +x src/main/backend/scripts/macos-install-script.sh
+          bash src/main/backend/scripts/macos-install-script.sh
+      
+      - name: Verify local-operator installation
+        run: |
+          source "$HOME/Library/Application Support/Local Operator/local-operator-venv/bin/activate"
+          local-operator --version
+          if [ $? -ne 0 ]; then
+            echo "Error: local-operator command failed"
+            exit 1
+          fi
+          echo "macOS installation script check passed!"
