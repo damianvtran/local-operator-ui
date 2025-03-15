@@ -70,8 +70,6 @@ jobs:
           security unlock-keychain -p "${{ secrets.KEYCHAIN_PASSWORD }}" build.keychain
           security import certificate.p12 -k build.keychain -P "${{ secrets.CSC_KEY_PASSWORD }}" -T /usr/bin/codesign
           security set-key-partition-list -S apple-tool:,apple:,codesign:,notarize: -s -k "${{ secrets.KEYCHAIN_PASSWORD }}" build.keychain
-          echo "CSC_LINK=./certificate.p12" >> $GITHUB_ENV
-          echo "CSC_KEYCHAIN=build.keychain" >> $GITHUB_ENV
 
       - name: Setup python distributable
         run: |
@@ -81,6 +79,8 @@ jobs:
         run: yarn dist:mac
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_LINK: ./certificate.p12
+          CSC_KEYCHAIN: build.keychain
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
@@ -117,7 +117,6 @@ jobs:
         shell: bash
         run: |
           echo "${{ secrets.CSC_CONTENT }}" | base64 -d > certificate.p12
-          echo "CSC_LINK=./certificate.p12" >> $GITHUB_ENV
       
       - name: Build Windows app
         run: yarn dist:win
