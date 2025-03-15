@@ -214,7 +214,8 @@
 				"Comment": "AI Agent Assistants On Your Device",
 				"Categories": "Development;Utility"
 			}
-		}
+		},
+		"publish": null
 	},
 	"eslintConfig": {
 		"extends": ["plugin:storybook/recommended"]

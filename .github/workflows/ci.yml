@@ -1,10 +1,10 @@
 name: Pre-Release CI Testing
 
-# on:
-#   push:
-#     branches:
-#       - main
-#       - 'dev-*'
+on:
+  push:
+    branches:
+      - main
+      - 'dev-*'
 
 jobs:
   lint:
