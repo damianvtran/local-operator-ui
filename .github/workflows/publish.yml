@@ -74,6 +74,7 @@ jobs:
       - name: Build macOS app
         run: yarn dist:mac
         env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_CONTENT: ${{ secrets.CSC_CONTENT }}
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
@@ -116,6 +117,7 @@ jobs:
       - name: Build Windows app
         run: yarn dist:win
         env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_CONTENT: ${{ secrets.CSC_CONTENT }}
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
       
@@ -148,6 +150,8 @@ jobs:
       
       - name: Build Linux app
         run: yarn dist:linux
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload Linux artifacts
         uses: actions/upload-artifact@v4
