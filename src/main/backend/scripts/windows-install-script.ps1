@@ -121,7 +121,7 @@ if (-not (Test-Path $VenvPath)) {
 Write-Output "Installing local-operator in virtual environment..."
 & "$VenvPath\\Scripts\\Activate.ps1"
 & python -m pip install --upgrade pip
-& python -m pip install local-operator
+& python -m pip install --upgrade local-operator
 
 # Verify installation
 $LocalOperatorInstalled = $false
