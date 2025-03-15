@@ -1,53 +1,48 @@
-name: Build and Publish (Testing)
-
-# on:
-#   release:
-#     types: [published]
-#   workflow_dispatch:
-#     inputs:
-#       release_type:
-#         description: 'Release Type'
-#         required: true
-#         default: 'draft'
-#         type: choice
-#         options:
-#           - draft
-#           - prerelease
-#           - release
+name: Build and Publish
 
 on:
-  push:
-    branches:
-      - 'dev-*'
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: 'Release Type'
+        required: true
+        default: 'draft'
+        type: choice
+        options:
+          - draft
+          - prerelease
+          - release
 
 jobs:
-  # npm-publish:
-  #   name: Build and Publish to NPM
-  #   runs-on: ubuntu-latest
+  npm-publish:
+    name: Build and Publish to NPM
+    runs-on: ubuntu-latest
     
-  #   steps:
-  #     - name: Checkout code
-  #       uses: actions/checkout@v4
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
       
-  #     - name: Setup Node.js
-  #       uses: actions/setup-node@v4
-  #       with:
-  #         node-version: '22.13.1'
-  #         cache: 'yarn'
-  #         registry-url: 'https://registry.npmjs.org'
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.13.1'
+          cache: 'yarn'
+          registry-url: 'https://registry.npmjs.org'
       
-  #     - name: Install dependencies
-  #       run: yarn install --frozen-lockfile
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
       
-  #     - name: Publish to npm
-  #       run: npm publish
-  #       env:
-  #         NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Publish to npm
+        run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
   build-macos:
     name: Build macOS App
     runs-on: macos-latest
-    # needs: npm-publish
+    needs: npm-publish
     
     steps:
       - name: Checkout code
@@ -98,7 +93,7 @@ jobs:
   build-windows:
     name: Build Windows App
     runs-on: windows-latest
-    # needs: npm-publish
+    needs: npm-publish
     
     steps:
       - name: Checkout code
@@ -137,7 +132,7 @@ jobs:
   build-linux:
     name: Build Linux App
     runs-on: ubuntu-latest
-    # needs: npm-publish
+    needs: npm-publish
     
     steps:
       - name: Checkout code
@@ -167,8 +162,8 @@ jobs:
             dist/*.rpm
           retention-days: 5
 
-  create-github-release:
-    name: Create GitHub Release
+  attach-to-release:
+    name: Attach Artifacts to Release
     runs-on: ubuntu-latest
     needs: [build-macos, build-windows, build-linux]
     
@@ -181,7 +176,7 @@ jobs:
         with:
           path: artifacts
       
-      - name: Create Release
+      - name: Attach artifacts to release
         uses: softprops/action-gh-release@v1
         with:
           files: |
