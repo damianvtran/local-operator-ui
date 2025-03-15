@@ -214,12 +214,6 @@
 				"Comment": "AI Agent Assistants On Your Device",
 				"Categories": "Development;Utility"
 			}
-		},
-		"publish": {
-			"provider": "github",
-			"owner": "damianvtran",
-			"repo": "local-operator-ui",
-			"releaseType": "release"
 		}
 	},
 	"eslintConfig": {
