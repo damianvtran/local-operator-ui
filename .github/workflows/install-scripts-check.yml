@@ -1,17 +1,12 @@
 name: Installation Scripts Sanity Check
 
-# on:
-#   workflow_dispatch:
-#     inputs:
-#       comment:
-#         description: 'Comment for triggering the workflow'
-#         required: false
-#         type: string
-
 on:
   push:
     branches:
       - 'dev-*'
+      - 'main'
+    paths:
+      - 'src/main/backend/scripts/**'
 
 jobs:
   linux-install-check:
