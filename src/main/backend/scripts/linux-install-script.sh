@@ -82,10 +82,24 @@ if [ ! -f "$PYTHON_BIN" ]; then
   exit 1
 fi
 
-# Make sure Python binary is executable
-chmod +x "$PYTHON_BIN"
+# Check if Python binary is executable
+if [ ! -x "$PYTHON_BIN" ]; then
+  # Only try to make it executable if it's in a user-writable directory
+  if [[ "$PYTHON_BIN" == "$HOME"* || "$PYTHON_BIN" == "$(pwd)"* || "$PYTHON_BIN" == "$(dirname "$0")"* ]]; then
+    echo "Making Python binary executable..."
+    chmod +x "$PYTHON_BIN" || echo "Warning: Could not make Python executable, but will try to continue"
+  else
+    echo "Warning: Python binary is not executable and is in a system directory. Cannot modify permissions."
+    echo "Please ensure the Python binary at $PYTHON_BIN is executable."
+    # Continue anyway, as the Python binary might still be executable for the current user
+  fi
+fi
+
 echo "Using Python: $PYTHON_BIN"
-"$PYTHON_BIN" --version
+"$PYTHON_BIN" --version || {
+  echo "Error: Failed to run Python. Please ensure it is executable and accessible."
+  exit 1
+}
 
 # Check if Python has venv module available
 echo "Checking for venv module availability..."
