@@ -84,8 +84,12 @@ export const useModelsStore = create<ModelsState>()(
 					const providersResponse = await client.models.listProviders();
 					const providers = providersResponse.result?.providers || [];
 
-					// Fetch all models
-					const modelsResponse = await client.models.listModels();
+					// Fetch all models by recommended
+					const modelsResponse = await client.models.listModels(
+						"",
+						"recommended",
+						"descending",
+					);
 					const models = modelsResponse.result?.models || [];
 
 					set({
