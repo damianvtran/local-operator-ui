@@ -15,6 +15,10 @@ on:
           - prerelease
           - release
 
+# Add permissions needed for GitHub releases
+permissions:
+  contents: write
+
 jobs:
   npm-publish:
     name: Build and Publish to NPM
