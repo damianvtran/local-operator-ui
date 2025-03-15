@@ -92,7 +92,7 @@ jobs:
   build-windows:
     name: Build Windows App
     runs-on: windows-latest
-    needs: npm-publish
+    # needs: npm-publish
     
     steps:
       - name: Checkout code
