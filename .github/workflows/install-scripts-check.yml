@@ -1,12 +1,17 @@
 name: Installation Scripts Sanity Check
 
+# on:
+#   workflow_dispatch:
+#     inputs:
+#       comment:
+#         description: 'Comment for triggering the workflow'
+#         required: false
+#         type: string
+
 on:
-  workflow_dispatch:
-    inputs:
-      comment:
-        description: 'Comment for triggering the workflow'
-        required: false
-        type: string
+  push:
+    branches:
+      - 'dev-*'
 
 jobs:
   linux-install-check:
