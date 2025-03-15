@@ -156,7 +156,7 @@ curl -s https://pypi.org/pypi/local-operator/json -o /dev/null || {
 }
 
 echo "Installing local-operator package..."
-python -m pip install --verbose local-operator || {
+python -m pip install --upgrade --verbose local-operator || {
   echo "ERROR: Failed to install local-operator package. Exit code: $?"
   echo "Python version:"
   python --version

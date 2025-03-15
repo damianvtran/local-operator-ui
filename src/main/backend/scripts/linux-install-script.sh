@@ -107,7 +107,7 @@ fi
 echo "Installing local-operator in virtual environment..."
 source "$VENV_PATH/bin/activate"
 pip install --upgrade pip
-pip install local-operator
+pip install --upgrade local-operator
 
 # Verify installation
 if command_exists local-operator; then
