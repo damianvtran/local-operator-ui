@@ -2,7 +2,7 @@ import { faDownload } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Card, CardContent, Typography } from "@mui/material";
 import { styled } from "@mui/material/styles";
-import { CheckForUpdatesButton } from "../common/update-notification";
+import { CheckForUpdatesButton } from "../common/check-for-updates-button";
 
 const StyledCard = styled(Card)(() => ({
 	marginBottom: 32,
