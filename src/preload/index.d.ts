@@ -1,5 +1,5 @@
 import type { ElectronAPI } from "@electron-toolkit/preload";
-import type { UpdateInfo, ProgressInfo } from "electron-updater";
+import type { ProgressInfo, UpdateInfo } from "electron-updater";
 
 declare global {
 	interface Window {

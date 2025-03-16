@@ -1,14 +1,14 @@
-import { useState, useEffect, useCallback } from "react";
 import {
-	Button,
-	Typography,
-	LinearProgress,
-	Box,
 	Alert,
+	Box,
+	Button,
+	LinearProgress,
 	Snackbar,
+	Typography,
 	styled,
 } from "@mui/material";
-import type { UpdateInfo, ProgressInfo } from "electron-updater";
+import type { ProgressInfo, UpdateInfo } from "electron-updater";
+import { useCallback, useEffect, useState } from "react";
 
 // Styled components
 const UpdateContainer = styled("div")(({ theme }) => ({

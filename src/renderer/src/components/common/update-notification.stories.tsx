@@ -1,23 +1,23 @@
 import {
-	CssBaseline,
-	Typography,
-	LinearProgress,
-	Button,
 	Alert,
-	Snackbar,
 	Box,
+	Button,
+	CssBaseline,
+	LinearProgress,
+	Snackbar,
+	Typography,
 } from "@mui/material";
 import { ThemeProvider as MuiThemeProvider } from "@mui/material/styles";
-import { ThemeProvider as StyledThemeProvider } from "styled-components";
 import type { Meta, StoryObj } from "@storybook/react";
+import type { ProgressInfo, UpdateInfo } from "electron-updater";
 import { useEffect, useState } from "react";
+import { ThemeProvider as StyledThemeProvider } from "styled-components";
 import { styled } from "styled-components";
 import theme from "../../theme";
 import {
-	UpdateNotification,
 	CheckForUpdatesButton,
+	UpdateNotification,
 } from "./update-notification";
-import type { ProgressInfo, UpdateInfo } from "electron-updater";
 
 // Copy the styled components from the actual component for direct rendering in stories
 const UpdateContainer = styled.div`

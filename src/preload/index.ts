@@ -1,6 +1,6 @@
 import { electronAPI } from "@electron-toolkit/preload";
 import { contextBridge, ipcRenderer } from "electron";
-import type { UpdateInfo, ProgressInfo } from "electron-updater";
+import type { ProgressInfo, UpdateInfo } from "electron-updater";
 
 // Custom APIs for renderer
 const api = {
