@@ -74,13 +74,14 @@ type UpdaterCallbacks = {
 // Create empty updater methods to prevent errors
 const createEmptyUpdaterMethods = () => {
 	const noop = () => () => {};
-
 	if (!window.api.updater) {
 		window.api.updater = {
 			checkForUpdates: async () =>
 				Promise.resolve({ updateInfo: mockUpdateInfo, cancellationToken: {} }),
 			downloadUpdate: async () => Promise.resolve([]),
 			quitAndInstall: () => {},
+			onUpdateDevMode: () => () => {},
+			onUpdateNpxAvailable: () => () => {},
 			onUpdateAvailable: noop,
 			onUpdateNotAvailable: noop,
 			onUpdateDownloaded: noop,
@@ -107,6 +108,32 @@ const mockUpdaterApi = () => {
 			}),
 		downloadUpdate: async () => Promise.resolve([]),
 		quitAndInstall: () => {},
+		onUpdateDevMode: (callback: (message: string) => void) => {
+			// For stories that need to trigger this callback
+			if (window.triggerUpdateDevMode) {
+				// Immediately trigger the callback
+				callback("Dev mode is active");
+			}
+			return () => {};
+		},
+		onUpdateNpxAvailable: (
+			callback: (info: {
+				currentVersion: string;
+				latestVersion: string;
+				updateCommand: string;
+			}) => void,
+		) => {
+			// For stories that need to trigger this callback
+			if (window.triggerUpdateNpxAvailable) {
+				// Immediately trigger the callback
+				callback({
+					currentVersion: "1.0.0",
+					latestVersion: "2.0.0",
+					updateCommand: "npx local-operator-ui@latest",
+				});
+			}
+			return () => {};
+		},
 		onUpdateAvailable: (callback: (info: UpdateInfo) => void) => {
 			// For stories that need to trigger this callback
 			if (window.triggerUpdateAvailable) {
@@ -178,6 +205,10 @@ declare global {
 		triggerUpdateDownloaded?: boolean;
 		triggerUpdateError?: boolean;
 		triggerUpdateProgress?: boolean;
+		triggerUpdateDevMode?: boolean;
+		triggerUpdateNpxAvailable?: boolean;
+		triggerNpxUpdate?: boolean;
+		triggerDevMode?: boolean;
 	}
 }
 
@@ -938,5 +969,172 @@ export const ButtonErrorState: StoryObj<typeof buttonMeta> = {
 		};
 
 		return <ErrorComponent />;
+	},
+};
+
+/**
+ * Shows the notification when in development mode.
+ */
+export const DevMode: Story = {
+	args: {
+		autoCheck: false,
+	},
+	render: () => {
+		// Create a component that directly renders the dev mode state
+		const DevModeComponent = () => {
+			// Use state to force the component to render with dev mode message
+			const [devModeMessage, setDevModeMessage] = useState<string | null>(null);
+			const [snackbarOpen, setSnackbarOpen] = useState(true);
+
+			useEffect(() => {
+				// Set the state immediately
+				setDevModeMessage(
+					"You're running in development mode. Updates are disabled.",
+				);
+
+				// Override the onUpdateDevMode method
+				const originalOnUpdateDevMode = window.api.updater.onUpdateDevMode;
+				window.api.updater.onUpdateDevMode = (callback) => {
+					// Call it immediately
+					callback("You're running in development mode. Updates are disabled.");
+					return () => {};
+				};
+
+				// Set the trigger flag
+				window.triggerDevMode = true;
+
+				return () => {
+					window.api.updater.onUpdateDevMode = originalOnUpdateDevMode;
+				};
+			}, []);
+
+			return (
+				<div style={{ minHeight: "100px", position: "relative" }}>
+					<Button
+						variant="outlined"
+						onClick={() => {}}
+						disabled={false}
+						startIcon={undefined}
+					>
+						Check for Updates
+					</Button>
+
+					<Snackbar
+						open={snackbarOpen}
+						autoHideDuration={6000}
+						onClose={() => setSnackbarOpen(false)}
+						anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+					>
+						<Alert onClose={() => setSnackbarOpen(false)} severity="info">
+							{devModeMessage}
+						</Alert>
+					</Snackbar>
+				</div>
+			);
+		};
+
+		return <DevModeComponent />;
+	},
+};
+
+/**
+ * Shows the notification when an NPX update is available.
+ */
+export const NpxUpdateAvailable: Story = {
+	args: {
+		autoCheck: false,
+	},
+	render: () => {
+		// Create a component that directly renders the NPX update available state
+		const NpxUpdateComponent = () => {
+			// Use state to force the component to render with NPX update info
+			const [npxUpdateInfo, setNpxUpdateInfo] = useState<{
+				currentVersion: string;
+				latestVersion: string;
+				updateCommand: string;
+			} | null>(null);
+			const [snackbarOpen, setSnackbarOpen] = useState(true);
+
+			useEffect(() => {
+				// Set the state immediately
+				setNpxUpdateInfo({
+					currentVersion: "1.0.0",
+					latestVersion: "2.0.0",
+					updateCommand: "npx local-operator-ui@latest",
+				});
+
+				// Override the onUpdateNpxAvailable method
+				const originalOnUpdateNpxAvailable =
+					window.api.updater.onUpdateNpxAvailable;
+				window.api.updater.onUpdateNpxAvailable = (callback) => {
+					// Call it immediately
+					callback({
+						currentVersion: "1.0.0",
+						latestVersion: "2.0.0",
+						updateCommand: "npx local-operator-ui@latest",
+					});
+					return () => {};
+				};
+
+				// Set the trigger flag
+				window.triggerNpxUpdate = true;
+
+				return () => {
+					window.api.updater.onUpdateNpxAvailable =
+						originalOnUpdateNpxAvailable;
+				};
+			}, []);
+
+			// Handle copying the NPX command to clipboard
+			const handleCopyNpxCommand = () => {
+				if (npxUpdateInfo) {
+					navigator.clipboard.writeText(npxUpdateInfo.updateCommand);
+				}
+			};
+
+			return (
+				<div style={{ minHeight: "100px", position: "relative" }}>
+					<Button
+						variant="outlined"
+						onClick={() => {}}
+						disabled={false}
+						startIcon={undefined}
+					>
+						Check for Updates
+					</Button>
+
+					<Snackbar
+						open={snackbarOpen}
+						autoHideDuration={10000}
+						onClose={() => setSnackbarOpen(false)}
+						anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+					>
+						<Alert
+							onClose={() => setSnackbarOpen(false)}
+							severity="info"
+							action={
+								<Button
+									color="inherit"
+									size="small"
+									onClick={handleCopyNpxCommand}
+								>
+									Copy
+								</Button>
+							}
+						>
+							<Typography variant="body2" sx={{ mb: 1 }}>
+								Update available: {npxUpdateInfo?.latestVersion} (current:{" "}
+								{npxUpdateInfo?.currentVersion})
+							</Typography>
+							<Typography variant="body2">
+								To update, run: <code>{npxUpdateInfo?.updateCommand}</code>
+							</Typography>
+						</Alert>
+					</Snackbar>
+				</div>
+			);
+		};
+
+		return <NpxUpdateComponent />;
 	},
 };

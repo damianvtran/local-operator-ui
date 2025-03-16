@@ -302,12 +302,20 @@ export const CheckForUpdatesButton = () => {
 	const [error, setError] = useState<string | null>(null);
 	const [snackbarOpen, setSnackbarOpen] = useState(false);
 	const [noUpdateAvailable, setNoUpdateAvailable] = useState(false);
+	const [devModeMessage, setDevModeMessage] = useState<string | null>(null);
+	const [npxUpdateInfo, setNpxUpdateInfo] = useState<{
+		currentVersion: string;
+		latestVersion: string;
+		updateCommand: string;
+	} | null>(null);
 
 	// Check for updates
 	const checkForUpdates = async () => {
 		try {
 			setChecking(true);
 			setError(null);
+			setDevModeMessage(null);
+			setNpxUpdateInfo(null);
 			await window.api.updater.checkForUpdates();
 		} catch (err) {
 			setError(
@@ -328,6 +336,23 @@ export const CheckForUpdatesButton = () => {
 				setSnackbarOpen(true);
 			});
 
+		// Dev mode update
+		const removeUpdateDevModeListener = window.api.updater.onUpdateDevMode(
+			(message) => {
+				setDevModeMessage(message);
+				setChecking(false);
+				setSnackbarOpen(true);
+			},
+		);
+
+		// NPX update available
+		const removeUpdateNpxAvailableListener =
+			window.api.updater.onUpdateNpxAvailable((info) => {
+				setNpxUpdateInfo(info);
+				setChecking(false);
+				setSnackbarOpen(true);
+			});
+
 		// Update error
 		const removeUpdateErrorListener = window.api.updater.onUpdateError(
 			(errorMessage) => {
@@ -340,6 +365,8 @@ export const CheckForUpdatesButton = () => {
 		// Clean up event listeners
 		return () => {
 			removeUpdateNotAvailableListener();
+			removeUpdateDevModeListener();
+			removeUpdateNpxAvailableListener();
 			removeUpdateErrorListener();
 		};
 	}, []);
@@ -348,6 +375,20 @@ export const CheckForUpdatesButton = () => {
 	const handleSnackbarClose = () => {
 		setSnackbarOpen(false);
 		setNoUpdateAvailable(false);
+		setDevModeMessage(null);
+		setNpxUpdateInfo(null);
+	};
+
+	// Handle copying the NPX command to clipboard
+	const handleCopyNpxCommand = () => {
+		if (npxUpdateInfo) {
+			navigator.clipboard.writeText(npxUpdateInfo.updateCommand);
+			// Show a temporary message that the command was copied
+			setError("Command copied to clipboard!");
+			setTimeout(() => {
+				setError(null);
+			}, 2000);
+		}
 	};
 
 	return (
@@ -385,6 +426,50 @@ export const CheckForUpdatesButton = () => {
 				>
 					<Alert onClose={handleSnackbarClose} severity="info">
 						You're using the latest version
+					</Alert>
+				</Snackbar>
+			)}
+
+			{devModeMessage && (
+				<Snackbar
+					open={snackbarOpen}
+					autoHideDuration={6000}
+					onClose={handleSnackbarClose}
+					anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+				>
+					<Alert onClose={handleSnackbarClose} severity="info">
+						{devModeMessage}
+					</Alert>
+				</Snackbar>
+			)}
+
+			{npxUpdateInfo && (
+				<Snackbar
+					open={snackbarOpen}
+					autoHideDuration={10000}
+					onClose={handleSnackbarClose}
+					anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+				>
+					<Alert
+						onClose={handleSnackbarClose}
+						severity="info"
+						action={
+							<Button
+								color="inherit"
+								size="small"
+								onClick={handleCopyNpxCommand}
+							>
+								Copy
+							</Button>
+						}
+					>
+						<Typography variant="body2" sx={{ mb: 1 }}>
+							Update available: {npxUpdateInfo.latestVersion} (current:{" "}
+							{npxUpdateInfo.currentVersion})
+						</Typography>
+						<Typography variant="body2">
+							To update, run: <code>{npxUpdateInfo.updateCommand}</code>
+						</Typography>
 					</Alert>
 				</Snackbar>
 			)}
