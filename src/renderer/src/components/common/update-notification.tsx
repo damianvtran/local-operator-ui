@@ -15,8 +15,13 @@ const UpdateContainer = styled("div")(({ theme }) => ({
 	padding: 16,
 	borderRadius: 8,
 	backgroundColor: theme.palette.background.paper,
-	boxShadow: "0 2px 10px rgba(0, 0, 0, 0.1)",
-	marginBottom: 16,
+	boxShadow: "0 4px 20px rgba(0, 0, 0, 0.15)",
+	position: "fixed",
+	top: 20,
+	right: 20,
+	zIndex: 1300, // Higher than most components but below modal dialogs
+	maxWidth: 400,
+	width: "calc(100% - 40px)", // Responsive width with margins
 }));
 
 const UpdateActions = styled("div")({
