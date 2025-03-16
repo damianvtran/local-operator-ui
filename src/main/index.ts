@@ -1,13 +1,123 @@
 import { join } from "node:path";
 import { electronApp, is, optimizer } from "@electron-toolkit/utils";
-import { BrowserWindow, app, ipcMain, nativeImage, shell } from "electron";
+import {
+	BrowserWindow,
+	Menu,
+	app,
+	ipcMain,
+	nativeImage,
+	shell,
+} from "electron";
 import icon from "../../resources/icon-180x180-dark.png?asset";
 import { BackendInstaller, BackendServiceManager } from "./backend";
 
 // Set application name
 app.setName("Local Operator");
 const image = nativeImage.createFromPath(icon);
-app.dock.setIcon(image);
+// Set dock icon on macOS only
+if (process.platform === "darwin" && app.dock) {
+	app.dock.setIcon(image);
+}
+
+// Create application menu without developer tools in production
+function createApplicationMenu(): void {
+	// Check if we're in development mode
+	const isDev = Boolean(process.env.ELECTRON_RENDERER_URL);
+
+	// Create menu template
+	const template: Electron.MenuItemConstructorOptions[] = [
+		{
+			label: "File",
+			submenu: [{ role: "quit" }],
+		},
+		{
+			label: "Edit",
+			submenu: [
+				{ role: "undo" },
+				{ role: "redo" },
+				{ type: "separator" as const },
+				{ role: "cut" },
+				{ role: "copy" },
+				{ role: "paste" },
+				{ role: "delete" },
+				{ type: "separator" as const },
+				{ role: "selectAll" },
+			],
+		},
+		{
+			label: "View",
+			submenu: [
+				{ role: "reload" },
+				{ role: "forceReload" },
+				{ type: "separator" as const },
+				{ role: "resetZoom" },
+				{ role: "zoomIn" },
+				{ role: "zoomOut" },
+				{ type: "separator" as const },
+				{ role: "togglefullscreen" },
+			],
+		},
+		{
+			label: "Window",
+			submenu: [
+				{ role: "minimize" },
+				{ role: "zoom" },
+				...(process.platform === "darwin"
+					? ([
+							{ type: "separator" as const },
+							{ role: "front" },
+							{ type: "separator" as const },
+							{ role: "window" },
+						] as Electron.MenuItemConstructorOptions[])
+					: ([{ role: "close" }] as Electron.MenuItemConstructorOptions[])),
+			],
+		},
+		{
+			role: "help",
+			submenu: [
+				{
+					label: "Learn More",
+					click: async () => {
+						await shell.openExternal("https://local-operator.com");
+					},
+				},
+			],
+		},
+	];
+
+	// Add developer tools option only in development mode
+	if (isDev) {
+		const viewMenu = template.find((menu) => menu.label === "View");
+		if (viewMenu?.submenu && Array.isArray(viewMenu.submenu)) {
+			viewMenu.submenu.push(
+				{ type: "separator" as const },
+				{ role: "toggleDevTools" },
+			);
+		}
+	}
+
+	// Add macOS specific menu items
+	if (process.platform === "darwin") {
+		template.unshift({
+			label: app.name,
+			submenu: [
+				{ role: "about" },
+				{ type: "separator" as const },
+				{ role: "services" },
+				{ type: "separator" as const },
+				{ role: "hide" },
+				{ role: "hideOthers" },
+				{ role: "unhide" },
+				{ type: "separator" as const },
+				{ role: "quit" },
+			],
+		});
+	}
+
+	// Build and set the menu
+	const menu = Menu.buildFromTemplate(template);
+	Menu.setApplicationMenu(menu);
+}
 
 function createWindow(): void {
 	// Create the browser window.
@@ -21,6 +131,9 @@ function createWindow(): void {
 		webPreferences: {
 			preload: join(__dirname, "../preload/index.js"),
 			sandbox: false,
+			// Only enable devTools when running with 'yarn dev'
+			// Disable for 'yarn start' and production builds
+			devTools: Boolean(process.env.ELECTRON_RENDERER_URL),
 		},
 	});
 
@@ -105,6 +218,9 @@ app.whenReady().then(async () => {
 			await backendService.start();
 		}
 	}
+
+	// Create custom application menu
+	createApplicationMenu();
 
 	// Create the main window
 	createWindow();
