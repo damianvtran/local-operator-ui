@@ -12,34 +12,15 @@ import type { Meta, StoryObj } from "@storybook/react";
 import type { ProgressInfo, UpdateInfo } from "electron-updater";
 import { useEffect, useState } from "react";
 import { ThemeProvider as StyledThemeProvider } from "styled-components";
-import { styled } from "styled-components";
 import theme from "../../theme";
 import parse from "html-react-parser";
 import {
 	CheckForUpdatesButton,
 	UpdateNotification,
+	UpdateContainer,
+	ProgressContainer,
+	UpdateActions,
 } from "./update-notification";
-
-// Copy the styled components from the actual component for direct rendering in stories
-const UpdateContainer = styled.div`
-  padding: 16px;
-  border-radius: 8px;
-  background-color: ${(props) => props.theme.palette.background.paper};
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  margin-bottom: 16px;
-`;
-
-const UpdateActions = styled.div`
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-top: 16px;
-`;
-
-const ProgressContainer = styled.div`
-  margin-top: 16px;
-  margin-bottom: 8px;
-`;
 
 // Initialize window.api if it doesn't exist
 if (typeof window.api === "undefined") {
@@ -476,6 +457,9 @@ export const UpdateAvailable: Story = {
 								disabled={false}
 							>
 								Download Update
+							</Button>
+							<Button variant="outlined" onClick={() => {}} disabled={false}>
+								Update Later
 							</Button>
 						</UpdateActions>
 					</UpdateContainer>

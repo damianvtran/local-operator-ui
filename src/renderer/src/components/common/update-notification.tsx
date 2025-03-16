@@ -11,10 +11,11 @@ import {
 import type { ProgressInfo, UpdateInfo } from "electron-updater";
 import { useCallback, useEffect, useState } from "react";
 import parse from "html-react-parser";
+import { useDeferredUpdatesStore } from "../../store/deferred-updates-store";
 
 // Styled components
-const UpdateContainer = styled("div")(({ theme }) => ({
-	padding: 16,
+export const UpdateContainer = styled("div")(({ theme }) => ({
+	padding: 24,
 	borderRadius: 8,
 	backgroundColor: theme.palette.background.paper,
 	boxShadow: "0 4px 20px rgba(0, 0, 0, 0.15)",
@@ -22,18 +23,24 @@ const UpdateContainer = styled("div")(({ theme }) => ({
 	top: 20,
 	right: 20,
 	zIndex: 1300, // Higher than most components but below modal dialogs
-	maxWidth: 400,
-	width: "calc(100% - 40px)", // Responsive width with margins
+	width: 560, // Responsive width with margins
+	"& a": {
+		color: theme.palette.primary.main,
+		textDecoration: "none",
+		"&:hover": {
+			textDecoration: "underline",
+		},
+	},
 }));
 
-const UpdateActions = styled("div")({
+export const UpdateActions = styled("div")({
 	display: "flex",
 	justifyContent: "flex-end",
 	gap: 8,
-	marginTop: 16,
+	marginTop: 24,
 });
 
-const ProgressContainer = styled("div")({
+export const ProgressContainer = styled("div")({
 	marginTop: 16,
 	marginBottom: 8,
 });
@@ -64,6 +71,9 @@ export const UpdateNotification = ({
 	const [error, setError] = useState<string | null>(null);
 	const [snackbarOpen, setSnackbarOpen] = useState(false);
 	const [appVersion, setAppVersion] = useState<string>("unknown");
+
+	// Access the deferred updates store
+	const { shouldShowUpdate, deferUpdate } = useDeferredUpdatesStore();
 
 	// Get app version on mount
 	useEffect(() => {
@@ -109,14 +119,27 @@ export const UpdateNotification = ({
 		window.api.updater.quitAndInstall();
 	}, []);
 
+	// Handle deferring an update
+	const handleDeferUpdate = useCallback(() => {
+		if (updateInfo) {
+			deferUpdate(updateInfo.version);
+			setSnackbarOpen(false);
+			setUpdateAvailable(false);
+			setUpdateDownloaded(false);
+		}
+	}, [deferUpdate, updateInfo]);
+
 	// Set up event listeners for update events
 	useEffect(() => {
 		// Update available
 		const removeUpdateAvailableListener = window.api.updater.onUpdateAvailable(
 			(info) => {
-				setUpdateAvailable(true);
-				setUpdateInfo(info);
-				setSnackbarOpen(true);
+				// Only show the update if it hasn't been deferred or the defer timeline has passed
+				if (shouldShowUpdate(info.version)) {
+					setUpdateAvailable(true);
+					setUpdateInfo(info);
+					setSnackbarOpen(true);
+				}
 			},
 		);
 
@@ -131,9 +154,12 @@ export const UpdateNotification = ({
 		const removeUpdateDownloadedListener =
 			window.api.updater.onUpdateDownloaded((info) => {
 				setDownloading(false);
-				setUpdateDownloaded(true);
-				setUpdateInfo(info);
-				setSnackbarOpen(true);
+				// Only show the update if it hasn't been deferred or the defer timeline has passed
+				if (shouldShowUpdate(info.version)) {
+					setUpdateDownloaded(true);
+					setUpdateInfo(info);
+					setSnackbarOpen(true);
+				}
 			});
 
 		// Update error
@@ -166,7 +192,7 @@ export const UpdateNotification = ({
 			removeUpdateErrorListener();
 			removeUpdateProgressListener();
 		};
-	}, [autoCheck, checkForUpdates]);
+	}, [autoCheck, checkForUpdates, shouldShowUpdate]);
 
 	// Handle snackbar close
 	const handleSnackbarClose = () => {
@@ -262,14 +288,23 @@ export const UpdateNotification = ({
 
 					<UpdateActions>
 						{!downloading && (
-							<Button
-								variant="contained"
-								color="primary"
-								onClick={downloadUpdate}
-								disabled={downloading}
-							>
-								Download Update
-							</Button>
+							<>
+								<Button
+									variant="contained"
+									color="primary"
+									onClick={downloadUpdate}
+									disabled={downloading}
+								>
+									Download Update
+								</Button>
+								<Button
+									variant="outlined"
+									onClick={handleDeferUpdate}
+									disabled={downloading}
+								>
+									Update Later
+								</Button>
+							</>
 						)}
 					</UpdateActions>
 				</UpdateContainer>
@@ -306,8 +341,8 @@ export const UpdateNotification = ({
 						<Button variant="contained" color="primary" onClick={installUpdate}>
 							Install Now
 						</Button>
-						<Button variant="outlined" onClick={() => setSnackbarOpen(false)}>
-							Install Later
+						<Button variant="outlined" onClick={handleDeferUpdate}>
+							Update Later
 						</Button>
 					</UpdateActions>
 				</UpdateContainer>
