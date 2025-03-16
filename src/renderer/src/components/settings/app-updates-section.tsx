@@ -5,6 +5,9 @@ import { styled } from "@mui/material/styles";
 import { useEffect, useState } from "react";
 import type { FC } from "react";
 import { AppUpdates } from "./app-updates";
+import { HealthApi } from "../../api/local-operator/health-api";
+import type { HealthCheckResponse } from "../../api/local-operator/types";
+import { apiConfig } from "../../config";
 
 const SectionTitle = styled(Typography)(({ theme }) => ({
 	marginTop: theme.spacing(4),
@@ -45,6 +48,9 @@ const InfoValue = styled(Typography)(() => ({
 export const AppUpdatesSection: FC = () => {
 	// State for app information
 	const [appVersion, setAppVersion] = useState<string>("0.1.2-beta.6");
+	const [serverVersion, setServerVersion] = useState<string>(
+		"Unknown (update required)",
+	);
 	const [platformInfo, setPlatformInfo] = useState({
 		platform: "unknown",
 		arch: "unknown",
@@ -53,7 +59,7 @@ export const AppUpdatesSection: FC = () => {
 		chromeVersion: "unknown",
 	});
 
-	// Fetch app version and platform info on component mount
+	// Fetch app version, server version, and platform info on component mount
 	useEffect(() => {
 		const fetchAppInfo = async () => {
 			try {
@@ -69,7 +75,22 @@ export const AppUpdatesSection: FC = () => {
 			}
 		};
 
+		const fetchServerVersion = async () => {
+			try {
+				// Get API server version from health check
+				const healthResponse: HealthCheckResponse = await HealthApi.healthCheck(
+					apiConfig.baseUrl,
+				);
+				const version = HealthApi.getServerVersion(healthResponse);
+				setServerVersion(version);
+			} catch (error) {
+				console.error("Error fetching server version:", error);
+				setServerVersion("Unknown (connection error)");
+			}
+		};
+
 		fetchAppInfo();
+		fetchServerVersion();
 	}, []);
 
 	return (
@@ -96,6 +117,21 @@ export const AppUpdatesSection: FC = () => {
 							Application Version
 						</InfoLabel>
 						<InfoValue variant="body1">{appVersion}</InfoValue>
+					</InfoBox>
+				</Grid>
+
+				<Grid item xs={12} sm={6} md={3}>
+					<InfoBox>
+						<InfoLabel variant="subtitle2">
+							<Tooltip title="The version of the Local Operator API server. This backend service handles all API requests and model interactions.">
+								<FontAwesomeIcon
+									icon={faInfoCircle}
+									style={{ marginRight: 8 }}
+								/>
+							</Tooltip>
+							Server Version
+						</InfoLabel>
+						<InfoValue variant="body1">{serverVersion}</InfoValue>
 					</InfoBox>
 				</Grid>
 

@@ -30,4 +30,21 @@ export const HealthApi = {
 
 		return response.json() as Promise<HealthCheckResponse>;
 	},
+
+	/**
+	 * Get the server version from the health check response
+	 * Handles backward compatibility with older server versions
+	 *
+	 * @param healthResponse - The health check response
+	 * @returns The server version or "Unknown (update required)" if not available
+	 */
+	getServerVersion(healthResponse: HealthCheckResponse): string {
+		// Check if the response has the result field with version information
+		if (healthResponse.result?.version) {
+			return healthResponse.result.version;
+		}
+
+		// For older server versions that don't have the version information
+		return "Unknown (update required)";
+	},
 };
