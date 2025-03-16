@@ -92,9 +92,7 @@ jobs:
           name: macos-artifacts
           path: |
             dist/*.dmg
-            dist/*.yml
-            dist/mac-arm64/*.yml
-            dist/mac-arm64/Local Operator.app/Contents/Resources/app-update.yml
+            dist/latest*.yml
           retention-days: 5
 
   build-windows:
@@ -134,9 +132,7 @@ jobs:
           path: |
             dist/*.exe
             dist/*.msi
-            dist/*.yml
-            dist/win-arm64/*.yml
-            dist/win-unpacked/resources/app-update.yml
+            dist/latest*.yml
           retention-days: 5
 
   build-linux:
@@ -170,8 +166,7 @@ jobs:
             dist/*.deb
             dist/*.AppImage
             dist/*.rpm
-            dist/*.yml
-            dist/linux-unpacked/resources/app-update.yml
+            dist/latest*.yml
           retention-days: 5
 
   attach-to-release:
@@ -188,6 +183,21 @@ jobs:
         with:
           path: artifacts
       
+      - name: Set release type from event
+        id: release_type
+        run: |
+          if [ "${{ github.event_name }}" == "release" ]; then
+            if [ "${{ github.event.release.draft }}" == "true" ]; then
+              echo "type=draft" >> $GITHUB_OUTPUT
+            elif [ "${{ github.event.release.prerelease }}" == "true" ]; then
+              echo "type=prerelease" >> $GITHUB_OUTPUT
+            else
+              echo "type=release" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "type=${{ github.event.inputs.release_type }}" >> $GITHUB_OUTPUT
+          fi
+      
       - name: Attach artifacts to release
         uses: softprops/action-gh-release@v1
         with:
@@ -195,7 +205,7 @@ jobs:
             artifacts/macos-artifacts/*
             artifacts/windows-artifacts/*
             artifacts/linux-artifacts/*
-          draft: ${{ github.event.inputs.release_type == 'draft' }}
-          prerelease: ${{ github.event.inputs.release_type == 'prerelease' }}
+          draft: ${{ steps.release_type.outputs.type == 'draft' }}
+          prerelease: ${{ steps.release_type.outputs.type == 'prerelease' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
