@@ -54,10 +54,10 @@
 		"check-types": "tsc --noEmit",
 		"pack": "yarn build && electron-builder --dir",
 		"dist": "yarn build && electron-builder",
-		"dist:mac": "yarn build && electron-builder --mac",
-		"dist:win": "yarn build && electron-builder --win",
-		"dist:linux": "yarn build && electron-builder --linux",
-		"dist:all": "yarn build && electron-builder -mwl",
+		"dist:mac": "yarn build && electron-builder --mac --publish never",
+		"dist:win": "yarn build && electron-builder --win --publish never",
+		"dist:linux": "yarn build && electron-builder --linux --publish never",
+		"dist:all": "yarn build && electron-builder -mwl --publish never",
 		"release": "yarn build && electron-builder --publish always",
 		"generate-icons": "node scripts/generate-icons.js",
 		"setup-python": "./scripts/setup-python-resource.sh",
@@ -220,13 +220,7 @@
 			"owner": "damianvtran",
 			"repo": "local-operator-ui",
 			"private": false,
-			"releaseType": "release",
-			"publishAutoUpdate": true,
-			"updateFileNames": {
-				"mac": "latest-mac.yml",
-				"win": "latest-win.yml",
-				"linux": "latest-linux.yml"
-			}
+			"releaseType": "release"
 		},
 		"generateUpdatesFilesForAllChannels": true
 	},
