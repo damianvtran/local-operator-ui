@@ -317,6 +317,9 @@ export const CheckForUpdatesButton = () => {
 			setDevModeMessage(null);
 			setNpxUpdateInfo(null);
 			await window.api.updater.checkForUpdates();
+			// If no update event is fired, default to "no update available"
+			setNoUpdateAvailable(true);
+			setSnackbarOpen(true);
 		} catch (err) {
 			setError(
 				`Error checking for updates: ${err instanceof Error ? err.message : String(err)}`,
@@ -391,6 +394,39 @@ export const CheckForUpdatesButton = () => {
 		}
 	};
 
+	// Define snackbar content based on the current state
+	const snackbarContent = error ? (
+		<Alert onClose={handleSnackbarClose} severity="error">
+			{error}
+		</Alert>
+	) : noUpdateAvailable ? (
+		<Alert onClose={handleSnackbarClose} severity="info">
+			You're using the latest version
+		</Alert>
+	) : devModeMessage ? (
+		<Alert onClose={handleSnackbarClose} severity="info">
+			{devModeMessage}
+		</Alert>
+	) : npxUpdateInfo ? (
+		<Alert
+			onClose={handleSnackbarClose}
+			severity="info"
+			action={
+				<Button color="inherit" size="small" onClick={handleCopyNpxCommand}>
+					Copy
+				</Button>
+			}
+		>
+			<Typography variant="body2" sx={{ mb: 1 }}>
+				Update available: {npxUpdateInfo.latestVersion} (current:{" "}
+				{npxUpdateInfo.currentVersion})
+			</Typography>
+			<Typography variant="body2">
+				To update, run: <code>{npxUpdateInfo.updateCommand}</code>
+			</Typography>
+		</Alert>
+	) : null;
+
 	return (
 		<>
 			<Button
@@ -404,73 +440,14 @@ export const CheckForUpdatesButton = () => {
 				{checking ? "Checking..." : "Check for Updates"}
 			</Button>
 
-			{error && (
+			{snackbarOpen && snackbarContent && (
 				<Snackbar
 					open={snackbarOpen}
 					autoHideDuration={6000}
 					onClose={handleSnackbarClose}
 					anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
 				>
-					<Alert onClose={handleSnackbarClose} severity="error">
-						{error}
-					</Alert>
-				</Snackbar>
-			)}
-
-			{noUpdateAvailable && (
-				<Snackbar
-					open={snackbarOpen}
-					autoHideDuration={6000}
-					onClose={handleSnackbarClose}
-					anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-				>
-					<Alert onClose={handleSnackbarClose} severity="info">
-						You're using the latest version
-					</Alert>
-				</Snackbar>
-			)}
-
-			{devModeMessage && (
-				<Snackbar
-					open={snackbarOpen}
-					autoHideDuration={6000}
-					onClose={handleSnackbarClose}
-					anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-				>
-					<Alert onClose={handleSnackbarClose} severity="info">
-						{devModeMessage}
-					</Alert>
-				</Snackbar>
-			)}
-
-			{npxUpdateInfo && (
-				<Snackbar
-					open={snackbarOpen}
-					autoHideDuration={10000}
-					onClose={handleSnackbarClose}
-					anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-				>
-					<Alert
-						onClose={handleSnackbarClose}
-						severity="info"
-						action={
-							<Button
-								color="inherit"
-								size="small"
-								onClick={handleCopyNpxCommand}
-							>
-								Copy
-							</Button>
-						}
-					>
-						<Typography variant="body2" sx={{ mb: 1 }}>
-							Update available: {npxUpdateInfo.latestVersion} (current:{" "}
-							{npxUpdateInfo.currentVersion})
-						</Typography>
-						<Typography variant="body2">
-							To update, run: <code>{npxUpdateInfo.updateCommand}</code>
-						</Typography>
-					</Alert>
+					{snackbarContent}
 				</Snackbar>
 			)}
 		</>
