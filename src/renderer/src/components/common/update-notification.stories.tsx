@@ -14,6 +14,7 @@ import { useEffect, useState } from "react";
 import { ThemeProvider as StyledThemeProvider } from "styled-components";
 import { styled } from "styled-components";
 import theme from "../../theme";
+import parse from "html-react-parser";
 import {
 	CheckForUpdatesButton,
 	UpdateNotification,
@@ -416,7 +417,6 @@ export const Checking: Story = {
 		return <CheckingComponent />;
 	},
 };
-
 /**
  * Shows the notification when an update is available.
  */
@@ -432,12 +432,20 @@ export const UpdateAvailable: Story = {
 		const UpdateAvailableComponent = () => {
 			// Use state to force the component to render with update available
 			const [available, setAvailable] = useState(true);
-			const [info, setInfo] = useState(mockUpdateInfo);
+			const [info, setInfo] = useState({
+				...mockUpdateInfo,
+				releaseNotes:
+					'<h3>New Features</h3><ul><li>Improved performance</li><li>Added dark mode</li><li>Fixed critical bugs</li></ul><p>See our <a href="https://example.com">documentation</a> for more details.</p>',
+			});
 
 			useEffect(() => {
 				// Set the state immediately
 				setAvailable(true);
-				setInfo(mockUpdateInfo);
+				setInfo({
+					...mockUpdateInfo,
+					releaseNotes:
+						'<h3>New Features</h3><ul><li>Improved performance</li><li>Added dark mode</li><li>Fixed critical bugs</li></ul><p>See our <a href="https://example.com">documentation</a> for more details.</p>',
+				});
 
 				// Set the trigger flag
 				window.triggerUpdateAvailable = true;
@@ -456,7 +464,7 @@ export const UpdateAvailable: Story = {
 							<Typography variant="body2" sx={{ mt: 1 }}>
 								Release Notes:{" "}
 								{typeof info.releaseNotes === "string"
-									? info.releaseNotes
+									? parse(info.releaseNotes)
 									: "See release notes on GitHub"}
 							</Typography>
 						)}

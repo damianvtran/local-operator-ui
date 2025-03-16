@@ -3,12 +3,14 @@ import {
 	Box,
 	Button,
 	LinearProgress,
+	Link,
 	Snackbar,
 	Typography,
 	styled,
 } from "@mui/material";
 import type { ProgressInfo, UpdateInfo } from "electron-updater";
 import { useCallback, useEffect, useState } from "react";
+import parse from "html-react-parser";
 
 // Styled components
 const UpdateContainer = styled("div")(({ theme }) => ({
@@ -61,6 +63,15 @@ export const UpdateNotification = ({
 	const [updateDownloaded, setUpdateDownloaded] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [snackbarOpen, setSnackbarOpen] = useState(false);
+	const [appVersion, setAppVersion] = useState<string>("unknown");
+
+	// Get app version on mount
+	useEffect(() => {
+		window.api.systemInfo
+			.getAppVersion()
+			.then((version) => setAppVersion(version))
+			.catch(() => setAppVersion("unknown"));
+	}, []);
 
 	// Check for updates
 	const checkForUpdates = useCallback(async () => {
@@ -201,14 +212,34 @@ export const UpdateNotification = ({
 					<Typography variant="h6">Update Available</Typography>
 					<Typography variant="body1">
 						Version {updateInfo.version} is available. You are currently using
-						version {process.env.npm_package_version || "unknown"}.
+						version {appVersion}.
 					</Typography>
 					{updateInfo.releaseNotes && (
 						<Typography variant="body2" sx={{ mt: 1 }}>
 							Release Notes:{" "}
-							{typeof updateInfo.releaseNotes === "string"
-								? updateInfo.releaseNotes
-								: "See release notes on GitHub"}
+							{typeof updateInfo.releaseNotes === "string" ? (
+								<>
+									{parse(truncateText(updateInfo.releaseNotes, 400))}
+									{updateInfo.releaseNotes.length > 400 && (
+										<Link
+											href={getReleaseUrl(updateInfo)}
+											target="_blank"
+											rel="noopener noreferrer"
+											sx={{ ml: 1 }}
+										>
+											View full release notes
+										</Link>
+									)}
+								</>
+							) : (
+								<Link
+									href={getReleaseUrl(updateInfo)}
+									target="_blank"
+									rel="noopener noreferrer"
+								>
+									See release notes on GitHub
+								</Link>
+							)}
 						</Typography>
 					)}
 
@@ -264,8 +295,8 @@ export const UpdateNotification = ({
 				<UpdateContainer>
 					<Typography variant="h6">Update Ready to Install</Typography>
 					<Typography variant="body1">
-						Version {updateInfo.version} has been downloaded and is ready to
-						install.
+						Version {updateInfo.version} is available. You are currently using
+						version {appVersion}.
 					</Typography>
 					<Typography variant="body2" sx={{ mt: 1 }}>
 						The application will restart to apply the update.
@@ -297,6 +328,35 @@ export const UpdateNotification = ({
 
 	// If checking for updates or no update is available, don't render anything
 	return null;
+};
+
+/**
+ * Truncates text to a specified length and adds an ellipsis if needed
+ * @param text The text to truncate
+ * @param maxLength The maximum length of the text
+ * @returns The truncated text with an ellipsis if needed
+ */
+const truncateText = (text: string, maxLength: number): string => {
+	if (text.length <= maxLength) return text;
+	return `${text.substring(0, maxLength)}...`;
+};
+
+/**
+ * Gets the URL to the release notes
+ * @param updateInfo The update information
+ * @returns The URL to the release notes
+ */
+const getReleaseUrl = (updateInfo: UpdateInfo): string => {
+	// Extract the repository URL from the update info if available
+	if (updateInfo.releaseNotes && typeof updateInfo.releaseNotes !== "string") {
+		// Handle the case where releaseNotes might be an object with a path property
+		const releaseNotesObj = updateInfo.releaseNotes as { path?: string };
+		const defaultUrl = `https://github.com/local-operator/local-operator-ui/releases/tag/v${updateInfo.version}`;
+		return releaseNotesObj.path || defaultUrl;
+	}
+
+	// Default to GitHub releases page with the version tag
+	return `https://github.com/local-operator/local-operator-ui/releases/tag/v${updateInfo.version}`;
 };
 
 /**
