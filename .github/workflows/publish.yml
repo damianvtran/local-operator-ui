@@ -92,6 +92,7 @@ jobs:
           name: macos-artifacts
           path: |
             dist/*.dmg
+            dist/*.zip
             dist/latest*.yml
           retention-days: 5
 
