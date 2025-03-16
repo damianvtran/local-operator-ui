@@ -23,6 +23,13 @@ declare global {
 					// biome-ignore lint/suspicious/noExplicitAny: Complex type from electron-updater
 					cancellationToken: any;
 				}>;
+				checkForBackendUpdates: () => Promise<{
+					currentVersion: string;
+					latestVersion: string;
+					updateCommand: string;
+				} | null>;
+				checkForAllUpdates: () => Promise<void>;
+				updateBackend: () => Promise<boolean>;
 				// biome-ignore lint/suspicious/noExplicitAny: Return type from electron-updater is complex
 				downloadUpdate: () => Promise<any[]>;
 				quitAndInstall: () => void;
@@ -38,6 +45,20 @@ declare global {
 						updateCommand: string;
 					}) => void,
 				) => () => void;
+				onBackendUpdateAvailable: (
+					callback: (info: {
+						currentVersion: string;
+						latestVersion: string;
+						updateCommand: string;
+					}) => void,
+				) => () => void;
+				onBackendUpdateDevMode: (
+					callback: (message: string) => void,
+				) => () => void;
+				onBackendUpdateNotAvailable: (
+					callback: (info: { version: string }) => void,
+				) => () => void;
+				onBackendUpdateCompleted: (callback: () => void) => () => void;
 				onUpdateDownloaded: (
 					callback: (info: UpdateInfo) => void,
 				) => () => void;

@@ -3,14 +3,48 @@ import { autoUpdater } from "electron-updater";
 import log from "electron-log";
 import * as path from "node:path";
 import * as https from "node:https";
+import { exec } from "node:child_process";
+import { promisify } from "node:util";
+import { apiConfig } from "./backend/config";
+
+/**
+ * Health check result containing version information
+ */
+type HealthCheckResult = {
+	/** API server version */
+	version: string;
+};
+
+/**
+ * Response from health check endpoint.
+ */
+type HealthCheckResponse = {
+	/** HTTP status code */
+	status: number;
+	/** Health check message */
+	message: string;
+	/** Health check result containing version information (may be undefined in older server versions) */
+	result?: HealthCheckResult;
+};
+
+/**
+ * Type definition for backend update information
+ */
+export type BackendUpdateInfo = {
+	currentVersion: string;
+	latestVersion: string;
+	updateCommand: string;
+};
 
 /**
  * Service to handle application updates using electron-updater
+ * and backend updates using pip
  */
 export class UpdateService {
 	private mainWindow: BrowserWindow | null = null;
 	private isDevMode: boolean;
 	private isNpxInstall: boolean;
+	private backendUrl: string;
 
 	/**
 	 * Initialize the update service
@@ -29,6 +63,9 @@ export class UpdateService {
 		this.isNpxInstall =
 			execPath.includes("node_modules/.bin") ||
 			execPath.includes("node_modules\\.bin");
+
+		// Get the backend URL from config
+		this.backendUrl = apiConfig.baseUrl;
 
 		log.info(
 			`Update service initialized. Dev mode: ${this.isDevMode}, NPX install: ${this.isNpxInstall}`,
@@ -105,13 +142,46 @@ export class UpdateService {
 	 * Set up IPC handlers for update-related actions
 	 */
 	public setupIpcHandlers(): void {
-		// Check for updates
+		// Check for UI updates
 		ipcMain.handle("check-for-updates", async () => {
-			log.info("Checking for updates...");
+			log.info("Checking for UI updates...");
 			try {
 				return await autoUpdater.checkForUpdates();
 			} catch (error) {
-				log.error("Error checking for updates:", error);
+				log.error("Error checking for UI updates:", error);
+				throw error;
+			}
+		});
+
+		// Check for backend updates
+		ipcMain.handle("check-for-backend-updates", async () => {
+			log.info("Checking for backend updates...");
+			try {
+				return await this.checkForBackendUpdates();
+			} catch (error) {
+				log.error("Error checking for backend updates:", error);
+				throw error;
+			}
+		});
+
+		// Check for all updates (UI and backend)
+		ipcMain.handle("check-for-all-updates", async () => {
+			log.info("Checking for all updates (UI and backend)...");
+			try {
+				return await this.checkForAllUpdates();
+			} catch (error) {
+				log.error("Error checking for all updates:", error);
+				throw error;
+			}
+		});
+
+		// Update backend
+		ipcMain.handle("update-backend", async () => {
+			log.info("Updating backend...");
+			try {
+				return await this.updateBackend();
+			} catch (error) {
+				log.error("Error updating backend:", error);
 				throw error;
 			}
 		});
@@ -301,8 +371,274 @@ export class UpdateService {
 		if (v1PreRelease && !v2PreRelease) return false;
 
 		// If both have pre-release tags, compare them lexicographically
-		// This is a simplification - in reality you might want more sophisticated semver comparison
 		return v1PreRelease > v2PreRelease;
+	}
+
+	/**
+	 * Get the installed backend version using the health API
+	 * @returns Promise resolving to the installed version or null if not found
+	 */
+	private async getInstalledBackendVersion(): Promise<string | null> {
+		try {
+			log.info(
+				`Checking backend version from health API at ${this.backendUrl}/health`,
+			);
+
+			// Set a timeout for the fetch request
+			const controller = new AbortController();
+			const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+
+			const response = await fetch(`${this.backendUrl}/health`, {
+				method: "GET",
+				headers: { Accept: "application/json" },
+				signal: controller.signal,
+			});
+
+			clearTimeout(timeoutId);
+
+			if (!response.ok) {
+				log.error(`Health API returned status ${response.status}`);
+				return null;
+			}
+
+			const healthData = (await response.json()) as HealthCheckResponse;
+
+			// Check if the response has version information
+			if (healthData.result?.version) {
+				log.info(
+					`Backend version from health API: ${healthData.result.version}`,
+				);
+				return healthData.result.version;
+			}
+
+			// For older server versions that don't have the version information
+			log.info("Backend version not available in health response");
+			return "Unknown";
+		} catch (error) {
+			log.error("Error getting backend version from health API:", error);
+
+			// Try alternative URL with localhost if the first attempt failed with 127.0.0.1
+			if (this.backendUrl.includes("127.0.0.1")) {
+				try {
+					const altUrl = this.backendUrl.replace("127.0.0.1", "localhost");
+					log.info(`Trying alternative URL: ${altUrl}/health`);
+
+					const controller = new AbortController();
+					const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+					const response = await fetch(`${altUrl}/health`, {
+						method: "GET",
+						headers: { Accept: "application/json" },
+						signal: controller.signal,
+					});
+
+					clearTimeout(timeoutId);
+
+					if (!response.ok) {
+						log.error(
+							`Alternative health API returned status ${response.status}`,
+						);
+						return null;
+					}
+
+					const healthData = (await response.json()) as HealthCheckResponse;
+
+					// Check if the response has version information
+					if (healthData.result?.version) {
+						log.info(
+							`Backend version from alternative health API: ${healthData.result.version}`,
+						);
+						return healthData.result.version;
+					}
+				} catch (altError) {
+					log.error("Error checking alternative backend URL:", altError);
+				}
+			}
+
+			// If we're in dev mode, try to get the version using pip as a fallback
+			if (this.isDevMode) {
+				try {
+					log.info("Trying to get backend version using pip as fallback");
+					const execAsync = promisify(exec);
+					const { stdout } = await execAsync("pip show local-operator");
+					const match = stdout.match(/Version:\s*([^\n]+)/);
+					if (match) {
+						const version = match[1].trim();
+						log.info(`Backend version from pip: ${version}`);
+						return version;
+					}
+				} catch (pipError) {
+					log.error("Error getting backend version from pip:", pipError);
+				}
+			}
+
+			return null;
+		}
+	}
+
+	/**
+	 * Get the latest version from PyPI
+	 * @returns Promise resolving to the latest version string or null if unable to fetch
+	 */
+	private getLatestPypiVersion(): Promise<string | null> {
+		return new Promise((resolve) => {
+			const url = "https://pypi.org/pypi/local-operator/json";
+			https
+				.get(url, (res) => {
+					let data = "";
+					res.on("data", (chunk) => {
+						data += chunk;
+					});
+					res.on("end", () => {
+						try {
+							const packageInfo = JSON.parse(data);
+							const latestVersion = packageInfo.info?.version;
+							resolve(latestVersion || null);
+						} catch (error) {
+							log.error("Error parsing PyPI response:", error);
+							resolve(null);
+						}
+					});
+				})
+				.on("error", (error) => {
+					log.error("Error fetching from PyPI:", error);
+					resolve(null);
+				});
+		});
+	}
+
+	/**
+	 * Check for backend updates using health API and PyPI
+	 * @param silent - Whether to suppress notifications on no update
+	 * @returns Promise resolving to update info or null if no update is available
+	 */
+	public async checkForBackendUpdates(
+		silent = false,
+	): Promise<BackendUpdateInfo | null> {
+		log.info(`Checking for backend updates... (silent mode: ${silent})`);
+
+		try {
+			// Handle dev mode case
+			if (this.isDevMode) {
+				log.info("Skip backend update check in dev mode unless forced");
+
+				if (!silent && this.mainWindow) {
+					this.mainWindow.webContents.send(
+						"backend-update-dev-mode",
+						"Backend updates are disabled in development mode.",
+					);
+				}
+				return null;
+			}
+
+			const installedVersion = await this.getInstalledBackendVersion();
+			const latestVersion = await this.getLatestPypiVersion();
+
+			if (!installedVersion || !latestVersion) {
+				log.error("Unable to determine backend versions.");
+				if (!silent && this.mainWindow) {
+					this.mainWindow.webContents.send(
+						"backend-update-error",
+						"Unable to determine backend version.",
+					);
+				}
+				return null;
+			}
+
+			// If installed version is "Unknown", we should recommend an update
+			const shouldUpdate =
+				installedVersion === "Unknown" ||
+				this.isNewerVersion(latestVersion, installedVersion);
+
+			log.info(
+				`Installed backend version: ${installedVersion}, Latest: ${latestVersion}, Update needed: ${shouldUpdate}`,
+			);
+
+			if (shouldUpdate) {
+				log.info(
+					`New backend version available: ${latestVersion} (installed: ${installedVersion})`,
+				);
+
+				const updateInfo: BackendUpdateInfo = {
+					currentVersion: installedVersion,
+					latestVersion,
+					updateCommand: "pip install --upgrade local-operator",
+				};
+
+				if (this.mainWindow) {
+					this.mainWindow.webContents.send(
+						"backend-update-available",
+						updateInfo,
+					);
+				}
+
+				return updateInfo;
+			}
+
+			log.info(
+				`No new backend version available. (installed: ${installedVersion}, latest: ${latestVersion})`,
+			);
+
+			if (!silent && this.mainWindow) {
+				this.mainWindow.webContents.send("backend-update-not-available", {
+					version: installedVersion,
+				});
+			}
+
+			return null;
+		} catch (error) {
+			log.error("Error checking for backend updates:", error);
+
+			if (!silent && this.mainWindow) {
+				this.mainWindow.webContents.send(
+					"backend-update-error",
+					(error as Error).message,
+				);
+			}
+
+			return null;
+		}
+	}
+
+	/**
+	 * Update the backend using pip
+	 * @returns Promise resolving to true if update was successful, false otherwise
+	 */
+	public async updateBackend(): Promise<boolean> {
+		log.info("Updating backend...");
+
+		try {
+			const execAsync = promisify(exec);
+			await execAsync("pip install --upgrade local-operator");
+
+			log.info("Backend update completed successfully");
+
+			if (this.mainWindow) {
+				this.mainWindow.webContents.send("backend-update-completed");
+			}
+
+			return true;
+		} catch (error) {
+			log.error("Error updating backend:", error);
+
+			if (this.mainWindow) {
+				this.mainWindow.webContents.send(
+					"backend-update-error",
+					(error as Error).message,
+				);
+			}
+
+			return false;
+		}
+	}
+
+	/**
+	 * Check for all updates (UI and backend)
+	 * @param silent - Whether to suppress notifications on no updates
+	 */
+	public async checkForAllUpdates(silent = false): Promise<void> {
+		await this.checkForUpdates(silent);
+		await this.checkForBackendUpdates(silent);
 	}
 
 	/**

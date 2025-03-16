@@ -295,6 +295,15 @@ export const UpdateNotification = ({
 };
 
 /**
+ * Type definition for backend update information
+ */
+type BackendUpdateInfo = {
+	currentVersion: string;
+	latestVersion: string;
+	updateCommand: string;
+};
+
+/**
  * Component that shows a button to manually check for updates
  */
 export const CheckForUpdatesButton = () => {
@@ -303,20 +312,27 @@ export const CheckForUpdatesButton = () => {
 	const [snackbarOpen, setSnackbarOpen] = useState(false);
 	const [noUpdateAvailable, setNoUpdateAvailable] = useState(false);
 	const [devModeMessage, setDevModeMessage] = useState<string | null>(null);
-	const [npxUpdateInfo, setNpxUpdateInfo] = useState<{
-		currentVersion: string;
-		latestVersion: string;
-		updateCommand: string;
-	} | null>(null);
+	const [npxUpdateInfo, setNpxUpdateInfo] = useState<BackendUpdateInfo | null>(
+		null,
+	);
+	const [backendUpdateInfo, setBackendUpdateInfo] =
+		useState<BackendUpdateInfo | null>(null);
+	const [backendUpdateCompleted, setBackendUpdateCompleted] = useState(false);
+	const [updatingBackend, setUpdatingBackend] = useState(false);
 
-	// Check for updates
+	// Check for UI updates
 	const checkForUpdates = async () => {
 		try {
 			setChecking(true);
 			setError(null);
 			setDevModeMessage(null);
 			setNpxUpdateInfo(null);
-			await window.api.updater.checkForUpdates();
+			setBackendUpdateInfo(null);
+			setBackendUpdateCompleted(false);
+
+			// Check for all updates (UI and backend)
+			await window.api.updater.checkForAllUpdates();
+
 			// If no update event is fired, default to "no update available"
 			setNoUpdateAvailable(true);
 			setSnackbarOpen(true);
@@ -327,6 +343,22 @@ export const CheckForUpdatesButton = () => {
 			setSnackbarOpen(true);
 		} finally {
 			setChecking(false);
+		}
+	};
+
+	// Update the backend
+	const updateBackend = async () => {
+		try {
+			setUpdatingBackend(true);
+			setError(null);
+			await window.api.updater.updateBackend();
+		} catch (err) {
+			setError(
+				`Error updating backend: ${err instanceof Error ? err.message : String(err)}`,
+			);
+			setSnackbarOpen(true);
+		} finally {
+			setUpdatingBackend(false);
 		}
 	};
 
@@ -356,11 +388,35 @@ export const CheckForUpdatesButton = () => {
 				setSnackbarOpen(true);
 			});
 
+		// Backend update available
+		const removeBackendUpdateAvailableListener =
+			window.api.updater.onBackendUpdateAvailable((info) => {
+				setBackendUpdateInfo(info);
+				setChecking(false);
+				setSnackbarOpen(true);
+			});
+
+		// Backend update not available
+		const removeBackendUpdateNotAvailableListener =
+			window.api.updater.onBackendUpdateNotAvailable(() => {
+				// This is handled by the general "no update available" state
+			});
+
+		// Backend update completed
+		const removeBackendUpdateCompletedListener =
+			window.api.updater.onBackendUpdateCompleted(() => {
+				setBackendUpdateCompleted(true);
+				setBackendUpdateInfo(null);
+				setUpdatingBackend(false);
+				setSnackbarOpen(true);
+			});
+
 		// Update error
 		const removeUpdateErrorListener = window.api.updater.onUpdateError(
 			(errorMessage) => {
 				setError(errorMessage);
 				setChecking(false);
+				setUpdatingBackend(false);
 				setSnackbarOpen(true);
 			},
 		);
@@ -370,6 +426,9 @@ export const CheckForUpdatesButton = () => {
 			removeUpdateNotAvailableListener();
 			removeUpdateDevModeListener();
 			removeUpdateNpxAvailableListener();
+			removeBackendUpdateAvailableListener();
+			removeBackendUpdateNotAvailableListener();
+			removeBackendUpdateCompletedListener();
 			removeUpdateErrorListener();
 		};
 	}, []);
@@ -380,52 +439,107 @@ export const CheckForUpdatesButton = () => {
 		setNoUpdateAvailable(false);
 		setDevModeMessage(null);
 		setNpxUpdateInfo(null);
+		setBackendUpdateCompleted(false);
 	};
 
-	// Handle copying the NPX command to clipboard
-	const handleCopyNpxCommand = () => {
-		if (npxUpdateInfo) {
-			navigator.clipboard.writeText(npxUpdateInfo.updateCommand);
-			// Show a temporary message that the command was copied
-			setError("Command copied to clipboard!");
-			setTimeout(() => {
-				setError(null);
-			}, 2000);
-		}
+	// Handle copying a command to clipboard
+	const handleCopyCommand = (command: string) => {
+		navigator.clipboard.writeText(command);
+		// Show a temporary message that the command was copied
+		setError("Command copied to clipboard!");
+		setTimeout(() => {
+			setError(null);
+		}, 2000);
 	};
 
 	// Define snackbar content based on the current state
-	const snackbarContent = error ? (
-		<Alert onClose={handleSnackbarClose} severity="error">
-			{error}
-		</Alert>
-	) : noUpdateAvailable ? (
-		<Alert onClose={handleSnackbarClose} severity="info">
-			You're using the latest version
-		</Alert>
-	) : devModeMessage ? (
-		<Alert onClose={handleSnackbarClose} severity="info">
-			{devModeMessage}
-		</Alert>
-	) : npxUpdateInfo ? (
-		<Alert
-			onClose={handleSnackbarClose}
-			severity="info"
-			action={
-				<Button color="inherit" size="small" onClick={handleCopyNpxCommand}>
-					Copy
-				</Button>
-			}
-		>
-			<Typography variant="body2" sx={{ mb: 1 }}>
-				Update available: {npxUpdateInfo.latestVersion} (current:{" "}
-				{npxUpdateInfo.currentVersion})
-			</Typography>
-			<Typography variant="body2">
-				To update, run: <code>{npxUpdateInfo.updateCommand}</code>
-			</Typography>
-		</Alert>
-	) : null;
+	let snackbarContent: JSX.Element | null = null;
+
+	if (error) {
+		snackbarContent = (
+			<Alert onClose={handleSnackbarClose} severity="error">
+				{error}
+			</Alert>
+		);
+	} else if (backendUpdateCompleted) {
+		snackbarContent = (
+			<Alert onClose={handleSnackbarClose} severity="success">
+				Backend updated successfully
+			</Alert>
+		);
+	} else if (backendUpdateInfo) {
+		snackbarContent = (
+			<Alert
+				onClose={handleSnackbarClose}
+				severity="info"
+				action={
+					<>
+						<Button
+							color="inherit"
+							size="small"
+							onClick={() => handleCopyCommand(backendUpdateInfo.updateCommand)}
+							sx={{ mr: 1 }}
+						>
+							Copy
+						</Button>
+						<Button
+							color="primary"
+							size="small"
+							onClick={updateBackend}
+							disabled={updatingBackend}
+						>
+							{updatingBackend ? "Updating..." : "Update"}
+						</Button>
+					</>
+				}
+			>
+				<Typography variant="body2" sx={{ mb: 1 }}>
+					Backend update available: {backendUpdateInfo.latestVersion} (current:{" "}
+					{backendUpdateInfo.currentVersion})
+				</Typography>
+				<Typography variant="body2">
+					To update manually, run:{" "}
+					<code>{backendUpdateInfo.updateCommand}</code>
+				</Typography>
+			</Alert>
+		);
+	} else if (npxUpdateInfo) {
+		snackbarContent = (
+			<Alert
+				onClose={handleSnackbarClose}
+				severity="info"
+				action={
+					<Button
+						color="inherit"
+						size="small"
+						onClick={() => handleCopyCommand(npxUpdateInfo.updateCommand)}
+					>
+						Copy
+					</Button>
+				}
+			>
+				<Typography variant="body2" sx={{ mb: 1 }}>
+					UI update available: {npxUpdateInfo.latestVersion} (current:{" "}
+					{npxUpdateInfo.currentVersion})
+				</Typography>
+				<Typography variant="body2">
+					To update, run: <code>{npxUpdateInfo.updateCommand}</code>
+				</Typography>
+			</Alert>
+		);
+	} else if (devModeMessage) {
+		snackbarContent = (
+			<Alert onClose={handleSnackbarClose} severity="info">
+				{devModeMessage}
+			</Alert>
+		);
+	} else if (noUpdateAvailable) {
+		snackbarContent = (
+			<Alert onClose={handleSnackbarClose} severity="info">
+				You're using the latest version
+			</Alert>
+		);
+	}
 
 	return (
 		<>

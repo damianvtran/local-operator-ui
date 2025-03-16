@@ -78,10 +78,17 @@ const createEmptyUpdaterMethods = () => {
 		window.api.updater = {
 			checkForUpdates: async () =>
 				Promise.resolve({ updateInfo: mockUpdateInfo, cancellationToken: {} }),
+			checkForBackendUpdates: async () => Promise.resolve(null),
+			checkForAllUpdates: async () => Promise.resolve(),
+			updateBackend: async () => Promise.resolve(true),
 			downloadUpdate: async () => Promise.resolve([]),
 			quitAndInstall: () => {},
 			onUpdateDevMode: () => () => {},
 			onUpdateNpxAvailable: () => () => {},
+			onBackendUpdateAvailable: () => () => {},
+			onBackendUpdateDevMode: () => () => {},
+			onBackendUpdateNotAvailable: () => () => {},
+			onBackendUpdateCompleted: () => () => {},
 			onUpdateAvailable: noop,
 			onUpdateNotAvailable: noop,
 			onUpdateDownloaded: noop,
@@ -106,6 +113,9 @@ const mockUpdaterApi = () => {
 				updateInfo: mockUpdateInfo,
 				cancellationToken: {},
 			}),
+		checkForBackendUpdates: async () => Promise.resolve(null),
+		checkForAllUpdates: async () => Promise.resolve(),
+		updateBackend: async () => Promise.resolve(true),
 		downloadUpdate: async () => Promise.resolve([]),
 		quitAndInstall: () => {},
 		onUpdateDevMode: (callback: (message: string) => void) => {
@@ -131,6 +141,50 @@ const mockUpdaterApi = () => {
 					latestVersion: "2.0.0",
 					updateCommand: "npx local-operator-ui@latest",
 				});
+			}
+			return () => {};
+		},
+		onBackendUpdateAvailable: (
+			callback: (info: {
+				currentVersion: string;
+				latestVersion: string;
+				updateCommand: string;
+			}) => void,
+		) => {
+			// For stories that need to trigger this callback
+			if (window.triggerBackendUpdateAvailable) {
+				// Immediately trigger the callback
+				callback({
+					currentVersion: "1.0.0",
+					latestVersion: "2.0.0",
+					updateCommand: "pip install --upgrade local-operator",
+				});
+			}
+			return () => {};
+		},
+		onBackendUpdateDevMode: (callback: (message: string) => void) => {
+			// For stories that need to trigger this callback
+			if (window.triggerBackendUpdateDevMode) {
+				// Immediately trigger the callback
+				callback("Backend updates are disabled in development mode.");
+			}
+			return () => {};
+		},
+		onBackendUpdateNotAvailable: (
+			callback: (info: { version: string }) => void,
+		) => {
+			// For stories that need to trigger this callback
+			if (window.triggerBackendUpdateNotAvailable) {
+				// Immediately trigger the callback
+				callback({ version: "1.0.0" });
+			}
+			return () => {};
+		},
+		onBackendUpdateCompleted: (callback: () => void) => {
+			// For stories that need to trigger this callback
+			if (window.triggerBackendUpdateCompleted) {
+				// Immediately trigger the callback
+				callback();
 			}
 			return () => {};
 		},
@@ -207,6 +261,10 @@ declare global {
 		triggerUpdateProgress?: boolean;
 		triggerUpdateDevMode?: boolean;
 		triggerUpdateNpxAvailable?: boolean;
+		triggerBackendUpdateAvailable?: boolean;
+		triggerBackendUpdateNotAvailable?: boolean;
+		triggerBackendUpdateCompleted?: boolean;
+		triggerBackendUpdateDevMode?: boolean;
 		triggerNpxUpdate?: boolean;
 		triggerDevMode?: boolean;
 	}
@@ -1136,5 +1194,250 @@ export const NpxUpdateAvailable: Story = {
 		};
 
 		return <NpxUpdateComponent />;
+	},
+};
+
+/**
+ * Shows the notification when a backend update is available.
+ */
+export const BackendUpdateAvailable: Story = {
+	args: {
+		autoCheck: false,
+	},
+	render: () => {
+		// Create a component that directly renders the backend update available state
+		const BackendUpdateComponent = () => {
+			const [backendUpdateInfo, setBackendUpdateInfo] = useState<{
+				currentVersion: string;
+				latestVersion: string;
+				updateCommand: string;
+			} | null>(null);
+			const [snackbarOpen, setSnackbarOpen] = useState(true);
+			const [updatingBackend, setUpdatingBackend] = useState(false);
+
+			useEffect(() => {
+				// Set the state immediately
+				setBackendUpdateInfo({
+					currentVersion: "1.0.0",
+					latestVersion: "2.0.0",
+					updateCommand: "pip install --upgrade local-operator",
+				});
+
+				// Override the onBackendUpdateAvailable method
+				const originalOnBackendUpdateAvailable =
+					window.api.updater.onBackendUpdateAvailable;
+				window.api.updater.onBackendUpdateAvailable = (callback) => {
+					// Call it immediately
+					callback({
+						currentVersion: "1.0.0",
+						latestVersion: "2.0.0",
+						updateCommand: "pip install --upgrade local-operator",
+					});
+					return () => {};
+				};
+
+				// Set the trigger flag
+				window.triggerBackendUpdateAvailable = true;
+
+				return () => {
+					window.api.updater.onBackendUpdateAvailable =
+						originalOnBackendUpdateAvailable;
+				};
+			}, []);
+
+			// Handle copying the backend update command to clipboard
+			const handleCopyCommand = () => {
+				if (backendUpdateInfo) {
+					navigator.clipboard.writeText(backendUpdateInfo.updateCommand);
+				}
+			};
+
+			// Handle updating the backend
+			const updateBackend = () => {
+				setUpdatingBackend(true);
+				// Simulate backend update
+				setTimeout(() => {
+					setUpdatingBackend(false);
+					setBackendUpdateInfo(null);
+					setSnackbarOpen(false);
+				}, 1500);
+			};
+
+			return (
+				<div style={{ minHeight: "100px", position: "relative" }}>
+					<Button
+						variant="outlined"
+						onClick={() => {}}
+						disabled={false}
+						startIcon={undefined}
+					>
+						Check for Updates
+					</Button>
+
+					<Snackbar
+						open={snackbarOpen}
+						autoHideDuration={10000}
+						onClose={() => setSnackbarOpen(false)}
+						anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+					>
+						<Alert
+							onClose={() => setSnackbarOpen(false)}
+							severity="info"
+							action={
+								<>
+									<Button
+										color="inherit"
+										size="small"
+										onClick={handleCopyCommand}
+										sx={{ mr: 1 }}
+									>
+										Copy
+									</Button>
+									<Button
+										color="primary"
+										size="small"
+										onClick={updateBackend}
+										disabled={updatingBackend}
+									>
+										{updatingBackend ? "Updating..." : "Update"}
+									</Button>
+								</>
+							}
+						>
+							<Typography variant="body2" sx={{ mb: 1 }}>
+								Backend update available: {backendUpdateInfo?.latestVersion}{" "}
+								(current: {backendUpdateInfo?.currentVersion})
+							</Typography>
+							<Typography variant="body2">
+								To update manually, run:{" "}
+								<code>{backendUpdateInfo?.updateCommand}</code>
+							</Typography>
+						</Alert>
+					</Snackbar>
+				</div>
+			);
+		};
+
+		return <BackendUpdateComponent />;
+	},
+};
+
+/**
+ * Shows the notification when a backend update has completed.
+ */
+export const BackendUpdateCompleted: Story = {
+	args: {
+		autoCheck: false,
+	},
+	render: () => {
+		// Create a component that directly renders the backend update completed state
+		const BackendUpdateCompletedComponent = () => {
+			const [snackbarOpen, setSnackbarOpen] = useState(true);
+
+			useEffect(() => {
+				// Override the onBackendUpdateCompleted method
+				const originalOnBackendUpdateCompleted =
+					window.api.updater.onBackendUpdateCompleted;
+				window.api.updater.onBackendUpdateCompleted = (callback) => {
+					// Call it immediately
+					callback();
+					return () => {};
+				};
+
+				// Set the trigger flag
+				window.triggerBackendUpdateCompleted = true;
+
+				return () => {
+					window.api.updater.onBackendUpdateCompleted =
+						originalOnBackendUpdateCompleted;
+				};
+			}, []);
+
+			return (
+				<div style={{ minHeight: "100px", position: "relative" }}>
+					<Button
+						variant="outlined"
+						onClick={() => {}}
+						disabled={false}
+						startIcon={undefined}
+					>
+						Check for Updates
+					</Button>
+
+					<Snackbar
+						open={snackbarOpen}
+						autoHideDuration={6000}
+						onClose={() => setSnackbarOpen(false)}
+						anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+					>
+						<Alert onClose={() => setSnackbarOpen(false)} severity="success">
+							Backend updated successfully
+						</Alert>
+					</Snackbar>
+				</div>
+			);
+		};
+
+		return <BackendUpdateCompletedComponent />;
+	},
+};
+
+/**
+ * Shows the notification when no backend update is available.
+ */
+export const BackendUpdateNotAvailable: Story = {
+	args: {
+		autoCheck: false,
+	},
+	render: () => {
+		// Create a component that directly renders the backend update not available state
+		const BackendUpdateNotAvailableComponent = () => {
+			const [snackbarOpen, setSnackbarOpen] = useState(true);
+
+			useEffect(() => {
+				// Override the onBackendUpdateNotAvailable method
+				const originalOnBackendUpdateNotAvailable =
+					window.api.updater.onBackendUpdateNotAvailable;
+				window.api.updater.onBackendUpdateNotAvailable = (callback) => {
+					// Call it immediately
+					callback({ version: "1.0.0" });
+					return () => {};
+				};
+
+				// Set the trigger flag
+				window.triggerBackendUpdateNotAvailable = true;
+
+				return () => {
+					window.api.updater.onBackendUpdateNotAvailable =
+						originalOnBackendUpdateNotAvailable;
+				};
+			}, []);
+
+			return (
+				<div style={{ minHeight: "100px", position: "relative" }}>
+					<Button
+						variant="outlined"
+						onClick={() => {}}
+						disabled={false}
+						startIcon={undefined}
+					>
+						Check for Updates
+					</Button>
+
+					<Snackbar
+						open={snackbarOpen}
+						autoHideDuration={6000}
+						onClose={() => setSnackbarOpen(false)}
+						anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+					>
+						<Alert onClose={() => setSnackbarOpen(false)} severity="info">
+							You're using the latest version
+						</Alert>
+					</Snackbar>
+				</div>
+			);
+		};
+
+		return <BackendUpdateNotAvailableComponent />;
 	},
 };

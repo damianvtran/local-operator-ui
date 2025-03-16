@@ -17,6 +17,10 @@ const api = {
 	// Add methods for auto-updater
 	updater: {
 		checkForUpdates: () => ipcRenderer.invoke("check-for-updates"),
+		checkForBackendUpdates: () =>
+			ipcRenderer.invoke("check-for-backend-updates"),
+		checkForAllUpdates: () => ipcRenderer.invoke("check-for-all-updates"),
+		updateBackend: () => ipcRenderer.invoke("update-backend"),
 		downloadUpdate: () => ipcRenderer.invoke("download-update"),
 		quitAndInstall: () => ipcRenderer.invoke("quit-and-install"),
 		onUpdateAvailable: (callback: (info: UpdateInfo) => void) => {
@@ -47,6 +51,44 @@ const api = {
 			ipcRenderer.on("update-npx-available", (_event, info) => callback(info));
 			return () => {
 				ipcRenderer.removeAllListeners("update-npx-available");
+			};
+		},
+		onBackendUpdateAvailable: (
+			callback: (info: {
+				currentVersion: string;
+				latestVersion: string;
+				updateCommand: string;
+			}) => void,
+		) => {
+			ipcRenderer.on("backend-update-available", (_event, info) =>
+				callback(info),
+			);
+			return () => {
+				ipcRenderer.removeAllListeners("backend-update-available");
+			};
+		},
+		onBackendUpdateDevMode: (callback: (message: string) => void) => {
+			ipcRenderer.on("backend-update-dev-mode", (_event, message) =>
+				callback(message),
+			);
+			return () => {
+				ipcRenderer.removeAllListeners("backend-update-dev-mode");
+			};
+		},
+		onBackendUpdateNotAvailable: (
+			callback: (info: { version: string }) => void,
+		) => {
+			ipcRenderer.on("backend-update-not-available", (_event, info) =>
+				callback(info),
+			);
+			return () => {
+				ipcRenderer.removeAllListeners("backend-update-not-available");
+			};
+		},
+		onBackendUpdateCompleted: (callback: () => void) => {
+			ipcRenderer.on("backend-update-completed", () => callback());
+			return () => {
+				ipcRenderer.removeAllListeners("backend-update-completed");
 			};
 		},
 		onUpdateDownloaded: (callback: (info: UpdateInfo) => void) => {
