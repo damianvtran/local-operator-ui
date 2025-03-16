@@ -5,6 +5,7 @@ import {
 	Button,
 	Alert,
 	Snackbar,
+	Box,
 } from "@mui/material";
 import { ThemeProvider as MuiThemeProvider } from "@mui/material/styles";
 import { ThemeProvider as StyledThemeProvider } from "styled-components";
@@ -59,6 +60,15 @@ const mockUpdateInfo: UpdateInfo = {
 	path: "",
 	sha512: "",
 	releaseDate: new Date().toISOString(),
+};
+
+// Type definition for our mock callbacks
+type UpdaterCallbacks = {
+	updateAvailable?: ((info: UpdateInfo) => void)[];
+	updateNotAvailable?: ((info: UpdateInfo) => void)[];
+	updateDownloaded?: ((info: UpdateInfo) => void)[];
+	updateError?: ((message: string) => void)[];
+	updateProgress?: ((progressObj: ProgressInfo) => void)[];
 };
 
 // Create empty updater methods to prevent errors
@@ -618,16 +628,185 @@ const buttonMeta = {
 } satisfies Meta<typeof CheckForUpdatesButton>;
 
 export const ButtonDefault: StoryObj<typeof buttonMeta> = {
-	render: () => <CheckForUpdatesButton />,
+	render: () => {
+		// Create a component that ensures no snackbar is shown initially
+		const DefaultComponent = () => {
+			const [checking, setChecking] = useState(false);
+
+			// Override the checkForUpdates function to simulate the flow
+			useEffect(() => {
+				// Replace with a function that simulates checking but doesn't show any snackbar
+				window.api.updater.checkForUpdates = async () => {
+					setChecking(true);
+
+					// Simulate a delay for checking
+					setTimeout(() => {
+						setChecking(false);
+					}, 500);
+
+					return Promise.resolve({
+						updateInfo: mockUpdateInfo,
+						cancellationToken: {},
+					});
+				};
+
+				return () => {
+					// No cleanup needed for the story
+				};
+			}, []);
+
+			return (
+				<div style={{ minHeight: "100px", position: "relative" }}>
+					<Button
+						variant="outlined"
+						onClick={() => window.api.updater.checkForUpdates()}
+						disabled={checking}
+						startIcon={
+							checking ? <Box sx={{ width: 16, height: 16 }} /> : undefined
+						}
+					>
+						{checking ? "Checking..." : "Check for Updates"}
+					</Button>
+				</div>
+			);
+		};
+
+		return <DefaultComponent />;
+	},
 };
 
 /**
  * Shows the button state when no update is available.
  */
 export const ButtonNoUpdateAvailable: StoryObj<typeof buttonMeta> = {
-	render: () => <CheckForUpdatesButton />,
 	parameters: {
 		triggerUpdateNotAvailable: true,
+	},
+	render: () => {
+		// Create a component that simulates clicking the button and showing "no update available"
+		const NoUpdateComponent = () => {
+			const [checking, setChecking] = useState(false);
+			const [noUpdateAvailable, setNoUpdateAvailable] = useState(false);
+			const [snackbarOpen, setSnackbarOpen] = useState(false);
+
+			// Initialize with the snackbar open to show the state
+			useEffect(() => {
+				setNoUpdateAvailable(true);
+				setSnackbarOpen(true);
+			}, []);
+
+			// Override the checkForUpdates function to simulate the flow
+			useEffect(() => {
+				// Replace with a function that simulates checking and then showing "no update available"
+				window.api.updater.checkForUpdates = async () => {
+					setChecking(true);
+					setSnackbarOpen(false); // Close any existing snackbar
+
+					// Simulate a delay for checking
+					setTimeout(() => {
+						setChecking(false);
+						setNoUpdateAvailable(true);
+						setSnackbarOpen(true); // Show the snackbar
+
+						// Trigger the onUpdateNotAvailable callback
+						const callbacks =
+							// @ts-ignore - _callbacks is added at runtime for our mock implementation
+							window.api.updater._callbacks?.updateNotAvailable || [];
+						for (const callback of callbacks) {
+							callback(mockUpdateInfo);
+						}
+					}, 500);
+
+					return Promise.resolve({
+						updateInfo: mockUpdateInfo,
+						cancellationToken: {},
+					});
+				};
+
+				// Add a callbacks collection to the mock API if it doesn't exist
+				// @ts-ignore - _callbacks is added at runtime for our mock implementation
+				if (!window.api.updater._callbacks) {
+					// @ts-ignore - _callbacks is added at runtime for our mock implementation
+					window.api.updater._callbacks = {} as UpdaterCallbacks;
+				}
+
+				return () => {
+					// No cleanup needed for the story
+				};
+			}, []);
+
+			// Override the onUpdateNotAvailable to store callbacks
+			useEffect(() => {
+				const originalOnUpdateNotAvailable =
+					window.api.updater.onUpdateNotAvailable;
+				window.api.updater.onUpdateNotAvailable = (callback) => {
+					// Store the callback
+					// @ts-ignore - _callbacks is added at runtime for our mock implementation
+					if (!window.api.updater._callbacks) {
+						// @ts-ignore - _callbacks is added at runtime for our mock implementation
+						window.api.updater._callbacks = {} as UpdaterCallbacks;
+					}
+					// @ts-ignore - _callbacks is added at runtime for our mock implementation
+					if (!window.api.updater._callbacks.updateNotAvailable) {
+						// @ts-ignore - _callbacks is added at runtime for our mock implementation
+						window.api.updater._callbacks.updateNotAvailable = [];
+					}
+					// @ts-ignore - _callbacks is added at runtime for our mock implementation
+					window.api.updater._callbacks.updateNotAvailable.push(callback);
+
+					// Call it immediately if we're already in the "no update available" state
+					if (noUpdateAvailable) {
+						callback(mockUpdateInfo);
+					}
+
+					// Return cleanup function
+					return () => {
+						// @ts-ignore - _callbacks is added at runtime for our mock implementation
+						if (window.api.updater._callbacks?.updateNotAvailable) {
+							// @ts-ignore - _callbacks is added at runtime for our mock implementation
+							window.api.updater._callbacks.updateNotAvailable =
+								// @ts-ignore - _callbacks is added at runtime for our mock implementation
+								window.api.updater._callbacks.updateNotAvailable.filter(
+									(cb) => cb !== callback,
+								);
+						}
+					};
+				};
+
+				return () => {
+					window.api.updater.onUpdateNotAvailable =
+						originalOnUpdateNotAvailable;
+				};
+			}, [noUpdateAvailable]);
+
+			return (
+				<div style={{ minHeight: "100px", position: "relative" }}>
+					<Button
+						variant="outlined"
+						onClick={() => window.api.updater.checkForUpdates()}
+						disabled={checking}
+						startIcon={
+							checking ? <Box sx={{ width: 16, height: 16 }} /> : undefined
+						}
+					>
+						{checking ? "Checking..." : "Check for Updates"}
+					</Button>
+
+					<Snackbar
+						open={snackbarOpen}
+						autoHideDuration={6000}
+						onClose={() => setSnackbarOpen(false)}
+						anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+					>
+						<Alert onClose={() => setSnackbarOpen(false)} severity="info">
+							You're using the latest version
+						</Alert>
+					</Snackbar>
+				</div>
+			);
+		};
+
+		return <NoUpdateComponent />;
 	},
 };
 
@@ -635,8 +814,129 @@ export const ButtonNoUpdateAvailable: StoryObj<typeof buttonMeta> = {
  * Shows the button state when there's an error checking for updates.
  */
 export const ButtonErrorState: StoryObj<typeof buttonMeta> = {
-	render: () => <CheckForUpdatesButton />,
 	parameters: {
 		triggerUpdateError: true,
+	},
+	render: () => {
+		// Create a component that simulates clicking the button and showing an error
+		const ErrorComponent = () => {
+			const [checking, setChecking] = useState(false);
+			const [error, setError] = useState<string>(
+				"Failed to check for updates: Network error",
+			);
+			const [snackbarOpen, setSnackbarOpen] = useState(true);
+
+			// Initialize with the error snackbar open to show the state
+			useEffect(() => {
+				setError("Failed to check for updates: Network error");
+				setSnackbarOpen(true);
+			}, []);
+
+			// Override the checkForUpdates function to simulate the flow
+			useEffect(() => {
+				// Replace with a function that simulates checking and then showing an error
+				window.api.updater.checkForUpdates = async () => {
+					setChecking(true);
+					setSnackbarOpen(false); // Close any existing snackbar
+
+					// Simulate a delay for checking
+					setTimeout(() => {
+						setChecking(false);
+						setError("Failed to check for updates: Network error");
+						setSnackbarOpen(true); // Show the snackbar
+
+						// Trigger the onUpdateError callback
+						// @ts-ignore - _callbacks is added at runtime for our mock implementation
+						const callbacks = window.api.updater._callbacks?.updateError || [];
+						for (const callback of callbacks) {
+							callback("Failed to check for updates: Network error");
+						}
+					}, 500);
+
+					return Promise.reject(new Error("Network error"));
+				};
+
+				// Add a callbacks collection to the mock API if it doesn't exist
+				// @ts-ignore - _callbacks is added at runtime for our mock implementation
+				if (!window.api.updater._callbacks) {
+					// @ts-ignore - _callbacks is added at runtime for our mock implementation
+					window.api.updater._callbacks = {} as UpdaterCallbacks;
+				}
+
+				return () => {
+					// No cleanup needed for the story
+				};
+			}, []);
+
+			// Override the onUpdateError to store callbacks
+			useEffect(() => {
+				const originalOnUpdateError = window.api.updater.onUpdateError;
+				window.api.updater.onUpdateError = (callback) => {
+					// Store the callback
+					// @ts-ignore - _callbacks is added at runtime for our mock implementation
+					if (!window.api.updater._callbacks) {
+						// @ts-ignore - _callbacks is added at runtime for our mock implementation
+						window.api.updater._callbacks = {} as UpdaterCallbacks;
+					}
+					// @ts-ignore - _callbacks is added at runtime for our mock implementation
+					if (!window.api.updater._callbacks.updateError) {
+						// @ts-ignore - _callbacks is added at runtime for our mock implementation
+						window.api.updater._callbacks.updateError = [];
+					}
+					// @ts-ignore - _callbacks is added at runtime for our mock implementation
+					window.api.updater._callbacks.updateError.push(callback);
+
+					// Call it immediately if we're already in the error state
+					if (error) {
+						callback(error);
+					}
+
+					// Return cleanup function
+					return () => {
+						// @ts-ignore - _callbacks is added at runtime for our mock implementation
+						if (window.api.updater._callbacks?.updateError) {
+							// @ts-ignore - _callbacks is added at runtime for our mock implementation
+							window.api.updater._callbacks.updateError =
+								// @ts-ignore - _callbacks is added at runtime for our mock implementation
+								window.api.updater._callbacks.updateError.filter(
+									(cb) => cb !== callback,
+								);
+						}
+					};
+				};
+
+				return () => {
+					window.api.updater.onUpdateError = originalOnUpdateError;
+				};
+			}, [error]);
+
+			return (
+				<div style={{ minHeight: "100px", position: "relative" }}>
+					<Button
+						variant="outlined"
+						onClick={() => window.api.updater.checkForUpdates()}
+						disabled={checking}
+						startIcon={
+							checking ? <Box sx={{ width: 16, height: 16 }} /> : undefined
+						}
+					>
+						{checking ? "Checking..." : "Check for Updates"}
+					</Button>
+
+					<Snackbar
+						open={snackbarOpen}
+						autoHideDuration={6000}
+						onClose={() => setSnackbarOpen(false)}
+						anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+					>
+						<Alert onClose={() => setSnackbarOpen(false)} severity="error">
+							{error}
+						</Alert>
+					</Snackbar>
+				</div>
+			);
+		};
+
+		return <ErrorComponent />;
 	},
 };
