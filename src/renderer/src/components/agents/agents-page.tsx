@@ -6,8 +6,9 @@
  * Layout follows the pattern of other pages with a sidebar and content area
  */
 
-import { faRobot } from "@fortawesome/free-solid-svg-icons";
-import { Box } from "@mui/material";
+import { faComment, faRobot } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { Box, Button, Tooltip, alpha } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import type { AgentDetails } from "@renderer/api/local-operator/types";
 import { useAgent, useAgents } from "@renderer/hooks/use-agents";
@@ -15,6 +16,7 @@ import { useAgentRouteParam } from "@renderer/hooks/use-route-params";
 import { useAgentSelectionStore } from "@renderer/store/agent-selection-store";
 import { useEffect, useRef, useState } from "react";
 import type { FC } from "react";
+import { useNavigate } from "react-router-dom";
 import { PageHeader } from "../common/page-header";
 import { AgentSettings } from "./agent-settings";
 import { AgentsSidebar } from "./agents-sidebar";
@@ -73,6 +75,7 @@ const AgentDetailsContainer = styled(Box)({
  */
 export const AgentsPage: FC<AgentsPageProps> = () => {
 	const { agentId, navigateToAgent, clearAgentId } = useAgentRouteParam();
+	const navigate = useNavigate();
 	// Use a ref to track the previous agent ID to prevent unnecessary renders
 	const prevAgentIdRef = useRef<string | undefined>(agentId);
 
@@ -161,11 +164,41 @@ export const AgentsPage: FC<AgentsPageProps> = () => {
 			{/* Content Area */}
 			<ContentContainer>
 				<ContentInnerContainer>
-					<PageHeader
-						title="Agent Management"
-						icon={faRobot}
-						subtitle="View, configure and manage your AI agents from a central dashboard"
-					/>
+					<Box sx={{ position: "relative", width: "100%", mb: 2 }}>
+						<PageHeader
+							title="Agent Management"
+							icon={faRobot}
+							subtitle="View, configure and manage your AI agents from a central dashboard"
+						/>
+
+						{selectedAgent && (
+							<Box sx={{ position: "absolute", top: 0, right: 0 }}>
+								<Tooltip
+									title={`Chat with ${selectedAgent?.name || "this Agent"}`}
+								>
+									<Button
+										variant="outlined"
+										color="primary"
+										size="small"
+										startIcon={<FontAwesomeIcon icon={faComment} />}
+										onClick={() => navigate(`/chat/${selectedAgent.id}`)}
+										sx={{
+											borderRadius: 2,
+											textTransform: "none",
+											fontWeight: 500,
+											transition: "all 0.2s ease-in-out",
+											"&:hover": {
+												backgroundColor: alpha("#38C96A", 0.08),
+												transform: "translateY(-1px)",
+											},
+										}}
+									>
+										Chat
+									</Button>
+								</Tooltip>
+							</Box>
+						)}
+					</Box>
 
 					<AgentDetailsContainer sx={{ opacity: selectedAgent ? 1 : 0.7 }}>
 						<AgentSettings
