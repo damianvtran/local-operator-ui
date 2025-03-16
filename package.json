@@ -215,7 +215,20 @@
 				"Categories": "Development;Utility"
 			}
 		},
-		"publish": null
+		"publish": {
+			"provider": "github",
+			"owner": "damianvtran",
+			"repo": "local-operator-ui",
+			"private": false,
+			"releaseType": "release",
+			"publishAutoUpdate": true,
+			"updateFileNames": {
+				"mac": "latest-mac.yml",
+				"win": "latest.yml",
+				"linux": "latest-linux.yml"
+			}
+		},
+		"generateUpdatesFilesForAllChannels": true
 	},
 	"eslintConfig": {
 		"extends": ["plugin:storybook/recommended"]
