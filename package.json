@@ -224,7 +224,7 @@
 			"publishAutoUpdate": true,
 			"updateFileNames": {
 				"mac": "latest-mac.yml",
-				"win": "latest.yml",
+				"win": "latest-win.yml",
 				"linux": "latest-linux.yml"
 			}
 		},
