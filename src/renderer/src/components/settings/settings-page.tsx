@@ -35,7 +35,7 @@ import { PageHeader } from "../common/page-header";
 import { SliderSetting } from "../common/slider-setting";
 import { ToggleSetting } from "../common/toggle-setting";
 import { HostingSelect, ModelSelect } from "../hosting";
-import { AppUpdates } from "./app-updates";
+import { AppUpdatesSection } from "./app-updates-section";
 import { Credentials } from "./credentials";
 import { DEFAULT_SETTINGS_SECTIONS, SettingsSidebar } from "./settings-sidebar";
 import { SystemPrompt } from "./system-prompt";
@@ -546,10 +546,7 @@ export const SettingsPage: FC = () => {
 									</StyledCardContent>
 								</StyledCard>
 
-								{/* Application Updates */}
-								<Box ref={updatesSectionRef}>
-									<AppUpdates />
-								</Box>
+								{/* Application Updates - Moved to its own section */}
 							</Grid>
 						</Grid>
 					</Box>
@@ -570,6 +567,11 @@ export const SettingsPage: FC = () => {
 							Manage your API keys for various services and integrations
 						</Typography>
 						<Credentials />
+					</Box>
+
+					{/* App Updates Section */}
+					<Box ref={updatesSectionRef}>
+						<AppUpdatesSection />
 					</Box>
 				</StyledContainer>
 			</ContentContainer>

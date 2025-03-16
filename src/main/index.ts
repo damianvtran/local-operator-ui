@@ -193,6 +193,21 @@ app.whenReady().then(async () => {
 		}
 	});
 
+	// Add IPC handlers for system information
+	ipcMain.handle("get-app-version", () => {
+		return app.getVersion();
+	});
+
+	ipcMain.handle("get-platform-info", () => {
+		return {
+			platform: process.platform,
+			arch: process.arch,
+			nodeVersion: process.versions.node,
+			electronVersion: process.versions.electron,
+			chromeVersion: process.versions.chrome,
+		};
+	});
+
 	// Check if backend manager is disabled via environment variable
 	const isBackendManagerDisabled =
 		process.env.VITE_DISABLE_BACKEND_MANAGER === "true";

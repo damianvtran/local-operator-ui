@@ -8,6 +8,12 @@ const api = {
 	openFile: (filePath: string) => ipcRenderer.invoke("open-file", filePath),
 	openExternal: (url: string) => ipcRenderer.invoke("open-external", url),
 
+	// System information
+	systemInfo: {
+		getAppVersion: () => ipcRenderer.invoke("get-app-version"),
+		getPlatformInfo: () => ipcRenderer.invoke("get-platform-info"),
+	},
+
 	// Add methods for auto-updater
 	updater: {
 		checkForUpdates: () => ipcRenderer.invoke("check-for-updates"),
