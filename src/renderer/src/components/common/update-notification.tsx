@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from "react";
-import { styled } from "styled-components";
 import {
 	Button,
 	Typography,
@@ -7,29 +6,30 @@ import {
 	Box,
 	Alert,
 	Snackbar,
+	styled,
 } from "@mui/material";
 import type { UpdateInfo, ProgressInfo } from "electron-updater";
 
 // Styled components
-const UpdateContainer = styled.div`
-  padding: 16px;
-  border-radius: 8px;
-  background-color: ${(props) => props.theme.palette.background.paper};
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  margin-bottom: 16px;
-`;
+const UpdateContainer = styled("div")(({ theme }) => ({
+	padding: 16,
+	borderRadius: 8,
+	backgroundColor: theme.palette.background.paper,
+	boxShadow: "0 2px 10px rgba(0, 0, 0, 0.1)",
+	marginBottom: 16,
+}));
 
-const UpdateActions = styled.div`
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-top: 16px;
-`;
+const UpdateActions = styled("div")({
+	display: "flex",
+	justifyContent: "flex-end",
+	gap: 8,
+	marginTop: 16,
+});
 
-const ProgressContainer = styled.div`
-  margin-top: 16px;
-  margin-bottom: 8px;
-`;
+const ProgressContainer = styled("div")({
+	marginTop: 16,
+	marginBottom: 8,
+});
 
 /**
  * Props for the UpdateNotification component
