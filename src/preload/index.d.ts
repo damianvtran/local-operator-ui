@@ -7,6 +7,16 @@ declare global {
 		api: {
 			openFile: (filePath: string) => Promise<void>;
 			openExternal: (url: string) => Promise<void>;
+			systemInfo: {
+				getAppVersion: () => Promise<string>;
+				getPlatformInfo: () => Promise<{
+					platform: string;
+					arch: string;
+					nodeVersion: string;
+					electronVersion: string;
+					chromeVersion: string;
+				}>;
+			};
 			updater: {
 				checkForUpdates: () => Promise<{
 					updateInfo: UpdateInfo;
