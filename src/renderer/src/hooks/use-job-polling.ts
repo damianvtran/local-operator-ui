@@ -1,6 +1,21 @@
 import { createLocalOperatorClient } from "@renderer/api/local-operator";
-import type { JobDetails, JobStatus } from "@renderer/api/local-operator/types";
+import type {
+	JobDetails as BaseJobDetails,
+	JobStatus,
+	ConversationRecord,
+	ChatStats,
+} from "@renderer/api/local-operator/types";
 import type { Message } from "@renderer/components/chat/types";
+
+// Extend the JobDetails type to include the error field in the result
+interface JobDetails extends Omit<BaseJobDetails, "result"> {
+	result?: {
+		response: string | null;
+		context: ConversationRecord[] | null;
+		stats: ChatStats | null;
+		error?: string;
+	};
+}
 import { apiConfig } from "@renderer/config";
 import { useChatStore } from "@renderer/store/chat-store";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -239,14 +254,20 @@ export const useJobPolling = ({
 					addMessage(conversationId, assistantMessage);
 				}
 			}
-			// If job failed, show error message
+			// If job failed, show error message with details
 			else if (job.status === "failed") {
+				// Extract error message from job result if available
+				const errorDetails = job.result?.error
+					? job.result.error
+					: "No error details available";
+
 				const errorMessage: Message = {
 					id: Date.now().toString(),
 					role: "assistant",
-					message:
-						"Sorry, there was an error processing your request. The job failed.",
+					message: "Sorry, there was an error processing your request.",
+					stderr: errorDetails,
 					timestamp: new Date(),
+					status: "error",
 				};
 
 				addMessage(conversationId, errorMessage);
