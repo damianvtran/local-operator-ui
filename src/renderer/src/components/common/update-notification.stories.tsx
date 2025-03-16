@@ -220,6 +220,50 @@ export const Default: Story = {
 };
 
 /**
+ * Shows the component when it's checking for updates.
+ */
+export const Checking: Story = {
+	args: {
+		autoCheck: false,
+	},
+	parameters: {
+		// Add a special parameter to indicate this is the checking story
+		checking: true,
+	},
+	render: () => {
+		// Create a component that forces the checking state to be true
+		const CheckingComponent = () => {
+			// Override the checkForUpdates function to never resolve
+			useEffect(() => {
+				// Store the original function
+				const originalCheckForUpdates = window.api.updater.checkForUpdates;
+
+				// Replace with a function that never resolves
+				window.api.updater.checkForUpdates = async () => {
+					// Return a promise that never resolves to keep checking state true
+					return new Promise(() => {});
+				};
+
+				// Call checkForUpdates to trigger the checking state
+				setTimeout(() => {
+					window.api.updater.checkForUpdates();
+				}, 100);
+
+				// Cleanup function to restore original function
+				return () => {
+					window.api.updater.checkForUpdates = originalCheckForUpdates;
+				};
+			}, []);
+
+			// Render the component with autoCheck=true to trigger the check
+			return <UpdateNotification autoCheck={true} />;
+		};
+
+		return <CheckingComponent />;
+	},
+};
+
+/**
  * Shows the notification when an update is available.
  */
 export const UpdateAvailable: Story = {

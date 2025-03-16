@@ -46,7 +46,7 @@ export const UpdateNotification = ({
 	autoCheck = true,
 }: UpdateNotificationProps) => {
 	// State for update status
-	const [_checking, setChecking] = useState(false);
+	const [checking, setChecking] = useState(false);
 	const [updateAvailable, setUpdateAvailable] = useState(false);
 	const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
 	const [downloading, setDownloading] = useState(false);
@@ -156,6 +156,21 @@ export const UpdateNotification = ({
 	const handleSnackbarClose = () => {
 		setSnackbarOpen(false);
 	};
+
+	// If checking for updates, show a loading indicator
+	if (checking) {
+		return (
+			<UpdateContainer>
+				<Typography variant="h6">Checking for Updates</Typography>
+				<Typography variant="body1">
+					Please wait while we check for available updates...
+				</Typography>
+				<ProgressContainer>
+					<LinearProgress />
+				</ProgressContainer>
+			</UpdateContainer>
+		);
+	}
 
 	// If there's an error, show a snackbar
 	if (error) {
