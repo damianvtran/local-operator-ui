@@ -1,12 +1,12 @@
-import { type BrowserWindow, ipcMain, app } from "electron";
-import { autoUpdater } from "electron-updater";
-import log from "electron-log";
-import * as path from "node:path";
-import * as https from "node:https";
 import { exec } from "node:child_process";
+import * as https from "node:https";
+import * as path from "node:path";
 import { promisify } from "node:util";
-import { apiConfig } from "./backend/config";
+import { type BrowserWindow, app, ipcMain } from "electron";
+import log from "electron-log";
+import { autoUpdater } from "electron-updater";
 import type { BackendServiceManager } from "./backend/backend-service";
+import { apiConfig } from "./backend/config";
 
 /**
  * Health check result containing version information
