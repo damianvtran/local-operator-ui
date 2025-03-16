@@ -229,6 +229,14 @@ export type ChatResponse = {
 };
 
 /**
+ * Health check result containing version information
+ */
+export type HealthCheckResult = {
+	/** API server version */
+	version: string;
+};
+
+/**
  * Response from health check endpoint.
  */
 export type HealthCheckResponse = {
@@ -236,6 +244,8 @@ export type HealthCheckResponse = {
 	status: number;
 	/** Health check message */
 	message: string;
+	/** Health check result containing version information (may be undefined in older server versions) */
+	result?: HealthCheckResult;
 };
 
 /**
