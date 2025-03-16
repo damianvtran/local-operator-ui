@@ -52,7 +52,7 @@ export const LogoSection: React.FC = () => {
 					maxWidth: "600px",
 				}}
 			>
-				Your Personal Assistant that Gets Things Done with Python
+				Personal AI Assistants that Turn Ideas into Action
 			</Typography>
 		</>
 	);

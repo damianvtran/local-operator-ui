@@ -27,6 +27,11 @@ export const useSystemPrompt = () => {
 				const client = createLocalOperatorClient(apiConfig.baseUrl);
 				const response = await client.config.getSystemPrompt();
 
+				// Handle case where there is no system prompt (204 response)
+				if (response === null) {
+					return null;
+				}
+
 				if (response.status >= 400) {
 					throw new Error(response.message || "Failed to fetch system prompt");
 				}
