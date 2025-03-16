@@ -243,8 +243,8 @@ app.whenReady().then(async () => {
 	// Create the main window
 	const mainWindow = createWindow();
 
-	// Initialize the update service
-	const updateService = new UpdateService(mainWindow);
+	// Initialize the update service with a reference to the backend service
+	const updateService = new UpdateService(mainWindow, backendService);
 
 	// Set up IPC handlers for the update service
 	updateService.setupIpcHandlers();

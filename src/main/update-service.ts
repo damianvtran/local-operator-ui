@@ -6,6 +6,7 @@ import * as https from "node:https";
 import { exec } from "node:child_process";
 import { promisify } from "node:util";
 import { apiConfig } from "./backend/config";
+import type { BackendServiceManager } from "./backend/backend-service";
 
 /**
  * Health check result containing version information
@@ -45,13 +46,20 @@ export class UpdateService {
 	private isDevMode: boolean;
 	private isNpxInstall: boolean;
 	private backendUrl: string;
+	private updateCheckInterval: NodeJS.Timeout | null = null;
+	private backendService: BackendServiceManager | null = null;
 
 	/**
 	 * Initialize the update service
 	 * @param mainWindow - The main application window
+	 * @param backendService - Optional backend service manager for restarting the backend after updates
 	 */
-	constructor(mainWindow: BrowserWindow) {
+	constructor(
+		mainWindow: BrowserWindow,
+		backendService?: BackendServiceManager,
+	) {
 		this.mainWindow = mainWindow;
+		this.backendService = backendService || null;
 
 		// Determine if we're in dev mode
 		this.isDevMode =
@@ -81,6 +89,39 @@ export class UpdateService {
 
 		// Set up event handlers
 		this.setupUpdateEvents();
+
+		// Start periodic update checks (every 5 minutes)
+		this.startPeriodicUpdateChecks();
+	}
+
+	/**
+	 * Start periodic update checks
+	 * Checks for updates every 5 minutes
+	 */
+	private startPeriodicUpdateChecks(): void {
+		// Clear any existing interval
+		if (this.updateCheckInterval) {
+			clearInterval(this.updateCheckInterval);
+		}
+
+		// Set up new interval (5 minutes = 300000 ms)
+		this.updateCheckInterval = setInterval(() => {
+			log.info("Running scheduled update check (every 5 minutes)");
+			this.checkForAllUpdates(true);
+		}, 300000);
+
+		log.info("Periodic update checks scheduled (every 5 minutes)");
+	}
+
+	/**
+	 * Clean up resources when the service is no longer needed
+	 */
+	public dispose(): void {
+		// Clear the update check interval
+		if (this.updateCheckInterval) {
+			clearInterval(this.updateCheckInterval);
+			this.updateCheckInterval = null;
+		}
 	}
 
 	/**
@@ -601,17 +642,50 @@ export class UpdateService {
 	}
 
 	/**
-	 * Update the backend using pip
+	 * Update the backend using pip and restart the backend service
 	 * @returns Promise resolving to true if update was successful, false otherwise
 	 */
 	public async updateBackend(): Promise<boolean> {
 		log.info("Updating backend...");
 
 		try {
+			// First, stop the backend service if we have a reference to it
+			if (
+				this.backendService &&
+				!this.backendService.isUsingExternalBackend()
+			) {
+				log.info("Stopping backend service before update...");
+				await this.backendService.stop();
+				log.info("Backend service stopped successfully");
+			}
+
+			// Update the backend using pip
 			const execAsync = promisify(exec);
 			await execAsync("pip install --upgrade local-operator");
+			log.info("Backend package updated successfully via pip");
 
-			log.info("Backend update completed successfully");
+			// Restart the backend service if we have a reference to it
+			if (this.backendService) {
+				log.info("Restarting backend service after update...");
+				const startSuccess = await this.backendService.start();
+
+				if (startSuccess) {
+					log.info("Backend service restarted successfully after update");
+				} else {
+					log.error("Failed to restart backend service after update");
+					if (this.mainWindow) {
+						this.mainWindow.webContents.send(
+							"backend-update-error",
+							"Backend was updated but failed to restart. Please restart the application.",
+						);
+					}
+					return false;
+				}
+			} else {
+				log.info("No backend service reference available, skipping restart");
+			}
+
+			log.info("Backend update and restart completed successfully");
 
 			if (this.mainWindow) {
 				this.mainWindow.webContents.send("backend-update-completed");
@@ -620,6 +694,24 @@ export class UpdateService {
 			return true;
 		} catch (error) {
 			log.error("Error updating backend:", error);
+
+			// Try to restart the backend service if it was stopped
+			if (
+				this.backendService &&
+				!this.backendService.isUsingExternalBackend()
+			) {
+				try {
+					log.info(
+						"Attempting to restart backend service after update failure...",
+					);
+					await this.backendService.start();
+				} catch (restartError) {
+					log.error(
+						"Failed to restart backend service after update failure:",
+						restartError,
+					);
+				}
+			}
 
 			if (this.mainWindow) {
 				this.mainWindow.webContents.send(
