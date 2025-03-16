@@ -1,6 +1,6 @@
 import { faDownload, faInfoCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Box, Grid, Typography } from "@mui/material";
+import { Box, Grid, Tooltip, Typography } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import { useEffect, useState } from "react";
 import type { FC } from "react";
@@ -82,14 +82,18 @@ export const AppUpdatesSection: FC = () => {
 				Check for updates and view information about your Local Operator
 				installation
 			</SectionDescription>
-
 			{/* Version Information */}
 			<Grid container spacing={2} sx={{ mb: 3 }}>
 				<Grid item xs={12} sm={6} md={3}>
 					<InfoBox>
 						<InfoLabel variant="subtitle2">
-							<FontAwesomeIcon icon={faInfoCircle} style={{ marginRight: 8 }} />
-							Version
+							<Tooltip title="The version of the Local Operator user interface application">
+								<FontAwesomeIcon
+									icon={faInfoCircle}
+									style={{ marginRight: 8 }}
+								/>
+							</Tooltip>
+							Application Version
 						</InfoLabel>
 						<InfoValue variant="body1">{appVersion}</InfoValue>
 					</InfoBox>
@@ -98,7 +102,12 @@ export const AppUpdatesSection: FC = () => {
 				<Grid item xs={12} sm={6} md={3}>
 					<InfoBox>
 						<InfoLabel variant="subtitle2">
-							<FontAwesomeIcon icon={faInfoCircle} style={{ marginRight: 8 }} />
+							<Tooltip title="The operating system and architecture your application is running on. This affects compatibility and performance.">
+								<FontAwesomeIcon
+									icon={faInfoCircle}
+									style={{ marginRight: 8 }}
+								/>
+							</Tooltip>
 							Platform
 						</InfoLabel>
 						<InfoValue variant="body1">
@@ -110,7 +119,12 @@ export const AppUpdatesSection: FC = () => {
 				<Grid item xs={12} sm={6} md={3}>
 					<InfoBox>
 						<InfoLabel variant="subtitle2">
-							<FontAwesomeIcon icon={faInfoCircle} style={{ marginRight: 8 }} />
+							<Tooltip title="The JavaScript runtime environment that powers the backend processes of the application. Different versions may affect performance and feature availability.">
+								<FontAwesomeIcon
+									icon={faInfoCircle}
+									style={{ marginRight: 8 }}
+								/>
+							</Tooltip>
 							Node.js
 						</InfoLabel>
 						<InfoValue variant="body1">{platformInfo.nodeVersion}</InfoValue>
@@ -120,7 +134,12 @@ export const AppUpdatesSection: FC = () => {
 				<Grid item xs={12} sm={6} md={3}>
 					<InfoBox>
 						<InfoLabel variant="subtitle2">
-							<FontAwesomeIcon icon={faInfoCircle} style={{ marginRight: 8 }} />
+							<Tooltip title="The framework that enables this desktop application to run across different operating systems using web technologies. It combines Chromium and Node.js into a single runtime.">
+								<FontAwesomeIcon
+									icon={faInfoCircle}
+									style={{ marginRight: 8 }}
+								/>
+							</Tooltip>
 							Electron
 						</InfoLabel>
 						<InfoValue variant="body1">
