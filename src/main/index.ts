@@ -252,9 +252,9 @@ app.whenReady().then(async () => {
 	// Handle platform-specific setup for the updater
 	updateService.handlePlatformSpecifics();
 
-	// Check for updates after a short delay to ensure the app is fully loaded
+	// Check for all updates (UI and backend) after a short delay to ensure the app is fully loaded
 	setTimeout(() => {
-		updateService.checkForUpdates(true);
+		updateService.checkForAllUpdates(true);
 	}, 3000);
 
 	app.on("activate", () => {
