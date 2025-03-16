@@ -1,4 +1,4 @@
-import { ThemeProvider } from "@mui/material";
+import { ThemeProvider as MuiThemeProvider } from "@mui/material";
 import CssBaseline from "@mui/material/CssBaseline";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
@@ -7,6 +7,7 @@ import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { ThemeProvider as StyledComponentsThemeProvider } from "styled-components";
 import "./assets/fonts/fonts.css";
 import { queryClient } from "./api/query-client";
 import App from "./app";
@@ -20,13 +21,15 @@ document.addEventListener("DOMContentLoaded", () => {
 	root.render(
 		<React.StrictMode>
 			<QueryClientProvider client={queryClient}>
-				<ThemeProvider theme={theme}>
-					<CssBaseline />
-					<ErrorBoundary>
-						<BrowserRouter>
-							<App />
-						</BrowserRouter>
-					</ErrorBoundary>
+				<MuiThemeProvider theme={theme}>
+					<StyledComponentsThemeProvider theme={theme}>
+						<CssBaseline />
+						<ErrorBoundary>
+							<BrowserRouter>
+								<App />
+							</BrowserRouter>
+						</ErrorBoundary>
+					</StyledComponentsThemeProvider>
 					<ToastContainer
 						position="top-right"
 						autoClose={5000}
@@ -48,7 +51,7 @@ document.addEventListener("DOMContentLoaded", () => {
 							buttonPosition="top-left"
 						/>
 					)}
-				</ThemeProvider>
+				</MuiThemeProvider>
 			</QueryClientProvider>
 		</React.StrictMode>,
 	);

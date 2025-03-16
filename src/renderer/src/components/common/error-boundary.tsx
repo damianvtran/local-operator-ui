@@ -74,7 +74,7 @@ const ErrorFallback = ({ error, resetErrorBoundary }: FallbackProps) => {
 			</Button>
 
 			{/* Show error details in development */}
-			{process.env.NODE_ENV !== "production" && (
+			{
 				<Box
 					sx={{
 						mt: 2,
@@ -111,7 +111,7 @@ const ErrorFallback = ({ error, resetErrorBoundary }: FallbackProps) => {
 						{error?.stack}
 					</Typography>
 				</Box>
-			)}
+			}
 		</Paper>
 	);
 };
