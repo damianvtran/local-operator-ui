@@ -126,6 +126,7 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 	const [currentHosting, setCurrentHosting] = useState<string>(
 		selectedAgent.hosting || "",
 	);
+
 	return (
 		<>
 			<HeaderContainer>

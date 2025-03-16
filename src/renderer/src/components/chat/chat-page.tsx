@@ -311,16 +311,21 @@ export const ChatPage: FC<ChatProps> = () => {
 				// It will be added when the job completes (in the useJobPolling hook)
 			} catch (error) {
 				console.error("Error sending message:", error);
+
+				// Extract error details
+				let errorDetails = "Unknown error occurred";
+				if (error instanceof Error) {
+					errorDetails = `${error.message}\n${error.stack || ""}`;
+				} else if (typeof error === "object" && error !== null) {
+					errorDetails = JSON.stringify(error, null, 2);
+				}
+
 				// Add error message
 				const errorMessage: Message = {
 					id: Date.now().toString(),
 					role: "assistant",
-					message:
-						"Sorry, there was an error processing your request. Please try again.",
-					stderr:
-						error instanceof Error
-							? `${error.message}\n${error.stack || ""}`
-							: "Unknown error occurred",
+					message: "Sorry, there was an error processing your request.",
+					stderr: errorDetails,
 					timestamp: new Date(),
 					status: "error",
 				};
