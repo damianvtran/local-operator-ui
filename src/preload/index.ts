@@ -1,11 +1,57 @@
 import { electronAPI } from "@electron-toolkit/preload";
 import { contextBridge, ipcRenderer } from "electron";
+import type { UpdateInfo, ProgressInfo } from "electron-updater";
 
 // Custom APIs for renderer
 const api = {
 	// Add methods to open files and URLs
 	openFile: (filePath: string) => ipcRenderer.invoke("open-file", filePath),
 	openExternal: (url: string) => ipcRenderer.invoke("open-external", url),
+
+	// Add methods for auto-updater
+	updater: {
+		checkForUpdates: () => ipcRenderer.invoke("check-for-updates"),
+		downloadUpdate: () => ipcRenderer.invoke("download-update"),
+		quitAndInstall: () => ipcRenderer.invoke("quit-and-install"),
+		onUpdateAvailable: (callback: (info: UpdateInfo) => void) => {
+			ipcRenderer.on("update-available", (_event, info) => callback(info));
+			return () => {
+				ipcRenderer.removeAllListeners("update-available");
+			};
+		},
+		onUpdateNotAvailable: (callback: (info: UpdateInfo) => void) => {
+			ipcRenderer.on("update-not-available", (_event, info) => callback(info));
+			return () => {
+				ipcRenderer.removeAllListeners("update-not-available");
+			};
+		},
+		onUpdateDownloaded: (callback: (info: UpdateInfo) => void) => {
+			ipcRenderer.on("update-downloaded", (_event, info) => callback(info));
+			return () => {
+				ipcRenderer.removeAllListeners("update-downloaded");
+			};
+		},
+		onUpdateError: (callback: (error: string) => void) => {
+			ipcRenderer.on("update-error", (_event, error) => callback(error));
+			return () => {
+				ipcRenderer.removeAllListeners("update-error");
+			};
+		},
+		onUpdateProgress: (callback: (progressObj: ProgressInfo) => void) => {
+			ipcRenderer.on("update-progress", (_event, progressObj) =>
+				callback(progressObj),
+			);
+			return () => {
+				ipcRenderer.removeAllListeners("update-progress");
+			};
+		},
+		onBeforeQuitForUpdate: (callback: () => void) => {
+			ipcRenderer.on("before-quit-for-update", () => callback());
+			return () => {
+				ipcRenderer.removeAllListeners("before-quit-for-update");
+			};
+		},
+	},
 
 	// Add methods for installer
 	ipcRenderer: {
