@@ -10,6 +10,7 @@ import {
 } from "electron";
 import icon from "../../resources/icon-180x180-dark.png?asset";
 import { BackendInstaller, BackendServiceManager } from "./backend";
+import { UpdateService } from "./update-service";
 
 // Set application name
 app.setName("Local Operator");
@@ -119,7 +120,7 @@ function createApplicationMenu(): void {
 	Menu.setApplicationMenu(menu);
 }
 
-function createWindow(): void {
+function createWindow(): BrowserWindow {
 	// Create the browser window.
 	const mainWindow = new BrowserWindow({
 		width: 1380,
@@ -153,6 +154,8 @@ function createWindow(): void {
 	} else {
 		mainWindow.loadFile(join(__dirname, "../renderer/index.html"));
 	}
+
+	return mainWindow;
 }
 
 // Initialize backend service manager and installer
@@ -223,7 +226,21 @@ app.whenReady().then(async () => {
 	createApplicationMenu();
 
 	// Create the main window
-	createWindow();
+	const mainWindow = createWindow();
+
+	// Initialize the update service
+	const updateService = new UpdateService(mainWindow);
+
+	// Set up IPC handlers for the update service
+	updateService.setupIpcHandlers();
+
+	// Handle platform-specific setup for the updater
+	updateService.handlePlatformSpecifics();
+
+	// Check for updates after a short delay to ensure the app is fully loaded
+	setTimeout(() => {
+		updateService.checkForUpdates(true);
+	}, 3000);
 
 	app.on("activate", () => {
 		// On macOS it's common to re-create a window in the app when the

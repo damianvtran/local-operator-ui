@@ -10,6 +10,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { ChatPage } from "@components/chat/chat-page";
 import { AgentsPage } from "@renderer/components/agents/agents-page";
 import { ModelsInitializer } from "@renderer/components/common/models-initializer";
+import { UpdateNotification } from "@renderer/components/common/update-notification";
 import { SidebarNavigation } from "@renderer/components/navigation/sidebar-navigation";
 import { OnboardingModal } from "@renderer/components/onboarding";
 import { SettingsPage } from "@renderer/components/settings/settings-page";
@@ -48,6 +49,9 @@ const App: FC = () => {
 
 			{/* First-time setup onboarding */}
 			<OnboardingModal open={isOnboardingActive} />
+
+			{/* Auto-update notification */}
+			<UpdateNotification />
 
 			{/* Sidebar Navigation */}
 			<SidebarNavigation />
