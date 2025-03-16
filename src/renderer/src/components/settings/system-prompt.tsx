@@ -158,8 +158,10 @@ export const SystemPrompt: FC = () => {
 	const handleReset = () => {
 		if (systemPromptData) {
 			setSystemPrompt(systemPromptData.content);
-			setIsEdited(false);
+		} else {
+			setSystemPrompt(""); // Reset to empty string if no system prompt exists
 		}
+		setIsEdited(false);
 	};
 
 	// Loading state
@@ -176,13 +178,69 @@ export const SystemPrompt: FC = () => {
 	}
 
 	// Error state
-	if (error || !systemPromptData) {
+	if (error) {
 		return (
 			<StyledCard>
 				<StyledCardContent>
 					<Alert severity="error">
 						Failed to load system prompt. Please try again later.
 					</Alert>
+				</StyledCardContent>
+			</StyledCard>
+		);
+	}
+
+	// No system prompt exists yet (204 response)
+	if (!systemPromptData) {
+		return (
+			<StyledCard>
+				<StyledCardContent>
+					<CardTitle variant="h6">
+						<FontAwesomeIcon icon={faRobot} />
+						System Prompt
+					</CardTitle>
+
+					<CardDescription variant="body2">
+						This system prompt is given to all Local Operator agents. It is
+						useful to define some baseline expectations for the behavior of
+						every agent in your environment. These instructions will be provided
+						in addition to any specific instructions you may have defined for
+						each agent.
+					</CardDescription>
+
+					<StyledTextField
+						label="System Prompt"
+						name="systemPrompt"
+						value={systemPrompt}
+						onChange={handleInputChange}
+						variant="outlined"
+						multiline
+						rows={8}
+						fullWidth
+						placeholder="Enter instructions for how all agents should behave and respond to your requests..."
+					/>
+
+					<ButtonContainer>
+						<Button
+							variant="contained"
+							color="primary"
+							size="small"
+							startIcon={<FontAwesomeIcon icon={faSave} />}
+							onClick={handleSave}
+							disabled={!isEdited || isSaving}
+						>
+							{isSaving ? <CircularProgress size={20} /> : "Save Changes"}
+						</Button>
+
+						<Button
+							variant="outlined"
+							size="small"
+							onClick={handleReset}
+							disabled={!isEdited || isSaving}
+						>
+							Cancel
+						</Button>
+					</ButtonContainer>
 				</StyledCardContent>
 			</StyledCard>
 		);

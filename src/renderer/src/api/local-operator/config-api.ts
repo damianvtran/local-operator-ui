@@ -72,17 +72,22 @@ export const ConfigApi = {
 	 * Retrieve the current system prompt content.
 	 *
 	 * @param baseUrl - The base URL of the Local Operator API
-	 * @returns Promise resolving to the system prompt response
+	 * @returns Promise resolving to the system prompt response or null if no prompt exists
 	 */
 	async getSystemPrompt(
 		baseUrl: string,
-	): Promise<CRUDResponse<SystemPromptResponse>> {
+	): Promise<CRUDResponse<SystemPromptResponse> | null> {
 		const response = await fetch(`${baseUrl}/v1/config/system-prompt`, {
 			method: "GET",
 			headers: {
 				Accept: "application/json",
 			},
 		});
+
+		// Handle 204 No Content response (system prompt doesn't exist)
+		if (response.status === 204) {
+			return null;
+		}
 
 		if (!response.ok) {
 			throw new Error(
