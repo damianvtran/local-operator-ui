@@ -31,6 +31,24 @@ const api = {
 				ipcRenderer.removeAllListeners("update-not-available");
 			};
 		},
+		onUpdateDevMode: (callback: (message: string) => void) => {
+			ipcRenderer.on("update-dev-mode", (_event, message) => callback(message));
+			return () => {
+				ipcRenderer.removeAllListeners("update-dev-mode");
+			};
+		},
+		onUpdateNpxAvailable: (
+			callback: (info: {
+				currentVersion: string;
+				latestVersion: string;
+				updateCommand: string;
+			}) => void,
+		) => {
+			ipcRenderer.on("update-npx-available", (_event, info) => callback(info));
+			return () => {
+				ipcRenderer.removeAllListeners("update-npx-available");
+			};
+		},
 		onUpdateDownloaded: (callback: (info: UpdateInfo) => void) => {
 			ipcRenderer.on("update-downloaded", (_event, info) => callback(info));
 			return () => {

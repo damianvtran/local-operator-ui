@@ -1,13 +1,16 @@
-import { type BrowserWindow, ipcMain } from "electron";
+import { type BrowserWindow, ipcMain, app } from "electron";
 import { autoUpdater } from "electron-updater";
 import log from "electron-log";
 import * as path from "node:path";
+import * as https from "node:https";
 
 /**
  * Service to handle application updates using electron-updater
  */
 export class UpdateService {
 	private mainWindow: BrowserWindow | null = null;
+	private isDevMode: boolean;
+	private isNpxInstall: boolean;
 
 	/**
 	 * Initialize the update service
@@ -15,6 +18,21 @@ export class UpdateService {
 	 */
 	constructor(mainWindow: BrowserWindow) {
 		this.mainWindow = mainWindow;
+
+		// Determine if we're in dev mode
+		this.isDevMode =
+			!app.isPackaged || Boolean(process.env.ELECTRON_RENDERER_URL);
+
+		// Determine if this is an npx installation
+		// Check if the app is running from a node_modules/.bin directory which is typical for npx
+		const execPath = process.execPath;
+		this.isNpxInstall =
+			execPath.includes("node_modules/.bin") ||
+			execPath.includes("node_modules\\.bin");
+
+		log.info(
+			`Update service initialized. Dev mode: ${this.isDevMode}, NPX install: ${this.isNpxInstall}`,
+		);
 
 		// Configure logging for autoUpdater
 		log.transports.file.level = "info";
@@ -122,7 +140,65 @@ export class UpdateService {
 	 */
 	public async checkForUpdates(silent = false): Promise<void> {
 		log.info(`Checking for updates... (silent mode: ${silent})`);
+
 		try {
+			// Handle dev mode case
+			if (this.isDevMode) {
+				log.info(
+					"Skip checkForUpdates because application is not packed and dev update config is not forced",
+				);
+
+				if (!silent && this.mainWindow) {
+					this.mainWindow.webContents.send(
+						"update-dev-mode",
+						"Application is running in development mode. Updates are disabled.",
+					);
+				}
+				return;
+			}
+
+			// Handle npx installation case
+			if (this.isNpxInstall) {
+				log.info(
+					"Application was installed via npx. Checking npm registry for updates...",
+				);
+
+				if (!silent) {
+					// Check npm registry for the latest version
+					const currentVersion = app.getVersion();
+					const latestVersion = await this.getLatestNpmVersion();
+
+					if (
+						latestVersion &&
+						this.isNewerVersion(latestVersion, currentVersion)
+					) {
+						log.info(
+							`Newer version available: ${latestVersion} (current: ${currentVersion})`,
+						);
+
+						if (this.mainWindow) {
+							this.mainWindow.webContents.send("update-npx-available", {
+								currentVersion,
+								latestVersion,
+								updateCommand: "npx local-operator-ui@latest",
+							});
+						}
+					} else {
+						log.info(
+							`No newer version available. Current: ${currentVersion}, Latest: ${latestVersion || "unknown"}`,
+						);
+
+						if (this.mainWindow) {
+							this.mainWindow.webContents.send("update-not-available", {
+								version: currentVersion,
+							});
+						}
+					}
+				}
+				return;
+			}
+
+			// Regular update flow for packaged app
 			// Set silent mode for the autoUpdater
 			autoUpdater.autoDownload = false;
 
@@ -160,6 +236,73 @@ export class UpdateService {
 				);
 			}
 		}
+	}
+
+	/**
+	 * Get the latest version from npm registry
+	 * @returns The latest version string or null if unable to fetch
+	 */
+	private getLatestNpmVersion(): Promise<string | null> {
+		return new Promise((resolve) => {
+			const packageName = "local-operator-ui";
+			const url = `https://registry.npmjs.org/${packageName}`;
+
+			https
+				.get(url, (res) => {
+					let data = "";
+
+					res.on("data", (chunk) => {
+						data += chunk;
+					});
+
+					res.on("end", () => {
+						try {
+							const packageInfo = JSON.parse(data);
+							const latestVersion = packageInfo["dist-tags"]?.latest;
+							resolve(latestVersion || null);
+						} catch (error) {
+							log.error("Error parsing npm registry response:", error);
+							resolve(null);
+						}
+					});
+				})
+				.on("error", (error) => {
+					log.error("Error fetching from npm registry:", error);
+					resolve(null);
+				});
+		});
+	}
+
+	/**
+	 * Compare version strings to determine if version1 is newer than version2
+	 * @param version1 First version string
+	 * @param version2 Second version string
+	 * @returns True if version1 is newer than version2
+	 */
+	private isNewerVersion(version1: string, version2: string): boolean {
+		const v1Parts = version1.split("-")[0].split(".").map(Number);
+		const v2Parts = version2.split("-")[0].split(".").map(Number);
+
+		// Compare major, minor, patch
+		for (let i = 0; i < Math.max(v1Parts.length, v2Parts.length); i++) {
+			const v1Part = v1Parts[i] || 0;
+			const v2Part = v2Parts[i] || 0;
+
+			if (v1Part > v2Part) return true;
+			if (v1Part < v2Part) return false;
+		}
+
+		// If we get here and versions have pre-release tags, compare those
+		const v1PreRelease = version1.split("-")[1];
+		const v2PreRelease = version2.split("-")[1];
+
+		// No pre-release is newer than any pre-release
+		if (!v1PreRelease && v2PreRelease) return true;
+		if (v1PreRelease && !v2PreRelease) return false;
+
+		// If both have pre-release tags, compare them lexicographically
+		// This is a simplification - in reality you might want more sophisticated semver comparison
+		return v1PreRelease > v2PreRelease;
 	}
 
 	/**

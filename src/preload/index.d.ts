@@ -30,6 +30,14 @@ declare global {
 				onUpdateNotAvailable: (
 					callback: (info: UpdateInfo) => void,
 				) => () => void;
+				onUpdateDevMode: (callback: (message: string) => void) => () => void;
+				onUpdateNpxAvailable: (
+					callback: (info: {
+						currentVersion: string;
+						latestVersion: string;
+						updateCommand: string;
+					}) => void,
+				) => () => void;
 				onUpdateDownloaded: (
 					callback: (info: UpdateInfo) => void,
 				) => () => void;
