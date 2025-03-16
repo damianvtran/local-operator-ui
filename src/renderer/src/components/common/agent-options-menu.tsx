@@ -1,4 +1,5 @@
 import {
+	faComment,
 	faEllipsisVertical,
 	faGear,
 	faTrash,
@@ -46,6 +47,11 @@ type AgentOptionsMenuProps = {
 	 * This should navigate to the Agents page with this agent selected
 	 */
 	onViewAgentSettings?: () => void;
+	/**
+	 * Optional callback for navigating to chat with the agent
+	 * This should navigate to the Chat page with this agent selected
+	 */
+	onChatWithAgent?: () => void;
 };
 
 const OptionsIconButton = styled(IconButton)({
@@ -65,7 +71,7 @@ const OptionsMenu = styled(Menu)({
 	},
 });
 
-const SettingsMenuItem = styled(MenuItem)(({ theme }) => ({
+const StyledMenuItem = styled(MenuItem)(({ theme }) => ({
 	padding: theme.spacing(1.5, 2),
 	"&:hover": {
 		backgroundColor: "rgba(56, 201, 106, 0.08)",
@@ -89,7 +95,7 @@ const MenuItemIcon = styled(ListItemIcon)(({ theme, color }) => ({
 /**
  * Agent Options Menu Component
  *
- * Provides a menu with options for an agent, including deletion and settings navigation
+ * Provides a menu with options for an agent, including chat, deletion and settings navigation
  */
 export const AgentOptionsMenu: FC<AgentOptionsMenuProps> = ({
 	agentId,
@@ -98,6 +104,7 @@ export const AgentOptionsMenu: FC<AgentOptionsMenuProps> = ({
 	buttonSx = {},
 	isAgentsPage = false,
 	onViewAgentSettings,
+	onChatWithAgent,
 }) => {
 	const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
 	const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -179,9 +186,24 @@ export const AgentOptionsMenu: FC<AgentOptionsMenuProps> = ({
 					horizontal: "right",
 				}}
 			>
+				{/* Chat with Agent option - only shown when on the agents page */}
+				{isAgentsPage && onChatWithAgent && (
+					<StyledMenuItem
+						onClick={() => {
+							onChatWithAgent();
+							handleCloseMenu();
+						}}
+					>
+						<MenuItemIcon>
+							<FontAwesomeIcon icon={faComment} size="sm" />
+						</MenuItemIcon>
+						<Typography variant="body2">Chat with Agent</Typography>
+					</StyledMenuItem>
+				)}
+
 				{/* View Agent Settings option - only shown when not on the agents page */}
 				{!isAgentsPage && onViewAgentSettings && (
-					<SettingsMenuItem
+					<StyledMenuItem
 						onClick={() => {
 							onViewAgentSettings();
 							handleCloseMenu();
@@ -191,7 +213,7 @@ export const AgentOptionsMenu: FC<AgentOptionsMenuProps> = ({
 							<FontAwesomeIcon icon={faGear} size="sm" />
 						</MenuItemIcon>
 						<Typography variant="body2">View Agent Settings</Typography>
-					</SettingsMenuItem>
+					</StyledMenuItem>
 				)}
 
 				<DeleteMenuItem onClick={handleOpenDeleteConfirmation}>

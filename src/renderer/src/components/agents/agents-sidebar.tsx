@@ -34,6 +34,7 @@ import { useAgents } from "@renderer/hooks/use-agents";
 import { usePaginationParams } from "@renderer/hooks/use-pagination-params";
 import type { ChangeEvent, FC } from "react";
 import React, { useState, useCallback, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 
 const SidebarContainer = styled(Paper)(() => ({
 	width: "100%",
@@ -140,6 +141,7 @@ export const AgentsSidebar: FC<AgentsSidebarProps> = ({
 	selectedAgentId,
 	onSelectAgent,
 }) => {
+	const navigate = useNavigate();
 	const [searchQuery, setSearchQuery] = useState("");
 	const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 	const perPage = 50;
@@ -309,6 +311,7 @@ export const AgentsSidebar: FC<AgentsSidebarProps> = ({
 										// Refetch the agents list
 										refetch();
 									}}
+									onChatWithAgent={() => navigate(`/chat/${agent.id}`)}
 									buttonSx={{
 										mr: 0.5,
 										width: 32,
