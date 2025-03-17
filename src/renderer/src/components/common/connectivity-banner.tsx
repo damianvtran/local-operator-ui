@@ -38,23 +38,43 @@ export const ConnectivityBanner = ({
 
 	// State to track if the banner should be shown
 	const [showBanner, setShowBanner] = useState(false);
+	// State to track if the internet connectivity banner has been dismissed
+	const [internetBannerDismissed, setInternetBannerDismissed] = useState(false);
 
 	// Update banner visibility when connectivity status changes
 	useEffect(() => {
 		// Always show banner if there's a connectivity issue, even during initial loading
-		setShowBanner(hasConnectivityIssue);
-	}, [hasConnectivityIssue]);
+		// For internet issues, respect the dismissed state
+		if (connectivityIssue === "internet_offline") {
+			setShowBanner(hasConnectivityIssue && !internetBannerDismissed);
+		} else {
+			// For server issues, always show
+			setShowBanner(hasConnectivityIssue);
+		}
+	}, [hasConnectivityIssue, connectivityIssue, internetBannerDismissed]);
+
+	// Reset dismissed state when connectivity status changes
+	useEffect(() => {
+		// If connectivity is restored or changes, reset the dismissed state
+		if (!hasConnectivityIssue || connectivityIssue !== "internet_offline") {
+			setInternetBannerDismissed(false);
+		}
+	}, [hasConnectivityIssue, connectivityIssue]);
 
 	// Also check navigator.onLine directly to immediately show banner when offline
 	useEffect(() => {
 		const handleOffline = () => {
 			if (shouldCheckInternet) {
 				setShowBanner(true);
+				// Reset dismissed state when going offline
+				setInternetBannerDismissed(false);
 			}
 		};
 
 		const handleOnline = () => {
 			setShowBanner(false);
+			// Reset dismissed state when going online
+			setInternetBannerDismissed(false);
 		};
 
 		window.addEventListener("offline", handleOffline);
@@ -93,6 +113,12 @@ export const ConnectivityBanner = ({
 		}
 	};
 
+	// Handle dismiss button click (only for internet connectivity issues)
+	const handleDismiss = () => {
+		setInternetBannerDismissed(true);
+		setShowBanner(false);
+	};
+
 	// If no connectivity issues or still loading, don't show anything
 	if (!showBanner) {
 		return null;
@@ -101,11 +127,25 @@ export const ConnectivityBanner = ({
 	return (
 		<BannerContainer>
 			<Alert
-				severity="error"
+				severity={
+					connectivityIssue === "internet_offline" ? "warning" : "error"
+				}
 				action={
-					<Button color="inherit" size="small" onClick={handleRetry}>
-						Retry
-					</Button>
+					<>
+						<Button color="inherit" size="small" onClick={handleRetry}>
+							Retry
+						</Button>
+						{connectivityIssue === "internet_offline" && (
+							<Button
+								aria-label="dismiss"
+								color="inherit"
+								size="small"
+								onClick={handleDismiss}
+							>
+								Dismiss
+							</Button>
+						)}
+					</>
 				}
 				sx={{ borderRadius: 0 }}
 			>
