@@ -51,11 +51,25 @@ export const ConnectivityBanner = ({
 	// Auto-check connectivity on mount if enabled
 	useEffect(() => {
 		if (autoCheck) {
+			// Initial check
 			refetchServerStatus();
 			if (shouldCheckInternet) {
 				refetchInternetStatus();
 			}
+
+			// Set up interval for continuous checking
+			const intervalId = setInterval(() => {
+				refetchServerStatus();
+				if (shouldCheckInternet) {
+					refetchInternetStatus();
+				}
+			}, 5000); // Check every 5 seconds
+
+			// Clean up interval on unmount
+			return () => clearInterval(intervalId);
 		}
+
+		return undefined;
 	}, [
 		autoCheck,
 		refetchServerStatus,

@@ -137,13 +137,18 @@ export const useConnectivityStatus = (
 	} = useInternetConnectivity(internetRefetchInterval);
 
 	// Determine if there's a connectivity issue
+	// For local server operations, we should only consider server connectivity
+	// since the server runs locally and doesn't require internet connectivity
+	const isLocalServerOperation = true; // Assume all operations are local server operations
+
 	const hasConnectivityIssue =
-		!isServerOnline || (shouldCheckInternet && !isOnline);
+		!isServerOnline ||
+		(!isLocalServerOperation && shouldCheckInternet && !isOnline);
 
 	// Determine the specific issue
 	const connectivityIssue = !isServerOnline
 		? "server_offline"
-		: shouldCheckInternet && !isOnline
+		: !isLocalServerOperation && shouldCheckInternet && !isOnline
 			? "internet_offline"
 			: null;
 

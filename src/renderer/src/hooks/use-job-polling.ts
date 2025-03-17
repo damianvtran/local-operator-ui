@@ -77,8 +77,8 @@ export const useJobPolling = ({
 		async (agentId: string): Promise<boolean> => {
 			if (!agentId) return false;
 
-			// Check connectivity before making API calls
-			if (!shouldEnableQuery()) {
+			// Check connectivity before making API calls (bypass internet check)
+			if (!shouldEnableQuery({ bypassInternetCheck: true })) {
 				const error = getConnectivityError();
 				if (error) {
 					console.error(
@@ -141,8 +141,8 @@ export const useJobPolling = ({
 			if (conversationId) {
 				// We need to check for active jobs for the new agent
 				const checkNewAgentJobs = async () => {
-					// Check connectivity before making API calls
-					if (!shouldEnableQuery()) {
+					// Check connectivity before making API calls (bypass internet check)
+					if (!shouldEnableQuery({ bypassInternetCheck: true })) {
 						const error = getConnectivityError();
 						if (error) {
 							console.error(
@@ -205,8 +205,8 @@ export const useJobPolling = ({
 		async (agentId: string) => {
 			if (!agentId) return;
 
-			// Check connectivity before making API calls
-			if (!shouldEnableQuery()) {
+			// Check connectivity before making API calls (bypass internet check)
+			if (!shouldEnableQuery({ bypassInternetCheck: true })) {
 				const error = getConnectivityError();
 				if (error) {
 					console.error(
@@ -349,8 +349,8 @@ export const useJobPolling = ({
 			const response = await client.jobs.getJobStatus(currentJobId);
 			return response.result;
 		},
-		// Only run the query if we have a job ID and connectivity is available
-		enabled: shouldEnableQuery() && !!currentJobId,
+		// Only run the query if we have a job ID and server is online (bypass internet check)
+		enabled: shouldEnableQuery({ bypassInternetCheck: true }) && !!currentJobId,
 		// Poll every 1 second while job is active
 		refetchInterval: currentJobId ? 1000 : false,
 		// Force refetch on interval regardless of window focus

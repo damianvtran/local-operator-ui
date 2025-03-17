@@ -25,6 +25,7 @@ export const useModels = ({ autoFetch = true } = {}) => {
 	const intervalRef = useRef<number | null>(null);
 
 	// Use the connectivity gate to check if we should fetch models
+	// Bypass internet check for model queries as they only need local server connectivity
 	const { shouldEnableQuery, getConnectivityError, hasConnectivityIssue } =
 		useConnectivityGate();
 
@@ -47,15 +48,15 @@ export const useModels = ({ autoFetch = true } = {}) => {
 			intervalRef.current = null;
 		}
 
-		if (autoFetch && shouldEnableQuery()) {
+		if (autoFetch && shouldEnableQuery({ bypassInternetCheck: true })) {
 			// Initial fetch
 			fetchModels(baseUrl);
 
 			// Set up refresh interval
 			intervalRef.current = window.setInterval(
 				() => {
-					// Only fetch if connectivity is available
-					if (shouldEnableQuery()) {
+					// Only fetch if server is online (bypass internet check)
+					if (shouldEnableQuery({ bypassInternetCheck: true })) {
 						fetchModels(baseUrl);
 					}
 				},
@@ -84,8 +85,8 @@ export const useModels = ({ autoFetch = true } = {}) => {
 	 * Force a refresh of the models data
 	 */
 	const refreshModels = async () => {
-		// Only refresh if connectivity is available
-		if (shouldEnableQuery()) {
+		// Only refresh if server is online (bypass internet check)
+		if (shouldEnableQuery({ bypassInternetCheck: true })) {
 			await fetchModels(baseUrl, true);
 		} else {
 			// If connectivity is not available, throw an error
