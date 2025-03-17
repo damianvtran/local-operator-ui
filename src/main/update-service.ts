@@ -5,8 +5,10 @@ import { promisify } from "node:util";
 import { type BrowserWindow, app, ipcMain } from "electron";
 import { autoUpdater } from "electron-updater";
 import type { BackendServiceManager } from "./backend/backend-service";
+import { LocalOperatorStartupMode } from "./backend/backend-service";
 import { apiConfig } from "./backend/config";
 import { logger, LogFileType } from "./backend/logger";
+import { join } from "node:path";
 
 /**
  * Health check result containing version information
@@ -35,6 +37,10 @@ export type BackendUpdateInfo = {
 	currentVersion: string;
 	latestVersion: string;
 	updateCommand: string;
+	/** Whether the update can be managed by the update service */
+	canManageUpdate: boolean;
+	/** The startup mode of the backend service */
+	startupMode?: LocalOperatorStartupMode;
 };
 
 /**
@@ -137,6 +143,63 @@ export class UpdateService {
 			clearInterval(this.updateCheckInterval);
 			this.updateCheckInterval = null;
 		}
+
+		// Ensure backend service is stopped if it's running
+		if (this.backendService && !this.backendService.isUsingExternalBackend()) {
+			logger.info(
+				"Stopping backend service during dispose...",
+				LogFileType.UPDATE_SERVICE,
+			);
+			this.backendService.stop(true).catch((error) => {
+				logger.error(
+					"Error stopping backend service during dispose:",
+					LogFileType.UPDATE_SERVICE,
+					error,
+				);
+			});
+		}
+	}
+
+	/**
+	 * Register the backend service for proper shutdown when app quits
+	 * This ensures that restarted backend services are properly shut down
+	 */
+	private registerBackendShutdown(): void {
+		if (!this.backendService || this.backendService.isUsingExternalBackend()) {
+			return;
+		}
+
+		// We'll use a more direct approach to ensure the backend is shut down
+		// Register a handler for the 'before-quit' event which is supported in Electron's type definitions
+		const shutdownHandler = async () => {
+			logger.info(
+				"Shutting down backend service before app quit...",
+				LogFileType.UPDATE_SERVICE,
+			);
+			try {
+				await this.backendService?.stop(true);
+				logger.info(
+					"Backend service successfully shut down before app quit",
+					LogFileType.UPDATE_SERVICE,
+				);
+			} catch (error) {
+				logger.error(
+					"Error shutting down backend service before app quit:",
+					LogFileType.UPDATE_SERVICE,
+					error,
+				);
+			}
+		};
+
+		// Register the handler for app quit
+		// Use a type assertion to work around TypeScript limitations
+		// biome-ignore lint/suspicious/noExplicitAny: Needed for compatibility with Electron's type system
+		(app as any).once("before-quit", shutdownHandler);
+
+		logger.info(
+			"Registered backend service for proper shutdown on app quit",
+			LogFileType.UPDATE_SERVICE,
+		);
 	}
 
 	/**
@@ -691,6 +754,20 @@ export class UpdateService {
 				return null;
 			}
 
+			// Check if we have a backend service and get its startup mode
+			const startupMode =
+				this.backendService?.getStartupMode() ||
+				LocalOperatorStartupMode.NOT_STARTED;
+
+			// If the server is not started, there's nothing to update
+			if (startupMode === LocalOperatorStartupMode.NOT_STARTED) {
+				logger.info(
+					"No python server is available, nothing to check or update",
+					LogFileType.UPDATE_SERVICE,
+				);
+				return null;
+			}
+
 			const installedVersion = await this.getInstalledBackendVersion();
 			const latestVersion = await this.getLatestPypiVersion();
 
@@ -714,7 +791,7 @@ export class UpdateService {
 				this.isNewerVersion(latestVersion, installedVersion);
 
 			logger.info(
-				`Installed backend version: ${installedVersion}, Latest: ${latestVersion}, Update needed: ${shouldUpdate}`,
+				`Installed backend version: ${installedVersion}, Latest: ${latestVersion}, Update needed: ${shouldUpdate}, Startup mode: ${startupMode}`,
 				LogFileType.UPDATE_SERVICE,
 			);
 
@@ -724,10 +801,22 @@ export class UpdateService {
 					LogFileType.UPDATE_SERVICE,
 				);
 
+				// Determine if we can manage the update based on startup mode
+				const canManageUpdate =
+					startupMode !== LocalOperatorStartupMode.EXISTING_SERVER;
+
+				// Determine the appropriate update command based on startup mode
+				let updateCommand = "pip install --upgrade local-operator";
+				if (startupMode === LocalOperatorStartupMode.EXISTING_SERVER) {
+					updateCommand = "pip install --upgrade local-operator";
+				}
+
 				const updateInfo: BackendUpdateInfo = {
 					currentVersion: installedVersion,
 					latestVersion,
-					updateCommand: "pip install --upgrade local-operator",
+					updateCommand,
+					canManageUpdate,
+					startupMode,
 				};
 
 				if (this.mainWindow) {
@@ -778,11 +867,68 @@ export class UpdateService {
 		logger.info("Updating backend...", LogFileType.UPDATE_SERVICE);
 
 		try {
+			// Check if we have a backend service and get its startup mode
+			if (!this.backendService) {
+				logger.error(
+					"No backend service reference available, cannot update",
+					LogFileType.UPDATE_SERVICE,
+				);
+				if (this.mainWindow) {
+					this.mainWindow.webContents.send(
+						"backend-update-error",
+						"No backend service reference available, cannot update.",
+					);
+				}
+				return false;
+			}
+
+			const startupMode = this.backendService.getStartupMode();
+
+			// Handle different startup modes
+			switch (startupMode) {
+				case LocalOperatorStartupMode.NOT_STARTED:
+					logger.info(
+						"No python server is available, nothing to update",
+						LogFileType.UPDATE_SERVICE,
+					);
+					if (this.mainWindow) {
+						this.mainWindow.webContents.send(
+							"backend-update-error",
+							"No python server is available, nothing to update.",
+						);
+					}
+					return false;
+
+				case LocalOperatorStartupMode.EXISTING_SERVER:
+					// For existing server, we can't manage the update
+					logger.info(
+						"Cannot manage update for existing server. User must update manually.",
+						LogFileType.UPDATE_SERVICE,
+					);
+					if (this.mainWindow) {
+						this.mainWindow.webContents.send("backend-update-manual-required", {
+							message:
+								"Please update the local-operator package manually using pip.",
+							command: "pip install --upgrade local-operator",
+						});
+					}
+					return false;
+
+				case LocalOperatorStartupMode.GLOBAL_INSTALL:
+				case LocalOperatorStartupMode.APP_BUNDLED_VENV:
+					// Continue with update process for these modes
+					break;
+
+				default:
+					logger.error(
+						`Unknown startup mode: ${startupMode}`,
+						LogFileType.UPDATE_SERVICE,
+					);
+					return false;
+			}
+
 			// First, stop the backend service if we have a reference to it
-			if (
-				this.backendService &&
-				!this.backendService.isUsingExternalBackend()
-			) {
+			if (!this.backendService.isUsingExternalBackend()) {
 				logger.info(
 					"Stopping backend service before update...",
 					LogFileType.UPDATE_SERVICE,
@@ -796,45 +942,118 @@ export class UpdateService {
 
 			// Update the backend using pip
 			const execAsync = promisify(exec);
-			await execAsync("pip install --upgrade local-operator");
+			let pythonPath = "";
+			let pipCommand = "";
+
+			// Determine the appropriate Python/pip command based on startup mode
+			if (startupMode === LocalOperatorStartupMode.APP_BUNDLED_VENV) {
+				// For APP_BUNDLED_VENV, use the bundled Python binary
+				try {
+					// First try to get Python path from virtual environment path
+					if (app.isPackaged) {
+						if (process.platform === "darwin") {
+							pythonPath = join(
+								this.backendService?.getVenvPath(),
+								"bin",
+								"python3",
+							);
+						} else if (process.platform === "win32") {
+							pythonPath = join(
+								this.backendService?.getVenvPath(),
+								"python.exe",
+							);
+						} else if (process.platform === "linux") {
+							pythonPath = join(
+								this.backendService?.getVenvPath(),
+								"bin",
+								"python3",
+							);
+						}
+
+						// Check if the Python path exists
+						if (pythonPath) {
+							logger.info(
+								`Using bundled Python at: ${pythonPath}`,
+								LogFileType.UPDATE_SERVICE,
+							);
+							pipCommand = `"${pythonPath}" -m pip install --upgrade local-operator`;
+						}
+					}
+				} catch (error) {
+					logger.warn(
+						"Error finding bundled Python path:",
+						LogFileType.UPDATE_SERVICE,
+						error,
+					);
+					pythonPath = "";
+				}
+			} else if (startupMode === LocalOperatorStartupMode.GLOBAL_INSTALL) {
+				// For GLOBAL_INSTALL, use the system Python that has local-operator installed
+				try {
+					// Try to find the Python that has local-operator installed
+					const { stdout } = await execAsync("which python3 || which python");
+					pythonPath = stdout.trim();
+					logger.info(
+						`Using system Python at: ${pythonPath}`,
+						LogFileType.UPDATE_SERVICE,
+					);
+					pipCommand = `"${pythonPath}" -m pip install --upgrade local-operator`;
+				} catch (error) {
+					logger.warn(
+						"Could not find system Python:",
+						LogFileType.UPDATE_SERVICE,
+						error,
+					);
+				}
+			}
+
+			// If we couldn't determine a specific pip command, use a fallback
+			if (!pipCommand) {
+				logger.warn("Using fallback pip command", LogFileType.UPDATE_SERVICE);
+				pipCommand = "pip install --upgrade local-operator";
+			}
+
+			// Execute the pip command
+			logger.info(
+				`Executing pip command: ${pipCommand}`,
+				LogFileType.UPDATE_SERVICE,
+			);
+			await execAsync(pipCommand);
+
 			logger.info(
 				"Backend package updated successfully via pip",
 				LogFileType.UPDATE_SERVICE,
 			);
 
-			// Restart the backend service if we have a reference to it
-			if (this.backendService) {
+			// Restart the backend service
+			logger.info(
+				"Restarting backend service after update...",
+				LogFileType.UPDATE_SERVICE,
+			);
+
+			// Use the dedicated restart method which properly handles the restart process
+			const restartSuccess = await this.backendService.restart();
+
+			if (restartSuccess) {
 				logger.info(
-					"Restarting backend service after update...",
+					"Backend service restarted successfully after update",
 					LogFileType.UPDATE_SERVICE,
 				);
 
-				// Use the dedicated restart method which properly handles the restart process
-				const restartSuccess = await this.backendService.restart();
-
-				if (restartSuccess) {
-					logger.info(
-						"Backend service restarted successfully after update",
-						LogFileType.UPDATE_SERVICE,
-					);
-				} else {
-					logger.error(
-						"Failed to restart backend service after update",
-						LogFileType.UPDATE_SERVICE,
-					);
-					if (this.mainWindow) {
-						this.mainWindow.webContents.send(
-							"backend-update-error",
-							"Backend was updated but failed to restart. Please restart the application.",
-						);
-					}
-					return false;
-				}
+				// Register the backend service for proper shutdown when app quits
+				this.registerBackendShutdown();
 			} else {
-				logger.info(
-					"No backend service reference available, skipping restart",
+				logger.error(
+					"Failed to restart backend service after update",
 					LogFileType.UPDATE_SERVICE,
 				);
+				if (this.mainWindow) {
+					this.mainWindow.webContents.send(
+						"backend-update-error",
+						"Backend was updated but failed to restart. Please restart the application.",
+					);
+				}
+				return false;
 			}
 
 			logger.info(

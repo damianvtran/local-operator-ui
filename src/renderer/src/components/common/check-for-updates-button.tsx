@@ -1,7 +1,6 @@
-import { Box } from "@mui/material";
-import { Button } from "@mui/material";
+import { Box, Button, Snackbar, Alert, Typography } from "@mui/material";
 import { useDeferredUpdatesStore } from "@renderer/store/deferred-updates-store";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 /**
  * Component that shows a button to manually check for updates.
@@ -12,11 +11,34 @@ import { useState } from "react";
  */
 export const CheckForUpdatesButton = () => {
 	const [checking, setChecking] = useState(false);
-	// We only need to track the checking state for the button UI
-	// All other states are tracked by the UpdateNotification component
+	const [snackbarOpen, setSnackbarOpen] = useState(false);
+	const [manualUpdateInfo, setManualUpdateInfo] = useState<{
+		message: string;
+		command: string;
+	} | null>(null);
 
 	// Access the deferred updates store to clear deferred updates when manually checking
 	const { clearDeferredUpdate } = useDeferredUpdatesStore();
+
+	// Listen for manual update required events
+	useEffect(() => {
+		const removeManualUpdateListener = window.api.updater.onUpdateError(
+			(message) => {
+				if (message.includes("manually")) {
+					setManualUpdateInfo({
+						message:
+							"Please update the local-operator package manually using pip.",
+						command: "pip install --upgrade local-operator",
+					});
+					setSnackbarOpen(true);
+				}
+			},
+		);
+
+		return () => {
+			removeManualUpdateListener();
+		};
+	}, []);
 
 	// Check for updates
 	const checkForUpdates = async () => {
@@ -39,6 +61,11 @@ export const CheckForUpdatesButton = () => {
 
 	// We don't need to listen to update events anymore since UpdateNotification handles that
 
+	// Handle snackbar close
+	const handleSnackbarClose = () => {
+		setSnackbarOpen(false);
+	};
+
 	return (
 		<>
 			<Button
@@ -51,6 +78,36 @@ export const CheckForUpdatesButton = () => {
 			>
 				{checking ? "Checking..." : "Check for Updates"}
 			</Button>
+
+			{/* Snackbar for manual update instructions */}
+			{manualUpdateInfo && (
+				<Snackbar
+					open={snackbarOpen}
+					autoHideDuration={10000}
+					onClose={handleSnackbarClose}
+					anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+				>
+					<Alert
+						onClose={handleSnackbarClose}
+						severity="warning"
+						sx={{ width: "100%" }}
+					>
+						<Typography variant="body2">{manualUpdateInfo.message}</Typography>
+						<Typography
+							variant="body2"
+							sx={{
+								mt: 1,
+								p: 1,
+								backgroundColor: "background.default",
+								borderRadius: 1,
+								fontFamily: "monospace",
+							}}
+						>
+							{manualUpdateInfo.command}
+						</Typography>
+					</Alert>
+				</Snackbar>
+			)}
 		</>
 	);
 };
