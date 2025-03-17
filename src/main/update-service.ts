@@ -760,7 +760,7 @@ export class UpdateService {
 					"Stopping backend service before update...",
 					UPDATE_SERVICE_LOG,
 				);
-				await this.backendService.stop();
+				await this.backendService.stop(true);
 				logger.info("Backend service stopped successfully", UPDATE_SERVICE_LOG);
 			}
 
@@ -778,9 +778,11 @@ export class UpdateService {
 					"Restarting backend service after update...",
 					UPDATE_SERVICE_LOG,
 				);
-				const startSuccess = await this.backendService.start();
 
-				if (startSuccess) {
+				// Use the dedicated restart method which properly handles the restart process
+				const restartSuccess = await this.backendService.restart();
+
+				if (restartSuccess) {
 					logger.info(
 						"Backend service restarted successfully after update",
 						UPDATE_SERVICE_LOG,

@@ -58,7 +58,7 @@ type UpdateNotificationProps = {
 export const UpdateNotification = ({
 	autoCheck = true,
 }: UpdateNotificationProps) => {
-	// State for update status
+	// State for frontend update status
 	const [checking, setChecking] = useState(false);
 	const [updateAvailable, setUpdateAvailable] = useState(false);
 	const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
@@ -70,6 +70,15 @@ export const UpdateNotification = ({
 	const [error, setError] = useState<string | null>(null);
 	const [snackbarOpen, setSnackbarOpen] = useState(false);
 	const [appVersion, setAppVersion] = useState<string>("unknown");
+
+	// State for backend update status
+	const [backendUpdateAvailable, setBackendUpdateAvailable] = useState(false);
+	const [backendUpdateInfo, setBackendUpdateInfo] = useState<{
+		currentVersion: string;
+		latestVersion: string;
+		updateCommand: string;
+	} | null>(null);
+	const [backendUpdateCompleted, setBackendUpdateCompleted] = useState(false);
 
 	// Access the deferred updates store
 	const { shouldShowUpdate, deferUpdate } = useDeferredUpdatesStore();
@@ -118,6 +127,32 @@ export const UpdateNotification = ({
 		window.api.updater.quitAndInstall();
 	}, []);
 
+	// Update the backend
+	const updateBackend = useCallback(async () => {
+		try {
+			setChecking(true);
+			setError(null);
+			await window.api.updater.updateBackend();
+			// The backend update completed event will handle the UI update
+		} catch (err) {
+			setError(
+				`Error updating backend: ${err instanceof Error ? err.message : String(err)}`,
+			);
+			setSnackbarOpen(true);
+			setChecking(false);
+		}
+	}, []);
+
+	// Handle deferring a backend update
+	const handleDeferBackendUpdate = useCallback(() => {
+		if (backendUpdateInfo) {
+			deferUpdate(backendUpdateInfo.latestVersion);
+			setSnackbarOpen(false);
+			setBackendUpdateAvailable(false);
+			setBackendUpdateInfo(null);
+		}
+	}, [deferUpdate, backendUpdateInfo]);
+
 	// Handle deferring an update
 	const handleDeferUpdate = useCallback(() => {
 		if (updateInfo) {
@@ -130,7 +165,7 @@ export const UpdateNotification = ({
 
 	// Set up event listeners for update events
 	useEffect(() => {
-		// Update available
+		// Frontend update available
 		const removeUpdateAvailableListener = window.api.updater.onUpdateAvailable(
 			(info) => {
 				// Only show the update if it hasn't been deferred or the defer timeline has passed
@@ -142,14 +177,14 @@ export const UpdateNotification = ({
 			},
 		);
 
-		// Update not available
+		// Frontend update not available
 		const removeUpdateNotAvailableListener =
 			window.api.updater.onUpdateNotAvailable(() => {
 				setUpdateAvailable(false);
 				setUpdateInfo(null);
 			});
 
-		// Update downloaded
+		// Frontend update downloaded
 		const removeUpdateDownloadedListener =
 			window.api.updater.onUpdateDownloaded((info) => {
 				setDownloading(false);
@@ -161,7 +196,7 @@ export const UpdateNotification = ({
 				}
 			});
 
-		// Update error
+		// Frontend update error
 		const removeUpdateErrorListener = window.api.updater.onUpdateError(
 			(errorMessage) => {
 				setError(errorMessage);
@@ -171,12 +206,45 @@ export const UpdateNotification = ({
 			},
 		);
 
-		// Update progress
+		// Frontend update progress
 		const removeUpdateProgressListener = window.api.updater.onUpdateProgress(
 			(progressObj) => {
 				setDownloadProgress(progressObj);
 			},
 		);
+
+		// Backend update available
+		const removeBackendUpdateAvailableListener =
+			window.api.updater.onBackendUpdateAvailable((info) => {
+				// Only show the update if it hasn't been deferred or the defer timeline has passed
+				if (shouldShowUpdate(info.latestVersion)) {
+					setBackendUpdateAvailable(true);
+					setBackendUpdateInfo(info);
+					setSnackbarOpen(true);
+				}
+			});
+
+		// Backend update not available
+		const removeBackendUpdateNotAvailableListener =
+			window.api.updater.onBackendUpdateNotAvailable(() => {
+				setBackendUpdateAvailable(false);
+				setBackendUpdateInfo(null);
+			});
+
+		// Backend update completed
+		const removeBackendUpdateCompletedListener =
+			window.api.updater.onBackendUpdateCompleted(() => {
+				setBackendUpdateAvailable(false);
+				setBackendUpdateInfo(null);
+				setChecking(false);
+				setBackendUpdateCompleted(true);
+				setSnackbarOpen(true);
+
+				// Auto-hide the completion notification after 6 seconds
+				setTimeout(() => {
+					setBackendUpdateCompleted(false);
+				}, 6000);
+			});
 
 		// Check for updates on mount if autoCheck is true
 		if (autoCheck) {
@@ -190,6 +258,9 @@ export const UpdateNotification = ({
 			removeUpdateDownloadedListener();
 			removeUpdateErrorListener();
 			removeUpdateProgressListener();
+			removeBackendUpdateAvailableListener();
+			removeBackendUpdateNotAvailableListener();
+			removeBackendUpdateCompletedListener();
 		};
 	}, [autoCheck, checkForUpdates, shouldShowUpdate]);
 
@@ -357,6 +428,73 @@ export const UpdateNotification = ({
 					</Alert>
 				</Snackbar>
 			</>
+		);
+	}
+
+	// If a backend update is available
+	if (backendUpdateAvailable && backendUpdateInfo) {
+		return (
+			<>
+				<UpdateContainer>
+					<Typography variant="h6">Backend Update Available</Typography>
+					<Typography variant="body1">
+						Backend version {backendUpdateInfo.latestVersion} is available. You
+						are currently using version {backendUpdateInfo.currentVersion}.
+					</Typography>
+					<Typography variant="body2" sx={{ mt: 1 }}>
+						Updating the backend will improve functionality and fix bugs.
+					</Typography>
+
+					<UpdateActions>
+						<Button
+							variant="contained"
+							color="primary"
+							onClick={updateBackend}
+							disabled={checking}
+						>
+							{checking ? "Updating..." : "Update Backend"}
+						</Button>
+						<Button
+							variant="outlined"
+							onClick={handleDeferBackendUpdate}
+							disabled={checking}
+						>
+							Update Later
+						</Button>
+					</UpdateActions>
+				</UpdateContainer>
+
+				<Snackbar
+					open={snackbarOpen}
+					autoHideDuration={6000}
+					onClose={handleSnackbarClose}
+					anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+				>
+					<Alert onClose={handleSnackbarClose} severity="info">
+						A new backend update is available: v
+						{backendUpdateInfo.latestVersion}
+					</Alert>
+				</Snackbar>
+			</>
+		);
+	}
+
+	// If a backend update has been completed
+	if (backendUpdateCompleted) {
+		return (
+			<Snackbar
+				open={true}
+				autoHideDuration={6000}
+				onClose={() => setBackendUpdateCompleted(false)}
+				anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+			>
+				<Alert
+					onClose={() => setBackendUpdateCompleted(false)}
+					severity="success"
+				>
+					Backend update completed successfully
+				</Alert>
+			</Snackbar>
 		);
 	}
 
