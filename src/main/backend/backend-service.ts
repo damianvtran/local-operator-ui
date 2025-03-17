@@ -5,6 +5,20 @@
  * It handles starting, stopping, and monitoring the health of the backend service.
  */
 
+/**
+ * Enum representing the different startup modes for the Local Operator server
+ */
+export enum LocalOperatorStartupMode {
+	/** An existing server was detected, not managed by the backend service */
+	EXISTING_SERVER = "EXISTING_SERVER",
+	/** Server started using globally installed local-operator entrypoint */
+	GLOBAL_INSTALL = "GLOBAL_INSTALL",
+	/** Server started from the virtual environment created with bundled python */
+	APP_BUNDLED_VENV = "APP_BUNDLED_VENV",
+	/** Initial state before server has been started */
+	NOT_STARTED = "NOT_STARTED",
+}
+
 import { type ChildProcess, exec, spawn } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
@@ -25,6 +39,8 @@ export class BackendServiceManager {
 	private isRunning = false;
 	private isExternalBackend = false;
 	private isDisabled = backendConfig.VITE_DISABLE_BACKEND_MANAGER === "true";
+	private startupMode: LocalOperatorStartupMode =
+		LocalOperatorStartupMode.NOT_STARTED;
 	private port: number;
 	private backendUrl: string;
 	private appDataPath = app.getPath("userData");
@@ -439,6 +455,7 @@ export class BackendServiceManager {
 		// First check if an external backend is already running
 		if (await this.checkExistingBackend()) {
 			this.isRunning = true;
+			this.startupMode = LocalOperatorStartupMode.EXISTING_SERVER;
 			this.startHealthCheck();
 			return true;
 		}
@@ -451,6 +468,9 @@ export class BackendServiceManager {
 					"Using globally installed local-operator command",
 					LogFileType.BACKEND,
 				);
+
+				// Set startup mode to global install
+				this.startupMode = LocalOperatorStartupMode.GLOBAL_INSTALL;
 
 				// Run local-operator serve directly
 				const cmd = process.platform === "win32" ? "cmd.exe" : "bash";
@@ -478,6 +498,9 @@ export class BackendServiceManager {
 					"Global local-operator not found, using virtual environment",
 					LogFileType.BACKEND,
 				);
+
+				// Set startup mode to app bundled venv
+				this.startupMode = LocalOperatorStartupMode.APP_BUNDLED_VENV;
 
 				// Platform-specific activation of virtual environment
 				let cmd: string;
@@ -828,6 +851,22 @@ export class BackendServiceManager {
 	 */
 	isUsingExternalBackend(): boolean {
 		return this.isExternalBackend;
+	}
+
+	/**
+	 * Get the startup mode of the Local Operator server
+	 * @returns The current startup mode
+	 */
+	getStartupMode(): LocalOperatorStartupMode {
+		return this.startupMode;
+	}
+
+	/**
+	 * Get the virtual environment path used by the backend service
+	 * @returns The path to the virtual environment
+	 */
+	getVenvPath(): string {
+		return this.venvPath;
 	}
 
 	/**

@@ -12,6 +12,15 @@ import { useCallback, useEffect, useState } from "react";
 import parse from "html-react-parser";
 import { useDeferredUpdatesStore } from "../../store/deferred-updates-store";
 
+// Define types for backend update info
+type BackendUpdateInfo = {
+	currentVersion: string;
+	latestVersion: string;
+	updateCommand: string;
+	canManageUpdate?: boolean; // Make optional to match API
+	startupMode?: string;
+};
+
 // Styled components
 export const UpdateContainer = styled("div")(({ theme }) => ({
 	padding: 24,
@@ -73,12 +82,14 @@ export const UpdateNotification = ({
 
 	// State for backend update status
 	const [backendUpdateAvailable, setBackendUpdateAvailable] = useState(false);
-	const [backendUpdateInfo, setBackendUpdateInfo] = useState<{
-		currentVersion: string;
-		latestVersion: string;
-		updateCommand: string;
-	} | null>(null);
+	const [backendUpdateInfo, setBackendUpdateInfo] =
+		useState<BackendUpdateInfo | null>(null);
 	const [backendUpdateCompleted, setBackendUpdateCompleted] = useState(false);
+	const [manualUpdateRequired, setManualUpdateRequired] = useState(false);
+	const [manualUpdateInfo, setManualUpdateInfo] = useState<{
+		message: string;
+		command: string;
+	} | null>(null);
 
 	// Access the deferred updates store
 	const { shouldShowUpdate, deferUpdate } = useDeferredUpdatesStore();
@@ -196,13 +207,24 @@ export const UpdateNotification = ({
 				}
 			});
 
-		// Frontend update error
+		// Frontend update error - also handle manual update requirements
 		const removeUpdateErrorListener = window.api.updater.onUpdateError(
 			(errorMessage) => {
-				setError(errorMessage);
-				setChecking(false);
-				setDownloading(false);
-				setSnackbarOpen(true);
+				// Check if this is a manual update message
+				if (errorMessage.includes("manually")) {
+					setManualUpdateRequired(true);
+					setManualUpdateInfo({
+						message:
+							"Please update the local-operator package manually using pip.",
+						command: "pip install --upgrade local-operator",
+					});
+					setSnackbarOpen(true);
+				} else {
+					setError(errorMessage);
+					setChecking(false);
+					setDownloading(false);
+					setSnackbarOpen(true);
+				}
 			},
 		);
 
@@ -218,8 +240,15 @@ export const UpdateNotification = ({
 			window.api.updater.onBackendUpdateAvailable((info) => {
 				// Only show the update if it hasn't been deferred or the defer timeline has passed
 				if (shouldShowUpdate(info.latestVersion)) {
+					// Add canManageUpdate property based on the update command
+					// If the command contains "manually", it can't be managed
+					const enhancedInfo: BackendUpdateInfo = {
+						...info,
+						canManageUpdate: !info.updateCommand.includes("manually"),
+					};
+
 					setBackendUpdateAvailable(true);
-					setBackendUpdateInfo(info);
+					setBackendUpdateInfo(enhancedInfo);
 					setSnackbarOpen(true);
 				}
 			});
@@ -445,23 +474,54 @@ export const UpdateNotification = ({
 						Updating the backend will improve functionality and fix bugs.
 					</Typography>
 
-					<UpdateActions>
-						<Button
-							variant="contained"
-							color="primary"
-							onClick={updateBackend}
-							disabled={checking}
-						>
-							{checking ? "Updating..." : "Update Backend"}
-						</Button>
-						<Button
-							variant="outlined"
-							onClick={handleDeferBackendUpdate}
-							disabled={checking}
-						>
-							Update Later
-						</Button>
-					</UpdateActions>
+					{backendUpdateInfo.canManageUpdate ? (
+						<UpdateActions>
+							<Button
+								variant="contained"
+								color="primary"
+								onClick={updateBackend}
+								disabled={checking}
+							>
+								{checking ? "Updating..." : "Update Backend"}
+							</Button>
+							<Button
+								variant="outlined"
+								onClick={handleDeferBackendUpdate}
+								disabled={checking}
+							>
+								Update Later
+							</Button>
+						</UpdateActions>
+					) : (
+						<>
+							<Typography variant="body2" sx={{ mt: 2, color: "warning.main" }}>
+								This backend server is running externally and cannot be updated
+								automatically. Please update it manually using the following
+								command:
+							</Typography>
+							<Typography
+								variant="body2"
+								sx={{
+									mt: 1,
+									p: 1,
+									backgroundColor: "background.default",
+									borderRadius: 1,
+									fontFamily: "monospace",
+								}}
+							>
+								{backendUpdateInfo.updateCommand}
+							</Typography>
+							<UpdateActions>
+								<Button
+									variant="outlined"
+									onClick={handleDeferBackendUpdate}
+									disabled={checking}
+								>
+									Dismiss
+								</Button>
+							</UpdateActions>
+						</>
+					)}
 				</UpdateContainer>
 
 				<Snackbar
@@ -473,6 +533,40 @@ export const UpdateNotification = ({
 					<Alert onClose={handleSnackbarClose} severity="info">
 						A new backend update is available: v
 						{backendUpdateInfo.latestVersion}
+					</Alert>
+				</Snackbar>
+			</>
+		);
+	}
+
+	// If a manual update is required
+	if (manualUpdateRequired && manualUpdateInfo) {
+		return (
+			<>
+				<Snackbar
+					open={snackbarOpen}
+					autoHideDuration={10000}
+					onClose={handleSnackbarClose}
+					anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+				>
+					<Alert
+						onClose={handleSnackbarClose}
+						severity="warning"
+						sx={{ width: "100%" }}
+					>
+						<Typography variant="body2">{manualUpdateInfo.message}</Typography>
+						<Typography
+							variant="body2"
+							sx={{
+								mt: 1,
+								p: 1,
+								backgroundColor: "background.default",
+								borderRadius: 1,
+								fontFamily: "monospace",
+							}}
+						>
+							{manualUpdateInfo.command}
+						</Typography>
 					</Alert>
 				</Snackbar>
 			</>
