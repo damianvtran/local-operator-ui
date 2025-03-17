@@ -22,8 +22,12 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 /**
  * Custom hook for polling job status using React Query
  * Handles polling for job status and provides state for tracking job progress
+ *
+ * This hook is gated by connectivity checks to ensure the server is online
+ * and the user has internet connectivity if required by the hosting provider.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useConnectivityGate } from "./use-connectivity-gate";
 import { agentsQueryKey } from "./use-agents";
 import { convertToMessage } from "./use-conversation-messages";
 import { conversationMessagesQueryKey } from "./use-conversation-messages";
@@ -60,6 +64,9 @@ export const useJobPolling = ({
 	const client = createLocalOperatorClient(apiConfig.baseUrl);
 	const previousConversationIdRef = useRef<string | undefined>(conversationId);
 
+	// Use the connectivity gate to check if the query should be enabled
+	const { shouldEnableQuery, getConnectivityError } = useConnectivityGate();
+
 	/**
 	 * Check if an agent has any active jobs
 	 *
@@ -69,6 +76,18 @@ export const useJobPolling = ({
 	const checkForActiveJobs = useCallback(
 		async (agentId: string): Promise<boolean> => {
 			if (!agentId) return false;
+
+			// Check connectivity before making API calls
+			if (!shouldEnableQuery()) {
+				const error = getConnectivityError();
+				if (error) {
+					console.error(
+						"Cannot check for active jobs due to connectivity issue:",
+						error.message,
+					);
+				}
+				return false;
+			}
 
 			try {
 				// Get active jobs for this agent (pending or processing)
@@ -107,7 +126,7 @@ export const useJobPolling = ({
 				return false;
 			}
 		},
-		[client.jobs, currentJobId],
+		[client.jobs, currentJobId, shouldEnableQuery, getConnectivityError],
 	);
 
 	// Reset loading state and job ID when switching agents
@@ -122,6 +141,18 @@ export const useJobPolling = ({
 			if (conversationId) {
 				// We need to check for active jobs for the new agent
 				const checkNewAgentJobs = async () => {
+					// Check connectivity before making API calls
+					if (!shouldEnableQuery()) {
+						const error = getConnectivityError();
+						if (error) {
+							console.error(
+								"Cannot check for active jobs due to connectivity issue:",
+								error.message,
+							);
+						}
+						return;
+					}
+
 					try {
 						// Get active jobs for this agent (pending or processing)
 						const pendingResponse = await client.jobs.listJobs(
@@ -162,7 +193,7 @@ export const useJobPolling = ({
 
 		// Update the ref
 		previousConversationIdRef.current = conversationId;
-	}, [conversationId, client.jobs]);
+	}, [conversationId, client.jobs, shouldEnableQuery, getConnectivityError]);
 
 	/**
 	 * Update conversation messages from execution history
@@ -173,6 +204,18 @@ export const useJobPolling = ({
 	const updateConversationMessages = useCallback(
 		async (agentId: string) => {
 			if (!agentId) return;
+
+			// Check connectivity before making API calls
+			if (!shouldEnableQuery()) {
+				const error = getConnectivityError();
+				if (error) {
+					console.error(
+						"Cannot update conversation messages due to connectivity issue:",
+						error.message,
+					);
+				}
+				return false;
+			}
 
 			try {
 				// Create a client instance to use the properly typed API
@@ -227,7 +270,13 @@ export const useJobPolling = ({
 				return false;
 			}
 		},
-		[getMessages, setMessages, queryClient],
+		[
+			getMessages,
+			setMessages,
+			queryClient,
+			shouldEnableQuery,
+			getConnectivityError,
+		],
 	);
 
 	// Handle job completion
@@ -300,8 +349,8 @@ export const useJobPolling = ({
 			const response = await client.jobs.getJobStatus(currentJobId);
 			return response.result;
 		},
-		// Only run the query if we have a job ID
-		enabled: !!currentJobId,
+		// Only run the query if we have a job ID and connectivity is available
+		enabled: shouldEnableQuery() && !!currentJobId,
 		// Poll every 1 second while job is active
 		refetchInterval: currentJobId ? 1000 : false,
 		// Force refetch on interval regardless of window focus

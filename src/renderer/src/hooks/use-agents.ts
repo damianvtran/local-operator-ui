@@ -1,12 +1,17 @@
 /**
  * Hook for fetching and managing agents from the Local Operator API
+ *
+ * This hook is gated by connectivity checks to ensure the server is online
+ * and the user has internet connectivity if required by the hosting provider.
  */
 
 import { createLocalOperatorClient } from "@renderer/api/local-operator";
 import type { AgentDetails } from "@renderer/api/local-operator/types";
 import { apiConfig } from "@renderer/config";
 import { useQuery } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { toast } from "react-toastify";
+import { useConnectivityGate } from "./use-connectivity-gate";
 
 /**
  * Query key for agents
@@ -28,7 +33,22 @@ export const useAgents = (
 	refetchInterval = 0,
 	name?: string,
 ) => {
+	// Use the connectivity gate to check if the query should be enabled
+	const { shouldEnableQuery, getConnectivityError } = useConnectivityGate();
+
+	// Get the connectivity error if any
+	const connectivityError = getConnectivityError();
+
+	// Log connectivity error if present
+	useEffect(() => {
+		if (connectivityError) {
+			console.error("Agents connectivity error:", connectivityError.message);
+		}
+	}, [connectivityError]);
+
 	return useQuery({
+		// Only enable the query if connectivity checks pass
+		enabled: shouldEnableQuery(),
 		queryKey: [...agentsQueryKey, page, perPage, name],
 		queryFn: async () => {
 			try {
@@ -69,7 +89,22 @@ export const useAgents = (
  * @returns Query result with agent data, loading state, error state, and refetch function
  */
 export const useAgent = (agentId: string | undefined) => {
+	// Use the connectivity gate to check if the query should be enabled
+	const { shouldEnableQuery, getConnectivityError } = useConnectivityGate();
+
+	// Get the connectivity error if any
+	const connectivityError = getConnectivityError();
+
+	// Log connectivity error if present
+	useEffect(() => {
+		if (connectivityError) {
+			console.error("Agent connectivity error:", connectivityError.message);
+		}
+	}, [connectivityError]);
+
 	return useQuery({
+		// Only enable the query if connectivity checks pass and agentId is provided
+		enabled: shouldEnableQuery() && !!agentId,
 		queryKey: [...agentsQueryKey, agentId],
 		queryFn: async (): Promise<AgentDetails | null> => {
 			if (!agentId) return null;
@@ -107,6 +142,5 @@ export const useAgent = (agentId: string | undefined) => {
 				throw error;
 			}
 		},
-		enabled: !!agentId,
 	});
 };
