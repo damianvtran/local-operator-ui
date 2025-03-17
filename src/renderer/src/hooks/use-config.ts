@@ -1,5 +1,8 @@
 /**
  * Hook for fetching configuration from the Local Operator API
+ *
+ * This hook is special and does not use the connectivity gate
+ * since it's used by the connectivity gate itself to determine the hosting provider.
  */
 
 import { createLocalOperatorClient } from "@renderer/api/local-operator";
@@ -20,6 +23,8 @@ export const configQueryKey = ["config"];
  */
 export const useConfig = () => {
 	return useQuery({
+		// Always enable this query since it's needed for connectivity checks
+		enabled: true,
 		queryKey: configQueryKey,
 		queryFn: async (): Promise<ConfigResponse | null> => {
 			try {

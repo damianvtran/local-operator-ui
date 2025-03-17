@@ -9,6 +9,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 
 import { ChatPage } from "@components/chat/chat-page";
 import { AgentsPage } from "@renderer/components/agents/agents-page";
+import { ConnectivityBanner } from "@renderer/components/common/connectivity-banner";
 import { ModelsInitializer } from "@renderer/components/common/models-initializer";
 import { UpdateNotification } from "@renderer/components/common/update-notification";
 import { SidebarNavigation } from "@renderer/components/navigation/sidebar-navigation";
@@ -49,6 +50,9 @@ const App: FC = () => {
 
 			{/* First-time setup onboarding */}
 			<OnboardingModal open={isOnboardingActive} />
+
+			{/* Connectivity status banner */}
+			<ConnectivityBanner />
 
 			{/* Auto-update notification */}
 			<UpdateNotification />
