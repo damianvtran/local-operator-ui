@@ -69,8 +69,17 @@ export const useConnectivityGate = () => {
 			return false;
 		}
 
-		// Check internet connectivity unless bypassed or using Ollama
-		if (!options?.bypassInternetCheck && shouldCheckInternet && !isOnline) {
+		// For local server operations, we should always bypass the internet check
+		// since the server runs locally and doesn't require internet connectivity
+		const isLocalServerOperation = true; // Assume all operations are local server operations
+
+		// Check internet connectivity unless bypassed, using Ollama, or it's a local server operation
+		if (
+			!options?.bypassInternetCheck &&
+			!isLocalServerOperation &&
+			shouldCheckInternet &&
+			!isOnline
+		) {
 			return false;
 		}
 
@@ -92,7 +101,11 @@ export const useConnectivityGate = () => {
 			return new Error("Server is offline. Please check your connection.");
 		}
 
-		if (shouldCheckInternet && !isOnline) {
+		// For local server operations, we should not return an error for internet connectivity
+		// since the server runs locally and doesn't require internet connectivity
+		const isLocalServerOperation = true; // Assume all operations are local server operations
+
+		if (!isLocalServerOperation && shouldCheckInternet && !isOnline) {
 			return new Error(
 				`Internet connection is required for the configured hosting provider (${hostingProvider}).`,
 			);

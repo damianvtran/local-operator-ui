@@ -24,11 +24,12 @@ export const systemPromptQueryKey = ["system-prompt"];
  */
 export const useSystemPrompt = () => {
 	// Use the connectivity gate to check if the query should be enabled
+	// Bypass internet check for system prompt queries as they only need local server connectivity
 	const { shouldEnableQuery } = useConnectivityGate();
 
 	return useQuery({
-		// Only enable the query if connectivity checks pass
-		enabled: shouldEnableQuery(),
+		// Only enable the query if server is online (bypass internet check)
+		enabled: shouldEnableQuery({ bypassInternetCheck: true }),
 		queryKey: systemPromptQueryKey,
 		queryFn: async (): Promise<SystemPromptResponse | null> => {
 			try {

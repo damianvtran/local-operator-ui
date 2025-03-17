@@ -34,6 +34,7 @@ export const useAgents = (
 	name?: string,
 ) => {
 	// Use the connectivity gate to check if the query should be enabled
+	// Bypass internet check for agent queries as they only need local server connectivity
 	const { shouldEnableQuery, getConnectivityError } = useConnectivityGate();
 
 	// Get the connectivity error if any
@@ -47,8 +48,8 @@ export const useAgents = (
 	}, [connectivityError]);
 
 	return useQuery({
-		// Only enable the query if connectivity checks pass
-		enabled: shouldEnableQuery(),
+		// Only enable the query if server is online (bypass internet check)
+		enabled: shouldEnableQuery({ bypassInternetCheck: true }),
 		queryKey: [...agentsQueryKey, page, perPage, name],
 		queryFn: async () => {
 			try {
@@ -90,6 +91,7 @@ export const useAgents = (
  */
 export const useAgent = (agentId: string | undefined) => {
 	// Use the connectivity gate to check if the query should be enabled
+	// Bypass internet check for agent queries as they only need local server connectivity
 	const { shouldEnableQuery, getConnectivityError } = useConnectivityGate();
 
 	// Get the connectivity error if any
@@ -103,8 +105,8 @@ export const useAgent = (agentId: string | undefined) => {
 	}, [connectivityError]);
 
 	return useQuery({
-		// Only enable the query if connectivity checks pass and agentId is provided
-		enabled: shouldEnableQuery() && !!agentId,
+		// Only enable the query if server is online and agentId is provided (bypass internet check)
+		enabled: shouldEnableQuery({ bypassInternetCheck: true }) && !!agentId,
 		queryKey: [...agentsQueryKey, agentId],
 		queryFn: async (): Promise<AgentDetails | null> => {
 			if (!agentId) return null;

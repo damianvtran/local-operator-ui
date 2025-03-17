@@ -25,6 +25,7 @@ export const credentialsQueryKey = ["credentials"];
  */
 export const useCredentials = () => {
 	// Use the connectivity gate to check if the query should be enabled
+	// Bypass internet check for credential queries as they only need local server connectivity
 	const { shouldEnableQuery, getConnectivityError } = useConnectivityGate();
 
 	// Get the connectivity error if any
@@ -41,8 +42,8 @@ export const useCredentials = () => {
 	}, [connectivityError]);
 
 	return useQuery({
-		// Only enable the query if connectivity checks pass
-		enabled: shouldEnableQuery(),
+		// Only enable the query if server is online (bypass internet check)
+		enabled: shouldEnableQuery({ bypassInternetCheck: true }),
 		queryKey: credentialsQueryKey,
 		queryFn: async (): Promise<CredentialListResult | null> => {
 			try {

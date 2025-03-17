@@ -124,8 +124,9 @@ export const useConversationMessages = (
 		error,
 		refetch,
 	} = useInfiniteQuery<PaginatedMessagesResponse, Error>({
-		// Only enable the query if connectivity checks pass and we have a conversation ID
-		enabled: shouldEnableQuery() && !!conversationId,
+		// Only enable the query if server is online (bypass internet check)
+		enabled:
+			shouldEnableQuery({ bypassInternetCheck: true }) && !!conversationId,
 		queryKey: [...conversationMessagesQueryKey, conversationId],
 		queryFn: async ({ pageParam }) => {
 			try {
