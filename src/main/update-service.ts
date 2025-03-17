@@ -649,20 +649,20 @@ export class UpdateService {
 
 		try {
 			// Handle dev mode case
-			// if (this.isDevMode) {
-			// 	logger.info(
-			// 		"Skip backend update check in dev mode unless forced",
-			// 		UPDATE_SERVICE_LOG,
-			// 	);
+			if (this.isDevMode) {
+				logger.info(
+					"Skip backend update check in dev mode unless forced",
+					UPDATE_SERVICE_LOG,
+				);
 
-			// 	if (!silent && this.mainWindow) {
-			// 		this.mainWindow.webContents.send(
-			// 			"backend-update-dev-mode",
-			// 			"Backend updates are disabled in development mode.",
-			// 		);
-			// 	}
-			// 	return null;
-			// }
+				if (!silent && this.mainWindow) {
+					this.mainWindow.webContents.send(
+						"backend-update-dev-mode",
+						"Backend updates are disabled in development mode.",
+					);
+				}
+				return null;
+			}
 
 			const installedVersion = await this.getInstalledBackendVersion();
 			const latestVersion = await this.getLatestPypiVersion();
