@@ -66,21 +66,15 @@ export const ConnectivityBanner = ({
 		};
 	}, [shouldCheckInternet]);
 
-	// Auto-check connectivity on mount if enabled
+	// Auto-check server connectivity on mount if enabled
 	useEffect(() => {
 		if (autoCheck) {
 			// Initial check
 			refetchServerStatus();
-			if (shouldCheckInternet) {
-				refetchInternetStatus();
-			}
 
-			// Set up interval for continuous checking with a more frequent check
+			// Set up interval for continuous checking of server status
 			const intervalId = setInterval(() => {
 				refetchServerStatus();
-				if (shouldCheckInternet) {
-					refetchInternetStatus();
-				}
 			}, 3000); // Check every 3 seconds for faster detection
 
 			// Clean up interval on unmount
@@ -88,19 +82,7 @@ export const ConnectivityBanner = ({
 		}
 
 		return undefined;
-	}, [
-		autoCheck,
-		refetchServerStatus,
-		refetchInternetStatus,
-		shouldCheckInternet,
-	]);
-
-	// Force a check when shouldCheckInternet changes
-	useEffect(() => {
-		if (shouldCheckInternet) {
-			refetchInternetStatus();
-		}
-	}, [shouldCheckInternet, refetchInternetStatus]);
+	}, [autoCheck, refetchServerStatus]);
 
 	// Handle retry button click
 	const handleRetry = () => {

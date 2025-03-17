@@ -2,10 +2,11 @@
  * Hook for gating React Query hooks based on connectivity status
  *
  * This hook provides a wrapper for React Query hooks that checks:
- * 1. If the server is online
- * 2. If the user is connected to the internet (when hosting provider is not "Ollama")
+ * 1. If the server is online - if not, queries will be disabled
+ * 2. If the user is connected to the internet (when hosting provider is not "Ollama") -
+ *    this only affects the banner display and does not disable queries to the local backend
  *
- * If either check fails, the query will be disabled and an error will be thrown.
+ * Only server offline issues will disable queries to the backend.
  */
 
 import { useConnectivityStatus } from "./use-connectivity-status";
@@ -26,13 +27,58 @@ export const useConnectivityGate = () => {
 		hasConnectivityIssue,
 		connectivityIssue,
 		isLoading,
+		refetchInternetStatus,
 	} = useConnectivityStatus();
 
 	const queryClient = useQueryClient();
 
-	// When connectivity status changes, invalidate all queries except connectivity-related ones
+	// Add direct event listeners for online/offline events to ensure immediate response
 	useEffect(() => {
-		if (!isLoading && hasConnectivityIssue) {
+		const handleOnline = () => {
+			// Immediately refetch internet status when online event fires
+			refetchInternetStatus();
+
+			// Invalidate and refetch all queries to ensure they're updated with new connectivity status
+			queryClient.invalidateQueries({
+				// Force refetch to ensure queries are updated with new connectivity status
+				refetchType: "all",
+			});
+		};
+
+		const handleOffline = () => {
+			// Immediately refetch internet status when offline event fires
+			refetchInternetStatus();
+
+			// Invalidate and refetch all queries except connectivity-related ones
+			// to ensure they're updated with the new connectivity status
+			queryClient.invalidateQueries({
+				predicate: (query) => {
+					const queryKey = query.queryKey[0];
+					return (
+						queryKey !== "server-health" &&
+						queryKey !== "internet-connectivity" &&
+						queryKey !== "config"
+					);
+				},
+				// Force refetch to ensure queries are updated with new connectivity status
+				refetchType: "active",
+			});
+		};
+
+		window.addEventListener("online", handleOnline);
+		window.addEventListener("offline", handleOffline);
+
+		return () => {
+			window.removeEventListener("online", handleOnline);
+			window.removeEventListener("offline", handleOffline);
+		};
+	}, [refetchInternetStatus, queryClient]);
+
+	// When server status changes, invalidate all queries except connectivity-related ones
+	useEffect(() => {
+		// Only invalidate queries when the server is offline
+		// Internet connectivity issues should not invalidate local backend queries
+		if (!isLoading && !isServerOnline) {
 			// Invalidate all queries except connectivity-related ones
 			queryClient.invalidateQueries({
 				predicate: (query) => {
@@ -43,9 +89,11 @@ export const useConnectivityGate = () => {
 						queryKey !== "config"
 					);
 				},
+				// Force refetch to ensure queries are updated with new connectivity status
+				refetchType: "active",
 			});
 		}
-	}, [hasConnectivityIssue, isLoading, queryClient]);
+	}, [isServerOnline, isLoading, queryClient]);
 
 	/**
 	 * Check if a query should be enabled based on connectivity status
@@ -65,15 +113,13 @@ export const useConnectivityGate = () => {
 		}
 
 		// Check server connectivity unless bypassed
+		// This is the only check that should disable queries to the backend
 		if (!options?.bypassServerCheck && !isServerOnline) {
 			return false;
 		}
 
-		// Check internet connectivity unless bypassed
-		// This is important for hosting providers that require internet connectivity
-		if (!options?.bypassInternetCheck && shouldCheckInternet && !isOnline) {
-			return false;
-		}
+		// Internet connectivity should not disable queries to the local backend
+		// The banner will still show for internet connectivity issues when needed
 
 		// All checks passed, enable the query
 		return true;
@@ -89,15 +135,14 @@ export const useConnectivityGate = () => {
 			return null;
 		}
 
+		// Only return an error for server offline issues
+		// This is the only condition that should prevent queries to the backend
 		if (!isServerOnline) {
 			return new Error("Server is offline. Please check your connection.");
 		}
 
-		if (shouldCheckInternet && !isOnline) {
-			return new Error(
-				`Internet connection is required for the configured hosting provider (${hostingProvider}).`,
-			);
-		}
+		// Internet connectivity issues should show a banner but not return an error
+		// for local backend queries
 
 		return null;
 	};
