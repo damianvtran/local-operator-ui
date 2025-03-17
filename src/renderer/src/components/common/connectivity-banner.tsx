@@ -32,7 +32,6 @@ export const ConnectivityBanner = ({
 		shouldCheckInternet,
 		hasConnectivityIssue,
 		connectivityIssue,
-		isLoading,
 		refetchServerStatus,
 		refetchInternetStatus,
 	} = useConnectivityStatus();
@@ -42,11 +41,30 @@ export const ConnectivityBanner = ({
 
 	// Update banner visibility when connectivity status changes
 	useEffect(() => {
-		// Only show banner after initial loading is complete
-		if (!isLoading) {
-			setShowBanner(hasConnectivityIssue);
-		}
-	}, [hasConnectivityIssue, isLoading]);
+		// Always show banner if there's a connectivity issue, even during initial loading
+		setShowBanner(hasConnectivityIssue);
+	}, [hasConnectivityIssue]);
+
+	// Also check navigator.onLine directly to immediately show banner when offline
+	useEffect(() => {
+		const handleOffline = () => {
+			if (shouldCheckInternet) {
+				setShowBanner(true);
+			}
+		};
+
+		const handleOnline = () => {
+			setShowBanner(false);
+		};
+
+		window.addEventListener("offline", handleOffline);
+		window.addEventListener("online", handleOnline);
+
+		return () => {
+			window.removeEventListener("offline", handleOffline);
+			window.removeEventListener("online", handleOnline);
+		};
+	}, [shouldCheckInternet]);
 
 	// Auto-check connectivity on mount if enabled
 	useEffect(() => {
@@ -57,13 +75,13 @@ export const ConnectivityBanner = ({
 				refetchInternetStatus();
 			}
 
-			// Set up interval for continuous checking
+			// Set up interval for continuous checking with a more frequent check
 			const intervalId = setInterval(() => {
 				refetchServerStatus();
 				if (shouldCheckInternet) {
 					refetchInternetStatus();
 				}
-			}, 5000); // Check every 5 seconds
+			}, 3000); // Check every 3 seconds for faster detection
 
 			// Clean up interval on unmount
 			return () => clearInterval(intervalId);
@@ -76,6 +94,13 @@ export const ConnectivityBanner = ({
 		refetchInternetStatus,
 		shouldCheckInternet,
 	]);
+
+	// Force a check when shouldCheckInternet changes
+	useEffect(() => {
+		if (shouldCheckInternet) {
+			refetchInternetStatus();
+		}
+	}, [shouldCheckInternet, refetchInternetStatus]);
 
 	// Handle retry button click
 	const handleRetry = () => {

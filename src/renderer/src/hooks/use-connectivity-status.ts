@@ -9,6 +9,7 @@
 import { HealthApi } from "@renderer/api/local-operator/health-api";
 import { apiConfig } from "@renderer/config";
 import { useQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import { useConfig } from "./use-config";
 
 /**
@@ -58,10 +59,39 @@ export const useServerHealth = (refetchInterval = 5000) => {
  * @returns Query result with internet connectivity status
  */
 export const useInternetConnectivity = (refetchInterval = 5000) => {
+	// Track the online status with useState
+	const [isOnlineState, setIsOnlineState] = useState(navigator.onLine);
+
+	// Set up event listeners for online/offline events
+	useEffect(() => {
+		const handleOnline = () => {
+			setIsOnlineState(true);
+		};
+
+		const handleOffline = () => {
+			setIsOnlineState(false);
+		};
+
+		// Add event listeners
+		window.addEventListener("online", handleOnline);
+		window.addEventListener("offline", handleOffline);
+
+		// Clean up event listeners on unmount
+		return () => {
+			window.removeEventListener("online", handleOnline);
+			window.removeEventListener("offline", handleOffline);
+		};
+	}, []); // eslint-disable-line react-hooks/exhaustive-deps
+
 	return useQuery({
 		queryKey: internetConnectivityQueryKey,
 		queryFn: async () => {
-			// First check navigator.onLine for basic connectivity
+			// First check our state which is updated by event listeners
+			if (!isOnlineState) {
+				return false;
+			}
+
+			// Also check navigator.onLine for basic connectivity
 			if (!navigator.onLine) {
 				return false;
 			}
@@ -71,22 +101,35 @@ export const useInternetConnectivity = (refetchInterval = 5000) => {
 			try {
 				// Create an AbortController to implement timeout
 				const controller = new AbortController();
-				const timeoutId = setTimeout(() => controller.abort(), 5000);
+				const timeoutId = setTimeout(() => controller.abort(), 3000); // Shorter timeout for faster detection
 
-				// Try to connect to a reliable DNS server
-				// This avoids depending on third-party websites
-				await fetch("https://1.1.1.1/cdn-cgi/trace", {
-					method: "HEAD",
-					mode: "no-cors",
-					cache: "no-store",
-					signal: controller.signal,
-				});
+				// Try multiple reliable endpoints to ensure we're really checking internet connectivity
+				// and not just a single service being down
+				const endpoints = [
+					"https://1.1.1.1/cdn-cgi/trace", // Cloudflare DNS
+				];
+
+				// Try each endpoint until one succeeds
+				for (const endpoint of endpoints) {
+					try {
+						await fetch(endpoint, {
+							method: "HEAD",
+							mode: "no-cors",
+							cache: "no-store",
+							signal: controller.signal,
+						});
+
+						clearTimeout(timeoutId);
+						return true;
+					} catch (e) {
+						// Try the next endpoint
+					}
+				}
 
 				clearTimeout(timeoutId);
-				return true; // Internet is connected
+				return false;
 			} catch (error) {
-				// If fetch fails or times out, we're offline
-				return false; // Internet is disconnected
+				return false;
 			}
 		},
 		// Refetch at specified interval
@@ -136,19 +179,41 @@ export const useConnectivityStatus = (
 		refetch: refetchInternetStatus,
 	} = useInternetConnectivity(internetRefetchInterval);
 
-	// Determine if there's a connectivity issue
-	// For local server operations, we should only consider server connectivity
-	// since the server runs locally and doesn't require internet connectivity
-	const isLocalServerOperation = true; // Assume all operations are local server operations
+	// Add event listeners for online/offline events
+	useEffect(() => {
+		// Function to handle online event
+		const handleOnline = () => {
+			// Immediately refetch to confirm
+			refetchInternetStatus();
+		};
 
+		// Function to handle offline event
+		const handleOffline = () => {
+			// Immediately refetch to confirm
+			refetchInternetStatus();
+		};
+
+		// Add event listeners
+		window.addEventListener("online", handleOnline);
+		window.addEventListener("offline", handleOffline);
+
+		// Clean up event listeners on unmount
+		return () => {
+			window.removeEventListener("online", handleOnline);
+			window.removeEventListener("offline", handleOffline);
+		};
+	}, [refetchInternetStatus]);
+
+	// Determine if there's a connectivity issue
+	// We need to check both server and internet connectivity
+	// Internet connectivity is only required for certain hosting providers (not Ollama)
 	const hasConnectivityIssue =
-		!isServerOnline ||
-		(!isLocalServerOperation && shouldCheckInternet && !isOnline);
+		!isServerOnline || (shouldCheckInternet && !isOnline);
 
 	// Determine the specific issue
 	const connectivityIssue = !isServerOnline
 		? "server_offline"
-		: !isLocalServerOperation && shouldCheckInternet && !isOnline
+		: shouldCheckInternet && !isOnline
 			? "internet_offline"
 			: null;
 
