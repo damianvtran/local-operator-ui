@@ -55,6 +55,9 @@ export const useServerHealth = (refetchInterval = 5000) => {
 /**
  * Hook for checking if the user is connected to the internet
  *
+ * Uses the browser's navigator.onLine property and online/offline events
+ * to determine internet connectivity status.
+ *
  * @param refetchInterval - Interval in milliseconds to refetch connectivity status (default: 5000 - 5 seconds)
  * @returns Query result with internet connectivity status
  */
@@ -86,51 +89,9 @@ export const useInternetConnectivity = (refetchInterval = 5000) => {
 	return useQuery({
 		queryKey: internetConnectivityQueryKey,
 		queryFn: async () => {
-			// First check our state which is updated by event listeners
-			if (!isOnlineState) {
-				return false;
-			}
-
-			// Also check navigator.onLine for basic connectivity
-			if (!navigator.onLine) {
-				return false;
-			}
-
-			// For a more reliable check, use the browser's fetch API with a timeout
-			// to detect if we can make network requests
-			try {
-				// Create an AbortController to implement timeout
-				const controller = new AbortController();
-				const timeoutId = setTimeout(() => controller.abort(), 3000); // Shorter timeout for faster detection
-
-				// Try multiple reliable endpoints to ensure we're really checking internet connectivity
-				// and not just a single service being down
-				const endpoints = [
-					"https://1.1.1.1/cdn-cgi/trace", // Cloudflare DNS
-				];
-
-				// Try each endpoint until one succeeds
-				for (const endpoint of endpoints) {
-					try {
-						await fetch(endpoint, {
-							method: "HEAD",
-							mode: "no-cors",
-							cache: "no-store",
-							signal: controller.signal,
-						});
-
-						clearTimeout(timeoutId);
-						return true;
-					} catch (e) {
-						// Try the next endpoint
-					}
-				}
-
-				clearTimeout(timeoutId);
-				return false;
-			} catch (error) {
-				return false;
-			}
+			// Simply return the current online state from navigator.onLine
+			// which is also kept in sync via the event listeners
+			return isOnlineState && navigator.onLine;
 		},
 		// Refetch at specified interval
 		refetchInterval,
@@ -149,13 +110,9 @@ export const useInternetConnectivity = (refetchInterval = 5000) => {
  * Hook for checking overall connectivity status
  *
  * @param serverRefetchInterval - Interval for server health check (default: 5000 - 5 seconds)
- * @param internetRefetchInterval - Interval for internet connectivity check (default: 5000 - 5 seconds)
  * @returns Object with connectivity status information
  */
-export const useConnectivityStatus = (
-	serverRefetchInterval = 5000,
-	internetRefetchInterval = 5000,
-) => {
+export const useConnectivityStatus = (serverRefetchInterval = 5000) => {
 	// Get server health status
 	const {
 		data: isServerOnline = true, // Default to true to avoid false positives on initial load
@@ -177,7 +134,7 @@ export const useConnectivityStatus = (
 		data: isOnline = true, // Default to true to avoid false positives on initial load
 		isLoading: isInternetStatusLoading,
 		refetch: refetchInternetStatus,
-	} = useInternetConnectivity(internetRefetchInterval);
+	} = useInternetConnectivity(serverRefetchInterval);
 
 	// Add event listeners for online/offline events
 	useEffect(() => {

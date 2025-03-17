@@ -22,7 +22,10 @@ export const queryClient = new QueryClient({
 			// Default refetch configuration
 			refetchOnWindowFocus: true,
 			refetchOnMount: true,
-			refetchOnReconnect: true,
+			// Don't wait for reconnect to refetch - we handle offline status separately
+			refetchOnReconnect: false,
+			// Continue to run queries even when offline
+			networkMode: "always",
 		},
 	},
 });
