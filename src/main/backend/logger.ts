@@ -17,6 +17,7 @@ import electronLog, { type ElectronLog } from "electron-log";
 export enum LogFileType {
 	INSTALLER = "backend-installer.log",
 	BACKEND = "backend-service.log",
+	UPDATE_SERVICE = "update-service.log",
 }
 
 /**
