@@ -75,8 +75,8 @@ export class UpdateService {
 			execPath.includes("node_modules/.bin") ||
 			execPath.includes("node_modules\\.bin");
 
-		// Get the backend URL from config
-		this.backendUrl = apiConfig.baseUrl;
+		// Get the backend URL from config.  Use 127.0.0.1 instead of localhost to avoid issues with local fetch.
+		this.backendUrl = apiConfig.baseUrl.replace("localhost", "127.0.0.1");
 
 		logger.info(
 			`Update service initialized. Dev mode: ${this.isDevMode}, NPX install: ${this.isNpxInstall}`,
