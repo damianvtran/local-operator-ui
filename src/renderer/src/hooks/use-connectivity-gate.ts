@@ -38,8 +38,8 @@ export const useConnectivityGate = () => {
 				predicate: (query) => {
 					const queryKey = query.queryKey[0];
 					return (
-						queryKey !== "serverHealth" &&
-						queryKey !== "internetConnectivity" &&
+						queryKey !== "server-health" &&
+						queryKey !== "internet-connectivity" &&
 						queryKey !== "config"
 					);
 				},

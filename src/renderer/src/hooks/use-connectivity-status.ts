@@ -14,12 +14,12 @@ import { useConfig } from "./use-config";
 /**
  * Query key for server health check
  */
-export const serverHealthQueryKey = ["serverHealth"];
+export const serverHealthQueryKey = ["server-health"];
 
 /**
  * Query key for internet connectivity check
  */
-export const internetConnectivityQueryKey = ["internetConnectivity"];
+export const internetConnectivityQueryKey = ["internet-connectivity"];
 
 /**
  * Hook for checking if the server is online
