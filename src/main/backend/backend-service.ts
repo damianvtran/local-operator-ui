@@ -599,9 +599,10 @@ export class BackendServiceManager {
 
 	/**
 	 * Stop the backend service
+	 * @param isRestart - Whether this stop is part of a restart operation
 	 * @returns Promise resolving when the backend has been stopped
 	 */
-	async stop(): Promise<void> {
+	async stop(isRestart = false): Promise<void> {
 		// Stop health check
 		if (this.healthCheckInterval) {
 			clearInterval(this.healthCheckInterval);
@@ -617,7 +618,10 @@ export class BackendServiceManager {
 		}
 
 		if (this.process && this.isRunning) {
-			logger.info("Stopping backend service...", LogFileType.BACKEND);
+			logger.info(
+				`Stopping backend service... (isRestart: ${isRestart})`,
+				LogFileType.BACKEND,
+			);
 
 			// Create a promise that resolves when the process exits
 			// Store this promise so it can be awaited from outside
@@ -670,52 +674,64 @@ export class BackendServiceManager {
 					this.process.kill("SIGTERM");
 				}
 
+				// Create a variable to store the timeout ID so we can clear it if needed
+				let forceKillTimeoutId: NodeJS.Timeout | null = null;
+
 				// Wait for process to exit with timeout
 				const timeoutPromise = new Promise<void>((resolve) => {
-					setTimeout(() => {
-						if (this.process) {
-							logger.info(
-								"Backend process did not exit in time, force killing",
-								LogFileType.BACKEND,
-							);
-							try {
-								// Force kill the process
-								if (process.platform === "win32" && this.process.pid) {
-									// On Windows, use taskkill with /F for force
-									spawn("taskkill", [
-										"/pid",
-										this.process.pid.toString(),
-										"/f",
-										"/t",
-									]);
-								} else if (this.process) {
-									// On Unix, use SIGKILL
-									this.process.kill("SIGKILL");
-								}
-							} catch (error) {
-								logger.error(
-									"Error force killing process:",
+					forceKillTimeoutId = setTimeout(
+						() => {
+							if (this.process) {
+								logger.info(
+									"Backend process did not exit in time, force killing",
 									LogFileType.BACKEND,
-									error,
 								);
-							}
+								try {
+									// Force kill the process
+									if (process.platform === "win32" && this.process.pid) {
+										// On Windows, use taskkill with /F for force
+										spawn("taskkill", [
+											"/pid",
+											this.process.pid.toString(),
+											"/f",
+											"/t",
+										]);
+									} else if (this.process) {
+										// On Unix, use SIGKILL
+										this.process.kill("SIGKILL");
+									}
+								} catch (error) {
+									logger.error(
+										"Error force killing process:",
+										LogFileType.BACKEND,
+										error,
+									);
+								}
 
-							// Even if force kill fails, mark process as stopped
-							this.process = null;
-							this.isRunning = false;
+								// Even if force kill fails, mark process as stopped
+								this.process = null;
+								this.isRunning = false;
 
-							// Resolve the exit promise
-							if (this.exitResolve) {
-								this.exitResolve();
-								this.exitResolve = null;
+								// Resolve the exit promise
+								if (this.exitResolve) {
+									this.exitResolve();
+									this.exitResolve = null;
+								}
 							}
-						}
-						resolve();
-					}, 5000); // Increased timeout to 5 seconds to give more time for graceful exit
+							resolve();
+						},
+						isRestart ? 30000 : 5000,
+					); // Use longer timeout for restart operations
 				});
 
 				// Wait for either the process to exit or the timeout
 				await Promise.race([this.exitPromise, timeoutPromise]);
+
+				// Clear the timeout if it's still active
+				if (forceKillTimeoutId) {
+					clearTimeout(forceKillTimeoutId);
+					forceKillTimeoutId = null;
+				}
 			} catch (error) {
 				logger.error(
 					"Error stopping backend process:",
@@ -812,6 +828,33 @@ export class BackendServiceManager {
 	 */
 	isUsingExternalBackend(): boolean {
 		return this.isExternalBackend;
+	}
+
+	/**
+	 * Restart the backend service
+	 * This method properly handles the restart process to ensure that any pending
+	 * timeouts from the stop operation don't affect the newly started process
+	 * @returns Promise resolving to true if the restart was successful, false otherwise
+	 */
+	async restart(): Promise<boolean> {
+		logger.info("Restarting backend service...", LogFileType.BACKEND);
+
+		// Stop the service with the isRestart flag to use a longer timeout
+		await this.stop(true);
+
+		// Start the service again
+		const success = await this.start();
+
+		if (success) {
+			logger.info(
+				"Backend service restarted successfully",
+				LogFileType.BACKEND,
+			);
+		} else {
+			logger.error("Failed to restart backend service", LogFileType.BACKEND);
+		}
+
+		return success;
 	}
 }
 
