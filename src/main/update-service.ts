@@ -6,10 +6,7 @@ import { type BrowserWindow, app, ipcMain } from "electron";
 import { autoUpdater } from "electron-updater";
 import type { BackendServiceManager } from "./backend/backend-service";
 import { apiConfig } from "./backend/config";
-import { logger, type LogFileType } from "./backend/logger";
-
-// Add update service log file type to the existing LogFileType enum
-const UPDATE_SERVICE_LOG: LogFileType = "update-service.log" as LogFileType;
+import { logger, LogFileType } from "./backend/logger";
 
 /**
  * Health check result containing version information
@@ -80,15 +77,19 @@ export class UpdateService {
 
 		logger.info(
 			`Update service initialized. Dev mode: ${this.isDevMode}, NPX install: ${this.isNpxInstall}`,
-			UPDATE_SERVICE_LOG,
+			LogFileType.UPDATE_SERVICE,
 		);
 
 		// Configure logging for autoUpdater
 		autoUpdater.logger = {
-			info: (message: string) => logger.info(message, UPDATE_SERVICE_LOG),
-			warn: (message: string) => logger.warn(message, UPDATE_SERVICE_LOG),
-			error: (message: string) => logger.error(message, UPDATE_SERVICE_LOG),
-			debug: (message: string) => logger.debug(message, UPDATE_SERVICE_LOG),
+			info: (message: string) =>
+				logger.info(message, LogFileType.UPDATE_SERVICE),
+			warn: (message: string) =>
+				logger.warn(message, LogFileType.UPDATE_SERVICE),
+			error: (message: string) =>
+				logger.error(message, LogFileType.UPDATE_SERVICE),
+			debug: (message: string) =>
+				logger.debug(message, LogFileType.UPDATE_SERVICE),
 		};
 
 		// Configure autoUpdater
@@ -116,14 +117,14 @@ export class UpdateService {
 		this.updateCheckInterval = setInterval(() => {
 			logger.info(
 				"Running scheduled update check (every 5 minutes)",
-				UPDATE_SERVICE_LOG,
+				LogFileType.UPDATE_SERVICE,
 			);
 			this.checkForAllUpdates(true);
 		}, 300000);
 
 		logger.info(
 			"Periodic update checks scheduled (every 5 minutes)",
-			UPDATE_SERVICE_LOG,
+			LogFileType.UPDATE_SERVICE,
 		);
 	}
 
@@ -144,7 +145,7 @@ export class UpdateService {
 	private setupUpdateEvents(): void {
 		// When an update is available
 		autoUpdater.on("update-available", (info) => {
-			logger.info("Update available:", UPDATE_SERVICE_LOG, info);
+			logger.info("Update available:", LogFileType.UPDATE_SERVICE, info);
 			if (this.mainWindow) {
 				this.mainWindow.webContents.send("update-available", info);
 			}
@@ -152,7 +153,7 @@ export class UpdateService {
 
 		// When no update is available
 		autoUpdater.on("update-not-available", (info) => {
-			logger.info("No update available:", UPDATE_SERVICE_LOG, info);
+			logger.info("No update available:", LogFileType.UPDATE_SERVICE, info);
 			if (this.mainWindow) {
 				this.mainWindow.webContents.send("update-not-available", info);
 			}
@@ -160,7 +161,7 @@ export class UpdateService {
 
 		// When an update has been downloaded
 		autoUpdater.on("update-downloaded", (info) => {
-			logger.info("Update downloaded:", UPDATE_SERVICE_LOG, info);
+			logger.info("Update downloaded:", LogFileType.UPDATE_SERVICE, info);
 			if (this.mainWindow) {
 				this.mainWindow.webContents.send("update-downloaded", info);
 			}
@@ -168,7 +169,7 @@ export class UpdateService {
 
 		// When there's an error with the update
 		autoUpdater.on("error", (err) => {
-			logger.error("Update error:", UPDATE_SERVICE_LOG, err);
+			logger.error("Update error:", LogFileType.UPDATE_SERVICE, err);
 			if (this.mainWindow) {
 				this.mainWindow.webContents.send("update-error", err.message);
 			}
@@ -176,7 +177,11 @@ export class UpdateService {
 
 		// When update download progress changes
 		autoUpdater.on("download-progress", (progressObj) => {
-			logger.info("Download progress:", UPDATE_SERVICE_LOG, progressObj);
+			logger.info(
+				"Download progress:",
+				LogFileType.UPDATE_SERVICE,
+				progressObj,
+			);
 			if (this.mainWindow) {
 				this.mainWindow.webContents.send("update-progress", progressObj);
 			}
@@ -188,7 +193,7 @@ export class UpdateService {
 		(autoUpdater as any).on("before-quit-for-update", () => {
 			logger.info(
 				"Application will quit and install update",
-				UPDATE_SERVICE_LOG,
+				LogFileType.UPDATE_SERVICE,
 			);
 			if (this.mainWindow) {
 				this.mainWindow.webContents.send("before-quit-for-update");
@@ -202,13 +207,13 @@ export class UpdateService {
 	public setupIpcHandlers(): void {
 		// Check for UI updates
 		ipcMain.handle("check-for-updates", async () => {
-			logger.info("Checking for UI updates...", UPDATE_SERVICE_LOG);
+			logger.info("Checking for UI updates...", LogFileType.UPDATE_SERVICE);
 			try {
 				return await autoUpdater.checkForUpdates();
 			} catch (error) {
 				logger.error(
 					"Error checking for UI updates:",
-					UPDATE_SERVICE_LOG,
+					LogFileType.UPDATE_SERVICE,
 					error,
 				);
 				throw error;
@@ -217,13 +222,16 @@ export class UpdateService {
 
 		// Check for backend updates
 		ipcMain.handle("check-for-backend-updates", async () => {
-			logger.info("Checking for backend updates...", UPDATE_SERVICE_LOG);
+			logger.info(
+				"Checking for backend updates...",
+				LogFileType.UPDATE_SERVICE,
+			);
 			try {
 				return await this.checkForBackendUpdates();
 			} catch (error) {
 				logger.error(
 					"Error checking for backend updates:",
-					UPDATE_SERVICE_LOG,
+					LogFileType.UPDATE_SERVICE,
 					error,
 				);
 				throw error;
@@ -234,14 +242,14 @@ export class UpdateService {
 		ipcMain.handle("check-for-all-updates", async () => {
 			logger.info(
 				"Checking for all updates (UI and backend)...",
-				UPDATE_SERVICE_LOG,
+				LogFileType.UPDATE_SERVICE,
 			);
 			try {
 				return await this.checkForAllUpdates();
 			} catch (error) {
 				logger.error(
 					"Error checking for all updates:",
-					UPDATE_SERVICE_LOG,
+					LogFileType.UPDATE_SERVICE,
 					error,
 				);
 				throw error;
@@ -250,29 +258,40 @@ export class UpdateService {
 
 		// Update backend
 		ipcMain.handle("update-backend", async () => {
-			logger.info("Updating backend...", UPDATE_SERVICE_LOG);
+			logger.info("Updating backend...", LogFileType.UPDATE_SERVICE);
 			try {
 				return await this.updateBackend();
 			} catch (error) {
-				logger.error("Error updating backend:", UPDATE_SERVICE_LOG, error);
+				logger.error(
+					"Error updating backend:",
+					LogFileType.UPDATE_SERVICE,
+					error,
+				);
 				throw error;
 			}
 		});
 
 		// Download update
 		ipcMain.handle("download-update", async () => {
-			logger.info("Downloading update...", UPDATE_SERVICE_LOG);
+			logger.info("Downloading update...", LogFileType.UPDATE_SERVICE);
 			try {
 				return await autoUpdater.downloadUpdate();
 			} catch (error) {
-				logger.error("Error downloading update:", UPDATE_SERVICE_LOG, error);
+				logger.error(
+					"Error downloading update:",
+					LogFileType.UPDATE_SERVICE,
+					error,
+				);
 				throw error;
 			}
 		});
 
 		// Quit and install update
 		ipcMain.handle("quit-and-install", () => {
-			logger.info("Quitting and installing update...", UPDATE_SERVICE_LOG);
+			logger.info(
+				"Quitting and installing update...",
+				LogFileType.UPDATE_SERVICE,
+			);
 			autoUpdater.quitAndInstall(false, true);
 		});
 	}
@@ -284,7 +303,7 @@ export class UpdateService {
 	public async checkForUpdates(silent = false): Promise<void> {
 		logger.info(
 			`Checking for updates... (silent mode: ${silent})`,
-			UPDATE_SERVICE_LOG,
+			LogFileType.UPDATE_SERVICE,
 		);
 
 		try {
@@ -292,7 +311,7 @@ export class UpdateService {
 			if (this.isDevMode) {
 				logger.info(
 					"Skip checkForUpdates because application is not packed and dev update config is not forced",
-					UPDATE_SERVICE_LOG,
+					LogFileType.UPDATE_SERVICE,
 				);
 
 				if (!silent && this.mainWindow) {
@@ -308,7 +327,7 @@ export class UpdateService {
 			if (this.isNpxInstall) {
 				logger.info(
 					"Application was installed via npx. Checking npm registry for updates...",
-					UPDATE_SERVICE_LOG,
+					LogFileType.UPDATE_SERVICE,
 				);
 
 				if (!silent) {
@@ -322,7 +341,7 @@ export class UpdateService {
 					) {
 						logger.info(
 							`Newer version available: ${latestVersion} (current: ${currentVersion})`,
-							UPDATE_SERVICE_LOG,
+							LogFileType.UPDATE_SERVICE,
 						);
 
 						if (this.mainWindow) {
@@ -335,7 +354,7 @@ export class UpdateService {
 					} else {
 						logger.info(
 							`No newer version available. Current: ${currentVersion}, Latest: ${latestVersion || "unknown"}`,
-							UPDATE_SERVICE_LOG,
+							LogFileType.UPDATE_SERVICE,
 						);
 
 						if (this.mainWindow) {
@@ -363,7 +382,7 @@ export class UpdateService {
 				autoUpdater.once("update-not-available", (info) => {
 					logger.info(
 						"No update available (silent mode):",
-						UPDATE_SERVICE_LOG,
+						LogFileType.UPDATE_SERVICE,
 						info,
 					);
 					// Don't send notification to renderer in silent mode
@@ -382,7 +401,11 @@ export class UpdateService {
 				);
 			}
 		} catch (error) {
-			logger.error("Error checking for updates:", UPDATE_SERVICE_LOG, error);
+			logger.error(
+				"Error checking for updates:",
+				LogFileType.UPDATE_SERVICE,
+				error,
+			);
 			if (this.mainWindow && !silent) {
 				this.mainWindow.webContents.send(
 					"update-error",
@@ -417,7 +440,7 @@ export class UpdateService {
 						} catch (error) {
 							logger.error(
 								"Error parsing npm registry response:",
-								UPDATE_SERVICE_LOG,
+								LogFileType.UPDATE_SERVICE,
 								error,
 							);
 							resolve(null);
@@ -427,7 +450,7 @@ export class UpdateService {
 				.on("error", (error) => {
 					logger.error(
 						"Error fetching from npm registry:",
-						UPDATE_SERVICE_LOG,
+						LogFileType.UPDATE_SERVICE,
 						error,
 					);
 					resolve(null);
@@ -474,7 +497,7 @@ export class UpdateService {
 		try {
 			logger.info(
 				`Checking backend version from health API at ${this.backendUrl}/health`,
-				UPDATE_SERVICE_LOG,
+				LogFileType.UPDATE_SERVICE,
 			);
 
 			// Set a timeout for the fetch request
@@ -492,7 +515,7 @@ export class UpdateService {
 			if (!response.ok) {
 				logger.error(
 					`Health API returned status ${response.status}`,
-					UPDATE_SERVICE_LOG,
+					LogFileType.UPDATE_SERVICE,
 				);
 				return null;
 			}
@@ -503,7 +526,7 @@ export class UpdateService {
 			if (healthData.result?.version) {
 				logger.info(
 					`Backend version from health API: ${healthData.result.version}`,
-					UPDATE_SERVICE_LOG,
+					LogFileType.UPDATE_SERVICE,
 				);
 				return healthData.result.version;
 			}
@@ -511,13 +534,13 @@ export class UpdateService {
 			// For older server versions that don't have the version information
 			logger.info(
 				"Backend version not available in health response",
-				UPDATE_SERVICE_LOG,
+				LogFileType.UPDATE_SERVICE,
 			);
 			return "Unknown";
 		} catch (error) {
 			logger.error(
 				"Error getting backend version from health API:",
-				UPDATE_SERVICE_LOG,
+				LogFileType.UPDATE_SERVICE,
 				error,
 			);
 
@@ -527,7 +550,7 @@ export class UpdateService {
 					const altUrl = this.backendUrl.replace("127.0.0.1", "localhost");
 					logger.info(
 						`Trying alternative URL: ${altUrl}/health`,
-						UPDATE_SERVICE_LOG,
+						LogFileType.UPDATE_SERVICE,
 					);
 
 					const controller = new AbortController();
@@ -544,7 +567,7 @@ export class UpdateService {
 					if (!response.ok) {
 						logger.error(
 							`Alternative health API returned status ${response.status}`,
-							UPDATE_SERVICE_LOG,
+							LogFileType.UPDATE_SERVICE,
 						);
 						return null;
 					}
@@ -555,14 +578,14 @@ export class UpdateService {
 					if (healthData.result?.version) {
 						logger.info(
 							`Backend version from alternative health API: ${healthData.result.version}`,
-							UPDATE_SERVICE_LOG,
+							LogFileType.UPDATE_SERVICE,
 						);
 						return healthData.result.version;
 					}
 				} catch (altError) {
 					logger.error(
 						"Error checking alternative backend URL:",
-						UPDATE_SERVICE_LOG,
+						LogFileType.UPDATE_SERVICE,
 						altError,
 					);
 				}
@@ -573,7 +596,7 @@ export class UpdateService {
 				try {
 					logger.info(
 						"Trying to get backend version using pip as fallback",
-						UPDATE_SERVICE_LOG,
+						LogFileType.UPDATE_SERVICE,
 					);
 					const execAsync = promisify(exec);
 					const { stdout } = await execAsync("pip show local-operator");
@@ -582,14 +605,14 @@ export class UpdateService {
 						const version = match[1].trim();
 						logger.info(
 							`Backend version from pip: ${version}`,
-							UPDATE_SERVICE_LOG,
+							LogFileType.UPDATE_SERVICE,
 						);
 						return version;
 					}
 				} catch (pipError) {
 					logger.error(
 						"Error getting backend version from pip:",
-						UPDATE_SERVICE_LOG,
+						LogFileType.UPDATE_SERVICE,
 						pipError,
 					);
 				}
@@ -620,7 +643,7 @@ export class UpdateService {
 						} catch (error) {
 							logger.error(
 								"Error parsing PyPI response:",
-								UPDATE_SERVICE_LOG,
+								LogFileType.UPDATE_SERVICE,
 								error,
 							);
 							resolve(null);
@@ -628,7 +651,11 @@ export class UpdateService {
 					});
 				})
 				.on("error", (error) => {
-					logger.error("Error fetching from PyPI:", UPDATE_SERVICE_LOG, error);
+					logger.error(
+						"Error fetching from PyPI:",
+						LogFileType.UPDATE_SERVICE,
+						error,
+					);
 					resolve(null);
 				});
 		});
@@ -644,7 +671,7 @@ export class UpdateService {
 	): Promise<BackendUpdateInfo | null> {
 		logger.info(
 			`Checking for backend updates... (silent mode: ${silent})`,
-			UPDATE_SERVICE_LOG,
+			LogFileType.UPDATE_SERVICE,
 		);
 
 		try {
@@ -652,7 +679,7 @@ export class UpdateService {
 			if (this.isDevMode) {
 				logger.info(
 					"Skip backend update check in dev mode unless forced",
-					UPDATE_SERVICE_LOG,
+					LogFileType.UPDATE_SERVICE,
 				);
 
 				if (!silent && this.mainWindow) {
@@ -670,7 +697,7 @@ export class UpdateService {
 			if (!installedVersion || !latestVersion) {
 				logger.error(
 					"Unable to determine backend versions.",
-					UPDATE_SERVICE_LOG,
+					LogFileType.UPDATE_SERVICE,
 				);
 				if (!silent && this.mainWindow) {
 					this.mainWindow.webContents.send(
@@ -688,13 +715,13 @@ export class UpdateService {
 
 			logger.info(
 				`Installed backend version: ${installedVersion}, Latest: ${latestVersion}, Update needed: ${shouldUpdate}`,
-				UPDATE_SERVICE_LOG,
+				LogFileType.UPDATE_SERVICE,
 			);
 
 			if (shouldUpdate) {
 				logger.info(
 					`New backend version available: ${latestVersion} (installed: ${installedVersion})`,
-					UPDATE_SERVICE_LOG,
+					LogFileType.UPDATE_SERVICE,
 				);
 
 				const updateInfo: BackendUpdateInfo = {
@@ -715,7 +742,7 @@ export class UpdateService {
 
 			logger.info(
 				`No new backend version available. (installed: ${installedVersion}, latest: ${latestVersion})`,
-				UPDATE_SERVICE_LOG,
+				LogFileType.UPDATE_SERVICE,
 			);
 
 			if (!silent && this.mainWindow) {
@@ -728,7 +755,7 @@ export class UpdateService {
 		} catch (error) {
 			logger.error(
 				"Error checking for backend updates:",
-				UPDATE_SERVICE_LOG,
+				LogFileType.UPDATE_SERVICE,
 				error,
 			);
 
@@ -748,7 +775,7 @@ export class UpdateService {
 	 * @returns Promise resolving to true if update was successful, false otherwise
 	 */
 	public async updateBackend(): Promise<boolean> {
-		logger.info("Updating backend...", UPDATE_SERVICE_LOG);
+		logger.info("Updating backend...", LogFileType.UPDATE_SERVICE);
 
 		try {
 			// First, stop the backend service if we have a reference to it
@@ -758,10 +785,13 @@ export class UpdateService {
 			) {
 				logger.info(
 					"Stopping backend service before update...",
-					UPDATE_SERVICE_LOG,
+					LogFileType.UPDATE_SERVICE,
 				);
 				await this.backendService.stop(true);
-				logger.info("Backend service stopped successfully", UPDATE_SERVICE_LOG);
+				logger.info(
+					"Backend service stopped successfully",
+					LogFileType.UPDATE_SERVICE,
+				);
 			}
 
 			// Update the backend using pip
@@ -769,14 +799,14 @@ export class UpdateService {
 			await execAsync("pip install --upgrade local-operator");
 			logger.info(
 				"Backend package updated successfully via pip",
-				UPDATE_SERVICE_LOG,
+				LogFileType.UPDATE_SERVICE,
 			);
 
 			// Restart the backend service if we have a reference to it
 			if (this.backendService) {
 				logger.info(
 					"Restarting backend service after update...",
-					UPDATE_SERVICE_LOG,
+					LogFileType.UPDATE_SERVICE,
 				);
 
 				// Use the dedicated restart method which properly handles the restart process
@@ -785,12 +815,12 @@ export class UpdateService {
 				if (restartSuccess) {
 					logger.info(
 						"Backend service restarted successfully after update",
-						UPDATE_SERVICE_LOG,
+						LogFileType.UPDATE_SERVICE,
 					);
 				} else {
 					logger.error(
 						"Failed to restart backend service after update",
-						UPDATE_SERVICE_LOG,
+						LogFileType.UPDATE_SERVICE,
 					);
 					if (this.mainWindow) {
 						this.mainWindow.webContents.send(
@@ -803,13 +833,13 @@ export class UpdateService {
 			} else {
 				logger.info(
 					"No backend service reference available, skipping restart",
-					UPDATE_SERVICE_LOG,
+					LogFileType.UPDATE_SERVICE,
 				);
 			}
 
 			logger.info(
 				"Backend update and restart completed successfully",
-				UPDATE_SERVICE_LOG,
+				LogFileType.UPDATE_SERVICE,
 			);
 
 			if (this.mainWindow) {
@@ -818,7 +848,11 @@ export class UpdateService {
 
 			return true;
 		} catch (error) {
-			logger.error("Error updating backend:", UPDATE_SERVICE_LOG, error);
+			logger.error(
+				"Error updating backend:",
+				LogFileType.UPDATE_SERVICE,
+				error,
+			);
 
 			// Try to restart the backend service if it was stopped
 			if (
@@ -828,13 +862,13 @@ export class UpdateService {
 				try {
 					logger.info(
 						"Attempting to restart backend service after update failure...",
-						UPDATE_SERVICE_LOG,
+						LogFileType.UPDATE_SERVICE,
 					);
 					await this.backendService.start();
 				} catch (restartError) {
 					logger.error(
 						"Failed to restart backend service after update failure:",
-						UPDATE_SERVICE_LOG,
+						LogFileType.UPDATE_SERVICE,
 						restartError,
 					);
 				}
@@ -875,9 +909,12 @@ export class UpdateService {
 				// This is the first run after installation
 				logger.info(
 					`First run after installation for ${exeName}`,
-					UPDATE_SERVICE_LOG,
+					LogFileType.UPDATE_SERVICE,
 				);
-				logger.info(`Update executable path: ${updateExe}`, UPDATE_SERVICE_LOG);
+				logger.info(
+					`Update executable path: ${updateExe}`,
+					LogFileType.UPDATE_SERVICE,
+				);
 
 				// Wait a bit before checking for updates to avoid file lock issues
 				setTimeout(() => {
@@ -890,7 +927,7 @@ export class UpdateService {
 			// Log Windows update configuration
 			logger.info(
 				`Windows update configuration: ${exeName} will use ${updateExe} for updates`,
-				UPDATE_SERVICE_LOG,
+				LogFileType.UPDATE_SERVICE,
 			);
 		}
 
@@ -898,7 +935,10 @@ export class UpdateService {
 		if (process.platform === "darwin") {
 			// macOS requires the app to be signed for auto-updates
 			// This is handled by the build process, but we can log it for clarity
-			logger.info("macOS auto-update requires app signing", UPDATE_SERVICE_LOG);
+			logger.info(
+				"macOS auto-update requires app signing",
+				LogFileType.UPDATE_SERVICE,
+			);
 		}
 	}
 }
