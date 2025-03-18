@@ -8,7 +8,7 @@
 
 import { createLocalOperatorClient } from "@renderer/api/local-operator";
 import type { AgentExecutionRecord } from "@renderer/api/local-operator/types";
-import type { Message } from "@renderer/components/chat/types";
+import type { Message } from "@renderer/components/chat/message-item/types";
 import { apiConfig } from "@renderer/config";
 import { useChatStore } from "@renderer/store/chat-store";
 import { showErrorToast } from "@renderer/utils/toast-manager";
@@ -52,6 +52,8 @@ export const convertToMessage = (record: AgentExecutionRecord): Message => {
 		logging: record.logging,
 		timestamp: record.timestamp ? new Date(record.timestamp) : new Date(),
 		files: record.files,
+		action: record.action,
+		execution_type: record.execution_type,
 	};
 };
 

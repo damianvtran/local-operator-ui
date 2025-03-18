@@ -8,7 +8,7 @@ import { Button, IconButton, TextField, Tooltip, alpha } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import { AttachmentsPreview } from "@renderer/components/chat/attachments-preview";
 import { ScrollToBottomButton } from "@renderer/components/chat/scroll-to-bottom-button";
-import type { Message } from "@renderer/components/chat/types";
+import type { Message } from "@renderer/components/chat/message-item/types";
 import { useMessageInput } from "@renderer/hooks/use-message-input";
 import { useRef, useState } from "react";
 import type { ChangeEvent, FC, FormEvent } from "react";
