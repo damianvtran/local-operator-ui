@@ -3,6 +3,7 @@ import { type FC, memo, useCallback, useMemo } from "react";
 import { createLocalOperatorClient } from "../../../api/local-operator";
 import { apiConfig } from "../../../config";
 import { ActionHighlight } from "./action-highlight";
+import { SecurityCheckHighlight } from "./security-check-highlight";
 import { CodeBlock } from "./code-block";
 import { CollapsibleMessage } from "./collapsible-message";
 import { ErrorBlock } from "./error-block";
@@ -86,6 +87,7 @@ export const MessageItem: FC<MessageItemProps> = memo(
 	({ message }) => {
 		const isUser = message.role === "user";
 		const isAction = message.execution_type === "action";
+		const isSecurityCheck = message.execution_type === "security_check";
 		const isPlanOrReflection =
 			message.execution_type === "plan" ||
 			message.execution_type === "reflection";
@@ -143,101 +145,199 @@ export const MessageItem: FC<MessageItemProps> = memo(
 			<MessageContainer isUser={isUser}>
 				<MessageAvatar isUser={isUser} />
 
-				<ActionHighlight action={message.action || "CODE"} isUser={isUser}>
-					<MessagePaper isUser={isUser}>
-						{/* Render image attachments if any */}
-						{message.files && message.files.length > 0 && (
-							<Box sx={{ mb: 2 }}>
-								{message.files
-									.filter((file) => isImage(file))
-									.map((file) => (
-										<ImageAttachment
-											key={`${message.id}-${file}`}
-											file={file}
-											src={getUrl(file)}
-											onClick={handleFileClick}
-										/>
-									))}
-							</Box>
-						)}
+				{isSecurityCheck ? (
+					<SecurityCheckHighlight isUser={isUser}>
+						<MessagePaper isUser={isUser}>
+							{/* Render image attachments if any */}
+							{message.files && message.files.length > 0 && (
+								<Box sx={{ mb: 2 }}>
+									{message.files
+										.filter((file) => isImage(file))
+										.map((file) => (
+											<ImageAttachment
+												key={`${message.id}-${file}`}
+												file={file}
+												src={getUrl(file)}
+												onClick={handleFileClick}
+											/>
+										))}
+								</Box>
+							)}
 
-						{/* Always render message content with markdown support */}
-						{message.message && (
-							<MessageContent content={message.message} isUser={isUser} />
-						)}
+							{/* Always render message content with markdown support */}
+							{message.message && (
+								<MessageContent content={message.message} isUser={isUser} />
+							)}
 
-						{/* Determine if we have any collapsible content */}
-						{(() => {
-							const hasCollapsibleContent =
-								isAction &&
-								(message.code ||
-									message.stdout ||
-									message.stderr ||
-									message.logging);
+							{/* Determine if we have any collapsible content */}
+							{(() => {
+								const hasCollapsibleContent =
+									isSecurityCheck &&
+									(message.code ||
+										message.stdout ||
+										message.stderr ||
+										message.logging);
 
-							// Content to be rendered inside the collapsible section
-							const contentBlocks = (
-								<>
-									{/* Render code with syntax highlighting */}
-									{message.code && (
-										<CodeBlock code={message.code} isUser={isUser} />
-									)}
+								// Content to be rendered inside the collapsible section
+								const contentBlocks = (
+									<>
+										{/* Render code with syntax highlighting */}
+										{message.code && (
+											<CodeBlock code={message.code} isUser={isUser} />
+										)}
 
-									{/* Render stdout */}
-									{message.stdout && (
-										<OutputBlock output={message.stdout} isUser={isUser} />
-									)}
+										{/* Render stdout */}
+										{message.stdout && (
+											<OutputBlock output={message.stdout} isUser={isUser} />
+										)}
 
-									{/* Render stderr */}
-									{message.stderr && (
-										<ErrorBlock error={message.stderr} isUser={isUser} />
-									)}
+										{/* Render stderr */}
+										{message.stderr && (
+											<ErrorBlock error={message.stderr} isUser={isUser} />
+										)}
 
-									{/* Render logging */}
-									{message.logging && (
-										<LogBlock log={message.logging} isUser={isUser} />
-									)}
-								</>
-							);
-
-							// If it's an action type with collapsible content, wrap in CollapsibleMessage
-							if (hasCollapsibleContent) {
-								return (
-									<CollapsibleMessage
-										defaultCollapsed={true}
-										hasContent={hasCollapsibleContent}
-									>
-										{contentBlocks}
-									</CollapsibleMessage>
+										{/* Render logging */}
+										{message.logging && (
+											<LogBlock log={message.logging} isUser={isUser} />
+										)}
+									</>
 								);
-							}
 
-							// Otherwise, render content normally
-							return contentBlocks;
-						})()}
+								// If it's a security check with collapsible content, wrap in CollapsibleMessage
+								if (hasCollapsibleContent) {
+									return (
+										<CollapsibleMessage
+											defaultCollapsed={true}
+											hasContent={hasCollapsibleContent}
+										>
+											{contentBlocks}
+										</CollapsibleMessage>
+									);
+								}
 
-						{/* Status indicator if present */}
-						{message.status && <StatusIndicator status={message.status} />}
+								// Otherwise, render content normally
+								return contentBlocks;
+							})()}
 
-						{/* Render non-image file attachments if any */}
-						{message.files && message.files.length > 0 && (
-							<Box sx={{ mt: 2 }}>
-								{message.files
-									.filter((file) => !isImage(file))
-									.map((file) => (
-										<FileAttachment
-											key={`${message.id}-${file}`}
-											file={file}
-											onClick={handleFileClick}
-										/>
-									))}
-							</Box>
-						)}
+							{/* Status indicator if present */}
+							{message.status && <StatusIndicator status={message.status} />}
 
-						{/* Message timestamp */}
-						<MessageTimestamp timestamp={message.timestamp} isUser={isUser} />
-					</MessagePaper>
-				</ActionHighlight>
+							{/* Render non-image file attachments if any */}
+							{message.files && message.files.length > 0 && (
+								<Box sx={{ mt: 2 }}>
+									{message.files
+										.filter((file) => !isImage(file))
+										.map((file) => (
+											<FileAttachment
+												key={`${message.id}-${file}`}
+												file={file}
+												onClick={handleFileClick}
+											/>
+										))}
+								</Box>
+							)}
+
+							{/* Message timestamp */}
+							<MessageTimestamp timestamp={message.timestamp} isUser={isUser} />
+						</MessagePaper>
+					</SecurityCheckHighlight>
+				) : (
+					<ActionHighlight action={message.action || "CODE"} isUser={isUser}>
+						<MessagePaper isUser={isUser}>
+							{/* Render image attachments if any */}
+							{message.files && message.files.length > 0 && (
+								<Box sx={{ mb: 2 }}>
+									{message.files
+										.filter((file) => isImage(file))
+										.map((file) => (
+											<ImageAttachment
+												key={`${message.id}-${file}`}
+												file={file}
+												src={getUrl(file)}
+												onClick={handleFileClick}
+											/>
+										))}
+								</Box>
+							)}
+
+							{/* Always render message content with markdown support */}
+							{message.message && (
+								<MessageContent content={message.message} isUser={isUser} />
+							)}
+
+							{/* Determine if we have any collapsible content */}
+							{(() => {
+								const hasCollapsibleContent =
+									isAction &&
+									(message.code ||
+										message.stdout ||
+										message.stderr ||
+										message.logging);
+
+								// Content to be rendered inside the collapsible section
+								const contentBlocks = (
+									<>
+										{/* Render code with syntax highlighting */}
+										{message.code && (
+											<CodeBlock code={message.code} isUser={isUser} />
+										)}
+
+										{/* Render stdout */}
+										{message.stdout && (
+											<OutputBlock output={message.stdout} isUser={isUser} />
+										)}
+
+										{/* Render stderr */}
+										{message.stderr && (
+											<ErrorBlock error={message.stderr} isUser={isUser} />
+										)}
+
+										{/* Render logging */}
+										{message.logging && (
+											<LogBlock log={message.logging} isUser={isUser} />
+										)}
+									</>
+								);
+
+								// If it's an action type with collapsible content, wrap in CollapsibleMessage
+								if (hasCollapsibleContent) {
+									return (
+										<CollapsibleMessage
+											defaultCollapsed={true}
+											hasContent={hasCollapsibleContent}
+										>
+											{contentBlocks}
+										</CollapsibleMessage>
+									);
+								}
+
+								// Otherwise, render content normally
+								return contentBlocks;
+							})()}
+
+							{/* Status indicator if present */}
+							{message.status && <StatusIndicator status={message.status} />}
+
+							{/* Render non-image file attachments if any */}
+							{message.files && message.files.length > 0 && (
+								<Box sx={{ mt: 2 }}>
+									{message.files
+										.filter((file) => !isImage(file))
+										.map((file) => (
+											<FileAttachment
+												key={`${message.id}-${file}`}
+												file={file}
+												onClick={handleFileClick}
+											/>
+										))}
+								</Box>
+							)}
+
+							{/* Message timestamp */}
+							<MessageTimestamp timestamp={message.timestamp} isUser={isUser} />
+						</MessagePaper>
+					</ActionHighlight>
+				)}
 			</MessageContainer>
 		);
 	},
