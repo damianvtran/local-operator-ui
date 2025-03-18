@@ -2,7 +2,7 @@ import { faCommentDots } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, CircularProgress, Typography, styled } from "@mui/material";
 import type { JobStatus } from "@renderer/api/local-operator/types";
-import type { Message } from "@renderer/components/chat/message-item/types";
+import type { Message } from "@renderer/components/chat/types";
 import type { FC, RefObject } from "react";
 import { LoadingIndicator } from "./loading-indicator";
 import { MessageItem } from "./message-item";

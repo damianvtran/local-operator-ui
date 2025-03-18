@@ -2,16 +2,7 @@ import type {
 	ActionType,
 	ExecutionType,
 } from "@renderer/api/local-operator/types";
-import type { Message as BaseMessage } from "../types";
-
-/**
- * Extended Message type that includes action and execution_type fields
- * from the AgentExecutionRecord
- */
-export type Message = BaseMessage & {
-	action?: ActionType;
-	execution_type?: ExecutionType;
-};
+import type { Message } from "../types";
 
 /**
  * Props for the MessageItem component
@@ -52,6 +43,7 @@ export type PlanReflectionBlockProps = {
 export type ActionHighlightProps = {
 	children: React.ReactNode;
 	action: ActionType;
+	taskClassification: string;
 	isUser: boolean;
 };
 

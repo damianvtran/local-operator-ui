@@ -242,7 +242,11 @@ export const MessageItem: FC<MessageItemProps> = memo(
 						</MessagePaper>
 					</SecurityCheckHighlight>
 				) : (
-					<ActionHighlight action={message.action || "CODE"} isUser={isUser}>
+					<ActionHighlight
+						action={message.action || "CODE"}
+						taskClassification={message.task_classification || ""}
+						isUser={isUser}
+					>
 						<MessagePaper isUser={isUser}>
 							{/* Render image attachments if any */}
 							{message.files && message.files.length > 0 && (
