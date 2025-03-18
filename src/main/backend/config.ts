@@ -12,7 +12,10 @@ import { z } from "zod";
 import { LogFileType, logger } from "./logger";
 
 // Load environment variables from .env file
-const envResult = dotenvConfig({ path: join(process.cwd(), ".env") });
+const envResult = dotenvConfig({
+	path: join(process.cwd(), ".env"),
+	override: true,
+});
 
 if (envResult.error) {
 	logger.warn(
@@ -31,7 +34,7 @@ const envSchema = z.object({
 		.string()
 		.url("API URL must be a valid URL")
 		.optional()
-		.default("http://localhost:1111"),
+		.default("http://127.0.0.1:1111"),
 
 	// Backend service manager configuration
 	VITE_DISABLE_BACKEND_MANAGER: z

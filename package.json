@@ -1,6 +1,6 @@
 {
 	"name": "local-operator-ui",
-	"version": "0.1.2-beta.6",
+	"version": "0.1.2",
 	"productName": "Local Operator",
 	"description": "User interface for the Local Operator agent environment",
 	"main": "./out/main/index.js",
@@ -54,10 +54,10 @@
 		"check-types": "tsc --noEmit",
 		"pack": "yarn build && electron-builder --dir",
 		"dist": "yarn build && electron-builder",
-		"dist:mac": "yarn build && electron-builder --mac",
-		"dist:win": "yarn build && electron-builder --win",
-		"dist:linux": "yarn build && electron-builder --linux",
-		"dist:all": "yarn build && electron-builder -mwl",
+		"dist:mac": "yarn build && electron-builder --mac --publish never",
+		"dist:win": "yarn build && electron-builder --win --publish never",
+		"dist:linux": "yarn build && electron-builder --linux --publish never",
+		"dist:all": "yarn build && electron-builder -mwl --publish never",
 		"release": "yarn build && electron-builder --publish always",
 		"generate-icons": "node scripts/generate-icons.js",
 		"setup-python": "./scripts/setup-python-resource.sh",
@@ -81,6 +81,7 @@
 		"electron-debug": "^3.2.0",
 		"electron-log": "^4.4.8",
 		"electron-updater": "^6.1.4",
+		"html-react-parser": "^5.2.2",
 		"react": "^18.3.1",
 		"react-dom": "^18.3.1",
 		"react-error-boundary": "^5.0.0",
@@ -162,7 +163,7 @@
 			"gatekeeperAssess": false,
 			"entitlements": "build/entitlements.mac.plist",
 			"entitlementsInherit": "build/entitlements.mac.plist",
-			"target": ["dmg"],
+			"target": ["dmg", "zip"],
 			"artifactName": "${name}-${version}-${arch}.${ext}"
 		},
 		"dmg": {
@@ -215,7 +216,14 @@
 				"Categories": "Development;Utility"
 			}
 		},
-		"publish": null
+		"publish": {
+			"provider": "github",
+			"owner": "damianvtran",
+			"repo": "local-operator-ui",
+			"private": false,
+			"releaseType": "release"
+		},
+		"generateUpdatesFilesForAllChannels": true
 	},
 	"eslintConfig": {
 		"extends": ["plugin:storybook/recommended"]

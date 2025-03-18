@@ -1,12 +1,16 @@
 /**
  * Hook for fetching system prompt from the Local Operator API
+ *
+ * This hook is gated by connectivity checks to ensure the server is online
+ * and the user has internet connectivity if required by the hosting provider.
  */
 
 import { createLocalOperatorClient } from "@renderer/api/local-operator";
 import type { SystemPromptResponse } from "@renderer/api/local-operator/types";
 import { apiConfig } from "@renderer/config";
+import { showErrorToast } from "@renderer/utils/toast-manager";
 import { useQuery } from "@tanstack/react-query";
-import { toast } from "react-toastify";
+import { useConnectivityGate } from "./use-connectivity-gate";
 
 /**
  * Query key for system prompt
@@ -19,7 +23,13 @@ export const systemPromptQueryKey = ["system-prompt"];
  * @returns Query result with system prompt data, loading state, error state, and refetch function
  */
 export const useSystemPrompt = () => {
+	// Use the connectivity gate to check if the query should be enabled
+	// Bypass internet check for system prompt queries as they only need local server connectivity
+	const { shouldEnableQuery } = useConnectivityGate();
+
 	return useQuery({
+		// Only enable the query if server is online (bypass internet check)
+		enabled: shouldEnableQuery({ bypassInternetCheck: true }),
 		queryKey: systemPromptQueryKey,
 		queryFn: async (): Promise<SystemPromptResponse | null> => {
 			try {
@@ -43,7 +53,7 @@ export const useSystemPrompt = () => {
 						? error.message
 						: "An unknown error occurred while fetching system prompt";
 
-				toast.error(errorMessage);
+				showErrorToast(errorMessage);
 				throw error;
 			}
 		},

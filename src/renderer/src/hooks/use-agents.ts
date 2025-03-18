@@ -1,12 +1,17 @@
 /**
  * Hook for fetching and managing agents from the Local Operator API
+ *
+ * This hook is gated by connectivity checks to ensure the server is online
+ * and the user has internet connectivity if required by the hosting provider.
  */
 
 import { createLocalOperatorClient } from "@renderer/api/local-operator";
 import type { AgentDetails } from "@renderer/api/local-operator/types";
 import { apiConfig } from "@renderer/config";
+import { showErrorToast } from "@renderer/utils/toast-manager";
 import { useQuery } from "@tanstack/react-query";
-import { toast } from "react-toastify";
+import { useEffect } from "react";
+import { useConnectivityGate } from "./use-connectivity-gate";
 
 /**
  * Query key for agents
@@ -28,7 +33,23 @@ export const useAgents = (
 	refetchInterval = 0,
 	name?: string,
 ) => {
+	// Use the connectivity gate to check if the query should be enabled
+	// Bypass internet check for agent queries as they only need local server connectivity
+	const { shouldEnableQuery, getConnectivityError } = useConnectivityGate();
+
+	// Get the connectivity error if any
+	const connectivityError = getConnectivityError();
+
+	// Log connectivity error if present
+	useEffect(() => {
+		if (connectivityError) {
+			console.error("Agents connectivity error:", connectivityError.message);
+		}
+	}, [connectivityError]);
+
 	return useQuery({
+		// Only enable the query if server is online (bypass internet check)
+		enabled: shouldEnableQuery({ bypassInternetCheck: true }),
 		queryKey: [...agentsQueryKey, page, perPage, name],
 		queryFn: async () => {
 			try {
@@ -47,7 +68,7 @@ export const useAgents = (
 						? error.message
 						: "An unknown error occurred while fetching agents";
 
-				toast.error(errorMessage);
+				showErrorToast(errorMessage);
 				throw error;
 			}
 		},
@@ -69,7 +90,23 @@ export const useAgents = (
  * @returns Query result with agent data, loading state, error state, and refetch function
  */
 export const useAgent = (agentId: string | undefined) => {
+	// Use the connectivity gate to check if the query should be enabled
+	// Bypass internet check for agent queries as they only need local server connectivity
+	const { shouldEnableQuery, getConnectivityError } = useConnectivityGate();
+
+	// Get the connectivity error if any
+	const connectivityError = getConnectivityError();
+
+	// Log connectivity error if present
+	useEffect(() => {
+		if (connectivityError) {
+			console.error("Agent connectivity error:", connectivityError.message);
+		}
+	}, [connectivityError]);
+
 	return useQuery({
+		// Only enable the query if server is online and agentId is provided (bypass internet check)
+		enabled: shouldEnableQuery({ bypassInternetCheck: true }) && !!agentId,
 		queryKey: [...agentsQueryKey, agentId],
 		queryFn: async (): Promise<AgentDetails | null> => {
 			if (!agentId) return null;
@@ -101,12 +138,11 @@ export const useAgent = (agentId: string | undefined) => {
 							? error.message
 							: `An unknown error occurred while fetching agent ${agentId}`;
 
-					toast.error(errorMessage);
+					showErrorToast(errorMessage);
 				}
 
 				throw error;
 			}
 		},
-		enabled: !!agentId,
 	});
 };

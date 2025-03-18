@@ -10,6 +10,7 @@ import {
 } from "electron";
 import icon from "../../resources/icon-180x180-dark.png?asset";
 import { BackendInstaller, BackendServiceManager } from "./backend";
+import { UpdateService } from "./update-service";
 
 // Set application name
 app.setName("Local Operator");
@@ -119,7 +120,7 @@ function createApplicationMenu(): void {
 	Menu.setApplicationMenu(menu);
 }
 
-function createWindow(): void {
+function createWindow(): BrowserWindow {
 	// Create the browser window.
 	const mainWindow = new BrowserWindow({
 		width: 1380,
@@ -153,6 +154,8 @@ function createWindow(): void {
 	} else {
 		mainWindow.loadFile(join(__dirname, "../renderer/index.html"));
 	}
+
+	return mainWindow;
 }
 
 // Initialize backend service manager and installer
@@ -190,6 +193,21 @@ app.whenReady().then(async () => {
 		}
 	});
 
+	// Add IPC handlers for system information
+	ipcMain.handle("get-app-version", () => {
+		return app.getVersion();
+	});
+
+	ipcMain.handle("get-platform-info", () => {
+		return {
+			platform: process.platform,
+			arch: process.arch,
+			nodeVersion: process.versions.node,
+			electronVersion: process.versions.electron,
+			chromeVersion: process.versions.chrome,
+		};
+	});
+
 	// Check if backend manager is disabled via environment variable
 	const isBackendManagerDisabled =
 		process.env.VITE_DISABLE_BACKEND_MANAGER === "true";
@@ -223,7 +241,21 @@ app.whenReady().then(async () => {
 	createApplicationMenu();
 
 	// Create the main window
-	createWindow();
+	const mainWindow = createWindow();
+
+	// Initialize the update service with a reference to the backend service
+	const updateService = new UpdateService(mainWindow, backendService);
+
+	// Set up IPC handlers for the update service
+	updateService.setupIpcHandlers();
+
+	// Handle platform-specific setup for the updater
+	updateService.handlePlatformSpecifics();
+
+	// Check for all updates (UI and backend) after a short delay to ensure the app is fully loaded
+	setTimeout(() => {
+		updateService.checkForAllUpdates(true);
+	}, 3000);
 
 	app.on("activate", () => {
 		// On macOS it's common to re-create a window in the app when the
@@ -252,8 +284,9 @@ app.on("will-quit", async (event) => {
 		event.preventDefault();
 		try {
 			console.log("App is quitting, stopping our backend service...");
-			// Stop the backend service and wait for it to fully terminate
-			await backendService.stop();
+
+			// Use false for isRestart to indicate this is a final shutdown, not a restart
+			await backendService.stop(false);
 			console.log("Backend service successfully stopped");
 
 			// Add an additional targeted cleanup as a failsafe
@@ -261,25 +294,98 @@ app.on("will-quit", async (event) => {
 				"Performing additional cleanup to ensure complete termination",
 			);
 
+			// Use more robust cleanup approach
 			if (process.platform === "win32") {
 				// On Windows, look for processes with "local-operator serve" in the command line
 				try {
+					// First try a more targeted approach with WMIC
 					require("node:child_process").execSync(
 						`wmic process where "commandline like '%local-operator serve%'" call terminate`,
 						{ stdio: "ignore" },
 					);
-				} catch (err) {
-					// Ignore errors, this is a best-effort cleanup
-				}
-			} else {
-				// On Unix systems, look for processes with "local-operator serve" in the command line
-				try {
+
+					// Also try taskkill as a backup
 					require("node:child_process").execSync(
-						`ps aux | grep "local-operator serve" | grep -v grep | awk '{print $2}' | xargs -r kill -15`,
+						`taskkill /f /im "local-operator.exe" /t`,
 						{ stdio: "ignore" },
 					);
 				} catch (err) {
 					// Ignore errors, this is a best-effort cleanup
+					console.log(
+						"Error during Windows process cleanup (may be normal):",
+						err,
+					);
+				}
+			} else {
+				// On Unix systems, look for processes with "local-operator serve" in the command line
+				try {
+					// First try graceful termination
+					require("node:child_process").execSync(
+						'pkill -f "local-operator serve"',
+						{ stdio: "ignore" },
+					);
+
+					// Wait a moment for graceful termination
+					await new Promise((resolve) => setTimeout(resolve, 1000));
+
+					// Then force kill any remaining processes
+					require("node:child_process").execSync(
+						'pkill -9 -f "local-operator serve"',
+						{ stdio: "ignore" },
+					);
+				} catch (err) {
+					// Ignore errors, this is a best-effort cleanup
+					console.log(
+						"Error during Unix process cleanup (may be normal):",
+						err,
+					);
+				}
+			}
+
+			// Verify all processes are terminated
+			let allProcessesTerminated = true;
+			try {
+				if (process.platform === "win32") {
+					const { stdout } = require("node:child_process").execSync(
+						`wmic process where "commandline like '%local-operator serve%'" get processid`,
+						{ encoding: "utf8" },
+					);
+					// If we find any processes, they're not all terminated
+					allProcessesTerminated = !stdout?.trim().includes("ProcessId");
+				} else {
+					const { stdout } = require("node:child_process").execSync(
+						`pgrep -f "local-operator serve" || echo ""`,
+						{ encoding: "utf8" },
+					);
+					// If we find any process IDs, they're not all terminated
+					allProcessesTerminated = !stdout?.trim();
+				}
+			} catch (err) {
+				// If there's an error checking, assume processes are terminated
+				console.log("Error checking for remaining processes:", err);
+				allProcessesTerminated = true;
+			}
+
+			if (!allProcessesTerminated) {
+				console.log(
+					"Some backend processes may still be running, attempting final cleanup",
+				);
+
+				// Final attempt at cleanup
+				try {
+					if (process.platform === "win32") {
+						require("node:child_process").execSync(
+							"taskkill /f /im python.exe /t",
+							{ stdio: "ignore" },
+						);
+					} else {
+						require("node:child_process").execSync("pkill -9 -f python", {
+							stdio: "ignore",
+						});
+					}
+				} catch (finalErr) {
+					// Ignore errors in final cleanup
+					console.log("Error during final cleanup (may be normal):", finalErr);
 				}
 			}
 		} catch (error) {
@@ -295,6 +401,12 @@ app.on("will-quit", async (event) => {
 						`wmic process where "commandline like '%local-operator serve%'" call terminate`,
 						{ stdio: "ignore" },
 					);
+
+					// Also try taskkill as a backup
+					require("node:child_process").execSync(
+						`taskkill /f /im "local-operator.exe" /t`,
+						{ stdio: "ignore" },
+					);
 				} catch (err) {
 					// Ignore errors, this is a best-effort cleanup
 				}
@@ -302,13 +414,13 @@ app.on("will-quit", async (event) => {
 				// On Unix systems, look for processes with "local-operator serve" in the command line
 				try {
 					require("node:child_process").execSync(
-						`ps aux | grep "local-operator serve" | grep -v grep | awk '{print $2}' | xargs -r kill -15`,
+						'pkill -f "local-operator serve"',
 						{ stdio: "ignore" },
 					);
 
 					// Give processes a moment to terminate gracefully before force killing
 					require("node:child_process").execSync(
-						`sleep 1 && ps aux | grep "local-operator serve" | grep -v grep | awk '{print $2}' | xargs -r kill -9`,
+						'sleep 1 && pkill -9 -f "local-operator serve"',
 						{ stdio: "ignore" },
 					);
 				} catch (err) {
@@ -322,7 +434,7 @@ app.on("will-quit", async (event) => {
 			setTimeout(() => {
 				console.log("Forcing app exit");
 				app.exit(0);
-			}, 1000); // Increased timeout to 1 second
+			}, 2000); // Increased timeout to 2 seconds for more reliable termination
 		}
 	} else if (
 		!isBackendManagerDisabled &&

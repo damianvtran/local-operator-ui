@@ -35,6 +35,7 @@ import { PageHeader } from "../common/page-header";
 import { SliderSetting } from "../common/slider-setting";
 import { ToggleSetting } from "../common/toggle-setting";
 import { HostingSelect, ModelSelect } from "../hosting";
+import { AppUpdatesSection } from "./app-updates-section";
 import { Credentials } from "./credentials";
 import { DEFAULT_SETTINGS_SECTIONS, SettingsSidebar } from "./settings-sidebar";
 import { SystemPrompt } from "./system-prompt";
@@ -154,11 +155,13 @@ export const SettingsPage: FC = () => {
 	// Refs for scrolling to sections
 	const generalSectionRef = useRef<HTMLDivElement>(null);
 	const credentialsSectionRef = useRef<HTMLDivElement>(null);
+	const updatesSectionRef = useRef<HTMLDivElement>(null);
 
 	// Map of section IDs to their refs - memoized to avoid recreation on each render
 	const sectionRefs = useRef<Record<string, RefObject<HTMLDivElement>>>({
 		general: generalSectionRef,
 		credentials: credentialsSectionRef,
+		updates: updatesSectionRef,
 	}).current;
 
 	// Handle section selection
@@ -542,6 +545,8 @@ export const SettingsPage: FC = () => {
 										</Grid>
 									</StyledCardContent>
 								</StyledCard>
+
+								{/* Application Updates - Moved to its own section */}
 							</Grid>
 						</Grid>
 					</Box>
@@ -562,6 +567,11 @@ export const SettingsPage: FC = () => {
 							Manage your API keys for various services and integrations
 						</Typography>
 						<Credentials />
+					</Box>
+
+					{/* App Updates Section */}
+					<Box ref={updatesSectionRef}>
+						<AppUpdatesSection />
 					</Box>
 				</StyledContainer>
 			</ContentContainer>

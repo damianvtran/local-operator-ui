@@ -1,6 +1,9 @@
 /**
  * Hook for fetching and managing conversation messages with pagination
  * Optimized for performance with virtualization and better scroll handling
+ *
+ * This hook is gated by connectivity checks to ensure the server is online
+ * and the user has internet connectivity if required by the hosting provider.
  */
 
 import { createLocalOperatorClient } from "@renderer/api/local-operator";
@@ -8,9 +11,10 @@ import type { AgentExecutionRecord } from "@renderer/api/local-operator/types";
 import type { Message } from "@renderer/components/chat/types";
 import { apiConfig } from "@renderer/config";
 import { useChatStore } from "@renderer/store/chat-store";
+import { showErrorToast } from "@renderer/utils/toast-manager";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { toast } from "react-toastify";
+import { useConnectivityGate } from "./use-connectivity-gate";
 
 /**
  * Query key for conversation messages
@@ -93,6 +97,22 @@ export const useConversationMessages = (
 		getScrollPosition,
 	} = useChatStore();
 
+	// Use the connectivity gate to check if the query should be enabled
+	const { shouldEnableQuery, getConnectivityError } = useConnectivityGate();
+
+	// Get the connectivity error if any
+	const connectivityError = getConnectivityError();
+
+	// Log connectivity error if present
+	useEffect(() => {
+		if (connectivityError) {
+			console.error(
+				"Conversation messages connectivity error:",
+				connectivityError.message,
+			);
+		}
+	}, [connectivityError]);
+
 	// Infinite query for fetching messages with pagination
 	const {
 		data,
@@ -104,6 +124,9 @@ export const useConversationMessages = (
 		error,
 		refetch,
 	} = useInfiniteQuery<PaginatedMessagesResponse, Error>({
+		// Only enable the query if server is online (bypass internet check)
+		enabled:
+			shouldEnableQuery({ bypassInternetCheck: true }) && !!conversationId,
 		queryKey: [...conversationMessagesQueryKey, conversationId],
 		queryFn: async ({ pageParam }) => {
 			try {
@@ -170,7 +193,7 @@ export const useConversationMessages = (
 						? error.message
 						: "An unknown error occurred while fetching conversation messages";
 
-				toast.error(errorMessage);
+				showErrorToast(errorMessage);
 				throw error;
 			}
 		},
@@ -179,8 +202,6 @@ export const useConversationMessages = (
 			if (!lastPage.hasMore) return undefined;
 			return lastPage.page + 1;
 		},
-		// Only enable the query if we have a conversation ID
-		enabled: !!conversationId,
 	});
 
 	// Optimized scroll handler with debouncing to reduce performance impact

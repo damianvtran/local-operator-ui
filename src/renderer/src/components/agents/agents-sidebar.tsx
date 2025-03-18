@@ -95,7 +95,8 @@ const AgentAvatar = styled(Avatar)(({ theme }) => ({
 	color: theme.palette.primary.main,
 }));
 
-const CreationDateText = styled(Typography)({
+// Use a span wrapper to avoid nesting <p> inside <p>
+const CreationDateText = styled("span")({
 	display: "flex",
 	alignItems: "center",
 	fontSize: "0.75rem",
@@ -104,9 +105,12 @@ const CreationDateText = styled(Typography)({
 	gap: 4,
 });
 
-const DescriptionText = styled(Typography)({
+// Use a span wrapper to avoid nesting <p> inside <p>
+const DescriptionText = styled("span")({
 	maxWidth: "100%",
 	fontSize: "0.75rem",
+	display: "block",
+	color: "text.secondary",
 });
 
 /**
