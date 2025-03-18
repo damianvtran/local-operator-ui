@@ -100,14 +100,32 @@ export const PlanReflectionBlock: FC<PlanReflectionBlockProps> = ({
 					<BlockTitle variant="subtitle2">{getTitle()}</BlockTitle>
 					{!isExpanded && (
 						<BlockContent>
-							<MarkdownRenderer content={content} />
+							<MarkdownRenderer
+								content={content}
+								styleProps={{
+									fontSize: "0.85rem",
+									lineHeight: 1.5,
+									paragraphSpacing: "4px",
+									headingScale: 0.9,
+									codeSize: "0.85em",
+								}}
+							/>
 						</BlockContent>
 					)}
 				</Box>
 			</BlockHeader>
 			<Collapse in={isExpanded} timeout="auto">
 				<ExpandedContent>
-					<MarkdownRenderer content={content} />
+					<MarkdownRenderer
+						content={content}
+						styleProps={{
+							fontSize: "0.85rem",
+							lineHeight: 1.5,
+							paragraphSpacing: "4px",
+							headingScale: 0.9,
+							codeSize: "0.85em",
+						}}
+					/>
 				</ExpandedContent>
 			</Collapse>
 		</BlockContainer>
