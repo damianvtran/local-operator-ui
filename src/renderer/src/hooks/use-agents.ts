@@ -10,7 +10,7 @@ import type { AgentDetails } from "@renderer/api/local-operator/types";
 import { apiConfig } from "@renderer/config";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
-import { toast } from "react-toastify";
+import { showErrorToast } from "@renderer/utils/toast-manager";
 import { useConnectivityGate } from "./use-connectivity-gate";
 
 /**
@@ -68,7 +68,7 @@ export const useAgents = (
 						? error.message
 						: "An unknown error occurred while fetching agents";
 
-				toast.error(errorMessage);
+				showErrorToast(errorMessage);
 				throw error;
 			}
 		},
@@ -138,7 +138,7 @@ export const useAgent = (agentId: string | undefined) => {
 							? error.message
 							: `An unknown error occurred while fetching agent ${agentId}`;
 
-					toast.error(errorMessage);
+					showErrorToast(errorMessage);
 				}
 
 				throw error;

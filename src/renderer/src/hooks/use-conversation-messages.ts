@@ -13,7 +13,7 @@ import { apiConfig } from "@renderer/config";
 import { useChatStore } from "@renderer/store/chat-store";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { toast } from "react-toastify";
+import { showErrorToast } from "@renderer/utils/toast-manager";
 import { useConnectivityGate } from "./use-connectivity-gate";
 
 /**
@@ -193,7 +193,7 @@ export const useConversationMessages = (
 						? error.message
 						: "An unknown error occurred while fetching conversation messages";
 
-				toast.error(errorMessage);
+				showErrorToast(errorMessage);
 				throw error;
 			}
 		},
