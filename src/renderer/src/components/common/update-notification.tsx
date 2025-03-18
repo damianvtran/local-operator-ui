@@ -311,7 +311,7 @@ export const UpdateNotification = ({
 				</Typography>
 				<Typography variant="body1">
 					{updatingBackend
-						? "Please wait while the server is being updated..."
+						? "Please wait while the server is being updated.  The server will temporarily go offline while it restarts to apply the update."
 						: "Please wait while we check for available updates..."}
 				</Typography>
 				<ProgressContainer>
