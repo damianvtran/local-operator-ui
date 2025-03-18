@@ -1,7 +1,6 @@
 import { Box, Typography } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import type { FC } from "react";
-import { CollapsibleSection } from "./collapsible-section";
 import type { ErrorBlockProps } from "./types";
 
 const CodeContainer = styled(Box)({
@@ -40,31 +39,14 @@ const ErrorContainer = styled(Box, {
 
 /**
  * Component for displaying error messages
- * Can be collapsible for action type executions
  */
-export const ErrorBlock: FC<ErrorBlockProps> = ({
-	error,
-	isUser,
-	isAction = false,
-}) => {
+export const ErrorBlock: FC<ErrorBlockProps> = ({ error, isUser }) => {
 	if (!error || error === "[No error output]") return null;
 
-	const errorContent = <ErrorContainer isUser={isUser}>{error}</ErrorContainer>;
-
-	// If it's an action type execution, make it collapsible
-	if (isAction) {
-		return (
-			<CollapsibleSection title="Error" defaultCollapsed={true} isUser={isUser}>
-				{errorContent}
-			</CollapsibleSection>
-		);
-	}
-
-	// Otherwise, render normally
 	return (
 		<CodeContainer>
 			<SectionLabel variant="caption">Error</SectionLabel>
-			{errorContent}
+			<ErrorContainer isUser={isUser}>{error}</ErrorContainer>
 		</CodeContainer>
 	);
 };

@@ -4,7 +4,6 @@ import type { FC } from "react";
 import SyntaxHighlighter from "react-syntax-highlighter";
 import { atomOneDark } from "react-syntax-highlighter/dist/esm/styles/hljs";
 import { createGlobalStyle } from "styled-components";
-import { CollapsibleSection } from "./collapsible-section";
 import type { CodeBlockProps } from "./types";
 
 const CodeContainer = styled(Box)({
@@ -27,17 +26,13 @@ const SyntaxHighlighterStyles = createGlobalStyle`
 
 /**
  * Component for displaying code with syntax highlighting
- * Can be collapsible for action type executions
  */
-export const CodeBlock: FC<CodeBlockProps> = ({
-	code,
-	isUser,
-	isAction = false,
-}) => {
+export const CodeBlock: FC<CodeBlockProps> = ({ code }) => {
 	if (!code) return null;
 
-	const codeContent = (
-		<>
+	return (
+		<CodeContainer>
+			<SectionLabel variant="caption">Code</SectionLabel>
 			<SyntaxHighlighterStyles />
 			<SyntaxHighlighter
 				language="python"
@@ -60,23 +55,6 @@ export const CodeBlock: FC<CodeBlockProps> = ({
 			>
 				{code}
 			</SyntaxHighlighter>
-		</>
-	);
-
-	// If it's an action type execution, make it collapsible
-	if (isAction) {
-		return (
-			<CollapsibleSection title="Code" defaultCollapsed={true} isUser={isUser}>
-				{codeContent}
-			</CollapsibleSection>
-		);
-	}
-
-	// Otherwise, render normally
-	return (
-		<CodeContainer>
-			<SectionLabel variant="caption">Code</SectionLabel>
-			{codeContent}
 		</CodeContainer>
 	);
 };

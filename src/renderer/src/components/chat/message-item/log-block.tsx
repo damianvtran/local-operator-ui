@@ -1,7 +1,6 @@
 import { Box, Typography } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import type { FC } from "react";
-import { CollapsibleSection } from "./collapsible-section";
 import type { LogBlockProps } from "./types";
 
 const CodeContainer = styled(Box)({
@@ -40,31 +39,14 @@ const LogContainer = styled(Box, {
 
 /**
  * Component for displaying log messages
- * Can be collapsible for action type executions
  */
-export const LogBlock: FC<LogBlockProps> = ({
-	log,
-	isUser,
-	isAction = false,
-}) => {
+export const LogBlock: FC<LogBlockProps> = ({ log, isUser }) => {
 	if (!log || log === "[No logger output]") return null;
 
-	const logContent = <LogContainer isUser={isUser}>{log}</LogContainer>;
-
-	// If it's an action type execution, make it collapsible
-	if (isAction) {
-		return (
-			<CollapsibleSection title="Logs" defaultCollapsed={true} isUser={isUser}>
-				{logContent}
-			</CollapsibleSection>
-		);
-	}
-
-	// Otherwise, render normally
 	return (
 		<CodeContainer>
 			<SectionLabel variant="caption">Logs</SectionLabel>
-			{logContent}
+			<LogContainer isUser={isUser}>{log}</LogContainer>
 		</CodeContainer>
 	);
 };

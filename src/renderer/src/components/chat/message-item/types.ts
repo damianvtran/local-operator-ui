@@ -84,7 +84,6 @@ export type MessageContentProps = {
 export type CodeBlockProps = {
 	code: string;
 	isUser: boolean;
-	isAction?: boolean;
 };
 
 /**
@@ -93,7 +92,6 @@ export type CodeBlockProps = {
 export type OutputBlockProps = {
 	output: string;
 	isUser: boolean;
-	isAction?: boolean;
 };
 
 /**
@@ -102,7 +100,6 @@ export type OutputBlockProps = {
 export type ErrorBlockProps = {
 	error: string;
 	isUser: boolean;
-	isAction?: boolean;
 };
 
 /**
@@ -111,7 +108,6 @@ export type ErrorBlockProps = {
 export type LogBlockProps = {
 	log: string;
 	isUser: boolean;
-	isAction?: boolean;
 };
 
 /**

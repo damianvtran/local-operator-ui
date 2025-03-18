@@ -13,6 +13,7 @@ const HighlightContainer = styled(Box, {
 	borderRadius: "8px",
 	marginBottom: "16px",
 	boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+	width: "100%",
 	border: `1px solid ${
 		action === "DONE" ? "rgba(76, 175, 80, 0.5)" : "rgba(33, 150, 243, 0.5)"
 	}`,
@@ -64,7 +65,7 @@ export const ActionHighlight: FC<ActionHighlightProps> = ({
 					icon={action === "DONE" ? faCheck : faQuestion}
 					size="xs"
 				/>
-				{action === "DONE" ? "COMPLETED" : "QUESTION"}
+				{action === "DONE" ? "RESPONSE" : "QUESTION"}
 			</ActionBadge>
 			{children}
 		</HighlightContainer>
