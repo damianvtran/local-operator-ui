@@ -306,8 +306,25 @@ export class UpdateService {
 		// When there's an error with the update
 		autoUpdater.on("error", (err) => {
 			logger.error("Update error:", LogFileType.UPDATE_SERVICE, err);
-			if (this.mainWindow) {
-				this.mainWindow.webContents.send("update-error", err.message);
+
+			// Check if the error should be filtered based on our requirements
+			const shouldFilter = this.shouldFilterUpdateError(err);
+
+			if (shouldFilter) {
+				logger.info(
+					"Error filtering result: Reporting as no updates available",
+				);
+				// Send update-not-available instead of the error
+				if (this.mainWindow) {
+					this.mainWindow.webContents.send("update-not-available", {
+						version: app.getVersion(),
+					});
+				}
+			} else {
+				// Only send the error to the renderer if it shouldn't be filtered
+				if (this.mainWindow) {
+					this.mainWindow.webContents.send("update-error", err.message);
+				}
 			}
 		});
 
@@ -352,6 +369,28 @@ export class UpdateService {
 					LogFileType.UPDATE_SERVICE,
 					error,
 				);
+
+				// Apply the same error filtering logic here as in the autoUpdater error event
+				const shouldFilter = this.shouldFilterUpdateError(error as Error);
+
+				if (shouldFilter) {
+					logger.info(
+						"Error filtering result in IPC handler: Reporting as no updates available",
+						LogFileType.UPDATE_SERVICE,
+					);
+					// Return a "no update available" result instead of throwing the error
+					return {
+						updateInfo: {
+							version: app.getVersion(),
+						},
+						versionInfo: {
+							version: app.getVersion(),
+						},
+						cancellationToken: null,
+					};
+				}
+
+				// Only throw the error if it shouldn't be filtered
 				throw error;
 			}
 		});
@@ -388,6 +427,27 @@ export class UpdateService {
 					LogFileType.UPDATE_SERVICE,
 					error,
 				);
+
+				// Apply the same error filtering logic here
+				const shouldFilter = this.shouldFilterUpdateError(error as Error);
+
+				if (shouldFilter) {
+					logger.info(
+						"Error filtering result in check-for-all-updates: Reporting as no updates available",
+						LogFileType.UPDATE_SERVICE,
+					);
+					// Return a "no update available" result instead of throwing the error
+					return {
+						updateInfo: {
+							version: app.getVersion(),
+						},
+						versionInfo: {
+							version: app.getVersion(),
+						},
+						cancellationToken: null,
+					};
+				}
+
 				throw error;
 			}
 		});
@@ -418,6 +478,27 @@ export class UpdateService {
 					LogFileType.UPDATE_SERVICE,
 					error,
 				);
+
+				// Apply the same error filtering logic here
+				const shouldFilter = this.shouldFilterUpdateError(error as Error);
+
+				if (shouldFilter) {
+					logger.info(
+						"Error filtering result in download-update: Reporting as no updates available",
+						LogFileType.UPDATE_SERVICE,
+					);
+					// Return a "no update available" result instead of throwing the error
+					if (this.mainWindow) {
+						this.mainWindow.webContents.send("update-not-available", {
+							version: app.getVersion(),
+						});
+					}
+					// Return a minimal result to avoid breaking the promise chain
+					return {
+						cancellationToken: null,
+					};
+				}
+
 				throw error;
 			}
 		});
@@ -1269,6 +1350,66 @@ export class UpdateService {
 			);
 			return false;
 		}
+	}
+
+	/**
+	 * Determines if an update error should be filtered (not shown to the user)
+	 * @param err The error object from autoUpdater
+	 * @returns True if the error should be filtered, false if it should be shown to the user
+	 */
+	private shouldFilterUpdateError(err: Error): boolean {
+		const errorMessage = err.message || "";
+		logger.info(
+			`Checking if error should be filtered: ${errorMessage}`,
+			LogFileType.UPDATE_SERVICE,
+		);
+
+		// Filter errors related to missing latest*.yml files
+		if (
+			(errorMessage.includes("latest") && errorMessage.includes(".yml")) ||
+			errorMessage.includes("Cannot find latest-mac.yml")
+		) {
+			logger.info(
+				"Filtering error: Missing latest*.yml file",
+				LogFileType.UPDATE_SERVICE,
+			);
+			return true;
+		}
+
+		// Filter errors related to GitHub releases that don't exist or aren't ready
+		if (
+			errorMessage.includes("GitHub") &&
+			(errorMessage.includes("release") || errorMessage.includes("tag"))
+		) {
+			logger.info(
+				"Filtering error: GitHub release issue",
+				LogFileType.UPDATE_SERVICE,
+			);
+			return true;
+		}
+
+		// Filter errors related to beta versions
+		if (
+			errorMessage.includes("beta") ||
+			errorMessage.match(/v\d+\.\d+\.\d+\.beta\.\d+/)
+		) {
+			logger.info("Filtering error: Beta version", LogFileType.UPDATE_SERVICE);
+			return true;
+		}
+
+		// Filter network errors that might be temporary
+		if (
+			errorMessage.includes("ENOTFOUND") ||
+			errorMessage.includes("ETIMEDOUT") ||
+			errorMessage.includes("ECONNREFUSED") ||
+			errorMessage.includes("HttpError: 404")
+		) {
+			logger.info("Filtering error: Network issue", LogFileType.UPDATE_SERVICE);
+			return true;
+		}
+
+		// Don't filter other errors
+		return false;
 	}
 
 	/**

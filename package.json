@@ -47,7 +47,7 @@
 		"build": "electron-vite build",
 		"postbuild": "chmod +x ./bin/local-operator-ui.js",
 		"lint": "npx @biomejs/biome check src",
-		"lint:fix": "npx @biomejs/biome check --apply src",
+		"lint:fix": "npx @biomejs/biome check --write src",
 		"format": "npx @biomejs/biome format src",
 		"format:fix": "npx @biomejs/biome format --write src",
 		"prepublishOnly": "npm run build",
