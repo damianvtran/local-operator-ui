@@ -3,11 +3,15 @@
  *
  * This hook provides access to model providers and models data from the API.
  * It handles fetching, caching, and automatic refreshing of the data.
+ *
+ * This hook is gated by connectivity checks to ensure the server is online
+ * and the user has internet connectivity if required by the hosting provider.
  */
 
 import { apiConfig } from "@renderer/config";
 import { useModelsStore } from "@renderer/store/models-store";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
+import { useConnectivityGate } from "./use-connectivity-gate";
 
 /**
  * Hook for accessing model providers and models
@@ -18,6 +22,12 @@ import { useEffect } from "react";
  */
 export const useModels = ({ autoFetch = true } = {}) => {
 	const baseUrl = apiConfig.baseUrl;
+	const intervalRef = useRef<number | null>(null);
+
+	// Use the connectivity gate to check if we should fetch models
+	// Bypass internet check for model queries as they only need local server connectivity
+	const { shouldEnableQuery, getConnectivityError, hasConnectivityIssue } =
+		useConnectivityGate();
 
 	const {
 		providers,
@@ -32,29 +42,59 @@ export const useModels = ({ autoFetch = true } = {}) => {
 
 	// Fetch models on mount and set up refresh interval
 	useEffect(() => {
-		if (autoFetch) {
+		// Clear any existing interval
+		if (intervalRef.current) {
+			clearInterval(intervalRef.current);
+			intervalRef.current = null;
+		}
+
+		if (autoFetch && shouldEnableQuery({ bypassInternetCheck: true })) {
 			// Initial fetch
 			fetchModels(baseUrl);
 
 			// Set up refresh interval
-			const intervalId = setInterval(
+			intervalRef.current = window.setInterval(
 				() => {
-					fetchModels(baseUrl);
+					// Only fetch if server is online (bypass internet check)
+					if (shouldEnableQuery({ bypassInternetCheck: true })) {
+						fetchModels(baseUrl);
+					}
 				},
 				15 * 60 * 1000,
 			); // 15 minutes
 
-			return () => clearInterval(intervalId);
+			return () => {
+				if (intervalRef.current) {
+					clearInterval(intervalRef.current);
+					intervalRef.current = null;
+				}
+			};
 		}
 
 		return undefined;
-	}, [autoFetch, baseUrl, fetchModels]);
+	}, [autoFetch, baseUrl, fetchModels, shouldEnableQuery]);
+
+	// When connectivity is restored, fetch models
+	useEffect(() => {
+		if (!hasConnectivityIssue && autoFetch && isInitialized) {
+			fetchModels(baseUrl);
+		}
+	}, [hasConnectivityIssue, autoFetch, isInitialized, baseUrl, fetchModels]);
 
 	/**
 	 * Force a refresh of the models data
 	 */
 	const refreshModels = async () => {
-		await fetchModels(baseUrl, true);
+		// Only refresh if server is online (bypass internet check)
+		if (shouldEnableQuery({ bypassInternetCheck: true })) {
+			await fetchModels(baseUrl, true);
+		} else {
+			// If connectivity is not available, throw an error
+			const error = getConnectivityError();
+			if (error) {
+				throw error;
+			}
+		}
 	};
 
 	/**

@@ -5,6 +5,20 @@
  * It handles starting, stopping, and monitoring the health of the backend service.
  */
 
+/**
+ * Enum representing the different startup modes for the Local Operator server
+ */
+export enum LocalOperatorStartupMode {
+	/** An existing server was detected, not managed by the backend service */
+	EXISTING_SERVER = "EXISTING_SERVER",
+	/** Server started using globally installed local-operator entrypoint */
+	GLOBAL_INSTALL = "GLOBAL_INSTALL",
+	/** Server started from the virtual environment created with bundled python */
+	APP_BUNDLED_VENV = "APP_BUNDLED_VENV",
+	/** Initial state before server has been started */
+	NOT_STARTED = "NOT_STARTED",
+}
+
 import { type ChildProcess, exec, spawn } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
@@ -25,6 +39,8 @@ export class BackendServiceManager {
 	private isRunning = false;
 	private isExternalBackend = false;
 	private isDisabled = backendConfig.VITE_DISABLE_BACKEND_MANAGER === "true";
+	private startupMode: LocalOperatorStartupMode =
+		LocalOperatorStartupMode.NOT_STARTED;
 	private port: number;
 	private backendUrl: string;
 	private appDataPath = app.getPath("userData");
@@ -439,6 +455,7 @@ export class BackendServiceManager {
 		// First check if an external backend is already running
 		if (await this.checkExistingBackend()) {
 			this.isRunning = true;
+			this.startupMode = LocalOperatorStartupMode.EXISTING_SERVER;
 			this.startHealthCheck();
 			return true;
 		}
@@ -451,6 +468,9 @@ export class BackendServiceManager {
 					"Using globally installed local-operator command",
 					LogFileType.BACKEND,
 				);
+
+				// Set startup mode to global install
+				this.startupMode = LocalOperatorStartupMode.GLOBAL_INSTALL;
 
 				// Run local-operator serve directly
 				const cmd = process.platform === "win32" ? "cmd.exe" : "bash";
@@ -478,6 +498,9 @@ export class BackendServiceManager {
 					"Global local-operator not found, using virtual environment",
 					LogFileType.BACKEND,
 				);
+
+				// Set startup mode to app bundled venv
+				this.startupMode = LocalOperatorStartupMode.APP_BUNDLED_VENV;
 
 				// Platform-specific activation of virtual environment
 				let cmd: string;
@@ -599,9 +622,10 @@ export class BackendServiceManager {
 
 	/**
 	 * Stop the backend service
+	 * @param isRestart - Whether this stop is part of a restart operation
 	 * @returns Promise resolving when the backend has been stopped
 	 */
-	async stop(): Promise<void> {
+	async stop(isRestart = false): Promise<void> {
 		// Stop health check
 		if (this.healthCheckInterval) {
 			clearInterval(this.healthCheckInterval);
@@ -617,7 +641,10 @@ export class BackendServiceManager {
 		}
 
 		if (this.process && this.isRunning) {
-			logger.info("Stopping backend service...", LogFileType.BACKEND);
+			logger.info(
+				`Stopping backend service... (isRestart: ${isRestart})`,
+				LogFileType.BACKEND,
+			);
 
 			// Create a promise that resolves when the process exits
 			// Store this promise so it can be awaited from outside
@@ -647,19 +674,17 @@ export class BackendServiceManager {
 
 			// Gracefully terminate the process
 			try {
+				// Store the process ID before attempting to terminate
+				const pid = this.process.pid;
+
 				if (process.platform === "win32") {
 					// Windows: send CTRL+C signal via taskkill
-					if (this.process.pid) {
+					if (pid) {
 						logger.info(
-							`Terminating Windows process with PID ${this.process.pid}`,
+							`Terminating Windows process with PID ${pid}`,
 							LogFileType.BACKEND,
 						);
-						spawn("taskkill", [
-							"/pid",
-							this.process.pid.toString(),
-							"/f",
-							"/t",
-						]);
+						spawn("taskkill", ["/pid", pid.toString(), "/f", "/t"]);
 					}
 				} else {
 					// Unix: send SIGTERM
@@ -670,52 +695,142 @@ export class BackendServiceManager {
 					this.process.kill("SIGTERM");
 				}
 
+				// Create a variable to store the timeout ID so we can clear it if needed
+				let forceKillTimeoutId: NodeJS.Timeout | null = null;
+
 				// Wait for process to exit with timeout
 				const timeoutPromise = new Promise<void>((resolve) => {
-					setTimeout(() => {
-						if (this.process) {
-							logger.info(
-								"Backend process did not exit in time, force killing",
-								LogFileType.BACKEND,
-							);
-							try {
-								// Force kill the process
-								if (process.platform === "win32" && this.process.pid) {
-									// On Windows, use taskkill with /F for force
-									spawn("taskkill", [
-										"/pid",
-										this.process.pid.toString(),
-										"/f",
-										"/t",
-									]);
-								} else if (this.process) {
-									// On Unix, use SIGKILL
-									this.process.kill("SIGKILL");
-								}
-							} catch (error) {
-								logger.error(
-									"Error force killing process:",
+					forceKillTimeoutId = setTimeout(
+						() => {
+							if (this.process) {
+								logger.info(
+									"Backend process did not exit in time, force killing",
 									LogFileType.BACKEND,
-									error,
 								);
-							}
+								try {
+									// Force kill the process
+									if (process.platform === "win32" && this.process.pid) {
+										// On Windows, use taskkill with /F for force
+										spawn("taskkill", [
+											"/pid",
+											this.process.pid.toString(),
+											"/f",
+											"/t",
+										]);
 
-							// Even if force kill fails, mark process as stopped
-							this.process = null;
-							this.isRunning = false;
+										// Also try to kill any child processes by command line pattern
+										try {
+											execPromise(
+												"wmic process where \"commandline like '%local-operator serve%'\" call terminate",
+											).catch((error) => {
+												logger.warn(
+													"Error terminating processes by command line pattern:",
+													LogFileType.BACKEND,
+													error,
+												);
+											});
+										} catch (wmicError) {
+											logger.warn(
+												"Error executing WMIC command:",
+												LogFileType.BACKEND,
+												wmicError,
+											);
+										}
+									} else if (this.process) {
+										// On Unix, use SIGKILL
+										this.process.kill("SIGKILL");
 
-							// Resolve the exit promise
-							if (this.exitResolve) {
-								this.exitResolve();
-								this.exitResolve = null;
+										// Also try to kill any processes with the same command line pattern
+										try {
+											execPromise('pkill -f "local-operator serve"').catch(
+												(error) => {
+													logger.warn(
+														"Error killing processes by pattern:",
+														LogFileType.BACKEND,
+														error,
+													);
+												},
+											);
+										} catch (pkillError) {
+											logger.warn(
+												"Error executing pkill command:",
+												LogFileType.BACKEND,
+												pkillError,
+											);
+										}
+									}
+								} catch (error) {
+									logger.error(
+										"Error force killing process:",
+										LogFileType.BACKEND,
+										error,
+									);
+								}
+
+								// Even if force kill fails, mark process as stopped
+								this.process = null;
+								this.isRunning = false;
+
+								// Resolve the exit promise
+								if (this.exitResolve) {
+									this.exitResolve();
+									this.exitResolve = null;
+								}
 							}
-						}
-						resolve();
-					}, 5000); // Increased timeout to 5 seconds to give more time for graceful exit
+							resolve();
+						},
+						isRestart ? 10000 : 5000,
+					); // Use longer timeout for restart operations, but not too long
 				});
 
 				// Wait for either the process to exit or the timeout
 				await Promise.race([this.exitPromise, timeoutPromise]);
+
+				// Clear the timeout if it's still active
+				if (forceKillTimeoutId) {
+					clearTimeout(forceKillTimeoutId);
+					forceKillTimeoutId = null;
+				}
+
+				// For final shutdowns (not restarts), perform additional cleanup to ensure all related processes are terminated
+				if (!isRestart) {
+					logger.info(
+						"Performing additional cleanup for final shutdown",
+						LogFileType.BACKEND,
+					);
+
+					try {
+						if (process.platform === "win32") {
+							// On Windows, look for processes with "local-operator serve" in the command line
+							await execPromise(
+								"wmic process where \"commandline like '%local-operator serve%'\" call terminate",
+							).catch(() => {
+								// Ignore errors, this is a best-effort cleanup
+							});
+						} else {
+							// On Unix systems, look for processes with "local-operator serve" in the command line
+							await execPromise('pkill -f "local-operator serve"').catch(() => {
+								// Ignore errors, this is a best-effort cleanup
+							});
+
+							// Give processes a moment to terminate gracefully before force killing
+							await new Promise((resolve) => setTimeout(resolve, 1000));
+
+							// Force kill any remaining processes
+							await execPromise('pkill -9 -f "local-operator serve"').catch(
+								() => {
+									// Ignore errors, this is a best-effort cleanup
+								},
+							);
+						}
+					} catch (cleanupError) {
+						logger.warn(
+							"Error during additional cleanup (this may be normal if processes were already terminated):",
+							LogFileType.BACKEND,
+							cleanupError,
+						);
+					}
+				}
 			} catch (error) {
 				logger.error(
 					"Error stopping backend process:",
@@ -812,6 +927,96 @@ export class BackendServiceManager {
 	 */
 	isUsingExternalBackend(): boolean {
 		return this.isExternalBackend;
+	}
+
+	/**
+	 * Get the startup mode of the Local Operator server
+	 * @returns The current startup mode
+	 */
+	getStartupMode(): LocalOperatorStartupMode {
+		return this.startupMode;
+	}
+
+	/**
+	 * Get the virtual environment path used by the backend service
+	 * @returns The path to the virtual environment
+	 */
+	getVenvPath(): string {
+		return this.venvPath;
+	}
+
+	/**
+	 * Restart the backend service
+	 * This method properly handles the restart process to ensure that any pending
+	 * timeouts from the stop operation don't affect the newly started process
+	 * @returns Promise resolving to true if the restart was successful, false otherwise
+	 */
+	async restart(): Promise<boolean> {
+		logger.info("Restarting backend service...", LogFileType.BACKEND);
+
+		// Stop the service with the isRestart flag to use a longer timeout
+		await this.stop(true);
+
+		// Wait a bit to ensure any cleanup processes have completed
+		await new Promise((resolve) => setTimeout(resolve, 2000));
+
+		// Verify the process is actually stopped
+		if (this.process) {
+			logger.warn(
+				"Process still exists after stop, attempting to force terminate",
+				LogFileType.BACKEND,
+			);
+
+			// Force terminate the process
+			try {
+				if (process.platform === "win32" && this.process.pid) {
+					// On Windows, use taskkill with /F for force
+					await promisify(exec)(`taskkill /pid ${this.process.pid} /f /t`);
+				} else if (this.process) {
+					// On Unix, use SIGKILL
+					this.process.kill("SIGKILL");
+				}
+
+				// Wait for the process to exit
+				await new Promise((resolve) => {
+					if (!this.process) {
+						resolve(null);
+						return;
+					}
+
+					this.process.once("exit", () => {
+						resolve(null);
+					});
+
+					// Timeout in case the process doesn't exit
+					setTimeout(resolve, 1000);
+				});
+
+				// Clear the process reference
+				this.process = null;
+				this.isRunning = false;
+			} catch (error) {
+				logger.error(
+					"Error force killing process during restart:",
+					LogFileType.BACKEND,
+					error,
+				);
+			}
+		}
+
+		// Start the service again
+		const success = await this.start();
+
+		if (success) {
+			logger.info(
+				"Backend service restarted successfully",
+				LogFileType.BACKEND,
+			);
+		} else {
+			logger.error("Failed to restart backend service", LogFileType.BACKEND);
+		}
+
+		return success;
 	}
 }
 
