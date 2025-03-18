@@ -12,7 +12,7 @@ import { ChatUtilities } from "./chat-utilities";
 import { MessageInput } from "./message-input";
 import { MessagesView } from "./messages-view";
 import { RawInfoView } from "./raw-info-view";
-import type { Message } from "./message-item/types";
+import type { Message } from "./types";
 
 /**
  * Props for the ChatContent component

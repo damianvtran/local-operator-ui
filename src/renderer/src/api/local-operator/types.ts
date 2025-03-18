@@ -542,6 +542,8 @@ export type AgentExecutionRecord = {
 	action?: ActionType;
 	/** Type of execution performed (plan, action, reflection, etc.) */
 	execution_type: ExecutionType;
+	/** The classification of the task that was performed */
+	task_classification: string;
 };
 
 /**

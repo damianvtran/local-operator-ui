@@ -52,9 +52,14 @@ export const ActionHighlight: FC<ActionHighlightProps> = ({
 	children,
 	action,
 	isUser,
+	taskClassification,
 }) => {
+	const shouldHighlight =
+		(action === "DONE" || action === "ASK") &&
+		taskClassification !== "conversation";
+
 	// Only apply special highlighting for DONE and ASK actions
-	if (action !== "DONE" && action !== "ASK") {
+	if (!shouldHighlight) {
 		return <>{children}</>;
 	}
 
