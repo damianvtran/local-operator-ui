@@ -30,7 +30,6 @@ const BlockHeader = styled(Box, {
 				? theme.palette.grey[600]
 				: theme.palette.grey[600]
 		}`,
-		borderRadius: "4px",
 	}),
 );
 
@@ -38,6 +37,7 @@ const BlockIcon = styled(Box)(({ theme }) => ({
 	marginRight: 8,
 	display: "flex",
 	alignItems: "center",
+	justifyContent: "flex-start",
 	color: theme.palette.grey[500],
 }));
 
@@ -60,11 +60,10 @@ const ExpandedContent = styled(Box)(({ theme }) => ({
 	backgroundColor: "rgba(0, 0, 0, 0.2)",
 	borderBottomLeftRadius: 4,
 	borderBottomRightRadius: 4,
-	whiteSpace: "pre-wrap",
 	fontSize: "0.85rem",
 	color: theme.palette.grey[300],
 	borderLeft: `3px solid ${theme.palette.grey[600]}`,
-	marginLeft: 12,
+	marginLeft: 0,
 }));
 
 /**
@@ -90,6 +89,12 @@ export const PlanReflectionBlock: FC<PlanReflectionBlockProps> = ({
 		return executionType === "plan" ? faLightbulb : faCommentDots;
 	};
 
+	const getTruncatedContent = (content: string, maxLength = 140) => {
+		return content.length > maxLength
+			? `${content.slice(0, maxLength)}...`
+			: content;
+	};
+
 	return (
 		<BlockContainer onClick={toggleExpand}>
 			<BlockHeader executionType={executionType} isUser={isUser}>
@@ -101,7 +106,7 @@ export const PlanReflectionBlock: FC<PlanReflectionBlockProps> = ({
 					{!isExpanded && (
 						<BlockContent>
 							<MarkdownRenderer
-								content={content}
+								content={getTruncatedContent(content)}
 								styleProps={{
 									fontSize: "0.85rem",
 									lineHeight: 1.5,
