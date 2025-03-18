@@ -69,6 +69,7 @@ export const UpdateNotification = ({
 }: UpdateNotificationProps) => {
 	// State for frontend update status
 	const [checking, setChecking] = useState(false);
+	const [updatingBackend, setUpdatingBackend] = useState(false);
 	const [updateAvailable, setUpdateAvailable] = useState(false);
 	const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
 	const [downloading, setDownloading] = useState(false);
@@ -142,15 +143,17 @@ export const UpdateNotification = ({
 	const updateBackend = useCallback(async () => {
 		try {
 			setChecking(true);
+			setUpdatingBackend(true);
 			setError(null);
 			await window.api.updater.updateBackend();
 			// The backend update completed event will handle the UI update
 		} catch (err) {
 			setError(
-				`Error updating backend: ${err instanceof Error ? err.message : String(err)}`,
+				`Error updating server: ${err instanceof Error ? err.message : String(err)}`,
 			);
 			setSnackbarOpen(true);
 			setChecking(false);
+			setUpdatingBackend(false);
 		}
 	}, []);
 
@@ -266,6 +269,7 @@ export const UpdateNotification = ({
 				setBackendUpdateAvailable(false);
 				setBackendUpdateInfo(null);
 				setChecking(false);
+				setUpdatingBackend(false);
 				setBackendUpdateCompleted(true);
 				setSnackbarOpen(true);
 
@@ -298,13 +302,17 @@ export const UpdateNotification = ({
 		setSnackbarOpen(false);
 	};
 
-	// If checking for updates, show a loading indicator
+	// If checking for updates or updating backend, show a loading indicator
 	if (checking) {
 		return (
 			<UpdateContainer>
-				<Typography variant="h6">Checking for Updates</Typography>
+				<Typography variant="h6">
+					{updatingBackend ? "Updating Server" : "Checking for Updates"}
+				</Typography>
 				<Typography variant="body1">
-					Please wait while we check for available updates...
+					{updatingBackend
+						? "Please wait while the server is being updated..."
+						: "Please wait while we check for available updates..."}
 				</Typography>
 				<ProgressContainer>
 					<LinearProgress />
@@ -465,13 +473,14 @@ export const UpdateNotification = ({
 		return (
 			<>
 				<UpdateContainer>
-					<Typography variant="h6">Backend Update Available</Typography>
+					<Typography variant="h6">Server Update Available</Typography>
 					<Typography variant="body1">
-						Backend version {backendUpdateInfo.latestVersion} is available. You
+						Server version {backendUpdateInfo.latestVersion} is available. You
 						are currently using version {backendUpdateInfo.currentVersion}.
 					</Typography>
 					<Typography variant="body2" sx={{ mt: 1 }}>
-						Updating the backend will improve functionality and fix bugs.
+						Updating the server will improve AI functionality, improve security,
+						and fix bugs.
 					</Typography>
 
 					{backendUpdateInfo.canManageUpdate ? (
@@ -482,7 +491,7 @@ export const UpdateNotification = ({
 								onClick={updateBackend}
 								disabled={checking}
 							>
-								{checking ? "Updating..." : "Update Backend"}
+								{checking ? "Updating..." : "Update Server"}
 							</Button>
 							<Button
 								variant="outlined"
@@ -495,7 +504,7 @@ export const UpdateNotification = ({
 					) : (
 						<>
 							<Typography variant="body2" sx={{ mt: 2, color: "warning.main" }}>
-								This backend server is running externally and cannot be updated
+								The backend server is running externally and cannot be updated
 								automatically. Please update it manually using the following
 								command:
 							</Typography>
@@ -531,8 +540,7 @@ export const UpdateNotification = ({
 					anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
 				>
 					<Alert onClose={handleSnackbarClose} severity="info">
-						A new backend update is available: v
-						{backendUpdateInfo.latestVersion}
+						A new server update is available: v{backendUpdateInfo.latestVersion}
 					</Alert>
 				</Snackbar>
 			</>
@@ -586,7 +594,7 @@ export const UpdateNotification = ({
 					onClose={() => setBackendUpdateCompleted(false)}
 					severity="success"
 				>
-					Backend update completed successfully
+					Server update completed successfully
 				</Alert>
 			</Snackbar>
 		);
