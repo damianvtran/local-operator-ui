@@ -150,12 +150,22 @@ export class UpdateService {
 				"Stopping backend service during dispose...",
 				LogFileType.UPDATE_SERVICE,
 			);
-			this.backendService.stop(true).catch((error) => {
+			// Use false for isRestart to indicate this is a final shutdown, not a restart
+			this.backendService.stop(false).catch((error) => {
 				logger.error(
 					"Error stopping backend service during dispose:",
 					LogFileType.UPDATE_SERVICE,
 					error,
 				);
+
+				// If normal shutdown fails, try a more aggressive approach
+				this.forceTerminateBackendProcess().catch((forceError) => {
+					logger.error(
+						"Error force terminating backend service during dispose:",
+						LogFileType.UPDATE_SERVICE,
+						forceError,
+					);
+				});
 			});
 		}
 	}
@@ -177,7 +187,8 @@ export class UpdateService {
 				LogFileType.UPDATE_SERVICE,
 			);
 			try {
-				await this.backendService?.stop(true);
+				// Use false for isRestart to indicate this is a final shutdown, not a restart
+				await this.backendService?.stop(false);
 				logger.info(
 					"Backend service successfully shut down before app quit",
 					LogFileType.UPDATE_SERVICE,
@@ -188,18 +199,80 @@ export class UpdateService {
 					LogFileType.UPDATE_SERVICE,
 					error,
 				);
+
+				// If normal shutdown fails, try a more aggressive approach
+				try {
+					logger.info(
+						"Attempting forced shutdown of backend service...",
+						LogFileType.UPDATE_SERVICE,
+					);
+					await this.forceTerminateBackendProcess();
+					logger.info(
+						"Forced shutdown of backend service completed",
+						LogFileType.UPDATE_SERVICE,
+					);
+				} catch (forceError) {
+					logger.error(
+						"Error during forced shutdown of backend service:",
+						LogFileType.UPDATE_SERVICE,
+						forceError,
+					);
+				}
 			}
 		};
 
+		// Remove any existing handlers to avoid duplicates
+		// biome-ignore lint/suspicious/noExplicitAny: Needed for compatibility with Electron's type system
+		(app as any).removeAllListeners("before-quit");
+
 		// Register the handler for app quit
-		// Use a type assertion to work around TypeScript limitations
 		// biome-ignore lint/suspicious/noExplicitAny: Needed for compatibility with Electron's type system
 		(app as any).once("before-quit", shutdownHandler);
+
+		// Also register a handler for the will-quit event as a backup
+		// biome-ignore lint/suspicious/noExplicitAny: Needed for compatibility with Electron's type system
+		(app as any).once("will-quit", shutdownHandler);
 
 		logger.info(
 			"Registered backend service for proper shutdown on app quit",
 			LogFileType.UPDATE_SERVICE,
 		);
+	}
+
+	/**
+	 * Force terminate the backend process using platform-specific commands
+	 * This is a last resort method when normal termination fails
+	 */
+	private async forceTerminateBackendProcess(): Promise<void> {
+		if (!this.backendService) {
+			return;
+		}
+
+		const execAsync = promisify(exec);
+
+		try {
+			if (process.platform === "win32") {
+				// On Windows, use taskkill to forcefully terminate processes with "local-operator serve" in the command line
+				await execAsync('taskkill /f /im "local-operator.exe" /t');
+				await execAsync(
+					"wmic process where \"commandline like '%local-operator serve%'\" call terminate",
+				);
+			} else {
+				// On Unix systems (macOS/Linux), use pkill to forcefully terminate processes with "local-operator serve" in the command line
+				await execAsync('pkill -f "local-operator serve"');
+				// Give processes a moment to terminate gracefully before force killing
+				await new Promise((resolve) => setTimeout(resolve, 1000));
+				// Force kill any remaining processes
+				await execAsync('pkill -9 -f "local-operator serve"');
+			}
+		} catch (error) {
+			// Ignore errors, as the process might not exist
+			logger.warn(
+				"Error during force termination (this may be normal if process was already terminated):",
+				LogFileType.UPDATE_SERVICE,
+				error,
+			);
+		}
 	}
 
 	/**
@@ -1031,6 +1104,25 @@ export class UpdateService {
 				LogFileType.UPDATE_SERVICE,
 			);
 
+			// Ensure the backend is fully stopped before attempting to restart
+			// Wait a bit to ensure any cleanup processes have completed
+			await new Promise((resolve) => setTimeout(resolve, 2000));
+
+			// Verify the backend is actually stopped
+			const isHealthy = await this.checkBackendHealth();
+			if (isHealthy) {
+				logger.warn(
+					"Backend service is still running after stop command, attempting force termination",
+					LogFileType.UPDATE_SERVICE,
+				);
+
+				// Try force termination
+				await this.forceTerminateBackendProcess();
+
+				// Wait again to ensure termination
+				await new Promise((resolve) => setTimeout(resolve, 2000));
+			}
+
 			// Use the dedicated restart method which properly handles the restart process
 			const restartSuccess = await this.backendService.restart();
 
@@ -1039,6 +1131,38 @@ export class UpdateService {
 					"Backend service restarted successfully after update",
 					LogFileType.UPDATE_SERVICE,
 				);
+
+				// Verify the backend is actually running after restart
+				const isRunningAfterRestart = await this.checkBackendHealth();
+				if (!isRunningAfterRestart) {
+					logger.error(
+						"Backend service reported successful restart but health check failed",
+						LogFileType.UPDATE_SERVICE,
+					);
+
+					// Try one more time to start the service
+					logger.info(
+						"Attempting to start backend service again...",
+						LogFileType.UPDATE_SERVICE,
+					);
+					await this.backendService.start();
+
+					// Final health check
+					const finalHealthCheck = await this.checkBackendHealth();
+					if (!finalHealthCheck) {
+						logger.error(
+							"Backend service failed to start after multiple attempts",
+							LogFileType.UPDATE_SERVICE,
+						);
+						if (this.mainWindow) {
+							this.mainWindow.webContents.send(
+								"backend-update-error",
+								"Backend was updated but failed to restart properly. Please restart the application.",
+							);
+						}
+						return false;
+					}
+				}
 
 				// Register the backend service for proper shutdown when app quits
 				this.registerBackendShutdown();
@@ -1111,6 +1235,40 @@ export class UpdateService {
 	public async checkForAllUpdates(silent = false): Promise<void> {
 		await this.checkForUpdates(silent);
 		await this.checkForBackendUpdates(silent);
+	}
+
+	/**
+	 * Check if the backend service is healthy
+	 * @returns Promise resolving to true if the backend is healthy, false otherwise
+	 */
+	private async checkBackendHealth(): Promise<boolean> {
+		try {
+			// Set a timeout for the fetch request
+			const controller = new AbortController();
+			const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
+
+			const response = await fetch(`${this.backendUrl}/health`, {
+				method: "GET",
+				headers: { Accept: "application/json" },
+				signal: controller.signal,
+			});
+
+			clearTimeout(timeoutId);
+
+			logger.info(
+				`Backend health check response status: ${response.status}`,
+				LogFileType.UPDATE_SERVICE,
+			);
+
+			return response.ok;
+		} catch (error) {
+			logger.error(
+				"Error checking backend health:",
+				LogFileType.UPDATE_SERVICE,
+				error,
+			);
+			return false;
+		}
 	}
 
 	/**

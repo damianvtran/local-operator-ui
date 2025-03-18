@@ -674,19 +674,17 @@ export class BackendServiceManager {
 
 			// Gracefully terminate the process
 			try {
+				// Store the process ID before attempting to terminate
+				const pid = this.process.pid;
+
 				if (process.platform === "win32") {
 					// Windows: send CTRL+C signal via taskkill
-					if (this.process.pid) {
+					if (pid) {
 						logger.info(
-							`Terminating Windows process with PID ${this.process.pid}`,
+							`Terminating Windows process with PID ${pid}`,
 							LogFileType.BACKEND,
 						);
-						spawn("taskkill", [
-							"/pid",
-							this.process.pid.toString(),
-							"/f",
-							"/t",
-						]);
+						spawn("taskkill", ["/pid", pid.toString(), "/f", "/t"]);
 					}
 				} else {
 					// Unix: send SIGTERM
@@ -719,9 +717,47 @@ export class BackendServiceManager {
 											"/f",
 											"/t",
 										]);
+
+										// Also try to kill any child processes by command line pattern
+										try {
+											execPromise(
+												"wmic process where \"commandline like '%local-operator serve%'\" call terminate",
+											).catch((error) => {
+												logger.warn(
+													"Error terminating processes by command line pattern:",
+													LogFileType.BACKEND,
+													error,
+												);
+											});
+										} catch (wmicError) {
+											logger.warn(
+												"Error executing WMIC command:",
+												LogFileType.BACKEND,
+												wmicError,
+											);
+										}
 									} else if (this.process) {
 										// On Unix, use SIGKILL
 										this.process.kill("SIGKILL");
+
+										// Also try to kill any processes with the same command line pattern
+										try {
+											execPromise('pkill -f "local-operator serve"').catch(
+												(error) => {
+													logger.warn(
+														"Error killing processes by pattern:",
+														LogFileType.BACKEND,
+														error,
+													);
+												},
+											);
+										} catch (pkillError) {
+											logger.warn(
+												"Error executing pkill command:",
+												LogFileType.BACKEND,
+												pkillError,
+											);
+										}
 									}
 								} catch (error) {
 									logger.error(
@@ -743,8 +779,8 @@ export class BackendServiceManager {
 							}
 							resolve();
 						},
-						isRestart ? 30000 : 5000,
-					); // Use longer timeout for restart operations
+						isRestart ? 10000 : 5000,
+					); // Use longer timeout for restart operations, but not too long
 				});
 
 				// Wait for either the process to exit or the timeout
@@ -754,6 +790,46 @@ export class BackendServiceManager {
 				if (forceKillTimeoutId) {
 					clearTimeout(forceKillTimeoutId);
 					forceKillTimeoutId = null;
+				}
+
+				// For final shutdowns (not restarts), perform additional cleanup to ensure all related processes are terminated
+				if (!isRestart) {
+					logger.info(
+						"Performing additional cleanup for final shutdown",
+						LogFileType.BACKEND,
+					);
+
+					try {
+						if (process.platform === "win32") {
+							// On Windows, look for processes with "local-operator serve" in the command line
+							await execPromise(
+								"wmic process where \"commandline like '%local-operator serve%'\" call terminate",
+							).catch(() => {
+								// Ignore errors, this is a best-effort cleanup
+							});
+						} else {
+							// On Unix systems, look for processes with "local-operator serve" in the command line
+							await execPromise('pkill -f "local-operator serve"').catch(() => {
+								// Ignore errors, this is a best-effort cleanup
+							});
+
+							// Give processes a moment to terminate gracefully before force killing
+							await new Promise((resolve) => setTimeout(resolve, 1000));
+
+							// Force kill any remaining processes
+							await execPromise('pkill -9 -f "local-operator serve"').catch(
+								() => {
+									// Ignore errors, this is a best-effort cleanup
+								},
+							);
+						}
+					} catch (cleanupError) {
+						logger.warn(
+							"Error during additional cleanup (this may be normal if processes were already terminated):",
+							LogFileType.BACKEND,
+							cleanupError,
+						);
+					}
 				}
 			} catch (error) {
 				logger.error(
@@ -880,6 +956,53 @@ export class BackendServiceManager {
 
 		// Stop the service with the isRestart flag to use a longer timeout
 		await this.stop(true);
+
+		// Wait a bit to ensure any cleanup processes have completed
+		await new Promise((resolve) => setTimeout(resolve, 2000));
+
+		// Verify the process is actually stopped
+		if (this.process) {
+			logger.warn(
+				"Process still exists after stop, attempting to force terminate",
+				LogFileType.BACKEND,
+			);
+
+			// Force terminate the process
+			try {
+				if (process.platform === "win32" && this.process.pid) {
+					// On Windows, use taskkill with /F for force
+					await promisify(exec)(`taskkill /pid ${this.process.pid} /f /t`);
+				} else if (this.process) {
+					// On Unix, use SIGKILL
+					this.process.kill("SIGKILL");
+				}
+
+				// Wait for the process to exit
+				await new Promise((resolve) => {
+					if (!this.process) {
+						resolve(null);
+						return;
+					}
+
+					this.process.once("exit", () => {
+						resolve(null);
+					});
+
+					// Timeout in case the process doesn't exit
+					setTimeout(resolve, 1000);
+				});
+
+				// Clear the process reference
+				this.process = null;
+				this.isRunning = false;
+			} catch (error) {
+				logger.error(
+					"Error force killing process during restart:",
+					LogFileType.BACKEND,
+					error,
+				);
+			}
+		}
 
 		// Start the service again
 		const success = await this.start();
