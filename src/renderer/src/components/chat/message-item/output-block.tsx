@@ -1,7 +1,6 @@
 import { Box, Typography } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import type { FC } from "react";
-import { CollapsibleSection } from "./collapsible-section";
 import type { OutputBlockProps } from "./types";
 
 const CodeContainer = styled(Box)({
@@ -43,35 +42,14 @@ const OutputContainer = styled(Box)({
 
 /**
  * Component for displaying command output
- * Can be collapsible for action type executions
  */
-export const OutputBlock: FC<OutputBlockProps> = ({
-	output,
-	isUser,
-	isAction = false,
-}) => {
+export const OutputBlock: FC<OutputBlockProps> = ({ output }) => {
 	if (!output) return null;
 
-	const outputContent = <OutputContainer>{output}</OutputContainer>;
-
-	// If it's an action type execution, make it collapsible
-	if (isAction) {
-		return (
-			<CollapsibleSection
-				title="Output"
-				defaultCollapsed={true}
-				isUser={isUser}
-			>
-				{outputContent}
-			</CollapsibleSection>
-		);
-	}
-
-	// Otherwise, render normally
 	return (
 		<CodeContainer>
 			<SectionLabel variant="caption">Output</SectionLabel>
-			{outputContent}
+			<OutputContainer>{output}</OutputContainer>
 		</CodeContainer>
 	);
 };

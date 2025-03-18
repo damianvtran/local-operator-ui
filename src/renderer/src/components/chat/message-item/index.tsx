@@ -4,6 +4,7 @@ import { createLocalOperatorClient } from "../../../api/local-operator";
 import { apiConfig } from "../../../config";
 import { ActionHighlight } from "./action-highlight";
 import { CodeBlock } from "./code-block";
+import { CollapsibleMessage } from "./collapsible-message";
 import { ErrorBlock } from "./error-block";
 import { FileAttachment } from "./file-attachment";
 import { ImageAttachment } from "./image-attachment";
@@ -160,46 +161,60 @@ export const MessageItem: FC<MessageItemProps> = memo(
 							</Box>
 						)}
 
-						{/* Render message content with markdown support */}
+						{/* Always render message content with markdown support */}
 						{message.message && (
 							<MessageContent content={message.message} isUser={isUser} />
 						)}
 
-						{/* Render code with syntax highlighting */}
-						{message.code && (
-							<CodeBlock
-								code={message.code}
-								isUser={isUser}
-								isAction={isAction}
-							/>
-						)}
+						{/* Determine if we have any collapsible content */}
+						{(() => {
+							const hasCollapsibleContent =
+								isAction &&
+								(message.code ||
+									message.stdout ||
+									message.stderr ||
+									message.logging);
 
-						{/* Render stdout */}
-						{message.stdout && (
-							<OutputBlock
-								output={message.stdout}
-								isUser={isUser}
-								isAction={isAction}
-							/>
-						)}
+							// Content to be rendered inside the collapsible section
+							const contentBlocks = (
+								<>
+									{/* Render code with syntax highlighting */}
+									{message.code && (
+										<CodeBlock code={message.code} isUser={isUser} />
+									)}
 
-						{/* Render stderr */}
-						{message.stderr && (
-							<ErrorBlock
-								error={message.stderr}
-								isUser={isUser}
-								isAction={isAction}
-							/>
-						)}
+									{/* Render stdout */}
+									{message.stdout && (
+										<OutputBlock output={message.stdout} isUser={isUser} />
+									)}
 
-						{/* Render logging */}
-						{message.logging && (
-							<LogBlock
-								log={message.logging}
-								isUser={isUser}
-								isAction={isAction}
-							/>
-						)}
+									{/* Render stderr */}
+									{message.stderr && (
+										<ErrorBlock error={message.stderr} isUser={isUser} />
+									)}
+
+									{/* Render logging */}
+									{message.logging && (
+										<LogBlock log={message.logging} isUser={isUser} />
+									)}
+								</>
+							);
+
+							// If it's an action type with collapsible content, wrap in CollapsibleMessage
+							if (hasCollapsibleContent) {
+								return (
+									<CollapsibleMessage
+										defaultCollapsed={true}
+										hasContent={hasCollapsibleContent}
+									>
+										{contentBlocks}
+									</CollapsibleMessage>
+								);
+							}
+
+							// Otherwise, render content normally
+							return contentBlocks;
+						})()}
 
 						{/* Status indicator if present */}
 						{message.status && <StatusIndicator status={message.status} />}

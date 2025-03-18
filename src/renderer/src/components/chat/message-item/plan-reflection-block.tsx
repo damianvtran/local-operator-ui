@@ -1,68 +1,70 @@
-import { faLightbulb, faPencil } from "@fortawesome/free-solid-svg-icons";
+import { faCommentDots, faLightbulb } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, Collapse, Typography } from "@mui/material";
 import { styled } from "@mui/material/styles";
+import type { ExecutionType } from "@renderer/api/local-operator/types";
 import { type FC, useState } from "react";
+import { MarkdownRenderer } from "../markdown-renderer";
 import type { PlanReflectionBlockProps } from "./types";
 
 const BlockContainer = styled(Box)(() => ({
-	width: "100%",
-	marginBottom: 16,
-	borderRadius: 8,
-	overflow: "hidden",
+	width: "95%",
 	cursor: "pointer",
 	transition: "all 0.2s ease",
+	marginLeft: 56,
 	"&:hover": {
-		boxShadow: "0 2px 8px rgba(0, 0, 0, 0.2)",
+		opacity: 0.9,
 	},
 }));
 
 const BlockHeader = styled(Box, {
 	shouldForwardProp: (prop) => prop !== "executionType" && prop !== "isUser",
-})<{ executionType: string; isUser: boolean }>(({ theme, executionType }) => ({
-	display: "flex",
-	alignItems: "center",
-	padding: "8px 12px",
-	backgroundColor:
-		executionType === "plan"
-			? "rgba(25, 118, 210, 0.15)"
-			: "rgba(156, 39, 176, 0.15)",
-	borderLeft: `3px solid ${
-		executionType === "plan"
-			? theme.palette.primary.main
-			: theme.palette.secondary.main
-	}`,
-	borderRadius: "4px",
-}));
+})<{ executionType: ExecutionType; isUser: boolean }>(
+	({ theme, executionType }) => ({
+		display: "flex",
+		alignItems: "center",
+		padding: "8px 12px",
+		backgroundColor: "rgba(0, 0, 0, 0.2)",
+		borderLeft: `3px solid ${
+			executionType === "plan"
+				? theme.palette.grey[600]
+				: theme.palette.grey[600]
+		}`,
+		borderRadius: "4px",
+	}),
+);
 
-const BlockIcon = styled(Box)(() => ({
+const BlockIcon = styled(Box)(({ theme }) => ({
 	marginRight: 8,
 	display: "flex",
 	alignItems: "center",
+	color: theme.palette.grey[500],
 }));
 
 const BlockTitle = styled(Typography)(({ theme }) => ({
 	fontWeight: 500,
-	fontSize: "0.9rem",
-	color: theme.palette.text.primary,
+	fontSize: "0.85rem",
+	color: theme.palette.grey[500],
 }));
 
 const BlockContent = styled(Typography)(({ theme }) => ({
 	fontSize: "0.85rem",
-	color: theme.palette.text.secondary,
-	whiteSpace: "nowrap",
+	color: theme.palette.grey[400],
 	overflow: "hidden",
 	textOverflow: "ellipsis",
+	marginTop: 2,
 }));
 
 const ExpandedContent = styled(Box)(({ theme }) => ({
 	padding: "12px 16px",
 	backgroundColor: "rgba(0, 0, 0, 0.2)",
-	borderBottomLeftRadius: 8,
-	borderBottomRightRadius: 8,
+	borderBottomLeftRadius: 4,
+	borderBottomRightRadius: 4,
 	whiteSpace: "pre-wrap",
 	fontSize: "0.85rem",
-	color: theme.palette.text.secondary,
+	color: theme.palette.grey[300],
+	borderLeft: `3px solid ${theme.palette.grey[600]}`,
+	marginLeft: 12,
 }));
 
 /**
@@ -85,7 +87,7 @@ export const PlanReflectionBlock: FC<PlanReflectionBlockProps> = ({
 	};
 
 	const getIcon = () => {
-		return executionType === "plan" ? faLightbulb : faPencil;
+		return executionType === "plan" ? faLightbulb : faCommentDots;
 	};
 
 	return (
@@ -96,11 +98,17 @@ export const PlanReflectionBlock: FC<PlanReflectionBlockProps> = ({
 				</BlockIcon>
 				<Box sx={{ flexGrow: 1 }}>
 					<BlockTitle variant="subtitle2">{getTitle()}</BlockTitle>
-					{!isExpanded && <BlockContent>{content}</BlockContent>}
+					{!isExpanded && (
+						<BlockContent>
+							<MarkdownRenderer content={content} />
+						</BlockContent>
+					)}
 				</Box>
 			</BlockHeader>
 			<Collapse in={isExpanded} timeout="auto">
-				<ExpandedContent>{content}</ExpandedContent>
+				<ExpandedContent>
+					<MarkdownRenderer content={content} />
+				</ExpandedContent>
 			</Collapse>
 		</BlockContainer>
 	);
