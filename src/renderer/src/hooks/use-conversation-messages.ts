@@ -11,9 +11,9 @@ import type { AgentExecutionRecord } from "@renderer/api/local-operator/types";
 import type { Message } from "@renderer/components/chat/types";
 import { apiConfig } from "@renderer/config";
 import { useChatStore } from "@renderer/store/chat-store";
+import { showErrorToast } from "@renderer/utils/toast-manager";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { showErrorToast } from "@renderer/utils/toast-manager";
 import { useConnectivityGate } from "./use-connectivity-gate";
 
 /**

@@ -8,9 +8,9 @@
 import { createLocalOperatorClient } from "@renderer/api/local-operator";
 import type { CredentialListResult } from "@renderer/api/local-operator/types";
 import { apiConfig } from "@renderer/config";
+import { showErrorToast } from "@renderer/utils/toast-manager";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
-import { showErrorToast } from "@renderer/utils/toast-manager";
 import { useConnectivityGate } from "./use-connectivity-gate";
 
 /**

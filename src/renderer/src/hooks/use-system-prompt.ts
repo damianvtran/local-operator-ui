@@ -8,8 +8,8 @@
 import { createLocalOperatorClient } from "@renderer/api/local-operator";
 import type { SystemPromptResponse } from "@renderer/api/local-operator/types";
 import { apiConfig } from "@renderer/config";
-import { useQuery } from "@tanstack/react-query";
 import { showErrorToast } from "@renderer/utils/toast-manager";
+import { useQuery } from "@tanstack/react-query";
 import { useConnectivityGate } from "./use-connectivity-gate";
 
 /**

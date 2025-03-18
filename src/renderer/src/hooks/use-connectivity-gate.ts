@@ -9,9 +9,9 @@
  * Only server offline issues will disable queries to the backend.
  */
 
-import { useConnectivityStatus } from "./use-connectivity-status";
-import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
+import { useConnectivityStatus } from "./use-connectivity-status";
 
 /**
  * Hook for gating React Query hooks based on connectivity status

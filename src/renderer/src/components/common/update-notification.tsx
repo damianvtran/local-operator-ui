@@ -8,8 +8,8 @@ import {
 	styled,
 } from "@mui/material";
 import type { ProgressInfo, UpdateInfo } from "electron-updater";
-import { useCallback, useEffect, useState } from "react";
 import parse from "html-react-parser";
+import { useCallback, useEffect, useState } from "react";
 import { useDeferredUpdatesStore } from "../../store/deferred-updates-store";
 
 // Define types for backend update info

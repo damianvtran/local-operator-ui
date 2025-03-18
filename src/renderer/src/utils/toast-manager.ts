@@ -5,7 +5,7 @@
  * including deduplication and rate limiting to prevent toast spam.
  */
 
-import { toast, type ToastOptions, type Id } from "react-toastify";
+import { type Id, type ToastOptions, toast } from "react-toastify";
 
 // Store active toast IDs by message
 const activeToasts = new Map<string, Id>();
