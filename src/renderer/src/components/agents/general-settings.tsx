@@ -94,13 +94,17 @@ const CardIcon = styled(FontAwesomeIcon)({
 	color: "#f2f2f3",
 });
 
-const LabelText = styled(Box)(({ theme }) => ({
+// Use span instead of Box to avoid nesting <div> inside <p>
+const LabelText = styled("span")(({ theme }) => ({
 	color: theme.palette.text.secondary,
 	marginRight: theme.spacing(1),
+	display: "inline-block",
 }));
 
-const ValueText = styled(Box)({
+// Use span instead of Box to avoid nesting <div> inside <p>
+const ValueText = styled("span")({
 	fontWeight: 500,
+	display: "inline-block",
 });
 
 const MonospaceValueText = styled(ValueText)({
