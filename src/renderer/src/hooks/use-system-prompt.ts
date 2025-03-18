@@ -9,7 +9,7 @@ import { createLocalOperatorClient } from "@renderer/api/local-operator";
 import type { SystemPromptResponse } from "@renderer/api/local-operator/types";
 import { apiConfig } from "@renderer/config";
 import { useQuery } from "@tanstack/react-query";
-import { toast } from "react-toastify";
+import { showErrorToast } from "@renderer/utils/toast-manager";
 import { useConnectivityGate } from "./use-connectivity-gate";
 
 /**
@@ -53,7 +53,7 @@ export const useSystemPrompt = () => {
 						? error.message
 						: "An unknown error occurred while fetching system prompt";
 
-				toast.error(errorMessage);
+				showErrorToast(errorMessage);
 				throw error;
 			}
 		},

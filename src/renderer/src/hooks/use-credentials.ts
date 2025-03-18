@@ -10,7 +10,7 @@ import type { CredentialListResult } from "@renderer/api/local-operator/types";
 import { apiConfig } from "@renderer/config";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
-import { toast } from "react-toastify";
+import { showErrorToast } from "@renderer/utils/toast-manager";
 import { useConnectivityGate } from "./use-connectivity-gate";
 
 /**
@@ -62,7 +62,7 @@ export const useCredentials = () => {
 						? error.message
 						: "An unknown error occurred while fetching credentials";
 
-				toast.error(errorMessage);
+				showErrorToast(errorMessage);
 				throw error;
 			}
 		},
