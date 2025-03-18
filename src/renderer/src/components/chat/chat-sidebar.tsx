@@ -89,7 +89,8 @@ const AgentAvatar = styled(Avatar)(({ theme }) => ({
 	color: theme.palette.primary.main,
 }));
 
-const MessagePreview = styled(Typography)({
+// Use a span wrapper to avoid nesting <p> inside <p>
+const MessagePreview = styled("span")({
 	display: "block",
 	color: "text.secondary",
 	maxWidth: "100%",
@@ -332,7 +333,7 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 														enterDelay={1500}
 														leaveDelay={200}
 													>
-														<MessagePreview variant="body2">
+														<MessagePreview>
 															{truncateMessage(agent.last_message, 60)}
 														</MessagePreview>
 													</Tooltip>
