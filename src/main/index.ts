@@ -351,14 +351,14 @@ app.on("will-quit", async (event) => {
 						{ encoding: "utf8" },
 					);
 					// If we find any processes, they're not all terminated
-					allProcessesTerminated = !stdout.trim().includes("ProcessId");
+					allProcessesTerminated = !stdout?.trim().includes("ProcessId");
 				} else {
 					const { stdout } = require("node:child_process").execSync(
 						`pgrep -f "local-operator serve" || echo ""`,
 						{ encoding: "utf8" },
 					);
 					// If we find any process IDs, they're not all terminated
-					allProcessesTerminated = stdout.trim() === "";
+					allProcessesTerminated = !stdout?.trim();
 				}
 			} catch (err) {
 				// If there's an error checking, assume processes are terminated
