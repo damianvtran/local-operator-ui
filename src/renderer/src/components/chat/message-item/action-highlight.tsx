@@ -65,7 +65,7 @@ export const ActionHighlight: FC<ActionHighlightProps> = ({
 					icon={action === "DONE" ? faCheck : faQuestion}
 					size="xs"
 				/>
-				{action === "DONE" ? "RESPONSE" : "QUESTION"}
+				{action === "DONE" ? "COMPLETE" : "QUESTION"}
 			</ActionBadge>
 			{children}
 		</HighlightContainer>
