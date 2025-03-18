@@ -27,8 +27,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
  * and the user has internet connectivity if required by the hosting provider.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useConnectivityGate } from "./use-connectivity-gate";
 import { agentsQueryKey } from "./use-agents";
+import { useConnectivityGate } from "./use-connectivity-gate";
 import { convertToMessage } from "./use-conversation-messages";
 import { conversationMessagesQueryKey } from "./use-conversation-messages";
 

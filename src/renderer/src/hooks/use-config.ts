@@ -8,8 +8,8 @@
 import { createLocalOperatorClient } from "@renderer/api/local-operator";
 import type { ConfigResponse } from "@renderer/api/local-operator/types";
 import { apiConfig } from "@renderer/config";
-import { useQuery } from "@tanstack/react-query";
 import { showErrorToast } from "@renderer/utils/toast-manager";
+import { useQuery } from "@tanstack/react-query";
 
 /**
  * Query key for configuration

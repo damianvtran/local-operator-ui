@@ -9,15 +9,15 @@ import {
 import { ThemeProvider as MuiThemeProvider } from "@mui/material/styles";
 import type { Meta, StoryObj } from "@storybook/react";
 import type { ProgressInfo, UpdateInfo } from "electron-updater";
+import parse from "html-react-parser";
 import { useEffect, useState } from "react";
 import { ThemeProvider as StyledThemeProvider } from "styled-components";
 import theme from "../../theme";
-import parse from "html-react-parser";
 import {
-	UpdateNotification,
-	UpdateContainer,
 	ProgressContainer,
 	UpdateActions,
+	UpdateContainer,
+	UpdateNotification,
 } from "./update-notification";
 
 // Initialize window.api if it doesn't exist

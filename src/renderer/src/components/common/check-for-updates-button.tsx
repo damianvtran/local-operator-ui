@@ -1,6 +1,6 @@
-import { Box, Button, Snackbar, Alert, Typography } from "@mui/material";
+import { Alert, Box, Button, Snackbar, Typography } from "@mui/material";
 import { useDeferredUpdatesStore } from "@renderer/store/deferred-updates-store";
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 
 /**
  * Component that shows a button to manually check for updates.

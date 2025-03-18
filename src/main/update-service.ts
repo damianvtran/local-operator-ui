@@ -1,14 +1,14 @@
 import { exec } from "node:child_process";
 import * as https from "node:https";
 import * as path from "node:path";
+import { join } from "node:path";
 import { promisify } from "node:util";
 import { type BrowserWindow, app, ipcMain } from "electron";
 import { autoUpdater } from "electron-updater";
 import type { BackendServiceManager } from "./backend/backend-service";
 import { LocalOperatorStartupMode } from "./backend/backend-service";
 import { apiConfig } from "./backend/config";
-import { logger, LogFileType } from "./backend/logger";
-import { join } from "node:path";
+import { LogFileType, logger } from "./backend/logger";
 
 /**
  * Health check result containing version information
