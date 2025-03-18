@@ -56,6 +56,14 @@ export type ActionHighlightProps = {
 };
 
 /**
+ * Props for the SecurityCheckHighlight component
+ */
+export type SecurityCheckHighlightProps = {
+	children: React.ReactNode;
+	isUser: boolean;
+};
+
+/**
  * Props for the MessageAvatar component
  */
 export type MessageAvatarProps = {
