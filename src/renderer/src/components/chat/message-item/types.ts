@@ -1,3 +1,4 @@
+import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import type {
 	ActionType,
 	ExecutionType,
@@ -35,6 +36,8 @@ export type PlanReflectionBlockProps = {
 	content: string;
 	executionType: ExecutionType;
 	isUser: boolean;
+	customIcon?: IconDefinition;
+	customTitle?: string;
 };
 
 /**
@@ -45,6 +48,7 @@ export type ActionHighlightProps = {
 	action: ActionType;
 	taskClassification: string;
 	isUser: boolean;
+	executionType?: ExecutionType;
 };
 
 /**

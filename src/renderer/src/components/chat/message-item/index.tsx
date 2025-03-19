@@ -1,5 +1,6 @@
 import { Box } from "@mui/material";
 import { type FC, memo, useCallback, useMemo } from "react";
+import { faCheck } from "@fortawesome/free-solid-svg-icons";
 import { createLocalOperatorClient } from "../../../api/local-operator";
 import { apiConfig } from "../../../config";
 import { ActionHighlight } from "./action-highlight";
@@ -85,12 +86,25 @@ const getAttachmentUrl = (
  */
 export const MessageItem: FC<MessageItemProps> = memo(
 	({ message }) => {
+		// Hide messages with action DONE, execution_type "action", and task_classification "conversation"
+		// These are redundant to the response execution_type messages
+		const shouldHide =
+			message.action === "DONE" &&
+			message.execution_type === "action" &&
+			message.task_classification === "conversation";
+
+		if (shouldHide) {
+			return null;
+		}
 		const isUser = message.role === "user";
 		const isAction = message.execution_type === "action";
 		const isSecurityCheck = message.execution_type === "security_check";
 		const isPlanOrReflection =
 			message.execution_type === "plan" ||
-			message.execution_type === "reflection";
+			message.execution_type === "reflection" ||
+			(isAction &&
+				message.action === "DONE" &&
+				message.task_classification !== "conversation");
 
 		// Create a Local Operator client using the API config
 		const client = useMemo(() => {
@@ -130,13 +144,25 @@ export const MessageItem: FC<MessageItemProps> = memo(
 			}
 		}, []);
 
-		// If it's a plan or reflection execution type, render the special block
+		// If it's a plan or reflection execution type, or an action with DONE, render the special block
 		if (isPlanOrReflection && message.message) {
+			// For action DONE, we use a custom execution type but pass the icon and title through
+			const executionType =
+				isAction && message.action === "DONE"
+					? "action"
+					: message.execution_type || "action";
+
 			return (
 				<PlanReflectionBlock
 					content={message.message}
-					executionType={message.execution_type || "action"}
+					executionType={executionType}
 					isUser={isUser}
+					customIcon={
+						isAction && message.action === "DONE" ? faCheck : undefined
+					}
+					customTitle={
+						isAction && message.action === "DONE" ? "Task Complete" : undefined
+					}
 				/>
 			);
 		}
@@ -246,6 +272,7 @@ export const MessageItem: FC<MessageItemProps> = memo(
 						action={message.action || "CODE"}
 						taskClassification={message.task_classification || ""}
 						isUser={isUser}
+						executionType={message.execution_type}
 					>
 						<MessagePaper isUser={isUser}>
 							{/* Render image attachments if any */}
