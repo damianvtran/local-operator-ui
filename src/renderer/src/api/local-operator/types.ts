@@ -483,6 +483,36 @@ export type JobCleanupResult = {
 };
 
 /**
+ * Action type enum
+ * Represents the different types of actions that can be taken in a conversation.
+ * Used to track the type of action being taken in a conversation.
+ */
+export type ActionType =
+	| "CODE" // Execute code
+	| "WRITE" // Write content
+	| "EDIT" // Edit existing content
+	| "DONE" // Complete the current task
+	| "ASK" // Ask a question
+	| "BYE" // End the conversation
+	| "READ"; // Read content
+
+/**
+ * Execution type enum
+ * Represents the different types of execution in a conversation workflow.
+ * Used to track the execution phase within the agent's thought process.
+ */
+export type ExecutionType =
+	| "plan" // Initial planning phase where the agent outlines its approach
+	| "action" // Execution of specific actions like running code or accessing resources
+	| "reflection" // Analysis and evaluation of previous actions and their results
+	| "response" // Final response generation based on the execution results
+	| "security_check" // Security check phase where the agent checks the safety of the code
+	| "classification" // Classification phase where the agent classifies the user's request
+	| "system" // An automatic static response from the system, such as an action cancellation
+	| "user_input" // Input provided by the user
+	| "none"; // No specific execution type
+
+/**
  * Agent execution history record
  */
 export type AgentExecutionRecord = {
@@ -500,7 +530,7 @@ export type AgentExecutionRecord = {
 	message: string;
 	/** Formatted print output */
 	formatted_print: string;
-	/** Role of the execution (e.g., system) */
+	/** Role of the execution (e.g., system, assistant, user) */
 	role: string;
 	/** Execution status (success, error, etc.) */
 	status: string;
@@ -508,6 +538,12 @@ export type AgentExecutionRecord = {
 	timestamp: string;
 	/** Files associated with the execution */
 	files: string[];
+	/** Action type taken during the execution */
+	action?: ActionType;
+	/** Type of execution performed (plan, action, reflection, etc.) */
+	execution_type: ExecutionType;
+	/** The classification of the task that was performed */
+	task_classification: string;
 };
 
 /**
