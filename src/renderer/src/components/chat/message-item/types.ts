@@ -130,6 +130,15 @@ export type ImageAttachmentProps = {
 };
 
 /**
+ * Props for the VideoAttachment component
+ */
+export type VideoAttachmentProps = {
+	file: string;
+	src: string;
+	onClick: (file: string) => void;
+};
+
+/**
  * Props for the MessageTimestamp component
  */
 export type MessageTimestampProps = {
