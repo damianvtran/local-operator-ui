@@ -92,6 +92,7 @@ export const ChatPage: FC<ChatProps> = () => {
 		isLoading,
 		setIsLoading,
 		checkForActiveJobs,
+		currentExecution,
 	} = useJobPolling({
 		conversationId,
 		addMessage,
@@ -407,6 +408,7 @@ Store messages: ${JSON.stringify(getMessages(conversationId || ""), null, 2)}`;
 				isFetchingMore={isFetchingMore}
 				isFarFromBottom={isFarFromBottom}
 				jobStatus={jobStatus as JobStatus | null}
+				currentExecution={currentExecution}
 				messagesContainerRef={messagesContainerRef}
 				messagesEndRef={messagesEndRef}
 				scrollToBottom={scrollToBottom}

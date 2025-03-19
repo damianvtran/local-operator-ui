@@ -1,8 +1,9 @@
 import { createLocalOperatorClient } from "@renderer/api/local-operator";
 import type {
-	JobDetails as BaseJobDetails,
+	AgentExecutionRecord,
 	ChatStats,
 	ConversationRecord,
+	JobDetails as BaseJobDetails,
 	JobStatus,
 } from "@renderer/api/local-operator/types";
 import type { Message } from "@renderer/components/chat/types";
@@ -15,6 +16,7 @@ interface JobDetails extends Omit<BaseJobDetails, "result"> {
 		stats: ChatStats | null;
 		error?: string;
 	};
+	current_execution?: AgentExecutionRecord;
 }
 import { apiConfig } from "@renderer/config";
 import { useChatStore } from "@renderer/store/chat-store";
@@ -44,6 +46,7 @@ type UseJobPollingResult = {
 	isLoading: boolean;
 	setIsLoading: (isLoading: boolean) => void;
 	checkForActiveJobs: (agentId: string) => Promise<boolean>;
+	currentExecution: AgentExecutionRecord | null;
 };
 
 /**
@@ -58,6 +61,8 @@ export const useJobPolling = ({
 }: UseJobPollingParams): UseJobPollingResult => {
 	const [currentJobId, setCurrentJobId] = useState<string | null>(null);
 	const [isLoading, setIsLoading] = useState(false);
+	const [currentExecution, setCurrentExecution] =
+		useState<AgentExecutionRecord | null>(null);
 	const queryClient = useQueryClient();
 	const { getMessages, setMessages } = useChatStore();
 	const lastProcessedJobDataRef = useRef<string | null>(null);
@@ -377,6 +382,11 @@ export const useJobPolling = ({
 			// Update the reference to the last processed job data
 			lastProcessedJobDataRef.current = jobDataSignature;
 
+			// Update current execution data if available
+			if (jobData.current_execution) {
+				setCurrentExecution(jobData.current_execution);
+			}
+
 			// Update messages on each poll to show real-time progress, but with debounce
 			// to prevent too frequent updates that cause flickering
 			if (jobData.status === "processing") {
@@ -392,6 +402,8 @@ export const useJobPolling = ({
 			// If job is completed or failed, handle it immediately
 			if (jobData.status === "completed" || jobData.status === "failed") {
 				handleJobCompletion(jobData);
+				// Clear current execution when job is complete
+				setCurrentExecution(null);
 			}
 		}
 
@@ -422,5 +434,6 @@ export const useJobPolling = ({
 		isLoading,
 		setIsLoading,
 		checkForActiveJobs,
+		currentExecution,
 	};
 };
