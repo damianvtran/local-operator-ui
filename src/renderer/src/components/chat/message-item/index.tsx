@@ -1,10 +1,10 @@
+import { faCheck } from "@fortawesome/free-solid-svg-icons";
 import { Box } from "@mui/material";
 import { type FC, memo, useCallback, useMemo } from "react";
-import { faCheck } from "@fortawesome/free-solid-svg-icons";
 import { createLocalOperatorClient } from "../../../api/local-operator";
 import { apiConfig } from "../../../config";
 import { ActionHighlight } from "./action-highlight";
-import { SecurityCheckHighlight } from "./security-check-highlight";
+import { BackgroundBlock } from "./background-block";
 import { CodeBlock } from "./code-block";
 import { CollapsibleMessage } from "./collapsible-message";
 import { ErrorBlock } from "./error-block";
@@ -17,7 +17,7 @@ import { MessageContent } from "./message-content";
 import { MessagePaper } from "./message-paper";
 import { MessageTimestamp } from "./message-timestamp";
 import { OutputBlock } from "./output-block";
-import { BackgroundBlock } from "./background-block";
+import { SecurityCheckHighlight } from "./security-check-highlight";
 import { StatusIndicator } from "./status-indicator";
 import type { MessageItemProps } from "./types";
 

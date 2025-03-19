@@ -1,5 +1,5 @@
-import { faCommentDots, faLightbulb } from "@fortawesome/free-solid-svg-icons";
 import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
+import { faCommentDots, faLightbulb } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, Collapse, Typography } from "@mui/material";
 import { styled } from "@mui/material/styles";
