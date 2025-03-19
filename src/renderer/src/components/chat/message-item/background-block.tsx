@@ -6,7 +6,7 @@ import { styled } from "@mui/material/styles";
 import type { ExecutionType } from "@renderer/api/local-operator/types";
 import { type FC, useState } from "react";
 import { MarkdownRenderer } from "../markdown-renderer";
-import type { PlanReflectionBlockProps } from "./types";
+import type { BackgroundBlockProps } from "./types";
 
 const BlockContainer = styled(Box)(() => ({
 	width: "95%",
@@ -71,7 +71,7 @@ const ExpandedContent = styled(Box)(({ theme }) => ({
  * Component for displaying plan and reflection execution types
  * Shows as a single line with truncation when collapsed
  */
-export const PlanReflectionBlock: FC<PlanReflectionBlockProps> = ({
+export const BackgroundBlock: FC<BackgroundBlockProps> = ({
 	content,
 	executionType,
 	isUser,
