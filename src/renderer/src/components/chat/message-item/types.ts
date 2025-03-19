@@ -30,9 +30,9 @@ export type CollapsibleSectionProps = {
 };
 
 /**
- * Props for the PlanReflectionBlock component
+ * Props for the BackgroundBlock component
  */
-export type PlanReflectionBlockProps = {
+export type BackgroundBlockProps = {
 	content: string;
 	executionType: ExecutionType;
 	isUser: boolean;

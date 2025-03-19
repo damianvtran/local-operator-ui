@@ -17,7 +17,7 @@ import { MessageContent } from "./message-content";
 import { MessagePaper } from "./message-paper";
 import { MessageTimestamp } from "./message-timestamp";
 import { OutputBlock } from "./output-block";
-import { PlanReflectionBlock } from "./plan-reflection-block";
+import { BackgroundBlock } from "./background-block";
 import { StatusIndicator } from "./status-indicator";
 import type { MessageItemProps } from "./types";
 
@@ -153,7 +153,7 @@ export const MessageItem: FC<MessageItemProps> = memo(
 					: message.execution_type || "action";
 
 			return (
-				<PlanReflectionBlock
+				<BackgroundBlock
 					content={message.message}
 					executionType={executionType}
 					isUser={isUser}
