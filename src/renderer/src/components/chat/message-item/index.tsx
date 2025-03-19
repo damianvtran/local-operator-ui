@@ -1,4 +1,3 @@
-import { faCheck } from "@fortawesome/free-solid-svg-icons";
 import { Box } from "@mui/material";
 import { type FC, memo, useCallback, useMemo } from "react";
 import { createLocalOperatorClient } from "../../../api/local-operator";
@@ -155,14 +154,9 @@ export const MessageItem: FC<MessageItemProps> = memo(
 			return (
 				<BackgroundBlock
 					content={message.message}
+					action={message.action}
 					executionType={executionType}
 					isUser={isUser}
-					customIcon={
-						isAction && message.action === "DONE" ? faCheck : undefined
-					}
-					customTitle={
-						isAction && message.action === "DONE" ? "Task Complete" : undefined
-					}
 				/>
 			);
 		}
