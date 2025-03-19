@@ -1,4 +1,3 @@
-import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import type {
 	ActionType,
 	ExecutionType,
@@ -34,10 +33,9 @@ export type CollapsibleSectionProps = {
  */
 export type BackgroundBlockProps = {
 	content: string;
+	action?: ActionType;
 	executionType: ExecutionType;
 	isUser: boolean;
-	customIcon?: IconDefinition;
-	customTitle?: string;
 };
 
 /**

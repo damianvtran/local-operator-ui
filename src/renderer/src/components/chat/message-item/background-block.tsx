@@ -1,5 +1,10 @@
 import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
-import { faCommentDots, faLightbulb } from "@fortawesome/free-solid-svg-icons";
+import {
+	faCheck,
+	faCommentDots,
+	faLightbulb,
+	faQuestion,
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, Collapse, Typography } from "@mui/material";
 import { styled } from "@mui/material/styles";
@@ -73,10 +78,9 @@ const ExpandedContent = styled(Box)(({ theme }) => ({
  */
 export const BackgroundBlock: FC<BackgroundBlockProps> = ({
 	content,
+	action,
 	executionType,
 	isUser,
-	customIcon,
-	customTitle,
 }) => {
 	const [isExpanded, setIsExpanded] = useState(false);
 
@@ -85,17 +89,25 @@ export const BackgroundBlock: FC<BackgroundBlockProps> = ({
 	};
 
 	const getTitle = () => {
-		if (customTitle) {
-			return customTitle;
+		switch (action) {
+			case "DONE":
+				return "Task Complete";
+			case "ASK":
+				return "Asking a Question";
+			default:
+				return executionType === "plan" ? "Planning" : "Reflection";
 		}
-		return executionType === "plan" ? "Planning" : "Reflection";
 	};
 
 	const getIcon = (): IconDefinition => {
-		if (customIcon) {
-			return customIcon;
+		switch (action) {
+			case "DONE":
+				return faCheck;
+			case "ASK":
+				return faQuestion;
+			default:
+				return executionType === "plan" ? faLightbulb : faCommentDots;
 		}
-		return executionType === "plan" ? faLightbulb : faCommentDots;
 	};
 
 	const getTruncatedContent = (content: string, maxLength = 140) => {
