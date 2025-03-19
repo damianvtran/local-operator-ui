@@ -52,6 +52,9 @@ export const convertToMessage = (record: AgentExecutionRecord): Message => {
 		logging: record.logging,
 		timestamp: record.timestamp ? new Date(record.timestamp) : new Date(),
 		files: record.files,
+		action: record.action,
+		execution_type: record.execution_type,
+		task_classification: record.task_classification,
 	};
 };
 
