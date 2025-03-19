@@ -89,7 +89,7 @@ export const MessageItem: FC<MessageItemProps> = memo(
 		// Hide messages with action DONE, execution_type "action", and task_classification "conversation"
 		// These are redundant to the response execution_type messages
 		const shouldHide =
-			message.action === "DONE" &&
+			(message.action === "DONE" || message.action === "ASK") &&
 			message.execution_type === "action" &&
 			message.task_classification === "conversation";
 
@@ -103,7 +103,7 @@ export const MessageItem: FC<MessageItemProps> = memo(
 			message.execution_type === "plan" ||
 			message.execution_type === "reflection" ||
 			(isAction &&
-				message.action === "DONE" &&
+				(message.action === "DONE" || message.action === "ASK") &&
 				message.task_classification !== "conversation");
 
 		// Create a Local Operator client using the API config
