@@ -45,18 +45,20 @@ const ActionBadge = styled(Box, {
 }));
 
 /**
- * Component for highlighting DONE and ASK action types
- * Adds a prominent visual styling to indicate user interaction
+ * Component for highlighting DONE and ASK action types, and response execution types
+ * Adds a prominent visual styling to indicate user interaction or final responses
  */
 export const ActionHighlight: FC<ActionHighlightProps> = ({
 	children,
 	action,
 	isUser,
 	taskClassification,
+	executionType,
 }) => {
 	const shouldHighlight =
-		(action === "DONE" || action === "ASK") &&
-		taskClassification !== "conversation";
+		((action === "DONE" || action === "ASK") &&
+			taskClassification !== "conversation") ||
+		(executionType === "response" && taskClassification !== "conversation");
 
 	// Only apply special highlighting for DONE and ASK actions
 	if (!shouldHighlight) {

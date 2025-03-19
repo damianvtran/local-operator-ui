@@ -1,4 +1,5 @@
 import { faCommentDots, faLightbulb } from "@fortawesome/free-solid-svg-icons";
+import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, Collapse, Typography } from "@mui/material";
 import { styled } from "@mui/material/styles";
@@ -74,6 +75,8 @@ export const PlanReflectionBlock: FC<PlanReflectionBlockProps> = ({
 	content,
 	executionType,
 	isUser,
+	customIcon,
+	customTitle,
 }) => {
 	const [isExpanded, setIsExpanded] = useState(false);
 
@@ -82,10 +85,16 @@ export const PlanReflectionBlock: FC<PlanReflectionBlockProps> = ({
 	};
 
 	const getTitle = () => {
+		if (customTitle) {
+			return customTitle;
+		}
 		return executionType === "plan" ? "Planning" : "Reflection";
 	};
 
-	const getIcon = () => {
+	const getIcon = (): IconDefinition => {
+		if (customIcon) {
+			return customIcon;
+		}
 		return executionType === "plan" ? faLightbulb : faCommentDots;
 	};
 
