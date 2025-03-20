@@ -4,11 +4,15 @@
  * A reusable component for sidebar headers with search functionality
  */
 
-import { faPlus, faSearch } from "@fortawesome/free-solid-svg-icons";
+import {
+	faFileImport,
+	faPlus,
+	faSearch,
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
 	Box,
-	Button,
+	IconButton,
 	InputAdornment,
 	TextField,
 	Tooltip,
@@ -31,26 +35,30 @@ const HeaderRow = styled(Box)({
 	marginBottom: 16,
 });
 
+const ActionsContainer = styled(Box)({
+	display: "flex",
+	gap: 8,
+});
+
 const SidebarTitle = styled(Typography)({
 	fontWeight: 600,
 	fontSize: "1rem",
 });
 
-const NewAgentButton = styled(Button)(({ theme }) => ({
-	borderRadius: 8,
-	textTransform: "none",
-	fontWeight: 600,
-	paddingLeft: 16,
-	paddingRight: 16,
-	paddingTop: 6.4,
-	paddingBottom: 6.4,
+const ActionButton = styled(IconButton)(({ theme }) => ({
+	borderRadius: 10,
+	padding: 8,
+	backgroundColor: alpha(theme.palette.primary.main, 0.1),
+	color: theme.palette.primary.main,
 	transition: "all 0.2s ease-in-out",
 	"&:hover": {
-		boxShadow: `0 2px 8px ${theme.palette.primary.main}33`,
-		transform: "translateY(-1px)",
+		backgroundColor: alpha(theme.palette.primary.main, 0.2),
+		transform: "translateY(-2px)",
+		boxShadow: `0 4px 8px ${alpha(theme.palette.primary.main, 0.25)}`,
 	},
 	"&:active": {
 		transform: "translateY(0)",
+		boxShadow: `0 2px 4px ${alpha(theme.palette.primary.main, 0.2)}`,
 	},
 }));
 
@@ -94,6 +102,10 @@ type SidebarHeaderProps = {
 	searchPlaceholder?: string;
 	/** Tooltip text for the new agent button */
 	newAgentTooltip?: string;
+	/** Callback for when the import agent button is clicked */
+	onImportAgentClick?: () => void;
+	/** Tooltip text for the import agent button */
+	importAgentTooltip?: string;
 };
 
 /**
@@ -108,23 +120,35 @@ export const SidebarHeader: FC<SidebarHeaderProps> = ({
 	onNewAgentClick,
 	searchPlaceholder = "Search agents",
 	newAgentTooltip = "Create a new agent",
+	onImportAgentClick,
+	importAgentTooltip = "Import an agent from a ZIP file",
 }) => {
 	return (
 		<SidebarHeaderContainer>
 			<HeaderRow>
 				<SidebarTitle variant="subtitle1">{title}</SidebarTitle>
-				{/* @ts-ignore - MUI Tooltip requires children but we're providing it */}
-				<Tooltip title={newAgentTooltip} arrow placement="top">
-					<NewAgentButton
-						variant="outlined"
-						color="primary"
-						size="small"
-						startIcon={<FontAwesomeIcon icon={faPlus} />}
-						onClick={onNewAgentClick}
-					>
-						New Agent
-					</NewAgentButton>
-				</Tooltip>
+				<ActionsContainer>
+					{onImportAgentClick && (
+						<Tooltip title={importAgentTooltip} arrow placement="top">
+							<ActionButton
+								onClick={onImportAgentClick}
+								size="small"
+								aria-label="Import agent"
+							>
+								<FontAwesomeIcon icon={faFileImport} />
+							</ActionButton>
+						</Tooltip>
+					)}
+					<Tooltip title={newAgentTooltip} arrow placement="top">
+						<ActionButton
+							onClick={onNewAgentClick}
+							size="small"
+							aria-label="New agent"
+						>
+							<FontAwesomeIcon icon={faPlus} />
+						</ActionButton>
+					</Tooltip>
+				</ActionsContainer>
 			</HeaderRow>
 
 			<SearchField

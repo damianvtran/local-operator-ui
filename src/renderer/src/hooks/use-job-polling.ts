@@ -378,10 +378,8 @@ export const useJobPolling = ({
 		enabled: shouldEnableQuery({ bypassInternetCheck: true }) && !!currentJobId,
 		// Poll every 1 second while job is active
 		refetchInterval: currentJobId ? 1000 : false,
-		// Force refetch on interval regardless of window focus
-		refetchIntervalInBackground: true,
-		// Don't refetch on window focus while polling
-		refetchOnWindowFocus: false,
+		refetchIntervalInBackground: false,
+		refetchOnWindowFocus: true,
 		// Don't cache the result
 		gcTime: 0,
 		staleTime: 0,

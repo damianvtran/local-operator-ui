@@ -41,8 +41,7 @@ export const useServerHealth = (refetchInterval = 5000) => {
 		},
 		// Refetch at specified interval
 		refetchInterval,
-		// Enable background refetching
-		refetchIntervalInBackground: true,
+		refetchIntervalInBackground: false,
 		// Don't retry on failure as this is expected when server is down
 		retry: false,
 		// Always refetch on window focus to get latest status
@@ -95,8 +94,7 @@ export const useInternetConnectivity = (refetchInterval = 5000) => {
 		},
 		// Refetch at specified interval
 		refetchInterval,
-		// Enable background refetching
-		refetchIntervalInBackground: true,
+		refetchIntervalInBackground: false,
 		// Don't retry on failure as this is expected when internet is down
 		retry: false,
 		// Always refetch on window focus to get latest status
