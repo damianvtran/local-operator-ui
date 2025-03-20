@@ -240,4 +240,72 @@ export const AgentsApi = {
 
 		return response.json() as Promise<CRUDResponse>;
 	},
+
+	/**
+	 * Get agent system prompt
+	 * Retrieve the system prompt for a specific agent.
+	 *
+	 * @param baseUrl - The base URL of the Local Operator API
+	 * @param agentId - ID of the agent to get system prompt for
+	 * @returns Promise resolving to the agent system prompt response
+	 * @throws Error if the request fails
+	 */
+	async getAgentSystemPrompt(
+		baseUrl: string,
+		agentId: string,
+	): Promise<CRUDResponse<{ system_prompt: string }>> {
+		const response = await fetch(
+			`${baseUrl}/v1/agents/${agentId}/system-prompt`,
+			{
+				method: "GET",
+				headers: {
+					Accept: "application/json",
+				},
+			},
+		);
+
+		if (!response.ok) {
+			throw new Error(
+				`Get agent system prompt request failed: ${response.status} ${response.statusText}`,
+			);
+		}
+
+		return response.json() as Promise<CRUDResponse<{ system_prompt: string }>>;
+	},
+
+	/**
+	 * Update agent system prompt
+	 * Update the system prompt for a specific agent.
+	 *
+	 * @param baseUrl - The base URL of the Local Operator API
+	 * @param agentId - ID of the agent to update system prompt for
+	 * @param systemPrompt - The new system prompt text
+	 * @returns Promise resolving to the update response
+	 * @throws Error if the request fails
+	 */
+	async updateAgentSystemPrompt(
+		baseUrl: string,
+		agentId: string,
+		systemPrompt: string,
+	): Promise<CRUDResponse> {
+		const response = await fetch(
+			`${baseUrl}/v1/agents/${agentId}/system-prompt`,
+			{
+				method: "PUT",
+				headers: {
+					"Content-Type": "application/json",
+					Accept: "application/json",
+				},
+				body: JSON.stringify({ system_prompt: systemPrompt }),
+			},
+		);
+
+		if (!response.ok) {
+			throw new Error(
+				`Update agent system prompt request failed: ${response.status} ${response.statusText}`,
+			);
+		}
+
+		return response.json() as Promise<CRUDResponse>;
+	},
 };
