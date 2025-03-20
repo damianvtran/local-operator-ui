@@ -74,10 +74,10 @@ const SectionTitle = styled(Typography)(({ theme }) => ({
 	color: theme.palette.text.primary,
 }));
 
-const TitleIcon = styled(FontAwesomeIcon)({
+const TitleIcon = styled(FontAwesomeIcon)(({ theme }) => ({
 	marginRight: 10,
-	color: "#f2f2f3",
-});
+	color: theme.palette.text.primary,
+}));
 
 const InfoCard = styled(Box)(({ theme }) => ({
 	display: "flex",
@@ -88,11 +88,11 @@ const InfoCard = styled(Box)(({ theme }) => ({
 	backgroundColor: alpha(theme.palette.background.default, 0.7),
 }));
 
-const CardIcon = styled(FontAwesomeIcon)({
+const CardIcon = styled(FontAwesomeIcon)(({ theme }) => ({
 	marginRight: 12,
 	opacity: 0.8,
-	color: "#f2f2f3",
-});
+	color: theme.palette.text.primary,
+}));
 
 // Use span instead of Box to avoid nesting <div> inside <p>
 const LabelText = styled("span")(({ theme }) => ({
@@ -102,14 +102,16 @@ const LabelText = styled("span")(({ theme }) => ({
 }));
 
 // Use span instead of Box to avoid nesting <div> inside <p>
-const ValueText = styled("span")({
+const ValueText = styled("span")(({ theme }) => ({
 	fontWeight: 500,
 	display: "inline-block",
-});
+	color: theme.palette.text.primary,
+}));
 
-const MonospaceValueText = styled(ValueText)({
+const MonospaceValueText = styled(ValueText)(({ theme }) => ({
 	fontFamily: "monospace",
-});
+	color: theme.palette.text.primary,
+}));
 
 /**
  * General Settings Component

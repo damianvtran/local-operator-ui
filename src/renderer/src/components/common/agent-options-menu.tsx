@@ -12,6 +12,7 @@ import {
 	Menu,
 	MenuItem,
 	Typography,
+	alpha,
 	styled,
 } from "@mui/material";
 import { useDeleteAgent } from "@renderer/hooks/use-agent-mutations";
@@ -60,27 +61,32 @@ type AgentOptionsMenuProps = {
 	onExportAgent?: () => void;
 };
 
-const OptionsIconButton = styled(IconButton)({
+const OptionsIconButton = styled(IconButton)(({ theme }) => ({
 	opacity: 0,
 	transition: "opacity 0.2s",
 	"&:hover": {
 		opacity: 1,
-		backgroundColor: "rgba(255, 255, 255, 0.08)",
+		backgroundColor: alpha(
+			theme.palette.mode === "dark"
+				? theme.palette.common.white
+				: theme.palette.common.black,
+			0.08,
+		),
 	},
-});
+}));
 
-const OptionsMenu = styled(Menu)({
+const OptionsMenu = styled(Menu)(({ theme }) => ({
 	"& .MuiPaper-root": {
 		minWidth: 150,
-		boxShadow: "0 4px 20px rgba(0, 0, 0, 0.15)",
+		boxShadow: `0 4px 20px ${alpha(theme.palette.common.black, theme.palette.mode === "dark" ? 0.4 : 0.15)}`,
 		borderRadius: 12,
 	},
-});
+}));
 
 const StyledMenuItem = styled(MenuItem)(({ theme }) => ({
 	padding: theme.spacing(1.5, 2),
 	"&:hover": {
-		backgroundColor: "rgba(56, 201, 106, 0.08)",
+		backgroundColor: alpha(theme.palette.primary.main, 0.08),
 	},
 }));
 
@@ -88,7 +94,7 @@ const DeleteMenuItem = styled(MenuItem)(({ theme }) => ({
 	padding: theme.spacing(1.5, 2),
 	color: theme.palette.error.main,
 	"&:hover": {
-		backgroundColor: "rgba(211, 47, 47, 0.08)",
+		backgroundColor: alpha(theme.palette.error.main, 0.08),
 	},
 }));
 

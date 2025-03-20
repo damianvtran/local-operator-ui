@@ -42,14 +42,20 @@ const DetailsPaper = styled(Paper)(({ theme }) => ({
 	display: "flex",
 	flexDirection: "column",
 	transition: "all 0.25s ease",
-	boxShadow: "0 4px 20px rgba(0,0,0,0.06)",
+	boxShadow:
+		theme.palette.mode === "dark"
+			? "0 4px 20px rgba(0,0,0,0.15)"
+			: "0 4px 20px rgba(0,0,0,0.06)",
 	"&:hover": {
-		boxShadow: "0 8px 30px rgba(0,0,0,0.08)",
+		boxShadow:
+			theme.palette.mode === "dark"
+				? "0 8px 30px rgba(0,0,0,0.2)"
+				: "0 8px 30px rgba(0,0,0,0.08)",
 	},
 	overflow: "hidden",
 }));
 
-const ScrollableContent = styled(Box)({
+const ScrollableContent = styled(Box)(({ theme }) => ({
 	display: "flex",
 	flexDirection: "column",
 	height: "100%",
@@ -61,13 +67,19 @@ const ScrollableContent = styled(Box)({
 		backgroundColor: "transparent",
 	},
 	"&::-webkit-scrollbar-thumb": {
-		backgroundColor: "rgba(255, 255, 255, 0.1)",
+		backgroundColor:
+			theme.palette.mode === "dark"
+				? "rgba(255, 255, 255, 0.1)"
+				: "rgba(0, 0, 0, 0.1)",
 		borderRadius: "10px",
 		"&:hover": {
-			backgroundColor: "rgba(0, 0, 0, 0.2)",
+			backgroundColor:
+				theme.palette.mode === "dark"
+					? "rgba(255, 255, 255, 0.2)"
+					: "rgba(0, 0, 0, 0.2)",
 		},
 	},
-});
+}));
 
 const EmptyStateContainer = styled(Box)(({ theme }) => ({
 	display: "flex",
@@ -80,11 +92,12 @@ const EmptyStateContainer = styled(Box)(({ theme }) => ({
 	borderRadius: 16,
 }));
 
-const PlaceholderIcon = styled(FontAwesomeIcon)({
+const PlaceholderIcon = styled(FontAwesomeIcon)(({ theme }) => ({
 	fontSize: "3rem",
 	marginBottom: "1rem",
 	opacity: 0.5,
-});
+	color: theme.palette.text.secondary,
+}));
 
 const DirectionIndicator = styled(Box)(({ theme }) => ({
 	display: "flex",

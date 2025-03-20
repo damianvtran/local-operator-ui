@@ -58,7 +58,12 @@ const SettingContainer = styled(Paper)(({ theme }) => ({
 	transition: "all 0.2s ease",
 	"&:hover": {
 		backgroundColor: alpha(theme.palette.background.default, 0.9),
-		boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
+		boxShadow: `0 4px 12px ${alpha(
+			theme.palette.mode === "dark"
+				? theme.palette.common.black
+				: theme.palette.common.black,
+			theme.palette.mode === "dark" ? 0.2 : 0.08,
+		)}`,
 	},
 	display: "flex",
 	justifyContent: "space-between",
