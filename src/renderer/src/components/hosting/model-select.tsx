@@ -175,15 +175,25 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 	// Force refresh models when hosting provider changes
 	const { refreshModels } = useModels();
 	const previousHostingIdRef = useRef<string | null>(null);
+	const refreshTimeRef = useRef<number | null>(null);
 
 	useEffect(() => {
 		// Only refresh if hostingId has changed and is not null
 		if (hostingId && previousHostingIdRef.current !== hostingId) {
 			previousHostingIdRef.current = hostingId;
-			// Use a timeout to prevent immediate re-renders
+
+			// Use a debounced refresh to prevent multiple rapid calls
 			const timeoutId = setTimeout(() => {
-				refreshModels();
-			}, 0);
+				// Add a check to prevent refreshing if we've refreshed recently
+				const now = Date.now();
+				const lastRefreshTime = refreshTimeRef.current;
+				const THROTTLE_DURATION = 2000; // 2 second cooldown
+
+				if (!lastRefreshTime || now - lastRefreshTime > THROTTLE_DURATION) {
+					refreshModels();
+					refreshTimeRef.current = now;
+				}
+			}, 100); // Slight delay to batch potential multiple changes
 
 			return () => clearTimeout(timeoutId);
 		}
