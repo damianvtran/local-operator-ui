@@ -1,6 +1,6 @@
 import { faFile } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Box, Typography } from "@mui/material";
+import { Box, Typography, alpha } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import type { FC } from "react";
 import type { FileAttachmentProps } from "./types";
@@ -10,26 +10,36 @@ import type { FileAttachmentProps } from "./types";
  * Displays a file icon and filename in a container
  * Includes interactive styling to indicate clickability
  */
-const FileAttachmentContainer = styled(Box)(() => ({
+const FileAttachmentContainer = styled(Box)(({ theme }) => ({
 	display: "flex",
 	alignItems: "center",
 	padding: "8px 12px",
 	marginTop: 8,
-	backgroundColor: "rgba(0, 0, 0, 0.1)",
+	backgroundColor: alpha(
+		theme.palette.mode === "dark"
+			? theme.palette.common.black
+			: theme.palette.grey[200],
+		theme.palette.mode === "dark" ? 0.1 : 0.5,
+	),
 	borderRadius: 8,
-	boxShadow: "0 1px 4px rgba(0, 0, 0, 0.1)",
+	boxShadow: `0 1px 4px ${alpha(theme.palette.common.black, theme.palette.mode === "dark" ? 0.1 : 0.05)}`,
 	width: "fit-content",
 	maxWidth: "100%",
 	cursor: "pointer",
 	transition: "all 0.2s ease",
 	"&:hover": {
-		backgroundColor: "rgba(0, 0, 0, 0.15)",
+		backgroundColor: alpha(
+			theme.palette.mode === "dark"
+				? theme.palette.common.black
+				: theme.palette.grey[300],
+			theme.palette.mode === "dark" ? 0.15 : 0.5,
+		),
 		transform: "translateY(-1px)",
-		boxShadow: "0 2px 5px rgba(0, 0, 0, 0.15)",
+		boxShadow: `0 2px 5px ${alpha(theme.palette.common.black, theme.palette.mode === "dark" ? 0.15 : 0.1)}`,
 	},
 	"&:active": {
 		transform: "translateY(0)",
-		boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)",
+		boxShadow: `0 1px 3px ${alpha(theme.palette.common.black, theme.palette.mode === "dark" ? 0.1 : 0.05)}`,
 	},
 }));
 

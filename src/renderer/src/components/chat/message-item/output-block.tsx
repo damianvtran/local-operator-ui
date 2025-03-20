@@ -1,4 +1,4 @@
-import { Box, Typography } from "@mui/material";
+import { Box, Typography, alpha } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import type { FC } from "react";
 import type { OutputBlockProps } from "./types";
@@ -14,31 +14,46 @@ const SectionLabel = styled(Typography)(({ theme }) => ({
 	color: theme.palette.text.secondary,
 }));
 
-const OutputContainer = styled(Box)({
+const OutputContainer = styled(Box)(({ theme }) => ({
 	fontFamily: '"Roboto Mono", monospace',
 	fontSize: "0.85rem",
-	backgroundColor: "rgba(0, 0, 0, 0.3)",
+	backgroundColor: alpha(
+		theme.palette.mode === "dark"
+			? theme.palette.common.black
+			: theme.palette.grey[200],
+		theme.palette.mode === "dark" ? 0.3 : 0.5,
+	),
 	borderRadius: "8px",
 	padding: 12,
 	maxHeight: "300px",
 	overflow: "auto",
 	whiteSpace: "pre",
 	width: "100%",
-	boxShadow: "0 2px 6px rgba(0, 0, 0, 0.15)",
-	color: "inherit",
+	boxShadow: `0 2px 6px ${alpha(theme.palette.common.black, theme.palette.mode === "dark" ? 0.15 : 0.1)}`,
+	color: theme.palette.text.primary,
 	overflowX: "auto",
 	"&::-webkit-scrollbar": {
 		width: "6px",
 		height: "6px",
 	},
 	"&::-webkit-scrollbar-thumb": {
-		backgroundColor: "rgba(255, 255, 255, 0.1)",
+		backgroundColor: alpha(
+			theme.palette.mode === "dark"
+				? theme.palette.common.white
+				: theme.palette.common.black,
+			0.1,
+		),
 		borderRadius: "3px",
 	},
 	"&::-webkit-scrollbar-corner": {
-		backgroundColor: "rgba(0, 0, 0, 0.3)",
+		backgroundColor: alpha(
+			theme.palette.mode === "dark"
+				? theme.palette.common.black
+				: theme.palette.grey[200],
+			theme.palette.mode === "dark" ? 0.3 : 0.5,
+		),
 	},
-});
+}));
 
 /**
  * Component for displaying command output
