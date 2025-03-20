@@ -15,6 +15,7 @@ import type { FC } from "react";
 import { ChatSettings } from "./chat-settings";
 import { GeneralSettings } from "./general-settings";
 import { SecuritySettings } from "./security-settings";
+import { SystemPromptSettings } from "./system-prompt-settings";
 
 type AgentSettingsProps = {
 	/**
@@ -132,6 +133,14 @@ export const AgentSettings: FC<AgentSettingsProps> = ({
 						savingField={savingField}
 						setSavingField={setSavingField}
 						updateAgentMutation={updateAgentMutation}
+						refetchAgent={refetchAgent}
+						initialSelectedAgentId={initialSelectedAgentId}
+					/>
+
+					<SystemPromptSettings
+						selectedAgent={selectedAgent}
+						savingField={savingField}
+						setSavingField={setSavingField}
 						refetchAgent={refetchAgent}
 						initialSelectedAgentId={initialSelectedAgentId}
 					/>
