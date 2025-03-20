@@ -25,7 +25,7 @@ import React from "react";
 
 const SidebarHeaderContainer = styled(Box)(({ theme }) => ({
 	padding: theme.spacing(3),
-	borderBottom: "1px solid rgba(255,255,255,0.08)",
+	borderBottom: `1px solid ${theme.palette.sidebar.border}`,
 }));
 
 const HeaderRow = styled(Box)({
