@@ -76,7 +76,10 @@ const SectionTitle = styled(Typography)(({ theme }) => ({
 
 const TitleIcon = styled(FontAwesomeIcon)(({ theme }) => ({
 	marginRight: 10,
-	color: theme.palette.text.primary,
+	color: theme.palette.primary.main,
+	padding: theme.spacing(0.5),
+	borderRadius: 999,
+	backgroundColor: alpha(theme.palette.primary.main, 0.1),
 }));
 
 const InfoCard = styled(Box)(({ theme }) => ({

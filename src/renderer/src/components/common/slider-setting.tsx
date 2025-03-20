@@ -76,17 +76,29 @@ type SliderSettingProps = {
 const SettingContainer = styled(Paper)(({ theme }) => ({
 	padding: theme.spacing(2.5),
 	borderRadius: theme.shape.borderRadius * 2,
-	backgroundColor: alpha(theme.palette.background.default, 0.7),
+	backgroundColor:
+		theme.palette.mode === "light"
+			? alpha(theme.palette.grey[100], 0.9)
+			: alpha(theme.palette.background.default, 0.7),
+	border:
+		theme.palette.mode === "light"
+			? `1px solid ${alpha(theme.palette.grey[300], 0.8)}`
+			: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
 	transition: "all 0.2s ease",
 	marginBottom: theme.spacing(2),
 	"&:hover": {
-		backgroundColor: alpha(theme.palette.background.default, 0.9),
-		boxShadow: `0 4px 12px ${alpha(
-			theme.palette.mode === "dark"
-				? theme.palette.common.black
-				: theme.palette.common.black,
-			theme.palette.mode === "dark" ? 0.2 : 0.08,
-		)}`,
+		backgroundColor:
+			theme.palette.mode === "light"
+				? alpha(theme.palette.grey[100], 1)
+				: alpha(theme.palette.background.default, 0.9),
+		boxShadow:
+			theme.palette.mode === "light"
+				? `0 4px 12px ${alpha(theme.palette.common.black, 0.08)}`
+				: `0 4px 12px ${alpha(theme.palette.common.black, 0.2)}`,
+		border:
+			theme.palette.mode === "light"
+				? `1px solid ${alpha(theme.palette.primary.main, 0.2)}`
+				: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
 	},
 }));
 
@@ -157,6 +169,29 @@ const StyledTextField = styled(TextField, {
 	width: hasUnit ? "130px" : "100px",
 	"& .MuiOutlinedInput-root": {
 		borderRadius: theme.shape.borderRadius * 1.5,
+		backgroundColor:
+			theme.palette.mode === "light"
+				? alpha(theme.palette.common.white, 0.9)
+				: alpha(theme.palette.background.paper, 0.4),
+		border:
+			theme.palette.mode === "light"
+				? `1px solid ${alpha(theme.palette.grey[400], 0.8)}`
+				: `1px solid ${alpha(theme.palette.divider, 0.2)}`,
+		"&:hover": {
+			backgroundColor:
+				theme.palette.mode === "light"
+					? theme.palette.common.white
+					: alpha(theme.palette.background.paper, 0.6),
+			borderColor:
+				theme.palette.mode === "light"
+					? alpha(theme.palette.primary.main, 0.5)
+					: alpha(theme.palette.primary.main, 0.3),
+		},
+		"&.Mui-focused": {
+			backgroundColor: theme.palette.common.white,
+			borderColor: theme.palette.primary.main,
+			boxShadow: `0 0 0 2px ${alpha(theme.palette.primary.main, 0.2)}`,
+		},
 	},
 	"& .MuiInputAdornment-root": {
 		marginLeft: 0,

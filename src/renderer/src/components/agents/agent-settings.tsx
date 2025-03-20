@@ -95,8 +95,11 @@ const EmptyStateContainer = styled(Box)(({ theme }) => ({
 const PlaceholderIcon = styled(FontAwesomeIcon)(({ theme }) => ({
 	fontSize: "3rem",
 	marginBottom: "1rem",
-	opacity: 0.5,
-	color: theme.palette.text.secondary,
+	color: theme.palette.primary.main,
+	opacity: 0.7,
+	padding: theme.spacing(1),
+	borderRadius: theme.shape.borderRadius,
+	backgroundColor: alpha(theme.palette.primary.main, 0.1),
 }));
 
 const DirectionIndicator = styled(Box)(({ theme }) => ({
