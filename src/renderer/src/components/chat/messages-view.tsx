@@ -1,7 +1,10 @@
 import { faCommentDots } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, CircularProgress, Typography, styled } from "@mui/material";
-import type { JobStatus } from "@renderer/api/local-operator/types";
+import type {
+	AgentExecutionRecord,
+	JobStatus,
+} from "@renderer/api/local-operator/types";
 import type { Message } from "@renderer/components/chat/types";
 import type { FC, RefObject } from "react";
 import { LoadingIndicator } from "./loading-indicator";
@@ -17,8 +20,10 @@ type MessagesViewProps = {
 	isFetchingMore: boolean;
 	jobStatus?: JobStatus | null;
 	agentName?: string;
+	currentExecution?: AgentExecutionRecord | null;
 	messagesContainerRef: RefObject<HTMLDivElement>;
 	messagesEndRef: RefObject<HTMLDivElement>;
+	scrollToBottom?: () => void;
 };
 
 const MessagesContainer = styled(Box)({
@@ -75,8 +80,10 @@ export const MessagesView: FC<MessagesViewProps> = ({
 	isFetchingMore,
 	jobStatus,
 	agentName,
+	currentExecution,
 	messagesContainerRef,
 	messagesEndRef,
+	scrollToBottom,
 }) => {
 	return (
 		<MessagesContainer ref={messagesContainerRef}>
@@ -119,7 +126,12 @@ export const MessagesView: FC<MessagesViewProps> = ({
 
 					{/* Loading indicator for new message */}
 					{isLoading && (
-						<LoadingIndicator status={jobStatus} agentName={agentName} />
+						<LoadingIndicator
+							status={jobStatus}
+							agentName={agentName}
+							currentExecution={currentExecution}
+							scrollToBottom={scrollToBottom}
+						/>
 					)}
 
 					{/* Invisible element to scroll to */}

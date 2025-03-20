@@ -462,6 +462,8 @@ export type JobDetails = {
 		/** Token usage statistics */
 		stats: ChatStats;
 	};
+	/** Current execution details */
+	current_execution?: AgentExecutionRecord;
 };
 
 /**

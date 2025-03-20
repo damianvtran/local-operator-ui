@@ -1,6 +1,7 @@
 import { Paper, styled } from "@mui/material";
 import type {
 	AgentDetails,
+	AgentExecutionRecord,
 	JobStatus,
 } from "@renderer/api/local-operator/types";
 import { StyledDivider } from "@renderer/components/common/chat-layout";
@@ -32,6 +33,7 @@ type ChatContentProps = {
 	isFetchingMore: boolean;
 	isFarFromBottom: boolean;
 	jobStatus?: JobStatus | null;
+	currentExecution?: AgentExecutionRecord | null;
 	messagesContainerRef: React.RefObject<HTMLDivElement>;
 	messagesEndRef: React.RefObject<HTMLDivElement>;
 	scrollToBottom: () => void;
@@ -70,6 +72,7 @@ export const ChatContent: FC<ChatContentProps> = ({
 	isFetchingMore,
 	isFarFromBottom,
 	jobStatus,
+	currentExecution,
 	messagesContainerRef,
 	messagesEndRef,
 	scrollToBottom,
@@ -107,8 +110,10 @@ export const ChatContent: FC<ChatContentProps> = ({
 					isFetchingMore={isFetchingMore}
 					jobStatus={jobStatus}
 					agentName={agentName}
+					currentExecution={currentExecution}
 					messagesContainerRef={messagesContainerRef}
 					messagesEndRef={messagesEndRef}
+					scrollToBottom={scrollToBottom}
 				/>
 			) : (
 				/* Raw information tab */
