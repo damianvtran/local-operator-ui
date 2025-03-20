@@ -28,9 +28,11 @@ import { queryClient } from "@renderer/api/query-client";
 import { AgentOptionsMenu } from "@renderer/components/common/agent-options-menu";
 import { CompactPagination } from "@renderer/components/common/compact-pagination";
 import { CreateAgentDialog } from "@renderer/components/common/create-agent-dialog";
+import { ImportAgentDialog } from "@renderer/components/common/import-agent-dialog";
 import { SidebarHeader } from "@renderer/components/common/sidebar-header";
 import { apiConfig } from "@renderer/config";
 import { useAgents } from "@renderer/hooks/use-agents";
+import { useExportAgent } from "@renderer/hooks/use-agent-mutations";
 import { usePaginationParams } from "@renderer/hooks/use-pagination-params";
 import type { ChangeEvent, FC } from "react";
 import React, { useState, useCallback, useRef, useEffect } from "react";
@@ -148,7 +150,11 @@ export const AgentsSidebar: FC<AgentsSidebarProps> = ({
 	const navigate = useNavigate();
 	const [searchQuery, setSearchQuery] = useState("");
 	const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+	const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
 	const perPage = 50;
+
+	// Export agent mutation
+	const exportAgentMutation = useExportAgent();
 
 	// Use the pagination hook to get and set the page from URL
 	const { page, setPage } = usePaginationParams();
@@ -205,6 +211,43 @@ export const AgentsSidebar: FC<AgentsSidebarProps> = ({
 	const handleCloseCreateDialog = useCallback(() => {
 		setIsCreateDialogOpen(false);
 	}, []);
+
+	const handleOpenImportDialog = useCallback(() => {
+		setIsImportDialogOpen(true);
+	}, []);
+
+	const handleCloseImportDialog = useCallback(() => {
+		setIsImportDialogOpen(false);
+	}, []);
+
+	const handleExportAgent = useCallback(
+		async (agentId: string) => {
+			try {
+				const blob = await exportAgentMutation.mutateAsync(agentId);
+
+				// Get the agent name for the filename
+				const agent = agents.find((a) => a.id === agentId);
+				const agentName = agent
+					? agent.name.replace(/\s+/g, "-").toLowerCase()
+					: agentId;
+
+				// Create a download link
+				const url = URL.createObjectURL(blob);
+				const a = document.createElement("a");
+				a.href = url;
+				a.download = `${agentName}-export.zip`;
+				document.body.appendChild(a);
+				a.click();
+
+				// Clean up
+				URL.revokeObjectURL(url);
+				document.body.removeChild(a);
+			} catch (error) {
+				console.error("Failed to export agent:", error);
+			}
+		},
+		[agents, exportAgentMutation],
+	);
 
 	const handleAgentCreated = useCallback(
 		(agentId: string) => {
@@ -266,6 +309,8 @@ export const AgentsSidebar: FC<AgentsSidebarProps> = ({
 				searchQuery={searchQuery}
 				onSearchChange={(query) => setSearchQuery(query)}
 				onNewAgentClick={handleOpenCreateDialog}
+				onImportAgentClick={handleOpenImportDialog}
+				importAgentTooltip="Import an agent from a ZIP file"
 			/>
 
 			{isLoading ? (
@@ -316,6 +361,7 @@ export const AgentsSidebar: FC<AgentsSidebarProps> = ({
 										refetch();
 									}}
 									onChatWithAgent={() => navigate(`/chat/${agent.id}`)}
+									onExportAgent={() => handleExportAgent(agent.id)}
 									buttonSx={{
 										mr: 0.5,
 										width: 32,
@@ -378,6 +424,12 @@ export const AgentsSidebar: FC<AgentsSidebarProps> = ({
 				open={isCreateDialogOpen}
 				onClose={handleCloseCreateDialog}
 				onAgentCreated={handleAgentCreated}
+			/>
+
+			<ImportAgentDialog
+				open={isImportDialogOpen}
+				onClose={handleCloseImportDialog}
+				onAgentImported={handleAgentCreated}
 			/>
 
 			{/* Compact pagination at the bottom of the sidebar */}
