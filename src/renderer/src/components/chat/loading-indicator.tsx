@@ -54,7 +54,6 @@ const ContentContainer = styled(Box)(() => ({
 	gap: 8,
 	maxWidth: "calc(100% - 60px)",
 }));
-
 const StatusContainer = styled(Box)(() => ({
 	display: "flex",
 	alignItems: "center",
@@ -64,15 +63,25 @@ const StatusContainer = styled(Box)(() => ({
 const StatusText = styled(Typography)(({ theme }) => ({
 	color: theme.palette.text.secondary,
 	display: "flex",
-	alignItems: "center",
 	marginLeft: 16,
 	position: "relative",
 	animation: `${textStrobeAnimation} 3s ease-in-out infinite`,
 }));
 
+const StatusTextContent = styled("span")(() => ({
+	wordBreak: "break-word",
+	display: "inline",
+}));
+
+const StatusControls = styled("span")(() => ({
+	display: "inline-flex",
+	alignItems: "center",
+	marginLeft: 4,
+	whiteSpace: "nowrap",
+}));
+
 const DotContainer = styled("span")(() => ({
 	display: "inline-flex",
-	marginLeft: 4,
 	alignItems: "center",
 	position: "relative",
 	zIndex: 2,
@@ -321,29 +330,33 @@ export const LoadingIndicator: FC<{
 			<ContentContainer>
 				<StatusContainer>
 					<StatusText variant="body2">
-						{message ? message : `${agentName} is ${statusText}`}
-						<DotContainer>
-							<Dot delay={0} />
-							<Dot delay={0.2} />
-							<Dot delay={0.4} />
-						</DotContainer>
+						<StatusTextContent>
+							{message ? message : `${agentName} is ${statusText}`}
+						</StatusTextContent>
+						<StatusControls>
+							<DotContainer>
+								<Dot delay={0} />
+								<Dot delay={0.2} />
+								<Dot delay={0.4} />
+							</DotContainer>
 
-						{codeSnippet && (
-							<CodeToggleButton
-								onClick={toggleCodeExpansion}
-								size="small"
-								variant="text"
-								startIcon={
-									<FontAwesomeIcon
-										icon={isCodeExpanded ? faChevronUp : faChevronDown}
-										size="xs"
-										style={{ fontSize: "0.75rem" }}
-									/>
-								}
-							>
-								{isCodeExpanded ? "(Hide code)" : "(Show code)"}
-							</CodeToggleButton>
-						)}
+							{codeSnippet && (
+								<CodeToggleButton
+									onClick={toggleCodeExpansion}
+									size="small"
+									variant="text"
+									startIcon={
+										<FontAwesomeIcon
+											icon={isCodeExpanded ? faChevronUp : faChevronDown}
+											size="xs"
+											style={{ fontSize: "0.75rem" }}
+										/>
+									}
+								>
+									{isCodeExpanded ? "(Hide code)" : "(Show code)"}
+								</CodeToggleButton>
+							)}
+						</StatusControls>
 					</StatusText>
 				</StatusContainer>
 
