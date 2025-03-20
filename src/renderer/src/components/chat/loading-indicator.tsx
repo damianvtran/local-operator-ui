@@ -4,13 +4,8 @@ import {
 	faRobot,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
-	Avatar,
-	Box,
-	Button,
-	CircularProgress,
-	Typography,
-} from "@mui/material";
+import { Avatar, Box, Button, Typography, styled } from "@mui/material";
+import { keyframes } from "@emotion/react";
 import SyntaxHighlighter from "react-syntax-highlighter";
 import { atomOneDark } from "react-syntax-highlighter/dist/esm/styles/hljs";
 import { createGlobalStyle } from "styled-components";
@@ -28,6 +23,89 @@ const SyntaxHighlighterStyles = createGlobalStyle`
     font-family: 'Roboto Mono', monospace !important;
   }
 `;
+
+// Define the animation
+const dotAnimation = keyframes`
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
+`;
+
+// Styled components
+const LoadingContainer = styled(Box)(() => ({
+	display: "flex",
+	alignItems: "center",
+	gap: 0,
+}));
+
+const AgentAvatar = styled(Avatar)(({ theme }) => ({
+	backgroundColor: "rgba(56, 201, 106, 0.2)",
+	color: theme.palette.primary.main,
+}));
+
+const ContentContainer = styled(Box)(() => ({
+	display: "flex",
+	flexDirection: "column",
+	gap: 8,
+	maxWidth: "calc(100% - 60px)",
+}));
+
+const StatusContainer = styled(Box)(() => ({
+	display: "flex",
+	alignItems: "center",
+	gap: 8,
+}));
+
+const StatusText = styled(Typography)(({ theme }) => ({
+	color: theme.palette.text.secondary,
+	display: "flex",
+	alignItems: "center",
+	marginLeft: 16,
+}));
+
+const DotContainer = styled("span")(() => ({
+	display: "inline-flex",
+	marginLeft: 4,
+	alignItems: "center",
+}));
+
+const Dot = styled("span")<{ delay: number }>(({ theme, delay }) => ({
+	width: 4,
+	height: 4,
+	borderRadius: "50%",
+	backgroundColor: theme.palette.text.secondary,
+	margin: "0 1px",
+	animation: `${dotAnimation} 1.4s infinite ease-in-out`,
+	animationDelay: `${delay}s`,
+}));
+
+const CodeToggleButton = styled(Button)(({ theme }) => ({
+	color: theme.palette.text.secondary,
+	padding: "0 4px",
+	minWidth: "auto",
+	textTransform: "none",
+	marginLeft: 8,
+	height: "auto",
+	fontSize: "0.75rem",
+	lineHeight: 1,
+	opacity: 0.7,
+	borderRadius: "12px",
+	transition: "all 0.2s ease",
+	"&:hover": {
+		backgroundColor: "transparent",
+		opacity: 1,
+		color: theme.palette.primary.light,
+	},
+	"& .MuiButton-startIcon": {
+		marginRight: 2,
+		marginLeft: 0,
+	},
+}));
+
+const CodeContainer = styled(Box)(() => ({
+	maxWidth: "100%",
+	marginLeft: 16,
+	marginTop: 8,
+}));
 
 /**
  * Component for displaying code with syntax highlighting in the loading indicator
@@ -221,76 +299,47 @@ export const LoadingIndicator: FC<{
 	};
 
 	return (
-		<Box
-			sx={{
-				display: "flex",
-				alignItems: "flex-start",
-				gap: 2,
-			}}
-		>
+		<LoadingContainer>
 			{/* Invisible div for scroll reference */}
 			<div ref={ref} style={{ height: 0, width: 0 }} />
-			<Avatar
-				sx={{
-					bgcolor: "rgba(56, 201, 106, 0.2)",
-					color: "primary.main",
-				}}
-			>
+			<AgentAvatar>
 				<FontAwesomeIcon icon={faRobot} size="sm" />
-			</Avatar>
+			</AgentAvatar>
 
-			<Box
-				sx={{
-					bgcolor: "background.paper",
-					p: 2,
-					borderRadius: 2,
-					border: "1px solid rgba(255, 255, 255, 0.1)",
-					display: "flex",
-					flexDirection: "column",
-					gap: 1,
-					maxWidth: "calc(100% - 60px)",
-				}}
-			>
-				<Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-					<CircularProgress size={16} color="primary" />
-					<Typography variant="body2">
-						{message ? message : `${agentName} is ${statusText}...`}
-					</Typography>
-				</Box>
+			<ContentContainer>
+				<StatusContainer>
+					<StatusText variant="body2">
+						{message ? message : `${agentName} is ${statusText}`}
+						<DotContainer>
+							<Dot delay={0} />
+							<Dot delay={0.2} />
+							<Dot delay={0.4} />
+						</DotContainer>
 
-				{codeSnippet && (
-					<>
-						<Button
-							onClick={toggleCodeExpansion}
-							size="small"
-							variant="text"
-							sx={{
-								alignSelf: "flex-start",
-								color: "text.secondary",
-								padding: "4px 8px",
-								minWidth: "auto",
-								textTransform: "none",
-								"&:hover": {
-									backgroundColor: "rgba(255, 255, 255, 0.05)",
-								},
-							}}
-							startIcon={
-								<FontAwesomeIcon
-									icon={isCodeExpanded ? faChevronUp : faChevronDown}
-									size="sm"
-								/>
-							}
-						>
-							{isCodeExpanded ? "Hide code" : "Show code"}
-						</Button>
-						{isCodeExpanded && (
-							<Box sx={{ maxWidth: "100%" }}>
-								<LoadingCodeBlock code={codeSnippet} />
-							</Box>
+						{codeSnippet && (
+							<CodeToggleButton
+								onClick={toggleCodeExpansion}
+								size="small"
+								variant="text"
+								startIcon={
+									<FontAwesomeIcon
+										icon={isCodeExpanded ? faChevronUp : faChevronDown}
+										size="xs"
+									/>
+								}
+							>
+								{isCodeExpanded ? "code" : "code"}
+							</CodeToggleButton>
 						)}
-					</>
+					</StatusText>
+				</StatusContainer>
+
+				{codeSnippet && isCodeExpanded && (
+					<CodeContainer>
+						<LoadingCodeBlock code={codeSnippet} />
+					</CodeContainer>
 				)}
-			</Box>
-		</Box>
+			</ContentContainer>
+		</LoadingContainer>
 	);
 };
