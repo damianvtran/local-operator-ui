@@ -77,10 +77,10 @@ const ContentContainer = styled(Box)(({ theme }) => ({
 
 const SidebarContainer = styled(Box)(({ theme }) => ({
 	width: 280,
-	padding: theme.spacing(2),
+	padding: 0,
 	[theme.breakpoints.down("md")]: {
 		width: "100%",
-		padding: theme.spacing(2, 2, 0, 2),
+		padding: 0,
 	},
 }));
 

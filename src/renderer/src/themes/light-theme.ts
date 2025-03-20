@@ -4,9 +4,49 @@ import type React from "react";
 declare module "@mui/material/styles" {
 	interface Palette {
 		caption: string;
+		sidebar: {
+			background: string;
+			border: string;
+			itemHover: string;
+			itemActive: string;
+			itemActiveHover: string;
+			itemText: string;
+			itemActiveText: string;
+			toggleButton: {
+				background: string;
+				border: string;
+				hoverBackground: string;
+				hoverBorder: string;
+			};
+		};
+		tooltip: {
+			background: string;
+			border: string;
+			text: string;
+		};
 	}
 	interface PaletteOptions {
 		caption?: string;
+		sidebar?: {
+			background?: string;
+			border?: string;
+			itemHover?: string;
+			itemActive?: string;
+			itemActiveHover?: string;
+			itemText?: string;
+			itemActiveText?: string;
+			toggleButton?: {
+				background?: string;
+				border?: string;
+				hoverBackground?: string;
+				hoverBorder?: string;
+			};
+		};
+		tooltip?: {
+			background?: string;
+			border?: string;
+			text?: string;
+		};
 	}
 	interface TypographyVariants {
 		gradientTitle: React.CSSProperties;
@@ -48,14 +88,14 @@ const lightTheme = createTheme({
 	palette: {
 		mode: "light",
 		primary: {
-			main: "#38C96A", // Keep the same green brand color
-			dark: "#16B34A",
+			main: "#2BA458", // Slightly darker green for better contrast on light backgrounds
+			dark: "#16843A",
 			light: "#68D88E",
 			contrastText: "#ffffff",
 		},
 		secondary: {
-			main: "#26BC85", // Keep the same secondary green
-			dark: "#0AA26D",
+			main: "#1A9E6E", // Slightly darker secondary green
+			dark: "#0A8258",
 			light: "#52CF9D",
 			contrastText: "#ffffff",
 		},
@@ -68,6 +108,26 @@ const lightTheme = createTheme({
 			secondary: "#4B5563", // Medium gray for secondary text
 		},
 		caption: "rgba(0, 0, 0, 0.7)", // Dark caption text
+		sidebar: {
+			background: "#F0F4F8", // Light blue-gray background
+			border: "rgba(0, 0, 0, 0.08)",
+			itemHover: "rgba(0, 0, 0, 0.05)",
+			itemActive: "rgba(42, 164, 88, 0.12)",
+			itemActiveHover: "rgba(42, 164, 88, 0.18)",
+			itemText: "rgba(0, 0, 0, 0.75)",
+			itemActiveText: "#2BA458",
+			toggleButton: {
+				background: "rgba(0, 0, 0, 0.04)",
+				border: "rgba(0, 0, 0, 0.1)",
+				hoverBackground: "rgba(42, 164, 88, 0.1)",
+				hoverBorder: "rgba(42, 164, 88, 0.3)",
+			},
+		},
+		tooltip: {
+			background: "#FFFFFF",
+			border: "rgba(0, 0, 0, 0.1)",
+			text: "#111827",
+		},
 	},
 	typography: {
 		fontFamily:

@@ -38,26 +38,28 @@ type SettingsSidebarProps = {
 	sections: SettingsSection[];
 };
 
-const SidebarContainer = styled(Paper)(() => ({
+const SidebarContainer = styled(Paper)(({ theme }) => ({
 	width: "100%",
 	height: "100%",
-	borderRadius: 8,
-	backgroundColor: "background.paper",
-	boxShadow: "0 4px 20px rgba(0,0,0,0.06)",
+	borderRadius: 0,
+	backgroundColor: theme.palette.sidebar.background,
+	boxShadow: "none",
 	display: "flex",
 	flexDirection: "column",
 	overflow: "hidden",
+	borderRight: `1px solid ${theme.palette.sidebar.border}`,
 }));
 
 const SidebarHeader = styled(Box)(({ theme }) => ({
 	padding: theme.spacing(3),
-	borderBottom: "1px solid rgba(255,255,255,0.08)",
+	borderBottom: `1px solid ${theme.palette.sidebar.border}`,
 }));
 
-const SidebarTitle = styled(Typography)({
+const SidebarTitle = styled(Typography)(({ theme }) => ({
 	fontWeight: 600,
 	fontSize: "1rem",
-});
+	color: theme.palette.text.primary,
+}));
 
 const SidebarList = styled(List)({
 	padding: "8px",
@@ -71,15 +73,15 @@ const SidebarItemButton = styled(ListItemButton, {
 	marginBottom: 4,
 	paddingTop: 10,
 	paddingBottom: 10,
-	color: isActive ? theme.palette.primary.main : "rgba(255,255,255,0.85)",
-	backgroundColor: isActive ? `${theme.palette.primary.main}15` : "transparent",
+	color: isActive ? theme.palette.primary.main : theme.palette.sidebar.itemText,
+	backgroundColor: isActive ? theme.palette.sidebar.itemActive : "transparent",
 	transition: "all 0.2s ease-out",
 	position: "relative",
 	overflow: "hidden",
 	"&:hover": {
 		backgroundColor: isActive
-			? `${theme.palette.primary.main}20`
-			: "rgba(255,255,255,0.07)",
+			? theme.palette.sidebar.itemActiveHover
+			: theme.palette.sidebar.itemHover,
 		transform: "translateX(4px)",
 	},
 	...(isActive && {

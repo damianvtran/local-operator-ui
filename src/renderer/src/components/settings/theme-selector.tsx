@@ -56,44 +56,78 @@ const ThemeLabel = styled(Box)(() => ({
 }));
 
 // Dark theme preview
-const DarkPreview = styled(Box)(() => ({
-	width: "100%",
-	height: "100%",
-	background:
-		"linear-gradient(to bottom, #0A0A0A 0%, #0A0A0A 30%, #141414 30%, #141414 100%)",
-	position: "relative",
-	"&::after": {
-		content: '""',
-		position: "absolute",
-		top: "50%",
-		left: "50%",
-		transform: "translate(-50%, -50%)",
-		width: "40%",
-		height: "20%",
-		backgroundColor: "#38C96A",
+const DarkPreview = styled(Box)(() => {
+	// Use the actual dark theme colors from the theme
+	const darkTheme = themes.localOperatorDark.theme;
+
+	return {
+		width: "100%",
+		height: "100%",
+		background: `linear-gradient(to bottom, ${darkTheme.palette.sidebar.background} 0%, ${darkTheme.palette.sidebar.background} 30%, ${darkTheme.palette.background.paper} 30%, ${darkTheme.palette.background.paper} 100%)`,
+		position: "relative",
+		boxShadow: "0 2px 8px rgba(0, 0, 0, 0.2)",
 		borderRadius: 4,
-	},
-}));
+		"&::after": {
+			content: '""',
+			position: "absolute",
+			top: "50%",
+			left: "50%",
+			transform: "translate(-50%, -50%)",
+			width: "40%",
+			height: "20%",
+			backgroundColor: darkTheme.palette.primary.main,
+			borderRadius: 4,
+		},
+		// Add a sidebar-like element
+		"&::before": {
+			content: '""',
+			position: "absolute",
+			left: 0,
+			top: 0,
+			height: "100%",
+			width: "20%",
+			backgroundColor: darkTheme.palette.sidebar.background,
+			borderRight: `1px solid ${darkTheme.palette.sidebar.border}`,
+		},
+	};
+});
 
 // Light theme preview
-const LightPreview = styled(Box)(() => ({
-	width: "100%",
-	height: "100%",
-	background:
-		"linear-gradient(to bottom, #F9FAFB 0%, #F9FAFB 30%, #FFFFFF 30%, #FFFFFF 100%)",
-	position: "relative",
-	"&::after": {
-		content: '""',
-		position: "absolute",
-		top: "50%",
-		left: "50%",
-		transform: "translate(-50%, -50%)",
-		width: "40%",
-		height: "20%",
-		backgroundColor: "#38C96A",
+const LightPreview = styled(Box)(() => {
+	// Use the actual light theme colors from the theme
+	const lightTheme = themes.localOperatorLight.theme;
+
+	return {
+		width: "100%",
+		height: "100%",
+		background: `linear-gradient(to bottom, ${lightTheme.palette.sidebar.background} 0%, ${lightTheme.palette.sidebar.background} 30%, ${lightTheme.palette.background.paper} 30%, ${lightTheme.palette.background.paper} 100%)`,
+		position: "relative",
+		boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)",
 		borderRadius: 4,
-	},
-}));
+		"&::after": {
+			content: '""',
+			position: "absolute",
+			top: "50%",
+			left: "50%",
+			transform: "translate(-50%, -50%)",
+			width: "40%",
+			height: "20%",
+			backgroundColor: lightTheme.palette.primary.main,
+			borderRadius: 4,
+		},
+		// Add a sidebar-like element
+		"&::before": {
+			content: '""',
+			position: "absolute",
+			left: 0,
+			top: 0,
+			height: "100%",
+			width: "20%",
+			backgroundColor: lightTheme.palette.sidebar.background,
+			borderRight: `1px solid ${lightTheme.palette.sidebar.border}`,
+		},
+	};
+});
 
 /**
  * Theme selector component
