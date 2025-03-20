@@ -59,10 +59,18 @@ export const useJobPolling = ({
 	conversationId,
 	addMessage,
 }: UseJobPollingParams): UseJobPollingResult => {
-	const [currentJobId, setCurrentJobId] = useState<string | null>(null);
+	const [currentJobId, setCurrentJobIdInternal] = useState<string | null>(null);
 	const [isLoading, setIsLoading] = useState(false);
 	const [currentExecution, setCurrentExecution] =
 		useState<AgentExecutionRecord | null>(null);
+
+	// Wrapper for setCurrentJobId that also resets currentExecution when job ID is null
+	const setCurrentJobId = useCallback((jobId: string | null) => {
+		setCurrentJobIdInternal(jobId);
+		if (jobId === null) {
+			setCurrentExecution(null);
+		}
+	}, []);
 	const queryClient = useQueryClient();
 	const { getMessages, setMessages } = useChatStore();
 	const lastProcessedJobDataRef = useRef<string | null>(null);
@@ -131,14 +139,20 @@ export const useJobPolling = ({
 				return false;
 			}
 		},
-		[client.jobs, currentJobId, shouldEnableQuery, getConnectivityError],
+		[
+			client.jobs,
+			currentJobId,
+			shouldEnableQuery,
+			getConnectivityError,
+			setCurrentJobId,
+		],
 	);
 
-	// Reset loading state and job ID when switching agents
+	// Reset loading state, job ID, and execution state when switching agents
 	useEffect(() => {
-		// If the conversation ID has changed, reset the loading state and job ID
+		// If the conversation ID has changed, reset the states
 		if (conversationId !== previousConversationIdRef.current) {
-			// Reset the loading state and job ID
+			// Reset the loading state, job ID, and current execution
 			setIsLoading(false);
 			setCurrentJobId(null);
 
@@ -198,7 +212,13 @@ export const useJobPolling = ({
 
 		// Update the ref
 		previousConversationIdRef.current = conversationId;
-	}, [conversationId, client.jobs, shouldEnableQuery, getConnectivityError]);
+	}, [
+		conversationId,
+		client.jobs,
+		shouldEnableQuery,
+		getConnectivityError,
+		setCurrentJobId,
+	]);
 
 	/**
 	 * Update conversation messages from execution history
@@ -284,7 +304,7 @@ export const useJobPolling = ({
 		],
 	);
 
-	// Handle job completion
+	// Handle job completion or cancellation
 	// biome-ignore lint/correctness/useExhaustiveDependencies: queryClient.invalidateQueries is intentionally omitted to prevent infinite loops
 	const handleJobCompletion = useCallback(
 		async (job: JobDetails) => {
@@ -336,7 +356,7 @@ export const useJobPolling = ({
 			setCurrentJobId(null);
 			setIsLoading(false);
 		},
-		[conversationId, addMessage, updateConversationMessages],
+		[conversationId, addMessage, updateConversationMessages, setCurrentJobId],
 	);
 
 	// Use React Query to poll for job status
@@ -371,6 +391,7 @@ export const useJobPolling = ({
 	});
 
 	// Process job data when it changes
+	// biome-ignore lint/correctness/useExhaustiveDependencies: setCurrentExecution and setCurrentJobId are stable
 	useEffect(() => {
 		if (!jobData || !conversationId) return undefined;
 
@@ -414,6 +435,8 @@ export const useJobPolling = ({
 		handleJobCompletion,
 		conversationId,
 		updateConversationMessages,
+		setCurrentExecution,
+		setCurrentJobId,
 	]);
 
 	// Log any errors
