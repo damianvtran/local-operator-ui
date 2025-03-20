@@ -73,11 +73,9 @@ export const useAgents = (
 			}
 		},
 		// Prevent automatic refetches on window focus
-		refetchOnWindowFocus: false,
+		refetchOnWindowFocus: true,
 		// Set refetch interval if provided
 		refetchInterval: refetchInterval,
-		// Enable background refetching if interval is set
-		refetchIntervalInBackground: refetchInterval > 0,
 		// Prevent stale time to avoid unnecessary refetches
 		staleTime: 5000,
 	});
