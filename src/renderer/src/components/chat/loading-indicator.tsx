@@ -130,6 +130,7 @@ const LoadingCodeBlock: FC<{ code: string }> = ({ code }) => {
 				"&::-webkit-scrollbar-corner": {
 					backgroundColor: "rgba(0, 0, 0, 0.3)",
 				},
+				borderRadius: "8px",
 			}}
 		>
 			<SyntaxHighlighterStyles />
@@ -137,7 +138,6 @@ const LoadingCodeBlock: FC<{ code: string }> = ({ code }) => {
 				language="python"
 				style={atomOneDark}
 				customStyle={{
-					borderRadius: "8px",
 					fontSize: "0.85rem",
 					width: "100%",
 					boxShadow: "0 2px 6px rgba(0, 0, 0, 0.2)",
@@ -325,10 +325,11 @@ export const LoadingIndicator: FC<{
 									<FontAwesomeIcon
 										icon={isCodeExpanded ? faChevronUp : faChevronDown}
 										size="xs"
+										style={{ fontSize: "0.75rem" }}
 									/>
 								}
 							>
-								{isCodeExpanded ? "code" : "code"}
+								{isCodeExpanded ? "(Hide code)" : "(Show code)"}
 							</CodeToggleButton>
 						)}
 					</StatusText>
