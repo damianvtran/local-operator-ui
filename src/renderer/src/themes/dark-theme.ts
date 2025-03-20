@@ -4,9 +4,49 @@ import type React from "react";
 declare module "@mui/material/styles" {
 	interface Palette {
 		caption: string;
+		sidebar: {
+			background: string;
+			border: string;
+			itemHover: string;
+			itemActive: string;
+			itemActiveHover: string;
+			itemText: string;
+			itemActiveText: string;
+			toggleButton: {
+				background: string;
+				border: string;
+				hoverBackground: string;
+				hoverBorder: string;
+			};
+		};
+		tooltip: {
+			background: string;
+			border: string;
+			text: string;
+		};
 	}
 	interface PaletteOptions {
 		caption?: string;
+		sidebar?: {
+			background?: string;
+			border?: string;
+			itemHover?: string;
+			itemActive?: string;
+			itemActiveHover?: string;
+			itemText?: string;
+			itemActiveText?: string;
+			toggleButton?: {
+				background?: string;
+				border?: string;
+				hoverBackground?: string;
+				hoverBorder?: string;
+			};
+		};
+		tooltip?: {
+			background?: string;
+			border?: string;
+			text?: string;
+		};
 	}
 	interface TypographyVariants {
 		gradientTitle: React.CSSProperties;
@@ -68,6 +108,26 @@ const darkTheme = createTheme({
 			secondary: "#9CA3AF",
 		},
 		caption: "rgba(255, 255, 255, 0.8)",
+		sidebar: {
+			background: "#0A0A0A",
+			border: "rgba(255, 255, 255, 0.08)",
+			itemHover: "rgba(255, 255, 255, 0.07)",
+			itemActive: "rgba(56, 201, 106, 0.1)",
+			itemActiveHover: "rgba(56, 201, 106, 0.15)",
+			itemText: "rgba(255, 255, 255, 0.85)",
+			itemActiveText: "#38C96A",
+			toggleButton: {
+				background: "rgba(255, 255, 255, 0.05)",
+				border: "rgba(255, 255, 255, 0.1)",
+				hoverBackground: "rgba(56, 201, 106, 0.1)",
+				hoverBorder: "rgba(56, 201, 106, 0.3)",
+			},
+		},
+		tooltip: {
+			background: "#1E1E1E",
+			border: "rgba(255, 255, 255, 0.1)",
+			text: "#FFFFFF",
+		},
 	},
 	typography: {
 		fontFamily:
