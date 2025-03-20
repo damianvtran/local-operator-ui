@@ -25,8 +25,8 @@ import { CompactPagination } from "@renderer/components/common/compact-paginatio
 import { CreateAgentDialog } from "@renderer/components/common/create-agent-dialog";
 import { ImportAgentDialog } from "@renderer/components/common/import-agent-dialog";
 import { SidebarHeader } from "@renderer/components/common/sidebar-header";
-import { useAgents } from "@renderer/hooks/use-agents";
 import { useExportAgent } from "@renderer/hooks/use-agent-mutations";
+import { useAgents } from "@renderer/hooks/use-agents";
 import { usePaginationParams } from "@renderer/hooks/use-pagination-params";
 import { format } from "date-fns";
 import type { ChangeEvent, FC } from "react";
