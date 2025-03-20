@@ -31,8 +31,8 @@ import { CreateAgentDialog } from "@renderer/components/common/create-agent-dial
 import { ImportAgentDialog } from "@renderer/components/common/import-agent-dialog";
 import { SidebarHeader } from "@renderer/components/common/sidebar-header";
 import { apiConfig } from "@renderer/config";
-import { useAgents } from "@renderer/hooks/use-agents";
 import { useExportAgent } from "@renderer/hooks/use-agent-mutations";
+import { useAgents } from "@renderer/hooks/use-agents";
 import { usePaginationParams } from "@renderer/hooks/use-pagination-params";
 import type { ChangeEvent, FC } from "react";
 import React, { useState, useCallback, useRef, useEffect } from "react";
