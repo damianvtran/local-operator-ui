@@ -1,6 +1,16 @@
-import { faRobot } from "@fortawesome/free-solid-svg-icons";
+import {
+	faChevronDown,
+	faChevronUp,
+	faRobot,
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Avatar, Box, CircularProgress, Typography } from "@mui/material";
+import {
+	Avatar,
+	Box,
+	Button,
+	CircularProgress,
+	Typography,
+} from "@mui/material";
 import SyntaxHighlighter from "react-syntax-highlighter";
 import { atomOneDark } from "react-syntax-highlighter/dist/esm/styles/hljs";
 import { createGlobalStyle } from "styled-components";
@@ -9,7 +19,8 @@ import type {
 	JobStatus,
 } from "@renderer/api/local-operator/types";
 import type { FC } from "react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { useScrollToBottom } from "@renderer/hooks/use-scroll-to-bottom";
 
 // Global style to ensure Roboto Mono is applied to syntax highlighter
 const SyntaxHighlighterStyles = createGlobalStyle`
@@ -178,15 +189,36 @@ export const LoadingIndicator: FC<{
 	// Get message if available
 	const message = currentExecution?.message || null;
 
-	// Effect to scroll to bottom when code is displayed
+	// State to track if code is expanded
+	const [isCodeExpanded, setIsCodeExpanded] = useState(false);
+
+	// Use the scroll to bottom hook with status and execution as dependencies
+	// This will automatically scroll to bottom when status changes if user is near bottom
+	const { ref, scrollToBottom: scrollToBottomHook } = useScrollToBottom(
+		[status, currentExecution, message],
+		300, // Default threshold
+		50, // Default button threshold
+	);
+
+	// Effect to scroll to bottom when code is expanded
 	useEffect(() => {
-		if (codeSnippet && scrollToBottom) {
+		if (codeSnippet && isCodeExpanded) {
 			// Use requestAnimationFrame to ensure the DOM has been updated
 			requestAnimationFrame(() => {
-				scrollToBottom();
+				// Use the hook's scrollToBottom if available, otherwise use the prop
+				if (scrollToBottomHook) {
+					scrollToBottomHook();
+				} else if (scrollToBottom) {
+					scrollToBottom();
+				}
 			});
 		}
-	}, [codeSnippet, scrollToBottom]);
+	}, [codeSnippet, isCodeExpanded, scrollToBottom, scrollToBottomHook]);
+
+	// Toggle code expansion
+	const toggleCodeExpansion = () => {
+		setIsCodeExpanded((prev) => !prev);
+	};
 
 	return (
 		<Box
@@ -196,6 +228,8 @@ export const LoadingIndicator: FC<{
 				gap: 2,
 			}}
 		>
+			{/* Invisible div for scroll reference */}
+			<div ref={ref} style={{ height: 0, width: 0 }} />
 			<Avatar
 				sx={{
 					bgcolor: "rgba(56, 201, 106, 0.2)",
@@ -225,9 +259,36 @@ export const LoadingIndicator: FC<{
 				</Box>
 
 				{codeSnippet && (
-					<Box sx={{ maxWidth: "100%" }}>
-						<LoadingCodeBlock code={codeSnippet} />
-					</Box>
+					<>
+						<Button
+							onClick={toggleCodeExpansion}
+							size="small"
+							variant="text"
+							sx={{
+								alignSelf: "flex-start",
+								color: "text.secondary",
+								padding: "4px 8px",
+								minWidth: "auto",
+								textTransform: "none",
+								"&:hover": {
+									backgroundColor: "rgba(255, 255, 255, 0.05)",
+								},
+							}}
+							startIcon={
+								<FontAwesomeIcon
+									icon={isCodeExpanded ? faChevronUp : faChevronDown}
+									size="sm"
+								/>
+							}
+						>
+							{isCodeExpanded ? "Hide code" : "Show code"}
+						</Button>
+						{isCodeExpanded && (
+							<Box sx={{ maxWidth: "100%" }}>
+								<LoadingCodeBlock code={codeSnippet} />
+							</Box>
+						)}
+					</>
 				)}
 			</Box>
 		</Box>
