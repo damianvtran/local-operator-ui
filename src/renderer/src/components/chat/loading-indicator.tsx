@@ -24,10 +24,16 @@ const SyntaxHighlighterStyles = createGlobalStyle`
   }
 `;
 
-// Define the animation
+// Define the animations
 const dotAnimation = keyframes`
   0%, 100% { opacity: 0.3; }
   50% { opacity: 1; }
+`;
+
+const textStrobeAnimation = keyframes`
+  0% { opacity: 0.6; }
+  50% { opacity: 1; }
+  100% { opacity: 0.6; }
 `;
 
 // Styled components
@@ -60,12 +66,16 @@ const StatusText = styled(Typography)(({ theme }) => ({
 	display: "flex",
 	alignItems: "center",
 	marginLeft: 16,
+	position: "relative",
+	animation: `${textStrobeAnimation} 3s ease-in-out infinite`,
 }));
 
 const DotContainer = styled("span")(() => ({
 	display: "inline-flex",
 	marginLeft: 4,
 	alignItems: "center",
+	position: "relative",
+	zIndex: 2,
 }));
 
 const Dot = styled("span")<{ delay: number }>(({ theme, delay }) => ({
@@ -90,6 +100,8 @@ const CodeToggleButton = styled(Button)(({ theme }) => ({
 	opacity: 0.7,
 	borderRadius: "12px",
 	transition: "all 0.2s ease",
+	position: "relative",
+	zIndex: 2,
 	"&:hover": {
 		backgroundColor: "transparent",
 		opacity: 1,
