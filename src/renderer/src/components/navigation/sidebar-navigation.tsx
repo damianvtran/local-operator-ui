@@ -21,7 +21,8 @@ import {
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import { useCurrentView } from "@renderer/hooks/use-route-params";
-import React, { useState } from "react";
+import { useUiPreferencesStore } from "@renderer/store/ui-preferences-store";
+import React from "react";
 import type { FC } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -159,16 +160,15 @@ const ToggleButton = styled(IconButton)(() => ({
 
 /**
  * SidebarNavigation component that provides a collapsible sidebar for application navigation
- * Uses React Router for navigation
+ * Uses React Router for navigation and persists sidebar state using the UI preferences store
  */
 export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
-	const [expanded, setExpanded] = useState(true);
 	const navigate = useNavigate();
 	const currentView = useCurrentView();
+	const { isSidebarCollapsed, toggleSidebar } = useUiPreferencesStore();
 
-	const toggleSidebar = () => {
-		setExpanded(!expanded);
-	};
+	// Invert the collapsed state to get expanded state
+	const expanded = !isSidebarCollapsed;
 
 	// Navigation items configuration
 	const navItems = [
@@ -264,6 +264,7 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 						onClick={toggleSidebar}
 						size="small"
 						title={expanded ? "Collapse sidebar" : "Expand sidebar"}
+						aria-label={expanded ? "Collapse sidebar" : "Expand sidebar"}
 					>
 						<FontAwesomeIcon
 							icon={expanded ? faChevronLeft : faChevronRight}

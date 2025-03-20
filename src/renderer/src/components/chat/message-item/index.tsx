@@ -19,6 +19,7 @@ import { OutputBlock } from "./output-block";
 import { SecurityCheckHighlight } from "./security-check-highlight";
 import { StatusIndicator } from "./status-indicator";
 import type { MessageItemProps } from "./types";
+import { VideoAttachment } from "./video-attachment";
 
 /**
  * Checks if a file is a web URL
@@ -58,8 +59,32 @@ const isImage = (path: string): boolean => {
 };
 
 /**
+ * Checks if a file is a video based on its extension
+ * @param path - The file path or URL to check
+ * @returns True if the file is a video, false otherwise
+ */
+const isVideo = (path: string): boolean => {
+	const videoExtensions = [
+		".mp4",
+		".webm",
+		".ogg",
+		".mov",
+		".avi",
+		".wmv",
+		".flv",
+		".mkv",
+		".m4v",
+		".3gp",
+		".3g2",
+	];
+	const lowerPath = path.toLowerCase();
+	return videoExtensions.some((ext) => lowerPath.endsWith(ext));
+};
+
+/**
  * Gets the appropriate URL for an attachment
  * Uses the static image endpoint for local image files
+ * and the static video endpoint for local video files
  * @param client - The Local Operator client
  * @param path - The file path or URL
  * @returns The URL to access the attachment
@@ -68,14 +93,23 @@ const getAttachmentUrl = (
 	client: ReturnType<typeof createLocalOperatorClient>,
 	path: string,
 ): string => {
-	// If it's an image and looks like a local file path
-	if (isImage(path) && !path.startsWith("http")) {
-		// Check if path already has file:// protocol
-		const normalizedPath = path.startsWith("file://") ? path : `file://${path}`;
-		// Use the static image endpoint
+	// If it's a web URL, return it as is
+	if (path.startsWith("http")) {
+		return path;
+	}
+
+	// For local files, normalize the path and use appropriate endpoint
+	const normalizedPath = path.startsWith("file://") ? path : `file://${path}`;
+
+	if (isImage(path)) {
 		return client.static.getImageUrl(normalizedPath);
 	}
-	// Otherwise return the original path
+
+	if (isVideo(path)) {
+		return client.static.getVideoUrl(normalizedPath);
+	}
+
+	// For other file types, return the original path
 	return path;
 };
 
@@ -184,6 +218,22 @@ export const MessageItem: FC<MessageItemProps> = memo(
 								</Box>
 							)}
 
+							{/* Render video attachments if any */}
+							{message.files && message.files.length > 0 && (
+								<Box sx={{ mb: 2 }}>
+									{message.files
+										.filter((file) => isVideo(file))
+										.map((file) => (
+											<VideoAttachment
+												key={`${message.id}-${file}`}
+												file={file}
+												src={getUrl(file)}
+												onClick={handleFileClick}
+											/>
+										))}
+								</Box>
+							)}
+
 							{/* Always render message content with markdown support */}
 							{message.message && (
 								<MessageContent content={message.message} isUser={isUser} />
@@ -242,11 +292,11 @@ export const MessageItem: FC<MessageItemProps> = memo(
 							{/* Status indicator if present */}
 							{message.status && <StatusIndicator status={message.status} />}
 
-							{/* Render non-image file attachments if any */}
+							{/* Render non-media file attachments if any */}
 							{message.files && message.files.length > 0 && (
 								<Box sx={{ mt: 2 }}>
 									{message.files
-										.filter((file) => !isImage(file))
+										.filter((file) => !isImage(file) && !isVideo(file))
 										.map((file) => (
 											<FileAttachment
 												key={`${message.id}-${file}`}
@@ -276,6 +326,22 @@ export const MessageItem: FC<MessageItemProps> = memo(
 										.filter((file) => isImage(file))
 										.map((file) => (
 											<ImageAttachment
+												key={`${message.id}-${file}`}
+												file={file}
+												src={getUrl(file)}
+												onClick={handleFileClick}
+											/>
+										))}
+								</Box>
+							)}
+
+							{/* Render video attachments if any */}
+							{message.files && message.files.length > 0 && (
+								<Box sx={{ mb: 2 }}>
+									{message.files
+										.filter((file) => isVideo(file))
+										.map((file) => (
+											<VideoAttachment
 												key={`${message.id}-${file}`}
 												file={file}
 												src={getUrl(file)}
@@ -343,11 +409,11 @@ export const MessageItem: FC<MessageItemProps> = memo(
 							{/* Status indicator if present */}
 							{message.status && <StatusIndicator status={message.status} />}
 
-							{/* Render non-image file attachments if any */}
+							{/* Render non-media file attachments if any */}
 							{message.files && message.files.length > 0 && (
 								<Box sx={{ mt: 2 }}>
 									{message.files
-										.filter((file) => !isImage(file))
+										.filter((file) => !isImage(file) && !isVideo(file))
 										.map((file) => (
 											<FileAttachment
 												key={`${message.id}-${file}`}
