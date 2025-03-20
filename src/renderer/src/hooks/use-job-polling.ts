@@ -1,9 +1,9 @@
 import { createLocalOperatorClient } from "@renderer/api/local-operator";
 import type {
 	AgentExecutionRecord,
+	JobDetails as BaseJobDetails,
 	ChatStats,
 	ConversationRecord,
-	JobDetails as BaseJobDetails,
 	JobStatus,
 } from "@renderer/api/local-operator/types";
 import type { Message } from "@renderer/components/chat/types";

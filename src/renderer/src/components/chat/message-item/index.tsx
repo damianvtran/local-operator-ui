@@ -18,8 +18,8 @@ import { MessageTimestamp } from "./message-timestamp";
 import { OutputBlock } from "./output-block";
 import { SecurityCheckHighlight } from "./security-check-highlight";
 import { StatusIndicator } from "./status-indicator";
-import { VideoAttachment } from "./video-attachment";
 import type { MessageItemProps } from "./types";
+import { VideoAttachment } from "./video-attachment";
 
 /**
  * Checks if a file is a web URL

@@ -1,3 +1,4 @@
+import { keyframes } from "@emotion/react";
 import {
 	faChevronDown,
 	faChevronUp,
@@ -5,17 +6,16 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Avatar, Box, Button, Typography, styled } from "@mui/material";
-import { keyframes } from "@emotion/react";
-import SyntaxHighlighter from "react-syntax-highlighter";
-import { atomOneDark } from "react-syntax-highlighter/dist/esm/styles/hljs";
-import { createGlobalStyle } from "styled-components";
 import type {
 	AgentExecutionRecord,
 	JobStatus,
 } from "@renderer/api/local-operator/types";
+import { useScrollToBottom } from "@renderer/hooks/use-scroll-to-bottom";
 import type { FC } from "react";
 import { useEffect, useState } from "react";
-import { useScrollToBottom } from "@renderer/hooks/use-scroll-to-bottom";
+import SyntaxHighlighter from "react-syntax-highlighter";
+import { atomOneDark } from "react-syntax-highlighter/dist/esm/styles/hljs";
+import { createGlobalStyle } from "styled-components";
 
 // Global style to ensure Roboto Mono is applied to syntax highlighter
 const SyntaxHighlighterStyles = createGlobalStyle`
