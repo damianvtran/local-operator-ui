@@ -189,17 +189,17 @@ const LoadingCodeBlock: FC<{ code: string }> = ({ code }) => {
 const getStatusText = (status: JobStatus): string => {
 	switch (status) {
 		case "pending":
-			return "waiting to start";
+			return "Waiting to start";
 		case "processing":
-			return "thinking";
+			return "Thinking";
 		case "completed":
-			return "finishing up";
+			return "Finishing up";
 		case "failed":
-			return "having trouble";
+			return "Had trouble";
 		case "cancelled":
-			return "was cancelled";
+			return "Had to stop";
 		default:
-			return "thinking";
+			return "Thinking";
 	}
 };
 
@@ -218,19 +218,19 @@ const getDetailedStatusText = (
 	if (execution.action) {
 		switch (execution.action) {
 			case "CODE":
-				return "executing code";
+				return "Executing code";
 			case "WRITE":
-				return "writing content";
+				return "Writing content";
 			case "EDIT":
-				return "editing content";
+				return "Editing content";
 			case "READ":
-				return "reading content";
+				return "Reading content";
 			case "ASK":
-				return "formulating a question";
+				return "Formulating a question";
 			case "DONE":
-				return "completing the task";
+				return "Completing the task";
 			case "BYE":
-				return "ending the conversation";
+				return "Ending the conversation";
 		}
 	}
 
@@ -238,21 +238,21 @@ const getDetailedStatusText = (
 	if (execution.execution_type) {
 		switch (execution.execution_type) {
 			case "plan":
-				return "planning the approach";
+				return "Planning my approach";
 			case "action":
-				return "thinking";
+				return "Thinking";
 			case "reflection":
-				return "reflecting on next steps";
+				return "Reflecting on next steps";
 			case "response":
-				return "writing a response";
+				return "Writing a response";
 			case "security_check":
-				return "performing security checks";
+				return "Performing security checks";
 			case "classification":
-				return "classifying the request";
+				return "Thinking about my response";
 			case "system":
-				return "processing system tasks";
+				return "Processing system tasks";
 			case "user_input":
-				return "processing your input";
+				return "Processing your input";
 		}
 	}
 
@@ -274,13 +274,13 @@ export const LoadingIndicator: FC<{
 	agentName?: string;
 	currentExecution?: AgentExecutionRecord | null;
 	scrollToBottom?: () => void;
-}> = ({ status, agentName = "Agent", currentExecution, scrollToBottom }) => {
+}> = ({ status, currentExecution, scrollToBottom }) => {
 	// Get detailed status text based on current execution if available
 	const statusText = currentExecution
 		? getDetailedStatusText(status, currentExecution)
 		: status
 			? getStatusText(status)
-			: "thinking";
+			: "Thinking";
 
 	// Get code snippet if available
 	const codeSnippet = currentExecution?.code || null;
@@ -331,7 +331,7 @@ export const LoadingIndicator: FC<{
 				<StatusContainer>
 					<StatusText variant="body2">
 						<StatusTextContent>
-							{message ? message : `${agentName} is ${statusText}`}
+							{message ? message : `${statusText}`}
 						</StatusTextContent>
 						<StatusControls>
 							<DotContainer>
