@@ -1,6 +1,7 @@
 import {
 	faComment,
 	faEllipsisVertical,
+	faFileExport,
 	faGear,
 	faTrash,
 } from "@fortawesome/free-solid-svg-icons";
@@ -52,6 +53,11 @@ type AgentOptionsMenuProps = {
 	 * This should navigate to the Chat page with this agent selected
 	 */
 	onChatWithAgent?: () => void;
+	/**
+	 * Optional callback for exporting the agent
+	 * This should export the agent as a ZIP file
+	 */
+	onExportAgent?: () => void;
 };
 
 const OptionsIconButton = styled(IconButton)({
@@ -105,6 +111,7 @@ export const AgentOptionsMenu: FC<AgentOptionsMenuProps> = ({
 	isAgentsPage = false,
 	onViewAgentSettings,
 	onChatWithAgent,
+	onExportAgent,
 }) => {
 	const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
 	const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -213,6 +220,21 @@ export const AgentOptionsMenu: FC<AgentOptionsMenuProps> = ({
 							<FontAwesomeIcon icon={faGear} size="sm" />
 						</MenuItemIcon>
 						<Typography variant="body2">View Agent Settings</Typography>
+					</StyledMenuItem>
+				)}
+
+				{/* Export Agent option */}
+				{onExportAgent && (
+					<StyledMenuItem
+						onClick={() => {
+							onExportAgent();
+							handleCloseMenu();
+						}}
+					>
+						<MenuItemIcon>
+							<FontAwesomeIcon icon={faFileExport} size="sm" />
+						</MenuItemIcon>
+						<Typography variant="body2">Export Agent</Typography>
 					</StyledMenuItem>
 				)}
 

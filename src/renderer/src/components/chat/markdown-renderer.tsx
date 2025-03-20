@@ -134,6 +134,14 @@ const convertUrlsToMarkdownLinks = (text: string): string => {
 	// Regex to match URLs that are not already part of markdown links.
 	// Captures optional trailing punctuation (e.g., commas, periods, quotes, and parentheses)
 	// in a separate group so that only the URL itself is hyperlinked.
+
+	const markdownLinkRegex =
+		/(?<!\]\()(https?:\/\/\S+?)([,.;:!?"'\)\]]+)?(?=\s|$)/g;
+
+	if (markdownLinkRegex.test(text)) {
+		return text;
+	}
+
 	const urlRegex = /(?<!\]\()(https?:\/\/\S+?)([,.;:!?"'\)\]]+)?(?=\s|$)/g;
 
 	// Replace plain URLs with markdown links, appending any captured trailing punctuation.

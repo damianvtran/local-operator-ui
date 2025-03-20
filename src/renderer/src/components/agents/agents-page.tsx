@@ -6,11 +6,16 @@
  * Layout follows the pattern of other pages with a sidebar and content area
  */
 
-import { faComment, faRobot } from "@fortawesome/free-solid-svg-icons";
+import {
+	faComment,
+	faFileExport,
+	faRobot,
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, Button, Tooltip, alpha } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import type { AgentDetails } from "@renderer/api/local-operator/types";
+import { useExportAgent } from "@renderer/hooks/use-agent-mutations";
 import { useAgent, useAgents } from "@renderer/hooks/use-agents";
 import { useAgentRouteParam } from "@renderer/hooks/use-route-params";
 import { useAgentSelectionStore } from "@renderer/store/agent-selection-store";
@@ -79,6 +84,9 @@ export const AgentsPage: FC<AgentsPageProps> = () => {
 	// Use a ref to track the previous agent ID to prevent unnecessary renders
 	const prevAgentIdRef = useRef<string | undefined>(agentId);
 
+	// Export agent mutation
+	const exportAgentMutation = useExportAgent();
+
 	// Get agent selection store functions
 	const { setLastAgentsPageAgentId, getLastAgentId, clearLastAgentId } =
 		useAgentSelectionStore();
@@ -121,6 +129,29 @@ export const AgentsPage: FC<AgentsPageProps> = () => {
 			setLastAgentsPageAgentId(agentId);
 		}
 	}, [agentId, setLastAgentsPageAgentId]);
+
+	// Handler for exporting the selected agent
+	const handleExportAgent = async () => {
+		if (!selectedAgent) return;
+
+		try {
+			const blob = await exportAgentMutation.mutateAsync(selectedAgent.id);
+
+			// Create a download link
+			const url = URL.createObjectURL(blob);
+			const a = document.createElement("a");
+			a.href = url;
+			a.download = `${selectedAgent.name.replace(/\s+/g, "-").toLowerCase()}-lo-agent.zip`;
+			document.body.appendChild(a);
+			a.click();
+
+			// Clean up
+			URL.revokeObjectURL(url);
+			document.body.removeChild(a);
+		} catch (error) {
+			console.error("Failed to export agent:", error);
+		}
+	};
 
 	// Update selected agent when URL changes or when agent data is refreshed
 	useEffect(() => {
@@ -172,7 +203,38 @@ export const AgentsPage: FC<AgentsPageProps> = () => {
 						/>
 
 						{selectedAgent && (
-							<Box sx={{ position: "absolute", top: 0, right: 0 }}>
+							<Box
+								sx={{
+									position: "absolute",
+									top: 0,
+									right: 0,
+									display: "flex",
+									gap: 1,
+								}}
+							>
+								<Tooltip title="Export Agent">
+									<Button
+										variant="outlined"
+										color="primary"
+										size="small"
+										startIcon={<FontAwesomeIcon icon={faFileExport} />}
+										onClick={handleExportAgent}
+										disabled={exportAgentMutation.isPending}
+										sx={{
+											borderRadius: 2,
+											textTransform: "none",
+											fontWeight: 500,
+											transition: "all 0.2s ease-in-out",
+											"&:hover": {
+												backgroundColor: alpha("#38C96A", 0.08),
+												transform: "translateY(-1px)",
+											},
+										}}
+									>
+										Export
+									</Button>
+								</Tooltip>
+
 								<Tooltip
 									title={`Chat with ${selectedAgent?.name || "this Agent"}`}
 								>
