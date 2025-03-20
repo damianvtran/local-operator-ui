@@ -1,4 +1,9 @@
-import { faDownload, faGear, faKey } from "@fortawesome/free-solid-svg-icons";
+import {
+	faAdjust,
+	faDownload,
+	faGear,
+	faKey,
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
 	Box,
@@ -18,7 +23,7 @@ import type { FC } from "react";
 export type SettingsSection = {
 	id: string;
 	label: string;
-	icon: typeof faGear | typeof faKey | typeof faDownload;
+	icon: typeof faGear | typeof faKey | typeof faDownload | typeof faAdjust;
 };
 
 /**
@@ -151,6 +156,11 @@ export const DEFAULT_SETTINGS_SECTIONS: SettingsSection[] = [
 		id: "general",
 		label: "General Settings",
 		icon: faGear,
+	},
+	{
+		id: "appearance",
+		label: "Appearance",
+		icon: faAdjust,
 	},
 	{
 		id: "credentials",
