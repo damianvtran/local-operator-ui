@@ -173,14 +173,19 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 	}, [hostingId]);
 
 	// Force refresh models when hosting provider changes
-	const { refreshModels } = useModels();
+	const { refreshModels, isLoading: isModelsLoading } = useModels();
 	const previousHostingIdRef = useRef<string | null>(null);
 	const refreshTimeRef = useRef<number | null>(null);
+	const refreshAttemptCountRef = useRef<number>(0);
+	const MAX_REFRESH_ATTEMPTS = 3;
 
 	useEffect(() => {
 		// Only refresh if hostingId has changed and is not null
 		if (hostingId && previousHostingIdRef.current !== hostingId) {
 			previousHostingIdRef.current = hostingId;
+
+			// Reset refresh attempt counter when hosting provider changes
+			refreshAttemptCountRef.current = 0;
 
 			// Use a debounced refresh to prevent multiple rapid calls
 			const timeoutId = setTimeout(() => {
@@ -189,7 +194,20 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 				const lastRefreshTime = refreshTimeRef.current;
 				const THROTTLE_DURATION = 2000; // 2 second cooldown
 
-				if (!lastRefreshTime || now - lastRefreshTime > THROTTLE_DURATION) {
+				// Prevent infinite loops by limiting the number of refresh attempts
+				if (refreshAttemptCountRef.current >= MAX_REFRESH_ATTEMPTS) {
+					console.warn(
+						`Exceeded maximum model refresh attempts (${MAX_REFRESH_ATTEMPTS}) for hosting provider ${hostingId}`,
+					);
+					return;
+				}
+
+				// Only refresh if we haven't refreshed recently and we're not currently loading models
+				if (
+					(!lastRefreshTime || now - lastRefreshTime > THROTTLE_DURATION) &&
+					!isModelsLoading
+				) {
+					refreshAttemptCountRef.current += 1;
 					refreshModels();
 					refreshTimeRef.current = now;
 				}
@@ -199,7 +217,7 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 		}
 
 		return undefined;
-	}, [hostingId, refreshModels]);
+	}, [hostingId, refreshModels, isModelsLoading]);
 
 	// Convert models to autocomplete options
 	const modelOptions: ModelOption[] = useMemo(() => {

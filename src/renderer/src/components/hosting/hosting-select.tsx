@@ -144,11 +144,28 @@ export const HostingSelect: FC<HostingSelectProps> = ({
 	// Flag to track if the dropdown should show all options (no filtering)
 	const showAllOptions = useRef(false);
 
+	// Ref to track number of credential fetch attempts
+	const credentialFetchAttemptsRef = useRef<number>(0);
+	const MAX_CREDENTIAL_FETCH_ATTEMPTS = 3;
+
 	// Get available hosting providers based on user credentials
 	const availableHostingProviders = useMemo(() => {
 		if (!filterByCredentials) {
 			return getHostingProviders();
 		}
+
+		// Prevent excessive credential fetches
+		if (credentialFetchAttemptsRef.current >= MAX_CREDENTIAL_FETCH_ATTEMPTS) {
+			console.warn(
+				`Exceeded maximum credential fetch attempts (${MAX_CREDENTIAL_FETCH_ATTEMPTS})`,
+			);
+			// Return all providers if we've exceeded the maximum attempts
+			return getHostingProviders();
+		}
+
+		// Track credential fetch attempts
+		credentialFetchAttemptsRef.current += 1;
+
 		return getAvailableHostingProviders(userCredentials);
 	}, [userCredentials, filterByCredentials]);
 
@@ -231,6 +248,11 @@ export const HostingSelect: FC<HostingSelectProps> = ({
 		);
 	}, [value, hostingOptions]);
 
+	// Reset credential fetch attempts when component mounts
+	useEffect(() => {
+		credentialFetchAttemptsRef.current = 0;
+	}, []);
+
 	// Update input value when selected option changes
 	useEffect(() => {
 		if (selectedOption) {
@@ -248,6 +270,10 @@ export const HostingSelect: FC<HostingSelectProps> = ({
 			setIsSubmitting(true);
 			// Type assertion since we know the structure
 			const option = newValue as HostingOption;
+
+			// Reset credential fetch attempts when hosting provider changes
+			credentialFetchAttemptsRef.current = 0;
+
 			await onSave(option.id);
 
 			// User has selected an option, so they're no longer typing
