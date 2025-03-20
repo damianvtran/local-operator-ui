@@ -85,6 +85,7 @@ const DotContainer = styled("span")(() => ({
 	alignItems: "center",
 	position: "relative",
 	zIndex: 2,
+	marginLeft: 4,
 }));
 
 const Dot = styled("span")<{ delay: number }>(({ theme, delay }) => ({
