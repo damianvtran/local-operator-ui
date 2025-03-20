@@ -87,14 +87,35 @@ const InfoCard = styled(Box)(({ theme }) => ({
 	alignItems: "center",
 	marginBottom: theme.spacing(2),
 	padding: theme.spacing(2),
-	borderRadius: 16,
-	backgroundColor: alpha(theme.palette.background.default, 0.7),
+	borderRadius: theme.shape.borderRadius * 2,
+	backgroundColor:
+		theme.palette.mode === "light"
+			? alpha(theme.palette.grey[100], 0.7)
+			: alpha(theme.palette.background.default, 0.7),
+	border:
+		theme.palette.mode === "light"
+			? `1px solid ${alpha(theme.palette.grey[300], 0.5)}`
+			: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+	transition: "all 0.2s ease",
+	"&:hover": {
+		backgroundColor:
+			theme.palette.mode === "light"
+				? alpha(theme.palette.grey[100], 1)
+				: alpha(theme.palette.background.paper, 0.6),
+		boxShadow:
+			theme.palette.mode === "light"
+				? "0 2px 8px rgba(0,0,0,0.05)"
+				: "0 2px 8px rgba(0,0,0,0.15)",
+	},
 }));
 
 const CardIcon = styled(FontAwesomeIcon)(({ theme }) => ({
 	marginRight: 12,
 	opacity: 0.8,
-	color: theme.palette.text.primary,
+	color:
+		theme.palette.mode === "light"
+			? theme.palette.grey[700]
+			: theme.palette.text.primary,
 }));
 
 // Use span instead of Box to avoid nesting <div> inside <p>
@@ -113,7 +134,10 @@ const ValueText = styled("span")(({ theme }) => ({
 
 const MonospaceValueText = styled(ValueText)(({ theme }) => ({
 	fontFamily: "monospace",
-	color: theme.palette.text.primary,
+	color:
+		theme.palette.mode === "light"
+			? theme.palette.grey[900]
+			: theme.palette.text.primary,
 }));
 
 /**
