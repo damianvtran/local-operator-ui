@@ -113,6 +113,7 @@ export const ChatContent: FC<ChatContentProps> = ({
 					currentExecution={currentExecution}
 					messagesContainerRef={messagesContainerRef}
 					messagesEndRef={messagesEndRef}
+					scrollToBottom={scrollToBottom}
 				/>
 			) : (
 				/* Raw information tab */

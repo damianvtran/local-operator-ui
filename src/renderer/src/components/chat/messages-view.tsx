@@ -23,6 +23,7 @@ type MessagesViewProps = {
 	currentExecution?: AgentExecutionRecord | null;
 	messagesContainerRef: RefObject<HTMLDivElement>;
 	messagesEndRef: RefObject<HTMLDivElement>;
+	scrollToBottom?: () => void;
 };
 
 const MessagesContainer = styled(Box)({
@@ -82,6 +83,7 @@ export const MessagesView: FC<MessagesViewProps> = ({
 	currentExecution,
 	messagesContainerRef,
 	messagesEndRef,
+	scrollToBottom,
 }) => {
 	return (
 		<MessagesContainer ref={messagesContainerRef}>
@@ -128,6 +130,7 @@ export const MessagesView: FC<MessagesViewProps> = ({
 							status={jobStatus}
 							agentName={agentName}
 							currentExecution={currentExecution}
+							scrollToBottom={scrollToBottom}
 						/>
 					)}
 

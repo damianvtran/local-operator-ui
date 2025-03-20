@@ -1,17 +1,74 @@
 import { faRobot } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
-	Avatar,
-	Box,
-	CircularProgress,
-	Tooltip,
-	Typography,
-} from "@mui/material";
+import { Avatar, Box, CircularProgress, Typography } from "@mui/material";
+import SyntaxHighlighter from "react-syntax-highlighter";
+import { atomOneDark } from "react-syntax-highlighter/dist/esm/styles/hljs";
+import { createGlobalStyle } from "styled-components";
 import type {
 	AgentExecutionRecord,
 	JobStatus,
 } from "@renderer/api/local-operator/types";
 import type { FC } from "react";
+import { useEffect } from "react";
+
+// Global style to ensure Roboto Mono is applied to syntax highlighter
+const SyntaxHighlighterStyles = createGlobalStyle`
+  .loading-syntax-highlighter * {
+    font-family: 'Roboto Mono', monospace !important;
+  }
+`;
+
+/**
+ * Component for displaying code with syntax highlighting in the loading indicator
+ */
+const LoadingCodeBlock: FC<{ code: string }> = ({ code }) => {
+	if (!code) return null;
+
+	return (
+		<Box
+			sx={{
+				width: "100%",
+				maxHeight: "300px",
+				overflow: "auto",
+				"&::-webkit-scrollbar": {
+					width: "6px",
+					height: "6px",
+				},
+				"&::-webkit-scrollbar-thumb": {
+					backgroundColor: "rgba(255, 255, 255, 0.1)",
+					borderRadius: "3px",
+				},
+				"&::-webkit-scrollbar-corner": {
+					backgroundColor: "rgba(0, 0, 0, 0.3)",
+				},
+			}}
+		>
+			<SyntaxHighlighterStyles />
+			<SyntaxHighlighter
+				language="python"
+				style={atomOneDark}
+				customStyle={{
+					borderRadius: "8px",
+					fontSize: "0.85rem",
+					width: "100%",
+					boxShadow: "0 2px 6px rgba(0, 0, 0, 0.2)",
+					padding: "0.75rem",
+					margin: 0, // Remove margin to make it more compact
+				}}
+				codeTagProps={{
+					style: {
+						fontFamily: '"Roboto Mono", monospace !important',
+					},
+				}}
+				className="loading-syntax-highlighter"
+				wrapLines={true}
+				wrapLongLines={true}
+			>
+				{code}
+			</SyntaxHighlighter>
+		</Box>
+	);
+};
 
 /**
  * Get a user-friendly text representation of a job status
@@ -73,11 +130,11 @@ const getDetailedStatusText = (
 			case "plan":
 				return "planning the approach";
 			case "action":
-				return "taking action";
+				return "thinking";
 			case "reflection":
-				return "analyzing results";
+				return "reflecting on next steps";
 			case "response":
-				return "generating a response";
+				return "writing a response";
 			case "security_check":
 				return "performing security checks";
 			case "classification":
@@ -94,38 +151,20 @@ const getDetailedStatusText = (
 };
 
 /**
- * Truncate code to a specified length with ellipsis
- *
- * @param code - The code to truncate
- * @param maxLength - Maximum length before truncation
- * @returns Truncated code string
- */
-const truncateCode = (code: string, maxLength: number): string => {
-	if (!code) return "";
-
-	// Remove extra whitespace and newlines
-	const cleanCode = code.trim().replace(/\s+/g, " ");
-
-	if (cleanCode.length <= maxLength) {
-		return cleanCode;
-	}
-
-	return `${cleanCode.substring(0, maxLength)}...`;
-};
-
-/**
  * Loading indicator component that displays the current status of a job
  * and execution details if available
  *
  * @param status - Optional job status to display
  * @param agentName - Optional agent name to display
  * @param currentExecution - Optional current execution details
+ * @param scrollToBottom - Optional function to scroll to the bottom of the chat
  */
 export const LoadingIndicator: FC<{
 	status?: JobStatus | null;
 	agentName?: string;
 	currentExecution?: AgentExecutionRecord | null;
-}> = ({ status, agentName = "Agent", currentExecution }) => {
+	scrollToBottom?: () => void;
+}> = ({ status, agentName = "Agent", currentExecution, scrollToBottom }) => {
 	// Get detailed status text based on current execution if available
 	const statusText = currentExecution
 		? getDetailedStatusText(status, currentExecution)
@@ -134,12 +173,20 @@ export const LoadingIndicator: FC<{
 			: "thinking";
 
 	// Get code snippet if available
-	const codeSnippet = currentExecution?.code
-		? truncateCode(currentExecution.code, 50)
-		: null;
+	const codeSnippet = currentExecution?.code || null;
 
 	// Get message if available
 	const message = currentExecution?.message || null;
+
+	// Effect to scroll to bottom when code is displayed
+	useEffect(() => {
+		if (codeSnippet && scrollToBottom) {
+			// Use requestAnimationFrame to ensure the DOM has been updated
+			requestAnimationFrame(() => {
+				scrollToBottom();
+			});
+		}
+	}, [codeSnippet, scrollToBottom]);
 
 	return (
 		<Box
@@ -173,43 +220,14 @@ export const LoadingIndicator: FC<{
 				<Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
 					<CircularProgress size={16} color="primary" />
 					<Typography variant="body2">
-						{`${agentName} is ${statusText}...`}
+						{message ? message : `${agentName} is ${statusText}...`}
 					</Typography>
 				</Box>
 
 				{codeSnippet && (
-					<Box
-						sx={{
-							bgcolor: "rgba(0, 0, 0, 0.2)",
-							p: 1,
-							borderRadius: 1,
-							fontFamily: "monospace",
-							fontSize: "0.8rem",
-							overflow: "hidden",
-							textOverflow: "ellipsis",
-							whiteSpace: "nowrap",
-						}}
-					>
-						{/* @ts-ignore - MUI Tooltip type issue */}
-						<Tooltip title={currentExecution?.code || ""} placement="bottom">
-							<Typography variant="body2" sx={{ fontFamily: "monospace" }}>
-								{codeSnippet}
-							</Typography>
-						</Tooltip>
+					<Box sx={{ maxWidth: "100%" }}>
+						<LoadingCodeBlock code={codeSnippet} />
 					</Box>
-				)}
-
-				{message && (
-					<Typography
-						variant="body2"
-						sx={{
-							fontStyle: "italic",
-							fontSize: "0.8rem",
-							color: "text.secondary",
-						}}
-					>
-						{message}
-					</Typography>
 				)}
 			</Box>
 		</Box>
