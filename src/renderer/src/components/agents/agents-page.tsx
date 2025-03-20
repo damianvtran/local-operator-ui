@@ -141,7 +141,7 @@ export const AgentsPage: FC<AgentsPageProps> = () => {
 			const url = URL.createObjectURL(blob);
 			const a = document.createElement("a");
 			a.href = url;
-			a.download = `${selectedAgent.name.replace(/\s+/g, "-").toLowerCase()}-export.zip`;
+			a.download = `${selectedAgent.name.replace(/\s+/g, "-").toLowerCase()}-lo-agent.zip`;
 			document.body.appendChild(a);
 			a.click();
 
