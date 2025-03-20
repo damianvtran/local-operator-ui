@@ -37,19 +37,19 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 }) => {
 	return (
 		<Box
-			sx={{
+			sx={(theme) => ({
 				p: 2,
-				borderBottom: "1px solid rgba(255, 255, 255, 0.1)",
+				borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
 				display: "flex",
 				alignItems: "center",
-			}}
+			})}
 		>
 			<Avatar
-				sx={{
-					bgcolor: "rgba(56, 201, 106, 0.2)",
-					color: "primary.main",
+				sx={(theme) => ({
+					bgcolor: alpha(theme.palette.primary.main, 0.2),
+					color: theme.palette.primary.main,
 					mr: 2,
-				}}
+				})}
 			>
 				<FontAwesomeIcon icon={faRobot} />
 			</Avatar>
