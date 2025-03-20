@@ -41,16 +41,26 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 	const theme = useTheme();
 	const isDarkMode = theme.palette.mode === "dark";
 
-	// Define border colors based on theme mode
-	const userBorderColor = "rgba(66, 133, 244, 0.3)"; // Blue border for user messages
+	// Define colors based on theme
+	const userBackgroundColor = isDarkMode
+		? "rgba(56, 201, 106, 0.15)" // Green background in dark mode
+		: "rgba(42, 164, 88, 0.12)"; // Slightly darker green in light mode for better contrast
+
+	const userBorderColor = isDarkMode
+		? "rgba(56, 201, 106, 0.3)" // Green border for user messages in dark mode
+		: "rgba(42, 164, 88, 0.25)"; // Slightly darker green border in light mode
+
 	const assistantBorderColor = isDarkMode
 		? "rgba(255, 255, 255, 0.1)" // Light border in dark mode
 		: "rgba(0, 0, 0, 0.1)"; // Dark border in light mode
 
 	// Define shadow based on theme mode
-	const userShadow = "0 4px 12px rgba(0, 0, 0, 0.15)";
+	const userShadow = isDarkMode
+		? "0 4px 12px rgba(0, 0, 0, 0.2)"
+		: "0 4px 12px rgba(0, 0, 0, 0.1)";
+
 	const assistantShadow = isDarkMode
-		? "0 2px 8px rgba(0, 0, 0, 0.1)" // Darker shadow in dark mode
+		? "0 2px 8px rgba(0, 0, 0, 0.15)" // Darker shadow in dark mode
 		: "0 2px 8px rgba(0, 0, 0, 0.05)"; // Lighter shadow in light mode
 
 	return (
@@ -58,7 +68,7 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 			elevation={elevation}
 			sx={{
 				backgroundColor: isUser
-					? "rgba(66, 133, 244, 0.15)" // Blue background for user messages
+					? userBackgroundColor // Theme-appropriate background for user messages
 					: theme.palette.background.paper, // Theme-appropriate background for assistant
 				border: isUser
 					? `1px solid ${userBorderColor}`

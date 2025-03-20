@@ -44,13 +44,14 @@ type ChatContentProps = {
 	agentData?: AgentDetails | null;
 };
 
-const ChatContainer = styled(Paper)({
+const ChatContainer = styled(Paper)(({ theme }) => ({
 	display: "flex",
 	flexDirection: "column",
 	height: "100%",
 	flexGrow: 1,
 	borderRadius: 0,
-});
+	backgroundColor: theme.palette.background.paper,
+}));
 
 /**
  * ChatContent Component
