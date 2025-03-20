@@ -6,7 +6,7 @@ import {
 	faQuestion,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Box, Collapse, Typography } from "@mui/material";
+import { Box, Collapse, Typography, alpha } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import type { ExecutionType } from "@renderer/api/local-operator/types";
 import { type FC, useState } from "react";
@@ -30,11 +30,16 @@ const BlockHeader = styled(Box, {
 		display: "flex",
 		alignItems: "center",
 		padding: "8px 12px",
-		backgroundColor: "rgba(0, 0, 0, 0.2)",
+		backgroundColor: alpha(
+			theme.palette.mode === "dark"
+				? theme.palette.common.black
+				: theme.palette.common.black,
+			theme.palette.mode === "dark" ? 0.2 : 0.05,
+		),
 		borderLeft: `3px solid ${
 			executionType === "plan"
-				? theme.palette.grey[600]
-				: theme.palette.grey[600]
+				? theme.palette.grey[theme.palette.mode === "dark" ? 600 : 400]
+				: theme.palette.grey[theme.palette.mode === "dark" ? 600 : 400]
 		}`,
 	}),
 );
@@ -55,7 +60,10 @@ const BlockTitle = styled(Typography)(({ theme }) => ({
 
 const BlockContent = styled(Typography)(({ theme }) => ({
 	fontSize: "0.85rem",
-	color: theme.palette.grey[400],
+	color:
+		theme.palette.mode === "dark"
+			? theme.palette.grey[400]
+			: theme.palette.grey[700],
 	overflow: "hidden",
 	textOverflow: "ellipsis",
 	marginTop: 2,
@@ -63,12 +71,20 @@ const BlockContent = styled(Typography)(({ theme }) => ({
 
 const ExpandedContent = styled(Box)(({ theme }) => ({
 	padding: "12px 16px",
-	backgroundColor: "rgba(0, 0, 0, 0.2)",
+	backgroundColor: alpha(
+		theme.palette.mode === "dark"
+			? theme.palette.common.black
+			: theme.palette.common.black,
+		theme.palette.mode === "dark" ? 0.2 : 0.05,
+	),
 	borderBottomLeftRadius: 4,
 	borderBottomRightRadius: 4,
 	fontSize: "0.85rem",
-	color: theme.palette.grey[300],
-	borderLeft: `3px solid ${theme.palette.grey[600]}`,
+	color:
+		theme.palette.mode === "dark"
+			? theme.palette.grey[300]
+			: theme.palette.grey[800],
+	borderLeft: `3px solid ${theme.palette.grey[theme.palette.mode === "dark" ? 600 : 400]}`,
 	marginLeft: 0,
 }));
 
