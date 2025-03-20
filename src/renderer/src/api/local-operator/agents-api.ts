@@ -308,4 +308,57 @@ export const AgentsApi = {
 
 		return response.json() as Promise<CRUDResponse>;
 	},
+
+	/**
+	 * Import an agent from a ZIP file
+	 * Import an agent from a ZIP file containing agent state files with an agent.yml file.
+	 *
+	 * @param baseUrl - The base URL of the Local Operator API
+	 * @param file - The ZIP file containing agent state files
+	 * @returns Promise resolving to the imported agent response
+	 * @throws Error if the request fails
+	 */
+	async importAgent(
+		baseUrl: string,
+		file: File,
+	): Promise<CRUDResponse<AgentDetails>> {
+		const formData = new FormData();
+		formData.append("file", file);
+
+		const response = await fetch(`${baseUrl}/v1/agents/import`, {
+			method: "POST",
+			body: formData,
+		});
+
+		if (!response.ok) {
+			throw new Error(
+				`Import agent request failed: ${response.status} ${response.statusText}`,
+			);
+		}
+
+		return response.json() as Promise<CRUDResponse<AgentDetails>>;
+	},
+
+	/**
+	 * Export an agent as a ZIP file
+	 * Export an agent's state files as a ZIP file.
+	 *
+	 * @param baseUrl - The base URL of the Local Operator API
+	 * @param agentId - ID of the agent to export
+	 * @returns Promise resolving to a Blob containing the ZIP file
+	 * @throws Error if the request fails
+	 */
+	async exportAgent(baseUrl: string, agentId: string): Promise<Blob> {
+		const response = await fetch(`${baseUrl}/v1/agents/${agentId}/export`, {
+			method: "GET",
+		});
+
+		if (!response.ok) {
+			throw new Error(
+				`Export agent request failed: ${response.status} ${response.statusText}`,
+			);
+		}
+
+		return response.blob();
+	},
 };
