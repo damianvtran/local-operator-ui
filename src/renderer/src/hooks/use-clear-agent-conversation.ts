@@ -31,6 +31,11 @@ export const useClearAgentConversation = () => {
 				queryKey: ["agent", variables.agentId, "conversation"],
 			});
 
+			// Invalidate the conversation messages query to ensure it's refetched
+			queryClient.invalidateQueries({
+				queryKey: ["conversation-messages", variables.agentId],
+			});
+
 			// Clear messages from the chat store
 			clearChatMessages(variables.agentId);
 
