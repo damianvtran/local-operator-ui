@@ -52,10 +52,13 @@ const SectionTitle = styled(Typography)(({ theme }) => ({
 	color: theme.palette.text.primary,
 }));
 
-const TitleIcon = styled(FontAwesomeIcon)({
+const TitleIcon = styled(FontAwesomeIcon)(({ theme }) => ({
 	marginRight: 10,
-	color: "#f2f2f3",
-});
+	color: theme.palette.primary.main,
+	padding: theme.spacing(0.5),
+	borderRadius: 999,
+	backgroundColor: alpha(theme.palette.primary.main, 0.1),
+}));
 
 const InfoButton = styled(IconButton)(({ theme }) => ({
 	marginLeft: theme.spacing(1),
