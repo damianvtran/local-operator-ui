@@ -1,5 +1,6 @@
 import darkTheme from "./dark-theme";
 import draculaTheme from "./dracula-theme";
+import icebergTheme from "./iceberg-theme";
 import lightTheme from "./light-theme";
 import monokaiTheme from "./monokai-theme";
 import sageTheme from "./sage-theme";
@@ -40,6 +41,11 @@ export const themes: ThemeCollection = {
 		id: "tokyoNight",
 		theme: tokyoNightTheme,
 	},
+	iceberg: {
+		name: "Iceberg",
+		id: "iceberg",
+		theme: icebergTheme,
+	},
 };
 
 /**
@@ -60,6 +66,7 @@ export type { ThemeName, ThemeOption };
 export {
 	darkTheme,
 	draculaTheme,
+	icebergTheme,
 	lightTheme,
 	monokaiTheme,
 	sageTheme,

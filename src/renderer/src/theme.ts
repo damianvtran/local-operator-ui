@@ -8,6 +8,7 @@ import type { ThemeName, ThemeOption } from "./themes";
  */
 import darkTheme from "./themes/dark-theme";
 import draculaTheme from "./themes/dracula-theme";
+import icebergTheme from "./themes/iceberg-theme";
 import lightTheme from "./themes/light-theme";
 import sageTheme from "./themes/sage-theme";
 import tokyoNightTheme from "./themes/tokyo-night-theme";
@@ -16,6 +17,7 @@ import tokyoNightTheme from "./themes/tokyo-night-theme";
 export {
 	darkTheme,
 	draculaTheme,
+	icebergTheme,
 	lightTheme,
 	sageTheme,
 	tokyoNightTheme,
