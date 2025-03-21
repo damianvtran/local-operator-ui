@@ -5,10 +5,10 @@
  * theme selection, and provides methods to update these preferences.
  */
 
-import { create } from "zustand";
-import { persist } from "zustand/middleware";
 import { DEFAULT_THEME } from "@renderer/themes";
 import type { ThemeName } from "@renderer/themes";
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
 
 /**
  * Type definition for the UI preferences store state

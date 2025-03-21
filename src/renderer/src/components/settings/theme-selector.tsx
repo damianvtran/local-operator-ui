@@ -1,8 +1,8 @@
 import {
-	faMoon,
-	faSun,
-	faSkull,
 	faLeaf,
+	faMoon,
+	faSkull,
+	faSun,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, Card, CardContent, Grid, Typography } from "@mui/material";

@@ -1,7 +1,7 @@
 import { ThemeProvider as MuiThemeProvider } from "@mui/material/styles";
 import { useUiPreferencesStore } from "@renderer/store/ui-preferences-store";
-import { getTheme } from "./index";
 import type { FC, ReactNode } from "react";
+import { getTheme } from "./index";
 
 /**
  * Props for the ThemeProvider component
