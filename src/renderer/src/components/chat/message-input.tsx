@@ -46,7 +46,7 @@ const AttachmentButton = styled(IconButton)(({ theme }) => ({
 	color:
 		theme.palette.mode === "light"
 			? theme.palette.common.white // White icon for light mode
-			: theme.palette.primary.contrastText,
+			: theme.palette.primary.light,
 	width: 52,
 	height: 52,
 	borderRadius: theme.shape.borderRadius * 1.5,

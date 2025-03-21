@@ -41,7 +41,8 @@ const darkTheme = createTheme({
 		},
 		caption: "rgba(255, 255, 255, 0.8)",
 		sidebar: {
-			background: "#0A0A0A",
+			background: "#0A0A0A", // Main navigation sidebar
+			secondaryBackground: "#141414", // Secondary sidebars (chat/agents)
 			border: "rgba(255, 255, 255, 0.08)",
 			itemHover: "rgba(255, 255, 255, 0.07)",
 			itemActive: "rgba(56, 201, 106, 0.1)",
@@ -64,6 +65,15 @@ const darkTheme = createTheme({
 			background: "rgba(66, 133, 244, 0.15)",
 			border: "rgba(66, 133, 244, 0.3)",
 			shadow: "0 4px 12px rgba(66, 133, 244, 0.2)",
+		},
+		messagesView: {
+			background: "rgba(0, 0, 0, 0.2)", // Dark background for messages view
+		},
+		inputField: {
+			background: "rgba(10, 10, 10, 0.9)",
+			hoverBackground: "rgba(20, 20, 20, 0.9)",
+			focusBackground: "#1E1E1E",
+			border: "rgba(255, 255, 255, 0.1)",
 		},
 		actionHighlight: {
 			done: {

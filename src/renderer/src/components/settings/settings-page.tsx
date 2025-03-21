@@ -77,6 +77,7 @@ const ContentContainer = styled(Box)(({ theme }) => ({
 
 const SidebarContainer = styled(Box)(({ theme }) => ({
 	width: 280,
+	flexShrink: 0,
 	padding: 0,
 	[theme.breakpoints.down("md")]: {
 		width: "100%",

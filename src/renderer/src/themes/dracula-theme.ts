@@ -33,7 +33,7 @@ const draculaTheme = createTheme({
 		},
 		background: {
 			default: "#282A36", // Dracula background
-			paper: "#383A59", // Slightly lighter background
+			paper: "#2F3146", // Slightly lighter background
 		},
 		text: {
 			primary: "#F8F8F2", // Dracula foreground
@@ -41,7 +41,8 @@ const draculaTheme = createTheme({
 		},
 		caption: "rgba(248, 248, 242, 0.8)",
 		sidebar: {
-			background: "#282A36", // Dracula background
+			background: "#282A36", // Dracula background for main navigation
+			secondaryBackground: "#2F3146", // Darker background for secondary sidebars
 			border: "rgba(248, 248, 242, 0.08)",
 			itemHover: "rgba(248, 248, 242, 0.07)",
 			itemActive: "rgba(189, 147, 249, 0.2)",
@@ -64,6 +65,15 @@ const draculaTheme = createTheme({
 			background: "rgba(139, 233, 253, 0.15)", // Cyan with opacity
 			border: "rgba(139, 233, 253, 0.3)",
 			shadow: "0 4px 12px rgba(139, 233, 253, 0.2)",
+		},
+		messagesView: {
+			background: "rgba(40, 42, 54, 0.7)", // Darker dracula background with opacity
+		},
+		inputField: {
+			background: "rgba(47, 49, 70, 0.7)",
+			hoverBackground: "rgba(56, 58, 89, 0.9)",
+			focusBackground: "#383A59",
+			border: "rgba(248, 248, 242, 0.1)",
 		},
 		actionHighlight: {
 			done: {

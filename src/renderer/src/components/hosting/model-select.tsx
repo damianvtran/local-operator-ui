@@ -90,11 +90,14 @@ const LabelIcon = styled(Box)({
 const StyledAutocomplete = styled(Autocomplete)(({ theme }) => ({
 	"& .MuiOutlinedInput-root": {
 		borderRadius: 8,
-		backgroundColor: alpha(theme.palette.background.default, 0.7),
+		backgroundColor: theme.palette.inputField.background,
 		padding: "16px",
 		transition: "all 0.2s ease",
 		"&:hover": {
-			backgroundColor: alpha(theme.palette.background.default, 0.9),
+			backgroundColor: theme.palette.inputField.hoverBackground,
+		},
+		"&.Mui-focused": {
+			backgroundColor: theme.palette.inputField.focusBackground,
 		},
 	},
 	"& .MuiInputBase-root": {

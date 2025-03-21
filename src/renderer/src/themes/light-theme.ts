@@ -41,7 +41,8 @@ const lightTheme = createTheme({
 		},
 		caption: "rgba(0, 0, 0, 0.7)", // Dark caption text
 		sidebar: {
-			background: "#F0F4F8", // Light blue-gray background
+			background: "#E8EEF2", // Darker blue-gray for main navigation
+			secondaryBackground: "#F0F4F8", // Light blue-gray for secondary sidebars
 			border: "rgba(0, 0, 0, 0.08)",
 			itemHover: "rgba(0, 0, 0, 0.05)",
 			itemActive: "rgba(42, 164, 88, 0.12)",
@@ -64,6 +65,15 @@ const lightTheme = createTheme({
 			background: "rgba(66, 133, 244, 0.12)",
 			border: "rgba(66, 133, 244, 0.25)",
 			shadow: "0 4px 12px rgba(66, 133, 244, 0.15)",
+		},
+		messagesView: {
+			background: "rgba(54, 81, 124, 0.12)", // Light bluish background for messages view
+		},
+		inputField: {
+			background: "rgba(240, 240, 240, 0.7)",
+			hoverBackground: "rgba(245, 245, 245, 0.9)",
+			focusBackground: "#FFFFFF",
+			border: "rgba(0, 0, 0, 0.1)",
 		},
 		actionHighlight: {
 			done: {

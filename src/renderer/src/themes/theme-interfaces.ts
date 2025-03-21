@@ -12,6 +12,7 @@ declare module "@mui/material/styles" {
 		caption: string;
 		sidebar: {
 			background: string;
+			secondaryBackground: string;
 			border: string;
 			itemHover: string;
 			itemActive: string;
@@ -35,6 +36,15 @@ declare module "@mui/material/styles" {
 			border: string;
 			shadow: string;
 		};
+		messagesView: {
+			background: string;
+		};
+		inputField: {
+			background: string;
+			hoverBackground: string;
+			focusBackground: string;
+			border: string;
+		};
 		actionHighlight: {
 			done: {
 				background: string;
@@ -50,6 +60,7 @@ declare module "@mui/material/styles" {
 		caption?: string;
 		sidebar?: {
 			background?: string;
+			secondaryBackground?: string;
 			border?: string;
 			itemHover?: string;
 			itemActive?: string;
@@ -72,6 +83,15 @@ declare module "@mui/material/styles" {
 			background?: string;
 			border?: string;
 			shadow?: string;
+		};
+		messagesView?: {
+			background?: string;
+		};
+		inputField?: {
+			background?: string;
+			hoverBackground?: string;
+			focusBackground?: string;
+			border?: string;
 		};
 		actionHighlight?: {
 			done?: {

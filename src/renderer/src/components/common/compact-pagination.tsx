@@ -20,7 +20,7 @@ const PaginationContainer = styled(Box)(({ theme }) => ({
 	alignItems: "center",
 	padding: theme.spacing(1, 2),
 	borderTop: `1px solid ${theme.palette.sidebar.border}`,
-	backgroundColor: theme.palette.sidebar.background,
+	backgroundColor: theme.palette.sidebar.secondaryBackground,
 	position: "sticky",
 	bottom: 0,
 	left: 0,

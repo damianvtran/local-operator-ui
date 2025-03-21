@@ -88,20 +88,11 @@ const InfoCard = styled(Box)(({ theme }) => ({
 	marginBottom: theme.spacing(2),
 	padding: theme.spacing(2),
 	borderRadius: theme.shape.borderRadius * 2,
-	backgroundColor:
-		theme.palette.mode === "light"
-			? alpha(theme.palette.grey[100], 0.7)
-			: alpha(theme.palette.background.default, 0.7),
-	border:
-		theme.palette.mode === "light"
-			? `1px solid ${alpha(theme.palette.grey[300], 0.5)}`
-			: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+	backgroundColor: theme.palette.inputField.background,
+	border: `1px solid ${theme.palette.inputField.border}`,
 	transition: "all 0.2s ease",
 	"&:hover": {
-		backgroundColor:
-			theme.palette.mode === "light"
-				? alpha(theme.palette.grey[100], 1)
-				: alpha(theme.palette.background.paper, 0.6),
+		backgroundColor: theme.palette.inputField.hoverBackground,
 		boxShadow:
 			theme.palette.mode === "light"
 				? "0 2px 8px rgba(0,0,0,0.05)"
