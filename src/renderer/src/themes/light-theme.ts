@@ -65,6 +65,16 @@ const lightTheme = createTheme({
 			border: "rgba(66, 133, 244, 0.25)",
 			shadow: "0 4px 12px rgba(66, 133, 244, 0.15)",
 		},
+		actionHighlight: {
+			done: {
+				background: "rgba(43, 164, 88, 0.05)", // Success color with opacity
+				border: "rgba(43, 164, 88, 0.5)", // Success color with opacity
+			},
+			ask: {
+				background: "rgba(66, 133, 244, 0.05)", // Info color with opacity
+				border: "rgba(66, 133, 244, 0.5)", // Info color with opacity
+			},
+		},
 	},
 	typography: {
 		fontFamily:

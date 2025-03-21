@@ -16,19 +16,13 @@ const HighlightContainer = styled(Box, {
 	width: "100%",
 	border: `1px solid ${
 		action === "DONE"
-			? alpha(theme.palette.success.main, 0.5)
-			: alpha(theme.palette.info.main, 0.5)
+			? theme.palette.actionHighlight.done.border
+			: theme.palette.actionHighlight.ask.border
 	}`,
 	backgroundColor:
 		action === "DONE"
-			? alpha(
-					theme.palette.success.main,
-					theme.palette.mode === "dark" ? 0.1 : 0.05,
-				)
-			: alpha(
-					theme.palette.info.main,
-					theme.palette.mode === "dark" ? 0.1 : 0.05,
-				),
+			? theme.palette.actionHighlight.done.background
+			: theme.palette.actionHighlight.ask.background,
 	transition: "all 0.2s ease",
 	"&:hover": {
 		boxShadow: `0 6px 16px ${alpha(theme.palette.common.black, theme.palette.mode === "dark" ? 0.2 : 0.15)}`,
@@ -46,7 +40,9 @@ const ActionBadge = styled(Box, {
 	fontSize: "0.7rem",
 	fontWeight: "bold",
 	backgroundColor:
-		action === "DONE" ? theme.palette.success.main : theme.palette.info.main,
+		action === "DONE"
+			? theme.palette.success.main
+			: theme.palette.secondary.main,
 	color: "#fff",
 	display: "flex",
 	alignItems: "center",
