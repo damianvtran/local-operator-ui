@@ -1,4 +1,9 @@
-import { faDownload, faGear, faKey } from "@fortawesome/free-solid-svg-icons";
+import {
+	faAdjust,
+	faDownload,
+	faGear,
+	faKey,
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
 	Box,
@@ -18,7 +23,7 @@ import type { FC } from "react";
 export type SettingsSection = {
 	id: string;
 	label: string;
-	icon: typeof faGear | typeof faKey | typeof faDownload;
+	icon: typeof faGear | typeof faKey | typeof faDownload | typeof faAdjust;
 };
 
 /**
@@ -33,31 +38,33 @@ type SettingsSidebarProps = {
 	sections: SettingsSection[];
 };
 
-const SidebarContainer = styled(Paper)(() => ({
+const SidebarContainer = styled(Paper)(({ theme }) => ({
 	width: "100%",
 	height: "100%",
-	borderRadius: 8,
-	backgroundColor: "background.paper",
-	boxShadow: "0 4px 20px rgba(0,0,0,0.06)",
+	borderRadius: 0,
+	backgroundColor: theme.palette.sidebar.secondaryBackground,
+	boxShadow: "none",
 	display: "flex",
 	flexDirection: "column",
 	overflow: "hidden",
+	borderRight: `1px solid ${theme.palette.sidebar.border}`,
 }));
 
 const SidebarHeader = styled(Box)(({ theme }) => ({
 	padding: theme.spacing(3),
-	borderBottom: "1px solid rgba(255,255,255,0.08)",
+	borderBottom: `1px solid ${theme.palette.sidebar.border}`,
 }));
 
-const SidebarTitle = styled(Typography)({
+const SidebarTitle = styled(Typography)(({ theme }) => ({
 	fontWeight: 600,
 	fontSize: "1rem",
-});
+	color: theme.palette.text.primary,
+}));
 
-const SidebarList = styled(List)({
-	padding: "8px",
+const SidebarList = styled(List)(({ theme }) => ({
+	padding: theme.spacing(2),
 	flexGrow: 1,
-});
+}));
 
 const SidebarItemButton = styled(ListItemButton, {
 	shouldForwardProp: (prop) => prop !== "isActive",
@@ -66,15 +73,17 @@ const SidebarItemButton = styled(ListItemButton, {
 	marginBottom: 4,
 	paddingTop: 10,
 	paddingBottom: 10,
-	color: isActive ? theme.palette.primary.main : "rgba(255,255,255,0.85)",
-	backgroundColor: isActive ? `${theme.palette.primary.main}15` : "transparent",
+	color: isActive
+		? theme.palette.sidebar.itemActiveText
+		: theme.palette.sidebar.itemText,
+	backgroundColor: isActive ? theme.palette.sidebar.itemActive : "transparent",
 	transition: "all 0.2s ease-out",
 	position: "relative",
 	overflow: "hidden",
 	"&:hover": {
 		backgroundColor: isActive
-			? `${theme.palette.primary.main}20`
-			: "rgba(255,255,255,0.07)",
+			? theme.palette.sidebar.itemActiveHover
+			: theme.palette.sidebar.itemHover,
 		transform: "translateX(4px)",
 	},
 	...(isActive && {
@@ -86,7 +95,7 @@ const SidebarItemButton = styled(ListItemButton, {
 			transform: "translateY(-50%)",
 			width: 4,
 			height: "60%",
-			backgroundColor: theme.palette.primary.main,
+			backgroundColor: theme.palette.sidebar.itemActiveText,
 			borderRadius: "0 4px 4px 0",
 		},
 	}),
@@ -96,7 +105,9 @@ const SidebarItemIcon = styled(ListItemIcon, {
 	shouldForwardProp: (prop) => prop !== "isActive",
 })<{ isActive: boolean }>(({ theme, isActive }) => ({
 	minWidth: 40,
-	color: isActive ? theme.palette.primary.main : "inherit",
+	color: isActive
+		? theme.palette.sidebar.itemActiveText
+		: theme.palette.icon.text,
 	transition: "transform 0.2s ease, color 0.2s ease",
 	...(isActive && {
 		transform: "scale(1.1)",
@@ -153,6 +164,11 @@ export const DEFAULT_SETTINGS_SECTIONS: SettingsSection[] = [
 		icon: faGear,
 	},
 	{
+		id: "appearance",
+		label: "Appearance",
+		icon: faAdjust,
+	},
+	{
 		id: "credentials",
 		label: "API Credentials",
 		icon: faKey,
@@ -162,25 +178,4 @@ export const DEFAULT_SETTINGS_SECTIONS: SettingsSection[] = [
 		label: "Application Updates",
 		icon: faDownload,
 	},
-	// Future sections can be added here
-	// {
-	//   id: 'security',
-	//   label: 'Security & Privacy',
-	//   icon: faShield
-	// },
-	// {
-	//   id: 'data',
-	//   label: 'Data Management',
-	//   icon: faDatabase
-	// },
-	// {
-	//   id: 'network',
-	//   label: 'Network Settings',
-	//   icon: faGlobe
-	// },
-	// {
-	//   id: 'integrations',
-	//   label: 'Integrations',
-	//   icon: faPlug
-	// }
 ];

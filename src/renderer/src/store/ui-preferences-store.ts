@@ -1,10 +1,12 @@
 /**
  * Store for managing UI preferences
  *
- * This store keeps track of user interface preferences such as sidebar collapse state
- * and provides methods to update these preferences.
+ * This store keeps track of user interface preferences such as sidebar collapse state,
+ * theme selection, and provides methods to update these preferences.
  */
 
+import { DEFAULT_THEME } from "@renderer/themes";
+import type { ThemeName } from "@renderer/themes";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
@@ -18,6 +20,11 @@ type UiPreferencesState = {
 	isSidebarCollapsed: boolean;
 
 	/**
+	 * The currently selected theme
+	 */
+	themeName: ThemeName;
+
+	/**
 	 * Toggle the sidebar collapse state
 	 */
 	toggleSidebar: () => void;
@@ -27,6 +34,12 @@ type UiPreferencesState = {
 	 * @param collapsed - Whether the sidebar should be collapsed
 	 */
 	setSidebarCollapsed: (collapsed: boolean) => void;
+
+	/**
+	 * Set the current theme
+	 * @param themeName - The name of the theme to set
+	 */
+	setTheme: (themeName: ThemeName) => void;
 };
 
 /**
@@ -38,6 +51,7 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 	persist(
 		(set) => ({
 			isSidebarCollapsed: false,
+			themeName: DEFAULT_THEME,
 
 			toggleSidebar: () => {
 				set((state) => ({
@@ -48,6 +62,12 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			setSidebarCollapsed: (collapsed: boolean) => {
 				set({
 					isSidebarCollapsed: collapsed,
+				});
+			},
+
+			setTheme: (themeName: ThemeName) => {
+				set({
+					themeName,
 				});
 			},
 		}),

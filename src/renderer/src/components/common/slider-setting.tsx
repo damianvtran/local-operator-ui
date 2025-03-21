@@ -76,12 +76,29 @@ type SliderSettingProps = {
 const SettingContainer = styled(Paper)(({ theme }) => ({
 	padding: theme.spacing(2.5),
 	borderRadius: theme.shape.borderRadius * 2,
-	backgroundColor: alpha(theme.palette.background.default, 0.7),
+	backgroundColor:
+		theme.palette.mode === "light"
+			? alpha(theme.palette.grey[100], 0.9)
+			: alpha(theme.palette.background.default, 0.7),
+	border:
+		theme.palette.mode === "light"
+			? `1px solid ${alpha(theme.palette.grey[300], 0.8)}`
+			: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
 	transition: "all 0.2s ease",
 	marginBottom: theme.spacing(2),
 	"&:hover": {
-		backgroundColor: alpha(theme.palette.background.default, 0.9),
-		boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
+		backgroundColor:
+			theme.palette.mode === "light"
+				? alpha(theme.palette.grey[100], 1)
+				: alpha(theme.palette.background.default, 0.9),
+		boxShadow:
+			theme.palette.mode === "light"
+				? `0 4px 12px ${alpha(theme.palette.common.black, 0.08)}`
+				: `0 4px 12px ${alpha(theme.palette.common.black, 0.2)}`,
+		border:
+			theme.palette.mode === "light"
+				? `1px solid ${alpha(theme.palette.primary.main, 0.2)}`
+				: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
 	},
 }));
 
@@ -112,16 +129,21 @@ const SliderContainer = styled(Box)({
 	flexGrow: 1,
 });
 
-const StyledSlider = styled(Slider)({
+const StyledSlider = styled(Slider)(({ theme }) => ({
 	"& .MuiSlider-thumb": {
 		width: 14,
 		height: 14,
 		transition: "0.2s cubic-bezier(.47,1.64,.41,.8)",
 		"&:before": {
-			boxShadow: "0 2px 12px 0 rgba(0,0,0,0.4)",
+			boxShadow: `0 2px 12px 0 ${alpha(theme.palette.common.black, theme.palette.mode === "dark" ? 0.4 : 0.2)}`,
 		},
 		"&:hover, &.Mui-focusVisible": {
-			boxShadow: "0px 0px 0px 8px rgb(255 255 255 / 16%)",
+			boxShadow: `0px 0px 0px 8px ${alpha(
+				theme.palette.mode === "dark"
+					? theme.palette.common.white
+					: theme.palette.common.black,
+				0.16,
+			)}`,
 		},
 		"&.Mui-active": {
 			width: 20,
@@ -129,9 +151,9 @@ const StyledSlider = styled(Slider)({
 		},
 	},
 	"& .MuiSlider-rail": {
-		opacity: 0.28,
+		opacity: theme.palette.mode === "dark" ? 0.28 : 0.38,
 	},
-});
+}));
 
 const InputContainer = styled(Box, {
 	shouldForwardProp: (prop) => prop !== "hasUnit",
@@ -147,6 +169,29 @@ const StyledTextField = styled(TextField, {
 	width: hasUnit ? "130px" : "100px",
 	"& .MuiOutlinedInput-root": {
 		borderRadius: theme.shape.borderRadius * 1.5,
+		backgroundColor:
+			theme.palette.mode === "light"
+				? alpha(theme.palette.common.white, 0.9)
+				: alpha(theme.palette.background.paper, 0.4),
+		border:
+			theme.palette.mode === "light"
+				? `1px solid ${alpha(theme.palette.grey[400], 0.8)}`
+				: `1px solid ${alpha(theme.palette.divider, 0.2)}`,
+		"&:hover": {
+			backgroundColor:
+				theme.palette.mode === "light"
+					? theme.palette.common.white
+					: alpha(theme.palette.background.paper, 0.6),
+			borderColor:
+				theme.palette.mode === "light"
+					? alpha(theme.palette.primary.main, 0.5)
+					: alpha(theme.palette.primary.main, 0.3),
+		},
+		"&.Mui-focused": {
+			backgroundColor: theme.palette.common.white,
+			borderColor: theme.palette.primary.main,
+			boxShadow: `0 0 0 2px ${alpha(theme.palette.primary.main, 0.2)}`,
+		},
 	},
 	"& .MuiInputAdornment-root": {
 		marginLeft: 0,

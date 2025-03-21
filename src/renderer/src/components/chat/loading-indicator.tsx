@@ -44,8 +44,10 @@ const LoadingContainer = styled(Box)(() => ({
 }));
 
 const AgentAvatar = styled(Avatar)(({ theme }) => ({
-	backgroundColor: "rgba(56, 201, 106, 0.2)",
-	color: theme.palette.primary.main,
+	backgroundColor: theme.palette.icon.background,
+	color: theme.palette.icon.text,
+	boxShadow: "none",
+	border: "none",
 }));
 
 const ContentContainer = styled(Box)(() => ({

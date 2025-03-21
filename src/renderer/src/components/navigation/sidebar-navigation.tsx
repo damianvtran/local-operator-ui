@@ -40,8 +40,8 @@ const StyledDrawer = styled(Drawer, {
 	"& .MuiDrawer-paper": {
 		width,
 		boxSizing: "border-box",
-		background: "#0a0a0a",
-		borderRight: "1px solid rgba(255,255,255,0.08)",
+		background: theme.palette.sidebar.background,
+		borderRight: `1px solid ${theme.palette.sidebar.border}`,
 		boxShadow: "0 4px 20px rgba(0,0,0,0.2)",
 		transition: theme.transitions.create("width", {
 			easing: theme.transitions.easing.sharp,
@@ -70,69 +70,79 @@ const NavList = styled(List)(({ theme }) => ({
 const NavItemButton = styled(ListItemButton, {
 	shouldForwardProp: (prop) =>
 		!["isActive", "isExpanded"].includes(prop as string),
-})<{ isActive: boolean; isExpanded: boolean }>(({ isActive, isExpanded }) => ({
-	borderRadius: 8,
-	marginBottom: 8,
-	paddingTop: 12,
-	paddingBottom: 12,
-	minHeight: 48,
-	justifyContent: isExpanded ? "initial" : "center",
-	color: isActive ? "#38C96A" : "rgba(255,255,255,0.85)",
-	backgroundColor: isActive ? alpha("#38C96A", 0.1) : "transparent",
-	transition: "all 0.2s ease-out",
-	position: "relative",
-	overflow: "hidden",
-	"&:hover": {
+})<{ isActive: boolean; isExpanded: boolean }>(
+	({ theme, isActive, isExpanded }) => ({
+		borderRadius: 8,
+		marginBottom: 8,
+		paddingTop: 12,
+		paddingBottom: 12,
+		minHeight: 48,
+		justifyContent: isExpanded ? "initial" : "center",
+		color: isActive
+			? theme.palette.sidebar.itemActiveText
+			: theme.palette.sidebar.itemText,
 		backgroundColor: isActive
-			? alpha("#38C96A", 0.15)
-			: "rgba(255,255,255,0.07)",
-		transform: "translateX(4px)",
-	},
-	...(isActive && {
-		"&::before": {
-			content: '""',
-			position: "absolute",
-			left: 0,
-			top: "50%",
-			transform: "translateY(-50%)",
-			width: 4,
-			height: "60%",
-			backgroundColor: "#38C96A",
-			borderRadius: "0 4px 4px 0",
+			? theme.palette.sidebar.itemActive
+			: "transparent",
+		transition: "all 0.2s ease-out",
+		position: "relative",
+		overflow: "hidden",
+		"&:hover": {
+			backgroundColor: isActive
+				? theme.palette.sidebar.itemActiveHover
+				: theme.palette.sidebar.itemHover,
+			transform: "translateX(4px)",
 		},
+		...(isActive && {
+			"&::before": {
+				content: '""',
+				position: "absolute",
+				left: 0,
+				top: "50%",
+				transform: "translateY(-50%)",
+				width: 4,
+				height: "60%",
+				backgroundColor: theme.palette.sidebar.itemActiveText,
+				borderRadius: "0 4px 4px 0",
+			},
+		}),
 	}),
-}));
+);
 
 const NavItemIcon = styled(ListItemIcon, {
 	shouldForwardProp: (prop) =>
 		!["isActive", "isExpanded"].includes(prop as string),
-})<{ isActive: boolean; isExpanded: boolean }>(({ isActive, isExpanded }) => ({
-	minWidth: isExpanded ? 40 : 0,
-	width: 24,
-	marginRight: isExpanded ? 16 : "auto",
-	justifyContent: "center",
-	color: isActive ? "#38C96A" : "inherit",
-	display: "flex",
-	alignItems: "center",
-	transition: "transform 0.2s ease, color 0.2s ease",
-	...(isActive && {
-		transform: "scale(1.1)",
+})<{ isActive: boolean; isExpanded: boolean }>(
+	({ theme, isActive, isExpanded }) => ({
+		minWidth: isExpanded ? 40 : 0,
+		width: 24,
+		marginRight: isExpanded ? 16 : "auto",
+		justifyContent: "center",
+		color: isActive
+			? theme.palette.sidebar.itemActiveText
+			: theme.palette.icon.text,
+		display: "flex",
+		alignItems: "center",
+		transition: "transform 0.2s ease, color 0.2s ease",
+		...(isActive && {
+			transform: "scale(1.1)",
+		}),
 	}),
-}));
+);
 
-const StyledTooltip = styled(Tooltip)(() => ({
+const StyledTooltip = styled(Tooltip)(({ theme }) => ({
 	"& .MuiTooltip-tooltip": {
-		backgroundColor: "#1E1E1E",
-		color: "white",
+		backgroundColor: theme.palette.tooltip.background,
+		color: theme.palette.tooltip.text,
 		fontSize: 12,
 		fontWeight: 500,
 		borderRadius: 8,
 		padding: "8px 14px",
 		boxShadow: "0 4px 14px rgba(0, 0, 0, 0.3)",
-		border: "1px solid rgba(255,255,255,0.1)",
+		border: `1px solid ${theme.palette.tooltip.border}`,
 	},
 	"& .MuiTooltip-arrow": {
-		color: "#1E1E1E",
+		color: theme.palette.tooltip.background,
 	},
 }));
 
@@ -143,18 +153,18 @@ const ToggleButtonContainer = styled(Box)(({ theme }) => ({
 	marginBottom: theme.spacing(2),
 }));
 
-const ToggleButton = styled(IconButton)(() => ({
+const ToggleButton = styled(IconButton)(({ theme }) => ({
 	borderRadius: "50%",
-	backgroundColor: "rgba(255,255,255,0.05)",
-	border: "1px solid rgba(255,255,255,0.1)",
+	backgroundColor: theme.palette.sidebar.toggleButton.background,
+	border: `1px solid ${theme.palette.sidebar.toggleButton.border}`,
 	width: 36,
 	height: 36,
 	transition: "all 0.2s ease-out",
 	"&:hover": {
-		backgroundColor: "rgba(56, 201, 106, 0.1)",
-		borderColor: "rgba(56, 201, 106, 0.3)",
+		backgroundColor: theme.palette.sidebar.toggleButton.hoverBackground,
+		borderColor: theme.palette.sidebar.toggleButton.hoverBorder,
 		transform: "scale(1.05)",
-		boxShadow: "0 2px 8px rgba(56, 201, 106, 0.2)",
+		boxShadow: `0 2px 8px ${alpha(theme.palette.primary.main, 0.2)}`,
 	},
 }));
 

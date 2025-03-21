@@ -19,36 +19,54 @@ const PaginationContainer = styled(Box)(({ theme }) => ({
 	justifyContent: "space-between",
 	alignItems: "center",
 	padding: theme.spacing(1, 2),
-	borderTop: "1px solid rgba(255, 255, 255, 0.08)",
-	backgroundColor: theme.palette.background.paper,
+	borderTop: `1px solid ${theme.palette.sidebar.border}`,
+	backgroundColor: theme.palette.sidebar.secondaryBackground,
 	position: "sticky",
 	bottom: 0,
 	left: 0,
 	right: 0,
 	zIndex: 10,
 	minHeight: 40, // Ensure consistent height
-	boxShadow: "0 -2px 8px rgba(0, 0, 0, 0.1)", // Subtle shadow for visual separation
+	boxShadow:
+		theme.palette.mode === "dark"
+			? "0 -2px 8px rgba(0, 0, 0, 0.15)"
+			: "0 -2px 8px rgba(0, 0, 0, 0.05)", // Subtle shadow for visual separation
 }));
 
-const PageInfo = styled(Typography)({
+const PageInfo = styled(Typography)(({ theme }) => ({
 	fontSize: "0.75rem",
-	color: "rgba(255, 255, 255, 0.6)",
+	color:
+		theme.palette.mode === "dark"
+			? "rgba(255, 255, 255, 0.6)"
+			: "rgba(0, 0, 0, 0.6)",
 	userSelect: "none",
 	fontWeight: 500,
-});
+}));
 
 const NavButton = styled(IconButton)(({ theme }) => ({
 	width: 28,
 	height: 28,
 	color: theme.palette.text.secondary,
-	backgroundColor: "rgba(255, 255, 255, 0.05)",
+	backgroundColor:
+		theme.palette.mode === "dark"
+			? "rgba(255, 255, 255, 0.05)"
+			: "rgba(0, 0, 0, 0.05)",
 	"&:hover": {
-		backgroundColor: "rgba(255, 255, 255, 0.1)",
+		backgroundColor:
+			theme.palette.mode === "dark"
+				? "rgba(255, 255, 255, 0.1)"
+				: "rgba(0, 0, 0, 0.1)",
 		color: theme.palette.primary.main,
 	},
 	"&.Mui-disabled": {
-		color: "rgba(255, 255, 255, 0.2)",
-		backgroundColor: "rgba(255, 255, 255, 0.03)",
+		color:
+			theme.palette.mode === "dark"
+				? "rgba(255, 255, 255, 0.2)"
+				: "rgba(0, 0, 0, 0.2)",
+		backgroundColor:
+			theme.palette.mode === "dark"
+				? "rgba(255, 255, 255, 0.03)"
+				: "rgba(0, 0, 0, 0.03)",
 	},
 }));
 

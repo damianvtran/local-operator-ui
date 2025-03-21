@@ -1,4 +1,5 @@
 import {
+	faAdjust,
 	faCloudUploadAlt,
 	faDatabase,
 	faEnvelope,
@@ -39,6 +40,7 @@ import { AppUpdatesSection } from "./app-updates-section";
 import { Credentials } from "./credentials";
 import { DEFAULT_SETTINGS_SECTIONS, SettingsSidebar } from "./settings-sidebar";
 import { SystemPrompt } from "./system-prompt";
+import { ThemeSelector } from "./theme-selector";
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
 	height: "100%",
@@ -65,17 +67,21 @@ const ContentContainer = styled(Box)(({ theme }) => ({
 		width: "8px",
 	},
 	"&::-webkit-scrollbar-thumb": {
-		backgroundColor: "rgba(255, 255, 255, 0.1)",
+		backgroundColor:
+			theme.palette.mode === "dark"
+				? "rgba(255, 255, 255, 0.1)" // Light scrollbar in dark mode
+				: "rgba(0, 0, 0, 0.1)", // Dark scrollbar in light mode
 		borderRadius: "4px",
 	},
 }));
 
 const SidebarContainer = styled(Box)(({ theme }) => ({
 	width: 280,
-	padding: theme.spacing(2),
+	flexShrink: 0,
+	padding: 0,
 	[theme.breakpoints.down("md")]: {
 		width: "100%",
-		padding: theme.spacing(2, 2, 0, 2),
+		padding: 0,
 	},
 }));
 
@@ -154,12 +160,14 @@ export const SettingsPage: FC = () => {
 
 	// Refs for scrolling to sections
 	const generalSectionRef = useRef<HTMLDivElement>(null);
+	const appearanceSectionRef = useRef<HTMLDivElement>(null);
 	const credentialsSectionRef = useRef<HTMLDivElement>(null);
 	const updatesSectionRef = useRef<HTMLDivElement>(null);
 
 	// Map of section IDs to their refs - memoized to avoid recreation on each render
 	const sectionRefs = useRef<Record<string, RefObject<HTMLDivElement>>>({
 		general: generalSectionRef,
+		appearance: appearanceSectionRef,
 		credentials: credentialsSectionRef,
 		updates: updatesSectionRef,
 	}).current;
@@ -549,6 +557,24 @@ export const SettingsPage: FC = () => {
 								{/* Application Updates - Moved to its own section */}
 							</Grid>
 						</Grid>
+					</Box>
+
+					{/* Appearance Section */}
+					<Box mt={6} mb={4} ref={appearanceSectionRef}>
+						<Typography
+							variant="h5"
+							fontWeight="500"
+							display="flex"
+							alignItems="center"
+							gap={2}
+						>
+							<FontAwesomeIcon icon={faAdjust} />
+							Appearance
+						</Typography>
+						<Typography variant="body1" color="text.secondary" mt={1} mb={3}>
+							Customize the look and feel of Local Operator
+						</Typography>
+						<ThemeSelector />
 					</Box>
 
 					{/* API Credentials Section */}

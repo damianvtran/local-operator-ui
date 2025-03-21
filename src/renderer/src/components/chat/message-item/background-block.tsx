@@ -6,7 +6,7 @@ import {
 	faQuestion,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Box, Collapse, Typography } from "@mui/material";
+import { Box, Collapse, Typography, alpha } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import type { ExecutionType } from "@renderer/api/local-operator/types";
 import { type FC, useState } from "react";
@@ -25,37 +25,36 @@ const BlockContainer = styled(Box)(() => ({
 
 const BlockHeader = styled(Box, {
 	shouldForwardProp: (prop) => prop !== "executionType" && prop !== "isUser",
-})<{ executionType: ExecutionType; isUser: boolean }>(
-	({ theme, executionType }) => ({
-		display: "flex",
-		alignItems: "center",
-		padding: "8px 12px",
-		backgroundColor: "rgba(0, 0, 0, 0.2)",
-		borderLeft: `3px solid ${
-			executionType === "plan"
-				? theme.palette.grey[600]
-				: theme.palette.grey[600]
-		}`,
-	}),
-);
+})<{ executionType: ExecutionType; isUser: boolean }>(({ theme }) => ({
+	display: "flex",
+	alignItems: "center",
+	padding: "8px 12px",
+	backgroundColor: alpha(
+		theme.palette.common.black,
+		theme.palette.mode === "dark" ? 0.2 : 0.05,
+	),
+	borderLeft: `3px solid ${
+		theme.palette.grey[theme.palette.mode === "dark" ? 600 : 400]
+	}`,
+}));
 
 const BlockIcon = styled(Box)(({ theme }) => ({
 	marginRight: 8,
 	display: "flex",
 	alignItems: "center",
 	justifyContent: "flex-start",
-	color: theme.palette.grey[500],
+	color: theme.palette.icon.text,
 }));
 
 const BlockTitle = styled(Typography)(({ theme }) => ({
 	fontWeight: 500,
 	fontSize: "0.85rem",
-	color: theme.palette.grey[500],
+	color: theme.palette.text.secondary,
 }));
 
 const BlockContent = styled(Typography)(({ theme }) => ({
 	fontSize: "0.85rem",
-	color: theme.palette.grey[400],
+	color: theme.palette.text.secondary,
 	overflow: "hidden",
 	textOverflow: "ellipsis",
 	marginTop: 2,
@@ -63,12 +62,15 @@ const BlockContent = styled(Typography)(({ theme }) => ({
 
 const ExpandedContent = styled(Box)(({ theme }) => ({
 	padding: "12px 16px",
-	backgroundColor: "rgba(0, 0, 0, 0.2)",
+	backgroundColor: alpha(
+		theme.palette.common.black,
+		theme.palette.mode === "dark" ? 0.2 : 0.05,
+	),
 	borderBottomLeftRadius: 4,
 	borderBottomRightRadius: 4,
 	fontSize: "0.85rem",
-	color: theme.palette.grey[300],
-	borderLeft: `3px solid ${theme.palette.grey[600]}`,
+	color: theme.palette.text.primary,
+	borderLeft: `3px solid ${theme.palette.grey[theme.palette.mode === "dark" ? 600 : 400]}`,
 	marginLeft: 0,
 }));
 

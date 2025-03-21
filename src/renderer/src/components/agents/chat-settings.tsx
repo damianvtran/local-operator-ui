@@ -71,10 +71,15 @@ const SectionTitle = styled(Typography)(({ theme }) => ({
 	color: theme.palette.text.primary,
 }));
 
-const TitleIcon = styled(FontAwesomeIcon)({
+const TitleIcon = styled(FontAwesomeIcon)(({ theme }) => ({
 	marginRight: 10,
-	color: "#f2f2f3",
-});
+	color: theme.palette.primary.main,
+	padding: theme.spacing(0.5),
+	borderRadius: 999,
+	width: 24,
+	height: 24,
+	backgroundColor: alpha(theme.palette.primary.main, 0.1),
+}));
 
 const InfoButton = styled(IconButton)(({ theme }) => ({
 	marginLeft: theme.spacing(1),
@@ -87,14 +92,31 @@ const InfoButton = styled(IconButton)(({ theme }) => ({
 const UnsetContainer = styled(Paper)(({ theme }) => ({
 	padding: theme.spacing(2.5),
 	borderRadius: theme.shape.borderRadius * 2,
-	backgroundColor: alpha(theme.palette.background.default, 0.7),
+	backgroundColor:
+		theme.palette.mode === "light"
+			? alpha(theme.palette.grey[100], 0.9)
+			: alpha(theme.palette.background.default, 0.7),
+	border:
+		theme.palette.mode === "light"
+			? `1px solid ${alpha(theme.palette.grey[300], 0.8)}`
+			: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
 	transition: "all 0.2s ease",
 	marginBottom: theme.spacing(2),
 	display: "flex",
 	flexDirection: "column",
 	"&:hover": {
-		backgroundColor: alpha(theme.palette.background.default, 0.9),
-		boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
+		backgroundColor:
+			theme.palette.mode === "light"
+				? alpha(theme.palette.grey[100], 1)
+				: alpha(theme.palette.background.default, 0.9),
+		boxShadow:
+			theme.palette.mode === "light"
+				? "0 4px 12px rgba(0,0,0,0.08)"
+				: "0 4px 12px rgba(0,0,0,0.15)",
+		border:
+			theme.palette.mode === "light"
+				? `1px solid ${alpha(theme.palette.primary.main, 0.2)}`
+				: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
 	},
 }));
 

@@ -28,9 +28,10 @@ const ContentContainer = styled(Box)({
 	overflow: "hidden",
 });
 
-const StyledDivider = styled(Divider)({
-	opacity: 0.1,
-});
+const StyledDivider = styled(Divider)(({ theme }) => ({
+	opacity: theme.palette.mode === "dark" ? 0.1 : 0.2,
+	backgroundColor: theme.palette.divider,
+}));
 
 /**
  * ChatLayout Component

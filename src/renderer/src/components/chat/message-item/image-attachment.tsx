@@ -1,3 +1,4 @@
+import { alpha } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import type { FC } from "react";
 import type { ImageAttachmentProps } from "./types";
@@ -6,19 +7,19 @@ import type { ImageAttachmentProps } from "./types";
  * Styled component for image attachments
  * Includes hover effects and styling
  */
-const AttachmentImage = styled("img")({
+const AttachmentImage = styled("img")(({ theme }) => ({
 	maxWidth: "100%",
 	maxHeight: 200,
 	borderRadius: 8,
 	marginBottom: 8,
-	boxShadow: "0 2px 8px rgba(0, 0, 0, 0.15)",
+	boxShadow: `0 2px 8px ${alpha(theme.palette.common.black, theme.palette.mode === "dark" ? 0.15 : 0.1)}`,
 	cursor: "pointer",
 	transition: "transform 0.2s ease, box-shadow 0.2s ease",
 	"&:hover": {
 		transform: "scale(1.02)",
-		boxShadow: "0 4px 12px rgba(0, 0, 0, 0.25)",
+		boxShadow: `0 4px 12px ${alpha(theme.palette.common.black, theme.palette.mode === "dark" ? 0.25 : 0.15)}`,
 	},
-});
+}));
 
 /**
  * Extracts the filename from a path

@@ -13,10 +13,11 @@ const StyledAvatar = styled(Avatar, {
 	shouldForwardProp: (prop) => prop !== "isUser",
 })<{ isUser: boolean }>(({ isUser, theme }) => ({
 	backgroundColor: isUser
-		? "rgba(66, 133, 244, 0.9)"
-		: "rgba(56, 201, 106, 0.2)",
-	color: isUser ? "white" : theme.palette.primary.main,
-	boxShadow: isUser ? "0 2px 8px rgba(66, 133, 244, 0.25)" : "none",
+		? theme.palette.userMessage.background
+		: theme.palette.icon.background,
+	color: isUser ? "white" : theme.palette.icon.text,
+	boxShadow: isUser ? theme.palette.userMessage.shadow : "none",
+	border: isUser ? `1px solid ${theme.palette.userMessage.border}` : "none",
 }));
 
 /**

@@ -1,6 +1,6 @@
 import { faCode, faCommentDots } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Tab, Tabs, styled } from "@mui/material";
+import { Tab, Tabs, alpha, styled } from "@mui/material";
 import type { FC } from "react";
 
 /**
@@ -11,8 +11,8 @@ type ChatTabsProps = {
 	onChange: (newTab: "chat" | "raw") => void;
 };
 
-const StyledTabs = styled(Tabs)(() => ({
-	borderBottom: "1px solid rgba(255, 255, 255, 0.05)",
+const StyledTabs = styled(Tabs)(({ theme }) => ({
+	borderBottom: `1px solid ${alpha(theme.palette.divider, 0.05)}`,
 	minHeight: "42px",
 	"& .MuiTabs-indicator": {
 		height: 2,
@@ -22,7 +22,7 @@ const StyledTabs = styled(Tabs)(() => ({
 
 const StyledTab = styled(Tab, {
 	shouldForwardProp: (prop) => prop !== "isActive",
-})<{ isActive?: boolean }>(({ isActive }) => ({
+})<{ isActive?: boolean }>(({ theme, isActive }) => ({
 	minHeight: "42px",
 	padding: "4px 0",
 	textTransform: "none",
@@ -32,7 +32,12 @@ const StyledTab = styled(Tab, {
 	opacity: isActive ? 1 : 0.7,
 	"&:hover": {
 		opacity: 1,
-		backgroundColor: "rgba(255, 255, 255, 0.05)",
+		backgroundColor: alpha(
+			theme.palette.mode === "dark"
+				? theme.palette.common.white
+				: theme.palette.common.black,
+			0.05,
+		),
 	},
 	"& .MuiTab-iconWrapper": {
 		marginRight: 6,

@@ -90,7 +90,12 @@ export const StyledDialog = styled(Dialog)(({ theme }) => ({
 			width: "8px",
 		},
 		"&::-webkit-scrollbar-thumb": {
-			backgroundColor: "rgba(255, 255, 255, 0.1)",
+			backgroundColor: alpha(
+				theme.palette.mode === "dark"
+					? theme.palette.common.white
+					: theme.palette.common.black,
+				0.1,
+			),
 			borderRadius: "4px",
 		},
 	},

@@ -18,6 +18,7 @@ import {
 	Paper,
 	Tooltip,
 	Typography,
+	alpha,
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import { AgentOptionsMenu } from "@renderer/components/common/agent-options-menu";
@@ -32,11 +33,11 @@ import { format } from "date-fns";
 import type { ChangeEvent, FC } from "react";
 import React, { useState, useCallback } from "react";
 
-const SidebarContainer = styled(Paper)(() => ({
+const SidebarContainer = styled(Paper)(({ theme }) => ({
 	width: "100%",
 	height: "100%",
-	borderRight: "1px solid rgba(255, 255, 255, 0.08)",
-	backgroundColor: "background.paper",
+	borderRight: `1px solid ${theme.palette.sidebar.border}`,
+	backgroundColor: theme.palette.sidebar.secondaryBackground,
 	display: "flex",
 	flexDirection: "column",
 	overflow: "hidden",
@@ -60,7 +61,7 @@ const EmptyStateContainer = styled(Box)({
 	textAlign: "center",
 });
 
-const AgentsList = styled(List)({
+const AgentsList = styled(List)(({ theme }) => ({
 	overflow: "auto",
 	flexGrow: 1,
 	padding: "8px",
@@ -68,27 +69,35 @@ const AgentsList = styled(List)({
 		width: "8px",
 	},
 	"&::-webkit-scrollbar-thumb": {
-		backgroundColor: "rgba(255, 255, 255, 0.1)",
+		backgroundColor:
+			theme.palette.mode === "dark"
+				? "rgba(255, 255, 255, 0.1)"
+				: "rgba(0, 0, 0, 0.1)",
 		borderRadius: "4px",
 	},
-});
+}));
 
-const AgentListItemButton = styled(ListItemButton)({
+const AgentListItemButton = styled(ListItemButton)(({ theme }) => ({
 	margin: "0 8px",
 	borderRadius: 8,
 	marginBottom: 4,
 	paddingRight: 40,
 	"&.Mui-selected": {
-		backgroundColor: "rgba(56, 201, 106, 0.1)",
+		backgroundColor: theme.palette.sidebar.itemActive,
+		color: theme.palette.sidebar.itemActiveText,
 		"&:hover": {
-			backgroundColor: "rgba(56, 201, 106, 0.15)",
+			backgroundColor: theme.palette.sidebar.itemActiveHover,
 		},
 	},
-});
+	"&:hover": {
+		backgroundColor: theme.palette.sidebar.itemHover,
+	},
+}));
 
 const AgentAvatar = styled(Avatar)(({ theme }) => ({
-	backgroundColor: "rgba(56, 201, 106, 0.2)",
-	color: theme.palette.primary.main,
+	backgroundColor: theme.palette.icon.background,
+	color: theme.palette.icon.text,
+	boxShadow: `0 2px 4px ${alpha(theme.palette.common.black, 0.15)}`,
 }));
 
 // Use a span wrapper to avoid nesting <p> inside <p>
@@ -100,24 +109,30 @@ const MessagePreview = styled("span")({
 	fontSize: "0.75rem",
 });
 
-const TimeStampContainer = styled("span")({
+const TimeStampContainer = styled("span")(({ theme }) => ({
 	display: "flex",
 	alignItems: "center",
-	color: "rgba(255, 255, 255, 0.5)",
+	color:
+		theme.palette.mode === "dark"
+			? "rgba(255, 255, 255, 0.5)"
+			: "rgba(0, 0, 0, 0.5)",
 	fontSize: "0.75rem",
-});
+}));
 
 const TimeStampText = styled("span")({
 	cursor: "help",
 });
 
-const NoMessagesContainer = styled("span")({
+const NoMessagesContainer = styled("span")(({ theme }) => ({
 	display: "flex",
 	alignItems: "center",
-	color: "rgba(255, 255, 255, 0.5)",
+	color:
+		theme.palette.mode === "dark"
+			? "rgba(255, 255, 255, 0.5)"
+			: "rgba(0, 0, 0, 0.5)",
 	fontSize: "0.75rem",
 	fontStyle: "italic",
-});
+}));
 
 /**
  * Props for the ChatSidebar component
