@@ -4,9 +4,9 @@ import {
 	faIcicles,
 	faLeaf,
 	faMoon,
+	faMountain,
 	faSkull,
 	faSun,
-	faMountain,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, Card, CardContent, Grid, Typography } from "@mui/material";
