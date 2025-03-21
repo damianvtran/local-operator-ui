@@ -20,6 +20,7 @@ import {
 	Paper,
 	Tooltip,
 	Typography,
+	alpha,
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import { createLocalOperatorClient } from "@renderer/api/local-operator";
@@ -38,11 +39,11 @@ import type { ChangeEvent, FC } from "react";
 import React, { useState, useCallback, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
-const SidebarContainer = styled(Paper)(() => ({
+const SidebarContainer = styled(Paper)(({ theme }) => ({
 	width: "100%",
 	height: "100%",
-	borderRight: "1px solid rgba(255, 255, 255, 0.08)",
-	backgroundColor: "background.paper",
+	borderRight: `1px solid ${theme.palette.sidebar.border}`,
+	backgroundColor: theme.palette.sidebar.secondaryBackground,
 	display: "flex",
 	flexDirection: "column",
 	overflow: "hidden",
@@ -66,7 +67,7 @@ const EmptyStateContainer = styled(Box)({
 	textAlign: "center",
 });
 
-const AgentsList = styled(List)({
+const AgentsList = styled(List)(({ theme }) => ({
 	overflow: "auto",
 	flexGrow: 1,
 	padding: "8px",
@@ -74,46 +75,57 @@ const AgentsList = styled(List)({
 		width: "8px",
 	},
 	"&::-webkit-scrollbar-thumb": {
-		backgroundColor: "rgba(255, 255, 255, 0.1)",
+		backgroundColor:
+			theme.palette.mode === "dark"
+				? "rgba(255, 255, 255, 0.1)"
+				: "rgba(0, 0, 0, 0.1)",
 		borderRadius: "4px",
 	},
-});
+}));
 
-const AgentListItemButton = styled(ListItemButton)({
+const AgentListItemButton = styled(ListItemButton)(({ theme }) => ({
 	margin: "0 8px",
 	borderRadius: 8,
 	marginBottom: 4,
 	paddingRight: 40,
 	"&.Mui-selected": {
-		backgroundColor: "rgba(56, 201, 106, 0.1)",
+		backgroundColor: theme.palette.sidebar.itemActive,
+		color: theme.palette.sidebar.itemActiveText,
 		"&:hover": {
-			backgroundColor: "rgba(56, 201, 106, 0.15)",
+			backgroundColor: theme.palette.sidebar.itemActiveHover,
 		},
 	},
-});
+	"&:hover": {
+		backgroundColor: theme.palette.sidebar.itemHover,
+	},
+}));
 
 const AgentAvatar = styled(Avatar)(({ theme }) => ({
-	backgroundColor: "rgba(56, 201, 106, 0.2)",
-	color: theme.palette.primary.main,
+	backgroundColor: theme.palette.icon.background,
+	color: theme.palette.icon.text,
+	boxShadow: `0 2px 4px ${alpha(theme.palette.common.black, 0.15)}`,
 }));
 
 // Use a span wrapper to avoid nesting <p> inside <p>
-const CreationDateText = styled("span")({
+const CreationDateText = styled("span")(({ theme }) => ({
 	display: "flex",
 	alignItems: "center",
 	fontSize: "0.75rem",
-	color: "rgba(255, 255, 255, 0.6)",
+	color:
+		theme.palette.mode === "dark"
+			? "rgba(255, 255, 255, 0.5)"
+			: "rgba(0, 0, 0, 0.5)",
 	marginTop: 4,
 	gap: 4,
-});
+}));
 
 // Use a span wrapper to avoid nesting <p> inside <p>
-const DescriptionText = styled("span")({
+const DescriptionText = styled("span")(({ theme }) => ({
 	maxWidth: "100%",
 	fontSize: "0.75rem",
 	display: "block",
-	color: "text.secondary",
-});
+	color: theme.palette.text.secondary,
+}));
 
 /**
  * Props for the AgentsSidebar component

@@ -88,7 +88,15 @@ const LabelIcon = styled(Box)({
 const StyledTextField = styled(TextField)(({ theme }) => ({
 	"& .MuiOutlinedInput-root": {
 		borderRadius: 8,
-		backgroundColor: alpha(theme.palette.background.default, 0.7),
+		backgroundColor: theme.palette.inputField.background,
+		border: `1px solid ${theme.palette.inputField.border}`,
+		"&:hover": {
+			backgroundColor: theme.palette.inputField.hoverBackground,
+		},
+		"&.Mui-focused": {
+			backgroundColor: theme.palette.inputField.focusBackground,
+			boxShadow: `0 0 0 2px ${alpha(theme.palette.primary.main, 0.2)}`,
+		},
 	},
 }));
 
@@ -129,7 +137,8 @@ const DisplayContainer = styled(Box, {
 })<{ multiline?: boolean }>(({ theme, multiline }) => ({
 	padding: 16,
 	borderRadius: 8,
-	backgroundColor: alpha(theme.palette.background.default, 0.7),
+	backgroundColor: theme.palette.inputField.background,
+	border: `1px solid ${theme.palette.inputField.border}`,
 	position: "relative",
 	minHeight: multiline ? "100px" : "40px",
 	display: "flex",
@@ -137,7 +146,8 @@ const DisplayContainer = styled(Box, {
 	transition: "all 0.2s ease",
 	cursor: "pointer",
 	"&:hover": {
-		backgroundColor: alpha(theme.palette.background.default, 0.9),
+		backgroundColor: theme.palette.inputField.hoverBackground,
+		boxShadow: `0 0 0 1px ${alpha(theme.palette.primary.main, 0.2)}`,
 		"& .edit-button": {
 			opacity: 1,
 		},

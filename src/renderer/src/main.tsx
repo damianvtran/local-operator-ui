@@ -1,4 +1,3 @@
-import { ThemeProvider } from "@mui/material";
 import CssBaseline from "@mui/material/CssBaseline";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
@@ -11,7 +10,7 @@ import "./assets/fonts/fonts.css";
 import { queryClient } from "./api/query-client";
 import App from "./app";
 import { ErrorBoundary } from "./components/common/error-boundary";
-import theme from "./theme";
+import { ThemeProvider } from "./themes/theme-provider";
 
 document.addEventListener("DOMContentLoaded", () => {
 	const root = ReactDOM.createRoot(
@@ -20,7 +19,7 @@ document.addEventListener("DOMContentLoaded", () => {
 	root.render(
 		<React.StrictMode>
 			<QueryClientProvider client={queryClient}>
-				<ThemeProvider theme={theme}>
+				<ThemeProvider>
 					<CssBaseline />
 					<ErrorBoundary>
 						<BrowserRouter>
@@ -37,7 +36,7 @@ document.addEventListener("DOMContentLoaded", () => {
 						pauseOnFocusLoss
 						draggable
 						pauseOnHover
-						theme="dark"
+						theme="colored" // Use colored theme which works with both light and dark modes
 						aria-label="toast-notifications"
 					/>
 					{/* React Query DevTools - only in development (positioned at bottom left) */}

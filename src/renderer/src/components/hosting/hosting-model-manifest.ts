@@ -99,12 +99,24 @@ const convertToManifestProvider = (
 	};
 };
 
+// Cache for hosting providers to prevent excessive re-renders
+let cachedProviders: HostingProvider[] | null = null;
+let lastCacheTime = 0;
+const CACHE_TTL = 5000; // 5 seconds
+
 /**
  * Get hosting providers from the models store
  *
  * @returns Array of hosting providers
  */
 export const getHostingProviders = (): HostingProvider[] => {
+	const now = Date.now();
+
+	// Return cached providers if they exist and are not expired
+	if (cachedProviders && now - lastCacheTime < CACHE_TTL) {
+		return cachedProviders;
+	}
+
 	const store = useModelsStore.getState();
 	const { providers, models, isInitialized } = store;
 
@@ -114,12 +126,18 @@ export const getHostingProviders = (): HostingProvider[] => {
 	}
 
 	// Convert API providers to manifest format
-	return providers.map((provider) => {
+	const result = providers.map((provider) => {
 		const providerModels = models.filter(
 			(model) => model.provider === provider.id,
 		);
 		return convertToManifestProvider(provider, providerModels);
 	});
+
+	// Update cache
+	cachedProviders = result;
+	lastCacheTime = now;
+
+	return result;
 };
 
 /**

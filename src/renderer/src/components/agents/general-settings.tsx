@@ -13,7 +13,14 @@ import {
 	faTag,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Box, Divider, Grid, Typography, alpha } from "@mui/material";
+import {
+	Box,
+	Divider,
+	Grid,
+	TextField,
+	Typography,
+	alpha,
+} from "@mui/material";
 import { styled } from "@mui/material/styles";
 import type {
 	AgentDetails,
@@ -58,6 +65,24 @@ type GeneralSettingsProps = {
 	initialSelectedAgentId?: string;
 };
 
+const FieldContainer = styled(Box)({
+	marginBottom: 24,
+	position: "relative",
+});
+
+const FieldLabel = styled(Typography)(({ theme }) => ({
+	marginBottom: 8,
+	display: "flex",
+	alignItems: "center",
+	color: theme.palette.text.secondary,
+	fontWeight: 600,
+}));
+
+const LabelIcon = styled(Box)({
+	marginRight: 12,
+	opacity: 0.8,
+});
+
 const HeaderContainer = styled(Box)(({ theme }) => ({
 	display: "flex",
 	alignItems: "center",
@@ -74,25 +99,40 @@ const SectionTitle = styled(Typography)(({ theme }) => ({
 	color: theme.palette.text.primary,
 }));
 
-const TitleIcon = styled(FontAwesomeIcon)({
+const TitleIcon = styled(FontAwesomeIcon)(({ theme }) => ({
 	marginRight: 10,
-	color: "#f2f2f3",
-});
+	color: theme.palette.primary.main,
+	padding: theme.spacing(0.5),
+	borderRadius: 999,
+	backgroundColor: alpha(theme.palette.primary.main, 0.1),
+}));
 
 const InfoCard = styled(Box)(({ theme }) => ({
 	display: "flex",
 	alignItems: "center",
 	marginBottom: theme.spacing(2),
 	padding: theme.spacing(2),
-	borderRadius: 16,
-	backgroundColor: alpha(theme.palette.background.default, 0.7),
+	borderRadius: theme.shape.borderRadius * 2,
+	backgroundColor: theme.palette.inputField.background,
+	border: `1px solid ${theme.palette.inputField.border}`,
+	transition: "all 0.2s ease",
+	"&:hover": {
+		backgroundColor: theme.palette.inputField.hoverBackground,
+		boxShadow:
+			theme.palette.mode === "light"
+				? "0 2px 8px rgba(0,0,0,0.05)"
+				: "0 2px 8px rgba(0,0,0,0.15)",
+	},
 }));
 
-const CardIcon = styled(FontAwesomeIcon)({
+const CardIcon = styled(FontAwesomeIcon)(({ theme }) => ({
 	marginRight: 12,
 	opacity: 0.8,
-	color: "#f2f2f3",
-});
+	color:
+		theme.palette.mode === "light"
+			? theme.palette.grey[700]
+			: theme.palette.text.primary,
+}));
 
 // Use span instead of Box to avoid nesting <div> inside <p>
 const LabelText = styled("span")(({ theme }) => ({
@@ -102,14 +142,19 @@ const LabelText = styled("span")(({ theme }) => ({
 }));
 
 // Use span instead of Box to avoid nesting <div> inside <p>
-const ValueText = styled("span")({
+const ValueText = styled("span")(({ theme }) => ({
 	fontWeight: 500,
 	display: "inline-block",
-});
+	color: theme.palette.text.primary,
+}));
 
-const MonospaceValueText = styled(ValueText)({
+const MonospaceValueText = styled(ValueText)(({ theme }) => ({
 	fontFamily: "monospace",
-});
+	color:
+		theme.palette.mode === "light"
+			? theme.palette.grey[900]
+			: theme.palette.text.primary,
+}));
 
 /**
  * General Settings Component
@@ -222,39 +267,68 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 					</Grid>
 
 					<Grid item xs={12} md={6}>
-						<ModelSelect
-							// Modified key to not include the selectedAgent.id, so it doesn't re-render and reset when agent changes
-							// This allows users to select a different model after making an initial selection
-							key={`model-select-${currentHosting}`}
-							value={selectedAgent.model || ""}
-							hostingId={currentHosting}
-							isSaving={savingField === "model"}
-							onSave={async (value) => {
-								setSavingField("model");
+						{/* Only render ModelSelect if we have a hosting provider selected */}
+						{currentHosting ? (
+							<ModelSelect
+								// Modified key to not include the selectedAgent.id, so it doesn't re-render and reset when agent changes
+								// This allows users to select a different model after making an initial selection
+								key={`model-select-${currentHosting}`}
+								value={selectedAgent.model || ""}
+								hostingId={currentHosting}
+								isSaving={savingField === "model"}
+								onSave={async (value) => {
+									setSavingField("model");
 
-								try {
-									const update: AgentUpdate = { model: value };
+									try {
+										const update: AgentUpdate = { model: value };
 
-									// Perform the API update
-									await updateAgentMutation.mutateAsync({
-										agentId: selectedAgent.id,
-										update,
-									});
+										// Perform the API update
+										await updateAgentMutation.mutateAsync({
+											agentId: selectedAgent.id,
+											update,
+										});
 
-									// Only refetch if needed (when viewing the current agent)
-									if (
-										selectedAgent.id === initialSelectedAgentId &&
-										refetchAgent
-									) {
-										await refetchAgent();
+										// Only refetch if needed (when viewing the current agent)
+										if (
+											selectedAgent.id === initialSelectedAgentId &&
+											refetchAgent
+										) {
+											await refetchAgent();
+										}
+									} catch (error) {
+										// Error is already handled in the mutation
+									} finally {
+										setSavingField(null);
 									}
-								} catch (error) {
-									// Error is already handled in the mutation
-								} finally {
-									setSavingField(null);
-								}
-							}}
-						/>
+								}}
+							/>
+						) : (
+							<FieldContainer>
+								<FieldLabel variant="subtitle2">
+									<LabelIcon>
+										<FontAwesomeIcon icon={faRobot} />
+									</LabelIcon>
+									Model
+								</FieldLabel>
+								<TextField
+									placeholder="Select a hosting provider first..."
+									variant="outlined"
+									size="small"
+									disabled
+									fullWidth
+									InputProps={{
+										sx: {
+											fontSize: "0.875rem",
+											lineHeight: 1.6,
+											backgroundColor: (theme) =>
+												theme.palette.inputField.background,
+											borderRadius: 2,
+											padding: "16px",
+										},
+									}}
+								/>
+							</FieldContainer>
+						)}
 					</Grid>
 				</Grid>
 			</HeaderContainer>

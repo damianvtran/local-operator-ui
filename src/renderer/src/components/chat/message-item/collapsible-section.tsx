@@ -3,19 +3,24 @@ import {
 	faChevronRight,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Box, Collapse, IconButton, Typography } from "@mui/material";
+import { Box, Collapse, IconButton, Typography, alpha } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import { type FC, useState } from "react";
 import type { CollapsibleSectionProps } from "./types";
 
-const SectionHeader = styled(Box)(() => ({
+const SectionHeader = styled(Box)(({ theme }) => ({
 	display: "flex",
 	alignItems: "center",
 	marginBottom: 4,
 	cursor: "pointer",
 	userSelect: "none",
 	"&:hover": {
-		backgroundColor: "rgba(255, 255, 255, 0.05)",
+		backgroundColor: alpha(
+			theme.palette.mode === "dark"
+				? theme.palette.common.white
+				: theme.palette.common.black,
+			theme.palette.mode === "dark" ? 0.05 : 0.03,
+		),
 	},
 	borderRadius: 4,
 	padding: "2px 4px",

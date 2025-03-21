@@ -1,24 +1,27 @@
 import { faExclamationTriangle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Box } from "@mui/material";
+import { Box, alpha } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import type { FC } from "react";
 import type { SecurityCheckHighlightProps } from "./types";
 
 const HighlightContainer = styled(Box, {
 	shouldForwardProp: (prop) => prop !== "isUser",
-})<{ isUser: boolean }>(() => ({
+})<{ isUser: boolean }>(({ theme }) => ({
 	position: "relative",
 	padding: "16px",
 	borderRadius: "8px",
 	marginBottom: "16px",
-	boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+	boxShadow: `0 4px 12px ${alpha(theme.palette.common.black, theme.palette.mode === "dark" ? 0.15 : 0.1)}`,
 	width: "100%",
-	border: "1px solid rgba(255, 193, 7, 0.5)",
-	backgroundColor: "rgba(255, 193, 7, 0.1)",
+	border: `1px solid ${alpha(theme.palette.warning.main, 0.5)}`,
+	backgroundColor: alpha(
+		theme.palette.warning.main,
+		theme.palette.mode === "dark" ? 0.1 : 0.05,
+	),
 	transition: "all 0.2s ease",
 	"&:hover": {
-		boxShadow: "0 6px 16px rgba(0, 0, 0, 0.2)",
+		boxShadow: `0 6px 16px ${alpha(theme.palette.common.black, theme.palette.mode === "dark" ? 0.2 : 0.15)}`,
 	},
 }));
 

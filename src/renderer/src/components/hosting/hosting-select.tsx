@@ -13,7 +13,6 @@ import {
 	CircularProgress,
 	TextField,
 	Typography,
-	alpha,
 	createFilterOptions,
 	styled,
 } from "@mui/material";
@@ -89,11 +88,14 @@ const LabelIcon = styled(Box)({
 const StyledAutocomplete = styled(Autocomplete)(({ theme }) => ({
 	"& .MuiOutlinedInput-root": {
 		borderRadius: 8,
-		backgroundColor: alpha(theme.palette.background.default, 0.7),
+		backgroundColor: theme.palette.inputField.background,
 		padding: "16px",
 		transition: "all 0.2s ease",
 		"&:hover": {
-			backgroundColor: alpha(theme.palette.background.default, 0.9),
+			backgroundColor: theme.palette.inputField.hoverBackground,
+		},
+		"&.Mui-focused": {
+			backgroundColor: theme.palette.inputField.focusBackground,
 		},
 	},
 	"& .MuiInputBase-root": {
@@ -144,9 +146,11 @@ export const HostingSelect: FC<HostingSelectProps> = ({
 	// Flag to track if the dropdown should show all options (no filtering)
 	const showAllOptions = useRef(false);
 
-	// Ref to track number of credential fetch attempts
+	// Refs to track credential fetch attempts and prevent excessive re-renders
 	const credentialFetchAttemptsRef = useRef<number>(0);
 	const MAX_CREDENTIAL_FETCH_ATTEMPTS = 3;
+	const lastCredentialFetchTimeRef = useRef<number | null>(null);
+	const CREDENTIAL_FETCH_THROTTLE = 2000; // 2 seconds
 
 	// Get available hosting providers based on user credentials
 	const availableHostingProviders = useMemo(() => {
@@ -163,8 +167,19 @@ export const HostingSelect: FC<HostingSelectProps> = ({
 			return getHostingProviders();
 		}
 
-		// Track credential fetch attempts
+		// Add throttling to prevent rapid successive calls
+		const now = Date.now();
+		if (
+			lastCredentialFetchTimeRef.current &&
+			now - lastCredentialFetchTimeRef.current < CREDENTIAL_FETCH_THROTTLE
+		) {
+			// If we've fetched recently, use the last result
+			return getHostingProviders();
+		}
+
+		// Track credential fetch attempts and time
 		credentialFetchAttemptsRef.current += 1;
+		lastCredentialFetchTimeRef.current = now;
 
 		return getAvailableHostingProviders(userCredentials);
 	}, [userCredentials, filterByCredentials]);

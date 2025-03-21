@@ -26,26 +26,29 @@ type MessagesViewProps = {
 	scrollToBottom?: () => void;
 };
 
-const MessagesContainer = styled(Box)({
+const MessagesContainer = styled(Box)(({ theme }) => ({
 	flexGrow: 1,
 	overflow: "auto",
 	padding: 16,
 	display: "flex",
 	flexDirection: "column",
 	gap: 16,
-	backgroundColor: "rgba(0, 0, 0, 0.2)",
+	backgroundColor: theme.palette.messagesView.background,
 	position: "relative", // Add position relative for absolute positioning of children
 	"&::-webkit-scrollbar": {
 		width: "8px",
 	},
 	"&::-webkit-scrollbar-thumb": {
-		backgroundColor: "rgba(255, 255, 255, 0.1)",
+		backgroundColor:
+			theme.palette.mode === "dark"
+				? "rgba(255, 255, 255, 0.1)"
+				: "rgba(0, 0, 0, 0.2)",
 		borderRadius: "4px",
 	},
 	// Improve GPU acceleration for smoother scrolling
 	transform: "translateZ(0)",
 	willChange: "scroll-position",
-});
+}));
 
 const LoadingMoreIndicator = styled(Box)({
 	display: "flex",

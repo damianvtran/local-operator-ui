@@ -25,7 +25,7 @@ import React from "react";
 
 const SidebarHeaderContainer = styled(Box)(({ theme }) => ({
 	padding: theme.spacing(3),
-	borderBottom: "1px solid rgba(255,255,255,0.08)",
+	borderBottom: `1px solid ${theme.palette.sidebar.border}`,
 }));
 
 const HeaderRow = styled(Box)({
@@ -46,19 +46,38 @@ const SidebarTitle = styled(Typography)({
 });
 
 const ActionButton = styled(IconButton)(({ theme }) => ({
-	borderRadius: 10,
+	borderRadius: theme.shape.borderRadius * 2,
 	padding: 8,
-	backgroundColor: alpha(theme.palette.primary.main, 0.1),
-	color: theme.palette.primary.main,
+	backgroundColor:
+		theme.palette.mode === "light"
+			? alpha(theme.palette.primary.dark, 0.15)
+			: alpha(theme.palette.primary.main, 0.1),
+	color:
+		theme.palette.mode === "light"
+			? theme.palette.primary.dark
+			: theme.palette.primary.main,
+	border:
+		theme.palette.mode === "light"
+			? `1px solid ${alpha(theme.palette.primary.dark, 0.5)}`
+			: "none",
 	transition: "all 0.2s ease-in-out",
 	"&:hover": {
-		backgroundColor: alpha(theme.palette.primary.main, 0.2),
+		backgroundColor:
+			theme.palette.mode === "light"
+				? alpha(theme.palette.primary.dark, 0.25)
+				: alpha(theme.palette.primary.main, 0.2),
 		transform: "translateY(-2px)",
-		boxShadow: `0 4px 8px ${alpha(theme.palette.primary.main, 0.25)}`,
+		boxShadow:
+			theme.palette.mode === "light"
+				? `0 4px 8px ${alpha(theme.palette.primary.dark, 0.3)}`
+				: `0 4px 8px ${alpha(theme.palette.primary.main, 0.25)}`,
 	},
 	"&:active": {
 		transform: "translateY(0)",
-		boxShadow: `0 2px 4px ${alpha(theme.palette.primary.main, 0.2)}`,
+		boxShadow:
+			theme.palette.mode === "light"
+				? `0 2px 4px ${alpha(theme.palette.primary.dark, 0.25)}`
+				: `0 2px 4px ${alpha(theme.palette.primary.main, 0.2)}`,
 	},
 }));
 

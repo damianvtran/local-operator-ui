@@ -39,16 +39,16 @@ const ProfileContainer = styled(Box)(() => ({
 
 const ProfileDivider = styled(Divider, {
 	shouldForwardProp: (prop) => prop !== "expanded",
-})<{ expanded: boolean }>(({ expanded }) => ({
+})<{ expanded: boolean }>(({ theme, expanded }) => ({
 	margin: "8px 0",
-	borderColor: "rgba(255,255,255,0.08)",
+	borderColor: theme.palette.sidebar.border,
 	marginLeft: expanded ? 16 : 8,
 	marginRight: expanded ? 16 : 8,
 }));
 
 const ProfileBox = styled(Box, {
 	shouldForwardProp: (prop) => prop !== "expanded",
-})<{ expanded: boolean }>(({ expanded }) => ({
+})<{ expanded: boolean }>(({ theme, expanded }) => ({
 	display: "flex",
 	alignItems: "center",
 	padding: "8px 16px",
@@ -58,17 +58,17 @@ const ProfileBox = styled(Box, {
 	marginRight: expanded ? 8 : "auto",
 	transition: "all 0.2s ease",
 	"&:hover": {
-		backgroundColor: "rgba(255,255,255,0.05)",
+		backgroundColor: theme.palette.sidebar.itemHover,
 	},
 }));
 
-const UserAvatar = styled(Avatar)(() => ({
+const UserAvatar = styled(Avatar)(({ theme }) => ({
 	width: 36,
 	height: 36,
-	backgroundColor: "primary.main",
+	backgroundColor: theme.palette.primary.main,
 	transition: "all 0.3s ease",
 	"&:hover": {
-		boxShadow: "0 0 15px rgba(56, 201, 106, 0.5)",
+		boxShadow: `0 0 15px ${alpha(theme.palette.primary.main, 0.5)}`,
 	},
 }));
 
@@ -100,11 +100,13 @@ const UserEmail = styled(Typography)(() => ({
 const StyledMenu = styled(Menu)(({ theme }) => ({
 	"& .MuiPaper-root": {
 		marginTop: theme.spacing(1.5),
-		backgroundColor: "background.paper",
+		backgroundColor: theme.palette.background.paper,
 		backgroundImage:
-			"linear-gradient(rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.03))",
+			theme.palette.mode === "dark"
+				? "linear-gradient(rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.03))"
+				: "linear-gradient(rgba(0, 0, 0, 0.01), rgba(0, 0, 0, 0.02))",
 		backdropFilter: "blur(20px)",
-		border: "1px solid rgba(255, 255, 255, 0.08)",
+		border: `1px solid ${theme.palette.sidebar.border}`,
 		borderRadius: 16,
 		minWidth: 200,
 		overflow: "visible",
@@ -117,22 +119,22 @@ const StyledMenu = styled(Menu)(({ theme }) => ({
 			right: 14,
 			width: 10,
 			height: 10,
-			bgcolor: "background.paper",
+			bgcolor: theme.palette.background.paper,
 			transform: "translateY(-50%) rotate(45deg)",
 			zIndex: 0,
-			borderTop: "1px solid rgba(255, 255, 255, 0.08)",
-			borderLeft: "1px solid rgba(255, 255, 255, 0.08)",
+			borderTop: `1px solid ${theme.palette.sidebar.border}`,
+			borderLeft: `1px solid ${theme.palette.sidebar.border}`,
 		},
 	},
 }));
 
-const MenuItemStyled = styled(MenuItem)(() => ({
+const MenuItemStyled = styled(MenuItem)(({ theme }) => ({
 	padding: "12px 12px",
 	borderRadius: 8,
 	margin: "4px 8px",
 	transition: "all 0.2s ease",
 	"&:hover": {
-		backgroundColor: "rgba(255,255,255,0.05)",
+		backgroundColor: theme.palette.sidebar.itemHover,
 		transform: "translateX(5px)",
 	},
 }));
@@ -145,8 +147,8 @@ const MenuItemDanger = styled(MenuItemStyled)(() => ({
 	},
 }));
 
-const MenuDivider = styled(Box)(() => ({
-	borderTop: "1px solid rgba(255,255,255,0.08)",
+const MenuDivider = styled(Box)(({ theme }) => ({
+	borderTop: `1px solid ${theme.palette.sidebar.border}`,
 	margin: "8px 0",
 }));
 
@@ -159,16 +161,17 @@ const IconWrapper = styled("span")(() => ({
 	justifyContent: "center",
 }));
 
-const StyledTooltip = styled(Tooltip)(() => ({
+const StyledTooltip = styled(Tooltip)(({ theme }) => ({
 	"& .MuiTooltip-tooltip": {
-		backgroundColor: "rgba(0, 0, 0, 0.8)",
-		color: "white",
+		backgroundColor: theme.palette.tooltip.background,
+		color: theme.palette.tooltip.text,
 		fontSize: 12,
 		borderRadius: 8,
 		padding: "5px 10px",
+		border: `1px solid ${theme.palette.tooltip.border}`,
 	},
 	"& .MuiTooltip-arrow": {
-		color: "rgba(0, 0, 0, 0.8)",
+		color: theme.palette.tooltip.background,
 	},
 }));
 

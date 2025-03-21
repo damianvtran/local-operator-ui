@@ -14,7 +14,6 @@ import {
 	TextField,
 	Tooltip,
 	Typography,
-	alpha,
 	createFilterOptions,
 	styled,
 } from "@mui/material";
@@ -90,11 +89,14 @@ const LabelIcon = styled(Box)({
 const StyledAutocomplete = styled(Autocomplete)(({ theme }) => ({
 	"& .MuiOutlinedInput-root": {
 		borderRadius: 8,
-		backgroundColor: alpha(theme.palette.background.default, 0.7),
+		backgroundColor: theme.palette.inputField.background,
 		padding: "16px",
 		transition: "all 0.2s ease",
 		"&:hover": {
-			backgroundColor: alpha(theme.palette.background.default, 0.9),
+			backgroundColor: theme.palette.inputField.hoverBackground,
+		},
+		"&.Mui-focused": {
+			backgroundColor: theme.palette.inputField.focusBackground,
 		},
 	},
 	"& .MuiInputBase-root": {
@@ -178,6 +180,7 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 	const refreshTimeRef = useRef<number | null>(null);
 	const refreshAttemptCountRef = useRef<number>(0);
 	const MAX_REFRESH_ATTEMPTS = 3;
+	const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
 	useEffect(() => {
 		// Only refresh if hostingId has changed and is not null
@@ -187,8 +190,14 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 			// Reset refresh attempt counter when hosting provider changes
 			refreshAttemptCountRef.current = 0;
 
+			// Clear any existing timeout to prevent multiple calls
+			if (refreshTimeoutRef.current) {
+				clearTimeout(refreshTimeoutRef.current);
+				refreshTimeoutRef.current = null;
+			}
+
 			// Use a debounced refresh to prevent multiple rapid calls
-			const timeoutId = setTimeout(() => {
+			refreshTimeoutRef.current = setTimeout(() => {
 				// Add a check to prevent refreshing if we've refreshed recently
 				const now = Date.now();
 				const lastRefreshTime = refreshTimeRef.current;
@@ -211,9 +220,17 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 					refreshModels();
 					refreshTimeRef.current = now;
 				}
-			}, 100); // Slight delay to batch potential multiple changes
 
-			return () => clearTimeout(timeoutId);
+				// Clear the timeout reference after it's executed
+				refreshTimeoutRef.current = null;
+			}, 300); // Increased delay to batch potential multiple changes
+
+			return () => {
+				if (refreshTimeoutRef.current) {
+					clearTimeout(refreshTimeoutRef.current);
+					refreshTimeoutRef.current = null;
+				}
+			};
 		}
 
 		return undefined;
