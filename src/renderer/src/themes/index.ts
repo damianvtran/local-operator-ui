@@ -3,6 +3,7 @@ import draculaTheme from "./dracula-theme";
 import lightTheme from "./light-theme";
 import monokaiTheme from "./monokai-theme";
 import sageTheme from "./sage-theme";
+import tokyoNightTheme from "./tokyo-night-theme";
 import type { ThemeCollection, ThemeName, ThemeOption } from "./types";
 
 /**
@@ -34,6 +35,11 @@ export const themes: ThemeCollection = {
 		id: "monokai",
 		theme: monokaiTheme,
 	},
+	tokyoNight: {
+		name: "Tokyo Night",
+		id: "tokyoNight",
+		theme: tokyoNightTheme,
+	},
 };
 
 /**
@@ -51,4 +57,11 @@ export const getTheme = (themeName: ThemeName): ThemeOption => {
 };
 
 export type { ThemeName, ThemeOption };
-export { darkTheme, draculaTheme, lightTheme, monokaiTheme, sageTheme };
+export {
+	darkTheme,
+	draculaTheme,
+	lightTheme,
+	monokaiTheme,
+	sageTheme,
+	tokyoNightTheme,
+};

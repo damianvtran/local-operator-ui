@@ -10,9 +10,18 @@ import darkTheme from "./themes/dark-theme";
 import draculaTheme from "./themes/dracula-theme";
 import lightTheme from "./themes/light-theme";
 import sageTheme from "./themes/sage-theme";
+import tokyoNightTheme from "./themes/tokyo-night-theme";
 
 // Export all theme-related items for backward compatibility
-export { darkTheme, draculaTheme, lightTheme, sageTheme, themes, getTheme };
+export {
+	darkTheme,
+	draculaTheme,
+	lightTheme,
+	sageTheme,
+	tokyoNightTheme,
+	themes,
+	getTheme,
+};
 export type { ThemeName, ThemeOption };
 
 // Export the dark theme as the default theme for backward compatibility

@@ -4,6 +4,7 @@ import {
 	faMoon,
 	faSkull,
 	faSun,
+	faMountain,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, Card, CardContent, Grid, Typography } from "@mui/material";
@@ -246,6 +247,43 @@ const MonokaiPreview = styled(Box)(() => {
 	};
 });
 
+// Tokyo Night theme preview
+const TokyoNightPreview = styled(Box)(() => {
+	// Use the actual Tokyo Night theme colors from the theme
+	const tokyoNightTheme = themes.tokyoNight.theme;
+
+	return {
+		width: "100%",
+		height: "100%",
+		background: `linear-gradient(to bottom, ${tokyoNightTheme.palette.sidebar.background} 0%, ${tokyoNightTheme.palette.sidebar.background} 30%, ${tokyoNightTheme.palette.background.paper} 30%, ${tokyoNightTheme.palette.background.paper} 100%)`,
+		position: "relative",
+		boxShadow: "0 2px 8px rgba(0, 0, 0, 0.2)",
+		borderRadius: 4,
+		"&::after": {
+			content: '""',
+			position: "absolute",
+			top: "50%",
+			left: "50%",
+			transform: "translate(-50%, -50%)",
+			width: "40%",
+			height: "20%",
+			backgroundColor: tokyoNightTheme.palette.primary.main,
+			borderRadius: 4,
+		},
+		// Add a sidebar-like element
+		"&::before": {
+			content: '""',
+			position: "absolute",
+			left: 0,
+			top: 0,
+			height: "100%",
+			width: "20%",
+			backgroundColor: tokyoNightTheme.palette.sidebar.background,
+			borderRight: `1px solid ${tokyoNightTheme.palette.sidebar.border}`,
+		},
+	};
+});
+
 /**
  * Theme selector component
  *
@@ -366,6 +404,27 @@ export const ThemeSelector: FC = () => {
 									fontWeight={themeName === "monokai" ? "bold" : "normal"}
 								>
 									{themes.monokai.name}
+								</Typography>
+							</ThemeLabel>
+						</ThemeOption>
+					</Grid>
+
+					{/* Tokyo Night Theme Option */}
+					<Grid item xs={12} sm={6} md={4} lg={3}>
+						<ThemeOption
+							isSelected={themeName === "tokyoNight"}
+							onClick={() => handleThemeChange("tokyoNight")}
+						>
+							<ThemePreview>
+								<TokyoNightPreview />
+							</ThemePreview>
+							<ThemeLabel>
+								<FontAwesomeIcon icon={faMountain} />
+								<Typography
+									variant="body2"
+									fontWeight={themeName === "tokyoNight" ? "bold" : "normal"}
+								>
+									{themes.tokyoNight.name}
 								</Typography>
 							</ThemeLabel>
 						</ThemeOption>
