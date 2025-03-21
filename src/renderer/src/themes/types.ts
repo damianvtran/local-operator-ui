@@ -3,7 +3,11 @@ import type { Theme } from "@mui/material/styles";
 /**
  * Available theme names in the application
  */
-export type ThemeName = "localOperatorDark" | "localOperatorLight" | "dracula";
+export type ThemeName =
+	| "localOperatorDark"
+	| "localOperatorLight"
+	| "dracula"
+	| "sage";
 
 /**
  * Theme option interface for the theme selector

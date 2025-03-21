@@ -1,4 +1,9 @@
-import { faMoon, faSun, faSkull } from "@fortawesome/free-solid-svg-icons";
+import {
+	faMoon,
+	faSun,
+	faSkull,
+	faLeaf,
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, Card, CardContent, Grid, Typography } from "@mui/material";
 import { styled } from "@mui/material/styles";
@@ -166,6 +171,43 @@ const DraculaPreview = styled(Box)(() => {
 	};
 });
 
+// Sage theme preview
+const SagePreview = styled(Box)(() => {
+	// Use the actual sage theme colors from the theme
+	const sageTheme = themes.sage.theme;
+
+	return {
+		width: "100%",
+		height: "100%",
+		background: `linear-gradient(to bottom, ${sageTheme.palette.sidebar.background} 0%, ${sageTheme.palette.sidebar.background} 30%, ${sageTheme.palette.background.paper} 30%, ${sageTheme.palette.background.paper} 100%)`,
+		position: "relative",
+		boxShadow: "0 2px 8px rgba(46, 61, 28, 0.1)",
+		borderRadius: 4,
+		"&::after": {
+			content: '""',
+			position: "absolute",
+			top: "50%",
+			left: "50%",
+			transform: "translate(-50%, -50%)",
+			width: "40%",
+			height: "20%",
+			backgroundColor: sageTheme.palette.primary.main,
+			borderRadius: 4,
+		},
+		// Add a sidebar-like element
+		"&::before": {
+			content: '""',
+			position: "absolute",
+			left: 0,
+			top: 0,
+			height: "100%",
+			width: "20%",
+			backgroundColor: sageTheme.palette.sidebar.background,
+			borderRight: `1px solid ${sageTheme.palette.sidebar.border}`,
+		},
+	};
+});
+
 /**
  * Theme selector component
  *
@@ -244,6 +286,27 @@ export const ThemeSelector: FC = () => {
 									fontWeight={themeName === "dracula" ? "bold" : "normal"}
 								>
 									{themes.dracula.name}
+								</Typography>
+							</ThemeLabel>
+						</ThemeOption>
+					</Grid>
+
+					{/* Sage Theme Option */}
+					<Grid item xs={12} sm={6} md={4} lg={3}>
+						<ThemeOption
+							isSelected={themeName === "sage"}
+							onClick={() => handleThemeChange("sage")}
+						>
+							<ThemePreview>
+								<SagePreview />
+							</ThemePreview>
+							<ThemeLabel>
+								<FontAwesomeIcon icon={faLeaf} />
+								<Typography
+									variant="body2"
+									fontWeight={themeName === "sage" ? "bold" : "normal"}
+								>
+									{themes.sage.name}
 								</Typography>
 							</ThemeLabel>
 						</ThemeOption>
