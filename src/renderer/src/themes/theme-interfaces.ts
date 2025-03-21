@@ -35,6 +35,16 @@ declare module "@mui/material/styles" {
 			border: string;
 			shadow: string;
 		};
+		actionHighlight: {
+			done: {
+				background: string;
+				border: string;
+			};
+			ask: {
+				background: string;
+				border: string;
+			};
+		};
 	}
 	interface PaletteOptions {
 		caption?: string;
@@ -62,6 +72,16 @@ declare module "@mui/material/styles" {
 			background?: string;
 			border?: string;
 			shadow?: string;
+		};
+		actionHighlight?: {
+			done?: {
+				background?: string;
+				border?: string;
+			};
+			ask?: {
+				background?: string;
+				border?: string;
+			};
 		};
 	}
 	interface TypographyVariants {

@@ -65,6 +65,16 @@ const draculaTheme = createTheme({
 			border: "rgba(139, 233, 253, 0.3)",
 			shadow: "0 4px 12px rgba(139, 233, 253, 0.2)",
 		},
+		actionHighlight: {
+			done: {
+				background: "rgba(80, 250, 123, 0.15)", // Dracula green with opacity
+				border: "rgba(80, 250, 123, 0.5)", // Dracula green with opacity
+			},
+			ask: {
+				background: "rgba(255, 121, 198, 0.15)", // Dracula pink with opacity
+				border: "rgba(255, 121, 198, 0.5)", // Dracula pink with opacity
+			},
+		},
 	},
 	typography: {
 		fontFamily:
