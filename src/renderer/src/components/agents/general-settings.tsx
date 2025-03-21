@@ -13,7 +13,14 @@ import {
 	faTag,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Box, Divider, Grid, Typography, alpha } from "@mui/material";
+import {
+	Box,
+	Divider,
+	Grid,
+	TextField,
+	Typography,
+	alpha,
+} from "@mui/material";
 import { styled } from "@mui/material/styles";
 import type {
 	AgentDetails,
@@ -57,6 +64,24 @@ type GeneralSettingsProps = {
 	 */
 	initialSelectedAgentId?: string;
 };
+
+const FieldContainer = styled(Box)({
+	marginBottom: 24,
+	position: "relative",
+});
+
+const FieldLabel = styled(Typography)(({ theme }) => ({
+	marginBottom: 8,
+	display: "flex",
+	alignItems: "center",
+	color: theme.palette.text.secondary,
+	fontWeight: 600,
+}));
+
+const LabelIcon = styled(Box)({
+	marginRight: 12,
+	opacity: 0.8,
+});
 
 const HeaderContainer = styled(Box)(({ theme }) => ({
 	display: "flex",
@@ -242,39 +267,68 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 					</Grid>
 
 					<Grid item xs={12} md={6}>
-						<ModelSelect
-							// Modified key to not include the selectedAgent.id, so it doesn't re-render and reset when agent changes
-							// This allows users to select a different model after making an initial selection
-							key={`model-select-${currentHosting}`}
-							value={selectedAgent.model || ""}
-							hostingId={currentHosting}
-							isSaving={savingField === "model"}
-							onSave={async (value) => {
-								setSavingField("model");
+						{/* Only render ModelSelect if we have a hosting provider selected */}
+						{currentHosting ? (
+							<ModelSelect
+								// Modified key to not include the selectedAgent.id, so it doesn't re-render and reset when agent changes
+								// This allows users to select a different model after making an initial selection
+								key={`model-select-${currentHosting}`}
+								value={selectedAgent.model || ""}
+								hostingId={currentHosting}
+								isSaving={savingField === "model"}
+								onSave={async (value) => {
+									setSavingField("model");
 
-								try {
-									const update: AgentUpdate = { model: value };
+									try {
+										const update: AgentUpdate = { model: value };
 
-									// Perform the API update
-									await updateAgentMutation.mutateAsync({
-										agentId: selectedAgent.id,
-										update,
-									});
+										// Perform the API update
+										await updateAgentMutation.mutateAsync({
+											agentId: selectedAgent.id,
+											update,
+										});
 
-									// Only refetch if needed (when viewing the current agent)
-									if (
-										selectedAgent.id === initialSelectedAgentId &&
-										refetchAgent
-									) {
-										await refetchAgent();
+										// Only refetch if needed (when viewing the current agent)
+										if (
+											selectedAgent.id === initialSelectedAgentId &&
+											refetchAgent
+										) {
+											await refetchAgent();
+										}
+									} catch (error) {
+										// Error is already handled in the mutation
+									} finally {
+										setSavingField(null);
 									}
-								} catch (error) {
-									// Error is already handled in the mutation
-								} finally {
-									setSavingField(null);
-								}
-							}}
-						/>
+								}}
+							/>
+						) : (
+							<FieldContainer>
+								<FieldLabel variant="subtitle2">
+									<LabelIcon>
+										<FontAwesomeIcon icon={faRobot} />
+									</LabelIcon>
+									Model
+								</FieldLabel>
+								<TextField
+									placeholder="Select a hosting provider first..."
+									variant="outlined"
+									size="small"
+									disabled
+									fullWidth
+									InputProps={{
+										sx: {
+											fontSize: "0.875rem",
+											lineHeight: 1.6,
+											backgroundColor: (theme) =>
+												theme.palette.inputField.background,
+											borderRadius: 2,
+											padding: "16px",
+										},
+									}}
+								/>
+							</FieldContainer>
+						)}
 					</Grid>
 				</Grid>
 			</HeaderContainer>
