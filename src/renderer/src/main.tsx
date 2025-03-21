@@ -4,8 +4,8 @@ import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
-import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { ThemedToastContainer } from "./components/common";
 import "./assets/fonts/fonts.css";
 import { queryClient } from "./api/query-client";
 import App from "./app";
@@ -26,19 +26,7 @@ document.addEventListener("DOMContentLoaded", () => {
 							<App />
 						</BrowserRouter>
 					</ErrorBoundary>
-					<ToastContainer
-						position="top-right"
-						autoClose={5000}
-						hideProgressBar={false}
-						newestOnTop
-						closeOnClick
-						rtl={false}
-						pauseOnFocusLoss
-						draggable
-						pauseOnHover
-						theme="colored" // Use colored theme which works with both light and dark modes
-						aria-label="toast-notifications"
-					/>
+					<ThemedToastContainer />
 					{/* React Query DevTools - only in development (positioned at bottom left) */}
 					{process.env.NODE_ENV !== "production" && (
 						<ReactQueryDevtools
