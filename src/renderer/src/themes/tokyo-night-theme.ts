@@ -78,12 +78,12 @@ const tokyoNightTheme = createTheme({
 		},
 		actionHighlight: {
 			done: {
-				background: "rgba(158, 206, 106, 0.15)", // Success color with opacity (green)
-				border: "rgba(158, 206, 106, 0.5)", // Success color with opacity
+				background: "rgba(122, 162, 247, 0.15)", // Neon blue with opacity
+				border: "rgba(122, 162, 247, 0.5)", // Neon blue with opacity
 			},
 			ask: {
-				background: "rgba(122, 162, 247, 0.15)", // Info color with opacity (blue)
-				border: "rgba(122, 162, 247, 0.5)", // Info color with opacity
+				background: "rgba(187, 154, 247, 0.15)", // Purple with opacity
+				border: "rgba(187, 154, 247, 0.5)", // Purple with opacity
 			},
 		},
 		icon: {
