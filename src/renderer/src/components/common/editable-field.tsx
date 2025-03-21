@@ -88,25 +88,13 @@ const LabelIcon = styled(Box)({
 const StyledTextField = styled(TextField)(({ theme }) => ({
 	"& .MuiOutlinedInput-root": {
 		borderRadius: 8,
-		backgroundColor:
-			theme.palette.mode === "light"
-				? alpha(theme.palette.grey[100], 0.9)
-				: alpha(theme.palette.background.default, 0.7),
-		border:
-			theme.palette.mode === "light"
-				? `1px solid ${alpha(theme.palette.grey[300], 0.8)}`
-				: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+		backgroundColor: theme.palette.inputField.background,
+		border: `1px solid ${theme.palette.inputField.border}`,
 		"&:hover": {
-			backgroundColor:
-				theme.palette.mode === "light"
-					? alpha(theme.palette.grey[100], 1)
-					: alpha(theme.palette.background.default, 0.9),
+			backgroundColor: theme.palette.inputField.hoverBackground,
 		},
 		"&.Mui-focused": {
-			backgroundColor:
-				theme.palette.mode === "light"
-					? "#ffffff"
-					: alpha(theme.palette.background.paper, 0.9),
+			backgroundColor: theme.palette.inputField.focusBackground,
 			boxShadow: `0 0 0 2px ${alpha(theme.palette.primary.main, 0.2)}`,
 		},
 	},
@@ -149,14 +137,8 @@ const DisplayContainer = styled(Box, {
 })<{ multiline?: boolean }>(({ theme, multiline }) => ({
 	padding: 16,
 	borderRadius: 8,
-	backgroundColor:
-		theme.palette.mode === "light"
-			? alpha(theme.palette.grey[100], 0.9)
-			: alpha(theme.palette.background.default, 0.7),
-	border:
-		theme.palette.mode === "light"
-			? `1px solid ${alpha(theme.palette.grey[300], 0.8)}`
-			: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+	backgroundColor: theme.palette.inputField.background,
+	border: `1px solid ${theme.palette.inputField.border}`,
 	position: "relative",
 	minHeight: multiline ? "100px" : "40px",
 	display: "flex",
@@ -164,10 +146,7 @@ const DisplayContainer = styled(Box, {
 	transition: "all 0.2s ease",
 	cursor: "pointer",
 	"&:hover": {
-		backgroundColor:
-			theme.palette.mode === "light"
-				? alpha(theme.palette.grey[100], 1)
-				: alpha(theme.palette.background.default, 0.9),
+		backgroundColor: theme.palette.inputField.hoverBackground,
 		boxShadow: `0 0 0 1px ${alpha(theme.palette.primary.main, 0.2)}`,
 		"& .edit-button": {
 			opacity: 1,

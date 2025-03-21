@@ -42,7 +42,7 @@ const SidebarContainer = styled(Paper)(({ theme }) => ({
 	width: "100%",
 	height: "100%",
 	borderRadius: 0,
-	backgroundColor: theme.palette.sidebar.background,
+	backgroundColor: theme.palette.sidebar.secondaryBackground,
 	boxShadow: "none",
 	display: "flex",
 	flexDirection: "column",
@@ -61,10 +61,10 @@ const SidebarTitle = styled(Typography)(({ theme }) => ({
 	color: theme.palette.text.primary,
 }));
 
-const SidebarList = styled(List)({
-	padding: "8px",
+const SidebarList = styled(List)(({ theme }) => ({
+	padding: theme.spacing(2),
 	flexGrow: 1,
-});
+}));
 
 const SidebarItemButton = styled(ListItemButton, {
 	shouldForwardProp: (prop) => prop !== "isActive",
@@ -73,7 +73,11 @@ const SidebarItemButton = styled(ListItemButton, {
 	marginBottom: 4,
 	paddingTop: 10,
 	paddingBottom: 10,
-	color: isActive ? theme.palette.primary.main : theme.palette.sidebar.itemText,
+	color: isActive
+		? theme.palette.mode === "light"
+			? theme.palette.primary.dark
+			: theme.palette.primary.main
+		: theme.palette.sidebar.itemText,
 	backgroundColor: isActive ? theme.palette.sidebar.itemActive : "transparent",
 	transition: "all 0.2s ease-out",
 	position: "relative",
@@ -93,7 +97,10 @@ const SidebarItemButton = styled(ListItemButton, {
 			transform: "translateY(-50%)",
 			width: 4,
 			height: "60%",
-			backgroundColor: theme.palette.primary.main,
+			backgroundColor:
+				theme.palette.mode === "light"
+					? theme.palette.primary.dark
+					: theme.palette.primary.main,
 			borderRadius: "0 4px 4px 0",
 		},
 	}),
@@ -103,7 +110,11 @@ const SidebarItemIcon = styled(ListItemIcon, {
 	shouldForwardProp: (prop) => prop !== "isActive",
 })<{ isActive: boolean }>(({ theme, isActive }) => ({
 	minWidth: 40,
-	color: isActive ? theme.palette.primary.main : "inherit",
+	color: isActive
+		? theme.palette.mode === "light"
+			? theme.palette.primary.dark
+			: theme.palette.primary.main
+		: "inherit",
 	transition: "transform 0.2s ease, color 0.2s ease",
 	...(isActive && {
 		transform: "scale(1.1)",
@@ -174,25 +185,4 @@ export const DEFAULT_SETTINGS_SECTIONS: SettingsSection[] = [
 		label: "Application Updates",
 		icon: faDownload,
 	},
-	// Future sections can be added here
-	// {
-	//   id: 'security',
-	//   label: 'Security & Privacy',
-	//   icon: faShield
-	// },
-	// {
-	//   id: 'data',
-	//   label: 'Data Management',
-	//   icon: faDatabase
-	// },
-	// {
-	//   id: 'network',
-	//   label: 'Network Settings',
-	//   icon: faGlobe
-	// },
-	// {
-	//   id: 'integrations',
-	//   label: 'Integrations',
-	//   icon: faPlug
-	// }
 ];

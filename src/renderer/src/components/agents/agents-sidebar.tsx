@@ -43,7 +43,7 @@ const SidebarContainer = styled(Paper)(({ theme }) => ({
 	width: "100%",
 	height: "100%",
 	borderRight: `1px solid ${theme.palette.sidebar.border}`,
-	backgroundColor: theme.palette.sidebar.background,
+	backgroundColor: theme.palette.sidebar.secondaryBackground,
 	display: "flex",
 	flexDirection: "column",
 	overflow: "hidden",
@@ -100,8 +100,12 @@ const AgentListItemButton = styled(ListItemButton)(({ theme }) => ({
 }));
 
 const AgentAvatar = styled(Avatar)(({ theme }) => ({
-	backgroundColor: alpha(theme.palette.primary.main, 0.2),
-	color: theme.palette.primary.main,
+	backgroundColor: alpha(theme.palette.primary.dark, 0.3),
+	color:
+		theme.palette.mode === "dark"
+			? theme.palette.primary.light
+			: theme.palette.primary.dark,
+	boxShadow: `0 2px 4px ${alpha(theme.palette.common.black, 0.15)}`,
 }));
 
 // Use a span wrapper to avoid nesting <p> inside <p>
@@ -111,8 +115,8 @@ const CreationDateText = styled("span")(({ theme }) => ({
 	fontSize: "0.75rem",
 	color:
 		theme.palette.mode === "dark"
-			? "rgba(255, 255, 255, 0.6)"
-			: "rgba(0, 0, 0, 0.6)",
+			? "rgba(255, 255, 255, 0.5)"
+			: "rgba(0, 0, 0, 0.5)",
 	marginTop: 4,
 	gap: 4,
 }));

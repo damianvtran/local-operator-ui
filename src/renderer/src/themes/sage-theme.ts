@@ -41,18 +41,22 @@ const sageTheme = createTheme({
 		},
 		caption: "rgba(34, 44, 31, 0.75)", // Dark caption text with better contrast
 		sidebar: {
-			background: "#E6EBE6", // Platinum - light sage background
-			border: "rgba(34, 44, 31, 0.1)",
-			itemHover: "rgba(34, 44, 31, 0.07)",
-			itemActive: "rgba(178, 206, 179, 0.15)",
-			itemActiveHover: "rgba(178, 206, 179, 0.22)",
-			itemText: "rgba(34, 44, 31, 0.8)",
-			itemActiveText: "#677657", // Ash gray 2 300
+			// Main navigation sidebar (darker for better contrast)
+			background: "#8DA985", // Darker sage for main navigation
+			secondaryBackground: "#C1D7C2", // Lighter sage for chat/agent sidebars
+			border: "rgba(34, 44, 31, 0.15)",
+			// Item states with improved contrast
+			itemHover: "rgba(34, 44, 31, 0.15)",
+			itemActive: "rgba(255, 255, 255, 0.35)",
+			itemActiveHover: "rgba(255, 255, 255, 0.45)",
+			// Text colors with better contrast
+			itemText: "rgba(34, 44, 31, 0.95)",
+			itemActiveText: "#222C1F", // Darker text for active items
 			toggleButton: {
-				background: "rgba(34, 44, 31, 0.05)",
-				border: "rgba(34, 44, 31, 0.12)",
-				hoverBackground: "rgba(178, 206, 179, 0.12)",
-				hoverBorder: "rgba(178, 206, 179, 0.35)",
+				background: "rgba(255, 255, 255, 0.25)",
+				border: "rgba(34, 44, 31, 0.2)",
+				hoverBackground: "rgba(255, 255, 255, 0.35)",
+				hoverBorder: "rgba(34, 44, 31, 0.3)",
 			},
 		},
 		tooltip: {
@@ -61,9 +65,18 @@ const sageTheme = createTheme({
 			text: "#222C1F", // Ash gray 100
 		},
 		userMessage: {
-			background: "rgba(178, 206, 179, 0.15)",
-			border: "rgba(178, 206, 179, 0.3)",
-			shadow: "0 4px 12px rgba(178, 206, 179, 0.18)",
+			background: "rgba(245, 235, 205, 0.7)",
+			border: "rgba(171, 159, 124, 0.5)",
+			shadow: "0 4px 12px rgba(245, 235, 205, 0.22)",
+		},
+		messagesView: {
+			background: "#FDF9F1", // Very light sage green background
+		},
+		inputField: {
+			background: "rgba(230, 235, 225, 0.7)",
+			hoverBackground: "rgba(235, 240, 230, 0.9)",
+			focusBackground: "#FFFFFF",
+			border: "rgba(34, 44, 31, 0.12)",
 		},
 		actionHighlight: {
 			done: {
