@@ -41,24 +41,12 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 	const theme = useTheme();
 	const isDarkMode = theme.palette.mode === "dark";
 
-	// Define colors based on theme
-	const userBackgroundColor = isDarkMode
-		? "rgba(56, 201, 106, 0.15)" // Green background in dark mode
-		: "rgba(42, 164, 88, 0.12)"; // Slightly darker green in light mode for better contrast
-
-	const userBorderColor = isDarkMode
-		? "rgba(56, 201, 106, 0.3)" // Green border for user messages in dark mode
-		: "rgba(42, 164, 88, 0.25)"; // Slightly darker green border in light mode
-
+	// Get assistant border color based on theme
 	const assistantBorderColor = isDarkMode
 		? "rgba(255, 255, 255, 0.1)" // Light border in dark mode
 		: "rgba(0, 0, 0, 0.1)"; // Dark border in light mode
 
-	// Define shadow based on theme mode
-	const userShadow = isDarkMode
-		? "0 4px 12px rgba(0, 0, 0, 0.2)"
-		: "0 4px 12px rgba(0, 0, 0, 0.1)";
-
+	// Define shadow for assistant messages based on theme mode
 	const assistantShadow = isDarkMode
 		? "0 2px 8px rgba(0, 0, 0, 0.15)" // Darker shadow in dark mode
 		: "0 2px 8px rgba(0, 0, 0, 0.05)"; // Lighter shadow in light mode
@@ -68,12 +56,12 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 			elevation={elevation}
 			sx={{
 				backgroundColor: isUser
-					? userBackgroundColor // Theme-appropriate background for user messages
+					? theme.palette.userMessage.background // Theme-defined background for user messages
 					: theme.palette.background.paper, // Theme-appropriate background for assistant
 				border: isUser
-					? `1px solid ${userBorderColor}`
+					? `1px solid ${theme.palette.userMessage.border}`
 					: `1px solid ${assistantBorderColor}`,
-				boxShadow: isUser ? userShadow : assistantShadow,
+				boxShadow: isUser ? theme.palette.userMessage.shadow : assistantShadow,
 				color: theme.palette.text.primary, // Use theme text color
 			}}
 		>

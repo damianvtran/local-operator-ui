@@ -24,6 +24,11 @@ declare module "@mui/material/styles" {
 			border: string;
 			text: string;
 		};
+		userMessage: {
+			background: string;
+			border: string;
+			shadow: string;
+		};
 	}
 	interface PaletteOptions {
 		caption?: string;
@@ -46,6 +51,11 @@ declare module "@mui/material/styles" {
 			background?: string;
 			border?: string;
 			text?: string;
+		};
+		userMessage?: {
+			background?: string;
+			border?: string;
+			shadow?: string;
 		};
 	}
 	interface TypographyVariants {
@@ -127,6 +137,11 @@ const lightTheme = createTheme({
 			background: "#FFFFFF",
 			border: "rgba(0, 0, 0, 0.1)",
 			text: "#111827",
+		},
+		userMessage: {
+			background: "rgba(66, 133, 244, 0.12)",
+			border: "rgba(66, 133, 244, 0.25)",
+			shadow: "0 4px 12px rgba(66, 133, 244, 0.15)",
 		},
 	},
 	typography: {
