@@ -1,4 +1,4 @@
-import { Box } from "@mui/material";
+import { Box, alpha } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import type { FC } from "react";
 import { memo, useMemo } from "react";
@@ -33,23 +33,34 @@ const MarkdownContent = styled(Box, {
 		paragraphSpacing = "8px",
 		headingScale = 1,
 		codeSize = "0.85em",
+		theme,
 	}) => ({
 		wordBreak: "break-word",
 		overflowWrap: "break-word",
 		lineHeight,
 		fontSize,
+		color: theme.palette.text.primary,
 		"& code": {
 			fontFamily: '"Roboto Mono", monospace',
-			backgroundColor: "rgba(0, 0, 0, 0.3)",
+			backgroundColor:
+				theme.palette.mode === "light"
+					? alpha(theme.palette.grey[300], 0.7)
+					: alpha(theme.palette.common.black, 0.3),
 			padding: "3px 6px",
 			borderRadius: "4px",
 			fontSize: codeSize,
 			whiteSpace: "pre-wrap",
 			wordBreak: "break-word",
-			color: "#e6e6e6",
+			color:
+				theme.palette.mode === "light"
+					? theme.palette.grey[900]
+					: theme.palette.common.white,
 		},
 		"& pre": {
-			backgroundColor: "rgba(0, 0, 0, 0.3)",
+			backgroundColor:
+				theme.palette.mode === "light"
+					? alpha(theme.palette.grey[200], 0.7)
+					: alpha(theme.palette.common.black, 0.3),
 			padding: "16px",
 			borderRadius: "8px",
 			overflowX: "auto",
@@ -57,7 +68,15 @@ const MarkdownContent = styled(Box, {
 			fontSize: codeSize,
 			margin: "12px 0",
 			maxWidth: "100%",
-			border: "1px solid rgba(255, 255, 255, 0.1)",
+			border: `1px solid ${
+				theme.palette.mode === "light"
+					? alpha(theme.palette.grey[400], 0.5)
+					: alpha(theme.palette.common.white, 0.1)
+			}`,
+			boxShadow:
+				theme.palette.mode === "light"
+					? `0 2px 6px ${alpha(theme.palette.common.black, 0.05)}`
+					: "none",
 		},
 		"& pre code": {
 			whiteSpace: "pre-wrap",
@@ -65,23 +84,34 @@ const MarkdownContent = styled(Box, {
 			backgroundColor: "transparent",
 			padding: 0,
 			borderRadius: 0,
+			color:
+				theme.palette.mode === "light"
+					? theme.palette.grey[900]
+					: theme.palette.common.white,
 		},
 		"& h1": {
 			fontSize: `calc(1.5rem * ${headingScale})`,
 			fontWeight: 600,
 			margin: "20px 0 12px 0",
-			borderBottom: "1px solid rgba(255, 255, 255, 0.1)",
+			borderBottom: `1px solid ${
+				theme.palette.mode === "light"
+					? alpha(theme.palette.grey[300], 0.7)
+					: alpha(theme.palette.common.white, 0.1)
+			}`,
 			paddingBottom: "8px",
+			color: theme.palette.text.primary,
 		},
 		"& h2": {
 			fontSize: `calc(1.3rem * ${headingScale})`,
 			fontWeight: 600,
 			margin: "18px 0 10px 0",
+			color: theme.palette.text.primary,
 		},
 		"& h3": {
 			fontSize: `calc(1.1rem * ${headingScale})`,
 			fontWeight: 600,
 			margin: "16px 0 8px 0",
+			color: theme.palette.text.primary,
 		},
 		"& ul": {
 			paddingLeft: "24px",
@@ -91,23 +121,26 @@ const MarkdownContent = styled(Box, {
 			margin: "4px 0",
 		},
 		"& a": {
-			color: "#90caf9",
+			color: theme.palette.primary.main,
 			textDecoration: "none",
-			borderBottom: "1px dotted rgba(144, 202, 249, 0.5)",
+			borderBottom: `1px dotted ${alpha(theme.palette.primary.main, 0.5)}`,
 			transition: "all 0.2s ease",
 			"&:hover": {
 				textDecoration: "none",
-				borderBottom: "1px solid #90caf9",
-				color: "#bbdefb",
+				borderBottom: `1px solid ${theme.palette.primary.main}`,
+				color: theme.palette.primary.light,
 			},
 		},
 		"& strong": {
 			fontWeight: 600,
-			color: "#e6e6e6",
+			color:
+				theme.palette.mode === "light"
+					? theme.palette.grey[900]
+					: theme.palette.common.white,
 		},
 		"& em": {
 			fontStyle: "italic",
-			color: "#e0e0e0",
+			color: theme.palette.text.primary,
 		},
 		"& br": {
 			display: "block",
@@ -119,6 +152,55 @@ const MarkdownContent = styled(Box, {
 		},
 		"& p": {
 			margin: `${paragraphSpacing} 0`,
+			color: theme.palette.text.primary,
+		},
+		"& blockquote": {
+			borderLeft: `4px solid ${
+				theme.palette.mode === "light"
+					? alpha(theme.palette.grey[400], 0.7)
+					: alpha(theme.palette.primary.main, 0.5)
+			}`,
+			paddingLeft: "16px",
+			margin: "16px 0",
+			color: theme.palette.text.secondary,
+			backgroundColor:
+				theme.palette.mode === "light"
+					? alpha(theme.palette.grey[100], 0.5)
+					: alpha(theme.palette.background.paper, 0.2),
+			borderRadius: "0 4px 4px 0",
+			padding: "8px 16px",
+		},
+		"& table": {
+			borderCollapse: "collapse",
+			width: "100%",
+			margin: "16px 0",
+			border: `1px solid ${
+				theme.palette.mode === "light"
+					? alpha(theme.palette.grey[300], 0.7)
+					: alpha(theme.palette.common.white, 0.1)
+			}`,
+		},
+		"& th, & td": {
+			border: `1px solid ${
+				theme.palette.mode === "light"
+					? alpha(theme.palette.grey[300], 0.7)
+					: alpha(theme.palette.common.white, 0.1)
+			}`,
+			padding: "8px 12px",
+			textAlign: "left",
+		},
+		"& th": {
+			backgroundColor:
+				theme.palette.mode === "light"
+					? alpha(theme.palette.grey[200], 0.7)
+					: alpha(theme.palette.common.black, 0.3),
+			fontWeight: 600,
+		},
+		"& tr:nth-of-type(even)": {
+			backgroundColor:
+				theme.palette.mode === "light"
+					? alpha(theme.palette.grey[100], 0.5)
+					: alpha(theme.palette.common.black, 0.1),
 		},
 	}),
 );
