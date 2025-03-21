@@ -572,7 +572,7 @@ export const SettingsPage: FC = () => {
 							Appearance
 						</Typography>
 						<Typography variant="body1" color="text.secondary" mt={1} mb={3}>
-							Customize the look and feel of the application
+							Customize the look and feel of Local Operator
 						</Typography>
 						<ThemeSelector />
 					</Box>
