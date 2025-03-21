@@ -1,5 +1,6 @@
 import {
 	faCode,
+	faIcicles,
 	faLeaf,
 	faMoon,
 	faSkull,
@@ -284,6 +285,43 @@ const TokyoNightPreview = styled(Box)(() => {
 	};
 });
 
+// Iceberg theme preview
+const IcebergPreview = styled(Box)(() => {
+	// Use the actual Iceberg theme colors from the theme
+	const icebergTheme = themes.iceberg.theme;
+
+	return {
+		width: "100%",
+		height: "100%",
+		background: `linear-gradient(to bottom, ${icebergTheme.palette.sidebar.background} 0%, ${icebergTheme.palette.sidebar.background} 30%, ${icebergTheme.palette.background.paper} 30%, ${icebergTheme.palette.background.paper} 100%)`,
+		position: "relative",
+		boxShadow: "0 2px 8px rgba(45, 83, 158, 0.1)",
+		borderRadius: 4,
+		"&::after": {
+			content: '""',
+			position: "absolute",
+			top: "50%",
+			left: "50%",
+			transform: "translate(-50%, -50%)",
+			width: "40%",
+			height: "20%",
+			backgroundColor: icebergTheme.palette.primary.main,
+			borderRadius: 4,
+		},
+		// Add a sidebar-like element
+		"&::before": {
+			content: '""',
+			position: "absolute",
+			left: 0,
+			top: 0,
+			height: "100%",
+			width: "20%",
+			backgroundColor: icebergTheme.palette.sidebar.background,
+			borderRight: `1px solid ${icebergTheme.palette.sidebar.border}`,
+		},
+	};
+});
+
 /**
  * Theme selector component
  *
@@ -425,6 +463,27 @@ export const ThemeSelector: FC = () => {
 									fontWeight={themeName === "tokyoNight" ? "bold" : "normal"}
 								>
 									{themes.tokyoNight.name}
+								</Typography>
+							</ThemeLabel>
+						</ThemeOption>
+					</Grid>
+
+					{/* Iceberg Theme Option */}
+					<Grid item xs={12} sm={6} md={4} lg={3}>
+						<ThemeOption
+							isSelected={themeName === "iceberg"}
+							onClick={() => handleThemeChange("iceberg")}
+						>
+							<ThemePreview>
+								<IcebergPreview />
+							</ThemePreview>
+							<ThemeLabel>
+								<FontAwesomeIcon icon={faIcicles} />
+								<Typography
+									variant="body2"
+									fontWeight={themeName === "iceberg" ? "bold" : "normal"}
+								>
+									{themes.iceberg.name}
 								</Typography>
 							</ThemeLabel>
 						</ThemeOption>

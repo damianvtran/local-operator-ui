@@ -9,7 +9,8 @@ export type ThemeName =
 	| "dracula"
 	| "sage"
 	| "monokai"
-	| "tokyoNight";
+	| "tokyoNight"
+	| "iceberg";
 
 /**
  * Theme option interface for the theme selector
