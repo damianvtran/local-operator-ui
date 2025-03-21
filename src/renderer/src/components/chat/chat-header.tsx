@@ -46,8 +46,8 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 		>
 			<Avatar
 				sx={(theme) => ({
-					bgcolor: alpha(theme.palette.primary.main, 0.2),
-					color: theme.palette.primary.main,
+					bgcolor: theme.palette.icon.background,
+					color: theme.palette.icon.text,
 					mr: 2,
 				})}
 			>

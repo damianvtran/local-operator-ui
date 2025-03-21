@@ -74,11 +74,9 @@ const SidebarItemButton = styled(ListItemButton, {
 	paddingTop: 10,
 	paddingBottom: 10,
 	color: isActive
-		? theme.palette.selectedItem.text
+		? theme.palette.sidebar.itemActiveText
 		: theme.palette.sidebar.itemText,
-	backgroundColor: isActive
-		? theme.palette.selectedItem.background
-		: "transparent",
+	backgroundColor: isActive ? theme.palette.sidebar.itemActive : "transparent",
 	transition: "all 0.2s ease-out",
 	position: "relative",
 	overflow: "hidden",
@@ -97,7 +95,7 @@ const SidebarItemButton = styled(ListItemButton, {
 			transform: "translateY(-50%)",
 			width: 4,
 			height: "60%",
-			backgroundColor: theme.palette.selectedItem.text,
+			backgroundColor: theme.palette.sidebar.itemActiveText,
 			borderRadius: "0 4px 4px 0",
 		},
 	}),
@@ -107,7 +105,9 @@ const SidebarItemIcon = styled(ListItemIcon, {
 	shouldForwardProp: (prop) => prop !== "isActive",
 })<{ isActive: boolean }>(({ theme, isActive }) => ({
 	minWidth: 40,
-	color: isActive ? theme.palette.selectedItem.text : theme.palette.icon.text,
+	color: isActive
+		? theme.palette.sidebar.itemActiveText
+		: theme.palette.icon.text,
 	transition: "transform 0.2s ease, color 0.2s ease",
 	...(isActive && {
 		transform: "scale(1.1)",

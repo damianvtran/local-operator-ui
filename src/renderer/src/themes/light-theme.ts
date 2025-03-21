@@ -85,14 +85,9 @@ const lightTheme = createTheme({
 				border: "rgba(66, 133, 244, 0.5)", // Info color with opacity
 			},
 		},
-		selectedItem: {
-			background: "rgba(16, 142, 47, 0.1)", // Primary dark color with opacity
-			border: "rgba(16, 142, 47, 0.5)", // Primary dark color with opacity
-			text: "#108E2F", // Primary dark color
-		},
 		icon: {
 			background: "rgba(10, 162, 109, 0.15)", // Secondary dark color with opacity
-			text: "#0AA26D", // Secondary dark color
+			text: "#2BA458", // Secondary dark color
 		},
 	},
 	typography: {

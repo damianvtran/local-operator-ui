@@ -89,8 +89,8 @@ const AgentListItemButton = styled(ListItemButton)(({ theme }) => ({
 	marginBottom: 4,
 	paddingRight: 40,
 	"&.Mui-selected": {
-		backgroundColor: theme.palette.selectedItem.background,
-		color: theme.palette.selectedItem.text,
+		backgroundColor: theme.palette.sidebar.itemActive,
+		color: theme.palette.sidebar.itemActiveText,
 		"&:hover": {
 			backgroundColor: theme.palette.sidebar.itemActiveHover,
 		},
