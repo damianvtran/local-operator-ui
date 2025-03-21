@@ -1,6 +1,7 @@
 import darkTheme from "./dark-theme";
 import draculaTheme from "./dracula-theme";
 import lightTheme from "./light-theme";
+import sageTheme from "./sage-theme";
 import type { ThemeCollection, ThemeName, ThemeOption } from "./types";
 
 /**
@@ -22,6 +23,11 @@ export const themes: ThemeCollection = {
 		id: "dracula",
 		theme: draculaTheme,
 	},
+	sage: {
+		name: "Sage",
+		id: "sage",
+		theme: sageTheme,
+	},
 };
 
 /**
@@ -39,4 +45,4 @@ export const getTheme = (themeName: ThemeName): ThemeOption => {
 };
 
 export type { ThemeName, ThemeOption };
-export { darkTheme, draculaTheme, lightTheme };
+export { darkTheme, draculaTheme, lightTheme, sageTheme };
