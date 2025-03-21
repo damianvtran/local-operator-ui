@@ -46,7 +46,7 @@ const SidebarTitle = styled(Typography)({
 });
 
 const ActionButton = styled(IconButton)(({ theme }) => ({
-	borderRadius: 10,
+	borderRadius: theme.shape.borderRadius * 2,
 	padding: 8,
 	backgroundColor:
 		theme.palette.mode === "light"
@@ -58,7 +58,7 @@ const ActionButton = styled(IconButton)(({ theme }) => ({
 			: theme.palette.primary.main,
 	border:
 		theme.palette.mode === "light"
-			? `1px solid ${alpha(theme.palette.primary.dark, 0.4)}`
+			? `1px solid ${alpha(theme.palette.primary.dark, 0.5)}`
 			: "none",
 	transition: "all 0.2s ease-in-out",
 	"&:hover": {

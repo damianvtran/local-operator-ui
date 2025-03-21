@@ -89,8 +89,8 @@ const sageTheme = createTheme({
 			},
 		},
 		icon: {
-			background: "#FDF9F166", // Sage green with opacity
-			text: "#B2CEB3", // Sage green
+			background: "#FDF9F155", // Sage green with opacity
+			text: "#476e49",
 		},
 	},
 	typography: {
