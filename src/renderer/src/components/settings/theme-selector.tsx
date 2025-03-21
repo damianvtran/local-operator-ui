@@ -1,5 +1,6 @@
 import {
 	faCode,
+	faFire,
 	faIcicles,
 	faLeaf,
 	faMoon,
@@ -285,6 +286,43 @@ const TokyoNightPreview = styled(Box)(() => {
 	};
 });
 
+// Dune theme preview
+const DunePreview = styled(Box)(() => {
+	// Use the actual Dune theme colors from the theme
+	const duneTheme = themes.dune.theme;
+
+	return {
+		width: "100%",
+		height: "100%",
+		background: `linear-gradient(to bottom, ${duneTheme.palette.sidebar.background} 0%, ${duneTheme.palette.sidebar.background} 30%, ${duneTheme.palette.background.paper} 30%, ${duneTheme.palette.background.paper} 100%)`,
+		position: "relative",
+		boxShadow: "0 2px 8px rgba(255, 140, 56, 0.2)",
+		borderRadius: 4,
+		"&::after": {
+			content: '""',
+			position: "absolute",
+			top: "50%",
+			left: "50%",
+			transform: "translate(-50%, -50%)",
+			width: "40%",
+			height: "20%",
+			backgroundColor: duneTheme.palette.primary.main,
+			borderRadius: 4,
+		},
+		// Add a sidebar-like element
+		"&::before": {
+			content: '""',
+			position: "absolute",
+			left: 0,
+			top: 0,
+			height: "100%",
+			width: "20%",
+			backgroundColor: duneTheme.palette.sidebar.background,
+			borderRight: `1px solid ${duneTheme.palette.sidebar.border}`,
+		},
+	};
+});
+
 // Iceberg theme preview
 const IcebergPreview = styled(Box)(() => {
 	// Use the actual Iceberg theme colors from the theme
@@ -463,6 +501,27 @@ export const ThemeSelector: FC = () => {
 									fontWeight={themeName === "tokyoNight" ? "bold" : "normal"}
 								>
 									{themes.tokyoNight.name}
+								</Typography>
+							</ThemeLabel>
+						</ThemeOption>
+					</Grid>
+
+					{/* Dune Theme Option */}
+					<Grid item xs={12} sm={6} md={4} lg={3}>
+						<ThemeOption
+							isSelected={themeName === "dune"}
+							onClick={() => handleThemeChange("dune")}
+						>
+							<ThemePreview>
+								<DunePreview />
+							</ThemePreview>
+							<ThemeLabel>
+								<FontAwesomeIcon icon={faFire} />
+								<Typography
+									variant="body2"
+									fontWeight={themeName === "dune" ? "bold" : "normal"}
+								>
+									{themes.dune.name}
 								</Typography>
 							</ThemeLabel>
 						</ThemeOption>

@@ -7,6 +7,7 @@ export type ThemeName =
 	| "localOperatorDark"
 	| "localOperatorLight"
 	| "dracula"
+	| "dune"
 	| "sage"
 	| "monokai"
 	| "tokyoNight"

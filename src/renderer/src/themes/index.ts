@@ -1,5 +1,6 @@
 import darkTheme from "./dark-theme";
 import draculaTheme from "./dracula-theme";
+import duneTheme from "./dune-theme";
 import icebergTheme from "./iceberg-theme";
 import lightTheme from "./light-theme";
 import monokaiTheme from "./monokai-theme";
@@ -25,6 +26,11 @@ export const themes: ThemeCollection = {
 		name: "Dracula",
 		id: "dracula",
 		theme: draculaTheme,
+	},
+	dune: {
+		name: "Dune",
+		id: "dune",
+		theme: duneTheme,
 	},
 	sage: {
 		name: "Sage",
@@ -66,6 +72,7 @@ export type { ThemeName, ThemeOption };
 export {
 	darkTheme,
 	draculaTheme,
+	duneTheme,
 	icebergTheme,
 	lightTheme,
 	monokaiTheme,
