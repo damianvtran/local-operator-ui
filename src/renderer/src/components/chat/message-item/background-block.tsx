@@ -55,7 +55,10 @@ const BlockIcon = styled(Box)(({ theme }) => ({
 const BlockTitle = styled(Typography)(({ theme }) => ({
 	fontWeight: 500,
 	fontSize: "0.85rem",
-	color: theme.palette.grey[500],
+	color:
+		theme.palette.mode === "dark"
+			? theme.palette.grey[500]
+			: theme.palette.grey[700],
 }));
 
 const BlockContent = styled(Typography)(({ theme }) => ({
