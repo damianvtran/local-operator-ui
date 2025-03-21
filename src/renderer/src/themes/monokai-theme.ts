@@ -45,10 +45,10 @@ const monokaiTheme = createTheme({
 			secondaryBackground: "#2D2E27", // Slightly lighter background for secondary sidebars
 			border: "rgba(248, 248, 242, 0.08)",
 			itemHover: "rgba(248, 248, 242, 0.07)",
-			itemActive: "rgba(166, 226, 46, 0.2)",
-			itemActiveHover: "rgba(166, 226, 46, 0.3)",
+			itemActive: "rgba(249, 38, 114, 0.15)",
+			itemActiveHover: "rgba(249, 38, 114, 0.3)",
 			itemText: "rgba(248, 248, 242, 0.85)",
-			itemActiveText: "#A6E22E", // Monokai Green
+			itemActiveText: "#F92672", // Monokai Pink/Red
 			toggleButton: {
 				background: "rgba(248, 248, 242, 0.05)",
 				border: "rgba(248, 248, 242, 0.1)",
@@ -84,11 +84,6 @@ const monokaiTheme = createTheme({
 				background: "rgba(249, 38, 114, 0.15)", // Monokai Pink/Red with opacity
 				border: "rgba(249, 38, 114, 0.5)", // Monokai Pink/Red with opacity
 			},
-		},
-		selectedItem: {
-			background: "rgba(249, 38, 114, 0.15)", // Monokai Pink/Red with opacity
-			border: "rgba(249, 38, 114, 0.5)", // Monokai Pink/Red with opacity
-			text: "#F92672", // Monokai Pink/Red
 		},
 		icon: {
 			background: "rgba(102, 217, 239, 0.15)", // Monokai Blue with opacity

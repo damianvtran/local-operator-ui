@@ -79,10 +79,10 @@ const NavItemButton = styled(ListItemButton, {
 		minHeight: 48,
 		justifyContent: isExpanded ? "initial" : "center",
 		color: isActive
-			? theme.palette.selectedItem.text
+			? theme.palette.sidebar.itemActiveText
 			: theme.palette.sidebar.itemText,
 		backgroundColor: isActive
-			? theme.palette.selectedItem.background
+			? theme.palette.sidebar.itemActive
 			: "transparent",
 		transition: "all 0.2s ease-out",
 		position: "relative",
@@ -102,7 +102,7 @@ const NavItemButton = styled(ListItemButton, {
 				transform: "translateY(-50%)",
 				width: 4,
 				height: "60%",
-				backgroundColor: theme.palette.selectedItem.text,
+				backgroundColor: theme.palette.sidebar.itemActiveText,
 				borderRadius: "0 4px 4px 0",
 			},
 		}),
@@ -118,7 +118,9 @@ const NavItemIcon = styled(ListItemIcon, {
 		width: 24,
 		marginRight: isExpanded ? 16 : "auto",
 		justifyContent: "center",
-		color: isActive ? theme.palette.selectedItem.text : theme.palette.icon.text,
+		color: isActive
+			? theme.palette.sidebar.itemActiveText
+			: theme.palette.icon.text,
 		display: "flex",
 		alignItems: "center",
 		transition: "transform 0.2s ease, color 0.2s ease",

@@ -48,7 +48,7 @@ const draculaTheme = createTheme({
 			itemActive: "rgba(189, 147, 249, 0.2)",
 			itemActiveHover: "rgba(189, 147, 249, 0.3)",
 			itemText: "rgba(248, 248, 242, 0.85)",
-			itemActiveText: "#BD93F9", // Purple
+			itemActiveText: "#FF79C6", // Purple
 			toggleButton: {
 				background: "rgba(248, 248, 242, 0.05)",
 				border: "rgba(248, 248, 242, 0.1)",
@@ -84,11 +84,6 @@ const draculaTheme = createTheme({
 				background: "rgba(255, 121, 198, 0.15)", // Dracula pink with opacity
 				border: "rgba(255, 121, 198, 0.5)", // Dracula pink with opacity
 			},
-		},
-		selectedItem: {
-			background: "rgba(255, 121, 198, 0.2)", // Dracula pink/secondary with opacity
-			border: "rgba(255, 121, 198, 0.5)", // Dracula pink/secondary with opacity
-			text: "#FF79C6", // Dracula pink/secondary
 		},
 		icon: {
 			background: "rgba(139, 233, 253, 0.2)", // Dracula cyan with opacity

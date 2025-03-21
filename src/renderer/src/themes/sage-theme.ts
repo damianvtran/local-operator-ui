@@ -47,8 +47,8 @@ const sageTheme = createTheme({
 			border: "rgba(34, 44, 31, 0.15)",
 			// Item states with improved contrast
 			itemHover: "rgba(34, 44, 31, 0.15)",
-			itemActive: "rgba(255, 255, 255, 0.35)",
-			itemActiveHover: "rgba(255, 255, 255, 0.45)",
+			itemActive: "rgba(255, 255, 255, 0.55)", // Increased opacity for better contrast
+			itemActiveHover: "rgba(255, 255, 255, 0.75)", // Significantly increased opacity for better contrast
 			// Text colors with better contrast
 			itemText: "rgba(34, 44, 31, 0.95)",
 			itemActiveText: "#222C1F", // Darker text for active items
@@ -88,14 +88,9 @@ const sageTheme = createTheme({
 				border: "rgba(142, 166, 4, 0.5)", // Sage yellow with opacity
 			},
 		},
-		selectedItem: {
-			background: "rgba(142, 166, 4, 0.15)", // Sage yellow/secondary with opacity
-			border: "rgba(142, 166, 4, 0.5)", // Sage yellow/secondary with opacity
-			text: "#8EA604", // Sage yellow/secondary
-		},
 		icon: {
-			background: "rgba(126, 192, 80, 0.15)", // Sage green with opacity
-			text: "#7EC050", // Sage green
+			background: "#FDF9F166", // Sage green with opacity
+			text: "#B2CEB3", // Sage green
 		},
 	},
 	typography: {
