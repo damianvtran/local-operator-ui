@@ -26,6 +26,15 @@ declare module "@mui/material/styles" {
 				hoverBorder: string;
 			};
 		};
+		selectedItem: {
+			background: string;
+			border: string;
+			text: string;
+		};
+		icon: {
+			background: string;
+			text: string;
+		};
 		tooltip: {
 			background: string;
 			border: string;
@@ -73,6 +82,15 @@ declare module "@mui/material/styles" {
 				hoverBackground?: string;
 				hoverBorder?: string;
 			};
+		};
+		selectedItem?: {
+			background?: string;
+			border?: string;
+			text?: string;
+		};
+		icon?: {
+			background?: string;
+			text?: string;
 		};
 		tooltip?: {
 			background?: string;

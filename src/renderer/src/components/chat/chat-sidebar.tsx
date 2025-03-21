@@ -83,7 +83,8 @@ const AgentListItemButton = styled(ListItemButton)(({ theme }) => ({
 	marginBottom: 4,
 	paddingRight: 40,
 	"&.Mui-selected": {
-		backgroundColor: theme.palette.sidebar.itemActive,
+		backgroundColor: theme.palette.selectedItem.background,
+		color: theme.palette.selectedItem.text,
 		"&:hover": {
 			backgroundColor: theme.palette.sidebar.itemActiveHover,
 		},
@@ -94,11 +95,8 @@ const AgentListItemButton = styled(ListItemButton)(({ theme }) => ({
 }));
 
 const AgentAvatar = styled(Avatar)(({ theme }) => ({
-	backgroundColor: alpha(theme.palette.primary.dark, 0.3),
-	color:
-		theme.palette.mode === "dark"
-			? theme.palette.primary.light
-			: theme.palette.primary.dark,
+	backgroundColor: theme.palette.icon.background,
+	color: theme.palette.icon.text,
 	boxShadow: `0 2px 4px ${alpha(theme.palette.common.black, 0.15)}`,
 }));
 

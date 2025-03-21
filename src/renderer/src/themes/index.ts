@@ -1,6 +1,7 @@
 import darkTheme from "./dark-theme";
 import draculaTheme from "./dracula-theme";
 import lightTheme from "./light-theme";
+import monokaiTheme from "./monokai-theme";
 import sageTheme from "./sage-theme";
 import type { ThemeCollection, ThemeName, ThemeOption } from "./types";
 
@@ -28,6 +29,11 @@ export const themes: ThemeCollection = {
 		id: "sage",
 		theme: sageTheme,
 	},
+	monokai: {
+		name: "Monokai",
+		id: "monokai",
+		theme: monokaiTheme,
+	},
 };
 
 /**
@@ -45,4 +51,4 @@ export const getTheme = (themeName: ThemeName): ThemeOption => {
 };
 
 export type { ThemeName, ThemeOption };
-export { darkTheme, draculaTheme, lightTheme, sageTheme };
+export { darkTheme, draculaTheme, lightTheme, monokaiTheme, sageTheme };

@@ -80,13 +80,22 @@ const sageTheme = createTheme({
 		},
 		actionHighlight: {
 			done: {
-				background: "rgba(178, 206, 179, 0.08)", // Success color with opacity
-				border: "rgba(178, 206, 179, 0.55)", // Success color with opacity
+				background: "rgba(126, 192, 80, 0.15)", // Sage green with opacity
+				border: "rgba(126, 192, 80, 0.5)", // Sage green with opacity
 			},
 			ask: {
-				background: "rgba(171, 183, 158, 0.08)", // Info color with opacity
-				border: "rgba(171, 183, 158, 0.55)", // Info color with opacity
+				background: "rgba(142, 166, 4, 0.15)", // Sage yellow with opacity
+				border: "rgba(142, 166, 4, 0.5)", // Sage yellow with opacity
 			},
+		},
+		selectedItem: {
+			background: "rgba(142, 166, 4, 0.15)", // Sage yellow/secondary with opacity
+			border: "rgba(142, 166, 4, 0.5)", // Sage yellow/secondary with opacity
+			text: "#8EA604", // Sage yellow/secondary
+		},
+		icon: {
+			background: "rgba(126, 192, 80, 0.15)", // Sage green with opacity
+			text: "#7EC050", // Sage green
 		},
 	},
 	typography: {

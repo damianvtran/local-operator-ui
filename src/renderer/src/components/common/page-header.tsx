@@ -6,7 +6,7 @@
 
 import type { IconDefinition } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Box, Typography, alpha } from "@mui/material";
+import { Box, Typography } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import React from "react";
 import type { FC, ReactNode } from "react";
@@ -44,13 +44,13 @@ const HeaderContainer = styled(Box)(({ theme }) => ({
 
 const HeaderIcon = styled(FontAwesomeIcon)(({ theme }) => ({
 	marginRight: theme.spacing(2),
-	color: theme.palette.primary.main,
+	color: theme.palette.icon.text,
 	// Add a subtle background to improve contrast in both light and dark modes
 	padding: theme.spacing(1),
 	borderRadius: 999,
 	width: 32,
 	height: 32,
-	backgroundColor: alpha(theme.palette.primary.main, 0.1),
+	backgroundColor: theme.palette.icon.background,
 }));
 
 const SubtitleText = styled(Typography)(({ theme }) => ({

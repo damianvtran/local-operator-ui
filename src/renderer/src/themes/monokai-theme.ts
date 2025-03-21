@@ -3,11 +3,11 @@ import { createTheme } from "@mui/material/styles";
 import "./theme-interfaces";
 
 /**
- * Dracula theme
+ * Monokai theme
  *
- * A dark theme based on the popular Dracula color scheme
+ * A dark theme based on the popular Monokai color scheme
  */
-const draculaTheme = createTheme({
+const monokaiTheme = createTheme({
 	breakpoints: {
 		values: {
 			xs: 0,
@@ -20,79 +20,79 @@ const draculaTheme = createTheme({
 	palette: {
 		mode: "dark",
 		primary: {
-			main: "#BD93F9", // Purple
-			dark: "#9C71E0",
-			light: "#D1AEFF",
-			contrastText: "#282A36",
+			main: "#A6E22E", // Monokai Green
+			dark: "#8BC220",
+			light: "#B6E94E",
+			contrastText: "#272822",
 		},
 		secondary: {
-			main: "#FF79C6", // Pink
-			dark: "#E056A1",
-			light: "#FF9CD6",
-			contrastText: "#282A36",
+			main: "#F92672", // Monokai Pink/Red
+			dark: "#E01563",
+			light: "#FA5286",
+			contrastText: "#272822",
 		},
 		background: {
-			default: "#282A36", // Dracula background
-			paper: "#2F3146", // Slightly lighter background
+			default: "#272822", // Monokai background
+			paper: "#2D2E27", // Slightly lighter background
 		},
 		text: {
-			primary: "#F8F8F2", // Dracula foreground
+			primary: "#F8F8F2", // Monokai foreground
 			secondary: "#BFBFBF", // Lighter gray for secondary text
 		},
 		caption: "rgba(248, 248, 242, 0.8)",
 		sidebar: {
-			background: "#282A36", // Dracula background for main navigation
-			secondaryBackground: "#2F3146", // Darker background for secondary sidebars
+			background: "#272822", // Monokai background for main navigation
+			secondaryBackground: "#2D2E27", // Slightly lighter background for secondary sidebars
 			border: "rgba(248, 248, 242, 0.08)",
 			itemHover: "rgba(248, 248, 242, 0.07)",
-			itemActive: "rgba(189, 147, 249, 0.2)",
-			itemActiveHover: "rgba(189, 147, 249, 0.3)",
+			itemActive: "rgba(166, 226, 46, 0.2)",
+			itemActiveHover: "rgba(166, 226, 46, 0.3)",
 			itemText: "rgba(248, 248, 242, 0.85)",
-			itemActiveText: "#BD93F9", // Purple
+			itemActiveText: "#A6E22E", // Monokai Green
 			toggleButton: {
 				background: "rgba(248, 248, 242, 0.05)",
 				border: "rgba(248, 248, 242, 0.1)",
-				hoverBackground: "rgba(189, 147, 249, 0.1)",
-				hoverBorder: "rgba(189, 147, 249, 0.3)",
+				hoverBackground: "rgba(166, 226, 46, 0.1)",
+				hoverBorder: "rgba(166, 226, 46, 0.3)",
 			},
 		},
 		tooltip: {
-			background: "#44475A", // Dracula current line
+			background: "#3E3D32", // Slightly lighter than background
 			border: "rgba(248, 248, 242, 0.1)",
-			text: "#F8F8F2", // Dracula foreground
+			text: "#F8F8F2", // Monokai foreground
 		},
 		userMessage: {
-			background: "rgba(139, 233, 253, 0.15)", // Cyan with opacity
-			border: "rgba(139, 233, 253, 0.3)",
-			shadow: "0 4px 12px rgba(139, 233, 253, 0.2)",
+			background: "rgba(102, 217, 239, 0.15)", // Monokai Blue with opacity
+			border: "rgba(102, 217, 239, 0.3)",
+			shadow: "0 4px 12px rgba(102, 217, 239, 0.2)",
 		},
 		messagesView: {
-			background: "rgba(40, 42, 54, 0.7)", // Darker dracula background with opacity
+			background: "rgba(39, 40, 34, 0.7)", // Darker monokai background with opacity
 		},
 		inputField: {
-			background: "rgba(47, 49, 70, 0.7)",
-			hoverBackground: "rgba(56, 58, 89, 0.9)",
-			focusBackground: "#383A59",
+			background: "rgba(45, 46, 39, 0.7)",
+			hoverBackground: "rgba(62, 61, 50, 0.9)",
+			focusBackground: "#3E3D32",
 			border: "rgba(248, 248, 242, 0.1)",
 		},
 		actionHighlight: {
 			done: {
-				background: "rgba(80, 250, 123, 0.15)", // Dracula green with opacity
-				border: "rgba(80, 250, 123, 0.5)", // Dracula green with opacity
+				background: "rgba(166, 226, 46, 0.15)", // Monokai Green with opacity
+				border: "rgba(166, 226, 46, 0.5)", // Monokai Green with opacity
 			},
 			ask: {
-				background: "rgba(255, 121, 198, 0.15)", // Dracula pink with opacity
-				border: "rgba(255, 121, 198, 0.5)", // Dracula pink with opacity
+				background: "rgba(249, 38, 114, 0.15)", // Monokai Pink/Red with opacity
+				border: "rgba(249, 38, 114, 0.5)", // Monokai Pink/Red with opacity
 			},
 		},
 		selectedItem: {
-			background: "rgba(255, 121, 198, 0.2)", // Dracula pink/secondary with opacity
-			border: "rgba(255, 121, 198, 0.5)", // Dracula pink/secondary with opacity
-			text: "#FF79C6", // Dracula pink/secondary
+			background: "rgba(249, 38, 114, 0.15)", // Monokai Pink/Red with opacity
+			border: "rgba(249, 38, 114, 0.5)", // Monokai Pink/Red with opacity
+			text: "#F92672", // Monokai Pink/Red
 		},
 		icon: {
-			background: "rgba(139, 233, 253, 0.2)", // Dracula cyan with opacity
-			text: "#8BE9FD", // Dracula cyan
+			background: "rgba(102, 217, 239, 0.15)", // Monokai Blue with opacity
+			text: "#66D9EF", // Monokai Blue
 		},
 	},
 	typography: {
@@ -124,7 +124,7 @@ const draculaTheme = createTheme({
 			styleOverrides: {
 				root: {
 					top: 0,
-					background: "rgba(40,42,54,0.8)", // Dracula background with opacity
+					background: "rgba(39,40,34,0.8)", // Monokai background with opacity
 					backdropFilter: "blur(10px)",
 				},
 			},
@@ -189,7 +189,7 @@ const draculaTheme = createTheme({
 		MuiCard: {
 			styleOverrides: {
 				root: {
-					backgroundColor: "#383A59", // Slightly lighter background
+					backgroundColor: "#3E3D32", // Slightly lighter background
 					borderRadius: 12,
 					border: "1px solid rgba(248, 248, 242, 0.1)",
 					backdropFilter: "blur(8px)",
@@ -215,4 +215,4 @@ const draculaTheme = createTheme({
 	},
 });
 
-export default draculaTheme;
+export default monokaiTheme;

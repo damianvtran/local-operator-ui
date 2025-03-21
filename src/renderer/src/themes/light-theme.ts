@@ -77,13 +77,22 @@ const lightTheme = createTheme({
 		},
 		actionHighlight: {
 			done: {
-				background: "rgba(43, 164, 88, 0.05)", // Success color with opacity
-				border: "rgba(43, 164, 88, 0.5)", // Success color with opacity
+				background: "rgba(56, 201, 106, 0.1)", // Success color with opacity
+				border: "rgba(56, 201, 106, 0.5)", // Success color with opacity
 			},
 			ask: {
-				background: "rgba(66, 133, 244, 0.05)", // Info color with opacity
+				background: "rgba(66, 133, 244, 0.1)", // Info color with opacity
 				border: "rgba(66, 133, 244, 0.5)", // Info color with opacity
 			},
+		},
+		selectedItem: {
+			background: "rgba(16, 142, 47, 0.1)", // Primary dark color with opacity
+			border: "rgba(16, 142, 47, 0.5)", // Primary dark color with opacity
+			text: "#108E2F", // Primary dark color
+		},
+		icon: {
+			background: "rgba(10, 162, 109, 0.15)", // Secondary dark color with opacity
+			text: "#0AA26D", // Secondary dark color
 		},
 	},
 	typography: {
