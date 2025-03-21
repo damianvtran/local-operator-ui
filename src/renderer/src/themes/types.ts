@@ -7,7 +7,8 @@ export type ThemeName =
 	| "localOperatorDark"
 	| "localOperatorLight"
 	| "dracula"
-	| "sage";
+	| "sage"
+	| "monokai";
 
 /**
  * Theme option interface for the theme selector

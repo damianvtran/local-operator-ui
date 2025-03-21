@@ -1,4 +1,5 @@
 import {
+	faCode,
 	faLeaf,
 	faMoon,
 	faSkull,
@@ -208,6 +209,43 @@ const SagePreview = styled(Box)(() => {
 	};
 });
 
+// Monokai theme preview
+const MonokaiPreview = styled(Box)(() => {
+	// Use the actual monokai theme colors from the theme
+	const monokaiTheme = themes.monokai.theme;
+
+	return {
+		width: "100%",
+		height: "100%",
+		background: `linear-gradient(to bottom, ${monokaiTheme.palette.sidebar.background} 0%, ${monokaiTheme.palette.sidebar.background} 30%, ${monokaiTheme.palette.background.paper} 30%, ${monokaiTheme.palette.background.paper} 100%)`,
+		position: "relative",
+		boxShadow: "0 2px 8px rgba(0, 0, 0, 0.2)",
+		borderRadius: 4,
+		"&::after": {
+			content: '""',
+			position: "absolute",
+			top: "50%",
+			left: "50%",
+			transform: "translate(-50%, -50%)",
+			width: "40%",
+			height: "20%",
+			backgroundColor: monokaiTheme.palette.primary.main,
+			borderRadius: 4,
+		},
+		// Add a sidebar-like element
+		"&::before": {
+			content: '""',
+			position: "absolute",
+			left: 0,
+			top: 0,
+			height: "100%",
+			width: "20%",
+			backgroundColor: monokaiTheme.palette.sidebar.background,
+			borderRight: `1px solid ${monokaiTheme.palette.sidebar.border}`,
+		},
+	};
+});
+
 /**
  * Theme selector component
  *
@@ -307,6 +345,27 @@ export const ThemeSelector: FC = () => {
 									fontWeight={themeName === "sage" ? "bold" : "normal"}
 								>
 									{themes.sage.name}
+								</Typography>
+							</ThemeLabel>
+						</ThemeOption>
+					</Grid>
+
+					{/* Monokai Theme Option */}
+					<Grid item xs={12} sm={6} md={4} lg={3}>
+						<ThemeOption
+							isSelected={themeName === "monokai"}
+							onClick={() => handleThemeChange("monokai")}
+						>
+							<ThemePreview>
+								<MonokaiPreview />
+							</ThemePreview>
+							<ThemeLabel>
+								<FontAwesomeIcon icon={faCode} />
+								<Typography
+									variant="body2"
+									fontWeight={themeName === "monokai" ? "bold" : "normal"}
+								>
+									{themes.monokai.name}
 								</Typography>
 							</ThemeLabel>
 						</ThemeOption>
