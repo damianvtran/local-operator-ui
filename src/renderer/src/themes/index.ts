@@ -1,4 +1,5 @@
 import darkTheme from "./dark-theme";
+import draculaTheme from "./dracula-theme";
 import lightTheme from "./light-theme";
 import type { ThemeCollection, ThemeName, ThemeOption } from "./types";
 
@@ -15,6 +16,11 @@ export const themes: ThemeCollection = {
 		name: "Local Operator Light",
 		id: "localOperatorLight",
 		theme: lightTheme,
+	},
+	dracula: {
+		name: "Dracula",
+		id: "dracula",
+		theme: draculaTheme,
 	},
 };
 
@@ -33,4 +39,4 @@ export const getTheme = (themeName: ThemeName): ThemeOption => {
 };
 
 export type { ThemeName, ThemeOption };
-export { darkTheme, lightTheme };
+export { darkTheme, draculaTheme, lightTheme };
