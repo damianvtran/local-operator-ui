@@ -1,6 +1,6 @@
+import { styled } from "@mui/material/styles";
 import type { FC } from "react";
 import { ToastContainer } from "react-toastify";
-import { styled } from "@mui/material/styles";
 
 /**
  * Styled ToastContainer component using MUI styled API
