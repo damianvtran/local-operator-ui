@@ -85,20 +85,38 @@ const LabelIcon = styled(Box)({
 	opacity: 0.8,
 });
 
-const StyledTextField = styled(TextField)(({ theme }) => ({
-	"& .MuiOutlinedInput-root": {
-		borderRadius: 8,
-		backgroundColor: theme.palette.inputField.background,
-		border: `1px solid ${theme.palette.inputField.border}`,
-		"&:hover": {
-			backgroundColor: theme.palette.inputField.hoverBackground,
+const StyledTextField = styled(TextField)<{ multiline?: boolean }>(
+	({ theme, multiline }) => ({
+		"& .MuiOutlinedInput-root": {
+			borderRadius: 8,
+			backgroundColor: theme.palette.inputField.background,
+			border: `1px solid ${theme.palette.inputField.border}`,
+			padding: 0,
+			minHeight: multiline ? "100px" : "40px",
+			alignItems: multiline ? "flex-start" : "center",
+			"&:hover": {
+				backgroundColor: theme.palette.inputField.hoverBackground,
+			},
+			"&.Mui-focused": {
+				backgroundColor: theme.palette.inputField.focusBackground,
+				boxShadow: `0 0 0 2px ${alpha(theme.palette.primary.main, 0.2)}`,
+			},
 		},
-		"&.Mui-focused": {
-			backgroundColor: theme.palette.inputField.focusBackground,
-			boxShadow: `0 0 0 2px ${alpha(theme.palette.primary.main, 0.2)}`,
+		"& .MuiInputBase-input": {
+			padding: 16,
+			fontSize: "0.875rem",
+			lineHeight: 1.6,
+			fontFamily: "inherit",
+			overflowWrap: "break-word",
+			wordWrap: "break-word",
+			whiteSpace: multiline ? "pre-wrap" : "nowrap",
+			wordBreak: multiline ? "break-word" : "normal",
+			hyphens: multiline ? "auto" : "none",
+			maxWidth: "100%",
+			alignSelf: "flex-start",
 		},
-	},
-}));
+	}),
+);
 
 const ActionButtonsContainer = styled(Box)({
 	position: "absolute",
@@ -168,6 +186,7 @@ const DisplayText = styled(Typography, {
 const PlaceholderText = styled(Typography)(({ theme }) => ({
 	color: theme.palette.text.disabled,
 	fontStyle: "italic",
+	fontSize: "0.875rem",
 }));
 
 const EditButton = styled(IconButton)(({ theme }) => ({
