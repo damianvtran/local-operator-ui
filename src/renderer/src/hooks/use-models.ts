@@ -40,6 +40,13 @@ export const useModels = ({ autoFetch = true } = {}) => {
 		getModelsForProvider,
 	} = useModelsStore();
 
+	// Track if this is the first render
+	const isFirstRenderRef = useRef(true);
+	// Track if we've already fetched models
+	const hasInitialFetchRef = useRef(false);
+	// Track the timeout for initial fetch
+	const initialFetchTimeoutRef = useRef<number | null>(null);
+
 	// Fetch models on mount and set up refresh interval
 	useEffect(() => {
 		// Clear any existing interval
@@ -48,11 +55,36 @@ export const useModels = ({ autoFetch = true } = {}) => {
 			intervalRef.current = null;
 		}
 
-		if (autoFetch && shouldEnableQuery({ bypassInternetCheck: true })) {
-			// Initial fetch
-			fetchModels(baseUrl);
+		// Clear any existing timeout
+		if (initialFetchTimeoutRef.current) {
+			clearTimeout(initialFetchTimeoutRef.current);
+			initialFetchTimeoutRef.current = null;
+		}
 
-			// Set up refresh interval
+		if (autoFetch && shouldEnableQuery({ bypassInternetCheck: true })) {
+			// For the first render, use a timeout to delay the initial fetch
+			// This helps prevent multiple fetches during app initialization
+			if (isFirstRenderRef.current) {
+				isFirstRenderRef.current = false;
+
+				initialFetchTimeoutRef.current = window.setTimeout(() => {
+					if (
+						!hasInitialFetchRef.current &&
+						shouldEnableQuery({ bypassInternetCheck: true })
+					) {
+						fetchModels(baseUrl);
+						hasInitialFetchRef.current = true;
+					}
+					initialFetchTimeoutRef.current = null;
+				}, 1000); // 1 second delay for initial fetch
+			}
+			// For subsequent renders, only fetch if we haven't already
+			else if (!hasInitialFetchRef.current) {
+				fetchModels(baseUrl);
+				hasInitialFetchRef.current = true;
+			}
+
+			// Set up refresh interval (only one interval regardless of renders)
 			intervalRef.current = window.setInterval(
 				() => {
 					// Only fetch if server is online (bypass internet check)
@@ -68,10 +100,19 @@ export const useModels = ({ autoFetch = true } = {}) => {
 					clearInterval(intervalRef.current);
 					intervalRef.current = null;
 				}
+				if (initialFetchTimeoutRef.current) {
+					clearTimeout(initialFetchTimeoutRef.current);
+					initialFetchTimeoutRef.current = null;
+				}
 			};
 		}
 
-		return undefined;
+		return () => {
+			if (initialFetchTimeoutRef.current) {
+				clearTimeout(initialFetchTimeoutRef.current);
+				initialFetchTimeoutRef.current = null;
+			}
+		};
 	}, [autoFetch, baseUrl, fetchModels, shouldEnableQuery]);
 
 	// When connectivity is restored, fetch models

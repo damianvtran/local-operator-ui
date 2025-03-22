@@ -181,8 +181,16 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 	const refreshAttemptCountRef = useRef<number>(0);
 	const MAX_REFRESH_ATTEMPTS = 3;
 	const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+	const isInitialMountRef = useRef(true);
 
 	useEffect(() => {
+		// Skip the effect on initial mount to prevent unnecessary refreshes
+		if (isInitialMountRef.current) {
+			isInitialMountRef.current = false;
+			previousHostingIdRef.current = hostingId;
+			return undefined;
+		}
+
 		// Only refresh if hostingId has changed and is not null
 		if (hostingId && previousHostingIdRef.current !== hostingId) {
 			previousHostingIdRef.current = hostingId;
@@ -201,7 +209,7 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 				// Add a check to prevent refreshing if we've refreshed recently
 				const now = Date.now();
 				const lastRefreshTime = refreshTimeRef.current;
-				const THROTTLE_DURATION = 2000; // 2 second cooldown
+				const THROTTLE_DURATION = 5000; // 5 second cooldown (increased from 2s)
 
 				// Prevent infinite loops by limiting the number of refresh attempts
 				if (refreshAttemptCountRef.current >= MAX_REFRESH_ATTEMPTS) {
@@ -223,7 +231,7 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 
 				// Clear the timeout reference after it's executed
 				refreshTimeoutRef.current = null;
-			}, 300); // Increased delay to batch potential multiple changes
+			}, 500); // Increased delay to batch potential multiple changes
 
 			return () => {
 				if (refreshTimeoutRef.current) {

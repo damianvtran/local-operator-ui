@@ -41,17 +41,16 @@ const ActionBadge = styled(Box, {
 	fontWeight: "bold",
 	backgroundColor:
 		action === "DONE"
-			? theme.palette.success.main
-			: theme.palette.secondary.main,
+			? alpha(theme.palette.actionHighlight.done.border, 1.0)
+			: alpha(theme.palette.actionHighlight.ask.border, 1.0),
 	color: "#fff",
 	display: "flex",
 	alignItems: "center",
 	gap: "4px",
 	boxShadow: "0 2px 4px rgba(0, 0, 0, 0.2)",
 }));
-
 /**
- * Component for highlighting DONE and ASK action types, and response execution types
+ * Component for highlighting DONE and ASK action types
  * Adds a prominent visual styling to indicate user interaction or final responses
  */
 export const ActionHighlight: FC<ActionHighlightProps> = ({
@@ -61,12 +60,17 @@ export const ActionHighlight: FC<ActionHighlightProps> = ({
 	taskClassification,
 	executionType,
 }) => {
+	// Highlight messages that are:
+	// 1. Action is DONE or ASK
+	// 2. Task classification is not conversation or continue
+	// 3. Execution type is response
 	const shouldHighlight =
-		((action === "DONE" || action === "ASK") &&
-			taskClassification !== "conversation") ||
-		(executionType === "response" && taskClassification !== "conversation");
+		(action === "DONE" || action === "ASK") &&
+		taskClassification !== "conversation" &&
+		taskClassification !== "continue" &&
+		executionType === "response";
 
-	// Only apply special highlighting for DONE and ASK actions
+	// Only apply special highlighting when conditions are met
 	if (!shouldHighlight) {
 		return <>{children}</>;
 	}

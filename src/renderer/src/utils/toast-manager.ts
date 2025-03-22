@@ -3,6 +3,7 @@
  *
  * This utility provides functions for managing toast notifications,
  * including deduplication and rate limiting to prevent toast spam.
+ * Toasts are styled to match the application's theme.
  */
 
 import { type Id, type ToastOptions, toast } from "react-toastify";
