@@ -251,12 +251,46 @@ const convertUrlsToMarkdownLinks = (text: string): string => {
 };
 
 /**
+ * Checks if the content contains LaTeX expressions.
+ * Looks for common LaTeX delimiters like $, $$, \begin{}, \end{}, etc.
+ *
+ * @param content - The text content to check for LaTeX expressions
+ * @returns Boolean indicating if LaTeX expressions were detected
+ */
+const containsLatex = (content: string): boolean => {
+	// Check for inline math delimiters: $...$
+	// But avoid matching currency symbols like $50 or $100.00
+	const inlineMathRegex = /\$(?!\d)(.+?)\$/g;
+
+	// Check for display math delimiters: $$...$$
+	const displayMathRegex = /\$\$([\s\S]+?)\$\$/g;
+
+	// Check for LaTeX environments: \begin{...}...\end{...}
+	const environmentRegex = /\\begin\{([^}]+)\}([\s\S]+?)\\end\{\1\}/g;
+
+	// Check for common LaTeX commands
+	const commandRegex = /\\[a-zA-Z]+(\{[^}]*\})?/g;
+
+	return (
+		inlineMathRegex.test(content) ||
+		displayMathRegex.test(content) ||
+		environmentRegex.test(content) ||
+		// Only consider command regex if it's likely to be a math expression
+		(commandRegex.test(content) &&
+			(content.includes("\\frac") ||
+				content.includes("\\sum") ||
+				content.includes("\\int") ||
+				content.includes("\\sqrt")))
+	);
+};
+
+/**
  * Memoized component for rendering markdown content with styled HTML.
  * Features:
  * - Only re-renders when the content changes
  * - Automatically converts plain URLs to clickable links
  * - Supports GitHub Flavored Markdown (tables, strikethrough, task lists, etc.) via remark-gfm
- * - Supports mathematical expressions via remark-math and rehype-katex
+ * - Conditionally supports mathematical expressions via remark-math and rehype-katex
  * - Handles light and dark mode styling for all markdown elements
  * - Opens external links in a new tab with proper security attributes
  *
@@ -270,11 +304,26 @@ export const MarkdownRenderer: FC<MarkdownRendererProps> = memo(
 			return convertUrlsToMarkdownLinks(content.trim());
 		}, [content]);
 
+		// Determine if content contains LaTeX expressions
+		const hasLatex = useMemo(
+			() => containsLatex(processedContent),
+			[processedContent],
+		);
+
+		// Select plugins based on content
+		const remarkPlugins = useMemo(() => {
+			return hasLatex ? [remarkGfm, remarkMath] : [remarkGfm];
+		}, [hasLatex]);
+
+		const rehypePlugins = useMemo(() => {
+			return hasLatex ? [rehypeKatex] : [];
+		}, [hasLatex]);
+
 		return (
 			<MarkdownContent {...styleProps}>
 				<ReactMarkdown
-					remarkPlugins={[remarkGfm, remarkMath]}
-					rehypePlugins={[rehypeKatex]}
+					remarkPlugins={remarkPlugins}
+					rehypePlugins={rehypePlugins}
 					components={{
 						a: ({ href, children }) => (
 							<a href={href} target="_blank" rel="noopener noreferrer">
