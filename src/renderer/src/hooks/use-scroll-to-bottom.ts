@@ -14,11 +14,12 @@ import type { DependencyList } from "react";
  *   - isNearBottom: Whether the user is near the bottom
  *   - isFarFromBottom: Whether the user is far enough from the bottom to show the scroll button
  *   - scrollToBottom: Function to manually scroll to the bottom
+ *   - forceScrollToBottom: Function to force scroll to bottom regardless of current position
  *   - containerRef: A ref to the scrollable container
  */
 export const useScrollToBottom = (
 	dependencies: DependencyList = [],
-	threshold = 300,
+	threshold = 100,
 	buttonThreshold = 50, // Reduced from 100 to make the button appear more readily
 ) => {
 	const ref = useRef<HTMLDivElement>(null);
@@ -45,6 +46,39 @@ export const useScrollToBottom = (
 				ref.current.scrollIntoView({ behavior: "smooth" });
 			}
 		});
+	}, []);
+
+	/**
+	 * Function to force scroll to the bottom regardless of current scroll position
+	 * This bypasses the normal "near bottom" check and directly scrolls
+	 * Uses multiple techniques to ensure scrolling works in all scenarios
+	 */
+	const forceScrollToBottom = useCallback(() => {
+		// First attempt: Use the ref approach
+		if (ref.current) {
+			// Use both smooth and instant scrolling for redundancy
+			ref.current.scrollIntoView({ behavior: "smooth" });
+
+			// Backup with setTimeout to ensure it happens after any DOM updates
+			setTimeout(() => {
+				if (ref.current) {
+					ref.current.scrollIntoView({ behavior: "instant" });
+				}
+			}, 50);
+		}
+
+		// Second attempt: Use the container directly if available
+		if (containerRef.current) {
+			// Immediate scroll
+			containerRef.current.scrollTop = containerRef.current.scrollHeight;
+
+			// Delayed scroll as backup
+			setTimeout(() => {
+				if (containerRef.current) {
+					containerRef.current.scrollTop = containerRef.current.scrollHeight;
+				}
+			}, 100);
+		}
 	}, []);
 
 	/**
@@ -170,5 +204,6 @@ export const useScrollToBottom = (
 		isNearBottom: shouldScrollToBottom,
 		isFarFromBottom,
 		scrollToBottom,
+		forceScrollToBottom,
 	};
 };

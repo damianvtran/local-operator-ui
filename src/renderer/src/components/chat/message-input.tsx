@@ -191,6 +191,8 @@ export const MessageInput: FC<MessageInputProps> = ({
 			onSendMessage(message, attachments);
 			setAttachments([]);
 		},
+		scrollToBottom,
+		forceScrollToBottom: scrollToBottom, // Use the scrollToBottom function for both regular and forced scrolling
 	});
 
 	const handleSubmit = (e: FormEvent) => {
@@ -253,7 +255,6 @@ export const MessageInput: FC<MessageInputProps> = ({
 					ref={fileInputRef}
 					onChange={handleFileSelect}
 					style={{ display: "none" }}
-					accept="image/*,.pdf,.doc,.docx,.txt"
 					disabled={isInputDisabled}
 					multiple
 				/>
