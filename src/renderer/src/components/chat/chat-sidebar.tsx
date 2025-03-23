@@ -94,9 +94,15 @@ const AgentListItemButton = styled(ListItemButton)(({ theme }) => ({
 	},
 }));
 
-const AgentAvatar = styled(Avatar)(({ theme }) => ({
-	backgroundColor: theme.palette.icon.background,
-	color: theme.palette.icon.text,
+const AgentAvatar = styled(Avatar, {
+	shouldForwardProp: (prop) => prop !== "selected",
+})<{ selected?: boolean }>(({ theme, selected }) => ({
+	backgroundColor: selected
+		? theme.palette.sidebar.itemActive
+		: theme.palette.icon.background,
+	color: selected
+		? theme.palette.sidebar.itemActiveText
+		: theme.palette.icon.text,
 	boxShadow: `0 2px 4px ${alpha(theme.palette.common.black, 0.15)}`,
 }));
 
@@ -290,6 +296,23 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 			: message;
 	};
 
+	// Sort agents by last_message_datetime in descending order
+	const sortedAgents = [...agents].sort((a, b) => {
+		// If both have last_message_datetime, compare them
+		if (a.last_message_datetime && b.last_message_datetime) {
+			return (
+				new Date(b.last_message_datetime).getTime() -
+				new Date(a.last_message_datetime).getTime()
+			);
+		}
+		// If only a has last_message_datetime, a comes first
+		if (a.last_message_datetime) return -1;
+		// If only b has last_message_datetime, b comes first
+		if (b.last_message_datetime) return 1;
+		// If neither has last_message_datetime, maintain original order
+		return 0;
+	});
+
 	return (
 		<SidebarContainer elevation={0}>
 			<SidebarHeader
@@ -321,7 +344,7 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 				>
 					Failed to load agents. Please try again.
 				</ErrorAlert>
-			) : agents.length === 0 ? (
+			) : sortedAgents.length === 0 ? (
 				<EmptyStateContainer>
 					<Typography variant="body2" color="text.secondary">
 						No agents found
@@ -329,7 +352,7 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 				</EmptyStateContainer>
 			) : (
 				<AgentsList>
-					{agents.map((agent) => (
+					{sortedAgents.map((agent) => (
 						<ListItem
 							key={agent.id}
 							disablePadding
@@ -377,7 +400,7 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 								onClick={() => handleSelectConversation(agent.id)}
 							>
 								<ListItemAvatar>
-									<AgentAvatar>
+									<AgentAvatar selected={selectedConversation === agent.id}>
 										<FontAwesomeIcon icon={faRobot} />
 									</AgentAvatar>
 								</ListItemAvatar>
@@ -453,7 +476,7 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 			{/* Compact pagination at the bottom of the sidebar */}
 			<CompactPagination
 				page={page}
-				count={Math.max(1, Math.ceil(agents.length / perPage))}
+				count={Math.max(1, Math.ceil(sortedAgents.length / perPage))}
 				onChange={(newPage) =>
 					handlePageChange({} as ChangeEvent<unknown>, newPage)
 				}

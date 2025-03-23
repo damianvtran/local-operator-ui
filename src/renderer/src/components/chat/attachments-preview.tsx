@@ -70,6 +70,15 @@ const AttachmentImage = styled("img")({
 });
 
 /**
+ * Styled component for the attachment video preview
+ */
+const AttachmentVideo = styled("video")({
+	width: "100%",
+	height: "100%",
+	objectFit: "cover",
+});
+
+/**
  * Styled component for the attachment filename
  */
 const AttachmentName = styled(Typography)(({ theme }) => ({
@@ -121,7 +130,7 @@ const LargePreview = styled(Box)(({ theme }) => ({
 	transform: "translateY(20px)",
 	transition:
 		"opacity 0.3s ease-in-out, transform 0.3s ease-in-out, visibility 0s linear 1.5s",
-	"& img": {
+	"& img, & video": {
 		width: "100%",
 		height: "100%",
 		objectFit: "contain",
@@ -189,6 +198,27 @@ export const AttachmentsPreview: FC<AttachmentsPreviewProps> = ({
 	}, []);
 
 	/**
+	 * Check if a file is a video based on its path/URL
+	 */
+	const isVideo = useCallback((path: string) => {
+		const videoExtensions = [
+			".mp4",
+			".webm",
+			".ogg",
+			".mov",
+			".avi",
+			".wmv",
+			".flv",
+			".mkv",
+			".m4v",
+			".3gp",
+			".3g2",
+		];
+		const lowerPath = path.toLowerCase();
+		return videoExtensions.some((ext) => lowerPath.endsWith(ext));
+	}, []);
+
+	/**
 	 * Extract filename from path
 	 */
 	const getFileName = useCallback((path: string) => {
@@ -200,22 +230,32 @@ export const AttachmentsPreview: FC<AttachmentsPreviewProps> = ({
 	/**
 	 * Get the appropriate URL for an attachment
 	 * Uses the static image endpoint for local image files
+	 * and the static video endpoint for local video files
 	 */
 	const getAttachmentUrl = useCallback(
 		(path: string) => {
-			// If it's an image and looks like a local file path
-			if (isImage(path) && !path.startsWith("http")) {
-				// Check if path already has file:// protocol
-				const normalizedPath = path.startsWith("file://")
-					? path
-					: `file://${path}`;
-				// Use the static image endpoint
+			// If it's a web URL, return it as is
+			if (path.startsWith("http")) {
+				return path;
+			}
+
+			// For local files, normalize the path and use appropriate endpoint
+			const normalizedPath = path.startsWith("file://")
+				? path
+				: `file://${path}`;
+
+			if (isImage(path)) {
 				return client.static.getImageUrl(normalizedPath);
 			}
-			// Otherwise return the original path
+
+			if (isVideo(path)) {
+				return client.static.getVideoUrl(normalizedPath);
+			}
+
+			// For other file types, return the original path
 			return path;
 		},
-		[client, isImage],
+		[client, isImage, isVideo],
 	);
 
 	/**
@@ -246,6 +286,12 @@ export const AttachmentsPreview: FC<AttachmentsPreviewProps> = ({
 								src={getAttachmentUrl(attachment)}
 								alt={getFileName(attachment)}
 							/>
+						) : isVideo(attachment) ? (
+							<AttachmentVideo
+								src={getAttachmentUrl(attachment)}
+								preload="metadata"
+								muted
+							/>
 						) : (
 							<FileIcon>{getFileName(attachment)}</FileIcon>
 						)}
@@ -267,6 +313,16 @@ export const AttachmentsPreview: FC<AttachmentsPreviewProps> = ({
 							<img
 								src={getAttachmentUrl(attachment)}
 								alt={getFileName(attachment)}
+							/>
+						</LargePreview>
+					)}
+					{isVideo(attachment) && (
+						<LargePreview className="large-preview">
+							<video
+								src={getAttachmentUrl(attachment)}
+								controls
+								preload="metadata"
+								muted
 							/>
 						</LargePreview>
 					)}

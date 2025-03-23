@@ -270,17 +270,22 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 
 				{/* Toggle Button - Now positioned below user profile */}
 				<ToggleButtonContainer>
-					<ToggleButton
-						onClick={toggleSidebar}
-						size="small"
+					<StyledTooltip
 						title={expanded ? "Collapse sidebar" : "Expand sidebar"}
-						aria-label={expanded ? "Collapse sidebar" : "Expand sidebar"}
+						placement="right"
+						arrow
 					>
-						<FontAwesomeIcon
-							icon={expanded ? faChevronLeft : faChevronRight}
-							size="xs"
-						/>
-					</ToggleButton>
+						<ToggleButton
+							onClick={toggleSidebar}
+							size="small"
+							aria-label={expanded ? "Collapse sidebar" : "Expand sidebar"}
+						>
+							<FontAwesomeIcon
+								icon={expanded ? faChevronLeft : faChevronRight}
+								size="xs"
+							/>
+						</ToggleButton>
+					</StyledTooltip>
 				</ToggleButtonContainer>
 			</Box>
 		</StyledDrawer>

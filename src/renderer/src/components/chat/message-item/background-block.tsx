@@ -52,7 +52,7 @@ const BlockTitle = styled(Typography)(({ theme }) => ({
 	color: theme.palette.text.secondary,
 }));
 
-const BlockContent = styled(Typography)(({ theme }) => ({
+const BlockContent = styled(Box)(({ theme }) => ({
 	fontSize: "0.85rem",
 	color: theme.palette.text.secondary,
 	overflow: "hidden",
