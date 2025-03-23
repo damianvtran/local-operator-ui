@@ -50,13 +50,13 @@ const MessagesContainer = styled(Box)(({ theme }) => ({
 	willChange: "scroll-position",
 }));
 
-const LoadingMoreIndicator = styled(Box)({
+const LoadingMoreIndicator = styled(Box)(({ theme }) => ({
 	display: "flex",
 	alignItems: "center",
 	justifyContent: "center",
 	padding: 16,
-	color: "rgba(255, 255, 255, 0.7)",
-});
+	color: theme.palette.text.secondary,
+}));
 
 const LoadingBox = styled(Box)({
 	display: "flex",
@@ -64,12 +64,23 @@ const LoadingBox = styled(Box)({
 	padding: 32,
 });
 
-const EmptyMessagesBox = styled(Box)({
+const EmptyMessagesBox = styled(Box)(({ theme }) => ({
 	textAlign: "center",
-	color: "rgba(255, 255, 255, 0.7)",
+	color: theme.palette.text.secondary,
 	padding: 32,
 	fontSize: "0.9rem",
-});
+	display: "flex",
+	flexDirection: "column",
+	alignItems: "center",
+	justifyContent: "center",
+}));
+
+const EmptyMessagesIcon = styled(FontAwesomeIcon)(({ theme }) => ({
+	fontSize: "2rem",
+	opacity: 0.5,
+	marginBottom: "1rem",
+	color: theme.palette.text.secondary,
+}));
 
 /**
  * MessagesView Component
@@ -113,14 +124,7 @@ export const MessagesView: FC<MessagesViewProps> = ({
 						))
 					) : (
 						<EmptyMessagesBox>
-							<FontAwesomeIcon
-								icon={faCommentDots}
-								style={{
-									fontSize: "2rem",
-									opacity: 0.5,
-									marginBottom: "1rem",
-								}}
-							/>
+							<EmptyMessagesIcon icon={faCommentDots} />
 							<Typography variant="body1">
 								No messages yet. Start a conversation!
 							</Typography>
