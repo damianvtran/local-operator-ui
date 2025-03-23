@@ -3,6 +3,10 @@ import { styled } from "@mui/material/styles";
 import type { FC } from "react";
 import { memo, useMemo } from "react";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
+import "katex/dist/katex.min.css"; // Import KaTeX CSS
 
 type MarkdownStyleProps = {
 	fontSize?: string;
@@ -202,6 +206,19 @@ const MarkdownContent = styled(Box, {
 					? alpha(theme.palette.grey[100], 0.5)
 					: alpha(theme.palette.common.black, 0.1),
 		},
+		// Math formula styling
+		"& .math, & .math-inline, & .math-display": {
+			color: theme.palette.text.primary,
+		},
+		"& .math-display": {
+			margin: "16px 0",
+			overflowX: "auto",
+			padding: "8px 0",
+		},
+		// KaTeX specific styling for better theme integration
+		"& .katex": {
+			fontSize: "1.1em",
+		},
 	}),
 );
 
@@ -234,9 +251,14 @@ const convertUrlsToMarkdownLinks = (text: string): string => {
 };
 
 /**
- * Memoized component for rendering markdown content with styled HTML
- * Only re-renders when the content changes
- * Automatically converts plain URLs to clickable links
+ * Memoized component for rendering markdown content with styled HTML.
+ * Features:
+ * - Only re-renders when the content changes
+ * - Automatically converts plain URLs to clickable links
+ * - Supports GitHub Flavored Markdown (tables, strikethrough, task lists, etc.) via remark-gfm
+ * - Supports mathematical expressions via remark-math and rehype-katex
+ * - Handles light and dark mode styling for all markdown elements
+ * - Opens external links in a new tab with proper security attributes
  *
  * @param content - The markdown content to render
  * @param styleProps - Optional styling properties to override default styles
@@ -251,6 +273,8 @@ export const MarkdownRenderer: FC<MarkdownRendererProps> = memo(
 		return (
 			<MarkdownContent {...styleProps}>
 				<ReactMarkdown
+					remarkPlugins={[remarkGfm, remarkMath]}
+					rehypePlugins={[rehypeKatex]}
 					components={{
 						a: ({ href, children }) => (
 							<a href={href} target="_blank" rel="noopener noreferrer">

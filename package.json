@@ -37,7 +37,12 @@
 		"electron",
 		"react"
 	],
-	"files": ["out", "bin", "LICENSE", "README.md"],
+	"files": [
+		"out",
+		"bin",
+		"LICENSE",
+		"README.md"
+	],
 	"publishConfig": {
 		"access": "public"
 	},
@@ -82,6 +87,7 @@
 		"electron-log": "^4.4.8",
 		"electron-updater": "^6.1.4",
 		"html-react-parser": "^5.2.2",
+		"katex": "^0.16.21",
 		"react": "^18.3.1",
 		"react-dom": "^18.3.1",
 		"react-error-boundary": "^5.0.0",
@@ -89,6 +95,9 @@
 		"react-router-dom": "^6.16.0",
 		"react-syntax-highlighter": "^15.6.1",
 		"react-toastify": "^11.0.5",
+		"rehype-katex": "^7.0.1",
+		"remark-gfm": "^4.0.1",
+		"remark-math": "^6.0.0",
 		"styled-components": "^6.1.14",
 		"uuid": "^11.1.0",
 		"zod": "^3.24.2",
@@ -142,7 +151,12 @@
 		"productName": "Local Operator",
 		"copyright": "Copyright © 2025 Damian Tran",
 		"asar": true,
-		"files": ["out/**/*", "bin/**/*", "LICENSE", "README.md"],
+		"files": [
+			"out/**/*",
+			"bin/**/*",
+			"LICENSE",
+			"README.md"
+		],
 		"directories": {
 			"output": "dist",
 			"buildResources": "resources"
@@ -151,7 +165,9 @@
 			{
 				"from": "resources/python",
 				"to": "python",
-				"filter": ["**/*"]
+				"filter": [
+					"**/*"
+				]
 			}
 		],
 		"afterSign": "scripts/notarize.js",
@@ -163,7 +179,10 @@
 			"gatekeeperAssess": false,
 			"entitlements": "build/entitlements.mac.plist",
 			"entitlementsInherit": "build/entitlements.mac.plist",
-			"target": ["dmg", "zip"],
+			"target": [
+				"dmg",
+				"zip"
+			],
 			"artifactName": "${name}-${version}-${arch}.${ext}"
 		},
 		"dmg": {
@@ -190,11 +209,17 @@
 			"target": [
 				{
 					"target": "nsis",
-					"arch": ["x64", "arm64"]
+					"arch": [
+						"x64",
+						"arm64"
+					]
 				},
 				{
 					"target": "portable",
-					"arch": ["x64", "arm64"]
+					"arch": [
+						"x64",
+						"arm64"
+					]
 				}
 			],
 			"artifactName": "${name}-${version}-${arch}.${ext}"
@@ -208,7 +233,11 @@
 		"linux": {
 			"icon": "resources/icon-512x512.png",
 			"category": "Development",
-			"target": ["deb", "AppImage", "rpm"],
+			"target": [
+				"deb",
+				"AppImage",
+				"rpm"
+			],
 			"artifactName": "${name}-${version}-${arch}.${ext}",
 			"desktop": {
 				"Name": "Local Operator",
@@ -226,6 +255,8 @@
 		"generateUpdatesFilesForAllChannels": true
 	},
 	"eslintConfig": {
-		"extends": ["plugin:storybook/recommended"]
+		"extends": [
+			"plugin:storybook/recommended"
+		]
 	}
 }
