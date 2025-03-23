@@ -19,7 +19,7 @@ import type { DependencyList } from "react";
  */
 export const useScrollToBottom = (
 	dependencies: DependencyList = [],
-	threshold = 150,
+	threshold = 100,
 	buttonThreshold = 50, // Reduced from 100 to make the button appear more readily
 ) => {
 	const ref = useRef<HTMLDivElement>(null);
