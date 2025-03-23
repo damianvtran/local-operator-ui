@@ -191,6 +191,8 @@ export const MessageInput: FC<MessageInputProps> = ({
 			onSendMessage(message, attachments);
 			setAttachments([]);
 		},
+		scrollToBottom,
+		forceScrollToBottom: scrollToBottom, // Use the scrollToBottom function for both regular and forced scrolling
 	});
 
 	const handleSubmit = (e: FormEvent) => {
