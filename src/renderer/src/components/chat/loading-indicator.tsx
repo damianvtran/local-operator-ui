@@ -298,7 +298,7 @@ export const LoadingIndicator: FC<{
 	// This will automatically scroll to bottom when status changes if user is near bottom
 	const { ref, scrollToBottom: scrollToBottomHook } = useScrollToBottom(
 		[status, currentExecution, message],
-		300, // Default threshold
+		150, // Default threshold
 		50, // Default button threshold
 	);
 
