@@ -94,9 +94,15 @@ const AgentListItemButton = styled(ListItemButton)(({ theme }) => ({
 	},
 }));
 
-const AgentAvatar = styled(Avatar)(({ theme }) => ({
-	backgroundColor: theme.palette.icon.background,
-	color: theme.palette.icon.text,
+const AgentAvatar = styled(Avatar, {
+	shouldForwardProp: (prop) => prop !== "selected",
+})<{ selected?: boolean }>(({ theme, selected }) => ({
+	backgroundColor: selected
+		? theme.palette.sidebar.itemActive
+		: theme.palette.icon.background,
+	color: selected
+		? theme.palette.sidebar.itemActiveText
+		: theme.palette.icon.text,
 	boxShadow: `0 2px 4px ${alpha(theme.palette.common.black, 0.15)}`,
 }));
 
@@ -394,7 +400,7 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 								onClick={() => handleSelectConversation(agent.id)}
 							>
 								<ListItemAvatar>
-									<AgentAvatar>
+									<AgentAvatar selected={selectedConversation === agent.id}>
 										<FontAwesomeIcon icon={faRobot} />
 									</AgentAvatar>
 								</ListItemAvatar>
