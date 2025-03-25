@@ -49,6 +49,7 @@ export class BackendServiceManager {
 	private exitPromise: Promise<void> | null = null;
 	private exitResolve: (() => void) | null = null;
 	private shellEnv: Record<string, string | undefined> = {};
+	private isAppClosing = false; // Flag to track when the app is being closed
 
 	/**
 	 * Constructor
@@ -483,6 +484,9 @@ export class BackendServiceManager {
 	 * @returns Promise resolving to true if the backend was started successfully, false otherwise
 	 */
 	async start(): Promise<boolean> {
+		// Reset the isAppClosing flag when starting the service
+		this.isAppClosing = false;
+
 		if (this.isDisabled) {
 			logger.info(
 				"Backend Service Manager is disabled. Skipping backend start.",
@@ -637,7 +641,13 @@ export class BackendServiceManager {
 				}
 
 				// Show error dialog if the process exited unexpectedly
-				if (code !== 0 && code !== null) {
+				// Skip showing the dialog if:
+				// 1. We're on Windows AND the app is closing AND the exit code is 1 (expected on Windows)
+				// 2. OR if the code is 0 or null (normal exit)
+				const isExpectedWindowsExit =
+					process.platform === "win32" && this.isAppClosing && code === 1;
+
+				if (code !== 0 && code !== null && !isExpectedWindowsExit) {
 					electronDialog.showErrorBox(
 						"Backend Error",
 						`The Local Operator backend service exited unexpectedly with code ${code}. Please restart the application.`,
@@ -696,6 +706,10 @@ export class BackendServiceManager {
 	 * @returns Promise resolving when the backend has been stopped
 	 */
 	async stop(isRestart = false): Promise<void> {
+		// Mark that we're closing the app if this is not a restart
+		if (!isRestart) {
+			this.isAppClosing = true;
+		}
 		// Stop health check
 		if (this.healthCheckInterval) {
 			clearInterval(this.healthCheckInterval);
@@ -754,7 +768,7 @@ export class BackendServiceManager {
 							`Terminating Windows process with PID ${pid}`,
 							LogFileType.BACKEND,
 						);
-						spawn("taskkill", ["/pid", pid.toString(), "/f", "/t"]);
+						spawn("taskkill", ["/pid", pid.toString(), "/t"]);
 					}
 				} else {
 					// Unix: send SIGTERM
@@ -1023,6 +1037,9 @@ export class BackendServiceManager {
 	 */
 	async restart(): Promise<boolean> {
 		logger.info("Restarting backend service...", LogFileType.BACKEND);
+
+		// Reset the isAppClosing flag since we're restarting, not closing
+		this.isAppClosing = false;
 
 		// Stop the service with the isRestart flag to use a longer timeout
 		await this.stop(true);
