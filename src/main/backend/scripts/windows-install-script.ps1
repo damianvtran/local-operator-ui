@@ -7,7 +7,7 @@ $PythonVersion = "3.12.0"
 $VenvName = "local-operator-venv"
 $AppDataDir = "$env:APPDATA\\$AppName"
 $VenvPath = "$AppDataDir\\$VenvName"
-$LogFile = "$AppDataDir\\backend-install.log"
+$LogFile = "$AppDataDir\\backend-install-shell.log"
 $PyenvDir = "$env:USERPROFILE\\.pyenv"
 
 # Create app data directory if it doesn't exist
@@ -237,4 +237,13 @@ if ($LocalOperatorInstalled) {
 }
 
 Write-Output "$(Get-Date): Installation completed successfully."
-Stop-Transcript
+
+# Stop transcript without waiting
+try {
+    Stop-Transcript
+} catch {
+    Write-Error "Error stopping transcript: $_"
+}
+
+# Don't force garbage collection or add delays here
+# Let the parent process handle waiting for file release

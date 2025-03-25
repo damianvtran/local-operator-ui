@@ -473,14 +473,91 @@ export class BackendInstaller {
 					LogFileType.INSTALLER,
 				);
 
-				// Show success dialog
-				await electronDialog.showMessageBox({
-					type: "info",
-					title: "Setup Complete",
-					message:
-						"✅ Local Operator is ready to use! Everything has been set up successfully.",
-					buttons: ["Let's Go!"],
-				});
+				// Verify the installation by checking if the local-operator executable exists
+				const localOperatorPath =
+					process.platform === "win32"
+						? join(this.venvPath, "Scripts", "local-operator.exe")
+						: join(this.venvPath, "bin", "local-operator");
+
+				if (!fs.existsSync(localOperatorPath)) {
+					logger.error(
+						`Installation verification failed: ${localOperatorPath} not found`,
+						LogFileType.INSTALLER,
+					);
+					throw new Error(
+						"Installation verification failed: local-operator executable not found",
+					);
+				}
+
+				logger.info(
+					"Installation verified successfully",
+					LogFileType.INSTALLER,
+				);
+
+				// Show success dialog and wait for user acknowledgment
+				const { response: successResponse } =
+					await electronDialog.showMessageBox({
+						type: "info",
+						title: "Setup Complete",
+						message:
+							"✅ Local Operator is ready to use! Everything has been set up successfully.",
+						buttons: ["Let's Go!", "Cancel"],
+						defaultId: 0,
+						cancelId: 1,
+					});
+
+				if (successResponse === 1) {
+					// User cancelled installation
+					logger.info(
+						"User ended session after successful installation",
+						LogFileType.INSTALLER,
+					);
+					// Exit the app when installation is cancelled
+					setTimeout(() => {
+						app.exit(0);
+					}, 500);
+					return false;
+				}
+
+				// Add a small delay after dialog to ensure UI is ready
+				await new Promise((resolve) => setTimeout(resolve, 500));
+
+				// On Windows, start a background task to wait for transcript file release
+				if (process.platform === "win32") {
+					const transcriptPath = join(this.appDataPath, "backend-install.log");
+
+					// Don't await this - let it run in the background
+					(async () => {
+						logger.info(
+							"Starting background task to wait for transcript file release...",
+							LogFileType.INSTALLER,
+						);
+
+						const maxAttempts = 30;
+						let attempts = 0;
+
+						while (attempts < maxAttempts) {
+							try {
+								const fd = fs.openSync(transcriptPath, "a");
+								fs.closeSync(fd);
+								logger.info(
+									"Transcript file released successfully",
+									LogFileType.INSTALLER,
+								);
+								break;
+							} catch (error) {
+								await new Promise((resolve) => setTimeout(resolve, 100));
+								attempts++;
+							}
+						}
+					})().catch((error) => {
+						logger.error(
+							"Error in transcript file release background task:",
+							LogFileType.INSTALLER,
+							error,
+						);
+					});
+				}
 
 				return true;
 			}
