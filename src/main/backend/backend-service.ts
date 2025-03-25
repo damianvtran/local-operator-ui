@@ -546,15 +546,43 @@ export class BackendServiceManager {
 				let args: string[];
 
 				if (process.platform === "win32") {
-					// Windows
-					const activateScript = join(this.venvPath, "Scripts", "Activate.ps1");
-					cmd = "powershell.exe";
-					args = [
-						"-ExecutionPolicy",
-						"Bypass",
-						"-Command",
-						`"& '${activateScript}'; local-operator serve --port ${this.port}"`,
-					];
+					// Windows - try direct executable first
+					const localOperatorExe = join(
+						this.venvPath,
+						"Scripts",
+						"local-operator.exe",
+					);
+					if (fs.existsSync(localOperatorExe)) {
+						cmd = localOperatorExe;
+						args = ["serve", "--port", this.port.toString()];
+					} else {
+						// Fallback to Python module execution
+						const pythonExe = join(this.venvPath, "Scripts", "python.exe");
+						if (fs.existsSync(pythonExe)) {
+							cmd = pythonExe;
+							args = [
+								"-m",
+								"local_operator",
+								"serve",
+								"--port",
+								this.port.toString(),
+							];
+						} else {
+							// Last resort - use PowerShell activation
+							const activateScript = join(
+								this.venvPath,
+								"Scripts",
+								"Activate.ps1",
+							);
+							cmd = "powershell.exe";
+							args = [
+								"-ExecutionPolicy",
+								"Bypass",
+								"-Command",
+								`"& '${activateScript}'; local-operator serve --port ${this.port}"`,
+							];
+						}
+					}
 				} else {
 					// macOS or Linux
 					const activateScript = join(this.venvPath, "bin", "activate");
