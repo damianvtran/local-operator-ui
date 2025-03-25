@@ -4,10 +4,12 @@ import {
 	BrowserWindow,
 	Menu,
 	app,
+	dialog,
 	ipcMain,
 	nativeImage,
 	shell,
 } from "electron";
+import { LogFileType, logger } from "./backend/logger";
 import icon from "../../resources/icon-180x180-dark.png?asset";
 import { BackendInstaller, BackendServiceManager } from "./backend";
 import { UpdateService } from "./update-service";
@@ -224,16 +226,66 @@ app.whenReady().then(async () => {
 			if (!hasGlobalCommand && !(await backendInstaller.isInstalled())) {
 				// Install backend
 				const installSuccess = await backendInstaller.install();
-				// If installation was cancelled, quit the app
+				// If installation was cancelled or failed, quit the app
 				if (!installSuccess) {
-					console.log("Backend installation cancelled by user, quitting app");
+					logger.error(
+						"Backend installation cancelled or failed, quitting app",
+						LogFileType.INSTALLER,
+					);
 					app.quit();
 					return; // Exit early to prevent window creation
 				}
-			}
 
-			// Start our backend service
-			await backendService.start();
+				// After successful installation, attempt to start the backend with retries
+				logger.info(
+					"Attempting to start backend service after installation",
+					LogFileType.INSTALLER,
+				);
+				let startAttempts = 0;
+				const maxStartAttempts = 3;
+				let backendStarted = false;
+
+				while (startAttempts < maxStartAttempts && !backendStarted) {
+					try {
+						backendStarted = await backendService.start();
+						if (!backendStarted) {
+							logger.error(
+								`Backend start attempt ${startAttempts + 1} failed`,
+								LogFileType.INSTALLER,
+							);
+							// Wait before retrying
+							await new Promise((resolve) => setTimeout(resolve, 2000));
+						}
+					} catch (error) {
+						logger.error(
+							`Error starting backend (attempt ${startAttempts + 1}):`,
+							LogFileType.INSTALLER,
+							error,
+						);
+					}
+					startAttempts++;
+				}
+
+				if (!backendStarted) {
+					dialog.showErrorBox(
+						"Backend Error",
+						"Failed to start the Local Operator backend service after installation. Please restart the application.",
+					);
+					app.quit();
+					return;
+				}
+			} else {
+				// Start our backend service (for existing installations)
+				const backendStarted = await backendService.start();
+				if (!backendStarted) {
+					dialog.showErrorBox(
+						"Backend Error",
+						"Failed to start the Local Operator backend service. Please restart the application.",
+					);
+					app.quit();
+					return;
+				}
+			}
 		}
 	}
 
@@ -283,15 +335,22 @@ app.on("will-quit", async (event) => {
 	if (!isBackendManagerDisabled && !backendService.isUsingExternalBackend()) {
 		event.preventDefault();
 		try {
-			console.log("App is quitting, stopping our backend service...");
+			logger.info(
+				"App is quitting, stopping the Local Operator backend service...",
+				LogFileType.BACKEND,
+			);
 
 			// Use false for isRestart to indicate this is a final shutdown, not a restart
 			await backendService.stop(false);
-			console.log("Backend service successfully stopped");
+			logger.info(
+				"Local Operator backend service successfully stopped",
+				LogFileType.BACKEND,
+			);
 
 			// Add an additional targeted cleanup as a failsafe
-			console.log(
+			logger.info(
 				"Performing additional cleanup to ensure complete termination",
+				LogFileType.BACKEND,
 			);
 
 			// Use more robust cleanup approach
@@ -311,8 +370,9 @@ app.on("will-quit", async (event) => {
 					);
 				} catch (err) {
 					// Ignore errors, this is a best-effort cleanup
-					console.log(
+					logger.error(
 						"Error during Windows process cleanup (may be normal):",
+						LogFileType.BACKEND,
 						err,
 					);
 				}
@@ -335,8 +395,9 @@ app.on("will-quit", async (event) => {
 					);
 				} catch (err) {
 					// Ignore errors, this is a best-effort cleanup
-					console.log(
+					logger.error(
 						"Error during Unix process cleanup (may be normal):",
+						LogFileType.BACKEND,
 						err,
 					);
 				}
@@ -362,13 +423,18 @@ app.on("will-quit", async (event) => {
 				}
 			} catch (err) {
 				// If there's an error checking, assume processes are terminated
-				console.log("Error checking for remaining processes:", err);
+				logger.error(
+					"Error checking for remaining processes:",
+					LogFileType.BACKEND,
+					err,
+				);
 				allProcessesTerminated = true;
 			}
 
 			if (!allProcessesTerminated) {
-				console.log(
+				logger.error(
 					"Some backend processes may still be running, attempting final cleanup",
+					LogFileType.BACKEND,
 				);
 
 				// Final attempt at cleanup
@@ -385,14 +451,25 @@ app.on("will-quit", async (event) => {
 					}
 				} catch (finalErr) {
 					// Ignore errors in final cleanup
-					console.log("Error during final cleanup (may be normal):", finalErr);
+					logger.error(
+						"Error during final cleanup (may be normal):",
+						LogFileType.BACKEND,
+						finalErr,
+					);
 				}
 			}
 		} catch (error) {
-			console.error("Error stopping backend service:", error);
+			logger.error(
+				"Error stopping the Local Operator backend service:",
+				LogFileType.BACKEND,
+				error,
+			);
 
 			// If the normal stop failed, try the targeted approach
-			console.log("Trying alternative termination approach");
+			logger.info(
+				"Trying alternative termination approach",
+				LogFileType.BACKEND,
+			);
 
 			if (process.platform === "win32") {
 				// On Windows, look for processes with "local-operator serve" in the command line
@@ -430,9 +507,9 @@ app.on("will-quit", async (event) => {
 		} finally {
 			// Ensure app quits even if there was an error stopping the service
 			// Use a longer timeout to ensure the process has time to fully terminate
-			console.log("Exiting application...");
+			logger.info("Exiting application...", LogFileType.BACKEND);
 			setTimeout(() => {
-				console.log("Forcing app exit");
+				logger.info("Forcing app exit", LogFileType.BACKEND);
 				app.exit(0);
 			}, 2000); // Increased timeout to 2 seconds for more reliable termination
 		}
@@ -440,18 +517,24 @@ app.on("will-quit", async (event) => {
 		!isBackendManagerDisabled &&
 		backendService.isUsingExternalBackend()
 	) {
-		console.log("Using external backend, skipping termination on app quit");
+		logger.info(
+			"Using external backend, skipping termination on app quit",
+			LogFileType.BACKEND,
+		);
 	}
 });
 
 // Handle before-quit event to ensure proper cleanup
 app.on("before-quit", () => {
-	console.log("App is about to quit");
+	logger.info("App is about to quit", LogFileType.BACKEND);
 });
 
 // Add a failsafe to ensure child processes are terminated when the app exits
 process.on("exit", () => {
-	console.log("Process exit event detected, ensuring backend is terminated");
+	logger.info(
+		"Process exit event detected, ensuring the Local Operator backend service is terminated",
+		LogFileType.BACKEND,
+	);
 	// This is a synchronous event, so we can't use async/await here
 	try {
 		// Force kill any remaining child processes, but ONLY if we started our own backend
@@ -460,12 +543,16 @@ process.on("exit", () => {
 			!process.env.VITE_DISABLE_BACKEND_MANAGER &&
 			!backendService.isUsingExternalBackend()
 		) {
-			console.log("Forcing termination of our backend process");
+			logger.info(
+				"Forcing termination of the Local Operator backend service",
+				LogFileType.BACKEND,
+			);
 
 			// Use a more targeted approach to avoid affecting other services
 			// We'll only try to find and terminate processes that look like our backend
-			console.log(
+			logger.info(
 				"Performing final cleanup of any remaining backend processes",
+				LogFileType.BACKEND,
 			);
 
 			if (process.platform === "win32") {
@@ -500,16 +587,19 @@ process.on("exit", () => {
 			!process.env.VITE_DISABLE_BACKEND_MANAGER &&
 			backendService.isUsingExternalBackend()
 		) {
-			console.log("Using external backend, skipping force termination");
+			logger.info(
+				"Using external backend, skipping force termination",
+				LogFileType.BACKEND,
+			);
 		}
 	} catch (error) {
-		console.error("Error in exit handler:", error);
+		logger.error("Error in exit handler", LogFileType.BACKEND, error);
 	}
 });
 
 // Handle uncaught exceptions to ensure backend is terminated
 process.on("uncaughtException", (error) => {
-	console.error("Uncaught exception:", error);
+	logger.error("Uncaught exception", LogFileType.BACKEND, error);
 
 	// Only attempt to stop the backend service if we started it ourselves
 	if (
@@ -517,18 +607,26 @@ process.on("uncaughtException", (error) => {
 		!process.env.VITE_DISABLE_BACKEND_MANAGER &&
 		!backendService.isUsingExternalBackend()
 	) {
-		console.log(
+		logger.info(
 			"Attempting to stop our backend service due to uncaught exception",
+			LogFileType.BACKEND,
 		);
 
 		// First try the normal stop method
 		backendService
 			.stop()
 			.catch((stopError) => {
-				console.error("Error stopping backend service:", stopError);
+				logger.error(
+					"Error stopping the Local Operator backend service:",
+					LogFileType.BACKEND,
+					stopError,
+				);
 
 				// If normal stop fails, try the more targeted approach
-				console.log("Trying alternative termination approach");
+				logger.info(
+					"Trying alternative termination approach",
+					LogFileType.BACKEND,
+				);
 
 				if (process.platform === "win32") {
 					// On Windows, look for processes with "local-operator serve" in the command line
@@ -561,7 +659,10 @@ process.on("uncaughtException", (error) => {
 			.finally(() => {
 				// Force exit after a timeout
 				setTimeout(() => {
-					console.log("Forcing app exit after uncaught exception");
+					logger.info(
+						"Forcing app exit after uncaught exception",
+						LogFileType.BACKEND,
+					);
 					process.exit(1);
 				}, 1000);
 			});
@@ -570,8 +671,9 @@ process.on("uncaughtException", (error) => {
 		!process.env.VITE_DISABLE_BACKEND_MANAGER &&
 		backendService.isUsingExternalBackend()
 	) {
-		console.log(
+		logger.info(
 			"Using external backend, skipping termination on uncaught exception",
+			LogFileType.BACKEND,
 		);
 		// Just exit without stopping the external backend
 		process.exit(1);
