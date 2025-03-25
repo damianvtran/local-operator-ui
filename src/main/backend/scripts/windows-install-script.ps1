@@ -171,12 +171,68 @@ if ($LASTEXITCODE -ne 0) {
 # Verify installation
 $LocalOperatorInstalled = $false
 try {
+    # First try to run local-operator directly (it should be in PATH from the activated venv)
     $Version = & local-operator --version
     $LocalOperatorInstalled = $true
     Write-Output "Local Operator backend installed successfully!"
     Write-Output $Version
 } catch {
-    Write-Error "Error: Failed to install Local Operator backend."
+    Write-Output "Could not run local-operator directly, trying with full path..."
+    try {
+        # Try with explicit path
+        $LocalOperatorExe = "$VenvPath\\Scripts\\local-operator.exe"
+        if (Test-Path $LocalOperatorExe) {
+            $Version = & $LocalOperatorExe --version
+            $LocalOperatorInstalled = $true
+            Write-Output "Local Operator backend installed successfully at $LocalOperatorExe!"
+            Write-Output $Version
+        } else {
+            # Try without .exe extension
+            $LocalOperatorCmd = "$VenvPath\\Scripts\\local-operator"
+            if (Test-Path $LocalOperatorCmd) {
+                $Version = & $LocalOperatorCmd --version
+                $LocalOperatorInstalled = $true
+                Write-Output "Local Operator backend installed successfully at $LocalOperatorCmd!"
+                Write-Output $Version
+            } else {
+                Write-Error "Error: local-operator executable not found in expected locations."
+                
+                # Create a symlink to make it more accessible
+                Write-Output "Attempting to create a symlink for local-operator..."
+                $PythonModule = "$VenvPath\\Lib\\site-packages\\local_operator"
+                if (Test-Path $PythonModule) {
+                    Write-Output "Found local_operator module at $PythonModule"
+                    
+                    # Create a batch file that runs the module
+                    $BatchContent = "@echo off`npython -m local_operator %*"
+                    Set-Content -Path "$VenvPath\\Scripts\\local-operator.bat" -Value $BatchContent
+                    
+                    # Test the batch file
+                    if (Test-Path "$VenvPath\\Scripts\\local-operator.bat") {
+                        Write-Output "Created local-operator.bat in Scripts directory"
+                        $LocalOperatorInstalled = $true
+                    } else {
+                        Write-Error "Failed to create local-operator.bat"
+                        exit 1
+                    }
+                } else {
+                    Write-Error "local_operator module not found in site-packages"
+                    exit 1
+                }
+            }
+        }
+    } catch {
+        Write-Error "Error: Failed to install Local Operator backend."
+        Write-Error $_.Exception.Message
+        exit 1
+    }
+}
+
+# If we got here, installation was successful
+if ($LocalOperatorInstalled) {
+    Write-Output "Local Operator backend installation verified."
+} else {
+    Write-Error "Error: Failed to verify Local Operator backend installation."
     exit 1
 }
 

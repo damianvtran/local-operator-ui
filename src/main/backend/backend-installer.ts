@@ -134,17 +134,34 @@ export class BackendInstaller {
 			}
 
 			// Check if local-operator is installed in the virtual environment
-			const localOperatorPath =
-				process.platform === "win32"
-					? join(this.venvPath, "Scripts", "local-operator.exe")
-					: join(this.venvPath, "bin", "local-operator");
+			let localOperatorPath: string;
 
-			if (!fs.existsSync(localOperatorPath)) {
-				logger.info(
-					`local-operator executable not found at ${localOperatorPath}`,
-					LogFileType.INSTALLER,
+			if (process.platform === "win32") {
+				// Windows
+				localOperatorPath = join(
+					this.venvPath,
+					"Scripts",
+					"local-operator.exe",
 				);
-				return false;
+
+				if (!fs.existsSync(localOperatorPath)) {
+					logger.info(
+						`local-operator executable not found at ${localOperatorPath}`,
+						LogFileType.INSTALLER,
+					);
+					return false;
+				}
+			} else {
+				// For non-Windows platforms
+				localOperatorPath = join(this.venvPath, "bin", "local-operator");
+
+				if (!fs.existsSync(localOperatorPath)) {
+					logger.info(
+						`local-operator executable not found at ${localOperatorPath}`,
+						LogFileType.INSTALLER,
+					);
+					return false;
+				}
 			}
 
 			logger.info("Backend is installed", LogFileType.INSTALLER);

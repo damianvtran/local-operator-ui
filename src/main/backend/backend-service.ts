@@ -546,6 +546,7 @@ export class BackendServiceManager {
 				let args: string[];
 
 				if (process.platform === "win32") {
+					// Windows
 					const activateScript = join(this.venvPath, "Scripts", "Activate.ps1");
 					cmd = "powershell.exe";
 					args = [
