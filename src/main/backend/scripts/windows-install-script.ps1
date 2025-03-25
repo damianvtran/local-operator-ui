@@ -59,17 +59,33 @@ if (-not (Test-Path $PyenvDir)) {
     [System.Environment]::SetEnvironmentVariable("PYENV", "$PyenvDir\\pyenv-win", "User")
     [System.Environment]::SetEnvironmentVariable("PYENV_HOME", "$PyenvDir\\pyenv-win", "User")
     
-    # Update PATH
+    # Update PATH - ensure both bin and shims are added separately for better compatibility
     $Path = [System.Environment]::GetEnvironmentVariable("PATH", "User")
-    $PyenvBin = "$PyenvDir\\pyenv-win\\bin;$PyenvDir\\pyenv-win\\shims"
-    if ($Path -notlike "*$PyenvBin*") {
-        [System.Environment]::SetEnvironmentVariable("PATH", "$PyenvBin;$Path", "User")
+    $PyenvBinPath = "$PyenvDir\\pyenv-win\\bin"
+    $PyenvShimsPath = "$PyenvDir\\pyenv-win\\shims"
+    
+    # Add bin path if not already in PATH
+    if ($Path -notlike "*$PyenvBinPath*") {
+        [System.Environment]::SetEnvironmentVariable("PATH", "$PyenvBinPath;$Path", "User")
+        $Path = [System.Environment]::GetEnvironmentVariable("PATH", "User")
     }
+    
+    # Add shims path if not already in PATH
+    if ($Path -notlike "*$PyenvShimsPath*") {
+        [System.Environment]::SetEnvironmentVariable("PATH", "$PyenvShimsPath;$Path", "User")
+    }
+    
+    # Set PYENV environment variables
+    [System.Environment]::SetEnvironmentVariable("PYENV", "$PyenvDir\\pyenv-win", "User")
+    [System.Environment]::SetEnvironmentVariable("PYENV_HOME", "$PyenvDir\\pyenv-win", "User")
     
     # Update current session PATH
     $env:PYENV = "$PyenvDir\\pyenv-win"
     $env:PYENV_HOME = "$PyenvDir\\pyenv-win"
     $env:PATH = "$PyenvDir\\pyenv-win\\bin;$PyenvDir\\pyenv-win\\shims;$env:PATH"
+    
+    # Refresh environment variables for the current process
+    $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "User") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "Machine")
     
     # Clean up
     Remove-Item -Path $TempDir -Recurse -Force
@@ -110,18 +126,47 @@ if ($LASTEXITCODE -ne 0) {
 # Create virtual environment if it doesn't exist
 if (-not (Test-Path $VenvPath)) {
     Write-Output "Creating virtual environment at $VenvPath..."
-    & python -m venv $VenvPath
+    
+    # Ensure the directory exists
+    if (-not (Test-Path $AppDataDir)) {
+        New-Item -ItemType Directory -Path $AppDataDir -Force | Out-Null
+        Write-Output "Created directory: $AppDataDir"
+    }
+    
+    # Use the full path to python from pyenv
+    $PythonExe = "$PyenvDir\\pyenv-win\\versions\\$PythonVersion\\python.exe"
+    
+    if (Test-Path $PythonExe) {
+        Write-Output "Using Python at: $PythonExe"
+        & $PythonExe -m venv $VenvPath
+    } else {
+        Write-Output "Using system Python"
+        & python -m venv $VenvPath
+    }
+    
     if ($LASTEXITCODE -ne 0) {
         Write-Error "Failed to create virtual environment"
         exit 1
     }
 }
 
+# Verify the virtual environment was created
+if (-not (Test-Path "$VenvPath\\Scripts\\Activate.ps1")) {
+    Write-Error "Virtual environment activation script not found at $VenvPath\\Scripts\\Activate.ps1"
+    exit 1
+}
+
 # Activate virtual environment and install local-operator
 Write-Output "Installing local-operator in virtual environment..."
+# Use PowerShell to run the activation script
 & "$VenvPath\\Scripts\\Activate.ps1"
 & python -m pip install --upgrade pip
 & python -m pip install --upgrade local-operator
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "Failed to install packages in virtual environment"
+    exit 1
+}
 
 # Verify installation
 $LocalOperatorInstalled = $false

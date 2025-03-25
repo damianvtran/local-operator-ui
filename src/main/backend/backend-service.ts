@@ -288,6 +288,45 @@ export class BackendServiceManager {
 				}
 			}
 
+			// Explicitly check for and add pyenv-win paths
+			// These might not be in the current process environment yet if they were just set
+			const userProfile = process.env.USERPROFILE || os.homedir();
+			const pyenvDir = join(userProfile, ".pyenv");
+			const pyenvBinPath = join(pyenvDir, "pyenv-win", "bin");
+			const pyenvShimsPath = join(pyenvDir, "pyenv-win", "shims");
+
+			// Check if these directories exist
+			if (fs.existsSync(pyenvBinPath) && fs.existsSync(pyenvShimsPath)) {
+				logger.info(
+					`Found pyenv-win directories at ${pyenvBinPath} and ${pyenvShimsPath}`,
+					LogFileType.BACKEND,
+				);
+
+				// Add to PATH if not already there
+				const currentPath = this.shellEnv.PATH || "";
+				if (!currentPath.includes(pyenvBinPath)) {
+					this.shellEnv.PATH = `${pyenvBinPath};${currentPath}`;
+				}
+				if (!currentPath.includes(pyenvShimsPath)) {
+					this.shellEnv.PATH = `${pyenvShimsPath};${this.shellEnv.PATH}`;
+				}
+
+				// Set PYENV and PYENV_HOME environment variables
+				const pyenvWinPath = join(pyenvDir, "pyenv-win");
+				this.shellEnv.PYENV = pyenvWinPath;
+				this.shellEnv.PYENV_HOME = pyenvWinPath;
+
+				logger.info(
+					`Added pyenv-win paths to environment. PATH now includes: ${pyenvBinPath} and ${pyenvShimsPath}`,
+					LogFileType.BACKEND,
+				);
+			} else {
+				logger.info(
+					`pyenv-win directories not found at ${pyenvBinPath} or ${pyenvShimsPath}`,
+					LogFileType.BACKEND,
+				);
+			}
+
 			logger.info(
 				"Loaded environment variables from Windows user profile",
 				LogFileType.BACKEND,
@@ -507,11 +546,13 @@ export class BackendServiceManager {
 				let args: string[];
 
 				if (process.platform === "win32") {
-					const activateScript = join(this.venvPath, "Scripts", "activate.bat");
-					cmd = "cmd.exe";
+					const activateScript = join(this.venvPath, "Scripts", "Activate.ps1");
+					cmd = "powershell.exe";
 					args = [
-						"/c",
-						`"${activateScript}" && local-operator serve --port ${this.port}`,
+						"-ExecutionPolicy",
+						"Bypass",
+						"-Command",
+						`"& '${activateScript}'; local-operator serve --port ${this.port}"`,
 					];
 				} else {
 					// macOS or Linux

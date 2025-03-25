@@ -89,11 +89,18 @@ export class BackendInstaller {
 
 		// Add Windows-specific paths
 		if (process.platform === "win32") {
+			const userProfile = process.env.USERPROFILE || app.getPath("home");
+			const pyenvDir = join(userProfile, ".pyenv");
+
 			possibilities.push(
 				// In packaged app (Windows)
 				join(process.resourcesPath, "python", "python.exe"),
 				// In development (Windows)
 				join(process.cwd(), "resources", "python", "python.exe"),
+				// Check for pyenv-win Python
+				join(pyenvDir, "pyenv-win", "versions", "3.12.0", "python.exe"),
+				// Check for pyenv-win shims
+				join(pyenvDir, "pyenv-win", "shims", "python.exe"),
 			);
 		}
 
