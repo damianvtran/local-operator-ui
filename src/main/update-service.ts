@@ -253,7 +253,7 @@ export class UpdateService {
 		try {
 			if (process.platform === "win32") {
 				// On Windows, use taskkill to forcefully terminate processes with "local-operator serve" in the command line
-				await execAsync('taskkill /f /im "local-operator.exe" /t');
+				await execAsync('taskkill /f /im "local-operator serve" /t');
 				await execAsync(
 					"wmic process where \"commandline like '%local-operator serve%'\" call terminate",
 				);

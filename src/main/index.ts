@@ -306,7 +306,7 @@ app.on("will-quit", async (event) => {
 
 					// Also try taskkill as a backup
 					require("node:child_process").execSync(
-						`taskkill /f /im "local-operator.exe" /t`,
+						`taskkill /f /im "local-operator serve" /t`,
 						{ stdio: "ignore" },
 					);
 				} catch (err) {
@@ -404,7 +404,7 @@ app.on("will-quit", async (event) => {
 
 					// Also try taskkill as a backup
 					require("node:child_process").execSync(
-						`taskkill /f /im "local-operator.exe" /t`,
+						`taskkill /f /im "local-operator serve" /t`,
 						{ stdio: "ignore" },
 					);
 				} catch (err) {
