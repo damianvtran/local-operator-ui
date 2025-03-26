@@ -4,8 +4,8 @@
  * Provides utilities for accessing and updating URL parameters
  */
 
-import { useNavigate, useParams } from "react-router-dom";
 import { getCurrentPath, pathIncludes } from "@renderer/utils/path-utils";
+import { useNavigate, useParams } from "react-router-dom";
 
 /**
  * Hook for working with agent ID in routes
