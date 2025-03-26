@@ -49,6 +49,7 @@ export class BackendServiceManager {
 	private exitPromise: Promise<void> | null = null;
 	private exitResolve: (() => void) | null = null;
 	private shellEnv: Record<string, string | undefined> = {};
+	private isAppClosing = false; // Flag to track when the app is being closed
 
 	/**
 	 * Constructor
@@ -288,6 +289,59 @@ export class BackendServiceManager {
 				}
 			}
 
+			// Explicitly check for and add pyenv-win paths
+			// These might not be in the current process environment yet if they were just set
+			const userProfile = process.env.USERPROFILE || os.homedir();
+			const pyenvDir = join(userProfile, ".pyenv");
+			const pyenvBinPath = join(pyenvDir, "pyenv-win", "bin");
+			const pyenvShimsPath = join(pyenvDir, "pyenv-win", "shims");
+
+			// Check if these directories exist
+			if (fs.existsSync(pyenvBinPath) && fs.existsSync(pyenvShimsPath)) {
+				logger.info(
+					`Found pyenv-win directories at ${pyenvBinPath} and ${pyenvShimsPath}`,
+					LogFileType.BACKEND,
+				);
+
+				// Add to PATH if not already there
+				const currentPath = this.shellEnv.PATH || "";
+				if (!currentPath.includes(pyenvBinPath)) {
+					this.shellEnv.PATH = `${pyenvBinPath};${currentPath}`;
+				}
+				if (!currentPath.includes(pyenvShimsPath)) {
+					this.shellEnv.PATH = `${pyenvShimsPath};${this.shellEnv.PATH}`;
+				}
+
+				// Set PYENV and PYENV_HOME environment variables
+				const pyenvWinPath = join(pyenvDir, "pyenv-win");
+				this.shellEnv.PYENV = pyenvWinPath;
+				this.shellEnv.PYENV_HOME = pyenvWinPath;
+
+				logger.info(
+					`Added pyenv-win paths to environment. PATH now includes: ${pyenvBinPath} and ${pyenvShimsPath}`,
+					LogFileType.BACKEND,
+				);
+			} else {
+				logger.info(
+					`pyenv-win directories not found at ${pyenvBinPath} or ${pyenvShimsPath}`,
+					LogFileType.BACKEND,
+				);
+			}
+
+			// Add the virtual environment Scripts directory to PATH
+			// This ensures we can find the local-operator executable
+			const venvScriptsPath = join(this.venvPath, "Scripts");
+			if (fs.existsSync(venvScriptsPath)) {
+				const currentPath = this.shellEnv.PATH || "";
+				if (!currentPath.includes(venvScriptsPath)) {
+					this.shellEnv.PATH = `${venvScriptsPath};${currentPath}`;
+					logger.info(
+						`Added virtual environment Scripts directory to PATH: ${venvScriptsPath}`,
+						LogFileType.BACKEND,
+					);
+				}
+			}
+
 			logger.info(
 				"Loaded environment variables from Windows user profile",
 				LogFileType.BACKEND,
@@ -444,6 +498,9 @@ export class BackendServiceManager {
 	 * @returns Promise resolving to true if the backend was started successfully, false otherwise
 	 */
 	async start(): Promise<boolean> {
+		// Reset the isAppClosing flag when starting the service
+		this.isAppClosing = false;
+
 		if (this.isDisabled) {
 			logger.info(
 				"Backend Service Manager is disabled. Skipping backend start.",
@@ -507,12 +564,43 @@ export class BackendServiceManager {
 				let args: string[];
 
 				if (process.platform === "win32") {
-					const activateScript = join(this.venvPath, "Scripts", "activate.bat");
-					cmd = "cmd.exe";
-					args = [
-						"/c",
-						`"${activateScript}" && local-operator serve --port ${this.port}`,
-					];
+					// Windows - try direct executable first
+					const localOperatorExe = join(
+						this.venvPath,
+						"Scripts",
+						"local-operator.exe",
+					);
+					if (fs.existsSync(localOperatorExe)) {
+						cmd = localOperatorExe;
+						args = ["serve", "--port", this.port.toString()];
+					} else {
+						// Fallback to Python module execution
+						const pythonExe = join(this.venvPath, "Scripts", "python.exe");
+						if (fs.existsSync(pythonExe)) {
+							cmd = pythonExe;
+							args = [
+								"-m",
+								"local_operator",
+								"serve",
+								"--port",
+								this.port.toString(),
+							];
+						} else {
+							// Last resort - use PowerShell activation
+							const activateScript = join(
+								this.venvPath,
+								"Scripts",
+								"Activate.ps1",
+							);
+							cmd = "powershell.exe";
+							args = [
+								"-ExecutionPolicy",
+								"Bypass",
+								"-Command",
+								`"& '${activateScript}'; local-operator serve --port ${this.port}"`,
+							];
+						}
+					}
 				} else {
 					// macOS or Linux
 					const activateScript = join(this.venvPath, "bin", "activate");
@@ -567,7 +655,13 @@ export class BackendServiceManager {
 				}
 
 				// Show error dialog if the process exited unexpectedly
-				if (code !== 0 && code !== null) {
+				// Skip showing the dialog if:
+				// 1. We're on Windows AND the app is closing AND the exit code is 1 (expected on Windows)
+				// 2. OR if the code is 0 or null (normal exit)
+				const isExpectedWindowsExit =
+					process.platform === "win32" && this.isAppClosing && code === 1;
+
+				if (code !== 0 && code !== null && !isExpectedWindowsExit) {
 					electronDialog.showErrorBox(
 						"Backend Error",
 						`The Local Operator backend service exited unexpectedly with code ${code}. Please restart the application.`,
@@ -626,6 +720,10 @@ export class BackendServiceManager {
 	 * @returns Promise resolving when the backend has been stopped
 	 */
 	async stop(isRestart = false): Promise<void> {
+		// Mark that we're closing the app if this is not a restart
+		if (!isRestart) {
+			this.isAppClosing = true;
+		}
 		// Stop health check
 		if (this.healthCheckInterval) {
 			clearInterval(this.healthCheckInterval);
@@ -684,7 +782,7 @@ export class BackendServiceManager {
 							`Terminating Windows process with PID ${pid}`,
 							LogFileType.BACKEND,
 						);
-						spawn("taskkill", ["/pid", pid.toString(), "/f", "/t"]);
+						spawn("taskkill", ["/pid", pid.toString(), "/t"]);
 					}
 				} else {
 					// Unix: send SIGTERM
@@ -718,22 +816,34 @@ export class BackendServiceManager {
 											"/t",
 										]);
 
-										// Also try to kill any child processes by command line pattern
+										// Also try to kill any child processes by process name
 										try {
+											// Use taskkill to find and kill python processes that might be running the backend
 											execPromise(
-												"wmic process where \"commandline like '%local-operator serve%'\" call terminate",
+												'taskkill /f /im python.exe /fi "WINDOWTITLE eq *local-operator*" /t',
 											).catch((error) => {
 												logger.warn(
-													"Error terminating processes by command line pattern:",
+													"Error terminating python processes:",
 													LogFileType.BACKEND,
 													error,
 												);
 											});
-										} catch (wmicError) {
+
+											// Also try to kill any local-operator.exe processes directly
+											execPromise(
+												"taskkill /f /im local-operator.exe /t",
+											).catch((error) => {
+												logger.warn(
+													"Error terminating local-operator processes:",
+													LogFileType.BACKEND,
+													error,
+												);
+											});
+										} catch (taskkillError) {
 											logger.warn(
-												"Error executing WMIC command:",
+												"Error executing taskkill command:",
 												LogFileType.BACKEND,
-												wmicError,
+												taskkillError,
 											);
 										}
 									} else if (this.process) {
@@ -801,12 +911,18 @@ export class BackendServiceManager {
 
 					try {
 						if (process.platform === "win32") {
-							// On Windows, look for processes with "local-operator serve" in the command line
+							// On Windows, use taskkill to find and kill python and local-operator processes
 							await execPromise(
-								"wmic process where \"commandline like '%local-operator serve%'\" call terminate",
+								'taskkill /f /im python.exe /fi "WINDOWTITLE eq *local-operator*" /t',
 							).catch(() => {
 								// Ignore errors, this is a best-effort cleanup
 							});
+
+							await execPromise("taskkill /f /im local-operator.exe /t").catch(
+								() => {
+									// Ignore errors, this is a best-effort cleanup
+								},
+							);
 						} else {
 							// On Unix systems, look for processes with "local-operator serve" in the command line
 							await execPromise('pkill -f "local-operator serve"').catch(() => {
@@ -953,6 +1069,9 @@ export class BackendServiceManager {
 	 */
 	async restart(): Promise<boolean> {
 		logger.info("Restarting backend service...", LogFileType.BACKEND);
+
+		// Reset the isAppClosing flag since we're restarting, not closing
+		this.isAppClosing = false;
 
 		// Stop the service with the isRestart flag to use a longer timeout
 		await this.stop(true);

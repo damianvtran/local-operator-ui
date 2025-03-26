@@ -4,12 +4,18 @@ import {
 	BrowserWindow,
 	Menu,
 	app,
+	dialog,
 	ipcMain,
 	nativeImage,
 	shell,
 } from "electron";
 import icon from "../../resources/icon-180x180-dark.png?asset";
-import { BackendInstaller, BackendServiceManager } from "./backend";
+import {
+	BackendInstaller,
+	BackendServiceManager,
+	LocalOperatorStartupMode,
+} from "./backend";
+import { LogFileType, logger } from "./backend/logger";
 import { UpdateService } from "./update-service";
 
 // Set application name
@@ -224,16 +230,74 @@ app.whenReady().then(async () => {
 			if (!hasGlobalCommand && !(await backendInstaller.isInstalled())) {
 				// Install backend
 				const installSuccess = await backendInstaller.install();
-				// If installation was cancelled, quit the app
+				// If installation was cancelled or failed, quit the app
 				if (!installSuccess) {
-					console.log("Backend installation cancelled by user, quitting app");
+					logger.error(
+						"Backend installation cancelled or failed, quitting app",
+						LogFileType.INSTALLER,
+					);
 					app.quit();
 					return; // Exit early to prevent window creation
 				}
-			}
 
-			// Start our backend service
-			await backendService.start();
+				// After successful installation, attempt to start the backend with retries
+				logger.info(
+					"Attempting to start backend service after installation",
+					LogFileType.INSTALLER,
+				);
+				let startAttempts = 0;
+				const maxStartAttempts = 3;
+				let backendStarted = false;
+
+				while (startAttempts < maxStartAttempts && !backendStarted) {
+					try {
+						backendStarted = await backendService.start();
+						if (!backendStarted) {
+							logger.error(
+								`Backend start attempt ${startAttempts + 1} failed`,
+								LogFileType.INSTALLER,
+							);
+							// Wait before retrying
+							await new Promise((resolve) => setTimeout(resolve, 2000));
+						}
+					} catch (error) {
+						logger.error(
+							`Error starting backend (attempt ${startAttempts + 1}):`,
+							LogFileType.INSTALLER,
+							error,
+						);
+					}
+					startAttempts++;
+				}
+
+				if (!backendStarted) {
+					logger.error(
+						"Failed to start backend after installation, quitting app",
+						LogFileType.INSTALLER,
+					);
+					dialog.showErrorBox(
+						"Backend Error",
+						"Failed to start the Local Operator backend service after installation. Please restart the application.",
+					);
+					app.quit();
+					return;
+				}
+			} else {
+				// Start our backend service (for existing installations)
+				const backendStarted = await backendService.start();
+				if (!backendStarted) {
+					logger.error(
+						"Failed to start backend with existing installation, quitting app",
+						LogFileType.BACKEND,
+					);
+					dialog.showErrorBox(
+						"Backend Error",
+						"Failed to start the Local Operator backend service. Please restart the application.",
+					);
+					app.quit();
+					return;
+				}
+			}
 		}
 	}
 
@@ -268,9 +332,36 @@ app.whenReady().then(async () => {
 // for applications and their menu bar to stay active until the user quits
 // explicitly with Cmd + Q.
 app.on("window-all-closed", () => {
-	if (process.platform !== "darwin") {
-		app.quit();
+	// On macOS, keep the app active in the dock
+	if (process.platform === "darwin") {
+		logger.info(
+			"All windows closed, but keeping app active (macOS platform)",
+			LogFileType.BACKEND,
+		);
+		return;
 	}
+
+	// For Windows and Linux, we need to check if we're in the installation process
+	// or if the user has explicitly closed all windows
+
+	// Check if we're in the installation process by looking at the backendInstaller state
+	// If the backend service is not yet started, we're likely in the installation process
+	if (
+		backendService.getStartupMode() === LocalOperatorStartupMode.NOT_STARTED
+	) {
+		logger.info(
+			"All windows closed during startup/installation, exit will not be handled by window-all-closed event",
+			LogFileType.BACKEND,
+		);
+		return;
+	}
+
+	// If we get here, the user has explicitly closed all windows, so quit the app
+	logger.info(
+		"All windows closed by user, quitting app via window-all-closed event (non-macOS platform)",
+		LogFileType.BACKEND,
+	);
+	app.quit();
 });
 
 // Stop backend service when app is quitting
@@ -283,36 +374,44 @@ app.on("will-quit", async (event) => {
 	if (!isBackendManagerDisabled && !backendService.isUsingExternalBackend()) {
 		event.preventDefault();
 		try {
-			console.log("App is quitting, stopping our backend service...");
+			logger.info(
+				"App is quitting, stopping the Local Operator backend service...",
+				LogFileType.BACKEND,
+			);
 
 			// Use false for isRestart to indicate this is a final shutdown, not a restart
 			await backendService.stop(false);
-			console.log("Backend service successfully stopped");
+			logger.info(
+				"Local Operator backend service successfully stopped",
+				LogFileType.BACKEND,
+			);
 
 			// Add an additional targeted cleanup as a failsafe
-			console.log(
+			logger.info(
 				"Performing additional cleanup to ensure complete termination",
+				LogFileType.BACKEND,
 			);
 
 			// Use more robust cleanup approach
 			if (process.platform === "win32") {
-				// On Windows, look for processes with "local-operator serve" in the command line
+				// On Windows, use taskkill to find and kill python and local-operator processes
 				try {
-					// First try a more targeted approach with WMIC
+					// Use taskkill to find and kill python processes that might be running the backend
 					require("node:child_process").execSync(
-						`wmic process where "commandline like '%local-operator serve%'" call terminate`,
+						'taskkill /f /im python.exe /fi "WINDOWTITLE eq *local-operator*" /t',
 						{ stdio: "ignore" },
 					);
 
-					// Also try taskkill as a backup
+					// Also try to kill any local-operator.exe processes directly
 					require("node:child_process").execSync(
-						`taskkill /f /im "local-operator.exe" /t`,
+						"taskkill /f /im local-operator.exe /t",
 						{ stdio: "ignore" },
 					);
 				} catch (err) {
 					// Ignore errors, this is a best-effort cleanup
-					console.log(
+					logger.error(
 						"Error during Windows process cleanup (may be normal):",
+						LogFileType.BACKEND,
 						err,
 					);
 				}
@@ -335,8 +434,9 @@ app.on("will-quit", async (event) => {
 					);
 				} catch (err) {
 					// Ignore errors, this is a best-effort cleanup
-					console.log(
+					logger.error(
 						"Error during Unix process cleanup (may be normal):",
+						LogFileType.BACKEND,
 						err,
 					);
 				}
@@ -346,12 +446,29 @@ app.on("will-quit", async (event) => {
 			let allProcessesTerminated = true;
 			try {
 				if (process.platform === "win32") {
-					const { stdout } = require("node:child_process").execSync(
-						`wmic process where "commandline like '%local-operator serve%'" get processid`,
-						{ encoding: "utf8" },
-					);
-					// If we find any processes, they're not all terminated
-					allProcessesTerminated = !stdout?.trim().includes("ProcessId");
+					// Use tasklist instead of wmic as it's more reliable on newer Windows versions
+					const { stdout: pythonOutput } =
+						require("node:child_process").execSync(
+							`tasklist /fi "imagename eq python.exe" /fo csv`,
+							{ encoding: "utf8" },
+						);
+					// If we find any python processes, check if they're related to local-operator
+					const hasPythonProcesses = pythonOutput
+						?.trim()
+						.includes("python.exe");
+
+					// Also check for local-operator.exe
+					const { stdout: localOperatorOutput } =
+						require("node:child_process").execSync(
+							`tasklist /fi "imagename eq local-operator.exe" /fo csv`,
+							{ encoding: "utf8" },
+						);
+					const hasLocalOperatorProcesses = localOperatorOutput
+						?.trim()
+						.includes("local-operator.exe");
+
+					allProcessesTerminated =
+						!hasPythonProcesses && !hasLocalOperatorProcesses;
 				} else {
 					const { stdout } = require("node:child_process").execSync(
 						`pgrep -f "local-operator serve" || echo ""`,
@@ -362,13 +479,18 @@ app.on("will-quit", async (event) => {
 				}
 			} catch (err) {
 				// If there's an error checking, assume processes are terminated
-				console.log("Error checking for remaining processes:", err);
+				logger.error(
+					"Error checking for remaining processes:",
+					LogFileType.BACKEND,
+					err,
+				);
 				allProcessesTerminated = true;
 			}
 
 			if (!allProcessesTerminated) {
-				console.log(
+				logger.error(
 					"Some backend processes may still be running, attempting final cleanup",
+					LogFileType.BACKEND,
 				);
 
 				// Final attempt at cleanup
@@ -385,26 +507,38 @@ app.on("will-quit", async (event) => {
 					}
 				} catch (finalErr) {
 					// Ignore errors in final cleanup
-					console.log("Error during final cleanup (may be normal):", finalErr);
+					logger.error(
+						"Error during final cleanup (may be normal):",
+						LogFileType.BACKEND,
+						finalErr,
+					);
 				}
 			}
 		} catch (error) {
-			console.error("Error stopping backend service:", error);
+			logger.error(
+				"Error stopping the Local Operator backend service:",
+				LogFileType.BACKEND,
+				error,
+			);
 
 			// If the normal stop failed, try the targeted approach
-			console.log("Trying alternative termination approach");
+			logger.info(
+				"Trying alternative termination approach",
+				LogFileType.BACKEND,
+			);
 
 			if (process.platform === "win32") {
-				// On Windows, look for processes with "local-operator serve" in the command line
+				// On Windows, use taskkill to find and kill python and local-operator processes
 				try {
+					// Use taskkill to find and kill python processes that might be running the backend
 					require("node:child_process").execSync(
-						`wmic process where "commandline like '%local-operator serve%'" call terminate`,
+						'taskkill /f /im python.exe /fi "WINDOWTITLE eq *local-operator*" /t',
 						{ stdio: "ignore" },
 					);
 
-					// Also try taskkill as a backup
+					// Also try to kill any local-operator.exe processes directly
 					require("node:child_process").execSync(
-						`taskkill /f /im "local-operator.exe" /t`,
+						"taskkill /f /im local-operator.exe /t",
 						{ stdio: "ignore" },
 					);
 				} catch (err) {
@@ -430,9 +564,9 @@ app.on("will-quit", async (event) => {
 		} finally {
 			// Ensure app quits even if there was an error stopping the service
 			// Use a longer timeout to ensure the process has time to fully terminate
-			console.log("Exiting application...");
+			logger.info("Exiting application...", LogFileType.BACKEND);
 			setTimeout(() => {
-				console.log("Forcing app exit");
+				logger.info("Forcing app exit", LogFileType.BACKEND);
 				app.exit(0);
 			}, 2000); // Increased timeout to 2 seconds for more reliable termination
 		}
@@ -440,18 +574,24 @@ app.on("will-quit", async (event) => {
 		!isBackendManagerDisabled &&
 		backendService.isUsingExternalBackend()
 	) {
-		console.log("Using external backend, skipping termination on app quit");
+		logger.info(
+			"Using external backend, skipping termination on app quit",
+			LogFileType.BACKEND,
+		);
 	}
 });
 
 // Handle before-quit event to ensure proper cleanup
 app.on("before-quit", () => {
-	console.log("App is about to quit");
+	logger.info("App is about to quit", LogFileType.BACKEND);
 });
 
 // Add a failsafe to ensure child processes are terminated when the app exits
 process.on("exit", () => {
-	console.log("Process exit event detected, ensuring backend is terminated");
+	logger.info(
+		"Process exit event detected, ensuring the Local Operator backend service is terminated",
+		LogFileType.BACKEND,
+	);
 	// This is a synchronous event, so we can't use async/await here
 	try {
 		// Force kill any remaining child processes, but ONLY if we started our own backend
@@ -460,21 +600,31 @@ process.on("exit", () => {
 			!process.env.VITE_DISABLE_BACKEND_MANAGER &&
 			!backendService.isUsingExternalBackend()
 		) {
-			console.log("Forcing termination of our backend process");
+			logger.info(
+				"Forcing termination of the Local Operator backend service",
+				LogFileType.BACKEND,
+			);
 
 			// Use a more targeted approach to avoid affecting other services
 			// We'll only try to find and terminate processes that look like our backend
-			console.log(
+			logger.info(
 				"Performing final cleanup of any remaining backend processes",
+				LogFileType.BACKEND,
 			);
 
 			if (process.platform === "win32") {
-				// On Windows, look for processes with "local-operator serve" in the command line
+				// On Windows, use taskkill to find and kill python and local-operator processes
 				try {
-					// First try a more targeted approach that won't affect other services
+					// Use taskkill to find and kill python processes that might be running the backend
 					require("node:child_process").spawnSync("cmd.exe", [
 						"/c",
-						`wmic process where "commandline like '%local-operator serve%'" call terminate`,
+						'taskkill /f /im python.exe /fi "WINDOWTITLE eq *local-operator*" /t',
+					]);
+
+					// Also try to kill any local-operator.exe processes directly
+					require("node:child_process").spawnSync("cmd.exe", [
+						"/c",
+						"taskkill /f /im local-operator.exe /t",
 					]);
 				} catch (err) {
 					// Ignore errors, this is a best-effort cleanup
@@ -500,16 +650,19 @@ process.on("exit", () => {
 			!process.env.VITE_DISABLE_BACKEND_MANAGER &&
 			backendService.isUsingExternalBackend()
 		) {
-			console.log("Using external backend, skipping force termination");
+			logger.info(
+				"Using external backend, skipping force termination",
+				LogFileType.BACKEND,
+			);
 		}
 	} catch (error) {
-		console.error("Error in exit handler:", error);
+		logger.error("Error in exit handler", LogFileType.BACKEND, error);
 	}
 });
 
 // Handle uncaught exceptions to ensure backend is terminated
 process.on("uncaughtException", (error) => {
-	console.error("Uncaught exception:", error);
+	logger.error("Uncaught exception", LogFileType.BACKEND, error);
 
 	// Only attempt to stop the backend service if we started it ourselves
 	if (
@@ -517,25 +670,40 @@ process.on("uncaughtException", (error) => {
 		!process.env.VITE_DISABLE_BACKEND_MANAGER &&
 		!backendService.isUsingExternalBackend()
 	) {
-		console.log(
+		logger.info(
 			"Attempting to stop our backend service due to uncaught exception",
+			LogFileType.BACKEND,
 		);
 
 		// First try the normal stop method
 		backendService
 			.stop()
 			.catch((stopError) => {
-				console.error("Error stopping backend service:", stopError);
+				logger.error(
+					"Error stopping the Local Operator backend service:",
+					LogFileType.BACKEND,
+					stopError,
+				);
 
 				// If normal stop fails, try the more targeted approach
-				console.log("Trying alternative termination approach");
+				logger.info(
+					"Trying alternative termination approach",
+					LogFileType.BACKEND,
+				);
 
 				if (process.platform === "win32") {
-					// On Windows, look for processes with "local-operator serve" in the command line
+					// On Windows, use taskkill to find and kill python and local-operator processes
 					try {
+						// Use taskkill to find and kill python processes that might be running the backend
 						require("node:child_process").spawnSync("cmd.exe", [
 							"/c",
-							`wmic process where "commandline like '%local-operator serve%'" call terminate`,
+							'taskkill /f /im python.exe /fi "WINDOWTITLE eq *local-operator*" /t',
+						]);
+
+						// Also try to kill any local-operator.exe processes directly
+						require("node:child_process").spawnSync("cmd.exe", [
+							"/c",
+							"taskkill /f /im local-operator.exe /t",
 						]);
 					} catch (err) {
 						// Ignore errors, this is a best-effort cleanup
@@ -561,7 +729,10 @@ process.on("uncaughtException", (error) => {
 			.finally(() => {
 				// Force exit after a timeout
 				setTimeout(() => {
-					console.log("Forcing app exit after uncaught exception");
+					logger.info(
+						"Forcing app exit after uncaught exception",
+						LogFileType.BACKEND,
+					);
 					process.exit(1);
 				}, 1000);
 			});
@@ -570,8 +741,9 @@ process.on("uncaughtException", (error) => {
 		!process.env.VITE_DISABLE_BACKEND_MANAGER &&
 		backendService.isUsingExternalBackend()
 	) {
-		console.log(
+		logger.info(
 			"Using external backend, skipping termination on uncaught exception",
+			LogFileType.BACKEND,
 		);
 		// Just exit without stopping the external backend
 		process.exit(1);
