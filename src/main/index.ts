@@ -11,7 +11,11 @@ import {
 } from "electron";
 import { LogFileType, logger } from "./backend/logger";
 import icon from "../../resources/icon-180x180-dark.png?asset";
-import { BackendInstaller, BackendServiceManager } from "./backend";
+import {
+	BackendInstaller,
+	BackendServiceManager,
+	LocalOperatorStartupMode,
+} from "./backend";
 import { UpdateService } from "./update-service";
 
 // Set application name
@@ -267,6 +271,10 @@ app.whenReady().then(async () => {
 				}
 
 				if (!backendStarted) {
+					logger.error(
+						"Failed to start backend after installation, quitting app",
+						LogFileType.INSTALLER,
+					);
 					dialog.showErrorBox(
 						"Backend Error",
 						"Failed to start the Local Operator backend service after installation. Please restart the application.",
@@ -278,6 +286,10 @@ app.whenReady().then(async () => {
 				// Start our backend service (for existing installations)
 				const backendStarted = await backendService.start();
 				if (!backendStarted) {
+					logger.error(
+						"Failed to start backend with existing installation, quitting app",
+						LogFileType.BACKEND,
+					);
 					dialog.showErrorBox(
 						"Backend Error",
 						"Failed to start the Local Operator backend service. Please restart the application.",
@@ -320,9 +332,36 @@ app.whenReady().then(async () => {
 // for applications and their menu bar to stay active until the user quits
 // explicitly with Cmd + Q.
 app.on("window-all-closed", () => {
-	if (process.platform !== "darwin") {
-		app.quit();
+	// On macOS, keep the app active in the dock
+	if (process.platform === "darwin") {
+		logger.info(
+			"All windows closed, but keeping app active (macOS platform)",
+			LogFileType.BACKEND,
+		);
+		return;
 	}
+
+	// For Windows and Linux, we need to check if we're in the installation process
+	// or if the user has explicitly closed all windows
+
+	// Check if we're in the installation process by looking at the backendInstaller state
+	// If the backend service is not yet started, we're likely in the installation process
+	if (
+		backendService.getStartupMode() === LocalOperatorStartupMode.NOT_STARTED
+	) {
+		logger.info(
+			"All windows closed during startup/installation, exit will not be handled by window-all-closed event",
+			LogFileType.BACKEND,
+		);
+		return;
+	}
+
+	// If we get here, the user has explicitly closed all windows, so quit the app
+	logger.info(
+		"All windows closed by user, quitting app via window-all-closed event (non-macOS platform)",
+		LogFileType.BACKEND,
+	);
+	app.quit();
 });
 
 // Stop backend service when app is quitting
@@ -355,17 +394,17 @@ app.on("will-quit", async (event) => {
 
 			// Use more robust cleanup approach
 			if (process.platform === "win32") {
-				// On Windows, look for processes with "local-operator serve" in the command line
+				// On Windows, use taskkill to find and kill python and local-operator processes
 				try {
-					// First try a more targeted approach with WMIC
+					// Use taskkill to find and kill python processes that might be running the backend
 					require("node:child_process").execSync(
-						`wmic process where "commandline like '%local-operator serve%'" call terminate`,
+						'taskkill /f /im python.exe /fi "WINDOWTITLE eq *local-operator*" /t',
 						{ stdio: "ignore" },
 					);
 
-					// Also try taskkill as a backup
+					// Also try to kill any local-operator.exe processes directly
 					require("node:child_process").execSync(
-						`taskkill /f /im "local-operator serve" /t`,
+						"taskkill /f /im local-operator.exe /t",
 						{ stdio: "ignore" },
 					);
 				} catch (err) {
@@ -407,12 +446,29 @@ app.on("will-quit", async (event) => {
 			let allProcessesTerminated = true;
 			try {
 				if (process.platform === "win32") {
-					const { stdout } = require("node:child_process").execSync(
-						`wmic process where "commandline like '%local-operator serve%'" get processid`,
-						{ encoding: "utf8" },
-					);
-					// If we find any processes, they're not all terminated
-					allProcessesTerminated = !stdout?.trim().includes("ProcessId");
+					// Use tasklist instead of wmic as it's more reliable on newer Windows versions
+					const { stdout: pythonOutput } =
+						require("node:child_process").execSync(
+							`tasklist /fi "imagename eq python.exe" /fo csv`,
+							{ encoding: "utf8" },
+						);
+					// If we find any python processes, check if they're related to local-operator
+					const hasPythonProcesses = pythonOutput
+						?.trim()
+						.includes("python.exe");
+
+					// Also check for local-operator.exe
+					const { stdout: localOperatorOutput } =
+						require("node:child_process").execSync(
+							`tasklist /fi "imagename eq local-operator.exe" /fo csv`,
+							{ encoding: "utf8" },
+						);
+					const hasLocalOperatorProcesses = localOperatorOutput
+						?.trim()
+						.includes("local-operator.exe");
+
+					allProcessesTerminated =
+						!hasPythonProcesses && !hasLocalOperatorProcesses;
 				} else {
 					const { stdout } = require("node:child_process").execSync(
 						`pgrep -f "local-operator serve" || echo ""`,
@@ -472,16 +528,17 @@ app.on("will-quit", async (event) => {
 			);
 
 			if (process.platform === "win32") {
-				// On Windows, look for processes with "local-operator serve" in the command line
+				// On Windows, use taskkill to find and kill python and local-operator processes
 				try {
+					// Use taskkill to find and kill python processes that might be running the backend
 					require("node:child_process").execSync(
-						`wmic process where "commandline like '%local-operator serve%'" call terminate`,
+						'taskkill /f /im python.exe /fi "WINDOWTITLE eq *local-operator*" /t',
 						{ stdio: "ignore" },
 					);
 
-					// Also try taskkill as a backup
+					// Also try to kill any local-operator.exe processes directly
 					require("node:child_process").execSync(
-						`taskkill /f /im "local-operator serve" /t`,
+						"taskkill /f /im local-operator.exe /t",
 						{ stdio: "ignore" },
 					);
 				} catch (err) {
@@ -556,12 +613,18 @@ process.on("exit", () => {
 			);
 
 			if (process.platform === "win32") {
-				// On Windows, look for processes with "local-operator serve" in the command line
+				// On Windows, use taskkill to find and kill python and local-operator processes
 				try {
-					// First try a more targeted approach that won't affect other services
+					// Use taskkill to find and kill python processes that might be running the backend
 					require("node:child_process").spawnSync("cmd.exe", [
 						"/c",
-						`wmic process where "commandline like '%local-operator serve%'" call terminate`,
+						'taskkill /f /im python.exe /fi "WINDOWTITLE eq *local-operator*" /t',
+					]);
+
+					// Also try to kill any local-operator.exe processes directly
+					require("node:child_process").spawnSync("cmd.exe", [
+						"/c",
+						"taskkill /f /im local-operator.exe /t",
 					]);
 				} catch (err) {
 					// Ignore errors, this is a best-effort cleanup
@@ -629,11 +692,18 @@ process.on("uncaughtException", (error) => {
 				);
 
 				if (process.platform === "win32") {
-					// On Windows, look for processes with "local-operator serve" in the command line
+					// On Windows, use taskkill to find and kill python and local-operator processes
 					try {
+						// Use taskkill to find and kill python processes that might be running the backend
 						require("node:child_process").spawnSync("cmd.exe", [
 							"/c",
-							`wmic process where "commandline like '%local-operator serve%'" call terminate`,
+							'taskkill /f /im python.exe /fi "WINDOWTITLE eq *local-operator*" /t',
+						]);
+
+						// Also try to kill any local-operator.exe processes directly
+						require("node:child_process").spawnSync("cmd.exe", [
+							"/c",
+							"taskkill /f /im local-operator.exe /t",
 						]);
 					} catch (err) {
 						// Ignore errors, this is a best-effort cleanup

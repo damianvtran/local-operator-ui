@@ -328,6 +328,20 @@ export class BackendServiceManager {
 				);
 			}
 
+			// Add the virtual environment Scripts directory to PATH
+			// This ensures we can find the local-operator executable
+			const venvScriptsPath = join(this.venvPath, "Scripts");
+			if (fs.existsSync(venvScriptsPath)) {
+				const currentPath = this.shellEnv.PATH || "";
+				if (!currentPath.includes(venvScriptsPath)) {
+					this.shellEnv.PATH = `${venvScriptsPath};${currentPath}`;
+					logger.info(
+						`Added virtual environment Scripts directory to PATH: ${venvScriptsPath}`,
+						LogFileType.BACKEND,
+					);
+				}
+			}
+
 			logger.info(
 				"Loaded environment variables from Windows user profile",
 				LogFileType.BACKEND,
@@ -802,22 +816,34 @@ export class BackendServiceManager {
 											"/t",
 										]);
 
-										// Also try to kill any child processes by command line pattern
+										// Also try to kill any child processes by process name
 										try {
+											// Use taskkill to find and kill python processes that might be running the backend
 											execPromise(
-												"wmic process where \"commandline like '%local-operator serve%'\" call terminate",
+												'taskkill /f /im python.exe /fi "WINDOWTITLE eq *local-operator*" /t',
 											).catch((error) => {
 												logger.warn(
-													"Error terminating processes by command line pattern:",
+													"Error terminating python processes:",
 													LogFileType.BACKEND,
 													error,
 												);
 											});
-										} catch (wmicError) {
+
+											// Also try to kill any local-operator.exe processes directly
+											execPromise(
+												"taskkill /f /im local-operator.exe /t",
+											).catch((error) => {
+												logger.warn(
+													"Error terminating local-operator processes:",
+													LogFileType.BACKEND,
+													error,
+												);
+											});
+										} catch (taskkillError) {
 											logger.warn(
-												"Error executing WMIC command:",
+												"Error executing taskkill command:",
 												LogFileType.BACKEND,
-												wmicError,
+												taskkillError,
 											);
 										}
 									} else if (this.process) {
@@ -885,12 +911,18 @@ export class BackendServiceManager {
 
 					try {
 						if (process.platform === "win32") {
-							// On Windows, look for processes with "local-operator serve" in the command line
+							// On Windows, use taskkill to find and kill python and local-operator processes
 							await execPromise(
-								"wmic process where \"commandline like '%local-operator serve%'\" call terminate",
+								'taskkill /f /im python.exe /fi "WINDOWTITLE eq *local-operator*" /t',
 							).catch(() => {
 								// Ignore errors, this is a best-effort cleanup
 							});
+
+							await execPromise("taskkill /f /im local-operator.exe /t").catch(
+								() => {
+									// Ignore errors, this is a best-effort cleanup
+								},
+							);
 						} else {
 							// On Unix systems, look for processes with "local-operator serve" in the command line
 							await execPromise('pkill -f "local-operator serve"').catch(() => {

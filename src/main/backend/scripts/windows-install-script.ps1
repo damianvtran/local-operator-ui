@@ -238,12 +238,22 @@ if ($LocalOperatorInstalled) {
 
 Write-Output "$(Get-Date): Installation completed successfully."
 
-# Stop transcript without waiting
+# Properly close the transcript and ensure it's released
 try {
+    Write-Output "Finalizing installation and releasing resources..."
+    # Flush any pending output
+    [System.Console]::Out.Flush()
+    # Stop transcript properly
     Stop-Transcript
+    
+    # Add a small delay to ensure file handles are released
+    Start-Sleep -Seconds 1
+    
+    # Explicitly release any COM objects
+    [System.GC]::Collect()
+    [System.GC]::WaitForPendingFinalizers()
+    
+    Write-Output "Installation completed and resources released."
 } catch {
-    Write-Error "Error stopping transcript: $_"
+    Write-Error "Error during cleanup: $_"
 }
-
-# Don't force garbage collection or add delays here
-# Let the parent process handle waiting for file release
