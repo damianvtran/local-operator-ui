@@ -47,7 +47,7 @@ import {
 export const SearchApiStep: FC = () => {
 	// Get the list of search API credentials
 	const searchApiCredentials = CREDENTIAL_MANIFEST.filter(
-		(cred) => cred.key === "SERP_API_KEY" || cred.key === "TAVILY_API_KEY",
+		(cred) => cred.key === "TAVILY_API_KEY" || cred.key === "SERP_API_KEY",
 	);
 
 	// State for the selected credential and its value
