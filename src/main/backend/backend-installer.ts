@@ -522,14 +522,17 @@ export class BackendInstaller {
 				// Add a small delay after dialog to ensure UI is ready
 				await new Promise((resolve) => setTimeout(resolve, 500));
 
-				// On Windows, start a background task to wait for transcript file release
+				// On Windows, wait for transcript file release before continuing
 				if (process.platform === "win32") {
-					const transcriptPath = join(this.appDataPath, "backend-install.log");
+					const transcriptPath = join(
+						this.appDataPath,
+						"backend-install-shell.log",
+					);
 
-					// Don't await this - let it run in the background
-					(async () => {
+					// Wait for the transcript file to be released
+					await (async () => {
 						logger.info(
-							"Starting background task to wait for transcript file release...",
+							"Waiting for transcript file release before continuing...",
 							LogFileType.INSTALLER,
 						);
 
@@ -544,19 +547,28 @@ export class BackendInstaller {
 									"Transcript file released successfully",
 									LogFileType.INSTALLER,
 								);
+								// Add a small delay after file is released to ensure all resources are freed
+								await new Promise((resolve) => setTimeout(resolve, 1000));
 								break;
 							} catch (error) {
-								await new Promise((resolve) => setTimeout(resolve, 100));
+								logger.info(
+									`Waiting for transcript file to be released (attempt ${attempts + 1}/${maxAttempts})`,
+									LogFileType.INSTALLER,
+								);
+								await new Promise((resolve) => setTimeout(resolve, 500));
 								attempts++;
 							}
 						}
-					})().catch((error) => {
-						logger.error(
-							"Error in transcript file release background task:",
-							LogFileType.INSTALLER,
-							error,
-						);
-					});
+
+						if (attempts >= maxAttempts) {
+							logger.warn(
+								"Timed out waiting for transcript file release, continuing anyway",
+								LogFileType.INSTALLER,
+							);
+							// Add a longer delay if we timed out
+							await new Promise((resolve) => setTimeout(resolve, 2000));
+						}
+					})();
 				}
 
 				return true;
