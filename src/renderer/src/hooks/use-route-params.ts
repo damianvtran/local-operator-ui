@@ -5,6 +5,7 @@
  */
 
 import { useNavigate, useParams } from "react-router-dom";
+import { getCurrentPath, pathIncludes } from "@renderer/utils/path-utils";
 
 /**
  * Hook for working with agent ID in routes
@@ -16,6 +17,15 @@ export const useAgentRouteParam = () => {
 	const navigate = useNavigate();
 
 	/**
+	 * Get the current base path (chat or agents)
+	 * Works with both hash and browser router
+	 */
+	const getCurrentBasePath = (): "chat" | "agents" => {
+		const currentPath = getCurrentPath();
+		return pathIncludes(currentPath, "/chat") ? "chat" : "agents";
+	};
+
+	/**
 	 * Navigate to a specific agent
 	 *
 	 * @param id - Agent ID to navigate to
@@ -24,8 +34,7 @@ export const useAgentRouteParam = () => {
 	const navigateToAgent = (id: string, path?: "chat" | "agents") => {
 		if (!id) return;
 
-		const basePath =
-			path || (window.location.pathname.includes("/chat") ? "chat" : "agents");
+		const basePath = path || getCurrentBasePath();
 		navigate(`/${basePath}/${id}`);
 	};
 
@@ -35,8 +44,7 @@ export const useAgentRouteParam = () => {
 	 * @param path - Base path to navigate to
 	 */
 	const clearAgentId = (path?: "chat" | "agents") => {
-		const basePath =
-			path || (window.location.pathname.includes("/chat") ? "chat" : "agents");
+		const basePath = path || getCurrentBasePath();
 		navigate(`/${basePath}`);
 	};
 
@@ -53,17 +61,17 @@ export const useAgentRouteParam = () => {
  * @returns The current view based on the URL path
  */
 export const useCurrentView = () => {
-	const path = window.location.pathname;
+	const currentPath = getCurrentPath();
 
-	if (path.startsWith("/chat")) {
+	if (pathIncludes(currentPath, "/chat")) {
 		return "chat";
 	}
 
-	if (path.startsWith("/agents")) {
+	if (pathIncludes(currentPath, "/agents")) {
 		return "agents";
 	}
 
-	if (path.startsWith("/settings")) {
+	if (pathIncludes(currentPath, "/settings")) {
 		return "settings";
 	}
 
