@@ -3,7 +3,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { BrowserRouter } from "react-router-dom";
+import { HashRouter } from "react-router-dom";
 import "react-toastify/dist/ReactToastify.css";
 import { ThemedToastContainer } from "./components/common";
 import "./assets/fonts/fonts.css";
@@ -22,9 +22,9 @@ document.addEventListener("DOMContentLoaded", () => {
 				<ThemeProvider>
 					<CssBaseline />
 					<ErrorBoundary>
-						<BrowserRouter>
+						<HashRouter>
 							<App />
-						</BrowserRouter>
+						</HashRouter>
 					</ErrorBoundary>
 					<ThemedToastContainer />
 					{/* React Query DevTools - only in development (positioned at bottom left) */}

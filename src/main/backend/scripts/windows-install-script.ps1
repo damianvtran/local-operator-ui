@@ -7,7 +7,7 @@ $PythonVersion = "3.12.0"
 $VenvName = "local-operator-venv"
 $AppDataDir = "$env:APPDATA\\$AppName"
 $VenvPath = "$AppDataDir\\$VenvName"
-$LogFile = "$AppDataDir\\backend-install.log"
+$LogFile = "$AppDataDir\\backend-install-shell.log"
 $PyenvDir = "$env:USERPROFILE\\.pyenv"
 
 # Create app data directory if it doesn't exist
@@ -59,17 +59,33 @@ if (-not (Test-Path $PyenvDir)) {
     [System.Environment]::SetEnvironmentVariable("PYENV", "$PyenvDir\\pyenv-win", "User")
     [System.Environment]::SetEnvironmentVariable("PYENV_HOME", "$PyenvDir\\pyenv-win", "User")
     
-    # Update PATH
+    # Update PATH - ensure both bin and shims are added separately for better compatibility
     $Path = [System.Environment]::GetEnvironmentVariable("PATH", "User")
-    $PyenvBin = "$PyenvDir\\pyenv-win\\bin;$PyenvDir\\pyenv-win\\shims"
-    if ($Path -notlike "*$PyenvBin*") {
-        [System.Environment]::SetEnvironmentVariable("PATH", "$PyenvBin;$Path", "User")
+    $PyenvBinPath = "$PyenvDir\\pyenv-win\\bin"
+    $PyenvShimsPath = "$PyenvDir\\pyenv-win\\shims"
+    
+    # Add bin path if not already in PATH
+    if ($Path -notlike "*$PyenvBinPath*") {
+        [System.Environment]::SetEnvironmentVariable("PATH", "$PyenvBinPath;$Path", "User")
+        $Path = [System.Environment]::GetEnvironmentVariable("PATH", "User")
     }
+    
+    # Add shims path if not already in PATH
+    if ($Path -notlike "*$PyenvShimsPath*") {
+        [System.Environment]::SetEnvironmentVariable("PATH", "$PyenvShimsPath;$Path", "User")
+    }
+    
+    # Set PYENV environment variables
+    [System.Environment]::SetEnvironmentVariable("PYENV", "$PyenvDir\\pyenv-win", "User")
+    [System.Environment]::SetEnvironmentVariable("PYENV_HOME", "$PyenvDir\\pyenv-win", "User")
     
     # Update current session PATH
     $env:PYENV = "$PyenvDir\\pyenv-win"
     $env:PYENV_HOME = "$PyenvDir\\pyenv-win"
     $env:PATH = "$PyenvDir\\pyenv-win\\bin;$PyenvDir\\pyenv-win\\shims;$env:PATH"
+    
+    # Refresh environment variables for the current process
+    $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "User") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "Machine")
     
     # Clean up
     Remove-Item -Path $TempDir -Recurse -Force
@@ -110,30 +126,134 @@ if ($LASTEXITCODE -ne 0) {
 # Create virtual environment if it doesn't exist
 if (-not (Test-Path $VenvPath)) {
     Write-Output "Creating virtual environment at $VenvPath..."
-    & python -m venv $VenvPath
+    
+    # Ensure the directory exists
+    if (-not (Test-Path $AppDataDir)) {
+        New-Item -ItemType Directory -Path $AppDataDir -Force | Out-Null
+        Write-Output "Created directory: $AppDataDir"
+    }
+    
+    # Use the full path to python from pyenv
+    $PythonExe = "$PyenvDir\\pyenv-win\\versions\\$PythonVersion\\python.exe"
+    
+    if (Test-Path $PythonExe) {
+        Write-Output "Using Python at: $PythonExe"
+        & $PythonExe -m venv $VenvPath
+    } else {
+        Write-Output "Using system Python"
+        & python -m venv $VenvPath
+    }
+    
     if ($LASTEXITCODE -ne 0) {
         Write-Error "Failed to create virtual environment"
         exit 1
     }
 }
 
+# Verify the virtual environment was created
+if (-not (Test-Path "$VenvPath\\Scripts\\Activate.ps1")) {
+    Write-Error "Virtual environment activation script not found at $VenvPath\\Scripts\\Activate.ps1"
+    exit 1
+}
+
 # Activate virtual environment and install local-operator
 Write-Output "Installing local-operator in virtual environment..."
+# Use PowerShell to run the activation script
 & "$VenvPath\\Scripts\\Activate.ps1"
 & python -m pip install --upgrade pip
 & python -m pip install --upgrade local-operator
 
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "Failed to install packages in virtual environment"
+    exit 1
+}
+
 # Verify installation
 $LocalOperatorInstalled = $false
 try {
+    # First try to run local-operator directly (it should be in PATH from the activated venv)
     $Version = & local-operator --version
     $LocalOperatorInstalled = $true
     Write-Output "Local Operator backend installed successfully!"
     Write-Output $Version
 } catch {
-    Write-Error "Error: Failed to install Local Operator backend."
+    Write-Output "Could not run local-operator directly, trying with full path..."
+    try {
+        # Try with explicit path
+        $LocalOperatorExe = "$VenvPath\\Scripts\\local-operator.exe"
+        if (Test-Path $LocalOperatorExe) {
+            $Version = & $LocalOperatorExe --version
+            $LocalOperatorInstalled = $true
+            Write-Output "Local Operator backend installed successfully at $LocalOperatorExe!"
+            Write-Output $Version
+        } else {
+            # Try without .exe extension
+            $LocalOperatorCmd = "$VenvPath\\Scripts\\local-operator"
+            if (Test-Path $LocalOperatorCmd) {
+                $Version = & $LocalOperatorCmd --version
+                $LocalOperatorInstalled = $true
+                Write-Output "Local Operator backend installed successfully at $LocalOperatorCmd!"
+                Write-Output $Version
+            } else {
+                Write-Error "Error: local-operator executable not found in expected locations."
+                
+                # Create a symlink to make it more accessible
+                Write-Output "Attempting to create a symlink for local-operator..."
+                $PythonModule = "$VenvPath\\Lib\\site-packages\\local_operator"
+                if (Test-Path $PythonModule) {
+                    Write-Output "Found local_operator module at $PythonModule"
+                    
+                    # Create a batch file that runs the module
+                    $BatchContent = "@echo off`npython -m local_operator %*"
+                    Set-Content -Path "$VenvPath\\Scripts\\local-operator.bat" -Value $BatchContent
+                    
+                    # Test the batch file
+                    if (Test-Path "$VenvPath\\Scripts\\local-operator.bat") {
+                        Write-Output "Created local-operator.bat in Scripts directory"
+                        $LocalOperatorInstalled = $true
+                    } else {
+                        Write-Error "Failed to create local-operator.bat"
+                        exit 1
+                    }
+                } else {
+                    Write-Error "local_operator module not found in site-packages"
+                    exit 1
+                }
+            }
+        }
+    } catch {
+        Write-Error "Error: Failed to install Local Operator backend."
+        Write-Error $_.Exception.Message
+        exit 1
+    }
+}
+
+# If we got here, installation was successful
+if ($LocalOperatorInstalled) {
+    Write-Output "Local Operator backend installation verified."
+} else {
+    Write-Error "Error: Failed to verify Local Operator backend installation."
     exit 1
 }
 
 Write-Output "$(Get-Date): Installation completed successfully."
-Stop-Transcript
+
+# Properly close the transcript and ensure it's released
+try {
+    Write-Output "Finalizing installation and releasing resources..."
+    # Flush any pending output
+    [System.Console]::Out.Flush()
+    # Stop transcript properly
+    Stop-Transcript
+    
+    # Add a small delay to ensure file handles are released
+    Start-Sleep -Seconds 1
+    
+    # Explicitly release any COM objects
+    [System.GC]::Collect()
+    [System.GC]::WaitForPendingFinalizers()
+    
+    Write-Output "Installation completed and resources released."
+} catch {
+    Write-Error "Error during cleanup: $_"
+}

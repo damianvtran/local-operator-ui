@@ -89,11 +89,18 @@ export class BackendInstaller {
 
 		// Add Windows-specific paths
 		if (process.platform === "win32") {
+			const userProfile = process.env.USERPROFILE || app.getPath("home");
+			const pyenvDir = join(userProfile, ".pyenv");
+
 			possibilities.push(
 				// In packaged app (Windows)
 				join(process.resourcesPath, "python", "python.exe"),
 				// In development (Windows)
 				join(process.cwd(), "resources", "python", "python.exe"),
+				// Check for pyenv-win Python
+				join(pyenvDir, "pyenv-win", "versions", "3.12.0", "python.exe"),
+				// Check for pyenv-win shims
+				join(pyenvDir, "pyenv-win", "shims", "python.exe"),
 			);
 		}
 
@@ -127,17 +134,34 @@ export class BackendInstaller {
 			}
 
 			// Check if local-operator is installed in the virtual environment
-			const localOperatorPath =
-				process.platform === "win32"
-					? join(this.venvPath, "Scripts", "local-operator.exe")
-					: join(this.venvPath, "bin", "local-operator");
+			let localOperatorPath: string;
 
-			if (!fs.existsSync(localOperatorPath)) {
-				logger.info(
-					`local-operator executable not found at ${localOperatorPath}`,
-					LogFileType.INSTALLER,
+			if (process.platform === "win32") {
+				// Windows
+				localOperatorPath = join(
+					this.venvPath,
+					"Scripts",
+					"local-operator.exe",
 				);
-				return false;
+
+				if (!fs.existsSync(localOperatorPath)) {
+					logger.info(
+						`local-operator executable not found at ${localOperatorPath}`,
+						LogFileType.INSTALLER,
+					);
+					return false;
+				}
+			} else {
+				// For non-Windows platforms
+				localOperatorPath = join(this.venvPath, "bin", "local-operator");
+
+				if (!fs.existsSync(localOperatorPath)) {
+					logger.info(
+						`local-operator executable not found at ${localOperatorPath}`,
+						LogFileType.INSTALLER,
+					);
+					return false;
+				}
 			}
 
 			logger.info("Backend is installed", LogFileType.INSTALLER);
@@ -449,14 +473,103 @@ export class BackendInstaller {
 					LogFileType.INSTALLER,
 				);
 
-				// Show success dialog
-				await electronDialog.showMessageBox({
-					type: "info",
-					title: "Setup Complete",
-					message:
-						"✅ Local Operator is ready to use! Everything has been set up successfully.",
-					buttons: ["Let's Go!"],
-				});
+				// Verify the installation by checking if the local-operator executable exists
+				const localOperatorPath =
+					process.platform === "win32"
+						? join(this.venvPath, "Scripts", "local-operator.exe")
+						: join(this.venvPath, "bin", "local-operator");
+
+				if (!fs.existsSync(localOperatorPath)) {
+					logger.error(
+						`Installation verification failed: ${localOperatorPath} not found`,
+						LogFileType.INSTALLER,
+					);
+					throw new Error(
+						"Installation verification failed: local-operator executable not found",
+					);
+				}
+
+				logger.info(
+					"Installation verified successfully",
+					LogFileType.INSTALLER,
+				);
+
+				// Show success dialog and wait for user acknowledgment
+				const { response: successResponse } =
+					await electronDialog.showMessageBox({
+						type: "info",
+						title: "Setup Complete",
+						message:
+							"✅ Local Operator is ready to use! Everything has been set up successfully.",
+						buttons: ["Let's Go!", "Cancel"],
+						defaultId: 0,
+						cancelId: 1,
+					});
+
+				if (successResponse === 1) {
+					// User cancelled installation
+					logger.info(
+						"User ended session after successful installation",
+						LogFileType.INSTALLER,
+					);
+					// Exit the app when installation is cancelled
+					setTimeout(() => {
+						app.exit(0);
+					}, 500);
+					return false;
+				}
+
+				// Add a small delay after dialog to ensure UI is ready
+				await new Promise((resolve) => setTimeout(resolve, 500));
+
+				// On Windows, wait for transcript file release before continuing
+				if (process.platform === "win32") {
+					const transcriptPath = join(
+						this.appDataPath,
+						"backend-install-shell.log",
+					);
+
+					// Wait for the transcript file to be released
+					await (async () => {
+						logger.info(
+							"Waiting for transcript file release before continuing...",
+							LogFileType.INSTALLER,
+						);
+
+						const maxAttempts = 30;
+						let attempts = 0;
+
+						while (attempts < maxAttempts) {
+							try {
+								const fd = fs.openSync(transcriptPath, "a");
+								fs.closeSync(fd);
+								logger.info(
+									"Transcript file released successfully",
+									LogFileType.INSTALLER,
+								);
+								// Add a small delay after file is released to ensure all resources are freed
+								await new Promise((resolve) => setTimeout(resolve, 1000));
+								break;
+							} catch (error) {
+								logger.info(
+									`Waiting for transcript file to be released (attempt ${attempts + 1}/${maxAttempts})`,
+									LogFileType.INSTALLER,
+								);
+								await new Promise((resolve) => setTimeout(resolve, 500));
+								attempts++;
+							}
+						}
+
+						if (attempts >= maxAttempts) {
+							logger.warn(
+								"Timed out waiting for transcript file release, continuing anyway",
+								LogFileType.INSTALLER,
+							);
+							// Add a longer delay if we timed out
+							await new Promise((resolve) => setTimeout(resolve, 2000));
+						}
+					})();
+				}
 
 				return true;
 			}
