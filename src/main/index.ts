@@ -9,13 +9,13 @@ import {
 	nativeImage,
 	shell,
 } from "electron";
-import { LogFileType, logger } from "./backend/logger";
 import icon from "../../resources/icon-180x180-dark.png?asset";
 import {
 	BackendInstaller,
 	BackendServiceManager,
 	LocalOperatorStartupMode,
 } from "./backend";
+import { LogFileType, logger } from "./backend/logger";
 import { UpdateService } from "./update-service";
 
 // Set application name
