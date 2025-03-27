@@ -6,6 +6,7 @@ import { promisify } from "node:util";
 import { type BrowserWindow, app, ipcMain } from "electron";
 import { autoUpdater } from "electron-updater";
 import type { BackendServiceManager } from "./backend/backend-service";
+
 import { LocalOperatorStartupMode } from "./backend/backend-service";
 import { apiConfig } from "./backend/config";
 import { LogFileType, logger } from "./backend/logger";
@@ -1087,6 +1088,8 @@ export class UpdateService {
 					"Stopping backend service before update...",
 					LogFileType.UPDATE_SERVICE,
 				);
+				// Set the auto-updating flag to prevent error dialogs during shutdown
+				this.backendService.setAutoUpdating(true);
 				await this.backendService.stop(true);
 				logger.info(
 					"Backend service stopped successfully",
@@ -1213,6 +1216,9 @@ export class UpdateService {
 					LogFileType.UPDATE_SERVICE,
 				);
 
+				// Reset the auto-updating flag
+				this.backendService.setAutoUpdating(false);
+
 				// Verify the backend is actually running after restart
 				const isRunningAfterRestart = await this.checkBackendHealth();
 				if (!isRunningAfterRestart) {
@@ -1252,6 +1258,10 @@ export class UpdateService {
 					"Failed to restart backend service after update",
 					LogFileType.UPDATE_SERVICE,
 				);
+
+				// Reset the auto-updating flag even if restart failed
+				this.backendService.setAutoUpdating(false);
+
 				if (this.mainWindow) {
 					this.mainWindow.webContents.send(
 						"backend-update-error",

@@ -50,6 +50,7 @@ export class BackendServiceManager {
 	private exitResolve: (() => void) | null = null;
 	private shellEnv: Record<string, string | undefined> = {};
 	private isAppClosing = false; // Flag to track when the app is being closed
+	private isAutoUpdating = false; // Flag to track when an autoupdate is in progress
 
 	/**
 	 * Constructor
@@ -658,8 +659,11 @@ export class BackendServiceManager {
 				// Skip showing the dialog if:
 				// 1. We're on Windows AND the app is closing AND the exit code is 1 (expected on Windows)
 				// 2. OR if the code is 0 or null (normal exit)
+				// 3. OR if we're in the middle of an autoupdate operation
 				const isExpectedWindowsExit =
-					process.platform === "win32" && this.isAppClosing && code === 1;
+					process.platform === "win32" &&
+					(this.isAppClosing || this.isAutoUpdating) &&
+					code === 1;
 
 				if (code !== 0 && code !== null && !isExpectedWindowsExit) {
 					electronDialog.showErrorBox(
@@ -1059,6 +1063,22 @@ export class BackendServiceManager {
 	 */
 	getVenvPath(): string {
 		return this.venvPath;
+	}
+
+	/**
+	 * Check if the backend service is auto-updating
+	 * @returns True if auto-updating, false otherwise
+	 */
+	checkIsAutoUpdating(): boolean {
+		return this.isAutoUpdating;
+	}
+
+	/**
+	 * Set the auto-updating flag
+	 * @param isAutoUpdating True if auto-updating, false otherwise
+	 */
+	setAutoUpdating(isAutoUpdating: boolean): void {
+		this.isAutoUpdating = isAutoUpdating;
 	}
 
 	/**
