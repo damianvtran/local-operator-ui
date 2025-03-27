@@ -55,10 +55,11 @@
 		"pack": "yarn build && electron-builder --dir",
 		"dist": "yarn build && electron-builder",
 		"dist:mac": "yarn build && electron-builder --mac --publish never",
-		"dist:win": "yarn build && electron-builder --win --publish never",
+		"dist:win": "yarn build && electron-builder --win --publish never && yarn update-win-hashes",
 		"dist:linux": "yarn build && electron-builder --linux --publish never",
-		"dist:all": "yarn build && electron-builder -mwl --publish never",
-		"release": "yarn build && electron-builder --publish always",
+		"dist:all": "yarn build && electron-builder -mwl --publish never && yarn update-win-hashes",
+		"release": "yarn build && electron-builder --publish always && yarn update-win-hashes",
+		"update-win-hashes": "node scripts/update-windows-hashes.js",
 		"generate-icons": "node scripts/generate-icons.js",
 		"setup-python": "./scripts/setup-python-resource.sh",
 		"storybook": "storybook dev -p 6006",
@@ -132,7 +133,8 @@
 		"typescript": "^5.8.2",
 		"typescript-eslint": "^8.18.2",
 		"vite": "^6.2.0",
-		"vite-tsconfig-paths": "^5.1.4"
+		"vite-tsconfig-paths": "^5.1.4",
+		"yaml": "^2.7.0"
 	},
 	"peerDependencies": {
 		"react": ">=18.0.0",
