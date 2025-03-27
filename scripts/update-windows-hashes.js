@@ -19,7 +19,7 @@ import * as yaml from "yaml";
  * @param {crypto.BinaryToTextEncoding} encoding - Output encoding (default: 'base64')
  * @returns {Promise<string>} Promise resolving to the hash string
  */
-async function hashFile(filePath, algorithm = "sha512", encoding = "base64") {
+const hashFile = (filePath, algorithm = "sha512", encoding = "base64") => {
 	return new Promise((resolve, reject) => {
 		const hash = crypto.createHash(algorithm);
 		const stream = fsSync.createReadStream(filePath, {
@@ -38,7 +38,7 @@ async function hashFile(filePath, algorithm = "sha512", encoding = "base64") {
 			resolve(hashValue);
 		});
 	});
-}
+};
 
 /**
  * Updates the hashes in the latest.yml file for Windows installers
@@ -47,7 +47,7 @@ async function hashFile(filePath, algorithm = "sha512", encoding = "base64") {
  * @param {string} distDir - Directory containing the installer files
  * @returns {Promise<void>}
  */
-async function updateWindowsHashes(latestYmlPath, distDir) {
+const updateWindowsHashes = async (latestYmlPath, distDir) => {
 	try {
 		// Read and parse the latest.yml file
 		const ymlContent = await fs.readFile(latestYmlPath, "utf8");
@@ -96,13 +96,13 @@ async function updateWindowsHashes(latestYmlPath, distDir) {
 		console.error("Failed to update hashes:", err);
 		process.exit(1);
 	}
-}
+};
 
 /**
  * Main function to run the script
  * @returns {Promise<void>}
  */
-async function main() {
+const main = async () => {
 	// Get the dist directory from the current working directory
 	const distDir = path.resolve(process.cwd(), "dist");
 	const latestYmlPath = path.join(distDir, "latest.yml");
@@ -117,7 +117,7 @@ async function main() {
 		console.error(`Error: ${latestYmlPath} not found or not accessible`);
 		process.exit(1);
 	}
-}
+};
 
 // Run the script
 main().catch((err) => {
