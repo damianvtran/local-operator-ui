@@ -510,6 +510,7 @@ export class UpdateService {
 				"Quitting and installing update...",
 				LogFileType.UPDATE_SERVICE,
 			);
+			this.backendService?.setAutoUpdating(true);
 			autoUpdater.quitAndInstall(false, true);
 		});
 	}
