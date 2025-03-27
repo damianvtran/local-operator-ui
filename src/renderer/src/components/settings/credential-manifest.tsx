@@ -72,6 +72,13 @@ export const CREDENTIAL_MANIFEST = [
 			"API key for Tavily, a search API designed specifically for AI applications.  Allows your agents to search the web for information.",
 		url: "https://tavily.com/#api",
 	},
+	{
+		key: "FAL_API_KEY",
+		name: "FAL API Key",
+		description:
+			"API key for FAL, used by agents for generating, interpreting, and understanding images.",
+		url: "https://docs.fal.ai/quick-start",
+	},
 ];
 
 /**
