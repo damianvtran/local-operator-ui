@@ -1117,6 +1117,7 @@ export class UpdateService {
 						} else if (process.platform === "win32") {
 							pythonPath = join(
 								this.backendService?.getVenvPath(),
+								"Scripts",
 								"python.exe",
 							);
 						} else if (process.platform === "linux") {
