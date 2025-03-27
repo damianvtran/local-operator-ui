@@ -8,21 +8,8 @@ set -e  # Exit immediately if a command exits with a non-zero status
 set -u  # Error on unset variables
 set -o pipefail  # Fail if any command in a pipe fails
 
-# Handle cleanup on script exit
-cleanup() {
-  # Remove any temporary files created during execution
-  if [ -f "$APP_DATA_DIR/get-pip.py" ]; then
-    rm -f "$APP_DATA_DIR/get-pip.py"
-  fi
-  echo "$(date): Cleanup completed."
-}
-
-# Set trap for script interruption
-trap cleanup EXIT
-
 # Configuration
-APP_NAME="Local Operator"
-MIN_PYTHON_VERSION="3.12"
+# Variables APP_NAME and MIN_PYTHON_VERSION removed as they were unused
 VENV_NAME="local-operator-venv"
 APP_DATA_DIR="${HOME}/.config/local-operator"
 VENV_PATH="${APP_DATA_DIR}/${VENV_NAME}"
@@ -30,12 +17,24 @@ LOG_FILE="${APP_DATA_DIR}/backend-install.log"
 TIMESTAMP=$(date +"%Y-%m-%d_%H-%M-%S")
 
 # Create app data directory if it doesn't exist
-mkdir -p "${APP_DATA_DIR}"
-if [ $? -ne 0 ]; then
+if ! mkdir -p "${APP_DATA_DIR}"; then
   echo "ERROR: Unable to create app data directory at ${APP_DATA_DIR}"
   echo "Please check permissions and try again."
   exit 1
 fi
+
+# Handle cleanup on script exit
+cleanup() {
+  # Remove any temporary files created during execution
+  if [ -f "${APP_DATA_DIR}/get-pip.py" ]; then
+    rm -f "${APP_DATA_DIR}/get-pip.py"
+  fi
+  echo "$(date): Cleanup completed."
+}
+
+# Set trap only for manual interruption (SIGINT, SIGTERM), not normal exits
+trap cleanup SIGINT SIGTERM
+
 
 # Start logging
 exec > >(tee -a "${LOG_FILE}") 2>&1
@@ -144,8 +143,7 @@ if [ -z "${PYTHON_BIN:-}" ] || ! is_valid_python_binary "${PYTHON_BIN:-}"; then
     
     if is_valid_python_binary "${path}"; then
       # Check Python version
-      PY_VERSION=$("${path}" -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>/dev/null)
-      if [ $? -eq 0 ]; then
+      if PY_VERSION=$("${path}" -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>/dev/null); then
         MAJOR=$(echo "${PY_VERSION}" | cut -d. -f1)
         MINOR=$(echo "${PY_VERSION}" | cut -d. -f2)
         if [ "${MAJOR}" -eq 3 ] && [ "${MINOR}" -ge 12 ]; then
@@ -192,11 +190,12 @@ else
 fi
 
 # Get Python version for package names
-PYTHON_VERSION=$("${PYTHON_BIN}" -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>/dev/null)
-if [ $? -ne 0 ]; then
+if ! PYTHON_VERSION=$("${PYTHON_BIN}" -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>/dev/null); then
   error_exit "Failed to determine Python version from ${PYTHON_BIN}"
 fi
-PYTHON_MAJOR_VERSION=$("${PYTHON_BIN}" -c "import sys; print(sys.version_info.major)" 2>/dev/null)
+if ! PYTHON_MAJOR_VERSION=$("${PYTHON_BIN}" -c "import sys; print(sys.version_info.major)" 2>/dev/null); then
+  error_exit "Failed to determine Python major version from ${PYTHON_BIN}"
+fi
 
 # Check if Python has venv module and ensurepip available
 log "Checking for venv module and ensurepip availability..."
@@ -216,9 +215,25 @@ if [ $VENV_AVAILABLE -ne 0 ] || [ $ENSUREPIP_AVAILABLE -ne 0 ]; then
   # Determine required packages based on distribution
   if [[ "$DISTRO" =~ ^(ubuntu|debian|linuxmint|pop|mint)$ ]]; then
     # For Debian-based distributions
-    VENV_PACKAGE="python${PYTHON_VERSION}-venv python${PYTHON_VERSION}-full"
-    ENSUREPIP_PACKAGE="python${PYTHON_VERSION}-venv"
-    PIP_PACKAGE="python${PYTHON_VERSION}-pip"
+    log "Detected Debian-based distribution: $DISTRO"
+    # Update package lists first
+    if command_exists apt-get && command_exists sudo; then
+      log "Updating package lists..."
+      sudo apt-get update
+    fi
+    
+    # Special handling for Linux Mint
+    if [[ "$DISTRO" =~ ^(linuxmint|mint)$ ]]; then
+      # Mint might need different package names
+      VENV_PACKAGE="python3-venv python3-full"
+      ENSUREPIP_PACKAGE="python3-venv"
+      PIP_PACKAGE="python3-pip"
+    else
+      # Regular Debian/Ubuntu package names
+      VENV_PACKAGE="python${PYTHON_VERSION}-venv python${PYTHON_VERSION}-full"
+      ENSUREPIP_PACKAGE="python${PYTHON_VERSION}-venv"
+      PIP_PACKAGE="python${PYTHON_VERSION}-pip"
+    fi
     INSTALL_CMD="apt-get install -y"
     SUDO_INSTALL_CMD="sudo apt-get install -y"
   elif [[ "$DISTRO" =~ ^(fedora|rhel|centos|rocky|alma)$ ]]; then
@@ -284,13 +299,31 @@ if [ $VENV_AVAILABLE -ne 0 ] || [ $ENSUREPIP_AVAILABLE -ne 0 ]; then
   if [ -n "$INSTALL_CMD" ]; then
     echo "Attempting to install required packages..."
     
-    # Try to install without sudo first
-    $INSTALL_CMD $VENV_PACKAGE $PIP_PACKAGE > /dev/null 2>&1
-    if [ $? -ne 0 ]; then
-      echo "Non-sudo installation failed. Trying with sudo..."
+    # Try to install without sudo first, but show output for debugging
+    log "Trying installation without sudo..."
+    echo "$INSTALL_CMD $VENV_PACKAGE $PIP_PACKAGE"
+    
+    # Temporarily disable strict error handling for this section
+    set +e
+    $INSTALL_CMD $VENV_PACKAGE $PIP_PACKAGE
+    INSTALL_STATUS=$?
+    set -e
+    
+    if [ $INSTALL_STATUS -ne 0 ]; then
+      log "Non-sudo installation failed. Trying with sudo..."
       if command_exists sudo; then
-        $SUDO_INSTALL_CMD $VENV_PACKAGE $PIP_PACKAGE
+        # Try with sudo
+        echo "$SUDO_INSTALL_CMD $VENV_PACKAGE $PIP_PACKAGE"
+        sudo apt-get update
+        $SUDO_INSTALL_CMD $VENV_PACKAGE $PIP_PACKAGE || true
         INSTALL_ATTEMPTED=1
+        
+        # If we're on Linux Mint, try alternative package combinations
+        if [[ "$DISTRO" =~ ^(linuxmint|mint)$ ]]; then
+          log "Attempting installation with generic Python 3 packages..."
+          sudo apt-get install -y python3-venv python3-pip || true
+          INSTALL_ATTEMPTED=1
+        fi
       else
         echo "sudo not available. Please install $VENV_PACKAGE and $PIP_PACKAGE manually."
         echo "For $DISTRO: $SUDO_INSTALL_CMD $VENV_PACKAGE $PIP_PACKAGE"
@@ -302,11 +335,29 @@ if [ $VENV_AVAILABLE -ne 0 ] || [ $ENSUREPIP_AVAILABLE -ne 0 ]; then
   else
     echo "Unable to determine package manager. Attempting to install with common package managers..."
     
-    # Try common package managers with sudo
-    if command_exists apt-get && command_exists sudo; then
-      echo "Trying apt-get..."
-      sudo apt-get update && sudo apt-get install -y python${PYTHON_VERSION}-venv python${PYTHON_VERSION}-full python${PYTHON_VERSION}-pip
-      INSTALL_ATTEMPTED=1
+      # Try common package managers with sudo
+      if command_exists apt-get && command_exists sudo; then
+        echo "Trying apt-get..."
+        
+        # Temporarily disable strict error handling for this section
+        set +e
+        
+        # Update package lists first
+        sudo apt-get update
+        
+        # First try specific Python version
+        echo "Installing with specific Python version: ${PYTHON_VERSION}"
+        sudo apt-get install -y python${PYTHON_VERSION}-venv python${PYTHON_VERSION}-full python${PYTHON_VERSION}-pip
+        if [ $? -ne 0 ]; then
+          # If specific version fails, try generic Python3 packages
+          echo "Trying generic Python3 packages..."
+          sudo apt-get install -y python3-venv python3-full python3-pip
+        fi
+        
+        # Re-enable strict error handling
+        set -e
+        
+        INSTALL_ATTEMPTED=1
     elif command_exists dnf && command_exists sudo; then
       echo "Trying dnf..."
       sudo dnf install -y python${PYTHON_MAJOR_VERSION}-devel python${PYTHON_MAJOR_VERSION}-pip
@@ -351,7 +402,23 @@ if [ $VENV_AVAILABLE -ne 0 ] || [ $ENSUREPIP_AVAILABLE -ne 0 ]; then
       if [[ "$DISTRO" =~ ^(ubuntu|debian|linuxmint|pop|mint)$ ]] || command_exists apt-get; then
         echo "Trying to install python3-full package..."
         if command_exists sudo; then
-          sudo apt-get update && sudo apt-get install -y python3-full
+          # Temporarily disable exit on error for this part
+          set +e
+          
+          sudo apt-get update
+          sudo apt-get install -y python3-full
+          
+          # Also try to install the venv package separately
+          sudo apt-get install -y python3-venv
+          
+          # And try using python3-full specifically from PPA for Linux Mint
+          if [[ "$DISTRO" =~ ^(linuxmint|mint)$ ]]; then
+            echo "Trying with python3.12 explicitly for Linux Mint..."
+            sudo apt-get install -y python3.12-full python3.12-venv
+          fi
+          
+          # Re-enable exit on error
+          set -e
           
           # Check again after python3-full installation
           "$PYTHON_BIN" -c "import venv" > /dev/null 2>&1 || VENV_AVAILABLE=1
@@ -361,7 +428,9 @@ if [ $VENV_AVAILABLE -ne 0 ] || [ $ENSUREPIP_AVAILABLE -ne 0 ]; then
             echo "Successfully installed venv support with python3-full!"
           else
             echo "Failed to install venv support even with python3-full."
-            exit 1
+            # Don't exit immediately, try to compile from source as a last resort
+            echo "Attempting to install virtualenv as a fallback..."
+            "$PYTHON_BIN" -m pip install --user virtualenv || true
           fi
         else
           echo "sudo not available to install python3-full package."
@@ -681,6 +750,9 @@ else
 fi
 
 log "Installation completed successfully at $(date)"
+
+# Clean up temporary files now that installation is complete
+cleanup
 
 # Print final instructions
 log ""
