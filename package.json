@@ -10,13 +10,13 @@
 	"license": "GPL-3.0-or-later",
 	"author": {
 		"name": "Damian Tran",
-		"email": "damianvtran@gmail.com",
+		"email": "damian@local-operator.com",
 		"url": "https://github.com/damianvtran"
 	},
 	"contributors": [
 		{
 			"name": "Damian Tran",
-			"email": "damianvtran@gmail.com",
+			"email": "damian@local-operator.com",
 			"url": "https://github.com/damianvtran"
 		}
 	],
@@ -212,7 +212,16 @@
 		"linux": {
 			"icon": "resources/icon-512x512.png",
 			"category": "Development",
-			"target": ["deb", "AppImage", "rpm"],
+			"target": [
+				{
+					"target": "deb",
+					"arch": "x64"
+				},
+				{
+					"target": "AppImage",
+					"arch": "x64"
+				}
+			],
 			"artifactName": "${name}-${version}-${arch}.${ext}",
 			"desktop": {
 				"Name": "Local Operator",
