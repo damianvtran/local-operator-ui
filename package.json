@@ -1,6 +1,6 @@
 {
 	"name": "local-operator-ui",
-	"version": "0.3.1",
+	"version": "0.3.2",
 	"productName": "Local Operator",
 	"description": "User interface for the Local Operator agent environment",
 	"main": "./out/main/index.js",
@@ -10,13 +10,13 @@
 	"license": "GPL-3.0-or-later",
 	"author": {
 		"name": "Damian Tran",
-		"email": "damianvtran@gmail.com",
+		"email": "damian@local-operator.com",
 		"url": "https://github.com/damianvtran"
 	},
 	"contributors": [
 		{
 			"name": "Damian Tran",
-			"email": "damianvtran@gmail.com",
+			"email": "damian@local-operator.com",
 			"url": "https://github.com/damianvtran"
 		}
 	],
@@ -211,14 +211,33 @@
 		},
 		"linux": {
 			"icon": "resources/icon-512x512.png",
-			"category": "Development",
-			"target": ["deb", "AppImage", "rpm"],
+			"category": "ArtificialIntelligence",
+			"target": [
+				{
+					"target": "deb",
+					"arch": "x64"
+				},
+				{
+					"target": "AppImage",
+					"arch": "x64"
+				},
+				{
+					"target": "rpm",
+					"arch": "x64"
+				}
+			],
 			"artifactName": "${name}-${version}-${arch}.${ext}",
 			"desktop": {
 				"Name": "Local Operator",
 				"Comment": "AI Agent Assistants On Your Device",
-				"Categories": "Development;Utility"
+				"Categories": "ArtificialIntelligence"
 			}
+		},
+		"deb": {
+			"depends": ["python3.12-full", "python3.12-venv"]
+		},
+		"rpm": {
+			"depends": ["python3.12-full", "python3.12-venv"]
 		},
 		"publish": {
 			"provider": "github",

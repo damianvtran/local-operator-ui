@@ -75,7 +75,7 @@ We follow responsible disclosure practices. Once a vulnerability or incident is 
 
 For any additional security-related inquiries or assistance with creating a GitHub Security Advisory, please contact:
 
-- **Email:** [damianvtran@gmail.com](mailto:damianvtran@gmail.com)
+- **Email:** [damian@local-operator.com](mailto:damian@local-operator.com)
 
 ## Additional Resources
 
