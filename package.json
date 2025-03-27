@@ -211,7 +211,7 @@
 		},
 		"linux": {
 			"icon": "resources/icon-512x512.png",
-			"category": "Development",
+			"category": "ArtificialIntelligence",
 			"target": [
 				{
 					"target": "deb",
@@ -226,8 +226,14 @@
 			"desktop": {
 				"Name": "Local Operator",
 				"Comment": "AI Agent Assistants On Your Device",
-				"Categories": "Development;Utility"
+				"Categories": "ArtificialIntelligence"
 			}
+		},
+		"deb": {
+			"depends": ["python3.12-full", "python3.12-venv"]
+		},
+		"rpm": {
+			"depends": ["python3.12-full", "python3.12-venv"]
 		},
 		"publish": {
 			"provider": "github",
