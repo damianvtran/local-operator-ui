@@ -355,15 +355,6 @@ app.on("window-all-closed", () => {
 		return;
 	}
 
-	// Check if we're in the middle of an auto-update process
-	if (backendService.checkIsAutoUpdating()) {
-		logger.info(
-			"All windows closed during auto-update process, exit will not be handled by window-all-closed event",
-			LogFileType.UPDATE_SERVICE,
-		);
-		return;
-	}
-
 	// If we get here, the user has explicitly closed all windows, so quit the app
 	logger.info(
 		"All windows closed by user, quitting app via window-all-closed event (non-macOS platform)",
