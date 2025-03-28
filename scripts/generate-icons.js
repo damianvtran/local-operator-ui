@@ -23,7 +23,7 @@ const { Resvg } = require("@resvg/resvg-js");
 // Configuration
 const defaultIconPath = path.join(__dirname, "../resources/icon.png");
 const sourceImage = process.argv[2];
-const outputDir = path.join(__dirname, "../resources");
+const outputDir = path.join(__dirname, "../build");
 
 // Validate source image
 if (!sourceImage) {
