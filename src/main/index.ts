@@ -327,7 +327,6 @@ app.whenReady().then(async () => {
 		if (BrowserWindow.getAllWindows().length === 0) createWindow();
 	});
 });
-
 // Quit when all windows are closed, except on macOS. There, it's common
 // for applications and their menu bar to stay active until the user quits
 // explicitly with Cmd + Q.
@@ -341,8 +340,8 @@ app.on("window-all-closed", () => {
 		return;
 	}
 
-	// For Windows and Linux, we need to check if we're in the installation process
-	// or if the user has explicitly closed all windows
+	// For Windows and Linux, we need to check if we're in the installation process,
+	// auto-update process, or if the user has explicitly closed all windows
 
 	// Check if we're in the installation process by looking at the backendInstaller state
 	// If the backend service is not yet started, we're likely in the installation process
@@ -352,6 +351,15 @@ app.on("window-all-closed", () => {
 		logger.info(
 			"All windows closed during startup/installation, exit will not be handled by window-all-closed event",
 			LogFileType.BACKEND,
+		);
+		return;
+	}
+
+	// Check if we're in the middle of an auto-update process
+	if (backendService.checkIsAutoUpdating()) {
+		logger.info(
+			"All windows closed during auto-update process, exit will not be handled by window-all-closed event",
+			LogFileType.UPDATE_SERVICE,
 		);
 		return;
 	}
