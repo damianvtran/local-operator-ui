@@ -163,7 +163,6 @@
 		"afterSign": "scripts/notarize.js",
 		"mac": {
 			"notarize": false,
-			"icon": "resources/icon-512x512.png",
 			"category": "public.app-category.developer-tools",
 			"hardenedRuntime": true,
 			"gatekeeperAssess": false,
@@ -192,7 +191,6 @@
 			}
 		},
 		"win": {
-			"icon": "resources/icon-512x512.png",
 			"target": [
 				{
 					"target": "nsis",
@@ -208,7 +206,6 @@
 			"license": "build/LICENSE.txt"
 		},
 		"linux": {
-			"icon": "resources/icon-512x512.png",
 			"category": "ArtificialIntelligence",
 			"target": [
 				{
