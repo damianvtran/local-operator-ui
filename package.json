@@ -150,7 +150,7 @@
 		"files": ["out/**/*", "bin/**/*", "LICENSE", "README.md"],
 		"directories": {
 			"output": "dist",
-			"buildResources": "resources"
+			"buildResources": "build"
 		},
 		"extraResources": [
 			{
@@ -201,10 +201,13 @@
 		"nsis": {
 			"createDesktopShortcut": true,
 			"createStartMenuShortcut": true,
-			"deleteAppDataOnUninstall": true
+			"deleteAppDataOnUninstall": true,
+			"displayLanguageSelector": true,
+			"multiLanguageInstaller": true
 		},
 		"linux": {
 			"category": "ArtificialIntelligence",
+			"icon": "build/icon.icns",
 			"target": [
 				{
 					"target": "deb",
