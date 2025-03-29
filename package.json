@@ -37,7 +37,12 @@
 		"electron",
 		"react"
 	],
-	"files": ["out", "bin", "LICENSE", "README.md"],
+	"files": [
+		"out",
+		"bin",
+		"LICENSE",
+		"README.md"
+	],
 	"publishConfig": {
 		"access": "public"
 	},
@@ -74,7 +79,6 @@
 		"@fortawesome/free-solid-svg-icons": "^6.7.2",
 		"@fortawesome/react-fontawesome": "^0.2.2",
 		"@mui/material": "^6.4.2",
-		"@resvg/resvg-js": "^2.6.2",
 		"@tanstack/react-query": "^5.67.1",
 		"@tanstack/react-query-devtools": "^5.67.1",
 		"date-fns": "^4.1.0",
@@ -148,7 +152,12 @@
 		"productName": "Local Operator",
 		"copyright": "Copyright © 2025 Damian Tran",
 		"asar": true,
-		"files": ["out/**/*", "bin/**/*", "LICENSE", "README.md"],
+		"files": [
+			"out/**/*",
+			"bin/**/*",
+			"LICENSE",
+			"README.md"
+		],
 		"directories": {
 			"output": "dist",
 			"buildResources": "resources"
@@ -157,7 +166,9 @@
 			{
 				"from": "resources/python",
 				"to": "python",
-				"filter": ["**/*"]
+				"filter": [
+					"**/*"
+				]
 			}
 		],
 		"afterSign": "scripts/notarize.js",
@@ -168,7 +179,10 @@
 			"gatekeeperAssess": false,
 			"entitlements": "build/entitlements.mac.plist",
 			"entitlementsInherit": "build/entitlements.mac.plist",
-			"target": ["dmg", "zip"],
+			"target": [
+				"dmg",
+				"zip"
+			],
 			"artifactName": "${name}-${version}-${arch}.${ext}"
 		},
 		"dmg": {
@@ -194,7 +208,10 @@
 			"target": [
 				{
 					"target": "nsis",
-					"arch": ["x64", "arm64"]
+					"arch": [
+						"x64",
+						"arm64"
+					]
 				}
 			],
 			"artifactName": "${name}-${version}-${arch}.${ext}"
@@ -229,10 +246,16 @@
 			}
 		},
 		"deb": {
-			"depends": ["python3.12-full", "python3.12-venv"]
+			"depends": [
+				"python3.12-full",
+				"python3.12-venv"
+			]
 		},
 		"rpm": {
-			"depends": ["python3.12-full", "python3.12-venv"]
+			"depends": [
+				"python3.12-full",
+				"python3.12-venv"
+			]
 		},
 		"publish": {
 			"provider": "github",
@@ -244,6 +267,8 @@
 		"generateUpdatesFilesForAllChannels": true
 	},
 	"eslintConfig": {
-		"extends": ["plugin:storybook/recommended"]
+		"extends": [
+			"plugin:storybook/recommended"
+		]
 	}
 }
