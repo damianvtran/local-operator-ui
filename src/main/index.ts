@@ -9,7 +9,7 @@ import {
 	nativeImage,
 	shell,
 } from "electron";
-import icon from "../../resources/icon-180x180-dark.png?asset";
+import icon from "../../resources/icon.png?asset";
 import {
 	BackendInstaller,
 	BackendServiceManager,
