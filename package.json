@@ -2,7 +2,7 @@
 	"name": "local-operator-ui",
 	"version": "0.3.6",
 	"productName": "Local Operator",
-	"description": "User interface for the Local Operator agent environment",
+	"description": "User interface for AI agent assistants that run Python code safely on your device through an intuitive chat interface. Supports local and cloud LLM models with built-in security features.",
 	"main": "./out/main/index.js",
 	"bin": {
 		"local-operator-ui": "./bin/local-operator-ui.js"
@@ -201,8 +201,7 @@
 		"nsis": {
 			"createDesktopShortcut": true,
 			"createStartMenuShortcut": true,
-			"deleteAppDataOnUninstall": true,
-			"license": "build/LICENSE.txt"
+			"deleteAppDataOnUninstall": true
 		},
 		"linux": {
 			"category": "ArtificialIntelligence",
