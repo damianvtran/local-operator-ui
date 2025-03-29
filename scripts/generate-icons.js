@@ -32,18 +32,6 @@ if (!sourceImage) {
 	process.exit(1);
 }
 
-// Check if source image is the same as output icon.png
-const absoluteSourcePath = path.resolve(sourceImage);
-const absoluteIconPath = path.resolve(defaultIconPath);
-
-if (absoluteSourcePath === absoluteIconPath) {
-	console.error(
-		"Error: Source image cannot be the same as the output icon.png.",
-	);
-	console.error("Please provide a different source image.");
-	process.exit(1);
-}
-
 // Ensure output directory exists
 if (!fs.existsSync(outputDir)) {
 	fs.mkdirSync(outputDir, { recursive: true });
