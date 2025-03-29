@@ -207,7 +207,7 @@
 		},
 		"linux": {
 			"category": "ArtificialIntelligence",
-			"icon": "build/icon.icns",
+			"icon": "build/",
 			"target": [
 				{
 					"target": "deb",
