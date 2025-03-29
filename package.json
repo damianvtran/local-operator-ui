@@ -1,6 +1,6 @@
 {
 	"name": "local-operator-ui",
-	"version": "0.3.5",
+	"version": "0.3.6",
 	"productName": "Local Operator",
 	"description": "User interface for the Local Operator agent environment",
 	"main": "./out/main/index.js",
@@ -37,12 +37,7 @@
 		"electron",
 		"react"
 	],
-	"files": [
-		"out",
-		"bin",
-		"LICENSE",
-		"README.md"
-	],
+	"files": ["out", "bin", "LICENSE", "README.md"],
 	"publishConfig": {
 		"access": "public"
 	},
@@ -60,11 +55,10 @@
 		"pack": "yarn build && electron-builder --dir",
 		"dist": "yarn build && electron-builder",
 		"dist:mac": "yarn build && electron-builder --mac --publish never",
-		"dist:win": "yarn build && electron-builder --win --publish never && yarn update-win-hashes",
+		"dist:win": "yarn build && electron-builder --win --publish never",
 		"dist:linux": "yarn build && electron-builder --linux --publish never",
-		"dist:all": "yarn build && electron-builder -mwl --publish never && yarn update-win-hashes",
-		"release": "yarn build && electron-builder --publish always && yarn update-win-hashes",
-		"update-win-hashes": "node scripts/update-windows-hashes.js",
+		"dist:all": "yarn build && electron-builder -mwl --publish never",
+		"release": "yarn build && electron-builder --publish always",
 		"generate-icons": "node scripts/generate-icons.js",
 		"setup-python": "./scripts/setup-python-resource.sh",
 		"storybook": "storybook dev -p 6006",
@@ -153,12 +147,7 @@
 		"productName": "Local Operator",
 		"copyright": "Copyright © 2025 Damian Tran",
 		"asar": true,
-		"files": [
-			"out/**/*",
-			"bin/**/*",
-			"LICENSE",
-			"README.md"
-		],
+		"files": ["out/**/*", "bin/**/*", "LICENSE", "README.md"],
 		"directories": {
 			"output": "dist",
 			"buildResources": "resources"
@@ -167,9 +156,7 @@
 			{
 				"from": "resources/python",
 				"to": "python",
-				"filter": [
-					"**/*"
-				]
+				"filter": ["**/*"]
 			}
 		],
 		"afterSign": "scripts/notarize.js",
@@ -180,10 +167,7 @@
 			"gatekeeperAssess": false,
 			"entitlements": "build/entitlements.mac.plist",
 			"entitlementsInherit": "build/entitlements.mac.plist",
-			"target": [
-				"dmg",
-				"zip"
-			],
+			"target": ["dmg", "zip"],
 			"artifactName": "${name}-${version}-${arch}.${ext}"
 		},
 		"dmg": {
@@ -209,13 +193,10 @@
 			"target": [
 				{
 					"target": "nsis",
-					"arch": [
-						"x64",
-						"arm64"
-					]
+					"arch": ["x64", "arm64"]
 				}
 			],
-			"artifactName": "${name}-${version}-${arch}.${ext}"
+			"artifactName": "${name}-setup-${version}-${arch}.${ext}"
 		},
 		"nsis": {
 			"createDesktopShortcut": true,
@@ -247,16 +228,10 @@
 			}
 		},
 		"deb": {
-			"depends": [
-				"python3.12-full",
-				"python3.12-venv"
-			]
+			"depends": ["python3.12-full", "python3.12-venv"]
 		},
 		"rpm": {
-			"depends": [
-				"python3.12-full",
-				"python3.12-venv"
-			]
+			"depends": ["python3.12-full", "python3.12-venv"]
 		},
 		"publish": {
 			"provider": "github",
@@ -268,8 +243,6 @@
 		"generateUpdatesFilesForAllChannels": true
 	},
 	"eslintConfig": {
-		"extends": [
-			"plugin:storybook/recommended"
-		]
+		"extends": ["plugin:storybook/recommended"]
 	}
 }
