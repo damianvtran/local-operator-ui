@@ -1,0 +1,200 @@
+END USER LICENSE AGREEMENT (EULA)
+
+FOR LOCAL OPERATOR SOFTWARE INSTALLER
+
+EFFECTIVE DATE: MARCH 23, 2025
+
+IMPORTANT - READ CAREFULLY BEFORE INSTALLING OR USING THE SOFTWARE
+
+THIS END USER LICENSE AGREEMENT ("EULA" OR "AGREEMENT") IS A LEGAL AGREEMENT BETWEEN YOU (EITHER AN INDIVIDUAL OR A SINGLE ENTITY) AND THE OWNER AND OPERATOR OF LOCAL OPERATOR ("LICENSOR," "WE," "US," OR "OUR") FOR THE LOCAL OPERATOR SOFTWARE INSTALLER AND RELATED SOFTWARE COMPONENTS ("SOFTWARE"). BY INSTALLING, COPYING, OR OTHERWISE USING THE SOFTWARE, YOU AGREE TO BE BOUND BY THE TERMS OF THIS EULA. IF YOU DO NOT AGREE TO THE TERMS OF THIS EULA, DO NOT INSTALL OR USE THE SOFTWARE.
+
+1. LEGAL NOTICE
+
+THIS DOCUMENT CONTAINS IMPORTANT LEGAL INFORMATION. PLEASE READ IT CAREFULLY BEFORE PROCEEDING WITH THE INSTALLATION. THIS EULA APPLIES SPECIFICALLY TO THE INSTALLER SOFTWARE. ONCE THE SOFTWARE IS INSTALLED, YOUR USE OF THE LOCAL OPERATOR APPLICATION WILL BE GOVERNED BY THE TERMS AND CONDITIONS AVAILABLE AT [INSERT URL TO TERMS AND CONDITIONS] AND THE PRIVACY POLICY AVAILABLE AT [INSERT URL TO PRIVACY POLICY].
+
+2. LICENSE GRANT
+
+2.1 Installer License
+Subject to the terms and conditions of this EULA, Licensor hereby grants you a limited, non-exclusive, non-transferable license to use the Software installer for the sole purpose of installing the Local Operator application on your device(s).
+
+2.2 GPL 3.0 License
+The Local Operator application that will be installed by this Software is licensed under the GNU General Public License version 3.0 (GPL 3.0), a copy of which can be found at https://www.gnu.org/licenses/gpl-3.0.en.html. Your rights to use, copy, modify, and distribute the Local Operator application after installation are governed by the GPL 3.0 license.
+
+2.3 Reservation of Rights
+All rights not expressly granted to you in this EULA are reserved by Licensor and its licensors.
+
+3. DESCRIPTION OF SOFTWARE
+
+3.1 Installer Functionality
+The Software is an installer program designed to facilitate the installation of the Local Operator application on your device(s). The installer may perform the following functions:
+
+a) Verify system requirements and compatibility;
+
+b) Download necessary components for the Local Operator application;
+
+c) Configure your system for optimal performance of the Local Operator application;
+
+d) Create necessary directories and files on your device;
+
+e) Register the Local Operator application with your operating system;
+
+f) Install dependencies required for the Local Operator application to function properly.
+
+3.2 Installer Data Collection
+During the installation process, the Software may collect certain information about your device, such as:
+
+a) Operating system type and version;
+
+b) Hardware specifications;
+
+c) Network configuration;
+
+d) Existing software that may interact with the Local Operator application;
+
+e) Installation success or failure information.
+
+This information is used solely for the purpose of facilitating the installation process and improving the Software. For more information about data collection practices, please refer to our Privacy Policy.
+
+4. LICENSE RESTRICTIONS
+
+4.1 Prohibited Actions
+You shall not:
+
+a) Modify, adapt, translate, reverse engineer, decompile, disassemble, or otherwise attempt to discover the source code of the Software installer, except to the extent that such activity is expressly permitted by applicable law notwithstanding this limitation;
+
+b) Create derivative works based on the Software installer;
+
+c) Copy the Software installer except as expressly permitted in this EULA;
+
+d) Rent, lease, loan, sell, distribute, or sublicense the Software installer;
+
+e) Remove or alter any proprietary notices or labels on the Software installer;
+
+f) Use the Software installer to install the Local Operator application on more devices than permitted under the applicable license;
+
+g) Use the Software installer for any purpose other than installing the Local Operator application;
+
+h) Use the Software installer in any manner that could damage, disable, overburden, or impair any Licensor server, or the network(s) connected to any Licensor server, or interfere with any other party's use and enjoyment of the Software;
+
+i) Attempt to gain unauthorized access to the Software installer, or to other accounts, computer systems, or networks connected to the Software installer, through hacking, password mining, or any other means;
+
+j) Obtain or attempt to obtain any materials or information through any means not intentionally made available through the Software installer.
+
+4.2 Compliance with Laws
+You agree to comply with all applicable local, state, national, and international laws and regulations in connection with your use of the Software installer.
+
+5. INTELLECTUAL PROPERTY RIGHTS
+
+5.1 Ownership
+The Software installer is protected by copyright laws and international copyright treaties, as well as other intellectual property laws and treaties. The Software installer is licensed, not sold. Licensor and its licensors own and retain all right, title, and interest in and to the Software installer, including all copyrights, patents, trade secret rights, trademarks, and other intellectual property rights therein.
+
+5.2 Third-Party Components
+The Software installer may include third-party software components that are subject to separate license terms. You agree to comply with any applicable third-party license terms.
+
+6. INSTALLATION CONSENT
+
+6.1 System Modifications
+By using the Software installer, you consent to the Software making necessary modifications to your system, including but not limited to:
+
+a) Creating directories and files;
+
+b) Modifying system registry or equivalent configuration files;
+
+c) Installing additional software components necessary for the proper functioning of the Local Operator application;
+
+d) Configuring network settings related to the Local Operator application;
+
+e) Creating desktop shortcuts, start menu entries, or equivalent items.
+
+6.2 Internet Connection
+The Software installer may require an internet connection to download necessary components, verify license information, or check for updates. You are responsible for any costs associated with your internet connection.
+
+7. WARRANTY DISCLAIMER
+
+7.1 No Warranty
+THE SOFTWARE INSTALLER IS PROVIDED "AS IS" AND "AS AVAILABLE" WITHOUT WARRANTY OF ANY KIND, EITHER EXPRESS OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT. LICENSOR DOES NOT WARRANT THAT THE FUNCTIONS CONTAINED IN THE SOFTWARE INSTALLER WILL MEET YOUR REQUIREMENTS, THAT THE OPERATION OF THE SOFTWARE INSTALLER WILL BE UNINTERRUPTED OR ERROR-FREE, OR THAT DEFECTS IN THE SOFTWARE INSTALLER WILL BE CORRECTED.
+
+7.2 System Compatibility
+LICENSOR DOES NOT WARRANT THAT THE SOFTWARE INSTALLER WILL BE COMPATIBLE WITH YOUR DEVICE OR THAT YOUR DEVICE MEETS THE MINIMUM REQUIREMENTS NECESSARY TO INSTALL AND RUN THE LOCAL OPERATOR APPLICATION. YOU ARE SOLELY RESPONSIBLE FOR DETERMINING WHETHER YOUR DEVICE MEETS THE MINIMUM REQUIREMENTS SPECIFIED FOR THE LOCAL OPERATOR APPLICATION.
+
+7.3 Security
+LICENSOR DOES NOT WARRANT THAT THE SOFTWARE INSTALLER IS FREE FROM VULNERABILITIES OR THAT IT WILL PROTECT YOUR DEVICE FROM ALL POSSIBLE SECURITY THREATS. YOU ARE RESPONSIBLE FOR MAINTAINING THE SECURITY OF YOUR DEVICE, INCLUDING USING APPROPRIATE ANTI-VIRUS SOFTWARE AND KEEPING YOUR DEVICE'S OPERATING SYSTEM AND OTHER SOFTWARE UP TO DATE.
+
+8. LIMITATION OF LIABILITY
+
+8.1 Limitation of Liability
+TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, IN NO EVENT SHALL LICENSOR, ITS AFFILIATES, DIRECTORS, EMPLOYEES, AGENTS, OR LICENSORS BE LIABLE FOR ANY INDIRECT, PUNITIVE, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR EXEMPLARY DAMAGES, INCLUDING WITHOUT LIMITATION DAMAGES FOR LOSS OF PROFITS, GOODWILL, USE, DATA, OR OTHER INTANGIBLE LOSSES, ARISING OUT OF OR RELATING TO YOUR USE OF OR INABILITY TO USE THE SOFTWARE INSTALLER.
+
+8.2 Maximum Liability
+TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, LICENSOR'S TOTAL LIABILITY TO YOU FOR ALL CLAIMS ARISING FROM OR RELATING TO THIS EULA OR YOUR USE OF THE SOFTWARE INSTALLER SHALL NOT EXCEED THE AMOUNT PAID BY YOU FOR THE SOFTWARE INSTALLER, IF ANY, OR $10.00, WHICHEVER IS GREATER.
+
+8.3 Essential Purpose
+THE LIMITATIONS OF DAMAGES SET FORTH ABOVE ARE FUNDAMENTAL ELEMENTS OF THE BASIS OF THE BARGAIN BETWEEN LICENSOR AND YOU. YOU ACKNOWLEDGE THAT LICENSOR WOULD NOT BE ABLE TO PROVIDE THE SOFTWARE INSTALLER WITHOUT SUCH LIMITATIONS.
+
+8.4 Exclusions
+SOME JURISDICTIONS DO NOT ALLOW THE EXCLUSION OF CERTAIN WARRANTIES OR THE LIMITATION OR EXCLUSION OF LIABILITY FOR CERTAIN TYPES OF DAMAGES. ACCORDINGLY, SOME OF THE ABOVE LIMITATIONS IN SECTIONS 7 AND 8 MAY NOT APPLY TO YOU.
+
+9. INDEMNIFICATION
+
+You agree to indemnify, defend, and hold harmless Licensor, its affiliates, officers, directors, employees, consultants, agents, and representatives from any and all third-party claims, liability, damages, and/or costs (including, but not limited to, attorneys' fees) arising from your use of the Software installer, your violation of this EULA, or your infringement of any intellectual property or other right of any person or entity.
+
+10. TERMINATION
+
+10.1 Automatic Termination
+This EULA automatically terminates upon completion of the installation of the Local Operator application or upon your failure to comply with any term or condition of this EULA.
+
+10.2 Effect of Termination
+Upon termination of this EULA, you must cease all use of the Software installer and destroy all copies, full or partial, of the Software installer.
+
+10.3 Survival
+The provisions of Sections 5, 7, 8, 9, 11, and 12 shall survive termination of this EULA.
+
+11. GOVERNING LAW AND DISPUTE RESOLUTION
+
+11.1 Governing Law
+This EULA shall be governed by and construed in accordance with the laws of the jurisdiction in which Licensor is headquartered, without regard to its conflict of law principles.
+
+11.2 Dispute Resolution
+Any dispute arising out of or in connection with this EULA, including any question regarding its existence, validity, or termination, shall be resolved as follows:
+
+a) First, the parties shall attempt to resolve the dispute through informal negotiations in good faith;
+
+b) If the dispute cannot be resolved through informal negotiations, the parties agree to submit the dispute to binding arbitration in accordance with the rules of the American Arbitration Association (or equivalent arbitration body in the jurisdiction where Licensor is headquartered);
+
+c) The arbitration shall be conducted in the English language in the city where Licensor is headquartered;
+
+d) The decision of the arbitrator shall be final and binding on both parties.
+
+11.3 Class Action Waiver
+YOU AND LICENSOR AGREE THAT EACH MAY BRING CLAIMS AGAINST THE OTHER ONLY IN YOUR OR ITS INDIVIDUAL CAPACITY, AND NOT AS A PLAINTIFF OR CLASS MEMBER IN ANY PURPORTED CLASS OR REPRESENTATIVE PROCEEDING.
+
+11.4 Exceptions
+Notwithstanding the foregoing, either party may seek injunctive or other equitable relief in any court of competent jurisdiction to protect its intellectual property rights pending the completion of arbitration.
+
+12. GENERAL PROVISIONS
+
+12.1 Entire Agreement
+This EULA constitutes the entire agreement between you and Licensor concerning the Software installer and supersedes all prior or contemporaneous oral or written communications, proposals, and representations with respect to the Software installer or any other subject matter covered by this EULA.
+
+12.2 Severability
+If any provision of this EULA is held to be void, invalid, unenforceable, or illegal, the other provisions shall continue in full force and effect and the invalid or unenforceable provision shall be reformed in a manner that comes closest to expressing the intention of the invalid or unenforceable provision.
+
+12.3 Waiver
+The failure of either party to enforce any rights granted hereunder or to take action against the other party in the event of any breach hereunder shall not be deemed a waiver by that party as to subsequent enforcement of rights or subsequent actions in the event of future breaches.
+
+12.4 Amendments
+Licensor reserves the right to amend this EULA at any time by posting the amended EULA on its website. Your continued use of the Software installer after such posting shall constitute your acceptance of the amended EULA.
+
+12.5 Assignment
+You may not assign or transfer this EULA or any rights or obligations under this EULA without the prior written consent of Licensor. Licensor may assign or transfer this EULA without your consent.
+
+12.6 Contact Information
+If you have any questions about this EULA, please contact Licensor at support@local-operator.com.
+
+13. ACKNOWLEDGMENT
+
+BY INSTALLING OR USING THE SOFTWARE INSTALLER, YOU ACKNOWLEDGE THAT YOU HAVE READ THIS EULA, UNDERSTAND IT, AND AGREE TO BE BOUND BY ITS TERMS AND CONDITIONS. YOU ALSO AGREE THAT THIS EULA IS THE COMPLETE AND EXCLUSIVE STATEMENT OF AGREEMENT BETWEEN YOU AND LICENSOR CONCERNING THE SUBJECT MATTER HEREOF AND SUPERSEDES ALL PROPOSALS OR PRIOR AGREEMENTS, ORAL OR WRITTEN, AND ANY OTHER COMMUNICATIONS BETWEEN YOU AND LICENSOR RELATING TO THE SUBJECT MATTER HEREOF.
+
+---
+
+© 2025 Local Operator. All rights reserved.
