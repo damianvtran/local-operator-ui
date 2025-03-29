@@ -1,0 +1,154 @@
+CONTRATO DE LICENÇA DE USUÁRIO FINAL (EULA)
+
+PARA O INSTALADOR DE SOFTWARE LOCAL OPERATOR
+
+DATA DE VIGÊNCIA: 23 DE MARÇO DE 2025
+
+IMPORTANTE - LEIA ATENTAMENTE ANTES DE INSTALAR OU USAR O SOFTWARE
+
+ESTE CONTRATO DE LICENÇA DE USUÁRIO FINAL ("EULA" OU "CONTRATO") É UM ACORDO LEGAL ENTRE VOCÊ (SEJA UM INDIVÍDUO OU UMA ÚNICA ENTIDADE) E O PROPRIETÁRIO E OPERADOR DO LOCAL OPERATOR ("LICENCIADOR", "NÓS", "NOS" OU "NOSSO") PARA O INSTALADOR DE SOFTWARE LOCAL OPERATOR E COMPONENTES DE SOFTWARE RELACIONADOS ("SOFTWARE"). AO INSTALAR, COPIAR OU DE OUTRA FORMA USAR O SOFTWARE, VOCÊ CONCORDA EM ESTAR VINCULADO AOS TERMOS DESTE EULA. SE VOCÊ NÃO CONCORDAR COM OS TERMOS DESTE EULA, NÃO INSTALE OU USE O SOFTWARE.
+
+AVISO LEGAL
+ESTE DOCUMENTO CONTÉM INFORMAÇÕES LEGAIS IMPORTANTES. POR FAVOR, LEIA-O ATENTAMENTE ANTES DE PROSSEGUIR COM A INSTALAÇÃO. ESTE EULA APLICA-SE ESPECIFICAMENTE AO SOFTWARE INSTALADOR. UMA VEZ QUE O SOFTWARE ESTEJA INSTALADO, O SEU USO DA APLICAÇÃO LOCAL OPERATOR SERÁ REGIDO PELOS TERMOS E CONDIÇÕES DISPONÍVEIS EM [INSERIR URL PARA TERMOS E CONDIÇÕES] E PELA POLÍTICA DE PRIVACIDADE DISPONÍVEL EM [INSERIR URL PARA POLÍTICA DE PRIVACIDADE].
+
+CONCESSÃO DE LICENÇA
+2.1 Licença do Instalador Sujeito aos termos e condições deste EULA, o Licenciador concede a você uma licença limitada, não exclusiva e não transferível para usar o instalador do Software com o único propósito de instalar a aplicação Local Operator em seu(s) dispositivo(s).
+
+2.2 Licença GPL 3.0 A aplicação Local Operator que será instalada por este Software é licenciada sob a GNU General Public License versão 3.0 (GPL 3.0), uma cópia da qual pode ser encontrada em https://www.gnu.org/licenses/gpl-3.0.en.html. Seus direitos de usar, copiar, modificar e distribuir a aplicação Local Operator após a instalação são regidos pela licença GPL 3.0.
+
+2.3 Reserva de Direitos Todos os direitos não expressamente concedidos a você neste EULA são reservados pelo Licenciador e seus licenciadores.
+
+DESCRIÇÃO DO SOFTWARE
+3.1 Funcionalidade do Instalador O Software é um programa instalador projetado para facilitar a instalação da aplicação Local Operator em seu(s) dispositivo(s). O instalador pode executar as seguintes funções:
+
+a) Verificar requisitos e compatibilidade do sistema;
+
+b) Baixar componentes necessários para a aplicação Local Operator;
+
+c) Configurar seu sistema para desempenho ideal da aplicação Local Operator;
+
+d) Criar diretórios e arquivos necessários em seu dispositivo;
+
+e) Registrar a aplicação Local Operator com seu sistema operacional;
+
+f) Instalar dependências necessárias para o funcionamento adequado da aplicação Local Operator.
+
+3.2 Coleta de Dados do Instalador Durante o processo de instalação, o Software pode coletar certas informações sobre seu dispositivo, como:
+
+a) Tipo e versão do sistema operacional;
+
+b) Especificações de hardware;
+
+c) Configuração de rede;
+
+d) Software existente que pode interagir com a aplicação Local Operator;
+
+e) Informações de sucesso ou falha da instalação.
+
+Essas informações são usadas exclusivamente com o propósito de facilitar o processo de instalação e melhorar o Software. Para mais informações sobre práticas de coleta de dados, consulte nossa Política de Privacidade.
+
+RESTRIÇÕES DE LICENÇA
+4.1 Ações Proibidas Você não deve:
+
+a) Modificar, adaptar, traduzir, fazer engenharia reversa, descompilar, desmontar ou de outra forma tentar descobrir o código-fonte do instalador do Software, exceto na medida em que tal atividade seja expressamente permitida pela lei aplicável, não obstante esta limitação;
+
+b) Criar trabalhos derivados baseados no instalador do Software;
+
+c) Copiar o instalador do Software, exceto conforme expressamente permitido neste EULA;
+
+d) Alugar, arrendar, emprestar, vender, distribuir ou sublicenciar o instalador do Software;
+
+e) Remover ou alterar quaisquer avisos ou etiquetas de propriedade no instalador do Software;
+
+f) Usar o instalador do Software para instalar a aplicação Local Operator em mais dispositivos do que o permitido pela licença aplicável;
+
+g) Usar o instalador do Software para qualquer finalidade que não seja instalar a aplicação Local Operator;
+
+h) Usar o instalador do Software de qualquer maneira que possa danificar, desativar, sobrecarregar ou prejudicar qualquer servidor do Licenciador, ou a(s) rede(s) conectada(s) a qualquer servidor do Licenciador, ou interferir no uso e aproveitamento do Software por qualquer outra parte;
+
+i) Tentar obter acesso não autorizado ao instalador do Software, ou a outras contas, sistemas de computador ou redes conectadas ao instalador do Software, através de hacking, mineração de senhas ou qualquer outro meio;
+
+j) Obter ou tentar obter quaisquer materiais ou informações por meio de qualquer meio não intencionalmente disponibilizado através do instalador do Software.
+
+4.2 Conformidade com as Leis Você concorda em cumprir todas as leis e regulamentos locais, estaduais, nacionais e internacionais aplicáveis em conexão com o uso do instalador do Software.
+
+DIREITOS DE PROPRIEDADE INTELECTUAL
+5.1 Propriedade O instalador do Software é protegido por leis de direitos autorais e tratados internacionais de direitos autorais, bem como outras leis e tratados de propriedade intelectual. O instalador do Software é licenciado, não vendido. O Licenciador e seus licenciadores possuem e retêm todos os direitos, títulos e interesses no e para o instalador do Software, incluindo todos os direitos autorais, patentes, direitos de segredo comercial, marcas registradas e outros direitos de propriedade intelectual nele contidos.
+
+5.2 Componentes de Terceiros O instalador do Software pode incluir componentes de software de terceiros que estão sujeitos a termos de licença separados. Você concorda em cumprir quaisquer termos de licença de terceiros aplicáveis.
+
+CONSENTIMENTO DE INSTALAÇÃO
+6.1 Modificações do Sistema Ao usar o instalador do Software, você consente que o Software faça as modificações necessárias em seu sistema, incluindo, mas não se limitando a:
+
+a) Criar diretórios e arquivos;
+
+b) Modificar o registro do sistema ou arquivos de configuração equivalentes;
+
+c) Instalar componentes de software adicionais necessários para o funcionamento adequado da aplicação Local Operator;
+
+d) Configurar configurações de rede relacionadas à aplicação Local Operator;
+
+e) Criar atalhos de desktop, entradas de menu iniciar ou itens equivalentes.
+
+6.2 Conexão com a Internet O instalador do Software pode exigir uma conexão com a Internet para baixar componentes necessários, verificar informações de licença ou verificar atualizações. Você é responsável por quaisquer custos associados à sua conexão com a Internet.
+
+ISENÇÃO DE GARANTIA
+7.1 Sem Garantia O INSTALADOR DO SOFTWARE É FORNECIDO "COMO ESTÁ" E "CONFORME DISPONÍVEL" SEM GARANTIA DE QUALQUER TIPO, SEJA EXPRESSA OU IMPLÍCITA, INCLUINDO, MAS NÃO SE LIMITANDO A, AS GARANTIAS IMPLÍCITAS DE COMERCIALIZAÇÃO, ADEQUAÇÃO A UM PROPÓSITO ESPECÍFICO E NÃO VIOLAÇÃO. O LICENCIADOR NÃO GARANTE QUE AS FUNÇÕES CONTIDAS NO INSTALADOR DO SOFTWARE ATENDERÃO AOS SEUS REQUISITOS, QUE A OPERAÇÃO DO INSTALADOR DO SOFTWARE SERÁ ININTERRUPTA OU LIVRE DE ERROS, OU QUE DEFEITOS NO INSTALADOR DO SOFTWARE SERÃO CORRIGIDOS.
+
+7.2 Compatibilidade do Sistema O LICENCIADOR NÃO GARANTE QUE O INSTALADOR DO SOFTWARE SERÁ COMPATÍVEL COM SEU DISPOSITIVO OU QUE SEU DISPOSITIVO ATENDE AOS REQUISITOS MÍNIMOS NECESSÁRIOS PARA INSTALAR E EXECUTAR A APLICAÇÃO LOCAL OPERATOR. VOCÊ É EXCLUSIVAMENTE RESPONSÁVEL POR DETERMINAR SE SEU DISPOSITIVO ATENDE AOS REQUISITOS MÍNIMOS ESPECIFICADOS PARA A APLICAÇÃO LOCAL OPERATOR.
+
+7.3 Segurança O LICENCIADOR NÃO GARANTE QUE O INSTALADOR DO SOFTWARE ESTEJA LIVRE DE VULNERABILIDADES OU QUE PROTEGERÁ SEU DISPOSITIVO DE TODAS AS POSSÍVEIS AMEAÇAS DE SEGURANÇA. VOCÊ É RESPONSÁVEL POR MANTER A SEGURANÇA DE SEU DISPOSITIVO, INCLUINDO O USO DE SOFTWARE ANTIVÍRUS APROPRIADO E MANTER O SISTEMA OPERACIONAL E OUTROS SOFTWARES DE SEU DISPOSITIVO ATUALIZADOS.
+
+LIMITAÇÃO DE RESPONSABILIDADE
+8.1 Limitação de Responsabilidade NA MÁXIMA EXTENSÃO PERMITIDA PELA LEI APLICÁVEL, EM NENHUM CASO O LICENCIADOR, SUAS AFILIADAS, DIRETORES, FUNCIONÁRIOS, AGENTES OU LICENCIADORES SERÃO RESPONSÁVEIS POR QUAISQUER DANOS INDIRETOS, PUNITIVOS, INCIDENTAIS, ESPECIAIS, CONSEQUENCIAIS OU EXEMPLARES, INCLUINDO, SEM LIMITAÇÃO, DANOS POR PERDA DE LUCROS, BOA VONTADE, USO, DADOS OU OUTRAS PERDAS INTANGÍVEIS, DECORRENTES DE OU RELACIONADOS AO SEU USO OU INCAPACIDADE DE USAR O INSTALADOR DO SOFTWARE.
+
+8.2 Responsabilidade Máxima NA MÁXIMA EXTENSÃO PERMITIDA PELA LEI APLICÁVEL, A RESPONSABILIDADE TOTAL DO LICENCIADOR PARA COM VOCÊ POR TODAS AS RECLAMAÇÕES DECORRENTES DE OU RELACIONADAS A ESTE EULA OU AO SEU USO DO INSTALADOR DO SOFTWARE NÃO EXCEDERÁ O VALOR PAGO POR VOCÊ PELO INSTALADOR DO SOFTWARE, SE HOUVER, OU $10,00, O QUE FOR MAIOR.
+
+8.3 Propósito Essencial AS LIMITAÇÕES DE DANOS ESTABELECIDAS ACIMA SÃO ELEMENTOS FUNDAMENTAIS DA BASE DO ACORDO ENTRE O LICENCIADOR E VOCÊ. VOCÊ RECONHECE QUE O LICENCIADOR NÃO SERIA CAPAZ DE FORNECER O INSTALADOR DO SOFTWARE SEM TAIS LIMITAÇÕES.
+
+8.4 Exclusões ALGUMAS JURISDIÇÕES NÃO PERMITEM A EXCLUSÃO DE CERTAS GARANTIAS OU A LIMITAÇÃO OU EXCLUSÃO DE RESPONSABILIDADE POR CERTOS TIPOS DE DANOS. CONSEQUENTEMENTE, ALGUMAS DAS LIMITAÇÕES ACIMA NAS SEÇÕES 7 E 8 PODEM NÃO SE APLICAR A VOCÊ.
+
+INDENIZAÇÃO
+Você concorda em indenizar, defender e isentar o Licenciador, suas afiliadas, oficiais, diretores, funcionários, consultores, agentes e representantes de quaisquer reclamações, responsabilidades, danos e/ou custos de terceiros (incluindo, mas não se limitando a, honorários advocatícios) decorrentes do seu uso do instalador do Software, sua violação deste EULA, ou sua violação de qualquer propriedade intelectual ou outro direito de qualquer pessoa ou entidade.
+
+RESCISÃO
+10.1 Rescisão Automática Este EULA termina automaticamente após a conclusão da instalação da aplicação Local Operator ou após sua falha em cumprir qualquer termo ou condição deste EULA.
+
+10.2 Efeito da Rescisão Após a rescisão deste EULA, você deve cessar todo uso do instalador do Software e destruir todas as cópias, completas ou parciais, do instalador do Software.
+
+10.3 Sobrevivência As disposições das Seções 5, 7, 8, 9, 11 e 12 sobreviverão à rescisão deste EULA.
+
+LEI APLICÁVEL E RESOLUÇÃO DE DISPUTAS
+11.1 Lei Aplicável Este EULA será regido e interpretado de acordo com as leis da jurisdição em que o Licenciador está sediado, sem considerar seus princípios de conflito de leis.
+
+11.2 Resolução de Disputas Qualquer disputa decorrente de ou em conexão com este EULA, incluindo qualquer questão relativa à sua existência, validade ou rescisão, será resolvida da seguinte forma:
+
+a) Primeiro, as partes tentarão resolver a disputa através de negociações informais de boa fé;
+
+b) Se a disputa não puder ser resolvida através de negociações informais, as partes concordam em submeter a disputa à arbitragem vinculativa de acordo com as regras da American Arbitration Association (ou órgão de arbitragem equivalente na jurisdição onde o Licenciador está sediado);
+
+c) A arbitragem será conduzida no idioma inglês na cidade onde o Licenciador está sediado;
+
+d) A decisão do árbitro será final e vinculativa para ambas as partes.
+
+11.3 Renúncia de Ação Coletiva VOCÊ E O LICENCIADOR CONCORDAM QUE CADA UM PODE APRESENTAR RECLAMAÇÕES CONTRA O OUTRO APENAS EM SUA CAPACIDADE INDIVIDUAL, E NÃO COMO AUTOR OU MEMBRO DE CLASSE EM QUALQUER PROCEDIMENTO COLETIVO OU REPRESENTATIVO PRETENDIDO.
+
+11.4 Exceções Não obstante o acima exposto, qualquer uma das partes pode buscar medida cautelar ou outro recurso equitativo em qualquer tribunal de jurisdição competente para proteger seus direitos de propriedade intelectual pendente da conclusão da arbitragem.
+
+DISPOSIÇÕES GERAIS
+12.1 Acordo Completo Este EULA constitui o acordo completo entre você e o Licenciador relativo ao instalador do Software e substitui todas as comunicações, propostas e representações orais ou escritas anteriores ou contemporâneas com respeito ao instalador do Software ou qualquer outro assunto coberto por este EULA.
+
+12.2 Separabilidade Se qualquer disposição deste EULA for considerada nula, inválida, inexequível ou ilegal, as outras disposições continuarão em pleno vigor e efeito e a disposição inválida ou inexequível será reformada de maneira que se aproxime mais da expressão da intenção da disposição inválida ou inexequível.
+
+12.3 Renúncia A falha de qualquer parte em fazer valer quaisquer direitos concedidos aqui ou em tomar medidas contra a outra parte em caso de qualquer violação aqui não será considerada uma renúncia por essa parte quanto à aplicação subsequente de direitos ou ações subsequentes no caso de violações futuras.
+
+12.4 Emendas O Licenciador reserva-se o direito de emendar este EULA a qualquer momento, publicando o EULA emendado em seu site. Seu uso continuado do instalador do Software após tal publicação constituirá sua aceitação do EULA emendado.
+
+12.5 Cessão Você não pode ceder ou transferir este EULA ou quaisquer direitos ou obrigações sob este EULA sem o consentimento prévio por escrito do Licenciador. O Licenciador pode ceder ou transferir este EULA sem o seu consentimento.
+
+12.6 Informações de Contato Se você tiver alguma dúvida sobre este EULA, entre em contato com o Licenciador em support@local-operator.com.
+
+RECONHECIMENTO
+AO INSTALAR OU USAR O INSTALADOR DO SOFTWARE, VOCÊ RECONHECE QUE LEU ESTE EULA, O COMPREENDE E CONCORDA EM ESTAR VINCULADO POR SEUS TERMOS E CONDIÇÕES. VOCÊ TAMBÉM CONCORDA QUE ESTE EULA É A DECLARAÇÃO COMPLETA E EXCLUSIVA DO ACORDO ENTRE VOCÊ E O LICENCIADOR RELATIVO AO ASSUNTO AQUI TRATADO E SUBSTITUI TODAS AS PROPOSTAS OU ACORDOS ANTERIORES, ORAIS OU ESCRITOS, E QUAISQUER OUTRAS COMUNICAÇÕES ENTRE VOCÊ E O LICENCIADOR RELATIVAS AO ASSUNTO AQUI TRATADO.
+
+© 2025 Local Operator. Todos os direitos reservados. 
