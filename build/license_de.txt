@@ -1,0 +1,200 @@
+ENDBENUTZER-LIZENZVEREINBARUNG (EULA)
+
+FÜR DEN LOCAL OPERATOR SOFTWARE-INSTALLER
+
+GÜLTIG AB: 23. MÄRZ 2025
+
+WICHTIG - LESEN SIE DIESE VEREINBARUNG SORGFÄLTIG DURCH, BEVOR SIE DIE SOFTWARE INSTALLIEREN ODER VERWENDEN
+
+DIESE ENDBENUTZER-LIZENZVEREINBARUNG ("EULA" ODER "VEREINBARUNG") IST EINE RECHTSGÜLTIGE VEREINBARUNG ZWISCHEN IHNEN (ENTWEDER EINE EINZELPERSON ODER EINE JURISTISCHE PERSON) UND DEM EIGENTÜMER UND BETREIBER VON LOCAL OPERATOR ("LIZENZGEBER", "WIR", "UNS" ODER "UNSER") FÜR DEN LOCAL OPERATOR SOFTWARE-INSTALLER UND ZUGEHÖRIGE SOFTWAREKOMPONENTEN ("SOFTWARE"). DURCH DIE INSTALLATION, DAS KOPIEREN ODER DIE ANDERWEITIGE NUTZUNG DER SOFTWARE ERKLÄREN SIE SICH MIT DEN BEDINGUNGEN DIESER EULA EINVERSTANDEN. WENN SIE MIT DEN BEDINGUNGEN DIESER EULA NICHT EINVERSTANDEN SIND, INSTALLIEREN ODER VERWENDEN SIE DIE SOFTWARE NICHT.
+
+1. RECHTLICHER HINWEIS
+
+DIESES DOKUMENT ENTHÄLT WICHTIGE RECHTLICHE INFORMATIONEN. BITTE LESEN SIE ES SORGFÄLTIG DURCH, BEVOR SIE MIT DER INSTALLATION FORTFAHREN. DIESE EULA GILT SPEZIELL FÜR DIE INSTALLER-SOFTWARE. SOBALD DIE SOFTWARE INSTALLIERT IST, UNTERLIEGT IHRE NUTZUNG DER LOCAL OPERATOR ANWENDUNG DEN ALLGEMEINEN GESCHÄFTSBEDINGUNGEN, DIE UNTER https://local-operator.com/terms-and-conditions UND DER DATENSCHUTZRICHTLINIE UNTER https://local-operator.com/privacy-policy VERFÜGBAR SIND.
+
+2. LIZENZGEWÄHRUNG
+
+2.1 Installer-Lizenz
+Vorbehaltlich der Bedingungen dieser EULA gewährt der Lizenzgeber Ihnen hiermit eine beschränkte, nicht-exklusive, nicht übertragbare Lizenz zur Nutzung des Software-Installers zum alleinigen Zweck der Installation der Local Operator Anwendung auf Ihrem/Ihren Gerät(en).
+
+2.2 GPL 3.0 Lizenz
+Die Local Operator Anwendung, die durch diese Software installiert wird, ist unter der GNU General Public License Version 3.0 (GPL 3.0) lizenziert, deren Kopie unter https://www.gnu.org/licenses/gpl-3.0.en.html zu finden ist. Ihre Rechte zur Nutzung, zum Kopieren, zur Änderung und zur Verbreitung der Local Operator Anwendung nach der Installation unterliegen der GPL 3.0-Lizenz.
+
+2.3 Vorbehalt von Rechten
+Alle Rechte, die Ihnen in dieser EULA nicht ausdrücklich gewährt werden, sind dem Lizenzgeber und seinen Lizenzgebern vorbehalten.
+
+3. BESCHREIBUNG DER SOFTWARE
+
+3.1 Funktionalität des Installers
+Die Software ist ein Installationsprogramm, das die Installation der Local Operator Anwendung auf Ihrem/Ihren Gerät(en) erleichtern soll. Der Installer kann die folgenden Funktionen ausführen:
+
+a) Überprüfung der Systemanforderungen und Kompatibilität;
+
+b) Herunterladen notwendiger Komponenten für die Local Operator Anwendung;
+
+c) Konfiguration Ihres Systems für optimale Leistung der Local Operator Anwendung;
+
+d) Erstellung notwendiger Verzeichnisse und Dateien auf Ihrem Gerät;
+
+e) Registrierung der Local Operator Anwendung bei Ihrem Betriebssystem;
+
+f) Installation von Abhängigkeiten, die für das ordnungsgemäße Funktionieren der Local Operator Anwendung erforderlich sind.
+
+3.2 Datenerfassung durch den Installer
+Während des Installationsprozesses kann die Software bestimmte Informationen über Ihr Gerät sammeln, wie zum Beispiel:
+
+a) Betriebssystemtyp und -version;
+
+b) Hardware-Spezifikationen;
+
+c) Netzwerkkonfiguration;
+
+d) Bestehende Software, die mit der Local Operator Anwendung interagieren könnte;
+
+e) Informationen über Erfolg oder Misserfolg der Installation.
+
+Diese Informationen werden ausschließlich zum Zweck der Erleichterung des Installationsprozesses und zur Verbesserung der Software verwendet. Weitere Informationen zu Datenerfassungspraktiken finden Sie in unserer Datenschutzrichtlinie.
+
+4. LIZENZBESCHRÄNKUNGEN
+
+4.1 Verbotene Handlungen
+Sie dürfen nicht:
+
+a) Den Software-Installer modifizieren, anpassen, übersetzen, zurückentwickeln, dekompilieren, disassemblieren oder anderweitig versuchen, den Quellcode des Software-Installers zu entdecken, außer in dem Umfang, in dem eine solche Aktivität durch geltendes Recht ausdrücklich erlaubt ist, ungeachtet dieser Einschränkung;
+
+b) Abgeleitete Werke auf Basis des Software-Installers erstellen;
+
+c) Den Software-Installer kopieren, außer wie in dieser EULA ausdrücklich erlaubt;
+
+d) Den Software-Installer vermieten, verleasen, verleihen, verkaufen, vertreiben oder unterlizenzieren;
+
+e) Eigentumshinweise oder Etiketten auf dem Software-Installer entfernen oder verändern;
+
+f) Den Software-Installer verwenden, um die Local Operator Anwendung auf mehr Geräten zu installieren, als unter der geltenden Lizenz erlaubt;
+
+g) Den Software-Installer für andere Zwecke als die Installation der Local Operator Anwendung verwenden;
+
+h) Den Software-Installer in einer Weise verwenden, die einen Server des Lizenzgebers oder die mit einem Server des Lizenzgebers verbundenen Netzwerke beschädigen, deaktivieren, überlasten oder beeinträchtigen könnte oder die die Nutzung und den Genuss der Software durch andere Parteien stören könnte;
+
+i) Versuchen, unbefugten Zugriff auf den Software-Installer oder auf andere Konten, Computersysteme oder Netzwerke zu erlangen, die mit dem Software-Installer verbunden sind, durch Hacking, Passwort-Mining oder andere Mittel;
+
+j) Materialien oder Informationen durch Mittel zu erhalten oder zu versuchen zu erhalten, die nicht absichtlich durch den Software-Installer verfügbar gemacht wurden.
+
+4.2 Einhaltung von Gesetzen
+Sie erklären sich damit einverstanden, alle geltenden lokalen, staatlichen, nationalen und internationalen Gesetze und Vorschriften in Verbindung mit Ihrer Nutzung des Software-Installers einzuhalten.
+
+5. RECHTE AN GEISTIGEM EIGENTUM
+
+5.1 Eigentum
+Der Software-Installer ist durch Urheberrechtsgesetze und internationale Urheberrechtsverträge sowie andere Gesetze und Verträge über geistiges Eigentum geschützt. Der Software-Installer wird lizenziert, nicht verkauft. Der Lizenzgeber und seine Lizenzgeber besitzen und behalten alle Rechte, Titel und Interessen an und zu dem Software-Installer, einschließlich aller Urheberrechte, Patente, Geschäftsgeheimnisse, Marken und anderer Rechte an geistigem Eigentum daran.
+
+5.2 Komponenten von Drittanbietern
+Der Software-Installer kann Softwarekomponenten von Drittanbietern enthalten, die separaten Lizenzbedingungen unterliegen. Sie erklären sich damit einverstanden, alle geltenden Lizenzbedingungen von Drittanbietern einzuhalten.
+
+6. INSTALLATIONSZUSTIMMUNG
+
+6.1 Systemänderungen
+Durch die Nutzung des Software-Installers stimmen Sie zu, dass die Software notwendige Änderungen an Ihrem System vornimmt, einschließlich, aber nicht beschränkt auf:
+
+a) Erstellung von Verzeichnissen und Dateien;
+
+b) Änderung der Systemregistrierung oder gleichwertiger Konfigurationsdateien;
+
+c) Installation zusätzlicher Softwarekomponenten, die für das ordnungsgemäße Funktionieren der Local Operator Anwendung erforderlich sind;
+
+d) Konfiguration von Netzwerkeinstellungen im Zusammenhang mit der Local Operator Anwendung;
+
+e) Erstellung von Desktop-Verknüpfungen, Startmenüeinträgen oder gleichwertigen Elementen.
+
+6.2 Internetverbindung
+Der Software-Installer kann eine Internetverbindung benötigen, um notwendige Komponenten herunterzuladen, Lizenzinformationen zu überprüfen oder nach Updates zu suchen. Sie sind für alle Kosten verantwortlich, die mit Ihrer Internetverbindung verbunden sind.
+
+7. GEWÄHRLEISTUNGSAUSSCHLUSS
+
+7.1 Keine Gewährleistung
+DER SOFTWARE-INSTALLER WIRD "WIE BESEHEN" UND "WIE VERFÜGBAR" OHNE JEGLICHE GEWÄHRLEISTUNG JEGLICHER ART, WEDER AUSDRÜCKLICH NOCH STILLSCHWEIGEND, BEREITGESTELLT, EINSCHLIESSLICH, ABER NICHT BESCHRÄNKT AUF DIE STILLSCHWEIGENDEN GEWÄHRLEISTUNGEN DER MARKTGÄNGIGKEIT, DER EIGNUNG FÜR EINEN BESTIMMTEN ZWECK UND DER NICHTVERLETZUNG VON RECHTEN DRITTER. DER LIZENZGEBER GARANTIERT NICHT, DASS DIE IM SOFTWARE-INSTALLER ENTHALTENEN FUNKTIONEN IHREN ANFORDERUNGEN ENTSPRECHEN, DASS DER BETRIEB DES SOFTWARE-INSTALLERS UNUNTERBROCHEN ODER FEHLERFREI SEIN WIRD ODER DASS MÄNGEL IM SOFTWARE-INSTALLER BEHOBEN WERDEN.
+
+7.2 Systemkompatibilität
+DER LIZENZGEBER GARANTIERT NICHT, DASS DER SOFTWARE-INSTALLER MIT IHREM GERÄT KOMPATIBEL IST ODER DASS IHR GERÄT DIE MINDESTANFORDERUNGEN ERFÜLLT, DIE FÜR DIE INSTALLATION UND AUSFÜHRUNG DER LOCAL OPERATOR ANWENDUNG ERFORDERLICH SIND. SIE SIND ALLEIN DAFÜR VERANTWORTLICH ZU BESTIMMEN, OB IHR GERÄT DIE FÜR DIE LOCAL OPERATOR ANWENDUNG ANGEGEBENEN MINDESTANFORDERUNGEN ERFÜLLT.
+
+7.3 Sicherheit
+DER LIZENZGEBER GARANTIERT NICHT, DASS DER SOFTWARE-INSTALLER FREI VON SCHWACHSTELLEN IST ODER DASS ER IHR GERÄT VOR ALLEN MÖGLICHEN SICHERHEITSBEDROHUNGEN SCHÜTZT. SIE SIND FÜR DIE AUFRECHTERHALTUNG DER SICHERHEIT IHRES GERÄTS VERANTWORTLICH, EINSCHLIESSLICH DER VERWENDUNG GEEIGNETER ANTI-VIRUS-SOFTWARE UND DER AKTUALISIERUNG DES BETRIEBSSYSTEMS UND ANDERER SOFTWARE IHRES GERÄTS.
+
+8. HAFTUNGSBESCHRÄNKUNG
+
+8.1 Haftungsbeschränkung
+IM MAXIMAL DURCH GELTENDES RECHT ZULÄSSIGEN UMFANG HAFTET DER LIZENZGEBER, SEINE VERBUNDENEN UNTERNEHMEN, DIREKTOREN, MITARBEITER, VERTRETER ODER LIZENZGEBER IN KEINEM FALL FÜR INDIREKTE, STRAFENDE, ZUFÄLLIGE, BESONDERE, FOLGE- ODER EXEMPLARISCHE SCHÄDEN, EINSCHLIESSLICH, ABER NICHT BESCHRÄNKT AUF SCHÄDEN FÜR ENTGANGENEN GEWINN, GOODWILL, NUTZUNG, DATEN ODER ANDERE IMMATERIELLE VERLUSTE, DIE AUS ODER IM ZUSAMMENHANG MIT IHRER NUTZUNG ODER UNFÄHIGKEIT ZUR NUTZUNG DES SOFTWARE-INSTALLERS ENTSTEHEN.
+
+8.2 Maximale Haftung
+IM MAXIMAL DURCH GELTENDES RECHT ZULÄSSIGEN UMFANG ÜBERSTEIGT DIE GESAMTHAFTUNG DES LIZENZGEBERS IHNEN GEGENÜBER FÜR ALLE ANSPRÜCHE, DIE AUS ODER IM ZUSAMMENHANG MIT DIESER EULA ODER IHRER NUTZUNG DES SOFTWARE-INSTALLERS ENTSTEHEN, NICHT DEN VON IHNEN FÜR DEN SOFTWARE-INSTALLER GEZAHLTEN BETRAG, FALLS VORHANDEN, ODER 10,00 $, JE NACHDEM, WELCHER BETRAG HÖHER IST.
+
+8.3 Wesentlicher Zweck
+DIE OBEN GENANNTEN SCHADENSBEGRENZUNGEN SIND GRUNDLEGENDE ELEMENTE DER GESCHÄFTSGRUNDLAGE ZWISCHEN DEM LIZENZGEBER UND IHNEN. SIE ERKENNEN AN, DASS DER LIZENZGEBER OHNE SOLCHE BESCHRÄNKUNGEN NICHT IN DER LAGE WÄRE, DEN SOFTWARE-INSTALLER BEREITZUSTELLEN.
+
+8.4 Ausschlüsse
+EINIGE RECHTSORDNUNGEN ERLAUBEN DEN AUSSCHLUSS BESTIMMTER GEWÄHRLEISTUNGEN ODER DIE BESCHRÄNKUNG ODER DEN AUSSCHLUSS DER HAFTUNG FÜR BESTIMMTE ARTEN VON SCHÄDEN NICHT. DEMENTSPRECHEND GELTEN EINIGE DER OBEN GENANNTEN EINSCHRÄNKUNGEN IN DEN ABSCHNITTEN 7 UND 8 MÖGLICHERWEISE NICHT FÜR SIE.
+
+9. ENTSCHÄDIGUNG
+
+Sie erklären sich damit einverstanden, den Lizenzgeber, seine verbundenen Unternehmen, leitenden Angestellten, Direktoren, Mitarbeiter, Berater, Vertreter und Repräsentanten von allen Ansprüchen, Haftungen, Schäden und/oder Kosten Dritter (einschließlich, aber nicht beschränkt auf Anwaltsgebühren) freizustellen, zu verteidigen und schadlos zu halten, die aus Ihrer Nutzung des Software-Installers, Ihrer Verletzung dieser EULA oder Ihrer Verletzung von geistigem Eigentum oder anderen Rechten einer Person oder Einrichtung entstehen.
+
+10. KÜNDIGUNG
+
+10.1 Automatische Kündigung
+Diese EULA endet automatisch nach Abschluss der Installation der Local Operator Anwendung oder bei Nichteinhaltung einer Bedingung dieser EULA durch Sie.
+
+10.2 Auswirkungen der Kündigung
+Nach Beendigung dieser EULA müssen Sie jede Nutzung des Software-Installers einstellen und alle vollständigen oder teilweisen Kopien des Software-Installers vernichten.
+
+10.3 Fortbestand
+Die Bestimmungen der Abschnitte 5, 7, 8, 9, 11 und 12 bleiben nach Beendigung dieser EULA bestehen.
+
+11. ANWENDBARES RECHT UND STREITBEILEGUNG
+
+11.1 Anwendbares Recht
+Diese EULA unterliegt den Gesetzen der Rechtsordnung, in der der Lizenzgeber seinen Hauptsitz hat, und wird in Übereinstimmung mit diesen ausgelegt, ohne Berücksichtigung ihrer Kollisionsnormen.
+
+11.2 Streitbeilegung
+Jeder Streitfall, der aus oder im Zusammenhang mit dieser EULA entsteht, einschließlich jeder Frage bezüglich ihres Bestehens, ihrer Gültigkeit oder ihrer Beendigung, wird wie folgt gelöst:
+
+a) Zunächst werden die Parteien versuchen, den Streitfall durch informelle Verhandlungen in gutem Glauben beizulegen;
+
+b) Wenn der Streitfall nicht durch informelle Verhandlungen beigelegt werden kann, vereinbaren die Parteien, den Streitfall einem verbindlichen Schiedsverfahren gemäß den Regeln der American Arbitration Association (oder einer gleichwertigen Schiedsstelle in der Rechtsordnung, in der der Lizenzgeber seinen Hauptsitz hat) zu unterwerfen;
+
+c) Das Schiedsverfahren wird in englischer Sprache in der Stadt durchgeführt, in der der Lizenzgeber seinen Hauptsitz hat;
+
+d) Die Entscheidung des Schiedsrichters ist endgültig und für beide Parteien bindend.
+
+11.3 Verzicht auf Sammelklagen
+SIE UND DER LIZENZGEBER VEREINBAREN, DASS JEDER NUR IN SEINER INDIVIDUELLEN EIGENSCHAFT UND NICHT ALS KLÄGER ODER KLASSENMITGLIED IN EINEM ANGEBLICHEN KLASSEN- ODER REPRÄSENTATIVEN VERFAHREN ANSPRÜCHE GEGEN DEN ANDEREN GELTEND MACHEN KANN.
+
+11.4 Ausnahmen
+Ungeachtet des Vorstehenden kann jede Partei bei einem zuständigen Gericht eine einstweilige Verfügung oder einen anderen billigen Rechtsbehelf beantragen, um ihre Rechte an geistigem Eigentum bis zum Abschluss des Schiedsverfahrens zu schützen.
+
+12. ALLGEMEINE BESTIMMUNGEN
+
+12.1 Gesamte Vereinbarung
+Diese EULA stellt die gesamte Vereinbarung zwischen Ihnen und dem Lizenzgeber in Bezug auf den Software-Installer dar und ersetzt alle vorherigen oder gleichzeitigen mündlichen oder schriftlichen Mitteilungen, Vorschläge und Darstellungen in Bezug auf den Software-Installer oder jeden anderen Gegenstand, der von dieser EULA abgedeckt wird.
+
+12.2 Salvatorische Klausel
+Sollte eine Bestimmung dieser EULA für nichtig, ungültig, nicht durchsetzbar oder rechtswidrig erklärt werden, bleiben die übrigen Bestimmungen in vollem Umfang in Kraft, und die ungültige oder nicht durchsetzbare Bestimmung wird in einer Weise reformiert, die der Absicht der ungültigen oder nicht durchsetzbaren Bestimmung am nächsten kommt.
+
+12.3 Verzicht
+Das Versäumnis einer Partei, die hierin gewährten Rechte durchzusetzen oder Maßnahmen gegen die andere Partei im Falle eines Verstoßes zu ergreifen, gilt nicht als Verzicht dieser Partei auf die spätere Durchsetzung von Rechten oder auf spätere Maßnahmen im Falle zukünftiger Verstöße.
+
+12.4 Änderungen
+Der Lizenzgeber behält sich das Recht vor, diese EULA jederzeit zu ändern, indem er die geänderte EULA auf seiner Website veröffentlicht. Ihre fortgesetzte Nutzung des Software-Installers nach einer solchen Veröffentlichung stellt Ihre Annahme der geänderten EULA dar.
+
+12.5 Abtretung
+Sie dürfen diese EULA oder Rechte oder Pflichten aus dieser EULA ohne die vorherige schriftliche Zustimmung des Lizenzgebers nicht abtreten oder übertragen. Der Lizenzgeber kann diese EULA ohne Ihre Zustimmung abtreten oder übertragen.
+
+12.6 Kontaktinformationen
+Wenn Sie Fragen zu dieser EULA haben, kontaktieren Sie bitte den Lizenzgeber unter support@local-operator.com.
+
+13. BESTÄTIGUNG
+
+DURCH DIE INSTALLATION ODER NUTZUNG DES SOFTWARE-INSTALLERS BESTÄTIGEN SIE, DASS SIE DIESE EULA GELESEN HABEN, SIE VERSTEHEN UND MIT IHREN BEDINGUNGEN EINVERSTANDEN SIND. SIE STIMMEN AUCH ZU, DASS DIESE EULA DIE VOLLSTÄNDIGE UND AUSSCHLIESSLICHE ERKLÄRUNG DER VEREINBARUNG ZWISCHEN IHNEN UND DEM LIZENZGEBER BEZÜGLICH DES HIERIN BEHANDELTEN GEGENSTANDS IST UND ALLE VORSCHLÄGE ODER VORHERIGEN VEREINBARUNGEN, MÜNDLICH ODER SCHRIFTLICH, UND ALLE ANDEREN MITTEILUNGEN ZWISCHEN IHNEN UND DEM LIZENZGEBER BEZÜGLICH DES HIERIN BEHANDELTEN GEGENSTANDS ERSETZT.
+
+---
+
+© 2025 Local Operator. Alle Rechte vorbehalten.

@@ -1,0 +1,201 @@
+CONTRAT DE LICENCE UTILISATEUR FINAL (CLUF)
+
+POUR L'INSTALLATEUR DU LOGICIEL LOCAL OPERATOR
+
+DATE D'ENTRÉE EN VIGUEUR : 23 MARS 2025
+
+IMPORTANT - LISEZ ATTENTIVEMENT AVANT D'INSTALLER OU D'UTILISER LE LOGICIEL
+
+CE CONTRAT DE LICENCE UTILISATEUR FINAL ("CLUF" OU "CONTRAT") EST UN ACCORD JURIDIQUE ENTRE VOUS (UNE PERSONNE PHYSIQUE OU UNE ENTITÉ UNIQUE) ET LE PROPRIÉTAIRE ET EXPLOITANT DE LOCAL OPERATOR ("CONCÉDANT", "NOUS", OU "NOTRE") CONCERNANT L'INSTALLATEUR DU LOGICIEL LOCAL OPERATOR ET LES COMPOSANTS LOGICIELS ASSOCIÉS ("LOGICIEL"). EN INSTALLANT, COPIANT OU UTILISANT LE LOGICIEL, VOUS ACCEPTEZ D'ÊTRE LIÉ PAR LES TERMES DE CE CLUF. SI VOUS N'ACCEPTEZ PAS LES TERMES DE CE CLUF, N'INSTALLEZ PAS ET N'UTILISEZ PAS LE LOGICIEL.
+
+1. AVIS JURIDIQUE
+
+CE DOCUMENT CONTIENT DES INFORMATIONS JURIDIQUES IMPORTANTES. VEUILLEZ LE LIRE ATTENTIVEMENT AVANT DE PROCÉDER À L'INSTALLATION. CE CLUF S'APPLIQUE SPÉCIFIQUEMENT AU LOGICIEL D'INSTALLATION. UNE FOIS LE LOGICIEL INSTALLÉ, VOTRE UTILISATION DE L'APPLICATION LOCAL OPERATOR SERA RÉGIE PAR LES CONDITIONS GÉNÉRALES DISPONIBLES À https://local-operator.com/terms-and-conditions ET LA POLITIQUE DE CONFIDENTIALITÉ DISPONIBLE À https://local-operator.com/privacy-policy.
+
+2. OCTROI DE LICENCE
+
+2.1 Licence d'installation
+Sous réserve des termes et conditions de ce CLUF, le Concédant vous accorde une licence limitée, non exclusive et non transférable pour utiliser l'installateur du Logiciel dans le seul but d'installer l'application Local Operator sur votre/vos appareil(s).
+
+2.2 Licence GPL 3.0
+L'application Local Operator qui sera installée par ce Logiciel est sous licence GNU General Public License version 3.0 (GPL 3.0), dont une copie peut être consultée à l'adresse https://www.gnu.org/licenses/gpl-3.0.en.html. Vos droits d'utilisation, de copie, de modification et de distribution de l'application Local Operator après installation sont régis par la licence GPL 3.0.
+
+2.3 Réserve de droits
+Tous les droits qui ne vous sont pas expressément accordés dans ce CLUF sont réservés par le Concédant et ses concédants.
+
+3. DESCRIPTION DU LOGICIEL
+
+3.1 Fonctionnalité de l'installateur
+Le Logiciel est un programme d'installation conçu pour faciliter l'installation de l'application Local Operator sur votre/vos appareil(s). L'installateur peut effectuer les fonctions suivantes :
+
+a) Vérifier les exigences système et la compatibilité ;
+
+b) Télécharger les composants nécessaires pour l'application Local Operator ;
+
+c) Configurer votre système pour des performances optimales de l'application Local Operator ;
+
+d) Créer les répertoires et fichiers nécessaires sur votre appareil ;
+
+e) Enregistrer l'application Local Operator auprès de votre système d'exploitation ;
+
+f) Installer les dépendances requises pour le bon fonctionnement de l'application Local Operator.
+
+3.2 Collecte de données par l'installateur
+Pendant le processus d'installation, le Logiciel peut collecter certaines informations sur votre appareil, telles que :
+
+a) Type et version du système d'exploitation ;
+
+b) Spécifications matérielles ;
+
+c) Configuration réseau ;
+
+d) Logiciels existants susceptibles d'interagir avec l'application Local Operator ;
+
+e) Informations sur le succès ou l'échec de l'installation.
+
+Ces informations sont utilisées uniquement dans le but de faciliter le processus d'installation et d'améliorer le Logiciel. Pour plus d'informations sur les pratiques de collecte de données, veuillez consulter notre Politique de confidentialité.
+
+4. RESTRICTIONS DE LICENCE
+
+4.1 Actions interdites
+Vous ne devez pas :
+
+a) Modifier, adapter, traduire, faire de l'ingénierie inverse, décompiler, désassembler ou tenter de découvrir le code source de l'installateur du Logiciel, sauf dans la mesure où cette activité est expressément autorisée par la loi applicable nonobstant cette limitation ;
+
+b) Créer des œuvres dérivées basées sur l'installateur du Logiciel ;
+
+c) Copier l'installateur du Logiciel, sauf autorisation expresse dans ce CLUF ;
+
+d) Louer, prêter, vendre, distribuer ou sous-licencier l'installateur du Logiciel ;
+
+e) Supprimer ou modifier les mentions de propriété ou étiquettes sur l'installateur du Logiciel ;
+
+f) Utiliser l'installateur du Logiciel pour installer l'application Local Operator sur plus d'appareils que ce qui est autorisé par la licence applicable ;
+
+g) Utiliser l'installateur du Logiciel à d'autres fins que l'installation de l'application Local Operator ;
+
+h) Utiliser l'installateur du Logiciel d'une manière qui pourrait endommager, désactiver, surcharger ou altérer tout serveur du Concédant, ou les réseaux connectés à tout serveur du Concédant, ou interférer avec l'utilisation et la jouissance du Logiciel par toute autre partie ;
+
+i) Tenter d'accéder sans autorisation à l'installateur du Logiciel, ou à d'autres comptes, systèmes informatiques ou réseaux connectés à l'installateur du Logiciel, par piratage, extraction de mot de passe ou tout autre moyen ;
+
+j) Obtenir ou tenter d'obtenir des matériaux ou informations par des moyens non intentionnellement mis à disposition via l'installateur du Logiciel.
+
+4.2 Conformité aux lois
+Vous acceptez de vous conformer à toutes les lois et réglementations locales, nationales et internationales applicables en relation avec votre utilisation de l'installateur du Logiciel.
+
+5. DROITS DE PROPRIÉTÉ INTELLECTUELLE
+
+5.1 Propriété
+L'installateur du Logiciel est protégé par les lois sur le droit d'auteur et les traités internationaux sur le droit d'auteur, ainsi que par d'autres lois et traités sur la propriété intellectuelle. L'installateur du Logiciel est concédé sous licence, non vendu. Le Concédant et ses concédants possèdent et conservent tous les droits, titres et intérêts sur l'installateur du Logiciel, y compris tous les droits d'auteur, brevets, secrets commerciaux, marques de commerce et autres droits de propriété intellectuelle y afférents.
+
+5.2 Composants tiers
+L'installateur du Logiciel peut inclure des composants logiciels tiers soumis à des conditions de licence distinctes. Vous acceptez de vous conformer à toutes les conditions de licence tierces applicables.
+
+6. CONSENTEMENT À L'INSTALLATION
+
+6.1 Modifications du système
+En utilisant l'installateur du Logiciel, vous consentez à ce que le Logiciel apporte les modifications nécessaires à votre système, notamment :
+
+a) Création de répertoires et de fichiers ;
+
+b) Modification du registre système ou des fichiers de configuration équivalents ;
+
+c) Installation de composants logiciels supplémentaires nécessaires au bon fonctionnement de l'application Local Operator ;
+
+d) Configuration des paramètres réseau liés à l'application Local Operator ;
+
+e) Création de raccourcis sur le bureau, d'entrées dans le menu de démarrage ou d'éléments équivalents.
+
+6.2 Connexion Internet
+L'installateur du Logiciel peut nécessiter une connexion Internet pour télécharger les composants nécessaires, vérifier les informations de licence ou rechercher des mises à jour. Vous êtes responsable de tous les coûts associés à votre connexion Internet.
+
+7. EXCLUSION DE GARANTIE
+
+7.1 Aucune garantie
+L'INSTALLATEUR DU LOGICIEL EST FOURNI "TEL QUEL" ET "SELON DISPONIBILITÉ" SANS GARANTIE D'AUCUNE SORTE, EXPRESSE OU IMPLICITE, Y COMPRIS, MAIS SANS S'Y LIMITER, LES GARANTIES IMPLICITES DE QUALITÉ MARCHANDE, D'ADÉQUATION À UN USAGE PARTICULIER ET DE NON-VIOLATION. LE CONCÉDANT NE GARANTIT PAS QUE LES FONCTIONS CONTENUES DANS L'INSTALLATEUR DU LOGICIEL RÉPONDRONT À VOS EXIGENCES, QUE LE FONCTIONNEMENT DE L'INSTALLATEUR DU LOGICIEL SERA ININTERROMPU OU EXEMPT D'ERREURS, OU QUE LES DÉFAUTS DE L'INSTALLATEUR DU LOGICIEL SERONT CORRIGÉS.
+
+7.2 Compatibilité système
+LE CONCÉDANT NE GARANTIT PAS QUE L'INSTALLATEUR DU LOGICIEL SERA COMPATIBLE AVEC VOTRE APPAREIL OU QUE VOTRE APPAREIL RÉPOND AUX EXIGENCES MINIMALES NÉCESSAIRES POUR INSTALLER ET EXÉCUTER L'APPLICATION LOCAL OPERATOR. VOUS ÊTES SEUL RESPONSABLE DE DÉTERMINER SI VOTRE APPAREIL RÉPOND AUX EXIGENCES MINIMALES SPÉCIFIÉES POUR L'APPLICATION LOCAL OPERATOR.
+
+7.3 Sécurité
+LE CONCÉDANT NE GARANTIT PAS QUE L'INSTALLATEUR DU LOGICIEL EST EXEMPT DE VULNÉRABILITÉS OU QU'IL PROTÉGERA VOTRE APPAREIL CONTRE TOUTES LES MENACES DE SÉCURITÉ POSSIBLES. VOUS ÊTES RESPONSABLE DU MAINTIEN DE LA SÉCURITÉ DE VOTRE APPAREIL, Y COMPRIS L'UTILISATION D'UN LOGICIEL ANTIVIRUS APPROPRIÉ ET LA MISE À JOUR DE VOTRE SYSTÈME D'EXPLOITATION ET D'AUTRES LOGICIELS.
+
+8. LIMITATION DE RESPONSABILITÉ
+
+8.1 Limitation de responsabilité
+DANS LA MESURE MAXIMALE PERMISE PAR LA LOI APPLICABLE, EN AUCUN CAS LE CONCÉDANT, SES AFFILIÉS, DIRECTEURS, EMPLOYÉS, AGENTS OU CONCÉDANTS NE SERONT RESPONSABLES DE DOMMAGES INDIRECTS, PUNITIFS, ACCESSOIRES, SPÉCIAUX, CONSÉCUTIFS OU EXEMPLAIRES, Y COMPRIS, SANS LIMITATION, LES DOMMAGES POUR PERTE DE PROFITS, DE CLIENTÈLE, D'UTILISATION, DE DONNÉES OU D'AUTRES PERTES INTANGIBLES, RÉSULTANT DE OU LIÉS À VOTRE UTILISATION OU INCAPACITÉ À UTILISER L'INSTALLATEUR DU LOGICIEL.
+
+8.2 Responsabilité maximale
+DANS LA MESURE MAXIMALE PERMISE PAR LA LOI APPLICABLE, LA RESPONSABILITÉ TOTALE DU CONCÉDANT ENVERS VOUS POUR TOUTES LES RÉCLAMATIONS DÉCOULANT DE OU LIÉES À CE CLUF OU À VOTRE UTILISATION DE L'INSTALLATEUR DU LOGICIEL NE DÉPASSERA PAS LE MONTANT QUE VOUS AVEZ PAYÉ POUR L'INSTALLATEUR DU LOGICIEL, LE CAS ÉCHÉANT, OU 10,00 $, SELON LE MONTANT LE PLUS ÉLEVÉ.
+
+8.3 Objectif essentiel
+LES LIMITATIONS DE DOMMAGES ÉNONCÉES CI-DESSUS SONT DES ÉLÉMENTS FONDAMENTAUX DE LA BASE DE L'ACCORD ENTRE LE CONCÉDANT ET VOUS. VOUS RECONNAISSEZ QUE LE CONCÉDANT NE SERAIT PAS EN MESURE DE FOURNIR L'INSTALLATEUR DU LOGICIEL SANS CES LIMITATIONS.
+
+8.4 Exclusions
+CERTAINES JURIDICTIONS N'AUTORISENT PAS L'EXCLUSION DE CERTAINES GARANTIES OU LA LIMITATION OU L'EXCLUSION DE RESPONSABILITÉ POUR CERTAINS TYPES DE DOMMAGES. PAR CONSÉQUENT, CERTAINES DES LIMITATIONS CI-DESSUS DANS LES SECTIONS 7 ET 8 PEUVENT NE PAS S'APPLIQUER À VOUS.
+
+9. INDEMNISATION
+
+Vous acceptez d'indemniser, de défendre et de dégager de toute responsabilité le Concédant, ses affiliés, dirigeants, administrateurs, employés, consultants, agents et représentants contre toutes réclamations, responsabilités, dommages et/ou coûts de tiers (y compris, mais sans s'y limiter, les honoraires d'avocat) découlant de votre utilisation de l'installateur du Logiciel, de votre violation de ce CLUF ou de votre violation de tout droit de propriété intellectuelle ou autre droit de toute personne ou entité.
+
+10. RÉSILIATION
+
+10.1 Résiliation automatique
+Ce CLUF prend fin automatiquement à la fin de l'installation de l'application Local Operator ou en cas de non-respect de votre part de tout terme ou condition de ce CLUF.
+
+10.2 Effet de la résiliation
+À la résiliation de ce CLUF, vous devez cesser toute utilisation de l'installateur du Logiciel et détruire toutes les copies, complètes ou partielles, de l'installateur du Logiciel.
+
+10.3 Survie
+Les dispositions des sections 5, 7, 8, 9, 11 et 12 survivront à la résiliation de ce CLUF.
+
+11. LOI APPLICABLE ET RÉSOLUTION DES LITIGES
+
+11.1 Loi applicable
+Ce CLUF sera régi et interprété conformément aux lois de la juridiction dans laquelle le Concédant a son siège social, sans égard à ses principes de conflit de lois.
+
+11.2 Résolution des litiges
+Tout litige découlant de ou en relation avec ce CLUF, y compris toute question concernant son existence, sa validité ou sa résiliation, sera résolu comme suit :
+
+a) D'abord, les parties tenteront de résoudre le litige par des négociations informelles de bonne foi ;
+
+b) Si le litige ne peut être résolu par des négociations informelles, les parties conviennent de soumettre le litige à un arbitrage contraignant conformément aux règles de l'American Arbitration Association (ou d'un organisme d'arbitrage équivalent dans la juridiction où le Concédant a son siège social) ;
+
+c) L'arbitrage sera conduit en langue anglaise dans la ville où le Concédant a son siège social ;
+
+d) La décision de l'arbitre sera définitive et liera les deux parties.
+
+11.3 Renonciation aux actions collectives
+VOUS ET LE CONCÉDANT ACCEPTEZ QUE CHACUN PUISSE PRÉSENTER DES RÉCLAMATIONS CONTRE L'AUTRE UNIQUEMENT À TITRE INDIVIDUEL, ET NON EN TANT QUE DEMANDEUR OU MEMBRE D'UN GROUPE DANS UNE ACTION COLLECTIVE OU REPRÉSENTATIVE PRÉSUMÉE.
+
+11.4 Exceptions
+Nonobstant ce qui précède, l'une ou l'autre des parties peut demander une injonction ou autre mesure équitable devant tout tribunal compétent pour protéger ses droits de propriété intellectuelle en attendant la fin de l'arbitrage.
+
+12. DISPOSITIONS GÉNÉRALES
+
+12.1 Intégralité de l'accord
+Ce CLUF constitue l'intégralité de l'accord entre vous et le Concédant concernant l'installateur du Logiciel et remplace toutes les communications, propositions et représentations orales ou écrites antérieures ou contemporaines concernant l'installateur du Logiciel ou tout autre sujet couvert par ce CLUF.
+
+12.2 Divisibilité
+Si une disposition de ce CLUF est jugée nulle, invalide, inapplicable ou illégale, les autres dispositions resteront pleinement en vigueur et la disposition invalide ou inapplicable sera réformée de manière à exprimer au mieux l'intention de la disposition invalide ou inapplicable.
+
+12.3 Renonciation
+Le fait pour l'une ou l'autre des parties de ne pas faire valoir les droits accordés par les présentes ou de ne pas prendre de mesures contre l'autre partie en cas de violation des présentes ne sera pas considéré comme une renonciation par cette partie à l'application ultérieure des droits ou à des actions ultérieures en cas de violations futures.
+
+12.4 Modifications
+Le Concédant se réserve le droit de modifier ce CLUF à tout moment en publiant le CLUF modifié sur son site Web. Votre utilisation continue de l'installateur du Logiciel après cette publication constituera votre acceptation du CLUF modifié.
+
+12.5 Cession
+Vous ne pouvez pas céder ou transférer ce CLUF ou tout droit ou obligation en vertu de ce CLUF sans le consentement écrit préalable du Concédant. Le Concédant peut céder ou transférer ce CLUF sans votre consentement.
+
+12.6 Coordonnées
+Si vous avez des questions concernant ce CLUF, veuillez contacter le Concédant à support@local-operator.com.
+
+13. RECONNAISSANCE
+
+EN INSTALLANT OU EN UTILISANT L'INSTALLATEUR DU LOGICIEL, VOUS RECONNAISSEZ AVOIR LU CE CLUF, LE COMPRENDRE ET ACCEPTER D'ÊTRE LIÉ PAR SES TERMES ET CONDITIONS. VOUS ACCEPTEZ ÉGALEMENT QUE CE CLUF CONSTITUE LA DÉCLARATION COMPLÈTE ET EXCLUSIVE DE L'ACCORD ENTRE VOUS ET LE CONCÉDANT CONCERNANT L'OBJET DES PRÉSENTES ET REMPLACE TOUTES LES PROPOSITIONS OU ACCORDS ANTÉRIEURS, ORAUX OU ÉCRITS, ET TOUTES AUTRES COMMUNICATIONS ENTRE VOUS ET LE CONCÉDANT RELATIVES À L'OBJET DES PRÉSENTES.
+
+---
+
+© 2025 Local Operator. Tous droits réservés.
+
