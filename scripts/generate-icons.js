@@ -18,10 +18,8 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const sharp = require("sharp");
-const { Resvg } = require("@resvg/resvg-js");
 
 // Configuration
-const defaultIconPath = path.join(__dirname, "../resources/icon.png");
 const sourceImage = process.argv[2];
 const outputDir = path.join(__dirname, "../build");
 
@@ -91,7 +89,6 @@ const generateIcons = async () => {
 
 			// Handle ICO format separately
 			if (icon.isIco) {
-				// Convert to PNG first (not SVG which was causing the error)
 				const pngBuffer = await resized.toFormat("png").toBuffer();
 
 				// Create a simple ICO format (basic implementation)
