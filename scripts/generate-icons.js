@@ -4,7 +4,7 @@
  * Icon Generator for Local Operator UI
  *
  * This script generates platform-specific icons from a source image.
- * It requires the 'sharp' image processing library.
+ * It requires the 'sharp' image processing library and 'icns-lib' for ICNS generation.
  *
  * Usage:
  *   node generate-icons.js <source-image>
@@ -12,12 +12,13 @@
  * The source image is required and cannot be the same as the output icon.png.
  *
  * Installation:
- *   npm install --save-dev sharp
+ *   npm install --save-dev sharp icns-lib
  */
 
 const fs = require("node:fs");
 const path = require("node:path");
 const sharp = require("sharp");
+const icnsLib = require("icns-lib");
 
 // Configuration
 const sourceImage = process.argv[2];
@@ -51,6 +52,7 @@ const icons = [
 
 	// Linux icons
 	{ size: 512, name: "icon.png" },
+	{ size: 512, name: "icon.icns", isIcns: true }, // ICNS format for Linux compatibility
 
 	// Electron tray icons
 	{ size: 16, name: "tray-icon.png" },
@@ -59,6 +61,17 @@ const icons = [
 	// Electron dock icons
 	{ size: 128, name: "dock-icon.png" },
 ];
+
+// ICNS icon type mappings
+const icnsTypes = {
+	16: "icp4", // 16x16
+	32: "icp5", // 32x32
+	64: "icp6", // 64x64
+	128: "ic07", // 128x128
+	256: "ic08", // 256x256
+	512: "ic09", // 512x512
+	1024: "ic10", // 1024x1024
+};
 
 // Generate icons
 const generateIcons = async () => {
@@ -73,6 +86,9 @@ const generateIcons = async () => {
 
 		// Load source image
 		const image = sharp(sourceImage);
+
+		// For ICNS generation, we'll need to store PNG buffers for each size
+		const icnsPngBuffers = {};
 
 		// Generate each icon
 		for (const icon of icons) {
@@ -111,11 +127,42 @@ const generateIcons = async () => {
 				// Combine header and PNG data
 				const icoBuffer = Buffer.concat([icoHeader, pngBuffer]);
 				fs.writeFileSync(outputPath, icoBuffer);
+			}
+			// Handle ICNS format separately
+			else if (icon.isIcns) {
+				// For ICNS, we need to generate all the required sizes
+				// We'll collect these in the next loop and generate the ICNS file at the end
+				console.log("Preparing ICNS file...");
 			} else {
 				// For other formats, use toFile directly
 				await resized.toFile(outputPath);
+
+				// If this is one of the sizes we need for ICNS, store the buffer
+				if (icnsTypes[size]) {
+					icnsPngBuffers[size] = await resized.toFormat("png").toBuffer();
+				}
 			}
 		}
+
+		// Generate ICNS file
+		const icnsPath = path.join(outputDir, "icon.icns");
+		console.log(`Generating ${icnsPath}...`);
+
+		// Create a map of icon types and their data
+		const icnsMap = {};
+
+		// Add each size to the ICNS map
+		for (const [size, type] of Object.entries(icnsTypes)) {
+			if (icnsPngBuffers[size]) {
+				icnsMap[type] = icnsPngBuffers[size];
+			}
+		}
+
+		// Format the map into an ICNS buffer
+		const icnsBuffer = icnsLib.format(icnsMap);
+
+		// Write the ICNS file
+		fs.writeFileSync(icnsPath, icnsBuffer);
 
 		console.log("Icon generation complete!");
 	} catch (error) {
