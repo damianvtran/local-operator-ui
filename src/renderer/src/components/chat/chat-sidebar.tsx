@@ -74,7 +74,7 @@ const AgentsList = styled(List)(({ theme }) => ({
 
 const AgentListItemButton = styled(ListItemButton)(({ theme }) => ({
 	margin: "0 8px 8px",
-	borderRadius: 12,
+	borderRadius: 8,
 	paddingRight: 12,
 	paddingTop: 6,
 	paddingBottom: 6,
@@ -172,7 +172,7 @@ const TimeStampText = styled("span")({
 // Options button container
 const OptionsButtonContainer = styled(Box)({
 	position: "absolute",
-	right: 0,
+	right: -8,
 	top: 0,
 	opacity: 0,
 	transform: "translateX(100%)",
@@ -180,6 +180,7 @@ const OptionsButtonContainer = styled(Box)({
 	".MuiListItemButton-root:hover &": {
 		opacity: 1,
 		transform: "translateX(0)",
+		visibility: "visible",
 	},
 	zIndex: 2,
 });
@@ -486,6 +487,7 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 															display: "flex",
 															justifyContent: "center",
 															alignItems: "center",
+															opacity: 1,
 														}}
 													/>
 												</span>
