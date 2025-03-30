@@ -1,31 +1,40 @@
 import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import {
 	faCheck,
+	faCode,
 	faCommentDots,
+	faEdit,
 	faLightbulb,
 	faQuestion,
+	faBook,
+	faPencilAlt,
+	faChevronUp,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, Collapse, Typography, alpha } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import type { ExecutionType } from "@renderer/api/local-operator/types";
 import { type FC, useState } from "react";
+import { CodeBlock } from "./code-block";
+import { ErrorBlock } from "./error-block";
+import { LogBlock } from "./log-block";
 import { MarkdownRenderer } from "../markdown-renderer";
+import { OutputBlock } from "./output-block";
 import type { BackgroundBlockProps } from "./types";
 
 const BlockContainer = styled(Box)(() => ({
 	width: "95%",
-	cursor: "pointer",
 	transition: "all 0.2s ease",
 	marginLeft: 56,
-	"&:hover": {
-		opacity: 0.9,
-	},
 }));
 
 const BlockHeader = styled(Box, {
 	shouldForwardProp: (prop) => prop !== "executionType" && prop !== "isUser",
 })<{ executionType: ExecutionType; isUser: boolean }>(({ theme }) => ({
+	cursor: "pointer",
+	"&:hover": {
+		opacity: 0.9,
+	},
 	display: "flex",
 	alignItems: "center",
 	padding: "8px 12px",
@@ -74,20 +83,67 @@ const ExpandedContent = styled(Box)(({ theme }) => ({
 	marginLeft: 0,
 }));
 
+const ActionBadge = styled(Box)(({ theme }) => ({
+	position: "absolute",
+	top: "-10px",
+	right: "16px",
+	padding: "4px 8px",
+	borderRadius: "12px",
+	fontSize: "0.7rem",
+	fontWeight: "bold",
+	backgroundColor: alpha(theme.palette.primary.main, 0.9),
+	color: "#fff",
+	display: "flex",
+	alignItems: "center",
+	gap: "4px",
+	boxShadow: "0 2px 4px rgba(0, 0, 0, 0.2)",
+	zIndex: 1, // Ensure badge is above other content
+}));
+
+const CollapseButton = styled(Box)(({ theme }) => ({
+	display: "flex",
+	justifyContent: "center",
+	alignItems: "center",
+	padding: "8px",
+	marginTop: "8px",
+	cursor: "pointer",
+	borderRadius: "4px",
+	backgroundColor: alpha(
+		theme.palette.common.black,
+		theme.palette.mode === "dark" ? 0.1 : 0.03,
+	),
+	"&:hover": {
+		backgroundColor: alpha(
+			theme.palette.common.black,
+			theme.palette.mode === "dark" ? 0.15 : 0.05,
+		),
+	},
+}));
+
 /**
- * Component for displaying plan and reflection execution types
+ * Component for displaying plan, reflection, and action execution types
  * Shows as a single line with truncation when collapsed
+ * For action types, also shows code, output, and errors when expanded
  */
 export const BackgroundBlock: FC<BackgroundBlockProps> = ({
 	content,
 	action,
 	executionType,
 	isUser,
+	code,
+	stdout,
+	stderr,
+	logging,
 }) => {
 	const [isExpanded, setIsExpanded] = useState(false);
 
-	const toggleExpand = () => {
-		setIsExpanded(!isExpanded);
+	const handleExpand = () => {
+		setIsExpanded(true);
+	};
+
+	const handleCollapse = (e: React.MouseEvent) => {
+		e.stopPropagation();
+		setIsExpanded(false);
 	};
 
 	const getTitle = () => {
@@ -96,8 +152,20 @@ export const BackgroundBlock: FC<BackgroundBlockProps> = ({
 				return "Task Complete";
 			case "ASK":
 				return "Asking a Question";
+			case "CODE":
+				return "Executing Code";
+			case "WRITE":
+				return "Writing Content";
+			case "EDIT":
+				return "Editing Content";
+			case "READ":
+				return "Reading Content";
 			default:
-				return executionType === "plan" ? "Planning" : "Reflection";
+				return executionType === "plan"
+					? "Planning"
+					: executionType === "action"
+						? "Action"
+						: "Reflection";
 		}
 	};
 
@@ -107,8 +175,20 @@ export const BackgroundBlock: FC<BackgroundBlockProps> = ({
 				return faCheck;
 			case "ASK":
 				return faQuestion;
+			case "CODE":
+				return faCode;
+			case "WRITE":
+				return faPencilAlt;
+			case "EDIT":
+				return faEdit;
+			case "READ":
+				return faBook;
 			default:
-				return executionType === "plan" ? faLightbulb : faCommentDots;
+				return executionType === "plan"
+					? faLightbulb
+					: executionType === "action"
+						? faCode
+						: faCommentDots;
 		}
 	};
 
@@ -118,13 +198,27 @@ export const BackgroundBlock: FC<BackgroundBlockProps> = ({
 			: content;
 	};
 
+	// Determine if we have any collapsible technical content
+	const hasCollapsibleContent =
+		executionType === "action" && (code || stdout || stderr || logging);
+
 	return (
-		<BlockContainer onClick={toggleExpand}>
-			<BlockHeader executionType={executionType} isUser={isUser}>
+		<BlockContainer sx={{ position: "relative" }}>
+			{executionType === "action" && !isUser && (
+				<ActionBadge>
+					<FontAwesomeIcon icon={getIcon()} size="xs" />
+					ACTION
+				</ActionBadge>
+			)}
+			<BlockHeader
+				executionType={executionType}
+				isUser={isUser}
+				onClick={handleExpand}
+			>
 				<BlockIcon>
 					<FontAwesomeIcon icon={getIcon()} size="sm" />
 				</BlockIcon>
-				<Box sx={{ flexGrow: 1 }}>
+				<Box sx={{ flexGrow: 1, position: "relative" }}>
 					<BlockTitle variant="subtitle2">{getTitle()}</BlockTitle>
 					{!isExpanded && (
 						<BlockContent>
@@ -154,6 +248,30 @@ export const BackgroundBlock: FC<BackgroundBlockProps> = ({
 							codeSize: "0.85em",
 						}}
 					/>
+
+					{/* Technical details for action messages */}
+					{hasCollapsibleContent && (
+						<>
+							{/* Render code with syntax highlighting */}
+							{code && <CodeBlock code={code} isUser={isUser} />}
+
+							{/* Render stdout */}
+							{stdout && <OutputBlock output={stdout} isUser={isUser} />}
+
+							{/* Render stderr */}
+							{stderr && <ErrorBlock error={stderr} isUser={isUser} />}
+
+							{/* Render logging */}
+							{logging && <LogBlock log={logging} isUser={isUser} />}
+						</>
+					)}
+
+					<CollapseButton onClick={handleCollapse}>
+						<FontAwesomeIcon icon={faChevronUp} size="sm" />
+						<Typography variant="caption" sx={{ ml: 1 }}>
+							Collapse
+						</Typography>
+					</CollapseButton>
 				</ExpandedContent>
 			</Collapse>
 		</BlockContainer>

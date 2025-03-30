@@ -132,12 +132,10 @@ export const MessageItem: FC<MessageItemProps> = memo(
 		const isUser = message.role === "user";
 		const isAction = message.execution_type === "action";
 		const isSecurityCheck = message.execution_type === "security_check";
-		const isPlanOrReflection =
+		const isPlanOrReflectionOrAction =
 			message.execution_type === "plan" ||
 			message.execution_type === "reflection" ||
-			(isAction &&
-				(message.action === "DONE" || message.action === "ASK") &&
-				message.task_classification !== "conversation");
+			message.execution_type === "action";
 
 		// Create a Local Operator client using the API config
 		const client = useMemo(() => {
@@ -177,20 +175,18 @@ export const MessageItem: FC<MessageItemProps> = memo(
 			}
 		}, []);
 
-		// If it's a plan or reflection execution type, or an action with DONE, render the special block
-		if (isPlanOrReflection && message.message) {
-			// For action DONE, we use a custom execution type but pass the icon and title through
-			const executionType =
-				isAction && message.action === "DONE"
-					? "action"
-					: message.execution_type || "action";
-
+		// If it's a plan, reflection, or action execution type, render the special block
+		if (isPlanOrReflectionOrAction && message.message) {
 			return (
 				<BackgroundBlock
 					content={message.message}
 					action={message.action}
-					executionType={executionType}
+					executionType={message.execution_type || "action"}
 					isUser={isUser}
+					code={message.code}
+					stdout={message.stdout}
+					stderr={message.stderr}
+					logging={message.logging}
 				/>
 			);
 		}
