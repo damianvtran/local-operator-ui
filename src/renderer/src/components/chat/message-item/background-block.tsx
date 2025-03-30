@@ -23,35 +23,42 @@ import { OutputBlock } from "./output-block";
 import type { BackgroundBlockProps } from "./types";
 
 const BlockContainer = styled(Box)(() => ({
-	width: "95%",
+	width: "calc(100% - 2*56px)",
 	transition: "all 0.2s ease",
 	marginLeft: 56,
 }));
 
 const BlockHeader = styled(Box, {
 	shouldForwardProp: (prop) => prop !== "executionType" && prop !== "isUser",
-})<{ executionType: ExecutionType; isUser: boolean }>(({ theme }) => ({
-	cursor: "pointer",
-	"&:hover": {
-		opacity: 0.9,
-	},
-	display: "flex",
-	alignItems: "center",
-	padding: "8px 12px",
+})<{ executionType: ExecutionType; isUser: boolean; isExpanded: boolean }>(
+	({ theme, isExpanded }) => ({
+		cursor: "pointer",
+		"&:hover": {
+			opacity: 0.9,
+		},
+		display: "flex",
+		alignItems: "center",
+		padding: "8px 12px",
+		backgroundColor: alpha(
+			theme.palette.common.black,
+			theme.palette.mode === "dark" ? 0.2 : 0.05,
+		),
+		borderRadius: isExpanded ? "8px 8px 0 0" : "8px",
+	}),
+);
+
+const BlockIcon = styled(Box)(({ theme }) => ({
+	marginRight: 8,
+	width: 40,
+	height: 40,
+	borderRadius: "100%",
 	backgroundColor: alpha(
 		theme.palette.common.black,
 		theme.palette.mode === "dark" ? 0.2 : 0.05,
 	),
-	borderLeft: `3px solid ${
-		theme.palette.grey[theme.palette.mode === "dark" ? 600 : 400]
-	}`,
-}));
-
-const BlockIcon = styled(Box)(({ theme }) => ({
-	marginRight: 8,
 	display: "flex",
 	alignItems: "center",
-	justifyContent: "flex-start",
+	justifyContent: "center",
 	color: theme.palette.icon.text,
 }));
 
@@ -213,7 +220,8 @@ export const BackgroundBlock: FC<BackgroundBlockProps> = ({
 			<BlockHeader
 				executionType={executionType}
 				isUser={isUser}
-				onClick={handleExpand}
+				isExpanded={isExpanded}
+				onClick={isExpanded ? handleCollapse : handleExpand}
 			>
 				<BlockIcon>
 					<FontAwesomeIcon icon={getIcon()} size="sm" />
