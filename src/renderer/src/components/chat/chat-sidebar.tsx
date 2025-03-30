@@ -459,7 +459,13 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 								</ListItemAvatar>
 								<MessageBubble>
 									<AgentNameContainer>
-										<Tooltip title={agent.name} arrow placement="top-start">
+										<Tooltip
+											enterDelay={1200}
+											enterNextDelay={1200}
+											title={agent.name}
+											arrow
+											placement="top-start"
+										>
 											<AgentName>{agent.name}</AgentName>
 										</Tooltip>
 										{agent.last_message_datetime && (
@@ -474,7 +480,13 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 											</TimeStampContainer>
 										)}
 										<OptionsButtonContainer>
-											<Tooltip title="Agent Options" arrow placement="top">
+											<Tooltip
+												enterDelay={1200}
+												enterNextDelay={1200}
+												title="Agent Options"
+												arrow
+												placement="top"
+											>
 												<span>
 													<AgentOptionsMenu
 														agentId={agent.id}
@@ -512,8 +524,8 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 											title={truncateMessage(agent.last_message, 500)}
 											arrow
 											placement="bottom-start"
-											enterDelay={1000}
-											leaveDelay={200}
+											enterDelay={1200}
+											enterNextDelay={1200}
 										>
 											{/* @ts-ignore - MUI Tooltip type issue */}
 											<MessagePreview>
