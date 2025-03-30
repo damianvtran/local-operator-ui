@@ -14,7 +14,7 @@
 <br />
 
 <div style="display: flex; justify-content: center;">
-  <video style="border-radius: 8px; max-width: 780px;" src="./resources/preview-example.mp4" alt="Local Operator Dashboard Example" autoplay loop muted playsinline></video>
+  <video style="border-radius: 8px; width: 100%; max-width: 780px;" src="./resources/preview-example.mp4" alt="Local Operator Dashboard Example" controls></video>
 </div>
 
 <br />
