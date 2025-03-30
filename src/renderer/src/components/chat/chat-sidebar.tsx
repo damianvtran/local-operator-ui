@@ -79,6 +79,7 @@ const AgentListItemButton = styled(ListItemButton)(({ theme }) => ({
 	paddingTop: 6,
 	paddingBottom: 6,
 	paddingLeft: 12,
+	position: "relative", // Ensure proper positioning context
 	"&.Mui-selected": {
 		backgroundColor: alpha(theme.palette.sidebar.itemActive, 0.1),
 		color: theme.palette.sidebar.itemActiveText,
@@ -112,6 +113,8 @@ const MessageBubble = styled("div")({
 	width: "100%",
 	overflow: "hidden",
 	position: "relative",
+	// Ensure the message bubble maintains its layout
+	isolation: "isolate", // Create a new stacking context
 });
 
 // Agent name container with timestamp
@@ -121,6 +124,8 @@ const AgentNameContainer = styled(Box)({
 	alignItems: "center",
 	width: "100%",
 	position: "relative",
+	// Ensure the container maintains its position
+	overflow: "hidden",
 });
 
 // Agent name styling
@@ -163,6 +168,8 @@ const TimeStampContainer = styled("div")(({ theme }) => ({
 	".MuiListItemButton-root:hover &": {
 		transform: "translateX(-24px)",
 	},
+	// Ensure the timestamp doesn't get affected by menu clicks
+	pointerEvents: "none",
 }));
 
 const TimeStampText = styled("span")({
@@ -183,6 +190,11 @@ const OptionsButtonContainer = styled(Box)({
 		visibility: "visible",
 	},
 	zIndex: 2,
+	// Ensure the container doesn't affect layout when clicked
+	pointerEvents: "none",
+	"& > *": {
+		pointerEvents: "auto", // Allow clicks on children (the button itself)
+	},
 });
 
 // No messages styling
