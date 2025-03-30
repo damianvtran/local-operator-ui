@@ -1,8 +1,4 @@
-import {
-	faClock,
-	faCommentSlash,
-	faRobot,
-} from "@fortawesome/free-solid-svg-icons";
+import { faCommentSlash, faRobot } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
 	Alert,
@@ -14,7 +10,6 @@ import {
 	ListItem,
 	ListItemAvatar,
 	ListItemButton,
-	ListItemText,
 	Paper,
 	Tooltip,
 	Typography,
@@ -64,7 +59,7 @@ const EmptyStateContainer = styled(Box)({
 const AgentsList = styled(List)(({ theme }) => ({
 	overflow: "auto",
 	flexGrow: 1,
-	padding: "8px",
+	padding: "8px 0px",
 	"&::-webkit-scrollbar": {
 		width: "8px",
 	},
@@ -78,19 +73,21 @@ const AgentsList = styled(List)(({ theme }) => ({
 }));
 
 const AgentListItemButton = styled(ListItemButton)(({ theme }) => ({
-	margin: "0 8px",
-	borderRadius: 8,
-	marginBottom: 4,
-	paddingRight: 40,
+	margin: "0 8px 8px",
+	borderRadius: 12,
+	paddingRight: 12,
+	paddingTop: 6,
+	paddingBottom: 6,
+	paddingLeft: 12,
 	"&.Mui-selected": {
-		backgroundColor: theme.palette.sidebar.itemActive,
+		backgroundColor: alpha(theme.palette.sidebar.itemActive, 0.1),
 		color: theme.palette.sidebar.itemActiveText,
 		"&:hover": {
-			backgroundColor: theme.palette.sidebar.itemActiveHover,
+			backgroundColor: alpha(theme.palette.sidebar.itemActiveHover, 0.15),
 		},
 	},
 	"&:hover": {
-		backgroundColor: theme.palette.sidebar.itemHover,
+		backgroundColor: alpha(theme.palette.sidebar.itemHover, 0.1),
 	},
 }));
 
@@ -104,40 +101,102 @@ const AgentAvatar = styled(Avatar, {
 		? theme.palette.sidebar.itemActiveText
 		: theme.palette.icon.text,
 	boxShadow: `0 2px 4px ${alpha(theme.palette.common.black, 0.15)}`,
+	width: 42,
+	height: 42,
 }));
 
-// Use a span wrapper to avoid nesting <p> inside <p>
-const MessagePreview = styled("span")({
-	display: "block",
-	color: "text.secondary",
-	maxWidth: "100%",
-	marginBottom: 4,
-	fontSize: "0.75rem",
+// Message bubble styling
+const MessageBubble = styled("div")({
+	display: "flex",
+	flexDirection: "column",
+	width: "100%",
+	overflow: "hidden",
+	position: "relative",
 });
 
-const TimeStampContainer = styled("span")(({ theme }) => ({
+// Agent name container with timestamp
+const AgentNameContainer = styled(Box)({
+	display: "flex",
+	justifyContent: "space-between",
+	alignItems: "center",
+	width: "100%",
+	position: "relative",
+});
+
+// Agent name styling
+const AgentName = styled(Typography)(() => ({
+	fontWeight: 600,
+	fontSize: "0.9rem",
+	whiteSpace: "nowrap",
+	overflow: "hidden",
+	textOverflow: "ellipsis",
+	marginBottom: 2,
+	flex: 1,
+}));
+
+// Message preview with truncation
+const MessagePreview = styled("div")(({ theme }) => ({
+	fontSize: "0.8rem",
+	color:
+		theme.palette.mode === "dark"
+			? "rgba(255, 255, 255, 0.7)"
+			: "rgba(0, 0, 0, 0.6)",
+	whiteSpace: "nowrap",
+	overflow: "hidden",
+	textOverflow: "ellipsis",
+	width: "100%",
+	minHeight: "18px",
+}));
+
+// Time stamp styling
+const TimeStampContainer = styled("div")(({ theme }) => ({
 	display: "flex",
 	alignItems: "center",
 	color:
 		theme.palette.mode === "dark"
 			? "rgba(255, 255, 255, 0.5)"
 			: "rgba(0, 0, 0, 0.5)",
-	fontSize: "0.75rem",
+	fontSize: "0.7rem",
+	marginLeft: 8,
+	flexShrink: 0,
+	transition: "transform 0.2s ease",
+	".MuiListItemButton-root:hover &": {
+		transform: "translateX(-24px)",
+	},
 }));
 
 const TimeStampText = styled("span")({
 	cursor: "help",
 });
 
-const NoMessagesContainer = styled("span")(({ theme }) => ({
+// Options button container
+const OptionsButtonContainer = styled(Box)({
+	position: "absolute",
+	right: 0,
+	top: 0,
+	opacity: 0,
+	transform: "translateX(100%)",
+	transition: "opacity 0.2s ease, transform 0.2s ease",
+	".MuiListItemButton-root:hover &": {
+		opacity: 1,
+		transform: "translateX(0)",
+	},
+	zIndex: 2,
+});
+
+// No messages styling
+const NoMessagesContainer = styled("div")(({ theme }) => ({
 	display: "flex",
 	alignItems: "center",
 	color:
 		theme.palette.mode === "dark"
 			? "rgba(255, 255, 255, 0.5)"
 			: "rgba(0, 0, 0, 0.5)",
-	fontSize: "0.75rem",
+	fontSize: "0.8rem",
 	fontStyle: "italic",
+	whiteSpace: "nowrap",
+	overflow: "hidden",
+	textOverflow: "ellipsis",
 }));
 
 /**
@@ -278,12 +337,34 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 		[onSelectConversation, refetch],
 	);
 
-	// No need for client-side filtering since we're using the server-side filter
+	// Format date/time based on when the message was sent
 	const formatDateTime = (dateTimeString?: string) => {
 		if (!dateTimeString) return "";
 		try {
-			const date = new Date(dateTimeString);
-			return format(date, "MMM d, h:mm a");
+			const messageDate = new Date(dateTimeString);
+			const now = new Date();
+			const yesterday = new Date(now);
+			yesterday.setDate(now.getDate() - 1);
+
+			// Check if the message was sent today
+			if (messageDate.toDateString() === now.toDateString()) {
+				return format(messageDate, "h:mm a"); // Today: just time
+			}
+
+			// Check if the message was sent yesterday
+			if (messageDate.toDateString() === yesterday.toDateString()) {
+				return "Yesterday"; // Yesterday
+			}
+
+			// Check if the message was sent this week (within the last 7 days)
+			const oneWeekAgo = new Date(now);
+			oneWeekAgo.setDate(now.getDate() - 7);
+			if (messageDate > oneWeekAgo) {
+				return format(messageDate, "EEEE"); // Day of week
+			}
+
+			// Otherwise, show the full date
+			return format(messageDate, "yyyy-MM-dd");
 		} catch (error) {
 			return "";
 		}
@@ -353,48 +434,7 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 			) : (
 				<AgentsList>
 					{sortedAgents.map((agent) => (
-						<ListItem
-							key={agent.id}
-							disablePadding
-							secondaryAction={
-								<AgentOptionsMenu
-									agentId={agent.id}
-									agentName={agent.name}
-									isAgentsPage={false}
-									onViewAgentSettings={
-										onNavigateToAgentSettings
-											? () => onNavigateToAgentSettings(agent.id)
-											: undefined
-									}
-									onExportAgent={() => handleExportAgent(agent.id)}
-									onAgentDeleted={(deletedAgentId) => {
-										// Check if the deleted agent is the currently selected one
-										if (selectedConversation === deletedAgentId) {
-											// If so, clear the selection by calling the parent's onSelectConversation with null
-											onSelectConversation("");
-										}
-										// Refetch the agents list
-										refetch();
-									}}
-									buttonSx={{
-										mr: 0.5,
-										width: 32,
-										height: 32,
-										borderRadius: "8px",
-										display: "flex",
-										justifyContent: "center",
-										alignItems: "center",
-										".MuiListItem-root:hover &": {
-											opacity: 0.6,
-										},
-										".MuiListItemButton-root.Mui-selected + .MuiListItemSecondaryAction-root &":
-											{
-												opacity: 0.6,
-											},
-									}}
-								/>
-							}
-						>
+						<ListItem key={agent.id} disablePadding>
 							<AgentListItemButton
 								selected={selectedConversation === agent.id}
 								onClick={() => handleSelectConversation(agent.id)}
@@ -404,57 +444,79 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 										<FontAwesomeIcon icon={faRobot} />
 									</AgentAvatar>
 								</ListItemAvatar>
-								<ListItemText
-									primary={agent.name}
-									secondary={
-										<span style={{ display: "block", marginTop: "4px" }}>
-											{agent.last_message ? (
-												<>
-													<Tooltip
-														title={truncateMessage(agent.last_message, 500)}
-														arrow
-														placement="bottom-start"
-														enterDelay={1500}
-														leaveDelay={200}
-													>
-														<MessagePreview>
-															{truncateMessage(agent.last_message, 60)}
-														</MessagePreview>
-													</Tooltip>
-													{agent.last_message_datetime && (
-														<TimeStampContainer>
-															<FontAwesomeIcon
-																icon={faClock}
-																size="xs"
-																style={{ marginRight: "4px" }}
-															/>
-															<TimeStampText
-																title={new Date(
-																	agent.last_message_datetime,
-																).toLocaleString()}
-															>
-																{formatDateTime(agent.last_message_datetime)}
-															</TimeStampText>
-														</TimeStampContainer>
-													)}
-												</>
-											) : (
-												<NoMessagesContainer>
-													<FontAwesomeIcon
-														icon={faCommentSlash}
-														size="xs"
-														style={{ marginRight: "4px" }}
+								<MessageBubble>
+									<AgentNameContainer>
+										<Tooltip title={agent.name} arrow placement="top-start">
+											<AgentName>{agent.name}</AgentName>
+										</Tooltip>
+										{agent.last_message_datetime && (
+											<TimeStampContainer>
+												<TimeStampText
+													title={new Date(
+														agent.last_message_datetime,
+													).toLocaleString()}
+												>
+													{formatDateTime(agent.last_message_datetime)}
+												</TimeStampText>
+											</TimeStampContainer>
+										)}
+										<OptionsButtonContainer>
+											<Tooltip title="Agent Options" arrow placement="top">
+												<span>
+													<AgentOptionsMenu
+														agentId={agent.id}
+														agentName={agent.name}
+														isAgentsPage={false}
+														onViewAgentSettings={
+															onNavigateToAgentSettings
+																? () => onNavigateToAgentSettings(agent.id)
+																: undefined
+														}
+														onExportAgent={() => handleExportAgent(agent.id)}
+														onAgentDeleted={(deletedAgentId) => {
+															if (selectedConversation === deletedAgentId) {
+																onSelectConversation("");
+															}
+															refetch();
+														}}
+														buttonSx={{
+															width: 24,
+															height: 24,
+															borderRadius: "4px",
+															display: "flex",
+															justifyContent: "center",
+															alignItems: "center",
+														}}
 													/>
-													<span>No messages yet</span>
-												</NoMessagesContainer>
-											)}
-										</span>
-									}
-									primaryTypographyProps={{
-										fontWeight: 500,
-										variant: "body1",
-									}}
-								/>
+												</span>
+											</Tooltip>
+										</OptionsButtonContainer>
+									</AgentNameContainer>
+
+									{agent.last_message ? (
+										<Tooltip
+											title={truncateMessage(agent.last_message, 500)}
+											arrow
+											placement="bottom-start"
+											enterDelay={1000}
+											leaveDelay={200}
+										>
+											{/* @ts-ignore - MUI Tooltip type issue */}
+											<MessagePreview>
+												{truncateMessage(agent.last_message, 40)}
+											</MessagePreview>
+										</Tooltip>
+									) : (
+										<NoMessagesContainer>
+											<FontAwesomeIcon
+												icon={faCommentSlash}
+												size="xs"
+												style={{ marginRight: "4px" }}
+											/>
+											<span>No messages yet</span>
+										</NoMessagesContainer>
+									)}
+								</MessageBubble>
 							</AgentListItemButton>
 						</ListItem>
 					))}
