@@ -11,6 +11,7 @@ import { queryClient } from "./api/query-client";
 import App from "./app";
 import { ErrorBoundary } from "./components/common/error-boundary";
 import { ThemeProvider } from "./themes/theme-provider";
+import { isDevelopmentMode } from "./utils/env-utils";
 
 document.addEventListener("DOMContentLoaded", () => {
 	const root = ReactDOM.createRoot(
@@ -28,7 +29,7 @@ document.addEventListener("DOMContentLoaded", () => {
 					</ErrorBoundary>
 					<ThemedToastContainer />
 					{/* React Query DevTools - only in development (positioned at bottom left) */}
-					{process.env.NODE_ENV !== "production" && (
+					{isDevelopmentMode() && (
 						<ReactQueryDevtools
 							initialIsOpen={false}
 							position="left"
