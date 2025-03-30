@@ -13,9 +13,9 @@
 
 <br />
 
-<picture style="display: flex; justify-content: center;">
+<div style="display: flex; justify-content: center;">
   <video style="border-radius: 8px; max-width: 780px;" src="./resources/preview-example.mp4" alt="Local Operator Dashboard Example" autoplay loop muted playsinline></video>
-</picture>
+</div>
 
 <br />
 
