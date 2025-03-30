@@ -13,7 +13,7 @@
 
 <br />
 
-<https://github.com/damianvtran/local-operator-ui/blob/main/resources/preview-example.mp4>
+<video src="./resources/preview-example.mp4" alt="Local Operator Dashboard Example" autoplay loop muted playsinline></video>
 
 <br />
 
