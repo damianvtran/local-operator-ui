@@ -27,6 +27,7 @@ const HighlightContainer = styled(Box, {
 	"&:hover": {
 		boxShadow: `0 6px 16px ${alpha(theme.palette.common.black, theme.palette.mode === "dark" ? 0.2 : 0.15)}`,
 	},
+	zIndex: 0, // Ensure container is below badge
 }));
 
 const ActionBadge = styled(Box, {
@@ -48,6 +49,7 @@ const ActionBadge = styled(Box, {
 	alignItems: "center",
 	gap: "4px",
 	boxShadow: "0 2px 4px rgba(0, 0, 0, 0.2)",
+	zIndex: 1, // Ensure badge is above other content
 }));
 /**
  * Component for highlighting DONE and ASK action types
