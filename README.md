@@ -11,9 +11,13 @@
   <p><i>Real-time code execution on your device through natural conversation</i></p>
 </div>
 
-<picture>
-  <img src="./resources/preview-example.png" alt="Local Operator Dashboard Example">
+<br />
+
+<picture style="display: flex; justify-content: center;">
+  <video style="border-radius: 8px; max-width: 780px;" src="./resources/preview-example.mp4" alt="Local Operator Dashboard Example" autoplay loop muted playsinline></video>
 </picture>
+
+<br />
 
 **<span style="color: #38C96A">Local Operator</span>** empowers you to run Python code safely on your own machine through an intuitive chat interface. The AI agent:
 
