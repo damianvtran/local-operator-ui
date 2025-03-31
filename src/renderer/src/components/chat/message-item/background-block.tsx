@@ -1,14 +1,14 @@
 import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import {
+	faBook,
 	faCheck,
+	faChevronUp,
 	faCode,
 	faCommentDots,
 	faEdit,
 	faLightbulb,
-	faQuestion,
-	faBook,
 	faPencilAlt,
-	faChevronUp,
+	faQuestion,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, Collapse, Typography, alpha } from "@mui/material";
@@ -16,23 +16,23 @@ import { styled } from "@mui/material/styles";
 import type { ExecutionType } from "@renderer/api/local-operator/types";
 import {
 	type FC,
-	useState,
 	useCallback,
-	useMemo,
 	useEffect,
+	useMemo,
 	useRef,
+	useState,
 } from "react";
-import { CodeBlock } from "./code-block";
-import { ErrorBlock } from "./error-block";
-import { LogBlock } from "./log-block";
-import { MarkdownRenderer } from "../markdown-renderer";
-import { OutputBlock } from "./output-block";
 import { createLocalOperatorClient } from "../../../api/local-operator";
 import { apiConfig } from "../../../config";
+import { MarkdownRenderer } from "../markdown-renderer";
+import { CodeBlock } from "./code-block";
+import { ErrorBlock } from "./error-block";
 import { FileAttachment } from "./file-attachment";
 import { ImageAttachment } from "./image-attachment";
-import { VideoAttachment } from "./video-attachment";
+import { LogBlock } from "./log-block";
+import { OutputBlock } from "./output-block";
 import type { BackgroundBlockProps } from "./types";
+import { VideoAttachment } from "./video-attachment";
 
 /**
  * Styled container for the background block with mount animation
