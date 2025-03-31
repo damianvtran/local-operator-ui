@@ -56,6 +56,7 @@ const BlockIcon = styled(Box)(({ theme }) => ({
 	marginRight: 8,
 	width: 40,
 	height: 40,
+	flexShrink: 0,
 	borderRadius: "100%",
 	backgroundColor: alpha(
 		theme.palette.common.black,
