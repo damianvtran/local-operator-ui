@@ -6,6 +6,7 @@ import type { MessageContainerProps } from "./types";
 /**
  * Container component for message items
  * Handles the layout direction based on whether the message is from the user or assistant
+ * Provides increased spacing for assistant messages to account for action banners
  */
 const StyledContainer = styled(Box, {
 	shouldForwardProp: (prop) => prop !== "isUser",
@@ -14,7 +15,8 @@ const StyledContainer = styled(Box, {
 	flexDirection: isUser ? "row-reverse" : "row",
 	alignItems: "flex-start",
 	gap: 16,
-	marginBottom: 16,
+	marginBottom: 24,
+	marginTop: 8,
 }));
 
 /**

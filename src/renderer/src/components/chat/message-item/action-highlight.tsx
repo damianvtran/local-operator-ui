@@ -7,34 +7,13 @@ import type { ActionHighlightProps } from "./types";
 
 const HighlightContainer = styled(Box, {
 	shouldForwardProp: (prop) => prop !== "action" && prop !== "isUser",
-})<{ action: string; isUser: boolean }>(({ theme, action }) => ({
-	position: "relative",
-	padding: "16px",
-	borderRadius: "8px",
+})<{ action: string; isUser: boolean }>(() => ({
 	marginBottom: "16px",
-	boxShadow: `0 4px 12px ${alpha(theme.palette.common.black, theme.palette.mode === "dark" ? 0.15 : 0.1)}`,
-	width: "100%",
-	border: `1px solid ${
-		action === "DONE"
-			? theme.palette.actionHighlight.done.border
-			: theme.palette.actionHighlight.ask.border
-	}`,
-	backgroundColor:
-		action === "DONE"
-			? theme.palette.actionHighlight.done.background
-			: theme.palette.actionHighlight.ask.background,
-	transition: "all 0.2s ease",
-	"&:hover": {
-		boxShadow: `0 6px 16px ${alpha(theme.palette.common.black, theme.palette.mode === "dark" ? 0.2 : 0.15)}`,
-	},
 }));
 
 const ActionBadge = styled(Box, {
 	shouldForwardProp: (prop) => prop !== "action",
 })<{ action: string }>(({ theme, action }) => ({
-	position: "absolute",
-	top: "-10px",
-	right: "16px",
 	padding: "4px 8px",
 	borderRadius: "12px",
 	fontSize: "0.7rem",
@@ -46,8 +25,12 @@ const ActionBadge = styled(Box, {
 	color: "#fff",
 	display: "flex",
 	alignItems: "center",
+	justifyContent: "flex-end",
 	gap: "4px",
 	boxShadow: "0 2px 4px rgba(0, 0, 0, 0.2)",
+	marginBottom: "8px", // Add space between badge and content
+	alignSelf: "flex-end", // Align to the right
+	width: "fit-content", // Only take up as much width as needed
 }));
 /**
  * Component for highlighting DONE and ASK action types

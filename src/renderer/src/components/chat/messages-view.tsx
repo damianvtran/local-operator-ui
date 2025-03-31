@@ -50,6 +50,28 @@ const MessagesContainer = styled(Box)(({ theme }) => ({
 	willChange: "scroll-position",
 }));
 
+/**
+ * Container for centering and constraining message width
+ * Creates a modern chat app layout with centered content
+ */
+const CenteredMessagesContainer = styled(Box)(({ theme }) => ({
+	width: "100%",
+	maxWidth: "900px",
+	margin: "0 auto",
+	display: "flex",
+	flexDirection: "column",
+	gap: 16,
+	[theme.breakpoints.down("sm")]: {
+		maxWidth: "100%",
+	},
+	[theme.breakpoints.between("sm", "md")]: {
+		maxWidth: "90%",
+	},
+	[theme.breakpoints.up("md")]: {
+		maxWidth: "900px",
+	},
+}));
+
 const LoadingMoreIndicator = styled(Box)(({ theme }) => ({
 	display: "flex",
 	alignItems: "center",
@@ -119,26 +141,42 @@ export const MessagesView: FC<MessagesViewProps> = ({
 					{/* Render messages with windowing for better performance */}
 					{messages.length > 0 ? (
 						// Only render visible messages plus a buffer
-						messages.map((message) => (
-							<MessageItem key={message.id} message={message} />
-						))
-					) : (
-						<EmptyMessagesBox>
-							<EmptyMessagesIcon icon={faCommentDots} />
-							<Typography variant="body1">
-								No messages yet. Start a conversation!
-							</Typography>
-						</EmptyMessagesBox>
-					)}
+						<CenteredMessagesContainer>
+							{messages.map((message) => (
+								<MessageItem key={message.id} message={message} />
+							))}
 
-					{/* Loading indicator for new message */}
-					{isLoading && (
-						<LoadingIndicator
-							status={jobStatus}
-							agentName={agentName}
-							currentExecution={currentExecution}
-							scrollToBottom={scrollToBottom}
-						/>
+							{/* Loading indicator for new message - now inside CenteredMessagesContainer */}
+							{isLoading && (
+								<LoadingIndicator
+									status={jobStatus}
+									agentName={agentName}
+									currentExecution={currentExecution}
+									scrollToBottom={scrollToBottom}
+								/>
+							)}
+						</CenteredMessagesContainer>
+					) : (
+						<>
+							<EmptyMessagesBox>
+								<EmptyMessagesIcon icon={faCommentDots} />
+								<Typography variant="body1">
+									No messages yet. Start a conversation!
+								</Typography>
+							</EmptyMessagesBox>
+
+							{/* Loading indicator when no messages */}
+							{isLoading && (
+								<CenteredMessagesContainer>
+									<LoadingIndicator
+										status={jobStatus}
+										agentName={agentName}
+										currentExecution={currentExecution}
+										scrollToBottom={scrollToBottom}
+									/>
+								</CenteredMessagesContainer>
+							)}
+						</>
 					)}
 
 					{/* Invisible element to scroll to */}
