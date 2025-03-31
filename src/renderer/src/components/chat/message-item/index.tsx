@@ -131,7 +131,8 @@ export const MessageItem: FC<MessageItemProps> = memo(
 				!message.code &&
 				!message.stdout &&
 				!message.stderr &&
-				!message.logging);
+				!message.logging &&
+				message.is_complete);
 
 		if (shouldHide) {
 			return null;
@@ -203,7 +204,11 @@ export const MessageItem: FC<MessageItemProps> = memo(
 
 				{isSecurityCheck ? (
 					<SecurityCheckHighlight isUser={isUser}>
-						<MessagePaper isUser={isUser} content={message.message}>
+						<MessagePaper
+							isUser={isUser}
+							content={message.message}
+							message={message}
+						>
 							{/* Render image attachments if any */}
 							{message.files && message.files.length > 0 && (
 								<Box sx={{ mb: 2 }}>
@@ -320,7 +325,11 @@ export const MessageItem: FC<MessageItemProps> = memo(
 						isUser={isUser}
 						executionType={message.execution_type}
 					>
-						<MessagePaper isUser={isUser} content={message.message}>
+						<MessagePaper
+							isUser={isUser}
+							content={message.message}
+							message={message}
+						>
 							{/* Render image attachments if any */}
 							{message.files && message.files.length > 0 && (
 								<Box sx={{ mb: 2 }}>

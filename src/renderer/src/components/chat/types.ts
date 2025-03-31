@@ -21,4 +21,6 @@ export type Message = {
 	task_classification?: string;
 	action?: ActionType;
 	execution_type?: ExecutionType;
+	is_streamable?: boolean;
+	is_complete?: boolean;
 };
