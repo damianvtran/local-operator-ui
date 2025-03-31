@@ -12,6 +12,7 @@ import { ChatLayout } from "@renderer/components/common/chat-layout";
 import { apiConfig } from "@renderer/config";
 import { useAgentRouteParam } from "@renderer/hooks/use-route-params";
 import { useAgentSelectionStore } from "@renderer/store/agent-selection-store";
+import { isDevelopmentMode } from "@renderer/utils/env-utils";
 import { useChatStore } from "@store/chat-store";
 import { useQueryClient } from "@tanstack/react-query";
 import React, { useState, useMemo, useEffect, useCallback } from "react";
@@ -55,7 +56,15 @@ export const ChatPage: FC<ChatProps> = () => {
 	const conversationId = effectiveAgentId || undefined;
 	const selectedConversation = effectiveAgentId || undefined;
 
+	// In production mode, always use "chat" tab
 	const [activeTab, setActiveTab] = useState<"chat" | "raw">("chat");
+
+	// Force "chat" tab in production mode
+	useEffect(() => {
+		if (!isDevelopmentMode() && activeTab !== "chat") {
+			setActiveTab("chat");
+		}
+	}, [activeTab]);
 	const [isOptionsSidebarOpen, setIsOptionsSidebarOpen] = useState(false);
 
 	// Initialize the API client (memoized to prevent recreation on every render)
@@ -371,9 +380,11 @@ Store messages: ${JSON.stringify(getMessages(conversationId || ""), null, 2)}`;
 		getMessages,
 	]);
 
-	// Handle tab change
+	// Handle tab change - only allow changing tabs in development mode
 	const handleTabChange = useCallback((newTab: "chat" | "raw") => {
-		setActiveTab(newTab);
+		if (isDevelopmentMode()) {
+			setActiveTab(newTab);
+		}
 	}, []);
 
 	// Render the appropriate content based on the state

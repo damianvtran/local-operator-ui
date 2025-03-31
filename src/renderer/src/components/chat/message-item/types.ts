@@ -36,6 +36,11 @@ export type BackgroundBlockProps = {
 	action?: ActionType;
 	executionType: ExecutionType;
 	isUser: boolean;
+	code?: string;
+	stdout?: string;
+	stderr?: string;
+	logging?: string;
+	files?: string[]; // URLs to attachments
 };
 
 /**

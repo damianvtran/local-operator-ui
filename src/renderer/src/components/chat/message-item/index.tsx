@@ -121,10 +121,17 @@ export const MessageItem: FC<MessageItemProps> = memo(
 	({ message }) => {
 		// Hide messages with action DONE, execution_type "action", and task_classification "conversation"
 		// These are redundant to the response execution_type messages
+		// Also hide messages with no content (no message, files, code, stdout, stderr, or logging)
 		const shouldHide =
-			(message.action === "DONE" || message.action === "ASK") &&
-			message.execution_type === "action" &&
-			message.task_classification === "conversation";
+			((message.action === "DONE" || message.action === "ASK") &&
+				message.execution_type === "action" &&
+				message.task_classification === "conversation") ||
+			(!message.message &&
+				(!message.files || message.files.length === 0) &&
+				!message.code &&
+				!message.stdout &&
+				!message.stderr &&
+				!message.logging);
 
 		if (shouldHide) {
 			return null;
@@ -132,12 +139,9 @@ export const MessageItem: FC<MessageItemProps> = memo(
 		const isUser = message.role === "user";
 		const isAction = message.execution_type === "action";
 		const isSecurityCheck = message.execution_type === "security_check";
-		const isPlanOrReflection =
-			message.execution_type === "plan" ||
+		const shouldUseBackgroundBlock =
 			message.execution_type === "reflection" ||
-			(isAction &&
-				(message.action === "DONE" || message.action === "ASK") &&
-				message.task_classification !== "conversation");
+			message.execution_type === "action";
 
 		// Create a Local Operator client using the API config
 		const client = useMemo(() => {
@@ -177,20 +181,18 @@ export const MessageItem: FC<MessageItemProps> = memo(
 			}
 		}, []);
 
-		// If it's a plan or reflection execution type, or an action with DONE, render the special block
-		if (isPlanOrReflection && message.message) {
-			// For action DONE, we use a custom execution type but pass the icon and title through
-			const executionType =
-				isAction && message.action === "DONE"
-					? "action"
-					: message.execution_type || "action";
-
+		if (shouldUseBackgroundBlock && message.message) {
 			return (
 				<BackgroundBlock
 					content={message.message}
 					action={message.action}
-					executionType={executionType}
+					executionType={message.execution_type || "action"}
 					isUser={isUser}
+					code={message.code}
+					stdout={message.stdout}
+					stderr={message.stderr}
+					logging={message.logging}
+					files={message.files}
 				/>
 			);
 		}
@@ -201,7 +203,7 @@ export const MessageItem: FC<MessageItemProps> = memo(
 
 				{isSecurityCheck ? (
 					<SecurityCheckHighlight isUser={isUser}>
-						<MessagePaper isUser={isUser}>
+						<MessagePaper isUser={isUser} content={message.message}>
 							{/* Render image attachments if any */}
 							{message.files && message.files.length > 0 && (
 								<Box sx={{ mb: 2 }}>
@@ -318,7 +320,7 @@ export const MessageItem: FC<MessageItemProps> = memo(
 						isUser={isUser}
 						executionType={message.execution_type}
 					>
-						<MessagePaper isUser={isUser}>
+						<MessagePaper isUser={isUser} content={message.message}>
 							{/* Render image attachments if any */}
 							{message.files && message.files.length > 0 && (
 								<Box sx={{ mb: 2 }}>

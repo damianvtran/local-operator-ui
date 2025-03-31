@@ -4,6 +4,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, Button, Paper, Typography } from "@mui/material";
+import { isDevelopmentMode } from "@renderer/utils/env-utils";
 import type React from "react";
 import type { ErrorInfo, ReactNode } from "react";
 import {
@@ -73,8 +74,8 @@ const ErrorFallback = ({ error, resetErrorBoundary }: FallbackProps) => {
 				Try Again
 			</Button>
 
-			{/* Show error details in development */}
-			{
+			{/* Show error details only in development mode */}
+			{isDevelopmentMode() && (
 				<Box
 					sx={{
 						mt: 2,
@@ -111,7 +112,7 @@ const ErrorFallback = ({ error, resetErrorBoundary }: FallbackProps) => {
 						{error?.stack}
 					</Typography>
 				</Box>
-			}
+			)}
 		</Paper>
 	);
 };

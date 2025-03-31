@@ -5,6 +5,7 @@ import type {
 	JobStatus,
 } from "@renderer/api/local-operator/types";
 import { StyledDivider } from "@renderer/components/common/chat-layout";
+import { isDevelopmentMode } from "@renderer/utils/env-utils";
 import type { FC } from "react";
 import { ChatHeader } from "./chat-header";
 import { ChatOptionsSidebar } from "./chat-options-sidebar";
@@ -99,10 +100,13 @@ export const ChatContent: FC<ChatContentProps> = ({
 				agentId={agentId}
 			/>
 
-			{/* Tabs for chat and raw */}
-			<ChatTabs activeTab={activeTab} onChange={onTabChange} />
+			{/* Tabs for chat and raw - only shown in development mode */}
+			{isDevelopmentMode() && (
+				<ChatTabs activeTab={activeTab} onChange={onTabChange} />
+			)}
 
-			{activeTab === "chat" ? (
+			{/* In production, always show chat view. In development, respect the active tab */}
+			{!isDevelopmentMode() || activeTab === "chat" ? (
 				/* Messages container */
 				<MessagesView
 					messages={messages}
@@ -117,7 +121,7 @@ export const ChatContent: FC<ChatContentProps> = ({
 					scrollToBottom={scrollToBottom}
 				/>
 			) : (
-				/* Raw information tab */
+				/* Raw information tab - only accessible in development mode */
 				<RawInfoView content={rawInfoContent} />
 			)}
 
