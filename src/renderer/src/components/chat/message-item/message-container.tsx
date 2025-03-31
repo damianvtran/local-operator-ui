@@ -15,9 +15,8 @@ const StyledContainer = styled(Box, {
 	flexDirection: isUser ? "row-reverse" : "row",
 	alignItems: "flex-start",
 	gap: 16,
-	marginBottom: isUser ? 16 : 32, // Increased spacing for assistant messages
-	marginTop: isUser ? 8 : 16, // Additional top margin for better spacing
-	paddingTop: isUser ? 0 : 8, // Extra padding for assistant messages to account for action badges
+	marginBottom: 16,
+	marginTop: 8,
 }));
 
 /**
