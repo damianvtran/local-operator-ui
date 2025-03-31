@@ -14,7 +14,14 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, Collapse, Typography, alpha } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import type { ExecutionType } from "@renderer/api/local-operator/types";
-import { type FC, useState, useCallback, useMemo } from "react";
+import {
+	type FC,
+	useState,
+	useCallback,
+	useMemo,
+	useEffect,
+	useRef,
+} from "react";
 import { CodeBlock } from "./code-block";
 import { ErrorBlock } from "./error-block";
 import { LogBlock } from "./log-block";
@@ -27,14 +34,27 @@ import { ImageAttachment } from "./image-attachment";
 import { VideoAttachment } from "./video-attachment";
 import type { BackgroundBlockProps } from "./types";
 
-const BlockContainer = styled(Box)(() => ({
+/**
+ * Styled container for the background block with mount animation
+ * Uses keyframes for a smooth entrance animation
+ */
+const BlockContainer = styled(Box, {
+	shouldForwardProp: (prop) => prop !== "mounted",
+})<{ mounted: boolean }>(({ theme, mounted }) => ({
 	width: "calc(100% - 2*56px)",
-	transition: "all 0.2s ease",
 	marginLeft: 56,
+	opacity: mounted ? 1 : 0, // Start invisible before animation
+	transform: mounted ? "translateY(0)" : "translateY(20px)",
+	transition: `opacity 0.4s ${theme.transitions.easing.easeOut}, transform 0.4s ${theme.transitions.easing.easeOut}`,
 }));
 
+/**
+ * Styled header for the background block
+ * Includes hover effect and adapts to expanded state
+ */
 const BlockHeader = styled(Box, {
-	shouldForwardProp: (prop) => prop !== "executionType" && prop !== "isUser",
+	shouldForwardProp: (prop) =>
+		prop !== "executionType" && prop !== "isUser" && prop !== "isExpanded",
 })<{ executionType: ExecutionType; isUser: boolean; isExpanded: boolean }>(
 	({ theme, isExpanded }) => ({
 		cursor: "pointer",
@@ -49,9 +69,15 @@ const BlockHeader = styled(Box, {
 			theme.palette.mode === "dark" ? 0.2 : 0.05,
 		),
 		borderRadius: isExpanded ? "8px 8px 0 0" : "8px",
+		transition: `background-color 0.3s ${theme.transitions.easing.easeInOut}, 
+                   border-radius 0.3s ${theme.transitions.easing.easeInOut}`,
 	}),
 );
 
+/**
+ * Styled icon container with subtle animation
+ * Animates with a slight rotation and scale effect
+ */
 const BlockIcon = styled(Box)(({ theme }) => ({
 	marginRight: 8,
 	width: 40,
@@ -66,22 +92,71 @@ const BlockIcon = styled(Box)(({ theme }) => ({
 	alignItems: "center",
 	justifyContent: "center",
 	color: theme.palette.icon.text,
+	transform: "scale(1) rotate(0deg)",
+	transition: `transform 0.4s ${theme.transitions.easing.easeOut}`,
+	"&.animate": {
+		animation: "iconAppear 0.4s forwards",
+	},
+	"@keyframes iconAppear": {
+		"0%": {
+			transform: "scale(0.8) rotate(-10deg)",
+		},
+		"100%": {
+			transform: "scale(1) rotate(0deg)",
+		},
+	},
 }));
 
+/**
+ * Styled title with fade-in animation
+ */
 const BlockTitle = styled(Typography)(({ theme }) => ({
 	fontWeight: 500,
 	fontSize: "0.85rem",
 	color: theme.palette.text.secondary,
+	transform: "translateX(0)",
+	transition: `transform 0.4s ${theme.transitions.easing.easeOut}`,
+	"&.animate": {
+		animation: "titleFadeIn 0.4s forwards",
+	},
+	"@keyframes titleFadeIn": {
+		"0%": {
+			transform: "translateX(-5px)",
+		},
+		"100%": {
+			transform: "translateX(0)",
+		},
+	},
 }));
 
+/**
+ * Styled content with fade-in animation
+ */
 const BlockContent = styled(Box)(({ theme }) => ({
 	fontSize: "0.85rem",
 	color: theme.palette.text.secondary,
 	overflow: "hidden",
 	textOverflow: "ellipsis",
 	marginTop: 2,
+	transform: "translateY(0)",
+	transition: `transform 0.4s ${theme.transitions.easing.easeOut}`,
+	"&.animate": {
+		animation: "contentFadeIn 0.4s forwards",
+	},
+	"@keyframes contentFadeIn": {
+		"0%": {
+			transform: "translateY(5px)",
+		},
+		"100%": {
+			transform: "translateY(0)",
+		},
+	},
 }));
 
+/**
+ * Styled expanded content with subtle animation
+ * Animates the border and background when expanded
+ */
 const ExpandedContent = styled(Box)(({ theme }) => ({
 	padding: "12px 16px",
 	backgroundColor: alpha(
@@ -94,8 +169,23 @@ const ExpandedContent = styled(Box)(({ theme }) => ({
 	color: theme.palette.text.primary,
 	borderLeft: `3px solid ${theme.palette.grey[theme.palette.mode === "dark" ? 600 : 400]}`,
 	marginLeft: 0,
+	transition: `border-left-width 0.3s ${theme.transitions.easing.easeInOut}`,
+	"&.animate": {
+		animation: "expandedContentAppear 0.3s forwards",
+	},
+	"@keyframes expandedContentAppear": {
+		"0%": {
+			borderLeftWidth: "0px",
+		},
+		"100%": {
+			borderLeftWidth: "3px",
+		},
+	},
 }));
 
+/**
+ * Styled action badge with bounce-in animation
+ */
 const ActionBadge = styled(Box)(({ theme }) => ({
 	position: "absolute",
 	top: "-10px",
@@ -111,8 +201,27 @@ const ActionBadge = styled(Box)(({ theme }) => ({
 	gap: "4px",
 	boxShadow: "0 2px 4px rgba(0, 0, 0, 0.2)",
 	zIndex: 1, // Ensure badge is above other content
+	transform: "scale(1)",
+	transition: `transform 0.5s ${theme.transitions.easing.easeOut}`,
+	"&.animate": {
+		animation: "badgeBounceIn 0.5s forwards",
+	},
+	"@keyframes badgeBounceIn": {
+		"0%": {
+			transform: "scale(0)",
+		},
+		"60%": {
+			transform: "scale(1.2)",
+		},
+		"100%": {
+			transform: "scale(1)",
+		},
+	},
 }));
 
+/**
+ * Styled collapse button with hover animation
+ */
 const CollapseButton = styled(Box)(({ theme }) => ({
 	display: "flex",
 	justifyContent: "center",
@@ -125,11 +234,18 @@ const CollapseButton = styled(Box)(({ theme }) => ({
 		theme.palette.common.black,
 		theme.palette.mode === "dark" ? 0.1 : 0.03,
 	),
+	transition: `all 0.2s ${theme.transitions.easing.easeInOut}`,
 	"&:hover": {
 		backgroundColor: alpha(
 			theme.palette.common.black,
 			theme.palette.mode === "dark" ? 0.15 : 0.05,
 		),
+		transform: "translateY(-1px)",
+		boxShadow: `0 2px 4px ${alpha(theme.palette.common.black, 0.1)}`,
+	},
+	"&:active": {
+		transform: "translateY(0px)",
+		boxShadow: "none",
 	},
 }));
 
@@ -243,6 +359,23 @@ export const BackgroundBlock: FC<BackgroundBlockProps> = ({
 	files,
 }) => {
 	const [isExpanded, setIsExpanded] = useState(false);
+	const [mounted, setMounted] = useState(false);
+	const mountedRef = useRef(false);
+
+	// Handle mount animation
+	useEffect(() => {
+		// Only trigger animation if it hasn't been mounted before
+		if (!mountedRef.current) {
+			mountedRef.current = true;
+			// Small delay to ensure DOM is ready and for a staggered effect if multiple blocks appear
+			const timer = setTimeout(() => {
+				setMounted(true);
+			}, 50);
+			return () => clearTimeout(timer);
+		}
+
+		return undefined;
+	}, []);
 
 	const handleExpand = () => {
 		setIsExpanded(true);
@@ -347,10 +480,15 @@ export const BackgroundBlock: FC<BackgroundBlockProps> = ({
 	const hasCollapsibleContent =
 		executionType === "action" && (code || stdout || stderr || logging);
 
+	// Set mounted to true immediately to ensure elements are visible
+	useEffect(() => {
+		setMounted(true);
+	}, []);
+
 	return (
-		<BlockContainer sx={{ position: "relative" }}>
+		<BlockContainer sx={{ position: "relative" }} mounted={mounted}>
 			{executionType === "action" && !isUser && (
-				<ActionBadge>
+				<ActionBadge className={mounted ? "animate" : ""}>
 					<FontAwesomeIcon icon={getIcon()} size="xs" />
 					ACTION
 				</ActionBadge>
@@ -362,13 +500,15 @@ export const BackgroundBlock: FC<BackgroundBlockProps> = ({
 				isExpanded={isExpanded}
 				onClick={isExpanded ? handleCollapse : handleExpand}
 			>
-				<BlockIcon>
+				<BlockIcon className={mounted ? "animate" : ""}>
 					<FontAwesomeIcon icon={getIcon()} size="sm" />
 				</BlockIcon>
 				<Box sx={{ flexGrow: 1, position: "relative" }}>
-					<BlockTitle variant="subtitle2">{getTitle()}</BlockTitle>
+					<BlockTitle variant="subtitle2" className={mounted ? "animate" : ""}>
+						{getTitle()}
+					</BlockTitle>
 					{!isExpanded && (
-						<BlockContent>
+						<BlockContent className={mounted ? "animate" : ""}>
 							<MarkdownRenderer
 								content={getTruncatedContent(content)}
 								styleProps={{
@@ -384,7 +524,7 @@ export const BackgroundBlock: FC<BackgroundBlockProps> = ({
 				</Box>
 			</BlockHeader>
 			<Collapse in={isExpanded} timeout="auto">
-				<ExpandedContent>
+				<ExpandedContent className={isExpanded ? "animate" : ""}>
 					<MarkdownRenderer
 						content={content}
 						styleProps={{
