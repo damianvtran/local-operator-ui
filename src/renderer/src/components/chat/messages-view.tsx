@@ -50,6 +50,28 @@ const MessagesContainer = styled(Box)(({ theme }) => ({
 	willChange: "scroll-position",
 }));
 
+/**
+ * Container for centering and constraining message width
+ * Creates a modern chat app layout with centered content
+ */
+const CenteredMessagesContainer = styled(Box)(({ theme }) => ({
+	width: "100%",
+	maxWidth: "900px",
+	margin: "0 auto",
+	display: "flex",
+	flexDirection: "column",
+	gap: 16,
+	[theme.breakpoints.down("sm")]: {
+		maxWidth: "100%",
+	},
+	[theme.breakpoints.between("sm", "md")]: {
+		maxWidth: "90%",
+	},
+	[theme.breakpoints.up("md")]: {
+		maxWidth: "900px",
+	},
+}));
+
 const LoadingMoreIndicator = styled(Box)(({ theme }) => ({
 	display: "flex",
 	alignItems: "center",
@@ -119,9 +141,11 @@ export const MessagesView: FC<MessagesViewProps> = ({
 					{/* Render messages with windowing for better performance */}
 					{messages.length > 0 ? (
 						// Only render visible messages plus a buffer
-						messages.map((message) => (
-							<MessageItem key={message.id} message={message} />
-						))
+						<CenteredMessagesContainer>
+							{messages.map((message) => (
+								<MessageItem key={message.id} message={message} />
+							))}
+						</CenteredMessagesContainer>
 					) : (
 						<EmptyMessagesBox>
 							<EmptyMessagesIcon icon={faCommentDots} />

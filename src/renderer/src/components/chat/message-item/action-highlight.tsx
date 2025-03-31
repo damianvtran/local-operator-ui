@@ -7,26 +7,10 @@ import type { ActionHighlightProps } from "./types";
 
 const HighlightContainer = styled(Box, {
 	shouldForwardProp: (prop) => prop !== "action" && prop !== "isUser",
-})<{ action: string; isUser: boolean }>(({ theme, action }) => ({
+})<{ action: string; isUser: boolean }>(() => ({
 	position: "relative",
-	padding: "16px",
-	borderRadius: "8px",
+	width: "calc(100% - 102px)",
 	marginBottom: "16px",
-	boxShadow: `0 4px 12px ${alpha(theme.palette.common.black, theme.palette.mode === "dark" ? 0.15 : 0.1)}`,
-	width: "100%",
-	border: `1px solid ${
-		action === "DONE"
-			? theme.palette.actionHighlight.done.border
-			: theme.palette.actionHighlight.ask.border
-	}`,
-	backgroundColor:
-		action === "DONE"
-			? theme.palette.actionHighlight.done.background
-			: theme.palette.actionHighlight.ask.background,
-	transition: "all 0.2s ease",
-	"&:hover": {
-		boxShadow: `0 6px 16px ${alpha(theme.palette.common.black, theme.palette.mode === "dark" ? 0.2 : 0.15)}`,
-	},
 	zIndex: 0, // Ensure container is below badge
 }));
 
