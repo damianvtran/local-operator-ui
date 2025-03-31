@@ -21,6 +21,7 @@ export { ConfigApi } from "./config-api";
 export { CredentialsApi } from "./credentials-api";
 export { ModelsApi } from "./models-api";
 export { StaticApi } from "./static-api";
+export { WebSocketApi } from "./websocket-api";
 
 // Export all types
 export * from "./types";

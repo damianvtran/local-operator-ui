@@ -55,6 +55,8 @@ export const convertToMessage = (record: AgentExecutionRecord): Message => {
 		action: record.action,
 		execution_type: record.execution_type,
 		task_classification: record.task_classification,
+		is_complete: record.is_complete,
+		is_streamable: record.is_streamable,
 	};
 };
 

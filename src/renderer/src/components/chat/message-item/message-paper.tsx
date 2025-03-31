@@ -1,7 +1,9 @@
 import { Box, Paper, useTheme } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import type { FC } from "react";
+import { StreamingMessage } from "./streaming-message";
 import { MessageControls } from "./message-controls";
+import type { Message } from "../types";
 
 // Create a Paper component with custom styling
 const StyledPaper = styled(Paper)(({ theme }) => ({
@@ -28,6 +30,7 @@ type MessagePaperProps = {
 	elevation?: number;
 	children: React.ReactNode;
 	content?: string;
+	message?: Message;
 };
 
 /**
@@ -40,6 +43,7 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 	elevation = isUser ? 2 : 0,
 	children,
 	content,
+	message,
 }) => {
 	const theme = useTheme();
 
@@ -75,6 +79,11 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 
 	// For assistant messages, we remove the paper boundary and just show text on background
 	// Take up the full width of the constraint for a modern chat app look
+
+	// Check if the message is streamable and not complete
+	const isStreamable =
+		message?.is_streamable && !message?.is_complete && !isUser;
+
 	return (
 		<Box
 			sx={{
@@ -85,18 +94,39 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 				},
 			}}
 		>
-			<Box
-				sx={{
-					borderRadius: 2,
-					color: theme.palette.text.primary,
-					width: "calc(100% - 52px)", // Take full width minus padding
-					wordBreak: "break-word",
-					overflowWrap: "break-word",
-					position: "relative",
-				}}
-			>
-				{children}
-			</Box>
+			{isStreamable && message ? (
+				<StreamingMessage
+					messageId={message.id}
+					autoConnect={true}
+					showStatus={false}
+				>
+					<Box
+						sx={{
+							borderRadius: 2,
+							color: theme.palette.text.primary,
+							width: "calc(100% - 52px)", // Take full width minus padding
+							wordBreak: "break-word",
+							overflowWrap: "break-word",
+							position: "relative",
+						}}
+					>
+						{children}
+					</Box>
+				</StreamingMessage>
+			) : (
+				<Box
+					sx={{
+						borderRadius: 2,
+						color: theme.palette.text.primary,
+						width: "calc(100% - 52px)", // Take full width minus padding
+						wordBreak: "break-word",
+						overflowWrap: "break-word",
+						position: "relative",
+					}}
+				>
+					{children}
+				</Box>
+			)}
 			<MessageControls isUser={isUser} content={content} />
 		</Box>
 	);

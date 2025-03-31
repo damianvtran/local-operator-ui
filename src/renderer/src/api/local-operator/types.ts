@@ -546,6 +546,10 @@ export type AgentExecutionRecord = {
 	execution_type: ExecutionType;
 	/** The classification of the task that was performed */
 	task_classification: string;
+	/** Whether the execution is complete */
+	is_complete: boolean;
+	/** Whether the execution is streamable */
+	is_streamable: boolean;
 };
 
 /**
