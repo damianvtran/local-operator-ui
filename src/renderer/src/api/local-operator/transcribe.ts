@@ -18,7 +18,7 @@ export const TranscribeApi = {
 	async transcribeAudio(
 		baseUrl: string,
 		audioData: string,
-  ): Promise<CRUDResponse<TranscribeResponse>> {
+	): Promise<CRUDResponse<TranscribeResponse>> {
 		try {
 			const response = await fetch(`${baseUrl}/v1/transcribe`, {
 				method: "POST",

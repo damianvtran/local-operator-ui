@@ -1,11 +1,11 @@
-import { useState, useRef } from "react";
-import { IconButton, alpha, styled } from "@mui/material";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
 	faMicrophone,
-	faStop,
 	faSpinner,
+	faStop,
 } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { IconButton, alpha, styled } from "@mui/material";
+import { useRef, useState } from "react";
 import { TranscribeApi } from "../../api/local-operator/transcribe";
 import { apiConfig } from "../../config";
 
@@ -128,8 +128,8 @@ export const AudioRecorder = ({
 					loading
 						? "Transcribing audio, please wait"
 						: recording
-						? "Stop recording"
-						: "Start recording"
+							? "Stop recording"
+							: "Start recording"
 				}
 				aria-busy={loading}
 			>
