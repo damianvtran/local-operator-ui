@@ -205,7 +205,7 @@ export const MessageItem: FC<MessageItemProps> = memo(
 
 				{isSecurityCheck ? (
 					<SecurityCheckHighlight isUser={isUser}>
-						<MessagePaper isUser={isUser}>
+						<MessagePaper isUser={isUser} content={message.message}>
 							{/* Render image attachments if any */}
 							{message.files && message.files.length > 0 && (
 								<Box sx={{ mb: 2 }}>
@@ -322,7 +322,7 @@ export const MessageItem: FC<MessageItemProps> = memo(
 						isUser={isUser}
 						executionType={message.execution_type}
 					>
-						<MessagePaper isUser={isUser}>
+						<MessagePaper isUser={isUser} content={message.message}>
 							{/* Render image attachments if any */}
 							{message.files && message.files.length > 0 && (
 								<Box sx={{ mb: 2 }}>
