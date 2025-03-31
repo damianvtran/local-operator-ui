@@ -78,34 +78,41 @@ export const useMessageInput = ({
 	/**
 	 * Handle form submission
 	 */
-	const handleSubmit = useCallback(() => {
-		if (!inputValue.trim()) return;
+	const handleSubmit = useCallback(
+		(messageValue?: string) => {
+			if (messageValue) {
+				handleChange(messageValue);
+			}
+			const message = messageValue ?? inputValue;
+			if (!message.trim()) return;
 
-		// Call the onSubmit callback
-		onSubmit?.(inputValue);
+			// Call the onSubmit callback
+			onSubmit?.(message);
 
-		// Clear the input
-		setInputValue("");
+			// Clear the input
+			setInputValue("");
 
-		// Reset history navigation
-		setHistoryIndex(null);
-		draftMessageRef.current = "";
+			// Reset history navigation
+			setHistoryIndex(null);
+			draftMessageRef.current = "";
 
-		// Force scroll to bottom when sending a message, regardless of current scroll position
-		if (forceScrollToBottom) {
-			// Use multiple approaches to ensure scrolling works in all scenarios
-			forceScrollToBottom();
+			// Force scroll to bottom when sending a message, regardless of current scroll position
+			if (forceScrollToBottom) {
+				// Use multiple approaches to ensure scrolling works in all scenarios
+				forceScrollToBottom();
 
-			// Additional delayed calls for hooks and delayed rendering
-			setTimeout(() => forceScrollToBottom?.(), 300);
-		}
+				// Additional delayed calls for hooks and delayed rendering
+				setTimeout(() => forceScrollToBottom?.(), 300);
+			}
 
-		// Fallback to regular scrollToBottom if forceScrollToBottom is not available
-		else if (scrollToBottom) {
-			scrollToBottom();
-			setTimeout(() => scrollToBottom?.(), 300);
-		}
-	}, [inputValue, onSubmit, scrollToBottom, forceScrollToBottom]);
+			// Fallback to regular scrollToBottom if forceScrollToBottom is not available
+			else if (scrollToBottom) {
+				scrollToBottom();
+				setTimeout(() => scrollToBottom?.(), 300);
+			}
+		},
+		[inputValue, handleChange, onSubmit, scrollToBottom, forceScrollToBottom],
+	);
 
 	/**
 	 * Get the current cursor position in the textarea
