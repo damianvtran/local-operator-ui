@@ -139,8 +139,7 @@ export const MessageItem: FC<MessageItemProps> = memo(
 		const isUser = message.role === "user";
 		const isAction = message.execution_type === "action";
 		const isSecurityCheck = message.execution_type === "security_check";
-		const isPlanOrReflectionOrAction =
-			message.execution_type === "plan" ||
+		const shouldUseBackgroundBlock =
 			message.execution_type === "reflection" ||
 			message.execution_type === "action";
 
@@ -182,8 +181,7 @@ export const MessageItem: FC<MessageItemProps> = memo(
 			}
 		}, []);
 
-		// If it's a plan, reflection, or action execution type, render the special block
-		if (isPlanOrReflectionOrAction && message.message) {
+		if (shouldUseBackgroundBlock && message.message) {
 			return (
 				<BackgroundBlock
 					content={message.message}
