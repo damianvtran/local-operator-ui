@@ -145,24 +145,38 @@ export const MessagesView: FC<MessagesViewProps> = ({
 							{messages.map((message) => (
 								<MessageItem key={message.id} message={message} />
 							))}
+
+							{/* Loading indicator for new message - now inside CenteredMessagesContainer */}
+							{isLoading && (
+								<LoadingIndicator
+									status={jobStatus}
+									agentName={agentName}
+									currentExecution={currentExecution}
+									scrollToBottom={scrollToBottom}
+								/>
+							)}
 						</CenteredMessagesContainer>
 					) : (
-						<EmptyMessagesBox>
-							<EmptyMessagesIcon icon={faCommentDots} />
-							<Typography variant="body1">
-								No messages yet. Start a conversation!
-							</Typography>
-						</EmptyMessagesBox>
-					)}
+						<>
+							<EmptyMessagesBox>
+								<EmptyMessagesIcon icon={faCommentDots} />
+								<Typography variant="body1">
+									No messages yet. Start a conversation!
+								</Typography>
+							</EmptyMessagesBox>
 
-					{/* Loading indicator for new message */}
-					{isLoading && (
-						<LoadingIndicator
-							status={jobStatus}
-							agentName={agentName}
-							currentExecution={currentExecution}
-							scrollToBottom={scrollToBottom}
-						/>
+							{/* Loading indicator when no messages */}
+							{isLoading && (
+								<CenteredMessagesContainer>
+									<LoadingIndicator
+										status={jobStatus}
+										agentName={agentName}
+										currentExecution={currentExecution}
+										scrollToBottom={scrollToBottom}
+									/>
+								</CenteredMessagesContainer>
+							)}
+						</>
 					)}
 
 					{/* Invisible element to scroll to */}
