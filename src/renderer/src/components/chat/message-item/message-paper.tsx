@@ -1,6 +1,7 @@
 import { Box, Paper, useTheme } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import type { FC } from "react";
+import { MessageControls } from "./message-controls";
 
 // Create a Paper component with custom styling
 const StyledPaper = styled(Paper)(({ theme }) => ({
@@ -26,6 +27,7 @@ type MessagePaperProps = {
 	isUser: boolean;
 	elevation?: number;
 	children: React.ReactNode;
+	content?: string;
 };
 
 /**
@@ -37,23 +39,37 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 	isUser,
 	elevation = isUser ? 2 : 0,
 	children,
+	content,
 }) => {
 	const theme = useTheme();
 
 	// For user messages, we keep the paper boundary
 	if (isUser) {
 		return (
-			<StyledPaper
-				elevation={elevation}
+			<Box
 				sx={{
-					backgroundColor: theme.palette.userMessage.background,
-					border: `1px solid ${theme.palette.userMessage.border}`,
-					boxShadow: theme.palette.userMessage.shadow,
-					color: theme.palette.text.primary,
+					position: "relative",
+					width: "100%",
+					display: "flex",
+					justifyContent: "flex-end",
+					"&:hover .message-controls": {
+						opacity: 1,
+					},
 				}}
 			>
-				{children}
-			</StyledPaper>
+				<StyledPaper
+					elevation={elevation}
+					sx={{
+						backgroundColor: theme.palette.userMessage.background,
+						border: `1px solid ${theme.palette.userMessage.border}`,
+						boxShadow: theme.palette.userMessage.shadow,
+						color: theme.palette.text.primary,
+					}}
+				>
+					{children}
+				</StyledPaper>
+				<MessageControls isUser={isUser} content={content} />
+			</Box>
 		);
 	}
 
@@ -62,15 +78,26 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 	return (
 		<Box
 			sx={{
-				borderRadius: 2,
-				color: theme.palette.text.primary,
-				width: "calc(100% - 52px)", // Take full width minus padding
-				wordBreak: "break-word",
-				overflowWrap: "break-word",
 				position: "relative",
+				width: "100%",
+				"&:hover .message-controls": {
+					opacity: 1,
+				},
 			}}
 		>
-			{children}
+			<Box
+				sx={{
+					borderRadius: 2,
+					color: theme.palette.text.primary,
+					width: "calc(100% - 52px)", // Take full width minus padding
+					wordBreak: "break-word",
+					overflowWrap: "break-word",
+					position: "relative",
+				}}
+			>
+				{children}
+			</Box>
+			<MessageControls isUser={isUser} content={content} />
 		</Box>
 	);
 };
