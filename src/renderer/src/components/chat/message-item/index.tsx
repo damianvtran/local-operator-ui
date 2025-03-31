@@ -121,10 +121,17 @@ export const MessageItem: FC<MessageItemProps> = memo(
 	({ message }) => {
 		// Hide messages with action DONE, execution_type "action", and task_classification "conversation"
 		// These are redundant to the response execution_type messages
+		// Also hide messages with no content (no message, files, code, stdout, stderr, or logging)
 		const shouldHide =
-			(message.action === "DONE" || message.action === "ASK") &&
-			message.execution_type === "action" &&
-			message.task_classification === "conversation";
+			((message.action === "DONE" || message.action === "ASK") &&
+				message.execution_type === "action" &&
+				message.task_classification === "conversation") ||
+			(!message.message &&
+				(!message.files || message.files.length === 0) &&
+				!message.code &&
+				!message.stdout &&
+				!message.stderr &&
+				!message.logging);
 
 		if (shouldHide) {
 			return null;
