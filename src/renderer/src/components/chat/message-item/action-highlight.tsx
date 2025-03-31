@@ -8,18 +8,12 @@ import type { ActionHighlightProps } from "./types";
 const HighlightContainer = styled(Box, {
 	shouldForwardProp: (prop) => prop !== "action" && prop !== "isUser",
 })<{ action: string; isUser: boolean }>(() => ({
-	position: "relative",
-	width: "calc(100% - 102px)",
 	marginBottom: "16px",
-	zIndex: 0, // Ensure container is below badge
 }));
 
 const ActionBadge = styled(Box, {
 	shouldForwardProp: (prop) => prop !== "action",
 })<{ action: string }>(({ theme, action }) => ({
-	position: "absolute",
-	top: "-10px",
-	right: "16px",
 	padding: "4px 8px",
 	borderRadius: "12px",
 	fontSize: "0.7rem",
@@ -31,9 +25,12 @@ const ActionBadge = styled(Box, {
 	color: "#fff",
 	display: "flex",
 	alignItems: "center",
+	justifyContent: "flex-end",
 	gap: "4px",
 	boxShadow: "0 2px 4px rgba(0, 0, 0, 0.2)",
-	zIndex: 1, // Ensure badge is above other content
+	marginBottom: "8px", // Add space between badge and content
+	alignSelf: "flex-end", // Align to the right
+	width: "fit-content", // Only take up as much width as needed
 }));
 /**
  * Component for highlighting DONE and ASK action types
