@@ -605,3 +605,11 @@ export type SystemPromptUpdate = {
 	/** The new content for the system prompt */
 	content: string;
 };
+
+/**
+ * Whisper transcribe response
+ */
+export type TranscribeResponse = {
+	/** Transcribed text from audio */
+	text: string;
+};
