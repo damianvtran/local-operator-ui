@@ -40,6 +40,7 @@ export type BackgroundBlockProps = {
 	stdout?: string;
 	stderr?: string;
 	logging?: string;
+	files?: string[]; // URLs to attachments
 };
 
 /**

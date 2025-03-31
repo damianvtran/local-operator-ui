@@ -187,6 +187,7 @@ export const MessageItem: FC<MessageItemProps> = memo(
 					stdout={message.stdout}
 					stderr={message.stderr}
 					logging={message.logging}
+					files={message.files}
 				/>
 			);
 		}
