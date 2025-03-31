@@ -9,10 +9,10 @@ const StyledPaper = styled(Paper)(({ theme }) => ({
 		maxWidth: "85%",
 	},
 	[theme.breakpoints.between("sm", "md")]: {
-		maxWidth: "75%",
+		maxWidth: "80%",
 	},
 	[theme.breakpoints.up("md")]: {
-		maxWidth: "65%",
+		maxWidth: "80%",
 	},
 	width: "auto",
 	padding: 16,
