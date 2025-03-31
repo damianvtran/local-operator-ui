@@ -355,38 +355,6 @@ export const BackgroundBlock: FC<BackgroundBlockProps> = ({
 				</ActionBadge>
 			)}
 
-			{/* Render image attachments if any - always visible */}
-			{files && files.length > 0 && (
-				<Box sx={{ mb: 2, mt: 2 }}>
-					{files
-						.filter((file) => isImage(file))
-						.map((file) => (
-							<ImageAttachment
-								key={`${file}`}
-								file={file}
-								src={getUrl(file)}
-								onClick={handleFileClick}
-							/>
-						))}
-				</Box>
-			)}
-
-			{/* Render video attachments if any - always visible */}
-			{files && files.length > 0 && (
-				<Box sx={{ mb: 2 }}>
-					{files
-						.filter((file) => isVideo(file))
-						.map((file) => (
-							<VideoAttachment
-								key={`${file}`}
-								file={file}
-								src={getUrl(file)}
-								onClick={handleFileClick}
-							/>
-						))}
-				</Box>
-			)}
-
 			<BlockHeader
 				executionType={executionType}
 				isUser={isUser}
@@ -452,6 +420,38 @@ export const BackgroundBlock: FC<BackgroundBlockProps> = ({
 					</CollapseButton>
 				</ExpandedContent>
 			</Collapse>
+
+			{/* Render image attachments if any - always visible */}
+			{files && files.length > 0 && (
+				<Box sx={{ mb: 2, mt: 2 }}>
+					{files
+						.filter((file) => isImage(file))
+						.map((file) => (
+							<ImageAttachment
+								key={`${file}`}
+								file={file}
+								src={getUrl(file)}
+								onClick={handleFileClick}
+							/>
+						))}
+				</Box>
+			)}
+
+			{/* Render video attachments if any - always visible */}
+			{files && files.length > 0 && (
+				<Box sx={{ mb: 2 }}>
+					{files
+						.filter((file) => isVideo(file))
+						.map((file) => (
+							<VideoAttachment
+								key={`${file}`}
+								file={file}
+								src={getUrl(file)}
+								onClick={handleFileClick}
+							/>
+						))}
+				</Box>
+			)}
 
 			{/* Render non-media file attachments if any - always visible */}
 			{files && files.length > 0 && (
