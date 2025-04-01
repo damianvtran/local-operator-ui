@@ -1,6 +1,6 @@
 import { Box, Paper, useTheme } from "@mui/material";
 import { styled } from "@mui/material/styles";
-import type { FC } from "react";
+import { type FC, useMemo } from "react";
 import { StreamingMessage } from "./streaming-message";
 import { MessageControls } from "./message-controls";
 import type { Message } from "../types";
@@ -84,6 +84,33 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 	const isStreamable =
 		message?.is_streamable && !message?.is_complete && !isUser;
 
+	// Memoize the StreamingMessage component to prevent unnecessary remounts
+	const MemoizedStreamingMessage = useMemo(() => {
+		if (!isStreamable || !message) return null;
+
+		return (
+			<StreamingMessage
+				messageId={message.id}
+				autoConnect={true}
+				showStatus={false}
+				keepAlive={true}
+			>
+				<Box
+					sx={{
+						borderRadius: 2,
+						color: theme.palette.text.primary,
+						width: "calc(100% - 52px)", // Take full width minus padding
+						wordBreak: "break-word",
+						overflowWrap: "break-word",
+						position: "relative",
+					}}
+				>
+					{children}
+				</Box>
+			</StreamingMessage>
+		);
+	}, [message, isStreamable, theme.palette.text.primary, children]);
+
 	return (
 		<Box
 			sx={{
@@ -94,26 +121,7 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 				},
 			}}
 		>
-			{isStreamable && message ? (
-				<StreamingMessage
-					messageId={message.id}
-					autoConnect={true}
-					showStatus={false}
-				>
-					<Box
-						sx={{
-							borderRadius: 2,
-							color: theme.palette.text.primary,
-							width: "calc(100% - 52px)", // Take full width minus padding
-							wordBreak: "break-word",
-							overflowWrap: "break-word",
-							position: "relative",
-						}}
-					>
-						{children}
-					</Box>
-				</StreamingMessage>
-			) : (
+			{MemoizedStreamingMessage || (
 				<Box
 					sx={{
 						borderRadius: 2,

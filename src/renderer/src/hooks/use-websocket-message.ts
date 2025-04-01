@@ -124,7 +124,7 @@ export const useWebSocketMessage = (
 					reconnectInterval,
 					maxReconnectAttempts,
 					pingInterval,
-					messageDelay: 1000, // Increased from 500ms to 1000ms
+					messageDelay: 350,
 				});
 
 				// Set up event listeners

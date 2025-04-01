@@ -2,10 +2,13 @@
  * Hook for integrating WebSocket message streaming with the message list
  */
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useWebSocketMessage } from "./use-websocket-message";
 import { apiConfig } from "../config";
 import type { AgentExecutionRecord } from "../api/local-operator/types";
-import type { UpdateMessage } from "../api/local-operator/websocket-api";
+import { WebSocketApi } from "../api/local-operator/websocket-api";
+import type {
+	UpdateMessage,
+	WebSocketConnectionStatus,
+} from "../api/local-operator/websocket-api";
 
 type UseMessageStreamingOptions = {
 	/** Agent ID to get messages for */
@@ -37,6 +40,18 @@ type UseMessageStreamingResult = {
 	getError: (messageId: string) => Error | null;
 };
 
+// Define a type for our client interface to match useWebSocketMessage return type
+type WebSocketClientInterface = {
+	message: AgentExecutionRecord | null;
+	isComplete: boolean;
+	isStreamable: boolean;
+	status: WebSocketConnectionStatus;
+	connect: () => Promise<void>;
+	disconnect: () => void;
+	isLoading: boolean;
+	error: Error | null;
+};
+
 /**
  * Hook for integrating WebSocket message streaming with the message list
  *
@@ -49,7 +64,7 @@ type UseMessageStreamingResult = {
 export const useMessageStreaming = (
 	options: UseMessageStreamingOptions = {},
 ): UseMessageStreamingResult => {
-	const { autoConnect = true, onMessageUpdate } = options;
+	const { onMessageUpdate } = options;
 
 	// State for tracking streaming messages
 	const [streamingMessages, setStreamingMessages] = useState<
@@ -64,9 +79,7 @@ export const useMessageStreaming = (
 	const streamableStatusRef = useRef<Map<string, boolean>>(new Map());
 	const loadingStatusRef = useRef<Map<string, boolean>>(new Map());
 	const errorRef = useRef<Map<string, Error | null>>(new Map());
-	const clientsRef = useRef<
-		Map<string, ReturnType<typeof useWebSocketMessage>>
-	>(new Map());
+	const clientsRef = useRef<Map<string, WebSocketClientInterface>>(new Map());
 
 	// Start streaming updates for a message
 	const startStreaming = useCallback(
@@ -93,61 +106,128 @@ export const useMessageStreaming = (
 
 			try {
 				// Create a WebSocket client for the message
-				const client = useWebSocketMessage({
-					baseUrl: apiConfig.baseUrl,
-					messageId,
-					autoConnect,
-					// Increase reconnect attempts for more resilience
+				// IMPORTANT: We can't use the hook directly here as it's not a React component
+				// This is causing the connection to close prematurely
+				// Instead, we need to create a client manually and store it
+
+				// Use a dummy client object that mimics the hook's return value
+				const client: WebSocketClientInterface = {
+					message: null,
+					isComplete: false,
+					isStreamable: false,
+					status: "disconnected",
+					connect: async () => {
+						// This will be implemented below
+						return Promise.resolve();
+					},
+					disconnect: () => {
+						// This will be implemented below
+					},
+					isLoading: false,
+					error: null,
+				};
+
+				// Create the actual WebSocket client using the WebSocketApi directly
+				// This ensures the connection persists and isn't tied to React's lifecycle
+				const wsManager = WebSocketApi.createManager(apiConfig.baseUrl, {
+					autoReconnect: true,
 					maxReconnectAttempts: 5,
-					// Add a longer ping interval to keep connection alive
 					pingInterval: 20000,
-					onUpdate: (update: UpdateMessage) => {
-						console.log(`Update for message ${messageId}:`, update.type);
-
-						// Update the message data
-						const currentData = messageDataRef.current.get(messageId) || null;
-						const newData = {
-							...currentData,
-							...update,
-						} as AgentExecutionRecord;
-
-						// Store the updated message data
-						messageDataRef.current.set(messageId, newData);
-
-						// Update the complete and streamable status
-						if (update.is_complete) {
-							console.log(`Message ${messageId} is complete`);
-							completeStatusRef.current.set(messageId, true);
-						}
-						if (update.is_streamable) {
-							console.log(`Message ${messageId} is streamable`);
-							streamableStatusRef.current.set(messageId, true);
-						}
-
-						// Call the onMessageUpdate callback
-						if (onMessageUpdate) {
-							onMessageUpdate(messageId, newData);
-						}
-					},
-					onStatusChange: (status) => {
-						console.log(`WebSocket status for ${messageId}: ${status}`);
-
-						// Update the loading status
-						loadingStatusRef.current.set(
-							messageId,
-							status === "connecting" || status === "reconnecting",
-						);
-					},
-					onError: (error) => {
-						console.error(`WebSocket error for ${messageId}:`, error);
-
-						// Store the error
-						errorRef.current.set(messageId, error);
-					},
 				});
 
-				// Store the client
+				// Store the client first so we can reference it in async operations
 				clientsRef.current.set(messageId, client);
+
+				// Connect to the WebSocket
+				wsManager
+					.connect(messageId)
+					.then((wsClient) => {
+						// Set up event listeners
+						wsClient.on("status", (newStatus: unknown) => {
+							const typedStatus = newStatus as WebSocketConnectionStatus;
+							console.log(`WebSocket status for ${messageId}: ${typedStatus}`);
+
+							// Update the loading status
+							loadingStatusRef.current.set(
+								messageId,
+								typedStatus === "connecting" || typedStatus === "reconnecting",
+							);
+
+							// Update the client status
+							client.status = typedStatus;
+						});
+
+						wsClient.on(`update:${messageId}`, (update: unknown) => {
+							const typedUpdate = update as UpdateMessage;
+							console.log(
+								`Received update for ${messageId}:`,
+								typedUpdate.type,
+							);
+
+							// Update the message data
+							const currentData = messageDataRef.current.get(messageId) || null;
+							const newData = {
+								...currentData,
+								...typedUpdate,
+							} as AgentExecutionRecord;
+
+							// Store the updated message data
+							messageDataRef.current.set(messageId, newData);
+							client.message = newData;
+
+							// Update the complete and streamable status
+							if (typedUpdate.is_complete) {
+								console.log(`Message ${messageId} is complete`);
+								completeStatusRef.current.set(messageId, true);
+								client.isComplete = true;
+							}
+							if (typedUpdate.is_streamable) {
+								console.log(`Message ${messageId} is streamable`);
+								streamableStatusRef.current.set(messageId, true);
+								client.isStreamable = true;
+							}
+
+							// Call the onMessageUpdate callback
+							if (onMessageUpdate) {
+								onMessageUpdate(messageId, newData);
+							}
+						});
+
+						wsClient.on("error", (error: unknown) => {
+							console.error(`WebSocket error for ${messageId}:`, error);
+
+							// Store the error
+							const typedError =
+								error instanceof Error ? error : new Error(String(error));
+							errorRef.current.set(messageId, typedError);
+							client.error = typedError;
+						});
+
+						// Implement the connect method
+						client.connect = async () => {
+							try {
+								await wsClient.connect();
+								return Promise.resolve();
+							} catch (error) {
+								return Promise.reject(error);
+							}
+						};
+
+						// Implement the disconnect method
+						client.disconnect = () => {
+							wsClient.disconnect();
+						};
+					})
+					.catch((error) => {
+						console.error(
+							`Error connecting to WebSocket for ${messageId}:`,
+							error,
+						);
+						const typedError =
+							error instanceof Error ? error : new Error(String(error));
+						errorRef.current.set(messageId, typedError);
+						client.error = typedError;
+					});
 			} catch (error) {
 				console.error(
 					`Error creating WebSocket client for ${messageId}:`,
@@ -159,7 +239,7 @@ export const useMessageStreaming = (
 				);
 			}
 		},
-		[autoConnect, onMessageUpdate, streamingMessages],
+		[onMessageUpdate, streamingMessages],
 	);
 
 	// Stop streaming updates for a message
