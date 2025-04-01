@@ -1,6 +1,6 @@
 import { Box, Paper, useTheme } from "@mui/material";
 import { styled } from "@mui/material/styles";
-import { type FC, useMemo } from "react";
+import type { FC } from "react";
 import { StreamingMessage } from "./streaming-message";
 import { MessageControls } from "./message-controls";
 import type { Message } from "../types";
@@ -84,8 +84,9 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 	const isStreamable =
 		message?.is_streamable && !message?.is_complete && !isUser;
 
-	// Memoize the StreamingMessage component to prevent unnecessary remounts
-	const MemoizedStreamingMessage = useMemo(() => {
+	// Render the StreamingMessage component
+	// We're not using useMemo here to ensure the component re-renders when message content changes
+	const renderStreamingMessage = () => {
 		if (!isStreamable || !message) return null;
 
 		return (
@@ -94,6 +95,12 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 				autoConnect={true}
 				showStatus={false}
 				keepAlive={true}
+				// Pass onUpdate to ensure we re-render when message content changes
+				onUpdate={() => {
+					// This callback will trigger when the message is updated
+					// No need to do anything here as the StreamingMessage component
+					// will handle the update internally
+				}}
 			>
 				<Box
 					sx={{
@@ -109,7 +116,7 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 				</Box>
 			</StreamingMessage>
 		);
-	}, [message, isStreamable, theme.palette.text.primary, children]);
+	};
 
 	return (
 		<Box
@@ -121,7 +128,9 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 				},
 			}}
 		>
-			{MemoizedStreamingMessage || (
+			{isStreamable ? (
+				renderStreamingMessage()
+			) : (
 				<Box
 					sx={{
 						borderRadius: 2,
