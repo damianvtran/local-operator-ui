@@ -295,14 +295,14 @@ export const LoadingIndicator: FC<{
 			? getStatusText(status)
 			: "Thinking";
 
-	const { ref, scrollToBottom: scrollToBottomHook } = useScrollToBottom(
-		[status, currentExecution, message],
-		100, // Default threshold
-		50, // Default button threshold
-	);
+	const {
+		ref,
+		scrollToBottom: scrollToBottomHook,
+		isFarFromBottom,
+	} = useScrollToBottom([status, currentExecution, message], 100, 50);
 
 	useEffect(() => {
-		if (codeSnippet && isCodeExpanded && !isStreaming) {
+		if (codeSnippet && isCodeExpanded && !isStreaming && !isFarFromBottom) {
 			// Use requestAnimationFrame to ensure the DOM has been updated
 			requestAnimationFrame(() => {
 				// Use the hook's scrollToBottom if available, otherwise use the prop
@@ -319,6 +319,7 @@ export const LoadingIndicator: FC<{
 		scrollToBottom,
 		scrollToBottomHook,
 		isStreaming,
+		isFarFromBottom,
 	]);
 
 	// Toggle code expansion function
@@ -330,7 +331,6 @@ export const LoadingIndicator: FC<{
 		return null;
 	}
 
-	// 7. Render component
 	return (
 		<LoadingContainer>
 			{/* Invisible div for scroll reference */}

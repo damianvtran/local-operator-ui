@@ -1,6 +1,7 @@
 import { Box, Paper, useTheme } from "@mui/material";
 import { styled } from "@mui/material/styles";
-import { type FC, useMemo } from "react";
+import { type FC, useMemo, useEffect } from "react";
+import { useScrollToBottom } from "../../../hooks/use-scroll-to-bottom";
 import { StreamingMessage } from "./streaming-message";
 import { MessageControls } from "./message-controls";
 import { MessageTimestamp } from "./message-timestamp";
@@ -120,6 +121,28 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 		return children;
 	}, [children]);
 
+	// Use the scroll to bottom hook to automatically scroll while streaming
+	const { ref: scrollRef, forceScrollToBottom } = useScrollToBottom(
+		// Dependencies that should trigger scroll evaluation
+		[content, isStreamable, message?.is_complete],
+		100, // Threshold for "near bottom" in pixels
+		50, // Threshold for showing scroll button
+	);
+
+	// Periodically scroll to bottom during streaming if user is near bottom
+	useEffect(() => {
+		if (!isStreamable || !message) return;
+
+		// Set up interval to check and scroll if needed during streaming
+		const scrollInterval = setInterval(() => {
+			forceScrollToBottom();
+		}, 500); // Check every 500ms while streaming
+
+		return () => {
+			clearInterval(scrollInterval);
+		};
+	}, [isStreamable, message, forceScrollToBottom]);
+
 	// Memoize the streaming message component to prevent unnecessary re-renders
 	const streamingMessageComponent = useMemo(() => {
 		if (!isStreamable || !message) return null;
@@ -135,13 +158,21 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 				conversationId={message.conversation_id}
 				refetchOnComplete={true}
 				onComplete={() => {
+					// Force one final scroll to bottom when message completes
+					forceScrollToBottom();
 					if (onMessageComplete) {
 						onMessageComplete();
 					}
 				}}
 			/>
 		);
-	}, [isStreamable, message, messageStyles, onMessageComplete]);
+	}, [
+		isStreamable,
+		message,
+		messageStyles,
+		onMessageComplete,
+		forceScrollToBottom,
+	]);
 
 	// Memoize the regular message components to prevent unnecessary re-renders
 	const regularMessageComponents = useMemo(() => {
@@ -170,6 +201,8 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 		>
 			{streamingMessageComponent}
 			{regularMessageComponents}
+			{/* Invisible element at the bottom for scroll targeting */}
+			<div ref={scrollRef} style={{ height: 1, width: 1, opacity: 0 }} />
 		</Box>
 	);
 };
