@@ -11,8 +11,9 @@ import type {
 	JobStatus,
 } from "@renderer/api/local-operator/types";
 import { useScrollToBottom } from "@renderer/hooks/use-scroll-to-bottom";
+import { useStreamingMessagesStore } from "@renderer/store/streaming-messages-store";
 import type { FC } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import SyntaxHighlighter from "react-syntax-highlighter";
 import { atomOneDark } from "react-syntax-highlighter/dist/esm/styles/hljs";
 import { createGlobalStyle } from "styled-components";
@@ -265,19 +266,49 @@ const getDetailedStatusText = (
 
 /**
  * Loading indicator component that displays the current status of a job
- * and execution details if available
+ * and execution details if available. Only shows when the current message is not streaming.
  *
  * @param status - Optional job status to display
  * @param agentName - Optional agent name to display
  * @param currentExecution - Optional current execution details
  * @param scrollToBottom - Optional function to scroll to the bottom of the chat
+ * @param conversationId - Optional conversation ID to check for streaming messages
  */
 export const LoadingIndicator: FC<{
 	status?: JobStatus | null;
 	agentName?: string;
 	currentExecution?: AgentExecutionRecord | null;
 	scrollToBottom?: () => void;
-}> = ({ status, currentExecution, scrollToBottom }) => {
+	conversationId?: string;
+}> = ({ status, currentExecution, scrollToBottom, conversationId }) => {
+	// Get streaming messages store to check if any messages are currently streaming
+	const { isMessageStreaming } = useStreamingMessagesStore();
+
+	// Check if any message is currently streaming in this conversation
+	const isAnyMessageStreaming = useMemo(() => {
+		// If we have a specific execution ID, check if that message is streaming
+		if (currentExecution?.id) {
+			return isMessageStreaming(currentExecution.id);
+		}
+
+		// If we don't have a specific execution ID but have a conversation ID,
+		// we need to check if any message in this conversation is streaming
+		if (conversationId) {
+			// We don't have a direct way to check all messages in a conversation,
+			// but we can infer from the current execution and loading state
+			return (
+				currentExecution?.is_streamable === true &&
+				currentExecution?.is_complete === false
+			);
+		}
+
+		return false;
+	}, [currentExecution, conversationId, isMessageStreaming]);
+
+	// Don't show the loading indicator if any message is streaming
+	if (isAnyMessageStreaming) {
+		return null;
+	}
 	// Get detailed status text based on current execution if available
 	const statusText = currentExecution
 		? getDetailedStatusText(status, currentExecution)

@@ -168,6 +168,7 @@ export const MessagesView: FC<MessagesViewProps> = ({
 									agentName={agentName}
 									currentExecution={currentExecution}
 									scrollToBottom={scrollToBottom}
+									conversationId={conversationId}
 								/>
 							)}
 						</CenteredMessagesContainer>
@@ -188,6 +189,7 @@ export const MessagesView: FC<MessagesViewProps> = ({
 										agentName={agentName}
 										currentExecution={currentExecution}
 										scrollToBottom={scrollToBottom}
+										conversationId={conversationId}
 									/>
 								</CenteredMessagesContainer>
 							)}
