@@ -1,7 +1,9 @@
 /**
  * Component for displaying a streaming message
+ *
+ * @module StreamingMessage
  */
-import { useEffect } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 import { Box, Typography, CircularProgress, styled } from "@mui/material";
 import type { AgentExecutionRecord } from "../../../api/local-operator/types";
 import { useWebSocketMessage } from "../../../hooks/use-websocket-message";
@@ -40,6 +42,24 @@ const OutputSection = styled(Box)(({ theme }) => ({
 	fontSize: "0.875rem",
 }));
 
+/**
+ * Global registry to track WebSocket connections across component instances
+ * This prevents duplicate connections and handles component remounting
+ */
+const globalConnectionRegistry = new Map<
+	string,
+	{
+		connected: boolean;
+		connecting: boolean;
+		timestamp: number;
+		instanceCount: number;
+		connectionPromise: Promise<void> | null;
+	}
+>();
+
+/**
+ * Props for the StreamingMessage component
+ */
 interface StreamingMessageProps {
 	/** Message ID to subscribe to */
 	messageId: string;
@@ -78,6 +98,33 @@ export const StreamingMessage = ({
 	children,
 	onConnectionControls,
 }: StreamingMessageProps) => {
+	// Generate a stable component ID for logging
+	const componentIdRef = useRef(
+		`stream-${Math.random().toString(36).substring(2, 9)}`,
+	);
+
+	// Track component mount state
+	const mountedRef = useRef(false);
+
+	// Track if we've already attempted to connect
+	const [hasAttemptedConnection, setHasAttemptedConnection] = useState(false);
+
+	// Helper function for consistent logging with component ID
+	const logWithId = useCallback(
+		(message: string, level: "log" | "warn" | "error" = "log") => {
+			const timestamp = new Date().toISOString().substring(11, 23);
+			const prefix = `[${timestamp}][${componentIdRef.current}][${messageId}]`;
+			if (level === "warn") {
+				console.warn(`${prefix} ${message}`);
+			} else if (level === "error") {
+				console.error(`${prefix} ${message}`);
+			} else {
+				console.log(`${prefix} ${message}`);
+			}
+		},
+		[messageId],
+	);
+
 	// Use the WebSocket hook to subscribe to message updates
 	const {
 		message,
@@ -91,31 +138,232 @@ export const StreamingMessage = ({
 	} = useWebSocketMessage({
 		baseUrl: apiConfig.baseUrl,
 		messageId,
-		autoConnect,
-		onUpdate: (_update) => {
-			// Call the onUpdate callback
-			if (onUpdate && message) {
-				onUpdate(message);
+		autoConnect: false, // We'll handle connection manually
+		onUpdate: (update) => {
+			// Call the onUpdate callback if component is still mounted
+			if (onUpdate && mountedRef.current) {
+				onUpdate(update);
 			}
 		},
 	});
 
-	// Provide connection controls to parent component if needed
-	useEffect(() => {
-		if (onConnectionControls) {
-			onConnectionControls({ connect, disconnect });
+	/**
+	 * Attempt to connect to the WebSocket
+	 * This function handles connection state tracking and retries
+	 */
+	const attemptConnection = useCallback(async () => {
+		// Skip if message is already complete
+		if (isComplete) {
+			logWithId("Message is already complete, skipping connection");
+			return;
 		}
-	}, [connect, disconnect, onConnectionControls]);
+
+		// Mark that we've attempted a connection
+		setHasAttemptedConnection(true);
+
+		// Get or create the registry entry for this message ID
+		if (!globalConnectionRegistry.has(messageId)) {
+			globalConnectionRegistry.set(messageId, {
+				connected: false,
+				connecting: false,
+				timestamp: Date.now(),
+				instanceCount: 0,
+				connectionPromise: null,
+			});
+		}
+
+		const registryEntry = globalConnectionRegistry.get(messageId);
+		if (!registryEntry) {
+			logWithId(
+				"Failed to get registry entry, aborting connection attempt",
+				"error",
+			);
+			return;
+		}
+
+		// Increment the instance count for this message ID
+		registryEntry.instanceCount++;
+
+		// If we're already connected, no need to connect again
+		if (registryEntry.connected) {
+			logWithId("Already connected to WebSocket, skipping connection attempt");
+			return;
+		}
+
+		// If we're already connecting, wait for that connection to complete
+		if (registryEntry.connecting && registryEntry.connectionPromise) {
+			logWithId("Connection already in progress, waiting for it to complete");
+			try {
+				await registryEntry.connectionPromise;
+				logWithId("Existing connection completed successfully");
+			} catch (error) {
+				logWithId(
+					"Existing connection failed, will attempt a new connection",
+					"warn",
+				);
+			}
+			return;
+		}
+
+		// Start a new connection attempt
+		logWithId("Starting new WebSocket connection attempt");
+		registryEntry.connecting = true;
+
+		// Create a connection promise that can be shared across instances
+		const connectionPromise: Promise<void> = (async () => {
+			try {
+				logWithId("Connecting to WebSocket");
+				await connect();
+				logWithId("WebSocket connected successfully");
+
+				// Update registry
+				if (globalConnectionRegistry.has(messageId)) {
+					const entry = globalConnectionRegistry.get(messageId);
+					if (entry) {
+						entry.connected = true;
+						entry.connecting = false;
+						entry.timestamp = Date.now();
+					}
+				}
+
+				return Promise.resolve();
+			} catch (error) {
+				// Create a proper error message
+				const errorMessage =
+					error instanceof Error
+						? error.message
+						: "Unknown error connecting to WebSocket";
+
+				logWithId(`WebSocket connection failed: ${errorMessage}`, "error");
+
+				// Update registry
+				if (globalConnectionRegistry.has(messageId)) {
+					const entry = globalConnectionRegistry.get(messageId);
+					if (entry) {
+						entry.connected = false;
+						entry.connecting = false;
+						entry.timestamp = Date.now();
+					}
+				}
+
+				return Promise.reject(error);
+			}
+		})();
+
+		// Store the connection promise in the registry
+		registryEntry.connectionPromise = connectionPromise;
+
+		// Wait for the connection to complete
+		try {
+			await connectionPromise;
+		} catch (error) {
+			// Error already logged above
+		} finally {
+			// Clear the connection promise
+			if (globalConnectionRegistry.has(messageId)) {
+				const entry = globalConnectionRegistry.get(messageId);
+				if (entry) {
+					entry.connectionPromise = null;
+				}
+			}
+		}
+	}, [connect, isComplete, logWithId, messageId]);
+
+	/**
+	 * Safely disconnect from the WebSocket
+	 * This function ensures we only disconnect when no instances need the connection
+	 */
+	const safeDisconnect = useCallback(() => {
+		if (!globalConnectionRegistry.has(messageId)) {
+			return;
+		}
+
+		const registryEntry = globalConnectionRegistry.get(messageId);
+		if (!registryEntry) {
+			return;
+		}
+
+		// Decrement the instance count
+		registryEntry.instanceCount = Math.max(0, registryEntry.instanceCount - 1);
+
+		// Only disconnect if this is the last instance
+		if (registryEntry.instanceCount === 0) {
+			logWithId(
+				"Last instance disconnecting, cleaning up WebSocket connection",
+			);
+
+			try {
+				disconnect();
+
+				// Update registry
+				registryEntry.connected = false;
+				registryEntry.connecting = false;
+				registryEntry.connectionPromise = null;
+			} catch (error) {
+				const errorMessage =
+					error instanceof Error ? error.message : String(error);
+				logWithId(`Error disconnecting WebSocket: ${errorMessage}`, "error");
+			}
+		} else {
+			logWithId(
+				`Not disconnecting, ${registryEntry.instanceCount} instances still active`,
+			);
+		}
+	}, [disconnect, logWithId, messageId]);
+
+	// Connect to the WebSocket when the component mounts
+	useEffect(() => {
+		// Mark component as mounted
+		mountedRef.current = true;
+		logWithId(
+			`Component mounted with autoConnect=${autoConnect}, isComplete=${isComplete}`,
+		);
+
+		// Connect immediately if autoConnect is true and message is not complete
+		if (autoConnect && !isComplete && !hasAttemptedConnection) {
+			// Connect immediately without delay
+			attemptConnection().catch((error) => {
+				logWithId(`Initial connection attempt failed: ${error}`, "error");
+			});
+		}
+
+		// Provide connection controls to parent component if needed
+		if (onConnectionControls) {
+			onConnectionControls({
+				connect: attemptConnection,
+				disconnect: safeDisconnect,
+			});
+		}
+
+		// Cleanup function that runs when component unmounts
+		return () => {
+			logWithId("Component unmounting - cleaning up resources");
+			mountedRef.current = false;
+			safeDisconnect();
+		};
+	}, [
+		autoConnect,
+		isComplete,
+		hasAttemptedConnection,
+		attemptConnection,
+		safeDisconnect,
+		onConnectionControls,
+		logWithId,
+	]);
 
 	// Call the onComplete callback when the message is complete
 	useEffect(() => {
-		if (isComplete && message && onComplete) {
+		if (isComplete && message && onComplete && mountedRef.current) {
+			logWithId("Message complete, calling onComplete callback");
 			onComplete(message);
-		}
-	}, [isComplete, message, onComplete]);
 
-	// Render the status indicator based on the current status
-	const renderStatusIndicator = () => {
+			// Disconnect when complete
+			safeDisconnect();
+		}
+	}, [isComplete, message, onComplete, safeDisconnect, logWithId]);
+
+	// Memoized status indicator renderer
+	const renderStatusIndicator = useCallback(() => {
 		if (!showStatus) return null;
 
 		switch (status) {
@@ -174,7 +422,7 @@ export const StreamingMessage = ({
 			default:
 				return null;
 		}
-	};
+	}, [status, showStatus]);
 
 	return (
 		<StreamingContainer className={isStreamable ? "streamable-message" : ""}>

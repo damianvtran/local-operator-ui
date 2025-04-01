@@ -7,12 +7,7 @@ import {
 	type WebSocketConnectionStatus,
 	type UpdateMessage,
 } from "../api/local-operator/websocket-api";
-import { createLocalOperatorClient } from "../api/local-operator";
-import type {
-	AgentExecutionRecord,
-	JobDetails,
-} from "../api/local-operator/types";
-import { useQuery } from "@tanstack/react-query";
+import type { AgentExecutionRecord } from "../api/local-operator/types";
 
 /**
  * Options for the useWebSocketMessage hook
@@ -106,32 +101,10 @@ export const useWebSocketMessage = (
 	const cleanupRef = useRef<(() => void) | null>(null);
 	const connectRef = useRef<(() => Promise<void>) | null>(null);
 
-	// Use React Query to poll for job status
-	const {
-		data: jobData,
-		isLoading: isJobLoading,
-		error: jobError,
-	} = useQuery({
-		queryKey: ["websocket-job", messageId],
-		queryFn: async () => {
-			if (!messageId || !baseUrl) return null;
-
-			const client = createLocalOperatorClient(baseUrl);
-			const response = await client.jobs.getJobStatus(messageId);
-			return response.result as JobDetails | null;
-		},
-		enabled: !!messageId && !!baseUrl,
-		refetchInterval: 5000, // Poll every 5 seconds until the message is complete
-		refetchIntervalInBackground: true,
-		refetchOnWindowFocus: true,
-		retry: true,
-		retryDelay: 1000,
-	});
-
 	// Connect to the WebSocket
 	const connect = useCallback(async () => {
 		if (!messageId || !baseUrl) {
-			return;
+			return Promise.reject(new Error("Missing messageId or baseUrl"));
 		}
 
 		try {
@@ -140,22 +113,38 @@ export const useWebSocketMessage = (
 
 			// Create a new WebSocket client if one doesn't exist
 			if (!clientRef.current) {
+				const timestamp = new Date().toISOString().substring(11, 23);
+				console.log(
+					`[${timestamp}] Creating new WebSocket client for message ID: ${messageId}`,
+				);
+
+				// Use a longer message delay to ensure the connection is fully established
 				clientRef.current = new WebSocketClient(baseUrl, messageId, {
 					autoReconnect,
 					reconnectInterval,
 					maxReconnectAttempts,
 					pingInterval,
+					messageDelay: 1000, // Increased from 500ms to 1000ms
 				});
 
 				// Set up event listeners
 				clientRef.current.on("status", (newStatus: unknown) => {
 					const typedStatus = newStatus as WebSocketConnectionStatus;
+					console.log(
+						`WebSocket status changed for ${messageId}: ${typedStatus}`,
+					);
 					setStatus(typedStatus);
 					onStatusChange?.(typedStatus);
 				});
 
+				clientRef.current.on("connection_established", (msg: unknown) => {
+					console.log(`WebSocket connection established for ${messageId}`, msg);
+				});
+
 				clientRef.current.on(`update:${messageId}`, (update: unknown) => {
 					const typedUpdate = update as UpdateMessage;
+					console.log(`Received update for ${messageId}:`, typedUpdate.type);
+
 					// Update the message data
 					setMessage((prev) => {
 						if (!prev) return typedUpdate as unknown as AgentExecutionRecord;
@@ -167,11 +156,13 @@ export const useWebSocketMessage = (
 
 					// Check if the message is complete
 					if (typedUpdate.is_complete) {
+						console.log(`Message ${messageId} is complete`);
 						setIsComplete(true);
 					}
 
 					// Check if the message is streamable
 					if (typedUpdate.is_streamable) {
+						console.log(`Message ${messageId} is streamable`);
 						setIsStreamable(true);
 					}
 
@@ -180,8 +171,17 @@ export const useWebSocketMessage = (
 				});
 
 				clientRef.current.on("error", (wsError: unknown) => {
-					const typedError =
-						wsError instanceof Error ? wsError : new Error(String(wsError));
+					// Ensure we have a proper Error object with a meaningful message
+					let typedError: Error;
+					if (wsError instanceof Error) {
+						typedError = wsError;
+					} else if (typeof wsError === "string") {
+						typedError = new Error(wsError);
+					} else {
+						typedError = new Error(`WebSocket error for ${messageId}`);
+					}
+
+					console.error(`WebSocket error for ${messageId}:`, typedError);
 					setError(typedError);
 					onError?.(typedError);
 				});
@@ -189,6 +189,7 @@ export const useWebSocketMessage = (
 				// Set up cleanup function
 				cleanupRef.current = () => {
 					if (clientRef.current) {
+						console.log(`Cleaning up WebSocket client for ${messageId}`);
 						clientRef.current.disconnect();
 						clientRef.current = null;
 					}
@@ -196,12 +197,22 @@ export const useWebSocketMessage = (
 			}
 
 			// Connect to the WebSocket
+			console.log(`Connecting to WebSocket for ${messageId}`);
 			await clientRef.current.connect();
+			console.log(`Connected to WebSocket for ${messageId}`);
 			setIsLoading(false);
+			return Promise.resolve();
 		} catch (err) {
-			setError(err instanceof Error ? err : new Error(String(err)));
+			const formattedError =
+				err instanceof Error ? err : new Error(String(err));
+			console.error(
+				`Error connecting to WebSocket for ${messageId}:`,
+				formattedError,
+			);
+			setError(formattedError);
 			setIsLoading(false);
-			onError?.(err instanceof Error ? err : new Error(String(err)));
+			onError?.(formattedError);
+			return Promise.reject(formattedError);
 		}
 	}, [
 		messageId,
@@ -220,24 +231,48 @@ export const useWebSocketMessage = (
 		connectRef.current = connect;
 	}, [connect]);
 
-	// Process job data when it changes
+	// Global registry of active WebSocket clients to prevent duplicate connections
+	// This is a static variable shared across all instances of the hook
+	const globalClientsRef = useRef<Record<string, boolean>>({});
+
+	// Connect to the WebSocket when the component mounts if autoConnect is true
+	// This is a separate effect from the cleanup effect to avoid reconnection loops
 	useEffect(() => {
-		if (jobData?.current_execution) {
-			setMessage(jobData.current_execution);
+		// Skip auto-connect if:
+		// 1. autoConnect is false
+		// 2. We don't have a messageId or baseUrl
+		// 3. We don't have a connect function
+		// 4. We already have a client for this messageId
+		// 5. There's already a global client for this messageId
+		if (
+			autoConnect &&
+			messageId &&
+			baseUrl &&
+			connectRef.current &&
+			!clientRef.current &&
+			!globalClientsRef.current[messageId]
+		) {
+			const timestamp = new Date().toISOString().substring(11, 23);
+			console.log(`[${timestamp}] Auto-connecting WebSocket for ${messageId}`);
 
-			// Check if the message is complete or streamable
-			const isComplete = jobData.status === "completed";
-			const isStreamable = jobData.current_execution?.id === messageId;
+			// Mark this messageId as having an active client
+			globalClientsRef.current[messageId] = true;
 
-			setIsComplete(isComplete);
-			setIsStreamable(isStreamable);
-
-			// If the message is streamable and not complete, connect to the WebSocket
-			if (isStreamable && !isComplete && autoConnect && connectRef.current) {
-				connectRef.current();
-			}
+			// Connect with a delay to allow for component stabilization
+			setTimeout(() => {
+				if (connectRef.current) {
+					connectRef.current().catch((err) => {
+						console.error(
+							`[${timestamp}] Error auto-connecting WebSocket for ${messageId}:`,
+							err,
+						);
+						// Remove from global registry if connection failed
+						globalClientsRef.current[messageId] = false;
+					});
+				}
+			}, 500);
 		}
-	}, [jobData, messageId, autoConnect]);
+	}, [autoConnect, messageId, baseUrl]);
 
 	// Disconnect from the WebSocket
 	const disconnect = useCallback(() => {
@@ -249,41 +284,38 @@ export const useWebSocketMessage = (
 	}, []);
 
 	// Connect to the WebSocket when the component mounts
+	// This effect only runs once on mount and handles cleanup on unmount
 	useEffect(() => {
-		if (
-			autoConnect &&
-			messageId &&
-			baseUrl &&
-			isStreamable &&
-			!isComplete &&
-			connectRef.current
-		) {
-			connectRef.current();
-		}
+		// Store a reference to the current cleanup function and messageId
+		const currentCleanup = cleanupRef.current;
+		const currentMessageId = messageId;
 
-		// Cleanup when the component unmounts
+		// Return cleanup function that will be called when component unmounts
 		return () => {
-			if (cleanupRef.current) {
-				cleanupRef.current();
-			}
+			// Set a small delay before cleanup to allow for component re-mounting
+			setTimeout(() => {
+				// Only run cleanup if we have a cleanup function
+				if (currentCleanup) {
+					const timestamp = new Date().toISOString().substring(11, 23);
+					console.log(
+						`[${timestamp}] Running delayed cleanup for WebSocket ${currentMessageId}`,
+					);
+
+					// Remove from global registry
+					if (globalClientsRef.current[currentMessageId]) {
+						globalClientsRef.current[currentMessageId] = false;
+					}
+
+					currentCleanup();
+				}
+			}, 200);
 		};
-	}, [autoConnect, messageId, baseUrl, isStreamable, isComplete]);
+	}, [messageId]); // Empty dependency array ensures this only runs on mount/unmount
 
-	// Update loading state based on job loading and WebSocket status
+	// Update loading state based on WebSocket status
 	useEffect(() => {
-		setIsLoading(
-			isJobLoading || status === "connecting" || status === "reconnecting",
-		);
-	}, [isJobLoading, status]);
-
-	// Update error state based on job error
-	useEffect(() => {
-		if (jobError) {
-			const typedError =
-				jobError instanceof Error ? jobError : new Error(String(jobError));
-			setError(typedError);
-		}
-	}, [jobError]);
+		setIsLoading(status === "connecting" || status === "reconnecting");
+	}, [status]);
 
 	return {
 		message,
