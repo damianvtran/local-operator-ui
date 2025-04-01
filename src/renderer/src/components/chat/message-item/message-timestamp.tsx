@@ -6,6 +6,7 @@ import type { MessageTimestampProps } from "./types";
 /**
  * Styled component for message timestamps
  * Positioned differently based on whether the message is from the user or assistant
+ * For assistant messages, width is set to match the content width (100% - 52px for avatar space)
  */
 const StyledTimestamp = styled(Typography, {
 	shouldForwardProp: (prop) => prop !== "isUser",
@@ -15,6 +16,7 @@ const StyledTimestamp = styled(Typography, {
 	textAlign: isUser ? "left" : "right",
 	color: theme.palette.text.secondary,
 	fontSize: "0.7rem",
+	width: isUser ? "auto" : "100%",
 }));
 
 /**
