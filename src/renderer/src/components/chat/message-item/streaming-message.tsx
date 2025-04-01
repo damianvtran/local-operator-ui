@@ -3,7 +3,7 @@
  *
  * @module StreamingMessage
  */
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useMemo } from "react";
 import { Box, Typography, CircularProgress, styled } from "@mui/material";
 import type { AgentExecutionRecord } from "../../../api/local-operator/types";
 import { useStreamingMessage } from "../../../hooks/use-streaming-message";
@@ -145,52 +145,72 @@ export const StreamingMessage = ({
 		refetchOnComplete,
 	});
 
-	// Determine which message to use - store or WebSocket
-	// Always prefer the store message if it's complete, otherwise use the WebSocket message
-	// if the store message is not available
-	const message =
-		storeMessage?.content && (storeMessage.isComplete || !wsMessage)
-			? storeMessage.content
-			: wsMessage;
+	// Debug logging to help diagnose issues - but throttled to reduce console spam
+	const lastLogTimeRef = useRef(0);
 
-	// Stable reference to the connection controls
-	const connectionControlsRef = useRef({
-		connect,
-		disconnect,
-		refetch,
-	});
-
-	// Update the connection controls ref when the functions change
 	useEffect(() => {
-		connectionControlsRef.current = {
+		if (wsMessage) {
+			const now = Date.now();
+			// Only log every 500ms to avoid excessive logging
+			if (now - lastLogTimeRef.current > 500) {
+				lastLogTimeRef.current = now;
+			}
+		}
+	}, [wsMessage]);
+
+	// Determine which message to use - store or WebSocket
+	// CRITICAL: During active streaming, ALWAYS prioritize the WebSocket message
+	// for real-time updates, regardless of what's in the store
+	const isActivelyStreaming = useMemo(
+		() => status === "connected" && !isStoreMessageComplete,
+		[status, isStoreMessageComplete],
+	);
+
+	// Always use the WebSocket message when actively streaming
+	// This is the key change - we're not checking if wsMessage exists
+	// because we want to show real-time updates even if they're empty at first
+	// Use a ref to track the last valid message to prevent flickering
+	const lastValidMessageRef = useRef<AgentExecutionRecord | null>(null);
+
+	const message = useMemo(() => {
+		// If we're actively streaming, ALWAYS use the WebSocket message
+		if (isActivelyStreaming && wsMessage) {
+			lastValidMessageRef.current = wsMessage;
+			return wsMessage;
+		}
+
+		// If we're not streaming or the WebSocket message is null,
+		// fall back to the store message or the last valid message
+		const result =
+			storeMessage?.content || wsMessage || lastValidMessageRef.current;
+
+		// Update the last valid message ref if we have a result
+		if (result) {
+			lastValidMessageRef.current = result;
+		}
+
+		return result;
+	}, [isActivelyStreaming, wsMessage, storeMessage]);
+
+	// Stable reference to the connection controls - memoized to prevent unnecessary re-renders
+	const connectionControls = useMemo(
+		() => ({
 			connect,
 			disconnect,
 			refetch,
-		};
-	}, [connect, disconnect, refetch]);
+		}),
+		[connect, disconnect, refetch],
+	);
 
 	// Provide connection controls to parent component if needed
 	useEffect(() => {
 		if (onConnectionControls) {
-			onConnectionControls(connectionControlsRef.current);
+			onConnectionControls(connectionControls);
 		}
-	}, [onConnectionControls]);
+	}, [onConnectionControls, connectionControls]);
 
-	// Call onComplete when the message is complete in the store
-	useEffect(() => {
-		if (isStoreMessageComplete) {
-			console.log(`Message ${messageId} is complete in store`);
-
-			// Call onComplete callback to trigger refetch in parent components
-			if (onComplete && message) {
-				console.log(`Calling onComplete callback for message ${messageId}`);
-				onComplete(message);
-			}
-		}
-	}, [isStoreMessageComplete, messageId, onComplete, message]);
-
-	// Memoized status indicator renderer
-	const renderStatusIndicator = useCallback(() => {
+	// Memoized status indicator renderer - only re-render when status or showStatus changes
+	const statusIndicator = useMemo(() => {
 		if (!showStatus) return null;
 
 		switch (status) {
@@ -251,75 +271,96 @@ export const StreamingMessage = ({
 		}
 	}, [status, showStatus]);
 
+	// Memoize the loading indicator to prevent unnecessary re-renders
+	const loadingIndicator = useMemo(() => {
+		if (!isLoading && !isRefetching) return null;
+
+		return (
+			<Box sx={{ display: "flex", alignItems: "center", mt: 1 }}>
+				<CircularProgress size={16} sx={{ mr: 1 }} />
+				<Typography variant="body2">
+					{isRefetching
+						? "Refreshing message data..."
+						: "Loading message data..."}
+				</Typography>
+			</Box>
+		);
+	}, [isLoading, isRefetching]);
+
+	// Memoize the message content to prevent unnecessary re-renders
+	const messageContent = useMemo(() => {
+		if (!message?.message) return null;
+		return <MessageContent content={message.message} isUser={false} />;
+	}, [message?.message]);
+
+	// Memoize the output sections to prevent unnecessary re-renders
+	const outputSections = useMemo(() => {
+		if (!showOutput || !message) return null;
+
+		return (
+			<>
+				{message.stdout && (
+					<OutputSection>
+						<Typography variant="caption" sx={{ fontWeight: "bold" }}>
+							Output:
+						</Typography>
+						<Box component="pre" sx={{ mt: 0.5, mb: 0 }}>
+							{message.stdout}
+						</Box>
+					</OutputSection>
+				)}
+
+				{message.stderr && (
+					<OutputSection
+						sx={{
+							backgroundColor: "error.main",
+							color: "error.contrastText",
+						}}
+					>
+						<Typography variant="caption" sx={{ fontWeight: "bold" }}>
+							Error:
+						</Typography>
+						<Box component="pre" sx={{ mt: 0.5, mb: 0 }}>
+							{message.stderr}
+						</Box>
+					</OutputSection>
+				)}
+			</>
+		);
+	}, [showOutput, message]);
+
+	// Memoize the error display to prevent unnecessary re-renders
+	const errorDisplay = useMemo(() => {
+		if (!error) return null;
+
+		return (
+			<Box
+				sx={{
+					mt: 1,
+					p: 1,
+					backgroundColor: "error.main",
+					color: "error.contrastText",
+					borderRadius: 1,
+				}}
+			>
+				<Typography variant="subtitle2">Error:</Typography>
+				<Typography variant="body2">{error.message}</Typography>
+			</Box>
+		);
+	}, [error]);
+
 	return (
 		<StreamingContainer
 			className={`${isStreamable ? "streamable-message" : ""} ${className || ""}`}
 			sx={sx}
+			data-streaming={isActivelyStreaming ? "true" : "false"}
 		>
-			{renderStatusIndicator()}
-
+			{statusIndicator}
 			{children}
-
-			{(isLoading || isRefetching) && (
-				<Box sx={{ display: "flex", alignItems: "center", mt: 1 }}>
-					<CircularProgress size={16} sx={{ mr: 1 }} />
-					<Typography variant="body2">
-						{isRefetching
-							? "Refreshing message data..."
-							: "Loading message data..."}
-					</Typography>
-				</Box>
-			)}
-
-			{message?.message && (
-				<MessageContent content={message.message} isUser={false} />
-			)}
-
-			{showOutput && message && (
-				<>
-					{message.stdout && (
-						<OutputSection>
-							<Typography variant="caption" sx={{ fontWeight: "bold" }}>
-								Output:
-							</Typography>
-							<Box component="pre" sx={{ mt: 0.5, mb: 0 }}>
-								{message.stdout}
-							</Box>
-						</OutputSection>
-					)}
-
-					{message.stderr && (
-						<OutputSection
-							sx={{
-								backgroundColor: "error.main",
-								color: "error.contrastText",
-							}}
-						>
-							<Typography variant="caption" sx={{ fontWeight: "bold" }}>
-								Error:
-							</Typography>
-							<Box component="pre" sx={{ mt: 0.5, mb: 0 }}>
-								{message.stderr}
-							</Box>
-						</OutputSection>
-					)}
-				</>
-			)}
-
-			{error && (
-				<Box
-					sx={{
-						mt: 1,
-						p: 1,
-						backgroundColor: "error.main",
-						color: "error.contrastText",
-						borderRadius: 1,
-					}}
-				>
-					<Typography variant="subtitle2">Error:</Typography>
-					<Typography variant="body2">{error.message}</Typography>
-				</Box>
-			)}
+			{loadingIndicator}
+			{messageContent}
+			{outputSections}
+			{errorDisplay}
 		</StreamingContainer>
 	);
 };

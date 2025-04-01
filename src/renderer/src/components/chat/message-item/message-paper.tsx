@@ -1,6 +1,6 @@
 import { Box, Paper, useTheme } from "@mui/material";
 import { styled } from "@mui/material/styles";
-import type { FC } from "react";
+import { type FC, useMemo } from "react";
 import { StreamingMessage } from "./streaming-message";
 import { MessageControls } from "./message-controls";
 import { MessageTimestamp } from "./message-timestamp";
@@ -83,25 +83,30 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 	// For assistant messages, we remove the paper boundary and just show text on background
 	// Take up the full width of the constraint for a modern chat app look
 
-	// Determine if the message is currently streaming
-	// Check the message's is_streamable and is_complete properties
-	// We need to be careful here - a message might have is_streamable=true
-	// but we should only show the streaming component if it's not complete
-	const isStreamable =
-		message?.is_streamable && !message?.is_complete && !isUser;
+	// Determine if the message is currently streaming - memoized to prevent unnecessary recalculations
+	const isStreamable = useMemo(
+		() =>
+			message?.is_streamable === true &&
+			message?.is_complete === false &&
+			!isUser,
+		[message?.is_streamable, message?.is_complete, isUser],
+	);
 
-	const messageStyles = {
-		borderRadius: 2,
-		color: theme.palette.text.primary,
-		width: "calc(100% - 52px)", // Take full width minus padding
-		wordBreak: "break-word",
-		overflowWrap: "break-word",
-		position: "relative",
-	};
+	// Memoize the message styles to prevent unnecessary object creation on each render
+	const messageStyles = useMemo(
+		() => ({
+			borderRadius: 2,
+			color: theme.palette.text.primary,
+			width: "calc(100% - 52px)", // Take full width minus padding
+			wordBreak: "break-word",
+			overflowWrap: "break-word",
+			position: "relative",
+		}),
+		[theme.palette.text.primary],
+	);
 
-	// Filter out the timestamp from children for assistant messages
-	// since we add it explicitly below for better alignment
-	const filterTimestampFromChildren = () => {
+	// Filter out the timestamp from children for assistant messages - memoized to prevent unnecessary recalculations
+	const filteredChildren = useMemo(() => {
 		// If children is a React element array, filter out the MessageTimestamp component
 		if (Array.isArray(children)) {
 			return children.filter(
@@ -113,7 +118,45 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 
 		// Otherwise, just return the children as is
 		return children;
-	};
+	}, [children]);
+
+	// Memoize the streaming message component to prevent unnecessary re-renders
+	const streamingMessageComponent = useMemo(() => {
+		if (!isStreamable || !message) return null;
+
+		return (
+			<StreamingMessage
+				messageId={message.id}
+				autoConnect={true}
+				showStatus={false}
+				keepAlive={true}
+				sx={messageStyles}
+				// Pass the conversation ID if available
+				conversationId={message.conversation_id}
+				refetchOnComplete={true}
+				onComplete={() => {
+					if (onMessageComplete) {
+						onMessageComplete();
+					}
+				}}
+			/>
+		);
+	}, [isStreamable, message, messageStyles, onMessageComplete]);
+
+	// Memoize the regular message components to prevent unnecessary re-renders
+	const regularMessageComponents = useMemo(() => {
+		if (isStreamable) return null;
+
+		return (
+			<>
+				<Box sx={messageStyles}>{filteredChildren}</Box>
+				{message && (
+					<MessageTimestamp timestamp={message.timestamp} isUser={isUser} />
+				)}
+				<MessageControls isUser={isUser} content={content} />
+			</>
+		);
+	}, [isStreamable, messageStyles, filteredChildren, message, isUser, content]);
 
 	return (
 		<Box
@@ -125,37 +168,8 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 				},
 			}}
 		>
-			{isStreamable ? (
-				// When streaming, show the streaming message without controls or timestamp
-				// Don't include any children inside the StreamingMessage component
-				// to avoid duplicate content rendering
-				<StreamingMessage
-					messageId={message.id}
-					autoConnect={true}
-					showStatus={false}
-					keepAlive={true}
-					sx={messageStyles}
-					// Pass the conversation ID if available
-					conversationId={message.conversation_id}
-					refetchOnComplete={true}
-					onComplete={() => {
-						console.log(`StreamingMessage onComplete called for ${message.id}`);
-						if (onMessageComplete) {
-							console.log(`Calling onMessageComplete for ${message.id}`);
-							onMessageComplete();
-						}
-					}}
-				/>
-			) : (
-				// When not streaming, show the regular message with controls and timestamp
-				<>
-					<Box sx={messageStyles}>{filterTimestampFromChildren()}</Box>
-					{message && (
-						<MessageTimestamp timestamp={message.timestamp} isUser={isUser} />
-					)}
-					<MessageControls isUser={isUser} content={content} />
-				</>
-			)}
+			{streamingMessageComponent}
+			{regularMessageComponents}
 		</Box>
 	);
 };
