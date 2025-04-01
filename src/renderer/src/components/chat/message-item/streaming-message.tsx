@@ -3,10 +3,11 @@
  *
  * @module StreamingMessage
  */
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 import { Box, Typography, CircularProgress, styled } from "@mui/material";
 import type { AgentExecutionRecord } from "../../../api/local-operator/types";
 import { useStreamingMessage } from "../../../hooks/use-streaming-message";
+import { useStreamingMessagesStore } from "../../../store/streaming-messages-store";
 import { MessageContent } from "./message-content";
 
 // Styled components
@@ -67,6 +68,7 @@ type StreamingMessageProps = {
 	onConnectionControls?: (controls: {
 		connect: () => void;
 		disconnect: () => void;
+		refetch: () => void;
 	}) => void;
 	/** Whether to keep the connection alive even after component unmounts */
 	keepAlive?: boolean;
@@ -74,6 +76,10 @@ type StreamingMessageProps = {
 	sx?: React.CSSProperties | Record<string, unknown>;
 	/** Custom class name to apply to the container */
 	className?: string;
+	/** Conversation ID this message belongs to (for updating the chat store) */
+	conversationId?: string;
+	/** Whether to refetch the message when complete */
+	refetchOnComplete?: boolean;
 };
 
 /**
@@ -81,6 +87,8 @@ type StreamingMessageProps = {
  *
  * This component uses the useStreamingMessage hook to subscribe to updates
  * for a specific message ID and display the streaming updates.
+ * It also integrates with the streaming messages store to provide a seamless
+ * transition between streaming and completed messages.
  */
 export const StreamingMessage = ({
 	messageId,
@@ -94,28 +102,64 @@ export const StreamingMessage = ({
 	keepAlive = true, // Default to keeping connection alive
 	sx,
 	className,
+	conversationId,
+	refetchOnComplete = true,
 }: StreamingMessageProps) => {
+	// Track if we should use the store data
+	const [useStoreData, setUseStoreData] = useState(true);
+
+	// Get streaming messages store functions
+	const { getStreamingMessage, isMessageStreamingComplete } =
+		useStreamingMessagesStore();
+
+	// Get the streaming message from the store
+	const storeMessage = getStreamingMessage(messageId);
+	const isStoreMessageComplete = isMessageStreamingComplete(messageId);
+
+	// Custom onComplete handler that will trigger a refetch
+	const handleComplete = useCallback(
+		(completedMessage: AgentExecutionRecord) => {
+			// Call the original onComplete callback
+			if (onComplete) {
+				onComplete(completedMessage);
+			}
+
+			// Switch to using the WebSocket data after completion
+			setUseStoreData(false);
+		},
+		[onComplete],
+	);
+
 	// Use our streaming message hook to handle WebSocket connections
 	const {
-		message,
+		message: wsMessage,
 		isStreamable,
 		status,
 		isLoading,
+		isRefetching,
 		error,
 		connect,
 		disconnect,
+		refetch,
 	} = useStreamingMessage({
 		messageId,
 		autoConnect,
-		onComplete,
+		onComplete: handleComplete,
 		onUpdate,
 		keepAlive,
+		conversationId,
+		refetchOnComplete,
 	});
+
+	// Determine which message to use - store or WebSocket
+	const message =
+		useStoreData && storeMessage?.content ? storeMessage.content : wsMessage;
 
 	// Stable reference to the connection controls
 	const connectionControlsRef = useRef({
 		connect,
 		disconnect,
+		refetch,
 	});
 
 	// Update the connection controls ref when the functions change
@@ -123,8 +167,9 @@ export const StreamingMessage = ({
 		connectionControlsRef.current = {
 			connect,
 			disconnect,
+			refetch,
 		};
-	}, [connect, disconnect]);
+	}, [connect, disconnect, refetch]);
 
 	// Provide connection controls to parent component if needed
 	useEffect(() => {
@@ -132,6 +177,16 @@ export const StreamingMessage = ({
 			onConnectionControls(connectionControlsRef.current);
 		}
 	}, [onConnectionControls]);
+
+	// Refetch the message when it's complete
+	useEffect(() => {
+		if (isStoreMessageComplete && refetchOnComplete) {
+			// Refetch the message to get the final state
+			refetch().catch((error) => {
+				console.error(`Error refetching message ${messageId}:`, error);
+			});
+		}
+	}, [isStoreMessageComplete, refetchOnComplete, refetch, messageId]);
 
 	// Memoized status indicator renderer
 	const renderStatusIndicator = useCallback(() => {
@@ -204,10 +259,14 @@ export const StreamingMessage = ({
 
 			{children}
 
-			{isLoading && (
+			{(isLoading || isRefetching) && (
 				<Box sx={{ display: "flex", alignItems: "center", mt: 1 }}>
 					<CircularProgress size={16} sx={{ mr: 1 }} />
-					<Typography variant="body2">Loading message data...</Typography>
+					<Typography variant="body2">
+						{isRefetching
+							? "Refreshing message data..."
+							: "Loading message data..."}
+					</Typography>
 				</Box>
 			)}
 
