@@ -293,6 +293,71 @@ export const StreamingMessage = ({
 		return <MessageContent content={message.message} isUser={false} />;
 	}, [message?.message]);
 
+	// Skeleton loader for when we're connected but waiting for first token
+	const skeletonLoader = useMemo(() => {
+		// Only show skeleton when we're connected but don't have a message yet
+		if (status === "connected" && !message?.message) {
+			return (
+				<Box sx={{ mt: 1, mb: 1 }}>
+					<Box
+						sx={{
+							height: 16,
+							width: "90%",
+							backgroundColor: (theme) =>
+								theme.palette.mode === "dark"
+									? "rgba(255, 255, 255, 0.1)"
+									: "rgba(0, 0, 0, 0.1)",
+							borderRadius: 1,
+							mb: 1,
+							animation: "pulse 1.5s ease-in-out infinite",
+							"@keyframes pulse": {
+								"0%": { opacity: 0.6 },
+								"50%": { opacity: 1 },
+								"100%": { opacity: 0.6 },
+							},
+						}}
+					/>
+					<Box
+						sx={{
+							height: 16,
+							width: "75%",
+							backgroundColor: (theme) =>
+								theme.palette.mode === "dark"
+									? "rgba(255, 255, 255, 0.1)"
+									: "rgba(0, 0, 0, 0.1)",
+							borderRadius: 1,
+							mb: 1,
+							animation: "pulse 1.5s ease-in-out 0.2s infinite",
+							"@keyframes pulse": {
+								"0%": { opacity: 0.6 },
+								"50%": { opacity: 1 },
+								"100%": { opacity: 0.6 },
+							},
+						}}
+					/>
+					<Box
+						sx={{
+							height: 16,
+							width: "60%",
+							backgroundColor: (theme) =>
+								theme.palette.mode === "dark"
+									? "rgba(255, 255, 255, 0.1)"
+									: "rgba(0, 0, 0, 0.1)",
+							borderRadius: 1,
+							animation: "pulse 1.5s ease-in-out 0.4s infinite",
+							"@keyframes pulse": {
+								"0%": { opacity: 0.6 },
+								"50%": { opacity: 1 },
+								"100%": { opacity: 0.6 },
+							},
+						}}
+					/>
+				</Box>
+			);
+		}
+		return null;
+	}, [status, message?.message]);
+
 	// Memoize the output sections to prevent unnecessary re-renders
 	const outputSections = useMemo(() => {
 		if (!showOutput || !message) return null;
@@ -359,6 +424,7 @@ export const StreamingMessage = ({
 			{children}
 			{loadingIndicator}
 			{messageContent}
+			{skeletonLoader}
 			{outputSections}
 			{errorDisplay}
 		</StreamingContainer>
