@@ -13,7 +13,7 @@ import type {
 import { useScrollToBottom } from "@renderer/hooks/use-scroll-to-bottom";
 import { useStreamingMessagesStore } from "@renderer/store/streaming-messages-store";
 import type { FC } from "react";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState } from "react";
 import SyntaxHighlighter from "react-syntax-highlighter";
 import { atomOneDark } from "react-syntax-highlighter/dist/esm/styles/hljs";
 import { createGlobalStyle } from "styled-components";
@@ -280,62 +280,30 @@ export const LoadingIndicator: FC<{
 	currentExecution?: AgentExecutionRecord | null;
 	scrollToBottom?: () => void;
 	conversationId?: string;
-}> = ({ status, currentExecution, scrollToBottom, conversationId }) => {
-	// Get streaming messages store to check if any messages are currently streaming
-	const { isMessageStreaming } = useStreamingMessagesStore();
+}> = ({ status, currentExecution, scrollToBottom }) => {
+	const [isCodeExpanded, setIsCodeExpanded] = useState(false);
 
-	// Check if any message is currently streaming in this conversation
-	const isAnyMessageStreaming = useMemo(() => {
-		// If we have a specific execution ID, check if that message is streaming
-		if (currentExecution?.id) {
-			return isMessageStreaming(currentExecution.id);
-		}
+	const { streamingMessages, getStreamingMessage } =
+		useStreamingMessagesStore();
+	const streamingMessage = getStreamingMessage(currentExecution?.id || "");
+	const isStreaming = !!streamingMessage && !streamingMessage.isComplete;
 
-		// If we don't have a specific execution ID but have a conversation ID,
-		// we need to check if any message in this conversation is streaming
-		if (conversationId) {
-			// We don't have a direct way to check all messages in a conversation,
-			// but we can infer from the current execution and loading state
-			return (
-				currentExecution?.is_streamable === true &&
-				currentExecution?.is_complete === false
-			);
-		}
-
-		return false;
-	}, [currentExecution, conversationId, isMessageStreaming]);
-
-	// Don't show the loading indicator if any message is streaming
-	if (isAnyMessageStreaming) {
-		return null;
-	}
-	// Get detailed status text based on current execution if available
+	const codeSnippet = currentExecution?.code || null;
+	const message = currentExecution?.message || null;
 	const statusText = currentExecution
 		? getDetailedStatusText(status, currentExecution)
 		: status
 			? getStatusText(status)
 			: "Thinking";
 
-	// Get code snippet if available
-	const codeSnippet = currentExecution?.code || null;
-
-	// Get message if available
-	const message = currentExecution?.message || null;
-
-	// State to track if code is expanded
-	const [isCodeExpanded, setIsCodeExpanded] = useState(false);
-
-	// Use the scroll to bottom hook with status and execution as dependencies
-	// This will automatically scroll to bottom when status changes if user is near bottom
 	const { ref, scrollToBottom: scrollToBottomHook } = useScrollToBottom(
 		[status, currentExecution, message],
 		100, // Default threshold
 		50, // Default button threshold
 	);
 
-	// Effect to scroll to bottom when code is expanded
 	useEffect(() => {
-		if (codeSnippet && isCodeExpanded) {
+		if (codeSnippet && isCodeExpanded && !isStreaming) {
 			// Use requestAnimationFrame to ensure the DOM has been updated
 			requestAnimationFrame(() => {
 				// Use the hook's scrollToBottom if available, otherwise use the prop
@@ -346,13 +314,30 @@ export const LoadingIndicator: FC<{
 				}
 			});
 		}
-	}, [codeSnippet, isCodeExpanded, scrollToBottom, scrollToBottomHook]);
+	}, [
+		codeSnippet,
+		isCodeExpanded,
+		scrollToBottom,
+		scrollToBottomHook,
+		isStreaming,
+	]);
 
-	// Toggle code expansion
+	// Toggle code expansion function
 	const toggleCodeExpansion = () => {
 		setIsCodeExpanded((prev) => !prev);
 	};
 
+	// Debug logging
+	console.log("Current execution ID", currentExecution?.id);
+	console.log("Streaming message", streamingMessage);
+	console.dir(streamingMessages, { depth: null });
+
+	// 6. Early return after all hooks have been called
+	if (isStreaming) {
+		return null;
+	}
+
+	// 7. Render component
 	return (
 		<LoadingContainer>
 			{/* Invisible div for scroll reference */}
