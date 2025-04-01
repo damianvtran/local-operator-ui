@@ -283,8 +283,7 @@ export const LoadingIndicator: FC<{
 }> = ({ status, currentExecution, scrollToBottom }) => {
 	const [isCodeExpanded, setIsCodeExpanded] = useState(false);
 
-	const { streamingMessages, getStreamingMessage } =
-		useStreamingMessagesStore();
+	const { getStreamingMessage } = useStreamingMessagesStore();
 	const streamingMessage = getStreamingMessage(currentExecution?.id || "");
 	const isStreaming = !!streamingMessage && !streamingMessage.isComplete;
 
@@ -327,12 +326,6 @@ export const LoadingIndicator: FC<{
 		setIsCodeExpanded((prev) => !prev);
 	};
 
-	// Debug logging
-	console.log("Current execution ID", currentExecution?.id);
-	console.log("Streaming message", streamingMessage);
-	console.dir(streamingMessages, { depth: null });
-
-	// 6. Early return after all hooks have been called
 	if (isStreaming) {
 		return null;
 	}
