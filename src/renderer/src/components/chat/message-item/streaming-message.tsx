@@ -3,7 +3,7 @@
  *
  * @module StreamingMessage
  */
-import { useEffect, useRef, useCallback, useState } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import { Box, Typography, CircularProgress, styled } from "@mui/material";
 import type { AgentExecutionRecord } from "../../../api/local-operator/types";
 import { useStreamingMessage } from "../../../hooks/use-streaming-message";
@@ -105,9 +105,6 @@ export const StreamingMessage = ({
 	conversationId,
 	refetchOnComplete = true,
 }: StreamingMessageProps) => {
-	// Track if we should use the store data
-	const [useStoreData, setUseStoreData] = useState(true);
-
 	// Get streaming messages store functions
 	const { getStreamingMessage, isMessageStreamingComplete } =
 		useStreamingMessagesStore();
@@ -123,9 +120,6 @@ export const StreamingMessage = ({
 			if (onComplete) {
 				onComplete(completedMessage);
 			}
-
-			// Switch to using the WebSocket data after completion
-			setUseStoreData(false);
 		},
 		[onComplete],
 	);
@@ -152,8 +146,12 @@ export const StreamingMessage = ({
 	});
 
 	// Determine which message to use - store or WebSocket
+	// Always prefer the store message if it's complete, otherwise use the WebSocket message
+	// if the store message is not available
 	const message =
-		useStoreData && storeMessage?.content ? storeMessage.content : wsMessage;
+		storeMessage?.content && (storeMessage.isComplete || !wsMessage)
+			? storeMessage.content
+			: wsMessage;
 
 	// Stable reference to the connection controls
 	const connectionControlsRef = useRef({
@@ -178,15 +176,18 @@ export const StreamingMessage = ({
 		}
 	}, [onConnectionControls]);
 
-	// Refetch the message when it's complete
+	// Call onComplete when the message is complete in the store
 	useEffect(() => {
-		if (isStoreMessageComplete && refetchOnComplete) {
-			// Refetch the message to get the final state
-			refetch().catch((error) => {
-				console.error(`Error refetching message ${messageId}:`, error);
-			});
+		if (isStoreMessageComplete) {
+			console.log(`Message ${messageId} is complete in store`);
+
+			// Call onComplete callback to trigger refetch in parent components
+			if (onComplete && message) {
+				console.log(`Calling onComplete callback for message ${messageId}`);
+				onComplete(message);
+			}
 		}
-	}, [isStoreMessageComplete, refetchOnComplete, refetch, messageId]);
+	}, [isStoreMessageComplete, messageId, onComplete, message]);
 
 	// Memoized status indicator renderer
 	const renderStatusIndicator = useCallback(() => {

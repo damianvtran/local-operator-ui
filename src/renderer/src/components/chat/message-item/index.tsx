@@ -242,10 +242,11 @@ export const MessageItem: FC<MessageItemProps> = memo(
 								</Box>
 							)}
 
-							{/* Always render message content with markdown support */}
-							{message.message && (
-								<MessageContent content={message.message} isUser={isUser} />
-							)}
+							{/* Only render message content when not streaming */}
+							{message.message &&
+								!(message.is_streamable && !message.is_complete) && (
+									<MessageContent content={message.message} isUser={isUser} />
+								)}
 
 							{/* Determine if we have any collapsible content */}
 							{(() => {
@@ -364,10 +365,11 @@ export const MessageItem: FC<MessageItemProps> = memo(
 								</Box>
 							)}
 
-							{/* Always render message content with markdown support */}
-							{message.message && (
-								<MessageContent content={message.message} isUser={isUser} />
-							)}
+							{/* Only render message content when not streaming */}
+							{message.message &&
+								!(message.is_streamable && !message.is_complete) && (
+									<MessageContent content={message.message} isUser={isUser} />
+								)}
 
 							{/* Determine if we have any collapsible content */}
 							{(() => {
@@ -447,11 +449,13 @@ export const MessageItem: FC<MessageItemProps> = memo(
 	},
 	(prevProps, nextProps) => {
 		// Custom comparison function for memo
-		// Only re-render if the message ID or content has changed
+		// Re-render if any of these properties have changed
 		return (
 			prevProps.message.id === nextProps.message.id &&
 			prevProps.message.message === nextProps.message.message &&
-			prevProps.message.status === nextProps.message.status
+			prevProps.message.status === nextProps.message.status &&
+			prevProps.message.is_complete === nextProps.message.is_complete &&
+			prevProps.message.is_streamable === nextProps.message.is_streamable
 		);
 	},
 );

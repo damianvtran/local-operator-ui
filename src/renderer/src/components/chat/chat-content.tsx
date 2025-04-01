@@ -122,6 +122,7 @@ export const ChatContent: FC<ChatContentProps> = ({
 					messagesEndRef={messagesEndRef}
 					scrollToBottom={scrollToBottom}
 					refetch={refetch}
+					conversationId={agentId}
 				/>
 			) : (
 				/* Raw information tab - only accessible in development mode */

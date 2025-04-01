@@ -146,7 +146,7 @@ export const useStreamingMessage = ({
 		useStreamingMessagesStore();
 
 	// Get chat store functions for updating conversation messages
-	const { addMessage } = useChatStore();
+	const { addMessage, updateMessage } = useChatStore();
 
 	// Helper function for consistent logging with component ID
 	const logWithId = useCallback(
@@ -200,19 +200,45 @@ export const useStreamingMessage = ({
 				}
 			}
 
-			// Update the streaming messages store
-			updateStreamingMessage(messageId, update as AgentExecutionRecord);
+			// Create a complete message object by merging with existing data
+			const messageData = {
+				...registryEntry?.messageData,
+				...update,
+			} as AgentExecutionRecord;
+
+			// If the message is complete, mark it as complete in the store
+			if (update.is_complete) {
+				logWithId("Message is complete, updating store with complete status");
+				completeStreamingMessage(messageId, messageData);
+
+				// Trigger a refetch to get the final state if needed
+				if (refetchOnComplete) {
+					// Use setTimeout to ensure this happens after the current execution
+					setTimeout(() => {
+						if (mountedRef.current) {
+							logWithId("Auto-refetching message to get final state");
+							refetchMessage().catch((error) => {
+								const errorMessage =
+									error instanceof Error ? error.message : String(error);
+								logWithId(
+									`Error auto-refetching message: ${errorMessage}`,
+									"error",
+								);
+							});
+						}
+					}, 100);
+				}
+			} else {
+				// Just update the streaming message store for regular updates
+				updateStreamingMessage(messageId, messageData);
+			}
 
 			// If we have a conversation ID, update the chat store as well
-			if (conversationId && update) {
-				// Convert the update to a Message type
-				const messageData = {
-					...registryEntry?.messageData,
-					...update,
-				} as AgentExecutionRecord;
-
-				if (messageData.id) {
-					const messageForStore = convertToMessage(messageData);
+			if (conversationId && messageData.id) {
+				const messageForStore = convertToMessage(messageData, conversationId);
+				// Try to update the message first, if it doesn't exist, add it
+				const updated = updateMessage(conversationId, messageForStore);
+				if (!updated) {
 					addMessage(conversationId, messageForStore);
 				}
 			}
@@ -277,8 +303,12 @@ export const useStreamingMessage = ({
 
 			// If we have a conversation ID, update the chat store as well
 			if (conversationId) {
-				const messageForStore = convertToMessage(messageData);
-				addMessage(conversationId, messageForStore);
+				const messageForStore = convertToMessage(messageData, conversationId);
+				// Try to update the message first, if it doesn't exist, add it
+				const updated = updateMessage(conversationId, messageForStore);
+				if (!updated) {
+					addMessage(conversationId, messageForStore);
+				}
 			}
 
 			// Call the onComplete callback if provided
@@ -301,6 +331,7 @@ export const useStreamingMessage = ({
 		completeStreamingMessage,
 		conversationId,
 		addMessage,
+		updateMessage,
 		onComplete,
 	]);
 
@@ -540,22 +571,36 @@ export const useStreamingMessage = ({
 	// Call the onComplete callback when the message is complete
 	useEffect(() => {
 		if (isComplete && message && mountedRef.current) {
-			logWithId("Message complete");
+			logWithId("Message complete effect triggered");
 
-			// Refetch the message if needed
-			if (refetchOnComplete) {
-				logWithId("Refetching message to get final state");
-				refetchMessage().catch((error) => {
-					const errorMessage =
-						error instanceof Error ? error.message : String(error);
-					logWithId(`Error refetching message: ${errorMessage}`, "error");
-				});
+			// Make sure the streaming messages store is updated with the complete status
+			if (message) {
+				logWithId("Ensuring message is marked as complete in store");
+				completeStreamingMessage(messageId, message);
 			}
 
 			// Call the onComplete callback
 			if (onComplete) {
 				logWithId("Calling onComplete callback");
 				onComplete(message);
+			}
+
+			// Trigger a refetch to get the final state if needed
+			if (refetchOnComplete) {
+				// Use setTimeout to ensure this happens after the current execution
+				setTimeout(() => {
+					if (mountedRef.current) {
+						logWithId("Auto-refetching message to get final state");
+						refetchMessage().catch((error) => {
+							const errorMessage =
+								error instanceof Error ? error.message : String(error);
+							logWithId(
+								`Error auto-refetching message: ${errorMessage}`,
+								"error",
+							);
+						});
+					}
+				}, 100);
 			}
 
 			// Don't disconnect when complete if keepAlive is true
@@ -575,8 +620,10 @@ export const useStreamingMessage = ({
 		keepAlive,
 		safeDisconnect,
 		logWithId,
-		refetchOnComplete,
+		messageId,
+		completeStreamingMessage,
 		refetchMessage,
+		refetchOnComplete,
 	]);
 
 	return {
