@@ -8,11 +8,15 @@ import { Box, Typography, CircularProgress, styled } from "@mui/material";
 import type { AgentExecutionRecord } from "../../../api/local-operator/types";
 import { useWebSocketMessage } from "../../../hooks/use-websocket-message";
 import { apiConfig } from "../../../config";
+import { MessageContent } from "./message-content";
 
 // Styled components
 const StreamingContainer = styled(Box)(() => ({
 	position: "relative",
 	overflow: "hidden",
+	borderRadius: 8,
+	wordBreak: "break-word",
+	overflowWrap: "break-word",
 }));
 
 const StatusIndicator = styled(Box)(({ theme }) => ({
@@ -90,6 +94,10 @@ type StreamingMessageProps = {
 	}) => void;
 	/** Whether to keep the connection alive even after component unmounts */
 	keepAlive?: boolean;
+	/** Custom styles to apply to the container */
+	sx?: React.CSSProperties | Record<string, unknown>;
+	/** Custom class name to apply to the container */
+	className?: string;
 };
 
 /**
@@ -108,6 +116,8 @@ export const StreamingMessage = ({
 	children,
 	onConnectionControls,
 	keepAlive = true, // Default to keeping connection alive
+	sx,
+	className,
 }: StreamingMessageProps) => {
 	// Generate a stable component ID for logging
 	const componentIdRef = useRef(
@@ -494,7 +504,10 @@ export const StreamingMessage = ({
 	}, [status, showStatus]);
 
 	return (
-		<StreamingContainer className={isStreamable ? "streamable-message" : ""}>
+		<StreamingContainer
+			className={`${isStreamable ? "streamable-message" : ""} ${className || ""}`}
+			sx={sx}
+		>
 			{renderStatusIndicator()}
 
 			{children}
@@ -507,9 +520,7 @@ export const StreamingMessage = ({
 			)}
 
 			{message?.message && (
-				<Box component="pre" sx={{ mt: 0.5, mb: 0 }}>
-					{message.message}
-				</Box>
+				<MessageContent content={message.message} isUser={false} />
 			)}
 
 			{showOutput && message && (
