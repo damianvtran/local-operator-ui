@@ -84,6 +84,15 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 	const isStreamable =
 		message?.is_streamable && !message?.is_complete && !isUser;
 
+	const messageStyles = {
+		borderRadius: 2,
+		color: theme.palette.text.primary,
+		width: "calc(100% - 52px)", // Take full width minus padding
+		wordBreak: "break-word",
+		overflowWrap: "break-word",
+		position: "relative",
+	};
+
 	// Render the StreamingMessage component
 	// We're not using useMemo here to ensure the component re-renders when message content changes
 	const renderStreamingMessage = () => {
@@ -95,25 +104,9 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 				autoConnect={true}
 				showStatus={false}
 				keepAlive={true}
-				// Pass onUpdate to ensure we re-render when message content changes
-				onUpdate={() => {
-					// This callback will trigger when the message is updated
-					// No need to do anything here as the StreamingMessage component
-					// will handle the update internally
-				}}
+				sx={messageStyles}
 			>
-				<Box
-					sx={{
-						borderRadius: 2,
-						color: theme.palette.text.primary,
-						width: "calc(100% - 52px)", // Take full width minus padding
-						wordBreak: "break-word",
-						overflowWrap: "break-word",
-						position: "relative",
-					}}
-				>
-					{children}
-				</Box>
+				<Box sx={messageStyles}>{children}</Box>
 			</StreamingMessage>
 		);
 	};
@@ -131,18 +124,7 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 			{isStreamable ? (
 				renderStreamingMessage()
 			) : (
-				<Box
-					sx={{
-						borderRadius: 2,
-						color: theme.palette.text.primary,
-						width: "calc(100% - 52px)", // Take full width minus padding
-						wordBreak: "break-word",
-						overflowWrap: "break-word",
-						position: "relative",
-					}}
-				>
-					{children}
-				</Box>
+				<Box sx={messageStyles}>{children}</Box>
 			)}
 			<MessageControls isUser={isUser} content={content} />
 		</Box>
