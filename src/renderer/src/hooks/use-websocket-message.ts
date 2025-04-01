@@ -143,7 +143,6 @@ export const useWebSocketMessage = (
 
 				clientRef.current.on(`update:${messageId}`, (update: unknown) => {
 					const typedUpdate = update as UpdateMessage;
-					console.log(`Received update for ${messageId}:`, typedUpdate.type);
 
 					// Update the message data
 					setMessage((prev) => {
