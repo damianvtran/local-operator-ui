@@ -88,6 +88,7 @@ export const ChatPage: FC<ChatProps> = () => {
 		isFetchingMore,
 		hasMoreMessages,
 		messagesContainerRef,
+		refetch,
 	} = useConversationMessages(conversationId);
 
 	// Get the addMessage function from the chat store
@@ -428,6 +429,7 @@ Store messages: ${JSON.stringify(getMessages(conversationId || ""), null, 2)}`;
 				currentJobId={currentJobId}
 				onCancelJob={handleCancelJob}
 				agentData={agentData}
+				refetch={refetch}
 			/>
 		);
 	};

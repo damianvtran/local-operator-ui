@@ -1,9 +1,9 @@
 import { Box, Paper, useTheme } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import type { FC } from "react";
-import { useState, useEffect, useCallback } from "react";
 import { StreamingMessage } from "./streaming-message";
 import { MessageControls } from "./message-controls";
+import { MessageTimestamp } from "./message-timestamp";
 import type { Message } from "../types";
 
 // Create a Paper component with custom styling
@@ -32,6 +32,7 @@ type MessagePaperProps = {
 	children: React.ReactNode;
 	content?: string;
 	message?: Message;
+	onMessageComplete?: () => void;
 };
 
 /**
@@ -45,6 +46,7 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 	children,
 	content,
 	message,
+	onMessageComplete,
 }) => {
 	const theme = useTheme();
 
@@ -81,24 +83,10 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 	// For assistant messages, we remove the paper boundary and just show text on background
 	// Take up the full width of the constraint for a modern chat app look
 
-	// Local state to track if streaming is complete
-	const [streamingComplete, setStreamingComplete] = useState(false);
-
-	// Check if the message is streamable and not complete
+	// Determine if the message is currently streaming
+	// Simply check the message's is_streamable and is_complete properties
 	const isStreamable =
-		message?.is_streamable &&
-		!message?.is_complete &&
-		!streamingComplete &&
-		!isUser;
-
-	// Reset streaming complete state when message changes
-	useEffect(() => {
-		if (message?.is_complete) {
-			setStreamingComplete(true);
-		} else {
-			setStreamingComplete(false);
-		}
-	}, [message?.is_complete]);
+		message?.is_streamable && !message?.is_complete && !isUser;
 
 	const messageStyles = {
 		borderRadius: 2,
@@ -109,13 +97,8 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 		position: "relative",
 	};
 
-	// Handle streaming message completion
-	const handleStreamingComplete = useCallback(() => {
-		setStreamingComplete(true);
-	}, []);
-
-	// Filter out the timestamp from children when streaming
-	// This is a bit of a hack, but it works because we know the structure of the children
+	// Filter out the timestamp from children for assistant messages
+	// since we add it explicitly below for better alignment
 	const filterTimestampFromChildren = () => {
 		// If children is a React element array, filter out the MessageTimestamp component
 		if (Array.isArray(children)) {
@@ -130,25 +113,6 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 		return children;
 	};
 
-	// Render the StreamingMessage component
-	// We're not using useMemo here to ensure the component re-renders when message content changes
-	const renderStreamingMessage = () => {
-		if (!isStreamable || !message) return null;
-
-		return (
-			<StreamingMessage
-				messageId={message.id}
-				autoConnect={true}
-				showStatus={false}
-				keepAlive={true}
-				onComplete={handleStreamingComplete}
-				sx={messageStyles}
-			>
-				<Box sx={messageStyles}>{filterTimestampFromChildren()}</Box>
-			</StreamingMessage>
-		);
-	};
-
 	return (
 		<Box
 			sx={{
@@ -161,11 +125,27 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 		>
 			{isStreamable ? (
 				// When streaming, only show the streaming message without controls or timestamp
-				renderStreamingMessage()
+				<StreamingMessage
+					messageId={message.id}
+					autoConnect={true}
+					showStatus={false}
+					keepAlive={true}
+					sx={messageStyles}
+					onComplete={() => {
+						if (onMessageComplete) {
+							onMessageComplete();
+						}
+					}}
+				>
+					<Box sx={messageStyles}>{filterTimestampFromChildren()}</Box>
+				</StreamingMessage>
 			) : (
-				// When not streaming, show the regular message with controls
+				// When not streaming, show the regular message with controls and timestamp
 				<>
-					<Box sx={messageStyles}>{children}</Box>
+					<Box sx={messageStyles}>{filterTimestampFromChildren()}</Box>
+					{message && (
+						<MessageTimestamp timestamp={message.timestamp} isUser={isUser} />
+					)}
 					<MessageControls isUser={isUser} content={content} />
 				</>
 			)}

@@ -16,7 +16,7 @@ const StyledTimestamp = styled(Typography, {
 	textAlign: isUser ? "left" : "right",
 	color: theme.palette.text.secondary,
 	fontSize: "0.7rem",
-	width: isUser ? "auto" : "100%",
+	width: isUser ? "auto" : "calc(100% - 52px)",
 }));
 
 /**
