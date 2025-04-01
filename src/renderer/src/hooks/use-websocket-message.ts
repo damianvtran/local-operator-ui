@@ -4,6 +4,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import {
 	WebSocketClient,
+	WebsocketConnectionType,
 	type WebSocketConnectionStatus,
 	type UpdateMessage,
 } from "../api/local-operator/websocket-api";
@@ -119,13 +120,18 @@ export const useWebSocketMessage = (
 				);
 
 				// Use a longer message delay to ensure the connection is fully established
-				clientRef.current = new WebSocketClient(baseUrl, messageId, {
-					autoReconnect,
-					reconnectInterval,
-					maxReconnectAttempts,
-					pingInterval,
-					messageDelay: 350,
-				});
+				clientRef.current = new WebSocketClient(
+					baseUrl,
+					messageId,
+					{
+						autoReconnect,
+						reconnectInterval,
+						maxReconnectAttempts,
+						pingInterval,
+						messageDelay: 350,
+					},
+					WebsocketConnectionType.MESSAGE,
+				);
 
 				// Set up event listeners
 				clientRef.current.on("status", (newStatus: unknown) => {

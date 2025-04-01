@@ -9,6 +9,18 @@
 // Import AgentExecutionRecord type to use in UpdateMessage
 import type { AgentExecutionRecord } from "./types";
 
+/**
+ * WebSocket connection type
+ * Represents the different types of WebSocket connections
+ * This should match the backend's WebsocketConnectionType enum
+ */
+export enum WebsocketConnectionType {
+	/** Connection for message updates */
+	MESSAGE = "message",
+	/** Connection for health checks */
+	HEALTH = "health",
+}
+
 // Using a browser-compatible EventEmitter implementation
 class EventEmitter {
 	private events: Record<string, Array<(...args: unknown[]) => void>> = {};
@@ -243,6 +255,7 @@ export class WebSocketClient extends EventEmitter {
 	private isReconnecting = false;
 	private lastErrorTime = 0;
 	private consecutiveErrorCount = 0;
+	private connectionType: WebsocketConnectionType;
 
 	/**
 	 * Create a new WebSocket client for a specific message ID
@@ -250,17 +263,20 @@ export class WebSocketClient extends EventEmitter {
 	 * @param baseUrl - The base URL of the Local Operator API
 	 * @param messageId - The message ID to subscribe to
 	 * @param options - Connection options
+	 * @param connectionType - Type of WebSocket connection (default: MESSAGE)
 	 */
 	constructor(
 		baseUrl: string,
 		messageId: string,
 		options: WebSocketConnectionOptions = {},
+		connectionType: WebsocketConnectionType = WebsocketConnectionType.MESSAGE,
 	) {
 		super();
 		this.baseUrl = baseUrl;
 		this.messageId = messageId;
 		this.options = { ...DEFAULT_CONNECTION_OPTIONS, ...options };
 		this.subscriptions.add(messageId);
+		this.connectionType = connectionType;
 	}
 
 	/**
@@ -329,7 +345,16 @@ export class WebSocketClient extends EventEmitter {
 
 		// Normalize the base URL to use ws:// or wss:// protocol
 		const wsBaseUrl = this.baseUrl.replace(/^http/, "ws");
-		const wsUrl = `${wsBaseUrl}/v1/ws/${this.messageId}`;
+
+		// Construct the WebSocket URL based on the connection type
+		let wsUrl: string;
+		if (this.connectionType === WebsocketConnectionType.HEALTH) {
+			wsUrl = `${wsBaseUrl}/v1/ws/health`;
+		} else {
+			// Default to MESSAGE connection type
+			wsUrl = `${wsBaseUrl}/v1/ws/messages/${this.messageId}`;
+		}
+
 		console.log(`Connecting to WebSocket URL: ${wsUrl}`);
 
 		return new Promise((resolve, reject) => {
@@ -913,22 +938,27 @@ export class WebSocketManager {
 	 *
 	 * @param messageId - The message ID to subscribe to
 	 * @param options - Connection options for this specific client
+	 * @param connectionType - Type of WebSocket connection (default: MESSAGE)
 	 * @returns The WebSocket client
 	 */
 	public getClient(
 		messageId: string,
 		options?: WebSocketConnectionOptions,
+		connectionType: WebsocketConnectionType = WebsocketConnectionType.MESSAGE,
 	): WebSocketClient {
-		if (!this.clients.has(messageId)) {
+		const clientKey = `${connectionType}:${messageId}`;
+
+		if (!this.clients.has(clientKey)) {
 			const client = new WebSocketClient(
 				this.baseUrl,
 				messageId,
 				options || this.defaultOptions,
+				connectionType,
 			);
-			this.clients.set(messageId, client);
+			this.clients.set(clientKey, client);
 		}
 
-		const client = this.clients.get(messageId);
+		const client = this.clients.get(clientKey);
 		if (!client) {
 			throw new Error(`WebSocket client for message ID ${messageId} not found`);
 		}
@@ -940,13 +970,15 @@ export class WebSocketManager {
 	 *
 	 * @param messageId - The message ID to subscribe to
 	 * @param options - Connection options for this specific client
+	 * @param connectionType - Type of WebSocket connection (default: MESSAGE)
 	 * @returns Promise that resolves to the WebSocket client
 	 */
 	public async connect(
 		messageId: string,
 		options?: WebSocketConnectionOptions,
+		connectionType: WebsocketConnectionType = WebsocketConnectionType.MESSAGE,
 	): Promise<WebSocketClient> {
-		const client = this.getClient(messageId, options);
+		const client = this.getClient(messageId, options, connectionType);
 		try {
 			await client.connect();
 			return client;
@@ -963,13 +995,18 @@ export class WebSocketManager {
 	 * Disconnect from the WebSocket endpoint for a specific message ID
 	 *
 	 * @param messageId - The message ID to disconnect from
+	 * @param connectionType - Type of WebSocket connection (default: MESSAGE)
 	 */
-	public disconnect(messageId: string): void {
-		const client = this.clients.get(messageId);
+	public disconnect(
+		messageId: string,
+		connectionType: WebsocketConnectionType = WebsocketConnectionType.MESSAGE,
+	): void {
+		const clientKey = `${connectionType}:${messageId}`;
+		const client = this.clients.get(clientKey);
 
 		if (client) {
 			client.disconnect();
-			this.clients.delete(messageId);
+			this.clients.delete(clientKey);
 		}
 	}
 
@@ -999,12 +1036,12 @@ export class WebSocketManager {
 		options?: WebSocketConnectionOptions,
 	): Promise<WebSocketClient> {
 		if (!this.healthClient) {
-			// For health endpoint, we use a special client
-			const wsBaseUrl = this.baseUrl.replace(/^http/, "ws");
+			// For health endpoint, we use a special client with HEALTH connection type
 			const healthClient = new WebSocketClient(
-				wsBaseUrl,
+				this.baseUrl,
 				"health",
 				options || this.defaultOptions,
+				WebsocketConnectionType.HEALTH,
 			);
 
 			this.healthClient = healthClient;
