@@ -84,7 +84,9 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 	// Take up the full width of the constraint for a modern chat app look
 
 	// Determine if the message is currently streaming
-	// Simply check the message's is_streamable and is_complete properties
+	// Check the message's is_streamable and is_complete properties
+	// We need to be careful here - a message might have is_streamable=true
+	// but we should only show the streaming component if it's not complete
 	const isStreamable =
 		message?.is_streamable && !message?.is_complete && !isUser;
 
@@ -124,21 +126,26 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 			}}
 		>
 			{isStreamable ? (
-				// When streaming, only show the streaming message without controls or timestamp
+				// When streaming, show the streaming message without controls or timestamp
+				// Don't include any children inside the StreamingMessage component
+				// to avoid duplicate content rendering
 				<StreamingMessage
 					messageId={message.id}
 					autoConnect={true}
 					showStatus={false}
 					keepAlive={true}
 					sx={messageStyles}
+					// Pass the conversation ID if available
+					conversationId={message.conversation_id}
+					refetchOnComplete={true}
 					onComplete={() => {
+						console.log(`StreamingMessage onComplete called for ${message.id}`);
 						if (onMessageComplete) {
+							console.log(`Calling onMessageComplete for ${message.id}`);
 							onMessageComplete();
 						}
 					}}
-				>
-					<Box sx={messageStyles}>{filterTimestampFromChildren()}</Box>
-				</StreamingMessage>
+				/>
 			) : (
 				// When not streaming, show the regular message with controls and timestamp
 				<>

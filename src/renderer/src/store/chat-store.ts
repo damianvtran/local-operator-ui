@@ -80,6 +80,14 @@ type ChatState = {
 	addMessage: (conversationId: string, message: Message) => void;
 
 	/**
+	 * Update an existing message in a specific conversation
+	 * @param conversationId - The ID of the conversation
+	 * @param message - The updated message
+	 * @returns True if the message was updated, false if it wasn't found
+	 */
+	updateMessage: (conversationId: string, message: Message) => boolean;
+
+	/**
 	 * Clear all messages for a specific conversation
 	 * @param conversationId - The ID of the conversation to clear
 	 */
@@ -228,6 +236,39 @@ export const useChatStore = create<ChatState>((set, get) => ({
 				lastUpdated: Date.now(),
 			};
 		});
+	},
+
+	updateMessage: (conversationId, message) => {
+		let updated = false;
+
+		set((state) => {
+			const existingMessages =
+				state.messagesByConversation[conversationId] || [];
+
+			// Find the message with the same ID
+			const updatedMessages = existingMessages.map((msg) => {
+				if (msg.id === message.id) {
+					updated = true;
+					return message;
+				}
+				return msg;
+			});
+
+			// If no message was updated, return the current state
+			if (!updated) {
+				return state;
+			}
+
+			return {
+				messagesByConversation: {
+					...state.messagesByConversation,
+					[conversationId]: updatedMessages,
+				},
+				lastUpdated: Date.now(),
+			};
+		});
+
+		return updated;
 	},
 
 	clearConversation: (conversationId) => {

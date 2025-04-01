@@ -25,6 +25,7 @@ type MessagesViewProps = {
 	messagesEndRef: RefObject<HTMLDivElement>;
 	scrollToBottom?: () => void;
 	refetch?: () => void;
+	conversationId?: string; // Added to support streaming message updates
 };
 
 const MessagesContainer = styled(Box)(({ theme }) => ({
@@ -122,6 +123,7 @@ export const MessagesView: FC<MessagesViewProps> = ({
 	messagesEndRef,
 	scrollToBottom,
 	refetch,
+	conversationId,
 }) => {
 	return (
 		<MessagesContainer ref={messagesContainerRef}>
@@ -147,7 +149,10 @@ export const MessagesView: FC<MessagesViewProps> = ({
 							{messages.map((message) => (
 								<MessageItem
 									key={message.id}
-									message={message}
+									message={{
+										...message,
+										conversation_id: conversationId, // Add conversation ID to message
+									}}
 									onMessageComplete={() => {
 										if (refetch) {
 											refetch();
