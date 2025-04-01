@@ -127,11 +127,6 @@ export const useStreamingMessage = ({
 	conversationId,
 	refetchOnComplete = true,
 }: UseStreamingMessageOptions): UseStreamingMessageResult => {
-	// Generate a stable component ID for logging
-	const componentIdRef = useRef(
-		`stream-${Math.random().toString(36).substring(2, 9)}`,
-	);
-
 	// Track component mount state
 	const mountedRef = useRef(false);
 
@@ -147,22 +142,6 @@ export const useStreamingMessage = ({
 
 	// Get chat store functions for updating conversation messages
 	const { addMessage, updateMessage } = useChatStore();
-
-	// Helper function for consistent logging with component ID
-	const logWithId = useCallback(
-		(message: string, level: "log" | "warn" | "error" = "log") => {
-			const timestamp = new Date().toISOString().substring(11, 23);
-			const prefix = `[${timestamp}][${componentIdRef.current}][${messageId}]`;
-			if (level === "warn") {
-				console.warn(`${prefix} ${message}`);
-			} else if (level === "error") {
-				console.error(`${prefix} ${message}`);
-			} else {
-				console.log(`${prefix} ${message}`);
-			}
-		},
-		[messageId],
-	);
 
 	// Use the WebSocket hook to subscribe to message updates
 	const {
@@ -208,7 +187,6 @@ export const useStreamingMessage = ({
 
 			// If the message is complete, mark it as complete in the store
 			if (update.is_complete) {
-				logWithId("Message is complete, updating store with complete status");
 				completeStreamingMessage(messageId, messageData);
 
 				// Trigger a refetch to get the final state if needed
@@ -216,14 +194,10 @@ export const useStreamingMessage = ({
 					// Use setTimeout to ensure this happens after the current execution
 					setTimeout(() => {
 						if (mountedRef.current) {
-							logWithId("Auto-refetching message to get final state");
 							refetchMessage().catch((error) => {
 								const errorMessage =
 									error instanceof Error ? error.message : String(error);
-								logWithId(
-									`Error auto-refetching message: ${errorMessage}`,
-									"error",
-								);
+								console.error(`Error auto-refetching message: ${errorMessage}`);
 							});
 						}
 					}, 100);
@@ -251,13 +225,11 @@ export const useStreamingMessage = ({
 	 */
 	const refetchMessage = useCallback(async () => {
 		if (!messageId) {
-			logWithId("No message ID provided, skipping refetch", "warn");
 			return;
 		}
 
 		try {
 			setIsRefetching(true);
-			logWithId("Refetching message from API");
 
 			const client = createLocalOperatorClient(baseUrl);
 
@@ -266,7 +238,6 @@ export const useStreamingMessage = ({
 			const agentId = registryEntry?.conversationId;
 
 			if (!agentId) {
-				logWithId("No agent ID found for message, skipping refetch", "warn");
 				return;
 			}
 
@@ -287,7 +258,6 @@ export const useStreamingMessage = ({
 			);
 
 			if (!messageData) {
-				logWithId("Message not found in execution history", "warn");
 				return;
 			}
 
@@ -315,19 +285,16 @@ export const useStreamingMessage = ({
 			if (onComplete && mountedRef.current) {
 				onComplete(messageData);
 			}
-
-			logWithId("Message refetch complete");
 		} catch (error) {
 			const errorMessage =
 				error instanceof Error ? error.message : String(error);
-			logWithId(`Error refetching message: ${errorMessage}`, "error");
+			console.error(`Error refetching message: ${errorMessage}`);
 		} finally {
 			setIsRefetching(false);
 		}
 	}, [
 		messageId,
 		baseUrl,
-		logWithId,
 		completeStreamingMessage,
 		conversationId,
 		addMessage,
@@ -342,7 +309,6 @@ export const useStreamingMessage = ({
 	const attemptConnection = useCallback(async () => {
 		// Skip if message is already complete
 		if (isComplete) {
-			logWithId("Message is already complete, skipping connection");
 			return;
 		}
 
@@ -377,9 +343,8 @@ export const useStreamingMessage = ({
 
 		const registryEntry = globalConnectionRegistry.get(messageId);
 		if (!registryEntry) {
-			logWithId(
+			console.error(
 				"Failed to get registry entry, aborting connection attempt",
-				"error",
 			);
 			return;
 		}
@@ -389,35 +354,28 @@ export const useStreamingMessage = ({
 
 		// If we're already connected, no need to connect again
 		if (registryEntry.connected) {
-			logWithId("Already connected to WebSocket, skipping connection attempt");
 			return;
 		}
 
 		// If we're already connecting, wait for that connection to complete
 		if (registryEntry.connecting && registryEntry.connectionPromise) {
-			logWithId("Connection already in progress, waiting for it to complete");
 			try {
 				await registryEntry.connectionPromise;
-				logWithId("Existing connection completed successfully");
 			} catch (error) {
-				logWithId(
+				console.warn(
 					"Existing connection failed, will attempt a new connection",
-					"warn",
 				);
 			}
 			return;
 		}
 
 		// Start a new connection attempt
-		logWithId("Starting new WebSocket connection attempt");
 		registryEntry.connecting = true;
 
 		// Create a connection promise that can be shared across instances
 		const connectionPromise: Promise<void> = (async () => {
 			try {
-				logWithId("Connecting to WebSocket");
 				await wsConnect();
-				logWithId("WebSocket connected successfully");
 
 				// Update registry
 				if (globalConnectionRegistry.has(messageId)) {
@@ -438,7 +396,7 @@ export const useStreamingMessage = ({
 						? error.message
 						: "Unknown error connecting to WebSocket";
 
-				logWithId(`WebSocket connection failed: ${errorMessage}`, "error");
+				console.error(`WebSocket connection failed: ${errorMessage}`);
 
 				// Update registry
 				if (globalConnectionRegistry.has(messageId)) {
@@ -475,7 +433,6 @@ export const useStreamingMessage = ({
 		wsConnect,
 		wsDisconnect,
 		isComplete,
-		logWithId,
 		messageId,
 		keepAlive,
 		conversationId,
@@ -500,10 +457,6 @@ export const useStreamingMessage = ({
 
 		// Only disconnect if this is the last instance and keepAlive is false
 		if (registryEntry.instanceCount === 0 && !registryEntry.keepAlive) {
-			logWithId(
-				"Last instance disconnecting, cleaning up WebSocket connection",
-			);
-
 			try {
 				wsDisconnect();
 
@@ -515,47 +468,31 @@ export const useStreamingMessage = ({
 			} catch (error) {
 				const errorMessage =
 					error instanceof Error ? error.message : String(error);
-				logWithId(`Error disconnecting WebSocket: ${errorMessage}`, "error");
+				console.error(`Error disconnecting WebSocket: ${errorMessage}`);
 			}
-		} else if (registryEntry.instanceCount === 0 && registryEntry.keepAlive) {
-			logWithId(
-				"Last instance disconnecting, but keeping WebSocket connection alive due to keepAlive flag",
-			);
-		} else {
-			logWithId(
-				`Not disconnecting, ${registryEntry.instanceCount} instances still active`,
-			);
 		}
-	}, [wsDisconnect, logWithId, messageId]);
+	}, [wsDisconnect, messageId]);
 
 	// Connect to the WebSocket when the component mounts
 	useEffect(() => {
 		// Mark component as mounted
 		mountedRef.current = true;
-		logWithId(
-			`Component mounted with autoConnect=${autoConnect}, isComplete=${isComplete}, keepAlive=${keepAlive}`,
-		);
 
 		// Connect immediately if autoConnect is true and message is not complete
 		if (autoConnect && !isComplete && !hasAttemptedConnection) {
 			// Connect immediately without delay
 			attemptConnection().catch((error) => {
-				logWithId(`Initial connection attempt failed: ${error}`, "error");
+				console.error(`Initial connection attempt failed: ${error}`);
 			});
 		}
 
 		// Cleanup function that runs when component unmounts
 		return () => {
-			logWithId("Component unmounting - cleaning up resources");
 			mountedRef.current = false;
 
 			// Only disconnect if keepAlive is false
 			if (!keepAlive) {
 				safeDisconnect();
-			} else {
-				logWithId(
-					"Keeping WebSocket connection alive after unmount due to keepAlive flag",
-				);
 			}
 		};
 	}, [
@@ -565,23 +502,18 @@ export const useStreamingMessage = ({
 		keepAlive,
 		attemptConnection,
 		safeDisconnect,
-		logWithId,
 	]);
 
 	// Call the onComplete callback when the message is complete
 	useEffect(() => {
 		if (isComplete && message && mountedRef.current) {
-			logWithId("Message complete effect triggered");
-
 			// Make sure the streaming messages store is updated with the complete status
 			if (message) {
-				logWithId("Ensuring message is marked as complete in store");
 				completeStreamingMessage(messageId, message);
 			}
 
 			// Call the onComplete callback
 			if (onComplete) {
-				logWithId("Calling onComplete callback");
 				onComplete(message);
 			}
 
@@ -590,14 +522,10 @@ export const useStreamingMessage = ({
 				// Use setTimeout to ensure this happens after the current execution
 				setTimeout(() => {
 					if (mountedRef.current) {
-						logWithId("Auto-refetching message to get final state");
 						refetchMessage().catch((error) => {
 							const errorMessage =
 								error instanceof Error ? error.message : String(error);
-							logWithId(
-								`Error auto-refetching message: ${errorMessage}`,
-								"error",
-							);
+							console.error(`Error auto-refetching message: ${errorMessage}`);
 						});
 					}
 				}, 100);
@@ -605,12 +533,7 @@ export const useStreamingMessage = ({
 
 			// Don't disconnect when complete if keepAlive is true
 			if (!keepAlive) {
-				logWithId("Message complete, disconnecting WebSocket");
 				safeDisconnect();
-			} else {
-				logWithId(
-					"Message complete, but keeping WebSocket connection alive due to keepAlive flag",
-				);
 			}
 		}
 	}, [
@@ -619,7 +542,6 @@ export const useStreamingMessage = ({
 		onComplete,
 		keepAlive,
 		safeDisconnect,
-		logWithId,
 		messageId,
 		completeStreamingMessage,
 		refetchMessage,

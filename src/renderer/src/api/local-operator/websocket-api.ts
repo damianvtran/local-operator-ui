@@ -298,9 +298,6 @@ export class WebSocketClient extends EventEmitter {
 			(this.ws.readyState === WebSocket.OPEN ||
 				this.ws.readyState === WebSocket.CONNECTING)
 		) {
-			console.log(
-				`WebSocket for ${this.messageId} is already connected or connecting`,
-			);
 			return Promise.resolve();
 		}
 
@@ -355,8 +352,6 @@ export class WebSocketClient extends EventEmitter {
 			wsUrl = `${wsBaseUrl}/v1/ws/messages/${this.messageId}`;
 		}
 
-		console.log(`Connecting to WebSocket URL: ${wsUrl}`);
-
 		return new Promise((resolve, reject) => {
 			// Set a connection timeout
 			const connectionTimeoutId = this.options.connectionTimeout
@@ -402,7 +397,6 @@ export class WebSocketClient extends EventEmitter {
 			try {
 				// Clean up any existing WebSocket
 				if (this.ws) {
-					console.log(`Cleaning up existing WebSocket for ${this.messageId}`);
 					this.ws.onopen = null;
 					this.ws.onmessage = null;
 					this.ws.onclose = null;
@@ -412,16 +406,10 @@ export class WebSocketClient extends EventEmitter {
 				}
 
 				// Create a new WebSocket
-				console.log(`Creating new WebSocket for ${this.messageId}`);
 				this.ws = new WebSocket(wsUrl);
 
 				// Set up event handlers
 				this.ws.onopen = () => {
-					const timestamp = new Date().toISOString().substring(11, 23);
-					console.log(
-						`[${timestamp}] WebSocket opened for ${this.messageId} (readyState: ${this.ws?.readyState})`,
-					);
-
 					// Clear the connection timeout
 					if (connectionTimeoutId !== null) {
 						clearTimeout(connectionTimeoutId);
@@ -437,14 +425,8 @@ export class WebSocketClient extends EventEmitter {
 					// This helps ensure the connection is fully established
 					if (this.options.messageDelay) {
 						const delayMs = this.options.messageDelay;
-						console.log(
-							`[${timestamp}] Delaying WebSocket message handling for ${delayMs}ms for ${this.messageId}`,
-						);
 						setTimeout(() => {
 							const newTimestamp = new Date().toISOString().substring(11, 23);
-							console.log(
-								`[${newTimestamp}] Starting ping interval for ${this.messageId} after delay`,
-							);
 							if (this.ws?.readyState === WebSocket.OPEN) {
 								this.startPingInterval();
 								resolve();
@@ -476,10 +458,6 @@ export class WebSocketClient extends EventEmitter {
 				this.ws.onmessage = (event) => {
 					try {
 						const message = JSON.parse(event.data) as WebSocketMessageUnion;
-						console.log(
-							`Received WebSocket message for ${this.messageId}:`,
-							message.type,
-						);
 						this.handleMessage(message);
 					} catch (error) {
 						console.error(
@@ -490,16 +468,6 @@ export class WebSocketClient extends EventEmitter {
 				};
 
 				this.ws.onclose = (event) => {
-					const timestamp = new Date().toISOString().substring(11, 23);
-					console.log(
-						`[${timestamp}] WebSocket closed for ${this.messageId} with code ${event.code}, reason: ${event.reason || "No reason provided"}`,
-					);
-
-					// Log additional context about the close
-					console.log(
-						`[${timestamp}] WebSocket close context - Current status: ${this.status}, isReconnecting: ${this.isReconnecting}, reconnectAttempts: ${this.reconnectAttempts}`,
-					);
-
 					// Clear the connection timeout
 					if (connectionTimeoutId !== null) {
 						clearTimeout(connectionTimeoutId);
@@ -515,19 +483,8 @@ export class WebSocketClient extends EventEmitter {
 
 						// Attempt to reconnect if enabled
 						if (this.options.autoReconnect && !this.isReconnecting) {
-							console.log(
-								`[${timestamp}] Auto-reconnecting WebSocket for ${this.messageId}`,
-							);
 							this.reconnect();
-						} else {
-							console.log(
-								`[${timestamp}] Not reconnecting WebSocket for ${this.messageId} - autoReconnect: ${this.options.autoReconnect}, isReconnecting: ${this.isReconnecting}`,
-							);
 						}
-					} else {
-						console.log(
-							`[${timestamp}] WebSocket already in ${this.status} state for ${this.messageId}, not changing status`,
-						);
 					}
 				};
 
@@ -536,11 +493,6 @@ export class WebSocketClient extends EventEmitter {
 					const timestamp = new Date().toISOString().substring(11, 23);
 					const errorMessage = `WebSocket connection error for ${this.messageId}`;
 					console.error(`[${timestamp}] ${errorMessage}`, event);
-
-					// Log additional context about the error
-					console.log(
-						`[${timestamp}] WebSocket error context - readyState: ${this.ws?.readyState}, status: ${this.status}, isReconnecting: ${this.isReconnecting}`,
-					);
 
 					// Clear the connection timeout
 					if (connectionTimeoutId !== null) {
@@ -560,9 +512,6 @@ export class WebSocketClient extends EventEmitter {
 						(this.ws.readyState === WebSocket.OPEN ||
 							this.ws.readyState === WebSocket.CONNECTING)
 					) {
-						console.log(
-							`[${timestamp}] Closing WebSocket after error for ${this.messageId}`,
-						);
 						try {
 							this.ws.close();
 						} catch (closeError) {
@@ -597,9 +546,6 @@ export class WebSocketClient extends EventEmitter {
 	public disconnect(): void {
 		// Prevent multiple disconnections
 		if (this.status === "disconnected" || this.status === "failed") {
-			console.log(
-				`WebSocket for ${this.messageId} already disconnected, skipping`,
-			);
 			return;
 		}
 
@@ -619,7 +565,6 @@ export class WebSocketClient extends EventEmitter {
 					this.ws.readyState === WebSocket.OPEN ||
 					this.ws.readyState === WebSocket.CONNECTING
 				) {
-					console.log(`Closing WebSocket for ${this.messageId}`);
 					this.ws.close();
 				}
 			} catch (error) {
@@ -802,9 +747,6 @@ export class WebSocketClient extends EventEmitter {
 	private reconnect(): void {
 		// If we're already reconnecting, don't start another reconnection
 		if (this.isReconnecting) {
-			console.log(
-				`Already reconnecting for ${this.messageId}, skipping duplicate reconnect`,
-			);
 			return;
 		}
 
@@ -813,9 +755,6 @@ export class WebSocketClient extends EventEmitter {
 			this.options.maxReconnectAttempts !== undefined &&
 			this.reconnectAttempts >= this.options.maxReconnectAttempts
 		) {
-			console.log(
-				`Maximum reconnect attempts (${this.options.maxReconnectAttempts}) reached for ${this.messageId}, entering cooldown`,
-			);
 			this.enterCooldown();
 			return;
 		}
@@ -827,11 +766,6 @@ export class WebSocketClient extends EventEmitter {
 
 		// Calculate delay with exponential backoff and jitter
 		const delay = this.calculateReconnectDelay();
-
-		console.log(
-			`Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts + 1}/${this.options.maxReconnectAttempts}) for ${this.messageId}`,
-		);
-
 		// Set a timeout to reconnect
 		this.reconnectTimeoutId = window.setTimeout(() => {
 			// Check if we're still in a valid state to reconnect
@@ -858,9 +792,6 @@ export class WebSocketClient extends EventEmitter {
 					}
 				});
 			} else {
-				console.log(
-					`Skipping reconnect for ${this.messageId} because status is ${this.status}`,
-				);
 				this.isReconnecting = false;
 				this.reconnectTimeoutId = null;
 			}
