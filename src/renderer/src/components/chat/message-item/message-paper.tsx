@@ -1,11 +1,11 @@
 import { Box, Paper, useTheme } from "@mui/material";
 import { styled } from "@mui/material/styles";
-import { type FC, useMemo, useEffect } from "react";
+import { type FC, useEffect, useMemo } from "react";
 import { useScrollToBottom } from "../../../hooks/use-scroll-to-bottom";
-import { StreamingMessage } from "./streaming-message";
+import type { Message } from "../types";
 import { MessageControls } from "./message-controls";
 import { MessageTimestamp } from "./message-timestamp";
-import type { Message } from "../types";
+import { StreamingMessage } from "./streaming-message";
 
 // Create a Paper component with custom styling
 const StyledPaper = styled(Paper)(({ theme }) => ({

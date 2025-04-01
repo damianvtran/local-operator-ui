@@ -23,15 +23,15 @@
  * );
  * ```
  */
-import { useEffect, useRef, useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createLocalOperatorClient } from "../api/local-operator";
 import type { AgentExecutionRecord } from "../api/local-operator/types";
-import { useWebSocketMessage } from "./use-websocket-message";
 import type { UpdateMessage } from "../api/local-operator/websocket-api";
 import { apiConfig } from "../config";
+import { useChatStore } from "../store/chat-store";
 import { useStreamingMessagesStore } from "../store/streaming-messages-store";
 import { convertToMessage } from "./use-conversation-messages";
-import { useChatStore } from "../store/chat-store";
+import { useWebSocketMessage } from "./use-websocket-message";
 
 /**
  * Global registry to track WebSocket connections across component instances
