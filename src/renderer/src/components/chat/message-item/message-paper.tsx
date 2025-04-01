@@ -1,6 +1,7 @@
 import { Box, Paper, useTheme } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import type { FC } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { StreamingMessage } from "./streaming-message";
 import { MessageControls } from "./message-controls";
 import type { Message } from "../types";
@@ -80,9 +81,24 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 	// For assistant messages, we remove the paper boundary and just show text on background
 	// Take up the full width of the constraint for a modern chat app look
 
+	// Local state to track if streaming is complete
+	const [streamingComplete, setStreamingComplete] = useState(false);
+
 	// Check if the message is streamable and not complete
 	const isStreamable =
-		message?.is_streamable && !message?.is_complete && !isUser;
+		message?.is_streamable &&
+		!message?.is_complete &&
+		!streamingComplete &&
+		!isUser;
+
+	// Reset streaming complete state when message changes
+	useEffect(() => {
+		if (message?.is_complete) {
+			setStreamingComplete(true);
+		} else {
+			setStreamingComplete(false);
+		}
+	}, [message?.is_complete]);
 
 	const messageStyles = {
 		borderRadius: 2,
@@ -91,6 +107,27 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 		wordBreak: "break-word",
 		overflowWrap: "break-word",
 		position: "relative",
+	};
+
+	// Handle streaming message completion
+	const handleStreamingComplete = useCallback(() => {
+		setStreamingComplete(true);
+	}, []);
+
+	// Filter out the timestamp from children when streaming
+	// This is a bit of a hack, but it works because we know the structure of the children
+	const filterTimestampFromChildren = () => {
+		// If children is a React element array, filter out the MessageTimestamp component
+		if (Array.isArray(children)) {
+			return children.filter(
+				(child) =>
+					child?.type?.displayName !== "MessageTimestamp" &&
+					child?.type?.name !== "MessageTimestamp",
+			);
+		}
+
+		// Otherwise, just return the children as is
+		return children;
 	};
 
 	// Render the StreamingMessage component
@@ -104,9 +141,10 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 				autoConnect={true}
 				showStatus={false}
 				keepAlive={true}
+				onComplete={handleStreamingComplete}
 				sx={messageStyles}
 			>
-				<Box sx={messageStyles}>{children}</Box>
+				<Box sx={messageStyles}>{filterTimestampFromChildren()}</Box>
 			</StreamingMessage>
 		);
 	};
@@ -122,11 +160,15 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 			}}
 		>
 			{isStreamable ? (
+				// When streaming, only show the streaming message without controls or timestamp
 				renderStreamingMessage()
 			) : (
-				<Box sx={messageStyles}>{children}</Box>
+				// When not streaming, show the regular message with controls
+				<>
+					<Box sx={messageStyles}>{children}</Box>
+					<MessageControls isUser={isUser} content={content} />
+				</>
 			)}
-			<MessageControls isUser={isUser} content={content} />
 		</Box>
 	);
 };
