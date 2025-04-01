@@ -101,6 +101,13 @@ export const useWebSocketMessage = (
 	const clientRef = useRef<WebSocketClient | null>(null);
 	const cleanupRef = useRef<(() => void) | null>(null);
 	const connectRef = useRef<(() => Promise<void>) | null>(null);
+	// Store the current message in a ref to avoid dependency issues
+	const messageRef = useRef<AgentExecutionRecord | null>(null);
+
+	// Keep messageRef in sync with message state
+	useEffect(() => {
+		messageRef.current = message;
+	}, [message]);
 
 	// Connect to the WebSocket
 	const connect = useCallback(async () => {
@@ -114,11 +121,6 @@ export const useWebSocketMessage = (
 
 			// Create a new WebSocket client if one doesn't exist
 			if (!clientRef.current) {
-				const timestamp = new Date().toISOString().substring(11, 23);
-				console.log(
-					`[${timestamp}] Creating new WebSocket client for message ID: ${messageId}`,
-				);
-
 				// Use a longer message delay to ensure the connection is fully established
 				clientRef.current = new WebSocketClient(
 					baseUrl,
@@ -136,42 +138,37 @@ export const useWebSocketMessage = (
 				// Set up event listeners
 				clientRef.current.on("status", (newStatus: unknown) => {
 					const typedStatus = newStatus as WebSocketConnectionStatus;
-					console.log(
-						`WebSocket status changed for ${messageId}: ${typedStatus}`,
-					);
 					setStatus(typedStatus);
 					onStatusChange?.(typedStatus);
-				});
-
-				clientRef.current.on("connection_established", (msg: unknown) => {
-					console.log(`WebSocket connection established for ${messageId}`, msg);
 				});
 
 				clientRef.current.on(`update:${messageId}`, (update: unknown) => {
 					const typedUpdate = update as UpdateMessage;
 
-					// Update the message data
-					setMessage((prev) => {
-						if (!prev) return typedUpdate as unknown as AgentExecutionRecord;
-						return {
-							...prev,
-							...typedUpdate,
-						} as AgentExecutionRecord;
+					// Use the ref to avoid dependency on message state
+					setMessage((prevMessage) => {
+						const updatedMessage = !prevMessage
+							? (typedUpdate as unknown as AgentExecutionRecord)
+							: ({
+									...prevMessage,
+									...typedUpdate,
+								} as AgentExecutionRecord);
+						return updatedMessage;
 					});
 
-					// Check if the message is complete
-					if (typedUpdate.is_complete) {
-						console.log(`Message ${messageId} is complete`);
+					// Batch state updates to avoid excessive renders
+					const isMessageComplete = typedUpdate.is_complete || false;
+					const isMessageStreamable = typedUpdate.is_streamable || false;
+
+					if (isMessageComplete) {
 						setIsComplete(true);
 					}
 
-					// Check if the message is streamable
-					if (typedUpdate.is_streamable) {
-						console.log(`Message ${messageId} is streamable`);
+					if (isMessageStreamable) {
 						setIsStreamable(true);
 					}
 
-					// Call the onUpdate callback
+					// Call the onUpdate callback with the updated message
 					onUpdate?.(typedUpdate);
 				});
 
@@ -194,7 +191,6 @@ export const useWebSocketMessage = (
 				// Set up cleanup function
 				cleanupRef.current = () => {
 					if (clientRef.current) {
-						console.log(`Cleaning up WebSocket client for ${messageId}`);
 						clientRef.current.disconnect();
 						clientRef.current = null;
 					}
@@ -202,9 +198,7 @@ export const useWebSocketMessage = (
 			}
 
 			// Connect to the WebSocket
-			console.log(`Connecting to WebSocket for ${messageId}`);
 			await clientRef.current.connect();
-			console.log(`Connected to WebSocket for ${messageId}`);
 			setIsLoading(false);
 			return Promise.resolve();
 		} catch (err) {
