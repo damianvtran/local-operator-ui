@@ -3,6 +3,8 @@
  *
  * This hook provides a way to subscribe to streaming message updates from the WebSocket API.
  * It handles connection management, reconnection, and cleanup across component instances.
+ * It also integrates with the streaming messages store to provide a seamless transition
+ * between streaming and completed messages.
  *
  * @module useStreamingMessage
  * @example
@@ -22,9 +24,13 @@
  * ```
  */
 import { useEffect, useRef, useCallback, useState } from "react";
+import { createLocalOperatorClient } from "../api/local-operator";
 import type { AgentExecutionRecord } from "../api/local-operator/types";
 import { useWebSocketMessage } from "./use-websocket-message";
 import { apiConfig } from "../config";
+import { useStreamingMessagesStore } from "../store/streaming-messages-store";
+import { convertToMessage } from "./use-conversation-messages";
+import { useChatStore } from "../store/chat-store";
 
 /**
  * Global registry to track WebSocket connections across component instances
@@ -46,6 +52,7 @@ const globalConnectionRegistry = new Map<
 		messageData: AgentExecutionRecord | null; // Store the message data
 		isComplete: boolean; // Store the complete status
 		isStreamable: boolean; // Store the streamable status
+		conversationId?: string; // Store the conversation ID for this message
 	}
 >();
 
@@ -65,6 +72,10 @@ export type UseStreamingMessageOptions = {
 	keepAlive?: boolean;
 	/** Base URL for the WebSocket connection */
 	baseUrl?: string;
+	/** Conversation ID this message belongs to (for updating the chat store) */
+	conversationId?: string;
+	/** Whether to refetch the message when complete */
+	refetchOnComplete?: boolean;
 };
 
 /**
@@ -81,12 +92,16 @@ export type UseStreamingMessageResult = {
 	status: string;
 	/** Whether the message is currently loading */
 	isLoading: boolean;
+	/** Whether the message is currently being refetched */
+	isRefetching: boolean;
 	/** Error that occurred during WebSocket connection or message processing */
 	error: Error | null;
 	/** Connect to the WebSocket */
 	connect: () => Promise<void>;
 	/** Disconnect from the WebSocket */
 	disconnect: () => void;
+	/** Refetch the message from the API */
+	refetch: () => Promise<void>;
 };
 
 /**
@@ -96,6 +111,8 @@ export type UseStreamingMessageResult = {
  * - Global connection registry to prevent duplicate connections
  * - Connection management across component instances
  * - Ability to keep connections alive after component unmounts
+ * - Integration with streaming messages store
+ * - Refetching message when complete
  *
  * @param options - Options for the streaming message connection
  * @returns The current message data, connection status, and control functions
@@ -107,6 +124,8 @@ export const useStreamingMessage = ({
 	onUpdate,
 	keepAlive = true,
 	baseUrl = apiConfig.baseUrl,
+	conversationId,
+	refetchOnComplete = true,
 }: UseStreamingMessageOptions): UseStreamingMessageResult => {
 	// Generate a stable component ID for logging
 	const componentIdRef = useRef(
@@ -118,6 +137,16 @@ export const useStreamingMessage = ({
 
 	// Track if we've already attempted to connect
 	const [hasAttemptedConnection, setHasAttemptedConnection] = useState(false);
+
+	// Track if we're refetching the message
+	const [isRefetching, setIsRefetching] = useState(false);
+
+	// Get streaming messages store functions
+	const { updateStreamingMessage, completeStreamingMessage } =
+		useStreamingMessagesStore();
+
+	// Get chat store functions for updating conversation messages
+	const { addMessage } = useChatStore();
 
 	// Helper function for consistent logging with component ID
 	const logWithId = useCallback(
@@ -170,8 +199,110 @@ export const useStreamingMessage = ({
 					registryEntry.isStreamable = true;
 				}
 			}
+
+			// Update the streaming messages store
+			updateStreamingMessage(messageId, update as AgentExecutionRecord);
+
+			// If we have a conversation ID, update the chat store as well
+			if (conversationId && update) {
+				// Convert the update to a Message type
+				const messageData = {
+					...registryEntry?.messageData,
+					...update,
+				} as AgentExecutionRecord;
+
+				if (messageData.id) {
+					const messageForStore = convertToMessage(messageData);
+					addMessage(conversationId, messageForStore);
+				}
+			}
 		},
 	});
+
+	/**
+	 * Refetch the message from the API
+	 * This is useful when the message is complete and we want to get the final state
+	 */
+	const refetchMessage = useCallback(async () => {
+		if (!messageId) {
+			logWithId("No message ID provided, skipping refetch", "warn");
+			return;
+		}
+
+		try {
+			setIsRefetching(true);
+			logWithId("Refetching message from API");
+
+			const client = createLocalOperatorClient(baseUrl);
+
+			// Find the agent ID from the registry
+			const registryEntry = globalConnectionRegistry.get(messageId);
+			const agentId = registryEntry?.conversationId;
+
+			if (!agentId) {
+				logWithId("No agent ID found for message, skipping refetch", "warn");
+				return;
+			}
+
+			// Get the execution history for this message
+			const response = await client.agents.getAgentExecutionHistory(
+				agentId,
+				1,
+				20,
+			);
+
+			if (response.status >= 400 || !response.result) {
+				throw new Error(response.message || "Failed to fetch message data");
+			}
+
+			// Find the message in the history
+			const messageData = response.result.history.find(
+				(record) => record.id === messageId,
+			);
+
+			if (!messageData) {
+				logWithId("Message not found in execution history", "warn");
+				return;
+			}
+
+			// Update the streaming messages store with the complete message
+			completeStreamingMessage(messageId, messageData);
+
+			// Update the global registry
+			if (registryEntry) {
+				registryEntry.messageData = messageData;
+				registryEntry.isComplete = true;
+				registryEntry.isStreamable = !!messageData.is_streamable;
+			}
+
+			// If we have a conversation ID, update the chat store as well
+			if (conversationId) {
+				const messageForStore = convertToMessage(messageData);
+				addMessage(conversationId, messageForStore);
+			}
+
+			// Call the onComplete callback if provided
+			if (onComplete && mountedRef.current) {
+				onComplete(messageData);
+			}
+
+			logWithId("Message refetch complete");
+		} catch (error) {
+			const errorMessage =
+				error instanceof Error ? error.message : String(error);
+			logWithId(`Error refetching message: ${errorMessage}`, "error");
+		} finally {
+			setIsRefetching(false);
+		}
+	}, [
+		messageId,
+		baseUrl,
+		logWithId,
+		completeStreamingMessage,
+		conversationId,
+		addMessage,
+		onComplete,
+	]);
 
 	/**
 	 * Attempt to connect to the WebSocket
@@ -200,12 +331,16 @@ export const useStreamingMessage = ({
 				messageData: null,
 				isComplete: false,
 				isStreamable: false,
+				conversationId, // Store the conversation ID
 			});
 		} else {
 			// Update the keepAlive flag if it exists
 			const entry = globalConnectionRegistry.get(messageId);
 			if (entry) {
 				entry.keepAlive = keepAlive;
+				if (conversationId) {
+					entry.conversationId = conversationId;
+				}
 			}
 		}
 
@@ -305,7 +440,15 @@ export const useStreamingMessage = ({
 				}
 			}
 		}
-	}, [wsConnect, wsDisconnect, isComplete, logWithId, messageId, keepAlive]);
+	}, [
+		wsConnect,
+		wsDisconnect,
+		isComplete,
+		logWithId,
+		messageId,
+		keepAlive,
+		conversationId,
+	]);
 
 	/**
 	 * Safely disconnect from the WebSocket
@@ -396,9 +539,24 @@ export const useStreamingMessage = ({
 
 	// Call the onComplete callback when the message is complete
 	useEffect(() => {
-		if (isComplete && message && onComplete && mountedRef.current) {
-			logWithId("Message complete, calling onComplete callback");
-			onComplete(message);
+		if (isComplete && message && mountedRef.current) {
+			logWithId("Message complete");
+
+			// Refetch the message if needed
+			if (refetchOnComplete) {
+				logWithId("Refetching message to get final state");
+				refetchMessage().catch((error) => {
+					const errorMessage =
+						error instanceof Error ? error.message : String(error);
+					logWithId(`Error refetching message: ${errorMessage}`, "error");
+				});
+			}
+
+			// Call the onComplete callback
+			if (onComplete) {
+				logWithId("Calling onComplete callback");
+				onComplete(message);
+			}
 
 			// Don't disconnect when complete if keepAlive is true
 			if (!keepAlive) {
@@ -410,7 +568,16 @@ export const useStreamingMessage = ({
 				);
 			}
 		}
-	}, [isComplete, message, onComplete, keepAlive, safeDisconnect, logWithId]);
+	}, [
+		isComplete,
+		message,
+		onComplete,
+		keepAlive,
+		safeDisconnect,
+		logWithId,
+		refetchOnComplete,
+		refetchMessage,
+	]);
 
 	return {
 		message,
@@ -418,8 +585,10 @@ export const useStreamingMessage = ({
 		isStreamable,
 		status,
 		isLoading,
+		isRefetching,
 		error,
 		connect: attemptConnection,
 		disconnect: safeDisconnect,
+		refetch: refetchMessage,
 	};
 };
