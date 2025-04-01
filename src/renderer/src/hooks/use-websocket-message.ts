@@ -1,14 +1,14 @@
 /**
  * Hook for managing WebSocket connections to stream message updates
  */
-import { useEffect, useState, useCallback, useRef } from "react";
-import {
-	WebSocketClient,
-	WebsocketConnectionType,
-	type WebSocketConnectionStatus,
-	type UpdateMessage,
-} from "../api/local-operator/websocket-api";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { AgentExecutionRecord } from "../api/local-operator/types";
+import {
+	type UpdateMessage,
+	WebSocketClient,
+	type WebSocketConnectionStatus,
+	WebsocketConnectionType,
+} from "../api/local-operator/websocket-api";
 
 /**
  * Options for the useWebSocketMessage hook
