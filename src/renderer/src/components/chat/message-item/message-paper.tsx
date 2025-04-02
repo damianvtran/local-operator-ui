@@ -122,10 +122,14 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 	}, [children]);
 
 	// Use the scroll to bottom hook to automatically scroll while streaming
-	const { ref: scrollRef, forceScrollToBottom } = useScrollToBottom(
+	const {
+		ref: scrollRef,
+		forceScrollToBottom,
+		isNearBottom,
+	} = useScrollToBottom(
 		// Dependencies that should trigger scroll evaluation
 		[content, isStreamable, message?.is_complete],
-		100, // Threshold for "near bottom" in pixels
+		150, // Threshold for "near bottom" in pixels
 		50, // Threshold for showing scroll button
 	);
 
@@ -135,13 +139,15 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 
 		// Set up interval to check and scroll if needed during streaming
 		const scrollInterval = setInterval(() => {
-			forceScrollToBottom();
-		}, 500); // Check every 500ms while streaming
+			if (isNearBottom) {
+				forceScrollToBottom();
+			}
+		}, 350); // Check every 350ms while streaming
 
 		return () => {
 			clearInterval(scrollInterval);
 		};
-	}, [isStreamable, message, forceScrollToBottom]);
+	}, [isStreamable, message, forceScrollToBottom, isNearBottom]);
 
 	// Memoize the streaming message component to prevent unnecessary re-renders
 	const streamingMessageComponent = useMemo(() => {
