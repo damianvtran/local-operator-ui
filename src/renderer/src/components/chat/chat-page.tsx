@@ -120,6 +120,7 @@ export const ChatPage: FC<ChatProps> = () => {
 		ref: messagesEndRef,
 		isFarFromBottom,
 		scrollToBottom,
+		forceScrollToBottom,
 	} = useScrollToBottom(scrollDependencies, 100);
 
 	// Check if the selected agent exists in the list of agents
@@ -139,22 +140,27 @@ export const ChatPage: FC<ChatProps> = () => {
 	}, [effectiveAgentId, agents, clearLastAgentId, clearAgentId]);
 
 	// Update the last selected agent ID when the agent ID changes
-	// Also force scroll to bottom when changing agents
-	// biome-ignore lint/correctness/useExhaustiveDependencies: messagesContainerRef.current is intentionally omitted to prevent infinite loops
+	// Force scroll to bottom only when switching to a new conversation
 	useEffect(() => {
 		if (agentId) {
 			setLastChatAgentId(agentId);
 
-			// Force scroll to bottom when changing agents
-			// Use requestAnimationFrame for smoother scrolling
-			requestAnimationFrame(() => {
-				if (messagesContainerRef.current) {
-					messagesContainerRef.current.scrollTop =
-						messagesContainerRef.current.scrollHeight;
+			// Only force scroll if we have a new conversation with loaded messages
+			if (!isLoadingMessages && messages.length > 0) {
+				const prevMessages = getMessages(agentId);
+				if (!prevMessages || prevMessages.length === 0) {
+					forceScrollToBottom();
 				}
-			});
+			}
 		}
-	}, [agentId, setLastChatAgentId]);
+	}, [
+		agentId,
+		setLastChatAgentId,
+		isLoadingMessages,
+		messages.length,
+		forceScrollToBottom,
+		getMessages,
+	]);
 
 	// Check for active jobs on initial page load
 	useEffect(() => {
@@ -184,19 +190,10 @@ export const ChatPage: FC<ChatProps> = () => {
 	}, []);
 
 	// Handle selecting a conversation
-	// biome-ignore lint/correctness/useExhaustiveDependencies: messagesContainerRef.current is intentionally omitted to prevent infinite loops
 	const handleSelectConversation = useCallback(
 		(id: string) => {
 			setLastChatAgentId(id);
 			navigateToAgent(id, "chat");
-
-			// Force scroll to bottom when selecting a conversation
-			requestAnimationFrame(() => {
-				if (messagesContainerRef.current) {
-					messagesContainerRef.current.scrollTop =
-						messagesContainerRef.current.scrollHeight;
-				}
-			});
 		},
 		[setLastChatAgentId, navigateToAgent],
 	);
