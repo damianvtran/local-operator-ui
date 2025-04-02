@@ -24,6 +24,8 @@ type MessagesViewProps = {
 	messagesContainerRef: RefObject<HTMLDivElement>;
 	messagesEndRef: RefObject<HTMLDivElement>;
 	scrollToBottom?: () => void;
+	refetch?: () => void;
+	conversationId?: string; // Added to support streaming message updates
 };
 
 const MessagesContainer = styled(Box)(({ theme }) => ({
@@ -120,6 +122,8 @@ export const MessagesView: FC<MessagesViewProps> = ({
 	messagesContainerRef,
 	messagesEndRef,
 	scrollToBottom,
+	refetch,
+	conversationId,
 }) => {
 	return (
 		<MessagesContainer ref={messagesContainerRef}>
@@ -143,7 +147,18 @@ export const MessagesView: FC<MessagesViewProps> = ({
 						// Only render visible messages plus a buffer
 						<CenteredMessagesContainer>
 							{messages.map((message) => (
-								<MessageItem key={message.id} message={message} />
+								<MessageItem
+									key={message.id}
+									message={{
+										...message,
+										conversation_id: conversationId, // Add conversation ID to message
+									}}
+									onMessageComplete={() => {
+										if (refetch) {
+											refetch();
+										}
+									}}
+								/>
 							))}
 
 							{/* Loading indicator for new message - now inside CenteredMessagesContainer */}
@@ -153,6 +168,7 @@ export const MessagesView: FC<MessagesViewProps> = ({
 									agentName={agentName}
 									currentExecution={currentExecution}
 									scrollToBottom={scrollToBottom}
+									conversationId={conversationId}
 								/>
 							)}
 						</CenteredMessagesContainer>
@@ -173,6 +189,7 @@ export const MessagesView: FC<MessagesViewProps> = ({
 										agentName={agentName}
 										currentExecution={currentExecution}
 										scrollToBottom={scrollToBottom}
+										conversationId={conversationId}
 									/>
 								</CenteredMessagesContainer>
 							)}

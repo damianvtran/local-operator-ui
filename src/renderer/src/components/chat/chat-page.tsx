@@ -48,7 +48,7 @@ export const ChatPage: FC<ChatProps> = () => {
 		useAgentSelectionStore();
 
 	// Fetch all agents to check if the selected agent exists
-	// Set up periodic refetch every 5 seconds to check for new messages
+	// Set up periodic refetch to check for new messages
 	const { data: agents = [] } = useAgents(1, 50, 10000); // 10000ms = 10 seconds
 
 	// Use the agent ID from URL or the last selected agent ID
@@ -88,6 +88,7 @@ export const ChatPage: FC<ChatProps> = () => {
 		isFetchingMore,
 		hasMoreMessages,
 		messagesContainerRef,
+		refetch,
 	} = useConversationMessages(conversationId);
 
 	// Get the addMessage function from the chat store
@@ -119,6 +120,7 @@ export const ChatPage: FC<ChatProps> = () => {
 		ref: messagesEndRef,
 		isFarFromBottom,
 		scrollToBottom,
+		forceScrollToBottom,
 	} = useScrollToBottom(scrollDependencies, 100);
 
 	// Check if the selected agent exists in the list of agents
@@ -138,22 +140,27 @@ export const ChatPage: FC<ChatProps> = () => {
 	}, [effectiveAgentId, agents, clearLastAgentId, clearAgentId]);
 
 	// Update the last selected agent ID when the agent ID changes
-	// Also force scroll to bottom when changing agents
-	// biome-ignore lint/correctness/useExhaustiveDependencies: messagesContainerRef.current is intentionally omitted to prevent infinite loops
+	// Force scroll to bottom only when switching to a new conversation
 	useEffect(() => {
 		if (agentId) {
 			setLastChatAgentId(agentId);
 
-			// Force scroll to bottom when changing agents
-			// Use requestAnimationFrame for smoother scrolling
-			requestAnimationFrame(() => {
-				if (messagesContainerRef.current) {
-					messagesContainerRef.current.scrollTop =
-						messagesContainerRef.current.scrollHeight;
+			// Only force scroll if we have a new conversation with loaded messages
+			if (!isLoadingMessages && messages.length > 0) {
+				const prevMessages = getMessages(agentId);
+				if (!prevMessages || prevMessages.length === 0) {
+					forceScrollToBottom();
 				}
-			});
+			}
 		}
-	}, [agentId, setLastChatAgentId]);
+	}, [
+		agentId,
+		setLastChatAgentId,
+		isLoadingMessages,
+		messages.length,
+		forceScrollToBottom,
+		getMessages,
+	]);
 
 	// Check for active jobs on initial page load
 	useEffect(() => {
@@ -183,19 +190,10 @@ export const ChatPage: FC<ChatProps> = () => {
 	}, []);
 
 	// Handle selecting a conversation
-	// biome-ignore lint/correctness/useExhaustiveDependencies: messagesContainerRef.current is intentionally omitted to prevent infinite loops
 	const handleSelectConversation = useCallback(
 		(id: string) => {
 			setLastChatAgentId(id);
 			navigateToAgent(id, "chat");
-
-			// Force scroll to bottom when selecting a conversation
-			requestAnimationFrame(() => {
-				if (messagesContainerRef.current) {
-					messagesContainerRef.current.scrollTop =
-						messagesContainerRef.current.scrollHeight;
-				}
-			});
 		},
 		[setLastChatAgentId, navigateToAgent],
 	);
@@ -428,6 +426,7 @@ Store messages: ${JSON.stringify(getMessages(conversationId || ""), null, 2)}`;
 				currentJobId={currentJobId}
 				onCancelJob={handleCancelJob}
 				agentData={agentData}
+				refetch={refetch}
 			/>
 		);
 	};

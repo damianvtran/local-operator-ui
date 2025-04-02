@@ -11,6 +11,7 @@ import type {
 	JobStatus,
 } from "@renderer/api/local-operator/types";
 import { useScrollToBottom } from "@renderer/hooks/use-scroll-to-bottom";
+import { useStreamingMessagesStore } from "@renderer/store/streaming-messages-store";
 import type { FC } from "react";
 import { useEffect, useState } from "react";
 import SyntaxHighlighter from "react-syntax-highlighter";
@@ -265,46 +266,43 @@ const getDetailedStatusText = (
 
 /**
  * Loading indicator component that displays the current status of a job
- * and execution details if available
+ * and execution details if available. Only shows when the current message is not streaming.
  *
  * @param status - Optional job status to display
  * @param agentName - Optional agent name to display
  * @param currentExecution - Optional current execution details
  * @param scrollToBottom - Optional function to scroll to the bottom of the chat
+ * @param conversationId - Optional conversation ID to check for streaming messages
  */
 export const LoadingIndicator: FC<{
 	status?: JobStatus | null;
 	agentName?: string;
 	currentExecution?: AgentExecutionRecord | null;
 	scrollToBottom?: () => void;
+	conversationId?: string;
 }> = ({ status, currentExecution, scrollToBottom }) => {
-	// Get detailed status text based on current execution if available
+	const [isCodeExpanded, setIsCodeExpanded] = useState(false);
+
+	const { getStreamingMessage } = useStreamingMessagesStore();
+	const streamingMessage = getStreamingMessage(currentExecution?.id || "");
+	const isStreaming = !!streamingMessage && !streamingMessage.isComplete;
+
+	const codeSnippet = currentExecution?.code || null;
+	const message = currentExecution?.message || null;
 	const statusText = currentExecution
 		? getDetailedStatusText(status, currentExecution)
 		: status
 			? getStatusText(status)
 			: "Thinking";
 
-	// Get code snippet if available
-	const codeSnippet = currentExecution?.code || null;
+	const {
+		ref,
+		scrollToBottom: scrollToBottomHook,
+		isFarFromBottom,
+	} = useScrollToBottom([status, currentExecution, message], 100, 50);
 
-	// Get message if available
-	const message = currentExecution?.message || null;
-
-	// State to track if code is expanded
-	const [isCodeExpanded, setIsCodeExpanded] = useState(false);
-
-	// Use the scroll to bottom hook with status and execution as dependencies
-	// This will automatically scroll to bottom when status changes if user is near bottom
-	const { ref, scrollToBottom: scrollToBottomHook } = useScrollToBottom(
-		[status, currentExecution, message],
-		100, // Default threshold
-		50, // Default button threshold
-	);
-
-	// Effect to scroll to bottom when code is expanded
 	useEffect(() => {
-		if (codeSnippet && isCodeExpanded) {
+		if (codeSnippet && isCodeExpanded && !isStreaming && !isFarFromBottom) {
 			// Use requestAnimationFrame to ensure the DOM has been updated
 			requestAnimationFrame(() => {
 				// Use the hook's scrollToBottom if available, otherwise use the prop
@@ -315,12 +313,23 @@ export const LoadingIndicator: FC<{
 				}
 			});
 		}
-	}, [codeSnippet, isCodeExpanded, scrollToBottom, scrollToBottomHook]);
+	}, [
+		codeSnippet,
+		isCodeExpanded,
+		scrollToBottom,
+		scrollToBottomHook,
+		isStreaming,
+		isFarFromBottom,
+	]);
 
-	// Toggle code expansion
+	// Toggle code expansion function
 	const toggleCodeExpansion = () => {
 		setIsCodeExpanded((prev) => !prev);
 	};
+
+	if (isStreaming) {
+		return null;
+	}
 
 	return (
 		<LoadingContainer>

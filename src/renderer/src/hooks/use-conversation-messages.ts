@@ -37,7 +37,10 @@ type PaginatedMessagesResponse = {
  * @param record - The agent execution record from the API
  * @returns The converted message for the UI
  */
-export const convertToMessage = (record: AgentExecutionRecord): Message => {
+export const convertToMessage = (
+	record: AgentExecutionRecord,
+	conversationId?: string,
+): Message => {
 	// Determine the role based on the API role
 	const role: "user" | "assistant" =
 		record.role === "user" || record.role === "human" ? "user" : "assistant";
@@ -55,6 +58,9 @@ export const convertToMessage = (record: AgentExecutionRecord): Message => {
 		action: record.action,
 		execution_type: record.execution_type,
 		task_classification: record.task_classification,
+		is_complete: record.is_complete,
+		is_streamable: record.is_streamable,
+		conversation_id: conversationId, // Add the conversation ID
 	};
 };
 
@@ -131,6 +137,8 @@ export const useConversationMessages = (
 		enabled:
 			shouldEnableQuery({ bypassInternetCheck: true }) && !!conversationId,
 		queryKey: [...conversationMessagesQueryKey, conversationId],
+		// Set stale time to 0 to ensure refetch always gets fresh data
+		staleTime: 0,
 		queryFn: async ({ pageParam }) => {
 			try {
 				// If no conversation ID, return empty result
@@ -171,7 +179,9 @@ export const useConversationMessages = (
 				}
 
 				// Convert API messages to UI messages
-				const messages = (result.history || []).map(convertToMessage);
+				const messages = (result.history || []).map((record) =>
+					convertToMessage(record, conversationId),
+				);
 
 				// Calculate total pages
 				const totalPages = Math.ceil(result.total / pageSize);
