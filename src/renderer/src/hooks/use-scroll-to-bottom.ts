@@ -53,32 +53,20 @@ export const useScrollToBottom = (
 	 * This bypasses the normal "near bottom" check and directly scrolls
 	 * Uses multiple techniques to ensure scrolling works in all scenarios
 	 */
+	const isForcedScrollRef = useRef(false);
 	const forceScrollToBottom = useCallback(() => {
-		// First attempt: Use the ref approach
-		if (ref.current) {
-			// Use both smooth and instant scrolling for redundancy
-			ref.current.scrollIntoView({ behavior: "smooth" });
+		if (!containerRef.current) return;
 
-			// Backup with setTimeout to ensure it happens after any DOM updates
-			setTimeout(() => {
-				if (ref.current) {
-					ref.current.scrollIntoView({ behavior: "instant" });
-				}
-			}, 50);
-		}
+		// Set forced scroll flag
+		isForcedScrollRef.current = true;
 
-		// Second attempt: Use the container directly if available
-		if (containerRef.current) {
-			// Immediate scroll
-			containerRef.current.scrollTop = containerRef.current.scrollHeight;
+		// Use container scroll for better reliability
+		containerRef.current.scrollTop = containerRef.current.scrollHeight;
 
-			// Delayed scroll as backup
-			setTimeout(() => {
-				if (containerRef.current) {
-					containerRef.current.scrollTop = containerRef.current.scrollHeight;
-				}
-			}, 100);
-		}
+		// Clear forced scroll flag after animation frame
+		requestAnimationFrame(() => {
+			isForcedScrollRef.current = false;
+		});
 	}, []);
 
 	/**
@@ -160,8 +148,18 @@ export const useScrollToBottom = (
 
 	// Memoize the scroll to bottom effect
 	useEffect(() => {
-		// Skip if we shouldn't scroll to bottom
-		if (!shouldScrollToBottom || !ref.current) return;
+		// Skip if:
+		// - We shouldn't scroll to bottom
+		// - User is far from bottom (scrolled up reading)
+		// - Forced scroll is active
+		// - No ref available
+		if (
+			!shouldScrollToBottom ||
+			isFarFromBottom ||
+			isForcedScrollRef.current ||
+			!ref.current
+		)
+			return;
 
 		// Use requestAnimationFrame for smoother scrolling
 		const animationFrame = requestAnimationFrame(() => {
@@ -171,7 +169,7 @@ export const useScrollToBottom = (
 		});
 
 		return () => cancelAnimationFrame(animationFrame);
-	}, [...dependencies, shouldScrollToBottom]); // eslint-disable-line react-hooks/exhaustive-deps
+	}, [...dependencies, shouldScrollToBottom, isFarFromBottom]); // eslint-disable-line react-hooks/exhaustive-deps
 
 	// Set containerRef to the parent of the ref element
 	// This only needs to run once after the ref is set
