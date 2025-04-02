@@ -118,7 +118,7 @@ const getAttachmentUrl = (
  * Only re-renders when the message content changes
  */
 export const MessageItem: FC<MessageItemProps> = memo(
-	({ message }) => {
+	({ message, onMessageComplete }) => {
 		// Hide messages with action DONE, execution_type "action", and task_classification "conversation"
 		// These are redundant to the response execution_type messages
 		// Also hide messages with no content (no message, files, code, stdout, stderr, or logging)
@@ -131,7 +131,8 @@ export const MessageItem: FC<MessageItemProps> = memo(
 				!message.code &&
 				!message.stdout &&
 				!message.stderr &&
-				!message.logging);
+				!message.logging &&
+				message.is_complete);
 
 		if (shouldHide) {
 			return null;
@@ -203,7 +204,12 @@ export const MessageItem: FC<MessageItemProps> = memo(
 
 				{isSecurityCheck ? (
 					<SecurityCheckHighlight isUser={isUser}>
-						<MessagePaper isUser={isUser} content={message.message}>
+						<MessagePaper
+							isUser={isUser}
+							content={message.message}
+							message={message}
+							onMessageComplete={onMessageComplete}
+						>
 							{/* Render image attachments if any */}
 							{message.files && message.files.length > 0 && (
 								<Box sx={{ mb: 2 }}>
@@ -236,10 +242,11 @@ export const MessageItem: FC<MessageItemProps> = memo(
 								</Box>
 							)}
 
-							{/* Always render message content with markdown support */}
-							{message.message && (
-								<MessageContent content={message.message} isUser={isUser} />
-							)}
+							{/* Only render message content when not streaming */}
+							{message.message &&
+								!(message.is_streamable && !message.is_complete) && (
+									<MessageContent content={message.message} isUser={isUser} />
+								)}
 
 							{/* Determine if we have any collapsible content */}
 							{(() => {
@@ -320,7 +327,12 @@ export const MessageItem: FC<MessageItemProps> = memo(
 						isUser={isUser}
 						executionType={message.execution_type}
 					>
-						<MessagePaper isUser={isUser} content={message.message}>
+						<MessagePaper
+							isUser={isUser}
+							content={message.message}
+							message={message}
+							onMessageComplete={onMessageComplete}
+						>
 							{/* Render image attachments if any */}
 							{message.files && message.files.length > 0 && (
 								<Box sx={{ mb: 2 }}>
@@ -353,10 +365,11 @@ export const MessageItem: FC<MessageItemProps> = memo(
 								</Box>
 							)}
 
-							{/* Always render message content with markdown support */}
-							{message.message && (
-								<MessageContent content={message.message} isUser={isUser} />
-							)}
+							{/* Only render message content when not streaming */}
+							{message.message &&
+								!(message.is_streamable && !message.is_complete) && (
+									<MessageContent content={message.message} isUser={isUser} />
+								)}
 
 							{/* Determine if we have any collapsible content */}
 							{(() => {
@@ -436,11 +449,13 @@ export const MessageItem: FC<MessageItemProps> = memo(
 	},
 	(prevProps, nextProps) => {
 		// Custom comparison function for memo
-		// Only re-render if the message ID or content has changed
+		// Re-render if any of these properties have changed
 		return (
 			prevProps.message.id === nextProps.message.id &&
 			prevProps.message.message === nextProps.message.message &&
-			prevProps.message.status === nextProps.message.status
+			prevProps.message.status === nextProps.message.status &&
+			prevProps.message.is_complete === nextProps.message.is_complete &&
+			prevProps.message.is_streamable === nextProps.message.is_streamable
 		);
 	},
 );

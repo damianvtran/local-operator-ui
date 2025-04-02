@@ -1,7 +1,7 @@
 import { faCopy } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Box, IconButton, Tooltip, useTheme } from "@mui/material";
-import { styled } from "@mui/material/styles";
+import { Box, IconButton, Tooltip } from "@mui/material";
+import { alpha, styled } from "@mui/material/styles";
 import type { FC } from "react";
 import { useState } from "react";
 
@@ -32,6 +32,17 @@ const ControlsWrapper = styled(Box)(() => ({
 	alignItems: "flex-start",
 }));
 
+// Styled IconButton for controls
+const StyledIconButton = styled(IconButton)(({ theme }) => ({
+	color: theme.palette.text.secondary,
+	width: "34px",
+	height: "34px",
+	"&:hover": {
+		color: theme.palette.primary.main,
+		backgroundColor: alpha(theme.palette.primary.main, 0.1),
+	},
+}));
+
 /**
  * Component for message control buttons that appear on hover
  * Currently includes a copy button for copying message content
@@ -40,7 +51,6 @@ export const MessageControls: FC<MessageControlsProps> = ({
 	isUser,
 	content,
 }) => {
-	const theme = useTheme();
 	const [copied, setCopied] = useState(false);
 
 	// Only show copy button for assistant messages
@@ -72,21 +82,9 @@ export const MessageControls: FC<MessageControlsProps> = ({
 						placement="top"
 						// @ts-ignore - MUI Tooltip type issue
 					>
-						<IconButton
-							size="small"
-							onClick={handleCopy}
-							sx={{
-								color: theme.palette.text.secondary,
-								width: "34px",
-								height: "34px",
-								"&:hover": {
-									color: theme.palette.primary.main,
-									backgroundColor: "rgba(56, 201, 106, 0.1)",
-								},
-							}}
-						>
+						<StyledIconButton size="small" onClick={handleCopy}>
 							<FontAwesomeIcon icon={faCopy} size="sm" />
-						</IconButton>
+						</StyledIconButton>
 					</Tooltip>
 				</ControlsWrapper>
 			)}

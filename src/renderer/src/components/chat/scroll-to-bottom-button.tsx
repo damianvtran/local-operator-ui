@@ -27,7 +27,7 @@ const ButtonContainer = styled(Box)(() => ({
 	position: "absolute",
 	top: -60, // Position above the message input
 	right: 20,
-	zIndex: 2000,
+	zIndex: 1000,
 	display: "flex",
 	justifyContent: "center",
 	alignItems: "center",

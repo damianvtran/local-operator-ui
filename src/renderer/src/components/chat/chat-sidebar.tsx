@@ -24,7 +24,10 @@ import { SidebarHeader } from "@renderer/components/common/sidebar-header";
 import { useExportAgent } from "@renderer/hooks/use-agent-mutations";
 import { useAgents } from "@renderer/hooks/use-agents";
 import { usePaginationParams } from "@renderer/hooks/use-pagination-params";
-import { format } from "date-fns";
+import {
+	formatMessageDateTime,
+	getFullDateTime,
+} from "@renderer/utils/date-utils";
 import type { ChangeEvent, FC } from "react";
 import React, { useState, useCallback } from "react";
 
@@ -350,39 +353,6 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 		[onSelectConversation, refetch],
 	);
 
-	// Format date/time based on when the message was sent
-	const formatDateTime = (dateTimeString?: string) => {
-		if (!dateTimeString) return "";
-		try {
-			const messageDate = new Date(dateTimeString);
-			const now = new Date();
-			const yesterday = new Date(now);
-			yesterday.setDate(now.getDate() - 1);
-
-			// Check if the message was sent today
-			if (messageDate.toDateString() === now.toDateString()) {
-				return format(messageDate, "h:mm a"); // Today: just time
-			}
-
-			// Check if the message was sent yesterday
-			if (messageDate.toDateString() === yesterday.toDateString()) {
-				return "Yesterday"; // Yesterday
-			}
-
-			// Check if the message was sent this week (within the last 7 days)
-			const oneWeekAgo = new Date(now);
-			oneWeekAgo.setDate(now.getDate() - 7);
-			if (messageDate > oneWeekAgo) {
-				return format(messageDate, "EEEE"); // Day of week
-			}
-
-			// Otherwise, show the full date
-			return format(messageDate, "yyyy-MM-dd");
-		} catch (error) {
-			return "";
-		}
-	};
-
 	const truncateMessage = (message?: string, maxLength = 60) => {
 		if (!message) return "";
 		return message.length > maxLength
@@ -471,11 +441,9 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 										{agent.last_message_datetime && (
 											<TimeStampContainer>
 												<TimeStampText
-													title={new Date(
-														agent.last_message_datetime,
-													).toLocaleString()}
+													title={getFullDateTime(agent.last_message_datetime)}
 												>
-													{formatDateTime(agent.last_message_datetime)}
+													{formatMessageDateTime(agent.last_message_datetime)}
 												</TimeStampText>
 											</TimeStampContainer>
 										)}

@@ -43,6 +43,7 @@ type ChatContentProps = {
 	currentJobId: string | null;
 	onCancelJob: (jobId: string) => void;
 	agentData?: AgentDetails | null;
+	refetch?: () => void;
 };
 
 const ChatContainer = styled(Paper)(({ theme }) => ({
@@ -83,6 +84,7 @@ export const ChatContent: FC<ChatContentProps> = ({
 	currentJobId,
 	onCancelJob,
 	agentData,
+	refetch,
 }) => {
 	return (
 		<ChatContainer elevation={0}>
@@ -119,6 +121,8 @@ export const ChatContent: FC<ChatContentProps> = ({
 					messagesContainerRef={messagesContainerRef}
 					messagesEndRef={messagesEndRef}
 					scrollToBottom={scrollToBottom}
+					refetch={refetch}
+					conversationId={agentId}
 				/>
 			) : (
 				/* Raw information tab - only accessible in development mode */
