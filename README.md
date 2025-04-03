@@ -13,7 +13,9 @@
 
 <br />
 
-<video src="https://github.com/user-attachments/assets/a7a97781-40a0-46ce-8f53-09ff6fb9ae86" alt="Local Operator Dashboard Example" autoplay loop muted playsinline></video>
+<div style="display: flex; justify-content: center; border-radius: 8px; overflow: hidden;">
+  <img src="./resources/preview-example.gif" alt="Local Operator UI Dashboard Example" style="width: 100%; max-width: 800px;">
+</div>
 
 <br />
 
