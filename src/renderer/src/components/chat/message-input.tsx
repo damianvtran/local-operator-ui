@@ -12,6 +12,7 @@ import type { Message } from "@renderer/components/chat/types";
 import { useMessageInput } from "@renderer/hooks/use-message-input";
 import { useRef, useState } from "react";
 import type { ChangeEvent, FC, FormEvent } from "react";
+import { AudioRecorder } from "./audio-recorder";
 
 type MessageInputProps = {
 	onSendMessage: (content: string, attachments: string[]) => void;
@@ -29,7 +30,10 @@ const FormContainer = styled("form")(({ theme }) => ({
 	display: "flex",
 	alignItems: "center",
 	gap: theme.spacing(2),
-	borderTop: `1px solid ${alpha(theme.palette.divider, theme.palette.mode === "light" ? 0.2 : 0.1)}`,
+	borderTop: `1px solid ${alpha(
+		theme.palette.divider,
+		theme.palette.mode === "light" ? 0.2 : 0.1,
+	)}`,
 	backgroundColor:
 		theme.palette.mode === "light"
 			? alpha(theme.palette.background.paper, 0.7)
@@ -99,7 +103,10 @@ const StyledTextField = styled(TextField)(({ theme }) => ({
 				theme.palette.mode === "light"
 					? theme.palette.common.white
 					: alpha(theme.palette.background.paper, 0.8),
-			boxShadow: `0 0 0 3px ${alpha(theme.palette.primary.main, theme.palette.mode === "light" ? 0.2 : 0.15)}`,
+			boxShadow: `0 0 0 3px ${alpha(
+				theme.palette.primary.main,
+				theme.palette.mode === "light" ? 0.2 : 0.15,
+			)}`,
 			borderColor: alpha(theme.palette.primary.main, 0.5),
 		},
 		"&:hover": {
@@ -187,7 +194,7 @@ export const MessageInput: FC<MessageInputProps> = ({
 	} = useMessageInput({
 		conversationId,
 		messages,
-		onSubmit: (message) => {
+		onSubmit: (message: string) => {
 			onSendMessage(message, attachments);
 			setAttachments([]);
 		},
@@ -236,6 +243,10 @@ export const MessageInput: FC<MessageInputProps> = ({
 		});
 	};
 
+	const handlesubmitTranscribedAudio = (value: string) => {
+		submitMessage(value);
+	};
+
 	const triggerFileInput = () => {
 		fileInputRef.current?.click();
 	};
@@ -268,10 +279,15 @@ export const MessageInput: FC<MessageInputProps> = ({
 							aria-label="Attach file"
 							disabled={isInputDisabled}
 						>
-							<FontAwesomeIcon icon={faPaperclip} />
+							<FontAwesomeIcon icon={faPaperclip} size="2xs" />
 						</AttachmentButton>
 					</span>
 				</Tooltip>
+
+				<AudioRecorder
+					disabled={isInputDisabled}
+					handlesubmitTranscribedAudio={handlesubmitTranscribedAudio}
+				/>
 
 				<StyledTextField
 					fullWidth
