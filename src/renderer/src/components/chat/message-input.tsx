@@ -48,6 +48,7 @@ const InputOuterContainer = styled(Box)(({ theme }) => ({
 	alignItems: "center",
 	justifyContent: "center",
 	padding: theme.spacing(1),
+	paddingBottom: theme.spacing(2),
 	backgroundColor: theme.palette.messagesView.background,
 }));
 

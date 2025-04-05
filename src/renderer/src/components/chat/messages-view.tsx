@@ -30,8 +30,7 @@ const MessagesContainer = styled(Box, {
 	shouldForwardProp: (prop) => prop !== "collapsed",
 })<{ collapsed?: boolean }>(({ theme, collapsed }) => ({
 	flexGrow: collapsed ? 0 : 1,
-	height: collapsed ? 0 : "auto",
-	minHeight: collapsed ? 0 : "auto",
+	height: collapsed ? 0 : "100%",
 	overflow: collapsed ? "hidden" : "auto",
 	padding: collapsed ? 0 : 16,
 	display: "flex",
