@@ -171,8 +171,7 @@ export const useScrollToBottom = (
 		return () => cancelAnimationFrame(animationFrame);
 	}, [...dependencies, shouldScrollToBottom, isFarFromBottom]); // eslint-disable-line react-hooks/exhaustive-deps
 
-	// Set containerRef to the parent of the ref element
-	// This only needs to run once after the ref is set
+	// Dynamically update containerRef whenever the bottom ref changes
 	useEffect(() => {
 		if (!ref.current) return;
 
@@ -186,15 +185,26 @@ export const useScrollToBottom = (
 				overflowY === "auto" ||
 				overflowY === "scroll"
 			) {
-				containerRef.current = parent as HTMLDivElement;
+				// Only update if different to avoid unnecessary resets
+				if (containerRef.current !== parent) {
+					containerRef.current = parent as HTMLDivElement;
+					checkScrollPosition();
 
-				// Initial check after finding the container
-				checkScrollPosition();
+					// Re-attach scroll event listener to new container
+					parent.addEventListener("scroll", handleScroll, { passive: true });
+				}
 				break;
 			}
 			parent = parent.parentElement;
 		}
-	}, [checkScrollPosition]);
+
+		// Cleanup: remove scroll listener from old container if it changed
+		return () => {
+			if (containerRef.current) {
+				containerRef.current.removeEventListener("scroll", handleScroll);
+			}
+		};
+	}, [checkScrollPosition, handleScroll]);
 
 	return {
 		ref,

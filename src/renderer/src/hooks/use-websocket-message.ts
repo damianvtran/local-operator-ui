@@ -252,7 +252,6 @@ export const useWebSocketMessage = (
 			!globalClientsRef.current[messageId]
 		) {
 			const timestamp = new Date().toISOString().substring(11, 23);
-			console.log(`[${timestamp}] Auto-connecting WebSocket for ${messageId}`);
 
 			// Mark this messageId as having an active client
 			globalClientsRef.current[messageId] = true;
@@ -261,7 +260,7 @@ export const useWebSocketMessage = (
 			setTimeout(() => {
 				if (connectRef.current) {
 					connectRef.current().catch((err) => {
-						console.error(
+						console.warn(
 							`[${timestamp}] Error auto-connecting WebSocket for ${messageId}:`,
 							err,
 						);
