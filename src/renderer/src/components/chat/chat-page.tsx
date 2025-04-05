@@ -10,6 +10,7 @@ import { JobsApi } from "@renderer/api/local-operator/jobs-api";
 import type { JobStatus } from "@renderer/api/local-operator/types";
 import { ChatLayout } from "@renderer/components/common/chat-layout";
 import { apiConfig } from "@renderer/config";
+import { useConfig } from "@renderer/hooks/use-config";
 import { useAgentRouteParam } from "@renderer/hooks/use-route-params";
 import { useAgentSelectionStore } from "@renderer/store/agent-selection-store";
 import { isDevelopmentMode } from "@renderer/utils/env-utils";
@@ -250,6 +251,8 @@ export const ChatPage: FC<ChatProps> = () => {
 	);
 
 	// Memoized function to handle sending a new message
+	const { data: configData } = useConfig();
+
 	const handleSendMessage = useCallback(
 		async (content: string, attachments: string[]) => {
 			if (!conversationId) return;
@@ -270,7 +273,6 @@ export const ChatPage: FC<ChatProps> = () => {
 			setIsLoading(true);
 
 			try {
-				// Send message to the API using processAgentChatAsync from AgentsApi
 				// Prepare options from agent settings
 				const options = {
 					temperature: agentData?.temperature,
@@ -290,13 +292,27 @@ export const ChatPage: FC<ChatProps> = () => {
 					),
 				);
 
+				const resolvedHosting =
+					!agentData?.hosting ||
+					agentData.hosting === "default" ||
+					agentData.hosting.trim() === ""
+						? configData?.values.hosting || ""
+						: agentData.hosting;
+
+				const resolvedModel =
+					!agentData?.model ||
+					agentData.model === "default" ||
+					agentData.model.trim() === ""
+						? configData?.values.model_name || ""
+						: agentData.model;
+
 				const jobDetails = await apiClient.chat.processAgentChatAsync(
 					conversationId,
 					{
-						hosting: agentData?.hosting || "openrouter", // Use agent's hosting or default
-						model: agentData?.model || "google/gemini-2.0-flash-001", // Use agent's model or default
+						hosting: resolvedHosting,
+						model: resolvedModel,
 						prompt: content,
-						persist_conversation: true, // Persist conversation history
+						persist_conversation: true,
 						user_message_id: userMessage.id,
 						options:
 							Object.keys(filteredOptions).length > 0
@@ -306,21 +322,15 @@ export const ChatPage: FC<ChatProps> = () => {
 					},
 				);
 
-				// Store the job ID for polling
-				// The API returns a CRUDResponse<JobDetails> where the actual job details are in the result property
 				if (jobDetails.result?.id) {
 					setCurrentJobId(jobDetails.result.id);
 				} else {
 					console.error("Job details missing ID:", jobDetails);
 					throw new Error("Failed to get job ID from response");
 				}
-
-				// Note: We don't add the assistant message here
-				// It will be added when the job completes (in the useJobPolling hook)
 			} catch (error) {
 				console.error("Error sending message:", error);
 
-				// Extract error details
 				let errorDetails = "Unknown error occurred";
 				if (error instanceof Error) {
 					errorDetails = `${error.message}\n${error.stack || ""}`;
@@ -328,7 +338,6 @@ export const ChatPage: FC<ChatProps> = () => {
 					errorDetails = JSON.stringify(error, null, 2);
 				}
 
-				// Add error message
 				const errorMessage: Message = {
 					id: Date.now().toString(),
 					role: "assistant",
@@ -338,10 +347,7 @@ export const ChatPage: FC<ChatProps> = () => {
 					status: "error",
 				};
 
-				// Add error message to chat store
 				addMessage(conversationId, errorMessage);
-
-				// Clear loading state
 				setIsLoading(false);
 			}
 		},
@@ -352,6 +358,7 @@ export const ChatPage: FC<ChatProps> = () => {
 			agentData,
 			apiClient,
 			setCurrentJobId,
+			configData,
 		],
 	);
 
