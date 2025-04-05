@@ -177,7 +177,8 @@
 					"arch": ["universal"]
 				}
 			],
-			"artifactName": "${name}-${version}-${arch}.${ext}"
+			"artifactName": "${name}-${version}-${arch}.${ext}",
+			"x64ArchFiles": "Contents/Resources/python/**/*"
 		},
 		"dmg": {
 			"sign": false,
