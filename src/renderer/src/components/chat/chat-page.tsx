@@ -10,6 +10,7 @@ import { JobsApi } from "@renderer/api/local-operator/jobs-api";
 import type { JobStatus } from "@renderer/api/local-operator/types";
 import { ChatLayout } from "@renderer/components/common/chat-layout";
 import { apiConfig } from "@renderer/config";
+import { useConfig } from "@renderer/hooks/use-config";
 import { useAgentRouteParam } from "@renderer/hooks/use-route-params";
 import { useAgentSelectionStore } from "@renderer/store/agent-selection-store";
 import { isDevelopmentMode } from "@renderer/utils/env-utils";
@@ -24,7 +25,6 @@ import { ChatSidebar } from "./chat-sidebar";
 import { ErrorView } from "./error-view";
 import { PlaceholderView } from "./placeholder-view";
 import type { Message } from "./types";
-import { useConfig } from "@renderer/hooks/use-config";
 
 /**
  * Props for the ChatPage component
