@@ -83,6 +83,24 @@ const InputInnerContainer = styled(Box)(({ theme }) => ({
 	},
 }));
 
+const SuggestionsContainer = styled(Box)(({ theme }) => ({
+	width: "100%",
+	maxWidth: "900px",
+	margin: "0 auto",
+	[theme.breakpoints.down("sm")]: {
+		maxWidth: "100%",
+		width: "100%",
+	},
+	[theme.breakpoints.between("sm", "md")]: {
+		maxWidth: "90%",
+		width: "90%",
+	},
+	[theme.breakpoints.up("md")]: {
+		maxWidth: "900px",
+		width: "900px",
+	},
+}));
+
 /**
  * Styled text input with no visible border
  *
@@ -309,6 +327,22 @@ export const MessageInput: FC<MessageInputProps> = ({
 
 	const isInputDisabled = Boolean(isLoading && currentJobId);
 
+	const initialSuggestions = [
+		"Go to my documents folder",
+		"What's the latest news?",
+		"Can you make me a research report on the latest trends in AI?",
+		"Can you make me a space invaders game?",
+		"Can you organize my desktop?",
+	];
+
+	const handleSuggestionClick = (suggestion: string) => {
+		if (isInputDisabled) return;
+		setNewMessage(suggestion);
+		setTimeout(() => {
+			submitMessage();
+		}, 0);
+	};
+
 	const inputContent = (
 		<form onSubmit={handleSubmit} style={{ width: "100%" }}>
 			<InputInnerContainer>
@@ -391,6 +425,40 @@ export const MessageInput: FC<MessageInputProps> = ({
 					</Box>
 				</ButtonsRow>
 			</InputInnerContainer>
+
+			{messages.length === 0 && (
+				<SuggestionsContainer>
+					<Box
+						sx={{
+							display: "flex",
+							flexWrap: "wrap",
+							gap: 1,
+							marginTop: 1.5,
+							justifyContent: "center",
+						}}
+					>
+						{initialSuggestions.map((suggestion) => (
+							<Button
+								key={suggestion}
+								variant="outlined"
+								size="small"
+								onClick={() => handleSuggestionClick(suggestion)}
+								disabled={isInputDisabled}
+								sx={{
+									borderRadius: 999,
+									textTransform: "none",
+									fontSize: "0.85rem",
+									paddingX: 1.5,
+									paddingY: 0.5,
+									whiteSpace: "nowrap",
+								}}
+							>
+								{suggestion}
+							</Button>
+						))}
+					</Box>
+				</SuggestionsContainer>
+			)}
 		</form>
 	);
 
