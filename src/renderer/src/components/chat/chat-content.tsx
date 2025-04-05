@@ -4,7 +4,6 @@ import type {
 	AgentExecutionRecord,
 	JobStatus,
 } from "@renderer/api/local-operator/types";
-import { StyledDivider } from "@renderer/components/common/chat-layout";
 import { isDevelopmentMode } from "@renderer/utils/env-utils";
 import type { FC } from "react";
 import { ChatHeader } from "./chat-header";
@@ -128,8 +127,6 @@ export const ChatContent: FC<ChatContentProps> = ({
 				/* Raw information tab - only accessible in development mode */
 				<RawInfoView content={rawInfoContent} />
 			)}
-
-			<StyledDivider />
 
 			{/* Message input */}
 			<MessageInput
