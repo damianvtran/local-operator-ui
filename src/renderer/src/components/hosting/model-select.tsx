@@ -494,41 +494,45 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 					(option as ModelOption).id === (value as ModelOption).id
 				}
 				groupBy={(option) => getProviderFromId((option as ModelOption).id)}
-				renderOption={(props, option) => (
-					<li {...props}>
-						<OptionContainer>
-							<OptionLabelContainer>
-								<OptionLabel>{(option as ModelOption).name}</OptionLabel>
-								{(option as ModelOption).recommended && (
-									<Tooltip title="Recommended based on community usage and feedback">
-										<RecommendedStar>
-											<FontAwesomeIcon icon={faStar} size="xs" />
-										</RecommendedStar>
-									</Tooltip>
+				renderOption={(props, option) => {
+					const { key, ...rest } = props;
+					return (
+						<li key={key} {...rest}>
+							<OptionContainer>
+								<OptionLabelContainer>
+									<OptionLabel>{(option as ModelOption).name}</OptionLabel>
+									{(option as ModelOption).recommended && (
+										// @ts-ignore
+										<Tooltip title="Recommended based on community usage and feedback">
+											<RecommendedStar>
+												<FontAwesomeIcon icon={faStar} size="xs" />
+											</RecommendedStar>
+										</Tooltip>
+									)}
+								</OptionLabelContainer>
+								{(option as ModelOption).description && (
+									<OptionDescription>
+										<ReactMarkdown
+											components={{
+												a: ({ href, children }) => (
+													<a
+														href={href}
+														target="_blank"
+														rel="noopener noreferrer"
+													>
+														{children}
+													</a>
+												),
+											}}
+										>
+											{(option as ModelOption).description}
+										</ReactMarkdown>
+									</OptionDescription>
 								)}
-							</OptionLabelContainer>
-							{(option as ModelOption).description && (
-								<OptionDescription>
-									<ReactMarkdown
-										components={{
-											a: ({ href, children }) => (
-												<a
-													href={href}
-													target="_blank"
-													rel="noopener noreferrer"
-												>
-													{children}
-												</a>
-											),
-										}}
-									>
-										{(option as ModelOption).description}
-									</ReactMarkdown>
-								</OptionDescription>
-							)}
-						</OptionContainer>
-					</li>
-				)}
+							</OptionContainer>
+						</li>
+					);
+				}}
 				freeSolo={allowCustom}
 				renderInput={(params) => (
 					<TextField
