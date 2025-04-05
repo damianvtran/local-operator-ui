@@ -15,7 +15,6 @@ on:
           - prerelease
           - release
 
-# Add permissions needed for GitHub releases
 permissions:
   contents: write
 
@@ -23,22 +22,37 @@ jobs:
   npm-publish:
     name: Build and Publish to NPM
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '22.13.1'
           cache: 'yarn'
           registry-url: 'https://registry.npmjs.org'
-      
+
       - name: Install dependencies
         run: yarn install --frozen-lockfile
-      
+
+      - name: Check if version already published
+        id: check_version
+        run: |
+          PKG_NAME=$(jq -r .name package.json)
+          PKG_VERSION=$(jq -r .version package.json)
+          echo "Package: $PKG_NAME, Version: $PKG_VERSION"
+          if npm view "$PKG_NAME@$PKG_VERSION" > /dev/null 2>&1; then
+            echo "Version $PKG_VERSION already published."
+            echo "published=true" >> $GITHUB_OUTPUT
+          else
+            echo "Version $PKG_VERSION not published yet."
+            echo "published=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Publish to npm
+        if: steps.check_version.outputs.published == 'false'
         run: npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
@@ -47,20 +61,20 @@ jobs:
     name: Build macOS App
     runs-on: macos-latest
     needs: npm-publish
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '22.13.1'
           cache: 'yarn'
-      
+
       - name: Install dependencies
         run: yarn install --frozen-lockfile
-      
+
       - name: Setup code signing
         run: |
           echo "${{ secrets.CSC_CONTENT }}" | base64 --decode > certificate.p12
@@ -73,7 +87,7 @@ jobs:
       - name: Setup python distributable
         run: |
           yarn setup-python
-      
+
       - name: Build macOS app
         run: yarn dist:mac
         env:
@@ -85,7 +99,7 @@ jobs:
           APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           NOTARIZE: true
-      
+
       - name: Upload macOS artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -100,32 +114,32 @@ jobs:
     name: Build Windows App
     runs-on: windows-latest
     needs: npm-publish
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '22.13.1'
           cache: 'yarn'
-      
+
       - name: Install dependencies
         run: yarn install --frozen-lockfile
-      
+
       - name: Setup code signing (Windows)
         shell: bash
         run: |
           echo "${{ secrets.CSC_CONTENT }}" | base64 -d > certificate.p12
-      
+
       - name: Build Windows app
         run: yarn dist:win
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_LINK: ./certificate.p12
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
-      
+
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -140,20 +154,20 @@ jobs:
     name: Build Linux App
     runs-on: ubuntu-latest
     needs: npm-publish
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '22.13.1'
           cache: 'yarn'
-      
+
       - name: Install dependencies
         run: yarn install --frozen-lockfile
-      
+
       - name: Build Linux app
         run: yarn dist:linux
         env:
@@ -174,16 +188,16 @@ jobs:
     name: Attach Artifacts to Release
     runs-on: ubuntu-latest
     needs: [build-macos, build-windows, build-linux]
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
           path: artifacts
-      
+
       - name: Set release type from event
         id: release_type
         run: |
@@ -198,7 +212,7 @@ jobs:
           else
             echo "type=${{ github.event.inputs.release_type }}" >> $GITHUB_OUTPUT
           fi
-      
+
       - name: Attach artifacts to release
         uses: softprops/action-gh-release@v1
         with:
