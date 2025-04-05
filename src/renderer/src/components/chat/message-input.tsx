@@ -68,7 +68,7 @@ const InputInnerContainer = styled(Box)(({ theme }) => ({
 		theme.palette.mode === "light"
 			? alpha(theme.palette.background.paper, 0.9)
 			: alpha(theme.palette.background.paper, 0.6),
-	padding: theme.spacing(1),
+	padding: theme.spacing(2),
 	[theme.breakpoints.down("sm")]: {
 		maxWidth: "100%",
 		width: "100%",
@@ -95,9 +95,8 @@ const StyledTextField = styled(TextField)(({ theme }) => ({
 	flex: 1,
 	"& .MuiOutlinedInput-root": {
 		backgroundColor: "transparent",
-		padding: "12px 16px",
+		padding: "6px 8px",
 		fontSize: "1rem",
-		minHeight: 48,
 		display: "flex",
 		alignItems: "center",
 		"& fieldset": {
