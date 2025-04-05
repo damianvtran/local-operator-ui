@@ -306,14 +306,12 @@ export class WebSocketClient extends EventEmitter {
 			const error = new Error(
 				`WebSocket connection failed after ${this.options.maxReconnectAttempts} attempts. In cooldown period.`,
 			);
-			console.error(error.message);
 			return Promise.reject(error);
 		}
 
 		// If we're already reconnecting, return a rejected promise
 		if (this.isReconnecting) {
 			const error = new Error("WebSocket reconnection already in progress");
-			console.error(error.message);
 			return Promise.reject(error);
 		}
 
@@ -774,12 +772,7 @@ export class WebSocketClient extends EventEmitter {
 				this.reconnectTimeoutId = null;
 
 				// Attempt to connect
-				this.connect().catch((error) => {
-					console.error(
-						`Reconnection attempt ${this.reconnectAttempts} failed for ${this.messageId}:`,
-						error,
-					);
-
+				this.connect().catch(() => {
 					// If this was the last attempt, enter cooldown
 					if (
 						this.reconnectAttempts >= (this.options.maxReconnectAttempts || 0)
