@@ -4,7 +4,6 @@ import type {
 	AgentExecutionRecord,
 	JobStatus,
 } from "@renderer/api/local-operator/types";
-import { StyledDivider } from "@renderer/components/common/chat-layout";
 import { isDevelopmentMode } from "@renderer/utils/env-utils";
 import type { FC } from "react";
 import { ChatHeader } from "./chat-header";
@@ -15,6 +14,30 @@ import { MessageInput } from "./message-input";
 import { MessagesView } from "./messages-view";
 import { RawInfoView } from "./raw-info-view";
 import type { Message } from "./types";
+
+const DEFAULT_MESSAGE_SUGGESTIONS = [
+	"Go to my documents folder",
+	"What's the latest news?",
+	"Make me a research report on the latest trends in AI",
+	"Make me a space invaders game",
+	"Organize my desktop",
+	"Create a presentation outline on climate change",
+	"Train a classifier on the MPG dataset",
+	"Search for quantum computing papers and download interesting ones to read later",
+	"Download some recent papers on fusion energy",
+	"Download some recent papers on cancer research",
+	"Make me a brick breaker game",
+	"Remove downloads that are more than a year old",
+	"Put together a competitive analysis report on the agentic AI space",
+	"Find me a royalty free gif of a cute cat",
+	"Go to my downloads folder",
+	"Organize my documents folder",
+	"Make me a GDPR compliant privacy policy",
+	"Look up trending stocks and put together an investment report",
+	"Fetch the MNIST dataset and train a good classifier",
+	"Look up interest rate trends and make a projection for the next 5 years",
+	"Make a presentation with a dependency graph of genetic factors for Alzheimer's disease",
+];
 
 /**
  * Props for the ChatContent component
@@ -129,19 +152,20 @@ export const ChatContent: FC<ChatContentProps> = ({
 				<RawInfoView content={rawInfoContent} />
 			)}
 
-			<StyledDivider />
-
 			{/* Message input */}
-			<MessageInput
-				onSendMessage={onSendMessage}
-				isLoading={isLoading}
-				conversationId={agentId}
-				messages={messages}
-				currentJobId={currentJobId}
-				onCancelJob={onCancelJob}
-				isFarFromBottom={isFarFromBottom}
-				scrollToBottom={scrollToBottom}
-			/>
+			{!(isLoadingMessages && messages.length === 0) && (
+				<MessageInput
+					onSendMessage={onSendMessage}
+					initialSuggestions={DEFAULT_MESSAGE_SUGGESTIONS}
+					isLoading={isLoading}
+					conversationId={agentId}
+					messages={messages}
+					currentJobId={currentJobId}
+					onCancelJob={onCancelJob}
+					isFarFromBottom={isFarFromBottom}
+					scrollToBottom={scrollToBottom}
+				/>
+			)}
 
 			{/* Chat utilities section */}
 			<ChatUtilities agentId={agentId} agentData={agentData} />

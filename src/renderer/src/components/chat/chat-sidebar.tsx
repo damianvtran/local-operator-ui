@@ -23,6 +23,7 @@ import { ImportAgentDialog } from "@renderer/components/common/import-agent-dial
 import { SidebarHeader } from "@renderer/components/common/sidebar-header";
 import { useExportAgent } from "@renderer/hooks/use-agent-mutations";
 import { useAgents } from "@renderer/hooks/use-agents";
+import { useClearAgentConversation } from "@renderer/hooks/use-clear-agent-conversation";
 import { usePaginationParams } from "@renderer/hooks/use-pagination-params";
 import {
 	formatMessageDateTime,
@@ -246,6 +247,9 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 	// Export agent mutation
 	const exportAgentMutation = useExportAgent();
 
+	// Clear conversation mutation
+	const clearConversationMutation = useClearAgentConversation();
+
 	// Use the pagination hook to get and set the page from URL
 	const { page, setPage } = usePaginationParams();
 
@@ -466,6 +470,11 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 																: undefined
 														}
 														onExportAgent={() => handleExportAgent(agent.id)}
+														onClearConversation={() => {
+															clearConversationMutation.mutate({
+																agentId: agent.id,
+															});
+														}}
 														onAgentDeleted={(deletedAgentId) => {
 															if (selectedConversation === deletedAgentId) {
 																onSelectConversation("");
