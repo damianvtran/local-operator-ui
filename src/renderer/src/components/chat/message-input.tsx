@@ -379,6 +379,14 @@ export const MessageInput: FC<MessageInputProps> = ({
 	const inputContent = (
 		<form onSubmit={handleSubmit} style={{ width: "100%" }}>
 			<InputInnerContainer>
+				{attachments.length > 0 && (
+					<AttachmentsPreview
+						attachments={attachments}
+						onRemoveAttachment={handleRemoveAttachment}
+						disabled={isInputDisabled}
+					/>
+				)}
+
 				<StyledTextField
 					fullWidth
 					placeholder={isInputDisabled ? "⌛ Agent is busy" : "Ask me for help"}
@@ -501,14 +509,6 @@ export const MessageInput: FC<MessageInputProps> = ({
 					inputContent
 				)}
 			</InputOuterContainer>
-
-			{attachments.length > 0 && (
-				<AttachmentsPreview
-					attachments={attachments}
-					onRemoveAttachment={handleRemoveAttachment}
-					disabled={isInputDisabled}
-				/>
-			)}
 
 			<ScrollToBottomButton
 				visible={isFarFromBottom}
