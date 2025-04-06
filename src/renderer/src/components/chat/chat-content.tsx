@@ -153,17 +153,19 @@ export const ChatContent: FC<ChatContentProps> = ({
 			)}
 
 			{/* Message input */}
-			<MessageInput
-				onSendMessage={onSendMessage}
-				initialSuggestions={DEFAULT_MESSAGE_SUGGESTIONS}
-				isLoading={isLoading}
-				conversationId={agentId}
-				messages={messages}
-				currentJobId={currentJobId}
-				onCancelJob={onCancelJob}
-				isFarFromBottom={isFarFromBottom}
-				scrollToBottom={scrollToBottom}
-			/>
+			{!(isLoadingMessages && messages.length === 0) && (
+				<MessageInput
+					onSendMessage={onSendMessage}
+					initialSuggestions={DEFAULT_MESSAGE_SUGGESTIONS}
+					isLoading={isLoading}
+					conversationId={agentId}
+					messages={messages}
+					currentJobId={currentJobId}
+					onCancelJob={onCancelJob}
+					isFarFromBottom={isFarFromBottom}
+					scrollToBottom={scrollToBottom}
+				/>
+			)}
 
 			{/* Chat utilities section */}
 			<ChatUtilities agentId={agentId} agentData={agentData} />
