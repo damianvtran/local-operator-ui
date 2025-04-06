@@ -59,6 +59,10 @@ type AgentOptionsMenuProps = {
 	 * This should export the agent as a ZIP file
 	 */
 	onExportAgent?: () => void;
+	/**
+	 * Optional callback to clear the conversation for this agent
+	 */
+	onClearConversation?: () => void;
 };
 
 const OptionsIconButton = styled(IconButton)(({ theme }) => ({
@@ -118,9 +122,11 @@ export const AgentOptionsMenu: FC<AgentOptionsMenuProps> = ({
 	onViewAgentSettings,
 	onChatWithAgent,
 	onExportAgent,
+	onClearConversation,
 }) => {
 	const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
 	const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+	const [isClearModalOpen, setIsClearModalOpen] = useState(false);
 
 	// Whether the menu is open
 	const isMenuOpen = Boolean(menuAnchorEl);
@@ -148,6 +154,17 @@ export const AgentOptionsMenu: FC<AgentOptionsMenuProps> = ({
 	// Handler for closing the delete confirmation modal
 	const handleCloseDeleteConfirmation = () => {
 		setIsDeleteModalOpen(false);
+	};
+
+	// Handler for opening the clear conversation confirmation modal
+	const handleOpenClearConfirmation = () => {
+		setIsClearModalOpen(true);
+		handleCloseMenu();
+	};
+
+	// Handler for closing the clear conversation confirmation modal
+	const handleCloseClearConfirmation = () => {
+		setIsClearModalOpen(false);
 	};
 
 	// Get the clearAgentFromAllPages function from the agent selection store
@@ -244,6 +261,16 @@ export const AgentOptionsMenu: FC<AgentOptionsMenuProps> = ({
 					</StyledMenuItem>
 				)}
 
+				{/* Clear Conversation option */}
+				{onClearConversation && (
+					<StyledMenuItem onClick={handleOpenClearConfirmation}>
+						<MenuItemIcon>
+							<FontAwesomeIcon icon={faTrash} size="sm" />
+						</MenuItemIcon>
+						<Typography variant="body2">Clear Conversation</Typography>
+					</StyledMenuItem>
+				)}
+
 				<DeleteMenuItem onClick={handleOpenDeleteConfirmation}>
 					<MenuItemIcon color="error">
 						<FontAwesomeIcon icon={faTrash} size="sm" />
@@ -272,6 +299,23 @@ export const AgentOptionsMenu: FC<AgentOptionsMenuProps> = ({
 				isDangerous
 				onConfirm={handleConfirmDelete}
 				onCancel={handleCloseDeleteConfirmation}
+			/>
+
+			{/* Clear Conversation Confirmation Modal */}
+			<ConfirmationModal
+				open={isClearModalOpen}
+				title="Clear Conversation"
+				message="Are you sure you want to clear this conversation? This action cannot be undone and all messages will be permanently deleted."
+				confirmText="Clear"
+				cancelText="Cancel"
+				isDangerous
+				onConfirm={() => {
+					if (onClearConversation) {
+						onClearConversation();
+					}
+					handleCloseClearConfirmation();
+				}}
+				onCancel={handleCloseClearConfirmation}
 			/>
 		</>
 	);
