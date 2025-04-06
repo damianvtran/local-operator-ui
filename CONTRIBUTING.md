@@ -57,7 +57,7 @@ local-operator-ui/
 ### Prerequisites
 
 - Node.js (version specified in `.nvmrc`)
-- yarn package manager
+- pnpm package manager
 - Local Operator Backend (for full functionality testing)
 
 ### Development Setup
@@ -73,7 +73,7 @@ local-operator-ui/
 
    ```bash
    cd local-operator-ui
-   yarn install
+   pnpm install
    ```
 
 4. Set up environment variables:
@@ -87,7 +87,7 @@ local-operator-ui/
 5. Start the development server:
 
    ```bash
-   yarn dev
+   pnpm dev
    ```
 
 ## Code Style & Quality
@@ -98,16 +98,16 @@ We enforce consistent code style and quality checks:
 
   ```bash
   # Check for linting issues
-  yarn lint
+  pnpm lint
   
   # Fix linting issues
-  yarn lint:fix
+  pnpm lint:fix
   
   # Format code
-  yarn format
+  pnpm format
   
   # Fix formatting issues
-  yarn format:fix
+  pnpm format:fix
   ```
 
 - **TypeScript**: Strict type checking is enforced
@@ -129,7 +129,7 @@ Always run these tools before submitting a pull request. They will also be run i
 We use Jest for testing:
 
 ```bash
-yarn test
+pnpm test
 ```
 
 - Keep tests in the same directory as the components they test

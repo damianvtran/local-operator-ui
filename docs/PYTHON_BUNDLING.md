@@ -20,7 +20,7 @@ We provide a script that automatically downloads and sets up the standalone Pyth
 
 ```bash
 # Run the setup script to download and configure standalone Python
-yarn setup-python-standalone
+pnpm setup-python-standalone
 ```
 
 This script will:
@@ -34,7 +34,7 @@ This script will:
 The electron-builder configuration in `package.json` has been updated to include the standalone Python in the build. When you build the application, the Python directory will be included in the app's resources directory.
 
 ```bash
-yarn dist:mac
+pnpm dist:mac
 ```
 
 ## How It Works
@@ -63,7 +63,7 @@ We use the Node.js `child_process.execFile()` function to execute Python scripts
 
 If you see an error like "Bundled Python not found", ensure that:
 
-1. You've run the `yarn setup-python-standalone` script
+1. You've run the `pnpm setup-python-standalone` script
 2. The Python binary is executable
 3. The path to the Python binary is correct in the installation script
 

@@ -7,7 +7,7 @@ This document provides instructions for building Local Operator UI distributable
 Before building the application, ensure you have the following installed:
 
 - **Node.js**: Version 22.13.1 or higher
-- **Yarn**: For package management
+- **pnpm**: For package management
 - **Git**: For version control
 
 ## Build Framework
@@ -27,10 +27,10 @@ To build the application for your current platform:
 
 ```bash
 # Install dependencies
-yarn install
+pnpm install
 
 # Build the application
-yarn dist
+pnpm dist
 ```
 
 The built distributables will be available in the `dist/` directory.
@@ -41,16 +41,16 @@ You can build for specific platforms using the following commands:
 
 ```bash
 # Build for macOS
-yarn dist:mac
+pnpm dist:mac
 
 # Build for Windows
-yarn dist:win
+pnpm dist:win
 
 # Build for Linux
-yarn dist:linux
+pnpm dist:linux
 
 # Build for all platforms (requires appropriate environment)
-yarn dist:all
+pnpm dist:all
 ```
 
 ## Code Signing
@@ -79,7 +79,7 @@ For local development and testing with code signing:
 
 1. Create a `.env.build` file in the project root (see `.env.build.example` for reference)
 2. Add your code signing credentials to this file
-3. Run the build command for your platform (e.g., `yarn dist:mac`)
+3. Run the build command for your platform (e.g., `pnpm dist:mac`)
 
 The build process will automatically use the credentials from your `.env.build` file.
 
