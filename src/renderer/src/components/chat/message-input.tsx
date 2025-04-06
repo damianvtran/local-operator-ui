@@ -18,7 +18,7 @@ import { AttachmentsPreview } from "@renderer/components/chat/attachments-previe
 import { ScrollToBottomButton } from "@renderer/components/chat/scroll-to-bottom-button";
 import type { Message } from "@renderer/components/chat/types";
 import { useMessageInput } from "@renderer/hooks/use-message-input";
-import { useRef, useState, useMemo } from "react";
+import { useMemo, useRef, useState } from "react";
 import type { ChangeEvent, FC, FormEvent } from "react";
 
 /**
