@@ -57,6 +57,9 @@ const InputOuterContainer = styled(Box)(({ theme }) => ({
 /**
  * Constrains the input area to the same max width as messages
  * and centers it horizontally
+ *
+ * When the text input inside is focused, increase border thickness and style
+ * without changing the container size by using outline instead of border change
  */
 const InputInnerContainer = styled(Box)(({ theme }) => ({
 	width: "900px",
@@ -65,6 +68,7 @@ const InputInnerContainer = styled(Box)(({ theme }) => ({
 	display: "flex",
 	flexDirection: "column",
 	gap: theme.spacing(1.5),
+	outline: "none",
 	borderRadius: theme.shape.borderRadius * 4,
 	border: `1px solid ${alpha(theme.palette.divider, theme.palette.mode === "light" ? 0.3 : 0.1)}`,
 	backgroundColor:
@@ -72,6 +76,8 @@ const InputInnerContainer = styled(Box)(({ theme }) => ({
 			? alpha(theme.palette.background.paper, 0.9)
 			: alpha(theme.palette.background.paper, 0.6),
 	padding: theme.spacing(2),
+	transition: "box-shadow 0.2s ease-in-out, outline 0.2s ease-in-out",
+	boxSizing: "border-box",
 	[theme.breakpoints.down("sm")]: {
 		maxWidth: "100%",
 		width: "100%",
@@ -83,6 +89,12 @@ const InputInnerContainer = styled(Box)(({ theme }) => ({
 	[theme.breakpoints.up("md")]: {
 		maxWidth: "900px",
 		width: "900px",
+	},
+	// When the input inside is focused, add an outline instead of increasing border thickness
+	"&:has(.MuiOutlinedInput-root.Mui-focused)": {
+		outline: `2px solid ${theme.palette.primary.main}`,
+		outlineOffset: "0px",
+		boxShadow: `0 0 0 2px ${alpha(theme.palette.primary.main, 0.2)}`,
 	},
 }));
 
