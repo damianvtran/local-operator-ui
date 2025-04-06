@@ -10,69 +10,85 @@ jobs:
   lint:
     name: Lint
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
-      - name: Setup Node.js
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: '10'
+
+      - name: Setup Node.js 22
         uses: actions/setup-node@v4
         with:
-          node-version: '22.13.1'
-          cache: 'yarn'
-      
+          node-version: '22'
+          cache: 'pnpm'
+
       - name: Install dependencies
-        run: yarn install --frozen-lockfile
-      
+        run: pnpm install --frozen-lockfile
+
       - name: Run Biome lint
-        run: yarn lint
-  
+        run: pnpm lint
+
   check-types:
     name: Type Checking
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
-      - name: Setup Node.js
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: '10'
+
+      - name: Setup Node.js 22
         uses: actions/setup-node@v4
         with:
-          node-version: '22.13.1'
-          cache: 'yarn'
-      
+          node-version: '22'
+          cache: 'pnpm'
+
       - name: Install dependencies
-        run: yarn install --frozen-lockfile
-      
+        run: pnpm install --frozen-lockfile
+
       - name: Check TypeScript types
-        run: yarn check-types
-  
+        run: pnpm check-types
+
   audit:
     name: Security Audit
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
-      - name: Setup Node.js
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: '10'
+
+      - name: Setup Node.js 22
         uses: actions/setup-node@v4
         with:
-          node-version: '22.13.1'
-          cache: 'yarn'
-      
+          node-version: '22'
+          cache: 'pnpm'
+
       - name: Install dependencies
-        run: yarn install --frozen-lockfile
-      
-      - name: Run yarn audit
+        run: pnpm install --frozen-lockfile
+
+      - name: Run pnpm audit
         run: |
-          if [[ $(yarn audit | grep "critical" |  wc -l | tr -d ' ') -gt 0 ]]; then
-            echo "critical vulnerability found"
+          if [[ $(pnpm audit --json | grep '"severity":"critical"' | wc -l | tr -d ' ') -gt 0 ]]; then
+            echo "Critical vulnerability found"
             exit 1
           else
+            echo "No critical vulnerabilities"
             exit 0
           fi
-  
+
   npx-sanity-check:
     name: NPX Sanity Check
     runs-on: ubuntu-latest
@@ -80,40 +96,41 @@ jobs:
       - lint
       - check-types
       - audit
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
-      - name: Setup Node.js
+
+      - name: Setup Node.js 22
         uses: actions/setup-node@v4
         with:
-          node-version: '22.13.1'
-      
+          node-version: '22'
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: '10'
+
       - name: Build and pack
         run: |
-          yarn install --frozen-lockfile
-          yarn build
+          pnpm install --frozen-lockfile
+          pnpm build
           npm pack
-      
+
       - name: Install and run with npx
         run: |
-          # Start the app with npx in the background
           npx ./local-operator-ui-*.tgz &
           NPX_PID=$!
-          
-          # Give the app some time to start up
+
           sleep 15
-          
-          # Check if process is still running (no immediate crash)
+
           if ps -p $NPX_PID > /dev/null; then
             echo "Application started successfully with npx"
-            # Kill the process
             kill $NPX_PID
-            # Wait for process to terminate
             wait $NPX_PID || true
             exit 0
           else
             echo "Application failed to start with npx"
             exit 1
           fi
+

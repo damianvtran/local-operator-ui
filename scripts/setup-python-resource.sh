@@ -54,4 +54,4 @@ else
 fi
 
 echo "Python standalone setup complete!"
-echo "You can now build the application with 'yarn dist:mac'"
+echo "You can now build the application with 'pnpm dist:mac'"

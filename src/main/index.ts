@@ -138,8 +138,8 @@ function createWindow(): BrowserWindow {
 		webPreferences: {
 			preload: join(__dirname, "../preload/index.js"),
 			sandbox: false,
-			// Only enable devTools when running with 'yarn dev'
-			// Disable for 'yarn start' and production builds
+			// Only enable devTools when running with 'pnpm dev'
+			// Disable for 'pnpm start' and production builds
 			devTools: Boolean(process.env.ELECTRON_RENDERER_URL),
 		},
 	});
