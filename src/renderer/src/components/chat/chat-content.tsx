@@ -18,14 +18,22 @@ import type { Message } from "./types";
 const DEFAULT_MESSAGE_SUGGESTIONS = [
 	"Go to my documents folder",
 	"What's the latest news?",
-	"Can you make me a research report on the latest trends in AI?",
-	"Can you make me a space invaders game?",
-	"Can you organize my desktop?",
+	"Make me a research report on the latest trends in AI",
+	"Make me a space invaders game",
+	"Organize my desktop",
 	"Create a presentation outline on climate change",
 	"Train a classifier on the MPG dataset",
-	"Search recent research papers on quantum computing",
+	"Search for quantum computing papers and download interesting ones to read later",
 	"Make me a brick breaker game",
-	"Can you remove downloads that are more than a year old?",
+	"Remove downloads that are more than a year old",
+	"Put together a competitive analysis report on the agentic AI space",
+	"Find me a royalty free gif of a cute cat",
+	"Go to my downloads folder",
+	"Organize my documents folder",
+	"Make me a GDPR compliant privacy policy",
+	"Look up trending stocks and put together an investment report",
+	"Fetch the MNIST dataset and train a good classifier",
+	"Look up interest rate trends and make a projection for the next 5 years",
 ];
 
 /**
