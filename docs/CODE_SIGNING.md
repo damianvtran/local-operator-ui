@@ -36,7 +36,7 @@ The following environment variables are used for code signing:
    - The path to this file is set as `CSC_LINK` for electron-builder
 
 2. **Build Process**:
-   - The application is built using `yarn dist:mac`, `yarn dist:win`, or `yarn dist:linux`
+   - The application is built using `pnpm dist:mac`, `pnpm dist:win`, or `pnpm dist:linux`
    - electron-builder automatically signs the application using the provided certificate
 
 3. **Notarization (macOS only)**:

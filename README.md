@@ -106,7 +106,7 @@ To set up the standalone Python for development:
 
 ```bash
 # Run the setup script to download and configure standalone Python
-yarn setup-python-standalone
+pnpm setup-python-standalone
 ```
 
 This uses [python-build-standalone](https://github.com/indygreg/python-build-standalone), the same approach used by Datasette Desktop and PyOxidizer.
