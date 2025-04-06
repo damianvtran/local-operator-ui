@@ -24,6 +24,8 @@ const DEFAULT_MESSAGE_SUGGESTIONS = [
 	"Create a presentation outline on climate change",
 	"Train a classifier on the MPG dataset",
 	"Search for quantum computing papers and download interesting ones to read later",
+	"Download some recent papers on fusion energy",
+	"Download some recent papers on cancer research",
 	"Make me a brick breaker game",
 	"Remove downloads that are more than a year old",
 	"Put together a competitive analysis report on the agentic AI space",
@@ -34,6 +36,7 @@ const DEFAULT_MESSAGE_SUGGESTIONS = [
 	"Look up trending stocks and put together an investment report",
 	"Fetch the MNIST dataset and train a good classifier",
 	"Look up interest rate trends and make a projection for the next 5 years",
+	"Make a presentation with a dependency graph of genetic factors for Alzheimer's disease",
 ];
 
 /**

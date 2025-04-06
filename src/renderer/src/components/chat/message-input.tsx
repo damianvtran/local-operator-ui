@@ -89,6 +89,7 @@ const SuggestionsContainer = styled(Box)(({ theme }) => ({
 	width: "100%",
 	maxWidth: "900px",
 	margin: "0 auto",
+	marginTop: theme.spacing(4),
 	[theme.breakpoints.down("sm")]: {
 		maxWidth: "100%",
 		width: "100%",
@@ -273,7 +274,7 @@ export const MessageInput: FC<MessageInputProps> = ({
 	const [attachments, setAttachments] = useState<string[]>([]);
 	const fileInputRef = useRef<HTMLInputElement>(null);
 
-	const MAX_SUGGESTIONS = 5;
+	const MAX_SUGGESTIONS = 7;
 
 	const suggestions = useMemo(() => {
 		if (!initialSuggestions || initialSuggestions.length === 0) return [];
