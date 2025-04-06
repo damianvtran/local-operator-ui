@@ -192,9 +192,6 @@ importers:
       storybook:
         specifier: ^8.6.4
         version: 8.6.4
-      tsc:
-        specifier: ^2.0.4
-        version: 2.0.4
       typescript:
         specifier: ^5.8.2
         version: 5.8.2
@@ -4360,10 +4357,6 @@ packages:
   ts-dedent@2.2.0:
     resolution: {integrity: sha512-q5W7tVM71e2xjHZTlgfTDoPF/SmqKG5hddq9SzR49CH2hayqRKJtQ4mtRlSxKaJlR/+9rEM+mnBHf7I2/BQcpQ==}
     engines: {node: '>=6.10'}
-
-  tsc@2.0.4:
-    resolution: {integrity: sha512-fzoSieZI5KKJVBYGvwbVZs/J5za84f2lSTLPYf6AGiIf43tZ3GNrI1QzTLcjtyDDP4aLxd46RTZq1nQxe7+k5Q==}
-    hasBin: true
 
   tsconfck@3.1.5:
     resolution: {integrity: sha512-CLDfGgUp7XPswWnezWwsCRxNmgQjhYq3VXHM0/XIRxhVrKw0M1if9agzryh1QS3nxjCROvV+xWxoJO1YctzzWg==}
@@ -9646,8 +9639,6 @@ snapshots:
       typescript: 5.8.2
 
   ts-dedent@2.2.0: {}
-
-  tsc@2.0.4: {}
 
   tsconfck@3.1.5(typescript@5.8.2):
     optionalDependencies:

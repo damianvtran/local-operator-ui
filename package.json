@@ -37,7 +37,12 @@
 		"electron",
 		"react"
 	],
-	"files": ["out", "bin", "LICENSE", "README.md"],
+	"files": [
+		"out",
+		"bin",
+		"LICENSE",
+		"README.md"
+	],
 	"publishConfig": {
 		"access": "public"
 	},
@@ -128,7 +133,6 @@
 		"prismjs": "^1.30.0",
 		"sharp": "^0.33.2",
 		"storybook": "^8.6.4",
-		"tsc": "^2.0.4",
 		"typescript": "^5.8.2",
 		"typescript-eslint": "^8.18.2",
 		"vite": "^6.2.0",
@@ -147,7 +151,12 @@
 		"productName": "Local Operator",
 		"copyright": "Copyright © 2025 Damian Tran",
 		"asar": true,
-		"files": ["out/**/*", "bin/**/*", "LICENSE", "README.md"],
+		"files": [
+			"out/**/*",
+			"bin/**/*",
+			"LICENSE",
+			"README.md"
+		],
 		"directories": {
 			"output": "dist",
 			"buildResources": "build"
@@ -156,7 +165,9 @@
 			{
 				"from": "resources/python",
 				"to": "python",
-				"filter": ["**/*"]
+				"filter": [
+					"**/*"
+				]
 			}
 		],
 		"afterSign": "scripts/notarize.js",
@@ -170,11 +181,15 @@
 			"target": [
 				{
 					"target": "dmg",
-					"arch": ["universal"]
+					"arch": [
+						"universal"
+					]
 				},
 				{
 					"target": "zip",
-					"arch": ["universal"]
+					"arch": [
+						"universal"
+					]
 				}
 			],
 			"artifactName": "${name}-${version}-${arch}.${ext}",
@@ -203,7 +218,10 @@
 			"target": [
 				{
 					"target": "nsis",
-					"arch": ["x64", "arm64"]
+					"arch": [
+						"x64",
+						"arm64"
+					]
 				}
 			],
 			"artifactName": "${name}-setup-${version}-${arch}.${ext}"
@@ -240,10 +258,16 @@
 			}
 		},
 		"deb": {
-			"depends": ["python3.12-full", "python3.12-venv"]
+			"depends": [
+				"python3.12-full",
+				"python3.12-venv"
+			]
 		},
 		"rpm": {
-			"depends": ["python3.12-full", "python3.12-venv"]
+			"depends": [
+				"python3.12-full",
+				"python3.12-venv"
+			]
 		},
 		"publish": {
 			"provider": "github",
@@ -255,6 +279,8 @@
 		"generateUpdatesFilesForAllChannels": true
 	},
 	"eslintConfig": {
-		"extends": ["plugin:storybook/recommended"]
+		"extends": [
+			"plugin:storybook/recommended"
+		]
 	}
 }
