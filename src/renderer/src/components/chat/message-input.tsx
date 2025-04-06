@@ -12,6 +12,7 @@ import {
 	Tooltip,
 	Typography,
 	alpha,
+	darken,
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import { AttachmentsPreview } from "@renderer/components/chat/attachments-preview";
@@ -102,6 +103,31 @@ const SuggestionsContainer = styled(Box)(({ theme }) => ({
 		maxWidth: "900px",
 		width: "900px",
 	},
+}));
+
+/**
+ * Styled suggestion chip button
+ */
+const SuggestionChip = styled(Button)(({ theme }) => ({
+	borderRadius: 999,
+	textTransform: "none",
+	fontSize: "0.85rem",
+	paddingLeft: theme.spacing(1.5),
+	paddingRight: theme.spacing(1.5),
+	paddingTop: theme.spacing(0.5),
+	paddingBottom: theme.spacing(0.5),
+	whiteSpace: "nowrap",
+	variant: "outlined",
+	size: "small",
+	...(theme.palette.mode === "light" && {
+		backgroundColor: alpha(theme.palette.primary.main, 0.15),
+		color: darken(theme.palette.primary.main, 0.4),
+		borderColor: alpha(theme.palette.primary.main, 0.5),
+		"&:hover": {
+			backgroundColor: alpha(theme.palette.primary.main, 0.25),
+			borderColor: alpha(theme.palette.primary.main, 0.7),
+		},
+	}),
 }));
 
 /**
@@ -445,23 +471,15 @@ export const MessageInput: FC<MessageInputProps> = ({
 						}}
 					>
 						{suggestions.map((suggestion) => (
-							<Button
+							<SuggestionChip
 								key={suggestion}
 								variant="outlined"
 								size="small"
 								onClick={() => handleSuggestionClick(suggestion)}
 								disabled={isInputDisabled}
-								sx={{
-									borderRadius: 999,
-									textTransform: "none",
-									fontSize: "0.85rem",
-									paddingX: 1.5,
-									paddingY: 0.5,
-									whiteSpace: "nowrap",
-								}}
 							>
 								{suggestion}
-							</Button>
+							</SuggestionChip>
 						))}
 					</Box>
 				</SuggestionsContainer>
