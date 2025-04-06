@@ -1,6 +1,4 @@
-import { faCommentDots } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Box, CircularProgress, Typography, styled } from "@mui/material";
+import { Box, CircularProgress, styled } from "@mui/material";
 import type {
 	AgentExecutionRecord,
 	JobStatus,
@@ -28,15 +26,18 @@ type MessagesViewProps = {
 	conversationId?: string; // Added to support streaming message updates
 };
 
-const MessagesContainer = styled(Box)(({ theme }) => ({
-	flexGrow: 1,
-	overflow: "auto",
-	padding: 16,
+const MessagesContainer = styled(Box, {
+	shouldForwardProp: (prop) => prop !== "collapsed",
+})<{ collapsed?: boolean }>(({ theme, collapsed }) => ({
+	flexGrow: collapsed ? 0 : 1,
+	height: collapsed ? 0 : "100%",
+	overflow: collapsed ? "hidden" : "auto",
+	padding: collapsed ? 0 : 16,
 	display: "flex",
 	flexDirection: "column",
 	gap: 16,
 	backgroundColor: theme.palette.messagesView.background,
-	position: "relative", // Add position relative for absolute positioning of children
+	position: "relative",
 	"&::-webkit-scrollbar": {
 		width: "8px",
 	},
@@ -47,7 +48,6 @@ const MessagesContainer = styled(Box)(({ theme }) => ({
 				: "rgba(0, 0, 0, 0.2)",
 		borderRadius: "4px",
 	},
-	// Improve GPU acceleration for smoother scrolling
 	transform: "translateZ(0)",
 	willChange: "scroll-position",
 }));
@@ -88,23 +88,17 @@ const LoadingBox = styled(Box)({
 	padding: 32,
 });
 
-const EmptyMessagesBox = styled(Box)(({ theme }) => ({
-	textAlign: "center",
-	color: theme.palette.text.secondary,
-	padding: 32,
-	fontSize: "0.9rem",
+/**
+ * Container to center the loading indicator fullscreen when no messages
+ */
+const FullScreenCenteredContainer = styled(Box)({
 	display: "flex",
-	flexDirection: "column",
-	alignItems: "center",
 	justifyContent: "center",
-}));
-
-const EmptyMessagesIcon = styled(FontAwesomeIcon)(({ theme }) => ({
-	fontSize: "2rem",
-	opacity: 0.5,
-	marginBottom: "1rem",
-	color: theme.palette.text.secondary,
-}));
+	alignItems: "center",
+	flexGrow: 1,
+	height: "100%",
+	width: "100%",
+});
 
 /**
  * MessagesView Component
@@ -125,8 +119,11 @@ export const MessagesView: FC<MessagesViewProps> = ({
 	refetch,
 	conversationId,
 }) => {
+	const collapsed =
+		messages.length === 0 && !isLoadingMessages && !isFetchingMore;
+
 	return (
-		<MessagesContainer ref={messagesContainerRef}>
+		<MessagesContainer ref={messagesContainerRef} collapsed={collapsed}>
 			{/* Loading more messages indicator */}
 			{isFetchingMore && (
 				<LoadingMoreIndicator>
@@ -174,16 +171,9 @@ export const MessagesView: FC<MessagesViewProps> = ({
 						</CenteredMessagesContainer>
 					) : (
 						<>
-							<EmptyMessagesBox>
-								<EmptyMessagesIcon icon={faCommentDots} />
-								<Typography variant="body1">
-									No messages yet. Start a conversation!
-								</Typography>
-							</EmptyMessagesBox>
-
-							{/* Loading indicator when no messages */}
-							{isLoading && (
-								<CenteredMessagesContainer>
+							{/* When no messages, center the loading indicator fullscreen */}
+							{isLoadingMessages && (
+								<FullScreenCenteredContainer>
 									<LoadingIndicator
 										status={jobStatus}
 										agentName={agentName}
@@ -191,7 +181,7 @@ export const MessagesView: FC<MessagesViewProps> = ({
 										scrollToBottom={scrollToBottom}
 										conversationId={conversationId}
 									/>
-								</CenteredMessagesContainer>
+								</FullScreenCenteredContainer>
 							)}
 						</>
 					)}
