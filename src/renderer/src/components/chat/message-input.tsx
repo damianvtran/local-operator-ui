@@ -18,7 +18,7 @@ import { AttachmentsPreview } from "@renderer/components/chat/attachments-previe
 import { ScrollToBottomButton } from "@renderer/components/chat/scroll-to-bottom-button";
 import type { Message } from "@renderer/components/chat/types";
 import { useMessageInput } from "@renderer/hooks/use-message-input";
-import { useRef, useState } from "react";
+import { useRef, useState, useMemo } from "react";
 import type { ChangeEvent, FC, FormEvent } from "react";
 
 /**
@@ -33,6 +33,7 @@ type MessageInputProps = {
 	onCancelJob?: (jobId: string) => void;
 	isFarFromBottom?: boolean;
 	scrollToBottom?: () => void;
+	initialSuggestions?: string[];
 };
 
 /**
@@ -267,9 +268,22 @@ export const MessageInput: FC<MessageInputProps> = ({
 	onCancelJob,
 	isFarFromBottom = false,
 	scrollToBottom = () => {},
+	initialSuggestions,
 }) => {
 	const [attachments, setAttachments] = useState<string[]>([]);
 	const fileInputRef = useRef<HTMLInputElement>(null);
+
+	const MAX_SUGGESTIONS = 5;
+
+	const suggestions = useMemo(() => {
+		if (!initialSuggestions || initialSuggestions.length === 0) return [];
+		if (initialSuggestions.length <= MAX_SUGGESTIONS) {
+			return initialSuggestions;
+		}
+		// Randomly select MAX_SUGGESTIONS unique suggestions
+		const shuffled = [...initialSuggestions].sort(() => Math.random() - 0.5);
+		return shuffled.slice(0, MAX_SUGGESTIONS);
+	}, [initialSuggestions]);
 
 	const {
 		inputValue: newMessage,
@@ -327,14 +341,6 @@ export const MessageInput: FC<MessageInputProps> = ({
 	};
 
 	const isInputDisabled = Boolean(isLoading && currentJobId);
-
-	const initialSuggestions = [
-		"Go to my documents folder",
-		"What's the latest news?",
-		"Can you make me a research report on the latest trends in AI?",
-		"Can you make me a space invaders game?",
-		"Can you organize my desktop?",
-	];
 
 	const handleSuggestionClick = (suggestion: string) => {
 		if (isInputDisabled) return;
@@ -438,7 +444,7 @@ export const MessageInput: FC<MessageInputProps> = ({
 							justifyContent: "center",
 						}}
 					>
-						{initialSuggestions.map((suggestion) => (
+						{suggestions.map((suggestion) => (
 							<Button
 								key={suggestion}
 								variant="outlined"

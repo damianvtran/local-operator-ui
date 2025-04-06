@@ -15,6 +15,19 @@ import { MessagesView } from "./messages-view";
 import { RawInfoView } from "./raw-info-view";
 import type { Message } from "./types";
 
+const DEFAULT_MESSAGE_SUGGESTIONS = [
+	"Go to my documents folder",
+	"What's the latest news?",
+	"Can you make me a research report on the latest trends in AI?",
+	"Can you make me a space invaders game?",
+	"Can you organize my desktop?",
+	"Create a presentation outline on climate change",
+	"Train a classifier on the MPG dataset",
+	"Search recent research papers on quantum computing",
+	"Make me a brick breaker game",
+	"Can you remove downloads that are more than a year old?",
+];
+
 /**
  * Props for the ChatContent component
  */
@@ -131,6 +144,7 @@ export const ChatContent: FC<ChatContentProps> = ({
 			{/* Message input */}
 			<MessageInput
 				onSendMessage={onSendMessage}
+				initialSuggestions={DEFAULT_MESSAGE_SUGGESTIONS}
 				isLoading={isLoading}
 				conversationId={agentId}
 				messages={messages}
