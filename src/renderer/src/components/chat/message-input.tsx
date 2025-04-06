@@ -65,7 +65,7 @@ const InputInnerContainer = styled(Box)(({ theme }) => ({
 	display: "flex",
 	flexDirection: "column",
 	gap: theme.spacing(1.5),
-	borderRadius: theme.shape.borderRadius * 2,
+	borderRadius: theme.shape.borderRadius * 4,
 	border: `1px solid ${alpha(theme.palette.divider, theme.palette.mode === "light" ? 0.3 : 0.1)}`,
 	backgroundColor:
 		theme.palette.mode === "light"
