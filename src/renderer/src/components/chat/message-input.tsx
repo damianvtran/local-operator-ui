@@ -62,7 +62,7 @@ const InputOuterContainer = styled(Box)(({ theme }) => ({
  * without changing the container size by using outline instead of border change
  */
 const InputInnerContainer = styled(Box)(({ theme }) => ({
-	width: "900px",
+	width: "100%",
 	maxWidth: "900px",
 	margin: "0 auto",
 	display: "flex",
@@ -80,15 +80,12 @@ const InputInnerContainer = styled(Box)(({ theme }) => ({
 	boxSizing: "border-box",
 	[theme.breakpoints.down("sm")]: {
 		maxWidth: "100%",
-		width: "100%",
 	},
 	[theme.breakpoints.between("sm", "md")]: {
 		maxWidth: "90%",
-		width: "90%",
 	},
 	[theme.breakpoints.up("md")]: {
 		maxWidth: "900px",
-		width: "900px",
 	},
 	// When the input inside is focused, add an outline instead of increasing border thickness
 	"&:has(.MuiOutlinedInput-root.Mui-focused)": {
@@ -105,15 +102,12 @@ const SuggestionsContainer = styled(Box)(({ theme }) => ({
 	marginTop: theme.spacing(4),
 	[theme.breakpoints.down("sm")]: {
 		maxWidth: "100%",
-		width: "100%",
 	},
 	[theme.breakpoints.between("sm", "md")]: {
 		maxWidth: "90%",
-		width: "90%",
 	},
 	[theme.breakpoints.up("md")]: {
 		maxWidth: "900px",
-		width: "900px",
 	},
 }));
 
@@ -128,9 +122,11 @@ const SuggestionChip = styled(Button)(({ theme }) => ({
 	paddingRight: theme.spacing(1.5),
 	paddingTop: theme.spacing(0.5),
 	paddingBottom: theme.spacing(0.5),
-	whiteSpace: "nowrap",
+	whiteSpace: "normal", // allow wrapping instead of nowrap
+	wordBreak: "break-word", // break long words if needed
 	variant: "outlined",
 	size: "small",
+	maxWidth: "100%", // ensure chip doesn't overflow container
 	...(theme.palette.mode === "light" && {
 		backgroundColor: alpha(theme.palette.primary.main, 0.15),
 		color: darken(theme.palette.primary.main, 0.4),
