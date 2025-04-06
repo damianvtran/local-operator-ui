@@ -31,11 +31,11 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22.13.1'
-          cache: 'yarn'
+          cache: 'pnpm'
           registry-url: 'https://registry.npmjs.org'
 
       - name: Install dependencies
-        run: yarn install --frozen-lockfile
+        run: pnpm install --frozen-lockfile
 
       - name: Check if version already published
         id: check_version
@@ -86,10 +86,10 @@ jobs:
 
       - name: Setup python distributable
         run: |
-          yarn setup-python
+          pnpm setup-python
 
       - name: Build macOS app
-        run: yarn dist:mac
+        run: pnpm dist:mac
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_LINK: ./certificate.p12
@@ -134,7 +134,7 @@ jobs:
           echo "${{ secrets.CSC_CONTENT }}" | base64 -d > certificate.p12
 
       - name: Build Windows app
-        run: yarn dist:win
+        run: pnpm dist:win
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_LINK: ./certificate.p12
@@ -169,7 +169,7 @@ jobs:
         run: yarn install --frozen-lockfile
 
       - name: Build Linux app
-        run: yarn dist:linux
+        run: pnpm dist:linux
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
