@@ -89,6 +89,18 @@ const LoadingBox = styled(Box)({
 });
 
 /**
+ * Container to center the loading indicator fullscreen when no messages
+ */
+const FullScreenCenteredContainer = styled(Box)({
+	display: "flex",
+	justifyContent: "center",
+	alignItems: "center",
+	flexGrow: 1,
+	height: "100%",
+	width: "100%",
+});
+
+/**
  * MessagesView Component
  *
  * Displays the list of messages in a conversation
@@ -159,9 +171,9 @@ export const MessagesView: FC<MessagesViewProps> = ({
 						</CenteredMessagesContainer>
 					) : (
 						<>
-							{/* When no messages, render nothing so input can take full height */}
-							{isLoading && (
-								<CenteredMessagesContainer>
+							{/* When no messages, center the loading indicator fullscreen */}
+							{isLoadingMessages && (
+								<FullScreenCenteredContainer>
 									<LoadingIndicator
 										status={jobStatus}
 										agentName={agentName}
@@ -169,7 +181,7 @@ export const MessagesView: FC<MessagesViewProps> = ({
 										scrollToBottom={scrollToBottom}
 										conversationId={conversationId}
 									/>
-								</CenteredMessagesContainer>
+								</FullScreenCenteredContainer>
 							)}
 						</>
 					)}
