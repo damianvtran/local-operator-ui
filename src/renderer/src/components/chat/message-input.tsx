@@ -344,10 +344,9 @@ export const MessageInput: FC<MessageInputProps> = ({
 
 	const handleSuggestionClick = (suggestion: string) => {
 		if (isInputDisabled) return;
-		setNewMessage(suggestion);
-		setTimeout(() => {
-			submitMessage();
-		}, 0);
+		onSendMessage(suggestion, attachments);
+		setAttachments([]);
+		setNewMessage("");
 	};
 
 	const inputContent = (
