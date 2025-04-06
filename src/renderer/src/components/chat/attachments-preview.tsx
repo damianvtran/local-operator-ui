@@ -33,9 +33,7 @@ const AttachmentsContainer = styled(Box)(({ theme }) => ({
 	display: "flex",
 	flexWrap: "wrap",
 	gap: theme.spacing(1.5),
-	padding: theme.spacing(2),
-	borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-	backgroundColor: alpha(theme.palette.background.paper, 0.4),
+	padding: theme.spacing(1),
 }));
 
 /**
