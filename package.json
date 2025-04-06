@@ -22,7 +22,7 @@
 	],
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/damianvtran/local-operator-ui.git"
+		"url": "https://github.com/damianvtran/local-operator-ui.git"
 	},
 	"homepage": "https://github.com/damianvtran/local-operator-ui#readme",
 	"bugs": {
@@ -116,7 +116,7 @@
 		"@types/react-dom": "18.3.5",
 		"@vitejs/plugin-react": "^4.3.4",
 		"electron": "^25.3.1",
-		"electron-builder": "^24.13.3",
+		"electron-builder": "^26.0.12",
 		"electron-vite": "^3.0.0",
 		"esbuild": "^0.25.1",
 		"icns-lib": "^1.0.1",
@@ -228,9 +228,11 @@
 			],
 			"artifactName": "${name}-${version}-${arch}.${ext}",
 			"desktop": {
-				"Name": "Local Operator",
-				"Comment": "AI Agent Assistants On Your Device",
-				"Categories": "ArtificialIntelligence"
+				"entry": {
+					"Name": "Local Operator",
+					"Comment": "AI Agent Assistants On Your Device",
+					"Categories": "ArtificialIntelligence"
+				}
 			}
 		},
 		"deb": {
@@ -239,13 +241,15 @@
 		"rpm": {
 			"depends": ["python3.12-full", "python3.12-venv"]
 		},
-		"publish": {
-			"provider": "github",
-			"owner": "damianvtran",
-			"repo": "local-operator-ui",
-			"private": false,
-			"releaseType": "release"
-		},
+		"publish": [
+			{
+				"provider": "github",
+				"owner": "damianvtran",
+				"repo": "local-operator-ui",
+				"private": false,
+				"releaseType": "release"
+			}
+		],
 		"generateUpdatesFilesForAllChannels": true
 	}
 }
