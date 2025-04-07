@@ -7,7 +7,7 @@
 
 import { faCheck } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Box, Typography, Tooltip } from "@mui/material";
+import { Box, Tooltip, Typography } from "@mui/material";
 import {
 	PrimaryButton,
 	SecondaryButton,
@@ -17,7 +17,7 @@ import {
 	useOnboardingStore,
 } from "@renderer/store/onboarding-store";
 import type { FC } from "react";
-import { useCallback, useMemo, useState, useEffect } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { OnboardingDialog } from "./onboarding-dialog";
 import {
