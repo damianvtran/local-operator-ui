@@ -8,7 +8,6 @@
 import {
 	Box,
 	Button,
-	Paper,
 	Typography,
 	alpha,
 	keyframes,
