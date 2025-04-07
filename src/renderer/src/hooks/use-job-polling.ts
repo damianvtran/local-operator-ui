@@ -377,7 +377,7 @@ export const useJobPolling = ({
 		// Only run the query if we have a job ID and server is online (bypass internet check)
 		enabled: shouldEnableQuery({ bypassInternetCheck: true }) && !!currentJobId,
 		// Poll every 1 second while job is active
-		refetchInterval: currentJobId ? 500 : false,
+		refetchInterval: currentJobId ? 1000 : false,
 		refetchIntervalInBackground: false,
 		refetchOnWindowFocus: true,
 		// Don't cache the result
