@@ -12,7 +12,6 @@ import {
 	PrimaryButton,
 	SecondaryButton,
 } from "@renderer/components/common/base-dialog";
-import { OnboardingDialog } from "./onboarding-dialog";
 import {
 	OnboardingStep,
 	useOnboardingStore,
@@ -20,6 +19,7 @@ import {
 import type { FC, ReactNode } from "react";
 import { useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { OnboardingDialog } from "./onboarding-dialog";
 import {
 	CongratulationsContainer,
 	CongratulationsIcon,

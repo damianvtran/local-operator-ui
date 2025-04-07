@@ -6,16 +6,16 @@
  * Theme-aware, responsive, and streamlined for multi-step onboarding.
  */
 
-import type { ReactNode } from "react";
-import React from "react";
 import {
 	Dialog,
+	DialogActions,
 	DialogContent,
 	DialogTitle,
-	DialogActions,
-	styled,
 	alpha,
+	styled,
 } from "@mui/material";
+import type { ReactNode } from "react";
+import React from "react";
 
 /**
  * Props for the OnboardingDialog component
