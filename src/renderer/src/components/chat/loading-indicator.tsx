@@ -299,7 +299,7 @@ export const LoadingIndicator: FC<{
 		ref,
 		scrollToBottom: scrollToBottomHook,
 		isFarFromBottom,
-	} = useScrollToBottom([status, currentExecution, message], 100, 50);
+	} = useScrollToBottom([status, currentExecution, message], 150, 50);
 
 	useEffect(() => {
 		if (codeSnippet && isCodeExpanded && !isStreaming && !isFarFromBottom) {

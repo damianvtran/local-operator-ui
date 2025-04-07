@@ -122,7 +122,7 @@ export const ChatPage: FC<ChatProps> = () => {
 		isFarFromBottom,
 		scrollToBottom,
 		forceScrollToBottom,
-	} = useScrollToBottom(scrollDependencies, 100);
+	} = useScrollToBottom(scrollDependencies, 150);
 
 	// Check if the selected agent exists in the list of agents
 	useEffect(() => {

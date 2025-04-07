@@ -129,7 +129,7 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 	} = useScrollToBottom(
 		// Dependencies that should trigger scroll evaluation
 		[content, isStreamable, message?.is_complete],
-		150, // Threshold for "near bottom" in pixels
+		250, // Threshold for "near bottom" in pixels
 		50, // Threshold for showing scroll button
 	);
 
@@ -164,21 +164,13 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 				conversationId={message.conversation_id}
 				refetchOnComplete={true}
 				onComplete={() => {
-					// Force one final scroll to bottom when message completes
-					forceScrollToBottom();
 					if (onMessageComplete) {
 						onMessageComplete();
 					}
 				}}
 			/>
 		);
-	}, [
-		isStreamable,
-		message,
-		messageStyles,
-		onMessageComplete,
-		forceScrollToBottom,
-	]);
+	}, [isStreamable, message, messageStyles, onMessageComplete]);
 
 	// Memoize the regular message components to prevent unnecessary re-renders
 	const regularMessageComponents = useMemo(() => {
