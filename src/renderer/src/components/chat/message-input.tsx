@@ -13,6 +13,7 @@ import {
 	Typography,
 	alpha,
 	darken,
+	CircularProgress,
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import { AttachmentsPreview } from "@renderer/components/chat/attachments-preview";
@@ -384,6 +385,8 @@ export const MessageInput: FC<MessageInputProps> = ({
 		setNewMessage("");
 	};
 
+	const placeholderText = isInputDisabled ? "" : "Ask me for help";
+
 	const inputContent = (
 		<form onSubmit={handleSubmit} style={{ width: "100%" }}>
 			<InputInnerContainer>
@@ -397,7 +400,7 @@ export const MessageInput: FC<MessageInputProps> = ({
 
 				<StyledTextField
 					fullWidth
-					placeholder={isInputDisabled ? "⌛ Agent is busy" : "Ask me for help"}
+					placeholder={placeholderText}
 					value={newMessage}
 					onChange={(e) => setNewMessage(e.target.value)}
 					onKeyDown={handleKeyDown}
@@ -406,6 +409,27 @@ export const MessageInput: FC<MessageInputProps> = ({
 					variant="outlined"
 					inputRef={textareaRef}
 					disabled={isInputDisabled}
+					InputProps={{
+						startAdornment: isInputDisabled ? (
+							<Box
+								sx={{
+									display: "flex",
+									alignItems: "center",
+									gap: 1,
+									ml: 0.5,
+								}}
+							>
+								<CircularProgress size={16} thickness={5} />
+								<Typography
+									variant="body2"
+									color="text.secondary"
+									sx={{ whiteSpace: "nowrap" }}
+								>
+									Agent is busy
+								</Typography>
+							</Box>
+						) : undefined,
+					}}
 				/>
 
 				<ButtonsRow>
