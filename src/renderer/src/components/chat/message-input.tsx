@@ -423,7 +423,7 @@ export const MessageInput: FC<MessageInputProps> = ({
 								<Typography
 									variant="body2"
 									color="text.secondary"
-									sx={{ whiteSpace: "nowrap" }}
+									sx={{ whiteSpace: "nowrap", opacity: 0.7 }}
 								>
 									Agent is busy
 								</Typography>
