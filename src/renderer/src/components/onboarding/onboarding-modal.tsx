@@ -227,13 +227,17 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 	const handleSkip = useCallback(() => {
 		if (currentStep === OnboardingStep.SEARCH_API) {
 			setCurrentStep(OnboardingStep.DEFAULT_MODEL);
+		} else if (currentStep === OnboardingStep.CREATE_AGENT) {
+			setCurrentStep(OnboardingStep.CONGRATULATIONS);
 		}
 	}, [currentStep, setCurrentStep]);
 
 	/**
 	 * Determine if the current step can be skipped
 	 */
-	const canSkip = currentStep === OnboardingStep.SEARCH_API;
+	const canSkip =
+		currentStep === OnboardingStep.SEARCH_API ||
+		currentStep === OnboardingStep.CREATE_AGENT;
 
 	/**
 	 * Determine if the current step can go back
@@ -249,6 +253,11 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 		currentStep === OnboardingStep.CONGRATULATIONS
 			? "🚀 Get Started"
 			: "Next →";
+
+	// Check if an agent has been created during onboarding
+	const hasCreatedAgent = Boolean(
+		sessionStorage.getItem("onboarding_created_agent_id"),
+	);
 
 	// Create dialog title with step title
 	const dialogTitle = (
@@ -270,7 +279,14 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 
 			<Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
 				{canSkip && <SkipButton onClick={handleSkip}>Skip</SkipButton>}
-				<PrimaryButton onClick={handleNext}>{nextButtonText}</PrimaryButton>
+				<PrimaryButton
+					onClick={handleNext}
+					disabled={
+						currentStep === OnboardingStep.CREATE_AGENT && !hasCreatedAgent
+					}
+				>
+					{nextButtonText}
+				</PrimaryButton>
 			</Box>
 		</>
 	);
