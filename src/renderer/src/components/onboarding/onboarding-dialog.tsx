@@ -30,6 +30,10 @@ export type OnboardingDialogProps = {
 	 */
 	title?: ReactNode;
 	/**
+	 * Optional step indicators (e.g., dots)
+	 */
+	stepIndicators?: ReactNode;
+	/**
 	 * Dialog main content
 	 */
 	children: ReactNode;
@@ -164,6 +168,7 @@ const StyledDialogActions = styled(DialogActions)(({ theme }) => ({
 export const OnboardingDialog = ({
 	open,
 	title,
+	stepIndicators,
 	children,
 	actions,
 	dialogProps = {},
@@ -178,6 +183,7 @@ export const OnboardingDialog = ({
 		>
 			<ContentContainer>
 				{title && <StyledDialogTitle>{title}</StyledDialogTitle>}
+				{stepIndicators}
 				<StyledDialogContent>{children}</StyledDialogContent>
 				{actions && <StyledDialogActions>{actions}</StyledDialogActions>}
 			</ContentContainer>

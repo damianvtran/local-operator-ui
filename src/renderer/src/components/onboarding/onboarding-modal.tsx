@@ -7,7 +7,7 @@
 
 import { faCheck } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Box, Typography } from "@mui/material";
+import { Box, Typography, Tooltip } from "@mui/material";
 import {
 	PrimaryButton,
 	SecondaryButton,
@@ -16,8 +16,8 @@ import {
 	OnboardingStep,
 	useOnboardingStore,
 } from "@renderer/store/onboarding-store";
-import type { FC, ReactNode } from "react";
-import { useCallback, useMemo } from "react";
+import type { FC } from "react";
+import { useCallback, useMemo, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { OnboardingDialog } from "./onboarding-dialog";
 import {
@@ -55,6 +55,42 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 	const { currentStep, setCurrentStep, completeOnboarding } =
 		useOnboardingStore();
 	const navigate = useNavigate();
+
+	const steps = useMemo(
+		() => [
+			OnboardingStep.WELCOME,
+			OnboardingStep.USER_PROFILE,
+			OnboardingStep.MODEL_CREDENTIAL,
+			OnboardingStep.SEARCH_API,
+			OnboardingStep.DEFAULT_MODEL,
+			OnboardingStep.CREATE_AGENT,
+			OnboardingStep.CONGRATULATIONS,
+		],
+		[],
+	);
+
+	const stepTitles: Record<OnboardingStep, string> = {
+		[OnboardingStep.WELCOME]: "Welcome to Local Operator",
+		[OnboardingStep.USER_PROFILE]: "Set Up Your Profile",
+		[OnboardingStep.MODEL_CREDENTIAL]: "Add Model Provider Credentials",
+		[OnboardingStep.SEARCH_API]: "Enable Web Search (Recommended)",
+		[OnboardingStep.DEFAULT_MODEL]: "Choose Your Default Model",
+		[OnboardingStep.CREATE_AGENT]: "Create Your First Agent",
+		[OnboardingStep.CONGRATULATIONS]: "🎉 Setup Complete!",
+	};
+
+	const [visitedSteps, setVisitedSteps] = useState<Set<OnboardingStep>>(
+		new Set([currentStep]),
+	);
+
+	useEffect(() => {
+		setVisitedSteps((prev) => {
+			if (prev.has(currentStep)) return prev;
+			const updated = new Set(prev);
+			updated.add(currentStep);
+			return updated;
+		});
+	}, [currentStep]);
 
 	/**
 	 * Get the title for the current step
@@ -214,29 +250,6 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 			? "🚀 Get Started"
 			: "Next →";
 
-	/**
-	 * Render the step indicators
-	 */
-	const renderStepIndicators = (): ReactNode => {
-		const steps = [
-			OnboardingStep.WELCOME,
-			OnboardingStep.USER_PROFILE,
-			OnboardingStep.MODEL_CREDENTIAL,
-			OnboardingStep.SEARCH_API,
-			OnboardingStep.DEFAULT_MODEL,
-			OnboardingStep.CREATE_AGENT,
-			OnboardingStep.CONGRATULATIONS,
-		];
-
-		return (
-			<StepIndicatorContainer>
-				{steps.map((step) => (
-					<StepDot key={step} active={currentStep === step} />
-				))}
-			</StepIndicatorContainer>
-		);
-	};
-
 	// Create dialog title with step title
 	const dialogTitle = (
 		<Typography variant="h6" fontWeight={600}>
@@ -262,16 +275,40 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 		</>
 	);
 
+	const stepIndicators = (
+		<StepIndicatorContainer>
+			{steps.map((step) => {
+				const isActive = currentStep === step;
+				const isVisited = visitedSteps.has(step);
+				const canNavigate = isVisited && step !== currentStep;
+
+				return (
+					<Tooltip key={step} title={stepTitles[step]} arrow>
+						<Box
+							onClick={() => {
+								if (canNavigate) {
+									setCurrentStep(step);
+								}
+							}}
+						>
+							<StepDot active={isActive} visited={isVisited} />
+						</Box>
+					</Tooltip>
+				);
+			})}
+		</StepIndicatorContainer>
+	);
+
 	return (
 		<OnboardingDialog
 			open={open}
 			title={dialogTitle}
+			stepIndicators={stepIndicators}
 			actions={dialogActions}
 			dialogProps={{
 				disableEscapeKeyDown: true,
 			}}
 		>
-			{renderStepIndicators()}
 			{stepContent}
 		</OnboardingDialog>
 	);

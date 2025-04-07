@@ -110,20 +110,38 @@ export const StepIndicatorContainer = styled(Box)(({ theme }) => ({
  * Step indicator dot
  */
 export const StepDot = styled(Box, {
-	shouldForwardProp: (prop) => prop !== "active",
-})<{ active?: boolean }>(({ theme, active }) => ({
-	width: active ? 12 : 10,
-	height: active ? 12 : 10,
-	borderRadius: "50%",
-	backgroundColor: active
-		? theme.palette.primary.main
-		: alpha(theme.palette.primary.main, 0.25),
-	boxShadow: active
-		? `0 0 10px ${alpha(theme.palette.primary.main, 0.5)}`
-		: "none",
-	transition: "all 0.3s ease-in-out",
-	animation: active ? `${pulse} 2s infinite ease-in-out` : "none",
-}));
+	shouldForwardProp: (prop) => prop !== "active" && prop !== "visited",
+})<{
+	active?: boolean;
+	visited?: boolean;
+}>(({ theme, active, visited }) => {
+	const baseSize = 10;
+	const activeSize = 12;
+
+	let backgroundColor = alpha(theme.palette.primary.main, 0.25);
+	let boxShadow = "none";
+	let animationStyle = "none";
+
+	if (active) {
+		backgroundColor = theme.palette.primary.main;
+		boxShadow = `0 0 10px ${alpha(theme.palette.primary.main, 0.5)}`;
+		animationStyle = `${pulse} 2s infinite ease-in-out`;
+	} else if (visited) {
+		backgroundColor = theme.palette.primary.main;
+	}
+
+	return {
+		width: active ? activeSize : baseSize,
+		height: active ? activeSize : baseSize,
+		borderRadius: "50%",
+		backgroundColor,
+		boxShadow,
+		transition: "all 0.3s ease-in-out",
+		animation: animationStyle,
+		cursor: visited ? "pointer" : "default",
+		opacity: !visited && !active ? 0.4 : 1,
+	};
+});
 
 /**
  * Section container
