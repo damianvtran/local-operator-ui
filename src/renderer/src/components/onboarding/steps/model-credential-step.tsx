@@ -38,7 +38,6 @@ import {
 	FormContainer,
 	SectionContainer,
 	SectionDescription,
-	SectionTitle,
 } from "../onboarding-styled";
 
 /**
@@ -63,16 +62,6 @@ export const ModelCredentialStep: FC = () => {
 	const { data: credentialsData } = useCredentials();
 	const updateCredentialMutation = useUpdateCredential();
 	const { refreshModels } = useModels();
-
-	// Set the credential value if it already exists
-	useEffect(() => {
-		// Only show the "already set" error if we haven't just saved successfully
-		if (credentialsData?.keys.includes(selectedCredential) && !saveSuccess) {
-			setError("This credential is already set");
-		} else {
-			setError("");
-		}
-	}, [selectedCredential, credentialsData, saveSuccess]);
 
 	// Handle credential selection change
 	const handleCredentialChange = (event: SelectChangeEvent) => {
@@ -152,7 +141,6 @@ export const ModelCredentialStep: FC = () => {
 
 	return (
 		<SectionContainer>
-			<SectionTitle>Add Model Provider Credential</SectionTitle>
 			<SectionDescription>
 				<EmojiContainer>✨</EmojiContainer> To unlock the power of AI models,
 				you need to add at least one model provider API key. Your key will be

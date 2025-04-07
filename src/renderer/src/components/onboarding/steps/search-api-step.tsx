@@ -38,17 +38,22 @@ import {
 	FormContainer,
 	SectionContainer,
 	SectionDescription,
-	SectionTitle,
 } from "../onboarding-styled";
+
+const RECOMMENDED_CREDENTIAL = "TAVILY_API_KEY";
 
 /**
  * Search API step in the onboarding process
  */
 export const SearchApiStep: FC = () => {
-	// Get the list of search API credentials
+	// Get the list of search API credentials and sort Tavily first
 	const searchApiCredentials = CREDENTIAL_MANIFEST.filter(
 		(cred) => cred.key === "TAVILY_API_KEY" || cred.key === "SERP_API_KEY",
-	);
+	).sort((a, b) => {
+		if (a.key === RECOMMENDED_CREDENTIAL) return -1;
+		if (b.key === RECOMMENDED_CREDENTIAL) return 1;
+		return 0;
+	});
 
 	// State for the selected credential and its value
 	const [selectedCredential, setSelectedCredential] = useState(
@@ -65,16 +70,6 @@ export const SearchApiStep: FC = () => {
 	// Get existing credentials and update mutation
 	const { data: credentialsData } = useCredentials();
 	const updateCredentialMutation = useUpdateCredential();
-
-	// Set the credential value if it already exists
-	useEffect(() => {
-		// Only show the "already set" error if we haven't just saved successfully
-		if (credentialsData?.keys.includes(selectedCredential) && !saveSuccess) {
-			setError("This credential is already set");
-		} else {
-			setError("");
-		}
-	}, [selectedCredential, credentialsData, saveSuccess]);
 
 	// Handle credential selection change
 	const handleCredentialChange = (event: SelectChangeEvent) => {
@@ -146,7 +141,6 @@ export const SearchApiStep: FC = () => {
 
 	return (
 		<SectionContainer>
-			<SectionTitle>Enable Web Search (Optional)</SectionTitle>
 			<SectionDescription>
 				<EmojiContainer>🌐</EmojiContainer> Supercharge your AI agents with the
 				ability to search the web for real-time information! This optional
@@ -211,7 +205,9 @@ export const SearchApiStep: FC = () => {
 					>
 						{searchApiCredentials.map((cred) => (
 							<MenuItem key={cred.key} value={cred.key}>
-								{cred.name}
+								{cred.key === RECOMMENDED_CREDENTIAL
+									? `${cred.name} (Recommended)`
+									: cred.name}
 							</MenuItem>
 						))}
 					</Select>

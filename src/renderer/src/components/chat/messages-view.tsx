@@ -143,13 +143,14 @@ export const MessagesView: FC<MessagesViewProps> = ({
 					{messages.length > 0 ? (
 						// Only render visible messages plus a buffer
 						<CenteredMessagesContainer>
-							{messages.map((message) => (
+							{messages.map((message, index) => (
 								<MessageItem
 									key={message.id}
 									message={{
 										...message,
 										conversation_id: conversationId, // Add conversation ID to message
 									}}
+									isLastMessage={index === messages.length - 1}
 									onMessageComplete={() => {
 										if (refetch) {
 											refetch();

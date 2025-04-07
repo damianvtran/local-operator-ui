@@ -1,6 +1,6 @@
 {
 	"name": "local-operator-ui",
-	"version": "0.4.5",
+	"version": "0.4.6",
 	"productName": "Local Operator",
 	"description": "User interface for AI agent assistants that run Python code safely on your device through an intuitive chat interface. Supports local and cloud LLM models with built-in security features.",
 	"main": "./out/main/index.js",
@@ -76,7 +76,9 @@
 		"@tanstack/react-query": "^5.67.1",
 		"@tanstack/react-query-devtools": "^5.67.1",
 		"date-fns": "^4.1.0",
+		"dmg-builder": "24.13.3",
 		"dotenv": "^16.4.7",
+		"electron-builder-squirrel-windows": "26.0.12",
 		"electron-debug": "^3.2.0",
 		"electron-log": "^4.4.8",
 		"electron-updater": "^6.1.4",
