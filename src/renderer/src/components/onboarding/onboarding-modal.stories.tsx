@@ -1,15 +1,15 @@
 import { CssBaseline } from "@mui/material";
 import { ThemeProvider } from "@mui/material/styles";
 import type { Meta, StoryObj } from "@storybook/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import React from "react";
 import { MemoryRouter } from "react-router-dom";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+	OnboardingStep,
+	useOnboardingStore,
+} from "../../store/onboarding-store";
 import theme from "../../theme";
 import { OnboardingModal } from "./onboarding-modal";
-import {
-	useOnboardingStore,
-	OnboardingStep,
-} from "../../store/onboarding-store";
 
 /**
  * Storybook stories for the OnboardingModal component.
