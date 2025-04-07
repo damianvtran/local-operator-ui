@@ -62,17 +62,17 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 	const stepTitle = useMemo(() => {
 		switch (currentStep) {
 			case OnboardingStep.WELCOME:
-				return "👋 Welcome to Local Operator";
+				return "Welcome to Local Operator";
 			case OnboardingStep.USER_PROFILE:
-				return "👤 Set Up Your Profile";
+				return "Set Up Your Profile";
 			case OnboardingStep.MODEL_CREDENTIAL:
-				return "🔑 Add Model Provider Credential";
+				return "Add Model Provider Credentials";
 			case OnboardingStep.SEARCH_API:
-				return "🔍 Enable Web Search (Optional)";
+				return "Enable Web Search (Recommended)";
 			case OnboardingStep.DEFAULT_MODEL:
-				return "🤖 Choose Your Default Model";
+				return "Choose Your Default Model";
 			case OnboardingStep.CREATE_AGENT:
-				return "✨ Create Your First Agent";
+				return "Create Your First Agent";
 			case OnboardingStep.CONGRATULATIONS:
 				return "🎉 Setup Complete!";
 			default:

@@ -38,7 +38,6 @@ import {
 	FormContainer,
 	SectionContainer,
 	SectionDescription,
-	SectionTitle,
 } from "../onboarding-styled";
 
 /**
@@ -152,7 +151,6 @@ export const ModelCredentialStep: FC = () => {
 
 	return (
 		<SectionContainer>
-			<SectionTitle>Add Model Provider Credential</SectionTitle>
 			<SectionDescription>
 				<EmojiContainer>✨</EmojiContainer> To unlock the power of AI models,
 				you need to add at least one model provider API key. Your key will be

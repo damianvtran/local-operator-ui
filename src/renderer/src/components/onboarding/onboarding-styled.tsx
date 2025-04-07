@@ -8,10 +8,6 @@
 import {
 	Box,
 	Button,
-	Dialog,
-	DialogActions,
-	DialogContent,
-	DialogTitle,
 	Paper,
 	Typography,
 	alpha,
@@ -42,62 +38,6 @@ const pulse = keyframes`
     transform: scale(1);
   }
 `;
-
-/**
- * Main onboarding dialog container
- */
-export const OnboardingDialog = styled(Dialog)(({ theme }) => ({
-	"& .MuiBackdrop-root": {
-		backdropFilter: "blur(12px)",
-		backgroundColor: alpha(theme.palette.background.default, 0.7),
-	},
-	"& .MuiDialog-paper": {
-		borderRadius: 16,
-		maxWidth: 700,
-		width: "100%",
-		backgroundColor: alpha(theme.palette.background.paper, 0.95),
-		boxShadow: `0 15px 50px ${alpha(theme.palette.primary.main, 0.2)}, 0 10px 40px ${alpha(theme.palette.common.black, 0.4)}`,
-		border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
-		overflow: "hidden",
-		animation: `${fadeIn} 0.4s ease-out`,
-	},
-}));
-
-/**
- * Onboarding dialog title
- */
-export const OnboardingTitle = styled(DialogTitle)(({ theme }) => ({
-	padding: "24px 28px 16px 28px",
-	fontSize: "1.35rem",
-	fontWeight: 700,
-	textAlign: "center",
-	borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-	background: `linear-gradient(to right, ${alpha(theme.palette.primary.main, 0.05)}, ${alpha(theme.palette.background.default, 0.8)}, ${alpha(theme.palette.primary.main, 0.05)})`,
-	color: theme.palette.primary.main,
-}));
-
-/**
- * Onboarding dialog content
- */
-export const OnboardingContent = styled(DialogContent)(({ theme }) => ({
-	padding: "20px 28px",
-	display: "flex",
-	flexDirection: "column",
-	gap: theme.spacing(3),
-	backgroundColor: theme.palette.background.default,
-	animation: `${fadeIn} 0.5s ease-out`,
-}));
-
-/**
- * Onboarding dialog actions
- */
-export const OnboardingActions = styled(DialogActions)(({ theme }) => ({
-	padding: "16px 28px 24px 28px",
-	justifyContent: "space-between",
-	gap: 16,
-	borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-	background: `linear-gradient(to right, ${alpha(theme.palette.primary.main, 0.05)}, ${alpha(theme.palette.background.default, 0.8)}, ${alpha(theme.palette.primary.main, 0.05)})`,
-}));
 
 /**
  * Primary action button
