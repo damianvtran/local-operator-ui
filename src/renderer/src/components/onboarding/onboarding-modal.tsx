@@ -9,10 +9,10 @@ import { faCheck } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, Typography } from "@mui/material";
 import {
-	BaseDialog,
 	PrimaryButton,
 	SecondaryButton,
 } from "@renderer/components/common/base-dialog";
+import { OnboardingDialog } from "./onboarding-dialog";
 import {
 	OnboardingStep,
 	useOnboardingStore,
@@ -263,19 +263,16 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 	);
 
 	return (
-		<BaseDialog
+		<OnboardingDialog
 			open={open}
-			onClose={() => {}} // No close handler as this is a required flow
 			title={dialogTitle}
 			actions={dialogActions}
-			maxWidth="md"
-			fullWidth
 			dialogProps={{
 				disableEscapeKeyDown: true,
 			}}
 		>
 			{renderStepIndicators()}
 			{stepContent}
-		</BaseDialog>
+		</OnboardingDialog>
 	);
 };

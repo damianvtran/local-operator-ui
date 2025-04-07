@@ -129,18 +129,9 @@ export const StepDot = styled(Box, {
 /**
  * Section container
  */
-export const SectionContainer = styled(Paper)(({ theme }) => ({
-	padding: theme.spacing(3.5),
-	borderRadius: 12,
-	boxShadow: `0 4px 20px ${alpha(theme.palette.common.black, 0.08)}`,
-	border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
-	background: `linear-gradient(135deg, ${alpha(theme.palette.background.paper, 0.95)} 0%, ${alpha(theme.palette.background.paper, 0.85)} 100%)`,
+export const SectionContainer = styled("div")(() => ({
 	animation: `${fadeIn} 0.5s ease-out`,
 	transition: "transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out",
-	"&:hover": {
-		boxShadow: `0 6px 25px ${alpha(theme.palette.primary.main, 0.15)}`,
-		transform: "translateY(-2px)",
-	},
 }));
 
 /**
