@@ -63,16 +63,6 @@ export const ModelCredentialStep: FC = () => {
 	const updateCredentialMutation = useUpdateCredential();
 	const { refreshModels } = useModels();
 
-	// Set the credential value if it already exists
-	useEffect(() => {
-		// Only show the "already set" error if we haven't just saved successfully
-		if (credentialsData?.keys.includes(selectedCredential) && !saveSuccess) {
-			setError("This credential is already set");
-		} else {
-			setError("");
-		}
-	}, [selectedCredential, credentialsData, saveSuccess]);
-
 	// Handle credential selection change
 	const handleCredentialChange = (event: SelectChangeEvent) => {
 		setSelectedCredential(event.target.value);
