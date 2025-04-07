@@ -39,6 +39,7 @@ type ChatProps = Record<string, never>;
  * Uses React Router for navigation and state management
  */
 export const ChatPage: FC<ChatProps> = () => {
+	const didAutoScrollRef = React.useRef(false);
 	// Get agent ID from URL parameters using custom hook
 	const { agentId, navigateToAgent, clearAgentId } = useAgentRouteParam();
 	const navigate = useNavigate();
@@ -161,6 +162,53 @@ export const ChatPage: FC<ChatProps> = () => {
 		messages.length,
 		forceScrollToBottom,
 		getMessages,
+	]);
+
+	// Reset auto-scroll flag when conversation changes
+	// biome-ignore lint/correctness/useExhaustiveDependencies: only trigger on agentId change
+	useEffect(() => {
+		didAutoScrollRef.current = false;
+	}, [agentId]);
+
+	// Scroll to bottom once after all messages load on conversation switch
+	useEffect(() => {
+		if (
+			!didAutoScrollRef.current &&
+			agentId &&
+			!isLoadingMessages &&
+			messages.length > 0
+		) {
+			const container = messagesContainerRef.current;
+			if (!container) return;
+
+			let lastScrollHeight = container.scrollHeight;
+			let stableCounter = 0;
+			const maxStableCount = 3; // Require 3 consecutive stable checks (~300ms)
+			const interval = setInterval(() => {
+				const currentScrollHeight = container.scrollHeight;
+				if (currentScrollHeight !== lastScrollHeight) {
+					lastScrollHeight = currentScrollHeight;
+					stableCounter = 0; // Reset counter if height changes
+				} else {
+					stableCounter++;
+				}
+
+				if (stableCounter >= maxStableCount) {
+					clearInterval(interval);
+					forceScrollToBottom();
+					didAutoScrollRef.current = true;
+				}
+			}, 100); // Check every 100ms
+
+			// Safety timeout to stop checking after 5 seconds
+			setTimeout(() => clearInterval(interval), 5000);
+		}
+	}, [
+		agentId,
+		isLoadingMessages,
+		messages.length,
+		forceScrollToBottom,
+		messagesContainerRef,
 	]);
 
 	// Check for active jobs on initial page load
