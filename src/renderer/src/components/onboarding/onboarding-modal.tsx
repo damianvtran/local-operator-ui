@@ -7,9 +7,8 @@
 
 import { faCheck } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Box, Typography } from "@mui/material";
+import { Box, Tooltip, Typography } from "@mui/material";
 import {
-	BaseDialog,
 	PrimaryButton,
 	SecondaryButton,
 } from "@renderer/components/common/base-dialog";
@@ -17,9 +16,10 @@ import {
 	OnboardingStep,
 	useOnboardingStore,
 } from "@renderer/store/onboarding-store";
-import type { FC, ReactNode } from "react";
-import { useCallback, useMemo } from "react";
+import type { FC } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { OnboardingDialog } from "./onboarding-dialog";
 import {
 	CongratulationsContainer,
 	CongratulationsIcon,
@@ -56,23 +56,59 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 		useOnboardingStore();
 	const navigate = useNavigate();
 
+	const steps = useMemo(
+		() => [
+			OnboardingStep.WELCOME,
+			OnboardingStep.USER_PROFILE,
+			OnboardingStep.MODEL_CREDENTIAL,
+			OnboardingStep.SEARCH_API,
+			OnboardingStep.DEFAULT_MODEL,
+			OnboardingStep.CREATE_AGENT,
+			OnboardingStep.CONGRATULATIONS,
+		],
+		[],
+	);
+
+	const stepTitles: Record<OnboardingStep, string> = {
+		[OnboardingStep.WELCOME]: "Welcome to Local Operator",
+		[OnboardingStep.USER_PROFILE]: "Set Up Your Profile",
+		[OnboardingStep.MODEL_CREDENTIAL]: "Add Model Provider Credentials",
+		[OnboardingStep.SEARCH_API]: "Enable Web Search (Recommended)",
+		[OnboardingStep.DEFAULT_MODEL]: "Choose Your Default Model",
+		[OnboardingStep.CREATE_AGENT]: "Create Your First Agent",
+		[OnboardingStep.CONGRATULATIONS]: "🎉 Setup Complete!",
+	};
+
+	const [visitedSteps, setVisitedSteps] = useState<Set<OnboardingStep>>(
+		new Set([currentStep]),
+	);
+
+	useEffect(() => {
+		setVisitedSteps((prev) => {
+			if (prev.has(currentStep)) return prev;
+			const updated = new Set(prev);
+			updated.add(currentStep);
+			return updated;
+		});
+	}, [currentStep]);
+
 	/**
 	 * Get the title for the current step
 	 */
 	const stepTitle = useMemo(() => {
 		switch (currentStep) {
 			case OnboardingStep.WELCOME:
-				return "👋 Welcome to Local Operator";
+				return "Welcome to Local Operator";
 			case OnboardingStep.USER_PROFILE:
-				return "👤 Set Up Your Profile";
+				return "Set Up Your Profile";
 			case OnboardingStep.MODEL_CREDENTIAL:
-				return "🔑 Add Model Provider Credential";
+				return "Add Model Provider Credentials";
 			case OnboardingStep.SEARCH_API:
-				return "🔍 Enable Web Search (Optional)";
+				return "Enable Web Search (Recommended)";
 			case OnboardingStep.DEFAULT_MODEL:
-				return "🤖 Choose Your Default Model";
+				return "Choose Your Default Model";
 			case OnboardingStep.CREATE_AGENT:
-				return "✨ Create Your First Agent";
+				return "Create Your First Agent";
 			case OnboardingStep.CONGRATULATIONS:
 				return "🎉 Setup Complete!";
 			default:
@@ -191,13 +227,17 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 	const handleSkip = useCallback(() => {
 		if (currentStep === OnboardingStep.SEARCH_API) {
 			setCurrentStep(OnboardingStep.DEFAULT_MODEL);
+		} else if (currentStep === OnboardingStep.CREATE_AGENT) {
+			setCurrentStep(OnboardingStep.CONGRATULATIONS);
 		}
 	}, [currentStep, setCurrentStep]);
 
 	/**
 	 * Determine if the current step can be skipped
 	 */
-	const canSkip = currentStep === OnboardingStep.SEARCH_API;
+	const canSkip =
+		currentStep === OnboardingStep.SEARCH_API ||
+		currentStep === OnboardingStep.CREATE_AGENT;
 
 	/**
 	 * Determine if the current step can go back
@@ -214,28 +254,10 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 			? "🚀 Get Started"
 			: "Next →";
 
-	/**
-	 * Render the step indicators
-	 */
-	const renderStepIndicators = (): ReactNode => {
-		const steps = [
-			OnboardingStep.WELCOME,
-			OnboardingStep.USER_PROFILE,
-			OnboardingStep.MODEL_CREDENTIAL,
-			OnboardingStep.SEARCH_API,
-			OnboardingStep.DEFAULT_MODEL,
-			OnboardingStep.CREATE_AGENT,
-			OnboardingStep.CONGRATULATIONS,
-		];
-
-		return (
-			<StepIndicatorContainer>
-				{steps.map((step) => (
-					<StepDot key={step} active={currentStep === step} />
-				))}
-			</StepIndicatorContainer>
-		);
-	};
+	// Check if an agent has been created during onboarding
+	const hasCreatedAgent = Boolean(
+		sessionStorage.getItem("onboarding_created_agent_id"),
+	);
 
 	// Create dialog title with step title
 	const dialogTitle = (
@@ -257,25 +279,53 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 
 			<Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
 				{canSkip && <SkipButton onClick={handleSkip}>Skip</SkipButton>}
-				<PrimaryButton onClick={handleNext}>{nextButtonText}</PrimaryButton>
+				<PrimaryButton
+					onClick={handleNext}
+					disabled={
+						currentStep === OnboardingStep.CREATE_AGENT && !hasCreatedAgent
+					}
+				>
+					{nextButtonText}
+				</PrimaryButton>
 			</Box>
 		</>
 	);
 
+	const stepIndicators = (
+		<StepIndicatorContainer>
+			{steps.map((step) => {
+				const isActive = currentStep === step;
+				const isVisited = visitedSteps.has(step);
+				const canNavigate = isVisited && step !== currentStep;
+
+				return (
+					<Tooltip key={step} title={stepTitles[step]} arrow>
+						<Box
+							onClick={() => {
+								if (canNavigate) {
+									setCurrentStep(step);
+								}
+							}}
+						>
+							<StepDot active={isActive} visited={isVisited} />
+						</Box>
+					</Tooltip>
+				);
+			})}
+		</StepIndicatorContainer>
+	);
+
 	return (
-		<BaseDialog
+		<OnboardingDialog
 			open={open}
-			onClose={() => {}} // No close handler as this is a required flow
 			title={dialogTitle}
+			stepIndicators={stepIndicators}
 			actions={dialogActions}
-			maxWidth="md"
-			fullWidth
 			dialogProps={{
 				disableEscapeKeyDown: true,
 			}}
 		>
-			{renderStepIndicators()}
 			{stepContent}
-		</BaseDialog>
+		</OnboardingDialog>
 	);
 };

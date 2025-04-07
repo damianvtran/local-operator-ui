@@ -14,7 +14,6 @@ import {
 	FormContainer,
 	SectionContainer,
 	SectionDescription,
-	SectionTitle,
 } from "../onboarding-styled";
 
 /**
@@ -58,7 +57,6 @@ export const UserProfileStep: FC = () => {
 
 	return (
 		<SectionContainer>
-			<SectionTitle>Your Profile Information</SectionTitle>
 			<SectionDescription>
 				<EmojiContainer>🔒</EmojiContainer> This information is stored locally
 				and is only used to personalize your AI experience. It's never shared
@@ -78,7 +76,7 @@ export const UserProfileStep: FC = () => {
 							nameError ||
 							"This will be used to create a personalized AI experience"
 						}
-						placeholder="Enter your awesome name"
+						placeholder="Enter your name"
 						required
 						InputProps={{
 							startAdornment: (

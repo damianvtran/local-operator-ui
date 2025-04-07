@@ -28,9 +28,8 @@ export const WelcomeStep: FC = () => {
 					lineHeight: 1.6,
 				}}
 			>
-				<EmojiContainer>🚀</EmojiContainer> Welcome to Local Operator! We're
-				thrilled to have you here! Let's set up your AI environment so you can
-				start creating amazing things with AI agents.
+				Let's set up your AI environment so you can start creating amazing
+				things with AI agents!
 			</Typography>
 
 			<Typography

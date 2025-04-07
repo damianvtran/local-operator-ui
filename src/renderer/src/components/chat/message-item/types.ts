@@ -9,6 +9,7 @@ import type { Message } from "../types";
  */
 export type MessageItemProps = {
 	message: Message;
+	isLastMessage: boolean;
 	onMessageComplete?: () => void;
 };
 

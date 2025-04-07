@@ -1,32 +1,20 @@
 {
-  "extends": "@electron-toolkit/tsconfig/tsconfig.web.json",
-  "include": [
-    "src/renderer/src/env.d.ts",
-    "src/renderer/src/**/*",
-    "src/preload/*.d.ts"
-  ],
-  "compilerOptions": {
-    "composite": true,
-    "baseUrl": ".",
-    "paths": {
-      "@renderer/*": [
-        "src/renderer/src/*"
-      ],
-      "@components/*": [
-        "src/renderer/src/components/*"
-      ],
-      "@assets/*": [
-        "src/renderer/src/assets/*"
-      ],
-      "@hooks/*": [
-        "src/renderer/src/hooks/*"
-      ],
-      "@api/*": [
-        "src/renderer/src/api/*"
-      ],
-      "@store/*": [
-        "src/renderer/src/store/*"
-      ]
-    }
-  }
+	"extends": "@electron-toolkit/tsconfig/tsconfig.web.json",
+	"include": [
+		"src/renderer/src/env.d.ts",
+		"src/renderer/src/**/*",
+		"src/preload/*.d.ts"
+	],
+	"compilerOptions": {
+		"composite": false,
+		"baseUrl": ".",
+		"paths": {
+			"@renderer/*": ["src/renderer/src/*"],
+			"@components/*": ["src/renderer/src/components/*"],
+			"@assets/*": ["src/renderer/src/assets/*"],
+			"@hooks/*": ["src/renderer/src/hooks/*"],
+			"@api/*": ["src/renderer/src/api/*"],
+			"@store/*": ["src/renderer/src/store/*"]
+		}
+	}
 }

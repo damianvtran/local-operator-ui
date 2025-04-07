@@ -397,7 +397,7 @@ export const MessageInput: FC<MessageInputProps> = ({
 
 				<StyledTextField
 					fullWidth
-					placeholder={isInputDisabled ? "⌛ Agent is busy" : "Ask me for help"}
+					placeholder={isInputDisabled ? "Agent is busy" : "Ask me for help"}
 					value={newMessage}
 					onChange={(e) => setNewMessage(e.target.value)}
 					onKeyDown={handleKeyDown}
