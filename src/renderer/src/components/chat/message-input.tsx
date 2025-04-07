@@ -13,7 +13,6 @@ import {
 	Typography,
 	alpha,
 	darken,
-	CircularProgress,
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import { AttachmentsPreview } from "@renderer/components/chat/attachments-preview";
@@ -419,7 +418,6 @@ export const MessageInput: FC<MessageInputProps> = ({
 									ml: 0.5,
 								}}
 							>
-								<CircularProgress size={16} thickness={5} />
 								<Typography
 									variant="body2"
 									color="text.secondary"
