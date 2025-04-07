@@ -118,7 +118,7 @@ const getAttachmentUrl = (
  * Only re-renders when the message content changes
  */
 export const MessageItem: FC<MessageItemProps> = memo(
-	({ message, onMessageComplete }) => {
+	({ message, onMessageComplete, isLastMessage }) => {
 		// Hide messages with action DONE, execution_type "action", and task_classification "conversation"
 		// These are redundant to the response execution_type messages
 		// Also hide messages with no content (no message, files, code, stdout, stderr, or logging)
@@ -209,6 +209,7 @@ export const MessageItem: FC<MessageItemProps> = memo(
 							content={message.message}
 							message={message}
 							onMessageComplete={onMessageComplete}
+							isLastMessage={isLastMessage}
 						>
 							{/* Render image attachments if any */}
 							{message.files && message.files.length > 0 && (
@@ -332,6 +333,7 @@ export const MessageItem: FC<MessageItemProps> = memo(
 							content={message.message}
 							message={message}
 							onMessageComplete={onMessageComplete}
+							isLastMessage={isLastMessage}
 						>
 							{/* Render image attachments if any */}
 							{message.files && message.files.length > 0 && (

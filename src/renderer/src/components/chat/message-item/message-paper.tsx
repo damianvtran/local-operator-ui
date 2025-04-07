@@ -34,6 +34,7 @@ type MessagePaperProps = {
 	content?: string;
 	message?: Message;
 	onMessageComplete?: () => void;
+	isLastMessage: boolean;
 };
 
 /**
@@ -48,6 +49,7 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 	content,
 	message,
 	onMessageComplete,
+	isLastMessage,
 }) => {
 	const theme = useTheme();
 
@@ -121,33 +123,40 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 		return children;
 	}, [children]);
 
-	// Use the scroll to bottom hook to automatically scroll while streaming
-	const {
-		ref: scrollRef,
-		forceScrollToBottom,
-		isNearBottom,
-	} = useScrollToBottom(
-		// Dependencies that should trigger scroll evaluation
-		[content, isStreamable, message?.is_complete],
-		250, // Threshold for "near bottom" in pixels
-		50, // Threshold for showing scroll button
-	);
+	let scrollRef: React.RefObject<HTMLDivElement> | null = null;
+	let forceScrollToBottom = () => {};
+	let isNearBottom = false;
 
-	// Periodically scroll to bottom during streaming if user is near bottom
-	useEffect(() => {
-		if (!isStreamable || !message) return;
+	if (isLastMessage) {
+		// Use the scroll to bottom hook to automatically scroll while streaming
+		const scrollHook = useScrollToBottom(
+			// Dependencies that should trigger scroll evaluation
+			[content, isStreamable, message?.is_complete],
+			250, // Threshold for "near bottom" in pixels
+			50, // Threshold for showing scroll button
+		);
 
-		// Set up interval to check and scroll if needed during streaming
-		const scrollInterval = setInterval(() => {
-			if (isNearBottom) {
-				forceScrollToBottom();
-			}
-		}, 350); // Check every 350ms while streaming
+		scrollRef = scrollHook.ref;
+		forceScrollToBottom = scrollHook.forceScrollToBottom;
+		isNearBottom = scrollHook.isNearBottom;
 
-		return () => {
-			clearInterval(scrollInterval);
-		};
-	}, [isStreamable, message, forceScrollToBottom, isNearBottom]);
+		// Periodically scroll to bottom during streaming if user is near bottom
+		useEffect(() => {
+			if (!isStreamable || !message) return;
+
+			// Set up interval to check and scroll if needed during streaming
+			const scrollInterval = setInterval(() => {
+				if (isNearBottom) {
+					forceScrollToBottom();
+				}
+			}, 350); // Check every 350ms while streaming
+
+			return () => {
+				clearInterval(scrollInterval);
+			};
+			// biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
+		}, [isStreamable, message, forceScrollToBottom, isNearBottom]);
+	}
 
 	// Memoize the streaming message component to prevent unnecessary re-renders
 	const streamingMessageComponent = useMemo(() => {
