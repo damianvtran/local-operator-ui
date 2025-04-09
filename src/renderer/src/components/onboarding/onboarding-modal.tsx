@@ -62,12 +62,22 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 	// Check if the Radient Pass onboarding feature flag is enabled
 	const isRadientPassEnabled = useFeatureFlagEnabled("radient-pass-onboarding");
 
-	// Define the steps based on the feature flag
+	// Define the steps based on the feature flag and current step
 	const steps = useMemo(() => {
+		// If Radient Pass is enabled and we're on the choice or signin step,
+		// don't show any steps since we don't know which path the user will choose
+		if (
+			isRadientPassEnabled &&
+			(currentStep === OnboardingStep.RADIENT_CHOICE ||
+				currentStep === OnboardingStep.RADIENT_SIGNIN)
+		) {
+			return [];
+		}
+
+		// If Radient Pass is enabled and we're past the signin step,
+		// we're on the DIY path (the Radient Pass path would have completed onboarding)
 		if (isRadientPassEnabled) {
 			return [
-				OnboardingStep.RADIENT_CHOICE,
-				OnboardingStep.RADIENT_SIGNIN,
 				OnboardingStep.WELCOME,
 				OnboardingStep.USER_PROFILE,
 				OnboardingStep.MODEL_CREDENTIAL,
@@ -78,6 +88,7 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 			];
 		}
 
+		// Default path (no Radient Pass feature flag)
 		return [
 			OnboardingStep.WELCOME,
 			OnboardingStep.USER_PROFILE,
@@ -87,7 +98,7 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 			OnboardingStep.CREATE_AGENT,
 			OnboardingStep.CONGRATULATIONS,
 		];
-	}, [isRadientPassEnabled]);
+	}, [isRadientPassEnabled, currentStep]);
 
 	// Set the initial step based on the feature flag
 	useEffect(() => {
