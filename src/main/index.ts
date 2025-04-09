@@ -9,12 +9,14 @@ import {
 	nativeImage,
 	shell,
 } from "electron";
+import { PostHog } from "posthog-node";
 import icon from "../../resources/icon.png?asset";
 import {
 	BackendInstaller,
 	BackendServiceManager,
 	LocalOperatorStartupMode,
 } from "./backend";
+import { backendConfig } from "./backend/config";
 import { LogFileType, logger } from "./backend/logger";
 import { UpdateService } from "./update-service";
 
@@ -25,6 +27,12 @@ const image = nativeImage.createFromPath(icon);
 if (process.platform === "darwin" && app.dock) {
 	app.dock.setIcon(image);
 }
+
+// Initialize PostHog
+const posthogClient = new PostHog(backendConfig.VITE_PUBLIC_POSTHOG_KEY, {
+	host: backendConfig.VITE_PUBLIC_POSTHOG_HOST,
+	enableExceptionAutocapture: true,
+});
 
 // Create application menu without developer tools in production
 function createApplicationMenu(): void {
@@ -657,6 +665,8 @@ process.on("exit", () => {
 	} catch (error) {
 		logger.error("Error in exit handler", LogFileType.BACKEND, error);
 	}
+
+	posthogClient.shutdown();
 });
 
 // Handle uncaught exceptions to ensure backend is terminated

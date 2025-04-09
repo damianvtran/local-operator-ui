@@ -22,6 +22,18 @@ const envSchema = z.object({
 		.enum(["debug", "info", "warn", "error"])
 		.optional()
 		.default("info"),
+
+	// Analytics
+	VITE_PUBLIC_POSTHOG_KEY: z
+		.string()
+		.optional()
+		.default("phc_u6n9doAtCUbpFbydIqzupCxqCaGUO4SiHMEU5ESvQRL"),
+
+	VITE_PUBLIC_POSTHOG_HOST: z
+		.string()
+		.url("PostHog host must be a valid URL")
+		.optional()
+		.default("https://us.i.posthog.com"),
 });
 
 /**
