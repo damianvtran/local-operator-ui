@@ -1,20 +1,20 @@
 import CssBaseline from "@mui/material/CssBaseline";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { PostHogProvider } from "posthog-js/react";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+import { PostHogProvider } from "posthog-js/react";
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { HashRouter } from "react-router-dom";
 import "react-toastify/dist/ReactToastify.css";
 import { ThemedToastContainer } from "./components/common";
 import "./assets/fonts/fonts.css";
+import type { PostHogConfig } from "posthog-js";
 import { queryClient } from "./api/query-client";
 import App from "./app";
 import { ErrorBoundary } from "./components/common/error-boundary";
+import { config } from "./config";
 import { ThemeProvider } from "./themes/theme-provider";
 import { isDevelopmentMode } from "./utils/env-utils";
-import { config } from "./config";
-import type { PostHogConfig } from "posthog-js";
 
 const posthogOptions: Partial<PostHogConfig> = {
 	api_host: config.VITE_PUBLIC_POSTHOG_HOST,
