@@ -6,6 +6,8 @@
 
 export * from "./onboarding-modal";
 export * from "./onboarding-styled";
+export * from "./steps/radient-choice-step";
+export * from "./steps/radient-signin-step";
 export * from "./steps/welcome-step";
 export * from "./steps/user-profile-step";
 export * from "./steps/model-credential-step";

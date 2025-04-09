@@ -16,6 +16,7 @@ import {
 	OnboardingStep,
 	useOnboardingStore,
 } from "@renderer/store/onboarding-store";
+import { useFeatureFlagEnabled } from "posthog-js/react";
 import type { FC } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -32,6 +33,8 @@ import {
 import { CreateAgentStep } from "./steps/create-agent-step";
 import { DefaultModelStep } from "./steps/default-model-step";
 import { ModelCredentialStep } from "./steps/model-credential-step";
+import { RadientChoiceStep } from "./steps/radient-choice-step";
+import { RadientSignInStep } from "./steps/radient-signin-step";
 import { SearchApiStep } from "./steps/search-api-step";
 import { UserProfileStep } from "./steps/user-profile-step";
 import { WelcomeStep } from "./steps/welcome-step";
@@ -56,8 +59,26 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 		useOnboardingStore();
 	const navigate = useNavigate();
 
-	const steps = useMemo(
-		() => [
+	// Check if the Radient Pass onboarding feature flag is enabled
+	const isRadientPassEnabled = useFeatureFlagEnabled("radient-pass-onboarding");
+
+	// Define the steps based on the feature flag
+	const steps = useMemo(() => {
+		if (isRadientPassEnabled) {
+			return [
+				OnboardingStep.RADIENT_CHOICE,
+				OnboardingStep.RADIENT_SIGNIN,
+				OnboardingStep.WELCOME,
+				OnboardingStep.USER_PROFILE,
+				OnboardingStep.MODEL_CREDENTIAL,
+				OnboardingStep.SEARCH_API,
+				OnboardingStep.DEFAULT_MODEL,
+				OnboardingStep.CREATE_AGENT,
+				OnboardingStep.CONGRATULATIONS,
+			];
+		}
+
+		return [
 			OnboardingStep.WELCOME,
 			OnboardingStep.USER_PROFILE,
 			OnboardingStep.MODEL_CREDENTIAL,
@@ -65,11 +86,19 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 			OnboardingStep.DEFAULT_MODEL,
 			OnboardingStep.CREATE_AGENT,
 			OnboardingStep.CONGRATULATIONS,
-		],
-		[],
-	);
+		];
+	}, [isRadientPassEnabled]);
+
+	// Set the initial step based on the feature flag
+	useEffect(() => {
+		if (isRadientPassEnabled && currentStep === OnboardingStep.WELCOME) {
+			setCurrentStep(OnboardingStep.RADIENT_CHOICE);
+		}
+	}, [isRadientPassEnabled, currentStep, setCurrentStep]);
 
 	const stepTitles: Record<OnboardingStep, string> = {
+		[OnboardingStep.RADIENT_CHOICE]: "Choose Your Setup Option",
+		[OnboardingStep.RADIENT_SIGNIN]: "Sign in with Radient Pass",
 		[OnboardingStep.WELCOME]: "Welcome to Local Operator",
 		[OnboardingStep.USER_PROFILE]: "Set Up Your Profile",
 		[OnboardingStep.MODEL_CREDENTIAL]: "Add Model Provider Credentials",
@@ -97,6 +126,10 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 	 */
 	const stepTitle = useMemo(() => {
 		switch (currentStep) {
+			case OnboardingStep.RADIENT_CHOICE:
+				return "Welcome to Local Operator";
+			case OnboardingStep.RADIENT_SIGNIN:
+				return "Sign in with Radient Pass";
 			case OnboardingStep.WELCOME:
 				return "Welcome to Local Operator";
 			case OnboardingStep.USER_PROFILE:
@@ -121,6 +154,10 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 	 */
 	const stepContent = useMemo(() => {
 		switch (currentStep) {
+			case OnboardingStep.RADIENT_CHOICE:
+				return <RadientChoiceStep />;
+			case OnboardingStep.RADIENT_SIGNIN:
+				return <RadientSignInStep />;
 			case OnboardingStep.WELCOME:
 				return <WelcomeStep />;
 			case OnboardingStep.USER_PROFILE:
@@ -158,6 +195,14 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 	 */
 	const handleNext = useCallback(() => {
 		switch (currentStep) {
+			case OnboardingStep.RADIENT_CHOICE:
+				setCurrentStep(OnboardingStep.RADIENT_SIGNIN);
+				break;
+			case OnboardingStep.RADIENT_SIGNIN:
+				// Skip to congratulations since this is a stub for now
+				completeOnboarding();
+				navigate("/chat");
+				break;
 			case OnboardingStep.WELCOME:
 				setCurrentStep(OnboardingStep.USER_PROFILE);
 				break;
@@ -201,6 +246,9 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 	 */
 	const handleBack = useCallback(() => {
 		switch (currentStep) {
+			case OnboardingStep.RADIENT_SIGNIN:
+				setCurrentStep(OnboardingStep.RADIENT_CHOICE);
+				break;
 			case OnboardingStep.USER_PROFILE:
 				setCurrentStep(OnboardingStep.WELCOME);
 				break;
@@ -241,10 +289,22 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 
 	/**
 	 * Determine if the current step can go back
+	 *
+	 * Users cannot go back from the first step, which depends on whether
+	 * the Radient Pass feature flag is enabled.
 	 */
-	const canGoBack =
-		currentStep !== OnboardingStep.WELCOME &&
-		currentStep !== OnboardingStep.CONGRATULATIONS;
+	const canGoBack = useMemo(() => {
+		if (isRadientPassEnabled) {
+			return (
+				currentStep !== OnboardingStep.RADIENT_CHOICE &&
+				currentStep !== OnboardingStep.CONGRATULATIONS
+			);
+		}
+		return (
+			currentStep !== OnboardingStep.WELCOME &&
+			currentStep !== OnboardingStep.CONGRATULATIONS
+		);
+	}, [currentStep, isRadientPassEnabled]);
 
 	/**
 	 * Get the text for the next button

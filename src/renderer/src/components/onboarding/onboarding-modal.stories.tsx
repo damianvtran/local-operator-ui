@@ -4,6 +4,8 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import React from "react";
 import { MemoryRouter } from "react-router-dom";
+import { PostHogProvider } from "posthog-js/react";
+import { config } from "../../config";
 import {
 	OnboardingStep,
 	useOnboardingStore,
@@ -33,7 +35,6 @@ const meta: Meta<typeof OnboardingModal> = {
 	},
 	decorators: [
 		(Story) => {
-			// Reset onboarding store and set to welcome step before rendering
 			const state = useOnboardingStore.getState();
 			state.resetOnboarding();
 			state.setCurrentStep(OnboardingStep.WELCOME);
@@ -43,10 +44,19 @@ const meta: Meta<typeof OnboardingModal> = {
 			return (
 				<QueryClientProvider client={queryClient}>
 					<MemoryRouter>
-						<ThemeProvider theme={theme}>
-							<CssBaseline />
-							<Story />
-						</ThemeProvider>
+						<PostHogProvider
+							apiKey={config.VITE_PUBLIC_POSTHOG_KEY}
+							options={{
+								api_host: config.VITE_PUBLIC_POSTHOG_HOST,
+								autocapture: false,
+								capture_pageview: false,
+							}}
+						>
+							<ThemeProvider theme={theme}>
+								<CssBaseline />
+								<Story />
+							</ThemeProvider>
+						</PostHogProvider>
 					</MemoryRouter>
 				</QueryClientProvider>
 			);
