@@ -24,9 +24,8 @@ const ChoiceCard = styled(Box, {
 	display: "flex",
 	flexDirection: "column",
 	alignItems: "center",
-	justifyContent: "center",
+	justifyContent: "flex-start",
 	padding: theme.spacing(4),
-	paddingTop: theme.spacing(3),
 	borderRadius: 12,
 	backgroundColor: selected
 		? alpha(theme.palette.primary.main, 0.05)
@@ -83,6 +82,7 @@ const RadientPassText = styled(Typography)(({ theme }) => ({
 const FreeText = styled(Typography)(({ theme }) => ({
 	fontSize: "1.25rem",
 	fontWeight: 700,
+	marginBottom: theme.spacing(1),
 	color: theme.palette.text.primary,
 	textAlign: "center",
 }));
@@ -168,17 +168,7 @@ export const RadientChoiceStep: FC = () => {
 									assortment of models
 								</span>
 								, and more. Get started with one click, no credit card required.
-								No rate limits, and everything you need in one place. Start
-								with&nbsp;
-								<span
-									style={{
-										fontWeight: 700,
-										color: radientTheme.palette.primary.light,
-									}}
-								>
-									$1 USD
-								</span>{" "}
-								and unlock more free credits as you use it more.
+								No rate limits, and everything you need in one place.
 							</CardSubtitle>
 						</ChoiceCard>
 					</Grid>
