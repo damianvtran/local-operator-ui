@@ -9,16 +9,16 @@ import {
 	nativeImage,
 	shell,
 } from "electron";
+import { PostHog } from "posthog-node";
 import icon from "../../resources/icon.png?asset";
 import {
 	BackendInstaller,
 	BackendServiceManager,
 	LocalOperatorStartupMode,
 } from "./backend";
+import { backendConfig } from "./backend/config";
 import { LogFileType, logger } from "./backend/logger";
 import { UpdateService } from "./update-service";
-import { backendConfig } from "./backend/config";
-import { PostHog } from "posthog-node";
 
 // Set application name
 app.setName("Local Operator");
