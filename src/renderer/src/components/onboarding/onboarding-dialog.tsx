@@ -110,7 +110,7 @@ const ContentContainer = styled("div")(() => ({
 	width: "100%",
 	height: "100%",
 	maxWidth: "780px",
-	maxHeight: "680px",
+	maxHeight: "780px",
 	boxSizing: "border-box",
 	display: "flex",
 	flexDirection: "column",

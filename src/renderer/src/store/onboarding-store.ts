@@ -12,6 +12,8 @@ import { persist } from "zustand/middleware";
  * Onboarding steps enum
  */
 export enum OnboardingStep {
+	RADIENT_CHOICE = "radient_choice",
+	RADIENT_SIGNIN = "radient_signin",
 	WELCOME = "welcome",
 	USER_PROFILE = "user_profile",
 	MODEL_CREDENTIAL = "model_credential",
