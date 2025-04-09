@@ -25,10 +25,8 @@ const ChoiceCard = styled(Box, {
 	flexDirection: "column",
 	alignItems: "center",
 	justifyContent: "center",
+	padding: theme.spacing(4),
 	paddingTop: theme.spacing(3),
-	paddingBottom: theme.spacing(3),
-	paddingLeft: theme.spacing(4),
-	paddingRight: theme.spacing(4),
 	borderRadius: 12,
 	backgroundColor: selected
 		? alpha(theme.palette.primary.main, 0.05)
@@ -61,7 +59,6 @@ const CardSubtitle = styled(Typography)(({ theme }) => ({
 	fontSize: "0.95rem",
 	color: theme.palette.text.secondary,
 	textAlign: "center",
-	marginBottom: theme.spacing(3),
 }));
 
 const CardIcon = styled(Box)(({ theme }) => ({
@@ -125,7 +122,7 @@ export const RadientChoiceStep: FC = () => {
 					mb: 3,
 				}}
 			>
-				Choose how you'd like to set up your AI environment:
+				Choose how you'd like to get started:
 			</Typography>
 
 			<SectionContainer>
@@ -160,10 +157,28 @@ export const RadientChoiceStep: FC = () => {
 								<RadientPassText>Radient Pass</RadientPassText>
 							</CardTitle>
 							<CardSubtitle>
-								Batteries included with agentic web search, image generation,
-								site crawling, and more. Get started with one click, no credit
-								card required. No rate limits, and everything you need in one
-								place.
+								Batteries included with{" "}
+								<span
+									style={{
+										fontWeight: 700,
+										color: radientTheme.palette.primary.light,
+									}}
+								>
+									agentic web search, image generation, site crawling, an
+									assortment of models
+								</span>
+								, and more. Get started with one click, no credit card required.
+								No rate limits, and everything you need in one place. Start
+								with&nbsp;
+								<span
+									style={{
+										fontWeight: 700,
+										color: radientTheme.palette.primary.light,
+									}}
+								>
+									$1 USD
+								</span>{" "}
+								and unlock more free credits as you use it more.
 							</CardSubtitle>
 						</ChoiceCard>
 					</Grid>
