@@ -12,6 +12,7 @@ import { useOnboardingStore } from "@renderer/store/onboarding-store";
 import type { FC } from "react";
 import { useCallback } from "react";
 import { SectionContainer, SectionDescription } from "../onboarding-styled";
+import { radientTheme } from "@renderer/themes/radient-theme";
 
 // Styled components for the sign-in buttons
 const SignInButton = styled(Button)(({ theme }) => ({
@@ -101,13 +102,28 @@ export const RadientSignInStep: FC = () => {
 					lineHeight: 1.6,
 				}}
 			>
-				Sign in to set up your Radient Pass account
+				Sign in to set up your Radient account
 			</Typography>
 
 			<SectionDescription sx={{ mb: 4 }}>
 				Choose your preferred sign-in method to get started with Radient Pass.
 				This will give you access to web search, image generation, site
 				crawling, and more.
+				<br />
+				<br />
+				Start with{" "}
+				<span
+					style={{ fontWeight: 600, color: radientTheme.palette.primary.light }}
+				>
+					$1 USD
+				</span>{" "}
+				of free credit, and unlock{" "}
+				<span
+					style={{ fontWeight: 600, color: radientTheme.palette.primary.light }}
+				>
+					$5 USD
+				</span>{" "}
+				more with your first payment.
 			</SectionDescription>
 
 			<SectionContainer>

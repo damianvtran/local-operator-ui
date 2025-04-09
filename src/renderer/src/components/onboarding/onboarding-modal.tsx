@@ -109,7 +109,7 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 
 	const stepTitles: Record<OnboardingStep, string> = {
 		[OnboardingStep.RADIENT_CHOICE]: "Choose Your Setup Option",
-		[OnboardingStep.RADIENT_SIGNIN]: "Sign in with Radient Pass",
+		[OnboardingStep.RADIENT_SIGNIN]: "Sign in with a Radient Pass",
 		[OnboardingStep.WELCOME]: "Welcome to Local Operator",
 		[OnboardingStep.USER_PROFILE]: "Set Up Your Profile",
 		[OnboardingStep.MODEL_CREDENTIAL]: "Add Model Provider Credentials",
@@ -140,7 +140,7 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 			case OnboardingStep.RADIENT_CHOICE:
 				return "Welcome to Local Operator";
 			case OnboardingStep.RADIENT_SIGNIN:
-				return "Sign in with Radient Pass";
+				return "Sign in with a Radient Pass";
 			case OnboardingStep.WELCOME:
 				return "Welcome to Local Operator";
 			case OnboardingStep.USER_PROFILE:
