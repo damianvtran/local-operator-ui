@@ -1,6 +1,7 @@
 import {
 	faCode,
 	faFire,
+	faHexagonNodes,
 	faIcicles,
 	faLeaf,
 	faMoon,
@@ -360,6 +361,43 @@ const IcebergPreview = styled(Box)(() => {
 	};
 });
 
+// Radient theme preview
+const RadientPreview = styled(Box)(() => {
+	// Use the actual Radient theme colors from the theme
+	const radientTheme = themes.radient.theme;
+
+	return {
+		width: "100%",
+		height: "100%",
+		background: `linear-gradient(to bottom, ${radientTheme.palette.sidebar.background} 0%, ${radientTheme.palette.sidebar.background} 30%, ${radientTheme.palette.background.paper} 30%, ${radientTheme.palette.background.paper} 100%)`,
+		position: "relative",
+		boxShadow: "0 2px 8px rgba(255, 100, 200, 0.2)",
+		borderRadius: 4,
+		"&::after": {
+			content: '""',
+			position: "absolute",
+			top: "50%",
+			left: "50%",
+			transform: "translate(-50%, -50%)",
+			width: "40%",
+			height: "20%",
+			backgroundColor: radientTheme.palette.primary.main,
+			borderRadius: 4,
+		},
+		// Add a sidebar-like element
+		"&::before": {
+			content: '""',
+			position: "absolute",
+			left: 0,
+			top: 0,
+			height: "100%",
+			width: "20%",
+			backgroundColor: radientTheme.palette.sidebar.background,
+			borderRight: `1px solid ${radientTheme.palette.sidebar.border}`,
+		},
+	};
+});
+
 /**
  * Theme selector component
  *
@@ -417,6 +455,27 @@ export const ThemeSelector: FC = () => {
 									}
 								>
 									{themes.localOperatorLight.name}
+								</Typography>
+							</ThemeLabel>
+						</ThemeOption>
+					</Grid>
+
+					{/* Radient Theme Option */}
+					<Grid item xs={12} sm={6} md={4} lg={3}>
+						<ThemeOption
+							isSelected={themeName === "radient"}
+							onClick={() => handleThemeChange("radient")}
+						>
+							<ThemePreview>
+								<RadientPreview />
+							</ThemePreview>
+							<ThemeLabel>
+								<FontAwesomeIcon icon={faHexagonNodes} />
+								<Typography
+									variant="body2"
+									fontWeight={themeName === "radient" ? "bold" : "normal"}
+								>
+									{themes.radient.name}
 								</Typography>
 							</ThemeLabel>
 						</ThemeOption>

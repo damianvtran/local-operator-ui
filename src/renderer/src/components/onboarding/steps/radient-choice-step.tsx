@@ -15,7 +15,7 @@ import type { FC } from "react";
 import { useCallback } from "react";
 import { SectionContainer, SectionDescription } from "../onboarding-styled";
 import radientLogo from "@assets/radient-icon-1024x1024.png";
-import { radientTheme } from "@renderer/themes/radient-theme";
+import { radientTheme } from "@renderer/themes";
 
 // Styled components for the choice cards
 const ChoiceCard = styled(Box, {

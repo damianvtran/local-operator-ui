@@ -4,6 +4,7 @@ import duneTheme from "./dune-theme";
 import icebergTheme from "./iceberg-theme";
 import lightTheme from "./light-theme";
 import monokaiTheme from "./monokai-theme";
+import radientTheme from "./radient-theme";
 import sageTheme from "./sage-theme";
 import tokyoNightTheme from "./tokyo-night-theme";
 import type { ThemeCollection, ThemeName, ThemeOption } from "./types";
@@ -52,6 +53,11 @@ export const themes: ThemeCollection = {
 		id: "iceberg",
 		theme: icebergTheme,
 	},
+	radient: {
+		name: "Radient",
+		id: "radient",
+		theme: radientTheme,
+	},
 };
 
 /**
@@ -76,6 +82,7 @@ export {
 	icebergTheme,
 	lightTheme,
 	monokaiTheme,
+	radientTheme,
 	sageTheme,
 	tokyoNightTheme,
 };
