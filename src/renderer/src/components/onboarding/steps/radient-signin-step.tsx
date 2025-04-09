@@ -12,7 +12,7 @@ import { useOnboardingStore } from "@renderer/store/onboarding-store";
 import type { FC } from "react";
 import { useCallback } from "react";
 import { SectionContainer, SectionDescription } from "../onboarding-styled";
-import { radientTheme } from "@renderer/themes/radient-theme";
+import { radientTheme } from "@renderer/themes";
 
 // Styled components for the sign-in buttons
 const SignInButton = styled(Button)(({ theme }) => ({
