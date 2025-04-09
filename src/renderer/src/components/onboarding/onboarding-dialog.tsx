@@ -54,7 +54,7 @@ const StyledDialog = styled(Dialog)(({ theme }) => ({
 	"& .MuiBackdrop-root": {
 		// Apply gradient to the backdrop for full screen effect
 		background:
-			"linear-gradient(135deg, rgba(30,30,30,1), rgba(15,15,15,0.95), rgba(5,5,5,1), rgba(56,201,106,0.1))",
+			"linear-gradient(135deg, rgba(40,40,40,1), rgba(15,15,15,0.95), rgba(5,5,5,1), rgba(56,201,106,0.15))",
 		opacity: 1.0,
 	},
 	"& .MuiPaper-root": {

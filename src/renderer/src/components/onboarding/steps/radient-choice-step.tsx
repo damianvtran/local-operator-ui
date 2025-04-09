@@ -25,11 +25,15 @@ const ChoiceCard = styled(Box, {
 	flexDirection: "column",
 	alignItems: "center",
 	justifyContent: "center",
-	padding: theme.spacing(4),
+	paddingTop: theme.spacing(3),
+	paddingBottom: theme.spacing(3),
+	paddingLeft: theme.spacing(4),
+	paddingRight: theme.spacing(4),
 	borderRadius: 12,
 	backgroundColor: selected
 		? alpha(theme.palette.primary.main, 0.05)
-		: theme.palette.background.paper,
+		: "transparent",
+	border: `1px solid ${selected ? theme.palette.primary.main : alpha(theme.palette.divider, 0.5)}`,
 	boxShadow: selected
 		? `0 8px 24px ${alpha(theme.palette.primary.main, 0.15)}`
 		: `0 4px 12px ${alpha(theme.palette.common.black, 0.05)}`,
@@ -41,7 +45,6 @@ const ChoiceCard = styled(Box, {
 	overflow: "hidden",
 	"&:hover": {
 		transform: "translateY(-4px)",
-		boxShadow: `0 12px 28px ${alpha(theme.palette.primary.main, 0.2)}`,
 		borderColor: theme.palette.primary.main,
 	},
 }));
@@ -69,7 +72,7 @@ const CardIcon = styled(Box)(({ theme }) => ({
 	justifyContent: "center",
 	marginBottom: theme.spacing(3),
 	borderRadius: "50%",
-	backgroundColor: alpha(theme.palette.primary.main, 0.1),
+	border: `1px solid ${theme.palette.primary.main}`,
 	padding: theme.spacing(2),
 }));
 
@@ -132,24 +135,14 @@ export const RadientChoiceStep: FC = () => {
 						<ChoiceCard
 							onClick={handleRadientPassChoice}
 							sx={{
-								backgroundColor: alpha(radientTheme.palette.primary.main, 0.15),
-								border: "none",
 								"&:hover": {
-									transform: "translateY(-4px)",
-									boxShadow: `0 12px 28px ${alpha(
-										radientTheme.palette.primary.main,
-										0.2,
-									)}`,
 									borderColor: radientTheme.palette.primary.main,
 								},
 							}}
 						>
 							<CardIcon
 								sx={{
-									backgroundColor: alpha(
-										radientTheme.palette.primary.light,
-										0.2,
-									),
+									borderColor: radientTheme.palette.primary.light,
 								}}
 							>
 								<img
