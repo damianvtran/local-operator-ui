@@ -6,13 +6,13 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { HashRouter } from "react-router-dom";
 import "react-toastify/dist/ReactToastify.css";
-import { ThemedToastContainer } from "./components/common";
+import { ThemedToastContainer } from "./shared/components/common";
 import "./assets/fonts/fonts.css";
 import type { PostHogConfig } from "posthog-js";
 import { queryClient } from "./api/query-client";
 import App from "./app";
-import { ErrorBoundary } from "./components/common/error-boundary";
 import { config } from "./config";
+import { ErrorBoundary } from "./shared/components/common/error-boundary";
 import { ThemeProvider } from "./themes/theme-provider";
 import { isDevelopmentMode } from "./utils/env-utils";
 
