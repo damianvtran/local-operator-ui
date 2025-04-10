@@ -12,6 +12,7 @@ import {
 } from "../../store/onboarding-store";
 import theme from "@renderer/theme";
 import { OnboardingModal } from "./onboarding-modal";
+import { AuthProviders } from "../../providers/auth";
 
 /**
  * Storybook stories for the OnboardingModal component.
@@ -52,10 +53,16 @@ const meta: Meta<typeof OnboardingModal> = {
 								capture_pageview: false,
 							}}
 						>
-							<ThemeProvider theme={theme}>
-								<CssBaseline />
-								<Story />
-							</ThemeProvider>
+							<AuthProviders
+								googleClientId="mock-client-id-for-storybook"
+								microsoftClientId="mock-client-id-for-storybook"
+								microsoftTenantId="mock-tenant-id-for-storybook"
+							>
+								<ThemeProvider theme={theme}>
+									<CssBaseline />
+									<Story />
+								</ThemeProvider>
+							</AuthProviders>
 						</PostHogProvider>
 					</MemoryRouter>
 				</QueryClientProvider>
@@ -89,6 +96,22 @@ export const Congratulations: Story = {
 		const state = useOnboardingStore.getState();
 		state.resetOnboarding();
 		state.setCurrentStep(OnboardingStep.CONGRATULATIONS);
+
+		return <OnboardingModal open={true} />;
+	},
+};
+
+/**
+ * Onboarding flow showcasing the Radient sign-in step.
+ */
+export const RadientSignIn: Story = {
+	args: {
+		open: true,
+	},
+	render: () => {
+		const state = useOnboardingStore.getState();
+		state.resetOnboarding();
+		state.setCurrentStep(OnboardingStep.RADIENT_SIGNIN);
 
 		return <OnboardingModal open={true} />;
 	},
