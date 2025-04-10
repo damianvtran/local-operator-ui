@@ -15,9 +15,8 @@ import type {
 	AgentDetails,
 	AgentUpdate,
 } from "@renderer/api/local-operator/types";
-import { updateAgentSetting } from "@renderer/components/chat/chat-options-utils";
-import { EditableField } from "@renderer/components/common/editable-field";
-import { SliderSetting } from "@renderer/components/common/slider-setting";
+import { EditableField } from "@shared/components/common/editable-field";
+import { SliderSetting } from "@shared/components/common/slider-setting";
 import type { UseMutationResult } from "@tanstack/react-query";
 import type { FC } from "react";
 import { toast } from "react-toastify";
@@ -26,6 +25,7 @@ import {
 	SectionTitle,
 	TitleIcon,
 } from "./chat-options-sidebar-styled";
+import { updateAgentSetting } from "./chat-options-utils";
 import { UnsetSliderSetting } from "./unset-slider-setting";
 import { UnsetTextSetting } from "./unset-text-setting";
 

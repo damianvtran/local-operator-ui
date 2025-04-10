@@ -13,8 +13,8 @@ import type {
 	AgentUpdate,
 } from "@renderer/api/local-operator/types";
 import type { useUpdateAgent } from "@renderer/hooks/use-update-agent";
+import { EditableField } from "@shared/components/common/editable-field";
 import type { FC } from "react";
-import { EditableField } from "../common/editable-field";
 
 type SecuritySettingsProps = {
 	/**

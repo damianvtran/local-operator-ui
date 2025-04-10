@@ -5,6 +5,7 @@
  * with an exciting and engaging interface.
  */
 
+import { CREDENTIAL_MANIFEST } from "@features/settings/credential-manifest";
 import {
 	faCheck,
 	faExternalLinkAlt,
@@ -28,7 +29,6 @@ import {
 	Typography,
 	alpha,
 } from "@mui/material";
-import { CREDENTIAL_MANIFEST } from "@renderer/components/settings/credential-manifest";
 import { useCredentials } from "@renderer/hooks/use-credentials";
 import { useUpdateCredential } from "@renderer/hooks/use-update-credential";
 import type { FC } from "react";

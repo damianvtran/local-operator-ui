@@ -25,11 +25,11 @@ import type {
 	AgentUpdate,
 } from "@renderer/api/local-operator/types";
 import type { useUpdateAgent } from "@renderer/hooks/use-update-agent";
+import { EditableField } from "@shared/components/common/editable-field";
+import { SliderSetting } from "@shared/components/common/slider-setting";
 import type { FC } from "react";
 import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
-import { EditableField } from "../common/editable-field";
-import { SliderSetting } from "../common/slider-setting";
 
 type ChatSettingsProps = {
 	/**
