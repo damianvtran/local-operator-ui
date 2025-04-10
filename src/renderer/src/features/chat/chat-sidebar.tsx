@@ -16,11 +16,6 @@ import {
 	alpha,
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
-import { AgentOptionsMenu } from "@renderer/components/common/agent-options-menu";
-import { CompactPagination } from "@renderer/components/common/compact-pagination";
-import { CreateAgentDialog } from "@renderer/components/common/create-agent-dialog";
-import { ImportAgentDialog } from "@renderer/components/common/import-agent-dialog";
-import { SidebarHeader } from "@renderer/components/common/sidebar-header";
 import { useExportAgent } from "@renderer/hooks/use-agent-mutations";
 import { useAgents } from "@renderer/hooks/use-agents";
 import { useClearAgentConversation } from "@renderer/hooks/use-clear-agent-conversation";
@@ -29,6 +24,11 @@ import {
 	formatMessageDateTime,
 	getFullDateTime,
 } from "@renderer/utils/date-utils";
+import { AgentOptionsMenu } from "@shared/components/common/agent-options-menu";
+import { CompactPagination } from "@shared/components/common/compact-pagination";
+import { CreateAgentDialog } from "@shared/components/common/create-agent-dialog";
+import { ImportAgentDialog } from "@shared/components/common/import-agent-dialog";
+import { SidebarHeader } from "@shared/components/common/sidebar-header";
 import type { ChangeEvent, FC } from "react";
 import React, { useState, useCallback } from "react";
 

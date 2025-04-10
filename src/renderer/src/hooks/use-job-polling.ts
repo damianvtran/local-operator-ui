@@ -6,7 +6,7 @@ import type {
 	ConversationRecord,
 	JobStatus,
 } from "@renderer/api/local-operator/types";
-import type { Message } from "@renderer/components/chat/types";
+import type { Message } from "@renderer/features/chat/types";
 
 // Extend the JobDetails type to include the error field in the result
 interface JobDetails extends Omit<BaseJobDetails, "result"> {
@@ -266,7 +266,9 @@ export const useJobPolling = ({
 				const existingMessages = getMessages(agentId);
 
 				// Convert API execution records to UI messages
-				const apiMessages = executionRecords.map(convertToMessage);
+				const apiMessages = executionRecords.map((record) => {
+					return convertToMessage(record, agentId);
+				});
 
 				// Find new messages that don't exist in the store
 				// We'll consider a message new if we don't have a message with the same ID

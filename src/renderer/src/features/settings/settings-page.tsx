@@ -1,3 +1,5 @@
+import { HostingSelect } from "@components/hosting/hosting-select";
+import { ModelSelect } from "@components/hosting/model-select";
 import {
 	faAdjust,
 	faCloudUploadAlt,
@@ -29,13 +31,12 @@ import type { ConfigUpdate } from "@renderer/api/local-operator/types";
 import { useConfig } from "@renderer/hooks/use-config";
 import { useUpdateConfig } from "@renderer/hooks/use-update-config";
 import { useUserStore } from "@renderer/store/user-store";
+import { EditableField } from "@shared/components/common/editable-field";
+import { PageHeader } from "@shared/components/common/page-header";
+import { SliderSetting } from "@shared/components/common/slider-setting";
+import { ToggleSetting } from "@shared/components/common/toggle-setting";
 import { useEffect, useRef, useState } from "react";
 import type { FC, RefObject } from "react";
-import { EditableField } from "../common/editable-field";
-import { PageHeader } from "../common/page-header";
-import { SliderSetting } from "../common/slider-setting";
-import { ToggleSetting } from "../common/toggle-setting";
-import { HostingSelect, ModelSelect } from "../hosting";
 import { AppUpdatesSection } from "./app-updates-section";
 import { Credentials } from "./credentials";
 import { DEFAULT_SETTINGS_SECTIONS, SettingsSidebar } from "./settings-sidebar";

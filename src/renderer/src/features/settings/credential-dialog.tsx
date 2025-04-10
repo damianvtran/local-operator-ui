@@ -1,4 +1,4 @@
-import { CREDENTIAL_MANIFEST } from "@components/settings/credential-manifest";
+import { CREDENTIAL_MANIFEST } from "@features/settings/credential-manifest";
 import {
 	Box,
 	CircularProgress,
@@ -15,7 +15,7 @@ import {
 	FormContainer,
 	PrimaryButton,
 	SecondaryButton,
-} from "@renderer/components/common/base-dialog";
+} from "@shared/components/common/base-dialog";
 import { useEffect, useState } from "react";
 import type { FC } from "react";
 

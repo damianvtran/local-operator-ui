@@ -3,7 +3,7 @@ import type {
 	AgentExecutionRecord,
 	JobStatus,
 } from "@renderer/api/local-operator/types";
-import type { Message } from "@renderer/components/chat/types";
+import type { Message } from "@renderer/features/chat/types";
 import type { FC, RefObject } from "react";
 import { LoadingIndicator } from "./loading-indicator";
 import { MessageItem } from "./message-item";
