@@ -20,6 +20,8 @@ export default defineConfig({
 			alias: {
 				"@renderer": resolve("src/renderer/src"),
 				"@components": resolve("src/renderer/src/components"),
+				"@features": resolve("src/renderer/src/features"),
+				"@shared": resolve("src/renderer/src/shared"),
 				"@assets": resolve("src/renderer/src/assets"),
 				"@hooks": resolve("src/renderer/src/hooks"),
 				"@api": resolve("src/renderer/src/api"),

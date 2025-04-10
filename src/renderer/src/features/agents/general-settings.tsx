@@ -4,6 +4,8 @@
  * Component for displaying and editing general agent settings
  */
 
+import { HostingSelect } from "@components/hosting/hosting-select";
+import { ModelSelect } from "@components/hosting/model-select";
 import {
 	faCalendarAlt,
 	faCodeBranch,
@@ -27,11 +29,10 @@ import type {
 	AgentUpdate,
 } from "@renderer/api/local-operator/types";
 import type { useUpdateAgent } from "@renderer/hooks/use-update-agent";
+import { EditableField } from "@shared/components/common/editable-field";
 import type { FC } from "react";
 import { useState } from "react";
 import { toast } from "react-toastify";
-import { EditableField } from "../common/editable-field";
-import { HostingSelect, ModelSelect } from "../hosting";
 
 type GeneralSettingsProps = {
 	/**

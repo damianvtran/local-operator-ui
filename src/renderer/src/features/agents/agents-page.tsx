@@ -19,10 +19,10 @@ import { useExportAgent } from "@renderer/hooks/use-agent-mutations";
 import { useAgent, useAgents } from "@renderer/hooks/use-agents";
 import { useAgentRouteParam } from "@renderer/hooks/use-route-params";
 import { useAgentSelectionStore } from "@renderer/store/agent-selection-store";
+import { PageHeader } from "@shared/components/common/page-header";
 import { useEffect, useRef, useState } from "react";
 import type { FC } from "react";
 import { useNavigate } from "react-router-dom";
-import { PageHeader } from "../common/page-header";
 import { AgentSettings } from "./agent-settings";
 import { AgentsSidebar } from "./agents-sidebar";
 

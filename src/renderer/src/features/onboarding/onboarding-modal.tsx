@@ -9,13 +9,13 @@ import { faCheck } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, Tooltip, Typography } from "@mui/material";
 import {
-	PrimaryButton,
-	SecondaryButton,
-} from "@renderer/components/common/base-dialog";
-import {
 	OnboardingStep,
 	useOnboardingStore,
 } from "@renderer/store/onboarding-store";
+import {
+	PrimaryButton,
+	SecondaryButton,
+} from "@shared/components/common/base-dialog";
 import type { FC } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";

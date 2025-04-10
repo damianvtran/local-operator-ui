@@ -13,9 +13,9 @@ import {
 	useAgentSystemPrompt,
 	useUpdateAgentSystemPrompt,
 } from "@renderer/hooks/use-agent-system-prompt";
+import { EditableField } from "@shared/components/common/editable-field";
 import type { FC } from "react";
 import { useEffect, useState } from "react";
-import { EditableField } from "../common/editable-field";
 
 type SystemPromptSettingsProps = {
 	/**
