@@ -7,6 +7,14 @@ declare global {
 		api: {
 			openFile: (filePath: string) => Promise<void>;
 			openExternal: (url: string) => Promise<void>;
+			session: {
+				getSession: () => Promise<{
+					jwt: string | undefined;
+					expiry: number | undefined;
+				}>;
+				storeSession: (jwt: string, expiry: number) => Promise<boolean>;
+				clearSession: () => Promise<boolean>;
+			};
 			systemInfo: {
 				getAppVersion: () => Promise<string>;
 				getPlatformInfo: () => Promise<{

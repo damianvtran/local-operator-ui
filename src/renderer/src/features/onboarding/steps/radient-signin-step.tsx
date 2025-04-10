@@ -11,8 +11,12 @@ import { Box, Button, Typography, alpha, styled } from "@mui/material";
 import { useOnboardingStore } from "@renderer/store/onboarding-store";
 import { radientTheme } from "@renderer/themes";
 import type { FC } from "react";
-import { useCallback } from "react";
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { SectionContainer, SectionDescription } from "../onboarding-styled";
+import { useOidcAuth } from "@renderer/hooks/use-oidc-auth";
+import { hasValidSession } from "@renderer/utils/session-store";
+import CircularProgress from "@mui/material/CircularProgress";
 
 // Styled components for the sign-in buttons
 const SignInButton = styled(Button)(({ theme }) => ({
@@ -68,28 +72,24 @@ const IconContainer = styled(Box)(({ theme }) => ({
  */
 export const RadientSignInStep: FC = () => {
 	const { completeOnboarding } = useOnboardingStore();
+	const navigate = useNavigate();
+	const { signInWithGoogle, signInWithMicrosoft, loading, error } =
+		useOidcAuth();
 
-	/**
-	 * Handle Google sign-in (stub for future implementation)
-	 */
-	const handleGoogleSignIn = useCallback(() => {
-		// This is a stub for future implementation
-		console.log("Google sign-in clicked - to be implemented");
-
-		// For now, just complete the onboarding
-		completeOnboarding();
-	}, [completeOnboarding]);
-
-	/**
-	 * Handle Microsoft sign-in (stub for future implementation)
-	 */
-	const handleMicrosoftSignIn = useCallback(() => {
-		// This is a stub for future implementation
-		console.log("Microsoft sign-in clicked - to be implemented");
-
-		// For now, just complete the onboarding
-		completeOnboarding();
-	}, [completeOnboarding]);
+	// Complete onboarding on successful sign-in (success toast is shown in the hook)
+	useEffect(() => {
+		const checkSession = async () => {
+			if (!loading && !error) {
+				// Check if we have a valid session after sign-in
+				const hasSession = await hasValidSession();
+				if (hasSession) {
+					completeOnboarding();
+					navigate("/chat");
+				}
+			}
+		};
+		checkSession();
+	}, [loading, error, completeOnboarding, navigate]);
 
 	return (
 		<Box sx={{ animation: "fadeIn 0.6s ease-out" }}>
@@ -135,19 +135,42 @@ export const RadientSignInStep: FC = () => {
 						py: 2,
 					}}
 				>
-					<GoogleButton onClick={handleGoogleSignIn}>
+					<GoogleButton
+						onClick={() => {
+							signInWithGoogle();
+							// On success, onboarding will complete via effect
+						}}
+						disabled={loading}
+					>
 						<IconContainer>
 							<FontAwesomeIcon icon={faGoogle} />
 						</IconContainer>
+						{loading ? <CircularProgress size={20} sx={{ mr: 2 }} /> : null}
 						Sign in with Google
 					</GoogleButton>
 
-					<MicrosoftButton onClick={handleMicrosoftSignIn}>
+					<MicrosoftButton
+						onClick={() => {
+							signInWithMicrosoft();
+							// On success, onboarding will complete via effect
+						}}
+						disabled={loading}
+					>
 						<IconContainer>
 							<FontAwesomeIcon icon={faMicrosoft} />
 						</IconContainer>
+						{loading ? <CircularProgress size={20} sx={{ mr: 2 }} /> : null}
 						Sign in with Microsoft
 					</MicrosoftButton>
+					{error && (
+						<Typography
+							variant="body2"
+							color="error"
+							sx={{ mt: 2, textAlign: "center" }}
+						>
+							{error}
+						</Typography>
+					)}
 				</Box>
 			</SectionContainer>
 

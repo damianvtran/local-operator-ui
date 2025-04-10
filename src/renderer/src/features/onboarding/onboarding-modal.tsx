@@ -19,6 +19,8 @@ import {
 import { useFeatureFlagEnabled } from "posthog-js/react";
 import type { FC } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { getSession, clearSession } from "@renderer/utils/session-store";
+import { apiConfig } from "@renderer/config";
 import { useNavigate } from "react-router-dom";
 import { OnboardingDialog } from "./onboarding-dialog";
 import {
@@ -58,6 +60,31 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 	const { currentStep, setCurrentStep, completeOnboarding } =
 		useOnboardingStore();
 	const navigate = useNavigate();
+
+	// On mount, check for a persisted session and validate it
+	useEffect(() => {
+		const tryRestoreSession = async () => {
+			const jwt = await getSession();
+			if (!jwt) return;
+			try {
+				const res = await fetch(`${apiConfig.radientBaseUrl}/me`, {
+					method: "GET",
+					headers: { Authorization: `Bearer ${jwt}` },
+					credentials: "same-origin",
+				});
+				if (res.ok) {
+					completeOnboarding();
+					navigate("/chat");
+				} else {
+					clearSession();
+				}
+			} catch {
+				clearSession();
+			}
+		};
+		tryRestoreSession();
+		// Only run on mount
+	}, [completeOnboarding, navigate]);
 
 	// Check if the Radient Pass onboarding feature flag is enabled
 	const isRadientPassEnabled = useFeatureFlagEnabled("radient-pass-onboarding");

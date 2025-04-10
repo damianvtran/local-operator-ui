@@ -37,7 +37,12 @@
 		"electron",
 		"react"
 	],
-	"files": ["out", "bin", "LICENSE", "README.md"],
+	"files": [
+		"out",
+		"bin",
+		"LICENSE",
+		"README.md"
+	],
 	"publishConfig": {
 		"access": "public"
 	},
@@ -65,6 +70,8 @@
 		"build-storybook": "storybook build"
 	},
 	"dependencies": {
+		"@azure/msal-browser": "^4.10.0",
+		"@azure/msal-react": "^3.0.9",
 		"@electron-toolkit/utils": "^4.0.0",
 		"@emotion/react": "^11.14.0",
 		"@emotion/styled": "^11.14.0",
@@ -73,6 +80,7 @@
 		"@fortawesome/free-solid-svg-icons": "^6.7.2",
 		"@fortawesome/react-fontawesome": "^0.2.2",
 		"@mui/material": "^6.4.2",
+		"@react-oauth/google": "^0.12.1",
 		"@tanstack/react-query": "^5.67.1",
 		"@tanstack/react-query-devtools": "^5.67.1",
 		"date-fns": "^4.1.0",
@@ -81,6 +89,7 @@
 		"electron-builder-squirrel-windows": "26.0.12",
 		"electron-debug": "^3.2.0",
 		"electron-log": "^4.4.8",
+		"electron-store": "^10.0.1",
 		"electron-updater": "^6.1.4",
 		"html-react-parser": "^5.2.2",
 		"katex": "^0.16.21",
@@ -145,7 +154,12 @@
 		"productName": "Local Operator",
 		"copyright": "Copyright © 2025 Damian Tran",
 		"asar": true,
-		"files": ["out/**/*", "bin/**/*", "LICENSE", "README.md"],
+		"files": [
+			"out/**/*",
+			"bin/**/*",
+			"LICENSE",
+			"README.md"
+		],
 		"directories": {
 			"output": "dist",
 			"buildResources": "build"
@@ -154,7 +168,9 @@
 			{
 				"from": "resources/python",
 				"to": "python",
-				"filter": ["**/*"]
+				"filter": [
+					"**/*"
+				]
 			}
 		],
 		"afterSign": "scripts/notarize.js",
@@ -168,11 +184,15 @@
 			"target": [
 				{
 					"target": "dmg",
-					"arch": ["universal"]
+					"arch": [
+						"universal"
+					]
 				},
 				{
 					"target": "zip",
-					"arch": ["universal"]
+					"arch": [
+						"universal"
+					]
 				}
 			],
 			"artifactName": "${name}-${version}-${arch}.${ext}",
@@ -201,7 +221,10 @@
 			"target": [
 				{
 					"target": "nsis",
-					"arch": ["x64", "arm64"]
+					"arch": [
+						"x64",
+						"arm64"
+					]
 				}
 			],
 			"artifactName": "${name}-setup-${version}-${arch}.${ext}",
@@ -241,10 +264,16 @@
 			}
 		},
 		"deb": {
-			"depends": ["python3.12-full", "python3.12-venv"]
+			"depends": [
+				"python3.12-full",
+				"python3.12-venv"
+			]
 		},
 		"rpm": {
-			"depends": ["python3.12-full", "python3.12-venv"]
+			"depends": [
+				"python3.12-full",
+				"python3.12-venv"
+			]
 		},
 		"publish": [
 			{
