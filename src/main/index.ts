@@ -207,6 +207,35 @@ app.whenReady().then(async () => {
 		}
 	});
 
+	// --- Session storage handlers for secure JWT persistence ---
+	// Use dynamic import for electron-store (ES module)
+	const { default: ElectronStore } = await import("electron-store");
+	const sessionStore = new ElectronStore();
+
+	ipcMain.handle("get-session", () => {
+		// @ts-ignore
+		const jwt = sessionStore.get("radient_jwt");
+		// @ts-ignore
+		const expiry = sessionStore.get("radient_jwt_expiry");
+		return { jwt, expiry };
+	});
+
+	ipcMain.handle("store-session", (_event, jwt: string, expiry: number) => {
+		// @ts-ignore
+		sessionStore.set("radient_jwt", jwt);
+		// @ts-ignore
+		sessionStore.set("radient_jwt_expiry", expiry);
+		return true;
+	});
+
+	ipcMain.handle("clear-session", () => {
+		// @ts-ignore
+		sessionStore.delete("radient_jwt");
+		// @ts-ignore
+		sessionStore.delete("radient_jwt_expiry");
+		return true;
+	});
+
 	// Add IPC handlers for system information
 	ipcMain.handle("get-app-version", () => {
 		return app.getVersion();

@@ -8,6 +8,14 @@ const api = {
 	openFile: (filePath: string) => ipcRenderer.invoke("open-file", filePath),
 	openExternal: (url: string) => ipcRenderer.invoke("open-external", url),
 
+	// Session storage methods
+	session: {
+		getSession: () => ipcRenderer.invoke("get-session"),
+		storeSession: (jwt: string, expiry: number) =>
+			ipcRenderer.invoke("store-session", jwt, expiry),
+		clearSession: () => ipcRenderer.invoke("clear-session"),
+	},
+
 	// System information
 	systemInfo: {
 		getAppVersion: () => ipcRenderer.invoke("get-app-version"),
