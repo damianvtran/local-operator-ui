@@ -54,9 +54,9 @@ const meta: Meta<typeof OnboardingModal> = {
 							}}
 						>
 							<AuthProviders
-								googleClientId="mock-client-id-for-storybook"
-								microsoftClientId="mock-client-id-for-storybook"
-								microsoftTenantId="mock-tenant-id-for-storybook"
+								googleClientId={config.VITE_GOOGLE_CLIENT_ID}
+								microsoftClientId={config.VITE_MICROSOFT_CLIENT_ID}
+								microsoftTenantId={config.VITE_MICROSOFT_TENANT_ID}
 							>
 								<ThemeProvider theme={theme}>
 									<CssBaseline />
