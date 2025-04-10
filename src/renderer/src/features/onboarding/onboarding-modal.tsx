@@ -78,7 +78,6 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 		// we're on the DIY path (the Radient Pass path would have completed onboarding)
 		if (isRadientPassEnabled) {
 			return [
-				OnboardingStep.WELCOME,
 				OnboardingStep.USER_PROFILE,
 				OnboardingStep.MODEL_CREDENTIAL,
 				OnboardingStep.SEARCH_API,
@@ -105,6 +104,8 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 		if (isRadientPassEnabled && currentStep === OnboardingStep.WELCOME) {
 			setCurrentStep(OnboardingStep.RADIENT_CHOICE);
 		}
+		// If Radient Pass is enabled and user lands on WELCOME, skip to RADIENT_CHOICE
+		// If Radient Pass is enabled and user lands on RADIENT_CHOICE and chooses DIY, skip WELCOME and go to USER_PROFILE
 	}, [isRadientPassEnabled, currentStep, setCurrentStep]);
 
 	const stepTitles: Record<OnboardingStep, string> = {
@@ -166,7 +167,14 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 	const stepContent = useMemo(() => {
 		switch (currentStep) {
 			case OnboardingStep.RADIENT_CHOICE:
-				return <RadientChoiceStep />;
+				return (
+					<RadientChoiceStep
+						onDoItYourself={() => setCurrentStep(OnboardingStep.USER_PROFILE)}
+						onRadientSignIn={() =>
+							setCurrentStep(OnboardingStep.RADIENT_SIGNIN)
+						}
+					/>
+				);
 			case OnboardingStep.RADIENT_SIGNIN:
 				return <RadientSignInStep />;
 			case OnboardingStep.WELCOME:
@@ -199,16 +207,14 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 			default:
 				return null;
 		}
-	}, [currentStep]);
+	}, [currentStep, setCurrentStep]);
 
 	/**
 	 * Handle moving to the next step
 	 */
 	const handleNext = useCallback(() => {
 		switch (currentStep) {
-			case OnboardingStep.RADIENT_CHOICE:
-				setCurrentStep(OnboardingStep.RADIENT_SIGNIN);
-				break;
+			// Remove Next button progression for RADIENT_CHOICE step
 			case OnboardingStep.RADIENT_SIGNIN:
 				// Skip to congratulations since this is a stub for now
 				completeOnboarding();
@@ -350,14 +356,16 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 
 			<Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
 				{canSkip && <SkipButton onClick={handleSkip}>Skip</SkipButton>}
-				<PrimaryButton
-					onClick={handleNext}
-					disabled={
-						currentStep === OnboardingStep.CREATE_AGENT && !hasCreatedAgent
-					}
-				>
-					{nextButtonText}
-				</PrimaryButton>
+				{currentStep !== OnboardingStep.RADIENT_CHOICE && (
+					<PrimaryButton
+						onClick={handleNext}
+						disabled={
+							currentStep === OnboardingStep.CREATE_AGENT && !hasCreatedAgent
+						}
+					>
+						{nextButtonText}
+					</PrimaryButton>
+				)}
 			</Box>
 		</>
 	);

@@ -93,23 +93,49 @@ const FreeText = styled(Typography)(({ theme }) => ({
  * Presents the user with two options for onboarding:
  * 1. Get started with Radient Pass (managed option)
  * 2. Set up their own keys (DIY option)
+ *
+ * @param props - Optional callbacks for handling card selection.
+ *   - onDoItYourself: Called when the DIY card is clicked.
+ *   - onRadientSignIn: Called when the Radient Pass card is clicked.
  */
-export const RadientChoiceStep: FC = () => {
+type RadientChoiceStepProps = {
+	/**
+	 * Called when the user selects the DIY option.
+	 */
+	onDoItYourself?: () => void;
+	/**
+	 * Called when the user selects the Radient Pass option.
+	 */
+	onRadientSignIn?: () => void;
+};
+
+export const RadientChoiceStep: FC<RadientChoiceStepProps> = ({
+	onDoItYourself,
+	onRadientSignIn,
+}) => {
 	const { setCurrentStep } = useOnboardingStore();
 
 	/**
 	 * Handle selection of the Radient Pass option
 	 */
 	const handleRadientPassChoice = useCallback(() => {
-		setCurrentStep(OnboardingStep.RADIENT_SIGNIN);
-	}, [setCurrentStep]);
+		if (onRadientSignIn) {
+			onRadientSignIn();
+		} else {
+			setCurrentStep(OnboardingStep.RADIENT_SIGNIN);
+		}
+	}, [onRadientSignIn, setCurrentStep]);
 
 	/**
 	 * Handle selection of the DIY option
 	 */
 	const handleDiyChoice = useCallback(() => {
-		setCurrentStep(OnboardingStep.WELCOME);
-	}, [setCurrentStep]);
+		if (onDoItYourself) {
+			onDoItYourself();
+		} else {
+			setCurrentStep(OnboardingStep.WELCOME);
+		}
+	}, [onDoItYourself, setCurrentStep]);
 
 	return (
 		<Box sx={{ animation: "fadeIn 0.6s ease-out" }}>
