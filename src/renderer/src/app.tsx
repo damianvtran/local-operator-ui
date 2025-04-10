@@ -7,15 +7,15 @@ import React from "react";
 import type { FC } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 
-import { ChatPage } from "@components/chat/chat-page";
-import { AgentsPage } from "@renderer/components/agents/agents-page";
-import { ConnectivityBanner } from "@renderer/components/common/connectivity-banner";
-import { ModelsInitializer } from "@renderer/components/common/models-initializer";
-import { UpdateNotification } from "@renderer/components/common/update-notification";
+import { AgentsPage } from "@features/agents/agents-page";
+import { ChatPage } from "@features/chat/chat-page";
+import { OnboardingModal } from "@features/onboarding";
+import { SettingsPage } from "@features/settings/settings-page";
 import { SidebarNavigation } from "@renderer/components/navigation/sidebar-navigation";
-import { OnboardingModal } from "@renderer/components/onboarding";
-import { SettingsPage } from "@renderer/components/settings/settings-page";
 import { useCheckFirstTimeUser } from "@renderer/hooks/use-check-first-time-user";
+import { ConnectivityBanner } from "@shared/components/common/connectivity-banner";
+import { ModelsInitializer } from "@shared/components/common/models-initializer";
+import { UpdateNotification } from "@shared/components/common/update-notification";
 
 library.add(fas, fab);
 
