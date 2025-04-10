@@ -7,7 +7,7 @@
 
 import { faCheck } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Box, Tooltip, Typography } from "@mui/material";
+import { Box, Tooltip } from "@mui/material";
 import {
 	OnboardingStep,
 	useOnboardingStore,
@@ -364,11 +364,7 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 	);
 
 	// Create dialog title with step title
-	const dialogTitle = (
-		<Typography variant="h6" fontWeight={600}>
-			{stepTitle}
-		</Typography>
-	);
+	const dialogTitle = stepTitle;
 
 	// Create dialog actions with back and next buttons
 	const dialogActions = (
