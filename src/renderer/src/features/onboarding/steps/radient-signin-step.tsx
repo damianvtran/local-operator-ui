@@ -168,7 +168,7 @@ export const RadientSignInStep: FC = () => {
 							color="error"
 							sx={{ mt: 2, textAlign: "center" }}
 						>
-							{error}
+							Error signing in: {error}
 						</Typography>
 					)}
 				</Box>
