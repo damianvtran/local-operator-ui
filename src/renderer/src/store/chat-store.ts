@@ -5,7 +5,7 @@
  * Provides a persistent store for messages during the user's session.
  */
 
-import type { Message } from "@renderer/components/chat/types";
+import type { Message } from "@renderer/features/chat/types";
 import { create } from "zustand";
 
 /**

@@ -15,12 +15,12 @@ import {
 	darken,
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
-import { AttachmentsPreview } from "@renderer/components/chat/attachments-preview";
-import { ScrollToBottomButton } from "@renderer/components/chat/scroll-to-bottom-button";
-import type { Message } from "@renderer/components/chat/types";
+import type { Message } from "@renderer/features/chat/types";
 import { useMessageInput } from "@renderer/hooks/use-message-input";
 import { useMemo, useRef, useState } from "react";
 import type { ChangeEvent, FC, FormEvent } from "react";
+import { AttachmentsPreview } from "./attachments-preview";
+import { ScrollToBottomButton } from "./scroll-to-bottom-button";
 
 /**
  * Props for the MessageInput component

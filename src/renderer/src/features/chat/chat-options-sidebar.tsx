@@ -12,9 +12,9 @@ import type { AgentDetails } from "@renderer/api/local-operator/types";
 import { useAgent } from "@renderer/hooks/use-agents";
 import { useClearAgentConversation } from "@renderer/hooks/use-clear-agent-conversation";
 import { useUpdateAgent } from "@renderer/hooks/use-update-agent";
+import { ConfirmationModal } from "@shared/components/common/confirmation-modal";
 import type { FC } from "react";
 import { useEffect, useState } from "react";
-import { ConfirmationModal } from "../common/confirmation-modal";
 import {
 	CloseButton,
 	HeaderTitle,

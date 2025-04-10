@@ -2,7 +2,7 @@
  * Hook for managing message input with history navigation
  */
 
-import type { Message } from "@renderer/components/chat/types";
+import type { Message } from "@renderer/features/chat/types";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
 
