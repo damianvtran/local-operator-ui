@@ -17,14 +17,12 @@
 
 import { useState, useCallback } from "react";
 import { useGoogleLogin } from "@react-oauth/google";
-import {
-	PublicClientApplication,
-	type AuthenticationResult,
-} from "@azure/msal-browser";
+import type { AuthenticationResult } from "@azure/msal-browser";
 import { CredentialsApi } from "../api/local-operator/credentials-api";
 import { apiConfig } from "../config";
 import { showSuccessToast, showErrorToast } from "../utils/toast-manager";
 import { storeSession } from "../utils/session-store";
+import { useMsalInstance } from "../providers/auth";
 
 type AuthProvider = "google" | "microsoft";
 
@@ -41,28 +39,8 @@ const ME_ENDPOINT = "/me";
 const PROVISION_ENDPOINT = "/provision";
 const RADIENT_BASE_URL = apiConfig.radientBaseUrl;
 
+// Microsoft authentication scopes
 const MICROSOFT_SCOPES = ["openid", "profile", "email"];
-const MICROSOFT_CLIENT_ID = import.meta.env.VITE_MICROSOFT_CLIENT_ID || "";
-const MICROSOFT_TENANT_ID = import.meta.env.VITE_MICROSOFT_TENANT_ID || "";
-const MICROSOFT_AUTHORITY =
-	MICROSOFT_CLIENT_ID && MICROSOFT_TENANT_ID
-		? `https://login.microsoftonline.com/${MICROSOFT_TENANT_ID}`
-		: "";
-
-const msalInstance =
-	MICROSOFT_CLIENT_ID && MICROSOFT_TENANT_ID
-		? new PublicClientApplication({
-				auth: {
-					clientId: MICROSOFT_CLIENT_ID,
-					authority: MICROSOFT_AUTHORITY,
-					redirectUri: window.location.origin,
-				},
-				cache: {
-					cacheLocation: "memoryStorage",
-					storeAuthStateInCookie: false,
-				},
-			})
-		: undefined;
 
 /**
  * Securely POSTs to a backend endpoint with JSON and returns the response.
@@ -225,11 +203,15 @@ export const useOidcAuth = (): UseOidcAuthResult => {
 	 * Microsoft sign-in handler.
 	 */
 	const signInWithMicrosoft = useCallback(async () => {
+		// Get the MSAL instance from the context or create a new one
+		const msalInstance = useMsalInstance();
+
 		if (!msalInstance) {
 			setError("Microsoft sign-in is not configured.");
 			showErrorToast("Microsoft sign-in is not configured.");
 			return;
 		}
+
 		setLoading(true);
 		setError(null);
 		try {

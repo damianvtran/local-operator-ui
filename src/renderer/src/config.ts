@@ -18,6 +18,13 @@ const envSchema = z.object({
 		.optional()
 		.default("https://api.radienthq.com"),
 
+	// OAuth client IDs
+	VITE_GOOGLE_CLIENT_ID: z.string().optional().default(""),
+
+	VITE_MICROSOFT_CLIENT_ID: z.string().optional().default(""),
+
+	VITE_MICROSOFT_TENANT_ID: z.string().optional().default(""),
+
 	// Backend service manager configuration
 	VITE_DISABLE_BACKEND_MANAGER: z
 		.enum(["true", "false"])
@@ -93,4 +100,13 @@ export const config = loadConfig();
 export const apiConfig = {
 	baseUrl: config.VITE_LOCAL_OPERATOR_API_URL,
 	radientBaseUrl: config.VITE_RADIENT_SERVER_BASE_URL,
+};
+
+/**
+ * OAuth configuration derived from the app config
+ */
+export const oauthConfig = {
+	googleClientId: config.VITE_GOOGLE_CLIENT_ID,
+	microsoftClientId: config.VITE_MICROSOFT_CLIENT_ID,
+	microsoftTenantId: config.VITE_MICROSOFT_TENANT_ID,
 };
