@@ -61,16 +61,21 @@ export const MicrosoftAuthProvider: FC<MicrosoftAuthProviderProps> = ({
 			return null;
 		}
 
-		// Create the MSAL instance
+		// Create the MSAL instance with Electron-specific configuration
 		const instance = new PublicClientApplication({
 			auth: {
 				clientId: initialClientIdRef.current,
 				authority: `https://login.microsoftonline.com/${initialTenantIdRef.current}`,
 				redirectUri: window.location.origin,
+				navigateToLoginRequestUrl: false,
 			},
 			cache: {
 				cacheLocation: "sessionStorage",
 				storeAuthStateInCookie: false,
+			},
+			system: {
+				// Use a more compatible hash handling for Electron
+				allowRedirectInIframe: true,
 			},
 		});
 

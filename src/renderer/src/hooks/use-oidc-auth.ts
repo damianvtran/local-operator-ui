@@ -216,12 +216,18 @@ export const useOidcAuth = (): UseOidcAuthResult => {
 		setLoading(true);
 		setError(null);
 		try {
-			// Ensure the instance is initialized before calling loginPopup
-			const loginResponse: AuthenticationResult = await msalInstance.loginPopup(
-				{
-					scopes: MICROSOFT_SCOPES,
+			// Configure popup login with specific parameters for Electron
+			const loginRequest = {
+				scopes: MICROSOFT_SCOPES,
+				prompt: "select_account", // Force account selection to avoid cached credentials issues
+				extraQueryParameters: {
+					domain_hint: "organizations", // Optimize for organizational accounts
 				},
-			);
+			};
+
+			// Use loginPopup with the enhanced configuration
+			const loginResponse: AuthenticationResult =
+				await msalInstance.loginPopup(loginRequest);
 
 			console.log("Microsoft login response:", loginResponse);
 			if (!loginResponse.idToken && !loginResponse.accessToken) {
