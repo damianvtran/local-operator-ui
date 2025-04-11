@@ -128,28 +128,47 @@ export const RadientAuthProvider: FC<RadientAuthProviderProps> = ({
 
 	// Check for an existing session on mount
 	useEffect(() => {
+		let isMounted = true;
 		const checkSession = async () => {
+			if (!isMounted) return;
+
 			setLoading(true);
 			try {
 				const hasSession = await hasValidSession();
-				if (hasSession) {
+				if (hasSession && isMounted) {
 					const token = await getSession();
-					if (token) {
-						setSessionToken(token);
-						await fetchUserInfo(token);
+					if (token && isMounted) {
+						// Only update if the token has changed
+						if (token !== sessionToken) {
+							setSessionToken(token);
+							await fetchUserInfo(token);
+						}
 					}
+				} else if (isMounted) {
+					// Clear the session token and user if there's no valid session
+					setSessionToken(null);
+					setUser(null);
 				}
 			} catch (err) {
+				if (!isMounted) return;
+
 				const errorMessage = err instanceof Error ? err.message : String(err);
 				console.error("Session check failed:", errorMessage);
 				setError(`Session check failed: ${errorMessage}`);
 			} finally {
-				setLoading(false);
+				if (isMounted) {
+					setLoading(false);
+				}
 			}
 		};
 
 		checkSession();
-	}, [fetchUserInfo]);
+
+		// Cleanup function to prevent state updates after unmount
+		return () => {
+			isMounted = false;
+		};
+	}, [fetchUserInfo, sessionToken]);
 
 	// Create the context value
 	const contextValue: RadientAuthContextType = {

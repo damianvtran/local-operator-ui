@@ -5,69 +5,20 @@
  * to set up their Radient Pass account.
  */
 
-import { faGoogle, faMicrosoft } from "@fortawesome/free-brands-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Box, Button, Typography, alpha, styled } from "@mui/material";
+import { Box, Typography } from "@mui/material";
+import { RadientAuthButtons } from "@renderer/components/auth";
+import { apiConfig } from "@renderer/config";
+import { getUserInfo } from "@renderer/api/radient/auth-api";
+import { getSession, hasValidSession } from "@renderer/utils/session-store";
 import {
 	OnboardingStep,
 	useOnboardingStore,
 } from "@renderer/store/onboarding-store";
+import { useUserStore } from "@renderer/store/user-store";
 import { radientTheme } from "@renderer/themes";
 import type { FC } from "react";
-import { useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import { SectionContainer, SectionDescription } from "../onboarding-styled";
-import { useOidcAuth } from "@renderer/hooks/use-oidc-auth";
-import { getSession, hasValidSession } from "@renderer/utils/session-store";
-import { getUserInfo } from "@renderer/api/radient/auth-api";
-import { apiConfig } from "@renderer/config";
-import { useUserStore } from "@renderer/store/user-store";
-import CircularProgress from "@mui/material/CircularProgress";
-
-// Styled components for the sign-in buttons
-const SignInButton = styled(Button)(({ theme }) => ({
-	display: "flex",
-	alignItems: "center",
-	justifyContent: "center",
-	padding: theme.spacing(2, 4),
-	borderRadius: 8,
-	fontSize: "1rem",
-	fontWeight: 600,
-	textTransform: "none",
-	marginBottom: theme.spacing(2),
-	width: "100%",
-	maxWidth: 320,
-	transition: "all 0.2s ease-in-out",
-	boxShadow: `0 4px 12px ${alpha(theme.palette.common.black, 0.1)}`,
-	"&:hover": {
-		transform: "translateY(-2px)",
-		boxShadow: `0 6px 16px ${alpha(theme.palette.common.black, 0.15)}`,
-	},
-}));
-
-const GoogleButton = styled(SignInButton)(() => ({
-	backgroundColor: "#ffffff",
-	color: "#444444",
-	border: "1px solid #dddddd",
-	"&:hover": {
-		backgroundColor: "#f8f8f8",
-	},
-}));
-
-const MicrosoftButton = styled(SignInButton)(() => ({
-	backgroundColor: "#2f2f2f",
-	color: "#ffffff",
-	"&:hover": {
-		backgroundColor: "#1f1f1f",
-	},
-}));
-
-const IconContainer = styled(Box)(({ theme }) => ({
-	display: "flex",
-	alignItems: "center",
-	justifyContent: "center",
-	marginRight: theme.spacing(2),
-	fontSize: "1.25rem",
-}));
 
 /**
  * Radient Sign In Step Component
@@ -76,51 +27,51 @@ const IconContainer = styled(Box)(({ theme }) => ({
  * to set up their Radient Pass account.
  */
 export const RadientSignInStep: FC = () => {
-	const { signInWithGoogle, signInWithMicrosoft, loading, error } =
-		useOidcAuth();
+	const handleSignInSuccess = useCallback(async () => {
+		try {
+			// Get the session JWT
+			const jwt = await getSession();
 
-	// After successful sign-in, fetch user info and continue to agent creation step
-	useEffect(() => {
-		const checkSessionAndFetchUserInfo = async () => {
-			if (!loading && !error) {
-				// Check if we have a valid session after sign-in
-				const hasSession = await hasValidSession();
-				if (hasSession) {
-					try {
-						// Get the session JWT
-						const jwt = await getSession();
+			if (jwt) {
+				// Fetch user information from Radient API
+				const userInfoResponse = await getUserInfo(
+					apiConfig.radientBaseUrl,
+					jwt,
+				);
+				const userInfo = userInfoResponse.result;
 
-						if (jwt) {
-							// Fetch user information from Radient API
-							const userInfoResponse = await getUserInfo(
-								apiConfig.radientBaseUrl,
-								jwt,
-							);
-							const userInfo = userInfoResponse.result;
-
-							// Update the user profile with name and email
-							if (userInfo) {
-								const updateProfile = useUserStore.getState().updateProfile;
-								updateProfile({
-									name: userInfo.account.name,
-									email: userInfo.account.email,
-								});
-							} else {
-								console.error("User info response was empty");
-							}
-						}
-					} catch (error) {
-						console.error("Error fetching user info:", error);
-					}
-
-					// Continue to agent creation step
-					const { setCurrentStep } = useOnboardingStore.getState();
-					setCurrentStep(OnboardingStep.CREATE_AGENT);
+				// Update the user profile with name and email
+				if (userInfo) {
+					const updateProfile = useUserStore.getState().updateProfile;
+					updateProfile({
+						name: userInfo.account.name,
+						email: userInfo.account.email,
+					});
+				} else {
+					console.error("User info response was empty");
 				}
 			}
+		} catch (error) {
+			console.error("Error fetching user info:", error);
+		}
+
+		// Continue to agent creation step
+		const { setCurrentStep } = useOnboardingStore.getState();
+		setCurrentStep(OnboardingStep.CREATE_AGENT);
+	}, []);
+
+	// Check for existing session on mount
+	useEffect(() => {
+		const checkExistingSession = async () => {
+			const hasSession = await hasValidSession();
+			if (hasSession) {
+				// If we already have a session, proceed to the next step
+				handleSignInSuccess();
+			}
 		};
-		checkSessionAndFetchUserInfo();
-	}, [loading, error]);
+
+		checkExistingSession();
+	}, [handleSignInSuccess]);
 
 	return (
 		<Box sx={{ animation: "fadeIn 0.6s ease-out" }}>
@@ -166,42 +117,11 @@ export const RadientSignInStep: FC = () => {
 						py: 2,
 					}}
 				>
-					<GoogleButton
-						onClick={() => {
-							signInWithGoogle();
-							// On success, user will continue to agent creation step
-						}}
-						disabled={loading}
-					>
-						<IconContainer>
-							<FontAwesomeIcon icon={faGoogle} />
-						</IconContainer>
-						{loading ? <CircularProgress size={20} sx={{ mr: 2 }} /> : null}
-						Sign in with Google
-					</GoogleButton>
-
-					<MicrosoftButton
-						onClick={() => {
-							signInWithMicrosoft();
-							// On success, user will continue to agent creation step
-						}}
-						disabled={loading}
-					>
-						<IconContainer>
-							<FontAwesomeIcon icon={faMicrosoft} />
-						</IconContainer>
-						{loading ? <CircularProgress size={20} sx={{ mr: 2 }} /> : null}
-						Sign in with Microsoft
-					</MicrosoftButton>
-					{error && (
-						<Typography
-							variant="body2"
-							color="error"
-							sx={{ mt: 2, textAlign: "center" }}
-						>
-							Error signing in: {error}
-						</Typography>
-					)}
+					<RadientAuthButtons
+						titleText=""
+						descriptionText=""
+						onSignInSuccess={handleSignInSuccess}
+					/>
 				</Box>
 			</SectionContainer>
 
