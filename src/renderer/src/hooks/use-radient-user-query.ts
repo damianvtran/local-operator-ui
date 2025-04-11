@@ -8,10 +8,11 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createRadientClient } from "@renderer/api/radient";
 import { apiConfig } from "@renderer/config";
+import { resetQueryCache } from "@renderer/api/query-client";
 import { getSession, hasValidSession, clearSession } from "@renderer/utils/session-store";
 import { useFeatureFlags } from "@renderer/providers/feature-flags";
 import type { RadientUser } from "@renderer/providers/auth";
-import { showErrorToast } from "@renderer/utils/toast-manager";
+import { showErrorToast, showSuccessToast } from "@renderer/utils/toast-manager";
 
 // Query keys for Radient user data
 export const radientUserKeys = {
@@ -47,12 +48,12 @@ export const useRadientUserQuery = () => {
         return null;
       }
     },
-    // Don't refetch on window focus to avoid unnecessary token checks
-    refetchOnWindowFocus: false,
+    // Refetch on window focus to ensure we have the latest session state
+    refetchOnWindowFocus: true,
     // Only enable if the feature flag is enabled
     enabled: isRadientPassEnabled,
-    // Keep the session data fresh
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    // Keep the session data fresh but not too long
+    staleTime: 30 * 1000, // 30 seconds
   });
 
   // Query for the user information
@@ -89,8 +90,8 @@ export const useRadientUserQuery = () => {
     },
     // Only run this query if we have a session token
     enabled: isRadientPassEnabled && !!sessionQuery.data,
-    // Keep the user data fresh
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    // Keep the user data fresh but not too long
+    staleTime: 30 * 1000, // 30 seconds
     // Don't retry on 401 errors
     retry: (failureCount, error) => {
       if (error instanceof Error && 
@@ -110,8 +111,10 @@ export const useRadientUserQuery = () => {
       return true;
     },
     onSuccess: () => {
-      // Invalidate the queries to trigger a refetch
-      queryClient.invalidateQueries({ queryKey: radientUserKeys.all });
+      // Reset the entire query cache to ensure a clean state
+      resetQueryCache();
+      // Show a success toast
+      showSuccessToast("Successfully signed out");
     },
     onError: (error) => {
       const errorMessage = error instanceof Error ? error.message : String(error);
