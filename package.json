@@ -92,6 +92,7 @@
 		"electron-store": "^10.0.1",
 		"electron-updater": "^6.1.4",
 		"html-react-parser": "^5.2.2",
+		"jwt-decode": "^4.0.0",
 		"katex": "^0.16.21",
 		"posthog-js": "^1.235.0",
 		"posthog-node": "^4.11.3",

@@ -10,6 +10,8 @@ import type {
 	AuthTokenExchangeResult,
 	UserInfoResult,
 	ProvisionResult,
+	CreateApplicationRequest,
+	CreateApplicationResult,
 } from "./types";
 
 // Export all API modules
@@ -152,6 +154,22 @@ export class RadientClient {
 		jwt: string,
 	): Promise<RadientApiResponse<ProvisionResult>> {
 		return this.auth.provisionAccount(jwt);
+	}
+
+	/**
+	 * Create a new application for a given account
+	 *
+	 * @param accountId - The ID of the account to create the application for
+	 * @param jwt - The backend JWT
+	 * @param applicationData - Data for the new application
+	 * @returns The created application information (standard response format)
+	 */
+	async createApplication(
+		accountId: string,
+		jwt: string,
+		applicationData: CreateApplicationRequest,
+	): Promise<RadientApiResponse<CreateApplicationResult>> {
+		return this.auth.createApplication(accountId, jwt, applicationData);
 	}
 }
 
