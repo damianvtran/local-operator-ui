@@ -53,7 +53,9 @@ export const useRadientUserQuery = () => {
     // Only enable if the feature flag is enabled
     enabled: isRadientPassEnabled,
     // Keep the session data fresh but not too long
-    staleTime: 30 * 1000, // 30 seconds
+    staleTime: 10 * 1000, // 10 seconds
+    // Refetch more frequently
+    refetchInterval: 10 * 1000, // 10 seconds
   });
 
   // Query for the user information
@@ -91,7 +93,9 @@ export const useRadientUserQuery = () => {
     // Only run this query if we have a session token
     enabled: isRadientPassEnabled && !!sessionQuery.data,
     // Keep the user data fresh but not too long
-    staleTime: 30 * 1000, // 30 seconds
+    staleTime: 10 * 1000, // 10 seconds
+    // Refetch more frequently
+    refetchInterval: 10 * 1000, // 10 seconds
     // Don't retry on 401 errors
     retry: (failureCount, error) => {
       if (error instanceof Error && 

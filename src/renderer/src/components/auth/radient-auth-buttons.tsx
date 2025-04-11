@@ -19,6 +19,8 @@ import { useOidcAuth } from "@renderer/hooks/use-oidc-auth";
 import { hasValidSession } from "@renderer/utils/session-store";
 import { useEffect } from "react";
 import type { FC } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { radientUserKeys } from "@renderer/hooks/use-radient-user-query";
 
 /**
  * Props for the RadientAuthButtons component
@@ -104,6 +106,8 @@ export const RadientAuthButtons: FC<RadientAuthButtonsProps> = ({
 	const { signInWithGoogle, signInWithMicrosoft, loading, error } =
 		useOidcAuth();
 
+	const queryClient = useQueryClient();
+
 	// Check for successful sign-in
 	useEffect(() => {
 		const checkSignInSuccess = async () => {
@@ -111,15 +115,21 @@ export const RadientAuthButtons: FC<RadientAuthButtonsProps> = ({
 			if (!loading && !error) {
 				// Check if we have a valid session after sign-in
 				const hasSession = await hasValidSession();
-				if (hasSession && onSignInSuccess) {
-					// Call the success callback
-					onSignInSuccess();
+				if (hasSession) {
+					// Force a refetch of the user information
+					await queryClient.invalidateQueries({ queryKey: radientUserKeys.all });
+					await queryClient.refetchQueries({ queryKey: radientUserKeys.all });
+					
+					// Call the success callback if provided
+					if (onSignInSuccess) {
+						onSignInSuccess();
+					}
 				}
 			}
 		};
 
 		checkSignInSuccess();
-	}, [loading, error, onSignInSuccess]);
+	}, [loading, error, onSignInSuccess, queryClient]);
 
 	const handleGoogleSignIn = () => {
 		signInWithGoogle();
