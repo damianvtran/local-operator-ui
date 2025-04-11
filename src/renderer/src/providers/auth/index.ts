@@ -6,5 +6,6 @@
 
 export * from "./google-auth-provider";
 export * from "./microsoft-auth-provider";
+export * from "./radient-auth-provider";
 export * from "./auth-providers";
 export * from "./use-msal-instance";

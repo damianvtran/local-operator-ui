@@ -2,15 +2,19 @@
  * @file auth-providers.tsx
  * @description
  * Combined authentication providers for the application.
- * Wraps the application with both Google and Microsoft authentication providers.
+ * Wraps the application with Google, Microsoft, and Radient authentication providers.
  */
 
 import type { FC, ReactNode } from "react";
 import { GoogleAuthProvider } from "./google-auth-provider";
 import { MicrosoftAuthProvider } from "./microsoft-auth-provider";
+import { RadientAuthProvider } from "./radient-auth-provider";
 import { useFeatureFlags } from "../feature-flags";
 
-type AuthProvidersProps = {
+// Re-export the useRadientUser hook for convenience
+export { useRadientUser } from "./radient-auth-provider";
+
+export type AuthProvidersProps = {
 	/**
 	 * The children to render inside the providers
 	 */
@@ -32,7 +36,7 @@ type AuthProvidersProps = {
 /**
  * Combined Authentication Providers
  *
- * Wraps the application with both Google and Microsoft authentication providers.
+ * Wraps the application with Google, Microsoft, and Radient authentication providers.
  * Uses the client IDs and tenant ID from the environment variables by default.
  */
 export const AuthProviders: FC<AuthProvidersProps> = ({
@@ -54,7 +58,7 @@ export const AuthProviders: FC<AuthProvidersProps> = ({
 				clientId={microsoftClientId}
 				tenantId={microsoftTenantId}
 			>
-				{children}
+				<RadientAuthProvider>{children}</RadientAuthProvider>
 			</MicrosoftAuthProvider>
 		</GoogleAuthProvider>
 	);
