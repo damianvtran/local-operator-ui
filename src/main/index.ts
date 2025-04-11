@@ -149,6 +149,11 @@ function createWindow(): BrowserWindow {
 			// Only enable devTools when running with 'pnpm dev'
 			// Disable for 'pnpm start' and production builds
 			devTools: Boolean(process.env.ELECTRON_RENDERER_URL),
+			// Security settings
+			nodeIntegration: false,
+			contextIsolation: true,
+			webSecurity: true,
+			allowRunningInsecureContent: false,
 		},
 	});
 
@@ -157,6 +162,41 @@ function createWindow(): BrowserWindow {
 	});
 
 	mainWindow.webContents.setWindowOpenHandler((details) => {
+		// Allow popups from authentication providers
+		const url = new URL(details.url);
+		const trustedAuthDomains = [
+			"accounts.google.com",
+			"login.microsoftonline.com",
+			"login.live.com",
+			"login.windows.net",
+			"storagerelay",
+		];
+
+		// Check if the URL is from a trusted authentication provider
+		const isTrustedAuthDomain = trustedAuthDomains.some(
+			(domain) =>
+				url.hostname.includes(domain) || url.protocol.includes(domain),
+		);
+
+		if (isTrustedAuthDomain) {
+			// Allow the popup for authentication with specific features
+			return {
+				action: "allow",
+				features: {
+					width: 800,
+					height: 600,
+					center: true,
+					frame: true,
+					webPreferences: {
+						contextIsolation: true,
+						nodeIntegration: false,
+						webSecurity: true,
+					},
+				},
+			};
+		}
+
+		// For all other URLs, open in external browser and deny the popup
 		shell.openExternal(details.url);
 		return { action: "deny" };
 	});
