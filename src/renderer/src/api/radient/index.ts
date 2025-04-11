@@ -6,9 +6,10 @@
 
 import * as AuthApiImpl from "./auth-api";
 import type {
-	AuthTokenExchangeResponse,
-	UserInfoResponse,
-	ProvisionResponse,
+	RadientApiResponse,
+	AuthTokenExchangeResult,
+	UserInfoResult,
+	ProvisionResult,
 } from "./types";
 
 // Export all API modules
@@ -105,10 +106,16 @@ export class RadientClient {
 	 * @param idToken - The Google ID token
 	 * @returns The backend JWT
 	 */
+	/**
+	 * Exchange a Google ID token for a backend JWT
+	 *
+	 * @param idToken - The Google ID token
+	 * @returns The backend JWT (standard response format)
+	 */
 	async exchangeGoogleToken(tokens: {
 		idToken?: string;
 		accessToken?: string;
-	}): Promise<AuthTokenExchangeResponse> {
+	}): Promise<RadientApiResponse<AuthTokenExchangeResult>> {
 		return this.auth.exchangeGoogleToken(tokens);
 	}
 
@@ -116,12 +123,12 @@ export class RadientClient {
 	 * Exchange a Microsoft ID token for a backend JWT
 	 *
 	 * @param idToken - The Microsoft ID token
-	 * @returns The backend JWT
+	 * @returns The backend JWT (standard response format)
 	 */
 	async exchangeMicrosoftToken(tokens: {
 		idToken?: string;
 		accessToken?: string;
-	}): Promise<AuthTokenExchangeResponse> {
+	}): Promise<RadientApiResponse<AuthTokenExchangeResult>> {
 		return this.auth.exchangeMicrosoftToken(tokens);
 	}
 
@@ -129,9 +136,9 @@ export class RadientClient {
 	 * Get the current user's information
 	 *
 	 * @param jwt - The backend JWT
-	 * @returns The user information
+	 * @returns The user information (standard response format)
 	 */
-	async getUserInfo(jwt: string): Promise<UserInfoResponse> {
+	async getUserInfo(jwt: string): Promise<RadientApiResponse<UserInfoResult>> {
 		return this.auth.getUserInfo(jwt);
 	}
 
@@ -139,9 +146,11 @@ export class RadientClient {
 	 * Provision a new account
 	 *
 	 * @param jwt - The backend JWT
-	 * @returns The provisioned account information
+	 * @returns The provisioned account information (standard response format)
 	 */
-	async provisionAccount(jwt: string): Promise<ProvisionResponse> {
+	async provisionAccount(
+		jwt: string,
+	): Promise<RadientApiResponse<ProvisionResult>> {
 		return this.auth.provisionAccount(jwt);
 	}
 }
