@@ -581,7 +581,7 @@ export const SettingsPage: FC = () => {
 								Radient Account
 							</Typography>
 							<Typography variant="body1" color="text.secondary" mt={1} mb={3}>
-								Manage your Radient account for accessing additional features
+								Manage your Radient account
 							</Typography>
 							<RadientAccountSection />
 						</Box>
