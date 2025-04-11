@@ -136,19 +136,19 @@ export type CreateApplicationResult = {
 	/**
 	 * ID of the account it belongs to
 	 */
-	accountId: string;
+	account_id: string;
 	/**
 	 * The raw, unhashed API key (only shown on creation)
 	 */
-	apiKey: string;
+	api_key: string;
 	/**
 	 * Timestamp of creation
 	 */
-	createdAt: string;
+	created_at: string;
 	/**
 	 * Timestamp of last update
 	 */
-	updatedAt: string;
+	updated_at: string;
 };
 
 /**
