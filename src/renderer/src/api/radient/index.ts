@@ -105,10 +105,11 @@ export class RadientClient {
 	 * @param idToken - The Google ID token
 	 * @returns The backend JWT
 	 */
-	async exchangeGoogleToken(
-		idToken: string,
-	): Promise<AuthTokenExchangeResponse> {
-		return this.auth.exchangeGoogleToken(idToken);
+	async exchangeGoogleToken(tokens: {
+		idToken?: string;
+		accessToken?: string;
+	}): Promise<AuthTokenExchangeResponse> {
+		return this.auth.exchangeGoogleToken(tokens);
 	}
 
 	/**
@@ -117,10 +118,11 @@ export class RadientClient {
 	 * @param idToken - The Microsoft ID token
 	 * @returns The backend JWT
 	 */
-	async exchangeMicrosoftToken(
-		idToken: string,
-	): Promise<AuthTokenExchangeResponse> {
-		return this.auth.exchangeMicrosoftToken(idToken);
+	async exchangeMicrosoftToken(tokens: {
+		idToken?: string;
+		accessToken?: string;
+	}): Promise<AuthTokenExchangeResponse> {
+		return this.auth.exchangeMicrosoftToken(tokens);
 	}
 
 	/**

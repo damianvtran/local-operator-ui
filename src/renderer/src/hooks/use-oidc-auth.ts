@@ -47,18 +47,21 @@ export const useOidcAuth = (): UseOidcAuthResult => {
 	const [error, setError] = useState<string | null>(null);
 
 	/**
-	 * Handles the full backend integration after obtaining an ID token.
+	 * Handles the full backend integration after obtaining tokens.
 	 */
 	const handleBackendAuth = useCallback(
-		async (provider: "google" | "microsoft", idToken: string) => {
+		async (
+			provider: "google" | "microsoft",
+			tokens: { idToken?: string; accessToken?: string },
+		) => {
 			setLoading(true);
 			setError(null);
 			try {
-				// 1. Exchange ID token for backend JWT
+				// 1. Exchange tokens for backend JWT
 				const tokenResponse =
 					provider === "google"
-						? await radientClient.exchangeGoogleToken(idToken)
-						: await radientClient.exchangeMicrosoftToken(idToken);
+						? await radientClient.exchangeGoogleToken(tokens)
+						: await radientClient.exchangeMicrosoftToken(tokens);
 
 				const backendJwt = tokenResponse.token;
 
@@ -128,51 +131,22 @@ export const useOidcAuth = (): UseOidcAuthResult => {
 
 				// Try to get id_token or credential property
 				let idToken: string | undefined;
+				let accessToken: string | undefined;
 
 				// First check for id_token in the response
 				if (typeof tokenResponse.id_token === "string") {
 					idToken = tokenResponse.id_token;
 				}
-				// Then check for credential
-				else if (typeof tokenResponse.credential === "string") {
-					idToken = tokenResponse.credential;
-				}
-				// If using code flow, we might have an access_token but no id_token
-				else if (typeof tokenResponse.access_token === "string") {
-					// Use the access token to get user info which includes the ID token
-					const userInfoResponse = await fetch(
-						"https://www.googleapis.com/oauth2/v3/userinfo",
-						{
-							headers: {
-								Authorization: `Bearer ${tokenResponse.access_token}`,
-							},
-						},
-					);
 
-					if (!userInfoResponse.ok) {
-						throw new Error("Failed to get user info from Google");
-					}
-
-					const userInfo = await userInfoResponse.json();
-					// Use the sub field as a fallback
-					if (userInfo.sub) {
-						// Create a minimal JWT with the user info
-						// This is a fallback and not ideal, but allows the flow to continue
-						idToken = btoa(
-							JSON.stringify({
-								sub: userInfo.sub,
-								email: userInfo.email,
-								name: userInfo.name,
-							}),
-						);
-					}
+				// Then check for access_token
+				if (typeof tokenResponse.access_token === "string") {
+					accessToken = tokenResponse.access_token;
 				}
 
-				if (!idToken) {
-					throw new Error("No ID token received from Google");
-				}
-
-				await handleBackendAuth("google", idToken);
+				await handleBackendAuth("google", {
+					idToken,
+					accessToken,
+				});
 			} catch (err) {
 				const msg = err instanceof Error ? err.message : String(err);
 				setError(msg);
@@ -211,10 +185,13 @@ export const useOidcAuth = (): UseOidcAuthResult => {
 					scopes: MICROSOFT_SCOPES,
 				},
 			);
-			if (!loginResponse.idToken) {
-				throw new Error("No ID token received from Microsoft");
+			if (!loginResponse.idToken && !loginResponse.accessToken) {
+				throw new Error("No ID token or access token received from Microsoft");
 			}
-			await handleBackendAuth("microsoft", loginResponse.idToken);
+			await handleBackendAuth("microsoft", {
+				idToken: loginResponse.idToken,
+				accessToken: loginResponse.accessToken,
+			});
 		} catch (err) {
 			const msg = err instanceof Error ? err.message : String(err);
 			setError(msg || "Microsoft sign-in failed");
