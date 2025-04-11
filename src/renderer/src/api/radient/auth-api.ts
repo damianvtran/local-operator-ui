@@ -26,28 +26,35 @@ function joinUrl(baseUrl: string, path: string): string {
 }
 
 /**
- * Exchange an ID token for a backend JWT
+ * Exchange an ID token or access token for a backend JWT.
+ *
+ * The backend will accept either an ID token or an access token, or both.
  *
  * @param baseUrl - The base URL of the Radient API
  * @param provider - The authentication provider
- * @param idToken - The ID token
+ * @param tokens - An object containing either or both tokens
  * @returns The backend JWT
  */
 export async function exchangeToken(
 	baseUrl: string,
 	provider: AuthProvider,
-	idToken: string,
+	tokens: { idToken?: string; accessToken?: string },
 ): Promise<AuthTokenExchangeResponse> {
 	const endpoint =
 		provider === "google" ? "/v1/auth/google" : "/v1/auth/microsoft";
 	const url = joinUrl(baseUrl, endpoint);
+
+	const body: AuthTokenExchangeRequest = {
+		id_token: tokens.idToken,
+		access_token: tokens.accessToken,
+	};
 
 	const response = await fetch(url, {
 		method: "POST",
 		headers: {
 			"Content-Type": "application/json",
 		},
-		body: JSON.stringify({ id_token: idToken } as AuthTokenExchangeRequest),
+		body: JSON.stringify(body),
 		credentials: "same-origin",
 	});
 
@@ -60,31 +67,31 @@ export async function exchangeToken(
 }
 
 /**
- * Exchange a Google ID token for a backend JWT
+ * Exchange Google tokens for a backend JWT.
  *
  * @param baseUrl - The base URL of the Radient API
- * @param idToken - The Google ID token
+ * @param tokens - An object containing either or both tokens
  * @returns The backend JWT
  */
 export async function exchangeGoogleToken(
 	baseUrl: string,
-	idToken: string,
+	tokens: { idToken?: string; accessToken?: string },
 ): Promise<AuthTokenExchangeResponse> {
-	return exchangeToken(baseUrl, "google", idToken);
+	return exchangeToken(baseUrl, "google", tokens);
 }
 
 /**
- * Exchange a Microsoft ID token for a backend JWT
+ * Exchange Microsoft tokens for a backend JWT.
  *
  * @param baseUrl - The base URL of the Radient API
- * @param idToken - The Microsoft ID token
+ * @param tokens - An object containing either or both tokens
  * @returns The backend JWT
  */
 export async function exchangeMicrosoftToken(
 	baseUrl: string,
-	idToken: string,
+	tokens: { idToken?: string; accessToken?: string },
 ): Promise<AuthTokenExchangeResponse> {
-	return exchangeToken(baseUrl, "microsoft", idToken);
+	return exchangeToken(baseUrl, "microsoft", tokens);
 }
 
 /**

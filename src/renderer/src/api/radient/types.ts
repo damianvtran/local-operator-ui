@@ -10,13 +10,20 @@
 export type AuthProvider = "google" | "microsoft";
 
 /**
- * Request to exchange an ID token for a backend JWT
+ * Request to exchange an ID token or access token for a backend JWT.
+ *
+ * The backend will accept either an ID token or an access token, or both.
+ * At least one of these should be provided.
  */
 export type AuthTokenExchangeRequest = {
 	/**
-	 * The ID token from the authentication provider
+	 * The ID token from the authentication provider (Google or Microsoft)
 	 */
-	id_token: string;
+	id_token?: string;
+	/**
+	 * The access token from the authentication provider (Google or Microsoft)
+	 */
+	access_token?: string;
 };
 
 /**
