@@ -16,6 +16,7 @@ import { ErrorBoundary } from "./shared/components/common/error-boundary";
 import { ThemeProvider } from "./themes/theme-provider";
 import { isDevelopmentMode } from "./utils/env-utils";
 import { AuthProviders } from "./providers/auth";
+import { FeatureFlagProvider } from "./providers/feature-flags";
 
 const posthogOptions: Partial<PostHogConfig> = {
 	api_host: config.VITE_PUBLIC_POSTHOG_HOST,
@@ -33,25 +34,27 @@ document.addEventListener("DOMContentLoaded", () => {
 				options={posthogOptions}
 			>
 				<QueryClientProvider client={queryClient}>
-					<AuthProviders>
-						<ThemeProvider>
-							<CssBaseline />
-							<ErrorBoundary>
-								<HashRouter>
-									<App />
-								</HashRouter>
-							</ErrorBoundary>
-							<ThemedToastContainer />
-							{/* React Query DevTools - only in development (positioned at bottom left) */}
-							{isDevelopmentMode() && (
-								<ReactQueryDevtools
-									initialIsOpen={false}
-									position="left"
-									buttonPosition="top-left"
-								/>
-							)}
-						</ThemeProvider>
-					</AuthProviders>
+					<FeatureFlagProvider>
+						<AuthProviders>
+							<ThemeProvider>
+								<CssBaseline />
+								<ErrorBoundary>
+									<HashRouter>
+										<App />
+									</HashRouter>
+								</ErrorBoundary>
+								<ThemedToastContainer />
+								{/* React Query DevTools - only in development (positioned at bottom left) */}
+								{isDevelopmentMode() && (
+									<ReactQueryDevtools
+										initialIsOpen={false}
+										position="left"
+										buttonPosition="top-left"
+									/>
+								)}
+							</ThemeProvider>
+						</AuthProviders>
+					</FeatureFlagProvider>
 				</QueryClientProvider>
 			</PostHogProvider>
 		</React.StrictMode>,

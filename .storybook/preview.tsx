@@ -7,6 +7,8 @@ import theme from "@renderer/theme";
 // @ts-ignore Path aliases don't work for Storybook root
 import { AuthProviders } from "@renderer/providers/auth";
 // @ts-ignore Path aliases don't work for Storybook root
+import { FeatureFlagProvider } from "@renderer/providers/feature-flags";
+// @ts-ignore Path aliases don't work for Storybook root
 import { config } from "@renderer/config";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router-dom";
@@ -88,17 +90,19 @@ const preview: Preview = {
 								capture_pageview: false,
 							}}
 						>
-							<AuthProviders
-								googleClientId={config.VITE_GOOGLE_CLIENT_ID}
-								microsoftClientId={config.VITE_MICROSOFT_CLIENT_ID}
-								microsoftTenantId={config.VITE_MICROSOFT_TENANT_ID}
-							>
-								<ThemeProvider theme={theme}>
-									<CssBaseline />
-									<Story />
-									<ThemedToastContainer />
-								</ThemeProvider>
-							</AuthProviders>
+							<FeatureFlagProvider>
+								<AuthProviders
+									googleClientId={config.VITE_GOOGLE_CLIENT_ID}
+									microsoftClientId={config.VITE_MICROSOFT_CLIENT_ID}
+									microsoftTenantId={config.VITE_MICROSOFT_TENANT_ID}
+								>
+									<ThemeProvider theme={theme}>
+										<CssBaseline />
+										<Story />
+										<ThemedToastContainer />
+									</ThemeProvider>
+								</AuthProviders>
+							</FeatureFlagProvider>
 						</PostHogProvider>
 					</MemoryRouter>
 				</QueryClientProvider>
