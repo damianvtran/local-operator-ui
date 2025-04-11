@@ -51,10 +51,7 @@ export type AuthTokenExchangeResult = {
 	token: string;
 };
 
-/**
- * User information returned by the /me endpoint
- */
-export type UserInfoResult = {
+export type AccountInfo = {
 	/**
 	 * User ID
 	 */
@@ -79,6 +76,35 @@ export type UserInfoResult = {
 	 * Account update timestamp
 	 */
 	updated_at: string;
+};
+
+export type IdentityInfo = {
+	/**
+	 * The user email
+	 */
+	email: string;
+	/**
+	 * The provider of the identity
+	 */
+	provider: AuthProvider;
+	/**
+	 * The provider ID
+	 */
+	provider_id: string;
+};
+
+/**
+ * User information returned by the /me endpoint
+ */
+export type UserInfoResult = {
+	/**
+	 * The account information
+	 */
+	account: AccountInfo;
+	/**
+	 * The identity information
+	 */
+	identity: IdentityInfo;
 };
 
 /**

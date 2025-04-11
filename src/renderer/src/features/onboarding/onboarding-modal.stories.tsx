@@ -31,6 +31,10 @@ const meta: Meta<typeof OnboardingModal> = {
 			const state = useOnboardingStore.getState();
 			state.resetOnboarding();
 			state.setCurrentStep(OnboardingStep.WELCOME);
+
+			// Clear the session to allow re-running the story
+			window.sessionStorage.removeItem("mock-radient-session");
+
 			return <Story />;
 		},
 	],
