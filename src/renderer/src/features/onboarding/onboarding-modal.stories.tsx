@@ -39,34 +39,7 @@ const meta: Meta<typeof OnboardingModal> = {
 			const state = useOnboardingStore.getState();
 			state.resetOnboarding();
 			state.setCurrentStep(OnboardingStep.WELCOME);
-
-			const queryClient = new QueryClient();
-
-			return (
-				<QueryClientProvider client={queryClient}>
-					<MemoryRouter>
-						<PostHogProvider
-							apiKey={config.VITE_PUBLIC_POSTHOG_KEY}
-							options={{
-								api_host: config.VITE_PUBLIC_POSTHOG_HOST,
-								autocapture: false,
-								capture_pageview: false,
-							}}
-						>
-							<AuthProviders
-								googleClientId={config.VITE_GOOGLE_CLIENT_ID}
-								microsoftClientId={config.VITE_MICROSOFT_CLIENT_ID}
-								microsoftTenantId={config.VITE_MICROSOFT_TENANT_ID}
-							>
-								<ThemeProvider theme={theme}>
-									<CssBaseline />
-									<Story />
-								</ThemeProvider>
-							</AuthProviders>
-						</PostHogProvider>
-					</MemoryRouter>
-				</QueryClientProvider>
-			);
+			return <Story />;
 		},
 	],
 	tags: ["autodocs"],

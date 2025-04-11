@@ -1,10 +1,18 @@
-// This import is only for TypeScript and will be removed at runtime
 import React from "react";
 import type { Preview } from "@storybook/react";
 import { ThemeProvider } from "@mui/material/styles";
 import { CssBaseline } from "@mui/material";
-import theme from "../src/renderer/src/theme";
-import { AuthProviders } from "../src/renderer/src/providers/auth";
+// @ts-ignore Path aliases don't work for Storybook root
+import theme from "@renderer/theme";
+// @ts-ignore Path aliases don't work for Storybook root
+import { AuthProviders } from "@renderer/providers/auth";
+// @ts-ignore Path aliases don't work for Storybook root
+import { config } from "@renderer/config";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { MemoryRouter } from "react-router-dom";
+import { PostHogProvider } from "posthog-js/react";
+// @ts-ignore Path aliases don't work for Storybook root
+import { ThemedToastContainer } from "@shared/components/common/themed-toast-container";
 
 // Mock the Electron preload API for Storybook
 if (typeof window !== "undefined") {
@@ -55,18 +63,36 @@ const preview: Preview = {
 		},
 	},
 	decorators: [
-		(Story) => (
-			<AuthProviders
-				googleClientId="mock-client-id-for-storybook"
-				microsoftClientId="mock-client-id-for-storybook"
-				microsoftTenantId="mock-tenant-id-for-storybook"
-			>
-				<ThemeProvider theme={theme}>
-					<CssBaseline />
-					<Story />
-				</ThemeProvider>
-			</AuthProviders>
-		),
+		(Story) => {
+			const queryClient = new QueryClient();
+
+			return (
+				<QueryClientProvider client={queryClient}>
+					<MemoryRouter>
+						<PostHogProvider
+							apiKey={config.VITE_PUBLIC_POSTHOG_KEY}
+							options={{
+								api_host: config.VITE_PUBLIC_POSTHOG_HOST,
+								autocapture: false,
+								capture_pageview: false,
+							}}
+						>
+							<AuthProviders
+								googleClientId={config.VITE_GOOGLE_CLIENT_ID}
+								microsoftClientId={config.VITE_MICROSOFT_CLIENT_ID}
+								microsoftTenantId={config.VITE_MICROSOFT_TENANT_ID}
+							>
+								<ThemeProvider theme={theme}>
+									<CssBaseline />
+									<Story />
+									<ThemedToastContainer />
+								</ThemeProvider>
+							</AuthProviders>
+						</PostHogProvider>
+					</MemoryRouter>
+				</QueryClientProvider>
+			);
+		},
 	],
 };
 
