@@ -25,7 +25,8 @@ import { storeSession } from "../utils/session-store";
 import { jwtDecode } from "jwt-decode";
 import { useMsalInstance } from "../providers/auth";
 import { createRadientClient } from "../api/radient";
-// UserInfoResult is no longer needed here
+import { useQueryClient } from "@tanstack/react-query";
+import { radientUserKeys } from "./use-radient-user-query";
 
 type UseOidcAuthResult = {
 	signInWithGoogle: () => void;
@@ -46,6 +47,7 @@ const radientClient = createRadientClient(apiConfig.radientBaseUrl);
 export const useOidcAuth = (): UseOidcAuthResult => {
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+	const queryClient = useQueryClient();
 
 	// Try to get the MSAL instance at the top level of the hook
 	// If it fails, we'll handle Microsoft sign-in gracefully
@@ -116,6 +118,9 @@ export const useOidcAuth = (): UseOidcAuthResult => {
 					value: appResponse.result.api_key,
 				});
 
+				// Invalidate the React Query cache to trigger a refetch of the user information
+				queryClient.invalidateQueries({ queryKey: radientUserKeys.all });
+				
 				showSuccessToast("Sign-in successful and API key stored.");
 				setLoading(false);
 			} catch (err) {

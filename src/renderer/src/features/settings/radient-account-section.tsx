@@ -104,8 +104,8 @@ export const RadientAccountSection: FC = () => {
 	const { isAuthenticated, user, isLoading, error, signOut } = useRadientAuth();
 	
 	// Use a more direct approach to determine if we should show loading
-	// Only show loading if we're loading and not authenticated yet
-	const effectiveLoading = isLoading && !isAuthenticated;
+	// Only show loading if we're loading
+	const effectiveLoading = isLoading;
 
 	// If the feature flag is disabled, don't show this section
 	if (!isRadientPassEnabled) {
@@ -202,8 +202,8 @@ export const RadientAccountSection: FC = () => {
 
 	// Memoize the sign-in section to prevent unnecessary re-renders
 	const signInSection = useMemo(() => {
-		// Only show if not authenticated and not loading
-		if (isAuthenticated || isLoading) return null;
+		// Only show if not authenticated
+		if (isAuthenticated) return null;
 		
 		return (
 			<Box sx={{ mt: 2 }}>
@@ -215,11 +215,15 @@ export const RadientAccountSection: FC = () => {
 					<RadientAuthButtons
 						titleText="Sign in to your Radient account"
 						descriptionText="Choose your preferred sign-in method to access Radient services."
+						onSignInSuccess={() => {
+							// Force a refresh of the component
+							console.log("Sign-in successful, refreshing account section");
+						}}
 					/>
 				</Box>
 			</Box>
 		);
-	}, [isAuthenticated, isLoading]);
+	}, [isAuthenticated]);
 
 	return (
 		<StyledCard>
