@@ -164,33 +164,63 @@ function createWindow(): BrowserWindow {
 	mainWindow.webContents.setWindowOpenHandler((details) => {
 		// Allow popups from authentication providers
 		const url = new URL(details.url);
+		
+		// Expanded list of trusted authentication domains
 		const trustedAuthDomains = [
+			// Google auth domains
 			"accounts.google.com",
+			"oauth.googleusercontent.com",
+			"content.googleapis.com",
+			"ssl.gstatic.com",
+			
+			// Microsoft auth domains
 			"login.microsoftonline.com",
 			"login.live.com",
 			"login.windows.net",
+			"login.microsoft.com",
+			"microsoftonline.com",
+			"msauth",
+			"msftauth",
+			
+			// Auth relay domains
 			"storagerelay",
 		];
 
 		// Check if the URL is from a trusted authentication provider
 		const isTrustedAuthDomain = trustedAuthDomains.some(
 			(domain) =>
-				url.hostname.includes(domain) || url.protocol.includes(domain),
+				url.hostname.includes(domain) || 
+				url.protocol.includes(domain) ||
+				// Special case for storage relay URLs
+				(details.url.startsWith('storagerelay:') || details.url.includes('storagerelay'))
 		);
 
+		// Log the auth URL for debugging
+		console.log(`Auth popup request: ${details.url} - Trusted: ${isTrustedAuthDomain}`);
+
 		if (isTrustedAuthDomain) {
-			// Allow the popup for authentication with specific features
+			// Allow the popup for authentication with improved features
 			return {
 				action: "allow",
 				features: {
 					width: 800,
-					height: 600,
+					height: 700, // Increased height for better visibility
+					minWidth: 600,
+					minHeight: 500,
 					center: true,
 					frame: true,
+					autoHideMenuBar: false,
+					backgroundColor: "#FFFFFF",
 					webPreferences: {
 						contextIsolation: true,
 						nodeIntegration: false,
 						webSecurity: true,
+						allowRunningInsecureContent: false,
+						sandbox: true, // Enable sandbox for additional security
+						// Disable various features that aren't needed for auth
+						enableWebSQL: false,
+						navigateOnDragDrop: false,
+						spellcheck: false,
 					},
 				},
 			};

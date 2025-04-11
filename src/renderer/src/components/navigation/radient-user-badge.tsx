@@ -54,8 +54,9 @@ export const RadientUserBadge: FC<RadientUserBadgeProps> = ({
 	}
 
 	if (error) {
+		const errorMessage = error instanceof Error ? error.message : String(error);
 		return (
-			<Tooltip title={error} arrow>
+			<Tooltip title={errorMessage} arrow>
 				<BadgeContainer>
 					<Chip label="Auth Error" color="error" size="small" />
 				</BadgeContainer>

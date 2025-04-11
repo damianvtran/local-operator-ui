@@ -21,6 +21,7 @@ export * from "./use-models";
 export * from "./use-oidc-auth";
 export * from "./use-pagination-params";
 export * from "./use-radient-auth";
+export * from "./use-radient-user-query";
 export * from "./use-route-params";
 export * from "./use-scroll-to-bottom";
 export * from "./use-streaming-message";
