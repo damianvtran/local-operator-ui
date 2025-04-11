@@ -22,9 +22,10 @@ import { CredentialsApi } from "../api/local-operator/credentials-api";
 import { apiConfig } from "../config";
 import { showSuccessToast, showErrorToast } from "../utils/toast-manager";
 import { storeSession } from "../utils/session-store";
+import { jwtDecode } from "jwt-decode";
 import { useMsalInstance } from "../providers/auth";
 import { createRadientClient } from "../api/radient";
-import type { RadientApiResponse, UserInfoResult } from "../api/radient/types";
+// UserInfoResult is no longer needed here
 
 type UseOidcAuthResult = {
 	signInWithGoogle: () => void;
@@ -68,48 +69,42 @@ export const useOidcAuth = (): UseOidcAuthResult => {
 				// Persist the backend JWT for session restoration (30 days)
 				await storeSession(backendJwt);
 
-				// 2. Call /me to check session/account status
-				let meResponse: RadientApiResponse<UserInfoResult> | null = null;
+				// 2. Decode JWT to get account ID (sub claim)
+				let accountId: string;
 				try {
-					meResponse = await radientClient.getUserInfo(backendJwt);
-				} catch (meErr) {
-					const msg = meErr instanceof Error ? meErr.message : String(meErr);
-
-					if (
-						msg.includes("expired") ||
-						msg.includes("invalid") ||
-						msg.includes("not logged in")
-					) {
-						setError("Session expired or invalid. Please sign in again.");
-						setLoading(false);
-						return;
+					const decodedToken = jwtDecode<{ sub: string }>(backendJwt);
+					if (!decodedToken || !decodedToken.sub) {
+						throw new Error("Invalid JWT: Missing 'sub' claim.");
 					}
-					if (msg.includes("not found") || msg.includes("404")) {
-						// No account provisioned, proceed to provision
-						meResponse = null;
-					} else {
-						setError(`Failed to validate session: ${msg}`);
-						setLoading(false);
-						return;
-					}
+					accountId = decodedToken.sub;
+				} catch (decodeError) {
+					setError("Failed to decode JWT. Please sign in again.");
+					showErrorToast("Failed to decode JWT.");
+					setLoading(false);
+					return;
 				}
 
-				// 3. If no account, call /provision and store API key
-				if (!meResponse) {
-					const provisionRes = await radientClient.provisionAccount(backendJwt);
-					if (!provisionRes.result.api_key) {
-						throw new Error("Provisioning failed: No API key returned");
-					}
-					// Store API key securely
-					await CredentialsApi.updateCredential(apiConfig.baseUrl, {
-						key: "RADIENT_API_KEY",
-						value: provisionRes.result.api_key,
-					});
-					showSuccessToast("Account provisioned and API key stored.");
-				} else {
-					// Account exists, proceed
-					showSuccessToast("Sign-in successful.");
+				// 3. Create an application to get an API key
+				const appResponse = await radientClient.createApplication(
+					accountId,
+					backendJwt,
+					{
+						name: "Local Operator UI",
+						description: "Application created for Local Operator UI",
+					},
+				);
+
+				if (!appResponse.result.apiKey) {
+					throw new Error("Application creation failed: No API key returned");
 				}
+
+				// 4. Store API key securely
+				await CredentialsApi.updateCredential(apiConfig.baseUrl, {
+					key: "RADIENT_API_KEY",
+					value: appResponse.result.apiKey,
+				});
+
+				showSuccessToast("Sign-in successful and API key stored.");
 				setLoading(false);
 			} catch (err) {
 				const msg = err instanceof Error ? err.message : String(err);

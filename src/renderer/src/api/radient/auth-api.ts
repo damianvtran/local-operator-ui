@@ -11,6 +11,8 @@ import type {
 	AuthTokenExchangeResult,
 	UserInfoResult,
 	ProvisionResult,
+	CreateApplicationRequest,
+	CreateApplicationResult,
 } from "./types";
 
 /**
@@ -56,6 +58,41 @@ export async function exchangeToken(
 			"Content-Type": "application/json",
 		},
 		body: JSON.stringify(body),
+		credentials: "same-origin",
+	});
+
+	if (!response.ok) {
+		const text = await response.text();
+		throw new Error(text || `HTTP ${response.status}`);
+	}
+
+	return response.json();
+}
+
+/**
+ * Create a new application for a given account
+ *
+ * @param baseUrl - The base URL of the Radient API
+ * @param accountId - The ID of the account to create the application for
+ * @param jwt - The backend JWT
+ * @param applicationData - Data for the new application
+ * @returns The created application information
+ */
+export async function createApplication(
+	baseUrl: string,
+	accountId: string,
+	jwt: string,
+	applicationData: CreateApplicationRequest,
+): Promise<RadientApiResponse<CreateApplicationResult>> {
+	const url = joinUrl(baseUrl, `/v1/accounts/${accountId}/applications`);
+
+	const response = await fetch(url, {
+		method: "POST",
+		headers: {
+			Authorization: `Bearer ${jwt}`,
+			"Content-Type": "application/json",
+		},
+		body: JSON.stringify(applicationData),
 		credentials: "same-origin",
 	});
 

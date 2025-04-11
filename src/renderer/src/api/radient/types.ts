@@ -104,6 +104,54 @@ export type ProvisionResult = {
 };
 
 /**
+ * CreateApplicationRequest defines the input for creating a new application.
+ */
+export type CreateApplicationRequest = {
+	/**
+	 * Name for the new application
+	 */
+	name: string;
+	/**
+	 * Optional description for the application
+	 */
+	description?: string;
+};
+
+/**
+ * Response from the application creation endpoint
+ */
+export type CreateApplicationResult = {
+	/**
+	 * ID of the newly created application
+	 */
+	id: string;
+	/**
+	 * Name of the application
+	 */
+	name: string;
+	/**
+	 * Description of the application
+	 */
+	description: string;
+	/**
+	 * ID of the account it belongs to
+	 */
+	accountId: string;
+	/**
+	 * The raw, unhashed API key (only shown on creation)
+	 */
+	apiKey: string;
+	/**
+	 * Timestamp of creation
+	 */
+	createdAt: string;
+	/**
+	 * Timestamp of last update
+	 */
+	updatedAt: string;
+};
+
+/**
  * Error response from the API
  */
 export type ErrorResponse = {
