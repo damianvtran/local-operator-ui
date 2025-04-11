@@ -21,6 +21,8 @@ import type { FC } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { getSession, clearSession } from "@renderer/utils/session-store";
 import { apiConfig } from "@renderer/config";
+import { getUserInfo } from "@renderer/api/radient/auth-api";
+import { useUserStore } from "@renderer/store/user-store";
 import { useNavigate } from "react-router-dom";
 import { OnboardingDialog } from "./onboarding-dialog";
 import {
@@ -40,6 +42,7 @@ import { RadientSignInStep } from "./steps/radient-signin-step";
 import { SearchApiStep } from "./steps/search-api-step";
 import { UserProfileStep } from "./steps/user-profile-step";
 import { WelcomeStep } from "./steps/welcome-step";
+import { showErrorToast } from "@renderer/utils/toast-manager";
 
 /**
  * Props for the OnboardingModal component
@@ -61,21 +64,34 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 		useOnboardingStore();
 	const navigate = useNavigate();
 
-	// On mount, check for a persisted session and validate it
+	// On mount, check for a persisted session, validate it, and fetch user info
 	useEffect(() => {
 		const tryRestoreSession = async () => {
 			const jwt = await getSession();
 			if (!jwt) return;
 			try {
-				const res = await fetch(`${apiConfig.radientBaseUrl}/me`, {
-					method: "GET",
-					headers: { Authorization: `Bearer ${jwt}` },
-					credentials: "same-origin",
-				});
-				if (res.ok) {
-					// When user is authenticated, send them to create agent step
-					setCurrentStep(OnboardingStep.CREATE_AGENT);
-				} else {
+				// Fetch user information from Radient API
+				try {
+					const userInfoResponse = await getUserInfo(
+						apiConfig.radientBaseUrl,
+						jwt,
+					);
+					const userInfo = userInfoResponse.result;
+
+					// Update the user profile with name and email
+					if (userInfo) {
+						const updateProfile = useUserStore.getState().updateProfile;
+						updateProfile({
+							name: userInfo.account.name,
+							email: userInfo.account.email,
+						});
+
+						// When user is authenticated, send them to create agent step
+						setCurrentStep(OnboardingStep.CREATE_AGENT);
+					}
+				} catch (error) {
+					console.error("Error fetching user info:", error);
+					showErrorToast("Error fetching user info. Please sign in again.");
 					clearSession();
 				}
 			} catch {

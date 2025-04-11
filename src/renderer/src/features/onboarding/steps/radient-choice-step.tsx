@@ -46,7 +46,7 @@ const ChoiceCard = styled(Box, {
 	},
 }));
 
-const CardTitle = styled(Typography)(({ theme }) => ({
+const CardTitle = styled(Box)(({ theme }) => ({
 	fontSize: "1.25rem",
 	fontWeight: 700,
 	marginBottom: theme.spacing(1),
@@ -54,7 +54,7 @@ const CardTitle = styled(Typography)(({ theme }) => ({
 	color: theme.palette.text.primary,
 }));
 
-const CardSubtitle = styled(Typography)(({ theme }) => ({
+const CardSubtitle = styled(Box)(({ theme }) => ({
 	fontSize: "0.95rem",
 	color: theme.palette.text.secondary,
 	textAlign: "center",
@@ -72,14 +72,14 @@ const CardIcon = styled(Box)(({ theme }) => ({
 	padding: theme.spacing(2),
 }));
 
-const RadientPassText = styled(Typography)(({ theme }) => ({
+const RadientPassText = styled(Box)(({ theme }) => ({
 	fontSize: "1.25rem",
 	fontWeight: 700,
 	marginBottom: theme.spacing(1),
 	color: radientTheme.palette.primary.light,
 }));
 
-const FreeText = styled(Typography)(({ theme }) => ({
+const FreeText = styled(Box)(({ theme }) => ({
 	fontSize: "1.25rem",
 	fontWeight: 700,
 	marginBottom: theme.spacing(1),
@@ -141,7 +141,6 @@ export const RadientChoiceStep: FC<RadientChoiceStepProps> = ({
 		<Box sx={{ animation: "fadeIn 0.6s ease-out" }}>
 			<Typography
 				variant="body1"
-				paragraph
 				sx={{
 					fontSize: "1.1rem",
 					fontWeight: 500,

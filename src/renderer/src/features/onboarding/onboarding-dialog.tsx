@@ -125,11 +125,8 @@ const StyledDialogTitle = styled(DialogTitle)(({ theme }) => ({
 	paddingLeft: theme.spacing(3), // Add horizontal padding
 	paddingRight: theme.spacing(3), // Add horizontal padding
 	color: theme.palette.text.primary,
-	// Remove explicit background
-	"& .MuiTypography-root": {
-		fontWeight: 400,
-		fontSize: "2rem",
-	},
+	fontSize: "2.2rem",
+	fontWeight: 400,
 }));
 
 /**

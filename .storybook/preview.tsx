@@ -24,20 +24,20 @@ if (typeof window !== "undefined") {
 		// Mock session storage methods with window variable
 		session: {
 			getSession: async () => {
-				const session = window.sessionStorage.getItem("mock_session");
+				const session = window.sessionStorage.getItem("mock-radient-session");
 				return session
 					? JSON.parse(session)
 					: { jwt: undefined, expiry: undefined };
 			},
 			storeSession: async (jwt: string, expiry: number) => {
 				window.sessionStorage.setItem(
-					"mock_session",
+					"mock-radient-session",
 					JSON.stringify({ jwt, expiry }),
 				);
 				return true;
 			},
 			clearSession: async () => {
-				window.sessionStorage.removeItem("mock_session");
+				window.sessionStorage.removeItem("mock-radient-session");
 				return true;
 			},
 		},
