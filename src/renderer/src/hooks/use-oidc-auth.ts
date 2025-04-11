@@ -98,30 +98,48 @@ export const useOidcAuth = (): UseOidcAuthResult => {
 					return;
 				}
 
-				// 3. Create an application to get an API key
-				const appResponse = await radientClient.createApplication(
-					accountId,
-					backendJwt,
-					{
-						name: "Local Operator UI",
-						description: "Application created for Local Operator UI",
-					},
-				);
-
-				if (!appResponse.result.api_key) {
-					throw new Error("Application creation failed: No API key returned");
+				// 3. Check if RADIENT_API_KEY already exists
+				let apiKeyExists = false;
+				try {
+					const credentialsResponse = await CredentialsApi.listCredentials(apiConfig.baseUrl);
+					if (credentialsResponse.result && credentialsResponse.result.keys) {
+						apiKeyExists = credentialsResponse.result.keys.includes("RADIENT_API_KEY");
+					}
+				} catch (credentialsError) {
+					console.error("Failed to check existing credentials:", credentialsError);
+					// Continue with the flow even if we couldn't check credentials
 				}
 
-				// 4. Store API key securely
-				await CredentialsApi.updateCredential(apiConfig.baseUrl, {
-					key: "RADIENT_API_KEY",
-					value: appResponse.result.api_key,
-				});
+				// Only create a new API key if one doesn't exist
+				if (!apiKeyExists) {
+					// Create an application to get an API key
+					const appResponse = await radientClient.createApplication(
+						accountId,
+						backendJwt,
+						{
+							name: "Local Operator UI",
+							description: "Application created for Local Operator UI",
+						},
+					);
+
+					if (!appResponse.result.api_key) {
+						throw new Error("Application creation failed: No API key returned");
+					}
+
+					// Store API key securely
+					await CredentialsApi.updateCredential(apiConfig.baseUrl, {
+						key: "RADIENT_API_KEY",
+						value: appResponse.result.api_key,
+					});
+					
+					showSuccessToast("Sign-in successful and new API key stored.");
+				} else {
+					showSuccessToast("Sign-in successful. Using existing API key.");
+				}
 
 				// Invalidate the React Query cache to trigger a refetch of the user information
 				queryClient.invalidateQueries({ queryKey: radientUserKeys.all });
 				
-				showSuccessToast("Sign-in successful and API key stored.");
 				setLoading(false);
 			} catch (err) {
 				const msg = err instanceof Error ? err.message : String(err);
