@@ -19,14 +19,25 @@ if (typeof window !== "undefined") {
 	// Mock window.api for Storybook
 	// biome-ignore lint/suspicious/noExplicitAny: Necessary for mocking the window object
 	(window as any).api = {
-		// Mock session storage methods
+		// Mock session storage methods with window variable
 		session: {
-			getSession: async () => ({
-				jwt: "mock-jwt",
-				expiry: Date.now() + 86400000,
-			}),
-			storeSession: async () => true,
-			clearSession: async () => true,
+			getSession: async () => {
+				const session = window.sessionStorage.getItem("mock_session");
+				return session
+					? JSON.parse(session)
+					: { jwt: undefined, expiry: undefined };
+			},
+			storeSession: async (jwt: string, expiry: number) => {
+				window.sessionStorage.setItem(
+					"mock_session",
+					JSON.stringify({ jwt, expiry }),
+				);
+				return true;
+			},
+			clearSession: async () => {
+				window.sessionStorage.removeItem("mock_session");
+				return true;
+			},
 		},
 		// Mock other API methods as needed
 		openFile: async () => {},
