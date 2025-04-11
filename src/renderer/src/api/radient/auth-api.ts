@@ -13,6 +13,19 @@ import type {
 } from "./types";
 
 /**
+ * Joins base URL and path ensuring exactly one slash between them.
+ *
+ * @param baseUrl - The base URL
+ * @param path - The endpoint path
+ * @returns The joined URL
+ */
+function joinUrl(baseUrl: string, path: string): string {
+	const normalizedBaseUrl = baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`;
+	const normalizedPath = path.startsWith("/") ? path.slice(1) : path;
+	return normalizedBaseUrl + normalizedPath;
+}
+
+/**
  * Exchange an ID token for a backend JWT
  *
  * @param baseUrl - The base URL of the Radient API
@@ -25,8 +38,9 @@ export async function exchangeToken(
 	provider: AuthProvider,
 	idToken: string,
 ): Promise<AuthTokenExchangeResponse> {
-	const endpoint = provider === "google" ? "/auth/google" : "/auth/microsoft";
-	const url = `${baseUrl}${endpoint}`;
+	const endpoint =
+		provider === "google" ? "/v1/auth/google" : "/v1/auth/microsoft";
+	const url = joinUrl(baseUrl, endpoint);
 
 	const response = await fetch(url, {
 		method: "POST",
@@ -84,7 +98,7 @@ export async function getUserInfo(
 	baseUrl: string,
 	jwt: string,
 ): Promise<UserInfoResponse> {
-	const url = `${baseUrl}/me`;
+	const url = joinUrl(baseUrl, "/v1/me");
 
 	const response = await fetch(url, {
 		method: "GET",
@@ -113,7 +127,7 @@ export async function provisionAccount(
 	baseUrl: string,
 	jwt: string,
 ): Promise<ProvisionResponse> {
-	const url = `${baseUrl}/provision`;
+	const url = joinUrl(baseUrl, "/v1/provision");
 
 	const response = await fetch(url, {
 		method: "POST",
