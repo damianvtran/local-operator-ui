@@ -16,7 +16,7 @@ import {
 	alpha,
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
-import { useUserStore } from "@renderer/store/user-store";
+import { useRadientAuth } from "@renderer/hooks";
 import { useState } from "react";
 import type React from "react";
 import type { FC } from "react";
@@ -188,10 +188,10 @@ export const UserProfileSidebar: FC<UserProfileSidebarProps> = ({
 	const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 	const open = Boolean(anchorEl);
 
-	// Get user profile from the store
-	const { profile } = useUserStore();
-	const userName = profile.name;
-	const userEmail = profile.email;
+	// Get user profile from Radient auth or fallback to user store
+	const { user, isAuthenticated, signOut } = useRadientAuth();
+	const userName = user.name;
+	const userEmail = user.email;
 
 	const handleClick = (event: React.MouseEvent<HTMLElement>) => {
 		if (useAuth) {
@@ -208,6 +208,18 @@ export const UserProfileSidebar: FC<UserProfileSidebarProps> = ({
 	const handleNavigate = (path: string) => {
 		handleClose();
 		navigate(path);
+	};
+
+	const handleSignOut = async () => {
+		// If authenticated with Radient, sign out
+		if (isAuthenticated) {
+			await signOut();
+			console.log("Signed out from Radient session");
+
+			// Refresh the page to reset the auth state
+			window.location.reload();
+		}
+		handleClose();
 	};
 
 	// Get user initials from name or use default icon
@@ -278,7 +290,7 @@ export const UserProfileSidebar: FC<UserProfileSidebarProps> = ({
 						Privacy & Security
 					</MenuItemStyled>
 					<MenuDivider />
-					<MenuItemDanger onClick={handleClose}>
+					<MenuItemDanger onClick={handleSignOut}>
 						<IconWrapper>
 							<FontAwesomeIcon icon={faSignOut} />
 						</IconWrapper>
