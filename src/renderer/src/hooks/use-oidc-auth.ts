@@ -101,12 +101,18 @@ export const useOidcAuth = (): UseOidcAuthResult => {
 				// 3. Check if RADIENT_API_KEY already exists
 				let apiKeyExists = false;
 				try {
-					const credentialsResponse = await CredentialsApi.listCredentials(apiConfig.baseUrl);
-					if (credentialsResponse.result && credentialsResponse.result.keys) {
-						apiKeyExists = credentialsResponse.result.keys.includes("RADIENT_API_KEY");
+					const credentialsResponse = await CredentialsApi.listCredentials(
+						apiConfig.baseUrl,
+					);
+					if (credentialsResponse.result?.keys) {
+						apiKeyExists =
+							credentialsResponse.result.keys.includes("RADIENT_API_KEY");
 					}
 				} catch (credentialsError) {
-					console.error("Failed to check existing credentials:", credentialsError);
+					console.error(
+						"Failed to check existing credentials:",
+						credentialsError,
+					);
 					// Continue with the flow even if we couldn't check credentials
 				}
 
@@ -131,7 +137,7 @@ export const useOidcAuth = (): UseOidcAuthResult => {
 						key: "RADIENT_API_KEY",
 						value: appResponse.result.api_key,
 					});
-					
+
 					showSuccessToast("Sign-in successful and new API key stored.");
 				} else {
 					showSuccessToast("Sign-in successful. Using existing API key.");
@@ -139,7 +145,7 @@ export const useOidcAuth = (): UseOidcAuthResult => {
 
 				// Invalidate the React Query cache to trigger a refetch of the user information
 				queryClient.invalidateQueries({ queryKey: radientUserKeys.all });
-				
+
 				setLoading(false);
 			} catch (err) {
 				const msg = err instanceof Error ? err.message : String(err);
@@ -148,7 +154,7 @@ export const useOidcAuth = (): UseOidcAuthResult => {
 				setLoading(false);
 			}
 		},
-		[],
+		[queryClient],
 	);
 
 	/**
