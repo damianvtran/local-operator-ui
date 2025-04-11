@@ -94,14 +94,16 @@ export const useOidcAuth = (): UseOidcAuthResult => {
 					},
 				);
 
-				if (!appResponse.result.apiKey) {
+				console.log("Application response:", appResponse);
+
+				if (!appResponse.result.api_key) {
 					throw new Error("Application creation failed: No API key returned");
 				}
 
 				// 4. Store API key securely
 				await CredentialsApi.updateCredential(apiConfig.baseUrl, {
 					key: "RADIENT_API_KEY",
-					value: appResponse.result.apiKey,
+					value: appResponse.result.api_key,
 				});
 
 				showSuccessToast("Sign-in successful and API key stored.");
