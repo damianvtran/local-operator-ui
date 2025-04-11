@@ -198,8 +198,9 @@ export const RadientAccountSection: FC = () => {
 		return (
 			<Box sx={{ mt: 2 }}>
 				<Typography variant="body2" color="text.secondary" gutterBottom>
-					You are not currently signed in to Radient. Sign in to access
-					additional features.
+					You are not currently signed in to Radient. Sign in to access your
+					account details or sign up to get free credits and unified access to
+					models, tools, and more with Radient Pass.
 				</Typography>
 				<Box sx={{ mt: 3 }}>
 					<RadientAuthButtons
@@ -220,12 +221,11 @@ export const RadientAccountSection: FC = () => {
 			<StyledCardContent>
 				<CardTitle variant="h6">
 					<FontAwesomeIcon icon={faUser} />
-					Radient Account
+					Account Details
 				</CardTitle>
 
 				<CardDescription variant="body2">
-					Manage your Radient account for accessing additional features like web
-					search, image generation, and more.
+					Review your Radient Pass details and manage your account settings.
 				</CardDescription>
 
 				{effectiveLoading ? (
