@@ -81,8 +81,8 @@ const InfoValue = styled(Typography)(() => ({
 
 const StatusChip = styled(Chip)(({ theme }) => ({
 	marginLeft: theme.spacing(1),
-  width: 8,
-  height: 8,
+	width: 8,
+	height: 8,
 }));
 
 const SignOutButton = styled(Button)(({ theme }) => ({
@@ -104,7 +104,7 @@ export const RadientAccountSection: FC = () => {
 	const { isEnabled } = useFeatureFlags();
 	const isRadientPassEnabled = isEnabled("radient-pass-onboarding");
 	const { isAuthenticated, user, isLoading, error, signOut } = useRadientAuth();
-	
+
 	// Use a more direct approach to determine if we should show loading
 	// Only show loading if we're loading
 	const effectiveLoading = isLoading;
@@ -122,14 +122,14 @@ export const RadientAccountSection: FC = () => {
 	// Memoize the account information section to prevent unnecessary re-renders
 	const accountInfoSection = useMemo(() => {
 		if (!isAuthenticated || !user.radientUser) return null;
-		
+
 		return (
 			<>
 				<InfoContainer>
 					<InfoRow>
 						<InfoLabel variant="body2">Status:</InfoLabel>
 						{/* Use Box instead of Typography to avoid nesting div inside p */}
-						<Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center' }}>
+						<Box sx={{ flexGrow: 1, display: "flex", alignItems: "center" }}>
 							<Typography variant="body2" component="span">
 								Connected
 							</Typography>
@@ -154,9 +154,7 @@ export const RadientAccountSection: FC = () => {
 					</InfoRow>
 					<InfoRow>
 						<InfoLabel variant="body2">Account ID:</InfoLabel>
-						<InfoValue variant="body2">
-							{user.radientUser.account.id}
-						</InfoValue>
+						<InfoValue variant="body2">{user.radientUser.account.id}</InfoValue>
 					</InfoRow>
 					<InfoRow>
 						<InfoLabel variant="body2">Provider:</InfoLabel>
@@ -167,9 +165,7 @@ export const RadientAccountSection: FC = () => {
 					<InfoRow>
 						<InfoLabel variant="body2">Created:</InfoLabel>
 						<InfoValue variant="body2">
-							{new Date(
-								user.radientUser.account.created_at,
-							).toLocaleString()}
+							{new Date(user.radientUser.account.created_at).toLocaleString()}
 						</InfoValue>
 					</InfoRow>
 				</InfoContainer>
@@ -192,21 +188,13 @@ export const RadientAccountSection: FC = () => {
 				</Grid>
 			</>
 		);
-	}, [
-		user.radientUser?.account.id,
-		user.radientUser?.account.name,
-		user.radientUser?.account.email,
-		user.radientUser?.account.status,
-		user.radientUser?.account.created_at,
-		user.radientUser?.identity.provider,
-		handleSignOut
-	]);
+	}, [isAuthenticated, user.radientUser, handleSignOut]);
 
 	// Memoize the sign-in section to prevent unnecessary re-renders
 	const signInSection = useMemo(() => {
 		// Only show if not authenticated
 		if (isAuthenticated) return null;
-		
+
 		return (
 			<Box sx={{ mt: 2 }}>
 				<Typography variant="body2" color="text.secondary" gutterBottom>
@@ -246,7 +234,9 @@ export const RadientAccountSection: FC = () => {
 					<Typography color="error">
 						Error: {error instanceof Error ? error.message : String(error)}
 					</Typography>
-				) : accountInfoSection || signInSection}
+				) : (
+					accountInfoSection || signInSection
+				)}
 			</StyledCardContent>
 		</StyledCard>
 	);
