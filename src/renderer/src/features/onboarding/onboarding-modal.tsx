@@ -16,7 +16,7 @@ import {
 	PrimaryButton,
 	SecondaryButton,
 } from "@shared/components/common/base-dialog";
-import { useFeatureFlagEnabled } from "posthog-js/react";
+import { useFeatureFlags } from "@renderer/providers/feature-flags";
 import type { FC } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { getSession, clearSession } from "@renderer/utils/session-store";
@@ -86,7 +86,8 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 	}, [setCurrentStep]);
 
 	// Check if the Radient Pass onboarding feature flag is enabled
-	const isRadientPassEnabled = useFeatureFlagEnabled("radient-pass-onboarding");
+	const { isEnabled } = useFeatureFlags();
+	const isRadientPassEnabled = isEnabled("radient-pass-onboarding");
 
 	// Define the steps based on the feature flag and current step
 	const steps = useMemo(() => {
