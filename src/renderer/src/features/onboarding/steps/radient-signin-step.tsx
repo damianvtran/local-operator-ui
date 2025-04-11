@@ -8,11 +8,13 @@
 import { faGoogle, faMicrosoft } from "@fortawesome/free-brands-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, Button, Typography, alpha, styled } from "@mui/material";
-import { useOnboardingStore } from "@renderer/store/onboarding-store";
+import {
+	OnboardingStep,
+	useOnboardingStore,
+} from "@renderer/store/onboarding-store";
 import { radientTheme } from "@renderer/themes";
 import type { FC } from "react";
 import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import { SectionContainer, SectionDescription } from "../onboarding-styled";
 import { useOidcAuth } from "@renderer/hooks/use-oidc-auth";
 import { hasValidSession } from "@renderer/utils/session-store";
@@ -71,25 +73,24 @@ const IconContainer = styled(Box)(({ theme }) => ({
  * to set up their Radient Pass account.
  */
 export const RadientSignInStep: FC = () => {
-	const { completeOnboarding } = useOnboardingStore();
-	const navigate = useNavigate();
 	const { signInWithGoogle, signInWithMicrosoft, loading, error } =
 		useOidcAuth();
 
-	// Complete onboarding on successful sign-in (success toast is shown in the hook)
+	// After successful sign-in, continue to agent creation step
 	useEffect(() => {
 		const checkSession = async () => {
 			if (!loading && !error) {
 				// Check if we have a valid session after sign-in
 				const hasSession = await hasValidSession();
 				if (hasSession) {
-					completeOnboarding();
-					navigate("/chat");
+					// Instead of completing onboarding, continue to agent creation
+					const { setCurrentStep } = useOnboardingStore.getState();
+					setCurrentStep(OnboardingStep.CREATE_AGENT);
 				}
 			}
 		};
 		checkSession();
-	}, [loading, error, completeOnboarding, navigate]);
+	}, [loading, error]);
 
 	return (
 		<Box sx={{ animation: "fadeIn 0.6s ease-out" }}>
@@ -138,7 +139,7 @@ export const RadientSignInStep: FC = () => {
 					<GoogleButton
 						onClick={() => {
 							signInWithGoogle();
-							// On success, onboarding will complete via effect
+							// On success, user will continue to agent creation step
 						}}
 						disabled={loading}
 					>
@@ -152,7 +153,7 @@ export const RadientSignInStep: FC = () => {
 					<MicrosoftButton
 						onClick={() => {
 							signInWithMicrosoft();
-							// On success, onboarding will complete via effect
+							// On success, user will continue to agent creation step
 						}}
 						disabled={loading}
 					>
