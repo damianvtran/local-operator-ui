@@ -81,6 +81,8 @@ const InfoValue = styled(Typography)(() => ({
 
 const StatusChip = styled(Chip)(({ theme }) => ({
 	marginLeft: theme.spacing(1),
+  width: 8,
+  height: 8,
 }));
 
 const SignOutButton = styled(Button)(({ theme }) => ({
