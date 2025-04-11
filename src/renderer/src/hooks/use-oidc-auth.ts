@@ -23,8 +23,8 @@ import { apiConfig } from "../config";
 import { showSuccessToast, showErrorToast } from "../utils/toast-manager";
 import { storeSession } from "../utils/session-store";
 import { useMsalInstance } from "../providers/auth";
-
-type AuthProvider = "google" | "microsoft";
+import { createRadientClient } from "../api/radient";
+import type { UserInfoResponse } from "../api/radient/types";
 
 type UseOidcAuthResult = {
 	signInWithGoogle: () => void;
@@ -33,59 +33,11 @@ type UseOidcAuthResult = {
 	error: string | null;
 };
 
-const GOOGLE_AUTH_ENDPOINT = "/auth/google";
-const MICROSOFT_AUTH_ENDPOINT = "/auth/microsoft";
-const ME_ENDPOINT = "/me";
-const PROVISION_ENDPOINT = "/provision";
-const RADIENT_BASE_URL = apiConfig.radientBaseUrl;
-
 // Microsoft authentication scopes
 const MICROSOFT_SCOPES = ["openid", "profile", "email"];
 
-/**
- * Securely POSTs to a backend endpoint with JSON and returns the response.
- */
-async function postJson<T>(
-	url: string,
-	body: unknown,
-	jwt?: string,
-): Promise<T> {
-	const headers: Record<string, string> = {
-		"Content-Type": "application/json",
-	};
-	if (jwt) {
-		headers.Authorization = `Bearer ${jwt}`;
-	}
-	const res = await fetch(url, {
-		method: "POST",
-		headers,
-		body: JSON.stringify(body),
-		credentials: "same-origin",
-	});
-	if (!res.ok) {
-		const text = await res.text();
-		throw new Error(text || `HTTP ${res.status}`);
-	}
-	return res.json();
-}
-
-/**
- * Securely GETs from a backend endpoint and returns the response.
- */
-async function getJson<T>(url: string, jwt: string): Promise<T> {
-	const res = await fetch(url, {
-		method: "GET",
-		headers: {
-			Authorization: `Bearer ${jwt}`,
-		},
-		credentials: "same-origin",
-	});
-	if (!res.ok) {
-		const text = await res.text();
-		throw new Error(text || `HTTP ${res.status}`);
-	}
-	return res.json();
-}
+// Create a Radient API client
+const radientClient = createRadientClient(apiConfig.radientBaseUrl);
 
 /**
  * Main hook for OIDC authentication.
@@ -98,29 +50,25 @@ export const useOidcAuth = (): UseOidcAuthResult => {
 	 * Handles the full backend integration after obtaining an ID token.
 	 */
 	const handleBackendAuth = useCallback(
-		async (provider: AuthProvider, idToken: string) => {
+		async (provider: "google" | "microsoft", idToken: string) => {
 			setLoading(true);
 			setError(null);
 			try {
 				// 1. Exchange ID token for backend JWT
-				const authEndpoint =
+				const tokenResponse =
 					provider === "google"
-						? `${RADIENT_BASE_URL}${GOOGLE_AUTH_ENDPOINT}`
-						: `${RADIENT_BASE_URL}${MICROSOFT_AUTH_ENDPOINT}`;
-				const { token: backendJwt } = await postJson<{ token: string }>(
-					authEndpoint,
-					{ id_token: idToken },
-				);
+						? await radientClient.exchangeGoogleToken(idToken)
+						: await radientClient.exchangeMicrosoftToken(idToken);
+
+				const backendJwt = tokenResponse.token;
+
 				// Persist the backend JWT for session restoration (30 days)
 				await storeSession(backendJwt);
 
 				// 2. Call /me to check session/account status
-				let meResponse: unknown;
+				let meResponse: UserInfoResponse | null = null;
 				try {
-					meResponse = await getJson(
-						`${RADIENT_BASE_URL}${ME_ENDPOINT}`,
-						backendJwt,
-					);
+					meResponse = await radientClient.getUserInfo(backendJwt);
 				} catch (meErr) {
 					const msg = meErr instanceof Error ? meErr.message : String(meErr);
 					if (
@@ -144,11 +92,7 @@ export const useOidcAuth = (): UseOidcAuthResult => {
 
 				// 3. If no account, call /provision and store API key
 				if (!meResponse) {
-					const provisionRes = await postJson<{ api_key: string }>(
-						`${RADIENT_BASE_URL}${PROVISION_ENDPOINT}`,
-						{},
-						backendJwt,
-					);
+					const provisionRes = await radientClient.provisionAccount(backendJwt);
 					if (!provisionRes.api_key) {
 						throw new Error("Provisioning failed: No API key returned");
 					}
