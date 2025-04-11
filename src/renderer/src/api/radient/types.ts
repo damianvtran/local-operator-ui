@@ -27,9 +27,24 @@ export type AuthTokenExchangeRequest = {
 };
 
 /**
+ * Standard Radient API response format
+ * All API responses are wrapped in this structure.
+ */
+export type RadientApiResponse<T> = {
+	/**
+	 * Human-readable message from the API
+	 */
+	msg: string;
+	/**
+	 * The actual data payload
+	 */
+	result: T;
+};
+
+/**
  * Response from the token exchange endpoint
  */
-export type AuthTokenExchangeResponse = {
+export type AuthTokenExchangeResult = {
 	/**
 	 * The backend JWT token
 	 */
@@ -39,7 +54,7 @@ export type AuthTokenExchangeResponse = {
 /**
  * User information returned by the /me endpoint
  */
-export type UserInfoResponse = {
+export type UserInfoResult = {
 	/**
 	 * User ID
 	 */
@@ -69,7 +84,7 @@ export type UserInfoResponse = {
 /**
  * Response from the /provision endpoint
  */
-export type ProvisionResponse = {
+export type ProvisionResult = {
 	/**
 	 * The API key for the provisioned account
 	 */

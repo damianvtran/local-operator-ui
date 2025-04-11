@@ -7,9 +7,10 @@
 import type {
 	AuthProvider,
 	AuthTokenExchangeRequest,
-	AuthTokenExchangeResponse,
-	UserInfoResponse,
-	ProvisionResponse,
+	RadientApiResponse,
+	AuthTokenExchangeResult,
+	UserInfoResult,
+	ProvisionResult,
 } from "./types";
 
 /**
@@ -39,7 +40,7 @@ export async function exchangeToken(
 	baseUrl: string,
 	provider: AuthProvider,
 	tokens: { idToken?: string; accessToken?: string },
-): Promise<AuthTokenExchangeResponse> {
+): Promise<RadientApiResponse<AuthTokenExchangeResult>> {
 	const endpoint =
 		provider === "google" ? "/v1/auth/google" : "/v1/auth/microsoft";
 	const url = joinUrl(baseUrl, endpoint);
@@ -76,7 +77,7 @@ export async function exchangeToken(
 export async function exchangeGoogleToken(
 	baseUrl: string,
 	tokens: { idToken?: string; accessToken?: string },
-): Promise<AuthTokenExchangeResponse> {
+): Promise<RadientApiResponse<AuthTokenExchangeResult>> {
 	return exchangeToken(baseUrl, "google", tokens);
 }
 
@@ -90,7 +91,7 @@ export async function exchangeGoogleToken(
 export async function exchangeMicrosoftToken(
 	baseUrl: string,
 	tokens: { idToken?: string; accessToken?: string },
-): Promise<AuthTokenExchangeResponse> {
+): Promise<RadientApiResponse<AuthTokenExchangeResult>> {
 	return exchangeToken(baseUrl, "microsoft", tokens);
 }
 
@@ -104,7 +105,7 @@ export async function exchangeMicrosoftToken(
 export async function getUserInfo(
 	baseUrl: string,
 	jwt: string,
-): Promise<UserInfoResponse> {
+): Promise<RadientApiResponse<UserInfoResult>> {
 	const url = joinUrl(baseUrl, "/v1/me");
 
 	const response = await fetch(url, {
@@ -133,7 +134,7 @@ export async function getUserInfo(
 export async function provisionAccount(
 	baseUrl: string,
 	jwt: string,
-): Promise<ProvisionResponse> {
+): Promise<RadientApiResponse<ProvisionResult>> {
 	const url = joinUrl(baseUrl, "/v1/provision");
 
 	const response = await fetch(url, {

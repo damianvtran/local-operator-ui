@@ -24,7 +24,7 @@ import { showSuccessToast, showErrorToast } from "../utils/toast-manager";
 import { storeSession } from "../utils/session-store";
 import { useMsalInstance } from "../providers/auth";
 import { createRadientClient } from "../api/radient";
-import type { UserInfoResponse } from "../api/radient/types";
+import type { RadientApiResponse, UserInfoResult } from "../api/radient/types";
 
 type UseOidcAuthResult = {
 	signInWithGoogle: () => void;
@@ -63,17 +63,18 @@ export const useOidcAuth = (): UseOidcAuthResult => {
 						? await radientClient.exchangeGoogleToken(tokens)
 						: await radientClient.exchangeMicrosoftToken(tokens);
 
-				const backendJwt = tokenResponse.token;
+				const backendJwt = tokenResponse.result.token;
 
 				// Persist the backend JWT for session restoration (30 days)
 				await storeSession(backendJwt);
 
 				// 2. Call /me to check session/account status
-				let meResponse: UserInfoResponse | null = null;
+				let meResponse: RadientApiResponse<UserInfoResult> | null = null;
 				try {
 					meResponse = await radientClient.getUserInfo(backendJwt);
 				} catch (meErr) {
 					const msg = meErr instanceof Error ? meErr.message : String(meErr);
+
 					if (
 						msg.includes("expired") ||
 						msg.includes("invalid") ||
@@ -96,13 +97,13 @@ export const useOidcAuth = (): UseOidcAuthResult => {
 				// 3. If no account, call /provision and store API key
 				if (!meResponse) {
 					const provisionRes = await radientClient.provisionAccount(backendJwt);
-					if (!provisionRes.api_key) {
+					if (!provisionRes.result.api_key) {
 						throw new Error("Provisioning failed: No API key returned");
 					}
 					// Store API key securely
 					await CredentialsApi.updateCredential(apiConfig.baseUrl, {
 						key: "RADIENT_API_KEY",
-						value: provisionRes.api_key,
+						value: provisionRes.result.api_key,
 					});
 					showSuccessToast("Account provisioned and API key stored.");
 				} else {
