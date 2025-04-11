@@ -8,6 +8,7 @@
 import type { FC, ReactNode } from "react";
 import { GoogleAuthProvider } from "./google-auth-provider";
 import { MicrosoftAuthProvider } from "./microsoft-auth-provider";
+import { useFeatureFlagEnabled } from "posthog-js/react";
 
 type AuthProvidersProps = {
 	/**
@@ -40,6 +41,12 @@ export const AuthProviders: FC<AuthProvidersProps> = ({
 	microsoftClientId,
 	microsoftTenantId,
 }) => {
+	const isRadientPassEnabled = useFeatureFlagEnabled("radient-pass-onboarding");
+
+	if (!isRadientPassEnabled) {
+		return <>{children}</>;
+	}
+
 	return (
 		<GoogleAuthProvider clientId={googleClientId}>
 			<MicrosoftAuthProvider
