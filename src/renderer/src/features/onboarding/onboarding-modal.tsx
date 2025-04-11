@@ -73,8 +73,8 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 					credentials: "same-origin",
 				});
 				if (res.ok) {
-					completeOnboarding();
-					navigate("/chat");
+					// When user is authenticated, send them to create agent step
+					setCurrentStep(OnboardingStep.CREATE_AGENT);
 				} else {
 					clearSession();
 				}
@@ -83,8 +83,7 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 			}
 		};
 		tryRestoreSession();
-		// Only run on mount
-	}, [completeOnboarding, navigate]);
+	}, [setCurrentStep]);
 
 	// Check if the Radient Pass onboarding feature flag is enabled
 	const isRadientPassEnabled = useFeatureFlagEnabled("radient-pass-onboarding");
@@ -241,12 +240,6 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 	 */
 	const handleNext = useCallback(() => {
 		switch (currentStep) {
-			// Remove Next button progression for RADIENT_CHOICE step
-			case OnboardingStep.RADIENT_SIGNIN:
-				// Skip to congratulations since this is a stub for now
-				completeOnboarding();
-				navigate("/chat");
-				break;
 			case OnboardingStep.WELCOME:
 				setCurrentStep(OnboardingStep.USER_PROFILE);
 				break;
@@ -379,16 +372,17 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 
 			<Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
 				{canSkip && <SkipButton onClick={handleSkip}>Skip</SkipButton>}
-				{currentStep !== OnboardingStep.RADIENT_CHOICE && (
-					<PrimaryButton
-						onClick={handleNext}
-						disabled={
-							currentStep === OnboardingStep.CREATE_AGENT && !hasCreatedAgent
-						}
-					>
-						{nextButtonText}
-					</PrimaryButton>
-				)}
+				{currentStep !== OnboardingStep.RADIENT_CHOICE &&
+					currentStep !== OnboardingStep.RADIENT_SIGNIN && (
+						<PrimaryButton
+							onClick={handleNext}
+							disabled={
+								currentStep === OnboardingStep.CREATE_AGENT && !hasCreatedAgent
+							}
+						>
+							{nextButtonText}
+						</PrimaryButton>
+					)}
 			</Box>
 		</>
 	);
