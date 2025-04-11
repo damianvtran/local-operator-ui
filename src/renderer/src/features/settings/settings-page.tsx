@@ -2,7 +2,6 @@ import { HostingSelect } from "@components/hosting/hosting-select";
 import { ModelSelect } from "@components/hosting/model-select";
 import {
 	faAdjust,
-	faCloudUploadAlt,
 	faDatabase,
 	faEnvelope,
 	faGear,
@@ -11,7 +10,6 @@ import {
 	faKey,
 	faListAlt,
 	faRobot,
-	faSave,
 	faUser,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -34,7 +32,6 @@ import { useUserStore } from "@renderer/store/user-store";
 import { EditableField } from "@shared/components/common/editable-field";
 import { PageHeader } from "@shared/components/common/page-header";
 import { SliderSetting } from "@shared/components/common/slider-setting";
-import { ToggleSetting } from "@shared/components/common/toggle-setting";
 import { useEffect, useRef, useState } from "react";
 import type { FC, RefObject } from "react";
 import { AppUpdatesSection } from "./app-updates-section";
@@ -414,35 +411,6 @@ export const SettingsPage: FC = () => {
 
 								{/* System Prompt Settings */}
 								<SystemPrompt />
-
-								{/* Auto-Save Settings */}
-								<StyledCard>
-									<StyledCardContent>
-										<CardTitle variant="h6">
-											<FontAwesomeIcon icon={faSave} />
-											Auto-Save Settings
-										</CardTitle>
-
-										<CardDescription variant="body2">
-											Control whether conversations are automatically saved for
-											future reference.
-										</CardDescription>
-
-										<ToggleSetting
-											value={config.values.auto_save_conversation}
-											label="Auto-Save Conversations"
-											description="When enabled, all conversations will be automatically saved to your history"
-											icon={faCloudUploadAlt}
-											isSaving={savingField === "auto_save_conversation"}
-											onChange={async (value) => {
-												await handleUpdateField(
-													"auto_save_conversation",
-													value,
-												);
-											}}
-										/>
-									</StyledCardContent>
-								</StyledCard>
 							</Grid>
 
 							{/* Right Column */}

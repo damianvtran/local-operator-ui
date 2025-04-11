@@ -164,7 +164,7 @@ function createWindow(): BrowserWindow {
 	mainWindow.webContents.setWindowOpenHandler((details) => {
 		// Allow popups from authentication providers
 		const url = new URL(details.url);
-		
+
 		// Expanded list of trusted authentication domains
 		const trustedAuthDomains = [
 			// Google auth domains
@@ -172,7 +172,7 @@ function createWindow(): BrowserWindow {
 			"oauth.googleusercontent.com",
 			"content.googleapis.com",
 			"ssl.gstatic.com",
-			
+
 			// Microsoft auth domains
 			"login.microsoftonline.com",
 			"login.live.com",
@@ -181,22 +181,32 @@ function createWindow(): BrowserWindow {
 			"microsoftonline.com",
 			"msauth",
 			"msftauth",
-			
+
 			// Auth relay domains
 			"storagerelay",
+
+			// Special case for initial blank page
+			"about:blank",
 		];
 
 		// Check if the URL is from a trusted authentication provider
-		const isTrustedAuthDomain = trustedAuthDomains.some(
-			(domain) =>
-				url.hostname.includes(domain) || 
-				url.protocol.includes(domain) ||
-				// Special case for storage relay URLs
-				(details.url.startsWith('storagerelay:') || details.url.includes('storagerelay'))
-		);
+		const isTrustedAuthDomain =
+			// Special case for about:blank which is used by MSAL to initialize the popup
+			details.url === "about:blank" ||
+			// Check other trusted domains
+			trustedAuthDomains.some(
+				(domain) =>
+					url.hostname.includes(domain) ||
+					url.protocol.includes(domain) ||
+					// Special case for storage relay URLs
+					details.url.startsWith("storagerelay:") ||
+					details.url.includes("storagerelay"),
+			);
 
 		// Log the auth URL for debugging
-		console.log(`Auth popup request: ${details.url} - Trusted: ${isTrustedAuthDomain}`);
+		console.log(
+			`Auth popup request: ${details.url} - Trusted: ${isTrustedAuthDomain}`,
+		);
 
 		if (isTrustedAuthDomain) {
 			// Allow the popup for authentication with improved features
