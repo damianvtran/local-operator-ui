@@ -3,7 +3,8 @@ import {
 	faDownload,
 	faGear,
 	faKey,
-	faUser,
+	type IconDefinition,
+	type faUser,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -17,6 +18,7 @@ import {
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import type { FC } from "react";
+import radientIcon from "@assets/radient-icon-1024x1024.png";
 
 /**
  * Type definition for settings sections
@@ -29,7 +31,9 @@ export type SettingsSection = {
 		| typeof faKey
 		| typeof faDownload
 		| typeof faAdjust
-		| typeof faUser;
+		| typeof faUser
+		| string;
+	isImage?: boolean;
 };
 
 /**
@@ -120,6 +124,13 @@ const SidebarItemIcon = styled(ListItemIcon, {
 	}),
 }));
 
+const IconImage = styled("img")(() => ({
+	width: 30,
+	height: 30,
+	marginLeft: -4,
+	objectFit: "contain",
+}));
+
 /**
  * SettingsSidebar component
  *
@@ -144,7 +155,14 @@ export const SettingsSidebar: FC<SettingsSidebarProps> = ({
 						onClick={() => onSelectSection(section.id)}
 					>
 						<SidebarItemIcon isActive={activeSection === section.id}>
-							<FontAwesomeIcon icon={section.icon} fixedWidth />
+							{section.isImage ? (
+								<IconImage src={section.icon as string} alt={section.label} />
+							) : (
+								<FontAwesomeIcon
+									icon={section.icon as IconDefinition}
+									fixedWidth
+								/>
+							)}
 						</SidebarItemIcon>
 						<ListItemText
 							primary={section.label}
@@ -172,7 +190,8 @@ export const DEFAULT_SETTINGS_SECTIONS: SettingsSection[] = [
 	{
 		id: "radient",
 		label: "Radient Account",
-		icon: faUser,
+		icon: radientIcon,
+		isImage: true,
 	},
 	{
 		id: "appearance",
