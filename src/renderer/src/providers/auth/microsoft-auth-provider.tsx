@@ -8,7 +8,7 @@
 import { MsalProvider } from "@azure/msal-react";
 import { PublicClientApplication } from "@azure/msal-browser";
 import { oauthConfig } from "@renderer/config";
-import { useMemo } from "react";
+import { useMemo, useRef, useEffect } from "react";
 import type { FC, ReactNode } from "react";
 
 type MicrosoftAuthProviderProps = {
@@ -41,16 +41,31 @@ export const MicrosoftAuthProvider: FC<MicrosoftAuthProviderProps> = ({
 	const msClientId = clientId || oauthConfig.microsoftClientId;
 	const msTenantId = tenantId || oauthConfig.microsoftTenantId;
 
-	// Create MSAL instance if client ID and tenant ID are provided
+	// Capture initial clientId and tenantId in refs to ensure stability and satisfy linter.
+	const initialClientIdRef = useRef(msClientId);
+	const initialTenantIdRef = useRef(msTenantId);
+
+	useEffect(() => {
+		if (
+			msClientId !== initialClientIdRef.current ||
+			msTenantId !== initialTenantIdRef.current
+		) {
+			console.warn(
+				"MicrosoftAuthProvider: clientId or tenantId changed after mount. This is not supported and may break authentication context.",
+			);
+		}
+	}, [msClientId, msTenantId]);
+
 	const msalInstance = useMemo(() => {
-		if (!msClientId || !msTenantId) {
+		if (!initialClientIdRef.current || !initialTenantIdRef.current) {
 			return null;
 		}
 
-		return new PublicClientApplication({
+		// Create the MSAL instance
+		const instance = new PublicClientApplication({
 			auth: {
-				clientId: msClientId,
-				authority: `https://login.microsoftonline.com/${msTenantId}`,
+				clientId: initialClientIdRef.current,
+				authority: `https://login.microsoftonline.com/${initialTenantIdRef.current}`,
 				redirectUri: window.location.origin,
 			},
 			cache: {
@@ -58,7 +73,15 @@ export const MicrosoftAuthProvider: FC<MicrosoftAuthProviderProps> = ({
 				storeAuthStateInCookie: false,
 			},
 		});
-	}, [msClientId, msTenantId]);
+
+		// Initialize the instance immediately
+		// This is crucial to prevent the "uninitialized_public_client_application" error
+		instance.initialize().catch((error) => {
+			console.error("Failed to initialize MSAL instance:", error);
+		});
+
+		return instance;
+	}, []);
 
 	// If no MSAL instance is created, render children without the provider
 	if (!msalInstance) {

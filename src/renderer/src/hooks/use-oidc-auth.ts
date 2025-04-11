@@ -47,6 +47,18 @@ export const useOidcAuth = (): UseOidcAuthResult => {
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
+	// Try to get the MSAL instance at the top level of the hook
+	// If it fails, we'll handle Microsoft sign-in gracefully
+	let msalInstance: ReturnType<typeof useMsalInstance> | null = null;
+	try {
+		msalInstance = useMsalInstance();
+	} catch (err) {
+		// We'll handle this in signInWithMicrosoft
+		console.debug(
+			"MSAL instance not available, Microsoft sign-in will show an error when used",
+		);
+	}
+
 	/**
 	 * Handles the full backend integration after obtaining tokens.
 	 */
@@ -94,8 +106,6 @@ export const useOidcAuth = (): UseOidcAuthResult => {
 					},
 				);
 
-				console.log("Application response:", appResponse);
-
 				if (!appResponse.result.api_key) {
 					throw new Error("Application creation failed: No API key returned");
 				}
@@ -124,9 +134,6 @@ export const useOidcAuth = (): UseOidcAuthResult => {
 	const signInWithGoogle = useGoogleLogin({
 		onSuccess: async (tokenResponse: Record<string, unknown>) => {
 			try {
-				// Log the token response for debugging
-				console.log("Google token response:", tokenResponse);
-
 				// Try to get id_token or credential property
 				let idToken: string | undefined;
 				let accessToken: string | undefined;
@@ -164,25 +171,30 @@ export const useOidcAuth = (): UseOidcAuthResult => {
 
 	/**
 	 * Microsoft sign-in handler.
+	 *
+	 * Note: This hook must be used within a component tree wrapped by MicrosoftAuthProvider.
+	 * If the provider is missing, sign-in will not work and a clear error will be shown.
 	 */
 	const signInWithMicrosoft = useCallback(async () => {
-		// Get the MSAL instance from the context or create a new one
-		const msalInstance = useMsalInstance();
-
 		if (!msalInstance) {
-			setError("Microsoft sign-in is not configured.");
-			showErrorToast("Microsoft sign-in is not configured.");
+			const errorMsg =
+				"Microsoft sign-in is not configured. Ensure MicrosoftAuthProvider is present in the component tree.";
+			setError(errorMsg);
+			showErrorToast(errorMsg);
 			return;
 		}
 
 		setLoading(true);
 		setError(null);
 		try {
+			// Ensure the instance is initialized before calling loginPopup
 			const loginResponse: AuthenticationResult = await msalInstance.loginPopup(
 				{
 					scopes: MICROSOFT_SCOPES,
 				},
 			);
+
+			console.log("Microsoft login response:", loginResponse);
 			if (!loginResponse.idToken && !loginResponse.accessToken) {
 				throw new Error("No ID token or access token received from Microsoft");
 			}
@@ -196,7 +208,7 @@ export const useOidcAuth = (): UseOidcAuthResult => {
 			showErrorToast(msg || "Microsoft sign-in failed");
 			setLoading(false);
 		}
-	}, [handleBackendAuth]);
+	}, [handleBackendAuth, msalInstance]);
 
 	return {
 		signInWithGoogle,

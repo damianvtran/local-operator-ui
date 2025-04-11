@@ -5,45 +5,35 @@
  */
 
 import { useMsal } from "@azure/msal-react";
-import {
-	PublicClientApplication,
-	type IPublicClientApplication,
-} from "@azure/msal-browser";
-import { oauthConfig } from "@renderer/config";
+import type { IPublicClientApplication } from "@azure/msal-browser";
 
 /**
  * Hook to access the MSAL instance from the MicrosoftAuthProvider context.
- * If the MSAL instance is not available (e.g., the provider is not present),
- * it will return undefined.
+ * This hook MUST be called within a component tree wrapped by MicrosoftAuthProvider.
  *
- * @returns The MSAL instance or undefined if not available
+ * @returns The MSAL instance from the context
+ * @throws Error if used outside of MicrosoftAuthProvider
  */
-export const useMsalInstance = (): IPublicClientApplication | undefined => {
+export const useMsalInstance = (): IPublicClientApplication => {
 	try {
-		// Try to get the MSAL instance from the context
+		// Get the MSAL instance from the context
 		const { instance } = useMsal();
-		return instance;
-	} catch (error) {
-		// If the context is not available, create a new instance if possible
-		if (oauthConfig.microsoftClientId && oauthConfig.microsoftTenantId) {
-			console.warn("MSAL context not available, creating a new instance");
-			return new PublicClientApplication({
-				auth: {
-					clientId: oauthConfig.microsoftClientId,
-					authority: `https://login.microsoftonline.com/${oauthConfig.microsoftTenantId}`,
-					redirectUri: window.location.origin,
-				},
-				cache: {
-					cacheLocation: "sessionStorage",
-					storeAuthStateInCookie: false,
-				},
-			});
+
+		// Ensure the instance is initialized
+		if (!instance) {
+			throw new Error("MSAL instance is null or undefined");
 		}
 
-		// If no client ID or tenant ID is available, return undefined
-		console.warn(
-			"MSAL context not available and no client ID or tenant ID provided",
+		return instance;
+	} catch (error) {
+		// Log the error with a clear message about the likely cause
+		console.error(
+			"Error getting MSAL instance: This usually means the hook is being used outside of MicrosoftAuthProvider or the instance is not properly initialized.",
+			error,
 		);
-		return undefined;
+
+		// Re-throw the error to ensure it's not silently ignored
+		// This follows React's pattern of failing fast for hook usage errors
+		throw error;
 	}
 };
