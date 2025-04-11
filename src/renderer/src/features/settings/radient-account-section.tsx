@@ -22,7 +22,7 @@ import {
 import { RadientAuthButtons } from "@renderer/components/auth";
 import { useRadientAuth } from "@renderer/hooks";
 import { useFeatureFlags } from "@renderer/providers/feature-flags";
-import type { FC } from "react";
+import { useCallback, useEffect, useMemo, useRef, type FC } from "react";
 
 const StyledCard = styled(Card)(() => ({
 	marginBottom: 32,
@@ -102,16 +102,134 @@ export const RadientAccountSection: FC = () => {
 	const { isEnabled } = useFeatureFlags();
 	const isRadientPassEnabled = isEnabled("radient-pass-onboarding");
 	const { isAuthenticated, user, isLoading, error, signOut } = useRadientAuth();
+	
+	// Track if we've ever loaded data successfully
+	const hasLoadedDataRef = useRef(false);
+	
+	// Simplified loading state logic - only show loading on initial load
+	// Once we've loaded data once, don't show loading again to prevent flickering
+	const effectiveLoading = isLoading && !hasLoadedDataRef.current;
+	
+	// Mark as loaded once we have user data
+	useEffect(() => {
+		if (isAuthenticated && user.radientUser && !hasLoadedDataRef.current) {
+			hasLoadedDataRef.current = true;
+		}
+	}, [isAuthenticated, user.radientUser]);
 
 	// If the feature flag is disabled, don't show this section
 	if (!isRadientPassEnabled) {
 		return null;
 	}
 
-	const handleSignOut = async () => {
+	// Memoize the sign-out handler to prevent unnecessary re-renders
+	const handleSignOut = useCallback(async () => {
 		await signOut();
 		// The page will be refreshed by the user-profile-sidebar component
-	};
+	}, [signOut]);
+
+	// Memoize the account information section to prevent unnecessary re-renders
+	const accountInfoSection = useMemo(() => {
+		if (!isAuthenticated || !user.radientUser) return null;
+		
+		return (
+			<>
+				<InfoContainer>
+					<InfoRow>
+						<InfoLabel variant="body2">Status:</InfoLabel>
+						{/* Use Box instead of Typography to avoid nesting div inside p */}
+						<Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center' }}>
+							<Typography variant="body2" component="span">
+								Connected
+							</Typography>
+							<StatusChip
+								label={user.radientUser.account.status}
+								color="success"
+								size="small"
+							/>
+						</Box>
+					</InfoRow>
+					<InfoRow>
+						<InfoLabel variant="body2">Name:</InfoLabel>
+						<InfoValue variant="body2">
+							{user.radientUser.account.name || "Not provided"}
+						</InfoValue>
+					</InfoRow>
+					<InfoRow>
+						<InfoLabel variant="body2">Email:</InfoLabel>
+						<InfoValue variant="body2">
+							{user.radientUser.account.email}
+						</InfoValue>
+					</InfoRow>
+					<InfoRow>
+						<InfoLabel variant="body2">Account ID:</InfoLabel>
+						<InfoValue variant="body2">
+							{user.radientUser.account.id}
+						</InfoValue>
+					</InfoRow>
+					<InfoRow>
+						<InfoLabel variant="body2">Provider:</InfoLabel>
+						<InfoValue variant="body2" sx={{ textTransform: "capitalize" }}>
+							{user.radientUser.identity.provider}
+						</InfoValue>
+					</InfoRow>
+					<InfoRow>
+						<InfoLabel variant="body2">Created:</InfoLabel>
+						<InfoValue variant="body2">
+							{new Date(
+								user.radientUser.account.created_at,
+							).toLocaleString()}
+						</InfoValue>
+					</InfoRow>
+				</InfoContainer>
+
+				<Divider sx={{ my: 3 }} />
+
+				<Grid container spacing={2}>
+					<Grid item xs={12}>
+						<Typography variant="body2" color="text.secondary" gutterBottom>
+							Need to sign out or switch accounts?
+						</Typography>
+						<SignOutButton
+							variant="outlined"
+							startIcon={<FontAwesomeIcon icon={faSignOut} />}
+							onClick={handleSignOut}
+						>
+							Sign Out from Radient
+						</SignOutButton>
+					</Grid>
+				</Grid>
+			</>
+		);
+	}, [
+		user.radientUser?.account.id,
+		user.radientUser?.account.name,
+		user.radientUser?.account.email,
+		user.radientUser?.account.status,
+		user.radientUser?.account.created_at,
+		user.radientUser?.identity.provider,
+		handleSignOut
+	]);
+
+	// Memoize the sign-in section to prevent unnecessary re-renders
+	const signInSection = useMemo(() => {
+		if (isAuthenticated || effectiveLoading || error) return null;
+		
+		return (
+			<Box sx={{ mt: 2 }}>
+				<Typography variant="body2" color="text.secondary" gutterBottom>
+					You are not currently signed in to Radient. Sign in to access
+					additional features.
+				</Typography>
+				<Box sx={{ mt: 3 }}>
+					<RadientAuthButtons
+						titleText="Sign in to your Radient account"
+						descriptionText="Choose your preferred sign-in method to access Radient services."
+					/>
+				</Box>
+			</Box>
+		);
+	}, [isAuthenticated, effectiveLoading, error]);
 
 	return (
 		<StyledCard>
@@ -126,89 +244,13 @@ export const RadientAccountSection: FC = () => {
 					search, image generation, and more.
 				</CardDescription>
 
-				{isLoading ? (
+				{effectiveLoading ? (
 					<Typography>Loading account information...</Typography>
 				) : error ? (
-					<Typography color="error">Error: {error}</Typography>
-				) : isAuthenticated && user.radientUser ? (
-					<>
-						<InfoContainer>
-							<InfoRow>
-								<InfoLabel variant="body2">Status:</InfoLabel>
-								<InfoValue variant="body2">
-									Connected
-									<StatusChip
-										label={user.radientUser.account.status}
-										color="success"
-										size="small"
-									/>
-								</InfoValue>
-							</InfoRow>
-							<InfoRow>
-								<InfoLabel variant="body2">Name:</InfoLabel>
-								<InfoValue variant="body2">
-									{user.radientUser.account.name || "Not provided"}
-								</InfoValue>
-							</InfoRow>
-							<InfoRow>
-								<InfoLabel variant="body2">Email:</InfoLabel>
-								<InfoValue variant="body2">
-									{user.radientUser.account.email}
-								</InfoValue>
-							</InfoRow>
-							<InfoRow>
-								<InfoLabel variant="body2">Account ID:</InfoLabel>
-								<InfoValue variant="body2">
-									{user.radientUser.account.id}
-								</InfoValue>
-							</InfoRow>
-							<InfoRow>
-								<InfoLabel variant="body2">Provider:</InfoLabel>
-								<InfoValue variant="body2" sx={{ textTransform: "capitalize" }}>
-									{user.radientUser.identity.provider}
-								</InfoValue>
-							</InfoRow>
-							<InfoRow>
-								<InfoLabel variant="body2">Created:</InfoLabel>
-								<InfoValue variant="body2">
-									{new Date(
-										user.radientUser.account.created_at,
-									).toLocaleString()}
-								</InfoValue>
-							</InfoRow>
-						</InfoContainer>
-
-						<Divider sx={{ my: 3 }} />
-
-						<Grid container spacing={2}>
-							<Grid item xs={12}>
-								<Typography variant="body2" color="text.secondary" gutterBottom>
-									Need to sign out or switch accounts?
-								</Typography>
-								<SignOutButton
-									variant="outlined"
-									startIcon={<FontAwesomeIcon icon={faSignOut} />}
-									onClick={handleSignOut}
-								>
-									Sign Out from Radient
-								</SignOutButton>
-							</Grid>
-						</Grid>
-					</>
-				) : (
-					<Box sx={{ mt: 2 }}>
-						<Typography variant="body2" color="text.secondary" gutterBottom>
-							You are not currently signed in to Radient. Sign in to access
-							additional features.
-						</Typography>
-						<Box sx={{ mt: 3 }}>
-							<RadientAuthButtons
-								titleText="Sign in to your Radient account"
-								descriptionText="Choose your preferred sign-in method to access Radient services."
-							/>
-						</Box>
-					</Box>
-				)}
+					<Typography color="error">
+						Error: {error instanceof Error ? error.message : String(error)}
+					</Typography>
+				) : accountInfoSection || signInSection}
 			</StyledCardContent>
 		</StyledCard>
 	);

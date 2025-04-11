@@ -17,9 +17,8 @@ import {
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import { useRadientAuth } from "@renderer/hooks";
-import { useState } from "react";
-import type React from "react";
-import type { FC } from "react";
+import { useCallback, useMemo, useState } from "react";
+import React, { type FC } from "react";
 import { useNavigate } from "react-router-dom";
 
 /**
@@ -180,7 +179,8 @@ const StyledTooltip = styled(Tooltip)(({ theme }) => ({
  * Shows only the avatar when collapsed, and user details when expanded
  * Uses React Router for navigation
  */
-export const UserProfileSidebar: FC<UserProfileSidebarProps> = ({
+// Use React.memo to prevent unnecessary re-renders of the entire component
+export const UserProfileSidebar: FC<UserProfileSidebarProps> = React.memo(({
 	expanded,
 	useAuth = false,
 }) => {
@@ -193,24 +193,25 @@ export const UserProfileSidebar: FC<UserProfileSidebarProps> = ({
 	const userName = user.name;
 	const userEmail = user.email;
 
-	const handleClick = (event: React.MouseEvent<HTMLElement>) => {
+	// Memoize handlers to prevent unnecessary re-renders
+	const handleClick = useCallback((event: React.MouseEvent<HTMLElement>) => {
 		if (useAuth) {
 			setAnchorEl(event.currentTarget);
 		} else {
 			navigate("/settings");
 		}
-	};
+	}, [useAuth, navigate]);
 
-	const handleClose = () => {
+	const handleClose = useCallback(() => {
 		setAnchorEl(null);
-	};
+	}, []);
 
-	const handleNavigate = (path: string) => {
+	const handleNavigate = useCallback((path: string) => {
 		handleClose();
 		navigate(path);
-	};
+	}, [handleClose, navigate]);
 
-	const handleSignOut = async () => {
+	const handleSignOut = useCallback(async () => {
 		// If authenticated with Radient, sign out
 		if (isAuthenticated) {
 			await signOut();
@@ -220,10 +221,10 @@ export const UserProfileSidebar: FC<UserProfileSidebarProps> = ({
 			window.location.reload();
 		}
 		handleClose();
-	};
+	}, [isAuthenticated, signOut, handleClose]);
 
-	// Get user initials from name or use default icon
-	const getUserInitials = (): string | null => {
+	// Memoize user initials calculation
+	const userInitials = useMemo(() => {
 		if (!userName) return null;
 
 		return userName
@@ -232,12 +233,10 @@ export const UserProfileSidebar: FC<UserProfileSidebarProps> = ({
 			.join("")
 			.toUpperCase()
 			.substring(0, 2);
-	};
+	}, [userName]);
 
-	const userInitials = getUserInitials();
-
-	// Avatar component that will be wrapped in a tooltip if sidebar is collapsed
-	const avatarComponent = (
+	// Memoize avatar component to prevent unnecessary re-renders
+	const avatarComponent = useMemo(() => (
 		<UserAvatar>
 			{userInitials ? (
 				<UserInitials>{userInitials}</UserInitials>
@@ -245,7 +244,7 @@ export const UserProfileSidebar: FC<UserProfileSidebarProps> = ({
 				<FontAwesomeIcon icon={faUser} size="sm" />
 			)}
 		</UserAvatar>
-	);
+	), [userInitials]);
 
 	return (
 		<ProfileContainer>
@@ -300,4 +299,4 @@ export const UserProfileSidebar: FC<UserProfileSidebarProps> = ({
 			) : null}
 		</ProfileContainer>
 	);
-};
+});

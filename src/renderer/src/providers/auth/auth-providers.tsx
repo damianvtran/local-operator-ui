@@ -11,8 +11,8 @@ import { MicrosoftAuthProvider } from "./microsoft-auth-provider";
 import { RadientAuthProvider } from "./radient-auth-provider";
 import { useFeatureFlags } from "../feature-flags";
 
-// Re-export the useRadientUser hook for convenience
-export { useRadientUser } from "./radient-auth-provider";
+// We no longer need to re-export the useRadientUser hook
+// The useRadientUserQuery hook is now exported from the hooks directory
 
 export type AuthProvidersProps = {
 	/**
