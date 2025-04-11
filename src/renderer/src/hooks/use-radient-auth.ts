@@ -6,7 +6,7 @@
  * Uses React Query for stable, cached, and automatically refreshing data.
  */
 
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { useUserStore } from "@renderer/store/user-store";
 import { useRadientUserQuery } from "./use-radient-user-query";
 
@@ -35,14 +35,9 @@ export const useRadientAuth = () => {
 		refreshUser,
 	} = useRadientUserQuery();
 
-	// Use a ref to track if we've already synced the profile to prevent infinite loops
-	const hasSyncedProfileRef = useRef(false);
-	// Use a ref to store the last account data we've seen to prevent unnecessary updates
-	const lastAccountDataRef = useRef<{id?: string; name?: string; email?: string}>({});
-
 	// Sync the Radient user information with the user store
 	useEffect(() => {
-		// Skip if we've already synced or if there's no user data
+		// Skip if there's no user data
 		if (!radientUser?.account) {
 			return;
 		}
@@ -54,16 +49,6 @@ export const useRadientAuth = () => {
 			return;
 		}
 
-		// Skip if we've already processed this exact account data
-		if (
-			lastAccountDataRef.current.id === account.id &&
-			lastAccountDataRef.current.name === account.name &&
-			lastAccountDataRef.current.email === account.email &&
-			hasSyncedProfileRef.current
-		) {
-			return;
-		}
-
 		// Get current values from the store
 		const { name: currentName, email: currentEmail } = userStore.profile;
 
@@ -72,16 +57,6 @@ export const useRadientAuth = () => {
 			(account.name && account.name !== currentName) ||
 			(account.email && account.email !== currentEmail)
 		) {
-			// Update our refs to track what we've processed
-			lastAccountDataRef.current = {
-				id: account.id,
-				name: account.name,
-				email: account.email
-			};
-			
-			// Mark that we've synced the profile
-			hasSyncedProfileRef.current = true;
-
 			// Update the store with the new values
 			userStore.updateProfile({
 				name: account.name || currentName,
@@ -89,17 +64,8 @@ export const useRadientAuth = () => {
 			});
 
 			console.log("Profile synced with Radient account data");
-		} else {
-			// Even if we didn't need to update, mark that we've checked this account
-			hasSyncedProfileRef.current = true;
-			lastAccountDataRef.current = {
-				id: account.id,
-				name: account.name,
-				email: account.email
-			};
 		}
-	// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [radientUser]);
+	}, [radientUser, userStore]);
 
 	return {
 		// Authentication state

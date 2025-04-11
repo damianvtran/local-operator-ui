@@ -45,7 +45,8 @@ export const RadientUserBadge: FC<RadientUserBadgeProps> = ({
 }) => {
 	const { isAuthenticated, isLoading, user, error } = useRadientAuth();
 
-	if (isLoading) {
+	// Only show loading if we're loading and not authenticated yet
+	if (isLoading && !isAuthenticated) {
 		return (
 			<BadgeContainer>
 				<Chip label="Loading..." color="default" size="small" />
@@ -53,7 +54,8 @@ export const RadientUserBadge: FC<RadientUserBadgeProps> = ({
 		);
 	}
 
-	if (error) {
+	// Show error only if there's an error and we're not authenticated
+	if (error && !isAuthenticated) {
 		const errorMessage = error instanceof Error ? error.message : String(error);
 		return (
 			<Tooltip title={errorMessage} arrow>
@@ -64,6 +66,7 @@ export const RadientUserBadge: FC<RadientUserBadgeProps> = ({
 		);
 	}
 
+	// Show not authenticated state
 	if (!isAuthenticated) {
 		return (
 			<BadgeContainer>

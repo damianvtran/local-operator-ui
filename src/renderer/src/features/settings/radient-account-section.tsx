@@ -22,7 +22,7 @@ import {
 import { RadientAuthButtons } from "@renderer/components/auth";
 import { useRadientAuth } from "@renderer/hooks";
 import { useFeatureFlags } from "@renderer/providers/feature-flags";
-import { useCallback, useEffect, useMemo, useRef, type FC } from "react";
+import { useCallback, useMemo, type FC } from "react";
 
 const StyledCard = styled(Card)(() => ({
 	marginBottom: 32,
@@ -103,19 +103,9 @@ export const RadientAccountSection: FC = () => {
 	const isRadientPassEnabled = isEnabled("radient-pass-onboarding");
 	const { isAuthenticated, user, isLoading, error, signOut } = useRadientAuth();
 	
-	// Track if we've ever loaded data successfully
-	const hasLoadedDataRef = useRef(false);
-	
-	// Simplified loading state logic - only show loading on initial load
-	// Once we've loaded data once, don't show loading again to prevent flickering
-	const effectiveLoading = isLoading && !hasLoadedDataRef.current;
-	
-	// Mark as loaded once we have user data
-	useEffect(() => {
-		if (isAuthenticated && user.radientUser && !hasLoadedDataRef.current) {
-			hasLoadedDataRef.current = true;
-		}
-	}, [isAuthenticated, user.radientUser]);
+	// Use a more direct approach to determine if we should show loading
+	// Only show loading if we're loading and not authenticated yet
+	const effectiveLoading = isLoading && !isAuthenticated;
 
 	// If the feature flag is disabled, don't show this section
 	if (!isRadientPassEnabled) {
@@ -125,7 +115,6 @@ export const RadientAccountSection: FC = () => {
 	// Memoize the sign-out handler to prevent unnecessary re-renders
 	const handleSignOut = useCallback(async () => {
 		await signOut();
-		// The page will be refreshed by the user-profile-sidebar component
 	}, [signOut]);
 
 	// Memoize the account information section to prevent unnecessary re-renders
@@ -213,7 +202,8 @@ export const RadientAccountSection: FC = () => {
 
 	// Memoize the sign-in section to prevent unnecessary re-renders
 	const signInSection = useMemo(() => {
-		if (isAuthenticated || effectiveLoading || error) return null;
+		// Only show if not authenticated and not loading
+		if (isAuthenticated || isLoading) return null;
 		
 		return (
 			<Box sx={{ mt: 2 }}>
@@ -229,7 +219,7 @@ export const RadientAccountSection: FC = () => {
 				</Box>
 			</Box>
 		);
-	}, [isAuthenticated, effectiveLoading, error]);
+	}, [isAuthenticated, isLoading]);
 
 	return (
 		<StyledCard>
