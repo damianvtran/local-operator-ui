@@ -111,7 +111,14 @@ export const RadientAccountSection: FC = () => {
 
 	// If the feature flag is disabled, don't show this section
 	if (!isRadientPassEnabled) {
-		return null;
+		return (
+			<Box>
+				<Typography variant="body2" color="text.secondary" gutterBottom>
+					Radient Pass is coming soon! Get unified access to models, tools,
+					agents, and more in one click with Radient Pass.
+				</Typography>
+			</Box>
+		);
 	}
 
 	// Memoize the sign-out handler to prevent unnecessary re-renders

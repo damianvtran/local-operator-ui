@@ -43,7 +43,7 @@ import { RadientAccountSection } from "./radient-account-section";
 import { DEFAULT_SETTINGS_SECTIONS, SettingsSidebar } from "./settings-sidebar";
 import { SystemPrompt } from "./system-prompt";
 import { ThemeSelector } from "./theme-selector";
-import { useFeatureFlags } from "@renderer/providers/feature-flags";
+import radientIcon from "@assets/radient-icon-1024x1024.png";
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
 	height: "100%",
@@ -153,6 +153,13 @@ const StyledCardContent = styled(CardContent)(({ theme }) => ({
 	},
 }));
 
+const IconImage = styled("img")(() => ({
+	width: 40,
+	height: 40,
+	marginLeft: -4,
+	objectFit: "contain",
+}));
+
 export const SettingsPage: FC = () => {
 	const { data: config, isLoading, error, refetch } = useConfig();
 	const updateConfigMutation = useUpdateConfig();
@@ -160,9 +167,6 @@ export const SettingsPage: FC = () => {
 	const userStore = useUserStore();
 	const [activeSection, setActiveSection] = useState<string>("general");
 	const [isScrolling, setIsScrolling] = useState(false);
-	const { isEnabled } = useFeatureFlags();
-
-	const isRadientPassEnabled = isEnabled("radient-pass-onboarding");
 
 	// Refs for scrolling to sections
 	const generalSectionRef = useRef<HTMLDivElement>(null);
@@ -568,24 +572,22 @@ export const SettingsPage: FC = () => {
 					</Box>
 
 					{/* Radient Account Section */}
-					{isRadientPassEnabled && (
-						<Box mt={6} mb={4} ref={radientSectionRef}>
-							<Typography
-								variant="h5"
-								fontWeight="500"
-								display="flex"
-								alignItems="center"
-								gap={2}
-							>
-								<FontAwesomeIcon icon={faUser} />
-								Radient Account
-							</Typography>
-							<Typography variant="body1" color="text.secondary" mt={1} mb={3}>
-								Manage your Radient account
-							</Typography>
-							<RadientAccountSection />
-						</Box>
-					)}
+					<Box mt={6} mb={4} ref={radientSectionRef}>
+						<Typography
+							variant="h5"
+							fontWeight="500"
+							display="flex"
+							alignItems="center"
+							gap={2}
+						>
+							<IconImage src={radientIcon} alt="Radient Icon" />
+							Radient Account
+						</Typography>
+						<Typography variant="body1" color="text.secondary" mt={1} mb={3}>
+							Manage your Radient account and Radient Pass details.
+						</Typography>
+						<RadientAccountSection />
+					</Box>
 
 					{/* Appearance Section */}
 					<Box mt={6} mb={4} ref={appearanceSectionRef}>
