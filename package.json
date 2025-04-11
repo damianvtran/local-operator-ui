@@ -121,7 +121,6 @@
 		"@electron/notarize": "^2.5.0",
 		"@storybook/addon-essentials": "^8.6.4",
 		"@storybook/addon-interactions": "^8.6.4",
-		"@storybook/addon-onboarding": "^8.6.4",
 		"@storybook/blocks": "^8.6.4",
 		"@storybook/react": "^8.6.4",
 		"@storybook/react-vite": "^8.6.4",
