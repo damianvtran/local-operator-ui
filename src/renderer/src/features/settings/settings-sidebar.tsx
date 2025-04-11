@@ -3,6 +3,7 @@ import {
 	faDownload,
 	faGear,
 	faKey,
+	faUser,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -23,7 +24,12 @@ import type { FC } from "react";
 export type SettingsSection = {
 	id: string;
 	label: string;
-	icon: typeof faGear | typeof faKey | typeof faDownload | typeof faAdjust;
+	icon:
+		| typeof faGear
+		| typeof faKey
+		| typeof faDownload
+		| typeof faAdjust
+		| typeof faUser;
 };
 
 /**
@@ -162,6 +168,11 @@ export const DEFAULT_SETTINGS_SECTIONS: SettingsSection[] = [
 		id: "general",
 		label: "General Settings",
 		icon: faGear,
+	},
+	{
+		id: "radient",
+		label: "Radient Account",
+		icon: faUser,
 	},
 	{
 		id: "appearance",
