@@ -3,11 +3,13 @@
  * @description
  * Provides a type-safe wrapper around PostHog feature flags.
  * Defines strict typing for feature flag keys and values.
+ * Automatically refreshes feature flags every 10 minutes.
  */
 
 import type { FC, ReactNode } from "react";
-import { createContext, useContext, useMemo } from "react";
+import { createContext, useContext, useEffect, useMemo } from "react";
 import { useFeatureFlagEnabled } from "posthog-js/react";
+import posthog from "posthog-js";
 
 /**
  * Type definition for all available feature flags
@@ -49,6 +51,12 @@ type FeatureFlagContextType = {
 	 * @deprecated PostHog React SDK only provides boolean flag checking
 	 */
 	getValue: <K extends FeatureFlagKey>(key: K) => FeatureFlags[K] | undefined;
+
+	/**
+	 * Manually reload feature flags from PostHog
+	 * This is called automatically every 10 minutes, but can be called manually if needed
+	 */
+	reloadFeatureFlags: () => void;
 };
 
 // Create the context with a default value
@@ -67,10 +75,42 @@ type FeatureFlagProviderProps = {
 /**
  * Provider component for type-safe feature flags
  * Wraps the PostHog provider and provides a type-safe interface
+ * Automatically refreshes feature flags every 10 minutes
  */
 export const FeatureFlagProvider: FC<FeatureFlagProviderProps> = ({
 	children,
 }) => {
+	/**
+	 * Reload feature flags from PostHog
+	 * This will update the flags and trigger a re-render
+	 */
+	const reloadFeatureFlags = useMemo(() => {
+		return () => {
+			// Call PostHog's reloadFeatureFlags method
+			posthog.reloadFeatureFlags();
+			// PostHog hooks will automatically re-render when flags change
+		};
+	}, []);
+
+	// Set up a timer to reload feature flags every 10 minutes
+	useEffect(() => {
+		// Initial load of feature flags
+		reloadFeatureFlags();
+
+		// Set up interval to reload flags every 10 minutes (600000 ms)
+		const intervalId = setInterval(
+			() => {
+				reloadFeatureFlags();
+			},
+			10 * 60 * 1000,
+		);
+
+		// Clean up the interval when the component unmounts
+		return () => {
+			clearInterval(intervalId);
+		};
+	}, [reloadFeatureFlags]);
+
 	// Create the context value with type-safe methods
 	const contextValue = useMemo<FeatureFlagContextType>(
 		() => ({
@@ -96,8 +136,10 @@ export const FeatureFlagProvider: FC<FeatureFlagProviderProps> = ({
 				}
 				return undefined;
 			},
+
+			reloadFeatureFlags,
 		}),
-		[],
+		[reloadFeatureFlags],
 	);
 
 	return (
