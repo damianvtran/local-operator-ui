@@ -1,9 +1,10 @@
+import radientIcon from "@assets/radient-icon-1024x1024.png";
 import {
+	type IconDefinition,
 	faAdjust,
 	faDownload,
 	faGear,
 	faKey,
-	type IconDefinition,
 	type faUser,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -18,7 +19,6 @@ import {
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import type { FC } from "react";
-import radientIcon from "@assets/radient-icon-1024x1024.png";
 
 /**
  * Type definition for settings sections

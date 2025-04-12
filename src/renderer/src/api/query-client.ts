@@ -9,7 +9,7 @@ import { QueryClient } from "@tanstack/react-query";
 
 /**
  * Default query client configuration
- * 
+ *
  * We use a more aggressive configuration for authentication-related queries
  * to ensure that the authentication state is always up-to-date.
  */

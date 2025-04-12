@@ -6,10 +6,10 @@
  * Automatically refreshes feature flags every 10 minutes.
  */
 
+import posthog from "posthog-js";
+import { useFeatureFlagEnabled } from "posthog-js/react";
 import type { FC, ReactNode } from "react";
 import { createContext, useContext, useEffect, useMemo } from "react";
-import { useFeatureFlagEnabled } from "posthog-js/react";
-import posthog from "posthog-js";
 
 /**
  * Type definition for all available feature flags

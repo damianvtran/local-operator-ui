@@ -12,11 +12,11 @@ import type { PostHogConfig } from "posthog-js";
 import { queryClient } from "./api/query-client";
 import App from "./app";
 import { config } from "./config";
+import { AuthProviders } from "./providers/auth";
+import { FeatureFlagProvider } from "./providers/feature-flags";
 import { ErrorBoundary } from "./shared/components/common/error-boundary";
 import { ThemeProvider } from "./themes/theme-provider";
 import { isDevelopmentMode } from "./utils/env-utils";
-import { AuthProviders } from "./providers/auth";
-import { FeatureFlagProvider } from "./providers/feature-flags";
 
 const posthogOptions: Partial<PostHogConfig> = {
 	api_host: config.VITE_PUBLIC_POSTHOG_HOST,

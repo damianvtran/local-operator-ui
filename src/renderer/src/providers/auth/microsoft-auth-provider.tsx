@@ -5,10 +5,10 @@
  * Wraps the application with MsalProvider from @azure/msal-react.
  */
 
-import { MsalProvider } from "@azure/msal-react";
 import { PublicClientApplication } from "@azure/msal-browser";
+import { MsalProvider } from "@azure/msal-react";
 import { oauthConfig } from "@renderer/config";
-import { useMemo, useRef, useEffect } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import type { FC, ReactNode } from "react";
 
 type MicrosoftAuthProviderProps = {

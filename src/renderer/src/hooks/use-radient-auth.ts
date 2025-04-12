@@ -6,8 +6,8 @@
  * Uses React Query for stable, cached, and automatically refreshing data.
  */
 
-import { useEffect } from "react";
 import { useUserStore } from "@renderer/store/user-store";
+import { useEffect } from "react";
 import { useRadientUserQuery } from "./use-radient-user-query";
 
 /**

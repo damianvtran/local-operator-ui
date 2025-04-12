@@ -6,16 +6,16 @@
  */
 
 import { Box, Typography } from "@mui/material";
+import { getUserInfo } from "@renderer/api/radient/auth-api";
 import { RadientAuthButtons } from "@renderer/components/auth";
 import { apiConfig } from "@renderer/config";
-import { getUserInfo } from "@renderer/api/radient/auth-api";
-import { getSession, hasValidSession } from "@renderer/utils/session-store";
 import {
 	OnboardingStep,
 	useOnboardingStore,
 } from "@renderer/store/onboarding-store";
 import { useUserStore } from "@renderer/store/user-store";
 import { radientTheme } from "@renderer/themes";
+import { getSession, hasValidSession } from "@renderer/utils/session-store";
 import type { FC } from "react";
 import { useCallback, useEffect } from "react";
 import { SectionContainer, SectionDescription } from "../onboarding-styled";

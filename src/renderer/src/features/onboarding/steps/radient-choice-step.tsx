@@ -7,6 +7,9 @@
  */
 
 import radientLogo from "@assets/radient-icon-1024x1024.png";
+import { keyframes } from "@emotion/react";
+import { faArrowRight } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, Grid, Typography, alpha, styled } from "@mui/material";
 import {
 	OnboardingStep,
@@ -16,9 +19,6 @@ import { radientTheme } from "@renderer/themes";
 import type { FC } from "react";
 import { useCallback } from "react";
 import { SectionContainer, SectionDescription } from "../onboarding-styled";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faArrowRight } from "@fortawesome/free-solid-svg-icons";
-import { keyframes } from "@emotion/react";
 
 const shimmerKeyframes = keyframes`
   0% {

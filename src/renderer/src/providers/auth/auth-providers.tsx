@@ -6,10 +6,10 @@
  */
 
 import type { FC, ReactNode } from "react";
+import { useFeatureFlags } from "../feature-flags";
 import { GoogleAuthProvider } from "./google-auth-provider";
 import { MicrosoftAuthProvider } from "./microsoft-auth-provider";
 import { RadientAuthProvider } from "./radient-auth-provider";
-import { useFeatureFlags } from "../feature-flags";
 
 // We no longer need to re-export the useRadientUser hook
 // The useRadientUserQuery hook is now exported from the hooks directory

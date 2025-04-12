@@ -5,10 +5,10 @@
  * This is now a simple wrapper around the React Query-based hooks.
  */
 
-import type { FC, ReactNode } from "react";
+import { queryClient } from "@renderer/api/query-client";
 import type { AccountInfo, IdentityInfo } from "@renderer/api/radient/types";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { queryClient } from "@renderer/api/query-client";
+import type { FC, ReactNode } from "react";
 
 /**
  * Radient user information type
@@ -44,8 +44,6 @@ export const RadientAuthProvider: FC<RadientAuthProviderProps> = ({
 	children,
 }) => {
 	return (
-		<QueryClientProvider client={queryClient}>
-			{children}
-		</QueryClientProvider>
+		<QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
 	);
 };

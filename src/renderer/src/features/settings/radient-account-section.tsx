@@ -22,7 +22,7 @@ import {
 import { RadientAuthButtons } from "@renderer/components/auth";
 import { useRadientAuth } from "@renderer/hooks";
 import { useFeatureFlags } from "@renderer/providers/feature-flags";
-import { useCallback, useMemo, type FC } from "react";
+import { type FC, useCallback, useMemo } from "react";
 
 const StyledCard = styled(Card)(() => ({
 	marginBottom: 32,

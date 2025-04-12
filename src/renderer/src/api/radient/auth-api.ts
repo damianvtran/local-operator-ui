@@ -7,12 +7,12 @@
 import type {
 	AuthProvider,
 	AuthTokenExchangeRequest,
-	RadientApiResponse,
 	AuthTokenExchangeResult,
-	UserInfoResult,
-	ProvisionResult,
 	CreateApplicationRequest,
 	CreateApplicationResult,
+	ProvisionResult,
+	RadientApiResponse,
+	UserInfoResult,
 } from "./types";
 
 /**

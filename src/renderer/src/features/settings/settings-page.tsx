@@ -1,3 +1,4 @@
+import radientIcon from "@assets/radient-icon-1024x1024.png";
 import { HostingSelect } from "@components/hosting/hosting-select";
 import { ModelSelect } from "@components/hosting/model-select";
 import {
@@ -40,7 +41,6 @@ import { RadientAccountSection } from "./radient-account-section";
 import { DEFAULT_SETTINGS_SECTIONS, SettingsSidebar } from "./settings-sidebar";
 import { SystemPrompt } from "./system-prompt";
 import { ThemeSelector } from "./theme-selector";
-import radientIcon from "@assets/radient-icon-1024x1024.png";
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
 	height: "100%",
