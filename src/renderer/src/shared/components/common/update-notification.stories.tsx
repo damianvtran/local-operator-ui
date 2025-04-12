@@ -7,12 +7,12 @@ import {
 	Typography,
 } from "@mui/material";
 import { ThemeProvider as MuiThemeProvider } from "@mui/material/styles";
+import theme from "@renderer/theme";
 import type { Meta, StoryObj } from "@storybook/react";
 import type { ProgressInfo, UpdateInfo } from "electron-updater";
 import parse from "html-react-parser";
 import { useEffect, useState } from "react";
 import { ThemeProvider as StyledThemeProvider } from "styled-components";
-import theme from "@renderer/theme";
 import {
 	ProgressContainer,
 	UpdateActions,

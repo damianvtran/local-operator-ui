@@ -15,17 +15,17 @@
  *   const { signInWithGoogle, signInWithMicrosoft, loading, error } = useOidcAuth();
  */
 
-import { useState, useCallback } from "react";
-import { useGoogleLogin } from "@react-oauth/google";
 import type { AuthenticationResult } from "@azure/msal-browser";
-import { CredentialsApi } from "../api/local-operator/credentials-api";
-import { apiConfig } from "../config";
-import { showSuccessToast, showErrorToast } from "../utils/toast-manager";
-import { storeSession } from "../utils/session-store";
-import { jwtDecode } from "jwt-decode";
-import { useMsalInstance } from "../providers/auth";
-import { createRadientClient } from "../api/radient";
+import { useGoogleLogin } from "@react-oauth/google";
 import { useQueryClient } from "@tanstack/react-query";
+import { jwtDecode } from "jwt-decode";
+import { useCallback, useState } from "react";
+import { CredentialsApi } from "../api/local-operator/credentials-api";
+import { createRadientClient } from "../api/radient";
+import { apiConfig } from "../config";
+import { useMsalInstance } from "../providers/auth";
+import { storeSession } from "../utils/session-store";
+import { showErrorToast, showSuccessToast } from "../utils/toast-manager";
 import { radientUserKeys } from "./use-radient-user-query";
 
 type UseOidcAuthResult = {

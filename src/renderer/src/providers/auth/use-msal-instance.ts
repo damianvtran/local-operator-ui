@@ -4,8 +4,8 @@
  * Hook to access the MSAL instance from the MicrosoftAuthProvider context.
  */
 
-import { useMsal } from "@azure/msal-react";
 import type { IPublicClientApplication } from "@azure/msal-browser";
+import { useMsal } from "@azure/msal-react";
 
 /**
  * Hook to access the MSAL instance from the MicrosoftAuthProvider context.

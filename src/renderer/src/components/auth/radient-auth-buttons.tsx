@@ -16,11 +16,11 @@ import {
 	styled,
 } from "@mui/material";
 import { useOidcAuth } from "@renderer/hooks/use-oidc-auth";
+import { radientUserKeys } from "@renderer/hooks/use-radient-user-query";
 import { hasValidSession } from "@renderer/utils/session-store";
+import { useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import type { FC } from "react";
-import { useQueryClient } from "@tanstack/react-query";
-import { radientUserKeys } from "@renderer/hooks/use-radient-user-query";
 
 /**
  * Props for the RadientAuthButtons component
@@ -117,9 +117,11 @@ export const RadientAuthButtons: FC<RadientAuthButtonsProps> = ({
 				const hasSession = await hasValidSession();
 				if (hasSession) {
 					// Force a refetch of the user information
-					await queryClient.invalidateQueries({ queryKey: radientUserKeys.all });
+					await queryClient.invalidateQueries({
+						queryKey: radientUserKeys.all,
+					});
 					await queryClient.refetchQueries({ queryKey: radientUserKeys.all });
-					
+
 					// Call the success callback if provided
 					if (onSignInSuccess) {
 						onSignInSuccess();

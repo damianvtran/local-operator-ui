@@ -180,123 +180,133 @@ const StyledTooltip = styled(Tooltip)(({ theme }) => ({
  * Uses React Router for navigation
  */
 // Use React.memo to prevent unnecessary re-renders of the entire component
-export const UserProfileSidebar: FC<UserProfileSidebarProps> = React.memo(({
-	expanded,
-	useAuth = false,
-}) => {
-	const navigate = useNavigate();
-	const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-	const open = Boolean(anchorEl);
+export const UserProfileSidebar: FC<UserProfileSidebarProps> = React.memo(
+	({ expanded, useAuth = false }) => {
+		const navigate = useNavigate();
+		const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+		const open = Boolean(anchorEl);
 
-	// Get user profile from Radient auth or fallback to user store
-	const { user, isAuthenticated, signOut } = useRadientAuth();
-	const userName = user.name;
-	const userEmail = user.email;
+		// Get user profile from Radient auth or fallback to user store
+		const { user, isAuthenticated, signOut } = useRadientAuth();
+		const userName = user.name;
+		const userEmail = user.email;
 
-	// Memoize handlers to prevent unnecessary re-renders
-	const handleClick = useCallback((event: React.MouseEvent<HTMLElement>) => {
-		if (useAuth) {
-			setAnchorEl(event.currentTarget);
-		} else {
-			navigate("/settings");
-		}
-	}, [useAuth, navigate]);
+		// Memoize handlers to prevent unnecessary re-renders
+		const handleClick = useCallback(
+			(event: React.MouseEvent<HTMLElement>) => {
+				if (useAuth) {
+					setAnchorEl(event.currentTarget);
+				} else {
+					navigate("/settings");
+				}
+			},
+			[useAuth, navigate],
+		);
 
-	const handleClose = useCallback(() => {
-		setAnchorEl(null);
-	}, []);
+		const handleClose = useCallback(() => {
+			setAnchorEl(null);
+		}, []);
 
-	const handleNavigate = useCallback((path: string) => {
-		handleClose();
-		navigate(path);
-	}, [handleClose, navigate]);
+		const handleNavigate = useCallback(
+			(path: string) => {
+				handleClose();
+				navigate(path);
+			},
+			[handleClose, navigate],
+		);
 
-	const handleSignOut = useCallback(async () => {
-		// If authenticated with Radient, sign out
-		if (isAuthenticated) {
-			await signOut();
-			console.log("Signed out from Radient session");
+		const handleSignOut = useCallback(async () => {
+			// If authenticated with Radient, sign out
+			if (isAuthenticated) {
+				await signOut();
+				console.log("Signed out from Radient session");
 
-			// Refresh the page to reset the auth state
-			window.location.reload();
-		}
-		handleClose();
-	}, [isAuthenticated, signOut, handleClose]);
+				// Refresh the page to reset the auth state
+				window.location.reload();
+			}
+			handleClose();
+		}, [isAuthenticated, signOut, handleClose]);
 
-	// Memoize user initials calculation
-	const userInitials = useMemo(() => {
-		if (!userName) return null;
+		// Memoize user initials calculation
+		const userInitials = useMemo(() => {
+			if (!userName) return null;
 
-		return userName
-			.split(" ")
-			.map((part) => part.charAt(0))
-			.join("")
-			.toUpperCase()
-			.substring(0, 2);
-	}, [userName]);
+			return userName
+				.split(" ")
+				.map((part) => part.charAt(0))
+				.join("")
+				.toUpperCase()
+				.substring(0, 2);
+		}, [userName]);
 
-	// Memoize avatar component to prevent unnecessary re-renders
-	const avatarComponent = useMemo(() => (
-		<UserAvatar>
-			{userInitials ? (
-				<UserInitials>{userInitials}</UserInitials>
-			) : (
-				<FontAwesomeIcon icon={faUser} size="sm" />
-			)}
-		</UserAvatar>
-	), [userInitials]);
+		// Memoize avatar component to prevent unnecessary re-renders
+		const avatarComponent = useMemo(
+			() => (
+				<UserAvatar>
+					{userInitials ? (
+						<UserInitials>{userInitials}</UserInitials>
+					) : (
+						<FontAwesomeIcon icon={faUser} size="sm" />
+					)}
+				</UserAvatar>
+			),
+			[userInitials],
+		);
 
-	return (
-		<ProfileContainer>
-			<ProfileDivider expanded={expanded} />
+		return (
+			<ProfileContainer>
+				<ProfileDivider expanded={expanded} />
 
-			<ProfileBox expanded={expanded} onClick={handleClick}>
-				{!expanded ? (
-					<StyledTooltip title="Account Settings" placement="right" arrow>
-						<Box>{avatarComponent}</Box>
-					</StyledTooltip>
-				) : (
-					avatarComponent
-				)}
+				<ProfileBox expanded={expanded} onClick={handleClick}>
+					{!expanded ? (
+						<StyledTooltip title="Account Settings" placement="right" arrow>
+							<Box>{avatarComponent}</Box>
+						</StyledTooltip>
+					) : (
+						avatarComponent
+					)}
 
-				{expanded && userName && (
-					<UserInfoContainer>
-						<UserName variant="subtitle2">{userName}</UserName>
-						{userEmail && <UserEmail variant="caption">{userEmail}</UserEmail>}
-					</UserInfoContainer>
-				)}
-			</ProfileBox>
+					{expanded && userName && (
+						<UserInfoContainer>
+							<UserName variant="subtitle2">{userName}</UserName>
+							{userEmail && (
+								<UserEmail variant="caption">{userEmail}</UserEmail>
+							)}
+						</UserInfoContainer>
+					)}
+				</ProfileBox>
 
-			{useAuth ? (
-				<StyledMenu
-					anchorEl={anchorEl}
-					id="account-menu"
-					open={open}
-					onClose={handleClose}
-					transformOrigin={{ horizontal: "right", vertical: "top" }}
-					anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
-				>
-					<MenuItemStyled onClick={() => handleNavigate("/settings")}>
-						<IconWrapper>
-							<FontAwesomeIcon icon={faGear} />
-						</IconWrapper>
-						Settings
-					</MenuItemStyled>
-					<MenuItemStyled onClick={handleClose}>
-						<IconWrapper>
-							<FontAwesomeIcon icon={faShield} />
-						</IconWrapper>
-						Privacy & Security
-					</MenuItemStyled>
-					<MenuDivider />
-					<MenuItemDanger onClick={handleSignOut}>
-						<IconWrapper>
-							<FontAwesomeIcon icon={faSignOut} />
-						</IconWrapper>
-						Sign out
-					</MenuItemDanger>
-				</StyledMenu>
-			) : null}
-		</ProfileContainer>
-	);
-});
+				{useAuth ? (
+					<StyledMenu
+						anchorEl={anchorEl}
+						id="account-menu"
+						open={open}
+						onClose={handleClose}
+						transformOrigin={{ horizontal: "right", vertical: "top" }}
+						anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
+					>
+						<MenuItemStyled onClick={() => handleNavigate("/settings")}>
+							<IconWrapper>
+								<FontAwesomeIcon icon={faGear} />
+							</IconWrapper>
+							Settings
+						</MenuItemStyled>
+						<MenuItemStyled onClick={handleClose}>
+							<IconWrapper>
+								<FontAwesomeIcon icon={faShield} />
+							</IconWrapper>
+							Privacy & Security
+						</MenuItemStyled>
+						<MenuDivider />
+						<MenuItemDanger onClick={handleSignOut}>
+							<IconWrapper>
+								<FontAwesomeIcon icon={faSignOut} />
+							</IconWrapper>
+							Sign out
+						</MenuItemDanger>
+					</StyledMenu>
+				) : null}
+			</ProfileContainer>
+		);
+	},
+);

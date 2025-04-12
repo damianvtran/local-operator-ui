@@ -8,21 +8,22 @@
 import { faCheck } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, Tooltip } from "@mui/material";
+import { getUserInfo } from "@renderer/api/radient/auth-api";
+import { apiConfig } from "@renderer/config";
+import { useFeatureFlags } from "@renderer/providers/feature-flags";
 import {
 	OnboardingStep,
 	useOnboardingStore,
 } from "@renderer/store/onboarding-store";
+import { useUserStore } from "@renderer/store/user-store";
+import { clearSession, getSession } from "@renderer/utils/session-store";
+import { showErrorToast } from "@renderer/utils/toast-manager";
 import {
 	PrimaryButton,
 	SecondaryButton,
 } from "@shared/components/common/base-dialog";
-import { useFeatureFlags } from "@renderer/providers/feature-flags";
 import type { FC } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { getSession, clearSession } from "@renderer/utils/session-store";
-import { apiConfig } from "@renderer/config";
-import { getUserInfo } from "@renderer/api/radient/auth-api";
-import { useUserStore } from "@renderer/store/user-store";
 import { useNavigate } from "react-router-dom";
 import { OnboardingDialog } from "./onboarding-dialog";
 import {
@@ -42,7 +43,6 @@ import { RadientSignInStep } from "./steps/radient-signin-step";
 import { SearchApiStep } from "./steps/search-api-step";
 import { UserProfileStep } from "./steps/user-profile-step";
 import { WelcomeStep } from "./steps/welcome-step";
-import { showErrorToast } from "@renderer/utils/toast-manager";
 
 /**
  * Props for the OnboardingModal component
