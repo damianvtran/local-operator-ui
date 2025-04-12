@@ -109,11 +109,13 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 	const steps = useMemo(() => {
 		// If Radient Pass is enabled and we're on the choice or signin step,
 		// don't show any steps since we don't know which path the user will choose
-		if (
-			isRadientPassEnabled &&
-			(currentStep === OnboardingStep.RADIENT_CHOICE ||
-				currentStep === OnboardingStep.RADIENT_SIGNIN)
-		) {
+		if (isRadientPassEnabled && currentStep === OnboardingStep.RADIENT_CHOICE) {
+			return [];
+		}
+
+		// If Radient Pass is enabled and we're on the signin step,
+		// only show the signin step
+		if (isRadientPassEnabled && currentStep === OnboardingStep.RADIENT_SIGNIN) {
 			return [];
 		}
 
@@ -261,6 +263,7 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 				setCurrentStep(OnboardingStep.USER_PROFILE);
 				break;
 			case OnboardingStep.USER_PROFILE:
+				console.log("Setting current step to MODEL_CREDENTIAL");
 				setCurrentStep(OnboardingStep.MODEL_CREDENTIAL);
 				break;
 			case OnboardingStep.MODEL_CREDENTIAL:
@@ -304,7 +307,13 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 				setCurrentStep(OnboardingStep.RADIENT_CHOICE);
 				break;
 			case OnboardingStep.USER_PROFILE:
-				setCurrentStep(OnboardingStep.WELCOME);
+				// If Radient Pass is enabled, go back to RADIENT_CHOICE
+				// Otherwise, go back to WELCOME
+				if (isRadientPassEnabled) {
+					setCurrentStep(OnboardingStep.RADIENT_CHOICE);
+				} else {
+					setCurrentStep(OnboardingStep.WELCOME);
+				}
 				break;
 			case OnboardingStep.MODEL_CREDENTIAL:
 				setCurrentStep(OnboardingStep.USER_PROFILE);
@@ -321,7 +330,7 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 			default:
 				break;
 		}
-	}, [currentStep, setCurrentStep]);
+	}, [currentStep, setCurrentStep, isRadientPassEnabled]);
 
 	/**
 	 * Handle skipping the current step (for optional steps)

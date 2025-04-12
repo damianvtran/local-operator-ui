@@ -180,7 +180,10 @@ export const ModelCredentialStep: FC = () => {
 						))}
 					</Select>
 					<FormHelperText>
-						<Box sx={{ display: "flex", alignItems: "center" }}>
+						<Box
+							component="span"
+							sx={{ display: "flex", alignItems: "center" }}
+						>
 							<FontAwesomeIcon
 								icon={faShieldAlt}
 								style={{
