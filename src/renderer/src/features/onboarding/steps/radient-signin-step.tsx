@@ -21,12 +21,24 @@ import { useCallback, useEffect } from "react";
 import { SectionContainer, SectionDescription } from "../onboarding-styled";
 
 /**
+ * Props for the RadientSignInStep component
+ */
+type RadientSignInStepProps = {
+	/**
+	 * Optional callback when user successfully signs in with Radient Pass
+	 */
+	onSignInSuccess?: () => void;
+};
+
+/**
  * Radient Sign In Step Component
  *
  * Provides options for users to sign in with Google or Microsoft
  * to set up their Radient Pass account.
  */
-export const RadientSignInStep: FC = () => {
+export const RadientSignInStep: FC<RadientSignInStepProps> = ({
+	onSignInSuccess,
+}) => {
 	const handleSignInSuccess = useCallback(async () => {
 		try {
 			// Get the session JWT
@@ -58,7 +70,12 @@ export const RadientSignInStep: FC = () => {
 		// Continue to agent creation step
 		const { setCurrentStep } = useOnboardingStore.getState();
 		setCurrentStep(OnboardingStep.CREATE_AGENT);
-	}, []);
+
+		// Call the onSignInSuccess callback if provided
+		if (onSignInSuccess) {
+			onSignInSuccess();
+		}
+	}, [onSignInSuccess]);
 
 	// Check for existing session on mount
 	useEffect(() => {
