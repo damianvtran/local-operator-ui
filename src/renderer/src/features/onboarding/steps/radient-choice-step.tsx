@@ -139,8 +139,8 @@ const CardSubtitle = styled(Box)(({ theme }) => ({
 }));
 
 const CardIcon = styled(Box)(({ theme }) => ({
-	width: 90,
-	height: 90,
+	width: 110,
+	height: 110,
 	display: "flex",
 	alignItems: "center",
 	justifyContent: "center",
@@ -313,7 +313,7 @@ export const RadientChoiceStep: FC<RadientChoiceStepProps> = ({
 									Anthropic.
 								</CardSubtitle>
 							</Box>
-							<CardIcon sx={{ fontSize: "3rem" }}>🔧</CardIcon>
+							<CardIcon sx={{ fontSize: "4rem" }}>🔧</CardIcon>
 							<ChooseOption className="choose-option">
 								Choose this option <FontAwesomeIcon icon={faArrowRight} />
 							</ChooseOption>
