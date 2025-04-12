@@ -170,7 +170,7 @@ export const SearchApiStep: FC = () => {
 							color: "#3f51b5",
 						}}
 					/>
-					<Typography variant="body2">
+					<Typography variant="body2" component="div">
 						<Box component="span" sx={{ fontWeight: 600 }}>
 							Web-enabled AI is more powerful!
 						</Box>{" "}
@@ -212,7 +212,10 @@ export const SearchApiStep: FC = () => {
 						))}
 					</Select>
 					<FormHelperText>
-						<Box sx={{ display: "flex", alignItems: "center" }}>
+						<Box
+							component="span"
+							sx={{ display: "flex", alignItems: "center" }}
+						>
 							<FontAwesomeIcon
 								icon={faSearch}
 								style={{
@@ -239,6 +242,7 @@ export const SearchApiStep: FC = () => {
 					>
 						<Typography
 							variant="body2"
+							component="div"
 							sx={{ mb: 1, display: "flex", alignItems: "center" }}
 						>
 							<EmojiContainer>💡</EmojiContainer>{" "}
@@ -349,6 +353,7 @@ export const SearchApiStep: FC = () => {
 					</EmojiContainer>
 					<Typography
 						variant="body2"
+						component="div"
 						sx={{ fontStyle: "italic", color: "text.secondary" }}
 					>
 						This step is completely optional! You can skip it now and add search
