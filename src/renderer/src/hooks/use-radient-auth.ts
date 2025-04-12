@@ -62,8 +62,6 @@ export const useRadientAuth = () => {
 				name: account.name || currentName,
 				email: account.email || currentEmail,
 			});
-
-			console.log("Profile synced with Radient account data");
 		}
 	}, [radientUser, userStore]);
 
