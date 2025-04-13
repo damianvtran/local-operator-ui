@@ -54,6 +54,47 @@ if (typeof window !== "undefined") {
 				chromeVersion: "114.0.0",
 			}),
 		},
+		// Mock ipcRenderer methods
+		ipcRenderer: {
+			send: () => {}, // Mock send if needed
+			on: () => () => {}, // Mock on and return a cleanup function
+			// Mock the new provider auth check
+			checkProviderAuthEnabled: async () => {
+				console.log(
+					"[Storybook Mock] checkProviderAuthEnabled called, returning true",
+				);
+				// Default to true for Storybook, can be overridden per story if needed
+				return true;
+			},
+		},
+		// Mock oauth methods (add if needed for stories using OAuth)
+		oauth: {
+			login: async (provider: string) => {
+				console.log(`[Storybook Mock] oauth.login called for ${provider}`);
+				return { success: true };
+			},
+			logout: async () => {
+				console.log("[Storybook Mock] oauth.logout called");
+				return { success: true };
+			},
+			getStatus: async () => {
+				console.log("[Storybook Mock] oauth.getStatus called");
+				// Simulate logged-out status by default
+				return { success: true, status: { loggedIn: false, provider: null } };
+			},
+			onStatusUpdate: (
+				_callback: (status: {
+					loggedIn: boolean;
+					provider: string | null;
+				}) => void,
+			) => {
+				console.log("[Storybook Mock] oauth.onStatusUpdate listener added");
+				// Return a no-op cleanup function
+				return () => {
+					console.log("[Storybook Mock] oauth.onStatusUpdate listener removed");
+				};
+			},
+		},
 	};
 }
 
