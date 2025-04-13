@@ -12,10 +12,12 @@ const SESSION_DURATION_MS = 30 * 24 * 60 * 60 * 1000;
 /**
  * Store the backend JWT with a 30-day expiration.
  * @param jwt - The backend JWT to store
+ * @returns A promise that resolves when the session is stored
  */
-export function storeSession(jwt: string): void {
+export async function storeSession(jwt: string): Promise<void> {
 	const expiry = Date.now() + SESSION_DURATION_MS;
-	window.api.session.storeSession(jwt, expiry);
+	// Await the IPC call to ensure it completes before proceeding
+	await window.api.session.storeSession(jwt, expiry);
 }
 
 /**

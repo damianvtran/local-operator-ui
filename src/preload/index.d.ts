@@ -12,8 +12,8 @@ declare global {
 					jwt: string | undefined;
 					expiry: number | undefined;
 				}>;
-				storeSession: (jwt: string, expiry: number) => Promise<boolean>;
-				clearSession: () => Promise<boolean>;
+				storeSession: (jwt: string, expiry: number) => Promise<void>;
+				clearSession: () => Promise<void>;
 			};
 			systemInfo: {
 				getAppVersion: () => Promise<string>;
