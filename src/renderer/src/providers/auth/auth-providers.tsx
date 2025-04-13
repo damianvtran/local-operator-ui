@@ -7,8 +7,6 @@
 
 import type { FC, ReactNode } from "react";
 import { useFeatureFlags } from "../feature-flags";
-import { GoogleAuthProvider } from "./google-auth-provider";
-import { MicrosoftAuthProvider } from "./microsoft-auth-provider";
 import { RadientAuthProvider } from "./radient-auth-provider";
 
 // We no longer need to re-export the useRadientUser hook
@@ -39,12 +37,7 @@ export type AuthProvidersProps = {
  * Wraps the application with Google, Microsoft, and Radient authentication providers.
  * Uses the client IDs and tenant ID from the environment variables by default.
  */
-export const AuthProviders: FC<AuthProvidersProps> = ({
-	children,
-	googleClientId,
-	microsoftClientId,
-	microsoftTenantId,
-}) => {
+export const AuthProviders: FC<AuthProvidersProps> = ({ children }) => {
 	const { isEnabled } = useFeatureFlags();
 	const isRadientPassEnabled = isEnabled("radient-pass-onboarding");
 
@@ -52,14 +45,5 @@ export const AuthProviders: FC<AuthProvidersProps> = ({
 		return <>{children}</>;
 	}
 
-	return (
-		<GoogleAuthProvider clientId={googleClientId}>
-			<MicrosoftAuthProvider
-				clientId={microsoftClientId}
-				tenantId={microsoftTenantId}
-			>
-				<RadientAuthProvider>{children}</RadientAuthProvider>
-			</MicrosoftAuthProvider>
-		</GoogleAuthProvider>
-	);
+	return <RadientAuthProvider>{children}</RadientAuthProvider>;
 };

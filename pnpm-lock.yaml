@@ -8,12 +8,6 @@ importers:
 
   .:
     dependencies:
-      '@azure/msal-browser':
-        specifier: ^4.10.0
-        version: 4.10.0
-      '@azure/msal-react':
-        specifier: ^3.0.9
-        version: 3.0.9(@azure/msal-browser@4.10.0)(react@18.3.1)
       '@electron-toolkit/utils':
         specifier: ^4.0.0
         version: 4.0.0(electron@25.9.8)
@@ -41,9 +35,6 @@ importers:
       '@openid/appauth':
         specifier: 1.3.2
         version: 1.3.2
-      '@react-oauth/google':
-        specifier: ^0.12.1
-        version: 0.12.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@tanstack/react-query':
         specifier: ^5.67.1
         version: 5.73.3(react@18.3.1)
@@ -231,21 +222,6 @@ packages:
   '@ampproject/remapping@2.3.0':
     resolution: {integrity: sha512-30iZtAPgz+LTIYoeivqYo853f02jBYSd5uGnGpkFV0M3xOt9aN73erkgYAmZU43x4VfqcnLxW9Kpg3R5LC4YYw==}
     engines: {node: '>=6.0.0'}
-
-  '@azure/msal-browser@4.10.0':
-    resolution: {integrity: sha512-48X2VwOtHk8A1CI00E8tAqko0+3qQh53u5bOPySzdojL3T/Ad4GgRnN0c0oLJ1/PcTm4D4QybHYG3LBOX0l3/g==}
-    engines: {node: '>=0.8.0'}
-
-  '@azure/msal-common@15.5.0':
-    resolution: {integrity: sha512-u97AJ6m4PB24/Plms9e9iydRcOaxxrHWkan1px5GeWGJfakY1D/r1DmY1+Typ8zWC/5JbNzH1GYpXrorPymz5g==}
-    engines: {node: '>=0.8.0'}
-
-  '@azure/msal-react@3.0.9':
-    resolution: {integrity: sha512-im4F/MIYn6RbkfbKs8XA6Zs4FDo6EflfBIgmlUlYls8orpYECtsaRzCEZxPomMRNjzwo1Lm54TlY/Mtj0+SAaA==}
-    engines: {node: '>=10'}
-    peerDependencies:
-      '@azure/msal-browser': ^4.10.0
-      react: ^16.8.0 || ^17 || ^18
 
   '@babel/code-frame@7.26.2':
     resolution: {integrity: sha512-RJlIHRueQgwWitWgF8OdFYGZX328Ax5BCemNGlqHfplnRT9ESi8JkFlvaVYbS+UubVY6dpv87Fs2u5M29iNFVQ==}
@@ -1118,12 +1094,6 @@ packages:
 
   '@popperjs/core@2.11.8':
     resolution: {integrity: sha512-P1st0aksCrn9sGZhp8GMYwBnQsbvAWsZAX44oXNNvLHGqAOcoVxmjZiohstwQ7SqKnbR47akdNi+uleWD8+g6A==}
-
-  '@react-oauth/google@0.12.1':
-    resolution: {integrity: sha512-qagsy22t+7UdkYAiT5ZhfM4StXi9PPNvw0zuwNmabrWyMKddczMtBIOARflbaIj+wHiQjnMAsZmzsUYuXeyoSg==}
-    peerDependencies:
-      react: '>=16.8.0'
-      react-dom: '>=16.8.0'
 
   '@remix-run/router@1.23.0':
     resolution: {integrity: sha512-O3rHJzAQKamUz1fvE0Qaw0xSFqsA/yafi2iqeE0pvdFtCO1viYx8QL6f3Ln/aCCTLxs68SLf0KPM9eSeM8yBnA==}
@@ -4533,17 +4503,6 @@ snapshots:
       '@jridgewell/gen-mapping': 0.3.8
       '@jridgewell/trace-mapping': 0.3.25
 
-  '@azure/msal-browser@4.10.0':
-    dependencies:
-      '@azure/msal-common': 15.5.0
-
-  '@azure/msal-common@15.5.0': {}
-
-  '@azure/msal-react@3.0.9(@azure/msal-browser@4.10.0)(react@18.3.1)':
-    dependencies:
-      '@azure/msal-browser': 4.10.0
-      react: 18.3.1
-
   '@babel/code-frame@7.26.2':
     dependencies:
       '@babel/helper-validator-identifier': 7.25.9
@@ -5521,11 +5480,6 @@ snapshots:
     optional: true
 
   '@popperjs/core@2.11.8': {}
-
-  '@react-oauth/google@0.12.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
-    dependencies:
-      react: 18.3.1
-      react-dom: 18.3.1(react@18.3.1)
 
   '@remix-run/router@1.23.0': {}
 
