@@ -82,6 +82,8 @@ declare global {
 					channel: string,
 					func: (...args: unknown[]) => void,
 				) => (() => void) | undefined;
+				// Add function to check if provider auth is configured in the backend
+				checkProviderAuthEnabled: () => Promise<boolean>;
 			};
 			oauth: {
 				login: (

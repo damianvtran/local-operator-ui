@@ -408,6 +408,28 @@ app
 			};
 		});
 
+		// --- Check Provider Auth IPC Handler ---
+		ipcMain.handle("ipc-check-provider-auth", () => {
+			// Check if any provider credentials are set beyond the default placeholders
+			const googleConfigured =
+				backendConfig.VITE_GOOGLE_CLIENT_ID &&
+				backendConfig.VITE_GOOGLE_CLIENT_ID !== "REPL_VITE_GOOGLE_CLIENT_ID" &&
+				backendConfig.VITE_GOOGLE_CLIENT_SECRET &&
+				backendConfig.VITE_GOOGLE_CLIENT_SECRET !==
+					"REPL_VITE_GOOGLE_CLIENT_SECRET";
+
+			const microsoftConfigured =
+				backendConfig.VITE_MICROSOFT_CLIENT_ID &&
+				backendConfig.VITE_MICROSOFT_CLIENT_ID !==
+					"REPL_VITE_MICROSOFT_CLIENT_ID" &&
+				backendConfig.VITE_MICROSOFT_TENANT_ID &&
+				backendConfig.VITE_MICROSOFT_TENANT_ID !==
+					"REPL_VITE_MICROSOFT_TENANT_ID";
+
+			// Return true if either Google or Microsoft credentials are configured
+			return googleConfigured || microsoftConfigured;
+		});
+
 		// --- OAuth IPC Handlers ---
 		ipcMain.handle(
 			"oauth-login",

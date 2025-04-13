@@ -174,6 +174,9 @@ const api = {
 			}
 			return undefined;
 		},
+		// Add function to check if provider auth is configured in the backend
+		checkProviderAuthEnabled: (): Promise<boolean> =>
+			ipcRenderer.invoke("ipc-check-provider-auth"),
 	},
 };
 
