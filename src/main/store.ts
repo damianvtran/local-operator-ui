@@ -38,19 +38,64 @@ export class Store<T extends Record<string, unknown>> {
 		const userDataPath = app.getPath("userData");
 		this.path = path.join(userDataPath, `${storeName}-lo-store.json`);
 
-		// Initialize with defaults
+		// Initialize with defaults first
 		this.data = { ...this.defaults };
 
 		try {
 			this.load();
-		} catch (error) {
-			logger.error(
-				`Failed to load store from ${this.path}. Using defaults.`,
-				LogFileType.BACKEND,
-				error,
-			);
-			// If loading fails, save the defaults
-			this.save();
+		} catch (loadError) {
+			// Check if the error is a JSON parsing error (indicative of corruption)
+			if (loadError instanceof SyntaxError) {
+				logger.warn(
+					`Detected corrupted store file (JSON parse error) at ${this.path}. Attempting recovery...`,
+					LogFileType.BACKEND,
+					loadError,
+				);
+				try {
+					// Delete the corrupted file
+					if (fs.existsSync(this.path)) {
+						logger.info(
+							`Deleting corrupted store file: ${this.path}`,
+							LogFileType.BACKEND,
+						);
+						fs.unlinkSync(this.path);
+					}
+					// Reset data to defaults (already done above, but explicit here for clarity)
+					this.data = { ...this.defaults };
+					// Save the defaults to create a clean file
+					this.save();
+					logger.info(
+						"Store recovered by deleting corrupted file and resetting to defaults.",
+						LogFileType.BACKEND,
+					);
+				} catch (recoveryError) {
+					logger.error(
+						`Failed to recover store after corruption at ${this.path}. Data loss may occur.`,
+						LogFileType.BACKEND,
+						recoveryError,
+					);
+					// Continue with defaults in memory, but log the critical failure
+					// Re-throw the recovery error to signal a critical initialization problem
+					throw new Error(
+						`Failed to recover corrupted store file: ${
+							recoveryError instanceof Error
+								? recoveryError.message
+								: recoveryError
+						}`,
+					);
+				}
+			} else {
+				// For other load errors (e.g., permissions), log and use defaults, but don't delete
+				logger.error(
+					`Failed to load store from ${this.path} due to non-parsing error. Using defaults.`,
+					LogFileType.BACKEND,
+					loadError,
+				);
+				// Ensure defaults are saved if loading failed for other reasons
+				this.save();
+				// Re-throw the original error to signal a potential issue
+				throw loadError;
+			}
 		}
 	}
 

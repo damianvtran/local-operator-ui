@@ -254,19 +254,57 @@ const backendService = new BackendServiceManager();
 const backendInstaller = new BackendInstaller();
 
 // Initialize session store (used by OAuthService and session handlers)
-const sessionStore = new Store<StoreData>({
-	name: "session",
-	defaults: {
-		radient_jwt: undefined,
-		radient_jwt_expiry: undefined,
-		oauth_provider: undefined,
-		oauth_access_token: undefined,
-		oauth_id_token: undefined,
-		oauth_expiry: undefined,
-	},
-});
+// Wrap initialization in try-catch to handle potential cache corruption
+let sessionStore: Store<StoreData>;
+try {
+	sessionStore = new Store<StoreData>({
+		name: "session",
+		defaults: {
+			radient_jwt: undefined,
+			radient_jwt_expiry: undefined,
+			oauth_provider: undefined,
+			oauth_access_token: undefined,
+			oauth_id_token: undefined,
+			oauth_expiry: undefined,
+		},
+	});
+	logger.info("Session store initialized successfully.", LogFileType.BACKEND);
+} catch (error) {
+	logger.error(
+		"Initial session store initialization failed.",
+		LogFileType.BACKEND,
+		error,
+	);
+	// The Store constructor now handles recovery from JSON parsing errors.
+	// If an error reaches this point, it's likely unrecoverable or a different type.
+	dialog.showErrorBox(
+		"Application Error",
+		`Failed to initialize application settings. Please restart the application. Error: ${error instanceof Error ? error.message : "Unknown error"}`,
+	);
+	app.quit();
+	// Re-throw the error to prevent further execution
+	throw error;
+}
 
-// Initialize OAuth service
+// Critical check: Ensure sessionStore is initialized before proceeding.
+// The logic above should either succeed, quit, or throw, making this mostly a safeguard.
+if (!sessionStore) {
+	// Use error instead of fatal
+	logger.error(
+		"Session store could not be initialized. Quitting.",
+		LogFileType.BACKEND,
+	);
+	dialog.showErrorBox(
+		"Fatal Error",
+		"Application could not initialize critical settings. Quitting.",
+	);
+	app.quit();
+	// Throw to prevent any further execution in this unlikely scenario
+	throw new Error("Session store initialization failed critically.");
+}
+
+// Initialize OAuth service (now guaranteed to have a valid sessionStore)
+// Moved declaration outside the try-catch block to avoid redeclaration issues
 const oauthService = new OAuthService(sessionStore);
 
 // This method will be called when Electron has finished
