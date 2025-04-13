@@ -65,8 +65,9 @@ const envSchema = z.object({
 		.string()
 		.optional()
 		.default(
-			"778402241192-mivhglm9ndiv1f9sshp9bqh1grcjkq7t.apps.googleusercontent.com",
+			"778402241192-7akrj44ptshfhh067e1lchko5vslcedk.apps.googleusercontent.com",
 		),
+	VITE_GOOGLE_CLIENT_SECRET: z.string().min(1),
 	VITE_MICROSOFT_CLIENT_ID: z
 		.string()
 		.optional()
