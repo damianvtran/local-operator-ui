@@ -229,7 +229,6 @@ export const useOidcAuth = (): UseOidcAuthResult => {
 			const loginResponse: AuthenticationResult =
 				await msalInstance.loginPopup(loginRequest);
 
-			console.log("Microsoft login response:", loginResponse);
 			if (!loginResponse.idToken && !loginResponse.accessToken) {
 				throw new Error("No ID token or access token received from Microsoft");
 			}
