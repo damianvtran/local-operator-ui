@@ -1,6 +1,3 @@
-import type { StoreData } from "./store";
-import { type BrowserWindow, net } from "electron";
-import * as keytar from "keytar";
 import {
 	AuthorizationNotifier,
 	AuthorizationRequest,
@@ -16,8 +13,11 @@ import {
 } from "@openid/appauth";
 import { NodeCrypto } from "@openid/appauth/built/node_support/";
 import { NodeBasedHandler } from "@openid/appauth/built/node_support/node_request_handler.js";
+import { net, type BrowserWindow } from "electron";
+import * as keytar from "keytar";
 import { backendConfig } from "./backend/config";
 import { LogFileType, logger } from "./backend/logger";
+import type { StoreData } from "./store";
 import type { Store } from "./store";
 
 // --- Constants ---

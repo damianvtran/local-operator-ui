@@ -19,8 +19,8 @@ import {
 import { backendConfig } from "./backend/config";
 import { LogFileType, logger } from "./backend/logger";
 import { OAuthService } from "./oauth-service";
-import { UpdateService } from "./update-service";
 import { Store, type StoreData } from "./store";
+import { UpdateService } from "./update-service";
 
 // Set application name
 app.setName("Local Operator");
