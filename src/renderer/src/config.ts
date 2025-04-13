@@ -11,6 +11,13 @@ const envSchema = z.object({
 		.optional()
 		.default("http://localhost:1111"),
 
+	// Radient agent-server base URL
+	VITE_RADIENT_SERVER_BASE_URL: z
+		.string()
+		.url("Radient server base URL must be a valid URL")
+		.optional()
+		.default("https://api.radienthq.com"),
+
 	// Backend service manager configuration
 	VITE_DISABLE_BACKEND_MANAGER: z
 		.enum(["true", "false"])
@@ -85,4 +92,5 @@ export const config = loadConfig();
  */
 export const apiConfig = {
 	baseUrl: config.VITE_LOCAL_OPERATOR_API_URL,
+	radientBaseUrl: config.VITE_RADIENT_SERVER_BASE_URL,
 };

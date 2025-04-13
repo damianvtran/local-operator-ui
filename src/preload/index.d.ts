@@ -7,6 +7,14 @@ declare global {
 		api: {
 			openFile: (filePath: string) => Promise<void>;
 			openExternal: (url: string) => Promise<void>;
+			session: {
+				getSession: () => Promise<{
+					jwt: string | undefined;
+					expiry: number | undefined;
+				}>;
+				storeSession: (jwt: string, expiry: number) => Promise<void>;
+				clearSession: () => Promise<void>;
+			};
 			systemInfo: {
 				getAppVersion: () => Promise<string>;
 				getPlatformInfo: () => Promise<{
@@ -74,6 +82,36 @@ declare global {
 					channel: string,
 					func: (...args: unknown[]) => void,
 				) => (() => void) | undefined;
+				// Add function to check if provider auth is configured in the backend
+				checkProviderAuthEnabled: () => Promise<boolean>;
+			};
+			oauth: {
+				login: (
+					provider: "google" | "microsoft",
+				) => Promise<{ success: boolean; error?: string }>;
+				logout: () => Promise<{ success: boolean; error?: string }>;
+				getStatus: () => Promise<{
+					success: boolean;
+					status?: {
+						loggedIn: boolean;
+						provider: "google" | "microsoft" | null;
+						accessToken?: string; // Consider removing if not needed by renderer
+						idToken?: string;
+						expiry?: number;
+						error?: string;
+					};
+					error?: string;
+				}>;
+				onStatusUpdate: (
+					callback: (status: {
+						loggedIn: boolean;
+						provider: "google" | "microsoft" | null;
+						accessToken?: string;
+						idToken?: string;
+						expiry?: number;
+						error?: string;
+					}) => void,
+				) => () => void; // Returns a cleanup function
 			};
 		};
 	}

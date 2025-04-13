@@ -54,7 +54,7 @@ const StyledDialog = styled(Dialog)(({ theme }) => ({
 	"& .MuiBackdrop-root": {
 		// Apply gradient to the backdrop for full screen effect
 		background:
-			"linear-gradient(135deg, rgba(30,30,30,1), rgba(15,15,15,0.95), rgba(5,5,5,1), rgba(56,201,106,0.1))",
+			"linear-gradient(135deg, rgba(40,40,40,1), rgba(15,15,15,0.95), rgba(5,5,5,1), rgba(56,201,106,0.15))",
 		opacity: 1.0,
 	},
 	"& .MuiPaper-root": {
@@ -110,7 +110,7 @@ const ContentContainer = styled("div")(() => ({
 	width: "100%",
 	height: "100%",
 	maxWidth: "780px",
-	maxHeight: "680px",
+	maxHeight: "780px",
 	boxSizing: "border-box",
 	display: "flex",
 	flexDirection: "column",
@@ -125,11 +125,8 @@ const StyledDialogTitle = styled(DialogTitle)(({ theme }) => ({
 	paddingLeft: theme.spacing(3), // Add horizontal padding
 	paddingRight: theme.spacing(3), // Add horizontal padding
 	color: theme.palette.text.primary,
-	// Remove explicit background
-	"& .MuiTypography-root": {
-		fontWeight: 400,
-		fontSize: "2rem",
-	},
+	fontSize: "2.2rem",
+	fontWeight: 400,
 }));
 
 /**

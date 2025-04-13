@@ -7,11 +7,11 @@ import {
 	Typography,
 } from "@mui/material";
 import { ThemeProvider as MuiThemeProvider } from "@mui/material/styles";
+import theme from "@renderer/theme";
 import type { Meta, StoryObj } from "@storybook/react";
 import type { ProgressInfo, UpdateInfo } from "electron-updater";
 import { useEffect, useState } from "react";
 import { ThemeProvider as StyledThemeProvider } from "styled-components";
-import theme from "../../theme";
 import { CheckForUpdatesButton } from "./check-for-updates-button";
 
 // Initialize window.api if it doesn't exist

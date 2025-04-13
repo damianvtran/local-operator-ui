@@ -156,7 +156,7 @@ export const CreateAgentStep: FC = () => {
 						color: "#ff9800",
 					}}
 				/>
-				<Typography variant="body2">
+				<Typography variant="body2" component="div">
 					<Box component="span" sx={{ fontWeight: 600 }}>
 						Pro tip!
 					</Box>{" "}
@@ -293,6 +293,7 @@ export const CreateAgentStep: FC = () => {
 					<EmojiContainer>💫</EmojiContainer>
 					<Typography
 						variant="body2"
+						component="div"
 						sx={{ color: "text.secondary", fontStyle: "italic" }}
 					>
 						This is the final step before your AI journey begins!

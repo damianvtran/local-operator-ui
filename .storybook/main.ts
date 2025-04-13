@@ -13,7 +13,6 @@ const config: StorybookConfig = {
 	stories: ["../src/**/*.mdx", "../src/**/*.stories.@(js|jsx|mjs|ts|tsx)"],
 	addons: [
 		getAbsolutePath("@storybook/addon-essentials"),
-		getAbsolutePath("@storybook/addon-onboarding"),
 		getAbsolutePath("@chromatic-com/storybook"),
 		getAbsolutePath("@storybook/addon-interactions"),
 	],
@@ -41,6 +40,8 @@ const config: StorybookConfig = {
 				...config.resolve?.alias,
 				"@renderer": resolve("src/renderer/src"),
 				"@components": resolve("src/renderer/src/components"),
+				"@features": resolve("src/renderer/src/features"),
+				"@shared": resolve("src/renderer/src/shared"),
 				"@assets": resolve("src/renderer/src/assets"),
 				"@hooks": resolve("src/renderer/src/hooks"),
 				"@api": resolve("src/renderer/src/api"),

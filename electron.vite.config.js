@@ -6,11 +6,16 @@ import {
 } from "electron-vite";
 import react from "@vitejs/plugin-react";
 import tsconfigPaths from "vite-tsconfig-paths";
+import { replaceBackendConfigPlugin } from "./scripts/vite-plugins/replace-backend-config";
 
 export default defineConfig({
 	assetsInclude: ["**/*.sh", "**/*.ps1"],
 	main: {
-		plugins: [externalizeDepsPlugin(), bytecodePlugin()],
+		plugins: [
+			externalizeDepsPlugin(),
+			bytecodePlugin(),
+			replaceBackendConfigPlugin(),
+		],
 	},
 	preload: {
 		plugins: [externalizeDepsPlugin(), bytecodePlugin()],
