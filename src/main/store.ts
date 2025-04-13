@@ -1,6 +1,6 @@
-import { app } from "electron";
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { app } from "electron";
 import { LogFileType, logger } from "./backend/logger";
 
 /**
