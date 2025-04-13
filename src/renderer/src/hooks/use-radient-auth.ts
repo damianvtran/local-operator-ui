@@ -6,9 +6,17 @@
  * Uses React Query for stable, cached, and automatically refreshing data.
  */
 
+import type { RadientUser } from "@renderer/providers/auth"; // Assuming RadientUser is defined here or import appropriately
 import { useUserStore } from "@renderer/store/user-store";
 import { useEffect } from "react";
 import { useRadientUserQuery } from "./use-radient-user-query";
+
+// Define a more descriptive status type
+export type AuthStatus =
+	| "loading" // Initial check or ongoing fetch, no local token hint
+	| "authenticated" // Backend validated
+	| "unauthenticated" // No local token or backend validation failed
+	| "restoring"; // Local token exists, backend validation pending
 
 /**
  * Hook for accessing Radient authentication state and user information
@@ -28,12 +36,26 @@ export const useRadientAuth = () => {
 	const {
 		user: radientUser,
 		sessionToken,
-		isLoading,
+		isLoading, // Combined loading state from useRadientUserQuery
 		error,
-		isAuthenticated,
+		isAuthenticated, // Backend validated flag from useRadientUserQuery
+		hasLocalSession, // Local token exists flag from useRadientUserQuery
 		signOut,
 		refreshUser,
 	} = useRadientUserQuery();
+
+	// Determine the overall authStatus
+	let authStatus: AuthStatus;
+	if (isLoading) {
+		// If loading, check if we have a local session hint to determine if restoring or initial loading
+		authStatus = hasLocalSession ? "restoring" : "loading";
+	} else if (isAuthenticated) {
+		// Not loading, and backend validation succeeded
+		authStatus = "authenticated";
+	} else {
+		// Not loading and not authenticated (could be due to no local session or backend validation failure)
+		authStatus = "unauthenticated";
+	}
 
 	// Sync the Radient user information with the user store
 	useEffect(() => {
@@ -67,8 +89,10 @@ export const useRadientAuth = () => {
 
 	return {
 		// Authentication state
-		isAuthenticated,
-		isLoading,
+		authStatus, // Use the new combined status
+		isAuthenticated, // Keep backend-validated flag for detailed checks if needed
+		hasLocalSession, // Expose this flag
+		isLoading, // Keep the combined loading flag
 		error,
 
 		// User information (from Radient or fallback to user store)
@@ -76,7 +100,7 @@ export const useRadientAuth = () => {
 			name: radientUser?.account?.name || userStore.profile.name,
 			email: radientUser?.account?.email || userStore.profile.email,
 			// Include the full Radient user object if available
-			radientUser,
+			radientUser: radientUser as RadientUser | undefined | null, // Added type assertion for clarity
 		},
 
 		// Session token for API calls

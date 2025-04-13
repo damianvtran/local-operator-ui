@@ -10,11 +10,7 @@ import { createRadientClient } from "@renderer/api/radient";
 import { apiConfig } from "@renderer/config";
 import type { RadientUser } from "@renderer/providers/auth";
 import { useFeatureFlags } from "@renderer/providers/feature-flags";
-import {
-	clearSession,
-	getSession,
-	hasValidSession,
-} from "@renderer/utils/session-store";
+import { clearSession, getSession } from "@renderer/utils/session-store";
 import {
 	showErrorToast,
 	showSuccessToast,
@@ -46,13 +42,11 @@ export const useRadientUserQuery = () => {
 		queryKey: radientUserKeys.session(),
 		queryFn: async () => {
 			try {
-				const hasSession = await hasValidSession();
-				if (!hasSession) return null;
-
-				return getSession();
+				// Directly get the session. It returns null if invalid/expired.
+				return await getSession();
 			} catch (error) {
 				console.error("Failed to get session:", error);
-				return null;
+				return null; // Return null on error
 			}
 		},
 		// Refetch on window focus to ensure we have the latest session state
@@ -122,6 +116,13 @@ export const useRadientUserQuery = () => {
 		},
 	});
 
+	// --- Authentication State ---
+	// Indicates if a token exists locally (might still be invalid/expired on backend, or backend call pending/failed)
+	const hasLocalSession = !!sessionQuery.data && !sessionQuery.isLoading;
+	// Indicates if token is validated by backend and user info fetched successfully
+	const isAuthenticated = !!userQuery.data && !userQuery.isLoading;
+	// --- End Authentication State ---
+
 	// Mutation for signing out
 	const signOutMutation = useMutation({
 		mutationFn: async () => {
@@ -156,12 +157,15 @@ export const useRadientUserQuery = () => {
 		sessionToken: sessionQuery.data,
 
 		// Loading and error states
-		isLoading: sessionQuery.isLoading || userQuery.isLoading,
+		// Loading is true if session is loading, OR if session is loaded but user info is still loading
+		isLoading:
+			sessionQuery.isLoading || (hasLocalSession && userQuery.isLoading),
 		isRefetching: sessionQuery.isRefetching || userQuery.isRefetching,
 		error: sessionQuery.error || userQuery.error,
 
-		// Authentication state
-		isAuthenticated: !!userQuery.data,
+		// Authentication state (defined above)
+		hasLocalSession,
+		isAuthenticated,
 
 		// Actions
 		signOut: signOutMutation.mutate,

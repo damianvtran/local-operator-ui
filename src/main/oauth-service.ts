@@ -338,7 +338,6 @@ export class OAuthService {
 		this.configuration = null;
 		this.currentAuthProvider = null;
 		this.currentAuthorizationRequest = null;
-		// this.currentAuthorizationCodeVerifier = null; // No longer needed
 	}
 
 	/**
@@ -582,7 +581,7 @@ export class OAuthService {
 		});
 
 		try {
-			logger.info(
+			logger.debug(
 				`Making token request to ${this.configuration.tokenEndpoint} for ${this.currentAuthProvider}`,
 				LogFileType.OAUTH,
 			);
@@ -594,7 +593,7 @@ export class OAuthService {
 					request,
 				);
 
-			logger.info(
+			logger.debug(
 				`Token request successful for ${this.currentAuthProvider}`,
 				LogFileType.OAUTH,
 				{

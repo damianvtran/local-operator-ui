@@ -205,11 +205,6 @@ function createWindow(): BrowserWindow {
 					details.url.includes("storagerelay"),
 			);
 
-		// Log the auth URL for debugging
-		console.log(
-			`Auth popup request: ${details.url} - Trusted: ${isTrustedAuthDomain}`,
-		);
-
 		if (isTrustedAuthDomain) {
 			// Allow the popup for authentication with improved features
 			return {
@@ -262,9 +257,8 @@ const backendInstaller = new BackendInstaller();
 const sessionStore = new Store<StoreData>({
 	name: "session",
 	defaults: {
-		radient_jwt: "",
-		radient_jwt_expiry: 0,
-		// Initialize OAuth fields as undefined
+		radient_jwt: undefined,
+		radient_jwt_expiry: undefined,
 		oauth_provider: undefined,
 		oauth_access_token: undefined,
 		oauth_id_token: undefined,

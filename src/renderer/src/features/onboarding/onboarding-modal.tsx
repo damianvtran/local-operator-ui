@@ -145,12 +145,6 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 						setIsUsingRadientPass(true);
 						setCurrentStep(OnboardingStep.CREATE_AGENT);
 					} else {
-						// If flow is disabled but they have a session, something is odd.
-						// Clear session and let them proceed normally.
-						console.warn(
-							"Radient session found but Radient Pass flow is disabled. Clearing session.",
-						);
-						clearSession();
 						// Reset to appropriate starting step based on flow status
 						setCurrentStep(
 							isRadientPassFlowEnabled
