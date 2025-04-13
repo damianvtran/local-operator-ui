@@ -31,6 +31,7 @@ const KEYTAR_SERVICE = "radient-local-operator-oauth"; // Unique service name fo
 const GOOGLE_CONFIG = {
 	discoveryUrl: "https://accounts.google.com/.well-known/openid-configuration",
 	clientId: backendConfig.VITE_GOOGLE_CLIENT_ID,
+	clientSecret: backendConfig.VITE_GOOGLE_CLIENT_SECRET,
 	scope: "openid email profile",
 };
 
@@ -38,6 +39,7 @@ const MICROSOFT_CONFIG = {
 	// Use common endpoint for multi-tenant apps or specify tenant ID
 	discoveryUrl: `https://login.microsoftonline.com/${backendConfig.VITE_MICROSOFT_TENANT_ID}/v2.0/.well-known/openid-configuration`,
 	clientId: backendConfig.VITE_MICROSOFT_CLIENT_ID,
+	clientSecret: "",
 	scope: "openid email profile offline_access", // offline_access is crucial for refresh tokens
 };
 
@@ -575,6 +577,7 @@ export class OAuthService {
 			code: code,
 			extras: {
 				code_verifier: codeVerifier, // Use the passed codeVerifier
+				client_secret: config.clientSecret,
 			},
 		});
 
