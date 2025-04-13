@@ -83,6 +83,34 @@ declare global {
 					func: (...args: unknown[]) => void,
 				) => (() => void) | undefined;
 			};
+			oauth: {
+				login: (
+					provider: "google" | "microsoft",
+				) => Promise<{ success: boolean; error?: string }>;
+				logout: () => Promise<{ success: boolean; error?: string }>;
+				getStatus: () => Promise<{
+					success: boolean;
+					status?: {
+						loggedIn: boolean;
+						provider: "google" | "microsoft" | null;
+						accessToken?: string; // Consider removing if not needed by renderer
+						idToken?: string;
+						expiry?: number;
+						error?: string;
+					};
+					error?: string;
+				}>;
+				onStatusUpdate: (
+					callback: (status: {
+						loggedIn: boolean;
+						provider: "google" | "microsoft" | null;
+						accessToken?: string;
+						idToken?: string;
+						expiry?: number;
+						error?: string;
+					}) => void,
+				) => () => void; // Returns a cleanup function
+			};
 		};
 	}
 }

@@ -18,6 +18,7 @@ import {
 } from "./backend";
 import { backendConfig } from "./backend/config";
 import { LogFileType, logger } from "./backend/logger";
+import { OAuthService } from "./oauth-service";
 import { UpdateService } from "./update-service";
 import { Store, type StoreData } from "./store";
 
@@ -257,14 +258,97 @@ function createWindow(): BrowserWindow {
 const backendService = new BackendServiceManager();
 const backendInstaller = new BackendInstaller();
 
+// Initialize session store (used by OAuthService and session handlers)
+const sessionStore = new Store<StoreData>({
+	name: "session",
+	defaults: {
+		radient_jwt: "",
+		radient_jwt_expiry: 0,
+		// Initialize OAuth fields as undefined
+		oauth_provider: undefined,
+		oauth_access_token: undefined,
+		oauth_id_token: undefined,
+		oauth_expiry: undefined,
+	},
+});
+
+// Initialize OAuth service
+const oauthService = new OAuthService(sessionStore);
+
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
+// Define mainWindow at a higher scope to be accessible in event handlers
+let mainWindow: BrowserWindow | null = null;
+
+// --- Single Instance Lock ---
+const gotTheLock = app.requestSingleInstanceLock();
+
+if (!gotTheLock) {
+	logger.warn("Another instance is already running. Quitting this instance.");
+	app.quit();
+} else {
+	app.on("second-instance", (_event, commandLine) => {
+		// Someone tried to run a second instance, we should focus our window.
+		if (mainWindow) {
+			if (mainWindow.isMinimized()) mainWindow.restore();
+			mainWindow.focus();
+
+			// Handle protocol URL if passed via command line (Windows/Linux)
+			const url = commandLine.find((arg) => arg.startsWith("radient://"));
+			if (url) {
+				logger.info(
+					`Received URL via second-instance: ${url}`,
+					LogFileType.OAUTH,
+				);
+				oauthService.completeAuthorizationRequest(url);
+			}
+		}
+	});
+}
+
+// --- Protocol Handling ---
+// Register the custom protocol
+if (process.defaultApp) {
+	if (process.argv.length >= 2) {
+		app.setAsDefaultProtocolClient("radient", process.execPath, [
+			join(process.cwd(), process.argv[1]),
+		]);
+	}
+} else {
+	app.setAsDefaultProtocolClient("radient");
+}
+
 app
 	.whenReady()
 	.then(async () => {
 		// Set app user model id for windows
 		electronApp.setAppUserModelId("com.local-operator");
+
+		// Handle 'open-url' event (macOS)
+		app.on("open-url", (event, url) => {
+			event.preventDefault(); // Prevent default handling
+			if (url.startsWith("radient://")) {
+				logger.info(
+					`Received URL via open-url (macOS): ${url}`,
+					LogFileType.OAUTH,
+				);
+				if (mainWindow) {
+					// Bring window to front
+					if (mainWindow.isMinimized()) mainWindow.restore();
+					mainWindow.focus();
+					oauthService.completeAuthorizationRequest(url);
+				} else {
+					// Handle case where app was launched via URL before window was ready
+					// Store the URL and process it once the window is created?
+					// For now, log a warning. This might need refinement.
+					logger.warn(
+						"Received open-url event before mainWindow was ready.",
+						LogFileType.OAUTH,
+					);
+				}
+			}
+		});
 
 		// Default open or close DevTools by F12 in development
 		// and ignore CommandOrControl + R in production.
@@ -290,15 +374,7 @@ app
 			}
 		});
 
-		// --- Session storage handlers for secure JWT persistence ---
-		const sessionStore = new Store<StoreData>({
-			name: "session",
-			defaults: {
-				radient_jwt: "",
-				radient_jwt_expiry: 0,
-			},
-		});
-
+		// --- Session storage handlers (using the already initialized sessionStore) ---
 		ipcMain.handle("get-session", () => {
 			const jwt = sessionStore.get("radient_jwt");
 			const expiry = sessionStore.get("radient_jwt_expiry");
@@ -330,6 +406,74 @@ app
 				electronVersion: process.versions.electron,
 				chromeVersion: process.versions.chrome,
 			};
+		});
+
+		// --- OAuth IPC Handlers ---
+		ipcMain.handle(
+			"oauth-login",
+			async (_event, provider: "google" | "microsoft") => {
+				logger.info(
+					`IPC: Received oauth-login request for ${provider}`,
+					LogFileType.OAUTH,
+				);
+				try {
+					// Input validation (simple check for known providers)
+					if (provider !== "google" && provider !== "microsoft") {
+						throw new Error(`Invalid OAuth provider: ${provider}`);
+					}
+					await oauthService.initiateLogin(provider);
+					return { success: true };
+				} catch (error) {
+					const errorMsg =
+						error instanceof Error
+							? error.message
+							: "Unknown error during login initiation";
+					logger.error(
+						`IPC: Error during oauth-login for ${provider}: ${errorMsg}`,
+						LogFileType.OAUTH,
+						error,
+					);
+					return { success: false, error: errorMsg };
+				}
+			},
+		);
+
+		ipcMain.handle("oauth-logout", async () => {
+			logger.info("IPC: Received oauth-logout request", LogFileType.OAUTH);
+			try {
+				await oauthService.logout();
+				return { success: true };
+			} catch (error) {
+				const errorMsg =
+					error instanceof Error
+						? error.message
+						: "Unknown error during logout";
+				logger.error(
+					`IPC: Error during oauth-logout: ${errorMsg}`,
+					LogFileType.OAUTH,
+					error,
+				);
+				return { success: false, error: errorMsg };
+			}
+		});
+
+		ipcMain.handle("oauth-get-status", async () => {
+			logger.info("IPC: Received oauth-get-status request", LogFileType.OAUTH);
+			try {
+				const status = await oauthService.getStatus();
+				return { success: true, status };
+			} catch (error) {
+				const errorMsg =
+					error instanceof Error
+						? error.message
+						: "Unknown error getting status";
+				logger.error(
+					`IPC: Error during oauth-get-status: ${errorMsg}`,
+					LogFileType.OAUTH,
+					error,
+				);
+				return { success: false, error: errorMsg };
+			}
 		});
 
 		// Check if backend manager is disabled via environment variable
@@ -424,7 +568,10 @@ app
 		createApplicationMenu();
 
 		// Create the main window
-		const mainWindow = createWindow();
+		mainWindow = createWindow(); // Assign to the higher-scoped variable
+
+		// Pass window reference to OAuthService
+		oauthService.setMainWindow(mainWindow);
 
 		// Initialize the update service with a reference to the backend service
 		const updateService = new UpdateService(mainWindow, backendService);
