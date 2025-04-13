@@ -9,6 +9,11 @@ import { LogFileType, logger } from "./backend/logger";
 export type StoreData = {
 	radient_jwt: string;
 	radient_jwt_expiry: number;
+	// OAuth related fields
+	oauth_provider?: "google" | "microsoft";
+	oauth_access_token?: string;
+	oauth_id_token?: string;
+	oauth_expiry?: number;
 };
 
 /**

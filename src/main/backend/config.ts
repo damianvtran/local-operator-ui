@@ -59,6 +59,15 @@ const envSchema = z.object({
 		.url("PostHog host must be a valid URL")
 		.optional()
 		.default("https://us.i.posthog.com"),
+
+	// OAuth Configuration
+	VITE_GOOGLE_CLIENT_ID: z.string().min(1, "Google Client ID is required"),
+	VITE_MICROSOFT_CLIENT_ID: z
+		.string()
+		.min(1, "Microsoft Client ID is required"),
+	VITE_MICROSOFT_TENANT_ID: z
+		.string()
+		.min(1, "Microsoft Tenant ID is required"),
 });
 
 /**

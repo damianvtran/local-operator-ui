@@ -9,79 +9,87 @@
  * - Uses @azure/msal-browser for Microsoft sign-in
  * - Handles all backend integration as per PRD
  * - Never stores sensitive tokens in localStorage/sessionStorage
- * - Handles loading, error, and success states
+ * - Uses main process via IPC for native OAuth flow.
+ * - Handles all backend integration as per PRD.
+ * - Never stores sensitive tokens in localStorage/sessionStorage.
+ * - Handles loading, error, and success states.
  *
  * Usage:
- *   const { signInWithGoogle, signInWithMicrosoft, loading, error } = useOidcAuth();
+ *   const { signInWithGoogle, signInWithMicrosoft, loading, error, status } = useOidcAuth();
  */
 
-import type { AuthenticationResult } from "@azure/msal-browser";
-import { useGoogleLogin } from "@react-oauth/google";
 import { useQueryClient } from "@tanstack/react-query";
 import { jwtDecode } from "jwt-decode";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { CredentialsApi } from "../api/local-operator/credentials-api";
 import { createRadientClient } from "../api/radient";
 import { apiConfig } from "../config";
-import { useMsalInstance } from "../providers/auth";
 import { storeSession } from "../utils/session-store";
 import { showErrorToast, showSuccessToast } from "../utils/toast-manager";
 import { radientUserKeys } from "./use-radient-user-query";
 
+type AuthProvider = "google" | "microsoft";
+
+// Type matching the status object sent from the main process via preload
+type OAuthStatus = {
+	loggedIn: boolean;
+	provider: AuthProvider | null;
+	accessToken?: string; // May not be needed by renderer long-term
+	idToken?: string;
+	expiry?: number;
+	error?: string;
+};
+
 type UseOidcAuthResult = {
 	signInWithGoogle: () => void;
 	signInWithMicrosoft: () => void;
+	logout: () => void; // Added logout function
 	loading: boolean;
 	error: string | null;
+	status: OAuthStatus; // Expose current status
 };
-
-// Microsoft authentication scopes
-const MICROSOFT_SCOPES = ["openid", "profile", "email"];
 
 // Create a Radient API client
 const radientClient = createRadientClient(apiConfig.radientBaseUrl);
 
 /**
- * Main hook for OIDC authentication.
+ * Main hook for OIDC authentication via main process native flow.
  */
 export const useOidcAuth = (): UseOidcAuthResult => {
-	const [loading, setLoading] = useState(false);
+	const [loading, setLoading] = useState(true); // Start loading until initial status is checked
 	const [error, setError] = useState<string | null>(null);
+	const [status, setStatus] = useState<OAuthStatus>({
+		loggedIn: false,
+		provider: null,
+	});
 	const queryClient = useQueryClient();
 
-	// Try to get the MSAL instance at the top level of the hook
-	// If it fails, we'll handle Microsoft sign-in gracefully
-	let msalInstance: ReturnType<typeof useMsalInstance> | null = null;
-	try {
-		msalInstance = useMsalInstance();
-	} catch (err) {
-		// We'll handle this in signInWithMicrosoft
-		console.debug(
-			"MSAL instance not available, Microsoft sign-in will show an error when used",
-		);
-	}
-
 	/**
-	 * Handles the full backend integration after obtaining tokens.
+	 * Handles the full backend integration after obtaining tokens from the main process.
 	 */
 	const handleBackendAuth = useCallback(
-		async (
-			provider: "google" | "microsoft",
-			tokens: { idToken?: string; accessToken?: string },
-		) => {
-			setLoading(true);
-			setError(null);
+		async (provider: AuthProvider, idToken: string) => {
+			// No need to set loading here, it's handled by the main flow
+			setError(null); // Clear previous errors
+			console.log(
+				`handleBackendAuth called for ${provider} with received ID token.`,
+			);
+
 			try {
-				// 1. Exchange tokens for backend JWT
+				// 1. Exchange ID token for backend JWT
+				// We only need the ID token for the backend exchange now
+				const tokenPayload = { idToken };
 				const tokenResponse =
 					provider === "google"
-						? await radientClient.exchangeGoogleToken(tokens)
-						: await radientClient.exchangeMicrosoftToken(tokens);
+						? await radientClient.exchangeGoogleToken(tokenPayload)
+						: await radientClient.exchangeMicrosoftToken(tokenPayload);
 
 				const backendJwt = tokenResponse.result.token;
+				console.log("Backend JWT received.");
 
-				// Persist the backend JWT for session restoration (30 days)
+				// Persist the backend JWT using the existing utility
 				await storeSession(backendJwt);
+				console.log("Backend JWT stored in session.");
 
 				// 2. Decode JWT to get account ID (sub claim)
 				let accountId: string;
@@ -91,22 +99,26 @@ export const useOidcAuth = (): UseOidcAuthResult => {
 						throw new Error("Invalid JWT: Missing 'sub' claim.");
 					}
 					accountId = decodedToken.sub;
+					console.log(`Decoded account ID: ${accountId}`);
 				} catch (decodeError) {
-					setError("Failed to decode JWT. Please sign in again.");
-					showErrorToast("Failed to decode JWT.");
-					setLoading(false);
-					return;
+					console.error("JWT Decode Error:", decodeError);
+					setError("Failed to decode session token. Please sign in again.");
+					showErrorToast("Failed to decode session token.");
+					// Don't set loading false here, let the main flow handle it
+					return; // Stop execution here
 				}
 
 				// 3. Check if RADIENT_API_KEY already exists
 				let apiKeyExists = false;
 				try {
+					console.log("Checking for existing RADIENT_API_KEY...");
 					const credentialsResponse = await CredentialsApi.listCredentials(
 						apiConfig.baseUrl,
 					);
 					if (credentialsResponse.result?.keys) {
 						apiKeyExists =
 							credentialsResponse.result.keys.includes("RADIENT_API_KEY");
+						console.log(`RADIENT_API_KEY exists: ${apiKeyExists}`);
 					}
 				} catch (credentialsError) {
 					console.error(
@@ -114,10 +126,12 @@ export const useOidcAuth = (): UseOidcAuthResult => {
 						credentialsError,
 					);
 					// Continue with the flow even if we couldn't check credentials
+					console.warn("Proceeding without checking existing API key.");
 				}
 
 				// Only create a new API key if one doesn't exist
 				if (!apiKeyExists) {
+					console.log("RADIENT_API_KEY not found, creating new application...");
 					// Create an application to get an API key
 					const appResponse = await radientClient.createApplication(
 						accountId,
@@ -131,6 +145,7 @@ export const useOidcAuth = (): UseOidcAuthResult => {
 					if (!appResponse.result.api_key) {
 						throw new Error("Application creation failed: No API key returned");
 					}
+					console.log("Application created, storing new API key.");
 
 					// Store API key securely
 					await CredentialsApi.updateCredential(apiConfig.baseUrl, {
@@ -140,114 +155,187 @@ export const useOidcAuth = (): UseOidcAuthResult => {
 
 					showSuccessToast("Sign-in successful and new API key stored.");
 				} else {
+					console.log("Using existing RADIENT_API_KEY.");
 					showSuccessToast("Sign-in successful. Using existing API key.");
 				}
 
 				// Invalidate the React Query cache to trigger a refetch of the user information
+				console.log("Invalidating user queries.");
 				queryClient.invalidateQueries({ queryKey: radientUserKeys.all });
 
-				setLoading(false);
+				// Success! Let the main flow handle setting loading to false.
+				console.log("handleBackendAuth completed successfully.");
 			} catch (err) {
 				const msg = err instanceof Error ? err.message : String(err);
-				setError(msg || "Authentication failed");
+				console.error("Error during backend authentication:", err);
+				setError(msg || "Authentication failed during backend processing.");
 				showErrorToast(msg || "Authentication failed");
-				setLoading(false);
+				// Let the main flow handle setting loading to false.
 			}
 		},
 		[queryClient],
 	);
 
-	/**
-	 * Google sign-in handler.
-	 */
-	const signInWithGoogle = useGoogleLogin({
-		onSuccess: async (tokenResponse: Record<string, unknown>) => {
+	// Effect to listen for status updates from the main process
+	useEffect(() => {
+		console.log("Setting up OAuth status listener.");
+		const cleanup = window.api.oauth.onStatusUpdate((newStatus) => {
+			console.log("Received OAuth status update:", {
+				...newStatus,
+				accessToken: "...",
+				idToken: "...",
+			}); // Log status without tokens
+			setStatus(newStatus);
+			setLoading(false); // Update finished
+
+			if (newStatus.error) {
+				setError(newStatus.error);
+				showErrorToast(`Authentication Error: ${newStatus.error}`);
+			} else {
+				setError(null); // Clear previous errors on success
+			}
+
+			// If login was successful and we have an ID token, trigger backend exchange
+			if (newStatus.loggedIn && newStatus.provider && newStatus.idToken) {
+				console.log(
+					`Login successful for ${newStatus.provider}, initiating backend auth.`,
+				);
+				// Call handleBackendAuth asynchronously, don't await here
+				handleBackendAuth(newStatus.provider, newStatus.idToken);
+			} else if (newStatus.loggedIn && !newStatus.idToken) {
+				console.warn(
+					"Logged in status received, but no ID token provided for backend exchange.",
+				);
+				// This might happen during refresh, which is okay if the renderer doesn't need immediate action.
+			}
+		});
+
+		// Cleanup function to remove the listener when the component unmounts
+		return () => {
+			console.log("Cleaning up OAuth status listener.");
+			cleanup();
+		};
+	}, [handleBackendAuth]); // Include handleBackendAuth in dependency array
+
+	// Effect to check initial status on mount
+	useEffect(() => {
+		const checkInitialStatus = async () => {
+			console.log("Checking initial OAuth status...");
+			setLoading(true);
 			try {
-				// Try to get id_token or credential property
-				let idToken: string | undefined;
-				let accessToken: string | undefined;
-
-				// First check for id_token in the response
-				if (typeof tokenResponse.id_token === "string") {
-					idToken = tokenResponse.id_token;
+				const response = await window.api.oauth.getStatus();
+				if (response.success && response.status) {
+					console.log("Initial status received:", {
+						...response.status,
+						accessToken: "...",
+						idToken: "...",
+					});
+					setStatus(response.status);
+					if (response.status.error) {
+						setError(response.status.error);
+						// Don't show toast for initial expired token error, it's expected
+						if (response.status.error !== "Token expired") {
+							showErrorToast(`Initial Auth Error: ${response.status.error}`);
+						}
+					}
+				} else {
+					console.error("Failed to get initial status:", response.error);
+					setError(response.error || "Failed to get initial status");
+					showErrorToast(response.error || "Failed to get initial status");
+					setStatus({ loggedIn: false, provider: null }); // Ensure logged out state
 				}
-
-				// Then check for access_token
-				if (typeof tokenResponse.access_token === "string") {
-					accessToken = tokenResponse.access_token;
-				}
-
-				await handleBackendAuth("google", {
-					idToken,
-					accessToken,
-				});
 			} catch (err) {
 				const msg = err instanceof Error ? err.message : String(err);
+				console.error("Error checking initial status:", msg);
 				setError(msg);
 				showErrorToast(msg);
+				setStatus({ loggedIn: false, provider: null }); // Ensure logged out state
+			} finally {
 				setLoading(false);
+				console.log("Initial status check complete.");
 			}
-		},
-		onError: (error) => {
-			console.error("Google sign-in error:", error);
-			setError("Google sign-in failed");
-			showErrorToast("Google sign-in failed");
-			setLoading(false);
-		},
-		flow: "implicit", // Use implicit flow to get ID token directly
-		scope: "openid email profile",
-	});
+		};
+
+		checkInitialStatus();
+	}, []); // Run only on mount
 
 	/**
-	 * Microsoft sign-in handler.
-	 *
-	 * Note: This hook must be used within a component tree wrapped by MicrosoftAuthProvider.
-	 * If the provider is missing, sign-in will not work and a clear error will be shown.
+	 * Initiates Google sign-in via the main process.
 	 */
-	const signInWithMicrosoft = useCallback(async () => {
-		if (!msalInstance) {
-			const errorMsg =
-				"Microsoft sign-in is not configured. Ensure MicrosoftAuthProvider is present in the component tree.";
-			setError(errorMsg);
-			showErrorToast(errorMsg);
-			return;
-		}
-
+	const signInWithGoogle = useCallback(async () => {
+		console.log("Initiating Google sign-in via main process...");
 		setLoading(true);
 		setError(null);
 		try {
-			// Configure popup login with specific parameters for Electron
-			const loginRequest = {
-				scopes: MICROSOFT_SCOPES,
-				prompt: "select_account", // Force account selection to avoid cached credentials issues
-				extraQueryParameters: {
-					domain_hint: "organizations", // Optimize for organizational accounts
-				},
-			};
-
-			// Use loginPopup with the enhanced configuration
-			const loginResponse: AuthenticationResult =
-				await msalInstance.loginPopup(loginRequest);
-
-			if (!loginResponse.idToken && !loginResponse.accessToken) {
-				throw new Error("No ID token or access token received from Microsoft");
+			const result = await window.api.oauth.login("google");
+			if (!result.success) {
+				throw new Error(result.error || "Failed to initiate Google login");
 			}
-			await handleBackendAuth("microsoft", {
-				idToken: loginResponse.idToken,
-				accessToken: loginResponse.accessToken,
-			});
+			// Status update will be handled by the listener effect
 		} catch (err) {
 			const msg = err instanceof Error ? err.message : String(err);
-			setError(msg || "Microsoft sign-in failed");
-			showErrorToast(msg || "Microsoft sign-in failed");
-			setLoading(false);
+			console.error("Error initiating Google sign-in:", msg);
+			setError(msg);
+			showErrorToast(msg);
+			setLoading(false); // Set loading false only if initiation fails
 		}
-	}, [handleBackendAuth, msalInstance]);
+	}, []);
+
+	/**
+	 * Initiates Microsoft sign-in via the main process.
+	 */
+	const signInWithMicrosoft = useCallback(async () => {
+		console.log("Initiating Microsoft sign-in via main process...");
+		setLoading(true);
+		setError(null);
+		try {
+			const result = await window.api.oauth.login("microsoft");
+			if (!result.success) {
+				throw new Error(result.error || "Failed to initiate Microsoft login");
+			}
+			// Status update will be handled by the listener effect
+		} catch (err) {
+			const msg = err instanceof Error ? err.message : String(err);
+			console.error("Error initiating Microsoft sign-in:", msg);
+			setError(msg);
+			showErrorToast(msg);
+			setLoading(false); // Set loading false only if initiation fails
+		}
+	}, []);
+
+	/**
+	 * Initiates logout via the main process.
+	 */
+	const logout = useCallback(async () => {
+		console.log("Initiating logout via main process...");
+		setLoading(true); // Indicate activity during logout
+		setError(null);
+		try {
+			const result = await window.api.oauth.logout();
+			if (!result.success) {
+				throw new Error(result.error || "Logout failed");
+			}
+			// Clear local session JWT as well
+			await window.api.session.clearSession();
+			// Invalidate user queries
+			queryClient.invalidateQueries({ queryKey: radientUserKeys.all });
+			showSuccessToast("Successfully signed out.");
+			// Status update (loggedIn: false) will be handled by the listener effect
+		} catch (err) {
+			const msg = err instanceof Error ? err.message : String(err);
+			console.error("Error during logout:", msg);
+			setError(msg);
+			showErrorToast(msg);
+			setLoading(false); // Ensure loading is false even on error
+		}
+	}, [queryClient]);
 
 	return {
 		signInWithGoogle,
 		signInWithMicrosoft,
+		logout,
 		loading,
 		error,
+		status,
 	};
 };

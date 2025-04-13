@@ -18,6 +18,7 @@ export enum LogFileType {
 	INSTALLER = "backend-installer.log",
 	BACKEND = "backend-service.log",
 	UPDATE_SERVICE = "update-service.log",
+	OAUTH = "oauth-service.log",
 }
 
 /**
