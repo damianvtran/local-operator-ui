@@ -3,6 +3,13 @@
  */
 export const CREDENTIAL_MANIFEST = [
 	{
+		key: "RADIENT_API_KEY",
+		name: "Radient Pass",
+		description:
+			"API key for your Radient Pass.  Radient Pass provides you unified access to models, tools, agents, automatic optimization, and many more features with a single key.  Get one by signing in above with Gmail or Microsoft.",
+		url: "https://radienthq.com",
+	},
+	{
 		key: "OPENAI_API_KEY",
 		name: "OpenAI API Key",
 		description:
