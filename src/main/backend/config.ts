@@ -61,13 +61,20 @@ const envSchema = z.object({
 		.default("https://us.i.posthog.com"),
 
 	// OAuth Configuration
-	VITE_GOOGLE_CLIENT_ID: z.string().min(1, "Google Client ID is required"),
+	VITE_GOOGLE_CLIENT_ID: z
+		.string()
+		.optional()
+		.default(
+			"778402241192-mivhglm9ndiv1f9sshp9bqh1grcjkq7t.apps.googleusercontent.com",
+		),
 	VITE_MICROSOFT_CLIENT_ID: z
 		.string()
-		.min(1, "Microsoft Client ID is required"),
+		.optional()
+		.default("ce6f7818-fa68-4063-ae88-5c4888bc4f9f"),
 	VITE_MICROSOFT_TENANT_ID: z
 		.string()
-		.min(1, "Microsoft Tenant ID is required"),
+		.optional()
+		.default("1cbff824-c118-40e7-86f6-0e8bef31658d"),
 });
 
 /**
