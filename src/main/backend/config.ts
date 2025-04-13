@@ -64,18 +64,19 @@ const envSchema = z.object({
 	VITE_GOOGLE_CLIENT_ID: z
 		.string()
 		.optional()
-		.default(
-			"778402241192-7akrj44ptshfhh067e1lchko5vslcedk.apps.googleusercontent.com",
-		),
-	VITE_GOOGLE_CLIENT_SECRET: z.string().min(1),
+		.default("REPL_VITE_GOOGLE_CLIENT_ID"),
+	VITE_GOOGLE_CLIENT_SECRET: z
+		.string()
+		.optional()
+		.default("REPL_VITE_GOOGLE_CLIENT_SECRET"),
 	VITE_MICROSOFT_CLIENT_ID: z
 		.string()
 		.optional()
-		.default("ce6f7818-fa68-4063-ae88-5c4888bc4f9f"),
+		.default("REPL_VITE_MICROSOFT_CLIENT_ID"),
 	VITE_MICROSOFT_TENANT_ID: z
 		.string()
 		.optional()
-		.default("1cbff824-c118-40e7-86f6-0e8bef31658d"),
+		.default("REPL_VITE_MICROSOFT_TENANT_ID"),
 });
 
 /**
