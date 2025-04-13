@@ -1,14 +1,9 @@
-import { CssBaseline } from "@mui/material";
-import { ThemeProvider } from "@mui/material/styles";
 import type { Meta, StoryObj } from "@storybook/react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import React from "react";
-import { MemoryRouter } from "react-router-dom";
 import {
 	OnboardingStep,
 	useOnboardingStore,
 } from "../../store/onboarding-store";
-import theme from "../../theme";
 import { OnboardingModal } from "./onboarding-modal";
 
 /**
@@ -33,23 +28,14 @@ const meta: Meta<typeof OnboardingModal> = {
 	},
 	decorators: [
 		(Story) => {
-			// Reset onboarding store and set to welcome step before rendering
 			const state = useOnboardingStore.getState();
 			state.resetOnboarding();
 			state.setCurrentStep(OnboardingStep.WELCOME);
 
-			const queryClient = new QueryClient();
+			// Clear the session to allow re-running the story
+			window.sessionStorage.removeItem("mock-radient-session");
 
-			return (
-				<QueryClientProvider client={queryClient}>
-					<MemoryRouter>
-						<ThemeProvider theme={theme}>
-							<CssBaseline />
-							<Story />
-						</ThemeProvider>
-					</MemoryRouter>
-				</QueryClientProvider>
-			);
+			return <Story />;
 		},
 	],
 	tags: ["autodocs"],
@@ -79,6 +65,22 @@ export const Congratulations: Story = {
 		const state = useOnboardingStore.getState();
 		state.resetOnboarding();
 		state.setCurrentStep(OnboardingStep.CONGRATULATIONS);
+
+		return <OnboardingModal open={true} />;
+	},
+};
+
+/**
+ * Onboarding flow showcasing the Radient sign-in step.
+ */
+export const RadientSignIn: Story = {
+	args: {
+		open: true,
+	},
+	render: () => {
+		const state = useOnboardingStore.getState();
+		state.resetOnboarding();
+		state.setCurrentStep(OnboardingStep.RADIENT_SIGNIN);
 
 		return <OnboardingModal open={true} />;
 	},

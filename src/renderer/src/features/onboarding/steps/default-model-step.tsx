@@ -244,7 +244,7 @@ export const DefaultModelStep: FC = () => {
 						color: "#7e57c2",
 					}}
 				/>
-				<Typography variant="body2">
+				<Typography variant="body2" component="div">
 					<Box component="span" sx={{ fontWeight: 600 }}>
 						Choose wisely!
 					</Box>{" "}
@@ -256,7 +256,11 @@ export const DefaultModelStep: FC = () => {
 			<FormContainer>
 				{isLoading ? (
 					<Box sx={{ display: "flex", justifyContent: "center", p: 3 }}>
-						<Typography sx={{ display: "flex", alignItems: "center" }}>
+						<Typography
+							variant="body2"
+							component="div"
+							sx={{ display: "flex", alignItems: "center" }}
+						>
 							<EmojiContainer
 								style={{
 									marginRight: "8px",
@@ -397,6 +401,7 @@ export const DefaultModelStep: FC = () => {
 									</EmojiContainer>
 									<Typography
 										variant="body2"
+										component="div"
 										sx={{
 											fontWeight: 500,
 											whiteSpace: "normal",

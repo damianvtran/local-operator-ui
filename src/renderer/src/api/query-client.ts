@@ -9,6 +9,9 @@ import { QueryClient } from "@tanstack/react-query";
 
 /**
  * Default query client configuration
+ *
+ * We use a more aggressive configuration for authentication-related queries
+ * to ensure that the authentication state is always up-to-date.
  */
 export const queryClient = new QueryClient({
 	defaultOptions: {
@@ -27,5 +30,19 @@ export const queryClient = new QueryClient({
 			// Continue to run queries even when offline
 			networkMode: "always",
 		},
+		mutations: {
+			// Retry mutations once by default
+			retry: 1,
+			// Continue to run mutations even when offline
+			networkMode: "always",
+		},
 	},
 });
+
+/**
+ * Reset the query client's cache
+ * This is useful for clearing all cached data, for example when signing out
+ */
+export const resetQueryCache = () => {
+	queryClient.clear();
+};

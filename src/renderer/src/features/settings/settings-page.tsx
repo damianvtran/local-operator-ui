@@ -1,8 +1,8 @@
+import radientIcon from "@assets/radient-icon-1024x1024.png";
 import { HostingSelect } from "@components/hosting/hosting-select";
 import { ModelSelect } from "@components/hosting/model-select";
 import {
 	faAdjust,
-	faCloudUploadAlt,
 	faDatabase,
 	faEnvelope,
 	faGear,
@@ -11,7 +11,6 @@ import {
 	faKey,
 	faListAlt,
 	faRobot,
-	faSave,
 	faUser,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -34,11 +33,11 @@ import { useUserStore } from "@renderer/store/user-store";
 import { EditableField } from "@shared/components/common/editable-field";
 import { PageHeader } from "@shared/components/common/page-header";
 import { SliderSetting } from "@shared/components/common/slider-setting";
-import { ToggleSetting } from "@shared/components/common/toggle-setting";
 import { useEffect, useRef, useState } from "react";
 import type { FC, RefObject } from "react";
 import { AppUpdatesSection } from "./app-updates-section";
 import { Credentials } from "./credentials";
+import { RadientAccountSection } from "./radient-account-section";
 import { DEFAULT_SETTINGS_SECTIONS, SettingsSidebar } from "./settings-sidebar";
 import { SystemPrompt } from "./system-prompt";
 import { ThemeSelector } from "./theme-selector";
@@ -151,6 +150,13 @@ const StyledCardContent = styled(CardContent)(({ theme }) => ({
 	},
 }));
 
+const IconImage = styled("img")(() => ({
+	width: 40,
+	height: 40,
+	marginLeft: -4,
+	objectFit: "contain",
+}));
+
 export const SettingsPage: FC = () => {
 	const { data: config, isLoading, error, refetch } = useConfig();
 	const updateConfigMutation = useUpdateConfig();
@@ -161,6 +167,7 @@ export const SettingsPage: FC = () => {
 
 	// Refs for scrolling to sections
 	const generalSectionRef = useRef<HTMLDivElement>(null);
+	const radientSectionRef = useRef<HTMLDivElement>(null);
 	const appearanceSectionRef = useRef<HTMLDivElement>(null);
 	const credentialsSectionRef = useRef<HTMLDivElement>(null);
 	const updatesSectionRef = useRef<HTMLDivElement>(null);
@@ -168,6 +175,7 @@ export const SettingsPage: FC = () => {
 	// Map of section IDs to their refs - memoized to avoid recreation on each render
 	const sectionRefs = useRef<Record<string, RefObject<HTMLDivElement>>>({
 		general: generalSectionRef,
+		radient: radientSectionRef,
 		appearance: appearanceSectionRef,
 		credentials: credentialsSectionRef,
 		updates: updatesSectionRef,
@@ -403,35 +411,6 @@ export const SettingsPage: FC = () => {
 
 								{/* System Prompt Settings */}
 								<SystemPrompt />
-
-								{/* Auto-Save Settings */}
-								<StyledCard>
-									<StyledCardContent>
-										<CardTitle variant="h6">
-											<FontAwesomeIcon icon={faSave} />
-											Auto-Save Settings
-										</CardTitle>
-
-										<CardDescription variant="body2">
-											Control whether conversations are automatically saved for
-											future reference.
-										</CardDescription>
-
-										<ToggleSetting
-											value={config.values.auto_save_conversation}
-											label="Auto-Save Conversations"
-											description="When enabled, all conversations will be automatically saved to your history"
-											icon={faCloudUploadAlt}
-											isSaving={savingField === "auto_save_conversation"}
-											onChange={async (value) => {
-												await handleUpdateField(
-													"auto_save_conversation",
-													value,
-												);
-											}}
-										/>
-									</StyledCardContent>
-								</StyledCard>
 							</Grid>
 
 							{/* Right Column */}
@@ -558,6 +537,24 @@ export const SettingsPage: FC = () => {
 								{/* Application Updates - Moved to its own section */}
 							</Grid>
 						</Grid>
+					</Box>
+
+					{/* Radient Account Section */}
+					<Box mt={6} mb={4} ref={radientSectionRef}>
+						<Typography
+							variant="h5"
+							fontWeight="500"
+							display="flex"
+							alignItems="center"
+							gap={2}
+						>
+							<IconImage src={radientIcon} alt="Radient Icon" />
+							Radient Account
+						</Typography>
+						<Typography variant="body1" color="text.secondary" mt={1} mb={3}>
+							Manage your Radient account and Radient Pass details.
+						</Typography>
+						<RadientAccountSection />
 					</Box>
 
 					{/* Appearance Section */}

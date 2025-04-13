@@ -24,6 +24,7 @@ export {
 	themes,
 	getTheme,
 };
+
 export type { ThemeName, ThemeOption };
 
 // Export the dark theme as the default theme for backward compatibility

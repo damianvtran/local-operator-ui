@@ -21,11 +21,11 @@ export const WelcomeStep: FC = () => {
 		<Box sx={{ animation: "fadeIn 0.6s ease-out" }}>
 			<Typography
 				variant="body1"
-				paragraph
 				sx={{
 					fontSize: "1.1rem",
 					fontWeight: 500,
 					lineHeight: 1.6,
+					mb: 2,
 				}}
 			>
 				Let's set up your AI environment so you can start creating amazing
@@ -34,7 +34,6 @@ export const WelcomeStep: FC = () => {
 
 			<Typography
 				variant="body1"
-				paragraph
 				sx={{
 					fontSize: "1.05rem",
 					mb: 3,
@@ -70,18 +69,19 @@ export const WelcomeStep: FC = () => {
 				</SectionDescription>
 			</SectionContainer>
 
-			<Typography
-				variant="body2"
+			<Box
 				sx={{
 					mt: 3,
 					fontStyle: "italic",
 					display: "flex",
 					alignItems: "center",
+					fontSize: "0.875rem", // Equivalent to variant="body2"
+					color: "text.secondary",
 				}}
 			>
 				<EmojiContainer>💡</EmojiContainer> Don't worry! You can always
 				customize these settings later in the Settings page.
-			</Typography>
+			</Box>
 		</Box>
 	);
 };

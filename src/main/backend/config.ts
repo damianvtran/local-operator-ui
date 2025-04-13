@@ -59,6 +59,24 @@ const envSchema = z.object({
 		.url("PostHog host must be a valid URL")
 		.optional()
 		.default("https://us.i.posthog.com"),
+
+	// OAuth Configuration
+	VITE_GOOGLE_CLIENT_ID: z
+		.string()
+		.optional()
+		.default("REPL_VITE_GOOGLE_CLIENT_ID"),
+	VITE_GOOGLE_CLIENT_SECRET: z
+		.string()
+		.optional()
+		.default("REPL_VITE_GOOGLE_CLIENT_SECRET"),
+	VITE_MICROSOFT_CLIENT_ID: z
+		.string()
+		.optional()
+		.default("REPL_VITE_MICROSOFT_CLIENT_ID"),
+	VITE_MICROSOFT_TENANT_ID: z
+		.string()
+		.optional()
+		.default("REPL_VITE_MICROSOFT_TENANT_ID"),
 });
 
 /**

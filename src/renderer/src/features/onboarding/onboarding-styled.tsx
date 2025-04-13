@@ -166,8 +166,10 @@ export const SectionTitle = styled(Typography)(({ theme }) => ({
 
 /**
  * Section description
+ * Using Box instead of Typography to avoid DOM nesting issues
+ * when content includes other Typography or Box components
  */
-export const SectionDescription = styled(Typography)(({ theme }) => ({
+export const SectionDescription = styled(Box)(({ theme }) => ({
 	fontSize: "1rem",
 	color: theme.palette.text.secondary,
 	marginBottom: theme.spacing(2.5),
@@ -238,7 +240,7 @@ export const CongratulationsIcon = styled(Box)(({ theme }) => ({
 /**
  * Congratulations title
  */
-export const CongratulationsTitle = styled(Typography)(({ theme }) => ({
+export const CongratulationsTitle = styled(Box)(({ theme }) => ({
 	fontSize: "2rem",
 	fontWeight: 700,
 	marginBottom: theme.spacing(2),
@@ -251,7 +253,7 @@ export const CongratulationsTitle = styled(Typography)(({ theme }) => ({
 /**
  * Congratulations message
  */
-export const CongratulationsMessage = styled(Typography)(({ theme }) => ({
+export const CongratulationsMessage = styled(Box)(({ theme }) => ({
 	fontSize: "1.1rem",
 	color: theme.palette.text.secondary,
 	marginBottom: theme.spacing(4),

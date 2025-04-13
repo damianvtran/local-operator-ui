@@ -18,6 +18,8 @@ import {
 } from "./backend";
 import { backendConfig } from "./backend/config";
 import { LogFileType, logger } from "./backend/logger";
+import { OAuthService } from "./oauth-service";
+import { Store, type StoreData } from "./store";
 import { UpdateService } from "./update-service";
 
 // Set application name
@@ -149,6 +151,11 @@ function createWindow(): BrowserWindow {
 			// Only enable devTools when running with 'pnpm dev'
 			// Disable for 'pnpm start' and production builds
 			devTools: Boolean(process.env.ELECTRON_RENDERER_URL),
+			// Security settings
+			nodeIntegration: false,
+			contextIsolation: true,
+			webSecurity: true,
+			allowRunningInsecureContent: false,
 		},
 	});
 
@@ -157,6 +164,76 @@ function createWindow(): BrowserWindow {
 	});
 
 	mainWindow.webContents.setWindowOpenHandler((details) => {
+		// Allow popups from authentication providers
+		const url = new URL(details.url);
+
+		// Expanded list of trusted authentication domains
+		const trustedAuthDomains = [
+			// Google auth domains
+			"accounts.google.com",
+			"oauth.googleusercontent.com",
+			"content.googleapis.com",
+			"ssl.gstatic.com",
+
+			// Microsoft auth domains
+			"login.microsoftonline.com",
+			"login.live.com",
+			"login.windows.net",
+			"login.microsoft.com",
+			"microsoftonline.com",
+			"msauth",
+			"msftauth",
+
+			// Auth relay domains
+			"storagerelay",
+
+			// Special case for initial blank page
+			"about:blank",
+		];
+
+		// Check if the URL is from a trusted authentication provider
+		const isTrustedAuthDomain =
+			// Special case for about:blank which is used by MSAL to initialize the popup
+			details.url === "about:blank" ||
+			// Check other trusted domains
+			trustedAuthDomains.some(
+				(domain) =>
+					url.hostname.includes(domain) ||
+					url.protocol.includes(domain) ||
+					// Special case for storage relay URLs
+					details.url.startsWith("storagerelay:") ||
+					details.url.includes("storagerelay"),
+			);
+
+		if (isTrustedAuthDomain) {
+			// Allow the popup for authentication with improved features
+			return {
+				action: "allow",
+				features: {
+					width: 800,
+					height: 700, // Increased height for better visibility
+					minWidth: 600,
+					minHeight: 500,
+					center: true,
+					frame: true,
+					autoHideMenuBar: false,
+					backgroundColor: "#FFFFFF",
+					webPreferences: {
+						contextIsolation: true,
+						nodeIntegration: false,
+						webSecurity: true,
+						allowRunningInsecureContent: false,
+						sandbox: true, // Enable sandbox for additional security
+						// Disable various features that aren't needed for auth
+						enableWebSQL: false,
+						navigateOnDragDrop: false,
+						spellcheck: false,
+					},
+				},
+			};
+		}
+
+		// For all other URLs, open in external browser and deny the popup
 		shell.openExternal(details.url);
 		return { action: "deny" };
 	});
@@ -176,165 +253,405 @@ function createWindow(): BrowserWindow {
 const backendService = new BackendServiceManager();
 const backendInstaller = new BackendInstaller();
 
+// Initialize session store (used by OAuthService and session handlers)
+// Wrap initialization in try-catch to handle potential cache corruption
+let sessionStore: Store<StoreData>;
+try {
+	sessionStore = new Store<StoreData>({
+		name: "session",
+		defaults: {
+			radient_jwt: undefined,
+			radient_jwt_expiry: undefined,
+			oauth_provider: undefined,
+			oauth_access_token: undefined,
+			oauth_id_token: undefined,
+			oauth_expiry: undefined,
+		},
+	});
+	logger.info("Session store initialized successfully.", LogFileType.BACKEND);
+} catch (error) {
+	logger.error(
+		"Initial session store initialization failed.",
+		LogFileType.BACKEND,
+		error,
+	);
+	// The Store constructor now handles recovery from JSON parsing errors.
+	// If an error reaches this point, it's likely unrecoverable or a different type.
+	dialog.showErrorBox(
+		"Application Error",
+		`Failed to initialize application settings. Please restart the application. Error: ${error instanceof Error ? error.message : "Unknown error"}`,
+	);
+	app.quit();
+	// Re-throw the error to prevent further execution
+	throw error;
+}
+
+// Critical check: Ensure sessionStore is initialized before proceeding.
+// The logic above should either succeed, quit, or throw, making this mostly a safeguard.
+if (!sessionStore) {
+	// Use error instead of fatal
+	logger.error(
+		"Session store could not be initialized. Quitting.",
+		LogFileType.BACKEND,
+	);
+	dialog.showErrorBox(
+		"Fatal Error",
+		"Application could not initialize critical settings. Quitting.",
+	);
+	app.quit();
+	// Throw to prevent any further execution in this unlikely scenario
+	throw new Error("Session store initialization failed critically.");
+}
+
+// Initialize OAuth service (now guaranteed to have a valid sessionStore)
+// Moved declaration outside the try-catch block to avoid redeclaration issues
+const oauthService = new OAuthService(sessionStore);
+
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
-app.whenReady().then(async () => {
-	// Set app user model id for windows
-	electronApp.setAppUserModelId("com.local-operator");
+// Define mainWindow at a higher scope to be accessible in event handlers
+let mainWindow: BrowserWindow | null = null;
 
-	// Default open or close DevTools by F12 in development
-	// and ignore CommandOrControl + R in production.
-	// see https://github.com/alex8088/electron-toolkit/tree/master/packages/utils
-	app.on("browser-window-created", (_, window) => {
-		optimizer.watchWindowShortcuts(window);
-	});
+// --- Single Instance Lock ---
+const gotTheLock = app.requestSingleInstanceLock();
 
-	// Add IPC handlers for opening files and URLs
-	ipcMain.handle("open-file", async (_, filePath) => {
-		try {
-			await shell.openPath(filePath);
-		} catch (error) {
-			console.error("Error opening file:", error);
-		}
-	});
+if (!gotTheLock) {
+	logger.warn("Another instance is already running. Quitting this instance.");
+	app.quit();
+} else {
+	app.on("second-instance", (_event, commandLine) => {
+		// Someone tried to run a second instance, we should focus our window.
+		if (mainWindow) {
+			if (mainWindow.isMinimized()) mainWindow.restore();
+			mainWindow.focus();
 
-	ipcMain.handle("open-external", async (_, url) => {
-		try {
-			await shell.openExternal(url);
-		} catch (error) {
-			console.error("Error opening URL:", error);
-		}
-	});
-
-	// Add IPC handlers for system information
-	ipcMain.handle("get-app-version", () => {
-		return app.getVersion();
-	});
-
-	ipcMain.handle("get-platform-info", () => {
-		return {
-			platform: process.platform,
-			arch: process.arch,
-			nodeVersion: process.versions.node,
-			electronVersion: process.versions.electron,
-			chromeVersion: process.versions.chrome,
-		};
-	});
-
-	// Check if backend manager is disabled via environment variable
-	const isBackendManagerDisabled =
-		process.env.VITE_DISABLE_BACKEND_MANAGER === "true";
-
-	if (!isBackendManagerDisabled) {
-		// Check if an external backend is already running
-		const hasExternalBackend = await backendService.checkExistingBackend();
-
-		if (!hasExternalBackend) {
-			// Check if local-operator command exists globally
-			const hasGlobalCommand = await backendService.checkLocalOperatorExists();
-
-			// If local-operator doesn't exist globally and our backend is not installed
-			if (!hasGlobalCommand && !(await backendInstaller.isInstalled())) {
-				// Install backend
-				const installSuccess = await backendInstaller.install();
-				// If installation was cancelled or failed, quit the app
-				if (!installSuccess) {
-					logger.error(
-						"Backend installation cancelled or failed, quitting app",
-						LogFileType.INSTALLER,
-					);
-					app.quit();
-					return; // Exit early to prevent window creation
-				}
-
-				// After successful installation, attempt to start the backend with retries
+			// Handle protocol URL if passed via command line (Windows/Linux)
+			const url = commandLine.find((arg) => arg.startsWith("radient://"));
+			if (url) {
 				logger.info(
-					"Attempting to start backend service after installation",
-					LogFileType.INSTALLER,
+					`Received URL via second-instance: ${url}`,
+					LogFileType.OAUTH,
 				);
-				let startAttempts = 0;
-				const maxStartAttempts = 3;
-				let backendStarted = false;
+				oauthService.completeAuthorizationRequest(url);
+			}
+		}
+	});
+}
 
-				while (startAttempts < maxStartAttempts && !backendStarted) {
-					try {
-						backendStarted = await backendService.start();
-						if (!backendStarted) {
-							logger.error(
-								`Backend start attempt ${startAttempts + 1} failed`,
-								LogFileType.INSTALLER,
-							);
-							// Wait before retrying
-							await new Promise((resolve) => setTimeout(resolve, 2000));
-						}
-					} catch (error) {
-						logger.error(
-							`Error starting backend (attempt ${startAttempts + 1}):`,
-							LogFileType.INSTALLER,
-							error,
-						);
-					}
-					startAttempts++;
+// --- Protocol Handling ---
+// Register the custom protocol
+if (process.defaultApp) {
+	if (process.argv.length >= 2) {
+		app.setAsDefaultProtocolClient("radient", process.execPath, [
+			join(process.cwd(), process.argv[1]),
+		]);
+	}
+} else {
+	app.setAsDefaultProtocolClient("radient");
+}
+
+app
+	.whenReady()
+	.then(async () => {
+		// Set app user model id for windows
+		electronApp.setAppUserModelId("com.local-operator");
+
+		// Handle 'open-url' event (macOS)
+		app.on("open-url", (event, url) => {
+			event.preventDefault(); // Prevent default handling
+			if (url.startsWith("radient://")) {
+				logger.info(
+					`Received URL via open-url (macOS): ${url}`,
+					LogFileType.OAUTH,
+				);
+				if (mainWindow) {
+					// Bring window to front
+					if (mainWindow.isMinimized()) mainWindow.restore();
+					mainWindow.focus();
+					oauthService.completeAuthorizationRequest(url);
+				} else {
+					// Handle case where app was launched via URL before window was ready
+					// Store the URL and process it once the window is created?
+					// For now, log a warning. This might need refinement.
+					logger.warn(
+						"Received open-url event before mainWindow was ready.",
+						LogFileType.OAUTH,
+					);
 				}
+			}
+		});
 
-				if (!backendStarted) {
+		// Default open or close DevTools by F12 in development
+		// and ignore CommandOrControl + R in production.
+		// see https://github.com/alex8088/electron-toolkit/tree/master/packages/utils
+		app.on("browser-window-created", (_, window) => {
+			optimizer.watchWindowShortcuts(window);
+		});
+
+		// Add IPC handlers for opening files and URLs
+		ipcMain.handle("open-file", async (_, filePath) => {
+			try {
+				await shell.openPath(filePath);
+			} catch (error) {
+				console.error("Error opening file:", error);
+			}
+		});
+
+		ipcMain.handle("open-external", async (_, url) => {
+			try {
+				await shell.openExternal(url);
+			} catch (error) {
+				console.error("Error opening URL:", error);
+			}
+		});
+
+		// --- Session storage handlers (using the already initialized sessionStore) ---
+		ipcMain.handle("get-session", () => {
+			const jwt = sessionStore.get("radient_jwt");
+			const expiry = sessionStore.get("radient_jwt_expiry");
+			return { jwt, expiry };
+		});
+
+		ipcMain.handle("store-session", (_event, jwt: string, expiry: number) => {
+			sessionStore.set("radient_jwt", jwt);
+			sessionStore.set("radient_jwt_expiry", expiry);
+			return true;
+		});
+
+		ipcMain.handle("clear-session", () => {
+			sessionStore.delete("radient_jwt");
+			sessionStore.delete("radient_jwt_expiry");
+			return true;
+		});
+
+		// Add IPC handlers for system information
+		ipcMain.handle("get-app-version", () => {
+			return app.getVersion();
+		});
+
+		ipcMain.handle("get-platform-info", () => {
+			return {
+				platform: process.platform,
+				arch: process.arch,
+				nodeVersion: process.versions.node,
+				electronVersion: process.versions.electron,
+				chromeVersion: process.versions.chrome,
+			};
+		});
+
+		// --- Check Provider Auth IPC Handler ---
+		ipcMain.handle("ipc-check-provider-auth", () => {
+			// Check if any provider credentials are set beyond the default placeholders
+			const googleConfigured =
+				backendConfig.VITE_GOOGLE_CLIENT_ID &&
+				backendConfig.VITE_GOOGLE_CLIENT_ID !== "REPL_VITE_GOOGLE_CLIENT_ID" &&
+				backendConfig.VITE_GOOGLE_CLIENT_SECRET &&
+				backendConfig.VITE_GOOGLE_CLIENT_SECRET !==
+					"REPL_VITE_GOOGLE_CLIENT_SECRET";
+
+			const microsoftConfigured =
+				backendConfig.VITE_MICROSOFT_CLIENT_ID &&
+				backendConfig.VITE_MICROSOFT_CLIENT_ID !==
+					"REPL_VITE_MICROSOFT_CLIENT_ID" &&
+				backendConfig.VITE_MICROSOFT_TENANT_ID &&
+				backendConfig.VITE_MICROSOFT_TENANT_ID !==
+					"REPL_VITE_MICROSOFT_TENANT_ID";
+
+			// Return true if either Google or Microsoft credentials are configured
+			return googleConfigured || microsoftConfigured;
+		});
+
+		// --- OAuth IPC Handlers ---
+		ipcMain.handle(
+			"oauth-login",
+			async (_event, provider: "google" | "microsoft") => {
+				logger.info(
+					`IPC: Received oauth-login request for ${provider}`,
+					LogFileType.OAUTH,
+				);
+				try {
+					// Input validation (simple check for known providers)
+					if (provider !== "google" && provider !== "microsoft") {
+						throw new Error(`Invalid OAuth provider: ${provider}`);
+					}
+					await oauthService.initiateLogin(provider);
+					return { success: true };
+				} catch (error) {
+					const errorMsg =
+						error instanceof Error
+							? error.message
+							: "Unknown error during login initiation";
 					logger.error(
-						"Failed to start backend after installation, quitting app",
+						`IPC: Error during oauth-login for ${provider}: ${errorMsg}`,
+						LogFileType.OAUTH,
+						error,
+					);
+					return { success: false, error: errorMsg };
+				}
+			},
+		);
+
+		ipcMain.handle("oauth-logout", async () => {
+			logger.info("IPC: Received oauth-logout request", LogFileType.OAUTH);
+			try {
+				await oauthService.logout();
+				return { success: true };
+			} catch (error) {
+				const errorMsg =
+					error instanceof Error
+						? error.message
+						: "Unknown error during logout";
+				logger.error(
+					`IPC: Error during oauth-logout: ${errorMsg}`,
+					LogFileType.OAUTH,
+					error,
+				);
+				return { success: false, error: errorMsg };
+			}
+		});
+
+		ipcMain.handle("oauth-get-status", async () => {
+			logger.info("IPC: Received oauth-get-status request", LogFileType.OAUTH);
+			try {
+				const status = await oauthService.getStatus();
+				return { success: true, status };
+			} catch (error) {
+				const errorMsg =
+					error instanceof Error
+						? error.message
+						: "Unknown error getting status";
+				logger.error(
+					`IPC: Error during oauth-get-status: ${errorMsg}`,
+					LogFileType.OAUTH,
+					error,
+				);
+				return { success: false, error: errorMsg };
+			}
+		});
+
+		// Check if backend manager is disabled via environment variable
+		const isBackendManagerDisabled =
+			process.env.VITE_DISABLE_BACKEND_MANAGER === "true";
+
+		if (!isBackendManagerDisabled) {
+			// Check if an external backend is already running
+			const hasExternalBackend = await backendService.checkExistingBackend();
+
+			if (!hasExternalBackend) {
+				// Check if local-operator command exists globally
+				const hasGlobalCommand =
+					await backendService.checkLocalOperatorExists();
+
+				// If local-operator doesn't exist globally and our backend is not installed
+				if (!hasGlobalCommand && !(await backendInstaller.isInstalled())) {
+					// Install backend
+					const installSuccess = await backendInstaller.install();
+					// If installation was cancelled or failed, quit the app
+					if (!installSuccess) {
+						logger.error(
+							"Backend installation cancelled or failed, quitting app",
+							LogFileType.INSTALLER,
+						);
+						app.quit();
+						return; // Exit early to prevent window creation
+					}
+
+					// After successful installation, attempt to start the backend with retries
+					logger.info(
+						"Attempting to start backend service after installation",
 						LogFileType.INSTALLER,
 					);
-					dialog.showErrorBox(
-						"Backend Error",
-						"Failed to start the Local Operator backend service after installation. Please restart the application.",
-					);
-					app.quit();
-					return;
-				}
-			} else {
-				// Start our backend service (for existing installations)
-				const backendStarted = await backendService.start();
-				if (!backendStarted) {
-					logger.error(
-						"Failed to start backend with existing installation, quitting app",
-						LogFileType.BACKEND,
-					);
-					dialog.showErrorBox(
-						"Backend Error",
-						"Failed to start the Local Operator backend service. Please restart the application.",
-					);
-					app.quit();
-					return;
+					let startAttempts = 0;
+					const maxStartAttempts = 3;
+					let backendStarted = false;
+
+					while (startAttempts < maxStartAttempts && !backendStarted) {
+						try {
+							backendStarted = await backendService.start();
+							if (!backendStarted) {
+								logger.error(
+									`Backend start attempt ${startAttempts + 1} failed`,
+									LogFileType.INSTALLER,
+								);
+								// Wait before retrying
+								await new Promise((resolve) => setTimeout(resolve, 2000));
+							}
+						} catch (error) {
+							logger.error(
+								`Error starting backend (attempt ${startAttempts + 1}):`,
+								LogFileType.INSTALLER,
+								error,
+							);
+						}
+						startAttempts++;
+					}
+
+					if (!backendStarted) {
+						logger.error(
+							"Failed to start backend after installation, quitting app",
+							LogFileType.INSTALLER,
+						);
+						dialog.showErrorBox(
+							"Backend Error",
+							"Failed to start the Local Operator backend service after installation. Please restart the application.",
+						);
+						app.quit();
+						return;
+					}
+				} else {
+					// Start our backend service (for existing installations)
+					const backendStarted = await backendService.start();
+					if (!backendStarted) {
+						logger.error(
+							"Failed to start backend with existing installation, quitting app",
+							LogFileType.BACKEND,
+						);
+						dialog.showErrorBox(
+							"Backend Error",
+							"Failed to start the Local Operator backend service. Please restart the application.",
+						);
+						app.quit();
+						return;
+					}
 				}
 			}
 		}
-	}
 
-	// Create custom application menu
-	createApplicationMenu();
+		// Create custom application menu
+		createApplicationMenu();
 
-	// Create the main window
-	const mainWindow = createWindow();
+		// Create the main window
+		mainWindow = createWindow(); // Assign to the higher-scoped variable
 
-	// Initialize the update service with a reference to the backend service
-	const updateService = new UpdateService(mainWindow, backendService);
+		// Pass window reference to OAuthService
+		oauthService.setMainWindow(mainWindow);
 
-	// Set up IPC handlers for the update service
-	updateService.setupIpcHandlers();
+		// Initialize the update service with a reference to the backend service
+		const updateService = new UpdateService(mainWindow, backendService);
 
-	// Handle platform-specific setup for the updater
-	updateService.handlePlatformSpecifics();
+		// Set up IPC handlers for the update service
+		updateService.setupIpcHandlers();
 
-	// Check for all updates (UI and backend) after a short delay to ensure the app is fully loaded
-	setTimeout(() => {
-		updateService.checkForAllUpdates(true);
-	}, 3000);
+		// Handle platform-specific setup for the updater
+		updateService.handlePlatformSpecifics();
 
-	app.on("activate", () => {
-		// On macOS it's common to re-create a window in the app when the
-		// dock icon is clicked and there are no other windows open.
-		if (BrowserWindow.getAllWindows().length === 0) createWindow();
+		// Check for all updates (UI and backend) after a short delay to ensure the app is fully loaded
+		setTimeout(() => {
+			updateService.checkForAllUpdates(true);
+		}, 3000);
+
+		app.on("activate", () => {
+			// On macOS it's common to re-create a window in the app when the
+			// dock icon is clicked and there are no other windows open.
+			if (BrowserWindow.getAllWindows().length === 0) createWindow();
+		});
+	})
+	.catch((error) => {
+		logger.error("Error initializing app:", LogFileType.BACKEND, error);
+		app.quit();
 	});
-});
+
 // Quit when all windows are closed, except on macOS. There, it's common
 // for applications and their menu bar to stay active until the user quits
 // explicitly with Cmd + Q.

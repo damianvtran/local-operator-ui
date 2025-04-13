@@ -7,7 +7,8 @@
   <link rel="icon" href="./assets/favicon.ico" />
   <!-- https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP -->
   <meta http-equiv="Content-Security-Policy"
-    content="default-src 'self'; connect-src 'self' http://localhost:1111 http://127.0.0.1:1111 ws://localhost:1111 ws://127.0.0.1:1111 https://us.i.posthog.com; script-src 'self' https://us-assets.i.posthog.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: http://localhost:1111 http://127.0.0.1:1111; media-src 'self' http://localhost:1111 http://127.0.0.1:1111; font-src 'self'" />
+    content="default-src 'self'; connect-src 'self' http://localhost:1111 http://127.0.0.1:1111 ws://localhost:1111 ws://127.0.0.1:1111 http://localhost:8080 http://127.0.0.1:8080 https://api.radienthq.com https://us.i.posthog.com https://login.microsoftonline.com https://accounts.google.com; script-src 'self' https://us-assets.i.posthog.com https://accounts.google.com https://login.microsoftonline.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: http://localhost:1111 http://127.0.0.1:1111; media-src 'self' http://localhost:1111 http://127.0.0.1:1111; font-src 'self'; frame-src 'self' https://accounts.google.com https://login.microsoftonline.com" />
+  <meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin-allow-popups" />
 </head>
 
 <body>

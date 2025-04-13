@@ -8,6 +8,14 @@ const api = {
 	openFile: (filePath: string) => ipcRenderer.invoke("open-file", filePath),
 	openExternal: (url: string) => ipcRenderer.invoke("open-external", url),
 
+	// Session storage methods
+	session: {
+		getSession: () => ipcRenderer.invoke("get-session"),
+		storeSession: (jwt: string, expiry: number) =>
+			ipcRenderer.invoke("store-session", jwt, expiry),
+		clearSession: () => ipcRenderer.invoke("clear-session"),
+	},
+
 	// System information
 	systemInfo: {
 		getAppVersion: () => ipcRenderer.invoke("get-app-version"),
@@ -119,6 +127,32 @@ const api = {
 		},
 	},
 
+	// --- OAuth Methods ---
+	oauth: {
+		login: (provider: "google" | "microsoft") =>
+			ipcRenderer.invoke("oauth-login", provider),
+		logout: () => ipcRenderer.invoke("oauth-logout"),
+		getStatus: () => ipcRenderer.invoke("oauth-get-status"),
+		// Listener for status updates from the main process
+		onStatusUpdate: (
+			callback: (status: {
+				loggedIn: boolean;
+				provider: "google" | "microsoft" | null;
+				accessToken?: string;
+				idToken?: string;
+				expiry?: number;
+				error?: string;
+			}) => void,
+		) => {
+			const handler = (_event, status) => callback(status);
+			ipcRenderer.on("oauth-status-update", handler);
+			// Return a cleanup function to remove the listener
+			return () => {
+				ipcRenderer.removeListener("oauth-status-update", handler);
+			};
+		},
+	},
+
 	// Add methods for installer
 	ipcRenderer: {
 		send: (channel: string, ...args: unknown[]) => {
@@ -140,6 +174,9 @@ const api = {
 			}
 			return undefined;
 		},
+		// Add function to check if provider auth is configured in the backend
+		checkProviderAuthEnabled: (): Promise<boolean> =>
+			ipcRenderer.invoke("ipc-check-provider-auth"),
 	},
 };
 
