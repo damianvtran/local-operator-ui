@@ -19,6 +19,7 @@ import {
 import { backendConfig } from "./backend/config";
 import { LogFileType, logger } from "./backend/logger";
 import { UpdateService } from "./update-service";
+import { Store, type StoreData } from "./store";
 
 // Set application name
 app.setName("Local Operator");
@@ -259,191 +260,197 @@ const backendInstaller = new BackendInstaller();
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
-app.whenReady().then(async () => {
-	// Set app user model id for windows
-	electronApp.setAppUserModelId("com.local-operator");
+app
+	.whenReady()
+	.then(async () => {
+		// Set app user model id for windows
+		electronApp.setAppUserModelId("com.local-operator");
 
-	// Default open or close DevTools by F12 in development
-	// and ignore CommandOrControl + R in production.
-	// see https://github.com/alex8088/electron-toolkit/tree/master/packages/utils
-	app.on("browser-window-created", (_, window) => {
-		optimizer.watchWindowShortcuts(window);
-	});
+		// Default open or close DevTools by F12 in development
+		// and ignore CommandOrControl + R in production.
+		// see https://github.com/alex8088/electron-toolkit/tree/master/packages/utils
+		app.on("browser-window-created", (_, window) => {
+			optimizer.watchWindowShortcuts(window);
+		});
 
-	// Add IPC handlers for opening files and URLs
-	ipcMain.handle("open-file", async (_, filePath) => {
-		try {
-			await shell.openPath(filePath);
-		} catch (error) {
-			console.error("Error opening file:", error);
-		}
-	});
+		// Add IPC handlers for opening files and URLs
+		ipcMain.handle("open-file", async (_, filePath) => {
+			try {
+				await shell.openPath(filePath);
+			} catch (error) {
+				console.error("Error opening file:", error);
+			}
+		});
 
-	ipcMain.handle("open-external", async (_, url) => {
-		try {
-			await shell.openExternal(url);
-		} catch (error) {
-			console.error("Error opening URL:", error);
-		}
-	});
+		ipcMain.handle("open-external", async (_, url) => {
+			try {
+				await shell.openExternal(url);
+			} catch (error) {
+				console.error("Error opening URL:", error);
+			}
+		});
 
-	// --- Session storage handlers for secure JWT persistence ---
-	// Use dynamic import for electron-store (ES module)
-	const { default: ElectronStore } = await import("electron-store");
-	const sessionStore = new ElectronStore();
+		// --- Session storage handlers for secure JWT persistence ---
+		const sessionStore = new Store<StoreData>({
+			name: "session",
+			defaults: {
+				radient_jwt: "",
+				radient_jwt_expiry: 0,
+			},
+		});
 
-	ipcMain.handle("get-session", () => {
-		// @ts-ignore
-		const jwt = sessionStore.get("radient_jwt");
-		// @ts-ignore
-		const expiry = sessionStore.get("radient_jwt_expiry");
-		return { jwt, expiry };
-	});
+		ipcMain.handle("get-session", () => {
+			const jwt = sessionStore.get("radient_jwt");
+			const expiry = sessionStore.get("radient_jwt_expiry");
+			return { jwt, expiry };
+		});
 
-	ipcMain.handle("store-session", (_event, jwt: string, expiry: number) => {
-		// @ts-ignore
-		sessionStore.set("radient_jwt", jwt);
-		// @ts-ignore
-		sessionStore.set("radient_jwt_expiry", expiry);
-		return true;
-	});
+		ipcMain.handle("store-session", (_event, jwt: string, expiry: number) => {
+			sessionStore.set("radient_jwt", jwt);
+			sessionStore.set("radient_jwt_expiry", expiry);
+			return true;
+		});
 
-	ipcMain.handle("clear-session", () => {
-		// @ts-ignore
-		sessionStore.delete("radient_jwt");
-		// @ts-ignore
-		sessionStore.delete("radient_jwt_expiry");
-		return true;
-	});
+		ipcMain.handle("clear-session", () => {
+			sessionStore.delete("radient_jwt");
+			sessionStore.delete("radient_jwt_expiry");
+			return true;
+		});
 
-	// Add IPC handlers for system information
-	ipcMain.handle("get-app-version", () => {
-		return app.getVersion();
-	});
+		// Add IPC handlers for system information
+		ipcMain.handle("get-app-version", () => {
+			return app.getVersion();
+		});
 
-	ipcMain.handle("get-platform-info", () => {
-		return {
-			platform: process.platform,
-			arch: process.arch,
-			nodeVersion: process.versions.node,
-			electronVersion: process.versions.electron,
-			chromeVersion: process.versions.chrome,
-		};
-	});
+		ipcMain.handle("get-platform-info", () => {
+			return {
+				platform: process.platform,
+				arch: process.arch,
+				nodeVersion: process.versions.node,
+				electronVersion: process.versions.electron,
+				chromeVersion: process.versions.chrome,
+			};
+		});
 
-	// Check if backend manager is disabled via environment variable
-	const isBackendManagerDisabled =
-		process.env.VITE_DISABLE_BACKEND_MANAGER === "true";
+		// Check if backend manager is disabled via environment variable
+		const isBackendManagerDisabled =
+			process.env.VITE_DISABLE_BACKEND_MANAGER === "true";
 
-	if (!isBackendManagerDisabled) {
-		// Check if an external backend is already running
-		const hasExternalBackend = await backendService.checkExistingBackend();
+		if (!isBackendManagerDisabled) {
+			// Check if an external backend is already running
+			const hasExternalBackend = await backendService.checkExistingBackend();
 
-		if (!hasExternalBackend) {
-			// Check if local-operator command exists globally
-			const hasGlobalCommand = await backendService.checkLocalOperatorExists();
+			if (!hasExternalBackend) {
+				// Check if local-operator command exists globally
+				const hasGlobalCommand =
+					await backendService.checkLocalOperatorExists();
 
-			// If local-operator doesn't exist globally and our backend is not installed
-			if (!hasGlobalCommand && !(await backendInstaller.isInstalled())) {
-				// Install backend
-				const installSuccess = await backendInstaller.install();
-				// If installation was cancelled or failed, quit the app
-				if (!installSuccess) {
-					logger.error(
-						"Backend installation cancelled or failed, quitting app",
-						LogFileType.INSTALLER,
-					);
-					app.quit();
-					return; // Exit early to prevent window creation
-				}
-
-				// After successful installation, attempt to start the backend with retries
-				logger.info(
-					"Attempting to start backend service after installation",
-					LogFileType.INSTALLER,
-				);
-				let startAttempts = 0;
-				const maxStartAttempts = 3;
-				let backendStarted = false;
-
-				while (startAttempts < maxStartAttempts && !backendStarted) {
-					try {
-						backendStarted = await backendService.start();
-						if (!backendStarted) {
-							logger.error(
-								`Backend start attempt ${startAttempts + 1} failed`,
-								LogFileType.INSTALLER,
-							);
-							// Wait before retrying
-							await new Promise((resolve) => setTimeout(resolve, 2000));
-						}
-					} catch (error) {
+				// If local-operator doesn't exist globally and our backend is not installed
+				if (!hasGlobalCommand && !(await backendInstaller.isInstalled())) {
+					// Install backend
+					const installSuccess = await backendInstaller.install();
+					// If installation was cancelled or failed, quit the app
+					if (!installSuccess) {
 						logger.error(
-							`Error starting backend (attempt ${startAttempts + 1}):`,
+							"Backend installation cancelled or failed, quitting app",
 							LogFileType.INSTALLER,
-							error,
 						);
+						app.quit();
+						return; // Exit early to prevent window creation
 					}
-					startAttempts++;
-				}
 
-				if (!backendStarted) {
-					logger.error(
-						"Failed to start backend after installation, quitting app",
+					// After successful installation, attempt to start the backend with retries
+					logger.info(
+						"Attempting to start backend service after installation",
 						LogFileType.INSTALLER,
 					);
-					dialog.showErrorBox(
-						"Backend Error",
-						"Failed to start the Local Operator backend service after installation. Please restart the application.",
-					);
-					app.quit();
-					return;
-				}
-			} else {
-				// Start our backend service (for existing installations)
-				const backendStarted = await backendService.start();
-				if (!backendStarted) {
-					logger.error(
-						"Failed to start backend with existing installation, quitting app",
-						LogFileType.BACKEND,
-					);
-					dialog.showErrorBox(
-						"Backend Error",
-						"Failed to start the Local Operator backend service. Please restart the application.",
-					);
-					app.quit();
-					return;
+					let startAttempts = 0;
+					const maxStartAttempts = 3;
+					let backendStarted = false;
+
+					while (startAttempts < maxStartAttempts && !backendStarted) {
+						try {
+							backendStarted = await backendService.start();
+							if (!backendStarted) {
+								logger.error(
+									`Backend start attempt ${startAttempts + 1} failed`,
+									LogFileType.INSTALLER,
+								);
+								// Wait before retrying
+								await new Promise((resolve) => setTimeout(resolve, 2000));
+							}
+						} catch (error) {
+							logger.error(
+								`Error starting backend (attempt ${startAttempts + 1}):`,
+								LogFileType.INSTALLER,
+								error,
+							);
+						}
+						startAttempts++;
+					}
+
+					if (!backendStarted) {
+						logger.error(
+							"Failed to start backend after installation, quitting app",
+							LogFileType.INSTALLER,
+						);
+						dialog.showErrorBox(
+							"Backend Error",
+							"Failed to start the Local Operator backend service after installation. Please restart the application.",
+						);
+						app.quit();
+						return;
+					}
+				} else {
+					// Start our backend service (for existing installations)
+					const backendStarted = await backendService.start();
+					if (!backendStarted) {
+						logger.error(
+							"Failed to start backend with existing installation, quitting app",
+							LogFileType.BACKEND,
+						);
+						dialog.showErrorBox(
+							"Backend Error",
+							"Failed to start the Local Operator backend service. Please restart the application.",
+						);
+						app.quit();
+						return;
+					}
 				}
 			}
 		}
-	}
 
-	// Create custom application menu
-	createApplicationMenu();
+		// Create custom application menu
+		createApplicationMenu();
 
-	// Create the main window
-	const mainWindow = createWindow();
+		// Create the main window
+		const mainWindow = createWindow();
 
-	// Initialize the update service with a reference to the backend service
-	const updateService = new UpdateService(mainWindow, backendService);
+		// Initialize the update service with a reference to the backend service
+		const updateService = new UpdateService(mainWindow, backendService);
 
-	// Set up IPC handlers for the update service
-	updateService.setupIpcHandlers();
+		// Set up IPC handlers for the update service
+		updateService.setupIpcHandlers();
 
-	// Handle platform-specific setup for the updater
-	updateService.handlePlatformSpecifics();
+		// Handle platform-specific setup for the updater
+		updateService.handlePlatformSpecifics();
 
-	// Check for all updates (UI and backend) after a short delay to ensure the app is fully loaded
-	setTimeout(() => {
-		updateService.checkForAllUpdates(true);
-	}, 3000);
+		// Check for all updates (UI and backend) after a short delay to ensure the app is fully loaded
+		setTimeout(() => {
+			updateService.checkForAllUpdates(true);
+		}, 3000);
 
-	app.on("activate", () => {
-		// On macOS it's common to re-create a window in the app when the
-		// dock icon is clicked and there are no other windows open.
-		if (BrowserWindow.getAllWindows().length === 0) createWindow();
+		app.on("activate", () => {
+			// On macOS it's common to re-create a window in the app when the
+			// dock icon is clicked and there are no other windows open.
+			if (BrowserWindow.getAllWindows().length === 0) createWindow();
+		});
+	})
+	.catch((error) => {
+		logger.error("Error initializing app:", LogFileType.BACKEND, error);
+		app.quit();
 	});
-});
+
 // Quit when all windows are closed, except on macOS. There, it's common
 // for applications and their menu bar to stay active until the user quits
 // explicitly with Cmd + Q.
