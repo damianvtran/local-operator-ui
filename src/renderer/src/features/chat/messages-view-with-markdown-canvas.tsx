@@ -6,7 +6,7 @@ import type {
 import type { Message } from "@renderer/features/chat/types";
 import type { FC, RefObject } from "react";
 import { LoadingIndicator } from "./loading-indicator";
-import { MessageItem } from "./message-item";
+import { MessageItemWithMarkdownCanvas } from "./message-item/index-with-markdown-canvas";
 
 /**
  * Props for the MessagesView component
@@ -101,11 +101,12 @@ const FullScreenCenteredContainer = styled(Box)({
 });
 
 /**
- * MessagesView Component
+ * MessagesView Component with Markdown Canvas support
  *
  * Displays the list of messages in a conversation
+ * Uses MessageItemWithMarkdownCanvas to render messages
  */
-export const MessagesView: FC<MessagesViewProps> = ({
+export const MessagesViewWithMarkdownCanvas: FC<MessagesViewProps> = ({
 	messages,
 	isLoading,
 	isLoadingMessages,
@@ -143,24 +144,21 @@ export const MessagesView: FC<MessagesViewProps> = ({
 					{messages.length > 0 ? (
 						// Only render visible messages plus a buffer
 						<CenteredMessagesContainer>
-							{messages.map((message, index) => {
-								console.log(message);
-								return (
-									<MessageItem
-										key={message.id}
-										message={{
-											...message,
-											conversation_id: conversationId, // Add conversation ID to message
-										}}
-										isLastMessage={index === messages.length - 1}
-										onMessageComplete={() => {
-											if (refetch) {
-												refetch();
-											}
-										}}
-									/>
-								);
-							})}
+							{messages.map((message, index) => (
+								<MessageItemWithMarkdownCanvas
+									key={message.id}
+									message={{
+										...message,
+										conversation_id: conversationId, // Add conversation ID to message
+									}}
+									isLastMessage={index === messages.length - 1}
+									onMessageComplete={() => {
+										if (refetch) {
+											refetch();
+										}
+									}}
+								/>
+							))}
 
 							{/* Loading indicator for new message - now inside CenteredMessagesContainer */}
 							{isLoading && (

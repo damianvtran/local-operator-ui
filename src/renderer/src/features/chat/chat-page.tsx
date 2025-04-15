@@ -20,7 +20,7 @@ import React, { useState, useMemo, useEffect, useCallback } from "react";
 import type { FC } from "react";
 import { useNavigate } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
-import { ChatContent } from "./chat-content";
+import { ChatContentWithMarkdownCanvas } from "./chat-content-with-markdown-canvas";
 import { ChatSidebar } from "./chat-sidebar";
 import { ErrorView } from "./error-view";
 import { PlaceholderView } from "./placeholder-view";
@@ -457,7 +457,7 @@ Store messages: ${JSON.stringify(getMessages(conversationId || ""), null, 2)}`;
 		}
 
 		return (
-			<ChatContent
+			<ChatContentWithMarkdownCanvas
 				activeTab={activeTab}
 				onTabChange={handleTabChange}
 				agentName={agentData?.name || ""}

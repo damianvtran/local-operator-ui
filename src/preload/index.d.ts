@@ -1,11 +1,21 @@
 import type { ElectronAPI } from "@electron-toolkit/preload";
 import type { ProgressInfo, UpdateInfo } from "electron-updater";
+import type {
+	FileInfo,
+	ListDirectoryResponse,
+	ReadFileResponse,
+} from "../main/ipc-handlers/file-handlers";
 
 declare global {
 	interface Window {
 		electron: ElectronAPI;
 		api: {
 			openFile: (filePath: string) => Promise<void>;
+			readFile: (filePath: string) => Promise<ReadFileResponse>;
+			listDirectory: (dirPath: string) => Promise<ListDirectoryResponse>;
+			getParentDirectory: (
+				filePath: string,
+			) => Promise<{ success: boolean; directory?: string; error?: unknown }>;
 			openExternal: (url: string) => Promise<void>;
 			systemInfo: {
 				getAppVersion: () => Promise<string>;

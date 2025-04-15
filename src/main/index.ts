@@ -1,14 +1,6 @@
 import { join } from "node:path";
 import { electronApp, is, optimizer } from "@electron-toolkit/utils";
-import {
-	BrowserWindow,
-	Menu,
-	app,
-	dialog,
-	ipcMain,
-	nativeImage,
-	shell,
-} from "electron";
+import { BrowserWindow, Menu, app, dialog, nativeImage, shell } from "electron";
 import { PostHog } from "posthog-node";
 import icon from "../../resources/icon.png?asset";
 import {
@@ -18,6 +10,7 @@ import {
 } from "./backend";
 import { backendConfig } from "./backend/config";
 import { LogFileType, logger } from "./backend/logger";
+import { registerIpcHandlers } from "./ipc-handlers";
 import { UpdateService } from "./update-service";
 
 // Set application name
@@ -190,38 +183,6 @@ app.whenReady().then(async () => {
 		optimizer.watchWindowShortcuts(window);
 	});
 
-	// Add IPC handlers for opening files and URLs
-	ipcMain.handle("open-file", async (_, filePath) => {
-		try {
-			await shell.openPath(filePath);
-		} catch (error) {
-			console.error("Error opening file:", error);
-		}
-	});
-
-	ipcMain.handle("open-external", async (_, url) => {
-		try {
-			await shell.openExternal(url);
-		} catch (error) {
-			console.error("Error opening URL:", error);
-		}
-	});
-
-	// Add IPC handlers for system information
-	ipcMain.handle("get-app-version", () => {
-		return app.getVersion();
-	});
-
-	ipcMain.handle("get-platform-info", () => {
-		return {
-			platform: process.platform,
-			arch: process.arch,
-			nodeVersion: process.versions.node,
-			electronVersion: process.versions.electron,
-			chromeVersion: process.versions.chrome,
-		};
-	});
-
 	// Check if backend manager is disabled via environment variable
 	const isBackendManagerDisabled =
 		process.env.VITE_DISABLE_BACKEND_MANAGER === "true";
@@ -318,8 +279,8 @@ app.whenReady().then(async () => {
 	// Initialize the update service with a reference to the backend service
 	const updateService = new UpdateService(mainWindow, backendService);
 
-	// Set up IPC handlers for the update service
-	updateService.setupIpcHandlers();
+	// Register all IPC handlers
+	registerIpcHandlers({ mainWindow, backendService, updateService });
 
 	// Handle platform-specific setup for the updater
 	updateService.handlePlatformSpecifics();

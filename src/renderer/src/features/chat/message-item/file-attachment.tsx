@@ -2,7 +2,9 @@ import { faFile } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, Typography, alpha } from "@mui/material";
 import { styled } from "@mui/material/styles";
+import { useMarkdownCanvasStore } from "@renderer/store/markdown-canvas-store";
 import type { FC } from "react";
+import { useCallback } from "react";
 import type { FileAttachmentProps } from "./types";
 
 /**
@@ -73,13 +75,42 @@ const getFileName = (path: string): string => {
 	return parts[parts.length - 1];
 };
 
+const markdownRegex = new RegExp(/\.md$/);
+
 /**
  * Component for displaying non-image file attachments
  */
 export const FileAttachment: FC<FileAttachmentProps> = ({ file, onClick }) => {
-	const handleClick = () => {
+	const { openDocument } = useMarkdownCanvasStore();
+
+	// Handle click on the file attachment
+	const handleClick = useCallback(async () => {
+		const isMarkdown = markdownRegex.test(file);
+
+		if (isMarkdown) {
+			try {
+				const normalizedPath = file.startsWith("file://")
+					? file.substring(7)
+					: file;
+				const title = getFileName(file);
+				const result = await window.api.readFile(normalizedPath);
+
+				if (result.success) {
+					openDocument(title, result.data, normalizedPath);
+				} else {
+					console.error("Error reading file:", result.error);
+					onClick(file);
+				}
+			} catch (error) {
+				console.error("Error opening markdown file:", error);
+				onClick(file);
+			}
+			return;
+		}
+
+		// For non-markdown files, use the default handler
 		onClick(file);
-	};
+	}, [file, onClick, openDocument]);
 
 	return (
 		<FileAttachmentContainer

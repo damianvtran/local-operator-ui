@@ -338,5 +338,3 @@ export const MarkdownRenderer: FC<MarkdownRendererProps> = memo(
 		);
 	},
 );
-
-export default MarkdownRenderer;

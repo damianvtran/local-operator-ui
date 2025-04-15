@@ -8,9 +8,15 @@ import react from "@vitejs/plugin-react";
 import tsconfigPaths from "vite-tsconfig-paths";
 
 export default defineConfig({
-	assetsInclude: ["**/*.sh", "**/*.ps1"],
+	assetsInclude: ["**/*.sh", "**/*.ps1", "**/*.wasm"],
+	build: {
+		target: "esnext",
+	},
 	main: {
 		plugins: [externalizeDepsPlugin(), bytecodePlugin()],
+	},
+	optimizeDeps: {
+		exclude: ["shiki"],
 	},
 	preload: {
 		plugins: [externalizeDepsPlugin(), bytecodePlugin()],

@@ -6,6 +6,11 @@ import type { ProgressInfo, UpdateInfo } from "electron-updater";
 const api = {
 	// Add methods to open files and URLs
 	openFile: (filePath: string) => ipcRenderer.invoke("open-file", filePath),
+	readFile: (filePath: string) => ipcRenderer.invoke("read-file", filePath),
+	listDirectory: (dirPath: string) =>
+		ipcRenderer.invoke("list-directory", dirPath),
+	getParentDirectory: (filePath: string) =>
+		ipcRenderer.invoke("get-parent-directory", filePath),
 	openExternal: (url: string) => ipcRenderer.invoke("open-external", url),
 
 	// System information
