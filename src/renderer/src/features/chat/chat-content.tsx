@@ -7,7 +7,7 @@ import type {
 import { useCanvasStore } from "@renderer/store/canvas-store";
 import { isDevelopmentMode } from "@renderer/utils/env-utils";
 import Split from "@uiw/react-split";
-import { type FC, useEffect, useState } from "react";
+import { type FC, useEffect, useRef, useState } from "react";
 import { ChatHeader } from "./chat-header";
 import { ChatOptionsSidebar } from "./chat-options-sidebar";
 import { ChatTabs } from "./chat-tabs";
@@ -113,6 +113,8 @@ export const ChatContent: FC<ChatContentProps> = ({
 	agentData,
 	refetch,
 }) => {
+  const canvasContainerRef = useRef<HTMLDivElement>(null);
+
 	// TODO: Update this state to be properly semantic
 	const [testValue, setTestValue] = useState(450);
 
@@ -129,6 +131,10 @@ export const ChatContent: FC<ChatContentProps> = ({
 		if (isOpen) {
 			return setTestValue(450);
 		}
+
+    if (canvasContainerRef.current) {
+      canvasContainerRef.current.style.width = ''
+    }
 		return setTestValue(0);
 	}, [isOpen]);
 
@@ -201,6 +207,7 @@ export const ChatContent: FC<ChatContentProps> = ({
 			</Box>
 
 			<Box
+      ref={canvasContainerRef}
 				sx={{
 					lineHeight: 0,
 					minWidth: testValue,
