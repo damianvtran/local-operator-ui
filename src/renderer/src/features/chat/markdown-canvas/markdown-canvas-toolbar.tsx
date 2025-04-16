@@ -118,7 +118,7 @@ export const MarkdownCanvasToolbar: FC<MarkdownCanvasToolbarProps> = ({
 					<ToolbarButton
 						size="small"
 						variant="text"
-						onClick={() => handleExport("md" as any)}
+						onClick={() => handleExport("md" as ExportFormat)}
 						startIcon={<FontAwesomeIcon icon={faDownload} />}
 					>
 						Download

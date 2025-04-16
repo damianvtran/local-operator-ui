@@ -3,9 +3,9 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, IconButton, Typography, alpha, styled } from "@mui/material";
 import { useCallback, useEffect, useState } from "react";
 import type { FC } from "react";
+import { MarkdownCanvasReactContent } from "./markdown-canvas-editor";
 import { MarkdownCanvasTabs } from "./markdown-canvas-tabs";
 import type { MarkdownDocument } from "./types";
-import { MarkdownCanvasReactContent } from "./markdown-canvas-editor";
 
 type MarkdownCanvasProps = {
 	/**

@@ -32,7 +32,7 @@ type MarkdownCanvasTabsProps = {
  */
 const StyledTabs = styled(Tabs)(({ theme }) => ({
 	borderBottom: `1px solid ${alpha(theme.palette.divider, 0.05)}`,
-  maxWidth: '100%',
+	maxWidth: "100%",
 	minHeight: "42px",
 	"& .MuiTabs-indicator": {
 		height: 2,
