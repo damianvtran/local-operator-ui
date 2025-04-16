@@ -2,7 +2,7 @@ import { v4 as uuidv4 } from "uuid";
 import { create } from "zustand";
 import type { MarkdownDocument } from "../features/chat/markdown-canvas/types";
 
-interface MarkdownCanvasState {
+interface CanvasState {
 	// Whether the markdown canvas is open
 	isOpen: boolean;
 
@@ -24,10 +24,12 @@ interface MarkdownCanvasState {
 	toggleAutoOpenMarkdownAttachments: () => void;
 }
 
+// TODO: Update references to no longer be specific to markdown
+
 /**
  * Store for managing the markdown canvas state
  */
-export const useMarkdownCanvasStore = create<MarkdownCanvasState>(
+export const useCanvasStore = create<CanvasState>(
 	(set, get) => ({
 		// Initial state
 		isOpen: false,
@@ -38,7 +40,9 @@ export const useMarkdownCanvasStore = create<MarkdownCanvasState>(
 		// Actions
 		openCanvas: () => set({ isOpen: true }),
 
-		closeCanvas: () => set({ isOpen: false }),
+		closeCanvas: () => {
+            return set({ isOpen: false });
+        },
 
 		openDocument: (title, content, path) => {
 			const { documents } = get();
@@ -71,6 +75,11 @@ export const useMarkdownCanvasStore = create<MarkdownCanvasState>(
 
 		closeDocument: (documentId) => {
 			const { documents, activeDocumentId } = get();
+      console.log({
+        documentId,
+        documents,
+        activeDocumentId
+      })
 
 			// Remove the document
 			const updatedDocuments = documents.filter((doc) => doc.id !== documentId);
