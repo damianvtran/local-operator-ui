@@ -6,6 +6,7 @@ declare global {
 		electron: ElectronAPI;
 		api: {
 			openFile: (filePath: string) => Promise<void>;
+			readFile: (filePath: string) => Promise<ReadFileResponse>; // TODO: Revisit to add proper reference
 			openExternal: (url: string) => Promise<void>;
 			session: {
 				getSession: () => Promise<{

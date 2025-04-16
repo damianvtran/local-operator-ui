@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { electronApp, is, optimizer } from "@electron-toolkit/utils";
 import {
@@ -21,6 +22,10 @@ import { LogFileType, logger } from "./backend/logger";
 import { OAuthService } from "./oauth-service";
 import { Store, type StoreData } from "./store";
 import { UpdateService } from "./update-service";
+
+export type ReadFileResponse =
+	| { success: true; data: string }
+	| { success: false; error: unknown }; // or use `string` if you always send error.message
 
 // Set application name
 app.setName("Local Operator");
@@ -401,6 +406,19 @@ app
 				console.error("Error opening file:", error);
 			}
 		});
+
+		ipcMain.handle(
+			"read-file",
+			async (_, filePath: string): Promise<ReadFileResponse> => {
+				try {
+					const data = readFileSync(filePath, "utf-8");
+					return { success: true, data };
+				} catch (error) {
+					logger.error("Error reading file:", LogFileType.BACKEND, error);
+					return { success: false, error };
+				}
+			},
+		);
 
 		ipcMain.handle("open-external", async (_, url) => {
 			try {
