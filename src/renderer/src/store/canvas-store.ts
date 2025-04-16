@@ -40,9 +40,7 @@ export const useCanvasStore = create<CanvasState>(
 		// Actions
 		openCanvas: () => set({ isOpen: true }),
 
-		closeCanvas: () => {
-            return set({ isOpen: false });
-        },
+		closeCanvas: () => set({ isOpen: false }),
 
 		openDocument: (title, content, path) => {
 			const { documents } = get();

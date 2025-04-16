@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { FC } from "react";
 import { MarkdownCanvasTabs } from "./markdown-canvas-tabs";
 import type { MarkdownDocument } from "./types";
+import { MarkdownCanvasReactContent } from "./markdown-canvas-editor";
 
 type MarkdownCanvasProps = {
 	/**
@@ -39,7 +40,6 @@ type MarkdownCanvasProps = {
  * Styled container for the markdown canvas
  */
 const CanvasContainer = styled(Box)(({ theme }) => ({
-	// width: 600,
 	height: "100%",
 	display: "flex",
 	flexDirection: "column",
@@ -189,6 +189,11 @@ export const MarkdownCanvas: FC<MarkdownCanvasProps> = ({
 				onChangeActiveDocument={handleChangeActiveDocument}
 				onCloseDocument={handleCloseDocument}
 			/>
+
+			{/* Document content area */}
+			{activeDocument && (
+				<MarkdownCanvasReactContent document={activeDocument} />
+			)}
 
 			{/* Empty state when no documents are open */}
 			{!activeDocument && (
