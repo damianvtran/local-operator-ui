@@ -1,21 +1,22 @@
-import { Box, Button, Paper, Stack, Typography, styled } from "@mui/material";
+import { Box, Paper, styled } from "@mui/material";
 import type {
 	AgentDetails,
 	AgentExecutionRecord,
 	JobStatus,
 } from "@renderer/api/local-operator/types";
+import { useCanvasStore } from "@renderer/store/canvas-store";
 import { isDevelopmentMode } from "@renderer/utils/env-utils";
-import { type FC, useState } from "react";
+import Split from "@uiw/react-split";
+import { type FC, useEffect, useState } from "react";
 import { ChatHeader } from "./chat-header";
 import { ChatOptionsSidebar } from "./chat-options-sidebar";
 import { ChatTabs } from "./chat-tabs";
 import { ChatUtilities } from "./chat-utilities";
+import { MarkdownCanvas } from "./markdown-canvas/markdown-canvas";
 import { MessageInput } from "./message-input";
 import { MessagesView } from "./messages-view";
 import { RawInfoView } from "./raw-info-view";
 import type { Message } from "./types";
-
-import Split from "@uiw/react-split";
 
 const DEFAULT_MESSAGE_SUGGESTIONS = [
 	"Go to my documents folder",
@@ -112,7 +113,24 @@ export const ChatContent: FC<ChatContentProps> = ({
 	agentData,
 	refetch,
 }) => {
-	const [testValue, setTestValue] = useState(210);
+	// TODO: Update this state to be properly semantic
+	const [testValue, setTestValue] = useState(450);
+
+	const {
+		isOpen,
+		documents,
+		activeDocumentId,
+		closeCanvas,
+		setActiveDocument,
+		closeDocument,
+	} = useCanvasStore();
+
+	useEffect(() => {
+		if (isOpen) {
+			return setTestValue(450);
+		}
+		return setTestValue(0);
+	}, [isOpen]);
 
 	return (
 		<Split
@@ -122,21 +140,10 @@ export const ChatContent: FC<ChatContentProps> = ({
 			<Box
 				sx={{
 					flex: 1,
-					minWidth: 30,
+					minWidth: 500,
 				}}
 			>
 				<ChatContainer elevation={0}>
-					<Button
-						onClick={() => {
-							const width = testValue === 0 ? 210 : 0;
-							setTestValue(width);
-						}}
-						sx={{
-							border: "2px solid tomato",
-						}}
-					>
-						Push Me
-					</Button>
 					{/* Chat header */}
 					<ChatHeader
 						agentName={agentName}
@@ -192,17 +199,23 @@ export const ChatContent: FC<ChatContentProps> = ({
 					<ChatUtilities agentId={agentId} agentData={agentData} />
 				</ChatContainer>
 			</Box>
+
 			<Box
 				sx={{
 					lineHeight: 0,
 					minWidth: testValue,
-					width: `${testValue === 0 ? "0%" : testValue} !important`,
+					width: testValue,
 					overflow: "hidden",
 				}}
 			>
-				<Stack justifyContent={"center"} alignItems={"center"}>
-					<Typography>Hello World</Typography>
-				</Stack>
+				<MarkdownCanvas
+					open={isOpen}
+					onClose={closeCanvas}
+					onCloseDocument={closeDocument}
+					initialDocuments={documents}
+					activeDocumentId={activeDocumentId}
+					onChangeActiveDocument={setActiveDocument}
+				/>
 			</Box>
 		</Split>
 	);

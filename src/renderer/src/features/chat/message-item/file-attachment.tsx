@@ -3,7 +3,9 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, Typography, alpha } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import type { FC } from "react";
+import { useCallback } from "react";
 import type { FileAttachmentProps } from "./types";
+import { useCanvasStore } from "@renderer/store/canvas-store";
 
 /**
  * Styled component for non-image file attachments
@@ -73,23 +75,54 @@ const getFileName = (path: string): string => {
 	return parts[parts.length - 1];
 };
 
+const markdownRegex = new RegExp(/\.md$/);
+
 /**
  * Component for displaying non-image file attachments
  */
 export const FileAttachment: FC<FileAttachmentProps> = ({ file, onClick }) => {
-	const handleClick = () => {
-		onClick(file);
-	};
+	const { openDocument, openCanvas } = useCanvasStore();
 
-	return (
-		<FileAttachmentContainer
-			onClick={handleClick}
-			title={`Click to open ${getFileName(file)}`}
-		>
-			<FileIcon>
-				<FontAwesomeIcon icon={faFile} size="sm" />
-			</FileIcon>
-			<FileName variant="body2">{getFileName(file)}</FileName>
-		</FileAttachmentContainer>
-	);
+
+	// Handle click on the file attachment
+const handleClick = useCallback(async () => {
+  const isMarkdown = markdownRegex.test(file);
+
+  if (isMarkdown) {
+    try {
+      const normalizedPath = file.startsWith("file://") 
+        ? file.substring(7) 
+        : file;
+      const title = getFileName(file);
+      const result = await window.api.readFile(normalizedPath);
+      
+      if (result.success) {
+        openDocument(title, result.data, normalizedPath);
+        openCanvas();
+      } else {
+        console.error("Error reading file:", result.error);
+        onClick(file);
+      }
+    } catch (error) {
+      console.error("Error opening markdown file:", error);
+      onClick(file);
+    }
+    return;
+  }
+  
+  // For non-markdown files, use the default handler
+  onClick(file);
+}, [file, onClick, openDocument, openCanvas]);
+
+return (
+  <FileAttachmentContainer
+    onClick={handleClick}
+    title={`Click to open ${getFileName(file)}`}
+  >
+    <FileIcon>
+      <FontAwesomeIcon icon={faFile} size="sm" />
+    </FileIcon>
+    <FileName variant="body2">{getFileName(file)}</FileName>
+  </FileAttachmentContainer>
+);
 };
