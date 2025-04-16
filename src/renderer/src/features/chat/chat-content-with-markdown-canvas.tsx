@@ -4,6 +4,7 @@ import type {
 	AgentExecutionRecord,
 	JobStatus,
 } from "@renderer/api/local-operator/types";
+import { useCanvasStore } from "@renderer/store/canvas-store";
 import { isDevelopmentMode } from "@renderer/utils/env-utils";
 import type { FC } from "react";
 import { ChatHeader } from "./chat-header";
@@ -14,7 +15,6 @@ import { MessageInput } from "./message-input";
 import { MessagesViewWithMarkdownCanvas } from "./messages-view-with-markdown-canvas";
 import { RawInfoView } from "./raw-info-view";
 import type { Message } from "./types";
-import { useCanvasStore } from "@renderer/store/canvas-store";
 
 const DEFAULT_MESSAGE_SUGGESTIONS = [
 	"Go to my documents folder",
@@ -110,8 +110,13 @@ export const ChatContentWithMarkdownCanvas: FC<ChatContentProps> = ({
 	refetch,
 }) => {
 	// Get markdown canvas state from store
-	const { isOpen, documents, activeDocumentId, closeCanvas, setActiveDocument } =
-		useCanvasStore();
+	const {
+		isOpen,
+		documents,
+		activeDocumentId,
+		closeCanvas,
+		setActiveDocument,
+	} = useCanvasStore();
 
 	return (
 		<ChatContainer elevation={0}>
@@ -123,14 +128,13 @@ export const ChatContentWithMarkdownCanvas: FC<ChatContentProps> = ({
 			/>
 
 			{/* Markdown Canvas */}
-      <MarkdownCanvas
-      open={isOpen}
-      onClose={closeCanvas}
-      initialDocuments={documents}
-      activeDocumentId={activeDocumentId}
-      onChangeActiveDocument={setActiveDocument}
-      />
-
+			<MarkdownCanvas
+				open={isOpen}
+				onClose={closeCanvas}
+				initialDocuments={documents}
+				activeDocumentId={activeDocumentId}
+				onChangeActiveDocument={setActiveDocument}
+			/>
 
 			{/* Tabs for chat and raw - only shown in development mode */}
 			{isDevelopmentMode() && (

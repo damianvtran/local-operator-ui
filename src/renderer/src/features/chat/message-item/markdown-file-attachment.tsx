@@ -4,10 +4,10 @@ import { Box, Typography, alpha } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import { createLocalOperatorClient } from "@renderer/api/local-operator";
 import { apiConfig } from "@renderer/config";
+import { useCanvasStore } from "@renderer/store/canvas-store";
 import type { FC } from "react";
 import { useCallback, useState } from "react";
 import type { FileAttachmentProps } from "./types";
-import { useCanvasStore } from "@renderer/store/canvas-store";
 
 /**
  * Styled component for markdown file attachments
@@ -127,7 +127,7 @@ export const MarkdownFileAttachment: FC<FileAttachmentProps> = ({
 
 			// Read the file content using the preload API
 			const result = await window.api.readFile(normalizedPath);
-			
+
 			if (result.success) {
 				// Open the document in the markdown canvas with the actual file content
 				openDocument(fileName, result.data, normalizedPath);

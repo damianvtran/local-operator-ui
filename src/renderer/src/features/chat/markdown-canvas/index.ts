@@ -7,7 +7,6 @@
 
 // Export main components
 export { MarkdownCanvas } from "./markdown-canvas";
-export { MarkdownCanvasContent } from "./markdown-canvas-content";
 export { MarkdownCanvasTabs } from "./markdown-canvas-tabs";
 export { MarkdownCanvasToolbar } from "./markdown-canvas-toolbar";
 export { MarkdownCanvasFileBrowser } from "./markdown-canvas-file-browser";

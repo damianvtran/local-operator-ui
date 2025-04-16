@@ -113,7 +113,7 @@ export const ChatContent: FC<ChatContentProps> = ({
 	agentData,
 	refetch,
 }) => {
-  const canvasContainerRef = useRef<HTMLDivElement>(null);
+	const canvasContainerRef = useRef<HTMLDivElement>(null);
 
 	// TODO: Update this state to be properly semantic
 	const [testValue, setTestValue] = useState(450);
@@ -132,9 +132,9 @@ export const ChatContent: FC<ChatContentProps> = ({
 			return setTestValue(450);
 		}
 
-    if (canvasContainerRef.current) {
-      canvasContainerRef.current.style.width = ''
-    }
+		if (canvasContainerRef.current) {
+			canvasContainerRef.current.style.width = "";
+		}
 		return setTestValue(0);
 	}, [isOpen]);
 
@@ -207,7 +207,7 @@ export const ChatContent: FC<ChatContentProps> = ({
 			</Box>
 
 			<Box
-      ref={canvasContainerRef}
+				ref={canvasContainerRef}
 				sx={{
 					lineHeight: 0,
 					minWidth: testValue,
