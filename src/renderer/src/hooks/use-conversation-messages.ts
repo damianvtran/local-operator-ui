@@ -85,6 +85,9 @@ export const useConversationMessages = (
 	// Track if we're preserving scroll position during loading
 	const [preserveScroll, setPreserveScroll] = useState(false);
 
+	// Track if we're currently loading more messages to prevent multiple consecutive loads
+	const isLoadingMoreRef = useRef(false);
+
 	// Store the scroll position before loading more messages
 	const scrollPositionBeforeLoadRef = useRef<number>(0);
 
@@ -300,8 +303,25 @@ export const useConversationMessages = (
 
 	// Load more messages when user scrolls to the bottom (which is the top in DOM terms with column-reverse)
 	useEffect(() => {
-		if (isNearTop && hasNextPage && !isFetchingNextPage) {
-			fetchNextPage();
+		if (
+			isNearTop &&
+			hasNextPage &&
+			!isFetchingNextPage &&
+			!isLoadingMoreRef.current
+		) {
+			// Set loading lock to prevent multiple consecutive loads
+			isLoadingMoreRef.current = true;
+
+			// Reset isNearTop to prevent continuous loading
+			setIsNearTop(false);
+
+			// Fetch the next page of messages
+			fetchNextPage().finally(() => {
+				// Release the loading lock after fetching completes (success or error)
+				setTimeout(() => {
+					isLoadingMoreRef.current = false;
+				}, 500); // Add a small delay to ensure DOM has updated
+			});
 		}
 	}, [isNearTop, hasNextPage, isFetchingNextPage, fetchNextPage]);
 
@@ -324,8 +344,8 @@ export const useConversationMessages = (
 					// - To maintain the same view, we need to adjust the scrollTop to be more negative
 					// - The adjustment should be proportional to the change in scrollHeight
 
-					// Calculate the new scroll position
-					const newScrollTop = originalScrollTop;
+					// Calculate the new scroll position - add a small offset to ensure we're not right at the edge
+					const newScrollTop = originalScrollTop + 20; // Add a small offset to prevent immediate re-triggering
 
 					// Set the scroll position
 					messagesContainerRef.current.scrollTop = newScrollTop;
