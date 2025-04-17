@@ -260,8 +260,12 @@ try {
 	sessionStore = new Store<StoreData>({
 		name: "session",
 		defaults: {
-			radient_jwt: undefined,
-			radient_jwt_expiry: undefined,
+			// Radient token fields
+			radient_access_token: undefined,
+			radient_refresh_token: undefined,
+			radient_token_expiry: undefined,
+
+			// OAuth fields
 			oauth_provider: undefined,
 			oauth_access_token: undefined,
 			oauth_id_token: undefined,
@@ -430,20 +434,31 @@ app
 
 		// --- Session storage handlers (using the already initialized sessionStore) ---
 		ipcMain.handle("get-session", () => {
-			const jwt = sessionStore.get("radient_jwt");
-			const expiry = sessionStore.get("radient_jwt_expiry");
-			return { jwt, expiry };
+			const accessToken = sessionStore.get("radient_access_token");
+			const refreshToken = sessionStore.get("radient_refresh_token");
+			const expiry = sessionStore.get("radient_token_expiry");
+			return { accessToken, refreshToken, expiry };
 		});
 
-		ipcMain.handle("store-session", (_event, jwt: string, expiry: number) => {
-			sessionStore.set("radient_jwt", jwt);
-			sessionStore.set("radient_jwt_expiry", expiry);
-			return true;
-		});
+		ipcMain.handle(
+			"store-session",
+			(_event, accessToken: string, expiry: number, refreshToken?: string) => {
+				sessionStore.set("radient_access_token", accessToken);
+				sessionStore.set("radient_token_expiry", expiry);
+
+				// Only set refresh token if provided
+				if (refreshToken) {
+					sessionStore.set("radient_refresh_token", refreshToken);
+				}
+
+				return true;
+			},
+		);
 
 		ipcMain.handle("clear-session", () => {
-			sessionStore.delete("radient_jwt");
-			sessionStore.delete("radient_jwt_expiry");
+			sessionStore.delete("radient_access_token");
+			sessionStore.delete("radient_refresh_token");
+			sessionStore.delete("radient_token_expiry");
 			return true;
 		});
 
