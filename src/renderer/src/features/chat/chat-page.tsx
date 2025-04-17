@@ -95,7 +95,7 @@ export const ChatPage: FC<ChatProps> = () => {
 		error,
 		isFetchingMore,
 		hasMoreMessages,
-		messagesContainerRef,
+		messagesContainerRef, // Get the ref from the hook
 		refetch,
 	} = useConversationMessages(conversationId);
 
@@ -117,11 +117,11 @@ export const ChatPage: FC<ChatProps> = () => {
 	});
 
 	// Use custom hook to track scroll position and show/hide scroll button
-	const {
-		containerRef: scrollContainerRef,
-		isFarFromBottom,
-		scrollToBottom,
-	} = useScrollToBottom();
+	// Pass the messagesContainerRef to the hook to ensure it tracks the correct container
+	const { isFarFromBottom, scrollToBottom } = useScrollToBottom(
+		50,
+		messagesContainerRef,
+	);
 
 	// Create a ref for the messages end element (for backwards compatibility)
 	const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -172,6 +172,7 @@ export const ChatPage: FC<ChatProps> = () => {
 	}, [agentId]);
 
 	// Scroll to bottom when switching conversations or when messages load
+	// biome-ignore lint/correctness/useExhaustiveDependencies: messagesContainerRef.current is used but we don't want to re-run on every ref change
 	useEffect(() => {
 		// Reset auto-scroll flag when conversation changes
 		if (agentId !== previousConversationIdRef.current) {
@@ -187,12 +188,12 @@ export const ChatPage: FC<ChatProps> = () => {
 			messages.length > 0
 		) {
 			// Immediately scroll to bottom (scrollTop = 0 in column-reverse)
-			if (scrollContainerRef.current) {
-				scrollContainerRef.current.scrollTop = 0;
+			if (messagesContainerRef.current) {
+				messagesContainerRef.current.scrollTop = 0;
 				didAutoScrollRef.current = true;
 			}
 		}
-	}, [agentId, isLoadingMessages, messages.length, scrollContainerRef]);
+	}, [agentId, isLoadingMessages, messages.length]);
 
 	// Reference to track previous conversation ID
 	const previousConversationIdRef = useRef<string | undefined>(undefined);
