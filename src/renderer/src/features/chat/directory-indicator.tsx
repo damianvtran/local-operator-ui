@@ -218,9 +218,22 @@ export const DirectoryIndicator: FC<DirectoryIndicatorProps> = ({
 	const [isEditing, setIsEditing] = useState(false);
 	const [directory, setDirectory] = useState(currentWorkingDirectory || "");
 	const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
+	const [homeDirectory, setHomeDirectory] = useState<string | null>(null); // State for home directory
 	const inputRef = useRef<HTMLInputElement>(null);
-	// Removed fileInputRef
 	const updateAgent = useUpdateAgent();
+
+	// Fetch home directory on mount
+	useEffect(() => {
+		const fetchHomeDir = async () => {
+			try {
+				const homeDir = await window.api.getHomeDirectory();
+				setHomeDirectory(homeDir);
+			} catch (error) {
+				console.error("Failed to fetch home directory:", error);
+			}
+		};
+		fetchHomeDir();
+	}, []);
 
 	useEffect(() => {
 		setDirectory(currentWorkingDirectory || "");
@@ -329,12 +342,34 @@ export const DirectoryIndicator: FC<DirectoryIndicatorProps> = ({
 		[handleSelectDirectory, handleCloseMenu],
 	); // Added handleCloseMenu dependency
 
-	const formatDirectory = (dir: string) => {
-		if (dir.startsWith("/Users/damiantran")) {
-			return dir.replace("/Users/damiantran", "~");
-		}
-		return dir;
-	};
+	// Updated formatDirectory to use fetched home directory
+	const formatDirectory = useCallback(
+		(dir: string) => {
+			if (homeDirectory && dir.startsWith(homeDirectory)) {
+				// Ensure consistent path separators (especially for Windows)
+				const relativePath = dir.substring(homeDirectory.length);
+				// Add separator if needed, handle both '/' and '\'
+				if (
+					relativePath.startsWith("/") ||
+					relativePath.startsWith("\\") ||
+					relativePath === ""
+				) {
+					return `~${relativePath.replace(/\\/g, "/")}`;
+				}
+				return `~/${relativePath.replace(/\\/g, "/")}`;
+			}
+			// Handle the case where the path is exactly the home directory
+			if (homeDirectory && dir === homeDirectory) {
+				return "~";
+			}
+			// Handle explicit '~' path from default directories
+			if (dir === "~") {
+				return "~";
+			}
+			return dir.replace(/\\/g, "/"); // Always use forward slashes for display
+		},
+		[homeDirectory],
+	);
 
 	if (!currentWorkingDirectory && !isEditing) {
 		return (
