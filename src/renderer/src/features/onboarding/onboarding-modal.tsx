@@ -10,6 +10,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, CircularProgress, Tooltip } from "@mui/material"; // Added CircularProgress
 import { getUserInfo } from "@renderer/api/radient/auth-api";
 import { apiConfig } from "@renderer/config";
+import { radientUserKeys } from "@renderer/hooks/use-radient-user-query";
 import { useFeatureFlags } from "@renderer/providers/feature-flags";
 import {
 	OnboardingStep,
@@ -18,6 +19,7 @@ import {
 import { useUserStore } from "@renderer/store/user-store";
 import { clearSession, getSession } from "@renderer/utils/session-store";
 import { showErrorToast } from "@renderer/utils/toast-manager";
+import { useQueryClient } from "@tanstack/react-query";
 import {
 	PrimaryButton,
 	SecondaryButton,
@@ -114,6 +116,9 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 		checkAuth();
 	}, []); // Run only once on mount
 
+	// Get the query client for invalidating queries
+	const queryClient = useQueryClient();
+
 	// On mount (or when auth check completes), check for a persisted session, validate it, and fetch user info
 	useEffect(() => {
 		// Only run if provider auth check is complete
@@ -121,7 +126,9 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 
 		const tryRestoreSession = async () => {
 			const sessionData = await getSession();
-			if (!sessionData) return; // No session, do nothing
+			if (!sessionData) {
+				return; // No session, do nothing
+			}
 
 			try {
 				// Fetch user information from Radient API
@@ -152,6 +159,9 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 								: OnboardingStep.WELCOME,
 						);
 					}
+
+					// Invalidate queries to ensure fresh data
+					queryClient.invalidateQueries({ queryKey: radientUserKeys.all });
 				} else {
 					// If userInfo is null/undefined despite having a JWT, the token might be invalid/expired
 					console.warn(
@@ -169,7 +179,8 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 	}, [
 		setCurrentStep,
 		isLoadingProviderAuth,
-		isRadientPassFlowEnabled, // Add dependency
+		isRadientPassFlowEnabled,
+		queryClient, // Add queryClient as a dependency
 	]);
 
 	// Update the previous step reference whenever currentStep changes
