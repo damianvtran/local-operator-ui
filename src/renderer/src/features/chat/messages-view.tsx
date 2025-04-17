@@ -26,6 +26,10 @@ type MessagesViewProps = {
 	conversationId?: string; // Added to support streaming message updates
 };
 
+/**
+ * Main messages container with column-reverse layout for automatic scroll-to-bottom
+ * This container handles scrolling and uses column-reverse to keep new messages at the bottom
+ */
 const MessagesContainer = styled(Box, {
 	shouldForwardProp: (prop) => prop !== "collapsed",
 })<{ collapsed?: boolean }>(({ theme, collapsed }) => ({
@@ -34,8 +38,7 @@ const MessagesContainer = styled(Box, {
 	overflow: collapsed ? "hidden" : "auto",
 	padding: collapsed ? 0 : 16,
 	display: "flex",
-	flexDirection: "column",
-	gap: 16,
+	flexDirection: "column-reverse", // Key change: reverse column direction for auto-bottom scrolling
 	backgroundColor: theme.palette.messagesView.background,
 	position: "relative",
 	"&::-webkit-scrollbar": {
@@ -50,18 +53,20 @@ const MessagesContainer = styled(Box, {
 	},
 	transform: "translateZ(0)",
 	willChange: "scroll-position",
+	overflowAnchor: "auto", // Ensures browser maintains scroll position when content changes
 }));
 
 /**
  * Container for centering and constraining message width
  * Creates a modern chat app layout with centered content
+ * The messages are displayed in normal order within this container
  */
 const CenteredMessagesContainer = styled(Box)(({ theme }) => ({
 	width: "100%",
 	maxWidth: "900px",
 	margin: "0 auto",
 	display: "flex",
-	flexDirection: "column",
+	flexDirection: "column", // Normal column direction to display messages in correct order
 	gap: 16,
 	[theme.breakpoints.down("sm")]: {
 		maxWidth: "100%",
@@ -103,7 +108,8 @@ const FullScreenCenteredContainer = styled(Box)({
 /**
  * MessagesView Component
  *
- * Displays the list of messages in a conversation
+ * Displays the list of messages in a conversation using a column-reverse layout
+ * for automatic scroll-to-bottom behavior
  */
 export const MessagesView: FC<MessagesViewProps> = ({
 	messages,
@@ -124,13 +130,16 @@ export const MessagesView: FC<MessagesViewProps> = ({
 
 	return (
 		<MessagesContainer ref={messagesContainerRef} collapsed={collapsed}>
-			{/* Loading more messages indicator */}
+			{/* Loading more messages indicator at the top (visually at the bottom with column-reverse) */}
 			{isFetchingMore && (
 				<LoadingMoreIndicator>
 					<CircularProgress size={20} sx={{ mr: 1 }} />
 					Loading more messages...
 				</LoadingMoreIndicator>
 			)}
+
+			{/* With column-reverse, the content is flipped, so we need to maintain the correct visual order */}
+			{/* The loading indicator and messages are wrapped in a container with normal column direction */}
 
 			{/* Show loading indicator when initially loading messages */}
 			{isLoadingMessages && !messages.length ? (
@@ -139,10 +148,23 @@ export const MessagesView: FC<MessagesViewProps> = ({
 				</LoadingBox>
 			) : (
 				<>
-					{/* Render messages with windowing for better performance */}
+					{/* Reference element for backwards compatibility */}
+					<div
+						ref={messagesEndRef}
+						style={{
+							height: 1,
+							width: "100%",
+							opacity: 0,
+							position: "relative",
+							pointerEvents: "none",
+						}}
+						id="messages-end-anchor"
+					/>
+
+					{/* Render messages with normal order inside the reversed container */}
 					{messages.length > 0 ? (
-						// Only render visible messages plus a buffer
 						<CenteredMessagesContainer>
+							{/* Messages are rendered in normal order */}
 							{messages.map((message, index) => (
 								<MessageItem
 									key={message.id}
@@ -159,7 +181,7 @@ export const MessagesView: FC<MessagesViewProps> = ({
 								/>
 							))}
 
-							{/* Loading indicator for new message - now inside CenteredMessagesContainer */}
+							{/* Loading indicator for new message at the bottom */}
 							{isLoading && (
 								<LoadingIndicator
 									status={jobStatus}
@@ -186,20 +208,6 @@ export const MessagesView: FC<MessagesViewProps> = ({
 							)}
 						</>
 					)}
-
-					{/* Constant anchor element at the bottom for scroll targeting */}
-					<div
-						ref={messagesEndRef}
-						style={{
-							height: 1,
-							width: "100%",
-							opacity: 0,
-							position: "relative",
-							marginTop: 8,
-							pointerEvents: "none",
-						}}
-						id="messages-end-anchor"
-					/>
 				</>
 			)}
 		</MessagesContainer>

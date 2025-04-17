@@ -79,8 +79,8 @@ export const useConversationMessages = (
 	// Reference to the messages container for scroll detection
 	const messagesContainerRef = useRef<HTMLDivElement | null>(null);
 
-	// Track if we're at the top of the messages container
-	const [isAtTop, setIsAtTop] = useState(false);
+	// Track if we're near the top of the messages container (which is now the bottom visually with column-reverse)
+	const [isNearTop, setIsNearTop] = useState(false);
 
 	// Track if we're preserving scroll position during loading
 	const [preserveScroll, setPreserveScroll] = useState(false);
@@ -218,6 +218,7 @@ export const useConversationMessages = (
 	});
 
 	// Optimized scroll handler with debouncing to reduce performance impact
+	// Adapted for column-reverse layout
 	const handleScroll = useCallback(() => {
 		if (!messagesContainerRef.current || !conversationId) return;
 
@@ -242,14 +243,38 @@ export const useConversationMessages = (
 				// Get current pagination state
 				const paginationState = getPagination(conversationId);
 
-				// Check if we're at the top of the container and there are more pages to load
-				if (scrollTop < 50 && paginationState.hasMore) {
+				// In column-reverse layout:
+				// - scrollTop can be 0 or negative at the bottom (newest messages)
+				// - As you scroll up (towards older messages), scrollTop becomes more negative
+				// - When you reach the top (oldest messages), scrollTop will be at its most negative value
+
+				// Handle both positive and negative scrollTop values
+				// For negative scrollTop (which happens in some browsers with column-reverse):
+				// - The most negative value is at the top (oldest messages)
+				// - 0 is at the bottom (newest messages)
+
+				// Calculate the maximum possible scroll value (most negative when scrollTop is negative)
+				const maxScrollValue = Math.abs(scrollHeight - clientHeight);
+
+				// Calculate how close we are to the top (oldest messages)
+				// For negative scrollTop: we're at the top when scrollTop is close to -maxScrollValue
+				// For positive scrollTop: we're at the top when scrollTop is close to maxScrollValue
+				const absScrollTop = Math.abs(scrollTop);
+				const distanceFromTop =
+					scrollTop < 0
+						? maxScrollValue - absScrollTop // For negative scrollTop
+						: maxScrollValue - scrollTop; // For positive scrollTop
+
+				// Consider "near top" if within 100px of the top edge
+				const isNearTopEdge = distanceFromTop < 100;
+
+				if (isNearTopEdge && paginationState.hasMore) {
 					// Save the current scroll position before loading more messages
-					scrollPositionBeforeLoadRef.current = scrollHeight - clientHeight;
+					scrollPositionBeforeLoadRef.current = scrollTop;
 					setPreserveScroll(true);
-					setIsAtTop(true);
-				} else {
-					setIsAtTop(false);
+					setIsNearTop(true);
+				} else if (!isNearTopEdge) {
+					setIsNearTop(false);
 				}
 			}
 
@@ -273,28 +298,37 @@ export const useConversationMessages = (
 		};
 	}, [handleScroll]);
 
-	// Load more messages when user scrolls to the top
+	// Load more messages when user scrolls to the bottom (which is the top in DOM terms with column-reverse)
 	useEffect(() => {
-		if (isAtTop && hasNextPage && !isFetchingNextPage) {
+		if (isNearTop && hasNextPage && !isFetchingNextPage) {
 			fetchNextPage();
 		}
-	}, [isAtTop, hasNextPage, isFetchingNextPage, fetchNextPage]);
+	}, [isNearTop, hasNextPage, isFetchingNextPage, fetchNextPage]);
 
 	// Optimized scroll position restoration after loading more messages
+	// Adapted for column-reverse layout with support for negative scrollTop values
 	useEffect(() => {
 		if (preserveScroll && !isFetchingNextPage && messagesContainerRef.current) {
 			// Use requestAnimationFrame for smoother updates
 			requestAnimationFrame(() => {
 				if (messagesContainerRef.current) {
-					// Calculate new position - we want to maintain the same relative position
-					// after new messages are loaded at the top
-					const newScrollTop =
-						messagesContainerRef.current.scrollHeight -
-						scrollPositionBeforeLoadRef.current;
+					// In column-reverse, we want to maintain the same absolute scroll position
+					// when new content is added at the top (which is the bottom in DOM terms)
+					// This keeps the user looking at the same messages after loading more history
+
+					// Get the current scroll dimensions
+					const originalScrollTop = scrollPositionBeforeLoadRef.current;
+
+					// For negative scrollTop values:
+					// - When more content is loaded, scrollHeight increases
+					// - To maintain the same view, we need to adjust the scrollTop to be more negative
+					// - The adjustment should be proportional to the change in scrollHeight
+
+					// Calculate the new scroll position
+					const newScrollTop = originalScrollTop;
 
 					// Set the scroll position
-					messagesContainerRef.current.scrollTop =
-						newScrollTop > 0 ? newScrollTop : 0;
+					messagesContainerRef.current.scrollTop = newScrollTop;
 
 					// Reset the preserve scroll flag
 					setPreserveScroll(false);
@@ -304,6 +338,7 @@ export const useConversationMessages = (
 	}, [preserveScroll, isFetchingNextPage]);
 
 	// Restore saved scroll position when switching back to a conversation
+	// Works with both positive and negative scrollTop values
 	useEffect(() => {
 		if (conversationId && messagesContainerRef.current && !isLoading) {
 			const savedPosition = getScrollPosition(conversationId);
@@ -312,7 +347,16 @@ export const useConversationMessages = (
 				// Wait for the DOM to update
 				setTimeout(() => {
 					if (messagesContainerRef.current) {
+						// Restore the saved position
 						messagesContainerRef.current.scrollTop = savedPosition;
+					}
+				}, 50);
+			} else {
+				// If no saved position, scroll to bottom
+				// For column-reverse, this means scrollTop = 0
+				setTimeout(() => {
+					if (messagesContainerRef.current) {
+						messagesContainerRef.current.scrollTop = 0;
 					}
 				}, 50);
 			}

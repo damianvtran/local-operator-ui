@@ -30,12 +30,6 @@ type UseMessageInputOptions = {
 	 * Will be called when a message is submitted
 	 */
 	scrollToBottom?: () => void;
-
-	/**
-	 * Function to force scroll to the bottom regardless of current position
-	 * This is used specifically when sending a message
-	 */
-	forceScrollToBottom?: () => void;
 };
 
 /**
@@ -49,7 +43,6 @@ export const useMessageInput = ({
 	messages,
 	onSubmit,
 	scrollToBottom,
-	forceScrollToBottom,
 }: UseMessageInputOptions) => {
 	// State for the current input value
 	const [inputValue, setInputValue] = useState("");
@@ -91,15 +84,11 @@ export const useMessageInput = ({
 		setHistoryIndex(null);
 		draftMessageRef.current = "";
 
-		// Force scroll to bottom when sending a message, regardless of current scroll position
-		if (forceScrollToBottom) {
-			forceScrollToBottom();
-		}
-		// Fallback to regular scrollToBottom if forceScrollToBottom is not available
-		else if (scrollToBottom) {
+		// Scroll to bottom when sending a message
+		if (scrollToBottom) {
 			scrollToBottom();
 		}
-	}, [inputValue, onSubmit, scrollToBottom, forceScrollToBottom]);
+	}, [inputValue, onSubmit, scrollToBottom]);
 
 	/**
 	 * Get the current cursor position in the textarea

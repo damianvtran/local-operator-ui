@@ -334,7 +334,6 @@ export const MessageInput: FC<MessageInputProps> = ({
 			setAttachments([]);
 		},
 		scrollToBottom,
-		forceScrollToBottom: scrollToBottom,
 	});
 
 	const handleSubmit = (e: FormEvent) => {
