@@ -1,7 +1,8 @@
 import { alpha } from "@mui/material";
 import { styled } from "@mui/material/styles";
-import type { FC } from "react";
+import { type FC, useState } from "react";
 import type { VideoAttachmentProps } from "./types";
+import { InvalidAttachment } from "./invalid-attachment";
 
 /**
  * Styled component for video attachments
@@ -35,22 +36,38 @@ const getFileName = (path: string): string => {
 /**
  * Component for displaying video attachments
  * Renders a video player with controls and preview functionality
+ * Handles video loading errors and displays an InvalidAttachment component if the video fails to load
  */
 export const VideoAttachment: FC<VideoAttachmentProps> = ({
 	file,
 	src,
 	onClick,
 }) => {
+	// State to track if the video has failed to load
+	const [hasError, setHasError] = useState(false);
+
 	const handleClick = () => {
 		onClick(file);
 	};
 
+	const handleError = () => {
+		// Set error state when video fails to load
+		setHasError(true);
+	};
+
+	// If the video failed to load, show the InvalidAttachment component
+	if (hasError) {
+		return <InvalidAttachment file={file} />;
+	}
+
+	// Otherwise, render the video with an error handler
 	return (
 		<AttachmentVideo
 			src={src}
 			controls
 			preload="metadata"
 			onClick={handleClick}
+			onError={handleError}
 			title={`Click to open ${getFileName(file)}`}
 		/>
 	);
