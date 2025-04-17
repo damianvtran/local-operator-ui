@@ -404,17 +404,21 @@ export const DirectoryIndicator: FC<DirectoryIndicatorProps> = ({
 			) : (
 				<>
 					<Tooltip
-						title="Click to select from menu, or click folder icon to browse"
+						title="Click to open directory browser"
 						arrow
 						placement="right"
 					>
 						<DirectoryChip
-							icon={<FontAwesomeIcon icon={faFolderOpen} size="sm" />}
+							icon={
+								<FontAwesomeIcon
+									icon={faFolderOpen}
+									size="sm"
+									onClick={handleBrowseForDirectory}
+								/>
+							}
 							label={formatDirectory(currentWorkingDirectory || "")}
 							onClick={handleOpenMenu}
 							clickable
-							deleteIcon={<FontAwesomeIcon icon={faFolderTree} size="2xs" />}
-							onDelete={handleBrowseForDirectory}
 						/>
 					</Tooltip>
 
@@ -504,9 +508,17 @@ export const DirectoryIndicator: FC<DirectoryIndicatorProps> = ({
 									<MenuItemIcon>
 										<FontAwesomeIcon icon={faClock} size="sm" />
 									</MenuItemIcon>
-									<Typography variant="body2">
-										{formatDirectory(path)}
-									</Typography>
+									<Tooltip
+										title={formatDirectory(path)}
+										arrow
+										placement="right"
+									>
+										<Typography variant="body2">
+											{formatDirectory(path).length > 60
+												? `...${formatDirectory(path).substring(formatDirectory(path).length - 57)}`
+												: formatDirectory(path)}
+										</Typography>
+									</Tooltip>
 								</MenuItem>
 							))
 						) : (
