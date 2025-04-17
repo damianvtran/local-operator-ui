@@ -7,8 +7,12 @@ import { LogFileType, logger } from "./backend/logger";
  * Type definition for store data
  */
 export type StoreData = {
-	radient_jwt?: string;
-	radient_jwt_expiry?: number;
+	// Radient token fields
+	radient_access_token?: string;
+	radient_refresh_token?: string;
+	radient_token_expiry?: number;
+
+	// OAuth fields
 	oauth_provider?: "google" | "microsoft";
 	oauth_access_token?: string;
 	oauth_id_token?: string;

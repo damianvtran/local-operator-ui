@@ -3,6 +3,7 @@
  * @description
  * React Query hook for fetching and managing Radient user information.
  * Provides a stable, cached, and automatically refreshing user data source.
+ * Handles token refresh when access tokens expire.
  */
 
 import { resetQueryCache } from "@renderer/api/query-client";
@@ -10,7 +11,11 @@ import { createRadientClient } from "@renderer/api/radient";
 import { apiConfig } from "@renderer/config";
 import type { RadientUser } from "@renderer/providers/auth";
 import { useFeatureFlags } from "@renderer/providers/feature-flags";
-import { clearSession, getSession } from "@renderer/utils/session-store";
+import {
+	clearSession,
+	getSession,
+	updateAccessToken,
+} from "@renderer/utils/session-store";
 import {
 	showErrorToast,
 	showSuccessToast,
@@ -22,6 +27,7 @@ export const radientUserKeys = {
 	all: ["radient-user"] as const,
 	user: () => [...radientUserKeys.all, "user"] as const,
 	session: () => [...radientUserKeys.all, "session"] as const,
+	tokens: () => [...radientUserKeys.all, "tokens"] as const,
 };
 
 /**
@@ -37,13 +43,70 @@ export const useRadientUserQuery = () => {
 	// Create the Radient API client
 	const radientClient = createRadientClient(apiConfig.radientBaseUrl);
 
-	// Query for the session token
+	// Mutation for refreshing the access token
+	const refreshTokenMutation = useMutation({
+		mutationFn: async (refreshToken: string) => {
+			console.log("Refreshing access token...");
+			const response = await radientClient.refreshToken(refreshToken);
+
+			// Store the new access token and refresh token (if provided)
+			await updateAccessToken(
+				response.result.access_token,
+				response.result.expires_in,
+			);
+
+			// If a new refresh token was provided, update it in the session
+			if (response.result.refresh_token) {
+				await updateAccessToken(
+					response.result.access_token,
+					response.result.expires_in,
+					response.result.refresh_token,
+				);
+			}
+
+			return response.result;
+		},
+		onSuccess: () => {
+			console.log("Token refresh successful");
+			// Invalidate the session query to trigger a refetch with the new token
+			queryClient.invalidateQueries({
+				queryKey: radientUserKeys.session(),
+			});
+		},
+		onError: (error) => {
+			console.error("Token refresh failed:", error);
+			// If refresh fails, clear the session and force re-authentication
+			clearSession();
+			queryClient.invalidateQueries({
+				queryKey: radientUserKeys.all,
+			});
+
+			const errorMessage =
+				error instanceof Error ? error.message : String(error);
+			showErrorToast(`Session expired: ${errorMessage}`);
+		},
+	});
+
+	// Query for the session data
 	const sessionQuery = useQuery({
 		queryKey: radientUserKeys.session(),
 		queryFn: async () => {
 			try {
-				// Directly get the session. It returns null if invalid/expired.
-				return await getSession();
+				// Get the session data (access token, refresh token, expiry)
+				const session = await getSession();
+
+				// If no session exists, return null
+				if (!session) return null;
+
+				// If the access token is expired but we have a refresh token, try to refresh
+				if (Date.now() > session.expiry && session.refreshToken) {
+					console.log("Access token expired, attempting refresh");
+					// Don't await here - we'll return the current session and let the refresh happen in the background
+					// The query will be invalidated and refetched when the refresh completes
+					refreshTokenMutation.mutate(session.refreshToken);
+				}
+
+				return session;
 			} catch (error) {
 				console.error("Failed to get session:", error);
 				return null; // Return null on error
@@ -64,10 +127,11 @@ export const useRadientUserQuery = () => {
 		queryKey: radientUserKeys.user(),
 		queryFn: async (): Promise<RadientUser | null> => {
 			try {
-				const token = sessionQuery.data;
-				if (!token) return null;
+				const session = sessionQuery.data;
+				if (!session) return null;
 
-				const response = await radientClient.getUserInfo(token);
+				// Use the access token to get user info
+				const response = await radientClient.getUserInfo(session.accessToken);
 
 				// The API response is already handled by the client
 				// If we get here, the request was successful
@@ -76,18 +140,28 @@ export const useRadientUserQuery = () => {
 					identity: response.result.identity,
 				};
 			} catch (error) {
-				// If we get an authentication error, clear the session
+				// If we get an authentication error, try to refresh the token if we have a refresh token
 				if (
 					error instanceof Error &&
 					(error.message.includes("401") ||
 						error.message.includes("unauthorized") ||
 						error.message.includes("invalid token"))
 				) {
-					clearSession();
-					// Invalidate the session query to trigger a refetch
-					queryClient.invalidateQueries({
-						queryKey: radientUserKeys.session(),
-					});
+					const session = sessionQuery.data;
+
+					// If we have a refresh token, try to refresh the access token
+					if (session?.refreshToken && !refreshTokenMutation.isPending) {
+						console.log("Authentication error, attempting token refresh");
+						refreshTokenMutation.mutate(session.refreshToken);
+					} else {
+						// No refresh token or refresh already in progress, clear the session
+						console.log("No refresh token available, clearing session");
+						clearSession();
+						// Invalidate the session query to trigger a refetch
+						queryClient.invalidateQueries({
+							queryKey: radientUserKeys.session(),
+						});
+					}
 				}
 
 				const errorMessage =
@@ -96,15 +170,20 @@ export const useRadientUserQuery = () => {
 				throw error;
 			}
 		},
-		// Only run this query if we have a session token
-		enabled: isRadientPassEnabled && !!sessionQuery.data,
+		// Only run this query if we have a session with an access token
+		enabled: isRadientPassEnabled && !!sessionQuery.data?.accessToken,
 		// Keep the user data fresh but not too long
 		staleTime: 10 * 1000, // 10 seconds
 		// Refetch more frequently
 		refetchInterval: 10 * 1000, // 10 seconds
-		// Don't retry on 401 errors
+		// Don't retry on 401 errors if we don't have a refresh token
 		retry: (failureCount, error) => {
+			// If we have a refresh token, let the error handler above handle it
+			const session = sessionQuery.data;
+			const hasRefreshToken = !!session?.refreshToken;
+
 			if (
+				!hasRefreshToken &&
 				error instanceof Error &&
 				(error.message.includes("401") ||
 					error.message.includes("unauthorized") ||
@@ -126,6 +205,21 @@ export const useRadientUserQuery = () => {
 	// Mutation for signing out
 	const signOutMutation = useMutation({
 		mutationFn: async () => {
+			// If we have a refresh token, try to revoke it
+			const session = sessionQuery.data;
+			if (session?.refreshToken) {
+				try {
+					await radientClient.revokeToken(
+						session.refreshToken,
+						"refresh_token",
+					);
+				} catch (error) {
+					console.error("Failed to revoke refresh token:", error);
+					// Continue with sign out even if revoke fails
+				}
+			}
+
+			// Clear the local session
 			clearSession();
 			return true;
 		},
@@ -154,14 +248,19 @@ export const useRadientUserQuery = () => {
 	return {
 		// User data
 		user: userQuery.data,
-		sessionToken: sessionQuery.data,
+		session: sessionQuery.data,
 
 		// Loading and error states
 		// Loading is true if session is loading, OR if session is loaded but user info is still loading
 		isLoading:
-			sessionQuery.isLoading || (hasLocalSession && userQuery.isLoading),
-		isRefetching: sessionQuery.isRefetching || userQuery.isRefetching,
-		error: sessionQuery.error || userQuery.error,
+			sessionQuery.isLoading ||
+			refreshTokenMutation.isPending ||
+			(hasLocalSession && userQuery.isLoading),
+		isRefetching:
+			sessionQuery.isRefetching ||
+			userQuery.isRefetching ||
+			refreshTokenMutation.isPending,
+		error: sessionQuery.error || userQuery.error || refreshTokenMutation.error,
 
 		// Authentication state (defined above)
 		hasLocalSession,
@@ -170,9 +269,12 @@ export const useRadientUserQuery = () => {
 		// Actions
 		signOut: signOutMutation.mutate,
 		refreshUser: refreshUserMutation.mutate,
+		refreshToken: (refreshToken: string) =>
+			refreshTokenMutation.mutate(refreshToken),
 
 		// Raw query objects for advanced usage
 		sessionQuery,
 		userQuery,
+		refreshTokenMutation,
 	};
 };

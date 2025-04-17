@@ -120,14 +120,14 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 		if (isLoadingProviderAuth) return;
 
 		const tryRestoreSession = async () => {
-			const jwt = await getSession();
-			if (!jwt) return; // No session, do nothing
+			const sessionData = await getSession();
+			if (!sessionData) return; // No session, do nothing
 
 			try {
 				// Fetch user information from Radient API
 				const userInfoResponse = await getUserInfo(
 					apiConfig.radientBaseUrl,
-					jwt,
+					sessionData.accessToken,
 				);
 				const userInfo = userInfoResponse.result;
 
