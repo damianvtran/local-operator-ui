@@ -1,9 +1,8 @@
-import { markdown } from "@codemirror/lang-markdown";
 import { Box } from "@mui/material";
+import { loadLanguageExtensions } from "@renderer/utils/load-language-extensions";
 import { basicLight } from "@uiw/codemirror-theme-basic";
-import CodeMirror from "@uiw/react-codemirror";
-import type { FC } from "react";
-import { useCallback, useEffect, useState } from "react";
+import CodeMirror, { type Extension } from "@uiw/react-codemirror";
+import { type FC, useEffect, useState } from "react";
 import type { MarkdownDocument } from "./types";
 
 type MarkdownCanvasContentProps = {
@@ -20,24 +19,25 @@ type MarkdownCanvasContentProps = {
 export const MarkdownCanvasReactContent: FC<MarkdownCanvasContentProps> = ({
 	document,
 }) => {
-	const [value, setValue] = useState<MarkdownDocument | null>(document);
+	const [value, setValue] = useState<MarkdownDocument | null>(null);
+	const [languageExtensions, setLanguageExtensions] = useState<Extension[]>([]);
 
-  useEffect(
-    () => {
-      if (document.id !== value?.id) {
-        setValue(document)
-      }
-    },
-      [document, value?.id]
-  )
+	useEffect(() => {
+		if (document.id !== value?.id) {
+			setValue(document);
+			const newLangExtension = loadLanguageExtensions(document.title);
+
+			if (!newLangExtension) return;
+			setLanguageExtensions([newLangExtension]);
+		}
+	}, [document, value?.id]);
 
 	return (
 		<Box
-			id="HELP"
 			sx={({ typography }) => ({
 				flexGrow: 1,
-
-				fontSize: typography.pxToRem(14),
+				fontSize: typography.pxToRem(12),
+				overflow: "auto",
 
 				"& > *": {
 					height: "100%",
@@ -45,11 +45,11 @@ export const MarkdownCanvasReactContent: FC<MarkdownCanvasContentProps> = ({
 			})}
 		>
 			<CodeMirror
-				value={value?.content ?? ''}
+				value={value?.content ?? ""}
 				height="100%"
 				theme={basicLight}
 				editable={false}
-				extensions={[markdown({})]}
+				extensions={languageExtensions}
 			/>
 		</Box>
 	);

@@ -3,6 +3,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, Typography, alpha } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import { useCanvasStore } from "@renderer/store/canvas-store";
+import { loadLanguageExtensions } from "@renderer/utils/load-language-extensions";
 import type { FC } from "react";
 import { useCallback } from "react";
 import type { FileAttachmentProps } from "./types";
@@ -75,8 +76,6 @@ const getFileName = (path: string): string => {
 	return parts[parts.length - 1];
 };
 
-const markdownRegex = new RegExp(/\.md$/);
-
 /**
  * Component for displaying non-image file attachments
  */
@@ -85,32 +84,30 @@ export const FileAttachment: FC<FileAttachmentProps> = ({ file, onClick }) => {
 
 	// Handle click on the file attachment
 	const handleClick = useCallback(async () => {
-		const isMarkdown = markdownRegex.test(file);
+		const fallbackAction = (err: string) => {
+			err && console.error("Error reading file:", err);
+			onClick(file);
+		};
 
-		if (isMarkdown) {
-			try {
-				const normalizedPath = file.startsWith("file://")
-					? file.substring(7)
-					: file;
-				const title = getFileName(file);
-				const result = await window.api.readFile(normalizedPath);
+		try {
+			const normalizedPath = file.startsWith("file://")
+				? file.substring(7)
+				: file;
+			const title = getFileName(file);
+			const result = await window.api.readFile(normalizedPath);
 
-				if (result.success) {
-					openDocument(title, result.data, normalizedPath);
-					openCanvas();
-				} else {
-					console.error("Error reading file:", result.error);
-					onClick(file);
-				}
-			} catch (error) {
-				console.error("Error opening markdown file:", error);
-				onClick(file);
+			if (!result.success || !loadLanguageExtensions(file)) {
+				const message =
+					result.error instanceof Error ? result.message : String(result);
+				return fallbackAction(message);
 			}
-			return;
-		}
 
-		// For non-markdown files, use the default handler
-		onClick(file);
+			openDocument(title, result.data, normalizedPath);
+			openCanvas();
+		} catch (error: unknown) {
+			const message = error instanceof Error ? error.message : String(error);
+			return fallbackAction(message);
+		}
 	}, [file, onClick, openDocument, openCanvas]);
 
 	return (
