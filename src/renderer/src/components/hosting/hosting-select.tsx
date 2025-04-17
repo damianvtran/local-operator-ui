@@ -17,6 +17,7 @@ import {
 	styled,
 } from "@mui/material";
 import { useCredentials } from "@renderer/hooks/use-credentials";
+import { useModels } from "@renderer/hooks/use-models";
 import type { FC, SyntheticEvent } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -277,6 +278,9 @@ export const HostingSelect: FC<HostingSelectProps> = ({
 		}
 	}, [selectedOption]);
 
+	// Get access to the models refresh function
+	const { refreshModels } = useModels();
+
 	// Handle option change
 	const handleChange = async (_event: SyntheticEvent, newValue: unknown) => {
 		if (!newValue) return;
@@ -289,7 +293,23 @@ export const HostingSelect: FC<HostingSelectProps> = ({
 			// Reset credential fetch attempts when hosting provider changes
 			credentialFetchAttemptsRef.current = 0;
 
+			// Save the new hosting provider
 			await onSave(option.id);
+
+			// Force refresh models when hosting provider changes
+			if (option.id !== value) {
+				console.log(
+					`Hosting provider changed to ${option.id}, refreshing models`,
+				);
+				try {
+					await refreshModels();
+				} catch (error) {
+					console.error(
+						"Error refreshing models after hosting provider change:",
+						error,
+					);
+				}
+			}
 
 			// User has selected an option, so they're no longer typing
 			setIsUserTyping(false);
@@ -350,7 +370,26 @@ export const HostingSelect: FC<HostingSelectProps> = ({
 			// If it's a new custom value, use the input value as the ID
 			try {
 				setIsSubmitting(true);
-				await onSave(inputValue.trim());
+				const newHostingId = inputValue.trim();
+
+				// Save the new hosting provider
+				await onSave(newHostingId);
+
+				// Force refresh models when hosting provider changes
+				if (newHostingId !== value) {
+					console.log(
+						`Custom hosting provider changed to ${newHostingId}, refreshing models`,
+					);
+					try {
+						await refreshModels();
+					} catch (error) {
+						console.error(
+							"Error refreshing models after custom hosting provider change:",
+							error,
+						);
+					}
+				}
+
 				setIsUserTyping(false);
 			} catch (error) {
 				console.error("Error saving custom hosting provider:", error);

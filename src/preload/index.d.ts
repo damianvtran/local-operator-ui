@@ -113,6 +113,10 @@ declare global {
 					}) => void,
 				) => () => void; // Returns a cleanup function
 			};
+			/** Opens a native dialog to select a directory */
+			selectDirectory: () => Promise<string | undefined>;
+			/** Gets the user's home directory path */
+			getHomeDirectory: () => Promise<string>;
 		};
 	}
 }

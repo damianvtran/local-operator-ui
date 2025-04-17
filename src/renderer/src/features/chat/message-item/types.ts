@@ -146,6 +146,13 @@ export type VideoAttachmentProps = {
 };
 
 /**
+ * Props for the InvalidAttachment component
+ */
+export type InvalidAttachmentProps = {
+	file: string;
+};
+
+/**
  * Props for the MessageTimestamp component
  */
 export type MessageTimestampProps = {

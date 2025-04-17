@@ -177,9 +177,6 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 	// Force refresh models when hosting provider changes
 	const { refreshModels, isLoading: isModelsLoading } = useModels();
 	const previousHostingIdRef = useRef<string | null>(null);
-	const refreshTimeRef = useRef<number | null>(null);
-	const refreshAttemptCountRef = useRef<number>(0);
-	const MAX_REFRESH_ATTEMPTS = 3;
 	const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 	const isInitialMountRef = useRef(true);
 
@@ -195,43 +192,28 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 		if (hostingId && previousHostingIdRef.current !== hostingId) {
 			previousHostingIdRef.current = hostingId;
 
-			// Reset refresh attempt counter when hosting provider changes
-			refreshAttemptCountRef.current = 0;
-
 			// Clear any existing timeout to prevent multiple calls
 			if (refreshTimeoutRef.current) {
 				clearTimeout(refreshTimeoutRef.current);
 				refreshTimeoutRef.current = null;
 			}
 
-			// Use a debounced refresh to prevent multiple rapid calls
+			// Use a short debounce to prevent multiple rapid calls
+			// but ensure models are refreshed quickly when hosting provider changes
 			refreshTimeoutRef.current = setTimeout(() => {
-				// Add a check to prevent refreshing if we've refreshed recently
-				const now = Date.now();
-				const lastRefreshTime = refreshTimeRef.current;
-				const THROTTLE_DURATION = 5000; // 5 second cooldown (increased from 2s)
-
-				// Prevent infinite loops by limiting the number of refresh attempts
-				if (refreshAttemptCountRef.current >= MAX_REFRESH_ATTEMPTS) {
-					console.warn(
-						`Exceeded maximum model refresh attempts (${MAX_REFRESH_ATTEMPTS}) for hosting provider ${hostingId}`,
-					);
-					return;
-				}
-
-				// Only refresh if we haven't refreshed recently and we're not currently loading models
-				if (
-					(!lastRefreshTime || now - lastRefreshTime > THROTTLE_DURATION) &&
-					!isModelsLoading
-				) {
-					refreshAttemptCountRef.current += 1;
-					refreshModels();
-					refreshTimeRef.current = now;
+				// Always refresh models when hosting provider changes
+				if (!isModelsLoading) {
+					console.log(`Refreshing models for hosting provider: ${hostingId}`);
+					refreshModels().catch((error) => {
+						console.error("Error refreshing models:", error);
+					});
+				} else {
+					console.log("Models already being refreshed, skipping refresh");
 				}
 
 				// Clear the timeout reference after it's executed
 				refreshTimeoutRef.current = null;
-			}, 500); // Increased delay to batch potential multiple changes
+			}, 300); // Short delay to batch potential multiple changes
 
 			return () => {
 				if (refreshTimeoutRef.current) {
