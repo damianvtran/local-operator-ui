@@ -93,17 +93,11 @@ export const useMessageInput = ({
 
 		// Force scroll to bottom when sending a message, regardless of current scroll position
 		if (forceScrollToBottom) {
-			// Use multiple approaches to ensure scrolling works in all scenarios
 			forceScrollToBottom();
-
-			// Additional delayed calls for hooks and delayed rendering
-			setTimeout(() => forceScrollToBottom?.(), 300);
 		}
-
 		// Fallback to regular scrollToBottom if forceScrollToBottom is not available
 		else if (scrollToBottom) {
 			scrollToBottom();
-			setTimeout(() => scrollToBottom?.(), 300);
 		}
 	}, [inputValue, onSubmit, scrollToBottom, forceScrollToBottom]);
 
