@@ -109,18 +109,40 @@ export const useScrollToBottom = (
 	/**
 	 * Immediately scroll to bottom without animation
 	 * Used for initial load and when we need to ensure the scroll happens immediately
+	 * Enhanced to be more robust with DOM updates
 	 */
 	const forceScrollToBottom = useCallback(() => {
-		if (!containerRef.current || isScrollingRef.current) return;
+		if (!containerRef.current) return;
 
+		// Allow force scroll even if another scroll is in progress
+		// This is important for message submission where we want to ensure scrolling happens
 		isScrollingRef.current = true;
 		shouldAutoScrollRef.current = true;
+
+		// Get current scroll height before attempting to scroll
+		const initialScrollHeight = containerRef.current.scrollHeight;
 
 		// Direct scrollTop manipulation for immediate scroll
 		containerRef.current.scrollTop = containerRef.current.scrollHeight;
 
+		// Check if scroll height changed during the operation
+		// This helps detect if content was added during scrolling
+		const currentScrollHeight = containerRef.current.scrollHeight;
+		if (currentScrollHeight > initialScrollHeight) {
+			// If content height increased, scroll again to catch the new content
+			containerRef.current.scrollTop = currentScrollHeight;
+		}
+
 		// Reset scrolling flag after a short delay
 		setTimeout(() => {
+			if (containerRef.current) {
+				// Final check to ensure we're at the bottom after any DOM updates
+				const finalScrollHeight = containerRef.current.scrollHeight;
+				if (finalScrollHeight > currentScrollHeight) {
+					containerRef.current.scrollTop = finalScrollHeight;
+				}
+			}
+
 			isScrollingRef.current = false;
 			updateScrollPosition();
 		}, 50);

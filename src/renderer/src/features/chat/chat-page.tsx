@@ -317,6 +317,10 @@ export const ChatPage: FC<ChatProps> = () => {
 			// Add user message to chat store
 			addMessage(conversationId, userMessage);
 
+			// Force scroll to bottom immediately after adding the message
+			// This ensures the user sees their message right away
+			forceScrollToBottom();
+
 			// Set loading state
 			setIsLoading(true);
 
@@ -407,6 +411,7 @@ export const ChatPage: FC<ChatProps> = () => {
 			apiClient,
 			setCurrentJobId,
 			configData,
+			forceScrollToBottom,
 		],
 	);
 
