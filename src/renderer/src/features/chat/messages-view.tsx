@@ -27,6 +27,23 @@ type MessagesViewProps = {
 };
 
 /**
+ * Wrapper container that holds both the scrollable messages and the loading indicator
+ * This allows the loading indicator to be positioned absolutely relative to this wrapper
+ */
+const MessagesViewWrapper = styled(Box, {
+	shouldForwardProp: (prop) => prop !== "collapsed",
+})<{ collapsed?: boolean }>(({ theme, collapsed }) => ({
+	height: collapsed ? 0 : "100%",
+	flexGrow: collapsed ? 0 : 1,
+	overflow: collapsed ? "hidden" : "auto",
+	position: "relative",
+	backgroundColor: theme.palette.messagesView.background,
+	display: "flex",
+	alignItems: "center",
+	justifyContent: "center",
+}));
+
+/**
  * Main messages container with column-reverse layout for automatic scroll-to-bottom
  * This container handles scrolling and uses column-reverse to keep new messages at the bottom
  */
@@ -37,6 +54,7 @@ const MessagesContainer = styled(Box, {
 	height: collapsed ? 0 : "100%",
 	overflow: collapsed ? "hidden" : "auto",
 	padding: collapsed ? 0 : 16,
+	width: "100%",
 	display: "flex",
 	flexDirection: "column-reverse", // Key change: reverse column direction for auto-bottom scrolling
 	backgroundColor: theme.palette.messagesView.background,
@@ -82,9 +100,15 @@ const CenteredMessagesContainer = styled(Box)(({ theme }) => ({
 const LoadingMoreIndicator = styled(Box)(({ theme }) => ({
 	display: "flex",
 	alignItems: "center",
-	justifyContent: "center",
-	padding: 16,
+	justifyContent: "flex-start",
+	padding: "8px 12px",
 	color: theme.palette.text.secondary,
+	position: "absolute",
+	top: 16,
+	left: 16,
+	zIndex: 10,
+	fontSize: "0.85rem",
+	maxWidth: "fit-content",
 }));
 
 const LoadingBox = styled(Box)({
@@ -129,74 +153,62 @@ export const MessagesView: FC<MessagesViewProps> = ({
 		messages.length === 0 && !isLoadingMessages && !isFetchingMore;
 
 	return (
-		<MessagesContainer ref={messagesContainerRef} collapsed={collapsed}>
-			{/* With column-reverse, the content is flipped, so we need to maintain the correct visual order */}
-			{/* The loading indicator and messages are wrapped in a container with normal column direction */}
+		<MessagesViewWrapper collapsed={collapsed}>
+			{/* Fixed position loading indicator for fetching more messages */}
+			{isFetchingMore && (
+				<LoadingMoreIndicator>
+					<CircularProgress size={16} sx={{ mr: 1 }} />
+					Loading older messages...
+				</LoadingMoreIndicator>
+			)}
 
-			{/* Show loading indicator when initially loading messages */}
-			{isLoadingMessages && !messages.length ? (
-				<LoadingBox>
-					<CircularProgress />
-				</LoadingBox>
-			) : (
-				<>
-					{/* Reference element for backwards compatibility */}
-					<div
-						ref={messagesEndRef}
-						style={{
-							height: 1,
-							width: "100%",
-							opacity: 0,
-							position: "relative",
-							pointerEvents: "none",
-						}}
-						id="messages-end-anchor"
-					/>
+			{/* Scrollable messages container */}
+			<MessagesContainer ref={messagesContainerRef} collapsed={collapsed}>
+				{/* With column-reverse, the content is flipped, so we need to maintain the correct visual order */}
+				{/* The loading indicator and messages are wrapped in a container with normal column direction */}
 
-					{/* Render messages with normal order inside the reversed container */}
-					{messages.length > 0 ? (
-						<CenteredMessagesContainer>
-							{/* Loading more messages indicator at the top (visually at the top when scrolled up) */}
-							{isFetchingMore && (
-								<LoadingMoreIndicator>
-									<CircularProgress size={20} sx={{ mr: 1 }} />
-									Loading more messages...
-								</LoadingMoreIndicator>
-							)}
+				{/* Show loading indicator when initially loading messages */}
+				{isLoadingMessages && !messages.length ? (
+					<LoadingBox>
+						<CircularProgress />
+					</LoadingBox>
+				) : (
+					<>
+						{/* Reference element for backwards compatibility */}
+						<div
+							ref={messagesEndRef}
+							style={{
+								height: 1,
+								width: "100%",
+								opacity: 0,
+								position: "relative",
+								pointerEvents: "none",
+							}}
+							id="messages-end-anchor"
+						/>
 
-							{/* Messages are rendered in normal order */}
-							{messages.map((message, index) => (
-								<MessageItem
-									key={message.id}
-									message={{
-										...message,
-										conversation_id: conversationId, // Add conversation ID to message
-									}}
-									isLastMessage={index === messages.length - 1}
-									onMessageComplete={() => {
-										if (refetch) {
-											refetch();
-										}
-									}}
-								/>
-							))}
+						{/* Render messages with normal order inside the reversed container */}
+						{messages.length > 0 ? (
+							<CenteredMessagesContainer>
+								{/* Messages are rendered in normal order */}
+								{messages.map((message, index) => (
+									<MessageItem
+										key={message.id}
+										message={{
+											...message,
+											conversation_id: conversationId, // Add conversation ID to message
+										}}
+										isLastMessage={index === messages.length - 1}
+										onMessageComplete={() => {
+											if (refetch) {
+												refetch();
+											}
+										}}
+									/>
+								))}
 
-							{/* Loading indicator for new message at the bottom */}
-							{isLoading && (
-								<LoadingIndicator
-									status={jobStatus}
-									agentName={agentName}
-									currentExecution={currentExecution}
-									scrollToBottom={scrollToBottom}
-									conversationId={conversationId}
-								/>
-							)}
-						</CenteredMessagesContainer>
-					) : (
-						<>
-							{/* When no messages, center the loading indicator fullscreen */}
-							{isLoadingMessages && (
-								<FullScreenCenteredContainer>
+								{/* Loading indicator for new message at the bottom */}
+								{isLoading && (
 									<LoadingIndicator
 										status={jobStatus}
 										agentName={agentName}
@@ -204,12 +216,27 @@ export const MessagesView: FC<MessagesViewProps> = ({
 										scrollToBottom={scrollToBottom}
 										conversationId={conversationId}
 									/>
-								</FullScreenCenteredContainer>
-							)}
-						</>
-					)}
-				</>
-			)}
-		</MessagesContainer>
+								)}
+							</CenteredMessagesContainer>
+						) : (
+							<>
+								{/* When no messages, center the loading indicator fullscreen */}
+								{isLoadingMessages && (
+									<FullScreenCenteredContainer>
+										<LoadingIndicator
+											status={jobStatus}
+											agentName={agentName}
+											currentExecution={currentExecution}
+											scrollToBottom={scrollToBottom}
+											conversationId={conversationId}
+										/>
+									</FullScreenCenteredContainer>
+								)}
+							</>
+						)}
+					</>
+				)}
+			</MessagesContainer>
+		</MessagesViewWrapper>
 	);
 };
