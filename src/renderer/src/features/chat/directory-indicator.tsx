@@ -508,17 +508,21 @@ export const DirectoryIndicator: FC<DirectoryIndicatorProps> = ({
 									<MenuItemIcon>
 										<FontAwesomeIcon icon={faClock} size="sm" />
 									</MenuItemIcon>
-									<Tooltip
-										title={formatDirectory(path)}
-										arrow
-										placement="right"
-									>
+									{formatDirectory(path).length > 42 ? (
+										<Tooltip
+											title={formatDirectory(path)}
+											arrow
+											placement="right"
+										>
+											<Typography variant="body2">
+												{`...${formatDirectory(path).substring(formatDirectory(path).length - 42)}`}
+											</Typography>
+										</Tooltip>
+									) : (
 										<Typography variant="body2">
-											{formatDirectory(path).length > 60
-												? `...${formatDirectory(path).substring(formatDirectory(path).length - 57)}`
-												: formatDirectory(path)}
+											{formatDirectory(path)}
 										</Typography>
-									</Tooltip>
+									)}
 								</MenuItem>
 							))
 						) : (
