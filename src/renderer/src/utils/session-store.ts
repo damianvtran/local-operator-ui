@@ -6,8 +6,8 @@
  * Uses the preload API to communicate with the main process, avoiding direct Node.js usage in the renderer.
  */
 
-// Session duration: 30 days in milliseconds (fallback for tokens without expiry)
-const SESSION_DURATION_MS = 30 * 24 * 60 * 60 * 1000;
+// Session duration: 7 days in milliseconds (fallback for tokens without expiry)
+const SESSION_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
 
 /**
  * Session data type
