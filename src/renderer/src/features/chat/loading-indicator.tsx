@@ -295,11 +295,12 @@ export const LoadingIndicator: FC<{
 			? getStatusText(status)
 			: "Thinking";
 
+	// Use the simplified scroll hook
 	const {
-		ref,
+		containerRef,
 		scrollToBottom: scrollToBottomHook,
 		isFarFromBottom,
-	} = useScrollToBottom([status, currentExecution, message], 150, 50);
+	} = useScrollToBottom();
 
 	useEffect(() => {
 		if (codeSnippet && isCodeExpanded && !isStreaming && !isFarFromBottom) {
@@ -334,7 +335,7 @@ export const LoadingIndicator: FC<{
 	return (
 		<LoadingContainer>
 			{/* Invisible div for scroll reference */}
-			<div ref={ref} style={{ height: 0, width: 0 }} />
+			<div ref={containerRef} style={{ height: 0, width: 0 }} />
 			<AgentAvatar>
 				<FontAwesomeIcon icon={faRobot} size="sm" />
 			</AgentAvatar>
