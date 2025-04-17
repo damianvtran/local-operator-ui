@@ -1,4 +1,5 @@
 import {
+	faBroom,
 	faComment,
 	faEllipsisVertical,
 	faFileExport,
@@ -94,6 +95,14 @@ const StyledMenuItem = styled(MenuItem)(({ theme }) => ({
 	},
 }));
 
+const WarningMenuItem = styled(MenuItem)(({ theme }) => ({
+	padding: theme.spacing(1.5, 2),
+	color: theme.palette.warning.main,
+	"&:hover": {
+		backgroundColor: alpha(theme.palette.warning.main, 0.08),
+	},
+}));
+
 const DeleteMenuItem = styled(MenuItem)(({ theme }) => ({
 	padding: theme.spacing(1.5, 2),
 	color: theme.palette.error.main,
@@ -104,7 +113,11 @@ const DeleteMenuItem = styled(MenuItem)(({ theme }) => ({
 
 const MenuItemIcon = styled(ListItemIcon)(({ theme, color }) => ({
 	color:
-		color === "error" ? theme.palette.error.main : theme.palette.primary.main,
+		color === "error"
+			? theme.palette.error.main
+			: color === "warning"
+				? theme.palette.warning.main
+				: theme.palette.primary.main,
 	minWidth: 36,
 }));
 
@@ -263,12 +276,12 @@ export const AgentOptionsMenu: FC<AgentOptionsMenuProps> = ({
 
 				{/* Clear Conversation option */}
 				{onClearConversation && (
-					<StyledMenuItem onClick={handleOpenClearConfirmation}>
-						<MenuItemIcon>
-							<FontAwesomeIcon icon={faTrash} size="sm" />
+					<WarningMenuItem onClick={handleOpenClearConfirmation}>
+						<MenuItemIcon color="warning">
+							<FontAwesomeIcon icon={faBroom} size="sm" />
 						</MenuItemIcon>
 						<Typography variant="body2">Clear Conversation</Typography>
-					</StyledMenuItem>
+					</WarningMenuItem>
 				)}
 
 				<DeleteMenuItem onClick={handleOpenDeleteConfirmation}>
