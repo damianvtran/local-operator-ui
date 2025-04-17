@@ -452,6 +452,11 @@ app
 			return app.getVersion();
 		});
 
+		// Add IPC handler to get the user's home directory
+		ipcMain.handle("get-home-directory", () => {
+			return app.getPath("home");
+		});
+
 		ipcMain.handle("get-platform-info", () => {
 			return {
 				platform: process.platform,
