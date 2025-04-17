@@ -159,14 +159,15 @@ export const MessageItem: FC<MessageItemProps> = memo(
 		 * Handles clicking on a file attachment
 		 * Opens local files with the system's default application
 		 * Opens web URLs in the default browser
+		 * Shows an error message if the file can't be opened
 		 * @param filePath - The path or URL of the file to open
 		 */
-		const handleFileClick = useCallback((filePath: string) => {
+		const handleFileClick = useCallback(async (filePath: string) => {
 			try {
 				// If it's a web URL
 				if (isWebUrl(filePath)) {
 					// Open in default browser
-					window.api.openExternal(filePath);
+					await window.api.openExternal(filePath);
 				} else {
 					// It's a local file, open with default application
 					// Remove file:// prefix if present
@@ -174,11 +175,16 @@ export const MessageItem: FC<MessageItemProps> = memo(
 						? filePath.substring(7)
 						: filePath;
 
-					window.api.openFile(normalizedPath);
+					await window.api.openFile(normalizedPath);
 				}
 			} catch (error) {
 				console.error("Error opening file:", error);
-				// Could add a toast notification here to inform the user
+
+				// Show an error message to the user
+				// This could be replaced with a toast notification if available
+				alert(
+					`Unable to open file: ${filePath}. The file may be incomplete, deleted, or moved.`,
+				);
 			}
 		}, []);
 
