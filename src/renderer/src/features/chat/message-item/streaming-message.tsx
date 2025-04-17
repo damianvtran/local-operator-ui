@@ -148,12 +148,82 @@ export const StreamingMessage = ({
 	// Debug logging to help diagnose issues - but throttled to reduce console spam
 	const lastLogTimeRef = useRef(0);
 
+	// Add a scroll ref at the bottom of the streaming message for auto-scrolling
+	const scrollRef = useRef<HTMLDivElement>(null);
+
+	// Track if we should auto-scroll based on user's scroll position
+	const shouldAutoScrollRef = useRef(true);
+
+	// Track the container element for scroll position calculations
+	const containerRef = useRef<HTMLElement | null>(null);
+
+	// Find the scrollable container once when the component mounts
+	useEffect(() => {
+		if (!scrollRef.current) return;
+
+		// Find the scrollable parent
+		let parent = scrollRef.current.parentElement;
+		while (parent) {
+			const { overflow, overflowY } = window.getComputedStyle(parent);
+			if (
+				overflow === "auto" ||
+				overflow === "scroll" ||
+				overflowY === "auto" ||
+				overflowY === "scroll"
+			) {
+				containerRef.current = parent;
+				break;
+			}
+			parent = parent.parentElement;
+		}
+
+		// Set up a one-time scroll handler to detect when user scrolls away
+		const handleScroll = () => {
+			if (!containerRef.current) return;
+
+			const { scrollTop, scrollHeight, clientHeight } = containerRef.current;
+			const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+
+			// If user scrolls away from bottom, disable auto-scrolling
+			if (distanceFromBottom > 150) {
+				shouldAutoScrollRef.current = false;
+			} else {
+				shouldAutoScrollRef.current = true;
+			}
+		};
+
+		if (containerRef.current) {
+			containerRef.current.addEventListener("scroll", handleScroll, {
+				passive: true,
+			});
+		}
+
+		return () => {
+			if (containerRef.current) {
+				containerRef.current.removeEventListener("scroll", handleScroll);
+			}
+		};
+	}, []);
+
+	// Handle streaming message updates
 	useEffect(() => {
 		if (wsMessage) {
 			const now = Date.now();
 			// Only log every 500ms to avoid excessive logging
 			if (now - lastLogTimeRef.current > 500) {
 				lastLogTimeRef.current = now;
+			}
+
+			// Only auto-scroll if we're near the bottom
+			if (
+				scrollRef.current &&
+				wsMessage.message &&
+				shouldAutoScrollRef.current
+			) {
+				// Use requestAnimationFrame for smoother scrolling
+				requestAnimationFrame(() => {
+					scrollRef.current?.scrollIntoView({ behavior: "smooth" });
+				});
 			}
 		}
 	}, [wsMessage]);
@@ -427,6 +497,8 @@ export const StreamingMessage = ({
 			{skeletonLoader}
 			{outputSections}
 			{errorDisplay}
+			{/* Invisible element at the bottom for scroll targeting */}
+			<div ref={scrollRef} style={{ height: 1, width: 1, opacity: 0 }} />
 		</StreamingContainer>
 	);
 };

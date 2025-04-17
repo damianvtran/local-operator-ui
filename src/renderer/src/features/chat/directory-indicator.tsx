@@ -11,13 +11,13 @@ import {
 	faFileAlt,
 	faFolder,
 	faFolderOpen,
+	faFolderTree,
 	faHdd,
 	faHome,
 	faImage,
 	faLaptop,
 	faMusic,
 	faNetworkWired,
-	faPen,
 	faServer,
 	faUsers,
 	faVideo,
@@ -218,8 +218,22 @@ export const DirectoryIndicator: FC<DirectoryIndicatorProps> = ({
 	const [isEditing, setIsEditing] = useState(false);
 	const [directory, setDirectory] = useState(currentWorkingDirectory || "");
 	const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
+	const [homeDirectory, setHomeDirectory] = useState<string | null>(null); // State for home directory
 	const inputRef = useRef<HTMLInputElement>(null);
 	const updateAgent = useUpdateAgent();
+
+	// Fetch home directory on mount
+	useEffect(() => {
+		const fetchHomeDir = async () => {
+			try {
+				const homeDir = await window.api.getHomeDirectory();
+				setHomeDirectory(homeDir);
+			} catch (error) {
+				console.error("Failed to fetch home directory:", error);
+			}
+		};
+		fetchHomeDir();
+	}, []);
 
 	useEffect(() => {
 		setDirectory(currentWorkingDirectory || "");
@@ -310,17 +324,57 @@ export const DirectoryIndicator: FC<DirectoryIndicatorProps> = ({
 		[handleFinishEdit, currentWorkingDirectory],
 	);
 
-	const formatDirectory = (dir: string) => {
-		if (dir.startsWith("/Users/damiantran")) {
-			return dir.replace("/Users/damiantran", "~");
-		}
-		return dir;
-	};
+	const handleBrowseForDirectory = useCallback(
+		async (e: React.MouseEvent) => {
+			e.stopPropagation();
+			handleCloseMenu(); // Close menu when browse starts
+
+			try {
+				const selectedPath = await window.api.selectDirectory();
+				if (selectedPath) {
+					handleSelectDirectory(selectedPath);
+				}
+			} catch (error) {
+				console.error("Error selecting directory:", error);
+				// Optionally show a user-facing error message here
+			}
+		},
+		[handleSelectDirectory, handleCloseMenu],
+	); // Added handleCloseMenu dependency
+
+	// Updated formatDirectory to use fetched home directory
+	const formatDirectory = useCallback(
+		(dir: string) => {
+			if (homeDirectory && dir.startsWith(homeDirectory)) {
+				// Ensure consistent path separators (especially for Windows)
+				const relativePath = dir.substring(homeDirectory.length);
+				// Add separator if needed, handle both '/' and '\'
+				if (
+					relativePath.startsWith("/") ||
+					relativePath.startsWith("\\") ||
+					relativePath === ""
+				) {
+					return `~${relativePath.replace(/\\/g, "/")}`;
+				}
+				return `~/${relativePath.replace(/\\/g, "/")}`;
+			}
+			// Handle the case where the path is exactly the home directory
+			if (homeDirectory && dir === homeDirectory) {
+				return "~";
+			}
+			// Handle explicit '~' path from default directories
+			if (dir === "~") {
+				return "~";
+			}
+			return dir.replace(/\\/g, "/"); // Always use forward slashes for display
+		},
+		[homeDirectory],
+	);
 
 	if (!currentWorkingDirectory && !isEditing) {
 		return (
 			<Box sx={{ display: "flex", alignItems: "center", ml: 1 }}>
-				<Tooltip title="Set working directory" arrow placement="right">
+				<Tooltip title="Click to set working directory" arrow placement="right">
 					<DirectoryChip
 						icon={<FontAwesomeIcon icon={faFolder} size="sm" />}
 						label="No working directory set"
@@ -349,19 +403,26 @@ export const DirectoryIndicator: FC<DirectoryIndicatorProps> = ({
 				</ClickAwayListener>
 			) : (
 				<>
-					<Tooltip title="Change working directory" arrow placement="right">
+					<Tooltip
+						title="Click to open directory browser"
+						arrow
+						placement="right"
+					>
 						<DirectoryChip
-							icon={<FontAwesomeIcon icon={faFolderOpen} size="sm" />}
+							icon={
+								<FontAwesomeIcon
+									icon={faFolderOpen}
+									size="sm"
+									onClick={handleBrowseForDirectory}
+								/>
+							}
 							label={formatDirectory(currentWorkingDirectory || "")}
 							onClick={handleOpenMenu}
 							clickable
-							deleteIcon={<FontAwesomeIcon icon={faPen} size="2xs" />}
-							onDelete={(e) => {
-								e.stopPropagation();
-								handleStartEdit();
-							}}
 						/>
 					</Tooltip>
+
+					{/* Removed hidden file input */}
 
 					<Menu
 						anchorEl={menuAnchorEl}
@@ -419,6 +480,13 @@ export const DirectoryIndicator: FC<DirectoryIndicatorProps> = ({
 							<Typography variant="body2">Enter custom path...</Typography>
 						</MenuItem>
 
+						<MenuItem onClick={handleBrowseForDirectory} dense>
+							<MenuItemIcon>
+								<FontAwesomeIcon icon={faFolderTree} size="sm" />
+							</MenuItemIcon>
+							<Typography variant="body2">Browse for directory...</Typography>
+						</MenuItem>
+
 						{/* Recent directories section - always show the section */}
 						<Divider sx={{ my: 1 }} />
 
@@ -440,9 +508,21 @@ export const DirectoryIndicator: FC<DirectoryIndicatorProps> = ({
 									<MenuItemIcon>
 										<FontAwesomeIcon icon={faClock} size="sm" />
 									</MenuItemIcon>
-									<Typography variant="body2">
-										{formatDirectory(path)}
-									</Typography>
+									{formatDirectory(path).length > 42 ? (
+										<Tooltip
+											title={formatDirectory(path)}
+											arrow
+											placement="right"
+										>
+											<Typography variant="body2">
+												{`...${formatDirectory(path).substring(formatDirectory(path).length - 42)}`}
+											</Typography>
+										</Tooltip>
+									) : (
+										<Typography variant="body2">
+											{formatDirectory(path)}
+										</Typography>
+									)}
 								</MenuItem>
 							))
 						) : (

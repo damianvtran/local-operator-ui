@@ -406,6 +406,28 @@ app
 			}
 		});
 
+		// --- Directory Selection IPC Handler ---
+		ipcMain.handle("select-directory", async () => {
+			// Ensure mainWindow is available
+			if (!mainWindow) {
+				logger.error(
+					"Cannot show select directory dialog: mainWindow is not available.",
+					LogFileType.BACKEND,
+				);
+				return undefined;
+			}
+			const result = await dialog.showOpenDialog(mainWindow, {
+				properties: ["openDirectory"],
+				title: "Select Working Directory", // More appropriate title
+				buttonLabel: "Select Folder", // Correct button label
+			});
+
+			if (!result.canceled && result.filePaths.length > 0) {
+				return result.filePaths[0]; // Return the selected path
+			}
+			return undefined; // Return undefined if canceled or no path selected
+		});
+
 		// --- Session storage handlers (using the already initialized sessionStore) ---
 		ipcMain.handle("get-session", () => {
 			const jwt = sessionStore.get("radient_jwt");
@@ -428,6 +450,11 @@ app
 		// Add IPC handlers for system information
 		ipcMain.handle("get-app-version", () => {
 			return app.getVersion();
+		});
+
+		// Add IPC handler to get the user's home directory
+		ipcMain.handle("get-home-directory", () => {
+			return app.getPath("home");
 		});
 
 		ipcMain.handle("get-platform-info", () => {

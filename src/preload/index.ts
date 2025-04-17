@@ -153,6 +153,14 @@ const api = {
 		},
 	},
 
+	/** Opens a native dialog to select a directory */
+	selectDirectory: (): Promise<string | undefined> =>
+		ipcRenderer.invoke("select-directory"),
+
+	/** Gets the user's home directory path */
+	getHomeDirectory: (): Promise<string> =>
+		ipcRenderer.invoke("get-home-directory"),
+
 	// Add methods for installer
 	ipcRenderer: {
 		send: (channel: string, ...args: unknown[]) => {

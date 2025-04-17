@@ -1,6 +1,7 @@
 import { alpha } from "@mui/material";
 import { styled } from "@mui/material/styles";
-import type { FC } from "react";
+import { type FC, useState } from "react";
+import { InvalidAttachment } from "./invalid-attachment";
 import type { ImageAttachmentProps } from "./types";
 
 /**
@@ -34,21 +35,37 @@ const getFileName = (path: string): string => {
 
 /**
  * Component for displaying image attachments
+ * Handles image loading errors and displays an InvalidAttachment component if the image fails to load
  */
 export const ImageAttachment: FC<ImageAttachmentProps> = ({
 	file,
 	src,
 	onClick,
 }) => {
+	// State to track if the image has failed to load
+	const [hasError, setHasError] = useState(false);
+
 	const handleClick = () => {
 		onClick(file);
 	};
 
+	const handleError = () => {
+		// Set error state when image fails to load
+		setHasError(true);
+	};
+
+	// If the image failed to load, show the InvalidAttachment component
+	if (hasError) {
+		return <InvalidAttachment file={file} />;
+	}
+
+	// Otherwise, render the image with an error handler
 	return (
 		<AttachmentImage
 			src={src}
 			alt={getFileName(file)}
 			onClick={handleClick}
+			onError={handleError}
 			title={`Click to open ${getFileName(file)}`}
 		/>
 	);
