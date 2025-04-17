@@ -1,8 +1,7 @@
 import { faTimes } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, IconButton, Tab, Tabs, alpha, styled } from "@mui/material";
-import type { FC } from "react";
-import { useCallback } from "react";
+import { type FC, useCallback, useEffect, useState } from "react";
 import type { MarkdownDocument } from "./types";
 
 type MarkdownCanvasTabsProps = {
@@ -96,10 +95,24 @@ export const MarkdownCanvasTabs: FC<MarkdownCanvasTabsProps> = ({
 	onChangeActiveDocument,
 	onCloseDocument,
 }) => {
-	// Handle tab change
-	const handleTabChange = useCallback(
-		(_: React.SyntheticEvent, newValue: string) => {
-			onChangeActiveDocument(newValue);
+	const [value, setValue] = useState<string | false>(false);
+
+	useEffect(() => {
+		// Synchronizes internal tab selection state with the active document id from props
+		// Ensures that the currently active tab matches the externally controlled
+		if (
+			activeDocumentId &&
+			value !== activeDocumentId &&
+			documents.find((document) => document.id === activeDocumentId)
+		) {
+			setValue(activeDocumentId);
+		}
+	}, [value, documents.find, activeDocumentId]);
+
+	// Handle direct tab click
+	const handleTabClick = useCallback(
+		(documentId: string) => {
+			onChangeActiveDocument(documentId);
 		},
 		[onChangeActiveDocument],
 	);
@@ -119,10 +132,9 @@ export const MarkdownCanvasTabs: FC<MarkdownCanvasTabsProps> = ({
 	}
 
 	return (
-		<Box sx={{ borderBottom: 1, borderColor: "divider" }}>
+		<Box id="HELP" sx={{ borderBottom: 1, borderColor: "divider" }}>
 			<StyledTabs
-				value={activeDocumentId || false}
-				onChange={handleTabChange}
+				value={value}
 				variant="scrollable"
 				scrollButtons="auto"
 				aria-label="Markdown document tabs"
@@ -133,6 +145,7 @@ export const MarkdownCanvasTabs: FC<MarkdownCanvasTabsProps> = ({
 						label={doc.title}
 						value={doc.id}
 						isActive={doc.id === activeDocumentId}
+						onClick={() => handleTabClick(doc.id)}
 						icon={
 							<CloseTabButton
 								onClick={(e) => handleCloseTab(e, doc.id)}

@@ -3,7 +3,7 @@ import { Box } from "@mui/material";
 import { basicLight } from "@uiw/codemirror-theme-basic";
 import CodeMirror from "@uiw/react-codemirror";
 import type { FC } from "react";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { MarkdownDocument } from "./types";
 
 type MarkdownCanvasContentProps = {
@@ -20,11 +20,16 @@ type MarkdownCanvasContentProps = {
 export const MarkdownCanvasReactContent: FC<MarkdownCanvasContentProps> = ({
 	document,
 }) => {
-	const [value, setValue] = useState(document.content);
+	const [value, setValue] = useState<MarkdownDocument | null>(document);
 
-	const onChange = useCallback((val: string) => {
-		setValue(val);
-	}, []);
+  useEffect(
+    () => {
+      if (document.id !== value?.id) {
+        setValue(document)
+      }
+    },
+      [document, value?.id]
+  )
 
 	return (
 		<Box
@@ -40,12 +45,11 @@ export const MarkdownCanvasReactContent: FC<MarkdownCanvasContentProps> = ({
 			})}
 		>
 			<CodeMirror
-				value={value}
+				value={value?.content ?? ''}
 				height="100%"
 				theme={basicLight}
 				editable={false}
 				extensions={[markdown({})]}
-				onChange={onChange}
 			/>
 		</Box>
 	);
