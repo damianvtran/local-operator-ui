@@ -1,6 +1,6 @@
 import { Box, Paper, useTheme } from "@mui/material";
 import { styled } from "@mui/material/styles";
-import { type FC, useEffect, useMemo } from "react";
+import { type FC, useEffect, useMemo, useRef } from "react";
 import { useScrollToBottom } from "../../../hooks/use-scroll-to-bottom";
 import type { Message } from "../types";
 import { MessageControls } from "./message-controls";
@@ -125,25 +125,32 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 
 	// Always call hooks at the top level, regardless of conditions
 	// Use the scroll to bottom hook to automatically scroll while streaming
-	const scrollHook = useScrollToBottom(
+	const {
+		ref: scrollRef,
+		forceScrollToBottom,
+		isNearBottom,
+	} = useScrollToBottom(
 		// Dependencies that should trigger scroll evaluation
 		[content, isStreamable, message?.is_complete],
 		250, // Threshold for "near bottom" in pixels
 		50, // Threshold for showing scroll button
 	);
 
-	const scrollRef = scrollHook.ref;
-	const forceScrollToBottom = scrollHook.forceScrollToBottom;
-	const isNearBottom = scrollHook.isNearBottom;
+	// Track if we should auto-scroll based on user's scroll position
+	const shouldAutoScrollRef = useRef(true);
 
 	// Periodically scroll to bottom during streaming if user is near bottom
 	useEffect(() => {
 		// Only run the effect if this is the last message and it's streamable
 		if (!isLastMessage || !isStreamable || !message) return;
 
+		// Initialize auto-scroll state based on current position
+		shouldAutoScrollRef.current = isNearBottom;
+
 		// Set up interval to check and scroll if needed during streaming
 		const scrollInterval = setInterval(() => {
-			if (isNearBottom) {
+			// Only scroll if the user is near the bottom (using the ref for performance)
+			if (shouldAutoScrollRef.current) {
 				forceScrollToBottom();
 			}
 		}, 350); // Check every 350ms while streaming
@@ -152,6 +159,14 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 			clearInterval(scrollInterval);
 		};
 	}, [isStreamable, message, forceScrollToBottom, isNearBottom, isLastMessage]);
+
+	// Update auto-scroll flag when isNearBottom changes
+	// This effect is intentionally simple and only depends on isNearBottom
+	// to avoid unnecessary re-renders
+	useEffect(() => {
+		// Update the ref without causing re-renders
+		shouldAutoScrollRef.current = isNearBottom;
+	}, [isNearBottom]);
 
 	// Memoize the streaming message component to prevent unnecessary re-renders
 	const streamingMessageComponent = useMemo(() => {

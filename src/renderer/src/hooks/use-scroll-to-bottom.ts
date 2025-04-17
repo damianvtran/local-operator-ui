@@ -4,120 +4,143 @@ import type { DependencyList } from "react";
 /**
  * Custom hook to scroll to the bottom of a container when the content changes
  * Only scrolls to bottom if the user is already near the bottom
- * Optimized to reduce unnecessary re-renders and calculations
+ * Optimized for reliability and performance with minimal re-renders
  *
  * @param dependencies - Array of dependencies that trigger scrolling when changed
- * @param threshold - Distance from bottom (in pixels) to consider "near bottom" (default: 300)
- * @param buttonThreshold - Distance from bottom (in pixels) to show the scroll button (default: 100)
+ * @param threshold - Distance from bottom (in pixels) to consider "near bottom" (default: 150)
+ * @param buttonThreshold - Distance from bottom (in pixels) to show the scroll button (default: 50)
  * @returns An object containing:
- *   - ref: A ref to attach to the element to scroll to
+ *   - ref: A ref to attach to the element at the bottom of the content
+ *   - containerRef: A ref to attach to the scrollable container
  *   - isNearBottom: Whether the user is near the bottom
  *   - isFarFromBottom: Whether the user is far enough from the bottom to show the scroll button
- *   - scrollToBottom: Function to manually scroll to the bottom
- *   - forceScrollToBottom: Function to force scroll to bottom regardless of current position
- *   - containerRef: A ref to the scrollable container
+ *   - scrollToBottom: Function to manually scroll to the bottom with smooth behavior
+ *   - forceScrollToBottom: Function to immediately scroll to bottom without animation
  */
 export const useScrollToBottom = (
 	dependencies: DependencyList = [],
 	threshold = 150,
-	buttonThreshold = 50, // Reduced from 100 to make the button appear more readily
+	buttonThreshold = 50,
 ) => {
+	// Refs for DOM elements
 	const ref = useRef<HTMLDivElement>(null);
 	const containerRef = useRef<HTMLDivElement | null>(null);
-	const [shouldScrollToBottom, setShouldScrollToBottom] = useState(true);
+
+	// State for scroll position - use refs for internal state to avoid re-renders during scrolling
+	const isNearBottomRef = useRef(true);
+	const isFarFromBottomRef = useRef(false);
+
+	// State for UI updates - only updated when needed to trigger re-renders
+	const [isNearBottom, setIsNearBottom] = useState(true);
 	const [isFarFromBottom, setIsFarFromBottom] = useState(false);
 
-	// Use a ref to track the last scroll position to avoid unnecessary state updates
-	const lastScrollPositionRef = useRef<number>(0);
-	const scrollTimeoutRef = useRef<number | null>(null);
+	// Ref to track if a scroll operation is in progress to prevent interference
+	const isScrollingRef = useRef(false);
 
-	// Track if we're currently processing a scroll event
-	const isProcessingScrollRef = useRef<boolean>(false);
+	// Ref to track if we're currently handling a scroll event to prevent recursive updates
+	const isHandlingScrollRef = useRef(false);
+
+	// Ref to track if we should auto-scroll on content changes
+	const shouldAutoScrollRef = useRef(true);
+
+	// Ref to track the last measured scroll height to detect content changes
+	const lastScrollHeightRef = useRef(0);
+
+	// Ref to track the last update time to throttle state updates
+	const lastUpdateTimeRef = useRef(0);
 
 	/**
-	 * Function to manually scroll to the bottom
-	 * Uses requestAnimationFrame for smoother scrolling
+	 * Calculate the current scroll position and update internal refs
+	 * Only updates state (triggering re-renders) when necessary and throttled
+	 */
+	const updateScrollPosition = useCallback(() => {
+		if (!containerRef.current || isHandlingScrollRef.current) return;
+
+		isHandlingScrollRef.current = true;
+
+		try {
+			const { scrollTop, scrollHeight, clientHeight } = containerRef.current;
+			const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+
+			// Update auto-scroll flag based on how close to bottom we are
+			shouldAutoScrollRef.current = distanceFromBottom <= threshold;
+
+			// Update internal refs
+			isNearBottomRef.current = distanceFromBottom <= threshold;
+			isFarFromBottomRef.current = distanceFromBottom > buttonThreshold;
+
+			// Store the current scroll height for comparison
+			lastScrollHeightRef.current = scrollHeight;
+
+			// Only update state (triggering re-renders) if values changed and throttled
+			const now = Date.now();
+			if (
+				(isNearBottomRef.current !== isNearBottom ||
+					isFarFromBottomRef.current !== isFarFromBottom) &&
+				now - lastUpdateTimeRef.current > 100 // Throttle to max 10 updates per second
+			) {
+				setIsNearBottom(isNearBottomRef.current);
+				setIsFarFromBottom(isFarFromBottomRef.current);
+				lastUpdateTimeRef.current = now;
+			}
+		} finally {
+			isHandlingScrollRef.current = false;
+		}
+	}, [threshold, buttonThreshold, isNearBottom, isFarFromBottom]);
+
+	/**
+	 * Scroll to bottom with smooth animation
 	 */
 	const scrollToBottom = useCallback(() => {
-		if (!ref.current) return;
+		if (!ref.current || !containerRef.current || isScrollingRef.current) return;
 
-		requestAnimationFrame(() => {
-			if (ref.current) {
-				ref.current.scrollIntoView({ behavior: "smooth" });
-			}
-		});
-	}, []);
+		isScrollingRef.current = true;
+		shouldAutoScrollRef.current = true;
+
+		ref.current.scrollIntoView({ behavior: "smooth" });
+
+		// Reset scrolling flag after animation completes
+		setTimeout(() => {
+			isScrollingRef.current = false;
+			updateScrollPosition();
+		}, 300);
+	}, [updateScrollPosition]);
 
 	/**
-	 * Function to force scroll to the bottom regardless of current scroll position
-	 * This bypasses the normal "near bottom" check and directly scrolls
-	 * Uses multiple techniques to ensure scrolling works in all scenarios
+	 * Immediately scroll to bottom without animation
+	 * Used for initial load and when we need to ensure the scroll happens immediately
 	 */
-	const isForcedScrollRef = useRef(false);
 	const forceScrollToBottom = useCallback(() => {
-		if (!containerRef.current) return;
+		if (!containerRef.current || isScrollingRef.current) return;
 
-		// Set forced scroll flag
-		isForcedScrollRef.current = true;
+		isScrollingRef.current = true;
+		shouldAutoScrollRef.current = true;
 
-		// Use container scroll for better reliability
+		// Direct scrollTop manipulation for immediate scroll
 		containerRef.current.scrollTop = containerRef.current.scrollHeight;
 
-		// Clear forced scroll flag after animation frame
-		requestAnimationFrame(() => {
-			isForcedScrollRef.current = false;
-		});
-	}, []);
+		// Reset scrolling flag after a short delay
+		setTimeout(() => {
+			isScrollingRef.current = false;
+			updateScrollPosition();
+		}, 50);
+	}, [updateScrollPosition]);
 
 	/**
-	 * Function to check if we should show the scroll button
-	 * This is called both on scroll events and when dependencies change
+	 * Handle scroll events in the container - throttled for performance
 	 */
-	const checkScrollPosition = useCallback(() => {
-		if (!containerRef.current || isProcessingScrollRef.current) return;
-
-		isProcessingScrollRef.current = true;
-
-		const { scrollTop, scrollHeight, clientHeight } = containerRef.current;
-		const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
-
-		// Only update state if the scroll position has changed significantly
-		// or if the shouldScrollToBottom value would change
-		const currentShouldScroll = distanceFromBottom <= threshold;
-
-		// Show the button when we're more than buttonThreshold pixels from the bottom
-		const shouldShowButton = distanceFromBottom > buttonThreshold;
-
-		if (
-			Math.abs(lastScrollPositionRef.current - scrollTop) > 20 ||
-			currentShouldScroll !== shouldScrollToBottom ||
-			shouldShowButton !== isFarFromBottom
-		) {
-			lastScrollPositionRef.current = scrollTop;
-			setShouldScrollToBottom(currentShouldScroll);
-			setIsFarFromBottom(shouldShowButton);
-		}
-
-		isProcessingScrollRef.current = false;
-	}, [threshold, buttonThreshold, shouldScrollToBottom, isFarFromBottom]);
-
-	// Throttled scroll handler to improve performance
 	const handleScroll = useCallback(() => {
-		if (!containerRef.current) return;
+		if (isScrollingRef.current || isHandlingScrollRef.current) return;
 
-		// Clear any pending timeout
-		if (scrollTimeoutRef.current !== null) {
-			window.clearTimeout(scrollTimeoutRef.current);
-		}
+		// Use requestAnimationFrame for better performance during scrolling
+		requestAnimationFrame(() => {
+			updateScrollPosition();
+		});
+	}, [updateScrollPosition]);
 
-		// Debounce the scroll event to reduce calculations
-		scrollTimeoutRef.current = window.setTimeout(() => {
-			checkScrollPosition();
-			scrollTimeoutRef.current = null;
-		}, 50); // 50ms debounce (reduced from 100ms for more responsive updates)
-	}, [checkScrollPosition]);
-
-	// Set up scroll event listener with passive option for better performance
+	/**
+	 * Set up the scroll event listener on the container
+	 */
 	useEffect(() => {
 		const container = containerRef.current;
 		if (!container) return;
@@ -126,52 +149,16 @@ export const useScrollToBottom = (
 		container.addEventListener("scroll", handleScroll, { passive: true });
 
 		// Initial check of scroll position
-		checkScrollPosition();
+		updateScrollPosition();
 
 		return () => {
-			if (scrollTimeoutRef.current !== null) {
-				window.clearTimeout(scrollTimeoutRef.current);
-			}
 			container.removeEventListener("scroll", handleScroll);
 		};
-	}, [handleScroll, checkScrollPosition]);
+	}, [handleScroll, updateScrollPosition]);
 
-	// Check scroll position when dependencies change
-	useEffect(() => {
-		// Use requestAnimationFrame to ensure DOM has updated
-		const animationFrame = requestAnimationFrame(() => {
-			checkScrollPosition();
-		});
-
-		return () => cancelAnimationFrame(animationFrame);
-	}, [...dependencies, checkScrollPosition]);
-
-	// Memoize the scroll to bottom effect
-	useEffect(() => {
-		// Skip if:
-		// - We shouldn't scroll to bottom
-		// - User is far from bottom (scrolled up reading)
-		// - Forced scroll is active
-		// - No ref available
-		if (
-			!shouldScrollToBottom ||
-			isFarFromBottom ||
-			isForcedScrollRef.current ||
-			!ref.current
-		)
-			return;
-
-		// Use requestAnimationFrame for smoother scrolling
-		const animationFrame = requestAnimationFrame(() => {
-			if (ref.current) {
-				ref.current.scrollIntoView({ behavior: "smooth" });
-			}
-		});
-
-		return () => cancelAnimationFrame(animationFrame);
-	}, [...dependencies, shouldScrollToBottom, isFarFromBottom]); // eslint-disable-line react-hooks/exhaustive-deps
-
-	// Dynamically update containerRef whenever the bottom ref changes
+	/**
+	 * Find the scrollable container when the ref changes
+	 */
 	useEffect(() => {
 		if (!ref.current) return;
 
@@ -188,28 +175,85 @@ export const useScrollToBottom = (
 				// Only update if different to avoid unnecessary resets
 				if (containerRef.current !== parent) {
 					containerRef.current = parent as HTMLDivElement;
-					checkScrollPosition();
-
-					// Re-attach scroll event listener to new container
-					parent.addEventListener("scroll", handleScroll, { passive: true });
+					updateScrollPosition();
 				}
 				break;
 			}
 			parent = parent.parentElement;
 		}
+	}, [updateScrollPosition]);
 
-		// Cleanup: remove scroll listener from old container if it changed
+	/**
+	 * Auto-scroll to bottom when dependencies change and we're near the bottom
+	 * Uses internal refs instead of state to avoid unnecessary re-renders
+	 *
+	 * Note: We intentionally omit forceScrollToBottom and updateScrollPosition from the
+	 * dependencies array to prevent infinite loops, as they would cause this effect to
+	 * run again after they're called within the effect. This is safe because these
+	 * functions' references are stable and only depend on refs that persist across renders.
+	 */
+	useEffect(() => {
+		// Store references to the functions to use inside the effect
+		const scrollToBottomFn = forceScrollToBottom;
+		const updatePositionFn = updateScrollPosition;
+
+		if (
+			!containerRef.current ||
+			isScrollingRef.current ||
+			isHandlingScrollRef.current
+		)
+			return;
+
+		// Check if content height has changed significantly
+		const currentScrollHeight = containerRef.current.scrollHeight;
+		const hasContentChanged =
+			Math.abs(currentScrollHeight - lastScrollHeightRef.current) > 5;
+
+		// Auto-scroll if we're near the bottom and content has changed
+		if (shouldAutoScrollRef.current && hasContentChanged) {
+			scrollToBottomFn();
+		} else {
+			// Just update the position state without scrolling
+			updatePositionFn();
+		}
+	}, [...dependencies, forceScrollToBottom, updateScrollPosition]);
+
+	/**
+	 * Handle window resize events to update scroll position - throttled
+	 */
+	useEffect(() => {
+		let resizeTimeoutId: number | null = null;
+
+		const handleResize = () => {
+			if (isScrollingRef.current || isHandlingScrollRef.current) return;
+
+			// Clear any existing timeout
+			if (resizeTimeoutId !== null) {
+				window.clearTimeout(resizeTimeoutId);
+			}
+
+			// Debounce resize events
+			resizeTimeoutId = window.setTimeout(() => {
+				updateScrollPosition();
+				resizeTimeoutId = null;
+			}, 100);
+		};
+
+		window.addEventListener("resize", handleResize, { passive: true });
+
 		return () => {
-			if (containerRef.current) {
-				containerRef.current.removeEventListener("scroll", handleScroll);
+			window.removeEventListener("resize", handleResize);
+			if (resizeTimeoutId !== null) {
+				window.clearTimeout(resizeTimeoutId);
 			}
 		};
-	}, [checkScrollPosition, handleScroll]);
+	}, [updateScrollPosition]);
 
+	// Memoize the return value to prevent unnecessary re-renders
 	return {
 		ref,
 		containerRef,
-		isNearBottom: shouldScrollToBottom,
+		isNearBottom,
 		isFarFromBottom,
 		scrollToBottom,
 		forceScrollToBottom,

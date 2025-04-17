@@ -187,8 +187,19 @@ export const MessagesView: FC<MessagesViewProps> = ({
 						</>
 					)}
 
-					{/* Invisible element to scroll to */}
-					<div ref={messagesEndRef} />
+					{/* Constant anchor element at the bottom for scroll targeting */}
+					<div
+						ref={messagesEndRef}
+						style={{
+							height: 1,
+							width: "100%",
+							opacity: 0,
+							position: "relative",
+							marginTop: 8,
+							pointerEvents: "none",
+						}}
+						id="messages-end-anchor"
+					/>
 				</>
 			)}
 		</MessagesContainer>
