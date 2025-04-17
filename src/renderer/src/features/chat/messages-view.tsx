@@ -57,7 +57,6 @@ const MessagesContainer = styled(Box, {
 	width: "100%",
 	display: "flex",
 	flexDirection: "column-reverse", // Key change: reverse column direction for auto-bottom scrolling
-	backgroundColor: theme.palette.messagesView.background,
 	position: "relative",
 	"&::-webkit-scrollbar": {
 		width: "8px",
