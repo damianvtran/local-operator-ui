@@ -153,6 +153,10 @@ const api = {
 		},
 	},
 
+	/** Opens a native dialog to select a directory */
+	selectDirectory: (): Promise<string | undefined> =>
+		ipcRenderer.invoke("select-directory"),
+
 	// Add methods for installer
 	ipcRenderer: {
 		send: (channel: string, ...args: unknown[]) => {

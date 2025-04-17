@@ -11,13 +11,13 @@ import {
 	faFileAlt,
 	faFolder,
 	faFolderOpen,
+	faFolderTree,
 	faHdd,
 	faHome,
 	faImage,
 	faLaptop,
 	faMusic,
 	faNetworkWired,
-	faPen,
 	faServer,
 	faUsers,
 	faVideo,
@@ -219,6 +219,7 @@ export const DirectoryIndicator: FC<DirectoryIndicatorProps> = ({
 	const [directory, setDirectory] = useState(currentWorkingDirectory || "");
 	const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
 	const inputRef = useRef<HTMLInputElement>(null);
+	// Removed fileInputRef
 	const updateAgent = useUpdateAgent();
 
 	useEffect(() => {
@@ -310,6 +311,24 @@ export const DirectoryIndicator: FC<DirectoryIndicatorProps> = ({
 		[handleFinishEdit, currentWorkingDirectory],
 	);
 
+	const handleBrowseForDirectory = useCallback(
+		async (e: React.MouseEvent) => {
+			e.stopPropagation();
+			handleCloseMenu(); // Close menu when browse starts
+
+			try {
+				const selectedPath = await window.api.selectDirectory();
+				if (selectedPath) {
+					handleSelectDirectory(selectedPath);
+				}
+			} catch (error) {
+				console.error("Error selecting directory:", error);
+				// Optionally show a user-facing error message here
+			}
+		},
+		[handleSelectDirectory, handleCloseMenu],
+	); // Added handleCloseMenu dependency
+
 	const formatDirectory = (dir: string) => {
 		if (dir.startsWith("/Users/damiantran")) {
 			return dir.replace("/Users/damiantran", "~");
@@ -320,7 +339,7 @@ export const DirectoryIndicator: FC<DirectoryIndicatorProps> = ({
 	if (!currentWorkingDirectory && !isEditing) {
 		return (
 			<Box sx={{ display: "flex", alignItems: "center", ml: 1 }}>
-				<Tooltip title="Set working directory" arrow placement="right">
+				<Tooltip title="Click to set working directory" arrow placement="right">
 					<DirectoryChip
 						icon={<FontAwesomeIcon icon={faFolder} size="sm" />}
 						label="No working directory set"
@@ -349,19 +368,22 @@ export const DirectoryIndicator: FC<DirectoryIndicatorProps> = ({
 				</ClickAwayListener>
 			) : (
 				<>
-					<Tooltip title="Change working directory" arrow placement="right">
+					<Tooltip
+						title="Click to select from menu, or click folder icon to browse"
+						arrow
+						placement="right"
+					>
 						<DirectoryChip
 							icon={<FontAwesomeIcon icon={faFolderOpen} size="sm" />}
 							label={formatDirectory(currentWorkingDirectory || "")}
 							onClick={handleOpenMenu}
 							clickable
-							deleteIcon={<FontAwesomeIcon icon={faPen} size="2xs" />}
-							onDelete={(e) => {
-								e.stopPropagation();
-								handleStartEdit();
-							}}
+							deleteIcon={<FontAwesomeIcon icon={faFolderTree} size="2xs" />}
+							onDelete={handleBrowseForDirectory}
 						/>
 					</Tooltip>
+
+					{/* Removed hidden file input */}
 
 					<Menu
 						anchorEl={menuAnchorEl}
@@ -417,6 +439,13 @@ export const DirectoryIndicator: FC<DirectoryIndicatorProps> = ({
 							dense
 						>
 							<Typography variant="body2">Enter custom path...</Typography>
+						</MenuItem>
+
+						<MenuItem onClick={handleBrowseForDirectory} dense>
+							<MenuItemIcon>
+								<FontAwesomeIcon icon={faFolderTree} size="sm" />
+							</MenuItemIcon>
+							<Typography variant="body2">Browse for directory...</Typography>
 						</MenuItem>
 
 						{/* Recent directories section - always show the section */}
