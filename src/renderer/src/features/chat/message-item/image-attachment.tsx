@@ -1,8 +1,8 @@
 import { alpha } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import { type FC, useState } from "react";
-import type { ImageAttachmentProps } from "./types";
 import { InvalidAttachment } from "./invalid-attachment";
+import type { ImageAttachmentProps } from "./types";
 
 /**
  * Styled component for image attachments
