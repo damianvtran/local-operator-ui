@@ -101,9 +101,25 @@ export const useRadientUserQuery = () => {
 				// If the access token is expired but we have a refresh token, try to refresh
 				if (Date.now() > session.expiry && session.refreshToken) {
 					console.log("Access token expired, attempting refresh");
-					// Don't await here - we'll return the current session and let the refresh happen in the background
-					// The query will be invalidated and refetched when the refresh completes
-					refreshTokenMutation.mutate(session.refreshToken);
+					try {
+						// Wait for the refresh to complete before returning
+						const refreshResult = await refreshTokenMutation.mutateAsync(
+							session.refreshToken,
+						);
+						console.log("Token refresh completed successfully");
+
+						// Return a new session object with the refreshed token
+						return {
+							accessToken: refreshResult.access_token,
+							refreshToken: refreshResult.refresh_token || session.refreshToken,
+							expiry: Date.now() + refreshResult.expires_in * 1000,
+						};
+					} catch (refreshError) {
+						console.error("Token refresh failed:", refreshError);
+						// If refresh fails, clear the session and return null
+						clearSession();
+						return null;
+					}
 				}
 
 				return session;
