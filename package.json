@@ -82,6 +82,7 @@
 		"@openid/appauth": "1.3.2",
 		"@tanstack/react-query": "^5.67.1",
 		"@tanstack/react-query-devtools": "^5.67.1",
+		"@uiw/codemirror-extensions-langs": "^4.23.10",
 		"@uiw/codemirror-theme-basic": "^4.23.10",
 		"@uiw/react-codemirror": "^4.23.10",
 		"@uiw/react-split": "^5.9.3",
