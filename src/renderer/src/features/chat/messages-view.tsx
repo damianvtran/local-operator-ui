@@ -130,14 +130,6 @@ export const MessagesView: FC<MessagesViewProps> = ({
 
 	return (
 		<MessagesContainer ref={messagesContainerRef} collapsed={collapsed}>
-			{/* Loading more messages indicator at the top (visually at the bottom with column-reverse) */}
-			{isFetchingMore && (
-				<LoadingMoreIndicator>
-					<CircularProgress size={20} sx={{ mr: 1 }} />
-					Loading more messages...
-				</LoadingMoreIndicator>
-			)}
-
 			{/* With column-reverse, the content is flipped, so we need to maintain the correct visual order */}
 			{/* The loading indicator and messages are wrapped in a container with normal column direction */}
 
@@ -164,6 +156,14 @@ export const MessagesView: FC<MessagesViewProps> = ({
 					{/* Render messages with normal order inside the reversed container */}
 					{messages.length > 0 ? (
 						<CenteredMessagesContainer>
+							{/* Loading more messages indicator at the top (visually at the top when scrolled up) */}
+							{isFetchingMore && (
+								<LoadingMoreIndicator>
+									<CircularProgress size={20} sx={{ mr: 1 }} />
+									Loading more messages...
+								</LoadingMoreIndicator>
+							)}
+
 							{/* Messages are rendered in normal order */}
 							{messages.map((message, index) => (
 								<MessageItem
