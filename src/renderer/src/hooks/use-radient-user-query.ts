@@ -46,7 +46,6 @@ export const useRadientUserQuery = () => {
 	// Mutation for refreshing the access token
 	const refreshTokenMutation = useMutation({
 		mutationFn: async (refreshToken: string) => {
-			console.log("Refreshing access token...");
 			const response = await radientClient.refreshToken(refreshToken);
 
 			// Store the new access token and refresh token (if provided)
@@ -67,14 +66,12 @@ export const useRadientUserQuery = () => {
 			return response.result;
 		},
 		onSuccess: () => {
-			console.log("Token refresh successful");
 			// Invalidate the session query to trigger a refetch with the new token
 			queryClient.invalidateQueries({
 				queryKey: radientUserKeys.session(),
 			});
 		},
 		onError: (error) => {
-			console.error("Token refresh failed:", error);
 			// If refresh fails, clear the session and force re-authentication
 			clearSession();
 			queryClient.invalidateQueries({
@@ -100,13 +97,11 @@ export const useRadientUserQuery = () => {
 
 				// If the access token is expired but we have a refresh token, try to refresh
 				if (Date.now() > session.expiry && session.refreshToken) {
-					console.log("Access token expired, attempting refresh");
 					try {
 						// Wait for the refresh to complete before returning
 						const refreshResult = await refreshTokenMutation.mutateAsync(
 							session.refreshToken,
 						);
-						console.log("Token refresh completed successfully");
 
 						// Return a new session object with the refreshed token
 						return {
@@ -167,11 +162,9 @@ export const useRadientUserQuery = () => {
 
 					// If we have a refresh token, try to refresh the access token
 					if (session?.refreshToken && !refreshTokenMutation.isPending) {
-						console.log("Authentication error, attempting token refresh");
 						refreshTokenMutation.mutate(session.refreshToken);
 					} else {
 						// No refresh token or refresh already in progress, clear the session
-						console.log("No refresh token available, clearing session");
 						clearSession();
 						// Invalidate the session query to trigger a refetch
 						queryClient.invalidateQueries({
