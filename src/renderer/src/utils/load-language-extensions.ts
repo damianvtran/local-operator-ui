@@ -29,7 +29,7 @@ export function loadLanguageExtensions(fileName: string): Extension | null {
  * Override of the * language mapping for specific extensions
  * Link: https://github.com/uiwjs/react-codemirror/blob/master/extensions/langs/src/index.ts
  */
-const languageOverrideMap: Record<string, LanguageName> = {
+export const languageOverrideMap: Record<string, LanguageName> = {
 	bash: "shell",
 	c: "cpp",
 	cc: "cpp",
