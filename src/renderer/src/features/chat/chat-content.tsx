@@ -216,14 +216,16 @@ export const ChatContent: FC<ChatContentProps> = ({
 					overflow: "hidden",
 				}}
 			>
-				<Canvas
-					open={isOpen}
-					onClose={closeCanvas}
-					onCloseDocument={closeDocument}
-					initialDocuments={documents}
-					activeDocumentId={activeDocumentId}
-					onChangeActiveDocument={setActiveDocument}
-				/>
+				{isOpen && (
+					<Canvas
+						open={isOpen}
+						onClose={closeCanvas}
+						onCloseDocument={closeDocument}
+						initialDocuments={documents}
+						activeDocumentId={activeDocumentId}
+						onChangeActiveDocument={setActiveDocument}
+					/>
+				)}
 			</Box>
 		</Split>
 	);
