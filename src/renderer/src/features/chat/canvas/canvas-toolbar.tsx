@@ -58,6 +58,8 @@ const ToolbarButton = styled(Button)(({ theme }) => ({
 /**
  * Toolbar component for the markdown canvas
  * Provides document actions like export
+ *
+ * @deprecated This component is not yet in use and may change in future releases.
  */
 export const CanvasToolbar: FC<CanvasToolbarProps> = ({ document }) => {
 	// State for export menu

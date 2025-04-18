@@ -3,7 +3,7 @@ import { create } from "zustand";
 import type { CanvasDocument } from "../features/chat/canvas/types";
 
 interface CanvasState {
-	// Whether the markdown canvas is open
+	// Whether the canvas is open
 	isOpen: boolean;
 
 	// List of open documents
@@ -12,29 +12,22 @@ interface CanvasState {
 	// ID of the active document
 	activeDocumentId: string | null;
 
-	// Whether to auto-open markdown attachments
-	autoOpenMarkdownAttachments: boolean;
-
 	// Actions
 	openCanvas: () => void;
 	closeCanvas: () => void;
 	openDocument: (title: string, content: string, path: string) => void;
 	closeDocument: (documentId: string) => void;
 	setActiveDocument: (documentId: string) => void;
-	toggleAutoOpenMarkdownAttachments: () => void;
 }
 
-// TODO: Update references to no longer be specific to markdown
-
 /**
- * Store for managing the markdown canvas state
+ * Store for managing the canvas state
  */
 export const useCanvasStore = create<CanvasState>((set, get) => ({
 	// Initial state
 	isOpen: false,
 	documents: [],
 	activeDocumentId: null,
-	autoOpenMarkdownAttachments: true,
 
 	// Actions
 	openCanvas: () => set({ isOpen: true }),
@@ -99,11 +92,5 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
 
 	setActiveDocument: (documentId) => {
 		set({ activeDocumentId: documentId });
-	},
-
-	toggleAutoOpenMarkdownAttachments: () => {
-		set((state) => ({
-			autoOpenMarkdownAttachments: !state.autoOpenMarkdownAttachments,
-		}));
 	},
 }));

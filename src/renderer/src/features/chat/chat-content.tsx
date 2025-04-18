@@ -42,6 +42,9 @@ const DEFAULT_MESSAGE_SUGGESTIONS = [
 	"Make a presentation with a dependency graph of genetic factors for Alzheimer's disease",
 ];
 
+const CANVAS_OPEN_WIDTH = 450;
+const CANVAS_CLOSED_WIDTH = 0;
+
 /**
  * Props for the ChatContent component
  */
@@ -115,8 +118,7 @@ export const ChatContent: FC<ChatContentProps> = ({
 }) => {
 	const canvasContainerRef = useRef<HTMLDivElement>(null);
 
-	// TODO: Update this state to be properly semantic
-	const [testValue, setTestValue] = useState(450);
+	const [canvasPanelWidth, setCanvasPanelWidth] = useState(CANVAS_OPEN_WIDTH);
 
 	const {
 		isOpen,
@@ -129,18 +131,18 @@ export const ChatContent: FC<ChatContentProps> = ({
 
 	useEffect(() => {
 		if (isOpen) {
-			return setTestValue(450);
+			return setCanvasPanelWidth(CANVAS_OPEN_WIDTH);
 		}
 
 		if (canvasContainerRef.current) {
 			canvasContainerRef.current.style.width = "";
 		}
-		return setTestValue(0);
+		return setCanvasPanelWidth(CANVAS_CLOSED_WIDTH);
 	}, [isOpen]);
 
 	return (
 		<Split
-			visible={!!testValue}
+			visible={!!canvasPanelWidth}
 			style={{ border: "1px solid #d5d5d5", borderRadius: 3 }}
 		>
 			<Box
@@ -209,8 +211,8 @@ export const ChatContent: FC<ChatContentProps> = ({
 			<Box
 				ref={canvasContainerRef}
 				sx={{
-					minWidth: testValue,
-					width: testValue,
+					minWidth: canvasPanelWidth,
+					width: canvasPanelWidth,
 					overflow: "hidden",
 				}}
 			>
