@@ -3,7 +3,6 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, Typography, alpha } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import { useCanvasStore } from "@renderer/store/canvas-store";
-import { loadLanguageExtensions } from "@renderer/utils/load-language-extensions";
 import type { FC } from "react";
 import { useCallback } from "react";
 import { isCanvasSupported } from "../utils/is-canvas-supported";
@@ -85,35 +84,42 @@ export const FileAttachment: FC<FileAttachmentProps> = ({ file, onClick }) => {
 
 	// Handle click on the file attachment
 	const handleClick = useCallback(async () => {
-		const fallback = (error?: string) => {
-			if (error) console.error("Error reading file:", error);
-			onClick(file); // fallback behavior
-		};
-
-		const normalizedPath = file.startsWith("file://") ? file.slice(7) : file;
+		const normalizedPath = file.startsWith("file://")
+			? file.substring(7)
+			: file;
 
 		const title = getFileName(file);
 
-		let result: any; // TODO: Add proper types for `readFile`
+		const fallbackAction = (err?: string) => {
+			if (err) console.error("Error reading file:", err);
+			onClick(file);
+		};
+
 		try {
-			result = await window.api.readFile(normalizedPath);
+			const result = await window.api.readFile(normalizedPath);
+
+			if (result.success && isCanvasSupported(title)) {
+				openDocument(title, result.data, normalizedPath);
+				openCanvas();
+				return;
+			}
+
+			// If we get here, result.success must be false
+			const errorMessage =
+				!result.success && result.error
+					? result.error instanceof Error
+						? result.error.message
+						: String(result.error)
+					: "Unknown error";
+
+			return fallbackAction(errorMessage);
 		} catch (error: unknown) {
-			const message = error instanceof Error ? error.message : String(error);
-			return fallback(message);
-		}
-
-		if (!result.success || !isCanvasSupported(title)) {
 			const message =
-				result.error instanceof Error
-					? result.error.message
-					: String(result.error ?? "Unknown error");
-
-			return fallback(message);
+				error instanceof Error
+					? error.message
+					: String(error ?? "Unknown error");
+			return fallbackAction(message);
 		}
-
-		// ✅ Happy path
-		openDocument(title, result.data, normalizedPath);
-		openCanvas();
 	}, [file, onClick, openDocument, openCanvas]);
 
 	return (
