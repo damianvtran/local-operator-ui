@@ -70,7 +70,6 @@
 		"build-storybook": "storybook build"
 	},
 	"dependencies": {
-		"@codemirror/lang-markdown": "^6.3.2",
 		"@electron-toolkit/utils": "^4.0.0",
 		"@emotion/react": "^11.14.0",
 		"@emotion/styled": "^11.14.0",

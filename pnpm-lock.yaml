@@ -8,9 +8,6 @@ importers:
 
   .:
     dependencies:
-      '@codemirror/lang-markdown':
-        specifier: ^6.3.2
-        version: 6.3.2
       '@electron-toolkit/utils':
         specifier: ^4.0.0
         version: 4.0.0(electron@25.9.8)

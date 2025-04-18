@@ -7,6 +7,7 @@ import { apiConfig } from "@renderer/config";
 import { useCanvasStore } from "@renderer/store/canvas-store";
 import type { FC } from "react";
 import { useCallback, useState } from "react";
+import { isMarkdownFile } from "../utils/is-markdown-file";
 import type { FileAttachmentProps } from "./types";
 
 /**
@@ -84,17 +85,6 @@ const getFileName = (path: string): string => {
 	// Handle both local paths and URLs
 	const parts = path.split(/[/\\]/);
 	return parts[parts.length - 1];
-};
-
-/**
- * Checks if a file is a markdown file based on its extension
- * @param path - The file path to check
- * @returns True if the file is a markdown file, false otherwise
- */
-export const isMarkdownFile = (path: string): boolean => {
-	const markdownExtensions = [".md", ".markdown", ".mdown", ".mkdn", ".mkd"];
-	const lowerPath = path.toLowerCase();
-	return markdownExtensions.some((ext) => lowerPath.endsWith(ext));
 };
 
 /**

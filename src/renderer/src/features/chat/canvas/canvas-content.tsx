@@ -1,8 +1,7 @@
-import { Box } from "@mui/material";
-import { loadLanguageExtensions } from "@renderer/utils/load-language-extensions";
-import { basicLight } from "@uiw/codemirror-theme-basic";
-import CodeMirror, { type Extension } from "@uiw/react-codemirror";
-import { type FC, useEffect, useState } from "react";
+import type { FC } from "react";
+import { isMarkdownFile } from "../utils/is-markdown-file";
+import { CodeEditor } from "./code-editor";
+import { MarkdownPreview } from "./markdown-preview";
 import type { CanvasDocument } from "./types";
 
 type CanvasContentProps = {
@@ -17,38 +16,9 @@ type CanvasContentProps = {
  * Displays the markdown content with syntax highlighting
  */
 export const CanvasContent: FC<CanvasContentProps> = ({ document }) => {
-	const [value, setValue] = useState<CanvasDocument | null>(null);
-	const [languageExtensions, setLanguageExtensions] = useState<Extension[]>([]);
+	if (isMarkdownFile(document.title)) {
+		return <MarkdownPreview document={document} />;
+	}
 
-	useEffect(() => {
-		if (document.id !== value?.id) {
-			setValue(document);
-			const newLangExtension = loadLanguageExtensions(document.title);
-
-			if (!newLangExtension) return;
-			setLanguageExtensions([newLangExtension]);
-		}
-	}, [document, value?.id]);
-
-	return (
-		<Box
-			sx={({ typography }) => ({
-				flexGrow: 1,
-				fontSize: typography.pxToRem(12),
-				overflow: "auto",
-
-				"& > *": {
-					height: "100%",
-				},
-			})}
-		>
-			<CodeMirror
-				value={value?.content ?? ""}
-				height="100%"
-				theme={basicLight}
-				editable={false}
-				extensions={languageExtensions}
-			/>
-		</Box>
-	);
+	return <CodeEditor document={document} />;
 };
