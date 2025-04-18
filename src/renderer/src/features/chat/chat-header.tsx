@@ -1,4 +1,4 @@
-import { faRobot, faSliders } from "@fortawesome/free-solid-svg-icons";
+import { faFileAlt, faRobot } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
 	Avatar,
@@ -10,11 +10,12 @@ import {
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import type { FC } from "react";
+import { useCanvasStore } from "../../store/canvas-store";
 
 type ChatHeaderProps = {
 	agentName?: string;
 	description?: string;
-	onOpenOptions?: () => void;
+	onOpenOptions?: () => void; // Kept for backward compatibility
 };
 
 const OptionsButton = styled(IconButton)(({ theme }) => ({
@@ -35,6 +36,8 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 	description = "Your on-device AI assistant",
 	onOpenOptions,
 }) => {
+	const { openCanvas, isOpen } = useCanvasStore();
+
 	return (
 		<Box
 			sx={(theme) => ({
@@ -62,11 +65,11 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 				</Typography>
 			</Box>
 
-			{onOpenOptions && (
+			{onOpenOptions && !isOpen && (
 				/* @ts-ignore - Tooltip has issues with TypeScript but works fine */
-				<Tooltip title="Chat Options" arrow placement="top">
-					<OptionsButton onClick={onOpenOptions} size="medium">
-						<FontAwesomeIcon icon={faSliders} />
+				<Tooltip title="Open Canvas" arrow placement="top">
+					<OptionsButton onClick={openCanvas} size="medium">
+						<FontAwesomeIcon icon={faFileAlt} />
 					</OptionsButton>
 				</Tooltip>
 			)}

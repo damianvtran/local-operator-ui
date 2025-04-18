@@ -1,6 +1,13 @@
 import { faTimes } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Box, IconButton, Typography, alpha, styled } from "@mui/material";
+import {
+	Box,
+	IconButton,
+	Tooltip,
+	Typography,
+	alpha,
+	styled,
+} from "@mui/material";
 import { useCallback, useEffect, useState } from "react";
 import type { FC } from "react";
 import { CanvasContent } from "./canvas-content";
@@ -175,9 +182,11 @@ export const Canvas: FC<CanvasProps> = ({
 					</Typography>
 				</HeaderTitle>
 				<Box sx={{ display: "flex", alignItems: "center" }}>
-					<CloseButton onClick={onClose} size="large">
-						<FontAwesomeIcon icon={faTimes} size="xs" />
-					</CloseButton>
+					<Tooltip title="Close Canvas" arrow placement="top">
+						<CloseButton onClick={onClose} size="large">
+							<FontAwesomeIcon icon={faTimes} size="xs" />
+						</CloseButton>
+					</Tooltip>
 				</Box>
 			</CanvasHeader>
 
@@ -209,7 +218,7 @@ export const Canvas: FC<CanvasProps> = ({
 						No Documents Open
 					</Typography>
 					<Typography variant="body2" color="text.secondary">
-						Click on a markdown file in chat to open it here.
+						Click on a file in chat to open it here.
 					</Typography>
 				</Box>
 			)}
