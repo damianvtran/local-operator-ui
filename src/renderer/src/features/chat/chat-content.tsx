@@ -8,11 +8,11 @@ import { useCanvasStore } from "@renderer/store/canvas-store";
 import { isDevelopmentMode } from "@renderer/utils/env-utils";
 import Split from "@uiw/react-split";
 import { type FC, useEffect, useRef, useState } from "react";
+import { Canvas } from "./canvas";
 import { ChatHeader } from "./chat-header";
 import { ChatOptionsSidebar } from "./chat-options-sidebar";
 import { ChatTabs } from "./chat-tabs";
 import { ChatUtilities } from "./chat-utilities";
-import { MarkdownCanvas } from "./markdown-canvas/markdown-canvas";
 import { MessageInput } from "./message-input";
 import { MessagesView } from "./messages-view";
 import { RawInfoView } from "./raw-info-view";
@@ -215,7 +215,7 @@ export const ChatContent: FC<ChatContentProps> = ({
 					overflow: "hidden",
 				}}
 			>
-				<MarkdownCanvas
+				<Canvas
 					open={isOpen}
 					onClose={closeCanvas}
 					onCloseDocument={closeDocument}
