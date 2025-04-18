@@ -44,6 +44,7 @@ export async function exchangeToken(
 	baseUrl: string,
 	provider: AuthProvider,
 	tokens: { idToken?: string; accessToken?: string },
+	clientId: string,
 ): Promise<RadientApiResponse<AuthTokenExchangeResult>> {
 	const endpoint =
 		provider === "google" ? "/v1/auth/google" : "/v1/auth/microsoft";
@@ -52,6 +53,7 @@ export async function exchangeToken(
 	const body: AuthTokenExchangeRequest = {
 		id_token: tokens.idToken,
 		access_token: tokens.accessToken,
+		client_id: clientId,
 	};
 
 	const response = await fetch(url, {
@@ -116,8 +118,9 @@ export async function createApplication(
 export async function exchangeGoogleToken(
 	baseUrl: string,
 	tokens: { idToken?: string; accessToken?: string },
+	clientId: string,
 ): Promise<RadientApiResponse<AuthTokenExchangeResult>> {
-	return exchangeToken(baseUrl, "google", tokens);
+	return exchangeToken(baseUrl, "google", tokens, clientId);
 }
 
 /**
@@ -130,8 +133,9 @@ export async function exchangeGoogleToken(
 export async function exchangeMicrosoftToken(
 	baseUrl: string,
 	tokens: { idToken?: string; accessToken?: string },
+	clientId: string,
 ): Promise<RadientApiResponse<AuthTokenExchangeResult>> {
-	return exchangeToken(baseUrl, "microsoft", tokens);
+	return exchangeToken(baseUrl, "microsoft", tokens, clientId);
 }
 
 /**

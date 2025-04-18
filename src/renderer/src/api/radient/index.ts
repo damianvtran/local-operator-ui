@@ -54,22 +54,28 @@ type BoundApi<T> = {
  */
 export class RadientClient {
 	private baseUrl: string;
+	private clientId: string;
 
 	/**
 	 * Create a new Radient API client
 	 *
 	 * @param baseUrl - The base URL of the Radient API
+	 * @param clientId - The OAuth client ID to use for auth requests
 	 */
-	constructor(baseUrl: string) {
+	constructor(baseUrl: string, clientId: string) {
 		// Ensure the base URL doesn't end with a slash
 		this.baseUrl = baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl;
+		this.clientId = clientId;
 	}
 
 	/**
 	 * Get the Auth API client with methods bound to the base URL
 	 */
-	get auth(): BoundApi<ApiWithBaseUrl<typeof AuthApiImpl>> {
-		return this.bindBaseUrlToApi(AuthApiImpl);
+	get auth(): BoundApi<ApiWithBaseUrl<typeof AuthApiImpl>> & {
+		clientId: string;
+	} {
+		const api = this.bindBaseUrlToApi(AuthApiImpl);
+		return { ...api, clientId: this.clientId };
 	}
 
 	/**
@@ -119,7 +125,7 @@ export class RadientClient {
 		idToken?: string;
 		accessToken?: string;
 	}): Promise<RadientApiResponse<AuthTokenExchangeResult>> {
-		return this.auth.exchangeGoogleToken(tokens);
+		return this.auth.exchangeGoogleToken(tokens, this.clientId);
 	}
 
 	/**
@@ -132,7 +138,7 @@ export class RadientClient {
 		idToken?: string;
 		accessToken?: string;
 	}): Promise<RadientApiResponse<AuthTokenExchangeResult>> {
-		return this.auth.exchangeMicrosoftToken(tokens);
+		return this.auth.exchangeMicrosoftToken(tokens, this.clientId);
 	}
 
 	/**
@@ -208,6 +214,16 @@ export class RadientClient {
  * @param baseUrl - The base URL of the Radient API
  * @returns A new Radient API client instance
  */
-export const createRadientClient = (baseUrl: string): RadientClient => {
-	return new RadientClient(baseUrl);
+/**
+ * Create a new Radient API client
+ *
+ * @param baseUrl - The base URL of the Radient API
+ * @param clientId - The OAuth client ID to use for auth requests
+ * @returns A new Radient API client instance
+ */
+export const createRadientClient = (
+	baseUrl: string,
+	clientId: string,
+): RadientClient => {
+	return new RadientClient(baseUrl, clientId);
 };
