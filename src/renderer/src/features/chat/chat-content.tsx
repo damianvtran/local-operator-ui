@@ -209,7 +209,6 @@ export const ChatContent: FC<ChatContentProps> = ({
 			<Box
 				ref={canvasContainerRef}
 				sx={{
-					lineHeight: 0,
 					minWidth: testValue,
 					width: testValue,
 					overflow: "hidden",

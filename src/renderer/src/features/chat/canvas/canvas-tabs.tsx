@@ -132,7 +132,7 @@ export const CanvasTabs: FC<CanvasTabsProps> = ({
 	}
 
 	return (
-		<Box id="HELP" sx={{ borderBottom: 1, borderColor: "divider" }}>
+		<Box sx={{ borderBottom: 1, borderColor: "divider" }}>
 			<StyledTabs
 				value={value}
 				variant="scrollable"

@@ -98,7 +98,6 @@ const CloseButton = styled(IconButton)(({ theme }) => ({
  * A sidebar component that displays markdown documents in tabs
  * Replaces the agent options sidebar with a markdown canvas
  */
-// TODO: Rename this component to CanvasView maybe?
 export const Canvas: FC<CanvasProps> = ({
 	onClose,
 	initialDocuments = [],

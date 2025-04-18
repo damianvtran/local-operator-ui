@@ -6,6 +6,7 @@ import { useCanvasStore } from "@renderer/store/canvas-store";
 import { loadLanguageExtensions } from "@renderer/utils/load-language-extensions";
 import type { FC } from "react";
 import { useCallback } from "react";
+import { isCanvasSupported } from "../utils/is-canvas-supported";
 import type { FileAttachmentProps } from "./types";
 
 /**
@@ -84,30 +85,35 @@ export const FileAttachment: FC<FileAttachmentProps> = ({ file, onClick }) => {
 
 	// Handle click on the file attachment
 	const handleClick = useCallback(async () => {
-		const fallbackAction = (err: string) => {
-			err && console.error("Error reading file:", err);
-			onClick(file);
+		const fallback = (error?: string) => {
+			if (error) console.error("Error reading file:", error);
+			onClick(file); // fallback behavior
 		};
 
+		const normalizedPath = file.startsWith("file://") ? file.slice(7) : file;
+
+		const title = getFileName(file);
+
+		let result: any; // TODO: Add proper types for `readFile`
 		try {
-			const normalizedPath = file.startsWith("file://")
-				? file.substring(7)
-				: file;
-			const title = getFileName(file);
-			const result = await window.api.readFile(normalizedPath);
-
-			if (!result.success || !loadLanguageExtensions(file)) {
-				const message =
-					result.error instanceof Error ? result.message : String(result);
-				return fallbackAction(message);
-			}
-
-			openDocument(title, result.data, normalizedPath);
-			openCanvas();
+			result = await window.api.readFile(normalizedPath);
 		} catch (error: unknown) {
 			const message = error instanceof Error ? error.message : String(error);
-			return fallbackAction(message);
+			return fallback(message);
 		}
+
+		if (!result.success || !isCanvasSupported(title)) {
+			const message =
+				result.error instanceof Error
+					? result.error.message
+					: String(result.error ?? "Unknown error");
+
+			return fallback(message);
+		}
+
+		// ✅ Happy path
+		openDocument(title, result.data, normalizedPath);
+		openCanvas();
 	}, [file, onClick, openDocument, openCanvas]);
 
 	return (
