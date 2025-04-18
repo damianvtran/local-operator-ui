@@ -35,13 +35,14 @@ export const useRadientAuth = () => {
 	// Use the React Query-based hook for Radient user information
 	const {
 		user: radientUser,
-		sessionToken,
+		session,
 		isLoading, // Combined loading state from useRadientUserQuery
 		error,
 		isAuthenticated, // Backend validated flag from useRadientUserQuery
 		hasLocalSession, // Local token exists flag from useRadientUserQuery
 		signOut,
 		refreshUser,
+		refreshToken,
 	} = useRadientUserQuery();
 
 	// Determine the overall authStatus
@@ -104,7 +105,11 @@ export const useRadientAuth = () => {
 		},
 
 		// Session token for API calls
-		sessionToken,
+		sessionToken: session?.accessToken,
+		// Expose the full session for advanced use cases
+		session,
+		// Token refresh function
+		refreshToken,
 
 		// Actions
 		refreshUser,

@@ -16,7 +16,13 @@ import { isDevelopmentMode } from "@renderer/utils/env-utils";
 import { ChatLayout } from "@shared/components/common/chat-layout";
 import { useChatStore } from "@store/chat-store";
 import { useQueryClient } from "@tanstack/react-query";
-import React, { useState, useMemo, useEffect, useCallback } from "react";
+import React, {
+	useState,
+	useMemo,
+	useEffect,
+	useCallback,
+	useRef,
+} from "react";
 import type { FC } from "react";
 import { useNavigate } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
@@ -89,7 +95,7 @@ export const ChatPage: FC<ChatProps> = () => {
 		error,
 		isFetchingMore,
 		hasMoreMessages,
-		messagesContainerRef,
+		messagesContainerRef, // Get the ref from the hook
 		refetch,
 	} = useConversationMessages(conversationId);
 
@@ -110,20 +116,15 @@ export const ChatPage: FC<ChatProps> = () => {
 		addMessage,
 	});
 
-	// Memoize the dependencies array to prevent unnecessary re-renders
-	const scrollDependencies = useMemo(
-		() => [messages.length, isLoading, currentJobId],
-		[messages.length, isLoading, currentJobId],
+	// Use custom hook to track scroll position and show/hide scroll button
+	// Pass the messagesContainerRef to the hook to ensure it tracks the correct container
+	const { isFarFromBottom, scrollToBottom } = useScrollToBottom(
+		50,
+		messagesContainerRef,
 	);
 
-	// Use custom hook to scroll to bottom when messages change or when a new message is added
-	// Only scrolls to bottom if user is already near the bottom
-	const {
-		ref: messagesEndRef,
-		isFarFromBottom,
-		scrollToBottom,
-		forceScrollToBottom,
-	} = useScrollToBottom(scrollDependencies, 150);
+	// Create a ref for the messages end element (for backwards compatibility)
+	const messagesEndRef = useRef<HTMLDivElement>(null);
 
 	// Check if the selected agent exists in the list of agents
 	useEffect(() => {
@@ -147,11 +148,11 @@ export const ChatPage: FC<ChatProps> = () => {
 		if (agentId) {
 			setLastChatAgentId(agentId);
 
-			// Only force scroll if we have a new conversation with loaded messages
+			// Only scroll if we have a new conversation with loaded messages
 			if (!isLoadingMessages && messages.length > 0) {
 				const prevMessages = getMessages(agentId);
 				if (!prevMessages || prevMessages.length === 0) {
-					forceScrollToBottom();
+					scrollToBottom();
 				}
 			}
 		}
@@ -160,7 +161,7 @@ export const ChatPage: FC<ChatProps> = () => {
 		setLastChatAgentId,
 		isLoadingMessages,
 		messages.length,
-		forceScrollToBottom,
+		scrollToBottom,
 		getMessages,
 	]);
 
@@ -170,46 +171,32 @@ export const ChatPage: FC<ChatProps> = () => {
 		didAutoScrollRef.current = false;
 	}, [agentId]);
 
-	// Scroll to bottom once after all messages load on conversation switch
+	// Scroll to bottom when switching conversations or when messages load
+	// biome-ignore lint/correctness/useExhaustiveDependencies: messagesContainerRef.current is used but we don't want to re-run on every ref change
 	useEffect(() => {
+		// Reset auto-scroll flag when conversation changes
+		if (agentId !== previousConversationIdRef.current) {
+			didAutoScrollRef.current = false;
+			previousConversationIdRef.current = agentId;
+		}
+
+		// Scroll to bottom once after messages load
 		if (
 			!didAutoScrollRef.current &&
 			agentId &&
 			!isLoadingMessages &&
 			messages.length > 0
 		) {
-			const container = messagesContainerRef.current;
-			if (!container) return;
-
-			let lastScrollHeight = container.scrollHeight;
-			let stableCounter = 0;
-			const maxStableCount = 3; // Require 3 consecutive stable checks (~300ms)
-			const interval = setInterval(() => {
-				const currentScrollHeight = container.scrollHeight;
-				if (currentScrollHeight !== lastScrollHeight) {
-					lastScrollHeight = currentScrollHeight;
-					stableCounter = 0; // Reset counter if height changes
-				} else {
-					stableCounter++;
-				}
-
-				if (stableCounter >= maxStableCount) {
-					clearInterval(interval);
-					forceScrollToBottom();
-					didAutoScrollRef.current = true;
-				}
-			}, 100); // Check every 100ms
-
-			// Safety timeout to stop checking after 5 seconds
-			setTimeout(() => clearInterval(interval), 5000);
+			// Immediately scroll to bottom (scrollTop = 0 in column-reverse)
+			if (messagesContainerRef.current) {
+				messagesContainerRef.current.scrollTop = 0;
+				didAutoScrollRef.current = true;
+			}
 		}
-	}, [
-		agentId,
-		isLoadingMessages,
-		messages.length,
-		forceScrollToBottom,
-		messagesContainerRef,
-	]);
+	}, [agentId, isLoadingMessages, messages.length]);
+
+	// Reference to track previous conversation ID
+	const previousConversationIdRef = useRef<string | undefined>(undefined);
 
 	// Check for active jobs on initial page load
 	useEffect(() => {
@@ -317,6 +304,10 @@ export const ChatPage: FC<ChatProps> = () => {
 			// Add user message to chat store
 			addMessage(conversationId, userMessage);
 
+			// Scroll to bottom immediately after adding the message
+			// This ensures the user sees their message right away
+			scrollToBottom();
+
 			// Set loading state
 			setIsLoading(true);
 
@@ -407,6 +398,7 @@ export const ChatPage: FC<ChatProps> = () => {
 			apiClient,
 			setCurrentJobId,
 			configData,
+			scrollToBottom,
 		],
 	);
 

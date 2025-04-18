@@ -11,8 +11,11 @@ const api = {
 	// Session storage methods
 	session: {
 		getSession: () => ipcRenderer.invoke("get-session"),
-		storeSession: (jwt: string, expiry: number) =>
-			ipcRenderer.invoke("store-session", jwt, expiry),
+		storeSession: (
+			accessToken: string,
+			expiry: number,
+			refreshToken?: string,
+		) => ipcRenderer.invoke("store-session", accessToken, expiry, refreshToken),
 		clearSession: () => ipcRenderer.invoke("clear-session"),
 	},
 

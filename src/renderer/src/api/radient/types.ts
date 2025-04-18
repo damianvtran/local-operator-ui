@@ -42,13 +42,61 @@ export type RadientApiResponse<T> = {
 };
 
 /**
+ * Standard OAuth 2.0 token response
+ */
+export type TokenResponse = {
+	/**
+	 * The access token
+	 */
+	access_token: string;
+	/**
+	 * The token type, typically "Bearer"
+	 */
+	token_type: string;
+	/**
+	 * The lifetime in seconds of the access token
+	 */
+	expires_in: number;
+	/**
+	 * The refresh token
+	 */
+	refresh_token?: string;
+	/**
+	 * The ID token (OpenID Connect)
+	 */
+	id_token?: string;
+	/**
+	 * The scope of the access token
+	 */
+	scope?: string;
+};
+
+/**
  * Response from the token exchange endpoint
  */
 export type AuthTokenExchangeResult = {
 	/**
-	 * The backend JWT token
+	 * Whether the account was newly created during this authentication
 	 */
-	token: string;
+	account_created: boolean;
+	/**
+	 * Full OAuth 2.0 token response
+	 */
+	token_response: TokenResponse;
+};
+
+/**
+ * Request to refresh an access token
+ */
+export type TokenRefreshRequest = {
+	/**
+	 * The refresh token
+	 */
+	refresh_token: string;
+	/**
+	 * Must be "refresh_token"
+	 */
+	grant_type: string;
 };
 
 export type AccountInfo = {

@@ -12,6 +12,8 @@ import type {
 	CreateApplicationResult,
 	ProvisionResult,
 	RadientApiResponse,
+	TokenRefreshRequest,
+	TokenResponse,
 	UserInfoResult,
 } from "./types";
 
@@ -74,14 +76,14 @@ export async function exchangeToken(
  *
  * @param baseUrl - The base URL of the Radient API
  * @param accountId - The ID of the account to create the application for
- * @param jwt - The backend JWT
+ * @param accessToken - The access token
  * @param applicationData - Data for the new application
  * @returns The created application information
  */
 export async function createApplication(
 	baseUrl: string,
 	accountId: string,
-	jwt: string,
+	accessToken: string,
 	applicationData: CreateApplicationRequest,
 ): Promise<RadientApiResponse<CreateApplicationResult>> {
 	const url = joinUrl(baseUrl, `/v1/accounts/${accountId}/applications`);
@@ -89,7 +91,7 @@ export async function createApplication(
 	const response = await fetch(url, {
 		method: "POST",
 		headers: {
-			Authorization: `Bearer ${jwt}`,
+			Authorization: `Bearer ${accessToken}`,
 			"Content-Type": "application/json",
 		},
 		body: JSON.stringify(applicationData),
@@ -136,19 +138,19 @@ export async function exchangeMicrosoftToken(
  * Get the current user's information
  *
  * @param baseUrl - The base URL of the Radient API
- * @param jwt - The backend JWT
+ * @param accessToken - The access token
  * @returns The user information
  */
 export async function getUserInfo(
 	baseUrl: string,
-	jwt: string,
+	accessToken: string,
 ): Promise<RadientApiResponse<UserInfoResult>> {
 	const url = joinUrl(baseUrl, "/v1/me");
 
 	const response = await fetch(url, {
 		method: "GET",
 		headers: {
-			Authorization: `Bearer ${jwt}`,
+			Authorization: `Bearer ${accessToken}`,
 		},
 		credentials: "same-origin",
 	});
@@ -165,22 +167,92 @@ export async function getUserInfo(
  * Provision a new account
  *
  * @param baseUrl - The base URL of the Radient API
- * @param jwt - The backend JWT
+ * @param accessToken - The access token
  * @returns The provisioned account information
  */
 export async function provisionAccount(
 	baseUrl: string,
-	jwt: string,
+	accessToken: string,
 ): Promise<RadientApiResponse<ProvisionResult>> {
 	const url = joinUrl(baseUrl, "/v1/provision");
 
 	const response = await fetch(url, {
 		method: "POST",
 		headers: {
-			Authorization: `Bearer ${jwt}`,
+			Authorization: `Bearer ${accessToken}`,
 			"Content-Type": "application/json",
 		},
 		body: JSON.stringify({}),
+		credentials: "same-origin",
+	});
+
+	if (!response.ok) {
+		const text = await response.text();
+		throw new Error(text || `HTTP ${response.status}`);
+	}
+
+	return response.json();
+}
+
+/**
+ * Refresh an access token using a refresh token
+ *
+ * @param baseUrl - The base URL of the Radient API
+ * @param refreshToken - The refresh token
+ * @returns A new token response with a fresh access token
+ */
+export async function refreshToken(
+	baseUrl: string,
+	refreshToken: string,
+): Promise<RadientApiResponse<TokenResponse>> {
+	const url = joinUrl(baseUrl, "/v1/auth/token");
+
+	const body: TokenRefreshRequest = {
+		refresh_token: refreshToken,
+		grant_type: "refresh_token",
+	};
+
+	const response = await fetch(url, {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/json",
+		},
+		body: JSON.stringify(body),
+		credentials: "same-origin",
+	});
+
+	if (!response.ok) {
+		const text = await response.text();
+		throw new Error(text || `HTTP ${response.status}`);
+	}
+
+	return response.json();
+}
+
+/**
+ * Revoke a token
+ *
+ * @param baseUrl - The base URL of the Radient API
+ * @param token - The token to revoke
+ * @param tokenType - The type of token to revoke (access_token or refresh_token)
+ * @returns Success response
+ */
+export async function revokeToken(
+	baseUrl: string,
+	token: string,
+	tokenType: "access_token" | "refresh_token",
+): Promise<RadientApiResponse<{ success: boolean }>> {
+	const url = joinUrl(baseUrl, "/v1/auth/revoke");
+
+	const response = await fetch(url, {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/json",
+		},
+		body: JSON.stringify({
+			token,
+			token_type_hint: tokenType,
+		}),
 		credentials: "same-origin",
 	});
 

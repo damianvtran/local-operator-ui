@@ -76,34 +76,45 @@ export const useOidcAuth = (): UseOidcAuthResult => {
 			);
 
 			try {
-				// 1. Exchange ID token for backend JWT
+				// 1. Exchange ID token for backend tokens
 				// We only need the ID token for the backend exchange now
 				const tokenPayload = { idToken };
-				const tokenResponse =
+				const authResponse =
 					provider === "google"
 						? await radientClient.exchangeGoogleToken(tokenPayload)
 						: await radientClient.exchangeMicrosoftToken(tokenPayload);
 
-				const backendJwt = tokenResponse.result.token;
-				console.log("Backend JWT received.");
+				// Extract the token response from the provider auth response
+				const tokenResponse = authResponse.result.token_response;
+				console.log("Token response received:", {
+					accessToken: "...",
+					refreshToken: tokenResponse.refresh_token ? "present" : "absent",
+					expiresIn: tokenResponse.expires_in,
+				});
 
-				// Persist the backend JWT using the existing utility
-				await storeSession(backendJwt);
-				console.log("Backend JWT stored in session.");
+				// Persist the tokens using the existing utility
+				await storeSession(
+					tokenResponse.access_token,
+					tokenResponse.refresh_token,
+					tokenResponse.expires_in,
+				);
+				console.log("Tokens stored in session.");
 
-				// 2. Decode JWT to get account ID (sub claim)
+				// 2. Decode access token to get account ID (sub claim)
 				let accountId: string;
 				try {
-					const decodedToken = jwtDecode<{ sub: string }>(backendJwt);
+					const decodedToken = jwtDecode<{ sub: string }>(
+						tokenResponse.access_token,
+					);
 					if (!decodedToken || !decodedToken.sub) {
-						throw new Error("Invalid JWT: Missing 'sub' claim.");
+						throw new Error("Invalid access token: Missing 'sub' claim.");
 					}
 					accountId = decodedToken.sub;
 					console.log(`Decoded account ID: ${accountId}`);
 				} catch (decodeError) {
 					console.error("JWT Decode Error:", decodeError);
-					setError("Failed to decode session token. Please sign in again.");
-					showErrorToast("Failed to decode session token.");
+					setError("Failed to decode access token. Please sign in again.");
+					showErrorToast("Failed to decode access token.");
 					// Don't set loading false here, let the main flow handle it
 					return; // Stop execution here
 				}
@@ -135,7 +146,7 @@ export const useOidcAuth = (): UseOidcAuthResult => {
 					// Create an application to get an API key
 					const appResponse = await radientClient.createApplication(
 						accountId,
-						backendJwt,
+						tokenResponse.access_token,
 						{
 							name: "Local Operator UI",
 							description: "Application created for Local Operator UI",

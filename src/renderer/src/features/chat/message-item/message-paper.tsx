@@ -124,17 +124,15 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 	}, [children]);
 
 	// Always call hooks at the top level, regardless of conditions
-	// Use the scroll to bottom hook to automatically scroll while streaming
+	// Use the simplified scroll hook to track scroll position and scroll to bottom
 	const {
-		ref: scrollRef,
-		forceScrollToBottom,
-		isNearBottom,
-	} = useScrollToBottom(
-		// Dependencies that should trigger scroll evaluation
-		[content, isStreamable, message?.is_complete],
-		250, // Threshold for "near bottom" in pixels
-		50, // Threshold for showing scroll button
-	);
+		containerRef: scrollRef,
+		scrollToBottom,
+		isFarFromBottom,
+	} = useScrollToBottom();
+
+	// Invert isFarFromBottom to get isNearBottom for compatibility with existing code
+	const isNearBottom = !isFarFromBottom;
 
 	// Track if we should auto-scroll based on user's scroll position
 	const shouldAutoScrollRef = useRef(true);
@@ -151,14 +149,14 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 		const scrollInterval = setInterval(() => {
 			// Only scroll if the user is near the bottom (using the ref for performance)
 			if (shouldAutoScrollRef.current) {
-				forceScrollToBottom();
+				scrollToBottom();
 			}
 		}, 350); // Check every 350ms while streaming
 
 		return () => {
 			clearInterval(scrollInterval);
 		};
-	}, [isStreamable, message, forceScrollToBottom, isNearBottom, isLastMessage]);
+	}, [isStreamable, message, scrollToBottom, isNearBottom, isLastMessage]);
 
 	// Update auto-scroll flag when isNearBottom changes
 	// This effect is intentionally simple and only depends on isNearBottom
