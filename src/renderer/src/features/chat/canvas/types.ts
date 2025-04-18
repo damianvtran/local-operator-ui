@@ -1,7 +1,7 @@
 /**
  * Represents a markdown document in the canvas
  */
-export interface MarkdownDocument {
+export interface CanvasDocument {
 	/**
 	 * Unique identifier for the document
 	 */

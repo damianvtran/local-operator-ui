@@ -1,13 +1,13 @@
 import { v4 as uuidv4 } from "uuid";
 import { create } from "zustand";
-import type { MarkdownDocument } from "../features/chat/markdown-canvas/types";
+import type { CanvasDocument } from "../features/chat/canvas/types";
 
 interface CanvasState {
 	// Whether the markdown canvas is open
 	isOpen: boolean;
 
 	// List of open documents
-	documents: MarkdownDocument[];
+	documents: CanvasDocument[];
 
 	// ID of the active document
 	activeDocumentId: string | null;
@@ -54,7 +54,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
 			set({ activeDocumentId: documents[existingDocIndex].id, isOpen: true });
 		} else {
 			// Otherwise create a new document
-			const newDocument: MarkdownDocument = {
+			const newDocument: CanvasDocument = {
 				id: uuidv4(),
 				title,
 				content,

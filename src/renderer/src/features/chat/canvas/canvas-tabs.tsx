@@ -2,13 +2,13 @@ import { faTimes } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, IconButton, Tab, Tabs, alpha, styled } from "@mui/material";
 import { type FC, useCallback, useEffect, useState } from "react";
-import type { MarkdownDocument } from "./types";
+import type { CanvasDocument } from "./types";
 
-type MarkdownCanvasTabsProps = {
+type CanvasTabsProps = {
 	/**
 	 * List of open documents
 	 */
-	documents: MarkdownDocument[];
+	documents: CanvasDocument[];
 
 	/**
 	 * ID of the currently active document
@@ -89,7 +89,7 @@ const CloseTabButton = styled(IconButton)(({ theme }) => ({
  * Tabs component for the markdown canvas
  * Displays a tab for each open document
  */
-export const MarkdownCanvasTabs: FC<MarkdownCanvasTabsProps> = ({
+export const CanvasTabs: FC<CanvasTabsProps> = ({
 	documents,
 	activeDocumentId,
 	onChangeActiveDocument,

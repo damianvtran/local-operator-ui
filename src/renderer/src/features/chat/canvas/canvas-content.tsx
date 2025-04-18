@@ -3,23 +3,21 @@ import { loadLanguageExtensions } from "@renderer/utils/load-language-extensions
 import { basicLight } from "@uiw/codemirror-theme-basic";
 import CodeMirror, { type Extension } from "@uiw/react-codemirror";
 import { type FC, useEffect, useState } from "react";
-import type { MarkdownDocument } from "./types";
+import type { CanvasDocument } from "./types";
 
-type MarkdownCanvasContentProps = {
+type CanvasContentProps = {
 	/**
 	 * The document to display
 	 */
-	document: MarkdownDocument;
+	document: CanvasDocument;
 };
 
 /**
  * Content component for the markdown canvas
  * Displays the markdown content with syntax highlighting
  */
-export const MarkdownCanvasReactContent: FC<MarkdownCanvasContentProps> = ({
-	document,
-}) => {
-	const [value, setValue] = useState<MarkdownDocument | null>(null);
+export const CanvasContent: FC<CanvasContentProps> = ({ document }) => {
+	const [value, setValue] = useState<CanvasDocument | null>(null);
 	const [languageExtensions, setLanguageExtensions] = useState<Extension[]>([]);
 
 	useEffect(() => {

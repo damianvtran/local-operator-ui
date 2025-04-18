@@ -17,13 +17,13 @@ import {
 } from "@mui/material";
 import type { FC } from "react";
 import { useCallback, useState } from "react";
-import type { ExportFormat, MarkdownDocument } from "./types";
+import type { CanvasDocument, ExportFormat } from "./types";
 
-type MarkdownCanvasToolbarProps = {
+type CanvasToolbarProps = {
 	/**
 	 * The currently active document
 	 */
-	document: MarkdownDocument;
+	document: CanvasDocument;
 };
 
 /**
@@ -59,9 +59,7 @@ const ToolbarButton = styled(Button)(({ theme }) => ({
  * Toolbar component for the markdown canvas
  * Provides document actions like export
  */
-export const MarkdownCanvasToolbar: FC<MarkdownCanvasToolbarProps> = ({
-	document,
-}) => {
+export const CanvasToolbar: FC<CanvasToolbarProps> = ({ document }) => {
 	// State for export menu
 	const [exportMenuAnchor, setExportMenuAnchor] = useState<null | HTMLElement>(
 		null,

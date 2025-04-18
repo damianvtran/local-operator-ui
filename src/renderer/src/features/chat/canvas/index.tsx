@@ -3,11 +3,11 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, IconButton, Typography, alpha, styled } from "@mui/material";
 import { useCallback, useEffect, useState } from "react";
 import type { FC } from "react";
-import { MarkdownCanvasReactContent } from "./markdown-canvas-editor";
-import { MarkdownCanvasTabs } from "./markdown-canvas-tabs";
-import type { MarkdownDocument } from "./types";
+import { CanvasContent } from "./canvas-content";
+import { CanvasTabs } from "./canvas-tabs";
+import type { CanvasDocument } from "./types";
 
-type MarkdownCanvasProps = {
+type CanvasProps = {
 	/**
 	 * Whether the canvas is open
 	 */
@@ -23,7 +23,7 @@ type MarkdownCanvasProps = {
 	/**
 	 * Initial markdown documents to display
 	 */
-	initialDocuments?: MarkdownDocument[];
+	initialDocuments?: CanvasDocument[];
 
 	/**
 	 * ID of the active document
@@ -99,7 +99,7 @@ const CloseButton = styled(IconButton)(({ theme }) => ({
  * Replaces the agent options sidebar with a markdown canvas
  */
 // TODO: Rename this component to CanvasView maybe?
-export const MarkdownCanvas: FC<MarkdownCanvasProps> = ({
+export const Canvas: FC<CanvasProps> = ({
 	onClose,
 	initialDocuments = [],
 	activeDocumentId: externalActiveDocumentId,
@@ -108,7 +108,7 @@ export const MarkdownCanvas: FC<MarkdownCanvasProps> = ({
 }) => {
 	// State for managing open documents
 	const [documents, setDocuments] =
-		useState<MarkdownDocument[]>(initialDocuments);
+		useState<CanvasDocument[]>(initialDocuments);
 	const [internalActiveDocumentId, setInternalActiveDocumentId] = useState<
 		string | null
 	>(initialDocuments.length > 0 ? initialDocuments[0].id : null);
@@ -183,7 +183,7 @@ export const MarkdownCanvas: FC<MarkdownCanvasProps> = ({
 			</CanvasHeader>
 
 			{/* Tabs for document navigation */}
-			<MarkdownCanvasTabs
+			<CanvasTabs
 				documents={documents}
 				activeDocumentId={activeDocumentId}
 				onChangeActiveDocument={handleChangeActiveDocument}
@@ -191,9 +191,7 @@ export const MarkdownCanvas: FC<MarkdownCanvasProps> = ({
 			/>
 
 			{/* Document content area */}
-			{activeDocument && (
-				<MarkdownCanvasReactContent document={activeDocument} />
-			)}
+			{activeDocument && <CanvasContent document={activeDocument} />}
 
 			{/* Empty state when no documents are open */}
 			{!activeDocument && (
