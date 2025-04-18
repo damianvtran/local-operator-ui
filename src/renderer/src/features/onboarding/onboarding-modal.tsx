@@ -10,6 +10,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, CircularProgress, Tooltip } from "@mui/material"; // Added CircularProgress
 import { getUserInfo } from "@renderer/api/radient/auth-api";
 import { apiConfig } from "@renderer/config";
+import { radientUserKeys } from "@renderer/hooks/use-radient-user-query";
 import { useFeatureFlags } from "@renderer/providers/feature-flags";
 import {
 	OnboardingStep,
@@ -22,6 +23,7 @@ import {
 	PrimaryButton,
 	SecondaryButton,
 } from "@shared/components/common/base-dialog";
+import { useQueryClient } from "@tanstack/react-query";
 import type { FC } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -114,20 +116,25 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 		checkAuth();
 	}, []); // Run only once on mount
 
+	// Get the query client for invalidating queries
+	const queryClient = useQueryClient();
+
 	// On mount (or when auth check completes), check for a persisted session, validate it, and fetch user info
 	useEffect(() => {
 		// Only run if provider auth check is complete
 		if (isLoadingProviderAuth) return;
 
 		const tryRestoreSession = async () => {
-			const jwt = await getSession();
-			if (!jwt) return; // No session, do nothing
+			const sessionData = await getSession();
+			if (!sessionData) {
+				return; // No session, do nothing
+			}
 
 			try {
 				// Fetch user information from Radient API
 				const userInfoResponse = await getUserInfo(
 					apiConfig.radientBaseUrl,
-					jwt,
+					sessionData.accessToken,
 				);
 				const userInfo = userInfoResponse.result;
 
@@ -152,6 +159,9 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 								: OnboardingStep.WELCOME,
 						);
 					}
+
+					// Invalidate queries to ensure fresh data
+					queryClient.invalidateQueries({ queryKey: radientUserKeys.all });
 				} else {
 					// If userInfo is null/undefined despite having a JWT, the token might be invalid/expired
 					console.warn(
@@ -169,7 +179,8 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 	}, [
 		setCurrentStep,
 		isLoadingProviderAuth,
-		isRadientPassFlowEnabled, // Add dependency
+		isRadientPassFlowEnabled,
+		queryClient, // Add queryClient as a dependency
 	]);
 
 	// Update the previous step reference whenever currentStep changes

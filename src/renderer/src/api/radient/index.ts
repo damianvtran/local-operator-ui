@@ -11,6 +11,7 @@ import type {
 	CreateApplicationResult,
 	ProvisionResult,
 	RadientApiResponse,
+	TokenResponse,
 	UserInfoResult,
 } from "./types";
 
@@ -137,39 +138,67 @@ export class RadientClient {
 	/**
 	 * Get the current user's information
 	 *
-	 * @param jwt - The backend JWT
+	 * @param accessToken - The access token
 	 * @returns The user information (standard response format)
 	 */
-	async getUserInfo(jwt: string): Promise<RadientApiResponse<UserInfoResult>> {
-		return this.auth.getUserInfo(jwt);
+	async getUserInfo(
+		accessToken: string,
+	): Promise<RadientApiResponse<UserInfoResult>> {
+		return this.auth.getUserInfo(accessToken);
 	}
 
 	/**
 	 * Provision a new account
 	 *
-	 * @param jwt - The backend JWT
+	 * @param accessToken - The access token
 	 * @returns The provisioned account information (standard response format)
 	 */
 	async provisionAccount(
-		jwt: string,
+		accessToken: string,
 	): Promise<RadientApiResponse<ProvisionResult>> {
-		return this.auth.provisionAccount(jwt);
+		return this.auth.provisionAccount(accessToken);
 	}
 
 	/**
 	 * Create a new application for a given account
 	 *
 	 * @param accountId - The ID of the account to create the application for
-	 * @param jwt - The backend JWT
+	 * @param accessToken - The access token
 	 * @param applicationData - Data for the new application
 	 * @returns The created application information (standard response format)
 	 */
 	async createApplication(
 		accountId: string,
-		jwt: string,
+		accessToken: string,
 		applicationData: CreateApplicationRequest,
 	): Promise<RadientApiResponse<CreateApplicationResult>> {
-		return this.auth.createApplication(accountId, jwt, applicationData);
+		return this.auth.createApplication(accountId, accessToken, applicationData);
+	}
+
+	/**
+	 * Refresh an access token using a refresh token
+	 *
+	 * @param refreshToken - The refresh token
+	 * @returns A new token response with a fresh access token
+	 */
+	async refreshToken(
+		refreshToken: string,
+	): Promise<RadientApiResponse<TokenResponse>> {
+		return this.auth.refreshToken(refreshToken);
+	}
+
+	/**
+	 * Revoke a token
+	 *
+	 * @param token - The token to revoke
+	 * @param tokenType - The type of token to revoke (access_token or refresh_token)
+	 * @returns Success response
+	 */
+	async revokeToken(
+		token: string,
+		tokenType: "access_token" | "refresh_token",
+	): Promise<RadientApiResponse<{ success: boolean }>> {
+		return this.auth.revokeToken(token, tokenType);
 	}
 }
 

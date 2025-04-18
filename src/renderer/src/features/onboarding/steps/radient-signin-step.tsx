@@ -41,14 +41,14 @@ export const RadientSignInStep: FC<RadientSignInStepProps> = ({
 }) => {
 	const handleSignInSuccess = useCallback(async () => {
 		try {
-			// Get the session JWT
-			const jwt = await getSession();
+			// Get the session data
+			const sessionData = await getSession();
 
-			if (jwt) {
+			if (sessionData) {
 				// Fetch user information from Radient API
 				const userInfoResponse = await getUserInfo(
 					apiConfig.radientBaseUrl,
-					jwt,
+					sessionData.accessToken,
 				);
 				const userInfo = userInfoResponse.result;
 
@@ -62,6 +62,8 @@ export const RadientSignInStep: FC<RadientSignInStepProps> = ({
 				} else {
 					console.error("User info response was empty");
 				}
+			} else {
+				console.warn("No session data found in handleSignInSuccess");
 			}
 		} catch (error) {
 			console.error("Error fetching user info:", error);

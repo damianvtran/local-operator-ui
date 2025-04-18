@@ -9,10 +9,15 @@ declare global {
 			openExternal: (url: string) => Promise<void>;
 			session: {
 				getSession: () => Promise<{
-					jwt: string | undefined;
+					accessToken: string | undefined;
+					refreshToken: string | undefined;
 					expiry: number | undefined;
 				}>;
-				storeSession: (jwt: string, expiry: number) => Promise<void>;
+				storeSession: (
+					accessToken: string,
+					expiry: number,
+					refreshToken?: string,
+				) => Promise<void>;
 				clearSession: () => Promise<void>;
 			};
 			systemInfo: {
