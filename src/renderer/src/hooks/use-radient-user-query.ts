@@ -41,7 +41,10 @@ export const useRadientUserQuery = () => {
 	const queryClient = useQueryClient();
 
 	// Create the Radient API client
-	const radientClient = createRadientClient(apiConfig.radientBaseUrl);
+	const radientClient = createRadientClient(
+		apiConfig.radientBaseUrl,
+		apiConfig.radientClientId,
+	);
 
 	// Mutation for refreshing the access token
 	const refreshTokenMutation = useMutation({

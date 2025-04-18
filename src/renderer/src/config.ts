@@ -18,6 +18,14 @@ const envSchema = z.object({
 		.optional()
 		.default("https://api.radienthq.com"),
 
+	// Radient OAuth client ID (required)
+	VITE_RADIENT_CLIENT_ID: z
+		.string({
+			required_error: "VITE_RADIENT_CLIENT_ID is required",
+			invalid_type_error: "VITE_RADIENT_CLIENT_ID must be a string",
+		})
+		.min(1, "VITE_RADIENT_CLIENT_ID cannot be empty"),
+
 	// Backend service manager configuration
 	VITE_DISABLE_BACKEND_MANAGER: z
 		.enum(["true", "false"])
@@ -93,4 +101,5 @@ export const config = loadConfig();
 export const apiConfig = {
 	baseUrl: config.VITE_LOCAL_OPERATOR_API_URL,
 	radientBaseUrl: config.VITE_RADIENT_SERVER_BASE_URL,
+	radientClientId: config.VITE_RADIENT_CLIENT_ID,
 };

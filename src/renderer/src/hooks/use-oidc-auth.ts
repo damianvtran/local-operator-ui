@@ -50,7 +50,10 @@ type UseOidcAuthResult = {
 };
 
 // Create a Radient API client
-const radientClient = createRadientClient(apiConfig.radientBaseUrl);
+const radientClient = createRadientClient(
+	apiConfig.radientBaseUrl,
+	apiConfig.radientClientId,
+);
 
 /**
  * Main hook for OIDC authentication via main process native flow.

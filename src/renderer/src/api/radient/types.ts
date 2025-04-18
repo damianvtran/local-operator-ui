@@ -14,6 +14,7 @@ export type AuthProvider = "google" | "microsoft";
  *
  * The backend will accept either an ID token or an access token, or both.
  * At least one of these should be provided.
+ * client_id is required to identify the OAuth client application.
  */
 export type AuthTokenExchangeRequest = {
 	/**
@@ -24,6 +25,10 @@ export type AuthTokenExchangeRequest = {
 	 * The access token from the authentication provider (Google or Microsoft)
 	 */
 	access_token?: string;
+	/**
+	 * The OAuth client ID (required)
+	 */
+	client_id: string;
 };
 
 /**
