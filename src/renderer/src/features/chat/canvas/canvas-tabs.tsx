@@ -102,12 +102,11 @@ export const CanvasTabs: FC<CanvasTabsProps> = ({
 		// Ensures that the currently active tab matches the externally controlled
 		if (
 			activeDocumentId &&
-			value !== activeDocumentId &&
 			documents.find((document) => document.id === activeDocumentId)
 		) {
 			setValue(activeDocumentId);
 		}
-	}, [value, documents.find, activeDocumentId]);
+	}, [documents.find, activeDocumentId]);
 
 	// Handle direct tab click
 	const handleTabClick = useCallback(
