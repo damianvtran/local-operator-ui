@@ -105,8 +105,14 @@ export const CanvasTabs: FC<CanvasTabsProps> = ({
 			documents.find((document) => document.id === activeDocumentId)
 		) {
 			setValue(activeDocumentId);
+		} else if (documents.length > 0 && !activeDocumentId) {
+			// If there's no active document but we have documents, select the first one
+			setValue(documents[0].id);
+		} else if (documents.length === 0) {
+			// If there are no documents, reset the value
+			setValue(false);
 		}
-	}, [documents.find, activeDocumentId]);
+	}, [documents, activeDocumentId]);
 
 	// Handle direct tab click
 	const handleTabClick = useCallback(
@@ -133,7 +139,7 @@ export const CanvasTabs: FC<CanvasTabsProps> = ({
 	return (
 		<Box sx={{ borderBottom: 1, borderColor: "divider" }}>
 			<StyledTabs
-				value={value}
+				value={activeDocumentId || value}
 				variant="scrollable"
 				scrollButtons="auto"
 				aria-label="Markdown document tabs"
