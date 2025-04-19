@@ -35,6 +35,7 @@ type MessageInputProps = {
 	isFarFromBottom?: boolean;
 	scrollToBottom?: () => void;
 	initialSuggestions?: string[];
+	isChatUtilitiesExpanded: boolean;
 };
 
 /**
@@ -304,6 +305,7 @@ export const MessageInput: FC<MessageInputProps> = ({
 	isFarFromBottom = false,
 	scrollToBottom = () => {},
 	initialSuggestions,
+	isChatUtilitiesExpanded,
 }) => {
 	const [attachments, setAttachments] = useState<string[]>([]);
 	const fileInputRef = useRef<HTMLInputElement>(null);
@@ -320,6 +322,16 @@ export const MessageInput: FC<MessageInputProps> = ({
 		return shuffled.slice(0, MAX_SUGGESTIONS);
 	}, [initialSuggestions]);
 
+	const onSubmit = useMemo(
+		() => (message: string) => {
+			onSendMessage(message, attachments);
+			setAttachments([]);
+		},
+		// attachments is a dependency, but this is safe because attachments is local state
+		// and onSendMessage is a prop (assumed stable)
+		[onSendMessage, attachments],
+	);
+
 	const {
 		inputValue: newMessage,
 		setInputValue: setNewMessage,
@@ -329,10 +341,7 @@ export const MessageInput: FC<MessageInputProps> = ({
 	} = useMessageInput({
 		conversationId,
 		messages,
-		onSubmit: (message) => {
-			onSendMessage(message, attachments);
-			setAttachments([]);
-		},
+		onSubmit,
 		scrollToBottom,
 	});
 
@@ -503,24 +512,22 @@ export const MessageInput: FC<MessageInputProps> = ({
 	);
 
 	return (
-		<>
-			<InputOuterContainer>
-				{messages.length === 0 ? (
-					<EmptyStateContainer>
-						<EmptyStateTitle variant="h6">
-							What can I help you with today?
-						</EmptyStateTitle>
-						{inputContent}
-					</EmptyStateContainer>
-				) : (
-					inputContent
-				)}
-			</InputOuterContainer>
-
+		<InputOuterContainer>
+			{messages.length === 0 ? (
+				<EmptyStateContainer>
+					<EmptyStateTitle variant="h6">
+						What can I help you with today?
+					</EmptyStateTitle>
+					{inputContent}
+				</EmptyStateContainer>
+			) : (
+				inputContent
+			)}
 			<ScrollToBottomButton
 				visible={isFarFromBottom}
+				isChatUtilitiesExpanded={isChatUtilitiesExpanded}
 				onClick={scrollToBottom}
 			/>
-		</>
+		</InputOuterContainer>
 	);
 };

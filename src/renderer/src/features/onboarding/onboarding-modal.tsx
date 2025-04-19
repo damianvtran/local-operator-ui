@@ -104,7 +104,6 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 			try {
 				const enabled = await window.api.ipcRenderer.checkProviderAuthEnabled();
 				setIsProviderAuthEnabled(enabled);
-				console.log("Provider Auth Enabled Status:", enabled); // Log status
 			} catch (error) {
 				console.error("Error checking provider auth status:", error);
 				// Assume disabled if there's an error

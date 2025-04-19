@@ -1,11 +1,15 @@
-import { Paper, styled } from "@mui/material";
+import { Box, Paper, styled } from "@mui/material";
 import type {
 	AgentDetails,
 	AgentExecutionRecord,
 	JobStatus,
 } from "@renderer/api/local-operator/types";
+import { useCanvasStore } from "@renderer/store/canvas-store";
+import { useUiPreferencesStore } from "@renderer/store/ui-preferences-store";
 import { isDevelopmentMode } from "@renderer/utils/env-utils";
-import type { FC } from "react";
+import { ResizableDivider } from "@shared/components/common/resizable-divider";
+import { type FC, useRef, useState } from "react";
+import { Canvas } from "./canvas";
 import { ChatHeader } from "./chat-header";
 import { ChatOptionsSidebar } from "./chat-options-sidebar";
 import { ChatTabs } from "./chat-tabs";
@@ -71,12 +75,21 @@ type ChatContentProps = {
 
 const ChatContainer = styled(Paper)(({ theme }) => ({
 	display: "flex",
+	flex: 1,
 	flexDirection: "column",
 	height: "100%",
 	flexGrow: 1,
 	borderRadius: 0,
 	backgroundColor: theme.palette.background.paper,
 }));
+
+const FlexRow = styled(Box)({
+	display: "flex",
+	flexDirection: "row",
+	width: "100%",
+	height: "100%",
+	position: "relative",
+});
 
 /**
  * ChatContent Component
@@ -109,66 +122,163 @@ export const ChatContent: FC<ChatContentProps> = ({
 	agentData,
 	refetch,
 }) => {
+	const canvasContainerRef = useRef<HTMLDivElement>(null);
+
+	const canvasPanelWidth = useUiPreferencesStore((s) => s.canvasWidth);
+	const setCanvasPanelWidth = useUiPreferencesStore((s) => s.setCanvasWidth);
+	const restoreDefaultCanvasPanelWidth = useUiPreferencesStore(
+		(s) => s.restoreDefaultCanvasWidth,
+	);
+	const [isChatUtilitiesExpanded, setIsChatUtilitiesExpanded] = useState(false);
+
+	// Get canvas state for the current conversation
+	const conversationId = agentId; // assuming agentId is the conversation ID
+	const canvasState = useCanvasStore((s) => s.conversations[conversationId]);
+
+	const defaultCanvasState = {
+		isOpen: false,
+		openTabs: [],
+		selectedTabId: null,
+		files: [],
+	};
+	const setOpenTabs = useCanvasStore((s) => s.setOpenTabs);
+	const setSelectedTab = useCanvasStore((s) => s.setSelectedTab);
+	const setFiles = useCanvasStore((s) => s.setFiles);
+
+	const isCanvasOpen = useUiPreferencesStore((s) => s.isCanvasOpen);
+	const openTabs = (canvasState ?? defaultCanvasState).openTabs;
+	const selectedTabId = (canvasState ?? defaultCanvasState).selectedTabId;
+	const files = (canvasState ?? defaultCanvasState).files;
+
+	// On conversation change, ensure canvas state is initialized/restored
+	// (No longer needed: Zustand store now always provides a default state for any conversationId)
+
+	// No effect needed: always use the value from the store, or fallback to default if 0
+	const effectiveCanvasPanelWidth =
+		canvasPanelWidth === 0 ? 450 : canvasPanelWidth;
+
 	return (
-		<ChatContainer elevation={0}>
-			{/* Chat header */}
-			<ChatHeader
-				agentName={agentName}
-				description={description}
-				onOpenOptions={onOpenOptions}
-			/>
+		<FlexRow>
+			<Box
+				sx={{
+					flex: 1,
+					minWidth: 500,
+					height: "100%",
+					position: "relative",
+				}}
+			>
+				<ChatContainer elevation={0}>
+					{/* Chat header */}
+					<ChatHeader
+						agentName={agentName}
+						description={description}
+						onOpenOptions={onOpenOptions}
+					/>
+					{/* Chat Options Sidebar */}
+					<ChatOptionsSidebar
+						open={isOptionsSidebarOpen}
+						onClose={onCloseOptions}
+						agentId={agentId}
+					/>
+					{/* Tabs for chat and raw - only shown in development mode */}
+					{isDevelopmentMode() && (
+						<ChatTabs activeTab={activeTab} onChange={onTabChange} />
+					)}
+					{/* In production, always show chat view. In development, respect the active tab */}
+					{!isDevelopmentMode() || activeTab === "chat" ? (
+						/* Messages container */
+						<MessagesView
+							messages={messages}
+							isLoading={isLoading}
+							isLoadingMessages={isLoadingMessages}
+							isFetchingMore={isFetchingMore}
+							jobStatus={jobStatus}
+							agentName={agentName}
+							currentExecution={currentExecution}
+							messagesContainerRef={messagesContainerRef}
+							messagesEndRef={messagesEndRef}
+							scrollToBottom={scrollToBottom}
+							refetch={refetch}
+							conversationId={agentId}
+						/>
+					) : (
+						/* Raw information tab - only accessible in development mode */
+						<RawInfoView content={rawInfoContent} />
+					)}
+					{/* Message input */}
+					{!(isLoadingMessages && messages.length === 0) && (
+						<MessageInput
+							onSendMessage={onSendMessage}
+							initialSuggestions={DEFAULT_MESSAGE_SUGGESTIONS}
+							isLoading={isLoading}
+							conversationId={agentId}
+							messages={messages}
+							currentJobId={currentJobId}
+							onCancelJob={onCancelJob}
+							isFarFromBottom={isFarFromBottom}
+							scrollToBottom={scrollToBottom}
+							isChatUtilitiesExpanded={isChatUtilitiesExpanded}
+						/>
+					)}
+					{/* Chat utilities section */}
+					<ChatUtilities
+						agentId={agentId}
+						agentData={agentData}
+						expanded={isChatUtilitiesExpanded}
+						setExpanded={setIsChatUtilitiesExpanded}
+					/>
+				</ChatContainer>
+			</Box>
 
-			{/* Chat Options Sidebar */}
-			<ChatOptionsSidebar
-				open={isOptionsSidebarOpen}
-				onClose={onCloseOptions}
-				agentId={agentId}
-			/>
-
-			{/* Tabs for chat and raw - only shown in development mode */}
-			{isDevelopmentMode() && (
-				<ChatTabs activeTab={activeTab} onChange={onTabChange} />
+			{isCanvasOpen && (
+				<>
+					<ResizableDivider
+						sidebarWidth={effectiveCanvasPanelWidth}
+						onSidebarWidthChange={setCanvasPanelWidth}
+						minWidth={220}
+						maxWidth={800}
+						side="left"
+						onDoubleClick={restoreDefaultCanvasPanelWidth}
+					/>
+					<Box
+						ref={canvasContainerRef}
+						sx={(theme) => ({
+							minWidth: effectiveCanvasPanelWidth,
+							width: effectiveCanvasPanelWidth,
+							overflow: "hidden",
+							height: "100%",
+							transition: "width 0.2s cubic-bezier(0.4,0,0.2,1)",
+							position: "relative",
+							borderLeft: `1px solid ${theme.palette.divider}`,
+						})}
+					>
+						<Canvas
+							open={isCanvasOpen}
+							onClose={() =>
+								useUiPreferencesStore.getState().setCanvasOpen(false)
+							}
+							onCloseDocument={(docId: string) => {
+								// Remove from openTabs and files, update selectedTabId if needed
+								const newTabs = openTabs.filter((tab) => tab.id !== docId);
+								const newFiles = files.filter((file) => file.id !== docId);
+								setOpenTabs(conversationId, newTabs);
+								setFiles(conversationId, newFiles);
+								if (selectedTabId === docId) {
+									setSelectedTab(
+										conversationId,
+										newTabs.length > 0 ? newTabs[0].id : null,
+									);
+								}
+							}}
+							initialDocuments={files}
+							activeDocumentId={selectedTabId}
+							onChangeActiveDocument={(documentId: string) =>
+								setSelectedTab(conversationId, documentId)
+							}
+						/>
+					</Box>
+				</>
 			)}
-
-			{/* In production, always show chat view. In development, respect the active tab */}
-			{!isDevelopmentMode() || activeTab === "chat" ? (
-				/* Messages container */
-				<MessagesView
-					messages={messages}
-					isLoading={isLoading}
-					isLoadingMessages={isLoadingMessages}
-					isFetchingMore={isFetchingMore}
-					jobStatus={jobStatus}
-					agentName={agentName}
-					currentExecution={currentExecution}
-					messagesContainerRef={messagesContainerRef}
-					messagesEndRef={messagesEndRef}
-					scrollToBottom={scrollToBottom}
-					refetch={refetch}
-					conversationId={agentId}
-				/>
-			) : (
-				/* Raw information tab - only accessible in development mode */
-				<RawInfoView content={rawInfoContent} />
-			)}
-
-			{/* Message input */}
-			{!(isLoadingMessages && messages.length === 0) && (
-				<MessageInput
-					onSendMessage={onSendMessage}
-					initialSuggestions={DEFAULT_MESSAGE_SUGGESTIONS}
-					isLoading={isLoading}
-					conversationId={agentId}
-					messages={messages}
-					currentJobId={currentJobId}
-					onCancelJob={onCancelJob}
-					isFarFromBottom={isFarFromBottom}
-					scrollToBottom={scrollToBottom}
-				/>
-			)}
-
-			{/* Chat utilities section */}
-			<ChatUtilities agentId={agentId} agentData={agentData} />
-		</ChatContainer>
+		</FlexRow>
 	);
 };

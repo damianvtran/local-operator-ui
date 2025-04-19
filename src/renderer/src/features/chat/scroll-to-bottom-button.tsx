@@ -13,6 +13,11 @@ type ScrollToBottomButtonProps = {
 	visible: boolean;
 
 	/**
+	 * Whether chat utilities panel is expanded
+	 */
+	isChatUtilitiesExpanded: boolean;
+
+	/**
 	 * Callback function to scroll to the bottom
 	 */
 	onClick: () => void;
@@ -23,16 +28,19 @@ type ScrollToBottomButtonProps = {
 	className?: string;
 };
 
-const ButtonContainer = styled(Box)(() => ({
-	position: "absolute",
-	bottom: 80, // Position above the message input
-	right: 20,
-	zIndex: 1000,
-	display: "flex",
-	justifyContent: "center",
-	alignItems: "center",
-	pointerEvents: "none", // Prevent container from blocking clicks
-}));
+const ButtonContainer = styled(Box)(
+	({
+		isChatUtilitiesExpanded,
+	}: Pick<ScrollToBottomButtonProps, "isChatUtilitiesExpanded">) => ({
+		position: "absolute",
+		bottom: isChatUtilitiesExpanded ? 260 : 200,
+		zIndex: 1000,
+		display: "flex",
+		justifyContent: "center",
+		alignItems: "center",
+		pointerEvents: "none", // Prevent container from blocking clicks
+	}),
+);
 
 const StyledButton = styled(IconButton)(({ theme }) => ({
 	backgroundColor: theme.palette.background.paper,
@@ -77,6 +85,7 @@ const StyledButton = styled(IconButton)(({ theme }) => ({
  */
 export const ScrollToBottomButton: FC<ScrollToBottomButtonProps> = ({
 	visible,
+	isChatUtilitiesExpanded,
 	onClick,
 	className,
 }) => {
@@ -86,7 +95,10 @@ export const ScrollToBottomButton: FC<ScrollToBottomButtonProps> = ({
 
 	return (
 		<Fade in={visible} timeout={200}>
-			<ButtonContainer className={className}>
+			<ButtonContainer
+				isChatUtilitiesExpanded={isChatUtilitiesExpanded}
+				className={className}
+			>
 				<StyledButton
 					aria-label="Scroll to bottom"
 					onClick={handleClick}

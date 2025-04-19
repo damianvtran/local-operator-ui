@@ -9,8 +9,9 @@ import type { Message } from "../types";
  */
 export type MessageItemProps = {
 	message: Message;
-	isLastMessage: boolean;
 	onMessageComplete?: () => void;
+	isLastMessage?: boolean;
+	conversationId: string;
 };
 
 /**
@@ -43,6 +44,7 @@ export type BackgroundBlockProps = {
 	stderr?: string;
 	logging?: string;
 	files?: string[]; // URLs to attachments
+	conversationId: string;
 };
 
 /**
