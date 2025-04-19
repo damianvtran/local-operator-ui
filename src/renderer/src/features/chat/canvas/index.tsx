@@ -16,16 +16,9 @@ import type { CanvasDocument } from "./types";
 
 type CanvasProps = {
 	/**
-	 * Whether the canvas is open
+	 * ID of the active document
 	 */
-	open: boolean;
-
-	/**
-	 * Function to close the canvas
-	 */
-	onClose: () => void;
-
-	onCloseDocument: (docId: string) => void;
+	activeDocumentId?: string | null;
 
 	/**
 	 * Initial markdown documents to display
@@ -33,14 +26,16 @@ type CanvasProps = {
 	initialDocuments?: CanvasDocument[];
 
 	/**
-	 * ID of the active document
-	 */
-	activeDocumentId?: string | null;
-
-	/**
 	 * Callback when a document tab is selected
 	 */
 	onChangeActiveDocument?: (documentId: string) => void;
+
+	/**
+	 * Function to close the canvas
+	 */
+	onClose: () => void;
+
+	onCloseDocument: (docId: string) => void;
 };
 
 /**
@@ -106,10 +101,10 @@ const CloseButton = styled(IconButton)(({ theme }) => ({
  * Replaces the agent options sidebar with a markdown canvas
  */
 export const Canvas: FC<CanvasProps> = ({
-	onClose,
-	initialDocuments = [],
 	activeDocumentId: externalActiveDocumentId,
+	initialDocuments = [],
 	onChangeActiveDocument: externalChangeActiveDocument,
+	onClose,
 	onCloseDocument,
 }) => {
 	// Use the documents prop directly instead of local state
