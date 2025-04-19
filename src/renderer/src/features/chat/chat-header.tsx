@@ -10,10 +10,8 @@ import {
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import type { FC } from "react";
-import { useCanvasStore } from "../../store/canvas-store";
-
+import { useUiPreferencesStore } from "../../store/ui-preferences-store";
 type ChatHeaderProps = {
-	agentId: string;
 	agentName?: string;
 	description?: string;
 	onOpenOptions?: () => void; // Kept for backward compatibility
@@ -33,15 +31,12 @@ const OptionsButton = styled(IconButton)(({ theme }) => ({
 }));
 
 export const ChatHeader: FC<ChatHeaderProps> = ({
-	agentId,
 	agentName = "Local Operator",
 	description = "Your on-device AI assistant",
 	onOpenOptions,
 }) => {
-	const setCanvasOpen = useCanvasStore((s) => s.setCanvasOpen);
-	const isOpen = useCanvasStore(
-		(s) => s.conversations[agentId]?.isOpen ?? false,
-	);
+	const setCanvasOpen = useUiPreferencesStore((s) => s.setCanvasOpen);
+	const isCanvasOpen = useUiPreferencesStore((s) => s.isCanvasOpen);
 
 	return (
 		<Box
@@ -70,13 +65,9 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 				</Typography>
 			</Box>
 
-			{onOpenOptions && !isOpen && (
-				/* @ts-ignore - Tooltip has issues with TypeScript but works fine */
+			{onOpenOptions && !isCanvasOpen && (
 				<Tooltip title="Open Canvas" arrow placement="top">
-					<OptionsButton
-						onClick={() => setCanvasOpen(agentId, true)}
-						size="medium"
-					>
+					<OptionsButton onClick={() => setCanvasOpen(true)} size="medium">
 						<FontAwesomeIcon icon={faFileAlt} />
 					</OptionsButton>
 				</Tooltip>
