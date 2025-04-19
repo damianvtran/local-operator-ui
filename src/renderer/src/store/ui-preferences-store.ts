@@ -15,6 +15,16 @@ import { persist } from "zustand/middleware";
  */
 type UiPreferencesState = {
 	/**
+	 * Whether the canvas is open (global, not per conversation)
+	 */
+	isCanvasOpen: boolean;
+
+	/**
+	 * Set the canvas open state
+	 * @param open - Whether the canvas should be open
+	 */
+	setCanvasOpen: (open: boolean) => void;
+	/**
 	 * Whether the navigation sidebar is collapsed
 	 */
 	isSidebarCollapsed: boolean;
@@ -92,6 +102,7 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			themeName: DEFAULT_THEME,
 			canvasWidth: DEFAULT_CANVAS_WIDTH,
 			chatSidebarWidth: DEFAULT_CHAT_SIDEBAR_WIDTH,
+			isCanvasOpen: false,
 
 			toggleSidebar: () => {
 				set((state) => ({
@@ -108,6 +119,12 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			setTheme: (themeName: ThemeName) => {
 				set({
 					themeName,
+				});
+			},
+
+			setCanvasOpen: (open: boolean) => {
+				set({
+					isCanvasOpen: open,
 				});
 			},
 

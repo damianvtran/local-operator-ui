@@ -8,7 +8,7 @@ import {
 	alpha,
 	styled,
 } from "@mui/material";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import type { FC } from "react";
 import { CanvasContent } from "./canvas-content";
 import { CanvasTabs } from "./canvas-tabs";
@@ -112,20 +112,14 @@ export const Canvas: FC<CanvasProps> = ({
 	onChangeActiveDocument: externalChangeActiveDocument,
 	onCloseDocument,
 }) => {
-	// State for managing open documents
-	const [documents, setDocuments] =
-		useState<CanvasDocument[]>(initialDocuments);
+	// Use the documents prop directly instead of local state
+	const documents = initialDocuments;
 	const [internalActiveDocumentId, setInternalActiveDocumentId] = useState<
 		string | null
-	>(initialDocuments.length > 0 ? initialDocuments[0].id : null);
+	>(documents.length > 0 ? documents[0].id : null);
 
 	// Use external active document ID if provided, otherwise use internal state
 	const activeDocumentId = externalActiveDocumentId ?? internalActiveDocumentId;
-
-	// Update documents when initialDocuments changes
-	useEffect(() => {
-		setDocuments(initialDocuments);
-	}, [initialDocuments]);
 
 	// Get the active document
 	const activeDocument =

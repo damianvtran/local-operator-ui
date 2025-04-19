@@ -23,7 +23,7 @@ type MessagesViewProps = {
 	messagesEndRef: RefObject<HTMLDivElement>;
 	scrollToBottom?: () => void;
 	refetch?: () => void;
-	conversationId?: string; // Added to support streaming message updates
+	conversationId: string;
 };
 
 /**
@@ -197,6 +197,7 @@ export const MessagesView: FC<MessagesViewProps> = ({
 											...message,
 											conversation_id: conversationId, // Add conversation ID to message
 										}}
+										conversationId={conversationId}
 										isLastMessage={index === messages.length - 1}
 										onMessageComplete={() => {
 											if (refetch) {
