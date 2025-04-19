@@ -190,7 +190,7 @@ export class RadientClient {
 	async refreshToken(
 		refreshToken: string,
 	): Promise<RadientApiResponse<TokenResponse>> {
-		return this.auth.refreshToken(refreshToken);
+		return this.auth.refreshToken(refreshToken, this.clientId);
 	}
 
 	/**

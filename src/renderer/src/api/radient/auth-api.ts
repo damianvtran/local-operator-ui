@@ -208,12 +208,14 @@ export async function provisionAccount(
 export async function refreshToken(
 	baseUrl: string,
 	refreshToken: string,
+	clientId: string,
 ): Promise<RadientApiResponse<TokenResponse>> {
 	const url = joinUrl(baseUrl, "/v1/auth/token");
 
 	const body: TokenRefreshRequest = {
 		refresh_token: refreshToken,
 		grant_type: "refresh_token",
+		client_id: clientId,
 	};
 
 	const response = await fetch(url, {

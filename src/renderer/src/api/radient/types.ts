@@ -93,6 +93,9 @@ export type AuthTokenExchangeResult = {
 /**
  * Request to refresh an access token
  */
+/**
+ * Request to refresh an access token
+ */
 export type TokenRefreshRequest = {
 	/**
 	 * The refresh token
@@ -102,6 +105,10 @@ export type TokenRefreshRequest = {
 	 * Must be "refresh_token"
 	 */
 	grant_type: string;
+	/**
+	 * The OAuth client ID (required)
+	 */
+	client_id: string;
 };
 
 export type AccountInfo = {
