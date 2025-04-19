@@ -6,9 +6,9 @@ import type {
 } from "@renderer/api/local-operator/types";
 import { useCanvasStore } from "@renderer/store/canvas-store";
 import { isDevelopmentMode } from "@renderer/utils/env-utils";
-import Split from "@uiw/react-split";
-import { type FC, useEffect, useRef, useState } from "react";
+import { type FC, useRef, useState } from "react";
 import { Canvas } from "./canvas";
+import { useUiPreferencesStore } from "@renderer/store/ui-preferences-store";
 import { ChatHeader } from "./chat-header";
 import { ChatOptionsSidebar } from "./chat-options-sidebar";
 import { ChatTabs } from "./chat-tabs";
@@ -16,6 +16,7 @@ import { ChatUtilities } from "./chat-utilities";
 import { MessageInput } from "./message-input";
 import { MessagesView } from "./messages-view";
 import { RawInfoView } from "./raw-info-view";
+import { ResizableDivider } from "@shared/components/common/resizable-divider";
 import type { Message } from "./types";
 
 const DEFAULT_MESSAGE_SUGGESTIONS = [
@@ -41,9 +42,6 @@ const DEFAULT_MESSAGE_SUGGESTIONS = [
 	"Look up interest rate trends and make a projection for the next 5 years",
 	"Make a presentation with a dependency graph of genetic factors for Alzheimer's disease",
 ];
-
-const CANVAS_OPEN_WIDTH = 450;
-const CANVAS_CLOSED_WIDTH = 0;
 
 /**
  * Props for the ChatContent component
@@ -85,6 +83,14 @@ const ChatContainer = styled(Paper)(({ theme }) => ({
 	backgroundColor: theme.palette.background.paper,
 }));
 
+const FlexRow = styled(Box)({
+	display: "flex",
+	flexDirection: "row",
+	width: "100%",
+	height: "100%",
+	position: "relative",
+});
+
 /**
  * ChatContent Component
  *
@@ -118,7 +124,11 @@ export const ChatContent: FC<ChatContentProps> = ({
 }) => {
 	const canvasContainerRef = useRef<HTMLDivElement>(null);
 
-	const [canvasPanelWidth, setCanvasPanelWidth] = useState(CANVAS_OPEN_WIDTH);
+	const canvasPanelWidth = useUiPreferencesStore((s) => s.canvasWidth);
+	const setCanvasPanelWidth = useUiPreferencesStore((s) => s.setCanvasWidth);
+	const restoreDefaultCanvasPanelWidth = useUiPreferencesStore(
+		(s) => s.restoreDefaultCanvasWidth,
+	);
 	const [isChatUtilitiesExpanded, setIsChatUtilitiesExpanded] = useState(false);
 
 	const {
@@ -130,23 +140,18 @@ export const ChatContent: FC<ChatContentProps> = ({
 		closeDocument,
 	} = useCanvasStore();
 
-	useEffect(() => {
-		if (isOpen) {
-			return setCanvasPanelWidth(CANVAS_OPEN_WIDTH);
-		}
-
-		if (canvasContainerRef.current) {
-			canvasContainerRef.current.style.width = "";
-		}
-		return setCanvasPanelWidth(CANVAS_CLOSED_WIDTH);
-	}, [isOpen]);
+	// No effect needed: always use the value from the store, or fallback to default if 0
+	const effectiveCanvasPanelWidth =
+		canvasPanelWidth === 0 ? 450 : canvasPanelWidth;
 
 	return (
-		<Split visible={!!canvasPanelWidth}>
+		<FlexRow>
 			<Box
 				sx={{
 					flex: 1,
 					minWidth: 500,
+					height: "100%",
+					position: "relative",
 				}}
 			>
 				<ChatContainer elevation={0}>
@@ -212,25 +217,39 @@ export const ChatContent: FC<ChatContentProps> = ({
 				</ChatContainer>
 			</Box>
 
-			<Box
-				ref={canvasContainerRef}
-				sx={{
-					minWidth: canvasPanelWidth,
-					width: canvasPanelWidth,
-					overflow: "hidden",
-				}}
-			>
-				{isOpen && (
-					<Canvas
-						open={isOpen}
-						onClose={closeCanvas}
-						onCloseDocument={closeDocument}
-						initialDocuments={documents}
-						activeDocumentId={activeDocumentId}
-						onChangeActiveDocument={setActiveDocument}
+			{isOpen && (
+				<>
+					<ResizableDivider
+						sidebarWidth={effectiveCanvasPanelWidth}
+						onSidebarWidthChange={setCanvasPanelWidth}
+						minWidth={220}
+						maxWidth={800}
+						side="left"
+						onDoubleClick={restoreDefaultCanvasPanelWidth}
 					/>
-				)}
-			</Box>
-		</Split>
+					<Box
+						ref={canvasContainerRef}
+						sx={(theme) => ({
+							minWidth: effectiveCanvasPanelWidth,
+							width: effectiveCanvasPanelWidth,
+							overflow: "hidden",
+							height: "100%",
+							transition: "width 0.2s cubic-bezier(0.4,0,0.2,1)",
+							position: "relative",
+							borderLeft: `1px solid ${theme.palette.divider}`,
+						})}
+					>
+						<Canvas
+							open={isOpen}
+							onClose={closeCanvas}
+							onCloseDocument={closeDocument}
+							initialDocuments={documents}
+							activeDocumentId={activeDocumentId}
+							onChangeActiveDocument={setActiveDocument}
+						/>
+					</Box>
+				</>
+			)}
+		</FlexRow>
 	);
 };

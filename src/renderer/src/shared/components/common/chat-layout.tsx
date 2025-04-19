@@ -1,5 +1,7 @@
-import { Box, Divider, styled } from "@mui/material";
+import { Box, styled } from "@mui/material";
+import { ResizableDivider } from "./resizable-divider";
 import type { FC, ReactNode } from "react";
+import { useUiPreferencesStore } from "@renderer/store/ui-preferences-store";
 
 /**
  * Props for the ChatLayout component
@@ -28,26 +30,32 @@ const ContentContainer = styled(Box)({
 	overflow: "hidden",
 });
 
-const StyledDivider = styled(Divider)(({ theme }) => ({
-	opacity: theme.palette.mode === "dark" ? 0.1 : 0.2,
-	backgroundColor: theme.palette.divider,
-}));
-
 /**
  * ChatLayout Component
  *
- * Provides a consistent layout for chat-related pages with a sidebar and main content area
+ * Provides a consistent layout for chat-related pages with a sidebar and main content area.
+ * Uses the persisted sidebar width from the UI preferences store.
  */
 export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
+	const sidebarWidth = useUiPreferencesStore((s) => s.chatSidebarWidth);
+	const setSidebarWidth = useUiPreferencesStore((s) => s.setChatSidebarWidth);
+	const restoreDefaultSidebarWidth = useUiPreferencesStore(
+		(s) => s.restoreDefaultChatSidebarWidth,
+	);
+
 	return (
 		<Container>
-			{/* Sidebar - fixed width */}
-			<SidebarContainer>{sidebar}</SidebarContainer>
-
-			{/* Main Content Area */}
+			<SidebarContainer style={{ width: sidebarWidth }}>
+				{sidebar}
+			</SidebarContainer>
+			<ResizableDivider
+				sidebarWidth={sidebarWidth}
+				onSidebarWidthChange={setSidebarWidth}
+				minWidth={180}
+				maxWidth={600}
+				onDoubleClick={restoreDefaultSidebarWidth}
+			/>
 			<ContentContainer>{content}</ContentContainer>
 		</Container>
 	);
 };
-
-export { StyledDivider };
