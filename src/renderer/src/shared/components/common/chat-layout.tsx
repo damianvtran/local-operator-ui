@@ -1,7 +1,7 @@
 import { Box, styled } from "@mui/material";
-import { ResizableDivider } from "./resizable-divider";
-import type { FC, ReactNode } from "react";
 import { useUiPreferencesStore } from "@renderer/store/ui-preferences-store";
+import type { FC, ReactNode } from "react";
+import { ResizableDivider } from "./resizable-divider";
 
 /**
  * Props for the ChatLayout component

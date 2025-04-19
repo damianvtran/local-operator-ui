@@ -74,9 +74,6 @@ export const useOidcAuth = (): UseOidcAuthResult => {
 		async (provider: AuthProvider, idToken: string) => {
 			// No need to set loading here, it's handled by the main flow
 			setError(null); // Clear previous errors
-			console.log(
-				`handleBackendAuth called for ${provider} with received ID token.`,
-			);
 
 			try {
 				// 1. Exchange ID token for backend tokens
@@ -89,11 +86,6 @@ export const useOidcAuth = (): UseOidcAuthResult => {
 
 				// Extract the token response from the provider auth response
 				const tokenResponse = authResponse.result.token_response;
-				console.log("Token response received:", {
-					accessToken: "...",
-					refreshToken: tokenResponse.refresh_token ? "present" : "absent",
-					expiresIn: tokenResponse.expires_in,
-				});
 
 				// Persist the tokens using the existing utility
 				await storeSession(
@@ -101,7 +93,6 @@ export const useOidcAuth = (): UseOidcAuthResult => {
 					tokenResponse.refresh_token,
 					tokenResponse.expires_in,
 				);
-				console.log("Tokens stored in session.");
 
 				// 2. Decode access token to get account ID (sub claim)
 				let accountId: string;
@@ -113,7 +104,6 @@ export const useOidcAuth = (): UseOidcAuthResult => {
 						throw new Error("Invalid access token: Missing 'sub' claim.");
 					}
 					accountId = decodedToken.sub;
-					console.log(`Decoded account ID: ${accountId}`);
 				} catch (decodeError) {
 					console.error("JWT Decode Error:", decodeError);
 					setError("Failed to decode access token. Please sign in again.");
@@ -125,14 +115,12 @@ export const useOidcAuth = (): UseOidcAuthResult => {
 				// 3. Check if RADIENT_API_KEY already exists
 				let apiKeyExists = false;
 				try {
-					console.log("Checking for existing RADIENT_API_KEY...");
 					const credentialsResponse = await CredentialsApi.listCredentials(
 						apiConfig.baseUrl,
 					);
 					if (credentialsResponse.result?.keys) {
 						apiKeyExists =
 							credentialsResponse.result.keys.includes("RADIENT_API_KEY");
-						console.log(`RADIENT_API_KEY exists: ${apiKeyExists}`);
 					}
 				} catch (credentialsError) {
 					console.error(
@@ -145,7 +133,6 @@ export const useOidcAuth = (): UseOidcAuthResult => {
 
 				// Only create a new API key if one doesn't exist
 				if (!apiKeyExists) {
-					console.log("RADIENT_API_KEY not found, creating new application...");
 					// Create an application to get an API key
 					const appResponse = await radientClient.createApplication(
 						accountId,
@@ -159,7 +146,6 @@ export const useOidcAuth = (): UseOidcAuthResult => {
 					if (!appResponse.result.api_key) {
 						throw new Error("Application creation failed: No API key returned");
 					}
-					console.log("Application created, storing new API key.");
 
 					// Store API key securely
 					await CredentialsApi.updateCredential(apiConfig.baseUrl, {
@@ -169,16 +155,13 @@ export const useOidcAuth = (): UseOidcAuthResult => {
 
 					showSuccessToast("Sign-in successful and new API key stored.");
 				} else {
-					console.log("Using existing RADIENT_API_KEY.");
 					showSuccessToast("Sign-in successful. Using existing API key.");
 				}
 
 				// Invalidate the React Query cache to trigger a refetch of the user information
-				console.log("Invalidating user queries.");
 				queryClient.invalidateQueries({ queryKey: radientUserKeys.all });
 
 				// Success! Let the main flow handle setting loading to false.
-				console.log("handleBackendAuth completed successfully.");
 			} catch (err) {
 				const msg = err instanceof Error ? err.message : String(err);
 				console.error("Error during backend authentication:", err);
@@ -192,13 +175,7 @@ export const useOidcAuth = (): UseOidcAuthResult => {
 
 	// Effect to listen for status updates from the main process
 	useEffect(() => {
-		console.log("Setting up OAuth status listener.");
 		const cleanup = window.api.oauth.onStatusUpdate((newStatus) => {
-			console.log("Received OAuth status update:", {
-				...newStatus,
-				accessToken: "...",
-				idToken: "...",
-			}); // Log status without tokens
 			setStatus(newStatus);
 			setLoading(false); // Update finished
 
@@ -211,9 +188,6 @@ export const useOidcAuth = (): UseOidcAuthResult => {
 
 			// If login was successful and we have an ID token, trigger backend exchange
 			if (newStatus.loggedIn && newStatus.provider && newStatus.idToken) {
-				console.log(
-					`Login successful for ${newStatus.provider}, initiating backend auth.`,
-				);
 				// Call handleBackendAuth asynchronously, don't await here
 				handleBackendAuth(newStatus.provider, newStatus.idToken);
 			} else if (newStatus.loggedIn && !newStatus.idToken) {
@@ -226,7 +200,6 @@ export const useOidcAuth = (): UseOidcAuthResult => {
 
 		// Cleanup function to remove the listener when the component unmounts
 		return () => {
-			console.log("Cleaning up OAuth status listener.");
 			cleanup();
 		};
 	}, [handleBackendAuth]); // Include handleBackendAuth in dependency array
@@ -234,12 +207,11 @@ export const useOidcAuth = (): UseOidcAuthResult => {
 	// Effect to check initial status on mount
 	useEffect(() => {
 		const checkInitialStatus = async () => {
-			console.log("Checking initial OAuth status...");
 			setLoading(true);
 			try {
 				const response = await window.api.oauth.getStatus();
 				if (response.success && response.status) {
-					console.log("Initial status received:", {
+					console.debug("Initial status received:", {
 						...response.status,
 						accessToken: "...",
 						idToken: "...",
@@ -266,7 +238,6 @@ export const useOidcAuth = (): UseOidcAuthResult => {
 				setStatus({ loggedIn: false, provider: null }); // Ensure logged out state
 			} finally {
 				setLoading(false);
-				console.log("Initial status check complete.");
 			}
 		};
 
@@ -277,7 +248,6 @@ export const useOidcAuth = (): UseOidcAuthResult => {
 	 * Initiates Google sign-in via the main process.
 	 */
 	const signInWithGoogle = useCallback(async () => {
-		console.log("Initiating Google sign-in via main process...");
 		setLoading(true);
 		setError(null);
 		try {
@@ -299,7 +269,6 @@ export const useOidcAuth = (): UseOidcAuthResult => {
 	 * Initiates Microsoft sign-in via the main process.
 	 */
 	const signInWithMicrosoft = useCallback(async () => {
-		console.log("Initiating Microsoft sign-in via main process...");
 		setLoading(true);
 		setError(null);
 		try {
@@ -321,7 +290,6 @@ export const useOidcAuth = (): UseOidcAuthResult => {
 	 * Initiates logout via the main process.
 	 */
 	const logout = useCallback(async () => {
-		console.log("Initiating logout via main process...");
 		setLoading(true); // Indicate activity during logout
 		setError(null);
 		try {

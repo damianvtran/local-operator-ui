@@ -357,6 +357,7 @@ export const BackgroundBlock: FC<BackgroundBlockProps> = ({
 	stderr,
 	logging,
 	files,
+	conversationId,
 }) => {
 	const [isExpanded, setIsExpanded] = useState(false);
 	const [mounted, setMounted] = useState(false);
@@ -604,6 +605,7 @@ export const BackgroundBlock: FC<BackgroundBlockProps> = ({
 								key={`${file}`}
 								file={file}
 								onClick={handleFileClick}
+								conversationId={conversationId}
 							/>
 						))}
 				</Box>

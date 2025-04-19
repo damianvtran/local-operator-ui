@@ -13,6 +13,7 @@ import type { FC } from "react";
 import { useCanvasStore } from "../../store/canvas-store";
 
 type ChatHeaderProps = {
+	agentId: string;
 	agentName?: string;
 	description?: string;
 	onOpenOptions?: () => void; // Kept for backward compatibility
@@ -32,11 +33,15 @@ const OptionsButton = styled(IconButton)(({ theme }) => ({
 }));
 
 export const ChatHeader: FC<ChatHeaderProps> = ({
+	agentId,
 	agentName = "Local Operator",
 	description = "Your on-device AI assistant",
 	onOpenOptions,
 }) => {
-	const { openCanvas, isOpen } = useCanvasStore();
+	const setCanvasOpen = useCanvasStore((s) => s.setCanvasOpen);
+	const isOpen = useCanvasStore(
+		(s) => s.conversations[agentId]?.isOpen ?? false,
+	);
 
 	return (
 		<Box
@@ -68,7 +73,10 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 			{onOpenOptions && !isOpen && (
 				/* @ts-ignore - Tooltip has issues with TypeScript but works fine */
 				<Tooltip title="Open Canvas" arrow placement="top">
-					<OptionsButton onClick={openCanvas} size="medium">
+					<OptionsButton
+						onClick={() => setCanvasOpen(agentId, true)}
+						size="medium"
+					>
 						<FontAwesomeIcon icon={faFileAlt} />
 					</OptionsButton>
 				</Tooltip>

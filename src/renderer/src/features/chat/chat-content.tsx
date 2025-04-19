@@ -5,10 +5,11 @@ import type {
 	JobStatus,
 } from "@renderer/api/local-operator/types";
 import { useCanvasStore } from "@renderer/store/canvas-store";
+import { useUiPreferencesStore } from "@renderer/store/ui-preferences-store";
 import { isDevelopmentMode } from "@renderer/utils/env-utils";
+import { ResizableDivider } from "@shared/components/common/resizable-divider";
 import { type FC, useRef, useState } from "react";
 import { Canvas } from "./canvas";
-import { useUiPreferencesStore } from "@renderer/store/ui-preferences-store";
 import { ChatHeader } from "./chat-header";
 import { ChatOptionsSidebar } from "./chat-options-sidebar";
 import { ChatTabs } from "./chat-tabs";
@@ -16,7 +17,6 @@ import { ChatUtilities } from "./chat-utilities";
 import { MessageInput } from "./message-input";
 import { MessagesView } from "./messages-view";
 import { RawInfoView } from "./raw-info-view";
-import { ResizableDivider } from "@shared/components/common/resizable-divider";
 import type { Message } from "./types";
 
 const DEFAULT_MESSAGE_SUGGESTIONS = [
@@ -131,14 +131,27 @@ export const ChatContent: FC<ChatContentProps> = ({
 	);
 	const [isChatUtilitiesExpanded, setIsChatUtilitiesExpanded] = useState(false);
 
-	const {
-		isOpen,
-		documents,
-		activeDocumentId,
-		closeCanvas,
-		setActiveDocument,
-		closeDocument,
-	} = useCanvasStore();
+	// Get canvas state for the current conversation
+	const conversationId = agentId; // assuming agentId is the conversation ID
+	const canvasState = useCanvasStore((s) => s.conversations[conversationId]);
+
+	const defaultCanvasState = {
+		isOpen: false,
+		openTabs: [],
+		selectedTabId: null,
+		files: [],
+	};
+	const setOpenTabs = useCanvasStore((s) => s.setOpenTabs);
+	const setSelectedTab = useCanvasStore((s) => s.setSelectedTab);
+	const setFiles = useCanvasStore((s) => s.setFiles);
+
+	const isCanvasOpen = useUiPreferencesStore((s) => s.isCanvasOpen);
+	const openTabs = (canvasState ?? defaultCanvasState).openTabs;
+	const selectedTabId = (canvasState ?? defaultCanvasState).selectedTabId;
+	const files = (canvasState ?? defaultCanvasState).files;
+
+	// On conversation change, ensure canvas state is initialized/restored
+	// (No longer needed: Zustand store now always provides a default state for any conversationId)
 
 	// No effect needed: always use the value from the store, or fallback to default if 0
 	const effectiveCanvasPanelWidth =
@@ -157,6 +170,7 @@ export const ChatContent: FC<ChatContentProps> = ({
 				<ChatContainer elevation={0}>
 					{/* Chat header */}
 					<ChatHeader
+						agentId={agentId}
 						agentName={agentName}
 						description={description}
 						onOpenOptions={onOpenOptions}
@@ -217,7 +231,7 @@ export const ChatContent: FC<ChatContentProps> = ({
 				</ChatContainer>
 			</Box>
 
-			{isOpen && (
+			{isCanvasOpen && (
 				<>
 					<ResizableDivider
 						sidebarWidth={effectiveCanvasPanelWidth}
@@ -240,12 +254,28 @@ export const ChatContent: FC<ChatContentProps> = ({
 						})}
 					>
 						<Canvas
-							open={isOpen}
-							onClose={closeCanvas}
-							onCloseDocument={closeDocument}
-							initialDocuments={documents}
-							activeDocumentId={activeDocumentId}
-							onChangeActiveDocument={setActiveDocument}
+							open={isCanvasOpen}
+							onClose={() =>
+								useUiPreferencesStore.getState().setCanvasOpen(false)
+							}
+							onCloseDocument={(docId: string) => {
+								// Remove from openTabs and files, update selectedTabId if needed
+								const newTabs = openTabs.filter((tab) => tab.id !== docId);
+								const newFiles = files.filter((file) => file.id !== docId);
+								setOpenTabs(conversationId, newTabs);
+								setFiles(conversationId, newFiles);
+								if (selectedTabId === docId) {
+									setSelectedTab(
+										conversationId,
+										newTabs.length > 0 ? newTabs[0].id : null,
+									);
+								}
+							}}
+							initialDocuments={files}
+							activeDocumentId={selectedTabId}
+							onChangeActiveDocument={(documentId: string) =>
+								setSelectedTab(conversationId, documentId)
+							}
 						/>
 					</Box>
 				</>

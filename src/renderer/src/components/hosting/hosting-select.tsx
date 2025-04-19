@@ -298,9 +298,6 @@ export const HostingSelect: FC<HostingSelectProps> = ({
 
 			// Force refresh models when hosting provider changes
 			if (option.id !== value) {
-				console.log(
-					`Hosting provider changed to ${option.id}, refreshing models`,
-				);
 				try {
 					await refreshModels();
 				} catch (error) {
@@ -377,9 +374,6 @@ export const HostingSelect: FC<HostingSelectProps> = ({
 
 				// Force refresh models when hosting provider changes
 				if (newHostingId !== value) {
-					console.log(
-						`Custom hosting provider changed to ${newHostingId}, refreshing models`,
-					);
 					try {
 						await refreshModels();
 					} catch (error) {
