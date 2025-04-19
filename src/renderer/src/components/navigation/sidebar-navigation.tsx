@@ -22,7 +22,6 @@ import {
 import { styled } from "@mui/material/styles";
 import { useCurrentView } from "@renderer/hooks/use-route-params";
 import { useUiPreferencesStore } from "@renderer/store/ui-preferences-store";
-import React from "react";
 import type { FC } from "react";
 import { useNavigate } from "react-router-dom";
 

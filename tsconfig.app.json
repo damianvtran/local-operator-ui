@@ -4,7 +4,7 @@
 		"target": "ES2020",
 		"useDefineForClassFields": true,
 		"lib": ["ES2020", "DOM", "DOM.Iterable"],
-		"module": "CommonJS",
+		"module": "esnext",
 		"skipLibCheck": true,
 		"moduleResolution": "node",
 		"resolveJsonModule": true,
@@ -32,6 +32,10 @@
 			"*": ["node_modules/*", "src/types/*"]
 		}
 	},
-	"include": ["src/renderer/**/*"],
+	"include": [
+		"src/renderer/**/*",
+		"src/preload/index.d.ts",
+		"src/renderer/src/vite-env.d.ts"
+	],
 	"exclude": ["node_modules", "dist"]
 }
