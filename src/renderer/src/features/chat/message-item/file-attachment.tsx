@@ -2,8 +2,16 @@ import { faFile } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, Typography, alpha } from "@mui/material";
 import { styled } from "@mui/material/styles";
+import { useCanvasStore } from "@renderer/store/canvas-store";
+import { useUiPreferencesStore } from "@renderer/store/ui-preferences-store";
 import type { FC } from "react";
-import type { FileAttachmentProps } from "./types";
+import { useCallback } from "react";
+import { isCanvasSupported } from "../utils/is-canvas-supported";
+import type { FileAttachmentProps as BaseFileAttachmentProps } from "./types";
+
+type FileAttachmentProps = BaseFileAttachmentProps & {
+	conversationId: string;
+};
 
 /**
  * Styled component for non-image file attachments
@@ -76,10 +84,85 @@ const getFileName = (path: string): string => {
 /**
  * Component for displaying non-image file attachments
  */
-export const FileAttachment: FC<FileAttachmentProps> = ({ file, onClick }) => {
-	const handleClick = () => {
-		onClick(file);
-	};
+export const FileAttachment: FC<FileAttachmentProps> = ({
+	file,
+	onClick,
+	conversationId,
+}) => {
+	const setCanvasOpen = useUiPreferencesStore((s) => s.setCanvasOpen);
+	const setFiles = useCanvasStore((s) => s.setFiles);
+	const setOpenTabs = useCanvasStore((s) => s.setOpenTabs);
+	const setSelectedTab = useCanvasStore((s) => s.setSelectedTab);
+	// Removed files and openTabs subscriptions to prevent unnecessary re-renders and update loops
+
+	// Handle click on the file attachment
+	const handleClick = useCallback(async () => {
+		const normalizedPath = file.startsWith("file://")
+			? file.substring(7)
+			: file;
+
+		const title = getFileName(file);
+
+		const fallbackAction = (err?: string) => {
+			if (err) console.error("Error reading file:", err);
+			onClick(file);
+		};
+
+		try {
+			const result = await window.api.readFile(normalizedPath);
+
+			if (result.success && isCanvasSupported(title)) {
+				const docId = normalizedPath;
+				const newDoc = {
+					id: docId,
+					title,
+					path: normalizedPath,
+					content: result.data,
+				};
+				// Always get the latest files and openTabs from the store to avoid stale closure and update loops
+				const state = useCanvasStore.getState();
+				const files = state.conversations[conversationId]?.files ?? [];
+				const openTabs = state.conversations[conversationId]?.openTabs ?? [];
+
+				const existsFile = files.some((d) => d.id === docId);
+				const updatedFiles = existsFile ? files : [...files, newDoc];
+				setFiles(conversationId, updatedFiles);
+
+				const existsTab = openTabs.some((t) => t.id === docId);
+				const updatedTabs = existsTab
+					? openTabs
+					: [...openTabs, { id: docId, title }];
+				setOpenTabs(conversationId, updatedTabs);
+				setSelectedTab(conversationId, docId);
+				setCanvasOpen(true);
+				return;
+			}
+
+			// If we get here, result.success must be false
+			const errorMessage =
+				!result.success && result.error
+					? result.error instanceof Error
+						? result.error.message
+						: String(result.error)
+					: "Unknown error";
+
+			return fallbackAction(errorMessage);
+		} catch (error: unknown) {
+			const message =
+				error instanceof Error
+					? error.message
+					: String(error ?? "Unknown error");
+			return fallbackAction(message);
+		}
+	}, [
+		file,
+		onClick,
+		setFiles,
+		setOpenTabs,
+		setSelectedTab,
+		setCanvasOpen,
+		conversationId,
+	]);
 
 	return (
 		<FileAttachmentContainer

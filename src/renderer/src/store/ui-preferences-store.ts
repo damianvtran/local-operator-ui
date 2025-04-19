@@ -15,6 +15,16 @@ import { persist } from "zustand/middleware";
  */
 type UiPreferencesState = {
 	/**
+	 * Whether the canvas is open (global, not per conversation)
+	 */
+	isCanvasOpen: boolean;
+
+	/**
+	 * Set the canvas open state
+	 * @param open - Whether the canvas should be open
+	 */
+	setCanvasOpen: (open: boolean) => void;
+	/**
 	 * Whether the navigation sidebar is collapsed
 	 */
 	isSidebarCollapsed: boolean;
@@ -23,6 +33,16 @@ type UiPreferencesState = {
 	 * The currently selected theme
 	 */
 	themeName: ThemeName;
+
+	/**
+	 * The width of the canvas area in pixels
+	 */
+	canvasWidth: number;
+
+	/**
+	 * The width of the chat sidebar in pixels
+	 */
+	chatSidebarWidth: number;
 
 	/**
 	 * Toggle the sidebar collapse state
@@ -40,6 +60,28 @@ type UiPreferencesState = {
 	 * @param themeName - The name of the theme to set
 	 */
 	setTheme: (themeName: ThemeName) => void;
+
+	/**
+	 * Set the width of the canvas area
+	 * @param width - The new width in pixels
+	 */
+	setCanvasWidth: (width: number) => void;
+
+	/**
+	 * Set the width of the chat sidebar
+	 * @param width - The new width in pixels
+	 */
+	setChatSidebarWidth: (width: number) => void;
+
+	/**
+	 * Restore the canvas width to its default value
+	 */
+	restoreDefaultCanvasWidth: () => void;
+
+	/**
+	 * Restore the chat sidebar width to its default value
+	 */
+	restoreDefaultChatSidebarWidth: () => void;
 };
 
 /**
@@ -47,11 +89,20 @@ type UiPreferencesState = {
  *
  * Uses zustand's persist middleware to save the state to localStorage
  */
+/**
+ * Default values for canvas and chat sidebar widths
+ */
+const DEFAULT_CANVAS_WIDTH = 800;
+const DEFAULT_CHAT_SIDEBAR_WIDTH = 320;
+
 export const useUiPreferencesStore = create<UiPreferencesState>()(
 	persist(
 		(set) => ({
 			isSidebarCollapsed: false,
 			themeName: DEFAULT_THEME,
+			canvasWidth: DEFAULT_CANVAS_WIDTH,
+			chatSidebarWidth: DEFAULT_CHAT_SIDEBAR_WIDTH,
+			isCanvasOpen: false,
 
 			toggleSidebar: () => {
 				set((state) => ({
@@ -68,6 +119,36 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			setTheme: (themeName: ThemeName) => {
 				set({
 					themeName,
+				});
+			},
+
+			setCanvasOpen: (open: boolean) => {
+				set({
+					isCanvasOpen: open,
+				});
+			},
+
+			setCanvasWidth: (width: number) => {
+				set({
+					canvasWidth: width,
+				});
+			},
+
+			setChatSidebarWidth: (width: number) => {
+				set({
+					chatSidebarWidth: width,
+				});
+			},
+
+			restoreDefaultCanvasWidth: () => {
+				set({
+					canvasWidth: DEFAULT_CANVAS_WIDTH,
+				});
+			},
+
+			restoreDefaultChatSidebarWidth: () => {
+				set({
+					chatSidebarWidth: DEFAULT_CHAT_SIDEBAR_WIDTH,
 				});
 			},
 		}),

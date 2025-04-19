@@ -215,7 +215,6 @@ export const RadientAccountSection: FC = () => {
 						descriptionText="Choose your preferred sign-in method to access Radient services."
 						onSignInSuccess={() => {
 							// Force a refresh of the component
-							console.log("Sign-in successful, refreshing account section");
 						}}
 					/>
 				</Box>

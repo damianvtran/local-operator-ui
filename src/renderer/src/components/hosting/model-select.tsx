@@ -203,12 +203,9 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 			refreshTimeoutRef.current = setTimeout(() => {
 				// Always refresh models when hosting provider changes
 				if (!isModelsLoading) {
-					console.log(`Refreshing models for hosting provider: ${hostingId}`);
 					refreshModels().catch((error) => {
 						console.error("Error refreshing models:", error);
 					});
-				} else {
-					console.log("Models already being refreshed, skipping refresh");
 				}
 
 				// Clear the timeout reference after it's executed

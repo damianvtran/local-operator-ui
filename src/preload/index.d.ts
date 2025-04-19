@@ -1,11 +1,17 @@
 import type { ElectronAPI } from "@electron-toolkit/preload";
 import type { ProgressInfo, UpdateInfo } from "electron-updater";
 
+// Matching same type in `src/main/index.ts`
+type ReadFileResponse =
+	| { success: true; data: string }
+	| { success: false; error: unknown }; // or use `string` if you always send error.message
+
 declare global {
 	interface Window {
 		electron: ElectronAPI;
 		api: {
 			openFile: (filePath: string) => Promise<void>;
+			readFile: (filePath: string) => Promise<ReadFileResponse>;
 			openExternal: (url: string) => Promise<void>;
 			session: {
 				getSession: () => Promise<{
