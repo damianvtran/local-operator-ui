@@ -142,10 +142,7 @@ export const ChatContent: FC<ChatContentProps> = ({
 	}, [isOpen]);
 
 	return (
-		<Split
-			visible={!!canvasPanelWidth}
-			style={{ border: "1px solid #d5d5d5", borderRadius: 3 }}
-		>
+		<Split visible={!!canvasPanelWidth}>
 			<Box
 				sx={{
 					flex: 1,
