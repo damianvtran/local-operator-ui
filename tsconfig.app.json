@@ -32,6 +32,6 @@
 			"*": ["node_modules/*", "src/types/*"]
 		}
 	},
-	"include": ["src/**/*"],
+	"include": ["src/renderer/**/*"],
 	"exclude": ["node_modules", "dist"]
 }
