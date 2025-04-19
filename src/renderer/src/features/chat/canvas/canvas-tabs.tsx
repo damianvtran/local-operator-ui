@@ -103,22 +103,23 @@ export const CanvasTabs: FC<CanvasTabsProps> = ({
 }) => {
 	const [value, setValue] = useState<string | false>(false);
 
+	// Check if activeDocumentId exists in current documents
+	const isActiveDocumentValid =
+		activeDocumentId && documents.some((doc) => doc.id === activeDocumentId);
+
 	useEffect(() => {
 		// Synchronizes internal tab selection state with the active document id from props
-		// Ensures that the currently active tab matches the externally controlled
-		if (
-			activeDocumentId &&
-			documents.find((document) => document.id === activeDocumentId)
-		) {
+		// Ensures that the currently active tab matches the externally controlled active document
+		if (isActiveDocumentValid) {
 			setValue(activeDocumentId);
-		} else if (documents.length > 0 && !activeDocumentId) {
-			// If there's no active document but we have documents, select the first one
+		} else if (documents.length > 0 && !isActiveDocumentValid) {
+			// If active document is invalid but we have documents, select the first one
 			setValue(documents[0].id);
 		} else if (documents.length === 0) {
 			// If there are no documents, reset the value
 			setValue(false);
 		}
-	}, [documents, activeDocumentId]);
+	}, [documents, activeDocumentId, isActiveDocumentValid]);
 
 	// Handle direct tab click
 	const handleTabClick = useCallback(
@@ -142,10 +143,17 @@ export const CanvasTabs: FC<CanvasTabsProps> = ({
 		return null;
 	}
 
+	// Determine the valid value for Tabs component
+	const tabValue = isActiveDocumentValid
+		? activeDocumentId
+		: documents.length > 0
+			? value
+			: false;
+
 	return (
 		<Box sx={{ borderBottom: 1, borderColor: "divider" }}>
 			<StyledTabs
-				value={activeDocumentId || value}
+				value={tabValue}
 				variant="scrollable"
 				scrollButtons="auto"
 				aria-label="Markdown document tabs"
