@@ -254,7 +254,7 @@ export const AutocompleteField = ({
 			await onSave(editValue);
 			setOriginalValue(editValue);
 			setIsEditing(false);
-		} catch (error) {
+		} catch (_error) {
 			// If save fails, revert to original value
 			setEditValue(originalValue);
 			setInputValue(originalValue);

@@ -381,7 +381,7 @@ export class BackendServiceManager {
 				);
 				return true;
 			}
-		} catch (error) {
+		} catch (_error) {
 			logger.info(
 				"local-operator command not found globally",
 				LogFileType.BACKEND,
@@ -995,7 +995,7 @@ export class BackendServiceManager {
 			);
 
 			return response.ok;
-		} catch (error) {
+		} catch (_error) {
 			return false;
 		}
 	}

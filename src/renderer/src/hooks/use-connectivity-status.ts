@@ -35,7 +35,7 @@ export const useServerHealth = (refetchInterval = 5000) => {
 			try {
 				await HealthApi.healthCheck(apiConfig.baseUrl);
 				return true; // Server is online
-			} catch (error) {
+			} catch (_error) {
 				return false; // Server is offline
 			}
 		},
