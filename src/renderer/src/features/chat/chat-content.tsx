@@ -253,7 +253,11 @@ export const ChatContent: FC<ChatContentProps> = ({
 						})}
 					>
 						<Canvas
-							open={isCanvasOpen}
+							activeDocumentId={selectedTabId}
+							initialDocuments={files}
+							onChangeActiveDocument={(documentId: string) =>
+								setSelectedTab(conversationId, documentId)
+							}
 							onClose={() =>
 								useUiPreferencesStore.getState().setCanvasOpen(false)
 							}
@@ -270,11 +274,6 @@ export const ChatContent: FC<ChatContentProps> = ({
 									);
 								}
 							}}
-							initialDocuments={files}
-							activeDocumentId={selectedTabId}
-							onChangeActiveDocument={(documentId: string) =>
-								setSelectedTab(conversationId, documentId)
-							}
 						/>
 					</Box>
 				</>
