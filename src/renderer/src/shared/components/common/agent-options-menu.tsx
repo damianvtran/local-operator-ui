@@ -19,7 +19,7 @@ import {
 import { useDeleteAgent } from "@renderer/hooks/use-agent-mutations";
 import { useAgentSelectionStore } from "@renderer/store/agent-selection-store";
 import type { FC, MouseEvent } from "react";
-import React, { useState } from "react";
+import { useState } from "react";
 import { ConfirmationModal } from "./confirmation-modal";
 
 type AgentOptionsMenuProps = {

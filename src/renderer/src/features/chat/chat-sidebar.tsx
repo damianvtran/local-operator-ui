@@ -30,7 +30,7 @@ import { CreateAgentDialog } from "@shared/components/common/create-agent-dialog
 import { ImportAgentDialog } from "@shared/components/common/import-agent-dialog";
 import { SidebarHeader } from "@shared/components/common/sidebar-header";
 import type { ChangeEvent, FC } from "react";
-import React, { useState, useCallback } from "react";
+import { useCallback, useState } from "react";
 
 const SidebarContainer = styled(Paper)(({ theme }) => ({
 	width: "100%",

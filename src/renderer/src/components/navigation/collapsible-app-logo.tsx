@@ -1,7 +1,6 @@
 import localOperatorIcon from "@assets/icon.png";
 import { Box, Typography, alpha, keyframes } from "@mui/material";
 import { styled } from "@mui/material/styles";
-import React from "react";
 import type { FC } from "react";
 
 /**

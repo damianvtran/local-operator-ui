@@ -429,7 +429,7 @@ export const ButtonNoUpdateAvailable: Story = {
 							window.api.updater._callbacks.updateNotAvailable =
 								// @ts-ignore - _callbacks is added at runtime for our mock implementation
 								window.api.updater._callbacks.updateNotAvailable.filter(
-									(cb) => cb !== callback,
+									(cb: (info: UpdateInfo) => void) => cb !== callback,
 								);
 						}
 					};
@@ -561,7 +561,7 @@ export const ButtonErrorState: Story = {
 							window.api.updater._callbacks.updateError =
 								// @ts-ignore - _callbacks is added at runtime for our mock implementation
 								window.api.updater._callbacks.updateError.filter(
-									(cb) => cb !== callback,
+									(cb: (message: string) => void) => cb !== callback,
 								);
 						}
 					};

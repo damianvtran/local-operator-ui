@@ -12,7 +12,6 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, IconButton, Typography } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import type { FC } from "react";
-import React from "react";
 
 const PaginationContainer = styled(Box)(({ theme }) => ({
 	display: "flex",

@@ -8,7 +8,6 @@ import type { IconDefinition } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, Typography } from "@mui/material";
 import { styled } from "@mui/material/styles";
-import React from "react";
 import type { FC, ReactNode } from "react";
 
 type PageHeaderProps = {
