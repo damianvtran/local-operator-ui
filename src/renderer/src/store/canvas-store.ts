@@ -40,8 +40,6 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
 		// Check if document with same path already exists
 		const existingDocIndex = documents.findIndex((doc) => doc.path === path);
 
-		console.log("existingDocIndex", existingDocIndex);
-
 		if (existingDocIndex >= 0) {
 			// If it exists, just make it active
 			set({ activeDocumentId: documents[existingDocIndex].id, isOpen: true });
