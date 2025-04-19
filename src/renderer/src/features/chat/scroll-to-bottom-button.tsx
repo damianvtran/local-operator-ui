@@ -25,8 +25,7 @@ type ScrollToBottomButtonProps = {
 
 const ButtonContainer = styled(Box)(() => ({
 	position: "absolute",
-	bottom: 80, // Position above the message input
-	right: 20,
+	bottom: 200,
 	zIndex: 1000,
 	display: "flex",
 	justifyContent: "center",
