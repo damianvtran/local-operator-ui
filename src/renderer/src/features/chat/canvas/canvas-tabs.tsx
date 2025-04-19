@@ -46,15 +46,17 @@ const StyledTab = styled(Tab, {
 	shouldForwardProp: (prop) => prop !== "isActive",
 })<{ isActive?: boolean }>(({ theme, isActive }) => ({
 	minHeight: "42px",
-	padding: "4px 12px",
+	padding: "4px 32px 4px 18px",
 	textTransform: "none",
 	fontSize: "0.85rem",
 	fontWeight: 500,
 	transition: "all 0.2s ease",
 	opacity: isActive ? 1 : 0.7,
-	maxWidth: "200px",
+	maxWidth: "500px",
 	position: "relative",
-	paddingRight: "32px", // Space for close button
+	textOverflow: "ellipsis",
+	overflow: "hidden",
+	whiteSpace: "nowrap",
 	"&:hover": {
 		opacity: 1,
 		backgroundColor: alpha(
