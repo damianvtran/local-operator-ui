@@ -129,7 +129,7 @@ export const SystemPromptSettings: FC<SystemPromptSettingsProps> = ({
 						if (selectedAgent.id === initialSelectedAgentId && refetchAgent) {
 							await refetchAgent();
 						}
-					} catch (error) {
+					} catch (_error) {
 						// Error is already handled in the mutation
 					} finally {
 						setSavingField(null);

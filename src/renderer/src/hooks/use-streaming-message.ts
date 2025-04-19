@@ -478,7 +478,7 @@ export const useStreamingMessage = ({
 		if (registryEntry.connecting && registryEntry.connectionPromise) {
 			try {
 				await registryEntry.connectionPromise;
-			} catch (error) {
+			} catch (_error) {
 				console.warn(
 					"Existing connection failed, will attempt a new connection",
 				);
@@ -535,7 +535,7 @@ export const useStreamingMessage = ({
 		// Wait for the connection to complete
 		try {
 			await connectionPromise;
-		} catch (error) {
+		} catch (_error) {
 			// Error already logged above
 		} finally {
 			// Clear the connection promise

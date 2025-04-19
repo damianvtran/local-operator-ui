@@ -262,7 +262,7 @@ export const ChatSettings: FC<ChatSettingsProps> = ({
 							if (selectedAgent.id === initialSelectedAgentId && refetchAgent) {
 								await refetchAgent();
 							}
-						} catch (error) {
+						} catch (_error) {
 							// Error is already handled in the mutation
 						} finally {
 							setSavingField(null);
@@ -289,7 +289,7 @@ export const ChatSettings: FC<ChatSettingsProps> = ({
 							if (selectedAgent.id === initialSelectedAgentId && refetchAgent) {
 								await refetchAgent();
 							}
-						} catch (error) {
+						} catch (_error) {
 							// Error is already handled in the mutation
 						} finally {
 							setSavingField(null);
@@ -322,7 +322,7 @@ export const ChatSettings: FC<ChatSettingsProps> = ({
 							if (selectedAgent.id === initialSelectedAgentId && refetchAgent) {
 								await refetchAgent();
 							}
-						} catch (error) {
+						} catch (_error) {
 							// Error is already handled in the mutation
 						} finally {
 							setSavingField(null);
@@ -349,7 +349,7 @@ export const ChatSettings: FC<ChatSettingsProps> = ({
 							if (selectedAgent.id === initialSelectedAgentId && refetchAgent) {
 								await refetchAgent();
 							}
-						} catch (error) {
+						} catch (_error) {
 							// Error is already handled in the mutation
 						} finally {
 							setSavingField(null);
@@ -382,7 +382,7 @@ export const ChatSettings: FC<ChatSettingsProps> = ({
 							if (selectedAgent.id === initialSelectedAgentId && refetchAgent) {
 								await refetchAgent();
 							}
-						} catch (error) {
+						} catch (_error) {
 							// Error is already handled in the mutation
 						} finally {
 							setSavingField(null);
@@ -409,7 +409,7 @@ export const ChatSettings: FC<ChatSettingsProps> = ({
 							if (selectedAgent.id === initialSelectedAgentId && refetchAgent) {
 								await refetchAgent();
 							}
-						} catch (error) {
+						} catch (_error) {
 							// Error is already handled in the mutation
 						} finally {
 							setSavingField(null);
@@ -442,7 +442,7 @@ export const ChatSettings: FC<ChatSettingsProps> = ({
 							if (selectedAgent.id === initialSelectedAgentId && refetchAgent) {
 								await refetchAgent();
 							}
-						} catch (error) {
+						} catch (_error) {
 							// Error is already handled in the mutation
 						} finally {
 							setSavingField(null);
@@ -469,7 +469,7 @@ export const ChatSettings: FC<ChatSettingsProps> = ({
 							if (selectedAgent.id === initialSelectedAgentId && refetchAgent) {
 								await refetchAgent();
 							}
-						} catch (error) {
+						} catch (_error) {
 							// Error is already handled in the mutation
 						} finally {
 							setSavingField(null);
@@ -528,7 +528,7 @@ export const ChatSettings: FC<ChatSettingsProps> = ({
 									) {
 										await refetchAgent();
 									}
-								} catch (error) {
+								} catch (_error) {
 									// Error is already handled in the mutation
 								} finally {
 									setSavingField(null);
@@ -568,7 +568,7 @@ export const ChatSettings: FC<ChatSettingsProps> = ({
 							if (selectedAgent.id === initialSelectedAgentId && refetchAgent) {
 								await refetchAgent();
 							}
-						} catch (error) {
+						} catch (_error) {
 							// Error is already handled in the mutation
 						} finally {
 							setSavingField(null);
@@ -601,7 +601,7 @@ export const ChatSettings: FC<ChatSettingsProps> = ({
 							if (selectedAgent.id === initialSelectedAgentId && refetchAgent) {
 								await refetchAgent();
 							}
-						} catch (error) {
+						} catch (_error) {
 							// Error is already handled in the mutation
 						} finally {
 							setSavingField(null);
@@ -628,7 +628,7 @@ export const ChatSettings: FC<ChatSettingsProps> = ({
 							if (selectedAgent.id === initialSelectedAgentId && refetchAgent) {
 								await refetchAgent();
 							}
-						} catch (error) {
+						} catch (_error) {
 							// Error is already handled in the mutation
 						} finally {
 							setSavingField(null);
@@ -661,7 +661,7 @@ export const ChatSettings: FC<ChatSettingsProps> = ({
 							if (selectedAgent.id === initialSelectedAgentId && refetchAgent) {
 								await refetchAgent();
 							}
-						} catch (error) {
+						} catch (_error) {
 							// Error is already handled in the mutation
 						} finally {
 							setSavingField(null);
@@ -688,7 +688,7 @@ export const ChatSettings: FC<ChatSettingsProps> = ({
 							if (selectedAgent.id === initialSelectedAgentId && refetchAgent) {
 								await refetchAgent();
 							}
-						} catch (error) {
+						} catch (_error) {
 							// Error is already handled in the mutation
 						} finally {
 							setSavingField(null);
@@ -748,7 +748,7 @@ export const ChatSettings: FC<ChatSettingsProps> = ({
 									) {
 										await refetchAgent();
 									}
-								} catch (error) {
+								} catch (_error) {
 									// Error is already handled in the mutation
 								} finally {
 									setSavingField(null);
@@ -787,7 +787,7 @@ export const ChatSettings: FC<ChatSettingsProps> = ({
 							if (selectedAgent.id === initialSelectedAgentId && refetchAgent) {
 								await refetchAgent();
 							}
-						} catch (error) {
+						} catch (_error) {
 							// Error is already handled in the mutation
 						} finally {
 							setSavingField(null);
