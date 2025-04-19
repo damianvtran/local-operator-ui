@@ -170,7 +170,6 @@ export const ChatContent: FC<ChatContentProps> = ({
 				<ChatContainer elevation={0}>
 					{/* Chat header */}
 					<ChatHeader
-						agentId={agentId}
 						agentName={agentName}
 						description={description}
 						onOpenOptions={onOpenOptions}
