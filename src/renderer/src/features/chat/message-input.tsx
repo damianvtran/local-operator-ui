@@ -503,24 +503,21 @@ export const MessageInput: FC<MessageInputProps> = ({
 	);
 
 	return (
-		<>
-			<InputOuterContainer>
-				{messages.length === 0 ? (
-					<EmptyStateContainer>
-						<EmptyStateTitle variant="h6">
-							What can I help you with today?
-						</EmptyStateTitle>
-						{inputContent}
-					</EmptyStateContainer>
-				) : (
-					inputContent
-				)}
-			</InputOuterContainer>
-
+		<InputOuterContainer>
+			{messages.length === 0 ? (
+				<EmptyStateContainer>
+					<EmptyStateTitle variant="h6">
+						What can I help you with today?
+					</EmptyStateTitle>
+					{inputContent}
+				</EmptyStateContainer>
+			) : (
+				inputContent
+			)}
 			<ScrollToBottomButton
 				visible={isFarFromBottom}
 				onClick={scrollToBottom}
 			/>
-		</>
+		</InputOuterContainer>
 	);
 };
