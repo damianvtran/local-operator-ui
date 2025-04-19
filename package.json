@@ -84,7 +84,6 @@
 		"@uiw/codemirror-extensions-langs": "^4.23.10",
 		"@uiw/codemirror-theme-basic": "^4.23.10",
 		"@uiw/react-codemirror": "^4.23.10",
-		"@uiw/react-split": "^5.9.3",
 		"date-fns": "^4.1.0",
 		"dmg-builder": "26.0.12",
 		"electron-builder-squirrel-windows": "26.0.12",
