@@ -380,13 +380,13 @@ export class BackendInstaller {
 						env, // Pass environment variables to the script
 					});
 
-					let stdout = "";
-					let stderr = "";
+					let _stdout = "";
+					let _stderr = "";
 
 					if (installProcess.stdout) {
 						installProcess.stdout.on("data", (data) => {
 							const output = data.toString();
-							stdout += output;
+							_stdout += output;
 							console.log(`Installation stdout: ${output}`);
 							logger.info(
 								`Installation stdout: ${output}`,
@@ -398,7 +398,7 @@ export class BackendInstaller {
 					if (installProcess.stderr) {
 						installProcess.stderr.on("data", (data) => {
 							const output = data.toString();
-							stderr += output;
+							_stderr += output;
 							console.error(`Installation stderr: ${output}`);
 							logger.error(
 								`Installation stderr: ${output}`,
@@ -550,7 +550,7 @@ export class BackendInstaller {
 								// Add a small delay after file is released to ensure all resources are freed
 								await new Promise((resolve) => setTimeout(resolve, 1000));
 								break;
-							} catch (error) {
+							} catch (_error) {
 								logger.info(
 									`Waiting for transcript file to be released (attempt ${attempts + 1}/${maxAttempts})`,
 									LogFileType.INSTALLER,

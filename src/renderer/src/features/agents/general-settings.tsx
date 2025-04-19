@@ -210,7 +210,7 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 								) {
 									await refetchAgent();
 								}
-							} catch (error) {
+							} catch (_error) {
 								// Error is already handled in the mutation
 							} finally {
 								setSavingField(null);
@@ -255,7 +255,7 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 									) {
 										await refetchAgent();
 									}
-								} catch (error) {
+								} catch (_error) {
 									// Error is already handled in the mutation
 									// Revert the local state if there's an error
 									setCurrentHosting(selectedAgent.hosting || "");
@@ -296,7 +296,7 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 										) {
 											await refetchAgent();
 										}
-									} catch (error) {
+									} catch (_error) {
 										// Error is already handled in the mutation
 									} finally {
 										setSavingField(null);
@@ -366,7 +366,7 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 							if (selectedAgent.id === initialSelectedAgentId && refetchAgent) {
 								await refetchAgent();
 							}
-						} catch (error) {
+						} catch (_error) {
 							// Error is already handled in the mutation
 						} finally {
 							setSavingField(null);
