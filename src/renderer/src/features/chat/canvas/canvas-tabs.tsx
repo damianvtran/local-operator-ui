@@ -1,6 +1,6 @@
 import { faTimes } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Box, IconButton, Tab, Tabs, alpha, styled } from "@mui/material";
+import { Box, Tab, Tabs, alpha, styled } from "@mui/material";
 import { type FC, useCallback, useEffect, useState } from "react";
 import type { CanvasDocument } from "./types";
 
@@ -68,8 +68,9 @@ const StyledTab = styled(Tab, {
 
 /**
  * Styled close button for tabs
+ * Using div instead of IconButton to avoid button nesting issues
  */
-const CloseTabButton = styled(IconButton)(({ theme }) => ({
+const CloseTabButton = styled("div")(({ theme }) => ({
 	position: "absolute",
 	right: 4,
 	top: "50%",
@@ -79,6 +80,11 @@ const CloseTabButton = styled(IconButton)(({ theme }) => ({
 	height: 18,
 	fontSize: "0.7rem",
 	color: theme.palette.text.secondary,
+	display: "flex",
+	alignItems: "center",
+	justifyContent: "center",
+	borderRadius: "50%",
+	cursor: "pointer",
 	"&:hover": {
 		backgroundColor: alpha(theme.palette.error.main, 0.1),
 		color: theme.palette.error.main,
@@ -154,7 +160,6 @@ export const CanvasTabs: FC<CanvasTabsProps> = ({
 						icon={
 							<CloseTabButton
 								onClick={(e) => handleCloseTab(e, doc.id)}
-								size="small"
 								aria-label={`Close ${doc.title}`}
 							>
 								<FontAwesomeIcon icon={faTimes} size="xs" />
