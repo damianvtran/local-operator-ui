@@ -58,7 +58,7 @@ export const updateAgentSetting = async <T,>(
 		if (refetchAgent) {
 			await refetchAgent();
 		}
-	} catch (error) {
+	} catch (_error) {
 		// Error is already handled in the mutation
 	} finally {
 		setSavingField(null);

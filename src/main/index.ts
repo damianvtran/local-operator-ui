@@ -925,7 +925,7 @@ app.on("will-quit", async (event) => {
 						"taskkill /f /im local-operator.exe /t",
 						{ stdio: "ignore" },
 					);
-				} catch (err) {
+				} catch (_err) {
 					// Ignore errors, this is a best-effort cleanup
 				}
 			} else {
@@ -941,7 +941,7 @@ app.on("will-quit", async (event) => {
 						'sleep 1 && pkill -9 -f "local-operator serve"',
 						{ stdio: "ignore" },
 					);
-				} catch (err) {
+				} catch (_err) {
 					// Ignore errors, this is a best-effort cleanup
 				}
 			}
@@ -1010,7 +1010,7 @@ process.on("exit", () => {
 						"/c",
 						"taskkill /f /im local-operator.exe /t",
 					]);
-				} catch (err) {
+				} catch (_err) {
 					// Ignore errors, this is a best-effort cleanup
 				}
 			} else {
@@ -1026,7 +1026,7 @@ process.on("exit", () => {
 						"-c",
 						`sleep 1 && ps aux | grep "local-operator serve" | grep -v grep | awk '{print $2}' | xargs -r kill -9`,
 					]);
-				} catch (err) {
+				} catch (_err) {
 					// Ignore errors, this is a best-effort cleanup
 				}
 			}
@@ -1091,7 +1091,7 @@ process.on("uncaughtException", (error) => {
 							"/c",
 							"taskkill /f /im local-operator.exe /t",
 						]);
-					} catch (err) {
+					} catch (_err) {
 						// Ignore errors, this is a best-effort cleanup
 					}
 				} else {
@@ -1107,7 +1107,7 @@ process.on("uncaughtException", (error) => {
 							"-c",
 							`sleep 1 && ps aux | grep "local-operator serve" | grep -v grep | awk '{print $2}' | xargs -r kill -9`,
 						]);
-					} catch (err) {
+					} catch (_err) {
 						// Ignore errors, this is a best-effort cleanup
 					}
 				}

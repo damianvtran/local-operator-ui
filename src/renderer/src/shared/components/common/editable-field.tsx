@@ -272,7 +272,7 @@ export const EditableField: FC<EditableFieldProps> = ({
 			setDisplayValue(editValue);
 			setOriginalValue(editValue);
 			setIsEditing(false);
-		} catch (error) {
+		} catch (_error) {
 			// If save fails, revert to original value
 			setEditValue(originalValue);
 		}
