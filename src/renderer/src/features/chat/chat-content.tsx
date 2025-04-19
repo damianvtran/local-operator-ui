@@ -119,6 +119,7 @@ export const ChatContent: FC<ChatContentProps> = ({
 	const canvasContainerRef = useRef<HTMLDivElement>(null);
 
 	const [canvasPanelWidth, setCanvasPanelWidth] = useState(CANVAS_OPEN_WIDTH);
+	const [isChatUtilitiesExpanded, setIsChatUtilitiesExpanded] = useState(false);
 
 	const {
 		isOpen,
@@ -201,10 +202,16 @@ export const ChatContent: FC<ChatContentProps> = ({
 							onCancelJob={onCancelJob}
 							isFarFromBottom={isFarFromBottom}
 							scrollToBottom={scrollToBottom}
+							isChatUtilitiesExpanded={isChatUtilitiesExpanded}
 						/>
 					)}
 					{/* Chat utilities section */}
-					<ChatUtilities agentId={agentId} agentData={agentData} />
+					<ChatUtilities
+						agentId={agentId}
+						agentData={agentData}
+						expanded={isChatUtilitiesExpanded}
+						setExpanded={setIsChatUtilitiesExpanded}
+					/>
 				</ChatContainer>
 			</Box>
 

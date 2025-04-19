@@ -35,6 +35,7 @@ type MessageInputProps = {
 	isFarFromBottom?: boolean;
 	scrollToBottom?: () => void;
 	initialSuggestions?: string[];
+	isChatUtilitiesExpanded: boolean;
 };
 
 /**
@@ -304,6 +305,7 @@ export const MessageInput: FC<MessageInputProps> = ({
 	isFarFromBottom = false,
 	scrollToBottom = () => {},
 	initialSuggestions,
+	isChatUtilitiesExpanded,
 }) => {
 	const [attachments, setAttachments] = useState<string[]>([]);
 	const fileInputRef = useRef<HTMLInputElement>(null);
@@ -516,6 +518,7 @@ export const MessageInput: FC<MessageInputProps> = ({
 			)}
 			<ScrollToBottomButton
 				visible={isFarFromBottom}
+				isChatUtilitiesExpanded={isChatUtilitiesExpanded}
 				onClick={scrollToBottom}
 			/>
 		</InputOuterContainer>

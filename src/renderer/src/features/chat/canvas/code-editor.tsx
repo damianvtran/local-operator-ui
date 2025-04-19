@@ -1,6 +1,6 @@
-import { Box } from "@mui/material";
+import { Box, useTheme } from "@mui/material";
 import { loadLanguageExtensions } from "@renderer/utils/load-language-extensions";
-import { basicLight } from "@uiw/codemirror-theme-basic";
+import { basicDark, basicLight } from "@uiw/codemirror-theme-basic";
 import CodeMirror, { type Extension } from "@uiw/react-codemirror";
 import { type FC, useEffect, useState } from "react";
 import type { CanvasDocument } from "./types";
@@ -20,6 +20,8 @@ export const CodeEditor: FC<CodeEditorProps> = ({ document }) => {
 	const [value, setValue] = useState<CanvasDocument | null>(null);
 	const [languageExtensions, setLanguageExtensions] = useState<Extension[]>([]);
 
+	const theme = useTheme();
+
 	useEffect(() => {
 		if (document.id !== value?.id) {
 			setValue(document);
@@ -29,6 +31,9 @@ export const CodeEditor: FC<CodeEditorProps> = ({ document }) => {
 			setLanguageExtensions([newLangExtension]);
 		}
 	}, [document, value?.id]);
+
+	const codeEditorTheme =
+		theme.palette.mode === "light" ? basicLight : basicDark;
 
 	return (
 		<Box
@@ -45,7 +50,7 @@ export const CodeEditor: FC<CodeEditorProps> = ({ document }) => {
 			<CodeMirror
 				value={value?.content ?? ""}
 				height="100%"
-				theme={basicLight}
+				theme={codeEditorTheme}
 				editable={false}
 				extensions={languageExtensions}
 			/>

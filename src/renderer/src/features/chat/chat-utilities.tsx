@@ -9,7 +9,7 @@ import {
 	styled,
 } from "@mui/material";
 import type { AgentDetails } from "@renderer/api/local-operator/types";
-import { type FC, useState } from "react";
+import type { Dispatch, FC, SetStateAction } from "react";
 import { DirectoryIndicator } from "./directory-indicator";
 
 /**
@@ -20,6 +20,10 @@ type ChatUtilitiesProps = {
 	agentId?: string;
 	/** The agent data */
 	agentData?: AgentDetails | null;
+
+	// Add props for a use state
+	expanded: boolean;
+	setExpanded: Dispatch<SetStateAction<boolean>>;
 };
 
 const UtilitiesContainer = styled(Box)(({ theme }) => ({
@@ -56,9 +60,9 @@ const UtilitiesContent = styled(Box)(({ theme }) => ({
 export const ChatUtilities: FC<ChatUtilitiesProps> = ({
 	agentId,
 	agentData,
+	expanded,
+	setExpanded,
 }) => {
-	const [expanded, setExpanded] = useState(false);
-
 	// Toggle the expanded state
 	const toggleExpanded = () => {
 		setExpanded(!expanded);
