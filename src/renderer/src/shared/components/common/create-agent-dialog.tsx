@@ -8,7 +8,7 @@ import {
 	styled,
 } from "@mui/material";
 import type { AgentCreate } from "@shared/api/local-operator/types";
-import { useCreateAgent } from "@shared/hooks/use-agent-mutations";
+import { useCreateAgent } from "@shared/hooks";
 import type { FC, FormEvent } from "react";
 import { useState } from "react";
 import {
