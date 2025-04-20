@@ -4,7 +4,7 @@
 
 import { createLocalOperatorClient } from "@shared/api/local-operator";
 import type { AgentCreate } from "@shared/api/local-operator/types";
-import { apiConfig } from "@renderer/config";
+import { apiConfig } from "@shared/config";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { QueryKey } from "@tanstack/react-query";
 import { toast } from "react-toastify";

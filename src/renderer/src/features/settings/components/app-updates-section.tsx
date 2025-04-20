@@ -7,7 +7,7 @@ import type { FC } from "react";
 // import { HealthApi } from "../../../api/local-operator/health-api";
 // import type { HealthCheckResponse } from "../../../api/local-operator/types";
 import { HealthApi, type HealthCheckResponse } from "@shared/api/local-operator";
-import { apiConfig } from "../../../config"; // TODO: Migrate apiConfig to shared
+import { apiConfig } from "@shared/config";
 import { AppUpdates } from "./app-updates";
 
 const SectionTitle = styled(Typography)(({ theme }) => ({

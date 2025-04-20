@@ -23,7 +23,7 @@ import { jwtDecode } from "jwt-decode";
 import { useCallback, useEffect, useState } from "react";
 import { CredentialsApi } from "../api/local-operator/credentials-api";
 import { createRadientClient } from "../api/radient";
-import { apiConfig } from "../../config";
+import { apiConfig } from "@shared/config";
 import { storeSession } from "../utils/session-store";
 import { showErrorToast, showSuccessToast } from "../utils/toast-manager";
 import { radientUserKeys } from "./use-radient-user-query";

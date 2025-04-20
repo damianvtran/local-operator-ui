@@ -7,7 +7,7 @@
 
 import { createLocalOperatorClient } from "@shared/api/local-operator";
 import type { AgentDetails } from "@shared/api/local-operator/types";
-import { apiConfig } from "../../config";
+import { apiConfig } from "@shared/config";
 import { showErrorToast } from "@shared/utils/toast-manager";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";

@@ -2,7 +2,7 @@
  * Hook for clearing an agent's conversation history
  */
 import { createLocalOperatorClient } from "@shared/api/local-operator";
-import { apiConfig } from "@renderer/config";
+import { apiConfig } from "@shared/config";
 import { useChatStore } from "@shared/store/chat-store";
 import { useMessageHistoryStore } from "@shared/store/message-history-store";
 import { useMutation, useQueryClient } from "@tanstack/react-query";

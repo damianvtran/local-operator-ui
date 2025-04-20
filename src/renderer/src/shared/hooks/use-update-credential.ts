@@ -7,7 +7,7 @@ import { createLocalOperatorClient,
 	type CredentialListResult,
 	type CredentialUpdate,
 } from "@shared/api/local-operator";
-import { apiConfig } from "@renderer/config";
+import { apiConfig } from "@shared/config";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-toastify";
 import { credentialsQueryKey } from "./use-credentials";

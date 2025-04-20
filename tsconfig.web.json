@@ -24,12 +24,6 @@
       "@hooks/*": [
         "src/renderer/src/shared/hooks/*"
       ],
-      "@renderer/*": [
-        "src/renderer/src/*"
-      ],
-      "@resources/*": [
-        "resources/*"
-      ],
       "@shared/*": [
         "src/renderer/src/shared/*"
       ],

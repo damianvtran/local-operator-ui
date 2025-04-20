@@ -8,7 +8,7 @@
 
 import { resetQueryCache } from "@shared/api/query-client";
 import { createRadientClient } from "@shared/api/radient";
-import { apiConfig } from "@renderer/config";
+import { apiConfig } from "@shared/config";
 import type { RadientUser } from "@shared/providers/auth";
 import { useFeatureFlags } from "@shared/providers/feature-flags";
 import {

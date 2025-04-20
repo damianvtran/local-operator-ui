@@ -6,7 +6,7 @@ import type {
 	ConversationRecord,
 	JobStatus,
 } from "@shared/api/local-operator/types";
-import type { Message } from "@renderer/features/chat/types";
+import type { Message } from "@features/chat/types";
 
 // Extend the JobDetails type to include the error field in the result
 interface JobDetails extends Omit<BaseJobDetails, "result"> {
@@ -18,7 +18,7 @@ interface JobDetails extends Omit<BaseJobDetails, "result"> {
 	};
 	current_execution?: AgentExecutionRecord;
 }
-import { apiConfig } from "@renderer/config";
+import { apiConfig } from "@shared/config";
 import { useChatStore } from "@shared/store/chat-store";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 /**

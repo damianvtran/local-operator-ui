@@ -3,7 +3,7 @@
  */
 
 import { createLocalOperatorClient, type AgentDetails, type AgentUpdate } from "@shared/api/local-operator";
-import { apiConfig } from "@renderer/config";
+import { apiConfig } from "@shared/config";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-toastify";
 import { agentsQueryKey } from "./use-agents";

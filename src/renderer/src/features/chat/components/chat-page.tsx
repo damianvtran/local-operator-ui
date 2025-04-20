@@ -8,7 +8,7 @@ import { useScrollToBottom } from "@shared/hooks/use-scroll-to-bottom";
 import { createLocalOperatorClient } from "@shared/api/local-operator";
 import { JobsApi } from "@shared/api/local-operator/jobs-api";
 import type { JobStatus } from "@shared/api/local-operator/types";
-import { apiConfig } from "@renderer/config";
+import { apiConfig } from "@shared/config";
 import { useConfig } from "@shared/hooks/use-config";
 import { useAgentRouteParam } from "@shared/hooks/use-route-params";
 import { useAgentSelectionStore } from "@shared/store/agent-selection-store";

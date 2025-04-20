@@ -12,7 +12,7 @@ import {
 import type { FC } from "react";
 import { useCallback, useMemo } from "react";
 import { createLocalOperatorClient } from "@shared/api/local-operator";
-import { apiConfig } from "../../../config";
+import { apiConfig } from "@shared/config";
 
 /**
  * Props for the AttachmentsPreview component

@@ -6,7 +6,7 @@
  */
 
 import { createLocalOperatorClient, type ConfigResponse } from "@shared/api/local-operator";
-import { apiConfig } from "../../config";
+import { apiConfig } from "@shared/config";
 import { showErrorToast } from "@shared/utils/toast-manager";
 import { useQuery } from "@tanstack/react-query";
 
