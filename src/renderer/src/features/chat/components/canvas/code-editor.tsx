@@ -3,7 +3,7 @@ import { loadLanguageExtensions } from "@shared/utils/load-language-extensions";
 import { basicDark, basicLight } from "@uiw/codemirror-theme-basic";
 import CodeMirror, { type Extension } from "@uiw/react-codemirror";
 import { type FC, useEffect, useState } from "react";
-import type { CanvasDocument } from "./types";
+import type { CanvasDocument } from "../../types/canvas";
 
 type CodeEditorProps = {
 	/**

@@ -14,7 +14,10 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, Collapse, Typography, alpha } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import { createLocalOperatorClient } from "@shared/api/local-operator";
-import type { ActionType, ExecutionType } from "@shared/api/local-operator/types";
+import type {
+	ActionType,
+	ExecutionType,
+} from "@shared/api/local-operator/types";
 import { apiConfig } from "@shared/config";
 import {
 	type FC,

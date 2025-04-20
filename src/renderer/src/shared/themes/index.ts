@@ -1,3 +1,4 @@
+import type { ThemeCollection, ThemeName, ThemeOption } from "../types/theme";
 import darkTheme from "./dark-theme";
 import draculaTheme from "./dracula-theme";
 import duneTheme from "./dune-theme";
@@ -7,7 +8,6 @@ import monokaiTheme from "./monokai-theme";
 import radientTheme from "./radient-theme";
 import sageTheme from "./sage-theme";
 import tokyoNightTheme from "./tokyo-night-theme";
-import type { ThemeCollection, ThemeName, ThemeOption } from "./types";
 
 /**
  * Collection of all available themes
