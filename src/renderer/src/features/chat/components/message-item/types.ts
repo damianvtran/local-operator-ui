@@ -2,7 +2,7 @@ import type {
 	ActionType,
 	ExecutionType,
 } from "@renderer/api/local-operator/types";
-import type { Message } from "../types";
+import type { Message } from "../../types";
 
 /**
  * Props for the MessageItem component

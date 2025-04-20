@@ -20,7 +20,7 @@ import {
 	ModelHostingSection as StyledModelHostingSection,
 	TitleIcon,
 } from "./chat-options-sidebar-styled";
-import { updateAgentSetting } from "./chat-options-utils";
+import { updateAgentSetting } from "../utils/chat-options-utils";
 
 type ModelHostingSectionProps = {
 	/**
