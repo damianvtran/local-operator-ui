@@ -10,7 +10,7 @@ export type CanvasTab = {
 	// Add more tab-specific fields as needed
 };
 
-import type { CanvasDocument } from "../features/chat/canvas/types";
+import type { CanvasDocument } from "../features/chat/components/canvas/types";
 
 /**
  * State for a single conversation's canvas

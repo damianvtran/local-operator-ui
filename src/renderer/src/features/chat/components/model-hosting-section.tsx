@@ -14,13 +14,13 @@ import type {
 import { HostingSelect, ModelSelect } from "@renderer/components/hosting";
 import type { UseMutationResult } from "@tanstack/react-query";
 import type { FC } from "react";
+import { updateAgentSetting } from "../utils/chat-options-utils";
 import {
 	InfoButton,
 	SectionTitle,
 	ModelHostingSection as StyledModelHostingSection,
 	TitleIcon,
 } from "./chat-options-sidebar-styled";
-import { updateAgentSetting } from "./chat-options-utils";
 
 type ModelHostingSectionProps = {
 	/**

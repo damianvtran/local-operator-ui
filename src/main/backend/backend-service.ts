@@ -30,6 +30,9 @@ import { LogFileType, logger } from "./logger";
 
 const execPromise = promisify(exec);
 
+// Regex for parsing environment variable lines (moved to top-level for performance)
+const ENV_VAR_REGEX = /^([^=]+)=(.*)$/;
+
 /**
  * Backend Service Manager class
  * Manages the Local Operator backend service
@@ -194,7 +197,7 @@ export class BackendServiceManager {
 			// Parse the environment variables
 			const envVars = stdout.split("\n");
 			for (const line of envVars) {
-				const match = line.match(/^([^=]+)=(.*)$/);
+				const match = line.match(ENV_VAR_REGEX);
 				if (match) {
 					const [, key, value] = match;
 					this.shellEnv[key] = value;
@@ -252,7 +255,7 @@ export class BackendServiceManager {
 			// Parse the environment variables
 			const envVars = stdout.split("\n");
 			for (const line of envVars) {
-				const match = line.match(/^([^=]+)=(.*)$/);
+				const match = line.match(ENV_VAR_REGEX);
 				if (match) {
 					const [, key, value] = match;
 					this.shellEnv[key] = value;
@@ -283,7 +286,7 @@ export class BackendServiceManager {
 			// Parse the environment variables
 			const envVars = stdout.split("\r\n");
 			for (const line of envVars) {
-				const match = line.match(/^([^=]+)=(.*)$/);
+				const match = line.match(ENV_VAR_REGEX);
 				if (match) {
 					const [, key, value] = match;
 					this.shellEnv[key] = value;

@@ -9,15 +9,15 @@ import { useUiPreferencesStore } from "@renderer/store/ui-preferences-store";
 import { isDevelopmentMode } from "@renderer/utils/env-utils";
 import { ResizableDivider } from "@shared/components/common/resizable-divider";
 import { type FC, useRef, useState } from "react";
+import type { Message } from "../types";
+import { ChatUtilities } from "../utils/chat-utilities";
 import { Canvas } from "./canvas";
 import { ChatHeader } from "./chat-header";
 import { ChatOptionsSidebar } from "./chat-options-sidebar";
 import { ChatTabs } from "./chat-tabs";
-import { ChatUtilities } from "./chat-utilities";
 import { MessageInput } from "./message-input";
 import { MessagesView } from "./messages-view";
 import { RawInfoView } from "./raw-info-view";
-import type { Message } from "./types";
 
 const DEFAULT_MESSAGE_SUGGESTIONS = [
 	"Go to my documents folder",

@@ -20,12 +20,12 @@ import { SliderSetting } from "@shared/components/common/slider-setting";
 import type { UseMutationResult } from "@tanstack/react-query";
 import type { FC } from "react";
 import { toast } from "react-toastify";
+import { updateAgentSetting } from "../utils/chat-options-utils";
 import {
 	InfoButton,
 	SectionTitle,
 	TitleIcon,
 } from "./chat-options-sidebar-styled";
-import { updateAgentSetting } from "./chat-options-utils";
 import { UnsetSliderSetting } from "./unset-slider-setting";
 import { UnsetTextSetting } from "./unset-text-setting";
 

@@ -1,5 +1,5 @@
 import type { FC } from "react";
-import { isMarkdownFile } from "../utils/is-markdown-file";
+import { isMarkdownFile } from "../../utils/is-markdown-file";
 import { CodeEditor } from "./code-editor";
 import { MarkdownPreview } from "./markdown-preview";
 import type { CanvasDocument } from "./types";

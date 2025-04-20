@@ -10,7 +10,7 @@ import {
 } from "@mui/material";
 import type { AgentDetails } from "@renderer/api/local-operator/types";
 import type { Dispatch, FC, SetStateAction } from "react";
-import { DirectoryIndicator } from "./directory-indicator";
+import { DirectoryIndicator } from "../components/directory-indicator";
 
 /**
  * Props for the ChatUtilities component

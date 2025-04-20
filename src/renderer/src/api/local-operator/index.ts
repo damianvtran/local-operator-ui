@@ -24,7 +24,41 @@ export { StaticApi } from "./static-api";
 export { WebSocketApi } from "./websocket-api";
 
 // Export all types
-export * from "./types";
+export type {
+	ConfigMetadata,
+	ConfigValues,
+	ConfigResponse,
+	ConfigUpdate,
+	ConversationRole,
+	JobStatus,
+	ConversationRecord,
+	ChatOptions,
+	ChatRequest,
+	AgentChatRequest,
+	ChatStats,
+	ChatResponse,
+	HealthCheckResult,
+	HealthCheckResponse,
+	AgentCreate,
+	AgentUpdate,
+	AgentGetConversationResult,
+	CRUDResponse,
+	ValidationError,
+	HTTPValidationError,
+	AgentListResult,
+	AgentDetails,
+	JobDetails,
+	JobListResult,
+	JobCleanupResult,
+	ActionType,
+	ExecutionType,
+	AgentExecutionRecord,
+	AgentExecutionHistoryResult,
+	CredentialListResult,
+	CredentialUpdate,
+	SystemPromptResponse,
+	SystemPromptUpdate,
+} from "./types";
 
 /**
  * Type for a function that takes a base URL as its first parameter
