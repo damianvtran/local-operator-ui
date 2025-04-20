@@ -26,11 +26,11 @@ import React, {
 import type { FC } from "react";
 import { useNavigate } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
+import type { Message } from "../types";
 import { ChatContent } from "./chat-content";
 import { ChatSidebar } from "./chat-sidebar";
 import { ErrorView } from "./error-view";
 import { PlaceholderView } from "./placeholder-view";
-import type { Message } from "../types";
 
 /**
  * Props for the ChatPage component
