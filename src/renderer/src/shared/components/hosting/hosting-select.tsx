@@ -16,8 +16,7 @@ import {
 	createFilterOptions,
 	styled,
 } from "@mui/material";
-import { useCredentials } from "@shared/hooks/use-credentials";
-import { useModels } from "@shared/hooks/use-models";
+import { useCredentials, useModels } from "@shared/hooks";
 import type { FC, SyntheticEvent } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
