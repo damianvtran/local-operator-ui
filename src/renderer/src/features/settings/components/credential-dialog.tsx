@@ -1,4 +1,4 @@
-import { CREDENTIAL_MANIFEST } from "@features/settings/credential-manifest";
+import { CREDENTIAL_MANIFEST } from "@features/settings/components/credential-manifest";
 import {
 	Box,
 	CircularProgress,

@@ -4,9 +4,9 @@ import { Box, Grid, Tooltip, Typography } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import { useEffect, useState } from "react";
 import type { FC } from "react";
-import { HealthApi } from "../../api/local-operator/health-api";
-import type { HealthCheckResponse } from "../../api/local-operator/types";
-import { apiConfig } from "../../config";
+import { HealthApi } from "../../../api/local-operator/health-api";
+import type { HealthCheckResponse } from "../../../api/local-operator/types";
+import { apiConfig } from "../../../config";
 import { AppUpdates } from "./app-updates";
 
 const SectionTitle = styled(Typography)(({ theme }) => ({
