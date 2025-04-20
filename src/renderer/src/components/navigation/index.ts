@@ -4,7 +4,7 @@
  * Exports navigation components.
  */
 
-export * from "./collapsible-app-logo";
-export * from "./sidebar-navigation";
-export * from "./user-profile-sidebar";
-export * from "./radient-user-badge";
+export { CollapsibleAppLogo } from "./collapsible-app-logo";
+export { SidebarNavigation } from "./sidebar-navigation";
+export { UserProfileSidebar } from "./user-profile-sidebar";
+export { RadientUserBadge } from "./radient-user-badge";
