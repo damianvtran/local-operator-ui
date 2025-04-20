@@ -25,8 +25,6 @@
 "@components/*": ["src/renderer/src/shared/components/*"],
 "@features/*": ["src/renderer/src/features/*"],
 "@hooks/*": ["src/renderer/src/shared/hooks/*"],
-"@renderer/*": ["src/renderer/src/*"],
-"@resources/*": ["resources/*"],
 "@shared/*": ["src/renderer/src/shared/*"],
 "@store/*": ["src/renderer/src/shared/store/*"],
 			"*": ["node_modules/*", "src/types/*"]

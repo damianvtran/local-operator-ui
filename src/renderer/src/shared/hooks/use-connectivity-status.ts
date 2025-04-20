@@ -7,7 +7,7 @@
  */
 
 import { HealthApi } from "@shared/api/local-operator/health-api";
-import { apiConfig } from "@renderer/config";
+import { apiConfig } from "@shared/config";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { useConfig } from "./use-config";

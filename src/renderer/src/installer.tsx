@@ -5,7 +5,7 @@ import ReactDOM from "react-dom/client";
 import "./assets/fonts/fonts.css";
 import { InstallerApp } from "./installer-app";
 import { ErrorBoundary } from "./shared/components/common/error-boundary";
-import theme from "./theme";
+import {DEFAULT_THEME, themes} from "@shared/themes";
 
 document.addEventListener("DOMContentLoaded", () => {
 	const root = ReactDOM.createRoot(
@@ -13,7 +13,7 @@ document.addEventListener("DOMContentLoaded", () => {
 	);
 	root.render(
 		<React.StrictMode>
-			<ThemeProvider theme={theme}>
+			<ThemeProvider theme={themes[DEFAULT_THEME]}>
 				<CssBaseline />
 				<ErrorBoundary>
 					<InstallerApp />

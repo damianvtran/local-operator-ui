@@ -23,7 +23,7 @@ import {
 	useState,
 } from "react";
 import { createLocalOperatorClient } from "@shared/api/local-operator";
-import { apiConfig } from "../../../../config";
+import { apiConfig } from "@shared/config";
 import { MarkdownRenderer } from "../markdown-renderer";
 import { CodeBlock } from "./code-block";
 import { ErrorBlock } from "./error-block";

@@ -8,7 +8,7 @@
  * and the user has internet connectivity if required by the hosting provider.
  */
 
-import { apiConfig } from "@renderer/config";
+import { apiConfig } from "@shared/config";
 import { useModelsStore } from "@shared/store/models-store";
 import { useEffect, useRef } from "react";
 import { useConnectivityGate } from "./use-connectivity-gate";

@@ -9,7 +9,7 @@ import { faCheck } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, CircularProgress, Tooltip } from "@mui/material"; // Added CircularProgress
 import { getUserInfo } from "@shared/api/radient/auth-api";
-import { apiConfig } from "../../../config";
+import { apiConfig } from "@shared/config";
 import { radientUserKeys } from "@shared/hooks/use-radient-user-query";
 import { useFeatureFlags } from "@shared/providers/feature-flags";
 import {

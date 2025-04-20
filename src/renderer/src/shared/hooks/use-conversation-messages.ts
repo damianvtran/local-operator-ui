@@ -8,8 +8,8 @@
 
 import { createLocalOperatorClient } from "@shared/api/local-operator";
 import type { AgentExecutionRecord } from "@shared/api/local-operator/types";
-import { apiConfig } from "@renderer/config";
-import type { Message } from "@renderer/features/chat/types";
+import { apiConfig } from "@shared/config";
+import type { Message } from "@features/chat/types";
 import { useChatStore } from "@shared/store/chat-store";
 import { showErrorToast } from "@shared/utils/toast-manager";
 import { useInfiniteQuery } from "@tanstack/react-query";

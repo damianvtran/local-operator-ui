@@ -11,7 +11,7 @@ import "./assets/fonts/fonts.css";
 import type { PostHogConfig } from "posthog-js";
 import { queryClient } from "./shared/api/query-client";
 import App from "./app";
-import { config } from "./config";
+import { config } from "@shared/config"; // TODO: Confirm that this is the only instance of the import
 import { AuthProviders } from "./shared/providers/auth";
 import { FeatureFlagProvider } from "./shared/providers/feature-flags";
 import { ErrorBoundary } from "./shared/components/common/error-boundary";

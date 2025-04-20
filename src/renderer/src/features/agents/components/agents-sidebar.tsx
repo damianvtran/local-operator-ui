@@ -26,7 +26,7 @@ import { styled } from "@mui/material/styles";
 import { createLocalOperatorClient } from "@shared/api/local-operator";
 import type { AgentDetails } from "@shared/api/local-operator/types";
 import { queryClient } from "@shared/api/query-client";
-import { apiConfig } from "@renderer/config";
+import { apiConfig } from "@shared/config";
 import { useExportAgent } from "@shared/hooks/use-agent-mutations";
 import { useAgents } from "@shared/hooks/use-agents";
 import { usePaginationParams } from "@shared/hooks/use-pagination-params";

@@ -5,7 +5,7 @@
  * Stores the current message draft and history position for each conversation.
  */
 
-import type { Message } from "@renderer/features/chat/types";
+import type { Message } from "@features/chat/types";
 import { create } from "zustand";
 
 /**

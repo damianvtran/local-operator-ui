@@ -1,6 +1,6 @@
 import { CssBaseline } from "@mui/material";
 import { ThemeProvider } from "@mui/material/styles";
-import theme from "../../../theme"; // TODO: This path should be updated
+import { DEFAULT_THEME, themes } from "@shared/themes";
 import type { Meta, StoryObj } from "@storybook/react";
 import { InstallerContent } from "./installer-content";
 import { AppContainer } from "./installer-styled";
@@ -29,7 +29,7 @@ const meta = {
 	},
 	decorators: [
 		(Story) => (
-			<ThemeProvider theme={theme}>
+			<ThemeProvider theme={themes[DEFAULT_THEME]}>
 				<CssBaseline />
 				<AppContainer>
 					<Story />

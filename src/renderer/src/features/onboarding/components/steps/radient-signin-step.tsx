@@ -8,7 +8,7 @@
 import { Box, Typography } from "@mui/material";
 import { getUserInfo } from "@shared/api/radient/auth-api";
 import { RadientAuthButtons } from "@shared/components/auth";
-import { apiConfig } from "../../../../config";
+import { apiConfig } from "@shared/config";
 import {
 	OnboardingStep,
 	useOnboardingStore,
