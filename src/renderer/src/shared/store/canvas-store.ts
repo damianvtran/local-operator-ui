@@ -10,7 +10,8 @@ export type CanvasTab = {
 	// Add more tab-specific fields as needed
 };
 
-import type { CanvasDocument } from "@features/chat/components/canvas/types"; // TODO: Should move this type to feature level
+// import type { CanvasDocument } from "@features/chat/components/canvas/types"; // TODO: Should move this type to feature level
+import type { CanvasDocument } from "@features/chat/types/canvas"; // TODO: Should move this type to feature level
 
 /**
  * State for a single conversation's canvas

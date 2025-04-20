@@ -26,7 +26,7 @@ import React, {
 import type { FC } from "react";
 import { useNavigate } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
-import type { Message } from "../types";
+import type { Message } from "../types/message";
 import { ChatContent } from "./chat-content";
 import { ChatSidebar } from "./chat-sidebar";
 import { ErrorView } from "./error-view";

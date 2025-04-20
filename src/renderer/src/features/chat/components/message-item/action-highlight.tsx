@@ -2,8 +2,11 @@ import { faCheck, faQuestion } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, alpha } from "@mui/material";
 import { styled } from "@mui/material/styles";
+import type {
+	ActionType,
+	ExecutionType,
+} from "@shared/api/local-operator/types";
 import type { FC, ReactNode } from "react";
-import type { ActionType, ExecutionType } from "@shared/api/local-operator/types";
 
 /**
  * Props for the ActionHighlight component

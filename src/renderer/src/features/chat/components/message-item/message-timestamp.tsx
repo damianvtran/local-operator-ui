@@ -5,7 +5,14 @@ import {
 	getFullDateTime,
 } from "@shared/utils/date-utils";
 import type { FC } from "react";
-import type { MessageTimestampProps } from "./types";
+
+/**
+ * Props for the MessageTimestamp component
+ */
+export type MessageTimestampProps = {
+	timestamp: Date;
+	isUser: boolean;
+};
 
 /**
  * Styled component for message timestamps

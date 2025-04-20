@@ -9,7 +9,7 @@ import { useCanvasStore } from "@shared/store/canvas-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { isDevelopmentMode } from "@shared/utils/env-utils";
 import { type FC, useRef, useState } from "react";
-import type { Message } from "../types";
+import type { Message } from "../types/message";
 import { ChatUtilities } from "../utils/chat-utilities";
 import { Canvas } from "./canvas";
 import { ChatHeader } from "./chat-header";
