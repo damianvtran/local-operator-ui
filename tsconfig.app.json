@@ -20,12 +20,9 @@
 		"noImplicitAny": true,
 		"baseUrl": ".",
 		"paths": {
-"@api/*": ["src/renderer/src/shared/api/*"],
-"@assets/*": ["src/renderer/src/assets/*"],
-"@features/*": ["src/renderer/src/features/*"],
-"@hooks/*": ["src/renderer/src/shared/hooks/*"],
-"@shared/*": ["src/renderer/src/shared/*"],
-"@store/*": ["src/renderer/src/shared/store/*"],
+			"@assets/*": ["src/renderer/src/assets/*"],
+			"@features/*": ["src/renderer/src/features/*"],
+			"@shared/*": ["src/renderer/src/shared/*"],
 			"*": ["node_modules/*", "src/types/*"]
 		}
 	},

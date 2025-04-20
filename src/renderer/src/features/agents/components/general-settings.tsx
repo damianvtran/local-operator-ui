@@ -4,8 +4,8 @@
  * Component for displaying and editing general agent settings
  */
 
-import { HostingSelect } from "@components/hosting/hosting-select";
-import { ModelSelect } from "@components/hosting/model-select";
+import { HostingSelect } from "@shared/components/hosting/hosting-select";
+import { ModelSelect } from "@shared/components/hosting/model-select";
 import {
 	faCalendarAlt,
 	faCodeBranch,
