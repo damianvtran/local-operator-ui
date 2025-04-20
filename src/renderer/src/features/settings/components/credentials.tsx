@@ -1,9 +1,9 @@
 import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Alert, Box, Button, CircularProgress, Grid } from "@mui/material";
-import type { CredentialUpdate } from "@renderer/api/local-operator/types";
-import { useCredentials } from "@renderer/hooks/use-credentials";
-import { useUpdateCredential } from "@renderer/hooks/use-update-credential";
+import type { CredentialUpdate } from "@shared/api/local-operator/types";
+import { useCredentials } from "@shared/hooks/use-credentials";
+import { useUpdateCredential } from "@shared/hooks/use-update-credential";
 import { useState } from "react";
 import type { FC } from "react";
 import { CredentialCard } from "./credential-card";

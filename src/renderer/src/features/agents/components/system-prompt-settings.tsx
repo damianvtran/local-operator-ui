@@ -8,11 +8,11 @@ import { faInfoCircle, faRobot } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, IconButton, Tooltip, Typography, alpha } from "@mui/material";
 import { styled } from "@mui/material/styles";
-import type { AgentDetails } from "@renderer/api/local-operator/types";
+import type { AgentDetails } from "@shared/api/local-operator/types";
 import {
 	useAgentSystemPrompt,
 	useUpdateAgentSystemPrompt,
-} from "@renderer/hooks/use-agent-system-prompt";
+} from "@shared/hooks/use-agent-system-prompt";
 import { EditableField } from "@shared/components/common/editable-field";
 import type { FC } from "react";
 import { useEffect, useState } from "react";

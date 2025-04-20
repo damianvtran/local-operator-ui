@@ -1,6 +1,6 @@
 import { Box } from "@mui/material";
 import { type FC, memo, useCallback, useMemo } from "react";
-import { createLocalOperatorClient } from "../../../../api/local-operator";
+import { createLocalOperatorClient } from "@shared/api/local-operator";
 import { apiConfig } from "../../../../config";
 import { ActionHighlight } from "./action-highlight";
 import { BackgroundBlock } from "./background-block";

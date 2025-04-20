@@ -10,8 +10,8 @@ import { Tooltip } from "@mui/material";
 import type {
 	AgentDetails,
 	AgentUpdate,
-} from "@renderer/api/local-operator/types";
-import { HostingSelect, ModelSelect } from "@renderer/components/hosting";
+} from "@shared/api/local-operator/types";
+import { HostingSelect, ModelSelect } from "@shared/components/hosting";
 import type { UseMutationResult } from "@tanstack/react-query";
 import type { FC } from "react";
 import { updateAgentSetting } from "../utils/chat-options-utils";

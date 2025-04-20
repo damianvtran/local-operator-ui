@@ -1,5 +1,5 @@
 import { Box, styled } from "@mui/material";
-import { useUiPreferencesStore } from "@renderer/store/ui-preferences-store";
+import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import type { FC, ReactNode } from "react";
 import { ResizableDivider } from "./resizable-divider";
 

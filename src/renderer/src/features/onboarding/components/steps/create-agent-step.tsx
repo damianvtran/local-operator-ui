@@ -21,13 +21,13 @@ import {
 	Typography,
 	alpha,
 } from "@mui/material";
-import { useCreateAgent } from "@renderer/hooks/use-agent-mutations";
-import { useConfig } from "@renderer/hooks/use-config";
-import { useAgentSelectionStore } from "@renderer/store/agent-selection-store";
+import { useCreateAgent } from "@shared/hooks/use-agent-mutations";
+import { useConfig } from "@shared/hooks/use-config";
+import { useAgentSelectionStore } from "@shared/store/agent-selection-store";
 import {
 	OnboardingStep,
 	useOnboardingStore,
-} from "@renderer/store/onboarding-store";
+} from "@shared/store/onboarding-store";
 import type { FC } from "react";
 import { useRef, useState } from "react";
 import {

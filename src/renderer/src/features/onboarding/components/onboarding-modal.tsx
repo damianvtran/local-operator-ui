@@ -8,17 +8,17 @@
 import { faCheck } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, CircularProgress, Tooltip } from "@mui/material"; // Added CircularProgress
-import { getUserInfo } from "@renderer/api/radient/auth-api";
-import { apiConfig } from "@renderer/config";
-import { radientUserKeys } from "@renderer/hooks/use-radient-user-query";
-import { useFeatureFlags } from "@renderer/providers/feature-flags";
+import { getUserInfo } from "@shared/api/radient/auth-api";
+import { apiConfig } from "../../../config";
+import { radientUserKeys } from "@shared/hooks/use-radient-user-query";
+import { useFeatureFlags } from "@shared/providers/feature-flags";
 import {
 	OnboardingStep,
 	useOnboardingStore,
-} from "@renderer/store/onboarding-store";
-import { useUserStore } from "@renderer/store/user-store";
-import { clearSession, getSession } from "@renderer/utils/session-store";
-import { showErrorToast } from "@renderer/utils/toast-manager";
+} from "@shared/store/onboarding-store";
+import { useUserStore } from "@shared/store/user-store";
+import { clearSession, getSession } from "@shared/utils/session-store";
+import { showErrorToast } from "@shared/utils/toast-manager";
 import {
 	PrimaryButton,
 	SecondaryButton,

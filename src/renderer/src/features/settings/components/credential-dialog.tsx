@@ -9,7 +9,7 @@ import {
 	TextField,
 	Typography,
 } from "@mui/material";
-import type { CredentialUpdate } from "@renderer/api/local-operator/types";
+import type { CredentialUpdate } from "@shared/api/local-operator/types";
 import {
 	BaseDialog,
 	FormContainer,

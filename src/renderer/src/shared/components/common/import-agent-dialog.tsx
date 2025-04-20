@@ -13,8 +13,8 @@ import {
 	alpha,
 	styled,
 } from "@mui/material";
-import type { AgentDetails } from "@renderer/api/local-operator/types";
-import { useImportAgent } from "@renderer/hooks/use-agent-mutations";
+import type { AgentDetails } from "@shared/api/local-operator/types";
+import { useImportAgent } from "@shared/hooks/use-agent-mutations";
 import type { FC } from "react";
 import { useCallback, useRef, useState } from "react";
 import {

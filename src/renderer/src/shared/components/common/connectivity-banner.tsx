@@ -1,5 +1,5 @@
 import { Alert, Box, Button, styled } from "@mui/material";
-import { useConnectivityStatus } from "@renderer/hooks/use-connectivity-status";
+import { useConnectivityStatus } from "@shared/hooks/use-connectivity-status";
 import { useEffect, useState } from "react";
 
 // Styled components

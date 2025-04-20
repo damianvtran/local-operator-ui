@@ -28,9 +28,9 @@ import {
 	Typography,
 	alpha,
 } from "@mui/material";
-import { useCredentials } from "@renderer/hooks/use-credentials";
-import { useModels } from "@renderer/hooks/use-models";
-import { useUpdateCredential } from "@renderer/hooks/use-update-credential";
+import { useCredentials } from "@shared/hooks/use-credentials";
+import { useModels } from "@shared/hooks/use-models";
+import { useUpdateCredential } from "@shared/hooks/use-update-credential";
 import type { FC } from "react";
 import { useEffect, useRef, useState } from "react";
 import {

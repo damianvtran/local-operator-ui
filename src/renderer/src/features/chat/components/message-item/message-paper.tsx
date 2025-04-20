@@ -1,7 +1,7 @@
 import { Box, Paper, useTheme } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import { type FC, useEffect, useMemo, useRef } from "react";
-import { useScrollToBottom } from "../../../../hooks/use-scroll-to-bottom";
+import { useScrollToBottom } from "@shared/hooks/use-scroll-to-bottom";
 import type { Message } from "../../types";
 import { MessageControls } from "./message-controls";
 import { MessageTimestamp } from "./message-timestamp";

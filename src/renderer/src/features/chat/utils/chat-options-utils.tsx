@@ -5,7 +5,7 @@
 import type {
 	AgentDetails,
 	AgentUpdate,
-} from "@renderer/api/local-operator/types";
+} from "@shared/api/local-operator/types";
 import type { UseMutationResult } from "@tanstack/react-query";
 
 /**
