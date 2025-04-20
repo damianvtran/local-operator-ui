@@ -4,13 +4,13 @@
  * Export all onboarding-related components for easier imports
  */
 
-export * from "./onboarding-modal";
-export * from "./onboarding-styled";
-export * from "./steps/radient-choice-step";
-export * from "./steps/radient-signin-step";
-export * from "./steps/welcome-step";
-export * from "./steps/user-profile-step";
-export * from "./steps/model-credential-step";
-export * from "./steps/search-api-step";
-export * from "./steps/default-model-step";
-export * from "./steps/create-agent-step";
+export * from "./components/onboarding-modal";
+export * from "./components/onboarding-styled";
+export * from "./components/steps/radient-choice-step";
+export * from "./components/steps/radient-signin-step";
+export * from "./components/steps/welcome-step";
+export * from "./components/steps/user-profile-step";
+export * from "./components/steps/model-credential-step";
+export * from "./components/steps/search-api-step";
+export * from "./components/steps/default-model-step";
+export * from "./components/steps/create-agent-step";
