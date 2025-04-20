@@ -13,7 +13,7 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, Collapse, Typography, alpha } from "@mui/material";
 import { styled } from "@mui/material/styles";
-import type { ExecutionType } from "@renderer/api/local-operator/types";
+import type { ExecutionType } from "@shared/api/local-operator/types";
 import {
 	type FC,
 	useCallback,
@@ -22,7 +22,7 @@ import {
 	useRef,
 	useState,
 } from "react";
-import { createLocalOperatorClient } from "../../../../api/local-operator";
+import { createLocalOperatorClient } from "@shared/api/local-operator";
 import { apiConfig } from "../../../../config";
 import { MarkdownRenderer } from "../markdown-renderer";
 import { CodeBlock } from "./code-block";

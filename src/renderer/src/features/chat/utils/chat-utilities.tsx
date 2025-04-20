@@ -8,7 +8,7 @@ import {
 	alpha,
 	styled,
 } from "@mui/material";
-import type { AgentDetails } from "@renderer/api/local-operator/types";
+import type { AgentDetails } from "@shared/api/local-operator/types";
 import type { Dispatch, FC, SetStateAction } from "react";
 import { DirectoryIndicator } from "../components/directory-indicator";
 

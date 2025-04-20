@@ -1,20 +1,20 @@
-import { useAgent, useAgents } from "@hooks/use-agents";
+import { useAgent, useAgents } from "@shared/hooks/use-agents";
 import {
 	conversationMessagesQueryKey,
 	useConversationMessages,
-} from "@hooks/use-conversation-messages";
-import { useJobPolling } from "@hooks/use-job-polling";
-import { useScrollToBottom } from "@hooks/use-scroll-to-bottom";
-import { createLocalOperatorClient } from "@renderer/api/local-operator";
-import { JobsApi } from "@renderer/api/local-operator/jobs-api";
-import type { JobStatus } from "@renderer/api/local-operator/types";
+} from "@shared/hooks/use-conversation-messages";
+import { useJobPolling } from "@shared/hooks/use-job-polling";
+import { useScrollToBottom } from "@shared/hooks/use-scroll-to-bottom";
+import { createLocalOperatorClient } from "@shared/api/local-operator";
+import { JobsApi } from "@shared/api/local-operator/jobs-api";
+import type { JobStatus } from "@shared/api/local-operator/types";
 import { apiConfig } from "@renderer/config";
-import { useConfig } from "@renderer/hooks/use-config";
-import { useAgentRouteParam } from "@renderer/hooks/use-route-params";
-import { useAgentSelectionStore } from "@renderer/store/agent-selection-store";
-import { isDevelopmentMode } from "@renderer/utils/env-utils";
+import { useConfig } from "@shared/hooks/use-config";
+import { useAgentRouteParam } from "@shared/hooks/use-route-params";
+import { useAgentSelectionStore } from "@shared/store/agent-selection-store";
+import { isDevelopmentMode } from "@shared/utils/env-utils";
 import { ChatLayout } from "@shared/components/common/chat-layout";
-import { useChatStore } from "@store/chat-store";
+import { useChatStore } from "@shared/store/chat-store";
 import { useQueryClient } from "@tanstack/react-query";
 import React, {
 	useState,

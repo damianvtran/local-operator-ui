@@ -16,8 +16,8 @@ import {
 	alpha,
 	styled,
 } from "@mui/material";
-import { useDeleteAgent } from "@renderer/hooks/use-agent-mutations";
-import { useAgentSelectionStore } from "@renderer/store/agent-selection-store";
+import { useDeleteAgent } from "@shared/hooks/use-agent-mutations";
+import { useAgentSelectionStore } from "@shared/store/agent-selection-store";
 import type { FC, MouseEvent } from "react";
 import { useState } from "react";
 import { ConfirmationModal } from "./confirmation-modal";

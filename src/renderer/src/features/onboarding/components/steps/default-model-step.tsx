@@ -24,10 +24,10 @@ import {
 	Typography,
 	alpha,
 } from "@mui/material";
-import { useConfig } from "@renderer/hooks/use-config";
-import { useCredentials } from "@renderer/hooks/use-credentials";
-import { useModels } from "@renderer/hooks/use-models";
-import { useUpdateConfig } from "@renderer/hooks/use-update-config";
+import { useConfig } from "@shared/hooks/use-config";
+import { useCredentials } from "@shared/hooks/use-credentials";
+import { useModels } from "@shared/hooks/use-models";
+import { useUpdateConfig } from "@shared/hooks/use-update-config";
 import type { FC } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {

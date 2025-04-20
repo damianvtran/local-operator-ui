@@ -23,8 +23,8 @@ import { styled } from "@mui/material/styles";
 import type {
 	AgentDetails,
 	AgentUpdate,
-} from "@renderer/api/local-operator/types";
-import type { useUpdateAgent } from "@renderer/hooks/use-update-agent";
+} from "@shared/api/local-operator/types";
+import type { useUpdateAgent } from "@shared/hooks/use-update-agent";
 import { EditableField } from "@shared/components/common/editable-field";
 import { SliderSetting } from "@shared/components/common/slider-setting";
 import type { FC } from "react";

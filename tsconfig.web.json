@@ -10,28 +10,31 @@
     "baseUrl": ".",
     "paths": {
       "@api/*": [
-        "src/renderer/src/api/*"
+        "src/renderer/src/shared/api/*"
       ],
       "@assets/*": [
-        "src/renderer/src/assets/*"
+        "src/renderer/src/shared/assets/*"
       ],
       "@components/*": [
-        "src/renderer/src/components/*"
+        "src/renderer/src/shared/components/*"
       ],
       "@features/*": [
         "src/renderer/src/features/*"
       ],
       "@hooks/*": [
-        "src/renderer/src/hooks/*"
+        "src/renderer/src/shared/hooks/*"
       ],
       "@renderer/*": [
         "src/renderer/src/*"
+      ],
+      "@resources/*": [
+        "resources/*"
       ],
       "@shared/*": [
         "src/renderer/src/shared/*"
       ],
       "@store/*": [
-        "src/renderer/src/store/*"
+        "src/renderer/src/shared/store/*"
       ]
     }
   }

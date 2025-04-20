@@ -15,8 +15,8 @@ import {
 	darken,
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
-import type { Message } from "@renderer/features/chat/types";
-import { useMessageInput } from "@renderer/hooks/use-message-input";
+import type { Message } from "../types";
+import { useMessageInput } from "@shared/hooks/use-message-input";
 import { useMemo, useRef, useState } from "react";
 import type { ChangeEvent, FC, FormEvent } from "react";
 import { AttachmentsPreview } from "./attachments-preview";

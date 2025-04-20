@@ -2,7 +2,8 @@ import type { Meta, StoryObj } from "@storybook/react";
 import {
 	OnboardingStep,
 	useOnboardingStore,
-} from "../../../store/onboarding-store";
+// } from "../../../store/onboarding-store";
+} from "@shared/store/onboarding-store";
 import { OnboardingModal } from "./onboarding-modal";
 
 /**

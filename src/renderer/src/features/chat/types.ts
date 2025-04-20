@@ -1,7 +1,7 @@
 import type {
 	ActionType,
 	ExecutionType,
-} from "@renderer/api/local-operator/types";
+} from "@shared/api/local-operator/types";
 
 // Message types
 export type MessageRole = "user" | "assistant" | "system";

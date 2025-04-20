@@ -1,6 +1,6 @@
 import { CssBaseline } from "@mui/material";
 import { ThemeProvider } from "@mui/material/styles";
-import theme from "@renderer/theme";
+import theme from "../../../theme"; // TODO: This path should be updated
 import type { Meta, StoryObj } from "@storybook/react";
 import { InstallerContent } from "./installer-content";
 import { AppContainer } from "./installer-styled";

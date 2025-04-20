@@ -14,11 +14,11 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, Button, Tooltip, alpha } from "@mui/material";
 import { styled } from "@mui/material/styles";
-import type { AgentDetails } from "@renderer/api/local-operator/types";
-import { useExportAgent } from "@renderer/hooks/use-agent-mutations";
-import { useAgent, useAgents } from "@renderer/hooks/use-agents";
-import { useAgentRouteParam } from "@renderer/hooks/use-route-params";
-import { useAgentSelectionStore } from "@renderer/store/agent-selection-store";
+import type { AgentDetails } from "@shared/api/local-operator/types";
+import { useExportAgent } from "@shared/hooks/use-agent-mutations";
+import { useAgent, useAgents } from "@shared/hooks/use-agents";
+import { useAgentRouteParam } from "@shared/hooks/use-route-params";
+import { useAgentSelectionStore } from "@shared/store/agent-selection-store";
 import { PageHeader } from "@shared/components/common/page-header";
 import { useEffect, useRef, useState } from "react";
 import type { FC } from "react";

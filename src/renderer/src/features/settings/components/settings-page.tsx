@@ -26,10 +26,10 @@ import {
 	Typography,
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
-import type { ConfigUpdate } from "@renderer/api/local-operator/types";
-import { useConfig } from "@renderer/hooks/use-config";
-import { useUpdateConfig } from "@renderer/hooks/use-update-config";
-import { useUserStore } from "@renderer/store/user-store";
+import type { ConfigUpdate } from "@shared/api/local-operator/types";
+import { useConfig } from "@shared/hooks/use-config";
+import { useUpdateConfig } from "@shared/hooks/use-update-config";
+import { useUserStore } from "@shared/store/user-store";
 import { EditableField } from "@shared/components/common/editable-field";
 import { PageHeader } from "@shared/components/common/page-header";
 import { SliderSetting } from "@shared/components/common/slider-setting";

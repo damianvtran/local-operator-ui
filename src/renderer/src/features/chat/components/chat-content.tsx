@@ -3,10 +3,10 @@ import type {
 	AgentDetails,
 	AgentExecutionRecord,
 	JobStatus,
-} from "@renderer/api/local-operator/types";
-import { useCanvasStore } from "@renderer/store/canvas-store";
-import { useUiPreferencesStore } from "@renderer/store/ui-preferences-store";
-import { isDevelopmentMode } from "@renderer/utils/env-utils";
+} from "@shared/api/local-operator/types";
+import { useCanvasStore } from "@shared/store/canvas-store";
+import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
+import { isDevelopmentMode } from "@shared/utils/env-utils";
 import { ResizableDivider } from "@shared/components/common/resizable-divider";
 import { type FC, useRef, useState } from "react";
 import type { Message } from "../types";
