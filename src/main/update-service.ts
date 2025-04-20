@@ -11,6 +11,10 @@ import { LocalOperatorStartupMode } from "./backend/backend-service";
 import { apiConfig } from "./backend/config";
 import { LogFileType, logger } from "./backend/logger";
 
+// Regex constants for performance (moved to top-level)
+const VERSION_LINE_REGEX = /Version:\s*([^\n]+)/;
+const BETA_VERSION_REGEX = /v\d+\.\d+\.\d+\.beta\.\d+/;
+
 /**
  * Health check result containing version information
  */
@@ -819,7 +823,7 @@ export class UpdateService {
 					);
 					const execAsync = promisify(exec);
 					const { stdout } = await execAsync("pip show local-operator");
-					const match = stdout.match(/Version:\s*([^\n]+)/);
+					const match = stdout.match(VERSION_LINE_REGEX);
 					if (match) {
 						const version = match[1].trim();
 						logger.info(
@@ -1403,7 +1407,7 @@ export class UpdateService {
 		// Filter errors related to beta versions
 		if (
 			errorMessage.includes("beta") ||
-			errorMessage.match(/v\d+\.\d+\.\d+\.beta\.\d+/)
+			errorMessage.match(BETA_VERSION_REGEX)
 		) {
 			logger.info("Filtering error: Beta version", LogFileType.UPDATE_SERVICE);
 			return true;

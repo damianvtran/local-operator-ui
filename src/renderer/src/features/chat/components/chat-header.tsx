@@ -10,7 +10,7 @@ import {
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import type { FC } from "react";
-import { useUiPreferencesStore } from "../../store/ui-preferences-store";
+import { useUiPreferencesStore } from "../../../store/ui-preferences-store";
 type ChatHeaderProps = {
 	agentName?: string;
 	description?: string;
