@@ -22,8 +22,8 @@ import {
 	useRef,
 	useState,
 } from "react";
-import { createLocalOperatorClient } from "../../../api/local-operator";
-import { apiConfig } from "../../../config";
+import { createLocalOperatorClient } from "../../../../api/local-operator";
+import { apiConfig } from "../../../../config";
 import { MarkdownRenderer } from "../markdown-renderer";
 import { CodeBlock } from "./code-block";
 import { ErrorBlock } from "./error-block";

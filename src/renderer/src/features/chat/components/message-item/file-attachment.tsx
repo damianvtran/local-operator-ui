@@ -6,7 +6,7 @@ import { useCanvasStore } from "@renderer/store/canvas-store";
 import { useUiPreferencesStore } from "@renderer/store/ui-preferences-store";
 import type { FC } from "react";
 import { useCallback } from "react";
-import { isCanvasSupported } from "../utils/is-canvas-supported";
+import { isCanvasSupported } from "../../utils/is-canvas-supported";
 import type { FileAttachmentProps as BaseFileAttachmentProps } from "./types";
 
 type FileAttachmentProps = BaseFileAttachmentProps & {

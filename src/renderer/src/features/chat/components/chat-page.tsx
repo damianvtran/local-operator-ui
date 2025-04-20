@@ -30,7 +30,7 @@ import { ChatContent } from "./chat-content";
 import { ChatSidebar } from "./chat-sidebar";
 import { ErrorView } from "./error-view";
 import { PlaceholderView } from "./placeholder-view";
-import type { Message } from "./types";
+import type { Message } from "../types";
 
 /**
  * Props for the ChatPage component

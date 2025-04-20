@@ -25,7 +25,7 @@ import {
 	SectionTitle,
 	TitleIcon,
 } from "./chat-options-sidebar-styled";
-import { updateAgentSetting } from "./chat-options-utils";
+import { updateAgentSetting } from "../utils/chat-options-utils";
 import { UnsetSliderSetting } from "./unset-slider-setting";
 import { UnsetTextSetting } from "./unset-text-setting";
 

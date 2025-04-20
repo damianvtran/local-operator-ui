@@ -11,8 +11,8 @@ import {
 } from "@mui/material";
 import type { FC } from "react";
 import { useCallback, useMemo } from "react";
-import { createLocalOperatorClient } from "../../api/local-operator";
-import { apiConfig } from "../../config";
+import { createLocalOperatorClient } from "../../../api/local-operator";
+import { apiConfig } from "../../../config";
 
 /**
  * Props for the AttachmentsPreview component
