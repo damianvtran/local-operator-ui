@@ -9,26 +9,14 @@
     "composite": false,
     "baseUrl": ".",
     "paths": {
-      "@api/*": [
-        "src/renderer/src/shared/api/*"
-      ],
       "@assets/*": [
         "src/renderer/src/assets/*"
-      ],
-      "@components/*": [
-        "src/renderer/src/shared/components/*"
       ],
       "@features/*": [
         "src/renderer/src/features/*"
       ],
-      "@hooks/*": [
-        "src/renderer/src/shared/hooks/*"
-      ],
       "@shared/*": [
         "src/renderer/src/shared/*"
-      ],
-      "@store/*": [
-        "src/renderer/src/shared/store/*"
       ]
     }
   }
