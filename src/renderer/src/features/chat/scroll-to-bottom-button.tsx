@@ -1,7 +1,7 @@
 import { faArrowDown } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, Fade, IconButton, styled } from "@mui/material";
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import type { FC } from "react";
 /**
  * Props for the ScrollToBottomButton component
