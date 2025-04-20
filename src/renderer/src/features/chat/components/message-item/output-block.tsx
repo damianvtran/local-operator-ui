@@ -1,7 +1,13 @@
 import { Box, Typography, alpha } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import type { FC } from "react";
-import type { OutputBlockProps } from "./types";
+/**
+ * Props for the OutputBlock component
+ */
+export type OutputBlockProps = {
+	output: string;
+	isUser: boolean;
+};
 
 const CodeContainer = styled(Box)({
 	marginBottom: 16,

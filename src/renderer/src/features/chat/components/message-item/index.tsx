@@ -18,8 +18,18 @@ import { MessageTimestamp } from "./message-timestamp";
 import { OutputBlock } from "./output-block";
 import { SecurityCheckHighlight } from "./security-check-highlight";
 import { StatusIndicator } from "./status-indicator";
-import type { MessageItemProps } from "./types";
+import type { Message } from "../../types";
 import { VideoAttachment } from "./video-attachment";
+
+/**
+ * Props for the MessageItem component
+ */
+export type MessageItemProps = {
+	message: Message;
+	onMessageComplete?: () => void;
+	isLastMessage?: boolean;
+	conversationId: string;
+};
 
 /**
  * Checks if a file is a web URL
