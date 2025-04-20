@@ -21,7 +21,6 @@ import {
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import type { FC } from "react";
-import React from "react";
 
 const SidebarHeaderContainer = styled(Box)(({ theme }) => ({
 	padding: theme.spacing(3),

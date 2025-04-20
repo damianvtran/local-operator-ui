@@ -36,7 +36,7 @@ import { CreateAgentDialog } from "@shared/components/common/create-agent-dialog
 import { ImportAgentDialog } from "@shared/components/common/import-agent-dialog";
 import { SidebarHeader } from "@shared/components/common/sidebar-header";
 import type { ChangeEvent, FC } from "react";
-import React, { useState, useCallback, useRef, useEffect } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 const SidebarContainer = styled(Paper)(({ theme }) => ({

@@ -3,7 +3,6 @@ import { fab } from "@fortawesome/free-brands-svg-icons";
 import { fas } from "@fortawesome/free-solid-svg-icons";
 import { Box, CssBaseline } from "@mui/material";
 import { styled } from "@mui/material/styles";
-import React from "react";
 import type { FC } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 

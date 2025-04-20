@@ -15,7 +15,6 @@ import {
 	styled,
 } from "@mui/material";
 import type { ReactNode } from "react";
-import React from "react";
 
 /**
  * Props for the OnboardingDialog component
