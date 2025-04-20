@@ -2,7 +2,13 @@ import { Box } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import type { FC } from "react";
 import { MarkdownRenderer } from "../markdown-renderer";
-import type { MessageContentProps } from "./types";
+/**
+ * Props for the MessageContent component
+ */
+export type MessageContentProps = {
+	content?: string;
+	isUser: boolean;
+};
 
 /**
  * Styled container for message content

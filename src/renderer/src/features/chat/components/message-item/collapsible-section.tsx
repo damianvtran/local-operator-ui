@@ -5,8 +5,18 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, Collapse, IconButton, Typography, alpha } from "@mui/material";
 import { styled } from "@mui/material/styles";
-import { type FC, useState } from "react";
-import type { CollapsibleSectionProps } from "./types";
+import type { FC, ReactNode } from "react";
+import { useState } from "react";
+
+/**
+ * Props for the CollapsibleSection component
+ */
+export type CollapsibleSectionProps = {
+	title: string;
+	children: ReactNode;
+	defaultCollapsed?: boolean;
+	isUser: boolean;
+};
 
 const SectionHeader = styled(Box)(({ theme }) => ({
 	display: "flex",

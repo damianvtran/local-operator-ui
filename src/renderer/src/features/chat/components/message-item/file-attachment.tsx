@@ -7,7 +7,13 @@ import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import type { FC } from "react";
 import { useCallback } from "react";
 import { isCanvasSupported } from "../../utils/is-canvas-supported";
-import type { FileAttachmentProps as BaseFileAttachmentProps } from "./types";
+/**
+ * Props for the FileAttachment component (base)
+ */
+type BaseFileAttachmentProps = {
+	file: string;
+	onClick: (file: string) => void;
+};
 
 type FileAttachmentProps = BaseFileAttachmentProps & {
 	conversationId: string;

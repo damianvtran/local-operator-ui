@@ -14,7 +14,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, Collapse, Typography, alpha } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import { createLocalOperatorClient } from "@shared/api/local-operator";
-import type { ExecutionType } from "@shared/api/local-operator/types";
+import type { ActionType, ExecutionType } from "@shared/api/local-operator/types";
 import { apiConfig } from "@shared/config";
 import {
 	type FC,
@@ -31,8 +31,23 @@ import { FileAttachment } from "./file-attachment";
 import { ImageAttachment } from "./image-attachment";
 import { LogBlock } from "./log-block";
 import { OutputBlock } from "./output-block";
-import type { BackgroundBlockProps } from "./types";
 import { VideoAttachment } from "./video-attachment";
+
+/**
+ * Props for the BackgroundBlock component
+ */
+export type BackgroundBlockProps = {
+	content: string;
+	action?: ActionType;
+	executionType: ExecutionType;
+	isUser: boolean;
+	code?: string;
+	stdout?: string;
+	stderr?: string;
+	logging?: string;
+	files?: string[]; // URLs to attachments
+	conversationId: string;
+};
 
 /**
  * Styled container for the background block with mount animation

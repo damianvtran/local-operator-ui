@@ -3,7 +3,12 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Avatar } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import type { FC } from "react";
-import type { MessageAvatarProps } from "./types";
+/**
+ * Props for the MessageAvatar component
+ */
+export type MessageAvatarProps = {
+	isUser: boolean;
+};
 
 /**
  * Styled avatar component for user or assistant messages
