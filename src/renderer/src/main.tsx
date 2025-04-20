@@ -7,7 +7,7 @@ import ReactDOM from "react-dom/client";
 import { HashRouter } from "react-router-dom";
 import "react-toastify/dist/ReactToastify.css";
 import { ThemedToastContainer } from "./shared/components/common";
-import "./assets/fonts/fonts.css";
+import "@assets/fonts/fonts.css";
 import type { PostHogConfig } from "posthog-js";
 import { queryClient } from "./shared/api/query-client";
 import App from "./app";
