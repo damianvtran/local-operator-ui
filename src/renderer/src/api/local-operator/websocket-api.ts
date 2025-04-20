@@ -237,6 +237,9 @@ const DEFAULT_CONNECTION_OPTIONS: WebSocketConnectionOptions = {
 	messageDelay: 500, // 500ms
 };
 
+// Regex for protocol replacement (moved to top-level for performance)
+const HTTP_PROTOCOL_REGEX = /^http/;
+
 /**
  * WebSocket client for a specific message ID
  * Manages a single WebSocket connection and handles reconnection logic
@@ -339,7 +342,7 @@ export class WebSocketClient extends EventEmitter {
 		this.emit("status", this.status);
 
 		// Normalize the base URL to use ws:// or wss:// protocol
-		const wsBaseUrl = this.baseUrl.replace(/^http/, "ws");
+		const wsBaseUrl = this.baseUrl.replace(HTTP_PROTOCOL_REGEX, "ws");
 
 		// Construct the WebSocket URL based on the connection type
 		let wsUrl: string;

@@ -22,7 +22,11 @@
 			"recommended": true,
 			"correctness": {
 				"noUnusedVariables": "warn"
-			}
+			},
+      "performance": {
+        "noReExportAll": "warn",
+        "useTopLevelRegex":"warn"
+      }
 		}
 	},
 	"javascript": {

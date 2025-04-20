@@ -16,10 +16,33 @@ import type {
 } from "./types";
 
 // Export all API modules
-export * from "./auth-api";
+export {
+	exchangeToken,
+	createApplication,
+	exchangeGoogleToken,
+	exchangeMicrosoftToken,
+	getUserInfo,
+	provisionAccount,
+	refreshToken,
+	revokeToken,
+} from "./auth-api";
 
 // Export all types
-export * from "./types";
+export type {
+	AuthProvider,
+	AuthTokenExchangeRequest,
+	RadientApiResponse,
+	TokenResponse,
+	AuthTokenExchangeResult,
+	TokenRefreshRequest,
+	AccountInfo,
+	IdentityInfo,
+	UserInfoResult,
+	ProvisionResult,
+	CreateApplicationRequest,
+	CreateApplicationResult,
+	ErrorResponse,
+} from "./types";
 
 /**
  * Type for a function that takes a base URL as its first parameter
