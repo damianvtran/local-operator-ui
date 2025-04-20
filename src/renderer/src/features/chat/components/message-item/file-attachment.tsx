@@ -75,9 +75,10 @@ const FileName = styled(Typography)({
  * @param path - The file path or URL
  * @returns The extracted filename
  */
+const PATH_SEPARATOR_REGEX = /[/\\]/;
 const getFileName = (path: string): string => {
 	// Handle both local paths and URLs
-	const parts = path.split(/[/\\]/);
+	const parts = path.split(PATH_SEPARATOR_REGEX);
 	return parts[parts.length - 1];
 };
 

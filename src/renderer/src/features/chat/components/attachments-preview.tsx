@@ -26,6 +26,9 @@ type AttachmentsPreviewProps = {
 	disabled?: boolean;
 };
 
+// Regex for splitting file paths (moved to top-level for performance)
+const PATH_SEPARATOR_REGEX = /[/\\]/;
+
 /**
  * Container for the attachments preview
  */
@@ -221,7 +224,7 @@ export const AttachmentsPreview: FC<AttachmentsPreviewProps> = ({
 	 */
 	const getFileName = useCallback((path: string) => {
 		// Handle both local paths and URLs
-		const parts = path.split(/[/\\]/);
+		const parts = path.split(PATH_SEPARATOR_REGEX);
 		return parts[parts.length - 1];
 	}, []);
 

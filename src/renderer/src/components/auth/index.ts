@@ -4,4 +4,4 @@
  * Exports authentication components.
  */
 
-export * from "./radient-auth-buttons";
+export { RadientAuthButtons } from "./radient-auth-buttons";

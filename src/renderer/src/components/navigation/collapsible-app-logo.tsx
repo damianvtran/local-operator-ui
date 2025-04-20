@@ -18,6 +18,9 @@ const pulse = keyframes`
   }
 `;
 
+// Regex for short hex color expansion (moved to top-level for performance)
+const SHORT_HEX_COLOR_REGEX = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
+
 type CollapsibleAppLogoProps = {
 	expanded: boolean;
 };
@@ -40,10 +43,7 @@ const LogoImage = styled("img", {
 	// Extract RGB values from primary color for use in animations
 	const primaryColor = theme.palette.primary.main;
 	const primaryRgb = primaryColor
-		.replace(
-			/^#?([a-f\d])([a-f\d])([a-f\d])$/i,
-			(_, r, g, b) => `#${r}${r}${g}${g}${b}${b}`,
-		)
+		.replace(SHORT_HEX_COLOR_REGEX, (_, r, g, b) => `#${r}${r}${g}${g}${b}${b}`)
 		.substring(1)
 		.match(/.{2}/g)
 		?.map((x) => Number.parseInt(x, 16))
