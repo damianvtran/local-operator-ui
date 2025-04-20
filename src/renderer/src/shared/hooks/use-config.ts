@@ -5,7 +5,10 @@
  * since it's used by the connectivity gate itself to determine the hosting provider.
  */
 
-import { createLocalOperatorClient, type ConfigResponse } from "@shared/api/local-operator";
+import {
+	type ConfigResponse,
+	createLocalOperatorClient,
+} from "@shared/api/local-operator";
 import { apiConfig } from "@shared/config";
 import { showErrorToast } from "@shared/utils/toast-manager";
 import { useQuery } from "@tanstack/react-query";

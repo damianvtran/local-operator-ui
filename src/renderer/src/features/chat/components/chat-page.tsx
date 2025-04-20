@@ -1,20 +1,20 @@
+import { createLocalOperatorClient } from "@shared/api/local-operator";
+import { JobsApi } from "@shared/api/local-operator/jobs-api";
+import type { JobStatus } from "@shared/api/local-operator/types";
+import { ChatLayout } from "@shared/components/common/chat-layout";
+import { apiConfig } from "@shared/config";
 import { useAgent, useAgents } from "@shared/hooks/use-agents";
+import { useConfig } from "@shared/hooks/use-config";
 import {
 	conversationMessagesQueryKey,
 	useConversationMessages,
 } from "@shared/hooks/use-conversation-messages";
 import { useJobPolling } from "@shared/hooks/use-job-polling";
-import { useScrollToBottom } from "@shared/hooks/use-scroll-to-bottom";
-import { createLocalOperatorClient } from "@shared/api/local-operator";
-import { JobsApi } from "@shared/api/local-operator/jobs-api";
-import type { JobStatus } from "@shared/api/local-operator/types";
-import { apiConfig } from "@shared/config";
-import { useConfig } from "@shared/hooks/use-config";
 import { useAgentRouteParam } from "@shared/hooks/use-route-params";
+import { useScrollToBottom } from "@shared/hooks/use-scroll-to-bottom";
 import { useAgentSelectionStore } from "@shared/store/agent-selection-store";
-import { isDevelopmentMode } from "@shared/utils/env-utils";
-import { ChatLayout } from "@shared/components/common/chat-layout";
 import { useChatStore } from "@shared/store/chat-store";
+import { isDevelopmentMode } from "@shared/utils/env-utils";
 import { useQueryClient } from "@tanstack/react-query";
 import React, {
 	useState,

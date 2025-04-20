@@ -4,10 +4,10 @@ import type {
 	AgentExecutionRecord,
 	JobStatus,
 } from "@shared/api/local-operator/types";
+import { ResizableDivider } from "@shared/components/common/resizable-divider";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { isDevelopmentMode } from "@shared/utils/env-utils";
-import { ResizableDivider } from "@shared/components/common/resizable-divider";
 import { type FC, useRef, useState } from "react";
 import type { Message } from "../types";
 import { ChatUtilities } from "../utils/chat-utilities";

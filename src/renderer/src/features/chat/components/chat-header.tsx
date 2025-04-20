@@ -9,8 +9,8 @@ import {
 	alpha,
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
-import type { FC } from "react";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
+import type { FC } from "react";
 type ChatHeaderProps = {
 	agentName?: string;
 	description?: string;

@@ -15,10 +15,10 @@ import {
 	darken,
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
-import type { Message } from "../types";
 import { useMessageInput } from "@shared/hooks/use-message-input";
 import { useMemo, useRef, useState } from "react";
 import type { ChangeEvent, FC, FormEvent } from "react";
+import type { Message } from "../types";
 import { AttachmentsPreview } from "./attachments-preview";
 import { ScrollToBottomButton } from "./scroll-to-bottom-button";
 

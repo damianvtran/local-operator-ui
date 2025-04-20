@@ -1,5 +1,5 @@
-import { envSchema, AppConfig } from "./env-schema";
 import { ZodError } from "zod";
+import { type AppConfig, envSchema } from "./env-schema";
 
 /**
  * Loads and validates environment variables

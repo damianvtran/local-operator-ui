@@ -4,8 +4,6 @@
  * Component for displaying and editing general agent settings
  */
 
-import { HostingSelect } from "@shared/components/hosting/hosting-select";
-import { ModelSelect } from "@shared/components/hosting/model-select";
 import {
 	faCalendarAlt,
 	faCodeBranch,
@@ -28,8 +26,10 @@ import type {
 	AgentDetails,
 	AgentUpdate,
 } from "@shared/api/local-operator/types";
-import type { useUpdateAgent } from "@shared/hooks/use-update-agent";
 import { EditableField } from "@shared/components/common/editable-field";
+import { HostingSelect } from "@shared/components/hosting/hosting-select";
+import { ModelSelect } from "@shared/components/hosting/model-select";
+import type { useUpdateAgent } from "@shared/hooks/use-update-agent";
 import type { FC } from "react";
 import { useState } from "react";
 import { toast } from "react-toastify";

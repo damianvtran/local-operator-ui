@@ -2,7 +2,11 @@
  * Hook for updating agent details
  */
 
-import { createLocalOperatorClient, type AgentDetails, type AgentUpdate } from "@shared/api/local-operator";
+import {
+	type AgentDetails,
+	type AgentUpdate,
+	createLocalOperatorClient,
+} from "@shared/api/local-operator";
 import { apiConfig } from "@shared/config";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-toastify";

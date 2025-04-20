@@ -1,5 +1,5 @@
-import { loadConfig } from "./load-config";
 import type { AppConfig } from "./env-schema";
+import { loadConfig } from "./load-config";
 
 /**
  * Application configuration singleton

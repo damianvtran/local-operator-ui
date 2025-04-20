@@ -6,10 +6,10 @@
  * and the user has internet connectivity if required by the hosting provider.
  */
 
+import type { Message } from "@features/chat/types";
 import { createLocalOperatorClient } from "@shared/api/local-operator";
 import type { AgentExecutionRecord } from "@shared/api/local-operator/types";
 import { apiConfig } from "@shared/config";
-import type { Message } from "@features/chat/types";
 import { useChatStore } from "@shared/store/chat-store";
 import { showErrorToast } from "@shared/utils/toast-manager";
 import { useInfiniteQuery } from "@tanstack/react-query";

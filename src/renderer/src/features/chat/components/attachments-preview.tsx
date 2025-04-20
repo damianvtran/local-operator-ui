@@ -9,10 +9,10 @@ import {
 	alpha,
 	styled,
 } from "@mui/material";
-import type { FC } from "react";
-import { useCallback, useMemo } from "react";
 import { createLocalOperatorClient } from "@shared/api/local-operator";
 import { apiConfig } from "@shared/config";
+import type { FC } from "react";
+import { useCallback, useMemo } from "react";
 
 /**
  * Props for the AttachmentsPreview component

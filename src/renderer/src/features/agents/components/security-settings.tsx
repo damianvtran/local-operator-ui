@@ -12,8 +12,8 @@ import type {
 	AgentDetails,
 	AgentUpdate,
 } from "@shared/api/local-operator/types";
-import type { useUpdateAgent } from "@shared/hooks/use-update-agent";
 import { EditableField } from "@shared/components/common/editable-field";
+import type { useUpdateAgent } from "@shared/hooks/use-update-agent";
 import type { FC } from "react";
 
 type SecuritySettingsProps = {

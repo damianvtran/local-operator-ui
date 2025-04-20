@@ -7,7 +7,7 @@ import {
 	Typography,
 } from "@mui/material";
 import { ThemeProvider as MuiThemeProvider } from "@mui/material/styles";
-import {DEFAULT_THEME, themes} from "@shared/themes";
+import { DEFAULT_THEME, themes } from "@shared/themes";
 import type { Meta, StoryObj } from "@storybook/react";
 import type { ProgressInfo, UpdateInfo } from "electron-updater";
 import { useEffect, useState } from "react";
@@ -271,7 +271,7 @@ const meta = {
 				context.parameters.triggerUpdateError,
 			]);
 
-      const theme = themes[DEFAULT_THEME];
+			const theme = themes[DEFAULT_THEME];
 
 			return (
 				<MuiThemeProvider theme={theme}>
