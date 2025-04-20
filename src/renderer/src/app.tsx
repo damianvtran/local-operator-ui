@@ -6,7 +6,7 @@ import { styled } from "@mui/material/styles";
 import type { FC } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 
-import { AgentsPage } from "@features/agents/agents-page";
+import { AgentsPage } from "@features/agents/components/agents-page";
 import { ChatPage } from "@features/chat/components/chat-page";
 import { OnboardingModal } from "@features/onboarding";
 import { SettingsPage } from "@features/settings/settings-page";
