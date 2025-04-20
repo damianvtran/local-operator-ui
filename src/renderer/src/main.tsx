@@ -8,13 +8,13 @@ import { HashRouter } from "react-router-dom";
 import "react-toastify/dist/ReactToastify.css";
 import { ThemedToastContainer } from "./shared/components/common";
 import "@assets/fonts/fonts.css";
-import type { PostHogConfig } from "posthog-js";
-import { queryClient } from "./shared/api/query-client";
-import App from "./app";
 import { config } from "@shared/config"; // TODO: Confirm that this is the only instance of the import
+import type { PostHogConfig } from "posthog-js";
+import App from "./app";
+import { queryClient } from "./shared/api/query-client";
+import { ErrorBoundary } from "./shared/components/common/error-boundary";
 import { AuthProviders } from "./shared/providers/auth";
 import { FeatureFlagProvider } from "./shared/providers/feature-flags";
-import { ErrorBoundary } from "./shared/components/common/error-boundary";
 import { ThemeProvider } from "./shared/themes/theme-provider";
 import { isDevelopmentMode } from "./shared/utils/env-utils";
 

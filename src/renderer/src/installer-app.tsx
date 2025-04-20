@@ -1,9 +1,9 @@
 import { CssBaseline } from "@mui/material";
 import { ThemeProvider } from "@mui/material/styles";
+import { DEFAULT_THEME, themes } from "@shared/themes";
 import type React from "react";
 import { InstallerContent } from "./features/installer/components/installer-content";
 import { AppContainer } from "./features/installer/components/installer-styled";
-import { DEFAULT_THEME, themes } from "@shared/themes";
 
 /**
  * InstallerApp component

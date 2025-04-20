@@ -24,9 +24,9 @@ import type {
 	AgentDetails,
 	AgentUpdate,
 } from "@shared/api/local-operator/types";
-import type { useUpdateAgent } from "@shared/hooks/use-update-agent";
 import { EditableField } from "@shared/components/common/editable-field";
 import { SliderSetting } from "@shared/components/common/slider-setting";
+import type { useUpdateAgent } from "@shared/hooks/use-update-agent";
 import type { FC } from "react";
 import { useEffect, useState } from "react";
 import { toast } from "react-toastify";

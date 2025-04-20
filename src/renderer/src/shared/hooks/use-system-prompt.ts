@@ -5,7 +5,10 @@
  * and the user has internet connectivity if required by the hosting provider.
  */
 
-import { createLocalOperatorClient, type SystemPromptResponse } from "@shared/api/local-operator";
+import {
+	type SystemPromptResponse,
+	createLocalOperatorClient,
+} from "@shared/api/local-operator";
 import { apiConfig } from "@shared/config";
 import { showErrorToast } from "@shared/utils/toast-manager";
 import { useQuery } from "@tanstack/react-query";

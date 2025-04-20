@@ -16,10 +16,7 @@ import {
 	getSession,
 	updateAccessToken,
 } from "@shared/utils/session-store";
-import {
-	showErrorToast,
-	showSuccessToast,
-} from "@shared/utils/toast-manager";
+import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 // Query keys for Radient user data

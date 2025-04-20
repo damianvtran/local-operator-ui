@@ -1,6 +1,4 @@
 import radientIcon from "@assets/radient-icon-1024x1024.png";
-import { HostingSelect } from "@shared/components/hosting/hosting-select";
-import { ModelSelect } from "@shared/components/hosting/model-select";
 import {
 	faAdjust,
 	faDatabase,
@@ -27,12 +25,14 @@ import {
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import type { ConfigUpdate } from "@shared/api/local-operator/types";
-import { useConfig } from "@shared/hooks/use-config";
-import { useUpdateConfig } from "@shared/hooks/use-update-config";
-import { useUserStore } from "@shared/store/user-store";
 import { EditableField } from "@shared/components/common/editable-field";
 import { PageHeader } from "@shared/components/common/page-header";
 import { SliderSetting } from "@shared/components/common/slider-setting";
+import { HostingSelect } from "@shared/components/hosting/hosting-select";
+import { ModelSelect } from "@shared/components/hosting/model-select";
+import { useConfig } from "@shared/hooks/use-config";
+import { useUpdateConfig } from "@shared/hooks/use-update-config";
+import { useUserStore } from "@shared/store/user-store";
 import { useEffect, useRef, useState } from "react";
 import type { FC, RefObject } from "react";
 import { AppUpdatesSection } from "./app-updates-section";

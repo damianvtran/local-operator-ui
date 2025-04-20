@@ -7,7 +7,7 @@
 
 import { Box, Chip, Tooltip, Typography } from "@mui/material";
 import { styled } from "@mui/material/styles";
-import { useRadientAuth } from "@shared/hooks/use-radient-auth"; // TODO: Advise on this type of import/export 
+import { useRadientAuth } from "@shared/hooks/use-radient-auth"; // TODO: Advise on this type of import/export
 import type { FC } from "react";
 
 /**

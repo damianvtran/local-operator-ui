@@ -1,5 +1,3 @@
-import { CollapsibleAppLogo } from "@shared/components/navigation/collapsible-app-logo";
-import { UserProfileSidebar } from "@shared/components/navigation/user-profile-sidebar";
 import {
 	faChevronLeft,
 	faChevronRight,
@@ -20,6 +18,8 @@ import {
 	alpha,
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
+import { CollapsibleAppLogo } from "@shared/components/navigation/collapsible-app-logo";
+import { UserProfileSidebar } from "@shared/components/navigation/user-profile-sidebar";
 import { useCurrentView } from "@shared/hooks/use-route-params";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import type { FC } from "react";

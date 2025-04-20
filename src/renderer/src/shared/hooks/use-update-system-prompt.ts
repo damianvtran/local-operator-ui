@@ -2,7 +2,11 @@
  * Hook for updating system prompt
  */
 
-import { createLocalOperatorClient, type SystemPromptUpdate, type SystemPromptResponse } from "@shared/api/local-operator";
+import {
+	type SystemPromptResponse,
+	type SystemPromptUpdate,
+	createLocalOperatorClient,
+} from "@shared/api/local-operator";
 import { apiConfig } from "@shared/config";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-toastify";

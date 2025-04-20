@@ -3,8 +3,8 @@ import type {
 	AgentExecutionRecord,
 	JobStatus,
 } from "@shared/api/local-operator/types";
-import type { Message } from "../types";
 import type { FC, RefObject } from "react";
+import type { Message } from "../types";
 import { LoadingIndicator } from "./loading-indicator";
 import { MessageItem } from "./message-item";
 

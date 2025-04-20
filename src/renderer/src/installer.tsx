@@ -3,9 +3,9 @@ import CssBaseline from "@mui/material/CssBaseline";
 import React from "react";
 import ReactDOM from "react-dom/client";
 import "./assets/fonts/fonts.css";
+import { DEFAULT_THEME, themes } from "@shared/themes";
 import { InstallerApp } from "./installer-app";
 import { ErrorBoundary } from "./shared/components/common/error-boundary";
-import {DEFAULT_THEME, themes} from "@shared/themes";
 
 document.addEventListener("DOMContentLoaded", () => {
 	const root = ReactDOM.createRoot(

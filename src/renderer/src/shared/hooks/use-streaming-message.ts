@@ -1,3 +1,4 @@
+import { apiConfig } from "@shared/config";
 /**
  * Hook for managing streaming message connections
  *
@@ -27,7 +28,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { createLocalOperatorClient } from "../api/local-operator";
 import type { AgentExecutionRecord } from "../api/local-operator/types";
 import type { UpdateMessage } from "../api/local-operator/websocket-api";
-import { apiConfig } from "@shared/config";
 import { useChatStore } from "../store/chat-store";
 import { useStreamingMessagesStore } from "../store/streaming-messages-store";
 import { convertToMessage } from "./use-conversation-messages";

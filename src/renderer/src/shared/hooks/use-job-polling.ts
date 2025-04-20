@@ -1,3 +1,4 @@
+import type { Message } from "@features/chat/types";
 import { createLocalOperatorClient } from "@shared/api/local-operator";
 import type {
 	AgentExecutionRecord,
@@ -6,7 +7,6 @@ import type {
 	ConversationRecord,
 	JobStatus,
 } from "@shared/api/local-operator/types";
-import type { Message } from "@features/chat/types";
 
 // Extend the JobDetails type to include the error field in the result
 interface JobDetails extends Omit<BaseJobDetails, "result"> {

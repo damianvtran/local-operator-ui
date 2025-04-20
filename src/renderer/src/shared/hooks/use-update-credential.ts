@@ -2,10 +2,10 @@
  * Hook for updating credentials
  */
 
-import { createLocalOperatorClient,
-
+import {
 	type CredentialListResult,
 	type CredentialUpdate,
+	createLocalOperatorClient,
 } from "@shared/api/local-operator";
 import { apiConfig } from "@shared/config";
 import { useMutation, useQueryClient } from "@tanstack/react-query";

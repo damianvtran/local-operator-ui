@@ -18,8 +18,8 @@ export { SliderSetting } from "./slider-setting";
 export { ThemedToastContainer } from "./themed-toast-container";
 export { ToggleSetting } from "./toggle-setting";
 export {
-  UpdateContainer,
-  UpdateActions,
-  ProgressContainer,
-  UpdateNotification,
+	UpdateContainer,
+	UpdateActions,
+	ProgressContainer,
+	UpdateNotification,
 } from "./update-notification";
