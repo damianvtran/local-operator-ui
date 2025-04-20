@@ -21,8 +21,7 @@
 		"baseUrl": ".",
 		"paths": {
 "@api/*": ["src/renderer/src/shared/api/*"],
-"@assets/*": ["src/renderer/src/shared/assets/*"],
-"@components/*": ["src/renderer/src/shared/components/*"],
+"@assets/*": ["src/renderer/src/assets/*"],
 "@features/*": ["src/renderer/src/features/*"],
 "@hooks/*": ["src/renderer/src/shared/hooks/*"],
 "@shared/*": ["src/renderer/src/shared/*"],

@@ -13,7 +13,7 @@
         "src/renderer/src/shared/api/*"
       ],
       "@assets/*": [
-        "src/renderer/src/shared/assets/*"
+        "src/renderer/src/assets/*"
       ],
       "@components/*": [
         "src/renderer/src/shared/components/*"
