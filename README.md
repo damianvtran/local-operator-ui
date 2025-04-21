@@ -123,6 +123,22 @@ All desktop applications are code signed and notarized to ensure security and tr
 
 For detailed information about the code signing and notarization process, see the [CODE_SIGNING.md](./docs/CODE_SIGNING.md) document.
 
+## 🗂️ Project Structure
+
+The codebase is organized for modularity and code reuse:
+
+- `src/renderer/src/shared/`: Contains all shared code, including components, hooks, stores, configuration, themes, and utilities. Use the `@shared/` path alias for imports.
+- `src/renderer/src/features/`: Contains feature-specific code for the UI, organized by domain.
+- `src/renderer/src/app.tsx`, `main.tsx`, etc.: Entry points for the Electron renderer process.
+- `build/`, `resources/`, `scripts/`: Build assets, static resources, and build scripts.
+
+**Import Conventions:**
+- Use `@shared/` for shared modules (e.g., `import { useAgents } from "@shared/hooks/use-agents"`).
+- Use `@features/` for feature-specific modules.
+- The old aliases (`@renderer`, `@components`, `@hooks`, etc.) have been removed in favor of this unified structure.
+
+For more details on building or contributing, see the [Contributing Guide](./CONTRIBUTING.md) and [BUILD.md](./docs/BUILD.md).
+
 ## ✨ Features
 
 The Local Operator UI provides a comprehensive interface for interacting with AI agents:
