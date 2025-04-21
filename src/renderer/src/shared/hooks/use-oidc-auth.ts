@@ -95,15 +95,15 @@ export const useOidcAuth = (): UseOidcAuthResult => {
 				);
 
 				// 2. Decode access token to get account ID (sub claim)
-				let accountId: string;
+				let tenantId: string;
 				try {
-					const decodedToken = jwtDecode<{ sub: string }>(
+					const decodedToken = jwtDecode<{ tenant_id: string }>(
 						tokenResponse.access_token,
 					);
-					if (!decodedToken || !decodedToken.sub) {
-						throw new Error("Invalid access token: Missing 'sub' claim.");
+					if (!decodedToken || !decodedToken.tenant_id) {
+						throw new Error("Invalid access token: Missing 'tenant_id' claim.");
 					}
-					accountId = decodedToken.sub;
+					tenantId = decodedToken.tenant_id;
 				} catch (decodeError) {
 					console.error("JWT Decode Error:", decodeError);
 					setError("Failed to decode access token. Please sign in again.");
@@ -135,7 +135,7 @@ export const useOidcAuth = (): UseOidcAuthResult => {
 				if (!apiKeyExists) {
 					// Create an application to get an API key
 					const appResponse = await radientClient.createApplication(
-						accountId,
+						tenantId,
 						tokenResponse.access_token,
 						{
 							name: "Local Operator UI",

@@ -191,17 +191,17 @@ export class RadientClient {
 	/**
 	 * Create a new application for a given account
 	 *
-	 * @param accountId - The ID of the account to create the application for
+	 * @param tenantId - The ID of the tenant to create the application for
 	 * @param accessToken - The access token
 	 * @param applicationData - Data for the new application
 	 * @returns The created application information (standard response format)
 	 */
 	async createApplication(
-		accountId: string,
+		tenantId: string,
 		accessToken: string,
 		applicationData: CreateApplicationRequest,
 	): Promise<RadientApiResponse<CreateApplicationResult>> {
-		return this.auth.createApplication(accountId, accessToken, applicationData);
+		return this.auth.createApplication(tenantId, accessToken, applicationData);
 	}
 
 	/**
