@@ -1,7 +1,14 @@
 import { Box } from "@mui/material";
 import { styled } from "@mui/material/styles";
-import type { FC } from "react";
-import type { MessageContainerProps } from "./types";
+import type { FC, ReactNode } from "react";
+
+/**
+ * Props for the MessageContainer component
+ */
+export type MessageContainerProps = {
+	isUser: boolean;
+	children: ReactNode;
+};
 
 /**
  * Container component for message items

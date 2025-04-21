@@ -19,9 +19,9 @@ import {
 	alpha,
 	styled,
 } from "@mui/material";
-import { RadientAuthButtons } from "@renderer/components/auth";
-import { useRadientAuth } from "@renderer/hooks";
-import { useFeatureFlags } from "@renderer/providers/feature-flags";
+import { RadientAuthButtons } from "@shared/components/auth";
+import { useRadientAuth } from "@shared/hooks";
+import { useFeatureFlags } from "@shared/providers/feature-flags";
 import { type FC, useCallback, useMemo } from "react";
 
 const StyledCard = styled(Card)(() => ({

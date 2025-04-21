@@ -14,7 +14,7 @@ import { Box, Tooltip, Typography } from "@mui/material";
 import type {
 	AgentDetails,
 	AgentUpdate,
-} from "@renderer/api/local-operator/types";
+} from "@shared/api/local-operator/types";
 import { EditableField } from "@shared/components/common/editable-field";
 import { SliderSetting } from "@shared/components/common/slider-setting";
 import type { UseMutationResult } from "@tanstack/react-query";

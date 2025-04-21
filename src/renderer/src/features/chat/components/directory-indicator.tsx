@@ -36,9 +36,9 @@ import {
 	alpha,
 	styled,
 } from "@mui/material";
-import type { AgentUpdate } from "@renderer/api/local-operator/types";
-import { useUpdateAgent } from "@renderer/hooks/use-update-agent";
-import { useRecentDirectoriesStore } from "@renderer/store/recent-directories-store";
+import type { AgentUpdate } from "@shared/api/local-operator/types";
+import { useUpdateAgent } from "@shared/hooks/use-update-agent";
+import { useRecentDirectoriesStore } from "@shared/store/recent-directories-store";
 import {
 	type FC,
 	useCallback,

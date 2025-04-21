@@ -14,8 +14,8 @@ import { Box, Grid, Typography, alpha, styled } from "@mui/material";
 import {
 	OnboardingStep,
 	useOnboardingStore,
-} from "@renderer/store/onboarding-store";
-import { radientTheme } from "@renderer/themes";
+} from "@shared/store/onboarding-store";
+import { radientTheme } from "@shared/themes";
 import type { FC } from "react";
 import { useCallback } from "react";
 import { SectionContainer, SectionDescription } from "../onboarding-styled";

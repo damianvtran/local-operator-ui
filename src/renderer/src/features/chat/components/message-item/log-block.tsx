@@ -1,7 +1,13 @@
 import { Box, Typography, alpha } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import type { FC } from "react";
-import type { LogBlockProps } from "./types";
+/**
+ * Props for the LogBlock component
+ */
+export type LogBlockProps = {
+	log: string;
+	isUser: boolean;
+};
 
 const CodeContainer = styled(Box)({
 	marginBottom: 16,

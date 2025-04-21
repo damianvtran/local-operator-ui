@@ -3,9 +3,9 @@ import CssBaseline from "@mui/material/CssBaseline";
 import React from "react";
 import ReactDOM from "react-dom/client";
 import "./assets/fonts/fonts.css";
+import { DEFAULT_THEME, themes } from "@shared/themes";
 import { InstallerApp } from "./installer-app";
 import { ErrorBoundary } from "./shared/components/common/error-boundary";
-import theme from "./theme";
 
 document.addEventListener("DOMContentLoaded", () => {
 	const root = ReactDOM.createRoot(
@@ -13,7 +13,7 @@ document.addEventListener("DOMContentLoaded", () => {
 	);
 	root.render(
 		<React.StrictMode>
-			<ThemeProvider theme={theme}>
+			<ThemeProvider theme={themes[DEFAULT_THEME]}>
 				<CssBaseline />
 				<ErrorBoundary>
 					<InstallerApp />

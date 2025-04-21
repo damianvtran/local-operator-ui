@@ -7,7 +7,7 @@ import {
 	Typography,
 	styled,
 } from "@mui/material";
-import { useDeferredUpdatesStore } from "@store/deferred-updates-store";
+import { useDeferredUpdatesStore } from "@shared/store/deferred-updates-store";
 import type { ProgressInfo, UpdateInfo } from "electron-updater";
 import parse from "html-react-parser";
 import { useCallback, useEffect, useState } from "react";

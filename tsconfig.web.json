@@ -9,29 +9,14 @@
     "composite": false,
     "baseUrl": ".",
     "paths": {
-      "@api/*": [
-        "src/renderer/src/api/*"
-      ],
       "@assets/*": [
         "src/renderer/src/assets/*"
-      ],
-      "@components/*": [
-        "src/renderer/src/components/*"
       ],
       "@features/*": [
         "src/renderer/src/features/*"
       ],
-      "@hooks/*": [
-        "src/renderer/src/hooks/*"
-      ],
-      "@renderer/*": [
-        "src/renderer/src/*"
-      ],
       "@shared/*": [
         "src/renderer/src/shared/*"
-      ],
-      "@store/*": [
-        "src/renderer/src/store/*"
       ]
     }
   }

@@ -8,7 +8,7 @@
  * during application startup, which can cause infinite loops.
  */
 
-import { useInitializeModels } from "@renderer/hooks/use-initialize-models";
+import { useInitializeModels } from "@shared/hooks/use-initialize-models";
 import type { FC } from "react";
 import { memo } from "react";
 

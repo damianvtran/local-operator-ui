@@ -7,16 +7,16 @@ import ReactDOM from "react-dom/client";
 import { HashRouter } from "react-router-dom";
 import "react-toastify/dist/ReactToastify.css";
 import { ThemedToastContainer } from "./shared/components/common";
-import "./assets/fonts/fonts.css";
+import "@assets/fonts/fonts.css";
+import { config } from "@shared/config"; // TODO: Confirm that this is the only instance of the import
 import type { PostHogConfig } from "posthog-js";
-import { queryClient } from "./api/query-client";
 import App from "./app";
-import { config } from "./config";
-import { AuthProviders } from "./providers/auth";
-import { FeatureFlagProvider } from "./providers/feature-flags";
+import { queryClient } from "./shared/api/query-client";
 import { ErrorBoundary } from "./shared/components/common/error-boundary";
-import { ThemeProvider } from "./themes/theme-provider";
-import { isDevelopmentMode } from "./utils/env-utils";
+import { AuthProviders } from "./shared/providers/auth";
+import { FeatureFlagProvider } from "./shared/providers/feature-flags";
+import { ThemeProvider } from "./shared/themes/theme-provider";
+import { isDevelopmentMode } from "./shared/utils/env-utils";
 
 const posthogOptions: Partial<PostHogConfig> = {
 	api_host: config.VITE_PUBLIC_POSTHOG_HOST,

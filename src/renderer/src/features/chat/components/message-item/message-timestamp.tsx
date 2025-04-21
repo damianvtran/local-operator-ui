@@ -3,9 +3,16 @@ import { styled } from "@mui/material/styles";
 import {
 	formatMessageDateTime,
 	getFullDateTime,
-} from "@renderer/utils/date-utils";
+} from "@shared/utils/date-utils";
 import type { FC } from "react";
-import type { MessageTimestampProps } from "./types";
+
+/**
+ * Props for the MessageTimestamp component
+ */
+export type MessageTimestampProps = {
+	timestamp: Date;
+	isUser: boolean;
+};
 
 /**
  * Styled component for message timestamps

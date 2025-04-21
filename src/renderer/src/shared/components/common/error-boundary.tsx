@@ -4,7 +4,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, Button, Paper, Typography } from "@mui/material";
-import { isDevelopmentMode } from "@renderer/utils/env-utils";
+import { isDevelopmentMode } from "@shared/utils/env-utils";
 import type React from "react";
 import type { ErrorInfo, ReactNode } from "react";
 import {

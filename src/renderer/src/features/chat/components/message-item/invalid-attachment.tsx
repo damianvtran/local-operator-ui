@@ -3,7 +3,12 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, Typography, alpha } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import type { FC } from "react";
-import type { InvalidAttachmentProps } from "./types";
+/**
+ * Props for the InvalidAttachment component
+ */
+export type InvalidAttachmentProps = {
+	file: string;
+};
 
 /**
  * Styled component for invalid file attachments

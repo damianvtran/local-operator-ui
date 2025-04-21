@@ -10,9 +10,9 @@ import {
 } from "@mui/material";
 import { useCallback, useState } from "react";
 import type { FC } from "react";
+import type { CanvasDocument } from "../../types/canvas";
 import { CanvasContent } from "./canvas-content";
 import { CanvasTabs } from "./canvas-tabs";
-import type { CanvasDocument } from "./types";
 
 type CanvasProps = {
 	/**

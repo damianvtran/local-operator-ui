@@ -6,7 +6,7 @@
  */
 
 import { Box, TextField } from "@mui/material";
-import { useUserStore } from "@renderer/store/user-store";
+import { useUserStore } from "@shared/store/user-store";
 import type { FC } from "react";
 import { useEffect, useState } from "react";
 import {

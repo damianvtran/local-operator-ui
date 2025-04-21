@@ -1,20 +1,20 @@
-import { useAgent, useAgents } from "@hooks/use-agents";
+import { createLocalOperatorClient } from "@shared/api/local-operator";
+import { JobsApi } from "@shared/api/local-operator/jobs-api";
+import type { JobStatus } from "@shared/api/local-operator/types";
+import { ChatLayout } from "@shared/components/common/chat-layout";
+import { apiConfig } from "@shared/config";
+import { useAgent, useAgents } from "@shared/hooks/use-agents";
+import { useConfig } from "@shared/hooks/use-config";
 import {
 	conversationMessagesQueryKey,
 	useConversationMessages,
-} from "@hooks/use-conversation-messages";
-import { useJobPolling } from "@hooks/use-job-polling";
-import { useScrollToBottom } from "@hooks/use-scroll-to-bottom";
-import { createLocalOperatorClient } from "@renderer/api/local-operator";
-import { JobsApi } from "@renderer/api/local-operator/jobs-api";
-import type { JobStatus } from "@renderer/api/local-operator/types";
-import { apiConfig } from "@renderer/config";
-import { useConfig } from "@renderer/hooks/use-config";
-import { useAgentRouteParam } from "@renderer/hooks/use-route-params";
-import { useAgentSelectionStore } from "@renderer/store/agent-selection-store";
-import { isDevelopmentMode } from "@renderer/utils/env-utils";
-import { ChatLayout } from "@shared/components/common/chat-layout";
-import { useChatStore } from "@store/chat-store";
+} from "@shared/hooks/use-conversation-messages";
+import { useJobPolling } from "@shared/hooks/use-job-polling";
+import { useAgentRouteParam } from "@shared/hooks/use-route-params";
+import { useScrollToBottom } from "@shared/hooks/use-scroll-to-bottom";
+import { useAgentSelectionStore } from "@shared/store/agent-selection-store";
+import { useChatStore } from "@shared/store/chat-store";
+import { isDevelopmentMode } from "@shared/utils/env-utils";
 import { useQueryClient } from "@tanstack/react-query";
 import React, {
 	useState,
@@ -26,7 +26,7 @@ import React, {
 import type { FC } from "react";
 import { useNavigate } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
-import type { Message } from "../types";
+import type { Message } from "../types/message";
 import { ChatContent } from "./chat-content";
 import { ChatSidebar } from "./chat-sidebar";
 import { ErrorView } from "./error-view";

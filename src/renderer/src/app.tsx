@@ -10,11 +10,11 @@ import { AgentsPage } from "@features/agents/components/agents-page";
 import { ChatPage } from "@features/chat/components/chat-page";
 import { OnboardingModal } from "@features/onboarding";
 import { SettingsPage } from "@features/settings/components/settings-page";
-import { SidebarNavigation } from "@renderer/components/navigation/sidebar-navigation";
-import { useCheckFirstTimeUser } from "@renderer/hooks/use-check-first-time-user";
 import { ConnectivityBanner } from "@shared/components/common/connectivity-banner";
 import { ModelsInitializer } from "@shared/components/common/models-initializer";
 import { UpdateNotification } from "@shared/components/common/update-notification";
+import { SidebarNavigation } from "@shared/components/navigation/sidebar-navigation";
+import { useCheckFirstTimeUser } from "@shared/hooks/use-check-first-time-user";
 
 library.add(fas, fab);
 

@@ -1,7 +1,13 @@
 import { Box } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import type { FC } from "react";
-import type { StatusIndicatorProps } from "./types";
+
+/**
+ * Props for the StatusIndicator component
+ */
+export type StatusIndicatorProps = {
+	status: string;
+};
 
 /**
  * Styled component for status indicators
