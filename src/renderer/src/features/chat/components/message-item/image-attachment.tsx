@@ -2,7 +2,14 @@ import { alpha } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import { type FC, useState } from "react";
 import { InvalidAttachment } from "./invalid-attachment";
-import type { ImageAttachmentProps } from "./types";
+/**
+ * Props for the ImageAttachment component
+ */
+export type ImageAttachmentProps = {
+	file: string;
+	src: string;
+	onClick: (file: string) => void;
+};
 
 /**
  * Styled component for image attachments

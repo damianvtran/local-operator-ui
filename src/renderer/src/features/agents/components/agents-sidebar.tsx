@@ -23,18 +23,18 @@ import {
 	alpha,
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
-import { createLocalOperatorClient } from "@renderer/api/local-operator";
-import type { AgentDetails } from "@renderer/api/local-operator/types";
-import { queryClient } from "@renderer/api/query-client";
-import { apiConfig } from "@renderer/config";
-import { useExportAgent } from "@renderer/hooks/use-agent-mutations";
-import { useAgents } from "@renderer/hooks/use-agents";
-import { usePaginationParams } from "@renderer/hooks/use-pagination-params";
+import { createLocalOperatorClient } from "@shared/api/local-operator";
+import type { AgentDetails } from "@shared/api/local-operator/types";
+import { queryClient } from "@shared/api/query-client";
 import { AgentOptionsMenu } from "@shared/components/common/agent-options-menu";
 import { CompactPagination } from "@shared/components/common/compact-pagination";
 import { CreateAgentDialog } from "@shared/components/common/create-agent-dialog";
 import { ImportAgentDialog } from "@shared/components/common/import-agent-dialog";
 import { SidebarHeader } from "@shared/components/common/sidebar-header";
+import { apiConfig } from "@shared/config";
+import { useExportAgent } from "@shared/hooks/use-agent-mutations";
+import { useAgents } from "@shared/hooks/use-agents";
+import { usePaginationParams } from "@shared/hooks/use-pagination-params";
 import type { ChangeEvent, FC } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";

@@ -4,7 +4,13 @@ import type { FC } from "react";
 import SyntaxHighlighter from "react-syntax-highlighter";
 import { atomOneDark } from "react-syntax-highlighter/dist/esm/styles/hljs";
 import { createGlobalStyle } from "styled-components";
-import type { CodeBlockProps } from "./types";
+/**
+ * Props for the CodeBlock component
+ */
+export type CodeBlockProps = {
+	code: string;
+	isUser: boolean;
+};
 
 const CodeContainer = styled(Box)({
 	marginBottom: 16,

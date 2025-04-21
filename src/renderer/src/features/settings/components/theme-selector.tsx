@@ -12,9 +12,9 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, Card, CardContent, Grid, Typography } from "@mui/material";
 import { styled } from "@mui/material/styles";
-import { useUiPreferencesStore } from "@renderer/store/ui-preferences-store";
-import { themes } from "@renderer/themes";
-import type { ThemeName } from "@renderer/themes";
+import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
+import { themes } from "@shared/themes";
+import type { ThemeName } from "@shared/themes";
 import type { FC } from "react";
 
 const StyledCardContent = styled(CardContent)(({ theme }) => ({

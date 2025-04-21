@@ -11,9 +11,9 @@ import {
 	Typography,
 	styled,
 } from "@mui/material";
-import type { SystemPromptUpdate } from "@renderer/api/local-operator/types";
-import { useSystemPrompt } from "@renderer/hooks/use-system-prompt";
-import { useUpdateSystemPrompt } from "@renderer/hooks/use-update-system-prompt";
+import type { SystemPromptUpdate } from "@shared/api/local-operator/types";
+import { useSystemPrompt } from "@shared/hooks/use-system-prompt";
+import { useUpdateSystemPrompt } from "@shared/hooks/use-update-system-prompt";
 import { useEffect, useState } from "react";
 import type { FC } from "react";
 

@@ -1,5 +1,5 @@
 import { Alert, Box, Button, Snackbar, Typography } from "@mui/material";
-import { useDeferredUpdatesStore } from "@renderer/store/deferred-updates-store";
+import { useDeferredUpdatesStore } from "@shared/store/deferred-updates-store";
 import { useEffect, useState } from "react";
 
 /**

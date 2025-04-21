@@ -17,7 +17,7 @@ import {
 } from "@mui/material";
 import type { FC } from "react";
 import { useCallback, useState } from "react";
-import type { CanvasDocument, ExportFormat } from "./types";
+import type { CanvasDocument, ExportFormat } from "../../types/canvas";
 
 type CanvasToolbarProps = {
 	/**

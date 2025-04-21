@@ -2,7 +2,14 @@ import { alpha } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import { type FC, useState } from "react";
 import { InvalidAttachment } from "./invalid-attachment";
-import type { VideoAttachmentProps } from "./types";
+/**
+ * Props for the VideoAttachment component
+ */
+export type VideoAttachmentProps = {
+	file: string;
+	src: string;
+	onClick: (file: string) => void;
+};
 
 /**
  * Styled component for video attachments

@@ -1,13 +1,13 @@
 import { Box, CircularProgress, Typography, styled } from "@mui/material";
+import type { AgentExecutionRecord } from "@shared/api/local-operator";
+import { useStreamingMessage } from "@shared/hooks/use-streaming-message";
+import { useStreamingMessagesStore } from "@shared/store/streaming-messages-store";
 /**
  * Component for displaying a streaming message
  *
  * @module StreamingMessage
  */
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import type { AgentExecutionRecord } from "../../../../api/local-operator/types";
-import { useStreamingMessage } from "../../../../hooks/use-streaming-message";
-import { useStreamingMessagesStore } from "../../../../store/streaming-messages-store";
 import { MessageContent } from "./message-content";
 
 // Styled components

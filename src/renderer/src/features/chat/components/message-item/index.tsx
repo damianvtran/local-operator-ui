@@ -1,7 +1,8 @@
 import { Box } from "@mui/material";
+import { createLocalOperatorClient } from "@shared/api/local-operator";
+import { apiConfig } from "@shared/config";
 import { type FC, memo, useCallback, useMemo } from "react";
-import { createLocalOperatorClient } from "../../../../api/local-operator";
-import { apiConfig } from "../../../../config";
+import type { Message } from "../../types/message";
 import { ActionHighlight } from "./action-highlight";
 import { BackgroundBlock } from "./background-block";
 import { CodeBlock } from "./code-block";
@@ -18,8 +19,17 @@ import { MessageTimestamp } from "./message-timestamp";
 import { OutputBlock } from "./output-block";
 import { SecurityCheckHighlight } from "./security-check-highlight";
 import { StatusIndicator } from "./status-indicator";
-import type { MessageItemProps } from "./types";
 import { VideoAttachment } from "./video-attachment";
+
+/**
+ * Props for the MessageItem component
+ */
+export type MessageItemProps = {
+	message: Message;
+	onMessageComplete?: () => void;
+	isLastMessage?: boolean;
+	conversationId: string;
+};
 
 /**
  * Checks if a file is a web URL

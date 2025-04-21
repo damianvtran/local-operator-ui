@@ -2,11 +2,15 @@ import { faDownload, faInfoCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, Grid, Tooltip, Typography } from "@mui/material";
 import { styled } from "@mui/material/styles";
+// import { HealthApi } from "../../../api/local-operator/health-api";
+// import type { HealthCheckResponse } from "../../../api/local-operator/types";
+import {
+	HealthApi,
+	type HealthCheckResponse,
+} from "@shared/api/local-operator";
+import { apiConfig } from "@shared/config";
 import { useEffect, useState } from "react";
 import type { FC } from "react";
-import { HealthApi } from "../../../api/local-operator/health-api";
-import type { HealthCheckResponse } from "../../../api/local-operator/types";
-import { apiConfig } from "../../../config";
 import { AppUpdates } from "./app-updates";
 
 const SectionTitle = styled(Typography)(({ theme }) => ({

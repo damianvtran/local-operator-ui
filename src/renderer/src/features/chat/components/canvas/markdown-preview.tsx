@@ -1,7 +1,7 @@
 import { Box } from "@mui/material";
 import type { FC } from "react";
+import type { CanvasDocument } from "../../types/canvas";
 import { MarkdownRenderer } from "../markdown-renderer";
-import type { CanvasDocument } from "./types";
 
 type MarkdownPreviewProps = {
 	/**

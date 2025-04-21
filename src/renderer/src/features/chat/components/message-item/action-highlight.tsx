@@ -2,8 +2,22 @@ import { faCheck, faQuestion } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, alpha } from "@mui/material";
 import { styled } from "@mui/material/styles";
-import type { FC } from "react";
-import type { ActionHighlightProps } from "./types";
+import type {
+	ActionType,
+	ExecutionType,
+} from "@shared/api/local-operator/types";
+import type { FC, ReactNode } from "react";
+
+/**
+ * Props for the ActionHighlight component
+ */
+export type ActionHighlightProps = {
+	children: ReactNode;
+	action: ActionType;
+	taskClassification: string;
+	isUser: boolean;
+	executionType?: ExecutionType;
+};
 
 const HighlightContainer = styled(Box, {
 	shouldForwardProp: (prop) => prop !== "action" && prop !== "isUser",

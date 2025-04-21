@@ -7,8 +7,8 @@ import {
 	alpha,
 	styled,
 } from "@mui/material";
-import type { AgentCreate } from "@renderer/api/local-operator/types";
-import { useCreateAgent } from "@renderer/hooks/use-agent-mutations";
+import type { AgentCreate } from "@shared/api/local-operator/types";
+import { useCreateAgent } from "@shared/hooks";
 import type { FC, FormEvent } from "react";
 import { useState } from "react";
 import {

@@ -8,11 +8,11 @@
 import { faTimes, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, Button, Drawer, Typography, alpha, styled } from "@mui/material";
-import type { AgentDetails } from "@renderer/api/local-operator/types";
-import { useAgent } from "@renderer/hooks/use-agents";
-import { useClearAgentConversation } from "@renderer/hooks/use-clear-agent-conversation";
-import { useUpdateAgent } from "@renderer/hooks/use-update-agent";
+import type { AgentDetails } from "@shared/api/local-operator/types";
 import { ConfirmationModal } from "@shared/components/common/confirmation-modal";
+import { useAgent } from "@shared/hooks/use-agents";
+import { useClearAgentConversation } from "@shared/hooks/use-clear-agent-conversation";
+import { useUpdateAgent } from "@shared/hooks/use-update-agent";
 import type { FC } from "react";
 import { useEffect, useState } from "react";
 import {

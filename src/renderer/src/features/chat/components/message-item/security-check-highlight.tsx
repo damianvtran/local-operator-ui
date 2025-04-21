@@ -2,8 +2,15 @@ import { faExclamationTriangle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, alpha } from "@mui/material";
 import { styled } from "@mui/material/styles";
-import type { FC } from "react";
-import type { SecurityCheckHighlightProps } from "./types";
+import type { FC, ReactNode } from "react";
+
+/**
+ * Props for the SecurityCheckHighlight component
+ */
+export type SecurityCheckHighlightProps = {
+	children: ReactNode;
+	isUser: boolean;
+};
 
 const HighlightContainer = styled(Box, {
 	shouldForwardProp: (prop) => prop !== "isUser",

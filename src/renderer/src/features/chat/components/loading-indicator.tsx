@@ -9,9 +9,9 @@ import { Avatar, Box, Button, Typography, styled } from "@mui/material";
 import type {
 	AgentExecutionRecord,
 	JobStatus,
-} from "@renderer/api/local-operator/types";
-import { useScrollToBottom } from "@renderer/hooks/use-scroll-to-bottom";
-import { useStreamingMessagesStore } from "@renderer/store/streaming-messages-store";
+} from "@shared/api/local-operator/types";
+import { useScrollToBottom } from "@shared/hooks/use-scroll-to-bottom";
+import { useStreamingMessagesStore } from "@shared/store/streaming-messages-store";
 import type { FC } from "react";
 import { useEffect, useState } from "react";
 import SyntaxHighlighter from "react-syntax-highlighter";
