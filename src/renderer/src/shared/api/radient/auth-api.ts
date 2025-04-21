@@ -77,18 +77,18 @@ export async function exchangeToken(
  * Create a new application for a given account
  *
  * @param baseUrl - The base URL of the Radient API
- * @param accountId - The ID of the account to create the application for
+ * @param tenantId - The ID of the tenant to create the application for
  * @param accessToken - The access token
  * @param applicationData - Data for the new application
  * @returns The created application information
  */
 export async function createApplication(
 	baseUrl: string,
-	accountId: string,
+	tenantId: string,
 	accessToken: string,
 	applicationData: CreateApplicationRequest,
 ): Promise<RadientApiResponse<CreateApplicationResult>> {
-	const url = joinUrl(baseUrl, `/v1/accounts/${accountId}/applications`);
+	const url = joinUrl(baseUrl, `/v1/tenants/${tenantId}/applications`);
 
 	const response = await fetch(url, {
 		method: "POST",
