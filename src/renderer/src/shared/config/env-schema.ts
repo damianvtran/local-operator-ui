@@ -24,7 +24,8 @@ export const envSchema = z.object({
 			required_error: "VITE_RADIENT_CLIENT_ID is required",
 			invalid_type_error: "VITE_RADIENT_CLIENT_ID must be a string",
 		})
-		.min(1, "VITE_RADIENT_CLIENT_ID cannot be empty"),
+		.optional()
+		.default("b0fd1aa8-05a2-4ca2-bac2-82db293e7584"),
 
 	// Backend service manager configuration
 	VITE_DISABLE_BACKEND_MANAGER: z
