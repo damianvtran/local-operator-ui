@@ -20,7 +20,7 @@ import {
 	CircularProgress,
 	FormControl,
 	FormHelperText,
-	InputAdornment, // Import InputAdornment
+	InputAdornment,
 	Link,
 	MenuItem,
 	Select,
@@ -28,7 +28,7 @@ import {
 	TextField,
 	Typography,
 	alpha,
-	useTheme, // Import useTheme
+	useTheme,
 } from "@mui/material";
 import { useCredentials } from "@shared/hooks/use-credentials";
 import { useUpdateCredential } from "@shared/hooks/use-update-credential";
@@ -36,11 +36,12 @@ import type { FC } from "react";
 import { useEffect, useRef, useState } from "react";
 import {
 	EmojiContainer,
-	FieldLabel, // Import FieldLabel
+	FieldLabel,
 	FormContainer,
-	LabelIcon, // Import LabelIcon
+	LabelIcon,
 	SectionContainer,
 	SectionDescription,
+	menuPropsSx,
 } from "../onboarding-styled";
 
 const RECOMMENDED_CREDENTIAL = "TAVILY_API_KEY";
@@ -173,13 +174,12 @@ export const SearchApiStep: FC = () => {
 				opacity: 1,
 			},
 			"& .MuiSelect-select": {
-				// Specific styles for Select input
 				display: "flex",
 				alignItems: "center",
 				gap: theme.spacing(1),
 			},
 			"& .MuiInputAdornment-root": {
-				color: theme.palette.text.secondary, // Color for adornments
+				color: theme.palette.text.secondary,
 				marginRight: theme.spacing(0.5),
 			},
 		},
@@ -188,9 +188,6 @@ export const SearchApiStep: FC = () => {
 			mt: 0.5,
 			ml: 0.5,
 		},
-		// Remove MUI label specific styles from inputSx
-		// "& .MuiInputLabel-root": { ... },
-		// "& .MuiInputLabel-outlined.MuiInputLabel-shrink": { ... },
 	};
 
 	// Style for info boxes
@@ -261,19 +258,16 @@ export const SearchApiStep: FC = () => {
 				{/* Provider Selection */}
 				<Box>
 					{" "}
-					{/* Wrap Label and Input */}
 					<FieldLabel>
-						<LabelIcon>🔎</LabelIcon> {/* Use LabelIcon */}
+						<LabelIcon>🔎</LabelIcon>
 						Search API Provider
 					</FieldLabel>
 					<FormControl fullWidth variant="outlined" sx={inputSx}>
-						{/* Remove InputLabel */}
 						<Select
-							// Remove labelId and label props
 							id="search-api-select"
 							value={selectedCredential}
 							onChange={handleCredentialChange}
-							// Remove startAdornment
+							MenuProps={menuPropsSx(theme)} 
 						>
 							{searchApiCredentials.map((cred) => (
 								<MenuItem key={cred.key} value={cred.key}>
@@ -356,7 +350,7 @@ export const SearchApiStep: FC = () => {
 						fullWidth
 						value={credentialValue}
 						onChange={handleCredentialValueChange}
-						error={!!error} // Keep error state if needed for validation later
+						error={!!error}
 						helperText={error || "Enter the API key for the selected provider"}
 						placeholder="Enter your API key here"
 						type="password"
@@ -373,7 +367,6 @@ export const SearchApiStep: FC = () => {
 							}
 						}}
 						InputProps={{
-							// Remove startAdornment
 							endAdornment: isSaving ? (
 								<InputAdornment position="end">
 									<CircularProgress size={20} />
@@ -381,7 +374,7 @@ export const SearchApiStep: FC = () => {
 							) : null,
 						}}
 						disabled={isSaving}
-						sx={inputSx} // Apply shared input styles
+						sx={inputSx}
 					/>
 				</Box>
 

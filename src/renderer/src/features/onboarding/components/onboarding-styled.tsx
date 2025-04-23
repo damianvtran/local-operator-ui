@@ -286,3 +286,44 @@ export const EmojiContainer = styled(Box)(({ theme }) => ({
 	marginRight: theme.spacing(1),
 	fontSize: "1em", // Inherit font size
 }));
+
+/**
+ * Reusable styles for Select dropdown menu items (shadcn-inspired)
+ * @param theme - The MUI theme object
+ */
+export const menuItemSx = (theme) => ({
+	fontSize: "0.875rem",
+	padding: theme.spacing(1, 1.5),
+	borderRadius: theme.shape.borderRadius * 0.75,
+	margin: theme.spacing(0.5, 1),
+	minHeight: "auto",
+	"&:hover": {
+		backgroundColor: alpha(theme.palette.action.hover, 0.08),
+	},
+	"&.Mui-selected": {
+		backgroundColor: alpha(theme.palette.primary.main, 0.1),
+		fontWeight: 500,
+		"&:hover": {
+			backgroundColor: alpha(theme.palette.primary.main, 0.15),
+		},
+	},
+});
+
+/**
+ * Reusable MenuProps for Select dropdowns (shadcn-inspired)
+ * Applies styles to the dropdown paper and uses menuItemSx for items.
+ * @param theme - The MUI theme object
+ */
+export const menuPropsSx = (theme) => ({
+	PaperProps: {
+		sx: {
+			mt: 0.5,
+			borderRadius: theme.shape.borderRadius * 0.75,
+			border: `1px solid ${theme.palette.divider}`,
+			boxShadow:
+				"0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
+			backgroundColor: theme.palette.background.paper,
+			"& .MuiMenuItem-root": menuItemSx(theme),
+		},
+	},
+});
