@@ -7,189 +7,123 @@
  */
 
 import radientLogo from "@assets/radient-icon-1024x1024.png";
-import { keyframes } from "@emotion/react";
 import { faArrowRight } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Box, Grid, Typography, alpha, styled } from "@mui/material";
+import { Box, Grid, Typography, alpha, styled } from "@mui/material"; // Removed useTheme
 import {
 	OnboardingStep,
 	useOnboardingStore,
 } from "@shared/store/onboarding-store";
-import { radientTheme } from "@shared/themes";
+import { radientTheme } from "@shared/themes"; // Keep for Radient specific colors if needed
 import type { FC } from "react";
 import { useCallback } from "react";
 import { SectionContainer, SectionDescription } from "../onboarding-styled";
 
-const shimmerKeyframes = keyframes`
-  0% {
-    background-position: -200% 0;
-  }
-  100% {
-    background-position: 200% 0;
-  }
-`;
+// --- Styled Components (Simplified for shadcn aesthetic) ---
 
-const pulseKeyframes = keyframes`
-  0% {
-    box-shadow: 0 0 0 0 ${alpha(radientTheme.palette.primary.main, 0)};
-  }
-  70% {
-    box-shadow: 0 0 0 10px ${alpha(radientTheme.palette.primary.main, 0.2)};
-  }
-  100% {
-    box-shadow: 0 0 0 0 ${alpha(radientTheme.palette.primary.main, 0)};
-  }
-`;
-
-const gradientAnimation = keyframes`
-  0% {
-    background-position: 0% 50%;
-    background-size: 250% 250%;
-  }
-  25% {
-    background-size: 300% 300%;
-  }
-  50% {
-    background-position: 100% 50%;
-    background-size: 250% 250%;
-  }
-  75% {
-    background-size: 300% 300%;
-  }
-  100% {
-    background-position: 0% 50%;
-    background-size: 250% 250%;
-  }
-`;
-
-const ChoiceCard = styled(Box, {
-	shouldForwardProp: (prop) => prop !== "isRadientOption",
-})<{ isRadientOption?: boolean }>(({ theme, isRadientOption }) => ({
+const ChoiceCard = styled(Box)(({ theme }) => ({
 	display: "flex",
 	flexDirection: "column",
-	alignItems: "center",
-	justifyContent: "space-between",
-	padding: theme.spacing(4),
-	paddingBottom: theme.spacing(5),
-	borderRadius: 16,
-	background: isRadientOption
-		? `linear-gradient(135deg, 
-        ${alpha(radientTheme.palette.primary.main, 0.4)} 0%, 
-        ${alpha(radientTheme.palette.primary.dark, 0.6)} 35%, 
-        ${alpha(radientTheme.palette.primary.dark, 0.8)} 70%, 
-        ${radientTheme.palette.background.default} 100%)`
-		: `linear-gradient(135deg, 
-        ${alpha(theme.palette.background.paper, 0.9)} 0%, 
-        ${theme.palette.background.paper} 40%, 
-        ${theme.palette.background.default} 100%)`,
-	backgroundSize: "300% 300%",
-	animation: `${gradientAnimation} 12s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite`,
-	boxShadow: `0 8px 32px ${alpha(theme.palette.common.black, 0.15)}`,
+	// alignItems: "center", // Align items to start for better text layout
+	justifyContent: "space-between", // Keep space-between
+	padding: theme.spacing(3), // Consistent padding
+	borderRadius: theme.shape.borderRadius * 1.5, // Slightly larger radius
+	border: `1px solid ${theme.palette.divider}`, // Standard border
+	backgroundColor: theme.palette.background.paper, // Use paper background
 	cursor: "pointer",
-	transition: "all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)",
+	transition:
+		"transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out, border-color 0.2s ease-in-out", // Smooth transitions
 	height: "100%",
-	minHeight: 320,
-	position: "relative",
-	overflow: "hidden",
-	"&::before": isRadientOption
-		? {
-				content: '""',
-				position: "absolute",
-				top: 0,
-				left: 0,
-				right: 0,
-				height: "2px",
-				background: `linear-gradient(90deg, transparent, ${radientTheme.palette.primary.light}, transparent)`,
-				backgroundSize: "200% 100%",
-				animation: `${shimmerKeyframes} 3s infinite`,
-				zIndex: 1,
-			}
-		: {},
+	minHeight: 300, // Adjusted min height
+	position: "relative", // Keep for potential absolute elements if needed later
+	overflow: "hidden", // Keep overflow hidden
 	"&:hover": {
-		transform: "translateY(-8px) scale(1.02)",
-		boxShadow: isRadientOption
-			? `0 16px 48px ${alpha(theme.palette.primary.main, 0.25)}, 0 0 20px ${alpha(theme.palette.primary.main, 0.15)}`
-			: `0 16px 48px ${alpha(theme.palette.common.black, 0.2)}`,
-		animation: isRadientOption
-			? `${gradientAnimation} 8s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite, ${pulseKeyframes} 3s infinite`
-			: `${gradientAnimation} 8s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite`,
-		borderColor: isRadientOption
-			? alpha(theme.palette.primary.main, 0.4)
-			: alpha(theme.palette.primary.main, 0.1),
+		transform: "translateY(-4px)", // Subtle lift
+		boxShadow: theme.shadows[3], // Subtle shadow
+		borderColor: theme.palette.primary.main, // Highlight border on hover
+		// Make the "Choose Option" text visible on hover
 		"& .choose-option": {
-			transform: "translateY(0)",
 			opacity: 1,
 		},
 	},
 }));
 
-const CardTitle = styled(Box)(({ theme }) => ({
-	fontSize: "1.5rem",
-	fontWeight: 700,
-	marginBottom: theme.spacing(1),
-	textAlign: "left",
-	color: theme.palette.text.primary,
+// Specific styling for the Radient option card
+const RadientChoiceCard = styled(ChoiceCard)(({ theme }) => ({
+	// Use a subtle gradient or border to differentiate if desired, or keep consistent
+	borderColor: alpha(radientTheme.palette.primary.main, 0.5), // Example: Use Radient color for border
+	"&:hover": {
+		transform: "translateY(-4px)",
+		boxShadow: theme.shadows[3],
+		borderColor: radientTheme.palette.primary.main, // Stronger Radient border on hover
+		"& .choose-option": {
+			opacity: 1,
+		},
+	},
 }));
 
-const CardSubtitle = styled(Box)(({ theme }) => ({
-	fontSize: "0.95rem",
+const CardTitle = styled(Typography)(({ theme }) => ({
+	fontSize: "1.25rem", // Adjusted size
+	fontWeight: 600, // Slightly less bold
+	marginBottom: theme.spacing(0.5), // Reduced margin
+	color: theme.palette.text.primary,
+	lineHeight: 1.3,
+}));
+
+const CardSubtitle = styled(Typography)(({ theme }) => ({
+	fontSize: "0.875rem", // Consistent small text size
 	color: theme.palette.text.secondary,
-	textAlign: "left",
-	marginBottom: theme.spacing(4),
+	marginBottom: theme.spacing(3), // Consistent margin
+	lineHeight: 1.5,
 }));
 
 const CardIcon = styled(Box)(({ theme }) => ({
-	width: 110,
-	height: 110,
+	width: 80, // Smaller icon size
+	height: 80,
 	display: "flex",
 	alignItems: "center",
 	justifyContent: "center",
-	marginTop: theme.spacing(2),
+	marginTop: "auto", // Push icon towards the bottom before the 'Choose' text
+	marginBottom: theme.spacing(4), // Space above the 'Choose' text
+	alignSelf: "center", // Center the icon horizontally
 }));
 
-const RadientPassText = styled(Box)(() => ({
-	fontSize: "1.5rem",
-	fontWeight: 700,
-	color: radientTheme.palette.primary.light,
-	textAlign: "left",
+// Use Typography for Radient Pass text, potentially with specific color
+const RadientPassText = styled(Typography)(() => ({
+	fontSize: "1.25rem",
+	fontWeight: 600,
+	color: radientTheme.palette.primary.main, // Use Radient primary color
+	display: "inline", // Keep inline if needed within CardTitle
 }));
 
-const FreeText = styled(Box)(({ theme }) => ({
-	fontSize: "1.5rem",
-	fontWeight: 700,
-	color: theme.palette.text.primary,
-	textAlign: "left",
+// Use Typography for Free text
+const FreeText = styled(Typography)(({ theme }) => ({
+	fontSize: "1.25rem",
+	fontWeight: 600,
+	color: theme.palette.text.primary, // Standard text color
+	display: "inline",
 }));
 
-const ChooseOption = styled(Box, {
-	shouldForwardProp: (prop) => prop !== "isRadientOption",
-})<{ isRadientOption?: boolean }>(({ theme, isRadientOption }) => ({
+// Simplified "Choose Option" text, appears on hover
+const ChooseOption = styled(Typography)(({ theme }) => ({
 	position: "absolute",
-	bottom: 0,
+	bottom: theme.spacing(2), // Positioned at the bottom
 	left: 0,
 	right: 0,
-	padding: theme.spacing(2),
-	background: isRadientOption
-		? `linear-gradient(to top, ${alpha(radientTheme.palette.primary.main, 0.1)}, transparent)`
-		: `linear-gradient(to top, ${alpha(theme.palette.primary.main, 0.1)}, transparent)`,
+	textAlign: "center",
+	opacity: 0, // Hidden by default
+	transition: "opacity 0.2s ease-in-out", // Fade in/out
+	color: theme.palette.primary.main, // Use primary color
+	fontWeight: 500,
+	fontSize: "0.875rem",
 	display: "flex",
 	alignItems: "center",
 	justifyContent: "center",
-	transform: "translateY(100%)",
-	opacity: 0,
-	transition: "all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)",
-	color: isRadientOption
-		? radientTheme.palette.primary.light
-		: theme.palette.primary.main,
-	fontWeight: 600,
-	fontSize: "0.95rem",
+	gap: theme.spacing(0.5),
 	"& svg": {
-		marginLeft: theme.spacing(1),
 		transition: "transform 0.2s ease",
 	},
-	"&:hover svg": {
-		transform: "translateX(4px)",
-	},
+	// Remove hover effect on the text itself, rely on card hover
 }));
 
 /**
@@ -238,47 +172,40 @@ export const RadientChoiceStep: FC<RadientChoiceStepProps> = ({
 		if (onDoItYourself) {
 			onDoItYourself();
 		} else {
-			setCurrentStep(OnboardingStep.WELCOME);
+			// Navigate to User Profile as Welcome step is removed
+			setCurrentStep(OnboardingStep.USER_PROFILE);
 		}
 	}, [onDoItYourself, setCurrentStep]);
 
 	return (
 		<Box sx={{ animation: "fadeIn 0.6s ease-out" }}>
-			<Typography
-				variant="body1"
-				sx={{
-					fontSize: "1.1rem",
-					fontWeight: 500,
-					mb: 3,
-				}}
-			>
+			{/* Use SectionDescription for introductory text */}
+			<SectionDescription sx={{ mb: 3, fontSize: "1rem" }}>
 				Choose how you'd like to get started:
-			</Typography>
+			</SectionDescription>
 
 			<SectionContainer>
-				<Grid container spacing={3}>
+				<Grid container spacing={2.5}> {/* Slightly reduced spacing */}
 					{/* Radient Pass Option */}
 					<Grid item xs={12} md={6}>
-						<ChoiceCard onClick={handleRadientPassChoice} isRadientOption>
-							<Box sx={{ textAlign: "left" }}>
-								<CardTitle>
-									Get started for free with <br />
+						{/* Use the specific RadientChoiceCard */}
+						<RadientChoiceCard onClick={handleRadientPassChoice}>
+							<Box> {/* Wrap text content */}
+								<CardTitle variant="h6"> {/* Use variant */}
+									Get started for free with{" "}
+									{/* Removed component="span" */}
 									<RadientPassText>Radient Pass</RadientPassText>
 								</CardTitle>
-								<CardSubtitle>
+								<CardSubtitle variant="body2"> {/* Use variant */}
 									Batteries included with{" "}
-									<span
-										style={{
-											fontWeight: 700,
-											color: radientTheme.palette.primary.light,
-										}}
+									<Typography
+										component="span"
+										fontWeight="medium" // Use medium weight
+										color={radientTheme.palette.primary.main} // Use Radient color
 									>
-										agentic web search, image generation, site crawling, an
-										assortment of models
-									</span>
-									, and more. Get started with one click, no credit card
-									required. No rate limits, and everything you need in one
-									place.
+										agentic web search, image generation, site crawling, models
+									</Typography>
+									, and more. One-click setup, no credit card required.
 								</CardSubtitle>
 							</Box>
 							<CardIcon>
@@ -292,41 +219,43 @@ export const RadientChoiceStep: FC<RadientChoiceStepProps> = ({
 									}}
 								/>
 							</CardIcon>
-							<ChooseOption className="choose-option" isRadientOption>
-								Choose this option <FontAwesomeIcon icon={faArrowRight} />
+							{/* Simplified ChooseOption text */}
+							<ChooseOption className="choose-option">
+								Choose Radient Pass <FontAwesomeIcon icon={faArrowRight} size="sm" />
 							</ChooseOption>
-						</ChoiceCard>
+						</RadientChoiceCard>
 					</Grid>
 
 					{/* DIY Option */}
 					<Grid item xs={12} md={6}>
 						<ChoiceCard onClick={handleDiyChoice}>
-							<Box sx={{ textAlign: "left" }}>
-								<CardTitle>
-									Set up your own keys <br />
-									<FreeText>Free Forever</FreeText>
+							<Box> {/* Wrap text content */}
+								<CardTitle variant="h6">
+									Set up your own keys{" "}
+									{/* Removed component="span" */}
+									<FreeText>(Free Forever)</FreeText>
 								</CardTitle>
-								<CardSubtitle>
-									Full flexibility for more technical users. Get your own API
-									keys and mix and match providers. Handle separate transaction
-									fees with providers on your own such as SERP API, OpenAI, and
-									Anthropic.
+								<CardSubtitle variant="body2">
+									Full flexibility for technical users. Bring your own API keys
+									for providers like OpenAI, Anthropic, SERP API, etc., and manage billing separately.
 								</CardSubtitle>
 							</Box>
-							<CardIcon sx={{ fontSize: "4rem" }}>🔧</CardIcon>
+							{/* Use Typography for emoji for better control */}
+							<CardIcon>
+                                <Typography fontSize="3.5rem">🔧</Typography>
+                            </CardIcon>
 							<ChooseOption className="choose-option">
-								Choose this option <FontAwesomeIcon icon={faArrowRight} />
+								Choose DIY Setup <FontAwesomeIcon icon={faArrowRight} size="sm" />
 							</ChooseOption>
 						</ChoiceCard>
 					</Grid>
 				</Grid>
 			</SectionContainer>
 
-			<SectionDescription sx={{ mt: 3, fontStyle: "italic" }}>
-				<Box component="span" sx={{ mr: 1 }}>
-					💡
-				</Box>
-				You can always change your setup later in the Settings page.
+			{/* Use standard SectionDescription styling */}
+			<SectionDescription sx={{ mt: 3, textAlign: 'center' }}>
+				<Box component="span" sx={{ mr: 0.5 }}>💡</Box>
+				You can always change your setup later in Settings.
 			</SectionDescription>
 		</Box>
 	);
