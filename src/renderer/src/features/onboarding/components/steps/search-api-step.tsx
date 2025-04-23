@@ -267,7 +267,7 @@ export const SearchApiStep: FC = () => {
 							id="search-api-select"
 							value={selectedCredential}
 							onChange={handleCredentialChange}
-							MenuProps={menuPropsSx(theme)} 
+							MenuProps={menuPropsSx(theme)}
 						>
 							{searchApiCredentials.map((cred) => (
 								<MenuItem key={cred.key} value={cred.key}>
