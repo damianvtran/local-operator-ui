@@ -3,13 +3,13 @@ import type { Preview } from "@storybook/react";
 import { ThemeProvider } from "@mui/material/styles";
 import { CssBaseline } from "@mui/material";
 // @ts-ignore Path aliases don't work for Storybook root
-import theme from "@renderer/theme";
+import { getTheme, DEFAULT_THEME } from "@renderer/shared/themes";
 // @ts-ignore Path aliases don't work for Storybook root
-import { AuthProviders } from "@renderer/providers/auth";
+import { AuthProviders } from "@renderer/shared/providers/auth";
 // @ts-ignore Path aliases don't work for Storybook root
-import { FeatureFlagProvider } from "@renderer/providers/feature-flags";
+import { FeatureFlagProvider } from "@renderer/shared/providers/feature-flags";
 // @ts-ignore Path aliases don't work for Storybook root
-import { config } from "@renderer/config";
+import { config } from "@renderer/shared/config";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router-dom";
 import { PostHogProvider } from "posthog-js/react";
@@ -98,6 +98,9 @@ if (typeof window !== "undefined") {
 	};
 }
 
+const defaultThemeOption = getTheme(DEFAULT_THEME);
+const defaultMuiTheme = defaultThemeOption.theme;
+
 const preview: Preview = {
 	parameters: {
 		controls: {
@@ -111,7 +114,7 @@ const preview: Preview = {
 			values: [
 				{
 					name: "dark",
-					value: theme.palette.background.default,
+					value: defaultMuiTheme.palette.background.default,
 				},
 			],
 		},
@@ -137,7 +140,7 @@ const preview: Preview = {
 									microsoftClientId={config.VITE_MICROSOFT_CLIENT_ID}
 									microsoftTenantId={config.VITE_MICROSOFT_TENANT_ID}
 								>
-									<ThemeProvider theme={theme}>
+									<ThemeProvider theme={defaultMuiTheme}>
 										<CssBaseline />
 										<Story />
 										<ThemedToastContainer />
