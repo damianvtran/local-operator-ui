@@ -14,7 +14,6 @@ import { persist } from "zustand/middleware";
 export enum OnboardingStep {
 	RADIENT_CHOICE = "radient_choice",
 	RADIENT_SIGNIN = "radient_signin",
-	WELCOME = "welcome",
 	USER_PROFILE = "user_profile",
 	MODEL_CREDENTIAL = "model_credential",
 	SEARCH_API = "search_api",
@@ -77,7 +76,8 @@ export const useOnboardingStore = create<OnboardingState>()(
 	persist(
 		(set) => ({
 			isComplete: false,
-			currentStep: OnboardingStep.WELCOME,
+			// Default to RADIENT_CHOICE; the modal will redirect if needed
+			currentStep: OnboardingStep.RADIENT_CHOICE,
 			isActive: false,
 
 			completeOnboarding: () => {
@@ -102,7 +102,8 @@ export const useOnboardingStore = create<OnboardingState>()(
 			resetOnboarding: () => {
 				set({
 					isComplete: false,
-					currentStep: OnboardingStep.WELCOME,
+					// Reset to RADIENT_CHOICE as well
+					currentStep: OnboardingStep.RADIENT_CHOICE,
 					isActive: false,
 				});
 			},
