@@ -75,8 +75,12 @@ export const useScrollToBottom = (
 					? absScrollTop // For negative scrollTop
 					: scrollTop; // For positive scrollTop
 
-			// Show button when scrolled away from bottom by more than the threshold
-			const shouldShowButton = distanceFromBottom > buttonThreshold;
+			// Check if the container is actually scrollable
+			const canScroll = container.scrollHeight > container.clientHeight;
+
+			// Show button only if scrollable and scrolled away from bottom
+			const shouldShowButton =
+				canScroll && distanceFromBottom > buttonThreshold;
 
 			// Only update state if value changed and throttled
 			const now = Date.now();
