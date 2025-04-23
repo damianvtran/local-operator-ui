@@ -14,7 +14,6 @@ import {
 	styled,
 } from "@mui/material";
 
-// --- Keyframes ---
 // Subtle fade-in animation
 const fadeIn = keyframes`
   from {
@@ -27,36 +26,33 @@ const fadeIn = keyframes`
   }
 `;
 
-// --- Buttons ---
-
 /**
  * Primary action button (shadcn-inspired)
  */
 export const PrimaryButton = styled(Button)(({ theme }) => ({
-	borderRadius: theme.shape.borderRadius * 0.75, // Consistent radius
-	padding: theme.spacing(0.75, 2), // Adjusted padding
+	borderRadius: theme.shape.borderRadius * 0.75,
+	padding: theme.spacing(0.75, 2),
 	fontWeight: 500,
-	fontSize: "0.875rem", // Consistent font size
+	fontSize: "0.875rem",
 	textTransform: "none",
-	minWidth: 100, // Adjusted min-width
+	minWidth: 100,
 	backgroundColor: theme.palette.primary.main,
 	color: theme.palette.primary.contrastText,
-	boxShadow: "none", // Remove default shadow
-	border: `1px solid ${theme.palette.primary.main}`, // Ensure border for consistency
+	boxShadow: "none",
+	border: `1px solid ${theme.palette.primary.main}`,
 	"&:hover": {
-		backgroundColor: alpha(theme.palette.primary.main, 0.9), // Slightly darken on hover
+		backgroundColor: alpha(theme.palette.primary.main, 0.9),
 		boxShadow: "none",
-		// Remove transform for flatter design
 	},
 	"&:active": {
-		// Remove transform
+		boxShadow: "none",
 	},
 	"&:disabled": {
 		backgroundColor: alpha(theme.palette.action.disabledBackground, 0.5),
 		color: theme.palette.action.disabled,
 		borderColor: theme.palette.divider,
 	},
-	transition: "background-color 0.2s ease-in-out, border-color 0.2s ease-in-out", // Simplified transition
+	transition: "background-color 0.2s ease-in-out, border-color 0.2s ease-in-out",
 }));
 
 /**
@@ -69,13 +65,13 @@ export const SecondaryButton = styled(Button)(({ theme }) => ({
 	fontSize: "0.875rem",
 	textTransform: "none",
 	minWidth: 100,
-	borderColor: theme.palette.divider, // Use divider color for border
-	color: theme.palette.text.primary, // Use primary text color
-	backgroundColor: theme.palette.background.paper, // Use paper background
+	borderColor: theme.palette.divider,
+	color: theme.palette.text.primary,
+	backgroundColor: theme.palette.background.paper,
 	boxShadow: "none",
 	"&:hover": {
-		backgroundColor: theme.palette.action.hover, // Subtle hover background
-		borderColor: theme.palette.divider, // Keep border color consistent
+		backgroundColor: theme.palette.action.hover,
+		borderColor: theme.palette.divider,
 		boxShadow: "none",
 	},
 	"&:disabled": {
@@ -95,18 +91,16 @@ export const SkipButton = styled(Button)(({ theme }) => ({
 	fontWeight: 500,
 	fontSize: "0.875rem",
 	padding: theme.spacing(0.75, 2),
-	minWidth: "auto", // Allow button to shrink
+	minWidth: "auto",
 	boxShadow: "none",
-	border: "1px solid transparent", // Keep layout consistent
+	border: "1px solid transparent",
 	"&:hover": {
-		backgroundColor: theme.palette.action.hover, // Subtle background on hover
+		backgroundColor: theme.palette.action.hover,
 		color: theme.palette.text.primary,
-		textDecoration: "none", // Remove underline
+		textDecoration: "none",
 	},
 	transition: "background-color 0.2s ease-in-out, color 0.2s ease-in-out",
 }));
-
-// --- Step Indicator ---
 
 /**
  * Step indicator container
@@ -114,7 +108,7 @@ export const SkipButton = styled(Button)(({ theme }) => ({
 export const StepIndicatorContainer = styled(Box)(({ theme }) => ({
 	display: "flex",
 	justifyContent: "center",
-	gap: theme.spacing(1), // Reduced gap
+	gap: theme.spacing(1),
 	marginBottom: theme.spacing(3),
 	padding: theme.spacing(1, 0),
 }));
@@ -128,17 +122,17 @@ export const StepDot = styled(Box, {
 	active?: boolean;
 	visited?: boolean;
 }>(({ theme, active, visited }) => {
-	const size = 8; // Smaller, consistent size
+	const size = 8;
 
-	let backgroundColor = theme.palette.action.disabledBackground; // Default inactive color
-	let opacity = 0.6; // Default opacity for inactive/unvisited
+	let backgroundColor = theme.palette.action.disabledBackground;
+	let opacity = 0.6;
 
 	if (active) {
 		backgroundColor = theme.palette.primary.main;
 		opacity = 1;
 	} else if (visited) {
-		backgroundColor = theme.palette.primary.main; // Visited but not active
-		opacity = 0.8; // Slightly less prominent than active
+		backgroundColor = theme.palette.primary.main;
+		opacity = 0.8;
 	}
 
 	return {
@@ -148,29 +142,26 @@ export const StepDot = styled(Box, {
 		backgroundColor,
 		opacity,
 		transition: "all 0.3s ease-in-out",
-		cursor: visited && !active ? "pointer" : "default", // Allow clicking visited (but not active) dots
-		// Removed pulse animation and shadow for cleaner look
+		cursor: visited && !active ? "pointer" : "default",
 	};
 });
-
-// --- Content Sections ---
 
 /**
  * Section container with subtle animation
  */
 export const SectionContainer = styled("div")({
-	animation: `${fadeIn} 0.4s ease-out`, // Slightly faster animation
-	padding: "4px 0", // Add small padding to prevent content shift during animation
+	animation: `${fadeIn} 0.4s ease-out`,
+	padding: "4px 0",
 });
 
 /**
  * Section title (aligned with SettingsSectionCard title style)
  */
 export const SectionTitle = styled(Typography)(({ theme }) => ({
-	fontSize: "1.125rem", // ~18px, consistent with h6 or slightly larger
+	fontSize: "1.125rem",
 	fontWeight: 500,
-	marginBottom: theme.spacing(1), // Reduced margin
-	color: theme.palette.text.primary, // Use primary text color
+	marginBottom: theme.spacing(1),
+	color: theme.palette.text.primary,
 	display: "flex",
 	alignItems: "center",
 	gap: theme.spacing(1),
@@ -188,14 +179,16 @@ export const SectionDescription = styled(Box)(({ theme }) => ({
 
 /**
  * Field Label (matches editable-field.tsx)
+ * Rendered as a 'label' for semantic correctness and to avoid nesting issues.
  */
-export const FieldLabel = styled(Typography)(({ theme }) => ({
+export const FieldLabel = styled('label')(({ theme }) => ({
+	...theme.typography.body2, 
 	marginBottom: 6,
 	display: "flex",
 	alignItems: "center",
+	fontSize: "0.875rem", 
+	fontWeight: 500, 
 	color: theme.palette.text.secondary,
-	fontWeight: 500,
-	fontSize: "0.875rem",
 }));
 
 /**
@@ -236,8 +229,6 @@ export const LinkText = styled(Typography)(({ theme }) => ({
 	},
 	transition: "color 0.2s ease-in-out",
 }));
-
-// --- Congratulations Screen ---
 
 /**
  * Congratulations container

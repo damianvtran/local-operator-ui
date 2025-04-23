@@ -1,7 +1,7 @@
+import React from "react"; // Add React import
 import {
 	OnboardingStep,
 	useOnboardingStore,
-	// } from "../../../store/onboarding-store";
 } from "@shared/store/onboarding-store";
 import type { Meta, StoryObj } from "@storybook/react";
 import { OnboardingModal } from "./onboarding-modal";
@@ -30,7 +30,8 @@ const meta: Meta<typeof OnboardingModal> = {
 		(Story) => {
 			const state = useOnboardingStore.getState();
 			state.resetOnboarding();
-			state.setCurrentStep(OnboardingStep.WELCOME);
+			// Default start step is now RADIENT_CHOICE
+			state.setCurrentStep(OnboardingStep.RADIENT_CHOICE);
 
 			// Clear the session to allow re-running the story
 			window.sessionStorage.removeItem("mock-radient-session");
@@ -81,6 +82,49 @@ export const RadientSignIn: Story = {
 		const state = useOnboardingStore.getState();
 		state.resetOnboarding();
 		state.setCurrentStep(OnboardingStep.RADIENT_SIGNIN);
+
+		return <OnboardingModal open={true} />;
+	},
+};
+
+/**
+ * Onboarding flow when Radient Pass (Provider Auth) is disabled.
+ * The modal should automatically start at the User Profile step.
+ */
+export const RadientPassDisabled: Story = {
+	args: {
+		open: true,
+	},
+	render: () => {
+		// Temporarily override the mock for this story
+		// biome-ignore lint/suspicious/noExplicitAny: Mocking window API
+		const originalCheck = (window as any).api.ipcRenderer
+			.checkProviderAuthEnabled;
+		// biome-ignore lint/suspicious/noExplicitAny: Mocking window API
+		(window as any).api.ipcRenderer.checkProviderAuthEnabled = async () => {
+			console.log(
+				"[Storybook Mock Override] checkProviderAuthEnabled returning false",
+			);
+			return false;
+		};
+
+		// Reset state - start at RADIENT_CHOICE, the component should redirect
+		const state = useOnboardingStore.getState();
+		state.resetOnboarding();
+		state.setCurrentStep(OnboardingStep.RADIENT_CHOICE);
+
+		// Restore the original mock when the component unmounts
+		// biome-ignore lint/correctness/useExhaustiveDependencies: Effect runs once on mount/unmount
+		React.useEffect(() => {
+			return () => {
+				// biome-ignore lint/suspicious/noExplicitAny: Mocking window API
+				(window as any).api.ipcRenderer.checkProviderAuthEnabled =
+					originalCheck;
+				console.log(
+					"[Storybook Mock Override] Restored checkProviderAuthEnabled",
+				);
+			};
+		}, []); // Empty dependency array ensures this runs only on mount and unmount
 
 		return <OnboardingModal open={true} />;
 	},
