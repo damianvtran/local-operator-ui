@@ -64,6 +64,7 @@ const CanvasHeader = styled(Box)(({ theme }) => ({
 	alignItems: "center",
 	justifyContent: "space-between",
 	padding: theme.spacing(2, 3),
+	height: "84px",
 	borderBottom: `1px solid ${alpha(
 		theme.palette.divider,
 		theme.palette.mode === "light" ? 0.2 : 0.1,
@@ -166,7 +167,7 @@ export const Canvas: FC<CanvasProps> = ({
 					<Typography variant="h6" fontWeight={600}>
 						Canvas
 					</Typography>
-					<Typography variant="body2" color="text.secondary">
+					<Typography variant="caption" color="text.secondary">
 						View and manage documents
 					</Typography>
 				</HeaderTitle>

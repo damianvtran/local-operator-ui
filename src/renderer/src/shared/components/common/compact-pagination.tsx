@@ -25,7 +25,7 @@ const PaginationContainer = styled(Box)(({ theme }) => ({
 	left: 0,
 	right: 0,
 	zIndex: 10,
-	minHeight: 40, // Ensure consistent height
+	minHeight: 52, // Ensure consistent height
 	boxShadow:
 		theme.palette.mode === "dark"
 			? "0 -2px 8px rgba(0, 0, 0, 0.15)"
