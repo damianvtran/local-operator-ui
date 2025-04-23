@@ -7,9 +7,8 @@
 
 import { faCheck } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Box, CircularProgress, Tooltip, useTheme } from "@mui/material"; // Added CircularProgress and useTheme
+import { Box, CircularProgress, Tooltip, useTheme } from "@mui/material";
 import { getUserInfo } from "@shared/api/radient/auth-api";
-// Import buttons from the local styled components file
 import { apiConfig } from "@shared/config";
 import { radientUserKeys } from "@shared/hooks/use-radient-user-query";
 import {
@@ -29,8 +28,8 @@ import {
 	CongratulationsIcon,
 	CongratulationsMessage,
 	CongratulationsTitle,
-	PrimaryButton, // Import from local styled components
-	SecondaryButton, // Import from local styled components
+	PrimaryButton,
+	SecondaryButton,
 	SkipButton,
 	StepDot,
 	StepIndicatorContainer,
@@ -42,14 +41,12 @@ import { RadientChoiceStep } from "./steps/radient-choice-step";
 import { RadientSignInStep } from "./steps/radient-signin-step";
 import { SearchApiStep } from "./steps/search-api-step";
 import { UserProfileStep } from "./steps/user-profile-step";
-// WelcomeStep is removed
 
 // Define step titles outside the component for stability
 // Use Partial<> as not all steps might have explicit titles defined here anymore
 const stepTitles: Partial<Record<OnboardingStep, string>> = {
 	[OnboardingStep.RADIENT_CHOICE]: "Choose Your Setup Option",
 	[OnboardingStep.RADIENT_SIGNIN]: "Sign in with a Radient Pass",
-	// [OnboardingStep.WELCOME]: "Welcome to Local Operator", // Removed
 	[OnboardingStep.USER_PROFILE]: "Set Up Your Profile",
 	[OnboardingStep.MODEL_CREDENTIAL]: "Add Model Provider Credentials",
 	[OnboardingStep.SEARCH_API]: "Enable Web Search (Recommended)",
@@ -79,8 +76,6 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 		useOnboardingStore();
 	const navigate = useNavigate();
 
-	// Feature flag 'radient-pass-onboarding' is now GA (always enabled)
-
 	// State to track if provider auth (OAuth credentials) is configured in the backend
 	const [isProviderAuthEnabled, setIsProviderAuthEnabled] = useState(false); // Assume disabled initially
 	// State to track loading status for the provider auth check
@@ -97,7 +92,7 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 	// On mount, check if provider auth is enabled via IPC
 	useEffect(() => {
 		const checkAuth = async () => {
-			setIsLoadingProviderAuth(true); // Start loading
+			setIsLoadingProviderAuth(true); 
 			try {
 				const enabled = await window.api.ipcRenderer.checkProviderAuthEnabled();
 				setIsProviderAuthEnabled(enabled);
@@ -106,7 +101,7 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 				// Assume disabled if there's an error
 				setIsProviderAuthEnabled(false);
 			} finally {
-				setIsLoadingProviderAuth(false); // Finish loading
+				setIsLoadingProviderAuth(false); 
 			}
 		};
 		checkAuth();
@@ -214,45 +209,39 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 		return diySteps;
 	}, [isRadientPassFlowEnabled, currentStep, isUsingRadientPass]);
 
-	// Track visited steps for navigation - Moved before usage in useEffect
+	// Track visited steps for navigation
+	// Initialize empty, as currentStep might be undefined during hydration
 	const [visitedSteps, setVisitedSteps] = useState<Set<OnboardingStep>>(
-		new Set([currentStep]),
+		new Set<OnboardingStep>(),
 	);
+
+	// Ref to track if the initial adjustment has been done
+	const initialAdjustmentDone = useRef(false);
 
 	// Adjust the initial step based on the enabled flow after loading
 	useEffect(() => {
-		// Wait until provider auth status is loaded and ensure we are on the initial step
-		if (
-			isLoadingProviderAuth ||
-			visitedSteps.size > 1 || // Only adjust if it's the very first load
-			currentStep === OnboardingStep.CREATE_AGENT // Don't adjust if already jumped via session restore
-		) {
-			return;
-		}
+		// Only run if loading is finished AND adjustment hasn't been done yet.
+		if (!isLoadingProviderAuth && !initialAdjustmentDone.current) {
+			// Mark as done immediately to prevent re-runs.
+			initialAdjustmentDone.current = true;
 
-		// If Radient Pass flow is enabled (provider auth configured), start at RADIENT_CHOICE.
-		if (isRadientPassFlowEnabled) {
-			// Only set if not already there (e.g., due to session restore logic)
-			if (currentStep !== OnboardingStep.RADIENT_CHOICE) {
-				setCurrentStep(OnboardingStep.RADIENT_CHOICE);
+			// Check the step *at this exact moment* using getState from the store.
+			const stepWhenEffectRuns = useOnboardingStore.getState().currentStep;
+
+			// Only adjust if the step is still the default initial step (RADIENT_CHOICE).
+			// This prevents overriding navigation triggered by DIY click or session restore.
+			if (stepWhenEffectRuns === OnboardingStep.RADIENT_CHOICE) {
+				if (!isRadientPassFlowEnabled) {
+					// If Radient Pass is disabled, the initial step should be USER_PROFILE.
+					setCurrentStep(OnboardingStep.USER_PROFILE);
+				}
+				// If Radient Pass is enabled, RADIENT_CHOICE is correct, so no change needed.
 			}
 		}
-		// If Radient Pass flow is *disabled* (provider auth not configured),
-		// skip choice/signin and start directly at USER_PROFILE.
-		else {
-			// Only set if not already there
-			if (currentStep !== OnboardingStep.USER_PROFILE) {
-				setCurrentStep(OnboardingStep.USER_PROFILE);
-			}
-		}
-	}, [
-		// Cleaned up dependencies based on Biome suggestions and actual usage
-		isRadientPassFlowEnabled,
-		currentStep, // Need currentStep to check if redirection is needed
-		setCurrentStep, // Need setCurrentStep to perform redirection
-		isLoadingProviderAuth, // Need loading state to gate the effect
-		visitedSteps.size, // Need size to check if it's the first load
-	]);
+		// Dependencies: Only run when loading finishes or provider auth status changes.
+		// setCurrentStep is included as it's used within the effect.
+	}, [isLoadingProviderAuth, isRadientPassFlowEnabled, setCurrentStep]);
+
 
 	// Detect if user has jumped from RADIENT_SIGNIN directly to CREATE_AGENT
 	// This indicates they successfully used Radient Pass
@@ -268,18 +257,32 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 	// Update visited steps when currentStep changes
 	useEffect(() => {
 		setVisitedSteps((prev) => {
-			// Don't modify if the step is already visited or if loading
-			if (prev.has(currentStep) || isLoadingProviderAuth) return prev;
+			// Don't modify if the step is already visited
+			if (prev.has(currentStep)) return prev;
+			// Add the new step regardless of loading state
 			const updated = new Set(prev);
 			updated.add(currentStep);
 			return updated;
 		});
-	}, [currentStep, isLoadingProviderAuth]); // Depend on loading state
+	}, [currentStep]); // Remove isLoadingProviderAuth dependency
+
+	// Effect to add the initial step to visitedSteps once currentStep is defined
+	useEffect(() => {
+		// Add the current step if it's defined and visitedSteps is still empty
+		if (currentStep && visitedSteps.size === 0) {
+			setVisitedSteps(new Set([currentStep]));
+		}
+		// This effect depends on currentStep becoming defined and visitedSteps being empty.
+	}, [currentStep, visitedSteps.size]);
+
 
 	/**
 	 * Get the main title for the dialog based on the current step
 	 */
 	const dialogTitle = useMemo(() => {
+		// Handle undefined currentStep during hydration
+		if (!currentStep) return "Loading...";
+
 		// Use specific titles, fallback to the tooltip title
 		switch (currentStep) {
 			case OnboardingStep.RADIENT_CHOICE:
@@ -292,10 +295,15 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 		}
 	}, [currentStep]); // Remove stepTitles from dependency array
 
+  console.log("currentStep", currentStep);
+
 	/**
 	 * Get the content component for the current step
 	 */
 	const stepContent = useMemo(() => {
+		// Handle undefined currentStep during hydration
+		if (!currentStep) return null;
+
 		switch (currentStep) {
 			case OnboardingStep.RADIENT_CHOICE:
 				return (
@@ -348,9 +356,6 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 	const handleNext = useCallback(() => {
 		// DIY flow transitions (Radient Choice/Signin don't use 'Next')
 		switch (currentStep) {
-			// case OnboardingStep.WELCOME: // Removed
-			// 	setCurrentStep(OnboardingStep.USER_PROFILE);
-			// 	break;
 			case OnboardingStep.USER_PROFILE:
 				setCurrentStep(OnboardingStep.MODEL_CREDENTIAL);
 				break;
@@ -451,8 +456,8 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 	 * Determine if the 'Back' button should be shown and enabled
 	 */
 	const canGoBack = useMemo(() => {
-		// Cannot go back while loading
-		if (isLoadingProviderAuth) {
+		// Cannot go back while loading or if currentStep is undefined
+		if (isLoadingProviderAuth || !currentStep) {
 			return false;
 		}
 
@@ -553,7 +558,8 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 	// Render step indicator dots
 	const stepIndicators = (
 		<StepIndicatorContainer>
-			{steps.map((step) => {
+			{/* Only render dots if currentStep is defined */}
+			{currentStep && steps.map((step) => {
 				const isActive = currentStep === step;
 				const isVisited = visitedSteps.has(step);
 				// Allow navigation only to visited steps that are not the current one
@@ -584,6 +590,9 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 			})}
 		</StepIndicatorContainer>
 	);
+
+	// Remove the debug console log before returning
+	// console.log("currentStep", currentStep); // Removed
 
 	return (
 		<OnboardingDialog
