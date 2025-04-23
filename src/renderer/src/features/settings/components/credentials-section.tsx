@@ -59,17 +59,16 @@ export const CredentialsSection: FC<CredentialsSectionProps> = ({
 			{/* Add margin bottom to separate sections */}
 			<CommonSectionTitle
 				title={title}
-				variant="h6" // Use h6 for subsection titles
+				variant="h6"
 				sx={{
-					mt: isFirstSection ? 0 : 3, // Adjust top margin based on position
-					mb: 1, // Reduced margin below title
+					mt: isFirstSection ? 0 : 3,
+					mb: 1,
 				}}
 			/>
 			<SectionDescription variant="body2">{description}</SectionDescription>
 			{isEmpty ? (
 				<EmptyState type={emptyStateType} />
 			) : (
-				// Use consistent spacing for the grid
 				<Grid container spacing={2}>
 					{children}
 				</Grid>

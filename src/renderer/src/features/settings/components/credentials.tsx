@@ -146,7 +146,7 @@ export const Credentials: FC = () => {
 				{/* Add Custom Credential Button */}
 				<Box display="flex" justifyContent="center" mt={4}>
 					<Button
-						variant="contained"
+						variant="outlined"
 						color="primary"
 						startIcon={<FontAwesomeIcon icon={faPlus} size="sm" />}
 						onClick={() => handleAddCredential(null)}

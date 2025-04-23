@@ -7,82 +7,76 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
-	alpha, // Import alpha for button styling
+	alpha,
 	Box,
 	Button,
 	IconButton,
 	Tooltip,
 	Typography,
 	styled,
-	useTheme, // Import useTheme
+	useTheme,
 } from "@mui/material";
 import type { FC } from "react";
 import { getCredentialInfo } from "./credential-manifest";
 
 // Shadcn-inspired card container
 const CredentialCardContainer = styled(Box)(({ theme }) => ({
-	padding: theme.spacing(2), // Consistent padding (16px)
+	padding: theme.spacing(2),
 	height: "100%",
 	display: "flex",
 	flexDirection: "column",
-	borderRadius: theme.shape.borderRadius * 0.75, // Consistent radius
-	border: `1px solid ${theme.palette.divider}`, // Border instead of shadow
-	backgroundColor: theme.palette.background.paper, // Use paper background
-	transition: "border-color 0.2s ease-in-out", // Subtle transition
+	borderRadius: theme.shape.borderRadius * 0.75,
+	border: `1px solid ${theme.palette.divider}`,
+	backgroundColor: theme.palette.background.paper,
+	transition: "border-color 0.2s ease-in-out",
 	"&:hover": {
-		borderColor: theme.palette.text.disabled, // Slightly darker border on hover
+		borderColor: theme.palette.text.disabled,
 	},
 }));
 
 // Styling for the credential name (title)
 const CredentialName = styled(Typography)(({ theme }) => ({
-	fontWeight: 500, // Medium weight
+	fontWeight: 500,
 	display: "flex",
 	alignItems: "center",
-	gap: theme.spacing(1), // 8px gap
-	fontSize: "0.9375rem", // ~15px
-	marginBottom: theme.spacing(0.25), // Small margin below name
+	gap: theme.spacing(1),
+	fontSize: "0.9375rem",
+	marginBottom: theme.spacing(0.25),
 }));
 
 // Styling for the credential key (subtitle)
 const CredentialKey = styled(Typography)(({ theme }) => ({
 	color: theme.palette.text.secondary,
-	fontSize: "0.75rem", // 12px
-	fontFamily: "'Roboto Mono', monospace", // Specify monospace font directly
-	marginBottom: theme.spacing(1), // 8px margin below key
-	wordBreak: "break-all", // Break long keys
+	fontSize: "0.75rem",
+	fontFamily: "'Roboto Mono', monospace",
+	marginBottom: theme.spacing(1),
+	wordBreak: "break-all",
 }));
 
 // Styling for the credential description
 const CredentialDescription = styled(Typography)(({ theme }) => ({
 	color: theme.palette.text.secondary,
-	fontSize: "0.8125rem", // 13px
+	fontSize: "0.8125rem",
 	lineHeight: 1.5,
-	marginBottom: theme.spacing(2), // 16px margin below description
-	flexGrow: 1, // Allow description to take available space
-	// Limit description lines for consistency (optional)
-	// display: "-webkit-box",
-	// WebkitLineClamp: 2,
-	// WebkitBoxOrient: "vertical",
-	// overflow: "hidden",
-	// textOverflow: "ellipsis",
+	marginBottom: theme.spacing(2),
+	flexGrow: 1,
 }));
 
 // Container for action buttons at the bottom
 const CredentialActions = styled(Box)(({ theme }) => ({
 	display: "flex",
 	justifyContent: "flex-end",
-	alignItems: "center", // Align items vertically
-	marginTop: "auto", // Push actions to the bottom
-	gap: theme.spacing(1), // 8px gap between actions
+	alignItems: "center",
+	marginTop: "auto",
+	gap: theme.spacing(1),
 }));
 
 type CredentialCardProps = {
-	credentialKey: string; // The unique key (e.g., "OPENAI_API_KEY")
-	isConfigured?: boolean; // True if the credential has a value set
-	onEdit?: (key: string) => void; // Callback when Edit/Update is clicked
-	onClear?: (key: string) => void; // Callback when Clear is clicked
-	onAdd?: (key: string) => void; // Callback when Configure is clicked
+	credentialKey: string;
+	isConfigured?: boolean;
+	onEdit?: (key: string) => void;
+	onClear?: (key: string) => void;
+	onAdd?: (key: string) => void;
 };
 
 /**
@@ -97,13 +91,13 @@ export const CredentialCard: FC<CredentialCardProps> = ({
 	onAdd,
 }) => {
 	const theme = useTheme();
-	const credInfo = getCredentialInfo(credentialKey); // Get manifest info (name, desc, url)
+	const credInfo = getCredentialInfo(credentialKey);
 
 	// Common button styles based on shadcn
 	const buttonSx = {
 		textTransform: "none",
-		fontSize: "0.8125rem", // ~13px
-		padding: theme.spacing(0.5, 1.5), // Smaller padding
+		fontSize: "0.8125rem",
+		padding: theme.spacing(0.5, 1.5),
 		borderRadius: theme.shape.borderRadius * 0.75,
 	};
 
@@ -119,7 +113,7 @@ export const CredentialCard: FC<CredentialCardProps> = ({
 
 	const destructiveButtonSx = {
 		...buttonSx,
-		borderColor: theme.palette.divider, // Start with subtle border
+		borderColor: theme.palette.divider,
 		color: theme.palette.error.main,
 		"&:hover": {
 			backgroundColor: alpha(theme.palette.error.main, 0.05),
@@ -129,7 +123,6 @@ export const CredentialCard: FC<CredentialCardProps> = ({
 
 	const primaryButtonSx = {
 		...buttonSx,
-		// Primary button uses contained variant, styles handled by theme
 	};
 
 	return (
@@ -142,7 +135,7 @@ export const CredentialCard: FC<CredentialCardProps> = ({
 						icon={isConfigured ? faLock : faKey}
 						size="sm"
 						fixedWidth
-						style={{ marginRight: theme.spacing(0.5) }} // Add space after icon
+						style={{ marginRight: theme.spacing(0.5) }}
 					/>
 					{credInfo.name}
 				</CredentialName>
@@ -151,7 +144,7 @@ export const CredentialCard: FC<CredentialCardProps> = ({
 				<Tooltip title={credInfo.description} placement="top">
 					<IconButton
 						size="small"
-						sx={{ ml: "auto", color: theme.palette.text.disabled }} // Align right, subtle color
+						sx={{ ml: "auto", color: theme.palette.text.disabled }}
 					>
 						<FontAwesomeIcon icon={faInfoCircle} size="xs" />
 					</IconButton>
@@ -195,12 +188,12 @@ export const CredentialCard: FC<CredentialCardProps> = ({
 					<>
 						{/* Configure Button (Primary Style) */}
 						<Button
-							variant="contained" // Use contained for primary action here
+							variant="outlined"
 							size="small"
 							color="primary"
 							startIcon={<FontAwesomeIcon icon={faKey} size="xs" />}
 							onClick={() => onAdd?.(credentialKey)}
-							sx={{ ...primaryButtonSx, boxShadow: "none" }} // Remove shadow for contained
+							sx={{ ...primaryButtonSx, boxShadow: "none" }}
 						>
 							Configure
 						</Button>

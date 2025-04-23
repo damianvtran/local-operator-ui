@@ -5,36 +5,35 @@ import type { FC, ReactNode, RefObject } from "react";
 
 // Shadcn-like card styles
 const StyledCard = styled(Card)(({ theme }) => ({
-	marginBottom: theme.spacing(3), // Consistent margin (24px)
+	marginBottom: theme.spacing(3),
 	backgroundColor: theme.palette.background.paper,
-	borderRadius: 6, // Slightly less rounded (shadcn default is often 8px, but 6px is common too)
-	border: `1px solid ${theme.palette.divider}`, // Use border instead of shadow
-	boxShadow: "none", // Remove default shadow
-	width: "100%", // Ensure card takes full width of its container
+	borderRadius: 6,
+	border: `1px solid ${theme.palette.divider}`,
+	boxShadow: "none",
+	width: "100%",
 }));
 
 const StyledCardContent = styled(CardContent)(({ theme }) => ({
-	padding: theme.spacing(3), // Consistent padding (24px)
+	padding: theme.spacing(3),
 	"&:last-child": {
-		// Ensure consistent padding even for last child in MUI Card
 		paddingBottom: theme.spacing(3),
 	},
 }));
 
 const CardTitle = styled(Typography)(({ theme }) => ({
-	marginBottom: theme.spacing(0.5), // Reduced margin below title (4px)
+	marginBottom: theme.spacing(0.5),
 	display: "flex",
 	alignItems: "center",
-	gap: theme.spacing(1.5), // Consistent gap (12px)
-	fontSize: "1.125rem", // ~18px, similar to h6 but explicit
-	fontWeight: 500, // Medium weight
+	gap: theme.spacing(1.5),
+	fontSize: "1.125rem",
+	fontWeight: 500,
 }));
 
 const CardDescription = styled(Typography)(({ theme }) => ({
-	marginBottom: theme.spacing(3), // Consistent margin below description (24px)
+	marginBottom: theme.spacing(3),
 	color: theme.palette.text.secondary,
-	fontSize: "0.875rem", // Smaller description text (14px)
-	lineHeight: 1.5, // Improve readability
+	fontSize: "0.875rem",
+	lineHeight: 1.5,
 }));
 
 type SettingsSectionCardProps = {
@@ -42,9 +41,9 @@ type SettingsSectionCardProps = {
 	description?: string;
 	icon?: IconDefinition;
 	children: ReactNode;
-	titleComponent?: ReactNode; // Optional custom title component (e.g., for Radient section)
-	contentProps?: Record<string, unknown>; // Pass additional props to CardContent
-	cardRef?: RefObject<HTMLDivElement>; // Add ref prop for scrolling
+	titleComponent?: ReactNode;
+	contentProps?: Record<string, unknown>;
+	cardRef?: RefObject<HTMLDivElement>;
 };
 
 /**
@@ -65,7 +64,7 @@ export const SettingsSectionCard: FC<SettingsSectionCardProps> = ({
 		<StyledCard ref={cardRef}>
 			<StyledCardContent {...contentProps}>
 				{titleComponent ? (
-					titleComponent // Render custom title if provided
+					titleComponent
 				) : (
 					<CardTitle variant="h6">
 						{/* Use fixedWidth for consistent icon spacing */}
@@ -83,15 +82,13 @@ export const SettingsSectionCard: FC<SettingsSectionCardProps> = ({
 	);
 };
 
-// --- Reusable Layout Components ---
-
 /**
  * A container for form fields or settings within a SettingsSectionCard, providing consistent spacing.
  */
 export const FieldsContainer = styled(Box)(({ theme }) => ({
 	display: "flex",
 	flexDirection: "column",
-	gap: theme.spacing(2), // Consistent gap (16px) between fields
+	gap: theme.spacing(2),
 }));
 
 /**
@@ -99,9 +96,8 @@ export const FieldsContainer = styled(Box)(({ theme }) => ({
  */
 export const InfoGrid = styled(Box)(({ theme }) => ({
 	display: "grid",
-	// Responsive grid: 1 column on small screens, auto-fit columns on larger screens
 	gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
-	gap: theme.spacing(2), // Consistent gap (16px) between info boxes
+	gap: theme.spacing(2),
 }));
 
 /**
@@ -109,14 +105,14 @@ export const InfoGrid = styled(Box)(({ theme }) => ({
  * Features subtle background, border, and padding consistent with shadcn aesthetics.
  */
 export const InfoBox = styled(Box)(({ theme }) => ({
-	padding: theme.spacing(1.5), // Reduced padding (12px)
-	borderRadius: 4, // Less rounded corners (shadcn often uses 4px or 6px)
-	backgroundColor: theme.palette.action.hover, // Use a subtle background like hover state
-	border: `1px solid ${theme.palette.divider}`, // Add a subtle border
-	height: "100%", // Ensure consistent height if needed within a grid
+	padding: theme.spacing(1.5),
+	borderRadius: 4,
+	backgroundColor: theme.palette.action.hover,
+	border: `1px solid ${theme.palette.divider}`,
+	height: "100%",
 	display: "flex",
 	flexDirection: "column",
-	justifyContent: "center", // Center content vertically if needed
+	justifyContent: "center",
 }));
 
 /**
@@ -124,18 +120,18 @@ export const InfoBox = styled(Box)(({ theme }) => ({
  */
 export const InfoLabel = styled(Typography)(({ theme }) => ({
 	color: theme.palette.text.secondary,
-	marginBottom: theme.spacing(0.5), // Reduced margin (4px)
-	fontSize: "0.75rem", // Smaller font size (12px)
-	lineHeight: 1.4, // Adjust line height for small font
-	fontWeight: 400, // Normal weight for labels
+	marginBottom: theme.spacing(0.5),
+	fontSize: "0.75rem",
+	lineHeight: 1.4,
+	fontWeight: 400,
 }));
 
 /**
  * Styled value for information displayed within an InfoBox.
  */
 export const InfoValue = styled(Typography)(() => ({
-	fontWeight: 500, // Medium weight for values
-	fontSize: "0.875rem", // Consistent small font size (14px)
-	lineHeight: 1.4, // Adjust line height
-	wordBreak: "break-word", // Prevent long values from overflowing the box
+	fontWeight: 500,
+	fontSize: "0.875rem",
+	lineHeight: 1.4,
+	wordBreak: "break-word",
 }));
