@@ -187,7 +187,6 @@ export const ModelCredentialStep: FC = () => {
 			mt: 0.5,
 			ml: 0.5,
 		},
-
 	};
 
 	// Style for the info box
