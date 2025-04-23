@@ -10,17 +10,20 @@ import {
 	faListAlt,
 	faRobot,
 	faUser,
+	faExternalLinkAlt, // Added for the CTA button icon
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
 	Alert,
 	Box,
+	Button, // Added for the CTA button
 	Card,
 	CardContent,
 	CircularProgress,
 	Container,
 	Grid,
 	Paper,
+	Stack, // Added for layout
 	Typography,
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
@@ -540,25 +543,119 @@ export const SettingsPage: FC = () => {
 					</Box>
 
 					{/* Radient Account Section */}
-					<Box mt={6} mb={4} ref={radientSectionRef}>
-						<Typography
-							variant="h5"
-							fontWeight="500"
-							display="flex"
-							alignItems="center"
-							gap={2}
-						>
-							<IconImage src={radientIcon} alt="Radient Icon" />
-							Radient Account
-						</Typography>
-						<Typography variant="body1" color="text.secondary" mt={1} mb={3}>
-							Manage your Radient account and Radient Pass details.
-						</Typography>
-						<RadientAccountSection />
-					</Box>
+					<StyledCard ref={radientSectionRef}>
+						<StyledCardContent>
+							<Stack
+								direction={{ xs: "column", sm: "row" }}
+								spacing={2}
+								justifyContent="space-between"
+								alignItems={{ xs: "flex-start", sm: "center" }}
+								mb={3}
+							>
+								<Box>
+									<Typography
+										variant="h5"
+										fontWeight="500"
+										display="flex"
+										alignItems="center"
+										gap={2}
+										mb={1} // Added margin bottom
+									>
+										<IconImage src={radientIcon} alt="Radient Icon" />
+										Radient Account
+									</Typography>
+									<Typography variant="body1" color="text.secondary">
+										Manage your Radient account, Radient Pass details, and
+										credits.
+									</Typography>
+								</Box>
+								<Button
+									variant="contained"
+									color="primary"
+									href="https://console.radienthq.com"
+									target="_blank"
+									rel="noopener noreferrer"
+									endIcon={
+										<FontAwesomeIcon icon={faExternalLinkAlt} size="sm" />
+									} // Slightly smaller icon
+									sx={(theme) => ({
+										// Shadcn-inspired base styles
+										backgroundColor: "primary.main",
+										color: "primary.contrastText",
+										padding: theme.spacing(0.75, 2.5), // Adjusted padding
+										fontSize: "0.875rem", // Slightly smaller font
+										fontWeight: 500,
+										borderRadius: theme.shape.borderRadius * 0.75, // Slightly reduced border radius
+										textTransform: "none", // No uppercase text
+										boxShadow: "none", // No default elevation
+										transition: theme.transitions.create("opacity", {
+											// Smooth transition for opacity
+											duration: theme.transitions.duration.short,
+										}),
+
+										// Hover effect: Dim slightly, no background change
+										"&:hover": {
+											backgroundColor: "primary.main", // Keep background the same
+											opacity: 0.9, // Dim the button
+											boxShadow: "none", // Ensure no shadow on hover
+										},
+
+										// Existing responsive styles
+										mt: { xs: 2, sm: 0 },
+										alignSelf: { xs: "flex-start", sm: "center" },
+									})}
+								>
+									Go to Radient Console
+								</Button>
+							</Stack>
+							<RadientAccountSection />
+						</StyledCardContent>
+					</StyledCard>
 
 					{/* Appearance Section */}
-					<Box mt={6} mb={4} ref={appearanceSectionRef}>
+					<StyledCard ref={appearanceSectionRef}>
+						<StyledCardContent>
+							<Typography
+								variant="h5"
+								fontWeight="500"
+								display="flex"
+								alignItems="center"
+								gap={2}
+								mb={1} // Added margin bottom
+							>
+								<FontAwesomeIcon icon={faAdjust} />
+								Appearance
+							</Typography>
+							<Typography variant="body1" color="text.secondary" mb={3}>
+								Customize the look and feel of Local Operator
+							</Typography>
+							<ThemeSelector />
+						</StyledCardContent>
+					</StyledCard>
+
+					{/* API Credentials Section */}
+					<StyledCard ref={credentialsSectionRef}>
+						<StyledCardContent>
+							<Typography
+								variant="h5"
+								fontWeight="500"
+								display="flex"
+								alignItems="center"
+								gap={2}
+								mb={1} // Added margin bottom
+							>
+								<FontAwesomeIcon icon={faKey} />
+								API Credentials
+							</Typography>
+							<Typography variant="body1" color="text.secondary" mb={3}>
+								Manage your API keys for various services and integrations
+							</Typography>
+							<Credentials />
+						</StyledCardContent>
+					</StyledCard>
+
+					{/* App Updates Section */}
+					<Box ref={updatesSectionRef}>
 						<Typography
 							variant="h5"
 							fontWeight="500"
