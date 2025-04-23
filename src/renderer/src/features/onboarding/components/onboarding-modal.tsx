@@ -132,7 +132,7 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 		};
 		// Run the session check logic
 		tryRestoreSession();
-	}, [setCurrentStep, queryClient]); // Dependencies simplified
+	}, [setCurrentStep, queryClient]);
 
 	// Update the previous step reference whenever currentStep changes
 	useEffect(() => {
@@ -146,7 +146,7 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 			currentStep === OnboardingStep.RADIENT_CHOICE ||
 			currentStep === OnboardingStep.RADIENT_SIGNIN
 		) {
-			return []; // No indicator needed during choice/signin
+			return [];
 		}
 
 		// If user is using Radient Pass and is at CREATE_AGENT or CONGRATULATIONS step,
@@ -171,19 +171,13 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 		];
 
 		return diySteps;
-	}, [currentStep, isUsingRadientPass]); // Dependencies simplified
+	}, [currentStep, isUsingRadientPass]);
 
 	// Track visited steps for navigation
 	// Initialize empty, as currentStep might be undefined during hydration
 	const [visitedSteps, setVisitedSteps] = useState<Set<OnboardingStep>>(
 		new Set<OnboardingStep>(),
 	);
-
-	// Ref to track if the initial adjustment has been done - No longer needed
-	// const initialAdjustmentDone = useRef(false);
-
-	// Adjust the initial step based on the enabled flow after loading - No longer needed
-	// useEffect(() => { ... });
 
 	// Detect if user has jumped from RADIENT_SIGNIN directly to CREATE_AGENT
 	// This indicates they successfully used Radient Pass
@@ -246,8 +240,6 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 				return stepTitles[currentStep] || "🚀 First-Time Setup";
 		}
 	}, [currentStep]); // Remove stepTitles from dependency array
-
-	console.log("currentStep", currentStep);
 
 	/**
 	 * Get the content component for the current step
@@ -522,9 +514,6 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 				})}
 		</StepIndicatorContainer>
 	);
-
-	// Remove the debug console log before returning
-	// console.log("currentStep", currentStep); // Removed
 
 	return (
 		<OnboardingDialog
