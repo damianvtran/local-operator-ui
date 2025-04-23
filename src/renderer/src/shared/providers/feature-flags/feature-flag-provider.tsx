@@ -15,16 +15,7 @@ import { createContext, useContext, useEffect, useMemo } from "react";
  * Type definition for all available feature flags
  * Add new feature flags here with their expected value types
  */
-export type FeatureFlags = {
-	/**
-	 * Controls whether the Radient Pass onboarding flow is enabled
-	 */
-	"radient-pass-onboarding": boolean;
-
-	// Add more feature flags here as needed
-	// Example:
-	// "new-feature": boolean | string | number;
-};
+export type FeatureFlags = Record<string, boolean>;
 
 /**
  * Type for feature flag keys, derived from the FeatureFlags type

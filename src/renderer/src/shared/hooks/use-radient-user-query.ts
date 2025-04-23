@@ -10,7 +10,6 @@ import { resetQueryCache } from "@shared/api/query-client";
 import { createRadientClient } from "@shared/api/radient";
 import { apiConfig } from "@shared/config";
 import type { RadientUser } from "@shared/providers/auth";
-import { useFeatureFlags } from "@shared/providers/feature-flags";
 import {
 	clearSession,
 	getSession,
@@ -33,8 +32,6 @@ export const radientUserKeys = {
  * @returns Query result with user data, loading state, error state, and utility functions
  */
 export const useRadientUserQuery = () => {
-	const { isEnabled } = useFeatureFlags();
-	const isRadientPassEnabled = isEnabled("radient-pass-onboarding");
 	const queryClient = useQueryClient();
 
 	// Create the Radient API client
@@ -125,8 +122,6 @@ export const useRadientUserQuery = () => {
 		},
 		// Refetch on window focus to ensure we have the latest session state
 		refetchOnWindowFocus: true,
-		// Only enable if the feature flag is enabled
-		enabled: isRadientPassEnabled,
 		// Keep the session data fresh but not too long
 		staleTime: 10 * 1000, // 10 seconds
 		// Refetch more frequently
@@ -180,7 +175,7 @@ export const useRadientUserQuery = () => {
 			}
 		},
 		// Only run this query if we have a session with an access token
-		enabled: isRadientPassEnabled && !!sessionQuery.data?.accessToken,
+		enabled: !!sessionQuery.data?.accessToken,
 		// Keep the user data fresh but not too long
 		staleTime: 10 * 1000, // 10 seconds
 		// Refetch more frequently
