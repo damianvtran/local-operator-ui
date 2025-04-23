@@ -279,7 +279,7 @@ export const CongratulationsTitle = styled(Typography)(({ theme }) => ({
  * Congratulations message
  */
 export const CongratulationsMessage = styled(Typography)(({ theme }) => ({
-	fontSize: "1rem", // Standard body text size
+	fontSize: "0.875rem", // Consistent body text size (shadcn)
 	color: theme.palette.text.secondary,
 	marginBottom: theme.spacing(3), // Consistent margin
 	maxWidth: 500, // Slightly narrower max width

@@ -113,6 +113,7 @@ export const RadientSignInStep: FC<RadientSignInStepProps> = ({
 					component="span"
 					fontWeight="medium" // Use medium weight for emphasis
 					color={theme.palette.primary.main} // Use theme primary color
+					sx={{ fontSize: "inherit" }} // Ensure size matches parent
 				>
 					$1 USD
 				</Typography>{" "}
@@ -121,6 +122,7 @@ export const RadientSignInStep: FC<RadientSignInStepProps> = ({
 					component="span"
 					fontWeight="medium" // Use medium weight
 					color={theme.palette.primary.main} // Use theme primary color
+					sx={{ fontSize: "inherit" }} // Ensure size matches parent
 				>
 					$5 USD
 				</Typography>{" "}
