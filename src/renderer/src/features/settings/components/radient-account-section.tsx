@@ -163,6 +163,13 @@ export const RadientAccountSection: FC = () => {
 						<InfoLabel variant="body2">Account ID:</InfoLabel>
 						<InfoValue variant="body2">{user.radientUser.account.id}</InfoValue>
 					</InfoRow>
+					{/* Added Tenant ID display */}
+					<InfoRow>
+						<InfoLabel variant="body2">Tenant ID:</InfoLabel>
+						<InfoValue variant="body2">
+							{user.radientUser.account.tenant_id}
+						</InfoValue>
+					</InfoRow>
 					<InfoRow>
 						<InfoLabel variant="body2">Provider:</InfoLabel>
 						<InfoValue variant="body2" sx={{ textTransform: "capitalize" }}>

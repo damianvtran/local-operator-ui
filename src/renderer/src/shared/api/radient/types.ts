@@ -111,11 +111,18 @@ export type TokenRefreshRequest = {
 	client_id: string;
 };
 
+// Define Role type (assuming string union based on common patterns)
+export type Role = "admin" | "member" | "owner" | string; // Allow string for flexibility
+
 export type AccountInfo = {
 	/**
-	 * User ID
+	 * Account ID (maps to User ID in some contexts)
 	 */
 	id: string;
+	/**
+	 * ID of the tenant the account belongs to
+	 */
+	tenant_id: string; // Added
 	/**
 	 * User email
 	 */
@@ -123,19 +130,27 @@ export type AccountInfo = {
 	/**
 	 * User name
 	 */
-	name?: string;
+	name: string; // Changed to required based on Go struct
 	/**
-	 * Account status
+	 * Role of the user within the tenant
 	 */
-	status: "active" | "pending" | "suspended";
+	role: Role; // Added
+	/**
+	 * Optional metadata associated with the account
+	 */
+	metadata?: Record<string, string>; // Added
+	/**
+	 * Account status (assuming this is still relevant, though not in Go struct)
+	 */
+	status?: "active" | "pending" | "suspended"; // Kept as optional
 	/**
 	 * Account creation timestamp
 	 */
-	created_at: string;
+	created_at: string; // Assuming string representation (time.Time -> string)
 	/**
 	 * Account update timestamp
 	 */
-	updated_at: string;
+	updated_at: string; // Assuming string representation (time.Time -> string)
 };
 
 export type IdentityInfo = {
@@ -253,4 +268,122 @@ export type ErrorResponse = {
 	 * HTTP status code
 	 */
 	status?: number;
+};
+
+/**
+ * Result structure for the credit balance endpoint.
+ * Assuming the balance is returned as a number.
+ */
+export type CreditBalanceResult = {
+	/**
+	 * The available credit balance.
+	 */
+	balance: number;
+	// Add other relevant fields if known, e.g., currency
+	// currency?: string;
+};
+
+/**
+ * Query parameters for the usage rollup endpoint.
+ */
+export type UsageRollupRequestParams = {
+	/**
+	 * Start date in RFC3339 format (e.g., "2023-01-01T00:00:00Z"). Optional.
+	 */
+	start_date?: string;
+	/**
+	 * End date in RFC3339 format (e.g., "2023-01-31T23:59:59Z"). Optional.
+	 */
+	end_date?: string;
+	/**
+	 * Filter by application ID. Optional.
+	 */
+	application_id?: string;
+	/**
+	 * Filter by usage type (e.g., "inference", "tool"). Optional.
+	 */
+	usage_type?: string;
+	/**
+	 * Filter by provider (e.g., "openai", "anthropic"). Optional.
+	 */
+	provider?: string;
+	/**
+	 * Rollup granularity (required).
+	 */
+	rollup: "daily" | "monthly" | "annual";
+};
+
+/**
+ * Represents a single aggregated usage data point from the API response.
+ * Structure matches the fields returned by the /usage/rollup endpoint.
+ */
+export type UsageDataPoint = {
+	// Renamed from UsageRecord
+	/**
+	 * Timestamp for the data point (RFC3339 format).
+	 */
+	timestamp: string; // Changed from period_start/period_end
+	/**
+	 * Total number of requests during the period.
+	 */
+	total_requests: number; // Added
+	/**
+	 * Total tokens processed during the period.
+	 */
+	total_tokens: number; // Added
+	/**
+	 * Total prompt tokens used during the period.
+	 */
+	prompt_tokens: number; // Added
+	/**
+	 * Total completion tokens generated during the period.
+	 */
+	completion_tokens: number; // Added
+	/**
+	 * Usage units (interpretation might depend on context, potentially credits).
+	 */
+	units: number; // Changed from usage_units, assuming this maps to tokens/usage for chart
+	/**
+	 * Total cost incurred during the period.
+	 */
+	total_cost: number; // Changed from cost, assuming this maps to credits for chart
+	/**
+	 * Number of successful requests.
+	 */
+	success_count: number; // Added
+	/**
+	 * Number of failed requests.
+	 */
+	failure_count: number; // Added
+	/**
+	 * Optional: Application ID if the rollup is per-application.
+	 */
+	// Fields like application_id, usage_type, provider might be present
+	// depending on the rollup parameters, but are not shown in the example log.
+	// Add them as optional if needed based on API behavior.
+	application_id?: string;
+	usage_type?: string;
+	provider?: string;
+};
+
+/**
+ * Response structure for the usage rollup endpoint.
+ */
+export type UsageRollupResponse = {
+	/**
+	 * An array of aggregated usage data points.
+	 */
+	data_points: UsageDataPoint[]; // Changed from usage_records: UsageRecord[]
+	/**
+	 * The granularity used for the rollup.
+	 */
+	rollup: "daily" | "monthly" | "annual";
+	/**
+	 * The start date of the queried period.
+	 */
+	start_date: string;
+	/**
+	 * The end date of the queried period.
+	 */
+	end_date: string;
 };
