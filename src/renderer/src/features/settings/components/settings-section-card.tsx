@@ -3,7 +3,6 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, Card, CardContent, Typography, styled } from "@mui/material";
 import type { FC, ReactNode, RefObject } from "react";
 
-// Shadcn-like card styles
 const StyledCard = styled(Card)(({ theme }) => ({
 	marginBottom: theme.spacing(3),
 	backgroundColor: theme.palette.background.paper,

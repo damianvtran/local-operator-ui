@@ -130,11 +130,10 @@ export const ChatSettings: FC<ChatSettingsProps> = ({
 		setLocalAgent(selectedAgent);
 	}, [selectedAgent]);
 	return (
-		<Box sx={{ mt: 4, mb: 3 }}>
+		<Box sx={{ mt: 2, mb: 1 }}>
 			<SectionTitle variant="subtitle1">
 				<TitleIcon icon={faComments} />
 				Chat Settings
-				{/* @ts-ignore - Tooltip has issues with TypeScript but works fine */}
 				<Tooltip
 					title="Settings that control how the agent generates responses"
 					arrow

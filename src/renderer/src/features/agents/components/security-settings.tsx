@@ -86,7 +86,7 @@ export const SecuritySettings: FC<SecuritySettingsProps> = ({
 	initialSelectedAgentId,
 }) => {
 	return (
-		<Box sx={{ mt: 1 }}>
+		<Box>
 			<SectionTitle variant="subtitle1">
 				<TitleIcon icon={faShieldAlt} />
 				Security Prompt
