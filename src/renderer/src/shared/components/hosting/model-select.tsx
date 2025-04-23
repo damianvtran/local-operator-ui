@@ -67,40 +67,80 @@ type ModelSelectProps = {
 	allowCustom?: boolean;
 };
 
-// Styled components for consistent UI
+// Styled components for consistent UI - Applying shadcn-like styles
 const FieldContainer = styled(Box)({
-	marginBottom: 24,
+	marginBottom: 16, // Reduced margin
 	position: "relative",
 });
 
 const FieldLabel = styled(Typography)(({ theme }) => ({
-	marginBottom: 8,
+	marginBottom: 6, // Reduced margin
 	display: "flex",
 	alignItems: "center",
 	color: theme.palette.text.secondary,
-	fontWeight: 600,
+	fontWeight: 500, // Slightly less bold
+	fontSize: "0.875rem", // Small text size
 }));
 
 const LabelIcon = styled(Box)({
-	marginRight: 12,
-	opacity: 0.8,
+	marginRight: 8, // Reduced margin
+	opacity: 0.9,
+	display: "flex",
+	alignItems: "center",
 });
 
+// Apply shadcn-like styles to Autocomplete's TextField
 const StyledAutocomplete = styled(Autocomplete)(({ theme }) => ({
 	"& .MuiOutlinedInput-root": {
-		borderRadius: 8,
-		backgroundColor: theme.palette.inputField.background,
-		padding: "16px",
-		transition: "all 0.2s ease",
+		// Target the root for border, background, height
+		borderRadius: 6, // Slightly less rounded
+		backgroundColor: theme.palette.background.paper, // Use paper background
+		border: `1px solid ${theme.palette.divider}`, // Use divider color for border
+		padding: "0 !important", // Override default Autocomplete padding, important needed sometimes
+		minHeight: "36px", // Target height
+		height: "36px", // Explicit height
+		transition: "border-color 0.2s ease, box-shadow 0.2s ease",
 		"&:hover": {
-			backgroundColor: theme.palette.inputField.hoverBackground,
+			borderColor: theme.palette.text.secondary, // Darker border on hover
+			backgroundColor: theme.palette.background.paper, // Keep background consistent
 		},
 		"&.Mui-focused": {
-			backgroundColor: theme.palette.inputField.focusBackground,
+			backgroundColor: theme.palette.background.paper, // Keep background consistent
+			borderColor: theme.palette.primary.main, // Primary border color on focus
+			boxShadow: `0 0 0 2px ${theme.palette.primary.main}33`, // Subtle focus ring like shadcn
+		},
+		// Remove default outline
+		"& .MuiOutlinedInput-notchedOutline": {
+			border: "none",
+		},
+		// Adjust padding for the input element itself within the root
+		"& .MuiInputBase-input": {
+			padding: "4px 12px !important", // Target inner padding (vertical 4px), override Autocomplete defaults
+			fontSize: "0.875rem", // Small text size
+			lineHeight: 1.5, // Adjusted line height
+			height: "calc(36px - 8px)", // Adjust height based on padding
+			boxSizing: "border-box",
+		},
+		// Style placeholder within the input
+		"& .MuiInputBase-input::placeholder": {
+			color: theme.palette.text.disabled,
+			opacity: 1, // Ensure placeholder is visible
+		},
+		// Adjust Autocomplete specific elements for vertical centering
+		"& .MuiAutocomplete-endAdornment": {
+			right: "8px",
+			top: "50%", // Position at vertical center
+			transform: "translateY(-50%)", // Adjust for icon height
+		},
+		"& .MuiAutocomplete-inputRoot": {
+			padding: "0 !important", // Ensure no extra padding from Autocomplete's inputRoot
 		},
 	},
+	// Ensure the base root doesn't interfere with height
 	"& .MuiInputBase-root": {
-		minHeight: "54px",
+		minHeight: "36px",
+		height: "36px",
+		padding: "0 !important",
 	},
 }));
 
@@ -522,21 +562,19 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 						helperText={helperText}
 						FormHelperTextProps={{
 							sx: {
-								fontSize: "0.7rem",
+								fontSize: "0.75rem", // Slightly larger helper text
 								mt: 0.5,
-								opacity: 0.8,
-								fontStyle: "italic",
+								ml: 0.5, // Add slight left margin
+								opacity: 0.9,
+								fontStyle: "normal", // Remove italic
 							},
 						}}
 						InputProps={{
 							...params.InputProps,
-							sx: {
-								fontSize: "0.875rem",
-								lineHeight: 1.6,
-							},
+							// sx is handled by StyledAutocomplete now
 							endAdornment: (
 								<>
-									{isSaving || isSubmitting ? (
+									{isSaving || isSubmitting || isModelsLoading ? ( // Include models loading state
 										<CircularProgress size={20} />
 									) : (
 										params.InputProps.endAdornment

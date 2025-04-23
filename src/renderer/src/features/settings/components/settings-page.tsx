@@ -338,11 +338,13 @@ const StyledContainer = styled(Container)(() => ({
 	marginTop: 16,
 }));
 
-const StyledCard = styled(Card)(() => ({
-	marginBottom: 32,
-	backgroundColor: "background.paper",
-	borderRadius: 8,
-	boxShadow: "0 4px 20px rgba(0,0,0,0.06)",
+// Apply shadcn-like card styles
+const StyledCard = styled(Card)(({ theme }) => ({
+	marginBottom: 24, // Reduced margin
+	backgroundColor: theme.palette.background.paper,
+	borderRadius: 6, // Slightly less rounded
+	border: `1px solid ${theme.palette.divider}`, // Use border instead of shadow
+	boxShadow: "none", // Remove default shadow
 }));
 
 const CardTitle = styled(Typography)(() => ({
@@ -360,23 +362,29 @@ const CardDescription = styled(Typography)(() => ({
 const FieldsContainer = styled(Box)(() => ({
 	display: "flex",
 	flexDirection: "column",
-	gap: 4,
+	gap: 4, // Reduced gap
 }));
 
-const InfoBox = styled(Box)(() => ({
-	padding: 16,
-	borderRadius: 8,
-	backgroundColor: "background.default",
+// Apply shadcn-like styles to InfoBox
+const InfoBox = styled(Box)(({ theme }) => ({
+	padding: 12, // Reduced padding
+	borderRadius: 4, // Less rounded corners
+	backgroundColor: theme.palette.action.hover, // Use a subtle background like hover state
+	border: `1px solid ${theme.palette.divider}`, // Add a subtle border
 	height: "100%",
 }));
 
-const InfoLabel = styled(Typography)(() => ({
-	color: "text.secondary",
-	marginBottom: 8,
+// Adjust InfoLabel styles
+const InfoLabel = styled(Typography)(({ theme }) => ({
+	color: theme.palette.text.secondary,
+	marginBottom: 4, // Reduced margin
+	fontSize: "0.75rem", // Smaller font size
 }));
 
+// Adjust InfoValue styles
 const InfoValue = styled(Typography)(() => ({
 	fontWeight: 500,
+	fontSize: "0.875rem", // Consistent small font size
 }));
 
 const StyledCardContent = styled(CardContent)(({ theme }) => ({

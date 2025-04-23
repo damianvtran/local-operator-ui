@@ -71,17 +71,22 @@ const FieldContainer = styled(Box)({
 	position: "relative",
 });
 
+// Update FieldLabel to match editable-field.tsx styles
 const FieldLabel = styled(Typography)(({ theme }) => ({
-	marginBottom: 8,
+	marginBottom: 6, // Reduced margin
 	display: "flex",
 	alignItems: "center",
 	color: theme.palette.text.secondary,
-	fontWeight: 600,
+	fontWeight: 500, // Slightly less bold
+	fontSize: "0.875rem", // Small text size
 }));
 
+// Update LabelIcon to match editable-field.tsx styles
 const LabelIcon = styled(Box)({
-	marginRight: 12,
-	opacity: 0.8,
+	marginRight: 8, // Reduced margin
+	opacity: 0.9,
+	display: "flex",
+	alignItems: "center",
 });
 
 const HeaderContainer = styled(Box)(({ theme }) => ({
@@ -108,45 +113,46 @@ const TitleIcon = styled(FontAwesomeIcon)(({ theme }) => ({
 	backgroundColor: alpha(theme.palette.primary.main, 0.1),
 }));
 
+// Restyle InfoCard to be just the value display box, matching input height/padding
 const InfoCard = styled(Box)(({ theme }) => ({
-	display: "flex",
-	alignItems: "center",
-	marginBottom: theme.spacing(2),
-	padding: theme.spacing(2),
-	borderRadius: theme.shape.borderRadius * 2,
-	backgroundColor: theme.palette.inputField.background,
-	border: `1px solid ${theme.palette.inputField.border}`,
-	transition: "all 0.2s ease",
-	"&:hover": {
-		backgroundColor: theme.palette.inputField.hoverBackground,
-		boxShadow:
-			theme.palette.mode === "light"
-				? "0 2px 8px rgba(0,0,0,0.05)"
-				: "0 2px 8px rgba(0,0,0,0.15)",
-	},
+	display: "flex", // Keep flex for vertical alignment if needed
+	alignItems: "center", // Align text vertically
+	height: "36px", // Match input height
+	padding: theme.spacing(0.5, 1.5), // Match input padding (4px 12px)
+	borderRadius: 4, // Less rounded corners
+	backgroundColor: theme.palette.background.paper, // Use paper background
+	border: `1px solid ${theme.palette.divider}`, // Use divider color for border
+	boxSizing: "border-box",
+	width: "100%", // Take full width of the grid item
+	overflow: "hidden", // Prevent text overflow
 }));
 
-const CardIcon = styled(FontAwesomeIcon)(({ theme }) => ({
+// CardIcon is now unused as icon goes into LabelIcon
+/* const CardIcon = styled(FontAwesomeIcon)(({ theme }) => ({
 	marginRight: 12,
 	opacity: 0.8,
-	color:
-		theme.palette.mode === "light"
+	fontSize: "0.875rem", // This was likely incorrect anyway
 			? theme.palette.grey[700]
 			: theme.palette.text.primary,
-}));
+})); */
 
-// Use span instead of Box to avoid nesting <div> inside <p>
-const LabelText = styled("span")(({ theme }) => ({
+// LabelText is now unused as label goes into FieldLabel
+/* const LabelText = styled("span")(({ theme }) => ({
 	color: theme.palette.text.secondary,
 	marginRight: theme.spacing(1),
+	fontSize: "0.875rem",
 	display: "inline-block",
-}));
+})); */
 
-// Use span instead of Box to avoid nesting <div> inside <p>
-const ValueText = styled("span")(({ theme }) => ({
-	fontWeight: 500,
-	display: "inline-block",
+// Adjust ValueText styles slightly if needed
+const ValueText = styled(Typography)(({ theme }) => ({
+	// Keep as Typography for consistency
+	fontWeight: 400, // Normal weight for value text inside the box
+	fontSize: "0.875rem",
 	color: theme.palette.text.primary,
+	whiteSpace: "nowrap", // Prevent wrapping
+	overflow: "hidden", // Hide overflow
+	textOverflow: "ellipsis", // Add ellipsis
 }));
 
 const MonospaceValueText = styled(ValueText)(({ theme }) => ({
@@ -375,38 +381,49 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 				/>
 
 				<Grid container spacing={3}>
+					{/* Agent ID */}
 					<Grid item xs={12} sm={6}>
-						<InfoCard>
-							<CardIcon icon={faIdCard} />
-							<Typography
-								variant="body2"
-								title="Unique identifier for this agent"
-							>
-								<LabelText>ID</LabelText>
-								<MonospaceValueText>{selectedAgent.id}</MonospaceValueText>
-							</Typography>
+						{/* Use updated FieldLabel and LabelIcon */}
+						<FieldLabel>
+							<LabelIcon>
+								<FontAwesomeIcon icon={faIdCard} size="xs" />
+							</LabelIcon>
+							ID
+						</FieldLabel>
+						<InfoCard title={selectedAgent.id}>
+							<MonospaceValueText>{selectedAgent.id}</MonospaceValueText>
 						</InfoCard>
 					</Grid>
 
+					{/* Created Date */}
 					<Grid item xs={12} sm={6}>
-						<InfoCard>
-							<CardIcon icon={faCalendarAlt} />
-							<Typography variant="body2" title="When this agent was created">
-								<LabelText>Created</LabelText>
-								<ValueText>
-									{new Date(selectedAgent.created_date).toLocaleString()}
-								</ValueText>
-							</Typography>
+						{/* Use updated FieldLabel and LabelIcon */}
+						<FieldLabel>
+							<LabelIcon>
+								<FontAwesomeIcon icon={faCalendarAlt} size="xs" />
+							</LabelIcon>
+							Created
+						</FieldLabel>
+						<InfoCard
+							title={new Date(selectedAgent.created_date).toLocaleString()}
+						>
+							<ValueText>
+								{new Date(selectedAgent.created_date).toLocaleString()}
+							</ValueText>
 						</InfoCard>
 					</Grid>
 
+					{/* Agent Version */}
 					<Grid item xs={12} sm={6}>
-						<InfoCard>
-							<CardIcon icon={faCodeBranch} />
-							<Typography variant="body2" title="Agent version number">
-								<LabelText>Version</LabelText>
-								<ValueText>{selectedAgent.version}</ValueText>
-							</Typography>
+						{/* Use updated FieldLabel and LabelIcon */}
+						<FieldLabel>
+							<LabelIcon>
+								<FontAwesomeIcon icon={faCodeBranch} size="xs" />
+							</LabelIcon>
+							Version
+						</FieldLabel>
+						<InfoCard title={selectedAgent.version}>
+							<ValueText>{selectedAgent.version}</ValueText>
 						</InfoCard>
 					</Grid>
 				</Grid>

@@ -14,12 +14,11 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
 	Box,
 	Button,
-	CircularProgress,
 	IconButton,
 	TextField,
 	Typography,
-	alpha,
 	styled,
+	type ButtonProps, // Import ButtonProps
 } from "@mui/material";
 import { useEffect, useRef, useState } from "react";
 import type React from "react";
@@ -69,134 +68,226 @@ type EditableFieldProps = {
 };
 
 const FieldContainer = styled(Box)({
-	marginBottom: 24,
+	marginBottom: 16, // Reduced margin
 });
 
 const FieldLabel = styled(Typography)(({ theme }) => ({
-	marginBottom: 8,
+	marginBottom: 6, // Reduced margin
 	display: "flex",
 	alignItems: "center",
 	color: theme.palette.text.secondary,
-	fontWeight: 600,
+	fontWeight: 500, // Slightly less bold
+	fontSize: "0.875rem", // Small text size
 }));
 
 const LabelIcon = styled(Box)({
-	marginRight: 12,
-	opacity: 0.8,
+	marginRight: 8, // Reduced margin
+	opacity: 0.9,
+	display: "flex",
+	alignItems: "center",
 });
 
+// Mimic shadcn Input style
 const StyledTextField = styled(TextField)<{ multiline?: boolean }>(
 	({ theme, multiline }) => ({
 		"& .MuiOutlinedInput-root": {
-			borderRadius: 8,
-			backgroundColor: theme.palette.inputField.background,
-			border: `1px solid ${theme.palette.inputField.border}`,
-			padding: 0,
-			minHeight: multiline ? "100px" : "40px",
+			borderRadius: 6, // Slightly less rounded
+			backgroundColor: theme.palette.background.paper, // Use paper background
+			border: `1px solid ${theme.palette.divider}`, // Use divider color for border
+			padding: 0, // Remove root padding
+			minHeight: multiline ? "auto" : "36px", // Target height
+			height: multiline ? "auto" : "36px", // Explicit height
 			alignItems: multiline ? "flex-start" : "center",
+			transition: "border-color 0.2s ease, box-shadow 0.2s ease",
 			"&:hover": {
-				backgroundColor: theme.palette.inputField.hoverBackground,
+				borderColor: theme.palette.text.secondary, // Darker border on hover
+				backgroundColor: theme.palette.background.paper, // Keep background consistent
 			},
 			"&.Mui-focused": {
-				backgroundColor: theme.palette.inputField.focusBackground,
-				boxShadow: `0 0 0 2px ${alpha(theme.palette.primary.main, 0.2)}`,
+				backgroundColor: theme.palette.background.paper, // Keep background consistent
+				borderColor: theme.palette.primary.main, // Primary border color on focus
+				boxShadow: `0 0 0 2px ${theme.palette.primary.main}33`, // Subtle focus ring like shadcn
+			},
+			// Remove default outline
+			"& .MuiOutlinedInput-notchedOutline": {
+				border: "none",
 			},
 		},
 		"& .MuiInputBase-input": {
-			padding: 16,
-			fontSize: "0.875rem",
-			lineHeight: 1.6,
+			padding: multiline ? "8px 12px" : "4px 12px", // Target inner padding (vertical 4px)
+			fontSize: "0.875rem", // Small text size
+			lineHeight: 1.5, // Adjusted line height
 			fontFamily: "inherit",
-			overflowWrap: "break-word",
-			wordWrap: "break-word",
+			height: multiline ? "auto" : "calc(36px - 8px)", // Adjust height based on padding
+			// Ensure text doesn't overflow container
+			overflow: "hidden",
+			textOverflow: "ellipsis",
 			whiteSpace: multiline ? "pre-wrap" : "nowrap",
-			wordBreak: multiline ? "break-word" : "normal",
-			hyphens: multiline ? "auto" : "none",
-			maxWidth: "100%",
-			alignSelf: "flex-start",
+			wordBreak: "break-word", // Keep break-word for multiline
+			alignSelf: multiline ? "flex-start" : "center", // Center single line text vertically
+		},
+		// Style placeholder
+		"& .MuiInputBase-input::placeholder": {
+			color: theme.palette.text.disabled,
+			opacity: 1, // Ensure placeholder is visible
 		},
 	}),
 );
 
+// Container for buttons inside the input field
 const ActionButtonsContainer = styled(Box)({
 	position: "absolute",
-	top: 8,
-	right: 8,
+	top: "50%", // Center vertically
+	transform: "translateY(-50%)", // Adjust vertical centering
+	right: 6, // Position from right
 	display: "flex",
+	alignItems: "center", // Align items vertically
 	gap: 4,
 	zIndex: 10,
 });
 
-const ActionIconButton = styled(IconButton)({
-	padding: 4,
-});
-
-const SaveButton = styled(ActionIconButton)(({ theme }) => ({
-	color: theme.palette.success.main,
-}));
-
-const CancelButton = styled(ActionIconButton)(({ theme }) => ({
-	color: theme.palette.error.main,
-}));
-
-const ClearButton = styled(Button)(({ theme }) => ({
-	backgroundColor: theme.palette.warning.main,
-	color: "white",
-	minWidth: "auto",
-	padding: "2px 8px",
+// Base styles for icon buttons mimicking shadcn ghost/icon button
+const ActionIconButton = styled(IconButton)(({ theme }) => ({
+	padding: 4, // Smaller padding
+	borderRadius: 4, // Slightly rounded corners
+	height: 24, // Smaller height
+	width: 24, // Smaller width
+	color: theme.palette.text.secondary, // Default color
 	"&:hover": {
-		backgroundColor: theme.palette.warning.dark,
+		backgroundColor: theme.palette.action.hover, // Subtle hover background
+		color: theme.palette.text.primary,
 	},
-	zIndex: 20,
 }));
 
-const DisplayContainer = styled(Box, {
-	shouldForwardProp: (prop) => prop !== "multiline",
-})<{ multiline?: boolean }>(({ theme, multiline }) => ({
-	padding: 16,
-	borderRadius: 8,
-	backgroundColor: theme.palette.inputField.background,
-	border: `1px solid ${theme.palette.inputField.border}`,
-	position: "relative",
-	minHeight: multiline ? "100px" : "40px",
-	display: "flex",
-	alignItems: multiline ? "flex-start" : "center",
-	transition: "all 0.2s ease",
-	cursor: "pointer",
+// Specific styles for Save button
+const SaveButton = styled(ActionIconButton)(({ theme }) => ({
+	color: theme.palette.success.main, // Green color for save
 	"&:hover": {
-		backgroundColor: theme.palette.inputField.hoverBackground,
-		boxShadow: `0 0 0 1px ${alpha(theme.palette.primary.main, 0.2)}`,
-		"& .edit-button": {
-			opacity: 1,
+		backgroundColor: `${theme.palette.success.main}1A`, // Lighter green background on hover
+		color: theme.palette.success.dark,
+	},
+}));
+
+// Specific styles for Cancel button
+const CancelButton = styled(ActionIconButton)(({ theme }) => ({
+	color: theme.palette.error.main, // Red color for cancel/close
+	"&:hover": {
+		backgroundColor: `${theme.palette.error.main}1A`, // Lighter red background on hover
+		color: theme.palette.error.dark,
+	},
+}));
+
+// Mimic shadcn secondary/destructive button for Clear
+const ClearButton = styled(Button)(({ theme }) => ({
+	backgroundColor: theme.palette.action.selected, // Use a subtle background
+	color: theme.palette.error.main, // Destructive text color
+	minWidth: "auto",
+	height: 24, // Match icon button height
+	padding: "0 8px", // Horizontal padding
+	fontSize: "0.75rem", // Smaller text
+	borderRadius: 4,
+	textTransform: "none", // No uppercase
+	boxShadow: "none",
+	border: `1px solid ${theme.palette.action.disabledBackground}`, // Subtle border
+	marginLeft: 4, // Add some space from icons
+	marginRight: 16,
+	"&:hover": {
+		backgroundColor: theme.palette.action.hover, // Consistent hover
+		borderColor: theme.palette.error.light,
+		boxShadow: "none",
+	},
+	// Adjust icon size and margin
+	"& .MuiButton-startIcon": {
+		marginRight: 4,
+		marginLeft: -2,
+		"& > *:nth-of-type(1)": {
+			// Target the FontAwesomeIcon
+			fontSize: "0.8rem",
 		},
 	},
 }));
 
+// Use a styled Button for the display state for better semantics
+const DisplayContainer = styled(Button, {
+	shouldForwardProp: (prop) => prop !== "multiline",
+	// Explicitly type the props passed to the styled Button
+})<ButtonProps & { multiline?: boolean }>(({ theme, multiline }) => ({
+	padding: multiline ? "8px 12px" : "4px 12px", // Match input padding
+	borderRadius: 6, // Match input border radius
+	backgroundColor: theme.palette.background.paper, // Match input background
+	border: `1px solid ${theme.palette.divider}`, // Match input border
+	position: "relative",
+	minHeight: multiline ? "auto" : "36px", // Match input height
+	height: multiline ? "auto" : "36px", // Explicit height
+	display: "flex",
+	alignItems: multiline ? "flex-start" : "center", // Align text
+	transition: "border-color 0.2s ease, background-color 0.2s ease",
+	cursor: "pointer",
+	boxSizing: "border-box", // Ensure padding/border are included in height
+	// Button specific resets/styles
+	width: "100%", // Ensure it takes full width like the input
+	textAlign: "left", // Align text to the left
+	textTransform: "none", // Reset button text transform
+	justifyContent: "flex-start", // Align content (icon, text) to the start
+	color: theme.palette.text.primary, // Ensure text color matches input text
+	fontWeight: "normal", // Reset button font weight
+	fontFamily: "inherit", // Use default font
+	"&:hover": {
+		borderColor: theme.palette.text.secondary, // Match input hover border
+		backgroundColor: theme.palette.action.hover, // Subtle background change on hover
+		"& .edit-button": {
+			opacity: 1, // Show edit button on hover
+		},
+	},
+}));
+
+// Adjust display text style
 const DisplayText = styled(Typography, {
 	shouldForwardProp: (prop) => prop !== "multiline",
 })<{ multiline?: boolean }>(({ multiline }) => ({
-	whiteSpace: multiline ? "pre-wrap" : "normal",
-	fontFamily: multiline ? '"Roboto Mono", monospace' : "inherit",
-	fontSize: "0.875rem",
-	lineHeight: 1.6,
+	fontSize: "0.875rem", // Match input text size
+	lineHeight: 1.5, // Match input line height
+	fontFamily: "inherit", // Use standard font
+	whiteSpace: multiline ? "pre-wrap" : "nowrap",
 	wordBreak: "break-word",
-	paddingRight: 32,
+	paddingRight: 30, // Space for the edit button
+	overflow: "hidden", // Prevent overflow
+	textOverflow: "ellipsis", // Add ellipsis if text is too long
+	flexGrow: 1, // Allow text to take available space
+	alignSelf: multiline ? "flex-start" : "center", // Center single line text vertically
 }));
 
+// Adjust placeholder style
 const PlaceholderText = styled(Typography)(({ theme }) => ({
 	color: theme.palette.text.disabled,
-	fontStyle: "italic",
-	fontSize: "0.875rem",
+	fontStyle: "normal", // Remove italic
+	fontSize: "0.875rem", // Match input text size
+	lineHeight: 1.5, // Match input line height
+	paddingRight: 30, // Space for the edit button
+	overflow: "hidden",
+	textOverflow: "ellipsis",
+	whiteSpace: "nowrap",
+	flexGrow: 1,
 }));
 
+// Mimic shadcn icon button for Edit button
 const EditButton = styled(IconButton)(({ theme }) => ({
 	position: "absolute",
-	top: 8,
-	right: 8,
-	color: theme.palette.primary.main,
-	opacity: 0,
-	transition: "opacity 0.2s ease",
-	padding: 4,
+	top: "50%", // Center vertically
+	transform: "translateY(-50%)", // Adjust vertical centering
+	right: 6, // Position from right
+	color: theme.palette.text.secondary, // Use secondary text color
+	opacity: 0, // Hidden by default
+	transition: "opacity 0.2s ease, background-color 0.2s ease, color 0.2s ease",
+	padding: 4, // Match other icon buttons
+	borderRadius: 4, // Match other icon buttons
+	height: 24, // Match other icon buttons
+	width: 24, // Match other icon buttons
+	marginLeft: 4,
+	"&:hover": {
+		backgroundColor: theme.palette.action.hover, // Subtle hover background
+		color: theme.palette.text.primary,
+	},
 }));
 
 /**
@@ -214,28 +305,47 @@ export const EditableField: FC<EditableFieldProps> = ({
 	rows = 4,
 	placeholder = "Enter value...",
 	icon,
-	isSaving = false,
+	isSaving: externalIsSaving = false, // Rename prop to avoid conflict
 }) => {
 	const [isEditing, setIsEditing] = useState(false);
 	const [editValue, setEditValue] = useState(value);
-	const [displayValue, setDisplayValue] = useState(value);
-	const [originalValue, setOriginalValue] = useState(value);
-	const [isClearing, setIsClearing] = useState(false);
+	const [displayValue, setDisplayValue] = useState(value); // Separate display value
+	const [originalValue, setOriginalValue] = useState(value); // Value when edit started
+	const [internalIsSaving, setInternalIsSaving] = useState(false); // Internal saving state
+	const [isClearing, setIsClearing] = useState(false); // Clearing state
 	const inputRef = useRef<HTMLInputElement>(null);
-	const actionButtonsRef = useRef<HTMLDivElement>(null);
+	const actionButtonsRef = useRef<HTMLDivElement>(null); // Ref for action buttons container
 
-	// Update the edit value when the value prop changes
-	useEffect(() => {
-		setEditValue(value);
-		setDisplayValue(value);
-		setOriginalValue(value);
-	}, [value]);
+	const isSaving = externalIsSaving || internalIsSaving; // Combine saving states
 
-	// Focus the input when entering edit mode
+	// Update internal states when the external value prop changes
 	useEffect(() => {
-		if (isEditing && inputRef.current) {
-			inputRef.current.focus();
+		// Only update if not currently editing to avoid disrupting user input
+		if (!isEditing) {
+			setEditValue(value);
+			setDisplayValue(value);
+			setOriginalValue(value);
+		} else {
+			// If editing, update the original value baseline in case the prop changed externally
+			// but keep the user's current editValue
+			setOriginalValue(value);
 		}
+	}, [value, isEditing]);
+
+	// Focus the input and select text when entering edit mode
+	useEffect(() => {
+		if (isEditing) {
+			// Timeout needed to ensure the input is rendered and focusable
+			const timer = setTimeout(() => {
+				if (inputRef.current) {
+					inputRef.current.focus();
+					// Select all text for easy replacement
+					inputRef.current.select();
+				}
+			}, 0);
+			return () => clearTimeout(timer);
+		}
+		return undefined;
 	}, [isEditing]);
 
 	/**
@@ -258,23 +368,31 @@ export const EditableField: FC<EditableFieldProps> = ({
 	 * Cancels editing and reverts to the original value.
 	 */
 	const handleCancel = () => {
-		setEditValue(originalValue);
-		setIsEditing(false);
+		setEditValue(originalValue); // Revert edit value
+		setIsEditing(false); // Exit editing mode
 	};
 
 	/**
 	 * Saves the current edit value.
 	 */
 	const handleSave = async () => {
+		if (isSaving || editValue === originalValue) return; // Prevent saving if already saving or no changes
+
+		setInternalIsSaving(true); // Set internal saving state
 		try {
 			await onSave(editValue);
-			// Update the display value immediately after successful save
-			setDisplayValue(editValue);
+			// On successful save, update the baseline values and exit edit mode
 			setOriginalValue(editValue);
+			setDisplayValue(editValue); // Update display value immediately
 			setIsEditing(false);
-		} catch (_error) {
-			// If save fails, revert to original value
+		} catch (error) {
+			console.error("Failed to save editable field:", error);
+			// Optionally: Add user feedback about the failure (e.g., toast notification)
+			// Revert edit value to the last known good state (originalValue)
 			setEditValue(originalValue);
+			// Do not exit edit mode on failure, allow user to retry or cancel
+		} finally {
+			setInternalIsSaving(false); // Reset internal saving state
 		}
 	};
 
@@ -284,17 +402,22 @@ export const EditableField: FC<EditableFieldProps> = ({
 	 *
 	 * @param e - The blur event.
 	 */
-	const handleBlur = (e: FocusEvent<HTMLInputElement>) => {
-		if (
-			actionButtonsRef.current &&
-			e.relatedTarget &&
-			actionButtonsRef.current.contains(e.relatedTarget as Node)
-		) {
-			return;
-		}
-		if (editValue === originalValue) {
-			setIsEditing(false);
-		}
+	const handleBlur = (
+		e: FocusEvent<HTMLInputElement | HTMLTextAreaElement>,
+	) => {
+		// Use setTimeout to allow click events on buttons to register before blur cancels edit mode
+		setTimeout(() => {
+			// Check if the new focused element is one of the action buttons or the clear button
+			const relatedTarget = e.relatedTarget as Node | null;
+			const isFocusWithinActionButtons =
+				actionButtonsRef.current?.contains(relatedTarget) ?? false;
+
+			// If focus moved outside the input and its action buttons, and there are no changes, cancel editing.
+			// If there *are* changes, keep editing mode active. User must explicitly save or cancel.
+			if (!isFocusWithinActionButtons && editValue === originalValue) {
+				setIsEditing(false);
+			}
+		}, 0);
 	};
 
 	/**
@@ -303,16 +426,21 @@ export const EditableField: FC<EditableFieldProps> = ({
 	 *
 	 * @param e - The keyboard event.
 	 */
-	const handleKeyPress = (e: KeyboardEvent<HTMLInputElement>) => {
-		if (e.key === "Enter" && !multiline) {
-			e.preventDefault();
-			if (editValue !== originalValue) {
-				handleSave();
-			}
-		} else if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && multiline) {
-			e.preventDefault();
-			if (editValue !== originalValue) {
-				handleSave();
+	const handleKeyDown = (
+		e: KeyboardEvent<HTMLInputElement | HTMLTextAreaElement | HTMLDivElement>,
+	) => {
+		if (e.key === "Escape") {
+			handleCancel();
+		} else if (e.key === "Enter") {
+			// Save on Enter for single line, Ctrl/Cmd+Enter for multiline
+			if (!multiline || (multiline && (e.ctrlKey || e.metaKey))) {
+				e.preventDefault(); // Prevent newline in multiline
+				if (editValue !== originalValue) {
+					handleSave();
+				} else {
+					// If no changes, Enter should just exit edit mode
+					setIsEditing(false);
+				}
 			}
 		}
 	};
@@ -324,38 +452,62 @@ export const EditableField: FC<EditableFieldProps> = ({
 	 * @param e - The mouse event.
 	 */
 	const clearField = (e: React.MouseEvent) => {
-		// Prevent any event bubbling
-		e.preventDefault();
-		e.stopPropagation();
+		e.preventDefault(); // Prevent triggering edit mode if clicking clear on display view
+		e.stopPropagation(); // Stop propagation
+
+		if (isSaving || isClearing) return; // Prevent action if already busy
 
 		setIsClearing(true);
+		setInternalIsSaving(true); // Use internal saving state for visual feedback
 
-		// Force the field to be empty first
+		// Optimistically update UI
 		setEditValue("");
+		setDisplayValue("");
 
-		// Direct API call to clear the field - using a timeout to ensure UI updates first
-		setTimeout(() => {
-			onSave("")
-				.then(() => {
-					// Update all state variables
-					setDisplayValue("");
-					setOriginalValue("");
-					setIsEditing(false);
-				})
-				.catch((error) => {
-					console.error("Failed to clear field:", error);
-				})
-				.finally(() => {
-					setIsClearing(false);
-				});
-		}, 0);
+		onSave("")
+			.then(() => {
+				// Confirm state on success
+				setOriginalValue("");
+				setIsEditing(false); // Exit edit mode after successful clear
+			})
+			.catch((error) => {
+				console.error("Failed to clear field:", error);
+				// Revert optimistic updates on failure
+				setEditValue(originalValue);
+				setDisplayValue(originalValue);
+				// Optionally provide user feedback
+			})
+			.finally(() => {
+				setIsClearing(false);
+				setInternalIsSaving(false);
+			});
+	};
+
+	/**
+	 * Handles keydown events on the display container (div) to activate edit mode.
+	 * Explicitly typed for HTMLButtonElement, as DisplayContainer is now a Button.
+	 * @param e - The keyboard event.
+	 */
+	const handleDisplayContainerKeyDown = (
+		e: KeyboardEvent<HTMLButtonElement>,
+	) => {
+		// Buttons are activated by Enter/Space by default, but we prevent default
+		// to avoid potential double activation if MUI's Button also handles it.
+		// We only need to call handleEdit.
+		if (e.key === "Enter" || e.key === " ") {
+			e.preventDefault();
+			handleEdit(); // Activate edit mode
+		}
 	};
 
 	const hasChanged = editValue !== originalValue;
+	// Show clear button if not saving, and the *original* value isn't empty.
+	// This prevents showing clear immediately after clearing until a save happens.
+	const showClearButton = !isSaving && originalValue !== "";
 
 	return (
 		<FieldContainer>
-			<FieldLabel variant="subtitle2">
+			<FieldLabel>
 				{icon && <LabelIcon>{icon}</LabelIcon>}
 				{label}
 			</FieldLabel>
@@ -364,83 +516,115 @@ export const EditableField: FC<EditableFieldProps> = ({
 				<Box sx={{ position: "relative" }}>
 					<StyledTextField
 						fullWidth
-						variant="outlined"
+						variant="outlined" // Keep variant for structure, style overrides hide default look
 						value={editValue}
 						onChange={handleChange}
 						onBlur={handleBlur}
-						onKeyPress={handleKeyPress}
+						onKeyDown={handleKeyDown} // Use onKeyDown for Escape/Enter
 						multiline={multiline}
 						rows={multiline ? rows : undefined}
 						placeholder={placeholder}
 						inputRef={inputRef}
-						size="small"
+						// size="small" // Size is controlled by styled component height/padding
+						autoComplete="off" // Disable browser autocomplete
 					/>
 					<ActionButtonsContainer ref={actionButtonsRef}>
-						{isSaving || isClearing ? (
-							<CircularProgress size={20} />
+						{isSaving ? (
+							// Simple text indicator instead of CircularProgress
+							<Typography
+								variant="caption"
+								sx={{ color: "text.secondary", px: 1 }}
+							>
+								{isClearing ? "Clearing..." : "Saving..."}
+							</Typography>
 						) : (
 							<>
-								{hasChanged ? (
-									<>
-										<SaveButton
-											size="small"
-											onClick={handleSave}
-											title="Save changes"
-										>
-											<FontAwesomeIcon icon={faCheck} size="xs" />
-										</SaveButton>
-										<CancelButton
-											size="small"
-											onClick={handleCancel}
-											title="Cancel"
-										>
-											<FontAwesomeIcon icon={faTimes} size="xs" />
-										</CancelButton>
-									</>
-								) : (
-									<CancelButton
-										size="small"
-										onClick={handleCancel}
-										title="Cancel"
+								{hasChanged && (
+									<SaveButton
+										size="small" // MUI size prop might affect internal padding, rely on styled-component
+										onClick={handleSave}
+										title="Save changes (Enter)"
 									>
-										<FontAwesomeIcon icon={faTimes} size="xs" />
-									</CancelButton>
+										{/* Use smaller icon */}
+										<FontAwesomeIcon icon={faCheck} size="sm" />
+									</SaveButton>
 								)}
-
-								<ClearButton
-									variant="contained"
+								<CancelButton
 									size="small"
-									onClick={clearField}
-									title="Clear field"
-									startIcon={<FontAwesomeIcon icon={faEraser} size="xs" />}
+									onClick={handleCancel}
+									title="Cancel (Escape)"
 								>
-									Clear
-								</ClearButton>
+									<FontAwesomeIcon icon={faTimes} size="sm" />
+								</CancelButton>
+								{/* Conditionally render Clear button only when editing and no changes */}
+								{showClearButton && !hasChanged && (
+									<ClearButton
+										size="small"
+										onClick={clearField}
+										title="Clear field"
+										startIcon={<FontAwesomeIcon icon={faEraser} />} // Default size might be better
+									>
+										Clear
+									</ClearButton>
+								)}
 							</>
 						)}
 					</ActionButtonsContainer>
 				</Box>
 			) : (
-				<DisplayContainer onClick={handleEdit} multiline={multiline}>
+				// Using Box with role="button" is acceptable for MUI, but ensure accessibility attributes are correct
+				<DisplayContainer
+					onClick={handleEdit}
+					multiline={multiline}
+					aria-label={`Current value: ${displayValue || placeholder}. Click to edit.`}
+					tabIndex={0} // Make it focusable
+					// Use the explicitly typed handler function
+					onKeyDown={handleDisplayContainerKeyDown}
+				>
 					{displayValue ? (
-						<DisplayText
-							variant="body2"
-							sx={{ whiteSpace: multiline ? "pre-wrap" : "normal" }}
-						>
-							{displayValue}
-						</DisplayText>
+						<DisplayText multiline={multiline}>{displayValue}</DisplayText>
 					) : (
-						<PlaceholderText variant="body2">{placeholder}</PlaceholderText>
+						<PlaceholderText>{placeholder}</PlaceholderText>
 					)}
-
+					{/* Edit Button: Always present but hidden until hover/focus */}
 					<EditButton
 						className="edit-button"
 						size="small"
-						onClick={handleEdit}
+						onClick={(e) => {
+							e.stopPropagation(); // Prevent triggering DisplayContainer's onClick
+							handleEdit();
+						}}
 						title="Edit"
+						aria-label={`Edit ${label}`} // Accessibility
+						// Ensure button is focusable when parent is focused
+						tabIndex={-1} // Initially not focusable, becomes focusable via hover/focus styles if needed
 					>
 						<FontAwesomeIcon icon={faPen} size="xs" />
 					</EditButton>
+					{/* Clear Button (visible on hover when not empty and not editing) */}
+					{showClearButton && (
+						<ClearButton
+							className="edit-button" // Use same class to show on hover
+							sx={{
+								position: "absolute",
+								top: "50%",
+								transform: "translateY(-50%)",
+								// Position next to edit icon, adjust based on icon size/padding
+								right: 30,
+								opacity: 0, // Hidden by default
+								transition: "opacity 0.2s ease",
+								pointerEvents: "auto", // Ensure it's clickable when visible
+							}}
+							size="small"
+							onClick={clearField}
+							title="Clear field"
+							aria-label={`Clear ${label}`}
+							startIcon={<FontAwesomeIcon icon={faEraser} />}
+							tabIndex={-1} // Initially not focusable
+						>
+							Clear
+						</ClearButton>
+					)}
 				</DisplayContainer>
 			)}
 		</FieldContainer>
