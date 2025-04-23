@@ -67,76 +67,68 @@ type ModelSelectProps = {
 	allowCustom?: boolean;
 };
 
-// Styled components for consistent UI - Applying shadcn-like styles
 const FieldContainer = styled(Box)({
-	marginBottom: 16, // Reduced margin
+	marginBottom: 16,
 	position: "relative",
 });
 
 const FieldLabel = styled(Typography)(({ theme }) => ({
-	marginBottom: 6, // Reduced margin
+	marginBottom: 6,
 	display: "flex",
 	alignItems: "center",
 	color: theme.palette.text.secondary,
-	fontWeight: 500, // Slightly less bold
-	fontSize: "0.875rem", // Small text size
+	fontWeight: 500,
+	fontSize: "0.875rem",
 }));
 
 const LabelIcon = styled(Box)({
-	marginRight: 8, // Reduced margin
+	marginRight: 8,
 	opacity: 0.9,
 	display: "flex",
 	alignItems: "center",
 });
 
-// Apply shadcn-like styles to Autocomplete's TextField
 const StyledAutocomplete = styled(Autocomplete)(({ theme }) => ({
 	"& .MuiOutlinedInput-root": {
-		// Target the root for border, background, height
-		borderRadius: 6, // Slightly less rounded
-		backgroundColor: theme.palette.background.paper, // Use paper background
-		border: `1px solid ${theme.palette.divider}`, // Use divider color for border
-		padding: "0 !important", // Override default Autocomplete padding, important needed sometimes
-		minHeight: "36px", // Target height
-		height: "36px", // Explicit height
+		borderRadius: 6,
+		backgroundColor: theme.palette.background.paper,
+		border: `1px solid ${theme.palette.divider}`,
+		padding: "0 !important",
+		minHeight: "36px",
+		height: "36px",
 		transition: "border-color 0.2s ease, box-shadow 0.2s ease",
 		"&:hover": {
-			borderColor: theme.palette.text.secondary, // Darker border on hover
-			backgroundColor: theme.palette.background.paper, // Keep background consistent
+			borderColor: theme.palette.text.secondary,
+			backgroundColor: theme.palette.background.paper,
 		},
 		"&.Mui-focused": {
-			backgroundColor: theme.palette.background.paper, // Keep background consistent
-			borderColor: theme.palette.primary.main, // Primary border color on focus
-			boxShadow: `0 0 0 2px ${theme.palette.primary.main}33`, // Subtle focus ring like shadcn
+			backgroundColor: theme.palette.background.paper,
+			borderColor: theme.palette.primary.main,
+			boxShadow: `0 0 0 2px ${theme.palette.primary.main}33`,
 		},
-		// Remove default outline
 		"& .MuiOutlinedInput-notchedOutline": {
 			border: "none",
 		},
-		// Adjust padding for the input element itself within the root
 		"& .MuiInputBase-input": {
-			padding: "4px 12px !important", // Target inner padding (vertical 4px), override Autocomplete defaults
-			fontSize: "0.875rem", // Small text size
-			lineHeight: 1.5, // Adjusted line height
-			height: "calc(36px - 8px)", // Adjust height based on padding
+			padding: "4px 12px !important",
+			fontSize: "0.875rem",
+			lineHeight: 1.5,
+			height: "calc(36px - 8px)",
 			boxSizing: "border-box",
 		},
-		// Style placeholder within the input
 		"& .MuiInputBase-input::placeholder": {
 			color: theme.palette.text.disabled,
-			opacity: 1, // Ensure placeholder is visible
+			opacity: 1,
 		},
-		// Adjust Autocomplete specific elements for vertical centering
 		"& .MuiAutocomplete-endAdornment": {
 			right: "8px",
-			top: "50%", // Position at vertical center
-			transform: "translateY(-50%)", // Adjust for icon height
+			top: "50%",
+			transform: "translateY(-50%)",
 		},
 		"& .MuiAutocomplete-inputRoot": {
-			padding: "0 !important", // Ensure no extra padding from Autocomplete's inputRoot
+			padding: "0 !important",
 		},
 	},
-	// Ensure the base root doesn't interfere with height
 	"& .MuiInputBase-root": {
 		minHeight: "36px",
 		height: "36px",
