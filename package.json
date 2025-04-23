@@ -9,14 +9,14 @@
 	},
 	"license": "GPL-3.0-or-later",
 	"author": {
-		"name": "Damian Tran",
-		"email": "damian@local-operator.com",
-		"url": "https://github.com/damianvtran"
+		"name": "Radient Inc.",
+		"email": "contact@radienthq.com",
+		"url": "https://github.com/radient-ml"
 	},
 	"contributors": [
 		{
 			"name": "Damian Tran",
-			"email": "damian@local-operator.com",
+			"email": "damian@radienthq.com",
 			"url": "https://github.com/damianvtran"
 		}
 	],
@@ -30,7 +30,9 @@
 	},
 	"keywords": [
 		"local-operator",
+		"radient",
 		"agent",
+    "ai",
 		"python",
 		"tool use",
 		"ui",
@@ -157,7 +159,7 @@
 	"build": {
 		"appId": "com.local-operator",
 		"productName": "Local Operator",
-		"copyright": "Copyright © 2025 Damian Tran",
+		"copyright": "Copyright © 2025 Radient Inc.",
 		"asar": true,
 		"files": [
 			"out/**/*",
