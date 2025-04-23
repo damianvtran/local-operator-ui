@@ -2,16 +2,18 @@
  * User Profile Step Component
  *
  * Second step in the onboarding process that allows the user to set up their profile
- * with a fun and engaging interface.
+ * with a clean and modern interface.
  */
 
-import { Box, TextField } from "@mui/material";
+import { Box, TextField, useTheme } from "@mui/material"; // Added useTheme
 import { useUserStore } from "@shared/store/user-store";
 import type { FC } from "react";
 import { useEffect, useState } from "react";
 import {
 	EmojiContainer,
+	FieldLabel, // Import FieldLabel
 	FormContainer,
+	LabelIcon, // Import LabelIcon
 	SectionContainer,
 	SectionDescription,
 } from "../onboarding-styled";
@@ -20,6 +22,7 @@ import {
  * User profile step in the onboarding process
  */
 export const UserProfileStep: FC = () => {
+	const theme = useTheme(); // Get theme context
 	const { profile, updateProfile } = useUserStore();
 	const [name, setName] = useState(profile.name === "User" ? "" : profile.name);
 	const [email, setEmail] = useState(
@@ -55,90 +58,113 @@ export const UserProfileStep: FC = () => {
 		setEmail(e.target.value);
 	};
 
+	// Define shadcn-like input styles using sx prop for simplicity
+	const inputSx = {
+		"& .MuiOutlinedInput-root": {
+			borderRadius: theme.shape.borderRadius * 0.75, // Consistent radius
+			backgroundColor: theme.palette.background.paper,
+			border: `1px solid ${theme.palette.divider}`,
+			minHeight: "40px", // Slightly taller for better touch targets/visuals
+			height: "40px",
+			transition: "border-color 0.2s ease, box-shadow 0.2s ease",
+			"&:hover": {
+				borderColor: theme.palette.text.secondary,
+			},
+			"&.Mui-focused": {
+				borderColor: theme.palette.primary.main,
+				boxShadow: `0 0 0 2px ${theme.palette.primary.main}33`,
+			},
+			"& .MuiOutlinedInput-notchedOutline": {
+				border: "none", // Remove the default notch
+			},
+			"& .MuiInputBase-input": {
+				padding: theme.spacing(1, 1.5), // Adjusted padding
+				fontSize: "0.875rem",
+				height: "calc(40px - 16px)", // Adjust height based on padding
+				boxSizing: "border-box",
+			},
+			"& .MuiInputBase-input::placeholder": {
+				color: theme.palette.text.disabled,
+				opacity: 1,
+			},
+			// Adjust adornment position if needed
+			"& .MuiInputAdornment-root": {
+				marginRight: theme.spacing(0.5), // Ensure space between adornment and text
+			},
+		},
+		// Style helper text
+		"& .MuiFormHelperText-root": {
+			fontSize: "0.75rem",
+			mt: 0.5,
+			ml: 0.5, // Keep margin for alignment under the input
+		},
+		// Remove MUI label specific styles from inputSx
+		// "& .MuiInputLabel-root": { ... },
+		// "& .MuiInputLabel-outlined.MuiInputLabel-shrink": { ... },
+	};
+
 	return (
 		<SectionContainer>
 			<SectionDescription>
-				<EmojiContainer>🔒</EmojiContainer> This information is stored locally
-				and is only used to personalize your AI experience. It's never shared
-				with any external services - your privacy matters to us!
+				<EmojiContainer>🔒</EmojiContainer> This info is stored locally to
+				personalize your AI experience and is never shared externally.
 			</SectionDescription>
 
 			<FormContainer>
-				<Box sx={{ position: "relative" }}>
+				{/* Name Field */}
+				<Box>
+					{" "}
+					{/* Wrap Label and Input */}
+					<FieldLabel>
+						<LabelIcon>😎</LabelIcon> {/* Use LabelIcon */}
+						Your Name
+					</FieldLabel>
 					<TextField
-						label="Your Name"
+						// Remove label prop
 						variant="outlined"
 						fullWidth
 						value={name}
 						onChange={handleNameChange}
 						error={!!nameError}
-						helperText={
-							nameError ||
-							"This will be used to create a personalized AI experience"
-						}
+						helperText={nameError || "Used to personalize your AI interactions"}
 						placeholder="Enter your name"
 						required
-						InputProps={{
-							startAdornment: (
-								<EmojiContainer style={{ marginRight: "8px" }}>
-									😎
-								</EmojiContainer>
-							),
-						}}
-						sx={{
-							"& .MuiOutlinedInput-root": {
-								"&.Mui-focused fieldset": {
-									borderColor: "primary.main",
-									borderWidth: 2,
-								},
-							},
-						}}
+						// Remove InputProps startAdornment if icon moved to label
+						// InputProps={{ ... }}
+						sx={inputSx} // Apply shared input styles
 					/>
 				</Box>
 
-				<Box sx={{ position: "relative" }}>
+				{/* Email Field */}
+				<Box>
+					{" "}
+					{/* Wrap Label and Input */}
+					<FieldLabel>
+						<LabelIcon>📧</LabelIcon> {/* Use LabelIcon */}
+						Email Address (Optional)
+					</FieldLabel>
 					<TextField
-						label="Email Address"
+						// Remove label prop
 						variant="outlined"
 						fullWidth
 						value={email}
 						onChange={handleEmailChange}
-						helperText="Optional: This is only stored locally for your convenience"
+						helperText="Stored locally for convenience, not shared"
 						placeholder="Enter your email address"
 						type="email"
-						InputProps={{
-							startAdornment: (
-								<EmojiContainer style={{ marginRight: "8px" }}>
-									📧
-								</EmojiContainer>
-							),
-						}}
-						sx={{
-							"& .MuiOutlinedInput-root": {
-								"&.Mui-focused fieldset": {
-									borderColor: "primary.main",
-									borderWidth: 2,
-								},
-							},
-						}}
+						// Remove InputProps startAdornment if icon moved to label
+						// InputProps={{ ... }}
+						sx={inputSx} // Apply shared input styles
 					/>
 				</Box>
 			</FormContainer>
 
-			<Box sx={{ mt: 3, display: "flex", alignItems: "center" }}>
-				<EmojiContainer>💡</EmojiContainer>
-				<Box
-					component="span"
-					sx={{
-						fontSize: "0.9rem",
-						fontStyle: "italic",
-						color: "text.secondary",
-					}}
-				>
-					Personalizing your profile helps your AI assistants provide a more
-					tailored experience!
-				</Box>
-			</Box>
+			{/* Use SectionDescription for the final tip */}
+			<SectionDescription sx={{ mt: 3, textAlign: "center" }}>
+				<EmojiContainer sx={{ mr: 0.5 }}>💡</EmojiContainer>
+				Personalizing your profile helps AI assistants provide a more tailored
+				experience!
+			</SectionDescription>
 		</SectionContainer>
 	);
 };

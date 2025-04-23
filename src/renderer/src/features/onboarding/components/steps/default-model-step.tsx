@@ -15,14 +15,15 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
 	Alert,
 	Box,
+	CircularProgress, // Import CircularProgress for loading
 	FormControl,
 	FormHelperText,
-	InputLabel,
 	MenuItem,
 	Select,
 	type SelectChangeEvent,
 	Typography,
 	alpha,
+	useTheme, // Import useTheme
 } from "@mui/material";
 import { useConfig } from "@shared/hooks/use-config";
 import { useCredentials } from "@shared/hooks/use-credentials";
@@ -32,16 +33,20 @@ import type { FC } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
 	EmojiContainer,
+	FieldLabel, // Import FieldLabel
 	FormContainer,
+	LabelIcon, // Import LabelIcon
 	SectionContainer,
 	SectionDescription,
 	SectionTitle,
+	menuPropsSx, // Import shared menu styles
 } from "../onboarding-styled";
 
 /**
  * Default model step in the onboarding process
  */
 export const DefaultModelStep: FC = () => {
+	const theme = useTheme(); // Get theme context
 	// Get models, credentials, and config
 	const {
 		providers,
@@ -214,232 +219,256 @@ export const DefaultModelStep: FC = () => {
 	// Loading state
 	const isLoading = isLoadingModels || isLoadingCredentials || isLoadingConfig;
 
+	// Define shadcn-like input styles using sx prop
+	const inputSx = {
+		"& .MuiOutlinedInput-root": {
+			borderRadius: theme.shape.borderRadius * 0.75,
+			backgroundColor: theme.palette.background.paper,
+			border: `1px solid ${theme.palette.divider}`,
+			minHeight: "40px",
+			height: "40px",
+			transition: "border-color 0.2s ease, box-shadow 0.2s ease",
+			"&:hover": {
+				borderColor: theme.palette.text.secondary,
+			},
+			"&.Mui-focused": {
+				borderColor: theme.palette.primary.main,
+				boxShadow: `0 0 0 2px ${theme.palette.primary.main}33`,
+			},
+			"& .MuiOutlinedInput-notchedOutline": {
+				border: "none",
+			},
+			"& .MuiInputBase-input": {
+				// Covers TextField input
+				padding: theme.spacing(1, 1.5),
+				fontSize: "0.875rem",
+				height: "calc(40px - 16px)",
+				boxSizing: "border-box",
+			},
+			"& .MuiSelect-select": {
+				// Specific styles for Select input
+				paddingTop: theme.spacing(1),
+				paddingBottom: theme.spacing(1),
+				paddingLeft: theme.spacing(1.5),
+				display: "flex",
+				alignItems: "center",
+				gap: theme.spacing(1),
+				height: "calc(40px - 16px) !important", // Ensure height matches
+				minHeight: "calc(40px - 16px) !important",
+			},
+			"& .MuiInputAdornment-root": {
+				color: theme.palette.text.secondary,
+				marginRight: theme.spacing(0.5),
+			},
+		},
+		"& .MuiFormHelperText-root": {
+			fontSize: "0.75rem",
+			mt: 0.5,
+			ml: 0.5,
+		},
+		// Remove MUI label specific styles from inputSx
+		// "& .MuiInputLabel-root": { ... },
+		// "& .MuiInputLabel-outlined.MuiInputLabel-shrink": { ... },
+	};
+
+	// Style for info boxes
+	const infoBoxSx = {
+		p: 1.5,
+		borderRadius: theme.shape.borderRadius * 0.75,
+		border: `1px solid ${theme.palette.divider}`,
+		backgroundColor: alpha(theme.palette.background.default, 0.5),
+		display: "flex",
+		alignItems: "center",
+		gap: 1.5,
+	};
+
+	// Style for the success alert
+	const successAlertSx = {
+		mt: 2, // Adjusted margin
+		mb: 1, // Adjusted margin
+		borderRadius: theme.shape.borderRadius * 0.75,
+		border: `1px solid ${theme.palette.success.main}`,
+		backgroundColor: alpha(theme.palette.success.main, 0.1),
+		color: theme.palette.success.dark,
+		"& .MuiAlert-icon": {
+			color: theme.palette.success.main,
+		},
+	};
+
+	// Style for the final confirmation box
+	const confirmationBoxSx = {
+		mt: 2, // Adjusted margin
+		p: 1.5, // Adjusted padding
+		borderRadius: theme.shape.borderRadius * 0.75,
+		backgroundColor: alpha(theme.palette.success.main, 0.08),
+		border: `1px solid ${alpha(theme.palette.success.main, 0.2)}`,
+		display: "flex",
+		alignItems: "flex-start", // Align items start for potentially wrapping text
+		gap: theme.spacing(1),
+	};
+
 	return (
 		<SectionContainer>
-			<SectionTitle>Choose Your Default Model</SectionTitle>
+			{/* Use SectionTitle from onboarding-styled */}
+			<SectionTitle>
+				<EmojiContainer sx={{ mb: 0 }}>✨</EmojiContainer> Choose Your Default
+				Model
+			</SectionTitle>
 			<SectionDescription>
-				<EmojiContainer>✨</EmojiContainer> Select your preferred AI model and
-				provider that will power all your agents. Don't worry, you can always
-				customize this for individual agents later!
+				Select the default AI model and provider for your agents. You can
+				customize this per agent later.
 			</SectionDescription>
 
-			<Box
-				sx={{
-					p: 2,
-					mb: 3,
-					borderRadius: 2,
-					background: (theme) =>
-						`linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.05)} 0%, ${alpha(theme.palette.secondary.main, 0.05)} 100%)`,
-					border: (theme) =>
-						`1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
-					display: "flex",
-					alignItems: "center",
-				}}
-			>
+			{/* "Choose wisely" Info Box */}
+			<Box sx={{ ...infoBoxSx, mb: 2 }}>
 				<FontAwesomeIcon
 					icon={faBrain}
-					style={{
-						fontSize: "1.5rem",
-						marginRight: "12px",
-						color: "#7e57c2",
-					}}
+					size="lg"
+					color={theme.palette.primary.main}
 				/>
-				<Typography variant="body2" component="div">
-					<Box component="span" sx={{ fontWeight: 600 }}>
+				<Typography variant="body2">
+					<Typography component="span" fontWeight="medium">
 						Choose wisely!
-					</Box>{" "}
-					Different models have different capabilities, strengths, and
-					specialties. Pick the one that best suits your needs.
+					</Typography>{" "}
+					Different models have different capabilities and costs. Pick one that
+					suits your general needs.
 				</Typography>
 			</Box>
 
 			<FormContainer>
 				{isLoading ? (
-					<Box sx={{ display: "flex", justifyContent: "center", p: 3 }}>
-						<Typography
-							variant="body2"
-							component="div"
-							sx={{ display: "flex", alignItems: "center" }}
-						>
-							<EmojiContainer
-								style={{
-									marginRight: "8px",
-									animation: "pulse 1.5s infinite ease-in-out",
-								}}
-							>
-								⏳
-							</EmojiContainer>
-							Loading available AI models...
+					// Simple loading indicator
+					<Box
+						sx={{
+							display: "flex",
+							justifyContent: "center",
+							alignItems: "center",
+							p: 3,
+							gap: 1,
+						}}
+					>
+						<CircularProgress size={20} />
+						<Typography variant="body2" color="text.secondary">
+							Loading available models...
 						</Typography>
 					</Box>
 				) : (
 					<>
-						<FormControl
-							fullWidth
-							variant="outlined"
-							sx={{
-								"& .MuiOutlinedInput-root": {
-									"&.Mui-focused fieldset": {
-										borderColor: "primary.main",
-										borderWidth: 2,
-									},
-								},
-							}}
-						>
-							<InputLabel id="provider-select-label">
-								<Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-									<FontAwesomeIcon
-										icon={faRobot}
-										style={{ fontSize: "0.9rem" }}
-									/>
-									Model Provider
-								</Box>
-							</InputLabel>
-							<Select
-								labelId="provider-select-label"
-								id="provider-select"
-								value={selectedProvider}
-								onChange={handleProviderChange}
-								label="Model Provider"
-							>
-								{availableProviders.map((provider) => (
-									<MenuItem key={provider.id} value={provider.id}>
-										{provider.name}
-									</MenuItem>
-								))}
-							</Select>
-							<FormHelperText>
-								Choose your AI provider from the ones you've added credentials
-								for
-							</FormHelperText>
-						</FormControl>
-
-						{selectedProvider && (
-							<FormControl
-								fullWidth
-								variant="outlined"
-								sx={{
-									mt: 2,
-									"& .MuiOutlinedInput-root": {
-										"&.Mui-focused fieldset": {
-											borderColor: "primary.main",
-											borderWidth: 2,
-										},
-									},
-									animation: "fadeIn 0.5s ease-out",
-								}}
-							>
-								<InputLabel id="model-select-label">
-									<Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-										<FontAwesomeIcon
-											icon={faWandMagicSparkles}
-											style={{ fontSize: "0.9rem" }}
-										/>
-										AI Model
-									</Box>
-								</InputLabel>
+						{/* Provider Selection */}
+						<Box>
+							{" "}
+							{/* Wrap Label and Input */}
+							<FieldLabel>
+								<LabelIcon>
+									<FontAwesomeIcon icon={faRobot} size="sm" />
+								</LabelIcon>
+								Model Provider
+							</FieldLabel>
+							<FormControl fullWidth variant="outlined" sx={inputSx}>
+								{/* Remove InputLabel */}
 								<Select
-									labelId="model-select-label"
-									id="model-select"
-									value={selectedModel}
-									onChange={handleModelChange}
-									label="AI Model"
+									// Remove labelId and label props
+									id="provider-select"
+									value={selectedProvider}
+									onChange={handleProviderChange}
+									MenuProps={menuPropsSx(theme)} // Apply dropdown styles
+									// Remove startAdornment
 								>
-									{availableModels.map((model) => (
-										<MenuItem key={model.id} value={model.id}>
-											{model.name}
+									{availableProviders.map((provider) => (
+										<MenuItem key={provider.id} value={provider.id}>
+											{provider.name}
 										</MenuItem>
 									))}
 								</Select>
 								<FormHelperText>
-									Select the specific AI model you want to use
+									Providers you've added credentials for
 								</FormHelperText>
 							</FormControl>
+						</Box>
+
+						{/* Model Selection */}
+						{selectedProvider && (
+							<Box sx={{ mt: 1.5 }}>
+								{" "}
+								{/* Wrap Label and Input */}
+								<FieldLabel>
+									<LabelIcon>
+										<FontAwesomeIcon icon={faWandMagicSparkles} size="sm" />
+									</LabelIcon>
+									AI Model
+								</FieldLabel>
+								<FormControl fullWidth variant="outlined" sx={inputSx}>
+									{/* Remove InputLabel */}
+									<Select
+										// Remove labelId and label props
+										id="model-select"
+										value={selectedModel}
+										onChange={handleModelChange}
+										MenuProps={menuPropsSx(theme)} // Apply dropdown styles
+										// Remove startAdornment
+										disabled={availableModels.length === 0} // Disable if no models
+									>
+										{availableModels.length === 0 && (
+											<MenuItem disabled value="">
+												No models found for this provider
+											</MenuItem>
+										)}
+										{availableModels.map((model) => (
+											<MenuItem key={model.id} value={model.id}>
+												{model.name}
+											</MenuItem>
+										))}
+									</Select>
+									<FormHelperText>Select the specific AI model</FormHelperText>
+								</FormControl>
+							</Box>
 						)}
 
+						{/* Save Success Alert */}
 						{saveSuccess && (
 							<Alert
 								severity="success"
 								icon={<FontAwesomeIcon icon={faCheck} />}
-								sx={{
-									mt: 3,
-									mb: 2,
-									animation: "fadeIn 0.5s ease-out",
-									border: (theme) =>
-										`1px solid ${alpha(theme.palette.success.main, 0.5)}`,
-								}}
+								sx={successAlertSx}
 							>
-								<Box sx={{ display: "flex", alignItems: "center" }}>
-									<EmojiContainer>🎉</EmojiContainer> Default model
-									configuration saved successfully! Your AI is ready to go!
+								<Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+									<EmojiContainer sx={{ mb: 0 }}>🎉</EmojiContainer> Default
+									model saved!
 								</Box>
 							</Alert>
 						)}
 
-						{selectedProvider && selectedModel && (
-							<Box
-								sx={{
-									mt: 3,
-									p: 2.5,
-									borderRadius: 2,
-									background: (theme) =>
-										alpha(theme.palette.success.light, 0.1),
-									border: (theme) =>
-										`1px solid ${alpha(theme.palette.success.main, 0.2)}`,
-									animation: "fadeIn 0.5s ease-out",
-								}}
-							>
-								<Box sx={{ display: "flex", alignItems: "flex-start" }}>
-									<EmojiContainer
-										style={{
-											marginRight: "8px",
-											fontSize: "1.2rem",
-											flexShrink: 0,
-										}}
-									>
-										🚀
-									</EmojiContainer>
+						{/* Confirmation Box */}
+						{selectedProvider && selectedModel && !isSaving && (
+							<Box sx={confirmationBoxSx}>
+								<EmojiContainer sx={{ mb: 0, mt: 0.2 }}>🚀</EmojiContainer>
+								<Typography variant="body2" color="text.secondary">
+									Default set to{" "}
 									<Typography
-										variant="body2"
-										component="div"
-										sx={{
-											fontWeight: 500,
-											whiteSpace: "normal",
-										}}
+										component="span"
+										fontWeight="medium"
+										color="text.primary"
 									>
-										Great choice! You've selected{" "}
-										<Box
-											component="span"
-											sx={{
-												fontWeight: 700,
-												color: "primary.main",
-												display: "inline",
-											}}
-										>
-											{
-												availableModels.find(
-													(model) => model.id === selectedModel,
-												)?.name
-											}
-										</Box>{" "}
-										from{" "}
-										<Box
-											component="span"
-											sx={{
-												fontWeight: 700,
-												color: "primary.main",
-												display: "inline",
-											}}
-										>
-											{
-												availableProviders.find(
-													(provider) => provider.id === selectedProvider,
-												)?.name
-											}
-										</Box>{" "}
-										as your default AI model.
+										{
+											availableModels.find(
+												(model) => model.id === selectedModel,
+											)?.name
+										}
+									</Typography>{" "}
+									from{" "}
+									<Typography
+										component="span"
+										fontWeight="medium"
+										color="text.primary"
+									>
+										{
+											availableProviders.find(
+												(provider) => provider.id === selectedProvider,
+											)?.name
+										}
 									</Typography>
-								</Box>
+									.
+								</Typography>
 							</Box>
 						)}
 					</>

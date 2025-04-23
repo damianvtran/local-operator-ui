@@ -4,109 +4,106 @@ import {
 	Alert,
 	Box,
 	Button,
-	Card,
-	CardContent,
 	CircularProgress,
 	TextField,
 	Typography,
 	styled,
+	useTheme, // Import useTheme
 } from "@mui/material";
 import type { SystemPromptUpdate } from "@shared/api/local-operator/types";
 import { useSystemPrompt } from "@shared/hooks/use-system-prompt";
 import { useUpdateSystemPrompt } from "@shared/hooks/use-update-system-prompt";
 import { useEffect, useState } from "react";
 import type { FC } from "react";
+import { SettingsSectionCard } from "./settings-section-card"; // Import the reusable card
 
-const StyledCard = styled(Card)(() => ({
-	marginBottom: 32,
-	backgroundColor: "background.paper",
-	borderRadius: 8,
-	boxShadow: "0 4px 20px rgba(0,0,0,0.06)",
-}));
-
-const StyledCardContent = styled(CardContent)(({ theme }) => ({
-	[theme.breakpoints.down("sm")]: {
-		padding: 16,
-	},
-	[theme.breakpoints.up("sm")]: {
-		padding: 24,
-	},
-}));
-
-const CardTitle = styled(Typography)(() => ({
-	marginBottom: 16,
-	display: "flex",
-	alignItems: "center",
-	gap: 8,
-}));
-
-const CardDescription = styled(Typography)(({ theme }) => ({
-	marginBottom: 32,
-	color: theme.palette.text.secondary,
-}));
-
-const StyledTextField = styled(TextField)(() => ({
-	marginBottom: 16,
+// Shadcn-inspired TextField styling
+const StyledTextField = styled(TextField)(({ theme }) => ({
 	width: "100%",
-	display: "flex",
-	flexGrow: 1,
 	"& .MuiInputBase-root": {
-		minHeight: 380,
-		width: "100%",
-		height: "100%",
-		display: "flex",
-		flexDirection: "column",
+		// Base styles for the input area
+		borderRadius: theme.shape.borderRadius * 0.75, // Slightly less rounded
+		backgroundColor: theme.palette.background.paper, // Match card background
+		minHeight: 200, // Adjust min height as needed
+		display: "flex", // Ensure flex properties work
+		flexDirection: "column", // Stack elements vertically
+		alignItems: "stretch", // Stretch items to fill width
 	},
 	"& .MuiOutlinedInput-root": {
-		width: "100%",
-		height: "100%",
-		display: "flex",
-		flexGrow: 1,
+		// Specific styles for outlined variant
+		padding: 0, // Remove default padding
+		"& .MuiOutlinedInput-notchedOutline": {
+			borderColor: theme.palette.divider, // Use divider color for border
+		},
+		"&:hover .MuiOutlinedInput-notchedOutline": {
+			borderColor: theme.palette.text.secondary, // Slightly darker border on hover
+		},
+		"&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+			borderColor: theme.palette.primary.main, // Primary color border when focused
+			borderWidth: "1px", // Ensure border width stays consistent
+		},
 	},
-	"& .MuiInputBase-input": {
-		height: "100%",
-		overflow: "auto",
-		width: "100%",
-		flexGrow: 1,
-		display: "flex",
+	"& .MuiInputBase-inputMultiline": {
+		// Styles for the actual multiline input element
+		padding: theme.spacing(1.5, 2), // Add internal padding
+		flexGrow: 1, // Allow input to grow
+		height: "auto", // Let height be determined by content and rows
+		overflow: "auto", // Enable scrolling
+		fontSize: "0.875rem", // Consistent font size
+		lineHeight: 1.5,
+		// Shadcn-like scrollbar
 		"&::-webkit-scrollbar": {
-			width: "6px",
+			width: "8px",
+			height: "8px",
 		},
 		"&::-webkit-scrollbar-track": {
 			backgroundColor: "transparent",
 		},
 		"&::-webkit-scrollbar-thumb": {
-			backgroundColor: "rgba(255, 255, 255, 0.1)",
-			borderRadius: "10px",
+			backgroundColor: theme.palette.divider,
+			borderRadius: "4px",
+			border: `2px solid ${theme.palette.background.paper}`, // Match input background
 			"&:hover": {
-				backgroundColor: "rgba(0, 0, 0, 0.2)",
+				backgroundColor: theme.palette.text.disabled,
 			},
+		},
+	},
+	"& .MuiInputLabel-root": {
+		// Style label if needed
+		fontSize: "0.875rem",
+		"&.Mui-focused": {
+			color: theme.palette.primary.main,
 		},
 	},
 }));
 
-const ButtonContainer = styled(Box)(() => ({
+// Container for action buttons
+const ButtonContainer = styled(Box)(({ theme }) => ({
 	display: "flex",
-	gap: 16,
+	gap: theme.spacing(1.5), // Consistent spacing (12px)
+	marginTop: theme.spacing(2), // Space above buttons (16px)
 }));
 
-const LastModifiedText = styled(Typography)(() => ({
-	marginTop: 16,
+// Styling for the last modified text
+const LastModifiedText = styled(Typography)(({ theme }) => ({
+	marginTop: theme.spacing(2), // Space above text (16px)
 	display: "block",
+	fontSize: "0.75rem", // Smaller font size (12px)
 }));
 
-const LoadingContainer = styled(Box)(() => ({
+// Loading container centered within the card
+const LoadingContainer = styled(Box)({
 	display: "flex",
 	justifyContent: "center",
 	alignItems: "center",
-	minHeight: 240,
-}));
+	minHeight: 200, // Match TextField min height
+});
 
 /**
- * SystemPrompt component
- * Displays and allows editing of the system prompt
+ * Displays and allows editing of the system prompt using shadcn-inspired styling.
  */
 export const SystemPrompt: FC = () => {
+	const theme = useTheme(); // Get theme for button styling
 	const {
 		data: systemPromptData,
 		isLoading,
@@ -116,192 +113,142 @@ export const SystemPrompt: FC = () => {
 	const updateSystemPromptMutation = useUpdateSystemPrompt();
 	const [systemPrompt, setSystemPrompt] = useState("");
 	const [isEdited, setIsEdited] = useState(false);
-	const [isSaving, setIsSaving] = useState(false);
 
-	// Initialize the system prompt when data is loaded
+	// Initialize the system prompt when data is loaded or reset
 	useEffect(() => {
-		if (systemPromptData) {
-			setSystemPrompt(systemPromptData.content);
-			setIsEdited(false);
-		}
+		setSystemPrompt(systemPromptData?.content ?? "");
+		setIsEdited(false); // Reset edited state when data changes
 	}, [systemPromptData]);
 
 	// Handle input change
 	const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-		setSystemPrompt(e.target.value);
-		setIsEdited(e.target.value !== systemPromptData?.content);
+		const newValue = e.target.value;
+		setSystemPrompt(newValue);
+		// Check if edited compared to original data or empty string if no data
+		setIsEdited(newValue !== (systemPromptData?.content ?? ""));
 	};
 
 	// Handle save
 	const handleSave = async () => {
-		if (!isEdited) return;
+		if (!isEdited || updateSystemPromptMutation.isPending) return;
 
-		setIsSaving(true);
 		try {
 			const update: SystemPromptUpdate = {
 				content: systemPrompt,
 			};
-
 			await updateSystemPromptMutation.mutateAsync(update);
-			// Explicitly refetch to update the UI
-			await refetch();
-			setIsEdited(false);
-		} catch (error) {
-			// Error is already handled in the mutation
-			console.error("Error updating system prompt:", error);
-		} finally {
-			setIsSaving(false);
+			await refetch(); // Refetch after successful save
+			setIsEdited(false); // Reset edited state
+		} catch (err) {
+			console.error("Error updating system prompt:", err);
+			// Consider adding user feedback (e.g., toast notification)
 		}
 	};
 
-	// Handle reset
+	// Handle reset to original value
 	const handleReset = () => {
-		if (systemPromptData) {
-			setSystemPrompt(systemPromptData.content);
-		} else {
-			setSystemPrompt(""); // Reset to empty string if no system prompt exists
-		}
+		setSystemPrompt(systemPromptData?.content ?? "");
 		setIsEdited(false);
 	};
 
-	// Loading state
-	if (isLoading) {
-		return (
-			<StyledCard>
-				<StyledCardContent>
-					<LoadingContainer>
-						<CircularProgress />
-					</LoadingContainer>
-				</StyledCardContent>
-			</StyledCard>
-		);
-	}
+	const isSaving = updateSystemPromptMutation.isPending;
 
-	// Error state
-	if (error) {
-		return (
-			<StyledCard>
-				<StyledCardContent>
-					<Alert severity="error">
-						Failed to load system prompt. Please try again later.
-					</Alert>
-				</StyledCardContent>
-			</StyledCard>
-		);
-	}
+	// Common content rendering logic
+	const renderContent = () => (
+		<>
+			<StyledTextField
+				label="System Prompt"
+				name="systemPrompt"
+				value={systemPrompt}
+				onChange={handleInputChange}
+				variant="outlined"
+				multiline
+				minRows={8} // Use minRows for flexibility
+				fullWidth
+				placeholder="Enter instructions for how all agents should behave and respond to your requests..."
+				InputLabelProps={{ shrink: true }} // Keep label floated
+			/>
 
-	// No system prompt exists yet (204 response)
-	if (!systemPromptData) {
-		return (
-			<StyledCard>
-				<StyledCardContent>
-					<CardTitle variant="h6">
-						<FontAwesomeIcon icon={faRobot} />
-						System Prompt
-					</CardTitle>
+			<ButtonContainer>
+				<Button
+					variant="contained" // Primary action button
+					color="primary"
+					size="small"
+					startIcon={
+						isSaving ? (
+							<CircularProgress size={16} color="inherit" />
+						) : (
+							<FontAwesomeIcon icon={faSave} size="sm" />
+						)
+					}
+					onClick={handleSave}
+					disabled={!isEdited || isSaving}
+					sx={{
+						// Shadcn primary button style
+						textTransform: "none",
+						fontSize: "0.8125rem", // ~13px
+						padding: theme.spacing(0.75, 2),
+						borderRadius: theme.shape.borderRadius * 0.75,
+						boxShadow: "none",
+						"&:hover": {
+							boxShadow: "none",
+							opacity: 0.9,
+						},
+					}}
+				>
+					{isSaving ? "Saving..." : "Save Changes"}
+				</Button>
 
-					<CardDescription variant="body2">
-						This system prompt is given to all Local Operator agents. It is
-						useful to define some baseline expectations for the behavior of
-						every agent in your environment. These instructions will be provided
-						in addition to any specific instructions you may have defined for
-						each agent.
-					</CardDescription>
+				<Button
+					variant="outlined" // Secondary action button
+					size="small"
+					onClick={handleReset}
+					disabled={!isEdited || isSaving}
+					sx={{
+						// Shadcn secondary/outline button style
+						borderColor: theme.palette.divider,
+						color: theme.palette.text.secondary,
+						textTransform: "none",
+						fontSize: "0.8125rem", // ~13px
+						padding: theme.spacing(0.75, 2),
+						borderRadius: theme.shape.borderRadius * 0.75,
+						"&:hover": {
+							backgroundColor: theme.palette.action.hover,
+							borderColor: theme.palette.divider,
+						},
+					}}
+				>
+					Cancel
+				</Button>
+			</ButtonContainer>
 
-					<StyledTextField
-						label="System Prompt"
-						name="systemPrompt"
-						value={systemPrompt}
-						onChange={handleInputChange}
-						variant="outlined"
-						multiline
-						rows={8}
-						fullWidth
-						placeholder="Enter instructions for how all agents should behave and respond to your requests..."
-					/>
-
-					<ButtonContainer>
-						<Button
-							variant="contained"
-							color="primary"
-							size="small"
-							startIcon={<FontAwesomeIcon icon={faSave} />}
-							onClick={handleSave}
-							disabled={!isEdited || isSaving}
-						>
-							{isSaving ? <CircularProgress size={20} /> : "Save Changes"}
-						</Button>
-
-						<Button
-							variant="outlined"
-							size="small"
-							onClick={handleReset}
-							disabled={!isEdited || isSaving}
-						>
-							Cancel
-						</Button>
-					</ButtonContainer>
-				</StyledCardContent>
-			</StyledCard>
-		);
-	}
+			{systemPromptData?.last_modified && (
+				<LastModifiedText variant="caption" color="text.secondary">
+					Last modified:{" "}
+					{new Date(systemPromptData.last_modified).toLocaleString()}
+				</LastModifiedText>
+			)}
+		</>
+	);
 
 	return (
-		<StyledCard>
-			<StyledCardContent>
-				<CardTitle variant="h6">
-					<FontAwesomeIcon icon={faRobot} />
-					System Prompt
-				</CardTitle>
-
-				<CardDescription variant="body2">
-					This system prompt is given to all Local Operator agents. It is useful
-					to define some baseline expectations for the behavior of every agent
-					in your environment. These instructions will be provided in addition
-					to any specific instructions you may have defined for each agent.
-				</CardDescription>
-
-				<StyledTextField
-					label="System Prompt"
-					name="systemPrompt"
-					value={systemPrompt}
-					onChange={handleInputChange}
-					variant="outlined"
-					multiline
-					rows={8}
-					fullWidth
-					placeholder="Enter instructions for how all agents should behave and respond to your requests..."
-				/>
-
-				<ButtonContainer>
-					<Button
-						variant="contained"
-						color="primary"
-						size="small"
-						startIcon={<FontAwesomeIcon icon={faSave} />}
-						onClick={handleSave}
-						disabled={!isEdited || isSaving}
-					>
-						{isSaving ? <CircularProgress size={20} /> : "Save Changes"}
-					</Button>
-
-					<Button
-						variant="outlined"
-						size="small"
-						onClick={handleReset}
-						disabled={!isEdited || isSaving}
-					>
-						Cancel
-					</Button>
-				</ButtonContainer>
-
-				{systemPromptData.last_modified && (
-					<LastModifiedText variant="caption" color="text.secondary">
-						Last modified:{" "}
-						{new Date(systemPromptData.last_modified).toLocaleString()}
-					</LastModifiedText>
-				)}
-			</StyledCardContent>
-		</StyledCard>
+		<SettingsSectionCard
+			title="System Prompt"
+			icon={faRobot}
+			description="This system prompt is given to all Local Operator agents. It is useful to define baseline expectations for the behavior of every agent in your environment. These instructions are provided in addition to any specific instructions defined for each agent."
+		>
+			{isLoading ? (
+				<LoadingContainer>
+					<CircularProgress />
+				</LoadingContainer>
+			) : error ? (
+				<Alert severity="error" sx={{ width: "100%" }}>
+					Failed to load system prompt:{" "}
+					{error instanceof Error ? error.message : "Unknown error"}
+				</Alert>
+			) : (
+				renderContent() // Render the main content (TextField, Buttons, etc.)
+			)}
+		</SettingsSectionCard>
 	);
 };

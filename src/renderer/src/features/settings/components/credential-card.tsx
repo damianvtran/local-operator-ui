@@ -10,54 +10,65 @@ import {
 	Box,
 	Button,
 	IconButton,
-	Paper,
 	Tooltip,
 	Typography,
+	alpha,
 	styled,
+	useTheme,
 } from "@mui/material";
 import type { FC } from "react";
 import { getCredentialInfo } from "./credential-manifest";
 
-const CredentialCardContainer = styled(Paper)(({ theme }) => ({
+// Shadcn-inspired card container
+const CredentialCardContainer = styled(Box)(({ theme }) => ({
 	padding: theme.spacing(2),
 	height: "100%",
 	display: "flex",
 	flexDirection: "column",
-	borderRadius: 8,
-	transition: "all 0.2s ease-in-out",
-	backgroundColor: "rgba(0, 0, 0, 0.02)",
+	borderRadius: theme.shape.borderRadius * 0.75,
+	border: `1px solid ${theme.palette.divider}`,
+	backgroundColor: theme.palette.background.paper,
+	transition: "border-color 0.2s ease-in-out",
 	"&:hover": {
-		backgroundColor: "rgba(0, 0, 0, 0.04)",
-		transform: "translateY(-2px)",
-		boxShadow: "0 6px 20px rgba(0,0,0,0.08)",
+		borderColor: theme.palette.text.disabled,
 	},
 }));
 
-const CredentialName = styled(Typography)(() => ({
+// Styling for the credential name (title)
+const CredentialName = styled(Typography)(({ theme }) => ({
 	fontWeight: 500,
 	display: "flex",
 	alignItems: "center",
-	gap: 8,
+	gap: theme.spacing(1),
+	fontSize: "0.9375rem",
+	marginBottom: theme.spacing(0.25),
 }));
 
+// Styling for the credential key (subtitle)
 const CredentialKey = styled(Typography)(({ theme }) => ({
 	color: theme.palette.text.secondary,
-	fontSize: "0.85rem",
-	marginTop: 4,
+	fontSize: "0.75rem",
+	fontFamily: "'Roboto Mono', monospace",
+	marginBottom: theme.spacing(1),
+	wordBreak: "break-all",
 }));
 
+// Styling for the credential description
 const CredentialDescription = styled(Typography)(({ theme }) => ({
 	color: theme.palette.text.secondary,
-	marginTop: 8,
-	marginBottom: 16,
+	fontSize: "0.8125rem",
+	lineHeight: 1.5,
+	marginBottom: theme.spacing(2),
 	flexGrow: 1,
 }));
 
-const CredentialActions = styled(Box)(() => ({
+// Container for action buttons at the bottom
+const CredentialActions = styled(Box)(({ theme }) => ({
 	display: "flex",
 	justifyContent: "flex-end",
+	alignItems: "center",
 	marginTop: "auto",
-	gap: 8,
+	gap: theme.spacing(1),
 }));
 
 type CredentialCardProps = {
@@ -69,8 +80,8 @@ type CredentialCardProps = {
 };
 
 /**
- * Component for displaying a credential card
- * Used for both configured and available credentials
+ * Component for displaying a credential card with shadcn-inspired styling.
+ * Shows details and actions based on whether the credential is configured.
  */
 export const CredentialCard: FC<CredentialCardProps> = ({
 	credentialKey,
@@ -79,71 +90,128 @@ export const CredentialCard: FC<CredentialCardProps> = ({
 	onClear,
 	onAdd,
 }) => {
+	const theme = useTheme();
 	const credInfo = getCredentialInfo(credentialKey);
 
+	// Common button styles based on shadcn
+	const buttonSx = {
+		textTransform: "none",
+		fontSize: "0.8125rem",
+		padding: theme.spacing(0.5, 1.5),
+		borderRadius: theme.shape.borderRadius * 0.75,
+	};
+
+	const secondaryButtonSx = {
+		...buttonSx,
+		borderColor: theme.palette.divider,
+		color: theme.palette.text.secondary,
+		"&:hover": {
+			backgroundColor: theme.palette.action.hover,
+			borderColor: theme.palette.divider,
+		},
+	};
+
+	const destructiveButtonSx = {
+		...buttonSx,
+		borderColor: theme.palette.divider,
+		color: theme.palette.error.main,
+		"&:hover": {
+			backgroundColor: alpha(theme.palette.error.main, 0.05),
+			borderColor: alpha(theme.palette.error.main, 0.5),
+		},
+	};
+
+	const primaryButtonSx = {
+		...buttonSx,
+	};
+
 	return (
-		<CredentialCardContainer elevation={1}>
-			<CredentialName>
-				<FontAwesomeIcon icon={isConfigured ? faLock : faKey} />
-				{credInfo.name}
-				{/* @ts-ignore - MUI Tooltip type issue */}
-				<Tooltip title={credInfo.description}>
-					<IconButton size="small">
+		<CredentialCardContainer>
+			{/* Card Header */}
+			<Box sx={{ display: "flex", alignItems: "center", mb: 0.5 }}>
+				<CredentialName>
+					{/* Icon based on configured status */}
+					<FontAwesomeIcon
+						icon={isConfigured ? faLock : faKey}
+						size="sm"
+						fixedWidth
+						style={{ marginRight: theme.spacing(0.5) }}
+					/>
+					{credInfo.name}
+				</CredentialName>
+				{/* Info Tooltip - Keep ts-ignore as requested */}
+				{/* @ts-ignore */}
+				<Tooltip title={credInfo.description} placement="top">
+					<IconButton
+						size="small"
+						sx={{ ml: "auto", color: theme.palette.text.disabled }}
+					>
 						<FontAwesomeIcon icon={faInfoCircle} size="xs" />
 					</IconButton>
 				</Tooltip>
-			</CredentialName>
+			</Box>
 
+			{/* Credential Key */}
 			<CredentialKey>{credentialKey}</CredentialKey>
 
+			{/* Description */}
 			<CredentialDescription variant="body2">
 				{credInfo.description}
 			</CredentialDescription>
 
+			{/* Action Buttons */}
 			<CredentialActions>
 				{isConfigured ? (
 					<>
+						{/* Update Button (Secondary Style) */}
 						<Button
 							variant="outlined"
 							size="small"
-							startIcon={<FontAwesomeIcon icon={faEdit} />}
+							startIcon={<FontAwesomeIcon icon={faEdit} size="xs" />}
 							onClick={() => onEdit?.(credentialKey)}
+							sx={secondaryButtonSx}
 						>
 							Update
 						</Button>
+						{/* Clear Button (Destructive Style) */}
 						<Button
 							variant="outlined"
 							size="small"
-							color="error"
-							startIcon={<FontAwesomeIcon icon={faTrash} />}
+							startIcon={<FontAwesomeIcon icon={faTrash} size="xs" />}
 							onClick={() => onClear?.(credentialKey)}
+							sx={destructiveButtonSx}
 						>
 							Clear
 						</Button>
 					</>
 				) : (
 					<>
+						{/* Configure Button (Primary Style) */}
 						<Button
 							variant="outlined"
 							size="small"
 							color="primary"
-							startIcon={<FontAwesomeIcon icon={faKey} />}
+							startIcon={<FontAwesomeIcon icon={faKey} size="xs" />}
 							onClick={() => onAdd?.(credentialKey)}
+							sx={{ ...primaryButtonSx, boxShadow: "none" }}
 						>
 							Configure
 						</Button>
+						{/* Link to get key (if URL exists) */}
 						{credInfo.url && (
-							/* @ts-ignore - MUI Tooltip type issue */
-							<Tooltip title={`Get your ${credInfo.name}`}>
+							// Keep ts-ignore as requested
+							// @ts-ignore
+							<Tooltip title={`Get your ${credInfo.name} key`} placement="top">
 								<IconButton
 									size="small"
-									sx={{ ml: 1 }}
+									sx={{ color: theme.palette.text.disabled }} // Subtle color
 									component="a"
 									href={credInfo.url}
 									target="_blank"
 									rel="noopener noreferrer"
+									aria-label={`Get your ${credInfo.name} key`}
 								>
-									<FontAwesomeIcon icon={faInfoCircle} />
+									<FontAwesomeIcon icon={faInfoCircle} size="xs" />
 								</IconButton>
 							</Tooltip>
 						)}

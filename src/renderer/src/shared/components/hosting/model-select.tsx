@@ -67,40 +67,72 @@ type ModelSelectProps = {
 	allowCustom?: boolean;
 };
 
-// Styled components for consistent UI
 const FieldContainer = styled(Box)({
-	marginBottom: 24,
+	marginBottom: 16,
 	position: "relative",
 });
 
 const FieldLabel = styled(Typography)(({ theme }) => ({
-	marginBottom: 8,
+	marginBottom: 6,
 	display: "flex",
 	alignItems: "center",
 	color: theme.palette.text.secondary,
-	fontWeight: 600,
+	fontWeight: 500,
+	fontSize: "0.875rem",
 }));
 
 const LabelIcon = styled(Box)({
-	marginRight: 12,
-	opacity: 0.8,
+	marginRight: 8,
+	opacity: 0.9,
+	display: "flex",
+	alignItems: "center",
 });
 
 const StyledAutocomplete = styled(Autocomplete)(({ theme }) => ({
 	"& .MuiOutlinedInput-root": {
-		borderRadius: 8,
-		backgroundColor: theme.palette.inputField.background,
-		padding: "16px",
-		transition: "all 0.2s ease",
+		borderRadius: 6,
+		backgroundColor: theme.palette.background.paper,
+		border: `1px solid ${theme.palette.divider}`,
+		padding: "0 !important",
+		minHeight: "36px",
+		height: "36px",
+		transition: "border-color 0.2s ease, box-shadow 0.2s ease",
 		"&:hover": {
-			backgroundColor: theme.palette.inputField.hoverBackground,
+			borderColor: theme.palette.text.secondary,
+			backgroundColor: theme.palette.background.paper,
 		},
 		"&.Mui-focused": {
-			backgroundColor: theme.palette.inputField.focusBackground,
+			backgroundColor: theme.palette.background.paper,
+			borderColor: theme.palette.primary.main,
+			boxShadow: `0 0 0 2px ${theme.palette.primary.main}33`,
+		},
+		"& .MuiOutlinedInput-notchedOutline": {
+			border: "none",
+		},
+		"& .MuiInputBase-input": {
+			padding: "4px 12px !important",
+			fontSize: "0.875rem",
+			lineHeight: 1.5,
+			height: "calc(36px - 8px)",
+			boxSizing: "border-box",
+		},
+		"& .MuiInputBase-input::placeholder": {
+			color: theme.palette.text.disabled,
+			opacity: 1,
+		},
+		"& .MuiAutocomplete-endAdornment": {
+			right: "8px",
+			top: "50%",
+			transform: "translateY(-50%)",
+		},
+		"& .MuiAutocomplete-inputRoot": {
+			padding: "0 !important",
 		},
 	},
 	"& .MuiInputBase-root": {
-		minHeight: "54px",
+		minHeight: "36px",
+		height: "36px",
+		padding: "0 !important",
 	},
 }));
 
@@ -522,21 +554,19 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 						helperText={helperText}
 						FormHelperTextProps={{
 							sx: {
-								fontSize: "0.7rem",
+								fontSize: "0.75rem", // Slightly larger helper text
 								mt: 0.5,
-								opacity: 0.8,
-								fontStyle: "italic",
+								ml: 0.5, // Add slight left margin
+								opacity: 0.9,
+								fontStyle: "normal", // Remove italic
 							},
 						}}
 						InputProps={{
 							...params.InputProps,
-							sx: {
-								fontSize: "0.875rem",
-								lineHeight: 1.6,
-							},
+							// sx is handled by StyledAutocomplete now
 							endAdornment: (
 								<>
-									{isSaving || isSubmitting ? (
+									{isSaving || isSubmitting || isModelsLoading ? ( // Include models loading state
 										<CircularProgress size={20} />
 									) : (
 										params.InputProps.endAdornment

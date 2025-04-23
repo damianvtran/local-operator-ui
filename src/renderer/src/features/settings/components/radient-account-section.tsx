@@ -5,252 +5,238 @@
  * Shows sign-in buttons if not authenticated, or account information and sign-out button if authenticated.
  */
 
-import { faSignOut, faUser } from "@fortawesome/free-solid-svg-icons";
+import { faSignOut } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
 	Box,
 	Button,
-	Card,
-	CardContent,
 	Chip,
+	CircularProgress,
 	Divider,
-	Grid,
 	Typography,
 	alpha,
 	styled,
 } from "@mui/material";
 import { RadientAuthButtons } from "@shared/components/auth";
 import { useRadientAuth } from "@shared/hooks";
-import { useFeatureFlags } from "@shared/providers/feature-flags";
 import { type FC, useCallback, useMemo } from "react";
 
-const StyledCard = styled(Card)(() => ({
-	marginBottom: 32,
-	backgroundColor: "background.paper",
-	borderRadius: 8,
-	boxShadow: "0 4px 20px rgba(0,0,0,0.06)",
-}));
-
-const StyledCardContent = styled(CardContent)(({ theme }) => ({
-	[theme.breakpoints.down("sm")]: {
-		padding: 16,
-	},
-	[theme.breakpoints.up("sm")]: {
-		padding: 24,
-	},
-}));
-
-const CardTitle = styled(Typography)(() => ({
-	marginBottom: 16,
-	display: "flex",
-	alignItems: "center",
-	gap: 8,
-}));
-
-const CardDescription = styled(Typography)(() => ({
-	marginBottom: 24,
-	color: "text.secondary",
-}));
-
+// Shadcn-inspired container for info rows
 const InfoContainer = styled(Box)(({ theme }) => ({
-	padding: theme.spacing(3),
-	borderRadius: 8,
-	backgroundColor: alpha(theme.palette.primary.main, 0.05),
+	padding: theme.spacing(2),
+	borderRadius: theme.shape.borderRadius * 0.75,
+	backgroundColor: theme.palette.action.hover,
+	border: `1px solid ${theme.palette.divider}`,
 	marginBottom: theme.spacing(3),
 }));
 
+// Styling for each row within the info container
 const InfoRow = styled(Box)(({ theme }) => ({
 	display: "flex",
-	marginBottom: theme.spacing(2),
+	flexDirection: "row",
+	alignItems: "flex-start",
+	marginBottom: theme.spacing(1.5),
 	"&:last-child": {
 		marginBottom: 0,
 	},
-}));
-
-const InfoLabel = styled(Typography)(({ theme }) => ({
-	fontWeight: 500,
-	width: 120,
-	flexShrink: 0,
-	color: theme.palette.text.secondary,
-}));
-
-const InfoValue = styled(Typography)(() => ({
-	fontWeight: 400,
-	flexGrow: 1,
-}));
-
-const StatusChip = styled(Chip)(({ theme }) => ({
-	marginLeft: theme.spacing(1),
-	width: 8,
-	height: 8,
-}));
-
-const SignOutButton = styled(Button)(({ theme }) => ({
-	marginTop: theme.spacing(3),
-	backgroundColor: alpha(theme.palette.error.main, 0.1),
-	color: theme.palette.error.main,
-	"&:hover": {
-		backgroundColor: alpha(theme.palette.error.main, 0.2),
+	[theme.breakpoints.down("sm")]: {
+		flexDirection: "column",
+		alignItems: "stretch",
+		marginBottom: theme.spacing(2),
 	},
 }));
 
+// Styling for the label part of an info row
+const InfoLabel = styled(Typography)(({ theme }) => ({
+	fontWeight: 500,
+	width: 100,
+	flexShrink: 0,
+	color: theme.palette.text.secondary,
+	fontSize: "0.8125rem",
+	lineHeight: 1.6,
+	marginRight: theme.spacing(2),
+	[theme.breakpoints.down("sm")]: {
+		width: "auto",
+		marginBottom: theme.spacing(0.5),
+		marginRight: 0,
+	},
+}));
+
+// Styling for the value part of an info row
+const InfoValue = styled(Typography)(({ theme }) => ({
+	fontWeight: 400,
+	flexGrow: 1,
+	fontSize: "0.8125rem",
+	lineHeight: 1.6,
+	wordBreak: "break-word",
+	color: theme.palette.text.primary,
+}));
+
+// Styling for the status chip (e.g., "Connected")
+const StatusChip = styled(Chip)(({ theme }) => ({
+	marginLeft: theme.spacing(1),
+	height: 20,
+	fontSize: "0.75rem",
+	borderRadius: theme.shape.borderRadius,
+	"& .MuiChip-label": {
+		paddingLeft: theme.spacing(1),
+		paddingRight: theme.spacing(1),
+	},
+	"&.MuiChip-colorSuccess": {
+		backgroundColor: alpha(theme.palette.success.main, 0.15),
+		color: theme.palette.success.dark,
+	},
+}));
+
+// Shadcn-inspired destructive button style for Sign Out
+const SignOutButton = styled(Button)(({ theme }) => ({
+	borderColor: theme.palette.divider,
+	color: theme.palette.error.main,
+	textTransform: "none",
+	fontSize: "0.8125rem",
+	padding: theme.spacing(0.75, 2),
+	borderRadius: theme.shape.borderRadius * 0.75,
+	"&:hover": {
+		backgroundColor: alpha(theme.palette.error.main, 0.05),
+		borderColor: alpha(theme.palette.error.main, 0.5),
+	},
+}));
+
+// Loading container
+const LoadingContainer = styled(Box)({
+	display: "flex",
+	justifyContent: "center",
+	alignItems: "center",
+	minHeight: 150,
+});
+
 /**
- * RadientAccountSection component
- *
- * Settings section for managing Radient account.
- * Shows sign-in buttons if not authenticated, or account information and sign-out button if authenticated.
+ * Settings section for managing Radient account connection and details.
+ * Uses shadcn-inspired styling via SettingsSectionCard and styled components.
  */
 export const RadientAccountSection: FC = () => {
-	const { isEnabled } = useFeatureFlags();
-	const isRadientPassEnabled = isEnabled("radient-pass-onboarding");
 	const { isAuthenticated, user, isLoading, error, signOut } = useRadientAuth();
 
-	// Use a more direct approach to determine if we should show loading
-	// Only show loading if we're loading
-	const effectiveLoading = isLoading;
-
-	// If the feature flag is disabled, don't show this section
-	if (!isRadientPassEnabled) {
-		return (
-			<Box>
-				<Typography variant="body2" color="text.secondary" gutterBottom>
-					Radient Pass is coming soon! Get unified access to models, tools,
-					agents, and more in one click with Radient Pass.
-				</Typography>
-			</Box>
-		);
-	}
-
-	// Memoize the sign-out handler to prevent unnecessary re-renders
+	// Memoize the sign-out handler
 	const handleSignOut = useCallback(async () => {
-		await signOut();
+		try {
+			await signOut();
+		} catch (err) {
+			console.error("Error signing out:", err);
+			// Consider adding user feedback
+		}
 	}, [signOut]);
 
-	// Memoize the account information section to prevent unnecessary re-renders
+	// Memoize the account information section
 	const accountInfoSection = useMemo(() => {
 		if (!isAuthenticated || !user.radientUser) return null;
+
+		const { account, identity } = user.radientUser;
 
 		return (
 			<>
 				<InfoContainer>
 					<InfoRow>
-						<InfoLabel variant="body2">Status:</InfoLabel>
-						{/* Use Box instead of Typography to avoid nesting div inside p */}
+						<InfoLabel>Status:</InfoLabel>
 						<Box sx={{ flexGrow: 1, display: "flex", alignItems: "center" }}>
-							<Typography variant="body2" component="span">
-								Connected
-							</Typography>
+							<InfoValue>Connected</InfoValue>
 							<StatusChip
-								label={user.radientUser.account.status}
+								label={account.status}
 								color="success"
 								size="small"
+								className="MuiChip-colorSuccess" // Ensure class is applied for styling
 							/>
 						</Box>
 					</InfoRow>
 					<InfoRow>
-						<InfoLabel variant="body2">Name:</InfoLabel>
-						<InfoValue variant="body2">
-							{user.radientUser.account.name || "Not provided"}
+						<InfoLabel>Name:</InfoLabel>
+						<InfoValue>{account.name || "Not provided"}</InfoValue>
+					</InfoRow>
+					<InfoRow>
+						<InfoLabel>Email:</InfoLabel>
+						<InfoValue>{account.email}</InfoValue>
+					</InfoRow>
+					<InfoRow>
+						<InfoLabel>Account ID:</InfoLabel>
+						<InfoValue>{account.id}</InfoValue>
+					</InfoRow>
+					<InfoRow>
+						<InfoLabel>Tenant ID:</InfoLabel>
+						<InfoValue>{account.tenant_id}</InfoValue>
+					</InfoRow>
+					<InfoRow>
+						<InfoLabel>Provider:</InfoLabel>
+						<InfoValue sx={{ textTransform: "capitalize" }}>
+							{identity.provider}
 						</InfoValue>
 					</InfoRow>
 					<InfoRow>
-						<InfoLabel variant="body2">Email:</InfoLabel>
-						<InfoValue variant="body2">
-							{user.radientUser.account.email}
-						</InfoValue>
-					</InfoRow>
-					<InfoRow>
-						<InfoLabel variant="body2">Account ID:</InfoLabel>
-						<InfoValue variant="body2">{user.radientUser.account.id}</InfoValue>
-					</InfoRow>
-					{/* Added Tenant ID display */}
-					<InfoRow>
-						<InfoLabel variant="body2">Tenant ID:</InfoLabel>
-						<InfoValue variant="body2">
-							{user.radientUser.account.tenant_id}
-						</InfoValue>
-					</InfoRow>
-					<InfoRow>
-						<InfoLabel variant="body2">Provider:</InfoLabel>
-						<InfoValue variant="body2" sx={{ textTransform: "capitalize" }}>
-							{user.radientUser.identity.provider}
-						</InfoValue>
-					</InfoRow>
-					<InfoRow>
-						<InfoLabel variant="body2">Created:</InfoLabel>
-						<InfoValue variant="body2">
-							{new Date(user.radientUser.account.created_at).toLocaleString()}
+						<InfoLabel>Created:</InfoLabel>
+						<InfoValue>
+							{new Date(account.created_at).toLocaleString()}
 						</InfoValue>
 					</InfoRow>
 				</InfoContainer>
 
 				<Divider sx={{ my: 3 }} />
 
-				<Grid container spacing={2}>
-					<Grid item xs={12}>
-						<Typography variant="body2" color="text.secondary" gutterBottom>
-							Need to sign out or switch accounts?
-						</Typography>
-						<SignOutButton
-							variant="outlined"
-							startIcon={<FontAwesomeIcon icon={faSignOut} />}
-							onClick={handleSignOut}
-						>
-							Sign Out from Radient
-						</SignOutButton>
-					</Grid>
-				</Grid>
+				<Box>
+					<Typography variant="body2" color="text.secondary" mb={1.5}>
+						Need to sign out or switch accounts?
+					</Typography>
+					<SignOutButton
+						variant="outlined"
+						startIcon={<FontAwesomeIcon icon={faSignOut} size="sm" />}
+						onClick={handleSignOut}
+					>
+						Sign Out from Radient
+					</SignOutButton>
+				</Box>
 			</>
 		);
 	}, [isAuthenticated, user.radientUser, handleSignOut]);
 
-	// Memoize the sign-in section to prevent unnecessary re-renders
+	// Memoize the sign-in section
 	const signInSection = useMemo(() => {
-		// Only show if not authenticated
 		if (isAuthenticated) return null;
 
 		return (
-			<Box sx={{ mt: 2 }}>
-				<Typography variant="body2" color="text.secondary" gutterBottom>
+			<Box sx={{ mt: 1 }}>
+				{" "}
+				{/* Reduced margin top */}
+				<Typography variant="body2" color="text.secondary" mb={2.5}>
 					You are not currently signed in to Radient. Sign in to access your
 					account details or sign up to get free credits and unified access to
 					models, tools, and more with Radient Pass.
 				</Typography>
-				<Box sx={{ mt: 3 }}>
-					<RadientAuthButtons
-						titleText="Sign in to your Radient account"
-						descriptionText="Choose your preferred sign-in method to access Radient services."
-						onSignInSuccess={() => {
-							// Force a refresh of the component
-						}}
-					/>
-				</Box>
+				<RadientAuthButtons
+					titleText=""
+					descriptionText=""
+					onSignInSuccess={() => {
+						// Optional: Add logic after successful sign-in if needed
+					}}
+				/>
 			</Box>
 		);
 	}, [isAuthenticated]);
 
 	return (
-		<StyledCard>
-			<StyledCardContent>
-				<CardTitle variant="h6">
-					<FontAwesomeIcon icon={faUser} />
-					Account Details
-				</CardTitle>
-
-				<CardDescription variant="body2">
-					Review your Radient Pass details and manage your account settings.
-				</CardDescription>
-
-				{effectiveLoading ? (
-					<Typography>Loading account information...</Typography>
-				) : error ? (
-					<Typography color="error">
-						Error: {error instanceof Error ? error.message : String(error)}
-					</Typography>
-				) : (
-					accountInfoSection || signInSection
-				)}
-			</StyledCardContent>
-		</StyledCard>
+		<Box>
+			{" "}
+			{/* Wrap content in a Box instead of a Card */}
+			{isLoading ? (
+				<LoadingContainer>
+					<CircularProgress />
+				</LoadingContainer>
+			) : error ? (
+				<Typography color="error" variant="body2">
+					Error loading account information:{" "}
+					{error instanceof Error ? error.message : String(error)}
+				</Typography>
+			) : (
+				// Render either the account info or the sign-in prompt
+				accountInfoSection || signInSection
+			)}
+		</Box>
 	);
 };

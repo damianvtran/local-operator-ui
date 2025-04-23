@@ -7,12 +7,13 @@
  */
 
 import {
+	Box,
 	Dialog,
 	DialogActions,
-	DialogContent,
 	DialogTitle,
 	alpha,
 	styled,
+	useTheme,
 } from "@mui/material";
 import type { ReactNode } from "react";
 
@@ -47,112 +48,84 @@ export type OnboardingDialogProps = {
 };
 
 /**
- * Styled root dialog with onboarding-specific full-screen styles
+ * Styled root dialog container.
+ * Uses a standard backdrop and centers the content container.
  */
 const StyledDialog = styled(Dialog)(({ theme }) => ({
 	"& .MuiBackdrop-root": {
-		// Apply gradient to the backdrop for full screen effect
 		background:
 			"linear-gradient(135deg, rgba(40,40,40,1), rgba(15,15,15,0.95), rgba(5,5,5,1), rgba(56,201,106,0.15))",
 		opacity: 1.0,
 	},
-	"& .MuiPaper-root": {
-		margin: 0,
-		width: "100%",
-		height: "100%",
+	"& .MuiDialog-container": {
 		display: "flex",
-		flexDirection: "column",
-		justifyContent: "center",
 		alignItems: "center",
-		backgroundColor: "transparent",
-		backgroundImage: "none",
-		boxShadow: "none",
-		overflow: "hidden",
-		[theme.breakpoints.down("sm")]: {
-			padding: theme.spacing(3, 2, 2),
-		},
-		[theme.breakpoints.up("xs")]: {
-			minWidth: "300px",
-		},
-		[theme.breakpoints.up("sm")]: {
-			minWidth: "400px",
-		},
-		[theme.breakpoints.up("md")]: {
-			minWidth: "500px",
-		},
+		justifyContent: "center",
+		padding: theme.spacing(2),
 	},
-	"& .MuiDialogContent-root": {
-		// Remove explicit background to let parent gradient show through
-		"&:first-of-type": {
-			paddingTop: 16,
-		},
-		overflow: "auto",
-		"&::-webkit-scrollbar": {
-			width: "8px",
-		},
-		"&::-webkit-scrollbar-thumb": {
-			backgroundColor: alpha(
-				theme.palette.mode === "dark"
-					? theme.palette.common.white
-					: theme.palette.common.black,
-				0.1,
-			),
-			borderRadius: "4px",
-		},
+	"& .MuiPaper-root": {
+		backgroundColor: "transparent",
+		boxShadow: "none",
+		overflow: "visible",
+		margin: 0,
+		maxWidth: "none",
+		maxHeight: "none",
+		width: "auto",
+		height: "auto",
 	},
 }));
 
 /**
- * Container to constrain content width and provide responsive centering
+ * The main content area styled like a shadcn card/dialog.
+ * Constrains width/height, adds background, border-radius, padding, etc.
  */
-const ContentContainer = styled("div")(() => ({
+const ContentContainer = styled(Box)(({ theme }) => ({
 	width: "100%",
 	height: "100%",
-	maxWidth: "780px",
-	maxHeight: "780px",
+	maxWidth: "650px",
+	maxHeight: "calc(100vh - 64px)",
 	boxSizing: "border-box",
 	display: "flex",
 	flexDirection: "column",
-	flexGrow: 1,
+	backgroundColor: theme.palette.background.paper,
+	borderRadius: theme.shape.borderRadius * 1.5,
+	border: `1px solid ${theme.palette.divider}`,
+	boxShadow: theme.shadows[4],
+	overflow: "hidden",
+	padding: 0,
+	[theme.breakpoints.down("sm")]: {
+		maxWidth: "95vw",
+		maxHeight: "90vh",
+	},
 }));
 
 /**
- * Styled title area
+ * Styled title area - consistent with shadcn headers.
  */
 const StyledDialogTitle = styled(DialogTitle)(({ theme }) => ({
 	margin: 0,
-	paddingLeft: theme.spacing(3), // Add horizontal padding
-	paddingRight: theme.spacing(3), // Add horizontal padding
+	padding: theme.spacing(2, 3),
 	color: theme.palette.text.primary,
-	fontSize: "2.2rem",
-	fontWeight: 400,
+	fontSize: "1.25rem",
+	fontWeight: 600,
+	borderBottom: `1px solid ${theme.palette.divider}`,
+	marginBottom: theme.spacing(1),
+	flexShrink: 0,
 }));
 
 /**
- * Styled content area with responsive constraints
- */
-const StyledDialogContent = styled(DialogContent)(({ theme }) => ({
-	paddingLeft: theme.spacing(3), // Add horizontal padding
-	paddingRight: theme.spacing(3), // Add horizontal padding
-	flexGrow: 1,
-	overflowY: "auto",
-	width: "100%", // Ensure it takes full width before padding
-	boxSizing: "border-box",
-}));
-
-/**
- * Styled actions area with responsive constraints
+ * Styled actions area with padding and border.
  */
 const StyledDialogActions = styled(DialogActions)(({ theme }) => ({
-	paddingLeft: theme.spacing(3), // Add horizontal padding
-	paddingRight: theme.spacing(3), // Add horizontal padding
-	marginTop: theme.spacing(2),
+	padding: theme.spacing(2, 3),
+	borderTop: `1px solid ${theme.palette.divider}`,
+	backgroundColor: alpha(theme.palette.background.default, 0.5),
 	display: "flex",
 	justifyContent: "space-between",
 	alignItems: "center",
 	width: "100%",
 	boxSizing: "border-box",
-	// Remove explicit background
+	flexShrink: 0,
 }));
 
 /**
@@ -169,18 +142,45 @@ export const OnboardingDialog = ({
 	actions,
 	dialogProps = {},
 }: OnboardingDialogProps): ReactNode => {
+	const theme = useTheme();
+
 	return (
 		<StyledDialog
 			open={open}
 			onClose={() => {}}
-			fullScreen
 			disableEscapeKeyDown
 			{...dialogProps}
 		>
 			<ContentContainer>
 				{title && <StyledDialogTitle>{title}</StyledDialogTitle>}
-				{stepIndicators}
-				<StyledDialogContent>{children}</StyledDialogContent>
+				{stepIndicators && (
+					<Box sx={{ px: 3, pt: 0, pb: 0, mb: 0 }}>{stepIndicators}</Box>
+				)}
+				<Box
+					sx={{
+						padding: theme.spacing(0, 3, 1),
+						flexGrow: 1,
+						overflowY: "auto",
+						"&::-webkit-scrollbar": {
+							width: "8px",
+							height: "8px",
+						},
+						"&::-webkit-scrollbar-track": {
+							backgroundColor: "transparent",
+						},
+						"&::-webkit-scrollbar-thumb": {
+							backgroundColor: alpha(theme.palette.text.primary, 0.2),
+							borderRadius: "4px",
+							border: "2px solid transparent",
+							backgroundClip: "padding-box",
+							"&:hover": {
+								backgroundColor: alpha(theme.palette.text.primary, 0.3),
+							},
+						},
+					}}
+				>
+					{children}
+				</Box>
 				{actions && <StyledDialogActions>{actions}</StyledDialogActions>}
 			</ContentContainer>
 		</StyledDialog>

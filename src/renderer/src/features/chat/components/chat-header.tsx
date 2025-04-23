@@ -20,8 +20,9 @@ type ChatHeaderProps = {
 const OptionsButton = styled(IconButton)(({ theme }) => ({
 	marginLeft: "auto",
 	color: theme.palette.text.secondary,
-	width: "60px",
-	height: "60px",
+	width: "48px",
+	height: "48px",
+	cursor: "pointer",
 	transition: "all 0.2s ease",
 	"&:hover": {
 		backgroundColor: alpha(theme.palette.primary.main, 0.08),
@@ -45,6 +46,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 				borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
 				display: "flex",
 				alignItems: "center",
+				height: "84px",
 			})}
 		>
 			<Avatar
@@ -57,10 +59,21 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 				<FontAwesomeIcon icon={faRobot} />
 			</Avatar>
 			<Box>
-				<Typography variant="h6" sx={{ fontWeight: 500 }}>
+				<Typography
+					variant="h6"
+					sx={{
+						fontWeight: 500,
+						lineHeight: 1.3,
+						mb: 0,
+					}}
+				>
 					{agentName}
 				</Typography>
-				<Typography variant="caption" color="text.secondary">
+				<Typography
+					variant="caption"
+					color="text.secondary"
+					sx={{ lineHeight: 1, mt: 0, fontSize: "0.875rem" }}
+				>
 					{description}
 				</Typography>
 			</Box>
@@ -68,7 +81,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 			{onOpenOptions && !isCanvasOpen && (
 				<Tooltip title="Open Canvas" arrow placement="top">
 					<OptionsButton onClick={() => setCanvasOpen(true)} size="medium">
-						<FontAwesomeIcon icon={faFileAlt} />
+						<FontAwesomeIcon icon={faFileAlt} size="sm" />
 					</OptionsButton>
 				</Tooltip>
 			)}

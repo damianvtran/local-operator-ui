@@ -1,101 +1,110 @@
 import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Alert, Box, Button, CircularProgress, Grid } from "@mui/material";
+import {
+	Alert,
+	Box,
+	Button,
+	CircularProgress,
+	Grid,
+	useTheme,
+} from "@mui/material";
+import { styled } from "@mui/material/styles";
 import type { CredentialUpdate } from "@shared/api/local-operator/types";
 import { useCredentials } from "@shared/hooks/use-credentials";
 import { useUpdateCredential } from "@shared/hooks/use-update-credential";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { FC } from "react";
 import { CredentialCard } from "./credential-card";
 import { CredentialDialog } from "./credential-dialog";
 import { CREDENTIAL_MANIFEST } from "./credential-manifest";
 import { CredentialsSection } from "./credentials-section";
-import {
-	LoadingContainer,
-	StyledCard,
-	StyledCardContent,
-} from "./credentials-styled";
+
+const LoadingContainer = styled(Box)({
+	display: "flex",
+	justifyContent: "center",
+	alignItems: "center",
+	minHeight: 150,
+});
 
 /**
- * Credentials component
- * Displays and allows management of API credentials
+ * Credentials component - Displays and manages API credentials using shadcn-inspired styling.
+ * This component renders the *content* for the API Credentials section.
  */
 export const Credentials: FC = () => {
+	const theme = useTheme();
 	const { data: credentialsData, isLoading, error, refetch } = useCredentials();
 	const updateCredentialMutation = useUpdateCredential();
 	const [editDialogOpen, setEditDialogOpen] = useState(false);
 	const [addDialogOpen, setAddDialogOpen] = useState(false);
-	const [currentCredential, setCurrentCredential] = useState<string | null>(
-		null,
-	);
+	const [currentCredentialKey, setCurrentCredentialKey] = useState<
+		string | null
+	>(null);
 
 	const handleEditCredential = (key: string) => {
-		setCurrentCredential(key);
+		setCurrentCredentialKey(key);
 		setEditDialogOpen(true);
 	};
 
-	const handleAddCredential = () => {
-		setCurrentCredential(null);
+	const handleAddCredential = (key: string | null = null) => {
+		setCurrentCredentialKey(key);
 		setAddDialogOpen(true);
+	};
+
+	const handleCloseDialogs = () => {
+		setEditDialogOpen(false);
+		setAddDialogOpen(false);
+		setCurrentCredentialKey(null);
 	};
 
 	const handleSaveCredential = async (update: CredentialUpdate) => {
 		try {
 			await updateCredentialMutation.mutateAsync(update);
-			setEditDialogOpen(false);
-			setAddDialogOpen(false);
+			handleCloseDialogs();
 			await refetch();
-		} catch (error) {
-			console.error("Error saving credential:", error);
+		} catch (err) {
+			console.error("Error saving credential:", err);
 		}
 	};
 
 	const handleClearCredential = async (key: string) => {
 		try {
-			await updateCredentialMutation.mutateAsync({
-				key,
-				value: "",
-			});
+			await updateCredentialMutation.mutateAsync({ key, value: "" });
 			await refetch();
-		} catch (error) {
-			console.error("Error clearing credential:", error);
+		} catch (err) {
+			console.error("Error clearing credential:", err);
 		}
 	};
 
-	// Loading state
-	if (isLoading) {
-		return (
-			<StyledCard>
-				<StyledCardContent>
-					<LoadingContainer>
-						<CircularProgress />
-					</LoadingContainer>
-				</StyledCardContent>
-			</StyledCard>
-		);
-	}
-
-	// Error state
-	if (error || !credentialsData) {
-		return (
-			<StyledCard>
-				<StyledCardContent>
-					<Alert severity="error">
-						Failed to load credentials. Please try again later.
-					</Alert>
-				</StyledCardContent>
-			</StyledCard>
-		);
-	}
-
-	const existingKeys = credentialsData.keys || [];
-	const availableCredentials = CREDENTIAL_MANIFEST.filter(
-		(cred) => !existingKeys.includes(cred.key),
+	const existingKeys = useMemo(
+		() => credentialsData?.keys ?? [],
+		[credentialsData],
+	);
+	const availableCredentials = useMemo(
+		() =>
+			CREDENTIAL_MANIFEST.filter((cred) => !existingKeys.includes(cred.key)),
+		[existingKeys],
 	);
 
-	return (
-		<StyledCard>
-			<StyledCardContent>
+	const renderContent = () => {
+		if (isLoading) {
+			return (
+				<LoadingContainer>
+					<CircularProgress />
+				</LoadingContainer>
+			);
+		}
+
+		if (error || !credentialsData) {
+			return (
+				<Alert severity="error" sx={{ width: "100%" }}>
+					Failed to load credentials:{" "}
+					{error instanceof Error ? error.message : "Unknown error"}
+				</Alert>
+			);
+		}
+
+		return (
+			<>
 				{/* Configured Credentials Section */}
 				<CredentialsSection
 					title="Configured Credentials"
@@ -128,10 +137,7 @@ export const Credentials: FC = () => {
 							<CredentialCard
 								credentialKey={cred.key}
 								isConfigured={false}
-								onAdd={() => {
-									setCurrentCredential(cred.key);
-									setAddDialogOpen(true);
-								}}
+								onAdd={() => handleAddCredential(cred.key)}
 							/>
 						</Grid>
 					))}
@@ -140,35 +146,54 @@ export const Credentials: FC = () => {
 				{/* Add Custom Credential Button */}
 				<Box display="flex" justifyContent="center" mt={4}>
 					<Button
-						variant="contained"
+						variant="outlined"
 						color="primary"
-						startIcon={<FontAwesomeIcon icon={faPlus} />}
-						onClick={handleAddCredential}
+						startIcon={<FontAwesomeIcon icon={faPlus} size="sm" />}
+						onClick={() => handleAddCredential(null)}
+						sx={{
+							textTransform: "none",
+							fontSize: "0.8125rem",
+							padding: theme.spacing(0.75, 2),
+							borderRadius: theme.shape.borderRadius * 0.75,
+							boxShadow: "none",
+							"&:hover": {
+								boxShadow: "none",
+								opacity: 0.9,
+							},
+						}}
 					>
 						Add Custom Credential
 					</Button>
 				</Box>
 
 				{/* Edit Credential Dialog */}
-				<CredentialDialog
-					open={editDialogOpen}
-					onClose={() => setEditDialogOpen(false)}
-					onSave={handleSaveCredential}
-					initialKey={currentCredential || ""}
-					existingKeys={existingKeys}
-					isSaving={updateCredentialMutation.isPending}
-				/>
+				{editDialogOpen && (
+					<CredentialDialog
+						open={editDialogOpen}
+						onClose={handleCloseDialogs}
+						onSave={handleSaveCredential}
+						initialKey={currentCredentialKey || ""}
+						existingKeys={existingKeys}
+						isSaving={updateCredentialMutation.isPending}
+						isEditMode={true}
+					/>
+				)}
 
 				{/* Add Credential Dialog */}
-				<CredentialDialog
-					open={addDialogOpen}
-					onClose={() => setAddDialogOpen(false)}
-					onSave={handleSaveCredential}
-					initialKey={currentCredential || ""}
-					existingKeys={existingKeys}
-					isSaving={updateCredentialMutation.isPending}
-				/>
-			</StyledCardContent>
-		</StyledCard>
-	);
+				{addDialogOpen && (
+					<CredentialDialog
+						open={addDialogOpen}
+						onClose={handleCloseDialogs}
+						onSave={handleSaveCredential}
+						initialKey={currentCredentialKey || ""}
+						existingKeys={existingKeys}
+						isSaving={updateCredentialMutation.isPending}
+						isEditMode={false}
+					/>
+				)}
+			</>
+		);
+	};
+
+	return <Box>{renderContent()}</Box>;
 };

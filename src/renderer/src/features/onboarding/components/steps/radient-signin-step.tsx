@@ -5,20 +5,14 @@
  * to set up their Radient Pass account.
  */
 
-import { Box, Typography } from "@mui/material";
-import { getUserInfo } from "@shared/api/radient/auth-api";
+import { Box, Typography, useTheme } from "@mui/material";
 import { RadientAuthButtons } from "@shared/components/auth";
-import { apiConfig } from "@shared/config";
-import {
-	OnboardingStep,
-	useOnboardingStore,
-} from "@shared/store/onboarding-store";
-import { useUserStore } from "@shared/store/user-store";
-import radientTheme from "@shared/themes/radient-theme";
-import { getSession, hasValidSession } from "@shared/utils/session-store";
 import type { FC } from "react";
-import { useCallback, useEffect } from "react";
-import { SectionContainer, SectionDescription } from "../onboarding-styled";
+import {
+	EmojiContainer,
+	SectionContainer,
+	SectionDescription,
+} from "../onboarding-styled"; // Added EmojiContainer
 
 /**
  * Props for the RadientSignInStep component
@@ -37,128 +31,74 @@ type RadientSignInStepProps = {
  * to set up their Radient Pass account.
  */
 export const RadientSignInStep: FC<RadientSignInStepProps> = ({
-	onSignInSuccess,
+	onSignInSuccess, // This prop comes from OnboardingModal
 }) => {
-	const handleSignInSuccess = useCallback(async () => {
-		try {
-			// Get the session data
-			const sessionData = await getSession();
+	const theme = useTheme(); // Get theme context
 
-			if (sessionData) {
-				// Fetch user information from Radient API
-				const userInfoResponse = await getUserInfo(
-					apiConfig.radientBaseUrl,
-					sessionData.accessToken,
-				);
-				const userInfo = userInfoResponse.result;
+	// Remove internal handleSignInSuccess logic
+	// const handleSignInSuccess = useCallback(async () => { ... });
 
-				// Update the user profile with name and email
-				if (userInfo) {
-					const updateProfile = useUserStore.getState().updateProfile;
-					updateProfile({
-						name: userInfo.account.name,
-						email: userInfo.account.email,
-					});
-				} else {
-					console.error("User info response was empty");
-				}
-			} else {
-				console.warn("No session data found in handleSignInSuccess");
-			}
-		} catch (error) {
-			console.error("Error fetching user info:", error);
-		}
+	// Remove session check useEffect
+	// useEffect(() => { ... });
 
-		// Continue to agent creation step
-		const { setCurrentStep } = useOnboardingStore.getState();
-		setCurrentStep(OnboardingStep.CREATE_AGENT);
-
-		// Call the onSignInSuccess callback if provided
-		if (onSignInSuccess) {
-			onSignInSuccess();
-		}
-	}, [onSignInSuccess]);
-
-	// Check for existing session on mount
-	useEffect(() => {
-		const checkExistingSession = async () => {
-			const hasSession = await hasValidSession();
-			if (hasSession) {
-				// If we already have a session, proceed to the next step
-				handleSignInSuccess();
-			}
-		};
-
-		checkExistingSession();
-	}, [handleSignInSuccess]);
-
+	// Use SectionContainer for the main wrapper with animation
 	return (
-		<Box sx={{ animation: "fadeIn 0.6s ease-out" }}>
-			<Typography
-				variant="body1"
-				sx={{
-					fontSize: "1.1rem",
-					fontWeight: 500,
-					lineHeight: 1.6,
-					mb: 2,
-				}}
-			>
-				Sign in to set up your Radient account
-			</Typography>
+		<SectionContainer>
+			{/* Use SectionDescription for main text, adjust font size if needed */}
+			<SectionDescription sx={{ mb: 3 }}>
+				Sign in with your preferred method to get started with Radient Pass.
+				This gives you access to web search, image generation, site crawling,
+				and more.
+			</SectionDescription>
 
-			<SectionDescription sx={{ mb: 4 }}>
-				Choose your preferred sign-in method to get started with Radient Pass.
-				This will give you access to web search, image generation, site
-				crawling, and more.
-				<br />
-				<br />
+			{/* Use SectionDescription for the credit info */}
+			<SectionDescription sx={{ mb: 3 }}>
 				Start with{" "}
-				<span
-					style={{ fontWeight: 600, color: radientTheme.palette.primary.light }}
+				<Typography
+					component="span"
+					fontWeight="medium" // Use medium weight for emphasis
+					color={theme.palette.primary.main} // Use theme primary color
+					sx={{ fontSize: "inherit" }} // Ensure size matches parent
 				>
 					$1 USD
-				</span>{" "}
+				</Typography>{" "}
 				of free credit, and unlock{" "}
-				<span
-					style={{ fontWeight: 600, color: radientTheme.palette.primary.light }}
+				<Typography
+					component="span"
+					fontWeight="medium" // Use medium weight
+					color={theme.palette.primary.main} // Use theme primary color
+					sx={{ fontSize: "inherit" }} // Ensure size matches parent
 				>
 					$5 USD
-				</span>{" "}
+				</Typography>{" "}
 				more with your first payment.
 			</SectionDescription>
 
-			<SectionContainer>
-				<Box
-					sx={{
-						display: "flex",
-						flexDirection: "column",
-						alignItems: "center",
-						py: 2,
-					}}
-				>
-					<RadientAuthButtons
-						titleText=""
-						descriptionText=""
-						onSignInSuccess={handleSignInSuccess}
-					/>
-				</Box>
-			</SectionContainer>
-
+			{/* Container for the auth buttons, centered */}
 			<Box
 				sx={{
-					mt: 4,
-					fontStyle: "italic",
-					textAlign: "center",
-					color: "text.secondary",
-					fontSize: "0.875rem", // Equivalent to variant="body2"
+					display: "flex",
+					flexDirection: "column",
+					alignItems: "center",
+					py: theme.spacing(2), // Consistent vertical padding
+					mb: 3, // Add margin below buttons
 				}}
 			>
-				<Box component="span" sx={{ mr: 1 }}>
-					💡
-				</Box>
-				Your account will be used only for authentication and to manage your
-				Radient Pass subscription.
+				{/* RadientAuthButtons should handle its internal styling */}
+				{/* Pass the onSignInSuccess prop directly to RadientAuthButtons */}
+				<RadientAuthButtons
+					titleText="" // Keep title/desc empty if not needed here
+					descriptionText=""
+					onSignInSuccess={onSignInSuccess} // Pass down the prop from parent
+				/>
 			</Box>
-		</Box>
+
+			{/* Use SectionDescription for the final note, centered */}
+			<SectionDescription sx={{ textAlign: "center" }}>
+				<EmojiContainer>💡</EmojiContainer> {/* Use EmojiContainer */}
+				Your account is used for authentication and managing your Radient Pass
+				subscription.
+			</SectionDescription>
+		</SectionContainer>
 	);
 };
