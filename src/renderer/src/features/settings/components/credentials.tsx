@@ -8,6 +8,7 @@ import {
 	Grid,
 	useTheme,
 } from "@mui/material";
+import { styled } from "@mui/material/styles";
 import type { CredentialUpdate } from "@shared/api/local-operator/types";
 import { useCredentials } from "@shared/hooks/use-credentials";
 import { useUpdateCredential } from "@shared/hooks/use-update-credential";
@@ -17,7 +18,6 @@ import { CredentialCard } from "./credential-card";
 import { CredentialDialog } from "./credential-dialog";
 import { CREDENTIAL_MANIFEST } from "./credential-manifest";
 import { CredentialsSection } from "./credentials-section";
-import { styled } from "@mui/material/styles";
 
 const LoadingContainer = styled(Box)({
 	display: "flex",
