@@ -7,12 +7,13 @@ import {
 	faHistory,
 	faInfoCircle,
 	faChartLine,
-	faDollarSign,
 	faKey,
 	faListAlt,
 	faRobot,
 	faUser,
 	faExternalLinkAlt,
+	faPlusCircle,
+	faCreditCard,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -82,8 +83,8 @@ const BillingInfo: FC = () => {
 				gap={1}
 				mb={1.5}
 			>
-				<FontAwesomeIcon icon={faDollarSign} />
-				Billing
+				<FontAwesomeIcon icon={faCreditCard} />
+				Radient Pass
 			</Typography>
 			{isLoading && <Skeleton variant="text" width={150} height={24} />}
 			{error && (
@@ -92,13 +93,24 @@ const BillingInfo: FC = () => {
 				</Alert>
 			)}
 			{creditData && !isLoading && !error && (
-				<Typography variant="body1">
-					Available Credits:{" "}
-					<Typography component="span" fontWeight="bold">
-						{/* Format balance if needed, e.g., to fixed decimal places */}
-						{creditData.balance.toLocaleString()}
+				<Stack direction="row" spacing={2} alignItems="center">
+					<Typography variant="body1">
+						Available Credits:{" "}
+						<Typography component="span" fontWeight="bold">
+							{creditData.balance.toFixed(2)}
+						</Typography>
 					</Typography>
-				</Typography>
+					<Button
+						variant="outlined"
+						size="small"
+						href="https://console.radienthq.com/dashboard/billing"
+						target="_blank"
+						rel="noopener noreferrer"
+						startIcon={<FontAwesomeIcon icon={faPlusCircle} size="sm" />}
+					>
+						Add Credits
+					</Button>
+				</Stack>
 			)}
 		</Box>
 	);
