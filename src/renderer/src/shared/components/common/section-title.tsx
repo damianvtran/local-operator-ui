@@ -17,9 +17,9 @@ type SectionTitleProps = TypographyProps & {
 export const SectionTitle: FC<SectionTitleProps> = ({
 	title,
 	icon,
-	iconSize = "sm", // Default icon size
-	variant = "h6", // Default variant
-	gutterBottom = false, // Default gutterBottom
+	iconSize = "sm",
+	variant = "h6",
+	gutterBottom = false,
 	sx,
 	...props
 }) => {
@@ -30,10 +30,11 @@ export const SectionTitle: FC<SectionTitleProps> = ({
 			sx={{
 				display: "flex",
 				alignItems: "center",
-				gap: 1.5, // Consistent gap (12px)
-				fontWeight: 500, // Medium weight for titles
-				mb: gutterBottom ? 1.5 : 0, // Apply margin bottom if gutterBottom is true
-				...sx, // Allow overriding styles
+				gap: 1.5,
+				fontWeight: 500,
+				fontSize: "1.125rem",
+				mb: gutterBottom ? 1.5 : 0,
+				...sx,
 			}}
 			{...props}
 		>
