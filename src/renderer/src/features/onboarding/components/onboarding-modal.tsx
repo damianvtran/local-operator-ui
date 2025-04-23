@@ -92,7 +92,7 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 	// On mount, check if provider auth is enabled via IPC
 	useEffect(() => {
 		const checkAuth = async () => {
-			setIsLoadingProviderAuth(true); 
+			setIsLoadingProviderAuth(true);
 			try {
 				const enabled = await window.api.ipcRenderer.checkProviderAuthEnabled();
 				setIsProviderAuthEnabled(enabled);
@@ -101,7 +101,7 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 				// Assume disabled if there's an error
 				setIsProviderAuthEnabled(false);
 			} finally {
-				setIsLoadingProviderAuth(false); 
+				setIsLoadingProviderAuth(false);
 			}
 		};
 		checkAuth();
@@ -165,7 +165,12 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 			}
 		};
 		tryRestoreSession();
-	}, [setCurrentStep, isLoadingProviderAuth, isRadientPassFlowEnabled, queryClient]);
+	}, [
+		setCurrentStep,
+		isLoadingProviderAuth,
+		isRadientPassFlowEnabled,
+		queryClient,
+	]);
 
 	// Update the previous step reference whenever currentStep changes
 	useEffect(() => {
@@ -242,7 +247,6 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 		// setCurrentStep is included as it's used within the effect.
 	}, [isLoadingProviderAuth, isRadientPassFlowEnabled, setCurrentStep]);
 
-
 	// Detect if user has jumped from RADIENT_SIGNIN directly to CREATE_AGENT
 	// This indicates they successfully used Radient Pass
 	useEffect(() => {
@@ -275,7 +279,6 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 		// This effect depends on currentStep becoming defined and visitedSteps being empty.
 	}, [currentStep, visitedSteps.size]);
 
-
 	/**
 	 * Get the main title for the dialog based on the current step
 	 */
@@ -295,7 +298,7 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 		}
 	}, [currentStep]); // Remove stepTitles from dependency array
 
-  console.log("currentStep", currentStep);
+	console.log("currentStep", currentStep);
 
 	/**
 	 * Get the content component for the current step
@@ -559,35 +562,36 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 	const stepIndicators = (
 		<StepIndicatorContainer>
 			{/* Only render dots if currentStep is defined */}
-			{currentStep && steps.map((step) => {
-				const isActive = currentStep === step;
-				const isVisited = visitedSteps.has(step);
-				// Allow navigation only to visited steps that are not the current one
-				const canNavigate = isVisited && step !== currentStep;
+			{currentStep &&
+				steps.map((step) => {
+					const isActive = currentStep === step;
+					const isVisited = visitedSteps.has(step);
+					// Allow navigation only to visited steps that are not the current one
+					const canNavigate = isVisited && step !== currentStep;
 
-				// Special case: Don't allow navigating back to CHOICE/SIGNIN via dots
-				const isNonNavigableRadientStep =
-					step === OnboardingStep.RADIENT_CHOICE ||
-					step === OnboardingStep.RADIENT_SIGNIN;
+					// Special case: Don't allow navigating back to CHOICE/SIGNIN via dots
+					const isNonNavigableRadientStep =
+						step === OnboardingStep.RADIENT_CHOICE ||
+						step === OnboardingStep.RADIENT_SIGNIN;
 
-				return (
-					// @ts-ignore - Ignore potential TS issue with Tooltip wrapping custom component
-					<Tooltip key={step} title={stepTitles[step]} arrow>
-						{/* Wrap StepDot directly if it forwards refs, otherwise use a Box */}
-						{/* The updated StepDot handles cursor styling internally */}
-						<StepDot
-							active={isActive}
-							visited={isVisited}
-							onClick={() => {
-								// Navigation logic remains the same
-								if (canNavigate && !isNonNavigableRadientStep) {
-									setCurrentStep(step);
-								}
-							}}
-						/>
-					</Tooltip>
-				);
-			})}
+					return (
+						// @ts-ignore - Ignore potential TS issue with Tooltip wrapping custom component
+						<Tooltip key={step} title={stepTitles[step]} arrow>
+							{/* Wrap StepDot directly if it forwards refs, otherwise use a Box */}
+							{/* The updated StepDot handles cursor styling internally */}
+							<StepDot
+								active={isActive}
+								visited={isVisited}
+								onClick={() => {
+									// Navigation logic remains the same
+									if (canNavigate && !isNonNavigableRadientStep) {
+										setCurrentStep(step);
+									}
+								}}
+							/>
+						</Tooltip>
+					);
+				})}
 		</StepIndicatorContainer>
 	);
 

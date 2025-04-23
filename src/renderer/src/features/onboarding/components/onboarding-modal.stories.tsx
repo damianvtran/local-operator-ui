@@ -1,9 +1,9 @@
-import React from "react"; // Add React import
 import {
 	OnboardingStep,
 	useOnboardingStore,
 } from "@shared/store/onboarding-store";
 import type { Meta, StoryObj } from "@storybook/react";
+import React from "react"; // Add React import
 import { OnboardingModal } from "./onboarding-modal";
 
 /**

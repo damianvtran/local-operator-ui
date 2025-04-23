@@ -60,7 +60,8 @@ const SignInButton = styled(Button)(({ theme }) => ({
 	backgroundColor: theme.palette.background.paper, // Standard background
 	color: theme.palette.text.primary, // Standard text color
 	boxShadow: "none", // Remove shadow
-	transition: "background-color 0.2s ease-in-out, border-color 0.2s ease-in-out", // Standard transition
+	transition:
+		"background-color 0.2s ease-in-out, border-color 0.2s ease-in-out", // Standard transition
 	"&:hover": {
 		backgroundColor: theme.palette.action.hover, // Standard hover
 		borderColor: theme.palette.divider, // Keep border consistent on hover
@@ -146,7 +147,9 @@ export const RadientAuthButtons: FC<RadientAuthButtonsProps> = ({
 	};
 
 	return (
-		<Box sx={{ width: "100%", maxWidth: 320, margin: "0 auto" }}> {/* Center the whole component */}
+		<Box sx={{ width: "100%", maxWidth: 320, margin: "0 auto" }}>
+			{" "}
+			{/* Center the whole component */}
 			{/* Title - Use styles similar to SectionTitle */}
 			{titleText && (
 				<Typography
@@ -162,7 +165,6 @@ export const RadientAuthButtons: FC<RadientAuthButtonsProps> = ({
 					{titleText}
 				</Typography>
 			)}
-
 			{/* Description - Use styles similar to SectionDescription */}
 			{descriptionText && (
 				<Typography
@@ -178,7 +180,6 @@ export const RadientAuthButtons: FC<RadientAuthButtonsProps> = ({
 					{descriptionText}
 				</Typography>
 			)}
-
 			<ButtonsContainer>
 				{/* Google Button */}
 				<GoogleButton onClick={handleGoogleSignIn} disabled={loading}>

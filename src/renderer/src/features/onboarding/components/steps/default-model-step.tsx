@@ -237,18 +237,20 @@ export const DefaultModelStep: FC = () => {
 			"& .MuiOutlinedInput-notchedOutline": {
 				border: "none",
 			},
-			"& .MuiInputBase-input": { // Covers TextField input
+			"& .MuiInputBase-input": {
+				// Covers TextField input
 				padding: theme.spacing(1, 1.5),
 				fontSize: "0.875rem",
 				height: "calc(40px - 16px)",
 				boxSizing: "border-box",
 			},
-			"& .MuiSelect-select": { // Specific styles for Select input
+			"& .MuiSelect-select": {
+				// Specific styles for Select input
 				paddingTop: theme.spacing(1),
 				paddingBottom: theme.spacing(1),
 				paddingLeft: theme.spacing(1.5),
-				display: 'flex',
-				alignItems: 'center',
+				display: "flex",
+				alignItems: "center",
 				gap: theme.spacing(1),
 				height: "calc(40px - 16px) !important", // Ensure height matches
 				minHeight: "calc(40px - 16px) !important",
@@ -274,8 +276,8 @@ export const DefaultModelStep: FC = () => {
 		borderRadius: theme.shape.borderRadius * 0.75,
 		border: `1px solid ${theme.palette.divider}`,
 		backgroundColor: alpha(theme.palette.background.default, 0.5),
-		display: 'flex',
-		alignItems: 'center',
+		display: "flex",
+		alignItems: "center",
 		gap: 1.5,
 	};
 
@@ -308,10 +310,12 @@ export const DefaultModelStep: FC = () => {
 		<SectionContainer>
 			{/* Use SectionTitle from onboarding-styled */}
 			<SectionTitle>
-				<EmojiContainer sx={{ mb: 0 }}>✨</EmojiContainer> Choose Your Default Model
+				<EmojiContainer sx={{ mb: 0 }}>✨</EmojiContainer> Choose Your Default
+				Model
 			</SectionTitle>
 			<SectionDescription>
-				Select the default AI model and provider for your agents. You can customize this per agent later.
+				Select the default AI model and provider for your agents. You can
+				customize this per agent later.
 			</SectionDescription>
 
 			{/* "Choose wisely" Info Box */}
@@ -325,14 +329,23 @@ export const DefaultModelStep: FC = () => {
 					<Typography component="span" fontWeight="medium">
 						Choose wisely!
 					</Typography>{" "}
-					Different models have different capabilities and costs. Pick one that suits your general needs.
+					Different models have different capabilities and costs. Pick one that
+					suits your general needs.
 				</Typography>
 			</Box>
 
 			<FormContainer>
 				{isLoading ? (
 					// Simple loading indicator
-					<Box sx={{ display: "flex", justifyContent: "center", alignItems: 'center', p: 3, gap: 1 }}>
+					<Box
+						sx={{
+							display: "flex",
+							justifyContent: "center",
+							alignItems: "center",
+							p: 3,
+							gap: 1,
+						}}
+					>
 						<CircularProgress size={20} />
 						<Typography variant="body2" color="text.secondary">
 							Loading available models...
@@ -341,76 +354,83 @@ export const DefaultModelStep: FC = () => {
 				) : (
 					<>
 						{/* Provider Selection */}
-                        <Box> {/* Wrap Label and Input */}
-                            <FieldLabel>
-                                <LabelIcon>
-                                    <FontAwesomeIcon icon={faRobot} size="sm" />
-                                </LabelIcon>
-                                Model Provider
-                            </FieldLabel>
-                            <FormControl fullWidth variant="outlined" sx={inputSx}>
-                                {/* Remove InputLabel */}
-                                <Select
-                                    // Remove labelId and label props
-                                    id="provider-select"
-                                    value={selectedProvider}
-                                    onChange={handleProviderChange}
-                                    // Remove startAdornment
-                                >
-                                    {availableProviders.map((provider) => (
-                                        <MenuItem key={provider.id} value={provider.id}>
-                                            {provider.name}
-                                        </MenuItem>
-                                    ))}
-                                </Select>
-                                <FormHelperText>
-                                    Providers you've added credentials for
-                                </FormHelperText>
-                            </FormControl>
-                        </Box>
+						<Box>
+							{" "}
+							{/* Wrap Label and Input */}
+							<FieldLabel>
+								<LabelIcon>
+									<FontAwesomeIcon icon={faRobot} size="sm" />
+								</LabelIcon>
+								Model Provider
+							</FieldLabel>
+							<FormControl fullWidth variant="outlined" sx={inputSx}>
+								{/* Remove InputLabel */}
+								<Select
+									// Remove labelId and label props
+									id="provider-select"
+									value={selectedProvider}
+									onChange={handleProviderChange}
+									// Remove startAdornment
+								>
+									{availableProviders.map((provider) => (
+										<MenuItem key={provider.id} value={provider.id}>
+											{provider.name}
+										</MenuItem>
+									))}
+								</Select>
+								<FormHelperText>
+									Providers you've added credentials for
+								</FormHelperText>
+							</FormControl>
+						</Box>
 
 						{/* Model Selection */}
 						{selectedProvider && (
-                            <Box sx={{ mt: 1.5 }}> {/* Wrap Label and Input */}
-                                <FieldLabel>
-                                    <LabelIcon>
-                                        <FontAwesomeIcon icon={faWandMagicSparkles} size="sm" />
-                                    </LabelIcon>
-                                    AI Model
-                                </FieldLabel>
-                                <FormControl fullWidth variant="outlined" sx={inputSx}>
-                                    {/* Remove InputLabel */}
-                                    <Select
-                                        // Remove labelId and label props
-                                        id="model-select"
-                                        value={selectedModel}
-                                        onChange={handleModelChange}
-                                        // Remove startAdornment
-                                        disabled={availableModels.length === 0} // Disable if no models
-                                    >
-                                        {availableModels.length === 0 && (
-                                            <MenuItem disabled value="">
-                                                No models found for this provider
-                                            </MenuItem>
-                                        )}
-                                        {availableModels.map((model) => (
-                                            <MenuItem key={model.id} value={model.id}>
-                                                {model.name}
-                                            </MenuItem>
-                                        ))}
-                                    </Select>
-                                    <FormHelperText>
-                                        Select the specific AI model
-                                    </FormHelperText>
-                                </FormControl>
-                            </Box>
+							<Box sx={{ mt: 1.5 }}>
+								{" "}
+								{/* Wrap Label and Input */}
+								<FieldLabel>
+									<LabelIcon>
+										<FontAwesomeIcon icon={faWandMagicSparkles} size="sm" />
+									</LabelIcon>
+									AI Model
+								</FieldLabel>
+								<FormControl fullWidth variant="outlined" sx={inputSx}>
+									{/* Remove InputLabel */}
+									<Select
+										// Remove labelId and label props
+										id="model-select"
+										value={selectedModel}
+										onChange={handleModelChange}
+										// Remove startAdornment
+										disabled={availableModels.length === 0} // Disable if no models
+									>
+										{availableModels.length === 0 && (
+											<MenuItem disabled value="">
+												No models found for this provider
+											</MenuItem>
+										)}
+										{availableModels.map((model) => (
+											<MenuItem key={model.id} value={model.id}>
+												{model.name}
+											</MenuItem>
+										))}
+									</Select>
+									<FormHelperText>Select the specific AI model</FormHelperText>
+								</FormControl>
+							</Box>
 						)}
 
 						{/* Save Success Alert */}
 						{saveSuccess && (
-							<Alert severity="success" icon={<FontAwesomeIcon icon={faCheck} />} sx={successAlertSx}>
+							<Alert
+								severity="success"
+								icon={<FontAwesomeIcon icon={faCheck} />}
+								sx={successAlertSx}
+							>
 								<Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-									<EmojiContainer sx={{ mb: 0 }}>🎉</EmojiContainer> Default model saved!
+									<EmojiContainer sx={{ mb: 0 }}>🎉</EmojiContainer> Default
+									model saved!
 								</Box>
 							</Alert>
 						)}
@@ -421,13 +441,30 @@ export const DefaultModelStep: FC = () => {
 								<EmojiContainer sx={{ mb: 0, mt: 0.2 }}>🚀</EmojiContainer>
 								<Typography variant="body2" color="text.secondary">
 									Default set to{" "}
-									<Typography component="span" fontWeight="medium" color="text.primary">
-										{availableModels.find((model) => model.id === selectedModel)?.name}
+									<Typography
+										component="span"
+										fontWeight="medium"
+										color="text.primary"
+									>
+										{
+											availableModels.find(
+												(model) => model.id === selectedModel,
+											)?.name
+										}
 									</Typography>{" "}
 									from{" "}
-									<Typography component="span" fontWeight="medium" color="text.primary">
-										{availableProviders.find((provider) => provider.id === selectedProvider)?.name}
-									</Typography>.
+									<Typography
+										component="span"
+										fontWeight="medium"
+										color="text.primary"
+									>
+										{
+											availableProviders.find(
+												(provider) => provider.id === selectedProvider,
+											)?.name
+										}
+									</Typography>
+									.
 								</Typography>
 							</Box>
 						)}
