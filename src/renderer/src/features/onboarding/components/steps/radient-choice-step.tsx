@@ -179,8 +179,8 @@ export const RadientChoiceStep: FC<RadientChoiceStepProps> = ({
 
 	return (
 		<Box sx={{ animation: "fadeIn 0.6s ease-out" }}>
-			{/* Use SectionDescription for introductory text */}
-			<SectionDescription sx={{ mb: 3, fontSize: "1rem" }}>
+			{/* Use SectionDescription for introductory text (defaults to 0.875rem) */}
+			<SectionDescription sx={{ mb: 3 }}>
 				Choose how you'd like to get started:
 			</SectionDescription>
 
@@ -202,6 +202,7 @@ export const RadientChoiceStep: FC<RadientChoiceStepProps> = ({
 										component="span"
 										fontWeight="medium" // Use medium weight
 										color={radientTheme.palette.primary.main} // Use Radient color
+										sx={{ fontSize: "inherit" }} // Ensure size matches parent
 									>
 										agentic web search, image generation, site crawling, models
 									</Typography>
