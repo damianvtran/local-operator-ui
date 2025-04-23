@@ -401,9 +401,7 @@ const ErrorContainer = styled(Box)(({ theme }) => ({
 
 // Main content area wrapper within ContentContainer
 const MainContentWrapper = styled(Box)(({ theme }) => ({
-	maxWidth: theme.breakpoints.values.lg, // Max width like Container lg
-	margin: "0 auto", // Center the content
-	paddingTop: theme.spacing(1), // Add some space below the header
+	paddingTop: theme.spacing(1),
 }));
 
 // Specific styling for the Radient icon image

@@ -12,8 +12,8 @@ import {
 	faRobot,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Box, Button, Tooltip, alpha } from "@mui/material";
-import { styled } from "@mui/material/styles";
+import { Box, Button, Tooltip } from "@mui/material";
+import { styled, useTheme } from "@mui/material/styles"; // Import useTheme here
 import type { AgentDetails } from "@shared/api/local-operator/types";
 import { PageHeader } from "@shared/components/common/page-header";
 import { useExportAgent } from "@shared/hooks/use-agent-mutations";
@@ -79,6 +79,7 @@ const AgentDetailsContainer = styled(Box)({
  * Layout follows the pattern of other pages with a sidebar and content area
  */
 export const AgentsPage: FC<AgentsPageProps> = () => {
+	const theme = useTheme(); // Get theme for button styles
 	const { agentId, navigateToAgent, clearAgentId } = useAgentRouteParam();
 	const navigate = useNavigate();
 	// Use a ref to track the previous agent ID to prevent unnecessary renders
@@ -182,6 +183,31 @@ export const AgentsPage: FC<AgentsPageProps> = () => {
 		navigateToAgent(agent.id, "agents");
 	};
 
+	const buttonSx = {
+		textTransform: "none",
+		fontSize: "0.8125rem",
+		padding: theme.spacing(0.5, 1.5),
+		borderRadius: theme.shape.borderRadius * 0.75,
+	};
+
+	const secondaryButtonSx = {
+		...buttonSx,
+		borderColor: theme.palette.divider,
+		color: theme.palette.text.secondary,
+		"&:hover": {
+			backgroundColor: theme.palette.action.hover,
+			borderColor: theme.palette.divider,
+		},
+	};
+
+	const primaryButtonSx = {
+		...buttonSx,
+		"&:hover": {
+			backgroundColor: theme.palette.action.hover,
+			borderColor: theme.palette.divider,
+		},
+	};
+
 	return (
 		<Container>
 			{/* Agents Sidebar - fixed width */}
@@ -195,41 +221,25 @@ export const AgentsPage: FC<AgentsPageProps> = () => {
 			{/* Content Area */}
 			<ContentContainer>
 				<ContentInnerContainer>
-					<Box sx={{ position: "relative", width: "100%", mb: 2 }}>
-						<PageHeader
-							title="Agent Management"
-							icon={faRobot}
-							subtitle="View, configure and manage your AI agents from a central dashboard"
-						/>
-
+					{/* Page Header with Action Buttons as Children */}
+					<PageHeader
+						title="Agent Management"
+						icon={faRobot}
+						subtitle="View, configure and manage your AI agents from a central dashboard"
+					>
+						{/* Action buttons passed as children */}
 						{selectedAgent && (
-							<Box
-								sx={{
-									position: "absolute",
-									top: 0,
-									right: 0,
-									display: "flex",
-									gap: 1,
-								}}
-							>
+							<Box sx={{ display: "flex", gap: 1 }}>
 								<Tooltip title="Export Agent">
 									<Button
 										variant="outlined"
-										color="primary"
 										size="small"
-										startIcon={<FontAwesomeIcon icon={faFileExport} />}
+										startIcon={
+											<FontAwesomeIcon icon={faFileExport} size="xs" />
+										}
 										onClick={handleExportAgent}
 										disabled={exportAgentMutation.isPending}
-										sx={{
-											borderRadius: 2,
-											textTransform: "none",
-											fontWeight: 500,
-											transition: "all 0.2s ease-in-out",
-											"&:hover": {
-												backgroundColor: alpha("#38C96A", 0.08),
-												transform: "translateY(-1px)",
-											},
-										}}
+										sx={secondaryButtonSx} // Apply secondary style
 									>
 										Export
 									</Button>
@@ -240,28 +250,20 @@ export const AgentsPage: FC<AgentsPageProps> = () => {
 								>
 									<Button
 										variant="outlined"
-										color="primary"
+										color="primary" // Keep primary color for distinction
 										size="small"
-										startIcon={<FontAwesomeIcon icon={faComment} />}
+										startIcon={<FontAwesomeIcon icon={faComment} size="xs" />}
 										onClick={() => navigate(`/chat/${selectedAgent.id}`)}
-										sx={{
-											borderRadius: 2,
-											textTransform: "none",
-											fontWeight: 500,
-											transition: "all 0.2s ease-in-out",
-											"&:hover": {
-												backgroundColor: alpha("#38C96A", 0.08),
-												transform: "translateY(-1px)",
-											},
-										}}
+										sx={primaryButtonSx} // Apply primary style
 									>
 										Chat
 									</Button>
 								</Tooltip>
 							</Box>
 						)}
-					</Box>
+					</PageHeader>
 
+					{/* Agent Details Section */}
 					<AgentDetailsContainer sx={{ opacity: selectedAgent ? 1 : 0.7 }}>
 						<AgentSettings
 							selectedAgent={selectedAgent}
