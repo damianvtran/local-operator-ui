@@ -264,7 +264,9 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 				);
 			case OnboardingStep.RADIENT_SIGNIN:
 				// Pass the callback to notify the modal on successful sign-in
-				return <RadientSignInStep onSignInSuccess={handleRadientSignInSuccess} />;
+				return (
+					<RadientSignInStep onSignInSuccess={handleRadientSignInSuccess} />
+				);
 			case OnboardingStep.USER_PROFILE:
 				return <UserProfileStep />;
 			case OnboardingStep.MODEL_CREDENTIAL:

@@ -13,7 +13,7 @@ import {
 	CircularProgress,
 	Typography,
 	styled,
-	useTheme, 
+	useTheme,
 } from "@mui/material";
 import { useOidcAuth } from "@shared/hooks/use-oidc-auth";
 import type { FC } from "react";
@@ -104,9 +104,11 @@ export const RadientAuthButtons: FC<RadientAuthButtonsProps> = ({
 }) => {
 	const theme = useTheme(); // Get theme for sx props
 	// Pass the onSignInSuccess callback to the hook
-	const { signInWithGoogle, signInWithMicrosoft, loading, error } = useOidcAuth({
-		onSuccess: onSignInSuccess,
-	});
+	const { signInWithGoogle, signInWithMicrosoft, loading, error } = useOidcAuth(
+		{
+			onSuccess: onSignInSuccess,
+		},
+	);
 
 	// const queryClient = useQueryClient(); // No longer needed here
 
