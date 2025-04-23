@@ -10,20 +10,20 @@ import {
 	faInfoCircle,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
-	Box,
-	Button,
-	IconButton,
-	Paper,
-	Tooltip,
-	Typography,
-	alpha,
-} from "@mui/material";
-import { styled } from "@mui/material/styles";
+import { Box, Button, IconButton, Tooltip, Typography } from "@mui/material";
+import { styled, alpha } from "@mui/material/styles"; // Correctly import alpha from styles
 import type {
 	AgentDetails,
 	AgentUpdate,
 } from "@shared/api/local-operator/types";
+// Import shared styled components needed for non-slider unset sections
+import {
+	DescriptionText,
+	LabelText,
+	LabelWrapper,
+	UnsetContainer,
+} from "@features/chat/components/chat-options-sidebar-styled";
+import { UnsetSliderSetting } from "@features/chat/components/unset-slider-setting"; // Import shared component
 import { EditableField } from "@shared/components/common/editable-field";
 import { SliderSetting } from "@shared/components/common/slider-setting";
 import type { useUpdateAgent } from "@shared/hooks/use-update-agent";
@@ -89,109 +89,25 @@ const InfoButton = styled(IconButton)(({ theme }) => ({
 	},
 }));
 
-const UnsetContainer = styled(Paper)(({ theme }) => ({
-	padding: theme.spacing(2.5),
-	borderRadius: theme.shape.borderRadius * 2,
-	backgroundColor:
-		theme.palette.mode === "light"
-			? alpha(theme.palette.grey[100], 0.9)
-			: alpha(theme.palette.background.default, 0.7),
-	border:
-		theme.palette.mode === "light"
-			? `1px solid ${alpha(theme.palette.grey[300], 0.8)}`
-			: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-	transition: "all 0.2s ease",
-	marginBottom: theme.spacing(2),
-	display: "flex",
-	flexDirection: "column",
+// Styled button similar to shadcn secondary/ghost for consistency
+const StyledButton = styled(Button)(({ theme }) => ({
+	color: theme.palette.text.secondary,
+	backgroundColor: "transparent",
+	border: `1px solid ${theme.palette.divider}`,
+	padding: theme.spacing(0.5, 1.5),
+	fontSize: "0.8rem",
+	textTransform: "none", // Keep text case as is
+	boxShadow: "none",
 	"&:hover": {
-		backgroundColor:
-			theme.palette.mode === "light"
-				? alpha(theme.palette.grey[100], 1)
-				: alpha(theme.palette.background.default, 0.9),
-		boxShadow:
-			theme.palette.mode === "light"
-				? "0 4px 12px rgba(0,0,0,0.08)"
-				: "0 4px 12px rgba(0,0,0,0.15)",
-		border:
-			theme.palette.mode === "light"
-				? `1px solid ${alpha(theme.palette.primary.main, 0.2)}`
-				: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
+		backgroundColor: alpha(theme.palette.action.hover, 0.04),
+		borderColor: theme.palette.grey[500],
+		boxShadow: "none",
+	},
+	"&:active": {
+		boxShadow: "none",
+		backgroundColor: alpha(theme.palette.action.selected, 0.08),
 	},
 }));
-
-const LabelWrapper = styled(Box)({
-	marginBottom: 8,
-});
-
-const LabelText = styled(Typography)(({ theme }) => ({
-	marginBottom: 4,
-	display: "flex",
-	alignItems: "center",
-	color: theme.palette.text.primary,
-	fontWeight: 600,
-}));
-
-const DescriptionText = styled(Typography)(({ theme }) => ({
-	fontSize: "0.875rem",
-	lineHeight: 1.5,
-	marginBottom: theme.spacing(2),
-}));
-
-/**
- * Unset Slider Setting Component
- *
- * Displays a "Not set" state with a button to set the value
- */
-type UnsetSliderSettingProps = {
-	label: string;
-	description: string;
-	defaultValue: number;
-	onSetValue: (value: number) => Promise<void>;
-	icon?: React.ReactNode;
-};
-
-const UnsetSliderSetting: FC<UnsetSliderSettingProps> = ({
-	label,
-	description,
-	defaultValue,
-	onSetValue,
-	icon,
-}) => {
-	return (
-		<UnsetContainer elevation={0}>
-			<LabelWrapper>
-				<LabelText variant="subtitle2">
-					{icon && icon}
-					{label}
-				</LabelText>
-				<DescriptionText variant="body2" color="text.secondary">
-					{description}
-				</DescriptionText>
-			</LabelWrapper>
-			<Box
-				sx={{
-					display: "flex",
-					alignItems: "center",
-					justifyContent: "space-between",
-				}}
-			>
-				<Typography variant="body2" color="text.secondary" fontStyle="italic">
-					Not set yet
-				</Typography>
-				<Button
-					variant="outlined"
-					size="small"
-					onClick={async () => {
-						await onSetValue(defaultValue);
-					}}
-				>
-					Set to default ({defaultValue})
-				</Button>
-			</Box>
-		</UnsetContainer>
-	);
-};
 
 /**
  * Chat Settings Component
@@ -481,10 +397,7 @@ export const ChatSettings: FC<ChatSettingsProps> = ({
 			{localAgent.stop === null ? (
 				<UnsetContainer elevation={0}>
 					<LabelWrapper>
-						<LabelText variant="subtitle2">
-							<FontAwesomeIcon icon={faGear} style={{ marginRight: "10px" }} />
-							Stop Sequences
-						</LabelText>
+						<LabelText variant="subtitle2">Stop Sequences</LabelText>
 						<DescriptionText variant="body2" color="text.secondary">
 							Sequences that will cause the model to stop generating text.
 						</DescriptionText>
@@ -496,16 +409,12 @@ export const ChatSettings: FC<ChatSettingsProps> = ({
 							justifyContent: "space-between",
 						}}
 					>
-						<Typography
-							variant="body2"
-							color="text.secondary"
-							fontStyle="italic"
-						>
+						{/* Adjusted Typography */}
+						<Typography variant="caption" color="text.disabled">
 							Not set yet
 						</Typography>
-						<Button
-							variant="outlined"
-							size="small"
+						{/* Use the StyledButton */}
+						<StyledButton
 							onClick={async () => {
 								setSavingField("stop");
 								try {
@@ -536,7 +445,7 @@ export const ChatSettings: FC<ChatSettingsProps> = ({
 							}}
 						>
 							Set to default (empty)
-						</Button>
+						</StyledButton>
 					</Box>
 				</UnsetContainer>
 			) : (
@@ -700,10 +609,7 @@ export const ChatSettings: FC<ChatSettingsProps> = ({
 			{localAgent.seed === null ? (
 				<UnsetContainer elevation={0}>
 					<LabelWrapper>
-						<LabelText variant="subtitle2">
-							<FontAwesomeIcon icon={faGear} style={{ marginRight: "10px" }} />
-							Seed
-						</LabelText>
+						<LabelText variant="subtitle2">Seed</LabelText>
 						<DescriptionText variant="body2" color="text.secondary">
 							Random number seed for deterministic generation.
 						</DescriptionText>
@@ -715,16 +621,12 @@ export const ChatSettings: FC<ChatSettingsProps> = ({
 							justifyContent: "space-between",
 						}}
 					>
-						<Typography
-							variant="body2"
-							color="text.secondary"
-							fontStyle="italic"
-						>
+						{/* Adjusted Typography */}
+						<Typography variant="caption" color="text.disabled">
 							Not set yet
 						</Typography>
-						<Button
-							variant="outlined"
-							size="small"
+						{/* Use the StyledButton */}
+						<StyledButton
 							onClick={async () => {
 								setSavingField("seed");
 								try {
@@ -756,7 +658,7 @@ export const ChatSettings: FC<ChatSettingsProps> = ({
 							}}
 						>
 							Set to default (42)
-						</Button>
+						</StyledButton>
 					</Box>
 				</UnsetContainer>
 			) : (

@@ -4,7 +4,7 @@
  * Displays a "Not set" state with a button to set the value
  */
 
-import { Box, Button, Typography } from "@mui/material";
+import { Box, Button, Typography, alpha, styled } from "@mui/material"; // Added styled and alpha
 import type { FC } from "react";
 import {
 	DescriptionText,
@@ -12,6 +12,26 @@ import {
 	LabelWrapper,
 	UnsetContainer,
 } from "./chat-options-sidebar-styled";
+
+// Styled button similar to shadcn secondary/ghost
+const StyledButton = styled(Button)(({ theme }) => ({
+	color: theme.palette.text.secondary,
+	backgroundColor: "transparent",
+	border: `1px solid ${theme.palette.divider}`,
+	padding: theme.spacing(0.5, 1.5),
+	fontSize: "0.8rem",
+	textTransform: "none", // Keep text case as is
+	boxShadow: "none",
+	"&:hover": {
+		backgroundColor: alpha(theme.palette.action.hover, 0.04),
+		borderColor: theme.palette.grey[500],
+		boxShadow: "none",
+	},
+	"&:active": {
+		boxShadow: "none",
+		backgroundColor: alpha(theme.palette.action.selected, 0.08),
+	},
+}));
 
 type UnsetSliderSettingProps = {
 	/**
@@ -70,18 +90,18 @@ export const UnsetSliderSetting: FC<UnsetSliderSettingProps> = ({
 					justifyContent: "space-between",
 				}}
 			>
-				<Typography variant="body2" color="text.secondary" fontStyle="italic">
+				{/* Adjusted Typography for "Not set yet" */}
+				<Typography variant="caption" color="text.disabled">
 					Not set yet
 				</Typography>
-				<Button
-					variant="outlined"
-					size="small"
+				{/* Use the StyledButton */}
+				<StyledButton
 					onClick={async () => {
 						await onSetValue(defaultValue);
 					}}
 				>
 					Set to default ({defaultValue})
-				</Button>
+				</StyledButton>
 			</Box>
 		</UnsetContainer>
 	);
