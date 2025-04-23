@@ -6,25 +6,32 @@ import {
 	faGear,
 	faHistory,
 	faInfoCircle,
+	faChartLine,
+	faDollarSign,
 	faKey,
 	faListAlt,
 	faRobot,
 	faUser,
-	faExternalLinkAlt, // Added for the CTA button icon
+	faExternalLinkAlt,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
 	Alert,
 	Box,
-	Button, // Added for the CTA button
+	Button,
 	Card,
 	CardContent,
 	CircularProgress,
 	Container,
 	Grid,
 	Paper,
-	Stack, // Added for layout
+	Skeleton,
+	Stack,
 	Typography,
+	Divider,
+	ToggleButton,
+	ToggleButtonGroup,
+	useTheme,
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import type { ConfigUpdate } from "@shared/api/local-operator/types";
@@ -34,16 +41,232 @@ import { SliderSetting } from "@shared/components/common/slider-setting";
 import { HostingSelect } from "@shared/components/hosting/hosting-select";
 import { ModelSelect } from "@shared/components/hosting/model-select";
 import { useConfig } from "@shared/hooks/use-config";
+import { useCreditBalance } from "@shared/hooks/use-credit-balance";
+import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import { useUpdateConfig } from "@shared/hooks/use-update-config";
+import { useUsageRollup } from "@shared/hooks/use-usage-rollup";
 import { useUserStore } from "@shared/store/user-store";
-import { useEffect, useRef, useState } from "react";
+import { format, formatRFC3339, parseISO, subDays } from "date-fns";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { FC, RefObject } from "react";
+import {
+	CartesianGrid,
+	Line,
+	LineChart,
+	ResponsiveContainer,
+	Tooltip,
+	XAxis,
+	YAxis,
+} from "recharts";
 import { AppUpdatesSection } from "./app-updates-section";
 import { Credentials } from "./credentials";
 import { RadientAccountSection } from "./radient-account-section";
 import { DEFAULT_SETTINGS_SECTIONS, SettingsSidebar } from "./settings-sidebar";
 import { SystemPrompt } from "./system-prompt";
 import { ThemeSelector } from "./theme-selector";
+
+// --- Billing Info Component ---
+const BillingInfo: FC = () => {
+	const {
+		data: creditData,
+		isLoading,
+		error,
+	} = useCreditBalance({ enabled: true }); // Enable the query
+
+	return (
+		<Box mb={3}>
+			<Typography
+				variant="h6"
+				display="flex"
+				alignItems="center"
+				gap={1}
+				mb={1.5}
+			>
+				<FontAwesomeIcon icon={faDollarSign} />
+				Billing
+			</Typography>
+			{isLoading && <Skeleton variant="text" width={150} height={24} />}
+			{error && (
+				<Alert severity="warning" sx={{ mb: 1 }}>
+					Could not load credit balance: {error.message}
+				</Alert>
+			)}
+			{creditData && !isLoading && !error && (
+				<Typography variant="body1">
+					Available Credits:{" "}
+					<Typography component="span" fontWeight="bold">
+						{/* Format balance if needed, e.g., to fixed decimal places */}
+						{creditData.balance.toLocaleString()}
+					</Typography>
+				</Typography>
+			)}
+		</Box>
+	);
+};
+
+// --- Usage Info Component ---
+const UsageInfo: FC = () => {
+	const theme = useTheme();
+	const [dataType, setDataType] = useState<"credits" | "tokens">("credits"); // State for toggle
+
+	// Calculate date range for the last 30 days
+	const usageParams = useMemo(() => {
+		const endDate = new Date();
+		const startDate = subDays(endDate, 30);
+		return {
+			start_date: formatRFC3339(startDate),
+			end_date: formatRFC3339(endDate),
+			rollup: "daily" as const, // Fetch daily usage for the last 30 days
+		};
+	}, []);
+
+	const {
+		data: usageData,
+		isLoading,
+		error,
+	} = useUsageRollup(usageParams, { enabled: true }); // Enable the query
+
+	// Prepare data for the chart
+	const chartData = useMemo(() => {
+		// Use data_points based on the updated type definition
+		if (!usageData?.data_points) return [];
+		// Sort records by timestamp
+		const sortedDataPoints = [...usageData.data_points].sort(
+			(a, b) =>
+				parseISO(a.timestamp).getTime() - parseISO(b.timestamp).getTime(),
+		);
+		return sortedDataPoints.map((point) => ({
+			date: format(parseISO(point.timestamp), "MMM dd"), // Use timestamp for date
+			// Round total_cost to 2 decimal places for credits display
+			credits: Number.parseFloat(point.total_cost.toFixed(2)),
+			tokens: point.total_tokens, // Use total_tokens for tokens
+		}));
+	}, [usageData]);
+
+	const handleDataTypeChange = (
+		_: React.MouseEvent<HTMLElement>,
+		newDataType: "credits" | "tokens" | null,
+	) => {
+		if (newDataType !== null) {
+			setDataType(newDataType);
+		}
+	};
+
+	const yAxisLabel =
+		dataType === "credits" ? "Credits Consumed" : "Tokens Used";
+	const lineDataKey = dataType === "credits" ? "credits" : "tokens";
+	const lineColor = theme.palette.primary.main; // Use theme color
+
+	return (
+		<Box>
+			<Stack
+				direction="row"
+				justifyContent="space-between"
+				alignItems="center"
+				mb={2} // Add margin below title/toggle row
+			>
+				<Typography variant="h6" display="flex" alignItems="center" gap={1}>
+					<FontAwesomeIcon icon={faChartLine} />
+					Usage (Last 30 Days)
+				</Typography>
+				<ToggleButtonGroup
+					value={dataType}
+					exclusive
+					onChange={handleDataTypeChange}
+					aria-label="Usage data type"
+					size="small"
+				>
+					<ToggleButton value="credits" aria-label="Show credits">
+						Credits
+					</ToggleButton>
+					<ToggleButton value="tokens" aria-label="Show tokens">
+						Tokens
+					</ToggleButton>
+				</ToggleButtonGroup>
+			</Stack>
+
+			{isLoading && (
+				// Show skeleton for the chart area
+				<Skeleton variant="rectangular" width="100%" height={250} />
+			)}
+			{error && (
+				<Alert severity="warning" sx={{ mb: 1 }}>
+					Could not load usage data: {error.message}
+				</Alert>
+			)}
+			{!isLoading && !error && usageData && chartData.length > 0 && (
+				<Box sx={{ width: "100%", height: 250 }}>
+					{" "}
+					{/* Container for chart size */}
+					<ResponsiveContainer width="100%" height="100%">
+						<LineChart
+							data={chartData}
+							margin={{
+								top: 5,
+								right: 20, // Add some right margin for labels
+								left: 10, // Add some left margin
+								bottom: 5,
+							}}
+						>
+							<CartesianGrid
+								strokeDasharray="3 3"
+								stroke={theme.palette.divider}
+							/>
+							<XAxis
+								dataKey="date"
+								stroke={theme.palette.text.secondary}
+								fontSize={12}
+							/>
+							<YAxis
+								stroke={theme.palette.text.secondary}
+								fontSize={12}
+								label={{
+									// Add Y-axis label
+									value: yAxisLabel,
+									angle: -90,
+									position: "insideLeft",
+									offset: -5, // Adjust offset as needed
+									style: {
+										textAnchor: "middle",
+										fill: theme.palette.text.secondary,
+										fontSize: 12,
+									},
+								}}
+							/>
+							<Tooltip
+								contentStyle={{
+									backgroundColor: theme.palette.background.paper,
+									borderColor: theme.palette.divider,
+									borderRadius: theme.shape.borderRadius,
+								}}
+								itemStyle={{ color: theme.palette.text.primary }}
+								labelStyle={{ color: theme.palette.text.secondary }}
+							/>
+							{/* <Legend /> */}
+							<Line
+								type="monotone"
+								dataKey={lineDataKey}
+								stroke={lineColor}
+								strokeWidth={2}
+								dot={false} // Hide dots for cleaner look
+								activeDot={{ r: 6 }} // Style for active dot on hover
+								name={yAxisLabel} // Name for tooltip
+							/>
+						</LineChart>
+					</ResponsiveContainer>
+				</Box>
+			)}
+			{!isLoading && !error && (!usageData || chartData.length === 0) && (
+				// Handle case with no usage data
+				<Typography variant="body2" color="text.secondary">
+					No usage data available for the selected period.
+				</Typography>
+			)}
+		</Box>
+	);
+};
+
+// --- Main Settings Page Component ---
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
 	height: "100%",
@@ -161,10 +384,16 @@ const IconImage = styled("img")(() => ({
 }));
 
 export const SettingsPage: FC = () => {
-	const { data: config, isLoading, error, refetch } = useConfig();
+	const {
+		data: config,
+		isLoading: isConfigLoading,
+		error: configError,
+		refetch,
+	} = useConfig();
 	const updateConfigMutation = useUpdateConfig();
 	const [savingField, setSavingField] = useState<string | null>(null);
 	const userStore = useUserStore();
+	const { isAuthenticated, isLoading: isAuthLoading } = useRadientAuth(); // Get auth status
 	const [activeSection, setActiveSection] = useState<string>("general");
 	const [isScrolling, setIsScrolling] = useState(false);
 
@@ -284,6 +513,9 @@ export const SettingsPage: FC = () => {
 		}
 	};
 
+	// Combine loading states
+	const isLoading = isConfigLoading || isAuthLoading;
+
 	if (isLoading) {
 		return (
 			<LoadingContainer>
@@ -292,11 +524,13 @@ export const SettingsPage: FC = () => {
 		);
 	}
 
-	if (error || !config) {
+	// Handle config loading error specifically
+	if (configError || !config) {
 		return (
 			<ErrorContainer>
 				<Alert severity="error">
-					Failed to load configuration. Please try again later.
+					Failed to load configuration. Please try again later.{" "}
+					{configError?.message}
 				</Alert>
 			</ErrorContainer>
 		);
@@ -608,7 +842,18 @@ export const SettingsPage: FC = () => {
 									Go to Radient Console
 								</Button>
 							</Stack>
+							{/* Render RadientAccountSection always, but conditionally add billing/usage */}
 							<RadientAccountSection />
+
+							{/* Conditionally render Billing and Usage if authenticated */}
+							{isAuthenticated && (
+								<>
+									<Divider sx={{ my: 3 }} />
+									<BillingInfo />
+									<Divider sx={{ my: 3 }} />
+									<UsageInfo />
+								</>
+							)}
 						</StyledCardContent>
 					</StyledCard>
 

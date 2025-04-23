@@ -37,7 +37,12 @@
 		"electron",
 		"react"
 	],
-	"files": ["out", "bin", "LICENSE", "README.md"],
+	"files": [
+		"out",
+		"bin",
+		"LICENSE",
+		"README.md"
+	],
 	"publishConfig": {
 		"access": "public"
 	},
@@ -100,6 +105,7 @@
 		"react-router-dom": "^6.16.0",
 		"react-syntax-highlighter": "^15.6.1",
 		"react-toastify": "^11.0.5",
+		"recharts": "^2.15.3",
 		"rehype-katex": "^7.0.1",
 		"remark-gfm": "^4.0.1",
 		"remark-math": "^6.0.0",
@@ -153,7 +159,12 @@
 		"productName": "Local Operator",
 		"copyright": "Copyright © 2025 Damian Tran",
 		"asar": true,
-		"files": ["out/**/*", "bin/**/*", "LICENSE", "README.md"],
+		"files": [
+			"out/**/*",
+			"bin/**/*",
+			"LICENSE",
+			"README.md"
+		],
 		"directories": {
 			"output": "dist",
 			"buildResources": "build"
@@ -162,7 +173,9 @@
 			{
 				"from": "resources/python",
 				"to": "python",
-				"filter": ["**/*"]
+				"filter": [
+					"**/*"
+				]
 			}
 		],
 		"afterSign": "scripts/notarize.js",
@@ -176,11 +189,15 @@
 			"target": [
 				{
 					"target": "dmg",
-					"arch": ["universal"]
+					"arch": [
+						"universal"
+					]
 				},
 				{
 					"target": "zip",
-					"arch": ["universal"]
+					"arch": [
+						"universal"
+					]
 				}
 			],
 			"artifactName": "${name}-${version}-${arch}.${ext}",
@@ -209,7 +226,10 @@
 			"target": [
 				{
 					"target": "nsis",
-					"arch": ["x64", "arm64"]
+					"arch": [
+						"x64",
+						"arm64"
+					]
 				}
 			],
 			"artifactName": "${name}-setup-${version}-${arch}.${ext}",
@@ -249,10 +269,16 @@
 			}
 		},
 		"deb": {
-			"depends": ["python3.12-full", "python3.12-venv"]
+			"depends": [
+				"python3.12-full",
+				"python3.12-venv"
+			]
 		},
 		"rpm": {
-			"depends": ["python3.12-full", "python3.12-venv"]
+			"depends": [
+				"python3.12-full",
+				"python3.12-venv"
+			]
 		},
 		"publish": [
 			{

@@ -3,8 +3,9 @@
  *
  * Main client for the Radient API
  */
-
 import * as AuthApiImpl from "./auth-api";
+import * as BillingApiImpl from "./billing-api";
+import * as UsageApiImpl from "./usage-api";
 import type {
 	AuthTokenExchangeResult,
 	CreateApplicationRequest,
@@ -26,6 +27,8 @@ export {
 	refreshToken,
 	revokeToken,
 } from "./auth-api";
+export { getCreditBalance } from "./billing-api";
+export { getUsageRollup } from "./usage-api";
 
 // Export all types
 export type {
@@ -99,6 +102,20 @@ export class RadientClient {
 	} {
 		const api = this.bindBaseUrlToApi(AuthApiImpl);
 		return { ...api, clientId: this.clientId };
+	}
+
+	/**
+	 * Get the Billing API client with methods bound to the base URL
+	 */
+	get billing(): BoundApi<ApiWithBaseUrl<typeof BillingApiImpl>> {
+		return this.bindBaseUrlToApi(BillingApiImpl);
+	}
+
+	/**
+	 * Get the Usage API client with methods bound to the base URL
+	 */
+	get usage(): BoundApi<ApiWithBaseUrl<typeof UsageApiImpl>> {
+		return this.bindBaseUrlToApi(UsageApiImpl);
 	}
 
 	/**
