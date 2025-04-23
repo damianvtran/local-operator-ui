@@ -5,7 +5,7 @@
  * to set up their Radient Pass account.
  */
 
-import { Box, Typography } from "@mui/material";
+import { Box, Typography, useTheme } from "@mui/material"; // Added useTheme
 import { getUserInfo } from "@shared/api/radient/auth-api";
 import { RadientAuthButtons } from "@shared/components/auth";
 import { apiConfig } from "@shared/config";
@@ -14,7 +14,7 @@ import {
 	useOnboardingStore,
 } from "@shared/store/onboarding-store";
 import { useUserStore } from "@shared/store/user-store";
-import radientTheme from "@shared/themes/radient-theme";
+// Removed direct import of radientTheme, use theme context instead
 import { getSession, hasValidSession } from "@shared/utils/session-store";
 import type { FC } from "react";
 import { useCallback, useEffect } from "react";
@@ -39,6 +39,7 @@ type RadientSignInStepProps = {
 export const RadientSignInStep: FC<RadientSignInStepProps> = ({
 	onSignInSuccess,
 }) => {
+	const theme = useTheme(); // Get theme context
 	const handleSignInSuccess = useCallback(async () => {
 		try {
 			// Get the session data
@@ -93,37 +94,30 @@ export const RadientSignInStep: FC<RadientSignInStepProps> = ({
 	}, [handleSignInSuccess]);
 
 	return (
-		<Box sx={{ animation: "fadeIn 0.6s ease-out" }}>
-			<Typography
-				variant="body1"
-				sx={{
-					fontSize: "1.1rem",
-					fontWeight: 500,
-					lineHeight: 1.6,
-					mb: 2,
-				}}
-			>
-				Sign in to set up your Radient account
-			</Typography>
+		<Box sx={{ animation: "fadeIn 0.5s ease-out" }}> {/* Consistent animation */}
+			{/* Use SectionDescription for main text */}
+			<SectionDescription sx={{ mb: 3, fontSize: "1rem" }}>
+				Sign in with your preferred method to get started with Radient Pass.
+				This gives you access to web search, image generation, site crawling, and more.
+			</SectionDescription>
 
-			<SectionDescription sx={{ mb: 4 }}>
-				Choose your preferred sign-in method to get started with Radient Pass.
-				This will give you access to web search, image generation, site
-				crawling, and more.
-				<br />
-				<br />
+			<SectionDescription sx={{ mb: 3 }}>
 				Start with{" "}
-				<span
-					style={{ fontWeight: 600, color: radientTheme.palette.primary.light }}
+				<Typography
+					component="span"
+					fontWeight="medium"
+					color={theme.palette.primary.main} // Use theme primary color
 				>
 					$1 USD
-				</span>{" "}
+				</Typography>{" "}
 				of free credit, and unlock{" "}
-				<span
-					style={{ fontWeight: 600, color: radientTheme.palette.primary.light }}
+				<Typography
+					component="span"
+					fontWeight="medium"
+					color={theme.palette.primary.main} // Use theme primary color
 				>
 					$5 USD
-				</span>{" "}
+				</Typography>{" "}
 				more with your first payment.
 			</SectionDescription>
 
@@ -132,33 +126,24 @@ export const RadientSignInStep: FC<RadientSignInStepProps> = ({
 					sx={{
 						display: "flex",
 						flexDirection: "column",
-						alignItems: "center",
-						py: 2,
+						alignItems: "center", // Center the auth buttons
+						py: theme.spacing(1), // Reduced padding
 					}}
 				>
+					{/* Assuming RadientAuthButtons is styled appropriately */}
 					<RadientAuthButtons
-						titleText=""
+						titleText="" // Keep title/desc empty if not needed here
 						descriptionText=""
 						onSignInSuccess={handleSignInSuccess}
 					/>
 				</Box>
 			</SectionContainer>
 
-			<Box
-				sx={{
-					mt: 4,
-					fontStyle: "italic",
-					textAlign: "center",
-					color: "text.secondary",
-					fontSize: "0.875rem", // Equivalent to variant="body2"
-				}}
-			>
-				<Box component="span" sx={{ mr: 1 }}>
-					💡
-				</Box>
-				Your account will be used only for authentication and to manage your
-				Radient Pass subscription.
-			</Box>
+			{/* Use SectionDescription for the final note */}
+			<SectionDescription sx={{ mt: 3, textAlign: 'center' }}>
+				<Box component="span" sx={{ mr: 0.5 }}>💡</Box>
+				Your account is used for authentication and managing your Radient Pass subscription.
+			</SectionDescription>
 		</Box>
 	);
 };

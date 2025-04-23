@@ -19,7 +19,7 @@ import {
 	CircularProgress,
 	FormControl,
 	FormHelperText,
-	InputLabel,
+	InputAdornment, // Import InputAdornment
 	Link,
 	MenuItem,
 	Select,
@@ -27,6 +27,7 @@ import {
 	TextField,
 	Typography,
 	alpha,
+	useTheme, // Import useTheme
 } from "@mui/material";
 import { useCredentials } from "@shared/hooks/use-credentials";
 import { useModels } from "@shared/hooks/use-models";
@@ -35,7 +36,9 @@ import type { FC } from "react";
 import { useEffect, useRef, useState } from "react";
 import {
 	EmojiContainer,
+	FieldLabel, // Import FieldLabel
 	FormContainer,
+	LabelIcon, // Import LabelIcon
 	SectionContainer,
 	SectionDescription,
 } from "../onboarding-styled";
@@ -44,6 +47,7 @@ import {
  * Model credential step in the onboarding process
  */
 export const ModelCredentialStep: FC = () => {
+	const theme = useTheme(); // Get theme context
 	// Get the list of model provider credentials
 	const modelProviderCredentials = CREDENTIAL_MANIFEST.filter(
 		(cred) => cred.key !== "SERP_API_KEY" && cred.key !== "TAVILY_API_KEY",
@@ -139,187 +143,211 @@ export const ModelCredentialStep: FC = () => {
 		(cred) => cred.key === selectedCredential,
 	);
 
+	// Define shadcn-like input styles using sx prop
+	const inputSx = {
+		"& .MuiOutlinedInput-root": {
+			borderRadius: theme.shape.borderRadius * 0.75,
+			backgroundColor: theme.palette.background.paper,
+			border: `1px solid ${theme.palette.divider}`,
+			minHeight: "40px",
+			height: "40px",
+			transition: "border-color 0.2s ease, box-shadow 0.2s ease",
+			"&:hover": {
+				borderColor: theme.palette.text.secondary,
+			},
+			"&.Mui-focused": {
+				borderColor: theme.palette.primary.main,
+				boxShadow: `0 0 0 2px ${theme.palette.primary.main}33`,
+			},
+			"& .MuiOutlinedInput-notchedOutline": {
+				border: "none",
+			},
+			"& .MuiInputBase-input": {
+				padding: theme.spacing(1, 1.5),
+				fontSize: "0.875rem",
+				height: "calc(40px - 16px)",
+				boxSizing: "border-box",
+			},
+			"& .MuiInputBase-input::placeholder": {
+				color: theme.palette.text.disabled,
+				opacity: 1,
+			},
+			"& .MuiSelect-select": { // Specific styles for Select input
+				display: 'flex',
+				alignItems: 'center',
+				gap: theme.spacing(1),
+			},
+			"& .MuiInputAdornment-root": {
+				color: theme.palette.text.secondary, // Color for adornments
+				marginRight: theme.spacing(0.5),
+			},
+		},
+		"& .MuiFormHelperText-root": {
+			fontSize: "0.75rem",
+			mt: 0.5,
+			ml: 0.5,
+		},
+		// Remove MUI label specific styles from inputSx
+		// "& .MuiInputLabel-root": { ... },
+		// "& .MuiInputLabel-outlined.MuiInputLabel-shrink": { ... },
+	};
+
+	// Style for the info box
+	const infoBoxSx = {
+		mt: 1.5, // Reduced margin top
+		p: 1.5, // Adjusted padding
+		borderRadius: theme.shape.borderRadius * 0.75, // Consistent radius
+		border: `1px solid ${theme.palette.divider}`,
+		backgroundColor: alpha(theme.palette.background.default, 0.5), // Slightly different background
+	};
+
+	// Style for the success alert
+	const successAlertSx = {
+		mb: 2,
+		borderRadius: theme.shape.borderRadius * 0.75,
+		border: `1px solid ${theme.palette.success.main}`,
+		backgroundColor: alpha(theme.palette.success.main, 0.1),
+		color: theme.palette.success.dark,
+		"& .MuiAlert-icon": {
+			color: theme.palette.success.main,
+		},
+	};
+
+	// Style for the final security note box
+	const securityNoteSx = {
+		mt: 2,
+		p: 1.5,
+		borderRadius: theme.shape.borderRadius * 0.75,
+		backgroundColor: alpha(theme.palette.info.main, 0.08), // Use info background
+		border: `1px solid ${alpha(theme.palette.info.main, 0.2)}`,
+		display: "flex",
+		alignItems: "center",
+		gap: theme.spacing(1),
+	};
+
 	return (
 		<SectionContainer>
 			<SectionDescription>
-				<EmojiContainer>✨</EmojiContainer> To unlock the power of AI models,
-				you need to add at least one model provider API key. Your key will be
-				securely stored on your device and used to access amazing AI
-				capabilities!
+				<EmojiContainer>✨</EmojiContainer> Add an API key for at least one model provider to enable AI features. Your keys are stored securely on your device.
 			</SectionDescription>
 
 			<FormContainer>
-				<FormControl
-					fullWidth
-					variant="outlined"
-					sx={{
-						"& .MuiOutlinedInput-root": {
-							"&.Mui-focused fieldset": {
-								borderColor: "primary.main",
-								borderWidth: 2,
-							},
-						},
-					}}
-				>
-					<InputLabel id="credential-select-label">
-						<Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-							<EmojiContainer>🤖</EmojiContainer> Model Provider
-						</Box>
-					</InputLabel>
-					<Select
-						labelId="credential-select-label"
-						id="credential-select"
-						value={selectedCredential}
-						onChange={handleCredentialChange}
-						label="🤖 Model Provider"
-					>
-						{modelProviderCredentials.map((cred) => (
-							<MenuItem key={cred.key} value={cred.key}>
-								{cred.name}
-							</MenuItem>
-						))}
-					</Select>
-					<FormHelperText>
-						<Box
-							component="span"
-							sx={{ display: "flex", alignItems: "center" }}
+				{/* Provider Selection */}
+				<Box> {/* Wrap Label and Input */}
+					<FieldLabel>
+						<LabelIcon>🤖</LabelIcon> {/* Use LabelIcon */}
+						Model Provider
+					</FieldLabel>
+					<FormControl fullWidth variant="outlined" sx={inputSx}>
+						{/* Remove InputLabel */}
+						<Select
+							// Remove labelId and label props
+							id="credential-select"
+							value={selectedCredential}
+							onChange={handleCredentialChange}
+							// Remove startAdornment
 						>
-							<FontAwesomeIcon
-								icon={faShieldAlt}
-								style={{
-									marginRight: "6px",
-									fontSize: "0.8rem",
-									color: "#666",
-								}}
-							/>
+							{modelProviderCredentials.map((cred) => (
+								<MenuItem key={cred.key} value={cred.key}>
+									{cred.name}
+								</MenuItem>
+							))}
+						</Select>
+						<FormHelperText sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+							<FontAwesomeIcon icon={faShieldAlt} size="xs" />
 							Select your preferred AI model provider
-						</Box>
-					</FormHelperText>
-				</FormControl>
+						</FormHelperText>
+					</FormControl>
+				</Box>
 
+				{/* Provider Info Box */}
 				{selectedCredentialInfo && (
-					<Box
-						sx={{
-							mt: 2,
-							p: 2,
-							borderRadius: 2,
-							border: (theme) =>
-								`1px solid ${alpha(theme.palette.primary.main, 0.2)}`,
-							background: (theme) => alpha(theme.palette.background.paper, 0.5),
-						}}
-					>
-						<Typography
-							variant="body2"
-							sx={{ mb: 1, display: "flex", alignItems: "center" }}
-						>
+					<Box sx={infoBoxSx}>
+						<Typography variant="body2" sx={{ mb: 1 }}>
 							{selectedCredentialInfo.description}
 						</Typography>
 						<Link
 							href={selectedCredentialInfo.url}
 							target="_blank"
 							rel="noopener noreferrer"
+							variant="body2" // Use variant for consistency
 							sx={{
 								display: "inline-flex",
 								alignItems: "center",
-								mb: 1,
-								color: "primary.main",
+								gap: 0.5, // Consistent gap
 								fontWeight: 500,
+								color: "primary.main",
 								"&:hover": {
-									textDecoration: "none",
+									textDecoration: "underline", // Keep underline for links
 									color: "primary.dark",
 								},
 							}}
 						>
-							<EmojiContainer>🔗</EmojiContainer> Get{" "}
-							{selectedCredentialInfo.name}{" "}
-							<FontAwesomeIcon
-								icon={faExternalLinkAlt}
-								style={{ marginLeft: "4px", fontSize: "0.8rem" }}
-							/>
+							<EmojiContainer sx={{ mb: 0 }}>🔗</EmojiContainer> Get{" "}
+							{selectedCredentialInfo.name} API Key{" "}
+							<FontAwesomeIcon icon={faExternalLinkAlt} size="xs" />
 						</Link>
 					</Box>
 				)}
 
+				{/* Success Alert */}
 				{saveSuccess && (
-					<Alert
-						severity="success"
-						icon={<FontAwesomeIcon icon={faCheck} />}
-						sx={{
-							mb: 2,
-							animation: "fadeIn 0.5s ease-out",
-							border: (theme) =>
-								`1px solid ${alpha(theme.palette.success.main, 0.5)}`,
-						}}
-					>
-						<Box sx={{ display: "flex", alignItems: "center" }}>
-							<EmojiContainer>🎉</EmojiContainer> Credential saved successfully!
-							You're one step closer to AI magic!
+					<Alert severity="success" icon={<FontAwesomeIcon icon={faCheck} />} sx={successAlertSx}>
+						<Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+							<EmojiContainer sx={{ mb: 0 }}>🎉</EmojiContainer> Credential saved successfully!
 						</Box>
 					</Alert>
 				)}
 
-				<TextField
-					label="API Key"
-					variant="outlined"
-					fullWidth
-					value={credentialValue}
-					onChange={handleCredentialValueChange}
-					error={!!error}
-					helperText={
-						error || "Enter your API key to connect with powerful AI models"
-					}
-					placeholder="Enter your API key here"
-					required
-					type="password"
-					onBlur={handleSaveCredential}
-					onKeyDown={(e) => {
-						if (
-							e.key === "Enter" &&
-							selectedCredential &&
-							credentialValue.trim() &&
-							!error &&
-							!isSaving
-						) {
-							handleSaveCredential();
-						}
-					}}
-					InputProps={{
-						startAdornment: (
-							<FontAwesomeIcon
-								icon={faKey}
-								style={{ marginRight: "10px", color: "#666" }}
-							/>
-						),
-						endAdornment: isSaving ? <CircularProgress size={20} /> : null,
-					}}
-					disabled={isSaving}
-					sx={{
-						"& .MuiOutlinedInput-root": {
-							"&.Mui-focused fieldset": {
-								borderColor: "primary.main",
-								borderWidth: 2,
-							},
-						},
-					}}
-				/>
+				{/* API Key Input */}
+				<Box> {/* Wrap Label and Input */}
+					<FieldLabel>
+						<LabelIcon>
+							<FontAwesomeIcon icon={faKey} size="sm" />
+						</LabelIcon>
+						API Key
+					</FieldLabel>
+					<TextField
+						// Remove label prop
+						variant="outlined"
+						fullWidth
+						value={credentialValue}
+						onChange={handleCredentialValueChange}
+						error={!!error}
+						helperText={error || "Enter the API key for the selected provider"}
+						placeholder="Enter your API key here"
+						required
+						type="password"
+						onBlur={handleSaveCredential}
+						onKeyDown={(e) => {
+							if (
+								e.key === "Enter" &&
+								selectedCredential &&
+								credentialValue.trim() &&
+								!error &&
+								!isSaving
+							) {
+								handleSaveCredential();
+							}
+						}}
+						InputProps={{
+							// Remove startAdornment
+							endAdornment: isSaving ? (
+								<InputAdornment position="end">
+									<CircularProgress size={20} />
+								</InputAdornment>
+							) : null,
+						}}
+						disabled={isSaving}
+						sx={inputSx} // Apply shared input styles
+					/>
+				</Box>
 
-				<Box
-					sx={{
-						mt: 2,
-						display: "flex",
-						alignItems: "center",
-						p: 1.5,
-						borderRadius: 1,
-						background: (theme) => alpha(theme.palette.info.main, 0.05),
-					}}
-				>
-					<EmojiContainer>🔒</EmojiContainer>
-					<Typography
-						variant="body2"
-						sx={{ color: "text.secondary", fontStyle: "italic" }}
-					>
-						Your API keys are stored securely on your device and are never
-						shared with anyone.
+				{/* Security Note */}
+				<Box sx={securityNoteSx}>
+					<EmojiContainer sx={{ mb: 0 }}>🔒</EmojiContainer>
+					<Typography variant="body2" color="text.secondary">
+						Your API keys are stored securely on your device and never shared.
 					</Typography>
 				</Box>
 			</FormContainer>

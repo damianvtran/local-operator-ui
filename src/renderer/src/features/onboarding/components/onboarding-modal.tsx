@@ -7,12 +7,9 @@
 
 import { faCheck } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Box, CircularProgress, Tooltip } from "@mui/material"; // Added CircularProgress
+import { Box, CircularProgress, Tooltip, useTheme } from "@mui/material"; // Added CircularProgress and useTheme
 import { getUserInfo } from "@shared/api/radient/auth-api";
-import {
-	PrimaryButton,
-	SecondaryButton,
-} from "@shared/components/common/base-dialog";
+// Import buttons from the local styled components file
 import { apiConfig } from "@shared/config";
 import { radientUserKeys } from "@shared/hooks/use-radient-user-query";
 import {
@@ -32,6 +29,8 @@ import {
 	CongratulationsIcon,
 	CongratulationsMessage,
 	CongratulationsTitle,
+	PrimaryButton, // Import from local styled components
+	SecondaryButton, // Import from local styled components
 	SkipButton,
 	StepDot,
 	StepIndicatorContainer,
@@ -75,6 +74,7 @@ type OnboardingModalProps = {
  * Manages the first-time setup experience with multiple steps
  */
 export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
+	const theme = useTheme(); // Get theme for spacing
 	const { currentStep, setCurrentStep, completeOnboarding } =
 		useOnboardingStore();
 	const navigate = useNavigate();
@@ -509,19 +509,35 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 		currentStep === OnboardingStep.CREATE_AGENT && !hasCreatedAgent;
 
 	// Render dialog actions (Back, Skip, Next buttons)
+	// Render dialog actions (Back, Skip, Next buttons) - Adjusted layout
 	const dialogActions = (
-		<>
-			{/* Back Button Area */}
-			<Box sx={{ minWidth: "80px" }}>
-				{" "}
-				{/* Ensure space even if button hidden */}
-				{canGoBack && (
+		<Box
+			sx={{
+				display: "flex",
+				justifyContent: "space-between", // Space out Back and Next/Skip
+				width: "100%",
+				alignItems: "center",
+				gap: theme.spacing(1.5), // Consistent gap
+			}}
+		>
+			{/* Back Button Area - Use flex-start alignment */}
+			<Box sx={{ display: "flex", justifyContent: "flex-start" }}>
+				{canGoBack ? (
 					<SecondaryButton onClick={handleBack}>Back</SecondaryButton>
+				) : (
+					<Box sx={{ minWidth: 100 }} /> // Placeholder to maintain alignment
 				)}
 			</Box>
 
-			{/* Skip/Next Button Area */}
-			<Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
+			{/* Skip/Next Button Area - Use flex-end alignment */}
+			<Box
+				sx={{
+					display: "flex",
+					justifyContent: "flex-end",
+					gap: theme.spacing(1.5), // Consistent gap
+					alignItems: "center",
+				}}
+			>
 				{canSkip && <SkipButton onClick={handleSkip}>Skip</SkipButton>}
 				{/* Hide Next button on choice/signin steps */}
 				{currentStep !== OnboardingStep.RADIENT_CHOICE &&
@@ -531,7 +547,7 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 						</PrimaryButton>
 					)}
 			</Box>
-		</>
+		</Box>
 	);
 
 	// Render step indicator dots
@@ -549,18 +565,20 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 					step === OnboardingStep.RADIENT_SIGNIN;
 
 				return (
+					// @ts-ignore - Ignore potential TS issue with Tooltip wrapping custom component
 					<Tooltip key={step} title={stepTitles[step]} arrow>
-						{/* Use Box as Tooltip child requires DOM element */}
-						<Box
+						{/* Wrap StepDot directly if it forwards refs, otherwise use a Box */}
+						{/* The updated StepDot handles cursor styling internally */}
+						<StepDot
+							active={isActive}
+							visited={isVisited}
 							onClick={() => {
+								// Navigation logic remains the same
 								if (canNavigate && !isNonNavigableRadientStep) {
 									setCurrentStep(step);
 								}
 							}}
-							sx={{ cursor: canNavigate ? "pointer" : "default" }} // Add pointer cursor
-						>
-							<StepDot active={isActive} visited={isVisited} />
-						</Box>
+						/>
 					</Tooltip>
 				);
 			})}
@@ -584,11 +602,11 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 						display: "flex",
 						justifyContent: "center",
 						alignItems: "center",
-						minHeight: "200px", // Ensure minimum height during load
-						py: 4, // Add some padding
+						minHeight: "250px", // Consistent min height
+						py: theme.spacing(4), // Use theme spacing
 					}}
 				>
-					<CircularProgress /> {/* Use MUI spinner */}
+					<CircularProgress />
 				</Box>
 			) : (
 				stepContent // Render the actual step content
