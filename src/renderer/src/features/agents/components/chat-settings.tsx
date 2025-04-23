@@ -4,18 +4,6 @@
  * Component for displaying and editing chat-specific agent settings
  */
 
-import {
-	faComments,
-	faGear,
-	faInfoCircle,
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Box, Button, IconButton, Tooltip, Typography } from "@mui/material";
-import { styled, alpha } from "@mui/material/styles"; // Correctly import alpha from styles
-import type {
-	AgentDetails,
-	AgentUpdate,
-} from "@shared/api/local-operator/types";
 // Import shared styled components needed for non-slider unset sections
 import {
 	DescriptionText,
@@ -24,6 +12,18 @@ import {
 	UnsetContainer,
 } from "@features/chat/components/chat-options-sidebar-styled";
 import { UnsetSliderSetting } from "@features/chat/components/unset-slider-setting"; // Import shared component
+import {
+	faComments,
+	faGear,
+	faInfoCircle,
+} from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { Box, Button, IconButton, Tooltip, Typography } from "@mui/material";
+import { alpha, styled } from "@mui/material/styles"; // Correctly import alpha from styles
+import type {
+	AgentDetails,
+	AgentUpdate,
+} from "@shared/api/local-operator/types";
 import { EditableField } from "@shared/components/common/editable-field";
 import { SliderSetting } from "@shared/components/common/slider-setting";
 import type { useUpdateAgent } from "@shared/hooks/use-update-agent";
