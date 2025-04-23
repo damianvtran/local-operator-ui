@@ -35,10 +35,11 @@ type AgentSettingsProps = {
 };
 
 const DetailsPaper = styled(Paper)(({ theme }) => ({
-	padding: theme.spacing(4),
+	padding: theme.spacing(3),
 	height: "100%",
-	borderRadius: 8,
+	borderRadius: 6,
 	backgroundColor: theme.palette.background.default,
+	border: `1px solid ${theme.palette.divider}`,
 	display: "flex",
 	flexDirection: "column",
 	transition: "all 0.25s ease",

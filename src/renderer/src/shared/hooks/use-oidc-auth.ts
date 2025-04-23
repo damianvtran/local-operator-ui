@@ -50,6 +50,17 @@ type UseOidcAuthResult = {
 	status: OAuthStatus; // Expose current status
 };
 
+/**
+ * Options for the useOidcAuth hook.
+ */
+type UseOidcAuthOptions = {
+	/**
+	 * Callback function to be invoked after successful authentication
+	 * and backend provisioning.
+	 */
+	onSuccess?: () => void;
+};
+
 // Create a Radient API client
 const radientClient = createRadientClient(
 	apiConfig.radientBaseUrl,
@@ -59,7 +70,10 @@ const radientClient = createRadientClient(
 /**
  * Main hook for OIDC authentication via main process native flow.
  */
-export const useOidcAuth = (): UseOidcAuthResult => {
+export const useOidcAuth = (
+	options?: UseOidcAuthOptions,
+): UseOidcAuthResult => {
+	const { onSuccess } = options || {}; // Destructure onSuccess callback
 	const [loading, setLoading] = useState(true); // Start loading until initial status is checked
 	const [error, setError] = useState<string | null>(null);
 	const [status, setStatus] = useState<OAuthStatus>({
@@ -179,7 +193,12 @@ export const useOidcAuth = (): UseOidcAuthResult => {
 				// Invalidate the React Query cache to trigger a refetch of the user information
 				queryClient.invalidateQueries({ queryKey: radientUserKeys.all });
 
-				// Success! Let the main flow handle setting loading to false.
+				// --- Success ---
+				// Call the onSuccess callback if provided
+				if (onSuccess) {
+					onSuccess();
+				}
+				// Let the main flow handle setting loading to false.
 			} catch (err) {
 				const msg = err instanceof Error ? err.message : String(err);
 				console.error("Error during backend authentication:", err);
@@ -188,7 +207,7 @@ export const useOidcAuth = (): UseOidcAuthResult => {
 				// Let the main flow handle setting loading to false.
 			}
 		},
-		[queryClient, updateConfig], // Added updateConfig dependency
+		[queryClient, updateConfig, onSuccess], // Added onSuccess dependency
 	);
 
 	// Effect to listen for status updates from the main process

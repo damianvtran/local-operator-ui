@@ -23,7 +23,7 @@ import { styled } from "@mui/material/styles";
 import type { FC } from "react";
 
 const SidebarHeaderContainer = styled(Box)(({ theme }) => ({
-	padding: theme.spacing(3),
+	padding: theme.spacing(2),
 	borderBottom: `1px solid ${theme.palette.sidebar.border}`,
 }));
 
@@ -31,12 +31,12 @@ const HeaderRow = styled(Box)({
 	display: "flex",
 	justifyContent: "space-between",
 	alignItems: "center",
-	marginBottom: 16,
+	marginBottom: 12,
 });
 
 const ActionsContainer = styled(Box)({
 	display: "flex",
-	gap: 8,
+	gap: 4,
 });
 
 const SidebarTitle = styled(Typography)({
@@ -82,6 +82,7 @@ const ActionButton = styled(IconButton)(({ theme }) => ({
 
 const SearchField = styled(TextField)(({ theme }) => ({
 	"& .MuiOutlinedInput-root": {
+		height: 36,
 		borderRadius: theme.shape.borderRadius * 1.5,
 		backgroundColor: alpha(theme.palette.background.paper, 0.6),
 		border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,

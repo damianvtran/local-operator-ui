@@ -257,7 +257,7 @@ export async function revokeToken(
 		},
 		body: JSON.stringify({
 			token,
-			token_type_hint: tokenType,
+			token_type: tokenType,
 		}),
 		credentials: "same-origin",
 	});

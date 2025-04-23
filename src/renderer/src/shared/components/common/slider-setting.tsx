@@ -14,9 +14,10 @@ import {
 	Slider,
 	TextField,
 	Typography,
-	alpha,
 	styled,
+	useTheme, // Import useTheme
 } from "@mui/material";
+import { alpha } from "@mui/material/styles"; // Import alpha from styles
 import { useEffect, useState } from "react";
 import type { ChangeEvent, FC, KeyboardEvent, SyntheticEvent } from "react";
 
@@ -74,153 +75,166 @@ type SliderSettingProps = {
 };
 
 const SettingContainer = styled(Paper)(({ theme }) => ({
-	padding: theme.spacing(2.5),
-	borderRadius: theme.shape.borderRadius * 2,
-	backgroundColor:
-		theme.palette.mode === "light"
-			? alpha(theme.palette.grey[100], 0.9)
-			: alpha(theme.palette.background.default, 0.7),
-	border:
-		theme.palette.mode === "light"
-			? `1px solid ${alpha(theme.palette.grey[300], 0.8)}`
-			: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-	transition: "all 0.2s ease",
+	padding: theme.spacing(2), // Adjusted padding
+	borderRadius: theme.shape.borderRadius * 1.5, // Adjusted border radius
+	backgroundColor: theme.palette.background.paper, // Use paper background
+	border: `1px solid ${theme.palette.divider}`, // Use theme divider color
+	transition: "border-color 0.2s ease", // Simplified transition
 	marginBottom: theme.spacing(2),
-	"&:hover": {
-		backgroundColor:
-			theme.palette.mode === "light"
-				? alpha(theme.palette.grey[100], 1)
-				: alpha(theme.palette.background.default, 0.9),
-		boxShadow:
-			theme.palette.mode === "light"
-				? `0 4px 12px ${alpha(theme.palette.common.black, 0.08)}`
-				: `0 4px 12px ${alpha(theme.palette.common.black, 0.2)}`,
-		border:
-			theme.palette.mode === "light"
-				? `1px solid ${alpha(theme.palette.primary.main, 0.2)}`
-				: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
-	},
+	// Removed hover effect for a cleaner look, consistent with shadcn cards
 }));
 
-const LabelWrapper = styled(Box)({
-	marginBottom: 8,
-});
+// --- Label and Description ---
+
+const LabelWrapper = styled(Box)(({ theme }) => ({
+	marginBottom: theme.spacing(1), // Adjusted margin
+}));
 
 const LabelText = styled(Typography)(({ theme }) => ({
-	marginBottom: 4,
+	// Use variant="subtitle1" or "h6" for consistency if needed elsewhere
+	fontWeight: 500, // Slightly reduced weight
 	display: "flex",
 	alignItems: "center",
 	color: theme.palette.text.primary,
-	fontWeight: 600,
+	marginBottom: theme.spacing(0.5), // Add small margin below label
 }));
 
 const IconWrapper = styled(Box)(({ theme }) => ({
-	marginRight: theme.spacing(1.5),
-	opacity: 0.8,
+	marginRight: theme.spacing(1), // Adjusted margin
+	color: theme.palette.text.secondary, // Use secondary text color for icon
+	display: "flex", // Ensure icon aligns well
+	alignItems: "center",
 }));
 
 const DescriptionText = styled(Typography)(({ theme }) => ({
-	fontSize: "0.875rem",
-	lineHeight: 1.5,
-	marginBottom: theme.spacing(2),
+	fontSize: "0.8rem", // Slightly smaller description
+	color: theme.palette.text.secondary, // Use secondary text color
+	lineHeight: 1.4,
+	marginBottom: theme.spacing(1.5), // Adjusted margin
 }));
+
+// --- Slider ---
 
 const SliderContainer = styled(Box)({
 	flexGrow: 1,
+	paddingRight: "8px", // Add slight padding to avoid thumb collision with input
 });
 
 const StyledSlider = styled(Slider)(({ theme }) => ({
+	color: theme.palette.primary.main, // Use primary color
+	height: 6, // Slightly thinner slider
+	padding: "13px 0", // Adjust padding for interaction area
 	"& .MuiSlider-thumb": {
-		width: 14,
-		height: 14,
-		transition: "0.2s cubic-bezier(.47,1.64,.41,.8)",
+		height: 16, // Slightly larger thumb
+		width: 16,
+		backgroundColor: theme.palette.primary.main, // Thumb color
+		border: `2px solid ${theme.palette.background.paper}`, // Border to match background
+		"&:focus, &:hover, &.Mui-active, &.Mui-focusVisible": {
+			boxShadow: `0 0 0 6px ${alpha(theme.palette.primary.main, 0.16)}`, // Consistent focus/hover ring
+		},
 		"&:before": {
-			boxShadow: `0 2px 12px 0 ${alpha(theme.palette.common.black, theme.palette.mode === "dark" ? 0.4 : 0.2)}`,
+			display: "none", // Remove default pseudo-element
 		},
-		"&:hover, &.Mui-focusVisible": {
-			boxShadow: `0px 0px 0px 8px ${alpha(
-				theme.palette.mode === "dark"
-					? theme.palette.common.white
-					: theme.palette.common.black,
-				0.16,
-			)}`,
+	},
+	"& .MuiSlider-valueLabel": {
+		// Style value label if needed, similar to shadcn tooltip
+		fontSize: 12,
+		fontWeight: "normal",
+		top: -6,
+		backgroundColor: alpha(theme.palette.grey[900], 0.85),
+		color: theme.palette.common.white,
+		borderRadius: theme.shape.borderRadius,
+		padding: "2px 6px",
+		"&:before": {
+			display: "none", // Remove arrow
 		},
-		"&.Mui-active": {
-			width: 20,
-			height: 20,
-		},
+	},
+	"& .MuiSlider-track": {
+		height: 6,
+		border: "none",
+		borderRadius: theme.shape.borderRadius, // Rounded track
 	},
 	"& .MuiSlider-rail": {
-		opacity: theme.palette.mode === "dark" ? 0.28 : 0.38,
+		height: 6,
+		opacity: 0.3, // Subtle rail
+		backgroundColor: theme.palette.grey[400], // Use grey for rail
+		borderRadius: theme.shape.borderRadius, // Rounded rail
 	},
 }));
 
-const InputContainer = styled(Box, {
-	shouldForwardProp: (prop) => prop !== "hasUnit",
-})<{ hasUnit?: boolean }>(({ hasUnit }) => ({
+// --- Input ---
+
+const InputContainer = styled(Box)({
 	display: "flex",
 	alignItems: "center",
-	minWidth: hasUnit ? "130px" : "100px",
-}));
-
-const StyledTextField = styled(TextField, {
-	shouldForwardProp: (prop) => prop !== "hasUnit",
-})<{ hasUnit?: boolean }>(({ theme, hasUnit }) => ({
-	width: hasUnit ? "130px" : "100px",
-	"& .MuiOutlinedInput-root": {
-		borderRadius: theme.shape.borderRadius * 1.5,
-		backgroundColor:
-			theme.palette.mode === "light"
-				? alpha(theme.palette.common.white, 0.9)
-				: alpha(theme.palette.background.paper, 0.4),
-		border:
-			theme.palette.mode === "light"
-				? `1px solid ${alpha(theme.palette.grey[400], 0.8)}`
-				: `1px solid ${alpha(theme.palette.divider, 0.2)}`,
-		"&:hover": {
-			backgroundColor:
-				theme.palette.mode === "light"
-					? theme.palette.common.white
-					: alpha(theme.palette.background.paper, 0.6),
-			borderColor:
-				theme.palette.mode === "light"
-					? alpha(theme.palette.primary.main, 0.5)
-					: alpha(theme.palette.primary.main, 0.3),
-		},
-		"&.Mui-focused": {
-			backgroundColor: theme.palette.common.white,
-			borderColor: theme.palette.primary.main,
-			boxShadow: `0 0 0 2px ${alpha(theme.palette.primary.main, 0.2)}`,
-		},
-	},
-	"& .MuiInputAdornment-root": {
-		marginLeft: 0,
-	},
-}));
-
-const UnitText = styled(Typography)({
-	fontSize: "0.9rem",
-	marginLeft: -4,
-	marginRight: 12,
+	minWidth: "90px", // Slightly reduced min-width
 });
 
-const MinMaxContainer = styled(Box)({
+const StyledTextField = styled(TextField)(({ theme }) => ({
+	width: "90px", // Fixed width
+	"& .MuiOutlinedInput-root": {
+		borderRadius: theme.shape.borderRadius, // Standard border radius
+		backgroundColor: theme.palette.background.default, // Use default background
+		fontSize: "0.875rem", // Match typical input text size
+		height: "36px", // Consistent height
+		"& fieldset": {
+			borderColor: theme.palette.divider, // Use divider color for border
+		},
+		"&:hover fieldset": {
+			borderColor: theme.palette.grey[500], // Slightly darker border on hover
+		},
+		"&.Mui-focused fieldset": {
+			borderColor: theme.palette.primary.main, // Primary color border on focus
+			borderWidth: "1px", // Ensure border width consistency
+		},
+		// Remove inner padding if adornment exists to prevent layout shift
+		"& .MuiInputAdornment-root + .MuiOutlinedInput-input": {
+			paddingRight: theme.spacing(0.5),
+		},
+	},
+	"& .MuiOutlinedInput-input": {
+		padding: theme.spacing(1, 1.5), // Adjust padding
+		textAlign: "right",
+	},
+	"& input[type=number]": {
+		// Improve number input appearance
+		appearance: "textfield",
+	},
+	"& input[type=number]::-webkit-outer-spin-button, & input[type=number]::-webkit-inner-spin-button":
+		{
+			// Hide number spinners
+			appearance: "none",
+			margin: 0,
+		},
+}));
+
+const UnitText = styled(Typography)(({ theme }) => ({
+	fontSize: "0.8rem",
+	color: theme.palette.text.secondary,
+	paddingLeft: theme.spacing(0.5), // Add padding for spacing
+	paddingRight: theme.spacing(1), // Ensure space after unit
+}));
+
+// --- Min/Max Labels ---
+
+const MinMaxContainer = styled(Box)(({ theme }) => ({
 	display: "flex",
 	justifyContent: "space-between",
-	marginTop: 8,
-});
+	marginTop: theme.spacing(0.5), // Reduced margin top
+}));
 
-const MinMaxText = styled(Typography)({
-	variant: "caption",
-	color: "text.secondary",
-});
+const MinMaxText = styled(Typography)(({ theme }) => ({
+	fontSize: "0.75rem", // Smaller text for min/max
+	color: theme.palette.text.disabled, // Use disabled color for less emphasis
+}));
 
 /**
  * Slider Setting Component
  *
  * A component for adjusting numeric settings with a slider and direct input
  *
- * @param props - SliderSettingProps
+ * @param props - The component props.
+ * @returns The SliderSetting component.
  */
 export const SliderSetting: FC<SliderSettingProps> = ({
 	value,
@@ -234,42 +248,56 @@ export const SliderSetting: FC<SliderSettingProps> = ({
 	icon,
 	isSaving = false,
 }) => {
+	const theme = useTheme(); // Get theme for conditional styles if needed later
 	const [sliderValue, setSliderValue] = useState<number>(value);
 	const [inputValue, setInputValue] = useState<string>(value.toString());
-	const [_isEditing, setIsEditing] = useState(false);
+	const [isEditing, setIsEditing] = useState(false); // Renamed state variable
 
-	// Update local state when prop value changes
+	// Update local state when the external value prop changes
 	useEffect(() => {
-		setSliderValue(value);
-		setInputValue(value.toString());
-	}, [value]);
+		// Only update if not currently editing the input to avoid overriding user input
+		if (!isEditing) {
+			setSliderValue(value);
+			setInputValue(value.toString());
+		}
+	}, [value, isEditing]); // Add isEditing to dependency array
 
 	/**
 	 * Handles slider change events
 	 */
-	const handleSliderChange = (_: Event, newValue: number | number[]) => {
+	const handleSliderChange = (_event: Event, newValue: number | number[]) => {
 		const numValue = newValue as number;
 		setSliderValue(numValue);
 		setInputValue(numValue.toString());
+		// Optionally trigger onChange immediately for smoother feedback,
+		// but handleSliderChangeCommitted is usually preferred for performance.
 	};
 
 	/**
-	 * Handles slider change completion
+	 * Handles slider change completion (when the user releases the slider).
 	 */
-	const handleSliderChangeCommitted = (
-		_: Event | SyntheticEvent<Element, Event>,
+	const handleSliderChangeCommitted = async (
+		_event: Event | SyntheticEvent<Element, Event>,
 		newValue: number | number[],
 	) => {
 		if (isSaving) return;
 
 		const numValue = newValue as number;
-		try {
-			void onChange(numValue);
-		} catch (error) {
-			// If there's an error, revert the UI state
-			setSliderValue(value);
-			setInputValue(value.toString());
-			console.error("Error updating setting:", error);
+		// Ensure the committed value is within bounds (Slider should handle this, but double-check)
+		const clampedValue = Math.max(min, Math.min(max, numValue));
+
+		setSliderValue(clampedValue);
+		setInputValue(clampedValue.toString());
+
+		if (clampedValue !== value) {
+			try {
+				await onChange(clampedValue);
+			} catch (error) {
+				console.error("Error updating setting via slider:", error);
+				// Revert UI state on error
+				setSliderValue(value);
+				setInputValue(value.toString());
+			}
 		}
 	};
 
@@ -281,36 +309,46 @@ export const SliderSetting: FC<SliderSettingProps> = ({
 	};
 
 	/**
-	 * Handles input blur - commits the change
+	 * Handles input blur - validates and commits the change.
 	 */
 	const handleInputBlur = async () => {
-		setIsEditing(false);
+		setIsEditing(false); // Mark editing as finished
 
 		if (isSaving) return;
 
-		const numValue = Number.parseInt(inputValue, 10);
+		let numValue = Number.parseFloat(inputValue); // Use parseFloat for potential decimal steps
 
+		// Validate and clamp the input value
 		if (Number.isNaN(numValue)) {
-			// Reset to current value if invalid
-			setInputValue(value.toString());
-			setSliderValue(value);
-			return;
+			numValue = value; // Reset to original value if invalid
+		} else {
+			numValue = Math.max(min, Math.min(max, numValue));
+			// Optional: Snap to the nearest step
+			if (step) {
+				numValue = Math.round(numValue / step) * step;
+				// Handle potential floating point inaccuracies if needed
+				const precision = step.toString().split(".")[1]?.length || 0;
+				numValue = Number.parseFloat(numValue.toFixed(precision));
+			}
 		}
 
-		// Clamp value to min/max range
-		const clampedValue = Math.max(min, Math.min(max, numValue));
-		setSliderValue(clampedValue);
-		setInputValue(clampedValue.toString());
-
-		if (clampedValue !== value) {
+		// Update state only if the clamped/validated value differs from the original prop
+		if (numValue !== value) {
+			setSliderValue(numValue);
+			setInputValue(numValue.toString());
 			try {
-				await onChange(clampedValue);
+				await onChange(numValue);
 			} catch (error) {
-				// If there's an error, revert the UI state
+				console.error("Error updating setting via input:", error);
+				// Revert UI state on error
 				setSliderValue(value);
 				setInputValue(value.toString());
-				console.error("Error updating setting:", error);
 			}
+		} else {
+			// If the value hasn't changed effectively, still reset the input
+			// string representation to the official value (e.g., user typed "5.0" but value is 5)
+			setSliderValue(value);
+			setInputValue(value.toString());
 		}
 	};
 
@@ -332,24 +370,26 @@ export const SliderSetting: FC<SliderSettingProps> = ({
 
 	return (
 		<SettingContainer elevation={0}>
+			{/* Label and Description */}
 			<LabelWrapper>
-				<LabelText variant="subtitle2">
+				<LabelText variant="subtitle1">
 					{icon && (
 						<IconWrapper>
-							<FontAwesomeIcon icon={icon} />
+							{/* Ensure FontAwesomeIcon size/color is appropriate */}
+							<FontAwesomeIcon icon={icon} size="sm" />
 						</IconWrapper>
 					)}
 					{label}
 				</LabelText>
-
 				{description && (
-					<DescriptionText variant="body2" color="text.secondary">
-						{description}
-					</DescriptionText>
+					<DescriptionText variant="body2">{description}</DescriptionText>
 				)}
 			</LabelWrapper>
 
-			<Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+			{/* Slider and Input Row */}
+			<Box
+				sx={{ display: "flex", alignItems: "center", gap: theme.spacing(2) }}
+			>
 				<SliderContainer>
 					<StyledSlider
 						value={sliderValue}
@@ -359,55 +399,49 @@ export const SliderSetting: FC<SliderSettingProps> = ({
 						onChange={handleSliderChange}
 						onChangeCommitted={handleSliderChangeCommitted}
 						disabled={isSaving}
+						valueLabelDisplay="auto" // Show label on hover/drag
 					/>
+					{/* MinMax Labels below Slider */}
+					<MinMaxContainer>
+						<MinMaxText>{min}</MinMaxText>
+						<MinMaxText>{max}</MinMaxText>
+					</MinMaxContainer>
 				</SliderContainer>
 
-				<InputContainer hasUnit={!!unit}>
+				<InputContainer>
 					{isSaving ? (
-						<CircularProgress size={24} sx={{ mr: 1 }} />
+						// Consistent loading indicator size
+						<CircularProgress size={20} sx={{ margin: "8px 12px" }} />
 					) : (
 						<StyledTextField
-							hasUnit={!!unit}
 							value={inputValue}
 							onChange={handleInputChange}
 							onBlur={handleInputBlur}
 							onFocus={handleInputFocus}
-							onKeyPress={handleKeyPress}
+							onKeyDown={handleKeyPress} // Use onKeyDown for Enter
 							variant="outlined"
-							size="small"
+							size="small" // Keep size small for compactness
 							type="number"
+							disabled={isSaving}
 							inputProps={{
 								min,
 								max,
 								step,
-								style: {
-									textAlign: "right",
-									paddingRight: unit ? "8px" : "0",
-								},
+								// Removed inline styles, handled by StyledTextField
 							}}
 							InputProps={{
 								endAdornment: unit ? (
-									<InputAdornment position="end">
-										<UnitText variant="caption">{unit}</UnitText>
+									// Use position="end" correctly
+									<InputAdornment position="end" sx={{ mr: 0, ml: -1 }}>
+										<UnitText>{unit}</UnitText>
 									</InputAdornment>
 								) : undefined,
-								sx: {
-									pr: unit ? 0.5 : 1,
-								},
+								// Removed sx padding, handled by StyledTextField
 							}}
 						/>
 					)}
 				</InputContainer>
 			</Box>
-
-			<MinMaxContainer>
-				<MinMaxText variant="caption" color="text.secondary">
-					{min}
-				</MinMaxText>
-				<MinMaxText variant="caption" color="text.secondary">
-					{max}
-				</MinMaxText>
-			</MinMaxContainer>
 		</SettingContainer>
 	);
 };

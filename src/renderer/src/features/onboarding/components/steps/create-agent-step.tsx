@@ -15,11 +15,11 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
 	Alert,
 	Box,
-	Button,
 	CircularProgress,
 	TextField,
 	Typography,
 	alpha,
+	useTheme, // Import useTheme
 } from "@mui/material";
 import { useCreateAgent } from "@shared/hooks/use-agent-mutations";
 import { useConfig } from "@shared/hooks/use-config";
@@ -31,8 +31,11 @@ import {
 import type { FC } from "react";
 import { useRef, useState } from "react";
 import {
-	EmojiContainer,
+	EmojiContainer, // Keep one EmojiContainer import
+	FieldLabel, // Import FieldLabel
 	FormContainer,
+	LabelIcon, // Import LabelIcon
+	PrimaryButton, // Import PrimaryButton
 	SectionContainer,
 	SectionDescription,
 	SectionTitle,
@@ -42,6 +45,7 @@ import {
  * Create agent step in the onboarding process
  */
 export const CreateAgentStep: FC = () => {
+	const theme = useTheme(); // Get theme context
 	// State for agent name and description
 	const [name, setName] = useState("");
 	const [description, setDescription] = useState("");
@@ -126,179 +130,195 @@ export const CreateAgentStep: FC = () => {
 		}
 	};
 
+	// Define shadcn-like input styles using sx prop
+	const inputSx = {
+		"& .MuiOutlinedInput-root": {
+			borderRadius: theme.shape.borderRadius * 0.75,
+			backgroundColor: theme.palette.background.paper,
+			border: `1px solid ${theme.palette.divider}`,
+			minHeight: "40px", // Standard height
+			// height: "40px", // Let height be determined by content for multiline
+			transition: "border-color 0.2s ease, box-shadow 0.2s ease",
+			"&:hover": {
+				borderColor: theme.palette.text.secondary,
+			},
+			"&.Mui-focused": {
+				borderColor: theme.palette.primary.main,
+				boxShadow: `0 0 0 2px ${theme.palette.primary.main}33`,
+			},
+			"& .MuiOutlinedInput-notchedOutline": {
+				border: "none",
+			},
+			"& .MuiInputBase-input": {
+				padding: theme.spacing(1, 1.5),
+				fontSize: "0.875rem",
+				// height: "calc(40px - 16px)", // Remove fixed height for multiline
+				boxSizing: "border-box",
+			},
+			"& .MuiInputBase-input::placeholder": {
+				color: theme.palette.text.disabled,
+				opacity: 1,
+			},
+			"& .MuiInputAdornment-root": {
+				color: theme.palette.text.secondary,
+				marginRight: theme.spacing(0.5),
+				// Align adornment top for multiline
+				alignSelf: "flex-start",
+				marginTop: theme.spacing(1.25),
+			},
+		},
+		"& .MuiFormHelperText-root": {
+			fontSize: "0.75rem",
+			mt: 0.5,
+			ml: 0.5,
+		},
+		// Remove MUI label specific styles from inputSx
+		// "& .MuiInputLabel-root": { ... },
+		// "& .MuiInputLabel-outlined.MuiInputLabel-shrink": { ... },
+	};
+
+	// Style for info boxes
+	const infoBoxSx = {
+		p: 1.5,
+		borderRadius: theme.shape.borderRadius * 0.75,
+		border: `1px solid ${theme.palette.divider}`,
+		backgroundColor: alpha(theme.palette.background.default, 0.5),
+		display: "flex",
+		alignItems: "center",
+		gap: 1.5,
+	};
+
+	// Style for the success alert
+	const successAlertSx = {
+		mt: 1, // Reduced margin
+		mb: 1,
+		borderRadius: theme.shape.borderRadius * 0.75,
+		border: `1px solid ${theme.palette.success.main}`,
+		backgroundColor: alpha(theme.palette.success.main, 0.1),
+		color: theme.palette.success.dark,
+		"& .MuiAlert-icon": {
+			color: theme.palette.success.main,
+		},
+	};
+
 	return (
 		<SectionContainer>
-			<SectionTitle>Create Your First AI Assistant</SectionTitle>
+			<SectionTitle>
+				<EmojiContainer sx={{ mb: 0 }}>🤖</EmojiContainer> Create Your First AI
+				Assistant
+			</SectionTitle>
 			<SectionDescription>
-				<EmojiContainer>🤖</EmojiContainer> It's time to create your very first
-				AI assistant! Give it a name and personality that reflects what you want
-				it to help you with. This is where the magic begins!
+				Give your AI assistant a name and describe its purpose. This helps
+				personalize its responses.
 			</SectionDescription>
 
-			<Box
-				sx={{
-					p: 2,
-					mb: 3,
-					borderRadius: 2,
-					background: (theme) =>
-						`linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.05)} 0%, ${alpha(theme.palette.secondary.main, 0.05)} 100%)`,
-					border: (theme) =>
-						`1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
-					display: "flex",
-					alignItems: "center",
-				}}
-			>
+			{/* "Pro tip!" Info Box */}
+			<Box sx={{ ...infoBoxSx, mb: 2 }}>
 				<FontAwesomeIcon
 					icon={faLightbulb}
-					style={{
-						fontSize: "1.5rem",
-						marginRight: "12px",
-						color: "#ff9800",
-					}}
+					size="lg"
+					color={theme.palette.warning.main} // Use warning color for tips
 				/>
-				<Typography variant="body2" component="div">
-					<Box component="span" sx={{ fontWeight: 600 }}>
-						Pro tip!
-					</Box>{" "}
-					Give your agent a descriptive name and purpose. For example, "Research
-					Assistant" or "Creative Writing Partner" will help you remember what
-					it's designed to do.
+				<Typography variant="body2">
+					<Typography component="span" fontWeight="medium">
+						Pro Tip:
+					</Typography>{" "}
+					Use a descriptive name like "Research Assistant" or "Creative Writing
+					Partner".
 				</Typography>
 			</Box>
 
 			<FormContainer>
-				<Box sx={{ position: "relative" }}>
+				{/* Agent Name */}
+				<Box>
+					{" "}
+					{/* Wrap Label and Input */}
+					<FieldLabel>
+						<LabelIcon>
+							<FontAwesomeIcon icon={faRobot} size="sm" />
+						</LabelIcon>
+						Agent Name
+					</FieldLabel>
 					<TextField
-						label="Agent Name"
+						// Remove label prop
 						variant="outlined"
 						fullWidth
 						value={name}
 						onChange={handleNameChange}
 						error={!!nameError}
-						helperText={nameError || "Give your AI assistant a memorable name"}
+						helperText={nameError || "A memorable name for your AI assistant"}
 						placeholder="My Awesome Assistant"
 						required
 						disabled={isSaving}
-						InputProps={{
-							startAdornment: (
-								<FontAwesomeIcon
-									icon={faRobot}
-									style={{ marginRight: "10px", color: "#666" }}
-								/>
-							),
-						}}
-						sx={{
-							"& .MuiOutlinedInput-root": {
-								"&.Mui-focused fieldset": {
-									borderColor: "primary.main",
-									borderWidth: 2,
-								},
-							},
-						}}
+						// Remove InputProps startAdornment
+						sx={inputSx} // Apply shared input styles
 					/>
 				</Box>
 
-				<Box sx={{ position: "relative" }}>
+				{/* Agent Description */}
+				<Box>
+					{" "}
+					{/* Wrap Label and Input */}
+					<FieldLabel>
+						<LabelIcon>
+							<FontAwesomeIcon icon={faLightbulb} size="sm" />
+						</LabelIcon>
+						Description (Optional)
+					</FieldLabel>
 					<TextField
-						label="Description (Optional)"
+						// Remove label prop
 						variant="outlined"
 						fullWidth
 						value={description}
 						onChange={handleDescriptionChange}
-						helperText="Describe what your AI assistant will help you with"
-						placeholder="A helpful assistant for research, writing, coding..."
+						helperText="Describe the assistant's purpose or specialty"
+						placeholder="e.g., Helps with research, writing, coding..."
 						multiline
-						rows={3}
+						rows={3} // Keep multiline
 						disabled={isSaving}
-						InputProps={{
-							startAdornment: (
-								<FontAwesomeIcon
-									icon={faLightbulb}
-									style={{
-										marginRight: "10px",
-										marginTop: "16px",
-										color: "#666",
-									}}
-								/>
-							),
-						}}
-						sx={{
-							"& .MuiOutlinedInput-root": {
-								"&.Mui-focused fieldset": {
-									borderColor: "primary.main",
-									borderWidth: 2,
-								},
-							},
-						}}
+						// Remove InputProps startAdornment
+						sx={inputSx} // Apply shared input styles
 					/>
 				</Box>
 
+				{/* Save Success Alert */}
 				{saveSuccess && (
 					<Alert
 						severity="success"
 						icon={<FontAwesomeIcon icon={faCheck} />}
-						sx={{
-							mt: 2,
-							mb: 2,
-							animation: "fadeIn 0.5s ease-out",
-							border: (theme) =>
-								`1px solid ${alpha(theme.palette.success.main, 0.5)}`,
-						}}
+						sx={successAlertSx}
 					>
-						<Box sx={{ display: "flex", alignItems: "center" }}>
-							<EmojiContainer>🎉</EmojiContainer> Your AI assistant has been
-							created successfully! Get ready for amazing conversations!
+						<Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+							<EmojiContainer sx={{ mb: 0 }}>🎉</EmojiContainer> AI assistant
+							created successfully!
 						</Box>
 					</Alert>
 				)}
 
-				<Button
-					variant="contained"
-					color="primary"
+				{/* Create Button - Use PrimaryButton */}
+				<PrimaryButton
 					fullWidth
 					onClick={handleCreateAgent}
-					disabled={!name.trim() || !!nameError || isSaving}
-					startIcon={<FontAwesomeIcon icon={faMagicWandSparkles} />}
-					sx={{
-						mt: 3,
-						py: 1.5,
-						fontSize: "1rem",
-						fontWeight: 600,
-						borderRadius: 2,
-						background: (theme) =>
-							`linear-gradient(90deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
-						boxShadow: (theme) =>
-							`0 4px 15px ${alpha(theme.palette.primary.main, 0.4)}`,
-						"&:hover": {
-							background: (theme) =>
-								`linear-gradient(90deg, ${theme.palette.primary.dark}, ${theme.palette.secondary.dark})`,
-							boxShadow: (theme) =>
-								`0 6px 20px ${alpha(theme.palette.primary.main, 0.6)}`,
-							transform: "translateY(-2px)",
-						},
-						transition: "all 0.3s ease",
-					}}
+					disabled={!name.trim() || !!nameError || isSaving || saveSuccess} // Disable after success too
+					startIcon={
+						isSaving ? undefined : (
+							<FontAwesomeIcon icon={faMagicWandSparkles} />
+						)
+					} // Hide icon when loading
+					sx={{ mt: 1 }} // Reduced margin top
 				>
-					{isSaving ? <CircularProgress size={24} /> : "Create My AI Assistant"}
-				</Button>
+					{isSaving ? (
+						<CircularProgress size={24} color="inherit" />
+					) : (
+						"Create My AI Assistant"
+					)}
+				</PrimaryButton>
 
-				<Box
-					sx={{
-						mt: 2,
-						display: "flex",
-						alignItems: "center",
-						justifyContent: "center",
-					}}
-				>
-					<EmojiContainer>💫</EmojiContainer>
-					<Typography
-						variant="body2"
-						component="div"
-						sx={{ color: "text.secondary", fontStyle: "italic" }}
-					>
-						This is the final step before your AI journey begins!
-					</Typography>
-				</Box>
+				{/* Final Note */}
+				<SectionDescription sx={{ mt: 1, textAlign: "center" }}>
+					<EmojiContainer sx={{ mr: 0.5 }}>💫</EmojiContainer>
+					Almost there! Just one more click after creating your agent.
+				</SectionDescription>
 			</FormContainer>
 		</SectionContainer>
 	);

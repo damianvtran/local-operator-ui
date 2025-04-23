@@ -10,13 +10,26 @@ dotenv.config({ path: resolve(process.cwd(), ".env") });
  * with environment variables from .env during build.
  */
 export function replaceBackendConfigPlugin(): Plugin {
+	if (!process.env.VITE_GOOGLE_CLIENT_ID) {
+		throw new Error("VITE_GOOGLE_CLIENT_ID is not set");
+	}
+	if (!process.env.VITE_GOOGLE_CLIENT_SECRET) {
+		throw new Error("VITE_GOOGLE_CLIENT_SECRET is not set");
+	}
+	if (!process.env.VITE_MICROSOFT_CLIENT_ID) {
+		throw new Error("VITE_MICROSOFT_CLIENT_ID is not set");
+	}
+	if (!process.env.VITE_MICROSOFT_TENANT_ID) {
+		throw new Error("VITE_MICROSOFT_TENANT_ID is not set");
+	}
+
 	const targetFile = resolve(process.cwd(), "src/main/backend/config.ts");
 
 	const replacements: Record<string, string> = {
-		REPL_VITE_GOOGLE_CLIENT_ID: `${process.env.VITE_GOOGLE_CLIENT_ID || ""}`,
-		REPL_VITE_GOOGLE_CLIENT_SECRET: `${process.env.VITE_GOOGLE_CLIENT_SECRET || ""}`,
-		REPL_VITE_MICROSOFT_CLIENT_ID: `${process.env.VITE_MICROSOFT_CLIENT_ID || ""}`,
-		REPL_VITE_MICROSOFT_TENANT_ID: `${process.env.VITE_MICROSOFT_TENANT_ID || ""}`,
+		REPL_VITE_GOOGLE_CLIENT_ID: process.env.VITE_GOOGLE_CLIENT_ID,
+		REPL_VITE_GOOGLE_CLIENT_SECRET: process.env.VITE_GOOGLE_CLIENT_SECRET,
+		REPL_VITE_MICROSOFT_CLIENT_ID: process.env.VITE_MICROSOFT_CLIENT_ID,
+		REPL_VITE_MICROSOFT_TENANT_ID: process.env.VITE_MICROSOFT_TENANT_ID,
 	};
 
 	const escapeRegExp = (string: string): string => {
