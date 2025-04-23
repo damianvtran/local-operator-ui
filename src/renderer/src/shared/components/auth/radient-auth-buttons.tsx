@@ -12,15 +12,10 @@ import {
 	Button,
 	CircularProgress,
 	Typography,
-	// alpha, // No longer needed for shadow
 	styled,
-	useTheme, // Import useTheme
+	useTheme, 
 } from "@mui/material";
 import { useOidcAuth } from "@shared/hooks/use-oidc-auth";
-import { radientUserKeys } from "@shared/hooks/use-radient-user-query";
-import { hasValidSession } from "@shared/utils/session-store";
-import { useQueryClient } from "@tanstack/react-query";
-import { useEffect } from "react";
 import type { FC } from "react";
 
 /**
@@ -108,35 +103,15 @@ export const RadientAuthButtons: FC<RadientAuthButtonsProps> = ({
 	descriptionText = "Choose your preferred sign-in method to access Radient services.",
 }) => {
 	const theme = useTheme(); // Get theme for sx props
-	const { signInWithGoogle, signInWithMicrosoft, loading, error } =
-		useOidcAuth();
+	// Pass the onSignInSuccess callback to the hook
+	const { signInWithGoogle, signInWithMicrosoft, loading, error } = useOidcAuth({
+		onSuccess: onSignInSuccess,
+	});
 
-	const queryClient = useQueryClient();
+	// const queryClient = useQueryClient(); // No longer needed here
 
-	// Check for successful sign-in
-	useEffect(() => {
-		const checkSignInSuccess = async () => {
-			// Only proceed if not loading and no error
-			if (!loading && !error) {
-				// Check if we have a valid session after sign-in
-				const hasSession = await hasValidSession();
-				if (hasSession) {
-					// Force a refetch of the user information
-					await queryClient.invalidateQueries({
-						queryKey: radientUserKeys.all,
-					});
-					await queryClient.refetchQueries({ queryKey: radientUserKeys.all });
-
-					// Call the success callback if provided
-					if (onSignInSuccess) {
-						onSignInSuccess();
-					}
-				}
-			}
-		};
-
-		checkSignInSuccess();
-	}, [loading, error, onSignInSuccess, queryClient]);
+	// Remove the useEffect that tried to infer success
+	// useEffect(() => { ... });
 
 	const handleGoogleSignIn = () => {
 		signInWithGoogle();

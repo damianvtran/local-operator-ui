@@ -6,17 +6,8 @@
  */
 
 import { Box, Typography, useTheme } from "@mui/material";
-import { getUserInfo } from "@shared/api/radient/auth-api";
 import { RadientAuthButtons } from "@shared/components/auth";
-import { apiConfig } from "@shared/config";
-import {
-	OnboardingStep,
-	useOnboardingStore,
-} from "@shared/store/onboarding-store";
-import { useUserStore } from "@shared/store/user-store";
-import { getSession, hasValidSession } from "@shared/utils/session-store";
 import type { FC } from "react";
-import { useCallback, useEffect } from "react";
 import {
 	EmojiContainer,
 	SectionContainer,
@@ -40,61 +31,15 @@ type RadientSignInStepProps = {
  * to set up their Radient Pass account.
  */
 export const RadientSignInStep: FC<RadientSignInStepProps> = ({
-	onSignInSuccess,
+	onSignInSuccess, // This prop comes from OnboardingModal
 }) => {
 	const theme = useTheme(); // Get theme context
-	const handleSignInSuccess = useCallback(async () => {
-		try {
-			// Get the session data
-			const sessionData = await getSession();
 
-			if (sessionData) {
-				// Fetch user information from Radient API
-				const userInfoResponse = await getUserInfo(
-					apiConfig.radientBaseUrl,
-					sessionData.accessToken,
-				);
-				const userInfo = userInfoResponse.result;
+	// Remove internal handleSignInSuccess logic
+	// const handleSignInSuccess = useCallback(async () => { ... });
 
-				// Update the user profile with name and email
-				if (userInfo) {
-					const updateProfile = useUserStore.getState().updateProfile;
-					updateProfile({
-						name: userInfo.account.name,
-						email: userInfo.account.email,
-					});
-				} else {
-					console.error("User info response was empty");
-				}
-			} else {
-				console.warn("No session data found in handleSignInSuccess");
-			}
-		} catch (error) {
-			console.error("Error fetching user info:", error);
-		}
-
-		// Continue to agent creation step
-		const { setCurrentStep } = useOnboardingStore.getState();
-		setCurrentStep(OnboardingStep.CREATE_AGENT);
-
-		// Call the onSignInSuccess callback if provided
-		if (onSignInSuccess) {
-			onSignInSuccess();
-		}
-	}, [onSignInSuccess]);
-
-	// Check for existing session on mount
-	useEffect(() => {
-		const checkExistingSession = async () => {
-			const hasSession = await hasValidSession();
-			if (hasSession) {
-				// If we already have a session, proceed to the next step
-				handleSignInSuccess();
-			}
-		};
-
-		checkExistingSession();
-	}, [handleSignInSuccess]);
+	// Remove session check useEffect
+	// useEffect(() => { ... });
 
 	// Use SectionContainer for the main wrapper with animation
 	return (
@@ -140,10 +85,11 @@ export const RadientSignInStep: FC<RadientSignInStepProps> = ({
 				}}
 			>
 				{/* RadientAuthButtons should handle its internal styling */}
+				{/* Pass the onSignInSuccess prop directly to RadientAuthButtons */}
 				<RadientAuthButtons
 					titleText="" // Keep title/desc empty if not needed here
 					descriptionText=""
-					onSignInSuccess={handleSignInSuccess}
+					onSignInSuccess={onSignInSuccess} // Pass down the prop from parent
 				/>
 			</Box>
 
