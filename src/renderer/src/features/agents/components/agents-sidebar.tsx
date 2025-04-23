@@ -68,9 +68,9 @@ const EmptyStateContainer = styled(Box)({
 });
 
 const AgentsList = styled(List)(({ theme }) => ({
-	overflow: "auto",
+	overflowY: "auto",
 	flexGrow: 1,
-	padding: "8px",
+	padding: "8px 0px", // Match chat sidebar padding
 	"&::-webkit-scrollbar": {
 		width: "8px",
 	},
@@ -84,19 +84,24 @@ const AgentsList = styled(List)(({ theme }) => ({
 }));
 
 const AgentListItemButton = styled(ListItemButton)(({ theme }) => ({
-	margin: "0 8px",
+	margin: "0 8px 8px", // Match chat sidebar margin
 	borderRadius: 8,
-	marginBottom: 4,
-	paddingRight: 40,
+	// marginBottom: 4, // Removed, handled by margin bottom
+	// marginBottom: 4, // Removed, handled by margin bottom
+	paddingRight: 12, // Match chat sidebar padding (now that secondaryAction is removed)
+	paddingTop: 6, // Match chat sidebar padding
+	paddingBottom: 6, // Match chat sidebar padding
+	paddingLeft: 12, // Match chat sidebar padding
+	position: "relative", // Add relative positioning like chat sidebar
 	"&.Mui-selected": {
-		backgroundColor: theme.palette.sidebar.itemActive,
+		backgroundColor: alpha(theme.palette.sidebar.itemActive, 0.1), // Match chat sidebar alpha
 		color: theme.palette.sidebar.itemActiveText,
 		"&:hover": {
-			backgroundColor: theme.palette.sidebar.itemActiveHover,
+			backgroundColor: alpha(theme.palette.sidebar.itemActiveHover, 0.15), // Match chat sidebar alpha
 		},
 	},
 	"&:hover": {
-		backgroundColor: theme.palette.sidebar.itemHover,
+		backgroundColor: alpha(theme.palette.sidebar.itemHover, 0.1), // Match chat sidebar alpha
 	},
 }));
 
@@ -110,28 +115,67 @@ const AgentAvatar = styled(Avatar, {
 		? theme.palette.sidebar.itemActiveText
 		: theme.palette.icon.text,
 	boxShadow: `0 2px 4px ${alpha(theme.palette.common.black, 0.15)}`,
+	width: 42, // Match chat sidebar avatar size
+	height: 42, // Match chat sidebar avatar size
 }));
 
-// Use a span wrapper to avoid nesting <p> inside <p>
-const CreationDateText = styled("span")(({ theme }) => ({
+// Agent name styling (similar to chat sidebar)
+const AgentName = styled(Typography)(() => ({
+	fontWeight: 600, // Match chat sidebar
+	fontSize: "0.9rem", // Match chat sidebar
+	whiteSpace: "nowrap",
+	overflow: "hidden",
+	textOverflow: "ellipsis",
+	flex: 1,
+}));
+
+// Description text styling (similar to message preview)
+const DescriptionText = styled("div")(({ theme }) => ({
+	fontSize: "0.8rem", // Match chat sidebar message preview
+	color:
+		theme.palette.mode === "dark"
+			? "rgba(255, 255, 255, 0.7)"
+			: "rgba(0, 0, 0, 0.6)", // Match chat sidebar message preview
+	whiteSpace: "nowrap",
+	overflow: "hidden",
+	textOverflow: "ellipsis",
+	width: "100%",
+	minHeight: "18px", // Match chat sidebar message preview
+}));
+
+// Creation date text styling (similar to timestamp)
+const CreationDateText = styled("div")(({ theme }) => ({
 	display: "flex",
 	alignItems: "center",
-	fontSize: "0.75rem",
+	fontSize: "0.7rem", // Match chat sidebar timestamp
 	color:
 		theme.palette.mode === "dark"
 			? "rgba(255, 255, 255, 0.5)"
-			: "rgba(0, 0, 0, 0.5)",
-	marginTop: 4,
+			: "rgba(0, 0, 0, 0.5)", // Match chat sidebar timestamp
+	marginTop: 2, // Add small margin like chat sidebar name/preview spacing
 	gap: 4,
 }));
 
-// Use a span wrapper to avoid nesting <p> inside <p>
-const DescriptionText = styled("span")(({ theme }) => ({
-	maxWidth: "100%",
-	fontSize: "0.75rem",
-	display: "block",
-	color: theme.palette.text.secondary,
-}));
+// Options button container (similar to chat sidebar)
+const OptionsButtonContainer = styled(Box)({
+	position: "absolute",
+	right: -8, // Position relative to the container it will be placed in
+	top: "50%", // Center vertically
+	transform: "translateY(-50%) translateX(100%)", // Center vertically and position off-screen horizontally
+	opacity: 0,
+	transition: "opacity 0.2s ease, transform 0.2s ease",
+	// Target hover on the parent ListItemButton to trigger the effect
+	".MuiListItemButton-root:hover &": {
+		opacity: 1,
+		transform: "translateY(-50%) translateX(0)", // Center vertically and slide in horizontally on hover
+		visibility: "visible",
+	},
+	zIndex: 2,
+	pointerEvents: "none", // Container doesn't block clicks
+	"& > *": {
+		pointerEvents: "auto", // Button inside is clickable
+	},
+});
 
 /**
  * Props for the AgentsSidebar component
@@ -360,45 +404,8 @@ export const AgentsSidebar: FC<AgentsSidebarProps> = ({
 			) : (
 				<AgentsList>
 					{displayAgents.map((agent) => (
-						<ListItem
-							key={agent.id}
-							disablePadding
-							secondaryAction={
-								<AgentOptionsMenu
-									agentId={agent.id}
-									agentName={agent.name}
-									isAgentsPage={true}
-									onAgentDeleted={(deletedAgentId) => {
-										// Check if the deleted agent is the currently selected one
-										if (selectedAgentId === deletedAgentId) {
-											// If the selected agent was deleted, we don't need to do anything here
-											// The parent component (AgentsPage) will handle clearing the selection
-											// when it detects the agent no longer exists
-										}
-										// Refetch the agents list
-										refetch();
-									}}
-									onChatWithAgent={() => navigate(`/chat/${agent.id}`)}
-									onExportAgent={() => handleExportAgent(agent.id)}
-									buttonSx={{
-										mr: 0.5,
-										width: 32,
-										height: 32,
-										borderRadius: "8px",
-										display: "flex",
-										justifyContent: "center",
-										alignItems: "center",
-										".MuiListItem-root:hover &": {
-											opacity: 0.6,
-										},
-										".MuiListItemButton-root.Mui-selected + .MuiListItemSecondaryAction-root &":
-											{
-												opacity: 0.6,
-											},
-									}}
-								/>
-							}
-						>
+						<ListItem key={agent.id} disablePadding>
+							{/* Removed secondaryAction */}
 							<AgentListItemButton
 								selected={selectedAgentId === agent.id}
 								onClick={() => handleSelectAgent(agent)}
@@ -409,29 +416,96 @@ export const AgentsSidebar: FC<AgentsSidebarProps> = ({
 									</AgentAvatar>
 								</ListItemAvatar>
 								<ListItemText
-									primary={agent.name}
-									secondary={
-										<>
+									// Remove primary and secondary props, render custom content
+									// primary={agent.name}
+									// secondary={...}
+									// primaryTypographyProps={{...}}
+									disableTypography // Important to allow custom content structure
+								>
+									{/* Custom content structure similar to chat sidebar */}
+									{/* Add position: relative here */}
+									<Box
+										sx={{
+											position: "relative",
+											width: "100%",
+											overflow: "hidden",
+										}}
+									>
+										<Tooltip
+											enterDelay={1200}
+											enterNextDelay={1200}
+											title={agent.name}
+											arrow
+											placement="top-start"
+										>
+											<AgentName>{agent.name}</AgentName>
+										</Tooltip>
+										<Tooltip
+											title={agent.description || "No description"}
+											arrow
+											placement="bottom-start"
+											enterDelay={1200}
+											enterNextDelay={1200}
+										>
+											{/* @ts-ignore - MUI Tooltip type issue */}
 											<DescriptionText>
 												{agent.description || "No description"}
 											</DescriptionText>
+										</Tooltip>
+										<Tooltip
+											title={`Created: ${formatDate(agent.created_date)}`}
+											arrow
+											placement="bottom-start"
+											enterDelay={1200}
+											enterNextDelay={1200}
+										>
+											{/* @ts-ignore - MUI Tooltip type issue */}
+											<CreationDateText>
+												<FontAwesomeIcon icon={faClock} size="xs" />
+												<span>{formatDate(agent.created_date)}</span>
+											</CreationDateText>
+										</Tooltip>
+										{/* Move OptionsButtonContainer inside the Box */}
+										<OptionsButtonContainer>
 											<Tooltip
-												title="Creation date"
+												enterDelay={1200}
+												enterNextDelay={1200}
+												title="Agent Options"
 												arrow
-												placement="bottom-start"
+												placement="top"
 											>
-												<CreationDateText>
-													<FontAwesomeIcon icon={faClock} size="xs" />
-													{formatDate(agent.created_date)}
-												</CreationDateText>
+												<span>
+													<AgentOptionsMenu
+														agentId={agent.id}
+														agentName={agent.name}
+														isAgentsPage={true}
+														onAgentDeleted={(deletedAgentId) => {
+															if (selectedAgentId === deletedAgentId) {
+																// Parent handles selection clearing
+															}
+															refetch();
+														}}
+														onChatWithAgent={() =>
+															navigate(`/chat/${agent.id}`)
+														}
+														onExportAgent={() => handleExportAgent(agent.id)}
+														buttonSx={{
+															// Match chat sidebar options button style
+															width: 24,
+															height: 24,
+															borderRadius: "4px",
+															display: "flex",
+															justifyContent: "center",
+															alignItems: "center",
+															opacity: 1, // Opacity controlled by container
+														}}
+													/>
+												</span>
 											</Tooltip>
-										</>
-									}
-									primaryTypographyProps={{
-										fontWeight: 500,
-										variant: "body1",
-									}}
-								/>
+										</OptionsButtonContainer>
+									</Box>
+								</ListItemText>
+								{/* OptionsButtonContainer moved inside Box */}
 							</AgentListItemButton>
 						</ListItem>
 					))}
