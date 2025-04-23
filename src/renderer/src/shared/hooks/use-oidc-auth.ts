@@ -25,6 +25,7 @@ import { useCallback, useEffect, useState } from "react";
 import { CredentialsApi } from "../api/local-operator/credentials-api";
 import { createRadientClient } from "../api/radient";
 import { storeSession } from "../utils/session-store";
+import { useUpdateConfig } from "./use-update-config"; // Added import
 import { showErrorToast, showSuccessToast } from "../utils/toast-manager";
 import { radientUserKeys } from "./use-radient-user-query";
 
@@ -66,6 +67,7 @@ export const useOidcAuth = (): UseOidcAuthResult => {
 		provider: null,
 	});
 	const queryClient = useQueryClient();
+	const { mutateAsync: updateConfig } = useUpdateConfig(); // Added hook instance
 
 	/**
 	 * Handles the full backend integration after obtaining tokens from the main process.
@@ -153,7 +155,23 @@ export const useOidcAuth = (): UseOidcAuthResult => {
 						value: appResponse.result.api_key,
 					});
 
-					showSuccessToast("Sign-in successful and new API key stored.");
+					// Attempt to set Radient as the default hosting provider and model
+					try {
+						await updateConfig({
+							hosting: "radient",
+							model_name: "auto",
+						});
+						// Success toast is handled by useUpdateConfig hook
+					} catch (configError) {
+						console.error(
+							"Failed to update config after provisioning API key:",
+							configError,
+						);
+						showErrorToast(
+							"Sign-in successful, but failed to set Radient hosting automatically.",
+						);
+						// Continue even if config update fails
+					}
 				} else {
 					showSuccessToast("Sign-in successful. Using existing API key.");
 				}
@@ -170,7 +188,7 @@ export const useOidcAuth = (): UseOidcAuthResult => {
 				// Let the main flow handle setting loading to false.
 			}
 		},
-		[queryClient],
+		[queryClient, updateConfig], // Added updateConfig dependency
 	);
 
 	// Effect to listen for status updates from the main process
