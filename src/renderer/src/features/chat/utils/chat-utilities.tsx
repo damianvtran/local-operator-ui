@@ -30,6 +30,7 @@ const UtilitiesContainer = styled(Box)(({ theme }) => ({
 	padding: theme.spacing(1, 3),
 	backgroundColor: alpha(theme.palette.background.paper, 0.4),
 	borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+	minHeight: 52,
 }));
 
 const UtilitiesHeader = styled(Box)(({ theme }) => ({
