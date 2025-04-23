@@ -12,8 +12,9 @@ import {
 	Button,
 	CircularProgress,
 	Typography,
-	alpha,
+	// alpha, // No longer needed for shadow
 	styled,
+	useTheme, // Import useTheme
 } from "@mui/material";
 import { useOidcAuth } from "@shared/hooks/use-oidc-auth";
 import { radientUserKeys } from "@shared/hooks/use-radient-user-query";
@@ -40,50 +41,52 @@ type RadientAuthButtonsProps = {
 	descriptionText?: string;
 };
 
-// Styled components for the sign-in buttons
+// --- Styled Components (shadcn-inspired) ---
+
+// Base button style, similar to SecondaryButton in onboarding-styled
 const SignInButton = styled(Button)(({ theme }) => ({
 	display: "flex",
 	alignItems: "center",
-	justifyContent: "center",
-	padding: theme.spacing(2, 4),
-	borderRadius: 8,
-	fontSize: "1rem",
-	fontWeight: 600,
+	justifyContent: "center", // Center content
+	padding: theme.spacing(0.75, 2), // Consistent padding
+	borderRadius: theme.shape.borderRadius * 0.75, // Consistent radius
+	fontSize: "0.875rem", // Standard font size
+	fontWeight: 500, // Standard weight
 	textTransform: "none",
-	marginBottom: theme.spacing(2),
+	marginBottom: theme.spacing(1.5), // Reduced margin between buttons
 	width: "100%",
-	maxWidth: 320,
-	transition: "all 0.2s ease-in-out",
-	boxShadow: `0 4px 12px ${alpha(theme.palette.common.black, 0.1)}`,
+	maxWidth: 320, // Keep max width for centering effect
+	border: `1px solid ${theme.palette.divider}`, // Standard border
+	backgroundColor: theme.palette.background.paper, // Standard background
+	color: theme.palette.text.primary, // Standard text color
+	boxShadow: "none", // Remove shadow
+	transition: "background-color 0.2s ease-in-out, border-color 0.2s ease-in-out", // Standard transition
 	"&:hover": {
-		transform: "translateY(-2px)",
-		boxShadow: `0 6px 16px ${alpha(theme.palette.common.black, 0.15)}`,
+		backgroundColor: theme.palette.action.hover, // Standard hover
+		borderColor: theme.palette.divider, // Keep border consistent on hover
+		boxShadow: "none", // Ensure no shadow on hover
+		// transform: "none", // Ensure no transform
+	},
+	"&:disabled": {
+		borderColor: theme.palette.divider,
+		color: theme.palette.action.disabled,
+		backgroundColor: theme.palette.action.disabledBackground,
 	},
 }));
 
-const GoogleButton = styled(SignInButton)(() => ({
-	backgroundColor: "#ffffff",
-	color: "#444444",
-	border: "1px solid #dddddd",
-	"&:hover": {
-		backgroundColor: "#f8f8f8",
-	},
-}));
+// Specific button styles are now minimal, inheriting from SignInButton
+const GoogleButton = styled(SignInButton)({}); // Inherits all styles
 
-const MicrosoftButton = styled(SignInButton)(() => ({
-	backgroundColor: "#2f2f2f",
-	color: "#ffffff",
-	"&:hover": {
-		backgroundColor: "#1f1f1f",
-	},
-}));
+const MicrosoftButton = styled(SignInButton)({}); // Inherits all styles
 
 const IconContainer = styled(Box)(({ theme }) => ({
 	display: "flex",
 	alignItems: "center",
 	justifyContent: "center",
-	marginRight: theme.spacing(2),
-	fontSize: "1.25rem",
+	marginRight: theme.spacing(1), // Reduced margin
+	fontSize: "1rem", // Slightly smaller icon to fit button style
+	width: 20, // Explicit width/height for alignment
+	height: 20,
 }));
 
 const ButtonsContainer = styled(Box)(() => ({
@@ -103,6 +106,7 @@ export const RadientAuthButtons: FC<RadientAuthButtonsProps> = ({
 	titleText = "Sign in to Radient",
 	descriptionText = "Choose your preferred sign-in method to access Radient services.",
 }) => {
+	const theme = useTheme(); // Get theme for sx props
 	const { signInWithGoogle, signInWithMicrosoft, loading, error } =
 		useOidcAuth();
 
@@ -142,44 +146,63 @@ export const RadientAuthButtons: FC<RadientAuthButtonsProps> = ({
 	};
 
 	return (
-		<Box>
+		<Box sx={{ width: "100%", maxWidth: 320, margin: "0 auto" }}> {/* Center the whole component */}
+			{/* Title - Use styles similar to SectionTitle */}
 			{titleText && (
 				<Typography
-					variant="body1"
+					// Use sx prop for finer control, aligning with SectionTitle style
 					sx={{
-						fontSize: "1.1rem",
+						fontSize: "1.125rem", // ~18px
 						fontWeight: 500,
-						lineHeight: 1.6,
-						mb: 2,
+						marginBottom: theme.spacing(1), // Reduced margin
+						color: theme.palette.text.primary,
+						textAlign: "center", // Center title
 					}}
 				>
 					{titleText}
 				</Typography>
 			)}
 
+			{/* Description - Use styles similar to SectionDescription */}
 			{descriptionText && (
-				<Typography variant="body2" color="text.secondary" sx={{ mb: 4 }}>
+				<Typography
+					// Use sx prop aligning with SectionDescription style
+					sx={{
+						fontSize: "0.875rem", // ~14px
+						color: theme.palette.text.secondary,
+						marginBottom: theme.spacing(3), // Consistent margin
+						lineHeight: 1.5,
+						textAlign: "center", // Center description
+					}}
+				>
 					{descriptionText}
 				</Typography>
 			)}
 
 			<ButtonsContainer>
+				{/* Google Button */}
 				<GoogleButton onClick={handleGoogleSignIn} disabled={loading}>
 					<IconContainer>
 						<FontAwesomeIcon icon={faGoogle} />
 					</IconContainer>
-					{loading ? <CircularProgress size={20} sx={{ mr: 2 }} /> : null}
+					{loading ? (
+						<CircularProgress size={16} sx={{ mr: 1 }} color="inherit" /> // Smaller spinner
+					) : null}
 					Sign in with Google
 				</GoogleButton>
 
+				{/* Microsoft Button */}
 				<MicrosoftButton onClick={handleMicrosoftSignIn} disabled={loading}>
 					<IconContainer>
 						<FontAwesomeIcon icon={faMicrosoft} />
 					</IconContainer>
-					{loading ? <CircularProgress size={20} sx={{ mr: 2 }} /> : null}
+					{loading ? (
+						<CircularProgress size={16} sx={{ mr: 1 }} color="inherit" /> // Smaller spinner
+					) : null}
 					Sign in with Microsoft
 				</MicrosoftButton>
 
+				{/* Error Message */}
 				{error && (
 					<Typography
 						variant="body2"
