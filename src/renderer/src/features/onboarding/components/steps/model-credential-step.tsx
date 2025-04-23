@@ -19,7 +19,7 @@ import {
 	CircularProgress,
 	FormControl,
 	FormHelperText,
-	InputAdornment, // Import InputAdornment
+	InputAdornment,
 	Link,
 	MenuItem,
 	Select,
@@ -27,7 +27,7 @@ import {
 	TextField,
 	Typography,
 	alpha,
-	useTheme, // Import useTheme
+	useTheme,
 } from "@mui/material";
 import { useCredentials } from "@shared/hooks/use-credentials";
 import { useModels } from "@shared/hooks/use-models";
@@ -36,11 +36,12 @@ import type { FC } from "react";
 import { useEffect, useRef, useState } from "react";
 import {
 	EmojiContainer,
-	FieldLabel, // Import FieldLabel
+	FieldLabel,
 	FormContainer,
-	LabelIcon, // Import LabelIcon
+	LabelIcon,
 	SectionContainer,
 	SectionDescription,
+	menuPropsSx,
 } from "../onboarding-styled";
 
 /**
@@ -143,7 +144,6 @@ export const ModelCredentialStep: FC = () => {
 		(cred) => cred.key === selectedCredential,
 	);
 
-	// Define shadcn-like input styles using sx prop
 	const inputSx = {
 		"& .MuiOutlinedInput-root": {
 			borderRadius: theme.shape.borderRadius * 0.75,
@@ -173,13 +173,12 @@ export const ModelCredentialStep: FC = () => {
 				opacity: 1,
 			},
 			"& .MuiSelect-select": {
-				// Specific styles for Select input
 				display: "flex",
 				alignItems: "center",
 				gap: theme.spacing(1),
 			},
 			"& .MuiInputAdornment-root": {
-				color: theme.palette.text.secondary, // Color for adornments
+				color: theme.palette.text.secondary,
 				marginRight: theme.spacing(0.5),
 			},
 		},
@@ -188,18 +187,16 @@ export const ModelCredentialStep: FC = () => {
 			mt: 0.5,
 			ml: 0.5,
 		},
-		// Remove MUI label specific styles from inputSx
-		// "& .MuiInputLabel-root": { ... },
-		// "& .MuiInputLabel-outlined.MuiInputLabel-shrink": { ... },
+
 	};
 
 	// Style for the info box
 	const infoBoxSx = {
-		mt: 1.5, // Reduced margin top
-		p: 1.5, // Adjusted padding
-		borderRadius: theme.shape.borderRadius * 0.75, // Consistent radius
+		mt: 1.5,
+		p: 1.5,
+		borderRadius: theme.shape.borderRadius * 0.75,
 		border: `1px solid ${theme.palette.divider}`,
-		backgroundColor: alpha(theme.palette.background.default, 0.5), // Slightly different background
+		backgroundColor: alpha(theme.palette.background.default, 0.5),
 	};
 
 	// Style for the success alert
@@ -219,7 +216,7 @@ export const ModelCredentialStep: FC = () => {
 		mt: 2,
 		p: 1.5,
 		borderRadius: theme.shape.borderRadius * 0.75,
-		backgroundColor: alpha(theme.palette.info.main, 0.08), // Use info background
+		backgroundColor: alpha(theme.palette.info.main, 0.08),
 		border: `1px solid ${alpha(theme.palette.info.main, 0.2)}`,
 		display: "flex",
 		alignItems: "center",
@@ -238,19 +235,16 @@ export const ModelCredentialStep: FC = () => {
 				{/* Provider Selection */}
 				<Box>
 					{" "}
-					{/* Wrap Label and Input */}
 					<FieldLabel>
-						<LabelIcon>🤖</LabelIcon> {/* Use LabelIcon */}
+						<LabelIcon>🤖</LabelIcon>
 						Model Provider
 					</FieldLabel>
 					<FormControl fullWidth variant="outlined" sx={inputSx}>
-						{/* Remove InputLabel */}
 						<Select
-							// Remove labelId and label props
 							id="credential-select"
 							value={selectedCredential}
 							onChange={handleCredentialChange}
-							// Remove startAdornment
+							MenuProps={menuPropsSx(theme)}
 						>
 							{modelProviderCredentials.map((cred) => (
 								<MenuItem key={cred.key} value={cred.key}>
@@ -277,15 +271,15 @@ export const ModelCredentialStep: FC = () => {
 							href={selectedCredentialInfo.url}
 							target="_blank"
 							rel="noopener noreferrer"
-							variant="body2" // Use variant for consistency
+							variant="body2"
 							sx={{
 								display: "inline-flex",
 								alignItems: "center",
-								gap: 0.5, // Consistent gap
+								gap: 0.5,
 								fontWeight: 500,
 								color: "primary.main",
 								"&:hover": {
-									textDecoration: "underline", // Keep underline for links
+									textDecoration: "underline",
 									color: "primary.dark",
 								},
 							}}
@@ -345,7 +339,6 @@ export const ModelCredentialStep: FC = () => {
 							}
 						}}
 						InputProps={{
-							// Remove startAdornment
 							endAdornment: isSaving ? (
 								<InputAdornment position="end">
 									<CircularProgress size={20} />
@@ -353,7 +346,7 @@ export const ModelCredentialStep: FC = () => {
 							) : null,
 						}}
 						disabled={isSaving}
-						sx={inputSx} // Apply shared input styles
+						sx={inputSx}
 					/>
 				</Box>
 

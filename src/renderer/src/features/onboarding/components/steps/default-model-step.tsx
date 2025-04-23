@@ -39,6 +39,7 @@ import {
 	SectionContainer,
 	SectionDescription,
 	SectionTitle,
+	menuPropsSx, // Import shared menu styles
 } from "../onboarding-styled";
 
 /**
@@ -370,6 +371,7 @@ export const DefaultModelStep: FC = () => {
 									id="provider-select"
 									value={selectedProvider}
 									onChange={handleProviderChange}
+									MenuProps={menuPropsSx(theme)} // Apply dropdown styles
 									// Remove startAdornment
 								>
 									{availableProviders.map((provider) => (
@@ -402,6 +404,7 @@ export const DefaultModelStep: FC = () => {
 										id="model-select"
 										value={selectedModel}
 										onChange={handleModelChange}
+										MenuProps={menuPropsSx(theme)} // Apply dropdown styles
 										// Remove startAdornment
 										disabled={availableModels.length === 0} // Disable if no models
 									>
