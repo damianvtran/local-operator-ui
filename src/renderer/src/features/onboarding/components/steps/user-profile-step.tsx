@@ -106,12 +106,15 @@ export const UserProfileStep: FC = () => {
 	return (
 		<SectionContainer>
 			<SectionDescription>
-				<EmojiContainer>🔒</EmojiContainer> This info is stored locally to personalize your AI experience and is never shared externally.
+				<EmojiContainer>🔒</EmojiContainer> This info is stored locally to
+				personalize your AI experience and is never shared externally.
 			</SectionDescription>
 
 			<FormContainer>
 				{/* Name Field */}
-				<Box> {/* Wrap Label and Input */}
+				<Box>
+					{" "}
+					{/* Wrap Label and Input */}
 					<FieldLabel>
 						<LabelIcon>😎</LabelIcon> {/* Use LabelIcon */}
 						Your Name
@@ -123,9 +126,7 @@ export const UserProfileStep: FC = () => {
 						value={name}
 						onChange={handleNameChange}
 						error={!!nameError}
-						helperText={
-							nameError || "Used to personalize your AI interactions"
-						}
+						helperText={nameError || "Used to personalize your AI interactions"}
 						placeholder="Enter your name"
 						required
 						// Remove InputProps startAdornment if icon moved to label
@@ -135,7 +136,9 @@ export const UserProfileStep: FC = () => {
 				</Box>
 
 				{/* Email Field */}
-				<Box> {/* Wrap Label and Input */}
+				<Box>
+					{" "}
+					{/* Wrap Label and Input */}
 					<FieldLabel>
 						<LabelIcon>📧</LabelIcon> {/* Use LabelIcon */}
 						Email Address (Optional)
@@ -157,9 +160,10 @@ export const UserProfileStep: FC = () => {
 			</FormContainer>
 
 			{/* Use SectionDescription for the final tip */}
-			<SectionDescription sx={{ mt: 3, textAlign: 'center' }}>
+			<SectionDescription sx={{ mt: 3, textAlign: "center" }}>
 				<EmojiContainer sx={{ mr: 0.5 }}>💡</EmojiContainer>
-				Personalizing your profile helps AI assistants provide a more tailored experience!
+				Personalizing your profile helps AI assistants provide a more tailored
+				experience!
 			</SectionDescription>
 		</SectionContainer>
 	);

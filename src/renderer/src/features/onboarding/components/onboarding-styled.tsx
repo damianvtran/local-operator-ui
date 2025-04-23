@@ -52,7 +52,8 @@ export const PrimaryButton = styled(Button)(({ theme }) => ({
 		color: theme.palette.action.disabled,
 		borderColor: theme.palette.divider,
 	},
-	transition: "background-color 0.2s ease-in-out, border-color 0.2s ease-in-out",
+	transition:
+		"background-color 0.2s ease-in-out, border-color 0.2s ease-in-out",
 }));
 
 /**
@@ -78,7 +79,8 @@ export const SecondaryButton = styled(Button)(({ theme }) => ({
 		borderColor: theme.palette.divider,
 		color: theme.palette.action.disabled,
 	},
-	transition: "background-color 0.2s ease-in-out, border-color 0.2s ease-in-out",
+	transition:
+		"background-color 0.2s ease-in-out, border-color 0.2s ease-in-out",
 }));
 
 /**
@@ -181,13 +183,13 @@ export const SectionDescription = styled(Box)(({ theme }) => ({
  * Field Label (matches editable-field.tsx)
  * Rendered as a 'label' for semantic correctness and to avoid nesting issues.
  */
-export const FieldLabel = styled('label')(({ theme }) => ({
-	...theme.typography.body2, 
+export const FieldLabel = styled("label")(({ theme }) => ({
+	...theme.typography.body2,
 	marginBottom: 6,
 	display: "flex",
 	alignItems: "center",
-	fontSize: "0.875rem", 
-	fontWeight: 500, 
+	fontSize: "0.875rem",
+	fontWeight: 500,
 	color: theme.palette.text.secondary,
 }));
 
@@ -200,7 +202,6 @@ export const LabelIcon = styled(Box)({
 	display: "flex",
 	alignItems: "center",
 });
-
 
 /**
  * Form container

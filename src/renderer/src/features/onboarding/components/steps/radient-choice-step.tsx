@@ -185,18 +185,25 @@ export const RadientChoiceStep: FC<RadientChoiceStepProps> = ({
 			</SectionDescription>
 
 			<SectionContainer>
-				<Grid container spacing={2.5}> {/* Slightly reduced spacing */}
+				<Grid container spacing={2.5}>
+					{" "}
+					{/* Slightly reduced spacing */}
 					{/* Radient Pass Option */}
 					<Grid item xs={12} md={6}>
 						{/* Use the specific RadientChoiceCard */}
 						<RadientChoiceCard onClick={handleRadientPassChoice}>
-							<Box> {/* Wrap text content */}
-								<CardTitle variant="h6"> {/* Use variant */}
-									Get started for free with{" "}
-									{/* Removed component="span" */}
+							<Box>
+								{" "}
+								{/* Wrap text content */}
+								<CardTitle variant="h6">
+									{" "}
+									{/* Use variant */}
+									Get started for free with {/* Removed component="span" */}
 									<RadientPassText>Radient Pass</RadientPassText>
 								</CardTitle>
-								<CardSubtitle variant="body2"> {/* Use variant */}
+								<CardSubtitle variant="body2">
+									{" "}
+									{/* Use variant */}
 									Batteries included with{" "}
 									<Typography
 										component="span"
@@ -222,31 +229,34 @@ export const RadientChoiceStep: FC<RadientChoiceStepProps> = ({
 							</CardIcon>
 							{/* Simplified ChooseOption text */}
 							<ChooseOption className="choose-option">
-								Choose Radient Pass <FontAwesomeIcon icon={faArrowRight} size="sm" />
+								Choose Radient Pass{" "}
+								<FontAwesomeIcon icon={faArrowRight} size="sm" />
 							</ChooseOption>
 						</RadientChoiceCard>
 					</Grid>
-
 					{/* DIY Option */}
 					<Grid item xs={12} md={6}>
 						<ChoiceCard onClick={handleDiyChoice}>
-							<Box> {/* Wrap text content */}
+							<Box>
+								{" "}
+								{/* Wrap text content */}
 								<CardTitle variant="h6">
-									Set up your own keys{" "}
-									{/* Removed component="span" */}
+									Set up your own keys {/* Removed component="span" */}
 									<FreeText>(Free Forever)</FreeText>
 								</CardTitle>
 								<CardSubtitle variant="body2">
 									Full flexibility for technical users. Bring your own API keys
-									for providers like OpenAI, Anthropic, SERP API, etc., and manage billing separately.
+									for providers like OpenAI, Anthropic, SERP API, etc., and
+									manage billing separately.
 								</CardSubtitle>
 							</Box>
 							{/* Use Typography for emoji for better control */}
 							<CardIcon>
-                                <Typography fontSize="3.5rem">🔧</Typography>
-                            </CardIcon>
+								<Typography fontSize="3.5rem">🔧</Typography>
+							</CardIcon>
 							<ChooseOption className="choose-option">
-								Choose DIY Setup <FontAwesomeIcon icon={faArrowRight} size="sm" />
+								Choose DIY Setup{" "}
+								<FontAwesomeIcon icon={faArrowRight} size="sm" />
 							</ChooseOption>
 						</ChoiceCard>
 					</Grid>
@@ -254,8 +264,10 @@ export const RadientChoiceStep: FC<RadientChoiceStepProps> = ({
 			</SectionContainer>
 
 			{/* Use standard SectionDescription styling */}
-			<SectionDescription sx={{ mt: 3, textAlign: 'center' }}>
-				<Box component="span" sx={{ mr: 0.5 }}>💡</Box>
+			<SectionDescription sx={{ mt: 3, textAlign: "center" }}>
+				<Box component="span" sx={{ mr: 0.5 }}>
+					💡
+				</Box>
 				You can always change your setup later in Settings.
 			</SectionDescription>
 		</Box>

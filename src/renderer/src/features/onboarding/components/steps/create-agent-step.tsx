@@ -163,7 +163,7 @@ export const CreateAgentStep: FC = () => {
 				color: theme.palette.text.secondary,
 				marginRight: theme.spacing(0.5),
 				// Align adornment top for multiline
-				alignSelf: 'flex-start',
+				alignSelf: "flex-start",
 				marginTop: theme.spacing(1.25),
 			},
 		},
@@ -183,8 +183,8 @@ export const CreateAgentStep: FC = () => {
 		borderRadius: theme.shape.borderRadius * 0.75,
 		border: `1px solid ${theme.palette.divider}`,
 		backgroundColor: alpha(theme.palette.background.default, 0.5),
-		display: 'flex',
-		alignItems: 'center',
+		display: "flex",
+		alignItems: "center",
 		gap: 1.5,
 	};
 
@@ -204,10 +204,12 @@ export const CreateAgentStep: FC = () => {
 	return (
 		<SectionContainer>
 			<SectionTitle>
-				<EmojiContainer sx={{ mb: 0 }}>🤖</EmojiContainer> Create Your First AI Assistant
+				<EmojiContainer sx={{ mb: 0 }}>🤖</EmojiContainer> Create Your First AI
+				Assistant
 			</SectionTitle>
 			<SectionDescription>
-				Give your AI assistant a name and describe its purpose. This helps personalize its responses.
+				Give your AI assistant a name and describe its purpose. This helps
+				personalize its responses.
 			</SectionDescription>
 
 			{/* "Pro tip!" Info Box */}
@@ -221,64 +223,74 @@ export const CreateAgentStep: FC = () => {
 					<Typography component="span" fontWeight="medium">
 						Pro Tip:
 					</Typography>{" "}
-					Use a descriptive name like "Research Assistant" or "Creative Writing Partner".
+					Use a descriptive name like "Research Assistant" or "Creative Writing
+					Partner".
 				</Typography>
 			</Box>
 
 			<FormContainer>
 				{/* Agent Name */}
-                <Box> {/* Wrap Label and Input */}
-                    <FieldLabel>
-                        <LabelIcon>
-                            <FontAwesomeIcon icon={faRobot} size="sm" />
-                        </LabelIcon>
-                        Agent Name
-                    </FieldLabel>
-                    <TextField
-                        // Remove label prop
-                        variant="outlined"
-                        fullWidth
-                        value={name}
-                        onChange={handleNameChange}
-                        error={!!nameError}
-                        helperText={nameError || "A memorable name for your AI assistant"}
-                        placeholder="My Awesome Assistant"
-                        required
-                        disabled={isSaving}
-                        // Remove InputProps startAdornment
-                        sx={inputSx} // Apply shared input styles
-                    />
-                </Box>
+				<Box>
+					{" "}
+					{/* Wrap Label and Input */}
+					<FieldLabel>
+						<LabelIcon>
+							<FontAwesomeIcon icon={faRobot} size="sm" />
+						</LabelIcon>
+						Agent Name
+					</FieldLabel>
+					<TextField
+						// Remove label prop
+						variant="outlined"
+						fullWidth
+						value={name}
+						onChange={handleNameChange}
+						error={!!nameError}
+						helperText={nameError || "A memorable name for your AI assistant"}
+						placeholder="My Awesome Assistant"
+						required
+						disabled={isSaving}
+						// Remove InputProps startAdornment
+						sx={inputSx} // Apply shared input styles
+					/>
+				</Box>
 
 				{/* Agent Description */}
-                <Box> {/* Wrap Label and Input */}
-                    <FieldLabel>
-                        <LabelIcon>
-                            <FontAwesomeIcon icon={faLightbulb} size="sm" />
-                        </LabelIcon>
-                        Description (Optional)
-                    </FieldLabel>
-                    <TextField
-                        // Remove label prop
-                        variant="outlined"
-                        fullWidth
-                        value={description}
-                        onChange={handleDescriptionChange}
-                        helperText="Describe the assistant's purpose or specialty"
-                        placeholder="e.g., Helps with research, writing, coding..."
-                        multiline
-                        rows={3} // Keep multiline
-                        disabled={isSaving}
-                        // Remove InputProps startAdornment
-                        sx={inputSx} // Apply shared input styles
-                    />
-                </Box>
+				<Box>
+					{" "}
+					{/* Wrap Label and Input */}
+					<FieldLabel>
+						<LabelIcon>
+							<FontAwesomeIcon icon={faLightbulb} size="sm" />
+						</LabelIcon>
+						Description (Optional)
+					</FieldLabel>
+					<TextField
+						// Remove label prop
+						variant="outlined"
+						fullWidth
+						value={description}
+						onChange={handleDescriptionChange}
+						helperText="Describe the assistant's purpose or specialty"
+						placeholder="e.g., Helps with research, writing, coding..."
+						multiline
+						rows={3} // Keep multiline
+						disabled={isSaving}
+						// Remove InputProps startAdornment
+						sx={inputSx} // Apply shared input styles
+					/>
+				</Box>
 
 				{/* Save Success Alert */}
 				{saveSuccess && (
-					<Alert severity="success" icon={<FontAwesomeIcon icon={faCheck} />} sx={successAlertSx}>
+					<Alert
+						severity="success"
+						icon={<FontAwesomeIcon icon={faCheck} />}
+						sx={successAlertSx}
+					>
 						<Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-							<EmojiContainer sx={{ mb: 0 }}>🎉</EmojiContainer> AI assistant created successfully!
+							<EmojiContainer sx={{ mb: 0 }}>🎉</EmojiContainer> AI assistant
+							created successfully!
 						</Box>
 					</Alert>
 				)}
@@ -288,14 +300,22 @@ export const CreateAgentStep: FC = () => {
 					fullWidth
 					onClick={handleCreateAgent}
 					disabled={!name.trim() || !!nameError || isSaving || saveSuccess} // Disable after success too
-					startIcon={isSaving ? undefined : <FontAwesomeIcon icon={faMagicWandSparkles} />} // Hide icon when loading
+					startIcon={
+						isSaving ? undefined : (
+							<FontAwesomeIcon icon={faMagicWandSparkles} />
+						)
+					} // Hide icon when loading
 					sx={{ mt: 1 }} // Reduced margin top
 				>
-					{isSaving ? <CircularProgress size={24} color="inherit" /> : "Create My AI Assistant"}
+					{isSaving ? (
+						<CircularProgress size={24} color="inherit" />
+					) : (
+						"Create My AI Assistant"
+					)}
 				</PrimaryButton>
 
 				{/* Final Note */}
-				<SectionDescription sx={{ mt: 1, textAlign: 'center' }}>
+				<SectionDescription sx={{ mt: 1, textAlign: "center" }}>
 					<EmojiContainer sx={{ mr: 0.5 }}>💫</EmojiContainer>
 					Almost there! Just one more click after creating your agent.
 				</SectionDescription>

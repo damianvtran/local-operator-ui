@@ -172,9 +172,10 @@ export const SearchApiStep: FC = () => {
 				color: theme.palette.text.disabled,
 				opacity: 1,
 			},
-			"& .MuiSelect-select": { // Specific styles for Select input
-				display: 'flex',
-				alignItems: 'center',
+			"& .MuiSelect-select": {
+				// Specific styles for Select input
+				display: "flex",
+				alignItems: "center",
 				gap: theme.spacing(1),
 			},
 			"& .MuiInputAdornment-root": {
@@ -227,12 +228,22 @@ export const SearchApiStep: FC = () => {
 	return (
 		<SectionContainer>
 			<SectionDescription>
-				<EmojiContainer>🌐</EmojiContainer> Supercharge your AI agents with web search for real-time information. This optional step gives your AI access to the latest data online.
+				<EmojiContainer>🌐</EmojiContainer> Supercharge your AI agents with web
+				search for real-time information. This optional step gives your AI
+				access to the latest data online.
 			</SectionDescription>
 
 			<FormContainer>
 				{/* Web-enabled AI Info Box */}
-				<Box sx={{ ...infoBoxSx, mb: 2, display: 'flex', alignItems: 'center', gap: 1.5 }}>
+				<Box
+					sx={{
+						...infoBoxSx,
+						mb: 2,
+						display: "flex",
+						alignItems: "center",
+						gap: 1.5,
+					}}
+				>
 					<FontAwesomeIcon
 						icon={faGlobe}
 						size="lg" // Use FontAwesome size prop
@@ -242,44 +253,52 @@ export const SearchApiStep: FC = () => {
 						<Typography component="span" fontWeight="medium">
 							Web-enabled AI is more powerful!
 						</Typography>{" "}
-						Agents can find current info, research topics, and provide up-to-date answers.
+						Agents can find current info, research topics, and provide
+						up-to-date answers.
 					</Typography>
 				</Box>
 
 				{/* Provider Selection */}
-                <Box> {/* Wrap Label and Input */}
-                    <FieldLabel>
-                        <LabelIcon>🔎</LabelIcon> {/* Use LabelIcon */}
-                        Search API Provider
-                    </FieldLabel>
-                    <FormControl fullWidth variant="outlined" sx={inputSx}>
-                        {/* Remove InputLabel */}
-                        <Select
-                            // Remove labelId and label props
-                            id="search-api-select"
-                            value={selectedCredential}
-                            onChange={handleCredentialChange}
-                            // Remove startAdornment
-                        >
-                            {searchApiCredentials.map((cred) => (
-                                <MenuItem key={cred.key} value={cred.key}>
-                                    {cred.key === RECOMMENDED_CREDENTIAL
-                                        ? `${cred.name} (Recommended)`
-                                        : cred.name}
-                                </MenuItem>
-                            ))}
-                        </Select>
-                        <FormHelperText sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                            <FontAwesomeIcon icon={faSearch} size="xs" />
-                            Choose your preferred search provider (Tavily recommended)
-                        </FormHelperText>
-                    </FormControl>
-                </Box>
+				<Box>
+					{" "}
+					{/* Wrap Label and Input */}
+					<FieldLabel>
+						<LabelIcon>🔎</LabelIcon> {/* Use LabelIcon */}
+						Search API Provider
+					</FieldLabel>
+					<FormControl fullWidth variant="outlined" sx={inputSx}>
+						{/* Remove InputLabel */}
+						<Select
+							// Remove labelId and label props
+							id="search-api-select"
+							value={selectedCredential}
+							onChange={handleCredentialChange}
+							// Remove startAdornment
+						>
+							{searchApiCredentials.map((cred) => (
+								<MenuItem key={cred.key} value={cred.key}>
+									{cred.key === RECOMMENDED_CREDENTIAL
+										? `${cred.name} (Recommended)`
+										: cred.name}
+								</MenuItem>
+							))}
+						</Select>
+						<FormHelperText
+							sx={{ display: "flex", alignItems: "center", gap: 0.5 }}
+						>
+							<FontAwesomeIcon icon={faSearch} size="xs" />
+							Choose your preferred search provider (Tavily recommended)
+						</FormHelperText>
+					</FormControl>
+				</Box>
 
 				{/* Provider Info Box */}
 				{selectedCredentialInfo && (
 					<Box sx={{ ...infoBoxSx, mt: 1.5 }}>
-						<Typography variant="body2" sx={{ mb: 1, display: 'flex', alignItems: 'center', gap: 0.5 }}>
+						<Typography
+							variant="body2"
+							sx={{ mb: 1, display: "flex", alignItems: "center", gap: 0.5 }}
+						>
 							<EmojiContainer sx={{ mb: 0 }}>💡</EmojiContainer>{" "}
 							{selectedCredentialInfo.description}
 						</Typography>
@@ -309,63 +328,69 @@ export const SearchApiStep: FC = () => {
 
 				{/* Success Alert */}
 				{saveSuccess && (
-					<Alert severity="success" icon={<FontAwesomeIcon icon={faCheck} />} sx={successAlertSx}>
+					<Alert
+						severity="success"
+						icon={<FontAwesomeIcon icon={faCheck} />}
+						sx={successAlertSx}
+					>
 						<Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-							<EmojiContainer sx={{ mb: 0 }}>🎉</EmojiContainer> Search API credential saved!
+							<EmojiContainer sx={{ mb: 0 }}>🎉</EmojiContainer> Search API
+							credential saved!
 						</Box>
 					</Alert>
 				)}
 
 				{/* API Key Input */}
-                <Box> {/* Wrap Label and Input */}
-                    <FieldLabel>
-                        <LabelIcon>
-                            <FontAwesomeIcon icon={faKey} size="sm" />
-                        </LabelIcon>
-                        API Key (Optional)
-                    </FieldLabel>
-                    <TextField
-                        // Remove label prop
-                        variant="outlined"
-                        fullWidth
-                        value={credentialValue}
-                        onChange={handleCredentialValueChange}
-                        error={!!error} // Keep error state if needed for validation later
-                        helperText={
-                            error || "Enter the API key for the selected provider"
-                        }
-                        placeholder="Enter your API key here"
-                        type="password"
-                        onBlur={handleSaveCredential}
-                        onKeyDown={(e) => {
-                            if (
-                                e.key === "Enter" &&
-                                selectedCredential &&
-                                credentialValue.trim() &&
-                                !error &&
-                                !isSaving
-                            ) {
-                                handleSaveCredential();
-                            }
-                        }}
-                        InputProps={{
-                            // Remove startAdornment
-                            endAdornment: isSaving ? (
-                                <InputAdornment position="end">
-                                    <CircularProgress size={20} />
-                                </InputAdornment>
-                            ) : null,
-                        }}
-                        disabled={isSaving}
-                        sx={inputSx} // Apply shared input styles
-                    />
-                </Box>
+				<Box>
+					{" "}
+					{/* Wrap Label and Input */}
+					<FieldLabel>
+						<LabelIcon>
+							<FontAwesomeIcon icon={faKey} size="sm" />
+						</LabelIcon>
+						API Key (Optional)
+					</FieldLabel>
+					<TextField
+						// Remove label prop
+						variant="outlined"
+						fullWidth
+						value={credentialValue}
+						onChange={handleCredentialValueChange}
+						error={!!error} // Keep error state if needed for validation later
+						helperText={error || "Enter the API key for the selected provider"}
+						placeholder="Enter your API key here"
+						type="password"
+						onBlur={handleSaveCredential}
+						onKeyDown={(e) => {
+							if (
+								e.key === "Enter" &&
+								selectedCredential &&
+								credentialValue.trim() &&
+								!error &&
+								!isSaving
+							) {
+								handleSaveCredential();
+							}
+						}}
+						InputProps={{
+							// Remove startAdornment
+							endAdornment: isSaving ? (
+								<InputAdornment position="end">
+									<CircularProgress size={20} />
+								</InputAdornment>
+							) : null,
+						}}
+						disabled={isSaving}
+						sx={inputSx} // Apply shared input styles
+					/>
+				</Box>
 
 				{/* Optional Step Note */}
 				<Box sx={optionalNoteSx}>
 					<EmojiContainer sx={{ mb: 0 }}>💫</EmojiContainer>
 					<Typography variant="body2" color="text.secondary">
-						This step is optional! You can skip it and add search capabilities later in Settings.
+						This step is optional! You can skip it and add search capabilities
+						later in Settings.
 					</Typography>
 				</Box>
 			</FormContainer>

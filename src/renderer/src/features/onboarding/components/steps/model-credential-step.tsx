@@ -172,9 +172,10 @@ export const ModelCredentialStep: FC = () => {
 				color: theme.palette.text.disabled,
 				opacity: 1,
 			},
-			"& .MuiSelect-select": { // Specific styles for Select input
-				display: 'flex',
-				alignItems: 'center',
+			"& .MuiSelect-select": {
+				// Specific styles for Select input
+				display: "flex",
+				alignItems: "center",
 				gap: theme.spacing(1),
 			},
 			"& .MuiInputAdornment-root": {
@@ -228,12 +229,16 @@ export const ModelCredentialStep: FC = () => {
 	return (
 		<SectionContainer>
 			<SectionDescription>
-				<EmojiContainer>✨</EmojiContainer> Add an API key for at least one model provider to enable AI features. Your keys are stored securely on your device.
+				<EmojiContainer>✨</EmojiContainer> Add an API key for at least one
+				model provider to enable AI features. Your keys are stored securely on
+				your device.
 			</SectionDescription>
 
 			<FormContainer>
 				{/* Provider Selection */}
-				<Box> {/* Wrap Label and Input */}
+				<Box>
+					{" "}
+					{/* Wrap Label and Input */}
 					<FieldLabel>
 						<LabelIcon>🤖</LabelIcon> {/* Use LabelIcon */}
 						Model Provider
@@ -253,7 +258,9 @@ export const ModelCredentialStep: FC = () => {
 								</MenuItem>
 							))}
 						</Select>
-						<FormHelperText sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+						<FormHelperText
+							sx={{ display: "flex", alignItems: "center", gap: 0.5 }}
+						>
 							<FontAwesomeIcon icon={faShieldAlt} size="xs" />
 							Select your preferred AI model provider
 						</FormHelperText>
@@ -292,15 +299,22 @@ export const ModelCredentialStep: FC = () => {
 
 				{/* Success Alert */}
 				{saveSuccess && (
-					<Alert severity="success" icon={<FontAwesomeIcon icon={faCheck} />} sx={successAlertSx}>
+					<Alert
+						severity="success"
+						icon={<FontAwesomeIcon icon={faCheck} />}
+						sx={successAlertSx}
+					>
 						<Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-							<EmojiContainer sx={{ mb: 0 }}>🎉</EmojiContainer> Credential saved successfully!
+							<EmojiContainer sx={{ mb: 0 }}>🎉</EmojiContainer> Credential
+							saved successfully!
 						</Box>
 					</Alert>
 				)}
 
 				{/* API Key Input */}
-				<Box> {/* Wrap Label and Input */}
+				<Box>
+					{" "}
+					{/* Wrap Label and Input */}
 					<FieldLabel>
 						<LabelIcon>
 							<FontAwesomeIcon icon={faKey} size="sm" />
