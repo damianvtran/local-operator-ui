@@ -8,6 +8,7 @@
 import {
 	Box,
 	Button,
+	type Theme,
 	Typography,
 	alpha,
 	keyframes,
@@ -291,7 +292,7 @@ export const EmojiContainer = styled(Box)(({ theme }) => ({
  * Reusable styles for Select dropdown menu items (shadcn-inspired)
  * @param theme - The MUI theme object
  */
-export const menuItemSx = (theme) => ({
+export const menuItemSx = (theme: Theme) => ({
 	fontSize: "0.875rem",
 	padding: theme.spacing(1, 1.5),
 	borderRadius: theme.shape.borderRadius * 0.75,
@@ -314,7 +315,7 @@ export const menuItemSx = (theme) => ({
  * Applies styles to the dropdown paper and uses menuItemSx for items.
  * @param theme - The MUI theme object
  */
-export const menuPropsSx = (theme) => ({
+export const menuPropsSx = (theme: Theme) => ({
 	PaperProps: {
 		sx: {
 			mt: 0.5,
