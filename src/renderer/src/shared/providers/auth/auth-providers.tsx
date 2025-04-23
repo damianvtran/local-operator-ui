@@ -6,7 +6,6 @@
  */
 
 import type { FC, ReactNode } from "react";
-import { useFeatureFlags } from "../feature-flags";
 import { RadientAuthProvider } from "./radient-auth-provider";
 
 // We no longer need to re-export the useRadientUser hook
@@ -38,12 +37,6 @@ export type AuthProvidersProps = {
  * Uses the client IDs and tenant ID from the environment variables by default.
  */
 export const AuthProviders: FC<AuthProvidersProps> = ({ children }) => {
-	const { isEnabled } = useFeatureFlags();
-	const isRadientPassEnabled = isEnabled("radient-pass-onboarding");
-
-	if (!isRadientPassEnabled) {
-		return <>{children}</>;
-	}
-
+	// Radient Pass is now GA, so always render the provider
 	return <RadientAuthProvider>{children}</RadientAuthProvider>;
 };
