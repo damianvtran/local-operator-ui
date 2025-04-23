@@ -25,9 +25,9 @@ import { useCallback, useEffect, useState } from "react";
 import { CredentialsApi } from "../api/local-operator/credentials-api";
 import { createRadientClient } from "../api/radient";
 import { storeSession } from "../utils/session-store";
-import { useUpdateConfig } from "./use-update-config"; // Added import
 import { showErrorToast, showSuccessToast } from "../utils/toast-manager";
 import { radientUserKeys } from "./use-radient-user-query";
+import { useUpdateConfig } from "./use-update-config"; // Added import
 
 type AuthProvider = "google" | "microsoft";
 

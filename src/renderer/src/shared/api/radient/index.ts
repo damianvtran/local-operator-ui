@@ -5,7 +5,6 @@
  */
 import * as AuthApiImpl from "./auth-api";
 import * as BillingApiImpl from "./billing-api";
-import * as UsageApiImpl from "./usage-api";
 import type {
 	AuthTokenExchangeResult,
 	CreateApplicationRequest,
@@ -15,6 +14,7 @@ import type {
 	TokenResponse,
 	UserInfoResult,
 } from "./types";
+import * as UsageApiImpl from "./usage-api";
 
 // Export all API modules
 export {
