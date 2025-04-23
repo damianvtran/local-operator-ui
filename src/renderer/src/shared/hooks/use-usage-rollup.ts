@@ -1,13 +1,13 @@
-/**
- * React Query hook for fetching Radient usage rollup data.
- */
-import { useQuery } from "@tanstack/react-query";
-import { createRadientClient, type RadientClient } from "@shared/api/radient";
+import { type RadientClient, createRadientClient } from "@shared/api/radient";
 import type {
 	UsageRollupRequestParams,
 	UsageRollupResponse,
 } from "@shared/api/radient/types";
 import { apiConfig } from "@shared/config";
+/**
+ * React Query hook for fetching Radient usage rollup data.
+ */
+import { useQuery } from "@tanstack/react-query";
 import { useRadientUserQuery } from "./use-radient-user-query";
 
 const QUERY_KEY_BASE = ["radient", "usageRollup"];

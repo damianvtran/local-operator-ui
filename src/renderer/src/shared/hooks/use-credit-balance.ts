@@ -1,10 +1,10 @@
+import { type RadientClient, createRadientClient } from "@shared/api/radient"; // Corrected import
+import type { CreditBalanceResult } from "@shared/api/radient/types";
+import { apiConfig } from "@shared/config"; // Added for client creation
 /**
  * React Query hook for fetching Radient credit balance.
  */
 import { useQuery } from "@tanstack/react-query";
-import { createRadientClient, type RadientClient } from "@shared/api/radient"; // Corrected import
-import type { CreditBalanceResult } from "@shared/api/radient/types";
-import { apiConfig } from "@shared/config"; // Added for client creation
 import { useRadientUserQuery } from "./use-radient-user-query"; // Use this hook for auth data
 
 const QUERY_KEY = ["radient", "creditBalance"];
