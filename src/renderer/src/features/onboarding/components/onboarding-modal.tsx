@@ -15,7 +15,6 @@ import {
 } from "@shared/components/common/base-dialog";
 import { apiConfig } from "@shared/config";
 import { radientUserKeys } from "@shared/hooks/use-radient-user-query";
-import { useFeatureFlags } from "@shared/providers/feature-flags";
 import {
 	OnboardingStep,
 	useOnboardingStore,
@@ -44,13 +43,14 @@ import { RadientChoiceStep } from "./steps/radient-choice-step";
 import { RadientSignInStep } from "./steps/radient-signin-step";
 import { SearchApiStep } from "./steps/search-api-step";
 import { UserProfileStep } from "./steps/user-profile-step";
-import { WelcomeStep } from "./steps/welcome-step";
+// WelcomeStep is removed
 
 // Define step titles outside the component for stability
-const stepTitles: Record<OnboardingStep, string> = {
+// Use Partial<> as not all steps might have explicit titles defined here anymore
+const stepTitles: Partial<Record<OnboardingStep, string>> = {
 	[OnboardingStep.RADIENT_CHOICE]: "Choose Your Setup Option",
 	[OnboardingStep.RADIENT_SIGNIN]: "Sign in with a Radient Pass",
-	[OnboardingStep.WELCOME]: "Welcome to Local Operator",
+	// [OnboardingStep.WELCOME]: "Welcome to Local Operator", // Removed
 	[OnboardingStep.USER_PROFILE]: "Set Up Your Profile",
 	[OnboardingStep.MODEL_CREDENTIAL]: "Add Model Provider Credentials",
 	[OnboardingStep.SEARCH_API]: "Enable Web Search (Recommended)",
@@ -79,18 +79,15 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 		useOnboardingStore();
 	const navigate = useNavigate();
 
-	// Check if the Radient Pass onboarding feature flag is enabled
-	const { isEnabled } = useFeatureFlags();
-	const isRadientPassFeatureFlagEnabled = isEnabled("radient-pass-onboarding");
+	// Feature flag 'radient-pass-onboarding' is now GA (always enabled)
 
 	// State to track if provider auth (OAuth credentials) is configured in the backend
-	const [isProviderAuthEnabled, setIsProviderAuthEnabled] = useState(false);
+	const [isProviderAuthEnabled, setIsProviderAuthEnabled] = useState(false); // Assume disabled initially
 	// State to track loading status for the provider auth check
-	const [isLoadingProviderAuth, setIsLoadingProviderAuth] = useState(true);
+	const [isLoadingProviderAuth, setIsLoadingProviderAuth] = useState(true); // Start loading
 
-	// Determine if the full Radient Pass flow should be enabled (flag AND backend config)
-	const isRadientPassFlowEnabled =
-		isRadientPassFeatureFlagEnabled && isProviderAuthEnabled;
+	// Determine if the full Radient Pass flow should be enabled (backend config only)
+	const isRadientPassFlowEnabled = isProviderAuthEnabled;
 
 	// Track whether the user is using Radient Pass within the flow
 	const [isUsingRadientPass, setIsUsingRadientPass] = useState(false);
@@ -145,18 +142,16 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 						email: userInfo.account.email,
 					});
 
-					// If Radient Pass flow is enabled and user is authenticated,
+					// If Radient Pass flow is enabled (provider auth configured) and user is authenticated,
 					// send them directly to create agent step and mark as using Radient Pass
 					if (isRadientPassFlowEnabled) {
 						setIsUsingRadientPass(true);
 						setCurrentStep(OnboardingStep.CREATE_AGENT);
 					} else {
-						// Reset to appropriate starting step based on flow status
-						setCurrentStep(
-							isRadientPassFlowEnabled
-								? OnboardingStep.RADIENT_CHOICE
-								: OnboardingStep.WELCOME,
-						);
+						// If Radient Pass flow is *not* enabled (provider auth not configured),
+						// but user somehow authenticated (e.g., old session), start them at User Profile.
+						// This shouldn't normally happen if provider auth is off, but handles edge cases.
+						setCurrentStep(OnboardingStep.USER_PROFILE);
 					}
 
 					// Invalidate queries to ensure fresh data
@@ -175,12 +170,7 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 			}
 		};
 		tryRestoreSession();
-	}, [
-		setCurrentStep,
-		isLoadingProviderAuth,
-		isRadientPassFlowEnabled,
-		queryClient, // Add queryClient as a dependency
-	]);
+	}, [setCurrentStep, isLoadingProviderAuth, isRadientPassFlowEnabled, queryClient]);
 
 	// Update the previous step reference whenever currentStep changes
 	useEffect(() => {
@@ -196,10 +186,10 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 			(currentStep === OnboardingStep.RADIENT_CHOICE ||
 				currentStep === OnboardingStep.RADIENT_SIGNIN)
 		) {
-			return [];
+			return []; // No indicator needed during choice/signin
 		}
 
-		// If user is using Radient Pass (and flow is enabled) and is at CREATE_AGENT or CONGRATULATIONS step,
+		// If user is using Radient Pass (flow is enabled) and is at CREATE_AGENT or CONGRATULATIONS step,
 		// only show those two steps in the indicator.
 		if (
 			isRadientPassFlowEnabled &&
@@ -210,18 +200,10 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 			return [OnboardingStep.CREATE_AGENT, OnboardingStep.CONGRATULATIONS];
 		}
 
-		// DIY path (either Radient Pass flow is disabled, or user chose DIY)
-		// Determine the correct first step for the DIY path
-		const firstDiyStep = isRadientPassFlowEnabled
-			? OnboardingStep.USER_PROFILE // Skip WELCOME/CHOICE if flow enabled but user chose DIY
-			: OnboardingStep.WELCOME; // Start at WELCOME if flow disabled
-
+		// DIY path (either Radient Pass flow is disabled, or user chose DIY from Radient Choice)
+		// The DIY path always starts visually from User Profile now.
 		const diySteps = [
-			firstDiyStep,
-			// Conditionally add USER_PROFILE if it wasn't the first step
-			...(firstDiyStep === OnboardingStep.WELCOME
-				? [OnboardingStep.USER_PROFILE]
-				: []),
+			OnboardingStep.USER_PROFILE,
 			OnboardingStep.MODEL_CREDENTIAL,
 			OnboardingStep.SEARCH_API,
 			OnboardingStep.DEFAULT_MODEL,
@@ -232,47 +214,58 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 		return diySteps;
 	}, [isRadientPassFlowEnabled, currentStep, isUsingRadientPass]);
 
-	// Adjust the current step based on the enabled flow after loading
+	// Track visited steps for navigation - Moved before usage in useEffect
+	const [visitedSteps, setVisitedSteps] = useState<Set<OnboardingStep>>(
+		new Set([currentStep]),
+	);
+
+	// Adjust the initial step based on the enabled flow after loading
 	useEffect(() => {
-		// Wait until provider auth status is loaded
-		if (isLoadingProviderAuth) {
+		// Wait until provider auth status is loaded and ensure we are on the initial step
+		if (
+			isLoadingProviderAuth ||
+			visitedSteps.size > 1 || // Only adjust if it's the very first load
+			currentStep === OnboardingStep.CREATE_AGENT // Don't adjust if already jumped via session restore
+		) {
 			return;
 		}
 
-		// If Radient Pass flow is enabled and user is currently on WELCOME, redirect to RADIENT_CHOICE
-		if (isRadientPassFlowEnabled && currentStep === OnboardingStep.WELCOME) {
-			setCurrentStep(OnboardingStep.RADIENT_CHOICE);
+		// If Radient Pass flow is enabled (provider auth configured), start at RADIENT_CHOICE.
+		if (isRadientPassFlowEnabled) {
+			// Only set if not already there (e.g., due to session restore logic)
+			if (currentStep !== OnboardingStep.RADIENT_CHOICE) {
+				setCurrentStep(OnboardingStep.RADIENT_CHOICE);
+			}
 		}
-		// If Radient Pass flow is *disabled* and user somehow lands on RADIENT_CHOICE or RADIENT_SIGNIN,
-		// redirect them back to the standard WELCOME step.
-		else if (
-			!isRadientPassFlowEnabled &&
-			(currentStep === OnboardingStep.RADIENT_CHOICE ||
-				currentStep === OnboardingStep.RADIENT_SIGNIN)
-		) {
-			setCurrentStep(OnboardingStep.WELCOME);
+		// If Radient Pass flow is *disabled* (provider auth not configured),
+		// skip choice/signin and start directly at USER_PROFILE.
+		else {
+			// Only set if not already there
+			if (currentStep !== OnboardingStep.USER_PROFILE) {
+				setCurrentStep(OnboardingStep.USER_PROFILE);
+			}
 		}
+	}, [
+		// Cleaned up dependencies based on Biome suggestions and actual usage
+		isRadientPassFlowEnabled,
+		currentStep, // Need currentStep to check if redirection is needed
+		setCurrentStep, // Need setCurrentStep to perform redirection
+		isLoadingProviderAuth, // Need loading state to gate the effect
+		visitedSteps.size, // Need size to check if it's the first load
+	]);
 
-		// Detect if user has jumped from RADIENT_SIGNIN directly to CREATE_AGENT
-		// This indicates they successfully used Radient Pass
+	// Detect if user has jumped from RADIENT_SIGNIN directly to CREATE_AGENT
+	// This indicates they successfully used Radient Pass
+	useEffect(() => {
 		if (
 			previousStepRef.current === OnboardingStep.RADIENT_SIGNIN &&
 			currentStep === OnboardingStep.CREATE_AGENT
 		) {
 			setIsUsingRadientPass(true);
 		}
-	}, [
-		isRadientPassFlowEnabled,
-		currentStep,
-		setCurrentStep,
-		isLoadingProviderAuth, // Depend on loading state
-	]);
+	}, [currentStep]); // Only depends on currentStep
 
-	// Track visited steps for navigation
-	const [visitedSteps, setVisitedSteps] = useState<Set<OnboardingStep>>(
-		new Set([currentStep]),
-	);
-
+	// Update visited steps when currentStep changes
 	useEffect(() => {
 		setVisitedSteps((prev) => {
 			// Don't modify if the step is already visited or if loading
@@ -290,8 +283,7 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 		// Use specific titles, fallback to the tooltip title
 		switch (currentStep) {
 			case OnboardingStep.RADIENT_CHOICE:
-			case OnboardingStep.WELCOME:
-				return "Welcome to Local Operator";
+				return "Choose Your Setup Option"; // More specific title
 			case OnboardingStep.CONGRATULATIONS:
 				return "🎉 Setup Complete!";
 			default:
@@ -319,17 +311,7 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 					/>
 				);
 			case OnboardingStep.RADIENT_SIGNIN:
-				return (
-					<RadientSignInStep
-						onSignInSuccess={() => {
-							// This callback is triggered by the component on successful sign-in
-							// The useEffect hook watching previousStepRef handles setting isUsingRadientPass
-							// No state change needed here directly, just navigate (which happens implicitly)
-						}}
-					/>
-				);
-			case OnboardingStep.WELCOME:
-				return <WelcomeStep />;
+				return <RadientSignInStep />;
 			case OnboardingStep.USER_PROFILE:
 				return <UserProfileStep />;
 			case OnboardingStep.MODEL_CREDENTIAL:
@@ -361,14 +343,14 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 	}, [currentStep, setCurrentStep]); // Only depends on currentStep and setCurrentStep
 
 	/**
-	 * Handle moving to the next step (standard flow)
+	 * Handle moving to the next step (DIY flow)
 	 */
 	const handleNext = useCallback(() => {
-		// Standard DIY flow transitions
+		// DIY flow transitions (Radient Choice/Signin don't use 'Next')
 		switch (currentStep) {
-			case OnboardingStep.WELCOME: // Only reachable if Radient flow disabled
-				setCurrentStep(OnboardingStep.USER_PROFILE);
-				break;
+			// case OnboardingStep.WELCOME: // Removed
+			// 	setCurrentStep(OnboardingStep.USER_PROFILE);
+			// 	break;
 			case OnboardingStep.USER_PROFILE:
 				setCurrentStep(OnboardingStep.MODEL_CREDENTIAL);
 				break;
@@ -414,12 +396,10 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 				break;
 			case OnboardingStep.USER_PROFILE:
 				// If Radient Pass flow is enabled (meaning we came from CHOICE), go back to CHOICE.
-				// Otherwise (flow disabled, came from WELCOME), go back to WELCOME.
-				setCurrentStep(
-					isRadientPassFlowEnabled
-						? OnboardingStep.RADIENT_CHOICE
-						: OnboardingStep.WELCOME,
-				);
+				// If Radient Pass flow is disabled, we started here, so back is disabled (handled by canGoBack).
+				if (isRadientPassFlowEnabled) {
+					setCurrentStep(OnboardingStep.RADIENT_CHOICE);
+				}
 				break;
 			case OnboardingStep.MODEL_CREDENTIAL:
 				setCurrentStep(OnboardingStep.USER_PROFILE);
@@ -431,22 +411,22 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 				setCurrentStep(OnboardingStep.SEARCH_API);
 				break;
 			case OnboardingStep.CREATE_AGENT:
-				// If using Radient Pass, back goes nowhere (handled by canGoBack)
-				// If DIY, back goes to DEFAULT_MODEL
+				// If using Radient Pass, back goes nowhere (handled by canGoBack).
+				// If DIY, back goes to DEFAULT_MODEL.
 				if (!isUsingRadientPass) {
 					setCurrentStep(OnboardingStep.DEFAULT_MODEL);
 				}
 				break;
-			// Cannot go back from WELCOME, RADIENT_CHOICE, or CONGRATULATIONS
+			// Cannot go back from RADIENT_CHOICE or CONGRATULATIONS (and WELCOME is removed)
 			default:
-				break;
+				break; // No action for other steps like RADIENT_CHOICE, CONGRATULATIONS
 		}
 	}, [
 		currentStep,
 		setCurrentStep,
 		isRadientPassFlowEnabled,
 		isUsingRadientPass,
-	]); // Update dependencies
+	]);
 
 	/**
 	 * Handle skipping the current step (for optional steps like Search API, Create Agent)
@@ -476,31 +456,36 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 			return false;
 		}
 
-		// Cannot go back from Congratulations
+		// Cannot go back from Congratulations (Duplicate check removed)
 		if (currentStep === OnboardingStep.CONGRATULATIONS) {
+			return false;
+		}
+
+		// Cannot go back from RADIENT_CHOICE (the new starting point when enabled)
+		if (currentStep === OnboardingStep.RADIENT_CHOICE) {
 			return false;
 		}
 
 		// If Radient Pass flow is enabled:
 		if (isRadientPassFlowEnabled) {
-			// Cannot go back from RADIENT_CHOICE
-			if (currentStep === OnboardingStep.RADIENT_CHOICE) {
-				return false;
-			}
 			// If using Radient Pass, cannot go back from CREATE_AGENT (first step after sign-in)
 			if (isUsingRadientPass && currentStep === OnboardingStep.CREATE_AGENT) {
 				return false;
 			}
-			// Otherwise, can go back (e.g., from SIGNIN to CHOICE, or within DIY steps)
+			// Otherwise, can go back (e.g., from SIGNIN to CHOICE, or within DIY steps after USER_PROFILE)
 			return true;
 		}
 
 		// If Radient Pass flow is disabled:
-		// Cannot go back from the initial WELCOME step
-		return currentStep !== OnboardingStep.WELCOME;
+		// Cannot go back from USER_PROFILE (the starting point when disabled)
+		if (currentStep === OnboardingStep.USER_PROFILE) {
+			return false;
+		}
+		// Otherwise, can go back within the remaining DIY steps
+		return true;
 	}, [
 		currentStep,
-		isRadientPassFlowEnabled,
+		isRadientPassFlowEnabled, // Still needed to determine logic paths
 		isLoadingProviderAuth,
 		isUsingRadientPass,
 	]);
