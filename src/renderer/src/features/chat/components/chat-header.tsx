@@ -59,10 +59,21 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 				<FontAwesomeIcon icon={faRobot} />
 			</Avatar>
 			<Box>
-				<Typography variant="h6" sx={{ fontWeight: 500 }}>
+				<Typography
+					variant="h6"
+					sx={{
+						fontWeight: 500,
+						lineHeight: 1.3,
+						mb: 0,
+					}}
+				>
 					{agentName}
 				</Typography>
-				<Typography variant="caption" color="text.secondary">
+				<Typography
+					variant="caption"
+					color="text.secondary"
+					sx={{ lineHeight: 1, mt: 0, fontSize: "0.875rem" }}
+				>
 					{description}
 				</Typography>
 			</Box>
