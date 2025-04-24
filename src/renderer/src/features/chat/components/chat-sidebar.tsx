@@ -24,17 +24,19 @@ import {
 	SidebarHeader,
 } from "@shared/components/common";
 import {
+	useAgent, // Import useAgent hook
 	useAgents,
 	useClearAgentConversation,
 	useExportAgent,
 	usePaginationParams,
 } from "@shared/hooks";
+import type { AgentDetails } from "@shared/api/local-operator/types"; // Import AgentDetails type
 import {
 	formatMessageDateTime,
 	getFullDateTime,
 } from "@shared/utils/date-utils";
 import type { ChangeEvent, FC } from "react";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react"; // Import useMemo
 
 const SidebarContainer = styled(Paper)(({ theme }) => ({
 	width: "100%",
@@ -258,13 +260,48 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 	const { page, setPage } = usePaginationParams();
 
 	// Set up periodic refetch every 5 seconds to check for new messages
-	// Pass the search query as the name parameter
+	// Pass the search query, sort, and direction parameters
 	const {
-		data: agents = [],
+		data: agentListResult, // Rename data to agentListResult
 		isLoading,
 		isError,
 		refetch,
-	} = useAgents(page, perPage, 5000, searchQuery); // 5000ms = 5 seconds
+	} = useAgents(
+		page,
+		perPage,
+		5000, // 5000ms = 5 seconds
+		searchQuery,
+		"last_message_datetime", // Sort by last message datetime
+		"desc", // Sort descending
+	);
+
+	// Extract agents and total count from the result
+	const agents = agentListResult?.agents || [];
+	const totalAgents = agentListResult?.total || 0;
+
+	// Fetch details for the selected agent if it's not in the current list
+	const { data: selectedAgentDetails } = useAgent(
+		// Only fetch if selectedConversation exists and is not found in the current agents list
+		selectedConversation && !agents.find((a) => a.id === selectedConversation)
+			? selectedConversation
+			: undefined,
+	);
+
+	// Memoize combinedAgents to stabilize its reference for hook dependencies
+	const combinedAgents = useMemo(() => {
+		const combined = [...agents];
+		if (
+			selectedAgentDetails &&
+			!combined.find((a) => a.id === selectedAgentDetails.id)
+		) {
+			// Add the selected agent if it's not already in the list
+			combined.push(selectedAgentDetails);
+		}
+		// The backend handles the primary sorting, but we might want to ensure
+		// the combined list maintains some order if the selected agent is added.
+		// For now, just adding it is sufficient as the backend sort is the main driver.
+		return combined;
+	}, [agents, selectedAgentDetails]); // Dependencies for useMemo
 
 	const handlePageChange = useCallback(
 		(_event: ChangeEvent<unknown>, value: number) => {
@@ -301,8 +338,8 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 			try {
 				const blob = await exportAgentMutation.mutateAsync(agentId);
 
-				// Get the agent name for the filename
-				const agent = agents.find((a) => a.id === agentId);
+				// Get the agent name for the filename (check combined list)
+				const agent = combinedAgents.find((a) => a.id === agentId);
 				const agentName = agent
 					? agent.name.replace(/\s+/g, "-").toLowerCase()
 					: agentId;
@@ -322,7 +359,7 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 				console.error("Failed to export agent:", error);
 			}
 		},
-		[agents, exportAgentMutation],
+		[combinedAgents, exportAgentMutation], // Use combinedAgents
 	);
 
 	const handleAgentCreated = useCallback(
@@ -334,11 +371,11 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 					const result = await refetch();
 
 					// Get the updated agents list from the refetch result
-					const updatedAgents = result.data || [];
+					const updatedAgentList = result.data?.agents || [];
 
 					// Find the newly created agent in the updated list
-					const createdAgent = updatedAgents.find(
-						(agent) => agent.id === agentId,
+					const createdAgent = updatedAgentList.find(
+						(agent: AgentDetails) => agent.id === agentId,
 					);
 
 					// Select the newly created agent if found
@@ -368,22 +405,7 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 			: message;
 	};
 
-	// Sort agents by last_message_datetime in descending order
-	const sortedAgents = [...agents].sort((a, b) => {
-		// If both have last_message_datetime, compare them
-		if (a.last_message_datetime && b.last_message_datetime) {
-			return (
-				new Date(b.last_message_datetime).getTime() -
-				new Date(a.last_message_datetime).getTime()
-			);
-		}
-		// If only a has last_message_datetime, a comes first
-		if (a.last_message_datetime) return -1;
-		// If only b has last_message_datetime, b comes first
-		if (b.last_message_datetime) return 1;
-		// If neither has last_message_datetime, maintain original order
-		return 0;
-	});
+	// Client-side sorting is no longer needed as the backend handles it
 
 	return (
 		<SidebarContainer elevation={0}>
@@ -416,18 +438,23 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 				>
 					Failed to load agents. Please try again.
 				</ErrorAlert>
-			) : sortedAgents.length === 0 ? (
+			) : combinedAgents.length === 0 && !isLoading ? ( // Check combinedAgents and isLoading
 				<EmptyStateContainer>
 					<Typography variant="body2" color="text.secondary">
-						No agents found
+						{searchQuery ? "No agents match your search" : "No agents found"}
 					</Typography>
 				</EmptyStateContainer>
 			) : (
 				<AgentsList>
-					{sortedAgents.map((agent) => (
+					{/* Use combinedAgents which includes the potentially fetched selected agent */}
+					{combinedAgents.map((agent) => (
 						<ListItem key={agent.id} disablePadding>
 							<AgentListItemButton
-								selected={selectedConversation === agent.id}
+								// Ensure the selected agent is highlighted even if added separately
+								selected={
+									selectedConversation === agent.id ||
+									selectedAgentDetails?.id === agent.id
+								}
 								onClick={() => handleSelectConversation(agent.id)}
 							>
 								<ListItemAvatar>
@@ -543,13 +570,16 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 			/>
 
 			{/* Compact pagination at the bottom of the sidebar */}
-			<CompactPagination
-				page={page}
-				count={Math.max(1, Math.ceil(sortedAgents.length / perPage))}
-				onChange={(newPage) =>
-					handlePageChange({} as ChangeEvent<unknown>, newPage)
-				}
-			/>
+			{totalAgents > 0 && ( // Only show pagination if there are agents
+				<CompactPagination
+					page={page}
+					// Calculate count based on totalAgents from the API result
+					count={Math.max(1, Math.ceil(totalAgents / perPage))}
+					onChange={(newPage) =>
+						handlePageChange({} as ChangeEvent<unknown>, newPage)
+					}
+				/>
+			)}
 		</SidebarContainer>
 	);
 };
