@@ -15,7 +15,7 @@ import {
 	Tooltip,
 	Typography,
 	createFilterOptions,
-	styled,
+	styled, // Ensure trailing comma
 } from "@mui/material";
 import { useModels } from "@shared/hooks";
 import type { FC, SyntheticEvent } from "react";
@@ -504,7 +504,13 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 				isOptionEqualToValue={(option, value) =>
 					(option as ModelOption).id === (value as ModelOption).id
 				}
-				groupBy={(option) => getProviderFromId((option as ModelOption).id)}
+				groupBy={(option) => {
+					const modelOption = option as ModelOption;
+					if (hostingId === "radient" && modelOption.id === "auto") {
+						return "radient"; // Group 'auto' under 'radient' specifically for radient hosting
+					}
+					return getProviderFromId(modelOption.id);
+				}}
 				renderOption={(props, option) => {
 					const { key, ...rest } = props;
 					return (
