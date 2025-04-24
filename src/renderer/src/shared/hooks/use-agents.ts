@@ -6,7 +6,10 @@
  */
 
 import { createLocalOperatorClient } from "@shared/api/local-operator";
-import type { AgentDetails } from "@shared/api/local-operator/types";
+import type {
+	AgentDetails,
+	AgentListResult,
+} from "@shared/api/local-operator/types";
 import { apiConfig } from "@shared/config";
 import { showErrorToast } from "@shared/utils/toast-manager";
 import { useQuery } from "@tanstack/react-query";
@@ -25,13 +28,17 @@ export const agentsQueryKey = ["agents"];
  * @param perPage - Number of agents per page (default: 50)
  * @param refetchInterval - Interval in milliseconds to refetch agents (default: 0, no refetch)
  * @param name - Optional name query to search agents by name
- * @returns Query result with agents data, loading state, error state, and refetch function
+ * @param sort - Optional field to sort by
+ * @param direction - Optional sort direction ('asc' or 'desc')
+ * @returns Query result with AgentListResult data, loading state, error state, and refetch function
  */
 export const useAgents = (
 	page = 1,
 	perPage = 50,
 	refetchInterval = 0,
 	name?: string,
+	sort?: string,
+	direction?: string,
 ) => {
 	// Use the connectivity gate to check if the query should be enabled
 	// Bypass internet check for agent queries as they only need local server connectivity
@@ -47,21 +54,28 @@ export const useAgents = (
 		}
 	}, [connectivityError]);
 
-	return useQuery({
+	return useQuery<AgentListResult, Error>({
 		// Only enable the query if server is online (bypass internet check)
 		enabled: shouldEnableQuery({ bypassInternetCheck: true }),
-		queryKey: [...agentsQueryKey, page, perPage, name],
-		queryFn: async () => {
+		queryKey: [...agentsQueryKey, page, perPage, name, sort, direction],
+		queryFn: async (): Promise<AgentListResult> => {
 			try {
 				// Use the properly typed client
 				const client = createLocalOperatorClient(apiConfig.baseUrl);
-				const response = await client.agents.listAgents(page, perPage, name);
+				const response = await client.agents.listAgents(
+					page,
+					perPage,
+					name,
+					sort,
+					direction,
+				);
 
-				if (response.status >= 400) {
+				if (response.status >= 400 || !response.result) {
 					throw new Error(response.message || "Failed to fetch agents");
 				}
 
-				return response.result?.agents || [];
+				// Return the full result including pagination info
+				return response.result;
 			} catch (error) {
 				const errorMessage =
 					error instanceof Error

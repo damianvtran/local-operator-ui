@@ -22,6 +22,8 @@ export const AgentsApi = {
 	 * @param page - Page number (default: 1)
 	 * @param perPage - Number of agents per page (default: 10)
 	 * @param name - Optional name query to search agents by name
+	 * @param sort - Optional field to sort by (e.g., 'name', 'created_date', 'last_message_datetime')
+	 * @param direction - Optional sort direction ('asc' or 'desc')
 	 * @returns Promise resolving to the agents list response
 	 */
 	async listAgents(
@@ -29,6 +31,8 @@ export const AgentsApi = {
 		page = 1,
 		perPage = 10,
 		name?: string,
+		sort?: string,
+		direction?: string,
 	): Promise<CRUDResponse<AgentListResult>> {
 		const url = new URL(`${baseUrl}/v1/agents`);
 		url.searchParams.append("page", page.toString());
@@ -37,6 +41,14 @@ export const AgentsApi = {
 		// Add name parameter if provided
 		if (name) {
 			url.searchParams.append("name", name);
+		}
+
+		// Add sort and direction parameters if provided
+		if (sort) {
+			url.searchParams.append("sort", sort);
+		}
+		if (direction) {
+			url.searchParams.append("direction", direction);
 		}
 
 		const response = await fetch(url.toString(), {
