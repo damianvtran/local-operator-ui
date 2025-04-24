@@ -23,24 +23,20 @@ import {
 	alpha,
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
-import type { AgentDetails } from "@shared/api/local-operator/types"; // Keep AgentDetails
+import type { AgentDetails } from "@shared/api/local-operator/types";
 import { AgentOptionsMenu } from "@shared/components/common/agent-options-menu";
 import { CompactPagination } from "@shared/components/common/compact-pagination";
 import { CreateAgentDialog } from "@shared/components/common/create-agent-dialog";
 import { ImportAgentDialog } from "@shared/components/common/import-agent-dialog";
 import { SidebarHeader } from "@shared/components/common/sidebar-header";
-// Remove unused apiConfig and queryClient imports if not needed elsewhere after changes
-// import { apiConfig } from "@shared/config";
-// import { queryClient } from "@shared/api/query-client";
-// import { createLocalOperatorClient } from "@shared/api/local-operator";
 import {
-	useAgent, // Import useAgent hook
+	useAgent,
 	useAgents,
 	useExportAgent,
 	usePaginationParams,
-} from "@shared/hooks"; // Consolidate hook imports
+} from "@shared/hooks";
 import type { ChangeEvent, FC } from "react";
-import { useCallback, useMemo, useState } from "react"; // Import useMemo, remove useEffect, useRef
+import { useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 const SidebarContainer = styled(Paper)(({ theme }) => ({
@@ -88,24 +84,22 @@ const AgentsList = styled(List)(({ theme }) => ({
 }));
 
 const AgentListItemButton = styled(ListItemButton)(({ theme }) => ({
-	margin: "0 8px 8px", // Match chat sidebar margin
+	margin: "0 8px 8px",
 	borderRadius: 8,
-	// marginBottom: 4, // Removed, handled by margin bottom
-	// marginBottom: 4, // Removed, handled by margin bottom
-	paddingRight: 12, // Match chat sidebar padding (now that secondaryAction is removed)
-	paddingTop: 6, // Match chat sidebar padding
-	paddingBottom: 6, // Match chat sidebar padding
-	paddingLeft: 12, // Match chat sidebar padding
-	position: "relative", // Add relative positioning like chat sidebar
+	paddingRight: 12,
+	paddingTop: 6,
+	paddingBottom: 6,
+	paddingLeft: 12,
+	position: "relative",
 	"&.Mui-selected": {
-		backgroundColor: alpha(theme.palette.sidebar.itemActive, 0.1), // Match chat sidebar alpha
+		backgroundColor: alpha(theme.palette.sidebar.itemActive, 0.1),
 		color: theme.palette.sidebar.itemActiveText,
 		"&:hover": {
-			backgroundColor: alpha(theme.palette.sidebar.itemActiveHover, 0.15), // Match chat sidebar alpha
+			backgroundColor: alpha(theme.palette.sidebar.itemActiveHover, 0.15),
 		},
 	},
 	"&:hover": {
-		backgroundColor: alpha(theme.palette.sidebar.itemHover, 0.1), // Match chat sidebar alpha
+		backgroundColor: alpha(theme.palette.sidebar.itemHover, 0.1),
 	},
 }));
 
@@ -119,14 +113,14 @@ const AgentAvatar = styled(Avatar, {
 		? theme.palette.sidebar.itemActiveText
 		: theme.palette.icon.text,
 	boxShadow: `0 2px 4px ${alpha(theme.palette.common.black, 0.15)}`,
-	width: 42, // Match chat sidebar avatar size
-	height: 42, // Match chat sidebar avatar size
+	width: 42,
+	height: 42,
 }));
 
 // Agent name styling (similar to chat sidebar)
 const AgentName = styled(Typography)(() => ({
-	fontWeight: 600, // Match chat sidebar
-	fontSize: "0.9rem", // Match chat sidebar
+	fontWeight: 600,
+	fontSize: "0.9rem",
 	whiteSpace: "nowrap",
 	overflow: "hidden",
 	textOverflow: "ellipsis",
@@ -135,49 +129,48 @@ const AgentName = styled(Typography)(() => ({
 
 // Description text styling (similar to message preview)
 const DescriptionText = styled("div")(({ theme }) => ({
-	fontSize: "0.8rem", // Match chat sidebar message preview
+	fontSize: "0.8rem",
 	color:
 		theme.palette.mode === "dark"
 			? "rgba(255, 255, 255, 0.7)"
-			: "rgba(0, 0, 0, 0.6)", // Match chat sidebar message preview
+			: "rgba(0, 0, 0, 0.6)",
 	whiteSpace: "nowrap",
 	overflow: "hidden",
 	textOverflow: "ellipsis",
 	width: "100%",
-	minHeight: "18px", // Match chat sidebar message preview
+	minHeight: "18px",
 }));
 
 // Creation date text styling (similar to timestamp)
 const CreationDateText = styled("div")(({ theme }) => ({
 	display: "flex",
 	alignItems: "center",
-	fontSize: "0.7rem", // Match chat sidebar timestamp
+	fontSize: "0.7rem",
 	color:
 		theme.palette.mode === "dark"
 			? "rgba(255, 255, 255, 0.5)"
-			: "rgba(0, 0, 0, 0.5)", // Match chat sidebar timestamp
-	marginTop: 2, // Add small margin like chat sidebar name/preview spacing
+			: "rgba(0, 0, 0, 0.5)",
+	marginTop: 2,
 	gap: 4,
 }));
 
 // Options button container (similar to chat sidebar)
 const OptionsButtonContainer = styled(Box)({
 	position: "absolute",
-	right: -8, // Position relative to the container it will be placed in
-	top: "50%", // Center vertically
-	transform: "translateY(-50%) translateX(100%)", // Center vertically and position off-screen horizontally
+	right: -8,
+	top: "50%",
+	transform: "translateY(-50%) translateX(100%)",
 	opacity: 0,
 	transition: "opacity 0.2s ease, transform 0.2s ease",
-	// Target hover on the parent ListItemButton to trigger the effect
 	".MuiListItemButton-root:hover &": {
 		opacity: 1,
-		transform: "translateY(-50%) translateX(0)", // Center vertically and slide in horizontally on hover
+		transform: "translateY(-50%) translateX(0)",
 		visibility: "visible",
 	},
 	zIndex: 2,
-	pointerEvents: "none", // Container doesn't block clicks
+	pointerEvents: "none",
 	"& > *": {
-		pointerEvents: "auto", // Button inside is clickable
+		pointerEvents: "auto",
 	},
 });
 
@@ -227,18 +220,11 @@ export const AgentsSidebar: FC<AgentsSidebarProps> = ({
 
 	// Fetch agents list with total count, similar to chat sidebar
 	const {
-		data: agentListResult, // Rename data to agentListResult
+		data: agentListResult,
 		isLoading,
 		isError,
 		refetch,
-	} = useAgents(
-		page,
-		perPage,
-		0, // No polling needed for agents page
-		searchQuery,
-		"created_date", // Sort by creation date for agents page
-		"desc", // Sort descending
-	);
+	} = useAgents(page, perPage, 0, searchQuery, "created_date", "desc");
 
 	// Extract agents and total count from the result
 	const agents = agentListResult?.agents || [];
@@ -265,15 +251,12 @@ export const AgentsSidebar: FC<AgentsSidebarProps> = ({
 		// Sort combined list client-side if needed, e.g., by name or creation date
 		// For now, rely on backend sorting primarily
 		combined.sort((a, b) => {
-			// Example: Sort by name alphabetically
-			// return a.name.localeCompare(b.name);
-			// Or sort by creation date (descending)
 			return (
 				new Date(b.created_date).getTime() - new Date(a.created_date).getTime()
 			);
 		});
 		return combined;
-	}, [agents, selectedAgentDetails]); // Dependencies for useMemo
+	}, [agents, selectedAgentDetails]);
 
 	const handlePageChange = useCallback(
 		(_event: ChangeEvent<unknown>, value: number) => {
@@ -453,15 +436,7 @@ export const AgentsSidebar: FC<AgentsSidebarProps> = ({
 										<FontAwesomeIcon icon={faRobot} />
 									</AgentAvatar>
 								</ListItemAvatar>
-								<ListItemText
-									// Remove primary and secondary props, render custom content
-									// primary={agent.name}
-									// secondary={...}
-									// primaryTypographyProps={{...}}
-									disableTypography // Important to allow custom content structure
-								>
-									{/* Custom content structure similar to chat sidebar */}
-									{/* Add position: relative here */}
+								<ListItemText disableTypography>
 									<Box
 										sx={{
 											position: "relative",
@@ -485,7 +460,6 @@ export const AgentsSidebar: FC<AgentsSidebarProps> = ({
 											enterDelay={1200}
 											enterNextDelay={1200}
 										>
-											{/* @ts-ignore - MUI Tooltip type issue */}
 											<DescriptionText>
 												{agent.description || "No description"}
 											</DescriptionText>
@@ -497,13 +471,11 @@ export const AgentsSidebar: FC<AgentsSidebarProps> = ({
 											enterDelay={1200}
 											enterNextDelay={1200}
 										>
-											{/* @ts-ignore - MUI Tooltip type issue */}
 											<CreationDateText>
 												<FontAwesomeIcon icon={faClock} size="xs" />
 												<span>{formatDate(agent.created_date)}</span>
 											</CreationDateText>
 										</Tooltip>
-										{/* Move OptionsButtonContainer inside the Box */}
 										<OptionsButtonContainer>
 											<Tooltip
 												enterDelay={1200}
@@ -528,14 +500,13 @@ export const AgentsSidebar: FC<AgentsSidebarProps> = ({
 														}
 														onExportAgent={() => handleExportAgent(agent.id)}
 														buttonSx={{
-															// Match chat sidebar options button style
 															width: 24,
 															height: 24,
 															borderRadius: "4px",
 															display: "flex",
 															justifyContent: "center",
 															alignItems: "center",
-															opacity: 1, // Opacity controlled by container
+															opacity: 1,
 														}}
 													/>
 												</span>
@@ -543,7 +514,6 @@ export const AgentsSidebar: FC<AgentsSidebarProps> = ({
 										</OptionsButtonContainer>
 									</Box>
 								</ListItemText>
-								{/* OptionsButtonContainer moved inside Box */}
 							</AgentListItemButton>
 						</ListItem>
 					))}
@@ -562,11 +532,9 @@ export const AgentsSidebar: FC<AgentsSidebarProps> = ({
 				onAgentImported={handleAgentCreated}
 			/>
 
-			{/* Compact pagination at the bottom of the sidebar */}
-			{totalAgents > 0 && ( // Only show pagination if there are agents
+			{totalAgents > 0 && (
 				<CompactPagination
 					page={page}
-					// Calculate count based on totalAgents from the API result
 					count={Math.max(1, Math.ceil(totalAgents / perPage))}
 					onChange={(newPage) =>
 						handlePageChange({} as ChangeEvent<unknown>, newPage)

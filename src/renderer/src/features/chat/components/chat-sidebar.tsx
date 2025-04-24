@@ -16,7 +16,7 @@ import {
 	alpha,
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
-import type { AgentDetails } from "@shared/api/local-operator/types"; // Import AgentDetails type
+import type { AgentDetails } from "@shared/api/local-operator/types";
 import {
 	AgentOptionsMenu,
 	CompactPagination,
@@ -25,7 +25,7 @@ import {
 	SidebarHeader,
 } from "@shared/components/common";
 import {
-	useAgent, // Import useAgent hook
+	useAgent,
 	useAgents,
 	useClearAgentConversation,
 	useExportAgent,
@@ -36,7 +36,7 @@ import {
 	getFullDateTime,
 } from "@shared/utils/date-utils";
 import type { ChangeEvent, FC } from "react";
-import { useCallback, useMemo, useState } from "react"; // Import useMemo
+import { useCallback, useMemo, useState } from "react";
 
 const SidebarContainer = styled(Paper)(({ theme }) => ({
 	width: "100%",
@@ -89,7 +89,7 @@ const AgentListItemButton = styled(ListItemButton)(({ theme }) => ({
 	paddingTop: 6,
 	paddingBottom: 6,
 	paddingLeft: 12,
-	position: "relative", // Ensure proper positioning context
+	position: "relative",
 	"&.Mui-selected": {
 		backgroundColor: alpha(theme.palette.sidebar.itemActive, 0.1),
 		color: theme.palette.sidebar.itemActiveText,
@@ -123,8 +123,7 @@ const MessageBubble = styled("div")({
 	width: "100%",
 	overflow: "hidden",
 	position: "relative",
-	// Ensure the message bubble maintains its layout
-	isolation: "isolate", // Create a new stacking context
+	isolation: "isolate",
 });
 
 // Agent name container with timestamp
@@ -134,7 +133,6 @@ const AgentNameContainer = styled(Box)({
 	alignItems: "center",
 	width: "100%",
 	position: "relative",
-	// Ensure the container maintains its position
 	overflow: "hidden",
 });
 
@@ -200,10 +198,9 @@ const OptionsButtonContainer = styled(Box)({
 		visibility: "visible",
 	},
 	zIndex: 2,
-	// Ensure the container doesn't affect layout when clicked
 	pointerEvents: "none",
 	"& > *": {
-		pointerEvents: "auto", // Allow clicks on children (the button itself)
+		pointerEvents: "auto",
 	},
 });
 
@@ -269,10 +266,10 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 	} = useAgents(
 		page,
 		perPage,
-		5000, // 5000ms = 5 seconds
+		5000,
 		searchQuery,
-		"last_message_datetime", // Sort by last message datetime
-		"desc", // Sort descending
+		"last_message_datetime",
+		"desc",
 	);
 
 	// Extract agents and total count from the result
@@ -297,11 +294,8 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 			// Add the selected agent if it's not already in the list
 			combined.push(selectedAgentDetails);
 		}
-		// The backend handles the primary sorting, but we might want to ensure
-		// the combined list maintains some order if the selected agent is added.
-		// For now, just adding it is sufficient as the backend sort is the main driver.
 		return combined;
-	}, [agents, selectedAgentDetails]); // Dependencies for useMemo
+	}, [agents, selectedAgentDetails]);
 
 	const handlePageChange = useCallback(
 		(_event: ChangeEvent<unknown>, value: number) => {
@@ -446,11 +440,9 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 				</EmptyStateContainer>
 			) : (
 				<AgentsList>
-					{/* Use combinedAgents which includes the potentially fetched selected agent */}
 					{combinedAgents.map((agent) => (
 						<ListItem key={agent.id} disablePadding>
 							<AgentListItemButton
-								// Ensure the selected agent is highlighted even if added separately
 								selected={
 									selectedConversation === agent.id ||
 									selectedAgentDetails?.id === agent.id
@@ -535,7 +527,6 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 											enterDelay={1200}
 											enterNextDelay={1200}
 										>
-											{/* @ts-ignore - MUI Tooltip type issue */}
 											<MessagePreview>
 												{truncateMessage(agent.last_message, 40)}
 											</MessagePreview>
@@ -569,11 +560,9 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 				onAgentImported={handleAgentCreated}
 			/>
 
-			{/* Compact pagination at the bottom of the sidebar */}
-			{totalAgents > 0 && ( // Only show pagination if there are agents
+			{totalAgents > 0 && (
 				<CompactPagination
 					page={page}
-					// Calculate count based on totalAgents from the API result
 					count={Math.max(1, Math.ceil(totalAgents / perPage))}
 					onChange={(newPage) =>
 						handlePageChange({} as ChangeEvent<unknown>, newPage)
