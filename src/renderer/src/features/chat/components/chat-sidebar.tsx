@@ -16,6 +16,7 @@ import {
 	alpha,
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
+import type { AgentDetails } from "@shared/api/local-operator/types"; // Import AgentDetails type
 import {
 	AgentOptionsMenu,
 	CompactPagination,
@@ -30,7 +31,6 @@ import {
 	useExportAgent,
 	usePaginationParams,
 } from "@shared/hooks";
-import type { AgentDetails } from "@shared/api/local-operator/types"; // Import AgentDetails type
 import {
 	formatMessageDateTime,
 	getFullDateTime,

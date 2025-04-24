@@ -35,10 +35,11 @@ const UtilitiesContainer = styled(Box)<UtilitiesContainerProps>(
 	({ theme, expanded }) => ({
 		padding: theme.spacing(1, 3),
 		backgroundColor: alpha(theme.palette.background.paper, 0.4),
-	borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-	// Apply minHeight only when collapsed to allow expansion
-	minHeight: expanded ? "auto" : 52,
-}));
+		borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+		// Apply minHeight only when collapsed to allow expansion
+		minHeight: expanded ? "auto" : 52,
+	}),
+);
 
 const UtilitiesHeader = styled(Box)(({ theme }) => ({
 	display: "flex",

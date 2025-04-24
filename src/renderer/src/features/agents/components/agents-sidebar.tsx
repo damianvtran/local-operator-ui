@@ -269,8 +269,7 @@ export const AgentsSidebar: FC<AgentsSidebarProps> = ({
 			// return a.name.localeCompare(b.name);
 			// Or sort by creation date (descending)
 			return (
-				new Date(b.created_date).getTime() -
-				new Date(a.created_date).getTime()
+				new Date(b.created_date).getTime() - new Date(a.created_date).getTime()
 			);
 		});
 		return combined;
