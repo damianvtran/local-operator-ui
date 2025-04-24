@@ -399,8 +399,6 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 			: message;
 	};
 
-	// Client-side sorting is no longer needed as the backend handles it
-
 	return (
 		<SidebarContainer elevation={0}>
 			<SidebarHeader

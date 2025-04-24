@@ -380,7 +380,6 @@ export const AgentsSidebar: FC<AgentsSidebarProps> = ({
 		[onSelectAgent, refetch], // Keep dependencies
 	);
 
-	// No need for client-side filtering since we're using the server-side filter
 	return (
 		<SidebarContainer elevation={0}>
 			<SidebarHeader
