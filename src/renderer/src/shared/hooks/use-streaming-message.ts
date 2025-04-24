@@ -270,14 +270,14 @@ export const useStreamingMessage = ({
 
 				// Trigger a refetch to get the final state if needed
 				if (refetchOnComplete) {
-						// Use setTimeout to ensure this happens after the current execution,
-						// giving the backend time to persist the final message state.
-						setTimeout(() => {
-							if (mountedRef.current) {
-								// Use a local function to avoid dependency on refetchMessage
-								const doRefetch = async () => {
-									try {
-										setIsRefetching(true);
+					// Use setTimeout to ensure this happens after the current execution,
+					// giving the backend time to persist the final message state.
+					setTimeout(() => {
+						if (mountedRef.current) {
+							// Use a local function to avoid dependency on refetchMessage
+							const doRefetch = async () => {
+								try {
+									setIsRefetching(true);
 
 									const client = createLocalOperatorClient(baseUrl);
 
