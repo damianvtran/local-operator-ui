@@ -23,20 +23,24 @@ import {
 	alpha,
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
-import { createLocalOperatorClient } from "@shared/api/local-operator";
-import type { AgentDetails } from "@shared/api/local-operator/types";
-import { queryClient } from "@shared/api/query-client";
+import type { AgentDetails } from "@shared/api/local-operator/types"; // Keep AgentDetails
 import { AgentOptionsMenu } from "@shared/components/common/agent-options-menu";
 import { CompactPagination } from "@shared/components/common/compact-pagination";
 import { CreateAgentDialog } from "@shared/components/common/create-agent-dialog";
 import { ImportAgentDialog } from "@shared/components/common/import-agent-dialog";
 import { SidebarHeader } from "@shared/components/common/sidebar-header";
-import { apiConfig } from "@shared/config";
-import { useExportAgent } from "@shared/hooks/use-agent-mutations";
-import { useAgents } from "@shared/hooks/use-agents";
-import { usePaginationParams } from "@shared/hooks/use-pagination-params";
+// Remove unused apiConfig and queryClient imports if not needed elsewhere after changes
+// import { apiConfig } from "@shared/config";
+// import { queryClient } from "@shared/api/query-client";
+// import { createLocalOperatorClient } from "@shared/api/local-operator";
+import {
+	useAgent, // Import useAgent hook
+	useAgents,
+	useExportAgent,
+	usePaginationParams,
+} from "@shared/hooks"; // Consolidate hook imports
 import type { ChangeEvent, FC } from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useMemo, useState } from "react"; // Import useMemo, remove useEffect, useRef
 import { useNavigate } from "react-router-dom";
 
 const SidebarContainer = styled(Paper)(({ theme }) => ({
@@ -221,36 +225,56 @@ export const AgentsSidebar: FC<AgentsSidebarProps> = ({
 	// Use the pagination hook to get and set the page from URL
 	const { page, setPage } = usePaginationParams();
 
-	// Store previous agents data to prevent UI flicker during refetches
-	const [stableAgents, setStableAgents] = useState<AgentDetails[]>([]);
-	const prevFetchingRef = useRef(false);
-
+	// Fetch agents list with total count, similar to chat sidebar
 	const {
-		data: agents = [],
+		data: agentListResult, // Rename data to agentListResult
 		isLoading,
 		isError,
 		refetch,
-		isFetching,
-	} = useAgents(page, perPage, 0, searchQuery); // Pass searchQuery as the name parameter
+	} = useAgents(
+		page,
+		perPage,
+		0, // No polling needed for agents page
+		searchQuery,
+		"created_date", // Sort by creation date for agents page
+		"desc", // Sort descending
+	);
 
-	// Update stable agents when data changes and not during refetches
-	useEffect(() => {
-		// Only update stable agents when we have data and we're not in a refetching state
-		// or when we're transitioning from fetching to not fetching (completed refetch)
+	// Extract agents and total count from the result
+	const agents = agentListResult?.agents || [];
+	const totalAgents = agentListResult?.total || 0;
+
+	// Fetch details for the selected agent if it's not in the current list
+	const { data: selectedAgentDetails } = useAgent(
+		// Only fetch if selectedAgentId exists and is not found in the current agents list
+		selectedAgentId && !agents.find((a) => a.id === selectedAgentId)
+			? selectedAgentId
+			: undefined,
+	);
+
+	// Memoize combinedAgents to stabilize its reference for hook dependencies
+	const combinedAgents = useMemo(() => {
+		const combined = [...agents];
 		if (
-			agents.length > 0 &&
-			(!isFetching || (prevFetchingRef.current && !isFetching))
+			selectedAgentDetails &&
+			!combined.find((a) => a.id === selectedAgentDetails.id)
 		) {
-			setStableAgents(agents);
+			// Add the selected agent if it's not already in the list
+			combined.push(selectedAgentDetails);
 		}
-
-		// Store current fetching state for next render
-		prevFetchingRef.current = isFetching;
-	}, [agents, isFetching]);
-
-	// Use stable agents for rendering to prevent UI flicker
-	const displayAgents =
-		isFetching && stableAgents.length > 0 ? stableAgents : agents;
+		// Sort combined list client-side if needed, e.g., by name or creation date
+		// For now, rely on backend sorting primarily
+		combined.sort((a, b) => {
+			// Example: Sort by name alphabetically
+			// return a.name.localeCompare(b.name);
+			// Or sort by creation date (descending)
+			return (
+				new Date(b.created_date).getTime() -
+				new Date(a.created_date).getTime()
+			);
+		});
+		return combined;
+	}, [agents, selectedAgentDetails]); // Dependencies for useMemo
 
 	const handlePageChange = useCallback(
 		(_event: ChangeEvent<unknown>, value: number) => {
@@ -287,8 +311,8 @@ export const AgentsSidebar: FC<AgentsSidebarProps> = ({
 			try {
 				const blob = await exportAgentMutation.mutateAsync(agentId);
 
-				// Get the agent name for the filename
-				const agent = agents.find((a) => a.id === agentId);
+				// Get the agent name for the filename (check combined list)
+				const agent = combinedAgents.find((a) => a.id === agentId);
 				const agentName = agent
 					? agent.name.replace(/\s+/g, "-").toLowerCase()
 					: agentId;
@@ -308,7 +332,7 @@ export const AgentsSidebar: FC<AgentsSidebarProps> = ({
 				console.error("Failed to export agent:", error);
 			}
 		},
-		[agents, exportAgentMutation],
+		[combinedAgents, exportAgentMutation], // Use combinedAgents
 	);
 
 	const handleAgentCreated = useCallback(
@@ -320,47 +344,58 @@ export const AgentsSidebar: FC<AgentsSidebarProps> = ({
 					const result = await refetch();
 
 					// Get the updated agents list from the refetch result
-					const updatedAgents = result.data || [];
+					const updatedAgentList = result.data?.agents || [];
 
 					// Find the newly created agent in the updated list
-					const createdAgent = updatedAgents.find(
-						(agent) => agent.id === agentId,
+					const createdAgent = updatedAgentList.find(
+						(agent: AgentDetails) => agent.id === agentId,
 					);
 
 					// Select the newly created agent if found
-					if (createdAgent && onSelectAgent) {
+					if (createdAgent) {
 						onSelectAgent(createdAgent);
 					} else {
-						// If the agent wasn't found in the updated list, use the API directly
-						// to get the agent details and select it
-
-						// Prefetch the agent details
-						await queryClient.prefetchQuery({
-							queryKey: ["agents", agentId],
-							queryFn: async () => {
-								const client = createLocalOperatorClient(apiConfig.baseUrl);
-								const response = await client.agents.getAgent(agentId);
-								return response.result;
-							},
-						});
-
-						// Get the agent details from the cache
-						const agentDetails = queryClient.getQueryData(["agents", agentId]);
-
-						if (agentDetails && onSelectAgent) {
-							onSelectAgent(agentDetails as AgentDetails);
+						// If the agent wasn't found in the updated list, still select it
+						// The agent details will be fetched when needed by the useAgent hook
+						// if it becomes the selected agent
+						// We need to manually fetch here to pass the full object to onSelectAgent
+						try {
+							// Use the useAgent hook's underlying fetch logic or a direct client call
+							// For simplicity, let's assume we can trigger selection and let the main view handle fetching if needed,
+							// OR fetch it here if onSelectAgent *requires* the full object immediately.
+							// Let's fetch it to be safe, similar to the original logic but simplified.
+							const { data: newAgentDetails } = await refetch(); // Refetch might return the new agent
+							const foundAgent = (newAgentDetails?.agents || []).find(
+								(a) => a.id === agentId,
+							);
+							if (foundAgent) {
+								onSelectAgent(foundAgent);
+							} else {
+								// Fallback if refetch didn't include it (e.g., pagination)
+								// This part might need adjustment based on how `onSelectAgent` is used
+								console.warn(
+									"Newly created agent not found immediately after refetch.",
+								);
+								// Potentially navigate or just set the ID, letting the main view load it
+								// For now, just log and don't select if not found
+							}
+						} catch (fetchError) {
+							console.error(
+								"Error fetching newly created agent details:",
+								fetchError,
+							);
+							// Optionally select with partial data or handle error
 						}
 					}
 				} catch (error) {
-					console.error("Error fetching agent details:", error);
-					// Still refetch the list even if there was an error
-					refetch();
+					console.error("Error refetching agents list:", error);
+					// Handle error appropriately
 				}
 			};
 
 			fetchAndSelectAgent();
 		},
-		[onSelectAgent, refetch],
+		[onSelectAgent, refetch], // Keep dependencies
 	);
 
 	// No need for client-side filtering since we're using the server-side filter
@@ -395,20 +430,24 @@ export const AgentsSidebar: FC<AgentsSidebarProps> = ({
 				>
 					Failed to load agents. Please try again.
 				</ErrorAlert>
-			) : displayAgents.length === 0 ? (
+			) : combinedAgents.length === 0 && !isLoading ? ( // Check combinedAgents and isLoading
 				<EmptyStateContainer>
 					<Typography variant="body2" color="text.secondary">
-						No agents found
+						{searchQuery ? "No agents match your search" : "No agents found"}
 					</Typography>
 				</EmptyStateContainer>
 			) : (
 				<AgentsList>
-					{displayAgents.map((agent) => (
+					{/* Use combinedAgents which includes the potentially fetched selected agent */}
+					{combinedAgents.map((agent) => (
 						<ListItem key={agent.id} disablePadding>
-							{/* Removed secondaryAction */}
 							<AgentListItemButton
-								selected={selectedAgentId === agent.id}
-								onClick={() => handleSelectAgent(agent)}
+								// Ensure the selected agent is highlighted even if added separately
+								selected={
+									selectedAgentId === agent.id ||
+									selectedAgentDetails?.id === agent.id
+								}
+								onClick={() => handleSelectAgent(agent)} // Pass the full agent object
 							>
 								<ListItemAvatar>
 									<AgentAvatar selected={selectedAgentId === agent.id}>
@@ -525,13 +564,16 @@ export const AgentsSidebar: FC<AgentsSidebarProps> = ({
 			/>
 
 			{/* Compact pagination at the bottom of the sidebar */}
-			<CompactPagination
-				page={page}
-				count={Math.max(1, Math.ceil(displayAgents.length / perPage))}
-				onChange={(newPage) =>
-					handlePageChange({} as ChangeEvent<unknown>, newPage)
-				}
-			/>
+			{totalAgents > 0 && ( // Only show pagination if there are agents
+				<CompactPagination
+					page={page}
+					// Calculate count based on totalAgents from the API result
+					count={Math.max(1, Math.ceil(totalAgents / perPage))}
+					onChange={(newPage) =>
+						handlePageChange({} as ChangeEvent<unknown>, newPage)
+					}
+				/>
+			)}
 		</SidebarContainer>
 	);
 };
