@@ -15,7 +15,7 @@ import {
 	Tooltip,
 	Typography,
 	createFilterOptions,
-	styled, // Ensure trailing comma
+	styled,
 } from "@mui/material";
 import { useModels } from "@shared/hooks";
 import type { FC, SyntheticEvent } from "react";
