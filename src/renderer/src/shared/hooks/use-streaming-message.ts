@@ -684,7 +684,6 @@ export const useStreamingMessage = ({
 				safeDisconnect();
 			}
 		} else if (!isComplete) {
-			// Reset the ref when isComplete becomes false
 			isCompletePrevRef.current = false;
 		}
 	}, [
@@ -695,7 +694,7 @@ export const useStreamingMessage = ({
 		safeDisconnect,
 		messageId,
 		completeStreamingMessage,
-	]); // Removed refetchMessage and refetchOnComplete dependencies
+	]);
 
 	return {
 		message,
