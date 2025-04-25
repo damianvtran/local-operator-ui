@@ -26,12 +26,20 @@ type ChatUtilitiesProps = {
 	setExpanded: Dispatch<SetStateAction<boolean>>;
 };
 
-const UtilitiesContainer = styled(Box)(({ theme }) => ({
-	padding: theme.spacing(1, 3),
-	backgroundColor: alpha(theme.palette.background.paper, 0.4),
-	borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-	minHeight: 52,
-}));
+/** Props for the styled UtilitiesContainer */
+type UtilitiesContainerProps = {
+	expanded: boolean;
+};
+
+const UtilitiesContainer = styled(Box)<UtilitiesContainerProps>(
+	({ theme, expanded }) => ({
+		padding: theme.spacing(1, 3),
+		backgroundColor: alpha(theme.palette.background.paper, 0.4),
+		borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+		// Apply minHeight only when collapsed to allow expansion
+		minHeight: expanded ? "auto" : 52,
+	}),
+);
 
 const UtilitiesHeader = styled(Box)(({ theme }) => ({
 	display: "flex",
@@ -73,7 +81,7 @@ export const ChatUtilities: FC<ChatUtilitiesProps> = ({
 	if (!agentId) return null;
 
 	return (
-		<UtilitiesContainer>
+		<UtilitiesContainer expanded={expanded}>
 			<UtilitiesHeader onClick={toggleExpanded}>
 				<IconButton
 					size="small"

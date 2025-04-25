@@ -16,6 +16,7 @@ import {
 	alpha,
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
+import type { AgentDetails } from "@shared/api/local-operator/types";
 import {
 	AgentOptionsMenu,
 	CompactPagination,
@@ -24,6 +25,7 @@ import {
 	SidebarHeader,
 } from "@shared/components/common";
 import {
+	useAgent,
 	useAgents,
 	useClearAgentConversation,
 	useExportAgent,
@@ -34,7 +36,7 @@ import {
 	getFullDateTime,
 } from "@shared/utils/date-utils";
 import type { ChangeEvent, FC } from "react";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 const SidebarContainer = styled(Paper)(({ theme }) => ({
 	width: "100%",
@@ -87,7 +89,7 @@ const AgentListItemButton = styled(ListItemButton)(({ theme }) => ({
 	paddingTop: 6,
 	paddingBottom: 6,
 	paddingLeft: 12,
-	position: "relative", // Ensure proper positioning context
+	position: "relative",
 	"&.Mui-selected": {
 		backgroundColor: alpha(theme.palette.sidebar.itemActive, 0.1),
 		color: theme.palette.sidebar.itemActiveText,
@@ -121,8 +123,7 @@ const MessageBubble = styled("div")({
 	width: "100%",
 	overflow: "hidden",
 	position: "relative",
-	// Ensure the message bubble maintains its layout
-	isolation: "isolate", // Create a new stacking context
+	isolation: "isolate",
 });
 
 // Agent name container with timestamp
@@ -132,7 +133,6 @@ const AgentNameContainer = styled(Box)({
 	alignItems: "center",
 	width: "100%",
 	position: "relative",
-	// Ensure the container maintains its position
 	overflow: "hidden",
 });
 
@@ -198,10 +198,9 @@ const OptionsButtonContainer = styled(Box)({
 		visibility: "visible",
 	},
 	zIndex: 2,
-	// Ensure the container doesn't affect layout when clicked
 	pointerEvents: "none",
 	"& > *": {
-		pointerEvents: "auto", // Allow clicks on children (the button itself)
+		pointerEvents: "auto",
 	},
 });
 
@@ -258,13 +257,45 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 	const { page, setPage } = usePaginationParams();
 
 	// Set up periodic refetch every 5 seconds to check for new messages
-	// Pass the search query as the name parameter
+	// Pass the search query, sort, and direction parameters
 	const {
-		data: agents = [],
+		data: agentListResult, // Rename data to agentListResult
 		isLoading,
 		isError,
 		refetch,
-	} = useAgents(page, perPage, 5000, searchQuery); // 5000ms = 5 seconds
+	} = useAgents(
+		page,
+		perPage,
+		5000,
+		searchQuery,
+		"last_message_datetime",
+		"desc",
+	);
+
+	// Extract agents and total count from the result
+	const agents = agentListResult?.agents || [];
+	const totalAgents = agentListResult?.total || 0;
+
+	// Fetch details for the selected agent if it's not in the current list
+	const { data: selectedAgentDetails } = useAgent(
+		// Only fetch if selectedConversation exists and is not found in the current agents list
+		selectedConversation && !agents.find((a) => a.id === selectedConversation)
+			? selectedConversation
+			: undefined,
+	);
+
+	// Memoize combinedAgents to stabilize its reference for hook dependencies
+	const combinedAgents = useMemo(() => {
+		const combined = [...agents];
+		if (
+			selectedAgentDetails &&
+			!combined.find((a) => a.id === selectedAgentDetails.id)
+		) {
+			// Add the selected agent if it's not already in the list
+			combined.push(selectedAgentDetails);
+		}
+		return combined;
+	}, [agents, selectedAgentDetails]);
 
 	const handlePageChange = useCallback(
 		(_event: ChangeEvent<unknown>, value: number) => {
@@ -301,8 +332,8 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 			try {
 				const blob = await exportAgentMutation.mutateAsync(agentId);
 
-				// Get the agent name for the filename
-				const agent = agents.find((a) => a.id === agentId);
+				// Get the agent name for the filename (check combined list)
+				const agent = combinedAgents.find((a) => a.id === agentId);
 				const agentName = agent
 					? agent.name.replace(/\s+/g, "-").toLowerCase()
 					: agentId;
@@ -322,7 +353,7 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 				console.error("Failed to export agent:", error);
 			}
 		},
-		[agents, exportAgentMutation],
+		[combinedAgents, exportAgentMutation], // Use combinedAgents
 	);
 
 	const handleAgentCreated = useCallback(
@@ -334,11 +365,11 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 					const result = await refetch();
 
 					// Get the updated agents list from the refetch result
-					const updatedAgents = result.data || [];
+					const updatedAgentList = result.data?.agents || [];
 
 					// Find the newly created agent in the updated list
-					const createdAgent = updatedAgents.find(
-						(agent) => agent.id === agentId,
+					const createdAgent = updatedAgentList.find(
+						(agent: AgentDetails) => agent.id === agentId,
 					);
 
 					// Select the newly created agent if found
@@ -367,23 +398,6 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 			? `${message.substring(0, maxLength)}...`
 			: message;
 	};
-
-	// Sort agents by last_message_datetime in descending order
-	const sortedAgents = [...agents].sort((a, b) => {
-		// If both have last_message_datetime, compare them
-		if (a.last_message_datetime && b.last_message_datetime) {
-			return (
-				new Date(b.last_message_datetime).getTime() -
-				new Date(a.last_message_datetime).getTime()
-			);
-		}
-		// If only a has last_message_datetime, a comes first
-		if (a.last_message_datetime) return -1;
-		// If only b has last_message_datetime, b comes first
-		if (b.last_message_datetime) return 1;
-		// If neither has last_message_datetime, maintain original order
-		return 0;
-	});
 
 	return (
 		<SidebarContainer elevation={0}>
@@ -416,18 +430,21 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 				>
 					Failed to load agents. Please try again.
 				</ErrorAlert>
-			) : sortedAgents.length === 0 ? (
+			) : combinedAgents.length === 0 && !isLoading ? ( // Check combinedAgents and isLoading
 				<EmptyStateContainer>
 					<Typography variant="body2" color="text.secondary">
-						No agents found
+						{searchQuery ? "No agents match your search" : "No agents found"}
 					</Typography>
 				</EmptyStateContainer>
 			) : (
 				<AgentsList>
-					{sortedAgents.map((agent) => (
+					{combinedAgents.map((agent) => (
 						<ListItem key={agent.id} disablePadding>
 							<AgentListItemButton
-								selected={selectedConversation === agent.id}
+								selected={
+									selectedConversation === agent.id ||
+									selectedAgentDetails?.id === agent.id
+								}
 								onClick={() => handleSelectConversation(agent.id)}
 							>
 								<ListItemAvatar>
@@ -508,7 +525,6 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 											enterDelay={1200}
 											enterNextDelay={1200}
 										>
-											{/* @ts-ignore - MUI Tooltip type issue */}
 											<MessagePreview>
 												{truncateMessage(agent.last_message, 40)}
 											</MessagePreview>
@@ -542,14 +558,15 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 				onAgentImported={handleAgentCreated}
 			/>
 
-			{/* Compact pagination at the bottom of the sidebar */}
-			<CompactPagination
-				page={page}
-				count={Math.max(1, Math.ceil(sortedAgents.length / perPage))}
-				onChange={(newPage) =>
-					handlePageChange({} as ChangeEvent<unknown>, newPage)
-				}
-			/>
+			{totalAgents > 0 && (
+				<CompactPagination
+					page={page}
+					count={Math.max(1, Math.ceil(totalAgents / perPage))}
+					onChange={(newPage) =>
+						handlePageChange({} as ChangeEvent<unknown>, newPage)
+					}
+				/>
+			)}
 		</SidebarContainer>
 	);
 };

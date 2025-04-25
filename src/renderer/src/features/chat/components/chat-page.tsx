@@ -128,8 +128,17 @@ export const ChatPage: FC<ChatProps> = () => {
 
 	// Check if the selected agent exists in the list of agents
 	useEffect(() => {
-		if (effectiveAgentId && agents.length > 0) {
-			const agentExists = agents.some((agent) => agent.id === effectiveAgentId);
+		// Check if agents data exists and is the AgentListResult type (has 'agents' property)
+		if (
+			effectiveAgentId &&
+			agents &&
+			"agents" in agents &&
+			agents.agents.length > 0
+		) {
+			// Access the agents array via agents.agents - type is narrowed here
+			const agentExists = agents.agents.some(
+				(agent) => agent.id === effectiveAgentId,
+			);
 
 			if (!agentExists) {
 				// If the agent doesn't exist, clear the selection and navigate to the chat page without an agent
