@@ -84,9 +84,12 @@ export const useMessageInput = ({
 		setHistoryIndex(null);
 		draftMessageRef.current = "";
 
-		// Scroll to bottom when sending a message
+		// Scroll to bottom when sending a message, with a slight delay
+		// to ensure the new message has rendered and layout is updated
 		if (scrollToBottom) {
-			scrollToBottom();
+			setTimeout(() => {
+				scrollToBottom();
+			}, 150); // 150ms delay
 		}
 	}, [inputValue, onSubmit, scrollToBottom]);
 

@@ -270,7 +270,8 @@ export const useStreamingMessage = ({
 
 				// Trigger a refetch to get the final state if needed
 				if (refetchOnComplete) {
-					// Use setTimeout to ensure this happens after the current execution
+					// Use setTimeout to ensure this happens after the current execution,
+					// giving the backend time to persist the final message state.
 					setTimeout(() => {
 						if (mountedRef.current) {
 							// Use a local function to avoid dependency on refetchMessage
@@ -346,7 +347,7 @@ export const useStreamingMessage = ({
 
 							doRefetch();
 						}
-					}, 100);
+					}, 500); // Increased delay to 500ms
 				}
 			} else {
 				// Just update the streaming message store for regular updates
@@ -653,7 +654,9 @@ export const useStreamingMessage = ({
 		return undefined;
 	}, [status, isComplete, isStoreMessageComplete, attemptConnection]);
 
-	// Call the onComplete callback when the message is complete - with debouncing
+	// Call the onComplete callback when the message is complete
+	// Note: The primary refetch logic is now handled within handleUpdate
+	// This useEffect mainly ensures the store is marked complete and calls the prop callback
 	const isCompletePrevRef = useRef(false);
 
 	useEffect(() => {
@@ -667,40 +670,22 @@ export const useStreamingMessage = ({
 			// Update ref to avoid repeated triggers
 			isCompletePrevRef.current = true;
 
-			// Make sure the streaming messages store is updated with the complete status
+			// Ensure the streaming messages store is updated with the complete status
+			// This might be redundant if handleUpdate already did it, but ensures consistency
 			completeStreamingMessage(messageId, message);
 
-			// Call the onComplete callback
+			// Call the onComplete callback prop if provided
 			if (onComplete) {
 				onComplete(message);
 			}
 
-			// Trigger a refetch to get the final state if needed
-			if (refetchOnComplete) {
-				// Use setTimeout to ensure this happens after the current execution
-				const timer = setTimeout(() => {
-					if (mountedRef.current) {
-						refetchMessage().catch((error) => {
-							const errorMessage =
-								error instanceof Error ? error.message : String(error);
-							console.error(`Error auto-refetching message: ${errorMessage}`);
-						});
-					}
-				}, 500);
-
-				return () => clearTimeout(timer);
-			}
-
-			// Don't disconnect when complete if keepAlive is true
+			// Disconnect if keepAlive is false (refetch is handled in handleUpdate)
 			if (!keepAlive) {
 				safeDisconnect();
 			}
 		} else if (!isComplete) {
-			// Reset the ref when isComplete becomes false
 			isCompletePrevRef.current = false;
 		}
-
-		return undefined;
 	}, [
 		isComplete,
 		message,
@@ -709,8 +694,6 @@ export const useStreamingMessage = ({
 		safeDisconnect,
 		messageId,
 		completeStreamingMessage,
-		refetchMessage,
-		refetchOnComplete,
 	]);
 
 	return {

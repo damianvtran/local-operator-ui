@@ -504,7 +504,13 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 				isOptionEqualToValue={(option, value) =>
 					(option as ModelOption).id === (value as ModelOption).id
 				}
-				groupBy={(option) => getProviderFromId((option as ModelOption).id)}
+				groupBy={(option) => {
+					const modelOption = option as ModelOption;
+					if (hostingId === "radient" && modelOption.id === "auto") {
+						return "radient"; // Group 'auto' under 'radient' specifically for radient hosting
+					}
+					return getProviderFromId(modelOption.id);
+				}}
 				renderOption={(props, option) => {
 					const { key, ...rest } = props;
 					return (

@@ -93,7 +93,9 @@ export const AgentsPage: FC<AgentsPageProps> = () => {
 		useAgentSelectionStore();
 
 	// Fetch all agents to check if the selected agent exists
-	const { data: agents = [] } = useAgents();
+	// Correctly destructure the agents array from the result object
+	const { data: agentListResult } = useAgents();
+	const agents = agentListResult?.agents || []; // Extract the agents array
 
 	// Use the agent ID from URL or the last selected agent ID
 	const effectiveAgentId = agentId || getLastAgentId("agents");
@@ -107,7 +109,6 @@ export const AgentsPage: FC<AgentsPageProps> = () => {
 	);
 
 	// Check if the selected agent exists in the list of agents
-	// biome-ignore lint/correctness/useExhaustiveDependencies: clearLastAgentId and clearAgentId are intentionally omitted to prevent infinite loops
 	useEffect(() => {
 		if (effectiveAgentId && agents.length > 0) {
 			const agentExists = agents.some((agent) => agent.id === effectiveAgentId);
@@ -122,7 +123,8 @@ export const AgentsPage: FC<AgentsPageProps> = () => {
 				}, 0);
 			}
 		}
-	}, [effectiveAgentId, agents]); // Remove clearLastAgentId and clearAgentId from dependencies
+		// Include cleanup functions in dependencies, matching chat-page.tsx pattern
+	}, [effectiveAgentId, agents, clearLastAgentId, clearAgentId]);
 
 	// Update the last selected agent ID when the agent ID changes
 	useEffect(() => {
