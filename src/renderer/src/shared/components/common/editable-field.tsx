@@ -70,13 +70,17 @@ const FieldContainer = styled(Box)({
 	marginBottom: 16, // Reduced margin
 });
 
-const FieldLabel = styled(Typography)(({ theme }) => ({
-	marginBottom: 6, // Reduced margin
+// Change from styled(Typography) to styled('label') and apply styles directly
+const FieldLabel = styled("label")(({ theme }) => ({
 	display: "flex",
 	alignItems: "center",
+	marginBottom: 6, // Reduced margin
 	color: theme.palette.text.secondary,
 	fontWeight: 500, // Slightly less bold
 	fontSize: "0.875rem", // Small text size
+	// Add other relevant typography styles if needed, e.g., fontFamily
+	fontFamily: theme.typography.fontFamily,
+	lineHeight: theme.typography.body2.lineHeight, // Example: Use body2 line height
 }));
 
 const LabelIcon = styled(Box)({
