@@ -7,7 +7,7 @@
  * unless the refresh token is also expired.
  */
 
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import { getSession, updateAccessToken, clearSession } from "@shared/utils/session-store";
 import { createRadientClient } from "@shared/api/radient";
@@ -29,10 +29,12 @@ export const useRadientTokenRefresher = () => {
   const { authStatus, hasLocalSession } = useRadientAuth();
   const queryClient = useQueryClient();
   const refreshTimeout = useRef<NodeJS.Timeout | null>(null);
-  const radientClient = createRadientClient(
+
+  // Memoize the Radient client instance as config values are constant
+  const radientClient = useMemo(() => createRadientClient(
     apiConfig.radientBaseUrl,
     apiConfig.radientClientId,
-  );
+  ), []);
 
   // Helper to clear any scheduled refresh
   const clearRefreshTimeout = useCallback(() => {
@@ -50,18 +52,27 @@ export const useRadientTokenRefresher = () => {
       return;
     }
 
+    const currentAccessToken = session.accessToken; // Store current access token
+
     // We do not track refresh token expiry timestamp; rely on refresh endpoint errors
 
     try {
       // Always refresh proactively, regardless of access token expiry
       const response = await radientClient.refreshToken(session.refreshToken);
+      const newAccessToken = response.result.access_token;
+      const newRefreshToken = response.result.refresh_token || session.refreshToken;
+
+      // Always update the stored tokens (access, expiry, refresh)
       await updateAccessToken(
-        response.result.access_token,
+        newAccessToken,
         response.result.expires_in,
-        response.result.refresh_token || session.refreshToken
+        newRefreshToken
       );
-      // Invalidate session query to update downstream consumers
-      queryClient.invalidateQueries({ queryKey: radientUserKeys.session() });
+
+      // Only invalidate queries if the access token actually changed
+      if (newAccessToken !== currentAccessToken) {
+        queryClient.invalidateQueries({ queryKey: radientUserKeys.session() });
+      }
     } catch (err) {
       // If refresh fails, check if it's due to refresh token expiry
       const errorMessage = err instanceof Error ? err.message : String(err);
@@ -70,11 +81,11 @@ export const useRadientTokenRefresher = () => {
         errorMessage.toLowerCase().includes("refresh token expired") ||
         errorMessage.toLowerCase().includes("invalid refresh token")
       ) {
-        clearSession();
+        await clearSession(); // Ensure session is cleared before invalidating
         queryClient.invalidateQueries({ queryKey: radientUserKeys.all });
         showErrorToast("Session expired. Please sign in again.");
       }
-      // Otherwise, do not show an error to the user (access token expiry is handled silently)
+      // Otherwise, do not show an error (silent failure for proactive refresh)
     }
   }, [queryClient, radientClient]);
 
