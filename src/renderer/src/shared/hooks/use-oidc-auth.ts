@@ -59,6 +59,11 @@ type UseOidcAuthOptions = {
 	 * and backend provisioning.
 	 */
 	onSuccess?: () => void;
+	/**
+	 * Callback function to be invoked after the RADIENT_API_KEY is set/updated.
+	 * Use this to force a model refresh after Radient sign-in.
+	 */
+	onAfterCredentialUpdate?: () => void;
 };
 
 // Create a Radient API client
@@ -73,7 +78,7 @@ const radientClient = createRadientClient(
 export const useOidcAuth = (
 	options?: UseOidcAuthOptions,
 ): UseOidcAuthResult => {
-	const { onSuccess } = options || {}; // Destructure onSuccess callback
+	const { onSuccess, onAfterCredentialUpdate } = options || {}; // Destructure callbacks
 	const [loading, setLoading] = useState(true); // Start loading until initial status is checked
 	const [error, setError] = useState<string | null>(null);
 	const [status, setStatus] = useState<OAuthStatus>({
@@ -169,6 +174,15 @@ export const useOidcAuth = (
 						value: appResponse.result.api_key,
 					});
 
+					// Call after-credential-update callback if provided (for model refresh)
+					if (onAfterCredentialUpdate) {
+						try {
+							onAfterCredentialUpdate();
+						} catch (err) {
+							console.error("Error in onAfterCredentialUpdate callback:", err);
+						}
+					}
+
 					// Attempt to set Radient as the default hosting provider and model
 					try {
 						await updateConfig({
@@ -207,7 +221,7 @@ export const useOidcAuth = (
 				// Let the main flow handle setting loading to false.
 			}
 		},
-		[queryClient, updateConfig, onSuccess], // Added onSuccess dependency
+		[queryClient, updateConfig, onSuccess, onAfterCredentialUpdate], 
 	);
 
 	/**

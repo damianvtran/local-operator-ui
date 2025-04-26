@@ -19,7 +19,7 @@ import {
 } from "@mui/material";
 import { RadientAuthButtons } from "@shared/components/auth";
 import { useRadientAuth } from "@shared/hooks";
-import { useUserStore } from "@shared/store/user-store"; // Import Zustand store
+import { useUserStore } from "@shared/store/user-store"; 
 import { type FC, useCallback, useMemo } from "react";
 
 // Shadcn-inspired container for info rows
@@ -115,7 +115,13 @@ const LoadingContainer = styled(Box)({
  * Settings section for managing Radient account connection and details.
  * Uses shadcn-inspired styling via SettingsSectionCard and styled components.
  */
-export const RadientAccountSection: FC = () => {
+type RadientAccountSectionProps = {
+	onAfterCredentialUpdate?: () => void;
+};
+
+export const RadientAccountSection: FC<RadientAccountSectionProps> = ({
+	onAfterCredentialUpdate,
+}) => {
 	const { isAuthenticated, user, isLoading, error, signOut } = useRadientAuth();
 	const isSigningOut = useUserStore((state) => state.isSigningOut); // Get signing out flag
 
@@ -213,6 +219,7 @@ export const RadientAccountSection: FC = () => {
 				</Typography>
 				<RadientAuthButtons
 					titleText=""
+					onAfterCredentialUpdate={onAfterCredentialUpdate}
 					descriptionText=""
 					onSignInSuccess={() => {
 						// Optional: Add logic after successful sign-in if needed
@@ -220,7 +227,7 @@ export const RadientAccountSection: FC = () => {
 				/>
 			</Box>
 		);
-	}, [isAuthenticated, user]);
+	}, [isAuthenticated, user, onAfterCredentialUpdate]);
 
 	return (
 		<Box>

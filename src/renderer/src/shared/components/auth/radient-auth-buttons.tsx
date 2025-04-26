@@ -27,6 +27,11 @@ type RadientAuthButtonsProps = {
 	 */
 	onSignInSuccess?: () => void;
 	/**
+	 * Optional callback to be called after RADIENT_API_KEY is set/updated.
+	 * Use this to force a model refresh and/or credentials refetch after Radient sign-in.
+	 */
+	onAfterCredentialUpdate?: () => void;
+	/**
 	 * Optional title text to display above the buttons
 	 */
 	titleText?: string;
@@ -95,13 +100,14 @@ const ButtonsContainer = styled(Box)(() => ({
  */
 export const RadientAuthButtons: FC<RadientAuthButtonsProps> = ({
 	onSignInSuccess,
+	onAfterCredentialUpdate,
 	titleText = "Sign in to Radient",
 	descriptionText = "Choose your preferred sign-in method to access Radient services.",
 }) => {
 	const theme = useTheme(); // Get theme for sx props
-	// Pass the onSignInSuccess callback to the hook
 	const { signInWithGoogle, signInWithMicrosoft, loading, error } = useOidcAuth(
 		{
+			onAfterCredentialUpdate,
 			onSuccess: onSignInSuccess,
 		},
 	);
