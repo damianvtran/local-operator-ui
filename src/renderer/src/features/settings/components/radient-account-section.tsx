@@ -19,6 +19,7 @@ import {
 } from "@mui/material";
 import { RadientAuthButtons } from "@shared/components/auth";
 import { useRadientAuth } from "@shared/hooks";
+import { useUserStore } from "@shared/store/user-store";
 import { type FC, useCallback, useMemo } from "react";
 
 // Shadcn-inspired container for info rows
@@ -114,8 +115,15 @@ const LoadingContainer = styled(Box)({
  * Settings section for managing Radient account connection and details.
  * Uses shadcn-inspired styling via SettingsSectionCard and styled components.
  */
-export const RadientAccountSection: FC = () => {
+type RadientAccountSectionProps = {
+	onAfterCredentialUpdate?: () => void;
+};
+
+export const RadientAccountSection: FC<RadientAccountSectionProps> = ({
+	onAfterCredentialUpdate,
+}) => {
 	const { isAuthenticated, user, isLoading, error, signOut } = useRadientAuth();
+	const isSigningOut = useUserStore((state) => state.isSigningOut); // Get signing out flag
 
 	// Memoize the sign-out handler
 	const handleSignOut = useCallback(async () => {
@@ -129,7 +137,7 @@ export const RadientAccountSection: FC = () => {
 
 	// Memoize the account information section
 	const accountInfoSection = useMemo(() => {
-		if (!isAuthenticated || !user.radientUser) return null;
+		if (!isAuthenticated || !user?.radientUser) return null;
 
 		const { account, identity } = user.radientUser;
 
@@ -194,11 +202,11 @@ export const RadientAccountSection: FC = () => {
 				</Box>
 			</>
 		);
-	}, [isAuthenticated, user.radientUser, handleSignOut]);
+	}, [isAuthenticated, user?.radientUser, handleSignOut]);
 
 	// Memoize the sign-in section
 	const signInSection = useMemo(() => {
-		if (isAuthenticated) return null;
+		if (isAuthenticated && user) return null;
 
 		return (
 			<Box sx={{ mt: 1 }}>
@@ -211,6 +219,7 @@ export const RadientAccountSection: FC = () => {
 				</Typography>
 				<RadientAuthButtons
 					titleText=""
+					onAfterCredentialUpdate={onAfterCredentialUpdate}
 					descriptionText=""
 					onSignInSuccess={() => {
 						// Optional: Add logic after successful sign-in if needed
@@ -218,24 +227,32 @@ export const RadientAccountSection: FC = () => {
 				/>
 			</Box>
 		);
-	}, [isAuthenticated]);
+	}, [isAuthenticated, user, onAfterCredentialUpdate]);
 
 	return (
 		<Box>
 			{" "}
 			{/* Wrap content in a Box instead of a Card */}
-			{isLoading ? (
+			{/* Show loading indicator if initial loading OR if signing out */}
+			{isLoading || isSigningOut ? (
 				<LoadingContainer>
 					<CircularProgress />
 				</LoadingContainer>
-			) : error ? (
-				<Typography color="error" variant="body2">
-					Error loading account information:{" "}
-					{error instanceof Error ? error.message : String(error)}
-				</Typography>
+			) : isAuthenticated && user?.radientUser ? (
+				// If authenticated and user data exists, show account info
+				accountInfoSection
 			) : (
-				// Render either the account info or the sign-in prompt
-				accountInfoSection || signInSection
+				// If not loading and not authenticated (or user data missing), show sign-in section.
+				// Display error above if it exists.
+				<>
+					{error && (
+						<Typography color="error" variant="body2" sx={{ mb: 2 }}>
+							Error checking account status:{" "}
+							{error instanceof Error ? error.message : String(error)}
+						</Typography>
+					)}
+					{signInSection}
+				</>
 			)}
 		</Box>
 	);

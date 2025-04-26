@@ -255,20 +255,21 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 		return undefined;
 	}, [hostingId, refreshModels, isModelsLoading]);
 
-	// Convert models to autocomplete options
+	// Convert models to autocomplete options, ensuring uniqueness by ID
 	const modelOptions: ModelOption[] = useMemo(() => {
-		// Start with Default option
-		const options: ModelOption[] = [
-			{
-				id: "",
-				name: "Default",
-				description: "Clear model selection",
-				model: undefined,
-			},
-		];
-		// Map available models to autocomplete options
+		const optionsMap = new Map<string, ModelOption>();
+
+		// Add Default option
+		optionsMap.set("", {
+			id: "",
+			name: "Default",
+			description: "Clear model selection",
+			model: undefined,
+		});
+
+		// Add available models, using ID as the key to handle duplicates
 		for (const model of availableModels) {
-			options.push({
+			optionsMap.set(model.id, {
 				id: model.id,
 				name: model.name,
 				description: model.description,
@@ -277,35 +278,9 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 			});
 		}
 
-		// Check if the current value exists in the available models
-		const modelExists = availableModels.some((model) => {
-			// Exact match
-			if (model.id === value) {
-				return true;
-			}
-
-			// Check with provider prefix
-			if (value?.includes("/")) {
-				return model.id?.endsWith(value.split("/")[1]);
-			}
-
-			// If value doesn't have a provider prefix, check if model.id ends with value
-			// or if model.id without provider prefix equals value
-			if (value && !value.includes("/")) {
-				// If model.id has a provider prefix
-				if (model.id.includes("/")) {
-					return model.id.endsWith(`/${value}`);
-				}
-				// If neither has a provider prefix, just compare directly
-				return model.id === value;
-			}
-
-			return false;
-		});
-
-		// If the current value is not in the available options, add it as a custom option
-		if (value && value.trim() !== "" && !modelExists) {
-			options.push({
+		// If the current value is not in the options map, add it as a custom option
+		if (value && value.trim() !== "" && !optionsMap.has(value)) {
+			optionsMap.set(value, {
 				id: value,
 				name: value,
 				description: "Custom model",
@@ -313,7 +288,8 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 			});
 		}
 
-		return options;
+		// Convert map values back to an array
+		return Array.from(optionsMap.values());
 	}, [availableModels, value]);
 
 	// Helper text to show when no models are available

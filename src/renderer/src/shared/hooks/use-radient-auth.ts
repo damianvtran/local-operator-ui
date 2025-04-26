@@ -36,10 +36,10 @@ export const useRadientAuth = () => {
 	const {
 		user: radientUser,
 		session,
-		isLoading, // Combined loading state from useRadientUserQuery
+		isLoading,
 		error,
-		isAuthenticated, // Backend validated flag from useRadientUserQuery
-		hasLocalSession, // Local token exists flag from useRadientUserQuery
+		isAuthenticated,
+		hasLocalSession,
 		signOut,
 		refreshUser,
 		refreshToken,
@@ -58,10 +58,9 @@ export const useRadientAuth = () => {
 		authStatus = "unauthenticated";
 	}
 
-	// Sync the Radient user information with the user store
+	// Sync the Radient user information with the user store, but only if authenticated
 	useEffect(() => {
-		// Skip if there's no user data
-		if (!radientUser?.account) {
+		if (!isAuthenticated || !radientUser?.account) {
 			return;
 		}
 
@@ -80,35 +79,34 @@ export const useRadientAuth = () => {
 			(account.name && account.name !== currentName) ||
 			(account.email && account.email !== currentEmail)
 		) {
-			// Update the store with the new values
 			userStore.updateProfile({
 				name: account.name || currentName,
 				email: account.email || currentEmail,
 			});
 		}
-	}, [radientUser, userStore]);
+	}, [isAuthenticated, radientUser, userStore]);
 
 	return {
 		// Authentication state
-		authStatus, // Use the new combined status
-		isAuthenticated, // Keep backend-validated flag for detailed checks if needed
-		hasLocalSession, // Expose this flag
-		isLoading, // Keep the combined loading flag
+		authStatus,
+		isAuthenticated,
+		hasLocalSession,
+		isLoading,
 		error,
 
-		// User information (from Radient or fallback to user store)
-		user: {
-			name: radientUser?.account?.name || userStore.profile.name,
-			email: radientUser?.account?.email || userStore.profile.email,
-			// Include the full Radient user object if available
-			radientUser: radientUser as RadientUser | undefined | null, // Added type assertion for clarity
-		},
+		// User information: only return if authenticated, otherwise null
+		user:
+			isAuthenticated && radientUser?.account
+				? {
+						name: radientUser.account.name,
+						email: radientUser.account.email,
+						radientUser: radientUser as RadientUser,
+					}
+				: null,
 
 		// Session token for API calls
 		sessionToken: session?.accessToken,
-		// Expose the full session for advanced use cases
 		session,
-		// Token refresh function
 		refreshToken,
 
 		// Actions

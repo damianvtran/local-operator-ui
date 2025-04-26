@@ -13,14 +13,7 @@ import {
 	faTag,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
-	Box,
-	Divider,
-	Grid,
-	TextField,
-	Typography,
-	alpha,
-} from "@mui/material";
+import { Box, Divider, Grid, Typography, alpha } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import type {
 	AgentDetails,
@@ -67,18 +60,19 @@ type GeneralSettingsProps = {
 };
 
 const FieldContainer = styled(Box)({
-	marginBottom: 24,
 	position: "relative",
 });
 
-// Update FieldLabel to match editable-field.tsx styles
-const FieldLabel = styled(Typography)(({ theme }) => ({
+// Update FieldLabel to be a styled 'div' to prevent nesting issues
+// Apply typography styles manually
+const FieldLabel = styled("div")(({ theme }) => ({
+	fontFamily: theme.typography.fontFamily,
+	fontSize: "0.875rem", // Small text size
+	fontWeight: 500, // Slightly less bold
+	color: theme.palette.text.secondary,
 	marginBottom: 6, // Reduced margin
 	display: "flex",
 	alignItems: "center",
-	color: theme.palette.text.secondary,
-	fontWeight: 500, // Slightly less bold
-	fontSize: "0.875rem", // Small text size
 }));
 
 // Update LabelIcon to match editable-field.tsx styles
@@ -115,44 +109,26 @@ const TitleIcon = styled(FontAwesomeIcon)(({ theme }) => ({
 
 // Restyle InfoCard to be just the value display box, matching input height/padding
 const InfoCard = styled(Box)(({ theme }) => ({
-	display: "flex", // Keep flex for vertical alignment if needed
-	alignItems: "center", // Align text vertically
-	height: "36px", // Match input height
-	padding: theme.spacing(0.5, 1.5), // Match input padding (4px 12px)
-	borderRadius: 4, // Less rounded corners
-	backgroundColor: theme.palette.background.paper, // Use paper background
-	border: `1px solid ${theme.palette.divider}`, // Use divider color for border
+	display: "flex",
+	alignItems: "center",
+	height: "36px",
+	padding: theme.spacing(0.5, 1.5),
+	borderRadius: 4,
+	backgroundColor: theme.palette.background.paper,
+	border: `1px solid ${theme.palette.divider}`,
 	boxSizing: "border-box",
-	width: "100%", // Take full width of the grid item
-	overflow: "hidden", // Prevent text overflow
+	width: "100%",
+	overflow: "hidden",
 }));
-
-// CardIcon is now unused as icon goes into LabelIcon
-/* const CardIcon = styled(FontAwesomeIcon)(({ theme }) => ({
-	marginRight: 12,
-	opacity: 0.8,
-	fontSize: "0.875rem", // This was likely incorrect anyway
-			? theme.palette.grey[700]
-			: theme.palette.text.primary,
-})); */
-
-// LabelText is now unused as label goes into FieldLabel
-/* const LabelText = styled("span")(({ theme }) => ({
-	color: theme.palette.text.secondary,
-	marginRight: theme.spacing(1),
-	fontSize: "0.875rem",
-	display: "inline-block",
-})); */
 
 // Adjust ValueText styles slightly if needed
 const ValueText = styled(Typography)(({ theme }) => ({
-	// Keep as Typography for consistency
-	fontWeight: 400, // Normal weight for value text inside the box
+	fontWeight: 400,
 	fontSize: "0.875rem",
 	color: theme.palette.text.primary,
-	whiteSpace: "nowrap", // Prevent wrapping
-	overflow: "hidden", // Hide overflow
-	textOverflow: "ellipsis", // Add ellipsis
+	whiteSpace: "nowrap",
+	overflow: "hidden",
+	textOverflow: "ellipsis",
 }));
 
 const MonospaceValueText = styled(ValueText)(({ theme }) => ({
@@ -161,6 +137,37 @@ const MonospaceValueText = styled(ValueText)(({ theme }) => ({
 		theme.palette.mode === "light"
 			? theme.palette.grey[900]
 			: theme.palette.text.primary,
+}));
+
+const ModelPlaceholderContainer = styled("div")(({ theme }) => ({
+	padding: "4px 12px",
+	borderRadius: 6,
+	backgroundColor: theme.palette.background.paper,
+	border: `1px solid ${theme.palette.divider}`,
+	position: "relative",
+	minHeight: "36px",
+	height: "36px",
+	display: "flex",
+	alignItems: "center",
+	boxSizing: "border-box",
+	width: "100%",
+	textAlign: "left",
+	justifyContent: "flex-start",
+	color: theme.palette.text.primary,
+	fontWeight: "normal",
+	fontFamily: "inherit",
+}));
+
+const ModelPlaceholderText = styled("div")(({ theme }) => ({
+	color: theme.palette.text.disabled,
+	fontStyle: "normal",
+	fontSize: "0.875rem",
+	lineHeight: 1.5,
+	paddingRight: 30,
+	overflow: "hidden",
+	textOverflow: "ellipsis",
+	whiteSpace: "nowrap",
+	flexGrow: 1,
 }));
 
 /**
@@ -225,7 +232,9 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 					/>
 				</Box>
 
-				<Grid container spacing={2}>
+				<Grid container spacing={2} alignItems="center">
+					{" "}
+					{/* Vertically align grid items */}
 					<Grid item xs={12} md={6}>
 						<HostingSelect
 							// Modified key to not include the selectedAgent.id, so it doesn't re-render and reset when agent changes
@@ -272,7 +281,6 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 							filterByCredentials={false}
 						/>
 					</Grid>
-
 					<Grid item xs={12} md={6}>
 						{/* Only render ModelSelect if we have a hosting provider selected */}
 						{currentHosting ? (
@@ -311,29 +319,17 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 							/>
 						) : (
 							<FieldContainer>
-								<FieldLabel variant="subtitle2">
+								<FieldLabel>
 									<LabelIcon>
 										<FontAwesomeIcon icon={faRobot} />
 									</LabelIcon>
 									Model
 								</FieldLabel>
-								<TextField
-									placeholder="Select a hosting provider first..."
-									variant="outlined"
-									size="small"
-									disabled
-									fullWidth
-									InputProps={{
-										sx: {
-											fontSize: "0.875rem",
-											lineHeight: 1.6,
-											backgroundColor: (theme) =>
-												theme.palette.inputField.background,
-											borderRadius: 2,
-											padding: "16px",
-										},
-									}}
-								/>
+								<ModelPlaceholderContainer>
+									<ModelPlaceholderText>
+										Select a hosting provider first...
+									</ModelPlaceholderText>
+								</ModelPlaceholderContainer>
 							</FieldContainer>
 						)}
 					</Grid>

@@ -35,7 +35,9 @@ const DividerFlexItem = styled(Box)({
 /**
  * Hover/click area for the divider (centered, does not take up layout space)
  */
-const DividerHoverArea = styled(Box)<{
+const DividerHoverArea = styled(Box, {
+	shouldForwardProp: (prop) => prop !== "$active" && prop !== "$side",
+})<{
 	$active: boolean;
 	$side: "left" | "right";
 }>(({ $active, $side }) => ({
@@ -55,7 +57,9 @@ const DividerHoverArea = styled(Box)<{
 /**
  * Styled thin divider line
  */
-const DividerLine = styled(Box)<{ $side: "left" | "right"; $active: boolean }>(
+const DividerLine = styled(Box, {
+	shouldForwardProp: (prop) => prop !== "$active" && prop !== "$side",
+})<{ $side: "left" | "right"; $active: boolean }>(
 	({ theme, $side, $active }) => ({
 		position: "absolute",
 		top: 0,
@@ -79,7 +83,9 @@ const DividerLine = styled(Box)<{ $side: "left" | "right"; $active: boolean }>(
 /**
  * Styled drag handle (appears on hover)
  */
-const DragHandle = styled(Box)<{ $active: boolean }>(({ theme, $active }) => ({
+const DragHandle = styled(Box, {
+	shouldForwardProp: (prop) => prop !== "$active",
+})<{ $active: boolean }>(({ theme, $active }) => ({
 	position: "absolute",
 	left: "50%",
 	top: "50%",
