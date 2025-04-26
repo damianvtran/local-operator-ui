@@ -15,6 +15,7 @@ import { ModelsInitializer } from "@shared/components/common/models-initializer"
 import { UpdateNotification } from "@shared/components/common/update-notification";
 import { SidebarNavigation } from "@shared/components/navigation/sidebar-navigation";
 import { useCheckFirstTimeUser } from "@shared/hooks/use-check-first-time-user";
+import { useRadientTokenRefresher } from "@shared/hooks/use-radient-token-refresher";
 
 library.add(fas, fab);
 
@@ -39,6 +40,9 @@ const MainContent = styled(Box)(() => ({
 const App: FC = () => {
 	// Check if this is a first-time user
 	const { isOnboardingActive } = useCheckFirstTimeUser();
+
+	// Always call the token refresher hook (it will no-op if not authenticated)
+	useRadientTokenRefresher();
 
 	return (
 		<AppContainer>
