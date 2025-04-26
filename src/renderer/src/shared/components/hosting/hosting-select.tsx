@@ -466,18 +466,21 @@ export const HostingSelect: FC<HostingSelectProps> = ({
 				isOptionEqualToValue={(option, value) =>
 					(option as HostingOption).id === (value as HostingOption).id
 				}
-				renderOption={(props, option) => (
-					<li {...props}>
-						<OptionContainer>
-							<OptionLabel>{(option as HostingOption).name}</OptionLabel>
-							{(option as HostingOption).description && (
-								<OptionDescription>
-									{(option as HostingOption).description}
-								</OptionDescription>
-							)}
-						</OptionContainer>
-					</li>
-				)}
+				renderOption={(props, option) => {
+					const { key, ...rest } = props;
+					return (
+						<li key={key} {...rest}>
+							<OptionContainer>
+								<OptionLabel>{(option as HostingOption).name}</OptionLabel>
+								{(option as HostingOption).description && (
+									<OptionDescription>
+										{(option as HostingOption).description}
+									</OptionDescription>
+								)}
+							</OptionContainer>
+						</li>
+					);
+				}}
 				freeSolo={allowCustom}
 				renderInput={(params) => (
 					<TextField
