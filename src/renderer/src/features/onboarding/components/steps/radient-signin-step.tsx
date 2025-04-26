@@ -49,9 +49,8 @@ export const RadientSignInStep: FC<RadientSignInStepProps> = ({
 		<SectionContainer>
 			{/* Use SectionDescription for main text, adjust font size if needed */}
 			<SectionDescription sx={{ mb: 3 }}>
-				Sign in with your preferred method to get started with Radient Pass.
-				This gives you access to web search, image generation, site crawling,
-				and more.
+				Sign in with your preferred method to get started with Radient Pass in a couple clicks.
+				This gives you access to hundreds of models updated in real time, cost-saving with Radient Auto, web search, image generation, site crawling, and more all in Local Operator.
 			</SectionDescription>
 
 			{/* Use SectionDescription for the credit info */}
