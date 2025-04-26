@@ -870,9 +870,6 @@ export class OAuthService {
 		return {
 			loggedIn: true,
 			provider: provider,
-			// Avoid sending full tokens in general status checks unless needed
-			// accessToken: accessToken,
-			// idToken: idToken,
 			expiry: expiry,
 		};
 	}

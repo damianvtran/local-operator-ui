@@ -188,8 +188,8 @@ export const UserProfileSidebar: FC<UserProfileSidebarProps> = React.memo(
 
 		// Get user profile from Radient auth or fallback to user store
 		const { user, isAuthenticated, signOut } = useRadientAuth();
-		const userName = user.name;
-		const userEmail = user.email;
+		const userName = user?.name ?? "User";
+		const userEmail = user?.email ?? "";
 
 		// Memoize handlers to prevent unnecessary re-renders
 		const handleClick = useCallback(
