@@ -227,7 +227,7 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 					/>
 				</Box>
 
-				<Grid container spacing={2}>
+				<Grid container spacing={2} alignItems="center"> {/* Vertically align grid items */}
 					<Grid item xs={12} md={6}>
 						<HostingSelect
 							// Modified key to not include the selectedAgent.id, so it doesn't re-render and reset when agent changes
