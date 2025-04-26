@@ -71,14 +71,16 @@ const FieldContainer = styled(Box)({
 	position: "relative",
 });
 
-// Update FieldLabel to match editable-field.tsx styles
-const FieldLabel = styled(Typography)(({ theme }) => ({
+// Update FieldLabel to be a styled 'div' to prevent nesting issues
+// Apply typography styles manually
+const FieldLabel = styled("div")(({ theme }) => ({
+	fontFamily: theme.typography.fontFamily,
+	fontSize: "0.875rem", // Small text size
+	fontWeight: 500, // Slightly less bold
+	color: theme.palette.text.secondary,
 	marginBottom: 6, // Reduced margin
 	display: "flex",
 	alignItems: "center",
-	color: theme.palette.text.secondary,
-	fontWeight: 500, // Slightly less bold
-	fontSize: "0.875rem", // Small text size
 }));
 
 // Update LabelIcon to match editable-field.tsx styles
@@ -311,7 +313,7 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 							/>
 						) : (
 							<FieldContainer>
-								<FieldLabel variant="subtitle2">
+								<FieldLabel>
 									<LabelIcon>
 										<FontAwesomeIcon icon={faRobot} />
 									</LabelIcon>
