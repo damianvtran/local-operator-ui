@@ -46,7 +46,7 @@ import { UserProfileStep } from "./steps/user-profile-step";
 // Use Partial<> as not all steps might have explicit titles defined here anymore
 const stepTitles: Partial<Record<OnboardingStep, string>> = {
 	[OnboardingStep.RADIENT_CHOICE]: "Choose Your Setup Option",
-	[OnboardingStep.RADIENT_SIGNIN]: "Sign in with a Radient Pass",
+	[OnboardingStep.RADIENT_SIGNIN]: "Set Up With Radient Pass",
 	[OnboardingStep.USER_PROFILE]: "Set Up Your Profile",
 	[OnboardingStep.MODEL_CREDENTIAL]: "Add Model Provider Credentials",
 	[OnboardingStep.SEARCH_API]: "Enable Web Search (Recommended)",
