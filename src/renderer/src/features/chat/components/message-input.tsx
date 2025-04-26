@@ -21,6 +21,7 @@ import type { ChangeEvent, FC, FormEvent } from "react";
 import type { Message } from "../types/message";
 import { AttachmentsPreview } from "./attachments-preview";
 import { ScrollToBottomButton } from "./scroll-to-bottom-button";
+import { normalizePath } from "@shared/utils/path-utils";
 
 /**
  * Props for the MessageInput component
@@ -354,10 +355,9 @@ export const MessageInput: FC<MessageInputProps> = ({
 	const handleFileSelect = (e: ChangeEvent<HTMLInputElement>) => {
 		if (e.target.files && e.target.files.length > 0) {
 			const newAttachments = Array.from(e.target.files).map((file) => {
-				// @ts-ignore Electron file path
 				const filePath = file.path;
 				if (filePath) {
-					return filePath;
+					return normalizePath(filePath);
 				}
 				return URL.createObjectURL(file);
 			});
