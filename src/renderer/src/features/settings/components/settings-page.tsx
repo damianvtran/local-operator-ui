@@ -45,6 +45,8 @@ import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import { useUpdateConfig } from "@shared/hooks/use-update-config";
 import { useUsageRollup } from "@shared/hooks/use-usage-rollup";
 import { useUserStore } from "@shared/store/user-store";
+import { useCredentials } from "@shared/hooks/use-credentials";
+import { useModels } from "@shared/hooks/use-models";
 import { format, formatRFC3339, parseISO, subDays } from "date-fns";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { FC, RefObject } from "react";
@@ -477,6 +479,35 @@ export const SettingsPage: FC = () => {
 	const [activeSection, setActiveSection] = useState<string>("general");
 	const [isScrolling, setIsScrolling] = useState(false);
 	const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null); // Ref for scroll timeout
+
+	const { data: credentialsData } = useCredentials();
+	const { refreshModels } = useModels();
+
+	// Memoize the credential keys to avoid unnecessary effect triggers
+	const credentialKeys = useMemo(
+		() => (credentialsData?.keys ? [...credentialsData.keys].sort() : []),
+		[credentialsData?.keys],
+	);
+
+	// Only refresh models if credential keys or hosting have actually changed
+	const lastRefreshRef = useRef<{ keys: string; hosting: string | undefined }>({
+		keys: "",
+		hosting: undefined,
+	});
+	useEffect(() => {
+		const keysString = credentialKeys.join(",");
+		const hosting = config?.values?.hosting;
+		if (
+			lastRefreshRef.current.keys !== keysString ||
+			lastRefreshRef.current.hosting !== hosting
+		) {
+			lastRefreshRef.current = { keys: keysString, hosting };
+			refreshModels().catch((err) => {
+				console.error("Failed to refresh models after credentials or hosting change:", err);
+			});
+		}
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [credentialKeys, config?.values?.hosting, refreshModels]);
 
 	// Refs for scrolling to sections
 	const sectionRefs = useRef<Record<string, RefObject<HTMLDivElement>>>({

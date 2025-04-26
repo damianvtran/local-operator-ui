@@ -11,6 +11,7 @@
 import { apiConfig } from "@shared/config";
 import { useModelsStore } from "@shared/store/models-store";
 import { useEffect, useRef } from "react";
+import { useCallback } from "react";
 import { useConnectivityGate } from "./use-connectivity-gate";
 
 /**
@@ -125,7 +126,7 @@ export const useModels = ({ autoFetch = true } = {}) => {
 	/**
 	 * Force a refresh of the models data
 	 */
-	const refreshModels = async () => {
+	const refreshModels = useCallback(async () => {
 		// Only refresh if server is online (bypass internet check)
 		if (shouldEnableQuery({ bypassInternetCheck: true })) {
 			await fetchModels(baseUrl, true);
@@ -136,7 +137,7 @@ export const useModels = ({ autoFetch = true } = {}) => {
 				throw error;
 			}
 		}
-	};
+	}, [baseUrl, fetchModels, shouldEnableQuery, getConnectivityError]);
 
 	/**
 	 * Get a model by its ID

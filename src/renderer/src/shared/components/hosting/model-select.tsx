@@ -489,9 +489,8 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 				}}
 				renderOption={(props, option) => {
 					const { key, ...rest } = props;
-					// Use the model's unique id as the key to ensure uniqueness
 					return (
-						<li key={(option as ModelOption).id} {...rest}>
+						<li key={key} {...rest}>
 							<OptionContainer>
 								<OptionLabelContainer>
 									<OptionLabel>{(option as ModelOption).name}</OptionLabel>
