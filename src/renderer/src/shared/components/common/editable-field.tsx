@@ -74,16 +74,16 @@ const FieldContainer = styled(Box)({
 const FieldLabel = styled("label")(({ theme }) => ({
 	display: "flex",
 	alignItems: "center",
-	marginBottom: 6, 
+	marginBottom: 6,
 	color: theme.palette.text.secondary,
-	fontWeight: 500, 
-	fontSize: "0.875rem", 
+	fontWeight: 500,
+	fontSize: "0.875rem",
 	fontFamily: theme.typography.fontFamily,
-	lineHeight: theme.typography.body2.lineHeight, 
+	lineHeight: theme.typography.body2.lineHeight,
 }));
 
 const LabelIcon = styled(Box)({
-	marginRight: 8, 
+	marginRight: 8,
 	opacity: 0.9,
 	display: "flex",
 	alignItems: "center",
@@ -92,42 +92,42 @@ const LabelIcon = styled(Box)({
 const StyledTextField = styled(TextField)<{ multiline?: boolean }>(
 	({ theme, multiline }) => ({
 		"& .MuiOutlinedInput-root": {
-			borderRadius: 6, 
-			backgroundColor: theme.palette.background.paper, 
-			border: `1px solid ${theme.palette.divider}`, 
-			padding: 0, 
-			minHeight: multiline ? "auto" : "36px", 
-			height: multiline ? "auto" : "36px", 
+			borderRadius: 6,
+			backgroundColor: theme.palette.background.paper,
+			border: `1px solid ${theme.palette.divider}`,
+			padding: 0,
+			minHeight: multiline ? "auto" : "36px",
+			height: multiline ? "auto" : "36px",
 			alignItems: multiline ? "flex-start" : "center",
 			transition: "border-color 0.2s ease, box-shadow 0.2s ease",
 			"&:hover": {
-				borderColor: theme.palette.text.secondary, 
-				backgroundColor: theme.palette.background.paper, 
+				borderColor: theme.palette.text.secondary,
+				backgroundColor: theme.palette.background.paper,
 			},
 			"&.Mui-focused": {
-				backgroundColor: theme.palette.background.paper, 
-				borderColor: theme.palette.primary.main, 
-				boxShadow: `0 0 0 2px ${theme.palette.primary.main}33`, 
+				backgroundColor: theme.palette.background.paper,
+				borderColor: theme.palette.primary.main,
+				boxShadow: `0 0 0 2px ${theme.palette.primary.main}33`,
 			},
 			"& .MuiOutlinedInput-notchedOutline": {
 				border: "none",
 			},
 		},
 		"& .MuiInputBase-input": {
-			padding: multiline ? "8px 12px" : "4px 12px", 
-			fontSize: "0.875rem", 
-			lineHeight: 1.5, 
+			padding: multiline ? "8px 12px" : "4px 12px",
+			fontSize: "0.875rem",
+			lineHeight: 1.5,
 			fontFamily: "inherit",
-			height: multiline ? "auto" : "calc(36px - 8px)", 
+			height: multiline ? "auto" : "calc(36px - 8px)",
 			overflow: "hidden",
 			textOverflow: "ellipsis",
 			whiteSpace: multiline ? "pre-wrap" : "nowrap",
-			wordBreak: "break-word", 
-			alignSelf: multiline ? "flex-start" : "center", 
+			wordBreak: "break-word",
+			alignSelf: multiline ? "flex-start" : "center",
 		},
 		"& .MuiInputBase-input::placeholder": {
 			color: theme.palette.text.disabled,
-			opacity: 1, 
+			opacity: 1,
 		},
 	}),
 );
@@ -135,62 +135,62 @@ const StyledTextField = styled(TextField)<{ multiline?: boolean }>(
 // Container for buttons inside the input field
 const ActionButtonsContainer = styled(Box)({
 	position: "absolute",
-	top: "50%", 
-	transform: "translateY(-50%)", 
-	right: 6, 
+	top: "50%",
+	transform: "translateY(-50%)",
+	right: 6,
 	display: "flex",
-	alignItems: "center", 
+	alignItems: "center",
 	gap: 4,
 	zIndex: 10,
 });
 
 // Base styles for icon buttons mimicking shadcn ghost/icon button
 const ActionIconButton = styled(IconButton)(({ theme }) => ({
-	padding: 4, 
-	borderRadius: 4, 
-	height: 24, 
-	width: 24, 
-	color: theme.palette.text.secondary, 
+	padding: 4,
+	borderRadius: 4,
+	height: 24,
+	width: 24,
+	color: theme.palette.text.secondary,
 	"&:hover": {
-		backgroundColor: theme.palette.action.hover, 
+		backgroundColor: theme.palette.action.hover,
 		color: theme.palette.text.primary,
 	},
 }));
 
 // Specific styles for Save button
 const SaveButton = styled(ActionIconButton)(({ theme }) => ({
-	color: theme.palette.success.main, 
+	color: theme.palette.success.main,
 	"&:hover": {
-		backgroundColor: `${theme.palette.success.main}1A`, 
+		backgroundColor: `${theme.palette.success.main}1A`,
 		color: theme.palette.success.dark,
 	},
 }));
 
 // Specific styles for Cancel button
 const CancelButton = styled(ActionIconButton)(({ theme }) => ({
-	color: theme.palette.error.main, 
+	color: theme.palette.error.main,
 	"&:hover": {
-		backgroundColor: `${theme.palette.error.main}1A`, 
+		backgroundColor: `${theme.palette.error.main}1A`,
 		color: theme.palette.error.dark,
 	},
 }));
 
 // Mimic shadcn secondary/destructive button for Clear
 const ClearButton = styled(Button)(({ theme }) => ({
-	backgroundColor: theme.palette.action.selected, 
-	color: theme.palette.error.main, 
+	backgroundColor: theme.palette.action.selected,
+	color: theme.palette.error.main,
 	minWidth: "auto",
-	height: 24, 
-	padding: "0 8px", 
-	fontSize: "0.75rem", 
+	height: 24,
+	padding: "0 8px",
+	fontSize: "0.75rem",
 	borderRadius: 4,
-	textTransform: "none", 
+	textTransform: "none",
 	boxShadow: "none",
-	border: `1px solid ${theme.palette.action.disabledBackground}`, 
-	marginLeft: 4, 
+	border: `1px solid ${theme.palette.action.disabledBackground}`,
+	marginLeft: 4,
 	marginRight: 16,
 	"&:hover": {
-		backgroundColor: theme.palette.action.hover, 
+		backgroundColor: theme.palette.action.hover,
 		borderColor: theme.palette.error.light,
 		boxShadow: "none",
 	},
@@ -243,25 +243,25 @@ const DisplayContainer = styled("button", {
 const DisplayText = styled(Typography, {
 	shouldForwardProp: (prop) => prop !== "multiline",
 })<{ multiline?: boolean }>(({ multiline }) => ({
-	fontSize: "0.875rem", 
-	lineHeight: 1.5, 
-	fontFamily: "inherit", 
+	fontSize: "0.875rem",
+	lineHeight: 1.5,
+	fontFamily: "inherit",
 	whiteSpace: multiline ? "pre-wrap" : "nowrap",
 	wordBreak: "break-word",
-	paddingRight: 30, 
-	overflow: "hidden", 
-	textOverflow: "ellipsis", 
-	flexGrow: 1, 
-	alignSelf: multiline ? "flex-start" : "center", 
+	paddingRight: 30,
+	overflow: "hidden",
+	textOverflow: "ellipsis",
+	flexGrow: 1,
+	alignSelf: multiline ? "flex-start" : "center",
 }));
 
 // Adjust placeholder style
 const PlaceholderText = styled(Typography)(({ theme }) => ({
 	color: theme.palette.text.disabled,
-	fontStyle: "normal", 
-	fontSize: "0.875rem", 
-	lineHeight: 1.5, 
-	paddingRight: 30, 
+	fontStyle: "normal",
+	fontSize: "0.875rem",
+	lineHeight: 1.5,
+	paddingRight: 30,
 	overflow: "hidden",
 	textOverflow: "ellipsis",
 	whiteSpace: "nowrap",
@@ -271,19 +271,19 @@ const PlaceholderText = styled(Typography)(({ theme }) => ({
 // Mimic shadcn icon button for Edit button
 const EditButton = styled(IconButton)(({ theme }) => ({
 	position: "absolute",
-	top: "50%", 
-	transform: "translateY(-50%)", 
-	right: 6, 
-	color: theme.palette.text.secondary, 
-	opacity: 0, 
+	top: "50%",
+	transform: "translateY(-50%)",
+	right: 6,
+	color: theme.palette.text.secondary,
+	opacity: 0,
 	transition: "opacity 0.2s ease, background-color 0.2s ease, color 0.2s ease",
-	padding: 4, 
-	borderRadius: 4, 
-	height: 24, 
-	width: 24, 
+	padding: 4,
+	borderRadius: 4,
+	height: 24,
+	width: 24,
 	marginLeft: 4,
 	"&:hover": {
-		backgroundColor: theme.palette.action.hover, 
+		backgroundColor: theme.palette.action.hover,
 		color: theme.palette.text.primary,
 	},
 }));

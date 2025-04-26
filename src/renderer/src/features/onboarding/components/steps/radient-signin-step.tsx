@@ -5,9 +5,9 @@
  * to set up their Radient Pass account.
  */
 
-import { Box, CircularProgress, Typography, useTheme } from "@mui/material"; 
+import { Box, CircularProgress, Typography, useTheme } from "@mui/material";
 import { RadientAuthButtons } from "@shared/components/auth";
-import { useRadientPricesQuery } from "@shared/hooks/use-radient-prices-query"; 
+import { useRadientPricesQuery } from "@shared/hooks/use-radient-prices-query";
 import type { FC } from "react";
 import {
 	EmojiContainer,
@@ -43,14 +43,15 @@ export const RadientSignInStep: FC<RadientSignInStepProps> = ({
 		return `$${amount.toFixed(2)} USD`; // Basic USD formatting
 	};
 
-
 	// Use SectionContainer for the main wrapper with animation
 	return (
 		<SectionContainer>
 			{/* Use SectionDescription for main text, adjust font size if needed */}
 			<SectionDescription sx={{ mb: 3 }}>
-				Sign in with your preferred method to get started with Radient Pass in a couple clicks.
-				This gives you access to hundreds of models updated in real time, cost-saving with Radient Auto, web search, image generation, site crawling, and more all in Local Operator.
+				Sign in with your preferred method to get started with Radient Pass in a
+				couple clicks. This gives you access to hundreds of models updated in
+				real time, cost-saving with Radient Auto, web search, image generation,
+				site crawling, and more all in Local Operator.
 			</SectionDescription>
 
 			{/* Use SectionDescription for the credit info */}

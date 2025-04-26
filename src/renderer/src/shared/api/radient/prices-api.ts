@@ -27,9 +27,7 @@ function joinUrl(baseUrl: string, path: string): string {
  * @returns A promise that resolves with the prices data.
  * @throws Throws an error if the API request fails.
  */
-export const fetchPrices = async (
-	baseUrl: string,
-): Promise<PricesResponse> => {
+export const fetchPrices = async (baseUrl: string): Promise<PricesResponse> => {
 	const url = joinUrl(baseUrl, "/v1/prices"); // Construct the full URL
 
 	try {

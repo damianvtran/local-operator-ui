@@ -36,10 +36,10 @@ export const useRadientAuth = () => {
 	const {
 		user: radientUser,
 		session,
-		isLoading, 
+		isLoading,
 		error,
-		isAuthenticated, 
-		hasLocalSession, 
+		isAuthenticated,
+		hasLocalSession,
 		signOut,
 		refreshUser,
 		refreshToken,
@@ -95,13 +95,14 @@ export const useRadientAuth = () => {
 		error,
 
 		// User information: only return if authenticated, otherwise null
-		user: isAuthenticated && radientUser?.account
-			? {
-					name: radientUser.account.name,
-					email: radientUser.account.email,
-					radientUser: radientUser as RadientUser,
-			  }
-			: null,
+		user:
+			isAuthenticated && radientUser?.account
+				? {
+						name: radientUser.account.name,
+						email: radientUser.account.email,
+						radientUser: radientUser as RadientUser,
+					}
+				: null,
 
 		// Session token for API calls
 		sessionToken: session?.accessToken,

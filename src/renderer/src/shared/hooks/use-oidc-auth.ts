@@ -221,7 +221,7 @@ export const useOidcAuth = (
 				// Let the main flow handle setting loading to false.
 			}
 		},
-		[queryClient, updateConfig, onSuccess, onAfterCredentialUpdate], 
+		[queryClient, updateConfig, onSuccess, onAfterCredentialUpdate],
 	);
 
 	/**

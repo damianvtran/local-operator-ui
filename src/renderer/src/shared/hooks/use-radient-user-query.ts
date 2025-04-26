@@ -9,6 +9,7 @@
 import { createRadientClient } from "@shared/api/radient";
 import { apiConfig } from "@shared/config";
 import type { RadientUser } from "@shared/providers/auth";
+import { useUserStore } from "@shared/store/user-store";
 import {
 	clearSession,
 	getSession,
@@ -16,7 +17,6 @@ import {
 } from "@shared/utils/session-store";
 import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useUserStore } from "@shared/store/user-store";
 
 // Query keys for Radient user data
 export const radientUserKeys = {

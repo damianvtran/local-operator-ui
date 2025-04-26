@@ -19,7 +19,7 @@ import {
 } from "@mui/material";
 import { RadientAuthButtons } from "@shared/components/auth";
 import { useRadientAuth } from "@shared/hooks";
-import { useUserStore } from "@shared/store/user-store"; 
+import { useUserStore } from "@shared/store/user-store";
 import { type FC, useCallback, useMemo } from "react";
 
 // Shadcn-inspired container for info rows
