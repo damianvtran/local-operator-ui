@@ -27,6 +27,11 @@ type RadientAuthButtonsProps = {
 	 */
 	onSignInSuccess?: () => void;
 	/**
+	 * Optional callback to be called after RADIENT_API_KEY is set/updated.
+	 * Use this to force a model refresh and/or credentials refetch after Radient sign-in.
+	 */
+	onAfterCredentialUpdate?: () => void;
+	/**
 	 * Optional title text to display above the buttons
 	 */
 	titleText?: string;
@@ -36,32 +41,29 @@ type RadientAuthButtonsProps = {
 	descriptionText?: string;
 };
 
-// --- Styled Components (shadcn-inspired) ---
-
 // Base button style, similar to SecondaryButton in onboarding-styled
 const SignInButton = styled(Button)(({ theme }) => ({
 	display: "flex",
 	alignItems: "center",
-	justifyContent: "center", // Center content
-	padding: theme.spacing(0.75, 2), // Consistent padding
-	borderRadius: theme.shape.borderRadius * 0.75, // Consistent radius
-	fontSize: "0.875rem", // Standard font size
-	fontWeight: 500, // Standard weight
+	justifyContent: "center",
+	padding: theme.spacing(0.75, 2),
+	borderRadius: theme.shape.borderRadius * 0.75,
+	fontSize: "0.875rem",
+	fontWeight: 500,
 	textTransform: "none",
-	marginBottom: theme.spacing(1.5), // Reduced margin between buttons
+	marginBottom: theme.spacing(1.5),
 	width: "100%",
-	maxWidth: 320, // Keep max width for centering effect
-	border: `1px solid ${theme.palette.divider}`, // Standard border
-	backgroundColor: theme.palette.background.paper, // Standard background
-	color: theme.palette.text.primary, // Standard text color
-	boxShadow: "none", // Remove shadow
+	maxWidth: 320,
+	border: `1px solid ${theme.palette.divider}`,
+	backgroundColor: theme.palette.background.paper,
+	color: theme.palette.text.primary,
+	boxShadow: "none",
 	transition:
-		"background-color 0.2s ease-in-out, border-color 0.2s ease-in-out", // Standard transition
+		"background-color 0.2s ease-in-out, border-color 0.2s ease-in-out",
 	"&:hover": {
-		backgroundColor: theme.palette.action.hover, // Standard hover
-		borderColor: theme.palette.divider, // Keep border consistent on hover
-		boxShadow: "none", // Ensure no shadow on hover
-		// transform: "none", // Ensure no transform
+		backgroundColor: theme.palette.action.hover,
+		borderColor: theme.palette.divider,
+		boxShadow: "none",
 	},
 	"&:disabled": {
 		borderColor: theme.palette.divider,
@@ -70,18 +72,17 @@ const SignInButton = styled(Button)(({ theme }) => ({
 	},
 }));
 
-// Specific button styles are now minimal, inheriting from SignInButton
-const GoogleButton = styled(SignInButton)({}); // Inherits all styles
+const GoogleButton = styled(SignInButton)({});
 
-const MicrosoftButton = styled(SignInButton)({}); // Inherits all styles
+const MicrosoftButton = styled(SignInButton)({});
 
 const IconContainer = styled(Box)(({ theme }) => ({
 	display: "flex",
 	alignItems: "center",
 	justifyContent: "center",
-	marginRight: theme.spacing(1), // Reduced margin
-	fontSize: "1rem", // Slightly smaller icon to fit button style
-	width: 20, // Explicit width/height for alignment
+	marginRight: theme.spacing(1),
+	fontSize: "1rem",
+	width: 20,
 	height: 20,
 }));
 
@@ -99,21 +100,17 @@ const ButtonsContainer = styled(Box)(() => ({
  */
 export const RadientAuthButtons: FC<RadientAuthButtonsProps> = ({
 	onSignInSuccess,
+	onAfterCredentialUpdate,
 	titleText = "Sign in to Radient",
 	descriptionText = "Choose your preferred sign-in method to access Radient services.",
 }) => {
 	const theme = useTheme(); // Get theme for sx props
-	// Pass the onSignInSuccess callback to the hook
 	const { signInWithGoogle, signInWithMicrosoft, loading, error } = useOidcAuth(
 		{
+			onAfterCredentialUpdate,
 			onSuccess: onSignInSuccess,
 		},
 	);
-
-	// const queryClient = useQueryClient(); // No longer needed here
-
-	// Remove the useEffect that tried to infer success
-	// useEffect(() => { ... });
 
 	const handleGoogleSignIn = () => {
 		signInWithGoogle();
@@ -127,60 +124,53 @@ export const RadientAuthButtons: FC<RadientAuthButtonsProps> = ({
 		<Box sx={{ width: "100%", maxWidth: 320, margin: "0 auto" }}>
 			{" "}
 			{/* Center the whole component */}
-			{/* Title - Use styles similar to SectionTitle */}
 			{titleText && (
 				<Typography
-					// Use sx prop for finer control, aligning with SectionTitle style
 					sx={{
-						fontSize: "1.125rem", // ~18px
+						fontSize: "1.125rem",
 						fontWeight: 500,
-						marginBottom: theme.spacing(1), // Reduced margin
+						marginBottom: theme.spacing(1),
 						color: theme.palette.text.primary,
-						textAlign: "center", // Center title
+						textAlign: "center",
 					}}
 				>
 					{titleText}
 				</Typography>
 			)}
-			{/* Description - Use styles similar to SectionDescription */}
 			{descriptionText && (
 				<Typography
-					// Use sx prop aligning with SectionDescription style
 					sx={{
-						fontSize: "0.875rem", // ~14px
+						fontSize: "0.875rem",
 						color: theme.palette.text.secondary,
-						marginBottom: theme.spacing(3), // Consistent margin
+						marginBottom: theme.spacing(3),
 						lineHeight: 1.5,
-						textAlign: "center", // Center description
+						textAlign: "center",
 					}}
 				>
 					{descriptionText}
 				</Typography>
 			)}
 			<ButtonsContainer>
-				{/* Google Button */}
 				<GoogleButton onClick={handleGoogleSignIn} disabled={loading}>
 					<IconContainer>
 						<FontAwesomeIcon icon={faGoogle} />
 					</IconContainer>
 					{loading ? (
-						<CircularProgress size={16} sx={{ mr: 1 }} color="inherit" /> // Smaller spinner
+						<CircularProgress size={16} sx={{ mr: 1 }} color="inherit" />
 					) : null}
 					Sign in with Google
 				</GoogleButton>
 
-				{/* Microsoft Button */}
 				<MicrosoftButton onClick={handleMicrosoftSignIn} disabled={loading}>
 					<IconContainer>
 						<FontAwesomeIcon icon={faMicrosoft} />
 					</IconContainer>
 					{loading ? (
-						<CircularProgress size={16} sx={{ mr: 1 }} color="inherit" /> // Smaller spinner
+						<CircularProgress size={16} sx={{ mr: 1 }} color="inherit" />
 					) : null}
 					Sign in with Microsoft
 				</MicrosoftButton>
 
-				{/* Error Message */}
 				{error && (
 					<Typography
 						variant="body2"

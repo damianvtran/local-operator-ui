@@ -40,7 +40,9 @@ import { SliderSetting } from "@shared/components/common/slider-setting";
 import { HostingSelect } from "@shared/components/hosting/hosting-select";
 import { ModelSelect } from "@shared/components/hosting/model-select";
 import { useConfig } from "@shared/hooks/use-config";
+import { useCredentials } from "@shared/hooks/use-credentials";
 import { useCreditBalance } from "@shared/hooks/use-credit-balance";
+import { useModels } from "@shared/hooks/use-models";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import { useUpdateConfig } from "@shared/hooks/use-update-config";
 import { useUsageRollup } from "@shared/hooks/use-usage-rollup";
@@ -478,6 +480,39 @@ export const SettingsPage: FC = () => {
 	const [isScrolling, setIsScrolling] = useState(false);
 	const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null); // Ref for scroll timeout
 
+	const { data: credentialsData, refetch: refetchCredentials } =
+		useCredentials();
+	const { refreshModels } = useModels();
+
+	// Memoize the credential keys to avoid unnecessary effect triggers
+	const credentialKeys = useMemo(
+		() => (credentialsData?.keys ? [...credentialsData.keys].sort() : []),
+		[credentialsData?.keys],
+	);
+
+	// Only refresh models if credential keys or hosting have actually changed
+	const lastRefreshRef = useRef<{ keys: string; hosting: string | undefined }>({
+		keys: "",
+		hosting: undefined,
+	});
+	useEffect(() => {
+		const keysString = credentialKeys.join(",");
+		const hosting = config?.values?.hosting;
+		if (
+			lastRefreshRef.current.keys !== keysString ||
+			lastRefreshRef.current.hosting !== hosting
+		) {
+			lastRefreshRef.current = { keys: keysString, hosting };
+			refreshModels().catch((err) => {
+				console.error(
+					"Failed to refresh models after credentials or hosting change:",
+					err,
+				);
+			});
+		}
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [credentialKeys, config?.values?.hosting, refreshModels]);
+
 	// Refs for scrolling to sections
 	const sectionRefs = useRef<Record<string, RefObject<HTMLDivElement>>>({
 		general: useRef<HTMLDivElement>(null),
@@ -810,7 +845,12 @@ export const SettingsPage: FC = () => {
 						cardRef={sectionRefs.radient} // Assign ref
 					>
 						{/* Render RadientAccountSection always */}
-						<RadientAccountSection />
+						<RadientAccountSection
+							onAfterCredentialUpdate={() => {
+								refreshModels();
+								refetchCredentials();
+							}}
+						/>
 
 						{/* Conditionally render Billing and Usage if authenticated */}
 						{isAuthenticated && (

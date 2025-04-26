@@ -28,10 +28,10 @@ type ScrollToBottomButtonProps = {
 	className?: string;
 };
 
-const ButtonContainer = styled(Box)(
-	({
-		isChatUtilitiesExpanded,
-	}: Pick<ScrollToBottomButtonProps, "isChatUtilitiesExpanded">) => ({
+const ButtonContainer = styled(Box, {
+	shouldForwardProp: (prop) => prop !== "isChatUtilitiesExpanded",
+})<Pick<ScrollToBottomButtonProps, "isChatUtilitiesExpanded">>(
+	({ isChatUtilitiesExpanded }) => ({
 		position: "absolute",
 		bottom: isChatUtilitiesExpanded ? 260 : 200,
 		zIndex: 1000,
@@ -95,6 +95,7 @@ export const ScrollToBottomButton: FC<ScrollToBottomButtonProps> = ({
 
 	return (
 		<Fade in={visible} timeout={200}>
+			{/* Pass isChatUtilitiesExpanded to the styled component for styling, but prevent it from reaching the DOM */}
 			<ButtonContainer
 				isChatUtilitiesExpanded={isChatUtilitiesExpanded}
 				className={className}

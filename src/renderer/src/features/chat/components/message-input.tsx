@@ -16,6 +16,7 @@ import {
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import { useMessageInput } from "@shared/hooks/use-message-input";
+import { normalizePath } from "@shared/utils/path-utils";
 import { useMemo, useRef, useState } from "react";
 import type { ChangeEvent, FC, FormEvent } from "react";
 import type { Message } from "../types/message";
@@ -354,10 +355,9 @@ export const MessageInput: FC<MessageInputProps> = ({
 	const handleFileSelect = (e: ChangeEvent<HTMLInputElement>) => {
 		if (e.target.files && e.target.files.length > 0) {
 			const newAttachments = Array.from(e.target.files).map((file) => {
-				// @ts-ignore Electron file path
 				const filePath = file.path;
 				if (filePath) {
-					return filePath;
+					return normalizePath(filePath);
 				}
 				return URL.createObjectURL(file);
 			});

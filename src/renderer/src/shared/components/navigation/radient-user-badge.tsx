@@ -79,7 +79,7 @@ export const RadientUserBadge: FC<RadientUserBadgeProps> = ({
 		<BadgeContainer>
 			<Chip label="Radient Authenticated" color="success" size="small" />
 
-			{showDetails && (
+			{showDetails && user && (
 				<UserInfoContainer>
 					<Typography variant="subtitle2">{user.name}</Typography>
 					<Typography variant="caption" color="text.secondary">
