@@ -288,7 +288,10 @@ export const CreateAgentStep: FC = () => {
 						icon={<FontAwesomeIcon icon={faCheck} />}
 						sx={successAlertSx}
 					>
-						<Box component="span" sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+						<Box
+							component="span"
+							sx={{ display: "flex", alignItems: "center", gap: 1 }}
+						>
 							<EmojiContainer sx={{ mb: 0 }}>🎉</EmojiContainer> AI assistant
 							created successfully!
 						</Box>

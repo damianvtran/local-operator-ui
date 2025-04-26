@@ -9,6 +9,6 @@ import { useRadientTokenRefresher } from "@shared/hooks/use-radient-token-refres
  * This component should be placed within the main provider tree (e.g., in main.tsx).
  */
 export const RadientTokenRefresherRunner = (): null => {
-  useRadientTokenRefresher();
-  return null;
+	useRadientTokenRefresher();
+	return null;
 };

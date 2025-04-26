@@ -59,8 +59,9 @@ const DividerHoverArea = styled(Box, {
  */
 const DividerLine = styled(Box, {
 	shouldForwardProp: (prop) => prop !== "$active" && prop !== "$side",
-})<{ $side: "left" | "right"; $active: boolean }>(({ theme, $side, $active }) => ({
-	position: "absolute",
+})<{ $side: "left" | "right"; $active: boolean }>(
+	({ theme, $side, $active }) => ({
+		position: "absolute",
 		top: 0,
 		[$side]: 0,
 		width: $active ? "3px" : "1px",

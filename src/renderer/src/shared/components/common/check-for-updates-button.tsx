@@ -1,7 +1,7 @@
 import { Alert, Box, Button, Snackbar, Typography } from "@mui/material";
 import { useDeferredUpdatesStore } from "@shared/store/deferred-updates-store";
-import { useEffect, useRef, useState } from "react";
 import { isDevelopmentMode } from "@shared/utils/env-utils";
+import { useEffect, useRef, useState } from "react";
 
 /**
  * Component that shows a button to manually check for updates.

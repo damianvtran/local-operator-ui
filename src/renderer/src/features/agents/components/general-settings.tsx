@@ -13,13 +13,7 @@ import {
 	faTag,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
-	Box,
-	Divider,
-	Grid,
-	Typography,
-	alpha,
-} from "@mui/material";
+import { Box, Divider, Grid, Typography, alpha } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import type {
 	AgentDetails,
@@ -115,26 +109,26 @@ const TitleIcon = styled(FontAwesomeIcon)(({ theme }) => ({
 
 // Restyle InfoCard to be just the value display box, matching input height/padding
 const InfoCard = styled(Box)(({ theme }) => ({
-	display: "flex", 
-	alignItems: "center", 
-	height: "36px", 
-	padding: theme.spacing(0.5, 1.5), 
-	borderRadius: 4, 
+	display: "flex",
+	alignItems: "center",
+	height: "36px",
+	padding: theme.spacing(0.5, 1.5),
+	borderRadius: 4,
 	backgroundColor: theme.palette.background.paper,
-	border: `1px solid ${theme.palette.divider}`, 
+	border: `1px solid ${theme.palette.divider}`,
 	boxSizing: "border-box",
-	width: "100%", 
-	overflow: "hidden", 
+	width: "100%",
+	overflow: "hidden",
 }));
 
 // Adjust ValueText styles slightly if needed
 const ValueText = styled(Typography)(({ theme }) => ({
-	fontWeight: 400, 
+	fontWeight: 400,
 	fontSize: "0.875rem",
 	color: theme.palette.text.primary,
-	whiteSpace: "nowrap", 
-	overflow: "hidden", 
-	textOverflow: "ellipsis", 
+	whiteSpace: "nowrap",
+	overflow: "hidden",
+	textOverflow: "ellipsis",
 }));
 
 const MonospaceValueText = styled(ValueText)(({ theme }) => ({
@@ -238,7 +232,9 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 					/>
 				</Box>
 
-				<Grid container spacing={2} alignItems="center"> {/* Vertically align grid items */}
+				<Grid container spacing={2} alignItems="center">
+					{" "}
+					{/* Vertically align grid items */}
 					<Grid item xs={12} md={6}>
 						<HostingSelect
 							// Modified key to not include the selectedAgent.id, so it doesn't re-render and reset when agent changes
@@ -285,7 +281,6 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 							filterByCredentials={false}
 						/>
 					</Grid>
-
 					<Grid item xs={12} md={6}>
 						{/* Only render ModelSelect if we have a hosting provider selected */}
 						{currentHosting ? (
