@@ -387,3 +387,17 @@ export type UsageRollupResponse = {
 	 */
 	end_date: string;
 };
+
+/**
+ * Response type for the /v1/prices endpoint.
+ */
+export type PricesResponse = {
+	/**
+	 * Default credits granted upon new account creation.
+	 */
+	default_new_credits: number;
+	/**
+	 * Default credits granted upon first registration/payment.
+	 */
+	default_registration_credits: number;
+};

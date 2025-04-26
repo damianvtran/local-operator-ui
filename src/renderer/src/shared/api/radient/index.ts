@@ -5,6 +5,7 @@
  */
 import * as AuthApiImpl from "./auth-api";
 import * as BillingApiImpl from "./billing-api";
+import * as PricesApiImpl from "./prices-api";
 import type {
 	AuthTokenExchangeResult,
 	CreateApplicationRequest,
@@ -28,6 +29,7 @@ export {
 	revokeToken,
 } from "./auth-api";
 export { getCreditBalance } from "./billing-api";
+export { fetchPrices } from "./prices-api";
 export { getUsageRollup } from "./usage-api";
 
 // Export all types
@@ -45,6 +47,7 @@ export type {
 	CreateApplicationRequest,
 	CreateApplicationResult,
 	ErrorResponse,
+	PricesResponse,
 } from "./types";
 
 /**
@@ -116,6 +119,13 @@ export class RadientClient {
 	 */
 	get usage(): BoundApi<ApiWithBaseUrl<typeof UsageApiImpl>> {
 		return this.bindBaseUrlToApi(UsageApiImpl);
+	}
+
+	/**
+	 * Get the Prices API client with methods bound to the base URL
+	 */
+	get prices(): BoundApi<ApiWithBaseUrl<typeof PricesApiImpl>> {
+		return this.bindBaseUrlToApi(PricesApiImpl);
 	}
 
 	/**
