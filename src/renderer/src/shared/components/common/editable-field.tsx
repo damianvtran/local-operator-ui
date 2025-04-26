@@ -14,7 +14,6 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
 	Box,
 	Button,
-	type ButtonProps, // Import ButtonProps
 	IconButton,
 	TextField,
 	Typography,
@@ -207,37 +206,39 @@ const ClearButton = styled(Button)(({ theme }) => ({
 	},
 }));
 
-// Use a styled Button for the display state for better semantics
-const DisplayContainer = styled(Button, {
+/**
+ * DisplayContainer is a styled native button for accessibility.
+ * Interactive children (edit/clear) are rendered outside the button to avoid nested button issues.
+ */
+const DisplayContainer = styled("button", {
 	shouldForwardProp: (prop) => prop !== "multiline",
-	// Explicitly type the props passed to the styled Button
-})<ButtonProps & { multiline?: boolean }>(({ theme, multiline }) => ({
-	padding: multiline ? "8px 12px" : "4px 12px", // Match input padding
-	borderRadius: 6, // Match input border radius
-	backgroundColor: theme.palette.background.paper, // Match input background
-	border: `1px solid ${theme.palette.divider}`, // Match input border
+})<{ multiline?: boolean }>(({ theme, multiline }) => ({
+	padding: multiline ? "8px 12px" : "4px 12px",
+	borderRadius: 6,
+	backgroundColor: theme.palette.background.paper,
+	border: `1px solid ${theme.palette.divider}`,
 	position: "relative",
-	minHeight: multiline ? "auto" : "36px", // Match input height
-	height: multiline ? "auto" : "36px", // Explicit height
+	minHeight: multiline ? "auto" : "36px",
+	height: multiline ? "auto" : "36px",
 	display: "flex",
-	alignItems: multiline ? "flex-start" : "center", // Align text
+	alignItems: multiline ? "flex-start" : "center",
 	transition: "border-color 0.2s ease, background-color 0.2s ease",
 	cursor: "pointer",
-	boxSizing: "border-box", // Ensure padding/border are included in height
-	// Button specific resets/styles
-	width: "100%", // Ensure it takes full width like the input
-	textAlign: "left", // Align text to the left
-	textTransform: "none", // Reset button text transform
-	justifyContent: "flex-start", // Align content (icon, text) to the start
-	color: theme.palette.text.primary, // Ensure text color matches input text
-	fontWeight: "normal", // Reset button font weight
-	fontFamily: "inherit", // Use default font
-	"&:hover": {
-		borderColor: theme.palette.text.secondary, // Match input hover border
-		backgroundColor: theme.palette.action.hover, // Subtle background change on hover
-		"& .edit-button": {
-			opacity: 1, // Show edit button on hover
-		},
+	boxSizing: "border-box",
+	width: "100%",
+	textAlign: "left",
+	textTransform: "none",
+	justifyContent: "flex-start",
+	color: theme.palette.text.primary,
+	fontWeight: "normal",
+	fontFamily: "inherit",
+	outline: "none",
+	"&:hover, &:focus": {
+		borderColor: theme.palette.text.secondary,
+		backgroundColor: theme.palette.action.hover,
+	},
+	"&:focus-visible": {
+		outline: `2px solid ${theme.palette.primary.main}`,
 	},
 }));
 
@@ -484,19 +485,16 @@ export const EditableField: FC<EditableFieldProps> = ({
 	};
 
 	/**
-	 * Handles keydown events on the display container (div) to activate edit mode.
-	 * Explicitly typed for HTMLButtonElement, as DisplayContainer is now a Button.
+	 * Handles keydown events on the display container (button) to activate edit mode.
 	 * @param e - The keyboard event.
 	 */
 	const handleDisplayContainerKeyDown = (
 		e: KeyboardEvent<HTMLButtonElement>,
 	) => {
-		// Buttons are activated by Enter/Space by default, but we prevent default
-		// to avoid potential double activation if MUI's Button also handles it.
-		// We only need to call handleEdit.
+		// Activate edit mode on Enter/Space
 		if (e.key === "Enter" || e.key === " ") {
 			e.preventDefault();
-			handleEdit(); // Activate edit mode
+			handleEdit();
 		}
 	};
 
@@ -572,60 +570,65 @@ export const EditableField: FC<EditableFieldProps> = ({
 					</ActionButtonsContainer>
 				</Box>
 			) : (
-				// Using Box with role="button" is acceptable for MUI, but ensure accessibility attributes are correct
-				<DisplayContainer
-					onClick={handleEdit}
-					multiline={multiline}
-					aria-label={`Current value: ${displayValue || placeholder}. Click to edit.`}
-					tabIndex={0} // Make it focusable
-					// Use the explicitly typed handler function
-					onKeyDown={handleDisplayContainerKeyDown}
-				>
-					{displayValue ? (
-						<DisplayText multiline={multiline}>{displayValue}</DisplayText>
-					) : (
-						<PlaceholderText>{placeholder}</PlaceholderText>
-					)}
-					{/* Edit Button: Always present but hidden until hover/focus */}
+				<Box sx={{ position: "relative", width: "100%" }}>
+					<DisplayContainer
+						type="button"
+						onClick={handleEdit}
+						multiline={multiline}
+						aria-label={`Current value: ${displayValue || placeholder}. Click to edit.`}
+						onKeyDown={handleDisplayContainerKeyDown}
+					>
+						{displayValue ? (
+							<DisplayText multiline={multiline}>{displayValue}</DisplayText>
+						) : (
+							<PlaceholderText>{placeholder}</PlaceholderText>
+						)}
+					</DisplayContainer>
+					{/* Absolutely position edit/clear buttons visually inside, but outside the button in DOM */}
 					<EditButton
 						className="edit-button"
 						size="small"
-						onClick={(e) => {
-							e.stopPropagation(); // Prevent triggering DisplayContainer's onClick
-							handleEdit();
+						sx={{
+							position: "absolute",
+							top: "50%",
+							right: 6,
+							transform: "translateY(-50%)",
+							opacity: 0,
+							transition: "opacity 0.2s ease",
+							pointerEvents: "auto",
+							"&:hover, &:focus, button:focus + &": { opacity: 1 },
 						}}
+						onClick={handleEdit}
 						title="Edit"
-						aria-label={`Edit ${label}`} // Accessibility
-						// Ensure button is focusable when parent is focused
-						tabIndex={-1} // Initially not focusable, becomes focusable via hover/focus styles if needed
+						aria-label={`Edit ${label}`}
+						tabIndex={-1}
 					>
 						<FontAwesomeIcon icon={faPen} size="xs" />
 					</EditButton>
-					{/* Clear Button (visible on hover when not empty and not editing) */}
 					{showClearButton && (
 						<ClearButton
-							className="edit-button" // Use same class to show on hover
+							className="edit-button"
 							sx={{
 								position: "absolute",
 								top: "50%",
+								right: 36,
 								transform: "translateY(-50%)",
-								// Position next to edit icon, adjust based on icon size/padding
-								right: 30,
-								opacity: 0, // Hidden by default
+								opacity: 0,
 								transition: "opacity 0.2s ease",
-								pointerEvents: "auto", // Ensure it's clickable when visible
+								pointerEvents: "auto",
+								"&:hover, &:focus, button:focus + &": { opacity: 1 },
 							}}
 							size="small"
 							onClick={clearField}
 							title="Clear field"
 							aria-label={`Clear ${label}`}
 							startIcon={<FontAwesomeIcon icon={faEraser} />}
-							tabIndex={-1} // Initially not focusable
+							tabIndex={-1}
 						>
 							Clear
 						</ClearButton>
 					)}
-				</DisplayContainer>
+				</Box>
 			)}
 		</FieldContainer>
 	);
