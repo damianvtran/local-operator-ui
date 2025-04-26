@@ -480,7 +480,7 @@ export const SettingsPage: FC = () => {
 	const [isScrolling, setIsScrolling] = useState(false);
 	const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null); // Ref for scroll timeout
 
-	const { data: credentialsData } = useCredentials();
+	const { data: credentialsData, refetch: refetchCredentials } = useCredentials();
 	const { refreshModels } = useModels();
 
 	// Memoize the credential keys to avoid unnecessary effect triggers
@@ -841,7 +841,12 @@ export const SettingsPage: FC = () => {
 						cardRef={sectionRefs.radient} // Assign ref
 					>
 						{/* Render RadientAccountSection always */}
-						<RadientAccountSection />
+						<RadientAccountSection
+							onAfterCredentialUpdate={() => {
+								refreshModels();
+								refetchCredentials();
+							}}
+						/>
 
 						{/* Conditionally render Billing and Usage if authenticated */}
 						{isAuthenticated && (

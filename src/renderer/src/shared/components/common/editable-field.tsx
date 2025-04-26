@@ -74,65 +74,60 @@ const FieldContainer = styled(Box)({
 const FieldLabel = styled("label")(({ theme }) => ({
 	display: "flex",
 	alignItems: "center",
-	marginBottom: 6, // Reduced margin
+	marginBottom: 6, 
 	color: theme.palette.text.secondary,
-	fontWeight: 500, // Slightly less bold
-	fontSize: "0.875rem", // Small text size
-	// Add other relevant typography styles if needed, e.g., fontFamily
+	fontWeight: 500, 
+	fontSize: "0.875rem", 
 	fontFamily: theme.typography.fontFamily,
-	lineHeight: theme.typography.body2.lineHeight, // Example: Use body2 line height
+	lineHeight: theme.typography.body2.lineHeight, 
 }));
 
 const LabelIcon = styled(Box)({
-	marginRight: 8, // Reduced margin
+	marginRight: 8, 
 	opacity: 0.9,
 	display: "flex",
 	alignItems: "center",
 });
 
-// Mimic shadcn Input style
 const StyledTextField = styled(TextField)<{ multiline?: boolean }>(
 	({ theme, multiline }) => ({
 		"& .MuiOutlinedInput-root": {
-			borderRadius: 6, // Slightly less rounded
-			backgroundColor: theme.palette.background.paper, // Use paper background
-			border: `1px solid ${theme.palette.divider}`, // Use divider color for border
-			padding: 0, // Remove root padding
-			minHeight: multiline ? "auto" : "36px", // Target height
-			height: multiline ? "auto" : "36px", // Explicit height
+			borderRadius: 6, 
+			backgroundColor: theme.palette.background.paper, 
+			border: `1px solid ${theme.palette.divider}`, 
+			padding: 0, 
+			minHeight: multiline ? "auto" : "36px", 
+			height: multiline ? "auto" : "36px", 
 			alignItems: multiline ? "flex-start" : "center",
 			transition: "border-color 0.2s ease, box-shadow 0.2s ease",
 			"&:hover": {
-				borderColor: theme.palette.text.secondary, // Darker border on hover
-				backgroundColor: theme.palette.background.paper, // Keep background consistent
+				borderColor: theme.palette.text.secondary, 
+				backgroundColor: theme.palette.background.paper, 
 			},
 			"&.Mui-focused": {
-				backgroundColor: theme.palette.background.paper, // Keep background consistent
-				borderColor: theme.palette.primary.main, // Primary border color on focus
-				boxShadow: `0 0 0 2px ${theme.palette.primary.main}33`, // Subtle focus ring like shadcn
+				backgroundColor: theme.palette.background.paper, 
+				borderColor: theme.palette.primary.main, 
+				boxShadow: `0 0 0 2px ${theme.palette.primary.main}33`, 
 			},
-			// Remove default outline
 			"& .MuiOutlinedInput-notchedOutline": {
 				border: "none",
 			},
 		},
 		"& .MuiInputBase-input": {
-			padding: multiline ? "8px 12px" : "4px 12px", // Target inner padding (vertical 4px)
-			fontSize: "0.875rem", // Small text size
-			lineHeight: 1.5, // Adjusted line height
+			padding: multiline ? "8px 12px" : "4px 12px", 
+			fontSize: "0.875rem", 
+			lineHeight: 1.5, 
 			fontFamily: "inherit",
-			height: multiline ? "auto" : "calc(36px - 8px)", // Adjust height based on padding
-			// Ensure text doesn't overflow container
+			height: multiline ? "auto" : "calc(36px - 8px)", 
 			overflow: "hidden",
 			textOverflow: "ellipsis",
 			whiteSpace: multiline ? "pre-wrap" : "nowrap",
-			wordBreak: "break-word", // Keep break-word for multiline
-			alignSelf: multiline ? "flex-start" : "center", // Center single line text vertically
+			wordBreak: "break-word", 
+			alignSelf: multiline ? "flex-start" : "center", 
 		},
-		// Style placeholder
 		"& .MuiInputBase-input::placeholder": {
 			color: theme.palette.text.disabled,
-			opacity: 1, // Ensure placeholder is visible
+			opacity: 1, 
 		},
 	}),
 );
@@ -140,71 +135,69 @@ const StyledTextField = styled(TextField)<{ multiline?: boolean }>(
 // Container for buttons inside the input field
 const ActionButtonsContainer = styled(Box)({
 	position: "absolute",
-	top: "50%", // Center vertically
-	transform: "translateY(-50%)", // Adjust vertical centering
-	right: 6, // Position from right
+	top: "50%", 
+	transform: "translateY(-50%)", 
+	right: 6, 
 	display: "flex",
-	alignItems: "center", // Align items vertically
+	alignItems: "center", 
 	gap: 4,
 	zIndex: 10,
 });
 
 // Base styles for icon buttons mimicking shadcn ghost/icon button
 const ActionIconButton = styled(IconButton)(({ theme }) => ({
-	padding: 4, // Smaller padding
-	borderRadius: 4, // Slightly rounded corners
-	height: 24, // Smaller height
-	width: 24, // Smaller width
-	color: theme.palette.text.secondary, // Default color
+	padding: 4, 
+	borderRadius: 4, 
+	height: 24, 
+	width: 24, 
+	color: theme.palette.text.secondary, 
 	"&:hover": {
-		backgroundColor: theme.palette.action.hover, // Subtle hover background
+		backgroundColor: theme.palette.action.hover, 
 		color: theme.palette.text.primary,
 	},
 }));
 
 // Specific styles for Save button
 const SaveButton = styled(ActionIconButton)(({ theme }) => ({
-	color: theme.palette.success.main, // Green color for save
+	color: theme.palette.success.main, 
 	"&:hover": {
-		backgroundColor: `${theme.palette.success.main}1A`, // Lighter green background on hover
+		backgroundColor: `${theme.palette.success.main}1A`, 
 		color: theme.palette.success.dark,
 	},
 }));
 
 // Specific styles for Cancel button
 const CancelButton = styled(ActionIconButton)(({ theme }) => ({
-	color: theme.palette.error.main, // Red color for cancel/close
+	color: theme.palette.error.main, 
 	"&:hover": {
-		backgroundColor: `${theme.palette.error.main}1A`, // Lighter red background on hover
+		backgroundColor: `${theme.palette.error.main}1A`, 
 		color: theme.palette.error.dark,
 	},
 }));
 
 // Mimic shadcn secondary/destructive button for Clear
 const ClearButton = styled(Button)(({ theme }) => ({
-	backgroundColor: theme.palette.action.selected, // Use a subtle background
-	color: theme.palette.error.main, // Destructive text color
+	backgroundColor: theme.palette.action.selected, 
+	color: theme.palette.error.main, 
 	minWidth: "auto",
-	height: 24, // Match icon button height
-	padding: "0 8px", // Horizontal padding
-	fontSize: "0.75rem", // Smaller text
+	height: 24, 
+	padding: "0 8px", 
+	fontSize: "0.75rem", 
 	borderRadius: 4,
-	textTransform: "none", // No uppercase
+	textTransform: "none", 
 	boxShadow: "none",
-	border: `1px solid ${theme.palette.action.disabledBackground}`, // Subtle border
-	marginLeft: 4, // Add some space from icons
+	border: `1px solid ${theme.palette.action.disabledBackground}`, 
+	marginLeft: 4, 
 	marginRight: 16,
 	"&:hover": {
-		backgroundColor: theme.palette.action.hover, // Consistent hover
+		backgroundColor: theme.palette.action.hover, 
 		borderColor: theme.palette.error.light,
 		boxShadow: "none",
 	},
-	// Adjust icon size and margin
 	"& .MuiButton-startIcon": {
 		marginRight: 4,
 		marginLeft: -2,
 		"& > *:nth-of-type(1)": {
-			// Target the FontAwesomeIcon
 			fontSize: "0.8rem",
 		},
 	},
@@ -250,25 +243,25 @@ const DisplayContainer = styled("button", {
 const DisplayText = styled(Typography, {
 	shouldForwardProp: (prop) => prop !== "multiline",
 })<{ multiline?: boolean }>(({ multiline }) => ({
-	fontSize: "0.875rem", // Match input text size
-	lineHeight: 1.5, // Match input line height
-	fontFamily: "inherit", // Use standard font
+	fontSize: "0.875rem", 
+	lineHeight: 1.5, 
+	fontFamily: "inherit", 
 	whiteSpace: multiline ? "pre-wrap" : "nowrap",
 	wordBreak: "break-word",
-	paddingRight: 30, // Space for the edit button
-	overflow: "hidden", // Prevent overflow
-	textOverflow: "ellipsis", // Add ellipsis if text is too long
-	flexGrow: 1, // Allow text to take available space
-	alignSelf: multiline ? "flex-start" : "center", // Center single line text vertically
+	paddingRight: 30, 
+	overflow: "hidden", 
+	textOverflow: "ellipsis", 
+	flexGrow: 1, 
+	alignSelf: multiline ? "flex-start" : "center", 
 }));
 
 // Adjust placeholder style
 const PlaceholderText = styled(Typography)(({ theme }) => ({
 	color: theme.palette.text.disabled,
-	fontStyle: "normal", // Remove italic
-	fontSize: "0.875rem", // Match input text size
-	lineHeight: 1.5, // Match input line height
-	paddingRight: 30, // Space for the edit button
+	fontStyle: "normal", 
+	fontSize: "0.875rem", 
+	lineHeight: 1.5, 
+	paddingRight: 30, 
 	overflow: "hidden",
 	textOverflow: "ellipsis",
 	whiteSpace: "nowrap",
@@ -278,19 +271,19 @@ const PlaceholderText = styled(Typography)(({ theme }) => ({
 // Mimic shadcn icon button for Edit button
 const EditButton = styled(IconButton)(({ theme }) => ({
 	position: "absolute",
-	top: "50%", // Center vertically
-	transform: "translateY(-50%)", // Adjust vertical centering
-	right: 6, // Position from right
-	color: theme.palette.text.secondary, // Use secondary text color
-	opacity: 0, // Hidden by default
+	top: "50%", 
+	transform: "translateY(-50%)", 
+	right: 6, 
+	color: theme.palette.text.secondary, 
+	opacity: 0, 
 	transition: "opacity 0.2s ease, background-color 0.2s ease, color 0.2s ease",
-	padding: 4, // Match other icon buttons
-	borderRadius: 4, // Match other icon buttons
-	height: 24, // Match other icon buttons
-	width: 24, // Match other icon buttons
+	padding: 4, 
+	borderRadius: 4, 
+	height: 24, 
+	width: 24, 
 	marginLeft: 4,
 	"&:hover": {
-		backgroundColor: theme.palette.action.hover, // Subtle hover background
+		backgroundColor: theme.palette.action.hover, 
 		color: theme.palette.text.primary,
 	},
 }));
@@ -314,25 +307,22 @@ export const EditableField: FC<EditableFieldProps> = ({
 }) => {
 	const [isEditing, setIsEditing] = useState(false);
 	const [editValue, setEditValue] = useState(value);
-	const [displayValue, setDisplayValue] = useState(value); // Separate display value
-	const [originalValue, setOriginalValue] = useState(value); // Value when edit started
-	const [internalIsSaving, setInternalIsSaving] = useState(false); // Internal saving state
-	const [isClearing, setIsClearing] = useState(false); // Clearing state
+	const [displayValue, setDisplayValue] = useState(value);
+	const [originalValue, setOriginalValue] = useState(value);
+	const [internalIsSaving, setInternalIsSaving] = useState(false);
+	const [isClearing, setIsClearing] = useState(false);
 	const inputRef = useRef<HTMLInputElement>(null);
-	const actionButtonsRef = useRef<HTMLDivElement>(null); // Ref for action buttons container
+	const actionButtonsRef = useRef<HTMLDivElement>(null);
 
-	const isSaving = externalIsSaving || internalIsSaving; // Combine saving states
+	const isSaving = externalIsSaving || internalIsSaving;
 
 	// Update internal states when the external value prop changes
 	useEffect(() => {
-		// Only update if not currently editing to avoid disrupting user input
 		if (!isEditing) {
 			setEditValue(value);
 			setDisplayValue(value);
 			setOriginalValue(value);
 		} else {
-			// If editing, update the original value baseline in case the prop changed externally
-			// but keep the user's current editValue
 			setOriginalValue(value);
 		}
 	}, [value, isEditing]);
