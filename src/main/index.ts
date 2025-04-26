@@ -477,6 +477,10 @@ app
 			sessionStore.delete("radient_access_token");
 			sessionStore.delete("radient_refresh_token");
 			sessionStore.delete("radient_token_expiry");
+			sessionStore.delete("oauth_access_token");
+			sessionStore.delete("oauth_id_token");
+			sessionStore.delete("oauth_expiry");
+			sessionStore.delete("oauth_provider");
 			return true;
 		});
 

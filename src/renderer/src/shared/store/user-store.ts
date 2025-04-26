@@ -49,12 +49,28 @@ type UserState = {
 	 * @param profile - The new profile information
 	 */
 	updateProfile: (profile: Partial<UserProfile>) => void;
+
+	/**
+	 * Clear the user profile (reset to empty)
+	 */
+	clearProfile: () => void;
+
+	/**
+	 * Flag indicating if a sign-out operation is in progress
+	 */
+	isSigningOut: boolean;
+
+	/**
+	 * Set the sign-out status
+	 * @param status - The new sign-out status
+	 */
+	setIsSigningOut: (status: boolean) => void;
 };
 
 /**
  * Default user profile values
  */
-const DEFAULT_PROFILE: UserProfile = {
+export const DEFAULT_PROFILE: UserProfile = {
 	name: "User",
 	email: "user@example.com",
 };
@@ -67,6 +83,7 @@ export const useUserStore = create<UserState>()(
 	persist(
 		(set) => ({
 			profile: DEFAULT_PROFILE,
+			isSigningOut: false, // Default value
 
 			updateName: (name) => {
 				set((state) => ({
@@ -93,6 +110,19 @@ export const useUserStore = create<UserState>()(
 						...profile,
 					},
 				}));
+			},
+
+			setIsSigningOut: (status) => {
+				set({ isSigningOut: status });
+			},
+
+			clearProfile: () => {
+				set({
+					profile: {
+						name: "",
+						email: "",
+					},
+				});
 			},
 		}),
 		{

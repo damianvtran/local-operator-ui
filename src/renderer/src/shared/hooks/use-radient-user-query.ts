@@ -6,7 +6,6 @@
  * Handles token refresh when access tokens expire.
  */
 
-import { resetQueryCache } from "@shared/api/query-client";
 import { createRadientClient } from "@shared/api/radient";
 import { apiConfig } from "@shared/config";
 import type { RadientUser } from "@shared/providers/auth";
@@ -17,6 +16,7 @@ import {
 } from "@shared/utils/session-store";
 import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useUserStore } from "@shared/store/user-store";
 
 // Query keys for Radient user data
 export const radientUserKeys = {
@@ -33,6 +33,7 @@ export const radientUserKeys = {
  */
 export const useRadientUserQuery = () => {
 	const queryClient = useQueryClient();
+	const { setIsSigningOut } = useUserStore(); // Get Zustand actions
 
 	// Create the Radient API client
 	const radientClient = createRadientClient(
@@ -208,6 +209,9 @@ export const useRadientUserQuery = () => {
 
 	// Mutation for signing out
 	const signOutMutation = useMutation({
+		onMutate: () => {
+			setIsSigningOut(true); // Set signing out flag *before* mutationFn runs
+		},
 		mutationFn: async () => {
 			// If we have a refresh token, try to revoke it
 			const session = sessionQuery.data;
@@ -224,19 +228,27 @@ export const useRadientUserQuery = () => {
 			}
 
 			// Clear the local session
-			clearSession();
+			await clearSession(); // Keep await as safeguard
 			return true;
 		},
-		onSuccess: () => {
-			// Reset the entire query cache to ensure a clean state
-			resetQueryCache();
-			// Show a success toast
+		onSuccess: async () => {
+			// Clear the local session
+			await clearSession(); // Keep await as safeguard
+
+			// Remove all radient-user queries from the cache to ensure immediate state update
+			queryClient.removeQueries({ queryKey: radientUserKeys.all });
+
+			// Reset the refresh token mutation state
+			refreshTokenMutation.reset();
+			// Show success toast
 			showSuccessToast("Successfully signed out");
+			setIsSigningOut(false); // Clear signing out flag on success
 		},
 		onError: (error) => {
 			const errorMessage =
 				error instanceof Error ? error.message : String(error);
 			showErrorToast(`Failed to sign out: ${errorMessage}`);
+			setIsSigningOut(false); // Clear signing out flag on error
 		},
 	});
 
