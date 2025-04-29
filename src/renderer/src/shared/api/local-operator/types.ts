@@ -491,6 +491,7 @@ export type JobCleanupResult = {
  */
 export type ActionType =
 	| "CODE" // Execute code
+	| "DELEGATE" // Delegate/assign a task to another agent
 	| "WRITE" // Write content
 	| "EDIT" // Edit existing content
 	| "DONE" // Complete the current task
