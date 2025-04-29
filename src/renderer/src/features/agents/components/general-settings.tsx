@@ -61,6 +61,7 @@ type GeneralSettingsProps = {
 
 const FieldContainer = styled(Box)({
 	position: "relative",
+	marginBottom: 16,
 });
 
 // Update FieldLabel to be a styled 'div' to prevent nesting issues
