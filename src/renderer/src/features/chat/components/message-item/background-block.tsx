@@ -9,6 +9,7 @@ import {
 	faLightbulb,
 	faPencilAlt,
 	faQuestion,
+	faShare,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, Collapse, Typography, alpha } from "@mui/material";
@@ -419,6 +420,8 @@ export const BackgroundBlock: FC<BackgroundBlockProps> = ({
 				return "Editing Content";
 			case "READ":
 				return "Reading Content";
+			case "DELEGATE":
+				return "Delegating Task";
 			default:
 				return executionType === "plan"
 					? "Planning"
@@ -442,6 +445,8 @@ export const BackgroundBlock: FC<BackgroundBlockProps> = ({
 				return faEdit;
 			case "READ":
 				return faBook;
+			case "DELEGATE":
+				return faShare;
 			default:
 				return executionType === "plan"
 					? faLightbulb
