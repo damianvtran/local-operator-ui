@@ -41,6 +41,10 @@ const DEFAULT_MESSAGE_SUGGESTIONS = [
 	"Fetch the MNIST dataset and train a good classifier",
 	"Look up interest rate trends and make a projection for the next 5 years",
 	"Make a presentation with a dependency graph of genetic factors for Alzheimer's disease",
+  "Is Apple buy/hold/sell?  Do a fundamentals analysis",
+  "Do a technical analysis on NVDA over the last year",
+  "What are the trending stocks on WallStreetBets?",
+  "What stocks are trending right now?"
 ];
 
 /**
