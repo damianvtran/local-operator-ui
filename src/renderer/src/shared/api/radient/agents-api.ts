@@ -15,6 +15,8 @@ import type {
 	CountResponse,
 	RadientApiResponse,
 	APIResponse,
+	AgentLike,
+	AgentFavourite,
 } from "./types";
 
 /**
@@ -551,4 +553,103 @@ export async function deleteAgentComment(
 	return response.status === 204
 		? { msg: "Deleted", result: undefined }
 		: response.json();
+}
+
+/**
+ * Get like details for the current user on an agent.
+ *
+ * @param baseUrl - The base URL of the Radient API
+ * @param agentId - The agent ID
+ * @param accessToken - The access token (JWT)
+ * @returns Like details or empty object if not liked
+ */
+export async function getAgentLike(
+	baseUrl: string,
+	agentId: string,
+	accessToken: string,
+): Promise<AgentLike | Record<string, never>> {
+	const url = joinUrl(baseUrl, `/v1/agents/${encodeURIComponent(agentId)}/like`);
+	const response = await fetch(url, {
+		method: "GET",
+		headers: {
+			Authorization: `Bearer ${accessToken}`,
+		},
+		credentials: "same-origin",
+	});
+	if (!response.ok) {
+		const text = await response.text();
+		throw new Error(text || `HTTP ${response.status}`);
+	}
+	return response.json();
+}
+
+/**
+ * Get favourite details for the current user on an agent.
+ *
+ * @param baseUrl - The base URL of the Radient API
+ * @param agentId - The agent ID
+ * @param accessToken - The access token (JWT)
+ * @returns Favourite details or empty object if not favourited
+ */
+export async function getAgentFavourite(
+	baseUrl: string,
+	agentId: string,
+	accessToken: string,
+): Promise<AgentFavourite | Record<string, never>> {
+	const url = joinUrl(baseUrl, `/v1/agents/${encodeURIComponent(agentId)}/favourite`);
+	const response = await fetch(url, {
+		method: "GET",
+		headers: {
+			Authorization: `Bearer ${accessToken}`,
+		},
+		credentials: "same-origin",
+	});
+	if (!response.ok) {
+		const text = await response.text();
+		throw new Error(text || `HTTP ${response.status}`);
+	}
+	return response.json();
+}
+
+/**
+ * List agents liked/favourited by account.
+ *
+ * @param baseUrl - The base URL of the Radient API
+ * @param accountId - The account ID
+ * @param accessToken - The access token (JWT)
+ * @param options - Filter options: liked, favourited, page, perPage
+ * @returns Paginated list of agents
+ */
+export async function listAccountAgents(
+	baseUrl: string,
+	accountId: string,
+	accessToken: string,
+	options?: {
+		liked?: boolean;
+		favourited?: boolean;
+		page?: number;
+		perPage?: number;
+	},
+): Promise<RadientApiResponse<PaginatedAgentList>> {
+	const params = new URLSearchParams();
+	if (options?.liked !== undefined) params.append("liked", String(options.liked));
+	if (options?.favourited !== undefined) params.append("favourited", String(options.favourited));
+	if (options?.page !== undefined) params.append("page", String(options.page));
+	if (options?.perPage !== undefined) params.append("per_page", String(options.perPage));
+	const url = joinUrl(
+		baseUrl,
+		`/v1/accounts/${encodeURIComponent(accountId)}/agents${params.toString() ? `?${params.toString()}` : ""}`,
+	);
+	const response = await fetch(url, {
+		method: "GET",
+		headers: {
+			Authorization: `Bearer ${accessToken}`,
+		},
+		credentials: "same-origin",
+	});
+	if (!response.ok) {
+		const text = await response.text();
+		throw new Error(text || `HTTP ${response.status}`);
+	}
+	return response.json();
 }
