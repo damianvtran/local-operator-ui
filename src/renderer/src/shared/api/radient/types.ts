@@ -93,9 +93,6 @@ export type AuthTokenExchangeResult = {
 /**
  * Request to refresh an access token
  */
-/**
- * Request to refresh an access token
- */
 export type TokenRefreshRequest = {
 	/**
 	 * The refresh token
@@ -400,4 +397,167 @@ export type PricesResponse = {
 	 * Default credits granted upon first registration/payment.
 	 */
 	default_registration_credits: number;
+};
+
+/* =========================
+   Agent API Types
+   ========================= */
+
+/**
+ * Agent object returned by the API.
+ */
+export type Agent = {
+	id: string;
+	account_id: string;
+	tenant_id: string;
+	name: string;
+	description?: string;
+	model?: string;
+	version: string;
+	created_at: string;
+	updated_at: string;
+	current_working_directory?: string;
+	security_prompt?: string;
+	last_message?: string;
+	last_message_datetime?: string;
+	temperature?: number;
+	top_p?: number;
+	top_k?: number;
+	max_tokens?: number;
+	frequency_penalty?: number;
+	presence_penalty?: number;
+	seed?: number;
+	hosting?: string;
+	state?: AgentState;
+};
+
+/**
+ * Agent state object (included in detail view).
+ */
+export type AgentState = {
+	agent_system_prompt?: string;
+	conversation?: ConversationRecord[];
+	current_plan?: string;
+	execution_history?: CodeExecutionResult[];
+	instruction_details?: string;
+	learnings?: string[];
+	version?: string;
+};
+
+/**
+ * Conversation record for agent state.
+ */
+export type ConversationRecord = {
+	content: string;
+	ephemeral?: boolean;
+	files?: string[];
+	is_system_prompt?: boolean;
+	role?: string;
+	should_cache?: boolean;
+	should_summarize?: boolean;
+	summarized?: boolean;
+	timestamp?: string;
+};
+
+/**
+ * Code execution result for agent state.
+ */
+export type CodeExecutionResult = {
+	action?: string;
+	code?: string;
+	execution_type?: string;
+	files?: string[];
+	formatted_print?: string;
+	id?: string;
+	is_complete?: boolean;
+	is_streamable?: boolean;
+	logging?: string;
+	message?: string;
+	role?: string;
+	status?: string;
+	stderr?: string;
+	stdout?: string;
+	task_classification?: string;
+	timestamp?: string;
+};
+
+/**
+ * Paginated response for agent list.
+ */
+export type PaginatedAgentList = {
+	page: number;
+	per_page: number;
+	records: Agent[];
+	total_pages: number;
+	total_records: number;
+};
+
+/**
+ * Request body for creating an agent.
+ */
+export type CreateAgentRequest = {
+	name: string;
+	version: string;
+	description?: string;
+	model?: string;
+	temperature?: number;
+	top_p?: number;
+	top_k?: number;
+	max_tokens?: number;
+	frequency_penalty?: number;
+	presence_penalty?: number;
+	seed?: number;
+	hosting?: string;
+	security_prompt?: string;
+	current_working_directory?: string;
+	stop?: string[];
+};
+
+/**
+ * Request body for updating an agent.
+ */
+export type UpdateAgentRequest = Partial<CreateAgentRequest>;
+
+/**
+ * Comment object for agent comments.
+ */
+export type AgentComment = {
+	id: string;
+	account_id: string;
+	tenant_id: string;
+	subject_id: string;
+	subject_type: string;
+	text: string;
+	created_at: string;
+	updated_at: string;
+};
+
+/**
+ * Request body for creating a comment.
+ */
+export type CreateAgentCommentRequest = {
+	text: string;
+};
+
+/**
+ * Request body for updating a comment.
+ */
+export type UpdateAgentCommentRequest = {
+	text: string;
+};
+
+/**
+ * Like/favourite/download count response.
+ */
+export type CountResponse = {
+	count: number;
+};
+
+/**
+ * API response for generic success/failure.
+ */
+export type APIResponse = {
+	msg: string;
+	result?: unknown;
+	error?: string;
 };
