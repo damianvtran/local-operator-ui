@@ -23,7 +23,6 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "react-router-dom";
 import type { Agent } from "@shared/api/radient/types";
-// Removed useRadientAuth import, handled by container
 import { formatDistanceToNowStrict } from "date-fns";
 import { useAgentLikeCountQuery } from "../hooks/use-agent-like-count-query";
 import { useAgentFavouriteCountQuery } from "../hooks/use-agent-favourite-count-query";
@@ -54,8 +53,10 @@ const CountDisplay = styled("span")(({ theme }) => ({
 const StyledCard = styled(Card)(({ theme }) => ({
   display: "flex",
   flexDirection: "column",
-  height: "100%", 
+  maxHeight: "420px", // Added max height
   border: `1px solid ${theme.palette.divider}`,
+  backgroundImage: "none",
+  backgroundColor: theme.palette.background.default,
   borderRadius: theme.shape.borderRadius * 2,
   transition: "box-shadow 0.3s ease-in-out",
   "&:hover": {
