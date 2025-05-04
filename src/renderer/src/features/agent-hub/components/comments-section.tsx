@@ -104,11 +104,13 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({ agentId }) => 
 	const [editText, setEditText] = useState("");
 
 	const {
-		data: comments = [],
+		data: commentsResponse, // Renamed from 'comments'
     isLoading,
     error,
-		// refetch, // Removed unused variable
 	} = useAgentCommentsQuery({ agentId, enabled: isAuthenticated });
+
+  // Extract comments array, default to empty array if response/records are undefined
+	const comments = commentsResponse?.records ?? [];
 
 	// Instantiate mutation hooks
 	const createCommentMutation = useCreateAgentCommentMutation();
@@ -249,11 +251,13 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({ agentId }) => 
       )}
       {!isLoading && !error && isAuthenticated && (
         <List>
+          {/* Use the extracted comments array */}
           {comments.length === 0 ? (
             <Typography variant="body2" color="textSecondary">
               No comments yet. Be the first to comment!
             </Typography>
           ) : (
+            // Use the extracted comments array
             comments.map((comment) =>
               editingCommentId === comment.id ? (
                 // Edit Mode

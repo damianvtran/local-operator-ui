@@ -17,6 +17,7 @@ import type {
 	APIResponse,
 	AgentLike,
 	AgentFavourite,
+  PaginatedResponse,
 } from "./types";
 
 /**
@@ -264,7 +265,7 @@ export async function unlikeAgent(
 export async function getAgentLikeCount(
 	baseUrl: string,
 	agentId: string,
-): Promise<CountResponse> {
+): Promise<RadientApiResponse<CountResponse>> {
 	const url = joinUrl(baseUrl, `/v1/agents/${encodeURIComponent(agentId)}/like/count`);
 
 	const response = await fetch(url, {
@@ -354,7 +355,7 @@ export async function unfavouriteAgent(
 export async function getAgentFavouriteCount(
 	baseUrl: string,
 	agentId: string,
-): Promise<CountResponse> {
+): Promise<RadientApiResponse<CountResponse>> {
 	const url = joinUrl(baseUrl, `/v1/agents/${encodeURIComponent(agentId)}/favourite/count`);
 
 	const response = await fetch(url, {
@@ -380,7 +381,7 @@ export async function getAgentFavouriteCount(
 export async function getAgentDownloadCount(
 	baseUrl: string,
 	agentId: string,
-): Promise<CountResponse> {
+): Promise<RadientApiResponse<CountResponse>> {
 	const url = joinUrl(baseUrl, `/v1/agents/${encodeURIComponent(agentId)}/download/count`);
 
 	const response = await fetch(url, {
@@ -410,7 +411,7 @@ export async function createAgentComment(
 	agentId: string,
 	accessToken: string,
 	data: CreateAgentCommentRequest,
-): Promise<AgentComment> {
+): Promise<RadientApiResponse<AgentComment>> {
 	const url = joinUrl(baseUrl, `/v1/agents/${encodeURIComponent(agentId)}/comments`);
 
 	const response = await fetch(url, {
@@ -432,27 +433,42 @@ export async function createAgentComment(
 }
 
 /**
- * List comments on an agent.
+ * List comments on an agent with pagination.
  *
  * @param baseUrl - The base URL of the Radient API
  * @param agentId - The agent ID
  * @param accessToken - The access token (JWT)
- * @returns List of comments
+ * @param page - The page number (optional, defaults to 1)
+ * @param perPage - The number of comments per page (optional, defaults to 20)
+ * @returns Paginated list of comments
+ * @throws Error if the API request fails
  */
 export async function listAgentComments(
 	baseUrl: string,
 	agentId: string,
 	accessToken: string,
-): Promise<AgentComment[]> {
-	const url = joinUrl(baseUrl, `/v1/agents/${encodeURIComponent(agentId)}/comments`);
+	page = 1,
+	perPage = 20,
+): Promise<RadientApiResponse<PaginatedResponse<AgentComment>>> {
+	const url = new URL(
+		joinUrl(baseUrl, `/v1/agents/${encodeURIComponent(agentId)}/comments`),
+	);
 
-	const response = await fetch(url, {
-		method: "GET",
-		headers: {
-			Authorization: `Bearer ${accessToken}`,
-		},
-		credentials: "same-origin",
-	});
+	url.searchParams.set("page", String(page));
+	url.searchParams.set("per_page", String(perPage));
+
+	let response: Response;
+	try {
+		response = await fetch(url.toString(), {
+			method: "GET",
+			headers: {
+				Authorization: `Bearer ${accessToken}`,
+			},
+			credentials: "same-origin",
+		});
+	} catch (err) {
+		throw new Error(`Network error: ${(err as Error).message}`);
+	}
 
 	if (!response.ok) {
 		const text = await response.text();
@@ -478,7 +494,7 @@ export async function updateAgentComment(
 	commentId: string,
 	accessToken: string,
 	data: UpdateAgentCommentRequest,
-): Promise<AgentComment> {
+): Promise<RadientApiResponse<AgentComment>> {
 	const url = joinUrl(
 		baseUrl,
 		`/v1/agents/${encodeURIComponent(agentId)}/comments/${encodeURIComponent(commentId)}`,
@@ -552,7 +568,7 @@ export async function getAgentLike(
 	baseUrl: string,
 	agentId: string,
 	accessToken: string,
-): Promise<AgentLike | Record<string, never>> {
+): Promise<RadientApiResponse<AgentLike | Record<string, never>>> {
 	const url = joinUrl(baseUrl, `/v1/agents/${encodeURIComponent(agentId)}/like`);
 	const response = await fetch(url, {
 		method: "GET",
@@ -580,7 +596,7 @@ export async function getAgentFavourite(
 	baseUrl: string,
 	agentId: string,
 	accessToken: string,
-): Promise<AgentFavourite | Record<string, never>> {
+): Promise<RadientApiResponse<AgentFavourite | Record<string, never>>> {
 	const url = joinUrl(baseUrl, `/v1/agents/${encodeURIComponent(agentId)}/favourite`);
 	const response = await fetch(url, {
 		method: "GET",

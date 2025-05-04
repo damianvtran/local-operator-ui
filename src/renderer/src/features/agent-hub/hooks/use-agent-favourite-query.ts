@@ -48,7 +48,7 @@ export const useAgentFavouriteQuery = ({
         sessionToken,
       );
       // API returns empty object {} if not favourited, or AgentFavourite object if favourited
-      return response;
+      return response.result;
     },
     // Enable the query only if agentId is provided, enabled prop is true, and user is authenticated
     enabled: !!agentId && enabled && isAuthenticated, // Use isAuthenticated status

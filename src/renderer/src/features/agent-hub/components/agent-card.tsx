@@ -199,10 +199,10 @@ export const AgentCard: React.FC<AgentCardProps> = ({
               size="small"
               onClick={(e) => handleActionClick(e, onLikeToggle)}
               disabled={isLikeActionLoading} // Use loading prop
-              sx={{ color: likeColor }}
+              sx={{ color: likeColor, borderRadius: 4 }}
               aria-label={isLiked ? "Unlike agent" : "Like agent"}
             >
-              <FontAwesomeIcon icon={likeIcon} />
+              <FontAwesomeIcon icon={likeIcon} size="xs"/>
               <CountDisplay>
                 {isLoadingLikes ? <Skeleton variant="text" width={20} /> : likeCount ?? 0}
               </CountDisplay>
@@ -211,10 +211,10 @@ export const AgentCard: React.FC<AgentCardProps> = ({
               size="small"
               onClick={(e) => handleActionClick(e, onFavouriteToggle)}
               disabled={isFavouriteActionLoading} // Use loading prop
-              sx={{ color: favouriteColor }}
+              sx={{ color: favouriteColor, borderRadius: 4 }}
               aria-label={isFavourited ? "Unfavourite agent" : "Favourite agent"}
             >
-              <FontAwesomeIcon icon={favouriteIcon} />
+              <FontAwesomeIcon icon={favouriteIcon} size="xs"/>
               <CountDisplay>
                 {isLoadingFavourites ? <Skeleton variant="text" width={20} /> : favouriteCount ?? 0}
               </CountDisplay>
@@ -232,7 +232,7 @@ export const AgentCard: React.FC<AgentCardProps> = ({
               disabled={downloadMutation.isPending} // Use mutation pending state
               aria-label="Download agent"
             >
-              <FontAwesomeIcon icon={faDownload} />
+              <FontAwesomeIcon icon={faDownload} size="xs"/>
             </IconButton>
           </Tooltip>
           {isLoadingDownloads || downloadMutation.isPending ? ( // Use mutation pending state

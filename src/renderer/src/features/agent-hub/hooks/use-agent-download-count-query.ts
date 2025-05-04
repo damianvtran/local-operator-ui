@@ -28,7 +28,7 @@ export const useAgentDownloadCountQuery = ({
   enabled = true,
 }: UseAgentDownloadCountQueryParams): UseQueryResult<number, Error> => {
   const query = useQuery<
-    CountResponse, // Type of data returned by queryFn
+    CountResponse, // Raw API response type
     Error, // Type of error
     number // Type of data returned by select
   >({
@@ -42,9 +42,11 @@ export const useAgentDownloadCountQuery = ({
         apiConfig.radientBaseUrl,
         agentId,
       );
-      return response;
+      // The queryFn should return the raw API response
+      return response.result;
     },
-    select: (data) => data.count, // Select the 'count' part of the API response
+    // Select the actual count from the response result
+    select: (data) => data.count,
     // Enable the query only if agentId is provided and the enabled prop is true
     enabled: !!agentId && enabled,
     staleTime: 5 * 60 * 1000, // 5 minutes
