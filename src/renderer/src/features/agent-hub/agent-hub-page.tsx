@@ -1,13 +1,13 @@
-import type React from "react"; // Import React as type
-import { useState } from "react"; // Import useState separately
+import type React from "react";
+import { useState } from "react";
 import { Box, Typography, Grid, CircularProgress } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import { faStore } from "@fortawesome/free-solid-svg-icons";
 import { PageHeader } from "@shared/components/common/page-header";
-import { AgentCard } from "./components/agent-card"; // Import AgentCard
-import { usePublicAgentsQuery } from "./hooks/use-public-agents-query"; // Import hook
-import type { Agent } from "@shared/api/radient/types"; // Import Agent type
-import { CompactPagination } from "@shared/components/common/compact-pagination"; // Import Pagination
+import { AgentCardContainer } from "./components/agent-card-container";
+import { usePublicAgentsQuery } from "./hooks/use-public-agents-query";
+import type { Agent } from "@shared/api/radient/types";
+import { CompactPagination } from "@shared/components/common/compact-pagination";
 
 const StyledAgentHubContainer = styled(Box)(({ theme }) => ({
   padding: theme.spacing(3),
@@ -18,7 +18,7 @@ const StyledAgentHubContainer = styled(Box)(({ theme }) => ({
 
 const StyledGridContainer = styled(Grid)(({ theme }) => ({
   flexGrow: 1,
-  overflowY: "auto", // Allow grid to scroll if content overflows
+  overflowY: "auto",
   padding: theme.spacing(2, 0),
 }));
 
@@ -38,20 +38,8 @@ export const AgentHubPage: React.FC = () => {
 
   const agents: Agent[] = agentsData?.records ?? [];
 
-  // Placeholder handlers - TODO: Implement actual logic with mutations
-  const handleLikeToggle = (agentId: string) => {
-    console.log("Toggle like for agent:", agentId);
-    // Invalidate/update queries after mutation
-  };
-
-  const handleFavouriteToggle = (agentId: string) => {
-    console.log("Toggle favourite for agent:", agentId);
-    // Invalidate/update queries after mutation
-  };
-
   const handlePageChange = (newPage: number) => {
     setPage(newPage);
-    // Optionally scroll to top or handle focus
   };
 
   return (
@@ -59,7 +47,7 @@ export const AgentHubPage: React.FC = () => {
       <PageHeader
         title="Agent Hub"
         subtitle="Discover and download community agents"
-        icon={faStore} // Use FontAwesome icon definition
+        icon={faStore}
       />
       {isLoading && (
         <Box display="flex" justifyContent="center" alignItems="center" flexGrow={1}>
@@ -69,7 +57,6 @@ export const AgentHubPage: React.FC = () => {
       {error && (
         <Box display="flex" justifyContent="center" alignItems="center" flexGrow={1}>
           <Typography color="error">
-            {/* @ts-ignore TODO: Improve error typing */}
             Failed to load agents: {error.message}
           </Typography>
         </Box>
@@ -85,15 +72,7 @@ export const AgentHubPage: React.FC = () => {
           ) : (
             agents.map((agent) => (
               <Grid item key={agent.id} xs={12} sm={6} md={4} lg={3}>
-                {/* TODO: Pass actual like/favourite status */}
-                <AgentCard
-                  agent={agent}
-                  isLiked={false} // Placeholder
-                  isFavourited={false} // Placeholder
-                  onLikeToggle={handleLikeToggle}
-                  onFavouriteToggle={handleFavouriteToggle}
-                  // onDownload prop removed as AgentCard handles it internally
-                />
+                <AgentCardContainer agent={agent} />
               </Grid>
             ))
           )}
@@ -104,7 +83,6 @@ export const AgentHubPage: React.FC = () => {
           <CompactPagination
             count={pagination.totalPages}
             page={pagination.page}
-            // Pass handlePageChange directly as it matches the expected signature (page: number) => void
             onChange={handlePageChange}
           />
         </Box>

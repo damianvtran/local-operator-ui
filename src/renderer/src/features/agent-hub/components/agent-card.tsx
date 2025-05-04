@@ -23,7 +23,7 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "react-router-dom";
 import type { Agent } from "@shared/api/radient/types";
-import { useRadientAuth } from "@shared/hooks/use-radient-auth";
+// Removed useRadientAuth import, handled by container
 import { formatDistanceToNowStrict } from "date-fns";
 import { useAgentLikeCountQuery } from "../hooks/use-agent-like-count-query";
 import { useAgentFavouriteCountQuery } from "../hooks/use-agent-favourite-count-query";
@@ -36,6 +36,9 @@ type AgentCardProps = {
   isFavourited: boolean;
   onLikeToggle: (agentId: string) => void;
   onFavouriteToggle: (agentId: string) => void;
+  isLikeActionLoading?: boolean; // Optional: Loading state for like button
+  isFavouriteActionLoading?: boolean; // Optional: Loading state for favourite button
+  showActions?: boolean; // Optional: Whether to show like/favourite buttons
 };
 
 const CountDisplay = styled("span")(({ theme }) => ({
@@ -126,10 +129,13 @@ export const AgentCard: React.FC<AgentCardProps> = ({
   isFavourited,
   onLikeToggle,
   onFavouriteToggle,
+  isLikeActionLoading = false, // Default to false
+  isFavouriteActionLoading = false, // Default to false
+  showActions = false, // Default to false
 }) => {
   const navigate = useNavigate();
-  const { isAuthenticated } = useRadientAuth();
-  const downloadMutation = useDownloadAgentMutation(); 
+  // Removed isAuthenticated check, handled by container
+  const downloadMutation = useDownloadAgentMutation();
 
   const { data: likeCount, isLoading: isLoadingLikes } = useAgentLikeCountQuery({
     agentId: agent.id,
@@ -149,10 +155,9 @@ export const AgentCard: React.FC<AgentCardProps> = ({
     event: React.MouseEvent<HTMLButtonElement>,
     action: (agentId: string) => void,
   ) => {
-    event.stopPropagation(); 
-    if (isAuthenticated) {
-      action(agent.id);
-    }
+    event.stopPropagation();
+    // Removed isAuthenticated check
+    action(agent.id);
   };
 
   const handleDownloadClick = (event: React.MouseEvent<HTMLButtonElement>) => {
@@ -165,16 +170,9 @@ export const AgentCard: React.FC<AgentCardProps> = ({
   const likeIcon = isLiked ? faHeartSolid : faHeartOutline;
   const likeColor = isLiked ? "error.main" : "inherit"; 
   const favouriteIcon = isFavourited ? faStarSolid : faStarOutline;
-  const favouriteColor = isFavourited ? "warning.main" : "inherit"; 
+  const favouriteColor = isFavourited ? "warning.main" : "inherit";
 
-  const AuthTooltipWrapper: React.FC<{ children: React.ReactElement }> = ({ children }) =>
-    isAuthenticated ? (
-      children
-    ) : (
-      <Tooltip title="Sign in to Radient to use this feature">
-        <span>{children}</span>
-      </Tooltip>
-    );
+  // Removed AuthTooltipWrapper
 
   return (
     <StyledCard onClick={handleCardClick}>
@@ -194,12 +192,12 @@ export const AgentCard: React.FC<AgentCardProps> = ({
         </MetaInfoContainer>
       </StyledCardContent>
       <StyledCardActions>
-        <ActionButtonGroup>
-          <AuthTooltipWrapper>
+        {showActions ? ( // Conditionally render action buttons
+          <ActionButtonGroup>
             <IconButton
               size="small"
               onClick={(e) => handleActionClick(e, onLikeToggle)}
-              disabled={!isAuthenticated}
+              disabled={isLikeActionLoading} // Use loading prop
               sx={{ color: likeColor }}
               aria-label={isLiked ? "Unlike agent" : "Like agent"}
             >
@@ -208,12 +206,10 @@ export const AgentCard: React.FC<AgentCardProps> = ({
                 {isLoadingLikes ? <Skeleton variant="text" width={20} /> : likeCount ?? 0}
               </CountDisplay>
             </IconButton>
-          </AuthTooltipWrapper>
-          <AuthTooltipWrapper>
             <IconButton
               size="small"
               onClick={(e) => handleActionClick(e, onFavouriteToggle)}
-              disabled={!isAuthenticated}
+              disabled={isFavouriteActionLoading} // Use loading prop
               sx={{ color: favouriteColor }}
               aria-label={isFavourited ? "Unfavourite agent" : "Favourite agent"}
             >
@@ -222,8 +218,10 @@ export const AgentCard: React.FC<AgentCardProps> = ({
                 {isLoadingFavourites ? <Skeleton variant="text" width={20} /> : favouriteCount ?? 0}
               </CountDisplay>
             </IconButton>
-          </AuthTooltipWrapper>
-        </ActionButtonGroup>
+          </ActionButtonGroup>
+        ) : (
+          <Box /> // Render empty box if actions are hidden to maintain layout
+        )}
         <ActionButtonGroup>
           {/* @ts-ignore - Tooltip title prop type issue */}
           <Tooltip title="Download agent to your local instance">
