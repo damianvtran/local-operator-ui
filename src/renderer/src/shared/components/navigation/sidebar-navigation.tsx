@@ -4,6 +4,7 @@ import {
 	faCode,
 	faGear,
 	faRobot,
+	faStore, // Import the store icon
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -192,6 +193,12 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 			label: "Agents",
 			path: "/agents",
 			isActive: currentView === "agents",
+		},
+		{
+			icon: faStore, // Add store icon
+			label: "Agent Hub", // Add label
+			path: "/agent-hub", // Add path
+			isActive: currentView === "agent-hub", // Add active check
 		},
 		{
 			icon: faGear,

@@ -150,6 +150,11 @@ export type AccountInfo = {
 	updated_at: string; // Assuming string representation (time.Time -> string)
 };
 
+export type AccountMetadata = {
+	name: string;
+	email: string;
+};
+
 export type IdentityInfo = {
 	/**
 	 * The user email
@@ -428,6 +433,7 @@ export type Agent = {
 	id: string;
 	account_id: string;
 	tenant_id: string;
+	account_metadata: AccountMetadata;
 	name: string;
 	description?: string;
 	model?: string;
@@ -583,6 +589,7 @@ export type AgentComment = {
 	id: string;
 	account_id: string;
 	tenant_id: string;
+	account_metadata: AccountMetadata;
 	subject_id: string;
 	subject_type: string;
 	text: string;

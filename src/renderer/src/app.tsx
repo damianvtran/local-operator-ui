@@ -7,6 +7,8 @@ import type { FC } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 
 import { AgentsPage } from "@features/agents/components/agents-page";
+import { AgentDetailsPage } from "@features/agent-hub/agent-details-page"; // Import Agent Details Page
+import { AgentHubPage } from "@features/agent-hub/agent-hub-page"; // Import Agent Hub Page
 import { ChatPage } from "@features/chat/components/chat-page";
 import { OnboardingModal } from "@features/onboarding";
 import { SettingsPage } from "@features/settings/components/settings-page";
@@ -75,6 +77,10 @@ const App: FC = () => {
 
 					{/* Settings route */}
 					<Route path="/settings" element={<SettingsPage />} />
+
+					{/* Agent Hub routes */}
+					<Route path="/agent-hub" element={<AgentHubPage />} />
+					<Route path="/agent-hub/:agentId" element={<AgentDetailsPage />} />
 
 					{/* Fallback route - redirect to chat */}
 					<Route path="*" element={<Navigate to="/chat" replace />} />
