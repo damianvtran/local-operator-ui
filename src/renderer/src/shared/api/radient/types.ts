@@ -513,16 +513,18 @@ export type CodeExecutionResult = {
 	timestamp?: string;
 };
 
-/**
- * Paginated response for agent list.
- */
-export type PaginatedAgentList = {
+export type PaginatedResponse<T> = {
 	page: number;
 	per_page: number;
-	records: Agent[];
+	records: T[];
 	total_pages: number;
 	total_records: number;
 };
+
+/**
+ * Paginated response for agent list.
+ */
+export type PaginatedAgentList = PaginatedResponse<Agent>;
 
 /**
  * Request body for creating an agent.

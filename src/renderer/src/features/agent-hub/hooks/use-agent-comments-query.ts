@@ -1,7 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { listAgentComments } from "@shared/api/radient/agents-api";
 import { apiConfig } from "@shared/config";
-import type { AgentComment } from "@shared/api/radient/types";
+import type {
+	AgentComment,
+	PaginatedResponse,
+} from "@shared/api/radient/types";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 
 // Query keys for agent comments
@@ -12,7 +15,7 @@ export const agentCommentsKeys = {
 
 type UseAgentCommentsQueryParams = {
   agentId: string;
-  enabled?: boolean; // Allow disabling the query
+  enabled?: boolean;
 };
 
 /**
@@ -30,8 +33,9 @@ export const useAgentCommentsQuery = ({
   const { isAuthenticated, sessionToken } = useRadientAuth();
 
   const query = useQuery<
-    AgentComment[], // Type of data returned by queryFn
-    Error // Type of error
+    PaginatedResponse<AgentComment>, // Raw API response type
+    Error, // Type of error
+    PaginatedResponse<AgentComment> // Type of data selected/returned
   >({
     // Ensure queryKey is valid even if agentId is temporarily undefined/empty
     queryKey: agentCommentsKeys.list(agentId || "invalid"),
@@ -45,14 +49,13 @@ export const useAgentCommentsQuery = ({
         throw new Error("Authentication token is required to fetch comments.");
       }
       // Fetch comments using the API client function
-      const comments = await listAgentComments(
+      const response = await listAgentComments(
         apiConfig.radientBaseUrl,
         agentId,
         sessionToken,
       );
-      return comments;
+      return response.result;
     },
-    // Enable the query only if agentId is provided, user is authenticated, and the enabled prop is true
     enabled: !!agentId && isAuthenticated && !!sessionToken && enabled,
     staleTime: 2 * 60 * 1000, // 2 minutes
     gcTime: 5 * 60 * 1000, // 5 minutes garbage collection time

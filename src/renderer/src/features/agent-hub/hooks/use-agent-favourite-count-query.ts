@@ -28,7 +28,7 @@ export const useAgentFavouriteCountQuery = ({
   enabled = true,
 }: UseAgentFavouriteCountQueryParams): UseQueryResult<number, Error> => {
   const query = useQuery<
-    CountResponse, // Type of data returned by queryFn
+    CountResponse, // Raw API response type
     Error, // Type of error
     number // Type of data returned by select
   >({
@@ -42,9 +42,10 @@ export const useAgentFavouriteCountQuery = ({
         apiConfig.radientBaseUrl,
         agentId,
       );
-      return response;
+      return response.result;
     },
-    select: (data) => data.count, // Select the 'count' part of the API response
+    // Select the actual count from the response result
+    select: (data) => data.count,
     // Enable the query only if agentId is provided and the enabled prop is true
     enabled: !!agentId && enabled,
     staleTime: 5 * 60 * 1000, // 5 minutes

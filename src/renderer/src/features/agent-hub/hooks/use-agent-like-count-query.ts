@@ -39,9 +39,10 @@ export const useAgentLikeCountQuery = ({
       }
       // No longer requires authentication
       const response = await getAgentLikeCount(apiConfig.radientBaseUrl, agentId);
-      return response;
+      return response.result;
     },
-    select: (data) => data.count, // Select the 'count' part of the API response
+    // Select the actual count from the response result
+    select: (data) => data.count,
     // Enable the query only if agentId is provided and the enabled prop is true
     enabled: !!agentId && enabled,
     staleTime: 5 * 60 * 1000, // 5 minutes

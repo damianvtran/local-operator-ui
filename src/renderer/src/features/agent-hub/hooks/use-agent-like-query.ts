@@ -38,19 +38,15 @@ export const useAgentLikeQuery = ({
         throw new Error("Agent ID is required to fetch like status.");
       }
       if (!sessionToken) {
-        // This case should ideally be prevented by the 'enabled' check, but good for safety
         throw new Error("Authentication required to fetch like status.");
       }
-      // Fetch like status using the API client function
       const response = await getAgentLike(
         apiConfig.radientBaseUrl,
         agentId,
         sessionToken,
       );
-      // API returns empty object {} if not liked, or AgentLike object if liked
-      return response;
+      return response.result;
     },
-    // Enable the query only if agentId is provided, enabled prop is true, and user is authenticated
     enabled: !!agentId && enabled && isAuthenticated, // Use isAuthenticated status
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000, // 10 minutes garbage collection time
