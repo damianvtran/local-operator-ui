@@ -404,6 +404,24 @@ export type PricesResponse = {
    ========================= */
 
 /**
+ * Agent categories (snake_case).
+ */
+export type AgentCategory =
+	| "investment"
+	| "accounting"
+	| "healthcare"
+	| "legal"
+	| "software"
+	| "security"
+	| "role_play"
+	| "personal_assistance"
+	| "education"
+	| "marketing"
+	| "sales"
+	| "research"
+	| "other";
+
+/**
  * Agent object returned by the API.
  */
 export type Agent = {
@@ -429,6 +447,14 @@ export type Agent = {
 	seed?: number;
 	hosting?: string;
 	state?: AgentState;
+	/**
+	 * Free text tags associated with the agent.
+	 */
+	tags?: string[];
+	/**
+	 * Categories assigned to the agent (enum values, snake_case).
+	 */
+	categories?: AgentCategory[];
 };
 
 /**
@@ -511,12 +537,44 @@ export type CreateAgentRequest = {
 	security_prompt?: string;
 	current_working_directory?: string;
 	stop?: string[];
+	/**
+	 * Free text tags for the agent.
+	 */
+	tags?: string[];
+	/**
+	 * Categories for the agent (enum values, snake_case).
+	 */
+	categories?: AgentCategory[];
 };
 
 /**
  * Request body for updating an agent.
  */
-export type UpdateAgentRequest = Partial<CreateAgentRequest>;
+export type UpdateAgentRequest = {
+	name?: string;
+	version?: string;
+	description?: string;
+	model?: string;
+	temperature?: number;
+	top_p?: number;
+	top_k?: number;
+	max_tokens?: number;
+	frequency_penalty?: number;
+	presence_penalty?: number;
+	seed?: number;
+	hosting?: string;
+	security_prompt?: string;
+	current_working_directory?: string;
+	stop?: string[];
+	/**
+	 * Free text tags for the agent.
+	 */
+	tags?: string[];
+	/**
+	 * Categories for the agent (enum values, snake_case).
+	 */
+	categories?: AgentCategory[];
+};
 
 /**
  * Comment object for agent comments.
