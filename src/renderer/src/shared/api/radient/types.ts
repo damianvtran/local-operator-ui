@@ -612,6 +612,32 @@ export type CountResponse = {
 };
 
 /**
+ * Like object for agent like endpoints.
+ */
+export type AgentLike = {
+	id: string;
+	account_id: string;
+	tenant_id: string;
+	subject_id: string;
+	subject_type: string;
+	created_at: string;
+	updated_at: string;
+};
+
+/**
+ * Favourite object for agent favourite endpoints.
+ */
+export type AgentFavourite = {
+	id: string;
+	account_id: string;
+	tenant_id: string;
+	subject_id: string;
+	subject_type: string;
+	created_at: string;
+	updated_at: string;
+};
+
+/**
  * API response for generic success/failure.
  */
 export type APIResponse = {
