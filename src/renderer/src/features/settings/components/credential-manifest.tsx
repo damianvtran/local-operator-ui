@@ -86,6 +86,13 @@ export const CREDENTIAL_MANIFEST = [
 			"API key for FAL, used by agents for generating, interpreting, and understanding images.",
 		url: "https://docs.fal.ai/quick-start",
 	},
+	{
+		key: "XAI_API_KEY",
+		name: "xAI API Key",
+		description:
+			"API key for xAI, providing access to Grok and other advanced xAI models for language and reasoning tasks.",
+		url: "https://docs.x.ai/docs/overview",
+	},
 ];
 
 /**
