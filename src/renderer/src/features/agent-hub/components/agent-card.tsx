@@ -8,7 +8,7 @@ import {
   IconButton,
   Tooltip,
   Chip,
-  Skeleton, // Import Skeleton
+  Skeleton,
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import {
@@ -24,7 +24,6 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "react-router-dom";
 import type { Agent } from "@shared/api/radient/types";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
-// No longer need useConfig here as it's handled in the hooks
 import { formatDistanceToNowStrict } from "date-fns";
 import { useAgentLikeCountQuery } from "../hooks/use-agent-like-count-query";
 import { useAgentFavouriteCountQuery } from "../hooks/use-agent-favourite-count-query";
@@ -134,18 +133,14 @@ export const AgentCard: React.FC<AgentCardProps> = ({
   const navigate = useNavigate();
   const { isAuthenticated } = useRadientAuth();
 
-  // Use the React Query hooks
   const { data: likeCount, isLoading: isLoadingLikes } = useAgentLikeCountQuery({
     agentId: agent.id,
-    enabled: isAuthenticated, // Only fetch if authenticated
   });
   const { data: favouriteCount, isLoading: isLoadingFavourites } = useAgentFavouriteCountQuery({
     agentId: agent.id,
-    enabled: isAuthenticated,
   });
   const { data: downloadCount, isLoading: isLoadingDownloads } = useAgentDownloadCountQuery({
     agentId: agent.id,
-    enabled: isAuthenticated,
   });
 
   const handleCardClick = () => {

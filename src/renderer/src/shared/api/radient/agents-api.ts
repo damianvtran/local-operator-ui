@@ -259,21 +259,16 @@ export async function unlikeAgent(
  *
  * @param baseUrl - The base URL of the Radient API
  * @param agentId - The agent ID
- * @param accessToken - The access token (JWT)
  * @returns Like count
  */
 export async function getAgentLikeCount(
 	baseUrl: string,
 	agentId: string,
-	accessToken: string,
 ): Promise<CountResponse> {
 	const url = joinUrl(baseUrl, `/v1/agents/${encodeURIComponent(agentId)}/like/count`);
 
 	const response = await fetch(url, {
 		method: "GET",
-		headers: {
-			Authorization: `Bearer ${accessToken}`,
-		},
 		credentials: "same-origin",
 	});
 
@@ -354,21 +349,16 @@ export async function unfavouriteAgent(
  *
  * @param baseUrl - The base URL of the Radient API
  * @param agentId - The agent ID
- * @param accessToken - The access token (JWT)
  * @returns Favourite count
  */
 export async function getAgentFavouriteCount(
 	baseUrl: string,
 	agentId: string,
-	accessToken: string,
 ): Promise<CountResponse> {
 	const url = joinUrl(baseUrl, `/v1/agents/${encodeURIComponent(agentId)}/favourite/count`);
 
 	const response = await fetch(url, {
 		method: "GET",
-		headers: {
-			Authorization: `Bearer ${accessToken}`,
-		},
 		credentials: "same-origin",
 	});
 
@@ -385,21 +375,16 @@ export async function getAgentFavouriteCount(
  *
  * @param baseUrl - The base URL of the Radient API
  * @param agentId - The agent ID
- * @param accessToken - The access token (JWT)
  * @returns Download count
  */
 export async function getAgentDownloadCount(
 	baseUrl: string,
 	agentId: string,
-	accessToken: string,
 ): Promise<CountResponse> {
 	const url = joinUrl(baseUrl, `/v1/agents/${encodeURIComponent(agentId)}/download/count`);
 
 	const response = await fetch(url, {
 		method: "GET",
-		headers: {
-			Authorization: `Bearer ${accessToken}`,
-		},
 		credentials: "same-origin",
 	});
 
