@@ -28,6 +28,7 @@ import { formatDistanceToNowStrict } from "date-fns";
 import { useAgentLikeCountQuery } from "../hooks/use-agent-like-count-query";
 import { useAgentFavouriteCountQuery } from "../hooks/use-agent-favourite-count-query";
 import { useAgentDownloadCountQuery } from "../hooks/use-agent-download-count-query";
+import { useDownloadAgentMutation } from "../hooks/use-download-agent-mutation"; 
 
 type AgentCardProps = {
   agent: Agent;
@@ -35,23 +36,22 @@ type AgentCardProps = {
   isFavourited: boolean;
   onLikeToggle: (agentId: string) => void;
   onFavouriteToggle: (agentId: string) => void;
-  onDownload: (agentId: string) => void;
 };
 
 const CountDisplay = styled("span")(({ theme }) => ({
-  fontSize: "0.8rem", // Slightly larger for visibility
-  marginLeft: theme.spacing(0.75), // Adjust spacing
+  fontSize: "0.8rem", 
+  marginLeft: theme.spacing(0.75), 
   color: theme.palette.text.secondary,
-  display: "inline-flex", // Align skeleton properly
+  display: "inline-flex", 
   alignItems: "center",
-  minWidth: "20px", // Ensure skeleton has some width
-  height: "1em", // Match font size height
+  minWidth: "20px", 
+  height: "1em", 
 }));
 
 const StyledCard = styled(Card)(({ theme }) => ({
   display: "flex",
   flexDirection: "column",
-  height: "100%", // Ensure card takes full height of grid item
+  height: "100%", 
   border: `1px solid ${theme.palette.divider}`,
   borderRadius: theme.shape.borderRadius * 2,
   transition: "box-shadow 0.3s ease-in-out",
@@ -62,14 +62,13 @@ const StyledCard = styled(Card)(({ theme }) => ({
 }));
 
 const StyledCardContent = styled(CardContent)({
-  flexGrow: 1, // Allow content to expand
-  paddingBottom: 0, // Remove default bottom padding
+  flexGrow: 1, 
+  paddingBottom: 0, 
 });
 
 const AgentName = styled(Typography)(({ theme }) => ({
   fontWeight: 500,
   marginBottom: theme.spacing(1),
-  // Truncate long names
   overflow: "hidden",
   textOverflow: "ellipsis",
   whiteSpace: "nowrap",
@@ -78,13 +77,12 @@ const AgentName = styled(Typography)(({ theme }) => ({
 const AgentDescription = styled(Typography)(({ theme }) => ({
   color: theme.palette.text.secondary,
   marginBottom: theme.spacing(2),
-  // Limit description lines
   display: "-webkit-box",
   WebkitLineClamp: 3,
   WebkitBoxOrient: "vertical",
   overflow: "hidden",
   textOverflow: "ellipsis",
-  minHeight: "3.9em", // Approx 3 lines height
+  minHeight: "3.9em",
 }));
 
 const MetaInfoContainer = styled(Box)(({ theme }) => ({
@@ -104,7 +102,7 @@ const MetaInfoItem = styled(Typography)(({ theme }) => ({
 
 const StyledCardActions = styled(CardActions)(({ theme }) => ({
   justifyContent: "space-between",
-  padding: theme.spacing(1, 2), // Adjust padding
+  padding: theme.spacing(1, 2), 
   borderTop: `1px solid ${theme.palette.divider}`,
 }));
 
@@ -128,10 +126,10 @@ export const AgentCard: React.FC<AgentCardProps> = ({
   isFavourited,
   onLikeToggle,
   onFavouriteToggle,
-  onDownload,
 }) => {
   const navigate = useNavigate();
   const { isAuthenticated } = useRadientAuth();
+  const downloadMutation = useDownloadAgentMutation(); 
 
   const { data: likeCount, isLoading: isLoadingLikes } = useAgentLikeCountQuery({
     agentId: agent.id,
@@ -144,38 +142,36 @@ export const AgentCard: React.FC<AgentCardProps> = ({
   });
 
   const handleCardClick = () => {
-    navigate(`/agent-hub/${agent.id}`); // Navigate to detail page
+    navigate(`/agent-hub/${agent.id}`); 
   };
 
   const handleActionClick = (
     event: React.MouseEvent<HTMLButtonElement>,
     action: (agentId: string) => void,
   ) => {
-    event.stopPropagation(); // Prevent card click navigation
+    event.stopPropagation(); 
     if (isAuthenticated) {
       action(agent.id);
     }
-    // Tooltip handles the 'not authenticated' case
   };
 
   const handleDownloadClick = (event: React.MouseEvent<HTMLButtonElement>) => {
     event.stopPropagation();
-    onDownload(agent.id);
-    // TODO: Implement download logic (potentially needs backend interaction)
-    console.log("Download clicked for agent:", agent.id);
+    if (!downloadMutation.isPending) {
+      downloadMutation.mutate({ agentId: agent.id, agentName: agent.name });
+    }
   };
 
   const likeIcon = isLiked ? faHeartSolid : faHeartOutline;
-  const likeColor = isLiked ? "error.main" : "inherit"; // Use theme color for liked state
+  const likeColor = isLiked ? "error.main" : "inherit"; 
   const favouriteIcon = isFavourited ? faStarSolid : faStarOutline;
-  const favouriteColor = isFavourited ? "warning.main" : "inherit"; // Use theme color for favourited state
+  const favouriteColor = isFavourited ? "warning.main" : "inherit"; 
 
   const AuthTooltipWrapper: React.FC<{ children: React.ReactElement }> = ({ children }) =>
     isAuthenticated ? (
       children
     ) : (
       <Tooltip title="Sign in to Radient to use this feature">
-        {/* Need a span wrapper for disabled elements */}
         <span>{children}</span>
       </Tooltip>
     );
@@ -229,14 +225,18 @@ export const AgentCard: React.FC<AgentCardProps> = ({
           </AuthTooltipWrapper>
         </ActionButtonGroup>
         <ActionButtonGroup>
-          <IconButton
-            size="small"
-            onClick={handleDownloadClick}
-            aria-label="Download agent"
-          >
-            <FontAwesomeIcon icon={faDownload} />
-          </IconButton>
-          {isLoadingDownloads ? (
+          {/* @ts-ignore - Tooltip title prop type issue */}
+          <Tooltip title="Download agent to your local instance">
+            <IconButton
+              size="small"
+              onClick={handleDownloadClick}
+              disabled={downloadMutation.isPending} // Use mutation pending state
+              aria-label="Download agent"
+            >
+              <FontAwesomeIcon icon={faDownload} />
+            </IconButton>
+          </Tooltip>
+          {isLoadingDownloads || downloadMutation.isPending ? ( // Use mutation pending state
             <Skeleton variant="rounded" width={100} height={24} sx={{ ml: 1 }} />
           ) : (
             <DownloadChip

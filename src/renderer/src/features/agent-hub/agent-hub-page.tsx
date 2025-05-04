@@ -49,11 +49,6 @@ export const AgentHubPage: React.FC = () => {
     // Invalidate/update queries after mutation
   };
 
-  const handleDownload = (agentId: string) => {
-    console.log("Download agent:", agentId);
-    // Implement download logic
-  };
-
   const handlePageChange = (newPage: number) => {
     setPage(newPage);
     // Optionally scroll to top or handle focus
@@ -97,7 +92,7 @@ export const AgentHubPage: React.FC = () => {
                   isFavourited={false} // Placeholder
                   onLikeToggle={handleLikeToggle}
                   onFavouriteToggle={handleFavouriteToggle}
-                  onDownload={handleDownload}
+                  // onDownload prop removed as AgentCard handles it internally
                 />
               </Grid>
             ))
