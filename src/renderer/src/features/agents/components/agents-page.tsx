@@ -7,6 +7,7 @@
  */
 
 import {
+	faCloudArrowUp, // Added for Upload icon
 	faComment,
 	faFileExport,
 	faRobot,
@@ -16,7 +17,11 @@ import { Box, Button, Tooltip } from "@mui/material";
 import { styled, useTheme } from "@mui/material/styles"; // Import useTheme here
 import type { AgentDetails } from "@shared/api/local-operator/types";
 import { PageHeader } from "@shared/components/common/page-header";
-import { useExportAgent } from "@shared/hooks/use-agent-mutations";
+import {
+	useExportAgent,
+	useUploadAgentToRadientMutation, // Import the upload mutation hook
+} from "@shared/hooks/use-agent-mutations";
+import { useRadientAuth } from "@shared/hooks/use-radient-auth"; // Added for Auth check
 import { useAgent, useAgents } from "@shared/hooks/use-agents";
 import { useAgentRouteParam } from "@shared/hooks/use-route-params";
 import { useAgentSelectionStore } from "@shared/store/agent-selection-store";
@@ -25,6 +30,7 @@ import type { FC } from "react";
 import { useNavigate } from "react-router-dom";
 import { AgentSettings } from "./agent-settings";
 import { AgentsSidebar } from "./agents-sidebar";
+import { UploadAgentDialog } from "./upload-agent-dialog"; // Import the new dialog
 
 /**
  * Props for the AgentsPage component
@@ -82,11 +88,16 @@ export const AgentsPage: FC<AgentsPageProps> = () => {
 	const theme = useTheme(); // Get theme for button styles
 	const { agentId, navigateToAgent, clearAgentId } = useAgentRouteParam();
 	const navigate = useNavigate();
+	const { isAuthenticated } = useRadientAuth(); // Get auth status
+	const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false); // State for dialog
+
 	// Use a ref to track the previous agent ID to prevent unnecessary renders
 	const prevAgentIdRef = useRef<string | undefined>(agentId);
 
 	// Export agent mutation
 	const exportAgentMutation = useExportAgent();
+	// Upload agent mutation
+	const uploadAgentMutation = useUploadAgentToRadientMutation();
 
 	// Get agent selection store functions
 	const { setLastAgentsPageAgentId, getLastAgentId, clearLastAgentId } =
@@ -154,6 +165,24 @@ export const AgentsPage: FC<AgentsPageProps> = () => {
 		} catch (error) {
 			console.error("Failed to export agent:", error);
 		}
+	};
+
+	// Handlers for the Upload Dialog
+	const handleOpenUploadDialog = () => {
+		// Reset agreement state inside the dialog component now
+		setIsUploadDialogOpen(true);
+	};
+
+	const handleCloseUploadDialog = () => {
+		setIsUploadDialogOpen(false);
+	};
+
+	const handleConfirmUpload = () => {
+		if (!selectedAgent || !isAuthenticated) return;
+
+		// Call the actual upload mutation
+		uploadAgentMutation.mutateAsync(selectedAgent.id);
+		handleCloseUploadDialog(); // Close dialog after initiating upload
 	};
 
 	// Update selected agent when URL changes or when agent data is refreshed
@@ -241,9 +270,27 @@ export const AgentsPage: FC<AgentsPageProps> = () => {
 										}
 										onClick={handleExportAgent}
 										disabled={exportAgentMutation.isPending}
-										sx={secondaryButtonSx} // Apply secondary style
+										sx={secondaryButtonSx} 
 									>
 										Export
+									</Button>
+								</Tooltip>
+
+								{/* Upload to Agent Hub Button */}
+								<Tooltip title="Upload Agent to Hub">
+									<Button
+										variant="outlined"
+										size="small"
+										startIcon={
+											<FontAwesomeIcon icon={faCloudArrowUp} size="xs" />
+										}
+										onClick={handleOpenUploadDialog}
+										disabled={uploadAgentMutation.isPending} // Disable button while uploading
+										sx={secondaryButtonSx}
+									>
+										{uploadAgentMutation.isPending
+											? "Uploading..."
+											: "Upload to Hub"}
 									</Button>
 								</Tooltip>
 
@@ -252,11 +299,11 @@ export const AgentsPage: FC<AgentsPageProps> = () => {
 								>
 									<Button
 										variant="outlined"
-										color="primary" // Keep primary color for distinction
+										color="primary"
 										size="small"
 										startIcon={<FontAwesomeIcon icon={faComment} size="xs" />}
 										onClick={() => navigate(`/chat/${selectedAgent.id}`)}
-										sx={primaryButtonSx} // Apply primary style
+										sx={primaryButtonSx}
 									>
 										Chat
 									</Button>
@@ -275,6 +322,19 @@ export const AgentsPage: FC<AgentsPageProps> = () => {
 					</AgentDetailsContainer>
 				</ContentInnerContainer>
 			</ContentContainer>
+
+			{/* Render the Upload Confirmation Dialog */}
+			{selectedAgent && (
+				<UploadAgentDialog
+					open={isUploadDialogOpen}
+					onClose={handleCloseUploadDialog}
+					agentName={selectedAgent.name}
+					isAuthenticated={isAuthenticated}
+					onConfirmUpload={handleConfirmUpload}
+					// Optional: Add handler if sign-in inside dialog needs specific action
+					// onSignInSuccess={() => { /* Maybe refetch auth status or close dialog */ }}
+				/>
+			)}
 		</Container>
 	);
 };
