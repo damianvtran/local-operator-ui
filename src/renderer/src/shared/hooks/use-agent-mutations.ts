@@ -51,6 +51,47 @@ export const useCreateAgent = () => {
 };
 
 /**
+ * Hook for uploading an agent to Radient marketplace via Local Operator
+ *
+ * @returns Mutation for uploading an agent
+ */
+export const useUploadAgentToRadientMutation = () => {
+	const client = createLocalOperatorClient(apiConfig.baseUrl);
+
+	return useMutation({
+		mutationFn: async (agentId: string) => {
+			try {
+				const response = await client.agents.uploadAgentToRadient(agentId);
+
+				if (response.status >= 400) {
+					throw new Error(
+						response.message || `Failed to upload agent ${agentId} to Radient`,
+					);
+				}
+
+				return response.result; // Contains { agent_id: string }
+			} catch (error) {
+				const errorMessage =
+					error instanceof Error
+						? error.message
+						: `An unknown error occurred while uploading agent ${agentId}`;
+
+				toast.error(errorMessage);
+				throw error;
+			}
+		},
+		onSuccess: (data) => {
+			toast.success(
+				`Agent successfully uploaded to Radient with ID: ${data?.agent_id}`,
+			);
+		},
+		onError: (error, agentId) => {
+			console.error(`Error uploading agent ${agentId} to Radient:`, error);
+		},
+	});
+};
+
+/**
  * Hook for deleting an agent
  *
  * @returns Mutation for deleting an agent
