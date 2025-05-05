@@ -129,14 +129,14 @@ const MessageBubble = styled("div")({
 	isolation: "isolate",
 });
 
-// Agent name container with timestamp
+// Agent name container with timestamp and absolutely positioned options button
 const AgentNameContainer = styled(Box)({
 	display: "flex",
-	justifyContent: "space-between",
 	alignItems: "center",
 	width: "100%",
 	position: "relative",
 	overflow: "hidden",
+	gap: 8,
 });
 
 // Agent name styling
@@ -187,21 +187,21 @@ const TimeStampText = styled("span")({
 	cursor: "help",
 });
 
-// Options button container
+// Options button container: absolutely positioned, does not take up space, fades in on hover
 const OptionsButtonContainer = styled(Box)({
 	position: "absolute",
-	right: -8,
 	top: 0,
+	right: 0,
+	height: "100%",
+	display: "flex",
+	alignItems: "center",
 	opacity: 0,
-	transform: "translateX(100%)",
-	transition: "opacity 0.2s ease, transform 0.2s ease",
+	transition: "opacity 0.2s",
+	pointerEvents: "none",
 	".MuiListItemButton-root:hover &": {
 		opacity: 1,
-		transform: "translateX(0)",
-		visibility: "visible",
+		pointerEvents: "auto",
 	},
-	zIndex: 2,
-	pointerEvents: "none",
 	"& > *": {
 		pointerEvents: "auto",
 	},
@@ -489,70 +489,69 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 									</AgentAvatar>
 								</ListItemAvatar>
 								<MessageBubble>
-									<AgentNameContainer>
-										<Tooltip
-											enterDelay={1200}
-											enterNextDelay={1200}
-											title={agent.name}
-											arrow
-											placement="top-start"
-										>
-											<AgentName>{agent.name}</AgentName>
-										</Tooltip>
-										{agent.last_message_datetime && (
-											<TimeStampContainer>
-												<TimeStampText
-													title={getFullDateTime(agent.last_message_datetime)}
-												>
-													{formatMessageDateTime(agent.last_message_datetime)}
-												</TimeStampText>
-											</TimeStampContainer>
-										)}
-										<OptionsButtonContainer>
+										<AgentNameContainer>
 											<Tooltip
 												enterDelay={1200}
 												enterNextDelay={1200}
-												title="Agent Options"
+												title={agent.name}
 												arrow
-												placement="top"
+												placement="top-start"
 											>
-												<span>
-													<AgentOptionsMenu
-														agentId={agent.id}
-														agentName={agent.name}
-														isAgentsPage={false}
-														onViewAgentSettings={
-															onNavigateToAgentSettings
-																? () => onNavigateToAgentSettings(agent.id)
-																: undefined
-														}
-														onExportAgent={() => handleExportAgent(agent.id)}
-														onClearConversation={() => {
-															clearConversationMutation.mutate({
-																agentId: agent.id,
-															});
-														}}
-														onAgentDeleted={(deletedAgentId) => {
-															if (selectedConversation === deletedAgentId) {
-																onSelectConversation("");
-															}
-															refetch();
-														}}
-														onUploadAgentToHub={() => handleOpenUploadDialog(agent)}
-														buttonSx={{
-															width: 24,
-															height: 24,
-															borderRadius: "4px",
-															display: "flex",
-															justifyContent: "center",
-															alignItems: "center",
-															opacity: 1,
-														}}
-													/>
-												</span>
+												<AgentName>{agent.name}</AgentName>
 											</Tooltip>
-										</OptionsButtonContainer>
-									</AgentNameContainer>
+											{agent.last_message_datetime && (
+												<TimeStampContainer>
+													<TimeStampText
+														title={getFullDateTime(agent.last_message_datetime)}
+													>
+														{formatMessageDateTime(agent.last_message_datetime)}
+													</TimeStampText>
+												</TimeStampContainer>
+											)}
+											<OptionsButtonContainer>
+												<Tooltip
+													enterDelay={1200}
+													enterNextDelay={1200}
+													title="Agent Options"
+													arrow
+													placement="top"
+												>
+													<span>
+														<AgentOptionsMenu
+															agentId={agent.id}
+															agentName={agent.name}
+															isAgentsPage={false}
+															onViewAgentSettings={
+																onNavigateToAgentSettings
+																	? () => onNavigateToAgentSettings(agent.id)
+																	: undefined
+															}
+															onExportAgent={() => handleExportAgent(agent.id)}
+															onClearConversation={() => {
+																clearConversationMutation.mutate({
+																	agentId: agent.id,
+																});
+															}}
+															onAgentDeleted={(deletedAgentId) => {
+																if (selectedConversation === deletedAgentId) {
+																	onSelectConversation("");
+																}
+																refetch();
+															}}
+															onUploadAgentToHub={() => handleOpenUploadDialog(agent)}
+															buttonSx={{
+																width: 24,
+																height: 24,
+																borderRadius: "4px",
+																display: "flex",
+																justifyContent: "center",
+																alignItems: "center",
+															}}
+														/>
+													</span>
+												</Tooltip>
+											</OptionsButtonContainer>
+										</AgentNameContainer>
 
 									{agent.last_message ? (
 										<Tooltip

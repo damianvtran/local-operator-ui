@@ -157,21 +157,21 @@ const CreationDateText = styled("div")(({ theme }) => ({
 	gap: 4,
 }));
 
-// Options button container (similar to chat sidebar)
+// Options button container: absolutely positioned, does not take up space, fades in on hover
 const OptionsButtonContainer = styled(Box)({
 	position: "absolute",
-	right: -8,
-	top: "50%",
-	transform: "translateY(-50%) translateX(100%)",
+	top: 0,
+	right: 0,
+	height: "100%",
+	display: "flex",
+	alignItems: "center",
 	opacity: 0,
-	transition: "opacity 0.2s ease, transform 0.2s ease",
+	transition: "opacity 0.2s",
+	pointerEvents: "none",
 	".MuiListItemButton-root:hover &": {
 		opacity: 1,
-		transform: "translateY(-50%) translateX(0)",
-		visibility: "visible",
+		pointerEvents: "auto",
 	},
-	zIndex: 2,
-	pointerEvents: "none",
 	"& > *": {
 		pointerEvents: "auto",
 	},
@@ -474,43 +474,48 @@ export const AgentsSidebar: FC<AgentsSidebarProps> = ({
 								<ListItemText disableTypography>
 									<Box
 										sx={{
-											position: "relative",
+											display: "flex",
+											alignItems: "center",
 											width: "100%",
 											overflow: "hidden",
+											gap: 1,
+											position: "relative",
 										}}
 									>
-										<Tooltip
-											enterDelay={1200}
-											enterNextDelay={1200}
-											title={agent.name}
-											arrow
-											placement="top-start"
-										>
-											<AgentName>{agent.name}</AgentName>
-										</Tooltip>
-										<Tooltip
-											title={agent.description || "No description"}
-											arrow
-											placement="bottom-start"
-											enterDelay={1200}
-											enterNextDelay={1200}
-										>
-											<DescriptionText>
-												{agent.description || "No description"}
-											</DescriptionText>
-										</Tooltip>
-										<Tooltip
-											title={`Created: ${formatDate(agent.created_date)}`}
-											arrow
-											placement="bottom-start"
-											enterDelay={1200}
-											enterNextDelay={1200}
-										>
-											<CreationDateText>
-												<FontAwesomeIcon icon={faClock} size="xs" />
-												<span>{formatDate(agent.created_date)}</span>
-											</CreationDateText>
-										</Tooltip>
+										<Box sx={{ flex: 1, minWidth: 0 }}>
+											<Tooltip
+												enterDelay={1200}
+												enterNextDelay={1200}
+												title={agent.name}
+												arrow
+												placement="top-start"
+											>
+												<AgentName>{agent.name}</AgentName>
+											</Tooltip>
+											<Tooltip
+												title={agent.description || "No description"}
+												arrow
+												placement="bottom-start"
+												enterDelay={1200}
+												enterNextDelay={1200}
+											>
+												<DescriptionText>
+													{agent.description || "No description"}
+												</DescriptionText>
+											</Tooltip>
+											<Tooltip
+												title={`Created: ${formatDate(agent.created_date)}`}
+												arrow
+												placement="bottom-start"
+												enterDelay={1200}
+												enterNextDelay={1200}
+											>
+												<CreationDateText>
+													<FontAwesomeIcon icon={faClock} size="xs" />
+													<span>{formatDate(agent.created_date)}</span>
+												</CreationDateText>
+											</Tooltip>
+										</Box>
 										<OptionsButtonContainer>
 											<Tooltip
 												enterDelay={1200}
@@ -542,7 +547,6 @@ export const AgentsSidebar: FC<AgentsSidebarProps> = ({
 															display: "flex",
 															justifyContent: "center",
 															alignItems: "center",
-															opacity: 1,
 														}}
 													/>
 												</span>
