@@ -14,6 +14,19 @@ import { faTimes } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { ALLOWED_AGENT_CATEGORIES } from "@shared/api/local-operator/types";
 
+/**
+ * Map snake_case category to Normal Capital Case for display.
+ */
+const CATEGORY_LABELS: Record<string, string> = Object.fromEntries(
+	ALLOWED_AGENT_CATEGORIES.map((cat) => [
+		cat,
+		cat
+			.split("_")
+			.map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+			.join(" "),
+	]),
+);
+
 type CategoriesInputChipsProps = {
 	/** Current categories */
 	value: string[];
@@ -107,7 +120,7 @@ export const CategoriesInputChips: FC<CategoriesInputChipsProps> = ({
 				{value.map((cat) => (
 					<StyledChip
 						key={cat}
-						label={cat}
+						label={CATEGORY_LABELS[cat] || cat}
 						onDelete={disabled ? undefined : () => handleDelete(cat)}
 						disabled={disabled}
 						deleteIcon={
@@ -133,13 +146,27 @@ export const CategoriesInputChips: FC<CategoriesInputChipsProps> = ({
 					options={availableOptions}
 					value={null}
 					inputValue={inputValue}
-					onInputChange={(_, newInput) => setInputValue(newInput)}
-					onChange={(_, newValue) => {
-						if (newValue && !value.includes(newValue)) {
+					onInputChange={(_, newInput, reason) => {
+						// Only update inputValue if not reset by blur
+						if (reason !== "reset") setInputValue(newInput);
+					}}
+					onChange={(_, newValue, reason) => {
+						// Only add if user selects from list (not on blur)
+						if (
+							newValue &&
+							!value.includes(newValue) &&
+							(reason === "selectOption" || reason === "createOption")
+						) {
 							onChange([...value, newValue]);
 						}
 						setInputValue("");
 					}}
+					selectOnFocus
+					clearOnBlur
+					handleHomeEndKeys
+					autoHighlight
+					autoSelect={false}
+					freeSolo={false}
 					renderInput={(params) => (
 						<TextField
 							{...params}
@@ -163,17 +190,70 @@ export const CategoriesInputChips: FC<CategoriesInputChipsProps> = ({
 							}}
 						/>
 					)}
+					renderOption={(props, option, { selected }) => (
+						<li
+							{...props}
+							className="category-autocomplete-option"
+							style={{
+								display: "flex",
+								alignItems: "center",
+								padding: "6px 14px",
+								fontSize: "0.875rem",
+								fontFamily: theme.typography.fontFamily,
+								color: theme.palette.text.primary,
+								background: selected
+									? theme.palette.action.selected
+									: theme.palette.background.paper,
+								borderRadius: 6,
+								margin: "2px 0",
+								cursor: "pointer",
+								transition: "background 0.15s",
+								fontWeight: 500,
+							}}
+						>
+							{CATEGORY_LABELS[option] || option}
+						</li>
+					)}
+					PaperComponent={(props) => (
+						// Override dropdown background to match list items
+						<Box
+							{...props}
+							sx={{
+								background: theme.palette.background.paper,
+								boxShadow: theme.shadows[3],
+								marginTop: 1,
+								overflow: "hidden",
+							}}
+						/>
+					)}
 					sx={{
 						minWidth: 80,
 						flex: 1,
 						"& .MuiInputBase-root": { padding: 0 },
 					}}
-					clearOnBlur
-					handleHomeEndKeys
-					autoHighlight
-					autoSelect
-					freeSolo={false}
 				/>
+				{/* Inline style for hover effect and custom scrollbar */}
+				<style>
+					{`
+					.category-autocomplete-option:hover,
+					.category-autocomplete-option[aria-selected="true"]:hover {
+						background: ${theme.palette.action.hover} !important;
+					}
+					.MuiAutocomplete-popper .MuiPaper-root {
+						scrollbar-width: thin;
+						scrollbar-color: ${theme.palette.action.selected} ${theme.palette.background.paper};
+					}
+					.MuiAutocomplete-popper .MuiPaper-root::-webkit-scrollbar {
+						width: 8px;
+						background: ${theme.palette.background.paper};
+						border-radius: 8px;
+					}
+					.MuiAutocomplete-popper .MuiPaper-root::-webkit-scrollbar-thumb {
+						background: ${theme.palette.action.selected};
+						border-radius: 8px;
+					}
+					`}
+				</style>
 			</ChipsContainer>
 			{value.length === 0 && (
 				<Typography
