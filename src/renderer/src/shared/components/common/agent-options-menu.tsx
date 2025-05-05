@@ -5,6 +5,7 @@ import {
 	faFileExport,
 	faGear,
 	faTrash,
+	faCloudUpload,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -64,6 +65,10 @@ type AgentOptionsMenuProps = {
 	 * Optional callback to clear the conversation for this agent
 	 */
 	onClearConversation?: () => void;
+	/**
+	 * Optional callback to upload the agent to the hub
+	 */
+	onUploadAgentToHub?: () => void;
 };
 
 const OptionsIconButton = styled(IconButton)(({ theme }) => ({
@@ -136,6 +141,7 @@ export const AgentOptionsMenu: FC<AgentOptionsMenuProps> = ({
 	onChatWithAgent,
 	onExportAgent,
 	onClearConversation,
+	onUploadAgentToHub,
 }) => {
 	const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
 	const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -271,6 +277,21 @@ export const AgentOptionsMenu: FC<AgentOptionsMenuProps> = ({
 							<FontAwesomeIcon icon={faFileExport} size="sm" />
 						</MenuItemIcon>
 						<Typography variant="body2">Export Agent</Typography>
+					</StyledMenuItem>
+				)}
+
+				{/* Upload to Hub option */}
+				{onUploadAgentToHub && (
+					<StyledMenuItem
+						onClick={() => {
+							onUploadAgentToHub();
+							handleCloseMenu();
+						}}
+					>
+						<MenuItemIcon>
+							<FontAwesomeIcon icon={faCloudUpload} size="sm" />
+						</MenuItemIcon>
+						<Typography variant="body2">Upload to Hub</Typography>
 					</StyledMenuItem>
 				)}
 

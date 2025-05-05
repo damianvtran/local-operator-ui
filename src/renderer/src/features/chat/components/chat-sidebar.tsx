@@ -38,6 +38,8 @@ import {
 import { Bot } from "lucide-react";
 import type { ChangeEvent, FC } from "react";
 import { useCallback, useMemo, useState } from "react";
+import { UploadAgentDialog } from "@features/agents/components/upload-agent-dialog";
+import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 
 const SidebarContainer = styled(Paper)(({ theme }) => ({
 	width: "100%",
@@ -248,6 +250,12 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 	const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
 	const perPage = 50;
 
+	// Upload to Hub dialog state
+	const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
+	const [uploadAgent, setUploadAgent] = useState<AgentDetails | null>(null);
+	const [uploadValidationIssues, setUploadValidationIssues] = useState<string[]>([]);
+	const { isAuthenticated } = useRadientAuth();
+
 	// Export agent mutation
 	const exportAgentMutation = useExportAgent();
 
@@ -356,6 +364,33 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 		},
 		[combinedAgents, exportAgentMutation], // Use combinedAgents
 	);
+
+	const getAgentUploadValidationIssues = (agent: AgentDetails | null): string[] => {
+		if (!agent) return ["No agent selected."];
+		const issues: string[] = [];
+		if (!agent.name || agent.name.trim() === "") issues.push("Name is required.");
+		if (!agent.description || agent.description.trim() === "") issues.push("Description is required.");
+		const hasCategory = agent.categories && agent.categories.length > 0;
+		if (!hasCategory) issues.push("At least one category is required.");
+		return issues;
+	};
+
+	const handleOpenUploadDialog = (agent: AgentDetails) => {
+		setUploadAgent(agent);
+		setUploadValidationIssues(getAgentUploadValidationIssues(agent));
+		setIsUploadDialogOpen(true);
+	};
+
+	const handleCloseUploadDialog = () => {
+		setIsUploadDialogOpen(false);
+		setUploadAgent(null);
+		setUploadValidationIssues([]);
+	};
+
+	const handleConfirmUpload = () => {
+		// Implement actual upload logic here if needed
+		handleCloseUploadDialog();
+	};
 
 	const handleAgentCreated = useCallback(
 		(agentId: string) => {
@@ -503,6 +538,7 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 															}
 															refetch();
 														}}
+														onUploadAgentToHub={() => handleOpenUploadDialog(agent)}
 														buttonSx={{
 															width: 24,
 															height: 24,
@@ -568,6 +604,15 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 					}
 				/>
 			)}
+			{/* Upload Agent Dialog */}
+			<UploadAgentDialog
+				open={isUploadDialogOpen}
+				onClose={handleCloseUploadDialog}
+				agentName={uploadAgent?.name || ""}
+				isAuthenticated={isAuthenticated}
+				onConfirmUpload={handleConfirmUpload}
+				validationIssues={uploadValidationIssues}
+			/>
 		</SidebarContainer>
 	);
 };
