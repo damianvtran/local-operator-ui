@@ -195,7 +195,7 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 	},
 		{
 			icon: Bot,
-			label: "Agents",
+			label: "My Agents",
 			path: "/agents",
 			isActive: currentView === "agents",
 		},

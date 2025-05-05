@@ -6,12 +6,6 @@
  * Layout follows the pattern of other pages with a sidebar and content area
  */
 
-import {
-	faCloudArrowUp,
-	faComment,
-	faFileExport,
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, Button, Tooltip } from "@mui/material";
 import { styled, useTheme } from "@mui/material/styles";
 import type { AgentDetails } from "@shared/api/local-operator/types";
@@ -30,7 +24,7 @@ import { useNavigate } from "react-router-dom";
 import { AgentSettings } from "./agent-settings";
 import { AgentsSidebar } from "./agents-sidebar";
 import { UploadAgentDialog } from "./upload-agent-dialog";
-import { Bot } from "lucide-react";
+import { Bot, CloudUpload, MessageCircle, FileUp } from "lucide-react";
 
 /**
  * Props for the AgentsPage component
@@ -265,7 +259,7 @@ export const AgentsPage: FC<AgentsPageProps> = () => {
 										variant="outlined"
 										size="small"
 										startIcon={
-											<FontAwesomeIcon icon={faFileExport} size="xs" />
+											<FileUp size={16} strokeWidth={2} />
 										}
 										onClick={handleExportAgent}
 										disabled={exportAgentMutation.isPending}
@@ -281,7 +275,7 @@ export const AgentsPage: FC<AgentsPageProps> = () => {
 										variant="outlined"
 										size="small"
 										startIcon={
-											<FontAwesomeIcon icon={faCloudArrowUp} size="xs" />
+											<CloudUpload size={16} strokeWidth={2} />
 										}
 										onClick={handleOpenUploadDialog}
 										disabled={uploadAgentMutation.isPending} // Disable button while uploading
@@ -300,7 +294,7 @@ export const AgentsPage: FC<AgentsPageProps> = () => {
 										variant="outlined"
 										color="primary"
 										size="small"
-										startIcon={<FontAwesomeIcon icon={faComment} size="xs" />}
+										startIcon={<MessageCircle size={16} strokeWidth={2} />}
 										onClick={() => navigate(`/chat/${selectedAgent.id}`)}
 										sx={primaryButtonSx}
 									>
