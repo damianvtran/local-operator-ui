@@ -1,5 +1,6 @@
-import { faCommentSlash, faRobot } from "@fortawesome/free-solid-svg-icons";
+import { faCommentSlash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { Bot } from "lucide-react";
 import {
 	Alert,
 	Avatar,
@@ -449,7 +450,7 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 							>
 								<ListItemAvatar>
 									<AgentAvatar selected={selectedConversation === agent.id}>
-										<FontAwesomeIcon icon={faRobot} />
+										<Bot size={22} strokeWidth={2.1} aria-label="Agent" />
 									</AgentAvatar>
 								</ListItemAvatar>
 								<MessageBubble>

@@ -4,8 +4,9 @@
  * Displays a list of agents with search, create, and delete functionality
  */
 
-import { faClock, faRobot } from "@fortawesome/free-solid-svg-icons";
+import { faClock } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { Bot } from "lucide-react";
 import {
 	Alert,
 	Avatar,
@@ -432,7 +433,7 @@ export const AgentsSidebar: FC<AgentsSidebarProps> = ({
 							>
 								<ListItemAvatar>
 									<AgentAvatar selected={selectedAgentId === agent.id}>
-										<FontAwesomeIcon icon={faRobot} />
+										<Bot size={22} strokeWidth={2.1} aria-label="Agent" />
 									</AgentAvatar>
 								</ListItemAvatar>
 								<ListItemText disableTypography>

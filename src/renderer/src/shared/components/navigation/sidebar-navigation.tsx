@@ -1,12 +1,12 @@
+import type { LucideIcon } from "lucide-react";
 import {
-	faChevronLeft,
-	faChevronRight,
-	faCode,
-	faGear,
-	faRobot,
-	faStore, // Import the store icon
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+	Bot,
+	Store,
+	Settings,
+	ChevronLeft,
+	ChevronRight,
+	MessageCircle,
+} from "lucide-react";
 import {
 	Box,
 	Drawer,
@@ -181,27 +181,32 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 	const expanded = !isSidebarCollapsed;
 
 	// Navigation items configuration
-	const navItems = [
+	const navItems: Array<{
+		icon: LucideIcon;
+		label: string;
+		path: string;
+		isActive: boolean;
+	}> = [
 		{
-			icon: faCode,
-			label: "Chat",
-			path: "/chat",
-			isActive: currentView === "chat",
-		},
+		icon: MessageCircle,
+		label: "Chat",
+		path: "/chat",
+		isActive: currentView === "chat",
+	},
 		{
-			icon: faRobot,
+			icon: Bot,
 			label: "Agents",
 			path: "/agents",
 			isActive: currentView === "agents",
 		},
 		{
-			icon: faStore, // Add store icon
-			label: "Agent Hub", // Add label
-			path: "/agent-hub", // Add path
-			isActive: currentView === "agent-hub", // Add active check
+			icon: Store,
+			label: "Agent Hub",
+			path: "/agent-hub",
+			isActive: currentView === "agent-hub",
 		},
 		{
-			icon: faGear,
+			icon: Settings,
 			label: "Settings",
 			path: "/settings",
 			isActive: currentView === "settings",
@@ -224,7 +229,12 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 				isExpanded={expanded}
 			>
 				<NavItemIcon isActive={item.isActive} isExpanded={expanded}>
-					<FontAwesomeIcon icon={item.icon} fixedWidth />
+					<item.icon
+						size={22}
+						strokeWidth={2.1}
+						style={{ display: "block" }}
+						aria-label={item.label}
+					/>
 				</NavItemIcon>
 				{expanded && (
 					<ListItemText
@@ -241,6 +251,7 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 
 		// If sidebar is collapsed, use custom tooltip
 		if (!expanded) {
+			// @ts-ignore Tooltip type issue workaround
 			return (
 				<StyledTooltip
 					key={item.path}
@@ -286,10 +297,11 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 							size="small"
 							aria-label={expanded ? "Collapse sidebar" : "Expand sidebar"}
 						>
-							<FontAwesomeIcon
-								icon={expanded ? faChevronLeft : faChevronRight}
-								size="xs"
-							/>
+							{expanded ? (
+								<ChevronLeft size={18} aria-label="Collapse sidebar" />
+							) : (
+								<ChevronRight size={18} aria-label="Expand sidebar" />
+							)}
 						</ToggleButton>
 					</StyledTooltip>
 				</ToggleButtonContainer>
