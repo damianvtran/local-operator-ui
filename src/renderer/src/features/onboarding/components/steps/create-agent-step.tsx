@@ -78,6 +78,8 @@ export const CreateAgentStep: FC<CreateAgentStepProps> = ({
 	} = usePublicAgentsQuery({
 		page: 1,
 		perPage: RECOMMENDED_AGENT_COUNT,
+		sort: "download_count",
+		order: "desc",
 	});
 
 	const recommendedAgents: Agent[] = agentsData?.records ?? [];
