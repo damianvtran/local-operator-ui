@@ -15,8 +15,8 @@ import {
   Skeleton,
   Stack,
 } from "@mui/material";
-import { styled, useTheme } from "@mui/material/styles";
-import { faEdit, faTrashAlt, faSave, faTimes } from "@fortawesome/free-solid-svg-icons";
+import { styled } from "@mui/material/styles";
+import { faEdit, faTrashAlt, faSave, faTimes, faComment } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useAgentCommentsQuery } from "../hooks/use-agent-comments-query";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
@@ -73,24 +73,63 @@ const CommentActions = styled(Box)({
   gap: 0.5,
 });
 
-// Replace styled component with a functional component using sx prop
-const CommentForm: React.FC<React.PropsWithChildren<{ onSubmit: React.FormEventHandler<HTMLFormElement> }>> = ({ onSubmit, children }) => {
-  const theme = useTheme();
-  return (
-    <Box
-      component="form"
-      onSubmit={onSubmit}
-      sx={{
-        marginTop: theme.spacing(3),
-        display: 'flex',
-        flexDirection: 'column',
-        gap: theme.spacing(2),
-      }}
-    >
-      {children}
-    </Box>
-  );
-};
+// Mimic EditableField label style
+const CommentLabel = styled("label")(({ theme }) => ({
+	display: "flex",
+	alignItems: "center",
+	marginBottom: 6,
+	color: theme.palette.text.secondary,
+	fontWeight: 500,
+	fontSize: "0.875rem",
+	fontFamily: theme.typography.fontFamily,
+	lineHeight: theme.typography.body2.lineHeight,
+}));
+
+const LabelIcon = styled(Box)({
+	marginRight: 8,
+	opacity: 0.9,
+	display: "flex",
+	alignItems: "center",
+});
+
+// Mimic EditableField text field style
+const StyledCommentTextField = styled(TextField)(({ theme }) => ({
+  "& .MuiOutlinedInput-root": {
+    borderRadius: 6,
+    backgroundColor: theme.palette.background.paper,
+    border: `1px solid ${theme.palette.divider}`,
+    padding: 0, // Remove default padding
+    transition: "border-color 0.2s ease, box-shadow 0.2s ease",
+    "&:hover": {
+      borderColor: theme.palette.text.secondary,
+      backgroundColor: theme.palette.background.paper, // Keep background consistent
+    },
+    "&.Mui-focused": {
+      backgroundColor: theme.palette.background.paper,
+      borderColor: theme.palette.primary.main,
+      boxShadow: `0 0 0 2px ${theme.palette.primary.main}33`,
+    },
+    "& .MuiOutlinedInput-notchedOutline": {
+      border: "none", // Hide the default outline
+    },
+  },
+  "& .MuiInputBase-inputMultiline": { // Target multiline input specifically
+    padding: "8px 12px", // Apply padding directly to the input area
+    fontSize: "0.875rem",
+    lineHeight: 1.5,
+    fontFamily: "inherit",
+  },
+  "& .MuiInputBase-input::placeholder": {
+    color: theme.palette.text.disabled,
+    opacity: 1,
+  },
+}));
+
+// Container for the comment form elements
+const CommentFormContainer = styled(Box)(({ theme }) => ({
+  marginTop: theme.spacing(3), // Keep original top margin
+  marginBottom: theme.spacing(2), // Add bottom margin consistent with EditableField
+}));
 
 
 /**
@@ -190,28 +229,37 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({ agentId }) => 
 
 			{/* Comment Input Form (only if authenticated) */}
 			{isAuthenticated ? (
-				<CommentForm onSubmit={handleCommentSubmit}>
-					<TextField
-						label="Leave a comment"
-						multiline
-            rows={3}
-            value={newComment}
-            onChange={(e) => setNewComment(e.target.value)}
-            variant="outlined"
-            fullWidth
-            required
-          />
-          <Button
-            type="submit"
-            variant="contained"
+        <CommentFormContainer>
+          <CommentLabel>
+            <LabelIcon>
+              <FontAwesomeIcon icon={faComment} size="sm" />
+            </LabelIcon>
+            Leave a comment
+          </CommentLabel>
+          <Box component="form" onSubmit={handleCommentSubmit} sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <StyledCommentTextField
+              placeholder="Share your thoughts..." // Use placeholder instead of label
+              multiline
+              rows={3}
+              value={newComment}
+              onChange={(e) => setNewComment(e.target.value)}
+              variant="outlined" // Keep variant for structure, style overrides hide default look
+              fullWidth
+              required
+            />
+            <Button
+              type="submit"
+              variant="contained"
+              color="primary" // Explicitly set color if needed
             disabled={createCommentMutation.isPending || !newComment.trim()} // Use mutation pending state
             sx={{ alignSelf: "flex-end" }}
           >
-            {createCommentMutation.isPending ? <CircularProgress size={24} /> : "Post Comment"}
-          </Button>
-        </CommentForm>
+              {createCommentMutation.isPending ? <CircularProgress size={24} /> : "Post Comment"}
+            </Button>
+          </Box>
+        </CommentFormContainer>
       ) : (
-        <Typography variant="body2" color="textSecondary" sx={{ mt: 2 }}>
+        <Typography variant="body2" color="textSecondary" sx={{ mt: 3, mb: 2 }}> {/* Adjusted margins */}
           Sign in to view and leave comments.
         </Typography>
       )}
