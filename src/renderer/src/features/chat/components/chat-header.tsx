@@ -1,5 +1,3 @@
-import { faFileAlt, faRobot } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
 	Avatar,
 	Box,
@@ -10,11 +8,19 @@ import {
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
+import { Bot, FileText } from "lucide-react";
 import type { FC } from "react";
+
+/**
+ * ChatHeaderProps
+ * @property agentName - The name of the agent to display.
+ * @property description - The description of the agent.
+ * @property onOpenOptions - Optional callback for opening options/canvas.
+ */
 type ChatHeaderProps = {
 	agentName?: string;
 	description?: string;
-	onOpenOptions?: () => void; // Kept for backward compatibility
+	onOpenOptions?: () => void;
 };
 
 const OptionsButton = styled(IconButton)(({ theme }) => ({
@@ -30,6 +36,12 @@ const OptionsButton = styled(IconButton)(({ theme }) => ({
 		transform: "translateY(-1px)",
 	},
 }));
+
+const DescriptionBox = styled(Box)({
+	display: "flex",
+	flexDirection: "column",
+	width: "90%",
+});
 
 export const ChatHeader: FC<ChatHeaderProps> = ({
 	agentName = "Local Operator",
@@ -56,14 +68,15 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 					mr: 2,
 				})}
 			>
-				<FontAwesomeIcon icon={faRobot} />
+				<Bot size={24} />
 			</Avatar>
-			<Box>
+			<DescriptionBox>
 				<Typography
 					variant="h6"
 					sx={{
-						fontWeight: 500,
-						lineHeight: 1.3,
+						fontWeight: 400,
+						lineHeight: 1.5,
+						fontSize: "1.4rem",
 						mb: 0,
 					}}
 				>
@@ -72,16 +85,26 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 				<Typography
 					variant="caption"
 					color="text.secondary"
-					sx={{ lineHeight: 1, mt: 0, fontSize: "0.875rem" }}
+					sx={{
+						lineHeight: 1.5,
+						mt: 0,
+						fontSize: "0.875rem",
+						whiteSpace: "nowrap",
+						overflow: "hidden",
+						textOverflow: "ellipsis",
+						width: "100%", // Truncate as a percentage of parent container
+						display: "block",
+					}}
+					title={description}
 				>
 					{description}
 				</Typography>
-			</Box>
+			</DescriptionBox>
 
 			{onOpenOptions && !isCanvasOpen && (
 				<Tooltip title="Open Canvas" arrow placement="top">
 					<OptionsButton onClick={() => setCanvasOpen(true)} size="medium">
-						<FontAwesomeIcon icon={faFileAlt} size="sm" />
+						<FileText size={24} />
 					</OptionsButton>
 				</Tooltip>
 			)}

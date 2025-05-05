@@ -4,31 +4,23 @@
  * A consistent header component for pages with customizable icon, title, and optional subtitle.
  */
 
-import type { IconDefinition } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, Typography } from "@mui/material";
 import { styled } from "@mui/material/styles";
+import type { LucideIcon } from "lucide-react";
 import type { FC, ReactNode } from "react";
 
+/**
+ * Props for the PageHeader component.
+ *
+ * @property title - The title of the page.
+ * @property icon - Lucide icon component to display next to the title.
+ * @property subtitle - Optional subtitle text to display below the header.
+ * @property children - Optional additional content to render below the title and subtitle.
+ */
 type PageHeaderProps = {
-	/**
-	 * The title of the page
-	 */
 	title: string;
-
-	/**
-	 * FontAwesome icon to display next to the title
-	 */
-	icon: IconDefinition;
-
-	/**
-	 * Optional subtitle text to display below the header.
-	 */
+	icon: LucideIcon;
 	subtitle?: string;
-
-	/**
-	 * Optional additional content to render below the title and subtitle.
-	 */
 	children?: ReactNode;
 };
 
@@ -40,13 +32,13 @@ type PageHeaderProps = {
  */
 const PageHeaderRoot = styled(Box)(({ theme }) => ({
 	display: "flex",
-	alignItems: "center", // Align items vertically
-	justifyContent: "space-between", // Push icon/text left, children right
+	alignItems: "center",
+	justifyContent: "space-between",
 	marginBottom: theme.spacing(4),
 	border: `1px solid ${theme.palette.divider}`,
 	borderRadius: theme.shape.borderRadius * 2,
 	padding: theme.spacing(2),
-	gap: theme.spacing(2), // Add gap between left and right sections
+	gap: theme.spacing(2),
 }));
 
 /**
@@ -57,7 +49,6 @@ const LeftContent = styled(Box)({
 	alignItems: "center",
 });
 
-/**
 /**
  * Styles for the icon wrapper.
  * Circular background, centered icon.
@@ -72,12 +63,6 @@ const HeaderIconWrapper = styled(Box)(({ theme }) => ({
 	width: "48px",
 	height: "48px",
 	flexShrink: 0,
-}));
-
-const StyledIcon = styled(FontAwesomeIcon)(({ theme }) => ({
-	color: theme.palette.text.primary,
-	width: "24px",
-	height: "24px",
 }));
 
 /**
@@ -104,12 +89,10 @@ const TitleText = styled(Typography)(() => ({
 const SubtitleText = styled(Typography)(({ theme }) => ({
 	color: theme.palette.text.secondary,
 	fontSize: "0.875rem",
-	marginTop: theme.spacing(0.5), // Reduced space between title and subtitle
+	marginTop: theme.spacing(0.5),
 	maxWidth: "800px",
 	lineHeight: 1.5,
 }));
-
-// --- Component ---
 
 /**
  * Page Header Component
@@ -118,27 +101,30 @@ const SubtitleText = styled(Typography)(({ theme }) => ({
  * using MUI theme variables for adaptability (light/dark modes).
  * Includes a circular icon, title, optional subtitle, and an area for action buttons (children).
  * The layout places the icon and text block on the left, and children (actions) on the right.
+ *
+ * @param title - The title of the page.
+ * @param icon - Lucide icon component to display next to the title.
+ * @param subtitle - Optional subtitle text to display below the header.
+ * @param children - Optional additional content to render below the title and subtitle.
+ * @throws Error if the icon prop is not a valid LucideIcon component.
  */
 export const PageHeader: FC<PageHeaderProps> = ({
 	title,
-	icon,
+	icon: Icon,
 	subtitle,
 	children,
 }) => {
 	return (
 		<PageHeaderRoot>
-			{/* Left side: Icon and Text */}
 			<LeftContent>
 				<HeaderIconWrapper>
-					<StyledIcon icon={icon} />
+					<Icon size={24} strokeWidth={2} />
 				</HeaderIconWrapper>
 				<TextContainer>
 					<TitleText variant="h1">{title}</TitleText>
 					{subtitle && <SubtitleText variant="body1">{subtitle}</SubtitleText>}
 				</TextContainer>
 			</LeftContent>
-
-			{/* Right side: Action Buttons (Children) */}
 			{children && <Box>{children}</Box>}
 		</PageHeaderRoot>
 	);

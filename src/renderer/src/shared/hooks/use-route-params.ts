@@ -58,9 +58,13 @@ export const useAgentRouteParam = () => {
 /**
  * Hook for determining the current view from the URL
  *
- * @returns The current view based on the URL path
+ * @returns The current view based on the URL path ('chat', 'agents', 'agent-hub', 'settings')
  */
-export const useCurrentView = () => {
+export const useCurrentView = ():
+	| "chat"
+	| "agents"
+	| "agent-hub"
+	| "settings" => {
 	const currentPath = getCurrentPath();
 
 	if (pathIncludes(currentPath, "/chat")) {
@@ -73,6 +77,10 @@ export const useCurrentView = () => {
 
 	if (pathIncludes(currentPath, "/settings")) {
 		return "settings";
+	}
+
+	if (pathIncludes(currentPath, "/agent-hub")) {
+		return "agent-hub";
 	}
 
 	// Default to chat if no match

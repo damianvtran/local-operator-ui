@@ -9,8 +9,10 @@ import {
 } from "@mui/material";
 import type { AgentCreate } from "@shared/api/local-operator/types";
 import { useCreateAgent } from "@shared/hooks";
+import { ExternalLink } from "lucide-react";
 import type { FC, FormEvent } from "react";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
 	BaseDialog,
 	FormContainer,
@@ -75,7 +77,26 @@ const Subtitle = styled(Typography)(({ theme }) => ({
 	color: theme.palette.text.secondary,
 	fontSize: "0.875rem",
 	marginTop: 4,
+	marginBottom: 8,
+}));
+
+const AgentHubLink = styled("button")(({ theme }) => ({
+	display: "inline-flex",
+	alignItems: "center",
+	gap: 4,
+	fontWeight: 500,
+	fontSize: "0.92rem",
+	color: theme.palette.primary.main,
+	textDecoration: "none",
 	marginBottom: 16,
+	background: "none",
+	border: "none",
+	padding: 0,
+	cursor: "pointer",
+	"&:hover": {
+		textDecoration: "underline",
+		color: theme.palette.primary.dark,
+	},
 }));
 
 /**
@@ -88,8 +109,16 @@ export const CreateAgentDialog: FC<CreateAgentDialogProps> = ({
 	onClose,
 	onAgentCreated,
 }) => {
+	const navigate = useNavigate();
 	const [name, setName] = useState("");
 	const [description, setDescription] = useState("");
+
+	const handleAgentHubClick = () => {
+		onClose();
+		setTimeout(() => {
+			navigate("/agent-hub");
+		}, 200);
+	};
 
 	const createAgentMutation = useCreateAgent();
 
@@ -166,6 +195,10 @@ export const CreateAgentDialog: FC<CreateAgentDialogProps> = ({
 			<Subtitle>
 				Configure your new AI assistant with a name and optional description
 			</Subtitle>
+			<AgentHubLink onClick={handleAgentHubClick}>
+				Browse Agent Hub to fetch ready-made agents
+				<ExternalLink size={18} style={{ marginLeft: 4 }} />
+			</AgentHubLink>
 			<form id="create-agent-form" onSubmit={handleSubmit}>
 				<FormContainer>
 					<NameField

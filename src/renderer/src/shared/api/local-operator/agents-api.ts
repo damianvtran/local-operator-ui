@@ -373,4 +373,79 @@ export const AgentsApi = {
 
 		return response.blob();
 	},
+
+	/**
+	 * Upload (push) an agent to Radient marketplace
+	 * Upload (push) the agent with the given ID to the Radient agents marketplace.
+	 * Requires RADIENT_API_KEY.
+	 *
+	 * @param baseUrl - The base URL of the Local Operator API
+	 * @param agentId - ID of the agent to upload
+	 * @returns Promise resolving to the upload response
+	 * @throws Error if the request fails
+	 */
+	async uploadAgentToRadient(
+		baseUrl: string,
+		agentId: string,
+	): Promise<CRUDResponse<{ agent_id: string }>> {
+		const response = await fetch(`${baseUrl}/v1/agents/${agentId}/upload`, {
+			method: "POST",
+			headers: {
+				Accept: "application/json",
+			},
+		});
+
+		if (!response.ok) {
+			// Attempt to parse error details if available
+			let errorDetail = `Upload agent to Radient request failed: ${response.status} ${response.statusText}`;
+			try {
+				const errorBody = await response.json();
+				if (errorBody?.detail) {
+					errorDetail = `Upload agent to Radient failed: ${errorBody.detail}`;
+				}
+			} catch (_) {
+				// Ignore if parsing fails, use the original error message
+			}
+			throw new Error(errorDetail);
+		}
+
+		return response.json() as Promise<CRUDResponse<{ agent_id: string }>>;
+	},
+
+	/**
+	 * Download (pull) an agent from Radient marketplace
+	 * Download (pull) an agent from the Radient agents marketplace by agent ID.
+	 *
+	 * @param baseUrl - The base URL of the Local Operator API
+	 * @param agentId - ID of the agent to download from Radient
+	 * @returns Promise resolving to the downloaded agent details response
+	 * @throws Error if the request fails
+	 */
+	async downloadAgentFromRadient(
+		baseUrl: string,
+		agentId: string,
+	): Promise<CRUDResponse<AgentDetails>> {
+		const response = await fetch(`${baseUrl}/v1/agents/${agentId}/download`, {
+			method: "GET",
+			headers: {
+				Accept: "application/json",
+			},
+		});
+
+		if (!response.ok) {
+			// Attempt to parse error details if available
+			let errorDetail = `Download agent from Radient request failed: ${response.status} ${response.statusText}`;
+			try {
+				const errorBody = await response.json();
+				if (errorBody?.detail) {
+					errorDetail = `Download agent from Radient failed: ${errorBody.detail}`;
+				}
+			} catch (_) {
+				// Ignore if parsing fails, use the original error message
+			}
+			throw new Error(errorDetail);
+		}
+
+		return response.json() as Promise<CRUDResponse<AgentDetails>>;
+	},
 };

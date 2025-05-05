@@ -1,3 +1,4 @@
+import * as AgentsApiImpl from "./agents-api";
 /**
  * Radient API Client
  *
@@ -31,6 +32,11 @@ export {
 export { getCreditBalance } from "./billing-api";
 export { fetchPrices } from "./prices-api";
 export { getUsageRollup } from "./usage-api";
+export {
+	getAgentLike,
+	getAgentFavourite,
+	listAccountAgents,
+} from "./agents-api";
 
 // Export all types
 export type {
@@ -126,6 +132,13 @@ export class RadientClient {
 	 */
 	get prices(): BoundApi<ApiWithBaseUrl<typeof PricesApiImpl>> {
 		return this.bindBaseUrlToApi(PricesApiImpl);
+	}
+
+	/**
+	 * Get the Agents API client with methods bound to the base URL
+	 */
+	get agents(): BoundApi<ApiWithBaseUrl<typeof AgentsApiImpl>> {
+		return this.bindBaseUrlToApi(AgentsApiImpl);
 	}
 
 	/**

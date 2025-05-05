@@ -4,12 +4,13 @@
  * Component for displaying and editing agent settings
  */
 
-import { faArrowLeft, faRobot } from "@fortawesome/free-solid-svg-icons";
+import { faArrowLeft } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Box, Paper, Typography, alpha } from "@mui/material";
+import { Box, Paper, Typography, alpha, useTheme } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import type { AgentDetails } from "@shared/api/local-operator/types";
 import { useUpdateAgent } from "@shared/hooks/use-update-agent";
+import { Bot } from "lucide-react";
 import { useState } from "react";
 import type { FC } from "react";
 import { ChatSettings } from "./chat-settings";
@@ -38,7 +39,8 @@ const DetailsPaper = styled(Paper)(({ theme }) => ({
 	padding: theme.spacing(3),
 	height: "100%",
 	borderRadius: 6,
-	backgroundColor: theme.palette.background.default,
+	backgroundImage: "none",
+	backgroundColor: theme.palette.background.paper,
 	border: `1px solid ${theme.palette.divider}`,
 	display: "flex",
 	flexDirection: "column",
@@ -93,16 +95,6 @@ const EmptyStateContainer = styled(Box)(({ theme }) => ({
 	borderRadius: 16,
 }));
 
-const PlaceholderIcon = styled(FontAwesomeIcon)(({ theme }) => ({
-	fontSize: "3rem",
-	marginBottom: "1rem",
-	color: theme.palette.primary.main,
-	opacity: 0.7,
-	padding: theme.spacing(1),
-	borderRadius: theme.shape.borderRadius,
-	backgroundColor: alpha(theme.palette.primary.main, 0.1),
-}));
-
 const DirectionIndicator = styled(Box)(({ theme }) => ({
 	display: "flex",
 	alignItems: "center",
@@ -120,6 +112,7 @@ export const AgentSettings: FC<AgentSettingsProps> = ({
 	refetchAgent,
 	initialSelectedAgentId,
 }) => {
+	const theme = useTheme();
 	const [savingField, setSavingField] = useState<string | null>(null);
 	const updateAgentMutation = useUpdateAgent();
 
@@ -164,7 +157,11 @@ export const AgentSettings: FC<AgentSettingsProps> = ({
 				</ScrollableContent>
 			) : (
 				<EmptyStateContainer>
-					<PlaceholderIcon icon={faRobot} />
+					<Bot
+						size={54}
+						color={theme.palette.primary.main}
+						style={{ marginBottom: 8 }}
+					/>
 					<Typography variant="h6" sx={{ mb: 1, fontWeight: 500 }}>
 						No Agent Selected
 					</Typography>

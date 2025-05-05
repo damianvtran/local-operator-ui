@@ -4,7 +4,7 @@
  * Displays a list of agents with search, create, and delete functionality
  */
 
-import { faClock, faRobot } from "@fortawesome/free-solid-svg-icons";
+import { faClock } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
 	Alert,
@@ -35,9 +35,12 @@ import {
 	useExportAgent,
 	usePaginationParams,
 } from "@shared/hooks";
+import { useRadientAuth } from "@shared/hooks/use-radient-auth";
+import { Bot } from "lucide-react";
 import type { ChangeEvent, FC } from "react";
 import { useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { UploadAgentDialog } from "./upload-agent-dialog";
 
 const SidebarContainer = styled(Paper)(({ theme }) => ({
 	width: "100%",
@@ -154,21 +157,21 @@ const CreationDateText = styled("div")(({ theme }) => ({
 	gap: 4,
 }));
 
-// Options button container (similar to chat sidebar)
+// Options button container: absolutely positioned, does not take up space, fades in on hover
 const OptionsButtonContainer = styled(Box)({
 	position: "absolute",
-	right: -8,
-	top: "50%",
-	transform: "translateY(-50%) translateX(100%)",
+	top: 0,
+	right: 0,
+	height: "100%",
+	display: "flex",
+	alignItems: "center",
 	opacity: 0,
-	transition: "opacity 0.2s ease, transform 0.2s ease",
+	transition: "opacity 0.2s",
+	pointerEvents: "none",
 	".MuiListItemButton-root:hover &": {
 		opacity: 1,
-		transform: "translateY(-50%) translateX(0)",
-		visibility: "visible",
+		pointerEvents: "auto",
 	},
-	zIndex: 2,
-	pointerEvents: "none",
 	"& > *": {
 		pointerEvents: "auto",
 	},
@@ -211,6 +214,14 @@ export const AgentsSidebar: FC<AgentsSidebarProps> = ({
 	const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 	const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
 	const perPage = 50;
+
+	// Upload to Hub dialog state
+	const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
+	const [uploadAgent, setUploadAgent] = useState<AgentDetails | null>(null);
+	const [uploadValidationIssues, setUploadValidationIssues] = useState<
+		string[]
+	>([]);
+	const { isAuthenticated } = useRadientAuth();
 
 	// Export agent mutation
 	const exportAgentMutation = useExportAgent();
@@ -316,6 +327,37 @@ export const AgentsSidebar: FC<AgentsSidebarProps> = ({
 		},
 		[combinedAgents, exportAgentMutation], // Use combinedAgents
 	);
+
+	const getAgentUploadValidationIssues = (
+		agent: AgentDetails | null,
+	): string[] => {
+		if (!agent) return ["No agent selected."];
+		const issues: string[] = [];
+		if (!agent.name || agent.name.trim() === "")
+			issues.push("Name is required.");
+		if (!agent.description || agent.description.trim() === "")
+			issues.push("Description is required.");
+		const hasCategory = agent.categories && agent.categories.length > 0;
+		if (!hasCategory) issues.push("At least one category is required.");
+		return issues;
+	};
+
+	const handleOpenUploadDialog = (agent: AgentDetails) => {
+		setUploadAgent(agent);
+		setUploadValidationIssues(getAgentUploadValidationIssues(agent));
+		setIsUploadDialogOpen(true);
+	};
+
+	const handleCloseUploadDialog = () => {
+		setIsUploadDialogOpen(false);
+		setUploadAgent(null);
+		setUploadValidationIssues([]);
+	};
+
+	const handleConfirmUpload = () => {
+		// Implement actual upload logic here if needed
+		handleCloseUploadDialog();
+	};
 
 	const handleAgentCreated = useCallback(
 		(agentId: string) => {
@@ -432,49 +474,54 @@ export const AgentsSidebar: FC<AgentsSidebarProps> = ({
 							>
 								<ListItemAvatar>
 									<AgentAvatar selected={selectedAgentId === agent.id}>
-										<FontAwesomeIcon icon={faRobot} />
+										<Bot size={22} strokeWidth={2.1} aria-label="Agent" />
 									</AgentAvatar>
 								</ListItemAvatar>
 								<ListItemText disableTypography>
 									<Box
 										sx={{
-											position: "relative",
+											display: "flex",
+											alignItems: "center",
 											width: "100%",
 											overflow: "hidden",
+											gap: 1,
+											position: "relative",
 										}}
 									>
-										<Tooltip
-											enterDelay={1200}
-											enterNextDelay={1200}
-											title={agent.name}
-											arrow
-											placement="top-start"
-										>
-											<AgentName>{agent.name}</AgentName>
-										</Tooltip>
-										<Tooltip
-											title={agent.description || "No description"}
-											arrow
-											placement="bottom-start"
-											enterDelay={1200}
-											enterNextDelay={1200}
-										>
-											<DescriptionText>
-												{agent.description || "No description"}
-											</DescriptionText>
-										</Tooltip>
-										<Tooltip
-											title={`Created: ${formatDate(agent.created_date)}`}
-											arrow
-											placement="bottom-start"
-											enterDelay={1200}
-											enterNextDelay={1200}
-										>
-											<CreationDateText>
-												<FontAwesomeIcon icon={faClock} size="xs" />
-												<span>{formatDate(agent.created_date)}</span>
-											</CreationDateText>
-										</Tooltip>
+										<Box sx={{ flex: 1, minWidth: 0 }}>
+											<Tooltip
+												enterDelay={1200}
+												enterNextDelay={1200}
+												title={agent.name}
+												arrow
+												placement="top-start"
+											>
+												<AgentName>{agent.name}</AgentName>
+											</Tooltip>
+											<Tooltip
+												title={agent.description || "No description"}
+												arrow
+												placement="bottom-start"
+												enterDelay={1200}
+												enterNextDelay={1200}
+											>
+												<DescriptionText>
+													{agent.description || "No description"}
+												</DescriptionText>
+											</Tooltip>
+											<Tooltip
+												title={`Created: ${formatDate(agent.created_date)}`}
+												arrow
+												placement="bottom-start"
+												enterDelay={1200}
+												enterNextDelay={1200}
+											>
+												<CreationDateText>
+													<FontAwesomeIcon icon={faClock} size="xs" />
+													<span>{formatDate(agent.created_date)}</span>
+												</CreationDateText>
+											</Tooltip>
+										</Box>
 										<OptionsButtonContainer>
 											<Tooltip
 												enterDelay={1200}
@@ -498,6 +545,9 @@ export const AgentsSidebar: FC<AgentsSidebarProps> = ({
 															navigate(`/chat/${agent.id}`)
 														}
 														onExportAgent={() => handleExportAgent(agent.id)}
+														onUploadAgentToHub={() =>
+															handleOpenUploadDialog(agent)
+														}
 														buttonSx={{
 															width: 24,
 															height: 24,
@@ -505,7 +555,6 @@ export const AgentsSidebar: FC<AgentsSidebarProps> = ({
 															display: "flex",
 															justifyContent: "center",
 															alignItems: "center",
-															opacity: 1,
 														}}
 													/>
 												</span>
@@ -540,6 +589,15 @@ export const AgentsSidebar: FC<AgentsSidebarProps> = ({
 					}
 				/>
 			)}
+			{/* Upload Agent Dialog */}
+			<UploadAgentDialog
+				open={isUploadDialogOpen}
+				onClose={handleCloseUploadDialog}
+				agentName={uploadAgent?.name || ""}
+				isAuthenticated={isAuthenticated}
+				onConfirmUpload={handleConfirmUpload}
+				validationIssues={uploadValidationIssues}
+			/>
 		</SidebarContainer>
 	);
 };
