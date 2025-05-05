@@ -15,16 +15,28 @@ export const publicAgentKeys = {
 
 /**
  * Parameters for usePublicAgentsQuery.
+ *
+ * @property page - The page number to fetch (default: 1)
+ * @property perPage - The number of agents per page (default: 20)
+ * @property enabled - Whether the query should be enabled (default: true)
+ * @property categories - Filter by categories (array of category keys, snake_case)
+ * @property sort - Sort key (allowed: "name", "created_at", "updated_at", "like_count", "favourite_count", "download_count")
+ * @property order - Sort order ("asc" or "desc")
  */
 export type UsePublicAgentsQueryParams = {
 	page?: number;
 	perPage?: number;
-	enabled?: boolean; // Allow disabling the query
-	/**
-	 * Filter by categories (array of category keys, snake_case).
-	 * If provided, only agents in these categories will be returned.
-	 */
+	enabled?: boolean;
 	categories?: string[];
+	/**
+	 * Sort key (allowed: "name", "created_at", "updated_at", "like_count", "favourite_count", "download_count").
+	 * Defaults to "download_count" if not specified.
+	 */
+	sort?: "name" | "created_at" | "updated_at" | "like_count" | "favourite_count" | "download_count";
+	/**
+	 * Sort order ("asc" or "desc"). Defaults to "desc" if not specified.
+	 */
+	order?: "asc" | "desc";
 };
 
 /**
@@ -49,40 +61,71 @@ export const usePublicAgentsQuery = ({
 	perPage = 20,
 	enabled = true,
 	categories,
+	sort,
+	order,
 }: UsePublicAgentsQueryParams = {}) => {
+	// Allowed sort fields and orders
+	const allowedSortFields = [
+		"name",
+		"created_at",
+		"updated_at",
+		"like_count",
+		"favourite_count",
+		"download_count",
+	] as const;
+	const allowedOrder = ["asc", "desc"] as const;
+
+	// Default to download_count/desc if not specified or invalid
+	const validatedSort =
+		sort && allowedSortFields.includes(sort)
+			? sort
+			: "download_count";
+	const validatedOrder =
+		order && allowedOrder.includes(order)
+			? order
+			: "desc";
+
 	const query = useQuery<
-		RadientApiResponse<PaginatedAgentList>, // Type of data returned by queryFn
-		Error, // Type of error
-		PaginatedAgentList // Type of data returned by select
+		RadientApiResponse<PaginatedAgentList>,
+		Error,
+		PaginatedAgentList
 	>({
 		queryKey: [
 			"public-agents",
 			"list",
-			{ page, perPage, categories: categories?.join(",") ?? undefined },
+			{
+				page,
+				perPage,
+				categories: categories?.join(",") ?? undefined,
+				sort: validatedSort,
+				order: validatedOrder,
+			},
 		],
 		queryFn: async () => {
-			// Fetch agents using the API client function
+			const params: Record<string, string> = {};
+			if (categories && categories.length > 0) {
+				params.categories = categories.join(",");
+			}
+			params.sort = validatedSort;
+			params.order = validatedOrder;
+
 			const response = await listAgents(
 				apiConfig.radientBaseUrl,
 				page,
 				perPage,
-				categories && categories.length > 0
-					? { categories: categories.join(",") }
-					: undefined,
+				params,
 			);
-			// The API client already handles basic error checking (non-2xx status)
 			return response;
 		},
-		select: (data) => data.result, // Select the 'result' part of the API response
-		enabled: enabled, // Control whether the query runs
-		staleTime: 5 * 60 * 1000, // 5 minutes
-		gcTime: 10 * 60 * 1000, // 10 minutes garbage collection time
-		refetchOnWindowFocus: false, // Optional: prevent refetch on window focus
+		select: (data) => data.result,
+		enabled: enabled,
+		staleTime: 5 * 60 * 1000,
+		gcTime: 10 * 60 * 1000,
+		refetchOnWindowFocus: false,
 	});
 
 	return {
 		...query,
-		// Expose agents and pagination info directly for convenience
 		agents: query.data?.records,
 		pagination: query.data
 			? {

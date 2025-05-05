@@ -461,6 +461,9 @@ export type Agent = {
 	 * Categories assigned to the agent (enum values, snake_case).
 	 */
 	categories?: AgentCategory[];
+	like_count: number;
+	favourite_count: number;
+	download_count: number;
 };
 
 /**
