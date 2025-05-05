@@ -289,6 +289,10 @@ export type AgentCreate = {
 export type AgentUpdate = {
 	/** Agent's name */
 	name?: string;
+	/** Free text tags for the agent */
+	tags?: string[];
+	/** Enum categories (snake_case) for the agent */
+	categories?: string[];
 	/**
 	 * The security prompt for the agent. Allows a user to explicitly specify
 	 * the security context for the agent's code security checks.
@@ -393,6 +397,10 @@ export type AgentListResult = {
 export type AgentDetails = {
 	/** Unique identifier for the agent */
 	id: string;
+	/** Free text tags for the agent */
+	tags?: string[];
+	/** Enum categories (snake_case) for the agent */
+	categories?: string[];
 	/** Display name of the agent */
 	name: string;
 	/** ISO timestamp when the agent was created */
@@ -610,3 +618,23 @@ export type SystemPromptUpdate = {
 	/** The new content for the system prompt */
 	content: string;
 };
+
+/**
+ * Allowed agent categories (snake_case).
+ * These should match the backend enum values.
+ */
+export const ALLOWED_AGENT_CATEGORIES = [
+	"investment",
+	"accounting",
+	"healthcare",
+	"legal",
+	"software",
+	"security",
+	"role_play",
+	"personal_assistance",
+	"education",
+	"marketing",
+	"sales",
+	"research",
+	"other",
+];
