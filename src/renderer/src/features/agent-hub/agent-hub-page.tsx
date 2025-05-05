@@ -10,25 +10,62 @@ import { AgentCardContainer } from "./components/agent-card-container";
 import { AgentCategoriesSidebar } from "./components/agent-categories-sidebar";
 import { usePublicAgentsQuery } from "./hooks/use-public-agents-query";
 
+/**
+ * Main container for the Agent Hub page.
+ */
 const StyledAgentHubContainer = styled(Box)(({ theme }) => ({
 	padding: theme.spacing(3),
 	display: "flex",
 	flexDirection: "column",
 	height: "100%",
+	minHeight: 0,
 }));
 
+/**
+ * Row layout for sidebar and main content.
+ */
 const MainContentRow = styled(Box)(({ theme }) => ({
 	display: "flex",
 	flexDirection: "row",
 	flexGrow: 1,
 	minHeight: 0,
 	marginTop: theme.spacing(2),
+	overflow: "hidden",
 }));
 
-const StyledGridContainer = styled(Grid)(({ theme }) => ({
-	overflowY: "auto",
-	padding: theme.spacing(0, 0),
+/**
+ * Sidebar container for categories.
+ */
+const SidebarContainer = styled(Box)(({ theme }) => ({
+	flex: "0 0 240px",
+	maxWidth: 240,
+	minWidth: 200,
+	marginRight: theme.spacing(3),
+	[theme.breakpoints.down("sm")]: {
+		display: "none",
+	},
+}));
+
+/**
+ * Scrollable content area for agent cards and pagination.
+ * Styled to match the chat messages view scrollbar.
+ */
+const ScrollableContent = styled(Box)(() => ({
+	display: "flex",
+	flexDirection: "column",
 	flex: 1,
+	minWidth: 0,
+	maxHeight: "100%",
+	height: "100%",
+	overflow: "hidden",
+}));
+
+const ScrollContainer = styled(Box)(({ theme }) => ({
+	flex: 1,
+	minHeight: 0,
+	overflowY: "auto",
+	overflowX: "hidden",
+	padding: theme.spacing(0, 0),
 	"&::-webkit-scrollbar": {
 		width: "8px",
 	},
@@ -39,6 +76,12 @@ const StyledGridContainer = styled(Grid)(({ theme }) => ({
 				: "rgba(0, 0, 0, 0.2)",
 		borderRadius: "4px",
 	},
+	// For Firefox
+	scrollbarWidth: "thin",
+	scrollbarColor:
+		theme.palette.mode === "dark"
+			? "rgba(255,255,255,0.1) transparent"
+			: "rgba(0,0,0,0.2) transparent",
 }));
 
 /**
@@ -79,60 +122,66 @@ export const AgentHubPage: React.FC = () => {
 				icon={Store}
 			/>
 			<MainContentRow>
-				<AgentCategoriesSidebar
-					selectedCategory={selectedCategory}
-					onSelectCategory={handleSelectCategory}
-				/>
-				<Box sx={{ flex: 1, minWidth: 0 }}>
-					{isLoading && (
-						<Box
-							display="flex"
-							justifyContent="center"
-							alignItems="center"
-							flexGrow={1}
-						>
-							<CircularProgress />
-						</Box>
-					)}
-					{error && (
-						<Box
-							display="flex"
-							justifyContent="center"
-							alignItems="center"
-							flexGrow={1}
-						>
-							<Typography color="error">
-								Failed to load agents: {error.message}
-							</Typography>
-						</Box>
-					)}
-					{!isLoading && !error && (
-						<StyledGridContainer container rowSpacing={3} columnSpacing={3}>
-							{agents.length === 0 ? (
-								<Grid item xs={12}>
-									<Typography variant="body1" align="center">
-										No public agents found.
-									</Typography>
-								</Grid>
-							) : (
-								agents.map((agent) => (
-									<Grid item key={agent.id} xs={12} sm={6} md={4} lg={3}>
-										<AgentCardContainer agent={agent} />
+				<SidebarContainer>
+					<AgentCategoriesSidebar
+						selectedCategory={selectedCategory}
+						onSelectCategory={handleSelectCategory}
+					/>
+				</SidebarContainer>
+				<ScrollableContent>
+					<ScrollContainer>
+						{isLoading && (
+							<Box
+								display="flex"
+								justifyContent="center"
+								alignItems="center"
+								flexGrow={1}
+								minHeight={200}
+							>
+								<CircularProgress />
+							</Box>
+						)}
+						{error && (
+							<Box
+								display="flex"
+								justifyContent="center"
+								alignItems="center"
+								flexGrow={1}
+								minHeight={200}
+							>
+								<Typography color="error">
+									Failed to load agents: {error.message}
+								</Typography>
+							</Box>
+						)}
+						{!isLoading && !error && (
+							<Grid container rowSpacing={3} columnSpacing={3}>
+								{agents.length === 0 ? (
+									<Grid item xs={12}>
+										<Typography variant="body1" align="center">
+											No public agents found.
+										</Typography>
 									</Grid>
-								))
-							)}
-						</StyledGridContainer>
-					)}
-					{pagination && pagination.totalPages > 1 && (
-						<Box display="flex" justifyContent="center" mt={3}>
-							<CompactPagination
-								count={pagination.totalPages}
-								page={pagination.page}
-								onChange={handlePageChange}
-							/>
-						</Box>
-					)}
-				</Box>
+								) : (
+									agents.map((agent) => (
+										<Grid item key={agent.id} xs={12} sm={6} md={4} lg={3}>
+											<AgentCardContainer agent={agent} />
+										</Grid>
+									))
+								)}
+							</Grid>
+						)}
+						{pagination && pagination.totalPages > 1 && (
+							<Box display="flex" justifyContent="center" mt={3}>
+								<CompactPagination
+									count={pagination.totalPages}
+									page={pagination.page}
+									onChange={handlePageChange}
+								/>
+							</Box>
+						)}
+					</ScrollContainer>
+				</ScrollableContent>
 			</MainContentRow>
 		</StyledAgentHubContainer>
 	);
