@@ -101,9 +101,23 @@ const DescriptionBox = styled(Box)(({ theme }) => ({
 	lineHeight: 1.6,
 }));
 
+/**
+ * Allowed palette color keys for LikeFavouriteButton.
+ */
+type LikeFavouriteButtonColor =
+	| "primary"
+	| "secondary"
+	| "error"
+	| "warning"
+	| "info"
+	| "success";
+
+/**
+ * Like/Favourite button styled for palette safety.
+ */
 const LikeFavouriteButton = styled(ButtonBase, {
 	shouldForwardProp: (prop) => prop !== "color",
-})<{ color?: string }>(({ theme, color }) => ({
+})<{ color?: LikeFavouriteButtonColor }>(({ theme, color }) => ({
 	display: "inline-flex",
 	alignItems: "center",
 	justifyContent: "center",
