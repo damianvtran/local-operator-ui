@@ -17,7 +17,7 @@ import {
 	SecondaryButton,
 } from "@shared/components/common/base-dialog";
 import type { FC } from "react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 /**
  * Props for the UploadAgentDialog component
@@ -65,12 +65,12 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 		}
 	};
 
-	// Reset agreement state when dialog closes or auth state changes
-	useState(() => {
+	// Reset agreement state when dialog closes
+	useEffect(() => {
 		if (!open) {
 			setAgreedToTerms(false);
 		}
-	});
+	}, [open]);
 
 	return (
 		<BaseDialog
@@ -125,8 +125,7 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 						label={
 							<Typography variant="body2">
 								I confirm that I have read and agree to the{" "}
-								{/* TODO: Add actual link to T&Cs */}
-								<Link href="#" target="_blank" rel="noopener noreferrer">
+								<Link href="https://radienthq.com/terms" target="_blank" rel="noopener noreferrer">
 									Terms & Conditions
 								</Link>{" "}
 								and that this agent does not contain malicious content or
@@ -137,19 +136,20 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 					/>
 				</Box>
 			)}
-			{/* Actions */}
-			<SecondaryButton variant="outlined" onClick={onClose}>
-				Cancel
-			</SecondaryButton>
-			{isAuthenticated && (
-				<PrimaryButton
-					onClick={handleConfirm}
-					disabled={!agreedToTerms}
-					variant="contained"
-				>
-					Confirm Upload
-				</PrimaryButton>
-			)}
+			<Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2, mt: 2 }}>
+				<SecondaryButton variant="outlined" onClick={onClose}>
+					Cancel
+				</SecondaryButton>
+        {isAuthenticated && (
+          <PrimaryButton
+            onClick={handleConfirm}
+            disabled={!agreedToTerms}
+            variant="contained"
+          >
+            Confirm Upload
+          </PrimaryButton>
+        )}
+      </Box>
 		</BaseDialog>
 	);
 };
