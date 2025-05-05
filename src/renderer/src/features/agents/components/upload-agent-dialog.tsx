@@ -85,13 +85,21 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 		>
 			{validationIssues.length > 0 && (
 				<Box sx={{ mb: 2 }}>
-					<Typography variant="body2" color="error" sx={{ fontWeight: 400, fontSize: "0.875rem" }}>
+					<Typography
+						variant="body2"
+						color="error"
+						sx={{ fontWeight: 400, fontSize: "0.875rem" }}
+					>
 						Agent is missing required fields:
 					</Typography>
 					<ul style={{ margin: 0, paddingLeft: 20 }}>
 						{validationIssues.map((issue) => (
 							<li key={issue}>
-								<Typography variant="body2" color="error" sx={{ fontSize: "0.875rem" }}>
+								<Typography
+									variant="body2"
+									color="error"
+									sx={{ fontSize: "0.875rem" }}
+								>
 									{issue}
 								</Typography>
 							</li>
@@ -115,13 +123,19 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 				<Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
 					<Typography variant="body1" sx={{ fontSize: "0.875rem" }}>
 						You are about to upload the agent{" "}
-						<Typography component="span" fontWeight="bold" sx={{ fontSize: "0.875rem" }}>
+						<Typography
+							component="span"
+							fontWeight="bold"
+							sx={{ fontSize: "0.875rem" }}
+						>
 							{agentName}
 						</Typography>{" "}
 						to the public Agent Hub. This will include:
 					</Typography>
 					<ul>
-						<li style={{ fontSize: "0.875rem" }}>Agent Configuration & Settings</li>
+						<li style={{ fontSize: "0.875rem" }}>
+							Agent Configuration & Settings
+						</li>
 						<li style={{ fontSize: "0.875rem" }}>Conversation History</li>
 						<li style={{ fontSize: "0.875rem" }}>Execution History</li>
 						<li style={{ fontSize: "0.875rem" }}>Learnings & Memory</li>

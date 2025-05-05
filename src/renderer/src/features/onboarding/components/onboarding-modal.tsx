@@ -279,9 +279,7 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 				return <DefaultModelStep />;
 			case OnboardingStep.CREATE_AGENT:
 				// Pass the validity callback
-				return (
-					<CreateAgentStep onValidityChange={setIsCreateAgentStepValid} />
-				);
+				return <CreateAgentStep onValidityChange={setIsCreateAgentStepValid} />;
 			case OnboardingStep.CONGRATULATIONS:
 				return (
 					<CongratulationsContainer>

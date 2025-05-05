@@ -14,8 +14,8 @@ import {
 	alpha,
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
+import { Import, Search as LucideSearch, Plus } from "lucide-react";
 import type { FC } from "react";
-import { Plus, Import, Search as LucideSearch } from "lucide-react";
 
 const SidebarHeaderContainer = styled(Box)(({ theme }) => ({
 	padding: theme.spacing(2),

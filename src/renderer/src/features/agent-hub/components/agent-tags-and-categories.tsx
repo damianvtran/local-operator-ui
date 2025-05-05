@@ -1,10 +1,13 @@
 import { Box } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import {
+	BarChart2,
 	Briefcase,
+	ClipboardList,
 	Code2,
 	FileQuestion,
 	FlaskConical,
+	Globe2,
 	GraduationCap,
 	HeartPulse,
 	Megaphone,
@@ -14,9 +17,6 @@ import {
 	Tag,
 	User,
 	Users,
-	BarChart2,
-	ClipboardList,
-	Globe2,
 } from "lucide-react";
 import type { FC } from "react";
 

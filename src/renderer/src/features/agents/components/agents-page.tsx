@@ -84,7 +84,9 @@ export const AgentsPage: FC<AgentsPageProps> = () => {
 	const navigate = useNavigate();
 	const { isAuthenticated } = useRadientAuth(); // Get auth status
 	const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false); // State for dialog
-	const [uploadValidationIssues, setUploadValidationIssues] = useState<string[]>([]);
+	const [uploadValidationIssues, setUploadValidationIssues] = useState<
+		string[]
+	>([]);
 
 	// Export agent mutation
 	const exportAgentMutation = useExportAgent();
@@ -92,8 +94,7 @@ export const AgentsPage: FC<AgentsPageProps> = () => {
 	const uploadAgentMutation = useUploadAgentToRadientMutation();
 
 	// Get agent selection store functions
-	const { setLastAgentsPageAgentId, getLastAgentId } =
-		useAgentSelectionStore();
+	const { setLastAgentsPageAgentId, getLastAgentId } = useAgentSelectionStore();
 
 	// Use the agent ID from URL or the last selected agent ID
 	const effectiveAgentId = agentId || getLastAgentId("agents");
@@ -102,7 +103,6 @@ export const AgentsPage: FC<AgentsPageProps> = () => {
 	const { data: selectedAgent, refetch: refetchAgent } = useAgent(
 		effectiveAgentId || undefined,
 	);
-
 
 	// Update the last selected agent ID when the agent ID changes
 	useEffect(() => {
@@ -134,11 +134,15 @@ export const AgentsPage: FC<AgentsPageProps> = () => {
 	};
 
 	// Validation for agent upload
-	const getAgentUploadValidationIssues = (agent: AgentDetails | null): string[] => {
+	const getAgentUploadValidationIssues = (
+		agent: AgentDetails | null,
+	): string[] => {
 		if (!agent) return ["No agent selected."];
 		const issues: string[] = [];
-		if (!agent.name || agent.name.trim() === "") issues.push("Name is required.");
-		if (!agent.description || agent.description.trim() === "") issues.push("Description is required.");
+		if (!agent.name || agent.name.trim() === "")
+			issues.push("Name is required.");
+		if (!agent.description || agent.description.trim() === "")
+			issues.push("Description is required.");
 		// Accept both category and categories (array or string), but require at least one
 		const hasCategory = agent.categories && agent.categories.length > 0;
 		if (!hasCategory) issues.push("At least one category is required.");

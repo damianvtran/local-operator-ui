@@ -1,3 +1,4 @@
+import { UploadAgentDialog } from "@features/agents/components/upload-agent-dialog";
 import { faCommentSlash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -31,6 +32,7 @@ import {
 	useExportAgent,
 	usePaginationParams,
 } from "@shared/hooks";
+import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import {
 	formatMessageDateTime,
 	getFullDateTime,
@@ -38,8 +40,6 @@ import {
 import { Bot } from "lucide-react";
 import type { ChangeEvent, FC } from "react";
 import { useCallback, useMemo, useState } from "react";
-import { UploadAgentDialog } from "@features/agents/components/upload-agent-dialog";
-import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 
 const SidebarContainer = styled(Paper)(({ theme }) => ({
 	width: "100%",
@@ -253,7 +253,9 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 	// Upload to Hub dialog state
 	const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
 	const [uploadAgent, setUploadAgent] = useState<AgentDetails | null>(null);
-	const [uploadValidationIssues, setUploadValidationIssues] = useState<string[]>([]);
+	const [uploadValidationIssues, setUploadValidationIssues] = useState<
+		string[]
+	>([]);
 	const { isAuthenticated } = useRadientAuth();
 
 	// Export agent mutation
@@ -365,11 +367,15 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 		[combinedAgents, exportAgentMutation], // Use combinedAgents
 	);
 
-	const getAgentUploadValidationIssues = (agent: AgentDetails | null): string[] => {
+	const getAgentUploadValidationIssues = (
+		agent: AgentDetails | null,
+	): string[] => {
 		if (!agent) return ["No agent selected."];
 		const issues: string[] = [];
-		if (!agent.name || agent.name.trim() === "") issues.push("Name is required.");
-		if (!agent.description || agent.description.trim() === "") issues.push("Description is required.");
+		if (!agent.name || agent.name.trim() === "")
+			issues.push("Name is required.");
+		if (!agent.description || agent.description.trim() === "")
+			issues.push("Description is required.");
 		const hasCategory = agent.categories && agent.categories.length > 0;
 		if (!hasCategory) issues.push("At least one category is required.");
 		return issues;
@@ -489,69 +495,71 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 									</AgentAvatar>
 								</ListItemAvatar>
 								<MessageBubble>
-										<AgentNameContainer>
+									<AgentNameContainer>
+										<Tooltip
+											enterDelay={1200}
+											enterNextDelay={1200}
+											title={agent.name}
+											arrow
+											placement="top-start"
+										>
+											<AgentName>{agent.name}</AgentName>
+										</Tooltip>
+										{agent.last_message_datetime && (
+											<TimeStampContainer>
+												<TimeStampText
+													title={getFullDateTime(agent.last_message_datetime)}
+												>
+													{formatMessageDateTime(agent.last_message_datetime)}
+												</TimeStampText>
+											</TimeStampContainer>
+										)}
+										<OptionsButtonContainer>
 											<Tooltip
 												enterDelay={1200}
 												enterNextDelay={1200}
-												title={agent.name}
+												title="Agent Options"
 												arrow
-												placement="top-start"
+												placement="top"
 											>
-												<AgentName>{agent.name}</AgentName>
-											</Tooltip>
-											{agent.last_message_datetime && (
-												<TimeStampContainer>
-													<TimeStampText
-														title={getFullDateTime(agent.last_message_datetime)}
-													>
-														{formatMessageDateTime(agent.last_message_datetime)}
-													</TimeStampText>
-												</TimeStampContainer>
-											)}
-											<OptionsButtonContainer>
-												<Tooltip
-													enterDelay={1200}
-													enterNextDelay={1200}
-													title="Agent Options"
-													arrow
-													placement="top"
-												>
-													<span>
-														<AgentOptionsMenu
-															agentId={agent.id}
-															agentName={agent.name}
-															isAgentsPage={false}
-															onViewAgentSettings={
-																onNavigateToAgentSettings
-																	? () => onNavigateToAgentSettings(agent.id)
-																	: undefined
+												<span>
+													<AgentOptionsMenu
+														agentId={agent.id}
+														agentName={agent.name}
+														isAgentsPage={false}
+														onViewAgentSettings={
+															onNavigateToAgentSettings
+																? () => onNavigateToAgentSettings(agent.id)
+																: undefined
+														}
+														onExportAgent={() => handleExportAgent(agent.id)}
+														onClearConversation={() => {
+															clearConversationMutation.mutate({
+																agentId: agent.id,
+															});
+														}}
+														onAgentDeleted={(deletedAgentId) => {
+															if (selectedConversation === deletedAgentId) {
+																onSelectConversation("");
 															}
-															onExportAgent={() => handleExportAgent(agent.id)}
-															onClearConversation={() => {
-																clearConversationMutation.mutate({
-																	agentId: agent.id,
-																});
-															}}
-															onAgentDeleted={(deletedAgentId) => {
-																if (selectedConversation === deletedAgentId) {
-																	onSelectConversation("");
-																}
-																refetch();
-															}}
-															onUploadAgentToHub={() => handleOpenUploadDialog(agent)}
-															buttonSx={{
-																width: 24,
-																height: 24,
-																borderRadius: "4px",
-																display: "flex",
-																justifyContent: "center",
-																alignItems: "center",
-															}}
-														/>
-													</span>
-												</Tooltip>
-											</OptionsButtonContainer>
-										</AgentNameContainer>
+															refetch();
+														}}
+														onUploadAgentToHub={() =>
+															handleOpenUploadDialog(agent)
+														}
+														buttonSx={{
+															width: 24,
+															height: 24,
+															borderRadius: "4px",
+															display: "flex",
+															justifyContent: "center",
+															alignItems: "center",
+														}}
+													/>
+												</span>
+											</Tooltip>
+										</OptionsButtonContainer>
+									</AgentNameContainer>
 
 									{agent.last_message ? (
 										<Tooltip
