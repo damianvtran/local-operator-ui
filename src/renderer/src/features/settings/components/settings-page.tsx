@@ -6,7 +6,6 @@ import {
 	faDatabase,
 	faEnvelope,
 	faExternalLinkAlt,
-	faGear,
 	faHistory,
 	faInfoCircle,
 	faKey,
@@ -15,6 +14,7 @@ import {
 	faRobot,
 	faUser,
 } from "@fortawesome/free-solid-svg-icons";
+import { Settings } from "lucide-react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
 	Alert,
@@ -664,7 +664,7 @@ export const SettingsPage: FC = () => {
 			<ContentContainer data-settings-content>
 				<PageHeader
 					title="Settings"
-					icon={faGear}
+					icon={Settings}
 					subtitle="Configure your application preferences and settings"
 				/>
 
