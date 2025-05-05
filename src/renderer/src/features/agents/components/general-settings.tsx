@@ -20,6 +20,8 @@ import type {
 	AgentUpdate,
 } from "@shared/api/local-operator/types";
 import { EditableField } from "@shared/components/common/editable-field";
+import { TagsInputChips } from "@shared/components/common/tags-input-chips";
+import { CategoriesInputChips } from "@shared/components/common/categories-input-chips";
 import { HostingSelect } from "@shared/components/hosting/hosting-select";
 import { ModelSelect } from "@shared/components/hosting/model-select";
 import type { useUpdateAgent } from "@shared/hooks/use-update-agent";
@@ -190,6 +192,9 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 	const [currentHosting, setCurrentHosting] = useState<string>(
 		selectedAgent.hosting || "",
 	);
+
+	const [tagsSaving, setTagsSaving] = useState(false);
+	const [categoriesSaving, setCategoriesSaving] = useState(false);
 
 	return (
 		<>
@@ -373,6 +378,72 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 							// Error is already handled in the mutation
 						} finally {
 							setSavingField(null);
+						}
+					}}
+				/>
+
+				{/* Tags input */}
+				<TagsInputChips
+					value={selectedAgent.tags || []}
+					label="Tags"
+					icon={<FontAwesomeIcon icon={faTag} />}
+					placeholder="Add tag..."
+					disabled={tagsSaving}
+					onChange={async (tags) => {
+						if (
+							Array.isArray(selectedAgent.tags) &&
+							tags.length === selectedAgent.tags.length &&
+							tags.every((t, i) => t === selectedAgent.tags?.[i])
+						) {
+							return;
+						}
+						setTagsSaving(true);
+						try {
+							const update: AgentUpdate = { tags };
+							await updateAgentMutation.mutateAsync({
+								agentId: selectedAgent.id,
+								update,
+							});
+							if (selectedAgent.id === initialSelectedAgentId && refetchAgent) {
+								await refetchAgent();
+							}
+						} catch (_error) {
+							// Error handled in mutation
+						} finally {
+							setTagsSaving(false);
+						}
+					}}
+				/>
+
+				{/* Categories input */}
+				<CategoriesInputChips
+					value={selectedAgent.categories || []}
+					label="Categories"
+					icon={<FontAwesomeIcon icon={faInfoCircle} />}
+					placeholder="Add category..."
+					disabled={categoriesSaving}
+					onChange={async (categories) => {
+						if (
+							Array.isArray(selectedAgent.categories) &&
+							categories.length === selectedAgent.categories.length &&
+							categories.every((c, i) => c === selectedAgent.categories?.[i])
+						) {
+							return;
+						}
+						setCategoriesSaving(true);
+						try {
+							const update: AgentUpdate = { categories };
+							await updateAgentMutation.mutateAsync({
+								agentId: selectedAgent.id,
+								update,
+							});
+							if (selectedAgent.id === initialSelectedAgentId && refetchAgent) {
+								await refetchAgent();
+							}
+						} catch (_error) {
+							// Error handled in mutation
+						} finally {
+							setCategoriesSaving(false);
 						}
 					}}
 				/>
