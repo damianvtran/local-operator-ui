@@ -2,13 +2,13 @@ import type React from "react";
 import { useState } from "react";
 import { Box, Typography, Grid, CircularProgress } from "@mui/material";
 import { styled } from "@mui/material/styles";
-import { faStore } from "@fortawesome/free-solid-svg-icons";
 import { PageHeader } from "@shared/components/common/page-header";
 import { AgentCardContainer } from "./components/agent-card-container";
 import { usePublicAgentsQuery } from "./hooks/use-public-agents-query";
 import type { Agent } from "@shared/api/radient/types";
 import { CompactPagination } from "@shared/components/common/compact-pagination";
 import { AgentCategoriesSidebar } from "./components/agent-categories-sidebar";
+import { Store } from "lucide-react";
 
 const StyledAgentHubContainer = styled(Box)(({ theme }) => ({
   padding: theme.spacing(3),
@@ -76,7 +76,7 @@ export const AgentHubPage: React.FC = () => {
       <PageHeader
         title="Agent Hub"
         subtitle="Discover and download community agents"
-        icon={faStore}
+        icon={Store}
       />
       <MainContentRow>
         <AgentCategoriesSidebar

@@ -10,7 +10,6 @@ import {
 	faCloudArrowUp,
 	faComment,
 	faFileExport,
-	faRobot,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, Button, Tooltip } from "@mui/material";
@@ -31,6 +30,7 @@ import { useNavigate } from "react-router-dom";
 import { AgentSettings } from "./agent-settings";
 import { AgentsSidebar } from "./agents-sidebar";
 import { UploadAgentDialog } from "./upload-agent-dialog";
+import { Bot } from "lucide-react";
 
 /**
  * Props for the AgentsPage component
@@ -254,7 +254,7 @@ export const AgentsPage: FC<AgentsPageProps> = () => {
 					{/* Page Header with Action Buttons as Children */}
 					<PageHeader
 						title="Agent Management"
-						icon={faRobot}
+						icon={Bot}
 						subtitle="View, configure and manage your AI agents from a central dashboard"
 					>
 						{/* Action buttons passed as children */}
