@@ -47,8 +47,8 @@ const CountDisplay = styled("span")(({ theme }) => ({
 const StyledCard = styled(Card)(({ theme }) => ({
 	display: "flex",
 	flexDirection: "column",
-	height: 320,
-	maxHeight: 320,
+	height: 410,
+	maxHeight: 410,
 	border: `1px solid ${theme.palette.divider}`,
 	backgroundImage: "none",
 	backgroundColor: theme.palette.background.default,
@@ -78,15 +78,11 @@ const AgentName = styled(Typography)(({ theme }) => ({
 	whiteSpace: "nowrap",
 }));
 
+// New AgentDescription style: no minHeight, no line clamp, just ellipsis for single line
 const AgentDescription = styled(Typography)(({ theme }) => ({
 	color: theme.palette.text.secondary,
 	marginBottom: theme.spacing(2),
-	display: "-webkit-box",
-	WebkitLineClamp: 3,
-	WebkitBoxOrient: "vertical",
-	overflow: "hidden",
-	textOverflow: "ellipsis",
-	minHeight: "3.9em",
+  fontSize: "0.875rem",
 }));
 
 const MetaInfoContainer = styled(Box)(({ theme }) => ({
@@ -142,6 +138,13 @@ const LikeFavouriteButton = styled(ButtonBase, {
 		pointerEvents: "none",
 	},
 }));
+
+// Helper function to truncate text with ellipsis if over 140 chars
+function truncateWithEllipsis(text: string, maxLength = 140): string {
+	if (!text) return "";
+	if (text.length <= maxLength) return text;
+	return `${text.slice(0, maxLength - 1)}…`;
+}
 
 /**
  * Renders a card displaying information about a public agent, with avatar and details icon.
@@ -206,6 +209,9 @@ export const AgentCard: React.FC<AgentCardProps> = ({
 		navigate(`/agent-hub/${agent.id}`);
 	};
 
+	const description = agent.description ?? "";
+	const truncatedDescription = truncateWithEllipsis(description, 140);
+
 	return (
 		<StyledCard onClick={handleCardClick}>
 			<Box
@@ -257,9 +263,19 @@ export const AgentCard: React.FC<AgentCardProps> = ({
 						flexDirection: "column",
 					}}
 				>
-					<AgentDescription variant="body2" sx={{ flexGrow: 1, minHeight: 0 }}>
-						{agent.description}
-					</AgentDescription>
+					{description.length > 140 ? (
+						<Tooltip title={description} arrow>
+							<span>
+								<AgentDescription variant="body2" sx={{ flexGrow: 1, minHeight: 0 }}>
+									{truncatedDescription}
+								</AgentDescription>
+							</span>
+						</Tooltip>
+					) : (
+						<AgentDescription variant="body2" sx={{ flexGrow: 1, minHeight: 0 }}>
+							{truncatedDescription}
+						</AgentDescription>
+					)}
 				</Box>
 				<Box>
 					<AgentTagsAndCategories

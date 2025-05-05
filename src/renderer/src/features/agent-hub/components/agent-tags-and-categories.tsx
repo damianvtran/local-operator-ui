@@ -95,7 +95,6 @@ const PillsContainer = styled(Box)(({ theme }) => ({
 	marginTop: theme.spacing(0.5),
 	marginBottom: theme.spacing(1),
 	alignItems: "center",
-	maxHeight: 48, // Clamp to ~2 lines of pills
 	overflow: "hidden",
 	position: "relative",
 }));
