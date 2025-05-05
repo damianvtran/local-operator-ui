@@ -1,4 +1,3 @@
-import { Bot, FileText } from "lucide-react";
 import {
 	Avatar,
 	Box,
@@ -9,6 +8,7 @@ import {
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
+import { Bot, FileText } from "lucide-react";
 import type { FC } from "react";
 type ChatHeaderProps = {
 	agentName?: string;

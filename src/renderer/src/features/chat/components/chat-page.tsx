@@ -52,9 +52,7 @@ export const ChatPage: FC<ChatProps> = () => {
 	const queryClient = useQueryClient();
 
 	// Get agent selection store functions
-	const { setLastChatAgentId, getLastAgentId } =
-		useAgentSelectionStore();
-
+	const { setLastChatAgentId, getLastAgentId } = useAgentSelectionStore();
 
 	// Use the agent ID from URL or the last selected agent ID
 	const effectiveAgentId = agentId || getLastAgentId("chat");

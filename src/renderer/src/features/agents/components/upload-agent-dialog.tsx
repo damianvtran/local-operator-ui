@@ -7,8 +7,8 @@ import {
 	Box,
 	Checkbox,
 	FormControlLabel,
-	Typography,
 	Link,
+	Typography,
 } from "@mui/material";
 import { RadientAuthButtons } from "@shared/components/auth/radient-auth-buttons";
 import {
@@ -17,7 +17,7 @@ import {
 	SecondaryButton,
 } from "@shared/components/common/base-dialog";
 import type { FC } from "react";
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 
 /**
  * Props for the UploadAgentDialog component
@@ -125,7 +125,11 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 						label={
 							<Typography variant="body2">
 								I confirm that I have read and agree to the{" "}
-								<Link href="https://radienthq.com/terms" target="_blank" rel="noopener noreferrer">
+								<Link
+									href="https://radienthq.com/terms"
+									target="_blank"
+									rel="noopener noreferrer"
+								>
 									Terms & Conditions
 								</Link>{" "}
 								and that this agent does not contain malicious content or
@@ -140,16 +144,16 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 				<SecondaryButton variant="outlined" onClick={onClose}>
 					Cancel
 				</SecondaryButton>
-        {isAuthenticated && (
-          <PrimaryButton
-            onClick={handleConfirm}
-            disabled={!agreedToTerms}
-            variant="contained"
-          >
-            Confirm Upload
-          </PrimaryButton>
-        )}
-      </Box>
+				{isAuthenticated && (
+					<PrimaryButton
+						onClick={handleConfirm}
+						disabled={!agreedToTerms}
+						variant="contained"
+					>
+						Confirm Upload
+					</PrimaryButton>
+				)}
+			</Box>
 		</BaseDialog>
 	);
 };

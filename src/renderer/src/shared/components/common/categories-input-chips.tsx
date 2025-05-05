@@ -7,12 +7,21 @@
  * - Theme-aware, shadcn/MUI style, consistent with EditableField and TagsInputChips
  */
 
-import { useState } from "react";
-import type { FC } from "react";
-import { Box, Chip, IconButton, Typography, styled, useTheme, Autocomplete, TextField } from "@mui/material";
 import { faTimes } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+	Autocomplete,
+	Box,
+	Chip,
+	IconButton,
+	TextField,
+	Typography,
+	styled,
+	useTheme,
+} from "@mui/material";
 import { ALLOWED_AGENT_CATEGORIES } from "@shared/api/local-operator/types";
+import { useState } from "react";
+import type { FC } from "react";
 
 /**
  * Map snake_case category to Normal Capital Case for display.
@@ -79,9 +88,10 @@ const ChipsContainer = styled(Box)(({ theme }) => ({
 const StyledChip = styled(Chip)(({ theme }) => ({
 	fontSize: "0.8125rem",
 	borderRadius: 4,
-	background: theme.palette.mode === "dark"
-		? theme.palette.action.selected
-		: theme.palette.action.hover,
+	background:
+		theme.palette.mode === "dark"
+			? theme.palette.action.selected
+			: theme.palette.action.hover,
 	color: theme.palette.text.primary,
 	"& .MuiChip-deleteIcon": {
 		color: theme.palette.text.secondary,
@@ -258,7 +268,11 @@ export const CategoriesInputChips: FC<CategoriesInputChipsProps> = ({
 			{value.length === 0 && (
 				<Typography
 					variant="caption"
-					sx={{ color: theme.palette.text.disabled, marginLeft: 1, marginTop: 0.5 }}
+					sx={{
+						color: theme.palette.text.disabled,
+						marginLeft: 1,
+						marginTop: 0.5,
+					}}
 				>
 					No categories selected
 				</Typography>

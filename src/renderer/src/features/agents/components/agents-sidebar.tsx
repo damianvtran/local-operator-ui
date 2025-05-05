@@ -6,7 +6,6 @@
 
 import { faClock } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Bot } from "lucide-react";
 import {
 	Alert,
 	Avatar,
@@ -36,6 +35,7 @@ import {
 	useExportAgent,
 	usePaginationParams,
 } from "@shared/hooks";
+import { Bot } from "lucide-react";
 import type { ChangeEvent, FC } from "react";
 import { useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";

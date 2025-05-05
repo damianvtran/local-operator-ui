@@ -19,9 +19,9 @@ import type {
 	AgentDetails,
 	AgentUpdate,
 } from "@shared/api/local-operator/types";
+import { CategoriesInputChips } from "@shared/components/common/categories-input-chips";
 import { EditableField } from "@shared/components/common/editable-field";
 import { TagsInputChips } from "@shared/components/common/tags-input-chips";
-import { CategoriesInputChips } from "@shared/components/common/categories-input-chips";
 import { HostingSelect } from "@shared/components/hosting/hosting-select";
 import { ModelSelect } from "@shared/components/hosting/model-select";
 import type { useUpdateAgent } from "@shared/hooks/use-update-agent";

@@ -1,3 +1,4 @@
+import * as AgentsApiImpl from "./agents-api";
 /**
  * Radient API Client
  *
@@ -6,7 +7,6 @@
 import * as AuthApiImpl from "./auth-api";
 import * as BillingApiImpl from "./billing-api";
 import * as PricesApiImpl from "./prices-api";
-import * as AgentsApiImpl from "./agents-api";
 import type {
 	AuthTokenExchangeResult,
 	CreateApplicationRequest,

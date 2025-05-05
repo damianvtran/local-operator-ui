@@ -1,76 +1,82 @@
+import {
+	faComment,
+	faEdit,
+	faSave,
+	faTimes,
+	faTrashAlt,
+} from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+	Avatar,
+	Box,
+	Button,
+	CircularProgress,
+	Divider,
+	IconButton,
+	List,
+	ListItem,
+	Skeleton,
+	Stack,
+	TextField,
+	Tooltip,
+	Typography,
+} from "@mui/material";
+import { styled } from "@mui/material/styles";
+import type { AgentComment } from "@shared/api/radient/types";
+import { useRadientAuth } from "@shared/hooks/use-radient-auth";
+import { formatDistanceToNowStrict } from "date-fns";
 import type React from "react";
 import { useState } from "react";
 import {
-  Box,
-  Typography,
-  List,
-  ListItem,
-  Avatar,
-  TextField,
-  Button,
-  CircularProgress,
-  IconButton,
-  Tooltip,
-  Divider,
-  Skeleton,
-  Stack,
-} from "@mui/material";
-import { styled } from "@mui/material/styles";
-import { faEdit, faTrashAlt, faSave, faTimes, faComment } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useAgentCommentsQuery } from "../hooks/use-agent-comments-query";
-import { useRadientAuth } from "@shared/hooks/use-radient-auth";
-import { formatDistanceToNowStrict } from "date-fns";
-import type { AgentComment } from "@shared/api/radient/types";
-import {
 	useCreateAgentCommentMutation,
-	useUpdateAgentCommentMutation,
 	useDeleteAgentCommentMutation,
+	useUpdateAgentCommentMutation,
 } from "../hooks/use-agent-comment-mutations";
+import { useAgentCommentsQuery } from "../hooks/use-agent-comments-query";
 
 type CommentsSectionProps = {
-  agentId: string;
+	agentId: string;
 };
 
 const CommentsContainer = styled(Box)(({ theme }) => ({
-  marginTop: theme.spacing(3),
+	marginTop: theme.spacing(3),
 }));
 
 const CommentItem = styled(ListItem)(({ theme }) => ({
-  alignItems: "flex-start",
-  paddingLeft: 0,
-  paddingRight: 0,
-  position: "relative", // For positioning edit/delete buttons
-  "&:not(:last-child)": {
-    marginBottom: theme.spacing(2),
-  },
+	alignItems: "flex-start",
+	paddingLeft: 0,
+	paddingRight: 0,
+	position: "relative", // For positioning edit/delete buttons
+	"&:not(:last-child)": {
+		marginBottom: theme.spacing(2),
+	},
 }));
 
 const CommentAvatar = styled(Avatar)(({ theme }) => ({
-  marginRight: theme.spacing(2),
-  marginTop: theme.spacing(0.5), // Align avatar better with text
+	marginRight: theme.spacing(2),
+	marginTop: theme.spacing(0.5), // Align avatar better with text
 }));
 
 const CommentHeader = styled(Box)({
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  width: "100%",
+	display: "flex",
+	justifyContent: "space-between",
+	alignItems: "center",
+	width: "100%",
 });
 
 const CommentAuthor = styled(Typography)(({ theme }) => ({
-  fontWeight: 500,
-  marginRight: theme.spacing(1),
+	fontWeight: 500,
+	marginRight: theme.spacing(1),
 }));
 
 const CommentTimestamp = styled(Typography)(({ theme }) => ({
-  fontSize: "0.75rem",
-  color: theme.palette.text.secondary,
+	fontSize: "0.75rem",
+	color: theme.palette.text.secondary,
 }));
 
 const CommentActions = styled(Box)({
-  display: "flex",
-  gap: 0.5,
+	display: "flex",
+	gap: 0.5,
 });
 
 // Mimic EditableField label style
@@ -94,48 +100,50 @@ const LabelIcon = styled(Box)({
 
 // Mimic EditableField text field style
 const StyledCommentTextField = styled(TextField)(({ theme }) => ({
-  "& .MuiOutlinedInput-root": {
-    borderRadius: 6,
-    backgroundColor: theme.palette.background.paper,
-    border: `1px solid ${theme.palette.divider}`,
-    padding: 0, // Remove default padding
-    transition: "border-color 0.2s ease, box-shadow 0.2s ease",
-    "&:hover": {
-      borderColor: theme.palette.text.secondary,
-      backgroundColor: theme.palette.background.paper, // Keep background consistent
-    },
-    "&.Mui-focused": {
-      backgroundColor: theme.palette.background.paper,
-      borderColor: theme.palette.primary.main,
-      boxShadow: `0 0 0 2px ${theme.palette.primary.main}33`,
-    },
-    "& .MuiOutlinedInput-notchedOutline": {
-      border: "none", // Hide the default outline
-    },
-  },
-  "& .MuiInputBase-inputMultiline": { // Target multiline input specifically
-    padding: "8px 12px", // Apply padding directly to the input area
-    fontSize: "0.875rem",
-    lineHeight: 1.5,
-    fontFamily: "inherit",
-  },
-  "& .MuiInputBase-input::placeholder": {
-    color: theme.palette.text.disabled,
-    opacity: 1,
-  },
+	"& .MuiOutlinedInput-root": {
+		borderRadius: 6,
+		backgroundColor: theme.palette.background.paper,
+		border: `1px solid ${theme.palette.divider}`,
+		padding: 0, // Remove default padding
+		transition: "border-color 0.2s ease, box-shadow 0.2s ease",
+		"&:hover": {
+			borderColor: theme.palette.text.secondary,
+			backgroundColor: theme.palette.background.paper, // Keep background consistent
+		},
+		"&.Mui-focused": {
+			backgroundColor: theme.palette.background.paper,
+			borderColor: theme.palette.primary.main,
+			boxShadow: `0 0 0 2px ${theme.palette.primary.main}33`,
+		},
+		"& .MuiOutlinedInput-notchedOutline": {
+			border: "none", // Hide the default outline
+		},
+	},
+	"& .MuiInputBase-inputMultiline": {
+		// Target multiline input specifically
+		padding: "8px 12px", // Apply padding directly to the input area
+		fontSize: "0.875rem",
+		lineHeight: 1.5,
+		fontFamily: "inherit",
+	},
+	"& .MuiInputBase-input::placeholder": {
+		color: theme.palette.text.disabled,
+		opacity: 1,
+	},
 }));
 
 // Container for the comment form elements
 const CommentFormContainer = styled(Box)(({ theme }) => ({
-  marginTop: theme.spacing(3), // Keep original top margin
-  marginBottom: theme.spacing(2), // Add bottom margin consistent with EditableField
+	marginTop: theme.spacing(3), // Keep original top margin
+	marginBottom: theme.spacing(2), // Add bottom margin consistent with EditableField
 }));
-
 
 /**
  * Renders the comments section for an agent, including display and creation form.
  */
-export const CommentsSection: React.FC<CommentsSectionProps> = ({ agentId }) => {
+export const CommentsSection: React.FC<CommentsSectionProps> = ({
+	agentId,
+}) => {
 	const { isAuthenticated, user, sessionToken } = useRadientAuth();
 	const [newComment, setNewComment] = useState("");
 	// State for inline editing
@@ -144,11 +152,11 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({ agentId }) => 
 
 	const {
 		data: commentsResponse, // Renamed from 'comments'
-    isLoading,
-    error,
+		isLoading,
+		error,
 	} = useAgentCommentsQuery({ agentId, enabled: isAuthenticated });
 
-  // Extract comments array, default to empty array if response/records are undefined
+	// Extract comments array, default to empty array if response/records are undefined
 	const comments = commentsResponse?.records ?? [];
 
 	// Instantiate mutation hooks
@@ -158,7 +166,8 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({ agentId }) => 
 
 	const handleCommentSubmit = async (event: React.FormEvent) => {
 		event.preventDefault();
-		if (!newComment.trim() || !isAuthenticated || !agentId || !sessionToken) return;
+		if (!newComment.trim() || !isAuthenticated || !agentId || !sessionToken)
+			return;
 
 		try {
 			await createCommentMutation.mutateAsync({
@@ -184,7 +193,14 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({ agentId }) => 
 	};
 
 	const handleSaveEdit = async () => {
-		if (!editingCommentId || !editText.trim() || !isAuthenticated || !agentId || !sessionToken) return;
+		if (
+			!editingCommentId ||
+			!editText.trim() ||
+			!isAuthenticated ||
+			!agentId ||
+			!sessionToken
+		)
+			return;
 
 		try {
 			await updateCommentMutation.mutateAsync({
@@ -218,7 +234,9 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({ agentId }) => 
 
 	const canEditOrDelete = (comment: AgentComment): boolean => {
 		// Check if the logged-in user is the author of the comment
-		return isAuthenticated && user?.radientUser?.account?.id === comment.account_id;
+		return (
+			isAuthenticated && user?.radientUser?.account?.id === comment.account_id
+		);
 	};
 
 	return (
@@ -229,178 +247,206 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({ agentId }) => 
 
 			{/* Comment Input Form (only if authenticated) */}
 			{isAuthenticated ? (
-        <CommentFormContainer>
-          <CommentLabel>
-            <LabelIcon>
-              <FontAwesomeIcon icon={faComment} size="sm" />
-            </LabelIcon>
-            Leave a comment
-          </CommentLabel>
-          <Box component="form" onSubmit={handleCommentSubmit} sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <StyledCommentTextField
-              placeholder="Share your thoughts..." // Use placeholder instead of label
-              multiline
-              rows={3}
-              value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
-              variant="outlined" // Keep variant for structure, style overrides hide default look
-              fullWidth
-              required
-            />
-            <Button
-              type="submit"
-              variant="contained"
-              color="primary" // Explicitly set color if needed
-            disabled={createCommentMutation.isPending || !newComment.trim()} // Use mutation pending state
-            sx={{ alignSelf: "flex-end" }}
-          >
-              {createCommentMutation.isPending ? <CircularProgress size={24} /> : "Post Comment"}
-            </Button>
-          </Box>
-        </CommentFormContainer>
-      ) : (
-        <Typography variant="body2" color="textSecondary" sx={{ mt: 3, mb: 2 }}> {/* Adjusted margins */}
-          Sign in to view and leave comments.
-        </Typography>
-      )}
+				<CommentFormContainer>
+					<CommentLabel>
+						<LabelIcon>
+							<FontAwesomeIcon icon={faComment} size="sm" />
+						</LabelIcon>
+						Leave a comment
+					</CommentLabel>
+					<Box
+						component="form"
+						onSubmit={handleCommentSubmit}
+						sx={{ display: "flex", flexDirection: "column", gap: 2 }}
+					>
+						<StyledCommentTextField
+							placeholder="Share your thoughts..." // Use placeholder instead of label
+							multiline
+							rows={3}
+							value={newComment}
+							onChange={(e) => setNewComment(e.target.value)}
+							variant="outlined" // Keep variant for structure, style overrides hide default look
+							fullWidth
+							required
+						/>
+						<Button
+							type="submit"
+							variant="contained"
+							color="primary" // Explicitly set color if needed
+							disabled={createCommentMutation.isPending || !newComment.trim()} // Use mutation pending state
+							sx={{ alignSelf: "flex-end" }}
+						>
+							{createCommentMutation.isPending ? (
+								<CircularProgress size={24} />
+							) : (
+								"Post Comment"
+							)}
+						</Button>
+					</Box>
+				</CommentFormContainer>
+			) : (
+				<Typography variant="body2" color="textSecondary" sx={{ mt: 3, mb: 2 }}>
+					{" "}
+					{/* Adjusted margins */}
+					Sign in to view and leave comments.
+				</Typography>
+			)}
 
-      <Divider sx={{ my: 3 }} />
+			<Divider sx={{ my: 3 }} />
 
-      {/* Comments List */}
-      {isLoading && isAuthenticated && (
-        // Skeleton Loading State
-        <List>
-          {[...Array(3)].map((_, index) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: Static list for skeleton, index is acceptable here
-            <CommentItem key={`skeleton-${index}`} divider>
-              <CommentAvatar>
-                <Skeleton variant="circular" width={40} height={40} />
-              </CommentAvatar>
-              <Box sx={{ width: "100%" }}>
-                <CommentHeader>
-                  <Box>
-                    <Skeleton variant="text" width="100px" sx={{ mb: 0.5 }} />
-                    <Skeleton variant="text" width="60px" height="0.75rem" />
-                  </Box>
-                  {/* Optionally show skeleton actions */}
-                </CommentHeader>
-                <Skeleton variant="text" sx={{ mt: 1 }} />
-                <Skeleton variant="text" width="80%" />
-              </Box>
-            </CommentItem>
-          ))}
-        </List>
-      )}
-      {error && isAuthenticated && (
-        <Typography color="error" sx={{ my: 3 }}>
-          {/* @ts-ignore */}
-          Failed to load comments: {error.message}
-        </Typography>
-      )}
-      {!isLoading && !error && isAuthenticated && (
-        <List>
-          {/* Use the extracted comments array */}
-          {comments.length === 0 ? (
-            <Typography variant="body2" color="textSecondary">
-              No comments yet. Be the first to comment!
-            </Typography>
-          ) : (
-            // Use the extracted comments array
-            comments.map((comment) =>
-              editingCommentId === comment.id ? (
-                // Edit Mode
-                <CommentItem key={comment.id} divider>
-                  <CommentAvatar>
-                    {comment.account_metadata?.name?.charAt(0).toUpperCase() || "?"}
-                  </CommentAvatar>
-                  <Box sx={{ width: "100%" }}>
-                    <TextField
-                      multiline
-                      rows={3}
-                      value={editText}
-                      onChange={(e) => setEditText(e.target.value)}
-                      variant="outlined"
-                      fullWidth
-                      autoFocus
-                      sx={{ mb: 1 }}
-                    />
-                    <Stack direction="row" spacing={1} justifyContent="flex-end">
-                      <Button
-                        size="small"
-                        onClick={handleCancelEdit}
-                        startIcon={<FontAwesomeIcon icon={faTimes} />}
-                      >
-                        Cancel
-                      </Button>
-                      <Button
-                        size="small"
-                        variant="contained"
-                        onClick={handleSaveEdit}
-                        disabled={updateCommentMutation.isPending || !editText.trim()}
-                        startIcon={
-                          updateCommentMutation.isPending ? (
-                            <CircularProgress size={16} color="inherit" />
-                          ) : (
-                            <FontAwesomeIcon icon={faSave} />
-                          )
-                        }
-                      >
-                        Save
-                      </Button>
-                    </Stack>
-                  </Box>
-                </CommentItem>
-              ) : (
-                // Display Mode
-                <CommentItem key={comment.id} divider>
-                  <CommentAvatar>
-                    {comment.account_metadata?.name?.charAt(0).toUpperCase() || "?"}
-                  </CommentAvatar>
-                  <Box sx={{ width: "100%" }}>
-                    <CommentHeader>
-                      <Box>
-                        <CommentAuthor variant="body1">
-                          {comment.account_metadata?.name || "Anonymous"}
-                        </CommentAuthor>
-                        <CommentTimestamp>
-                          {formatDistanceToNowStrict(new Date(comment.created_at))} ago
-                        </CommentTimestamp>
-                      </Box>
-                      {canEditOrDelete(comment) && (
-                        <CommentActions>
-                          <Tooltip title="Edit Comment">
-                            {/* Disable edit button while another edit is in progress */}
-                            <IconButton
-                              size="small"
-                              onClick={() => handleEditComment(comment.id, comment.text)}
-                              disabled={!!editingCommentId}
-                            >
-                              <FontAwesomeIcon icon={faEdit} size="xs" />
-                            </IconButton>
-                          </Tooltip>
-                          <Tooltip title="Delete Comment">
-                            {/* Disable delete button while an edit is in progress */}
-                            <IconButton
-                              size="small"
-                              onClick={() => handleDeleteComment(comment.id)}
-                              disabled={!!editingCommentId}
-                            >
-                              <FontAwesomeIcon icon={faTrashAlt} size="xs" />
-                            </IconButton>
-                          </Tooltip>
-                        </CommentActions>
-                      )}
-                    </CommentHeader>
-                    <Typography variant="body2" sx={{ mt: 1, whiteSpace: "pre-wrap" }}> {/* Preserve whitespace */}
-                      {comment.text}
-                    </Typography>
-                  </Box>
-                </CommentItem>
-              ),
-            )
-          )}
-        </List>
-      )}
-    </CommentsContainer>
-  );
+			{/* Comments List */}
+			{isLoading && isAuthenticated && (
+				// Skeleton Loading State
+				<List>
+					{[...Array(3)].map((_, index) => (
+						// biome-ignore lint/suspicious/noArrayIndexKey: Static list for skeleton, index is acceptable here
+						<CommentItem key={`skeleton-${index}`} divider>
+							<CommentAvatar>
+								<Skeleton variant="circular" width={40} height={40} />
+							</CommentAvatar>
+							<Box sx={{ width: "100%" }}>
+								<CommentHeader>
+									<Box>
+										<Skeleton variant="text" width="100px" sx={{ mb: 0.5 }} />
+										<Skeleton variant="text" width="60px" height="0.75rem" />
+									</Box>
+									{/* Optionally show skeleton actions */}
+								</CommentHeader>
+								<Skeleton variant="text" sx={{ mt: 1 }} />
+								<Skeleton variant="text" width="80%" />
+							</Box>
+						</CommentItem>
+					))}
+				</List>
+			)}
+			{error && isAuthenticated && (
+				<Typography color="error" sx={{ my: 3 }}>
+					{/* @ts-ignore */}
+					Failed to load comments: {error.message}
+				</Typography>
+			)}
+			{!isLoading && !error && isAuthenticated && (
+				<List>
+					{/* Use the extracted comments array */}
+					{comments.length === 0 ? (
+						<Typography variant="body2" color="textSecondary">
+							No comments yet. Be the first to comment!
+						</Typography>
+					) : (
+						// Use the extracted comments array
+						comments.map((comment) =>
+							editingCommentId === comment.id ? (
+								// Edit Mode
+								<CommentItem key={comment.id} divider>
+									<CommentAvatar>
+										{comment.account_metadata?.name?.charAt(0).toUpperCase() ||
+											"?"}
+									</CommentAvatar>
+									<Box sx={{ width: "100%" }}>
+										<TextField
+											multiline
+											rows={3}
+											value={editText}
+											onChange={(e) => setEditText(e.target.value)}
+											variant="outlined"
+											fullWidth
+											autoFocus
+											sx={{ mb: 1 }}
+										/>
+										<Stack
+											direction="row"
+											spacing={1}
+											justifyContent="flex-end"
+										>
+											<Button
+												size="small"
+												onClick={handleCancelEdit}
+												startIcon={<FontAwesomeIcon icon={faTimes} />}
+											>
+												Cancel
+											</Button>
+											<Button
+												size="small"
+												variant="contained"
+												onClick={handleSaveEdit}
+												disabled={
+													updateCommentMutation.isPending || !editText.trim()
+												}
+												startIcon={
+													updateCommentMutation.isPending ? (
+														<CircularProgress size={16} color="inherit" />
+													) : (
+														<FontAwesomeIcon icon={faSave} />
+													)
+												}
+											>
+												Save
+											</Button>
+										</Stack>
+									</Box>
+								</CommentItem>
+							) : (
+								// Display Mode
+								<CommentItem key={comment.id} divider>
+									<CommentAvatar>
+										{comment.account_metadata?.name?.charAt(0).toUpperCase() ||
+											"?"}
+									</CommentAvatar>
+									<Box sx={{ width: "100%" }}>
+										<CommentHeader>
+											<Box>
+												<CommentAuthor variant="body1">
+													{comment.account_metadata?.name || "Anonymous"}
+												</CommentAuthor>
+												<CommentTimestamp>
+													{formatDistanceToNowStrict(
+														new Date(comment.created_at),
+													)}{" "}
+													ago
+												</CommentTimestamp>
+											</Box>
+											{canEditOrDelete(comment) && (
+												<CommentActions>
+													<Tooltip title="Edit Comment">
+														{/* Disable edit button while another edit is in progress */}
+														<IconButton
+															size="small"
+															onClick={() =>
+																handleEditComment(comment.id, comment.text)
+															}
+															disabled={!!editingCommentId}
+														>
+															<FontAwesomeIcon icon={faEdit} size="xs" />
+														</IconButton>
+													</Tooltip>
+													<Tooltip title="Delete Comment">
+														{/* Disable delete button while an edit is in progress */}
+														<IconButton
+															size="small"
+															onClick={() => handleDeleteComment(comment.id)}
+															disabled={!!editingCommentId}
+														>
+															<FontAwesomeIcon icon={faTrashAlt} size="xs" />
+														</IconButton>
+													</Tooltip>
+												</CommentActions>
+											)}
+										</CommentHeader>
+										<Typography
+											variant="body2"
+											sx={{ mt: 1, whiteSpace: "pre-wrap" }}
+										>
+											{" "}
+											{/* Preserve whitespace */}
+											{comment.text}
+										</Typography>
+									</Box>
+								</CommentItem>
+							),
+						)
+					)}
+				</List>
+			)}
+		</CommentsContainer>
+	);
 };

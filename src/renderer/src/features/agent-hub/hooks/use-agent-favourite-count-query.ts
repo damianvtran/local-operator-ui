@@ -1,18 +1,19 @@
+import { getAgentFavouriteCount } from "@shared/api/radient/agents-api";
+import type { CountResponse } from "@shared/api/radient/types";
+import { apiConfig } from "@shared/config";
 import type { UseQueryResult } from "@tanstack/react-query";
 import { useQuery } from "@tanstack/react-query";
-import { getAgentFavouriteCount } from "@shared/api/radient/agents-api";
-import { apiConfig } from "@shared/config";
-import type { CountResponse } from "@shared/api/radient/types";
 
 // Query keys for agent favourite count
 export const agentFavouriteCountKeys = {
-  all: ["agent-favourite-count"] as const,
-  count: (agentId: string) => [...agentFavouriteCountKeys.all, agentId] as const,
+	all: ["agent-favourite-count"] as const,
+	count: (agentId: string) =>
+		[...agentFavouriteCountKeys.all, agentId] as const,
 };
 
 type UseAgentFavouriteCountQueryParams = {
-  agentId: string;
-  enabled?: boolean; // Allow disabling the query
+	agentId: string;
+	enabled?: boolean; // Allow disabling the query
 };
 
 /**
@@ -24,34 +25,34 @@ type UseAgentFavouriteCountQueryParams = {
  * @returns Query result object for the agent favourite count.
  */
 export const useAgentFavouriteCountQuery = ({
-  agentId,
-  enabled = true,
+	agentId,
+	enabled = true,
 }: UseAgentFavouriteCountQueryParams): UseQueryResult<number, Error> => {
-  const query = useQuery<
-    CountResponse, // Raw API response type
-    Error, // Type of error
-    number // Type of data returned by select
-  >({
-    queryKey: agentFavouriteCountKeys.count(agentId || "invalid"),
-    queryFn: async () => {
-      if (!agentId) {
-        throw new Error("Agent ID is required to fetch favourite count.");
-      }
-      // No longer requires authentication
-      const response = await getAgentFavouriteCount(
-        apiConfig.radientBaseUrl,
-        agentId,
-      );
-      return response.result;
-    },
-    // Select the actual count from the response result
-    select: (data) => data.count,
-    // Enable the query only if agentId is provided and the enabled prop is true
-    enabled: !!agentId && enabled,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes garbage collection time
-    refetchOnWindowFocus: false,
-  });
+	const query = useQuery<
+		CountResponse, // Raw API response type
+		Error, // Type of error
+		number // Type of data returned by select
+	>({
+		queryKey: agentFavouriteCountKeys.count(agentId || "invalid"),
+		queryFn: async () => {
+			if (!agentId) {
+				throw new Error("Agent ID is required to fetch favourite count.");
+			}
+			// No longer requires authentication
+			const response = await getAgentFavouriteCount(
+				apiConfig.radientBaseUrl,
+				agentId,
+			);
+			return response.result;
+		},
+		// Select the actual count from the response result
+		select: (data) => data.count,
+		// Enable the query only if agentId is provided and the enabled prop is true
+		enabled: !!agentId && enabled,
+		staleTime: 5 * 60 * 1000, // 5 minutes
+		gcTime: 10 * 60 * 1000, // 10 minutes garbage collection time
+		refetchOnWindowFocus: false,
+	});
 
-  return query;
+	return query;
 };

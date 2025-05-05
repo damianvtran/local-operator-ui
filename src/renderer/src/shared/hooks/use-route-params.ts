@@ -60,7 +60,11 @@ export const useAgentRouteParam = () => {
  *
  * @returns The current view based on the URL path ('chat', 'agents', 'agent-hub', 'settings')
  */
-export const useCurrentView = (): "chat" | "agents" | "agent-hub" | "settings" => {
+export const useCurrentView = ():
+	| "chat"
+	| "agents"
+	| "agent-hub"
+	| "settings" => {
 	const currentPath = getCurrentPath();
 
 	if (pathIncludes(currentPath, "/chat")) {

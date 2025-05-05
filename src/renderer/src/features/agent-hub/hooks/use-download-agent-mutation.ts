@@ -1,9 +1,12 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { toast } from "react-toastify";
 import { AgentsApi } from "@shared/api/local-operator/agents-api";
-import type { AgentDetails, CRUDResponse } from "@shared/api/local-operator/types";
+import type {
+	AgentDetails,
+	CRUDResponse,
+} from "@shared/api/local-operator/types";
 import { apiConfig } from "@shared/config"; // Import apiConfig for the base URL
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
 
 /**
  * React Query mutation hook for downloading an agent from Radient via the Local Operator.
@@ -33,14 +36,18 @@ export const useDownloadAgentMutation = () => {
 			// Invalidate local agents list to reflect the newly downloaded agent
 			queryClient.invalidateQueries({ queryKey: ["agents"] });
 			// Optionally invalidate agent download counts if needed elsewhere
-			queryClient.invalidateQueries({ queryKey: ["agent-download-count", variables.agentId] });
+			queryClient.invalidateQueries({
+				queryKey: ["agent-download-count", variables.agentId],
+			});
 
 			const agentResult = data.result; // Capture result
 
 			if (agentResult?.id) {
 				navigate(`/chat/${agentResult.id}`);
 			} else {
-				console.warn("Downloaded agent ID not found in response, cannot navigate to chat.");
+				console.warn(
+					"Downloaded agent ID not found in response, cannot navigate to chat.",
+				);
 			}
 		},
 		onError: (error) => {
