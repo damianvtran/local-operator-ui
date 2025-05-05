@@ -117,7 +117,6 @@ const DownloadChip = styled(Chip)(({ theme }) => ({
 	height: "24px",
 }));
 
-
 /**
  * Allowed palette color keys for LikeFavouriteButton.
  */
