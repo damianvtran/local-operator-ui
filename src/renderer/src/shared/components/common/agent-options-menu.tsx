@@ -1,23 +1,23 @@
 import {
-  MoreVertical,
-  MessageCircle,
-  Settings,
-  FileOutput,
-  Trash2,
-  Eraser,
-  UploadCloud,
-} from "lucide-react";
-import {
-  IconButton,
-  ListItemIcon,
-  Menu,
-  MenuItem,
-  Typography,
-  alpha,
-  styled,
+	IconButton,
+	ListItemIcon,
+	Menu,
+	MenuItem,
+	Typography,
+	alpha,
+	styled,
 } from "@mui/material";
 import { useDeleteAgent } from "@shared/hooks/use-agent-mutations";
 import { useAgentSelectionStore } from "@shared/store/agent-selection-store";
+import {
+	Eraser,
+	FileOutput,
+	MessageCircle,
+	MoreVertical,
+	Settings,
+	Trash2,
+	UploadCloud,
+} from "lucide-react";
 import type { FC, MouseEvent } from "react";
 import { useState } from "react";
 import { ConfirmationModal } from "./confirmation-modal";
@@ -78,109 +78,111 @@ type AgentOptionsMenuProps = {
  * The button has a fixed size to prevent layout shift, and the icon is larger for prominence.
  */
 const OptionsIconButton = styled(IconButton)(({ theme }) => ({
-  borderRadius: "0.375rem", // rounded-md
-  padding: 0,
-  left: 8,
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  transition: "background-color 0.2s",
-  background: "transparent",
-  "&:hover": {
-    backgroundColor:
-      theme.palette.mode === "dark"
-        ? alpha(theme.palette.common.white, 0.08)
-        : alpha(theme.palette.common.black, 0.08),
-  },
+	borderRadius: "0.375rem", // rounded-md
+	padding: 0,
+	left: 8,
+	display: "flex",
+	alignItems: "center",
+	justifyContent: "center",
+	transition: "background-color 0.2s",
+	background: "transparent",
+	"&:hover": {
+		backgroundColor:
+			theme.palette.mode === "dark"
+				? alpha(theme.palette.common.white, 0.08)
+				: alpha(theme.palette.common.black, 0.08),
+	},
 }));
 
 /**
  * Styled menu using shadcn style tokens.
  */
 const OptionsMenu = styled(Menu)(({ theme }) => ({
-  "& .MuiPaper-root": {
-    minWidth: 180, // shadcn menus are wider
-    boxShadow:
-      theme.palette.mode === "dark"
-        ? "0px 8px 32px 0px rgba(0,0,0,0.45)"
-        : "0px 8px 32px 0px rgba(0,0,0,0.15)",
-    borderRadius: "0.75rem", // rounded-xl
-    padding: "0.25rem", // p-1
-    background: theme.palette.background.paper,
-  },
+	"& .MuiPaper-root": {
+		minWidth: 180, // shadcn menus are wider
+		boxShadow:
+			theme.palette.mode === "dark"
+				? "0px 8px 32px 0px rgba(0,0,0,0.45)"
+				: "0px 8px 32px 0px rgba(0,0,0,0.15)",
+		borderRadius: "0.75rem", // rounded-xl
+		padding: "0.25rem", // p-1
+		background: theme.palette.background.paper,
+	},
 }));
 
 /**
  * Styled menu item for normal actions, using shadcn spacing and font.
  */
 const StyledMenuItem = styled(MenuItem)(({ theme }) => ({
-  borderRadius: "0.375rem", // rounded-md
-  padding: "0.5rem 0.75rem", // py-2 px-3
-  fontSize: "0.875rem", // text-sm
-  fontWeight: 500,
-  gap: "0.75rem", // gap-3
-  minHeight: "2.25rem", // h-9
-  "&:hover": {
-    backgroundColor:
-      theme.palette.mode === "dark"
-        ? alpha(theme.palette.primary.main, 0.10)
-        : alpha(theme.palette.primary.main, 0.08),
-  },
+	borderRadius: "0.375rem", // rounded-md
+	padding: "0.5rem 0.75rem", // py-2 px-3
+	fontSize: "0.875rem", // text-sm
+	fontWeight: 500,
+	gap: "0.75rem", // gap-3
+	minHeight: "2.25rem", // h-9
+	"&:hover": {
+		backgroundColor:
+			theme.palette.mode === "dark"
+				? alpha(theme.palette.primary.main, 0.1)
+				: alpha(theme.palette.primary.main, 0.08),
+	},
 }));
 
 /**
  * Styled menu item for warning actions.
  */
 const WarningMenuItem = styled(MenuItem)(({ theme }) => ({
-  borderRadius: "0.375rem",
-  padding: "0.5rem 0.75rem",
-  fontSize: "0.875rem",
-  fontWeight: 500,
-  gap: "0.75rem",
-  minHeight: "2.25rem",
-  color: theme.palette.warning.main,
-  "&:hover": {
-    backgroundColor: alpha(theme.palette.warning.main, 0.08),
-  },
+	borderRadius: "0.375rem",
+	padding: "0.5rem 0.75rem",
+	fontSize: "0.875rem",
+	fontWeight: 500,
+	gap: "0.75rem",
+	minHeight: "2.25rem",
+	color: theme.palette.warning.main,
+	"&:hover": {
+		backgroundColor: alpha(theme.palette.warning.main, 0.08),
+	},
 }));
 
 /**
  * Styled menu item for delete actions.
  */
 const DeleteMenuItem = styled(MenuItem)(({ theme }) => ({
-  borderRadius: "0.375rem",
-  padding: "0.5rem 0.75rem",
-  fontSize: "0.875rem",
-  fontWeight: 500,
-  gap: "0.75rem",
-  minHeight: "2.25rem",
-  color: theme.palette.error.main,
-  "&:hover": {
-    backgroundColor: alpha(theme.palette.error.main, 0.08),
-  },
+	borderRadius: "0.375rem",
+	padding: "0.5rem 0.75rem",
+	fontSize: "0.875rem",
+	fontWeight: 500,
+	gap: "0.75rem",
+	minHeight: "2.25rem",
+	color: theme.palette.error.main,
+	"&:hover": {
+		backgroundColor: alpha(theme.palette.error.main, 0.08),
+	},
 }));
 
 /**
  * Styled icon for menu items, using shadcn size and color.
  */
-const MenuItemIcon = styled(ListItemIcon)<{ color?: "error" | "warning" }>(({ theme, color }) => ({
-  color:
-    color === "error"
-      ? theme.palette.error.main
-      : color === "warning"
-      ? theme.palette.warning.main
-      : theme.palette.text.primary,
-  minWidth: 0,
-  marginRight: "0.75rem", // gap-3
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  "& svg": {
-    width: "1.125rem", // w-4.5
-    height: "1.125rem",
-    strokeWidth: 1.8,
-  },
-}));
+const MenuItemIcon = styled(ListItemIcon)<{ color?: "error" | "warning" }>(
+	({ theme, color }) => ({
+		color:
+			color === "error"
+				? theme.palette.error.main
+				: color === "warning"
+					? theme.palette.warning.main
+					: theme.palette.text.primary,
+		minWidth: 0,
+		marginRight: "0.75rem", // gap-3
+		display: "flex",
+		alignItems: "center",
+		justifyContent: "center",
+		"& svg": {
+			width: "1.125rem", // w-4.5
+			height: "1.125rem",
+			strokeWidth: 1.8,
+		},
+	}),
+);
 
 /**
  * Agent Options Menu Component
@@ -268,13 +270,16 @@ export const AgentOptionsMenu: FC<AgentOptionsMenuProps> = ({
 
 	return (
 		<>
-      <OptionsIconButton
-        aria-label="agent options"
-        onClick={handleOpenMenu}
-        sx={buttonSx}
-      >
-        <MoreVertical aria-label="More options" style={{ width: "1rem", height: "1rem" }} />
-      </OptionsIconButton>
+			<OptionsIconButton
+				aria-label="agent options"
+				onClick={handleOpenMenu}
+				sx={buttonSx}
+			>
+				<MoreVertical
+					aria-label="More options"
+					style={{ width: "1rem", height: "1rem" }}
+				/>
+			</OptionsIconButton>
 
 			<OptionsMenu
 				anchorEl={menuAnchorEl}
@@ -291,81 +296,81 @@ export const AgentOptionsMenu: FC<AgentOptionsMenuProps> = ({
 				}}
 			>
 				{/* Chat with Agent option - only shown when on the agents page */}
-        {isAgentsPage && onChatWithAgent && (
-          <StyledMenuItem
-            onClick={() => {
-              onChatWithAgent();
-              handleCloseMenu();
-            }}
-          >
-            <MenuItemIcon>
-              <MessageCircle aria-label="Chat with Agent" />
-            </MenuItemIcon>
-            <span>Chat with Agent</span>
-          </StyledMenuItem>
-        )}
+				{isAgentsPage && onChatWithAgent && (
+					<StyledMenuItem
+						onClick={() => {
+							onChatWithAgent();
+							handleCloseMenu();
+						}}
+					>
+						<MenuItemIcon>
+							<MessageCircle aria-label="Chat with Agent" />
+						</MenuItemIcon>
+						<span>Chat with Agent</span>
+					</StyledMenuItem>
+				)}
 
 				{/* View Agent Settings option - only shown when not on the agents page */}
-        {!isAgentsPage && onViewAgentSettings && (
-          <StyledMenuItem
-            onClick={() => {
-              onViewAgentSettings();
-              handleCloseMenu();
-            }}
-          >
-            <MenuItemIcon>
-              <Settings aria-label="View Agent Settings" />
-            </MenuItemIcon>
-            <span>View Agent Settings</span>
-          </StyledMenuItem>
-        )}
+				{!isAgentsPage && onViewAgentSettings && (
+					<StyledMenuItem
+						onClick={() => {
+							onViewAgentSettings();
+							handleCloseMenu();
+						}}
+					>
+						<MenuItemIcon>
+							<Settings aria-label="View Agent Settings" />
+						</MenuItemIcon>
+						<span>View Agent Settings</span>
+					</StyledMenuItem>
+				)}
 
 				{/* Export Agent option */}
-        {onExportAgent && (
-          <StyledMenuItem
-            onClick={() => {
-              onExportAgent();
-              handleCloseMenu();
-            }}
-          >
-            <MenuItemIcon>
-              <FileOutput aria-label="Export Agent" />
-            </MenuItemIcon>
-            <span>Export Agent</span>
-          </StyledMenuItem>
-        )}
+				{onExportAgent && (
+					<StyledMenuItem
+						onClick={() => {
+							onExportAgent();
+							handleCloseMenu();
+						}}
+					>
+						<MenuItemIcon>
+							<FileOutput aria-label="Export Agent" />
+						</MenuItemIcon>
+						<span>Export Agent</span>
+					</StyledMenuItem>
+				)}
 
 				{/* Upload to Hub option */}
-        {onUploadAgentToHub && (
-          <StyledMenuItem
-            onClick={() => {
-              onUploadAgentToHub();
-              handleCloseMenu();
-            }}
-          >
-            <MenuItemIcon>
-              <UploadCloud aria-label="Upload to Hub" />
-            </MenuItemIcon>
-            <span>Upload to Hub</span>
-          </StyledMenuItem>
-        )}
+				{onUploadAgentToHub && (
+					<StyledMenuItem
+						onClick={() => {
+							onUploadAgentToHub();
+							handleCloseMenu();
+						}}
+					>
+						<MenuItemIcon>
+							<UploadCloud aria-label="Upload to Hub" />
+						</MenuItemIcon>
+						<span>Upload to Hub</span>
+					</StyledMenuItem>
+				)}
 
 				{/* Clear Conversation option */}
-        {onClearConversation && (
-          <WarningMenuItem onClick={handleOpenClearConfirmation}>
-            <MenuItemIcon color="warning">
-              <Eraser aria-label="Clear Conversation" />
-            </MenuItemIcon>
-            <span>Clear Conversation</span>
-          </WarningMenuItem>
-        )}
+				{onClearConversation && (
+					<WarningMenuItem onClick={handleOpenClearConfirmation}>
+						<MenuItemIcon color="warning">
+							<Eraser aria-label="Clear Conversation" />
+						</MenuItemIcon>
+						<span>Clear Conversation</span>
+					</WarningMenuItem>
+				)}
 
-        <DeleteMenuItem onClick={handleOpenDeleteConfirmation}>
-          <MenuItemIcon color="error">
-            <Trash2 aria-label="Delete Agent" />
-          </MenuItemIcon>
-          <span>Delete Agent</span>
-        </DeleteMenuItem>
+				<DeleteMenuItem onClick={handleOpenDeleteConfirmation}>
+					<MenuItemIcon color="error">
+						<Trash2 aria-label="Delete Agent" />
+					</MenuItemIcon>
+					<span>Delete Agent</span>
+				</DeleteMenuItem>
 			</OptionsMenu>
 
 			{/* Delete Confirmation Modal */}

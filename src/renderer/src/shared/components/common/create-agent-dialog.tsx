@@ -7,12 +7,12 @@ import {
 	alpha,
 	styled,
 } from "@mui/material";
-import { useNavigate } from "react-router-dom";
-import { ExternalLink } from "lucide-react";
 import type { AgentCreate } from "@shared/api/local-operator/types";
 import { useCreateAgent } from "@shared/hooks";
+import { ExternalLink } from "lucide-react";
 import type { FC, FormEvent } from "react";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
 	BaseDialog,
 	FormContainer,

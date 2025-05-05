@@ -82,7 +82,7 @@ const AgentName = styled(Typography)(({ theme }) => ({
 const AgentDescription = styled(Typography)(({ theme }) => ({
 	color: theme.palette.text.secondary,
 	marginBottom: theme.spacing(2),
-  fontSize: "0.875rem",
+	fontSize: "0.875rem",
 }));
 
 const MetaInfoContainer = styled(Box)(({ theme }) => ({
@@ -266,13 +266,19 @@ export const AgentCard: React.FC<AgentCardProps> = ({
 					{description.length > 140 ? (
 						<Tooltip title={description} arrow>
 							<span>
-								<AgentDescription variant="body2" sx={{ flexGrow: 1, minHeight: 0 }}>
+								<AgentDescription
+									variant="body2"
+									sx={{ flexGrow: 1, minHeight: 0 }}
+								>
 									{truncatedDescription}
 								</AgentDescription>
 							</span>
 						</Tooltip>
 					) : (
-						<AgentDescription variant="body2" sx={{ flexGrow: 1, minHeight: 0 }}>
+						<AgentDescription
+							variant="body2"
+							sx={{ flexGrow: 1, minHeight: 0 }}
+						>
 							{truncatedDescription}
 						</AgentDescription>
 					)}

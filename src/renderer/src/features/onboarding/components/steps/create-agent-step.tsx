@@ -5,21 +5,21 @@
  * from a curated list.
  */
 
+import { AgentCard } from "@features/agent-hub/components/agent-card";
+import { useDownloadAgentMutation } from "@features/agent-hub/hooks/use-download-agent-mutation";
+import { usePublicAgentsQuery } from "@features/agent-hub/hooks/use-public-agents-query";
 import { faDownload } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
 	Box,
 	Button,
+	Chip,
 	CircularProgress,
 	Grid,
 	Typography,
 	styled,
-	Chip,
 } from "@mui/material";
 import type { Agent } from "@shared/api/radient/types";
-import { AgentCard } from "@features/agent-hub/components/agent-card";
-import { useDownloadAgentMutation } from "@features/agent-hub/hooks/use-download-agent-mutation";
-import { usePublicAgentsQuery } from "@features/agent-hub/hooks/use-public-agents-query";
 import { useAgents } from "@shared/hooks/use-agents";
 import { CheckCircle } from "lucide-react";
 import type { FC } from "react";
@@ -35,11 +35,11 @@ const RECOMMENDED_AGENT_COUNT = 8;
 
 const StyledGridContainer = styled(Grid)(({ theme }) => ({
 	overflowY: "auto",
-	padding: theme.spacing(2, 0), 
+	padding: theme.spacing(2, 0),
 	height: 400,
-  maxHeight: 400,
+	maxHeight: 400,
 	flexGrow: 1,
-	width: "100%", 
+	width: "100%",
 	"&::-webkit-scrollbar": {
 		width: "8px",
 	},
@@ -100,8 +100,13 @@ export const CreateAgentStep: FC<CreateAgentStepProps> = ({
 		}
 
 		// Add agent ID to state upon successful download
-		if (downloadAgentMutation.isSuccess && downloadAgentMutation.variables?.agentId) {
-			setAddedAgentIds((prev) => new Set(prev).add(downloadAgentMutation.variables.agentId));
+		if (
+			downloadAgentMutation.isSuccess &&
+			downloadAgentMutation.variables?.agentId
+		) {
+			setAddedAgentIds((prev) =>
+				new Set(prev).add(downloadAgentMutation.variables.agentId),
+			);
 		}
 	}, [
 		localAgentsData,
@@ -167,8 +172,9 @@ export const CreateAgentStep: FC<CreateAgentStepProps> = ({
 				Assistants
 			</SectionTitle>
 			<SectionDescription>
-				Select from our recommended agents to get started quickly, or click the quick start button to
-				have us set up a team for you from the most popular agents. You can always add more later from the Agent Hub.
+				Select from our recommended agents to get started quickly, or click the
+				quick start button to have us set up a team for you from the most
+				popular agents. You can always add more later from the Agent Hub.
 			</SectionDescription>
 
 			{/* Add Recommended Button */}
@@ -189,9 +195,7 @@ export const CreateAgentStep: FC<CreateAgentStepProps> = ({
 						)
 					}
 				>
-					{isAddingAll
-						? "Adding..."
-						: "Setup My Team For Me"}
+					{isAddingAll ? "Adding..." : "Setup My Team For Me"}
 				</Button>
 			</Box>
 
@@ -246,16 +250,15 @@ export const CreateAgentStep: FC<CreateAgentStepProps> = ({
 									>
 										<AgentCard
 											agent={agent}
-											isLiked={false} 
-											isFavourited={false} 
-											onLikeToggle={() => {}} 
-											onFavouriteToggle={() => {}} 
-											showActions={false} 
+											isLiked={false}
+											isFavourited={false}
+											onLikeToggle={() => {}}
+											onFavouriteToggle={() => {}}
+											showActions={false}
 										/>
 										{/* Show loading spinner on the specific card being added */}
 										{downloadAgentMutation.isPending &&
-											downloadAgentMutation.variables?.agentId ===
-												agent.id && (
+											downloadAgentMutation.variables?.agentId === agent.id && (
 												<CircularProgress
 													size={24}
 													sx={{
@@ -282,8 +285,7 @@ export const CreateAgentStep: FC<CreateAgentStepProps> = ({
 													zIndex: 2,
 													backgroundColor: (theme) =>
 														theme.palette.success.main,
-													color: (theme) =>
-														theme.palette.success.contrastText,
+													color: (theme) => theme.palette.success.contrastText,
 													".MuiChip-icon": {
 														color: "inherit",
 													},

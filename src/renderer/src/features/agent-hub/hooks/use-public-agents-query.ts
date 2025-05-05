@@ -32,7 +32,13 @@ export type UsePublicAgentsQueryParams = {
 	 * Sort key (allowed: "name", "created_at", "updated_at", "like_count", "favourite_count", "download_count").
 	 * Defaults to "download_count" if not specified.
 	 */
-	sort?: "name" | "created_at" | "updated_at" | "like_count" | "favourite_count" | "download_count";
+	sort?:
+		| "name"
+		| "created_at"
+		| "updated_at"
+		| "like_count"
+		| "favourite_count"
+		| "download_count";
 	/**
 	 * Sort order ("asc" or "desc"). Defaults to "desc" if not specified.
 	 */
@@ -77,13 +83,8 @@ export const usePublicAgentsQuery = ({
 
 	// Default to download_count/desc if not specified or invalid
 	const validatedSort =
-		sort && allowedSortFields.includes(sort)
-			? sort
-			: "download_count";
-	const validatedOrder =
-		order && allowedOrder.includes(order)
-			? order
-			: "desc";
+		sort && allowedSortFields.includes(sort) ? sort : "download_count";
+	const validatedOrder = order && allowedOrder.includes(order) ? order : "desc";
 
 	const query = useQuery<
 		RadientApiResponse<PaginatedAgentList>,
