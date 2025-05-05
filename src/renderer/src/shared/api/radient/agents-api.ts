@@ -34,34 +34,58 @@ function joinUrl(baseUrl: string, path: string): string {
 }
 
 /**
- * List agents (paginated).
+ * List agents (paginated, with optional filters).
  *
  * @param baseUrl - The base URL of the Radient API
  * @param page - Page number (default 1)
  * @param perPage - Records per page (default 20, max 100)
+ * @param params - Optional filter params (e.g. categories, tags, etc.)
  * @returns Paginated list of agents
  */
 export async function listAgents(
-	baseUrl: string,
-	page = 1,
-	perPage = 20,
+  baseUrl: string,
+  page = 1,
+  perPage = 20,
+  params?: {
+    categories?: string;
+    tags?: string;
+    account_id?: string;
+    tenant_id?: string;
+    name?: string;
+    description?: string;
+    sort?: string;
+    order?: string;
+  }
 ): Promise<RadientApiResponse<PaginatedAgentList>> {
-	const url = joinUrl(
-		baseUrl,
-		`/v1/agents?page=${encodeURIComponent(page)}&per_page=${encodeURIComponent(perPage)}`,
-	);
+  const searchParams = new URLSearchParams();
+  searchParams.set("page", String(page));
+  searchParams.set("per_page", String(perPage));
+  if (params) {
+    if (params.categories) searchParams.set("categories", params.categories);
+    if (params.tags) searchParams.set("tags", params.tags);
+    if (params.account_id) searchParams.set("account_id", params.account_id);
+    if (params.tenant_id) searchParams.set("tenant_id", params.tenant_id);
+    if (params.name) searchParams.set("name", params.name);
+    if (params.description) searchParams.set("description", params.description);
+    if (params.sort) searchParams.set("sort", params.sort);
+    if (params.order) searchParams.set("order", params.order);
+  }
+  const url = joinUrl(
+    baseUrl,
+    `/v1/agents?${searchParams.toString()}`
+  );
 
-	const response = await fetch(url, {
-		method: "GET",
-		credentials: "same-origin",
-	});
+  const response = await fetch(url, {
+    method: "GET",
+    credentials: "same-origin",
+  });
 
-	if (!response.ok) {
-		const text = await response.text();
-		throw new Error(text || `HTTP ${response.status}`);
-	}
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(text || `HTTP ${response.status}`);
+  }
 
-	return response.json();
+  return response.json();
 }
 
 /**

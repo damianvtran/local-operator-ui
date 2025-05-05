@@ -10,10 +10,18 @@ export const publicAgentKeys = {
     [...publicAgentKeys.all, "list", { page, perPage }] as const,
 };
 
-type UsePublicAgentsQueryParams = {
+/**
+ * Parameters for usePublicAgentsQuery.
+ */
+export type UsePublicAgentsQueryParams = {
   page?: number;
   perPage?: number;
   enabled?: boolean; // Allow disabling the query
+  /**
+   * Filter by categories (array of category keys, snake_case).
+   * If provided, only agents in these categories will be returned.
+   */
+  categories?: string[];
 };
 
 /**
@@ -24,20 +32,41 @@ type UsePublicAgentsQueryParams = {
  * @param enabled - Whether the query should be enabled (default: true)
  * @returns Query result object for the list of public agents
  */
+/**
+ * React Query hook for fetching a paginated list of public agents.
+ *
+ * @param page - The page number to fetch (default: 1)
+ * @param perPage - The number of agents per page (default: 20)
+ * @param enabled - Whether the query should be enabled (default: true)
+ * @param categories - Array of category keys to filter by (snake_case)
+ * @returns Query result object for the list of public agents
+ */
 export const usePublicAgentsQuery = ({
   page = 1,
   perPage = 20,
   enabled = true,
+  categories,
 }: UsePublicAgentsQueryParams = {}) => {
   const query = useQuery<
     RadientApiResponse<PaginatedAgentList>, // Type of data returned by queryFn
     Error, // Type of error
     PaginatedAgentList // Type of data returned by select
   >({
-    queryKey: publicAgentKeys.list(page, perPage),
+    queryKey: [
+      "public-agents",
+      "list",
+      { page, perPage, categories: categories?.join(",") ?? undefined },
+    ],
     queryFn: async () => {
       // Fetch agents using the API client function
-      const response = await listAgents(apiConfig.radientBaseUrl, page, perPage);
+      const response = await listAgents(
+        apiConfig.radientBaseUrl,
+        page,
+        perPage,
+        categories && categories.length > 0
+          ? { categories: categories.join(",") }
+          : undefined
+      );
       // The API client already handles basic error checking (non-2xx status)
       return response;
     },
