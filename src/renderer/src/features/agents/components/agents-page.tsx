@@ -14,12 +14,12 @@ import {
 	useExportAgent,
 	useUploadAgentToRadientMutation,
 } from "@shared/hooks/use-agent-mutations";
-import { useAgent, useAgents } from "@shared/hooks/use-agents";
+import { useAgent } from "@shared/hooks/use-agents";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import { useAgentRouteParam } from "@shared/hooks/use-route-params";
 import { useAgentSelectionStore } from "@shared/store/agent-selection-store";
 import { Bot, CloudUpload, FileUp, MessageCircle } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import type { FC } from "react";
 import { useNavigate } from "react-router-dom";
 import { AgentSettings } from "./agent-settings";
@@ -80,14 +80,11 @@ const AgentDetailsContainer = styled(Box)({
  */
 export const AgentsPage: FC<AgentsPageProps> = () => {
 	const theme = useTheme(); // Get theme for button styles
-	const { agentId, navigateToAgent, clearAgentId } = useAgentRouteParam();
+	const { agentId, navigateToAgent } = useAgentRouteParam();
 	const navigate = useNavigate();
 	const { isAuthenticated } = useRadientAuth(); // Get auth status
 	const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false); // State for dialog
 	const [uploadValidationIssues, setUploadValidationIssues] = useState<string[]>([]);
-
-	// Use a ref to track the previous agent ID to prevent unnecessary renders
-	const prevAgentIdRef = useRef<string | undefined>(agentId);
 
 	// Export agent mutation
 	const exportAgentMutation = useExportAgent();
@@ -95,42 +92,17 @@ export const AgentsPage: FC<AgentsPageProps> = () => {
 	const uploadAgentMutation = useUploadAgentToRadientMutation();
 
 	// Get agent selection store functions
-	const { setLastAgentsPageAgentId, getLastAgentId, clearLastAgentId } =
+	const { setLastAgentsPageAgentId, getLastAgentId } =
 		useAgentSelectionStore();
-
-	// Fetch all agents to check if the selected agent exists
-	// Correctly destructure the agents array from the result object
-	const { data: agentListResult } = useAgents();
-	const agents = agentListResult?.agents || []; // Extract the agents array
 
 	// Use the agent ID from URL or the last selected agent ID
 	const effectiveAgentId = agentId || getLastAgentId("agents");
 
-	// Maintain stable agent state to prevent flickering during transitions
-	const [selectedAgent, setSelectedAgent] = useState<AgentDetails | null>(null);
-
 	// Fetch the agent details if agentId is provided from URL
-	const { data: initialAgent, refetch: refetchAgent } = useAgent(
+	const { data: selectedAgent, refetch: refetchAgent } = useAgent(
 		effectiveAgentId || undefined,
 	);
 
-	// Check if the selected agent exists in the list of agents
-	useEffect(() => {
-		if (effectiveAgentId && agents.length > 0) {
-			const agentExists = agents.some((agent) => agent.id === effectiveAgentId);
-
-			if (!agentExists) {
-				// If the agent doesn't exist, clear the selection and navigate to the agents page without an agent
-				// Use a timeout to break the render cycle and prevent infinite loops
-				setTimeout(() => {
-					clearLastAgentId("agents");
-					clearAgentId("agents");
-					setSelectedAgent(null);
-				}, 0);
-			}
-		}
-		// Include cleanup functions in dependencies, matching chat-page.tsx pattern
-	}, [effectiveAgentId, agents, clearLastAgentId, clearAgentId]);
 
 	// Update the last selected agent ID when the agent ID changes
 	useEffect(() => {
@@ -175,7 +147,7 @@ export const AgentsPage: FC<AgentsPageProps> = () => {
 
 	// Handlers for the Upload Dialog
 	const handleOpenUploadDialog = () => {
-		const issues = getAgentUploadValidationIssues(selectedAgent);
+		const issues = getAgentUploadValidationIssues(selectedAgent ?? null);
 		setUploadValidationIssues(issues);
 		setIsUploadDialogOpen(true);
 	};
@@ -193,32 +165,8 @@ export const AgentsPage: FC<AgentsPageProps> = () => {
 		handleCloseUploadDialog(); // Close dialog after initiating upload
 	};
 
-	// Update selected agent when URL changes or when agent data is refreshed
-	useEffect(() => {
-		// Only update if we have agent data
-		if (initialAgent) {
-			// If this is a new agent selection (URL changed)
-			if (agentId !== prevAgentIdRef.current) {
-				// Update the ref to track the new agent ID
-				prevAgentIdRef.current = agentId;
-				// Set the new agent directly
-				setSelectedAgent(initialAgent);
-			} else {
-				// Same agent, just update properties without triggering a full re-render
-				setSelectedAgent((prev) => {
-					if (!prev || prev.id !== initialAgent.id) return initialAgent;
-					return { ...prev, ...initialAgent };
-				});
-			}
-		}
-	}, [initialAgent, agentId]);
-
 	const handleSelectAgent = (agent: AgentDetails) => {
-		// First update local state to prevent flickering
-		setSelectedAgent(agent);
-		// Update the last selected agent ID
 		setLastAgentsPageAgentId(agent.id);
-		// Then update URL (this will trigger a re-render, but our useEffect will handle it properly)
 		navigateToAgent(agent.id, "agents");
 	};
 
@@ -289,7 +237,7 @@ export const AgentsPage: FC<AgentsPageProps> = () => {
 										size="small"
 										startIcon={<CloudUpload size={16} strokeWidth={2} />}
 										onClick={handleOpenUploadDialog}
-										disabled={uploadAgentMutation.isPending} // Disable button while uploading
+										disabled={uploadAgentMutation.isPending}
 										sx={secondaryButtonSx}
 									>
 										{uploadAgentMutation.isPending
@@ -319,7 +267,7 @@ export const AgentsPage: FC<AgentsPageProps> = () => {
 					{/* Agent Details Section */}
 					<AgentDetailsContainer sx={{ opacity: selectedAgent ? 1 : 0.7 }}>
 						<AgentSettings
-							selectedAgent={selectedAgent}
+							selectedAgent={selectedAgent ?? null}
 							refetchAgent={refetchAgent}
 							initialSelectedAgentId={agentId}
 						/>
@@ -332,12 +280,10 @@ export const AgentsPage: FC<AgentsPageProps> = () => {
 				<UploadAgentDialog
 					open={isUploadDialogOpen}
 					onClose={handleCloseUploadDialog}
-					agentName={selectedAgent.name}
+					agentName={selectedAgent?.name ?? ""}
 					isAuthenticated={isAuthenticated}
 					onConfirmUpload={handleConfirmUpload}
 					validationIssues={uploadValidationIssues}
-					// Optional: Add handler if sign-in inside dialog needs specific action
-					// onSignInSuccess={() => { /* Maybe refetch auth status or close dialog */ }}
 				/>
 			)}
 		</Container>

@@ -14,6 +14,8 @@ import {
 	Tag,
 	User,
 	Users,
+	BarChart2,
+	ClipboardList,
 } from "lucide-react";
 import type { FC } from "react";
 
@@ -71,6 +73,14 @@ export const CATEGORY_ICON_MAP: Record<
 	research: {
 		icon: <FlaskConical size={14} style={{ marginRight: 4 }} />,
 		label: "Research",
+	},
+	analysis: {
+		icon: <BarChart2 size={14} style={{ marginRight: 4 }} />,
+		label: "Analysis",
+	},
+	management: {
+		icon: <ClipboardList size={14} style={{ marginRight: 4 }} />,
+		label: "Management",
 	},
 	other: {
 		icon: <FileQuestion size={14} style={{ marginRight: 4 }} />,
@@ -145,6 +155,11 @@ type AgentTagsAndCategoriesProps = {
 
 /**
  * Minimal, theme-aware, display-only pills for agent tags and categories.
+ *
+ * @param tags - Optional array of tag strings to display.
+ * @param categories - Optional array of category strings to display.
+ * @param className - Optional className for styling.
+ * @returns React element with pills for tags and categories, or null if none provided.
  */
 export const AgentTagsAndCategories: FC<AgentTagsAndCategoriesProps> = ({
 	tags,

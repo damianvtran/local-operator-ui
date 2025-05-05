@@ -636,5 +636,7 @@ export const ALLOWED_AGENT_CATEGORIES = [
 	"marketing",
 	"sales",
 	"research",
+	"analysis",
+	"management",
 	"other",
 ];
