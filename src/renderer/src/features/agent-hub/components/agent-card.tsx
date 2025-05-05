@@ -10,20 +10,11 @@ import {
   Chip,
   Skeleton,
   Avatar,
+  ButtonBase,
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
-import { Bot, Info } from "lucide-react";
+import { Bot, Info, Heart, Star, Download } from "lucide-react";
 import { AgentTagsAndCategories } from "./agent-tags-and-categories";
-import {
-  faHeart as faHeartSolid,
-  faStar as faStarSolid,
-  faDownload,
-} from "@fortawesome/free-solid-svg-icons";
-import {
-  faHeart as faHeartOutline,
-  faStar as faStarOutline,
-} from "@fortawesome/free-regular-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "react-router-dom";
 import type { Agent } from "@shared/api/radient/types";
 import { formatDistanceToNowStrict } from "date-fns";
@@ -130,6 +121,27 @@ const DownloadChip = styled(Chip)(({ theme }) => ({
   height: "24px",
 }));
 
+const LikeFavouriteButton = styled(ButtonBase, {
+  shouldForwardProp: (prop) => prop !== "color",
+})<{ color?: string }>(({ theme, color }) => ({
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  borderRadius: 8,
+  padding: theme.spacing(0.5, 1),
+  color: color ? theme.palette[color].main : theme.palette.text.primary,
+  background: "transparent",
+  transition: "background 0.2s, color 0.2s",
+  "&:hover": {
+    background: theme.palette.action.hover,
+    textDecoration: "none",
+  },
+  "&:disabled": {
+    opacity: 0.5,
+    pointerEvents: "none",
+  },
+}));
+
 /**
  * Renders a card displaying information about a public agent, with avatar and details icon.
  *
@@ -188,11 +200,6 @@ export const AgentCard: React.FC<AgentCardProps> = ({
     event.stopPropagation();
     navigate(`/agent-hub/${agent.id}`);
   };
-
-  const likeIcon = isLiked ? faHeartSolid : faHeartOutline;
-  const likeColor = isLiked ? "error.main" : "inherit";
-  const favouriteIcon = isFavourited ? faStarSolid : faStarOutline;
-  const favouriteColor = isFavourited ? "warning.main" : "inherit";
 
   return (
     <StyledCard onClick={handleCardClick}>
@@ -260,30 +267,48 @@ export const AgentCard: React.FC<AgentCardProps> = ({
       <StyledCardActions>
         {showActions ? (
           <ActionButtonGroup>
-            <IconButton
-              size="small"
+            <LikeFavouriteButton
               onClick={(e) => handleActionClick(e, onLikeToggle)}
               disabled={isLikeActionLoading}
-              sx={{ color: likeColor, borderRadius: 4 }}
+              color={isLiked ? "error" : undefined}
               aria-label={isLiked ? "Unlike agent" : "Like agent"}
+              focusRipple
+              tabIndex={0}
+              type="button"
             >
-              <FontAwesomeIcon icon={likeIcon} size="xs" />
+              <Heart
+                size={18}
+                strokeWidth={2}
+                fill={isLiked ? "#e53935" : "none"}
+                color={isLiked ? "#e53935" : undefined}
+                style={{ verticalAlign: "middle" }}
+                data-testid="agent-like-heart"
+              />
               <CountDisplay>
                 {isLoadingLikes ? <Skeleton variant="text" width={20} /> : likeCount ?? 0}
               </CountDisplay>
-            </IconButton>
-            <IconButton
-              size="small"
+            </LikeFavouriteButton>
+            <LikeFavouriteButton
               onClick={(e) => handleActionClick(e, onFavouriteToggle)}
               disabled={isFavouriteActionLoading}
-              sx={{ color: favouriteColor, borderRadius: 4 }}
+              color={isFavourited ? "warning" : undefined}
               aria-label={isFavourited ? "Unfavourite agent" : "Favourite agent"}
+              focusRipple
+              tabIndex={0}
+              type="button"
             >
-              <FontAwesomeIcon icon={favouriteIcon} size="xs" />
+              <Star
+                size={18}
+                strokeWidth={2}
+                fill={isFavourited ? "#ffb300" : "none"}
+                color={isFavourited ? "#ffb300" : undefined}
+                style={{ verticalAlign: "middle" }}
+                data-testid="agent-favourite-star"
+              />
               <CountDisplay>
                 {isLoadingFavourites ? <Skeleton variant="text" width={20} /> : favouriteCount ?? 0}
               </CountDisplay>
-            </IconButton>
+            </LikeFavouriteButton>
           </ActionButtonGroup>
         ) : (
           <Box />
@@ -296,7 +321,12 @@ export const AgentCard: React.FC<AgentCardProps> = ({
               disabled={downloadMutation.isPending}
               aria-label="Download agent"
             >
-              <FontAwesomeIcon icon={faDownload} size="xs" />
+              <Download
+                size={18}
+                strokeWidth={2}
+                style={{ verticalAlign: "middle" }}
+                data-testid="agent-download"
+              />
             </IconButton>
           </Tooltip>
           {isLoadingDownloads || downloadMutation.isPending ? (
