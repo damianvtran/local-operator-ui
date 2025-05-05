@@ -75,7 +75,7 @@ export const AgentHubPage: React.FC = () => {
 		<StyledAgentHubContainer>
 			<PageHeader
 				title="Agent Hub"
-				subtitle="Discover and download community agents"
+				subtitle="Discover and download community agents on Radient"
 				icon={Store}
 			/>
 			<MainContentRow>
