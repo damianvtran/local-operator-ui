@@ -211,9 +211,12 @@ export const RadientChoiceStep: FC<RadientChoiceStepProps> = ({
 										color={radientTheme.palette.primary.main} // Use Radient color
 										sx={{ fontSize: "inherit" }} // Ensure size matches parent
 									>
-										web search, image generation, site crawling, hundreds of AI models
+										web search, image generation, site crawling, hundreds of AI
+										models
 									</Typography>
-									, and more. One API key instead of many, with potential savings when Radient picks the best model to handle each step.  Two-click setup, no credit card required.
+									, and more. One API key instead of many, with potential
+									savings when Radient picks the best model to handle each step.
+									Two-click setup, no credit card required.
 								</CardSubtitle>
 							</Box>
 							<CardIcon>
