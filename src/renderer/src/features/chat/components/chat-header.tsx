@@ -1,5 +1,4 @@
-import { faFileAlt, faRobot } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { Bot, FileText } from "lucide-react";
 import {
 	Avatar,
 	Box,
@@ -56,7 +55,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 					mr: 2,
 				})}
 			>
-				<FontAwesomeIcon icon={faRobot} />
+				<Bot size={24} />
 			</Avatar>
 			<Box>
 				<Typography
@@ -81,7 +80,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 			{onOpenOptions && !isCanvasOpen && (
 				<Tooltip title="Open Canvas" arrow placement="top">
 					<OptionsButton onClick={() => setCanvasOpen(true)} size="medium">
-						<FontAwesomeIcon icon={faFileAlt} size="sm" />
+						<FileText size={24} />
 					</OptionsButton>
 				</Tooltip>
 			)}
