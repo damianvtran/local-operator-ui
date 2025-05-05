@@ -3,7 +3,7 @@ import { JobsApi } from "@shared/api/local-operator/jobs-api";
 import type { JobStatus } from "@shared/api/local-operator/types";
 import { ChatLayout } from "@shared/components/common/chat-layout";
 import { apiConfig } from "@shared/config";
-import { useAgent, useAgents } from "@shared/hooks/use-agents";
+import { useAgent } from "@shared/hooks/use-agents";
 import { useConfig } from "@shared/hooks/use-config";
 import {
 	conversationMessagesQueryKey,
@@ -47,17 +47,12 @@ type ChatProps = Record<string, never>;
 export const ChatPage: FC<ChatProps> = () => {
 	const didAutoScrollRef = React.useRef(false);
 	// Get agent ID from URL parameters using custom hook
-	const { agentId, navigateToAgent, clearAgentId } = useAgentRouteParam();
+	const { agentId, navigateToAgent } = useAgentRouteParam();
 	const navigate = useNavigate();
 	const queryClient = useQueryClient();
 
 	// Get agent selection store functions
-	const { setLastChatAgentId, getLastAgentId, clearLastAgentId } =
-		useAgentSelectionStore();
-
-	// Fetch all agents to check if the selected agent exists
-	// Set up periodic refetch to check for new messages
-	const { data: agents = [] } = useAgents(1, 50, 10000); // 10000ms = 10 seconds
+	const { setLastChatAgentId, getLastAgentId } = useAgentSelectionStore();
 
 	// Use the agent ID from URL or the last selected agent ID
 	const effectiveAgentId = agentId || getLastAgentId("chat");
@@ -125,31 +120,6 @@ export const ChatPage: FC<ChatProps> = () => {
 
 	// Create a ref for the messages end element (for backwards compatibility)
 	const messagesEndRef = useRef<HTMLDivElement>(null);
-
-	// Check if the selected agent exists in the list of agents
-	useEffect(() => {
-		// Check if agents data exists and is the AgentListResult type (has 'agents' property)
-		if (
-			effectiveAgentId &&
-			agents &&
-			"agents" in agents &&
-			agents.agents.length > 0
-		) {
-			// Access the agents array via agents.agents - type is narrowed here
-			const agentExists = agents.agents.some(
-				(agent) => agent.id === effectiveAgentId,
-			);
-
-			if (!agentExists) {
-				// If the agent doesn't exist, clear the selection and navigate to the chat page without an agent
-				// Use a timeout to break the render cycle and prevent infinite loops
-				setTimeout(() => {
-					clearLastAgentId("chat");
-					clearAgentId("chat");
-				}, 0);
-			}
-		}
-	}, [effectiveAgentId, agents, clearLastAgentId, clearAgentId]);
 
 	// Update the last selected agent ID when the agent ID changes
 	// Force scroll to bottom only when switching to a new conversation

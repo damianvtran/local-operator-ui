@@ -6,25 +6,25 @@
  * Layout follows the pattern of other pages with a sidebar and content area
  */
 
-import {
-	faComment,
-	faFileExport,
-	faRobot,
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, Button, Tooltip } from "@mui/material";
-import { styled, useTheme } from "@mui/material/styles"; // Import useTheme here
+import { styled, useTheme } from "@mui/material/styles";
 import type { AgentDetails } from "@shared/api/local-operator/types";
 import { PageHeader } from "@shared/components/common/page-header";
-import { useExportAgent } from "@shared/hooks/use-agent-mutations";
-import { useAgent, useAgents } from "@shared/hooks/use-agents";
+import {
+	useExportAgent,
+	useUploadAgentToRadientMutation,
+} from "@shared/hooks/use-agent-mutations";
+import { useAgent } from "@shared/hooks/use-agents";
+import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import { useAgentRouteParam } from "@shared/hooks/use-route-params";
 import { useAgentSelectionStore } from "@shared/store/agent-selection-store";
-import { useEffect, useRef, useState } from "react";
+import { Bot, CloudUpload, FileUp, MessageCircle } from "lucide-react";
+import { useEffect, useState } from "react";
 import type { FC } from "react";
 import { useNavigate } from "react-router-dom";
 import { AgentSettings } from "./agent-settings";
 import { AgentsSidebar } from "./agents-sidebar";
+import { UploadAgentDialog } from "./upload-agent-dialog";
 
 /**
  * Props for the AgentsPage component
@@ -80,51 +80,29 @@ const AgentDetailsContainer = styled(Box)({
  */
 export const AgentsPage: FC<AgentsPageProps> = () => {
 	const theme = useTheme(); // Get theme for button styles
-	const { agentId, navigateToAgent, clearAgentId } = useAgentRouteParam();
+	const { agentId, navigateToAgent } = useAgentRouteParam();
 	const navigate = useNavigate();
-	// Use a ref to track the previous agent ID to prevent unnecessary renders
-	const prevAgentIdRef = useRef<string | undefined>(agentId);
+	const { isAuthenticated } = useRadientAuth(); // Get auth status
+	const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false); // State for dialog
+	const [uploadValidationIssues, setUploadValidationIssues] = useState<
+		string[]
+	>([]);
 
 	// Export agent mutation
 	const exportAgentMutation = useExportAgent();
+	// Upload agent mutation
+	const uploadAgentMutation = useUploadAgentToRadientMutation();
 
 	// Get agent selection store functions
-	const { setLastAgentsPageAgentId, getLastAgentId, clearLastAgentId } =
-		useAgentSelectionStore();
-
-	// Fetch all agents to check if the selected agent exists
-	// Correctly destructure the agents array from the result object
-	const { data: agentListResult } = useAgents();
-	const agents = agentListResult?.agents || []; // Extract the agents array
+	const { setLastAgentsPageAgentId, getLastAgentId } = useAgentSelectionStore();
 
 	// Use the agent ID from URL or the last selected agent ID
 	const effectiveAgentId = agentId || getLastAgentId("agents");
 
-	// Maintain stable agent state to prevent flickering during transitions
-	const [selectedAgent, setSelectedAgent] = useState<AgentDetails | null>(null);
-
 	// Fetch the agent details if agentId is provided from URL
-	const { data: initialAgent, refetch: refetchAgent } = useAgent(
+	const { data: selectedAgent, refetch: refetchAgent } = useAgent(
 		effectiveAgentId || undefined,
 	);
-
-	// Check if the selected agent exists in the list of agents
-	useEffect(() => {
-		if (effectiveAgentId && agents.length > 0) {
-			const agentExists = agents.some((agent) => agent.id === effectiveAgentId);
-
-			if (!agentExists) {
-				// If the agent doesn't exist, clear the selection and navigate to the agents page without an agent
-				// Use a timeout to break the render cycle and prevent infinite loops
-				setTimeout(() => {
-					clearLastAgentId("agents");
-					clearAgentId("agents");
-					setSelectedAgent(null);
-				}, 0);
-			}
-		}
-		// Include cleanup functions in dependencies, matching chat-page.tsx pattern
-	}, [effectiveAgentId, agents, clearLastAgentId, clearAgentId]);
 
 	// Update the last selected agent ID when the agent ID changes
 	useEffect(() => {
@@ -148,7 +126,6 @@ export const AgentsPage: FC<AgentsPageProps> = () => {
 			document.body.appendChild(a);
 			a.click();
 
-			// Clean up
 			URL.revokeObjectURL(url);
 			document.body.removeChild(a);
 		} catch (error) {
@@ -156,32 +133,44 @@ export const AgentsPage: FC<AgentsPageProps> = () => {
 		}
 	};
 
-	// Update selected agent when URL changes or when agent data is refreshed
-	useEffect(() => {
-		// Only update if we have agent data
-		if (initialAgent) {
-			// If this is a new agent selection (URL changed)
-			if (agentId !== prevAgentIdRef.current) {
-				// Update the ref to track the new agent ID
-				prevAgentIdRef.current = agentId;
-				// Set the new agent directly
-				setSelectedAgent(initialAgent);
-			} else {
-				// Same agent, just update properties without triggering a full re-render
-				setSelectedAgent((prev) => {
-					if (!prev || prev.id !== initialAgent.id) return initialAgent;
-					return { ...prev, ...initialAgent };
-				});
-			}
-		}
-	}, [initialAgent, agentId]);
+	// Validation for agent upload
+	const getAgentUploadValidationIssues = (
+		agent: AgentDetails | null,
+	): string[] => {
+		if (!agent) return ["No agent selected."];
+		const issues: string[] = [];
+		if (!agent.name || agent.name.trim() === "")
+			issues.push("Name is required.");
+		if (!agent.description || agent.description.trim() === "")
+			issues.push("Description is required.");
+		// Accept both category and categories (array or string), but require at least one
+		const hasCategory = agent.categories && agent.categories.length > 0;
+		if (!hasCategory) issues.push("At least one category is required.");
+		return issues;
+	};
+
+	// Handlers for the Upload Dialog
+	const handleOpenUploadDialog = () => {
+		const issues = getAgentUploadValidationIssues(selectedAgent ?? null);
+		setUploadValidationIssues(issues);
+		setIsUploadDialogOpen(true);
+	};
+
+	const handleCloseUploadDialog = () => {
+		setIsUploadDialogOpen(false);
+		setUploadValidationIssues([]);
+	};
+
+	const handleConfirmUpload = () => {
+		if (!selectedAgent || !isAuthenticated) return;
+
+		// Call the actual upload mutation
+		uploadAgentMutation.mutateAsync(selectedAgent.id);
+		handleCloseUploadDialog(); // Close dialog after initiating upload
+	};
 
 	const handleSelectAgent = (agent: AgentDetails) => {
-		// First update local state to prevent flickering
-		setSelectedAgent(agent);
-		// Update the last selected agent ID
 		setLastAgentsPageAgentId(agent.id);
-		// Then update URL (this will trigger a re-render, but our useEffect will handle it properly)
 		navigateToAgent(agent.id, "agents");
 	};
 
@@ -226,7 +215,7 @@ export const AgentsPage: FC<AgentsPageProps> = () => {
 					{/* Page Header with Action Buttons as Children */}
 					<PageHeader
 						title="Agent Management"
-						icon={faRobot}
+						icon={Bot}
 						subtitle="View, configure and manage your AI agents from a central dashboard"
 					>
 						{/* Action buttons passed as children */}
@@ -236,14 +225,28 @@ export const AgentsPage: FC<AgentsPageProps> = () => {
 									<Button
 										variant="outlined"
 										size="small"
-										startIcon={
-											<FontAwesomeIcon icon={faFileExport} size="xs" />
-										}
+										startIcon={<FileUp size={16} strokeWidth={2} />}
 										onClick={handleExportAgent}
 										disabled={exportAgentMutation.isPending}
-										sx={secondaryButtonSx} // Apply secondary style
+										sx={secondaryButtonSx}
 									>
 										Export
+									</Button>
+								</Tooltip>
+
+								{/* Upload to Agent Hub Button */}
+								<Tooltip title="Upload Agent to Hub">
+									<Button
+										variant="outlined"
+										size="small"
+										startIcon={<CloudUpload size={16} strokeWidth={2} />}
+										onClick={handleOpenUploadDialog}
+										disabled={uploadAgentMutation.isPending}
+										sx={secondaryButtonSx}
+									>
+										{uploadAgentMutation.isPending
+											? "Uploading..."
+											: "Upload to Hub"}
 									</Button>
 								</Tooltip>
 
@@ -252,11 +255,11 @@ export const AgentsPage: FC<AgentsPageProps> = () => {
 								>
 									<Button
 										variant="outlined"
-										color="primary" // Keep primary color for distinction
+										color="primary"
 										size="small"
-										startIcon={<FontAwesomeIcon icon={faComment} size="xs" />}
+										startIcon={<MessageCircle size={16} strokeWidth={2} />}
 										onClick={() => navigate(`/chat/${selectedAgent.id}`)}
-										sx={primaryButtonSx} // Apply primary style
+										sx={primaryButtonSx}
 									>
 										Chat
 									</Button>
@@ -268,13 +271,25 @@ export const AgentsPage: FC<AgentsPageProps> = () => {
 					{/* Agent Details Section */}
 					<AgentDetailsContainer sx={{ opacity: selectedAgent ? 1 : 0.7 }}>
 						<AgentSettings
-							selectedAgent={selectedAgent}
+							selectedAgent={selectedAgent ?? null}
 							refetchAgent={refetchAgent}
 							initialSelectedAgentId={agentId}
 						/>
 					</AgentDetailsContainer>
 				</ContentInnerContainer>
 			</ContentContainer>
+
+			{/* Render the Upload Confirmation Dialog */}
+			{selectedAgent && (
+				<UploadAgentDialog
+					open={isUploadDialogOpen}
+					onClose={handleCloseUploadDialog}
+					agentName={selectedAgent?.name ?? ""}
+					isAuthenticated={isAuthenticated}
+					onConfirmUpload={handleConfirmUpload}
+					validationIssues={uploadValidationIssues}
+				/>
+			)}
 		</Container>
 	);
 };

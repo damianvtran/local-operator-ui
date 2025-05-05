@@ -1,12 +1,4 @@
 import {
-	faChevronLeft,
-	faChevronRight,
-	faCode,
-	faGear,
-	faRobot,
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
 	Box,
 	Drawer,
 	IconButton,
@@ -22,6 +14,15 @@ import { CollapsibleAppLogo } from "@shared/components/navigation/collapsible-ap
 import { UserProfileSidebar } from "@shared/components/navigation/user-profile-sidebar";
 import { useCurrentView } from "@shared/hooks/use-route-params";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
+import type { LucideIcon } from "lucide-react";
+import {
+	Bot,
+	ChevronLeft,
+	ChevronRight,
+	MessageCircle,
+	Settings,
+	Store,
+} from "lucide-react";
 import type { FC } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -180,21 +181,32 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 	const expanded = !isSidebarCollapsed;
 
 	// Navigation items configuration
-	const navItems = [
+	const navItems: Array<{
+		icon: LucideIcon;
+		label: string;
+		path: string;
+		isActive: boolean;
+	}> = [
 		{
-			icon: faCode,
+			icon: MessageCircle,
 			label: "Chat",
 			path: "/chat",
 			isActive: currentView === "chat",
 		},
 		{
-			icon: faRobot,
-			label: "Agents",
+			icon: Bot,
+			label: "My Agents",
 			path: "/agents",
 			isActive: currentView === "agents",
 		},
 		{
-			icon: faGear,
+			icon: Store,
+			label: "Agent Hub",
+			path: "/agent-hub",
+			isActive: currentView === "agent-hub",
+		},
+		{
+			icon: Settings,
 			label: "Settings",
 			path: "/settings",
 			isActive: currentView === "settings",
@@ -217,7 +229,12 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 				isExpanded={expanded}
 			>
 				<NavItemIcon isActive={item.isActive} isExpanded={expanded}>
-					<FontAwesomeIcon icon={item.icon} fixedWidth />
+					<item.icon
+						size={22}
+						strokeWidth={2.1}
+						style={{ display: "block" }}
+						aria-label={item.label}
+					/>
 				</NavItemIcon>
 				{expanded && (
 					<ListItemText
@@ -234,6 +251,7 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 
 		// If sidebar is collapsed, use custom tooltip
 		if (!expanded) {
+			// @ts-ignore Tooltip type issue workaround
 			return (
 				<StyledTooltip
 					key={item.path}
@@ -279,10 +297,11 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 							size="small"
 							aria-label={expanded ? "Collapse sidebar" : "Expand sidebar"}
 						>
-							<FontAwesomeIcon
-								icon={expanded ? faChevronLeft : faChevronRight}
-								size="xs"
-							/>
+							{expanded ? (
+								<ChevronLeft size={18} aria-label="Collapse sidebar" />
+							) : (
+								<ChevronRight size={18} aria-label="Expand sidebar" />
+							)}
 						</ToggleButton>
 					</StyledTooltip>
 				</ToggleButtonContainer>

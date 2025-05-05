@@ -1,4 +1,5 @@
-import { faCommentSlash, faRobot } from "@fortawesome/free-solid-svg-icons";
+import { UploadAgentDialog } from "@features/agents/components/upload-agent-dialog";
+import { faCommentSlash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
 	Alert,
@@ -31,10 +32,12 @@ import {
 	useExportAgent,
 	usePaginationParams,
 } from "@shared/hooks";
+import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import {
 	formatMessageDateTime,
 	getFullDateTime,
 } from "@shared/utils/date-utils";
+import { Bot } from "lucide-react";
 import type { ChangeEvent, FC } from "react";
 import { useCallback, useMemo, useState } from "react";
 
@@ -126,14 +129,14 @@ const MessageBubble = styled("div")({
 	isolation: "isolate",
 });
 
-// Agent name container with timestamp
+// Agent name container with timestamp and absolutely positioned options button
 const AgentNameContainer = styled(Box)({
 	display: "flex",
-	justifyContent: "space-between",
 	alignItems: "center",
 	width: "100%",
 	position: "relative",
 	overflow: "hidden",
+	gap: 8,
 });
 
 // Agent name styling
@@ -184,21 +187,21 @@ const TimeStampText = styled("span")({
 	cursor: "help",
 });
 
-// Options button container
+// Options button container: absolutely positioned, does not take up space, fades in on hover
 const OptionsButtonContainer = styled(Box)({
 	position: "absolute",
-	right: -8,
 	top: 0,
+	right: 0,
+	height: "100%",
+	display: "flex",
+	alignItems: "center",
 	opacity: 0,
-	transform: "translateX(100%)",
-	transition: "opacity 0.2s ease, transform 0.2s ease",
+	transition: "opacity 0.2s",
+	pointerEvents: "none",
 	".MuiListItemButton-root:hover &": {
 		opacity: 1,
-		transform: "translateX(0)",
-		visibility: "visible",
+		pointerEvents: "auto",
 	},
-	zIndex: 2,
-	pointerEvents: "none",
 	"& > *": {
 		pointerEvents: "auto",
 	},
@@ -246,6 +249,14 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 	const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 	const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
 	const perPage = 50;
+
+	// Upload to Hub dialog state
+	const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
+	const [uploadAgent, setUploadAgent] = useState<AgentDetails | null>(null);
+	const [uploadValidationIssues, setUploadValidationIssues] = useState<
+		string[]
+	>([]);
+	const { isAuthenticated } = useRadientAuth();
 
 	// Export agent mutation
 	const exportAgentMutation = useExportAgent();
@@ -356,6 +367,37 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 		[combinedAgents, exportAgentMutation], // Use combinedAgents
 	);
 
+	const getAgentUploadValidationIssues = (
+		agent: AgentDetails | null,
+	): string[] => {
+		if (!agent) return ["No agent selected."];
+		const issues: string[] = [];
+		if (!agent.name || agent.name.trim() === "")
+			issues.push("Name is required.");
+		if (!agent.description || agent.description.trim() === "")
+			issues.push("Description is required.");
+		const hasCategory = agent.categories && agent.categories.length > 0;
+		if (!hasCategory) issues.push("At least one category is required.");
+		return issues;
+	};
+
+	const handleOpenUploadDialog = (agent: AgentDetails) => {
+		setUploadAgent(agent);
+		setUploadValidationIssues(getAgentUploadValidationIssues(agent));
+		setIsUploadDialogOpen(true);
+	};
+
+	const handleCloseUploadDialog = () => {
+		setIsUploadDialogOpen(false);
+		setUploadAgent(null);
+		setUploadValidationIssues([]);
+	};
+
+	const handleConfirmUpload = () => {
+		// Implement actual upload logic here if needed
+		handleCloseUploadDialog();
+	};
+
 	const handleAgentCreated = useCallback(
 		(agentId: string) => {
 			// Fetch the agent details to get the full agent object
@@ -449,7 +491,7 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 							>
 								<ListItemAvatar>
 									<AgentAvatar selected={selectedConversation === agent.id}>
-										<FontAwesomeIcon icon={faRobot} />
+										<Bot size={22} strokeWidth={2.1} aria-label="Agent" />
 									</AgentAvatar>
 								</ListItemAvatar>
 								<MessageBubble>
@@ -502,6 +544,9 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 															}
 															refetch();
 														}}
+														onUploadAgentToHub={() =>
+															handleOpenUploadDialog(agent)
+														}
 														buttonSx={{
 															width: 24,
 															height: 24,
@@ -509,7 +554,6 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 															display: "flex",
 															justifyContent: "center",
 															alignItems: "center",
-															opacity: 1,
 														}}
 													/>
 												</span>
@@ -567,6 +611,15 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 					}
 				/>
 			)}
+			{/* Upload Agent Dialog */}
+			<UploadAgentDialog
+				open={isUploadDialogOpen}
+				onClose={handleCloseUploadDialog}
+				agentName={uploadAgent?.name || ""}
+				isAuthenticated={isAuthenticated}
+				onConfirmUpload={handleConfirmUpload}
+				validationIssues={uploadValidationIssues}
+			/>
 		</SidebarContainer>
 	);
 };

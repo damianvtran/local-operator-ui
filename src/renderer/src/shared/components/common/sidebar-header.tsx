@@ -5,12 +5,6 @@
  */
 
 import {
-	faFileImport,
-	faPlus,
-	faSearch,
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
 	Box,
 	IconButton,
 	InputAdornment,
@@ -20,6 +14,7 @@ import {
 	alpha,
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
+import { Import, Search as LucideSearch, Plus } from "lucide-react";
 import type { FC } from "react";
 
 const SidebarHeaderContainer = styled(Box)(({ theme }) => ({
@@ -154,7 +149,7 @@ export const SidebarHeader: FC<SidebarHeaderProps> = ({
 								size="small"
 								aria-label="Import agent"
 							>
-								<FontAwesomeIcon icon={faFileImport} />
+								<Import size={18} strokeWidth={2} />
 							</ActionButton>
 						</Tooltip>
 					)}
@@ -164,7 +159,7 @@ export const SidebarHeader: FC<SidebarHeaderProps> = ({
 							size="small"
 							aria-label="New agent"
 						>
-							<FontAwesomeIcon icon={faPlus} />
+							<Plus size={18} strokeWidth={2} />
 						</ActionButton>
 					</Tooltip>
 				</ActionsContainer>
@@ -179,7 +174,7 @@ export const SidebarHeader: FC<SidebarHeaderProps> = ({
 				InputProps={{
 					startAdornment: (
 						<InputAdornment position="start">
-							<FontAwesomeIcon icon={faSearch} size="sm" />
+							<LucideSearch size={16} strokeWidth={2} />
 						</InputAdornment>
 					),
 				}}

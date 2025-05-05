@@ -6,7 +6,6 @@ import {
 	faDatabase,
 	faEnvelope,
 	faExternalLinkAlt,
-	faGear,
 	faHistory,
 	faInfoCircle,
 	faKey,
@@ -48,6 +47,7 @@ import { useUpdateConfig } from "@shared/hooks/use-update-config";
 import { useUsageRollup } from "@shared/hooks/use-usage-rollup";
 import { useUserStore } from "@shared/store/user-store";
 import { format, formatRFC3339, parseISO, subDays } from "date-fns";
+import { Settings } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { FC, RefObject } from "react";
 import {
@@ -664,7 +664,7 @@ export const SettingsPage: FC = () => {
 			<ContentContainer data-settings-content>
 				<PageHeader
 					title="Settings"
-					icon={faGear}
+					icon={Settings}
 					subtitle="Configure your application preferences and settings"
 				/>
 

@@ -1,328 +1,304 @@
 /**
- * Create Agent Step Component
+ * Add Agent Step Component
  *
- * Sixth step in the onboarding process that allows the user to create their first AI agent
- * with an exciting and engaging interface.
+ * Sixth step in the onboarding process that allows the user to add recommended AI agents
+ * from a curated list.
  */
 
-import {
-	faCheck,
-	faLightbulb,
-	faMagicWandSparkles,
-	faRobot,
-} from "@fortawesome/free-solid-svg-icons";
+import { AgentCard } from "@features/agent-hub/components/agent-card";
+import { useDownloadAgentMutation } from "@features/agent-hub/hooks/use-download-agent-mutation";
+import { usePublicAgentsQuery } from "@features/agent-hub/hooks/use-public-agents-query";
+import { faDownload } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
-	Alert,
 	Box,
+	Button,
+	Chip,
 	CircularProgress,
-	TextField,
+	Grid,
 	Typography,
-	alpha,
-	useTheme, // Import useTheme
+	styled,
 } from "@mui/material";
-import { useCreateAgent } from "@shared/hooks/use-agent-mutations";
-import { useConfig } from "@shared/hooks/use-config";
-import { useAgentSelectionStore } from "@shared/store/agent-selection-store";
-import {
-	OnboardingStep,
-	useOnboardingStore,
-} from "@shared/store/onboarding-store";
+import type { Agent } from "@shared/api/radient/types";
+import { useAgents } from "@shared/hooks/use-agents";
+import { CheckCircle } from "lucide-react";
 import type { FC } from "react";
-import { useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import {
-	EmojiContainer, // Keep one EmojiContainer import
-	FieldLabel, // Import FieldLabel
-	FormContainer,
-	LabelIcon, // Import LabelIcon
-	PrimaryButton, // Import PrimaryButton
+	EmojiContainer,
 	SectionContainer,
 	SectionDescription,
 	SectionTitle,
 } from "../onboarding-styled";
 
+const RECOMMENDED_AGENT_COUNT = 8;
+
+const StyledGridContainer = styled(Grid)(({ theme }) => ({
+	overflowY: "auto",
+	padding: theme.spacing(2, 0),
+	height: 400,
+	maxHeight: 400,
+	flexGrow: 1,
+	width: "100%",
+	"&::-webkit-scrollbar": {
+		width: "8px",
+	},
+	"&::-webkit-scrollbar-thumb": {
+		backgroundColor:
+			theme.palette.mode === "dark"
+				? "rgba(255, 255, 255, 0.1)"
+				: "rgba(0, 0, 0, 0.2)",
+		borderRadius: "4px",
+	},
+}));
+
+type CreateAgentStepProps = {
+	/** Callback to inform the parent modal about the step's validity */
+	onValidityChange: (isValid: boolean) => void;
+};
+
 /**
- * Create agent step in the onboarding process
+ * Add agent step in the onboarding process. Displays recommended agents to add.
  */
-export const CreateAgentStep: FC = () => {
-	const theme = useTheme(); // Get theme context
-	// State for agent name and description
-	const [name, setName] = useState("");
-	const [description, setDescription] = useState("");
-	const [nameError, setNameError] = useState("");
-	const [isSaving, setIsSaving] = useState(false);
-	const [saveSuccess, setSaveSuccess] = useState(false);
+export const CreateAgentStep: FC<CreateAgentStepProps> = ({
+	onValidityChange,
+}) => {
+	const { data: localAgentsData } = useAgents(); // Get local agents to check if added
+	const downloadAgentMutation = useDownloadAgentMutation();
 
-	// Reference to store the timeout ID for clearing
-	const successTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+	// State to track agents added during this session
+	const [addedAgentIds, setAddedAgentIds] = useState<Set<string>>(new Set());
+	const [isAddingAll, setIsAddingAll] = useState(false);
 
-	// Get config for default model and provider
-	const { data: configData } = useConfig();
-	const { setCurrentStep } = useOnboardingStore();
+	// Fetch recommended public agents (top 8 by download count)
+	const {
+		data: agentsData,
+		isLoading: isLoadingAgents,
+		error: agentsError,
+	} = usePublicAgentsQuery({
+		page: 1,
+		perPage: RECOMMENDED_AGENT_COUNT,
+		sort: "download_count",
+		order: "desc",
+	});
 
-	// Create agent mutation
-	const createAgentMutation = useCreateAgent();
-	const { setLastChatAgentId } = useAgentSelectionStore();
+	const recommendedAgents: Agent[] = agentsData?.records ?? [];
 
-	// Handle name change
-	const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-		const value = e.target.value;
-		setName(value);
+	// Update addedAgentIds based on localAgentsData changes
+	useEffect(() => {
+		// Ensure localAgentsData and its 'agents' property exist
+		if (localAgentsData?.agents) {
+			const localIds = new Set(localAgentsData.agents.map((agent) => agent.id));
+			// Filter recommended agents to find those already present locally
+			const newlyAdded = recommendedAgents
+				.filter((agent) => localIds.has(agent.id))
+				.map((agent) => agent.id);
 
-		if (!value.trim()) {
-			setNameError("Agent name is required");
-		} else {
-			setNameError("");
+			// Update state, preserving any agents added *during this step*
+			// that might not yet be reflected in localAgentsData if query hasn't refetched
+			setAddedAgentIds((prev) => new Set([...prev, ...newlyAdded]));
 		}
-	};
 
-	// Handle description change
-	const handleDescriptionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-		setDescription(e.target.value);
-	};
-
-	// Handle creating the agent
-	const handleCreateAgent = async () => {
+		// Add agent ID to state upon successful download
 		if (
-			name.trim() &&
-			!nameError &&
-			configData?.values.hosting &&
-			configData?.values.model_name &&
-			!isSaving
+			downloadAgentMutation.isSuccess &&
+			downloadAgentMutation.variables?.agentId
 		) {
-			try {
-				setIsSaving(true);
-				setSaveSuccess(false);
+			setAddedAgentIds((prev) =>
+				new Set(prev).add(downloadAgentMutation.variables.agentId),
+			);
+		}
+	}, [
+		localAgentsData,
+		recommendedAgents,
+		downloadAgentMutation.isSuccess,
+		downloadAgentMutation.variables?.agentId, // Depend on the specific agentId from variables
+	]);
 
-				const result = await createAgentMutation.mutateAsync({
-					name: name.trim(),
-					description: description.trim() || undefined,
-					hosting: configData.values.hosting,
-					model: configData.values.model_name,
-				});
+	// Removed handleAddAgent as AgentCard handles its own download click
 
-				// Set the newly created agent as the selected agent
-				if (result?.id) {
-					setLastChatAgentId(result.id);
+	const handleAddRecommended = async () => {
+		if (isAddingAll || downloadAgentMutation.isPending) return;
+		setIsAddingAll(true);
+		// Filter agents that are not already added locally or in the process of being added
+		const agentsToAdd = recommendedAgents.filter(
+			(agent) => !addedAgentIds.has(agent.id),
+		);
 
-					// Store the agent ID to navigate to after onboarding completes
-					sessionStorage.setItem("onboarding_created_agent_id", result.id);
+		// Use Promise.all for potentially faster downloads, but process sequentially if API limits are a concern
+		// For simplicity, sequential download is shown here.
+		try {
+			for (const agent of agentsToAdd) {
+				// Check again inside the loop in case it was added individually
+				if (
+					!addedAgentIds.has(agent.id) &&
+					downloadAgentMutation.variables?.agentId !== agent.id // Ensure not currently adding this one
+				) {
+					try {
+						// Use the mutation from AgentCard's hook, passing the correct object
+						await downloadAgentMutation.mutateAsync({
+							agentId: agent.id,
+							agentName: agent.name, // Pass name for potential use by mutation
+						});
+						// Update state immediately after successful mutation for this agent
+						setAddedAgentIds((prev) => new Set(prev).add(agent.id));
+					} catch (agentErr) {
+						console.error(`Failed to download agent ${agent.name}:`, agentErr);
+						// Optionally break or continue on individual agent failure
+					}
 				}
-
-				setSaveSuccess(true);
-
-				// Clear any existing timeout
-				if (successTimeoutRef.current) {
-					clearTimeout(successTimeoutRef.current);
-				}
-
-				// Set a timeout to hide the success message and move to the next step
-				successTimeoutRef.current = setTimeout(() => {
-					setSaveSuccess(false);
-					// Move to the congratulations step after agent is created
-					setCurrentStep(OnboardingStep.CONGRATULATIONS);
-				}, 1500);
-			} catch (err) {
-				console.error("Failed to create agent:", err);
-			} finally {
-				setIsSaving(false);
 			}
+		} catch (err) {
+			// This catch block might be less likely to be hit with individual try/catches
+			console.error("Failed to add all recommended agents:", err);
+		} finally {
+			setIsAddingAll(false);
 		}
 	};
 
-	// Define shadcn-like input styles using sx prop
-	const inputSx = {
-		"& .MuiOutlinedInput-root": {
-			borderRadius: theme.shape.borderRadius * 0.75,
-			backgroundColor: theme.palette.background.paper,
-			border: `1px solid ${theme.palette.divider}`,
-			minHeight: "40px", // Standard height
-			// height: "40px", // Let height be determined by content for multiline
-			transition: "border-color 0.2s ease, box-shadow 0.2s ease",
-			"&:hover": {
-				borderColor: theme.palette.text.secondary,
-			},
-			"&.Mui-focused": {
-				borderColor: theme.palette.primary.main,
-				boxShadow: `0 0 0 2px ${theme.palette.primary.main}33`,
-			},
-			"& .MuiOutlinedInput-notchedOutline": {
-				border: "none",
-			},
-			"& .MuiInputBase-input": {
-				padding: theme.spacing(1, 1.5),
-				fontSize: "0.875rem",
-				// height: "calc(40px - 16px)", // Remove fixed height for multiline
-				boxSizing: "border-box",
-			},
-			"& .MuiInputBase-input::placeholder": {
-				color: theme.palette.text.disabled,
-				opacity: 1,
-			},
-			"& .MuiInputAdornment-root": {
-				color: theme.palette.text.secondary,
-				marginRight: theme.spacing(0.5),
-				// Align adornment top for multiline
-				alignSelf: "flex-start",
-				marginTop: theme.spacing(1.25),
-			},
-		},
-		"& .MuiFormHelperText-root": {
-			fontSize: "0.75rem",
-			mt: 0.5,
-			ml: 0.5,
-		},
-		// Remove MUI label specific styles from inputSx
-		// "& .MuiInputLabel-root": { ... },
-		// "& .MuiInputLabel-outlined.MuiInputLabel-shrink": { ... },
-	};
+	// Removed unused handleProceed function
 
-	// Style for info boxes
-	const infoBoxSx = {
-		p: 1.5,
-		borderRadius: theme.shape.borderRadius * 0.75,
-		border: `1px solid ${theme.palette.divider}`,
-		backgroundColor: alpha(theme.palette.background.default, 0.5),
-		display: "flex",
-		alignItems: "center",
-		gap: 1.5,
-	};
+	const hasAddedAgents = addedAgentIds.size > 0;
 
-	// Style for the success alert
-	const successAlertSx = {
-		mt: 1, // Reduced margin
-		mb: 1,
-		borderRadius: theme.shape.borderRadius * 0.75,
-		border: `1px solid ${theme.palette.success.main}`,
-		backgroundColor: alpha(theme.palette.success.main, 0.1),
-		color: theme.palette.success.dark,
-		"& .MuiAlert-icon": {
-			color: theme.palette.success.main,
-		},
-	};
+	// Effect to notify parent about validity change
+	useEffect(() => {
+		onValidityChange(hasAddedAgents);
+	}, [hasAddedAgents, onValidityChange]);
 
 	return (
-		<SectionContainer>
+		<SectionContainer sx={{ display: "flex", flexDirection: "column" }}>
 			<SectionTitle>
-				<EmojiContainer sx={{ mb: 0 }}>🤖</EmojiContainer> Create Your First AI
-				Assistant
+				<EmojiContainer sx={{ mb: 0 }}>🤖</EmojiContainer> Add Your First AI
+				Assistants
 			</SectionTitle>
 			<SectionDescription>
-				Give your AI assistant a name and describe its purpose. This helps
-				personalize its responses.
+				Select from our recommended agents to get started quickly, or click the
+				quick start button to have us set up a team for you from the most
+				popular agents. You can always add more later from the Agent Hub.
 			</SectionDescription>
 
-			{/* "Pro tip!" Info Box */}
-			<Box sx={{ ...infoBoxSx, mb: 2 }}>
-				<FontAwesomeIcon
-					icon={faLightbulb}
-					size="lg"
-					color={theme.palette.warning.main} // Use warning color for tips
-				/>
-				<Typography variant="body2">
-					<Typography component="span" fontWeight="medium">
-						Pro Tip:
-					</Typography>{" "}
-					Use a descriptive name like "Research Assistant" or "Creative Writing
-					Partner".
-				</Typography>
+			{/* Add Recommended Button */}
+			<Box sx={{ my: 2, display: "flex", justifyContent: "center" }}>
+				<Button
+					variant="outlined"
+					onClick={handleAddRecommended}
+					disabled={
+						isLoadingAgents ||
+						isAddingAll ||
+						recommendedAgents.every((agent) => addedAgentIds.has(agent.id))
+					}
+					startIcon={
+						isAddingAll ? (
+							<CircularProgress size={20} color="inherit" />
+						) : (
+							<FontAwesomeIcon icon={faDownload} />
+						)
+					}
+				>
+					{isAddingAll ? "Adding..." : "Setup My Team For Me"}
+				</Button>
 			</Box>
 
-			<FormContainer>
-				{/* Agent Name */}
-				<Box>
-					{" "}
-					{/* Wrap Label and Input */}
-					<FieldLabel>
-						<LabelIcon>
-							<FontAwesomeIcon icon={faRobot} size="sm" />
-						</LabelIcon>
-						Agent Name
-					</FieldLabel>
-					<TextField
-						// Remove label prop
-						variant="outlined"
-						fullWidth
-						value={name}
-						onChange={handleNameChange}
-						error={!!nameError}
-						helperText={nameError || "A memorable name for your AI assistant"}
-						placeholder="My Awesome Assistant"
-						required
-						disabled={isSaving}
-						// Remove InputProps startAdornment
-						sx={inputSx} // Apply shared input styles
-					/>
-				</Box>
-
-				{/* Agent Description */}
-				<Box>
-					{" "}
-					{/* Wrap Label and Input */}
-					<FieldLabel>
-						<LabelIcon>
-							<FontAwesomeIcon icon={faLightbulb} size="sm" />
-						</LabelIcon>
-						Description (Optional)
-					</FieldLabel>
-					<TextField
-						// Remove label prop
-						variant="outlined"
-						fullWidth
-						value={description}
-						onChange={handleDescriptionChange}
-						helperText="Describe the assistant's purpose or specialty"
-						placeholder="e.g., Helps with research, writing, coding..."
-						multiline
-						rows={3} // Keep multiline
-						disabled={isSaving}
-						// Remove InputProps startAdornment
-						sx={inputSx} // Apply shared input styles
-					/>
-				</Box>
-
-				{/* Save Success Alert */}
-				{saveSuccess && (
-					<Alert
-						severity="success"
-						icon={<FontAwesomeIcon icon={faCheck} />}
-						sx={successAlertSx}
+			{/* Agent Grid */}
+			<Box sx={{ flexGrow: 1, minHeight: 0, width: "100%" }}>
+				{isLoadingAgents && (
+					<Box
+						display="flex"
+						justifyContent="center"
+						alignItems="center"
+						flexGrow={1}
+						sx={{ height: "300px" }} // Ensure loading takes space
 					>
-						<Box
-							component="span"
-							sx={{ display: "flex", alignItems: "center", gap: 1 }}
-						>
-							<EmojiContainer sx={{ mb: 0 }}>🎉</EmojiContainer> AI assistant
-							created successfully!
-						</Box>
-					</Alert>
+						<CircularProgress />
+					</Box>
 				)}
-
-				{/* Create Button - Use PrimaryButton */}
-				<PrimaryButton
-					fullWidth
-					onClick={handleCreateAgent}
-					disabled={!name.trim() || !!nameError || isSaving || saveSuccess} // Disable after success too
-					startIcon={
-						isSaving ? undefined : (
-							<FontAwesomeIcon icon={faMagicWandSparkles} />
-						)
-					} // Hide icon when loading
-					sx={{ mt: 1 }} // Reduced margin top
-				>
-					{isSaving ? (
-						<CircularProgress size={24} color="inherit" />
-					) : (
-						"Create My AI Assistant"
-					)}
-				</PrimaryButton>
-
-				{/* Final Note */}
-				<SectionDescription sx={{ mt: 1, textAlign: "center" }}>
-					<EmojiContainer sx={{ mr: 0.5 }}>💫</EmojiContainer>
-					Almost there! Just one more click after creating your agent.
-				</SectionDescription>
-			</FormContainer>
+				{agentsError && (
+					<Box
+						display="flex"
+						justifyContent="center"
+						alignItems="center"
+						flexGrow={1}
+						sx={{ height: "300px" }} // Ensure error takes space
+					>
+						<Typography color="error">
+							Failed to load recommended agents: {agentsError.message}
+						</Typography>
+					</Box>
+				)}
+				{!isLoadingAgents && !agentsError && (
+					<StyledGridContainer container spacing={2}>
+						{recommendedAgents.length === 0 ? (
+							<Grid item xs={12}>
+								<Typography variant="body1" align="center">
+									No recommended agents found. You can proceed or add agents
+									later.
+								</Typography>
+							</Grid>
+						) : (
+							recommendedAgents.map((agent) => (
+								<Grid item key={agent.id} xs={12} sm={6} md={6} lg={4}>
+									{/* Wrap AgentCard to show added state */}
+									<Box
+										sx={{
+											position: "relative",
+											opacity: addedAgentIds.has(agent.id) ? 0.6 : 1,
+											pointerEvents: addedAgentIds.has(agent.id)
+												? "none"
+												: "auto",
+											transition: "opacity 0.3s ease",
+										}}
+									>
+										<AgentCard
+											agent={agent}
+											isLiked={false}
+											isFavourited={false}
+											onLikeToggle={() => {}}
+											onFavouriteToggle={() => {}}
+											showActions={false}
+										/>
+										{/* Show loading spinner on the specific card being added */}
+										{downloadAgentMutation.isPending &&
+											downloadAgentMutation.variables?.agentId === agent.id && (
+												<CircularProgress
+													size={24}
+													sx={{
+														position: "absolute",
+														top: "50%",
+														left: "50%",
+														marginTop: "-12px",
+														marginLeft: "-12px",
+														zIndex: 2,
+													}}
+												/>
+											)}
+										{/* Show checkmark overlay if added */}
+										{addedAgentIds.has(agent.id) && (
+											<Chip
+												icon={<CheckCircle size={16} />}
+												label="Added"
+												size="small"
+												color="success"
+												sx={{
+													position: "absolute",
+													top: 12,
+													right: 12,
+													zIndex: 2,
+													backgroundColor: (theme) =>
+														theme.palette.success.main,
+													color: (theme) => theme.palette.success.contrastText,
+													".MuiChip-icon": {
+														color: "inherit",
+													},
+												}}
+											/>
+										)}
+									</Box>
+								</Grid>
+							))
+						)}
+					</StyledGridContainer>
+				)}
+			</Box>
 		</SectionContainer>
 	);
 };

@@ -1,13 +1,4 @@
 import {
-	faBroom,
-	faComment,
-	faEllipsisVertical,
-	faFileExport,
-	faGear,
-	faTrash,
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
 	IconButton,
 	ListItemIcon,
 	Menu,
@@ -18,6 +9,15 @@ import {
 } from "@mui/material";
 import { useDeleteAgent } from "@shared/hooks/use-agent-mutations";
 import { useAgentSelectionStore } from "@shared/store/agent-selection-store";
+import {
+	Eraser,
+	FileOutput,
+	MessageCircle,
+	MoreVertical,
+	Settings,
+	Trash2,
+	UploadCloud,
+} from "lucide-react";
 import type { FC, MouseEvent } from "react";
 import { useState } from "react";
 import { ConfirmationModal } from "./confirmation-modal";
@@ -64,62 +64,125 @@ type AgentOptionsMenuProps = {
 	 * Optional callback to clear the conversation for this agent
 	 */
 	onClearConversation?: () => void;
+	/**
+	 * Optional callback to upload the agent to the hub
+	 */
+	onUploadAgentToHub?: () => void;
 };
 
+/**
+ * Styled icon button for the options menu, using shadcn spacing and rounded.
+ */
+/**
+ * Styled icon button for the options menu, using shadcn spacing and rounded.
+ * The button has a fixed size to prevent layout shift, and the icon is larger for prominence.
+ */
 const OptionsIconButton = styled(IconButton)(({ theme }) => ({
-	opacity: 0,
-	transition: "opacity 0.2s",
+	borderRadius: "0.375rem", // rounded-md
+	padding: 0,
+	left: 8,
+	display: "flex",
+	alignItems: "center",
+	justifyContent: "center",
+	transition: "background-color 0.2s",
+	background: "transparent",
 	"&:hover": {
-		opacity: 1,
-		backgroundColor: alpha(
+		backgroundColor:
 			theme.palette.mode === "dark"
-				? theme.palette.common.white
-				: theme.palette.common.black,
-			0.08,
-		),
+				? alpha(theme.palette.common.white, 0.08)
+				: alpha(theme.palette.common.black, 0.08),
 	},
 }));
 
+/**
+ * Styled menu using shadcn style tokens.
+ */
 const OptionsMenu = styled(Menu)(({ theme }) => ({
 	"& .MuiPaper-root": {
-		minWidth: 150,
-		boxShadow: `0 4px 20px ${alpha(theme.palette.common.black, theme.palette.mode === "dark" ? 0.4 : 0.15)}`,
-		borderRadius: 12,
+		minWidth: 180, // shadcn menus are wider
+		boxShadow:
+			theme.palette.mode === "dark"
+				? "0px 8px 32px 0px rgba(0,0,0,0.45)"
+				: "0px 8px 32px 0px rgba(0,0,0,0.15)",
+		borderRadius: "0.75rem", // rounded-xl
+		padding: "0.25rem", // p-1
+		background: theme.palette.background.paper,
 	},
 }));
 
+/**
+ * Styled menu item for normal actions, using shadcn spacing and font.
+ */
 const StyledMenuItem = styled(MenuItem)(({ theme }) => ({
-	padding: theme.spacing(1.5, 2),
+	borderRadius: "0.375rem", // rounded-md
+	padding: "0.5rem 0.75rem", // py-2 px-3
+	fontSize: "0.875rem", // text-sm
+	fontWeight: 500,
+	gap: "0.75rem", // gap-3
+	minHeight: "2.25rem", // h-9
 	"&:hover": {
-		backgroundColor: alpha(theme.palette.primary.main, 0.08),
+		backgroundColor:
+			theme.palette.mode === "dark"
+				? alpha(theme.palette.primary.main, 0.1)
+				: alpha(theme.palette.primary.main, 0.08),
 	},
 }));
 
+/**
+ * Styled menu item for warning actions.
+ */
 const WarningMenuItem = styled(MenuItem)(({ theme }) => ({
-	padding: theme.spacing(1.5, 2),
+	borderRadius: "0.375rem",
+	padding: "0.5rem 0.75rem",
+	fontSize: "0.875rem",
+	fontWeight: 500,
+	gap: "0.75rem",
+	minHeight: "2.25rem",
 	color: theme.palette.warning.main,
 	"&:hover": {
 		backgroundColor: alpha(theme.palette.warning.main, 0.08),
 	},
 }));
 
+/**
+ * Styled menu item for delete actions.
+ */
 const DeleteMenuItem = styled(MenuItem)(({ theme }) => ({
-	padding: theme.spacing(1.5, 2),
+	borderRadius: "0.375rem",
+	padding: "0.5rem 0.75rem",
+	fontSize: "0.875rem",
+	fontWeight: 500,
+	gap: "0.75rem",
+	minHeight: "2.25rem",
 	color: theme.palette.error.main,
 	"&:hover": {
 		backgroundColor: alpha(theme.palette.error.main, 0.08),
 	},
 }));
 
-const MenuItemIcon = styled(ListItemIcon)(({ theme, color }) => ({
-	color:
-		color === "error"
-			? theme.palette.error.main
-			: color === "warning"
-				? theme.palette.warning.main
-				: theme.palette.primary.main,
-	minWidth: 36,
-}));
+/**
+ * Styled icon for menu items, using shadcn size and color.
+ */
+const MenuItemIcon = styled(ListItemIcon)<{ color?: "error" | "warning" }>(
+	({ theme, color }) => ({
+		color:
+			color === "error"
+				? theme.palette.error.main
+				: color === "warning"
+					? theme.palette.warning.main
+					: theme.palette.text.primary,
+		minWidth: 0,
+		marginRight: "0.75rem", // gap-3
+		display: "flex",
+		alignItems: "center",
+		justifyContent: "center",
+		"& svg": {
+			width: "1.125rem", // w-4.5
+			height: "1.125rem",
+			strokeWidth: 1.8,
+		},
+	}),
+);
 
 /**
  * Agent Options Menu Component
@@ -136,6 +199,7 @@ export const AgentOptionsMenu: FC<AgentOptionsMenuProps> = ({
 	onChatWithAgent,
 	onExportAgent,
 	onClearConversation,
+	onUploadAgentToHub,
 }) => {
 	const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
 	const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -207,12 +271,14 @@ export const AgentOptionsMenu: FC<AgentOptionsMenuProps> = ({
 	return (
 		<>
 			<OptionsIconButton
-				size="small"
 				aria-label="agent options"
 				onClick={handleOpenMenu}
 				sx={buttonSx}
 			>
-				<FontAwesomeIcon icon={faEllipsisVertical} size="sm" />
+				<MoreVertical
+					aria-label="More options"
+					style={{ width: "1rem", height: "1rem" }}
+				/>
 			</OptionsIconButton>
 
 			<OptionsMenu
@@ -238,9 +304,9 @@ export const AgentOptionsMenu: FC<AgentOptionsMenuProps> = ({
 						}}
 					>
 						<MenuItemIcon>
-							<FontAwesomeIcon icon={faComment} size="sm" />
+							<MessageCircle aria-label="Chat with Agent" />
 						</MenuItemIcon>
-						<Typography variant="body2">Chat with Agent</Typography>
+						<span>Chat with Agent</span>
 					</StyledMenuItem>
 				)}
 
@@ -253,9 +319,9 @@ export const AgentOptionsMenu: FC<AgentOptionsMenuProps> = ({
 						}}
 					>
 						<MenuItemIcon>
-							<FontAwesomeIcon icon={faGear} size="sm" />
+							<Settings aria-label="View Agent Settings" />
 						</MenuItemIcon>
-						<Typography variant="body2">View Agent Settings</Typography>
+						<span>View Agent Settings</span>
 					</StyledMenuItem>
 				)}
 
@@ -268,9 +334,24 @@ export const AgentOptionsMenu: FC<AgentOptionsMenuProps> = ({
 						}}
 					>
 						<MenuItemIcon>
-							<FontAwesomeIcon icon={faFileExport} size="sm" />
+							<FileOutput aria-label="Export Agent" />
 						</MenuItemIcon>
-						<Typography variant="body2">Export Agent</Typography>
+						<span>Export Agent</span>
+					</StyledMenuItem>
+				)}
+
+				{/* Upload to Hub option */}
+				{onUploadAgentToHub && (
+					<StyledMenuItem
+						onClick={() => {
+							onUploadAgentToHub();
+							handleCloseMenu();
+						}}
+					>
+						<MenuItemIcon>
+							<UploadCloud aria-label="Upload to Hub" />
+						</MenuItemIcon>
+						<span>Upload to Hub</span>
 					</StyledMenuItem>
 				)}
 
@@ -278,17 +359,17 @@ export const AgentOptionsMenu: FC<AgentOptionsMenuProps> = ({
 				{onClearConversation && (
 					<WarningMenuItem onClick={handleOpenClearConfirmation}>
 						<MenuItemIcon color="warning">
-							<FontAwesomeIcon icon={faBroom} size="sm" />
+							<Eraser aria-label="Clear Conversation" />
 						</MenuItemIcon>
-						<Typography variant="body2">Clear Conversation</Typography>
+						<span>Clear Conversation</span>
 					</WarningMenuItem>
 				)}
 
 				<DeleteMenuItem onClick={handleOpenDeleteConfirmation}>
 					<MenuItemIcon color="error">
-						<FontAwesomeIcon icon={faTrash} size="sm" />
+						<Trash2 aria-label="Delete Agent" />
 					</MenuItemIcon>
-					<Typography variant="body2">Delete Agent</Typography>
+					<span>Delete Agent</span>
 				</DeleteMenuItem>
 			</OptionsMenu>
 

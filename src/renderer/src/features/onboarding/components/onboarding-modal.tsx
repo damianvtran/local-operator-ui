@@ -79,6 +79,8 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 	// Track whether the user is using Radient Pass within the flow
 	// Assume false initially, set to true on successful sign-in or session restore
 	const [isUsingRadientPass, setIsUsingRadientPass] = useState(false);
+	// State to track if the Create Agent step is valid (at least one agent added)
+	const [isCreateAgentStepValid, setIsCreateAgentStepValid] = useState(false);
 	// Track the previous step to detect jumps
 	const previousStepRef = useRef<OnboardingStep | null>(null);
 
@@ -276,7 +278,8 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 			case OnboardingStep.DEFAULT_MODEL:
 				return <DefaultModelStep />;
 			case OnboardingStep.CREATE_AGENT:
-				return <CreateAgentStep />;
+				// Pass the validity callback
+				return <CreateAgentStep onValidityChange={setIsCreateAgentStepValid} />;
 			case OnboardingStep.CONGRATULATIONS:
 				return (
 					<CongratulationsContainer>
@@ -428,15 +431,10 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 			? "🚀 Get Started"
 			: "Next →";
 
-	// Check if an agent has been created (relevant for enabling Next on Create Agent step)
-	const hasCreatedAgent = Boolean(
-		sessionStorage.getItem("onboarding_created_agent_id"),
-	);
-
 	// Determine if the Next button should be disabled
 	const isNextDisabled =
-		// Disable on Create Agent step if no agent has been created yet
-		currentStep === OnboardingStep.CREATE_AGENT && !hasCreatedAgent;
+		// Disable on Create Agent step if it's not valid (no agents added)
+		currentStep === OnboardingStep.CREATE_AGENT && !isCreateAgentStepValid;
 
 	// Render dialog actions (Back, Skip, Next buttons)
 	// Render dialog actions (Back, Skip, Next buttons) - Adjusted layout
