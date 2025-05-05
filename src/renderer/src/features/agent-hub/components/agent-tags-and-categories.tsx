@@ -16,6 +16,7 @@ import {
 	Users,
 	BarChart2,
 	ClipboardList,
+	Globe2,
 } from "lucide-react";
 import type { FC } from "react";
 
@@ -81,6 +82,10 @@ export const CATEGORY_ICON_MAP: Record<
 	management: {
 		icon: <ClipboardList size={14} style={{ marginRight: 4 }} />,
 		label: "Management",
+	},
+	social_media: {
+		icon: <Globe2 size={14} style={{ marginRight: 4 }} />,
+		label: "Social Media",
 	},
 	other: {
 		icon: <FileQuestion size={14} style={{ marginRight: 4 }} />,
