@@ -132,6 +132,7 @@ const LikeFavouriteButton = styled(ButtonBase, {
   color: color ? theme.palette[color].main : theme.palette.text.primary,
   background: "transparent",
   transition: "background 0.2s, color 0.2s",
+  width: "fit-content",
   "&:hover": {
     background: theme.palette.action.hover,
     textDecoration: "none",
