@@ -70,7 +70,7 @@ export const CreateAgentStep: FC<CreateAgentStepProps> = ({
 	const [addedAgentIds, setAddedAgentIds] = useState<Set<string>>(new Set());
 	const [isAddingAll, setIsAddingAll] = useState(false);
 
-	// Fetch recommended public agents (top 8)
+	// Fetch recommended public agents (top 8 by download count)
 	const {
 		data: agentsData,
 		isLoading: isLoadingAgents,
