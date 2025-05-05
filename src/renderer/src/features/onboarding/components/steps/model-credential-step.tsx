@@ -284,7 +284,7 @@ export const ModelCredentialStep: FC = () => {
 							}}
 						>
 							<EmojiContainer sx={{ mb: 0 }}>🔗</EmojiContainer> Get{" "}
-							{selectedCredentialInfo.name} API Key{" "}
+							{selectedCredentialInfo.name}{" "}
 							<FontAwesomeIcon icon={faExternalLinkAlt} size="xs" />
 						</Link>
 					</Box>
