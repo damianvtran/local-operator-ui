@@ -1,13 +1,11 @@
 import radientIcon from "@assets/radient-icon-1024x1024.png";
+import type { LucideIcon } from "lucide-react";
 import {
-	type IconDefinition,
-	faAdjust,
-	faDownload,
-	faGear,
-	faKey,
-	type faUser,
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+	Settings,
+	Key,
+	Download,
+	Paintbrush,
+} from "lucide-react";
 import {
 	Box,
 	List,
@@ -26,13 +24,7 @@ import type { FC } from "react";
 export type SettingsSection = {
 	id: string;
 	label: string;
-	icon:
-		| typeof faGear
-		| typeof faKey
-		| typeof faDownload
-		| typeof faAdjust
-		| typeof faUser
-		| string;
+	icon: LucideIcon | string;
 	isImage?: boolean;
 };
 
@@ -158,10 +150,7 @@ export const SettingsSidebar: FC<SettingsSidebarProps> = ({
 							{section.isImage ? (
 								<IconImage src={section.icon as string} alt={section.label} />
 							) : (
-								<FontAwesomeIcon
-									icon={section.icon as IconDefinition}
-									fixedWidth
-								/>
+								<section.icon size={22} strokeWidth={2.1} />
 							)}
 						</SidebarItemIcon>
 						<ListItemText
@@ -185,7 +174,7 @@ export const DEFAULT_SETTINGS_SECTIONS: SettingsSection[] = [
 	{
 		id: "general",
 		label: "General Settings",
-		icon: faGear,
+		icon: Settings,
 	},
 	{
 		id: "radient",
@@ -196,16 +185,16 @@ export const DEFAULT_SETTINGS_SECTIONS: SettingsSection[] = [
 	{
 		id: "appearance",
 		label: "Appearance",
-		icon: faAdjust,
+		icon: Paintbrush,
 	},
 	{
 		id: "credentials",
 		label: "API Credentials",
-		icon: faKey,
+		icon: Key,
 	},
 	{
 		id: "updates",
 		label: "Application Updates",
-		icon: faDownload,
+		icon: Download,
 	},
 ];
