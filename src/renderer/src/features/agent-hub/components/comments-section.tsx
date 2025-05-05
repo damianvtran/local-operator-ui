@@ -223,7 +223,7 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({ agentId }) => 
 
 	return (
 		<CommentsContainer>
-			<Typography variant="h5" gutterBottom>
+			<Typography variant="h6" gutterBottom>
 				Comments
 			</Typography>
 

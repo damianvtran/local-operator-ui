@@ -48,6 +48,8 @@ import { CommentsSection } from "./components/comments-section";
 const DetailsContainer = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(4),
   margin: theme.spacing(3),
+  backgroundImage: "none",
+  backgroundColor: theme.palette.background.default,
   flexGrow: 1,
   display: "flex",
   flexDirection: "column",
@@ -307,19 +309,19 @@ export const AgentDetailsPage: React.FC = () => {
 
       <AgentTagsAndCategories tags={agent.tags} categories={agent.categories} />
       <MetaInfoContainer>
-        <Typography variant="body2">
+        <Typography variant="body2" sx={{ fontSize: "0.875rem" }}>
           Created by: {agent.account_metadata?.name ?? "Unknown"} ({agent.account_metadata?.email ?? "No email"})
         </Typography>
-        <Typography variant="body2">
+        <Typography variant="body2" sx={{ fontSize: "0.875rem" }}>
           Created: {formatDistanceToNowStrict(new Date(agent.created_at))} ago ({new Date(agent.created_at).toLocaleDateString()})
         </Typography>
-        <Typography variant="body2">
+        <Typography variant="body2" sx={{ fontSize: "0.875rem" }}>
           Updated: {formatDistanceToNowStrict(new Date(agent.updated_at))} ago ({new Date(agent.updated_at).toLocaleDateString()})
         </Typography>
       </MetaInfoContainer>
 
       <DescriptionBox>
-        <Typography variant="body1">{agent.description || "No description provided."}</Typography>
+        <Typography variant="body1" sx={{ fontSize: "0.875rem" }}>{agent.description || "No description provided."}</Typography>
       </DescriptionBox>
 
       <Divider sx={{ my: 3 }} />
