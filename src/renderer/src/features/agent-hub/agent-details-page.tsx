@@ -17,22 +17,18 @@ import {
   DialogContentText,
   DialogTitle,
   Avatar,
+  ButtonBase,
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
-import { Bot } from "lucide-react";
 import {
-  faArrowLeft,
-  faHeart as faHeartSolid,
-  faStar as faStarSolid,
-  faDownload,
-  faTrash,
-} from "@fortawesome/free-solid-svg-icons";
+  Bot,
+  ArrowLeft,
+  Heart,
+  Star,
+  Download,
+  Trash2,
+} from "lucide-react";
 import { AgentTagsAndCategories } from "./components/agent-tags-and-categories";
-import {
-  faHeart as faHeartOutline,
-  faStar as faStarOutline,
-} from "@fortawesome/free-regular-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { formatDistanceToNowStrict } from "date-fns";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import { useAgentDetailsQuery } from "./hooks/use-agent-details-query";
@@ -46,6 +42,14 @@ import { useAgentFavouriteMutation } from "./hooks/use-agent-favourite-mutation"
 import { useDownloadAgentMutation } from "./hooks/use-download-agent-mutation";
 import { useDelistAgentMutation } from "./hooks/use-delist-agent-mutation";
 import { CommentsSection } from "./components/comments-section";
+
+// Filled icon replacements using Lucide's two-tone approach
+const HeartFilled = (props: React.ComponentProps<typeof Heart>) => (
+  <Heart {...props} fill="currentColor" style={{ color: "#e53935" }} />
+);
+const StarFilled = (props: React.ComponentProps<typeof Star>) => (
+  <Star {...props} fill="currentColor" style={{ color: "#ffb300" }} />
+);
 
 const DetailsContainer = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(4),
@@ -98,10 +102,32 @@ const MetaInfoContainer = styled(Box)(({ theme }) => ({
   fontSize: "0.875rem",
 }));
 
+
 const DescriptionBox = styled(Box)(({ theme }) => ({
   marginTop: theme.spacing(2),
   marginBottom: theme.spacing(4),
   lineHeight: 1.6,
+}));
+
+const LikeFavouriteButton = styled(ButtonBase, {
+  shouldForwardProp: (prop) => prop !== "color",
+})<{ color?: string }>(({ theme, color }) => ({
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  borderRadius: 8,
+  padding: theme.spacing(0.5, 1),
+  color: color ? theme.palette[color].main : theme.palette.text.primary,
+  background: "transparent",
+  transition: "background 0.2s, color 0.2s",
+  "&:hover": {
+    background: theme.palette.action.hover,
+    textDecoration: "none",
+  },
+  "&:disabled": {
+    opacity: 0.5,
+    pointerEvents: "none",
+  },
 }));
 
 // Copied from AgentCard
@@ -196,10 +222,18 @@ export const AgentDetailsPage: React.FC = () => {
     navigate("/agent-hub");
   };
 
-  const likeIcon = isLiked ? faHeartSolid : faHeartOutline;
-  const likeColor = isLiked ? "error.main" : "inherit";
-  const favouriteIcon = isFavourited ? faStarSolid : faStarOutline;
-  const favouriteColor = isFavourited ? "warning.main" : "inherit";
+  // Lucide icon selection for like/favourite
+  // Use slightly larger size for like/favourite icons
+  const likeIcon = isLiked ? (
+    <HeartFilled size={18} strokeWidth={2.2} />
+  ) : (
+    <Heart size={18} strokeWidth={2.2} />
+  );
+  const favouriteIcon = isFavourited ? (
+    <StarFilled size={18} strokeWidth={2.2} />
+  ) : (
+    <Star size={18} strokeWidth={2.2} />
+  );
 
   const AuthTooltipWrapper: React.FC<{ children: React.ReactElement }> = ({ children }) =>
     isAuthenticated ? (
@@ -240,7 +274,7 @@ export const AgentDetailsPage: React.FC = () => {
       <HeaderBox>
         <TitleBox>
           <BackButton onClick={handleBack} aria-label="Back to Agent Hub">
-            <FontAwesomeIcon icon={faArrowLeft} size="sm" />
+            <ArrowLeft size={20} />
           </BackButton>
           <Avatar
             sx={{
@@ -260,32 +294,36 @@ export const AgentDetailsPage: React.FC = () => {
         </TitleBox>
         <ActionButtonGroup>
           <AuthTooltipWrapper>
-            <IconButton
-              size="medium"
+            <LikeFavouriteButton
               onClick={handleLikeToggle}
               disabled={!isAuthenticated || likeMutation.isPending}
-              sx={{ color: likeColor, borderRadius: 4 }}
+              color={isLiked ? "error" : undefined}
               aria-label={isLiked ? "Unlike agent" : "Like agent"}
+              focusRipple
+              tabIndex={0}
+              type="button"
             >
-              <FontAwesomeIcon icon={likeIcon} />
+              {likeIcon}
               <CountDisplay>
                 {isLoadingLikes ? <Skeleton variant="text" width={20} /> : likeCount ?? 0}
               </CountDisplay>
-            </IconButton>
+            </LikeFavouriteButton>
           </AuthTooltipWrapper>
           <AuthTooltipWrapper>
-            <IconButton
-              size="medium"
+            <LikeFavouriteButton
               onClick={handleFavouriteToggle}
               disabled={!isAuthenticated || favouriteMutation.isPending}
-              sx={{ color: favouriteColor, borderRadius: 4 }}
+              color={isFavourited ? "warning" : undefined}
               aria-label={isFavourited ? "Unfavourite agent" : "Favourite agent"}
+              focusRipple
+              tabIndex={0}
+              type="button"
             >
-              <FontAwesomeIcon icon={favouriteIcon} />
+              {favouriteIcon}
               <CountDisplay>
                 {isLoadingFavourites ? <Skeleton variant="text" width={20} /> : favouriteCount ?? 0}
               </CountDisplay>
-            </IconButton>
+            </LikeFavouriteButton>
           </AuthTooltipWrapper>
           <Tooltip title="Download agent to your computer">
             <span>
@@ -296,7 +334,7 @@ export const AgentDetailsPage: React.FC = () => {
                 sx={{ borderRadius: 4, ml: 1 }}
                 aria-label="Download agent"
               >
-                <FontAwesomeIcon icon={faDownload} />
+                <Download size={20} />
                 <CountDisplay>
                   {isLoadingDownloads || downloadMutation.isPending ? (
                     <Skeleton variant="text" width={20} />
@@ -317,7 +355,7 @@ export const AgentDetailsPage: React.FC = () => {
                 sx={{ borderRadius: 4, ml: 1, color: "error.main" }} // Style as destructive action
                 aria-label="Delist agent"
               >
-                <FontAwesomeIcon icon={faTrash} />
+                <Trash2 size={20} />
               </IconButton>
             </Tooltip>
           )}
