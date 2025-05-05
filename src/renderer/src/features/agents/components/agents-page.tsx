@@ -14,17 +14,17 @@ import {
 	useExportAgent,
 	useUploadAgentToRadientMutation,
 } from "@shared/hooks/use-agent-mutations";
-import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import { useAgent, useAgents } from "@shared/hooks/use-agents";
+import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import { useAgentRouteParam } from "@shared/hooks/use-route-params";
 import { useAgentSelectionStore } from "@shared/store/agent-selection-store";
+import { Bot, CloudUpload, FileUp, MessageCircle } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { FC } from "react";
 import { useNavigate } from "react-router-dom";
 import { AgentSettings } from "./agent-settings";
 import { AgentsSidebar } from "./agents-sidebar";
 import { UploadAgentDialog } from "./upload-agent-dialog";
-import { Bot, CloudUpload, MessageCircle, FileUp } from "lucide-react";
 
 /**
  * Props for the AgentsPage component
@@ -258,12 +258,10 @@ export const AgentsPage: FC<AgentsPageProps> = () => {
 									<Button
 										variant="outlined"
 										size="small"
-										startIcon={
-											<FileUp size={16} strokeWidth={2} />
-										}
+										startIcon={<FileUp size={16} strokeWidth={2} />}
 										onClick={handleExportAgent}
 										disabled={exportAgentMutation.isPending}
-										sx={secondaryButtonSx} 
+										sx={secondaryButtonSx}
 									>
 										Export
 									</Button>
@@ -274,9 +272,7 @@ export const AgentsPage: FC<AgentsPageProps> = () => {
 									<Button
 										variant="outlined"
 										size="small"
-										startIcon={
-											<CloudUpload size={16} strokeWidth={2} />
-										}
+										startIcon={<CloudUpload size={16} strokeWidth={2} />}
 										onClick={handleOpenUploadDialog}
 										disabled={uploadAgentMutation.isPending} // Disable button while uploading
 										sx={secondaryButtonSx}

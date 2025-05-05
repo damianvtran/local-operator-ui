@@ -5,19 +5,19 @@
  */
 
 import type {
-	Agent,
-	PaginatedAgentList,
-	CreateAgentRequest,
-	UpdateAgentRequest,
-	AgentComment,
-	CreateAgentCommentRequest,
-	UpdateAgentCommentRequest,
-	CountResponse,
-	RadientApiResponse,
 	APIResponse,
-	AgentLike,
+	Agent,
+	AgentComment,
 	AgentFavourite,
-  PaginatedResponse,
+	AgentLike,
+	CountResponse,
+	CreateAgentCommentRequest,
+	CreateAgentRequest,
+	PaginatedAgentList,
+	PaginatedResponse,
+	RadientApiResponse,
+	UpdateAgentCommentRequest,
+	UpdateAgentRequest,
 } from "./types";
 
 /**
@@ -43,49 +43,46 @@ function joinUrl(baseUrl: string, path: string): string {
  * @returns Paginated list of agents
  */
 export async function listAgents(
-  baseUrl: string,
-  page = 1,
-  perPage = 20,
-  params?: {
-    categories?: string;
-    tags?: string;
-    account_id?: string;
-    tenant_id?: string;
-    name?: string;
-    description?: string;
-    sort?: string;
-    order?: string;
-  }
+	baseUrl: string,
+	page = 1,
+	perPage = 20,
+	params?: {
+		categories?: string;
+		tags?: string;
+		account_id?: string;
+		tenant_id?: string;
+		name?: string;
+		description?: string;
+		sort?: string;
+		order?: string;
+	},
 ): Promise<RadientApiResponse<PaginatedAgentList>> {
-  const searchParams = new URLSearchParams();
-  searchParams.set("page", String(page));
-  searchParams.set("per_page", String(perPage));
-  if (params) {
-    if (params.categories) searchParams.set("categories", params.categories);
-    if (params.tags) searchParams.set("tags", params.tags);
-    if (params.account_id) searchParams.set("account_id", params.account_id);
-    if (params.tenant_id) searchParams.set("tenant_id", params.tenant_id);
-    if (params.name) searchParams.set("name", params.name);
-    if (params.description) searchParams.set("description", params.description);
-    if (params.sort) searchParams.set("sort", params.sort);
-    if (params.order) searchParams.set("order", params.order);
-  }
-  const url = joinUrl(
-    baseUrl,
-    `/v1/agents?${searchParams.toString()}`
-  );
+	const searchParams = new URLSearchParams();
+	searchParams.set("page", String(page));
+	searchParams.set("per_page", String(perPage));
+	if (params) {
+		if (params.categories) searchParams.set("categories", params.categories);
+		if (params.tags) searchParams.set("tags", params.tags);
+		if (params.account_id) searchParams.set("account_id", params.account_id);
+		if (params.tenant_id) searchParams.set("tenant_id", params.tenant_id);
+		if (params.name) searchParams.set("name", params.name);
+		if (params.description) searchParams.set("description", params.description);
+		if (params.sort) searchParams.set("sort", params.sort);
+		if (params.order) searchParams.set("order", params.order);
+	}
+	const url = joinUrl(baseUrl, `/v1/agents?${searchParams.toString()}`);
 
-  const response = await fetch(url, {
-    method: "GET",
-    credentials: "same-origin",
-  });
+	const response = await fetch(url, {
+		method: "GET",
+		credentials: "same-origin",
+	});
 
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(text || `HTTP ${response.status}`);
-  }
+	if (!response.ok) {
+		const text = await response.text();
+		throw new Error(text || `HTTP ${response.status}`);
+	}
 
-  return response.json();
+	return response.json();
 }
 
 /**
@@ -228,7 +225,10 @@ export async function likeAgent(
 	agentId: string,
 	accessToken: string,
 ): Promise<APIResponse> {
-	const url = joinUrl(baseUrl, `/v1/agents/${encodeURIComponent(agentId)}/like`);
+	const url = joinUrl(
+		baseUrl,
+		`/v1/agents/${encodeURIComponent(agentId)}/like`,
+	);
 
 	const response = await fetch(url, {
 		method: "POST",
@@ -259,7 +259,10 @@ export async function unlikeAgent(
 	agentId: string,
 	accessToken: string,
 ): Promise<APIResponse> {
-	const url = joinUrl(baseUrl, `/v1/agents/${encodeURIComponent(agentId)}/like`);
+	const url = joinUrl(
+		baseUrl,
+		`/v1/agents/${encodeURIComponent(agentId)}/like`,
+	);
 
 	const response = await fetch(url, {
 		method: "DELETE",
@@ -290,7 +293,10 @@ export async function getAgentLikeCount(
 	baseUrl: string,
 	agentId: string,
 ): Promise<RadientApiResponse<CountResponse>> {
-	const url = joinUrl(baseUrl, `/v1/agents/${encodeURIComponent(agentId)}/like/count`);
+	const url = joinUrl(
+		baseUrl,
+		`/v1/agents/${encodeURIComponent(agentId)}/like/count`,
+	);
 
 	const response = await fetch(url, {
 		method: "GET",
@@ -318,7 +324,10 @@ export async function favouriteAgent(
 	agentId: string,
 	accessToken: string,
 ): Promise<APIResponse> {
-	const url = joinUrl(baseUrl, `/v1/agents/${encodeURIComponent(agentId)}/favourite`);
+	const url = joinUrl(
+		baseUrl,
+		`/v1/agents/${encodeURIComponent(agentId)}/favourite`,
+	);
 
 	const response = await fetch(url, {
 		method: "POST",
@@ -349,7 +358,10 @@ export async function unfavouriteAgent(
 	agentId: string,
 	accessToken: string,
 ): Promise<APIResponse> {
-	const url = joinUrl(baseUrl, `/v1/agents/${encodeURIComponent(agentId)}/favourite`);
+	const url = joinUrl(
+		baseUrl,
+		`/v1/agents/${encodeURIComponent(agentId)}/favourite`,
+	);
 
 	const response = await fetch(url, {
 		method: "DELETE",
@@ -380,7 +392,10 @@ export async function getAgentFavouriteCount(
 	baseUrl: string,
 	agentId: string,
 ): Promise<RadientApiResponse<CountResponse>> {
-	const url = joinUrl(baseUrl, `/v1/agents/${encodeURIComponent(agentId)}/favourite/count`);
+	const url = joinUrl(
+		baseUrl,
+		`/v1/agents/${encodeURIComponent(agentId)}/favourite/count`,
+	);
 
 	const response = await fetch(url, {
 		method: "GET",
@@ -406,7 +421,10 @@ export async function getAgentDownloadCount(
 	baseUrl: string,
 	agentId: string,
 ): Promise<RadientApiResponse<CountResponse>> {
-	const url = joinUrl(baseUrl, `/v1/agents/${encodeURIComponent(agentId)}/download/count`);
+	const url = joinUrl(
+		baseUrl,
+		`/v1/agents/${encodeURIComponent(agentId)}/download/count`,
+	);
 
 	const response = await fetch(url, {
 		method: "GET",
@@ -436,7 +454,10 @@ export async function createAgentComment(
 	accessToken: string,
 	data: CreateAgentCommentRequest,
 ): Promise<RadientApiResponse<AgentComment>> {
-	const url = joinUrl(baseUrl, `/v1/agents/${encodeURIComponent(agentId)}/comments`);
+	const url = joinUrl(
+		baseUrl,
+		`/v1/agents/${encodeURIComponent(agentId)}/comments`,
+	);
 
 	const response = await fetch(url, {
 		method: "POST",
@@ -593,7 +614,10 @@ export async function getAgentLike(
 	agentId: string,
 	accessToken: string,
 ): Promise<RadientApiResponse<AgentLike | Record<string, never>>> {
-	const url = joinUrl(baseUrl, `/v1/agents/${encodeURIComponent(agentId)}/like`);
+	const url = joinUrl(
+		baseUrl,
+		`/v1/agents/${encodeURIComponent(agentId)}/like`,
+	);
 	const response = await fetch(url, {
 		method: "GET",
 		headers: {
@@ -630,7 +654,10 @@ export async function getAgentFavourite(
 	agentId: string,
 	accessToken: string,
 ): Promise<RadientApiResponse<AgentFavourite | Record<string, never>>> {
-	const url = joinUrl(baseUrl, `/v1/agents/${encodeURIComponent(agentId)}/favourite`);
+	const url = joinUrl(
+		baseUrl,
+		`/v1/agents/${encodeURIComponent(agentId)}/favourite`,
+	);
 	const response = await fetch(url, {
 		method: "GET",
 		headers: {
@@ -666,10 +693,13 @@ export async function listAccountAgents(
 	},
 ): Promise<RadientApiResponse<PaginatedAgentList>> {
 	const params = new URLSearchParams();
-	if (options?.liked !== undefined) params.append("liked", String(options.liked));
-	if (options?.favourited !== undefined) params.append("favourited", String(options.favourited));
+	if (options?.liked !== undefined)
+		params.append("liked", String(options.liked));
+	if (options?.favourited !== undefined)
+		params.append("favourited", String(options.favourited));
 	if (options?.page !== undefined) params.append("page", String(options.page));
-	if (options?.perPage !== undefined) params.append("per_page", String(options.perPage));
+	if (options?.perPage !== undefined)
+		params.append("per_page", String(options.perPage));
 	const url = joinUrl(
 		baseUrl,
 		`/v1/accounts/${encodeURIComponent(accountId)}/agents${params.toString() ? `?${params.toString()}` : ""}`,

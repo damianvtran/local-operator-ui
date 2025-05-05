@@ -1,12 +1,3 @@
-import type { LucideIcon } from "lucide-react";
-import {
-	Bot,
-	Store,
-	Settings,
-	ChevronLeft,
-	ChevronRight,
-	MessageCircle,
-} from "lucide-react";
 import {
 	Box,
 	Drawer,
@@ -23,6 +14,15 @@ import { CollapsibleAppLogo } from "@shared/components/navigation/collapsible-ap
 import { UserProfileSidebar } from "@shared/components/navigation/user-profile-sidebar";
 import { useCurrentView } from "@shared/hooks/use-route-params";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
+import type { LucideIcon } from "lucide-react";
+import {
+	Bot,
+	ChevronLeft,
+	ChevronRight,
+	MessageCircle,
+	Settings,
+	Store,
+} from "lucide-react";
 import type { FC } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -188,11 +188,11 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 		isActive: boolean;
 	}> = [
 		{
-		icon: MessageCircle,
-		label: "Chat",
-		path: "/chat",
-		isActive: currentView === "chat",
-	},
+			icon: MessageCircle,
+			label: "Chat",
+			path: "/chat",
+			isActive: currentView === "chat",
+		},
 		{
 			icon: Bot,
 			label: "My Agents",

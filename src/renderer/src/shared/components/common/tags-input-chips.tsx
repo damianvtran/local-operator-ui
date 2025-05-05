@@ -7,11 +7,19 @@
  * - Theme-aware, shadcn/MUI style, consistent with EditableField
  */
 
-import { useRef, useState } from "react";
-import type { FC, KeyboardEvent, ChangeEvent } from "react";
-import { Box, Chip, IconButton, InputBase, Typography, styled, useTheme } from "@mui/material";
 import { faPlus, faTimes } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+	Box,
+	Chip,
+	IconButton,
+	InputBase,
+	Typography,
+	styled,
+	useTheme,
+} from "@mui/material";
+import { useRef, useState } from "react";
+import type { ChangeEvent, FC, KeyboardEvent } from "react";
 
 type TagsInputChipsProps = {
 	/** Current tags */
@@ -77,9 +85,10 @@ const StyledInput = styled(InputBase)(({ theme }) => ({
 const StyledChip = styled(Chip)(({ theme }) => ({
 	fontSize: "0.8125rem",
 	borderRadius: 4,
-	background: theme.palette.mode === "dark"
-		? theme.palette.action.selected
-		: theme.palette.action.hover,
+	background:
+		theme.palette.mode === "dark"
+			? theme.palette.action.selected
+			: theme.palette.action.hover,
 	color: theme.palette.text.primary,
 	"& .MuiChip-deleteIcon": {
 		color: theme.palette.text.secondary,
@@ -193,7 +202,11 @@ export const TagsInputChips: FC<TagsInputChipsProps> = ({
 			{value.length === 0 && !input && (
 				<Typography
 					variant="caption"
-					sx={{ color: theme.palette.text.disabled, marginLeft: 1, marginTop: 0.5 }}
+					sx={{
+						color: theme.palette.text.disabled,
+						marginLeft: 1,
+						marginTop: 0.5,
+					}}
 				>
 					No tags added
 				</Typography>

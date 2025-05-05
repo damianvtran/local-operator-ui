@@ -5,12 +5,12 @@
  */
 
 import { faArrowLeft } from "@fortawesome/free-solid-svg-icons";
-import { Bot } from "lucide-react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, Paper, Typography, alpha, useTheme } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import type { AgentDetails } from "@shared/api/local-operator/types";
 import { useUpdateAgent } from "@shared/hooks/use-update-agent";
+import { Bot } from "lucide-react";
 import { useState } from "react";
 import type { FC } from "react";
 import { ChatSettings } from "./chat-settings";
@@ -157,7 +157,11 @@ export const AgentSettings: FC<AgentSettingsProps> = ({
 				</ScrollableContent>
 			) : (
 				<EmptyStateContainer>
-					<Bot size={54} color={theme.palette.primary.main} style={{ marginBottom: 8 }} />
+					<Bot
+						size={54}
+						color={theme.palette.primary.main}
+						style={{ marginBottom: 8 }}
+					/>
 					<Typography variant="h6" sx={{ mb: 1, fontWeight: 500 }}>
 						No Agent Selected
 					</Typography>

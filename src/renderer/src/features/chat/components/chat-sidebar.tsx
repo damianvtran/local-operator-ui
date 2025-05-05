@@ -1,6 +1,5 @@
 import { faCommentSlash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Bot } from "lucide-react";
 import {
 	Alert,
 	Avatar,
@@ -36,6 +35,7 @@ import {
 	formatMessageDateTime,
 	getFullDateTime,
 } from "@shared/utils/date-utils";
+import { Bot } from "lucide-react";
 import type { ChangeEvent, FC } from "react";
 import { useCallback, useMemo, useState } from "react";
 

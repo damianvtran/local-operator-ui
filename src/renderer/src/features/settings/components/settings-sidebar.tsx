@@ -1,11 +1,4 @@
 import radientIcon from "@assets/radient-icon-1024x1024.png";
-import type { LucideIcon } from "lucide-react";
-import {
-	Settings,
-	Key,
-	Download,
-	Paintbrush,
-} from "lucide-react";
 import {
 	Box,
 	List,
@@ -16,6 +9,8 @@ import {
 	Typography,
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
+import type { LucideIcon } from "lucide-react";
+import { Download, Key, Paintbrush, Settings } from "lucide-react";
 import type { FC } from "react";
 
 /**
