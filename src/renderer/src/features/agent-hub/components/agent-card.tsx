@@ -11,6 +11,7 @@ import {
   Skeleton,
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
+import { AgentTagsAndCategories } from "./agent-tags-and-categories";
 import {
   faHeart as faHeartSolid,
   faStar as faStarSolid,
@@ -53,7 +54,8 @@ const CountDisplay = styled("span")(({ theme }) => ({
 const StyledCard = styled(Card)(({ theme }) => ({
   display: "flex",
   flexDirection: "column",
-  maxHeight: "420px", // Added max height
+  height: 320,
+  maxHeight: 320,
   border: `1px solid ${theme.palette.divider}`,
   backgroundImage: "none",
   backgroundColor: theme.palette.background.default,
@@ -63,11 +65,15 @@ const StyledCard = styled(Card)(({ theme }) => ({
     boxShadow: theme.shadows[4],
     cursor: "pointer",
   },
+  overflow: "hidden",
 }));
 
 const StyledCardContent = styled(CardContent)({
-  flexGrow: 1, 
-  paddingBottom: 0, 
+  display: "flex",
+  flexDirection: "column",
+  flexGrow: 1,
+  minHeight: 0,
+  paddingBottom: 0,
 });
 
 const AgentName = styled(Typography)(({ theme }) => ({
@@ -179,18 +185,25 @@ export const AgentCard: React.FC<AgentCardProps> = ({
     <StyledCard onClick={handleCardClick}>
       <StyledCardContent>
         <AgentName variant="h6">{agent.name}</AgentName>
-        <AgentDescription variant="body2">{agent.description}</AgentDescription>
-        <MetaInfoContainer>
-          <MetaInfoItem>
-            Creator: {agent.account_metadata?.name ?? "Unknown"} ({agent.account_metadata?.email ?? "No email"})
-          </MetaInfoItem>
-          <MetaInfoItem>
-            Created: {formatDistanceToNowStrict(new Date(agent.created_at))} ago
-          </MetaInfoItem>
-          <MetaInfoItem>
-            Updated: {formatDistanceToNowStrict(new Date(agent.updated_at))} ago
-          </MetaInfoItem>
-        </MetaInfoContainer>
+        <Box sx={{ flexGrow: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
+          <AgentDescription variant="body2" sx={{ flexGrow: 1, minHeight: 0 }} >
+            {agent.description}
+          </AgentDescription>
+        </Box>
+        <Box>
+          <AgentTagsAndCategories tags={agent.tags} categories={agent.categories} />
+          <MetaInfoContainer>
+            <MetaInfoItem>
+              Creator: {agent.account_metadata?.name ?? "Unknown"} ({agent.account_metadata?.email ?? "No email"})
+            </MetaInfoItem>
+            <MetaInfoItem>
+              Created: {formatDistanceToNowStrict(new Date(agent.created_at))} ago
+            </MetaInfoItem>
+            <MetaInfoItem>
+              Updated: {formatDistanceToNowStrict(new Date(agent.updated_at))} ago
+            </MetaInfoItem>
+          </MetaInfoContainer>
+        </Box>
       </StyledCardContent>
       <StyledCardActions>
         {showActions ? ( // Conditionally render action buttons

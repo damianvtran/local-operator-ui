@@ -62,7 +62,7 @@ export const AgentHubPage: React.FC = () => {
         </Box>
       )}
       {!isLoading && !error && (
-        <StyledGridContainer container spacing={3}>
+        <StyledGridContainer container rowSpacing={1.5} columnSpacing={3}>
           {agents.length === 0 ? (
             <Grid item xs={12}>
               <Typography variant="body1" align="center">
