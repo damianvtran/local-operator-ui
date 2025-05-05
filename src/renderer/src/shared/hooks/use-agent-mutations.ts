@@ -56,6 +56,7 @@ export const useCreateAgent = () => {
  * @returns Mutation for uploading an agent
  */
 export const useUploadAgentToRadientMutation = () => {
+	const queryClient = useQueryClient(); // Added queryClient
 	const client = createLocalOperatorClient(apiConfig.baseUrl);
 
 	return useMutation({
@@ -84,6 +85,8 @@ export const useUploadAgentToRadientMutation = () => {
 			toast.success(
 				`Agent successfully uploaded to Radient with ID: ${data?.agent_id}`,
 			);
+			// Invalidate the local agents list query to trigger a refetch
+			queryClient.invalidateQueries({ queryKey: agentsQueryKey });
 		},
 		onError: (error, agentId) => {
 			console.error(`Error uploading agent ${agentId} to Radient:`, error);

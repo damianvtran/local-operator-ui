@@ -7,21 +7,21 @@
  */
 
 import {
-	faCloudArrowUp, // Added for Upload icon
+	faCloudArrowUp,
 	faComment,
 	faFileExport,
 	faRobot,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, Button, Tooltip } from "@mui/material";
-import { styled, useTheme } from "@mui/material/styles"; // Import useTheme here
+import { styled, useTheme } from "@mui/material/styles";
 import type { AgentDetails } from "@shared/api/local-operator/types";
 import { PageHeader } from "@shared/components/common/page-header";
 import {
 	useExportAgent,
-	useUploadAgentToRadientMutation, // Import the upload mutation hook
+	useUploadAgentToRadientMutation,
 } from "@shared/hooks/use-agent-mutations";
-import { useRadientAuth } from "@shared/hooks/use-radient-auth"; // Added for Auth check
+import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import { useAgent, useAgents } from "@shared/hooks/use-agents";
 import { useAgentRouteParam } from "@shared/hooks/use-route-params";
 import { useAgentSelectionStore } from "@shared/store/agent-selection-store";
@@ -30,7 +30,7 @@ import type { FC } from "react";
 import { useNavigate } from "react-router-dom";
 import { AgentSettings } from "./agent-settings";
 import { AgentsSidebar } from "./agents-sidebar";
-import { UploadAgentDialog } from "./upload-agent-dialog"; // Import the new dialog
+import { UploadAgentDialog } from "./upload-agent-dialog";
 
 /**
  * Props for the AgentsPage component
@@ -159,7 +159,6 @@ export const AgentsPage: FC<AgentsPageProps> = () => {
 			document.body.appendChild(a);
 			a.click();
 
-			// Clean up
 			URL.revokeObjectURL(url);
 			document.body.removeChild(a);
 		} catch (error) {

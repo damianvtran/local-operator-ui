@@ -1,4 +1,5 @@
 import type React from "react";
+import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   Box,
@@ -9,6 +10,12 @@ import {
   Tooltip,
   Divider,
   Skeleton,
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import {
@@ -16,6 +23,7 @@ import {
   faHeart as faHeartSolid,
   faStar as faStarSolid,
   faDownload,
+  faTrash,
 } from "@fortawesome/free-solid-svg-icons";
 import {
   faHeart as faHeartOutline,
@@ -33,6 +41,7 @@ import { useAgentDownloadCountQuery } from "./hooks/use-agent-download-count-que
 import { useAgentLikeMutation } from "./hooks/use-agent-like-mutation";
 import { useAgentFavouriteMutation } from "./hooks/use-agent-favourite-mutation";
 import { useDownloadAgentMutation } from "./hooks/use-download-agent-mutation";
+import { useDelistAgentMutation } from "./hooks/use-delist-agent-mutation";
 import { CommentsSection } from "./components/comments-section";
 
 const DetailsContainer = styled(Paper)(({ theme }) => ({
@@ -106,32 +115,31 @@ const CountDisplay = styled("span")(({ theme }) => ({
 export const AgentDetailsPage: React.FC = () => {
   const { agentId } = useParams<{ agentId: string }>();
   const navigate = useNavigate();
-  const { isAuthenticated } = useRadientAuth();
+  const { isAuthenticated, user } = useRadientAuth();
 
   const { data: agent, isLoading, error } = useAgentDetailsQuery({
-    agentId: agentId ?? "", // Ensure agentId is not undefined
-    // Removed duplicate agentId
-    enabled: !!agentId, // Only enable if agentId exists
+    agentId: agentId ?? "",
+    enabled: !!agentId,
   });
   // Destructure isLiked directly from the hook result
   const { isLiked } = useAgentLikeQuery({
     agentId: agentId ?? "",
-    enabled: !!agentId && isAuthenticated, // Also check auth
+    enabled: !!agentId && isAuthenticated,
   });
   // Destructure isFavourited directly from the hook result
   const { isFavourited } = useAgentFavouriteQuery({
     agentId: agentId ?? "",
-    enabled: !!agentId && isAuthenticated, // Also check auth
+    enabled: !!agentId && isAuthenticated,
   });
-  const { data: likeCount, isLoading: isLoadingLikes } = useAgentLikeCountQuery({ // Keep isLoadingLikes
+  const { data: likeCount, isLoading: isLoadingLikes } = useAgentLikeCountQuery({
     agentId: agentId ?? "",
     enabled: !!agentId,
   });
-  const { data: favouriteCount, isLoading: isLoadingFavourites } = useAgentFavouriteCountQuery({ // Keep isLoadingFavourites
+  const { data: favouriteCount, isLoading: isLoadingFavourites } = useAgentFavouriteCountQuery({
     agentId: agentId ?? "",
     enabled: !!agentId,
   });
-  const { data: downloadCount, isLoading: isLoadingDownloads } = useAgentDownloadCountQuery({ // Keep isLoadingDownloads
+  const { data: downloadCount, isLoading: isLoadingDownloads } = useAgentDownloadCountQuery({
     agentId: agentId ?? "",
     enabled: !!agentId,
   });
@@ -139,18 +147,37 @@ export const AgentDetailsPage: React.FC = () => {
   const likeMutation = useAgentLikeMutation();
   const favouriteMutation = useAgentFavouriteMutation();
   const downloadMutation = useDownloadAgentMutation();
+  const delistMutation = useDelistAgentMutation();
 
-  // isLiked and isFavourited are now directly from hooks
+  // State for the confirmation dialog
+  const [isDelistDialogOpen, setIsDelistDialogOpen] = useState(false);
+
+  // Determine if the current user is the owner
+  const isOwner = !!user && !!agent && user.radientUser?.account?.id === agent.account_id;
+
+  // --- Delist Dialog Handlers ---
+  const handleOpenDelistDialog = () => {
+    setIsDelistDialogOpen(true);
+  };
+
+  const handleCloseDelistDialog = () => {
+    setIsDelistDialogOpen(false);
+  };
+
+  const handleConfirmDelist = () => {
+    if (!agentId || !isOwner || delistMutation.isPending) return;
+    delistMutation.mutate({ agentId });
+    handleCloseDelistDialog();
+  };
+  // --- End Delist Dialog Handlers ---
 
   const handleLikeToggle = () => {
     if (!agentId || !isAuthenticated || likeMutation.isPending) return;
-    // Pass isCurrentlyLiked based on the current state
     likeMutation.mutate({ agentId, isCurrentlyLiked: isLiked });
   };
 
   const handleFavouriteToggle = () => {
     if (!agentId || !isAuthenticated || favouriteMutation.isPending) return;
-    // Assuming favourite mutation follows the same pattern
     favouriteMutation.mutate({ agentId, isCurrentlyFavourited: isFavourited });
   };
 
@@ -160,7 +187,7 @@ export const AgentDetailsPage: React.FC = () => {
   };
 
   const handleBack = () => {
-    navigate("/agent-hub"); // Navigate back to the hub list
+    navigate("/agent-hub");
   };
 
   const likeIcon = isLiked ? faHeartSolid : faHeartOutline;
@@ -207,10 +234,8 @@ export const AgentDetailsPage: React.FC = () => {
       <HeaderBox>
         <TitleBox>
           <BackButton onClick={handleBack} aria-label="Back to Agent Hub">
-            {/* Reduced icon size */}
             <FontAwesomeIcon icon={faArrowLeft} size="sm" />
           </BackButton>
-          {/* Removed variant="h4", styles applied via styled component */}
           <AgentName>{agent.name}</AgentName>
         </TitleBox>
         <ActionButtonGroup>
@@ -218,8 +243,8 @@ export const AgentDetailsPage: React.FC = () => {
             <IconButton
               size="medium"
               onClick={handleLikeToggle}
-              disabled={!isAuthenticated || likeMutation.isPending} // Use mutation pending state
-              sx={{ color: likeColor, borderRadius: 4 }} // Added border radius for consistency
+              disabled={!isAuthenticated || likeMutation.isPending}
+              sx={{ color: likeColor, borderRadius: 4 }}
               aria-label={isLiked ? "Unlike agent" : "Like agent"}
             >
               <FontAwesomeIcon icon={likeIcon} />
@@ -232,8 +257,8 @@ export const AgentDetailsPage: React.FC = () => {
             <IconButton
               size="medium"
               onClick={handleFavouriteToggle}
-              disabled={!isAuthenticated || favouriteMutation.isPending} // Use mutation pending state
-              sx={{ color: favouriteColor, borderRadius: 4 }} // Added border radius for consistency
+              disabled={!isAuthenticated || favouriteMutation.isPending}
+              sx={{ color: favouriteColor, borderRadius: 4 }}
               aria-label={isFavourited ? "Unfavourite agent" : "Favourite agent"}
             >
               <FontAwesomeIcon icon={favouriteIcon} />
@@ -242,21 +267,18 @@ export const AgentDetailsPage: React.FC = () => {
               </CountDisplay>
             </IconButton>
           </AuthTooltipWrapper>
-          {/* Separated Download Button and Count */}
-          {/* @ts-ignore - Tooltip title prop type issue */}
           <Tooltip title="Download agent to your local instance">
-            {/* Span needed for Tooltip when button is disabled */}
             <span>
               <IconButton
                 size="medium"
                 onClick={handleDownload}
-                disabled={downloadMutation.isPending} // Use mutation pending state
-                sx={{ borderRadius: 4, ml: 1 }} // Added margin left here
+                disabled={downloadMutation.isPending}
+                sx={{ borderRadius: 4, ml: 1 }}
                 aria-label="Download agent"
               >
                 <FontAwesomeIcon icon={faDownload} />
                 <CountDisplay>
-                  {isLoadingDownloads || downloadMutation.isPending ? ( // Show skeleton in count display
+                  {isLoadingDownloads || downloadMutation.isPending ? (
                     <Skeleton variant="text" width={20} />
                   ) : (
                     downloadCount ?? 0
@@ -265,6 +287,20 @@ export const AgentDetailsPage: React.FC = () => {
               </IconButton>
             </span>
           </Tooltip>
+
+          {isOwner && (
+            <Tooltip title="Permanently delist this agent from Agent Hub">
+              <IconButton
+                size="medium"
+                onClick={handleOpenDelistDialog}
+                disabled={delistMutation.isPending}
+                sx={{ borderRadius: 4, ml: 1, color: "error.main" }} // Style as destructive action
+                aria-label="Delist agent"
+              >
+                <FontAwesomeIcon icon={faTrash} />
+              </IconButton>
+            </Tooltip>
+          )}
         </ActionButtonGroup>
       </HeaderBox>
 
@@ -278,7 +314,6 @@ export const AgentDetailsPage: React.FC = () => {
         <Typography variant="body2">
           Updated: {formatDistanceToNowStrict(new Date(agent.updated_at))} ago ({new Date(agent.updated_at).toLocaleDateString()})
         </Typography>
-        {/* TODO: Add Tags/Categories if available */}
       </MetaInfoContainer>
 
       <DescriptionBox>
@@ -287,8 +322,35 @@ export const AgentDetailsPage: React.FC = () => {
 
       <Divider sx={{ my: 3 }} />
 
-      {/* Render Comments Section */}
       <CommentsSection agentId={agent.id} />
+
+      <Dialog
+        open={isDelistDialogOpen}
+        onClose={handleCloseDelistDialog}
+        aria-labelledby="delist-dialog-title"
+        aria-describedby="delist-dialog-description"
+      >
+        <DialogTitle id="delist-dialog-title">Confirm Delist Agent</DialogTitle>
+        <DialogContent>
+          <DialogContentText id="delist-dialog-description">
+            Are you sure you want to permanently delist "{agent.name}"? This action cannot be undone.
+            Nobody will be able to download this agent anymore. You can re-upload it later if you choose.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDelistDialog} color="inherit">
+            Cancel
+          </Button>
+          <Button
+            onClick={handleConfirmDelist}
+            color="error"
+            disabled={delistMutation.isPending}
+            autoFocus
+          >
+            {delistMutation.isPending ? <CircularProgress size={24} /> : "Delist"}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </DetailsContainer>
   );
 };
