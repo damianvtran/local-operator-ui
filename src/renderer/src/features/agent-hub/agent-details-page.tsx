@@ -9,6 +9,7 @@ import {
   Tooltip,
   Button,
   Divider,
+  Skeleton, // Added Skeleton
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import {
@@ -22,10 +23,18 @@ import {
   faStar as faStarOutline,
 } from "@fortawesome/free-regular-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useAgentDetailsQuery } from "./hooks/use-agent-details-query";
-import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import { formatDistanceToNowStrict } from "date-fns";
-import { CommentsSection } from "./components/comments-section"; // Import CommentsSection
+import { useRadientAuth } from "@shared/hooks/use-radient-auth";
+import { useAgentDetailsQuery } from "./hooks/use-agent-details-query";
+import { useAgentLikeQuery } from "./hooks/use-agent-like-query";
+import { useAgentFavouriteQuery } from "./hooks/use-agent-favourite-query";
+import { useAgentLikeCountQuery } from "./hooks/use-agent-like-count-query";
+import { useAgentFavouriteCountQuery } from "./hooks/use-agent-favourite-count-query";
+import { useAgentDownloadCountQuery } from "./hooks/use-agent-download-count-query";
+import { useAgentLikeMutation } from "./hooks/use-agent-like-mutation";
+import { useAgentFavouriteMutation } from "./hooks/use-agent-favourite-mutation";
+import { useDownloadAgentMutation } from "./hooks/use-download-agent-mutation";
+import { CommentsSection } from "./components/comments-section";
 
 const DetailsContainer = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(4),
@@ -78,6 +87,17 @@ const DescriptionBox = styled(Box)(({ theme }) => ({
   lineHeight: 1.6,
 }));
 
+// Copied from AgentCard
+const CountDisplay = styled("span")(({ theme }) => ({
+  fontSize: "0.8rem",
+  marginLeft: theme.spacing(0.75),
+  color: theme.palette.text.secondary,
+  display: "inline-flex",
+  alignItems: "center",
+  minWidth: "20px",
+  height: "1em",
+}));
+
 /**
  * Renders the detailed view for a specific public agent.
  */
@@ -88,31 +108,53 @@ export const AgentDetailsPage: React.FC = () => {
 
   const { data: agent, isLoading, error } = useAgentDetailsQuery({
     agentId: agentId ?? "", // Ensure agentId is not undefined
-    enabled: !!agentId, // Only run query if agentId exists
+    // Removed duplicate agentId
+    enabled: !!agentId, // Only enable if agentId exists
+  });
+  // Destructure isLiked directly from the hook result
+  const { isLiked } = useAgentLikeQuery({
+    agentId: agentId ?? "",
+    enabled: !!agentId && isAuthenticated, // Also check auth
+  });
+  // Destructure isFavourited directly from the hook result
+  const { isFavourited } = useAgentFavouriteQuery({
+    agentId: agentId ?? "",
+    enabled: !!agentId && isAuthenticated, // Also check auth
+  });
+  const { data: likeCount, isLoading: isLoadingLikes } = useAgentLikeCountQuery({ // Keep isLoadingLikes
+    agentId: agentId ?? "",
+    enabled: !!agentId,
+  });
+  const { data: favouriteCount, isLoading: isLoadingFavourites } = useAgentFavouriteCountQuery({ // Keep isLoadingFavourites
+    agentId: agentId ?? "",
+    enabled: !!agentId,
+  });
+  const { data: downloadCount, isLoading: isLoadingDownloads } = useAgentDownloadCountQuery({ // Keep isLoadingDownloads
+    agentId: agentId ?? "",
+    enabled: !!agentId,
   });
 
-  // TODO: Fetch like/favourite status for the current user
-  const isLiked = false; // Placeholder
-  const isFavourited = false; // Placeholder
-  const downloadCount = 0; // Placeholder
+  const likeMutation = useAgentLikeMutation();
+  const favouriteMutation = useAgentFavouriteMutation();
+  const downloadMutation = useDownloadAgentMutation();
 
-  // Placeholder handlers - TODO: Implement actual logic with mutations
+  // isLiked and isFavourited are now directly from hooks
+
   const handleLikeToggle = () => {
-    if (!agentId) return;
-    console.log("Toggle like for agent:", agentId);
-    // Invalidate/update queries after mutation
+    if (!agentId || !isAuthenticated || likeMutation.isPending) return;
+    // Pass isCurrentlyLiked based on the current state
+    likeMutation.mutate({ agentId, isCurrentlyLiked: isLiked });
   };
 
   const handleFavouriteToggle = () => {
-    if (!agentId) return;
-    console.log("Toggle favourite for agent:", agentId);
-    // Invalidate/update queries after mutation
+    if (!agentId || !isAuthenticated || favouriteMutation.isPending) return;
+    // Assuming favourite mutation follows the same pattern
+    favouriteMutation.mutate({ agentId, isCurrentlyFavourited: isFavourited });
   };
 
   const handleDownload = () => {
-    if (!agentId) return;
-    console.log("Download agent:", agentId);
-    // Implement download logic
+    if (!agentId || !agent || downloadMutation.isPending) return;
+    downloadMutation.mutate({ agentId: agent.id, agentName: agent.name });
   };
 
   const handleBack = () => {
@@ -172,34 +214,46 @@ export const AgentDetailsPage: React.FC = () => {
             <IconButton
               size="medium"
               onClick={handleLikeToggle}
-              disabled={!isAuthenticated}
-              sx={{ color: likeColor }}
+              disabled={!isAuthenticated || likeMutation.isPending} // Use mutation pending state
+              sx={{ color: likeColor, borderRadius: 4 }} // Added border radius for consistency
               aria-label={isLiked ? "Unlike agent" : "Like agent"}
             >
               <FontAwesomeIcon icon={likeIcon} />
-              {/* TODO: Display like count? */}
+              <CountDisplay>
+                {isLoadingLikes ? <Skeleton variant="text" width={20} /> : likeCount ?? 0}
+              </CountDisplay>
             </IconButton>
           </AuthTooltipWrapper>
           <AuthTooltipWrapper>
             <IconButton
               size="medium"
               onClick={handleFavouriteToggle}
-              disabled={!isAuthenticated}
-              sx={{ color: favouriteColor }}
+              disabled={!isAuthenticated || favouriteMutation.isPending} // Use mutation pending state
+              sx={{ color: favouriteColor, borderRadius: 4 }} // Added border radius for consistency
               aria-label={isFavourited ? "Unfavourite agent" : "Favourite agent"}
             >
               <FontAwesomeIcon icon={favouriteIcon} />
-              {/* TODO: Display favourite count? */}
+              <CountDisplay>
+                {isLoadingFavourites ? <Skeleton variant="text" width={20} /> : favouriteCount ?? 0}
+              </CountDisplay>
             </IconButton>
           </AuthTooltipWrapper>
-          <Button
-            variant="contained"
-            startIcon={<FontAwesomeIcon icon={faDownload} />}
-            onClick={handleDownload}
-            sx={{ ml: 2 }} // Add margin left
-          >
-            Download ({downloadCount})
-          </Button>
+          {/* @ts-ignore - Tooltip title prop type issue */}
+          <Tooltip title="Download agent to your local instance">
+            <Button
+              variant="contained"
+              startIcon={<FontAwesomeIcon icon={faDownload} />}
+              onClick={handleDownload}
+              disabled={downloadMutation.isPending} // Use mutation pending state
+              sx={{ ml: 2 }} // Add margin left
+            >
+              {isLoadingDownloads || downloadMutation.isPending ? (
+                <Skeleton variant="text" width={80} sx={{ color: "inherit" }} />
+              ) : (
+                `Download (${downloadCount ?? 0})`
+              )}
+            </Button>
+          </Tooltip>
         </ActionButtonGroup>
       </HeaderBox>
 

@@ -577,10 +577,19 @@ export async function getAgentLike(
 		},
 		credentials: "same-origin",
 	});
+
+	// Handle 404 specifically as "not liked"
 	if (!response.ok) {
+		if (response.status === 404) {
+			// Return the structure expected by useAgentLikeQuery for a non-existent like
+			return { msg: "Like not found", result: {} };
+		}
+		// Throw for other errors
 		const text = await response.text();
 		throw new Error(text || `HTTP ${response.status}`);
 	}
+
+	// If response is OK (2xx), parse and return the JSON
 	return response.json();
 }
 
