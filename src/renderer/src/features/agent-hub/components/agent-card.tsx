@@ -9,8 +9,10 @@ import {
   Tooltip,
   Chip,
   Skeleton,
+  Avatar,
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
+import { Bot, Info } from "lucide-react";
 import { AgentTagsAndCategories } from "./agent-tags-and-categories";
 import {
   faHeart as faHeartSolid,
@@ -60,9 +62,10 @@ const StyledCard = styled(Card)(({ theme }) => ({
   backgroundImage: "none",
   backgroundColor: theme.palette.background.default,
   borderRadius: theme.shape.borderRadius * 2,
-  transition: "box-shadow 0.3s ease-in-out",
+  transition: "box-shadow 0.3s, border-color 0.3s",
   "&:hover": {
     boxShadow: theme.shadows[4],
+    borderColor: theme.palette.primary.main,
     cursor: "pointer",
   },
   overflow: "hidden",
@@ -128,7 +131,16 @@ const DownloadChip = styled(Chip)(({ theme }) => ({
 }));
 
 /**
- * Renders a card displaying information about a public agent.
+ * Renders a card displaying information about a public agent, with avatar and details icon.
+ *
+ * @param agent - The agent data to display.
+ * @param isLiked - Whether the agent is liked by the user.
+ * @param isFavourited - Whether the agent is favourited by the user.
+ * @param onLikeToggle - Callback for toggling like state.
+ * @param onFavouriteToggle - Callback for toggling favourite state.
+ * @param isLikeActionLoading - Loading state for like button.
+ * @param isFavouriteActionLoading - Loading state for favourite button.
+ * @param showActions - Whether to show like/favourite buttons.
  */
 export const AgentCard: React.FC<AgentCardProps> = ({
   agent,
@@ -136,12 +148,11 @@ export const AgentCard: React.FC<AgentCardProps> = ({
   isFavourited,
   onLikeToggle,
   onFavouriteToggle,
-  isLikeActionLoading = false, // Default to false
-  isFavouriteActionLoading = false, // Default to false
-  showActions = false, // Default to false
+  isLikeActionLoading = false,
+  isFavouriteActionLoading = false,
+  showActions = false,
 }) => {
   const navigate = useNavigate();
-  // Removed isAuthenticated check, handled by container
   const downloadMutation = useDownloadAgentMutation();
 
   const { data: likeCount, isLoading: isLoadingLikes } = useAgentLikeCountQuery({
@@ -155,7 +166,7 @@ export const AgentCard: React.FC<AgentCardProps> = ({
   });
 
   const handleCardClick = () => {
-    navigate(`/agent-hub/${agent.id}`); 
+    navigate(`/agent-hub/${agent.id}`);
   };
 
   const handleActionClick = (
@@ -163,7 +174,6 @@ export const AgentCard: React.FC<AgentCardProps> = ({
     action: (agentId: string) => void,
   ) => {
     event.stopPropagation();
-    // Removed isAuthenticated check
     action(agent.id);
   };
 
@@ -174,19 +184,61 @@ export const AgentCard: React.FC<AgentCardProps> = ({
     }
   };
 
+  const handleDetailsClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
+    navigate(`/agent-hub/${agent.id}`);
+  };
+
   const likeIcon = isLiked ? faHeartSolid : faHeartOutline;
-  const likeColor = isLiked ? "error.main" : "inherit"; 
+  const likeColor = isLiked ? "error.main" : "inherit";
   const favouriteIcon = isFavourited ? faStarSolid : faStarOutline;
   const favouriteColor = isFavourited ? "warning.main" : "inherit";
 
-  // Removed AuthTooltipWrapper
-
   return (
     <StyledCard onClick={handleCardClick}>
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+          px: 2,
+          pt: 2,
+          pb: 0,
+        }}
+      >
+        <Avatar
+          sx={{
+            bgcolor: (theme) => theme.palette.icon.background,
+            color: (theme) => theme.palette.icon.text,
+            width: 44,
+            height: 44,
+            boxShadow: 2,
+            border: (theme) => `2px solid ${theme.palette.primary.main}`,
+          }}
+          variant="circular"
+        >
+          <Bot size={24} />
+        </Avatar>
+        {/* @ts-ignore - Tooltip title prop type issue */}
+        <Tooltip title="See details">
+          <IconButton
+            size="small"
+            onClick={handleDetailsClick}
+            sx={{
+              color: (theme) => theme.palette.icon.text,
+              borderRadius: 2,
+              ml: 1,
+            }}
+            aria-label="See details"
+          >
+            <Info size={18} />
+          </IconButton>
+        </Tooltip>
+      </Box>
       <StyledCardContent>
         <AgentName variant="h6">{agent.name}</AgentName>
         <Box sx={{ flexGrow: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
-          <AgentDescription variant="body2" sx={{ flexGrow: 1, minHeight: 0 }} >
+          <AgentDescription variant="body2" sx={{ flexGrow: 1, minHeight: 0 }}>
             {agent.description}
           </AgentDescription>
         </Box>
@@ -206,16 +258,16 @@ export const AgentCard: React.FC<AgentCardProps> = ({
         </Box>
       </StyledCardContent>
       <StyledCardActions>
-        {showActions ? ( // Conditionally render action buttons
+        {showActions ? (
           <ActionButtonGroup>
             <IconButton
               size="small"
               onClick={(e) => handleActionClick(e, onLikeToggle)}
-              disabled={isLikeActionLoading} // Use loading prop
+              disabled={isLikeActionLoading}
               sx={{ color: likeColor, borderRadius: 4 }}
               aria-label={isLiked ? "Unlike agent" : "Like agent"}
             >
-              <FontAwesomeIcon icon={likeIcon} size="xs"/>
+              <FontAwesomeIcon icon={likeIcon} size="xs" />
               <CountDisplay>
                 {isLoadingLikes ? <Skeleton variant="text" width={20} /> : likeCount ?? 0}
               </CountDisplay>
@@ -223,32 +275,31 @@ export const AgentCard: React.FC<AgentCardProps> = ({
             <IconButton
               size="small"
               onClick={(e) => handleActionClick(e, onFavouriteToggle)}
-              disabled={isFavouriteActionLoading} // Use loading prop
+              disabled={isFavouriteActionLoading}
               sx={{ color: favouriteColor, borderRadius: 4 }}
               aria-label={isFavourited ? "Unfavourite agent" : "Favourite agent"}
             >
-              <FontAwesomeIcon icon={favouriteIcon} size="xs"/>
+              <FontAwesomeIcon icon={favouriteIcon} size="xs" />
               <CountDisplay>
                 {isLoadingFavourites ? <Skeleton variant="text" width={20} /> : favouriteCount ?? 0}
               </CountDisplay>
             </IconButton>
           </ActionButtonGroup>
         ) : (
-          <Box /> // Render empty box if actions are hidden to maintain layout
+          <Box />
         )}
         <ActionButtonGroup>
-          {/* @ts-ignore - Tooltip title prop type issue */}
-          <Tooltip title="Download agent to your local instance">
+          <Tooltip title="Download agent to your computer">
             <IconButton
               size="small"
               onClick={handleDownloadClick}
-              disabled={downloadMutation.isPending} // Use mutation pending state
+              disabled={downloadMutation.isPending}
               aria-label="Download agent"
             >
-              <FontAwesomeIcon icon={faDownload} size="xs"/>
+              <FontAwesomeIcon icon={faDownload} size="xs" />
             </IconButton>
           </Tooltip>
-          {isLoadingDownloads || downloadMutation.isPending ? ( // Use mutation pending state
+          {isLoadingDownloads || downloadMutation.isPending ? (
             <Skeleton variant="rounded" width={100} height={24} sx={{ ml: 1 }} />
           ) : (
             <DownloadChip

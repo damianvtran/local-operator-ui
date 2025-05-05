@@ -16,8 +16,10 @@ import {
   DialogContent,
   DialogContentText,
   DialogTitle,
+  Avatar,
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
+import { Bot } from "lucide-react";
 import {
   faArrowLeft,
   faHeart as faHeartSolid,
@@ -65,6 +67,7 @@ const HeaderBox = styled(Box)(({ theme }) => ({
 const TitleBox = styled(Box)({
   display: "flex",
   alignItems: "center",
+  gap: 16,
 });
 
 const BackButton = styled(IconButton)(({ theme }) => ({
@@ -239,6 +242,20 @@ export const AgentDetailsPage: React.FC = () => {
           <BackButton onClick={handleBack} aria-label="Back to Agent Hub">
             <FontAwesomeIcon icon={faArrowLeft} size="sm" />
           </BackButton>
+          <Avatar
+            sx={{
+              bgcolor: (theme) => theme.palette.icon.background,
+              color: (theme) => theme.palette.icon.text,
+              width: 44,
+              height: 44,
+              boxShadow: 2,
+              border: (theme) => `2px solid ${theme.palette.primary.main}`,
+              mr: 2,
+            }}
+            variant="circular"
+          >
+            <Bot size={28} />
+          </Avatar>
           <AgentName>{agent.name}</AgentName>
         </TitleBox>
         <ActionButtonGroup>
@@ -270,7 +287,7 @@ export const AgentDetailsPage: React.FC = () => {
               </CountDisplay>
             </IconButton>
           </AuthTooltipWrapper>
-          <Tooltip title="Download agent to your local instance">
+          <Tooltip title="Download agent to your computer">
             <span>
               <IconButton
                 size="medium"
