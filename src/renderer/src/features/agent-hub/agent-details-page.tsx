@@ -25,6 +25,7 @@ import {
   faDownload,
   faTrash,
 } from "@fortawesome/free-solid-svg-icons";
+import { AgentTagsAndCategories } from "./components/agent-tags-and-categories";
 import {
   faHeart as faHeartOutline,
   faStar as faStarOutline,
@@ -304,6 +305,7 @@ export const AgentDetailsPage: React.FC = () => {
         </ActionButtonGroup>
       </HeaderBox>
 
+      <AgentTagsAndCategories tags={agent.tags} categories={agent.categories} />
       <MetaInfoContainer>
         <Typography variant="body2">
           Created by: {agent.account_metadata?.name ?? "Unknown"} ({agent.account_metadata?.email ?? "No email"})
