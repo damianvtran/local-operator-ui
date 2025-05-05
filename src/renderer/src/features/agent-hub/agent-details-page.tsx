@@ -7,9 +7,8 @@ import {
   Paper,
   IconButton,
   Tooltip,
-  Button,
   Divider,
-  Skeleton, // Added Skeleton
+  Skeleton,
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import {
@@ -60,8 +59,11 @@ const BackButton = styled(IconButton)(({ theme }) => ({
   marginRight: theme.spacing(2),
 }));
 
+// Match PageHeader title style
 const AgentName = styled(Typography)(({ theme }) => ({
-  fontWeight: 500,
+  fontSize: "2rem", // Match PageHeader TitleText
+  fontWeight: 500,    // Match PageHeader TitleText
+  lineHeight: 1.3,    // Match PageHeader TitleText
   marginRight: theme.spacing(2), // Space between name and actions
 }));
 
@@ -205,9 +207,11 @@ export const AgentDetailsPage: React.FC = () => {
       <HeaderBox>
         <TitleBox>
           <BackButton onClick={handleBack} aria-label="Back to Agent Hub">
-            <FontAwesomeIcon icon={faArrowLeft} />
+            {/* Reduced icon size */}
+            <FontAwesomeIcon icon={faArrowLeft} size="sm" />
           </BackButton>
-          <AgentName variant="h4">{agent.name}</AgentName>
+          {/* Removed variant="h4", styles applied via styled component */}
+          <AgentName>{agent.name}</AgentName>
         </TitleBox>
         <ActionButtonGroup>
           <AuthTooltipWrapper>
@@ -238,21 +242,28 @@ export const AgentDetailsPage: React.FC = () => {
               </CountDisplay>
             </IconButton>
           </AuthTooltipWrapper>
+          {/* Separated Download Button and Count */}
           {/* @ts-ignore - Tooltip title prop type issue */}
           <Tooltip title="Download agent to your local instance">
-            <Button
-              variant="contained"
-              startIcon={<FontAwesomeIcon icon={faDownload} />}
-              onClick={handleDownload}
-              disabled={downloadMutation.isPending} // Use mutation pending state
-              sx={{ ml: 2 }} // Add margin left
-            >
-              {isLoadingDownloads || downloadMutation.isPending ? (
-                <Skeleton variant="text" width={80} sx={{ color: "inherit" }} />
-              ) : (
-                `Download (${downloadCount ?? 0})`
-              )}
-            </Button>
+            {/* Span needed for Tooltip when button is disabled */}
+            <span>
+              <IconButton
+                size="medium"
+                onClick={handleDownload}
+                disabled={downloadMutation.isPending} // Use mutation pending state
+                sx={{ borderRadius: 4, ml: 1 }} // Added margin left here
+                aria-label="Download agent"
+              >
+                <FontAwesomeIcon icon={faDownload} />
+                <CountDisplay>
+                  {isLoadingDownloads || downloadMutation.isPending ? ( // Show skeleton in count display
+                    <Skeleton variant="text" width={20} />
+                  ) : (
+                    downloadCount ?? 0
+                  )}
+                </CountDisplay>
+              </IconButton>
+            </span>
           </Tooltip>
         </ActionButtonGroup>
       </HeaderBox>
