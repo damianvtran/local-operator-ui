@@ -11,15 +11,13 @@ import { CompactPagination } from "@shared/components/common/compact-pagination"
 
 const StyledAgentHubContainer = styled(Box)(({ theme }) => ({
   padding: theme.spacing(3),
-  height: "100%",
   display: "flex",
   flexDirection: "column",
 }));
 
 const StyledGridContainer = styled(Grid)(({ theme }) => ({
-  flexGrow: 1,
   overflowY: "auto",
-  padding: theme.spacing(2, 0),
+  padding: theme.spacing(0, 0),
   "&::-webkit-scrollbar": {
     width: "8px",
   },
@@ -72,7 +70,7 @@ export const AgentHubPage: React.FC = () => {
         </Box>
       )}
       {!isLoading && !error && (
-        <StyledGridContainer container rowSpacing={1.5} columnSpacing={3}>
+        <StyledGridContainer container rowSpacing={3} columnSpacing={3}>
           {agents.length === 0 ? (
             <Grid item xs={12}>
               <Typography variant="body1" align="center">
@@ -81,7 +79,14 @@ export const AgentHubPage: React.FC = () => {
             </Grid>
           ) : (
             agents.map((agent) => (
-              <Grid item key={agent.id} xs={12} sm={6} md={4} lg={3}>
+              <Grid
+                item
+                key={agent.id}
+                xs={12}
+                sm={6}
+                md={4}
+                lg={3}
+              >
                 <AgentCardContainer agent={agent} />
               </Grid>
             ))
