@@ -84,6 +84,7 @@ export const AgentsPage: FC<AgentsPageProps> = () => {
 	const navigate = useNavigate();
 	const { isAuthenticated } = useRadientAuth(); // Get auth status
 	const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false); // State for dialog
+	const [uploadValidationIssues, setUploadValidationIssues] = useState<string[]>([]);
 
 	// Use a ref to track the previous agent ID to prevent unnecessary renders
 	const prevAgentIdRef = useRef<string | undefined>(agentId);
@@ -160,14 +161,28 @@ export const AgentsPage: FC<AgentsPageProps> = () => {
 		}
 	};
 
+	// Validation for agent upload
+	const getAgentUploadValidationIssues = (agent: AgentDetails | null): string[] => {
+		if (!agent) return ["No agent selected."];
+		const issues: string[] = [];
+		if (!agent.name || agent.name.trim() === "") issues.push("Name is required.");
+		if (!agent.description || agent.description.trim() === "") issues.push("Description is required.");
+		// Accept both category and categories (array or string), but require at least one
+		const hasCategory = agent.categories && agent.categories.length > 0;
+		if (!hasCategory) issues.push("At least one category is required.");
+		return issues;
+	};
+
 	// Handlers for the Upload Dialog
 	const handleOpenUploadDialog = () => {
-		// Reset agreement state inside the dialog component now
+		const issues = getAgentUploadValidationIssues(selectedAgent);
+		setUploadValidationIssues(issues);
 		setIsUploadDialogOpen(true);
 	};
 
 	const handleCloseUploadDialog = () => {
 		setIsUploadDialogOpen(false);
+		setUploadValidationIssues([]);
 	};
 
 	const handleConfirmUpload = () => {
@@ -320,6 +335,7 @@ export const AgentsPage: FC<AgentsPageProps> = () => {
 					agentName={selectedAgent.name}
 					isAuthenticated={isAuthenticated}
 					onConfirmUpload={handleConfirmUpload}
+					validationIssues={uploadValidationIssues}
 					// Optional: Add handler if sign-in inside dialog needs specific action
 					// onSignInSuccess={() => { /* Maybe refetch auth status or close dialog */ }}
 				/>

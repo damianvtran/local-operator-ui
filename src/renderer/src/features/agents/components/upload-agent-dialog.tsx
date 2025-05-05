@@ -35,6 +35,8 @@ type UploadAgentDialogProps = {
 	onConfirmUpload: () => void;
 	/** Optional callback for after successful sign-in via the dialog */
 	onSignInSuccess?: () => void;
+	/** Validation issues to display (if any) */
+	validationIssues?: string[];
 };
 
 /**
@@ -50,6 +52,7 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 	isAuthenticated,
 	onConfirmUpload,
 	onSignInSuccess,
+	validationIssues = [],
 }) => {
 	const [agreedToTerms, setAgreedToTerms] = useState(false);
 
@@ -60,7 +63,7 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 	};
 
 	const handleConfirm = () => {
-		if (agreedToTerms && isAuthenticated) {
+		if (agreedToTerms && isAuthenticated && validationIssues.length === 0) {
 			onConfirmUpload();
 		}
 	};
@@ -80,9 +83,25 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 			maxWidth="sm"
 			fullWidth
 		>
+			{validationIssues.length > 0 && (
+				<Box sx={{ mb: 2 }}>
+					<Typography variant="body2" color="error" sx={{ fontWeight: 400, fontSize: "0.875rem" }}>
+						Agent is missing required fields:
+					</Typography>
+					<ul style={{ margin: 0, paddingLeft: 20 }}>
+						{validationIssues.map((issue) => (
+							<li key={issue}>
+								<Typography variant="body2" color="error" sx={{ fontSize: "0.875rem" }}>
+									{issue}
+								</Typography>
+							</li>
+						))}
+					</ul>
+				</Box>
+			)}
 			{!isAuthenticated ? (
 				<Box sx={{ textAlign: "center", p: 2 }}>
-					<Typography variant="body1" sx={{ mb: 3 }}>
+					<Typography variant="body1" sx={{ mb: 3, fontSize: "0.875rem" }}>
 						You need to be signed in to Radient to upload agents to the Agent
 						Hub.
 					</Typography>
@@ -94,21 +113,21 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 				</Box>
 			) : (
 				<Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-					<Typography variant="body1">
+					<Typography variant="body1" sx={{ fontSize: "0.875rem" }}>
 						You are about to upload the agent{" "}
-						<Typography component="span" fontWeight="bold">
+						<Typography component="span" fontWeight="bold" sx={{ fontSize: "0.875rem" }}>
 							{agentName}
 						</Typography>{" "}
 						to the public Agent Hub. This will include:
 					</Typography>
 					<ul>
-						<li>Agent Configuration & Settings</li>
-						<li>Conversation History</li>
-						<li>Execution History</li>
-						<li>Learnings & Memory</li>
-						<li>Current Plan (if any)</li>
+						<li style={{ fontSize: "0.875rem" }}>Agent Configuration & Settings</li>
+						<li style={{ fontSize: "0.875rem" }}>Conversation History</li>
+						<li style={{ fontSize: "0.875rem" }}>Execution History</li>
+						<li style={{ fontSize: "0.875rem" }}>Learnings & Memory</li>
+						<li style={{ fontSize: "0.875rem" }}>Current Plan (if any)</li>
 					</ul>
-					<Typography variant="body1">
+					<Typography variant="body1" sx={{ fontSize: "0.875rem" }}>
 						This information will be publicly visible and downloadable by other
 						users. Please ensure you are not uploading sensitive or private
 						information.
@@ -123,7 +142,7 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 							/>
 						}
 						label={
-							<Typography variant="body2">
+							<Typography variant="body2" sx={{ fontSize: "0.875rem" }}>
 								I confirm that I have read and agree to the{" "}
 								<Link
 									href="https://radienthq.com/terms"
@@ -147,7 +166,7 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 				{isAuthenticated && (
 					<PrimaryButton
 						onClick={handleConfirm}
-						disabled={!agreedToTerms}
+						disabled={!agreedToTerms || validationIssues.length > 0}
 						variant="contained"
 					>
 						Confirm Upload
