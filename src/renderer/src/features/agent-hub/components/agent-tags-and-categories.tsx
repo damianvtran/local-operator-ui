@@ -20,7 +20,7 @@ import {
 /**
  * Maps agent category (snake_case) to icon and label.
  */
-const CATEGORY_ICON_MAP: Record<
+export const CATEGORY_ICON_MAP: Record<
   string,
   { icon: React.ReactNode; label: string }
 > = {
