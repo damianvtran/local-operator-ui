@@ -164,7 +164,15 @@ export const AgentHubPage: React.FC = () => {
 									</Grid>
 								) : (
 									agents.map((agent) => (
-										<Grid item key={agent.id} xs={12} sm={12} md={6} lg={4} xl={3}>
+										<Grid
+											item
+											key={agent.id}
+											xs={12}
+											sm={12}
+											md={6}
+											lg={4}
+											xl={3}
+										>
 											<AgentCardContainer agent={agent} />
 										</Grid>
 									))
