@@ -154,7 +154,7 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
 		data: commentsResponse, // Renamed from 'comments'
 		isLoading,
 		error,
-	} = useAgentCommentsQuery({ agentId, enabled: isAuthenticated });
+	} = useAgentCommentsQuery({ agentId });
 
 	// Extract comments array, default to empty array if response/records are undefined
 	const comments = commentsResponse?.records ?? [];
@@ -286,16 +286,14 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
 				</CommentFormContainer>
 			) : (
 				<Typography variant="body2" color="textSecondary" sx={{ mt: 3, mb: 2 }}>
-					{" "}
-					{/* Adjusted margins */}
-					Sign in to view and leave comments.
+					Sign in to leave comments.
 				</Typography>
 			)}
 
 			<Divider sx={{ my: 3 }} />
 
 			{/* Comments List */}
-			{isLoading && isAuthenticated && (
+			{isLoading && (
 				// Skeleton Loading State
 				<List>
 					{[...Array(3)].map((_, index) => (
@@ -319,13 +317,13 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
 					))}
 				</List>
 			)}
-			{error && isAuthenticated && (
+			{error && (
 				<Typography color="error" sx={{ my: 3 }}>
 					{/* @ts-ignore */}
 					Failed to load comments: {error.message}
 				</Typography>
 			)}
-			{!isLoading && !error && isAuthenticated && (
+			{!isLoading && !error && (
 				<List>
 					{/* Use the extracted comments array */}
 					{comments.length === 0 ? (
