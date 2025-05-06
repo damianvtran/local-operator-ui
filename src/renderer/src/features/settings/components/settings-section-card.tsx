@@ -7,6 +7,7 @@ const StyledCard = styled(Card)(({ theme }) => ({
 	marginBottom: theme.spacing(3),
 	backgroundColor: theme.palette.background.paper,
 	borderRadius: 6,
+	backgroundImage: "none",
 	border: `1px solid ${theme.palette.divider}`,
 	boxShadow: "none",
 	width: "100%",
