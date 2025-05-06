@@ -22,6 +22,7 @@ import { useAgentFavouriteCountQuery } from "../hooks/use-agent-favourite-count-
 import { useAgentLikeCountQuery } from "../hooks/use-agent-like-count-query";
 import { useDownloadAgentMutation } from "../hooks/use-download-agent-mutation";
 import { AgentTagsAndCategories } from "./agent-tags-and-categories";
+import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 
 type AgentCardProps = {
 	agent: Agent;
@@ -180,10 +181,10 @@ export const AgentCard: React.FC<AgentCardProps> = ({
 	onFavouriteToggle,
 	isLikeActionLoading = false,
 	isFavouriteActionLoading = false,
-	showActions = false,
 }) => {
 	const navigate = useNavigate();
 	const downloadMutation = useDownloadAgentMutation();
+	const { isAuthenticated } = useRadientAuth();
 
 	const { data: likeCount, isLoading: isLoadingLikes } = useAgentLikeCountQuery(
 		{
@@ -225,6 +226,18 @@ export const AgentCard: React.FC<AgentCardProps> = ({
 
 	const description = agent.description ?? "";
 	const truncatedDescription = truncateWithEllipsis(description, 140);
+
+	const likeTooltip = isAuthenticated
+		? isLiked
+			? "Unlike agent"
+			: "Like agent"
+		: "Log in to Radient to like agents";
+	const favouriteTooltip = isAuthenticated
+		? isFavourited
+			? "Unfavourite agent"
+			: "Favourite agent"
+		: "Log in to Radient to favourite agents";
+	const downloadTooltip = "Download agent to your computer";
 
 	return (
 		<StyledCard onClick={handleCardClick}>
@@ -319,79 +332,88 @@ export const AgentCard: React.FC<AgentCardProps> = ({
 				</Box>
 			</StyledCardContent>
 			<StyledCardActions>
-				{showActions ? (
-					<ActionButtonGroup>
-						<LikeFavouriteButton
-							onClick={(e) => handleActionClick(e, onLikeToggle)}
-							disabled={isLikeActionLoading}
-							color={isLiked ? "error" : undefined}
-							aria-label={isLiked ? "Unlike agent" : "Like agent"}
-							focusRipple
-							tabIndex={0}
-							type="button"
-						>
-							<Heart
-								size={18}
-								strokeWidth={2}
-								fill={isLiked ? "#e53935" : "none"}
-								color={isLiked ? "#e53935" : undefined}
-								style={{ verticalAlign: "middle" }}
-								data-testid="agent-like-heart"
-							/>
-							<CountDisplay>
-								{isLoadingLikes ? (
-									<Skeleton variant="text" width={20} />
-								) : (
-									(likeCount ?? 0)
-								)}
-							</CountDisplay>
-						</LikeFavouriteButton>
-						<LikeFavouriteButton
-							onClick={(e) => handleActionClick(e, onFavouriteToggle)}
-							disabled={isFavouriteActionLoading}
-							color={isFavourited ? "warning" : undefined}
-							aria-label={
-								isFavourited ? "Unfavourite agent" : "Favourite agent"
-							}
-							focusRipple
-							tabIndex={0}
-							type="button"
-						>
-							<Star
-								size={18}
-								strokeWidth={2}
-								fill={isFavourited ? "#ffb300" : "none"}
-								color={isFavourited ? "#ffb300" : undefined}
-								style={{ verticalAlign: "middle" }}
-								data-testid="agent-favourite-star"
-							/>
-							<CountDisplay>
-								{isLoadingFavourites ? (
-									<Skeleton variant="text" width={20} />
-								) : (
-									(favouriteCount ?? 0)
-								)}
-							</CountDisplay>
-						</LikeFavouriteButton>
-					</ActionButtonGroup>
-				) : (
-					<Box />
-				)}
 				<ActionButtonGroup>
-					<Tooltip title="Download agent to your computer">
-						<IconButton
-							size="small"
-							onClick={handleDownloadClick}
-							disabled={downloadMutation.isPending}
-							aria-label="Download agent"
-						>
-							<Download
-								size={18}
-								strokeWidth={2}
-								style={{ verticalAlign: "middle" }}
-								data-testid="agent-download"
-							/>
-						</IconButton>
+					{/* @ts-ignore - Tooltip title prop type issue */}
+					<Tooltip title={likeTooltip}>
+						<span>
+							<LikeFavouriteButton
+								onClick={isAuthenticated ? (e) => handleActionClick(e, onLikeToggle) : undefined}
+								disabled={isLikeActionLoading || !isAuthenticated}
+								color={isLiked ? "error" : undefined}
+								aria-label={isLiked ? "Unlike agent" : "Like agent"}
+								focusRipple
+								tabIndex={0}
+								type="button"
+							>
+								<Heart
+									size={18}
+									strokeWidth={2}
+									fill={isLiked ? "#e53935" : "none"}
+									color={isLiked ? "#e53935" : undefined}
+									style={{ verticalAlign: "middle" }}
+									data-testid="agent-like-heart"
+								/>
+								<CountDisplay>
+									{isLoadingLikes ? (
+										<Skeleton variant="text" width={20} />
+									) : (
+										likeCount ?? 0
+									)}
+								</CountDisplay>
+							</LikeFavouriteButton>
+						</span>
+					</Tooltip>
+					{/* @ts-ignore - Tooltip title prop type issue */}
+					<Tooltip title={favouriteTooltip}>
+						<span>
+							<LikeFavouriteButton
+								onClick={isAuthenticated ? (e) => handleActionClick(e, onFavouriteToggle) : undefined}
+								disabled={isFavouriteActionLoading || !isAuthenticated}
+								color={isFavourited ? "warning" : undefined}
+								aria-label={
+									isFavourited ? "Unfavourite agent" : "Favourite agent"
+								}
+								focusRipple
+								tabIndex={0}
+								type="button"
+							>
+								<Star
+									size={18}
+									strokeWidth={2}
+									fill={isFavourited ? "#ffb300" : "none"}
+									color={isFavourited ? "#ffb300" : undefined}
+									style={{ verticalAlign: "middle" }}
+									data-testid="agent-favourite-star"
+								/>
+								<CountDisplay>
+									{isLoadingFavourites ? (
+										<Skeleton variant="text" width={20} />
+									) : (
+										favouriteCount ?? 0
+									)}
+								</CountDisplay>
+							</LikeFavouriteButton>
+						</span>
+					</Tooltip>
+				</ActionButtonGroup>
+				<ActionButtonGroup>
+					{/* @ts-ignore - Tooltip title prop type issue */}
+					<Tooltip title={downloadTooltip}>
+						<span>
+							<IconButton
+								size="small"
+								onClick={handleDownloadClick}
+								disabled={downloadMutation.isPending}
+								aria-label="Download agent"
+							>
+								<Download
+									size={18}
+									strokeWidth={2}
+									style={{ verticalAlign: "middle" }}
+									data-testid="agent-download"
+								/>
+							</IconButton>
+						</span>
 					</Tooltip>
 					{isLoadingDownloads || downloadMutation.isPending ? (
 						<Skeleton
