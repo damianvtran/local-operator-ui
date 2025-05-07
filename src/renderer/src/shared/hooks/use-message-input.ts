@@ -47,8 +47,34 @@ export const useMessageInput = ({
   const setCurrentHistoryIndex = useConversationInputStore((s) => s.setCurrentHistoryIndex);
   const resetCurrentHistoryIndex = useConversationInputStore((s) => s.resetCurrentHistoryIndex);
 
-  // State for the current input value (mirrored from store)
+  // Robust hydration state using subscription to persist events
+  const [hydrated, setHydrated] = useState(
+    (useConversationInputStore.persist as unknown as { hasHydrated: () => boolean }).hasHydrated?.() ?? false
+  );
+  const initializedRef = useRef<string | undefined>(undefined);
   const [inputValue, setInputValue] = useState<string>("");
+
+  // Always subscribe to hydration events at the top level
+  useEffect(() => {
+    const persist = useConversationInputStore.persist as unknown as {
+      onHydrate: (fn: () => void) => () => void;
+      onFinishHydration: (fn: () => void) => () => void;
+      hasHydrated: () => boolean;
+    };
+    let unsubHydrate: (() => void) | undefined;
+    let unsubFinish: (() => void) | undefined;
+    if (persist && typeof persist.onHydrate === "function" && typeof persist.onFinishHydration === "function") {
+      unsubHydrate = persist.onHydrate(() => setHydrated(false));
+      unsubFinish = persist.onFinishHydration(() => setHydrated(true));
+      setHydrated(persist.hasHydrated());
+    } else {
+      setHydrated(true);
+    }
+    return () => {
+      unsubHydrate?.();
+      unsubFinish?.();
+    };
+  }, []);
 
   // Reference to the textarea element
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -237,23 +263,27 @@ export const useMessageInput = ({
 
   // On mount or conversation change, sync input value and navigation index from store
   useEffect(() => {
+    if (!hydrated) return;
     if (conversationId) {
       const storeValue = getCurrentInput(conversationId);
       setInputValue(storeValue);
-      // No need to reset history index here; it is persisted per conversation
+      initializedRef.current = conversationId;
       draftMessageRef.current = "";
     } else {
       setInputValue("");
+      initializedRef.current = undefined;
       draftMessageRef.current = "";
     }
-  }, [conversationId, getCurrentInput]);
+  }, [conversationId, hydrated, getCurrentInput]);
 
-  // Keep store in sync if inputValue changes (e.g., via up/down navigation)
+  // Only sync inputValue to the store if hydrated and inputValue is not being initialized from the store
   useEffect(() => {
-    if (conversationId) {
-      setCurrentInput(conversationId, inputValue);
-    }
-  }, [conversationId, inputValue, setCurrentInput]);
+    if (!hydrated) return;
+    if (!conversationId) return;
+    // Don't sync to store if this is the first initialization for this conversation
+    if (initializedRef.current === conversationId) return;
+    setCurrentInput(conversationId, inputValue);
+  }, [conversationId, inputValue, setCurrentInput, hydrated]);
 
   return {
     inputValue,
