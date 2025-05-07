@@ -6,6 +6,7 @@
  */
 
 import { create } from "zustand";
+import { persist } from "zustand/middleware";
 
 /**
  * State for a single conversation's input
@@ -103,135 +104,133 @@ const MAX_SUBMITTED_MESSAGES = 20;
 /**
  * Zustand store implementation
  */
-export const useConversationInputStore = create<ConversationInputStoreState>((set, get) => ({
-  inputByConversation: {},
+export const useConversationInputStore = create<ConversationInputStoreState>()(
+  persist(
+    (set, get) => ({
+      inputByConversation: {},
 
-  setCurrentInput: (conversationId, value) => {
-    set((state) => {
-      const existing = state.inputByConversation[conversationId] || {
-        currentInput: "",
-        submittedMessages: [],
-        currentHistoryIndex: null,
-      };
-      return {
-        inputByConversation: {
-          ...state.inputByConversation,
-          [conversationId]: {
-            ...existing,
-            currentInput: value,
+      setCurrentInput: (conversationId, value) => {
+        const existing = get().inputByConversation[conversationId] || {
+          currentInput: "",
+          submittedMessages: [],
+          currentHistoryIndex: null,
+        };
+        set({
+          inputByConversation: {
+            ...get().inputByConversation,
+            [conversationId]: {
+              ...existing,
+              currentInput: value,
+            },
           },
-        },
-      };
-    });
-  },
+        });
+      },
 
-  getCurrentInput: (conversationId) => {
-    return get().inputByConversation[conversationId]?.currentInput || "";
-  },
+      getCurrentInput: (conversationId) => {
+        return get().inputByConversation[conversationId]?.currentInput || "";
+      },
 
-  addSubmittedMessage: (conversationId, message) => {
-    set((state) => {
-      const existing = state.inputByConversation[conversationId] || {
-        currentInput: "",
-        submittedMessages: [],
-        currentHistoryIndex: null,
-      };
-      // Avoid duplicate consecutive entries
-      const last = existing.submittedMessages[existing.submittedMessages.length - 1];
-      const newMessages =
-        message && message !== last
-          ? [
-              ...existing.submittedMessages.slice(-MAX_SUBMITTED_MESSAGES + 1),
-              message,
-            ]
-          : existing.submittedMessages;
-      return {
-        inputByConversation: {
-          ...state.inputByConversation,
-          [conversationId]: {
-            ...existing,
-            submittedMessages: newMessages,
+      addSubmittedMessage: (conversationId, message) => {
+        const existing = get().inputByConversation[conversationId] || {
+          currentInput: "",
+          submittedMessages: [],
+          currentHistoryIndex: null,
+        };
+        // Avoid duplicate consecutive entries
+        const last = existing.submittedMessages[existing.submittedMessages.length - 1];
+        const newMessages =
+          message && message !== last
+            ? [
+                ...existing.submittedMessages.slice(-MAX_SUBMITTED_MESSAGES + 1),
+                message,
+              ]
+            : existing.submittedMessages;
+        set({
+          inputByConversation: {
+            ...get().inputByConversation,
+            [conversationId]: {
+              ...existing,
+              submittedMessages: newMessages,
+            },
           },
-        },
-      };
-    });
-  },
+        });
+      },
 
-  getSubmittedMessages: (conversationId) => {
-    return get().inputByConversation[conversationId]?.submittedMessages || [];
-  },
+      getSubmittedMessages: (conversationId) => {
+        return get().inputByConversation[conversationId]?.submittedMessages || [];
+      },
 
-  clearSubmittedMessages: (conversationId) => {
-    set((state) => {
-      const existing = state.inputByConversation[conversationId];
-      if (!existing) return state;
-      return {
-        inputByConversation: {
-          ...state.inputByConversation,
-          [conversationId]: {
-            ...existing,
-            submittedMessages: [],
+      clearSubmittedMessages: (conversationId) => {
+        const existing = get().inputByConversation[conversationId];
+        if (!existing) return;
+        set({
+          inputByConversation: {
+            ...get().inputByConversation,
+            [conversationId]: {
+              ...existing,
+              submittedMessages: [],
+            },
           },
-        },
-      };
-    });
-  },
+        });
+      },
 
-  getCurrentHistoryIndex: (conversationId) => {
-    return get().inputByConversation[conversationId]?.currentHistoryIndex ?? null;
-  },
+      getCurrentHistoryIndex: (conversationId) => {
+        return get().inputByConversation[conversationId]?.currentHistoryIndex ?? null;
+      },
 
-  /**
-   * Set the current history navigation index for a conversation, clamped to valid range.
-   * @param conversationId - The ID of the conversation
-   * @param index - The index to set (null = not navigating)
-   */
-  setCurrentHistoryIndex: (conversationId, index) => {
-    set((state) => {
-      const existing = state.inputByConversation[conversationId] || {
-        currentInput: "",
-        submittedMessages: [],
-        currentHistoryIndex: null,
-      };
-      const messages = existing.submittedMessages;
-      let clampedIndex: number | null = null;
-      if (typeof index === "number" && messages.length > 0) {
-        clampedIndex = Math.max(0, Math.min(index, messages.length - 1));
-      }
-      return {
-        inputByConversation: {
-          ...state.inputByConversation,
-          [conversationId]: {
-            ...existing,
-            currentHistoryIndex: clampedIndex,
+      /**
+       * Set the current history navigation index for a conversation, clamped to valid range.
+       * @param conversationId - The ID of the conversation
+       * @param index - The index to set (null = not navigating)
+       */
+      setCurrentHistoryIndex: (conversationId, index) => {
+        const existing = get().inputByConversation[conversationId] || {
+          currentInput: "",
+          submittedMessages: [],
+          currentHistoryIndex: null,
+        };
+        const messages = existing.submittedMessages;
+        let clampedIndex: number | null = null;
+        if (typeof index === "number" && messages.length > 0) {
+          clampedIndex = Math.max(0, Math.min(index, messages.length - 1));
+        }
+        set({
+          inputByConversation: {
+            ...get().inputByConversation,
+            [conversationId]: {
+              ...existing,
+              currentHistoryIndex: clampedIndex,
+            },
           },
-        },
-      };
-    });
-  },
+        });
+      },
 
-  resetCurrentHistoryIndex: (conversationId) => {
-    set((state) => {
-      const existing = state.inputByConversation[conversationId];
-      if (!existing) return state;
-      return {
-        inputByConversation: {
-          ...state.inputByConversation,
-          [conversationId]: {
-            ...existing,
-            currentHistoryIndex: null,
+      resetCurrentHistoryIndex: (conversationId) => {
+        const existing = get().inputByConversation[conversationId];
+        if (!existing) return;
+        set({
+          inputByConversation: {
+            ...get().inputByConversation,
+            [conversationId]: {
+              ...existing,
+              currentHistoryIndex: null,
+            },
           },
-        },
-      };
-    });
-  },
+        });
+      },
 
-  clearAll: (conversationId) => {
-    set((state) => {
-      const { [conversationId]: _, ...rest } = state.inputByConversation;
-      return {
-        inputByConversation: rest,
-      };
-    });
-  },
-}));
+      clearAll: (conversationId) => {
+        const { [conversationId]: _, ...rest } = get().inputByConversation;
+        set({
+          inputByConversation: rest,
+        });
+      },
+    }),
+    {
+      name: "conversation-input-store",
+      partialize: (state) => ({
+        inputByConversation: state.inputByConversation,
+      }),
+    }
+  )
+);
