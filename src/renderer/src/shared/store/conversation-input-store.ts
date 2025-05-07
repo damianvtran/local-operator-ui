@@ -1,7 +1,7 @@
 /**
  * Conversation Input Store
  *
- * Manages the current input draft and a log of last submitted messages per conversation.
+ * Manages the current input draft, a log of last submitted messages, and the current history navigation index per conversation.
  * Used to persist input state and provide robust up-arrow navigation for message input.
  */
 
@@ -19,6 +19,10 @@ type ConversationInputState = {
    * The log of last submitted messages (most recent last)
    */
   submittedMessages: string[];
+  /**
+   * The current index for up/down navigation in the submittedMessages log (null = not navigating)
+   */
+  currentHistoryIndex: number | null;
 };
 
 /**
@@ -65,6 +69,26 @@ type ConversationInputStoreState = {
   clearSubmittedMessages: (conversationId: string) => void;
 
   /**
+   * Get the current history navigation index for a conversation
+   * @param conversationId - The ID of the conversation
+   * @returns The current history index or null if not navigating
+   */
+  getCurrentHistoryIndex: (conversationId: string) => number | null;
+
+  /**
+   * Set the current history navigation index for a conversation
+   * @param conversationId - The ID of the conversation
+   * @param index - The index to set (null = not navigating)
+   */
+  setCurrentHistoryIndex: (conversationId: string, index: number | null) => void;
+
+  /**
+   * Reset the history navigation index for a conversation (set to null)
+   * @param conversationId - The ID of the conversation
+   */
+  resetCurrentHistoryIndex: (conversationId: string) => void;
+
+  /**
    * Clear all input state for a conversation
    * @param conversationId - The ID of the conversation
    */
@@ -87,6 +111,7 @@ export const useConversationInputStore = create<ConversationInputStoreState>((se
       const existing = state.inputByConversation[conversationId] || {
         currentInput: "",
         submittedMessages: [],
+        currentHistoryIndex: null,
       };
       return {
         inputByConversation: {
@@ -109,6 +134,7 @@ export const useConversationInputStore = create<ConversationInputStoreState>((se
       const existing = state.inputByConversation[conversationId] || {
         currentInput: "",
         submittedMessages: [],
+        currentHistoryIndex: null,
       };
       // Avoid duplicate consecutive entries
       const last = existing.submittedMessages[existing.submittedMessages.length - 1];
@@ -145,6 +171,55 @@ export const useConversationInputStore = create<ConversationInputStoreState>((se
           [conversationId]: {
             ...existing,
             submittedMessages: [],
+          },
+        },
+      };
+    });
+  },
+
+  getCurrentHistoryIndex: (conversationId) => {
+    return get().inputByConversation[conversationId]?.currentHistoryIndex ?? null;
+  },
+
+  /**
+   * Set the current history navigation index for a conversation, clamped to valid range.
+   * @param conversationId - The ID of the conversation
+   * @param index - The index to set (null = not navigating)
+   */
+  setCurrentHistoryIndex: (conversationId, index) => {
+    set((state) => {
+      const existing = state.inputByConversation[conversationId] || {
+        currentInput: "",
+        submittedMessages: [],
+        currentHistoryIndex: null,
+      };
+      const messages = existing.submittedMessages;
+      let clampedIndex: number | null = null;
+      if (typeof index === "number" && messages.length > 0) {
+        clampedIndex = Math.max(0, Math.min(index, messages.length - 1));
+      }
+      return {
+        inputByConversation: {
+          ...state.inputByConversation,
+          [conversationId]: {
+            ...existing,
+            currentHistoryIndex: clampedIndex,
+          },
+        },
+      };
+    });
+  },
+
+  resetCurrentHistoryIndex: (conversationId) => {
+    set((state) => {
+      const existing = state.inputByConversation[conversationId];
+      if (!existing) return state;
+      return {
+        inputByConversation: {
+          ...state.inputByConversation,
+          [conversationId]: {
+            ...existing,
+            currentHistoryIndex: null,
           },
         },
       };
