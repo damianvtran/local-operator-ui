@@ -43,6 +43,9 @@ export const useMessageInput = ({
   const setCurrentInput = useConversationInputStore((s) => s.setCurrentInput);
   const addSubmittedMessage = useConversationInputStore((s) => s.addSubmittedMessage);
   const getSubmittedMessages = useConversationInputStore((s) => s.getSubmittedMessages);
+  const getCurrentHistoryIndex = useConversationInputStore((s) => s.getCurrentHistoryIndex);
+  const setCurrentHistoryIndex = useConversationInputStore((s) => s.setCurrentHistoryIndex);
+  const resetCurrentHistoryIndex = useConversationInputStore((s) => s.resetCurrentHistoryIndex);
 
   // State for the current input value (mirrored from store)
   const [inputValue, setInputValue] = useState<string>("");
@@ -50,16 +53,16 @@ export const useMessageInput = ({
   // Reference to the textarea element
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
-  // State to track history navigation index (null = not navigating)
-  const [historyIndex, setHistoryIndex] = useState<number | null>(null);
-
   // Ref to store the draft message when navigating history
   const draftMessageRef = useRef<string>("");
 
-  // Get the submitted messages log for this conversation
+  // Get the submitted messages log and navigation index for this conversation
   const submittedMessages = conversationId
     ? getSubmittedMessages(conversationId)
     : [];
+  const historyIndex = conversationId
+    ? getCurrentHistoryIndex(conversationId)
+    : null;
 
   /**
    * Handle input change
@@ -69,11 +72,10 @@ export const useMessageInput = ({
       setInputValue(value);
       if (conversationId) {
         setCurrentInput(conversationId, value);
+        resetCurrentHistoryIndex(conversationId);
       }
-      // Reset history navigation when user types
-      setHistoryIndex(null);
     },
-    [conversationId, setCurrentInput]
+    [conversationId, setCurrentInput, resetCurrentHistoryIndex]
   );
 
   /**
@@ -93,7 +95,7 @@ export const useMessageInput = ({
     setCurrentInput(conversationId, "");
 
     // Reset history navigation
-    setHistoryIndex(null);
+    resetCurrentHistoryIndex(conversationId);
     draftMessageRef.current = "";
 
     // Scroll to bottom when sending a message, with a slight delay
@@ -102,7 +104,7 @@ export const useMessageInput = ({
         scrollToBottom();
       }, 150);
     }
-  }, [inputValue, conversationId, onSubmit, addSubmittedMessage, setCurrentInput, scrollToBottom]);
+  }, [inputValue, conversationId, onSubmit, addSubmittedMessage, setCurrentInput, resetCurrentHistoryIndex, scrollToBottom]);
 
   /**
    * Get the current cursor position in the textarea
@@ -148,6 +150,8 @@ export const useMessageInput = ({
    */
   const handleKeyDown = useCallback(
     (e: KeyboardEvent<HTMLDivElement>) => {
+      if (!conversationId) return;
+
       // Handle Enter key for submission
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
@@ -168,13 +172,13 @@ export const useMessageInput = ({
         if (historyIndex === null) {
           draftMessageRef.current = inputValue;
           // Start from the most recent message
-          setHistoryIndex(submittedMessages.length - 1);
+          setCurrentHistoryIndex(conversationId, submittedMessages.length - 1);
           setInputValue(submittedMessages[submittedMessages.length - 1] || "");
         }
         // Navigate to previous message if not at the beginning
         else if (historyIndex > 0) {
           const newIndex = historyIndex - 1;
-          setHistoryIndex(newIndex);
+          setCurrentHistoryIndex(conversationId, newIndex);
           setInputValue(submittedMessages[newIndex] || "");
         }
 
@@ -197,12 +201,12 @@ export const useMessageInput = ({
           // Navigate to next message if not at the end
           if (historyIndex < submittedMessages.length - 1) {
             const newIndex = historyIndex + 1;
-            setHistoryIndex(newIndex);
+            setCurrentHistoryIndex(conversationId, newIndex);
             setInputValue(submittedMessages[newIndex] || "");
           }
           // Return to draft message if at the end
           else {
-            setHistoryIndex(null);
+            resetCurrentHistoryIndex(conversationId);
             setInputValue(draftMessageRef.current);
             draftMessageRef.current = "";
           }
@@ -225,19 +229,23 @@ export const useMessageInput = ({
       historyIndex,
       inputValue,
       submittedMessages,
+      conversationId,
+      setCurrentHistoryIndex,
+      resetCurrentHistoryIndex,
     ]
   );
 
-  // On mount or conversation change, sync input value from store
+  // On mount or conversation change, sync input value and navigation index from store
   useEffect(() => {
     if (conversationId) {
       const storeValue = getCurrentInput(conversationId);
       setInputValue(storeValue);
+      // No need to reset history index here; it is persisted per conversation
+      draftMessageRef.current = "";
     } else {
       setInputValue("");
+      draftMessageRef.current = "";
     }
-    setHistoryIndex(null);
-    draftMessageRef.current = "";
   }, [conversationId, getCurrentInput]);
 
   // Keep store in sync if inputValue changes (e.g., via up/down navigation)
