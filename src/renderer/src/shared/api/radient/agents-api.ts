@@ -482,7 +482,7 @@ export async function createAgentComment(
  *
  * @param baseUrl - The base URL of the Radient API
  * @param agentId - The agent ID
- * @param accessToken - The access token (JWT)
+ * @param accessToken - The access token (JWT, optional for read)
  * @param page - The page number (optional, defaults to 1)
  * @param perPage - The number of comments per page (optional, defaults to 20)
  * @returns Paginated list of comments
@@ -491,7 +491,6 @@ export async function createAgentComment(
 export async function listAgentComments(
 	baseUrl: string,
 	agentId: string,
-	accessToken: string,
 	page = 1,
 	perPage = 20,
 ): Promise<RadientApiResponse<PaginatedResponse<AgentComment>>> {
@@ -502,13 +501,13 @@ export async function listAgentComments(
 	url.searchParams.set("page", String(page));
 	url.searchParams.set("per_page", String(perPage));
 
+	const headers: Record<string, string> = {};
+
 	let response: Response;
 	try {
 		response = await fetch(url.toString(), {
 			method: "GET",
-			headers: {
-				Authorization: `Bearer ${accessToken}`,
-			},
+			headers,
 			credentials: "same-origin",
 		});
 	} catch (err) {

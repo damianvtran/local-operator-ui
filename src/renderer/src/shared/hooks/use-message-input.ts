@@ -1,173 +1,208 @@
 /**
- * Hook for managing message input with history navigation
+ * Hook for managing message input with robust per-conversation persistence and log-based history navigation.
  */
 
-import type { Message } from "@features/chat/types";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
+import { useConversationInputStore } from "../store/conversation-input-store";
 
 /**
  * Options for the useMessageInput hook
  */
 type UseMessageInputOptions = {
-	/**
-	 * The ID of the current conversation
-	 */
 	conversationId?: string;
-
-	/**
-	 * All messages in the conversation
-	 */
-	messages: Message[];
-
-	/**
-	 * Callback when a message is submitted
-	 */
 	onSubmit?: (message: string) => void;
-
-	/**
-	 * Function to scroll to the bottom of the messages container
-	 * Will be called when a message is submitted
-	 */
 	scrollToBottom?: () => void;
 };
 
 /**
- * Hook for managing message input with history navigation
- *
- * @param options - Configuration options
- * @returns Object with input state and handlers
+ * Hook for managing message input with robust per-conversation persistence and log-based history navigation.
  */
 export const useMessageInput = ({
 	conversationId,
-	messages,
 	onSubmit,
 	scrollToBottom,
 }: UseMessageInputOptions) => {
-	// State for the current input value
-	const [inputValue, setInputValue] = useState("");
+	// Store selectors
+	const getCurrentInput = useConversationInputStore((s) => s.getCurrentInput);
+	const setCurrentInput = useConversationInputStore((s) => s.setCurrentInput);
+	const addSubmittedMessage = useConversationInputStore(
+		(s) => s.addSubmittedMessage,
+	);
+	const getSubmittedMessages = useConversationInputStore(
+		(s) => s.getSubmittedMessages,
+	);
+	const getCurrentHistoryIndex = useConversationInputStore(
+		(s) => s.getCurrentHistoryIndex,
+	);
+	const setCurrentHistoryIndex = useConversationInputStore(
+		(s) => s.setCurrentHistoryIndex,
+	);
+	const resetCurrentHistoryIndex = useConversationInputStore(
+		(s) => s.resetCurrentHistoryIndex,
+	);
 
-	// Reference to the textarea element
-	const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+	// Hydration state
+	const [hydrated, setHydrated] = useState(
+		(
+			useConversationInputStore.persist as unknown as {
+				hasHydrated: () => boolean;
+			}
+		).hasHydrated?.() ?? false,
+	);
+	const initializedRef = useRef<string | undefined>(undefined);
+	const [inputValue, setInputValue] = useState<string>("");
 
-	// State to track history navigation
-	const [historyIndex, setHistoryIndex] = useState<number | null>(null);
-
-	// Ref to store the draft message when navigating history
-	const draftMessageRef = useRef("");
-
-	// Filter user messages
-	const userMessages = messages.filter((msg) => msg.role === "user");
-
-	/**
-	 * Handle input change
-	 */
-	const handleChange = useCallback((value: string) => {
-		setInputValue(value);
-		// Reset history navigation when user types
-		setHistoryIndex(null);
+	useEffect(() => {
+		const persist = useConversationInputStore.persist as unknown as {
+			onHydrate: (fn: () => void) => () => void;
+			onFinishHydration: (fn: () => void) => () => void;
+			hasHydrated: () => boolean;
+		};
+		let unsubHydrate: (() => void) | undefined;
+		let unsubFinish: (() => void) | undefined;
+		if (
+			persist &&
+			typeof persist.onHydrate === "function" &&
+			typeof persist.onFinishHydration === "function"
+		) {
+			unsubHydrate = persist.onHydrate(() => setHydrated(false));
+			unsubFinish = persist.onFinishHydration(() => setHydrated(true));
+			setHydrated(persist.hasHydrated());
+		} else {
+			setHydrated(true);
+		}
+		return () => {
+			unsubHydrate?.();
+			unsubFinish?.();
+		};
 	}, []);
 
-	/**
-	 * Handle form submission
-	 */
+	// Refs
+	const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+	const draftMessageRef = useRef<string>("");
+
+	// Store state for this conversation
+	const submittedMessages = conversationId
+		? getSubmittedMessages(conversationId)
+		: [];
+	const historyIndex = conversationId
+		? getCurrentHistoryIndex(conversationId)
+		: null;
+
+	// On mount or conversation change, set inputValue to the correct state (draft or log message)
+	useEffect(() => {
+		if (!hydrated) return;
+		if (conversationId) {
+			const draft = getCurrentInput(conversationId);
+			if (historyIndex !== null && submittedMessages.length > 0) {
+				setInputValue(submittedMessages[historyIndex] || "");
+			} else {
+				setInputValue(draft);
+			}
+			initializedRef.current = conversationId;
+			draftMessageRef.current = "";
+		} else {
+			setInputValue("");
+			initializedRef.current = undefined;
+			draftMessageRef.current = "";
+		}
+	}, [
+		conversationId,
+		hydrated,
+		getCurrentInput,
+		historyIndex,
+		submittedMessages,
+	]);
+
+	// Only sync inputValue to the store if hydrated and inputValue is not being initialized from the store
+	useEffect(() => {
+		if (!hydrated) return;
+		if (!conversationId) return;
+		if (initializedRef.current === conversationId) return;
+		setCurrentInput(conversationId, inputValue);
+	}, [conversationId, inputValue, setCurrentInput, hydrated]);
+
+	// Handle input change: always reset history navigation and update draft
+	const handleChange = useCallback(
+		(value: string) => {
+			setInputValue(value);
+			if (conversationId) {
+				setCurrentInput(conversationId, value);
+				resetCurrentHistoryIndex(conversationId);
+			}
+		},
+		[conversationId, setCurrentInput, resetCurrentHistoryIndex],
+	);
+
+	// Handle form submission
 	const handleSubmit = useCallback(() => {
-		if (!inputValue.trim()) return;
-
-		// Call the onSubmit callback
+		if (!inputValue.trim() || !conversationId) return;
 		onSubmit?.(inputValue);
-
-		// Clear the input
+		addSubmittedMessage(conversationId, inputValue);
 		setInputValue("");
-
-		// Reset history navigation
-		setHistoryIndex(null);
+		setCurrentInput(conversationId, "");
+		resetCurrentHistoryIndex(conversationId);
 		draftMessageRef.current = "";
-
-		// Scroll to bottom when sending a message, with a slight delay
-		// to ensure the new message has rendered and layout is updated
 		if (scrollToBottom) {
 			setTimeout(() => {
 				scrollToBottom();
-			}, 150); // 150ms delay
+			}, 150);
 		}
-	}, [inputValue, onSubmit, scrollToBottom]);
+	}, [
+		inputValue,
+		conversationId,
+		onSubmit,
+		addSubmittedMessage,
+		setCurrentInput,
+		resetCurrentHistoryIndex,
+		scrollToBottom,
+	]);
 
-	/**
-	 * Get the current cursor position in the textarea
-	 */
+	// Cursor position helpers
 	const getCursorPosition = useCallback((): {
 		line: number;
 		totalLines: number;
 	} => {
 		const textarea = textareaRef.current;
 		if (!textarea) return { line: 0, totalLines: 1 };
-
 		const text = textarea.value;
 		const selectionStart = textarea.selectionStart;
-
-		// Count lines up to the cursor position
 		const textUpToCursor = text.substring(0, selectionStart);
 		const linesUpToCursor = (textUpToCursor.match(/\n/g) || []).length + 1;
-
-		// Count total lines
 		const totalLines = (text.match(/\n/g) || []).length + 1;
-
 		return { line: linesUpToCursor, totalLines };
 	}, []);
-
-	/**
-	 * Check if cursor is at the first line
-	 */
-	const isCursorAtFirstLine = useCallback((): boolean => {
-		const { line } = getCursorPosition();
-		return line === 1;
-	}, [getCursorPosition]);
-
-	/**
-	 * Check if cursor is at the last line
-	 */
+	const isCursorAtFirstLine = useCallback(
+		(): boolean => getCursorPosition().line === 1,
+		[getCursorPosition],
+	);
 	const isCursorAtLastLine = useCallback((): boolean => {
 		const { line, totalLines } = getCursorPosition();
 		return line === totalLines;
 	}, [getCursorPosition]);
 
-	/**
-	 * Handle keyboard events
-	 */
+	// Keyboard navigation
 	const handleKeyDown = useCallback(
 		(e: KeyboardEvent<HTMLDivElement>) => {
-			// Handle Enter key for submission
+			if (!conversationId) return;
 			if (e.key === "Enter" && !e.shiftKey) {
 				e.preventDefault();
 				handleSubmit();
 				return;
 			}
-
-			// Skip if no user messages
-			if (userMessages.length === 0) {
-				return;
-			}
-
-			// Handle arrow up for history navigation
+			if (!submittedMessages.length) return;
 			if (e.key === "ArrowUp" && isCursorAtFirstLine()) {
 				e.preventDefault();
-
-				// Save current input if starting navigation
 				if (historyIndex === null) {
 					draftMessageRef.current = inputValue;
-					// Start from the most recent message
-					setHistoryIndex(userMessages.length - 1);
-					setInputValue(userMessages[userMessages.length - 1].message || "");
-				}
-				// Navigate to previous message if not at the beginning
-				else if (historyIndex > 0) {
+					setCurrentHistoryIndex(conversationId, submittedMessages.length - 1);
+					setInputValue(submittedMessages[submittedMessages.length - 1] || "");
+				} else if (historyIndex > 0) {
 					const newIndex = historyIndex - 1;
-					setHistoryIndex(newIndex);
-					setInputValue(userMessages[newIndex].message || "");
+					setCurrentHistoryIndex(conversationId, newIndex);
+					setInputValue(submittedMessages[newIndex] || "");
 				}
-
-				// Set cursor position at the end in the next render
 				setTimeout(() => {
 					if (textareaRef.current) {
 						const length = textareaRef.current.value.length;
@@ -176,27 +211,18 @@ export const useMessageInput = ({
 					}
 				}, 0);
 			}
-
-			// Handle arrow down for history navigation
 			if (e.key === "ArrowDown" && isCursorAtLastLine()) {
 				e.preventDefault();
-
-				// Only handle if we're navigating history
 				if (historyIndex !== null) {
-					// Navigate to next message if not at the end
-					if (historyIndex < userMessages.length - 1) {
+					if (historyIndex < submittedMessages.length - 1) {
 						const newIndex = historyIndex + 1;
-						setHistoryIndex(newIndex);
-						setInputValue(userMessages[newIndex].message || "");
-					}
-					// Return to draft message if at the end
-					else {
-						setHistoryIndex(null);
+						setCurrentHistoryIndex(conversationId, newIndex);
+						setInputValue(submittedMessages[newIndex] || "");
+					} else {
+						resetCurrentHistoryIndex(conversationId);
 						setInputValue(draftMessageRef.current);
 						draftMessageRef.current = "";
 					}
-
-					// Set cursor position at the end in the next render
 					setTimeout(() => {
 						if (textareaRef.current) {
 							const length = textareaRef.current.value.length;
@@ -213,17 +239,12 @@ export const useMessageInput = ({
 			isCursorAtLastLine,
 			historyIndex,
 			inputValue,
-			userMessages,
+			submittedMessages,
+			conversationId,
+			setCurrentHistoryIndex,
+			resetCurrentHistoryIndex,
 		],
 	);
-
-	// Reset input and history when conversation changes
-	// biome-ignore lint/correctness/useExhaustiveDependencies: conversationId is intentionally the only dependency to reset state when conversation changes
-	useEffect(() => {
-		setInputValue("");
-		setHistoryIndex(null);
-		draftMessageRef.current = "";
-	}, [conversationId]);
 
 	return {
 		inputValue,
