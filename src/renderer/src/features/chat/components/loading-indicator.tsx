@@ -17,6 +17,9 @@ import { useEffect, useState } from "react";
 import SyntaxHighlighter from "react-syntax-highlighter";
 import { atomOneDark } from "react-syntax-highlighter/dist/esm/styles/hljs";
 import { createGlobalStyle } from "styled-components";
+import { ErrorBlock } from "./message-item/error-block";
+import { LogBlock } from "./message-item/log-block";
+import { OutputBlock } from "./message-item/output-block";
 
 // Global style to ensure Roboto Mono is applied to syntax highlighter
 const SyntaxHighlighterStyles = createGlobalStyle`
@@ -133,53 +136,80 @@ const CodeContainer = styled(Box)(() => ({
 }));
 
 /**
- * Component for displaying code with syntax highlighting in the loading indicator
+ * Displays a syntax-highlighted code/output block for loading indicator.
+ * Uses flex-direction: column-reverse to anchor scroll to the bottom via CSS.
+ * @param code - The code or output string to display.
+ * @param label - Optional label to display above the block.
+ * @param language - Optional language for syntax highlighting.
  */
-const LoadingCodeBlock: FC<{ code: string }> = ({ code }) => {
+const LoadingCodeBlock: FC<{
+	code: string;
+	label?: string;
+	language?: string;
+}> = ({ code, label, language = "python" }) => {
 	if (!code) return null;
 
 	return (
-		<Box
-			sx={{
-				width: "100%",
-				maxHeight: "300px",
-				overflow: "auto",
-				"&::-webkit-scrollbar": {
-					width: "6px",
-					height: "6px",
-				},
-				"&::-webkit-scrollbar-thumb": {
-					backgroundColor: "rgba(255, 255, 255, 0.1)",
-					borderRadius: "3px",
-				},
-				"&::-webkit-scrollbar-corner": {
-					backgroundColor: "rgba(0, 0, 0, 0.3)",
-				},
-				borderRadius: "8px",
-			}}
-		>
-			<SyntaxHighlighterStyles />
-			<SyntaxHighlighter
-				language="python"
-				style={atomOneDark}
-				customStyle={{
-					fontSize: "0.85rem",
+		<Box sx={{ width: "100%", marginBottom: 2 }}>
+			{label && (
+				<Typography
+					variant="caption"
+					sx={{
+						color: (theme) => theme.palette.text.secondary,
+						fontWeight: 600,
+						marginLeft: 0.5,
+						marginBottom: 0.5,
+						letterSpacing: 0.5,
+						textTransform: "uppercase",
+						opacity: 0.7,
+					}}
+				>
+					{label}
+				</Typography>
+			)}
+			<Box
+				sx={{
 					width: "100%",
-					boxShadow: "0 2px 6px rgba(0, 0, 0, 0.2)",
-					padding: "0.75rem",
-					margin: 0, // Remove margin to make it more compact
-				}}
-				codeTagProps={{
-					style: {
-						fontFamily: '"Roboto Mono", monospace !important',
+					maxHeight: "300px",
+					overflow: "auto",
+					display: "flex",
+					borderRadius: "8px",
+					"&::-webkit-scrollbar": {
+						width: "6px",
+						height: "6px",
+					},
+					"&::-webkit-scrollbar-thumb": {
+						backgroundColor: "rgba(255, 255, 255, 0.1)",
+						borderRadius: "3px",
+					},
+					"&::-webkit-scrollbar-corner": {
+						backgroundColor: "rgba(0, 0, 0, 0.3)",
 					},
 				}}
-				className="loading-syntax-highlighter"
-				wrapLines={true}
-				wrapLongLines={true}
 			>
-				{code}
-			</SyntaxHighlighter>
+				<SyntaxHighlighterStyles />
+				<SyntaxHighlighter
+					language={language}
+					style={atomOneDark}
+					customStyle={{
+						fontSize: "0.85rem",
+						width: "100%",
+						boxShadow: "0 2px 6px rgba(0, 0, 0, 0.2)",
+						padding: "0.75rem",
+						margin: 0,
+					}}
+					codeTagProps={{
+						style: {
+							fontFamily: '"Roboto Mono", monospace !important',
+						},
+					}}
+					className="loading-syntax-highlighter"
+					wrapLines={true}
+					wrapLongLines={true}
+				>
+					{code}
+				</SyntaxHighlighter>
+			</Box>
 		</Box>
 	);
 };
@@ -288,6 +318,9 @@ export const LoadingIndicator: FC<{
 	const isStreaming = !!streamingMessage && !streamingMessage.isComplete;
 
 	const codeSnippet = currentExecution?.code || null;
+	const stdout = currentExecution?.stdout || "";
+	const stderr = currentExecution?.stderr || "";
+	const logging = currentExecution?.logging || "";
 	const message = currentExecution?.message || null;
 	const statusText = currentExecution
 		? getDetailedStatusText(status, currentExecution)
@@ -353,7 +386,7 @@ export const LoadingIndicator: FC<{
 								<Dot delay={0.4} />
 							</DotContainer>
 
-							{codeSnippet && (
+							{(codeSnippet || stdout || stderr || logging) && (
 								<CodeToggleButton
 									onClick={toggleCodeExpansion}
 									size="small"
@@ -373,9 +406,18 @@ export const LoadingIndicator: FC<{
 					</StatusText>
 				</StatusContainer>
 
-				{codeSnippet && isCodeExpanded && (
+				{isCodeExpanded && (codeSnippet || stdout || stderr || logging) && (
 					<CodeContainer>
-						<LoadingCodeBlock code={codeSnippet} />
+						{codeSnippet && (
+							<LoadingCodeBlock
+								code={codeSnippet}
+								label="Code"
+								language="python"
+							/>
+						)}
+						{stdout && <OutputBlock output={stdout} isUser={false} />}
+						{stderr && <ErrorBlock error={stderr} isUser={false} />}
+						{logging && <LogBlock log={logging} isUser={false} />}
 					</CodeContainer>
 				)}
 			</ContentContainer>

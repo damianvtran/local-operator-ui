@@ -1,6 +1,7 @@
 import { Box, Typography, alpha } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import type { FC } from "react";
+
 /**
  * Props for the OutputBlock component
  */
@@ -35,9 +36,14 @@ const OutputContainer = styled(Box)(({ theme }) => ({
 	overflow: "auto",
 	whiteSpace: "pre",
 	width: "100%",
-	boxShadow: `0 2px 6px ${alpha(theme.palette.common.black, theme.palette.mode === "dark" ? 0.15 : 0.1)}`,
+	boxShadow: `0 2px 6px ${alpha(
+		theme.palette.common.black,
+		theme.palette.mode === "dark" ? 0.15 : 0.1,
+	)}`,
 	color: theme.palette.text.primary,
 	overflowX: "auto",
+	display: "flex",
+	flexDirection: "column-reverse",
 	"&::-webkit-scrollbar": {
 		width: "6px",
 		height: "6px",
@@ -63,6 +69,10 @@ const OutputContainer = styled(Box)(({ theme }) => ({
 
 /**
  * Component for displaying command output
+ *
+ * @param output - The output string to display.
+ * @param isUser - Whether the output is from the user.
+ * @returns The output block component.
  */
 export const OutputBlock: FC<OutputBlockProps> = ({ output }) => {
 	if (!output) return null;

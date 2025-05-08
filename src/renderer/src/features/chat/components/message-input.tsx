@@ -341,7 +341,6 @@ export const MessageInput: FC<MessageInputProps> = ({
 		textareaRef,
 	} = useMessageInput({
 		conversationId,
-		messages,
 		onSubmit,
 		scrollToBottom,
 	});
