@@ -17,9 +17,9 @@ import { useEffect, useState } from "react";
 import SyntaxHighlighter from "react-syntax-highlighter";
 import { atomOneDark } from "react-syntax-highlighter/dist/esm/styles/hljs";
 import { createGlobalStyle } from "styled-components";
-import { OutputBlock } from "./message-item/output-block";
 import { ErrorBlock } from "./message-item/error-block";
 import { LogBlock } from "./message-item/log-block";
+import { OutputBlock } from "./message-item/output-block";
 
 // Global style to ensure Roboto Mono is applied to syntax highlighter
 const SyntaxHighlighterStyles = createGlobalStyle`
@@ -142,11 +142,11 @@ const CodeContainer = styled(Box)(() => ({
  * @param label - Optional label to display above the block.
  * @param language - Optional language for syntax highlighting.
  */
-const LoadingCodeBlock: FC<{ code: string; label?: string; language?: string }> = ({
-	code,
-	label,
-	language = "python",
-}) => {
+const LoadingCodeBlock: FC<{
+	code: string;
+	label?: string;
+	language?: string;
+}> = ({ code, label, language = "python" }) => {
 	if (!code) return null;
 
 	return (
@@ -409,17 +409,15 @@ export const LoadingIndicator: FC<{
 				{isCodeExpanded && (codeSnippet || stdout || stderr || logging) && (
 					<CodeContainer>
 						{codeSnippet && (
-							<LoadingCodeBlock code={codeSnippet} label="Code" language="python" />
+							<LoadingCodeBlock
+								code={codeSnippet}
+								label="Code"
+								language="python"
+							/>
 						)}
-						{stdout && (
-							<OutputBlock output={stdout} isUser={false} />
-						)}
-						{stderr && (
-							<ErrorBlock error={stderr} isUser={false} />
-						)}
-						{logging && (
-							<LogBlock log={logging} isUser={false} />
-						)}
+						{stdout && <OutputBlock output={stdout} isUser={false} />}
+						{stderr && <ErrorBlock error={stderr} isUser={false} />}
+						{logging && <LogBlock log={logging} isUser={false} />}
 					</CodeContainer>
 				)}
 			</ContentContainer>
