@@ -33,6 +33,8 @@ const ErrorContainer = styled(Box, {
 	padding: 12,
 	maxHeight: "200px",
 	overflow: "auto",
+	display: "flex",
+	flexDirection: "column-reverse",
 	whiteSpace: "pre-wrap",
 	color: isUser ? theme.palette.error.main : theme.palette.error.light,
 	width: "100%",

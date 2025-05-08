@@ -35,6 +35,8 @@ const LogContainer = styled(Box, {
 	padding: 12,
 	maxHeight: "200px",
 	overflow: "auto",
+	display: "flex",
+	flexDirection: "column-reverse",
 	whiteSpace: "pre-wrap",
 	color: isUser ? theme.palette.info.main : theme.palette.info.light,
 	width: "100%",
