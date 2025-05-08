@@ -1,10 +1,10 @@
-import { useQuery } from "@tanstack/react-query";
 import { listAgentComments } from "@shared/api/radient/agents-api";
 import type {
 	AgentComment,
 	PaginatedResponse,
 } from "@shared/api/radient/types";
 import { apiConfig } from "@shared/config";
+import { useQuery } from "@tanstack/react-query";
 
 // Query keys for agent comments
 export const agentCommentsKeys = {

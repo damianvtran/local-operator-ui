@@ -13,6 +13,7 @@ import {
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import type { Agent } from "@shared/api/radient/types";
+import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import { formatDistanceToNowStrict } from "date-fns";
 import { Bot, Download, Heart, Info, Star } from "lucide-react";
 import type React from "react";
@@ -22,7 +23,6 @@ import { useAgentFavouriteCountQuery } from "../hooks/use-agent-favourite-count-
 import { useAgentLikeCountQuery } from "../hooks/use-agent-like-count-query";
 import { useDownloadAgentMutation } from "../hooks/use-download-agent-mutation";
 import { AgentTagsAndCategories } from "./agent-tags-and-categories";
-import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 
 type AgentCardProps = {
 	agent: Agent;
@@ -337,7 +337,11 @@ export const AgentCard: React.FC<AgentCardProps> = ({
 					<Tooltip title={likeTooltip}>
 						<span>
 							<LikeFavouriteButton
-								onClick={isAuthenticated ? (e) => handleActionClick(e, onLikeToggle) : undefined}
+								onClick={
+									isAuthenticated
+										? (e) => handleActionClick(e, onLikeToggle)
+										: undefined
+								}
 								disabled={isLikeActionLoading || !isAuthenticated}
 								color={isLiked ? "error" : undefined}
 								aria-label={isLiked ? "Unlike agent" : "Like agent"}
@@ -357,7 +361,7 @@ export const AgentCard: React.FC<AgentCardProps> = ({
 									{isLoadingLikes ? (
 										<Skeleton variant="text" width={20} />
 									) : (
-										likeCount ?? 0
+										(likeCount ?? 0)
 									)}
 								</CountDisplay>
 							</LikeFavouriteButton>
@@ -367,7 +371,11 @@ export const AgentCard: React.FC<AgentCardProps> = ({
 					<Tooltip title={favouriteTooltip}>
 						<span>
 							<LikeFavouriteButton
-								onClick={isAuthenticated ? (e) => handleActionClick(e, onFavouriteToggle) : undefined}
+								onClick={
+									isAuthenticated
+										? (e) => handleActionClick(e, onFavouriteToggle)
+										: undefined
+								}
 								disabled={isFavouriteActionLoading || !isAuthenticated}
 								color={isFavourited ? "warning" : undefined}
 								aria-label={
@@ -389,7 +397,7 @@ export const AgentCard: React.FC<AgentCardProps> = ({
 									{isLoadingFavourites ? (
 										<Skeleton variant="text" width={20} />
 									) : (
-										favouriteCount ?? 0
+										(favouriteCount ?? 0)
 									)}
 								</CountDisplay>
 							</LikeFavouriteButton>
