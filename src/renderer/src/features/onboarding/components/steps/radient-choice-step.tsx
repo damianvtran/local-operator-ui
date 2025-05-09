@@ -202,21 +202,8 @@ export const RadientChoiceStep: FC<RadientChoiceStepProps> = ({
 									<RadientPassText>Radient Pass</RadientPassText>
 								</CardTitle>
 								<CardSubtitle variant="body2">
-									{" "}
-									{/* Use variant */}
-									Batteries included with{" "}
-									<Typography
-										component="span"
-										fontWeight="medium" // Use medium weight
-										color={radientTheme.palette.primary.main} // Use Radient color
-										sx={{ fontSize: "inherit" }} // Ensure size matches parent
-									>
-										web search, image generation, site crawling, hundreds of AI
-										models
-									</Typography>
-									, and more. One API key instead of many, with potential
-									savings when Radient picks the best model to handle each step.
-									Two-click setup, no credit card required.
+									Designed for best speed, accuracy, and performance with Local
+									Operator. Get access to all tools and models at once, with potential savings when Radient picks the best model to handle each step. Two-click setup, no credit card required.
 								</CardSubtitle>
 							</Box>
 							<CardIcon>
@@ -249,7 +236,7 @@ export const RadientChoiceStep: FC<RadientChoiceStepProps> = ({
 								</CardTitle>
 								<CardSubtitle variant="body2">
 									Full flexibility for technical users. Bring your own API keys
-									for providers like OpenAI, Anthropic, SERP API, etc., and
+									for providers like OpenAI, Anthropic, Tavily API, etc., and
 									manage billing separately.
 								</CardSubtitle>
 							</Box>
