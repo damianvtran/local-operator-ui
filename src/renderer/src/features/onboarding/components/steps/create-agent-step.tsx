@@ -36,8 +36,6 @@ const RECOMMENDED_AGENT_COUNT = 8;
 const StyledGridContainer = styled(Grid)(({ theme }) => ({
 	overflowY: "auto",
 	padding: theme.spacing(2, 0),
-	height: 400,
-	maxHeight: 400,
 	flexGrow: 1,
 	width: "100%",
 	"&::-webkit-scrollbar": {
@@ -236,7 +234,7 @@ export const CreateAgentStep: FC<CreateAgentStepProps> = ({
 							</Grid>
 						) : (
 							recommendedAgents.map((agent) => (
-								<Grid item key={agent.id} xs={12} sm={6} md={6} lg={4}>
+								<Grid item key={agent.id} xs={12} sm={6} md={6} lg={6}>
 									{/* Wrap AgentCard to show added state */}
 									<Box
 										sx={{
