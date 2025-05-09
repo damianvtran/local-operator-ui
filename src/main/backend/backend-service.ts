@@ -54,6 +54,11 @@ export class BackendServiceManager {
 	private shellEnv: Record<string, string | undefined> = {};
 	private isAppClosing = false; // Flag to track when the app is being closed
 	private isAutoUpdating = false; // Flag to track when an autoupdate is in progress
+	private shutdownTimeoutMs = {
+		restart: 10000, // 10 seconds for restart operations
+		normal: 5000,   // 5 seconds for normal shutdowns
+		force: 3000     // 3 seconds before force killing after SIGKILL
+	}; // Configurable timeouts for different shutdown scenarios
 
 	/**
 	 * Constructor
@@ -805,11 +810,19 @@ export class BackendServiceManager {
 
 				// Wait for process to exit with timeout
 				const timeoutPromise = new Promise<void>((resolve) => {
+					// Determine which timeout to use based on the operation type
+					const timeoutMs = isRestart ? this.shutdownTimeoutMs.restart : this.shutdownTimeoutMs.normal;
+					
+					logger.info(
+						`Setting shutdown timeout to ${timeoutMs}ms for ${isRestart ? 'restart' : 'normal'} operation`,
+						LogFileType.BACKEND,
+					);
+					
 					forceKillTimeoutId = setTimeout(
 						() => {
 							if (this.process) {
 								logger.info(
-									"Backend process did not exit in time, force killing",
+									`Backend process did not exit within ${timeoutMs}ms, force killing`,
 									LogFileType.BACKEND,
 								);
 								try {
@@ -875,6 +888,35 @@ export class BackendServiceManager {
 												pkillError,
 											);
 										}
+										
+										// Set a final force kill timeout in case SIGKILL doesn't work
+										setTimeout(() => {
+											if (this.process) {
+												logger.warn(
+													`Process still exists after SIGKILL, attempting more aggressive termination after ${this.shutdownTimeoutMs.force}ms`,
+													LogFileType.BACKEND,
+												);
+												try {
+													// Try more aggressive methods
+													execPromise('pkill -9 -f "local-operator serve"').catch(() => {});
+													
+													// Even if these fail, mark the process as stopped
+													this.process = null;
+													this.isRunning = false;
+													
+													if (this.exitResolve) {
+														this.exitResolve();
+														this.exitResolve = null;
+													}
+												} catch (finalError) {
+													logger.error(
+														"Error during final force kill attempt:",
+														LogFileType.BACKEND,
+														finalError,
+													);
+												}
+											}
+										}, this.shutdownTimeoutMs.force);
 									}
 								} catch (error) {
 									logger.error(
@@ -896,8 +938,8 @@ export class BackendServiceManager {
 							}
 							resolve();
 						},
-						isRestart ? 10000 : 5000,
-					); // Use longer timeout for restart operations, but not too long
+						timeoutMs,
+					);
 				});
 
 				// Wait for either the process to exit or the timeout
