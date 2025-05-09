@@ -7,7 +7,7 @@ import {
 	Typography,
 	styled,
 } from "@mui/material";
-import { useDeferredUpdatesStore } from "@shared/store/deferred-updates-store";
+import { useDeferredUpdatesStore, UpdateType } from "@shared/store/deferred-updates-store";
 import type { ProgressInfo, UpdateInfo } from "electron-updater";
 import parse from "html-react-parser";
 import { useCallback, useEffect, useState } from "react";
@@ -93,7 +93,7 @@ export const UpdateNotification = ({
 	} | null>(null);
 
 	// Access the deferred updates store
-	const { shouldShowUpdate, deferUpdate } = useDeferredUpdatesStore();
+	const { shouldShowUpdate, deferUpdate, hydrated } = useDeferredUpdatesStore();
 
 	// Get app version on mount
 	useEffect(() => {
@@ -102,6 +102,15 @@ export const UpdateNotification = ({
 			.then((version) => setAppVersion(version))
 			.catch(() => setAppVersion("unknown"));
 	}, []);
+
+	/**
+	 * Do not render notifications until the deferred updates store is hydrated.
+	 * This prevents race conditions where notifications could appear before
+	 * the persisted state is loaded and respected.
+	 */
+	if (!hydrated) {
+		return null;
+	}
 
 	// Check for updates
 	const checkForUpdates = useCallback(async () => {
@@ -160,7 +169,7 @@ export const UpdateNotification = ({
 	// Handle deferring a backend update
 	const handleDeferBackendUpdate = useCallback(() => {
 		if (backendUpdateInfo) {
-			deferUpdate(backendUpdateInfo.latestVersion);
+			deferUpdate(UpdateType.BACKEND, backendUpdateInfo.latestVersion);
 			setSnackbarOpen(false);
 			setBackendUpdateAvailable(false);
 			setBackendUpdateInfo(null);
@@ -170,7 +179,7 @@ export const UpdateNotification = ({
 	// Handle deferring an update
 	const handleDeferUpdate = useCallback(() => {
 		if (updateInfo) {
-			deferUpdate(updateInfo.version);
+			deferUpdate(UpdateType.UI, updateInfo.version);
 			setSnackbarOpen(false);
 			setUpdateAvailable(false);
 			setUpdateDownloaded(false);
@@ -183,7 +192,7 @@ export const UpdateNotification = ({
 		const removeUpdateAvailableListener = window.api.updater.onUpdateAvailable(
 			(info) => {
 				// Only show the update if it hasn't been deferred or the defer timeline has passed
-				if (shouldShowUpdate(info.version)) {
+				if (shouldShowUpdate(UpdateType.UI, info.version)) {
 					setUpdateAvailable(true);
 					setUpdateInfo(info);
 					setSnackbarOpen(true);
@@ -203,7 +212,7 @@ export const UpdateNotification = ({
 			window.api.updater.onUpdateDownloaded((info) => {
 				setDownloading(false);
 				// Only show the update if it hasn't been deferred or the defer timeline has passed
-				if (shouldShowUpdate(info.version)) {
+				if (shouldShowUpdate(UpdateType.UI, info.version)) {
 					setUpdateDownloaded(true);
 					setUpdateInfo(info);
 					setSnackbarOpen(true);
@@ -242,7 +251,7 @@ export const UpdateNotification = ({
 		const removeBackendUpdateAvailableListener =
 			window.api.updater.onBackendUpdateAvailable((info) => {
 				// Only show the update if it hasn't been deferred or the defer timeline has passed
-				if (shouldShowUpdate(info.latestVersion)) {
+				if (shouldShowUpdate(UpdateType.BACKEND, info.latestVersion)) {
 					// Add canManageUpdate property based on the update command
 					// If the command contains "manually", it can't be managed
 					const enhancedInfo: BackendUpdateInfo = {
