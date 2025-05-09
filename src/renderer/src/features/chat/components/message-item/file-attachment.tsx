@@ -131,8 +131,20 @@ export const FileAttachment: FC<FileAttachmentProps> = ({
 				const files = state.conversations[conversationId]?.files ?? [];
 				const openTabs = state.conversations[conversationId]?.openTabs ?? [];
 
-				const existsFile = files.some((d) => d.id === docId);
-				const updatedFiles = existsFile ? files : [...files, newDoc];
+				// Always update the file content if it exists, or add it if not
+				const updatedFiles = (() => {
+					const idx = files.findIndex((d) => d.id === docId);
+					if (idx !== -1) {
+						// Replace the file with the new content
+						return [
+							...files.slice(0, idx),
+							newDoc,
+							...files.slice(idx + 1),
+						];
+					}
+					// Add new file
+					return [...files, newDoc];
+				})();
 				setFiles(conversationId, updatedFiles);
 
 				const existsTab = openTabs.some((t) => t.id === docId);
