@@ -17,7 +17,6 @@ import {
 } from "@shared/store/onboarding-store";
 import { useUserStore } from "@shared/store/user-store";
 import { clearSession, getSession } from "@shared/utils/session-store";
-import { showErrorToast } from "@shared/utils/toast-manager";
 import { useQueryClient } from "@tanstack/react-query";
 import type { FC } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -128,7 +127,6 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 				}
 			} catch (error) {
 				console.error("Error validating session/fetching user info:", error);
-				showErrorToast("Session validation failed. Please sign in again.");
 				clearSession();
 			}
 		};
