@@ -203,7 +203,9 @@ export const RadientChoiceStep: FC<RadientChoiceStepProps> = ({
 								</CardTitle>
 								<CardSubtitle variant="body2">
 									Designed for best speed, accuracy, and performance with Local
-									Operator. Get access to all tools and models at once, with potential savings when Radient picks the best model to handle each step. Two-click setup, no credit card required.
+									Operator. Get access to all tools and models at once, with
+									potential savings when Radient picks the best model to handle
+									each step. Two-click setup, no credit card required.
 								</CardSubtitle>
 							</Box>
 							<CardIcon>

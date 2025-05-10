@@ -136,11 +136,7 @@ export const FileAttachment: FC<FileAttachmentProps> = ({
 					const idx = files.findIndex((d) => d.id === docId);
 					if (idx !== -1) {
 						// Replace the file with the new content
-						return [
-							...files.slice(0, idx),
-							newDoc,
-							...files.slice(idx + 1),
-						];
+						return [...files.slice(0, idx), newDoc, ...files.slice(idx + 1)];
 					}
 					// Add new file
 					return [...files, newDoc];

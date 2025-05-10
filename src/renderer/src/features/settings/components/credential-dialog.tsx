@@ -1,4 +1,6 @@
 import { CREDENTIAL_MANIFEST } from "@features/settings/components/credential-manifest";
+import { faKey } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
 	Box,
 	Button,
@@ -6,21 +8,19 @@ import {
 	FormControl,
 	Link,
 	MenuItem,
+	OutlinedInput,
 	Select,
 	TextField,
 	Typography,
-	useTheme,
 	alpha,
 	styled,
-	OutlinedInput,
+	useTheme,
 } from "@mui/material";
-import { faKey } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import type { Theme } from "@mui/material/styles";
 import type { CredentialUpdate } from "@shared/api/local-operator/types";
 import { BaseDialog } from "@shared/components/common/base-dialog";
 import { useEffect, useState } from "react";
 import type { FC } from "react";
-import type { Theme } from "@mui/material/styles";
 
 /**
  * Styled OutlinedInput for Select to achieve shadcn/modern look
@@ -335,7 +335,9 @@ export const CredentialDialog: FC<CredentialDialogProps> = ({
 								}}
 								displayEmpty={!key && !useCustomKey}
 								MenuProps={menuPropsSx(theme)}
-								input={<StyledOutlinedInput notched={false} label={undefined} />}
+								input={
+									<StyledOutlinedInput notched={false} label={undefined} />
+								}
 							>
 								<MenuItem value="" disabled>
 									<em>Select a credential type...</em>

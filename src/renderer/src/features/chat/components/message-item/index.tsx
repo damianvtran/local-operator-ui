@@ -2,7 +2,7 @@ import { Box } from "@mui/material";
 import { createLocalOperatorClient } from "@shared/api/local-operator";
 import { apiConfig } from "@shared/config";
 import { useCanvasStore } from "@shared/store/canvas-store";
-import { type FC, memo, useCallback, useMemo, useEffect } from "react";
+import { type FC, memo, useCallback, useEffect, useMemo } from "react";
 import type { Message } from "../../types/message";
 import { ActionHighlight } from "./action-highlight";
 import { BackgroundBlock } from "./background-block";
@@ -153,7 +153,9 @@ export const MessageItem: FC<MessageItemProps> = memo(
 					const tabIsOpen = openTabs.some((tab) => tab.id === normalizedPath);
 					if (!tabIsOpen) continue;
 
-					const fileIdx = updatedFiles.findIndex((f) => f.id === normalizedPath);
+					const fileIdx = updatedFiles.findIndex(
+						(f) => f.id === normalizedPath,
+					);
 					if (fileIdx === -1) continue;
 
 					try {
