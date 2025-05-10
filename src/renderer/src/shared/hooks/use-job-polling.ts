@@ -371,60 +371,86 @@ export const useJobPolling = ({
 		queryFn: async () => {
 			if (!currentJobId) return null;
 
-			// Create a client instance to use the properly typed API
 			const client = createLocalOperatorClient(apiConfig.baseUrl);
-			const response = await client.jobs.getJobStatus(currentJobId);
-			return response.result;
+			try {
+				const response = await client.jobs.getJobStatus(currentJobId);
+				return response.result;
+			} catch (err) {
+				// If the error is a 404, treat as job complete (not found)
+				const errorObj = err as {
+					response?: { status?: number };
+					status?: number;
+					message?: string;
+				};
+				if (
+					errorObj?.response?.status === 404 ||
+					errorObj?.status === 404 ||
+					errorObj?.message?.toString().includes("404")
+				) {
+					return { status: "not_found" };
+				}
+				throw err;
+			}
 		},
-		// Only run the query if we have a job ID and server is online (bypass internet check)
 		enabled: shouldEnableQuery({ bypassInternetCheck: true }) && !!currentJobId,
-		// Poll every 1 second while job is active
 		refetchInterval: currentJobId ? 1000 : false,
 		refetchIntervalInBackground: false,
 		refetchOnWindowFocus: true,
-		// Don't cache the result
 		gcTime: 0,
 		staleTime: 0,
-		// Retry failed requests to ensure polling continues
 		retry: true,
 		retryDelay: 1000,
 	});
 
-	// Process job data when it changes
-	// biome-ignore lint/correctness/useExhaustiveDependencies: setCurrentExecution and setCurrentJobId are stable
+	// Type guard to check if jobData is JobDetails
+	function isJobDetails(data: unknown): data is JobDetails {
+		return (
+			typeof data === "object" &&
+			data !== null &&
+			"id" in data &&
+			typeof (data as { id?: unknown }).id === "string"
+		);
+	}
+
+	// Process job data when it changes, including handling 404 (not_found) as job complete
+	// biome-ignore lint/correctness/useExhaustiveDependencies: isJobDetails is a local function and does not need to be a dependency
 	useEffect(() => {
-		if (!jobData || !conversationId) return undefined;
+		if (!conversationId) return undefined;
 
-		// Create a unique identifier for the current job data to detect changes
-		const jobDataSignature = `${jobData.id}-${jobData.status}-${dataUpdatedAt}`;
-
-		// Only process if this is new data
-		if (jobDataSignature !== lastProcessedJobDataRef.current) {
-			// Update the reference to the last processed job data
-			lastProcessedJobDataRef.current = jobDataSignature;
-
-			// Update current execution data if available
-			if (jobData.current_execution) {
-				setCurrentExecution(jobData.current_execution);
-			}
-
-			// Update messages on each poll to show real-time progress, but with debounce
-			// to prevent too frequent updates that cause flickering
-			if (jobData.status === "processing") {
-				// Use a debounced update to prevent flickering
-				const debounceTimeout = setTimeout(() => {
-					updateConversationMessages(conversationId);
-				}, 500); // 500ms debounce
-
-				// Clean up timeout if component unmounts or job data changes again
-				return () => clearTimeout(debounceTimeout);
-			}
-
-			// If job is completed or failed, handle it immediately
-			if (jobData.status === "completed" || jobData.status === "failed") {
-				handleJobCompletion(jobData);
-				// Clear current execution when job is complete
+		// Handle 404 (not_found) as job complete
+		if (jobData && jobData.status === "not_found") {
+			(async () => {
+				await updateConversationMessages(conversationId);
+				setCurrentJobId(null);
+				setIsLoading(false);
 				setCurrentExecution(null);
+			})();
+			return;
+		}
+
+		if (!jobData) return undefined;
+
+		if (isJobDetails(jobData)) {
+			const jobDataSignature = `${jobData.id}-${jobData.status}-${dataUpdatedAt}`;
+
+			if (jobDataSignature !== lastProcessedJobDataRef.current) {
+				lastProcessedJobDataRef.current = jobDataSignature;
+
+				if (jobData.current_execution) {
+					setCurrentExecution(jobData.current_execution);
+				}
+
+				if (jobData.status === "processing") {
+					const debounceTimeout = setTimeout(() => {
+						updateConversationMessages(conversationId);
+					}, 500);
+					return () => clearTimeout(debounceTimeout);
+				}
+
+				if (jobData.status === "completed" || jobData.status === "failed") {
+					handleJobCompletion(jobData);
+					setCurrentExecution(null);
+				}
 			}
 		}
 
@@ -435,7 +461,6 @@ export const useJobPolling = ({
 		handleJobCompletion,
 		conversationId,
 		updateConversationMessages,
-		setCurrentExecution,
 		setCurrentJobId,
 	]);
 
@@ -450,10 +475,28 @@ export const useJobPolling = ({
 		}
 	}, [error, currentJobId, queryClient]);
 
+	// Only allow valid JobStatus values for jobStatus
+	const validJobStatuses: JobStatus[] = [
+		"pending",
+		"processing",
+		"completed",
+		"failed",
+		"cancelled",
+	];
+
+	let jobStatus: JobStatus | null = null;
+	if (
+		jobData &&
+		typeof jobData.status === "string" &&
+		(validJobStatuses as string[]).includes(jobData.status)
+	) {
+		jobStatus = jobData.status as JobStatus;
+	}
+
 	return {
 		currentJobId,
 		setCurrentJobId,
-		jobStatus: jobData?.status || null,
+		jobStatus,
 		isLoading,
 		setIsLoading,
 		checkForActiveJobs,
