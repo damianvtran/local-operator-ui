@@ -61,13 +61,13 @@ export const InstallationProgress: React.FC = () => {
 				variant="body1" 
 				sx={{ textAlign: "center", color: "text.secondary", fontSize: "1rem" }} 
 			>
-				Installing dependencies and configuring your environment...
+				Installing Python and other AI dependencies for Local Operator assistants on your device...
 			</Typography>
       <Typography
 				variant="body1"
 				sx={{ textAlign: "center", color: "text.secondary", fontSize: "0.875rem" }}
 			>
-				This will take a few minutes.
+				This will take a few minutes.  You can minimize this window and continue using your computer in the meantime, you will get a notification when it's done.
 			</Typography>
 
 			<Button
