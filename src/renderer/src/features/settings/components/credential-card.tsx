@@ -139,8 +139,6 @@ export const CredentialCard: FC<CredentialCardProps> = ({
 					/>
 					{credInfo.name}
 				</CredentialName>
-				{/* Info Tooltip - Keep ts-ignore as requested */}
-				{/* @ts-ignore */}
 				<Tooltip title={credInfo.description} placement="top">
 					<IconButton
 						size="small"
@@ -191,7 +189,13 @@ export const CredentialCard: FC<CredentialCardProps> = ({
 							variant="outlined"
 							size="small"
 							color="primary"
-							startIcon={<FontAwesomeIcon icon={faKey} size="xs" />}
+							startIcon={
+								<FontAwesomeIcon
+									icon={faKey}
+									size="xs"
+									style={{ fontSize: "0.875rem" }}
+								/>
+							}
 							onClick={() => onAdd?.(credentialKey)}
 							sx={{ ...primaryButtonSx, boxShadow: "none" }}
 						>
@@ -199,8 +203,6 @@ export const CredentialCard: FC<CredentialCardProps> = ({
 						</Button>
 						{/* Link to get key (if URL exists) */}
 						{credInfo.url && (
-							// Keep ts-ignore as requested
-							// @ts-ignore
 							<Tooltip title={`Get your ${credInfo.name} key`} placement="top">
 								<IconButton
 									size="small"

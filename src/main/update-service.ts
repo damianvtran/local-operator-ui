@@ -142,12 +142,29 @@ export class UpdateService {
 	/**
 	 * Clean up resources when the service is no longer needed
 	 */
+	/**
+	 * Clean up resources, event listeners, and IPC handlers when the service is no longer needed
+	 */
 	public dispose(): void {
 		// Clear the update check interval
 		if (this.updateCheckInterval) {
 			clearInterval(this.updateCheckInterval);
 			this.updateCheckInterval = null;
 		}
+
+		// Remove all autoUpdater event listeners
+		autoUpdater.removeAllListeners();
+
+		// Remove all relevant IPC handlers
+		ipcMain.removeHandler("check-for-updates");
+		ipcMain.removeHandler("check-for-backend-updates");
+		ipcMain.removeHandler("check-for-all-updates");
+		ipcMain.removeHandler("update-backend");
+		ipcMain.removeHandler("download-update");
+		ipcMain.removeHandler("quit-and-install");
+
+		// Set mainWindow to null to break references
+		this.mainWindow = null;
 
 		// Ensure backend service is stopped if it's running
 		if (this.backendService && !this.backendService.isUsingExternalBackend()) {
@@ -287,7 +304,12 @@ export class UpdateService {
 		// When an update is available
 		autoUpdater.on("update-available", (info) => {
 			logger.info("Update available:", LogFileType.UPDATE_SERVICE, info);
-			if (this.mainWindow) {
+			if (
+				this.mainWindow &&
+				!this.mainWindow.isDestroyed() &&
+				this.mainWindow.webContents &&
+				!this.mainWindow.webContents.isDestroyed()
+			) {
 				this.mainWindow.webContents.send("update-available", info);
 			}
 		});
@@ -295,7 +317,12 @@ export class UpdateService {
 		// When no update is available
 		autoUpdater.on("update-not-available", (info) => {
 			logger.info("No update available:", LogFileType.UPDATE_SERVICE, info);
-			if (this.mainWindow) {
+			if (
+				this.mainWindow &&
+				!this.mainWindow.isDestroyed() &&
+				this.mainWindow.webContents &&
+				!this.mainWindow.webContents.isDestroyed()
+			) {
 				this.mainWindow.webContents.send("update-not-available", info);
 			}
 		});
@@ -303,7 +330,12 @@ export class UpdateService {
 		// When an update has been downloaded
 		autoUpdater.on("update-downloaded", (info) => {
 			logger.info("Update downloaded:", LogFileType.UPDATE_SERVICE, info);
-			if (this.mainWindow) {
+			if (
+				this.mainWindow &&
+				!this.mainWindow.isDestroyed() &&
+				this.mainWindow.webContents &&
+				!this.mainWindow.webContents.isDestroyed()
+			) {
 				this.mainWindow.webContents.send("update-downloaded", info);
 			}
 		});
@@ -320,14 +352,24 @@ export class UpdateService {
 					"Error filtering result: Reporting as no updates available",
 				);
 				// Send update-not-available instead of the error
-				if (this.mainWindow) {
+				if (
+					this.mainWindow &&
+					!this.mainWindow.isDestroyed() &&
+					this.mainWindow.webContents &&
+					!this.mainWindow.webContents.isDestroyed()
+				) {
 					this.mainWindow.webContents.send("update-not-available", {
 						version: app.getVersion(),
 					});
 				}
 			} else {
 				// Only send the error to the renderer if it shouldn't be filtered
-				if (this.mainWindow) {
+				if (
+					this.mainWindow &&
+					!this.mainWindow.isDestroyed() &&
+					this.mainWindow.webContents &&
+					!this.mainWindow.webContents.isDestroyed()
+				) {
 					this.mainWindow.webContents.send("update-error", err.message);
 				}
 			}
@@ -340,7 +382,12 @@ export class UpdateService {
 				LogFileType.UPDATE_SERVICE,
 				progressObj,
 			);
-			if (this.mainWindow) {
+			if (
+				this.mainWindow &&
+				!this.mainWindow.isDestroyed() &&
+				this.mainWindow.webContents &&
+				!this.mainWindow.webContents.isDestroyed()
+			) {
 				this.mainWindow.webContents.send("update-progress", progressObj);
 			}
 		});
@@ -353,7 +400,12 @@ export class UpdateService {
 				"Application will quit and install update",
 				LogFileType.UPDATE_SERVICE,
 			);
-			if (this.mainWindow) {
+			if (
+				this.mainWindow &&
+				!this.mainWindow.isDestroyed() &&
+				this.mainWindow.webContents &&
+				!this.mainWindow.webContents.isDestroyed()
+			) {
 				this.mainWindow.webContents.send("before-quit-for-update");
 			}
 		});
@@ -493,7 +545,12 @@ export class UpdateService {
 						LogFileType.UPDATE_SERVICE,
 					);
 					// Return a "no update available" result instead of throwing the error
-					if (this.mainWindow) {
+					if (
+						this.mainWindow &&
+						!this.mainWindow.isDestroyed() &&
+						this.mainWindow.webContents &&
+						!this.mainWindow.webContents.isDestroyed()
+					) {
 						this.mainWindow.webContents.send("update-not-available", {
 							version: app.getVersion(),
 						});
@@ -537,7 +594,13 @@ export class UpdateService {
 					LogFileType.UPDATE_SERVICE,
 				);
 
-				if (!silent && this.mainWindow) {
+				if (
+					!silent &&
+					this.mainWindow &&
+					!this.mainWindow.isDestroyed() &&
+					this.mainWindow.webContents &&
+					!this.mainWindow.webContents.isDestroyed()
+				) {
 					this.mainWindow.webContents.send(
 						"update-dev-mode",
 						"Application is running in development mode. Updates are disabled.",
@@ -567,7 +630,12 @@ export class UpdateService {
 							LogFileType.UPDATE_SERVICE,
 						);
 
-						if (this.mainWindow) {
+						if (
+							this.mainWindow &&
+							!this.mainWindow.isDestroyed() &&
+							this.mainWindow.webContents &&
+							!this.mainWindow.webContents.isDestroyed()
+						) {
 							this.mainWindow.webContents.send("update-npx-available", {
 								currentVersion,
 								latestVersion,
@@ -580,7 +648,12 @@ export class UpdateService {
 							LogFileType.UPDATE_SERVICE,
 						);
 
-						if (this.mainWindow) {
+						if (
+							this.mainWindow &&
+							!this.mainWindow.isDestroyed() &&
+							this.mainWindow.webContents &&
+							!this.mainWindow.webContents.isDestroyed()
+						) {
 							this.mainWindow.webContents.send("update-not-available", {
 								version: currentVersion,
 							});
@@ -629,7 +702,13 @@ export class UpdateService {
 				LogFileType.UPDATE_SERVICE,
 				error,
 			);
-			if (this.mainWindow && !silent) {
+			if (
+				this.mainWindow &&
+				!this.mainWindow.isDestroyed() &&
+				this.mainWindow.webContents &&
+				!this.mainWindow.webContents.isDestroyed() &&
+				!silent
+			) {
 				this.mainWindow.webContents.send(
 					"update-error",
 					(error as Error).message,
@@ -905,7 +984,13 @@ export class UpdateService {
 					LogFileType.UPDATE_SERVICE,
 				);
 
-				if (!silent && this.mainWindow) {
+				if (
+					!silent &&
+					this.mainWindow &&
+					!this.mainWindow.isDestroyed() &&
+					this.mainWindow.webContents &&
+					!this.mainWindow.webContents.isDestroyed()
+				) {
 					this.mainWindow.webContents.send(
 						"backend-update-dev-mode",
 						"Backend updates are disabled in development mode.",
@@ -936,7 +1021,13 @@ export class UpdateService {
 					"Unable to determine backend versions.",
 					LogFileType.UPDATE_SERVICE,
 				);
-				if (!silent && this.mainWindow) {
+				if (
+					!silent &&
+					this.mainWindow &&
+					!this.mainWindow.isDestroyed() &&
+					this.mainWindow.webContents &&
+					!this.mainWindow.webContents.isDestroyed()
+				) {
 					this.mainWindow.webContents.send(
 						"backend-update-error",
 						"Unable to determine backend version.",
@@ -979,7 +1070,12 @@ export class UpdateService {
 					startupMode,
 				};
 
-				if (this.mainWindow) {
+				if (
+					this.mainWindow &&
+					!this.mainWindow.isDestroyed() &&
+					this.mainWindow.webContents &&
+					!this.mainWindow.webContents.isDestroyed()
+				) {
 					this.mainWindow.webContents.send(
 						"backend-update-available",
 						updateInfo,
@@ -994,7 +1090,13 @@ export class UpdateService {
 				LogFileType.UPDATE_SERVICE,
 			);
 
-			if (!silent && this.mainWindow) {
+			if (
+				!silent &&
+				this.mainWindow &&
+				!this.mainWindow.isDestroyed() &&
+				this.mainWindow.webContents &&
+				!this.mainWindow.webContents.isDestroyed()
+			) {
 				this.mainWindow.webContents.send("backend-update-not-available", {
 					version: installedVersion,
 				});
@@ -1008,7 +1110,13 @@ export class UpdateService {
 				error,
 			);
 
-			if (!silent && this.mainWindow) {
+			if (
+				!silent &&
+				this.mainWindow &&
+				!this.mainWindow.isDestroyed() &&
+				this.mainWindow.webContents &&
+				!this.mainWindow.webContents.isDestroyed()
+			) {
 				this.mainWindow.webContents.send(
 					"backend-update-error",
 					(error as Error).message,
@@ -1033,7 +1141,12 @@ export class UpdateService {
 					"No backend service reference available, cannot update",
 					LogFileType.UPDATE_SERVICE,
 				);
-				if (this.mainWindow) {
+				if (
+					this.mainWindow &&
+					!this.mainWindow.isDestroyed() &&
+					this.mainWindow.webContents &&
+					!this.mainWindow.webContents.isDestroyed()
+				) {
 					this.mainWindow.webContents.send(
 						"backend-update-error",
 						"No backend service reference available, cannot update.",
@@ -1051,7 +1164,12 @@ export class UpdateService {
 						"No python server is available, nothing to update",
 						LogFileType.UPDATE_SERVICE,
 					);
-					if (this.mainWindow) {
+					if (
+						this.mainWindow &&
+						!this.mainWindow.isDestroyed() &&
+						this.mainWindow.webContents &&
+						!this.mainWindow.webContents.isDestroyed()
+					) {
 						this.mainWindow.webContents.send(
 							"backend-update-error",
 							"No python server is available, nothing to update.",
@@ -1065,7 +1183,12 @@ export class UpdateService {
 						"Cannot manage update for existing server. User must update manually.",
 						LogFileType.UPDATE_SERVICE,
 					);
-					if (this.mainWindow) {
+					if (
+						this.mainWindow &&
+						!this.mainWindow.isDestroyed() &&
+						this.mainWindow.webContents &&
+						!this.mainWindow.webContents.isDestroyed()
+					) {
 						this.mainWindow.webContents.send("backend-update-manual-required", {
 							message:
 								"Please update the local-operator package manually using pip.",
@@ -1282,7 +1405,12 @@ export class UpdateService {
 				LogFileType.UPDATE_SERVICE,
 			);
 
-			if (this.mainWindow) {
+			if (
+				this.mainWindow &&
+				!this.mainWindow.isDestroyed() &&
+				this.mainWindow.webContents &&
+				!this.mainWindow.webContents.isDestroyed()
+			) {
 				this.mainWindow.webContents.send("backend-update-completed");
 			}
 
@@ -1314,7 +1442,12 @@ export class UpdateService {
 				}
 			}
 
-			if (this.mainWindow) {
+			if (
+				this.mainWindow &&
+				!this.mainWindow.isDestroyed() &&
+				this.mainWindow.webContents &&
+				!this.mainWindow.webContents.isDestroyed()
+			) {
 				this.mainWindow.webContents.send(
 					"backend-update-error",
 					(error as Error).message,
