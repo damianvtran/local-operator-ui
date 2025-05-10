@@ -167,11 +167,11 @@ const StyledSlider = styled(Slider)(({ theme }) => ({
 const InputContainer = styled(Box)({
 	display: "flex",
 	alignItems: "center",
-	minWidth: "90px", // Slightly reduced min-width
+	minWidth: "110px", // Increased min-width for wider input
 });
 
 const StyledTextField = styled(TextField)(({ theme }) => ({
-	width: "90px", // Fixed width
+	width: "110px", // Increased width for wider input
 	"& .MuiOutlinedInput-root": {
 		borderRadius: theme.shape.borderRadius, // Standard border radius
 		backgroundColor: theme.palette.background.default, // Use default background
