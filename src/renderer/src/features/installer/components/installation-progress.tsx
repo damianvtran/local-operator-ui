@@ -1,10 +1,4 @@
-import {
-	Box,
-	Button,
-	Typography,
-	useTheme,
-	alpha, 
-} from "@mui/material";
+import { Box, Button, Typography, alpha, useTheme } from "@mui/material";
 import type React from "react";
 import { Spinner, SpinnerContainer } from "./installer-styled";
 
@@ -53,35 +47,44 @@ export const InstallationProgress: React.FC = () => {
 				{/* LinearProgress removed as per feedback */}
 			</Box>
 
-			<SpinnerContainer sx={{ my: 2 }}> {/* Added some margin for better spacing */}
+			<SpinnerContainer sx={{ my: 2 }}>
+				{" "}
+				{/* Added some margin for better spacing */}
 				<Spinner />
 			</SpinnerContainer>
 
 			<Typography
-				variant="body1" 
-				sx={{ textAlign: "center", color: "text.secondary", fontSize: "1rem" }} 
-			>
-				Installing Python and other AI dependencies for Local Operator assistants on your device...
-			</Typography>
-      <Typography
 				variant="body1"
-				sx={{ textAlign: "center", color: "text.secondary", fontSize: "0.875rem" }}
+				sx={{ textAlign: "center", color: "text.secondary", fontSize: "1rem" }}
 			>
-				This will take a few minutes.  You can minimize this window and continue using your computer in the meantime, you will get a notification when it's done.
+				Installing Python and other AI dependencies for Local Operator
+				assistants on your device...
+			</Typography>
+			<Typography
+				variant="body1"
+				sx={{
+					textAlign: "center",
+					color: "text.secondary",
+					fontSize: "0.875rem",
+				}}
+			>
+				This will take a few minutes. You can minimize this window and continue
+				using your computer in the meantime, you will get a notification when
+				it's done.
 			</Typography>
 
 			<Button
-				variant="outlined" 
+				variant="outlined"
 				color="error"
 				onClick={handleCancel}
 				sx={{
 					alignSelf: "center",
-					px: 3, 
+					px: 3,
 					py: 1,
-					borderRadius: theme.shape.borderRadius, 
+					borderRadius: theme.shape.borderRadius,
 					borderColor: theme.palette.error.main,
 					"&:hover": {
-						backgroundColor: alpha(theme.palette.error.main, 0.08), 
+						backgroundColor: alpha(theme.palette.error.main, 0.08),
 						borderColor: theme.palette.error.dark,
 					},
 				}}

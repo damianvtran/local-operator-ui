@@ -1,12 +1,12 @@
 import { Box } from "@mui/material";
 import {
-	Target,
-	ShieldCheck,
-	Wrench,
+	Code,
+	Handshake,
+	HardDrive,
 	type LucideProps,
-  Code,
-  Handshake,
-  HardDrive,
+	ShieldCheck,
+	Target,
+	Wrench,
 } from "lucide-react";
 import type React from "react";
 import { useEffect, useState } from "react";
@@ -47,19 +47,19 @@ export const features: Feature[] = [
 		description:
 			"Agents can intelligently handle errors and roadblocks by adapting approaches and finding alternative solutions.",
 	},
-  {
+	{
 		icon: Code,
 		title: "Universal Problem Solvers",
 		description:
 			"Local Operator agents use code as a universal tool to make their own integrations on the fly and creatively solve problems.",
 	},
-  {
+	{
 		icon: Handshake,
 		title: "Agent-to-Agent Communication",
 		description:
 			"Agents can delegate tasks and communicate with each other to solve more complex problems.",
 	},
-  {
+	{
 		icon: HardDrive,
 		title: "On-Device Work",
 		description:
