@@ -34,11 +34,9 @@ export const LogoSection: React.FC = () => {
 				variant="h3"
 				sx={{
 					textAlign: "center",
-					mb: 4,
-					fontWeight: 600,
-					background: `linear-gradient(90deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
-					WebkitBackgroundClip: "text",
-					WebkitTextFillColor: "transparent",
+					mb: 2,
+					fontWeight: 700,
+					color: theme.palette.text.primary,
 				}}
 			>
 				Local Operator
@@ -47,9 +45,10 @@ export const LogoSection: React.FC = () => {
 				variant="h6"
 				sx={{
 					textAlign: "center",
-					mb: 6,
-					color: "rgba(255, 255, 255, 0.7)",
-					maxWidth: "600px",
+					mb: 4,
+					color: theme.palette.text.secondary,
+					maxWidth: "500px",
+					fontWeight: 400,
 				}}
 			>
 				Personal AI Assistants that Turn Ideas into Action
