@@ -7,8 +7,8 @@
  */
 
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
 import type { StoreApi } from "zustand";
+import { persist } from "zustand/middleware";
 
 /**
  * Default defer timeline in milliseconds (48 hours)
@@ -158,9 +158,12 @@ export const useDeferredUpdatesStore = create<DeferredUpdatesState>()(
 					store &&
 					typeof store === "object" &&
 					"setState" in store &&
-					typeof (store as unknown as StoreApi<DeferredUpdatesState>).setState === "function"
+					typeof (store as unknown as StoreApi<DeferredUpdatesState>)
+						.setState === "function"
 				) {
-					(store as unknown as StoreApi<DeferredUpdatesState>).setState({ hydrated: true });
+					(store as unknown as StoreApi<DeferredUpdatesState>).setState({
+						hydrated: true,
+					});
 				}
 			},
 		},
