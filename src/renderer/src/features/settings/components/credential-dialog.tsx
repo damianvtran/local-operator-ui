@@ -1,76 +1,137 @@
 import { CREDENTIAL_MANIFEST } from "@features/settings/components/credential-manifest";
 import {
 	Box,
-	Button, // Import Button
+	Button,
 	CircularProgress,
 	FormControl,
-	InputLabel,
-	Link, // Import Link
+	Link,
 	MenuItem,
 	Select,
 	TextField,
 	Typography,
-	styled, // Import styled
-	useTheme, // Import useTheme
+	useTheme,
+	alpha,
+	styled,
+	OutlinedInput,
 } from "@mui/material";
+import { faKey } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import type { CredentialUpdate } from "@shared/api/local-operator/types";
-import { BaseDialog } from "@shared/components/common/base-dialog"; // Assuming BaseDialog handles basic dialog structure
+import { BaseDialog } from "@shared/components/common/base-dialog";
 import { useEffect, useState } from "react";
 import type { FC } from "react";
+import type { Theme } from "@mui/material/styles";
 
-// Shadcn-inspired styles for form elements
-const StyledFormControl = styled(FormControl)(({ theme }) => ({
-	marginBottom: theme.spacing(2.5), // Consistent spacing
-}));
-
-const StyledTextField = styled(TextField)(({ theme }) => ({
-	marginBottom: theme.spacing(2.5), // Consistent spacing
-	"& .MuiInputBase-root": {
-		borderRadius: theme.shape.borderRadius * 0.75,
-		backgroundColor: theme.palette.background.paper,
-	},
-	"& .MuiOutlinedInput-root": {
-		"& .MuiOutlinedInput-notchedOutline": {
-			borderColor: theme.palette.divider,
-		},
-		"&:hover .MuiOutlinedInput-notchedOutline": {
-			borderColor: theme.palette.text.secondary,
-		},
-		"&.Mui-focused .MuiOutlinedInput-notchedOutline": {
-			borderColor: theme.palette.primary.main,
-			borderWidth: "1px",
-		},
-	},
-	"& .MuiInputLabel-root": {
-		fontSize: "0.875rem",
-		"&.Mui-focused": {
-			color: theme.palette.primary.main,
-		},
-	},
-}));
-
-const StyledSelect = styled(Select)(({ theme }) => ({
+/**
+ * Styled OutlinedInput for Select to achieve shadcn/modern look
+ */
+const StyledOutlinedInput = styled(OutlinedInput)(({ theme }) => ({
 	borderRadius: theme.shape.borderRadius * 0.75,
 	backgroundColor: theme.palette.background.paper,
+	border: `1px solid ${theme.palette.divider}`,
+	minHeight: "40px",
+	height: "40px",
+	fontSize: "0.875rem",
+	paddingRight: 0,
 	"& .MuiOutlinedInput-notchedOutline": {
-		borderColor: theme.palette.divider,
+		border: "none",
 	},
-	"&:hover .MuiOutlinedInput-notchedOutline": {
+	"& .MuiSelect-select": {
+		display: "flex",
+		alignItems: "center",
+		gap: theme.spacing(1),
+		fontSize: "0.875rem",
+		padding: theme.spacing(1, 1.5),
+		height: "calc(40px - 16px)",
+		boxSizing: "border-box",
+	},
+	"& .MuiInputBase-input": {
+		padding: theme.spacing(1, 1.5),
+		fontSize: "0.875rem",
+		height: "calc(40px - 16px)",
+		boxSizing: "border-box",
+	},
+	"& .MuiInputBase-input::placeholder": {
+		color: theme.palette.text.disabled,
+		opacity: 1,
+	},
+	"&:hover": {
 		borderColor: theme.palette.text.secondary,
 	},
-	"&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+	"&.Mui-focused": {
 		borderColor: theme.palette.primary.main,
+		boxShadow: `0 0 0 2px ${theme.palette.primary.main}33`,
 	},
 }));
 
-const DescriptionBox = styled(Box)(({ theme }) => ({
+/**
+ * Shadcn-inspired menu props for Select dropdown
+ */
+const menuPropsSx = (theme: Theme) => ({
+	PaperProps: {
+		sx: {
+			borderRadius: theme.shape.borderRadius * 0.75,
+			boxShadow: theme.shadows[2],
+			mt: 0.5,
+			"& .MuiMenuItem-root": {
+				fontSize: "0.875rem",
+				minHeight: "40px",
+				px: 2,
+			},
+		},
+	},
+});
+
+/**
+ * TextField input styles for custom key and credential value fields
+ */
+const textFieldInputSx = (theme: Theme) => ({
+	"& .MuiOutlinedInput-root": {
+		borderRadius: theme.shape.borderRadius * 0.75,
+		backgroundColor: theme.palette.background.paper,
+		border: `1px solid ${theme.palette.divider}`,
+		minHeight: "40px",
+		height: "40px",
+		transition: "border-color 0.2s ease, box-shadow 0.2s ease",
+		"&:hover": {
+			borderColor: theme.palette.text.secondary,
+		},
+		"&.Mui-focused": {
+			borderColor: theme.palette.primary.main,
+			boxShadow: `0 0 0 2px ${theme.palette.primary.main}33`,
+		},
+		"& .MuiOutlinedInput-notchedOutline": {
+			border: "none",
+		},
+	},
+	"& .MuiInputBase-input": {
+		padding: theme.spacing(1, 1.5),
+		fontSize: "0.875rem",
+		height: "calc(40px - 16px)",
+		boxSizing: "border-box",
+	},
+	"& .MuiInputBase-input::placeholder": {
+		color: theme.palette.text.disabled,
+		opacity: 1,
+	},
+	"& .MuiFormHelperText-root": {
+		fontSize: "0.75rem",
+		mt: 0.5,
+		ml: 0.5,
+	},
+});
+
+/**
+ * Description box styling
+ */
+const DescriptionBoxSx = (theme: Theme) => ({
 	marginTop: theme.spacing(1),
 	marginBottom: theme.spacing(2),
 	padding: theme.spacing(1.5),
-	backgroundColor: theme.palette.action.hover,
+	backgroundColor: alpha(theme.palette.background.default, 0.5),
 	border: `1px solid ${theme.palette.divider}`,
 	borderRadius: theme.shape.borderRadius * 0.75,
-}));
+});
 
 /**
  * Dialog for adding or editing a credential
@@ -160,6 +221,24 @@ export const CredentialDialog: FC<CredentialDialogProps> = ({
 
 	const dialogTitle = isEditMode ? "Update Credential" : "Add New Credential";
 
+	// Styled label and icon (matches EditableField/GeneralSettings)
+	const FieldLabel = styled("div")(({ theme }) => ({
+		fontFamily: theme.typography.fontFamily,
+		fontSize: "0.875rem",
+		fontWeight: 500,
+		color: theme.palette.text.secondary,
+		marginBottom: 6,
+		display: "flex",
+		alignItems: "center",
+	}));
+
+	const LabelIcon = styled(Box)({
+		marginRight: 8,
+		opacity: 0.9,
+		display: "flex",
+		alignItems: "center",
+	});
+
 	// Shadcn-inspired Dialog Actions
 	const dialogActions = (
 		<>
@@ -216,42 +295,47 @@ export const CredentialDialog: FC<CredentialDialogProps> = ({
 			actions={dialogActions}
 			maxWidth="sm"
 			fullWidth
-			// Apply some padding via contentSx if BaseDialog supports it, or wrap content
-			// contentSx={{ pt: 2 }} // BaseDialog doesn't support contentSx, wrap content instead
 		>
-			{/* Wrap content in a Box for padding */}
 			<Box sx={{ pt: 2 }}>
 				{/* Key Selection/Display */}
 				{isEditMode ? (
-					// Display the key being edited (non-editable)
 					<Box mb={2.5}>
-						<Typography variant="overline" color="text.secondary">
+						<Typography
+							variant="overline"
+							color="text.secondary"
+							sx={{ fontSize: "0.75rem", letterSpacing: 1, fontWeight: 500 }}
+						>
 							Credential Key
 						</Typography>
-						<Typography fontWeight={500}>{initialKey}</Typography>
+						<Typography fontWeight={500} sx={{ fontSize: "0.95rem" }}>
+							{initialKey}
+						</Typography>
 					</Box>
 				) : (
-					// Show selection for adding new credentials
 					<>
-						<StyledFormControl fullWidth>
-							<InputLabel id="credential-key-label">Credential Type</InputLabel>
-							<StyledSelect
-								labelId="credential-key-label"
+						<FormControl fullWidth sx={{ mb: 2.5 }}>
+							<FieldLabel>
+								<LabelIcon>
+									<FontAwesomeIcon icon={faKey} size="sm" />
+								</LabelIcon>
+								Credential Type
+							</FieldLabel>
+							<Select
 								value={useCustomKey ? "_custom_" : key}
-								label="Credential Type"
 								onChange={(e) => {
-									// Cast value to string
 									const selectedValue = e.target.value as string;
 									if (selectedValue === "_custom_") {
 										setUseCustomKey(true);
-										setKey(""); // Clear selected manifest key
+										setKey("");
 									} else {
 										setUseCustomKey(false);
 										setKey(selectedValue);
-										setCustomKey(""); // Clear custom key
+										setCustomKey("");
 									}
 								}}
-								displayEmpty={!key && !useCustomKey} // Show label correctly when empty
+								displayEmpty={!key && !useCustomKey}
+								MenuProps={menuPropsSx(theme)}
+								input={<StyledOutlinedInput notched={false} label={undefined} />}
 							>
 								<MenuItem value="" disabled>
 									<em>Select a credential type...</em>
@@ -266,11 +350,11 @@ export const CredentialDialog: FC<CredentialDialogProps> = ({
 									</MenuItem>
 								))}
 								<MenuItem value="_custom_">Custom Credential</MenuItem>
-							</StyledSelect>
-						</StyledFormControl>
+							</Select>
+						</FormControl>
 
 						{useCustomKey && (
-							<StyledTextField
+							<TextField
 								label="Custom Credential Key"
 								fullWidth
 								value={customKey}
@@ -282,13 +366,13 @@ export const CredentialDialog: FC<CredentialDialogProps> = ({
 										: ""
 								}
 								required
-								autoFocus // Focus custom key field when shown
+								autoFocus
+								sx={textFieldInputSx(theme)}
 							/>
 						)}
 
-						{/* Show description and link if a manifest item is selected */}
 						{selectedCredentialManifest && !useCustomKey && (
-							<DescriptionBox>
+							<Box sx={DescriptionBoxSx(theme)}>
 								<Typography variant="body2" color="text.secondary" gutterBottom>
 									{selectedCredentialManifest.description}
 								</Typography>
@@ -303,14 +387,19 @@ export const CredentialDialog: FC<CredentialDialogProps> = ({
 										Get your {selectedCredentialManifest.name} key
 									</Link>
 								)}
-							</DescriptionBox>
+							</Box>
 						)}
 					</>
 				)}
 
-				{/* Value Input (Password) */}
-				<StyledTextField
-					label="Credential Value"
+				{/* Credential Value Label and Input */}
+				<FieldLabel>
+					<LabelIcon>
+						<FontAwesomeIcon icon={faKey} size="sm" />
+					</LabelIcon>
+					Credential Value
+				</FieldLabel>
+				<TextField
 					fullWidth
 					type="password"
 					value={value}
@@ -321,15 +410,17 @@ export const CredentialDialog: FC<CredentialDialogProps> = ({
 						}
 					}}
 					required
-					autoFocus={isEditMode} // Focus value field when editing
+					autoFocus={isEditMode}
+					placeholder="Enter the credential value or API key."
 					helperText={
 						isEditMode
 							? `Enter the new value for ${initialKey}`
 							: "Enter the credential value or API key."
 					}
+					sx={textFieldInputSx(theme)}
+					InputLabelProps={{ shrink: false }}
 				/>
-			</Box>{" "}
-			{/* Close padding Box */}
+			</Box>
 		</BaseDialog>
 	);
 };
