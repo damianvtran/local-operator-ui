@@ -1,4 +1,13 @@
 import { Box } from "@mui/material";
+import {
+	Code,
+	Handshake,
+	HardDrive,
+	type LucideProps,
+	ShieldCheck,
+	Target,
+	Wrench,
+} from "lucide-react";
 import type React from "react";
 import { useEffect, useState } from "react";
 import {
@@ -13,30 +22,48 @@ import {
 /**
  * Feature data for the carousel
  */
-export const features = [
+type Feature = {
+	icon: React.ElementType<LucideProps>;
+	title: string;
+	description: string;
+};
+
+export const features: Feature[] = [
 	{
-		icon: "🎯",
+		icon: Target,
 		title: "Plans & Executes",
 		description:
 			"Breaks down complex goals into manageable steps and executes them with precision.",
 	},
 	{
-		icon: "🔒",
+		icon: ShieldCheck,
 		title: "Prioritizes Security",
 		description:
 			"Built-in safety checks by independent AI review and user confirmations keep your system protected.",
 	},
 	{
-		icon: "🌐",
-		title: "Flexible Deployment",
+		icon: Wrench,
+		title: "Agentic Problem Solving",
 		description:
-			"Run completely locally with Ollama models or leverage cloud providers like OpenAI.",
+			"Agents can intelligently handle errors and roadblocks by adapting approaches and finding alternative solutions.",
 	},
 	{
-		icon: "🔧",
-		title: "Problem Solving",
+		icon: Code,
+		title: "Universal Problem Solvers",
 		description:
-			"Intelligently handles errors and roadblocks by adapting approaches and finding alternative solutions.",
+			"Local Operator agents use code as a universal tool to make their own integrations on the fly and creatively solve problems.",
+	},
+	{
+		icon: Handshake,
+		title: "Agent-to-Agent Communication",
+		description:
+			"Agents can delegate tasks and communicate with each other to solve more complex problems.",
+	},
+	{
+		icon: HardDrive,
+		title: "On-Device Work",
+		description:
+			"Agents can work on-device without relying on the cloud, reducing the back and forth between your files and the cloud, and improving privacy.",
 	},
 ];
 
@@ -89,7 +116,9 @@ export const FeatureCarousel: React.FC = () => {
 							pointerEvents: index === activeFeature ? "auto" : "none",
 						}}
 					>
-						<FeatureIconContainer>{feature.icon}</FeatureIconContainer>
+						<FeatureIconContainer>
+							<feature.icon size={32} strokeWidth={1} />
+						</FeatureIconContainer>
 						<FeatureTitle variant="h4">{feature.title}</FeatureTitle>
 						<FeatureDescription>{feature.description}</FeatureDescription>
 					</FeatureContent>

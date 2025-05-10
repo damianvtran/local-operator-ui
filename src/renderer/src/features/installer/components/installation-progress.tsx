@@ -1,10 +1,4 @@
-import {
-	Box,
-	Button,
-	LinearProgress,
-	Typography,
-	useTheme,
-} from "@mui/material";
+import { Box, Button, Typography, alpha, useTheme } from "@mui/material";
 import type React from "react";
 import { Spinner, SpinnerContainer } from "./installer-styled";
 
@@ -37,7 +31,7 @@ export const InstallationProgress: React.FC = () => {
 		>
 			<Box sx={{ textAlign: "center" }}>
 				<Typography variant="gradientTitle">
-					🚀 Setting Up Your Environment
+					Setting Up Your Environment
 				</Typography>
 			</Box>
 
@@ -45,46 +39,54 @@ export const InstallationProgress: React.FC = () => {
 				<Typography
 					variant="body1"
 					color="text.secondary"
-					sx={{ textAlign: "center", mb: 3 }}
+					sx={{ textAlign: "center", mb: 3, fontSize: "1rem" }}
 				>
 					We're preparing the magic behind the scenes! This one-time setup
 					ensures you'll have the best experience with Local Operator.
 				</Typography>
-
-				<LinearProgress
-					sx={{
-						height: 8,
-						borderRadius: 2,
-						backgroundColor: "rgba(255, 255, 255, 0.1)",
-						"& .MuiLinearProgress-bar": {
-							borderRadius: 2,
-							background: `linear-gradient(90deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
-						},
-					}}
-				/>
+				{/* LinearProgress removed as per feedback */}
 			</Box>
 
-			<SpinnerContainer>
+			<SpinnerContainer sx={{ my: 2 }}>
+				{" "}
+				{/* Added some margin for better spacing */}
 				<Spinner />
 			</SpinnerContainer>
 
 			<Typography
-				variant="body2"
-				sx={{ textAlign: "center", color: "text.secondary", mb: 2 }}
+				variant="body1"
+				sx={{ textAlign: "center", color: "text.secondary", fontSize: "1rem" }}
 			>
-				Installing dependencies and configuring your environment...
+				Installing Python and other AI dependencies for Local Operator
+				assistants on your device...
+			</Typography>
+			<Typography
+				variant="body1"
+				sx={{
+					textAlign: "center",
+					color: "text.secondary",
+					fontSize: "0.875rem",
+				}}
+			>
+				This will take a few minutes. You can minimize this window and continue
+				using your computer in the meantime, you will get a notification when
+				it's done.
 			</Typography>
 
 			<Button
-				variant="contained"
+				variant="outlined"
 				color="error"
 				onClick={handleCancel}
 				sx={{
 					alignSelf: "center",
-					px: 4,
+					px: 3,
 					py: 1,
-					borderRadius: 2,
-					boxShadow: "0 4px 12px rgba(211, 47, 47, 0.2)",
+					borderRadius: theme.shape.borderRadius,
+					borderColor: theme.palette.error.main,
+					"&:hover": {
+						backgroundColor: alpha(theme.palette.error.main, 0.08),
+						borderColor: theme.palette.error.dark,
+					},
 				}}
 			>
 				Cancel Setup
