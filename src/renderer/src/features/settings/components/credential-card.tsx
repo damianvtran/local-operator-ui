@@ -191,7 +191,7 @@ export const CredentialCard: FC<CredentialCardProps> = ({
 							variant="outlined"
 							size="small"
 							color="primary"
-							startIcon={<FontAwesomeIcon icon={faKey} size="xs" />}
+							startIcon={<FontAwesomeIcon icon={faKey} size="xs" style={{ fontSize: "0.875rem" }} />}
 							onClick={() => onAdd?.(credentialKey)}
 							sx={{ ...primaryButtonSx, boxShadow: "none" }}
 						>
