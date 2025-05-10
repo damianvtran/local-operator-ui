@@ -51,6 +51,8 @@ const StyledTextField = styled(TextField)(({ theme }) => ({
 		overflow: "auto", // Enable scrolling
 		fontSize: "0.875rem", // Consistent font size
 		lineHeight: 1.5,
+		whiteSpace: "pre-wrap", // Ensure text wraps within the input
+		wordBreak: "break-word", // Break long words to prevent overflow
 		// Shadcn-like scrollbar
 		"&::-webkit-scrollbar": {
 			width: "8px",

@@ -54,6 +54,11 @@ export class BackendServiceManager {
 	private shellEnv: Record<string, string | undefined> = {};
 	private isAppClosing = false; // Flag to track when the app is being closed
 	private isAutoUpdating = false; // Flag to track when an autoupdate is in progress
+	private shutdownTimeoutMs = {
+		restart: 10000, // 10 seconds for restart operations
+		normal: 5000, // 5 seconds for normal shutdowns
+		force: 3000, // 3 seconds before force killing after SIGKILL
+	}; // Configurable timeouts for different shutdown scenarios
 
 	/**
 	 * Constructor
@@ -805,99 +810,137 @@ export class BackendServiceManager {
 
 				// Wait for process to exit with timeout
 				const timeoutPromise = new Promise<void>((resolve) => {
-					forceKillTimeoutId = setTimeout(
-						() => {
-							if (this.process) {
-								logger.info(
-									"Backend process did not exit in time, force killing",
-									LogFileType.BACKEND,
-								);
-								try {
-									// Force kill the process
-									if (process.platform === "win32" && this.process.pid) {
-										// On Windows, use taskkill with /F for force
-										spawn("taskkill", [
-											"/pid",
-											this.process.pid.toString(),
-											"/f",
-											"/t",
-										]);
+					// Determine which timeout to use based on the operation type
+					const timeoutMs = isRestart
+						? this.shutdownTimeoutMs.restart
+						: this.shutdownTimeoutMs.normal;
 
-										// Also try to kill any child processes by process name
-										try {
-											// Use taskkill to find and kill python processes that might be running the backend
-											execPromise(
-												'taskkill /f /im python.exe /fi "WINDOWTITLE eq *local-operator*" /t',
-											).catch((error) => {
-												logger.warn(
-													"Error terminating python processes:",
-													LogFileType.BACKEND,
-													error,
-												);
-											});
+					logger.info(
+						`Setting shutdown timeout to ${timeoutMs}ms for ${isRestart ? "restart" : "normal"} operation`,
+						LogFileType.BACKEND,
+					);
 
-											// Also try to kill any local-operator.exe processes directly
-											execPromise(
-												"taskkill /f /im local-operator.exe /t",
-											).catch((error) => {
+					forceKillTimeoutId = setTimeout(() => {
+						if (this.process) {
+							logger.info(
+								`Backend process did not exit within ${timeoutMs}ms, force killing`,
+								LogFileType.BACKEND,
+							);
+							try {
+								// Force kill the process
+								if (process.platform === "win32" && this.process.pid) {
+									// On Windows, use taskkill with /F for force
+									spawn("taskkill", [
+										"/pid",
+										this.process.pid.toString(),
+										"/f",
+										"/t",
+									]);
+
+									// Also try to kill any child processes by process name
+									try {
+										// Use taskkill to find and kill python processes that might be running the backend
+										execPromise(
+											'taskkill /f /im python.exe /fi "WINDOWTITLE eq *local-operator*" /t',
+										).catch((error) => {
+											logger.warn(
+												"Error terminating python processes:",
+												LogFileType.BACKEND,
+												error,
+											);
+										});
+
+										// Also try to kill any local-operator.exe processes directly
+										execPromise("taskkill /f /im local-operator.exe /t").catch(
+											(error) => {
 												logger.warn(
 													"Error terminating local-operator processes:",
 													LogFileType.BACKEND,
 													error,
 												);
-											});
-										} catch (taskkillError) {
-											logger.warn(
-												"Error executing taskkill command:",
-												LogFileType.BACKEND,
-												taskkillError,
-											);
-										}
-									} else if (this.process) {
-										// On Unix, use SIGKILL
-										this.process.kill("SIGKILL");
-
-										// Also try to kill any processes with the same command line pattern
-										try {
-											execPromise('pkill -f "local-operator serve"').catch(
-												(error) => {
-													logger.warn(
-														"Error killing processes by pattern:",
-														LogFileType.BACKEND,
-														error,
-													);
-												},
-											);
-										} catch (pkillError) {
-											logger.warn(
-												"Error executing pkill command:",
-												LogFileType.BACKEND,
-												pkillError,
-											);
-										}
+											},
+										);
+									} catch (taskkillError) {
+										logger.warn(
+											"Error executing taskkill command:",
+											LogFileType.BACKEND,
+											taskkillError,
+										);
 									}
-								} catch (error) {
-									logger.error(
-										"Error force killing process:",
-										LogFileType.BACKEND,
-										error,
-									);
-								}
+								} else if (this.process) {
+									// On Unix, use SIGKILL
+									this.process.kill("SIGKILL");
 
-								// Even if force kill fails, mark process as stopped
-								this.process = null;
-								this.isRunning = false;
+									// Also try to kill any processes with the same command line pattern
+									try {
+										execPromise('pkill -f "local-operator serve"').catch(
+											(error) => {
+												logger.warn(
+													"Error killing processes by pattern:",
+													LogFileType.BACKEND,
+													error,
+												);
+											},
+										);
+									} catch (pkillError) {
+										logger.warn(
+											"Error executing pkill command:",
+											LogFileType.BACKEND,
+											pkillError,
+										);
+									}
 
-								// Resolve the exit promise
-								if (this.exitResolve) {
-									this.exitResolve();
-									this.exitResolve = null;
+									// Set a final force kill timeout in case SIGKILL doesn't work
+									setTimeout(() => {
+										if (this.process) {
+											logger.warn(
+												`Process still exists after SIGKILL, attempting more aggressive termination after ${this.shutdownTimeoutMs.force}ms`,
+												LogFileType.BACKEND,
+											);
+											try {
+												// Try more aggressive methods
+												execPromise('pkill -9 -f "local-operator serve"').catch(
+													() => {},
+												);
+
+												// Even if these fail, mark the process as stopped
+												this.process = null;
+												this.isRunning = false;
+
+												if (this.exitResolve) {
+													this.exitResolve();
+													this.exitResolve = null;
+												}
+											} catch (finalError) {
+												logger.error(
+													"Error during final force kill attempt:",
+													LogFileType.BACKEND,
+													finalError,
+												);
+											}
+										}
+									}, this.shutdownTimeoutMs.force);
 								}
+							} catch (error) {
+								logger.error(
+									"Error force killing process:",
+									LogFileType.BACKEND,
+									error,
+								);
 							}
-							resolve();
-						},
-						isRestart ? 10000 : 5000,
-					); // Use longer timeout for restart operations, but not too long
+
+							// Even if force kill fails, mark process as stopped
+							this.process = null;
+							this.isRunning = false;
+
+							// Resolve the exit promise
+							if (this.exitResolve) {
+								this.exitResolve();
+								this.exitResolve = null;
+							}
+						}
+						resolve();
+					}, timeoutMs);
 				});
 
 				// Wait for either the process to exit or the timeout

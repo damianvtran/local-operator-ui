@@ -685,30 +685,54 @@ app
 		// Create custom application menu
 		createApplicationMenu();
 
-		// Create the main window
-		mainWindow = createWindow(); // Assign to the higher-scoped variable
+		// --- Helper to manage main window and update service lifecycle ---
+		let updateService: UpdateService | null = null;
 
-		// Pass window reference to OAuthService
-		oauthService.setMainWindow(mainWindow);
+		function setupMainWindowWithUpdateService() {
+			mainWindow = createWindow();
 
-		// Initialize the update service with a reference to the backend service
-		const updateService = new UpdateService(mainWindow, backendService);
+			// Pass window reference to OAuthService
+			oauthService.setMainWindow(mainWindow);
 
-		// Set up IPC handlers for the update service
-		updateService.setupIpcHandlers();
+			// Clean up any previous update service
+			if (updateService) {
+				updateService.dispose();
+				updateService = null;
+			}
 
-		// Handle platform-specific setup for the updater
-		updateService.handlePlatformSpecifics();
+			// Initialize the update service with a reference to the backend service
+			updateService = new UpdateService(mainWindow, backendService);
 
-		// Check for all updates (UI and backend) after a short delay to ensure the app is fully loaded
-		setTimeout(() => {
-			updateService.checkForAllUpdates(true);
-		}, 3000);
+			// Clean up update service and mainWindow reference when the window is closed
+			mainWindow.on("closed", () => {
+				if (updateService) {
+					updateService.dispose();
+					updateService = null;
+				}
+				mainWindow = null;
+			});
+
+			// Set up IPC handlers for the update service
+			updateService.setupIpcHandlers();
+
+			// Handle platform-specific setup for the updater
+			updateService.handlePlatformSpecifics();
+
+			// Check for all updates (UI and backend) after a short delay to ensure the app is fully loaded
+			setTimeout(() => {
+				updateService?.checkForAllUpdates(true);
+			}, 3000);
+		}
+
+		// Initial window + update service setup
+		setupMainWindowWithUpdateService();
 
 		app.on("activate", () => {
 			// On macOS it's common to re-create a window in the app when the
 			// dock icon is clicked and there are no other windows open.
-			if (BrowserWindow.getAllWindows().length === 0) createWindow();
+			if (BrowserWindow.getAllWindows().length === 0) {
+				setupMainWindowWithUpdateService();
+			}
 		});
 	})
 	.catch((error) => {

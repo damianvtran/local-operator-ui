@@ -1,5 +1,8 @@
 import { Alert, Box, Button, Snackbar, Typography } from "@mui/material";
-import { useDeferredUpdatesStore } from "@shared/store/deferred-updates-store";
+import {
+	UpdateType,
+	useDeferredUpdatesStore,
+} from "@shared/store/deferred-updates-store";
 import { isDevelopmentMode } from "@shared/utils/env-utils";
 import { useEffect, useRef, useState } from "react";
 
@@ -96,7 +99,8 @@ export const CheckForUpdatesButton = () => {
 			manualCheckRef.current = true;
 
 			// Clear any deferred updates to ensure we see all available updates
-			clearDeferredUpdate();
+			clearDeferredUpdate(UpdateType.UI);
+			clearDeferredUpdate(UpdateType.BACKEND);
 
 			// Check for all updates (UI and backend)
 			await window.api.updater.checkForAllUpdates();
