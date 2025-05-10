@@ -5,12 +5,12 @@ import { keyframes, styled } from "@mui/material/styles";
  * Container for the installer app
  * Fills the entire screen with a dark background
  */
-export const AppContainer = styled(Box)(() => ({
+export const AppContainer = styled(Box)(({ theme }) => ({
 	display: "flex",
 	height: "100vh",
 	width: "100vw",
 	overflow: "hidden",
-	backgroundColor: "#0A0A0A",
+	backgroundColor: theme.palette.background.default, // Use theme variable
 }));
 
 /**
@@ -35,8 +35,8 @@ export const FeatureSection = styled(Box)(({ theme }) => ({
 	flexDirection: "column",
 	justifyContent: "center",
 	alignItems: "center",
-	padding: "48px",
-	background: `linear-gradient(135deg, ${theme.palette.background.default} 0%, #111111 100%)`,
+	padding: theme.spacing(6), // Use theme spacing
+	backgroundColor: theme.palette.background.paper, // Solid, slightly lighter background
 	position: "relative",
 	overflow: "hidden",
 	"&::after": {
@@ -46,11 +46,11 @@ export const FeatureSection = styled(Box)(({ theme }) => ({
 		right: 0,
 		bottom: 0,
 		width: "1px",
-		background: "rgba(255, 255, 255, 0.1)",
+		backgroundColor: theme.palette.divider, // Softer divider
 	},
 	"@media (max-width: 900px)": {
 		flex: "1 1 auto",
-		padding: "32px 24px",
+		padding: theme.spacing(4, 3),
 		"&::after": {
 			width: "100%",
 			height: "1px",
@@ -63,16 +63,17 @@ export const FeatureSection = styled(Box)(({ theme }) => ({
 /**
  * Right section of the installer containing the progress information
  */
-export const ProgressSection = styled(Box)(() => ({
+export const ProgressSection = styled(Box)(({ theme }) => ({
 	flex: "1 1 50%",
 	display: "flex",
 	flexDirection: "column",
 	justifyContent: "center",
 	alignItems: "center",
-	padding: "48px",
+	padding: theme.spacing(6), // Use theme spacing
+	backgroundColor: theme.palette.background.default, // Main background for contrast
 	"@media (max-width: 900px)": {
 		flex: "1 1 auto",
-		padding: "32px 24px",
+		padding: theme.spacing(4, 3),
 	},
 }));
 
@@ -89,12 +90,12 @@ export const SpinnerContainer = styled(Box)(() => ({
  * Animated spinner component
  */
 export const Spinner = styled(Box)(({ theme }) => ({
-	width: "48px",
-	height: "48px",
-	border: `3px solid ${theme.palette.primary.main}20`,
+	width: "40px", // Slightly smaller
+	height: "40px",
+	border: `4px solid ${theme.palette.action.disabledBackground}`, // Muted track
 	borderRadius: "50%",
-	borderTopColor: theme.palette.primary.main,
-	animation: "spin 1s ease-in-out infinite",
+	borderTopColor: theme.palette.primary.main, // Accent color for spinner part
+	animation: "spin 0.8s linear infinite", // Smoother, faster animation
 	"@keyframes spin": {
 		to: { transform: "rotate(360deg)" },
 	},
@@ -115,16 +116,17 @@ export const LogoContainer = styled(Box)(() => ({
  * Feature icon container
  */
 export const FeatureIconContainer = styled(Box)(({ theme }) => ({
-	width: "80px",
-	height: "80px",
-	borderRadius: "50%",
+	width: "64px", // Smaller icon container
+	height: "64px",
+	borderRadius: theme.shape.borderRadius * 2, // Rounded square like shadcn cards
 	display: "flex",
 	justifyContent: "center",
 	alignItems: "center",
-	marginBottom: "24px",
-	background: `linear-gradient(135deg, ${theme.palette.primary.dark} 0%, ${theme.palette.primary.main} 100%)`,
-	boxShadow: "0 8px 32px rgba(56, 201, 106, 0.2)",
-	fontSize: "2.5rem",
+	marginBottom: theme.spacing(3),
+	backgroundColor: theme.palette.action.hover, // Muted background
+	// border: `1px solid ${theme.palette.divider}`, // Subtle border
+	color: theme.palette.primary.main, // Icon color
+	fontSize: "2rem", // Adjusted icon size
 }));
 
 // Animation keyframes
@@ -171,21 +173,20 @@ export const FeatureContent = styled(Box)<{ isActive: boolean }>(
  * Feature title typography
  */
 export const FeatureTitle = styled(Typography)(({ theme }) => ({
-	fontSize: "1.75rem",
+	fontSize: "1.5rem", // Adjusted size
 	fontWeight: 600,
-	marginBottom: "16px",
-	background: `linear-gradient(90deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
-	WebkitBackgroundClip: "text",
-	WebkitTextFillColor: "transparent",
+	marginBottom: theme.spacing(1.5),
+	color: theme.palette.text.primary, // Solid color
 }));
 
 /**
  * Feature description typography
  */
-export const FeatureDescription = styled(Typography)(() => ({
-	fontSize: "1rem",
-	lineHeight: 1.6,
-	color: "rgba(255, 255, 255, 0.8)",
+export const FeatureDescription = styled(Typography)(({ theme }) => ({
+	fontSize: "0.9rem", // Slightly smaller for balance
+	lineHeight: 1.7, // Increased line height for readability
+	color: theme.palette.text.secondary,
+	maxWidth: "400px", // Limit width for better readability
 }));
 
 /**
@@ -205,13 +206,17 @@ export const ProgressDots = styled(Box)(() => ({
  */
 export const ProgressDot = styled(Box)<{ active: boolean }>(
 	({ active, theme }) => ({
-		width: "8px",
-		height: "8px",
+		width: "10px", // Slightly larger dots
+		height: "10px",
 		borderRadius: "50%",
-		background: active
+		backgroundColor: active
 			? theme.palette.primary.main
-			: "rgba(255, 255, 255, 0.2)",
-		transition: "background 0.3s ease",
+			: theme.palette.action.disabledBackground, // Muted inactive color
+		transition: "background-color 0.3s ease, transform 0.3s ease",
+		cursor: "pointer",
+		"&:hover": {
+			transform: "scale(1.2)",
+		},
 	}),
 );
 
@@ -224,9 +229,9 @@ export const BackgroundPattern = styled(Box)(() => ({
 	left: 0,
 	right: 0,
 	bottom: 0,
-	opacity: 0.05,
+	opacity: 0.03, // Even more subtle
 	backgroundImage:
-		"radial-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px)",
-	backgroundSize: "30px 30px",
+		"radial-gradient(rgba(255, 255, 255, 0.05) 0.5px, transparent 0.5px)", // Smaller dots
+	backgroundSize: "20px 20px", // Smaller grid
 	pointerEvents: "none",
 }));
