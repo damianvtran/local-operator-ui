@@ -2,6 +2,7 @@ import { Box, Typography, Button, CircularProgress, Alert, Paper, useTheme } fro
 import type { FC } from "react";
 import { useState } from "react";
 import { PlusCircle, CalendarDays } from "lucide-react";
+import { toast } from "react-toastify";
 import {
 	useListAllSchedules,
 	useCreateScheduleForAgent,
@@ -68,17 +69,19 @@ export const SchedulesPage: FC = () => {
 					scheduleId: editingSchedule.id,
 					scheduleData: data as ScheduleUpdateRequest,
 				});
+				toast.success("Schedule updated successfully!");
 			} else {
 				// Creating a new schedule
 				await createScheduleMutation.mutateAsync({
 					agentId: agentId, // Use the agentId selected in the form
 					scheduleData: data as ScheduleCreateRequest,
 				});
+				toast.success("Schedule created successfully!");
 			}
 			refetchSchedules();
 		} catch (err) {
 			console.error("Failed to save schedule:", err);
-			// Consider showing an error toast to the user
+			toast.error(`Failed to save schedule: ${err instanceof Error ? err.message : "Unknown error"}`);
 		}
 	};
 
@@ -86,9 +89,11 @@ export const SchedulesPage: FC = () => {
 		const scheduleToDelete = schedulesResponse?.result?.schedules.find(s => s.id === scheduleId);
 		try {
 			await removeScheduleMutation.mutateAsync({ scheduleId, agentId: scheduleToDelete?.agent_id });
+			toast.success("Schedule removed successfully!");
 			refetchSchedules();
 		} catch (err) {
 			console.error("Failed to delete schedule:", err);
+			toast.error(`Failed to remove schedule: ${err instanceof Error ? err.message : "Unknown error"}`);
 		}
 	};
 	
@@ -98,9 +103,11 @@ export const SchedulesPage: FC = () => {
 				scheduleId: schedule.id,
 				scheduleData: { is_active: !schedule.is_active },
 			});
+			toast.success(`Schedule ${schedule.is_active ? "deactivated" : "activated"} successfully!`);
 			refetchSchedules();
 		} catch (err) {
 			console.error("Failed to toggle schedule active state:", err);
+			toast.error(`Failed to toggle schedule: ${err instanceof Error ? err.message : "Unknown error"}`);
 		}
 	};
 
