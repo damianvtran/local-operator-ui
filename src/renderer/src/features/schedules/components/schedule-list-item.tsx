@@ -1,10 +1,10 @@
 import type { FC } from "react";
 import { Box, Typography, IconButton, Paper, Skeleton, Chip } from "@mui/material";
-import { Edit, Trash2, PlayCircle, PauseCircle, User } from "lucide-react";
+import { Edit, Trash2, User } from "lucide-react";
 import type { ScheduleResponse } from "@shared/api/local-operator";
 import { AgentsApi } from "@shared/api/local-operator/agents-api";
 import { useQuery } from "@tanstack/react-query";
-import { styled } from "@mui/material/styles";
+import { alpha, styled } from "@mui/material/styles";
 import { apiConfig } from "@shared/config";
 
 type ScheduleListItemProps = {
@@ -26,10 +26,11 @@ const ListItemPaper = styled(Paper)(({ theme }) => ({
 	gridTemplateColumns: "1fr auto auto",
 	gap: theme.spacing(1),
 	backgroundImage: "none",
-	border: `1px solid ${theme.palette.divider}`,
+	border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
 	borderRadius: theme.shape.borderRadius,
+  transition: "border-color 0.2s ease",
 	"&:hover": {
-		borderColor: theme.palette.text.secondary,
+		borderColor: alpha(theme.palette.divider, 0.4),
 	},
 }));
 
@@ -93,7 +94,6 @@ export const ScheduleListItem: FC<ScheduleListItemProps> = ({
 	schedule,
 	onEdit,
 	onDelete,
-	onToggleActive,
 }) => {
 	const { data: agentName, isLoading: isLoadingAgentName } = useAgentName(
 		schedule.agent_id,
@@ -108,17 +108,6 @@ export const ScheduleListItem: FC<ScheduleListItemProps> = ({
 			</PromptSection>
 
 			<ActionsSection>
-				<IconButton
-					onClick={() => onToggleActive(schedule)}
-					size="small"
-					title={schedule.is_active ? "Deactivate" : "Activate"}
-				>
-					{schedule.is_active ? (
-						<PauseCircle size={20} />
-					) : (
-						<PlayCircle size={20} />
-					)}
-				</IconButton>
 				<IconButton
 					onClick={() => onEdit(schedule)}
 					size="small"
