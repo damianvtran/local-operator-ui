@@ -3,17 +3,16 @@ import {
 	TextField,
 	Grid,
 	FormControl,
-	InputLabel,
 	Select,
 	MenuItem,
 	FormControlLabel,
 	Switch,
 	CircularProgress,
-	FormHelperText,
 	Typography,
 	Tooltip,
-	Autocomplete, // Added Autocomplete
-	Box, // Added Box for Autocomplete renderOption
+	Autocomplete,
+	Box,
+	alpha,
 } from "@mui/material";
 import type { SelectChangeEvent } from "@mui/material";
 import type {
@@ -21,80 +20,238 @@ import type {
 	ScheduleResponse,
 	ScheduleUnit,
 	ScheduleUpdateRequest,
-	AgentDetails, // Added AgentDetails
+	AgentDetails,
 } from "@shared/api/local-operator";
-import { useEffect, useState, useMemo } from "react"; // Added useMemo
+import { useEffect, useState, useMemo } from "react";
 import { styled } from "@mui/material/styles";
-import { Save, XSquare } from "lucide-react"; // Using lucide-react icons
-import { useAgents } from "@shared/hooks/use-agents"; // Import useAgents
+import { Save, XSquare } from "lucide-react";
+import { useAgents } from "@shared/hooks/use-agents";
 import {
 	BaseDialog,
 	PrimaryButton,
 	SecondaryButton,
 } from "@shared/components/common/base-dialog";
 
-// Styled components from the original file, adapted for BaseDialog if needed
-// or removed if BaseDialog's own styled components suffice.
-
+// Styled components
 const StyledFormGrid = styled(Grid)(({ theme }) => ({
-	paddingTop: theme.spacing(1), // Add some top padding to the grid itself
-	"& .MuiGrid-item": {
-		// Keep specific item padding if needed, or rely on Grid spacing
-		// paddingTop: theme.spacing(1),
-		// paddingBottom: theme.spacing(1),
-	},
+	paddingTop: theme.spacing(1),
 }));
 
-const FullWidthTextField = styled(TextField)({
+// FieldLabel for external labels, similar to other shadcn-styled components
+const FieldLabel = styled('label')(({ theme }) => ({
+	display: 'block',
+	marginBottom: theme.spacing(0.75),
+	color: theme.palette.text.secondary,
+	fontWeight: 500,
+	fontSize: '0.875rem',
+	lineHeight: 1.5,
+}));
+
+// FullWidthTextField remains largely the same, but label prop will not be used.
+const FullWidthTextField = styled(TextField)(({ theme }) => ({
 	width: '100%',
 	'& .MuiOutlinedInput-root': {
 		borderRadius: 6,
-		border: '1px solid var(--mui-palette-divider)',
+		border: `1px solid ${theme.palette.divider}`,
+		backgroundColor: theme.palette.background.paper,
 		minHeight: '36px',
+		height: '36px',
+		padding: 0,
 		transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
 		'&:hover': {
-			borderColor: 'var(--mui-palette-text-secondary)',
+			borderColor: theme.palette.text.secondary,
 		},
 		'&.Mui-focused': {
-			borderColor: 'var(--mui-palette-primary-main)',
-			boxShadow: '0 0 0 2px var(--mui-palette-primary-main)33',
+			borderColor: theme.palette.primary.main,
+			boxShadow: `0 0 0 2px ${alpha(theme.palette.primary.main, 0.2)}`,
 		},
 		'& .MuiOutlinedInput-notchedOutline': {
 			border: 'none',
 		},
+		'&:not(.MuiInputBase-multiline) .MuiInputBase-input': {
+			height: 'calc(36px - 16px)',
+			padding: '8px 12px',
+		},
+		'&.MuiInputBase-multiline': {
+			minHeight: '36px',
+			height: 'auto',
+			padding: '8px 12px',
+		},
 	},
 	'& .MuiInputBase-input': {
-		padding: '8px 12px',
 		fontSize: '0.875rem',
 		lineHeight: 1.5,
+		boxSizing: 'border-box',
+		'&.MuiInputBase-inputMultiline': {
+			padding: '0px',
+			height: 'auto',
+		},
 	},
-});
+}));
 
-const FullWidthFormControl = styled(FormControl)({
+// FullWidthFormControl for Select, label prop will not be used.
+const FullWidthFormControl = styled(FormControl)(({ theme }) => ({
 	width: '100%',
 	'& .MuiOutlinedInput-root': {
 		borderRadius: 6,
-		border: '1px solid var(--mui-palette-divider)',
+		border: `1px solid ${theme.palette.divider}`,
+		backgroundColor: theme.palette.background.paper,
 		minHeight: '36px',
+		height: '36px',
+		padding: '0 !important',
 		transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
 		'&:hover': {
-			borderColor: 'var(--mui-palette-text-secondary)',
+			borderColor: theme.palette.text.secondary,
 		},
 		'&.Mui-focused': {
-			borderColor: 'var(--mui-palette-primary-main)',
-			boxShadow: '0 0 0 2px var(--mui-palette-primary-main)33',
+			borderColor: theme.palette.primary.main,
+			boxShadow: `0 0 0 2px ${alpha(theme.palette.primary.main, 0.2)}`,
 		},
 		'& .MuiOutlinedInput-notchedOutline': {
 			border: 'none',
 		},
 	},
 	'& .MuiSelect-select': {
-		padding: '8px 12px',
+		padding: '8px 12px !important',
 		fontSize: '0.875rem',
 		lineHeight: 1.5,
+		height: 'calc(36px - 16px) !important',
+		boxSizing: 'border-box',
+		display: 'flex',
+		alignItems: 'center',
 	},
-});
+}));
 
+// Styled Autocomplete (for agent selection)
+// No need for AgentAutocompleteProps type alias if styled() handles generics correctly
+const StyledAutocomplete = styled(Autocomplete<AgentDetails, false, false, false>)(({ theme }) => ({
+  '& .MuiOutlinedInput-root': {
+    borderRadius: 6,
+    border: `1px solid ${theme.palette.divider}`,
+    backgroundColor: theme.palette.background.paper,
+    minHeight: '36px',
+    height: '36px',
+    padding: '0 !important',
+    transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
+    '&:hover': {
+      borderColor: theme.palette.text.secondary,
+    },
+    '&.Mui-focused': {
+      borderColor: theme.palette.primary.main,
+      boxShadow: `0 0 0 2px ${alpha(theme.palette.primary.main, 0.2)}`,
+    },
+    '& .MuiOutlinedInput-notchedOutline': {
+      border: 'none',
+    },
+    '& .MuiInputBase-input': {
+      padding: '8px 12px !important',
+      fontSize: '0.875rem',
+      lineHeight: 1.5,
+      height: 'calc(36px - 16px)',
+      boxSizing: 'border-box',
+    },
+  },
+  '& .MuiAutocomplete-endAdornment': {
+    right: '8px',
+    top: '50%',
+    transform: 'translateY(-50%)',
+  },
+  '& .MuiAutocomplete-clearIndicator, & .MuiAutocomplete-popupIndicator': {
+    color: theme.palette.text.secondary,
+    '&:hover': {
+      color: theme.palette.text.primary,
+      backgroundColor: alpha(theme.palette.action.active, 0.04),
+    }
+  },
+}));
+
+// Styled FormHelperText using Typography for more control over error class
+const StyledFormHelperText = styled(Typography, {
+  shouldForwardProp: (prop) => prop !== 'error',
+})<{ error?: boolean }>(({ theme, error }) => ({
+  fontSize: '0.75rem',
+  marginTop: theme.spacing(0.5),
+  marginLeft: theme.spacing(0.25),
+  color: error ? theme.palette.error.main : theme.palette.text.secondary,
+}));
+
+
+// Styled Switch and FormControlLabel
+const StyledSwitch = styled(Switch)(({ theme }) => ({
+  width: 42,
+  height: 26,
+  padding: 0,
+  '& .MuiSwitch-switchBase': {
+    padding: 0,
+    margin: 2,
+    transitionDuration: '300ms',
+    '&.Mui-checked': {
+      transform: 'translateX(16px)',
+      color: '#fff',
+      '& + .MuiSwitch-track': {
+        backgroundColor: theme.palette.primary.main,
+        opacity: 1,
+        border: 0,
+      },
+      '&.Mui-disabled + .MuiSwitch-track': {
+        opacity: 0.5,
+      },
+    },
+    '&.Mui-focusVisible .MuiSwitch-thumb': {
+      color: theme.palette.primary.main,
+      border: '6px solid #fff',
+    },
+    '&.Mui-disabled .MuiSwitch-thumb': {
+      color:
+        theme.palette.mode === 'light'
+          ? theme.palette.grey[100]
+          : theme.palette.grey[600],
+    },
+    '&.Mui-disabled + .MuiSwitch-track': {
+      opacity: theme.palette.mode === 'light' ? 0.7 : 0.3,
+    },
+  },
+  '& .MuiSwitch-thumb': {
+    boxSizing: 'border-box',
+    width: 22,
+    height: 22,
+    boxShadow: 'none',
+  },
+  '& .MuiSwitch-track': {
+    borderRadius: 26 / 2,
+    backgroundColor: theme.palette.mode === 'light' ? '#E9E9EA' : theme.palette.grey[700],
+    opacity: 1,
+    transition: theme.transitions.create(['background-color'], {
+      duration: 500,
+    }),
+  },
+}));
+
+const StyledFormControlLabel = styled(FormControlLabel)(({ theme }) => ({
+  marginLeft: 0,
+  marginRight: theme.spacing(1),
+  '& .MuiTypography-root': {
+    fontSize: '0.875rem',
+    color: theme.palette.text.primary,
+    paddingLeft: theme.spacing(1),
+  },
+}));
+
+// Styled MenuItem for Select
+const StyledMenuItem = styled(MenuItem)(({ theme }) => ({
+	fontSize: '0.875rem',
+	paddingTop: theme.spacing(1),
+	paddingBottom: theme.spacing(1),
+	'&:hover': {
+		backgroundColor: alpha(theme.palette.action.hover, 0.08),
+	},
+	'&.Mui-selected': {
+		backgroundColor: alpha(theme.palette.primary.main, 0.12),
+		'&:hover': {
+			backgroundColor: alpha(theme.palette.primary.main, 0.16),
+		}
+	},
+}));
 
 type ScheduleFormDialogProps = {
 	open: boolean;
@@ -285,7 +442,7 @@ export const ScheduleFormDialog: FC<ScheduleFormDialogProps> = ({
 					isSubmitting ||
 					!formData.prompt ||
 					(formData.interval != null && formData.interval < 1) ||
-					(!isEditMode && !formData.selectedAgentId) // Disable if creating and no agent selected
+					(!isEditMode && !formData.selectedAgentId)
 				}
 				startIcon={isSubmitting ? <CircularProgress size={18} color="inherit" /> : <Save size={18} />}
 			>
@@ -300,126 +457,137 @@ export const ScheduleFormDialog: FC<ScheduleFormDialogProps> = ({
 			onClose={onClose}
 			title={dialogTitle}
 			actions={dialogActions}
-			maxWidth="sm" // Consider "md" if agent selection makes it crowded
+			maxWidth="sm"
 			fullWidth
 		>
 			<StyledFormGrid container spacing={2}>
 				{!isEditMode && (
 					<Grid item xs={12}>
-						<Autocomplete
-							id="agent-select-for-schedule"
-							options={agentOptions}
-							value={selectedAgentForForm}
-							getOptionLabel={(option) => option.name || `Agent ID: ${option.id.substring(0,8)}...`}
-							isOptionEqualToValue={(option, value) => option.id === value.id}
-							onChange={(_event, newValue) => {
-								setSelectedAgentForForm(newValue);
-								setFormData((prev) => ({ ...prev, selectedAgentId: newValue ? newValue.id : null }));
-							}}
-							onInputChange={(_event, newInputValue) => {
-								// Debounced search
-								const timer = setTimeout(() => {
-									setAgentSearchQuery(newInputValue);
-								}, 300);
-								return () => clearTimeout(timer);
-							}}
-							loading={isLoadingAgents}
-							disabled={isSubmitting || isEditMode} // Disable if editing (agent is fixed)
-							renderInput={(params) => (
-								<TextField
-									{...params}
-									label="Select Agent"
-									variant="outlined"
-									required={!isEditMode} // Required only for new schedules
-									error={isAgentsError}
-									helperText={isAgentsError ? "Failed to load agents" : (!isEditMode && !formData.selectedAgentId ? "Agent selection is required." : "")}
-									InputProps={{
-										...params.InputProps,
-										endAdornment: (
-											<>
-												{isLoadingAgents ? <CircularProgress color="inherit" size={20} /> : null}
-												{params.InputProps.endAdornment}
-											</>
-										),
-									}}
-								/>
+						<FieldLabel htmlFor="agent-select-for-schedule">Select Agent {isEditMode ? "" : <Typography component="span" color="error.main" sx={{ml: 0.5}}>*</Typography>}</FieldLabel>
+						<StyledAutocomplete
+								id="agent-select-for-schedule"
+								options={agentOptions}
+								value={selectedAgentForForm}
+								getOptionLabel={(option) => option.name || `Agent ID: ${option.id.substring(0,8)}...`}
+								isOptionEqualToValue={(option, value) => option.id === value.id}
+								onChange={(_event, newValue) => {
+									setSelectedAgentForForm(newValue);
+									setFormData((prev) => ({ ...prev, selectedAgentId: newValue ? newValue.id : null }));
+								}}
+								onInputChange={(_event, newInputValue) => {
+									const timer = setTimeout(() => {
+										setAgentSearchQuery(newInputValue);
+									}, 300);
+									return () => clearTimeout(timer);
+								}}
+								loading={isLoadingAgents}
+								disabled={isSubmitting || isEditMode}
+								renderInput={(params) => (
+									<TextField
+										{...params}
+										placeholder="Search or select an agent..."
+										error={isAgentsError || (!isEditMode && !formData.selectedAgentId && isSubmitting)}
+										InputProps={{
+											...params.InputProps,
+											endAdornment: (
+												<>
+													{isLoadingAgents ? <CircularProgress color="inherit" size={20} /> : null}
+													{params.InputProps.endAdornment}
+												</>
+											),
+										}}
+									/>
+								)}
+								renderOption={(props, option: AgentDetails) => (
+									<Box component="li" {...props} key={option.id} sx={(theme) => ({
+										display: 'flex', flexDirection: 'column', alignItems: 'flex-start',
+										'&:hover': { backgroundColor: alpha(theme.palette.action.hover, 0.08)},
+										'&[aria-selected="true"]': { backgroundColor: alpha(theme.palette.primary.main, 0.12)},
+									})}>
+										<Typography variant="body2" component="span" sx={{ fontWeight: 500 }}>{option.name || "Unnamed Agent"}</Typography>
+										<Typography variant="caption" color="text.secondary">ID: {option.id.substring(0, 8)}...</Typography>
+									</Box>
+								)}
+							/>
+							{(isAgentsError || (!isEditMode && !formData.selectedAgentId && isSubmitting)) && (
+								<StyledFormHelperText error={!!isAgentsError || (!isEditMode && !formData.selectedAgentId && !!isSubmitting)}>
+									{isAgentsError ? "Failed to load agents." : "Agent selection is required."}
+								</StyledFormHelperText>
 							)}
-							renderOption={(props, option) => (
-								<Box component="li" {...props} key={option.id}>
-									{option.name || "Unnamed Agent"} ({option.id.substring(0, 8)})
-								</Box>
-							)}
-						/>
-						{isAgentsError && <FormHelperText error>Error loading agents. Try searching or check connection.</FormHelperText>}
 					</Grid>
 				)}
 				 {isEditMode && initialData && (
 					 <Grid item xs={12}>
-						 <Typography variant="body2" color="text.secondary">
-							 Editing schedule for Agent: {initialData.agent_id.substring(0,8)}... (Agent cannot be changed)
+						 <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+							 Editing schedule for Agent: <Typography component="span" sx={{ fontWeight: 500 }}>{selectedAgentForForm?.name || `${initialData.agent_id.substring(0,8)}...`}</Typography> (Agent cannot be changed)
 						 </Typography>
 					 </Grid>
 				 )}
 				<Grid item xs={12}>
-					<Tooltip
-						title={
-							<>
-								<Typography variant="caption" display="block" gutterBottom>
-									This is the message that will be sent to the agent on the schedule.
-								</Typography>
-								<Typography variant="caption" display="block">
-									Example: "Send me an email with a detailed world news breakdown with key events"
-								</Typography>
-							</>
-						}
-						placement="top-start"
-						arrow
-					>
-						<FullWidthTextField
-							label="Prompt"
-							name="prompt"
-							value={formData.prompt}
-							onChange={handleChange}
-							required
-							multiline
-							rows={3}
-							disabled={isSubmitting}
-							placeholder="e.g., Send me an email with a detailed world news breakdown..."
-						/>
-					</Tooltip>
+						<Tooltip
+							title={
+								<>
+									<Typography variant="caption" display="block" gutterBottom>
+										This is the message that will be sent to the agent on the schedule.
+									</Typography>
+									<Typography variant="caption" display="block">
+										Example: "Send me an email with a detailed world news breakdown with key events"
+									</Typography>
+								</>
+							}
+							placement="top-start"
+							arrow
+						>
+							<div>
+								<FieldLabel htmlFor="prompt">Prompt <Typography component="span" color="error.main" sx={{ml: 0.5}}>*</Typography></FieldLabel>
+								<FullWidthTextField
+									id="prompt"
+									name="prompt"
+									value={formData.prompt}
+									onChange={handleChange}
+									required
+									multiline
+									rows={3}
+									disabled={isSubmitting}
+									placeholder="e.g., Send me an email with a detailed world news breakdown..."
+								/>
+							</div>
+						</Tooltip>
 				</Grid>
-				{/* Name and Description fields removed */}
 				<Grid item xs={6}>
+					<FieldLabel htmlFor="interval">Interval <Typography component="span" color="error.main" sx={{ml: 0.5}}>*</Typography></FieldLabel>
 					<FullWidthTextField
-						label="Interval"
+						id="interval"
 						name="interval"
 						type="number"
-						value={formData.interval || 1}
+						value={formData.interval === null ? "" : formData.interval}
 						onChange={handleChange}
 						required
 						disabled={isSubmitting}
 						InputProps={{ inputProps: { min: 1 } }}
+						placeholder="e.g., 1"
 					/>
 				</Grid>
 				<Grid item xs={6}>
-					<FullWidthFormControl required disabled={isSubmitting}>
-						<InputLabel id="unit-select-label">Unit</InputLabel>
+					<FieldLabel htmlFor="unit-select">Unit <Typography component="span" color="error.main" sx={{ml: 0.5}}>*</Typography></FieldLabel>
+					<FullWidthFormControl required disabled={isSubmitting} id="unit-select-formcontrol">
 						<Select
-							labelId="unit-select-label"
+							id="unit-select"
 							name="unit"
 							value={formData.unit || "hours"}
-							label="Unit"
 							onChange={handleChange}
+							displayEmpty
 						>
-							<MenuItem value="minutes">Minutes</MenuItem>
-							<MenuItem value="hours">Hours</MenuItem>
-							<MenuItem value="days">Days</MenuItem>
+							<StyledMenuItem value="minutes">Minutes</StyledMenuItem>
+							<StyledMenuItem value="hours">Hours</StyledMenuItem>
+							<StyledMenuItem value="days">Days</StyledMenuItem>
 						</Select>
 					</FullWidthFormControl>
 				</Grid>
 				<Grid item xs={12} sm={6}>
+					<FieldLabel htmlFor="start_time_utc">Start Time (UTC, Optional)</FieldLabel>
 					<FullWidthTextField
-						label="Start Time (UTC, Optional)"
+						id="start_time_utc"
 						name="start_time_utc"
 						type="datetime-local"
 						value={
@@ -428,29 +596,28 @@ export const ScheduleFormDialog: FC<ScheduleFormDialogProps> = ({
 								: ""
 						}
 						onChange={handleDateTimeChange}
-						InputLabelProps={{ shrink: true }}
 						disabled={isSubmitting}
 					/>
-					<FormHelperText>If not set, starts immediately or on next interval.</FormHelperText>
+					<StyledFormHelperText>If not set, starts immediately or on next interval.</StyledFormHelperText>
 				</Grid>
 				<Grid item xs={12} sm={6}>
+					<FieldLabel htmlFor="end_time_utc">End Time (UTC, Optional)</FieldLabel>
 					<FullWidthTextField
-						label="End Time (UTC, Optional)"
+						id="end_time_utc"
 						name="end_time_utc"
 						type="datetime-local"
 						value={
 							formData.end_time_utc ? formData.end_time_utc.slice(0, 16) : ""
 						}
 						onChange={handleDateTimeChange}
-						InputLabelProps={{ shrink: true }}
 						disabled={isSubmitting}
 					/>
-					<FormHelperText>If not set, schedule runs indefinitely.</FormHelperText>
+					<StyledFormHelperText>If not set, schedule runs indefinitely.</StyledFormHelperText>
 				</Grid>
-				<Grid item xs={6}>
-					<FormControlLabel
+				<Grid item xs={6} sx={{ display: 'flex', alignItems: 'center', mt:1 }}>
+					<StyledFormControlLabel
 						control={
-							<Switch
+							<StyledSwitch
 								checked={formData.is_active || false}
 								onChange={handleSwitchChange}
 								name="is_active"
@@ -460,10 +627,10 @@ export const ScheduleFormDialog: FC<ScheduleFormDialogProps> = ({
 						label="Active"
 					/>
 				</Grid>
-				<Grid item xs={6}>
-					<FormControlLabel
+				<Grid item xs={6} sx={{ display: 'flex', alignItems: 'center', mt:1 }}>
+					<StyledFormControlLabel
 						control={
-							<Switch
+							<StyledSwitch
 								checked={formData.one_time || false}
 								onChange={handleSwitchChange}
 								name="one_time"
