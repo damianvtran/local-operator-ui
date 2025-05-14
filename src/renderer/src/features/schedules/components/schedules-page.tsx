@@ -121,7 +121,7 @@ export const SchedulesPage: FC = () => {
 				subtitle="View and manage all agent schedules."
 			>
 				<Button
-					variant="contained"
+					variant="outlined"
 					color="primary"
 					startIcon={<PlusCircle size={18} />}
 					onClick={() => handleOpenForm()} // Opens ScheduleFormDialog for new schedule
