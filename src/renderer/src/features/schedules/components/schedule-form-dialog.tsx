@@ -1,4 +1,5 @@
 import type { FC } from "react";
+import { toast } from "react-toastify";
 import {
 	TextField,
 	Grid,
@@ -420,10 +421,13 @@ export const ScheduleFormDialog: FC<ScheduleFormDialogProps> = ({
 			}
 
 			await onSubmit(scheduleData, agentForSubmit);
+			// Toast for success is handled by the handleSubmitForm in schedules-page.tsx
+			// No separate toast here to avoid duplicates, unless a more specific message is needed for the dialog context.
+			// For now, we assume the parent page's toast is sufficient.
 			onClose();
 		} catch (error) {
 			console.error("Failed to submit schedule:", error);
-			// Consider showing an error toast to the user
+			toast.error(`Failed to save schedule: ${error instanceof Error ? error.message : "Unknown error"}`);
 		} finally {
 			setIsSubmitting(false);
 		}
