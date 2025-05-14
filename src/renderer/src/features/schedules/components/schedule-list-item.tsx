@@ -27,7 +27,13 @@ const formatDate = (date: Date, includeYear: boolean): string => {
 };
 
 const createScheduleDisplayString = (schedule: ScheduleResponse): string => {
-	let displayString = `Every ${schedule.interval} ${schedule.unit}`;
+	let intervalString: string;
+	if (schedule.interval === 1) {
+		intervalString = `Every ${schedule.unit.slice(0, -1)}`; // Remove 's'
+	} else {
+		intervalString = `Every ${schedule.interval} ${schedule.unit}`;
+	}
+	let displayString = intervalString;
 
 	const now = new Date();
 	const currentYear = now.getFullYear();
