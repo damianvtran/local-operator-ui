@@ -22,6 +22,7 @@ import {
 	MessageCircle,
 	Settings,
 	Store,
+	CalendarDays, 
 } from "lucide-react";
 import type { FC } from "react";
 import { useNavigate } from "react-router-dom";
@@ -204,6 +205,12 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 			label: "Agent Hub",
 			path: "/agent-hub",
 			isActive: currentView === "agent-hub",
+		},
+		{
+			icon: CalendarDays,
+			label: "Schedules",
+			path: "/schedules",
+			isActive: currentView === "schedules",
 		},
 		{
 			icon: Settings,
