@@ -11,7 +11,9 @@ import {
 	CircularProgress,
 	FormHelperText,
 	Typography,
-	Tooltip, // Added Tooltip
+	Tooltip,
+	Autocomplete, // Added Autocomplete
+	Box, // Added Box for Autocomplete renderOption
 } from "@mui/material";
 import type { SelectChangeEvent } from "@mui/material";
 import type {
@@ -19,10 +21,12 @@ import type {
 	ScheduleResponse,
 	ScheduleUnit,
 	ScheduleUpdateRequest,
+	AgentDetails, // Added AgentDetails
 } from "@shared/api/local-operator";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react"; // Added useMemo
 import { styled } from "@mui/material/styles";
 import { Save, XSquare } from "lucide-react"; // Using lucide-react icons
+import { useAgents } from "@shared/hooks/use-agents"; // Import useAgents
 import {
 	BaseDialog,
 	PrimaryButton,
@@ -97,16 +101,19 @@ type ScheduleFormDialogProps = {
 	onClose: () => void;
 	onSubmit: (
 		data: ScheduleCreateRequest | ScheduleUpdateRequest,
-		agentId?: string, // Pass agentId if creating
+		agentId: string, // AgentId is now mandatory for submission from this form
 	) => Promise<void>;
 	initialData?: ScheduleResponse | null;
-	agentId?: string; // For creating a schedule for a specific agent
+	// agentId prop is removed as it's now selected within the dialog
 };
 
-// Represents the form state. Name and description are removed.
-type FormDataType = ScheduleCreateRequest;
+// Represents the form state.
+type FormDataType = ScheduleCreateRequest & {
+	selectedAgentId: string | null; // Add selectedAgentId to form data
+};
 
 const defaultFormState: FormDataType = {
+	selectedAgentId: null, // Initialize selectedAgentId
 	prompt: "",
 	interval: 1,
 	unit: "hours",
@@ -126,39 +133,60 @@ export const ScheduleFormDialog: FC<ScheduleFormDialogProps> = ({
 	onClose,
 	onSubmit,
 	initialData,
-	agentId,
+	// agentId prop removed
 }) => {
-	const [formData, setFormData] = useState<
-		FormDataType
-	>(defaultFormState);
+	const [formData, setFormData] = useState<FormDataType>(defaultFormState);
 	const [isSubmitting, setIsSubmitting] = useState(false);
+	const [agentSearchQuery, setAgentSearchQuery] = useState("");
+	const [selectedAgentForForm, setSelectedAgentForForm] = useState<AgentDetails | null>(null);
 
 	const isEditMode = !!initialData;
+
+	// Fetch agents for the Autocomplete
+	const {
+		data: agentsListResult,
+		isLoading: isLoadingAgents,
+		isError: isAgentsError,
+	} = useAgents(1, 50, 0, agentSearchQuery || undefined, "name", "asc");
+
+	const agentOptions = useMemo(() => agentsListResult?.agents || [], [agentsListResult]);
 
 	useEffect(() => {
 		if (open) {
 			if (initialData) {
 				// Editing existing schedule
 				setFormData({
+					selectedAgentId: initialData.agent_id, // Pre-fill agent if editing
 					prompt: initialData.prompt,
 					interval: initialData.interval,
 					unit: initialData.unit,
 					is_active: initialData.is_active,
 					one_time: initialData.one_time,
 					start_time_utc: initialData.start_time_utc
-						? new Date(initialData.start_time_utc).toISOString().slice(0, 16) // Format for datetime-local
+						? new Date(initialData.start_time_utc).toISOString().slice(0, 16)
 						: null,
 					end_time_utc: initialData.end_time_utc
-						? new Date(initialData.end_time_utc).toISOString().slice(0, 16) // Format for datetime-local
+						? new Date(initialData.end_time_utc).toISOString().slice(0, 16)
 						: null,
-					// name and description are removed from initialData mapping
 				});
+				// Attempt to find and set the agent object for the Autocomplete if editing
+				const currentAgent = agentOptions.find(agent => agent.id === initialData.agent_id);
+				if (currentAgent) {
+					setSelectedAgentForForm(currentAgent);
+				} else if (initialData.agent_id && !isLoadingAgents && agentOptions.length > 0) {
+					// If agent not in initial list (e.g. due to pagination/search),
+					// this part might need enhancement to fetch the specific agent by ID if crucial for display.
+					// For now, ID is set, Autocomplete might not show the name until list is broader.
+				}
+
 			} else {
 				// Creating new schedule, reset to default
 				setFormData(defaultFormState);
+				setSelectedAgentForForm(null);
+				setAgentSearchQuery(""); // Reset search
 			}
 		}
-	}, [open, initialData]);
+	}, [open, initialData, agentOptions, isLoadingAgents]);
 
 	const handleChange = (
 		event:
@@ -202,24 +230,43 @@ export const ScheduleFormDialog: FC<ScheduleFormDialogProps> = ({
 	const handleSubmit = async () => {
 		setIsSubmitting(true);
 		try {
-			const submitData: ScheduleCreateRequest | ScheduleUpdateRequest = {
+			if (!isEditMode && !formData.selectedAgentId) {
+				// This should ideally be caught by form validation (e.g. making Autocomplete required)
+				console.error("Agent ID is required to create a schedule.");
+				setIsSubmitting(false);
+				return;
+			}
+
+			const scheduleData: ScheduleCreateRequest | ScheduleUpdateRequest = {
 				prompt: formData.prompt,
-				interval: Number(formData.interval), // Ensure interval is a number
+				interval: Number(formData.interval),
 				unit: formData.unit,
 				is_active: formData.is_active,
 				one_time: formData.one_time,
-				start_time_utc: formData.start_time_utc || null, // Ensure null if empty
-				end_time_utc: formData.end_time_utc || null, // Ensure null if empty
+				start_time_utc: formData.start_time_utc || null,
+				end_time_utc: formData.end_time_utc || null,
 			};
-
+			
 			// Clean up empty optional fields that should be null
-			if (submitData.start_time_utc === "") submitData.start_time_utc = null;
-			if (submitData.end_time_utc === "") submitData.end_time_utc = null;
+			if (scheduleData.start_time_utc === "") scheduleData.start_time_utc = null;
+			if (scheduleData.end_time_utc === "") scheduleData.end_time_utc = null;
 
-			await onSubmit(submitData, isEditMode ? undefined : agentId);
+			// For new schedules, agentId comes from formData.selectedAgentId
+			// For edits, agentId is inherent to initialData and not changed here.
+			const agentForSubmit = isEditMode ? initialData.agent_id : formData.selectedAgentId;
+
+			if (!agentForSubmit) {
+				// Should not happen if validation and button disabled state are correct
+				console.error("Agent ID is missing for submission.");
+				setIsSubmitting(false);
+				return;
+			}
+
+			await onSubmit(scheduleData, agentForSubmit);
 			onClose();
 		} catch (error) {
 			console.error("Failed to submit schedule:", error);
+			// Consider showing an error toast to the user
 		} finally {
 			setIsSubmitting(false);
 		}
@@ -229,13 +276,18 @@ export const ScheduleFormDialog: FC<ScheduleFormDialogProps> = ({
 
 	const dialogActions = (
 		<>
-			<SecondaryButton onClick={onClose} disabled={isSubmitting} startIcon={<XSquare size={18}/>}>
+			<SecondaryButton onClick={onClose} disabled={isSubmitting} startIcon={<XSquare size={18} />}>
 				Cancel
 			</SecondaryButton>
 			<PrimaryButton
 				onClick={handleSubmit}
-				disabled={isSubmitting || !formData.prompt || (formData.interval != null && formData.interval < 1)}
-				startIcon={isSubmitting ? <CircularProgress size={18} color="inherit"/> : <Save size={18}/>}
+				disabled={
+					isSubmitting ||
+					!formData.prompt ||
+					(formData.interval != null && formData.interval < 1) ||
+					(!isEditMode && !formData.selectedAgentId) // Disable if creating and no agent selected
+				}
+				startIcon={isSubmitting ? <CircularProgress size={18} color="inherit" /> : <Save size={18} />}
 			>
 				{isSubmitting ? "Saving..." : isEditMode ? "Save Changes" : "Create Schedule"}
 			</PrimaryButton>
@@ -248,17 +300,66 @@ export const ScheduleFormDialog: FC<ScheduleFormDialogProps> = ({
 			onClose={onClose}
 			title={dialogTitle}
 			actions={dialogActions}
-			maxWidth="sm"
+			maxWidth="sm" // Consider "md" if agent selection makes it crowded
 			fullWidth
 		>
 			<StyledFormGrid container spacing={2}>
-				{!isEditMode && agentId && (
+				{!isEditMode && (
 					<Grid item xs={12}>
-						<Typography variant="body2" color="text.secondary">
-							Creating schedule for Agent ID: {agentId.substring(0,8)}...
-						</Typography>
+						<Autocomplete
+							id="agent-select-for-schedule"
+							options={agentOptions}
+							value={selectedAgentForForm}
+							getOptionLabel={(option) => option.name || `Agent ID: ${option.id.substring(0,8)}...`}
+							isOptionEqualToValue={(option, value) => option.id === value.id}
+							onChange={(_event, newValue) => {
+								setSelectedAgentForForm(newValue);
+								setFormData((prev) => ({ ...prev, selectedAgentId: newValue ? newValue.id : null }));
+							}}
+							onInputChange={(_event, newInputValue) => {
+								// Debounced search
+								const timer = setTimeout(() => {
+									setAgentSearchQuery(newInputValue);
+								}, 300);
+								return () => clearTimeout(timer);
+							}}
+							loading={isLoadingAgents}
+							disabled={isSubmitting || isEditMode} // Disable if editing (agent is fixed)
+							renderInput={(params) => (
+								<TextField
+									{...params}
+									label="Select Agent"
+									variant="outlined"
+									required={!isEditMode} // Required only for new schedules
+									error={isAgentsError}
+									helperText={isAgentsError ? "Failed to load agents" : (!isEditMode && !formData.selectedAgentId ? "Agent selection is required." : "")}
+									InputProps={{
+										...params.InputProps,
+										endAdornment: (
+											<>
+												{isLoadingAgents ? <CircularProgress color="inherit" size={20} /> : null}
+												{params.InputProps.endAdornment}
+											</>
+										),
+									}}
+								/>
+							)}
+							renderOption={(props, option) => (
+								<Box component="li" {...props} key={option.id}>
+									{option.name || "Unnamed Agent"} ({option.id.substring(0, 8)})
+								</Box>
+							)}
+						/>
+						{isAgentsError && <FormHelperText error>Error loading agents. Try searching or check connection.</FormHelperText>}
 					</Grid>
 				)}
+				 {isEditMode && initialData && (
+					 <Grid item xs={12}>
+						 <Typography variant="body2" color="text.secondary">
+							 Editing schedule for Agent: {initialData.agent_id.substring(0,8)}... (Agent cannot be changed)
+						 </Typography>
+					 </Grid>
+				 )}
 				<Grid item xs={12}>
 					<Tooltip
 						title={
