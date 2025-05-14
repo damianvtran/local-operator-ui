@@ -7,6 +7,70 @@ import { useQuery } from "@tanstack/react-query";
 import { alpha, styled } from "@mui/material/styles";
 import { apiConfig } from "@shared/config";
 
+const formatTime = (date: Date): string => {
+	return date.toLocaleTimeString(navigator.language, {
+		hour: "numeric",
+		minute: "2-digit",
+	});
+};
+
+const formatDate = (date: Date, includeYear: boolean): string => {
+	const options: Intl.DateTimeFormatOptions = {
+		weekday: "long",
+		month: "long",
+		day: "numeric",
+	};
+	if (includeYear) {
+		options.year = "numeric";
+	}
+	return date.toLocaleDateString(navigator.language, options);
+};
+
+const createScheduleDisplayString = (schedule: ScheduleResponse): string => {
+	let displayString = `Every ${schedule.interval} ${schedule.unit}`;
+
+	const now = new Date();
+	const currentYear = now.getFullYear();
+
+	if (schedule.start_time_utc) {
+		const startTime = new Date(schedule.start_time_utc);
+		displayString += ` @ ${formatTime(startTime)}`;
+		if (schedule.one_time) {
+			const startYear = startTime.getFullYear();
+			displayString += ` on ${formatDate(startTime, startYear !== currentYear)}`;
+		}
+	}
+
+	if (schedule.end_time_utc) {
+		const endTime = new Date(schedule.end_time_utc);
+		if (schedule.start_time_utc) {
+			// If there's a start time, "to" indicates the end of a range for that start instance
+			displayString += ` to ${formatTime(endTime)}`;
+			if (schedule.one_time) {
+				// Only add date part if it's different from start_time's date or if start_time wasn't one_time formatted
+				const startTime = schedule.start_time_utc ? new Date(schedule.start_time_utc) : null;
+				if (!startTime || startTime.toDateString() !== endTime.toDateString()) {
+					const endYear = endTime.getFullYear();
+					displayString += ` on ${formatDate(endTime, endYear !== currentYear)}`;
+				}
+			}
+		} else {
+			// If no start time, "ends @ ..."
+			displayString += ` ending @ ${formatTime(endTime)}`;
+			if (schedule.one_time) {
+				const endYear = endTime.getFullYear();
+				displayString += ` on ${formatDate(endTime, endYear !== currentYear)}`;
+			}
+		}
+	}
+
+	if (schedule.one_time && !schedule.start_time_utc && !schedule.end_time_utc) {
+		displayString += " (One-time)";
+	}
+
+	return displayString;
+};
+
 type ScheduleListItemProps = {
 	schedule: ScheduleResponse;
 	onEdit: (schedule: ScheduleResponse) => void;
@@ -154,8 +218,7 @@ export const ScheduleListItem: FC<ScheduleListItemProps> = ({
 					)}
 				</Box>
 				<Typography variant="caption" color="text.secondary">
-					Every {schedule.interval} {schedule.unit}
-					{schedule.one_time ? " (One-time)" : ""}
+					{createScheduleDisplayString(schedule)}
 				</Typography>
 				<Typography
 					variant="caption"
