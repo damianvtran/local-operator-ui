@@ -1,6 +1,6 @@
 import type { FC } from "react";
-import { Box, Typography, IconButton, Paper, Skeleton } from "@mui/material";
-import { Edit, Trash2, PlayCircle, PauseCircle } from "lucide-react";
+import { Box, Typography, IconButton, Paper, Skeleton, Chip } from "@mui/material";
+import { Edit, Trash2, PlayCircle, PauseCircle, User } from "lucide-react";
 import type { ScheduleResponse } from "@shared/api/local-operator";
 import { AgentsApi } from "@shared/api/local-operator/agents-api";
 import { useQuery } from "@tanstack/react-query";
@@ -25,7 +25,7 @@ const ListItemPaper = styled(Paper)(({ theme }) => ({
   `,
 	gridTemplateColumns: "1fr auto auto",
 	gap: theme.spacing(1),
-	backgroundImage: "none", // Ensure no MUI paper default background image
+	backgroundImage: "none",
 	border: `1px solid ${theme.palette.divider}`,
 	borderRadius: theme.shape.borderRadius,
 	"&:hover": {
@@ -35,7 +35,7 @@ const ListItemPaper = styled(Paper)(({ theme }) => ({
 
 const PromptSection = styled(Box)({
 	gridArea: "prompt",
-	wordBreak: "break-word", // Ensure long prompts wrap
+	wordBreak: "break-word",
 });
 
 const InfoSection = styled(Box)(({ theme }) => ({
@@ -49,7 +49,7 @@ const ActionsSection = styled(Box)(({ theme }) => ({
 	gridArea: "actions",
 	display: "flex",
 	gap: theme.spacing(1),
-	alignSelf: "start", // Align to the top of the grid area
+	alignSelf: "start",
 }));
 
 const FooterSection = styled(Box)({
@@ -68,13 +68,13 @@ const useAgentName = (agentId: string) => {
 			if (!baseUrl) {
 				// eslint-disable-next-line no-console
 				console.warn("Base URL for Local Operator API is not configured.");
-				return "Agent ID"; // Fallback or throw error
+				return "Agent ID";
 			}
 			const response = await AgentsApi.getAgent(baseUrl, agentId);
 			return response.result?.name || "Unknown Agent";
 		},
-		enabled: !!agentId && !!baseUrl, // Only run query if agentId and baseUrl are available
-		staleTime: 1000 * 60 * 5, // Cache for 5 minutes
+		enabled: !!agentId && !!baseUrl,
+		staleTime: 1000 * 60 * 5,
 	});
 };
 
@@ -82,6 +82,12 @@ const useAgentName = (agentId: string) => {
  * ScheduleListItem component
  *
  * Displays a single schedule item with actions to edit, delete, and toggle active state.
+ *
+ * @param schedule - The schedule object to display.
+ * @param onEdit - Callback for editing the schedule.
+ * @param onDelete - Callback for deleting the schedule.
+ * @param onToggleActive - Callback for toggling the schedule's active state.
+ * @throws Will throw if agent name cannot be fetched.
  */
 export const ScheduleListItem: FC<ScheduleListItemProps> = ({
 	schedule,
@@ -96,7 +102,7 @@ export const ScheduleListItem: FC<ScheduleListItemProps> = ({
 	return (
 		<ListItemPaper elevation={0}>
 			<PromptSection>
-				<Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+				<Typography variant="body2" color="text.secondary" fontSize="0.875rem" sx={{ mt: 0.5 }}>
 					{schedule.prompt}
 				</Typography>
 			</PromptSection>
@@ -130,17 +136,37 @@ export const ScheduleListItem: FC<ScheduleListItemProps> = ({
 			</ActionsSection>
 
 			<InfoSection>
-				<Typography variant="caption" color="text.secondary">
-					Interval: Every {schedule.interval} {schedule.unit}
-					{schedule.one_time ? " (One-time)" : ""}
-				</Typography>
-				<Typography variant="caption" display="block" color="text.secondary">
-					Agent:{" "}
+				<Box sx={{ display: "flex", alignItems: "center", minHeight: 28 }}>
 					{isLoadingAgentName ? (
-						<Skeleton width={80} sx={{ display: "inline-block" }} />
+						<Skeleton
+							width={80}
+							height={28}
+							variant="rectangular"
+							sx={{ borderRadius: 1 }}
+						/>
 					) : (
-						agentName || schedule.agent_id.substring(0, 8)
+						<Chip
+							icon={<User size={12} style={{ marginLeft: 2 }} />}
+							label={agentName || schedule.agent_id.substring(0, 8)}
+							variant="outlined"
+							color="primary"
+							size="small"
+							sx={{
+								fontSize: "0.75rem",
+								height: 24,
+								maxWidth: 180,
+								overflow: "hidden",
+								textOverflow: "ellipsis",
+                pl: 1,
+                pr: 0.5,
+							}}
+							aria-label="Agent Name"
+						/>
 					)}
+				</Box>
+				<Typography variant="caption" color="text.secondary">
+					Every {schedule.interval} {schedule.unit}
+					{schedule.one_time ? " (One-time)" : ""}
 				</Typography>
 				<Typography
 					variant="caption"
@@ -152,7 +178,12 @@ export const ScheduleListItem: FC<ScheduleListItemProps> = ({
 			</InfoSection>
 
 			<FooterSection>
-				<Typography variant="caption" color="text.secondary" fontSize="0.75rem">
+				<Typography
+					variant="caption"
+					color="text.secondary"
+					fontSize="0.75rem"
+					sx={{ opacity: 0.6 }}
+				>
 					ID: {schedule.id}
 				</Typography>
 			</FooterSection>
