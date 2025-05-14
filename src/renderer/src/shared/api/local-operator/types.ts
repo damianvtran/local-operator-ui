@@ -619,6 +619,101 @@ export type SystemPromptUpdate = {
 	content: string;
 };
 
+// --- Schedule Types ---
+
+/**
+ * Enum representing the units for a schedule interval.
+ */
+export type ScheduleUnit = "minutes" | "hours" | "days";
+
+/**
+ * Request model for creating a new schedule.
+ */
+export type ScheduleCreateRequest = {
+	/** The prompt for the scheduled task. */
+	prompt: string;
+	/** The interval value for the schedule (e.g., 5 for every 5 minutes). */
+	interval: number;
+	/** The unit for the interval (MINUTES, HOURS, DAYS). */
+	unit: ScheduleUnit;
+	/** Whether the schedule is active upon creation. Defaults to true. */
+	is_active?: boolean;
+	/** Whether this is a one-time schedule. Defaults to false. */
+	one_time?: boolean;
+	/** Optional UTC start time for the schedule. */
+	start_time_utc?: string | null;
+	/** Optional UTC end time for the schedule. */
+	end_time_utc?: string | null;
+};
+
+/**
+ * Response model for a schedule.
+ */
+export type ScheduleResponse = {
+	/** Unique identifier for the schedule (UUID). */
+	id: string;
+	/** Unique identifier for the agent associated with the schedule (UUID). */
+	agent_id: string;
+	/** The prompt for the scheduled task. */
+	prompt: string;
+	/** The interval value for the schedule. */
+	interval: number;
+	/** The unit for the interval. */
+	unit: ScheduleUnit;
+	/** Whether the schedule is active. */
+	is_active: boolean;
+	/** Whether this is a one-time schedule. */
+	one_time: boolean;
+	/** Timestamp when the schedule was created (ISO 8601). */
+	created_at: string;
+	/** Timestamp of the last run (ISO 8601), or null if never run. */
+	last_run_at?: string | null;
+	/** Optional UTC start time for the schedule (ISO 8601). */
+	start_time_utc?: string | null;
+	/** Optional UTC end time for the schedule (ISO 8601). */
+	end_time_utc?: string | null;
+	/** Optional name for the schedule. */
+	name?: string | null;
+	/** Optional description for the schedule. */
+	description?: string | null;
+};
+
+/**
+ * Response model for a paginated list of schedules.
+ */
+export type ScheduleListResponse = {
+	/** Total number of schedules. */
+	total: number;
+	/** Current page number. */
+	page: number;
+	/** Number of schedules per page. */
+	per_page: number;
+	/** List of schedules for the current page. */
+	schedules: ScheduleResponse[];
+};
+
+/**
+ * Request model for updating an existing schedule. All fields are optional.
+ */
+export type ScheduleUpdateRequest = {
+	/** The prompt for the scheduled task. */
+	prompt?: string | null;
+	/** The interval value for the schedule. */
+	interval?: number | null;
+	/** The unit for the interval. */
+	unit?: ScheduleUnit | null;
+	/** Whether the schedule is active. */
+	is_active?: boolean | null;
+	/** Whether this is a one-time schedule. */
+	one_time?: boolean | null;
+	/** Optional UTC start time for the schedule. */
+	start_time_utc?: string | null;
+	/** Optional UTC end time for the schedule. */
+	end_time_utc?: string | null;
+};
+
+// --- End Schedule Types ---
+
 /**
  * Allowed agent categories (snake_case).
  * These should match the backend enum values.
