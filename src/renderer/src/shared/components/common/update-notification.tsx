@@ -13,7 +13,7 @@ import {
 } from "@shared/store/deferred-updates-store";
 import type { ProgressInfo, UpdateInfo } from "electron-updater";
 import parse from "html-react-parser";
-import { useCallback, useEffect, useState, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 // Define types for backend update info
 type BackendUpdateInfo = {
@@ -267,10 +267,7 @@ export const UpdateNotification = ({
 				// Only clear the notification if the backend version is up to date
 				const currentInfo = backendUpdateInfoRef.current;
 				setBackendUpdateAvailable((prev) => {
-					if (
-						currentInfo &&
-						currentInfo.latestVersion === info.version
-					) {
+					if (currentInfo && currentInfo.latestVersion === info.version) {
 						setBackendUpdateInfo(null);
 						return false;
 					}
