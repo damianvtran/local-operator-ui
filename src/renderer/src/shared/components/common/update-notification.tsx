@@ -13,7 +13,7 @@ import {
 } from "@shared/store/deferred-updates-store";
 import type { ProgressInfo, UpdateInfo } from "electron-updater";
 import parse from "html-react-parser";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 // Define types for backend update info
 type BackendUpdateInfo = {
@@ -96,24 +96,21 @@ export const UpdateNotification = ({
 	} | null>(null);
 
 	// Access the deferred updates store
-	const { shouldShowUpdate, deferUpdate, hydrated } = useDeferredUpdatesStore();
+	const { shouldShowUpdate, deferUpdate } = useDeferredUpdatesStore();
 
 	// Get app version on mount
+	// Keep a ref to the latest backendUpdateInfo for use in event handlers
+	const backendUpdateInfoRef = useRef<BackendUpdateInfo | null>(null);
+	useEffect(() => {
+		backendUpdateInfoRef.current = backendUpdateInfo;
+	}, [backendUpdateInfo]);
+
 	useEffect(() => {
 		window.api.systemInfo
 			.getAppVersion()
 			.then((version) => setAppVersion(version))
 			.catch(() => setAppVersion("unknown"));
 	}, []);
-
-	/**
-	 * Do not render notifications until the deferred updates store is hydrated.
-	 * This prevents race conditions where notifications could appear before
-	 * the persisted state is loaded and respected.
-	 */
-	if (!hydrated) {
-		return null;
-	}
 
 	// Check for updates
 	const checkForUpdates = useCallback(async () => {
@@ -253,15 +250,11 @@ export const UpdateNotification = ({
 		// Backend update available
 		const removeBackendUpdateAvailableListener =
 			window.api.updater.onBackendUpdateAvailable((info) => {
-				// Only show the update if it hasn't been deferred or the defer timeline has passed
 				if (shouldShowUpdate(UpdateType.BACKEND, info.latestVersion)) {
-					// Add canManageUpdate property based on the update command
-					// If the command contains "manually", it can't be managed
 					const enhancedInfo: BackendUpdateInfo = {
 						...info,
 						canManageUpdate: !info.updateCommand.includes("manually"),
 					};
-
 					setBackendUpdateAvailable(true);
 					setBackendUpdateInfo(enhancedInfo);
 					setSnackbarOpen(true);
@@ -270,9 +263,16 @@ export const UpdateNotification = ({
 
 		// Backend update not available
 		const removeBackendUpdateNotAvailableListener =
-			window.api.updater.onBackendUpdateNotAvailable(() => {
-				setBackendUpdateAvailable(false);
-				setBackendUpdateInfo(null);
+			window.api.updater.onBackendUpdateNotAvailable((info) => {
+				// Only clear the notification if the backend version is up to date
+				const currentInfo = backendUpdateInfoRef.current;
+				setBackendUpdateAvailable((prev) => {
+					if (currentInfo && currentInfo.latestVersion === info.version) {
+						setBackendUpdateInfo(null);
+						return false;
+					}
+					return prev;
+				});
 			});
 
 		// Backend update completed

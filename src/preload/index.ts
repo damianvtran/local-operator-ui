@@ -1,6 +1,7 @@
 import { electronAPI } from "@electron-toolkit/preload";
 import { contextBridge, ipcRenderer } from "electron";
 import type { ProgressInfo, UpdateInfo } from "electron-updater";
+import type { BackendUpdateInfo } from "../main/update-service";
 
 // Custom APIs for renderer
 const api = {
@@ -37,97 +38,89 @@ const api = {
 		downloadUpdate: () => ipcRenderer.invoke("download-update"),
 		quitAndInstall: () => ipcRenderer.invoke("quit-and-install"),
 		onUpdateAvailable: (callback: (info: UpdateInfo) => void) => {
-			ipcRenderer.on("update-available", (_event, info) => callback(info));
+			const handler = (_event, info) => callback(info);
+			ipcRenderer.on("update-available", handler);
 			return () => {
-				ipcRenderer.removeAllListeners("update-available");
+				ipcRenderer.removeListener("update-available", handler);
 			};
 		},
 		onUpdateNotAvailable: (callback: (info: UpdateInfo) => void) => {
-			ipcRenderer.on("update-not-available", (_event, info) => callback(info));
+			const handler = (_event, info) => callback(info);
+			ipcRenderer.on("update-not-available", handler);
 			return () => {
-				ipcRenderer.removeAllListeners("update-not-available");
+				ipcRenderer.removeListener("update-not-available", handler);
 			};
 		},
 		onUpdateDevMode: (callback: (message: string) => void) => {
-			ipcRenderer.on("update-dev-mode", (_event, message) => callback(message));
+			const handler = (_event, message) => callback(message);
+			ipcRenderer.on("update-dev-mode", handler);
 			return () => {
-				ipcRenderer.removeAllListeners("update-dev-mode");
+				ipcRenderer.removeListener("update-dev-mode", handler);
 			};
 		},
-		onUpdateNpxAvailable: (
-			callback: (info: {
-				currentVersion: string;
-				latestVersion: string;
-				updateCommand: string;
-			}) => void,
-		) => {
-			ipcRenderer.on("update-npx-available", (_event, info) => callback(info));
+		onUpdateNpxAvailable: (callback: (info: BackendUpdateInfo) => void) => {
+			const handler = (_event, info) => callback(info);
+			ipcRenderer.on("update-npx-available", handler);
 			return () => {
-				ipcRenderer.removeAllListeners("update-npx-available");
+				ipcRenderer.removeListener("update-npx-available", handler);
 			};
 		},
-		onBackendUpdateAvailable: (
-			callback: (info: {
-				currentVersion: string;
-				latestVersion: string;
-				updateCommand: string;
-			}) => void,
-		) => {
-			ipcRenderer.on("backend-update-available", (_event, info) =>
-				callback(info),
-			);
+		onBackendUpdateAvailable: (callback: (info: BackendUpdateInfo) => void) => {
+			const handler = (_event, info) => callback(info);
+			ipcRenderer.on("backend-update-available", handler);
 			return () => {
-				ipcRenderer.removeAllListeners("backend-update-available");
+				ipcRenderer.removeListener("backend-update-available", handler);
 			};
 		},
 		onBackendUpdateDevMode: (callback: (message: string) => void) => {
-			ipcRenderer.on("backend-update-dev-mode", (_event, message) =>
-				callback(message),
-			);
+			const handler = (_event, message) => callback(message);
+			ipcRenderer.on("backend-update-dev-mode", handler);
 			return () => {
-				ipcRenderer.removeAllListeners("backend-update-dev-mode");
+				ipcRenderer.removeListener("backend-update-dev-mode", handler);
 			};
 		},
 		onBackendUpdateNotAvailable: (
 			callback: (info: { version: string }) => void,
 		) => {
-			ipcRenderer.on("backend-update-not-available", (_event, info) =>
-				callback(info),
-			);
+			const handler = (_event, info) => callback(info);
+			ipcRenderer.on("backend-update-not-available", handler);
 			return () => {
-				ipcRenderer.removeAllListeners("backend-update-not-available");
+				ipcRenderer.removeListener("backend-update-not-available", handler);
 			};
 		},
 		onBackendUpdateCompleted: (callback: () => void) => {
-			ipcRenderer.on("backend-update-completed", () => callback());
+			const handler = () => callback();
+			ipcRenderer.on("backend-update-completed", handler);
 			return () => {
-				ipcRenderer.removeAllListeners("backend-update-completed");
+				ipcRenderer.removeListener("backend-update-completed", handler);
 			};
 		},
 		onUpdateDownloaded: (callback: (info: UpdateInfo) => void) => {
-			ipcRenderer.on("update-downloaded", (_event, info) => callback(info));
+			const handler = (_event, info) => callback(info);
+			ipcRenderer.on("update-downloaded", handler);
 			return () => {
-				ipcRenderer.removeAllListeners("update-downloaded");
+				ipcRenderer.removeListener("update-downloaded", handler);
 			};
 		},
 		onUpdateError: (callback: (error: string) => void) => {
-			ipcRenderer.on("update-error", (_event, error) => callback(error));
+			const handler = (_event, error) => callback(error);
+			ipcRenderer.on("update-error", handler);
 			return () => {
-				ipcRenderer.removeAllListeners("update-error");
+				ipcRenderer.removeListener("update-error", handler);
 			};
 		},
 		onUpdateProgress: (callback: (progressObj: ProgressInfo) => void) => {
-			ipcRenderer.on("update-progress", (_event, progressObj) =>
-				callback(progressObj),
-			);
+			const handler = (_event, progressObj) => callback(progressObj);
+			ipcRenderer.on("update-progress", handler);
 			return () => {
-				ipcRenderer.removeAllListeners("update-progress");
+				ipcRenderer.removeListener("update-progress", handler);
 			};
 		},
 		onBeforeQuitForUpdate: (callback: () => void) => {
-			ipcRenderer.on("before-quit-for-update", () => callback());
+			const handler = () => callback();
+			ipcRenderer.on("before-quit-for-update", handler);
 			return () => {
-				ipcRenderer.removeAllListeners("before-quit-for-update");
+				ipcRenderer.removeListener("before-quit-for-update", handler);
 			};
 		},
 	},
