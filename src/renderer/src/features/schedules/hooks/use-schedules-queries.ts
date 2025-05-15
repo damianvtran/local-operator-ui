@@ -1,6 +1,13 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { SchedulesApi, type CRUDResponse, type ScheduleListResponse, type ScheduleResponse, type ScheduleCreateRequest, type ScheduleUpdateRequest } from "@shared/api/local-operator";
+import {
+	type CRUDResponse,
+	type ScheduleCreateRequest,
+	type ScheduleListResponse,
+	type ScheduleResponse,
+	type ScheduleUpdateRequest,
+	SchedulesApi,
+} from "@shared/api/local-operator";
 import { apiConfig } from "@shared/config/api-config"; // Corrected import path for useApiConfig
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 const SCHEDULE_QUERY_KEY = "schedules";
 const AGENT_SCHEDULE_QUERY_KEY = "agentSchedules";
@@ -25,11 +32,16 @@ export const useListAllSchedules = (page = 1, perPage = 10) => {
  * @param page - Page number for pagination.
  * @param perPage - Number of items per page.
  */
-export const useListSchedulesForAgent = (agentId: string, page = 1, perPage = 10) => {
+export const useListSchedulesForAgent = (
+	agentId: string,
+	page = 1,
+	perPage = 10,
+) => {
 	const { baseUrl } = apiConfig;
 	return useQuery<CRUDResponse<ScheduleListResponse>, Error>({
 		queryKey: [AGENT_SCHEDULE_QUERY_KEY, agentId, page, perPage],
-		queryFn: () => SchedulesApi.listSchedulesForAgent(baseUrl, agentId, page, perPage),
+		queryFn: () =>
+			SchedulesApi.listSchedulesForAgent(baseUrl, agentId, page, perPage),
 		enabled: !!baseUrl && !!agentId,
 	});
 };
@@ -70,7 +82,9 @@ export const useCreateScheduleForAgent = () => {
 		onSuccess: (_, variables) => {
 			// Invalidate queries for all schedules and specific agent schedules
 			queryClient.invalidateQueries({ queryKey: [SCHEDULE_QUERY_KEY, "all"] });
-			queryClient.invalidateQueries({ queryKey: [AGENT_SCHEDULE_QUERY_KEY, variables.agentId] });
+			queryClient.invalidateQueries({
+				queryKey: [AGENT_SCHEDULE_QUERY_KEY, variables.agentId],
+			});
 		},
 	});
 };
@@ -93,9 +107,13 @@ export const useEditSchedule = () => {
 			const agentId = data.result?.agent_id;
 			// Invalidate queries for all schedules and the specific schedule
 			queryClient.invalidateQueries({ queryKey: [SCHEDULE_QUERY_KEY, "all"] });
-			queryClient.invalidateQueries({ queryKey: [SCHEDULE_QUERY_KEY, data.result?.id] });
+			queryClient.invalidateQueries({
+				queryKey: [SCHEDULE_QUERY_KEY, data.result?.id],
+			});
 			if (agentId) {
-				queryClient.invalidateQueries({ queryKey: [AGENT_SCHEDULE_QUERY_KEY, agentId] });
+				queryClient.invalidateQueries({
+					queryKey: [AGENT_SCHEDULE_QUERY_KEY, agentId],
+				});
 			}
 		},
 	});
@@ -111,16 +129,20 @@ export const useRemoveSchedule = () => {
 	return useMutation<
 		CRUDResponse,
 		Error,
-		{ scheduleId: string, agentId?: string } // agentId is optional, used for cache invalidation
+		{ scheduleId: string; agentId?: string } // agentId is optional, used for cache invalidation
 	>({
 		mutationFn: ({ scheduleId }) =>
 			SchedulesApi.removeSchedule(baseUrl, scheduleId),
 		onSuccess: (_, variables) => {
 			// Invalidate queries for all schedules and the specific schedule
 			queryClient.invalidateQueries({ queryKey: [SCHEDULE_QUERY_KEY, "all"] });
-			queryClient.invalidateQueries({ queryKey: [SCHEDULE_QUERY_KEY, variables.scheduleId] });
+			queryClient.invalidateQueries({
+				queryKey: [SCHEDULE_QUERY_KEY, variables.scheduleId],
+			});
 			if (variables.agentId) {
-				queryClient.invalidateQueries({ queryKey: [AGENT_SCHEDULE_QUERY_KEY, variables.agentId] });
+				queryClient.invalidateQueries({
+					queryKey: [AGENT_SCHEDULE_QUERY_KEY, variables.agentId],
+				});
 			}
 		},
 	});

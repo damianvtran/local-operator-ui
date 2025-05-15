@@ -1,5 +1,3 @@
-import type { FC } from "react";
-import { useState } from "react";
 import {
 	Button,
 	Dialog,
@@ -9,6 +7,8 @@ import {
 	TextField,
 	Typography,
 } from "@mui/material";
+import type { FC } from "react";
+import { useState } from "react";
 
 type AgentIdInputDialogProps = {
 	open: boolean;
@@ -21,7 +21,11 @@ type AgentIdInputDialogProps = {
  *
  * This dialog prompts the user to enter an Agent ID.
  */
-export const AgentIdInputDialog: FC<AgentIdInputDialogProps> = ({ open, onClose, onSubmit }) => {
+export const AgentIdInputDialog: FC<AgentIdInputDialogProps> = ({
+	open,
+	onClose,
+	onSubmit,
+}) => {
 	const [agentId, setAgentId] = useState("");
 	const [error, setError] = useState("");
 
@@ -64,7 +68,7 @@ export const AgentIdInputDialog: FC<AgentIdInputDialogProps> = ({ open, onClose,
 					error={Boolean(error)}
 					helperText={error}
 					onKeyPress={(e) => {
-						if (e.key === 'Enter') {
+						if (e.key === "Enter") {
 							handleSubmit();
 						}
 					}}

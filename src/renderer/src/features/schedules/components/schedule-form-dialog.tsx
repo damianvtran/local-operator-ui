@@ -1,38 +1,38 @@
-import type { FC } from "react";
-import { toast } from "react-toastify";
 import {
-	TextField,
-	Grid,
-	FormControl,
-	Select,
-	MenuItem,
-	FormControlLabel,
-	Switch,
-	CircularProgress,
-	Typography,
-	Tooltip,
 	Autocomplete,
 	Box,
-	alpha,
+	CircularProgress,
+	FormControl,
+	FormControlLabel,
+	Grid,
 	IconButton,
+	MenuItem,
+	Select,
+	Switch,
+	TextField,
+	Tooltip,
+	Typography,
+	alpha,
 } from "@mui/material";
 import type { SelectChangeEvent } from "@mui/material";
+import { styled } from "@mui/material/styles";
 import type {
+	AgentDetails,
 	ScheduleCreateRequest,
 	ScheduleResponse,
 	ScheduleUnit,
 	ScheduleUpdateRequest,
-	AgentDetails,
 } from "@shared/api/local-operator";
-import { useEffect, useState, useMemo } from "react";
-import { styled } from "@mui/material/styles";
-import { Save, XSquare, Info } from "lucide-react";
-import { useAgents } from "@shared/hooks/use-agents";
 import {
 	BaseDialog,
 	PrimaryButton,
 	SecondaryButton,
 } from "@shared/components/common/base-dialog";
+import { useAgents } from "@shared/hooks/use-agents";
+import { Info, Save, XSquare } from "lucide-react";
+import type { FC } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { toast } from "react-toastify";
 
 // Styled components
 const StyledFormGrid = styled(Grid)(({ theme }) => ({
