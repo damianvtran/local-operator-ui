@@ -166,31 +166,6 @@ export class UpdateService {
 
 		// Set mainWindow to null to break references
 		this.mainWindow = null;
-
-		// Ensure backend service is stopped if it's running
-		if (this.backendService && !this.backendService.isUsingExternalBackend()) {
-			logger.info(
-				"Stopping backend service during dispose...",
-				LogFileType.UPDATE_SERVICE,
-			);
-			// Use false for isRestart to indicate this is a final shutdown, not a restart
-			this.backendService.stop(false).catch((error) => {
-				logger.error(
-					"Error stopping backend service during dispose:",
-					LogFileType.UPDATE_SERVICE,
-					error,
-				);
-
-				// If normal shutdown fails, try a more aggressive approach
-				this.forceTerminateBackendProcess().catch((forceError) => {
-					logger.error(
-						"Error force terminating backend service during dispose:",
-						LogFileType.UPDATE_SERVICE,
-						forceError,
-					);
-				});
-			});
-		}
 	}
 
 	/**
