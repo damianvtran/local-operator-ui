@@ -1,6 +1,7 @@
 import { electronAPI } from "@electron-toolkit/preload";
 import { contextBridge, ipcRenderer } from "electron";
 import type { ProgressInfo, UpdateInfo } from "electron-updater";
+import type { BackendUpdateInfo } from "../main/update-service";
 
 // Custom APIs for renderer
 const api = {
@@ -58,11 +59,7 @@ const api = {
 			};
 		},
 		onUpdateNpxAvailable: (
-			callback: (info: {
-				currentVersion: string;
-				latestVersion: string;
-				updateCommand: string;
-			}) => void,
+			callback: (info: BackendUpdateInfo) => void,
 		) => {
 			const handler = (_event, info) => callback(info);
 			ipcRenderer.on("update-npx-available", handler);
@@ -71,11 +68,7 @@ const api = {
 			};
 		},
 		onBackendUpdateAvailable: (
-			callback: (info: {
-				currentVersion: string;
-				latestVersion: string;
-				updateCommand: string;
-			}) => void,
+			callback: (info: BackendUpdateInfo) => void,
 		) => {
 			const handler = (_event, info) => callback(info);
 			ipcRenderer.on("backend-update-available", handler);
