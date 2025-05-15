@@ -118,7 +118,7 @@ export const SchedulesPage: FC = () => {
 			<PageHeader
 				title="Schedules"
 				icon={CalendarDays}
-				subtitle="View and manage all agent schedules."
+				subtitle="View and manage scheduled tasks for your AI team."
 			>
 				<Button
 					variant="outlined"
