@@ -145,7 +145,7 @@ export const SchedulesPage: FC = () => {
 				{error && <Alert severity="error" sx={{ mt: 2 }}>Error fetching schedules: {error.message}</Alert>}
 				{!isLoading && !error && schedules.length === 0 && (
 					<NoSchedulesMessage>
-						No schedules found. Click "Create Schedule" to add one.
+						No schedules found. Simply ask an agent to do a daily/weekly task for you, or to handle something in the future and that task will appear here.
 					</NoSchedulesMessage>
 				)}
 				{!isLoading && !error && schedules.length > 0 && (
