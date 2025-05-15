@@ -1058,9 +1058,18 @@ export class UpdateService {
 					this.mainWindow.webContents &&
 					!this.mainWindow.webContents.isDestroyed()
 				) {
+					logger.info(
+						`Sending backend-update-available event with info: ${JSON.stringify(updateInfo)}`,
+						LogFileType.UPDATE_SERVICE,
+					);
 					this.mainWindow.webContents.send(
 						"backend-update-available",
 						updateInfo,
+					);
+				} else {
+					logger.error(
+						"Cannot send backend-update-available event: mainWindow is not available or destroyed",
+						LogFileType.UPDATE_SERVICE,
 					);
 				}
 

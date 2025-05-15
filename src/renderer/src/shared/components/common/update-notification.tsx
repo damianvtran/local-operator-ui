@@ -96,7 +96,7 @@ export const UpdateNotification = ({
 	} | null>(null);
 
 	// Access the deferred updates store
-	const { shouldShowUpdate, deferUpdate, hydrated } = useDeferredUpdatesStore();
+	const { shouldShowUpdate, deferUpdate } = useDeferredUpdatesStore();
 
 	// Get app version on mount
 	// Keep a ref to the latest backendUpdateInfo for use in event handlers
@@ -111,15 +111,6 @@ export const UpdateNotification = ({
 			.then((version) => setAppVersion(version))
 			.catch(() => setAppVersion("unknown"));
 	}, []);
-
-	/**
-	 * Do not render notifications until the deferred updates store is hydrated.
-	 * This prevents race conditions where notifications could appear before
-	 * the persisted state is loaded and respected.
-	 */
-	if (!hydrated) {
-		return null;
-	}
 
 	// Check for updates
 	const checkForUpdates = useCallback(async () => {
@@ -259,7 +250,6 @@ export const UpdateNotification = ({
 		// Backend update available
 		const removeBackendUpdateAvailableListener =
 			window.api.updater.onBackendUpdateAvailable((info) => {
-				console.log("onBackendUpdateAvailable", info);
 				if (shouldShowUpdate(UpdateType.BACKEND, info.latestVersion)) {
 					const enhancedInfo: BackendUpdateInfo = {
 						...info,

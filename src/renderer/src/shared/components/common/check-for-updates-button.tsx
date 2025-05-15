@@ -76,11 +76,19 @@ export const CheckForUpdatesButton = () => {
 				setSnackbarSeverity("success");
 				setSnackbarOpen(true);
 			});
+		const removeBackendUpdateDevModeListener =
+			window.api.updater.onBackendUpdateDevMode((message) => {
+				if (!manualCheckRef.current) return;
+				setSnackbarMessage(message);
+				setSnackbarSeverity("info");
+				setSnackbarOpen(true);
+			});
 
 		return () => {
 			removeUpdateErrorListener();
 			removeUpdateNotAvailableListener();
 			removeBackendUpdateNotAvailableListener();
+			removeBackendUpdateDevModeListener();
 		};
 	}, []);
 
