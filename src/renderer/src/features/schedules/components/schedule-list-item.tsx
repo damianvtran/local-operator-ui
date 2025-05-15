@@ -1,11 +1,18 @@
-import type { FC } from "react";
-import { Box, Typography, IconButton, Paper, Skeleton, Chip } from "@mui/material";
-import { Edit, Trash2, User } from "lucide-react";
+import {
+	Box,
+	Chip,
+	IconButton,
+	Paper,
+	Skeleton,
+	Typography,
+} from "@mui/material";
+import { alpha, styled } from "@mui/material/styles";
 import type { ScheduleResponse } from "@shared/api/local-operator";
 import { AgentsApi } from "@shared/api/local-operator/agents-api";
-import { useQuery } from "@tanstack/react-query";
-import { alpha, styled } from "@mui/material/styles";
 import { apiConfig } from "@shared/config";
+import { useQuery } from "@tanstack/react-query";
+import { Edit, Trash2, User } from "lucide-react";
+import type { FC } from "react";
 
 const formatTime = (date: Date): string => {
 	return date.toLocaleTimeString(navigator.language, {
@@ -54,7 +61,9 @@ const createScheduleDisplayString = (schedule: ScheduleResponse): string => {
 			displayString += ` to ${formatTime(endTime)}`;
 			if (schedule.one_time) {
 				// Only add date part if it's different from start_time's date or if start_time wasn't one_time formatted
-				const startTime = schedule.start_time_utc ? new Date(schedule.start_time_utc) : null;
+				const startTime = schedule.start_time_utc
+					? new Date(schedule.start_time_utc)
+					: null;
 				if (!startTime || startTime.toDateString() !== endTime.toDateString()) {
 					const endYear = endTime.getFullYear();
 					displayString += ` on ${formatDate(endTime, endYear !== currentYear)}`;
@@ -98,7 +107,7 @@ const ListItemPaper = styled(Paper)(({ theme }) => ({
 	backgroundImage: "none",
 	border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
 	borderRadius: theme.shape.borderRadius,
-  transition: "border-color 0.2s ease",
+	transition: "border-color 0.2s ease",
 	"&:hover": {
 		borderColor: alpha(theme.palette.divider, 0.4),
 	},
@@ -172,7 +181,12 @@ export const ScheduleListItem: FC<ScheduleListItemProps> = ({
 	return (
 		<ListItemPaper elevation={0}>
 			<PromptSection>
-				<Typography variant="body2" color="text.secondary" fontSize="0.875rem" sx={{ mt: 0.5 }}>
+				<Typography
+					variant="body2"
+					color="text.secondary"
+					fontSize="0.875rem"
+					sx={{ mt: 0.5 }}
+				>
 					{schedule.prompt}
 				</Typography>
 			</PromptSection>
@@ -216,8 +230,8 @@ export const ScheduleListItem: FC<ScheduleListItemProps> = ({
 								maxWidth: 180,
 								overflow: "hidden",
 								textOverflow: "ellipsis",
-                pl: 1,
-                pr: 0.5,
+								pl: 1,
+								pr: 0.5,
 							}}
 							aria-label="Agent Name"
 						/>

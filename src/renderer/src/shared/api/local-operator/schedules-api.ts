@@ -61,17 +61,14 @@ export const SchedulesApi = {
 		agentId: string,
 		scheduleData: ScheduleCreateRequest,
 	): Promise<CRUDResponse<ScheduleResponse>> {
-		const response = await fetch(
-			`${baseUrl}/v1/agents/${agentId}/schedules`,
-			{
-				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-					Accept: "application/json",
-				},
-				body: JSON.stringify(scheduleData),
+		const response = await fetch(`${baseUrl}/v1/agents/${agentId}/schedules`, {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				Accept: "application/json",
 			},
-		);
+			body: JSON.stringify(scheduleData),
+		});
 
 		if (!response.ok) {
 			throw new Error(

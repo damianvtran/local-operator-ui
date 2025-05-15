@@ -1,19 +1,31 @@
-import { Box, Typography, Button, CircularProgress, Alert, Paper, useTheme } from "@mui/material";
+import {
+	Alert,
+	Box,
+	Button,
+	CircularProgress,
+	Paper,
+	Typography,
+	useTheme,
+} from "@mui/material";
+import { styled } from "@mui/material/styles";
+import type {
+	ScheduleCreateRequest,
+	ScheduleResponse,
+	ScheduleUpdateRequest,
+} from "@shared/api/local-operator";
+import { PageHeader } from "@shared/components/common/page-header";
+import { CalendarDays, PlusCircle } from "lucide-react";
 import type { FC } from "react";
 import { useState } from "react";
-import { PlusCircle, CalendarDays } from "lucide-react";
 import { toast } from "react-toastify";
 import {
-	useListAllSchedules,
 	useCreateScheduleForAgent,
 	useEditSchedule,
+	useListAllSchedules,
 	useRemoveSchedule,
 } from "../hooks/use-schedules-queries";
-import { ScheduleListItem } from "./schedule-list-item";
 import { ScheduleFormDialog } from "./schedule-form-dialog";
-import type { ScheduleCreateRequest, ScheduleResponse, ScheduleUpdateRequest } from "@shared/api/local-operator";
-import { PageHeader } from "@shared/components/common/page-header";
-import { styled } from "@mui/material/styles";
+import { ScheduleListItem } from "./schedule-list-item";
 
 const SchedulesContainer = styled(Paper)(({ theme }) => ({
 	padding: theme.spacing(3),
@@ -36,7 +48,8 @@ const NoSchedulesMessage = styled(Typography)(({ theme }) => ({
 export const SchedulesPage: FC = () => {
 	const theme = useTheme();
 	const [isFormOpen, setIsFormOpen] = useState(false);
-	const [editingSchedule, setEditingSchedule] = useState<ScheduleResponse | null>(null);
+	const [editingSchedule, setEditingSchedule] =
+		useState<ScheduleResponse | null>(null);
 
 	const {
 		data: schedulesResponse,
@@ -81,40 +94,55 @@ export const SchedulesPage: FC = () => {
 			refetchSchedules();
 		} catch (err) {
 			console.error("Failed to save schedule:", err);
-			toast.error(`Failed to save schedule: ${err instanceof Error ? err.message : "Unknown error"}`);
+			toast.error(
+				`Failed to save schedule: ${err instanceof Error ? err.message : "Unknown error"}`,
+			);
 		}
 	};
 
 	const handleDeleteSchedule = async (scheduleId: string) => {
-		const scheduleToDelete = schedulesResponse?.result?.schedules.find(s => s.id === scheduleId);
+		const scheduleToDelete = schedulesResponse?.result?.schedules.find(
+			(s) => s.id === scheduleId,
+		);
 		try {
-			await removeScheduleMutation.mutateAsync({ scheduleId, agentId: scheduleToDelete?.agent_id });
+			await removeScheduleMutation.mutateAsync({
+				scheduleId,
+				agentId: scheduleToDelete?.agent_id,
+			});
 			toast.success("Schedule removed successfully!");
 			refetchSchedules();
 		} catch (err) {
 			console.error("Failed to delete schedule:", err);
-			toast.error(`Failed to remove schedule: ${err instanceof Error ? err.message : "Unknown error"}`);
+			toast.error(
+				`Failed to remove schedule: ${err instanceof Error ? err.message : "Unknown error"}`,
+			);
 		}
 	};
-	
+
 	const handleToggleActive = async (schedule: ScheduleResponse) => {
 		try {
 			await editScheduleMutation.mutateAsync({
 				scheduleId: schedule.id,
 				scheduleData: { is_active: !schedule.is_active },
 			});
-			toast.success(`Schedule ${schedule.is_active ? "deactivated" : "activated"} successfully!`);
+			toast.success(
+				`Schedule ${schedule.is_active ? "deactivated" : "activated"} successfully!`,
+			);
 			refetchSchedules();
 		} catch (err) {
 			console.error("Failed to toggle schedule active state:", err);
-			toast.error(`Failed to toggle schedule: ${err instanceof Error ? err.message : "Unknown error"}`);
+			toast.error(
+				`Failed to toggle schedule: ${err instanceof Error ? err.message : "Unknown error"}`,
+			);
 		}
 	};
 
 	const schedules = schedulesResponse?.result?.schedules || [];
 
 	return (
-		<Box sx={{ p: 3, height: "100%", display: "flex", flexDirection: "column" }}>
+		<Box
+			sx={{ p: 3, height: "100%", display: "flex", flexDirection: "column" }}
+		>
 			<PageHeader
 				title="Schedules"
 				icon={CalendarDays}
@@ -140,12 +168,20 @@ export const SchedulesPage: FC = () => {
 				</Button>
 			</PageHeader>
 
-			<SchedulesContainer elevation={0} sx={{ flexGrow: 1, overflowY: 'auto' }}>
-				{isLoading && <CircularProgress sx={{ display: 'block', margin: 'auto', mt: 4 }} />}
-				{error && <Alert severity="error" sx={{ mt: 2 }}>Error fetching schedules: {error.message}</Alert>}
+			<SchedulesContainer elevation={0} sx={{ flexGrow: 1, overflowY: "auto" }}>
+				{isLoading && (
+					<CircularProgress sx={{ display: "block", margin: "auto", mt: 4 }} />
+				)}
+				{error && (
+					<Alert severity="error" sx={{ mt: 2 }}>
+						Error fetching schedules: {error.message}
+					</Alert>
+				)}
 				{!isLoading && !error && schedules.length === 0 && (
 					<NoSchedulesMessage>
-						No schedules found. Simply ask an agent to do a daily/weekly task for you, or to handle something in the future and that task will appear here.
+						No schedules found. Simply ask an agent to do a daily/weekly task
+						for you, or to handle something in the future and that task will
+						appear here.
 					</NoSchedulesMessage>
 				)}
 				{!isLoading && !error && schedules.length > 0 && (

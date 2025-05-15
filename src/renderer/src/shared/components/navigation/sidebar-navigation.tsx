@@ -17,12 +17,12 @@ import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import type { LucideIcon } from "lucide-react";
 import {
 	Bot,
+	CalendarDays,
 	ChevronLeft,
 	ChevronRight,
 	MessageCircle,
 	Settings,
 	Store,
-	CalendarDays, 
 } from "lucide-react";
 import type { FC } from "react";
 import { useNavigate } from "react-router-dom";
