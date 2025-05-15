@@ -13,6 +13,7 @@ import { LogFileType, logger } from "./backend/logger";
 
 // Regex constants for performance (moved to top-level)
 const VERSION_LINE_REGEX = /Version:\s*([^\n]+)/;
+const VERSION_CLEAN_REGEX = /^v/i;
 const BETA_VERSION_REGEX = /v\d+\.\d+\.\d+\.beta\.\d+/;
 
 /**
@@ -767,8 +768,14 @@ export class UpdateService {
 	 * @returns True if version1 is newer than version2
 	 */
 	private isNewerVersion(version1: string, version2: string): boolean {
-		const v1Parts = version1.split("-")[0].split(".").map(Number);
-		const v2Parts = version2.split("-")[0].split(".").map(Number);
+		const normalizeVersion = (ver: string) =>
+			ver.trim().replace(VERSION_CLEAN_REGEX, ""); // Remove leading 'v' or 'V'
+
+		const v1Norm = normalizeVersion(version1);
+		const v2Norm = normalizeVersion(version2);
+
+		const v1Parts = v1Norm.split("-")[0].split(".").map(Number);
+		const v2Parts = v2Norm.split("-")[0].split(".").map(Number);
 
 		// Compare major, minor, patch
 		for (let i = 0; i < Math.max(v1Parts.length, v2Parts.length); i++) {
@@ -780,8 +787,8 @@ export class UpdateService {
 		}
 
 		// If we get here and versions have pre-release tags, compare those
-		const v1PreRelease = version1.split("-")[1];
-		const v2PreRelease = version2.split("-")[1];
+		const v1PreRelease = v1Norm.split("-")[1];
+		const v2PreRelease = v2Norm.split("-")[1];
 
 		// No pre-release is newer than any pre-release
 		if (!v1PreRelease && v2PreRelease) return true;
