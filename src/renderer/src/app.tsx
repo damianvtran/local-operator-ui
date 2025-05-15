@@ -11,6 +11,7 @@ import { AgentHubPage } from "@features/agent-hub/agent-hub-page"; // Import Age
 import { AgentsPage } from "@features/agents/components/agents-page";
 import { ChatPage } from "@features/chat/components/chat-page";
 import { OnboardingModal } from "@features/onboarding";
+import { SchedulesPage } from "@features/schedules/components/schedules-page"; // Import Schedules Page
 import { SettingsPage } from "@features/settings/components/settings-page";
 import { ConnectivityBanner } from "@shared/components/common/connectivity-banner";
 import { ModelsInitializer } from "@shared/components/common/models-initializer";
@@ -81,6 +82,9 @@ const App: FC = () => {
 					{/* Agent Hub routes */}
 					<Route path="/agent-hub" element={<AgentHubPage />} />
 					<Route path="/agent-hub/:agentId" element={<AgentDetailsPage />} />
+
+					{/* Schedules route */}
+					<Route path="/schedules" element={<SchedulesPage />} />
 
 					{/* Fallback route - redirect to chat */}
 					<Route path="*" element={<Navigate to="/chat" replace />} />

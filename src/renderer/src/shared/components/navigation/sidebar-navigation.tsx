@@ -17,6 +17,7 @@ import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import type { LucideIcon } from "lucide-react";
 import {
 	Bot,
+	CalendarDays,
 	ChevronLeft,
 	ChevronRight,
 	MessageCircle,
@@ -204,6 +205,12 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 			label: "Agent Hub",
 			path: "/agent-hub",
 			isActive: currentView === "agent-hub",
+		},
+		{
+			icon: CalendarDays,
+			label: "Schedules",
+			path: "/schedules",
+			isActive: currentView === "schedules",
 		},
 		{
 			icon: Settings,
