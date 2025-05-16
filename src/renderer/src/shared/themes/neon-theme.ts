@@ -26,9 +26,9 @@ const neonTheme = createTheme({
 			contrastText: "#000000",
 		},
 		secondary: {
-			main: "#E600E6", // Bright Magenta
-			dark: "#B300B3",
-			light: "#FF66FF",
+			main: "#FF00A0", // Cyberpunk Pink
+			dark: "#D90086", // Darker Cyberpunk Pink
+			light: "#FF66C7", // Lighter Cyberpunk Pink
 			contrastText: "#ffffff",
 		},
 		background: {
@@ -45,10 +45,10 @@ const neonTheme = createTheme({
 			secondaryBackground: "#0D1220", // Secondary sidebars (chat/agents)
 			border: "rgba(0, 239, 255, 0.15)", // Primary color with alpha
 			itemHover: "rgba(0, 239, 255, 0.1)",
-			itemActive: "rgba(0, 239, 255, 0.2)",
-			itemActiveHover: "rgba(0, 239, 255, 0.25)",
+			itemActive: "rgba(255, 0, 160, 0.2)", // Cyberpunk Pink with opacity
+			itemActiveHover: "rgba(255, 0, 160, 0.25)", // Cyberpunk Pink with higher opacity for hover
 			itemText: "rgba(224, 224, 224, 0.85)",
-			itemActiveText: "#00EFFF", // Primary color
+			itemActiveText: "#FF00A0", // Cyberpunk Pink
 			toggleButton: {
 				background: "rgba(0, 239, 255, 0.08)",
 				border: "rgba(0, 239, 255, 0.2)",
@@ -81,8 +81,8 @@ const neonTheme = createTheme({
 				border: "rgba(0, 239, 255, 0.4)",
 			},
 			ask: {
-				background: "rgba(230, 0, 230, 0.1)", // Secondary color with opacity
-				border: "rgba(230, 0, 230, 0.4)",
+				background: "rgba(255, 140, 0, 0.15)", // Cyberpunk Orange with opacity
+				border: "rgba(255, 140, 0, 0.5)", // Cyberpunk Orange for border
 			},
 		},
 		icon: {
@@ -93,7 +93,7 @@ const neonTheme = createTheme({
 	typography: {
 		fontFamily:
 			"'Roboto Mono', 'Menlo', 'Monaco', 'Consolas', 'Courier New', monospace", // Monospaced font for Tron feel
-		fontSize: 16,
+		fontSize: 14,
 		h1: { fontWeight: 700, textShadow: "0 0 5px #00EFFF" }, // Added text shadow
 		h2: { fontWeight: 700, textShadow: "0 0 4px #00EFFF" }, // Added text shadow
 		h3: {
