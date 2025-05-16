@@ -1,4 +1,5 @@
 import {
+	faBolt,
 	faCode,
 	faFire,
 	faHexagonNodes,
@@ -398,6 +399,44 @@ const RadientPreview = styled(Box)(() => {
 	};
 });
 
+// Neon theme preview
+const NeonPreview = styled(Box)(() => {
+	// Use the actual Neon theme colors from the theme
+	const neonTheme = themes.neon.theme;
+
+	return {
+		width: "100%",
+		height: "100%",
+		background: `linear-gradient(to bottom, ${neonTheme.palette.sidebar.background} 0%, ${neonTheme.palette.sidebar.background} 30%, ${neonTheme.palette.background.paper} 30%, ${neonTheme.palette.background.paper} 100%)`,
+		position: "relative",
+		boxShadow: `0 2px 8px ${neonTheme.palette.primary.main}33`,
+		borderRadius: 4,
+		"&::after": {
+			content: '""',
+			position: "absolute",
+			top: "50%",
+			left: "50%",
+			transform: "translate(-50%, -50%)",
+			width: "40%",
+			height: "20%",
+			backgroundColor: neonTheme.palette.primary.main,
+			borderRadius: 4,
+			boxShadow: `0 0 10px ${neonTheme.palette.primary.main}77`,
+		},
+		// Add a sidebar-like element
+		"&::before": {
+			content: '""',
+			position: "absolute",
+			left: 0,
+			top: 0,
+			height: "100%",
+			width: "20%",
+			backgroundColor: neonTheme.palette.sidebar.background,
+			borderRight: `1px solid ${neonTheme.palette.sidebar.border}`,
+		},
+	};
+});
+
 /**
  * Theme selector component
  *
@@ -602,6 +641,27 @@ export const ThemeSelector: FC = () => {
 									fontWeight={themeName === "iceberg" ? "bold" : "normal"}
 								>
 									{themes.iceberg.name}
+								</Typography>
+							</ThemeLabel>
+						</ThemeOption>
+					</Grid>
+
+					{/* Neon Theme Option */}
+					<Grid item xs={12} sm={6} md={4} lg={3}>
+						<ThemeOption
+							isSelected={themeName === "neon"}
+							onClick={() => handleThemeChange("neon")}
+						>
+							<ThemePreview>
+								<NeonPreview />
+							</ThemePreview>
+							<ThemeLabel>
+								<FontAwesomeIcon icon={faBolt} />
+								<Typography
+									variant="body2"
+									fontWeight={themeName === "neon" ? "bold" : "normal"}
+								>
+									{themes.neon.name}
 								</Typography>
 							</ThemeLabel>
 						</ThemeOption>
