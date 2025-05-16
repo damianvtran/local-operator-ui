@@ -12,7 +12,8 @@ export type ThemeName =
 	| "monokai"
 	| "tokyoNight"
 	| "iceberg"
-	| "radient";
+	| "radient"
+	| "neon";
 
 /**
  * Theme option interface for the theme selector
