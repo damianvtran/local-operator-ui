@@ -13,7 +13,8 @@ export type ThemeName =
 	| "tokyoNight"
 	| "iceberg"
 	| "radient"
-	| "neon";
+	| "neon"
+	| "obsidian";
 
 /**
  * Theme option interface for the theme selector

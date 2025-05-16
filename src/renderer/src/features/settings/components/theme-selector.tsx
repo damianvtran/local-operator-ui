@@ -1,4 +1,5 @@
 import {
+	faAdjust,
 	faBolt,
 	faCode,
 	faFire,
@@ -437,6 +438,43 @@ const NeonPreview = styled(Box)(() => {
 	};
 });
 
+// Obsidian theme preview
+const ObsidianPreview = styled(Box)(() => {
+	// Use the actual Obsidian theme colors from the theme
+	const obsidianTheme = themes.obsidian.theme;
+
+	return {
+		width: "100%",
+		height: "100%",
+		background: `linear-gradient(to bottom, ${obsidianTheme.palette.sidebar.background} 0%, ${obsidianTheme.palette.sidebar.background} 30%, ${obsidianTheme.palette.background.paper} 30%, ${obsidianTheme.palette.background.paper} 100%)`,
+		position: "relative",
+		boxShadow: `0 2px 8px ${obsidianTheme.palette.text.primary}1A`, // Use text primary with low alpha for subtle shadow
+		borderRadius: 4,
+		"&::after": {
+			content: '""',
+			position: "absolute",
+			top: "50%",
+			left: "50%",
+			transform: "translate(-50%, -50%)",
+			width: "40%",
+			height: "20%",
+			backgroundColor: obsidianTheme.palette.text.primary, // Use primary text as accent
+			borderRadius: 4,
+		},
+		// Add a sidebar-like element
+		"&::before": {
+			content: '""',
+			position: "absolute",
+			left: 0,
+			top: 0,
+			height: "100%",
+			width: "20%",
+			backgroundColor: obsidianTheme.palette.sidebar.background,
+			borderRight: `1px solid ${obsidianTheme.palette.sidebar.border}`,
+		},
+	};
+});
+
 /**
  * Theme selector component
  *
@@ -662,6 +700,27 @@ export const ThemeSelector: FC = () => {
 									fontWeight={themeName === "neon" ? "bold" : "normal"}
 								>
 									{themes.neon.name}
+								</Typography>
+							</ThemeLabel>
+						</ThemeOption>
+					</Grid>
+
+					{/* Obsidian Theme Option */}
+					<Grid item xs={12} sm={6} md={4} lg={3}>
+						<ThemeOption
+							isSelected={themeName === "obsidian"}
+							onClick={() => handleThemeChange("obsidian")}
+						>
+							<ThemePreview>
+								<ObsidianPreview />
+							</ThemePreview>
+							<ThemeLabel>
+								<FontAwesomeIcon icon={faAdjust} />
+								<Typography
+									variant="body2"
+									fontWeight={themeName === "obsidian" ? "bold" : "normal"}
+								>
+									{themes.obsidian.name}
 								</Typography>
 							</ThemeLabel>
 						</ThemeOption>
