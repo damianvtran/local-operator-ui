@@ -93,7 +93,7 @@ const neonTheme = createTheme({
 	typography: {
 		fontFamily:
 			"system-ui, Inter, -apple-system, BlinkMacSystemFont, sans-serif",
-		fontSize: 14,
+		fontSize: 16,
 		h1: { fontWeight: 700, textShadow: "0 0 5px #00EFFF" }, // Added text shadow
 		h2: { fontWeight: 700, textShadow: "0 0 4px #00EFFF" }, // Added text shadow
 		h3: {
