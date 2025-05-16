@@ -6,6 +6,7 @@ import icebergTheme from "./iceberg-theme";
 import lightTheme from "./light-theme";
 import monokaiTheme from "./monokai-theme";
 import neonTheme from "./neon-theme";
+import obsidianTheme from "./obsidian-theme";
 import radientTheme from "./radient-theme";
 import sageTheme from "./sage-theme";
 import tokyoNightTheme from "./tokyo-night-theme";
@@ -64,6 +65,11 @@ export const themes: ThemeCollection = {
 		id: "neon",
 		theme: neonTheme,
 	},
+	obsidian: {
+		name: "Obsidian",
+		id: "obsidian",
+		theme: obsidianTheme,
+	},
 };
 
 /**
@@ -89,6 +95,7 @@ export {
 	lightTheme,
 	monokaiTheme,
 	neonTheme,
+	obsidianTheme,
 	radientTheme,
 	sageTheme,
 	tokyoNightTheme,
