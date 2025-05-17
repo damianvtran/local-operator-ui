@@ -27,7 +27,7 @@ import { createRadientClient } from "../api/radient";
 import { storeSession } from "../utils/session-store";
 import { showErrorToast, showSuccessToast } from "../utils/toast-manager";
 import { radientUserKeys } from "./use-radient-user-query";
-import { useUpdateConfig } from "./use-update-config"; // Added import
+import { useUpdateConfig } from "./use-update-config";
 
 type AuthProvider = "google" | "microsoft";
 
@@ -35,7 +35,7 @@ type AuthProvider = "google" | "microsoft";
 type OAuthStatus = {
 	loggedIn: boolean;
 	provider: AuthProvider | null;
-	accessToken?: string; // May not be needed by renderer long-term
+	accessToken?: string;
 	idToken?: string;
 	expiry?: number;
 	error?: string;
@@ -44,10 +44,10 @@ type OAuthStatus = {
 type UseOidcAuthResult = {
 	signInWithGoogle: () => void;
 	signInWithMicrosoft: () => void;
-	logout: () => void; // Added logout function
+	logout: () => void;
 	loading: boolean;
 	error: string | null;
-	status: OAuthStatus; // Expose current status
+	status: OAuthStatus;
 };
 
 /**
@@ -78,15 +78,15 @@ const radientClient = createRadientClient(
 export const useOidcAuth = (
 	options?: UseOidcAuthOptions,
 ): UseOidcAuthResult => {
-	const { onSuccess, onAfterCredentialUpdate } = options || {}; // Destructure callbacks
-	const [loading, setLoading] = useState(true); // Start loading until initial status is checked
+	const { onSuccess, onAfterCredentialUpdate } = options || {};
+	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 	const [status, setStatus] = useState<OAuthStatus>({
 		loggedIn: false,
 		provider: null,
 	});
 	const queryClient = useQueryClient();
-	const { mutateAsync: updateConfig } = useUpdateConfig(); // Added hook instance
+	const { mutateAsync: updateConfig } = useUpdateConfig();
 
 	/**
 	 * Handles the full backend integration after obtaining tokens from the main process.
