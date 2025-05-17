@@ -5,15 +5,15 @@
  * with a clean and modern interface.
  */
 
-import { Box, TextField, useTheme } from "@mui/material"; // Added useTheme
+import { Box, TextField, useTheme } from "@mui/material";
 import { useUserStore } from "@shared/store/user-store";
 import type { FC } from "react";
 import { useEffect, useState } from "react";
 import {
 	EmojiContainer,
-	FieldLabel, // Import FieldLabel
+	FieldLabel,
 	FormContainer,
-	LabelIcon, // Import LabelIcon
+	LabelIcon,
 	SectionContainer,
 	SectionDescription,
 } from "../onboarding-styled";
@@ -22,7 +22,7 @@ import {
  * User profile step in the onboarding process
  */
 export const UserProfileStep: FC = () => {
-	const theme = useTheme(); // Get theme context
+	const theme = useTheme();
 	const { profile, updateProfile } = useUserStore();
 	const [name, setName] = useState(profile.name === "User" ? "" : profile.name);
 	const [email, setEmail] = useState(

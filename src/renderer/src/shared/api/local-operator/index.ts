@@ -10,7 +10,7 @@ import { CredentialsApi as CredentialsApiImpl } from "./credentials-api";
 import { HealthApi as HealthApiImpl } from "./health-api";
 import { JobsApi as JobsApiImpl } from "./jobs-api";
 import { ModelsApi as ModelsApiImpl } from "./models-api";
-import { SchedulesApi as SchedulesApiImpl } from "./schedules-api"; // Added
+import { SchedulesApi as SchedulesApiImpl } from "./schedules-api";
 import { StaticApi as StaticApiImpl } from "./static-api";
 
 // Export all API clients
@@ -21,7 +21,7 @@ export { JobsApi } from "./jobs-api";
 export { ConfigApi } from "./config-api";
 export { CredentialsApi } from "./credentials-api";
 export { ModelsApi } from "./models-api";
-export { SchedulesApi } from "./schedules-api"; // Added
+export { SchedulesApi } from "./schedules-api";
 export { StaticApi } from "./static-api";
 export { WebSocketApi } from "./websocket-api";
 

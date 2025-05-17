@@ -9,7 +9,6 @@ import { Clock, CalendarDays, History } from "lucide-react";
 import type { FC } from "react";
 import { useState, useEffect } from "react";
 
-// Styled components to match shadcn-like appearance
 const StyledTextField = styled(TextField)(({ theme }) => ({
 	width: "100%",
 	"& .MuiOutlinedInput-root": {
@@ -34,25 +33,25 @@ const StyledTextField = styled(TextField)(({ theme }) => ({
 			padding: "8px 12px",
 			fontSize: "0.875rem",
 			lineHeight: 1.5,
-			height: "calc(36px - 16px)", // Adjust height to fit content within 36px
+			height: "calc(36px - 16px)",
 			boxSizing: "border-box",
 		},
 	},
 	"& .MuiInputAdornment-root .MuiIconButton-root": {
 		color: theme.palette.text.secondary,
-		padding: theme.spacing(0.5), // Smaller padding for icons
+		padding: theme.spacing(0.5),
 	},
 }));
 
 const DateTimePickerContainer = styled(Box)({
 	display: "flex",
-	alignItems: "flex-start", // Align items to the top for better consistency
-	gap: "8px", // Spacing between date, time, and button
+	alignItems: "flex-start",
+	gap: "8px",
 });
 
 const PickerWrapper = styled(Box)({
-	flexGrow: 1, // Allow pickers to grow
-	minWidth: 0, // Prevent overflow issues with flexGrow
+	flexGrow: 1,
+	minWidth: 0,
 });
 
 // Styled FormHelperText for consistency
@@ -61,7 +60,7 @@ const StyledFormHelperText = styled(Typography, {
 })<{ error?: boolean }>(({ theme, error }) => ({
 	fontSize: "0.75rem",
 	marginTop: theme.spacing(0.5),
-	marginLeft: theme.spacing(0.25), // Match schedule-form-dialog
+	marginLeft: theme.spacing(0.25),
 	color: error ? theme.palette.error.main : theme.palette.text.secondary,
 }));
 
