@@ -94,10 +94,10 @@ const neonTheme = createTheme({
 		fontFamily:
 			"system-ui, Inter, -apple-system, BlinkMacSystemFont, sans-serif",
 		fontSize: 16,
-		h1: { fontWeight: 700, textShadow: "0 0 5px #00EFFF" }, // Added text shadow
-		h2: { fontWeight: 700, textShadow: "0 0 4px #00EFFF" }, // Added text shadow
+		h1: { fontWeight: 600, textShadow: "0 0 5px #00EFFF" }, // Added text shadow
+		h2: { fontWeight: 600, textShadow: "0 0 4px #00EFFF" }, // Added text shadow
 		h3: {
-			fontWeight: 700,
+			fontWeight: 600,
 			fontSize: "3rem",
 			textShadow: "0 0 3px #00EFFF", // Added text shadow
 			"@media (max-width:600px)": {
@@ -106,8 +106,8 @@ const neonTheme = createTheme({
 		},
 		gradientTitle: {
 			fontSize: "1.4rem",
-			fontWeight: 500,
-			letterSpacing: "0.03em",
+			fontWeight: 400,
+			letterSpacing: "0.02em",
 			background:
 				"linear-gradient(90deg, #00EFFF, #B0E0FF)", // Cyan to light blue gradient
 			WebkitBackgroundClip: "text",
@@ -186,9 +186,7 @@ const neonTheme = createTheme({
 				root: {
 					textTransform: "none",
 					borderRadius: 8,
-					fontWeight: 600, // Bolder font
 					padding: "8px 16px",
-					letterSpacing: "0.05em", // Wider letter spacing
 					transition: "all 0.2s ease-in-out",
 				},
 				containedPrimary: ({ theme }) => ({

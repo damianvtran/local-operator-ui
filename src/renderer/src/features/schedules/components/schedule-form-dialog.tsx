@@ -28,6 +28,7 @@ import {
 	PrimaryButton,
 	SecondaryButton,
 } from "@shared/components/common/base-dialog";
+import { DateTimePicker } from "@shared/components/common/date-time-picker"; // Added
 import { useAgents } from "@shared/hooks/use-agents";
 import { Info, Save, XSquare } from "lucide-react";
 import type { FC } from "react";
@@ -328,10 +329,10 @@ export const ScheduleFormDialog: FC<ScheduleFormDialogProps> = ({
 					is_active: initialData.is_active,
 					one_time: initialData.one_time,
 					start_time_utc: initialData.start_time_utc
-						? new Date(initialData.start_time_utc).toISOString().slice(0, 16)
+						? new Date(initialData.start_time_utc).toISOString()
 						: null,
 					end_time_utc: initialData.end_time_utc
-						? new Date(initialData.end_time_utc).toISOString().slice(0, 16)
+						? new Date(initialData.end_time_utc).toISOString()
 						: null,
 				});
 				// Attempt to find and set the agent object for the Autocomplete if editing
@@ -384,14 +385,6 @@ export const ScheduleFormDialog: FC<ScheduleFormDialogProps> = ({
 		setFormData((prev) => ({
 			...prev,
 			[event.target.name]: event.target.checked,
-		}));
-	};
-
-	const handleDateTimeChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-		const { name, value } = event.target;
-		setFormData((prev) => ({
-			...prev,
-			[name]: value ? new Date(value).toISOString() : null,
 		}));
 	};
 
@@ -711,42 +704,26 @@ export const ScheduleFormDialog: FC<ScheduleFormDialogProps> = ({
 					</FullWidthFormControl>
 				</Grid>
 				<Grid item xs={12} sm={6}>
-					<FieldLabel htmlFor="start_time_utc">
-						Start Time (UTC, Optional)
-					</FieldLabel>
-					<FullWidthTextField
-						id="start_time_utc"
-						name="start_time_utc"
-						type="datetime-local"
-						value={
-							formData.start_time_utc
-								? formData.start_time_utc.slice(0, 16)
-								: ""
+					<DateTimePicker
+						label="Start Time"
+						value={formData.start_time_utc ?? null}
+						onChange={(newValue) =>
+							setFormData((prev) => ({ ...prev, start_time_utc: newValue }))
 						}
-						onChange={handleDateTimeChange}
 						disabled={isSubmitting}
+						helperText="If not set, starts immediately or on next interval."
 					/>
-					<StyledFormHelperText>
-						If not set, starts immediately or on next interval.
-					</StyledFormHelperText>
 				</Grid>
 				<Grid item xs={12} sm={6}>
-					<FieldLabel htmlFor="end_time_utc">
-						End Time (UTC, Optional)
-					</FieldLabel>
-					<FullWidthTextField
-						id="end_time_utc"
-						name="end_time_utc"
-						type="datetime-local"
-						value={
-							formData.end_time_utc ? formData.end_time_utc.slice(0, 16) : ""
+					<DateTimePicker
+						label="End Time (Optional)"
+						value={formData.end_time_utc ?? null}
+						onChange={(newValue) =>
+							setFormData((prev) => ({ ...prev, end_time_utc: newValue }))
 						}
-						onChange={handleDateTimeChange}
 						disabled={isSubmitting}
+						helperText="If not set, schedule runs indefinitely."
 					/>
-					<StyledFormHelperText>
-						If not set, schedule runs indefinitely.
-					</StyledFormHelperText>
 				</Grid>
 				<Grid item xs={6} sx={{ display: "flex", alignItems: "center", mt: 1 }}>
 					<StyledFormControlLabel
