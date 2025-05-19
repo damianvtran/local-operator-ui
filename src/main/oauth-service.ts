@@ -28,7 +28,7 @@ const KEYTAR_SERVICE = "radient-local-operator-oauth"; // Unique service name fo
 
 // --- Provider Configurations ---
 // Using OpenID Connect discovery endpoints
-const GOOGLE_BASE_SCOPES = ["openid", "email", "profile"];
+const GOOGLE_BASE_SCOPES = ["openid", "email", "profile", "offline_access"]; // Added offline_access
 const GOOGLE_CONFIG = {
 	discoveryUrl: "https://accounts.google.com/.well-known/openid-configuration",
 	clientId: backendConfig.VITE_GOOGLE_CLIENT_ID,
@@ -493,13 +493,15 @@ export class OAuthService {
 						: MICROSOFT_CONFIG.scope, // Explicitly use MICROSOFT_CONFIG.scope for Microsoft
 				response_type: AuthorizationRequest.RESPONSE_TYPE_CODE,
 				state: undefined, // Optional state parameter
-				extras: {
-					prompt:
-						provider === "google" && isScopeUpdateRequest
-							? "consent" // Force consent screen for new scopes
-							: "select_account", // Default prompt
-					access_type: "offline", // For refresh token
-				},
+				extras: provider === "google"
+						? {
+								prompt: "consent", // Always force consent for Google to maximize chance of refresh token
+								access_type: "offline",
+							}
+						: { // For other providers like Microsoft
+								prompt: "select_account",
+								access_type: "offline", // Assuming MS also uses this for refresh tokens if applicable
+							},
 			},
 			new NodeCrypto(), // Pass NodeCrypto instance here
 			true, // Set to true to use PKCE (usually default, but explicit is fine)
@@ -630,12 +632,26 @@ export class OAuthService {
 					request,
 				);
 
-			logger.debug(
+			logger.debug( // More detailed log for the entire TokenResponse
+				`Full TokenResponse received for ${this.currentAuthProvider}:`,
+				LogFileType.OAUTH,
+				{
+					accessToken: response.accessToken ? "present" : "absent",
+					idToken: response.idToken ? "present" : "absent",
+					refreshToken: response.refreshToken ? response.refreshToken : "ABSENT or UNDEFINED",
+					expiresIn: response.expiresIn,
+					scope: response.scope,
+					issuedAt: response.issuedAt,
+					tokenType: response.tokenType,
+				}
+			);
+
+			logger.debug( // Kept original summary log as well for quick overview
 				`Token request successful for ${this.currentAuthProvider}`,
 				LogFileType.OAUTH,
 				{
-					accessToken: "...",
-					idToken: "...",
+					accessToken: "...", // Truncated for brevity in this specific log
+					idToken: "...", // Truncated
 					refreshToken: response.refreshToken ? "present" : "absent",
 					expiresIn: response.expiresIn,
 				},
