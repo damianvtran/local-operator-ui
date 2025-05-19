@@ -594,6 +594,32 @@ app
 			}
 		});
 
+		ipcMain.handle(
+			"oauth-request-google-scopes",
+			async (_event, scopes: string[]) => {
+				logger.info(
+					"IPC: Received oauth-request-google-scopes request",
+					LogFileType.OAUTH,
+					{ scopes },
+				);
+				try {
+					await oauthService.requestAdditionalGoogleScopes(scopes);
+					return { success: true };
+				} catch (error) {
+					const errorMsg =
+						error instanceof Error
+							? error.message
+							: "Unknown error requesting additional Google scopes";
+					logger.error(
+						`IPC: Error during oauth-request-google-scopes: ${errorMsg}`,
+						LogFileType.OAUTH,
+						error,
+					);
+					return { success: false, error: errorMsg };
+				}
+			},
+		);
+
 		// Check if backend manager is disabled via environment variable
 		const isBackendManagerDisabled =
 			process.env.VITE_DISABLE_BACKEND_MANAGER === "true";

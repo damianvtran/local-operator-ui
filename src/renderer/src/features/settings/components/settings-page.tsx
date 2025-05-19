@@ -43,6 +43,7 @@ import { useCredentials } from "@shared/hooks/use-credentials";
 import { useCreditBalance } from "@shared/hooks/use-credit-balance";
 import { useModels } from "@shared/hooks/use-models";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
+import { useOidcAuth } from "@shared/hooks/use-oidc-auth";
 import { useUpdateConfig } from "@shared/hooks/use-update-config";
 import { useUsageRollup } from "@shared/hooks/use-usage-rollup";
 import { useUserStore } from "@shared/store/user-store";
@@ -62,6 +63,7 @@ import {
 import { AppUpdatesSection } from "./app-updates-section";
 import { Credentials } from "./credentials";
 import { RadientAccountSection } from "./radient-account-section";
+import { GoogleIntegrationsSection } from "./google-integrations-section";
 import {
 	FieldsContainer,
 	InfoBox,
@@ -476,6 +478,7 @@ export const SettingsPage: FC = () => {
 	const [savingField, setSavingField] = useState<string | null>(null);
 	const userStore = useUserStore();
 	const { isAuthenticated, isLoading: isAuthLoading } = useRadientAuth();
+	const { status: oidcStatus } = useOidcAuth();
 	const [activeSection, setActiveSection] = useState<string>("general");
 	const [isScrolling, setIsScrolling] = useState(false);
 	const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null); // Ref for scroll timeout
@@ -517,6 +520,7 @@ export const SettingsPage: FC = () => {
 	const sectionRefs = useRef<Record<string, RefObject<HTMLDivElement>>>({
 		general: useRef<HTMLDivElement>(null),
 		radient: useRef<HTMLDivElement>(null),
+		google: useRef<HTMLDivElement>(null),
 		appearance: useRef<HTMLDivElement>(null),
 		credentials: useRef<HTMLDivElement>(null),
 		updates: useRef<HTMLDivElement>(null),
@@ -862,6 +866,13 @@ export const SettingsPage: FC = () => {
 							</>
 						)}
 					</SettingsSectionCard>
+
+					{/* Google Integrations Section - Conditionally Rendered */}
+					{isAuthenticated && oidcStatus.provider === "google" && (
+						<Box ref={sectionRefs.google}>
+							<GoogleIntegrationsSection />
+						</Box>
+					)}
 
 					{/* Appearance Section */}
 					<SettingsSectionCard

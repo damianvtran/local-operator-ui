@@ -38,6 +38,7 @@ type OAuthStatus = {
 	accessToken?: string;
 	idToken?: string;
 	refreshToken?: string; // Added to match main process
+	grantedScopes?: string[]; // Added to match main process
 	expiry?: number;
 	error?: string;
 };
@@ -46,6 +47,9 @@ type UseOidcAuthResult = {
 	signInWithGoogle: () => void;
 	signInWithMicrosoft: () => void;
 	logout: () => void;
+	requestAdditionalGoogleScopes: (
+		scopes: string[],
+	) => Promise<{ success: boolean; error?: string }>;
 	loading: boolean;
 	error: string | null;
 	status: OAuthStatus;
@@ -89,6 +93,7 @@ export const useOidcAuth = (
 	const [status, setStatus] = useState<OAuthStatus>({
 		loggedIn: false,
 		provider: null,
+		grantedScopes: [],
 	});
 	const queryClient = useQueryClient();
 	const { mutateAsync: updateConfig } = useUpdateConfig();
@@ -410,10 +415,37 @@ export const useOidcAuth = (
 		checkInitialStatus();
 	}, []); // Run only on mount
 
+	const requestAdditionalGoogleScopes = useCallback(
+		async (scopes: string[]) => {
+			setLoading(true);
+			setError(null);
+			try {
+				const result =
+					await window.api.oauth.requestAdditionalGoogleScopes(scopes);
+				if (!result.success) {
+					throw new Error(
+						result.error || "Failed to request additional Google scopes",
+					);
+				}
+				// Status update will be handled by the listener effect after re-authentication
+				return { success: true };
+			} catch (err) {
+				const msg = err instanceof Error ? err.message : String(err);
+				console.error("Error requesting additional Google scopes:", msg);
+				setError(msg);
+				showErrorToast(msg);
+				setLoading(false); // Set loading false only if initiation fails
+				return { success: false, error: msg };
+			}
+		},
+		[],
+	);
+
 	return {
 		signInWithGoogle,
 		signInWithMicrosoft,
 		logout,
+		requestAdditionalGoogleScopes,
 		loading,
 		error,
 		status,
