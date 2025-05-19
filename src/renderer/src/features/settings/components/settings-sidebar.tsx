@@ -9,11 +9,10 @@ import {
 	Typography,
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
-import { faGoogle } from "@fortawesome/free-brands-svg-icons"; // Added
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"; // Added
-import type { IconDefinition } from "@fortawesome/fontawesome-svg-core"; // Added
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import type { LucideIcon } from "lucide-react";
-import { Download, Key, Paintbrush, Settings } from "lucide-react";
+import { Download, Key, Paintbrush, Puzzle, Settings } from "lucide-react";
 import type { FC } from "react";
 
 /**
@@ -22,9 +21,9 @@ import type { FC } from "react";
 export type SettingsSection = {
 	id: string;
 	label: string;
-	icon: LucideIcon | IconDefinition | string; // Updated to include IconDefinition
+	icon: LucideIcon | IconDefinition | string;
 	isImage?: boolean;
-	isFontAwesome?: boolean; // Added to differentiate icon types
+	isFontAwesome?: boolean;
 };
 
 /**
@@ -192,8 +191,7 @@ export const DEFAULT_SETTINGS_SECTIONS: SettingsSection[] = [
 	{
 		id: "integrations",
 		label: "Integrations",
-		icon: faGoogle,
-		isFontAwesome: true,
+		icon: Puzzle,
 	},
 	{
 		id: "appearance",
