@@ -190,8 +190,8 @@ export const DEFAULT_SETTINGS_SECTIONS: SettingsSection[] = [
 		isImage: true,
 	},
 	{
-		id: "google",
-		label: "Google Integrations",
+		id: "integrations",
+		label: "Integrations",
 		icon: faGoogle,
 		isFontAwesome: true,
 	},
