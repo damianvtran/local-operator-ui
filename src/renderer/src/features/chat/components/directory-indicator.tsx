@@ -340,7 +340,7 @@ export const DirectoryIndicator: FC<DirectoryIndicatorProps> = ({
 			}
 		},
 		[handleSelectDirectory, handleCloseMenu],
-	); // Added handleCloseMenu dependency
+	);
 
 	// Updated formatDirectory to use fetched home directory
 	const formatDirectory = useCallback(

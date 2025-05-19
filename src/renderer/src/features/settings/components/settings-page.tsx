@@ -61,6 +61,7 @@ import {
 } from "recharts";
 import { AppUpdatesSection } from "./app-updates-section";
 import { Credentials } from "./credentials";
+import { GoogleIntegrationsSection } from "./integrations-section";
 import { RadientAccountSection } from "./radient-account-section";
 import {
 	FieldsContainer,
@@ -517,6 +518,7 @@ export const SettingsPage: FC = () => {
 	const sectionRefs = useRef<Record<string, RefObject<HTMLDivElement>>>({
 		general: useRef<HTMLDivElement>(null),
 		radient: useRef<HTMLDivElement>(null),
+		integrations: useRef<HTMLDivElement>(null),
 		appearance: useRef<HTMLDivElement>(null),
 		credentials: useRef<HTMLDivElement>(null),
 		updates: useRef<HTMLDivElement>(null),
@@ -862,6 +864,12 @@ export const SettingsPage: FC = () => {
 							</>
 						)}
 					</SettingsSectionCard>
+
+					{/* Google Integrations Section - Rendered Unconditionally */}
+					{/* The component itself will handle auth state for its connect buttons */}
+					<Box ref={sectionRefs.integrations}>
+						<GoogleIntegrationsSection />
+					</Box>
 
 					{/* Appearance Section */}
 					<SettingsSectionCard

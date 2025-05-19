@@ -108,6 +108,7 @@ declare global {
 						provider: "google" | "microsoft" | null;
 						accessToken?: string; // Consider removing if not needed by renderer
 						idToken?: string;
+						refreshToken?: string; // Added for Google refresh token
 						expiry?: number;
 						error?: string;
 					};
@@ -119,10 +120,14 @@ declare global {
 						provider: "google" | "microsoft" | null;
 						accessToken?: string;
 						idToken?: string;
+						refreshToken?: string; // Added for Google refresh token
 						expiry?: number;
 						error?: string;
 					}) => void,
 				) => () => void; // Returns a cleanup function
+				requestAdditionalGoogleScopes: (
+					scopes: string[],
+				) => Promise<{ success: boolean; error?: string }>;
 			};
 			/** Opens a native dialog to select a directory */
 			selectDirectory: () => Promise<string | undefined>;

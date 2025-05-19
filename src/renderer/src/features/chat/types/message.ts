@@ -23,5 +23,5 @@ export type Message = {
 	execution_type?: ExecutionType;
 	is_streamable?: boolean;
 	is_complete?: boolean;
-	conversation_id?: string; // Added to support streaming message updates
+	conversation_id?: string;
 };

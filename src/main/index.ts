@@ -594,6 +594,32 @@ app
 			}
 		});
 
+		ipcMain.handle(
+			"oauth-request-additional-scopes",
+			async (_event, scopes: string[]) => {
+				logger.info(
+					"IPC: Received oauth-request-additional-scopes request",
+					LogFileType.OAUTH,
+					{ scopes },
+				);
+				try {
+					await oauthService.requestAdditionalGoogleScopes(scopes);
+					return { success: true };
+				} catch (error) {
+					const errorMsg =
+						error instanceof Error
+							? error.message
+							: "Unknown error requesting additional Google scopes";
+					logger.error(
+						`IPC: Error during oauth-request-additional-scopes: ${errorMsg}`,
+						LogFileType.OAUTH,
+						error,
+					);
+					return { success: false, error: errorMsg };
+				}
+			},
+		);
+
 		// Check if backend manager is disabled via environment variable
 		const isBackendManagerDisabled =
 			process.env.VITE_DISABLE_BACKEND_MANAGER === "true";
@@ -1166,6 +1192,3 @@ process.on("uncaughtException", (error) => {
 		process.exit(1);
 	}
 });
-
-// In this file you can include the rest of your app"s specific main process
-// code. You can also put them in separate files and require them here.

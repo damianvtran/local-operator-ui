@@ -27,7 +27,7 @@ import { createRadientClient } from "../api/radient";
 import { storeSession } from "../utils/session-store";
 import { showErrorToast, showSuccessToast } from "../utils/toast-manager";
 import { radientUserKeys } from "./use-radient-user-query";
-import { useUpdateConfig } from "./use-update-config"; // Added import
+import { useUpdateConfig } from "./use-update-config";
 
 type AuthProvider = "google" | "microsoft";
 
@@ -35,8 +35,10 @@ type AuthProvider = "google" | "microsoft";
 type OAuthStatus = {
 	loggedIn: boolean;
 	provider: AuthProvider | null;
-	accessToken?: string; // May not be needed by renderer long-term
+	accessToken?: string;
 	idToken?: string;
+	refreshToken?: string; // Added to match main process
+	grantedScopes?: string[]; // Added to match main process
 	expiry?: number;
 	error?: string;
 };
@@ -44,10 +46,13 @@ type OAuthStatus = {
 type UseOidcAuthResult = {
 	signInWithGoogle: () => void;
 	signInWithMicrosoft: () => void;
-	logout: () => void; // Added logout function
+	logout: () => void;
+	requestAdditionalGoogleScopes: (
+		scopes: string[],
+	) => Promise<{ success: boolean; error?: string }>;
 	loading: boolean;
 	error: string | null;
-	status: OAuthStatus; // Expose current status
+	status: OAuthStatus;
 };
 
 /**
@@ -72,31 +77,73 @@ const radientClient = createRadientClient(
 	apiConfig.radientClientId,
 );
 
+const GOOGLE_ACCESS_TOKEN_KEY = "GOOGLE_ACCESS_TOKEN";
+const GOOGLE_REFRESH_TOKEN_KEY = "GOOGLE_REFRESH_TOKEN";
+const GOOGLE_TOKEN_EXPIRY_TIMESTAMP_KEY = "GOOGLE_TOKEN_EXPIRY_TIMESTAMP";
+
 /**
  * Main hook for OIDC authentication via main process native flow.
  */
 export const useOidcAuth = (
 	options?: UseOidcAuthOptions,
 ): UseOidcAuthResult => {
-	const { onSuccess, onAfterCredentialUpdate } = options || {}; // Destructure callbacks
-	const [loading, setLoading] = useState(true); // Start loading until initial status is checked
+	const { onSuccess, onAfterCredentialUpdate } = options || {};
+	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 	const [status, setStatus] = useState<OAuthStatus>({
 		loggedIn: false,
 		provider: null,
+		grantedScopes: [],
 	});
 	const queryClient = useQueryClient();
-	const { mutateAsync: updateConfig } = useUpdateConfig(); // Added hook instance
+	const { mutateAsync: updateConfig } = useUpdateConfig();
 
 	/**
 	 * Handles the full backend integration after obtaining tokens from the main process.
 	 */
 	const handleBackendAuth = useCallback(
-		async (provider: AuthProvider, idToken: string) => {
+		async (
+			provider: AuthProvider,
+			idToken: string,
+			googleAccessToken?: string,
+			googleTokenExpiry?: number,
+			googleRefreshToken?: string,
+		) => {
 			// No need to set loading here, it's handled by the main flow
 			setError(null); // Clear previous errors
 
 			try {
+				// Store Google-specific tokens if provider is Google
+				// This is done before Radient exchange to ensure these are saved even if Radient flow fails
+				if (provider === "google") {
+					try {
+						if (googleAccessToken) {
+							await CredentialsApi.updateCredential(apiConfig.baseUrl, {
+								key: GOOGLE_ACCESS_TOKEN_KEY,
+								value: googleAccessToken,
+							});
+						}
+						if (googleRefreshToken) {
+							await CredentialsApi.updateCredential(apiConfig.baseUrl, {
+								key: GOOGLE_REFRESH_TOKEN_KEY,
+								value: googleRefreshToken,
+							});
+						}
+						if (googleTokenExpiry !== undefined) {
+							await CredentialsApi.updateCredential(apiConfig.baseUrl, {
+								key: GOOGLE_TOKEN_EXPIRY_TIMESTAMP_KEY,
+								value: String(googleTokenExpiry),
+							});
+						}
+					} catch (credError) {
+						console.error(
+							"Failed to store Google OAuth specific credentials:",
+							credError,
+						);
+						showErrorToast("Failed to store Google credentials.");
+					}
+				}
+
 				// 1. Exchange ID token for backend tokens
 				// We only need the ID token for the backend exchange now
 				const tokenPayload = { idToken };
@@ -308,7 +355,13 @@ export const useOidcAuth = (
 			// If login was successful and we have an ID token, trigger backend exchange
 			if (newStatus.loggedIn && newStatus.provider && newStatus.idToken) {
 				// Call handleBackendAuth asynchronously, don't await here
-				handleBackendAuth(newStatus.provider, newStatus.idToken);
+				handleBackendAuth(
+					newStatus.provider,
+					newStatus.idToken,
+					newStatus.accessToken,
+					newStatus.expiry,
+					newStatus.refreshToken,
+				);
 			} else if (newStatus.loggedIn && !newStatus.idToken) {
 				console.warn(
 					"Logged in status received, but no ID token provided for backend exchange.",
@@ -362,10 +415,37 @@ export const useOidcAuth = (
 		checkInitialStatus();
 	}, []); // Run only on mount
 
+	const requestAdditionalGoogleScopes = useCallback(
+		async (scopes: string[]) => {
+			setLoading(true);
+			setError(null);
+			try {
+				const result =
+					await window.api.oauth.requestAdditionalGoogleScopes(scopes);
+				if (!result.success) {
+					throw new Error(
+						result.error || "Failed to request additional Google scopes",
+					);
+				}
+				// Status update will be handled by the listener effect after re-authentication
+				return { success: true };
+			} catch (err) {
+				const msg = err instanceof Error ? err.message : String(err);
+				console.error("Error requesting additional Google scopes:", msg);
+				setError(msg);
+				showErrorToast(msg);
+				setLoading(false); // Set loading false only if initiation fails
+				return { success: false, error: msg };
+			}
+		},
+		[],
+	);
+
 	return {
 		signInWithGoogle,
 		signInWithMicrosoft,
 		logout,
+		requestAdditionalGoogleScopes,
 		loading,
 		error,
 		status,

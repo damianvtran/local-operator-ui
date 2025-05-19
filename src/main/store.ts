@@ -17,6 +17,7 @@ export type StoreData = {
 	oauth_access_token?: string;
 	oauth_id_token?: string;
 	oauth_expiry?: number;
+	google_requested_scopes?: string[]; // For storing requested Google scopes
 };
 
 /**
