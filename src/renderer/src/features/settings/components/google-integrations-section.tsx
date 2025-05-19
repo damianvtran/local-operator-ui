@@ -22,9 +22,18 @@ import { useOidcAuth } from "@shared/hooks/use-oidc-auth";
 import type { FC } from "react";
 
 // Define the scopes for each Google service
-const GMAIL_SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"];
-const CALENDAR_SCOPES = ["https://www.googleapis.com/auth/calendar.readonly"];
-const DRIVE_SCOPES = ["https://www.googleapis.com/auth/drive.readonly"]; // Example, can be more specific
+const GMAIL_SCOPES = [
+	"https://www.googleapis.com/auth/gmail.readonly",
+	"https://www.googleapis.com/auth/gmail.compose",
+];
+const CALENDAR_SCOPES = [
+	"https://www.googleapis.com/auth/calendar.readonly",
+	"https://www.googleapis.com/auth/calendar",
+];
+const DRIVE_SCOPES = [
+	"https://www.googleapis.com/auth/drive.readonly",
+	"https://www.googleapis.com/auth/drive",
+];
 
 type IntegrationButtonProps = {
 	serviceName: string;
