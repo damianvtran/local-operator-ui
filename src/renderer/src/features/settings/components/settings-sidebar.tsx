@@ -9,6 +9,9 @@ import {
 	Typography,
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
+import { faGoogle } from "@fortawesome/free-brands-svg-icons"; // Added
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"; // Added
+import type { IconDefinition } from "@fortawesome/fontawesome-svg-core"; // Added
 import type { LucideIcon } from "lucide-react";
 import { Download, Key, Paintbrush, Settings } from "lucide-react";
 import type { FC } from "react";
@@ -19,8 +22,9 @@ import type { FC } from "react";
 export type SettingsSection = {
 	id: string;
 	label: string;
-	icon: LucideIcon | string;
+	icon: LucideIcon | IconDefinition | string; // Updated to include IconDefinition
 	isImage?: boolean;
+	isFontAwesome?: boolean; // Added to differentiate icon types
 };
 
 /**
@@ -144,8 +148,16 @@ export const SettingsSidebar: FC<SettingsSidebarProps> = ({
 						<SidebarItemIcon isActive={activeSection === section.id}>
 							{section.isImage ? (
 								<IconImage src={section.icon as string} alt={section.label} />
+							) : section.isFontAwesome ? (
+								<FontAwesomeIcon
+									icon={section.icon as IconDefinition}
+									style={{ fontSize: 20 }} // Adjusted size for FA icons
+								/>
 							) : (
-								<section.icon size={22} strokeWidth={2.1} />
+								(() => {
+									const IconComponent = section.icon as LucideIcon;
+									return <IconComponent size={22} strokeWidth={2.1} />;
+								})()
 							)}
 						</SidebarItemIcon>
 						<ListItemText
@@ -176,6 +188,12 @@ export const DEFAULT_SETTINGS_SECTIONS: SettingsSection[] = [
 		label: "Radient Account",
 		icon: radientIcon,
 		isImage: true,
+	},
+	{
+		id: "google",
+		label: "Google Integrations",
+		icon: faGoogle,
+		isFontAwesome: true,
 	},
 	{
 		id: "appearance",

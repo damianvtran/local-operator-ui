@@ -125,6 +125,9 @@ declare global {
 						error?: string;
 					}) => void,
 				) => () => void; // Returns a cleanup function
+				requestAdditionalGoogleScopes: (
+					scopes: string[],
+				) => Promise<{ success: boolean; error?: string }>;
 			};
 			/** Opens a native dialog to select a directory */
 			selectDirectory: () => Promise<string | undefined>;

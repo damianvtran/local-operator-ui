@@ -28,11 +28,11 @@ const KEYTAR_SERVICE = "radient-local-operator-oauth"; // Unique service name fo
 
 // --- Provider Configurations ---
 // Using OpenID Connect discovery endpoints
+const GOOGLE_BASE_SCOPES = ["openid", "email", "profile"];
 const GOOGLE_CONFIG = {
 	discoveryUrl: "https://accounts.google.com/.well-known/openid-configuration",
 	clientId: backendConfig.VITE_GOOGLE_CLIENT_ID,
 	clientSecret: backendConfig.VITE_GOOGLE_CLIENT_SECRET,
-	scope: "openid email profile",
 };
 
 const MICROSOFT_CONFIG = {
@@ -51,6 +51,7 @@ type OAuthStatus = {
 	accessToken?: string;
 	idToken?: string;
 	refreshToken?: string; // Added for Google refresh token
+	grantedScopes?: string[]; // To inform renderer about granted scopes
 	expiry?: number;
 	error?: string;
 };
@@ -215,6 +216,7 @@ export class OAuthService {
 	private readonly requestHandler: NodeBasedHandler; // Use NodeBasedHandler
 	private readonly tokenHandler: BaseTokenRequestHandler;
 	private currentAuthProvider: AuthProvider | null = null;
+	private currentGoogleScopes: string[];
 	// Store the request used in the listener to retrieve the code_verifier
 	private currentAuthorizationRequest: AuthorizationRequest | null = null;
 	// private currentAuthorizationCodeVerifier: string | null = null; // No longer needed
@@ -222,6 +224,18 @@ export class OAuthService {
 	constructor(private readonly sessionStore: Store<StoreData>) {
 		this.notifier = new AuthorizationNotifier();
 		this.requestHandler = new NodeBasedHandler(OAUTH_LISTEN_PORT); // Use constant
+		// Load stored Google scopes or default to base scopes
+		const storedGoogleScopes =
+			this.sessionStore.get("google_requested_scopes");
+		if (
+			storedGoogleScopes &&
+			Array.isArray(storedGoogleScopes) &&
+			storedGoogleScopes.length > 0
+		) {
+			this.currentGoogleScopes = storedGoogleScopes;
+		} else {
+			this.currentGoogleScopes = [...GOOGLE_BASE_SCOPES];
+		}
 
 		// *** Use the new ElectronNetRequestor for token handling ***
 		this.tokenHandler = new BaseTokenRequestHandler(new ElectronNetRequestor());
@@ -436,10 +450,26 @@ export class OAuthService {
 	/**
 	 * Initiates the login flow for the specified provider.
 	 * @param provider The authentication provider ('google' or 'microsoft').
+	 * @param isScopeUpdateRequest Optional flag to indicate if this is a re-authentication for new scopes.
 	 */
-	public async initiateLogin(provider: AuthProvider): Promise<void> {
-		logger.info(`Initiating login with ${provider}`, LogFileType.OAUTH);
+	public async initiateLogin(
+		provider: AuthProvider,
+		isScopeUpdateRequest = false,
+	): Promise<void> {
+		logger.info(
+			`Initiating login with ${provider}${isScopeUpdateRequest ? " (scope update)" : ""}`,
+			LogFileType.OAUTH,
+		);
+		// Don't reset currentGoogleScopes if it's a scope update request,
+		// but do reset other auth state.
+		const scopesToKeep =
+			provider === "google" ? [...this.currentGoogleScopes] : [];
 		this.resetState(); // Reset state before starting a new flow
+		if (provider === "google") {
+			this.currentGoogleScopes = scopesToKeep.length
+				? scopesToKeep
+				: [...GOOGLE_BASE_SCOPES];
+		}
 		this.currentAuthProvider = provider;
 
 		// Fetch configuration
@@ -457,12 +487,18 @@ export class OAuthService {
 			{
 				client_id: config.clientId,
 				redirect_uri: REDIRECT_URI,
-				scope: config.scope,
+				scope:
+					provider === "google"
+						? this.currentGoogleScopes.join(" ")
+						: MICROSOFT_CONFIG.scope, // Explicitly use MICROSOFT_CONFIG.scope for Microsoft
 				response_type: AuthorizationRequest.RESPONSE_TYPE_CODE,
 				state: undefined, // Optional state parameter
 				extras: {
-					prompt: "select_account",
-					access_type: "offline",
+					prompt:
+						provider === "google" && isScopeUpdateRequest
+							? "consent" // Force consent screen for new scopes
+							: "select_account", // Default prompt
+					access_type: "offline", // For refresh token
 				},
 			},
 			new NodeCrypto(), // Pass NodeCrypto instance here
@@ -621,7 +657,11 @@ export class OAuthService {
 				provider: this.currentAuthProvider,
 				accessToken: response.accessToken,
 				idToken: response.idToken,
-				refreshToken: response.refreshToken, // Pass the refresh token
+				refreshToken: response.refreshToken,
+				grantedScopes:
+					this.currentAuthProvider === "google"
+						? [...this.currentGoogleScopes]
+						: undefined, // Pass granted scopes for Google
 				expiry: this.sessionStore.get("oauth_expiry"),
 			});
 
@@ -848,7 +888,17 @@ export class OAuthService {
 
 		const provider = this.sessionStore.get("oauth_provider");
 		const accessToken = this.sessionStore.get("oauth_access_token");
+		const idToken = this.sessionStore.get("oauth_id_token"); // Also get idToken
 		const expiry = this.sessionStore.get("oauth_expiry");
+		let grantedScopes: string[] | undefined;
+		if (provider === "google") {
+			const storedScopes = this.sessionStore.get("google_requested_scopes");
+			if (Array.isArray(storedScopes)) {
+				grantedScopes = storedScopes;
+			} else {
+				grantedScopes = [...GOOGLE_BASE_SCOPES];
+			}
+		}
 
 		if (!provider || !accessToken || !expiry) {
 			logger.info("No valid session found in store.", LogFileType.OAUTH);
@@ -872,39 +922,52 @@ export class OAuthService {
 		return {
 			loggedIn: true,
 			provider: provider,
+			accessToken: accessToken, // Return tokens for renderer to use if needed
+			idToken: idToken || undefined,
+			grantedScopes: grantedScopes,
 			expiry: expiry,
 		};
 	}
 
 	/**
-	 * Logs the user out, clearing stored tokens and resetting state.
+	 * Initiates a new Google login flow to request additional scopes.
+	 * @param additionalScopes An array of additional scopes to request.
 	 */
-	public async logout(): Promise<void> {
-		logger.info("Initiating logout process", LogFileType.OAUTH);
-
-		const provider = this.sessionStore.get("oauth_provider");
-
-		if (provider) {
-			logger.info(`Clearing refresh token for ${provider}`, LogFileType.OAUTH);
-			await this.clearRefreshToken(provider);
-		} else {
+	public async requestAdditionalGoogleScopes(
+		additionalScopes: string[],
+	): Promise<void> {
+		if (this.currentAuthProvider !== "google" && this.sessionStore.get("oauth_provider") !== "google") {
 			logger.warn(
-				"No provider found in session during logout, attempting to clear all known providers.",
+				"requestAdditionalGoogleScopes called but current provider is not Google.",
 				LogFileType.OAUTH,
 			);
-			// Attempt to clear for both just in case state is inconsistent
-			await this.clearRefreshToken("google");
-			await this.clearRefreshToken("microsoft");
+			this.sendErrorToRenderer("Cannot request Google scopes: Not signed in with Google.");
+			return;
 		}
+		this.currentAuthProvider = "google"; // Ensure it's set if re-initiating
 
-		logger.info("Clearing session tokens", LogFileType.OAUTH);
-		this.clearSessionTokens();
+		logger.info(
+			"Requesting additional Google scopes:",
+			LogFileType.OAUTH,
+			additionalScopes,
+		);
 
-		logger.info("Resetting OAuth service state", LogFileType.OAUTH);
-		this.resetState();
+		const newScopeSet = new Set([
+			...this.currentGoogleScopes,
+			...additionalScopes,
+		]);
+		this.currentGoogleScopes = Array.from(newScopeSet);
 
-		logger.info("Sending logged out status to renderer", LogFileType.OAUTH);
-		this.sendStatusToRenderer({ loggedIn: false, provider: null });
+		// Persist the new set of scopes
+		this.sessionStore.set("google_requested_scopes", this.currentGoogleScopes);
+		logger.debug(
+			"Updated currentGoogleScopes:",
+			LogFileType.OAUTH,
+			this.currentGoogleScopes,
+		);
+
+		// Re-initiate login with 'consent' prompt
+		await this.initiateLogin("google", true);
 	}
 
 	// --- Helper methods for token storage ---
@@ -1042,6 +1105,52 @@ export class OAuthService {
 		this.sessionStore.delete("oauth_access_token");
 		this.sessionStore.delete("oauth_id_token");
 		this.sessionStore.delete("oauth_expiry");
+		// Note: google_requested_scopes is cleared in the logout method
+		// to ensure it's only cleared when logging out from Google.
 		logger.info("Cleared OAuth tokens from session store.", LogFileType.OAUTH);
+	}
+
+	/**
+	 * Logs the user out, clearing stored tokens and resetting state.
+	 */
+	public async logout(): Promise<void> {
+		logger.info("Initiating logout process", LogFileType.OAUTH);
+
+		const currentProvider = this.sessionStore.get("oauth_provider");
+
+		if (currentProvider) {
+			logger.info(`Clearing refresh token for ${currentProvider}`, LogFileType.OAUTH);
+			await this.clearRefreshToken(currentProvider);
+			// Clear Google-specific scopes if the provider was Google
+			if (currentProvider === "google") {
+				this.sessionStore.delete("google_requested_scopes");
+				this.currentGoogleScopes = [...GOOGLE_BASE_SCOPES]; // Reset to defaults
+				logger.info("Cleared stored Google scopes.", LogFileType.OAUTH);
+			}
+		} else {
+			logger.warn(
+				"No provider found in session during logout, attempting to clear all known providers.",
+				LogFileType.OAUTH,
+			);
+			// Attempt to clear for both just in case state is inconsistent
+			await this.clearRefreshToken("google");
+			await this.clearRefreshToken("microsoft");
+			// Also clear Google scopes as a fallback
+			this.sessionStore.delete("google_requested_scopes");
+			this.currentGoogleScopes = [...GOOGLE_BASE_SCOPES];
+			logger.info(
+				"Cleared stored Google scopes as part of general cleanup.",
+				LogFileType.OAUTH,
+			);
+		}
+
+		logger.info("Clearing session tokens", LogFileType.OAUTH);
+		this.clearSessionTokens(); // This will now only clear generic tokens
+
+		logger.info("Resetting OAuth service state", LogFileType.OAUTH);
+		this.resetState();
+
+		logger.info("Sending logged out status to renderer", LogFileType.OAUTH);
+		this.sendStatusToRenderer({ loggedIn: false, provider: null });
 	}
 }
