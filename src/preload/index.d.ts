@@ -108,6 +108,7 @@ declare global {
 						provider: "google" | "microsoft" | null;
 						accessToken?: string; // Consider removing if not needed by renderer
 						idToken?: string;
+						refreshToken?: string; // Added for Google refresh token
 						expiry?: number;
 						error?: string;
 					};
@@ -119,6 +120,7 @@ declare global {
 						provider: "google" | "microsoft" | null;
 						accessToken?: string;
 						idToken?: string;
+						refreshToken?: string; // Added for Google refresh token
 						expiry?: number;
 						error?: string;
 					}) => void,

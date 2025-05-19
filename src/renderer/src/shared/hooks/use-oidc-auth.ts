@@ -37,6 +37,7 @@ type OAuthStatus = {
 	provider: AuthProvider | null;
 	accessToken?: string;
 	idToken?: string;
+	refreshToken?: string; // Added to match main process
 	expiry?: number;
 	error?: string;
 };
@@ -72,6 +73,10 @@ const radientClient = createRadientClient(
 	apiConfig.radientClientId,
 );
 
+const GOOGLE_ACCESS_TOKEN_KEY = "GOOGLE_ACCESS_TOKEN";
+const GOOGLE_REFRESH_TOKEN_KEY = "GOOGLE_REFRESH_TOKEN";
+const GOOGLE_TOKEN_EXPIRY_TIMESTAMP_KEY = "GOOGLE_TOKEN_EXPIRY_TIMESTAMP";
+
 /**
  * Main hook for OIDC authentication via main process native flow.
  */
@@ -92,11 +97,48 @@ export const useOidcAuth = (
 	 * Handles the full backend integration after obtaining tokens from the main process.
 	 */
 	const handleBackendAuth = useCallback(
-		async (provider: AuthProvider, idToken: string) => {
+		async (
+			provider: AuthProvider,
+			idToken: string,
+			googleAccessToken?: string,
+			googleTokenExpiry?: number,
+			googleRefreshToken?: string,
+		) => {
 			// No need to set loading here, it's handled by the main flow
 			setError(null); // Clear previous errors
 
 			try {
+				// Store Google-specific tokens if provider is Google
+				// This is done before Radient exchange to ensure these are saved even if Radient flow fails
+				if (provider === "google") {
+					try {
+						if (googleAccessToken) {
+							await CredentialsApi.updateCredential(apiConfig.baseUrl, {
+								key: GOOGLE_ACCESS_TOKEN_KEY,
+								value: googleAccessToken,
+							});
+						}
+						if (googleRefreshToken) {
+							await CredentialsApi.updateCredential(apiConfig.baseUrl, {
+								key: GOOGLE_REFRESH_TOKEN_KEY,
+								value: googleRefreshToken,
+							});
+						}
+						if (googleTokenExpiry !== undefined) {
+							await CredentialsApi.updateCredential(apiConfig.baseUrl, {
+								key: GOOGLE_TOKEN_EXPIRY_TIMESTAMP_KEY,
+								value: String(googleTokenExpiry),
+							});
+						}
+					} catch (credError) {
+						console.error(
+							"Failed to store Google OAuth specific credentials:",
+							credError,
+						);
+						showErrorToast("Failed to store Google credentials.");
+					}
+				}
+
 				// 1. Exchange ID token for backend tokens
 				// We only need the ID token for the backend exchange now
 				const tokenPayload = { idToken };
@@ -308,7 +350,13 @@ export const useOidcAuth = (
 			// If login was successful and we have an ID token, trigger backend exchange
 			if (newStatus.loggedIn && newStatus.provider && newStatus.idToken) {
 				// Call handleBackendAuth asynchronously, don't await here
-				handleBackendAuth(newStatus.provider, newStatus.idToken);
+				handleBackendAuth(
+					newStatus.provider,
+					newStatus.idToken,
+					newStatus.accessToken,
+					newStatus.expiry,
+					newStatus.refreshToken,
+				);
 			} else if (newStatus.loggedIn && !newStatus.idToken) {
 				console.warn(
 					"Logged in status received, but no ID token provided for backend exchange.",
