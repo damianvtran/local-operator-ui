@@ -8,6 +8,7 @@ import monokaiTheme from "./monokai-theme";
 import neonTheme from "./neon-theme";
 import obsidianTheme from "./obsidian-theme";
 import radientTheme from "./radient-theme";
+import synthTheme from "./synth-theme";
 import sageTheme from "./sage-theme";
 import tokyoNightTheme from "./tokyo-night-theme";
 
@@ -70,6 +71,11 @@ export const themes: ThemeCollection = {
 		id: "obsidian",
 		theme: obsidianTheme,
 	},
+	synth: {
+		name: "Synth",
+		id: "synth",
+		theme: synthTheme,
+	},
 };
 
 /**
@@ -98,5 +104,6 @@ export {
 	obsidianTheme,
 	radientTheme,
 	sageTheme,
+	synthTheme,
 	tokyoNightTheme,
 };

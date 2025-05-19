@@ -14,7 +14,8 @@ export type ThemeName =
 	| "iceberg"
 	| "radient"
 	| "neon"
-	| "obsidian";
+	| "obsidian"
+	| "synth";
 
 /**
  * Theme option interface for the theme selector

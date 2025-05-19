@@ -10,6 +10,7 @@ import {
 	faMountain,
 	faSkull,
 	faSun,
+	faWaveSquare,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, Card, CardContent, Grid, Typography } from "@mui/material";
@@ -475,6 +476,44 @@ const ObsidianPreview = styled(Box)(() => {
 	};
 });
 
+// Synth theme preview
+const SynthPreview = styled(Box)(() => {
+	// Use the actual Synth theme colors from the theme
+	const synthTheme = themes.synth.theme;
+
+	return {
+		width: "100%",
+		height: "100%",
+		background: `linear-gradient(to bottom, ${synthTheme.palette.sidebar.background} 0%, ${synthTheme.palette.sidebar.background} 30%, ${synthTheme.palette.background.paper} 30%, ${synthTheme.palette.background.paper} 100%)`,
+		position: "relative",
+		boxShadow: `0 2px 8px ${synthTheme.palette.primary.main}33`,
+		borderRadius: 4,
+		"&::after": {
+			content: '""',
+			position: "absolute",
+			top: "50%",
+			left: "50%",
+			transform: "translate(-50%, -50%)",
+			width: "40%",
+			height: "20%",
+			backgroundColor: synthTheme.palette.primary.main,
+			borderRadius: 4,
+			boxShadow: `0 0 10px ${synthTheme.palette.primary.main}77`,
+		},
+		// Add a sidebar-like element
+		"&::before": {
+			content: '""',
+			position: "absolute",
+			left: 0,
+			top: 0,
+			height: "100%",
+			width: "20%",
+			backgroundColor: synthTheme.palette.sidebar.background,
+			borderRight: `1px solid ${synthTheme.palette.sidebar.border}`,
+		},
+	};
+});
+
 /**
  * Theme selector component
  *
@@ -721,6 +760,27 @@ export const ThemeSelector: FC = () => {
 									fontWeight={themeName === "obsidian" ? "bold" : "normal"}
 								>
 									{themes.obsidian.name}
+								</Typography>
+							</ThemeLabel>
+						</ThemeOption>
+					</Grid>
+
+					{/* Synth Theme Option */}
+					<Grid item xs={12} sm={6} md={4} lg={3}>
+						<ThemeOption
+							isSelected={themeName === "synth"}
+							onClick={() => handleThemeChange("synth")}
+						>
+							<ThemePreview>
+								<SynthPreview />
+							</ThemePreview>
+							<ThemeLabel>
+								<FontAwesomeIcon icon={faWaveSquare} />
+								<Typography
+									variant="body2"
+									fontWeight={themeName === "synth" ? "bold" : "normal"}
+								>
+									{themes.synth.name}
 								</Typography>
 							</ThemeLabel>
 						</ThemeOption>
