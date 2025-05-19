@@ -1,13 +1,5 @@
 import { faGoogle } from "@fortawesome/free-brands-svg-icons";
 import {
-	faCalendarDays,
-	faCheckCircle,
-	faCircleExclamation,
-	faEnvelope,
-	faHardDrive,
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
 	Box,
 	Button,
 	CircularProgress,
@@ -17,9 +9,16 @@ import {
 	alpha,
 	useTheme,
 } from "@mui/material";
-import { SettingsSectionCard } from "./settings-section-card"; // Corrected import path
+import { SettingsSectionCard } from "./settings-section-card";
 import { useOidcAuth } from "@shared/hooks/use-oidc-auth";
 import type { FC } from "react";
+import {
+	Mail,
+	CalendarDays,
+	HardDrive,
+	CheckCircle2,
+	Link as LinkIcon, // Renamed to avoid conflict with HTML Link
+} from "lucide-react";
 
 // Define the scopes for each Google service
 const GMAIL_SCOPES = [
@@ -66,22 +65,27 @@ const IntegrationButton: FC<IntegrationButtonProps> = ({
 		<Paper
 			variant="outlined"
 			sx={{
-				p: 2,
+				p: theme.spacing(1.5, 2), // Adjusted padding
 				display: "flex",
 				alignItems: "center",
 				justifyContent: "space-between",
-				mb: 1.5,
+				mb: theme.spacing(1.5), // Adjusted margin
+				borderRadius: theme.shape.borderRadius * 0.75, // Shadcn-like border radius
 				backgroundColor: isConnected
-					? alpha(theme.palette.success.main, 0.05)
+					? alpha(theme.palette.success.main, 0.08) // Slightly adjusted alpha for subtlety
 					: theme.palette.background.paper,
 				borderColor: isConnected
-					? alpha(theme.palette.success.main, 0.3)
+					? alpha(theme.palette.success.main, 0.4) // Slightly adjusted alpha
 					: theme.palette.divider,
+				transition: "border-color 0.2s ease-in-out, background-color 0.2s ease-in-out",
+				"&:hover": {
+					borderColor: isConnected ? alpha(theme.palette.success.main, 0.6) : theme.palette.text.disabled,
+				},
 			}}
 		>
 			<Stack direction="row" alignItems="center" spacing={1.5}>
 				{icon}
-				<Typography variant="body1" fontWeight="500">
+				<Typography variant="subtitle1" fontWeight="500" fontSize="0.9375rem"> {/* Adjusted Typography */}
 					{serviceName}
 				</Typography>
 			</Stack>
@@ -95,15 +99,17 @@ const IntegrationButton: FC<IntegrationButtonProps> = ({
 					isLoading ? (
 						<CircularProgress size={16} color="inherit" />
 					) : isConnected ? (
-						<FontAwesomeIcon icon={faCheckCircle} />
+						<CheckCircle2 size={16} />
 					) : (
-						<FontAwesomeIcon icon={faCircleExclamation} />
+						<LinkIcon size={16} /> // Changed icon
 					)
 				}
 				sx={{
-					minWidth: 120,
+					minWidth: 110, // Adjusted minWidth
 					textTransform: "none",
 					fontSize: "0.8125rem",
+					borderRadius: theme.shape.borderRadius * 0.75, // Shadcn-like border radius
+					padding: theme.spacing(0.75, 1.5), // Adjusted padding
 					...(isConnected && {
 						backgroundColor: theme.palette.success.main,
 						color: theme.palette.success.contrastText,
@@ -111,6 +117,14 @@ const IntegrationButton: FC<IntegrationButtonProps> = ({
 							backgroundColor: theme.palette.success.dark,
 						},
 					}),
+					...(!isConnected && { // Styling for "Connect" button
+						borderColor: theme.palette.divider,
+						color: theme.palette.text.primary,
+						"&:hover": {
+							backgroundColor: alpha(theme.palette.primary.main, 0.05),
+							borderColor: theme.palette.primary.light,
+						},
+					})
 				}}
 			>
 				{isLoading
@@ -125,22 +139,29 @@ const IntegrationButton: FC<IntegrationButtonProps> = ({
 
 export const GoogleIntegrationsSection: FC = () => {
 	const { status: oidcStatus, requestAdditionalGoogleScopes, loading: oidcLoading, } = useOidcAuth();
+	const theme = useTheme(); // For spacing
 
 	const handleConnectService = async (scopesToRequest: string[]) => {
 		await requestAdditionalGoogleScopes(scopesToRequest);
 		// The useOidcAuth hook will handle status updates and re-renders
 	};
 
+	// Icon props for Lucide icons
+	const iconProps = {
+		size: 20, // Consistent icon size
+		strokeWidth: 1.75,
+	};
+
 	return (
 		<SettingsSectionCard
 			title="Google Integrations"
-			icon={faGoogle}
+			icon={faGoogle} // Brand icon remains FontAwesome
 			description="Connect your Google services like Gmail, Calendar, and Drive to enhance Local Operator's capabilities."
 		>
-			<Box mt={1}>
+			<Box mt={theme.spacing(2)}> {/* Adjusted margin top */}
 				<IntegrationButton
 					serviceName="Gmail"
-					icon={<FontAwesomeIcon icon={faEnvelope} fixedWidth />}
+					icon={<Mail {...iconProps} />}
 					scopes={GMAIL_SCOPES}
 					grantedScopes={oidcStatus.grantedScopes}
 					onConnect={handleConnectService}
@@ -148,7 +169,7 @@ export const GoogleIntegrationsSection: FC = () => {
 				/>
 				<IntegrationButton
 					serviceName="Calendar"
-					icon={<FontAwesomeIcon icon={faCalendarDays} fixedWidth />}
+					icon={<CalendarDays {...iconProps} />}
 					scopes={CALENDAR_SCOPES}
 					grantedScopes={oidcStatus.grantedScopes}
 					onConnect={handleConnectService}
@@ -156,7 +177,7 @@ export const GoogleIntegrationsSection: FC = () => {
 				/>
 				<IntegrationButton
 					serviceName="Drive"
-					icon={<FontAwesomeIcon icon={faHardDrive} fixedWidth />}
+					icon={<HardDrive {...iconProps} />}
 					scopes={DRIVE_SCOPES}
 					grantedScopes={oidcStatus.grantedScopes}
 					onConnect={handleConnectService}
