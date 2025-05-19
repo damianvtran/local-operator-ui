@@ -50,6 +50,7 @@ type OAuthStatus = {
 	provider: AuthProvider | null;
 	accessToken?: string;
 	idToken?: string;
+	refreshToken?: string; // Added for Google refresh token
 	expiry?: number;
 	error?: string;
 };
@@ -618,8 +619,9 @@ export class OAuthService {
 			this.sendStatusToRenderer({
 				loggedIn: true,
 				provider: this.currentAuthProvider,
-				accessToken: response.accessToken, // Consider if renderer needs this directly
+				accessToken: response.accessToken,
 				idToken: response.idToken,
+				refreshToken: response.refreshToken, // Pass the refresh token
 				expiry: this.sessionStore.get("oauth_expiry"),
 			});
 
