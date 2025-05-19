@@ -59,6 +59,27 @@ export const CREDENTIAL_MANIFEST = [
 		url: "https://aistudio.google.com/",
 	},
 	{
+		key: "GOOGLE_ACCESS_TOKEN",
+		name: "Google Access Token",
+		description:
+			"OAuth 2.0 access token for Google APIs. Used by Local Operator for authenticated requests to Google services such as Gmail, Calendar, and Drive. This token is short-lived and automatically refreshed.",
+		url: "https://console.cloud.google.com/apis/credentials",
+	},
+	{
+		key: "GOOGLE_TOKEN_EXPIRY_TIMESTAMP",
+		name: "Google Token Expiry Timestamp",
+		description:
+			"Timestamp (in milliseconds since epoch) indicating when the current Google access token will expire. Used internally to manage token refresh.",
+		url: "",
+	},
+	{
+		key: "GOOGLE_REFRESH_TOKEN",
+		name: "Google Refresh Token",
+		description:
+			"OAuth 2.0 refresh token for Google APIs. Used to obtain new access tokens when the current one expires. This is managed securely and automatically.",
+		url: "https://console.cloud.google.com/apis/credentials",
+	},
+	{
 		key: "ANTHROPIC_API_KEY",
 		name: "Anthropic API Key",
 		description:
@@ -97,6 +118,9 @@ export const CREDENTIAL_MANIFEST = [
 
 /**
  * Find credential info from the manifest
+ *
+ * @param key - The credential key to look up.
+ * @returns The credential info object if found, otherwise a default object.
  */
 export const getCredentialInfo = (key: string) => {
 	return (
