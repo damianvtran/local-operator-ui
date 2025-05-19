@@ -520,7 +520,7 @@ export const SettingsPage: FC = () => {
 	const sectionRefs = useRef<Record<string, RefObject<HTMLDivElement>>>({
 		general: useRef<HTMLDivElement>(null),
 		radient: useRef<HTMLDivElement>(null),
-		google: useRef<HTMLDivElement>(null),
+		integrations: useRef<HTMLDivElement>(null),
 		appearance: useRef<HTMLDivElement>(null),
 		credentials: useRef<HTMLDivElement>(null),
 		updates: useRef<HTMLDivElement>(null),
@@ -869,7 +869,7 @@ export const SettingsPage: FC = () => {
 
 					{/* Google Integrations Section - Conditionally Rendered */}
 					{isAuthenticated && oidcStatus.provider === "google" && (
-						<Box ref={sectionRefs.google}>
+						<Box ref={sectionRefs.integrations}>
 							<GoogleIntegrationsSection />
 						</Box>
 					)}

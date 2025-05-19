@@ -154,7 +154,7 @@ export const GoogleIntegrationsSection: FC = () => {
 
 	return (
 		<SettingsSectionCard
-			title="Google Integrations"
+			title="Integrations"
 			icon={faGoogle} // Brand icon remains FontAwesome
 			description="Connect your Google services like Gmail, Calendar, and Drive to enhance Local Operator's capabilities."
 		>
