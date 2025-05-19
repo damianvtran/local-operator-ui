@@ -131,6 +131,8 @@ const api = {
 			ipcRenderer.invoke("oauth-login", provider),
 		logout: () => ipcRenderer.invoke("oauth-logout"),
 		getStatus: () => ipcRenderer.invoke("oauth-get-status"),
+		requestAdditionalGoogleScopes: (scopes: string[]) => // Added
+			ipcRenderer.invoke("oauth-request-additional-scopes", scopes), // Added
 		// Listener for status updates from the main process
 		onStatusUpdate: (
 			callback: (status: {
