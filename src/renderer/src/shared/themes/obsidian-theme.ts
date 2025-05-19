@@ -19,13 +19,15 @@ const obsidianTheme = createTheme({
 	},
 	palette: {
 		mode: "dark",
-		primary: { // Accent color - typically white or light grey in monochrome
+		primary: {
+			// Accent color - typically white or light grey in monochrome
 			main: "#FAFAFA", // Very light grey / off-white
 			dark: "#E0E0E0", // Slightly darker for pressed states
 			light: "#FFFFFF", // Pure white for hover states or highlights
 			contrastText: "#09090B", // Text on primary elements
 		},
-		secondary: { // Secondary accent - a mid-grey
+		secondary: {
+			// Secondary accent - a mid-grey
 			main: "#A1A1AA", // Shadcn zinc-500
 			dark: "#71717A", // Shadcn zinc-600
 			light: "#D4D4D8", // Shadcn zinc-400
@@ -103,7 +105,8 @@ const obsidianTheme = createTheme({
 				fontSize: "2.7rem",
 			},
 		},
-		gradientTitle: { // Less emphasis on gradient for monochrome
+		gradientTitle: {
+			// Less emphasis on gradient for monochrome
 			fontSize: "1.4rem",
 			fontWeight: 600,
 			letterSpacing: "0.01em",
@@ -125,7 +128,8 @@ const obsidianTheme = createTheme({
 			styleOverrides: {
 				root: ({ theme }) => ({
 					borderRadius: 8,
-					transition: "background-color 0.2s ease-in-out, border-color 0.2s ease-in-out",
+					transition:
+						"background-color 0.2s ease-in-out, border-color 0.2s ease-in-out",
 					paddingTop: 12,
 					paddingBottom: 12,
 					border: "1px solid transparent",
@@ -146,7 +150,8 @@ const obsidianTheme = createTheme({
 				root: {
 					color: "#A1A1AA", // zinc-500
 					marginRight: 8,
-					transition: "background-color 0.2s ease-in-out, color 0.2s ease-in-out",
+					transition:
+						"background-color 0.2s ease-in-out, color 0.2s ease-in-out",
 					"&:hover": {
 						background: "rgba(250, 250, 250, 0.08)",
 						color: "#FAFAFA", // zinc-50

@@ -108,8 +108,7 @@ const neonTheme = createTheme({
 			fontSize: "1.4rem",
 			fontWeight: 400,
 			letterSpacing: "0.02em",
-			background:
-				"linear-gradient(90deg, #00EFFF, #B0E0FF)", // Cyan to light blue gradient
+			background: "linear-gradient(90deg, #00EFFF, #B0E0FF)", // Cyan to light blue gradient
 			WebkitBackgroundClip: "text",
 			WebkitTextFillColor: "transparent",
 			textShadow: "0 0 10px rgba(0, 239, 255, 0.3)",

@@ -1,3 +1,4 @@
+import { faPuzzlePiece } from "@fortawesome/free-solid-svg-icons";
 import {
 	Box,
 	Button,
@@ -9,18 +10,17 @@ import {
 	alpha,
 	useTheme,
 } from "@mui/material";
-import { SettingsSectionCard } from "./settings-section-card";
 import { useOidcAuth } from "@shared/hooks/use-oidc-auth";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
-import type { FC } from "react";
 import {
-	Mail,
 	CalendarDays,
-	HardDrive,
 	CheckCircle2,
+	HardDrive,
 	Link as LinkIcon,
+	Mail,
 } from "lucide-react";
-import { faPuzzlePiece } from "@fortawesome/free-solid-svg-icons";
+import type { FC } from "react";
+import { SettingsSectionCard } from "./settings-section-card";
 
 // Define the scopes for each Google service
 const GMAIL_SCOPES = [
@@ -60,7 +60,8 @@ const IntegrationButton: FC<IntegrationButtonProps> = ({
 		grantedScopes && scopes.every((scope) => grantedScopes.includes(scope));
 
 	const handleConnect = () => {
-		if (!isConnected && isAuthenticated) { // Check isAuthenticated before connecting
+		if (!isConnected && isAuthenticated) {
+			// Check isAuthenticated before connecting
 			onConnect(scopes);
 		}
 	};
@@ -104,11 +105,7 @@ const IntegrationButton: FC<IntegrationButtonProps> = ({
 				}),
 			}}
 		>
-			{isLoading
-				? "Connecting..."
-				: isConnected
-					? "Connected"
-					: "Connect"}
+			{isLoading ? "Connecting..." : isConnected ? "Connected" : "Connect"}
 		</Button>
 	);
 
@@ -128,9 +125,12 @@ const IntegrationButton: FC<IntegrationButtonProps> = ({
 				borderColor: isConnected
 					? alpha(theme.palette.success.main, 0.4)
 					: theme.palette.divider,
-				transition: "border-color 0.2s ease-in-out, background-color 0.2s ease-in-out",
+				transition:
+					"border-color 0.2s ease-in-out, background-color 0.2s ease-in-out",
 				"&:hover": {
-					borderColor: isConnected ? alpha(theme.palette.success.main, 0.6) : theme.palette.text.disabled,
+					borderColor: isConnected
+						? alpha(theme.palette.success.main, 0.6)
+						: theme.palette.text.disabled,
 				},
 			}}
 		>
@@ -143,7 +143,8 @@ const IntegrationButton: FC<IntegrationButtonProps> = ({
 			{!isAuthenticated && !isConnected ? (
 				// @ts-ignore
 				<Tooltip title="Login with Radient to connect integrations">
-					<span>{/* Span is needed for Tooltip when button is disabled */}
+					<span>
+						{/* Span is needed for Tooltip when button is disabled */}
 						{connectButton}
 					</span>
 				</Tooltip>
@@ -155,12 +156,17 @@ const IntegrationButton: FC<IntegrationButtonProps> = ({
 };
 
 export const GoogleIntegrationsSection: FC = () => {
-	const { status: oidcStatus, requestAdditionalGoogleScopes, loading: oidcLoading, } = useOidcAuth();
+	const {
+		status: oidcStatus,
+		requestAdditionalGoogleScopes,
+		loading: oidcLoading,
+	} = useOidcAuth();
 	const { isAuthenticated: isRadientAuthenticated } = useRadientAuth(); // Get Radient auth status
 	const theme = useTheme();
 
 	const handleConnectService = async (scopesToRequest: string[]) => {
-		if (isRadientAuthenticated) { // Ensure Radient authenticated before requesting Google scopes
+		if (isRadientAuthenticated) {
+			// Ensure Radient authenticated before requesting Google scopes
 			await requestAdditionalGoogleScopes(scopesToRequest);
 		}
 		// The useOidcAuth hook will handle status updates and re-renders
@@ -185,7 +191,9 @@ export const GoogleIntegrationsSection: FC = () => {
 					grantedScopes={oidcStatus.grantedScopes}
 					onConnect={handleConnectService}
 					isLoading={oidcLoading}
-					isAuthenticated={isRadientAuthenticated && oidcStatus.provider === "google"} // Pass Radient auth status
+					isAuthenticated={
+						isRadientAuthenticated && oidcStatus.provider === "google"
+					} // Pass Radient auth status
 				/>
 				<IntegrationButton
 					serviceName="Calendar"
@@ -194,7 +202,9 @@ export const GoogleIntegrationsSection: FC = () => {
 					grantedScopes={oidcStatus.grantedScopes}
 					onConnect={handleConnectService}
 					isLoading={oidcLoading}
-					isAuthenticated={isRadientAuthenticated && oidcStatus.provider === "google"} // Pass Radient auth status
+					isAuthenticated={
+						isRadientAuthenticated && oidcStatus.provider === "google"
+					} // Pass Radient auth status
 				/>
 				<IntegrationButton
 					serviceName="Drive"
@@ -203,7 +213,9 @@ export const GoogleIntegrationsSection: FC = () => {
 					grantedScopes={oidcStatus.grantedScopes}
 					onConnect={handleConnectService}
 					isLoading={oidcLoading}
-					isAuthenticated={isRadientAuthenticated && oidcStatus.provider === "google"} // Pass Radient auth status
+					isAuthenticated={
+						isRadientAuthenticated && oidcStatus.provider === "google"
+					} // Pass Radient auth status
 				/>
 			</Box>
 		</SettingsSectionCard>

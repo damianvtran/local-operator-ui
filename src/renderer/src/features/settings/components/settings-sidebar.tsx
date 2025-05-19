@@ -1,4 +1,6 @@
 import radientIcon from "@assets/radient-icon-1024x1024.png";
+import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
 	Box,
 	List,
@@ -9,8 +11,6 @@ import {
 	Typography,
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import type { LucideIcon } from "lucide-react";
 import { Download, Key, Paintbrush, Puzzle, Settings } from "lucide-react";
 import type { FC } from "react";

@@ -1,13 +1,20 @@
-import { Box, IconButton, TextField, Tooltip, Typography, alpha } from "@mui/material";
+import {
+	Box,
+	IconButton,
+	TextField,
+	Tooltip,
+	Typography,
+	alpha,
+} from "@mui/material";
 import { styled } from "@mui/material/styles";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { TimePicker } from "@mui/x-date-pickers/TimePicker";
 import { isValid, parseISO } from "date-fns";
-import { Clock, CalendarDays, History } from "lucide-react";
+import { CalendarDays, Clock, History } from "lucide-react";
 import type { FC } from "react";
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 
 const StyledTextField = styled(TextField)(({ theme }) => ({
 	width: "100%",
@@ -136,17 +143,22 @@ export const DateTimePicker: FC<DateTimePickerProps> = ({
 				// If no date was selected, also set the date part of newDateTime to today
 				// This ensures that if only time is picked, it's for today.
 				// However, the primary flow expects a date to be picked first or concurrently.
-				setSelectedDate(new Date(newDateTime.getFullYear(), newDateTime.getMonth(), newDateTime.getDate()));
+				setSelectedDate(
+					new Date(
+						newDateTime.getFullYear(),
+						newDateTime.getMonth(),
+						newDateTime.getDate(),
+					),
+				);
 			}
 			onChange(newDateTime.toISOString());
 		} else if (time === null && selectedDate) {
 			// Time cleared, but date exists. Set time to midnight.
 			const newDateTime = new Date(selectedDate);
-			newDateTime.setHours(0,0,0,0);
+			newDateTime.setHours(0, 0, 0, 0);
 			setSelectedTime(newDateTime); // update time state to midnight
 			onChange(newDateTime.toISOString());
-		}
-		 else {
+		} else {
 			onChange(null);
 		}
 	};
@@ -162,7 +174,11 @@ export const DateTimePicker: FC<DateTimePickerProps> = ({
 		<LocalizationProvider dateAdapter={AdapterDateFns}>
 			<Box>
 				{/* Static FieldLabel above the pickers */}
-				<FieldLabel htmlFor={`${label.toLowerCase().replace(/\s/g, "-")}-date-field`}>{label}</FieldLabel>
+				<FieldLabel
+					htmlFor={`${label.toLowerCase().replace(/\s/g, "-")}-date-field`}
+				>
+					{label}
+				</FieldLabel>
 				<DateTimePickerContainer>
 					<PickerWrapper>
 						<DatePicker
@@ -209,8 +225,8 @@ export const DateTimePicker: FC<DateTimePickerProps> = ({
 								textField: (params) => (
 									<StyledTextField
 										{...params}
-										id={`${label.toLowerCase().replace(/\s/g, "-")}-time-field`} 
-										placeholder="Select Time" 
+										id={`${label.toLowerCase().replace(/\s/g, "-")}-time-field`}
+										placeholder="Select Time"
 									/>
 								),
 								openPickerIcon: () => <Clock size={18} />, // Use Lucide icon
@@ -229,19 +245,26 @@ export const DateTimePicker: FC<DateTimePickerProps> = ({
 										boxShadow: theme.shadows[2],
 										border: `1px solid ${theme.palette.divider}`,
 										backgroundColor: theme.palette.background.paper,
-                    backgroundImage: "none",
+										backgroundImage: "none",
 									}),
 								},
 							}}
 						/>
 					</PickerWrapper>
 					<Tooltip title="Set to current time">
-						<IconButton onClick={handleSetToCurrent} disabled={disabled} size="small" sx={{ mt: "4px" /* Align with top of text fields */ }}>
+						<IconButton
+							onClick={handleSetToCurrent}
+							disabled={disabled}
+							size="small"
+							sx={{ mt: "4px" /* Align with top of text fields */ }}
+						>
 							<History size={20} />
 						</IconButton>
 					</Tooltip>
 				</DateTimePickerContainer>
-				{helperText && <StyledFormHelperText>{helperText}</StyledFormHelperText>}
+				{helperText && (
+					<StyledFormHelperText>{helperText}</StyledFormHelperText>
+				)}
 			</Box>
 		</LocalizationProvider>
 	);
