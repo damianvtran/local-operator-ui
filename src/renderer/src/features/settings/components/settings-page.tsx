@@ -61,8 +61,8 @@ import {
 } from "recharts";
 import { AppUpdatesSection } from "./app-updates-section";
 import { Credentials } from "./credentials";
-import { RadientAccountSection } from "./radient-account-section";
 import { GoogleIntegrationsSection } from "./integrations-section";
+import { RadientAccountSection } from "./radient-account-section";
 import {
 	FieldsContainer,
 	InfoBox,

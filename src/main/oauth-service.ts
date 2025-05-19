@@ -225,8 +225,7 @@ export class OAuthService {
 		this.notifier = new AuthorizationNotifier();
 		this.requestHandler = new NodeBasedHandler(OAUTH_LISTEN_PORT); // Use constant
 		// Load stored Google scopes or default to base scopes
-		const storedGoogleScopes =
-			this.sessionStore.get("google_requested_scopes");
+		const storedGoogleScopes = this.sessionStore.get("google_requested_scopes");
 		if (
 			storedGoogleScopes &&
 			Array.isArray(storedGoogleScopes) &&
@@ -493,12 +492,14 @@ export class OAuthService {
 						: MICROSOFT_CONFIG.scope, // Explicitly use MICROSOFT_CONFIG.scope for Microsoft
 				response_type: AuthorizationRequest.RESPONSE_TYPE_CODE,
 				state: undefined, // Optional state parameter
-				extras: provider === "google"
+				extras:
+					provider === "google"
 						? {
 								prompt: "consent", // Always force consent for Google to maximize chance of refresh token
 								access_type: "offline",
 							}
-						: { // For other providers like Microsoft
+						: {
+								// For other providers like Microsoft
 								prompt: "select_account",
 								access_type: "offline", // Assuming MS also uses this for refresh tokens if applicable
 							},
@@ -632,21 +633,25 @@ export class OAuthService {
 					request,
 				);
 
-			logger.debug( // More detailed log for the entire TokenResponse
+			logger.debug(
+				// More detailed log for the entire TokenResponse
 				`Full TokenResponse received for ${this.currentAuthProvider}:`,
 				LogFileType.OAUTH,
 				{
 					accessToken: response.accessToken ? "present" : "absent",
 					idToken: response.idToken ? "present" : "absent",
-					refreshToken: response.refreshToken ? response.refreshToken : "ABSENT or UNDEFINED",
+					refreshToken: response.refreshToken
+						? response.refreshToken
+						: "ABSENT or UNDEFINED",
 					expiresIn: response.expiresIn,
 					scope: response.scope,
 					issuedAt: response.issuedAt,
 					tokenType: response.tokenType,
-				}
+				},
 			);
 
-			logger.debug( // Kept original summary log as well for quick overview
+			logger.debug(
+				// Kept original summary log as well for quick overview
 				`Token request successful for ${this.currentAuthProvider}`,
 				LogFileType.OAUTH,
 				{
@@ -952,12 +957,17 @@ export class OAuthService {
 	public async requestAdditionalGoogleScopes(
 		additionalScopes: string[],
 	): Promise<void> {
-		if (this.currentAuthProvider !== "google" && this.sessionStore.get("oauth_provider") !== "google") {
+		if (
+			this.currentAuthProvider !== "google" &&
+			this.sessionStore.get("oauth_provider") !== "google"
+		) {
 			logger.warn(
 				"requestAdditionalGoogleScopes called but current provider is not Google.",
 				LogFileType.OAUTH,
 			);
-			this.sendErrorToRenderer("Cannot request Google scopes: Not signed in with Google.");
+			this.sendErrorToRenderer(
+				"Cannot request Google scopes: Not signed in with Google.",
+			);
 			return;
 		}
 		this.currentAuthProvider = "google"; // Ensure it's set if re-initiating
@@ -1135,7 +1145,10 @@ export class OAuthService {
 		const currentProvider = this.sessionStore.get("oauth_provider");
 
 		if (currentProvider) {
-			logger.info(`Clearing refresh token for ${currentProvider}`, LogFileType.OAUTH);
+			logger.info(
+				`Clearing refresh token for ${currentProvider}`,
+				LogFileType.OAUTH,
+			);
 			await this.clearRefreshToken(currentProvider);
 			// Clear Google-specific scopes if the provider was Google
 			if (currentProvider === "google") {
