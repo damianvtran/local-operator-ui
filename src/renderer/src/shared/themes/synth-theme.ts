@@ -97,7 +97,8 @@ const synthTheme = createTheme({
 		fontSize: 16, // from darkTheme
 		h1: { fontWeight: 600 }, // from darkTheme
 		h2: { fontWeight: 600 }, // from darkTheme
-		h3: { // from darkTheme (structure)
+		h3: {
+			// from darkTheme (structure)
 			fontWeight: 600,
 			fontSize: "3rem",
 			textShadow: "0 0 5px #FF4081", // Keep some pink shadow for vibrancy
@@ -105,14 +106,16 @@ const synthTheme = createTheme({
 				fontSize: "2.7rem",
 			},
 		},
-		gradientTitle: { // from darkTheme (structure), but with synth colors
+		gradientTitle: {
+			// from darkTheme (structure), but with synth colors
 			fontSize: "1.4rem",
 			fontWeight: 400,
 			letterSpacing: "0.02em",
 			background: "linear-gradient(90deg, #FF4081, #FFA500, #00E5FF)", // Pink to Orange to Blue gradient
 			WebkitBackgroundClip: "text",
 			WebkitTextFillColor: "transparent",
-			textShadow: "0 0 10px rgba(255, 64, 129, 0.3), 0 0 15px rgba(0, 229, 255, 0.2)", // Adjusted synth shadow
+			textShadow:
+				"0 0 10px rgba(255, 64, 129, 0.3), 0 0 15px rgba(0, 229, 255, 0.2)", // Adjusted synth shadow
 		},
 	},
 	components: {

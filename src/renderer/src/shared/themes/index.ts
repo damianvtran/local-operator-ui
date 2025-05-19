@@ -8,8 +8,8 @@ import monokaiTheme from "./monokai-theme";
 import neonTheme from "./neon-theme";
 import obsidianTheme from "./obsidian-theme";
 import radientTheme from "./radient-theme";
-import synthTheme from "./synth-theme";
 import sageTheme from "./sage-theme";
+import synthTheme from "./synth-theme";
 import tokyoNightTheme from "./tokyo-night-theme";
 
 /**
