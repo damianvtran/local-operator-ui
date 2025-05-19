@@ -199,7 +199,7 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 		console.log("handleRadientSignInSuccess");
 		setIsUsingRadientPass(true);
 		setCurrentStep(OnboardingStep.CREATE_AGENT);
-	}, [setCurrentStep]); // Added setCurrentStep dependency
+	}, [setCurrentStep]);
 
 	// Update visited steps when currentStep changes
 	useEffect(() => {

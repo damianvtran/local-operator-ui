@@ -119,7 +119,7 @@ export type AccountInfo = {
 	/**
 	 * ID of the tenant the account belongs to
 	 */
-	tenant_id: string; // Added
+	tenant_id: string;
 	/**
 	 * User email
 	 */
@@ -127,27 +127,27 @@ export type AccountInfo = {
 	/**
 	 * User name
 	 */
-	name: string; // Changed to required based on Go struct
+	name: string;
 	/**
 	 * Role of the user within the tenant
 	 */
-	role: Role; // Added
+	role: Role;
 	/**
 	 * Optional metadata associated with the account
 	 */
-	metadata?: Record<string, string>; // Added
+	metadata?: Record<string, string>;
 	/**
 	 * Account status (assuming this is still relevant, though not in Go struct)
 	 */
-	status?: "active" | "pending" | "suspended"; // Kept as optional
+	status?: "active" | "pending" | "suspended";
 	/**
 	 * Account creation timestamp
 	 */
-	created_at: string; // Assuming string representation (time.Time -> string)
+	created_at: string;
 	/**
 	 * Account update timestamp
 	 */
-	updated_at: string; // Assuming string representation (time.Time -> string)
+	updated_at: string;
 };
 
 export type AccountMetadata = {
@@ -328,35 +328,35 @@ export type UsageDataPoint = {
 	/**
 	 * Total number of requests during the period.
 	 */
-	total_requests: number; // Added
+	total_requests: number;
 	/**
 	 * Total tokens processed during the period.
 	 */
-	total_tokens: number; // Added
+	total_tokens: number;
 	/**
 	 * Total prompt tokens used during the period.
 	 */
-	prompt_tokens: number; // Added
+	prompt_tokens: number;
 	/**
 	 * Total completion tokens generated during the period.
 	 */
-	completion_tokens: number; // Added
+	completion_tokens: number;
 	/**
 	 * Usage units (interpretation might depend on context, potentially credits).
 	 */
-	units: number; // Changed from usage_units, assuming this maps to tokens/usage for chart
+	units: number;
 	/**
 	 * Total cost incurred during the period.
 	 */
-	total_cost: number; // Changed from cost, assuming this maps to credits for chart
+	total_cost: number;
 	/**
 	 * Number of successful requests.
 	 */
-	success_count: number; // Added
+	success_count: number;
 	/**
 	 * Number of failed requests.
 	 */
-	failure_count: number; // Added
+	failure_count: number;
 	/**
 	 * Optional: Application ID if the rollup is per-application.
 	 */
@@ -375,7 +375,7 @@ export type UsageRollupResponse = {
 	/**
 	 * An array of aggregated usage data points.
 	 */
-	data_points: UsageDataPoint[]; // Changed from usage_records: UsageRecord[]
+	data_points: UsageDataPoint[];
 	/**
 	 * The granularity used for the rollup.
 	 */

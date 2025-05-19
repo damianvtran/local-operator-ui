@@ -56,7 +56,7 @@ export const useCreateAgent = () => {
  * @returns Mutation for uploading an agent
  */
 export const useUploadAgentToRadientMutation = () => {
-	const queryClient = useQueryClient(); // Added queryClient
+	const queryClient = useQueryClient();
 	const client = createLocalOperatorClient(apiConfig.baseUrl);
 
 	return useMutation({
