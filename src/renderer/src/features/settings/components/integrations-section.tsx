@@ -1,24 +1,26 @@
-import { faGoogle } from "@fortawesome/free-brands-svg-icons";
 import {
 	Box,
 	Button,
 	CircularProgress,
 	Paper,
 	Stack,
+	Tooltip,
 	Typography,
 	alpha,
 	useTheme,
 } from "@mui/material";
 import { SettingsSectionCard } from "./settings-section-card";
 import { useOidcAuth } from "@shared/hooks/use-oidc-auth";
+import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import type { FC } from "react";
 import {
 	Mail,
 	CalendarDays,
 	HardDrive,
 	CheckCircle2,
-	Link as LinkIcon, // Renamed to avoid conflict with HTML Link
+	Link as LinkIcon,
 } from "lucide-react";
+import { faPuzzlePiece } from "@fortawesome/free-solid-svg-icons";
 
 // Define the scopes for each Google service
 const GMAIL_SCOPES = [
@@ -41,6 +43,7 @@ type IntegrationButtonProps = {
 	grantedScopes: string[] | undefined;
 	onConnect: (scopes: string[]) => void;
 	isLoading: boolean;
+	isAuthenticated: boolean; // Added isAuthenticated prop
 };
 
 const IntegrationButton: FC<IntegrationButtonProps> = ({
@@ -50,32 +53,80 @@ const IntegrationButton: FC<IntegrationButtonProps> = ({
 	grantedScopes,
 	onConnect,
 	isLoading,
+	isAuthenticated, // Destructure isAuthenticated
 }) => {
 	const theme = useTheme();
 	const isConnected =
 		grantedScopes && scopes.every((scope) => grantedScopes.includes(scope));
 
 	const handleConnect = () => {
-		if (!isConnected) {
+		if (!isConnected && isAuthenticated) { // Check isAuthenticated before connecting
 			onConnect(scopes);
 		}
 	};
+
+	const connectButton = (
+		<Button
+			variant={isConnected ? "contained" : "outlined"}
+			color={isConnected ? "success" : "primary"}
+			size="small"
+			onClick={handleConnect}
+			disabled={isLoading || isConnected || !isAuthenticated} // Disable if not authenticated
+			startIcon={
+				isLoading ? (
+					<CircularProgress size={16} color="inherit" />
+				) : isConnected ? (
+					<CheckCircle2 size={16} />
+				) : (
+					<LinkIcon size={16} />
+				)
+			}
+			sx={{
+				minWidth: 110,
+				textTransform: "none",
+				fontSize: "0.8125rem",
+				borderRadius: theme.shape.borderRadius * 0.75,
+				padding: theme.spacing(0.75, 1.5),
+				...(isConnected && {
+					backgroundColor: theme.palette.success.main,
+					color: theme.palette.success.contrastText,
+					"&:hover": {
+						backgroundColor: theme.palette.success.dark,
+					},
+				}),
+				...(!isConnected && {
+					borderColor: theme.palette.divider,
+					color: theme.palette.text.primary,
+					"&:hover": {
+						backgroundColor: alpha(theme.palette.primary.main, 0.05),
+						borderColor: theme.palette.primary.light,
+					},
+				}),
+			}}
+		>
+			{isLoading
+				? "Connecting..."
+				: isConnected
+					? "Connected"
+					: "Connect"}
+		</Button>
+	);
 
 	return (
 		<Paper
 			variant="outlined"
 			sx={{
-				p: theme.spacing(1.5, 2), // Adjusted padding
+				p: theme.spacing(1.5, 2),
 				display: "flex",
 				alignItems: "center",
 				justifyContent: "space-between",
-				mb: theme.spacing(1.5), // Adjusted margin
-				borderRadius: theme.shape.borderRadius * 0.75, // Shadcn-like border radius
+				mb: theme.spacing(1.5),
+				borderRadius: theme.shape.borderRadius * 0.75,
 				backgroundColor: isConnected
-					? alpha(theme.palette.success.main, 0.08) // Slightly adjusted alpha for subtlety
+					? alpha(theme.palette.success.main, 0.08)
 					: theme.palette.background.paper,
 				borderColor: isConnected
-					? alpha(theme.palette.success.main, 0.4) // Slightly adjusted alpha
+					? alpha(theme.palette.success.main, 0.4)
 					: theme.palette.divider,
 				transition: "border-color 0.2s ease-in-out, background-color 0.2s ease-in-out",
 				"&:hover": {
@@ -85,80 +136,48 @@ const IntegrationButton: FC<IntegrationButtonProps> = ({
 		>
 			<Stack direction="row" alignItems="center" spacing={1.5}>
 				{icon}
-				<Typography variant="subtitle1" fontWeight="500" fontSize="0.9375rem"> {/* Adjusted Typography */}
+				<Typography variant="subtitle1" fontWeight="500" fontSize="0.9375rem">
 					{serviceName}
 				</Typography>
 			</Stack>
-			<Button
-				variant={isConnected ? "contained" : "outlined"}
-				color={isConnected ? "success" : "primary"}
-				size="small"
-				onClick={handleConnect}
-				disabled={isLoading || isConnected}
-				startIcon={
-					isLoading ? (
-						<CircularProgress size={16} color="inherit" />
-					) : isConnected ? (
-						<CheckCircle2 size={16} />
-					) : (
-						<LinkIcon size={16} /> // Changed icon
-					)
-				}
-				sx={{
-					minWidth: 110, // Adjusted minWidth
-					textTransform: "none",
-					fontSize: "0.8125rem",
-					borderRadius: theme.shape.borderRadius * 0.75, // Shadcn-like border radius
-					padding: theme.spacing(0.75, 1.5), // Adjusted padding
-					...(isConnected && {
-						backgroundColor: theme.palette.success.main,
-						color: theme.palette.success.contrastText,
-						"&:hover": {
-							backgroundColor: theme.palette.success.dark,
-						},
-					}),
-					...(!isConnected && { // Styling for "Connect" button
-						borderColor: theme.palette.divider,
-						color: theme.palette.text.primary,
-						"&:hover": {
-							backgroundColor: alpha(theme.palette.primary.main, 0.05),
-							borderColor: theme.palette.primary.light,
-						},
-					})
-				}}
-			>
-				{isLoading
-					? "Connecting..."
-					: isConnected
-						? "Connected"
-						: "Connect"}
-			</Button>
+			{!isAuthenticated && !isConnected ? (
+				// @ts-ignore
+				<Tooltip title="Login with Radient to connect integrations">
+					<span>{/* Span is needed for Tooltip when button is disabled */}
+						{connectButton}
+					</span>
+				</Tooltip>
+			) : (
+				connectButton
+			)}
 		</Paper>
 	);
 };
 
 export const GoogleIntegrationsSection: FC = () => {
 	const { status: oidcStatus, requestAdditionalGoogleScopes, loading: oidcLoading, } = useOidcAuth();
-	const theme = useTheme(); // For spacing
+	const { isAuthenticated: isRadientAuthenticated } = useRadientAuth(); // Get Radient auth status
+	const theme = useTheme();
 
 	const handleConnectService = async (scopesToRequest: string[]) => {
-		await requestAdditionalGoogleScopes(scopesToRequest);
+		if (isRadientAuthenticated) { // Ensure Radient authenticated before requesting Google scopes
+			await requestAdditionalGoogleScopes(scopesToRequest);
+		}
 		// The useOidcAuth hook will handle status updates and re-renders
 	};
 
-	// Icon props for Lucide icons
 	const iconProps = {
-		size: 20, // Consistent icon size
+		size: 20,
 		strokeWidth: 1.75,
 	};
 
 	return (
 		<SettingsSectionCard
 			title="Integrations"
-			icon={faGoogle} // Brand icon remains FontAwesome
+			icon={faPuzzlePiece} // Use FontAwesome Puzzle icon
 			description="Connect your Google services like Gmail, Calendar, and Drive to enhance Local Operator's capabilities."
 		>
-			<Box mt={theme.spacing(2)}> {/* Adjusted margin top */}
+			<Box mt={theme.spacing(2)}>
 				<IntegrationButton
 					serviceName="Gmail"
 					icon={<Mail {...iconProps} />}
@@ -166,6 +185,7 @@ export const GoogleIntegrationsSection: FC = () => {
 					grantedScopes={oidcStatus.grantedScopes}
 					onConnect={handleConnectService}
 					isLoading={oidcLoading}
+					isAuthenticated={isRadientAuthenticated && oidcStatus.provider === "google"} // Pass Radient auth status
 				/>
 				<IntegrationButton
 					serviceName="Calendar"
@@ -174,6 +194,7 @@ export const GoogleIntegrationsSection: FC = () => {
 					grantedScopes={oidcStatus.grantedScopes}
 					onConnect={handleConnectService}
 					isLoading={oidcLoading}
+					isAuthenticated={isRadientAuthenticated && oidcStatus.provider === "google"} // Pass Radient auth status
 				/>
 				<IntegrationButton
 					serviceName="Drive"
@@ -182,6 +203,7 @@ export const GoogleIntegrationsSection: FC = () => {
 					grantedScopes={oidcStatus.grantedScopes}
 					onConnect={handleConnectService}
 					isLoading={oidcLoading}
+					isAuthenticated={isRadientAuthenticated && oidcStatus.provider === "google"} // Pass Radient auth status
 				/>
 			</Box>
 		</SettingsSectionCard>
