@@ -142,7 +142,7 @@ const IntegrationButton: FC<IntegrationButtonProps> = ({
 			</Stack>
 			{!isAuthenticated && !isConnected ? (
 				// @ts-ignore
-				<Tooltip title="Login with Radient to connect integrations">
+				<Tooltip title="Login to Radient with a Google account to connect integrations">
 					<span>
 						{/* Span is needed for Tooltip when button is disabled */}
 						{connectButton}
