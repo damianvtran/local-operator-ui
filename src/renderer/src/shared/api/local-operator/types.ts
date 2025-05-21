@@ -521,6 +521,7 @@ export type ExecutionType =
 	| "classification" // Classification phase where the agent classifies the user's request
 	| "system" // An automatic static response from the system, such as an action cancellation
 	| "user_input" // Input provided by the user
+	| "info" // Informational message, like an import notification
 	| "none"; // No specific execution type
 
 /**
