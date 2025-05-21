@@ -90,7 +90,7 @@ const InfoMessageDivider = styled(Box)(({ theme }) => ({
 		padding: theme.spacing(0, 2), // Increased padding for better spacing around text
 		color: theme.palette.text.secondary,
 		fontSize: "0.875rem",
-		lineHeight: 1, // Ensure text aligns well with the line
+		maxWidth: "720px",
 	},
 }));
 
