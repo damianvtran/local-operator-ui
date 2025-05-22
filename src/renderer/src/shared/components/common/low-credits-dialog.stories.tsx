@@ -1,7 +1,6 @@
 import { Box } from "@mui/material";
 import { useLowCreditsStore } from "@shared/store/low-credits-store";
 import type { Meta, StoryObj } from "@storybook/react";
-import React from "react";
 import { LowCreditsDialog } from "./low-credits-dialog";
 
 /**
