@@ -1,8 +1,8 @@
+import { Box } from "@mui/material";
+import { useLowCreditsStore } from "@shared/store/low-credits-store";
 import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 import { LowCreditsDialog } from "./low-credits-dialog";
-import { useLowCreditsStore } from "@shared/store/low-credits-store";
-import { Box } from "@mui/material";
 
 /**
  * Storybook stories for the LowCreditsDialog component.
@@ -30,16 +30,26 @@ const meta: Meta<typeof LowCreditsDialog> = {
 			if (typeof window !== "undefined") {
 				// biome-ignore lint/suspicious/noExplicitAny: Mocking window API
 				(window as any).api = {
-          // biome-ignore lint/suspicious/noExplicitAny: Mocking window API
+					// biome-ignore lint/suspicious/noExplicitAny: Mocking window API
 					...(window as any).api, // Preserve other mocks from preview.tsx
 					openExternal: async (url: string) => {
-						console.log(`[Storybook Mock] openExternal called with URL: ${url}`);
+						console.log(
+							`[Storybook Mock] openExternal called with URL: ${url}`,
+						);
 					},
 				};
 			}
 
 			return (
-				<Box sx={{ p: 3, display: "flex", justifyContent: "center", alignItems: "center", minHeight: "100vh" }}>
+				<Box
+					sx={{
+						p: 3,
+						display: "flex",
+						justifyContent: "center",
+						alignItems: "center",
+						minHeight: "100vh",
+					}}
+				>
 					<Story />
 				</Box>
 			);
@@ -84,8 +94,10 @@ export const Default: Story = {
 export const AlreadyNotified: Story = {
 	args: {
 		open: true,
-		onClose: () => console.log("Dialog closed (Maybe Later) - Already Notified"),
-		onGoToConsole: () => console.log("Go To Console clicked - Already Notified"),
+		onClose: () =>
+			console.log("Dialog closed (Maybe Later) - Already Notified"),
+		onGoToConsole: () =>
+			console.log("Go To Console clicked - Already Notified"),
 	},
 	decorators: [
 		(Story) => {

@@ -1,4 +1,4 @@
-import { Box, CircularProgress, styled, Typography } from "@mui/material";
+import { Box, CircularProgress, Typography, styled } from "@mui/material";
 import type {
 	AgentExecutionRecord,
 	JobStatus,
@@ -86,7 +86,8 @@ const InfoMessageDivider = styled(Box)(({ theme }) => ({
 		flex: 1,
 		borderBottom: `1px solid ${theme.palette.divider}`,
 	},
-	"& > .MuiTypography-root": { // Target Typography directly for specificity
+	"& > .MuiTypography-root": {
+		// Target Typography directly for specificity
 		padding: theme.spacing(0, 2), // Increased padding for better spacing around text
 		color: theme.palette.text.secondary,
 		fontSize: "0.875rem",

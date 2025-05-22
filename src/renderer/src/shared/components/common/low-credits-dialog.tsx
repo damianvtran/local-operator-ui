@@ -1,14 +1,18 @@
-import { Box, Typography, Link, alpha, styled, CircularProgress, useTheme } from "@mui/material";
-import type { FC } from "react";
 import {
-	BaseDialog,
-	PrimaryButton,
-	SecondaryButton,
-} from "./base-dialog";
+	Box,
+	CircularProgress,
+	Link,
+	Typography,
+	alpha,
+	styled,
+	useTheme,
+} from "@mui/material";
 import RadientIcon from "@renderer/assets/radient-icon-1024x1024.png";
-import { useLowCreditsStore } from "@shared/store/low-credits-store";
 import { useRadientPricesQuery } from "@shared/hooks/use-radient-prices-query"; // Import useRadientPricesQuery
+import { useLowCreditsStore } from "@shared/store/low-credits-store";
 import { ExternalLink } from "lucide-react";
+import type { FC } from "react";
+import { BaseDialog, PrimaryButton, SecondaryButton } from "./base-dialog";
 
 const IconImage = styled("img")({
 	width: 80,
@@ -105,9 +109,9 @@ export const LowCreditsDialog: FC<LowCreditsDialogProps> = ({
 					<CTAButton
 						onClick={handleGoToConsole}
 						startIcon={<ExternalLink size={18} />}
-            sx={{
-              marginBottom: 0,
-            }}
+						sx={{
+							marginBottom: 0,
+						}}
 					>
 						Get More Credits
 					</CTAButton>
@@ -115,24 +119,28 @@ export const LowCreditsDialog: FC<LowCreditsDialogProps> = ({
 			}
 		>
 			<DialogContentWrapper>
-				<IconImage src={RadientIcon} alt="Radient Logo" sx={{
-          width: 120,
-          height: 120,
-        }} />
+				<IconImage
+					src={RadientIcon}
+					alt="Radient Logo"
+					sx={{
+						width: 120,
+						height: 120,
+					}}
+				/>
 				<MarketingText variant="body1" sx={{ mb: 1 }}>
-					Unlock the full power of Local Operator with <HighlightText>Radient Pass</HighlightText>!
+					Unlock the full power of Local Operator with{" "}
+					<HighlightText>Radient Pass</HighlightText>!
 				</MarketingText>
 				<MarketingText variant="body2">
-					Using Local Operator with <HighlightText>Radient Automatic</HighlightText>{" "}
-					is often <HighlightText>cheaper</HighlightText> than bringing your
-					own key. Radient's smart model routing picks the most
-					cost-effective and powerful model for each step of your agentic
-					workflows.
+					Using Local Operator with{" "}
+					<HighlightText>Radient Automatic</HighlightText> is often{" "}
+					<HighlightText>cheaper</HighlightText> than bringing your own key.
+					Radient's smart model routing picks the most cost-effective and
+					powerful model for each step of your agentic workflows.
 				</MarketingText>
 				<MarketingText variant="body2" sx={{ mt: 1 }}>
-					It's <HighlightText>pay-as-you-go</HighlightText> with no
-					commitments. Load up what you need, starting small for maximum
-					flexibility.
+					It's <HighlightText>pay-as-you-go</HighlightText> with no commitments.
+					Load up what you need, starting small for maximum flexibility.
 				</MarketingText>
 
 				<MarketingText variant="body2" sx={{ mt: 2, mb: 2 }}>
@@ -144,14 +152,22 @@ export const LowCreditsDialog: FC<LowCreditsDialogProps> = ({
 						sx={{ fontSize: "inherit" }}
 					>
 						{isLoadingPrices ? (
-							<CircularProgress size={14} sx={{ mr: 0.5, verticalAlign: "middle" }} />
+							<CircularProgress
+								size={14}
+								sx={{ mr: 0.5, verticalAlign: "middle" }}
+							/>
 						) : (
 							formatCurrency(prices?.default_registration_credits)
 						)}
 					</Typography>{" "}
 					in bonus credits with your first purchase!
 					{pricesError && (
-						<Typography color="error" variant="caption" display="block" mt={0.5}>
+						<Typography
+							color="error"
+							variant="caption"
+							display="block"
+							mt={0.5}
+						>
 							Could not load bonus credit information.
 						</Typography>
 					)}
