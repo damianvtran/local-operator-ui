@@ -1,4 +1,4 @@
-import { Box, CircularProgress, styled } from "@mui/material";
+import { Box, CircularProgress, Typography, styled } from "@mui/material";
 import type {
 	AgentExecutionRecord,
 	JobStatus,
@@ -71,6 +71,28 @@ const MessagesContainer = styled(Box, {
 	transform: "translateZ(0)",
 	willChange: "scroll-position",
 	overflowAnchor: "auto", // Ensures browser maintains scroll position when content changes
+}));
+
+/**
+ * Styled component for displaying informational messages as a divider
+ */
+const InfoMessageDivider = styled(Box)(({ theme }) => ({
+	display: "flex",
+	alignItems: "center",
+	textAlign: "center",
+	margin: theme.spacing(2, 0),
+	"&::before, &::after": {
+		content: '""',
+		flex: 1,
+		borderBottom: `1px solid ${theme.palette.divider}`,
+	},
+	"& > .MuiTypography-root": {
+		// Target Typography directly for specificity
+		padding: theme.spacing(0, 2), // Increased padding for better spacing around text
+		color: theme.palette.text.secondary,
+		fontSize: "0.875rem",
+		maxWidth: "720px",
+	},
 }));
 
 /**
@@ -190,22 +212,28 @@ export const MessagesView: FC<MessagesViewProps> = ({
 						{messages.length > 0 ? (
 							<CenteredMessagesContainer>
 								{/* Messages are rendered in normal order */}
-								{messages.map((message, index) => (
-									<MessageItem
-										key={message.id}
-										message={{
-											...message,
-											conversation_id: conversationId, // Add conversation ID to message
-										}}
-										conversationId={conversationId}
-										isLastMessage={index === messages.length - 1}
-										onMessageComplete={() => {
-											if (refetch) {
-												refetch();
-											}
-										}}
-									/>
-								))}
+								{messages.map((message, index) =>
+									message.execution_type === "info" ? (
+										<InfoMessageDivider key={message.id}>
+											<Typography>{message.message}</Typography>
+										</InfoMessageDivider>
+									) : (
+										<MessageItem
+											key={message.id}
+											message={{
+												...message,
+												conversation_id: conversationId, // Add conversation ID to message
+											}}
+											conversationId={conversationId}
+											isLastMessage={index === messages.length - 1}
+											onMessageComplete={() => {
+												if (refetch) {
+													refetch();
+												}
+											}}
+										/>
+									),
+								)}
 
 								{/* Loading indicator for new message at the bottom */}
 								{isLoading && (
