@@ -50,17 +50,24 @@ export const useLowCreditsDialog = () => {
 	}, [isAuthenticated, fetchCredits]);
 
 	useEffect(() => {
-		if (
-			isAuthenticated &&
-			!hasBeenNotified &&
-			currentCredits !== null &&
-			currentCredits < LOW_CREDITS_THRESHOLD
-		) {
-			setIsDialogOpen(true);
+		if (isAuthenticated && currentCredits !== null) {
+			if (currentCredits < LOW_CREDITS_THRESHOLD) {
+				if (!hasBeenNotified) {
+					setIsDialogOpen(true);
+				}
+			} else {
+				// Credits are above threshold
+				setIsDialogOpen(false);
+				if (hasBeenNotified) {
+					// Reset notification status if credits are topped up
+					setHasBeenNotified(false);
+				}
+			}
 		} else {
+			// Not authenticated or credits not loaded
 			setIsDialogOpen(false);
 		}
-	}, [isAuthenticated, hasBeenNotified, currentCredits]);
+	}, [isAuthenticated, hasBeenNotified, currentCredits, setHasBeenNotified]);
 
 	const openRadientConsole = () => {
 		if (window.api?.openExternal) {
