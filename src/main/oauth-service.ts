@@ -28,7 +28,7 @@ const KEYTAR_SERVICE = "radient-local-operator-oauth"; // Unique service name fo
 
 // --- Provider Configurations ---
 // Using OpenID Connect discovery endpoints
-const GOOGLE_BASE_SCOPES = ["openid", "email", "profile", "offline_access"]; // Added offline_access
+const GOOGLE_BASE_SCOPES = ["openid", "email", "profile"];
 const GOOGLE_CONFIG = {
 	discoveryUrl: "https://accounts.google.com/.well-known/openid-configuration",
 	clientId: backendConfig.VITE_GOOGLE_CLIENT_ID,
@@ -226,12 +226,20 @@ export class OAuthService {
 		this.requestHandler = new NodeBasedHandler(OAUTH_LISTEN_PORT); // Use constant
 		// Load stored Google scopes or default to base scopes
 		const storedGoogleScopes = this.sessionStore.get("google_requested_scopes");
+
 		if (
 			storedGoogleScopes &&
 			Array.isArray(storedGoogleScopes) &&
 			storedGoogleScopes.length > 0
 		) {
 			this.currentGoogleScopes = storedGoogleScopes;
+
+      // For backwards compatibility, remove "offline_access" from stored scopes if present
+      if (storedGoogleScopes.includes("offline_access")) {
+        this.currentGoogleScopes = storedGoogleScopes.filter(
+          (scope) => scope !== "offline_access"
+        );
+      }
 		} else {
 			this.currentGoogleScopes = [...GOOGLE_BASE_SCOPES];
 		}
