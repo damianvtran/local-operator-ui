@@ -234,12 +234,12 @@ export class OAuthService {
 		) {
 			this.currentGoogleScopes = storedGoogleScopes;
 
-      // For backwards compatibility, remove "offline_access" from stored scopes if present
-      if (storedGoogleScopes.includes("offline_access")) {
-        this.currentGoogleScopes = storedGoogleScopes.filter(
-          (scope) => scope !== "offline_access"
-        );
-      }
+			// For backwards compatibility, remove "offline_access" from stored scopes if present
+			if (storedGoogleScopes.includes("offline_access")) {
+				this.currentGoogleScopes = storedGoogleScopes.filter(
+					(scope) => scope !== "offline_access",
+				);
+			}
 		} else {
 			this.currentGoogleScopes = [...GOOGLE_BASE_SCOPES];
 		}
