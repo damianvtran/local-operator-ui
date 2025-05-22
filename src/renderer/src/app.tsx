@@ -6,18 +6,20 @@ import { styled } from "@mui/material/styles";
 import type { FC } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 
-import { AgentDetailsPage } from "@features/agent-hub/agent-details-page"; // Import Agent Details Page
-import { AgentHubPage } from "@features/agent-hub/agent-hub-page"; // Import Agent Hub Page
+import { AgentDetailsPage } from "@features/agent-hub/agent-details-page";
+import { AgentHubPage } from "@features/agent-hub/agent-hub-page";
 import { AgentsPage } from "@features/agents/components/agents-page";
 import { ChatPage } from "@features/chat/components/chat-page";
 import { OnboardingModal } from "@features/onboarding";
-import { SchedulesPage } from "@features/schedules/components/schedules-page"; // Import Schedules Page
+import { SchedulesPage } from "@features/schedules/components/schedules-page";
 import { SettingsPage } from "@features/settings/components/settings-page";
 import { ConnectivityBanner } from "@shared/components/common/connectivity-banner";
+import { LowCreditsDialog } from "@shared/components/common/low-credits-dialog"; // Import LowCreditsDialog
 import { ModelsInitializer } from "@shared/components/common/models-initializer";
 import { UpdateNotification } from "@shared/components/common/update-notification";
 import { SidebarNavigation } from "@shared/components/navigation/sidebar-navigation";
 import { useCheckFirstTimeUser } from "@shared/hooks/use-check-first-time-user";
+import { useLowCreditsDialog } from "@shared/hooks/use-low-credits-dialog"; // Import useLowCreditsDialog
 
 library.add(fas, fab);
 
@@ -42,6 +44,11 @@ const MainContent = styled(Box)(() => ({
 const App: FC = () => {
 	// Check if this is a first-time user
 	const { isOnboardingActive } = useCheckFirstTimeUser();
+	const {
+		isLowCreditsDialogOpen,
+		openRadientConsole,
+		onLowCreditsDialogClose,
+	} = useLowCreditsDialog();
 
 	return (
 		<AppContainer>
@@ -58,6 +65,13 @@ const App: FC = () => {
 
 			{/* Auto-update notification */}
 			<UpdateNotification />
+
+			{/* Low Credits Dialog */}
+			<LowCreditsDialog
+				open={isLowCreditsDialogOpen}
+				onClose={onLowCreditsDialogClose}
+				onGoToConsole={openRadientConsole}
+			/>
 
 			{/* Sidebar Navigation */}
 			<SidebarNavigation />
