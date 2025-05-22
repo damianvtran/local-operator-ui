@@ -1,12 +1,13 @@
-import { Box, Typography, Link, alpha, styled } from "@mui/material";
+import { Box, Typography, Link, alpha, styled, CircularProgress, useTheme } from "@mui/material";
 import type { FC } from "react";
 import {
 	BaseDialog,
 	PrimaryButton,
 	SecondaryButton,
 } from "./base-dialog";
-import RadientIcon from "@renderer/assets/radient-icon-1024x1024.png"; // Verify path
+import RadientIcon from "@renderer/assets/radient-icon-1024x1024.png";
 import { useLowCreditsStore } from "@shared/store/low-credits-store";
+import { useRadientPricesQuery } from "@shared/hooks/use-radient-prices-query"; // Import useRadientPricesQuery
 import { ExternalLink } from "lucide-react";
 
 const IconImage = styled("img")({
@@ -58,6 +59,17 @@ export const LowCreditsDialog: FC<LowCreditsDialogProps> = ({
 	onGoToConsole,
 }) => {
 	const { setHasBeenNotified } = useLowCreditsStore();
+	const theme = useTheme();
+	const {
+		prices,
+		isLoading: isLoadingPrices,
+		error: pricesError,
+	} = useRadientPricesQuery();
+
+	const formatCurrency = (amount: number | undefined) => {
+		if (typeof amount !== "number") return "$..."; // Fallback for loading/error
+		return `$${amount.toFixed(2)} USD`; // Basic USD formatting
+	};
 
 	const handleClose = () => {
 		setHasBeenNotified(true);
@@ -93,6 +105,9 @@ export const LowCreditsDialog: FC<LowCreditsDialogProps> = ({
 					<CTAButton
 						onClick={handleGoToConsole}
 						startIcon={<ExternalLink size={18} />}
+            sx={{
+              marginBottom: 0,
+            }}
 					>
 						Get More Credits
 					</CTAButton>
@@ -100,9 +115,12 @@ export const LowCreditsDialog: FC<LowCreditsDialogProps> = ({
 			}
 		>
 			<DialogContentWrapper>
-				<IconImage src={RadientIcon} alt="Radient Logo" />
+				<IconImage src={RadientIcon} alt="Radient Logo" sx={{
+          width: 120,
+          height: 120,
+        }} />
 				<MarketingText variant="body1" sx={{ mb: 1 }}>
-					Unlock the full power of Local Operator with Radient!
+					Unlock the full power of Local Operator with <HighlightText>Radient Pass</HighlightText>!
 				</MarketingText>
 				<MarketingText variant="body2">
 					Using Local Operator with <HighlightText>Radient Automatic</HighlightText>{" "}
@@ -115,6 +133,28 @@ export const LowCreditsDialog: FC<LowCreditsDialogProps> = ({
 					It's <HighlightText>pay-as-you-go</HighlightText> with no
 					commitments. Load up what you need, starting small for maximum
 					flexibility.
+				</MarketingText>
+
+				<MarketingText variant="body2" sx={{ mt: 2, mb: 2 }}>
+					Plus, get{" "}
+					<Typography
+						component="span"
+						fontWeight="medium"
+						color={theme.palette.primary.main}
+						sx={{ fontSize: "inherit" }}
+					>
+						{isLoadingPrices ? (
+							<CircularProgress size={14} sx={{ mr: 0.5, verticalAlign: "middle" }} />
+						) : (
+							formatCurrency(prices?.default_registration_credits)
+						)}
+					</Typography>{" "}
+					in bonus credits with your first purchase!
+					{pricesError && (
+						<Typography color="error" variant="caption" display="block" mt={0.5}>
+							Could not load bonus credit information.
+						</Typography>
+					)}
 				</MarketingText>
 
 				<Box mt={3} mb={1}>
