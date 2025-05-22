@@ -8,7 +8,7 @@ import {
 	useTheme,
 } from "@mui/material";
 import RadientIcon from "@renderer/assets/radient-icon-1024x1024.png";
-import { useRadientPricesQuery } from "@shared/hooks/use-radient-prices-query"; // Import useRadientPricesQuery
+import { useRadientPricesQuery } from "@shared/hooks/use-radient-prices-query";
 import { useLowCreditsStore } from "@shared/store/low-credits-store";
 import { ExternalLink } from "lucide-react";
 import type { FC } from "react";
