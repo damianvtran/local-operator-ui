@@ -321,12 +321,18 @@ export const LoadingIndicator: FC<{
 	const stdout = currentExecution?.stdout || "";
 	const stderr = currentExecution?.stderr || "";
 	const logging = currentExecution?.logging || "";
-	const message = currentExecution?.message || null;
+	const originalMessage = currentExecution?.message || null;
 	const statusText = currentExecution
 		? getDetailedStatusText(status, currentExecution)
 		: status
 			? getStatusText(status)
 			: "Thinking";
+
+	const displayMessage = originalMessage
+		? originalMessage.length > 240
+			? `${originalMessage.substring(0, 240)}`
+			: originalMessage
+		: statusText;
 
 	// Use the simplified scroll hook
 	const {
@@ -377,7 +383,7 @@ export const LoadingIndicator: FC<{
 				<StatusContainer>
 					<StatusText variant="body2">
 						<StatusTextContent>
-							{message ? message : `${statusText}`}
+							{displayMessage}
 						</StatusTextContent>
 						<StatusControls>
 							<DotContainer>
