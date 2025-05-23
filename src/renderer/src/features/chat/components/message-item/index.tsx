@@ -251,10 +251,10 @@ export const MessageItem: FC<MessageItemProps> = memo(
 			}
 		}, []);
 
-		if (shouldUseBackgroundBlock && message.message) {
+		if (shouldUseBackgroundBlock) {
 			return (
 				<BackgroundBlock
-					content={message.message}
+					content={message.message ?? ""}
 					action={message.action}
 					executionType={message.execution_type || "action"}
 					isUser={isUser}
