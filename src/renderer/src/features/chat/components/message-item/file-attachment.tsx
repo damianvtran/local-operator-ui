@@ -129,9 +129,11 @@ export const FileAttachment: FC<FileAttachmentProps> = ({
 	const setSelectedTab = useCanvasStore((s) => s.setSelectedTab);
 	// Removed files and openTabs subscriptions to prevent unnecessary re-renders and update loops
 
+	const isPastedImage = file.startsWith("data:image/");
+
 	// Handle click on the file attachment
 	const handleClick = useCallback(async () => {
-		const title = getFileName(file);
+		const title = getFileName(file); // This will be "Pasted Image" for image data URIs
 		const fallbackAction = (err?: string) => {
 			if (err) console.error("Error processing file:", err);
 			onClick(file); // Pass the original file string (path or data URI)
@@ -252,11 +254,34 @@ export const FileAttachment: FC<FileAttachmentProps> = ({
 		<FileAttachmentContainer
 			onClick={handleClick}
 			title={`Click to open ${getFileName(file)}`}
+			sx={{
+				// Adjust padding if it's an image to give it more space, or remove padding
+				padding: isPastedImage ? 0 : "8px 12px",
+				// If it's an image, let it define its own aspect ratio, otherwise fix height for icon/text
+				height: isPastedImage ? "auto" : "auto", // Keep auto or set specific for icon
+				maxWidth: isPastedImage ? "200px" : "100%", // Allow images to be a bit wider if needed
+			}}
 		>
-			<FileIcon>
-				<FontAwesomeIcon icon={faFile} size="sm" />
-			</FileIcon>
-			<FileName variant="body2">{getFileName(file)}</FileName>
+			{isPastedImage ? (
+				<img
+					src={file}
+					alt="Pasted content preview"
+					style={{
+						display: "block",
+						maxWidth: "100%",
+						maxHeight: "150px", // Max height for the preview in message
+						borderRadius: "8px", // Match container's border radius
+						objectFit: "contain",
+					}}
+				/>
+			) : (
+				<>
+					<FileIcon>
+						<FontAwesomeIcon icon={faFile} size="sm" />
+					</FileIcon>
+					<FileName variant="body2">{getFileName(file)}</FileName>
+				</>
+			)}
 		</FileAttachmentContainer>
 	);
 };
