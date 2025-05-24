@@ -83,7 +83,7 @@ const BlockHeader = styled(Box, {
 		},
 		display: "flex",
 		alignItems: "center",
-		padding: "8px 22px 8px 12px",
+		padding: "4px 22px 4px 12px",
 		backgroundColor: alpha(
 			theme.palette.common.black,
 			theme.palette.mode === "dark" ? 0.2 : 0.05,
