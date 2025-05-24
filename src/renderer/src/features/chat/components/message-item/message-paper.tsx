@@ -20,7 +20,8 @@ const StyledPaper = styled(Paper)(({ theme }) => ({
 	},
 	width: "auto",
 	padding: 16,
-	borderRadius: 8,
+	backgroundImage: "none",
+	borderRadius: 16,
 	wordBreak: "break-word",
 	overflowWrap: "break-word",
 	position: "relative",
@@ -59,7 +60,7 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 			<Box
 				sx={{
 					position: "relative",
-					width: "100%",
+					width: "calc(100% - 56px)",
 					display: "flex",
 					justifyContent: "flex-end",
 					"&:hover .message-controls": {
@@ -99,6 +100,7 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 	const messageStyles = useMemo(
 		() => ({
 			borderRadius: 2,
+      padding: 0,
 			color: theme.palette.text.primary,
 			width: "calc(100% - 52px)", // Take full width minus padding
 			wordBreak: "break-word",
@@ -208,7 +210,7 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 		<Box
 			sx={{
 				position: "relative",
-				width: "100%",
+				width: "calc(100% - 56px)",
 				"&:hover .message-controls": {
 					opacity: 1,
 				},

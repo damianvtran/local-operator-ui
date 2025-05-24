@@ -61,8 +61,7 @@ export type ActionBlockProps = {
 const BlockContainer = styled(Box, {
 	shouldForwardProp: (prop) => prop !== "mounted",
 })<{ mounted: boolean }>(({ theme, mounted }) => ({
-	width: "calc(100% - 2*56px)",
-	marginLeft: 56,
+	width: "100%",
 	opacity: mounted ? 1 : 0, // Start invisible before animation
 	transform: mounted ? "translateY(0)" : "translateY(20px)",
 	transition: `opacity 0.4s ${theme.transitions.easing.easeOut}, transform 0.4s ${theme.transitions.easing.easeOut}`,
