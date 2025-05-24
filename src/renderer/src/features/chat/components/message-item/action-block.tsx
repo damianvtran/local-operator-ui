@@ -20,6 +20,7 @@ import type {
 	ExecutionType,
 } from "@shared/api/local-operator/types";
 import { apiConfig } from "@shared/config";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import {
 	type FC,
 	useCallback,
@@ -36,7 +37,6 @@ import { ImageAttachment } from "./image-attachment";
 import { LogBlock } from "./log-block";
 import { OutputBlock } from "./output-block";
 import { VideoAttachment } from "./video-attachment";
-import { ChevronDown, ChevronUp } from "lucide-react";
 
 /**
  * Props for the ActionBlock component
@@ -89,10 +89,10 @@ const BlockHeader = styled(Box, {
 			theme.palette.mode === "dark" ? 0.2 : 0.05,
 		),
 		borderRadius: isExpanded ? "8px 8px 0 0" : "8px",
-    borderColor: theme.palette.divider,
-    borderWidth: 1,
-    borderStyle: "solid",
-    borderBottomColor: isExpanded ? "transparent" : theme.palette.divider,
+		borderColor: theme.palette.divider,
+		borderWidth: 1,
+		borderStyle: "solid",
+		borderBottomColor: isExpanded ? "transparent" : theme.palette.divider,
 		transition: `background-color 0.3s ${theme.transitions.easing.easeInOut}, 
                    border-radius 0.3s ${theme.transitions.easing.easeInOut}`,
 	}),
@@ -187,10 +187,10 @@ const ExpandedContent = styled(Box)(({ theme }) => ({
 	),
 	borderBottomLeftRadius: 8,
 	borderBottomRightRadius: 8,
-  borderColor: theme.palette.divider,
-  borderWidth: 1,
-  borderStyle: "solid",
-  borderTop: "none",
+	borderColor: theme.palette.divider,
+	borderWidth: 1,
+	borderStyle: "solid",
+	borderTop: "none",
 	fontSize: "0.85rem",
 	color: theme.palette.text.primary,
 	marginLeft: 0,
@@ -472,9 +472,9 @@ export const ActionBlock: FC<ActionBlockProps> = ({
 						width: "100%",
 						wordBreak: "break-word",
 						overflowWrap: "break-word",
-            position: "relative",
-            mb: 2,
-				}}
+						position: "relative",
+						mb: 2,
+					}}
 				>
 					<MarkdownRenderer content={content} />
 				</Box>
@@ -492,22 +492,33 @@ export const ActionBlock: FC<ActionBlockProps> = ({
 						<BlockIcon className={mounted ? "animate" : ""}>
 							<FontAwesomeIcon icon={getIcon()} size="sm" />
 						</BlockIcon>
-						<Box sx={{ flexGrow: 1, position: "relative", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-							<BlockTitle variant="subtitle2" className={mounted ? "animate" : ""}>
+						<Box
+							sx={{
+								flexGrow: 1,
+								position: "relative",
+								display: "flex",
+								justifyContent: "space-between",
+								alignItems: "center",
+							}}
+						>
+							<BlockTitle
+								variant="subtitle2"
+								className={mounted ? "animate" : ""}
+							>
 								{getTitle()}
 							</BlockTitle>
 							{!isExpanded ? (
-                <Tooltip title="View Details">
-                  <BlockContent className={mounted ? "animate" : ""}>
-                    <ChevronDown size={22} style={{ marginTop: 4 }} />
-                  </BlockContent>
-                </Tooltip>
+								<Tooltip title="View Details">
+									<BlockContent className={mounted ? "animate" : ""}>
+										<ChevronDown size={22} style={{ marginTop: 4 }} />
+									</BlockContent>
+								</Tooltip>
 							) : (
-                <Tooltip title="Collapse Details">
-                  <BlockContent className={mounted ? "animate" : ""}>
-                    <ChevronUp size={22} style={{ marginTop: 4 }} />
-                  </BlockContent>
-                </Tooltip>
+								<Tooltip title="Collapse Details">
+									<BlockContent className={mounted ? "animate" : ""}>
+										<ChevronUp size={22} style={{ marginTop: 4 }} />
+									</BlockContent>
+								</Tooltip>
 							)}
 						</Box>
 					</BlockHeader>

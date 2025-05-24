@@ -382,9 +382,7 @@ export const LoadingIndicator: FC<{
 			<ContentContainer>
 				<StatusContainer>
 					<StatusText variant="body2">
-						<StatusTextContent>
-							{displayMessage}
-						</StatusTextContent>
+						<StatusTextContent>{displayMessage}</StatusTextContent>
 						<StatusControls>
 							<DotContainer>
 								<Dot delay={0} />
