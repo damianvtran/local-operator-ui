@@ -39,9 +39,9 @@ import { VideoAttachment } from "./video-attachment";
 import { ChevronDown, ChevronUp } from "lucide-react";
 
 /**
- * Props for the BackgroundBlock component
+ * Props for the ActionBlock component
  */
-export type BackgroundBlockProps = {
+export type ActionBlockProps = {
 	content: string;
 	action?: ActionType;
 	executionType: ExecutionType;
@@ -324,7 +324,7 @@ const getAttachmentUrl = (
  * For action types, also shows code, output, and errors when expanded
  * Attachments (images and files) are always visible outside the collapsible element
  */
-export const BackgroundBlock: FC<BackgroundBlockProps> = ({
+export const ActionBlock: FC<ActionBlockProps> = ({
 	content,
 	action,
 	executionType,
