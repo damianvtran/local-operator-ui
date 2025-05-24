@@ -12,7 +12,7 @@ import {
 	faShare,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Box, Collapse, Typography, alpha } from "@mui/material";
+import { Box, Collapse, Tooltip, Typography, alpha } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import { createLocalOperatorClient } from "@shared/api/local-operator";
 import type {
@@ -36,6 +36,7 @@ import { ImageAttachment } from "./image-attachment";
 import { LogBlock } from "./log-block";
 import { OutputBlock } from "./output-block";
 import { VideoAttachment } from "./video-attachment";
+import { ChevronDown, ChevronUp } from "lucide-react";
 
 /**
  * Props for the BackgroundBlock component
@@ -82,12 +83,16 @@ const BlockHeader = styled(Box, {
 		},
 		display: "flex",
 		alignItems: "center",
-		padding: "8px 12px",
+		padding: "8px 22px 8px 12px",
 		backgroundColor: alpha(
 			theme.palette.common.black,
 			theme.palette.mode === "dark" ? 0.2 : 0.05,
 		),
 		borderRadius: isExpanded ? "8px 8px 0 0" : "8px",
+    borderColor: theme.palette.divider,
+    borderWidth: 1,
+    borderStyle: "solid",
+    borderBottomColor: isExpanded ? "transparent" : theme.palette.divider,
 		transition: `background-color 0.3s ${theme.transitions.easing.easeInOut}, 
                    border-radius 0.3s ${theme.transitions.easing.easeInOut}`,
 	}),
@@ -155,8 +160,6 @@ const BlockContent = styled(Box)(({ theme }) => ({
 	fontSize: "0.85rem",
 	color: theme.palette.text.secondary,
 	overflow: "hidden",
-	textOverflow: "ellipsis",
-	marginTop: 2,
 	transform: "translateY(0)",
 	transition: `transform 0.4s ${theme.transitions.easing.easeOut}`,
 	"&.animate": {
@@ -182,60 +185,15 @@ const ExpandedContent = styled(Box)(({ theme }) => ({
 		theme.palette.common.black,
 		theme.palette.mode === "dark" ? 0.2 : 0.05,
 	),
-	borderBottomLeftRadius: 4,
-	borderBottomRightRadius: 4,
+	borderBottomLeftRadius: 8,
+	borderBottomRightRadius: 8,
+  borderColor: theme.palette.divider,
+  borderWidth: 1,
+  borderStyle: "solid",
+  borderTop: "none",
 	fontSize: "0.85rem",
 	color: theme.palette.text.primary,
-	borderLeft: `3px solid ${theme.palette.grey[theme.palette.mode === "dark" ? 600 : 400]}`,
 	marginLeft: 0,
-	transition: `border-left-width 0.3s ${theme.transitions.easing.easeInOut}`,
-	"&.animate": {
-		animation: "expandedContentAppear 0.3s forwards",
-	},
-	"@keyframes expandedContentAppear": {
-		"0%": {
-			borderLeftWidth: "0px",
-		},
-		"100%": {
-			borderLeftWidth: "3px",
-		},
-	},
-}));
-
-/**
- * Styled action badge with bounce-in animation
- */
-const ActionBadge = styled(Box)(({ theme }) => ({
-	position: "absolute",
-	top: "-10px",
-	right: "16px",
-	padding: "4px 8px",
-	borderRadius: "12px",
-	fontSize: "0.7rem",
-	fontWeight: "bold",
-	backgroundColor: alpha(theme.palette.primary.main, 0.9),
-	color: "#fff",
-	display: "flex",
-	alignItems: "center",
-	gap: "4px",
-	boxShadow: "0 2px 4px rgba(0, 0, 0, 0.2)",
-	zIndex: 1, // Ensure badge is above other content
-	transform: "scale(1)",
-	transition: `transform 0.5s ${theme.transitions.easing.easeOut}`,
-	"&.animate": {
-		animation: "badgeBounceIn 0.5s forwards",
-	},
-	"@keyframes badgeBounceIn": {
-		"0%": {
-			transform: "scale(0)",
-		},
-		"60%": {
-			transform: "scale(1.2)",
-		},
-		"100%": {
-			transform: "scale(1)",
-		},
-	},
 }));
 
 /**
@@ -456,12 +414,6 @@ export const BackgroundBlock: FC<BackgroundBlockProps> = ({
 		}
 	};
 
-	const getTruncatedContent = (content: string, maxLength = 140) => {
-		return content.length > maxLength
-			? `${content.slice(0, maxLength)}...`
-			: content;
-	};
-
 	// Create a Local Operator client using the API config
 	const client = useMemo(() => {
 		return createLocalOperatorClient(apiConfig.baseUrl);
@@ -511,58 +463,55 @@ export const BackgroundBlock: FC<BackgroundBlockProps> = ({
 
 	return (
 		<BlockContainer sx={{ position: "relative" }} mounted={mounted}>
-			{executionType === "action" && !isUser && (
-				<ActionBadge className={mounted ? "animate" : ""}>
-					<FontAwesomeIcon icon={getIcon()} size="xs" />
-					ACTION
-				</ActionBadge>
-			)}
-
-			<BlockHeader
-				executionType={executionType}
-				isUser={isUser}
-				isExpanded={isExpanded}
-				onClick={isExpanded ? handleCollapse : handleExpand}
+			{/* Message content displayed outside and above the collapsible block */}
+			<Box
+				sx={{
+					borderRadius: 2,
+					color: (theme) => theme.palette.text.primary,
+					width: "calc(100% - 52px)",
+					wordBreak: "break-word",
+					overflowWrap: "break-word",
+					position: "relative",
+					mb: 2,
+				}}
 			>
-				<BlockIcon className={mounted ? "animate" : ""}>
-					<FontAwesomeIcon icon={getIcon()} size="sm" />
-				</BlockIcon>
-				<Box sx={{ flexGrow: 1, position: "relative" }}>
-					<BlockTitle variant="subtitle2" className={mounted ? "animate" : ""}>
-						{getTitle()}
-					</BlockTitle>
-					{!isExpanded && (
-						<BlockContent className={mounted ? "animate" : ""}>
-							<MarkdownRenderer
-								content={getTruncatedContent(content)}
-								styleProps={{
-									fontSize: "0.85rem",
-									lineHeight: 1.5,
-									paragraphSpacing: "4px",
-									headingScale: 0.9,
-									codeSize: "0.85em",
-								}}
-							/>
-						</BlockContent>
-					)}
-				</Box>
-			</BlockHeader>
-			<Collapse in={isExpanded} timeout="auto">
-				<ExpandedContent className={isExpanded ? "animate" : ""}>
-					<MarkdownRenderer
-						content={content}
-						styleProps={{
-							fontSize: "0.85rem",
-							lineHeight: 1.5,
-							paragraphSpacing: "4px",
-							headingScale: 0.9,
-							codeSize: "0.85em",
-						}}
-					/>
+				<MarkdownRenderer content={content} />
+			</Box>
 
-					{/* Technical details for action messages */}
-					{hasCollapsibleContent && (
-						<>
+			{/* Collapsible block for technical details only */}
+			{hasCollapsibleContent && (
+				<>
+					<BlockHeader
+						executionType={executionType}
+						isUser={isUser}
+						isExpanded={isExpanded}
+						onClick={isExpanded ? handleCollapse : handleExpand}
+					>
+						<BlockIcon className={mounted ? "animate" : ""}>
+							<FontAwesomeIcon icon={getIcon()} size="sm" />
+						</BlockIcon>
+						<Box sx={{ flexGrow: 1, position: "relative", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+							<BlockTitle variant="subtitle2" className={mounted ? "animate" : ""}>
+								{getTitle()}
+							</BlockTitle>
+							{!isExpanded ? (
+                <Tooltip title="View Details">
+                  <BlockContent className={mounted ? "animate" : ""}>
+                    <ChevronDown size={22} style={{ marginTop: 4 }} />
+                  </BlockContent>
+                </Tooltip>
+							) : (
+                <Tooltip title="Collapse Details">
+                  <BlockContent className={mounted ? "animate" : ""}>
+                    <ChevronUp size={22} style={{ marginTop: 4 }} />
+                  </BlockContent>
+                </Tooltip>
+							)}
+						</Box>
+					</BlockHeader>
+					<Collapse in={isExpanded} timeout="auto">
+						<ExpandedContent className={isExpanded ? "animate" : ""}>
+							{/* Technical details for action messages */}
 							{/* Render code with syntax highlighting */}
 							{code && <CodeBlock code={code} isUser={isUser} />}
 
@@ -574,17 +523,17 @@ export const BackgroundBlock: FC<BackgroundBlockProps> = ({
 
 							{/* Render logging */}
 							{logging && <LogBlock log={logging} isUser={isUser} />}
-						</>
-					)}
 
-					<CollapseButton onClick={handleCollapse}>
-						<FontAwesomeIcon icon={faChevronUp} size="sm" />
-						<Typography variant="caption" sx={{ ml: 1 }}>
-							Collapse
-						</Typography>
-					</CollapseButton>
-				</ExpandedContent>
-			</Collapse>
+							<CollapseButton onClick={handleCollapse}>
+								<FontAwesomeIcon icon={faChevronUp} size="sm" />
+								<Typography variant="caption" sx={{ ml: 1 }}>
+									Collapse
+								</Typography>
+							</CollapseButton>
+						</ExpandedContent>
+					</Collapse>
+				</>
+			)}
 
 			{/* Render image attachments if any - always visible */}
 			{files && files.length > 0 && (
