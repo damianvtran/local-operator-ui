@@ -22,8 +22,7 @@ const StyledContainer = styled(Box, {
 	flexDirection: isUser ? "row-reverse" : "row",
 	alignItems: "flex-start",
 	gap: 16,
-	marginBottom: 24,
-	marginTop: 8,
+	marginBottom: 12,
 }));
 
 /**

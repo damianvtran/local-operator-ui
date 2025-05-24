@@ -5,7 +5,6 @@ import { useCanvasStore } from "@shared/store/canvas-store";
 import { type FC, memo, useCallback, useEffect, useMemo } from "react";
 import type { Message } from "../../types/message";
 import { ActionBlock } from "./action-block";
-import { ActionHighlight } from "./action-highlight";
 import { CodeBlock } from "./code-block";
 import { CollapsibleMessage } from "./collapsible-message";
 import { ErrorBlock } from "./error-block";
@@ -253,18 +252,29 @@ export const MessageItem: FC<MessageItemProps> = memo(
 
 		if (shouldUseActionBlock) {
 			return (
-				<ActionBlock
-					content={message.message ?? ""}
-					action={message.action}
-					executionType={message.execution_type || "action"}
-					isUser={isUser}
-					code={message.code}
-					stdout={message.stdout}
-					stderr={message.stderr}
-					logging={message.logging}
-					files={message.files}
-					conversationId={conversationId}
-				/>
+				<MessageContainer isUser={isUser}>
+					<MessageAvatar isUser={isUser} />
+					<MessagePaper
+						isUser={isUser}
+						content={message.message}
+						message={message}
+						onMessageComplete={onMessageComplete}
+						isLastMessage={isLastMessage ?? false}
+					>
+						<ActionBlock
+							content={message.message ?? ""}
+							action={message.action}
+							executionType={message.execution_type || "action"}
+							isUser={isUser}
+							code={message.code}
+							stdout={message.stdout}
+							stderr={message.stderr}
+							logging={message.logging}
+							files={message.files}
+							conversationId={conversationId}
+						/>
+					</MessagePaper>
+				</MessageContainer>
 			);
 		}
 
@@ -393,130 +403,123 @@ export const MessageItem: FC<MessageItemProps> = memo(
 						</MessagePaper>
 					</SecurityCheckHighlight>
 				) : (
-					<ActionHighlight
-						action={message.action || "CODE"}
-						taskClassification={message.task_classification || ""}
-						isUser={isUser}
-						executionType={message.execution_type}
-					>
-						<MessagePaper
-							isUser={isUser}
-							content={message.message}
-							message={message}
-							onMessageComplete={onMessageComplete}
-							isLastMessage={isLastMessage ?? false}
-						>
-							{/* Render image attachments if any */}
-							{message.files && message.files.length > 0 && (
-								<Box sx={{ mb: 2 }}>
-									{message.files
-										.filter((file) => isImage(file))
-										.map((file) => (
-											<ImageAttachment
-												key={`${message.id}-${file}`}
-												file={file}
-												src={getUrl(file)}
-												onClick={handleFileClick}
-											/>
-										))}
-								</Box>
-							)}
+          <MessagePaper
+            isUser={isUser}
+            content={message.message}
+            message={message}
+            onMessageComplete={onMessageComplete}
+            isLastMessage={isLastMessage ?? false}
+          >
+            {/* Render image attachments if any */}
+            {message.files && message.files.length > 0 && (
+              <Box sx={{ mb: 2 }}>
+                {message.files
+                  .filter((file) => isImage(file))
+                  .map((file) => (
+                    <ImageAttachment
+                      key={`${message.id}-${file}`}
+                      file={file}
+                      src={getUrl(file)}
+                      onClick={handleFileClick}
+                    />
+                  ))}
+              </Box>
+            )}
 
-							{/* Render video attachments if any */}
-							{message.files && message.files.length > 0 && (
-								<Box sx={{ mb: 2 }}>
-									{message.files
-										.filter((file) => isVideo(file))
-										.map((file) => (
-											<VideoAttachment
-												key={`${message.id}-${file}`}
-												file={file}
-												src={getUrl(file)}
-												onClick={handleFileClick}
-											/>
-										))}
-								</Box>
-							)}
+            {/* Render video attachments if any */}
+            {message.files && message.files.length > 0 && (
+              <Box sx={{ mb: 2 }}>
+                {message.files
+                  .filter((file) => isVideo(file))
+                  .map((file) => (
+                    <VideoAttachment
+                      key={`${message.id}-${file}`}
+                      file={file}
+                      src={getUrl(file)}
+                      onClick={handleFileClick}
+                    />
+                  ))}
+              </Box>
+            )}
 
-							{/* Only render message content when not streaming */}
-							{message.message &&
-								!(message.is_streamable && !message.is_complete) && (
-									<MessageContent content={message.message} isUser={isUser} />
-								)}
+            {/* Only render message content when not streaming */}
+            {message.message &&
+              !(message.is_streamable && !message.is_complete) && (
+                <MessageContent content={message.message} isUser={isUser} />
+              )}
 
-							{/* Determine if we have any collapsible content */}
-							{(() => {
-								const hasCollapsibleContent =
-									isAction &&
-									(message.code ||
-										message.stdout ||
-										message.stderr ||
-										message.logging);
+            {/* Determine if we have any collapsible content */}
+            {(() => {
+              const hasCollapsibleContent =
+                isAction &&
+                (message.code ||
+                  message.stdout ||
+                  message.stderr ||
+                  message.logging);
 
-								// Content to be rendered inside the collapsible section
-								const contentBlocks = (
-									<>
-										{/* Render code with syntax highlighting */}
-										{message.code && (
-											<CodeBlock code={message.code} isUser={isUser} />
-										)}
+              // Content to be rendered inside the collapsible section
+              const contentBlocks = (
+                <>
+                  {/* Render code with syntax highlighting */}
+                  {message.code && (
+                    <CodeBlock code={message.code} isUser={isUser} />
+                  )}
 
-										{/* Render stdout */}
-										{message.stdout && (
-											<OutputBlock output={message.stdout} isUser={isUser} />
-										)}
+                  {/* Render stdout */}
+                  {message.stdout && (
+                    <OutputBlock output={message.stdout} isUser={isUser} />
+                  )}
 
-										{/* Render stderr */}
-										{message.stderr && (
-											<ErrorBlock error={message.stderr} isUser={isUser} />
-										)}
+                  {/* Render stderr */}
+                  {message.stderr && (
+                    <ErrorBlock error={message.stderr} isUser={isUser} />
+                  )}
 
-										{/* Render logging */}
-										{message.logging && (
-											<LogBlock log={message.logging} isUser={isUser} />
-										)}
-									</>
-								);
+                  {/* Render logging */}
+                  {message.logging && (
+                    <LogBlock log={message.logging} isUser={isUser} />
+                  )}
+                </>
+              );
 
-								// If it's an action type with collapsible content, wrap in CollapsibleMessage
-								if (hasCollapsibleContent) {
-									return (
-										<CollapsibleMessage
-											defaultCollapsed={true}
-											hasContent={hasCollapsibleContent}
-										>
-											{contentBlocks}
-										</CollapsibleMessage>
-									);
-								}
+              // If it's an action type with collapsible content, wrap in CollapsibleMessage
+              if (hasCollapsibleContent) {
+                return (
+                  <CollapsibleMessage
+                    defaultCollapsed={true}
+                    hasContent={hasCollapsibleContent}
+                  >
+                    {contentBlocks}
+                  </CollapsibleMessage>
+                );
+              }
 
-								// Otherwise, render content normally
-								return contentBlocks;
-							})()}
+              // Otherwise, render content normally
+              return contentBlocks;
+            })()}
 
-							{/* Status indicator if present */}
-							{message.status && <StatusIndicator status={message.status} />}
+            {/* Status indicator if present */}
+            {message.status && <StatusIndicator status={message.status} />}
 
-							{/* Render non-media file attachments if any */}
-							{message.files && message.files.length > 0 && (
-								<Box sx={{ mt: 2 }}>
-									{message.files
-										.filter((file) => !isImage(file) && !isVideo(file))
-										.map((file) => (
-											<FileAttachment
-												key={`${message.id}-${file}`}
-												file={file}
-												onClick={handleFileClick}
-												conversationId={conversationId}
-											/>
-										))}
-								</Box>
-							)}
+            {/* Render non-media file attachments if any */}
+            {message.files && message.files.length > 0 && (
+              <Box sx={{ mt: 2 }}>
+                {message.files
+                  .filter((file) => !isImage(file) && !isVideo(file))
+                  .map((file) => (
+                    <FileAttachment
+                      key={`${message.id}-${file}`}
+                      file={file}
+                      onClick={handleFileClick}
+                      conversationId={conversationId}
+                    />
+                  ))}
+              </Box>
+            )}
 
-							{/* Message timestamp */}
-							<MessageTimestamp timestamp={message.timestamp} isUser={isUser} />
-						</MessagePaper>
-					</ActionHighlight>
+            {/* Message timestamp */}
+            <MessageTimestamp timestamp={message.timestamp} isUser={isUser} />
+          </MessagePaper>
 				)}
 			</MessageContainer>
 		);

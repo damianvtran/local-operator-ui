@@ -117,6 +117,9 @@ const MarkdownContent = styled(Box, {
 			margin: "16px 0 8px 0",
 			color: theme.palette.text.primary,
 		},
+		"& h1:first-of-type, & h2:first-of-type, & h3:first-of-type": {
+			marginTop: 0,
+		},
 		"& ul": {
 			paddingLeft: "24px",
 			margin: "10px 0",

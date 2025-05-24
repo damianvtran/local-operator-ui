@@ -14,7 +14,7 @@ export type MessageContentProps = {
  * Styled container for message content
  */
 const ContentContainer = styled(Box)(() => ({
-	marginBottom: 16,
+	marginBottom: 0,
 }));
 
 /**

@@ -1,8 +1,8 @@
-import { faRobot, faUser } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Avatar } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import type { FC } from "react";
+import { User, Bot } from "lucide-react";
+
 /**
  * Props for the MessageAvatar component
  */
@@ -28,11 +28,18 @@ const StyledAvatar = styled(Avatar, {
 /**
  * Avatar component for message items
  * Displays different icons for user and assistant messages
+ *
+ * @param isUser - Whether the message is from the user
+ * @returns The avatar component with the appropriate icon
  */
 export const MessageAvatar: FC<MessageAvatarProps> = ({ isUser }) => {
 	return (
 		<StyledAvatar isUser={isUser}>
-			<FontAwesomeIcon icon={isUser ? faUser : faRobot} size="sm" />
+			{isUser ? (
+				<User size={22} aria-label="User" />
+			) : (
+				<Bot size={22} aria-label="Assistant" />
+			)}
 		</StyledAvatar>
 	);
 };

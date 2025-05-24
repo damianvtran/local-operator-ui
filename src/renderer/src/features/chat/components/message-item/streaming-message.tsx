@@ -1,14 +1,32 @@
-import { Box, CircularProgress, Typography, styled } from "@mui/material";
+import { Box, CircularProgress, Typography, styled, alpha, Collapse, Tooltip } from "@mui/material";
 import type { AgentExecutionRecord } from "@shared/api/local-operator";
 import { useStreamingMessage } from "@shared/hooks/use-streaming-message";
 import { useStreamingMessagesStore } from "@shared/store/streaming-messages-store";
-/**
- * Component for displaying a streaming message
- *
- * @module StreamingMessage
- */
-import { useCallback, useEffect, useMemo, useRef } from "react";
-import { MessageContent } from "./message-content";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { CodeBlock } from "./code-block";
+import { OutputBlock } from "./output-block";
+import { ErrorBlock } from "./error-block";
+import { LogBlock } from "./log-block";
+import { FileAttachment } from "./file-attachment";
+import { ImageAttachment } from "./image-attachment";
+import { VideoAttachment } from "./video-attachment";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+	faBook,
+	faCheck,
+	faChevronUp,
+	faCode,
+	faEdit,
+	faLightbulb,
+	faPencilAlt,
+	faQuestion,
+	faShare,
+	faCommentDots,
+} from "@fortawesome/free-solid-svg-icons";
+import { ChevronDown, ChevronUp } from "lucide-react";
+import { createLocalOperatorClient } from "@shared/api/local-operator";
+import { apiConfig } from "@shared/config";
+import { MarkdownRenderer } from "../markdown-renderer";
 
 // Styled components
 const StreamingContainer = styled(Box)(() => ({
@@ -33,17 +51,141 @@ const StatusIndicator = styled(Box)(({ theme }) => ({
 	zIndex: 1,
 }));
 
-const OutputSection = styled(Box)(({ theme }) => ({
-	marginTop: theme.spacing(1),
-	padding: theme.spacing(1),
-	backgroundColor:
-		theme.palette.mode === "dark"
-			? theme.palette.grey[900]
-			: theme.palette.grey[100],
-	borderRadius: theme.shape.borderRadius,
-	whiteSpace: "pre-wrap",
-	fontFamily: "monospace",
-	fontSize: "0.875rem",
+const BlockHeader = styled(Box, {
+	shouldForwardProp: (prop) =>
+		prop !== "executionType" && prop !== "isUser" && prop !== "isExpanded",
+})<{ executionType: string; isUser: boolean; isExpanded: boolean }>(
+	({ theme, isExpanded }) => ({
+		cursor: "pointer",
+		"&:hover": {
+			opacity: 0.9,
+		},
+		display: "flex",
+		alignItems: "center",
+		padding: "4px 22px 4px 12px",
+		backgroundColor: alpha(
+			theme.palette.common.black,
+			theme.palette.mode === "dark" ? 0.2 : 0.05,
+		),
+		borderRadius: isExpanded ? "8px 8px 0 0" : "8px",
+		borderColor: theme.palette.divider,
+		borderWidth: 1,
+		borderStyle: "solid",
+		borderBottomColor: isExpanded ? "transparent" : theme.palette.divider,
+		transition: `background-color 0.3s ${theme.transitions.easing.easeInOut}, 
+                   border-radius 0.3s ${theme.transitions.easing.easeInOut}`,
+	}),
+);
+
+const BlockIcon = styled(Box)(({ theme }) => ({
+	marginRight: 8,
+	width: 40,
+	height: 40,
+	flexShrink: 0,
+	borderRadius: "100%",
+	backgroundColor: alpha(
+		theme.palette.common.black,
+		theme.palette.mode === "dark" ? 0.2 : 0.05,
+	),
+	display: "flex",
+	alignItems: "center",
+	justifyContent: "center",
+	color: theme.palette.icon.text,
+	transform: "scale(1) rotate(0deg)",
+	transition: `transform 0.4s ${theme.transitions.easing.easeOut}`,
+	"&.animate": {
+		animation: "iconAppear 0.4s forwards",
+	},
+	"@keyframes iconAppear": {
+		"0%": {
+			transform: "scale(0.8) rotate(-10deg)",
+		},
+		"100%": {
+			transform: "scale(1) rotate(0deg)",
+		},
+	},
+}));
+
+const BlockTitle = styled(Typography)(({ theme }) => ({
+	fontWeight: 500,
+	fontSize: "0.85rem",
+	color: theme.palette.text.secondary,
+	transform: "translateX(0)",
+	transition: `transform 0.4s ${theme.transitions.easing.easeOut}`,
+	"&.animate": {
+		animation: "titleFadeIn 0.4s forwards",
+	},
+	"@keyframes titleFadeIn": {
+		"0%": {
+			transform: "translateX(-5px)",
+		},
+		"100%": {
+			transform: "translateX(0)",
+		},
+	},
+}));
+
+const BlockContent = styled(Box)(({ theme }) => ({
+	fontSize: "0.85rem",
+	color: theme.palette.text.secondary,
+	overflow: "hidden",
+	transform: "translateY(0)",
+	transition: `transform 0.4s ${theme.transitions.easing.easeOut}`,
+	"&.animate": {
+		animation: "contentFadeIn 0.4s forwards",
+	},
+	"@keyframes contentFadeIn": {
+		"0%": {
+			transform: "translateY(5px)",
+		},
+		"100%": {
+			transform: "translateY(0)",
+		},
+	},
+}));
+
+const ExpandedContent = styled(Box)(({ theme }) => ({
+	padding: "12px 16px",
+	backgroundColor: alpha(
+		theme.palette.common.black,
+		theme.palette.mode === "dark" ? 0.2 : 0.05,
+	),
+	borderBottomLeftRadius: 8,
+	borderBottomRightRadius: 8,
+	borderColor: theme.palette.divider,
+	borderWidth: 1,
+	borderStyle: "solid",
+	borderTop: "none",
+	fontSize: "0.85rem",
+	color: theme.palette.text.primary,
+	marginLeft: 0,
+}));
+
+const CollapseButton = styled(Box)(({ theme }) => ({
+	display: "flex",
+	justifyContent: "center",
+	alignItems: "center",
+	padding: "8px",
+	marginTop: "8px",
+	cursor: "pointer",
+	borderRadius: "4px",
+	backgroundColor: alpha(
+		theme.palette.common.black,
+		theme.palette.mode === "dark" ? 0.1 : 0.03,
+	),
+	transition: `all 0.2s ${theme.transitions.easing.easeInOut}`,
+	"&:hover": {
+		backgroundColor: alpha(
+			theme.palette.common.black,
+			theme.palette.mode === "dark" ? 0.15 : 0.05,
+		),
+		transform: "translateY(-1px)",
+		boxShadow: `0 2px 4px ${alpha(theme.palette.common.black, 0.1)}`,
+	},
+	"&:active": {
+		transform: "translateY(0px)",
+		boxShadow: "none",
+	},
 }));
 
 /**
@@ -96,7 +238,6 @@ export const StreamingMessage = ({
 	onComplete,
 	onUpdate,
 	showStatus = true,
-	showOutput = true,
 	children,
 	onConnectionControls,
 	keepAlive = true, // Default to keeping connection alive
@@ -360,7 +501,7 @@ export const StreamingMessage = ({
 	// Memoize the message content to prevent unnecessary re-renders
 	const messageContent = useMemo(() => {
 		if (!message?.message) return null;
-		return <MessageContent content={message.message} isUser={false} />;
+		return <MarkdownRenderer content={message.message} />;
 	}, [message?.message]);
 
 	// Skeleton loader for when we're connected but waiting for first token
@@ -428,42 +569,6 @@ export const StreamingMessage = ({
 		return null;
 	}, [status, message?.message]);
 
-	// Memoize the output sections to prevent unnecessary re-renders
-	const outputSections = useMemo(() => {
-		if (!showOutput || !message) return null;
-
-		return (
-			<>
-				{message.stdout && (
-					<OutputSection>
-						<Typography variant="caption" sx={{ fontWeight: "bold" }}>
-							Output:
-						</Typography>
-						<Box component="pre" sx={{ mt: 0.5, mb: 0 }}>
-							{message.stdout}
-						</Box>
-					</OutputSection>
-				)}
-
-				{message.stderr && (
-					<OutputSection
-						sx={{
-							backgroundColor: "error.main",
-							color: "error.contrastText",
-						}}
-					>
-						<Typography variant="caption" sx={{ fontWeight: "bold" }}>
-							Error:
-						</Typography>
-						<Box component="pre" sx={{ mt: 0.5, mb: 0 }}>
-							{message.stderr}
-						</Box>
-					</OutputSection>
-				)}
-			</>
-		);
-	}, [showOutput, message]);
-
 	// Memoize the error display to prevent unnecessary re-renders
 	const errorDisplay = useMemo(() => {
 		if (!error) return null;
@@ -484,6 +589,131 @@ export const StreamingMessage = ({
 		);
 	}, [error]);
 
+	// --- Attachments logic (copied from action-block.tsx) ---
+	const client = useMemo(() => {
+		return createLocalOperatorClient(apiConfig.baseUrl);
+	}, []);
+
+	const getUrl = useCallback(
+		(path: string) => {
+			if (path.startsWith("http")) return path;
+			const normalizedPath = path.startsWith("file://") ? path : `file://${path}`;
+			const isImage = (p: string) => {
+				const imageExtensions = [
+					".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".svg", ".tiff", ".tif", ".ico", ".heic", ".heif", ".avif", ".jfif", ".pjpeg", ".pjp",
+				];
+				const lowerPath = p.toLowerCase();
+				return imageExtensions.some((ext) => lowerPath.endsWith(ext));
+			};
+			const isVideo = (p: string) => {
+				const videoExtensions = [
+					".mp4", ".webm", ".ogg", ".mov", ".avi", ".wmv", ".flv", ".mkv", ".m4v", ".3gp", ".3g2",
+				];
+				const lowerPath = p.toLowerCase();
+				return videoExtensions.some((ext) => lowerPath.endsWith(ext));
+			};
+			if (isImage(path)) return client.static.getImageUrl(normalizedPath);
+			if (isVideo(path)) return client.static.getVideoUrl(normalizedPath);
+			return path;
+		},
+		[client],
+	);
+
+	const handleFileClick = useCallback((filePath: string) => {
+		try {
+			if (filePath.startsWith("http")) {
+				window.api.openExternal(filePath);
+			} else {
+				const normalizedPath = filePath.startsWith("file://")
+					? filePath.substring(7)
+					: filePath;
+				window.api.openFile(normalizedPath);
+			}
+		} catch (error) {
+			console.error("Error opening file:", error);
+		}
+	}, []);
+
+	// --- Collapsible technical details logic (copied from action-block.tsx) ---
+	const [isExpanded, setIsExpanded] = useState(false);
+	const [mounted, setMounted] = useState(false);
+	const mountedRef = useRef(false);
+
+	useEffect(() => {
+		if (!mountedRef.current) {
+			mountedRef.current = true;
+			const timer = setTimeout(() => {
+				setMounted(true);
+			}, 50);
+			return () => clearTimeout(timer);
+		}
+		return undefined;
+	}, []);
+
+	useEffect(() => {
+		setMounted(true);
+	}, []);
+
+	const handleExpand = () => setIsExpanded(true);
+	const handleCollapse = (e: React.MouseEvent) => {
+		e.stopPropagation();
+		setIsExpanded(false);
+	};
+
+	const getTitle = () => {
+		switch (message?.action) {
+			case "DONE":
+				return "Task Complete";
+			case "ASK":
+				return "Asking a Question";
+			case "CODE":
+				return "Executing Code";
+			case "WRITE":
+				return "Writing Content";
+			case "EDIT":
+				return "Editing Content";
+			case "READ":
+				return "Reading Content";
+			case "DELEGATE":
+				return "Delegating Task";
+			default:
+				return message?.execution_type === "plan"
+					? "Planning"
+					: message?.execution_type === "action"
+						? "Action"
+						: "Reflection";
+		}
+	};
+
+	const getIcon = () => {
+		switch (message?.action) {
+			case "DONE":
+				return faCheck;
+			case "ASK":
+				return faQuestion;
+			case "CODE":
+				return faCode;
+			case "WRITE":
+				return faPencilAlt;
+			case "EDIT":
+				return faEdit;
+			case "READ":
+				return faBook;
+			case "DELEGATE":
+				return faShare;
+			default:
+				return message?.execution_type === "plan"
+					? faLightbulb
+					: message?.execution_type === "action"
+						? faCode
+						: faCommentDots;
+		}
+	};
+
+	const hasCollapsibleContent =
+		message?.execution_type === "action" &&
+		(message?.code || message?.stdout || message?.stderr || message?.logging);
+
 	return (
 		<StreamingContainer
 			className={`${isStreamable ? "streamable-message" : ""} ${className || ""}`}
@@ -495,7 +725,136 @@ export const StreamingMessage = ({
 			{loadingIndicator}
 			{messageContent}
 			{skeletonLoader}
-			{outputSections}
+
+			{/* Collapsible technical details block */}
+			{hasCollapsibleContent && (
+				<>
+					<BlockHeader
+						executionType={message?.execution_type || "action"}
+						isUser={false}
+						isExpanded={isExpanded}
+						onClick={isExpanded ? handleCollapse : handleExpand}
+					>
+						<BlockIcon className={mounted ? "animate" : ""}>
+							<FontAwesomeIcon icon={getIcon()} size="sm" />
+						</BlockIcon>
+						<Box
+							sx={{
+								flexGrow: 1,
+								position: "relative",
+								display: "flex",
+								justifyContent: "space-between",
+								alignItems: "center",
+							}}
+						>
+							<BlockTitle
+								variant="subtitle2"
+								className={mounted ? "animate" : ""}
+							>
+								{getTitle()}
+							</BlockTitle>
+							{!isExpanded ? (
+								<Tooltip title="View Details">
+									<BlockContent className={mounted ? "animate" : ""}>
+										<ChevronDown size={22} style={{ marginTop: 4 }} />
+									</BlockContent>
+								</Tooltip>
+							) : (
+								<Tooltip title="Collapse Details">
+									<BlockContent className={mounted ? "animate" : ""}>
+										<ChevronUp size={22} style={{ marginTop: 4 }} />
+									</BlockContent>
+								</Tooltip>
+							)}
+						</Box>
+					</BlockHeader>
+					<Collapse in={isExpanded} timeout="auto">
+						<ExpandedContent className={isExpanded ? "animate" : ""}>
+							{message?.code && <CodeBlock code={message.code} isUser={false} />}
+							{message?.stdout && <OutputBlock output={message.stdout} isUser={false} />}
+							{message?.stderr && <ErrorBlock error={message.stderr} isUser={false} />}
+							{message?.logging && <LogBlock log={message.logging} isUser={false} />}
+							<CollapseButton onClick={handleCollapse}>
+								<FontAwesomeIcon icon={faChevronUp} size="sm" />
+								<Typography variant="caption" sx={{ ml: 1 }}>
+									Collapse
+								</Typography>
+							</CollapseButton>
+						</ExpandedContent>
+					</Collapse>
+				</>
+			)}
+
+			{/* Attachments (images) */}
+			{message?.files && message.files.length > 0 && (
+				<Box sx={{ mb: 2, mt: 2 }}>
+					{message.files
+						.filter((file) => {
+							const imageExtensions = [
+								".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".svg", ".tiff", ".tif", ".ico", ".heic", ".heif", ".avif", ".jfif", ".pjpeg", ".pjp",
+							];
+							const lowerPath = file.toLowerCase();
+							return imageExtensions.some((ext) => lowerPath.endsWith(ext));
+						})
+						.map((file) => (
+							<ImageAttachment
+								key={`${file}`}
+								file={file}
+								src={getUrl(file)}
+								onClick={handleFileClick}
+							/>
+						))}
+				</Box>
+			)}
+
+			{/* Attachments (videos) */}
+			{message?.files && message.files.length > 0 && (
+				<Box sx={{ mb: 2 }}>
+					{message.files
+						.filter((file) => {
+							const videoExtensions = [
+								".mp4", ".webm", ".ogg", ".mov", ".avi", ".wmv", ".flv", ".mkv", ".m4v", ".3gp", ".3g2",
+							];
+							const lowerPath = file.toLowerCase();
+							return videoExtensions.some((ext) => lowerPath.endsWith(ext));
+						})
+						.map((file) => (
+							<VideoAttachment
+								key={`${file}`}
+								file={file}
+								src={getUrl(file)}
+								onClick={handleFileClick}
+							/>
+						))}
+				</Box>
+			)}
+
+			{/* Attachments (non-media files) */}
+			{message?.files && message.files.length > 0 && (
+				<Box sx={{ mt: 2 }}>
+					{message.files
+						.filter((file) => {
+							const imageExtensions = [
+								".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".svg", ".tiff", ".tif", ".ico", ".heic", ".heif", ".avif", ".jfif", ".pjpeg", ".pjp",
+							];
+							const videoExtensions = [
+								".mp4", ".webm", ".ogg", ".mov", ".avi", ".wmv", ".flv", ".mkv", ".m4v", ".3gp", ".3g2",
+							];
+							const lowerPath = file.toLowerCase();
+							return !imageExtensions.some((ext) => lowerPath.endsWith(ext)) &&
+								!videoExtensions.some((ext) => lowerPath.endsWith(ext));
+						})
+						.map((file) => (
+							<FileAttachment
+								key={`${file}`}
+								file={file}
+								onClick={handleFileClick}
+								conversationId={conversationId ?? ""}
+							/>
+						))}
+				</Box>
+			)}
+
 			{errorDisplay}
 			{/* Invisible element at the bottom for scroll targeting */}
 			<div ref={scrollRef} style={{ height: 1, width: 1, opacity: 0 }} />
