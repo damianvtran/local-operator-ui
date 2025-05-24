@@ -464,19 +464,21 @@ export const ActionBlock: FC<ActionBlockProps> = ({
 	return (
 		<BlockContainer sx={{ position: "relative" }} mounted={mounted}>
 			{/* Message content displayed outside and above the collapsible block */}
-			<Box
-				sx={{
-					borderRadius: 2,
-					color: (theme) => theme.palette.text.primary,
-					width: "calc(100% - 52px)",
-					wordBreak: "break-word",
-					overflowWrap: "break-word",
-					position: "relative",
-					mb: 2,
+			{content && (
+				<Box
+					sx={{
+						borderRadius: 2,
+						color: (theme) => theme.palette.text.primary,
+						width: "100%",
+						wordBreak: "break-word",
+						overflowWrap: "break-word",
+            position: "relative",
+            mb: 2,
 				}}
-			>
-				<MarkdownRenderer content={content} />
-			</Box>
+				>
+					<MarkdownRenderer content={content} />
+				</Box>
+			)}
 
 			{/* Collapsible block for technical details only */}
 			{hasCollapsibleContent && (
