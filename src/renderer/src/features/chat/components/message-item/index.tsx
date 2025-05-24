@@ -5,7 +5,7 @@ import { useCanvasStore } from "@shared/store/canvas-store";
 import { type FC, memo, useCallback, useEffect, useMemo } from "react";
 import type { Message } from "../../types/message";
 import { ActionHighlight } from "./action-highlight";
-import { BackgroundBlock } from "./background-block";
+import { ActionBlock } from "./action-block";
 import { CodeBlock } from "./code-block";
 import { CollapsibleMessage } from "./collapsible-message";
 import { ErrorBlock } from "./error-block";
@@ -203,7 +203,7 @@ export const MessageItem: FC<MessageItemProps> = memo(
 		const isUser = message.role === "user";
 		const isAction = message.execution_type === "action";
 		const isSecurityCheck = message.execution_type === "security_check";
-		const shouldUseBackgroundBlock =
+		const shouldUseActionBlock =
 			message.execution_type === "reflection" ||
 			message.execution_type === "action";
 
@@ -251,9 +251,9 @@ export const MessageItem: FC<MessageItemProps> = memo(
 			}
 		}, []);
 
-		if (shouldUseBackgroundBlock) {
+		if (shouldUseActionBlock) {
 			return (
-				<BackgroundBlock
+				<ActionBlock
 					content={message.message ?? ""}
 					action={message.action}
 					executionType={message.execution_type || "action"}
