@@ -49,8 +49,6 @@ export const HtmlPreview: FC<HtmlPreviewProps> = ({ document }) => {
 		return getHtmlUrl(apiConfig.baseUrl, document.path);
 	}, [document.path]);
 
-	console.log(htmlUrl);
-
 	return (
 		<IframeContainer>
 			<HtmlIframe
