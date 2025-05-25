@@ -1,5 +1,5 @@
 import { Box } from "@mui/material";
-import { createLocalOperatorClient } from "@shared/api/local-operator";
+import { type AgentExecutionRecord, createLocalOperatorClient } from "@shared/api/local-operator";
 import { apiConfig } from "@shared/config";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import { type FC, memo, useCallback, useEffect, useMemo } from "react";
@@ -29,6 +29,7 @@ export type MessageItemProps = {
 	onMessageComplete?: () => void;
 	isLastMessage?: boolean;
 	conversationId: string;
+	currentExecution?: AgentExecutionRecord | null;
 };
 
 /**
@@ -128,8 +129,52 @@ const getAttachmentUrl = (
  * Only re-renders when the message content changes
  */
 export const MessageItem: FC<MessageItemProps> = memo(
-	({ message, onMessageComplete, isLastMessage, conversationId }) => {
+	({ message, onMessageComplete, isLastMessage, conversationId, currentExecution }) => {
 		const setFiles = useCanvasStore((s) => s.setFiles);
+
+		// Create a Local Operator client using the API config
+		const client = useMemo(() => {
+			return createLocalOperatorClient(apiConfig.baseUrl);
+		}, []);
+
+		// Get the URL for an attachment
+		const getUrl = useCallback(
+			(path: string) => getAttachmentUrl(client, path),
+			[client],
+		);
+
+		/**
+		 * Handles clicking on a file attachment
+		 * Opens local files with the system's default application
+		 * Opens web URLs in the default browser
+		 * Shows an error message if the file can't be opened
+		 * @param filePath - The path or URL of the file to open
+		 */
+		const handleFileClick = useCallback(async (filePath: string) => {
+			try {
+				// If it's a web URL
+				if (isWebUrl(filePath)) {
+					// Open in default browser
+					await window.api.openExternal(filePath);
+				} else {
+					// It's a local file, open with default application
+					// Remove file:// prefix if present
+					const normalizedPath = filePath.startsWith("file://")
+						? filePath.substring(7)
+						: filePath;
+
+					await window.api.openFile(normalizedPath);
+				}
+			} catch (error) {
+				console.error("Error opening file:", error);
+
+				// Show an error message to the user
+				// This could be replaced with a toast notification if available
+				alert(
+					`Unable to open file: ${filePath}. The file may be incomplete, deleted, or moved.`,
+				);
+			}
+		}, []);
 
 		// Refresh open canvas tabs with latest file content if a new message contains a file that matches an open tab
 		useEffect(() => {
@@ -194,61 +239,19 @@ export const MessageItem: FC<MessageItemProps> = memo(
 				!message.stdout &&
 				!message.stderr &&
 				!message.logging &&
-				message.is_complete);
+				message.is_complete) ||
+			(message.is_streamable && !message.is_complete && !currentExecution);
 
 		if (shouldHide) {
 			return null;
 		}
+
 		const isUser = message.role === "user";
 		const isAction = message.execution_type === "action";
 		const isSecurityCheck = message.execution_type === "security_check";
 		const shouldUseActionBlock =
 			message.execution_type === "reflection" ||
 			message.execution_type === "action";
-
-		// Create a Local Operator client using the API config
-		const client = useMemo(() => {
-			return createLocalOperatorClient(apiConfig.baseUrl);
-		}, []);
-
-		// Get the URL for an attachment
-		const getUrl = useCallback(
-			(path: string) => getAttachmentUrl(client, path),
-			[client],
-		);
-
-		/**
-		 * Handles clicking on a file attachment
-		 * Opens local files with the system's default application
-		 * Opens web URLs in the default browser
-		 * Shows an error message if the file can't be opened
-		 * @param filePath - The path or URL of the file to open
-		 */
-		const handleFileClick = useCallback(async (filePath: string) => {
-			try {
-				// If it's a web URL
-				if (isWebUrl(filePath)) {
-					// Open in default browser
-					await window.api.openExternal(filePath);
-				} else {
-					// It's a local file, open with default application
-					// Remove file:// prefix if present
-					const normalizedPath = filePath.startsWith("file://")
-						? filePath.substring(7)
-						: filePath;
-
-					await window.api.openFile(normalizedPath);
-				}
-			} catch (error) {
-				console.error("Error opening file:", error);
-
-				// Show an error message to the user
-				// This could be replaced with a toast notification if available
-				alert(
-					`Unable to open file: ${filePath}. The file may be incomplete, deleted, or moved.`,
-				);
-			}
-		}, []);
 
 		if (shouldUseActionBlock) {
 			return (
@@ -260,6 +263,7 @@ export const MessageItem: FC<MessageItemProps> = memo(
 						message={message}
 						onMessageComplete={onMessageComplete}
 						isLastMessage={isLastMessage ?? false}
+            isJobRunning={!!currentExecution}
 					>
 						<ActionBlock
 							message={message.message ?? ""}
@@ -269,11 +273,12 @@ export const MessageItem: FC<MessageItemProps> = memo(
 							executionType={message.execution_type || "action"}
 							isUser={isUser}
 							code={message.code}
-							stdout={message.stdout}
-							stderr={message.stderr}
-							logging={message.logging}
+							stdout={currentExecution?.stdout ?? message.stdout}
+							stderr={currentExecution?.stderr ?? message.stderr}
+							logging={currentExecution?.logging ?? message.logging}
 							files={message.files}
 							conversationId={conversationId}
+              isLoading={isLastMessage && !!currentExecution}
 						/>
 					</MessagePaper>
 				</MessageContainer>
@@ -292,6 +297,7 @@ export const MessageItem: FC<MessageItemProps> = memo(
 							message={message}
 							onMessageComplete={onMessageComplete}
 							isLastMessage={isLastMessage ?? false}
+              isJobRunning={!!currentExecution}
 						>
 							{/* Render image attachments if any */}
 							{message.files && message.files.length > 0 && (
@@ -411,6 +417,7 @@ export const MessageItem: FC<MessageItemProps> = memo(
             message={message}
             onMessageComplete={onMessageComplete}
             isLastMessage={isLastMessage ?? false}
+            isJobRunning={!!currentExecution}
           >
             {/* Render image attachments if any */}
             {message.files && message.files.length > 0 && (
@@ -534,7 +541,11 @@ export const MessageItem: FC<MessageItemProps> = memo(
 			prevProps.message.message === nextProps.message.message &&
 			prevProps.message.status === nextProps.message.status &&
 			prevProps.message.is_complete === nextProps.message.is_complete &&
-			prevProps.message.is_streamable === nextProps.message.is_streamable
+			prevProps.message.is_streamable === nextProps.message.is_streamable &&
+			prevProps.currentExecution?.id === nextProps.currentExecution?.id &&
+			prevProps.currentExecution?.stdout === nextProps.currentExecution?.stdout &&
+			prevProps.currentExecution?.stderr === nextProps.currentExecution?.stderr &&
+			prevProps.currentExecution?.logging === nextProps.currentExecution?.logging
 		);
 	},
 );

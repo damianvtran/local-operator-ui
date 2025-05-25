@@ -1,4 +1,4 @@
-import { Box, Collapse, Tooltip, Typography, alpha } from "@mui/material";
+import { Box, Collapse, Tooltip, Typography, alpha, CircularProgress } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import type { ActionType, ExecutionType } from "@shared/api/local-operator/types";
 import {
@@ -12,7 +12,7 @@ import {
 	Share2,
 	Lightbulb,
 	MessageSquare,
-  PencilLine,
+	PencilLine,
 } from "lucide-react";
 import type { FC, ReactNode } from "react";
 
@@ -36,6 +36,8 @@ export type ExpandableActionElementProps = {
 	children: ReactNode;
 	/** Whether there is any collapsible content */
 	hasCollapsibleContent: boolean;
+	/** Whether the action is loading */
+	isLoading: boolean;
 };
 
 /**
@@ -221,6 +223,17 @@ const getIcon = (action?: ActionType, executionType?: ExecutionType): ReactNode 
 /**
  * Reusable expandable action element component
  * Provides a consistent interface for collapsible technical details
+ *
+ * @param executionType - The execution type (plan, action, reflection)
+ * @param action - The action type if available
+ * @param isUser - Whether this is a user message
+ * @param isExpanded - Whether the element is currently expanded
+ * @param onExpand - Handler for expanding the element
+ * @param onCollapse - Handler for collapsing the element
+ * @param children - Content to display when expanded
+ * @param hasCollapsibleContent - Whether there is any collapsible content
+ * @param isLoading - Whether the action is loading
+ * @returns The expandable action element or null if not applicable
  */
 export const ExpandableActionElement: FC<ExpandableActionElementProps> = ({
 	executionType,
@@ -231,6 +244,7 @@ export const ExpandableActionElement: FC<ExpandableActionElementProps> = ({
 	onCollapse,
 	children,
 	hasCollapsibleContent,
+	isLoading,
 }) => {
 	if (!hasCollapsibleContent) {
 		return null;
@@ -257,7 +271,14 @@ export const ExpandableActionElement: FC<ExpandableActionElementProps> = ({
 						alignItems: "center",
 					}}
 				>
-					<BlockTitle variant="subtitle2">{title}</BlockTitle>
+					<Box sx={{ display: "flex", alignItems: "center" }}>
+						<BlockTitle variant="subtitle2">{title}</BlockTitle>
+						{isLoading && (
+							<Box sx={{ ml: 1, display: "flex", alignItems: "center" }}>
+								<CircularProgress size={14} thickness={2} />
+							</Box>
+						)}
+					</Box>
 					{!isExpanded ? (
 						<Tooltip title="View Details">
 							<BlockContent>

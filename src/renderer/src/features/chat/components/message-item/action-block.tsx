@@ -37,6 +37,7 @@ export type ActionBlockProps = {
 	logging?: string;
 	files?: string[]; // URLs to attachments
 	conversationId: string;
+	isLoading?: boolean;
 };
 
 /**
@@ -150,6 +151,7 @@ export const ActionBlock: FC<ActionBlockProps> = ({
 	logging,
 	files,
 	conversationId,
+  isLoading,
 }) => {
 	const [isExpanded, setIsExpanded] = useState(false);
 
@@ -232,6 +234,7 @@ export const ActionBlock: FC<ActionBlockProps> = ({
 				onExpand={handleExpand}
 				onCollapse={handleCollapse}
 				hasCollapsibleContent={hasCollapsibleContent}
+				isLoading={isLoading ?? false}
 			>
 				{/* Technical details for action messages */}
 				{code && <CodeBlock code={code} isUser={isUser} />}
@@ -249,7 +252,7 @@ export const ActionBlock: FC<ActionBlockProps> = ({
 			</ExpandableActionElement>
 
 			{/* Render image attachments if any - always visible */}
-			{files && files.length > 0 && (
+			{files && files.length > 0 && !isLoading && (
 				<Box sx={{ mb: 2, mt: 2 }}>
 					{files
 						.filter((file) => isImage(file))
@@ -265,7 +268,7 @@ export const ActionBlock: FC<ActionBlockProps> = ({
 			)}
 
 			{/* Render video attachments if any - always visible */}
-			{files && files.length > 0 && (
+			{files && files.length > 0 && !isLoading && (
 				<Box sx={{ mb: 2 }}>
 					{files
 						.filter((file) => isVideo(file))
@@ -281,7 +284,7 @@ export const ActionBlock: FC<ActionBlockProps> = ({
 			)}
 
 			{/* Render non-media file attachments if any - always visible */}
-			{files && files.length > 0 && (
+			{files && files.length > 0 && !isLoading && (
 				<Box sx={{ mt: 2 }}>
 					{files
 						.filter((file) => !isImage(file) && !isVideo(file))

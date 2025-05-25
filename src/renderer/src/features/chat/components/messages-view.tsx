@@ -225,6 +225,11 @@ export const MessagesView: FC<MessagesViewProps> = ({
 												conversation_id: conversationId, // Add conversation ID to message
 											}}
 											conversationId={conversationId}
+											currentExecution={
+												(index === messages.length - 1 && currentExecution)
+													? currentExecution
+													: undefined
+											}
 											isLastMessage={index === messages.length - 1}
 											onMessageComplete={() => {
 												if (refetch) {

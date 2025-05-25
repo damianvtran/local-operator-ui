@@ -36,6 +36,7 @@ type MessagePaperProps = {
 	message?: Message;
 	onMessageComplete?: () => void;
 	isLastMessage: boolean;
+  isJobRunning: boolean;
 };
 
 /**
@@ -51,6 +52,7 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 	message,
 	onMessageComplete,
 	isLastMessage,
+  isJobRunning,
 }) => {
 	const theme = useTheme();
 
@@ -170,7 +172,7 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 
 	// Memoize the streaming message component to prevent unnecessary re-renders
 	const streamingMessageComponent = useMemo(() => {
-		if (!isStreamable || !message) return null;
+		if (!isStreamable || !message || !isJobRunning) return null;
 
 		return (
 			<StreamingMessage
@@ -189,7 +191,7 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 				}}
 			/>
 		);
-	}, [isStreamable, message, messageStyles, onMessageComplete]);
+	}, [isStreamable, message, messageStyles, onMessageComplete, isJobRunning]);
 
 	// Memoize the regular message components to prevent unnecessary re-renders
 	const regularMessageComponents = useMemo(() => {

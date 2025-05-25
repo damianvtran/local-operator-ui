@@ -7,11 +7,6 @@ import { CodeBlock } from "./code-block";
 import { OutputBlock } from "./output-block";
 import { ErrorBlock } from "./error-block";
 import { LogBlock } from "./log-block";
-import { FileAttachment } from "./file-attachment";
-import { ImageAttachment } from "./image-attachment";
-import { VideoAttachment } from "./video-attachment";
-import { createLocalOperatorClient } from "@shared/api/local-operator";
-import { apiConfig } from "@shared/config";
 import { MarkdownRenderer } from "../markdown-renderer";
 import { ExpandableActionElement } from "../expandable-action-element";
 
@@ -407,50 +402,6 @@ export const StreamingMessage = ({
 		);
 	}, [error]);
 
-	const client = useMemo(() => {
-		return createLocalOperatorClient(apiConfig.baseUrl);
-	}, []);
-
-	const getUrl = useCallback(
-		(path: string) => {
-			if (path.startsWith("http")) return path;
-			const normalizedPath = path.startsWith("file://") ? path : `file://${path}`;
-			const isImage = (p: string) => {
-				const imageExtensions = [
-					".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".svg", ".tiff", ".tif", ".ico", ".heic", ".heif", ".avif", ".jfif", ".pjpeg", ".pjp",
-				];
-				const lowerPath = p.toLowerCase();
-				return imageExtensions.some((ext) => lowerPath.endsWith(ext));
-			};
-			const isVideo = (p: string) => {
-				const videoExtensions = [
-					".mp4", ".webm", ".ogg", ".mov", ".avi", ".wmv", ".flv", ".mkv", ".m4v", ".3gp", ".3g2",
-				];
-				const lowerPath = p.toLowerCase();
-				return videoExtensions.some((ext) => lowerPath.endsWith(ext));
-			};
-			if (isImage(path)) return client.static.getImageUrl(normalizedPath);
-			if (isVideo(path)) return client.static.getVideoUrl(normalizedPath);
-			return path;
-		},
-		[client],
-	);
-
-	const handleFileClick = useCallback((filePath: string) => {
-		try {
-			if (filePath.startsWith("http")) {
-				window.api.openExternal(filePath);
-			} else {
-				const normalizedPath = filePath.startsWith("file://")
-					? filePath.substring(7)
-					: filePath;
-				window.api.openFile(normalizedPath);
-			}
-		} catch (error) {
-			console.error("Error opening file:", error);
-		}
-	}, []);
-
 	const [isExpanded, setIsExpanded] = useState(false);
 
 	const handleExpand = () => setIsExpanded(true);
@@ -485,6 +436,7 @@ export const StreamingMessage = ({
 				onExpand={handleExpand}
 				onCollapse={handleCollapse}
 				hasCollapsibleContent={hasCollapsibleContent}
+        isLoading={isActivelyStreaming}
 			>
 				{message?.code && <CodeBlock code={message.code} isUser={false} />}
 				{message?.content && <CodeBlock code={message.content} isUser={false} />}
@@ -493,76 +445,6 @@ export const StreamingMessage = ({
 				{message?.stderr && <ErrorBlock error={message.stderr} isUser={false} />}
 				{message?.logging && <LogBlock log={message.logging} isUser={false} />}
 			</ExpandableActionElement>
-
-			{/* Attachments (images) */}
-			{message?.files && message.files.length > 0 && (
-				<Box sx={{ mb: 2, mt: 2 }}>
-					{message.files
-						.filter((file) => {
-							const imageExtensions = [
-								".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".svg", ".tiff", ".tif", ".ico", ".heic", ".heif", ".avif", ".jfif", ".pjpeg", ".pjp",
-							];
-							const lowerPath = file.toLowerCase();
-							return imageExtensions.some((ext) => lowerPath.endsWith(ext));
-						})
-						.map((file) => (
-							<ImageAttachment
-								key={`${file}`}
-								file={file}
-								src={getUrl(file)}
-								onClick={handleFileClick}
-							/>
-						))}
-				</Box>
-			)}
-
-			{/* Attachments (videos) */}
-			{message?.files && message.files.length > 0 && (
-				<Box sx={{ mb: 2 }}>
-					{message.files
-						.filter((file) => {
-							const videoExtensions = [
-								".mp4", ".webm", ".ogg", ".mov", ".avi", ".wmv", ".flv", ".mkv", ".m4v", ".3gp", ".3g2",
-							];
-							const lowerPath = file.toLowerCase();
-							return videoExtensions.some((ext) => lowerPath.endsWith(ext));
-						})
-						.map((file) => (
-							<VideoAttachment
-								key={`${file}`}
-								file={file}
-								src={getUrl(file)}
-								onClick={handleFileClick}
-							/>
-						))}
-				</Box>
-			)}
-
-			{/* Attachments (non-media files) */}
-			{message?.files && message.files.length > 0 && (
-				<Box sx={{ mt: 2 }}>
-					{message.files
-						.filter((file) => {
-							const imageExtensions = [
-								".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".svg", ".tiff", ".tif", ".ico", ".heic", ".heif", ".avif", ".jfif", ".pjpeg", ".pjp",
-							];
-							const videoExtensions = [
-								".mp4", ".webm", ".ogg", ".mov", ".avi", ".wmv", ".flv", ".mkv", ".m4v", ".3gp", ".3g2",
-							];
-							const lowerPath = file.toLowerCase();
-							return !imageExtensions.some((ext) => lowerPath.endsWith(ext)) &&
-								!videoExtensions.some((ext) => lowerPath.endsWith(ext));
-						})
-						.map((file) => (
-							<FileAttachment
-								key={`${file}`}
-								file={file}
-								onClick={handleFileClick}
-								conversationId={conversationId ?? ""}
-							/>
-						))}
-				</Box>
-			)}
 
 			{errorDisplay}
 			<div ref={scrollRef} style={{ height: 1, width: 1, opacity: 0 }} />
