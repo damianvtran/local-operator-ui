@@ -1,5 +1,5 @@
 import { Box, CircularProgress, Typography, styled, alpha, Collapse, Tooltip } from "@mui/material";
-import type { AgentExecutionRecord } from "@shared/api/local-operator";
+import type { AgentExecutionRecord, ExecutionType } from "@shared/api/local-operator";
 import { useStreamingMessage } from "@shared/hooks/use-streaming-message";
 import { useStreamingMessagesStore } from "@shared/store/streaming-messages-store";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -10,31 +10,33 @@ import { LogBlock } from "./log-block";
 import { FileAttachment } from "./file-attachment";
 import { ImageAttachment } from "./image-attachment";
 import { VideoAttachment } from "./video-attachment";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
-	faBook,
-	faCheck,
-	faChevronUp,
-	faCode,
-	faEdit,
-	faLightbulb,
-	faPencilAlt,
-	faQuestion,
-	faShare,
-	faCommentDots,
-} from "@fortawesome/free-solid-svg-icons";
-import { ChevronDown, ChevronUp } from "lucide-react";
+	Check,
+	BookOpen,
+	Code2,
+	Pencil,
+	PencilLine,
+	Lightbulb,
+	Share2,
+	HelpCircle,
+	ChevronDown,
+	ChevronUp,
+  MessageSquare,
+} from "lucide-react";
 import { createLocalOperatorClient } from "@shared/api/local-operator";
 import { apiConfig } from "@shared/config";
 import { MarkdownRenderer } from "../markdown-renderer";
 
-// Styled components
-const StreamingContainer = styled(Box)(() => ({
+// --- Styled components (adapted to match @action-block.tsx) ---
+
+const StreamingContainer = styled(Box)(({ theme }) => ({
 	position: "relative",
 	overflow: "hidden",
 	borderRadius: 8,
 	wordBreak: "break-word",
 	overflowWrap: "break-word",
+	background: theme.palette.background.paper,
+	boxShadow: theme.shadows[1],
 }));
 
 const StatusIndicator = styled(Box)(({ theme }) => ({
@@ -54,7 +56,7 @@ const StatusIndicator = styled(Box)(({ theme }) => ({
 const BlockHeader = styled(Box, {
 	shouldForwardProp: (prop) =>
 		prop !== "executionType" && prop !== "isUser" && prop !== "isExpanded",
-})<{ executionType: string; isUser: boolean; isExpanded: boolean }>(
+})<{ executionType: ExecutionType; isUser: boolean; isExpanded: boolean }>(
 	({ theme, isExpanded }) => ({
 		cursor: "pointer",
 		"&:hover": {
@@ -62,7 +64,7 @@ const BlockHeader = styled(Box, {
 		},
 		display: "flex",
 		alignItems: "center",
-		padding: "4px 22px 4px 12px",
+		padding: "4px 12px 4px 8px",
 		backgroundColor: alpha(
 			theme.palette.common.black,
 			theme.palette.mode === "dark" ? 0.2 : 0.05,
@@ -78,9 +80,9 @@ const BlockHeader = styled(Box, {
 );
 
 const BlockIcon = styled(Box)(({ theme }) => ({
-	marginRight: 8,
-	width: 40,
-	height: 40,
+	marginRight: 6,
+	width: 28,
+	height: 28,
 	flexShrink: 0,
 	borderRadius: "100%",
 	backgroundColor: alpha(
@@ -88,60 +90,21 @@ const BlockIcon = styled(Box)(({ theme }) => ({
 		theme.palette.mode === "dark" ? 0.2 : 0.05,
 	),
 	display: "flex",
-	alignItems: "center",
+	alignItems: "center", 
 	justifyContent: "center",
 	color: theme.palette.icon.text,
-	transform: "scale(1) rotate(0deg)",
-	transition: `transform 0.4s ${theme.transitions.easing.easeOut}`,
-	"&.animate": {
-		animation: "iconAppear 0.4s forwards",
-	},
-	"@keyframes iconAppear": {
-		"0%": {
-			transform: "scale(0.8) rotate(-10deg)",
-		},
-		"100%": {
-			transform: "scale(1) rotate(0deg)",
-		},
-	},
 }));
 
 const BlockTitle = styled(Typography)(({ theme }) => ({
 	fontWeight: 500,
 	fontSize: "0.85rem",
 	color: theme.palette.text.secondary,
-	transform: "translateX(0)",
-	transition: `transform 0.4s ${theme.transitions.easing.easeOut}`,
-	"&.animate": {
-		animation: "titleFadeIn 0.4s forwards",
-	},
-	"@keyframes titleFadeIn": {
-		"0%": {
-			transform: "translateX(-5px)",
-		},
-		"100%": {
-			transform: "translateX(0)",
-		},
-	},
 }));
 
 const BlockContent = styled(Box)(({ theme }) => ({
 	fontSize: "0.85rem",
 	color: theme.palette.text.secondary,
 	overflow: "hidden",
-	transform: "translateY(0)",
-	transition: `transform 0.4s ${theme.transitions.easing.easeOut}`,
-	"&.animate": {
-		animation: "contentFadeIn 0.4s forwards",
-	},
-	"@keyframes contentFadeIn": {
-		"0%": {
-			transform: "translateY(5px)",
-		},
-		"100%": {
-			transform: "translateY(0)",
-		},
-	},
 }));
 
 const ExpandedContent = styled(Box)(({ theme }) => ({
@@ -154,7 +117,7 @@ const ExpandedContent = styled(Box)(({ theme }) => ({
 	borderBottomRightRadius: 8,
 	borderColor: theme.palette.divider,
 	borderWidth: 1,
-	borderStyle: "solid",
+	borderStyle: "solid", 
 	borderTop: "none",
 	fontSize: "0.85rem",
 	color: theme.palette.text.primary,
@@ -171,13 +134,13 @@ const CollapseButton = styled(Box)(({ theme }) => ({
 	borderRadius: "4px",
 	backgroundColor: alpha(
 		theme.palette.common.black,
-		theme.palette.mode === "dark" ? 0.1 : 0.03,
+		theme.palette.mode === "dark" ? 0.10 : 0.03
 	),
 	transition: `all 0.2s ${theme.transitions.easing.easeInOut}`,
 	"&:hover": {
 		backgroundColor: alpha(
 			theme.palette.common.black,
-			theme.palette.mode === "dark" ? 0.15 : 0.05,
+			theme.palette.mode === "dark" ? 0.15 : 0.07
 		),
 		transform: "translateY(-1px)",
 		boxShadow: `0 2px 4px ${alpha(theme.palette.common.black, 0.1)}`,
@@ -192,46 +155,25 @@ const CollapseButton = styled(Box)(({ theme }) => ({
  * Props for the StreamingMessage component
  */
 type StreamingMessageProps = {
-	/** Message ID to subscribe to */
 	messageId: string;
-	/** Whether to automatically connect to the WebSocket */
 	autoConnect?: boolean;
-	/** Callback when the message is complete */
 	onComplete?: (message: AgentExecutionRecord) => void;
-	/** Callback when the message is updated */
 	onUpdate?: (message: AgentExecutionRecord) => void;
-	/** Whether to show the status indicator */
 	showStatus?: boolean;
-	/** Whether to show the output sections */
 	showOutput?: boolean;
-	/** Children to render */
 	children?: React.ReactNode;
-	/** Callback to get connection controls */
 	onConnectionControls?: (controls: {
 		connect: () => void;
 		disconnect: () => void;
 		refetch: () => void;
 	}) => void;
-	/** Whether to keep the connection alive even after component unmounts */
 	keepAlive?: boolean;
-	/** Custom styles to apply to the container */
 	sx?: React.CSSProperties | Record<string, unknown>;
-	/** Custom class name to apply to the container */
 	className?: string;
-	/** Conversation ID this message belongs to (for updating the chat store) */
 	conversationId?: string;
-	/** Whether to refetch the message when complete */
 	refetchOnComplete?: boolean;
 };
 
-/**
- * Component for displaying a streaming message
- *
- * This component uses the useStreamingMessage hook to subscribe to updates
- * for a specific message ID and display the streaming updates.
- * It also integrates with the streaming messages store to provide a seamless
- * transition between streaming and completed messages.
- */
 export const StreamingMessage = ({
 	messageId,
 	autoConnect = true,
@@ -240,24 +182,20 @@ export const StreamingMessage = ({
 	showStatus = true,
 	children,
 	onConnectionControls,
-	keepAlive = true, // Default to keeping connection alive
+	keepAlive = true,
 	sx,
 	className,
 	conversationId,
 	refetchOnComplete = true,
 }: StreamingMessageProps) => {
-	// Get streaming messages store functions
 	const { getStreamingMessage, isMessageStreamingComplete } =
 		useStreamingMessagesStore();
 
-	// Get the streaming message from the store
 	const storeMessage = getStreamingMessage(messageId);
 	const isStoreMessageComplete = isMessageStreamingComplete(messageId);
 
-	// Custom onComplete handler that will trigger a refetch
 	const handleComplete = useCallback(
 		(completedMessage: AgentExecutionRecord) => {
-			// Call the original onComplete callback
 			if (onComplete) {
 				onComplete(completedMessage);
 			}
@@ -265,7 +203,6 @@ export const StreamingMessage = ({
 		[onComplete],
 	);
 
-	// Use our streaming message hook to handle WebSocket connections
 	const {
 		message: wsMessage,
 		isStreamable,
@@ -286,23 +223,13 @@ export const StreamingMessage = ({
 		refetchOnComplete,
 	});
 
-	// Debug logging to help diagnose issues - but throttled to reduce console spam
 	const lastLogTimeRef = useRef(0);
-
-	// Add a scroll ref at the bottom of the streaming message for auto-scrolling
 	const scrollRef = useRef<HTMLDivElement>(null);
-
-	// Track if we should auto-scroll based on user's scroll position
 	const shouldAutoScrollRef = useRef(true);
-
-	// Track the container element for scroll position calculations
 	const containerRef = useRef<HTMLElement | null>(null);
 
-	// Find the scrollable container once when the component mounts
 	useEffect(() => {
 		if (!scrollRef.current) return;
-
-		// Find the scrollable parent
 		let parent = scrollRef.current.parentElement;
 		while (parent) {
 			const { overflow, overflowY } = window.getComputedStyle(parent);
@@ -317,28 +244,21 @@ export const StreamingMessage = ({
 			}
 			parent = parent.parentElement;
 		}
-
-		// Set up a one-time scroll handler to detect when user scrolls away
 		const handleScroll = () => {
 			if (!containerRef.current) return;
-
 			const { scrollTop, scrollHeight, clientHeight } = containerRef.current;
 			const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
-
-			// If user scrolls away from bottom, disable auto-scrolling
 			if (distanceFromBottom > 150) {
 				shouldAutoScrollRef.current = false;
 			} else {
 				shouldAutoScrollRef.current = true;
 			}
 		};
-
 		if (containerRef.current) {
 			containerRef.current.addEventListener("scroll", handleScroll, {
 				passive: true,
 			});
 		}
-
 		return () => {
 			if (containerRef.current) {
 				containerRef.current.removeEventListener("scroll", handleScroll);
@@ -346,22 +266,17 @@ export const StreamingMessage = ({
 		};
 	}, []);
 
-	// Handle streaming message updates
 	useEffect(() => {
 		if (wsMessage) {
 			const now = Date.now();
-			// Only log every 500ms to avoid excessive logging
 			if (now - lastLogTimeRef.current > 500) {
 				lastLogTimeRef.current = now;
 			}
-
-			// Only auto-scroll if we're near the bottom
 			if (
 				scrollRef.current &&
 				wsMessage.message &&
 				shouldAutoScrollRef.current
 			) {
-				// Use requestAnimationFrame for smoother scrolling
 				requestAnimationFrame(() => {
 					scrollRef.current?.scrollIntoView({ behavior: "smooth" });
 				});
@@ -369,41 +284,26 @@ export const StreamingMessage = ({
 		}
 	}, [wsMessage]);
 
-	// Determine which message to use - store or WebSocket
-	// CRITICAL: During active streaming, ALWAYS prioritize the WebSocket message
-	// for real-time updates, regardless of what's in the store
 	const isActivelyStreaming = useMemo(
 		() => status === "connected" && !isStoreMessageComplete,
 		[status, isStoreMessageComplete],
 	);
 
-	// Always use the WebSocket message when actively streaming
-	// This is the key change - we're not checking if wsMessage exists
-	// because we want to show real-time updates even if they're empty at first
-	// Use a ref to track the last valid message to prevent flickering
 	const lastValidMessageRef = useRef<AgentExecutionRecord | null>(null);
 
 	const message = useMemo(() => {
-		// If we're actively streaming, ALWAYS use the WebSocket message
 		if (isActivelyStreaming && wsMessage) {
 			lastValidMessageRef.current = wsMessage;
 			return wsMessage;
 		}
-
-		// If we're not streaming or the WebSocket message is null,
-		// fall back to the store message or the last valid message
 		const result =
 			storeMessage?.content || wsMessage || lastValidMessageRef.current;
-
-		// Update the last valid message ref if we have a result
 		if (result) {
 			lastValidMessageRef.current = result;
 		}
-
 		return result;
 	}, [isActivelyStreaming, wsMessage, storeMessage]);
 
-	// Stable reference to the connection controls - memoized to prevent unnecessary re-renders
 	const connectionControls = useMemo(
 		() => ({
 			connect,
@@ -413,17 +313,14 @@ export const StreamingMessage = ({
 		[connect, disconnect, refetch],
 	);
 
-	// Provide connection controls to parent component if needed
 	useEffect(() => {
 		if (onConnectionControls) {
 			onConnectionControls(connectionControls);
 		}
 	}, [onConnectionControls, connectionControls]);
 
-	// Memoized status indicator renderer - only re-render when status or showStatus changes
 	const statusIndicator = useMemo(() => {
 		if (!showStatus) return null;
-
 		switch (status) {
 			case "connecting":
 			case "reconnecting":
@@ -482,10 +379,8 @@ export const StreamingMessage = ({
 		}
 	}, [status, showStatus]);
 
-	// Memoize the loading indicator to prevent unnecessary re-renders
 	const loadingIndicator = useMemo(() => {
 		if (!isLoading && !isRefetching) return null;
-
 		return (
 			<Box sx={{ display: "flex", alignItems: "center", mt: 1 }}>
 				<CircularProgress size={16} sx={{ mr: 1 }} />
@@ -498,15 +393,12 @@ export const StreamingMessage = ({
 		);
 	}, [isLoading, isRefetching]);
 
-	// Memoize the message content to prevent unnecessary re-renders
 	const messageContent = useMemo(() => {
 		if (!message?.message) return null;
 		return <MarkdownRenderer content={message.message} />;
 	}, [message?.message]);
 
-	// Skeleton loader for when we're connected but waiting for first token
 	const skeletonLoader = useMemo(() => {
-		// Only show skeleton when we're connected but don't have a message yet
 		if (status === "connected" && !message?.message) {
 			return (
 				<Box sx={{ mt: 1, mb: 1 }}>
@@ -569,10 +461,8 @@ export const StreamingMessage = ({
 		return null;
 	}, [status, message?.message]);
 
-	// Memoize the error display to prevent unnecessary re-renders
 	const errorDisplay = useMemo(() => {
 		if (!error) return null;
-
 		return (
 			<Box
 				sx={{
@@ -589,7 +479,6 @@ export const StreamingMessage = ({
 		);
 	}, [error]);
 
-	// --- Attachments logic (copied from action-block.tsx) ---
 	const client = useMemo(() => {
 		return createLocalOperatorClient(apiConfig.baseUrl);
 	}, []);
@@ -634,25 +523,7 @@ export const StreamingMessage = ({
 		}
 	}, []);
 
-	// --- Collapsible technical details logic (copied from action-block.tsx) ---
 	const [isExpanded, setIsExpanded] = useState(false);
-	const [mounted, setMounted] = useState(false);
-	const mountedRef = useRef(false);
-
-	useEffect(() => {
-		if (!mountedRef.current) {
-			mountedRef.current = true;
-			const timer = setTimeout(() => {
-				setMounted(true);
-			}, 50);
-			return () => clearTimeout(timer);
-		}
-		return undefined;
-	}, []);
-
-	useEffect(() => {
-		setMounted(true);
-	}, []);
 
 	const handleExpand = () => setIsExpanded(true);
 	const handleCollapse = (e: React.MouseEvent) => {
@@ -688,25 +559,25 @@ export const StreamingMessage = ({
 	const getIcon = () => {
 		switch (message?.action) {
 			case "DONE":
-				return faCheck;
+				return <Check size={16} />;
 			case "ASK":
-				return faQuestion;
+				return <HelpCircle size={16} />;
 			case "CODE":
-				return faCode;
+				return <Code2 size={16} />;
 			case "WRITE":
-				return faPencilAlt;
+				return <Pencil size={14} />;
 			case "EDIT":
-				return faEdit;
+				return <PencilLine size={16} />;
 			case "READ":
-				return faBook;
+				return <BookOpen size={16} />;
 			case "DELEGATE":
-				return faShare;
+				return <Share2 size={16} />;
 			default:
 				return message?.execution_type === "plan"
-					? faLightbulb
+					? <Lightbulb size={16} />
 					: message?.execution_type === "action"
-						? faCode
-						: faCommentDots;
+						? <Code2 size={16} />
+						: <MessageSquare size={16} />;
 		}
 	};
 
@@ -735,8 +606,8 @@ export const StreamingMessage = ({
 						isExpanded={isExpanded}
 						onClick={isExpanded ? handleCollapse : handleExpand}
 					>
-						<BlockIcon className={mounted ? "animate" : ""}>
-							<FontAwesomeIcon icon={getIcon()} size="sm" />
+						<BlockIcon>
+							{getIcon()}
 						</BlockIcon>
 						<Box
 							sx={{
@@ -747,21 +618,18 @@ export const StreamingMessage = ({
 								alignItems: "center",
 							}}
 						>
-							<BlockTitle
-								variant="subtitle2"
-								className={mounted ? "animate" : ""}
-							>
+							<BlockTitle>
 								{getTitle()}
 							</BlockTitle>
 							{!isExpanded ? (
 								<Tooltip title="View Details">
-									<BlockContent className={mounted ? "animate" : ""}>
+									<BlockContent>
 										<ChevronDown size={22} style={{ marginTop: 4 }} />
 									</BlockContent>
 								</Tooltip>
 							) : (
 								<Tooltip title="Collapse Details">
-									<BlockContent className={mounted ? "animate" : ""}>
+									<BlockContent>
 										<ChevronUp size={22} style={{ marginTop: 4 }} />
 									</BlockContent>
 								</Tooltip>
@@ -769,13 +637,13 @@ export const StreamingMessage = ({
 						</Box>
 					</BlockHeader>
 					<Collapse in={isExpanded} timeout="auto">
-						<ExpandedContent className={isExpanded ? "animate" : ""}>
+						<ExpandedContent>
 							{message?.code && <CodeBlock code={message.code} isUser={false} />}
 							{message?.stdout && <OutputBlock output={message.stdout} isUser={false} />}
 							{message?.stderr && <ErrorBlock error={message.stderr} isUser={false} />}
 							{message?.logging && <LogBlock log={message.logging} isUser={false} />}
 							<CollapseButton onClick={handleCollapse}>
-								<FontAwesomeIcon icon={faChevronUp} size="sm" />
+								<ChevronUp size={18} />
 								<Typography variant="caption" sx={{ ml: 1 }}>
 									Collapse
 								</Typography>
@@ -856,11 +724,9 @@ export const StreamingMessage = ({
 			)}
 
 			{errorDisplay}
-			{/* Invisible element at the bottom for scroll targeting */}
 			<div ref={scrollRef} style={{ height: 1, width: 1, opacity: 0 }} />
 		</StreamingContainer>
 	);
 };
 
-// Add display name for debugging
 StreamingMessage.displayName = "StreamingMessage";
