@@ -1,5 +1,5 @@
-import { Box, CircularProgress, Typography, styled, alpha, Collapse, Tooltip } from "@mui/material";
-import type { AgentExecutionRecord, ExecutionType } from "@shared/api/local-operator";
+import { Box, CircularProgress, Typography, styled } from "@mui/material";
+import type { AgentExecutionRecord } from "@shared/api/local-operator";
 import { useStreamingMessage } from "@shared/hooks/use-streaming-message";
 import { useStreamingMessagesStore } from "@shared/store/streaming-messages-store";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -10,24 +10,10 @@ import { LogBlock } from "./log-block";
 import { FileAttachment } from "./file-attachment";
 import { ImageAttachment } from "./image-attachment";
 import { VideoAttachment } from "./video-attachment";
-import {
-	Check,
-	BookOpen,
-	Code2,
-	Pencil,
-	PencilLine,
-	Lightbulb,
-	Share2,
-	HelpCircle,
-	ChevronDown,
-	ChevronUp,
-  MessageSquare,
-} from "lucide-react";
 import { createLocalOperatorClient } from "@shared/api/local-operator";
 import { apiConfig } from "@shared/config";
 import { MarkdownRenderer } from "../markdown-renderer";
-
-// --- Styled components (adapted to match @action-block.tsx) ---
+import { ExpandableActionElement } from "../expandable-action-element";
 
 const StreamingContainer = styled(Box)(() => ({
 	position: "relative",
@@ -48,104 +34,6 @@ const StatusIndicator = styled(Box)(({ theme }) => ({
 	backgroundColor: theme.palette.background.paper,
 	boxShadow: theme.shadows[1],
 	zIndex: 1,
-}));
-
-const BlockHeader = styled(Box, {
-	shouldForwardProp: (prop) =>
-		prop !== "executionType" && prop !== "isUser" && prop !== "isExpanded",
-})<{ executionType: ExecutionType; isUser: boolean; isExpanded: boolean }>(
-	({ theme, isExpanded }) => ({
-		cursor: "pointer",
-		"&:hover": {
-			opacity: 0.9,
-		},
-		display: "flex",
-		alignItems: "center",
-		padding: "4px 12px 4px 8px",
-		backgroundColor: alpha(
-			theme.palette.common.black,
-			theme.palette.mode === "dark" ? 0.2 : 0.05,
-		),
-		borderRadius: isExpanded ? "8px 8px 0 0" : "8px",
-		borderColor: theme.palette.divider,
-		borderWidth: 1,
-		borderStyle: "solid",
-		borderBottomColor: isExpanded ? "transparent" : theme.palette.divider,
-		transition: `background-color 0.3s ${theme.transitions.easing.easeInOut}, 
-                   border-radius 0.3s ${theme.transitions.easing.easeInOut}`,
-	}),
-);
-
-const BlockIcon = styled(Box)(({ theme }) => ({
-	marginRight: 6,
-	width: 28,
-	height: 28,
-	flexShrink: 0,
-	borderRadius: "100%",
-	backgroundColor: alpha(
-		theme.palette.common.black,
-		theme.palette.mode === "dark" ? 0.2 : 0.05,
-	),
-	display: "flex",
-	alignItems: "center", 
-	justifyContent: "center",
-	color: theme.palette.icon.text,
-}));
-
-const BlockTitle = styled(Typography)(({ theme }) => ({
-	fontWeight: 500,
-	fontSize: "0.85rem",
-	color: theme.palette.text.secondary,
-}));
-
-const BlockContent = styled(Box)(({ theme }) => ({
-	fontSize: "0.85rem",
-	color: theme.palette.text.secondary,
-	overflow: "hidden",
-}));
-
-const ExpandedContent = styled(Box)(({ theme }) => ({
-	padding: "12px 16px",
-	backgroundColor: alpha(
-		theme.palette.common.black,
-		theme.palette.mode === "dark" ? 0.2 : 0.05,
-	),
-	borderBottomLeftRadius: 8,
-	borderBottomRightRadius: 8,
-	borderColor: theme.palette.divider,
-	borderWidth: 1,
-	borderStyle: "solid", 
-	borderTop: "none",
-	fontSize: "0.85rem",
-	color: theme.palette.text.primary,
-	marginLeft: 0,
-}));
-
-const CollapseButton = styled(Box)(({ theme }) => ({
-	display: "flex",
-	justifyContent: "center",
-	alignItems: "center",
-	padding: "8px",
-	marginTop: "8px",
-	cursor: "pointer",
-	borderRadius: "4px",
-	backgroundColor: alpha(
-		theme.palette.common.black,
-		theme.palette.mode === "dark" ? 0.10 : 0.03
-	),
-	transition: `all 0.2s ${theme.transitions.easing.easeInOut}`,
-	"&:hover": {
-		backgroundColor: alpha(
-			theme.palette.common.black,
-			theme.palette.mode === "dark" ? 0.15 : 0.07
-		),
-		transform: "translateY(-1px)",
-		boxShadow: `0 2px 4px ${alpha(theme.palette.common.black, 0.1)}`,
-	},
-	"&:active": {
-		transform: "translateY(0px)",
-		boxShadow: "none",
-	},
 }));
 
 /**
@@ -571,59 +459,10 @@ export const StreamingMessage = ({
 		setIsExpanded(false);
 	};
 
-	const getTitle = () => {
-		switch (message?.action) {
-			case "DONE":
-				return "Task Complete";
-			case "ASK":
-				return "Asking a Question";
-			case "CODE":
-				return "Executing Code";
-			case "WRITE":
-				return "Writing Content";
-			case "EDIT":
-				return "Editing Content";
-			case "READ":
-				return "Reading Content";
-			case "DELEGATE":
-				return "Delegating Task";
-			default:
-				return message?.execution_type === "plan"
-					? "Planning"
-					: message?.execution_type === "action"
-						? "Action"
-						: "Reflection";
-		}
-	};
-
-	const getIcon = () => {
-		switch (message?.action) {
-			case "DONE":
-				return <Check size={16} />;
-			case "ASK":
-				return <HelpCircle size={16} />;
-			case "CODE":
-				return <Code2 size={16} />;
-			case "WRITE":
-				return <Pencil size={14} />;
-			case "EDIT":
-				return <PencilLine size={16} />;
-			case "READ":
-				return <BookOpen size={16} />;
-			case "DELEGATE":
-				return <Share2 size={16} />;
-			default:
-				return message?.execution_type === "plan"
-					? <Lightbulb size={16} />
-					: message?.execution_type === "action"
-						? <Code2 size={16} />
-						: <MessageSquare size={16} />;
-		}
-	};
-
-	const hasCollapsibleContent =
+	const hasCollapsibleContent = Boolean(
 		message?.execution_type === "action" &&
-		(message?.code || message?.stdout || message?.stderr || message?.logging || message?.content || message?.replacements);
+		(message?.code || message?.stdout || message?.stderr || message?.logging || message?.content || message?.replacements)
+	);
 
 	return (
 		<StreamingContainer
@@ -637,63 +476,23 @@ export const StreamingMessage = ({
 			{messageContent}
 			{streamingLoader}
 
-			{/* Collapsible technical details block */}
-			{hasCollapsibleContent && (
-				<>
-					<BlockHeader
-						executionType={message?.execution_type || "action"}
-						isUser={false}
-						isExpanded={isExpanded}
-						onClick={isExpanded ? handleCollapse : handleExpand}
-					>
-						<BlockIcon>
-							{getIcon()}
-						</BlockIcon>
-						<Box
-							sx={{
-								flexGrow: 1,
-								position: "relative",
-								display: "flex",
-								justifyContent: "space-between",
-								alignItems: "center",
-							}}
-						>
-							<BlockTitle>
-								{getTitle()}
-							</BlockTitle>
-							{!isExpanded ? (
-								<Tooltip title="View Details">
-									<BlockContent>
-										<ChevronDown size={22} style={{ marginTop: 4 }} />
-									</BlockContent>
-								</Tooltip>
-							) : (
-								<Tooltip title="Collapse Details">
-									<BlockContent>
-										<ChevronUp size={22} style={{ marginTop: 4 }} />
-									</BlockContent>
-								</Tooltip>
-							)}
-						</Box>
-					</BlockHeader>
-					<Collapse in={isExpanded} timeout="auto">
-						<ExpandedContent>
-							{message?.code && <CodeBlock code={message.code} isUser={false} />}
-							{message?.content && <CodeBlock code={message.content} isUser={false} />}
-							{message?.replacements && <CodeBlock code={message.replacements} isUser={false} language="diff" />}
-							{message?.stdout && <OutputBlock output={message.stdout} isUser={false} />}
-							{message?.stderr && <ErrorBlock error={message.stderr} isUser={false} />}
-							{message?.logging && <LogBlock log={message.logging} isUser={false} />}
-							<CollapseButton onClick={handleCollapse}>
-								<ChevronUp size={18} />
-								<Typography variant="caption" sx={{ ml: 1 }}>
-									Collapse
-								</Typography>
-							</CollapseButton>
-						</ExpandedContent>
-					</Collapse>
-				</>
-			)}
+			{/* Use the shared expandable action element */}
+			<ExpandableActionElement
+				executionType={message?.execution_type || "action"}
+				action={message?.action}
+				isUser={false}
+				isExpanded={isExpanded}
+				onExpand={handleExpand}
+				onCollapse={handleCollapse}
+				hasCollapsibleContent={hasCollapsibleContent}
+			>
+				{message?.code && <CodeBlock code={message.code} isUser={false} />}
+				{message?.content && <CodeBlock code={message.content} isUser={false} />}
+				{message?.replacements && <CodeBlock code={message.replacements} isUser={false} language="diff" />}
+				{message?.stdout && <OutputBlock output={message.stdout} isUser={false} />}
+				{message?.stderr && <ErrorBlock error={message.stderr} isUser={false} />}
+				{message?.logging && <LogBlock log={message.logging} isUser={false} />}
+			</ExpandableActionElement>
 
 			{/* Attachments (images) */}
 			{message?.files && message.files.length > 0 && (
