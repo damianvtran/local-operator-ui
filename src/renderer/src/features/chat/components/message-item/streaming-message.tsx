@@ -9,6 +9,7 @@ import { CodeBlock } from "./code-block";
 import { ErrorBlock } from "./error-block";
 import { LogBlock } from "./log-block";
 import { OutputBlock } from "./output-block";
+import { getLanguageFromExtension } from "@shared/utils/file-utils";
 
 const StreamingContainer = styled(Box)(() => ({
 	position: "relative",
@@ -275,7 +276,21 @@ export const StreamingMessage = ({
 
 	const messageContent = useMemo(() => {
 		if (!message?.message) return null;
-		return <MarkdownRenderer content={message.message} />;
+		return (
+			<Box
+				sx={{
+					borderRadius: 2,
+					color: (theme) => theme.palette.text.primary,
+          width: "100%",
+            wordBreak: "break-word",
+            overflowWrap: "break-word",
+            position: "relative",
+            mb: 2,
+          }}
+        >
+				<MarkdownRenderer content={message.message} />
+			</Box>
+		);
 	}, [message?.message]);
 
 	const streamingLoader = useMemo(() => {
@@ -427,6 +442,8 @@ export const StreamingMessage = ({
 				message?.replacements),
 	);
 
+  const fileLanguage = getLanguageFromExtension(message?.file_path || "");
+
 	return (
 		<StreamingContainer
 			className={`${isStreamable ? "streamable-message" : ""} ${className || ""}`}
@@ -452,10 +469,11 @@ export const StreamingMessage = ({
 			>
 				{message?.code && <CodeBlock code={message.code} isUser={false} />}
 				{message?.content && (
-					<CodeBlock code={message.content} isUser={false} />
+					<CodeBlock header="Content" code={message.content} isUser={false} language={fileLanguage} />
 				)}
 				{message?.replacements && (
 					<CodeBlock
+						header="Replacements"
 						code={message.replacements}
 						isUser={false}
 						language="diff"

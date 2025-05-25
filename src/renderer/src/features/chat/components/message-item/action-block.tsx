@@ -15,6 +15,7 @@ import { ImageAttachment } from "./image-attachment";
 import { LogBlock } from "./log-block";
 import { OutputBlock } from "./output-block";
 import { VideoAttachment } from "./video-attachment";
+import { getLanguageFromExtension } from "@shared/utils/file-utils";
 
 /**
  * Props for the ActionBlock component
@@ -32,6 +33,7 @@ export type ActionBlockProps = {
 	logging?: string;
 	files?: string[]; // URLs to attachments
 	conversationId: string;
+	filePath?: string;
 	isLoading?: boolean;
 };
 
@@ -145,6 +147,7 @@ export const ActionBlock: FC<ActionBlockProps> = ({
 	stderr,
 	logging,
 	files,
+  filePath,
 	conversationId,
 	isLoading,
 }) => {
@@ -202,6 +205,8 @@ export const ActionBlock: FC<ActionBlockProps> = ({
 			(code || stdout || stderr || logging || replacements || content),
 	);
 
+  const fileLanguage = getLanguageFromExtension(filePath || "");
+
 	return (
 		<Box sx={{ position: "relative", width: "100%" }}>
 			{/* Message content displayed outside and above the collapsible block */}
@@ -234,9 +239,9 @@ export const ActionBlock: FC<ActionBlockProps> = ({
 			>
 				{/* Technical details for action messages */}
 				{code && <CodeBlock code={code} isUser={isUser} />}
-				{content && <CodeBlock code={content} isUser={isUser} />}
+				{content && <CodeBlock header="Content" code={content} isUser={isUser} language={fileLanguage} />}
 				{replacements && (
-					<CodeBlock code={replacements} isUser={isUser} language="diff" />
+					<CodeBlock header="Replacements" code={replacements} isUser={isUser} language="diff" />
 				)}
 				{stdout && <OutputBlock output={stdout} isUser={isUser} />}
 				{stderr && <ErrorBlock error={stderr} isUser={isUser} />}

@@ -12,6 +12,7 @@ export type CodeBlockProps = {
 	code: string;
 	isUser: boolean;
 	language?: string;
+	header?: string;
 };
 
 const CodeContainer = styled(Box)({
@@ -55,14 +56,15 @@ const SyntaxHighlighterStyles = createGlobalStyle`
  * @param code - The code string to display
  * @param isUser - Whether the code is from the user
  * @param language - Optional language for syntax highlighting
+ * @param header - Optional header for the code block
  * @returns The rendered code block or null if no code is provided
  */
-export const CodeBlock: FC<CodeBlockProps> = ({ code, language }) => {
+export const CodeBlock: FC<CodeBlockProps> = ({ code, language, header }) => {
 	if (!code) return null;
 
 	return (
 		<CodeContainer>
-			<SectionLabel variant="caption">Code</SectionLabel>
+			<SectionLabel variant="caption">{header || "Code"}</SectionLabel>
 			<SyntaxHighlighterStyles />
 			<BlockScrollWrapper>
 				<SyntaxHighlighter
