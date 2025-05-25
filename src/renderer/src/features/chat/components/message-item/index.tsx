@@ -262,7 +262,9 @@ export const MessageItem: FC<MessageItemProps> = memo(
 						isLastMessage={isLastMessage ?? false}
 					>
 						<ActionBlock
-							content={message.message ?? ""}
+							message={message.message ?? ""}
+							content={message.content}
+							replacements={message.replacements}
 							action={message.action}
 							executionType={message.execution_type || "action"}
 							isUser={isUser}

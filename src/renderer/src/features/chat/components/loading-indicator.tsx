@@ -1,10 +1,4 @@
 import { keyframes } from "@emotion/react";
-import {
-	faChevronDown,
-	faChevronUp,
-	faRobot,
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Avatar, Box, Button, Typography, styled } from "@mui/material";
 import type {
 	AgentExecutionRecord,
@@ -20,6 +14,7 @@ import { createGlobalStyle } from "styled-components";
 import { ErrorBlock } from "./message-item/error-block";
 import { LogBlock } from "./message-item/log-block";
 import { OutputBlock } from "./message-item/output-block";
+import { Bot, ChevronDown, ChevronUp } from "lucide-react";
 
 // Global style to ensure Roboto Mono is applied to syntax highlighter
 const SyntaxHighlighterStyles = createGlobalStyle`
@@ -376,7 +371,7 @@ export const LoadingIndicator: FC<{
 			{/* Invisible div for scroll reference */}
 			<div ref={containerRef} style={{ height: 0, width: 0 }} />
 			<AgentAvatar>
-				<FontAwesomeIcon icon={faRobot} size="sm" />
+				<Bot size={22} />
 			</AgentAvatar>
 
 			<ContentContainer>
@@ -396,11 +391,11 @@ export const LoadingIndicator: FC<{
 									size="small"
 									variant="text"
 									startIcon={
-										<FontAwesomeIcon
-											icon={isCodeExpanded ? faChevronUp : faChevronDown}
-											size="xs"
-											style={{ fontSize: "0.75rem" }}
-										/>
+										isCodeExpanded ? (
+											<ChevronUp size={14} strokeWidth={2} style={{ fontSize: "0.75rem" }} />
+										) : (
+											<ChevronDown size={14} strokeWidth={2} style={{ fontSize: "0.75rem" }} />
+										)
 									}
 								>
 									{isCodeExpanded ? "(Hide code)" : "(Show code)"}

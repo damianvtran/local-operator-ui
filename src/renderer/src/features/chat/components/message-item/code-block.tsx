@@ -10,6 +10,7 @@ import { createGlobalStyle } from "styled-components";
 export type CodeBlockProps = {
 	code: string;
 	isUser: boolean;
+	language?: string;
 };
 
 const CodeContainer = styled(Box)({
@@ -33,7 +34,7 @@ const SyntaxHighlighterStyles = createGlobalStyle`
 /**
  * Component for displaying code with syntax highlighting
  */
-export const CodeBlock: FC<CodeBlockProps> = ({ code }) => {
+export const CodeBlock: FC<CodeBlockProps> = ({ code, language }) => {
 	if (!code) return null;
 
 	return (
@@ -41,7 +42,7 @@ export const CodeBlock: FC<CodeBlockProps> = ({ code }) => {
 			<SectionLabel variant="caption">Code</SectionLabel>
 			<SyntaxHighlighterStyles />
 			<SyntaxHighlighter
-				language="python"
+				language={language || "python"}
 				style={atomOneDark}
 				customStyle={{
 					borderRadius: "8px",

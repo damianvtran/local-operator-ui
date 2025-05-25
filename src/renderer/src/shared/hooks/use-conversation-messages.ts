@@ -61,6 +61,11 @@ export const convertToMessage = (
 		is_complete: record.is_complete,
 		is_streamable: record.is_streamable,
 		conversation_id: conversationId, // Add the conversation ID
+		content: record.content,
+		file_path: record.file_path,
+		replacements: record.replacements,
+		agent: record.agent,
+		learnings: record.learnings,
 	};
 };
 
