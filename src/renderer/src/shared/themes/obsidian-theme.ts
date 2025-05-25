@@ -27,7 +27,6 @@ const obsidianTheme = createTheme({
 			contrastText: "#09090B", // Text on primary elements
 		},
 		secondary: {
-			// Secondary accent - a mid-grey
 			main: "#A1A1AA", // Shadcn zinc-500
 			dark: "#71717A", // Shadcn zinc-600
 			light: "#D4D4D8", // Shadcn zinc-400
@@ -35,7 +34,7 @@ const obsidianTheme = createTheme({
 		},
 		background: {
 			default: "#09090B", // Shadcn zinc-950 (very dark grey, near black)
-			paper: "#18181B", // Shadcn zinc-900 (slightly lighter for cards/surfaces)
+			paper: "#09090B", // Shadcn zinc-950 (very dark grey, near black)
 		},
 		text: {
 			primary: "#FAFAFA", // Shadcn zinc-50 (off-white)
@@ -44,7 +43,7 @@ const obsidianTheme = createTheme({
 		caption: "rgba(250, 250, 250, 0.7)", // Off-white with alpha
 		sidebar: {
 			background: "#09090B", // Main navigation sidebar
-			secondaryBackground: "#18181B", // Secondary sidebars (chat/agents)
+			secondaryBackground: "#09090B", // Secondary sidebars (chat/agents)
 			border: "rgba(250, 250, 250, 0.12)", // Light border (zinc-50 alpha)
 			itemHover: "rgba(250, 250, 250, 0.08)",
 			itemActive: "rgba(250, 250, 250, 0.15)", // Active item background
@@ -237,6 +236,13 @@ const obsidianTheme = createTheme({
 					"@media (min-width:1800px)": {
 						maxWidth: "1800px",
 					},
+				},
+			},
+		},
+		MuiPaper: {
+			styleOverrides: {
+				root: {
+					backgroundImage: "none",
 				},
 			},
 		},
