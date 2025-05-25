@@ -287,6 +287,7 @@ export const MessageItem: FC<MessageItemProps> = memo(
 							logging={currentExecution?.logging ?? message.logging}
 							files={message.files}
 							conversationId={conversationId}
+							filePath={message.file_path}
 							isLoading={isLastMessage && !!currentExecution}
 						/>
 					</MessagePaper>
