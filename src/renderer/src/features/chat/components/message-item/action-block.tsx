@@ -1,5 +1,4 @@
-import { Box, Collapse, Tooltip, Typography, alpha } from "@mui/material";
-import { styled } from "@mui/material/styles";
+import { Box } from "@mui/material";
 import { createLocalOperatorClient } from "@shared/api/local-operator";
 import type {
 	ActionType,
@@ -7,24 +6,12 @@ import type {
 } from "@shared/api/local-operator/types";
 import { apiConfig } from "@shared/config";
 import {
-	ChevronDown,
-	ChevronUp,
-	Check,
-	HelpCircle,
-	Code2,
-	Pencil,
-	Book,
-	Share2,
-	Lightbulb,
-	MessageSquare,
-	Edit2,
-} from "lucide-react";
-import {
 	type FC,
 	useCallback,
 	useMemo,
 	useState,
 } from "react";
+import { ExpandableActionElement } from "../expandable-action-element";
 import { MarkdownRenderer } from "../markdown-renderer";
 import { CodeBlock } from "./code-block";
 import { ErrorBlock } from "./error-block";
@@ -51,133 +38,6 @@ export type ActionBlockProps = {
 	files?: string[]; // URLs to attachments
 	conversationId: string;
 };
-
-/**
- * Styled container for the background block with mount animation
- * Uses keyframes for a smooth entrance animation
- */
-const BlockContainer = styled(Box)(() => ({
-	width: "100%",
-}));
-
-/**
- * Styled header for the background block
- * Includes hover effect and adapts to expanded state
- */
-const BlockHeader = styled(Box, {
-	shouldForwardProp: (prop) =>
-		prop !== "executionType" && prop !== "isUser" && prop !== "isExpanded",
-})<{ executionType: ExecutionType; isUser: boolean; isExpanded: boolean }>(
-	({ theme, isExpanded }) => ({
-		cursor: "pointer",
-		"&:hover": {
-			opacity: 0.9,
-		},
-		display: "flex",
-		alignItems: "center",
-		padding: "4px 12px 4px 8px",
-		backgroundColor: alpha(
-			theme.palette.common.black,
-			theme.palette.mode === "dark" ? 0.2 : 0.05,
-		),
-		borderRadius: isExpanded ? "8px 8px 0 0" : "8px",
-		borderColor: theme.palette.divider,
-		borderWidth: 1,
-		borderStyle: "solid",
-		borderBottomColor: isExpanded ? "transparent" : theme.palette.divider,
-		transition: `background-color 0.3s ${theme.transitions.easing.easeInOut}, 
-                   border-radius 0.3s ${theme.transitions.easing.easeInOut}`,
-	}),
-);
-
-/**
- * Styled icon container with subtle animation
- * Animates with a slight rotation and scale effect
- */
-const BlockIcon = styled(Box)(({ theme }) => ({
-	marginRight: 6,
-	width: 28,
-	height: 28,
-	flexShrink: 0,
-	borderRadius: "100%",
-	backgroundColor: alpha(
-		theme.palette.common.black,
-		theme.palette.mode === "dark" ? 0.2 : 0.05,
-	),
-	display: "flex",
-	alignItems: "center",
-	justifyContent: "center",
-	color: theme.palette.icon.text,
-}));
-
-/**
- * Styled title with fade-in animation
- */
-const BlockTitle = styled(Typography)(({ theme }) => ({
-	fontWeight: 500,
-	fontSize: "0.85rem",
-	color: theme.palette.text.secondary,
-}));
-
-/**
- * Styled content with fade-in animation
- */
-const BlockContent = styled(Box)(({ theme }) => ({
-	fontSize: "0.85rem",
-	color: theme.palette.text.secondary,
-	overflow: "hidden",
-}));
-
-/**
- * Styled expanded content with subtle animation
- * Animates the border and background when expanded
- */
-const ExpandedContent = styled(Box)(({ theme }) => ({
-	padding: "12px 16px",
-	backgroundColor: alpha(
-		theme.palette.common.black,
-		theme.palette.mode === "dark" ? 0.2 : 0.05,
-	),
-	borderBottomLeftRadius: 8,
-	borderBottomRightRadius: 8,
-	borderColor: theme.palette.divider,
-	borderWidth: 1,
-	borderStyle: "solid",
-	borderTop: "none",
-	fontSize: "0.85rem",
-	color: theme.palette.text.primary,
-	marginLeft: 0,
-}));
-
-/**
- * Styled collapse button with hover animation
- */
-const CollapseButton = styled(Box)(({ theme }) => ({
-	display: "flex",
-	justifyContent: "center",
-	alignItems: "center",
-	padding: "8px",
-	marginTop: "8px",
-	cursor: "pointer",
-	borderRadius: "4px",
-	backgroundColor: alpha(
-		theme.palette.common.black,
-		theme.palette.mode === "dark" ? 0.1 : 0.03,
-	),
-	transition: `all 0.2s ${theme.transitions.easing.easeInOut}`,
-	"&:hover": {
-		backgroundColor: alpha(
-			theme.palette.common.black,
-			theme.palette.mode === "dark" ? 0.15 : 0.05,
-		),
-		transform: "translateY(-1px)",
-		boxShadow: `0 2px 4px ${alpha(theme.palette.common.black, 0.1)}`,
-	},
-	"&:active": {
-		transform: "translateY(0px)",
-		boxShadow: "none",
-	},
-}));
 
 /**
  * Checks if a file is a web URL
@@ -302,57 +162,6 @@ export const ActionBlock: FC<ActionBlockProps> = ({
 		setIsExpanded(false);
 	};
 
-	const getTitle = () => {
-		switch (action) {
-			case "DONE":
-				return "Task Complete";
-			case "ASK":
-				return "Asking a Question";
-			case "CODE":
-				return "Executing Code";
-			case "WRITE":
-				return "Writing Content";
-			case "EDIT":
-				return "Editing Content";
-			case "READ":
-				return "Reading Content";
-			case "DELEGATE":
-				return "Delegating Task";
-			default:
-				return executionType === "plan"
-					? "Planning"
-					: executionType === "action"
-						? "Action"
-						: "Reflection";
-		}
-	};
-
-	// Map action/executionType to lucide-react icon component
-	const getIcon = () => {
-		switch (action) {
-			case "DONE":
-				return <Check size={16} />;
-			case "ASK":
-				return <HelpCircle size={16} />;
-			case "CODE":
-				return <Code2 size={16} />;
-			case "WRITE":
-				return <Pencil size={14} />;
-			case "EDIT":
-				return <Edit2 size={16} />;
-			case "READ":
-				return <Book size={16} />;
-			case "DELEGATE":
-				return <Share2 size={16} />;
-			default:
-				return executionType === "plan"
-					? <Lightbulb size={16} />
-					: executionType === "action"
-						? <Code2 size={16} />
-						: <MessageSquare size={16} />;
-		}
-	};
-
 	// Create a Local Operator client using the API config
 	const client = useMemo(() => {
 		return createLocalOperatorClient(apiConfig.baseUrl);
@@ -387,16 +196,16 @@ export const ActionBlock: FC<ActionBlockProps> = ({
 			}
 		} catch (error) {
 			console.error("Error opening file:", error);
-			// Could add a toast notification here to inform the user
 		}
 	}, []);
 
 	// Determine if we have any collapsible technical content
-	const hasCollapsibleContent =
-		executionType === "action" && (code || stdout || stderr || logging || replacements || content);
+	const hasCollapsibleContent = Boolean(
+		executionType === "action" && (code || stdout || stderr || logging || replacements || content)
+	);
 
 	return (
-		<BlockContainer sx={{ position: "relative" }}>
+		<Box sx={{ position: "relative", width: "100%" }}>
 			{/* Message content displayed outside and above the collapsible block */}
 			{message && (
 				<Box
@@ -414,82 +223,30 @@ export const ActionBlock: FC<ActionBlockProps> = ({
 				</Box>
 			)}
 
-			{/* Collapsible block for technical details only */}
-			{hasCollapsibleContent && (
-				<>
-					<BlockHeader
-						executionType={executionType}
+			{/* Use the shared expandable action element */}
+			<ExpandableActionElement
+				executionType={executionType}
+				action={action}
+				isUser={isUser}
+				isExpanded={isExpanded}
+				onExpand={handleExpand}
+				onCollapse={handleCollapse}
+				hasCollapsibleContent={hasCollapsibleContent}
+			>
+				{/* Technical details for action messages */}
+				{code && <CodeBlock code={code} isUser={isUser} />}
+				{content && <CodeBlock code={content} isUser={isUser} />}
+				{replacements && (
+					<CodeBlock
+						code={replacements}
 						isUser={isUser}
-						isExpanded={isExpanded}
-						onClick={isExpanded ? handleCollapse : handleExpand}
-					>
-						<BlockIcon>
-							{getIcon()}
-						</BlockIcon>
-						<Box
-							sx={{
-								flexGrow: 1,
-								position: "relative",
-								display: "flex",
-								justifyContent: "space-between",
-								alignItems: "center",
-							}}
-						>
-							<BlockTitle variant="subtitle2">
-								{getTitle()}
-							</BlockTitle>
-							{!isExpanded ? (
-								<Tooltip title="View Details">
-									<BlockContent>
-										<ChevronDown size={18} style={{ marginTop: 6 }} />
-									</BlockContent>
-								</Tooltip>
-							) : (
-								<Tooltip title="Collapse Details">
-									<BlockContent>
-										<ChevronUp size={18} style={{ marginTop: 6 }} />
-									</BlockContent>
-								</Tooltip>
-							)}
-						</Box>
-					</BlockHeader>
-					<Collapse in={isExpanded} timeout="auto">
-						<ExpandedContent>
-							{/* Technical details for action messages */}
-							{/* Render code with syntax highlighting */}
-							{code && <CodeBlock code={code} isUser={isUser} />}
-
-							{/* Render content */}
-							{content && <CodeBlock code={content} isUser={isUser} />}
-
-							{/* Render replacements */}
-							{replacements && (
-								<CodeBlock
-									code={replacements}
-									isUser={isUser}
-									language="diff"
-								/>
-							)}
-
-							{/* Render stdout */}
-							{stdout && <OutputBlock output={stdout} isUser={isUser} />}
-
-							{/* Render stderr */}
-							{stderr && <ErrorBlock error={stderr} isUser={isUser} />}
-
-							{/* Render logging */}
-							{logging && <LogBlock log={logging} isUser={isUser} />}
-
-							<CollapseButton onClick={handleCollapse}>
-								<ChevronUp size={16} />
-								<Typography variant="caption" sx={{ ml: 1 }}>
-									Collapse
-								</Typography>
-							</CollapseButton>
-						</ExpandedContent>
-					</Collapse>
-				</>
-			)}
+						language="diff"
+					/>
+				)}
+				{stdout && <OutputBlock output={stdout} isUser={isUser} />}
+				{stderr && <ErrorBlock error={stderr} isUser={isUser} />}
+				{logging && <LogBlock log={logging} isUser={isUser} />}
+			</ExpandableActionElement>
 
 			{/* Render image attachments if any - always visible */}
 			{files && files.length > 0 && (
@@ -538,6 +295,6 @@ export const ActionBlock: FC<ActionBlockProps> = ({
 						))}
 				</Box>
 			)}
-		</BlockContainer>
+		</Box>
 	);
 };
