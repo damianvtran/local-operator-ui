@@ -5,8 +5,8 @@ import type {
 	JobStatus,
 } from "@shared/api/local-operator/types";
 import { useStreamingMessagesStore } from "@shared/store/streaming-messages-store";
-import type { FC } from "react";
 import { Bot } from "lucide-react";
+import type { FC } from "react";
 
 // Define the animations
 const dotAnimation = keyframes`
@@ -83,7 +83,6 @@ const Dot = styled("span")<{ delay: number }>(({ theme, delay }) => ({
 	animation: `${dotAnimation} 1.4s infinite ease-in-out`,
 	animationDelay: `${delay}s`,
 }));
-
 
 /**
  * Get a user-friendly text representation of a job status
@@ -181,7 +180,6 @@ export const LoadingIndicator: FC<{
 	currentExecution?: AgentExecutionRecord | null;
 	conversationId?: string;
 }> = ({ status, currentExecution }) => {
-
 	const { getStreamingMessage } = useStreamingMessagesStore();
 	const streamingMessage = getStreamingMessage(currentExecution?.id || "");
 	const isStreaming = !!streamingMessage && !streamingMessage.isComplete;

@@ -224,7 +224,7 @@ export const MessagesView: FC<MessagesViewProps> = ({
 											}}
 											conversationId={conversationId}
 											currentExecution={
-												(index === messages.length - 1 && currentExecution)
+												index === messages.length - 1 && currentExecution
 													? currentExecution
 													: undefined
 											}

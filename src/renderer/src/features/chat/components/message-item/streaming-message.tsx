@@ -3,12 +3,12 @@ import type { AgentExecutionRecord } from "@shared/api/local-operator";
 import { useStreamingMessage } from "@shared/hooks/use-streaming-message";
 import { useStreamingMessagesStore } from "@shared/store/streaming-messages-store";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ExpandableActionElement } from "../expandable-action-element";
+import { MarkdownRenderer } from "../markdown-renderer";
 import { CodeBlock } from "./code-block";
-import { OutputBlock } from "./output-block";
 import { ErrorBlock } from "./error-block";
 import { LogBlock } from "./log-block";
-import { MarkdownRenderer } from "../markdown-renderer";
-import { ExpandableActionElement } from "../expandable-action-element";
+import { OutputBlock } from "./output-block";
 
 const StreamingContainer = styled(Box)(() => ({
 	position: "relative",
@@ -281,104 +281,111 @@ export const StreamingMessage = ({
 	const streamingLoader = useMemo(() => {
 		if (status === "connected" && !message?.message) {
 			return (
-        <Box sx={{ width: "100%", display: "flex", justifyContent: "flex-start" }}>
-          <Box 
-            sx={{ 
-              mt: 1, 
-              mb: 1, 
-              display: "flex", 
-              justifyContent: "center", 
-              alignItems: "center",
-              height: 30,
-              width: 30,
-              position: "relative",
-              "@keyframes outerPulse": {
-                "0%": { 
-                  transform: "scale(1)",
-                  opacity: 0.8,
-                },
-                "50%": { 
-                  transform: "scale(1.1)",
-                  opacity: 0.4,
-                },
-                "100%": { 
-                  transform: "scale(1)",
-                  opacity: 0.8,
-                },
-              },
-              "@keyframes innerRotate": {
-                "0%": { transform: "rotate(0deg)" },
-                "100%": { transform: "rotate(360deg)" },
-              },
-              "@keyframes middleRotate": {
-                "0%": { transform: "rotate(0deg)" },
-                "100%": { transform: "rotate(-360deg)" },
-              },
-              "@keyframes glow": {
-                "0%": { 
-                  boxShadow: (theme) => `0 0 5px ${theme.palette.primary.main}40`,
-                },
-                "50%": { 
-                  boxShadow: (theme) => `0 0 20px ${theme.palette.primary.main}80, 0 0 30px ${theme.palette.primary.main}40`,
-                },
-                "100%": { 
-                  boxShadow: (theme) => `0 0 5px ${theme.palette.primary.main}40`,
-                },
-              },
-            }}
-          >
-            {/* Outer pulsing ring */}
-            <Box
-              sx={{
-                position: "absolute",
-                width: 30,
-                height: 30,
-                borderRadius: "50%",
-                border: (theme) => `2px solid ${theme.palette.primary.main}60`,
-                animation: "outerPulse 2s ease-in-out infinite",
-              }}
-            />
-            
-            {/* Middle rotating ring */}
-            <Box
-              sx={{
-                position: "absolute",
-                width: 22,
-                height: 22,
-                borderRadius: "50%",
-                border: () => "2px solid transparent",
-                borderTop: (theme) => `2px solid ${theme.palette.primary.main}`,
-                borderRight: (theme) => `2px solid ${theme.palette.primary.main}80`,
-                animation: "middleRotate 1.5s linear infinite",
-              }}
-            />
-            
-            {/* Inner fast rotating ring */}
-            <Box
-              sx={{
-                position: "absolute",
-                width: 15,
-                height: 15,
-                borderRadius: "50%",
-                border: () => "2px solid transparent",
-                borderTop: (theme) => `2px solid ${theme.palette.primary.main}`,
-                borderLeft: (theme) => `2px solid ${theme.palette.primary.main}60`,
-                animation: "innerRotate 1s linear infinite",
-              }}
-            />
-            
-            {/* Central glowing core */}
-            <Box
-              sx={{
-                width: 6,
-                height: 6,
-                borderRadius: "50%",
-                backgroundColor: (theme) => theme.palette.primary.main,
-                animation: "glow 2s ease-in-out infinite",
-              }}
-            />
-          </Box>
-        </Box>
+				<Box
+					sx={{ width: "100%", display: "flex", justifyContent: "flex-start" }}
+				>
+					<Box
+						sx={{
+							mt: 1,
+							mb: 1,
+							display: "flex",
+							justifyContent: "center",
+							alignItems: "center",
+							height: 30,
+							width: 30,
+							position: "relative",
+							"@keyframes outerPulse": {
+								"0%": {
+									transform: "scale(1)",
+									opacity: 0.8,
+								},
+								"50%": {
+									transform: "scale(1.1)",
+									opacity: 0.4,
+								},
+								"100%": {
+									transform: "scale(1)",
+									opacity: 0.8,
+								},
+							},
+							"@keyframes innerRotate": {
+								"0%": { transform: "rotate(0deg)" },
+								"100%": { transform: "rotate(360deg)" },
+							},
+							"@keyframes middleRotate": {
+								"0%": { transform: "rotate(0deg)" },
+								"100%": { transform: "rotate(-360deg)" },
+							},
+							"@keyframes glow": {
+								"0%": {
+									boxShadow: (theme) =>
+										`0 0 5px ${theme.palette.primary.main}40`,
+								},
+								"50%": {
+									boxShadow: (theme) =>
+										`0 0 20px ${theme.palette.primary.main}80, 0 0 30px ${theme.palette.primary.main}40`,
+								},
+								"100%": {
+									boxShadow: (theme) =>
+										`0 0 5px ${theme.palette.primary.main}40`,
+								},
+							},
+						}}
+					>
+						{/* Outer pulsing ring */}
+						<Box
+							sx={{
+								position: "absolute",
+								width: 30,
+								height: 30,
+								borderRadius: "50%",
+								border: (theme) => `2px solid ${theme.palette.primary.main}60`,
+								animation: "outerPulse 2s ease-in-out infinite",
+							}}
+						/>
+
+						{/* Middle rotating ring */}
+						<Box
+							sx={{
+								position: "absolute",
+								width: 22,
+								height: 22,
+								borderRadius: "50%",
+								border: () => "2px solid transparent",
+								borderTop: (theme) => `2px solid ${theme.palette.primary.main}`,
+								borderRight: (theme) =>
+									`2px solid ${theme.palette.primary.main}80`,
+								animation: "middleRotate 1.5s linear infinite",
+							}}
+						/>
+
+						{/* Inner fast rotating ring */}
+						<Box
+							sx={{
+								position: "absolute",
+								width: 15,
+								height: 15,
+								borderRadius: "50%",
+								border: () => "2px solid transparent",
+								borderTop: (theme) => `2px solid ${theme.palette.primary.main}`,
+								borderLeft: (theme) =>
+									`2px solid ${theme.palette.primary.main}60`,
+								animation: "innerRotate 1s linear infinite",
+							}}
+						/>
+
+						{/* Central glowing core */}
+						<Box
+							sx={{
+								width: 6,
+								height: 6,
+								borderRadius: "50%",
+								backgroundColor: (theme) => theme.palette.primary.main,
+								animation: "glow 2s ease-in-out infinite",
+							}}
+						/>
+					</Box>
+				</Box>
 			);
 		}
 		return null;
@@ -412,7 +419,12 @@ export const StreamingMessage = ({
 
 	const hasCollapsibleContent = Boolean(
 		message?.execution_type === "action" &&
-		(message?.code || message?.stdout || message?.stderr || message?.logging || message?.content || message?.replacements)
+			(message?.code ||
+				message?.stdout ||
+				message?.stderr ||
+				message?.logging ||
+				message?.content ||
+				message?.replacements),
 	);
 
 	return (
@@ -436,13 +448,25 @@ export const StreamingMessage = ({
 				onExpand={handleExpand}
 				onCollapse={handleCollapse}
 				hasCollapsibleContent={hasCollapsibleContent}
-        isLoading={isActivelyStreaming}
+				isLoading={isActivelyStreaming}
 			>
 				{message?.code && <CodeBlock code={message.code} isUser={false} />}
-				{message?.content && <CodeBlock code={message.content} isUser={false} />}
-				{message?.replacements && <CodeBlock code={message.replacements} isUser={false} language="diff" />}
-				{message?.stdout && <OutputBlock output={message.stdout} isUser={false} />}
-				{message?.stderr && <ErrorBlock error={message.stderr} isUser={false} />}
+				{message?.content && (
+					<CodeBlock code={message.content} isUser={false} />
+				)}
+				{message?.replacements && (
+					<CodeBlock
+						code={message.replacements}
+						isUser={false}
+						language="diff"
+					/>
+				)}
+				{message?.stdout && (
+					<OutputBlock output={message.stdout} isUser={false} />
+				)}
+				{message?.stderr && (
+					<ErrorBlock error={message.stderr} isUser={false} />
+				)}
 				{message?.logging && <LogBlock log={message.logging} isUser={false} />}
 			</ExpandableActionElement>
 
