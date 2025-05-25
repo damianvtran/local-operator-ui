@@ -21,7 +21,6 @@ type MessagesViewProps = {
 	currentExecution?: AgentExecutionRecord | null;
 	messagesContainerRef: RefObject<HTMLDivElement>;
 	messagesEndRef: RefObject<HTMLDivElement>;
-	scrollToBottom?: () => void;
 	refetch?: () => void;
 	conversationId: string;
 };
@@ -166,7 +165,6 @@ export const MessagesView: FC<MessagesViewProps> = ({
 	currentExecution,
 	messagesContainerRef,
 	messagesEndRef,
-	scrollToBottom,
 	refetch,
 	conversationId,
 }) => {
@@ -246,7 +244,6 @@ export const MessagesView: FC<MessagesViewProps> = ({
 										status={jobStatus}
 										agentName={agentName}
 										currentExecution={currentExecution}
-										scrollToBottom={scrollToBottom}
 										conversationId={conversationId}
 									/>
 								)}
@@ -260,7 +257,6 @@ export const MessagesView: FC<MessagesViewProps> = ({
 											status={jobStatus}
 											agentName={agentName}
 											currentExecution={currentExecution}
-											scrollToBottom={scrollToBottom}
 											conversationId={conversationId}
 										/>
 									</FullScreenCenteredContainer>

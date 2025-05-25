@@ -68,7 +68,6 @@ type ChatContentProps = {
 	currentExecution?: AgentExecutionRecord | null;
 	messagesContainerRef: React.RefObject<HTMLDivElement>;
 	messagesEndRef: React.RefObject<HTMLDivElement>;
-	scrollToBottom: () => void;
 	rawInfoContent: string;
 	onSendMessage: (content: string, attachments: string[]) => void;
 	currentJobId: string | null;
@@ -118,7 +117,6 @@ export const ChatContent: FC<ChatContentProps> = ({
 	currentExecution,
 	messagesContainerRef,
 	messagesEndRef,
-	scrollToBottom,
 	rawInfoContent,
 	onSendMessage,
 	currentJobId,
@@ -201,7 +199,6 @@ export const ChatContent: FC<ChatContentProps> = ({
 							currentExecution={currentExecution}
 							messagesContainerRef={messagesContainerRef}
 							messagesEndRef={messagesEndRef}
-							scrollToBottom={scrollToBottom}
 							refetch={refetch}
 							conversationId={agentId}
 						/>
@@ -220,7 +217,6 @@ export const ChatContent: FC<ChatContentProps> = ({
 							currentJobId={currentJobId}
 							onCancelJob={onCancelJob}
 							isFarFromBottom={isFarFromBottom}
-							scrollToBottom={scrollToBottom}
 							isChatUtilitiesExpanded={isChatUtilitiesExpanded}
 						/>
 					)}
