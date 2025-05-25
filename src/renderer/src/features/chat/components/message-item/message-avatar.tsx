@@ -1,7 +1,7 @@
 import { Avatar } from "@mui/material";
 import { styled } from "@mui/material/styles";
+import { Bot, User } from "lucide-react";
 import type { FC } from "react";
-import { User, Bot } from "lucide-react";
 
 /**
  * Props for the MessageAvatar component

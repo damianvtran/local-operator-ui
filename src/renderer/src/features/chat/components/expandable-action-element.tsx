@@ -1,18 +1,28 @@
-import { Box, Collapse, Tooltip, Typography, alpha, CircularProgress } from "@mui/material";
-import { styled } from "@mui/material/styles";
-import type { ActionType, ExecutionType } from "@shared/api/local-operator/types";
 import {
+	Box,
+	CircularProgress,
+	Collapse,
+	Tooltip,
+	Typography,
+	alpha,
+} from "@mui/material";
+import { styled } from "@mui/material/styles";
+import type {
+	ActionType,
+	ExecutionType,
+} from "@shared/api/local-operator/types";
+import {
+	Book,
+	Check,
 	ChevronDown,
 	ChevronUp,
-	Check,
-	HelpCircle,
 	Code2,
-	Pencil,
-	Book,
-	Share2,
+	HelpCircle,
 	Lightbulb,
 	MessageSquare,
+	Pencil,
 	PencilLine,
+	Share2,
 } from "lucide-react";
 import type { FC, ReactNode } from "react";
 
@@ -167,7 +177,10 @@ const CollapseButton = styled(Box)(({ theme }) => ({
 /**
  * Gets the appropriate title based on action and execution type
  */
-const getTitle = (action?: ActionType, executionType?: ExecutionType): string => {
+const getTitle = (
+	action?: ActionType,
+	executionType?: ExecutionType,
+): string => {
 	switch (action) {
 		case "DONE":
 			return "Task Complete";
@@ -195,7 +208,10 @@ const getTitle = (action?: ActionType, executionType?: ExecutionType): string =>
 /**
  * Gets the appropriate icon based on action and execution type
  */
-const getIcon = (action?: ActionType, executionType?: ExecutionType): ReactNode => {
+const getIcon = (
+	action?: ActionType,
+	executionType?: ExecutionType,
+): ReactNode => {
 	switch (action) {
 		case "DONE":
 			return <Check size={16} />;
@@ -212,11 +228,13 @@ const getIcon = (action?: ActionType, executionType?: ExecutionType): ReactNode 
 		case "DELEGATE":
 			return <Share2 size={16} />;
 		default:
-			return executionType === "plan"
-				? <Lightbulb size={16} />
-				: executionType === "action"
-					? <Code2 size={16} />
-					: <MessageSquare size={16} />;
+			return executionType === "plan" ? (
+				<Lightbulb size={16} />
+			) : executionType === "action" ? (
+				<Code2 size={16} />
+			) : (
+				<MessageSquare size={16} />
+			);
 	}
 };
 

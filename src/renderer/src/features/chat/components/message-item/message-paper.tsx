@@ -36,7 +36,7 @@ type MessagePaperProps = {
 	message?: Message;
 	onMessageComplete?: () => void;
 	isLastMessage: boolean;
-  isJobRunning: boolean;
+	isJobRunning: boolean;
 };
 
 /**
@@ -52,7 +52,7 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 	message,
 	onMessageComplete,
 	isLastMessage,
-  isJobRunning,
+	isJobRunning,
 }) => {
 	const theme = useTheme();
 
@@ -102,7 +102,7 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 	const messageStyles = useMemo(
 		() => ({
 			borderRadius: 2,
-      padding: 0,
+			padding: 0,
 			color: theme.palette.text.primary,
 			width: "calc(100% - 52px)", // Take full width minus padding
 			wordBreak: "break-word",

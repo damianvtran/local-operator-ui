@@ -1,6 +1,6 @@
-import { Copy } from "lucide-react";
 import { Box, IconButton, Tooltip } from "@mui/material";
 import { alpha, styled } from "@mui/material/styles";
+import { Copy } from "lucide-react";
 import type { FC } from "react";
 import { useState } from "react";
 
@@ -76,10 +76,7 @@ export const MessageControls: FC<MessageControlsProps> = ({
 			{/* Only render the wrapper if there are buttons to show */}
 			{showCopyButton && (
 				<ControlsWrapper>
-					<Tooltip
-						title={copied ? "Copied!" : "Copy message"}
-						placement="top"
-					>
+					<Tooltip title={copied ? "Copied!" : "Copy message"} placement="top">
 						<StyledIconButton size="small" onClick={handleCopy}>
 							<Copy size={16} />
 						</StyledIconButton>

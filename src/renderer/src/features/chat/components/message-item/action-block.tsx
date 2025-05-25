@@ -5,12 +5,7 @@ import type {
 	ExecutionType,
 } from "@shared/api/local-operator/types";
 import { apiConfig } from "@shared/config";
-import {
-	type FC,
-	useCallback,
-	useMemo,
-	useState,
-} from "react";
+import { type FC, useCallback, useMemo, useState } from "react";
 import { ExpandableActionElement } from "../expandable-action-element";
 import { MarkdownRenderer } from "../markdown-renderer";
 import { CodeBlock } from "./code-block";
@@ -151,7 +146,7 @@ export const ActionBlock: FC<ActionBlockProps> = ({
 	logging,
 	files,
 	conversationId,
-  isLoading,
+	isLoading,
 }) => {
 	const [isExpanded, setIsExpanded] = useState(false);
 
@@ -203,7 +198,8 @@ export const ActionBlock: FC<ActionBlockProps> = ({
 
 	// Determine if we have any collapsible technical content
 	const hasCollapsibleContent = Boolean(
-		executionType === "action" && (code || stdout || stderr || logging || replacements || content)
+		executionType === "action" &&
+			(code || stdout || stderr || logging || replacements || content),
 	);
 
 	return (
@@ -240,11 +236,7 @@ export const ActionBlock: FC<ActionBlockProps> = ({
 				{code && <CodeBlock code={code} isUser={isUser} />}
 				{content && <CodeBlock code={content} isUser={isUser} />}
 				{replacements && (
-					<CodeBlock
-						code={replacements}
-						isUser={isUser}
-						language="diff"
-					/>
+					<CodeBlock code={replacements} isUser={isUser} language="diff" />
 				)}
 				{stdout && <OutputBlock output={stdout} isUser={isUser} />}
 				{stderr && <ErrorBlock error={stderr} isUser={isUser} />}
