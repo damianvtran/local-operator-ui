@@ -1,17 +1,3 @@
-import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
-import {
-	faBook,
-	faCheck,
-	faChevronUp,
-	faCode,
-	faCommentDots,
-	faEdit,
-	faLightbulb,
-	faPencilAlt,
-	faQuestion,
-	faShare,
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, Collapse, Tooltip, Typography, alpha } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import { createLocalOperatorClient } from "@shared/api/local-operator";
@@ -20,7 +6,19 @@ import type {
 	ExecutionType,
 } from "@shared/api/local-operator/types";
 import { apiConfig } from "@shared/config";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import {
+	ChevronDown,
+	ChevronUp,
+	Check,
+	HelpCircle,
+	Code2,
+	Pencil,
+	Book,
+	Share2,
+	Lightbulb,
+	MessageSquare,
+	Edit2,
+} from "lucide-react";
 import {
 	type FC,
 	useCallback,
@@ -82,7 +80,7 @@ const BlockHeader = styled(Box, {
 		},
 		display: "flex",
 		alignItems: "center",
-		padding: "4px 22px 4px 12px",
+		padding: "4px 12px 4px 8px",
 		backgroundColor: alpha(
 			theme.palette.common.black,
 			theme.palette.mode === "dark" ? 0.2 : 0.05,
@@ -102,9 +100,9 @@ const BlockHeader = styled(Box, {
  * Animates with a slight rotation and scale effect
  */
 const BlockIcon = styled(Box)(({ theme }) => ({
-	marginRight: 8,
-	width: 40,
-	height: 40,
+	marginRight: 6,
+	width: 28,
+	height: 28,
 	flexShrink: 0,
 	borderRadius: "100%",
 	backgroundColor: alpha(
@@ -116,18 +114,6 @@ const BlockIcon = styled(Box)(({ theme }) => ({
 	justifyContent: "center",
 	color: theme.palette.icon.text,
 	transform: "scale(1) rotate(0deg)",
-	transition: `transform 0.4s ${theme.transitions.easing.easeOut}`,
-	"&.animate": {
-		animation: "iconAppear 0.4s forwards",
-	},
-	"@keyframes iconAppear": {
-		"0%": {
-			transform: "scale(0.8) rotate(-10deg)",
-		},
-		"100%": {
-			transform: "scale(1) rotate(0deg)",
-		},
-	},
 }));
 
 /**
@@ -137,19 +123,6 @@ const BlockTitle = styled(Typography)(({ theme }) => ({
 	fontWeight: 500,
 	fontSize: "0.85rem",
 	color: theme.palette.text.secondary,
-	transform: "translateX(0)",
-	transition: `transform 0.4s ${theme.transitions.easing.easeOut}`,
-	"&.animate": {
-		animation: "titleFadeIn 0.4s forwards",
-	},
-	"@keyframes titleFadeIn": {
-		"0%": {
-			transform: "translateX(-5px)",
-		},
-		"100%": {
-			transform: "translateX(0)",
-		},
-	},
 }));
 
 /**
@@ -159,19 +132,6 @@ const BlockContent = styled(Box)(({ theme }) => ({
 	fontSize: "0.85rem",
 	color: theme.palette.text.secondary,
 	overflow: "hidden",
-	transform: "translateY(0)",
-	transition: `transform 0.4s ${theme.transitions.easing.easeOut}`,
-	"&.animate": {
-		animation: "contentFadeIn 0.4s forwards",
-	},
-	"@keyframes contentFadeIn": {
-		"0%": {
-			transform: "translateY(5px)",
-		},
-		"100%": {
-			transform: "translateY(0)",
-		},
-	},
 }));
 
 /**
@@ -388,28 +348,29 @@ export const ActionBlock: FC<ActionBlockProps> = ({
 		}
 	};
 
-	const getIcon = (): IconDefinition => {
+	// Map action/executionType to lucide-react icon component
+	const getIcon = () => {
 		switch (action) {
 			case "DONE":
-				return faCheck;
+				return <Check size={16} />;
 			case "ASK":
-				return faQuestion;
+				return <HelpCircle size={16} />;
 			case "CODE":
-				return faCode;
+				return <Code2 size={16} />;
 			case "WRITE":
-				return faPencilAlt;
+				return <Pencil size={14} />;
 			case "EDIT":
-				return faEdit;
+				return <Edit2 size={16} />;
 			case "READ":
-				return faBook;
+				return <Book size={16} />;
 			case "DELEGATE":
-				return faShare;
+				return <Share2 size={16} />;
 			default:
 				return executionType === "plan"
-					? faLightbulb
+					? <Lightbulb size={16} />
 					: executionType === "action"
-						? faCode
-						: faCommentDots;
+						? <Code2 size={16} />
+						: <MessageSquare size={16} />;
 		}
 	};
 
@@ -488,8 +449,8 @@ export const ActionBlock: FC<ActionBlockProps> = ({
 						isExpanded={isExpanded}
 						onClick={isExpanded ? handleCollapse : handleExpand}
 					>
-						<BlockIcon className={mounted ? "animate" : ""}>
-							<FontAwesomeIcon icon={getIcon()} size="sm" />
+						<BlockIcon>
+							{getIcon()}
 						</BlockIcon>
 						<Box
 							sx={{
@@ -500,29 +461,26 @@ export const ActionBlock: FC<ActionBlockProps> = ({
 								alignItems: "center",
 							}}
 						>
-							<BlockTitle
-								variant="subtitle2"
-								className={mounted ? "animate" : ""}
-							>
+							<BlockTitle variant="subtitle2">
 								{getTitle()}
 							</BlockTitle>
 							{!isExpanded ? (
 								<Tooltip title="View Details">
-									<BlockContent className={mounted ? "animate" : ""}>
-										<ChevronDown size={22} style={{ marginTop: 4 }} />
+									<BlockContent>
+										<ChevronDown size={18} style={{ marginTop: 6 }} />
 									</BlockContent>
 								</Tooltip>
 							) : (
 								<Tooltip title="Collapse Details">
-									<BlockContent className={mounted ? "animate" : ""}>
-										<ChevronUp size={22} style={{ marginTop: 4 }} />
+									<BlockContent>
+										<ChevronUp size={18} style={{ marginTop: 6 }} />
 									</BlockContent>
 								</Tooltip>
 							)}
 						</Box>
 					</BlockHeader>
 					<Collapse in={isExpanded} timeout="auto">
-						<ExpandedContent className={isExpanded ? "animate" : ""}>
+						<ExpandedContent>
 							{/* Technical details for action messages */}
 							{/* Render code with syntax highlighting */}
 							{code && <CodeBlock code={code} isUser={isUser} />}
@@ -537,7 +495,7 @@ export const ActionBlock: FC<ActionBlockProps> = ({
 							{logging && <LogBlock log={logging} isUser={isUser} />}
 
 							<CollapseButton onClick={handleCollapse}>
-								<FontAwesomeIcon icon={faChevronUp} size="sm" />
+								<ChevronUp size={16} />
 								<Typography variant="caption" sx={{ ml: 1 }}>
 									Collapse
 								</Typography>
