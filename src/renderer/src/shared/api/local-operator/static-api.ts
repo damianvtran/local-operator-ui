@@ -56,9 +56,36 @@ export const getVideoUrl = (baseUrl: string, videoPath: string): string => {
 };
 
 /**
+ * Get the URL for an HTML file from the static HTML endpoint
+ *
+ * @param baseUrl - The base URL of the Local Operator API
+ * @param htmlPath - The path to the HTML file on disk
+ * @returns The URL to access the HTML file via the static endpoint
+ */
+export const getHtmlUrl = (baseUrl: string, htmlPath: string): string => {
+	// Ensure the base URL doesn't end with a slash
+	const normalizedBaseUrl = baseUrl.endsWith("/")
+		? baseUrl.slice(0, -1)
+		: baseUrl;
+
+	// Remove the file:// protocol if present
+	let normalizedPath = htmlPath;
+	if (normalizedPath.startsWith("file://")) {
+		normalizedPath = normalizedPath.substring(7);
+	}
+
+	// Encode the HTML path to handle special characters
+	const encodedPath = encodeURIComponent(normalizedPath);
+
+	// Return the full URL to the static HTML endpoint
+	return `${normalizedBaseUrl}/v1/static/html?path=${encodedPath}`;
+};
+
+/**
  * Static API methods
  */
 export const StaticApi = {
 	getImageUrl,
 	getVideoUrl,
+	getHtmlUrl,
 };
