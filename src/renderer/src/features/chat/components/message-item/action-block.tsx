@@ -22,9 +22,7 @@ import {
 import {
 	type FC,
 	useCallback,
-	useEffect,
 	useMemo,
-	useRef,
 	useState,
 } from "react";
 import { MarkdownRenderer } from "../markdown-renderer";
@@ -40,8 +38,10 @@ import { VideoAttachment } from "./video-attachment";
  * Props for the ActionBlock component
  */
 export type ActionBlockProps = {
-	content: string;
+	message: string;
+	content?: string;
 	action?: ActionType;
+	replacements?: string;
 	executionType: ExecutionType;
 	isUser: boolean;
 	code?: string;
@@ -56,13 +56,8 @@ export type ActionBlockProps = {
  * Styled container for the background block with mount animation
  * Uses keyframes for a smooth entrance animation
  */
-const BlockContainer = styled(Box, {
-	shouldForwardProp: (prop) => prop !== "mounted",
-})<{ mounted: boolean }>(({ theme, mounted }) => ({
+const BlockContainer = styled(Box)(() => ({
 	width: "100%",
-	opacity: mounted ? 1 : 0, // Start invisible before animation
-	transform: mounted ? "translateY(0)" : "translateY(20px)",
-	transition: `opacity 0.4s ${theme.transitions.easing.easeOut}, transform 0.4s ${theme.transitions.easing.easeOut}`,
 }));
 
 /**
@@ -113,7 +108,6 @@ const BlockIcon = styled(Box)(({ theme }) => ({
 	alignItems: "center",
 	justifyContent: "center",
 	color: theme.palette.icon.text,
-	transform: "scale(1) rotate(0deg)",
 }));
 
 /**
@@ -284,6 +278,8 @@ const getAttachmentUrl = (
  * Attachments (images and files) are always visible outside the collapsible element
  */
 export const ActionBlock: FC<ActionBlockProps> = ({
+	message,
+	replacements,
 	content,
 	action,
 	executionType,
@@ -296,23 +292,6 @@ export const ActionBlock: FC<ActionBlockProps> = ({
 	conversationId,
 }) => {
 	const [isExpanded, setIsExpanded] = useState(false);
-	const [mounted, setMounted] = useState(false);
-	const mountedRef = useRef(false);
-
-	// Handle mount animation
-	useEffect(() => {
-		// Only trigger animation if it hasn't been mounted before
-		if (!mountedRef.current) {
-			mountedRef.current = true;
-			// Small delay to ensure DOM is ready and for a staggered effect if multiple blocks appear
-			const timer = setTimeout(() => {
-				setMounted(true);
-			}, 50);
-			return () => clearTimeout(timer);
-		}
-
-		return undefined;
-	}, []);
 
 	const handleExpand = () => {
 		setIsExpanded(true);
@@ -414,17 +393,12 @@ export const ActionBlock: FC<ActionBlockProps> = ({
 
 	// Determine if we have any collapsible technical content
 	const hasCollapsibleContent =
-		executionType === "action" && (code || stdout || stderr || logging);
-
-	// Set mounted to true immediately to ensure elements are visible
-	useEffect(() => {
-		setMounted(true);
-	}, []);
+		executionType === "action" && (code || stdout || stderr || logging || replacements || content);
 
 	return (
-		<BlockContainer sx={{ position: "relative" }} mounted={mounted}>
+		<BlockContainer sx={{ position: "relative" }}>
 			{/* Message content displayed outside and above the collapsible block */}
-			{content && (
+			{message && (
 				<Box
 					sx={{
 						borderRadius: 2,
@@ -436,7 +410,7 @@ export const ActionBlock: FC<ActionBlockProps> = ({
 						mb: 2,
 					}}
 				>
-					<MarkdownRenderer content={content} />
+					<MarkdownRenderer content={message} />
 				</Box>
 			)}
 
@@ -484,6 +458,18 @@ export const ActionBlock: FC<ActionBlockProps> = ({
 							{/* Technical details for action messages */}
 							{/* Render code with syntax highlighting */}
 							{code && <CodeBlock code={code} isUser={isUser} />}
+
+							{/* Render content */}
+							{content && <CodeBlock code={content} isUser={isUser} />}
+
+							{/* Render replacements */}
+							{replacements && (
+								<CodeBlock
+									code={replacements}
+									isUser={isUser}
+									language="diff"
+								/>
+							)}
 
 							{/* Render stdout */}
 							{stdout && <OutputBlock output={stdout} isUser={isUser} />}

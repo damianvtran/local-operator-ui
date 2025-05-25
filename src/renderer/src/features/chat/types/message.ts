@@ -24,4 +24,9 @@ export type Message = {
 	is_streamable?: boolean;
 	is_complete?: boolean;
 	conversation_id?: string;
+	content?: string;
+	file_path?: string;
+	replacements?: string;
+	agent?: string;
+	learnings?: string;
 };

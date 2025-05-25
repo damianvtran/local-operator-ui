@@ -503,6 +503,11 @@ export type CodeExecutionResult = {
 	execution_type?: string;
 	files?: string[];
 	formatted_print?: string;
+	content?: string;
+	file_path?: string;
+	replacements?: string;
+	agent?: string;
+	learnings?: string;
 	id?: string;
 	is_complete?: boolean;
 	is_streamable?: boolean;

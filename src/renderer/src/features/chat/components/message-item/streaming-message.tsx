@@ -29,14 +29,11 @@ import { MarkdownRenderer } from "../markdown-renderer";
 
 // --- Styled components (adapted to match @action-block.tsx) ---
 
-const StreamingContainer = styled(Box)(({ theme }) => ({
+const StreamingContainer = styled(Box)(() => ({
 	position: "relative",
 	overflow: "hidden",
-	borderRadius: 8,
 	wordBreak: "break-word",
 	overflowWrap: "break-word",
-	background: theme.palette.background.paper,
-	boxShadow: theme.shadows[1],
 }));
 
 const StatusIndicator = styled(Box)(({ theme }) => ({
@@ -583,7 +580,7 @@ export const StreamingMessage = ({
 
 	const hasCollapsibleContent =
 		message?.execution_type === "action" &&
-		(message?.code || message?.stdout || message?.stderr || message?.logging);
+		(message?.code || message?.stdout || message?.stderr || message?.logging || message?.content || message?.replacements);
 
 	return (
 		<StreamingContainer
@@ -639,6 +636,8 @@ export const StreamingMessage = ({
 					<Collapse in={isExpanded} timeout="auto">
 						<ExpandedContent>
 							{message?.code && <CodeBlock code={message.code} isUser={false} />}
+							{message?.content && <CodeBlock code={message.content} isUser={false} />}
+							{message?.replacements && <CodeBlock code={message.replacements} isUser={false} language="diff" />}
 							{message?.stdout && <OutputBlock output={message.stdout} isUser={false} />}
 							{message?.stderr && <ErrorBlock error={message.stderr} isUser={false} />}
 							{message?.logging && <LogBlock log={message.logging} isUser={false} />}
