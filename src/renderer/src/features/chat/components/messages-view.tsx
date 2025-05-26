@@ -21,6 +21,7 @@ type MessagesViewProps = {
 	currentExecution?: AgentExecutionRecord | null;
 	messagesContainerRef: RefObject<HTMLDivElement>;
 	messagesEndRef: RefObject<HTMLDivElement>;
+	scrollToBottom?: () => void;
 	refetch?: () => void;
 	conversationId: string;
 };
