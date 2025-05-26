@@ -6,6 +6,7 @@ import { styled } from "@mui/material/styles";
 import type { FC } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 
+import { OnboardingProvider } from "@features/onboarding/components/onboarding-provider"; // Import the new provider
 import { AgentDetailsPage } from "@features/agent-hub/agent-details-page";
 import { AgentHubPage } from "@features/agent-hub/agent-hub-page";
 import { AgentsPage } from "@features/agents/components/agents-page";
@@ -51,60 +52,63 @@ const App: FC = () => {
 	} = useLowCreditsDialog();
 
 	return (
-		<AppContainer>
-			<CssBaseline />
+		<OnboardingProvider>
+			<AppContainer>
+				<CssBaseline />
 
-			{/* Initialize models store */}
-			<ModelsInitializer />
+				{/* Initialize models store */}
+				<ModelsInitializer />
 
-			{/* First-time setup onboarding */}
-			<OnboardingModal open={isOnboardingActive} />
+				{/* First-time setup onboarding (existing modal) */}
+				{/* This might need to be coordinated with the new Shepherd tour */}
+				<OnboardingModal open={isOnboardingActive} />
 
-			{/* Connectivity status banner */}
-			<ConnectivityBanner />
+				{/* Connectivity status banner */}
+				<ConnectivityBanner />
 
-			{/* Auto-update notification */}
-			<UpdateNotification />
+				{/* Auto-update notification */}
+				<UpdateNotification />
 
-			{/* Low Credits Dialog */}
-			<LowCreditsDialog
-				open={isLowCreditsDialogOpen}
-				onClose={onLowCreditsDialogClose}
-				onGoToConsole={openRadientConsole}
-			/>
+				{/* Low Credits Dialog */}
+				<LowCreditsDialog
+					open={isLowCreditsDialogOpen}
+					onClose={onLowCreditsDialogClose}
+					onGoToConsole={openRadientConsole}
+				/>
 
-			{/* Sidebar Navigation */}
-			<SidebarNavigation />
+				{/* Sidebar Navigation */}
+				<SidebarNavigation />
 
-			{/* Main Content Area */}
-			<MainContent>
-				<Routes>
-					{/* Redirect root to chat */}
-					<Route path="/" element={<Navigate to="/chat" replace />} />
+				{/* Main Content Area */}
+				<MainContent>
+					<Routes>
+						{/* Redirect root to chat */}
+						<Route path="/" element={<Navigate to="/chat" replace />} />
 
-					{/* Chat routes */}
-					<Route path="/chat" element={<ChatPage />} />
-					<Route path="/chat/:agentId" element={<ChatPage />} />
+						{/* Chat routes */}
+						<Route path="/chat" element={<ChatPage />} />
+						<Route path="/chat/:agentId" element={<ChatPage />} />
 
-					{/* Agents routes */}
-					<Route path="/agents" element={<AgentsPage />} />
-					<Route path="/agents/:agentId" element={<AgentsPage />} />
+						{/* Agents routes */}
+						<Route path="/agents" element={<AgentsPage />} />
+						<Route path="/agents/:agentId" element={<AgentsPage />} />
 
-					{/* Settings route */}
-					<Route path="/settings" element={<SettingsPage />} />
+						{/* Settings route */}
+						<Route path="/settings" element={<SettingsPage />} />
 
-					{/* Agent Hub routes */}
-					<Route path="/agent-hub" element={<AgentHubPage />} />
-					<Route path="/agent-hub/:agentId" element={<AgentDetailsPage />} />
+						{/* Agent Hub routes */}
+						<Route path="/agent-hub" element={<AgentHubPage />} />
+						<Route path="/agent-hub/:agentId" element={<AgentDetailsPage />} />
 
-					{/* Schedules route */}
-					<Route path="/schedules" element={<SchedulesPage />} />
+						{/* Schedules route */}
+						<Route path="/schedules" element={<SchedulesPage />} />
 
-					{/* Fallback route - redirect to chat */}
-					<Route path="*" element={<Navigate to="/chat" replace />} />
-				</Routes>
-			</MainContent>
-		</AppContainer>
+						{/* Fallback route - redirect to chat */}
+						<Route path="*" element={<Navigate to="/chat" replace />} />
+					</Routes>
+				</MainContent>
+			</AppContainer>
+		</OnboardingProvider>
 	);
 };
 
