@@ -68,7 +68,7 @@ const obsidianTheme = createTheme({
 			shadow: "0 2px 8px rgba(250, 250, 250, 0.05)",
 		},
 		messagesView: {
-			background: "#030711", // Even darker for message view (near black)
+			background: "#060609", // Even darker for message view (near black)
 		},
 		inputField: {
 			background: "#18181B", // zinc-900

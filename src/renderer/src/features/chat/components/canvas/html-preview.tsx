@@ -1,7 +1,6 @@
 import { Box, styled } from "@mui/material";
 import { getHtmlUrl } from "@shared/api/local-operator/static-api";
 import { apiConfig } from "@shared/config";
-import { useMemo } from "react";
 import type { FC } from "react";
 import type { CanvasDocument } from "../../types/canvas";
 
@@ -45,9 +44,7 @@ export const HtmlPreview: FC<HtmlPreviewProps> = ({ document }) => {
 	 * Create a URL for the HTML document using the static HTML endpoint
 	 * This serves the file through the Local Operator API, simulating opening it in a browser
 	 */
-	const htmlUrl = useMemo(() => {
-		return getHtmlUrl(apiConfig.baseUrl, document.path);
-	}, [document.path]);
+	const htmlUrl = getHtmlUrl(apiConfig.baseUrl, document.path);
 
 	return (
 		<IframeContainer>
