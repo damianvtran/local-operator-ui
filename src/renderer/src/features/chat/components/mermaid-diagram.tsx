@@ -2,6 +2,7 @@ import { Box, IconButton, Tooltip } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import { BaseDialog } from "@shared/components/common/base-dialog";
 import {
+	Copy as CopyIcon,
 	Download,
 	Maximize2,
 	Move,
@@ -9,7 +10,6 @@ import {
 	X,
 	ZoomIn,
 	ZoomOut,
-	Copy as CopyIcon,
 } from "lucide-react";
 import mermaid from "mermaid";
 import type { FC } from "react";
@@ -152,7 +152,9 @@ export const MermaidDiagram: FC<MermaidDiagramProps> = memo(({ chart, id }) => {
 	const [lastPanPoint, setLastPanPoint] = useState({ x: 0, y: 0 });
 
 	const [copyStatus, setCopyStatus] = useState<"idle" | "copied">("idle");
-	const [fullscreenCopyStatus, setFullscreenCopyStatus] = useState<"idle" | "copied">("idle");
+	const [fullscreenCopyStatus, setFullscreenCopyStatus] = useState<
+		"idle" | "copied"
+	>("idle");
 
 	const renderDiagram = useCallback(async () => {
 		try {
@@ -447,9 +449,14 @@ export const MermaidDiagram: FC<MermaidDiagramProps> = memo(({ chart, id }) => {
 						</ControlButton>
 					</Tooltip>
 
-					<Tooltip title={copyStatus === "copied" ? "Copied!" : "Copy Mermaid Text"}>
+					<Tooltip
+						title={copyStatus === "copied" ? "Copied!" : "Copy Mermaid Text"}
+					>
 						<ControlButton onClick={handleCopy}>
-							<CopyIcon size={14} color={copyStatus === "copied" ? "#4caf50" : undefined} />
+							<CopyIcon
+								size={14}
+								color={copyStatus === "copied" ? "#4caf50" : undefined}
+							/>
 						</ControlButton>
 					</Tooltip>
 
@@ -507,9 +514,20 @@ export const MermaidDiagram: FC<MermaidDiagramProps> = memo(({ chart, id }) => {
 							</ControlButton>
 						</Tooltip>
 
-						<Tooltip title={fullscreenCopyStatus === "copied" ? "Copied!" : "Copy Mermaid Text"}>
+						<Tooltip
+							title={
+								fullscreenCopyStatus === "copied"
+									? "Copied!"
+									: "Copy Mermaid Text"
+							}
+						>
 							<ControlButton onClick={handleFullscreenCopy}>
-								<CopyIcon size={14} color={fullscreenCopyStatus === "copied" ? "#4caf50" : undefined} />
+								<CopyIcon
+									size={14}
+									color={
+										fullscreenCopyStatus === "copied" ? "#4caf50" : undefined
+									}
+								/>
 							</ControlButton>
 						</Tooltip>
 
