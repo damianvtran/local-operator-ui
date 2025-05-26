@@ -1,7 +1,6 @@
-import { faCopy } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, IconButton, Tooltip } from "@mui/material";
 import { alpha, styled } from "@mui/material/styles";
+import { Copy } from "lucide-react";
 import type { FC } from "react";
 import { useState } from "react";
 
@@ -77,13 +76,9 @@ export const MessageControls: FC<MessageControlsProps> = ({
 			{/* Only render the wrapper if there are buttons to show */}
 			{showCopyButton && (
 				<ControlsWrapper>
-					<Tooltip
-						title={copied ? "Copied!" : "Copy message"}
-						placement="top"
-						// @ts-ignore - MUI Tooltip type issue
-					>
+					<Tooltip title={copied ? "Copied!" : "Copy message"} placement="top">
 						<StyledIconButton size="small" onClick={handleCopy}>
-							<FontAwesomeIcon icon={faCopy} size="sm" />
+							<Copy size={16} />
 						</StyledIconButton>
 					</Tooltip>
 				</ControlsWrapper>

@@ -40,6 +40,7 @@ import {
 import { Bot } from "lucide-react";
 import type { ChangeEvent, FC } from "react";
 import { useCallback, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 const SidebarContainer = styled(Paper)(({ theme }) => ({
 	width: "100%",
@@ -257,6 +258,9 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 		string[]
 	>([]);
 	const { isAuthenticated } = useRadientAuth();
+
+	// Navigation
+	const navigate = useNavigate();
 
 	// Export agent mutation
 	const exportAgentMutation = useExportAgent();
@@ -543,6 +547,7 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 																onSelectConversation("");
 															}
 															refetch();
+															navigate("/chat");
 														}}
 														onUploadAgentToHub={() =>
 															handleOpenUploadDialog(agent)

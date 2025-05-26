@@ -540,6 +540,7 @@ export const AgentsSidebar: FC<AgentsSidebarProps> = ({
 																// Parent handles selection clearing
 															}
 															refetch();
+															navigate("/agents");
 														}}
 														onChatWithAgent={() =>
 															navigate(`/chat/${agent.id}`)

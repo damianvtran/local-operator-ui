@@ -7,6 +7,7 @@ import rehypeKatex from "rehype-katex";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import "katex/dist/katex.min.css"; // Import KaTeX CSS
+import { MermaidDiagram } from "./mermaid-diagram";
 
 type MarkdownStyleProps = {
 	fontSize?: string;
@@ -20,6 +21,9 @@ type MarkdownRendererProps = {
 	content: string;
 	styleProps?: MarkdownStyleProps;
 };
+
+const LANGUAGE_REGEX = /language-(\w+)/;
+const NEWLINE_REGEX = /\n$/;
 
 const MarkdownContent = styled(Box, {
 	shouldForwardProp: (prop) =>
@@ -116,6 +120,9 @@ const MarkdownContent = styled(Box, {
 			fontWeight: 600,
 			margin: "16px 0 8px 0",
 			color: theme.palette.text.primary,
+		},
+		"& h1:first-of-type, & h2:first-of-type, & h3:first-of-type": {
+			marginTop: 0,
 		},
 		"& ul": {
 			paddingLeft: "24px",
@@ -330,6 +337,25 @@ export const MarkdownRenderer: FC<MarkdownRendererProps> = memo(
 								{children}
 							</a>
 						),
+						// biome-ignore lint/suspicious/noExplicitAny: ReactMarkdown component typing requires any
+						code: (props: any) => {
+							const { className, children } = props;
+							const match = LANGUAGE_REGEX.exec(className || "");
+							const language = match ? match[1] : "";
+
+							// Handle mermaid code blocks
+							if (language === "mermaid") {
+								const code = String(children).replace(NEWLINE_REGEX, "");
+								return <MermaidDiagram chart={code} />;
+							}
+
+							// Return default code rendering for non-mermaid blocks
+							return (
+								<code className={className} {...props}>
+									{children}
+								</code>
+							);
+						},
 					}}
 				>
 					{processedContent}

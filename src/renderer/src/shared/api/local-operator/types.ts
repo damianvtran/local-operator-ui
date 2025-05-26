@@ -560,6 +560,16 @@ export type AgentExecutionRecord = {
 	is_complete: boolean;
 	/** Whether the execution is streamable */
 	is_streamable: boolean;
+	/** The content of the execution for the WRITE action */
+	content?: string;
+	/** The file path of the action operation */
+	file_path?: string;
+	/** The replacements of the execution, in git diff format */
+	replacements?: string;
+	/** The agent being delegated to for the DELEGATE action */
+	agent?: string;
+	/** Learnings noted during this step about previous steps */
+	learnings?: string;
 };
 
 /**
