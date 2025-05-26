@@ -7,6 +7,7 @@ import type { FC } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 
 import { OnboardingProvider } from "@features/onboarding/components/onboarding-provider"; // Import the new provider
+import { OnboardingTourGlobalStyles } from "@features/onboarding/components/onboarding-tour-global.styles";
 import { AgentDetailsPage } from "@features/agent-hub/agent-details-page";
 import { AgentHubPage } from "@features/agent-hub/agent-hub-page";
 import { AgentsPage } from "@features/agents/components/agents-page";
@@ -53,6 +54,7 @@ const App: FC = () => {
 
 	return (
 		<OnboardingProvider>
+			<OnboardingTourGlobalStyles />
 			<AppContainer>
 				<CssBaseline />
 
