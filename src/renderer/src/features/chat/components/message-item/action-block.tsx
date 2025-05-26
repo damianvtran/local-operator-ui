@@ -200,9 +200,7 @@ export const ActionBlock: FC<ActionBlockProps> = ({
 	}, []);
 
 	// Determine if we have any collapsible technical content
-	const hasCollapsibleContent = Boolean(
-		executionType === "action" && !!action,
-	);
+	const hasCollapsibleContent = Boolean(executionType === "action" && !!action);
 
 	const fileLanguage = getLanguageFromExtension(filePath || "");
 
