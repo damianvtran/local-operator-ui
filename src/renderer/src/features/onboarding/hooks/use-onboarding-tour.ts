@@ -25,7 +25,7 @@ const tourSteps: StepOptions[] = [
   {
     id: 'select-agent',
     // Targets the first AgentListItemButton within the AgentsList using the new data-tour-tag
-    attachTo: { element: 'ul[class*="AgentsList-root"] > li:first-child [data-tour-tag="agent-list-item-button"]', on: 'right' },
+    attachTo: { element: '[data-tour-tag="agent-list-item-button-0"]', on: 'right' },
     title: 'Select an Agent',
     text: 'Click on an agent to open the chat window and start interacting with it.',
     buttons: [

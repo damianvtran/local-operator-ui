@@ -446,7 +446,7 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 	};
 
 	return (
-		<SidebarContainer elevation={0}>
+		<SidebarContainer elevation={0} data-tour-tag="agent-list-panel">
 			<SidebarHeader
 				title="Agents"
 				searchQuery={searchQuery}
@@ -484,8 +484,8 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 				</EmptyStateContainer>
 			) : (
 				<AgentsList>
-					{combinedAgents.map((agent) => (
-						<ListItem key={agent.id} disablePadding>
+					{combinedAgents.map((agent, index) => (
+						<ListItem key={agent.id} disablePadding data-tour-tag={`agent-list-item-button-${index}`}>
 							<AgentListItemButton
 								selected={
 									selectedConversation === agent.id ||
