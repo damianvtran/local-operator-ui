@@ -467,9 +467,9 @@ export const StreamingMessage = ({
 				hasCollapsibleContent={hasCollapsibleContent}
 				isLoading={isActivelyStreaming}
 			>
-				{message?.code && <CodeBlock code={message.code} isUser={false} />}
+				{message?.code && <CodeBlock code={message.code} isUser={false} flexDirection="column-reverse" />}
 				{message?.content && (
-					<CodeBlock header="Content" code={message.content} isUser={false} language={fileLanguage} />
+					<CodeBlock header="Content" code={message.content} isUser={false} language={fileLanguage} flexDirection="column-reverse" />
 				)}
 				{message?.replacements && (
 					<CodeBlock
@@ -477,6 +477,7 @@ export const StreamingMessage = ({
 						code={message.replacements}
 						isUser={false}
 						language="diff"
+						flexDirection="column-reverse"
 					/>
 				)}
 				{message?.stdout && (

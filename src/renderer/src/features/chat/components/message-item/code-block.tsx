@@ -1,5 +1,5 @@
 import { Box, Typography } from "@mui/material";
-import { styled } from "@mui/material/styles";
+import { alpha, styled } from "@mui/material/styles";
 import type { FC } from "react";
 import SyntaxHighlighter from "react-syntax-highlighter";
 import { atomOneDark } from "react-syntax-highlighter/dist/esm/styles/hljs";
@@ -13,6 +13,7 @@ export type CodeBlockProps = {
 	isUser: boolean;
 	language?: string;
 	header?: string;
+  flexDirection?: "column" | "column-reverse";
 };
 
 const CodeContainer = styled(Box)({
@@ -26,22 +27,50 @@ const SectionLabel = styled(Typography)(({ theme }) => ({
 	color: theme.palette.text.secondary,
 }));
 
-// Wrapper for the syntax highlighter with max height and custom scrollbars
-const BlockScrollWrapper = styled(Box)(({ theme }) => ({
-	maxHeight: 320,
-	overflow: "auto",
-	width: "100%",
-	"&::-webkit-scrollbar": {
-		width: "8px",
+/**
+ * Wrapper for the syntax highlighter with max height and custom scrollbars.
+ * 
+ * @param theme - The MUI theme object injected by the styled utility.
+ * @param flexDirection - The flex direction for the wrapper ("column" or "column-reverse").
+ * @returns The style object for the BlockScrollWrapper.
+ * @throws {Error} If theme is not provided by the styled utility.
+ */
+const BlockScrollWrapper = styled(Box, {
+	shouldForwardProp: (prop) => prop !== "flexDirection",
+})<{ flexDirection?: "column" | "column-reverse" }>(({ theme, flexDirection }) => {
+		if (!theme) {
+			throw new Error("Theme is required for BlockScrollWrapper styles.");
+		}
+		return {
+			maxHeight: 320,
+			overflowY: "auto",
+			width: "100%",
+      borderRadius: "8px",
+			"&::-webkit-scrollbar": {
+        width: "6px",
+        height: "6px",
+      },
+      boxShadow: "0 2px 6px rgba(0, 0, 0, 0.2)",
+      "&::-webkit-scrollbar-thumb": {
+        backgroundColor: alpha(
+          theme.palette.mode === "dark"
+            ? theme.palette.common.white
+            : theme.palette.common.black,
+          0.1,
+        ),
+        borderRadius: "3px",
+      },
+      "&::-webkit-scrollbar-corner": {
+        backgroundColor: theme.palette.mode === "dark" 
+          ? "#282c34" 
+          : theme.palette.grey[200],
+      },
+      display: "flex",
+			flexDirection: flexDirection || "column",
+      whiteSpace: "pre",
+		};
 	},
-	"&::-webkit-scrollbar-thumb": {
-		backgroundColor:
-			theme.palette.mode === "dark"
-				? "rgba(255, 255, 255, 0.1)"
-				: "rgba(0, 0, 0, 0.2)",
-		borderRadius: "4px",
-	},
-}));
+);
 
 // Global style to ensure Roboto Mono is applied to syntax highlighter
 const SyntaxHighlighterStyles = createGlobalStyle`
@@ -59,14 +88,14 @@ const SyntaxHighlighterStyles = createGlobalStyle`
  * @param header - Optional header for the code block
  * @returns The rendered code block or null if no code is provided
  */
-export const CodeBlock: FC<CodeBlockProps> = ({ code, language, header }) => {
+export const CodeBlock: FC<CodeBlockProps> = ({ code, language, header, flexDirection = "column" }) => {
 	if (!code) return null;
 
 	return (
 		<CodeContainer>
 			<SectionLabel variant="caption">{header || "Code"}</SectionLabel>
 			<SyntaxHighlighterStyles />
-			<BlockScrollWrapper>
+			<BlockScrollWrapper flexDirection={flexDirection}>
 				<SyntaxHighlighter
 					language={language || "python"}
 					style={atomOneDark}
@@ -74,7 +103,6 @@ export const CodeBlock: FC<CodeBlockProps> = ({ code, language, header }) => {
 						borderRadius: "8px",
 						fontSize: "0.85rem",
 						width: "100%",
-						boxShadow: "0 2px 6px rgba(0, 0, 0, 0.2)",
 						padding: "0.75rem",
 						margin: 0,
 					}}
