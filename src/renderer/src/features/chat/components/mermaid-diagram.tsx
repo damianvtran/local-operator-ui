@@ -9,6 +9,7 @@ import {
 	X,
 	ZoomIn,
 	ZoomOut,
+	Copy as CopyIcon,
 } from "lucide-react";
 import mermaid from "mermaid";
 import type { FC } from "react";
@@ -130,7 +131,7 @@ const ErrorContainer = styled(Box)(({ theme }) => ({
 }));
 
 /**
- * Enhanced Mermaid diagram component with zoom, pan, save SVG, reset, and fullscreen controls
+ * Enhanced Mermaid diagram component with zoom, pan, save SVG, reset, fullscreen, and copy controls
  */
 export const MermaidDiagram: FC<MermaidDiagramProps> = memo(({ chart, id }) => {
 	const elementRef = useRef<HTMLDivElement>(null);
@@ -149,6 +150,9 @@ export const MermaidDiagram: FC<MermaidDiagramProps> = memo(({ chart, id }) => {
 	});
 	const [isPanning, setIsPanning] = useState(false);
 	const [lastPanPoint, setLastPanPoint] = useState({ x: 0, y: 0 });
+
+	const [copyStatus, setCopyStatus] = useState<"idle" | "copied">("idle");
+	const [fullscreenCopyStatus, setFullscreenCopyStatus] = useState<"idle" | "copied">("idle");
 
 	const renderDiagram = useCallback(async () => {
 		try {
@@ -279,6 +283,26 @@ export const MermaidDiagram: FC<MermaidDiagramProps> = memo(({ chart, id }) => {
 			console.error("Failed to save SVG:", err);
 		}
 	}, [svgContent]);
+
+	const handleCopy = useCallback(async () => {
+		try {
+			await navigator.clipboard.writeText(chart);
+			setCopyStatus("copied");
+			setTimeout(() => setCopyStatus("idle"), 1200);
+		} catch (err) {
+			console.error("Failed to copy Mermaid chart text:", err);
+		}
+	}, [chart]);
+
+	const handleFullscreenCopy = useCallback(async () => {
+		try {
+			await navigator.clipboard.writeText(chart);
+			setFullscreenCopyStatus("copied");
+			setTimeout(() => setFullscreenCopyStatus("idle"), 1200);
+		} catch (err) {
+			console.error("Failed to copy Mermaid chart text:", err);
+		}
+	}, [chart]);
 
 	const handleMouseDown = useCallback((e: React.MouseEvent) => {
 		setIsPanning(true);
@@ -423,6 +447,12 @@ export const MermaidDiagram: FC<MermaidDiagramProps> = memo(({ chart, id }) => {
 						</ControlButton>
 					</Tooltip>
 
+					<Tooltip title={copyStatus === "copied" ? "Copied!" : "Copy Mermaid Text"}>
+						<ControlButton onClick={handleCopy}>
+							<CopyIcon size={14} color={copyStatus === "copied" ? "#4caf50" : undefined} />
+						</ControlButton>
+					</Tooltip>
+
 					<Tooltip title="Fullscreen">
 						<ControlButton onClick={() => setIsFullscreen(true)}>
 							<Maximize2 size={14} />
@@ -474,6 +504,12 @@ export const MermaidDiagram: FC<MermaidDiagramProps> = memo(({ chart, id }) => {
 						<Tooltip title="Save as SVG">
 							<ControlButton onClick={handleSaveSVG}>
 								<Download size={14} />
+							</ControlButton>
+						</Tooltip>
+
+						<Tooltip title={fullscreenCopyStatus === "copied" ? "Copied!" : "Copy Mermaid Text"}>
+							<ControlButton onClick={handleFullscreenCopy}>
+								<CopyIcon size={14} color={fullscreenCopyStatus === "copied" ? "#4caf50" : undefined} />
 							</ControlButton>
 						</Tooltip>
 

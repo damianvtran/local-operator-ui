@@ -207,6 +207,14 @@ export const ActionBlock: FC<ActionBlockProps> = ({
 
 	const fileLanguage = getLanguageFromExtension(filePath || "");
 
+  /**
+   * Removes any trailing code block language markers (e.g., ```xml, ```tool_use) 
+   * at the end of the string, including any trailing whitespace.
+   */
+  const trimmedMessage = message
+    ? message.replace(/(```\w+\s*)+$/g, "").trimEnd()
+    : message;
+
 	return (
 		<Box sx={{ position: "relative", width: "100%" }}>
 			{/* Message content displayed outside and above the collapsible block */}
@@ -222,7 +230,7 @@ export const ActionBlock: FC<ActionBlockProps> = ({
 						mb: 2,
 					}}
 				>
-					<MarkdownRenderer content={message} />
+					<MarkdownRenderer content={trimmedMessage} />
 				</Box>
 			)}
 
