@@ -423,7 +423,7 @@ export const AgentsSidebar: FC<AgentsSidebarProps> = ({
 	);
 
 	return (
-		<SidebarContainer elevation={0} data-tour-tag="agent-list-panel">
+		<SidebarContainer elevation={0}>
 			<SidebarHeader
 				title="Agents"
 				searchQuery={searchQuery}
