@@ -184,15 +184,15 @@ export const LoadingIndicator: FC<{
 	const streamingMessage = getStreamingMessage(currentExecution?.id || "");
 	const isStreaming = !!streamingMessage && !streamingMessage.isComplete;
 
-  if (isStreaming) {
-    // Don't show while streaming
+	if (isStreaming) {
+		// Don't show while streaming
 		return null;
 	}
 
-  if (currentExecution?.action) {
-    // Don't show while action is running
-    return null;
-  }
+	if (currentExecution?.action) {
+		// Don't show while action is running
+		return null;
+	}
 
 	let statusText: string;
 
