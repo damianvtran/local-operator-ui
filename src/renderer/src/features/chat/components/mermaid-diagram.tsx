@@ -24,7 +24,6 @@ const MermaidContainer = styled(Box)(({ theme }) => ({
 	display: "flex",
 	justifyContent: "center",
 	alignItems: "center",
-	margin: "16px 0",
 	overflow: "hidden",
 	border: `1px solid ${theme.palette.divider}`,
 	borderRadius: "8px",
@@ -42,7 +41,7 @@ const MermaidContainer = styled(Box)(({ theme }) => ({
 	"& svg": {
 		maxWidth: "none",
 		height: "auto",
-		minHeight: "200px",
+		minHeight: "400px",
 		backgroundColor: "transparent",
 		transition: "transform 0.2s ease-out",
 	},
