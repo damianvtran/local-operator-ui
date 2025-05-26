@@ -446,6 +446,7 @@ Store messages: ${JSON.stringify(getMessages(conversationId || ""), null, 2)}`;
 				currentExecution={currentExecution}
 				messagesContainerRef={messagesContainerRef}
 				messagesEndRef={messagesEndRef}
+				scrollToBottom={scrollToBottom}
 				rawInfoContent={rawInfoContent}
 				onSendMessage={handleSendMessage}
 				currentJobId={currentJobId}
