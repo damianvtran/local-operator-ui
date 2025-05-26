@@ -1,11 +1,13 @@
 import { Box } from "@mui/material";
-import { createLocalOperatorClient } from "@shared/api/local-operator";
+import {
+	type AgentExecutionRecord,
+	createLocalOperatorClient,
+} from "@shared/api/local-operator";
 import { apiConfig } from "@shared/config";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import { type FC, memo, useCallback, useEffect, useMemo } from "react";
 import type { Message } from "../../types/message";
-import { ActionHighlight } from "./action-highlight";
-import { BackgroundBlock } from "./background-block";
+import { ActionBlock } from "./action-block";
 import { CodeBlock } from "./code-block";
 import { CollapsibleMessage } from "./collapsible-message";
 import { ErrorBlock } from "./error-block";
@@ -30,6 +32,7 @@ export type MessageItemProps = {
 	onMessageComplete?: () => void;
 	isLastMessage?: boolean;
 	conversationId: string;
+	currentExecution?: AgentExecutionRecord | null;
 };
 
 /**
@@ -129,8 +132,58 @@ const getAttachmentUrl = (
  * Only re-renders when the message content changes
  */
 export const MessageItem: FC<MessageItemProps> = memo(
-	({ message, onMessageComplete, isLastMessage, conversationId }) => {
+	({
+		message,
+		onMessageComplete,
+		isLastMessage,
+		conversationId,
+		currentExecution,
+	}) => {
 		const setFiles = useCanvasStore((s) => s.setFiles);
+
+		// Create a Local Operator client using the API config
+		const client = useMemo(() => {
+			return createLocalOperatorClient(apiConfig.baseUrl);
+		}, []);
+
+		// Get the URL for an attachment
+		const getUrl = useCallback(
+			(path: string) => getAttachmentUrl(client, path),
+			[client],
+		);
+
+		/**
+		 * Handles clicking on a file attachment
+		 * Opens local files with the system's default application
+		 * Opens web URLs in the default browser
+		 * Shows an error message if the file can't be opened
+		 * @param filePath - The path or URL of the file to open
+		 */
+		const handleFileClick = useCallback(async (filePath: string) => {
+			try {
+				// If it's a web URL
+				if (isWebUrl(filePath)) {
+					// Open in default browser
+					await window.api.openExternal(filePath);
+				} else {
+					// It's a local file, open with default application
+					// Remove file:// prefix if present
+					const normalizedPath = filePath.startsWith("file://")
+						? filePath.substring(7)
+						: filePath;
+
+					await window.api.openFile(normalizedPath);
+				}
+			} catch (error) {
+				console.error("Error opening file:", error);
+
+				// Show an error message to the user
+				// This could be replaced with a toast notification if available
+				alert(
+					`Unable to open file: ${filePath}. The file may be incomplete, deleted, or moved.`,
+				);
+			}
+		}, []);
 
 		// Refresh open canvas tabs with latest file content if a new message contains a file that matches an open tab
 		useEffect(() => {
@@ -195,76 +248,50 @@ export const MessageItem: FC<MessageItemProps> = memo(
 				!message.stdout &&
 				!message.stderr &&
 				!message.logging &&
-				message.is_complete);
+				message.is_complete) ||
+			(message.is_streamable && !message.is_complete && !currentExecution);
 
 		if (shouldHide) {
 			return null;
 		}
+
 		const isUser = message.role === "user";
 		const isAction = message.execution_type === "action";
 		const isSecurityCheck = message.execution_type === "security_check";
-		const shouldUseBackgroundBlock =
+		const shouldUseActionBlock =
 			message.execution_type === "reflection" ||
 			message.execution_type === "action";
 
-		// Create a Local Operator client using the API config
-		const client = useMemo(() => {
-			return createLocalOperatorClient(apiConfig.baseUrl);
-		}, []);
-
-		// Get the URL for an attachment
-		const getUrl = useCallback(
-			(path: string) => getAttachmentUrl(client, path),
-			[client],
-		);
-
-		/**
-		 * Handles clicking on a file attachment
-		 * Opens local files with the system's default application
-		 * Opens web URLs in the default browser
-		 * Shows an error message if the file can't be opened
-		 * @param filePath - The path or URL of the file to open
-		 */
-		const handleFileClick = useCallback(async (filePath: string) => {
-			try {
-				// If it's a web URL
-				if (isWebUrl(filePath)) {
-					// Open in default browser
-					await window.api.openExternal(filePath);
-				} else {
-					// It's a local file, open with default application
-					// Remove file:// prefix if present
-					const normalizedPath = filePath.startsWith("file://")
-						? filePath.substring(7)
-						: filePath;
-
-					await window.api.openFile(normalizedPath);
-				}
-			} catch (error) {
-				console.error("Error opening file:", error);
-
-				// Show an error message to the user
-				// This could be replaced with a toast notification if available
-				alert(
-					`Unable to open file: ${filePath}. The file may be incomplete, deleted, or moved.`,
-				);
-			}
-		}, []);
-
-		if (shouldUseBackgroundBlock && message.message) {
+		if (shouldUseActionBlock) {
 			return (
-				<BackgroundBlock
-					content={message.message}
-					action={message.action}
-					executionType={message.execution_type || "action"}
-					isUser={isUser}
-					code={message.code}
-					stdout={message.stdout}
-					stderr={message.stderr}
-					logging={message.logging}
-					files={message.files}
-					conversationId={conversationId}
-				/>
+				<MessageContainer isUser={isUser}>
+					<MessageAvatar isUser={isUser} />
+					<MessagePaper
+						isUser={isUser}
+						content={message.message}
+						message={message}
+						onMessageComplete={onMessageComplete}
+						isLastMessage={isLastMessage ?? false}
+						isJobRunning={!!currentExecution}
+					>
+						<ActionBlock
+							message={message.message ?? ""}
+							content={message.content}
+							replacements={message.replacements}
+							action={message.action}
+							executionType={message.execution_type || "action"}
+							isUser={isUser}
+							code={message.code}
+							stdout={currentExecution?.stdout ?? message.stdout}
+							stderr={currentExecution?.stderr ?? message.stderr}
+							logging={currentExecution?.logging ?? message.logging}
+							files={message.files}
+							conversationId={conversationId}
+							filePath={message.file_path}
+							isLoading={isLastMessage && !!currentExecution}
+						/>
+					</MessagePaper>
+				</MessageContainer>
 			);
 		}
 
@@ -280,6 +307,7 @@ export const MessageItem: FC<MessageItemProps> = memo(
 							message={message}
 							onMessageComplete={onMessageComplete}
 							isLastMessage={isLastMessage ?? false}
+							isJobRunning={!!currentExecution}
 						>
 							{/* Render image attachments if any */}
 							{message.files && message.files.length > 0 && (
@@ -393,130 +421,124 @@ export const MessageItem: FC<MessageItemProps> = memo(
 						</MessagePaper>
 					</SecurityCheckHighlight>
 				) : (
-					<ActionHighlight
-						action={message.action || "CODE"}
-						taskClassification={message.task_classification || ""}
+					<MessagePaper
 						isUser={isUser}
-						executionType={message.execution_type}
+						content={message.message}
+						message={message}
+						onMessageComplete={onMessageComplete}
+						isLastMessage={isLastMessage ?? false}
+						isJobRunning={!!currentExecution}
 					>
-						<MessagePaper
-							isUser={isUser}
-							content={message.message}
-							message={message}
-							onMessageComplete={onMessageComplete}
-							isLastMessage={isLastMessage ?? false}
-						>
-							{/* Render image attachments if any */}
-							{message.files && message.files.length > 0 && (
-								<Box sx={{ mb: 2 }}>
-									{message.files
-										.filter((file) => isImage(file))
-										.map((file) => (
-											<ImageAttachment
-												key={`${message.id}-${file}`}
-												file={file}
-												src={getUrl(file)}
-												onClick={handleFileClick}
-											/>
-										))}
-								</Box>
+						{/* Render image attachments if any */}
+						{message.files && message.files.length > 0 && (
+							<Box sx={{ mb: 2 }}>
+								{message.files
+									.filter((file) => isImage(file))
+									.map((file) => (
+										<ImageAttachment
+											key={`${message.id}-${file}`}
+											file={file}
+											src={getUrl(file)}
+											onClick={handleFileClick}
+										/>
+									))}
+							</Box>
+						)}
+
+						{/* Render video attachments if any */}
+						{message.files && message.files.length > 0 && (
+							<Box sx={{ mb: 2 }}>
+								{message.files
+									.filter((file) => isVideo(file))
+									.map((file) => (
+										<VideoAttachment
+											key={`${message.id}-${file}`}
+											file={file}
+											src={getUrl(file)}
+											onClick={handleFileClick}
+										/>
+									))}
+							</Box>
+						)}
+
+						{/* Only render message content when not streaming */}
+						{message.message &&
+							!(message.is_streamable && !message.is_complete) && (
+								<MessageContent content={message.message} isUser={isUser} />
 							)}
 
-							{/* Render video attachments if any */}
-							{message.files && message.files.length > 0 && (
-								<Box sx={{ mb: 2 }}>
-									{message.files
-										.filter((file) => isVideo(file))
-										.map((file) => (
-											<VideoAttachment
-												key={`${message.id}-${file}`}
-												file={file}
-												src={getUrl(file)}
-												onClick={handleFileClick}
-											/>
-										))}
-								</Box>
-							)}
+						{/* Determine if we have any collapsible content */}
+						{(() => {
+							const hasCollapsibleContent =
+								isAction &&
+								(message.code ||
+									message.stdout ||
+									message.stderr ||
+									message.logging);
 
-							{/* Only render message content when not streaming */}
-							{message.message &&
-								!(message.is_streamable && !message.is_complete) && (
-									<MessageContent content={message.message} isUser={isUser} />
-								)}
+							// Content to be rendered inside the collapsible section
+							const contentBlocks = (
+								<>
+									{/* Render code with syntax highlighting */}
+									{message.code && (
+										<CodeBlock code={message.code} isUser={isUser} />
+									)}
 
-							{/* Determine if we have any collapsible content */}
-							{(() => {
-								const hasCollapsibleContent =
-									isAction &&
-									(message.code ||
-										message.stdout ||
-										message.stderr ||
-										message.logging);
+									{/* Render stdout */}
+									{message.stdout && (
+										<OutputBlock output={message.stdout} isUser={isUser} />
+									)}
 
-								// Content to be rendered inside the collapsible section
-								const contentBlocks = (
-									<>
-										{/* Render code with syntax highlighting */}
-										{message.code && (
-											<CodeBlock code={message.code} isUser={isUser} />
-										)}
+									{/* Render stderr */}
+									{message.stderr && (
+										<ErrorBlock error={message.stderr} isUser={isUser} />
+									)}
 
-										{/* Render stdout */}
-										{message.stdout && (
-											<OutputBlock output={message.stdout} isUser={isUser} />
-										)}
+									{/* Render logging */}
+									{message.logging && (
+										<LogBlock log={message.logging} isUser={isUser} />
+									)}
+								</>
+							);
 
-										{/* Render stderr */}
-										{message.stderr && (
-											<ErrorBlock error={message.stderr} isUser={isUser} />
-										)}
-
-										{/* Render logging */}
-										{message.logging && (
-											<LogBlock log={message.logging} isUser={isUser} />
-										)}
-									</>
+							// If it's an action type with collapsible content, wrap in CollapsibleMessage
+							if (hasCollapsibleContent) {
+								return (
+									<CollapsibleMessage
+										defaultCollapsed={true}
+										hasContent={hasCollapsibleContent}
+									>
+										{contentBlocks}
+									</CollapsibleMessage>
 								);
+							}
 
-								// If it's an action type with collapsible content, wrap in CollapsibleMessage
-								if (hasCollapsibleContent) {
-									return (
-										<CollapsibleMessage
-											defaultCollapsed={true}
-											hasContent={hasCollapsibleContent}
-										>
-											{contentBlocks}
-										</CollapsibleMessage>
-									);
-								}
+							// Otherwise, render content normally
+							return contentBlocks;
+						})()}
 
-								// Otherwise, render content normally
-								return contentBlocks;
-							})()}
+						{/* Status indicator if present */}
+						{message.status && <StatusIndicator status={message.status} />}
 
-							{/* Status indicator if present */}
-							{message.status && <StatusIndicator status={message.status} />}
+						{/* Render non-media file attachments if any */}
+						{message.files && message.files.length > 0 && (
+							<Box sx={{ mt: 2 }}>
+								{message.files
+									.filter((file) => !isImage(file) && !isVideo(file))
+									.map((file) => (
+										<FileAttachment
+											key={`${message.id}-${file}`}
+											file={file}
+											onClick={handleFileClick}
+											conversationId={conversationId}
+										/>
+									))}
+							</Box>
+						)}
 
-							{/* Render non-media file attachments if any */}
-							{message.files && message.files.length > 0 && (
-								<Box sx={{ mt: 2 }}>
-									{message.files
-										.filter((file) => !isImage(file) && !isVideo(file))
-										.map((file) => (
-											<FileAttachment
-												key={`${message.id}-${file}`}
-												file={file}
-												onClick={handleFileClick}
-												conversationId={conversationId}
-											/>
-										))}
-								</Box>
-							)}
-
-							{/* Message timestamp */}
-							<MessageTimestamp timestamp={message.timestamp} isUser={isUser} />
-						</MessagePaper>
-					</ActionHighlight>
+						{/* Message timestamp */}
+						<MessageTimestamp timestamp={message.timestamp} isUser={isUser} />
+					</MessagePaper>
 				)}
 			</MessageContainer>
 		);
@@ -529,7 +551,14 @@ export const MessageItem: FC<MessageItemProps> = memo(
 			prevProps.message.message === nextProps.message.message &&
 			prevProps.message.status === nextProps.message.status &&
 			prevProps.message.is_complete === nextProps.message.is_complete &&
-			prevProps.message.is_streamable === nextProps.message.is_streamable
+			prevProps.message.is_streamable === nextProps.message.is_streamable &&
+			prevProps.currentExecution?.id === nextProps.currentExecution?.id &&
+			prevProps.currentExecution?.stdout ===
+				nextProps.currentExecution?.stdout &&
+			prevProps.currentExecution?.stderr ===
+				nextProps.currentExecution?.stderr &&
+			prevProps.currentExecution?.logging ===
+				nextProps.currentExecution?.logging
 		);
 	},
 );

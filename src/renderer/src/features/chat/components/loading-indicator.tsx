@@ -1,32 +1,12 @@
 import { keyframes } from "@emotion/react";
-import {
-	faChevronDown,
-	faChevronUp,
-	faRobot,
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Avatar, Box, Button, Typography, styled } from "@mui/material";
+import { Avatar, Box, Typography, styled } from "@mui/material";
 import type {
 	AgentExecutionRecord,
 	JobStatus,
 } from "@shared/api/local-operator/types";
-import { useScrollToBottom } from "@shared/hooks/use-scroll-to-bottom";
 import { useStreamingMessagesStore } from "@shared/store/streaming-messages-store";
+import { Bot } from "lucide-react";
 import type { FC } from "react";
-import { useEffect, useState } from "react";
-import SyntaxHighlighter from "react-syntax-highlighter";
-import { atomOneDark } from "react-syntax-highlighter/dist/esm/styles/hljs";
-import { createGlobalStyle } from "styled-components";
-import { ErrorBlock } from "./message-item/error-block";
-import { LogBlock } from "./message-item/log-block";
-import { OutputBlock } from "./message-item/output-block";
-
-// Global style to ensure Roboto Mono is applied to syntax highlighter
-const SyntaxHighlighterStyles = createGlobalStyle`
-  .loading-syntax-highlighter * {
-    font-family: 'Roboto Mono', monospace !important;
-  }
-`;
 
 // Define the animations
 const dotAnimation = keyframes`
@@ -103,116 +83,6 @@ const Dot = styled("span")<{ delay: number }>(({ theme, delay }) => ({
 	animation: `${dotAnimation} 1.4s infinite ease-in-out`,
 	animationDelay: `${delay}s`,
 }));
-
-const CodeToggleButton = styled(Button)(({ theme }) => ({
-	color: theme.palette.text.secondary,
-	padding: "0 4px",
-	minWidth: "auto",
-	textTransform: "none",
-	marginLeft: 8,
-	height: "auto",
-	fontSize: "0.75rem",
-	lineHeight: 1,
-	opacity: 0.7,
-	borderRadius: "12px",
-	transition: "all 0.2s ease",
-	position: "relative",
-	zIndex: 2,
-	"&:hover": {
-		backgroundColor: "transparent",
-		opacity: 1,
-		color: theme.palette.primary.light,
-	},
-	"& .MuiButton-startIcon": {
-		marginRight: 2,
-		marginLeft: 0,
-	},
-}));
-
-const CodeContainer = styled(Box)(() => ({
-	maxWidth: "100%",
-	marginLeft: 16,
-	marginTop: 8,
-}));
-
-/**
- * Displays a syntax-highlighted code/output block for loading indicator.
- * Uses flex-direction: column-reverse to anchor scroll to the bottom via CSS.
- * @param code - The code or output string to display.
- * @param label - Optional label to display above the block.
- * @param language - Optional language for syntax highlighting.
- */
-const LoadingCodeBlock: FC<{
-	code: string;
-	label?: string;
-	language?: string;
-}> = ({ code, label, language = "python" }) => {
-	if (!code) return null;
-
-	return (
-		<Box sx={{ width: "100%", marginBottom: 2 }}>
-			{label && (
-				<Typography
-					variant="caption"
-					sx={{
-						color: (theme) => theme.palette.text.secondary,
-						fontWeight: 600,
-						marginLeft: 0.5,
-						marginBottom: 0.5,
-						letterSpacing: 0.5,
-						textTransform: "uppercase",
-						opacity: 0.7,
-					}}
-				>
-					{label}
-				</Typography>
-			)}
-			<Box
-				sx={{
-					width: "100%",
-					maxHeight: "300px",
-					overflow: "auto",
-					display: "flex",
-					borderRadius: "8px",
-					"&::-webkit-scrollbar": {
-						width: "6px",
-						height: "6px",
-					},
-					"&::-webkit-scrollbar-thumb": {
-						backgroundColor: "rgba(255, 255, 255, 0.1)",
-						borderRadius: "3px",
-					},
-					"&::-webkit-scrollbar-corner": {
-						backgroundColor: "rgba(0, 0, 0, 0.3)",
-					},
-				}}
-			>
-				<SyntaxHighlighterStyles />
-				<SyntaxHighlighter
-					language={language}
-					style={atomOneDark}
-					customStyle={{
-						fontSize: "0.85rem",
-						width: "100%",
-						boxShadow: "0 2px 6px rgba(0, 0, 0, 0.2)",
-						padding: "0.75rem",
-						margin: 0,
-					}}
-					codeTagProps={{
-						style: {
-							fontFamily: '"Roboto Mono", monospace !important',
-						},
-					}}
-					className="loading-syntax-highlighter"
-					wrapLines={true}
-					wrapLongLines={true}
-				>
-					{code}
-				</SyntaxHighlighter>
-			</Box>
-		</Box>
-	);
-};
 
 /**
  * Get a user-friendly text representation of a job status
@@ -308,118 +178,55 @@ export const LoadingIndicator: FC<{
 	status?: JobStatus | null;
 	agentName?: string;
 	currentExecution?: AgentExecutionRecord | null;
-	scrollToBottom?: () => void;
 	conversationId?: string;
-}> = ({ status, currentExecution, scrollToBottom }) => {
-	const [isCodeExpanded, setIsCodeExpanded] = useState(false);
-
+}> = ({ status, currentExecution }) => {
 	const { getStreamingMessage } = useStreamingMessagesStore();
 	const streamingMessage = getStreamingMessage(currentExecution?.id || "");
 	const isStreaming = !!streamingMessage && !streamingMessage.isComplete;
 
-	const codeSnippet = currentExecution?.code || null;
-	const stdout = currentExecution?.stdout || "";
-	const stderr = currentExecution?.stderr || "";
-	const logging = currentExecution?.logging || "";
-	const message = currentExecution?.message || null;
-	const statusText = currentExecution
-		? getDetailedStatusText(status, currentExecution)
-		: status
-			? getStatusText(status)
-			: "Thinking";
-
-	// Use the simplified scroll hook
-	const {
-		containerRef,
-		scrollToBottom: scrollToBottomHook,
-		isFarFromBottom,
-	} = useScrollToBottom();
-
-	useEffect(() => {
-		if (codeSnippet && isCodeExpanded && !isStreaming && !isFarFromBottom) {
-			// Use requestAnimationFrame to ensure the DOM has been updated
-			requestAnimationFrame(() => {
-				// Use the hook's scrollToBottom if available, otherwise use the prop
-				if (scrollToBottomHook) {
-					scrollToBottomHook();
-				} else if (scrollToBottom) {
-					scrollToBottom();
-				}
-			});
-		}
-	}, [
-		codeSnippet,
-		isCodeExpanded,
-		scrollToBottom,
-		scrollToBottomHook,
-		isStreaming,
-		isFarFromBottom,
-	]);
-
-	// Toggle code expansion function
-	const toggleCodeExpansion = () => {
-		setIsCodeExpanded((prev) => !prev);
-	};
-
 	if (isStreaming) {
+		// Don't show while streaming
 		return null;
+	}
+
+	if (currentExecution?.action) {
+		// Don't show while action is running
+		return null;
+	}
+
+	let statusText: string;
+
+	if (currentExecution) {
+		if (currentExecution.message) {
+			statusText = currentExecution.message;
+		} else {
+			statusText = getDetailedStatusText(status, currentExecution);
+		}
+	} else if (status) {
+		statusText = getStatusText(status);
+	} else {
+		statusText = "Thinking";
 	}
 
 	return (
 		<LoadingContainer>
-			{/* Invisible div for scroll reference */}
-			<div ref={containerRef} style={{ height: 0, width: 0 }} />
 			<AgentAvatar>
-				<FontAwesomeIcon icon={faRobot} size="sm" />
+				<Bot size={22} />
 			</AgentAvatar>
 
 			<ContentContainer>
 				<StatusContainer>
 					<StatusText variant="body2">
-						<StatusTextContent>
-							{message ? message : `${statusText}`}
-						</StatusTextContent>
+						<StatusTextContent>{statusText}</StatusTextContent>
 						<StatusControls>
 							<DotContainer>
 								<Dot delay={0} />
 								<Dot delay={0.2} />
 								<Dot delay={0.4} />
 							</DotContainer>
-
-							{(codeSnippet || stdout || stderr || logging) && (
-								<CodeToggleButton
-									onClick={toggleCodeExpansion}
-									size="small"
-									variant="text"
-									startIcon={
-										<FontAwesomeIcon
-											icon={isCodeExpanded ? faChevronUp : faChevronDown}
-											size="xs"
-											style={{ fontSize: "0.75rem" }}
-										/>
-									}
-								>
-									{isCodeExpanded ? "(Hide code)" : "(Show code)"}
-								</CodeToggleButton>
-							)}
 						</StatusControls>
 					</StatusText>
 				</StatusContainer>
-
-				{isCodeExpanded && (codeSnippet || stdout || stderr || logging) && (
-					<CodeContainer>
-						{codeSnippet && (
-							<LoadingCodeBlock
-								code={codeSnippet}
-								label="Code"
-								language="python"
-							/>
-						)}
-						{stdout && <OutputBlock output={stdout} isUser={false} />}
-						{stderr && <ErrorBlock error={stderr} isUser={false} />}
-						{logging && <LogBlock log={logging} isUser={false} />}
-					</CodeContainer>
-				)}
 			</ContentContainer>
 		</LoadingContainer>
 	);

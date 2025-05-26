@@ -28,6 +28,10 @@ type AttachmentsPreviewProps = {
 
 // Regex for splitting file paths (moved to top-level for performance)
 const PATH_SEPARATOR_REGEX = /[/\\]/;
+// Regex for extracting the resource name from a data URI
+const RESOURCE_NAME_REGEX = /name=([^;,]+)/;
+// Regex for extracting the MIME type from a data URI
+const MIME_TYPE_REGEX = /^data:([^;,]+)/;
 
 /**
  * Container for the attachments preview
@@ -185,6 +189,9 @@ export const AttachmentsPreview: FC<AttachmentsPreviewProps> = ({
 	 * Check if a file is an image based on its path/URL
 	 */
 	const isImage = useCallback((path: string) => {
+		if (path.startsWith("data:image/")) {
+			return true;
+		}
 		const imageExtensions = [
 			".jpg",
 			".jpeg",
@@ -202,6 +209,9 @@ export const AttachmentsPreview: FC<AttachmentsPreviewProps> = ({
 	 * Check if a file is a video based on its path/URL
 	 */
 	const isVideo = useCallback((path: string) => {
+		if (path.startsWith("data:video/")) {
+			return true;
+		}
 		const videoExtensions = [
 			".mp4",
 			".webm",
@@ -223,7 +233,26 @@ export const AttachmentsPreview: FC<AttachmentsPreviewProps> = ({
 	 * Extract filename from path
 	 */
 	const getFileName = useCallback((path: string) => {
-		// Handle both local paths and URLs
+		if (path.startsWith("data:image/")) {
+			return ""; // No name for pasted images
+		}
+		if (path.startsWith("data:")) {
+			// For other pasted files (non-image)
+			const nameMatch = path.match(RESOURCE_NAME_REGEX);
+			if (nameMatch?.[1]) {
+				try {
+					return decodeURIComponent(nameMatch[1]);
+				} catch (_) {
+					// Fallback if decoding fails, continue to MIME type extraction
+				}
+			}
+			const mimeTypeMatch = path.match(MIME_TYPE_REGEX);
+			if (mimeTypeMatch?.[1]) {
+				return `Pasted ${mimeTypeMatch[1]}`;
+			}
+			return "Pasted File"; // Generic fallback for non-image data URIs
+		}
+		// Handle both local paths and URLs for actual files
 		const parts = path.split(PATH_SEPARATOR_REGEX);
 		return parts[parts.length - 1];
 	}, []);
@@ -235,6 +264,10 @@ export const AttachmentsPreview: FC<AttachmentsPreviewProps> = ({
 	 */
 	const getAttachmentUrl = useCallback(
 		(path: string) => {
+			// If it's a data URI, return it as is
+			if (path.startsWith("data:")) {
+				return path;
+			}
 			// If it's a web URL, return it as is
 			if (path.startsWith("http")) {
 				return path;
@@ -253,10 +286,10 @@ export const AttachmentsPreview: FC<AttachmentsPreviewProps> = ({
 				return client.static.getVideoUrl(normalizedPath);
 			}
 
-			// For other file types, return the original path
+			// For other file types, return the original path (though this case might not be hit if not image/video)
 			return path;
 		},
-		[client, isImage, isVideo],
+		[client, isImage, isVideo], // isImage and isVideo are stable due to useCallback
 	);
 
 	/**
@@ -296,9 +329,12 @@ export const AttachmentsPreview: FC<AttachmentsPreviewProps> = ({
 						) : (
 							<FileIcon>{getFileName(attachment)}</FileIcon>
 						)}
-						<AttachmentName variant="caption" noWrap>
-							{getFileName(attachment)}
-						</AttachmentName>
+						{/* Only show name if it's not a pasted image (getFileName returns "" for them) */}
+						{getFileName(attachment) && (
+							<AttachmentName variant="caption" noWrap>
+								{getFileName(attachment)}
+							</AttachmentName>
+						)}
 						<Tooltip title="Remove attachment">
 							<RemoveButton
 								size="small"

@@ -19,6 +19,8 @@ type FileAttachmentProps = BaseFileAttachmentProps & {
 	conversationId: string;
 };
 
+const RESOURCE_NAME_REGEX = /name=([^;,]+)/;
+
 /**
  * Styled component for non-image file attachments
  * Displays a file icon and filename in a container
@@ -83,6 +85,31 @@ const FileName = styled(Typography)({
  */
 const PATH_SEPARATOR_REGEX = /[/\\]/;
 const getFileName = (path: string): string => {
+	if (path.startsWith("data:image/")) {
+		// Attempt to get a name from the data URI if it's there (e.g., from a download attribute)
+		// This is a basic heuristic and might not always work.
+		const nameMatch = path.match(RESOURCE_NAME_REGEX);
+		if (nameMatch?.[1]) {
+			try {
+				return decodeURIComponent(nameMatch[1]);
+			} catch (_) {
+				// Fallback if decoding fails
+				return "Pasted Image";
+			}
+		}
+		return "Pasted Image";
+	}
+	if (path.startsWith("data:")) {
+		const nameMatch = path.match(RESOURCE_NAME_REGEX);
+		if (nameMatch?.[1]) {
+			try {
+				return decodeURIComponent(nameMatch[1]);
+			} catch (_) {
+				return "Pasted File";
+			}
+		}
+		return "Pasted File";
+	}
 	// Handle both local paths and URLs
 	const parts = path.split(PATH_SEPARATOR_REGEX);
 	return parts[parts.length - 1];
@@ -102,72 +129,116 @@ export const FileAttachment: FC<FileAttachmentProps> = ({
 	const setSelectedTab = useCanvasStore((s) => s.setSelectedTab);
 	// Removed files and openTabs subscriptions to prevent unnecessary re-renders and update loops
 
+	const isPastedImage = file.startsWith("data:image/");
+
 	// Handle click on the file attachment
 	const handleClick = useCallback(async () => {
-		const normalizedPath = file.startsWith("file://")
-			? file.substring(7)
-			: file;
-
-		const title = getFileName(file);
-
+		const title = getFileName(file); // This will be "Pasted Image" for image data URIs
 		const fallbackAction = (err?: string) => {
-			if (err) console.error("Error reading file:", err);
-			onClick(file);
+			if (err) console.error("Error processing file:", err);
+			onClick(file); // Pass the original file string (path or data URI)
 		};
 
-		try {
-			const result = await window.api.readFile(normalizedPath);
-
-			if (result.success && isCanvasSupported(title)) {
-				const docId = normalizedPath;
+		if (file.startsWith("data:")) {
+			// Handle base64 data URI
+			if (isCanvasSupported(title)) {
+				const docId = file; // Use the data URI itself as a unique ID
 				const newDoc = {
 					id: docId,
 					title,
-					path: normalizedPath,
-					content: result.data,
+					path: docId, // Store data URI as path for consistency if needed
+					content: file, // The content is the data URI itself
 				};
-				// Always get the latest files and openTabs from the store to avoid stale closure and update loops
-				const state = useCanvasStore.getState();
-				const files = state.conversations[conversationId]?.files ?? [];
-				const openTabs = state.conversations[conversationId]?.openTabs ?? [];
 
-				// Always update the file content if it exists, or add it if not
+				const state = useCanvasStore.getState();
+				const conversationCanvasState = state.conversations?.[conversationId];
+				const filesInState = conversationCanvasState?.files ?? [];
+				const openTabsInState = conversationCanvasState?.openTabs ?? [];
+
 				const updatedFiles = (() => {
-					const idx = files.findIndex((d) => d.id === docId);
+					const idx = filesInState.findIndex((d) => d.id === docId);
 					if (idx !== -1) {
-						// Replace the file with the new content
-						return [...files.slice(0, idx), newDoc, ...files.slice(idx + 1)];
+						return [
+							...filesInState.slice(0, idx),
+							newDoc,
+							...filesInState.slice(idx + 1),
+						];
 					}
-					// Add new file
-					return [...files, newDoc];
+					return [...filesInState, newDoc];
 				})();
 				setFiles(conversationId, updatedFiles);
 
-				const existsTab = openTabs.some((t) => t.id === docId);
+				const existsTab = openTabsInState.some((t) => t.id === docId);
 				const updatedTabs = existsTab
-					? openTabs
-					: [...openTabs, { id: docId, title }];
+					? openTabsInState
+					: [...openTabsInState, { id: docId, title }];
 				setOpenTabs(conversationId, updatedTabs);
 				setSelectedTab(conversationId, docId);
 				setCanvasOpen(true);
-				return;
+			} else {
+				// Not canvas supported, but it's a data URI.
+				// The server will handle it. For client-side, just call onClick.
+				onClick(file);
 			}
+		} else {
+			// Handle file path
+			const normalizedPath = file.startsWith("file://")
+				? file.substring(7)
+				: file;
+			try {
+				const result = await window.api.readFile(normalizedPath);
 
-			// If we get here, result.success must be false
-			const errorMessage =
-				!result.success && result.error
-					? result.error instanceof Error
-						? result.error.message
-						: String(result.error)
-					: "Unknown error";
+				if (result.success && isCanvasSupported(title)) {
+					const docId = normalizedPath;
+					const newDoc = {
+						id: docId,
+						title,
+						path: normalizedPath,
+						content: result.data,
+					};
 
-			return fallbackAction(errorMessage);
-		} catch (error: unknown) {
-			const message =
-				error instanceof Error
-					? error.message
-					: String(error ?? "Unknown error");
-			return fallbackAction(message);
+					const state = useCanvasStore.getState();
+					const conversationCanvasState = state.conversations?.[conversationId];
+					const filesInState = conversationCanvasState?.files ?? [];
+					const openTabsInState = conversationCanvasState?.openTabs ?? [];
+
+					const updatedFiles = (() => {
+						const idx = filesInState.findIndex((d) => d.id === docId);
+						if (idx !== -1) {
+							return [
+								...filesInState.slice(0, idx),
+								newDoc,
+								...filesInState.slice(idx + 1),
+							];
+						}
+						return [...filesInState, newDoc];
+					})();
+					setFiles(conversationId, updatedFiles);
+
+					const existsTab = openTabsInState.some((t) => t.id === docId);
+					const updatedTabs = existsTab
+						? openTabsInState
+						: [...openTabsInState, { id: docId, title }];
+					setOpenTabs(conversationId, updatedTabs);
+					setSelectedTab(conversationId, docId);
+					setCanvasOpen(true);
+					return;
+				}
+
+				const errorMessage =
+					!result.success && result.error
+						? result.error instanceof Error
+							? result.error.message
+							: String(result.error)
+						: "Unknown error reading file";
+				return fallbackAction(errorMessage);
+			} catch (error: unknown) {
+				const message =
+					error instanceof Error
+						? error.message
+						: String(error ?? "Unknown error reading file");
+				return fallbackAction(message);
+			}
 		}
 	}, [
 		file,
@@ -183,11 +254,34 @@ export const FileAttachment: FC<FileAttachmentProps> = ({
 		<FileAttachmentContainer
 			onClick={handleClick}
 			title={`Click to open ${getFileName(file)}`}
+			sx={{
+				// Adjust padding if it's an image to give it more space, or remove padding
+				padding: isPastedImage ? 0 : "8px 12px",
+				// If it's an image, let it define its own aspect ratio, otherwise fix height for icon/text
+				height: isPastedImage ? "auto" : "auto", // Keep auto or set specific for icon
+				maxWidth: isPastedImage ? "200px" : "100%", // Allow images to be a bit wider if needed
+			}}
 		>
-			<FileIcon>
-				<FontAwesomeIcon icon={faFile} size="sm" />
-			</FileIcon>
-			<FileName variant="body2">{getFileName(file)}</FileName>
+			{isPastedImage ? (
+				<img
+					src={file}
+					alt="Pasted content preview"
+					style={{
+						display: "block",
+						maxWidth: "100%",
+						maxHeight: "150px", // Max height for the preview in message
+						borderRadius: "8px", // Match container's border radius
+						objectFit: "contain",
+					}}
+				/>
+			) : (
+				<>
+					<FileIcon>
+						<FontAwesomeIcon icon={faFile} size="sm" />
+					</FileIcon>
+					<FileName variant="body2">{getFileName(file)}</FileName>
+				</>
+			)}
 		</FileAttachmentContainer>
 	);
 };

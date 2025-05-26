@@ -18,7 +18,7 @@ import { styled } from "@mui/material/styles";
 import { useMessageInput } from "@shared/hooks/use-message-input";
 import { normalizePath } from "@shared/utils/path-utils";
 import { useMemo, useRef, useState } from "react";
-import type { ChangeEvent, FC, FormEvent } from "react";
+import type { ChangeEvent, ClipboardEvent, FC, FormEvent } from "react";
 import type { Message } from "../types/message";
 import { AttachmentsPreview } from "./attachments-preview";
 import { ScrollToBottomButton } from "./scroll-to-bottom-button";
@@ -382,6 +382,26 @@ export const MessageInput: FC<MessageInputProps> = ({
 		fileInputRef.current?.click();
 	};
 
+	const handlePaste = (event: ClipboardEvent<HTMLDivElement>) => {
+		const items = event.clipboardData?.items;
+		if (items) {
+			for (let i = 0; i < items.length; i++) {
+				if (items[i].type.indexOf("image") !== -1 || items[i].kind === "file") {
+					const file = items[i].getAsFile();
+					if (file) {
+						const reader = new FileReader();
+						reader.onload = (e) => {
+							if (e.target?.result) {
+								setAttachments((prev) => [...prev, e.target?.result as string]);
+							}
+						};
+						reader.readAsDataURL(file);
+					}
+				}
+			}
+		}
+	};
+
 	const isInputDisabled = Boolean(isLoading && currentJobId);
 
 	const handleSuggestionClick = (suggestion: string) => {
@@ -408,6 +428,7 @@ export const MessageInput: FC<MessageInputProps> = ({
 					value={newMessage}
 					onChange={(e) => setNewMessage(e.target.value)}
 					onKeyDown={handleKeyDown}
+					onPaste={handlePaste}
 					multiline
 					maxRows={4}
 					variant="outlined"
