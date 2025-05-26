@@ -50,6 +50,7 @@ import { format, formatRFC3339, parseISO, subDays } from "date-fns";
 import { Settings, PlayCircle } from "lucide-react"; // Added PlayCircle for tour button
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { FC, RefObject } from "react";
+import { useNavigate } from "react-router-dom";
 import {
 	CartesianGrid,
 	Line,
@@ -482,6 +483,7 @@ export const SettingsPage: FC = () => {
 	const [isScrolling, setIsScrolling] = useState(false);
 	const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null); // Ref for scroll timeout
 	const { startTour: startOnboardingTour } = useOnboardingTour();
+	const navigate = useNavigate();
 
 	const { data: credentialsData, refetch: refetchCredentials } =
 		useCredentials();
@@ -723,15 +725,18 @@ export const SettingsPage: FC = () => {
 								{/* Onboarding Tour Button */}
                 <SettingsSectionCard
                   title="Application Tour"
-                  description="Missed the tour or want a refresher? Start it again here."
+                  description="Missed the application onboarding tour or want a refresher? Start it again here."
                 >
                   <FieldsContainer>
                     <Button
                       variant="outlined"
-                      onClick={() => startOnboardingTour({ forceModalCompleted: true })}
+                      onClick={() => {
+                        navigate("/");
+                        startOnboardingTour({ forceModalCompleted: true });
+                      }}
                       startIcon={<PlayCircle size={18} />} // Lucide icon used directly in startIcon
                     >
-                      Resume Onboarding Tour
+                      Take the Tour
                     </Button>
                   </FieldsContainer>
                 </SettingsSectionCard>
