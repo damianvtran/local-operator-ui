@@ -78,6 +78,9 @@ const FullscreenContainer = styled(Box)(() => ({
 	width: "100%",
 	height: "80vh",
 	overflow: "hidden",
+	display: "flex",
+	justifyContent: "center",
+	alignItems: "center",
 	"& .mermaid": {
 		display: "flex",
 		justifyContent: "center",
@@ -90,8 +93,10 @@ const FullscreenContainer = styled(Box)(() => ({
 		},
 	},
 	"& svg": {
-		maxWidth: "none",
-		height: "90%",
+		maxWidth: "100%",
+		maxHeight: "100%",
+		width: "auto",
+		height: "auto",
 		backgroundColor: "transparent",
 		transition: "transform 0.2s ease-out",
 	},
@@ -182,13 +187,49 @@ export const MermaidDiagram: FC<MermaidDiagramProps> = memo(({ chart, id }) => {
 		renderDiagram();
 	}, [renderDiagram]);
 
+	// Calculate initial scale for fullscreen mode to fit the diagram properly
+	const calculateInitialFullscreenScale = useCallback(() => {
+		if (!svgContent || !fullscreenElementRef.current) return 1;
+
+		const container = fullscreenElementRef.current;
+		const containerRect = container.getBoundingClientRect();
+		const tempDiv = document.createElement("div");
+		tempDiv.innerHTML = svgContent;
+		const svgElement = tempDiv.querySelector("svg");
+
+		if (!svgElement) return 1;
+
+		const svgWidth = svgElement.getBoundingClientRect?.()?.width || 
+			Number.parseFloat(svgElement.getAttribute("width") || "0") || 
+			svgElement.viewBox?.baseVal?.width || 800;
+		const svgHeight = svgElement.getBoundingClientRect?.()?.height || 
+			Number.parseFloat(svgElement.getAttribute("height") || "0") || 
+			svgElement.viewBox?.baseVal?.height || 600;
+
+		const scaleX = (containerRect.width * 0.9) / svgWidth;
+		const scaleY = (containerRect.height * 0.9) / svgHeight;
+		
+		return Math.min(scaleX, scaleY, 1); // Don't scale up beyond original size
+	}, [svgContent]);
+
+	// Reset fullscreen transform when entering fullscreen
+	useEffect(() => {
+		if (isFullscreen && svgContent) {
+			// Small delay to ensure the container is rendered
+			setTimeout(() => {
+				const initialScale = calculateInitialFullscreenScale();
+				setFullscreenTransform({ scale: initialScale, x: 0, y: 0 });
+			}, 100);
+		}
+	}, [isFullscreen, svgContent, calculateInitialFullscreenScale]);
+
 	const handleZoomIn = useCallback((isFullscreenMode = false) => {
 		const setTransformState = isFullscreenMode
 			? setFullscreenTransform
 			: setTransform;
 		setTransformState((prev) => ({
 			...prev,
-			scale: Math.min(prev.scale * 1.2, 3),
+			scale: Math.min(prev.scale * 1.2, 5), // Increased max zoom to 5x
 		}));
 	}, []);
 
@@ -206,8 +247,14 @@ export const MermaidDiagram: FC<MermaidDiagramProps> = memo(({ chart, id }) => {
 		const setTransformState = isFullscreenMode
 			? setFullscreenTransform
 			: setTransform;
-		setTransformState({ scale: 1, x: 0, y: 0 });
-	}, []);
+		
+		if (isFullscreenMode) {
+			const initialScale = calculateInitialFullscreenScale();
+			setTransformState({ scale: initialScale, x: 0, y: 0 });
+		} else {
+			setTransformState({ scale: 1, x: 0, y: 0 });
+		}
+	}, [calculateInitialFullscreenScale]);
 
 	const handleSaveSVG = useCallback(() => {
 		if (!svgContent) return;
@@ -228,7 +275,7 @@ export const MermaidDiagram: FC<MermaidDiagramProps> = memo(({ chart, id }) => {
 	}, [svgContent]);
 
 	const handleMouseDown = useCallback(
-		(e: React.MouseEvent, isFullscreenMode = false) => {
+		(e: React.MouseEvent) => {
 			setIsPanning(true);
 			setLastPanPoint({ x: e.clientX, y: e.clientY });
 			e.preventDefault();
@@ -271,13 +318,11 @@ export const MermaidDiagram: FC<MermaidDiagramProps> = memo(({ chart, id }) => {
 
 			setTransformState((prev) => ({
 				...prev,
-				scale: Math.min(Math.max(prev.scale * delta, 0.1), 3),
+				scale: Math.min(Math.max(prev.scale * delta, 0.1), 5), // Increased max zoom to 5x
 			}));
 		},
 		[],
 	);
-
-	const currentTransform = isFullscreen ? fullscreenTransform : transform;
 
 	if (error) {
 		return (
@@ -305,8 +350,12 @@ export const MermaidDiagram: FC<MermaidDiagramProps> = memo(({ chart, id }) => {
 			<div
 				ref={containerRef}
 				className={`mermaid ${isPanning ? "panning" : ""}`}
-				style={{ minHeight: isFullscreenMode ? "100%" : "200px" }}
-				onMouseDown={(e) => handleMouseDown(e, isFullscreenMode)}
+				style={{ 
+					minHeight: isFullscreenMode ? "100%" : "200px",
+					width: "100%",
+					height: isFullscreenMode ? "100%" : "auto",
+				}}
+				onMouseDown={handleMouseDown}
 				onMouseMove={(e) => handleMouseMove(e, isFullscreenMode)}
 				onMouseUp={handleMouseUp}
 				onMouseLeave={handleMouseUp}
@@ -321,6 +370,11 @@ export const MermaidDiagram: FC<MermaidDiagramProps> = memo(({ chart, id }) => {
 						style={{
 							transform: `translate(${currentTransformState.x}px, ${currentTransformState.y}px) scale(${currentTransformState.scale})`,
 							transformOrigin: "center center",
+							width: "100%",
+							height: "100%",
+							display: "flex",
+							justifyContent: "center",
+							alignItems: "center",
 						}}
 						// biome-ignore lint/security/noDangerouslySetInnerHtml: SVG content from mermaid library is safe
 						dangerouslySetInnerHTML={{ __html: svgContent }}
