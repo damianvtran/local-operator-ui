@@ -413,6 +413,7 @@ export const AgentCard: React.FC<AgentCardProps> = ({
 								onClick={handleDownloadClick}
 								disabled={downloadMutation.isPending}
 								aria-label="Download agent"
+								data-tour-tag="agent-hub-download-button"
 							>
 								<Download
 									size={18}

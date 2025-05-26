@@ -153,6 +153,7 @@ export const SchedulesPage: FC = () => {
 					color="primary"
 					startIcon={<PlusCircle size={18} />}
 					onClick={() => handleOpenForm()} // Opens ScheduleFormDialog for new schedule
+					data-tour-tag="create-schedule-button"
 					sx={{
 						textTransform: "none",
 						fontSize: "0.8125rem",

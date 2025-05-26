@@ -138,14 +138,39 @@ export const SettingsSidebar: FC<SettingsSidebarProps> = ({
 			</SidebarHeader>
 
 			<SidebarList>
-				{sections.map((section) => (
-					<SidebarItemButton
-						key={section.id}
-						isActive={activeSection === section.id}
-						onClick={() => onSelectSection(section.id)}
-					>
-						<SidebarItemIcon isActive={activeSection === section.id}>
-							{section.isImage ? (
+				{sections.map((section) => {
+					let tourTag: string | undefined;
+					switch (section.id) {
+						case "general":
+							tourTag = "settings-sidebar-general";
+							break;
+						case "radient":
+							tourTag = "settings-sidebar-radient-account";
+							break;
+						case "integrations":
+							tourTag = "settings-sidebar-integrations";
+							break;
+						case "appearance":
+							tourTag = "settings-sidebar-appearance";
+							break;
+						case "credentials":
+							tourTag = "settings-sidebar-api-credentials";
+							break;
+						case "updates":
+							tourTag = "settings-sidebar-application-updates";
+							break;
+						default:
+							tourTag = undefined;
+					}
+					return (
+						<SidebarItemButton
+							key={section.id}
+							isActive={activeSection === section.id}
+							onClick={() => onSelectSection(section.id)}
+							data-tour-tag={tourTag}
+						>
+							<SidebarItemIcon isActive={activeSection === section.id}>
+								{section.isImage ? (
 								<IconImage src={section.icon as string} alt={section.label} />
 							) : section.isFontAwesome ? (
 								<FontAwesomeIcon
@@ -159,15 +184,16 @@ export const SettingsSidebar: FC<SettingsSidebarProps> = ({
 								})()
 							)}
 						</SidebarItemIcon>
-						<ListItemText
-							primary={section.label}
-							primaryTypographyProps={{
-								fontWeight: activeSection === section.id ? 600 : 500,
-								fontSize: "0.95rem",
-							}}
-						/>
-					</SidebarItemButton>
-				))}
+							<ListItemText
+								primary={section.label}
+								primaryTypographyProps={{
+									fontWeight: activeSection === section.id ? 600 : 500,
+									fontSize: "0.95rem",
+								}}
+							/>
+						</SidebarItemButton>
+					);
+				})}
 			</SidebarList>
 		</SidebarContainer>
 	);
