@@ -13,7 +13,14 @@ import {
 } from "lucide-react";
 import mermaid from "mermaid";
 import type { FC, ReactNode } from "react";
-import { memo, useCallback, useEffect, useRef, useState, Component } from "react";
+import {
+	Component,
+	memo,
+	useCallback,
+	useEffect,
+	useRef,
+	useState,
+} from "react";
 
 type MermaidDiagramProps = {
 	chart: string;
@@ -143,7 +150,10 @@ const ErrorContainer = styled(Box)(({ theme }) => ({
 /**
  * Error boundary to catch any rendering errors that escape the component's error handling
  */
-class MermaidErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+class MermaidErrorBoundary extends Component<
+	ErrorBoundaryProps,
+	ErrorBoundaryState
+> {
 	constructor(props: ErrorBoundaryProps) {
 		super(props);
 		this.state = { hasError: false };
@@ -164,7 +174,8 @@ class MermaidErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 					<ErrorContainer>
 						<strong>Mermaid Diagram Error:</strong>
 						<br />
-						{this.state.error?.message || "An unexpected error occurred while rendering the diagram"}
+						{this.state.error?.message ||
+							"An unexpected error occurred while rendering the diagram"}
 						<br />
 						<br />
 						<em>This error has been contained within the diagram component.</em>
@@ -230,7 +241,7 @@ const MermaidDiagramCore: FC<MermaidDiagramProps> = memo(({ chart, id }) => {
 
 			// Render the diagram
 			const { svg } = await mermaid.render(diagramId, chart);
-			
+
 			// Validate the SVG output
 			if (!svg || typeof svg !== "string" || svg.trim().length === 0) {
 				throw new Error("Mermaid failed to generate valid SVG output");
@@ -239,7 +250,8 @@ const MermaidDiagramCore: FC<MermaidDiagramProps> = memo(({ chart, id }) => {
 			setSvgContent(svg);
 		} catch (err) {
 			console.error("Mermaid rendering error:", err);
-			const errorMessage = err instanceof Error ? err.message : "Failed to render mermaid diagram";
+			const errorMessage =
+				err instanceof Error ? err.message : "Failed to render mermaid diagram";
 			setError(errorMessage);
 			setSvgContent(""); // Ensure SVG content is cleared on error
 		} finally {
