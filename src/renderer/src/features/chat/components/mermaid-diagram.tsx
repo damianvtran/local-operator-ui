@@ -53,7 +53,7 @@ const ControlsContainer = styled(Box)(({ theme }) => ({
 	top: 8,
 	right: 8,
 	display: "flex",
-	gap: 4,
+	gap: 2,
 	backgroundColor: theme.palette.background.paper,
 	borderRadius: "6px",
 	padding: "4px",
@@ -63,8 +63,8 @@ const ControlsContainer = styled(Box)(({ theme }) => ({
 }));
 
 const ControlButton = styled(IconButton)(({ theme }) => ({
-	width: 32,
-	height: 32,
+	width: 26,
+	height: 26,
 	padding: 4,
 	color: theme.palette.text.secondary,
 	"&:hover": {
@@ -110,7 +110,7 @@ const FullscreenControls = styled(Box)(({ theme }) => ({
 	gap: 8,
 	backgroundColor: theme.palette.background.paper,
 	borderRadius: "8px",
-	padding: "8px",
+	padding: "6px",
 	boxShadow: theme.shadows[4],
 	border: `1px solid ${theme.palette.divider}`,
 	zIndex: 10,
@@ -392,37 +392,37 @@ export const MermaidDiagram: FC<MermaidDiagramProps> = memo(({ chart, id }) => {
 				<ControlsContainer>
 					<Tooltip title="Zoom In">
 						<ControlButton onClick={() => handleZoomIn(false)}>
-							<ZoomIn size={16} />
+							<ZoomIn size={14} />
 						</ControlButton>
 					</Tooltip>
 
 					<Tooltip title="Zoom Out">
 						<ControlButton onClick={() => handleZoomOut(false)}>
-							<ZoomOut size={16} />
+							<ZoomOut size={14} />
 						</ControlButton>
 					</Tooltip>
 
 					<Tooltip title="Pan (drag to move)">
 						<ControlButton>
-							<Move size={16} />
+							<Move size={14} />
 						</ControlButton>
 					</Tooltip>
 
 					<Tooltip title="Reset View">
 						<ControlButton onClick={() => handleReset(false)}>
-							<RotateCcw size={16} />
+							<RotateCcw size={14} />
 						</ControlButton>
 					</Tooltip>
 
 					<Tooltip title="Save as SVG">
 						<ControlButton onClick={handleSaveSVG}>
-							<Download size={16} />
+							<Download size={14} />
 						</ControlButton>
 					</Tooltip>
 
 					<Tooltip title="Fullscreen">
 						<ControlButton onClick={() => setIsFullscreen(true)}>
-							<Maximize2 size={16} />
+							<Maximize2 size={14} />
 						</ControlButton>
 					</Tooltip>
 				</ControlsContainer>
@@ -446,37 +446,37 @@ export const MermaidDiagram: FC<MermaidDiagramProps> = memo(({ chart, id }) => {
 					<FullscreenControls>
 						<Tooltip title="Zoom In">
 							<ControlButton onClick={() => handleZoomIn(true)}>
-								<ZoomIn size={20} />
+								<ZoomIn size={14} />
 							</ControlButton>
 						</Tooltip>
 
 						<Tooltip title="Zoom Out">
 							<ControlButton onClick={() => handleZoomOut(true)}>
-								<ZoomOut size={20} />
+								<ZoomOut size={14} />
 							</ControlButton>
 						</Tooltip>
 
 						<Tooltip title="Pan (drag to move)">
 							<ControlButton>
-								<Move size={20} />
+								<Move size={14} />
 							</ControlButton>
 						</Tooltip>
 
 						<Tooltip title="Reset View">
 							<ControlButton onClick={() => handleReset(true)}>
-								<RotateCcw size={20} />
+								<RotateCcw size={14} />
 							</ControlButton>
 						</Tooltip>
 
 						<Tooltip title="Save as SVG">
 							<ControlButton onClick={handleSaveSVG}>
-								<Download size={20} />
+								<Download size={14} />
 							</ControlButton>
 						</Tooltip>
 
 						<Tooltip title="Close Fullscreen">
 							<ControlButton onClick={() => setIsFullscreen(false)}>
-								<X size={20} />
+								<X size={14} />
 							</ControlButton>
 						</Tooltip>
 					</FullscreenControls>
