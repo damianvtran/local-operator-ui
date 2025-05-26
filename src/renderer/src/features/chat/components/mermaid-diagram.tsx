@@ -324,7 +324,7 @@ const MermaidDiagramCore: FC<MermaidDiagramProps> = memo(({ chart, id }) => {
 				: setTransform;
 			setTransformState((prev) => ({
 				...prev,
-				scale: Math.min(prev.scale * 1.2, 5), // Increased max zoom to 5x
+				scale: Math.min(prev.scale * 1.2, 10),
 			}));
 		} catch (err) {
 			console.error("Error in zoom in:", err);
