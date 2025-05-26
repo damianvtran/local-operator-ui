@@ -198,16 +198,20 @@ export const MermaidDiagram: FC<MermaidDiagramProps> = memo(({ chart, id }) => {
 
 		if (!svgElement) return 1;
 
-		const svgWidth = svgElement.getBoundingClientRect?.()?.width || 
-			Number.parseFloat(svgElement.getAttribute("width") || "0") || 
-			svgElement.viewBox?.baseVal?.width || 800;
-		const svgHeight = svgElement.getBoundingClientRect?.()?.height || 
-			Number.parseFloat(svgElement.getAttribute("height") || "0") || 
-			svgElement.viewBox?.baseVal?.height || 600;
+		const svgWidth =
+			svgElement.getBoundingClientRect?.()?.width ||
+			Number.parseFloat(svgElement.getAttribute("width") || "0") ||
+			svgElement.viewBox?.baseVal?.width ||
+			800;
+		const svgHeight =
+			svgElement.getBoundingClientRect?.()?.height ||
+			Number.parseFloat(svgElement.getAttribute("height") || "0") ||
+			svgElement.viewBox?.baseVal?.height ||
+			600;
 
 		const scaleX = (containerRect.width * 0.9) / svgWidth;
 		const scaleY = (containerRect.height * 0.9) / svgHeight;
-		
+
 		return Math.min(scaleX, scaleY, 1); // Don't scale up beyond original size
 	}, [svgContent]);
 
@@ -242,18 +246,21 @@ export const MermaidDiagram: FC<MermaidDiagramProps> = memo(({ chart, id }) => {
 		}));
 	}, []);
 
-	const handleReset = useCallback((isFullscreenMode = false) => {
-		const setTransformState = isFullscreenMode
-			? setFullscreenTransform
-			: setTransform;
-		
-		if (isFullscreenMode) {
-			const initialScale = calculateInitialFullscreenScale();
-			setTransformState({ scale: initialScale, x: 0, y: 0 });
-		} else {
-			setTransformState({ scale: 1, x: 0, y: 0 });
-		}
-	}, [calculateInitialFullscreenScale]);
+	const handleReset = useCallback(
+		(isFullscreenMode = false) => {
+			const setTransformState = isFullscreenMode
+				? setFullscreenTransform
+				: setTransform;
+
+			if (isFullscreenMode) {
+				const initialScale = calculateInitialFullscreenScale();
+				setTransformState({ scale: initialScale, x: 0, y: 0 });
+			} else {
+				setTransformState({ scale: 1, x: 0, y: 0 });
+			}
+		},
+		[calculateInitialFullscreenScale],
+	);
 
 	const handleSaveSVG = useCallback(() => {
 		if (!svgContent) return;
@@ -273,14 +280,11 @@ export const MermaidDiagram: FC<MermaidDiagramProps> = memo(({ chart, id }) => {
 		}
 	}, [svgContent]);
 
-	const handleMouseDown = useCallback(
-		(e: React.MouseEvent) => {
-			setIsPanning(true);
-			setLastPanPoint({ x: e.clientX, y: e.clientY });
-			e.preventDefault();
-		},
-		[],
-	);
+	const handleMouseDown = useCallback((e: React.MouseEvent) => {
+		setIsPanning(true);
+		setLastPanPoint({ x: e.clientX, y: e.clientY });
+		e.preventDefault();
+	}, []);
 
 	const handleMouseMove = useCallback(
 		(e: React.MouseEvent, isFullscreenMode = false) => {
@@ -349,7 +353,7 @@ export const MermaidDiagram: FC<MermaidDiagramProps> = memo(({ chart, id }) => {
 			<div
 				ref={containerRef}
 				className={`mermaid ${isPanning ? "panning" : ""}`}
-				style={{ 
+				style={{
 					minHeight: isFullscreenMode ? "100%" : "200px",
 					width: "100%",
 					height: isFullscreenMode ? "100%" : "auto",
