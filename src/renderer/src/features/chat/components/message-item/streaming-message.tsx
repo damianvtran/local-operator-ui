@@ -2,6 +2,7 @@ import { Box, CircularProgress, Typography, styled } from "@mui/material";
 import type { AgentExecutionRecord } from "@shared/api/local-operator";
 import { useStreamingMessage } from "@shared/hooks/use-streaming-message";
 import { useStreamingMessagesStore } from "@shared/store/streaming-messages-store";
+import { getLanguageFromExtension } from "@shared/utils/file-utils";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ExpandableActionElement } from "../expandable-action-element";
 import { MarkdownRenderer } from "../markdown-renderer";
@@ -9,7 +10,6 @@ import { CodeBlock } from "./code-block";
 import { ErrorBlock } from "./error-block";
 import { LogBlock } from "./log-block";
 import { OutputBlock } from "./output-block";
-import { getLanguageFromExtension } from "@shared/utils/file-utils";
 
 const StreamingContainer = styled(Box)(() => ({
 	position: "relative",
@@ -281,13 +281,13 @@ export const StreamingMessage = ({
 				sx={{
 					borderRadius: 2,
 					color: (theme) => theme.palette.text.primary,
-          width: "100%",
-            wordBreak: "break-word",
-            overflowWrap: "break-word",
-            position: "relative",
-            mb: 2,
-          }}
-        >
+					width: "100%",
+					wordBreak: "break-word",
+					overflowWrap: "break-word",
+					position: "relative",
+					mb: 2,
+				}}
+			>
 				<MarkdownRenderer content={message.message} />
 			</Box>
 		);
@@ -442,7 +442,7 @@ export const StreamingMessage = ({
 				message?.replacements),
 	);
 
-  const fileLanguage = getLanguageFromExtension(message?.file_path || "");
+	const fileLanguage = getLanguageFromExtension(message?.file_path || "");
 
 	return (
 		<StreamingContainer
@@ -467,9 +467,21 @@ export const StreamingMessage = ({
 				hasCollapsibleContent={hasCollapsibleContent}
 				isLoading={isActivelyStreaming}
 			>
-				{message?.code && <CodeBlock code={message.code} isUser={false} flexDirection="column-reverse" />}
+				{message?.code && (
+					<CodeBlock
+						code={message.code}
+						isUser={false}
+						flexDirection="column-reverse"
+					/>
+				)}
 				{message?.content && (
-					<CodeBlock header="Content" code={message.content} isUser={false} language={fileLanguage} flexDirection="column-reverse" />
+					<CodeBlock
+						header="Content"
+						code={message.content}
+						isUser={false}
+						language={fileLanguage}
+						flexDirection="column-reverse"
+					/>
 				)}
 				{message?.replacements && (
 					<CodeBlock

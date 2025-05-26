@@ -5,6 +5,7 @@ import type {
 	ExecutionType,
 } from "@shared/api/local-operator/types";
 import { apiConfig } from "@shared/config";
+import { getLanguageFromExtension } from "@shared/utils/file-utils";
 import { type FC, useCallback, useMemo, useState } from "react";
 import { ExpandableActionElement } from "../expandable-action-element";
 import { MarkdownRenderer } from "../markdown-renderer";
@@ -15,7 +16,6 @@ import { ImageAttachment } from "./image-attachment";
 import { LogBlock } from "./log-block";
 import { OutputBlock } from "./output-block";
 import { VideoAttachment } from "./video-attachment";
-import { getLanguageFromExtension } from "@shared/utils/file-utils";
 
 /**
  * Props for the ActionBlock component
@@ -147,7 +147,7 @@ export const ActionBlock: FC<ActionBlockProps> = ({
 	stderr,
 	logging,
 	files,
-  filePath,
+	filePath,
 	conversationId,
 	isLoading,
 }) => {
@@ -205,7 +205,7 @@ export const ActionBlock: FC<ActionBlockProps> = ({
 			(code || stdout || stderr || logging || replacements || content),
 	);
 
-  const fileLanguage = getLanguageFromExtension(filePath || "");
+	const fileLanguage = getLanguageFromExtension(filePath || "");
 
 	return (
 		<Box sx={{ position: "relative", width: "100%" }}>
@@ -239,9 +239,21 @@ export const ActionBlock: FC<ActionBlockProps> = ({
 			>
 				{/* Technical details for action messages */}
 				{code && <CodeBlock code={code} isUser={isUser} />}
-				{content && <CodeBlock header="Content" code={content} isUser={isUser} language={fileLanguage} />}
+				{content && (
+					<CodeBlock
+						header="Content"
+						code={content}
+						isUser={isUser}
+						language={fileLanguage}
+					/>
+				)}
 				{replacements && (
-					<CodeBlock header="Replacements" code={replacements} isUser={isUser} language="diff" />
+					<CodeBlock
+						header="Replacements"
+						code={replacements}
+						isUser={isUser}
+						language="diff"
+					/>
 				)}
 				{stdout && <OutputBlock output={stdout} isUser={isUser} />}
 				{stderr && <ErrorBlock error={stderr} isUser={isUser} />}
