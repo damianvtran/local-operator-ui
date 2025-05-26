@@ -184,14 +184,28 @@ export const LoadingIndicator: FC<{
 	const streamingMessage = getStreamingMessage(currentExecution?.id || "");
 	const isStreaming = !!streamingMessage && !streamingMessage.isComplete;
 
-	const statusText = currentExecution
-		? getDetailedStatusText(status, currentExecution)
-		: status
-			? getStatusText(status)
-			: "Thinking";
-
-	if (isStreaming) {
+  if (isStreaming) {
+    // Don't show while streaming
 		return null;
+	}
+
+  if (currentExecution?.action) {
+    // Don't show while action is running
+    return null;
+  }
+
+	let statusText: string;
+
+	if (currentExecution) {
+		if (currentExecution.message) {
+			statusText = currentExecution.message;
+		} else {
+			statusText = getDetailedStatusText(status, currentExecution);
+		}
+	} else if (status) {
+		statusText = getStatusText(status);
+	} else {
+		statusText = "Thinking";
 	}
 
 	return (
