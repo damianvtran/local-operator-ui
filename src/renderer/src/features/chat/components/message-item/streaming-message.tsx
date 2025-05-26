@@ -433,7 +433,7 @@ export const StreamingMessage = ({
 	};
 
 	const hasCollapsibleContent = Boolean(
-		message?.execution_type === "action" && message?.action
+		message?.execution_type === "action" && message?.action,
 	);
 
 	const fileLanguage = getLanguageFromExtension(message?.file_path || "");
