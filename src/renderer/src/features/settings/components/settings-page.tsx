@@ -47,7 +47,7 @@ import { useUpdateConfig } from "@shared/hooks/use-update-config";
 import { useUsageRollup } from "@shared/hooks/use-usage-rollup";
 import { useUserStore } from "@shared/store/user-store";
 import { format, formatRFC3339, parseISO, subDays } from "date-fns";
-import { Settings } from "lucide-react";
+import { Settings, PlayCircle } from "lucide-react"; // Added PlayCircle for tour button
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { FC, RefObject } from "react";
 import {
@@ -74,6 +74,8 @@ import {
 import { DEFAULT_SETTINGS_SECTIONS, SettingsSidebar } from "./settings-sidebar";
 import { SystemPrompt } from "./system-prompt";
 import { ThemeSelector } from "./theme-selector";
+import { useOnboardingTour } from "@features/onboarding/hooks/use-onboarding-tour";
+import { useOnboardingStore } from "@shared/store/onboarding-store"; // Re-add this import
 
 // --- Billing Info Component ---
 const BillingInfo: FC = () => {
@@ -480,6 +482,8 @@ export const SettingsPage: FC = () => {
 	const [activeSection, setActiveSection] = useState<string>("general");
 	const [isScrolling, setIsScrolling] = useState(false);
 	const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null); // Ref for scroll timeout
+	const { startTour: startOnboardingTour } = useOnboardingTour();
+	const { isModalComplete, isTourComplete } = useOnboardingStore(); // Ensure this is present
 
 	const { data: credentialsData, refetch: refetchCredentials } =
 		useCredentials();
@@ -717,6 +721,25 @@ export const SettingsPage: FC = () => {
 										/>
 									</FieldsContainer>
 								</SettingsSectionCard>
+
+								{/* Onboarding Tour Button */}
+								{isModalComplete && !isTourComplete && (
+									<SettingsSectionCard
+										title="Application Tour"
+										// icon={PlayCircle} // Removed icon to resolve TS error, can be re-added with proper type handling
+										description="Missed the tour or want a refresher? Start it again here."
+									>
+										<FieldsContainer>
+											<Button
+												variant="outlined"
+												onClick={() => startOnboardingTour({ forceModalCompleted: true })}
+												startIcon={<PlayCircle size={18} />} // Lucide icon used directly in startIcon
+											>
+												Resume Onboarding Tour
+											</Button>
+										</FieldsContainer>
+									</SettingsSectionCard>
+								)}
 
 								{/* Model Settings */}
 								<SettingsSectionCard

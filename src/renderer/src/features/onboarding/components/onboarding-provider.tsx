@@ -11,22 +11,23 @@ type OnboardingProviderProps = {
 
 // Helper component to consume the context and initiate the tour
 const TourInitiator: React.FC = () => {
-  const { isComplete: isTourPreviouslyCompleted } = useOnboardingStore();
+  const { isModalComplete, isTourComplete } = useOnboardingStore();
   // useOnboardingTour provides the startTour function which itself uses the context.
   const { startTour: initiateTourFromHook } = useOnboardingTour();
   const shepherdContext = React.useContext(ShepherdJourneyContext);
 
   useEffect(() => {
-    if (!isTourPreviouslyCompleted && shepherdContext) {
+    // Start the tour if the modal is complete, the tour is NOT yet complete, and shepherd context is available.
+    if (isModalComplete && !isTourComplete && shepherdContext) {
       const timer = setTimeout(() => {
         initiateTourFromHook();
-      }, 200);
+      }, 200); // Delay to ensure UI elements are rendered
 
       return () => clearTimeout(timer);
     }
 
     return undefined;
-  }, [isTourPreviouslyCompleted, shepherdContext, initiateTourFromHook]);
+  }, [isModalComplete, isTourComplete, shepherdContext, initiateTourFromHook]);
 
   return null; // This component does not render any UI itself
 };

@@ -434,6 +434,9 @@ export const MessageInput: FC<MessageInputProps> = ({
 					variant="outlined"
 					inputRef={textareaRef}
 					disabled={isInputDisabled}
+					inputProps={{
+						"data-tour-tag": "chat-input-textarea",
+					}}
 				/>
 
 				<ButtonsRow>

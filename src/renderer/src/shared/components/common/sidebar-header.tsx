@@ -158,6 +158,7 @@ export const SidebarHeader: FC<SidebarHeaderProps> = ({
 							onClick={onNewAgentClick}
 							size="small"
 							aria-label="New agent"
+							data-tour-tag="create-new-agent-button"
 						>
 							<Plus size={18} strokeWidth={2} />
 						</ActionButton>

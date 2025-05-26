@@ -272,6 +272,7 @@ export const AgentOptionsMenu: FC<AgentOptionsMenuProps> = ({
 		<>
 			<OptionsIconButton
 				aria-label="agent options"
+				data-tour-tag="agent-options-button"
 				onClick={handleOpenMenu}
 				sx={buttonSx}
 			>
@@ -313,6 +314,7 @@ export const AgentOptionsMenu: FC<AgentOptionsMenuProps> = ({
 				{/* View Agent Settings option - only shown when not on the agents page */}
 				{!isAgentsPage && onViewAgentSettings && (
 					<StyledMenuItem
+						data-tour-tag="view-agent-settings-menu-item"
 						onClick={() => {
 							onViewAgentSettings();
 							handleCloseMenu();
@@ -343,6 +345,7 @@ export const AgentOptionsMenu: FC<AgentOptionsMenuProps> = ({
 				{/* Upload to Hub option */}
 				{onUploadAgentToHub && (
 					<StyledMenuItem
+						data-tour-tag="upload-to-hub-menu-item"
 						onClick={() => {
 							onUploadAgentToHub();
 							handleCloseMenu();

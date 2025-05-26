@@ -229,11 +229,21 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 
 	// Render a navigation item with or without tooltip based on sidebar state
 	const renderNavItem = (item: (typeof navItems)[0]) => {
+		let tourTag: string | undefined;
+		if (item.label === "Agent Hub") {
+			tourTag = "nav-item-agent-hub";
+		} else if (item.label === "Schedules") {
+			tourTag = "nav-item-schedules";
+		} else if (item.label === "Settings") {
+			tourTag = "nav-item-settings";
+		}
+
 		const navButton = (
 			<NavItemButton
 				onClick={() => handleNavigate(item.path)}
 				isActive={item.isActive}
 				isExpanded={expanded}
+				data-tour-tag={tourTag}
 			>
 				<NavItemIcon isActive={item.isActive} isExpanded={expanded}>
 					<item.icon

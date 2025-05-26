@@ -27,41 +27,42 @@ export enum OnboardingStep {
  */
 type OnboardingState = {
 	/**
-	 * Whether onboarding has been completed
+	 * Whether the onboarding modal has been completed
 	 */
-	isComplete: boolean;
-
+	isModalComplete: boolean;
+	/**
+	 * Whether the onboarding tour has been completed
+	 */
+	isTourComplete: boolean;
 	/**
 	 * Current step in the onboarding process
 	 */
 	currentStep: OnboardingStep;
-
 	/**
-	 * Whether onboarding is currently active/visible
+	 * Whether onboarding modal is currently active/visible
 	 */
-	isActive: boolean;
-
+	isModalActive: boolean;
 	/**
-	 * Mark onboarding as complete
+	 * Mark onboarding modal as complete
 	 */
-	completeOnboarding: () => void;
-
+	completeModalOnboarding: () => void;
+	/**
+	 * Mark onboarding tour as complete
+	 */
+	completeTourOnboarding: () => void;
 	/**
 	 * Set the current onboarding step
 	 * @param step - The step to set as current
 	 */
 	setCurrentStep: (step: OnboardingStep) => void;
-
 	/**
-	 * Activate the onboarding flow
+	 * Activate the onboarding modal
 	 */
-	activateOnboarding: () => void;
-
+	activateModalOnboarding: () => void;
 	/**
-	 * Deactivate the onboarding flow
+	 * Deactivate the onboarding modal
 	 */
-	deactivateOnboarding: () => void;
-
+	deactivateModalOnboarding: () => void;
 	/**
 	 * Reset the onboarding state (for testing/development)
 	 */
@@ -74,16 +75,23 @@ type OnboardingState = {
  */
 export const useOnboardingStore = create<OnboardingState>()(
 	persist(
-		(set) => ({
-			isComplete: false,
+		(set, _) => ({
+			isModalComplete: false,
+			isTourComplete: false,
 			// Default to RADIENT_CHOICE; the modal will redirect if needed
 			currentStep: OnboardingStep.RADIENT_CHOICE,
-			isActive: false,
+			isModalActive: false,
 
-			completeOnboarding: () => {
+			completeModalOnboarding: () => {
 				set({
-					isComplete: true,
-					isActive: false,
+					isModalComplete: true,
+					isModalActive: false, // Modal is no longer active once completed
+				});
+			},
+
+			completeTourOnboarding: () => {
+				set({
+					isTourComplete: true,
 				});
 			},
 
@@ -91,25 +99,43 @@ export const useOnboardingStore = create<OnboardingState>()(
 				set({ currentStep: step });
 			},
 
-			activateOnboarding: () => {
-				set({ isActive: true });
+			activateModalOnboarding: () => {
+				set({ isModalActive: true });
 			},
 
-			deactivateOnboarding: () => {
-				set({ isActive: false });
+			deactivateModalOnboarding: () => {
+				set({ isModalActive: false });
 			},
 
 			resetOnboarding: () => {
 				set({
-					isComplete: false,
+					isModalComplete: false,
+					isTourComplete: false,
 					// Reset to RADIENT_CHOICE as well
 					currentStep: OnboardingStep.RADIENT_CHOICE,
-					isActive: false,
+					isModalActive: false,
 				});
 			},
 		}),
 		{
 			name: "onboarding-storage",
+			onRehydrateStorage: () => (state, error) => {
+				if (error) {
+					console.error("Failed to rehydrate onboarding store:", error);
+				} else if (state) {
+					// Check for the old 'isComplete' key from a previous version of the store state
+					// This is a simplified one-time migration logic.
+					// biome-ignore lint/suspicious/noExplicitAny: checking for old state shape
+					const rawPersistedState = JSON.parse(localStorage.getItem("onboarding-storage") || "{}") as any;
+					
+					if (rawPersistedState?.state?.isComplete === true && !state.isModalComplete) {
+						console.log("Migrating old 'isComplete:true' state to 'isModalComplete:true'");
+						// Directly update the state that will be applied to the store
+						// This ensures that if the old key indicated modal completion, the new key reflects it.
+						state.isModalComplete = true; 
+					}
+				}
+			},
 		},
 	),
 );

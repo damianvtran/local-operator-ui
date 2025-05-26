@@ -423,7 +423,7 @@ export const AgentsSidebar: FC<AgentsSidebarProps> = ({
 	);
 
 	return (
-		<SidebarContainer elevation={0}>
+		<SidebarContainer elevation={0} data-tour-tag="agent-list-panel">
 			<SidebarHeader
 				title="Agents"
 				searchQuery={searchQuery}
@@ -471,6 +471,7 @@ export const AgentsSidebar: FC<AgentsSidebarProps> = ({
 									selectedAgentDetails?.id === agent.id
 								}
 								onClick={() => handleSelectAgent(agent)} // Pass the full agent object
+								data-tour-tag="agent-list-item-button"
 							>
 								<ListItemAvatar>
 									<AgentAvatar selected={selectedAgentId === agent.id}>

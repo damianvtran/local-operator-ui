@@ -117,7 +117,7 @@ export const AgentSettings: FC<AgentSettingsProps> = ({
 	const updateAgentMutation = useUpdateAgent();
 
 	return (
-		<DetailsPaper>
+		<DetailsPaper data-tour-tag="agent-settings-details-paper">
 			{selectedAgent ? (
 				<ScrollableContent>
 					<GeneralSettings
