@@ -187,36 +187,42 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 		label: string;
 		path: string;
 		isActive: boolean;
+		tourTag?: string;
 	}> = [
 		{
 			icon: MessageCircle,
 			label: "Chat",
 			path: "/chat",
 			isActive: currentView === "chat",
+			tourTag: "nav-item-chat",
 		},
 		{
 			icon: Bot,
 			label: "My Agents",
 			path: "/agents",
 			isActive: currentView === "agents",
+			tourTag: "nav-item-agents",
 		},
 		{
 			icon: Store,
 			label: "Agent Hub",
 			path: "/agent-hub",
 			isActive: currentView === "agent-hub",
+			tourTag: "nav-item-agent-hub",
 		},
 		{
 			icon: CalendarDays,
 			label: "Schedules",
 			path: "/schedules",
 			isActive: currentView === "schedules",
+			tourTag: "nav-item-schedules",
 		},
 		{
 			icon: Settings,
 			label: "Settings",
 			path: "/settings",
 			isActive: currentView === "settings",
+			tourTag: "nav-item-settings",
 		},
 	];
 
@@ -229,21 +235,12 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 
 	// Render a navigation item with or without tooltip based on sidebar state
 	const renderNavItem = (item: (typeof navItems)[0]) => {
-		let tourTag: string | undefined;
-		if (item.label === "Agent Hub") {
-			tourTag = "nav-item-agent-hub";
-		} else if (item.label === "Schedules") {
-			tourTag = "nav-item-schedules";
-		} else if (item.label === "Settings") {
-			tourTag = "nav-item-settings";
-		}
-
 		const navButton = (
 			<NavItemButton
 				onClick={() => handleNavigate(item.path)}
 				isActive={item.isActive}
 				isExpanded={expanded}
-				data-tour-tag={tourTag}
+				data-tour-tag={item.tourTag}
 			>
 				<NavItemIcon isActive={item.isActive} isExpanded={expanded}>
 					<item.icon

@@ -30,7 +30,14 @@ const tourSteps: StepOptions[] = [
     text: 'Click on an agent to open the chat window and start interacting with it.',
     buttons: [
       { text: 'Back', classes: 'shepherd-button-secondary', action: function() { this.back(); } },
-      { text: 'Next', classes: 'shepherd-button-primary', action: function() { this.next(); } },
+      { text: 'Next', classes: 'shepherd-button-primary', action: function() { 
+        const button = document.querySelector('[data-tour-tag="agent-list-item-button-0"]');
+        if (button) {
+          (button as HTMLButtonElement).click();
+        }
+        // Wait for the navigation to complete before clicking the next button
+        setTimeout(() => { this.next(); }, 500);
+      } },
     ],
   },
   {
@@ -45,12 +52,58 @@ const tourSteps: StepOptions[] = [
   },
   {
     id: 'agent-capabilities',
-    attachTo: { element: '[data-tour-tag="chat-utilities-header"]', on: 'top' },
+    attachTo: { element: '[data-tour-tag="chat-header"]', on: 'top' },
     title: 'More Than Just Chat',
     text: 'Local Operator agents are different from simple chatbots. They can perform actions on your computer, like creating files, running code, or browsing the web, based on your instructions. You\'ll see them use "tools" to get things done!',
     buttons: [
       { text: 'Back', classes: 'shepherd-button-secondary', action: function() { this.back(); } },
       { text: 'Next', classes: 'shepherd-button-primary', action: function() { this.next(); } },
+    ],
+  },
+  {
+    id: 'canvas-open-button',
+    attachTo: { element: 'button[data-tour-tag="open-canvas-button"]', on: 'left' },
+    title: 'Open the Canvas',
+    text: 'Click here to open the Canvas, a workspace for files and dynamic visualizations where you can organize, plan, and interact with your agents in a more flexible way.',
+    buttons: [
+      { text: 'Back', classes: 'shepherd-button-secondary', action: function() { this.back(); } },
+      { 
+        text: 'Next', 
+        classes: 'shepherd-button-primary', 
+        action: function() { 
+          const button = document.querySelector('button[data-tour-tag="open-canvas-button"]');
+          if (button) {
+            (button as HTMLButtonElement).click();
+          }
+          setTimeout(() => { this.next(); }, 500);
+        } 
+      },
+    ],
+  },
+  {
+    id: 'canvas-feature',
+    attachTo: { element: '[data-tour-tag="canvas-container"]', on: 'left' },
+    title: 'The Canvas: Your Visual Workspace',
+    text: 'This is the Canvas, your workspace for files and dynamic visualizations where you can organize, plan, and interact with your agents in a more flexible way.  Any files that your agents create on your device can be opened here by clicking on the file icons that you see as they work.  Agents can make dynamic visualizations like games, charts, maps, and more in HTML files.  Any HTML files you open will be rendered dynamically in an iframe.  Any markdown files that you open will be rendered in full markdown viewer with support for code blocks, tables, mermaid diagrams, and more.',
+    buttons: [
+      { text: 'Back', classes: 'shepherd-button-secondary', action: function() { 
+        const button = document.querySelector('[data-tour-tag="close-canvas-button"]');
+        if (button) {
+          (button as HTMLButtonElement).click();
+        }
+        setTimeout(() => { this.back(); }, 500);
+      } },
+      { 
+        text: 'Next', 
+        classes: 'shepherd-button-primary', 
+        action: function() { 
+          const button = document.querySelector('button[data-tour-tag="close-canvas-button"]');
+          if (button) {
+            (button as HTMLButtonElement).click();
+          }
+          setTimeout(() => { this.next(); }, 500);
+        } 
+      },
     ],
   },
   {
@@ -60,7 +113,16 @@ const tourSteps: StepOptions[] = [
     text: 'Click here to see options for the currently selected agent, like viewing its settings, exporting it, or deleting it.',
     buttons: [
       { text: 'Back', classes: 'shepherd-button-secondary', action: function() { this.back(); } },
-      { text: 'Next', classes: 'shepherd-button-primary', action: function() { this.next(); } },
+      { text: 'Next', classes: 'shepherd-button-primary', action: function() { 
+        const button = document.querySelector('[data-tour-tag="agent-options-button"]');
+        if (button) {
+          (button as HTMLButtonElement).click();
+        }
+        // Wait for the menu to open before clicking the next button
+        setTimeout(() => {
+          this.next();
+        }, 500);
+      } },
     ],
   },
   {
@@ -71,7 +133,16 @@ const tourSteps: StepOptions[] = [
     text: 'Click "View Agent Settings" to see and change how this agent works.',
     buttons: [
       { text: 'Back', classes: 'shepherd-button-secondary', action: function() { this.back(); } },
-      { text: 'Next', classes: 'shepherd-button-primary', action: function() { this.next(); } },
+      { text: 'Next', classes: 'shepherd-button-primary', action: function() { 
+        const button = document.querySelector('[role="menuitem"][data-tour-tag="view-agent-settings-menu-item"]');
+        if (button) {
+          (button as HTMLButtonElement).click();
+        }
+        // Wait for the navigation to complete before clicking the next button
+        setTimeout(() => {
+          this.next();
+        }, 500);
+      } },
     ],
   },
   {
@@ -81,7 +152,24 @@ const tourSteps: StepOptions[] = [
     title: 'Agent Configuration',
     text: 'This is where you can configure your agent. You can change its name, description, the AI model it uses, its temperature for creativity, and other chat settings.',
     buttons: [
-      { text: 'Back', classes: 'shepherd-button-secondary', action: function() { this.back(); } },
+      { text: 'Back', classes: 'shepherd-button-secondary', action: function() { 
+        const button = document.querySelector('[data-tour-tag="nav-item-chat"]');
+        if (button) {
+          (button as HTMLButtonElement).click();
+        }
+
+        setTimeout(() => {
+          const settingsButton = document.querySelector('button[data-tour-tag="agent-options-button"]');
+          if (settingsButton) {
+            (settingsButton as HTMLButtonElement).click();
+          }
+        }, 500);
+
+        // Wait for the menu to open before clicking the back button
+        setTimeout(() => {
+          this.back();
+        }, 1000);
+      } },
       { text: 'Next', classes: 'shepherd-button-primary', action: function() { this.next(); } },
     ],
   },
@@ -92,24 +180,73 @@ const tourSteps: StepOptions[] = [
     text: 'Click the "+" button to create a brand new agent from scratch. You can then customize its behavior and capabilities.',
     buttons: [
       { text: 'Back', classes: 'shepherd-button-secondary', action: function() { this.back(); } },
-      { text: 'Next', classes: 'shepherd-button-primary', action: function() { this.next(); } },
+      { text: 'Next', classes: 'shepherd-button-primary', action: function() {
+        const button = document.querySelector('[data-tour-tag="create-new-agent-button"]');
+        if (button) {
+          (button as HTMLButtonElement).click();
+        }
+        // Wait for the navigation to complete before clicking the next button
+        setTimeout(() => {
+          this.next();
+        }, 1000);
+      } },
+    ],
+  },
+  {
+    id: 'agent-naming-guidelines',
+    attachTo: { element: '[data-tour-tag="create-agent-dialog"]', on: 'bottom' },
+    title: 'Naming and Describing Your Agent',
+    text: `Give your agent a clear, descriptive name that reflects its purpose (e.g., "File Organizer" or "Web Researcher"). 
+A good description helps you and others understand what the agent does and any special instructions. 
+Be concise and specific!`,
+    buttons: [
+      { text: 'Back', classes: 'shepherd-button-secondary', action: function() { 
+        const button = document.querySelector('[data-tour-tag="create-agent-dialog-cancel-button"]');
+        if (button) {
+          (button as HTMLButtonElement).click();
+        }
+        // Wait for the navigation to complete before clicking the next button
+        setTimeout(() => { this.back(); }, 500);
+      } },
+      { text: 'Next', classes: 'shepherd-button-primary', action: function() { 
+        const button = document.querySelector('[data-tour-tag="create-agent-dialog-cancel-button"]');
+        if (button) {
+          (button as HTMLButtonElement).click();
+        }
+        // Wait for the navigation to complete before clicking the next button
+        setTimeout(() => { this.next(); }, 500);
+      } },
     ],
   },
   {
     id: 'navigate-agent-hub',
     // Targets the NavItemButton for Agent Hub via its icon's aria-label
-    attachTo: { element: 'button[data-tour-tag="nav-item-agent-hub"]', on: 'right' },
+    attachTo: { element: '[data-tour-tag="nav-item-agent-hub"]', on: 'right' },
     title: 'Discover More Agents',
     text: 'Let\'s visit the Agent Hub to find community-created agents. Click on the "Agent Hub" icon in the navigation bar.',
     buttons: [
-      { text: 'Back', classes: 'shepherd-button-secondary', action: function() { this.back(); } },
-      { text: 'Next', classes: 'shepherd-button-primary', action: function() { this.next(); } },
+      { text: 'Back', classes: 'shepherd-button-secondary', action: function() { 
+        const button = document.querySelector('[data-tour-tag="nav-item-agents"]');
+        if (button) {
+          (button as HTMLButtonElement).click();
+        }
+        // Wait for the navigation to complete before clicking the next button
+        setTimeout(() => { this.back(); }, 500);
+      } },
+      { text: 'Next', classes: 'shepherd-button-primary', action: function() {
+        const button = document.querySelector('[data-tour-tag="nav-item-agent-hub"]');
+        if (button) {
+          (button as HTMLButtonElement).click();
+        }
+        // Wait for the navigation to complete before clicking the next button
+        setTimeout(() => { this.next(); }, 500);
+      } },
     ],
   },
   {
     id: 'agent-hub-view',
     // Targets the SidebarContainer in AgentHubPage that wraps AgentCategoriesSidebar
-    attachTo: { element: 'div[data-tour-tag="agent-hub-sidebar-container"]', on: 'right' },
+    attachTo: { element: '[data-tour-tag="agent-hub-sidebar-container"]', on: 'right' },
     title: 'The Agent Hub',
     text: 'Here you can browse agents by category or search for specific ones. These agents are shared by the community and can perform various specialized tasks.',
     buttons: [
@@ -125,18 +262,62 @@ const tourSteps: StepOptions[] = [
     text: 'Find an agent that interests you and click the "Download" button to add it to your local agent list.',
     buttons: [
       { text: 'Back', classes: 'shepherd-button-secondary', action: function() { this.back(); } },
-      { text: 'Next', classes: 'shepherd-button-primary', action: function() { this.next(); } },
+      { text: 'Next', classes: 'shepherd-button-primary', action: function() { 
+        const button = document.querySelector('button[data-tour-tag="nav-item-agents"]');
+        if (button) {
+          (button as HTMLButtonElement).click();
+        }
+        setTimeout(() => { this.next(); }, 500);
+      } },
     ],
   },
   {
     id: 'upload-agent-hub',
     // Targets the "Upload to Hub" menu item, assuming the parent menu is open
-    attachTo: { element: '[role="menuitem"][data-tour-tag="upload-to-hub-menu-item"]', on: 'bottom' },
+    attachTo: { element: '[data-tour-tag="upload-to-hub-header-button"]', on: 'bottom' },
     title: 'Share Your Agents (Optional)',
     text: 'If you create a useful agent, you can also share it with the community by uploading it to the Hub from the Agent Options menu.',
     buttons: [
       { text: 'Back', classes: 'shepherd-button-secondary', action: function() { this.back(); } },
-      { text: 'Next', classes: 'shepherd-button-primary', action: function() { this.next(); } },
+      { text: 'Next', classes: 'shepherd-button-primary', action: function() { 
+        const button = document.querySelector('[data-tour-tag="nav-item-agents"]');
+        if (button) {
+          (button as HTMLButtonElement).click();
+        }
+        setTimeout(() => {
+          const button = document.querySelector('[data-tour-tag="upload-to-hub-header-button"]');
+          if (button) {
+            (button as HTMLButtonElement).click();
+          }
+        }, 500);
+        // Wait for the navigation to complete before clicking the next button
+        setTimeout(() => { this.next(); }, 1000);
+      } },
+    ],
+  },
+  {
+    id: 'upload-agent-hub-dialog',
+    // Targets the UploadAgentDialog modal, which should be open after clicking "Upload to Hub"
+    attachTo: { element: '[data-tour-tag="upload-agent-dialog"]', on: 'top' },
+    title: 'Upload Agent to Hub',
+    text: 'This dialog allows you to share your agent with the community. You can review the agent details and confirm the upload. Make sure your agent meets the required criteria before submitting.  Also be aware that any conversation history and learnings for this agent will be part of its training and will be visible to the public.  So don\'t share agents publicly that know sensitive information!',
+    buttons: [
+      { text: 'Back', classes: 'shepherd-button-secondary', action: function() { 
+        const button = document.querySelector('[data-tour-tag="upload-agent-dialog-cancel-button"]');
+        if (button) {
+          (button as HTMLButtonElement).click();
+        }
+        // Wait for the navigation to complete before clicking the next button
+        setTimeout(() => { this.back(); }, 500);
+      } },
+      { text: 'Next', classes: 'shepherd-button-primary', action: function() { 
+        const button = document.querySelector('[data-tour-tag="upload-agent-dialog-cancel-button"]');
+        if (button) {
+          (button as HTMLButtonElement).click();
+        }
+        // Wait for the navigation to complete before clicking the next button
+        setTimeout(() => { this.next(); }, 500);
+      } },
     ],
   },
   {
@@ -145,8 +326,27 @@ const tourSteps: StepOptions[] = [
     title: 'Automate Tasks with Schedules',
     text: 'Local Operator can run tasks for you on a regular basis. Let\'s check out the Schedules section.',
     buttons: [
-      { text: 'Back', classes: 'shepherd-button-secondary' },
-      { text: 'Next', classes: 'shepherd-button-primary' },
+      { text: 'Back', classes: 'shepherd-button-secondary', action: function() { 
+        const button = document.querySelector('[data-tour-tag="nav-item-agents"]');
+        if (button) {
+          (button as HTMLButtonElement).click();
+        }
+        setTimeout(() => {
+          const uploadAgentsButton = document.querySelector('[data-tour-tag="upload-to-hub-header-button"]');
+          if (uploadAgentsButton) {
+            (uploadAgentsButton as HTMLButtonElement).click();
+          }
+        }, 500);
+        setTimeout(() => { this.back(); }, 1000);
+      } },
+      { text: 'Next', classes: 'shepherd-button-primary', action: function() {
+        const button = document.querySelector('[data-tour-tag="nav-item-schedules"]');
+        if (button) {
+          (button as HTMLButtonElement).click();
+        }
+        // Wait for the navigation to complete before clicking the next button
+        setTimeout(() => { this.next(); }, 500);
+      } },
     ],
   },
   {
@@ -156,8 +356,15 @@ const tourSteps: StepOptions[] = [
     title: 'Set Up a Recurring Task',
     text: 'Click "Create Schedule" to ask an agent to perform a task for you regularly, like sending a daily report or checking for news updates.',
     buttons: [
-      { text: 'Back', classes: 'shepherd-button-secondary', action: function() { this.back(); } },
-      { text: 'Next', classes: 'shepherd-button-primary', action: function() { this.next(); } },
+      { text: 'Back', classes: 'shepherd-button-secondary', action: function() { 
+        this.back(); } },
+      { text: 'Next', classes: 'shepherd-button-primary', action: function() { 
+        const button = document.querySelector('button[data-tour-tag="create-schedule-button"]');
+        if (button) {
+          (button as HTMLButtonElement).click();
+        }
+        setTimeout(() => { this.next(); }, 500);
+      } },
     ],
   },
   {
@@ -166,8 +373,22 @@ const tourSteps: StepOptions[] = [
     title: 'Personalize Your Experience',
     text: 'Now, let\'s explore the Settings menu to customize Local Operator to your liking.',
     buttons: [
-      { text: 'Back', classes: 'shepherd-button-secondary', action: function() { this.back(); } },
-      { text: 'Next', classes: 'shepherd-button-primary', action: function() { this.next(); } },
+      { text: 'Back', classes: 'shepherd-button-secondary', action: function() { 
+        const button = document.querySelector('[data-tour-tag="nav-item-schedules"]');
+        if (button) {
+          (button as HTMLButtonElement).click();
+        }
+        // Wait for the navigation to complete before clicking the next button
+        setTimeout(() => { this.back(); }, 500);
+      } },
+      { text: 'Next', classes: 'shepherd-button-primary', action: function() {
+        const button = document.querySelector('[data-tour-tag="nav-item-settings"]');
+        if (button) {
+          (button as HTMLButtonElement).click();
+        }
+        // Wait for the navigation to complete before clicking the next button
+        setTimeout(() => { this.next(); }, 500);
+      } },
     ],
   },
   {
