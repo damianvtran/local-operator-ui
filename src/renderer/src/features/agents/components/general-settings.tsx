@@ -241,7 +241,12 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 				<Grid container spacing={2} alignItems="center">
 					{" "}
 					{/* Vertically align grid items */}
-					<Grid item xs={12} md={6} data-tour-tag="agent-settings-hosting-select">
+					<Grid
+						item
+						xs={12}
+						md={6}
+						data-tour-tag="agent-settings-hosting-select"
+					>
 						<HostingSelect
 							// Modified key to not include the selectedAgent.id, so it doesn't re-render and reset when agent changes
 							// This allows users to select a different hosting provider after making an initial selection

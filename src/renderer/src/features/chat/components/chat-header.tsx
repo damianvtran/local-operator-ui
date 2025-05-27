@@ -104,7 +104,11 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 
 			{onOpenOptions && !isCanvasOpen && (
 				<Tooltip title="Open Canvas" arrow placement="top">
-					<OptionsButton onClick={() => setCanvasOpen(true)} size="medium" data-tour-tag="open-canvas-button">
+					<OptionsButton
+						onClick={() => setCanvasOpen(true)}
+						size="medium"
+						data-tour-tag="open-canvas-button"
+					>
 						<FileText size={24} />
 					</OptionsButton>
 				</Tooltip>

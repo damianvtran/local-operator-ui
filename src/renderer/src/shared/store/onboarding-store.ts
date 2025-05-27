@@ -126,13 +126,20 @@ export const useOnboardingStore = create<OnboardingState>()(
 					// Check for the old 'isComplete' key from a previous version of the store state
 					// This is a simplified one-time migration logic.
 					// biome-ignore lint/suspicious/noExplicitAny: checking for old state shape
-					const rawPersistedState = JSON.parse(localStorage.getItem("onboarding-storage") || "{}") as any;
-					
-					if (rawPersistedState?.state?.isComplete === true && !state.isModalComplete) {
-						console.log("Migrating old 'isComplete:true' state to 'isModalComplete:true'");
+					const rawPersistedState = JSON.parse(
+						localStorage.getItem("onboarding-storage") || "{}",
+					) as any;
+
+					if (
+						rawPersistedState?.state?.isComplete === true &&
+						!state.isModalComplete
+					) {
+						console.log(
+							"Migrating old 'isComplete:true' state to 'isModalComplete:true'",
+						);
 						// Directly update the state that will be applied to the store
 						// This ensures that if the old key indicated modal completion, the new key reflects it.
-						state.isModalComplete = true; 
+						state.isModalComplete = true;
 					}
 				}
 			},
