@@ -129,16 +129,7 @@ export const AgentSettings: FC<AgentSettingsProps> = ({
 						initialSelectedAgentId={initialSelectedAgentId}
 					/>
 
-					<ChatSettings
-						selectedAgent={selectedAgent}
-						savingField={savingField}
-						setSavingField={setSavingField}
-						updateAgentMutation={updateAgentMutation}
-						refetchAgent={refetchAgent}
-						initialSelectedAgentId={initialSelectedAgentId}
-					/>
-
-					<SecuritySettings
+          <SecuritySettings
 						selectedAgent={selectedAgent}
 						savingField={savingField}
 						setSavingField={setSavingField}
@@ -151,6 +142,15 @@ export const AgentSettings: FC<AgentSettingsProps> = ({
 						selectedAgent={selectedAgent}
 						savingField={savingField}
 						setSavingField={setSavingField}
+						refetchAgent={refetchAgent}
+						initialSelectedAgentId={initialSelectedAgentId}
+					/>
+
+					<ChatSettings
+						selectedAgent={selectedAgent}
+						savingField={savingField}
+						setSavingField={setSavingField}
+						updateAgentMutation={updateAgentMutation}
 						refetchAgent={refetchAgent}
 						initialSelectedAgentId={initialSelectedAgentId}
 					/>
