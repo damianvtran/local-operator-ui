@@ -47,7 +47,7 @@ import { useUpdateConfig } from "@shared/hooks/use-update-config";
 import { useUsageRollup } from "@shared/hooks/use-usage-rollup";
 import { useUserStore } from "@shared/store/user-store";
 import { format, formatRFC3339, parseISO, subDays } from "date-fns";
-import { Settings, PlayCircle } from "lucide-react"; // Added PlayCircle for tour button
+import { Settings, PlayCircle } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { FC, RefObject } from "react";
 import {
