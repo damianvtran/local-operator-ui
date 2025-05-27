@@ -50,6 +50,10 @@ export type BaseDialogProps = {
 	 * Additional props to pass to the Dialog component
 	 */
 	dialogProps?: Record<string, unknown>;
+	/**
+	 * Data tour tag for the dialog
+	 */
+	dataTourTag?: string;
 };
 /**
  * Styled Dialog component with consistent styling
@@ -148,6 +152,7 @@ export const BaseDialog: FC<BaseDialogProps> = ({
 	maxWidth = "sm",
 	fullWidth = false,
 	dialogProps = {},
+	dataTourTag,
 }) => {
 	return (
 		<StyledDialog
@@ -166,7 +171,7 @@ export const BaseDialog: FC<BaseDialogProps> = ({
 					title
 				)}
 			</DialogTitle>
-			<DialogContent>{children}</DialogContent>
+			<DialogContent data-tour-tag={dataTourTag}>{children}</DialogContent>
 			{actions && <StyledDialogActions>{actions}</StyledDialogActions>}
 		</StyledDialog>
 	);
