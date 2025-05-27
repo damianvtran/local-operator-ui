@@ -26,6 +26,7 @@ export const OnboardingTourGlobalStyles: FC = () => {
 		},
 		".shepherd-arrow::before": {
 			backgroundColor: alpha(theme.palette.background.paper, 0.95),
+      border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
 		},
 
 		// Header
@@ -115,7 +116,7 @@ export const OnboardingTourGlobalStyles: FC = () => {
 			"&:hover": {
 				backgroundColor: alpha(theme.palette.action.hover, 0.1),
 				borderColor: theme.palette.primary.light, // Or a slightly darker divider
-				color: theme.palette.text.primary,
+				color: theme.palette.primary.contrastText,
 			},
 		},
 		// Ensure single button in footer takes full primary style if no class is set (fallback)
