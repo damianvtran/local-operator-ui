@@ -245,8 +245,14 @@ A good description helps you and others understand what the agent does and any s
         if (button) {
           (button as HTMLButtonElement).click();
         }
+        setTimeout(() => {
+          const newAgentButton = document.querySelector('[data-tour-tag="create-new-agent-button"]');
+          if (newAgentButton) {
+            (newAgentButton as HTMLButtonElement).click();
+          }
+        }, 500);
         // Wait for the navigation to complete before clicking the next button
-        setTimeout(() => { this.back(); }, 500);
+        setTimeout(() => { this.back(); }, 1000);
       } },
       { text: 'Next', classes: 'shepherd-button-primary', action: function() {
         const button = document.querySelector('[data-tour-tag="nav-item-agent-hub"]');
@@ -293,7 +299,13 @@ A good description helps you and others understand what the agent does and any s
     title: 'Share Your Agents',
     text: 'If you create a useful agent, you can also share it with the community by uploading it to the Hub from the Agent Options menu.',
     buttons: [
-      { text: 'Back', classes: 'shepherd-button-secondary', action: function() { this.back(); } },
+      { text: 'Back', classes: 'shepherd-button-secondary', action: function() { 
+        const button = document.querySelector('[data-tour-tag="nav-item-agent-hub"]');
+        if (button) {
+          (button as HTMLButtonElement).click();
+        }
+        setTimeout(() => { this.back(); }, 500);
+      } },
       { text: 'Next', classes: 'shepherd-button-primary', action: function() { 
         const button = document.querySelector('button[data-tour-tag="upload-to-hub-header-button"]');
         if (button) {
@@ -443,8 +455,14 @@ A good description helps you and others understand what the agent does and any s
         if (button) {
           (button as HTMLButtonElement).click();
         }
+        setTimeout(() => {
+          const button = document.querySelector('button[data-tour-tag="create-schedule-button"]');
+          if (button) {
+            (button as HTMLButtonElement).click();
+          }
+        }, 500);
         // Wait for the navigation to complete before clicking the next button
-        setTimeout(() => { this.back(); }, 500);
+        setTimeout(() => { this.back(); }, 1000);
       } },
       { text: 'Next', classes: 'shepherd-button-primary', action: function() {
         const button = document.querySelector('[data-tour-tag="nav-item-settings"]');
