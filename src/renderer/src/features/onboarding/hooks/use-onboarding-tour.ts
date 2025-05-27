@@ -1,4 +1,5 @@
 import { useContext } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ShepherdJourneyContext } from 'react-shepherd';
 import type { Tour, StepOptions } from 'shepherd.js';
 import { useOnboardingStore } from '@shared/store/onboarding-store';
@@ -619,6 +620,7 @@ A good description helps you and others understand what the agent does and any s
 ];
 
 export const useOnboardingTour = () => {
+  const navigate = useNavigate();
   const { completeTourOnboarding } = useOnboardingStore();
   // Using 'any' for shepherdContext as ShepherdContextType might be incomplete or not exported.
   // The actual context value might be the tour instance itself or an object containing it.
@@ -722,6 +724,8 @@ export const useOnboardingTour = () => {
     }
 
     if (typeof tourInstance.start === 'function') {
+      // Navigate to home page if all conditions to start the tour are met
+      navigate('/');
       tourInstance.start();
     } else {
       console.warn('Shepherd tour instance does not have a start method.', tourInstance);
