@@ -59,7 +59,7 @@ export const SettingsSectionCard: FC<SettingsSectionCardProps> = ({
 	titleComponent,
 	contentProps,
 	cardRef, // Receive ref
-  dataTourTag,
+	dataTourTag,
 }) => {
 	return (
 		// Attach ref here for scrolling purposes

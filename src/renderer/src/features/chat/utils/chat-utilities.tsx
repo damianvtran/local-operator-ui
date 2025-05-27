@@ -82,7 +82,10 @@ export const ChatUtilities: FC<ChatUtilitiesProps> = ({
 
 	return (
 		<UtilitiesContainer $expanded={expanded}>
-			<UtilitiesHeader onClick={toggleExpanded} data-tour-tag="chat-utilities-header">
+			<UtilitiesHeader
+				onClick={toggleExpanded}
+				data-tour-tag="chat-utilities-header"
+			>
 				<IconButton
 					size="small"
 					sx={{

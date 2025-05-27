@@ -1,4 +1,5 @@
 import radientIcon from "@assets/radient-icon-1024x1024.png";
+import { useOnboardingTour } from "@features/onboarding/hooks/use-onboarding-tour";
 import {
 	faAdjust,
 	faChartLine,
@@ -47,7 +48,7 @@ import { useUpdateConfig } from "@shared/hooks/use-update-config";
 import { useUsageRollup } from "@shared/hooks/use-usage-rollup";
 import { useUserStore } from "@shared/store/user-store";
 import { format, formatRFC3339, parseISO, subDays } from "date-fns";
-import { Settings, PlayCircle } from "lucide-react";
+import { PlayCircle, Settings } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { FC, RefObject } from "react";
 import {
@@ -74,7 +75,6 @@ import {
 import { DEFAULT_SETTINGS_SECTIONS, SettingsSidebar } from "./settings-sidebar";
 import { SystemPrompt } from "./system-prompt";
 import { ThemeSelector } from "./theme-selector";
-import { useOnboardingTour } from "@features/onboarding/hooks/use-onboarding-tour";
 
 // --- Billing Info Component ---
 const BillingInfo: FC = () => {
@@ -665,7 +665,10 @@ export const SettingsPage: FC = () => {
 			</SidebarContainer>
 
 			{/* Scrollable Content Area */}
-			<ContentContainer data-settings-content data-tour-tag="settings-general-section">
+			<ContentContainer
+				data-settings-content
+				data-tour-tag="settings-general-section"
+			>
 				<PageHeader
 					title="Settings"
 					icon={Settings}
@@ -721,22 +724,22 @@ export const SettingsPage: FC = () => {
 								</SettingsSectionCard>
 
 								{/* Onboarding Tour Button */}
-                <SettingsSectionCard
-                  title="Application Tour"
-                  description="Missed the application onboarding tour or want a refresher? Start it again here."
-                >
-                  <FieldsContainer>
-                    <Button
-                      variant="outlined"
-                      onClick={() => {
-                        startOnboardingTour({ forceModalCompleted: true });
-                      }}
-                      startIcon={<PlayCircle size={18} />} // Lucide icon used directly in startIcon
-                    >
-                      Take the Tour
-                    </Button>
-                  </FieldsContainer>
-                </SettingsSectionCard>
+								<SettingsSectionCard
+									title="Application Tour"
+									description="Missed the application onboarding tour or want a refresher? Start it again here."
+								>
+									<FieldsContainer>
+										<Button
+											variant="outlined"
+											onClick={() => {
+												startOnboardingTour({ forceModalCompleted: true });
+											}}
+											startIcon={<PlayCircle size={18} />} // Lucide icon used directly in startIcon
+										>
+											Take the Tour
+										</Button>
+									</FieldsContainer>
+								</SettingsSectionCard>
 
 								{/* Model Settings */}
 								<SettingsSectionCard
@@ -865,7 +868,7 @@ export const SettingsPage: FC = () => {
 						titleComponent={<RadientSectionTitle />}
 						description="Manage your Radient account, Radient Pass details, and credits." // Description passed here
 						cardRef={sectionRefs.radient} // Assign ref
-            dataTourTag="settings-radient-account-section"
+						dataTourTag="settings-radient-account-section"
 					>
 						{/* Render RadientAccountSection always */}
 						<RadientAccountSection
@@ -898,7 +901,7 @@ export const SettingsPage: FC = () => {
 						icon={faAdjust}
 						description="Customize the look and feel of Local Operator"
 						cardRef={sectionRefs.appearance} // Assign ref
-            dataTourTag="settings-appearance-section"
+						dataTourTag="settings-appearance-section"
 					>
 						<ThemeSelector />
 					</SettingsSectionCard>
@@ -909,7 +912,7 @@ export const SettingsPage: FC = () => {
 						icon={faKey}
 						description="Manage your API keys for various services and integrations"
 						cardRef={sectionRefs.credentials} // Assign ref
-            dataTourTag="settings-api-credentials-section"
+						dataTourTag="settings-api-credentials-section"
 					>
 						<Credentials />
 					</SettingsSectionCard>

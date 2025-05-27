@@ -1,4 +1,4 @@
-import { GlobalStyles, useTheme, alpha } from "@mui/material";
+import { GlobalStyles, alpha, useTheme } from "@mui/material";
 import type { FC } from "react";
 
 /**
@@ -20,20 +20,21 @@ export const OnboardingTourGlobalStyles: FC = () => {
 				borderTopLeftRadius: "6px", // Adjusted
 				borderTopRightRadius: "6px", // Adjusted
 			},
-			".shepherd-content": { // Ensure content respects border radius
+			".shepherd-content": {
+				// Ensure content respects border radius
 				borderRadius: "6px", // Adjusted
-			}
+			},
 		},
 		".shepherd-arrow::before": {
 			backgroundColor: alpha(theme.palette.background.paper, 0.95),
-      border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+			border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
 		},
 
 		// Header
 		".shepherd-header": {
 			backgroundColor: `${alpha(theme.palette.background.paper, 0.95)} !important`, // Same as modal body
 			padding: "2px 16px", // Reduced padding
-      backgroundImage: "none",
+			backgroundImage: "none",
 			borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
 		},
 		".shepherd-title": {
@@ -46,7 +47,7 @@ export const OnboardingTourGlobalStyles: FC = () => {
 			fontSize: "1.5rem", // Increased size for better clickability
 			padding: "4px", // Add some padding around the icon
 			"&:hover": {
-        color: theme.palette.text.secondary,
+				color: theme.palette.text.secondary,
 				backgroundColor: alpha(theme.palette.action.hover, 0.1),
 				borderRadius: "4px",
 			},
@@ -59,7 +60,8 @@ export const OnboardingTourGlobalStyles: FC = () => {
 			color: theme.palette.text.secondary,
 			fontSize: "1rem", // body1 equivalent
 			lineHeight: 1.6,
-			"& p": { // Ensure paragraphs within text are styled correctly
+			"& p": {
+				// Ensure paragraphs within text are styled correctly
 				margin: 0,
 				padding: 0,
 				color: "inherit",
@@ -105,7 +107,7 @@ export const OnboardingTourGlobalStyles: FC = () => {
 			color: theme.palette.primary.contrastText,
 			"&:hover": {
 				backgroundColor: theme.palette.primary.dark,
-        color: theme.palette.primary.contrastText,
+				color: theme.palette.primary.contrastText,
 			},
 		},
 
@@ -121,13 +123,14 @@ export const OnboardingTourGlobalStyles: FC = () => {
 		},
 		// Ensure single button in footer takes full primary style if no class is set (fallback)
 		// However, we will be setting classes explicitly.
-		".shepherd-footer .shepherd-button:only-child:not(.shepherd-button-primary):not(.shepherd-button-secondary)": {
-			backgroundColor: theme.palette.primary.main,
-			color: theme.palette.primary.contrastText,
-			"&:hover": {
-				backgroundColor: theme.palette.primary.dark,
+		".shepherd-footer .shepherd-button:only-child:not(.shepherd-button-primary):not(.shepherd-button-secondary)":
+			{
+				backgroundColor: theme.palette.primary.main,
+				color: theme.palette.primary.contrastText,
+				"&:hover": {
+					backgroundColor: theme.palette.primary.dark,
+				},
 			},
-		},
 	};
 
 	return <GlobalStyles styles={styles} />;

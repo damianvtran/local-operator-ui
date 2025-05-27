@@ -171,19 +171,19 @@ export const SettingsSidebar: FC<SettingsSidebarProps> = ({
 						>
 							<SidebarItemIcon isActive={activeSection === section.id}>
 								{section.isImage ? (
-								<IconImage src={section.icon as string} alt={section.label} />
-							) : section.isFontAwesome ? (
-								<FontAwesomeIcon
-									icon={section.icon as IconDefinition}
-									style={{ fontSize: 20 }} // Adjusted size for FA icons
-								/>
-							) : (
-								(() => {
-									const IconComponent = section.icon as LucideIcon;
-									return <IconComponent size={22} strokeWidth={2.1} />;
-								})()
-							)}
-						</SidebarItemIcon>
+									<IconImage src={section.icon as string} alt={section.label} />
+								) : section.isFontAwesome ? (
+									<FontAwesomeIcon
+										icon={section.icon as IconDefinition}
+										style={{ fontSize: 20 }} // Adjusted size for FA icons
+									/>
+								) : (
+									(() => {
+										const IconComponent = section.icon as LucideIcon;
+										return <IconComponent size={22} strokeWidth={2.1} />;
+									})()
+								)}
+							</SidebarItemIcon>
 							<ListItemText
 								primary={section.label}
 								primaryTypographyProps={{

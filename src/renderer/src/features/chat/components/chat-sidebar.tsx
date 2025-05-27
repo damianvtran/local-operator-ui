@@ -485,7 +485,11 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 			) : (
 				<AgentsList>
 					{combinedAgents.map((agent, index) => (
-						<ListItem key={agent.id} disablePadding data-tour-tag={`agent-list-item-button-${index}`}>
+						<ListItem
+							key={agent.id}
+							disablePadding
+							data-tour-tag={`agent-list-item-button-${index}`}
+						>
 							<AgentListItemButton
 								selected={
 									selectedConversation === agent.id ||

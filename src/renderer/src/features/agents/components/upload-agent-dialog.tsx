@@ -175,7 +175,11 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 				</Box>
 			)}
 			<Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2, mt: 2 }}>
-				<SecondaryButton variant="outlined" onClick={onClose} data-tour-tag="upload-agent-dialog-cancel-button">
+				<SecondaryButton
+					variant="outlined"
+					onClick={onClose}
+					data-tour-tag="upload-agent-dialog-cancel-button"
+				>
 					Cancel
 				</SecondaryButton>
 				{isAuthenticated && (

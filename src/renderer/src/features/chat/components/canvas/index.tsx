@@ -173,7 +173,11 @@ export const Canvas: FC<CanvasProps> = ({
 				</HeaderTitle>
 				<Box sx={{ display: "flex", alignItems: "center" }}>
 					<Tooltip title="Close Canvas" arrow placement="top">
-						<CloseButton onClick={onClose} size="large" data-tour-tag="close-canvas-button">
+						<CloseButton
+							onClick={onClose}
+							size="large"
+							data-tour-tag="close-canvas-button"
+						>
 							<FontAwesomeIcon icon={faTimes} size="xs" />
 						</CloseButton>
 					</Tooltip>
