@@ -237,7 +237,7 @@ export const SystemPrompt: FC = () => {
 		<SettingsSectionCard
 			title="System Prompt"
 			icon={faRobot}
-			description="This system prompt is given to all Local Operator agents. It is useful to define baseline expectations for the behavior of every agent in your environment. These instructions are provided in addition to any specific instructions defined for each agent."
+			description="This system prompt is given to all Local Operator agents. It is useful to define baseline expectations for the behavior of every agent in your environment. These instructions are provided in addition to any specific instructions defined for each agent.  You can elect to provide more specific information about yourself such as your location, name, age, preferences, and any other details that all agents should know about you.  Keep in mind that information in here is shared with your selected hosting provider."
 		>
 			{isLoading ? (
 				<LoadingContainer>
