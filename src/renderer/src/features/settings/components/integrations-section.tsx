@@ -182,6 +182,7 @@ export const GoogleIntegrationsSection: FC = () => {
 			title="Integrations"
 			icon={faPuzzlePiece} // Use FontAwesome Puzzle icon
 			description="Connect your Google services like Gmail, Calendar, and Drive to enhance Local Operator's capabilities."
+			dataTourTag="settings-integrations-section"
 		>
 			<Box mt={theme.spacing(2)}>
 				<IntegrationButton

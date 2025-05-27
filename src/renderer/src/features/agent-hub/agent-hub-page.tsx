@@ -122,7 +122,7 @@ export const AgentHubPage: React.FC = () => {
 				icon={Store}
 			/>
 			<MainContentRow>
-				<SidebarContainer>
+				<SidebarContainer data-tour-tag="agent-hub-sidebar-container">
 					<AgentCategoriesSidebar
 						selectedCategory={selectedCategory}
 						onSelectCategory={handleSelectCategory}

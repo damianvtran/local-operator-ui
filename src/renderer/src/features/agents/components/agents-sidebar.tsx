@@ -471,6 +471,7 @@ export const AgentsSidebar: FC<AgentsSidebarProps> = ({
 									selectedAgentDetails?.id === agent.id
 								}
 								onClick={() => handleSelectAgent(agent)} // Pass the full agent object
+								data-tour-tag="agent-list-item-button"
 							>
 								<ListItemAvatar>
 									<AgentAvatar selected={selectedAgentId === agent.id}>

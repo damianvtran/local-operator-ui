@@ -44,6 +44,7 @@ type SettingsSectionCardProps = {
 	titleComponent?: ReactNode;
 	contentProps?: Record<string, unknown>;
 	cardRef?: RefObject<HTMLDivElement>;
+	dataTourTag?: string;
 };
 
 /**
@@ -58,10 +59,11 @@ export const SettingsSectionCard: FC<SettingsSectionCardProps> = ({
 	titleComponent,
 	contentProps,
 	cardRef, // Receive ref
+	dataTourTag,
 }) => {
 	return (
 		// Attach ref here for scrolling purposes
-		<StyledCard ref={cardRef}>
+		<StyledCard ref={cardRef} data-tour-tag={dataTourTag}>
 			<StyledCardContent {...contentProps}>
 				{titleComponent ? (
 					titleComponent

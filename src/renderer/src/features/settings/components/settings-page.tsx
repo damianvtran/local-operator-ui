@@ -1,4 +1,5 @@
 import radientIcon from "@assets/radient-icon-1024x1024.png";
+import { useOnboardingTour } from "@features/onboarding/hooks/use-onboarding-tour";
 import {
 	faAdjust,
 	faChartLine,
@@ -47,7 +48,7 @@ import { useUpdateConfig } from "@shared/hooks/use-update-config";
 import { useUsageRollup } from "@shared/hooks/use-usage-rollup";
 import { useUserStore } from "@shared/store/user-store";
 import { format, formatRFC3339, parseISO, subDays } from "date-fns";
-import { Settings } from "lucide-react";
+import { PlayCircle, Settings } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { FC, RefObject } from "react";
 import {
@@ -480,6 +481,7 @@ export const SettingsPage: FC = () => {
 	const [activeSection, setActiveSection] = useState<string>("general");
 	const [isScrolling, setIsScrolling] = useState(false);
 	const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null); // Ref for scroll timeout
+	const { startTour: startOnboardingTour } = useOnboardingTour();
 
 	const { data: credentialsData, refetch: refetchCredentials } =
 		useCredentials();
@@ -663,7 +665,10 @@ export const SettingsPage: FC = () => {
 			</SidebarContainer>
 
 			{/* Scrollable Content Area */}
-			<ContentContainer data-settings-content>
+			<ContentContainer
+				data-settings-content
+				data-tour-tag="settings-general-section"
+			>
 				<PageHeader
 					title="Settings"
 					icon={Settings}
@@ -682,7 +687,7 @@ export const SettingsPage: FC = () => {
 								<SettingsSectionCard
 									title="User Profile"
 									icon={faUser}
-									description="Update your user profile information displayed in the application."
+									description={`Your user profile information displayed in the application.  This information is not provided to the agents.  ${isAuthenticated ? "These details are provided through your Radient Account." : ""}`}
 								>
 									<FieldsContainer>
 										<EditableField
@@ -699,6 +704,7 @@ export const SettingsPage: FC = () => {
 													setSavingField(null);
 												}
 											}}
+											readOnly={isAuthenticated}
 										/>
 										<EditableField
 											value={userStore.profile.email}
@@ -714,7 +720,26 @@ export const SettingsPage: FC = () => {
 													setSavingField(null);
 												}
 											}}
+											readOnly={isAuthenticated}
 										/>
+									</FieldsContainer>
+								</SettingsSectionCard>
+
+								{/* Onboarding Tour Button */}
+								<SettingsSectionCard
+									title="Application Tour"
+									description="Missed the application onboarding tour or want a refresher? Start it again here."
+								>
+									<FieldsContainer>
+										<Button
+											variant="outlined"
+											onClick={() => {
+												startOnboardingTour({ forceModalCompleted: true });
+											}}
+											startIcon={<PlayCircle size={18} />} // Lucide icon used directly in startIcon
+										>
+											Take the Tour
+										</Button>
 									</FieldsContainer>
 								</SettingsSectionCard>
 
@@ -722,7 +747,7 @@ export const SettingsPage: FC = () => {
 								<SettingsSectionCard
 									title="Model Settings"
 									icon={faRobot}
-									description="Configure the AI model and hosting provider used for generating responses."
+									description="Configure the default AI model and hosting providers used for generating responses.  This will be used for all agents that don't have a specific model or hosting provider configured.  You can override these settings for individual agents in the agent settings."
 								>
 									<FieldsContainer>
 										<HostingSelect
@@ -752,7 +777,7 @@ export const SettingsPage: FC = () => {
 								<SettingsSectionCard
 									title="History Settings"
 									icon={faHistory}
-									description="Configure how much conversation history is retained and displayed."
+									description="Configure how much conversation history is retained and displayed.  These are tools to help balance cost and performance by controlling the amount of data used by the agents."
 								>
 									{/* Assuming SliderSetting is styled appropriately */}
 									<FieldsContainer>
@@ -761,7 +786,7 @@ export const SettingsPage: FC = () => {
 											label="Maximum Conversation History"
 											description="Number of messages to keep in conversation history for context. More messages will make the agents have longer memory but more expensive to run.  Recommended: 100"
 											min={10}
-											max={200}
+											max={500}
 											step={10}
 											unit="msgs"
 											icon={faHistory}
@@ -773,9 +798,9 @@ export const SettingsPage: FC = () => {
 										<SliderSetting
 											value={config.values.detail_length}
 											label="Detail View Length"
-											description="Maximum number of messages to show in the detailed conversation view. Messages beyond this limit will be summarized. Shortening this will decrease costs but some important details could get lost from earlier messages.  Recommended: 20"
+											description="Maximum number of messages to show in the detailed conversation view. Messages beyond this limit will be summarized. Shortening this will decrease costs but some important details could get lost from earlier messages.  Recommended: 15"
 											min={10}
-											max={100}
+											max={500}
 											step={5}
 											unit="msgs"
 											icon={faListAlt}
@@ -787,11 +812,11 @@ export const SettingsPage: FC = () => {
 										<SliderSetting
 											value={config.values.max_learnings_history}
 											label="Maximum Learnings History"
-											description="Number of learning items to retain for context and personalization. More items will make the agents acquire a longer history of knowledge from your conversations but more expensive to run.  Recommended: 50"
+											description="Agents note down specific insights and key learnings in memory which persist beyond the maximum conversation history and summarization.  This setting controls the maximum number of learning items to retain.  More items will make the agents acquire a longer history of knowledge from your conversations but more expensive to run.  Recommended: 50"
 											min={10}
-											max={100}
+											max={200}
 											step={10}
-											unit="items"
+											unit="notes"
 											icon={faDatabase}
 											isSaving={savingField === "max_learnings_history"}
 											onChange={(value) =>
@@ -845,6 +870,7 @@ export const SettingsPage: FC = () => {
 						titleComponent={<RadientSectionTitle />}
 						description="Manage your Radient account, Radient Pass details, and credits." // Description passed here
 						cardRef={sectionRefs.radient} // Assign ref
+						dataTourTag="settings-radient-account-section"
 					>
 						{/* Render RadientAccountSection always */}
 						<RadientAccountSection
@@ -877,6 +903,7 @@ export const SettingsPage: FC = () => {
 						icon={faAdjust}
 						description="Customize the look and feel of Local Operator"
 						cardRef={sectionRefs.appearance} // Assign ref
+						dataTourTag="settings-appearance-section"
 					>
 						<ThemeSelector />
 					</SettingsSectionCard>
@@ -887,6 +914,7 @@ export const SettingsPage: FC = () => {
 						icon={faKey}
 						description="Manage your API keys for various services and integrations"
 						cardRef={sectionRefs.credentials} // Assign ref
+						dataTourTag="settings-api-credentials-section"
 					>
 						<Credentials />
 					</SettingsSectionCard>

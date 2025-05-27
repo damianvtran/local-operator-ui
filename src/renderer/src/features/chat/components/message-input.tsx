@@ -434,6 +434,9 @@ export const MessageInput: FC<MessageInputProps> = ({
 					variant="outlined"
 					inputRef={textareaRef}
 					disabled={isInputDisabled}
+					inputProps={{
+						"data-tour-tag": "chat-input-textarea",
+					}}
 				/>
 
 				<ButtonsRow>
@@ -455,6 +458,7 @@ export const MessageInput: FC<MessageInputProps> = ({
 									color="primary"
 									size="small"
 									aria-label="Attach file"
+									data-tour-tag="chat-input-attach-file-button"
 									disabled={isInputDisabled}
 								>
 									<FontAwesomeIcon icon={faPaperclip} />

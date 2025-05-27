@@ -71,7 +71,7 @@ type OnboardingModalProps = {
  */
 export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 	const theme = useTheme(); // Get theme for spacing
-	const { currentStep, setCurrentStep, completeOnboarding } =
+	const { currentStep, setCurrentStep, completeModalOnboarding } =
 		useOnboardingStore();
 	const navigate = useNavigate();
 
@@ -321,7 +321,7 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 				setCurrentStep(OnboardingStep.CONGRATULATIONS);
 				break;
 			case OnboardingStep.CONGRATULATIONS: {
-				completeOnboarding();
+				completeModalOnboarding(); // Mark modal as complete
 				// Navigate to the chat view, potentially with the newly created agent
 				const createdAgentId = sessionStorage.getItem(
 					"onboarding_created_agent_id",
@@ -338,7 +338,7 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 			default:
 				break;
 		}
-	}, [currentStep, setCurrentStep, completeOnboarding, navigate]);
+	}, [currentStep, setCurrentStep, completeModalOnboarding, navigate]);
 
 	/**
 	 * Handle moving to the previous step

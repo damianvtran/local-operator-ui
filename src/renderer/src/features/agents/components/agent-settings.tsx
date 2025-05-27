@@ -117,19 +117,10 @@ export const AgentSettings: FC<AgentSettingsProps> = ({
 	const updateAgentMutation = useUpdateAgent();
 
 	return (
-		<DetailsPaper>
+		<DetailsPaper data-tour-tag="agent-settings-details-paper">
 			{selectedAgent ? (
 				<ScrollableContent>
 					<GeneralSettings
-						selectedAgent={selectedAgent}
-						savingField={savingField}
-						setSavingField={setSavingField}
-						updateAgentMutation={updateAgentMutation}
-						refetchAgent={refetchAgent}
-						initialSelectedAgentId={initialSelectedAgentId}
-					/>
-
-					<ChatSettings
 						selectedAgent={selectedAgent}
 						savingField={savingField}
 						setSavingField={setSavingField}
@@ -151,6 +142,15 @@ export const AgentSettings: FC<AgentSettingsProps> = ({
 						selectedAgent={selectedAgent}
 						savingField={savingField}
 						setSavingField={setSavingField}
+						refetchAgent={refetchAgent}
+						initialSelectedAgentId={initialSelectedAgentId}
+					/>
+
+					<ChatSettings
+						selectedAgent={selectedAgent}
+						savingField={savingField}
+						setSavingField={setSavingField}
+						updateAgentMutation={updateAgentMutation}
 						refetchAgent={refetchAgent}
 						initialSelectedAgentId={initialSelectedAgentId}
 					/>

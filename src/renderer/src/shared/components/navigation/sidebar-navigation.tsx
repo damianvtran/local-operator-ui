@@ -187,36 +187,42 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 		label: string;
 		path: string;
 		isActive: boolean;
+		tourTag?: string;
 	}> = [
 		{
 			icon: MessageCircle,
 			label: "Chat",
 			path: "/chat",
 			isActive: currentView === "chat",
+			tourTag: "nav-item-chat",
 		},
 		{
 			icon: Bot,
 			label: "My Agents",
 			path: "/agents",
 			isActive: currentView === "agents",
+			tourTag: "nav-item-agents",
 		},
 		{
 			icon: Store,
 			label: "Agent Hub",
 			path: "/agent-hub",
 			isActive: currentView === "agent-hub",
+			tourTag: "nav-item-agent-hub",
 		},
 		{
 			icon: CalendarDays,
 			label: "Schedules",
 			path: "/schedules",
 			isActive: currentView === "schedules",
+			tourTag: "nav-item-schedules",
 		},
 		{
 			icon: Settings,
 			label: "Settings",
 			path: "/settings",
 			isActive: currentView === "settings",
+			tourTag: "nav-item-settings",
 		},
 	];
 
@@ -234,6 +240,7 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 				onClick={() => handleNavigate(item.path)}
 				isActive={item.isActive}
 				isExpanded={expanded}
+				data-tour-tag={item.tourTag}
 			>
 				<NavItemIcon isActive={item.isActive} isExpanded={expanded}>
 					<item.icon
