@@ -775,7 +775,7 @@ export const SettingsPage: FC = () => {
 								<SettingsSectionCard
 									title="History Settings"
 									icon={faHistory}
-									description="Configure how much conversation history is retained and displayed."
+									description="Configure how much conversation history is retained and displayed.  These are tools to help balance cost and performance by controlling the amount of data used by the agents."
 								>
 									{/* Assuming SliderSetting is styled appropriately */}
 									<FieldsContainer>
@@ -798,7 +798,7 @@ export const SettingsPage: FC = () => {
 											label="Detail View Length"
 											description="Maximum number of messages to show in the detailed conversation view. Messages beyond this limit will be summarized. Shortening this will decrease costs but some important details could get lost from earlier messages.  Recommended: 15"
 											min={10}
-											max={100}
+											max={500}
 											step={5}
 											unit="msgs"
 											icon={faListAlt}
