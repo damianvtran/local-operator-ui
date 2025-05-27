@@ -96,7 +96,7 @@ export const SystemPromptSettings: FC<SystemPromptSettingsProps> = ({
 	}, [systemPrompt]);
 
 	return (
-		<Box sx={{ mt: 4 }}>
+		<Box data-tour-tag="agent-settings-system-prompt" sx={{ mt: 4 }}>
 			<SectionTitle variant="subtitle1">
 				<TitleIcon icon={faRobot} />
 				System Prompt

@@ -86,7 +86,7 @@ export const SecuritySettings: FC<SecuritySettingsProps> = ({
 	initialSelectedAgentId,
 }) => {
 	return (
-		<Box>
+		<Box data-tour-tag="agent-settings-security">
 			<SectionTitle variant="subtitle1">
 				<TitleIcon icon={faShieldAlt} />
 				Security Prompt
