@@ -146,7 +146,7 @@ const tourSteps: StepOptions[] = [
     // Assumes Agent Options menu is open from the previous step
     attachTo: { element: '[role="menuitem"][data-tour-tag="view-agent-settings-menu-item"]', on: 'right' },
     title: 'View Configuration',
-    text: 'Click "View Agent Settings" to see and change how this agent works.',
+    text: 'Click "View Agent Settings" to see and change how this agent works and change things like its name, description, hosting provider, and AI model.',
     buttons: [
       { text: 'Back', classes: 'shepherd-button-secondary', action: function() { this.back(); } },
       { text: 'Next', classes: 'shepherd-button-primary', action: function() { 
@@ -186,7 +186,53 @@ const tourSteps: StepOptions[] = [
           this.back();
         }, 1000);
       } },
-      { text: 'Next', classes: 'shepherd-button-primary', action: function() { this.next(); } },
+      { text: 'Next', classes: 'shepherd-button-primary', action: function() { this.next(); } }, // Will go to select-provider
+    ],
+  },
+  {
+    id: 'select-provider',
+    attachTo: { element: '[data-tour-tag="agent-settings-hosting-select"]', on: 'left' },
+    title: 'Select Hosting Provider',
+    text: 'Choose an AI provider for your agent. If you don\'t pick one here, then the default provider from the Settings Page will be used.  Providers offer different AI models and pricing. Radient is recommended for Local Operator as its "Automatic" mode is optimized for the lowest cost and best performance.',
+    buttons: [
+      { text: 'Back', classes: 'shepherd-button-secondary', action: function() { this.back(); } }, // Goes to view-agent-settings
+      { text: 'Next', classes: 'shepherd-button-primary', action: function() { this.next(); } }, // Goes to select-model
+    ],
+  },
+  {
+    id: 'select-model',
+    attachTo: { element: '[data-tour-tag="agent-settings-model-select"]', on: 'left' },
+    title: 'Select AI Model',
+    text: "After selecting a provider, choose an AI model. Models marked with a star (⭐) are 'Recommended' and known to work well with Local Operator. Non-starred models might have inconsistent performance. If a model you expect to be recommended isn't listed, please let us know if it works well for you in Local Operator via GitHub Issues or email.",
+    buttons: [
+      { text: 'Back', classes: 'shepherd-button-secondary', action: function() { this.back(); } }, // Goes to select-provider
+      { text: 'Next', classes: 'shepherd-button-primary', action: function() { this.next(); } }, // Goes to modify-security-prompt
+    ],
+  },
+  {
+    id: 'modify-security-prompt',
+    attachTo: { element: '[data-tour-tag="agent-settings-security"]', on: 'left' }, // Attaching to the broader "Model Settings" card as a proxy
+    title: 'Customize Security Behaviors',
+    text: "This prompt provides separate instructions to the security agent that reviews this agent's work. You can explicitly allow certain actions that would normally be blocked. If you encounter frequent security interventions, consider adding a note here for the security agent.",
+    buttons: [
+      { text: 'Back', classes: 'shepherd-button-secondary', action: function() { this.back(); } }, // Goes to select-model
+      { text: 'Next', classes: 'shepherd-button-primary', action: function() { this.next(); } }, // Goes to modify-agent-prompt
+    ],
+  },
+  {
+    id: 'modify-agent-prompt',
+    attachTo: { element: '[data-tour-tag="agent-settings-system-prompt"]', on: 'left' },
+    title: 'Customize the Agent\'s Behavior',
+    text: "This prompt allows you to customize the baseline behavior of the agent. While most customization can happen by talking to the agent (it records learnings in its notebook), you can provide specific workflow instructions here that will be followed separately.",
+    buttons: [
+      { text: 'Back', classes: 'shepherd-button-secondary', action: function() { this.back(); } }, // Goes to modify-security-prompt
+      { 
+        text: 'Next', 
+        classes: 'shepherd-button-primary', 
+        action: function() { 
+          this.next();
+        } 
+      },
     ],
   },
   {
@@ -195,7 +241,34 @@ const tourSteps: StepOptions[] = [
     title: 'Create a New Agent',
     text: 'Click the "+" button to create a brand new agent from scratch. You can then customize its behavior and capabilities.',
     buttons: [
-      { text: 'Back', classes: 'shepherd-button-secondary', action: function() { this.back(); } },
+      { 
+        text: 'Back', 
+        classes: 'shepherd-button-secondary', 
+        action: function() { 
+          // We are on the main page (agent list/chat). Need to go to agent settings page.
+          // This assumes an agent is selected and we can navigate to its settings.
+          // Attempt to click the first agent to ensure context, then options, then settings.
+          const agentButton = document.querySelector('[data-tour-tag="agent-list-item-button-0"]');
+          if (agentButton) { 
+            // Check if we are already on the chat page for this agent, if not, click it.
+            // This logic might need refinement based on actual app state management.
+            // For now, we assume clicking it is safe or sets the context.
+            (agentButton as HTMLButtonElement).click(); 
+          }
+
+          setTimeout(() => {
+            const agentOptionsButton = document.querySelector('button[data-tour-tag="agent-options-button"]');
+            if (agentOptionsButton) { (agentOptionsButton as HTMLButtonElement).click(); } 
+          }, 500); // Wait for agent selection/navigation
+
+          setTimeout(() => {
+            const viewSettingsMenuItem = document.querySelector('[role="menuitem"][data-tour-tag="view-agent-settings-menu-item"]');
+            if (viewSettingsMenuItem) { (viewSettingsMenuItem as HTMLButtonElement).click(); } 
+          }, 1000); // Wait for options menu
+          
+          setTimeout(() => { this.back(); }, 1500); // Go to modify-agent-prompt (now on agent settings page)
+        } 
+      },
       { text: 'Next', classes: 'shepherd-button-primary', action: function() {
         const button = document.querySelector('[data-tour-tag="create-new-agent-button"]');
         if (button) {
