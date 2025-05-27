@@ -168,6 +168,7 @@ export const CreateAgentDialog: FC<CreateAgentDialogProps> = ({
 				onClick={onClose}
 				variant="outlined"
 				disabled={isLoading}
+				data-tour-tag="create-agent-dialog-cancel-button"
 			>
 				Cancel
 			</SecondaryButton>
@@ -191,6 +192,7 @@ export const CreateAgentDialog: FC<CreateAgentDialogProps> = ({
 			title={dialogTitle}
 			actions={dialogActions}
 			maxWidth="sm"
+			dataTourTag="create-agent-dialog"
 		>
 			<Subtitle>
 				Configure your new AI assistant with a name and optional description

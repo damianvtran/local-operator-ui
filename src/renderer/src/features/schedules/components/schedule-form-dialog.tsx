@@ -449,6 +449,7 @@ export const ScheduleFormDialog: FC<ScheduleFormDialogProps> = ({
 				onClick={onClose}
 				disabled={isSubmitting}
 				startIcon={<XSquare size={18} />}
+				data-tour-tag="create-schedule-dialog-cancel-button"
 			>
 				Cancel
 			</SecondaryButton>
@@ -485,6 +486,7 @@ export const ScheduleFormDialog: FC<ScheduleFormDialogProps> = ({
 			actions={dialogActions}
 			maxWidth="sm"
 			fullWidth
+			dataTourTag="create-schedule-dialog"
 		>
 			<StyledFormGrid container spacing={2}>
 				{/* Tooltip with info icon at the top of the modal content */}

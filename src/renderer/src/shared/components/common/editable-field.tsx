@@ -64,6 +64,11 @@ type EditableFieldProps = {
 	 * Whether the field is currently being saved
 	 */
 	isSaving?: boolean;
+
+	/**
+	 * Whether the field is read-only
+	 */
+	readOnly?: boolean;
 };
 
 const FieldContainer = styled(Box)({
@@ -208,36 +213,42 @@ const ClearButton = styled(Button)(({ theme }) => ({
  * Interactive children (edit/clear) are rendered outside the button to avoid nested button issues.
  */
 const DisplayContainer = styled("button", {
-	shouldForwardProp: (prop) => prop !== "multiline",
-})<{ multiline?: boolean }>(({ theme, multiline }) => ({
-	padding: multiline ? "8px 12px" : "4px 12px",
-	borderRadius: 6,
-	backgroundColor: theme.palette.background.paper,
-	border: `1px solid ${theme.palette.divider}`,
-	position: "relative",
-	minHeight: multiline ? "auto" : "36px",
-	height: multiline ? "auto" : "36px",
-	display: "flex",
-	alignItems: multiline ? "flex-start" : "center",
-	transition: "border-color 0.2s ease, background-color 0.2s ease",
-	cursor: "pointer",
-	boxSizing: "border-box",
-	width: "100%",
-	textAlign: "left",
-	textTransform: "none",
-	justifyContent: "flex-start",
-	color: theme.palette.text.primary,
-	fontWeight: "normal",
-	fontFamily: "inherit",
-	outline: "none",
-	"&:hover, &:focus": {
-		borderColor: theme.palette.text.secondary,
-		backgroundColor: theme.palette.action.hover,
-	},
-	"&:focus-visible": {
-		outline: `2px solid ${theme.palette.primary.main}`,
-	},
-}));
+	shouldForwardProp: (prop) => prop !== "multiline" && prop !== "readOnly",
+})<{ multiline?: boolean; readOnly?: boolean }>(
+	({ theme, multiline, readOnly }) => ({
+		padding: multiline ? "8px 12px" : "4px 12px",
+		borderRadius: 6,
+		backgroundColor: readOnly
+			? theme.palette.action.disabledBackground
+			: theme.palette.background.paper,
+		border: `1px solid ${theme.palette.divider}`,
+		position: "relative",
+		minHeight: multiline ? "auto" : "36px",
+		height: multiline ? "auto" : "36px",
+		display: "flex",
+		alignItems: multiline ? "flex-start" : "center",
+		transition: "border-color 0.2s ease, background-color 0.2s ease",
+		cursor: readOnly ? "default" : "pointer",
+		boxSizing: "border-box",
+		width: "100%",
+		textAlign: "left",
+		textTransform: "none",
+		justifyContent: "flex-start",
+		color: readOnly ? theme.palette.text.disabled : theme.palette.text.primary,
+		fontWeight: "normal",
+		fontFamily: "inherit",
+		outline: "none",
+		...(!readOnly && {
+			"&:hover, &:focus": {
+				borderColor: theme.palette.text.secondary,
+				backgroundColor: theme.palette.action.hover,
+			},
+			"&:focus-visible": {
+				outline: `2px solid ${theme.palette.primary.main}`,
+			},
+		}),
+	}),
+);
 
 // Adjust display text style
 const DisplayText = styled(Typography, {
@@ -304,6 +315,7 @@ export const EditableField: FC<EditableFieldProps> = ({
 	placeholder = "Enter value...",
 	icon,
 	isSaving: externalIsSaving = false, // Rename prop to avoid conflict
+	readOnly = false,
 }) => {
 	const [isEditing, setIsEditing] = useState(false);
 	const [editValue, setEditValue] = useState(value);
@@ -347,6 +359,7 @@ export const EditableField: FC<EditableFieldProps> = ({
 	 * Handles entering edit mode.
 	 */
 	const handleEdit = () => {
+		if (readOnly) return;
 		setIsEditing(true);
 	};
 
@@ -450,7 +463,7 @@ export const EditableField: FC<EditableFieldProps> = ({
 		e.preventDefault(); // Prevent triggering edit mode if clicking clear on display view
 		e.stopPropagation(); // Stop propagation
 
-		if (isSaving || isClearing) return; // Prevent action if already busy
+		if (readOnly || isSaving || isClearing) return; // Prevent action if already busy
 
 		setIsClearing(true);
 		setInternalIsSaving(true); // Use internal saving state for visual feedback
@@ -485,6 +498,7 @@ export const EditableField: FC<EditableFieldProps> = ({
 	const handleDisplayContainerKeyDown = (
 		e: KeyboardEvent<HTMLButtonElement>,
 	) => {
+		if (readOnly) return;
 		// Activate edit mode on Enter/Space
 		if (e.key === "Enter" || e.key === " ") {
 			e.preventDefault();
@@ -495,7 +509,7 @@ export const EditableField: FC<EditableFieldProps> = ({
 	const hasChanged = editValue !== originalValue;
 	// Show clear button if not saving, and the *original* value isn't empty.
 	// This prevents showing clear immediately after clearing until a save happens.
-	const showClearButton = !isSaving && originalValue !== "";
+	const showClearButton = !readOnly && !isSaving && originalValue !== "";
 
 	return (
 		<FieldContainer>
@@ -569,8 +583,10 @@ export const EditableField: FC<EditableFieldProps> = ({
 						type="button"
 						onClick={handleEdit}
 						multiline={multiline}
-						aria-label={`Current value: ${displayValue || placeholder}. Click to edit.`}
+						readOnly={readOnly}
+						aria-label={`Current value: ${displayValue || placeholder}.${readOnly ? "" : " Click to edit."}`}
 						onKeyDown={handleDisplayContainerKeyDown}
+						disabled={readOnly} // Disable the button if readOnly
 					>
 						{displayValue ? (
 							<DisplayText multiline={multiline}>{displayValue}</DisplayText>
@@ -579,33 +595,35 @@ export const EditableField: FC<EditableFieldProps> = ({
 						)}
 					</DisplayContainer>
 					{/* Absolutely position edit/clear buttons visually inside, but outside the button in DOM */}
-					<EditButton
-						className="edit-button"
-						size="small"
-						sx={{
-							position: "absolute",
-							top: "50%",
-							right: 6,
-							transform: "translateY(-50%)",
-							opacity: 0,
-							transition: "opacity 0.2s ease",
-							pointerEvents: "auto",
-							"&:hover, &:focus, button:focus + &": { opacity: 1 },
-						}}
-						onClick={handleEdit}
-						title="Edit"
-						aria-label={`Edit ${label}`}
-						tabIndex={-1}
-					>
-						<FontAwesomeIcon icon={faPen} size="xs" />
-					</EditButton>
-					{showClearButton && (
-						<ClearButton
+					{!readOnly && (
+						<EditButton
 							className="edit-button"
+							size="small"
 							sx={{
 								position: "absolute",
 								top: "50%",
-								right: 36,
+								right: 6,
+								transform: "translateY(-50%)",
+								opacity: 0,
+								transition: "opacity 0.2s ease",
+								pointerEvents: "auto",
+								"&:hover, &:focus, button:focus + &": { opacity: 1 },
+							}}
+							onClick={handleEdit}
+							title="Edit"
+							aria-label={`Edit ${label}`}
+							tabIndex={-1} // Keep focus on the main button
+						>
+							<FontAwesomeIcon icon={faPen} size="xs" />
+						</EditButton>
+					)}
+					{showClearButton && !readOnly && (
+						<ClearButton
+							className="edit-button" // Re-use class for hover effect if needed
+							sx={{
+								position: "absolute",
+								top: "50%",
+								right: 36, // Adjust position if EditButton is present
 								transform: "translateY(-50%)",
 								opacity: 0,
 								transition: "opacity 0.2s ease",
@@ -617,7 +635,7 @@ export const EditableField: FC<EditableFieldProps> = ({
 							title="Clear field"
 							aria-label={`Clear ${label}`}
 							startIcon={<FontAwesomeIcon icon={faEraser} />}
-							tabIndex={-1}
+							tabIndex={-1} // Keep focus on the main button
 						>
 							Clear
 						</ClearButton>

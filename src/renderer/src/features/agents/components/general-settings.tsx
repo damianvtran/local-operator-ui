@@ -13,7 +13,7 @@ import {
 	faTag,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Box, Divider, Grid, Typography, alpha } from "@mui/material";
+import { Box, Divider, Grid, Tooltip, Typography, alpha } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import type {
 	AgentDetails,
@@ -241,7 +241,12 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 				<Grid container spacing={2} alignItems="center">
 					{" "}
 					{/* Vertically align grid items */}
-					<Grid item xs={12} md={6}>
+					<Grid
+						item
+						xs={12}
+						md={6}
+						data-tour-tag="agent-settings-hosting-select"
+					>
 						<HostingSelect
 							// Modified key to not include the selectedAgent.id, so it doesn't re-render and reset when agent changes
 							// This allows users to select a different hosting provider after making an initial selection
@@ -287,7 +292,7 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 							filterByCredentials={false}
 						/>
 					</Grid>
-					<Grid item xs={12} md={6}>
+					<Grid item xs={12} md={6} data-tour-tag="agent-settings-model-select">
 						{/* Only render ModelSelect if we have a hosting provider selected */}
 						{currentHosting ? (
 							<ModelSelect
@@ -325,12 +330,14 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 							/>
 						) : (
 							<FieldContainer>
-								<FieldLabel>
-									<LabelIcon>
-										<FontAwesomeIcon icon={faRobot} />
-									</LabelIcon>
-									Model
-								</FieldLabel>
+								<Tooltip title="Select a hosting provider first, and then select the AI model that you want to use.  Each model has different capabilities and costs.  Recommended: Automatic">
+									<FieldLabel>
+										<LabelIcon>
+											<FontAwesomeIcon icon={faRobot} />
+										</LabelIcon>
+										Model
+									</FieldLabel>
+								</Tooltip>
 								<ModelPlaceholderContainer>
 									<ModelPlaceholderText>
 										Select a hosting provider first...

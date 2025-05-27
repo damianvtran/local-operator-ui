@@ -255,32 +255,56 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 		return undefined;
 	}, [hostingId, refreshModels, isModelsLoading]);
 
-	// Convert models to autocomplete options, ensuring uniqueness by ID
+	// Convert models to autocomplete options, ensuring uniqueness by ID and specific ordering
 	const modelOptions: ModelOption[] = useMemo(() => {
-		const optionsMap = new Map<string, ModelOption>();
+		const finalOptions: ModelOption[] = [];
+		const addedIds = new Set<string>();
 
-		// Add Default option
-		optionsMap.set("", {
-			id: "",
-			name: "Default",
-			description: "Clear model selection",
-			model: undefined,
-		});
-
-		// Add available models, using ID as the key to handle duplicates
-		for (const model of availableModels) {
-			optionsMap.set(model.id, {
-				id: model.id,
-				name: model.name,
-				description: model.description,
-				model,
-				recommended: model.recommended,
-			});
+		// 1. If hostingId is "radient", add "auto" model first if it exists
+		if (hostingId === "radient") {
+			const autoModelFromAvailable = availableModels.find(
+				(model) => model.id === "auto",
+			);
+			if (autoModelFromAvailable) {
+				finalOptions.push({
+					id: autoModelFromAvailable.id,
+					name: autoModelFromAvailable.name,
+					description: autoModelFromAvailable.description,
+					model: autoModelFromAvailable,
+					recommended: autoModelFromAvailable.recommended,
+				});
+				addedIds.add(autoModelFromAvailable.id);
+			}
 		}
 
-		// If the current value is not in the options map, add it as a custom option
-		if (value && value.trim() !== "" && !optionsMap.has(value)) {
-			optionsMap.set(value, {
+		// 2. Add "Default" option if its ID hasn't been added yet
+		if (!addedIds.has("")) {
+			finalOptions.push({
+				id: "",
+				name: "Default",
+				description: "Clear model selection",
+				model: undefined,
+			});
+			addedIds.add("");
+		}
+
+		// 3. Add all other models from availableModels that haven't been added yet
+		for (const model of availableModels) {
+			if (!addedIds.has(model.id)) {
+				finalOptions.push({
+					id: model.id,
+					name: model.name,
+					description: model.description,
+					model,
+					recommended: model.recommended,
+				});
+				addedIds.add(model.id);
+			}
+		}
+
+		// 4. Add the current 'value' as a custom option if it's not empty and not already in finalOptions
+		if (value && value.trim() !== "" && !addedIds.has(value)) {
+			finalOptions.push({
 				id: value,
 				name: value,
 				description: "Custom model",
@@ -288,9 +312,8 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 			});
 		}
 
-		// Convert map values back to an array
-		return Array.from(optionsMap.values());
-	}, [availableModels, value]);
+		return finalOptions;
+	}, [availableModels, value, hostingId]);
 
 	// Helper text to show when no models are available
 	const helperText = useMemo(() => {
@@ -448,12 +471,14 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 
 	return (
 		<FieldContainer>
-			<FieldLabel variant="subtitle2">
-				<LabelIcon>
-					<FontAwesomeIcon icon={faRobot} />
-				</LabelIcon>
-				Model
-			</FieldLabel>
+			<Tooltip title="Select the AI model that you want to use.  Each model has different capabilities and costs.  Recommended: Automatic">
+				<FieldLabel variant="subtitle2">
+					<LabelIcon>
+						<FontAwesomeIcon icon={faRobot} />
+					</LabelIcon>
+					Model
+				</FieldLabel>
+			</Tooltip>
 
 			<StyledAutocomplete
 				key={`model-select-${hostingId}-${modelOptions.length}`}
@@ -483,9 +508,28 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 				groupBy={(option) => {
 					const modelOption = option as ModelOption;
 					if (hostingId === "radient" && modelOption.id === "auto") {
-						return "radient"; // Group 'auto' under 'radient' specifically for radient hosting
+						return "Auto (Recommended)"; // Special group for "auto" when Radient is active
 					}
-					return getProviderFromId(modelOption.id);
+					if (modelOption.id === "") {
+						return "General"; // Group for "Default"
+					}
+
+					const providerId = getProviderFromId(modelOption.id);
+					// If the model is from Radient (but not 'auto' and hosting is 'radient')
+					if (hostingId === "radient" && providerId === "radient") {
+						return "Radient"; // Keep other Radient models in a "Radient" group
+					}
+
+					// For models from other providers, or Radient models when hosting is not Radient
+					const provider = getHostingProviderById(providerId);
+					if (provider) {
+						return provider.name; // e.g., "OpenAI", "Anthropic", "Radient"
+					}
+					if (providerId) {
+						// Fallback if provider object not found but ID exists
+						return providerId;
+					}
+					return "Other Models"; // Fallback for models without a clear provider
 				}}
 				renderOption={(props, option) => {
 					const { key, ...rest } = props;

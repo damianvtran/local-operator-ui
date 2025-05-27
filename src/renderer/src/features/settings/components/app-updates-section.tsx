@@ -114,6 +114,7 @@ export const AppUpdatesSection: FC = () => {
 			title="Application Updates & Info"
 			icon={faDownload}
 			description="Check for updates and view information about your Local Operator installation."
+			dataTourTag="settings-app-updates-section"
 		>
 			{/* Version Information Grid */}
 			<InfoGrid sx={{ mb: 3 }}>

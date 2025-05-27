@@ -12,6 +12,7 @@ import {
 	Box,
 	CircularProgress,
 	TextField,
+	Tooltip,
 	Typography,
 	createFilterOptions,
 	styled,
@@ -434,12 +435,14 @@ export const HostingSelect: FC<HostingSelectProps> = ({
 
 	return (
 		<FieldContainer>
-			<FieldLabel variant="subtitle2">
-				<LabelIcon>
-					<FontAwesomeIcon icon={faServer} />
-				</LabelIcon>
-				Hosting Provider
-			</FieldLabel>
+			<Tooltip title="Select the AI provider that you want to use.  Each provider has different models available.  Recommended: Radient">
+				<FieldLabel variant="subtitle2">
+					<LabelIcon>
+						<FontAwesomeIcon icon={faServer} />
+					</LabelIcon>
+					Hosting Provider
+				</FieldLabel>
+			</Tooltip>
 
 			<StyledAutocomplete
 				key={`hosting-select-${hostingOptions.length}`}

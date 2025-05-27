@@ -82,6 +82,7 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 			title={`Upload "${agentName}" to Agent Hub?`}
 			maxWidth="sm"
 			fullWidth
+			dataTourTag="upload-agent-dialog"
 		>
 			{validationIssues.length > 0 && (
 				<Box sx={{ mb: 2 }}>
@@ -174,7 +175,11 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 				</Box>
 			)}
 			<Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2, mt: 2 }}>
-				<SecondaryButton variant="outlined" onClick={onClose}>
+				<SecondaryButton
+					variant="outlined"
+					onClick={onClose}
+					data-tour-tag="upload-agent-dialog-cancel-button"
+				>
 					Cancel
 				</SecondaryButton>
 				{isAuthenticated && (

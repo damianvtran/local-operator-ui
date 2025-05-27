@@ -19,10 +19,10 @@ export const useCheckFirstTimeUser = () => {
 	const { data: credentialsData, isLoading: isLoadingCredentials } =
 		useCredentials();
 	const {
-		isComplete: isOnboardingComplete,
-		isActive: isOnboardingActive,
-		activateOnboarding,
-		deactivateOnboarding,
+		isModalComplete: isOnboardingComplete,
+		isModalActive: isOnboardingActive,
+		activateModalOnboarding: activateOnboarding,
+		deactivateModalOnboarding: deactivateOnboarding,
 		resetOnboarding,
 	} = useOnboardingStore();
 
