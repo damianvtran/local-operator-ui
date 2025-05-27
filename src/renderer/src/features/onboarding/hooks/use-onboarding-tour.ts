@@ -7,7 +7,7 @@ const tourSteps: StepOptions[] = [
   {
     id: 'welcome',
     title: 'Welcome to Local Operator!',
-    text: 'Local Operator helps you get things done with AI agents that can do things for you on your computer and use the internet. Let\'s explore how it works!',
+    text: 'Local Operator is an AI agents platform that allows you to create a team of proactive AI agents that support you and help to reduce your daily workload.<br/><br/>These agents are different from simple chatbots because they can actually do things for you on your computer like create files, run code and analytics, edit images, videos, and PDFs, organize your system, and much more.  Let\'s explore how it works!',
     buttons: [
       { text: 'Next', classes: 'shepherd-button-primary', action: function() { this.next(); } },
     ],
@@ -84,7 +84,7 @@ const tourSteps: StepOptions[] = [
     id: 'canvas-feature',
     attachTo: { element: '[data-tour-tag="canvas-container"]', on: 'left' },
     title: 'The Canvas: Your Visual Workspace',
-    text: 'This is the Canvas, your workspace for files and dynamic visualizations where you can organize, plan, and interact with your agents in a more flexible way.  Any files that your agents create on your device can be opened here by clicking on the file icons that you see as they work.  Agents can make dynamic visualizations like games, charts, maps, and more in HTML files.  Any HTML files you open will be rendered dynamically in an iframe.  Any markdown files that you open will be rendered in full markdown viewer with support for code blocks, tables, mermaid diagrams, and more.',
+    text: 'This is the Canvas, your workspace for files and dynamic visualizations where you can organize, plan, and interact with your agents in a more flexible way.  Any files that your agents create on your device can be opened here by clicking on the file icons that you see as they work.<br/><br/>Agents can make dynamic visualizations like games, charts, maps, and more in HTML files.  Any HTML files you open will be rendered dynamically in an iframe.  Any markdown files that you open will be rendered in full markdown viewer with support for code blocks, tables, mermaid diagrams, and more.',
     buttons: [
       { text: 'Back', classes: 'shepherd-button-secondary', action: function() { 
         const button = document.querySelector('[data-tour-tag="close-canvas-button"]');
@@ -108,7 +108,7 @@ const tourSteps: StepOptions[] = [
   },
   {
     id: 'agent-options',
-    attachTo: { element: 'button[data-tour-tag="agent-options-button"]', on: 'bottom' },
+    attachTo: { element: 'button[data-tour-tag="agent-options-button"]', on: 'right' },
     title: 'Agent Options',
     text: 'Click here to see options for the currently selected agent, like viewing its settings, exporting it, or deleting it.',
     buttons: [
@@ -128,7 +128,7 @@ const tourSteps: StepOptions[] = [
   {
     id: 'click-view-settings-from-chat',
     // Assumes Agent Options menu is open from the previous step
-    attachTo: { element: '[role="menuitem"][data-tour-tag="view-agent-settings-menu-item"]', on: 'bottom' },
+    attachTo: { element: '[role="menuitem"][data-tour-tag="view-agent-settings-menu-item"]', on: 'right' },
     title: 'View Configuration',
     text: 'Click "View Agent Settings" to see and change how this agent works.',
     buttons: [
@@ -150,7 +150,7 @@ const tourSteps: StepOptions[] = [
     // Targets the DetailsPaper component in AgentSettings
     attachTo: { element: 'div[data-tour-tag="agent-settings-details-paper"]', on: 'left' },
     title: 'Agent Configuration',
-    text: 'This is where you can configure your agent. You can change its name, description, the AI model it uses, its temperature for creativity, and other chat settings.',
+    text: 'This is where you can customize and configure your agent. You can change its name, description, the AI model it uses, its temperature for creativity, and other chat settings.<br /><br />The agents will already have default settings that work well for most use cases, but if you want to roll up your sleeves and customize, you can do so here!',
     buttons: [
       { text: 'Back', classes: 'shepherd-button-secondary', action: function() { 
         const button = document.querySelector('[data-tour-tag="nav-item-chat"]');
@@ -194,11 +194,10 @@ const tourSteps: StepOptions[] = [
   },
   {
     id: 'agent-naming-guidelines',
-    attachTo: { element: '[data-tour-tag="create-agent-dialog"]', on: 'bottom' },
+    attachTo: { element: '[data-tour-tag="create-agent-dialog"]', on: 'right' },
     title: 'Naming and Describing Your Agent',
     text: `Give your agent a clear, descriptive name that reflects its purpose (e.g., "File Organizer" or "Web Researcher"). 
-A good description helps you and others understand what the agent does and any special instructions. 
-Be concise and specific!`,
+A good description helps you and others understand what the agent does and any special instructions. The descriptions are also used by other agents to help them understand how to tag each other in for certain tasks.<br /><br />If you want this agent to be part of the agent-to-agent communication network, it will need to have a description that captures its purpose and capabilities.  Be concise and specific!`,
     buttons: [
       { text: 'Back', classes: 'shepherd-button-secondary', action: function() { 
         const button = document.querySelector('[data-tour-tag="create-agent-dialog-cancel-button"]');
@@ -263,7 +262,24 @@ Be concise and specific!`,
     buttons: [
       { text: 'Back', classes: 'shepherd-button-secondary', action: function() { this.back(); } },
       { text: 'Next', classes: 'shepherd-button-primary', action: function() { 
-        const button = document.querySelector('button[data-tour-tag="nav-item-agents"]');
+        const button = document.querySelector('[data-tour-tag="nav-item-agents"]');
+        if (button) {
+          (button as HTMLButtonElement).click();
+        }
+        setTimeout(() => { this.next(); }, 1000);
+      } },
+    ],
+  },
+  {
+    id: 'upload-agent-hub',
+    // Targets the "Upload to Hub" menu item, assuming the parent menu is open
+    attachTo: { element: 'button[data-tour-tag="upload-to-hub-header-button"]', on: 'bottom' },
+    title: 'Share Your Agents',
+    text: 'If you create a useful agent, you can also share it with the community by uploading it to the Hub from the Agent Options menu.',
+    buttons: [
+      { text: 'Back', classes: 'shepherd-button-secondary', action: function() { this.back(); } },
+      { text: 'Next', classes: 'shepherd-button-primary', action: function() { 
+        const button = document.querySelector('button[data-tour-tag="upload-to-hub-header-button"]');
         if (button) {
           (button as HTMLButtonElement).click();
         }
@@ -272,38 +288,14 @@ Be concise and specific!`,
     ],
   },
   {
-    id: 'upload-agent-hub',
-    // Targets the "Upload to Hub" menu item, assuming the parent menu is open
-    attachTo: { element: '[data-tour-tag="upload-to-hub-header-button"]', on: 'bottom' },
-    title: 'Share Your Agents (Optional)',
-    text: 'If you create a useful agent, you can also share it with the community by uploading it to the Hub from the Agent Options menu.',
-    buttons: [
-      { text: 'Back', classes: 'shepherd-button-secondary', action: function() { this.back(); } },
-      { text: 'Next', classes: 'shepherd-button-primary', action: function() { 
-        const button = document.querySelector('[data-tour-tag="nav-item-agents"]');
-        if (button) {
-          (button as HTMLButtonElement).click();
-        }
-        setTimeout(() => {
-          const button = document.querySelector('[data-tour-tag="upload-to-hub-header-button"]');
-          if (button) {
-            (button as HTMLButtonElement).click();
-          }
-        }, 500);
-        // Wait for the navigation to complete before clicking the next button
-        setTimeout(() => { this.next(); }, 1000);
-      } },
-    ],
-  },
-  {
     id: 'upload-agent-hub-dialog',
     // Targets the UploadAgentDialog modal, which should be open after clicking "Upload to Hub"
-    attachTo: { element: '[data-tour-tag="upload-agent-dialog"]', on: 'top' },
+    attachTo: { element: '[data-tour-tag="upload-agent-dialog"]', on: 'right' },
     title: 'Upload Agent to Hub',
     text: 'This dialog allows you to share your agent with the community. You can review the agent details and confirm the upload. Make sure your agent meets the required criteria before submitting.  Also be aware that any conversation history and learnings for this agent will be part of its training and will be visible to the public.  So don\'t share agents publicly that know sensitive information!',
     buttons: [
       { text: 'Back', classes: 'shepherd-button-secondary', action: function() { 
-        const button = document.querySelector('[data-tour-tag="upload-agent-dialog-cancel-button"]');
+        const button = document.querySelector('button[data-tour-tag="upload-agent-dialog-cancel-button"]');
         if (button) {
           (button as HTMLButtonElement).click();
         }
@@ -311,7 +303,7 @@ Be concise and specific!`,
         setTimeout(() => { this.back(); }, 500);
       } },
       { text: 'Next', classes: 'shepherd-button-primary', action: function() { 
-        const button = document.querySelector('[data-tour-tag="upload-agent-dialog-cancel-button"]');
+        const button = document.querySelector('button[data-tour-tag="upload-agent-dialog-cancel-button"]');
         if (button) {
           (button as HTMLButtonElement).click();
         }
@@ -322,7 +314,7 @@ Be concise and specific!`,
   },
   {
     id: 'navigate-schedules',
-    attachTo: { element: 'button[data-tour-tag="nav-item-schedules"]', on: 'right' },
+    attachTo: { element: '[data-tour-tag="nav-item-schedules"]', on: 'right' },
     title: 'Automate Tasks with Schedules',
     text: 'Local Operator can run tasks for you on a regular basis. Let\'s check out the Schedules section.',
     buttons: [
@@ -350,11 +342,32 @@ Be concise and specific!`,
     ],
   },
   {
+    id: 'schedules-overview',
+    title: 'Proactive Agents with Schedules',
+    text: 'A powerful feature of Local Operator is the ability to ask agents to perform tasks on their own on a recurring basis.  This turns them from reactive agent bots to proactive agents that work on their own in the background to support you without you needing to continually ask them to do things.<br /><br />You can simply ask any agent to do something at some point in the future, or to handle some daily task at a certain time, and it will create a prompt for itself that will be executed at the specified times.<br /><br />Here, you can view, create, and manage all your scheduled tasks in one place to streamline your workflow and ensure important actions happen automatically.',
+    buttons: [
+      {
+        text: 'Back',
+        classes: 'shepherd-button-secondary',
+        action: function() {
+          this.back();
+        }
+      },
+      {
+        text: 'Next',
+        classes: 'shepherd-button-primary',
+        action: function() {
+          this.next();
+        }
+      }
+    ],
+  },
+  {
     id: 'create-schedule',
     // Targets the "Create Schedule" button within the PageHeader
     attachTo: { element: 'button[data-tour-tag="create-schedule-button"]', on: 'bottom' },
     title: 'Set Up a Recurring Task',
-    text: 'Click "Create Schedule" to ask an agent to perform a task for you regularly, like sending a daily report or checking for news updates.',
+    text: 'Click "Create Schedule" to ask an agent to perform a task for you regularly, like sending a daily report or checking for news updates.<br /><br />You can also create one-off tasks that only run once at some point in the future.',
     buttons: [
       { text: 'Back', classes: 'shepherd-button-secondary', action: function() { 
         this.back(); } },
@@ -368,8 +381,44 @@ Be concise and specific!`,
     ],
   },
   {
+    id: 'create-schedule-dialog',
+    attachTo: { element: '[data-tour-tag="create-schedule-dialog"]', on: 'right' },
+    title: 'Configure Your Schedule',
+    text: 'While it is often much easier to simply ask the agent to do a task on a recurring basis for you, you can also manually set up a schedule for a task here or update existing tasks.<br /><br />The prompt is the message that will be sent to the agent at the predefined schedule.  You can update the time of day in your local timezone, the frequency of the task, and even specify a specific date or time that the task should stop running at.<br /><br />You can also schedule one-off tasks that only run once at some point in the future.',
+    buttons: [
+      { 
+        text: 'Back', 
+        classes: 'shepherd-button-secondary', 
+        action: function() { 
+          // Close dialog if open, then go back
+          const closeButton = document.querySelector(
+            '[data-tour-tag="create-schedule-dialog-cancel-button"]'
+          );
+          if (closeButton) {
+            (closeButton as HTMLButtonElement).click();
+          }
+          setTimeout(() => { this.back(); }, 500);
+        } 
+      },
+      { 
+        text: 'Next', 
+        classes: 'shepherd-button-primary', 
+        action: function() { 
+          // Optionally close dialog before moving on
+          const closeButton = document.querySelector(
+            '[data-tour-tag="create-schedule-dialog-cancel-button"]'
+          );
+          if (closeButton) {
+            (closeButton as HTMLButtonElement).click();
+          }
+          setTimeout(() => { this.next(); }, 500);
+        } 
+      },
+    ],
+  },
+  {
     id: 'navigate-settings',
-    attachTo: { element: 'button[data-tour-tag="nav-item-settings"]', on: 'right' },
+    attachTo: { element: '[data-tour-tag="nav-item-settings"]', on: 'right' },
     title: 'Personalize Your Experience',
     text: 'Now, let\'s explore the Settings menu to customize Local Operator to your liking.',
     buttons: [
@@ -394,7 +443,7 @@ Be concise and specific!`,
   {
     id: 'general-settings',
     // Targets the "General Settings" item in settings sidebar via its icon
-    attachTo: { element: 'div[data-tour-tag="settings-sidebar-general"]', on: 'right' },
+    attachTo: { element: 'div[data-tour-tag="settings-general-section"]', on: 'right' },
     title: 'General Settings',
     text: 'Here you can update your user profile, configure model settings (like default hosting provider and model), and adjust history settings for conversations and learnings.',
     buttons: [
@@ -404,7 +453,7 @@ Be concise and specific!`,
   },
   {
     id: 'radient-account-settings',
-    attachTo: { element: 'div[data-tour-tag="settings-sidebar-radient-account"]', on: 'right' },
+    attachTo: { element: '[data-tour-tag="settings-radient-account-section"]', on: 'right' },
     title: 'Radient Account',
     text: 'Connect your Radient Account to access your Radient Pass details, credits, and unlock unified access to models and tools.',
     buttons: [
@@ -414,9 +463,9 @@ Be concise and specific!`,
   },
   {
     id: 'integrations-settings',
-    attachTo: { element: 'div[data-tour-tag="settings-sidebar-integrations"]', on: 'right' },
+    attachTo: { element: '[data-tour-tag="settings-integrations-section"]', on: 'right' },
     title: 'Connect Your Services',
-    text: 'Enhance your agents\' capabilities by connecting your Google services like Gmail, Calendar, and Drive. This allows agents to access and manage your information with your permission.',
+    text: 'Enhance your agents\' capabilities by connecting your Google services like Gmail, Calendar, and Drive. This allows agents to access and manage your information with your permission.<br /><br />You need to be logged in to a Radient account to use this feature, however it is free to use and doesn\'t cost any additional Radient Credits per action.',
     buttons: [
       { text: 'Back', classes: 'shepherd-button-secondary', action: function() { this.back(); } },
       { text: 'Next', classes: 'shepherd-button-primary', action: function() { this.next(); } },
@@ -424,7 +473,7 @@ Be concise and specific!`,
   },
   {
     id: 'appearance-settings',
-    attachTo: { element: 'div[data-tour-tag="settings-sidebar-appearance"]', on: 'right' },
+    attachTo: { element: '[data-tour-tag="settings-appearance-section"]', on: 'right' },
     title: 'Customize Appearance',
     text: 'Choose from various themes to change the look and feel of Local Operator. Find one that suits your style!',
     buttons: [
@@ -434,7 +483,7 @@ Be concise and specific!`,
   },
   {
     id: 'api-credentials-settings',
-    attachTo: { element: 'div[data-tour-tag="settings-sidebar-api-credentials"]', on: 'right' },
+    attachTo: { element: '[data-tour-tag="settings-api-credentials-section"]', on: 'right' },
     title: 'Manage API Keys',
     text: 'Configure API keys for various services and AI models here. This allows your agents to access external tools and capabilities.',
     buttons: [
@@ -444,7 +493,7 @@ Be concise and specific!`,
   },
   {
     id: 'application-updates-settings',
-    attachTo: { element: 'div[data-tour-tag="settings-sidebar-application-updates"]', on: 'right' },
+    attachTo: { element: '[data-tour-tag="settings-app-updates-section"]', on: 'right' },
     title: 'Stay Up-to-Date',
     text: 'Check for updates to Local Operator here to ensure you have the latest features and improvements. You can see your current version information below.',
     buttons: [

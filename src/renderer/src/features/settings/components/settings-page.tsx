@@ -667,7 +667,7 @@ export const SettingsPage: FC = () => {
 			</SidebarContainer>
 
 			{/* Scrollable Content Area */}
-			<ContentContainer data-settings-content>
+			<ContentContainer data-settings-content data-tour-tag="settings-general-section">
 				<PageHeader
 					title="Settings"
 					icon={Settings}
@@ -868,6 +868,7 @@ export const SettingsPage: FC = () => {
 						titleComponent={<RadientSectionTitle />}
 						description="Manage your Radient account, Radient Pass details, and credits." // Description passed here
 						cardRef={sectionRefs.radient} // Assign ref
+            dataTourTag="settings-radient-account-section"
 					>
 						{/* Render RadientAccountSection always */}
 						<RadientAccountSection
@@ -900,6 +901,7 @@ export const SettingsPage: FC = () => {
 						icon={faAdjust}
 						description="Customize the look and feel of Local Operator"
 						cardRef={sectionRefs.appearance} // Assign ref
+            dataTourTag="settings-appearance-section"
 					>
 						<ThemeSelector />
 					</SettingsSectionCard>
@@ -910,6 +912,7 @@ export const SettingsPage: FC = () => {
 						icon={faKey}
 						description="Manage your API keys for various services and integrations"
 						cardRef={sectionRefs.credentials} // Assign ref
+            dataTourTag="settings-api-credentials-section"
 					>
 						<Credentials />
 					</SettingsSectionCard>

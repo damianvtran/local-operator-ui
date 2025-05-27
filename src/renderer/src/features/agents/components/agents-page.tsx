@@ -237,6 +237,7 @@ export const AgentsPage: FC<AgentsPageProps> = () => {
 								{/* Upload to Agent Hub Button */}
 								<Tooltip title="Upload Agent to Hub">
 									<Button
+										data-tour-tag="upload-to-hub-header-button"
 										variant="outlined"
 										size="small"
 										startIcon={<CloudUpload size={16} strokeWidth={2} />}
