@@ -44,7 +44,17 @@ const tourSteps: StepOptions[] = [
     id: 'chat-input',
     attachTo: { element: 'textarea[data-tour-tag="chat-input-textarea"]', on: 'top' },
     title: 'Ask Your Agent Anything',
-    text: 'Type your request here. Agents can answer questions, perform tasks, search the web, and much more. Notice the suggested prompts above for ideas!',
+    text: 'Type your request here. Agents can answer questions, perform tasks, search the web, and much more. When you create a new agent, you\'ll see suggested prompts for ideas!<br /><br />Some powerful requests that you can try:<br /><br /><ul><li>"Create a spreadsheet in my Documents folder with all the major cities in Canada."</li><li>"Search the web for the latest news on AI and make a thorough report."</li><li>Select an attachment and then "translate this document to French."</li></ul>',
+    buttons: [
+      { text: 'Back', classes: 'shepherd-button-secondary', action: function() { this.back(); } },
+      { text: 'Next', classes: 'shepherd-button-primary', action: function() { this.next(); } },
+    ],
+  },
+  {
+    id: 'attachments',
+    attachTo: { element: 'button[data-tour-tag="chat-input-attach-file-button"]', on: 'top' },
+    title: 'Attach Files to Your Message',
+    text: 'You can attach any files, images, or documents to your message by clicking this paperclip button, there are no limitations on the file types. Your agent can process, analyze, or translate these attachments as part of your request.<br /><br />Try attaching a PDF, image, or text file and then ask your agent to summarize, translate, or extract information from it!<br /><br />Images like PNGs, JPGs, and PDFs are natively streamed into the model context window, so they can understand them directly without needing to run any code.  Other files like Excel, Word, and CSV files are included as file paths on your device to direct the model\'s attention to work with them using code.  You can attach massive files like million line CSVs and have the agent work with them using code.<br /><br />You can also paste images into the chat input, and attach multiple files at once to achieve more complex tasks.  Try taking a screenshot of a website and then asking your agent to try to code it!',
     buttons: [
       { text: 'Back', classes: 'shepherd-button-secondary', action: function() { this.back(); } },
       { text: 'Next', classes: 'shepherd-button-primary', action: function() { this.next(); } },
@@ -54,7 +64,7 @@ const tourSteps: StepOptions[] = [
     id: 'agent-capabilities',
     attachTo: { element: '[data-tour-tag="chat-header"]', on: 'top' },
     title: 'More Than Just Chat',
-    text: 'Local Operator agents are different from simple chatbots. They can perform actions on your computer, like creating files, running code, or browsing the web, based on your instructions. You\'ll see them use "tools" to get things done!',
+    text: 'Local Operator agents are different from simple chatbots. They can perform actions on your computer, like creating files, running code, or browsing the web, based on your instructions. You\'ll see them use "tools" like reading, writing, and executing code to get things done!  Agents have memory of the conversation, previous steps, learnings, and even store the execution variables of previous steps in code to be able to use them later in the conversation.<br /><br />Local Operator agents are extremely flexible, so they can bounce back and forth with you for simple chatting, and know when they need to embark on a work journey to get things done in multiple steps with tool use!',
     buttons: [
       { text: 'Back', classes: 'shepherd-button-secondary', action: function() { this.back(); } },
       { text: 'Next', classes: 'shepherd-button-primary', action: function() { this.next(); } },
