@@ -687,7 +687,7 @@ export const SettingsPage: FC = () => {
 								<SettingsSectionCard
 									title="User Profile"
 									icon={faUser}
-									description="Update your user profile information displayed in the application."
+									description={`Your user profile information displayed in the application.  This information is not provided to the agents.  ${isAuthenticated ? "These details are provided through your Radient Account." : ""}`}
 								>
 									<FieldsContainer>
 										<EditableField
@@ -704,6 +704,7 @@ export const SettingsPage: FC = () => {
 													setSavingField(null);
 												}
 											}}
+											readOnly={isAuthenticated}
 										/>
 										<EditableField
 											value={userStore.profile.email}
@@ -719,6 +720,7 @@ export const SettingsPage: FC = () => {
 													setSavingField(null);
 												}
 											}}
+											readOnly={isAuthenticated}
 										/>
 									</FieldsContainer>
 								</SettingsSectionCard>
