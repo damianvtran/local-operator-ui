@@ -214,37 +214,41 @@ const ClearButton = styled(Button)(({ theme }) => ({
  */
 const DisplayContainer = styled("button", {
 	shouldForwardProp: (prop) => prop !== "multiline" && prop !== "readOnly",
-})<{ multiline?: boolean; readOnly?: boolean }>(({ theme, multiline, readOnly }) => ({
-	padding: multiline ? "8px 12px" : "4px 12px",
-	borderRadius: 6,
-	backgroundColor: readOnly ? theme.palette.action.disabledBackground : theme.palette.background.paper,
-	border: `1px solid ${theme.palette.divider}`,
-	position: "relative",
-	minHeight: multiline ? "auto" : "36px",
-	height: multiline ? "auto" : "36px",
-	display: "flex",
-	alignItems: multiline ? "flex-start" : "center",
-	transition: "border-color 0.2s ease, background-color 0.2s ease",
-	cursor: readOnly ? "default" : "pointer",
-	boxSizing: "border-box",
-	width: "100%",
-	textAlign: "left",
-	textTransform: "none",
-	justifyContent: "flex-start",
-	color: readOnly ? theme.palette.text.disabled : theme.palette.text.primary,
-	fontWeight: "normal",
-	fontFamily: "inherit",
-	outline: "none",
-	...(!readOnly && {
-		"&:hover, &:focus": {
-			borderColor: theme.palette.text.secondary,
-			backgroundColor: theme.palette.action.hover,
-		},
-		"&:focus-visible": {
-			outline: `2px solid ${theme.palette.primary.main}`,
-		},
+})<{ multiline?: boolean; readOnly?: boolean }>(
+	({ theme, multiline, readOnly }) => ({
+		padding: multiline ? "8px 12px" : "4px 12px",
+		borderRadius: 6,
+		backgroundColor: readOnly
+			? theme.palette.action.disabledBackground
+			: theme.palette.background.paper,
+		border: `1px solid ${theme.palette.divider}`,
+		position: "relative",
+		minHeight: multiline ? "auto" : "36px",
+		height: multiline ? "auto" : "36px",
+		display: "flex",
+		alignItems: multiline ? "flex-start" : "center",
+		transition: "border-color 0.2s ease, background-color 0.2s ease",
+		cursor: readOnly ? "default" : "pointer",
+		boxSizing: "border-box",
+		width: "100%",
+		textAlign: "left",
+		textTransform: "none",
+		justifyContent: "flex-start",
+		color: readOnly ? theme.palette.text.disabled : theme.palette.text.primary,
+		fontWeight: "normal",
+		fontFamily: "inherit",
+		outline: "none",
+		...(!readOnly && {
+			"&:hover, &:focus": {
+				borderColor: theme.palette.text.secondary,
+				backgroundColor: theme.palette.action.hover,
+			},
+			"&:focus-visible": {
+				outline: `2px solid ${theme.palette.primary.main}`,
+			},
+		}),
 	}),
-}));
+);
 
 // Adjust display text style
 const DisplayText = styled(Typography, {

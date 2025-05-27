@@ -125,10 +125,9 @@ export const useOnboardingStore = create<OnboardingState>()(
 				} else if (state) {
 					// Check for the old 'isComplete' key from a previous version of the store state
 					// This is a simplified one-time migration logic.
-					// biome-ignore lint/suspicious/noExplicitAny: checking for old state shape
 					const rawPersistedState = JSON.parse(
 						localStorage.getItem("onboarding-storage") || "{}",
-					) as any;
+					);
 
 					if (
 						rawPersistedState?.state?.isComplete === true &&
