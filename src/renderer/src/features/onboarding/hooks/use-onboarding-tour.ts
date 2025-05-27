@@ -7,7 +7,7 @@ const tourSteps: StepOptions[] = [
   {
     id: 'welcome',
     title: 'Welcome to Local Operator!',
-    text: 'Local Operator is an AI agents platform that allows you to create a team of proactive AI agents that support you and help to reduce your daily workload.<br/><br/>These agents are different from simple chatbots because they can actually do things for you on your computer like create files, run code and analytics, edit images, videos, and PDFs, organize your system, and much more.  Let\'s explore how it works!',
+    text: 'Local Operator is an AI agents platform that allows you to create a team of proactive AI agents that support you and help to reduce your daily workload.<br/><br/>These agents are different from simple chatbots because they can actually do things for you on your computer like create files, run code and analytics, edit images, videos, and PDFs, organize your system, and much more.<br/><br/>In this walkthrough we\'ll cover:<ul><li>Creating agents</li><li>Making agents do things</li><li>The canvas workspace</li><li>Customizing agents</li><li>Agent Hub for sharing and collaborating</li><li>Schedules for proactive agents</li><li>Settings for customization</li></ul>Let\'s explore how it works!',
     buttons: [
       { text: 'Next', classes: 'shepherd-button-primary', action: function() { this.next(); } },
     ],
@@ -122,7 +122,13 @@ const tourSteps: StepOptions[] = [
     title: 'Agent Options',
     text: 'Click here to see options for the currently selected agent, like viewing its settings, exporting it, or deleting it.',
     buttons: [
-      { text: 'Back', classes: 'shepherd-button-secondary', action: function() { this.back(); } },
+      { text: 'Back', classes: 'shepherd-button-secondary', action: function() { 
+        const button = document.querySelector('button[data-tour-tag="open-canvas-button"]');
+        if (button) {
+          (button as HTMLButtonElement).click();
+        }
+        setTimeout(() => { this.back(); }, 500);
+      } },
       { text: 'Next', classes: 'shepherd-button-primary', action: function() { 
         const button = document.querySelector('[data-tour-tag="agent-options-button"]');
         if (button) {
