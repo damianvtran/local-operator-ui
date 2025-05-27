@@ -331,12 +331,12 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 						) : (
 							<FieldContainer>
 								<Tooltip title="Select a hosting provider first, and then select the AI model that you want to use.  Each model has different capabilities and costs.  Recommended: Automatic">
-                  <FieldLabel>
-                    <LabelIcon>
-                      <FontAwesomeIcon icon={faRobot} />
-                    </LabelIcon>
-                    Model
-                  </FieldLabel>
+									<FieldLabel>
+										<LabelIcon>
+											<FontAwesomeIcon icon={faRobot} />
+										</LabelIcon>
+										Model
+									</FieldLabel>
 								</Tooltip>
 								<ModelPlaceholderContainer>
 									<ModelPlaceholderText>
@@ -357,37 +357,37 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 					Agent Information
 				</SectionTitle>
 
-        <EditableField
-          value={selectedAgent.description || ""}
-          label="Description"
-          placeholder="Enter agent description..."
-          icon={<FontAwesomeIcon icon={faTag} />}
-          multiline
-          rows={3}
-          isSaving={savingField === "description"}
-          onSave={async (value) => {
-            setSavingField("description");
+				<EditableField
+					value={selectedAgent.description || ""}
+					label="Description"
+					placeholder="Enter agent description..."
+					icon={<FontAwesomeIcon icon={faTag} />}
+					multiline
+					rows={3}
+					isSaving={savingField === "description"}
+					onSave={async (value) => {
+						setSavingField("description");
 
-            try {
-              const update: AgentUpdate = { description: value };
+						try {
+							const update: AgentUpdate = { description: value };
 
-              // Perform the API update
-              await updateAgentMutation.mutateAsync({
-                agentId: selectedAgent.id,
-                update,
-              });
+							// Perform the API update
+							await updateAgentMutation.mutateAsync({
+								agentId: selectedAgent.id,
+								update,
+							});
 
-              // Only refetch if needed (when viewing the current agent)
-              if (selectedAgent.id === initialSelectedAgentId && refetchAgent) {
-                await refetchAgent();
-              }
-            } catch (_error) {
-              // Error is already handled in the mutation
-            } finally {
-              setSavingField(null);
-            }
-          }}
-        />
+							// Only refetch if needed (when viewing the current agent)
+							if (selectedAgent.id === initialSelectedAgentId && refetchAgent) {
+								await refetchAgent();
+							}
+						} catch (_error) {
+							// Error is already handled in the mutation
+						} finally {
+							setSavingField(null);
+						}
+					}}
+				/>
 
 				{/* Tags input */}
 				<TagsInputChips

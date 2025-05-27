@@ -129,7 +129,7 @@ export const AgentSettings: FC<AgentSettingsProps> = ({
 						initialSelectedAgentId={initialSelectedAgentId}
 					/>
 
-          <SecuritySettings
+					<SecuritySettings
 						selectedAgent={selectedAgent}
 						savingField={savingField}
 						setSavingField={setSavingField}

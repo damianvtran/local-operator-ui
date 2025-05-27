@@ -472,10 +472,10 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 	return (
 		<FieldContainer>
 			<Tooltip title="Select the AI model that you want to use.  Each model has different capabilities and costs.  Recommended: Automatic">
-        <FieldLabel variant="subtitle2">
-          <LabelIcon>
-            <FontAwesomeIcon icon={faRobot} />
-          </LabelIcon>
+				<FieldLabel variant="subtitle2">
+					<LabelIcon>
+						<FontAwesomeIcon icon={faRobot} />
+					</LabelIcon>
 					Model
 				</FieldLabel>
 			</Tooltip>
