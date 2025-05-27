@@ -21,7 +21,7 @@ const TourInitiator: React.FC = () => {
     if (isModalComplete && !isTourComplete && shepherdContext) {
       const timer = setTimeout(() => {
         initiateTourFromHook();
-      }, 200); // Delay to ensure UI elements are rendered
+      }, 1000); // Delay to ensure UI elements are rendered
 
       return () => clearTimeout(timer);
     }
