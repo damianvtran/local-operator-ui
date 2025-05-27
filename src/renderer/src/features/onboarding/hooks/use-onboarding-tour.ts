@@ -642,6 +642,13 @@ export const useOnboardingTour = () => {
   };
 
   const startTour = (options?: StartTourOptions) => {
+    // If react-shepherd's context provides an active tour, and it's running, don't overlap.
+    // This is the main guard against multiple active tours.
+    if (shepherdContext?.tour?.isActive() && !options?.forceModalCompleted) {
+      console.log('Onboarding tour is already active (from context.tour). Not starting another.');
+      return;
+    }
+
     const currentStoreState = useOnboardingStore.getState(); // Get the latest state
 
     // Check modal completion unless forced
@@ -650,44 +657,34 @@ export const useOnboardingTour = () => {
       return;
     }
 
-    // If the tour is already complete, don't restart it automatically,
-    // unless it's being forced (e.g. from a resume button that should always work if visible).
-    // The visibility of such a button should already be gated by !isTourComplete.
-    if (currentStoreState.isTourComplete) {
-      // Allow starting if forced (e.g. resume button) or if tour is somehow active but marked complete.
-      // This primarily prevents automatic re-triggering by TourInitiator.
-      if (!options?.forceModalCompleted && !shepherdContext?.tour?.isActive()) {
-         console.log('Onboarding tour already completed. Not starting again automatically.');
-         return;
-      }
-       // If forced, or active, proceed to potentially re-add steps and start.
-    }
-
-    const shepherdService = shepherdContext?.Shepherd;
-
-    if (!shepherdService) {
-      console.warn('Shepherd service (Shepherd.Shepherd) not available on context.', shepherdContext);
+    // If tour is marked complete in store, and we are not forcing it, don't restart.
+    // The check for an active tour is handled by the initial guard at the top of the function.
+    if (currentStoreState.isTourComplete && !options?.forceModalCompleted) {
+      console.log('Onboarding tour already completed in store and not forced. Not starting again.');
       return;
     }
 
-    let tourInstance: Tour | undefined = shepherdService.activeTour;
+    // Get the tour instance. Prefer react-shepherd's context tour.
+    let tourInstance: Tour | undefined = shepherdContext?.tour;
+    const shepherdService = shepherdContext?.Shepherd; // Shepherd global/class
 
-    if (!tourInstance && shepherdService.Tour) {
-      console.log("No active Shepherd tour found. Creating a new one.");
-      const tourCreationOptions = {
-        useModalOverlay,
-        defaultStepOptions,
-      };
-      tourInstance = new shepherdService.Tour(tourCreationOptions);
-      // It's crucial that this new tour instance is managed by react-shepherd,
-      // or that react-shepherd's provider is designed to work with tours created this way.
-      // If ShepherdJourneyProvider expects to solely manage activeTour, this might need adjustment
-      // based on react-shepherd's specific API for setting the active tour.
-      // For now, we assume creating and starting it is sufficient.
+    if (!tourInstance && shepherdService) {
+        // If context.tour wasn't available, try Shepherd.activeTour
+        tourInstance = shepherdService.activeTour;
+        if (!tourInstance && shepherdService.Tour) {
+            // If still no tour, create one. This part is from original code.
+            console.log("No active Shepherd tour found from context or global. Creating a new one.");
+            tourInstance = new shepherdService.Tour({ useModalOverlay, defaultStepOptions });
+        }
     }
 
     if (!tourInstance) {
       console.warn('Failed to get or create a Shepherd tour instance.', shepherdContext);
+      return;
+    }
+
+    if (tourInstance.isActive()) {
+      console.log('Tour is already active. Not starting again.');
       return;
     }
 
@@ -723,7 +720,6 @@ export const useOnboardingTour = () => {
       // If the tour is somehow active but has no steps (e.g., after cancellation and restart logic elsewhere)
       tourInstance.addSteps(tourSteps);
     }
-    // If the tour is active and already has steps, and not forced, Shepherd's start() should resume.
 
     if (typeof tourInstance.start === 'function') {
       tourInstance.start();
