@@ -120,7 +120,6 @@ const darkTheme = createTheme({
 				root: {
 					top: 0,
 					background: "rgba(10,10,10,0.8)",
-					backdropFilter: "blur(10px)",
 				},
 			},
 		},
@@ -133,7 +132,6 @@ const darkTheme = createTheme({
 					paddingBottom: 12,
 					"&:hover": {
 						background: "rgba(255,255,255,0.05)",
-						backdropFilter: "blur(4px)",
 					},
 				},
 			},
@@ -161,7 +159,6 @@ const darkTheme = createTheme({
 						transition: "all 0.2s ease-in-out",
 						"&:hover": {
 							background: "rgba(255,255,255,0.05)",
-							backdropFilter: "blur(4px)",
 						},
 					},
 				},
