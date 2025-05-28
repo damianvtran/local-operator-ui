@@ -16,6 +16,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
  *
  * @param buttonThreshold - Distance from bottom (in pixels) to show the scroll button (default: 50)
  * @param externalContainerRef - Optional external ref to use instead of creating a new one
+ * @param contentKey - An optional key that changes when the main content changes (e.g., conversation ID)
  * @returns An object containing:
  *   - containerRef: A ref to attach to the scrollable container (only if externalContainerRef is not provided)
  *   - isFarFromBottom: Whether the user is far enough from the bottom to show the scroll button
@@ -24,6 +25,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 export const useScrollToBottom = (
 	buttonThreshold = 50,
 	externalContainerRef?: React.RefObject<HTMLDivElement>,
+	contentKey?: unknown, // Added contentKey parameter
 ) => {
 	// Use the external ref if provided, otherwise create a new one
 	const internalContainerRef = useRef<HTMLDivElement | null>(null);
@@ -40,6 +42,7 @@ export const useScrollToBottom = (
 
 	// Ref to track if initial position check has been performed
 	const initialCheckPerformedRef = useRef(false);
+	const prevContentKeyForScrollEffectRef = useRef(contentKey); // For the main scroll listener effect
 
 	// Debounce scroll handling to improve performance
 	const scrollTimeoutRef = useRef<number | null>(null);
@@ -52,7 +55,7 @@ export const useScrollToBottom = (
 		if (!containerRef.current || isHandlingScrollRef.current) return false;
 
 		isHandlingScrollRef.current = true;
-		let positionUpdated = false;
+		let localPositionUpdated = false;
 
 		try {
 			const container = containerRef.current;
@@ -84,21 +87,24 @@ export const useScrollToBottom = (
 
 			// Only update state if value changed and throttled
 			const now = Date.now();
-			if (
-				shouldShowButton !== isFarFromBottom &&
-				now - lastUpdateTimeRef.current > 100
-			) {
-				// Throttle to max 10 updates per second
-				setIsFarFromBottom(shouldShowButton);
-				lastUpdateTimeRef.current = now;
-				positionUpdated = true;
-			}
+			// Use functional update to access previous state without adding it to dependencies
+			setIsFarFromBottom((prevIsFarFromBottom) => {
+				if (
+					shouldShowButton !== prevIsFarFromBottom &&
+					now - lastUpdateTimeRef.current > 100
+				) {
+					lastUpdateTimeRef.current = now;
+					localPositionUpdated = true;
+					return shouldShowButton;
+				}
+				return prevIsFarFromBottom;
+			});
 		} finally {
 			isHandlingScrollRef.current = false;
 		}
 
-		return positionUpdated;
-	}, [buttonThreshold, isFarFromBottom, containerRef]);
+		return localPositionUpdated;
+	}, [buttonThreshold, containerRef]);
 
 	/**
 	 * Scroll to bottom with smooth animation
@@ -150,6 +156,9 @@ export const useScrollToBottom = (
 		// Mark that we've performed the initial check
 		initialCheckPerformedRef.current = true;
 
+		// Reset throttle timer to ensure this update isn't skipped
+		lastUpdateTimeRef.current = 0;
+
 		// Update scroll position and check if button should be shown
 		updateScrollPosition();
 	}, [updateScrollPosition, containerRef]);
@@ -158,6 +167,11 @@ export const useScrollToBottom = (
 	 * Set up the scroll event listener on the container
 	 */
 	useEffect(() => {
+		if (prevContentKeyForScrollEffectRef.current !== contentKey) {
+			initialCheckPerformedRef.current = false; // Reset for new content
+			prevContentKeyForScrollEffectRef.current = contentKey;
+		}
+
 		const container = containerRef.current;
 		if (!container) return;
 
@@ -193,7 +207,7 @@ export const useScrollToBottom = (
 			}
 			container.removeEventListener("scroll", handleScroll);
 		};
-	}, [handleScroll, checkInitialPosition, containerRef]);
+	}, [handleScroll, checkInitialPosition, containerRef, contentKey]); // Added contentKey
 
 	/**
 	 * Handle window resize events to update scroll position - throttled
@@ -232,21 +246,39 @@ export const useScrollToBottom = (
 	 * but uses refs to prevent unnecessary work
 	 */
 	useEffect(() => {
-		// Skip if we're already handling a scroll event
-		if (isHandlingScrollRef.current) return;
+		const container = containerRef.current;
+		if (!container) return;
 
-		// Use a short timeout to allow the DOM to update first
-		const timeoutId = setTimeout(() => {
-			// Only update if the container exists and we're not handling another event
-			if (containerRef.current && !isHandlingScrollRef.current) {
-				updateScrollPosition();
+		// Use ResizeObserver to detect changes in content size affecting scrollHeight
+		const observer = new ResizeObserver(() => {
+			if (!isHandlingScrollRef.current) {
+				// Debounce or throttle if ResizeObserver fires too rapidly for some content
+				requestAnimationFrame(() => {
+					updateScrollPosition();
+				});
 			}
-		}, 50);
+		});
+
+		observer.observe(container);
+		let initialCheckTimeoutId: number | undefined;
+
+		// This effect re-runs when contentKey changes.
+		// Schedule a check for the scroll position.
+		if (!isHandlingScrollRef.current) {
+			initialCheckTimeoutId = window.setTimeout(() => {
+				if (containerRef.current && !isHandlingScrollRef.current) {
+					updateScrollPosition();
+				}
+			}, 50); // Delay to allow layout to settle
+		}
 
 		return () => {
-			clearTimeout(timeoutId);
+			if (initialCheckTimeoutId) {
+				clearTimeout(initialCheckTimeoutId);
+			}
+			observer.disconnect();
 		};
-	});
+	}, [containerRef, updateScrollPosition]); // Removed contentKey, its role is handled by the other useEffect
 
 	return {
 		containerRef,

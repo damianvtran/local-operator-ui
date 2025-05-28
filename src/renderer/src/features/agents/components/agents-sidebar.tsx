@@ -38,7 +38,7 @@ import {
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import { Bot } from "lucide-react";
 import type { ChangeEvent, FC } from "react";
-import { useCallback, useMemo, useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { UploadAgentDialog } from "./upload-agent-dialog";
 
@@ -187,6 +187,122 @@ type AgentsSidebarProps = {
 	onSelectAgent: (agent: AgentDetails) => void;
 };
 
+type AgentsSidebarItemProps = {
+	agent: AgentDetails;
+	isSelected: boolean;
+	onSelectAgent: (agent: AgentDetails) => void;
+	formatDate: (dateString: string) => string;
+	onChatWithAgent: (agentId: string) => void;
+	onExportAgent: (agentId: string) => void;
+	onAgentDeleted: (deletedAgentId: string) => void;
+	onUploadAgentToHub: (agent: AgentDetails) => void;
+};
+
+const AgentsSidebarItem: FC<AgentsSidebarItemProps> = ({
+	agent,
+	isSelected,
+	onSelectAgent,
+	formatDate,
+	onChatWithAgent,
+	onExportAgent,
+	onAgentDeleted,
+	onUploadAgentToHub,
+}) => {
+	return (
+		<ListItem key={agent.id} disablePadding>
+			<AgentListItemButton
+				selected={isSelected}
+				onClick={() => onSelectAgent(agent)}
+				data-tour-tag="agent-list-item-button"
+			>
+				<ListItemAvatar>
+					<AgentAvatar selected={isSelected}>
+						<Bot size={22} strokeWidth={2.1} aria-label="Agent" />
+					</AgentAvatar>
+				</ListItemAvatar>
+				<ListItemText disableTypography>
+					<Box
+						sx={{
+							display: "flex",
+							alignItems: "center",
+							width: "100%",
+							overflow: "hidden",
+							gap: 1,
+							position: "relative",
+						}}
+					>
+						<Box sx={{ flex: 1, minWidth: 0 }}>
+							<Tooltip
+								enterDelay={1200}
+								enterNextDelay={1200}
+								title={agent.name}
+								arrow
+								placement="top-start"
+							>
+								<AgentName>{agent.name}</AgentName>
+							</Tooltip>
+							<Tooltip
+								title={agent.description || "No description"}
+								arrow
+								placement="bottom-start"
+								enterDelay={1200}
+								enterNextDelay={1200}
+							>
+								<DescriptionText>
+									{agent.description || "No description"}
+								</DescriptionText>
+							</Tooltip>
+							<Tooltip
+								title={`Created: ${formatDate(agent.created_date)}`}
+								arrow
+								placement="bottom-start"
+								enterDelay={1200}
+								enterNextDelay={1200}
+							>
+								<CreationDateText>
+									<FontAwesomeIcon icon={faClock} size="xs" />
+									<span>{formatDate(agent.created_date)}</span>
+								</CreationDateText>
+							</Tooltip>
+						</Box>
+						<OptionsButtonContainer>
+							<Tooltip
+								enterDelay={1200}
+								enterNextDelay={1200}
+								title="Agent Options"
+								arrow
+								placement="top"
+							>
+								<span>
+									<AgentOptionsMenu
+										agentId={agent.id}
+										agentName={agent.name}
+										isAgentsPage={true}
+										onAgentDeleted={() => onAgentDeleted(agent.id)}
+										onChatWithAgent={() => onChatWithAgent(agent.id)}
+										onExportAgent={() => onExportAgent(agent.id)}
+										onUploadAgentToHub={() => onUploadAgentToHub(agent)}
+										buttonSx={{
+											width: 24,
+											height: 24,
+											borderRadius: "4px",
+											display: "flex",
+											justifyContent: "center",
+											alignItems: "center",
+										}}
+									/>
+								</span>
+							</Tooltip>
+						</OptionsButtonContainer>
+					</Box>
+				</ListItemText>
+			</AgentListItemButton>
+		</ListItem>
+	);
+};
+
+const MemoizedAgentsSidebarItem = memo(AgentsSidebarItem);
+
 /**
  * Formats a date string into a more readable format
  */
@@ -328,25 +444,29 @@ export const AgentsSidebar: FC<AgentsSidebarProps> = ({
 		[combinedAgents, exportAgentMutation], // Use combinedAgents
 	);
 
-	const getAgentUploadValidationIssues = (
-		agent: AgentDetails | null,
-	): string[] => {
-		if (!agent) return ["No agent selected."];
-		const issues: string[] = [];
-		if (!agent.name || agent.name.trim() === "")
-			issues.push("Name is required.");
-		if (!agent.description || agent.description.trim() === "")
-			issues.push("Description is required.");
-		const hasCategory = agent.categories && agent.categories.length > 0;
-		if (!hasCategory) issues.push("At least one category is required.");
-		return issues;
-	};
+	const getAgentUploadValidationIssues = useCallback(
+		(agent: AgentDetails | null): string[] => {
+			if (!agent) return ["No agent selected."];
+			const issues: string[] = [];
+			if (!agent.name || agent.name.trim() === "")
+				issues.push("Name is required.");
+			if (!agent.description || agent.description.trim() === "")
+				issues.push("Description is required.");
+			const hasCategory = agent.categories && agent.categories.length > 0;
+			if (!hasCategory) issues.push("At least one category is required.");
+			return issues;
+		},
+		[],
+	);
 
-	const handleOpenUploadDialog = (agent: AgentDetails) => {
-		setUploadAgent(agent);
-		setUploadValidationIssues(getAgentUploadValidationIssues(agent));
-		setIsUploadDialogOpen(true);
-	};
+	const handleOpenUploadDialog = useCallback(
+		(agent: AgentDetails) => {
+			setUploadAgent(agent);
+			setUploadValidationIssues(getAgentUploadValidationIssues(agent));
+			setIsUploadDialogOpen(true);
+		},
+		[getAgentUploadValidationIssues],
+	);
 
 	const handleCloseUploadDialog = () => {
 		setIsUploadDialogOpen(false);
@@ -422,6 +542,36 @@ export const AgentsSidebar: FC<AgentsSidebarProps> = ({
 		[onSelectAgent, refetch], // Keep dependencies
 	);
 
+	const handleChatWithAgent = useCallback(
+		(agentId: string) => {
+			navigate(`/chat/${agentId}`);
+		},
+		[navigate],
+	);
+
+	const handleAgentDeletedFromItem = useCallback(
+		(deletedAgentId: string) => {
+			if (selectedAgentId === deletedAgentId) {
+				// The parent component (AgentsPage) is responsible for clearing
+				// the selected agent details if the selected agent is deleted.
+				// This could be done by passing a callback or by the parent observing
+				// the agents list and selectedAgentId.
+				// For now, we assume the parent handles this logic.
+				// If onSelectAgent(null) or similar is needed, it should be passed as a prop.
+			}
+			refetch();
+			navigate("/agents"); // Navigate to the main agents page
+		},
+		[selectedAgentId, refetch, navigate],
+	);
+
+	const handleUploadAgentToHubFromItem = useCallback(
+		(agent: AgentDetails) => {
+			handleOpenUploadDialog(agent);
+		},
+		[handleOpenUploadDialog],
+	);
+
 	return (
 		<SidebarContainer elevation={0}>
 			<SidebarHeader
@@ -461,111 +611,21 @@ export const AgentsSidebar: FC<AgentsSidebarProps> = ({
 				</EmptyStateContainer>
 			) : (
 				<AgentsList>
-					{/* Use combinedAgents which includes the potentially fetched selected agent */}
 					{combinedAgents.map((agent) => (
-						<ListItem key={agent.id} disablePadding>
-							<AgentListItemButton
-								// Ensure the selected agent is highlighted even if added separately
-								selected={
-									selectedAgentId === agent.id ||
-									selectedAgentDetails?.id === agent.id
-								}
-								onClick={() => handleSelectAgent(agent)} // Pass the full agent object
-								data-tour-tag="agent-list-item-button"
-							>
-								<ListItemAvatar>
-									<AgentAvatar selected={selectedAgentId === agent.id}>
-										<Bot size={22} strokeWidth={2.1} aria-label="Agent" />
-									</AgentAvatar>
-								</ListItemAvatar>
-								<ListItemText disableTypography>
-									<Box
-										sx={{
-											display: "flex",
-											alignItems: "center",
-											width: "100%",
-											overflow: "hidden",
-											gap: 1,
-											position: "relative",
-										}}
-									>
-										<Box sx={{ flex: 1, minWidth: 0 }}>
-											<Tooltip
-												enterDelay={1200}
-												enterNextDelay={1200}
-												title={agent.name}
-												arrow
-												placement="top-start"
-											>
-												<AgentName>{agent.name}</AgentName>
-											</Tooltip>
-											<Tooltip
-												title={agent.description || "No description"}
-												arrow
-												placement="bottom-start"
-												enterDelay={1200}
-												enterNextDelay={1200}
-											>
-												<DescriptionText>
-													{agent.description || "No description"}
-												</DescriptionText>
-											</Tooltip>
-											<Tooltip
-												title={`Created: ${formatDate(agent.created_date)}`}
-												arrow
-												placement="bottom-start"
-												enterDelay={1200}
-												enterNextDelay={1200}
-											>
-												<CreationDateText>
-													<FontAwesomeIcon icon={faClock} size="xs" />
-													<span>{formatDate(agent.created_date)}</span>
-												</CreationDateText>
-											</Tooltip>
-										</Box>
-										<OptionsButtonContainer>
-											<Tooltip
-												enterDelay={1200}
-												enterNextDelay={1200}
-												title="Agent Options"
-												arrow
-												placement="top"
-											>
-												<span>
-													<AgentOptionsMenu
-														agentId={agent.id}
-														agentName={agent.name}
-														isAgentsPage={true}
-														onAgentDeleted={(deletedAgentId) => {
-															if (selectedAgentId === deletedAgentId) {
-																// Parent handles selection clearing
-															}
-															refetch();
-															navigate("/agents");
-														}}
-														onChatWithAgent={() =>
-															navigate(`/chat/${agent.id}`)
-														}
-														onExportAgent={() => handleExportAgent(agent.id)}
-														onUploadAgentToHub={() =>
-															handleOpenUploadDialog(agent)
-														}
-														buttonSx={{
-															width: 24,
-															height: 24,
-															borderRadius: "4px",
-															display: "flex",
-															justifyContent: "center",
-															alignItems: "center",
-														}}
-													/>
-												</span>
-											</Tooltip>
-										</OptionsButtonContainer>
-									</Box>
-								</ListItemText>
-							</AgentListItemButton>
-						</ListItem>
+						<MemoizedAgentsSidebarItem
+							key={agent.id}
+							agent={agent}
+							isSelected={
+								selectedAgentId === agent.id ||
+								selectedAgentDetails?.id === agent.id
+							}
+							onSelectAgent={handleSelectAgent}
+							formatDate={formatDate}
+							onChatWithAgent={handleChatWithAgent}
+							onExportAgent={handleExportAgent}
+							onAgentDeleted={handleAgentDeletedFromItem}
+							onUploadAgentToHub={handleUploadAgentToHubFromItem}
+						/>
 					))}
 				</AgentsList>
 			)}
