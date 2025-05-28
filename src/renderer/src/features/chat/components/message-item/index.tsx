@@ -5,7 +5,7 @@ import {
 } from "@shared/api/local-operator";
 import { apiConfig } from "@shared/config";
 import { useCanvasStore } from "@shared/store/canvas-store";
-import { type FC, memo, useCallback, useEffect, useMemo } from "react"; // Removed React from here as it's not used directly
+import { type FC, memo, useCallback, useEffect, useMemo } from "react";
 import type { Message } from "../../types/message";
 import { ActionBlock } from "./action-block";
 import { CodeBlock } from "./code-block";
@@ -21,7 +21,6 @@ import { MessagePaper } from "./message-paper";
 import { MessageTimestamp } from "./message-timestamp";
 import { OutputBlock } from "./output-block";
 import { SecurityCheckHighlight } from "./security-check-highlight";
-import { StatusIndicator } from "./status-indicator";
 import { VideoAttachment } from "./video-attachment";
 
 /**
@@ -396,9 +395,6 @@ export const MessageItem: FC<MessageItemProps> = memo(
 								return contentBlocks;
 							})()}
 
-							{/* Status indicator if present */}
-							{message.status && <StatusIndicator status={message.status} />}
-
 							{/* Render non-media file attachments if any */}
 							{message.files && message.files.length > 0 && (
 								<Box sx={{ mt: 2 }}>
@@ -515,9 +511,6 @@ export const MessageItem: FC<MessageItemProps> = memo(
 							// Otherwise, render content normally
 							return contentBlocks;
 						})()}
-
-						{/* Status indicator if present */}
-						{message.status && <StatusIndicator status={message.status} />}
 
 						{/* Render non-media file attachments if any */}
 						{message.files && message.files.length > 0 && (

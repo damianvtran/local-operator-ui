@@ -58,39 +58,84 @@ const ErrorContainer = styled(Box, {
 const InfoContainer = styled(Box)(({ theme }) => ({
 	fontFamily: theme.typography.fontFamily,
 	fontSize: "0.875rem",
-	backgroundColor: alpha(
-		theme.palette.info.main,
-		theme.palette.mode === "dark" ? 0.15 : 0.1,
-	),
+	backgroundColor: theme.palette.background.paper,
 	borderRadius: "8px",
 	padding: "12px",
-	marginTop: "8px",
+	marginTop: "12px",
 	display: "flex",
 	alignItems: "center",
 	gap: "8px",
-	color: theme.palette.info.contrastText,
+	color: theme.palette.text.primary,
 	width: "100%",
-	boxShadow: `0 2px 6px ${alpha(theme.palette.common.black, theme.palette.mode === "dark" ? 0.15 : 0.1)}`,
+	border: `1px solid ${theme.palette.divider}`,
+}));
+
+const InfoText = styled(Typography)(({ theme }) => ({
+	fontSize: "0.875rem",
+	color: theme.palette.text.primary,
 }));
 
 const errorSuggestions: Record<string, React.ReactNode> = {
 	"Hosting platform is not configured": (
-		<Typography variant="body2">
+		<InfoText>
 			You haven't selected an AI provider yet. Please go to the{" "}
 			<MuiLink component={Link} to="/settings" color="inherit">
 				settings page
 			</MuiLink>{" "}
-			to configure it for all your agents.
-		</Typography>
+			to configure it for all your agents.  If you don't have an AI provider, you can sign in to Radient to get access for free to start!
+		</InfoText>
 	),
 	"Model name is not configured": (
-		<Typography variant="body2">
+		<InfoText>
 			You haven't selected an AI model yet. Please go to the{" "}
 			<MuiLink component={Link} to="/settings" color="inherit">
 				settings page
 			</MuiLink>{" "}
-			to select a model for all your agents.
-		</Typography>
+			to select a model for all your agents.   If you don't have an AI provider, you can sign in to Radient to get access for free to start!
+		</InfoText>
+	),
+	"Rate limit": (
+		<InfoText>
+			You've hit the rate limit for your AI provider. Please try again later or get Radient Pass in the <MuiLink component={Link} to="/settings" color="inherit">
+				settings page
+			</MuiLink>{" "}
+			to access AI models with no rate limits at low prices.
+		</InfoText>
+	),
+  "Rate-limit": (
+		<InfoText>
+			You've hit the rate limit for your AI provider. Please try again later or get Radient Pass in the <MuiLink component={Link} to="/settings" color="inherit">
+				settings page
+			</MuiLink>{" "}
+			to access all AI models with no rate limits at low prices.
+		</InfoText>
+	),
+	"Invalid API key": (
+		<InfoText>
+			Your API key is invalid. Please go to the{" "}
+			<MuiLink component={Link} to="/settings" color="inherit">
+				settings page
+			</MuiLink>{" "}
+			to update your API key.
+		</InfoText>
+	),
+  "404 models": (
+		<InfoText>
+			No models found. Please go to the{" "}
+			<MuiLink component={Link} to="/settings" color="inherit">
+				settings page
+			</MuiLink>{" "}
+			to select a different model, or try using Radient to get access to hundreds of models with no rate limits
+		</InfoText>
+	),
+  "Call ListModels": (
+		<InfoText>
+			No models found. Please go to the{" "}
+			<MuiLink component={Link} to="/settings" color="inherit">
+				settings page
+			</MuiLink>{" "}
+			to select a different model, or try using Radient to get access to hundreds of models with no rate limits
+		</InfoText>
 	),
 };
 
@@ -117,7 +162,15 @@ export const ErrorBlock: FC<ErrorBlockProps> = ({ error, isUser }) => {
 			<ErrorContainer isUser={isUser}>{error}</ErrorContainer>
 			{suggestion && (
 				<InfoContainer>
-					<Info size={18} />
+          <Box sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: "24px",
+            height: "24px",
+          }}>
+					  <Info size={18} />
+          </Box>
 					{suggestion}
 				</InfoContainer>
 			)}
