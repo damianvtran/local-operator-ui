@@ -88,7 +88,8 @@ export const RingLoadingIndicator = ({
 					height: size * 0.73, // 22/30
 					borderRadius: "50%",
 					border: () => "2px solid transparent",
-					borderTop: (theme: Theme) => `2px solid ${theme.palette.primary.main}`,
+					borderTop: (theme: Theme) =>
+						`2px solid ${theme.palette.primary.main}`,
 					borderRight: (theme: Theme) =>
 						`2px solid ${theme.palette.primary.main}80`,
 					animation: "middleRotate 1.5s linear infinite",
@@ -103,7 +104,8 @@ export const RingLoadingIndicator = ({
 					height: size * 0.5, // 15/30
 					borderRadius: "50%",
 					border: () => "2px solid transparent",
-					borderTop: (theme: Theme) => `2px solid ${theme.palette.primary.main}`,
+					borderTop: (theme: Theme) =>
+						`2px solid ${theme.palette.primary.main}`,
 					borderLeft: (theme: Theme) =>
 						`2px solid ${theme.palette.primary.main}60`,
 					animation: "innerRotate 1s linear infinite",

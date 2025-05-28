@@ -76,11 +76,7 @@ export const MessageControls: FC<MessageControlsProps> = ({
 	};
 
 	return (
-		<ControlsContainer
-			isUser={isUser}
-			className="message-controls"
-			sx={sx}
-		>
+		<ControlsContainer isUser={isUser} className="message-controls" sx={sx}>
 			{/* Only render the wrapper if there are buttons to show */}
 			{showCopyButton && (
 				<ControlsWrapper>

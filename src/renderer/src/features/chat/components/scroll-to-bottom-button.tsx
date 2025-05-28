@@ -24,15 +24,14 @@ type ScrollToBottomButtonProps = {
 };
 
 const ButtonContainer = styled(Box)(() => ({
-		position: "absolute",
-		bottom: 160,
-		zIndex: 1000,
-		display: "flex",
-		justifyContent: "center",
-		alignItems: "center",
-		pointerEvents: "none", // Prevent container from blocking clicks
-	}),
-);
+	position: "absolute",
+	bottom: 160,
+	zIndex: 1000,
+	display: "flex",
+	justifyContent: "center",
+	alignItems: "center",
+	pointerEvents: "none", // Prevent container from blocking clicks
+}));
 
 const StyledButton = styled(IconButton)(({ theme }) => ({
 	backgroundColor: theme.palette.background.paper,

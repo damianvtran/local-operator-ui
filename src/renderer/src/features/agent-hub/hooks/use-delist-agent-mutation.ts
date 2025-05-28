@@ -1,12 +1,9 @@
 import { deleteAgent } from "@shared/api/radient/agents-api";
 import { apiConfig } from "@shared/config";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
+import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import {
-	showSuccessToast,
-	showErrorToast,
-} from "@shared/utils/toast-manager";
 import { agentDetailsKeys } from "./use-agent-details-query";
 import { publicAgentKeys } from "./use-public-agents-query"; // Corrected import name
 

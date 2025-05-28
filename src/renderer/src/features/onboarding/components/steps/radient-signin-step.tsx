@@ -5,16 +5,22 @@
  * to set up their Radient Pass account.
  */
 
-import { Box, CircularProgress, styled, Typography, useTheme } from "@mui/material";
+import {
+	Box,
+	CircularProgress,
+	Typography,
+	styled,
+	useTheme,
+} from "@mui/material";
 import { RadientAuthButtons } from "@shared/components/auth";
 import { useRadientPricesQuery } from "@shared/hooks/use-radient-prices-query";
+import { radientTheme } from "@shared/themes";
 import type { FC } from "react";
 import {
 	EmojiContainer,
 	SectionContainer,
 	SectionDescription,
 } from "../onboarding-styled";
-import { radientTheme } from "@shared/themes";
 
 /**
  * Props for the RadientSignInStep component
@@ -55,16 +61,25 @@ export const RadientSignInStep: FC<RadientSignInStepProps> = ({
 		<SectionContainer>
 			{/* Use SectionDescription for main text, adjust font size if needed */}
 			<SectionDescription sx={{ mb: 3 }}>
-				Access <RadientBoldTextSpan>hundreds of models</RadientBoldTextSpan> updated in
-				real time, <RadientBoldTextSpan>cost-saving and performance enhancements</RadientBoldTextSpan> with Radient Automatic, web search, image generation,
-				site crawling, and more all in Local Operator.
-        <br />
-        <br />
-        It is often <RadientBoldTextSpan>cheaper</RadientBoldTextSpan> to use Radient Pass Credits compared to using an API key from any single provider due to automatic cost reduction when Radient Automatic picks the best model for your agents.
-        <br />
-        <br />
-        You can also use your Radient Pass with other agentic tools such as <RadientBoldTextSpan>Cline, Cursor, and more</RadientBoldTextSpan>.  Sign in with your preferred method to get started with Radient Pass in a
-				couple clicks. 
+				Access <RadientBoldTextSpan>hundreds of models</RadientBoldTextSpan>{" "}
+				updated in real time,{" "}
+				<RadientBoldTextSpan>
+					cost-saving and performance enhancements
+				</RadientBoldTextSpan>{" "}
+				with Radient Automatic, web search, image generation, site crawling, and
+				more all in Local Operator.
+				<br />
+				<br />
+				It is often <RadientBoldTextSpan>cheaper</RadientBoldTextSpan> to use
+				Radient Pass Credits compared to using an API key from any single
+				provider due to automatic cost reduction when Radient Automatic picks
+				the best model for your agents.
+				<br />
+				<br />
+				You can also use your Radient Pass with other agentic tools such as{" "}
+				<RadientBoldTextSpan>Cline, Cursor, and more</RadientBoldTextSpan>. Sign
+				in with your preferred method to get started with Radient Pass in a
+				couple clicks.
 			</SectionDescription>
 
 			{/* Use SectionDescription for the credit info */}
@@ -73,7 +88,7 @@ export const RadientSignInStep: FC<RadientSignInStepProps> = ({
 				<Typography
 					component="span"
 					fontWeight="medium" // Use medium weight for emphasis
-					color={radientTheme.palette.primary.main} 
+					color={radientTheme.palette.primary.main}
 					sx={{ fontSize: "inherit" }}
 				>
 					{/* Display loading indicator or fetched value */}

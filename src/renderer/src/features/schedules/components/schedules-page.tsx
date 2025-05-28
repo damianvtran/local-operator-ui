@@ -14,10 +14,10 @@ import type {
 	ScheduleUpdateRequest,
 } from "@shared/api/local-operator";
 import { PageHeader } from "@shared/components/common/page-header";
+import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
 import { CalendarDays, PlusCircle } from "lucide-react";
 import type { FC } from "react";
 import { useState } from "react";
-import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
 import {
 	useCreateScheduleForAgent,
 	useEditSchedule,

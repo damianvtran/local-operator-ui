@@ -1,7 +1,7 @@
 import { faTimes } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, Tab, Tabs, alpha, styled } from "@mui/material";
-import { type FC, useCallback, useEffect, useState, memo } from "react";
+import { type FC, memo, useCallback, useEffect, useState } from "react";
 import type { CanvasDocument } from "../../types/canvas";
 
 type CanvasTabsProps = {

@@ -343,13 +343,7 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 			return "No models available";
 		}
 		return undefined;
-	}, [
-		availableModels.length,
-		hostingId,
-		allowDefault,
-		modelOptions,
-		value,
-	]);
+	}, [availableModels.length, hostingId, allowDefault, modelOptions, value]);
 
 	// Find the current selected option
 	const selectedOption = useMemo(() => {
@@ -642,15 +636,15 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 								showAllOptions.current = true;
 							}
 						}}
-						disabled={
-							Boolean(
-								(!hostingId && !allowDefault) ||
-									(hostingId &&
-										availableModels.length === 0 &&
-										!allowDefault &&
-										!modelOptions.some((opt) => opt.id === value && value !== "")),
-							)
-						} // Disable if no hostingId/models and default not allowed
+						disabled={Boolean(
+							(!hostingId && !allowDefault) ||
+								(hostingId &&
+									availableModels.length === 0 &&
+									!allowDefault &&
+									!modelOptions.some(
+										(opt) => opt.id === value && value !== "",
+									)),
+						)} // Disable if no hostingId/models and default not allowed
 					/>
 				)}
 			/>

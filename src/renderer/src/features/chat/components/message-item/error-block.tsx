@@ -1,8 +1,8 @@
-import { Box, Typography, alpha, Link as MuiLink } from "@mui/material";
+import { Box, Link as MuiLink, Typography, alpha } from "@mui/material";
 import { styled } from "@mui/material/styles";
+import { Info } from "lucide-react";
 import type { FC } from "react";
 import { Link } from "react-router-dom";
-import { Info } from "lucide-react";
 /**
  * Props for the ErrorBlock component
  */

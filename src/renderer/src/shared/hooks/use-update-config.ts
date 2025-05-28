@@ -8,8 +8,8 @@ import {
 	createLocalOperatorClient,
 } from "@shared/api/local-operator";
 import { apiConfig } from "@shared/config";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { configQueryKey } from "./use-config";
 
 /**

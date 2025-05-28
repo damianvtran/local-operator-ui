@@ -300,7 +300,14 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 			</Box>
 
 			{/* User Profile and Toggle Button at Bottom */}
-			<Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%" }}>
+			<Box
+				sx={{
+					display: "flex",
+					flexDirection: "column",
+					alignItems: "center",
+					width: "100%",
+				}}
+			>
 				{/* User Profile */}
 				<UserProfileSidebar expanded={expanded} />
 

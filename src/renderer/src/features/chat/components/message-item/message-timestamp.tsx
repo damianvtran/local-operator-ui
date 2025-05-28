@@ -1,11 +1,11 @@
 import { Tooltip, Typography } from "@mui/material";
+import type { SxProps, Theme } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import {
 	formatMessageDateTime,
 	getFullDateTime,
 } from "@shared/utils/date-utils";
 import type { FC } from "react";
-import type { SxProps, Theme } from "@mui/material";
 
 /**
  * Props for the MessageTimestamp component

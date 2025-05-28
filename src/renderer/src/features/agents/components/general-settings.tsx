@@ -25,9 +25,9 @@ import { TagsInputChips } from "@shared/components/common/tags-input-chips";
 import { HostingSelect } from "@shared/components/hosting/hosting-select";
 import { ModelSelect } from "@shared/components/hosting/model-select";
 import type { useUpdateAgent } from "@shared/hooks/use-update-agent";
+import { showErrorToast } from "@shared/utils/toast-manager";
 import type { FC } from "react";
 import { useState } from "react";
-import { showErrorToast } from "@shared/utils/toast-manager";
 
 type GeneralSettingsProps = {
 	/**
