@@ -23,7 +23,7 @@ const tourSteps: StepOptions[] = [
 		id: "agent-list",
 		attachTo: { element: '[data-tour-tag="agent-list-panel"]', on: "right" },
 		title: "Your Agents",
-		text: "On the left, you'll see a list of your available AI agents. You can select an agent to start a conversation or manage its settings.",
+		text: "On the left, you'll see a list of your available AI agents. You can select an agent to start a conversation or manage its settings.  Think of this as your WhatsApp chat list, but for AI agents!  There are no limits to how many agents you can have, so create as many as you need to handle all your daily tasks.",
 		buttons: [
 			{
 				text: "Back",
@@ -49,7 +49,7 @@ const tourSteps: StepOptions[] = [
 			on: "right",
 		},
 		title: "Select an Agent",
-		text: "Click on an agent to open the chat window and start interacting with it.",
+		text: "Click on an agent to open the chat window to pull up your conversation with it.  This will show the messages that you have sent them and the responses and actions that they have taken.",
 		buttons: [
 			{
 				text: "Back",
@@ -706,7 +706,7 @@ A good description helps you and others understand what the agent does and any s
 		// Targets the UploadAgentDialog modal, which should be open after clicking "Upload to Hub"
 		attachTo: { element: '[data-tour-tag="upload-agent-dialog"]', on: "right" },
 		title: "Upload Agent to Hub",
-		text: "This dialog allows you to share your agent with the community. You can review the agent details and confirm the upload. Make sure your agent meets the required criteria before submitting.  Also be aware that any conversation history and learnings for this agent will be part of its training and will be visible to the public.  So don't share agents publicly that know sensitive information!",
+		text: "This dialog allows you to share your agent with the community. You need to have a Radient Account to upload an agent, which is free to create and doesn't cost anything per upload.  You can review the agent details and confirm the upload. Make sure your agent meets the required criteria before submitting.  Also be aware that any conversation history and learnings for this agent will be part of its training and will be visible to the public.  So don't share agents publicly that know sensitive information!",
 		buttons: [
 			{
 				text: "Back",
@@ -968,7 +968,7 @@ A good description helps you and others understand what the agent does and any s
 			on: "right",
 		},
 		title: "Radient Account",
-		text: "Connect your Radient Account to access your Radient Pass details, credits, and unlock unified access to models and tools.",
+		text: "Connect your Radient Account to access your Radient Pass details, credits, and unlock unified access to models and tools.  Radient is the best way to use Local Operator since it powers the AI models, web search, image generation, and much more with a single integration.  You get free credits when you sign up to try it out and bonus credits when you top up!<br /><br />When you sign in for the first time, it will automatically create a Radient Pass for you and save it securely to your computer.  This will power your Local Operator agents with Radient Automatic, which mixes and matches AI models to get you the best balance of speed, accuracy, and cost in every step of your agents' workflows.",
 		buttons: [
 			{
 				text: "Back",
