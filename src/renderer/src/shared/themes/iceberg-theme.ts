@@ -167,7 +167,6 @@ const icebergTheme = createTheme({
 						transition: "all 0.2s ease-in-out",
 						"&:hover": {
 							background: "rgba(38,42,63,0.08)",
-							backdropFilter: "blur(4px)",
 						},
 					},
 				},
@@ -193,7 +192,6 @@ const icebergTheme = createTheme({
 					backgroundColor: "#f3f4f7",
 					borderRadius: 12,
 					border: "1px solid rgba(38, 42, 63, 0.15)",
-					backdropFilter: "blur(8px)",
 				},
 			},
 		},

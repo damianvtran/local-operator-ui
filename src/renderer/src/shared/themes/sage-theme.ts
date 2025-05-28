@@ -123,7 +123,6 @@ const sageTheme = createTheme({
 				root: {
 					top: 0,
 					background: "rgba(253,249,241,0.85)", // Floral white app bar
-					backdropFilter: "blur(10px)",
 					boxShadow: "0 1px 3px rgba(34,44,31,0.12)",
 				},
 			},
@@ -137,7 +136,6 @@ const sageTheme = createTheme({
 					paddingBottom: 12,
 					"&:hover": {
 						background: "rgba(34,44,31,0.06)", // Light hover effect
-						backdropFilter: "blur(4px)",
 					},
 				},
 			},
@@ -165,7 +163,6 @@ const sageTheme = createTheme({
 						transition: "all 0.2s ease-in-out",
 						"&:hover": {
 							background: "rgba(34,44,31,0.06)", // Light hover effect
-							backdropFilter: "blur(4px)",
 						},
 					},
 				},
@@ -192,7 +189,6 @@ const sageTheme = createTheme({
 					borderRadius: 12,
 					border: "1px solid rgba(34, 44, 31, 0.12)", // Light border
 					boxShadow: "0 2px 8px rgba(34, 44, 31, 0.06)", // Subtle shadow
-					backdropFilter: "blur(8px)",
 				},
 			},
 		},

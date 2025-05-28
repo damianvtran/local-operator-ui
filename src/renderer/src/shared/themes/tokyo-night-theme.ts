@@ -121,7 +121,6 @@ const tokyoNightTheme = createTheme({
 				root: {
 					top: 0,
 					background: "rgba(26,27,38,0.8)",
-					backdropFilter: "blur(10px)",
 				},
 			},
 		},
@@ -134,7 +133,6 @@ const tokyoNightTheme = createTheme({
 					paddingBottom: 12,
 					"&:hover": {
 						background: "rgba(86,95,137,0.15)",
-						backdropFilter: "blur(4px)",
 					},
 				},
 			},
@@ -162,7 +160,6 @@ const tokyoNightTheme = createTheme({
 						transition: "all 0.2s ease-in-out",
 						"&:hover": {
 							background: "rgba(86,95,137,0.15)",
-							backdropFilter: "blur(4px)",
 						},
 					},
 				},
@@ -188,7 +185,6 @@ const tokyoNightTheme = createTheme({
 					backgroundColor: "#24283B",
 					borderRadius: 12,
 					border: "1px solid rgba(86, 95, 137, 0.3)",
-					backdropFilter: "blur(8px)",
 				},
 			},
 		},
