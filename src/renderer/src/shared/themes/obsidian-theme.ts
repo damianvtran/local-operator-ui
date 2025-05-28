@@ -118,7 +118,6 @@ const obsidianTheme = createTheme({
 				root: {
 					top: 0,
 					background: "rgba(9, 9, 11, 0.85)", // zinc-950 with alpha
-					backdropFilter: "blur(8px)",
 					boxShadow: "0 1px 0 rgba(250, 250, 250, 0.08)", // Subtle bottom border
 				},
 			},

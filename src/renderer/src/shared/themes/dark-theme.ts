@@ -187,7 +187,6 @@ const darkTheme = createTheme({
 					backgroundColor: "#141414",
 					borderRadius: 12,
 					border: "1px solid rgba(255, 255, 255, 0.1)",
-					backdropFilter: "blur(8px)",
 				},
 			},
 		},
@@ -204,6 +203,13 @@ const darkTheme = createTheme({
 					"@media (min-width:1800px)": {
 						maxWidth: "1800px",
 					},
+				},
+			},
+		},
+    MuiPaper: {
+			styleOverrides: {
+				root: {
+					backgroundImage: "none",
 				},
 			},
 		},

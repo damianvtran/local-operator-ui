@@ -161,7 +161,6 @@ const lightTheme = createTheme({
 						transition: "all 0.2s ease-in-out",
 						"&:hover": {
 							background: "rgba(0,0,0,0.05)", // Light hover effect
-							backdropFilter: "blur(4px)",
 						},
 					},
 				},
@@ -188,7 +187,6 @@ const lightTheme = createTheme({
 					borderRadius: 12,
 					border: "1px solid rgba(0, 0, 0, 0.1)", // Light border
 					boxShadow: "0 2px 8px rgba(0, 0, 0, 0.05)", // Subtle shadow
-					backdropFilter: "blur(8px)",
 				},
 			},
 		},
