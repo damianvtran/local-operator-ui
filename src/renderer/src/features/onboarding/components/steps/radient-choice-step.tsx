@@ -186,7 +186,7 @@ export const RadientChoiceStep: FC<RadientChoiceStepProps> = ({
 	return (
 		<Box sx={{ animation: "fadeIn 0.6s ease-out" }}>
 			{/* Use SectionDescription for introductory text (defaults to 0.875rem) */}
-			<SectionDescription sx={{ mb: 3 }}>
+			<SectionDescription sx={{ mb: 2 }}>
 				Choose how you'd like to get started:
 			</SectionDescription>
 
@@ -208,10 +208,9 @@ export const RadientChoiceStep: FC<RadientChoiceStepProps> = ({
 									<RadientPassText>Radient Pass</RadientPassText>
 								</CardTitle>
 								<CardSubtitle variant="body2">
-									Designed for <b>low cost and best speed, accuracy, and performance</b> with
-									Local Operator. Get access to all tools and models at once, with
+									Designed for <b>low cost and best speed, accuracy, and performance</b> with Local Operator. Get access to all tools and models at once, with
 									potential savings when Radient Automatic picks the best model to handle
-									each step. Two-click setup that <b>works out of the box</b>, no credit card required.
+									each step.<br /><br />Two-click setup that <b>works out of the box</b>, no credit card required.
 								</CardSubtitle>
 							</Box>
 							<CardIcon sx={{ width: 150, height: 150, mb: 3 }}> {/* Further Increased icon size */}
@@ -225,8 +224,8 @@ export const RadientChoiceStep: FC<RadientChoiceStepProps> = ({
 									}}
 								/>
 							</CardIcon>
-							{/* Simplified ChooseOption text */}
-							<ChooseOption className="choose-option">
+							{/* Simplified ChooseOption text, color overridden for Radient */}
+							<ChooseOption className="choose-option" sx={{ color: radientTheme.palette.primary.main }}>
 								Choose Radient Pass{" "}
 								<FontAwesomeIcon icon={faArrowRight} size="sm" />
 							</ChooseOption>
