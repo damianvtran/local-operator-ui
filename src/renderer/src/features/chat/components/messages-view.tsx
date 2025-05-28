@@ -172,6 +172,10 @@ export const MessagesView: FC<MessagesViewProps> = ({
 	const collapsed =
 		messages.length === 0 && !isLoadingMessages && !isFetchingMore;
 
+	const lastMessageIsStreaming =
+		messages[messages.length - 1]?.is_streamable &&
+		!messages[messages.length - 1]?.is_complete;
+
 	return (
 		<MessagesViewWrapper collapsed={collapsed}>
 			{/* Fixed position loading indicator for fetching more messages */}
@@ -240,7 +244,7 @@ export const MessagesView: FC<MessagesViewProps> = ({
 								)}
 
 								{/* Loading indicator for new message at the bottom */}
-								{isLoading && (
+								{isLoading && !lastMessageIsStreaming && (
 									<LoadingIndicator
 										status={jobStatus}
 										agentName={agentName}
