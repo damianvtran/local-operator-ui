@@ -126,7 +126,6 @@ const icebergTheme = createTheme({
 				root: {
 					top: 0,
 					background: "rgba(232,233,236,0.8)",
-					backdropFilter: "blur(10px)",
 				},
 			},
 		},
@@ -139,7 +138,6 @@ const icebergTheme = createTheme({
 					paddingBottom: 12,
 					"&:hover": {
 						background: "rgba(38,42,63,0.08)",
-						backdropFilter: "blur(4px)",
 					},
 				},
 			},

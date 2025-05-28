@@ -120,7 +120,6 @@ const duneTheme = createTheme({
 				root: {
 					top: 0,
 					background: "rgba(15,13,11,0.8)",
-					backdropFilter: "blur(10px)",
 				},
 			},
 		},
@@ -133,7 +132,6 @@ const duneTheme = createTheme({
 					paddingBottom: 12,
 					"&:hover": {
 						background: "rgba(255,165,0,0.05)",
-						backdropFilter: "blur(4px)",
 					},
 				},
 			},

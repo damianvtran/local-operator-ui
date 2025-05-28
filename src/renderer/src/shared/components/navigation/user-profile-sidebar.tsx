@@ -104,7 +104,6 @@ const StyledMenu = styled(Menu)(({ theme }) => ({
 			theme.palette.mode === "dark"
 				? "linear-gradient(rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.03))"
 				: "linear-gradient(rgba(0, 0, 0, 0.01), rgba(0, 0, 0, 0.02))",
-		backdropFilter: "blur(20px)",
 		border: `1px solid ${theme.palette.sidebar.border}`,
 		borderRadius: 16,
 		minWidth: 200,
