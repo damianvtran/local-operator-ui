@@ -5,6 +5,7 @@ import {
 	getFullDateTime,
 } from "@shared/utils/date-utils";
 import type { FC } from "react";
+import type { SxProps, Theme } from "@mui/material";
 
 /**
  * Props for the MessageTimestamp component
@@ -12,6 +13,7 @@ import type { FC } from "react";
 export type MessageTimestampProps = {
 	timestamp: Date;
 	isUser: boolean;
+	sx?: SxProps<Theme>;
 };
 
 /**
@@ -39,6 +41,7 @@ const StyledTimestamp = styled(Typography, {
 export const MessageTimestamp: FC<MessageTimestampProps> = ({
 	timestamp,
 	isUser,
+	sx,
 }) => {
 	// Format the timestamp using our utility function
 	const formattedTime = formatMessageDateTime(timestamp);
@@ -52,6 +55,7 @@ export const MessageTimestamp: FC<MessageTimestampProps> = ({
 			placement="bottom"
 			enterDelay={1200}
 			enterNextDelay={1200}
+			sx={sx}
 		>
 			{/* @ts-ignore - MUI Tooltip type issue */}
 			<StyledTimestamp variant="caption" isUser={isUser}>

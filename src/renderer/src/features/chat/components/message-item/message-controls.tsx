@@ -4,10 +4,13 @@ import { Copy } from "lucide-react";
 import type { FC } from "react";
 import { useState } from "react";
 
+import type { SxProps, Theme } from "@mui/material";
+
 // Props for the MessageControls component
 type MessageControlsProps = {
 	isUser: boolean;
 	content?: string;
+	sx?: SxProps<Theme>;
 };
 
 // Styled container for the message controls
@@ -49,6 +52,7 @@ const StyledIconButton = styled(IconButton)(({ theme }) => ({
 export const MessageControls: FC<MessageControlsProps> = ({
 	isUser,
 	content,
+	sx,
 }) => {
 	const [copied, setCopied] = useState(false);
 
@@ -72,7 +76,11 @@ export const MessageControls: FC<MessageControlsProps> = ({
 	};
 
 	return (
-		<ControlsContainer isUser={isUser} className="message-controls">
+		<ControlsContainer
+			isUser={isUser}
+			className="message-controls"
+			sx={sx}
+		>
 			{/* Only render the wrapper if there are buttons to show */}
 			{showCopyButton && (
 				<ControlsWrapper>

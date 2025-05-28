@@ -197,16 +197,8 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 	const regularMessageComponents = useMemo(() => {
 		if (isStreamable) return null;
 
-		return (
-			<>
-				<Box sx={messageStyles}>{filteredChildren}</Box>
-				{message && (
-					<MessageTimestamp timestamp={message.timestamp} isUser={isUser} />
-				)}
-				<MessageControls isUser={isUser} content={content} />
-			</>
-		);
-	}, [isStreamable, messageStyles, filteredChildren, message, isUser, content]);
+		return <Box sx={messageStyles}>{filteredChildren}</Box>;
+	}, [isStreamable, messageStyles, filteredChildren]);
 
 	return (
 		<Box
@@ -214,12 +206,43 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 				position: "relative",
 				width: "calc(100% - 56px)",
 				"&:hover .message-controls": {
+					// This hover effect is for when MessageControls is not explicitly hidden by streaming state
 					opacity: 1,
 				},
 			}}
 		>
 			{streamingMessageComponent}
 			{regularMessageComponents}
+			{/* MessageTimestamp: always rendered, conditionally visible/interactive */}
+			{message && (
+				<MessageTimestamp
+					timestamp={message.timestamp}
+					isUser={isUser}
+					sx={{
+						opacity: isStreamable ? 0 : 1,
+						pointerEvents: isStreamable ? "none" : "auto",
+						transition: theme.transitions.create("opacity", {
+							duration: theme.transitions.duration.short,
+						}),
+						// Ensure positioning is consistent with how it was before
+					}}
+				/>
+			)}
+			{/* MessageControls: always rendered, conditionally visible/interactive */}
+			<MessageControls
+				isUser={isUser}
+				content={content}
+				sx={{
+					// When streaming, force opacity 0 and disable pointer events.
+					// This inline style for opacity will override the parent's hover rule.
+					...(isStreamable && {
+						opacity: 0,
+						pointerEvents: "none",
+					}),
+					// Assuming MessageControls has its own transition for opacity changes (e.g., for hover).
+					// If not, a transition could be added here for when isStreamable changes.
+				}}
+			/>
 			{/* Invisible element at the bottom for scroll targeting */}
 			<div ref={scrollRef} style={{ height: 1, width: 1, opacity: 0 }} />
 		</Box>
