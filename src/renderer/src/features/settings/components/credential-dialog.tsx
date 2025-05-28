@@ -342,15 +342,17 @@ export const CredentialDialog: FC<CredentialDialogProps> = ({
 								<MenuItem value="" disabled>
 									<em>Select a credential type...</em>
 								</MenuItem>
-								{CREDENTIAL_MANIFEST.map((cred) => (
-									<MenuItem
-										key={cred.key}
-										value={cred.key}
-										disabled={isExistingKey(cred.key)}
-									>
-										{cred.name} {isExistingKey(cred.key) && "(Configured)"}
-									</MenuItem>
-								))}
+								{CREDENTIAL_MANIFEST.filter((cred) => !cred.internal).map(
+									(cred) => (
+										<MenuItem
+											key={cred.key}
+											value={cred.key}
+											disabled={isExistingKey(cred.key)}
+										>
+											{cred.name} {isExistingKey(cred.key) && "(Configured)"}
+										</MenuItem>
+									),
+								)}
 								<MenuItem value="_custom_">Custom Credential</MenuItem>
 							</Select>
 						</FormControl>

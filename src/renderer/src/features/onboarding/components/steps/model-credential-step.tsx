@@ -5,7 +5,10 @@
  * with an exciting and engaging interface.
  */
 
-import { CREDENTIAL_MANIFEST } from "@features/settings/components/credential-manifest";
+import {
+	CREDENTIAL_MANIFEST,
+	CredentialType,
+} from "@features/settings/components/credential-manifest";
 import {
 	faCheck,
 	faExternalLinkAlt,
@@ -51,7 +54,7 @@ export const ModelCredentialStep: FC = () => {
 	const theme = useTheme(); // Get theme context
 	// Get the list of model provider credentials
 	const modelProviderCredentials = CREDENTIAL_MANIFEST.filter(
-		(cred) => cred.key !== "SERP_API_KEY" && cred.key !== "TAVILY_API_KEY",
+		(cred) => cred.type === CredentialType.Hosting,
 	);
 
 	// State for the selected credential and its value

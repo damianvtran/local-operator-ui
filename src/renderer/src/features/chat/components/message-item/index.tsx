@@ -21,7 +21,6 @@ import { MessagePaper } from "./message-paper";
 import { MessageTimestamp } from "./message-timestamp";
 import { OutputBlock } from "./output-block";
 import { SecurityCheckHighlight } from "./security-check-highlight";
-import { StatusIndicator } from "./status-indicator";
 import { VideoAttachment } from "./video-attachment";
 
 /**
@@ -185,7 +184,6 @@ export const MessageItem: FC<MessageItemProps> = memo(
 			}
 		}, []);
 
-		// Refresh open canvas tabs with latest file content if a new message contains a file that matches an open tab
 		useEffect(() => {
 			if (!message.files || message.files.length === 0) return;
 			const state = useCanvasStore.getState();
@@ -233,7 +231,7 @@ export const MessageItem: FC<MessageItemProps> = memo(
 					setFiles(conversationId, updatedFiles);
 				}
 			})();
-		}, [message, conversationId, setFiles]);
+		}, [message.files, conversationId, setFiles]);
 
 		// Hide messages with action DONE, execution_type "action", and task_classification "conversation"
 		// These are redundant to the response execution_type messages
@@ -397,9 +395,6 @@ export const MessageItem: FC<MessageItemProps> = memo(
 								return contentBlocks;
 							})()}
 
-							{/* Status indicator if present */}
-							{message.status && <StatusIndicator status={message.status} />}
-
 							{/* Render non-media file attachments if any */}
 							{message.files && message.files.length > 0 && (
 								<Box sx={{ mt: 2 }}>
@@ -516,9 +511,6 @@ export const MessageItem: FC<MessageItemProps> = memo(
 							// Otherwise, render content normally
 							return contentBlocks;
 						})()}
-
-						{/* Status indicator if present */}
-						{message.status && <StatusIndicator status={message.status} />}
 
 						{/* Render non-media file attachments if any */}
 						{message.files && message.files.length > 0 && (

@@ -109,7 +109,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 						size="medium"
 						data-tour-tag="open-canvas-button"
 					>
-						<FileText size={24} />
+						<FileText size={24} strokeWidth={1.5} />
 					</OptionsButton>
 				</Tooltip>
 			)}

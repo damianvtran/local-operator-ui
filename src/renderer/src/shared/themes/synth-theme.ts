@@ -124,7 +124,6 @@ const synthTheme = createTheme({
 				root: {
 					top: 0,
 					background: "rgba(18, 7, 32, 0.88)", // Even Darker Purple with alpha
-					backdropFilter: "blur(10px)",
 					boxShadow: "0 2px 12px rgba(255, 64, 129, 0.25)", // Pink glow shadow
 				},
 			},
@@ -140,7 +139,6 @@ const synthTheme = createTheme({
 					"&:hover": {
 						background: "rgba(255, 64, 129, 0.1)", // Pink hover
 						borderColor: "rgba(255, 64, 129, 0.25)",
-						backdropFilter: "blur(3px)",
 					},
 					"&.Mui-selected": {
 						background: "rgba(0, 229, 255, 0.18)", // Blue selected
@@ -181,7 +179,6 @@ const synthTheme = createTheme({
 							borderColor: "rgba(0, 229, 255, 0.55)",
 							color: theme.palette.secondary.main, // Blue text
 							boxShadow: `0 0 10px ${theme.palette.secondary.main}66`,
-							backdropFilter: "blur(3px)",
 						},
 					}),
 				},
@@ -226,7 +223,6 @@ const synthTheme = createTheme({
 					backgroundColor: "rgba(27, 10, 47, 0.9)", // Even Darker Purple with alpha
 					borderRadius: 10, // Slightly less rounded
 					border: "1px solid rgba(255, 64, 129, 0.3)", // Pink border
-					backdropFilter: "blur(8px)",
 					boxShadow: "0 5px 18px rgba(255, 64, 129, 0.15)", // Pink glow
 				}),
 			},

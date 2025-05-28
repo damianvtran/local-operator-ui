@@ -8,8 +8,8 @@ import {
 	createLocalOperatorClient,
 } from "@shared/api/local-operator";
 import { apiConfig } from "@shared/config";
+import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { toast } from "react-toastify";
 import { credentialsQueryKey } from "./use-credentials";
 
 /**
@@ -38,7 +38,7 @@ export const useUpdateCredential = () => {
 						? error.message
 						: "An unknown error occurred while updating credential";
 
-				toast.error(errorMessage);
+				showErrorToast(errorMessage);
 				throw error;
 			}
 		},
@@ -73,7 +73,7 @@ export const useUpdateCredential = () => {
 				type: "all", // Refetch all related queries at once
 			});
 
-			toast.success(`Credential "${variables.key}" updated successfully`);
+			showSuccessToast(`Credential "${variables.key}" updated successfully`);
 		},
 		onError: (error) => {
 			console.error("Error updating credential:", error);

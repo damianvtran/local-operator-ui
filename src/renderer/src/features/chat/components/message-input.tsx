@@ -15,12 +15,14 @@ import {
 	darken,
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
+import type { AgentDetails } from "@shared/api/local-operator/types";
 import { useMessageInput } from "@shared/hooks/use-message-input";
 import { normalizePath } from "@shared/utils/path-utils";
 import { useMemo, useRef, useState } from "react";
 import type { ChangeEvent, ClipboardEvent, FC, FormEvent } from "react";
 import type { Message } from "../types/message";
 import { AttachmentsPreview } from "./attachments-preview";
+import { DirectoryIndicator } from "./directory-indicator";
 import { ScrollToBottomButton } from "./scroll-to-bottom-button";
 
 /**
@@ -36,7 +38,7 @@ type MessageInputProps = {
 	isFarFromBottom?: boolean;
 	scrollToBottom?: () => void;
 	initialSuggestions?: string[];
-	isChatUtilitiesExpanded: boolean;
+	agentData?: AgentDetails | null;
 };
 
 /**
@@ -306,7 +308,7 @@ export const MessageInput: FC<MessageInputProps> = ({
 	isFarFromBottom = false,
 	scrollToBottom = () => {},
 	initialSuggestions,
-	isChatUtilitiesExpanded,
+	agentData,
 }) => {
 	const [attachments, setAttachments] = useState<string[]>([]);
 	const fileInputRef = useRef<HTMLInputElement>(null);
@@ -465,6 +467,12 @@ export const MessageInput: FC<MessageInputProps> = ({
 								</AttachmentButton>
 							</span>
 						</Tooltip>
+						{conversationId && (
+							<DirectoryIndicator
+								agentId={conversationId}
+								currentWorkingDirectory={agentData?.current_working_directory}
+							/>
+						)}
 					</Box>
 
 					{/* Right side: send or stop button */}
@@ -549,7 +557,6 @@ export const MessageInput: FC<MessageInputProps> = ({
 			)}
 			<ScrollToBottomButton
 				visible={isFarFromBottom}
-				isChatUtilitiesExpanded={isChatUtilitiesExpanded}
 				onClick={scrollToBottom}
 			/>
 		</InputOuterContainer>

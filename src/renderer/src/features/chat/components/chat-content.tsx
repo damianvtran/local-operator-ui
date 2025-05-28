@@ -8,9 +8,8 @@ import { ResizableDivider } from "@shared/components/common/resizable-divider";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { isDevelopmentMode } from "@shared/utils/env-utils";
-import { type FC, useRef, useState } from "react";
+import { type FC, useRef } from "react";
 import type { Message } from "../types/message";
-import { ChatUtilities } from "../utils/chat-utilities";
 import { Canvas } from "./canvas";
 import { ChatHeader } from "./chat-header";
 import { ChatOptionsSidebar } from "./chat-options-sidebar";
@@ -133,7 +132,6 @@ export const ChatContent: FC<ChatContentProps> = ({
 	const restoreDefaultCanvasPanelWidth = useUiPreferencesStore(
 		(s) => s.restoreDefaultCanvasWidth,
 	);
-	const [isChatUtilitiesExpanded, setIsChatUtilitiesExpanded] = useState(false);
 
 	// Get canvas state for the current conversation
 	const conversationId = agentId; // assuming agentId is the conversation ID
@@ -221,16 +219,9 @@ export const ChatContent: FC<ChatContentProps> = ({
 							onCancelJob={onCancelJob}
 							isFarFromBottom={isFarFromBottom}
 							scrollToBottom={scrollToBottom}
-							isChatUtilitiesExpanded={isChatUtilitiesExpanded}
+							agentData={agentData}
 						/>
 					)}
-					{/* Chat utilities section */}
-					<ChatUtilities
-						agentId={agentId}
-						agentData={agentData}
-						expanded={isChatUtilitiesExpanded}
-						setExpanded={setIsChatUtilitiesExpanded}
-					/>
 				</ChatContainer>
 			</Box>
 

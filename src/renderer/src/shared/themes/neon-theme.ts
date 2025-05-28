@@ -120,7 +120,6 @@ const neonTheme = createTheme({
 				root: {
 					top: 0,
 					background: "rgba(8, 12, 24, 0.85)", // Dark blue with alpha
-					backdropFilter: "blur(12px)", // Stronger blur
 					boxShadow: "0 2px 10px rgba(0, 239, 255, 0.2)", // Neon glow shadow
 				},
 			},
@@ -136,7 +135,6 @@ const neonTheme = createTheme({
 					"&:hover": {
 						background: "rgba(0, 239, 255, 0.08)",
 						borderColor: "rgba(0, 239, 255, 0.2)",
-						backdropFilter: "blur(4px)",
 					},
 					"&.Mui-selected": {
 						background: "rgba(0, 239, 255, 0.15)",
@@ -176,7 +174,6 @@ const neonTheme = createTheme({
 							borderColor: "rgba(0, 239, 255, 0.5)",
 							color: theme.palette.primary.main,
 							boxShadow: `0 0 8px ${theme.palette.primary.main}55`,
-							backdropFilter: "blur(4px)",
 						},
 					}),
 				},
@@ -221,7 +218,6 @@ const neonTheme = createTheme({
 					backgroundColor: "rgba(13, 18, 32, 0.85)", // Slightly lighter dark blue with alpha
 					borderRadius: 12,
 					border: "1px solid rgba(0, 239, 255, 0.25)", // Primary color border
-					backdropFilter: "blur(10px)",
 					boxShadow: "0 4px 15px rgba(0, 239, 255, 0.1)", // Neon glow
 				}),
 			},

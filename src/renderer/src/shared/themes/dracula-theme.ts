@@ -120,7 +120,6 @@ const draculaTheme = createTheme({
 				root: {
 					top: 0,
 					background: "rgba(40,42,54,0.8)", // Dracula background with opacity
-					backdropFilter: "blur(10px)",
 				},
 			},
 		},
@@ -133,7 +132,6 @@ const draculaTheme = createTheme({
 					paddingBottom: 12,
 					"&:hover": {
 						background: "rgba(248,248,242,0.05)",
-						backdropFilter: "blur(4px)",
 					},
 				},
 			},
@@ -161,7 +159,6 @@ const draculaTheme = createTheme({
 						transition: "all 0.2s ease-in-out",
 						"&:hover": {
 							background: "rgba(248,248,242,0.05)",
-							backdropFilter: "blur(4px)",
 						},
 					},
 				},
@@ -187,7 +184,6 @@ const draculaTheme = createTheme({
 					backgroundColor: "#383A59", // Slightly lighter background
 					borderRadius: 12,
 					border: "1px solid rgba(248, 248, 242, 0.1)",
-					backdropFilter: "blur(8px)",
 				},
 			},
 		},

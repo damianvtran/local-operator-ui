@@ -4,9 +4,8 @@
 
 import { createLocalOperatorClient } from "@shared/api/local-operator";
 import { apiConfig } from "@shared/config";
-import { showErrorToast } from "@shared/utils/toast-manager";
+import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "react-toastify";
 import { useConnectivityGate } from "./use-connectivity-gate";
 
 /**
@@ -95,7 +94,7 @@ export const useUpdateAgentSystemPrompt = (agentId: string) => {
 						? error.message
 						: "An unknown error occurred while updating agent system prompt";
 
-				toast.error(errorMessage);
+				showErrorToast(errorMessage);
 				throw error;
 			}
 		},
@@ -105,7 +104,7 @@ export const useUpdateAgentSystemPrompt = (agentId: string) => {
 				queryKey: agentSystemPromptQueryKey(agentId),
 			});
 
-			toast.success("Agent system prompt updated successfully");
+			showSuccessToast("Agent system prompt updated successfully");
 		},
 		onError: (error) => {
 			console.error("Error updating agent system prompt:", error);

@@ -17,9 +17,9 @@ import type {
 } from "@shared/api/local-operator/types";
 import { EditableField } from "@shared/components/common/editable-field";
 import { SliderSetting } from "@shared/components/common/slider-setting";
+import { showErrorToast } from "@shared/utils/toast-manager";
 import type { UseMutationResult } from "@tanstack/react-query";
 import type { FC } from "react";
-import { toast } from "react-toastify";
 import { updateAgentSetting } from "../utils/chat-options-utils";
 import {
 	InfoButton,
@@ -437,7 +437,7 @@ export const GenerationSettingsSection: FC<GenerationSettingsSectionProps> = ({
 
 						// Validate that the seed is a valid number if provided
 						if (value.trim() && Number.isNaN(seedValue as number)) {
-							toast.error("Seed must be a valid number");
+							showErrorToast("Seed must be a valid number");
 							return;
 						}
 

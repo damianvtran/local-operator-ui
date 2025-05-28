@@ -13,11 +13,6 @@ type ScrollToBottomButtonProps = {
 	visible: boolean;
 
 	/**
-	 * Whether chat utilities panel is expanded
-	 */
-	isChatUtilitiesExpanded: boolean;
-
-	/**
 	 * Callback function to scroll to the bottom
 	 */
 	onClick: () => void;
@@ -28,28 +23,22 @@ type ScrollToBottomButtonProps = {
 	className?: string;
 };
 
-const ButtonContainer = styled(Box, {
-	shouldForwardProp: (prop) => prop !== "isChatUtilitiesExpanded",
-})<Pick<ScrollToBottomButtonProps, "isChatUtilitiesExpanded">>(
-	({ isChatUtilitiesExpanded }) => ({
-		position: "absolute",
-		bottom: isChatUtilitiesExpanded ? 260 : 200,
-		zIndex: 1000,
-		display: "flex",
-		justifyContent: "center",
-		alignItems: "center",
-		pointerEvents: "none", // Prevent container from blocking clicks
-	}),
-);
+const ButtonContainer = styled(Box)(() => ({
+	position: "absolute",
+	bottom: 160,
+	zIndex: 1000,
+	display: "flex",
+	justifyContent: "center",
+	alignItems: "center",
+	pointerEvents: "none", // Prevent container from blocking clicks
+}));
 
 const StyledButton = styled(IconButton)(({ theme }) => ({
 	backgroundColor: theme.palette.background.paper,
 	color: theme.palette.text.secondary,
-	width: 44,
-	height: 44,
-	backdropFilter: "blur(8px)",
-	WebkitBackdropFilter: "blur(8px)",
-	borderRadius: "12px",
+	width: 36,
+	height: 36,
+	borderRadius: "100%",
 	pointerEvents: "auto",
 	boxShadow: "0 2px 12px rgba(0, 0, 0, 0.15)",
 	border: "1px solid rgba(255, 255, 255, 0.1)",
@@ -85,7 +74,6 @@ const StyledButton = styled(IconButton)(({ theme }) => ({
  */
 export const ScrollToBottomButton: FC<ScrollToBottomButtonProps> = ({
 	visible,
-	isChatUtilitiesExpanded,
 	onClick,
 	className,
 }) => {
@@ -95,17 +83,13 @@ export const ScrollToBottomButton: FC<ScrollToBottomButtonProps> = ({
 
 	return (
 		<Fade in={visible} timeout={200}>
-			{/* Pass isChatUtilitiesExpanded to the styled component for styling, but prevent it from reaching the DOM */}
-			<ButtonContainer
-				isChatUtilitiesExpanded={isChatUtilitiesExpanded}
-				className={className}
-			>
+			<ButtonContainer className={className}>
 				<StyledButton
 					aria-label="Scroll to bottom"
 					onClick={handleClick}
 					size="small"
 				>
-					<FontAwesomeIcon icon={faArrowDown} />
+					<FontAwesomeIcon icon={faArrowDown} style={{ fontSize: 14 }} />
 				</StyledButton>
 			</ButtonContainer>
 		</Fade>
