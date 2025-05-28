@@ -404,7 +404,7 @@ export const DirectoryIndicator: FC<DirectoryIndicatorProps> = ({
 			) : (
 				<>
 					<Tooltip
-						title="Click to open directory browser"
+						title="Click to change working directory"
 						arrow
 						placement="right"
 					>
