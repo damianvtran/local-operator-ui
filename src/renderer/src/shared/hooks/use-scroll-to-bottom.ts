@@ -47,14 +47,32 @@ export const useScrollToBottom = (
 	// Debounce scroll handling to improve performance
 	const scrollTimeoutRef = useRef<number | null>(null);
 
+	// Ref to track if content was recently updated to implement a grace period
+	const contentRecentlyUpdatedRef = useRef(false);
+	const gracePeriodTimeoutRef = useRef<number | null>(null);
+
 	/**
 	 * Calculate the current scroll position and update button visibility state
 	 * Returns true if the position was updated, false otherwise
+	 * @param isUserScrollEvent - Indicates if the update is triggered by a direct user scroll action
 	 */
-	const updateScrollPosition = useCallback(() => {
-		if (!containerRef.current || isHandlingScrollRef.current) return false;
+	const updateScrollPosition = useCallback(
+		(isUserScrollEvent = false) => {
+			if (!containerRef.current || isHandlingScrollRef.current) return false;
 
-		isHandlingScrollRef.current = true;
+			// If content was recently updated and this is not a user scroll,
+			// and the user was at the bottom, keep the button hidden during the grace period.
+			if (
+				contentRecentlyUpdatedRef.current &&
+				!isUserScrollEvent &&
+				!isFarFromBottom // Check current state, not previous
+			) {
+				// Reset the flag after the grace period check
+				// The button remains hidden if already hidden due to being at the bottom
+				return false;
+			}
+
+			isHandlingScrollRef.current = true;
 		let localPositionUpdated = false;
 
 		try {
@@ -104,7 +122,7 @@ export const useScrollToBottom = (
 		}
 
 		return localPositionUpdated;
-	}, [buttonThreshold, containerRef]);
+	}, [buttonThreshold, containerRef, isFarFromBottom]);
 
 	/**
 	 * Scroll to bottom with smooth animation
@@ -120,7 +138,7 @@ export const useScrollToBottom = (
 
 		// Update button state after scrolling
 		setTimeout(() => {
-			updateScrollPosition();
+			updateScrollPosition(false); // Not a user scroll event
 		}, 100);
 	}, [updateScrollPosition, containerRef]);
 
@@ -139,7 +157,7 @@ export const useScrollToBottom = (
 		scrollTimeoutRef.current = window.setTimeout(() => {
 			// Use requestAnimationFrame for better performance during scrolling
 			requestAnimationFrame(() => {
-				updateScrollPosition();
+				updateScrollPosition(true); // This is a user scroll event
 			});
 
 			scrollTimeoutRef.current = null;
@@ -160,7 +178,7 @@ export const useScrollToBottom = (
 		lastUpdateTimeRef.current = 0;
 
 		// Update scroll position and check if button should be shown
-		updateScrollPosition();
+		updateScrollPosition(false); // Not a user scroll event
 	}, [updateScrollPosition, containerRef]);
 
 	/**
@@ -170,6 +188,22 @@ export const useScrollToBottom = (
 		if (prevContentKeyForScrollEffectRef.current !== contentKey) {
 			initialCheckPerformedRef.current = false; // Reset for new content
 			prevContentKeyForScrollEffectRef.current = contentKey;
+			contentRecentlyUpdatedRef.current = true; // Mark content as recently updated
+
+			// Clear any existing grace period timeout
+			if (gracePeriodTimeoutRef.current !== null) {
+				clearTimeout(gracePeriodTimeoutRef.current);
+			}
+			// Set a new grace period
+			gracePeriodTimeoutRef.current = window.setTimeout(() => {
+				contentRecentlyUpdatedRef.current = false;
+				gracePeriodTimeoutRef.current = null;
+				// Re-check position after grace period if needed,
+				// especially if the button was suppressed.
+				if (containerRef.current && !isHandlingScrollRef.current) {
+					updateScrollPosition(false);
+				}
+			}, 300); // Grace period of 300ms
 		}
 
 		const container = containerRef.current;
@@ -207,7 +241,7 @@ export const useScrollToBottom = (
 			}
 			container.removeEventListener("scroll", handleScroll);
 		};
-	}, [handleScroll, checkInitialPosition, containerRef, contentKey]); // Added contentKey
+	}, [handleScroll, checkInitialPosition, containerRef, contentKey, updateScrollPosition]); // Added contentKey and updateScrollPosition
 
 	/**
 	 * Handle window resize events to update scroll position - throttled
@@ -223,22 +257,22 @@ export const useScrollToBottom = (
 				window.clearTimeout(resizeTimeoutId);
 			}
 
-			// Debounce resize events
-			resizeTimeoutId = window.setTimeout(() => {
-				updateScrollPosition();
-				resizeTimeoutId = null;
-			}, 100);
-		};
+				// Debounce resize events
+				resizeTimeoutId = window.setTimeout(() => {
+					updateScrollPosition(false); // Not a user scroll event
+					resizeTimeoutId = null;
+				}, 100);
+			};
 
-		window.addEventListener("resize", handleResize, { passive: true });
+			window.addEventListener("resize", handleResize, { passive: true });
 
-		return () => {
-			window.removeEventListener("resize", handleResize);
-			if (resizeTimeoutId !== null) {
-				window.clearTimeout(resizeTimeoutId);
-			}
-		};
-	}, [updateScrollPosition]);
+			return () => {
+				window.removeEventListener("resize", handleResize);
+				if (resizeTimeoutId !== null) {
+					window.clearTimeout(resizeTimeoutId);
+				}
+			};
+		}, [updateScrollPosition]);
 
 	/**
 	 * Re-check scroll position when content changes
@@ -252,9 +286,24 @@ export const useScrollToBottom = (
 		// Use ResizeObserver to detect changes in content size affecting scrollHeight
 		const observer = new ResizeObserver(() => {
 			if (!isHandlingScrollRef.current) {
+				contentRecentlyUpdatedRef.current = true; // Mark content as recently updated due to resize
+				// Clear any existing grace period timeout
+				if (gracePeriodTimeoutRef.current !== null) {
+					clearTimeout(gracePeriodTimeoutRef.current);
+				}
+				// Set a new grace period
+				gracePeriodTimeoutRef.current = window.setTimeout(() => {
+					contentRecentlyUpdatedRef.current = false;
+					gracePeriodTimeoutRef.current = null;
+					// Re-check position after grace period
+					if (containerRef.current && !isHandlingScrollRef.current) {
+						updateScrollPosition(false);
+					}
+				}, 300); // Grace period of 300ms
+
 				// Debounce or throttle if ResizeObserver fires too rapidly for some content
 				requestAnimationFrame(() => {
-					updateScrollPosition();
+					updateScrollPosition(false); // Not a user scroll event
 				});
 			}
 		});
@@ -262,12 +311,13 @@ export const useScrollToBottom = (
 		observer.observe(container);
 		let initialCheckTimeoutId: number | undefined;
 
-		// This effect re-runs when contentKey changes.
+		// This effect re-runs when contentKey changes (handled by the other useEffect).
+		// This effect handles initial mount and direct containerRef changes.
 		// Schedule a check for the scroll position.
 		if (!isHandlingScrollRef.current) {
 			initialCheckTimeoutId = window.setTimeout(() => {
 				if (containerRef.current && !isHandlingScrollRef.current) {
-					updateScrollPosition();
+					updateScrollPosition(false); // Not a user scroll event
 				}
 			}, 50); // Delay to allow layout to settle
 		}
@@ -276,9 +326,13 @@ export const useScrollToBottom = (
 			if (initialCheckTimeoutId) {
 				clearTimeout(initialCheckTimeoutId);
 			}
+			if (gracePeriodTimeoutRef.current !== null) {
+				clearTimeout(gracePeriodTimeoutRef.current);
+				gracePeriodTimeoutRef.current = null;
+			}
 			observer.disconnect();
 		};
-	}, [containerRef, updateScrollPosition]); // Removed contentKey, its role is handled by the other useEffect
+	}, [containerRef, updateScrollPosition]);
 
 	return {
 		containerRef,
