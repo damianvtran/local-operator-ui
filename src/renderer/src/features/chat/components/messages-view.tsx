@@ -5,6 +5,7 @@ import type {
 } from "@shared/api/local-operator/types";
 import type { FC, RefObject } from "react";
 import type { Message } from "../types/message";
+import { RingLoadingIndicator } from "@shared/components/common/ring-loading-indicator";
 import { LoadingIndicator } from "./loading-indicator";
 import { MessageItem } from "./message-item";
 
@@ -135,7 +136,10 @@ const LoadingMoreIndicator = styled(Box)(({ theme }) => ({
 const LoadingBox = styled(Box)({
 	display: "flex",
 	justifyContent: "center",
+	alignItems: "center",
 	padding: 32,
+	height: "100%",
+	flexGrow: 1,
 });
 
 /**
@@ -194,7 +198,7 @@ export const MessagesView: FC<MessagesViewProps> = ({
 				{/* Show loading indicator when initially loading messages */}
 				{isLoadingMessages && !messages.length ? (
 					<LoadingBox>
-						<CircularProgress />
+						<RingLoadingIndicator size={68} />
 					</LoadingBox>
 				) : (
 					<>
