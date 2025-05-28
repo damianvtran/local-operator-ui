@@ -4,12 +4,9 @@ import type {
 	CRUDResponse,
 } from "@shared/api/local-operator/types";
 import { apiConfig } from "@shared/config"; // Import apiConfig for the base URL
+import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import {
-	showSuccessToast,
-	showErrorToast,
-} from "@shared/utils/toast-manager";
 
 /**
  * React Query mutation hook for downloading an agent from Radient via the Local Operator.

@@ -5,7 +5,10 @@
  * with an exciting and engaging interface.
  */
 
-import { CREDENTIAL_MANIFEST, CredentialType } from "@features/settings/components/credential-manifest";
+import {
+	CREDENTIAL_MANIFEST,
+	CredentialType,
+} from "@features/settings/components/credential-manifest";
 import {
 	faCheck,
 	faExternalLinkAlt,

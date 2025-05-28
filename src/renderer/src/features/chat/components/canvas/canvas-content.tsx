@@ -1,4 +1,4 @@
-import { memo, type FC } from "react";
+import { type FC, memo } from "react";
 import type { CanvasDocument } from "../../types/canvas";
 import { isHtmlFile } from "../../utils/is-html-file";
 import { isMarkdownFile } from "../../utils/is-markdown-file";

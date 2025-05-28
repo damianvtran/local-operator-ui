@@ -7,7 +7,7 @@ import ReactDOM from "react-dom/client";
 import { HashRouter } from "react-router-dom";
 import { ThemedToastContainer } from "./shared/components/common";
 import "@assets/fonts/fonts.css";
-import { config } from "@shared/config"; 
+import { config } from "@shared/config";
 import type { PostHogConfig } from "posthog-js";
 import App from "./app";
 import { queryClient } from "./shared/api/query-client";

@@ -201,7 +201,9 @@ export const RadientChoiceStep: FC<RadientChoiceStepProps> = ({
 					{" "}
 					{/* Slightly reduced spacing */}
 					{/* Radient Pass Option */}
-					<Grid item xs={12} md={12}> {/* Changed md to 12 for vertical stacking */}
+					<Grid item xs={12} md={12}>
+						{" "}
+						{/* Changed md to 12 for vertical stacking */}
 						{/* Use the specific RadientChoiceCard */}
 						<RadientChoiceCard onClick={handleRadientPassChoice}>
 							<Box>
@@ -218,17 +220,21 @@ export const RadientChoiceStep: FC<RadientChoiceStepProps> = ({
 									<RadientBoldTextSpan>
 										low cost and best speed, accuracy, and performance
 									</RadientBoldTextSpan>{" "}
-									with Local Operator. Get access to all tools and models at once, with
-									potential savings when Radient Automatic picks the best model to handle
-									each step.
+									with Local Operator. Get access to all tools and models at
+									once, with potential savings when Radient Automatic picks the
+									best model to handle each step.
 									<br />
 									<br />
 									Two-click setup that{" "}
-									<RadientBoldTextSpan>works out of the box</RadientBoldTextSpan>, no credit
-									card required.
+									<RadientBoldTextSpan>
+										works out of the box
+									</RadientBoldTextSpan>
+									, no credit card required.
 								</CardSubtitle>
 							</Box>
-							<CardIcon sx={{ width: 150, height: 150, mb: 3 }}> {/* Further Increased icon size */}
+							<CardIcon sx={{ width: 150, height: 150, mb: 3 }}>
+								{" "}
+								{/* Further Increased icon size */}
 								<img
 									src={radientLogo}
 									alt="Radient Logo"
@@ -240,35 +246,57 @@ export const RadientChoiceStep: FC<RadientChoiceStepProps> = ({
 								/>
 							</CardIcon>
 							{/* Simplified ChooseOption text, color overridden for Radient */}
-							<ChooseOption className="choose-option" sx={{ color: radientTheme.palette.primary.main }}>
+							<ChooseOption
+								className="choose-option"
+								sx={{ color: radientTheme.palette.primary.main }}
+							>
 								Choose Radient Pass{" "}
 								<FontAwesomeIcon icon={faArrowRight} size="sm" />
 							</ChooseOption>
 						</RadientChoiceCard>
 					</Grid>
 					{/* DIY Option */}
-					<Grid item xs={12} md={12}> {/* Changed md to 12 for vertical stacking */}
-						<DiyChoiceCard onClick={handleDiyChoice}> {/* Use DiyChoiceCard */}
-							<Box sx={{ display: 'flex', flexDirection: 'row', alignItems: 'center', flexGrow: 1, width: '100%' }}> {/* Changed alignItems to center */}
-								<Box sx={{ flex: 1, pr: 2 }}> {/* Text content wrapper */}
+					<Grid item xs={12} md={12}>
+						{" "}
+						{/* Changed md to 12 for vertical stacking */}
+						<DiyChoiceCard onClick={handleDiyChoice}>
+							{" "}
+							{/* Use DiyChoiceCard */}
+							<Box
+								sx={{
+									display: "flex",
+									flexDirection: "row",
+									alignItems: "center",
+									flexGrow: 1,
+									width: "100%",
+								}}
+							>
+								{" "}
+								{/* Changed alignItems to center */}
+								<Box sx={{ flex: 1, pr: 2 }}>
+									{" "}
+									{/* Text content wrapper */}
 									<CardTitle variant="h6">
-										Set up your own keys{" "}
-										<FreeText>(Technical Setup)</FreeText>
+										Set up your own keys <FreeText>(Technical Setup)</FreeText>
 									</CardTitle>
 									<CardSubtitle variant="body2">
-										Full flexibility for technical users. Bring your own API keys
-										for providers like OpenRouter, OpenAI, Anthropic, Google, Tavily API, FAL, and manage billing with providers separately.  Experiment manually to find the best models and providers for your needs.
+										Full flexibility for technical users. Bring your own API
+										keys for providers like OpenRouter, OpenAI, Anthropic,
+										Google, Tavily API, FAL, and manage billing with providers
+										separately. Experiment manually to find the best models and
+										providers for your needs.
 									</CardSubtitle>
 								</Box>
 								{/* DIY Icon - styled for right alignment and vertical centering */}
 								<Box
 									sx={{
-										display: 'flex',
-										alignItems: 'center', // Vertically center icon
-										justifyContent: 'center', // Horizontally center icon in its box
+										display: "flex",
+										alignItems: "center", // Vertically center icon
+										justifyContent: "center", // Horizontally center icon in its box
 									}}
 								>
-									<Typography fontSize="3rem">🔧</Typography> {/* Adjusted emoji size */}
+									<Typography fontSize="3rem">🔧</Typography>{" "}
+									{/* Adjusted emoji size */}
 								</Box>
 							</Box>
 							<ChooseOption className="choose-option">

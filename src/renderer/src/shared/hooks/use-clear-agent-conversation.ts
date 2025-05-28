@@ -5,11 +5,8 @@ import { createLocalOperatorClient } from "@shared/api/local-operator";
 import { apiConfig } from "@shared/config";
 import { useChatStore } from "@shared/store/chat-store";
 import { useMessageHistoryStore } from "@shared/store/message-history-store";
+import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import {
-	showSuccessToast,
-	showErrorToast,
-} from "@shared/utils/toast-manager";
 
 /**
  * Hook that provides a mutation for clearing an agent's conversation history

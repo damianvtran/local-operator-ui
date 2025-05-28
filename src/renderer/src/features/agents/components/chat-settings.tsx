@@ -27,9 +27,9 @@ import type {
 import { EditableField } from "@shared/components/common/editable-field";
 import { SliderSetting } from "@shared/components/common/slider-setting";
 import type { useUpdateAgent } from "@shared/hooks/use-update-agent";
+import { showErrorToast } from "@shared/utils/toast-manager";
 import type { FC } from "react";
 import { useEffect, useState } from "react";
-import { showErrorToast } from "@shared/utils/toast-manager";
 
 type ChatSettingsProps = {
 	/**

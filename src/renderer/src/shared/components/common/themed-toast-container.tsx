@@ -1,7 +1,7 @@
+import GlobalStyles from "@mui/material/GlobalStyles";
+import { useTheme } from "@mui/material/styles";
 import type { FC } from "react";
 import { Toaster, toast } from "sonner";
-import { useTheme } from "@mui/material/styles";
-import GlobalStyles from "@mui/material/GlobalStyles";
 
 /**
  * ThemedToastContainer component
@@ -28,9 +28,9 @@ export const ThemedToastContainer: FC = () => {
 						top: "0px !important", // Added !important to ensure override
 						right: "-16px !important", // Added !important to ensure override
 						left: "auto !important", // Ensure left is not interfering
-            backgroundColor: "black !important",
-            border: "1px solid white !important",
-            color: "white !important",
+						backgroundColor: "black !important",
+						border: "1px solid white !important",
+						color: "white !important",
 					},
 				}}
 			/>

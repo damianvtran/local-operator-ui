@@ -8,7 +8,7 @@ import {
 	alpha,
 	styled,
 } from "@mui/material";
-import { useCallback, useState, memo } from "react";
+import { memo, useCallback, useState } from "react";
 import type { FC } from "react";
 import type { CanvasDocument } from "../../types/canvas";
 import { CanvasContent } from "./canvas-content";

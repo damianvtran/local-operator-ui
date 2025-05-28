@@ -203,7 +203,7 @@ const darkTheme = createTheme({
 				},
 			},
 		},
-    MuiPaper: {
+		MuiPaper: {
 			styleOverrides: {
 				root: {
 					backgroundImage: "none",
