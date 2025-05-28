@@ -119,7 +119,6 @@ const lightTheme = createTheme({
 				root: {
 					top: 0,
 					background: "rgba(255,255,255,0.8)", // Light app bar
-					backdropFilter: "blur(10px)",
 					boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
 				},
 			},
@@ -133,7 +132,6 @@ const lightTheme = createTheme({
 					paddingBottom: 12,
 					"&:hover": {
 						background: "rgba(0,0,0,0.05)", // Light hover effect
-						backdropFilter: "blur(4px)",
 					},
 				},
 			},

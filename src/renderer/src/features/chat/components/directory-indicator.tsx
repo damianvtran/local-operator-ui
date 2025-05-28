@@ -445,7 +445,6 @@ export const DirectoryIndicator: FC<DirectoryIndicatorProps> = ({
 								backgroundImage: "none",
 								borderRadius: "8px",
 								border: "1px solid rgba(255,255,255,0.1)",
-								backdropFilter: "blur(10px)",
 								"& .MuiMenuItem-root": {
 									borderRadius: "4px",
 									margin: "2px 4px",

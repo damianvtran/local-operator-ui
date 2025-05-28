@@ -174,7 +174,6 @@ const neonTheme = createTheme({
 							borderColor: "rgba(0, 239, 255, 0.5)",
 							color: theme.palette.primary.main,
 							boxShadow: `0 0 8px ${theme.palette.primary.main}55`,
-							backdropFilter: "blur(4px)",
 						},
 					}),
 				},

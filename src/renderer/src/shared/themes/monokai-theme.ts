@@ -120,7 +120,6 @@ const monokaiTheme = createTheme({
 				root: {
 					top: 0,
 					background: "rgba(39,40,34,0.8)", // Monokai background with opacity
-					backdropFilter: "blur(10px)",
 				},
 			},
 		},
@@ -133,7 +132,6 @@ const monokaiTheme = createTheme({
 					paddingBottom: 12,
 					"&:hover": {
 						background: "rgba(248,248,242,0.05)",
-						backdropFilter: "blur(4px)",
 					},
 				},
 			},
