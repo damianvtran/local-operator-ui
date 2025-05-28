@@ -65,6 +65,12 @@ type HostingSelectProps = {
 	 * Default: true
 	 */
 	allowCustom?: boolean;
+
+	/**
+	 * Whether to allow the "Default" option in the select
+	 * Default: true
+	 */
+	allowDefault?: boolean;
 };
 
 // Styled components for consistent UI - Applying shadcn-like styles
@@ -171,6 +177,7 @@ export const HostingSelect: FC<HostingSelectProps> = ({
 	isSaving = false,
 	filterByCredentials = true,
 	allowCustom = true,
+	allowDefault = true,
 }) => {
 	// Get user credentials
 	const { data: credentialsData } = useCredentials();
@@ -227,15 +234,15 @@ export const HostingSelect: FC<HostingSelectProps> = ({
 
 	// Convert hosting providers to autocomplete options
 	const hostingOptions: HostingOption[] = useMemo(() => {
-		// Start with Default option
-		const options: HostingOption[] = [
-			{
+		const options: HostingOption[] = [];
+		if (allowDefault) {
+			options.push({
 				id: "",
 				name: "Default",
 				description: "Clear hosting provider selection",
 				provider: undefined,
-			},
-		];
+			});
+		}
 
 		// Map available hosting providers to options
 		for (const provider of availableHostingProviders) {
@@ -280,7 +287,7 @@ export const HostingSelect: FC<HostingSelectProps> = ({
 		}
 
 		return options;
-	}, [availableHostingProviders, value, allowCustom]);
+	}, [availableHostingProviders, value, allowCustom, allowDefault]);
 
 	// Helper text to show when no credentials are available
 	const helperText = useMemo(() => {
@@ -292,6 +299,20 @@ export const HostingSelect: FC<HostingSelectProps> = ({
 
 	// Find the current selected option
 	const selectedOption = useMemo(() => {
+		// If value is empty and default is not allowed, or if there are no options at all
+		// when default is not allowed, treat as no selection.
+		if (
+			(!value && !allowDefault) ||
+			(!allowDefault &&
+				availableHostingProviders.length === 0 &&
+				!hostingOptions.some((opt) => opt.id === value && value !== ""))
+		) {
+			return null;
+		}
+		if (!value && allowDefault) {
+			// Find the "Default" option if value is empty and default is allowed
+			return hostingOptions.find((option) => option.id === "") || null;
+		}
 		if (!value) return null;
 
 		return (
@@ -302,7 +323,7 @@ export const HostingSelect: FC<HostingSelectProps> = ({
 				provider: undefined,
 			}
 		);
-	}, [value, hostingOptions]);
+	}, [value, hostingOptions, allowDefault, availableHostingProviders.length]);
 
 	// Reset credential fetch attempts when component mounts
 	useEffect(() => {
@@ -522,6 +543,12 @@ export const HostingSelect: FC<HostingSelectProps> = ({
 								showAllOptions.current = true;
 							}
 						}}
+						disabled={
+							!allowDefault &&
+							filterByCredentials &&
+							availableHostingProviders.length === 0 &&
+							!hostingOptions.some((opt) => opt.id === value && value !== "")
+						} // Disable if no credentials and default not allowed
 					/>
 				)}
 			/>

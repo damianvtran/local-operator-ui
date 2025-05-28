@@ -289,7 +289,8 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 									setSavingField(null);
 								}
 							}}
-							filterByCredentials={false}
+							filterByCredentials={true}
+							allowDefault={true}
 						/>
 					</Grid>
 					<Grid item xs={12} md={6} data-tour-tag="agent-settings-model-select">
@@ -302,6 +303,7 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 								value={selectedAgent.model || ""}
 								hostingId={currentHosting}
 								isSaving={savingField === "model"}
+								allowDefault={true}
 								onSave={async (value) => {
 									setSavingField("model");
 
