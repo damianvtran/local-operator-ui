@@ -1,4 +1,4 @@
-import type { FC } from "react";
+import { memo, type FC } from "react";
 import type { CanvasDocument } from "../../types/canvas";
 import { isHtmlFile } from "../../utils/is-html-file";
 import { isMarkdownFile } from "../../utils/is-markdown-file";
@@ -17,7 +17,7 @@ type CanvasContentProps = {
  * Content component for the canvas
  * Displays content based on file type - markdown preview, HTML preview, or code editor
  */
-export const CanvasContent: FC<CanvasContentProps> = ({ document }) => {
+const CanvasContentComponent: FC<CanvasContentProps> = ({ document }) => {
 	if (isMarkdownFile(document.title)) {
 		return <MarkdownPreview document={document} />;
 	}
@@ -28,3 +28,5 @@ export const CanvasContent: FC<CanvasContentProps> = ({ document }) => {
 
 	return <CodeEditor document={document} />;
 };
+
+export const CanvasContent = memo(CanvasContentComponent);
