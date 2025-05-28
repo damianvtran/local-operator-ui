@@ -17,7 +17,7 @@ import { PageHeader } from "@shared/components/common/page-header";
 import { CalendarDays, PlusCircle } from "lucide-react";
 import type { FC } from "react";
 import { useState } from "react";
-import { toast } from "react-toastify";
+import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
 import {
 	useCreateScheduleForAgent,
 	useEditSchedule,
@@ -82,19 +82,19 @@ export const SchedulesPage: FC = () => {
 					scheduleId: editingSchedule.id,
 					scheduleData: data as ScheduleUpdateRequest,
 				});
-				toast.success("Schedule updated successfully!");
+				showSuccessToast("Schedule updated successfully!");
 			} else {
 				// Creating a new schedule
 				await createScheduleMutation.mutateAsync({
 					agentId: agentId, // Use the agentId selected in the form
 					scheduleData: data as ScheduleCreateRequest,
 				});
-				toast.success("Schedule created successfully!");
+				showSuccessToast("Schedule created successfully!");
 			}
 			refetchSchedules();
 		} catch (err) {
 			console.error("Failed to save schedule:", err);
-			toast.error(
+			showErrorToast(
 				`Failed to save schedule: ${err instanceof Error ? err.message : "Unknown error"}`,
 			);
 		}
@@ -109,11 +109,11 @@ export const SchedulesPage: FC = () => {
 				scheduleId,
 				agentId: scheduleToDelete?.agent_id,
 			});
-			toast.success("Schedule removed successfully!");
+			showSuccessToast("Schedule removed successfully!");
 			refetchSchedules();
 		} catch (err) {
 			console.error("Failed to delete schedule:", err);
-			toast.error(
+			showErrorToast(
 				`Failed to remove schedule: ${err instanceof Error ? err.message : "Unknown error"}`,
 			);
 		}
@@ -125,13 +125,13 @@ export const SchedulesPage: FC = () => {
 				scheduleId: schedule.id,
 				scheduleData: { is_active: !schedule.is_active },
 			});
-			toast.success(
+			showSuccessToast(
 				`Schedule ${schedule.is_active ? "deactivated" : "activated"} successfully!`,
 			);
 			refetchSchedules();
 		} catch (err) {
 			console.error("Failed to toggle schedule active state:", err);
-			toast.error(
+			showErrorToast(
 				`Failed to toggle schedule: ${err instanceof Error ? err.message : "Unknown error"}`,
 			);
 		}

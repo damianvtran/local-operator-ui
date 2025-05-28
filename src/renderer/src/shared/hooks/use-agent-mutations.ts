@@ -7,7 +7,10 @@ import type { AgentCreate } from "@shared/api/local-operator/types";
 import { apiConfig } from "@shared/config";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { QueryKey } from "@tanstack/react-query";
-import { toast } from "react-toastify";
+import {
+	showSuccessToast,
+	showErrorToast,
+} from "@shared/utils/toast-manager";
 import { agentsQueryKey } from "./use-agents";
 
 /**
@@ -35,14 +38,14 @@ export const useCreateAgent = () => {
 						? error.message
 						: "An unknown error occurred while creating the agent";
 
-				toast.error(errorMessage);
+				showErrorToast(errorMessage);
 				throw error;
 			}
 		},
 		onSuccess: () => {
 			// Invalidate agents query to refetch the list
 			queryClient.invalidateQueries({ queryKey: agentsQueryKey });
-			toast.success("Agent created successfully");
+			showSuccessToast("Agent created successfully");
 		},
 		onError: (error) => {
 			console.error("Error creating agent:", error);
@@ -77,12 +80,12 @@ export const useUploadAgentToRadientMutation = () => {
 						? error.message
 						: `An unknown error occurred while uploading agent ${agentId}`;
 
-				toast.error(errorMessage);
+				showErrorToast(errorMessage);
 				throw error;
 			}
 		},
 		onSuccess: (data) => {
-			toast.success(
+			showSuccessToast(
 				`Agent successfully uploaded to Radient with ID: ${data?.agent_id}`,
 			);
 			// Invalidate the local agents list query to trigger a refetch
@@ -121,7 +124,7 @@ export const useDeleteAgent = () => {
 						? error.message
 						: `An unknown error occurred while deleting agent ${agentId}`;
 
-				toast.error(errorMessage);
+				showErrorToast(errorMessage);
 				throw error;
 			}
 		},
@@ -133,7 +136,7 @@ export const useDeleteAgent = () => {
 			});
 			// Invalidate agents query to refetch the list
 			queryClient.invalidateQueries({ queryKey: agentsQueryKey });
-			toast.success("Agent deleted successfully");
+			showSuccessToast("Agent deleted successfully");
 		},
 		onError: (error) => {
 			console.error("Error deleting agent:", error);
@@ -166,14 +169,14 @@ export const useImportAgent = () => {
 						? error.message
 						: "An unknown error occurred while importing the agent";
 
-				toast.error(errorMessage);
+				showErrorToast(errorMessage);
 				throw error;
 			}
 		},
 		onSuccess: (data) => {
 			// Invalidate agents query to refetch the list
 			queryClient.invalidateQueries({ queryKey: agentsQueryKey });
-			toast.success("Agent imported successfully");
+			showSuccessToast("Agent imported successfully");
 			return data;
 		},
 		onError: (error) => {
@@ -200,12 +203,12 @@ export const useExportAgent = () => {
 						? error.message
 						: `An unknown error occurred while exporting agent ${agentId}`;
 
-				toast.error(errorMessage);
+				showErrorToast(errorMessage);
 				throw error;
 			}
 		},
 		onSuccess: () => {
-			toast.success("Agent exported successfully");
+			showSuccessToast("Agent exported successfully");
 		},
 		onError: (error) => {
 			console.error("Error exporting agent:", error);

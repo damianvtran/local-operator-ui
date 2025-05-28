@@ -33,7 +33,7 @@ import { useAgents } from "@shared/hooks/use-agents";
 import { Info, Save, XSquare } from "lucide-react";
 import type { FC } from "react";
 import { useEffect, useMemo, useState } from "react";
-import { toast } from "react-toastify";
+import { showErrorToast } from "@shared/utils/toast-manager";
 
 // Styled components
 const StyledFormGrid = styled(Grid)(({ theme }) => ({
@@ -433,7 +433,7 @@ export const ScheduleFormDialog: FC<ScheduleFormDialogProps> = ({
 			onClose();
 		} catch (error) {
 			console.error("Failed to submit schedule:", error);
-			toast.error(
+			showErrorToast(
 				`Failed to save schedule: ${error instanceof Error ? error.message : "Unknown error"}`,
 			);
 		} finally {

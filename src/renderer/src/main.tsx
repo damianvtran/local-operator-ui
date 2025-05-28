@@ -5,10 +5,9 @@ import { PostHogProvider } from "posthog-js/react";
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { HashRouter } from "react-router-dom";
-import "react-toastify/dist/ReactToastify.css";
 import { ThemedToastContainer } from "./shared/components/common";
 import "@assets/fonts/fonts.css";
-import { config } from "@shared/config"; // TODO: Confirm that this is the only instance of the import
+import { config } from "@shared/config"; 
 import type { PostHogConfig } from "posthog-js";
 import App from "./app";
 import { queryClient } from "./shared/api/query-client";

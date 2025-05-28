@@ -3,8 +3,10 @@ import { apiConfig } from "@shared/config";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { toast } from "react-toastify"; // Use react-toastify
-// Removed useSnackbar import
+import {
+	showSuccessToast,
+	showErrorToast,
+} from "@shared/utils/toast-manager";
 import { agentDetailsKeys } from "./use-agent-details-query";
 import { publicAgentKeys } from "./use-public-agents-query"; // Corrected import name
 
@@ -39,7 +41,7 @@ export const useDelistAgentMutation = () => {
 			return deleteAgent(apiConfig.radientBaseUrl, agentId, sessionToken); // Use sessionToken
 		},
 		onSuccess: (_, variables) => {
-			toast.success("Agent successfully delisted."); // Use toast.success
+			showSuccessToast("Agent successfully delisted."); // Use toast.success
 
 			// Invalidate queries related to the specific agent and the list of public agents
 			queryClient.invalidateQueries({
@@ -52,7 +54,7 @@ export const useDelistAgentMutation = () => {
 		},
 		onError: (error) => {
 			// @ts-ignore TODO: Improve error typing
-			toast.error(`Failed to delist agent: ${error.message}`); // Use toast.error
+			showErrorToast(`Failed to delist agent: ${error.message}`); // Use toast.error
 			console.error("Delist agent error:", error);
 		},
 	});

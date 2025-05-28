@@ -27,7 +27,7 @@ import { ModelSelect } from "@shared/components/hosting/model-select";
 import type { useUpdateAgent } from "@shared/hooks/use-update-agent";
 import type { FC } from "react";
 import { useState } from "react";
-import { toast } from "react-toastify";
+import { showErrorToast } from "@shared/utils/toast-manager";
 
 type GeneralSettingsProps = {
 	/**
@@ -208,7 +208,7 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 						isSaving={savingField === "name"}
 						onSave={async (value) => {
 							if (!value.trim()) {
-								toast.error("Agent name cannot be empty");
+								showErrorToast("Agent name cannot be empty");
 								return;
 							}
 							setSavingField("name");

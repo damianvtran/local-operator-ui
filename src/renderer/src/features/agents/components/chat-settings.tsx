@@ -29,7 +29,7 @@ import { SliderSetting } from "@shared/components/common/slider-setting";
 import type { useUpdateAgent } from "@shared/hooks/use-update-agent";
 import type { FC } from "react";
 import { useEffect, useState } from "react";
-import { toast } from "react-toastify";
+import { showErrorToast } from "@shared/utils/toast-manager";
 
 type ChatSettingsProps = {
 	/**
@@ -676,7 +676,7 @@ export const ChatSettings: FC<ChatSettingsProps> = ({
 
 							// Validate that the seed is a valid number if provided
 							if (value.trim() && Number.isNaN(seedValue as number)) {
-								toast.error("Seed must be a valid number");
+								showErrorToast("Seed must be a valid number");
 								return;
 							}
 
