@@ -45,11 +45,9 @@ const ButtonContainer = styled(Box, {
 const StyledButton = styled(IconButton)(({ theme }) => ({
 	backgroundColor: theme.palette.background.paper,
 	color: theme.palette.text.secondary,
-	width: 44,
-	height: 44,
-	backdropFilter: "blur(8px)",
-	WebkitBackdropFilter: "blur(8px)",
-	borderRadius: "12px",
+	width: 36,
+	height: 36,
+	borderRadius: "100%",
 	pointerEvents: "auto",
 	boxShadow: "0 2px 12px rgba(0, 0, 0, 0.15)",
 	border: "1px solid rgba(255, 255, 255, 0.1)",
@@ -105,7 +103,7 @@ export const ScrollToBottomButton: FC<ScrollToBottomButtonProps> = ({
 					onClick={handleClick}
 					size="small"
 				>
-					<FontAwesomeIcon icon={faArrowDown} />
+					<FontAwesomeIcon icon={faArrowDown} style={{ fontSize: 14 }} />
 				</StyledButton>
 			</ButtonContainer>
 		</Fade>
