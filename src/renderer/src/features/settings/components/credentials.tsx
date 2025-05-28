@@ -76,12 +76,13 @@ export const Credentials: FC = () => {
 	};
 
 	const existingKeys = useMemo(
-		() => credentialsData?.keys ?? [],
+		() => credentialsData?.keys?.filter((key) => !CREDENTIAL_MANIFEST.find((cred) => cred.key === key)?.internal) ?? [],
 		[credentialsData],
 	);
+  
 	const availableCredentials = useMemo(
 		() =>
-			CREDENTIAL_MANIFEST.filter((cred) => !existingKeys.includes(cred.key)),
+			CREDENTIAL_MANIFEST.filter((cred) => !existingKeys.includes(cred.key) && !cred.internal),
 		[existingKeys],
 	);
 
