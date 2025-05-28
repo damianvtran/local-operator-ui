@@ -82,7 +82,8 @@ const errorSuggestions: Record<string, React.ReactNode> = {
 			<MuiLink component={Link} to="/settings" color="inherit">
 				settings page
 			</MuiLink>{" "}
-			to configure it for all your agents.  If you don't have an AI provider, you can sign in to Radient to get access for free to start!
+			to configure it for all your agents. If you don't have an AI provider, you
+			can sign in to Radient to get access for free to start!
 		</InfoText>
 	),
 	"Model name is not configured": (
@@ -91,20 +92,25 @@ const errorSuggestions: Record<string, React.ReactNode> = {
 			<MuiLink component={Link} to="/settings" color="inherit">
 				settings page
 			</MuiLink>{" "}
-			to select a model for all your agents.   If you don't have an AI provider, you can sign in to Radient to get access for free to start!
+			to select a model for all your agents. If you don't have an AI provider,
+			you can sign in to Radient to get access for free to start!
 		</InfoText>
 	),
 	"Rate limit": (
 		<InfoText>
-			You've hit the rate limit for your AI provider. Please try again later or get Radient Pass in the <MuiLink component={Link} to="/settings" color="inherit">
+			You've hit the rate limit for your AI provider. Please try again later or
+			get Radient Pass in the{" "}
+			<MuiLink component={Link} to="/settings" color="inherit">
 				settings page
 			</MuiLink>{" "}
 			to access AI models with no rate limits at low prices.
 		</InfoText>
 	),
-  "Rate-limit": (
+	"Rate-limit": (
 		<InfoText>
-			You've hit the rate limit for your AI provider. Please try again later or get Radient Pass in the <MuiLink component={Link} to="/settings" color="inherit">
+			You've hit the rate limit for your AI provider. Please try again later or
+			get Radient Pass in the{" "}
+			<MuiLink component={Link} to="/settings" color="inherit">
 				settings page
 			</MuiLink>{" "}
 			to access all AI models with no rate limits at low prices.
@@ -119,22 +125,24 @@ const errorSuggestions: Record<string, React.ReactNode> = {
 			to update your API key.
 		</InfoText>
 	),
-  "404 models": (
+	"404 models": (
 		<InfoText>
 			No models found. Please go to the{" "}
 			<MuiLink component={Link} to="/settings" color="inherit">
 				settings page
 			</MuiLink>{" "}
-			to select a different model, or try using Radient to get access to hundreds of models with no rate limits
+			to select a different model, or try using Radient to get access to
+			hundreds of models with no rate limits
 		</InfoText>
 	),
-  "Call ListModels": (
+	"Call ListModels": (
 		<InfoText>
 			No models found. Please go to the{" "}
 			<MuiLink component={Link} to="/settings" color="inherit">
 				settings page
 			</MuiLink>{" "}
-			to select a different model, or try using Radient to get access to hundreds of models with no rate limits
+			to select a different model, or try using Radient to get access to
+			hundreds of models with no rate limits
 		</InfoText>
 	),
 };
@@ -162,15 +170,17 @@ export const ErrorBlock: FC<ErrorBlockProps> = ({ error, isUser }) => {
 			<ErrorContainer isUser={isUser}>{error}</ErrorContainer>
 			{suggestion && (
 				<InfoContainer>
-          <Box sx={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            width: "24px",
-            height: "24px",
-          }}>
-					  <Info size={18} />
-          </Box>
+					<Box
+						sx={{
+							display: "flex",
+							alignItems: "center",
+							justifyContent: "center",
+							width: "24px",
+							height: "24px",
+						}}
+					>
+						<Info size={18} />
+					</Box>
 					{suggestion}
 				</InfoContainer>
 			)}
