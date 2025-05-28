@@ -102,6 +102,12 @@ const RadientPassText = styled(Typography)(() => ({
 	display: "inline", // Keep inline if needed within CardTitle
 }));
 
+// Styled span for Radient bold text
+const RadientBoldTextSpan = styled("span")(() => ({
+	fontWeight: "bold",
+	color: radientTheme.palette.primary.main,
+}));
+
 // Use Typography for Free text
 const FreeText = styled(Typography)(({ theme }) => ({
 	fontSize: "1.25rem",
@@ -208,9 +214,18 @@ export const RadientChoiceStep: FC<RadientChoiceStepProps> = ({
 									<RadientPassText>Radient Pass</RadientPassText>
 								</CardTitle>
 								<CardSubtitle variant="body2">
-									Designed for <b>low cost and best speed, accuracy, and performance</b> with Local Operator. Get access to all tools and models at once, with
+									Designed for{" "}
+									<RadientBoldTextSpan>
+										low cost and best speed, accuracy, and performance
+									</RadientBoldTextSpan>{" "}
+									with Local Operator. Get access to all tools and models at once, with
 									potential savings when Radient Automatic picks the best model to handle
-									each step.<br /><br />Two-click setup that <b>works out of the box</b>, no credit card required.
+									each step.
+									<br />
+									<br />
+									Two-click setup that{" "}
+									<RadientBoldTextSpan>works out of the box</RadientBoldTextSpan>, no credit
+									card required.
 								</CardSubtitle>
 							</Box>
 							<CardIcon sx={{ width: 150, height: 150, mb: 3 }}> {/* Further Increased icon size */}
