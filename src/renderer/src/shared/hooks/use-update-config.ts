@@ -9,7 +9,7 @@ import {
 } from "@shared/api/local-operator";
 import { apiConfig } from "@shared/config";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { toast } from "react-toastify";
+import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
 import { configQueryKey } from "./use-config";
 
 /**
@@ -37,7 +37,7 @@ export const useUpdateConfig = () => {
 						? error.message
 						: "An unknown error occurred while updating configuration";
 
-				toast.error(errorMessage);
+				showErrorToast(errorMessage);
 				throw error;
 			}
 		},
@@ -66,7 +66,7 @@ export const useUpdateConfig = () => {
 				type: "all", // Refetch all related queries at once
 			});
 
-			toast.success("Configuration updated successfully");
+			showSuccessToast("Configuration updated successfully");
 		},
 		onError: (error) => {
 			console.error("Error updating configuration:", error);

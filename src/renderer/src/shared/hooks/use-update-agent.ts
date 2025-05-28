@@ -9,7 +9,7 @@ import {
 } from "@shared/api/local-operator";
 import { apiConfig } from "@shared/config";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { toast } from "react-toastify";
+import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
 import { agentsQueryKey } from "./use-agents";
 
 /**
@@ -42,7 +42,7 @@ export const useUpdateAgent = () => {
 						? error.message
 						: `An unknown error occurred while updating agent ${agentId}`;
 
-				toast.error(errorMessage);
+				showErrorToast(errorMessage);
 				throw error;
 			}
 		},
@@ -71,7 +71,7 @@ export const useUpdateAgent = () => {
 				type: "all", // Refetch all related queries at once
 			});
 
-			toast.success("Agent updated successfully");
+			showSuccessToast("Agent updated successfully");
 		},
 		onError: (error) => {
 			console.error("Error updating agent:", error);

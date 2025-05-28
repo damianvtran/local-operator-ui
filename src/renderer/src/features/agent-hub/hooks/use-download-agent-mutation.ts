@@ -6,7 +6,10 @@ import type {
 import { apiConfig } from "@shared/config"; // Import apiConfig for the base URL
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { toast } from "react-toastify";
+import {
+	showSuccessToast,
+	showErrorToast,
+} from "@shared/utils/toast-manager";
 
 /**
  * React Query mutation hook for downloading an agent from Radient via the Local Operator.
@@ -32,7 +35,7 @@ export const useDownloadAgentMutation = () => {
 		},
 		onSuccess: (data, variables) => {
 			const agentName = data.result?.name ?? variables.agentName ?? "Agent";
-			toast.success(`Agent "${agentName}" downloaded successfully!`);
+			showSuccessToast(`Agent "${agentName}" downloaded successfully!`);
 			// Invalidate local agents list to reflect the newly downloaded agent
 			queryClient.invalidateQueries({ queryKey: ["agents"] });
 			// Optionally invalidate agent download counts if needed elsewhere
@@ -51,7 +54,7 @@ export const useDownloadAgentMutation = () => {
 			}
 		},
 		onError: (error) => {
-			toast.error(`Failed to download agent: ${error.message}`);
+			showErrorToast(`Failed to download agent: ${error.message}`);
 			console.error("Download agent error:", error);
 		},
 	});
