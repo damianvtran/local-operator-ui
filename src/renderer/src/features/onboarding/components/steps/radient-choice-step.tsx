@@ -78,8 +78,8 @@ const CardSubtitle = styled(Typography)(({ theme }) => ({
 }));
 
 const CardIcon = styled(Box)(({ theme }) => ({
-	width: 80, // Smaller icon size
-	height: 80,
+	width: 92,
+	height: 92,
 	display: "flex",
 	alignItems: "center",
 	justifyContent: "center",
@@ -198,14 +198,14 @@ export const RadientChoiceStep: FC<RadientChoiceStepProps> = ({
 								<CardTitle variant="h6">
 									{" "}
 									{/* Use variant */}
-									Get started for free with {/* Removed component="span" */}
+									Get started for free with{" "}
 									<RadientPassText>Radient Pass</RadientPassText>
 								</CardTitle>
 								<CardSubtitle variant="body2">
-									Designed for best speed, accuracy, and performance with Local
-									Operator. Get access to all tools and models at once, with
-									potential savings when Radient picks the best model to handle
-									each step. Two-click setup, no credit card required.
+									Designed for <b>low cost and best speed, accuracy, and performance</b> with
+									Local Operator. Get access to all tools and models at once, with
+									potential savings when Radient Automatic picks the best model to handle
+									each step. Two-click setup that <b>works out of the box</b>, no credit card required.
 								</CardSubtitle>
 							</Box>
 							<CardIcon>
@@ -233,13 +233,12 @@ export const RadientChoiceStep: FC<RadientChoiceStepProps> = ({
 								{" "}
 								{/* Wrap text content */}
 								<CardTitle variant="h6">
-									Set up your own keys {/* Removed component="span" */}
-									<FreeText>(Free Forever)</FreeText>
+									Set up your own keys{" "}
+									<FreeText>(Technical Setup)</FreeText>
 								</CardTitle>
 								<CardSubtitle variant="body2">
 									Full flexibility for technical users. Bring your own API keys
-									for providers like OpenAI, Anthropic, Tavily API, etc., and
-									manage billing separately.
+									for providers like OpenRouter, OpenAI, Anthropic, Google, Tavily API, FAL, and manage billing with providers separately.  Experiment manually to find the best models and providers for your needs.
 								</CardSubtitle>
 							</Box>
 							{/* Use Typography for emoji for better control */}
