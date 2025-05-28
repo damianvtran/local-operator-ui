@@ -6,7 +6,7 @@ import type {
 } from "@shared/api/local-operator/types";
 import { useStreamingMessagesStore } from "@shared/store/streaming-messages-store";
 import { Bot } from "lucide-react";
-import type { FC } from "react";
+import { type FC, memo } from "react"; // Import memo
 
 // Define the animations
 const dotAnimation = keyframes`
@@ -179,7 +179,7 @@ export const LoadingIndicator: FC<{
 	agentName?: string;
 	currentExecution?: AgentExecutionRecord | null;
 	conversationId?: string;
-}> = ({ status, currentExecution }) => {
+}> = memo(({ status, currentExecution }) => {
 	const { getStreamingMessage } = useStreamingMessagesStore();
 	const streamingMessage = getStreamingMessage(currentExecution?.id || "");
 	const isStreaming = !!streamingMessage && !streamingMessage.isComplete;
@@ -230,4 +230,4 @@ export const LoadingIndicator: FC<{
 			</ContentContainer>
 		</LoadingContainer>
 	);
-};
+});
