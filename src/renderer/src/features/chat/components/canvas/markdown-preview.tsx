@@ -14,7 +14,7 @@ export const MarkdownPreview: FC<MarkdownPreviewProps> = ({ document }) => {
 	return (
 		<Box
 			sx={(theme) => ({
-				padding: `0 ${theme.spacing(2)}`,
+				padding: `${theme.spacing(2)} ${theme.spacing(4)}`,
 				overflow: "auto",
 
 				"&::-webkit-scrollbar": {
