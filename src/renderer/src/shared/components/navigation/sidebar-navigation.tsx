@@ -147,11 +147,16 @@ const StyledTooltip = styled(Tooltip)(({ theme }) => ({
 	},
 }));
 
-const ToggleButtonContainer = styled(Box)(({ theme }) => ({
+const ToggleButtonContainer = styled(Box, {
+	shouldForwardProp: (prop) => prop !== "isExpanded",
+})<{ isExpanded: boolean }>(({ theme, isExpanded }) => ({
 	display: "flex",
 	justifyContent: "center",
+	alignItems: "center",
 	marginTop: theme.spacing(1),
 	marginBottom: theme.spacing(2),
+	width: "100%",
+	paddingLeft: isExpanded ? 0 : theme.spacing(1), // Adjust padding when collapsed to center the button
 }));
 
 const ToggleButton = styled(IconButton)(({ theme }) => ({
@@ -295,12 +300,12 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 			</Box>
 
 			{/* User Profile and Toggle Button at Bottom */}
-			<Box>
+			<Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%" }}>
 				{/* User Profile */}
 				<UserProfileSidebar expanded={expanded} />
 
 				{/* Toggle Button - Now positioned below user profile */}
-				<ToggleButtonContainer>
+				<ToggleButtonContainer isExpanded={expanded}>
 					<StyledTooltip
 						title={expanded ? "Collapse sidebar" : "Expand sidebar"}
 						placement="right"
