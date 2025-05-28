@@ -5,7 +5,7 @@ import {
 } from "@shared/api/local-operator";
 import { apiConfig } from "@shared/config";
 import { useCanvasStore } from "@shared/store/canvas-store";
-import { type FC, memo, useCallback, useEffect, useMemo } from "react";
+import { type FC, memo, useCallback, useEffect, useMemo } from "react"; // Removed React from here as it's not used directly
 import type { Message } from "../../types/message";
 import { ActionBlock } from "./action-block";
 import { CodeBlock } from "./code-block";
@@ -185,57 +185,57 @@ export const MessageItem: FC<MessageItemProps> = memo(
 			}
 		}, []);
 
-		// Refresh open canvas tabs with latest file content if a new message contains a file that matches an open tab
-		useEffect(() => {
-			if (!message.files || message.files.length === 0) return;
-			const state = useCanvasStore.getState();
-			const conv = state.conversations[conversationId];
-			if (!conv) return;
-			const { openTabs, files } = conv;
-			if (!openTabs || openTabs.length === 0) return;
 
-			// For each file in the message that matches an open tab, re-read from disk and update the store if changed
-			(async () => {
-				let updatedFiles = files;
-				let didUpdate = false;
+	useEffect(() => {
+		if (!message.files || message.files.length === 0) return;
+		const state = useCanvasStore.getState();
+		const conv = state.conversations[conversationId];
+		if (!conv) return;
+		const { openTabs, files } = conv;
+		if (!openTabs || openTabs.length === 0) return;
 
-				for (const filePath of message.files ?? []) {
-					const normalizedPath = filePath.startsWith("file://")
-						? filePath.substring(7)
-						: filePath;
-					const tabIsOpen = openTabs.some((tab) => tab.id === normalizedPath);
-					if (!tabIsOpen) continue;
+		// For each file in the message that matches an open tab, re-read from disk and update the store if changed
+		(async () => {
+			let updatedFiles = files;
+			let didUpdate = false;
 
-					const fileIdx = updatedFiles.findIndex(
-						(f) => f.id === normalizedPath,
-					);
-					if (fileIdx === -1) continue;
+			for (const filePath of message.files ?? []) {
+				const normalizedPath = filePath.startsWith("file://")
+					? filePath.substring(7)
+					: filePath;
+				const tabIsOpen = openTabs.some((tab) => tab.id === normalizedPath);
+				if (!tabIsOpen) continue;
 
-					try {
-						const result = await window.api.readFile(normalizedPath);
-						if (result.success) {
-							const currentDoc = updatedFiles[fileIdx];
-							if (currentDoc.content !== result.data) {
-								const updatedDoc = { ...currentDoc, content: result.data };
-								updatedFiles = [
-									...updatedFiles.slice(0, fileIdx),
-									updatedDoc,
-									...updatedFiles.slice(fileIdx + 1),
-								];
-								didUpdate = true;
-							}
+				const fileIdx = updatedFiles.findIndex(
+					(f) => f.id === normalizedPath,
+				);
+				if (fileIdx === -1) continue;
+
+				try {
+					const result = await window.api.readFile(normalizedPath);
+					if (result.success) {
+						const currentDoc = updatedFiles[fileIdx];
+						if (currentDoc.content !== result.data) {
+							const updatedDoc = { ...currentDoc, content: result.data };
+							updatedFiles = [
+								...updatedFiles.slice(0, fileIdx),
+								updatedDoc,
+								...updatedFiles.slice(fileIdx + 1),
+							];
+							didUpdate = true;
 						}
-					} catch (_) {
-						// Ignore read errors, do not update
 					}
+				} catch (_) {
+					// Ignore read errors, do not update
 				}
-				if (didUpdate) {
-					setFiles(conversationId, updatedFiles);
-				}
-			})();
-		}, [message, conversationId, setFiles]);
+			}
+			if (didUpdate) {
+				setFiles(conversationId, updatedFiles);
+			}
+		})();
+	}, [message.files, conversationId, setFiles]);
 
-		// Hide messages with action DONE, execution_type "action", and task_classification "conversation"
+	// Hide messages with action DONE, execution_type "action", and task_classification "conversation"
 		// These are redundant to the response execution_type messages
 		// Also hide messages with no content (no message, files, code, stdout, stderr, or logging)
 		const shouldHide =
