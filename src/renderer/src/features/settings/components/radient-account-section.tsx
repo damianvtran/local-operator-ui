@@ -215,7 +215,7 @@ export const RadientAccountSection: FC<RadientAccountSectionProps> = ({
 				<Typography variant="body2" color="text.secondary" mb={2.5}>
 					You are not currently signed in to Radient. Sign in to access your
 					account details or sign up to get free credits and unified access to
-					models, tools, and more with Radient Pass.
+					models, tools, and more with Radient Pass.  Radient's automatic model router will automatically select the best model for your agents to balance cost and performance.  It is often cheaper to use Radient Pass than to use single AI providers due to automatic cost optimization.
 				</Typography>
 				<RadientAuthButtons
 					titleText=""
