@@ -65,6 +65,12 @@ type ModelSelectProps = {
 	 * Default: true
 	 */
 	allowCustom?: boolean;
+
+	/**
+	 * Whether to allow the "Default" option in the select
+	 * Default: true
+	 */
+	allowDefault?: boolean;
 };
 
 const FieldContainer = styled(Box)({
@@ -185,6 +191,7 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 	onSave,
 	isSaving = false,
 	allowCustom = true,
+	allowDefault = true,
 }) => {
 	// State for tracking if user is typing or just clicking
 	const [isUserTyping, setIsUserTyping] = useState(false);
@@ -277,8 +284,8 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 			}
 		}
 
-		// 2. Add "Default" option if its ID hasn't been added yet
-		if (!addedIds.has("")) {
+		// 2. Add "Default" option if its ID hasn't been added yet and allowDefault is true
+		if (allowDefault && !addedIds.has("")) {
 			finalOptions.push({
 				id: "",
 				name: "Default",
@@ -313,10 +320,21 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 		}
 
 		return finalOptions;
-	}, [availableModels, value, hostingId]);
+	}, [availableModels, value, hostingId, allowDefault]);
 
 	// Helper text to show when no models are available
 	const helperText = useMemo(() => {
+		if (!hostingId && !allowDefault) {
+			return "Select a hosting provider first.";
+		}
+		if (
+			hostingId &&
+			availableModels.length === 0 &&
+			!allowDefault &&
+			!modelOptions.some((opt) => opt.id === value && value !== "")
+		) {
+			return "No models available for selected provider.";
+		}
 		if (availableModels.length === 0 && hostingId) {
 			const provider = getHostingProviderById(hostingId);
 			if (provider) {
@@ -325,10 +343,26 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 			return "No models available";
 		}
 		return undefined;
-	}, [availableModels.length, hostingId]);
+	}, [
+		availableModels.length,
+		hostingId,
+		allowDefault,
+		modelOptions,
+		value,
+	]);
 
 	// Find the current selected option
 	const selectedOption = useMemo(() => {
+		if (
+			(!value || value.trim() === "") &&
+			!allowDefault &&
+			availableModels.length === 0
+		) {
+			return null;
+		}
+		if ((!value || value.trim() === "") && allowDefault) {
+			return modelOptions.find((option) => option.id === "") || null;
+		}
 		if (!value || value.trim() === "") return null;
 
 		// Check if the value exists exactly in the available options
@@ -357,7 +391,7 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 			description: "Custom model",
 			model: undefined,
 		};
-	}, [value, modelOptions, hostingId]);
+	}, [value, modelOptions, hostingId, allowDefault, availableModels.length]);
 
 	// Update input value when selected option changes
 	useEffect(() => {
@@ -608,6 +642,15 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 								showAllOptions.current = true;
 							}
 						}}
+						disabled={
+							Boolean(
+								(!hostingId && !allowDefault) ||
+									(hostingId &&
+										availableModels.length === 0 &&
+										!allowDefault &&
+										!modelOptions.some((opt) => opt.id === value && value !== "")),
+							)
+						} // Disable if no hostingId/models and default not allowed
 					/>
 				)}
 			/>

@@ -758,6 +758,7 @@ export const SettingsPage: FC = () => {
 											onSave={(value) => handleUpdateField("hosting", value)}
 											filterByCredentials={true}
 											allowCustom={true}
+											allowDefault={false}
 										/>
 										<ModelSelect
 											value={config.values.model_name}
@@ -765,6 +766,7 @@ export const SettingsPage: FC = () => {
 											isSaving={savingField === "model_name"}
 											onSave={(value) => handleUpdateField("model_name", value)}
 											allowCustom={true}
+											allowDefault={false}
 										/>
                     <Box sx={{ display: "flex", gap: 1, alignItems: "center"}}>
                       <Info size={28} />
