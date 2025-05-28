@@ -5,7 +5,10 @@
  * with an exciting and engaging interface.
  */
 
-import { CREDENTIAL_MANIFEST } from "@features/settings/components/credential-manifest";
+import {
+	CREDENTIAL_MANIFEST,
+	CredentialType,
+} from "@features/settings/components/credential-manifest";
 import {
 	faCheck,
 	faExternalLinkAlt,
@@ -53,7 +56,7 @@ export const SearchApiStep: FC = () => {
 	const theme = useTheme(); // Get theme context
 	// Get the list of search API credentials and sort Tavily first
 	const searchApiCredentials = CREDENTIAL_MANIFEST.filter(
-		(cred) => cred.key === "TAVILY_API_KEY" || cred.key === "SERP_API_KEY",
+		(cred) => cred.type === CredentialType.Search,
 	).sort((a, b) => {
 		if (a.key === RECOMMENDED_CREDENTIAL) return -1;
 		if (b.key === RECOMMENDED_CREDENTIAL) return 1;

@@ -8,8 +8,8 @@ import {
 	createLocalOperatorClient,
 } from "@shared/api/local-operator";
 import { apiConfig } from "@shared/config";
+import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { toast } from "react-toastify";
 import { systemPromptQueryKey } from "./use-system-prompt";
 
 /**
@@ -37,7 +37,7 @@ export const useUpdateSystemPrompt = () => {
 						? error.message
 						: "An unknown error occurred while updating system prompt";
 
-				toast.error(errorMessage);
+				showErrorToast(errorMessage);
 				throw error;
 			}
 		},
@@ -66,7 +66,7 @@ export const useUpdateSystemPrompt = () => {
 				type: "all", // Refetch all related queries at once
 			});
 
-			toast.success("System prompt updated successfully");
+			showSuccessToast("System prompt updated successfully");
 		},
 		onError: (error) => {
 			console.error("Error updating system prompt:", error);

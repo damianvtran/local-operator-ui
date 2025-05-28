@@ -119,7 +119,6 @@ const radientTheme = createTheme({
 				root: {
 					top: 0,
 					background: "rgba(16,21,28,0.8)",
-					backdropFilter: "blur(10px)",
 				},
 			},
 		},
@@ -132,7 +131,6 @@ const radientTheme = createTheme({
 					paddingBottom: 12,
 					"&:hover": {
 						background: "rgba(255,255,255,0.08)",
-						backdropFilter: "blur(4px)",
 					},
 				},
 			},
@@ -160,7 +158,6 @@ const radientTheme = createTheme({
 						transition: "all 0.2s ease-in-out",
 						"&:hover": {
 							background: "rgba(255,255,255,0.08)",
-							backdropFilter: "blur(4px)",
 						},
 					},
 				},
@@ -186,7 +183,6 @@ const radientTheme = createTheme({
 					backgroundColor: "#1a1f2f",
 					borderRadius: 12,
 					border: "1px solid rgba(255, 255, 255, 0.12)",
-					backdropFilter: "blur(8px)",
 				},
 			},
 		},

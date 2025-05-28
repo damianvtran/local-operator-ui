@@ -120,7 +120,6 @@ const darkTheme = createTheme({
 				root: {
 					top: 0,
 					background: "rgba(10,10,10,0.8)",
-					backdropFilter: "blur(10px)",
 				},
 			},
 		},
@@ -133,7 +132,6 @@ const darkTheme = createTheme({
 					paddingBottom: 12,
 					"&:hover": {
 						background: "rgba(255,255,255,0.05)",
-						backdropFilter: "blur(4px)",
 					},
 				},
 			},
@@ -161,7 +159,6 @@ const darkTheme = createTheme({
 						transition: "all 0.2s ease-in-out",
 						"&:hover": {
 							background: "rgba(255,255,255,0.05)",
-							backdropFilter: "blur(4px)",
 						},
 					},
 				},
@@ -187,7 +184,6 @@ const darkTheme = createTheme({
 					backgroundColor: "#141414",
 					borderRadius: 12,
 					border: "1px solid rgba(255, 255, 255, 0.1)",
-					backdropFilter: "blur(8px)",
 				},
 			},
 		},
@@ -204,6 +200,13 @@ const darkTheme = createTheme({
 					"@media (min-width:1800px)": {
 						maxWidth: "1800px",
 					},
+				},
+			},
+		},
+		MuiPaper: {
+			styleOverrides: {
+				root: {
+					backgroundImage: "none",
 				},
 			},
 		},

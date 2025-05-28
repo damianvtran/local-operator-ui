@@ -3,6 +3,7 @@ import type {
 	AgentExecutionRecord,
 	JobStatus,
 } from "@shared/api/local-operator/types";
+import { RingLoadingIndicator } from "@shared/components/common/ring-loading-indicator";
 import type { FC, RefObject } from "react";
 import type { Message } from "../types/message";
 import { LoadingIndicator } from "./loading-indicator";
@@ -135,7 +136,10 @@ const LoadingMoreIndicator = styled(Box)(({ theme }) => ({
 const LoadingBox = styled(Box)({
 	display: "flex",
 	justifyContent: "center",
+	alignItems: "center",
 	padding: 32,
+	height: "100%",
+	flexGrow: 1,
 });
 
 /**
@@ -172,6 +176,10 @@ export const MessagesView: FC<MessagesViewProps> = ({
 	const collapsed =
 		messages.length === 0 && !isLoadingMessages && !isFetchingMore;
 
+	const lastMessageIsStreaming =
+		messages[messages.length - 1]?.is_streamable &&
+		!messages[messages.length - 1]?.is_complete;
+
 	return (
 		<MessagesViewWrapper collapsed={collapsed}>
 			{/* Fixed position loading indicator for fetching more messages */}
@@ -190,7 +198,7 @@ export const MessagesView: FC<MessagesViewProps> = ({
 				{/* Show loading indicator when initially loading messages */}
 				{isLoadingMessages && !messages.length ? (
 					<LoadingBox>
-						<CircularProgress />
+						<RingLoadingIndicator size={68} />
 					</LoadingBox>
 				) : (
 					<>
@@ -240,7 +248,7 @@ export const MessagesView: FC<MessagesViewProps> = ({
 								)}
 
 								{/* Loading indicator for new message at the bottom */}
-								{isLoading && (
+								{isLoading && !lastMessageIsStreaming && (
 									<LoadingIndicator
 										status={jobStatus}
 										agentName={agentName}

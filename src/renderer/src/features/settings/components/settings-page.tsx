@@ -48,7 +48,7 @@ import { useUpdateConfig } from "@shared/hooks/use-update-config";
 import { useUsageRollup } from "@shared/hooks/use-usage-rollup";
 import { useUserStore } from "@shared/store/user-store";
 import { format, formatRFC3339, parseISO, subDays } from "date-fns";
-import { PlayCircle, Settings } from "lucide-react";
+import { Info, PlayCircle, Settings } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { FC, RefObject } from "react";
 import {
@@ -483,6 +483,8 @@ export const SettingsPage: FC = () => {
 	const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null); // Ref for scroll timeout
 	const { startTour: startOnboardingTour } = useOnboardingTour();
 
+	const theme = useTheme();
+
 	const { data: credentialsData, refetch: refetchCredentials } =
 		useCredentials();
 	const { refreshModels } = useModels();
@@ -756,6 +758,7 @@ export const SettingsPage: FC = () => {
 											onSave={(value) => handleUpdateField("hosting", value)}
 											filterByCredentials={true}
 											allowCustom={true}
+											allowDefault={false}
 										/>
 										<ModelSelect
 											value={config.values.model_name}
@@ -763,7 +766,25 @@ export const SettingsPage: FC = () => {
 											isSaving={savingField === "model_name"}
 											onSave={(value) => handleUpdateField("model_name", value)}
 											allowCustom={true}
+											allowDefault={false}
 										/>
+										<Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
+											<Info size={28} />
+											<Typography
+												variant="subtitle2"
+												sx={{
+													color: theme.palette.text.secondary,
+													fontSize: "0.8rem",
+													lineHeight: 1.4,
+													fontWeight: 300,
+												}}
+											>
+												You need a Radient Account or to bring your own API keys
+												to access cloud providers. If you don't see more options
+												for hosting providers and models, you may need to add
+												credentials or sign in to Radient.
+											</Typography>
+										</Box>
 									</FieldsContainer>
 								</SettingsSectionCard>
 

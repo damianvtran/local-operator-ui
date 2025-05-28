@@ -8,7 +8,7 @@ import {
 	alpha,
 	styled,
 } from "@mui/material";
-import { useCallback, useState } from "react";
+import { memo, useCallback, useState } from "react";
 import type { FC } from "react";
 import type { CanvasDocument } from "../../types/canvas";
 import { CanvasContent } from "./canvas-content";
@@ -101,7 +101,7 @@ const CloseButton = styled(IconButton)(({ theme }) => ({
  * A sidebar component that displays markdown documents in tabs
  * Replaces the agent options sidebar with a markdown canvas
  */
-export const Canvas: FC<CanvasProps> = ({
+const CanvasComponent: FC<CanvasProps> = ({
 	activeDocumentId: externalActiveDocumentId,
 	initialDocuments = [],
 	onChangeActiveDocument: externalChangeActiveDocument,
@@ -219,3 +219,5 @@ export const Canvas: FC<CanvasProps> = ({
 		</CanvasContainer>
 	);
 };
+
+export const Canvas = memo(CanvasComponent);

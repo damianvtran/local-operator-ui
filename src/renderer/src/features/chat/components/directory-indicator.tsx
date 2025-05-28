@@ -404,7 +404,7 @@ export const DirectoryIndicator: FC<DirectoryIndicatorProps> = ({
 			) : (
 				<>
 					<Tooltip
-						title="Click to open directory browser"
+						title="Click to change working directory"
 						arrow
 						placement="right"
 					>
@@ -442,9 +442,9 @@ export const DirectoryIndicator: FC<DirectoryIndicatorProps> = ({
 								backgroundColor: (theme) =>
 									alpha(theme.palette.background.default, 0.95),
 								boxShadow: "0 4px 20px rgba(0,0,0,0.4)",
+								backgroundImage: "none",
 								borderRadius: "8px",
 								border: "1px solid rgba(255,255,255,0.1)",
-								backdropFilter: "blur(10px)",
 								"& .MuiMenuItem-root": {
 									borderRadius: "4px",
 									margin: "2px 4px",

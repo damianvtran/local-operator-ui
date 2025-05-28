@@ -25,9 +25,9 @@ import { TagsInputChips } from "@shared/components/common/tags-input-chips";
 import { HostingSelect } from "@shared/components/hosting/hosting-select";
 import { ModelSelect } from "@shared/components/hosting/model-select";
 import type { useUpdateAgent } from "@shared/hooks/use-update-agent";
+import { showErrorToast } from "@shared/utils/toast-manager";
 import type { FC } from "react";
 import { useState } from "react";
-import { toast } from "react-toastify";
 
 type GeneralSettingsProps = {
 	/**
@@ -208,7 +208,7 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 						isSaving={savingField === "name"}
 						onSave={async (value) => {
 							if (!value.trim()) {
-								toast.error("Agent name cannot be empty");
+								showErrorToast("Agent name cannot be empty");
 								return;
 							}
 							setSavingField("name");
@@ -289,7 +289,8 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 									setSavingField(null);
 								}
 							}}
-							filterByCredentials={false}
+							filterByCredentials={true}
+							allowDefault={true}
 						/>
 					</Grid>
 					<Grid item xs={12} md={6} data-tour-tag="agent-settings-model-select">
@@ -302,6 +303,7 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 								value={selectedAgent.model || ""}
 								hostingId={currentHosting}
 								isSaving={savingField === "model"}
+								allowDefault={true}
 								onSave={async (value) => {
 									setSavingField("model");
 

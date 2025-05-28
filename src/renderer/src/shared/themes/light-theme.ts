@@ -119,7 +119,6 @@ const lightTheme = createTheme({
 				root: {
 					top: 0,
 					background: "rgba(255,255,255,0.8)", // Light app bar
-					backdropFilter: "blur(10px)",
 					boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
 				},
 			},
@@ -133,7 +132,6 @@ const lightTheme = createTheme({
 					paddingBottom: 12,
 					"&:hover": {
 						background: "rgba(0,0,0,0.05)", // Light hover effect
-						backdropFilter: "blur(4px)",
 					},
 				},
 			},
@@ -161,7 +159,6 @@ const lightTheme = createTheme({
 						transition: "all 0.2s ease-in-out",
 						"&:hover": {
 							background: "rgba(0,0,0,0.05)", // Light hover effect
-							backdropFilter: "blur(4px)",
 						},
 					},
 				},
@@ -188,7 +185,6 @@ const lightTheme = createTheme({
 					borderRadius: 12,
 					border: "1px solid rgba(0, 0, 0, 0.1)", // Light border
 					boxShadow: "0 2px 8px rgba(0, 0, 0, 0.05)", // Subtle shadow
-					backdropFilter: "blur(8px)",
 				},
 			},
 		},
