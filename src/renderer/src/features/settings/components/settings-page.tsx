@@ -767,9 +767,9 @@ export const SettingsPage: FC = () => {
 											allowCustom={true}
 										/>
                     <Box sx={{ display: "flex", gap: 1, alignItems: "center"}}>
-                      <Info size={16} />
-                      <Typography variant="subtitle2" sx={{ color: theme.palette.text.secondary, fontSize: "0.8rem", lineHeight: 1.4 }}>
-                        You need a Radient Account or to bring your own API keys to access cloud providers.
+                      <Info size={28} />
+                      <Typography variant="subtitle2" sx={{ color: theme.palette.text.secondary, fontSize: "0.8rem", lineHeight: 1.4, fontWeight: 300 }}>
+                        You need a Radient Account or to bring your own API keys to access cloud providers.  If you don't see more options for hosting providers and models, you may need to add credentials or sign in to Radient.
                       </Typography>
                     </Box>
 									</FieldsContainer>

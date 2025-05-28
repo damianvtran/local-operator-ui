@@ -1,6 +1,8 @@
-import { Box, Typography, alpha } from "@mui/material";
+import { Box, Typography, alpha, Link as MuiLink } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import type { FC } from "react";
+import { Link } from "react-router-dom";
+import { Info } from "lucide-react";
 /**
  * Props for the ErrorBlock component
  */
@@ -53,16 +55,72 @@ const ErrorContainer = styled(Box, {
 	},
 }));
 
+const InfoContainer = styled(Box)(({ theme }) => ({
+	fontFamily: theme.typography.fontFamily,
+	fontSize: "0.875rem",
+	backgroundColor: alpha(
+		theme.palette.info.main,
+		theme.palette.mode === "dark" ? 0.15 : 0.1,
+	),
+	borderRadius: "8px",
+	padding: "12px",
+	marginTop: "8px",
+	display: "flex",
+	alignItems: "center",
+	gap: "8px",
+	color: theme.palette.info.contrastText,
+	width: "100%",
+	boxShadow: `0 2px 6px ${alpha(theme.palette.common.black, theme.palette.mode === "dark" ? 0.15 : 0.1)}`,
+}));
+
+const errorSuggestions: Record<string, React.ReactNode> = {
+	"Hosting platform is not configured": (
+		<Typography variant="body2">
+			You haven't selected an AI provider yet. Please go to the{" "}
+			<MuiLink component={Link} to="/settings" color="inherit">
+				settings page
+			</MuiLink>{" "}
+			to configure it for all your agents.
+		</Typography>
+	),
+	"Model name is not configured": (
+		<Typography variant="body2">
+			You haven't selected an AI model yet. Please go to the{" "}
+			<MuiLink component={Link} to="/settings" color="inherit">
+				settings page
+			</MuiLink>{" "}
+			to select a model for all your agents.
+		</Typography>
+	),
+};
+
 /**
  * Component for displaying error messages
  */
 export const ErrorBlock: FC<ErrorBlockProps> = ({ error, isUser }) => {
 	if (!error || error === "[No error output]") return null;
 
+	const trimmedError = error.trim();
+	let suggestion: React.ReactNode | undefined;
+
+	const lowercasedTrimmedError = trimmedError.toLowerCase();
+	for (const key in errorSuggestions) {
+		if (lowercasedTrimmedError.includes(key.toLowerCase())) {
+			suggestion = errorSuggestions[key];
+			break;
+		}
+	}
+
 	return (
 		<CodeContainer>
 			<SectionLabel variant="caption">Error</SectionLabel>
 			<ErrorContainer isUser={isUser}>{error}</ErrorContainer>
+			{suggestion && (
+				<InfoContainer>
+					<Info size={18} />
+					{suggestion}
+				</InfoContainer>
+			)}
 		</CodeContainer>
 	);
 };
