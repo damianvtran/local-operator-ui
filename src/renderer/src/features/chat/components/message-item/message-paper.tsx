@@ -204,7 +204,7 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 
 	// Memoize the regular message components to prevent unnecessary re-renders
 	const regularMessageComponents = useMemo(() => {
-		if (isStreamable || !message) return null;
+		if ((isStreamable && isJobRunning) || !message) return null;
 
 		return (
 			<Box sx={messageStyles}>
@@ -225,6 +225,7 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 		filteredChildren,
 		message,
 		isUser,
+		isJobRunning,
 		isThinkingExpanded,
 		handleThinkingExpand, // Added
 		handleThinkingCollapse, // Added
