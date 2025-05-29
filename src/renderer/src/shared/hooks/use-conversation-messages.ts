@@ -66,6 +66,7 @@ export const convertToMessage = (
 		replacements: record.replacements,
 		agent: record.agent,
 		learnings: record.learnings,
+		thinking: record.thinking,
 	};
 };
 
