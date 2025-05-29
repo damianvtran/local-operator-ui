@@ -1,6 +1,6 @@
-import { Box, Typography, IconButton, Collapse } from "@mui/material";
+import { Box, Collapse, IconButton, Typography } from "@mui/material";
 import { styled } from "@mui/material/styles";
-import { ChevronRight, ChevronDown } from "lucide-react";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import type { FC } from "react";
 import { MarkdownRenderer } from "../markdown-renderer";
 
@@ -56,7 +56,9 @@ export const ExpandableThinkingContent: FC<ExpandableThinkingContentProps> = ({
 				<ThinkingTitle variant="caption">Thinking</ThinkingTitle>
 			</ThinkingHeader>
 			<Collapse in={isExpanded} timeout="auto" unmountOnExit>
-				<Box sx={{ pl: 4.5, pb: 1 }}> {/* Indent content slightly */}
+				<Box sx={{ pl: 4.5, pb: 1 }}>
+					{" "}
+					{/* Indent content slightly */}
 					<MarkdownRenderer content={thinking} />
 				</Box>
 			</Collapse>
