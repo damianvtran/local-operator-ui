@@ -29,4 +29,5 @@ export type Message = {
 	replacements?: string;
 	agent?: string;
 	learnings?: string;
+	thinking?: string;
 };

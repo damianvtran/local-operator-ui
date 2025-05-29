@@ -1,8 +1,16 @@
 import { Box, Paper, useTheme } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import { useScrollToBottom } from "@shared/hooks/use-scroll-to-bottom";
-import { type FC, useEffect, useMemo, useRef } from "react";
+import {
+	type FC,
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import type { Message } from "../../types/message";
+import { ExpandableThinkingContent } from "./expandable-thinking-content";
 import { MessageControls } from "./message-controls";
 import { MessageTimestamp } from "./message-timestamp";
 import { StreamingMessage } from "./streaming-message";
@@ -193,12 +201,45 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 		);
 	}, [isStreamable, message, messageStyles, onMessageComplete, isJobRunning]);
 
+	// State for expanding thinking content in non-streaming messages
+	const [isThinkingExpanded, setIsThinkingExpanded] = useState(false);
+	const handleThinkingExpand = useCallback(
+		() => setIsThinkingExpanded(true),
+		[],
+	);
+	const handleThinkingCollapse = useCallback((e: React.MouseEvent) => {
+		e.stopPropagation();
+		setIsThinkingExpanded(false);
+	}, []);
+
 	// Memoize the regular message components to prevent unnecessary re-renders
 	const regularMessageComponents = useMemo(() => {
-		if (isStreamable) return null;
+		if ((isStreamable && isJobRunning) || !message) return null;
 
-		return <Box sx={messageStyles}>{filteredChildren}</Box>;
-	}, [isStreamable, messageStyles, filteredChildren]);
+		return (
+			<Box sx={messageStyles}>
+				{message.thinking && !isUser && (
+					<ExpandableThinkingContent
+						thinking={message.thinking}
+						isExpanded={isThinkingExpanded}
+						onExpand={handleThinkingExpand}
+						onCollapse={handleThinkingCollapse}
+					/>
+				)}
+				{filteredChildren}
+			</Box>
+		);
+	}, [
+		isStreamable,
+		messageStyles,
+		filteredChildren,
+		message,
+		isUser,
+		isJobRunning,
+		isThinkingExpanded,
+		handleThinkingExpand, // Added
+		handleThinkingCollapse, // Added
+	]);
 
 	return (
 		<Box

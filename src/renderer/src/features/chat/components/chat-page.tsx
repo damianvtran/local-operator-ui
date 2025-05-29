@@ -116,6 +116,7 @@ export const ChatPage: FC<ChatProps> = () => {
 	const { isFarFromBottom, scrollToBottom } = useScrollToBottom(
 		50,
 		messagesContainerRef,
+		messages.length,
 	);
 
 	// Create a ref for the messages end element (for backwards compatibility)

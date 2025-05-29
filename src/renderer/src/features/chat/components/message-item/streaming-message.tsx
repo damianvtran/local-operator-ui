@@ -9,6 +9,7 @@ import { ExpandableActionElement } from "../expandable-action-element";
 import { MarkdownRenderer } from "../markdown-renderer";
 import { CodeBlock } from "./code-block";
 import { ErrorBlock } from "./error-block";
+import { ExpandableThinkingContent } from "./expandable-thinking-content";
 import { LogBlock } from "./log-block";
 import { OutputBlock } from "./output-block";
 
@@ -325,12 +326,19 @@ export const StreamingMessage = ({
 		);
 	}, [error]);
 
-	const [isExpanded, setIsExpanded] = useState(false);
+	const [isActionExpanded, setIsActionExpanded] = useState(false);
+	const [isThinkingExpanded, setIsThinkingExpanded] = useState(false);
 
-	const handleExpand = () => setIsExpanded(true);
-	const handleCollapse = (e: React.MouseEvent) => {
+	const handleActionExpand = () => setIsActionExpanded(true);
+	const handleActionCollapse = (e: React.MouseEvent) => {
 		e.stopPropagation();
-		setIsExpanded(false);
+		setIsActionExpanded(false);
+	};
+
+	const handleThinkingExpand = () => setIsThinkingExpanded(true);
+	const handleThinkingCollapse = (e: React.MouseEvent) => {
+		e.stopPropagation();
+		setIsThinkingExpanded(false);
 	};
 
 	const hasCollapsibleContent = Boolean(
@@ -348,6 +356,14 @@ export const StreamingMessage = ({
 			{statusIndicator}
 			{children}
 			{loadingIndicator}
+			{message?.thinking && (
+				<ExpandableThinkingContent
+					thinking={message.thinking}
+					isExpanded={isThinkingExpanded}
+					onExpand={handleThinkingExpand}
+					onCollapse={handleThinkingCollapse}
+				/>
+			)}
 			{messageContent}
 			{streamingLoader}
 
@@ -356,9 +372,9 @@ export const StreamingMessage = ({
 				executionType={message?.execution_type || "action"}
 				action={message?.action}
 				isUser={false}
-				isExpanded={isExpanded}
-				onExpand={handleExpand}
-				onCollapse={handleCollapse}
+				isExpanded={isActionExpanded}
+				onExpand={handleActionExpand}
+				onCollapse={handleActionCollapse}
 				hasCollapsibleContent={hasCollapsibleContent}
 				isLoading={isActivelyStreaming}
 			>
