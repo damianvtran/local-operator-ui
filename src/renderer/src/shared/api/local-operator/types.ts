@@ -570,6 +570,8 @@ export type AgentExecutionRecord = {
 	agent?: string;
 	/** Learnings noted during this step about previous steps */
 	learnings?: string;
+	/** Thinking process of the agent */
+	thinking?: string;
 };
 
 /**
