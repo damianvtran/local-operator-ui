@@ -21,20 +21,13 @@ export const useScrollToBottom = (
 		const container = containerRef.current;
 		if (!container) return;
 
-		const { scrollTop, scrollHeight, clientHeight } = container;
-		const distanceFromBottom = Math.abs(scrollTop);
+    const { scrollTop, scrollHeight, clientHeight } = container;
+    const distanceFromBottom = Math.abs(scrollTop);
 		const canScroll = scrollHeight > clientHeight;
 		const shouldShow = canScroll && distanceFromBottom > buttonThreshold;
-		const now = Date.now();
-
-		if (
-			shouldShow !== isFarFromBottom &&
-			now - lastUpdateTimeRef.current > 100
-		) {
-			lastUpdateTimeRef.current = now;
-			setIsFarFromBottom(shouldShow);
-		}
-	}, [buttonThreshold, containerRef, isFarFromBottom]);
+		// Update visibility immediately based on scroll position
+		setIsFarFromBottom(shouldShow);
+	}, [buttonThreshold, containerRef]);
 
 	/**
 	 * Smoothly scroll to bottom (scrollTop = 0 in column-reverse layouts).
