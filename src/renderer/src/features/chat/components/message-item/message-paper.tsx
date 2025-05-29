@@ -1,12 +1,19 @@
 import { Box, Paper, useTheme } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import { useScrollToBottom } from "@shared/hooks/use-scroll-to-bottom";
-import { type FC, useEffect, useMemo, useRef, useState, useCallback } from "react";
+import {
+	type FC,
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import type { Message } from "../../types/message";
+import { ExpandableThinkingContent } from "./expandable-thinking-content";
 import { MessageControls } from "./message-controls";
 import { MessageTimestamp } from "./message-timestamp";
 import { StreamingMessage } from "./streaming-message";
-import { ExpandableThinkingContent } from "./expandable-thinking-content";
 
 // Create a Paper component with custom styling
 const StyledPaper = styled(Paper)(({ theme }) => ({
@@ -196,7 +203,10 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 
 	// State for expanding thinking content in non-streaming messages
 	const [isThinkingExpanded, setIsThinkingExpanded] = useState(false);
-	const handleThinkingExpand = useCallback(() => setIsThinkingExpanded(true), []);
+	const handleThinkingExpand = useCallback(
+		() => setIsThinkingExpanded(true),
+		[],
+	);
 	const handleThinkingCollapse = useCallback((e: React.MouseEvent) => {
 		e.stopPropagation();
 		setIsThinkingExpanded(false);

@@ -7,9 +7,9 @@ import { getLanguageFromExtension } from "@shared/utils/file-utils";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ExpandableActionElement } from "../expandable-action-element";
 import { MarkdownRenderer } from "../markdown-renderer";
-import { ExpandableThinkingContent } from "./expandable-thinking-content";
 import { CodeBlock } from "./code-block";
 import { ErrorBlock } from "./error-block";
+import { ExpandableThinkingContent } from "./expandable-thinking-content";
 import { LogBlock } from "./log-block";
 import { OutputBlock } from "./output-block";
 

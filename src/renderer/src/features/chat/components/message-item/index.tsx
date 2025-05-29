@@ -234,12 +234,12 @@ export const MessageItem: FC<MessageItemProps> = memo(
 		}, [message.files, conversationId, setFiles]);
 
 		const isMessageContentEmpty =
-			(!message.message &&
-				(!message.files || message.files.length === 0) &&
-				!message.code &&
-				!message.stdout &&
-				!message.stderr &&
-				!message.logging);
+			!message.message &&
+			(!message.files || message.files.length === 0) &&
+			!message.code &&
+			!message.stdout &&
+			!message.stderr &&
+			!message.logging;
 
 		// Hide messages with action DONE, execution_type "action", and task_classification "conversation"
 		// These are redundant to the response execution_type messages

@@ -21,8 +21,8 @@ export const useScrollToBottom = (
 		const container = containerRef.current;
 		if (!container) return;
 
-    const { scrollTop, scrollHeight, clientHeight } = container;
-    const distanceFromBottom = Math.abs(scrollTop);
+		const { scrollTop, scrollHeight, clientHeight } = container;
+		const distanceFromBottom = Math.abs(scrollTop);
 		const canScroll = scrollHeight > clientHeight;
 		const shouldShow = canScroll && distanceFromBottom > buttonThreshold;
 		// Update visibility immediately based on scroll position
