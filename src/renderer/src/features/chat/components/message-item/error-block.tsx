@@ -127,7 +127,7 @@ const errorSuggestions: Record<string, React.ReactNode> = {
 	),
 	"404 models": (
 		<InfoText>
-			No models found. Please go to the{" "}
+			The model you're trying to use is not available. Please go to the{" "}
 			<MuiLink component={Link} to="/settings" color="inherit">
 				settings page
 			</MuiLink>{" "}
@@ -137,7 +137,7 @@ const errorSuggestions: Record<string, React.ReactNode> = {
 	),
 	"Call ListModels": (
 		<InfoText>
-			No models found. Please go to the{" "}
+			The model you're trying to use is not available. Please go to the{" "}
 			<MuiLink component={Link} to="/settings" color="inherit">
 				settings page
 			</MuiLink>{" "}
