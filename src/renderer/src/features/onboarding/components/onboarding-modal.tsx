@@ -476,48 +476,61 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 		</Box>
 	);
 
-	// Render step indicator dots
-	const stepIndicators = (
-		<StepIndicatorContainer>
-			{/* Only render dots if currentStep is defined */}
-			{currentStep &&
-				steps.map((step) => {
-					const isActive = currentStep === step;
-					const isVisited = visitedSteps.has(step);
-					// Allow navigation only to visited steps that are not the current one
-					const canNavigate = isVisited && step !== currentStep;
+	// Generate the actual dot elements or null
+	const stepIndicatorDotElements = useMemo(() => {
+		// If currentStep is not yet defined, or if there are no steps in the current flow
+		if (!currentStep || steps.length === 0) {
+			return null;
+		}
 
-					// Special case: Don't allow navigating back to CHOICE/SIGNIN via dots
-					const isNonNavigableRadientStep =
-						step === OnboardingStep.RADIENT_CHOICE ||
-						step === OnboardingStep.RADIENT_SIGNIN;
+		return steps.map((step) => {
+			const isActive = currentStep === step;
+			const isVisited = visitedSteps.has(step);
+			// Allow navigation only to visited steps that are not the current one
+			const canNavigate = isVisited && step !== currentStep;
 
-					return (
-						// @ts-ignore - Ignore potential TS issue with Tooltip wrapping custom component
-						<Tooltip key={step} title={stepTitles[step]} arrow>
-							{/* Wrap StepDot directly if it forwards refs, otherwise use a Box */}
-							{/* The updated StepDot handles cursor styling internally */}
-							<StepDot
-								active={isActive}
-								visited={isVisited}
-								onClick={() => {
-									// Navigation logic remains the same
-									if (canNavigate && !isNonNavigableRadientStep) {
-										setCurrentStep(step);
-									}
-								}}
-							/>
-						</Tooltip>
-					);
-				})}
-		</StepIndicatorContainer>
-	);
+			// Special case: Don't allow navigating back to CHOICE/SIGNIN via dots
+			const isNonNavigableRadientStep =
+				step === OnboardingStep.RADIENT_CHOICE ||
+				step === OnboardingStep.RADIENT_SIGNIN;
+
+			return (
+				// @ts-ignore - Ignore potential TS issue with Tooltip wrapping custom component
+				<Tooltip key={step} title={stepTitles[step]} arrow>
+					{/* Wrap StepDot directly if it forwards refs, otherwise use a Box */}
+					{/* The updated StepDot handles cursor styling internally */}
+					<StepDot
+						active={isActive}
+						visited={isVisited}
+						onClick={() => {
+							// Navigation logic remains the same
+							if (canNavigate && !isNonNavigableRadientStep) {
+								setCurrentStep(step);
+							}
+						}}
+					/>
+				</Tooltip>
+			);
+		});
+	}, [currentStep, steps, visitedSteps, setCurrentStep]); // stepTitles is stable
+
+	// Prepare the final stepIndicators prop for OnboardingDialog
+	const finalStepIndicatorsProp = useMemo(() => {
+		// If there are no dot elements to render, pass null to OnboardingDialog
+		if (!stepIndicatorDotElements) {
+			return null;
+		}
+		// Otherwise, wrap the dots in the StepIndicatorContainer
+		return (
+			<StepIndicatorContainer>{stepIndicatorDotElements}</StepIndicatorContainer>
+		);
+	}, [stepIndicatorDotElements]);
 
 	return (
 		<OnboardingDialog
 			open={open}
 			title={dialogTitle}
-			stepIndicators={stepIndicators}
+			stepIndicators={finalStepIndicatorsProp} // Use the new variable
 			actions={dialogActions}
 			dialogProps={{
 				disableEscapeKeyDown: true, // Prevent closing with Escape key
