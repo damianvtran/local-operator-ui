@@ -129,19 +129,19 @@ export const AgentSettings: FC<AgentSettingsProps> = ({
 						initialSelectedAgentId={initialSelectedAgentId}
 					/>
 
+          <SystemPromptSettings
+						selectedAgent={selectedAgent}
+						savingField={savingField}
+						setSavingField={setSavingField}
+						refetchAgent={refetchAgent}
+						initialSelectedAgentId={initialSelectedAgentId}
+					/>
+
 					<SecuritySettings
 						selectedAgent={selectedAgent}
 						savingField={savingField}
 						setSavingField={setSavingField}
 						updateAgentMutation={updateAgentMutation}
-						refetchAgent={refetchAgent}
-						initialSelectedAgentId={initialSelectedAgentId}
-					/>
-
-					<SystemPromptSettings
-						selectedAgent={selectedAgent}
-						savingField={savingField}
-						setSavingField={setSavingField}
 						refetchAgent={refetchAgent}
 						initialSelectedAgentId={initialSelectedAgentId}
 					/>
