@@ -133,6 +133,8 @@ declare global {
 			selectDirectory: () => Promise<string | undefined>;
 			/** Gets the user's home directory path */
 			getHomeDirectory: () => Promise<string>;
+			/** Opens a file with the OS's default application */
+			openFileNatively: (filePath: string) => Promise<void>;
 		};
 	}
 }

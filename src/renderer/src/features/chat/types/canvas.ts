@@ -1,7 +1,22 @@
+export type CanvasDocumentType =
+	| "image"
+	| "video"
+	| "pdf"
+	| "markdown"
+	| "html"
+	| "archive"
+	| "text"
+	| "code"
+	| "document"
+	| "spreadsheet"
+	| "presentation"
+	| "audio"
+	| "other";
+
 /**
  * Represents a markdown document in the canvas
  */
-export interface CanvasDocument {
+export type CanvasDocument = {
 	/**
 	 * Unique identifier for the document
 	 */
@@ -26,7 +41,12 @@ export interface CanvasDocument {
 	 * Timestamp when the document was last modified
 	 */
 	lastModified?: Date;
-}
+
+	/**
+	 * Type of the document/file
+	 */
+	type?: CanvasDocumentType;
+};
 
 /**
  * Export format options for markdown documents
