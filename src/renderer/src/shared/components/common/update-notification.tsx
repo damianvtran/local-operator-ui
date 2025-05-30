@@ -7,6 +7,7 @@ import {
 	Typography,
 	styled,
 } from "@mui/material";
+import { useTheme } from "@mui/material/styles";
 import {
 	UpdateType,
 	useDeferredUpdatesStore,
@@ -20,41 +21,70 @@ type BackendUpdateInfo = {
 	currentVersion: string;
 	latestVersion: string;
 	updateCommand: string;
-	canManageUpdate?: boolean; // Make optional to match API
+	canManageUpdate?: boolean;
 	startupMode?: string;
 };
 
-// Styled components
+// Styled components following shadcn design patterns
 export const UpdateContainer = styled("div")(({ theme }) => ({
-	padding: 24,
+	padding: theme.spacing(2.5),
 	borderRadius: 8,
 	backgroundColor: theme.palette.background.paper,
-	boxShadow: "0 4px 20px rgba(0, 0, 0, 0.15)",
+	border: `1px solid ${theme.palette.divider}`,
+	boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
 	position: "fixed",
-	top: 20,
-	right: 20,
-	zIndex: 1300, // Higher than most components but below modal dialogs
-	width: 560, // Responsive width with margins
+	top: theme.spacing(2.5),
+	right: theme.spacing(2.5),
+	zIndex: 1300,
+	width: 400,
+	maxWidth: "calc(100vw - 40px)",
+	backgroundImage: "none",
+	"& .update-title": {
+		fontSize: "1.125rem",
+		fontWeight: 600,
+		lineHeight: 1.4,
+		marginBottom: theme.spacing(1.5),
+		color: theme.palette.text.primary,
+	},
+	"& .update-description": {
+		fontSize: "0.875rem",
+		lineHeight: 1.5,
+		color: theme.palette.text.secondary,
+		marginBottom: theme.spacing(1),
+	},
+	"& .update-notes": {
+		fontSize: "0.8125rem",
+		lineHeight: 1.4,
+		color: theme.palette.text.secondary,
+	},
 	"& a": {
 		color: theme.palette.primary.main,
 		textDecoration: "none",
+		fontWeight: 500,
 		"&:hover": {
 			textDecoration: "underline",
 		},
 	},
+	[theme.breakpoints.down("sm")]: {
+		width: "calc(100vw - 32px)",
+		left: theme.spacing(2),
+		right: theme.spacing(2),
+		top: theme.spacing(2),
+		padding: theme.spacing(2),
+	},
 }));
 
-export const UpdateActions = styled("div")({
+export const UpdateActions = styled("div")(({ theme }) => ({
 	display: "flex",
 	justifyContent: "flex-end",
-	gap: 8,
-	marginTop: 24,
-});
+	gap: theme.spacing(1.5),
+	marginTop: theme.spacing(3),
+}));
 
-export const ProgressContainer = styled("div")({
-	marginTop: 16,
-	marginBottom: 8,
-});
+export const ProgressContainer = styled("div")(({ theme }) => ({
+	marginTop: theme.spacing(2),
+	marginBottom: theme.spacing(1),
+}));
 
 /**
  * Props for the UpdateNotification component
@@ -70,6 +100,8 @@ type UpdateNotificationProps = {
 export const UpdateNotification = ({
 	autoCheck = true,
 }: UpdateNotificationProps) => {
+	const theme = useTheme();
+	
 	// State for frontend update status
 	const [checking, setChecking] = useState(false);
 	const [updatingBackend, setUpdatingBackend] = useState(false);
@@ -98,7 +130,6 @@ export const UpdateNotification = ({
 	// Access the deferred updates store
 	const { shouldShowUpdate, deferUpdate } = useDeferredUpdatesStore();
 
-	// Get app version on mount
 	// Keep a ref to the latest backendUpdateInfo for use in event handlers
 	const backendUpdateInfoRef = useRef<BackendUpdateInfo | null>(null);
 	useEffect(() => {
@@ -155,7 +186,6 @@ export const UpdateNotification = ({
 			setUpdatingBackend(true);
 			setError(null);
 			await window.api.updater.updateBackend();
-			// The backend update completed event will handle the UI update
 		} catch (err) {
 			setError(
 				`Error updating server: ${err instanceof Error ? err.message : String(err)}`,
@@ -191,7 +221,6 @@ export const UpdateNotification = ({
 		// Frontend update available
 		const removeUpdateAvailableListener = window.api.updater.onUpdateAvailable(
 			(info) => {
-				// Only show the update if it hasn't been deferred or the defer timeline has passed
 				if (shouldShowUpdate(UpdateType.UI, info.version)) {
 					setUpdateAvailable(true);
 					setUpdateInfo(info);
@@ -211,7 +240,6 @@ export const UpdateNotification = ({
 		const removeUpdateDownloadedListener =
 			window.api.updater.onUpdateDownloaded((info) => {
 				setDownloading(false);
-				// Only show the update if it hasn't been deferred or the defer timeline has passed
 				if (shouldShowUpdate(UpdateType.UI, info.version)) {
 					setUpdateDownloaded(true);
 					setUpdateInfo(info);
@@ -222,7 +250,6 @@ export const UpdateNotification = ({
 		// Frontend update error - also handle manual update requirements
 		const removeUpdateErrorListener = window.api.updater.onUpdateError(
 			(errorMessage) => {
-				// Check if this is a manual update message
 				if (errorMessage.includes("manually")) {
 					setManualUpdateRequired(true);
 					setManualUpdateInfo({
@@ -264,7 +291,6 @@ export const UpdateNotification = ({
 		// Backend update not available
 		const removeBackendUpdateNotAvailableListener =
 			window.api.updater.onBackendUpdateNotAvailable((info) => {
-				// Only clear the notification if the backend version is up to date
 				const currentInfo = backendUpdateInfoRef.current;
 				setBackendUpdateAvailable((prev) => {
 					if (currentInfo && currentInfo.latestVersion === info.version) {
@@ -285,7 +311,6 @@ export const UpdateNotification = ({
 				setBackendUpdateCompleted(true);
 				setSnackbarOpen(true);
 
-				// Auto-hide the completion notification after 6 seconds
 				setTimeout(() => {
 					setBackendUpdateCompleted(false);
 				}, 6000);
@@ -314,16 +339,34 @@ export const UpdateNotification = ({
 		setSnackbarOpen(false);
 	};
 
+	// Button styling to match agent header buttons
+	const buttonSx = {
+		textTransform: "none",
+		fontSize: "0.8125rem",
+		padding: theme.spacing(0.5, 1.5),
+		borderRadius: theme.shape.borderRadius * 0.75,
+	};
+
+	const secondaryButtonSx = {
+		...buttonSx,
+		borderColor: theme.palette.divider,
+		color: theme.palette.text.secondary,
+		"&:hover": {
+			backgroundColor: theme.palette.action.hover,
+			borderColor: theme.palette.divider,
+		},
+	};
+
 	// If checking for updates or updating backend, show a loading indicator
 	if (checking) {
 		return (
 			<UpdateContainer>
-				<Typography variant="h6">
+				<Typography className="update-title">
 					{updatingBackend ? "Updating Server" : "Checking for Updates"}
 				</Typography>
-				<Typography variant="body1">
+				<Typography className="update-description">
 					{updatingBackend
-						? "Please wait while the server is being updated.  The server will temporarily go offline while it restarts to apply the update."
+						? "Please wait while the server is being updated. The server will temporarily go offline while it restarts to apply the update."
 						: "Please wait while we check for available updates..."}
 				</Typography>
 				<ProgressContainer>
@@ -354,13 +397,13 @@ export const UpdateNotification = ({
 		return (
 			<>
 				<UpdateContainer>
-					<Typography variant="h6">Update Available</Typography>
-					<Typography variant="body1">
+					<Typography className="update-title">Update Available</Typography>
+					<Typography className="update-description">
 						Version {updateInfo.version} is available. You are currently using
 						version {appVersion}.
 					</Typography>
 					{updateInfo.releaseNotes && (
-						<Typography variant="body2" sx={{ mt: 1 }}>
+						<Typography className="update-notes" sx={{ mt: 1 }}>
 							Release Notes:{" "}
 							{typeof updateInfo.releaseNotes === "string" ? (
 								<>
@@ -390,7 +433,7 @@ export const UpdateNotification = ({
 
 					{downloading && downloadProgress && (
 						<ProgressContainer>
-							<Typography variant="body2">
+							<Typography variant="body2" sx={{ fontSize: "0.8125rem" }}>
 								Downloading: {Math.round(downloadProgress.percent)}%
 							</Typography>
 							<LinearProgress
@@ -398,7 +441,7 @@ export const UpdateNotification = ({
 								value={downloadProgress.percent}
 								sx={{ mt: 1 }}
 							/>
-							<Typography variant="caption" sx={{ mt: 0.5, display: "block" }}>
+							<Typography variant="caption" sx={{ mt: 0.5, display: "block", fontSize: "0.75rem" }}>
 								{Math.round(downloadProgress.transferred / 1024)} KB of{" "}
 								{Math.round(downloadProgress.total / 1024)} KB
 							</Typography>
@@ -410,16 +453,19 @@ export const UpdateNotification = ({
 							<>
 								<Button
 									variant="contained"
-									color="primary"
+									size="small"
 									onClick={downloadUpdate}
 									disabled={downloading}
+									sx={buttonSx}
 								>
 									Download Update
 								</Button>
 								<Button
 									variant="outlined"
+									size="small"
 									onClick={handleDeferUpdate}
 									disabled={downloading}
+									sx={secondaryButtonSx}
 								>
 									Update Later
 								</Button>
@@ -447,20 +493,30 @@ export const UpdateNotification = ({
 		return (
 			<>
 				<UpdateContainer>
-					<Typography variant="h6">Update Ready to Install</Typography>
-					<Typography variant="body1">
+					<Typography className="update-title">Update Ready to Install</Typography>
+					<Typography className="update-description">
 						Version {updateInfo.version} is available. You are currently using
 						version {appVersion}.
 					</Typography>
-					<Typography variant="body2" sx={{ mt: 1 }}>
+					<Typography className="update-notes" sx={{ mt: 1 }}>
 						The application will restart to apply the update.
 					</Typography>
 
 					<UpdateActions>
-						<Button variant="contained" color="primary" onClick={installUpdate}>
+						<Button
+							variant="contained"
+							size="small"
+							onClick={installUpdate}
+							sx={buttonSx}
+						>
 							Install Now
 						</Button>
-						<Button variant="outlined" onClick={handleDeferUpdate}>
+						<Button
+							variant="outlined"
+							size="small"
+							onClick={handleDeferUpdate}
+							sx={secondaryButtonSx}
+						>
 							Update Later
 						</Button>
 					</UpdateActions>
@@ -485,12 +541,12 @@ export const UpdateNotification = ({
 		return (
 			<>
 				<UpdateContainer>
-					<Typography variant="h6">Server Update Available</Typography>
-					<Typography variant="body1">
+					<Typography className="update-title">Server Update Available</Typography>
+					<Typography className="update-description">
 						Server version {backendUpdateInfo.latestVersion} is available. You
 						are currently using version {backendUpdateInfo.currentVersion}.
 					</Typography>
-					<Typography variant="body2" sx={{ mt: 1 }}>
+					<Typography className="update-notes" sx={{ mt: 1 }}>
 						Updating the server will improve AI functionality, improve security,
 						and fix bugs.
 					</Typography>
@@ -499,23 +555,26 @@ export const UpdateNotification = ({
 						<UpdateActions>
 							<Button
 								variant="contained"
-								color="primary"
+								size="small"
 								onClick={updateBackend}
 								disabled={checking}
+								sx={buttonSx}
 							>
 								{checking ? "Updating..." : "Update Server"}
 							</Button>
 							<Button
 								variant="outlined"
+								size="small"
 								onClick={handleDeferBackendUpdate}
 								disabled={checking}
+								sx={secondaryButtonSx}
 							>
 								Update Later
 							</Button>
 						</UpdateActions>
 					) : (
 						<>
-							<Typography variant="body2" sx={{ mt: 2, color: "warning.main" }}>
+							<Typography variant="body2" sx={{ mt: 2, color: "warning.main", fontSize: "0.8125rem" }}>
 								The backend server is running externally and cannot be updated
 								automatically. Please update it manually using the following
 								command:
@@ -528,6 +587,7 @@ export const UpdateNotification = ({
 									backgroundColor: "background.default",
 									borderRadius: 1,
 									fontFamily: "monospace",
+									fontSize: "0.8125rem",
 								}}
 							>
 								{backendUpdateInfo.updateCommand}
@@ -535,8 +595,10 @@ export const UpdateNotification = ({
 							<UpdateActions>
 								<Button
 									variant="outlined"
+									size="small"
 									onClick={handleDeferBackendUpdate}
 									disabled={checking}
+									sx={secondaryButtonSx}
 								>
 									Dismiss
 								</Button>
@@ -574,7 +636,7 @@ export const UpdateNotification = ({
 						severity="warning"
 						sx={{ width: "100%" }}
 					>
-						<Typography variant="body2">{manualUpdateInfo.message}</Typography>
+						<Typography variant="body2" sx={{ fontSize: "0.8125rem" }}>{manualUpdateInfo.message}</Typography>
 						<Typography
 							variant="body2"
 							sx={{
@@ -583,6 +645,7 @@ export const UpdateNotification = ({
 								backgroundColor: "background.default",
 								borderRadius: 1,
 								fontFamily: "monospace",
+								fontSize: "0.8125rem",
 							}}
 						>
 							{manualUpdateInfo.command}
@@ -612,15 +675,11 @@ export const UpdateNotification = ({
 		);
 	}
 
-	// If checking for updates or no update is available, don't render anything
 	return null;
 };
 
 /**
  * Truncates text to a specified length and adds an ellipsis if needed
- * @param text The text to truncate
- * @param maxLength The maximum length of the text
- * @returns The truncated text with an ellipsis if needed
  */
 const truncateText = (text: string, maxLength: number): string => {
 	if (text.length <= maxLength) return text;
@@ -629,18 +688,13 @@ const truncateText = (text: string, maxLength: number): string => {
 
 /**
  * Gets the URL to the release notes
- * @param updateInfo The update information
- * @returns The URL to the release notes
  */
 const getReleaseUrl = (updateInfo: UpdateInfo): string => {
-	// Extract the repository URL from the update info if available
 	if (updateInfo.releaseNotes && typeof updateInfo.releaseNotes !== "string") {
-		// Handle the case where releaseNotes might be an object with a path property
 		const releaseNotesObj = updateInfo.releaseNotes as { path?: string };
 		const defaultUrl = `https://github.com/local-operator/local-operator-ui/releases/tag/v${updateInfo.version}`;
 		return releaseNotesObj.path || defaultUrl;
 	}
 
-	// Default to GitHub releases page with the version tag
 	return `https://github.com/local-operator/local-operator-ui/releases/tag/v${updateInfo.version}`;
 };

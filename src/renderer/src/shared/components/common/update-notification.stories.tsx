@@ -6,7 +6,7 @@ import {
 	Snackbar,
 	Typography,
 } from "@mui/material";
-import { ThemeProvider as MuiThemeProvider } from "@mui/material/styles";
+import { ThemeProvider as MuiThemeProvider, useTheme } from "@mui/material/styles";
 import { DEFAULT_THEME, themes } from "@shared/themes";
 import type { Meta, StoryObj } from "@storybook/react";
 import type { ProgressInfo, UpdateInfo } from "electron-updater";
@@ -371,8 +371,8 @@ export const Checking: Story = {
 			if (isChecking) {
 				return (
 					<UpdateContainer>
-						<Typography variant="h6">Checking for Updates</Typography>
-						<Typography variant="body1">
+						<Typography className="update-title">Checking for Updates</Typography>
+						<Typography className="update-description">
 							Please wait while we check for available updates...
 						</Typography>
 						<ProgressContainer>
@@ -389,6 +389,7 @@ export const Checking: Story = {
 		return <CheckingComponent />;
 	},
 };
+
 /**
  * Shows the notification when an update is available.
  */
@@ -402,6 +403,8 @@ export const UpdateAvailable: Story = {
 	render: () => {
 		// Create a component that directly renders the update available state
 		const UpdateAvailableComponent = () => {
+			const theme = useTheme();
+			
 			// Use state to force the component to render with update available
 			const [available, setAvailable] = useState(true);
 			const [info, setInfo] = useState({
@@ -423,17 +426,35 @@ export const UpdateAvailable: Story = {
 				window.triggerUpdateAvailable = true;
 			}, []);
 
+			// Button styling to match agent header buttons
+			const buttonSx = {
+				textTransform: "none",
+				fontSize: "0.8125rem",
+				padding: theme.spacing(0.5, 1.5),
+				borderRadius: theme.shape.borderRadius * 0.75,
+			};
+
+			const secondaryButtonSx = {
+				...buttonSx,
+				borderColor: theme.palette.divider,
+				color: theme.palette.text.secondary,
+				"&:hover": {
+					backgroundColor: theme.palette.action.hover,
+					borderColor: theme.palette.divider,
+				},
+			};
+
 			// If update is available, render the UI directly
 			if (available && info) {
 				return (
 					<UpdateContainer>
-						<Typography variant="h6">Update Available</Typography>
-						<Typography variant="body1">
+						<Typography className="update-title">Update Available</Typography>
+						<Typography className="update-description">
 							Version {info.version} is available. You are currently using
 							version {process.env.npm_package_version || "1.0.0"}.
 						</Typography>
 						{info.releaseNotes && (
-							<Typography variant="body2" sx={{ mt: 1 }}>
+							<Typography className="update-notes" sx={{ mt: 1 }}>
 								Release Notes:{" "}
 								{typeof info.releaseNotes === "string"
 									? parse(info.releaseNotes)
@@ -443,13 +464,20 @@ export const UpdateAvailable: Story = {
 						<UpdateActions>
 							<Button
 								variant="contained"
-								color="primary"
+								size="small"
 								onClick={() => {}}
 								disabled={false}
+								sx={buttonSx}
 							>
 								Download Update
 							</Button>
-							<Button variant="outlined" onClick={() => {}} disabled={false}>
+							<Button
+								variant="outlined"
+								size="small"
+								onClick={() => {}}
+								disabled={false}
+								sx={secondaryButtonSx}
+							>
 								Update Later
 							</Button>
 						</UpdateActions>
@@ -506,13 +534,13 @@ export const Downloading: Story = {
 			if (available && downloading && info) {
 				return (
 					<UpdateContainer>
-						<Typography variant="h6">Update Available</Typography>
-						<Typography variant="body1">
+						<Typography className="update-title">Update Available</Typography>
+						<Typography className="update-description">
 							Version {info.version} is available. You are currently using
 							version {process.env.npm_package_version || "1.0.0"}.
 						</Typography>
 						{info.releaseNotes && (
-							<Typography variant="body2" sx={{ mt: 1 }}>
+							<Typography className="update-notes" sx={{ mt: 1 }}>
 								Release Notes:{" "}
 								{typeof info.releaseNotes === "string"
 									? info.releaseNotes
@@ -521,7 +549,7 @@ export const Downloading: Story = {
 						)}
 
 						<ProgressContainer>
-							<Typography variant="body2">
+							<Typography variant="body2" sx={{ fontSize: "0.8125rem" }}>
 								Downloading: {Math.round(progress.percent)}%
 							</Typography>
 							<LinearProgress
@@ -529,7 +557,7 @@ export const Downloading: Story = {
 								value={progress.percent}
 								sx={{ mt: 1 }}
 							/>
-							<Typography variant="caption" sx={{ mt: 0.5, display: "block" }}>
+							<Typography variant="caption" sx={{ mt: 0.5, display: "block", fontSize: "0.75rem" }}>
 								{Math.round(progress.transferred / 1024)} KB of{" "}
 								{Math.round(progress.total / 1024)} KB
 							</Typography>
@@ -559,6 +587,8 @@ export const Downloaded: Story = {
 	render: () => {
 		// Create a component that directly renders the downloaded state
 		const DownloadedComponent = () => {
+			const theme = useTheme();
+			
 			// Use state to force the component to render with downloaded state
 			const [downloaded, setDownloaded] = useState(true);
 			const [info, setInfo] = useState(mockUpdateInfo);
@@ -572,25 +602,53 @@ export const Downloaded: Story = {
 				window.triggerUpdateDownloaded = true;
 			}, []);
 
+			// Button styling to match agent header buttons
+			const buttonSx = {
+				textTransform: "none",
+				fontSize: "0.8125rem",
+				padding: theme.spacing(0.5, 1.5),
+				borderRadius: theme.shape.borderRadius * 0.75,
+			};
+
+			const secondaryButtonSx = {
+				...buttonSx,
+				borderColor: theme.palette.divider,
+				color: theme.palette.text.secondary,
+				"&:hover": {
+					backgroundColor: theme.palette.action.hover,
+					borderColor: theme.palette.divider,
+				},
+			};
+
 			// If update is downloaded, render the UI directly
 			if (downloaded && info) {
 				return (
 					<UpdateContainer>
-						<Typography variant="h6">Update Ready to Install</Typography>
-						<Typography variant="body1">
+						<Typography className="update-title">Update Ready to Install</Typography>
+						<Typography className="update-description">
 							Version {info.version} has been downloaded and is ready to
 							install.
 						</Typography>
-						<Typography variant="body2" sx={{ mt: 1 }}>
+						<Typography className="update-notes" sx={{ mt: 1 }}>
 							The application will restart to apply the update.
 						</Typography>
 
 						<UpdateActions>
-							<Button variant="contained" color="primary" onClick={() => {}}>
+							<Button
+								variant="contained"
+								size="small"
+								onClick={() => {}}
+								sx={buttonSx}
+							>
 								Install Now
 							</Button>
-							<Button variant="outlined" onClick={() => {}}>
-								Install Later
+							<Button
+								variant="outlined"
+								size="small"
+								onClick={() => {}}
+								sx={secondaryButtonSx}
+							>
+								Update Later
 							</Button>
 						</UpdateActions>
 					</UpdateContainer>
