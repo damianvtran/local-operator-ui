@@ -154,7 +154,7 @@ export const OnboardingDialog = ({
 			<ContentContainer>
 				{title && <StyledDialogTitle>{title}</StyledDialogTitle>}
 				{stepIndicators && (
-					<Box sx={{ px: 3, pt: 0, pb: 0, mb: 0 }}>{stepIndicators}</Box>
+					<Box sx={{ px: 3, pt: 1, pb: 0, mb: 0 }}>{stepIndicators}</Box>
 				)}
 				<Box
 					sx={{
