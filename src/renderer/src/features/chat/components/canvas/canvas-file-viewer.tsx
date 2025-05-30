@@ -15,7 +15,6 @@ import {
 	Card,
 	CardActionArea,
 	CardContent,
-	CardMedia,
 	Grid,
 	Tooltip,
 	Typography,
@@ -55,13 +54,18 @@ const StyledCard = styled(Card)(({ theme }) => ({
   borderRadius: 8,
 }));
 
-// Allow standard HTML video attributes to be passed when component="video"
-const StyledCardMedia = styled(CardMedia, {
-	shouldForwardProp: (prop) => prop !== "component" && prop !== "controls" && prop !== "src",
-})<{ component?: React.ElementType; controls?: boolean; src?: string }>({
+const StyledImage = styled("img")({
 	height: 140,
-	objectFit: "contain", // Use 'contain' for previews to avoid cropping
-	backgroundColor: alpha("#000", 0.1), // Slight background for non-image media
+	width: "100%",
+	objectFit: "contain",
+	backgroundColor: alpha("#000", 0.1),
+});
+
+const StyledVideo = styled("video")({
+	height: 140,
+	width: "100%",
+	objectFit: "contain",
+	backgroundColor: alpha("#000", 0.1),
 });
 
 const IconBox = styled(Box)({
@@ -114,6 +118,11 @@ const getAttachmentUrl = (
 ): string => {
 	// If it's a web URL, return it as is
 	if (path.startsWith("http")) {
+		return path;
+	}
+
+	// For data URIs, return as is
+	if (path.startsWith("data:")) {
 		return path;
 	}
 
@@ -252,12 +261,17 @@ export const CanvasFileViewer: FC<CanvasFileViewerProps> = ({
 									sx={{ display: "flex", flexDirection: "column", flexGrow: 1 }}
 								>
 									{fileDoc.type === "image" ? (
-										<StyledCardMedia src={getUrl(fileDoc.path)} title={fileDoc.title} />
+										<StyledImage
+											src={getUrl(fileDoc.path)}
+											alt={fileDoc.title}
+											title={fileDoc.title}
+										/>
 									) : fileDoc.type === "video" ? (
-										<StyledCardMedia
-											component="video"
+										<StyledVideo
 											src={getUrl(fileDoc.path)}
 											title={fileDoc.title}
+											controls={true}
+											preload="metadata"
 										/>
 									) : (
 										<IconBox>
