@@ -227,7 +227,7 @@ export const RadientChoiceStep: FC<RadientChoiceStepProps> = ({
 									, no credit card required.
 								</CardSubtitle>
 							</Box>
-							<CardIcon sx={{ width: 150, height: 150, mb: 3 }}>
+							<CardIcon sx={{ width: 150, height: 150, mb: 1 }}>
 								{" "}
 								{/* Further Increased icon size */}
 								<img
