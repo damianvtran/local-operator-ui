@@ -21,7 +21,7 @@
 import { apiConfig } from "@shared/config";
 import { useQueryClient } from "@tanstack/react-query";
 import { jwtDecode } from "jwt-decode";
-import { useCallback, useEffect, useState, useRef } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { CredentialsApi } from "../api/local-operator/credentials-api";
 import { createRadientClient } from "../api/radient";
 import { storeSession } from "../utils/session-store";
@@ -71,6 +71,9 @@ type UseOidcAuthOptions = {
 	onAfterCredentialUpdate?: () => void;
 };
 
+// Module-level lock to prevent concurrent backend auth calls from any instance
+let isAnyBackendAuthInProgress = false;
+
 // Create a Radient API client
 const radientClient = createRadientClient(
 	apiConfig.radientBaseUrl,
@@ -97,7 +100,6 @@ export const useOidcAuth = (
 	});
 	const queryClient = useQueryClient();
 	const { mutateAsync: updateConfig } = useUpdateConfig();
-	const isBackendAuthInProgressRef = useRef(false);
 
 	/**
 	 * Handles the full backend integration after obtaining tokens from the main process.
@@ -110,13 +112,13 @@ export const useOidcAuth = (
 			googleTokenExpiry?: number,
 			googleRefreshToken?: string,
 		) => {
-			if (isBackendAuthInProgressRef.current) {
+			if (isAnyBackendAuthInProgress) {
 				console.warn(
-					"Backend authentication is already in progress. Skipping duplicate call.",
+					"Backend authentication is already in progress globally. Skipping duplicate call.",
 				);
 				return;
 			}
-			isBackendAuthInProgressRef.current = true;
+			isAnyBackendAuthInProgress = true;
 			setError(null); // Clear previous errors
 
 			try {
@@ -274,7 +276,7 @@ export const useOidcAuth = (
 				showErrorToast(msg || "Authentication failed");
 				// Let the main flow handle setting loading to false.
 			} finally {
-				isBackendAuthInProgressRef.current = false;
+				isAnyBackendAuthInProgress = false;
 			}
 		},
 		[queryClient, updateConfig, onSuccess, onAfterCredentialUpdate],
