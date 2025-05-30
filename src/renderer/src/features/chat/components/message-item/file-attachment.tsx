@@ -3,9 +3,10 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, Typography, alpha } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import { useCanvasStore } from "@shared/store/canvas-store";
+import type { CanvasDocument } from "@features/chat/types/canvas";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import type { FC } from "react";
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import { isCanvasSupported } from "../../utils/is-canvas-supported";
 /**
  * Props for the FileAttachment component (base)
@@ -20,6 +21,54 @@ type FileAttachmentProps = BaseFileAttachmentProps & {
 };
 
 const RESOURCE_NAME_REGEX = /name=([^;,]+)/;
+
+const getFileTypeFromPath = (filePath: string): CanvasDocument["type"] => {
+	if (filePath.startsWith("data:image/")) return "image";
+	if (filePath.startsWith("data:video/")) return "video";
+	if (filePath.startsWith("data:application/pdf")) return "pdf";
+	// Add more specific data URI checks if necessary for other types like audio, text etc.
+
+	const extension = filePath.split(".").pop()?.toLowerCase();
+	if (!extension) return "other";
+
+	if (["png", "jpg", "jpeg", "gif", "bmp", "webp", "svg"].includes(extension))
+		return "image";
+	if (["mp4", "webm", "ogg", "mov", "avi", "mkv"].includes(extension))
+		return "video";
+	if (["pdf"].includes(extension)) return "pdf";
+	if (["md", "markdown"].includes(extension)) return "markdown";
+	if (["html", "htm"].includes(extension)) return "html";
+	if (["zip", "tar", "gz", "rar", "7z"].includes(extension)) return "archive";
+	if (["txt", "log", "csv", "json", "xml", "yaml", "yml"].includes(extension))
+		return "text"; // Grouping common text-based formats
+	if (
+		[
+			"js",
+			"ts",
+			"jsx",
+			"tsx",
+			"py",
+			"java",
+			"c",
+			"cpp",
+			"cs",
+			"go",
+			"rb",
+			"php",
+			"sh",
+			"css",
+			"scss",
+			"less",
+		].includes(extension)
+	)
+		return "code";
+	if (["doc", "docx", "odt"].includes(extension)) return "document";
+	if (["xls", "xlsx", "ods"].includes(extension)) return "spreadsheet";
+	if (["ppt", "pptx", "odp"].includes(extension)) return "presentation";
+	if (["mp3", "wav", "aac", "flac"].includes(extension)) return "audio";
+
+	return "other";
+};
 
 /**
  * Styled component for non-image file attachments
@@ -129,127 +178,144 @@ export const FileAttachment: FC<FileAttachmentProps> = ({
 	const setSelectedTab = useCanvasStore((s) => s.setSelectedTab);
 	// Removed files and openTabs subscriptions to prevent unnecessary re-renders and update loops
 
-	const isPastedImage = file.startsWith("data:image/");
+	const storeFileInCanvas = useCallback(
+		async (
+			fileToStore: string,
+			convId: string,
+			baseOnClick: (file: string) => void,
+			openInCanvas?: boolean, // If true, also manages tabs and selection
+		) => {
+			const title = getFileName(fileToStore);
+			const fileType = getFileTypeFromPath(fileToStore);
 
-	// Handle click on the file attachment
-	const handleClick = useCallback(async () => {
-		const title = getFileName(file); // This will be "Pasted Image" for image data URIs
-		const fallbackAction = (err?: string) => {
-			if (err) console.error("Error processing file:", err);
-			onClick(file); // Pass the original file string (path or data URI)
-		};
+			const fallback = (err?: string) => {
+				if (err) console.error("Error processing file for store:", err);
+				// Only call baseOnClick if not opening in canvas or if it's a true fallback
+				if (!openInCanvas) {
+					baseOnClick(fileToStore);
+				}
+			};
 
-		if (file.startsWith("data:")) {
-			// Handle base64 data URI
-			if (isCanvasSupported(title)) {
-				const docId = file; // Use the data URI itself as a unique ID
-				const newDoc = {
-					id: docId,
+			let docId: string;
+			let newDocData: Omit<CanvasDocument, "id" | "type"> & {
+				type: CanvasDocument["type"];
+			};
+
+			if (fileToStore.startsWith("data:")) {
+				docId = fileToStore; // Use the data URI itself as a unique ID
+				newDocData = {
 					title,
-					path: docId, // Store data URI as path for consistency if needed
-					content: file, // The content is the data URI itself
+					path: docId,
+					content: fileToStore, // The content is the data URI itself
+					type: fileType,
 				};
+				if (openInCanvas && !isCanvasSupported(title)) {
+					// If trying to open in canvas but not supported, use fallback
+					baseOnClick(fileToStore);
+					return; // Don't proceed to store or open tab
+				}
+			} else {
+				const normalizedPath = fileToStore.startsWith("file://")
+					? fileToStore.substring(7)
+					: fileToStore;
+				docId = normalizedPath;
 
-				const state = useCanvasStore.getState();
-				const conversationCanvasState = state.conversations?.[conversationId];
-				const filesInState = conversationCanvasState?.files ?? [];
-				const openTabsInState = conversationCanvasState?.openTabs ?? [];
-
-				const updatedFiles = (() => {
-					const idx = filesInState.findIndex((d) => d.id === docId);
-					if (idx !== -1) {
-						return [
-							...filesInState.slice(0, idx),
-							newDoc,
-							...filesInState.slice(idx + 1),
-						];
+				if (openInCanvas && isCanvasSupported(title)) {
+					try {
+						const result = await window.api.readFile(normalizedPath);
+						if (result.success) {
+							newDocData = {
+								title,
+								path: normalizedPath,
+								content: result.data,
+								type: fileType,
+							};
+						} else {
+							const errorMessage =
+								result.error instanceof Error
+									? result.error.message
+									: String(result.error);
+							fallback(errorMessage);
+							if (openInCanvas) baseOnClick(fileToStore); // Fallback to OS open
+							return;
+						}
+					} catch (error: unknown) {
+						const message =
+							error instanceof Error ? error.message : String(error);
+						fallback(message);
+						if (openInCanvas) baseOnClick(fileToStore); // Fallback to OS open
+						return;
 					}
-					return [...filesInState, newDoc];
-				})();
-				setFiles(conversationId, updatedFiles);
+				} else {
+					// Not opening in canvas or not canvas supported, store metadata only
+					newDocData = {
+						title,
+						path: normalizedPath,
+						content: normalizedPath, // Placeholder: content will be loaded if opened in canvas
+						type: fileType,
+					};
+					if (openInCanvas && !isCanvasSupported(title)) {
+						// Trying to open in canvas but not supported
+						baseOnClick(fileToStore); // Fallback to OS open
+						return; // Don't proceed to store or open tab
+					}
+				}
+			}
 
+			const finalNewDoc: CanvasDocument = { id: docId, ...newDocData };
+
+			const state = useCanvasStore.getState();
+			const conversationCanvasState = state.conversations?.[convId];
+			const filesInState = conversationCanvasState?.files ?? [];
+
+			const updatedFiles = (() => {
+				const idx = filesInState.findIndex((d) => d.id === docId);
+				if (idx !== -1) {
+					const existingDoc = filesInState[idx];
+					// Merge, prioritizing new data, but keep existing content if new content is just a placeholder path
+					const mergedDoc = { ...existingDoc, ...finalNewDoc };
+					if (
+						finalNewDoc.content === finalNewDoc.path && // New content is placeholder
+						existingDoc.content !== existingDoc.path && // Old content was not placeholder
+						finalNewDoc.content !== existingDoc.content // And content actually differs
+					) {
+						mergedDoc.content = existingDoc.content;
+					}
+					return [
+						...filesInState.slice(0, idx),
+						mergedDoc,
+						...filesInState.slice(idx + 1),
+					];
+				}
+				return [...filesInState, finalNewDoc];
+			})();
+			setFiles(convId, updatedFiles);
+
+			if (openInCanvas && isCanvasSupported(title)) {
+				const openTabsInState = conversationCanvasState?.openTabs ?? [];
 				const existsTab = openTabsInState.some((t) => t.id === docId);
 				const updatedTabs = existsTab
 					? openTabsInState
 					: [...openTabsInState, { id: docId, title }];
-				setOpenTabs(conversationId, updatedTabs);
-				setSelectedTab(conversationId, docId);
+				setOpenTabs(convId, updatedTabs);
+				setSelectedTab(convId, docId);
 				setCanvasOpen(true);
-			} else {
-				// Not canvas supported, but it's a data URI.
-				// The server will handle it. For client-side, just call onClick.
-				onClick(file);
+			} else if (openInCanvas && !isCanvasSupported(title)) {
+				baseOnClick(fileToStore); // Fallback to OS open if tried to open unsupported in canvas
 			}
-		} else {
-			// Handle file path
-			const normalizedPath = file.startsWith("file://")
-				? file.substring(7)
-				: file;
-			try {
-				const result = await window.api.readFile(normalizedPath);
+		},
+		[setFiles, setOpenTabs, setSelectedTab, setCanvasOpen],
+	);
 
-				if (result.success && isCanvasSupported(title)) {
-					const docId = normalizedPath;
-					const newDoc = {
-						id: docId,
-						title,
-						path: normalizedPath,
-						content: result.data,
-					};
+	useEffect(() => {
+		storeFileInCanvas(file, conversationId, onClick, false);
+	}, [file, conversationId, onClick, storeFileInCanvas]);
 
-					const state = useCanvasStore.getState();
-					const conversationCanvasState = state.conversations?.[conversationId];
-					const filesInState = conversationCanvasState?.files ?? [];
-					const openTabsInState = conversationCanvasState?.openTabs ?? [];
+	const handleClick = useCallback(async () => {
+		storeFileInCanvas(file, conversationId, onClick, true);
+	}, [file, conversationId, onClick, storeFileInCanvas]);
 
-					const updatedFiles = (() => {
-						const idx = filesInState.findIndex((d) => d.id === docId);
-						if (idx !== -1) {
-							return [
-								...filesInState.slice(0, idx),
-								newDoc,
-								...filesInState.slice(idx + 1),
-							];
-						}
-						return [...filesInState, newDoc];
-					})();
-					setFiles(conversationId, updatedFiles);
-
-					const existsTab = openTabsInState.some((t) => t.id === docId);
-					const updatedTabs = existsTab
-						? openTabsInState
-						: [...openTabsInState, { id: docId, title }];
-					setOpenTabs(conversationId, updatedTabs);
-					setSelectedTab(conversationId, docId);
-					setCanvasOpen(true);
-					return;
-				}
-
-				const errorMessage =
-					!result.success && result.error
-						? result.error instanceof Error
-							? result.error.message
-							: String(result.error)
-						: "Unknown error reading file";
-				return fallbackAction(errorMessage);
-			} catch (error: unknown) {
-				const message =
-					error instanceof Error
-						? error.message
-						: String(error ?? "Unknown error reading file");
-				return fallbackAction(message);
-			}
-		}
-	}, [
-		file,
-		onClick,
-		setFiles,
-		setOpenTabs,
-		setSelectedTab,
-		setCanvasOpen,
-		conversationId,
-	]);
-
+	const isPastedImage = file.startsWith("data:image/");
 	return (
 		<FileAttachmentContainer
 			onClick={handleClick}

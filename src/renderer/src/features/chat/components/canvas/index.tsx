@@ -1,4 +1,8 @@
-import { faTimes } from "@fortawesome/free-solid-svg-icons";
+import {
+	faFileLines,
+	faFolderOpen,
+	faTimes,
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
 	Box,
@@ -12,6 +16,7 @@ import { memo, useCallback, useState } from "react";
 import type { FC } from "react";
 import type { CanvasDocument } from "../../types/canvas";
 import { CanvasContent } from "./canvas-content";
+import { CanvasFileViewer } from "./canvas-file-viewer";
 import { CanvasTabs } from "./canvas-tabs";
 
 type CanvasProps = {
@@ -36,6 +41,11 @@ type CanvasProps = {
 	onClose: () => void;
 
 	onCloseDocument: (docId: string) => void;
+
+	/**
+	 * The conversation ID for the current chat context
+	 */
+	conversationId?: string;
 };
 
 /**
@@ -107,7 +117,11 @@ const CanvasComponent: FC<CanvasProps> = ({
 	onChangeActiveDocument: externalChangeActiveDocument,
 	onClose,
 	onCloseDocument,
+	conversationId,
 }) => {
+	type CanvasViewMode = "documents" | "files";
+	const [currentView, setCurrentView] = useState<CanvasViewMode>("documents");
+
 	// Use the documents prop directly instead of local state
 	const documents = initialDocuments;
 	const [internalActiveDocumentId, setInternalActiveDocumentId] = useState<
@@ -131,6 +145,27 @@ const CanvasComponent: FC<CanvasProps> = ({
 			}
 		},
 		[externalChangeActiveDocument],
+	);
+
+	const handleSwitchToDocumentView = useCallback(
+		(documentId: string) => {
+			// Get the conversation ID from the parent context
+			// Since we're in files view, we need to get the proper conversation ID
+			// The activeDocumentId being passed as conversationId is incorrect
+			// We need to get the actual conversation ID from the parent
+			// For now, let's assume we can derive it or get it from context
+			
+			// Find the document in the files list
+			const targetDocument = documents.find(doc => doc.id === documentId);
+			if (!targetDocument) {
+				console.warn('Document not found:', documentId);
+				return;
+			}
+			
+			setCurrentView("documents");
+			handleChangeActiveDocument(documentId);
+		},
+		[handleChangeActiveDocument, documents],
 	);
 
 	// Handle closing a document
@@ -171,8 +206,57 @@ const CanvasComponent: FC<CanvasProps> = ({
 						Your visual workspace for files and documents
 					</Typography>
 				</HeaderTitle>
-				<Box sx={{ display: "flex", alignItems: "center" }}>
+				<Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+					<Tooltip title="Documents View" arrow placement="top">
+						{/* @ts-ignore MUI Tooltip a11y issue */}
+						<IconButton
+							onClick={() => setCurrentView("documents")}
+							size="large"
+							sx={(theme) => ({
+								color:
+									currentView === "documents"
+										? theme.palette.primary.main
+										: theme.palette.text.secondary,
+								backgroundColor:
+									currentView === "documents"
+										? alpha(theme.palette.primary.main, 0.08)
+										: "transparent",
+								"&:hover": {
+									backgroundColor: alpha(theme.palette.primary.main, 0.12),
+								},
+								width: 36,
+								height: 36,
+							})}
+						>
+							<FontAwesomeIcon icon={faFileLines} size="xs" />
+						</IconButton>
+					</Tooltip>
+					<Tooltip title="Files View" arrow placement="top">
+						{/* @ts-ignore MUI Tooltip a11y issue */}
+						<IconButton
+							onClick={() => setCurrentView("files")}
+							size="large"
+							sx={(theme) => ({
+								color:
+									currentView === "files"
+										? theme.palette.primary.main
+										: theme.palette.text.secondary,
+								backgroundColor:
+									currentView === "files"
+										? alpha(theme.palette.primary.main, 0.08)
+										: "transparent",
+								"&:hover": {
+									backgroundColor: alpha(theme.palette.primary.main, 0.12),
+								},
+								width: 36,
+								height: 36,
+							})}
+						>
+							<FontAwesomeIcon icon={faFolderOpen} size="xs" />
+						</IconButton>
+					</Tooltip>
 					<Tooltip title="Close Canvas" arrow placement="top">
+						{/* @ts-ignore MUI Tooltip a11y issue */}
 						<CloseButton
 							onClick={onClose}
 							size="large"
@@ -184,19 +268,51 @@ const CanvasComponent: FC<CanvasProps> = ({
 				</Box>
 			</CanvasHeader>
 
-			{/* Tabs for document navigation */}
-			<CanvasTabs
-				documents={documents}
-				activeDocumentId={activeDocumentId}
-				onChangeActiveDocument={handleChangeActiveDocument}
-				onCloseDocument={handleCloseDocument}
-			/>
+			{currentView === "documents" && (
+				<>
+					{/* Tabs for document navigation */}
+					<CanvasTabs
+						documents={documents}
+						activeDocumentId={activeDocumentId}
+						onChangeActiveDocument={handleChangeActiveDocument}
+						onCloseDocument={handleCloseDocument}
+					/>
 
-			{/* Document content area */}
-			{activeDocument && <CanvasContent document={activeDocument} />}
+					{/* Document content area */}
+					{activeDocument && <CanvasContent document={activeDocument} />}
 
-			{/* Empty state when no documents are open */}
-			{!activeDocument && (
+					{/* Empty state when no documents are open */}
+					{!activeDocument && documents.length === 0 && (
+						<Box
+							sx={{
+								display: "flex",
+								flexDirection: "column",
+								alignItems: "center",
+								justifyContent: "center",
+								height: "100%",
+								p: 3,
+								textAlign: "center",
+							}}
+						>
+							<Typography variant="h6" gutterBottom>
+								No Documents Open
+							</Typography>
+							<Typography variant="body2" color="text.secondary">
+								Click on a file in chat to open it here.
+							</Typography>
+						</Box>
+					)}
+				</>
+			)}
+
+			{currentView === "files" && conversationId && (
+				<CanvasFileViewer
+					conversationId={conversationId}
+					onSwitchToDocumentView={handleSwitchToDocumentView}
+				/>
+			)}
+			{/* Placeholder if no conversation context for files view */}
+			{currentView === "files" && !conversationId && (
 				<Box
 					sx={{
 						display: "flex",
@@ -209,10 +325,10 @@ const CanvasComponent: FC<CanvasProps> = ({
 					}}
 				>
 					<Typography variant="h6" gutterBottom>
-						No Documents Open
+						File Viewer
 					</Typography>
 					<Typography variant="body2" color="text.secondary">
-						Click on a file in chat to open it here.
+						No active conversation context to display files.
 					</Typography>
 				</Box>
 			)}
