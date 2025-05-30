@@ -176,6 +176,7 @@ export const FileAttachment: FC<FileAttachmentProps> = ({
 	const setFiles = useCanvasStore((s) => s.setFiles);
 	const setOpenTabs = useCanvasStore((s) => s.setOpenTabs);
 	const setSelectedTab = useCanvasStore((s) => s.setSelectedTab);
+	const addMentionedFile = useCanvasStore((s) => s.addMentionedFile);
 	// Removed files and openTabs subscriptions to prevent unnecessary re-renders and update loops
 
 	const storeFileInCanvas = useCallback(
@@ -290,6 +291,8 @@ export const FileAttachment: FC<FileAttachmentProps> = ({
 				return [...filesInState, finalNewDoc];
 			})();
 			setFiles(convId, updatedFiles);
+			// Track all mentioned files for canvas viewer
+			addMentionedFile(convId, finalNewDoc);
 
 			if (openInCanvas && isCanvasSupported(title)) {
 				const openTabsInState = conversationCanvasState?.openTabs ?? [];
@@ -304,7 +307,7 @@ export const FileAttachment: FC<FileAttachmentProps> = ({
 				baseOnClick(fileToStore); // Fallback to OS open if tried to open unsupported in canvas
 			}
 		},
-		[setFiles, setOpenTabs, setSelectedTab, setCanvasOpen],
+		[setFiles, setOpenTabs, setSelectedTab, setCanvasOpen, addMentionedFile],
 	);
 
 	useEffect(() => {

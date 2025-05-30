@@ -323,6 +323,7 @@ export const MessageItem: FC<MessageItemProps> = memo(
 												file={file}
 												src={getUrl(file)}
 												onClick={handleFileClick}
+												conversationId={conversationId}
 											/>
 										))}
 								</Box>
@@ -339,6 +340,7 @@ export const MessageItem: FC<MessageItemProps> = memo(
 												file={file}
 												src={getUrl(file)}
 												onClick={handleFileClick}
+												conversationId={conversationId}
 											/>
 										))}
 								</Box>
@@ -440,6 +442,7 @@ export const MessageItem: FC<MessageItemProps> = memo(
 											file={file}
 											src={getUrl(file)}
 											onClick={handleFileClick}
+											conversationId={conversationId}
 										/>
 									))}
 							</Box>
@@ -456,6 +459,7 @@ export const MessageItem: FC<MessageItemProps> = memo(
 											file={file}
 											src={getUrl(file)}
 											onClick={handleFileClick}
+											conversationId={conversationId}
 										/>
 									))}
 							</Box>
