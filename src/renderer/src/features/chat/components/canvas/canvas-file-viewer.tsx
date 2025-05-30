@@ -1,17 +1,15 @@
 import {
-	faFile,
-	faFileArchive,
-	faFileAudio,
-	faFileCode,
-	faFileExcel,
-	faFileImage,
-	faFileLines,
-	faFilePdf,
-	faFilePowerpoint,
-	faFileVideo,
-	faFileWord,
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+	Archive,
+	AudioLines,
+	Code,
+	File,
+	FileImage,
+	FileSpreadsheet,
+	FileText,
+	FileVideo,
+	Presentation,
+	ScrollText,
+} from "lucide-react";
 import {
 	Box,
 	Card,
@@ -45,12 +43,12 @@ const StyledCard = styled(Card)(({ theme }) => ({
 	flexDirection: "column",
 	height: "100%",
 	backgroundColor: alpha(theme.palette.background.paper, 0.8),
-	backdropFilter: "blur(8px)",
-	transition: "transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out",
+  backgroundImage: "none",
+	transition: "box-shadow 0.2s ease-in-out",
 	"&:hover": {
-		transform: "translateY(-4px)",
 		boxShadow: theme.shadows[6],
 	},
+  borderRadius: 8,
 }));
 
 // Allow standard HTML video attributes to be passed when component="video"
@@ -67,43 +65,43 @@ const IconBox = styled(Box)({
 	display: "flex",
 	alignItems: "center",
 	justifyContent: "center",
-	fontSize: "3rem", // Larger icon
 });
 
 const FileNameTypography = styled(Typography)(({ theme }) => ({
-	fontWeight: 500,
+	fontWeight: 400,
 	whiteSpace: "nowrap",
 	overflow: "hidden",
 	textOverflow: "ellipsis",
-	padding: theme.spacing(0, 0.5),
+  fontSize: "0.7rem",
+	padding: theme.spacing(0, 0),
 }));
 
 const getIconForFileType = (type?: CanvasDocumentType) => {
 	switch (type) {
 		case "image":
-			return faFileImage;
+			return FileImage;
 		case "video":
-			return faFileVideo;
+			return FileVideo;
 		case "pdf":
-			return faFilePdf;
+			return ScrollText;
 		case "markdown":
 		case "text": // Grouping text-like types
-			return faFileLines;
+			return FileText;
 		case "html":
 		case "code": // Grouping code-like types
-			return faFileCode;
+			return Code;
 		case "archive":
-			return faFileArchive;
+			return Archive;
 		case "document": // Word, ODT etc.
-			return faFileWord;
+			return FileText;
 		case "spreadsheet": // Excel, ODS etc.
-			return faFileExcel;
+			return FileSpreadsheet;
 		case "presentation": // PowerPoint, ODP etc.
-			return faFilePowerpoint;
+			return Presentation;
 		case "audio":
-			return faFileAudio;
+			return AudioLines;
 		default:
-			return faFile; // Generic file icon
+			return File; // Generic file icon
 	}
 };
 
@@ -171,38 +169,41 @@ export const CanvasFileViewer: FC<CanvasFileViewerProps> = ({
 	return (
 		<Box sx={{ p: 2, height: "100%", overflowY: "auto" }}>
 			<Grid container spacing={2}>
-				{files.map((fileDoc) => (
-					<Grid item xs={6} sm={4} md={3} key={fileDoc.id}>
-						<StyledCard>
-							<CardActionArea
-								onClick={() => handleFileClick(fileDoc)}
-								sx={{ display: "flex", flexDirection: "column", flexGrow: 1 }}
-							>
-								{fileDoc.type === "image" && fileDoc.content.startsWith("data:image") ? (
-									<StyledCardMedia image={fileDoc.content} title={fileDoc.title} />
-								) : fileDoc.type === "video" && fileDoc.content.startsWith("data:video") ? (
-									<StyledCardMedia
-										component="video"
-										controls
-										src={fileDoc.content}
-										title={fileDoc.title}
-									/>
-								) : (
-									<IconBox>
-										<FontAwesomeIcon icon={getIconForFileType(fileDoc.type)} />
-									</IconBox>
-								)}
-								<CardContent sx={{ width: "100%", pt: 1, pb: "8px !important" }}>
-									<Tooltip title={fileDoc.title} placement="bottom" arrow>
-										<FileNameTypography variant="caption">
-											{getFileName(fileDoc.title)}
-										</FileNameTypography>
-									</Tooltip>
-								</CardContent>
-							</CardActionArea>
-						</StyledCard>
-					</Grid>
-				))}
+				{files.map((fileDoc) => {
+					const IconComponent = getIconForFileType(fileDoc.type);
+					return (
+						<Grid item xs={6} sm={4} md={4} key={fileDoc.id}>
+							<StyledCard>
+								<CardActionArea
+									onClick={() => handleFileClick(fileDoc)}
+									sx={{ display: "flex", flexDirection: "column", flexGrow: 1 }}
+								>
+									{fileDoc.type === "image" && fileDoc.content.startsWith("data:image") ? (
+										<StyledCardMedia image={fileDoc.content} title={fileDoc.title} />
+									) : fileDoc.type === "video" && fileDoc.content.startsWith("data:video") ? (
+										<StyledCardMedia
+											component="video"
+											controls
+											src={fileDoc.content}
+											title={fileDoc.title}
+										/>
+									) : (
+										<IconBox>
+											<IconComponent size={48} strokeWidth={1} />
+										</IconBox>
+									)}
+									<CardContent sx={{ width: "100%", pt: 1, pb: "8px !important" }}>
+										<Tooltip title={fileDoc.title} placement="bottom" arrow>
+											<FileNameTypography variant="caption">
+												{getFileName(fileDoc.title)}
+											</FileNameTypography>
+										</Tooltip>
+									</CardContent>
+								</CardActionArea>
+							</StyledCard>
+						</Grid>
+					);
+				})}
 			</Grid>
 		</Box>
 	);
