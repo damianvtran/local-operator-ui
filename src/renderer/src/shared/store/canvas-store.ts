@@ -14,6 +14,11 @@ export type CanvasTab = {
 import type { CanvasDocument } from "@features/chat/types/canvas"; // TODO: Should move this type to feature level
 
 /**
+ * Canvas view mode type
+ */
+export type CanvasViewMode = "documents" | "files";
+
+/**
  * State for a single conversation's canvas
  */
 export type ConversationCanvasState = {
@@ -22,6 +27,7 @@ export type ConversationCanvasState = {
 	selectedTabId: string | null;
 	files: CanvasDocument[];
 	mentionedFiles: CanvasDocument[];
+	viewMode: CanvasViewMode;
 };
 
 /**
@@ -54,6 +60,10 @@ export type CanvasStoreState = {
 	 */
 	addMentionedFile: (conversationId: string, file: CanvasDocument) => void;
 	/**
+	 * Set the view mode for a conversation's canvas
+	 */
+	setViewMode: (conversationId: string, viewMode: CanvasViewMode) => void;
+	/**
 	 * Reset the canvas state for a conversation
 	 */
 	resetConversationCanvas: (conversationId: string) => void;
@@ -68,6 +78,7 @@ const defaultConversationCanvasState: ConversationCanvasState = {
 	selectedTabId: null,
 	files: [],
 	mentionedFiles: [],
+	viewMode: "documents",
 };
 
 /**
@@ -169,6 +180,17 @@ export const useCanvasStore = create<CanvasStoreState>()(
 						},
 					};
 				});
+			},
+			setViewMode: (conversationId, viewMode) => {
+				set((state) => ({
+					conversations: {
+						...state.conversations,
+						[conversationId]: {
+							...getConversationState(state.conversations, conversationId),
+							viewMode,
+						},
+					},
+				}));
 			},
 		}),
 		{
