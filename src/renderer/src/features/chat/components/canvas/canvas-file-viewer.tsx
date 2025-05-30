@@ -28,7 +28,7 @@ import type {
 } from "@features/chat/types/canvas";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import type { FC } from "react";
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { isCanvasSupported } from "@features/chat/utils/is-canvas-supported";
 import { getFileName } from "@features/chat/utils/get-file-name";
 
@@ -37,6 +37,8 @@ type CanvasFileViewerProps = {
 	// Callback to switch view in parent component
 	onSwitchToDocumentView: (documentId: string) => void;
 };
+
+const defaultFiles: CanvasDocument[] = [];
 
 const StyledCard = styled(Card)(({ theme }) => ({
 	display: "flex",
@@ -110,7 +112,13 @@ export const CanvasFileViewer: FC<CanvasFileViewerProps> = ({
 	onSwitchToDocumentView,
 }) => {
 	// Get files from the canvas store for this conversation
-	const files = useCanvasStore((s) => s.conversations[conversationId]?.files ?? []);
+	const files = useCanvasStore((state): CanvasDocument[] => {
+		const conv = state.conversations[conversationId];
+		return conv ? conv.files : defaultFiles;
+	});
+
+	// Memoize files to prevent unnecessary re-renders
+	const memoizedFiles = useMemo<CanvasDocument[]>(() => files, [files]);
 
 	const handleFileClick = useCallback(
 		async (fileDoc: CanvasDocument) => {
@@ -169,7 +177,7 @@ export const CanvasFileViewer: FC<CanvasFileViewerProps> = ({
 	return (
 		<Box sx={{ p: 2, height: "100%", overflowY: "auto" }}>
 			<Grid container spacing={2}>
-				{files.map((fileDoc) => {
+				{memoizedFiles.map((fileDoc) => {
 					const IconComponent = getIconForFileType(fileDoc.type);
 					return (
 						<Grid item xs={6} sm={4} md={4} key={fileDoc.id}>
@@ -183,7 +191,6 @@ export const CanvasFileViewer: FC<CanvasFileViewerProps> = ({
 									) : fileDoc.type === "video" && fileDoc.content.startsWith("data:video") ? (
 										<StyledCardMedia
 											component="video"
-											controls
 											src={fileDoc.content}
 											title={fileDoc.title}
 										/>
