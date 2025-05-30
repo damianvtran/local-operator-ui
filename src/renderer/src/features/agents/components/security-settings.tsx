@@ -128,6 +128,14 @@ export const SecuritySettings: FC<SecuritySettingsProps> = ({
 					}
 				}}
 			/>
+			<Typography
+				variant="caption"
+				color="text.secondary"
+				sx={{ mt: 1, display: "block" }}
+			>
+				This prompt is directed to the AI security reviewer. It helps the
+				reviewer decide whether to block or allow actions based on safety.  Write as if talking to another agent that is watching this agent (eg. "Allow all git operations", "Don't let the agent access drive files in the restricted folder")
+			</Typography>
 		</Box>
 	);
 };

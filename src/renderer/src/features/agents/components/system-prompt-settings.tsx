@@ -136,6 +136,15 @@ export const SystemPromptSettings: FC<SystemPromptSettingsProps> = ({
 					}
 				}}
 			/>
+			<Typography
+				variant="caption"
+				color="text.secondary"
+				sx={{ mt: 1, display: "block" }}
+			>
+				Define the agent's role, personality, or provide context. Write as if
+				talking to the agent (e.g., "You are an expert researcher") and/or about
+				yourself (e.g., "My name is John").
+			</Typography>
 		</Box>
 	);
 };
