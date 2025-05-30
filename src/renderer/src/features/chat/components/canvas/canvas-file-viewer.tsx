@@ -198,6 +198,7 @@ export const CanvasFileViewer: FC<CanvasFileViewerProps> = ({
 		async (fileDoc: CanvasDocument) => {
 			if (isCanvasSupported(fileDoc.title)) {
 				// Let the parent handle all state updates to avoid feedback loops
+				console.log("Switching to document view", fileDoc.id);
 				onSwitchToDocumentView(fileDoc.id);
 			} else {
 				// Fallback to OS open for non-canvas supported files
@@ -214,7 +215,7 @@ export const CanvasFileViewer: FC<CanvasFileViewerProps> = ({
 						// Potentially use a download utility if available via window.api
 						// Or, if the original onClick from FileAttachment is accessible and handles this, use it.
 					} else {
-						await window.api.openFileNatively(fileDoc.path);
+						await window.api.openFile(fileDoc.path);
 					}
 				} catch (error) {
 					console.error("Error opening file natively:", error);

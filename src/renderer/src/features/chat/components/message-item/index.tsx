@@ -4,8 +4,7 @@ import {
 	createLocalOperatorClient,
 } from "@shared/api/local-operator";
 import { apiConfig } from "@shared/config";
-import { useCanvasStore } from "@shared/store/canvas-store";
-import { type FC, memo, useCallback, useEffect, useMemo } from "react";
+import { type FC, memo, useCallback, useMemo } from "react";
 import type { Message } from "../../types/message";
 import { ActionBlock } from "./action-block";
 import { CodeBlock } from "./code-block";
@@ -138,8 +137,6 @@ export const MessageItem: FC<MessageItemProps> = memo(
 		conversationId,
 		currentExecution,
 	}) => {
-		const setFiles = useCanvasStore((s) => s.setFiles);
-
 		// Create a Local Operator client using the API config
 		const client = useMemo(() => {
 			return createLocalOperatorClient(apiConfig.baseUrl);
@@ -183,55 +180,6 @@ export const MessageItem: FC<MessageItemProps> = memo(
 				);
 			}
 		}, []);
-
-		useEffect(() => {
-			if (!message.files || message.files.length === 0) return;
-			const state = useCanvasStore.getState();
-			const conv = state.conversations[conversationId];
-			if (!conv) return;
-			const { openTabs, files } = conv;
-			if (!openTabs || openTabs.length === 0) return;
-
-			// For each file in the message that matches an open tab, re-read from disk and update the store if changed
-			(async () => {
-				let updatedFiles = files;
-				let didUpdate = false;
-
-				for (const filePath of message.files ?? []) {
-					const normalizedPath = filePath.startsWith("file://")
-						? filePath.substring(7)
-						: filePath;
-					const tabIsOpen = openTabs.some((tab) => tab.id === normalizedPath);
-					if (!tabIsOpen) continue;
-
-					const fileIdx = updatedFiles.findIndex(
-						(f) => f.id === normalizedPath,
-					);
-					if (fileIdx === -1) continue;
-
-					try {
-						const result = await window.api.readFile(normalizedPath);
-						if (result.success) {
-							const currentDoc = updatedFiles[fileIdx];
-							if (currentDoc.content !== result.data) {
-								const updatedDoc = { ...currentDoc, content: result.data };
-								updatedFiles = [
-									...updatedFiles.slice(0, fileIdx),
-									updatedDoc,
-									...updatedFiles.slice(fileIdx + 1),
-								];
-								didUpdate = true;
-							}
-						}
-					} catch (_) {
-						// Ignore read errors, do not update
-					}
-				}
-				if (didUpdate) {
-					setFiles(conversationId, updatedFiles);
-				}
-			})();
-		}, [message.files, conversationId, setFiles]);
 
 		const isMessageContentEmpty =
 			!message.message &&
