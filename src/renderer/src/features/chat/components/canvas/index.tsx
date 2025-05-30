@@ -1,9 +1,4 @@
-import {
-	faFileLines,
-	faFolderOpen,
-	faTimes,
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { FileText, FolderOpen, X } from "lucide-react";
 import {
 	Box,
 	IconButton,
@@ -226,9 +221,10 @@ const CanvasComponent: FC<CanvasProps> = ({
 								},
 								width: 36,
 								height: 36,
+                padding: 0,
 							})}
 						>
-							<FontAwesomeIcon icon={faFileLines} size="xs" />
+							<FileText size={16} />
 						</IconButton>
 					</Tooltip>
 					<Tooltip title="Files View" arrow placement="top">
@@ -250,19 +246,20 @@ const CanvasComponent: FC<CanvasProps> = ({
 								},
 								width: 36,
 								height: 36,
+                padding: 0,
 							})}
 						>
-							<FontAwesomeIcon icon={faFolderOpen} size="xs" />
+							<FolderOpen size={16} />
 						</IconButton>
 					</Tooltip>
-					<Tooltip title="Close Canvas" arrow placement="top">
+					<Tooltip title="Close Canvas" arrow placement="top" sx={{ padding: 0 }}>
 						{/* @ts-ignore MUI Tooltip a11y issue */}
 						<CloseButton
 							onClick={onClose}
 							size="large"
 							data-tour-tag="close-canvas-button"
 						>
-							<FontAwesomeIcon icon={faTimes} size="xs" />
+							<X size={16} />
 						</CloseButton>
 					</Tooltip>
 				</Box>
