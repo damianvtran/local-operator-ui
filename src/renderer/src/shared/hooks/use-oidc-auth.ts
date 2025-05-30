@@ -21,7 +21,7 @@
 import { apiConfig } from "@shared/config";
 import { useQueryClient } from "@tanstack/react-query";
 import { jwtDecode } from "jwt-decode";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import { CredentialsApi } from "../api/local-operator/credentials-api";
 import { createRadientClient } from "../api/radient";
 import { storeSession } from "../utils/session-store";
@@ -97,6 +97,7 @@ export const useOidcAuth = (
 	});
 	const queryClient = useQueryClient();
 	const { mutateAsync: updateConfig } = useUpdateConfig();
+	const isBackendAuthInProgressRef = useRef(false);
 
 	/**
 	 * Handles the full backend integration after obtaining tokens from the main process.
@@ -109,7 +110,13 @@ export const useOidcAuth = (
 			googleTokenExpiry?: number,
 			googleRefreshToken?: string,
 		) => {
-			// No need to set loading here, it's handled by the main flow
+			if (isBackendAuthInProgressRef.current) {
+				console.warn(
+					"Backend authentication is already in progress. Skipping duplicate call.",
+				);
+				return;
+			}
+			isBackendAuthInProgressRef.current = true;
 			setError(null); // Clear previous errors
 
 			try {
@@ -266,6 +273,8 @@ export const useOidcAuth = (
 				setError(msg || "Authentication failed during backend processing.");
 				showErrorToast(msg || "Authentication failed");
 				// Let the main flow handle setting loading to false.
+			} finally {
+				isBackendAuthInProgressRef.current = false;
 			}
 		},
 		[queryClient, updateConfig, onSuccess, onAfterCredentialUpdate],
