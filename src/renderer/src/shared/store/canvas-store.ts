@@ -21,6 +21,7 @@ export type ConversationCanvasState = {
 	openTabs: CanvasTab[];
 	selectedTabId: string | null;
 	files: CanvasDocument[];
+	mentionedFiles: CanvasDocument[];
 };
 
 /**
@@ -45,6 +46,14 @@ export type CanvasStoreState = {
 	 */
 	setFiles: (conversationId: string, files: CanvasDocument[]) => void;
 	/**
+	 * Set the mentioned files for a conversation
+	 */
+	setMentionedFiles: (conversationId: string, mentionedFiles: CanvasDocument[]) => void;
+	/**
+	 * Add a single mentioned file (deduplicated) for a conversation
+	 */
+	addMentionedFile: (conversationId: string, file: CanvasDocument) => void;
+	/**
 	 * Reset the canvas state for a conversation
 	 */
 	resetConversationCanvas: (conversationId: string) => void;
@@ -58,6 +67,7 @@ const defaultConversationCanvasState: ConversationCanvasState = {
 	openTabs: [],
 	selectedTabId: null,
 	files: [],
+	mentionedFiles: [],
 };
 
 /**
@@ -66,8 +76,12 @@ const defaultConversationCanvasState: ConversationCanvasState = {
 const getConversationState = (
 	conversations: Record<string, ConversationCanvasState>,
 	conversationId: string,
-): ConversationCanvasState =>
-	conversations[conversationId] ?? { ...defaultConversationCanvasState };
+): ConversationCanvasState => {
+	const existing = conversations[conversationId];
+	return existing
+		? { ...defaultConversationCanvasState, ...existing }
+		: { ...defaultConversationCanvasState };
+};
 
 /**
  * Zustand store for managing canvas state per conversation
@@ -127,6 +141,33 @@ export const useCanvasStore = create<CanvasStoreState>()(
 						...defaultConversationCanvasState,
 					};
 					return { conversations: newConversations };
+				});
+			},
+			setMentionedFiles: (conversationId, mentionedFiles) => {
+				set((state) => ({
+					conversations: {
+						...state.conversations,
+						[conversationId]: {
+							...getConversationState(state.conversations, conversationId),
+							mentionedFiles,
+						},
+					},
+				}));
+			},
+			addMentionedFile: (conversationId, file) => {
+				set((state) => {
+					const conv = getConversationState(state.conversations, conversationId);
+					const exists = conv.mentionedFiles.find((d) => d.id === file.id);
+					const updated = exists ? conv.mentionedFiles : [...conv.mentionedFiles, file];
+					return {
+						conversations: {
+							...state.conversations,
+							[conversationId]: {
+								...conv,
+								mentionedFiles: updated,
+							},
+						},
+					};
 				});
 			},
 		}),

@@ -114,7 +114,7 @@ export const CanvasFileViewer: FC<CanvasFileViewerProps> = ({
 	// Get files from the canvas store for this conversation
 	const files = useCanvasStore((state): CanvasDocument[] => {
 		const conv = state.conversations[conversationId];
-		return conv ? conv.files : defaultFiles;
+		return conv?.mentionedFiles ?? defaultFiles;
 	});
 
 	// Memoize files to prevent unnecessary re-renders
@@ -186,9 +186,9 @@ export const CanvasFileViewer: FC<CanvasFileViewerProps> = ({
 									onClick={() => handleFileClick(fileDoc)}
 									sx={{ display: "flex", flexDirection: "column", flexGrow: 1 }}
 								>
-									{fileDoc.type === "image" && fileDoc.content.startsWith("data:image") ? (
+									{fileDoc.type === "image" ? (
 										<StyledCardMedia image={fileDoc.content} title={fileDoc.title} />
-									) : fileDoc.type === "video" && fileDoc.content.startsWith("data:video") ? (
+									) : fileDoc.type === "video" ? (
 										<StyledCardMedia
 											component="video"
 											src={fileDoc.content}
