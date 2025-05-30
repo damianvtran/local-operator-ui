@@ -79,7 +79,7 @@ const CardTitle = styled(Typography)(({ theme }) => ({
 const CardSubtitle = styled(Typography)(({ theme }) => ({
 	fontSize: "0.875rem", // Consistent small text size
 	color: theme.palette.text.secondary,
-	marginBottom: theme.spacing(3), // Consistent margin
+	marginBottom: theme.spacing(2), // Consistent margin
 	lineHeight: 1.5,
 }));
 
@@ -106,14 +106,6 @@ const RadientPassText = styled(Typography)(() => ({
 const RadientBoldTextSpan = styled("span")(() => ({
 	fontWeight: "bold",
 	color: radientTheme.palette.primary.main,
-}));
-
-// Use Typography for Free text
-const FreeText = styled(Typography)(({ theme }) => ({
-	fontSize: "1.25rem",
-	fontWeight: 600,
-	color: theme.palette.text.primary, // Standard text color
-	display: "inline",
 }));
 
 // Simplified "Choose Option" text, appears on hover
@@ -215,6 +207,9 @@ export const RadientChoiceStep: FC<RadientChoiceStepProps> = ({
 									Get started for free with{" "}
 									<RadientPassText>Radient Pass</RadientPassText>
 								</CardTitle>
+								<CardSubtitle variant="subtitle1" sx={{ mb: 1, fontWeight: 600 }}>
+									Recommended for most users.
+								</CardSubtitle>
 								<CardSubtitle variant="body2">
 									Designed for{" "}
 									<RadientBoldTextSpan>
@@ -223,7 +218,7 @@ export const RadientChoiceStep: FC<RadientChoiceStepProps> = ({
 									with Local Operator. Get access to all tools and models at
 									once, with potential savings when Radient Automatic picks the
 									best model to handle each step.
-									<br />
+                  <br />
 									<br />
 									Two-click setup that{" "}
 									<RadientBoldTextSpan>
@@ -277,14 +272,16 @@ export const RadientChoiceStep: FC<RadientChoiceStepProps> = ({
 									{" "}
 									{/* Text content wrapper */}
 									<CardTitle variant="h6">
-										Set up your own keys <FreeText>(Technical Setup)</FreeText>
+										Set up your own keys
 									</CardTitle>
-									<CardSubtitle variant="body2">
-										Full flexibility for technical users. Bring your own API
-										keys for providers like OpenRouter, OpenAI, Anthropic,
-										Google, Tavily API, FAL, and manage billing with providers
-										separately. Experiment manually to find the best models and
-										providers for your needs.
+									<CardSubtitle variant="subtitle1" sx={{ mb: 1, fontWeight: 600 }}>
+										For advanced and technical users.
+									</CardSubtitle>
+									<CardSubtitle variant="body2" sx={{ mb: 0 }}>
+										Bring your own API keys for providers like OpenRouter,
+										OpenAI, Anthropic, Google, Tavily API, FAL, and manage
+										billing with providers separately. Experiment manually to
+										find the best models and providers for your needs.
 									</CardSubtitle>
 								</Box>
 								{/* DIY Icon - styled for right alignment and vertical centering */}
@@ -309,7 +306,7 @@ export const RadientChoiceStep: FC<RadientChoiceStepProps> = ({
 			</SectionContainer>
 
 			{/* Use standard SectionDescription styling */}
-			<SectionDescription sx={{ mt: 3, textAlign: "center" }}>
+			<SectionDescription sx={{ mt: 2, textAlign: "center" }}>
 				<Box component="span" sx={{ mr: 0.5 }}>
 					💡
 				</Box>
