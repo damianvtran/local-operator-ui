@@ -180,6 +180,11 @@ export const CanvasFileViewer: FC<CanvasFileViewerProps> = ({
 		return conv?.mentionedFiles ?? defaultFiles;
 	});
 
+	// Canvas store actions
+	const setFiles = useCanvasStore((s) => s.setFiles);
+	const setOpenTabs = useCanvasStore((s) => s.setOpenTabs);
+	const setSelectedTab = useCanvasStore((s) => s.setSelectedTab);
+
 	// Memoize files to prevent unnecessary re-renders
 	const memoizedFiles = useMemo<CanvasDocument[]>(() => files, [files]);
 
@@ -196,34 +201,132 @@ export const CanvasFileViewer: FC<CanvasFileViewerProps> = ({
 
 	const handleFileClick = useCallback(
 		async (fileDoc: CanvasDocument) => {
-			if (isCanvasSupported(fileDoc.title)) {
-				// Let the parent handle all state updates to avoid feedback loops
-				console.log("Switching to document view", fileDoc.id);
-				onSwitchToDocumentView(fileDoc.id);
-			} else {
+			const title = fileDoc.title;
+			const fallbackAction = (err?: string) => {
+				if (err) console.error("Error processing file:", err);
 				// Fallback to OS open for non-canvas supported files
-				// Assuming fileDoc.path is the correct path for OS to open
 				try {
 					if (fileDoc.path.startsWith("data:")) {
-						// For data URIs, we might need a different approach if direct opening isn't feasible
-						// This might involve downloading the file first or using a specific API
-						// For now, log and potentially do nothing or show a message
 						console.warn(
 							"Opening data URI with OS default is not directly supported here.",
 							`${fileDoc.path.substring(0, 50)}...`,
 						);
-						// Potentially use a download utility if available via window.api
-						// Or, if the original onClick from FileAttachment is accessible and handles this, use it.
 					} else {
-						await window.api.openFile(fileDoc.path);
+						window.api.openFile(fileDoc.path);
 					}
 				} catch (error) {
 					console.error("Error opening file natively:", error);
-					// Handle error (e.g., show a toast notification)
+				}
+			};
+
+			if (fileDoc.path.startsWith("data:")) {
+				// Handle base64 data URI
+				if (isCanvasSupported(title)) {
+					const docId = fileDoc.path; // Use the data URI itself as a unique ID
+					const newDoc = {
+						id: docId,
+						title,
+						path: docId, // Store data URI as path for consistency if needed
+						content: fileDoc.path, // The content is the data URI itself
+					};
+
+					const state = useCanvasStore.getState();
+					const conversationCanvasState = state.conversations?.[conversationId];
+					const filesInState = conversationCanvasState?.files ?? [];
+					const openTabsInState = conversationCanvasState?.openTabs ?? [];
+
+					const updatedFiles = (() => {
+						const idx = filesInState.findIndex((d) => d.id === docId);
+						if (idx !== -1) {
+							return [
+								...filesInState.slice(0, idx),
+								newDoc,
+								...filesInState.slice(idx + 1),
+							];
+						}
+						return [...filesInState, newDoc];
+					})();
+					setFiles(conversationId, updatedFiles);
+
+					const existsTab = openTabsInState.some((t) => t.id === docId);
+					const updatedTabs = existsTab
+						? openTabsInState
+						: [...openTabsInState, { id: docId, title }];
+					setOpenTabs(conversationId, updatedTabs);
+					setSelectedTab(conversationId, docId);
+					onSwitchToDocumentView(docId);
+				} else {
+					// Not canvas supported, but it's a data URI.
+					fallbackAction();
+				}
+			} else {
+				// Handle file path
+				const normalizedPath = fileDoc.path.startsWith("file://")
+					? fileDoc.path.substring(7)
+					: fileDoc.path;
+				try {
+					const result = await window.api.readFile(normalizedPath);
+
+					if (result.success && isCanvasSupported(title)) {
+						const docId = normalizedPath;
+						const newDoc = {
+							id: docId,
+							title,
+							path: normalizedPath,
+							content: result.data,
+						};
+
+						const state = useCanvasStore.getState();
+						const conversationCanvasState = state.conversations?.[conversationId];
+						const filesInState = conversationCanvasState?.files ?? [];
+						const openTabsInState = conversationCanvasState?.openTabs ?? [];
+
+						const updatedFiles = (() => {
+							const idx = filesInState.findIndex((d) => d.id === docId);
+							if (idx !== -1) {
+								return [
+									...filesInState.slice(0, idx),
+									newDoc,
+									...filesInState.slice(idx + 1),
+								];
+							}
+							return [...filesInState, newDoc];
+						})();
+						setFiles(conversationId, updatedFiles);
+
+						const existsTab = openTabsInState.some((t) => t.id === docId);
+						const updatedTabs = existsTab
+							? openTabsInState
+							: [...openTabsInState, { id: docId, title }];
+						setOpenTabs(conversationId, updatedTabs);
+						setSelectedTab(conversationId, docId);
+						onSwitchToDocumentView(docId);
+						return;
+					}
+
+					const errorMessage =
+						!result.success && result.error
+							? result.error instanceof Error
+								? result.error.message
+								: String(result.error)
+							: "Unknown error reading file";
+					return fallbackAction(errorMessage);
+				} catch (error: unknown) {
+					const message =
+						error instanceof Error
+							? error.message
+							: String(error ?? "Unknown error reading file");
+					return fallbackAction(message);
 				}
 			}
 		},
-		[onSwitchToDocumentView],
+		[
+			conversationId,
+			setFiles,
+			setOpenTabs,
+			setSelectedTab,
+			onSwitchToDocumentView,
+		],
 	);
 
 	if (files.length === 0) {

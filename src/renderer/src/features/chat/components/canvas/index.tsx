@@ -159,23 +159,10 @@ const CanvasComponent: FC<CanvasProps> = ({
 
 	const handleSwitchToDocumentView = useCallback(
 		(documentId: string) => {
-			// Get the conversation ID from the parent context
-			// Since we're in files view, we need to get the proper conversation ID
-			// The activeDocumentId being passed as conversationId is incorrect
-			// We need to get the actual conversation ID from the parent
-			// For now, let's assume we can derive it or get it from context
-			
-			// Find the document in the files list
-			const targetDocument = documents.find(doc => doc.id === documentId);
-			if (!targetDocument) {
-				console.warn('Document not found:', documentId);
-				return;
-			}
-			
 			setCurrentView("documents");
 			handleChangeActiveDocument(documentId);
 		},
-		[handleChangeActiveDocument, documents, setCurrentView],
+		[handleChangeActiveDocument, setCurrentView],
 	);
 
 	// Handle closing a document
