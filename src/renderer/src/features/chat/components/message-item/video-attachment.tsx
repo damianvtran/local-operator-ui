@@ -1,8 +1,6 @@
 import { alpha } from "@mui/material";
 import { styled } from "@mui/material/styles";
-import { type FC, useState, useCallback, useEffect } from "react";
-import { useCanvasStore } from "@shared/store/canvas-store";
-import type { CanvasDocument } from "@features/chat/types/canvas";
+import { type FC, useState, memo } from "react";
 import { InvalidAttachment } from "./invalid-attachment";
 
 /**
@@ -48,132 +46,44 @@ const getFileName = (path: string): string => {
 	return parts[parts.length - 1];
 };
 
-const getFileTypeFromPath = (filePath: string): CanvasDocument["type"] => {
-	if (filePath.startsWith("data:image/")) return "image";
-	if (filePath.startsWith("data:video/")) return "video";
-	if (filePath.startsWith("data:application/pdf")) return "pdf";
-
-	const extension = filePath.split(".").pop()?.toLowerCase();
-	if (!extension) return "other";
-
-	if (["png", "jpg", "jpeg", "gif", "bmp", "webp", "svg"].includes(extension))
-		return "image";
-	if (["mp4", "webm", "ogg", "mov", "avi", "mkv"].includes(extension))
-		return "video";
-	if (["pdf"].includes(extension)) return "pdf";
-	if (["md", "markdown"].includes(extension)) return "markdown";
-	if (["html", "htm"].includes(extension)) return "html";
-	if (["zip", "tar", "gz", "rar", "7z"].includes(extension)) return "archive";
-	if (["txt", "log", "csv", "json", "xml", "yaml", "yml"].includes(extension))
-		return "text";
-	if (
-		[
-			"js",
-			"ts",
-			"jsx",
-			"tsx",
-			"py",
-			"java",
-			"c",
-			"cpp",
-			"cs",
-			"go",
-			"rb",
-			"php",
-			"sh",
-			"css",
-			"scss",
-			"less",
-		].includes(extension)
-	)
-		return "code";
-	if (["doc", "docx", "odt"].includes(extension)) return "document";
-	if (["xls", "xlsx", "ods"].includes(extension)) return "spreadsheet";
-	if (["ppt", "pptx", "odp"].includes(extension)) return "presentation";
-	if (["mp3", "wav", "aac", "flac"].includes(extension)) return "audio";
-
-	return "other";
-};
-
 /**
  * Component for displaying video attachments
  * Renders a video player with controls and preview functionality
  * Handles video loading errors and displays an InvalidAttachment component if the video fails to load
  */
-export const VideoAttachment: FC<VideoAttachmentProps> = ({
-	file,
-	src,
-	onClick,
-	conversationId,
-}) => {
-	// State to track if the video has failed to load
-	const [hasError, setHasError] = useState(false);
-	const addMentionedFile = useCanvasStore((s) => s.addMentionedFile);
+export const VideoAttachment: FC<VideoAttachmentProps> = memo(
+	({ file, src, onClick }) => {
+		// State to track if the video has failed to load
+		const [hasError, setHasError] = useState(false);
+		// The conversationId and addMentionedFile logic is removed from here
+		// It will be handled by MessageItem
 
-	const storeFileInCanvas = useCallback(
-		async (fileToStore: string, convId: string) => {
-			const title = getFileName(fileToStore);
-			const fileType = getFileTypeFromPath(fileToStore);
-
-			let docId: string;
-			let newDocData: Omit<CanvasDocument, "id" | "type"> & {
-				type: CanvasDocument["type"];
-			};
-
-			if (fileToStore.startsWith("data:")) {
-				docId = fileToStore;
-				newDocData = {
-					title,
-					path: docId,
-					content: fileToStore,
-					type: fileType,
-				};
-			} else {
-				const normalizedPath = fileToStore.startsWith("file://")
-					? fileToStore.substring(7)
-					: fileToStore;
-				docId = normalizedPath;
-				newDocData = {
-					title,
-					path: normalizedPath,
-					content: normalizedPath,
-					type: fileType,
-				};
-			}
-
-			const finalNewDoc: CanvasDocument = { id: docId, ...newDocData };
-			addMentionedFile(convId, finalNewDoc);
-		},
-		[addMentionedFile],
-	);
-
-	useEffect(() => {
-		storeFileInCanvas(file, conversationId);
-	}, [file, conversationId, storeFileInCanvas]);
-
-	const handleClick = () => {
-		onClick(file);
-	};
+		const handleClick = () => {
+			onClick(file);
+		};
 
 	const handleError = () => {
 		// Set error state when video fails to load
 		setHasError(true);
 	};
 
-	// If the video failed to load, show the InvalidAttachment component
-	if (hasError) {
-		return <InvalidAttachment file={file} />;
-	}
+		// If the video failed to load, show the InvalidAttachment component
+		if (hasError) {
+			return <InvalidAttachment file={file} />;
+		}
 
-	// Otherwise, render the video with an error handler
-	return (
-		<AttachmentVideo
-			src={src}
-			controls
-			preload="metadata"
-			onClick={handleClick}
-			onError={handleError}
-			title={`Click to open ${getFileName(file)}`}
-		/>
-	);
-};
+		// Otherwise, render the video with an error handler
+		return (
+			<AttachmentVideo
+				src={src}
+				controls
+				preload="metadata"
+				onClick={handleClick}
+				onError={handleError}
+				title={`Click to open ${getFileName(file)}`}
+			/>
+		);
+	},
+);
+
+VideoAttachment.displayName = "VideoAttachment";
