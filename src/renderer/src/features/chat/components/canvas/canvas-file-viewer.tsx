@@ -31,6 +31,8 @@ import type { FC } from "react";
 import { useCallback, useMemo } from "react";
 import { isCanvasSupported } from "@features/chat/utils/is-canvas-supported";
 import { getFileName } from "@features/chat/utils/get-file-name";
+import { createLocalOperatorClient } from "@shared/api/local-operator";
+import { apiConfig } from "@shared/config";
 
 type CanvasFileViewerProps = {
 	conversationId: string;
@@ -78,6 +80,58 @@ const FileNameTypography = styled(Typography)(({ theme }) => ({
 	padding: theme.spacing(0, 0),
 }));
 
+/**
+ * Checks if a file is an image based on its extension
+ */
+const isImage = (path: string): boolean => {
+	const imageExtensions = [
+		".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".svg",
+		".tiff", ".tif", ".ico", ".heic", ".heif", ".avif",
+		".jfif", ".pjpeg", ".pjp"
+	];
+	const lowerPath = path.toLowerCase();
+	return imageExtensions.some((ext) => lowerPath.endsWith(ext));
+};
+
+/**
+ * Checks if a file is a video based on its extension
+ */
+const isVideo = (path: string): boolean => {
+	const videoExtensions = [
+		".mp4", ".webm", ".ogg", ".mov", ".avi", ".wmv",
+		".flv", ".mkv", ".m4v", ".3gp", ".3g2"
+	];
+	const lowerPath = path.toLowerCase();
+	return videoExtensions.some((ext) => lowerPath.endsWith(ext));
+};
+
+/**
+ * Gets the appropriate URL for an attachment using the static API
+ */
+const getAttachmentUrl = (
+	client: ReturnType<typeof createLocalOperatorClient>,
+	path: string,
+): string => {
+	// If it's a web URL, return it as is
+	if (path.startsWith("http")) {
+		return path;
+	}
+
+	// For local files, normalize the path and use appropriate endpoint
+	const normalizedPath = path.startsWith("file://") ? path : `file://${path}`;
+
+	if (isImage(path)) {
+		return client.static.getImageUrl(normalizedPath);
+	}
+
+	if (isVideo(path)) {
+		return client.static.getVideoUrl(normalizedPath);
+	}
+
+	// For other file types, return the original path
+	return path;
+};
+
 const getIconForFileType = (type?: CanvasDocumentType) => {
 	switch (type) {
 		case "image":
@@ -119,6 +173,17 @@ export const CanvasFileViewer: FC<CanvasFileViewerProps> = ({
 
 	// Memoize files to prevent unnecessary re-renders
 	const memoizedFiles = useMemo<CanvasDocument[]>(() => files, [files]);
+
+	// Create a Local Operator client using the API config
+	const client = useMemo(() => {
+		return createLocalOperatorClient(apiConfig.baseUrl);
+	}, []);
+
+	// Get the URL for an attachment
+	const getUrl = useCallback(
+		(path: string) => getAttachmentUrl(client, path),
+		[client],
+	);
 
 	const handleFileClick = useCallback(
 		async (fileDoc: CanvasDocument) => {
@@ -187,11 +252,11 @@ export const CanvasFileViewer: FC<CanvasFileViewerProps> = ({
 									sx={{ display: "flex", flexDirection: "column", flexGrow: 1 }}
 								>
 									{fileDoc.type === "image" ? (
-										<StyledCardMedia image={fileDoc.content} title={fileDoc.title} />
+										<StyledCardMedia src={getUrl(fileDoc.path)} title={fileDoc.title} />
 									) : fileDoc.type === "video" ? (
 										<StyledCardMedia
 											component="video"
-											src={fileDoc.content}
+											src={getUrl(fileDoc.path)}
 											title={fileDoc.title}
 										/>
 									) : (
