@@ -158,7 +158,7 @@ export const OnboardingDialog = ({
 				)}
 				<Box
 					sx={{
-						padding: theme.spacing(0, 3, 1),
+						padding: theme.spacing(2, 3, 1),
 						flexGrow: 1,
 						overflowY: "auto",
 						"&::-webkit-scrollbar": {
