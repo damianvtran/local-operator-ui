@@ -177,146 +177,155 @@ export const FileAttachment: FC<FileAttachmentProps> = ({
 	const setOpenTabs = useCanvasStore((s) => s.setOpenTabs);
 	const setSelectedTab = useCanvasStore((s) => s.setSelectedTab);
 	const addMentionedFile = useCanvasStore((s) => s.addMentionedFile);
-	// Removed files and openTabs subscriptions to prevent unnecessary re-renders and update loops
 
-	const storeFileInCanvas = useCallback(
-		async (
-			fileToStore: string,
-			convId: string,
-			baseOnClick: (file: string) => void,
-			openInCanvas?: boolean, // If true, also manages tabs and selection
-		) => {
-			const title = getFileName(fileToStore);
-			const fileType = getFileTypeFromPath(fileToStore);
+	// Passive effect to add mentioned files without click functionality
+	useEffect(() => {
+		const addToMentionedFiles = () => {
+			const title = getFileName(file);
+			const fileType = getFileTypeFromPath(file);
 
-			const fallback = (err?: string) => {
-				if (err) console.error("Error processing file for store:", err);
-				// Only call baseOnClick if not opening in canvas or if it's a true fallback
-				if (!openInCanvas) {
-					baseOnClick(fileToStore);
-				}
-			};
-
-			let docId: string;
-			let newDocData: Omit<CanvasDocument, "id" | "type"> & {
-				type: CanvasDocument["type"];
-			};
-
-			if (fileToStore.startsWith("data:")) {
-				docId = fileToStore; // Use the data URI itself as a unique ID
-				newDocData = {
-					title,
-					path: docId,
-					content: fileToStore, // The content is the data URI itself
-					type: fileType,
-				};
-				if (openInCanvas && !isCanvasSupported(title)) {
-					// If trying to open in canvas but not supported, use fallback
-					baseOnClick(fileToStore);
-					return; // Don't proceed to store or open tab
-				}
-			} else {
-				const normalizedPath = fileToStore.startsWith("file://")
-					? fileToStore.substring(7)
-					: fileToStore;
-				docId = normalizedPath;
-
-				if (openInCanvas && isCanvasSupported(title)) {
-					try {
-						const result = await window.api.readFile(normalizedPath);
-						if (result.success) {
-							newDocData = {
-								title,
-								path: normalizedPath,
-								content: result.data,
-								type: fileType,
-							};
-						} else {
-							const errorMessage =
-								result.error instanceof Error
-									? result.error.message
-									: String(result.error);
-							fallback(errorMessage);
-							if (openInCanvas) baseOnClick(fileToStore); // Fallback to OS open
-							return;
-						}
-					} catch (error: unknown) {
-						const message =
-							error instanceof Error ? error.message : String(error);
-						fallback(message);
-						if (openInCanvas) baseOnClick(fileToStore); // Fallback to OS open
-						return;
-					}
-				} else {
-					// Not opening in canvas or not canvas supported, store metadata only
-					newDocData = {
-						title,
-						path: normalizedPath,
-						content: normalizedPath, // Placeholder: content will be loaded if opened in canvas
-						type: fileType,
-					};
-					if (openInCanvas && !isCanvasSupported(title)) {
-						// Trying to open in canvas but not supported
-						baseOnClick(fileToStore); // Fallback to OS open
-						return; // Don't proceed to store or open tab
-					}
-				}
+			if (file.startsWith("data:")) {
+				// Data URIs are not supported for canvas
+				return;
 			}
 
-			const finalNewDoc: CanvasDocument = { id: docId, ...newDocData };
+			const normalizedPath = file.startsWith("file://")
+				? file.substring(7)
+				: file;
 
-			const state = useCanvasStore.getState();
-			const conversationCanvasState = state.conversations?.[convId];
-			const filesInState = conversationCanvasState?.files ?? [];
+			const docId = normalizedPath;
+			const newDocData = {
+				title,
+				path: normalizedPath,
+				content: normalizedPath, // Placeholder: content will be loaded if opened in canvas
+				type: fileType,
+			};
 
-			const updatedFiles = (() => {
-				const idx = filesInState.findIndex((d) => d.id === docId);
-				if (idx !== -1) {
-					const existingDoc = filesInState[idx];
-					// Merge, prioritizing new data, but keep existing content if new content is just a placeholder path
-					const mergedDoc = { ...existingDoc, ...finalNewDoc };
-					if (
-						finalNewDoc.content === finalNewDoc.path && // New content is placeholder
-						existingDoc.content !== existingDoc.path && // Old content was not placeholder
-						finalNewDoc.content !== existingDoc.content // And content actually differs
-					) {
-						mergedDoc.content = existingDoc.content;
-					}
-					return [
-						...filesInState.slice(0, idx),
-						mergedDoc,
-						...filesInState.slice(idx + 1),
-					];
-				}
-				return [...filesInState, finalNewDoc];
-			})();
-			setFiles(convId, updatedFiles);
 			// Track all mentioned files for canvas viewer
-			addMentionedFile(convId, finalNewDoc);
+			addMentionedFile(conversationId, { id: docId, ...newDocData });
+		};
 
-			if (openInCanvas && isCanvasSupported(title)) {
+		addToMentionedFiles();
+	}, [file, conversationId, addMentionedFile]);
+
+	// Handle click on the file attachment
+	const handleClick = useCallback(async () => {
+		const title = getFileName(file); // This will be "Pasted Image" for image data URIs
+		const fallbackAction = (err?: string) => {
+			if (err) console.error("Error processing file:", err);
+			onClick(file); // Pass the original file string (path or data URI)
+		};
+
+		if (file.startsWith("data:")) {
+			// Handle base64 data URI
+			if (isCanvasSupported(title)) {
+				const docId = file; // Use the data URI itself as a unique ID
+				const newDoc = {
+					id: docId,
+					title,
+					path: docId, // Store data URI as path for consistency if needed
+					content: file, // The content is the data URI itself
+				};
+
+				const state = useCanvasStore.getState();
+				const conversationCanvasState = state.conversations?.[conversationId];
+				const filesInState = conversationCanvasState?.files ?? [];
 				const openTabsInState = conversationCanvasState?.openTabs ?? [];
+
+				const updatedFiles = (() => {
+					const idx = filesInState.findIndex((d) => d.id === docId);
+					if (idx !== -1) {
+						return [
+							...filesInState.slice(0, idx),
+							newDoc,
+							...filesInState.slice(idx + 1),
+						];
+					}
+					return [...filesInState, newDoc];
+				})();
+				setFiles(conversationId, updatedFiles);
+
 				const existsTab = openTabsInState.some((t) => t.id === docId);
 				const updatedTabs = existsTab
 					? openTabsInState
 					: [...openTabsInState, { id: docId, title }];
-				setOpenTabs(convId, updatedTabs);
-				setSelectedTab(convId, docId);
+				setOpenTabs(conversationId, updatedTabs);
+				setSelectedTab(conversationId, docId);
 				setCanvasOpen(true);
-			} else if (openInCanvas && !isCanvasSupported(title)) {
-				baseOnClick(fileToStore); // Fallback to OS open if tried to open unsupported in canvas
+			} else {
+				// Not canvas supported, but it's a data URI.
+				// The server will handle it. For client-side, just call onClick.
+				onClick(file);
 			}
-		},
-		[setFiles, setOpenTabs, setSelectedTab, setCanvasOpen, addMentionedFile],
-	);
+		} else {
+			// Handle file path
+			const normalizedPath = file.startsWith("file://")
+				? file.substring(7)
+				: file;
+			try {
+				const result = await window.api.readFile(normalizedPath);
 
-	useEffect(() => {
-		storeFileInCanvas(file, conversationId, onClick, false);
-	}, [file, conversationId, onClick, storeFileInCanvas]);
+				if (result.success && isCanvasSupported(title)) {
+					const docId = normalizedPath;
+					const newDoc = {
+						id: docId,
+						title,
+						path: normalizedPath,
+						content: result.data,
+					};
 
-	const handleClick = useCallback(async () => {
-		storeFileInCanvas(file, conversationId, onClick, true);
-	}, [file, conversationId, onClick, storeFileInCanvas]);
+					const state = useCanvasStore.getState();
+					const conversationCanvasState = state.conversations?.[conversationId];
+					const filesInState = conversationCanvasState?.files ?? [];
+					const openTabsInState = conversationCanvasState?.openTabs ?? [];
+
+					const updatedFiles = (() => {
+						const idx = filesInState.findIndex((d) => d.id === docId);
+						if (idx !== -1) {
+							return [
+								...filesInState.slice(0, idx),
+								newDoc,
+								...filesInState.slice(idx + 1),
+							];
+						}
+						return [...filesInState, newDoc];
+					})();
+					setFiles(conversationId, updatedFiles);
+
+					const existsTab = openTabsInState.some((t) => t.id === docId);
+					const updatedTabs = existsTab
+						? openTabsInState
+						: [...openTabsInState, { id: docId, title }];
+					setOpenTabs(conversationId, updatedTabs);
+					setSelectedTab(conversationId, docId);
+					setCanvasOpen(true);
+					return;
+				}
+
+				const errorMessage =
+					!result.success && result.error
+						? result.error instanceof Error
+							? result.error.message
+							: String(result.error)
+						: "Unknown error reading file";
+				return fallbackAction(errorMessage);
+			} catch (error: unknown) {
+				const message =
+					error instanceof Error
+						? error.message
+						: String(error ?? "Unknown error reading file");
+				return fallbackAction(message);
+			}
+		}
+	}, [
+		file,
+		onClick,
+		setFiles,
+		setOpenTabs,
+		setSelectedTab,
+		setCanvasOpen,
+		conversationId,
+	]);
 
 	const isPastedImage = file.startsWith("data:image/");
 	return (
