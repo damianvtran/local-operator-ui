@@ -10,6 +10,7 @@ import {
 import { memo, useCallback, useState } from "react";
 import type { FC } from "react";
 import type { CanvasDocument } from "../../types/canvas";
+import { useCanvasStore } from "@shared/store/canvas-store";
 import { CanvasContent } from "./canvas-content";
 import { CanvasFileViewer } from "./canvas-file-viewer";
 import { CanvasTabs } from "./canvas-tabs";
@@ -114,8 +115,22 @@ const CanvasComponent: FC<CanvasProps> = ({
 	onCloseDocument,
 	conversationId,
 }) => {
-	type CanvasViewMode = "documents" | "files";
-	const [currentView, setCurrentView] = useState<CanvasViewMode>("documents");
+	// Get view mode from store if conversationId is available
+	const { setViewMode } = useCanvasStore();
+	const canvasState = useCanvasStore((state) => 
+		conversationId ? state.conversations[conversationId] : undefined
+	);
+	const currentView = canvasState?.viewMode ?? "documents";
+
+	const setCurrentView = useCallback(
+		(viewMode: "documents" | "files") => {
+			if (conversationId) {
+				setViewMode(conversationId, viewMode);
+			}
+		},
+		[conversationId, setViewMode]
+	);
+
 
 	// Use the documents prop directly instead of local state
 	const documents = initialDocuments;
@@ -160,7 +175,7 @@ const CanvasComponent: FC<CanvasProps> = ({
 			setCurrentView("documents");
 			handleChangeActiveDocument(documentId);
 		},
-		[handleChangeActiveDocument, documents],
+		[handleChangeActiveDocument, documents, setCurrentView],
 	);
 
 	// Handle closing a document
@@ -295,7 +310,7 @@ const CanvasComponent: FC<CanvasProps> = ({
 								No Documents Open
 							</Typography>
 							<Typography variant="body2" color="text.secondary">
-								Click on a file in chat to open it here.
+								Click on a file in chat or use the files view to open a file.
 							</Typography>
 						</Box>
 					)}
