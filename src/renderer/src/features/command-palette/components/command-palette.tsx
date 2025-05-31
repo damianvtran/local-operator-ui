@@ -180,7 +180,69 @@ export const CommandPalette: FC = () => {
 	const theme = useTheme();
 
 	const [selectedIndex, setSelectedIndex] = useState(0);
-	const debouncedCommandPaletteQuery = useDebounce(commandPaletteQuery, 200);
+	const [localQuery, setLocalQuery] = useState(commandPaletteQuery);
+	const debouncedLocalQuery = useDebounce(localQuery, 200);
+
+	// Sync the debounced local query back to the store (but this won't cause re-renders during typing)
+	useEffect(() => {
+		setCommandPaletteQuery(debouncedLocalQuery);
+	}, [debouncedLocalQuery, setCommandPaletteQuery]);
+
+	// Sync store query to local query when palette opens (in case it was set externally)
+	useEffect(() => {
+		if (isCommandPaletteOpen) {
+			setLocalQuery(commandPaletteQuery);
+		}
+	}, [isCommandPaletteOpen, commandPaletteQuery]);
+
+	const handleQueryChange = useCallback(
+		(event: React.ChangeEvent<HTMLInputElement>) => {
+			setLocalQuery(event.target.value);
+		},
+		[],
+	);
+
+	const handleClearSearch = useCallback(() => {
+		setLocalQuery("");
+	}, []);
+
+	const inputPropsStyle = useMemo(() => ({ fontSize: "1rem" }), []);
+
+	const startAdornment = useMemo(
+		() => (
+			<InputAdornment position="start">
+				<LucideSearch size={20} color={theme.palette.action.active} />
+			</InputAdornment>
+		),
+		[theme.palette.action.active],
+	);
+
+	const endAdornment = useMemo(
+		() =>
+			localQuery ? (
+				<InputAdornment position="end">
+					<IconButton
+						aria-label="clear search"
+						onClick={handleClearSearch}
+						edge="end"
+						size="small"
+					>
+						<X size={20} />
+					</IconButton>
+				</InputAdornment>
+			) : null,
+		[localQuery, handleClearSearch],
+	);
+
+	const textFieldInputProps = useMemo(
+		() => ({
+			startAdornment,
+			endAdornment,
+			disableUnderline: true,
+			style: inputPropsStyle,
+		}),
+		[startAdornment, endAdornment, inputPropsStyle],
+	);
 
 	const pages = useMemo((): CommandPaletteItem[] => {
 		return PAGE_DEFINITIONS.map((p, i) => ({
@@ -188,7 +250,7 @@ export const CommandPalette: FC = () => {
 			id: `page-${i}`,
 			type: "page",
 		}));
-	}, []); // PAGE_DEFINITIONS is constant
+	}, []);
 
 	const settingsSectionItems = useMemo((): CommandPaletteItem[] => {
 		return DEFAULT_SETTINGS_SECTIONS.map(
@@ -201,9 +263,8 @@ export const CommandPalette: FC = () => {
 				icon: getIconElement(section),
 			}),
 		);
-	}, []); // Assuming DEFAULT_SETTINGS_SECTIONS is static
+	}, []);
 
-	// useCallback for handleItemClick to stabilize its reference for the useEffect dependency array
 	const handleItemClick = useCallback(
 		(item: CommandPaletteItem) => {
 			navigate(item.path);
@@ -229,7 +290,7 @@ export const CommandPalette: FC = () => {
 					type: "agent-settings",
 					name: agent.name,
 					category: "Agent",
-					path: `/agents/${agent.id}`, // Corrected path for agent settings
+					path: `/agents/${agent.id}`,
 					icon: <Settings size={16} />,
 				});
 			}
@@ -238,45 +299,41 @@ export const CommandPalette: FC = () => {
 	}, [agentsData, pages, settingsSectionItems]);
 
 	const filteredItems = useMemo(() => {
-		let items = allItems;
-		
-		if (debouncedCommandPaletteQuery) {
-			const lowerCaseQuery = debouncedCommandPaletteQuery.toLowerCase();
-			items = allItems.filter(
-				(item) =>
-					item.name.toLowerCase().includes(lowerCaseQuery) ||
-					item.category.toLowerCase().includes(lowerCaseQuery),
-			);
+		if (!debouncedLocalQuery) {
+			return allItems.slice(0, MAX_SUGGESTIONS);
 		}
 		
-		// Limit to top 15 suggestions
-		return items.slice(0, MAX_SUGGESTIONS);
-	}, [allItems, debouncedCommandPaletteQuery]);
-
-	const displayedItems = filteredItems; // Simplified: displayedItems is always filteredItems
+		const lowerCaseQuery = debouncedLocalQuery.toLowerCase();
+		const filtered = allItems.filter(
+			(item) =>
+				item.name.toLowerCase().includes(lowerCaseQuery) ||
+				item.category.toLowerCase().includes(lowerCaseQuery),
+		);
+		
+		return filtered.slice(0, MAX_SUGGESTIONS);
+	}, [allItems, debouncedLocalQuery]);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: reset selected index when filtered items change or palette opens
 	useEffect(() => {
 		setSelectedIndex(0);
-	}, [displayedItems, isCommandPaletteOpen]); // displayedItems will change less frequently due to debounce
+	}, [filteredItems, isCommandPaletteOpen]);
 
-	// biome-ignore lint/correctness/useExhaustiveDependencies: handle keyboard navigation
 	useEffect(() => {
 		const handleKeyDown = (event: KeyboardEvent) => {
 			if (!isCommandPaletteOpen) return;
 
 			if (event.key === "ArrowDown") {
 				event.preventDefault();
-				setSelectedIndex((prev) => (prev + 1) % displayedItems.length);
+				setSelectedIndex((prev) => (prev + 1) % filteredItems.length);
 			} else if (event.key === "ArrowUp") {
 				event.preventDefault();
 				setSelectedIndex(
-					(prev) => (prev - 1 + displayedItems.length) % displayedItems.length,
+					(prev) => (prev - 1 + filteredItems.length) % filteredItems.length,
 				);
 			} else if (event.key === "Enter") {
 				event.preventDefault();
-				if (displayedItems[selectedIndex]) {
-					handleItemClick(displayedItems[selectedIndex]);
+				if (filteredItems[selectedIndex]) {
+					handleItemClick(filteredItems[selectedIndex]);
 				}
 			} else if (event.key === "Escape") {
 				closeCommandPalette();
@@ -287,7 +344,7 @@ export const CommandPalette: FC = () => {
 		return () => {
 			window.removeEventListener("keydown", handleKeyDown);
 		};
-	}, [isCommandPaletteOpen, displayedItems, selectedIndex, closeCommandPalette, navigate, handleItemClick]);
+	}, [isCommandPaletteOpen, filteredItems, selectedIndex, closeCommandPalette, handleItemClick]);
 
 
 	if (!isCommandPaletteOpen) {
@@ -296,12 +353,12 @@ export const CommandPalette: FC = () => {
 
 	return (
 		<StyledDialog
-			data-tour-tag="command-palette-dialog" // Added tour tag here
+			data-tour-tag="command-palette-dialog"
 			open={isCommandPaletteOpen}
 			onClose={closeCommandPalette}
 			aria-labelledby="command-palette-dialog-title"
 			fullWidth
-			disableRestoreFocus // Important to allow text field to autoFocus
+			disableRestoreFocus
 		>
 			<SearchInputContainer>
 				<TextField
@@ -309,45 +366,25 @@ export const CommandPalette: FC = () => {
 					fullWidth
 					variant="standard"
 					placeholder="Search agents and pages..."
-					value={commandPaletteQuery}
-					onChange={(e) => setCommandPaletteQuery(e.target.value)}
-					InputProps={{
-						startAdornment: (
-							<InputAdornment position="start">
-								<LucideSearch size={20} color={theme.palette.action.active} />
-							</InputAdornment>
-						),
-						endAdornment: commandPaletteQuery ? (
-							<InputAdornment position="end">
-								<IconButton
-									aria-label="clear search"
-									onClick={() => setCommandPaletteQuery("")}
-									edge="end"
-									size="small"
-								>
-									<X size={20} />
-								</IconButton>
-							</InputAdornment>
-						) : null,
-						disableUnderline: true, 
-						style: { fontSize: "1rem" },
-					}}
+					value={localQuery}
+					onChange={handleQueryChange}
+					InputProps={textFieldInputProps}
 					autoComplete="off"
 				/>
 			</SearchInputContainer>
 			<DialogContent sx={{ padding: 0 }}>
-				{displayedItems.length === 0 && commandPaletteQuery && (
+				{filteredItems.length === 0 && debouncedLocalQuery && (
 					<Typography sx={{ p: 3, textAlign: "center", color: "text.secondary" }}>
 						No results found.
 					</Typography>
 				)}
 				<ResultsListContainer>
-					{displayedItems.map((item, index) => (
+					{filteredItems.map((item, index) => (
 						<ListItem key={item.id} disablePadding dense>
 							<ResultItemStyled
 								selected={selectedIndex === index}
 								onClick={() => handleItemClick(item)}
-								onMouseMove={() => setSelectedIndex(index)} // Update selection on mouse hover
+								onMouseMove={() => setSelectedIndex(index)}
 							>
 								<ListItemIcon sx={{ minWidth: "20px", display: "flex", alignItems: "center", justifyContent: "center", mr: 1.5, color: "text.secondary" }}>
 									{item.icon || <FileText size={16} />}
