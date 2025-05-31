@@ -767,7 +767,7 @@ app
 				mainWindow.webContents.send("toggle-command-palette");
 			}
 		}
-		// Handle Cmd+P on macOS
+		// Handle keydown event on macOS
 		if (input.meta && input.key.toLowerCase() === 'k' && input.type === 'keyDown' && process.platform === 'darwin') {
 			if (mainWindow?.isFocused() && mainWindow?.isVisible()) {
 				event.preventDefault();
