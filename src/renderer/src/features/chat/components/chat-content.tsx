@@ -8,13 +8,14 @@ import { ResizableDivider } from "@shared/components/common/resizable-divider";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { isDevelopmentMode } from "@shared/utils/env-utils";
+import type React from "react";
 import { type FC, useRef } from "react";
 import type { Message } from "../types/message";
 import { Canvas } from "./canvas";
 import { ChatHeader } from "./chat-header";
 import { ChatOptionsSidebar } from "./chat-options-sidebar";
 import { ChatTabs } from "./chat-tabs";
-import { MessageInput } from "./message-input";
+import { MessageInput, type MessageInputHandle } from "./message-input";
 import { MessagesView } from "./messages-view";
 import { RawInfoView } from "./raw-info-view";
 
@@ -74,6 +75,7 @@ type ChatContentProps = {
 	onCancelJob: (jobId: string) => void;
 	agentData?: AgentDetails | null;
 	refetch?: () => void;
+	messageInputRef?: React.Ref<MessageInputHandle>;
 };
 
 const ChatContainer = styled(Paper)(({ theme }) => ({
@@ -124,6 +126,7 @@ export const ChatContent: FC<ChatContentProps> = ({
 	onCancelJob,
 	agentData,
 	refetch,
+	messageInputRef,
 }) => {
 	const canvasContainerRef = useRef<HTMLDivElement>(null);
 
@@ -210,6 +213,7 @@ export const ChatContent: FC<ChatContentProps> = ({
 					{/* Message input */}
 					{!(isLoadingMessages && messages.length === 0) && (
 						<MessageInput
+							ref={messageInputRef}
 							onSendMessage={onSendMessage}
 							initialSuggestions={DEFAULT_MESSAGE_SUGGESTIONS}
 							isLoading={isLoading}

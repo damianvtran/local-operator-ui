@@ -6,6 +6,7 @@ import {
 	Menu,
 	app,
 	dialog,
+	globalShortcut,
 	ipcMain,
 	nativeImage,
 	shell,
@@ -756,6 +757,33 @@ app
 			setTimeout(() => {
 				updateService?.checkForAllUpdates(true);
 			}, 3000);
+
+			// Register local shortcut for Command Palette (only when window is focused)
+			// Use window-level accelerator instead of global shortcut to avoid overriding other apps
+			mainWindow.webContents.on("before-input-event", (event, input) => {
+				if (
+					input.control &&
+					input.key.toLowerCase() === "k" &&
+					input.type === "keyDown"
+				) {
+					if (mainWindow?.isFocused() && mainWindow?.isVisible()) {
+						event.preventDefault();
+						mainWindow.webContents.send("toggle-command-palette");
+					}
+				}
+				// Handle keydown event on macOS
+				if (
+					input.meta &&
+					input.key.toLowerCase() === "k" &&
+					input.type === "keyDown" &&
+					process.platform === "darwin"
+				) {
+					if (mainWindow?.isFocused() && mainWindow?.isVisible()) {
+						event.preventDefault();
+						mainWindow.webContents.send("toggle-command-palette");
+					}
+				}
+			});
 		}
 
 		// Initial window + update service setup
@@ -1030,6 +1058,8 @@ app.on("will-quit", async (event) => {
 // Handle before-quit event to ensure proper cleanup
 app.on("before-quit", () => {
 	logger.info("App is about to quit", LogFileType.BACKEND);
+	// Unregister all shortcuts.
+	globalShortcut.unregisterAll();
 });
 
 // Add a failsafe to ensure child processes are terminated when the app exits

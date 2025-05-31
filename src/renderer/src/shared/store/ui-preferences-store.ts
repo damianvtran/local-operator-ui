@@ -15,6 +15,37 @@ import { persist } from "zustand/middleware";
  */
 type UiPreferencesState = {
 	/**
+	 * Whether the command palette is open
+	 */
+	isCommandPaletteOpen: boolean;
+
+	/**
+	 * The current query in the command palette
+	 */
+	commandPaletteQuery: string;
+
+	/**
+	 * Opens the command palette
+	 */
+	openCommandPalette: () => void;
+
+	/**
+	 * Closes the command palette
+	 */
+	closeCommandPalette: () => void;
+
+	/**
+	 * Toggles the command palette visibility
+	 */
+	toggleCommandPalette: () => void;
+
+	/**
+	 * Sets the command palette query
+	 * @param query - The query string
+	 */
+	setCommandPaletteQuery: (query: string) => void;
+
+	/**
 	 * Whether the canvas is open (global, not per conversation)
 	 */
 	isCanvasOpen: boolean;
@@ -24,6 +55,22 @@ type UiPreferencesState = {
 	 * @param open - Whether the canvas should be open
 	 */
 	setCanvasOpen: (open: boolean) => void;
+
+	/**
+	 * Whether the create agent dialog is open
+	 */
+	isCreateAgentDialogOpen: boolean;
+
+	/**
+	 * Opens the create agent dialog
+	 */
+	openCreateAgentDialog: () => void;
+
+	/**
+	 * Closes the create agent dialog
+	 */
+	closeCreateAgentDialog: () => void;
+
 	/**
 	 * Whether the navigation sidebar is collapsed
 	 */
@@ -98,11 +145,43 @@ const DEFAULT_CHAT_SIDEBAR_WIDTH = 320;
 export const useUiPreferencesStore = create<UiPreferencesState>()(
 	persist(
 		(set) => ({
+			isCommandPaletteOpen: false,
+			commandPaletteQuery: "",
 			isSidebarCollapsed: false,
 			themeName: DEFAULT_THEME,
 			canvasWidth: DEFAULT_CANVAS_WIDTH,
 			chatSidebarWidth: DEFAULT_CHAT_SIDEBAR_WIDTH,
 			isCanvasOpen: false,
+			isCreateAgentDialogOpen: false,
+
+			openCreateAgentDialog: () => {
+				set({ isCreateAgentDialogOpen: true });
+			},
+
+			closeCreateAgentDialog: () => {
+				set({ isCreateAgentDialogOpen: false });
+			},
+
+			openCommandPalette: () => {
+				set({ isCommandPaletteOpen: true });
+			},
+
+			closeCommandPalette: () => {
+				set({ isCommandPaletteOpen: false, commandPaletteQuery: "" });
+			},
+
+			toggleCommandPalette: () => {
+				set((state) => ({
+					isCommandPaletteOpen: !state.isCommandPaletteOpen,
+					commandPaletteQuery: !state.isCommandPaletteOpen
+						? ""
+						: state.commandPaletteQuery, // Clear query if opening, retain if closing (though it's cleared by closeCommandPalette)
+				}));
+			},
+
+			setCommandPaletteQuery: (query: string) => {
+				set({ commandPaletteQuery: query });
+			},
 
 			toggleSidebar: () => {
 				set((state) => ({
