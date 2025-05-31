@@ -9,6 +9,7 @@ import {
 	ipcMain,
 	nativeImage,
 	shell,
+	globalShortcut,
 } from "electron";
 import { PostHog } from "posthog-node";
 import icon from "../../resources/icon.png?asset";
@@ -752,16 +753,24 @@ app
 			// Handle platform-specific setup for the updater
 			updateService.handlePlatformSpecifics();
 
-			// Check for all updates (UI and backend) after a short delay to ensure the app is fully loaded
-			setTimeout(() => {
-				updateService?.checkForAllUpdates(true);
-			}, 3000);
+	// Check for all updates (UI and backend) after a short delay to ensure the app is fully loaded
+	setTimeout(() => {
+		updateService?.checkForAllUpdates(true);
+	}, 3000);
+
+	// Register global shortcut for Command Palette
+	// Ensure mainWindow is available and focused before sending IPC message
+	globalShortcut.register("CommandOrControl+P", () => {
+		if (mainWindow?.isFocused()) {
+			mainWindow.webContents.send("toggle-command-palette");
 		}
+	});
+}
 
-		// Initial window + update service setup
-		setupMainWindowWithUpdateService();
+// Initial window + update service setup
+setupMainWindowWithUpdateService();
 
-		app.on("activate", () => {
+app.on("activate", () => {
 			// On macOS it's common to re-create a window in the app when the
 			// dock icon is clicked and there are no other windows open.
 			if (BrowserWindow.getAllWindows().length === 0) {
@@ -1030,6 +1039,8 @@ app.on("will-quit", async (event) => {
 // Handle before-quit event to ensure proper cleanup
 app.on("before-quit", () => {
 	logger.info("App is about to quit", LogFileType.BACKEND);
+	// Unregister all shortcuts.
+	globalShortcut.unregisterAll();
 });
 
 // Add a failsafe to ensure child processes are terminated when the app exits
