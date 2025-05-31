@@ -6,15 +6,15 @@ import {
 	Typography,
 	alpha,
 	IconButton,
-	Collapse, // Added for expandable sections
+	Collapse,
 } from "@mui/material";
 import { styled, useTheme } from "@mui/material/styles";
 import type { ExecutionVariable } from "@shared/api/local-operator/types";
 import { useAgentExecutionVariables } from "@shared/hooks/use-agent-execution-variables";
 import { showErrorToast, showInfoToast } from "@shared/utils/toast-manager";
-import { Edit2, Trash2, PlusCircle, ChevronRight, ChevronDown } from "lucide-react"; // Added Chevron icons
+import { Edit2, Trash2, PlusCircle, ChevronRight, ChevronDown } from "lucide-react";
 import type { FC } from "react";
-import { useEffect, useState, useMemo, useCallback, memo } from "react"; // Added memoization hooks
+import { useEffect, useState, useMemo, useCallback, memo } from "react";
 
 type CanvasVariablesViewerProps = {
 	conversationId: string;
@@ -24,7 +24,25 @@ const VariableListContainer = styled(Box)(({ theme }) => ({
 	border: `1px solid ${theme.palette.divider}`,
 	borderRadius: theme.shape.borderRadius,
 	backgroundColor: theme.palette.mode === "dark" ? alpha(theme.palette.background.paper, 0.3) : alpha(theme.palette.grey[50], 0.7),
-	overflow: "hidden",
+	overflow: "auto",
+	maxHeight: "100%",
+  "&::-webkit-scrollbar": {
+    width: "8px",
+  },
+  "&::-webkit-scrollbar-thumb": {
+    backgroundColor:
+      theme.palette.mode === "dark"
+        ? "rgba(255, 255, 255, 0.1)"
+        : "rgba(0, 0, 0, 0.2)",
+    borderRadius: "4px",
+  },
+  // For Firefox
+  scrollbarWidth: "thin",
+  scrollbarColor:
+    theme.palette.mode === "dark"
+      ? "rgba(255,255,255,0.1) transparent"
+      : "rgba(0,0,0,0.2) transparent",
+	flex: 1,
 }));
 
 const VariableItem = styled(Box)(({ theme }) => ({
@@ -235,9 +253,9 @@ export const CanvasVariablesViewer: FC<CanvasVariablesViewerProps> = memo(({
 	const containerStyles = useMemo(() => ({
 		p: 1.5,
 		height: "100%",
-		overflowY: "auto",
 		display: "flex",
-		flexDirection: "column"
+		flexDirection: "column",
+		minHeight: 0, // Important for flex children to shrink
 	}), []);
 
 	const headerStyles = useMemo(() => ({
@@ -245,7 +263,8 @@ export const CanvasVariablesViewer: FC<CanvasVariablesViewerProps> = memo(({
 		justifyContent: "space-between",
 		alignItems: "center",
 		mb: 1,
-		px: 0.5
+		px: 0.5,
+		flexShrink: 0, // Prevent header from shrinking
 	}), []);
 
 	const titleStyles = useMemo(() => ({
