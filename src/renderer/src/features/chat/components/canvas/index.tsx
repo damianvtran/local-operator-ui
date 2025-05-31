@@ -210,6 +210,7 @@ const CanvasComponent: FC<CanvasProps> = ({
 						<IconButton
 							onClick={() => setCurrentView("documents")}
 							size="large"
+							data-tour-tag="canvas-documents-view-button"
 							sx={(theme) => ({
 								color:
 									currentView === "documents"
@@ -235,6 +236,7 @@ const CanvasComponent: FC<CanvasProps> = ({
 						<IconButton
 							onClick={() => setCurrentView("files")}
 							size="large"
+							data-tour-tag="canvas-files-view-button"
 							sx={(theme) => ({
 								color:
 									currentView === "files"
@@ -260,6 +262,7 @@ const CanvasComponent: FC<CanvasProps> = ({
 						<IconButton
 							onClick={() => setCurrentView("variables")}
 							size="large"
+							data-tour-tag="canvas-variables-view-button"
 							sx={(theme) => ({
 								color:
 									currentView === "variables"
