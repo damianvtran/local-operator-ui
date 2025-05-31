@@ -48,7 +48,7 @@ const VariableListContainer = styled(Box)(({ theme }) => ({
 const VariableItem = styled(Box)(({ theme }) => ({
 	display: "flex",
 	alignItems: "center",
-	padding: theme.spacing(0.75, 1.5),
+	padding: theme.spacing(0.75, 1),
 	borderBottom: `1px solid ${theme.palette.divider}`,
 	"&:last-child": {
 		borderBottom: "none",
@@ -61,6 +61,7 @@ const VariableName = styled(Typography)(({ theme }) => ({
 	color: theme.palette.text.primary,
 	marginRight: theme.spacing(1),
 	fontFamily: "monospace", // PyCharm uses monospace for variables
+  fontSize: "0.8rem",
 }));
 
 const VariableType = styled(Typography)(({ theme }) => ({
@@ -68,6 +69,7 @@ const VariableType = styled(Typography)(({ theme }) => ({
 	fontStyle: "italic",
 	marginRight: theme.spacing(1),
 	fontFamily: "monospace",
+  fontSize: "0.8rem",
 }));
 
 const VariableValue = styled(Typography)(({ theme }) => ({
@@ -78,6 +80,7 @@ const VariableValue = styled(Typography)(({ theme }) => ({
 	textOverflow: "ellipsis",
 	fontFamily: "monospace",
 	maxWidth: 'calc(100% - 200px)', // Adjust as needed based on other elements
+  fontSize: "0.8rem",
 }));
 
 const VariableActions = styled(Box)(({ theme }) => ({
