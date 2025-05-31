@@ -18,7 +18,7 @@ import { styled } from "@mui/material/styles";
 import type { AgentDetails } from "@shared/api/local-operator/types";
 import { useMessageInput } from "@shared/hooks/use-message-input";
 import { normalizePath } from "@shared/utils/path-utils";
-import React, {
+import {
 	useMemo,
 	useRef,
 	useState,

@@ -2,7 +2,6 @@ import type { SettingsSection } from "@features/settings/components/settings-sid
 import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import type { FC, ReactElement } from "react";
-import React from "react"; // Import React for JSX
 
 export const getIconElement = (section: SettingsSection): ReactElement => {
 	if (section.isImage && typeof section.icon === "string") {
