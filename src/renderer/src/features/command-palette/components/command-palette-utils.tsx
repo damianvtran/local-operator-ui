@@ -9,8 +9,8 @@ export const getIconElement = (section: SettingsSection): ReactElement => {
 		return <img src={section.icon} alt={section.label} style={{ width: 20, height: 20, objectFit: "contain" }} />;
 	}
 	if (section.isFontAwesome) {
-		return <FontAwesomeIcon icon={section.icon as IconDefinition} size="lg" style={{ width: 20, height: 20 }} />;
+		return <FontAwesomeIcon icon={section.icon as IconDefinition} size="lg" style={{ width: 16, height: 16 }} />;
 	}
 	const IconComponent = section.icon as FC<{ size?: number; strokeWidth?: number }>;
-	return <IconComponent size={20} />;
+	return <IconComponent size={16} />;
 };

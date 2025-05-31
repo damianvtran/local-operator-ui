@@ -10,20 +10,22 @@ import {
 	ListItemText,
 	TextField,
 	Typography,
+	Chip,
+	Box,
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import type { AgentListResult } from "@shared/api/local-operator/types";
 import { useAgents } from "@shared/hooks/use-agents";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import {
-	BotMessageSquare,
-	Cog,
+	MessageSquare,
+	Settings,
 	FileText,
 	Search as LucideSearch,
 	Users,
-	Waypoints,
+	Store,
 	X,
-	CalendarClock,
+	Calendar,
 } from "lucide-react";
 import type { FC } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -82,10 +84,10 @@ const ResultItemStyled = styled(ListItemButton)(({ theme }) => ({
 	},
 }));
 
-const ResultItemCategory = styled(Typography)(({ theme }) => ({
-	fontSize: "0.75rem",
-	color: theme.palette.text.secondary,
-	marginLeft: theme.spacing(1),
+const ActionChip = styled(Chip)(() => ({
+	fontSize: "0.7rem",
+	height: "20px",
+	marginLeft: "auto",
 }));
 
 type CommandPaletteItemType = "page" | "agent-chat" | "agent-settings" | "settings-section";
@@ -104,35 +106,65 @@ const PAGE_DEFINITIONS: Omit<CommandPaletteItem, "id" | "type">[] = [
 		name: "Chat",
 		path: "/chat",
 		category: "Navigation",
-		icon: <BotMessageSquare size={20} />,
+		icon: <MessageSquare size={16} />,
 	},
 	{
 		name: "My Agents",
 		path: "/agents",
 		category: "Navigation",
-		icon: <Users size={20} />,
+		icon: <Users size={16} />,
 	},
 	{
 		name: "Agent Hub",
 		path: "/agent-hub",
 		category: "Navigation",
-		icon: <Waypoints size={20} />,
+		icon: <Store size={16} />,
 	},
 	{
 		name: "Schedules",
 		path: "/schedules",
 		category: "Navigation",
-		icon: <CalendarClock size={20} />,
+		icon: <Calendar size={16} />,
 	},
 	{
 		name: "Settings",
 		path: "/settings",
 		category: "Navigation",
-		icon: <Cog size={20} />,
+		icon: <Settings size={16} />,
 	},
 ];
 
 const MAX_SUGGESTIONS = 15;
+
+const getActionLabel = (type: CommandPaletteItemType): string => {
+	switch (type) {
+		case "page":
+			return "Navigate";
+		case "agent-chat":
+			return "Chat";
+		case "agent-settings":
+			return "Configure";
+		case "settings-section":
+			return "Configure";
+		default:
+			return "Open";
+	}
+};
+
+const getActionColor = (type: CommandPaletteItemType): "default" | "primary" | "secondary" | "success" | "warning" | "info" | "error" => {
+	switch (type) {
+		case "page":
+			return "primary";
+		case "agent-chat":
+			return "success";
+		case "agent-settings":
+			return "warning";
+		case "settings-section":
+			return "info";
+		default:
+			return "default";
+	}
+};
 
 export const CommandPalette: FC = () => {
 	const navigate = useNavigate();
@@ -182,17 +214,17 @@ export const CommandPalette: FC = () => {
 					id: `agent-chat-${agent.id}`,
 					type: "agent-chat",
 					name: agent.name,
-					category: "Chat with Agent",
+					category: "Agent",
 					path: `/chat/${agent.id}`,
-					icon: <BotMessageSquare size={20} />,
+					icon: <MessageSquare size={16} />,
 				});
 				agentItems.push({
 					id: `agent-settings-${agent.id}`,
 					type: "agent-settings",
-					name: `${agent.name} Settings`,
-					category: "Agent Settings",
+					name: agent.name,
+					category: "Agent",
 					path: `/agents/${agent.id}`, // Corrected path for agent settings
-					icon: <Cog size={20} />,
+					icon: <Settings size={16} />,
 				});
 			}
 		}
@@ -310,19 +342,24 @@ export const CommandPalette: FC = () => {
 								onClick={() => handleItemClick(item)}
 								onMouseMove={() => setSelectedIndex(index)} // Update selection on mouse hover
 							>
-								<ListItemIcon sx={{ minWidth: "auto", mr: 1.5, color: "text.secondary" }}>
-									{item.icon || <FileText size={20} />}
+								<ListItemIcon sx={{ minWidth: "20px", display: "flex", alignItems: "center", justifyContent: "center", mr: 1.5, color: "text.secondary" }}>
+									{item.icon || <FileText size={16} />}
 								</ListItemIcon>
 								<ListItemText
-									primary={item.name}
-									secondary={
-										// The 'component' prop is valid for MUI Typography when used as a styled component
-										// This should resolve the TS error if ResultItemCategory is correctly defined.
-										// If ResultItemCategory is a direct styled(Typography), this is fine.
-										<ResultItemCategory> 
-											{item.category}
-										</ResultItemCategory>
+									primary={
+										<Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+											<Typography variant="body2">{item.name}</Typography>
+											<Typography variant="caption" color="text.secondary">
+												{item.category}
+											</Typography>
+										</Box>
 									}
+								/>
+								<ActionChip
+									label={getActionLabel(item.type)}
+									size="small"
+									color={getActionColor(item.type)}
+									variant="outlined"
 								/>
 							</ResultItemStyled>
 						</ListItem>
