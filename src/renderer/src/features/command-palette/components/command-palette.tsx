@@ -290,6 +290,7 @@ export const CommandPalette: FC = () => {
 
 	return (
 		<StyledDialog
+			data-tour-tag="command-palette-dialog" // Added tour tag here
 			open={isCommandPaletteOpen}
 			onClose={closeCommandPalette}
 			aria-labelledby="command-palette-dialog-title"
