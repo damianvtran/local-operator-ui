@@ -1,13 +1,13 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useMemo } from "react";
 import { createLocalOperatorClient } from "@shared/api/local-operator";
-import { apiConfig } from "@shared/config";
 import type {
 	CRUDResponse,
 	ExecutionVariable,
 	ExecutionVariablesResponse,
 } from "@shared/api/local-operator/types";
+import { apiConfig } from "@shared/config";
 import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMemo } from "react";
 
 /**
  * Custom hook to fetch agent execution variables.
@@ -51,10 +51,7 @@ export const useCreateAgentExecutionVariable = () => {
 		{ agentId: string; variableData: ExecutionVariable }
 	>({
 		mutationFn: async ({ agentId, variableData }) =>
-			client.agents.createAgentExecutionVariable(
-				agentId,
-				variableData,
-			),
+			client.agents.createAgentExecutionVariable(agentId, variableData),
 		onSuccess: (_data, variables) => {
 			queryClient.invalidateQueries({
 				queryKey: ["agentExecutionVariables", variables.agentId],

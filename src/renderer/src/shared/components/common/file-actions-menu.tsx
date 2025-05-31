@@ -7,33 +7,38 @@ import {
 	alpha,
 	styled,
 } from "@mui/material";
-import { File as FileIcon, FolderOpen, MoreHorizontal, LayoutGrid } from "lucide-react";
-import { useState, type MouseEvent } from "react";
+import {
+	File as FileIcon,
+	FolderOpen,
+	LayoutGrid,
+	MoreHorizontal,
+} from "lucide-react";
+import { type MouseEvent, useState } from "react";
 
 /**
  * Props for FileActionsMenu
  */
 export type FileActionsMenuProps = {
-  /**
-   * The file path or URI to act on.
-   */
-  filePath: string;
-  /**
-   * Optional: placement for the tooltip or menu trigger.
-   */
-  tooltip?: string;
-  /**
-   * Optional: icon to use for the trigger (defaults to MoreHorizontal).
-   */
-  icon?: React.ReactNode;
-  /**
-   * Optional: aria-label for accessibility.
-   */
-  "aria-label"?: string;
-  /**
-   * Optional: callback to show the file in the canvas.
-   */
-  onShowInCanvas?: (() => void) | undefined;
+	/**
+	 * The file path or URI to act on.
+	 */
+	filePath: string;
+	/**
+	 * Optional: placement for the tooltip or menu trigger.
+	 */
+	tooltip?: string;
+	/**
+	 * Optional: icon to use for the trigger (defaults to MoreHorizontal).
+	 */
+	icon?: React.ReactNode;
+	/**
+	 * Optional: aria-label for accessibility.
+	 */
+	"aria-label"?: string;
+	/**
+	 * Optional: callback to show the file in the canvas.
+	 */
+	onShowInCanvas?: (() => void) | undefined;
 };
 
 /**
@@ -112,82 +117,86 @@ const MenuItemIcon = styled(ListItemIcon)(({ theme }) => ({
  * Uses Electron's window.api.openFile and window.api.showItemInFolder.
  */
 export const FileActionsMenu = ({
-  filePath,
-  tooltip = "File actions",
-  icon,
-  "aria-label": ariaLabel = "File actions",
-  onShowInCanvas,
+	filePath,
+	tooltip = "File actions",
+	icon,
+	"aria-label": ariaLabel = "File actions",
+	onShowInCanvas,
 }: FileActionsMenuProps) => {
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+	const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
-  const handleOpenMenu = (event: MouseEvent<HTMLElement>) => {
-    setAnchorEl(event.currentTarget);
-  };
+	const handleOpenMenu = (event: MouseEvent<HTMLElement>) => {
+		setAnchorEl(event.currentTarget);
+	};
 
-  const handleCloseMenu = () => {
-    setAnchorEl(null);
-  };
+	const handleCloseMenu = () => {
+		setAnchorEl(null);
+	};
 
-  const handleOpenFile = () => {
-    handleCloseMenu();
-    if (filePath) {
-      window.api.openFile(filePath);
-    }
-  };
+	const handleOpenFile = () => {
+		handleCloseMenu();
+		if (filePath) {
+			window.api.openFile(filePath);
+		}
+	};
 
-  const handleShowInCanvas = () => {
-    handleCloseMenu();
-    if (onShowInCanvas) {
-      onShowInCanvas();
-    }
-  };
+	const handleShowInCanvas = () => {
+		handleCloseMenu();
+		if (onShowInCanvas) {
+			onShowInCanvas();
+		}
+	};
 
-  return (
-    <>
-      <Tooltip title={tooltip} arrow>
-        <FileActionsIconButton
-          aria-label={ariaLabel}
-          onClick={handleOpenMenu}
-        >
-          {icon ?? <MoreHorizontal style={{ width: "1.125rem", height: "1.125rem" }} />}
-        </FileActionsIconButton>
-      </Tooltip>
+	return (
+		<>
+			<Tooltip title={tooltip} arrow>
+				<FileActionsIconButton aria-label={ariaLabel} onClick={handleOpenMenu}>
+					{icon ?? (
+						<MoreHorizontal style={{ width: "1.125rem", height: "1.125rem" }} />
+					)}
+				</FileActionsIconButton>
+			</Tooltip>
 
-      <StyledFileActionsMenu
-        anchorEl={anchorEl}
-        open={Boolean(anchorEl)}
-        onClose={handleCloseMenu}
-        onClick={(e) => e.stopPropagation()}
-        anchorOrigin={{
-          vertical: "bottom",
-          horizontal: "right",
-        }}
-        transformOrigin={{
-          vertical: "top",
-          horizontal: "right",
-        }}
-      >
-        {onShowInCanvas && (
-          <StyledMenuItem onClick={handleShowInCanvas}>
-            <MenuItemIcon>
-              <LayoutGrid aria-label="Show in Canvas" />
-            </MenuItemIcon>
-            <span>Show in Canvas</span>
-          </StyledMenuItem>
-        )}
-        <StyledMenuItem onClick={handleOpenFile}>
-          <MenuItemIcon>
-            <FileIcon aria-label="Open File" />
-          </MenuItemIcon>
-          <span>Open File</span>
-        </StyledMenuItem>
-        <StyledMenuItem onClick={() => { handleCloseMenu(); window.api.showItemInFolder(filePath); }}>
-          <MenuItemIcon>
-            <FolderOpen aria-label="Open Folder" />
-          </MenuItemIcon>
-          <span>Open Folder</span>
-        </StyledMenuItem>
-      </StyledFileActionsMenu>
-    </>
-  );
+			<StyledFileActionsMenu
+				anchorEl={anchorEl}
+				open={Boolean(anchorEl)}
+				onClose={handleCloseMenu}
+				onClick={(e) => e.stopPropagation()}
+				anchorOrigin={{
+					vertical: "bottom",
+					horizontal: "right",
+				}}
+				transformOrigin={{
+					vertical: "top",
+					horizontal: "right",
+				}}
+			>
+				{onShowInCanvas && (
+					<StyledMenuItem onClick={handleShowInCanvas}>
+						<MenuItemIcon>
+							<LayoutGrid aria-label="Show in Canvas" />
+						</MenuItemIcon>
+						<span>Show in Canvas</span>
+					</StyledMenuItem>
+				)}
+				<StyledMenuItem onClick={handleOpenFile}>
+					<MenuItemIcon>
+						<FileIcon aria-label="Open File" />
+					</MenuItemIcon>
+					<span>Open File</span>
+				</StyledMenuItem>
+				<StyledMenuItem
+					onClick={() => {
+						handleCloseMenu();
+						window.api.showItemInFolder(filePath);
+					}}
+				>
+					<MenuItemIcon>
+						<FolderOpen aria-label="Open Folder" />
+					</MenuItemIcon>
+					<span>Open Folder</span>
+				</StyledMenuItem>
+			</StyledFileActionsMenu>
+		</>
+	);
 };

@@ -16,6 +16,7 @@ import {
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import { createLocalOperatorClient } from "@shared/api/local-operator";
+import { FileActionsMenu } from "@shared/components/common/file-actions-menu";
 import { apiConfig } from "@shared/config";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import {
@@ -30,7 +31,6 @@ import {
 	Presentation,
 	ScrollText,
 } from "lucide-react";
-import { FileActionsMenu } from "@shared/components/common/file-actions-menu";
 import type { FC } from "react";
 import { useCallback, useMemo } from "react";
 
