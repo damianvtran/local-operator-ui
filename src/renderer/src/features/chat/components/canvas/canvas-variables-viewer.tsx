@@ -14,7 +14,7 @@ import { useAgentExecutionVariables } from "@shared/hooks/use-agent-execution-va
 import { showErrorToast, showInfoToast } from "@shared/utils/toast-manager";
 import { Edit2, Trash2, PlusCircle, ChevronRight, ChevronDown } from "lucide-react"; // Added Chevron icons
 import type { FC } from "react";
-import { useEffect, useState } from "react"; // Added useState
+import { useEffect, useState, useMemo, useCallback, memo } from "react"; // Added memoization hooks
 
 type CanvasVariablesViewerProps = {
 	conversationId: string;
@@ -78,6 +78,15 @@ const CenteredBox = styled(Box)(({ theme }) => ({
 	textAlign: "center",
 }));
 
+// Memoized constants
+const EXPANDABLE_TYPES = ['dict', 'list', 'DataFrame', 'ndarray', 'object', 'array'];
+
+// Utility function to truncate text
+const truncateText = (text: string, maxLength: number): string => {
+	if (text.length <= maxLength) return text;
+	return `${text.substring(0, maxLength)}...`;
+};
+
 // Individual variable display component
 type VariableDisplayProps = {
 	variable: ExecutionVariable;
@@ -85,29 +94,64 @@ type VariableDisplayProps = {
 	onDelete: (variableKey: string) => void;
 };
 
-const VariableRow: FC<VariableDisplayProps> = ({ variable, onEdit, onDelete }) => {
+const VariableRow: FC<VariableDisplayProps> = memo(({ variable, onEdit, onDelete }) => {
 	const theme = useTheme();
 	const [expanded, setExpanded] = useState(false);
 
-	// Determine if variable is expandable (e.g., dict, list, dataframe, array)
-	// For now, let's assume types like 'dict', 'list', 'DataFrame', 'ndarray' are expandable
-	const isExpandable = ['dict', 'list', 'DataFrame', 'ndarray', 'object', 'array'].includes(variable.type);
+	// Memoize expandable check
+	const isExpandable = useMemo(() => 
+		EXPANDABLE_TYPES.includes(variable.type), 
+		[variable.type]
+	);
 
-	const handleToggleExpand = () => {
+	// Memoize string value conversion with truncation
+	const stringValue = useMemo(() => String(variable.value), [variable.value]);
+	const truncatedValue = useMemo(() => truncateText(stringValue, 200), [stringValue]);
+	const tooltipValue = useMemo(() => truncateText(stringValue, 1000), [stringValue]);
+
+	// Memoize variable type display
+	const typeDisplay = useMemo(() => `{${variable.type}}`, [variable.type]);
+
+	// Memoize dynamic styles
+	const itemStyles = useMemo(() => ({
+		cursor: isExpandable ? "pointer" : "default",
+		"&:hover": {
+			backgroundColor: isExpandable ? alpha(theme.palette.action.hover, 0.08) : "transparent",
+		},
+	}), [isExpandable, theme.palette.action.hover]);
+
+	const expandedContentStyles = useMemo(() => ({
+		pl: 4,
+		py: 1,
+		backgroundColor: alpha(theme.palette.background.default, 0.05),
+		borderBottom: `1px solid ${theme.palette.divider}`
+	}), [theme.palette.background.default, theme.palette.divider]);
+
+	const placeholderBoxStyles = useMemo(() => ({
+		width: theme.spacing(3.5)
+	}), [theme]);
+
+	// Memoize callbacks
+	const handleToggleExpand = useCallback(() => {
 		if (isExpandable) {
-			setExpanded(!expanded);
+			setExpanded(prev => !prev);
 		}
-	};
+	}, [isExpandable]);
+
+	const handleEdit = useCallback((e: React.MouseEvent) => {
+		e.stopPropagation();
+		onEdit(variable);
+	}, [onEdit, variable]);
+
+	const handleDelete = useCallback((e: React.MouseEvent) => {
+		e.stopPropagation();
+		onDelete(variable.key);
+	}, [onDelete, variable.key]);
 
 	return (
 		<>
 			<VariableItem
-				sx={{
-					cursor: isExpandable ? "pointer" : "default",
-					"&:hover": {
-						backgroundColor: isExpandable ? alpha(theme.palette.action.hover, 0.08) : "transparent",
-					},
-				}}
+				sx={itemStyles}
 				onClick={handleToggleExpand}
 			>
 				{isExpandable ? (
@@ -115,23 +159,23 @@ const VariableRow: FC<VariableDisplayProps> = ({ variable, onEdit, onDelete }) =
 						{expanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
 					</IconButton>
 				) : (
-					<Box sx={{ width: theme.spacing(3.5) }} /> // Placeholder for alignment
+					<Box sx={placeholderBoxStyles} /> // Placeholder for alignment
 				)}
 				<VariableName variant="body2">{variable.key}</VariableName>
-				<VariableType variant="caption">{`{${variable.type}}`}</VariableType>
-				<Tooltip title={String(variable.value)} placement="top-start" arrow>
+				<VariableType variant="caption">{typeDisplay}</VariableType>
+				<Tooltip title={tooltipValue} placement="top-start" arrow>
 					<VariableValue variant="body2">
-						{String(variable.value)}
+						{truncatedValue}
 					</VariableValue>
 				</Tooltip>
 				<VariableActions>
 					<Tooltip title="Edit Variable">
-						<IconButton onClick={(e) => { e.stopPropagation(); onEdit(variable); }} size="small" sx={{ mr: 0.25, padding: theme.spacing(0.5) }}>
+						<IconButton onClick={handleEdit} size="small" sx={{ mr: 0.25, padding: theme.spacing(0.5) }}>
 							<Edit2 size={14} />
 						</IconButton>
 					</Tooltip>
 					<Tooltip title="Delete Variable">
-						<IconButton onClick={(e) => { e.stopPropagation(); onDelete(variable.key); }} size="small" color="error" sx={{ padding: theme.spacing(0.5) }}>
+						<IconButton onClick={handleDelete} size="small" color="error" sx={{ padding: theme.spacing(0.5) }}>
 							<Trash2 size={14} />
 						</IconButton>
 					</Tooltip>
@@ -139,7 +183,7 @@ const VariableRow: FC<VariableDisplayProps> = ({ variable, onEdit, onDelete }) =
 			</VariableItem>
 			{isExpandable && (
 				<Collapse in={expanded} timeout="auto" unmountOnExit>
-					<Box sx={{ pl: 4, py: 1, backgroundColor: alpha(theme.palette.background.default, 0.05), borderBottom: `1px solid ${theme.palette.divider}` }}>
+					<Box sx={expandedContentStyles}>
 						{/* Placeholder for expanded content */}
 						<Typography variant="caption" color="text.secondary">
 							Detailed view for {variable.key} (type: {variable.type}) will be shown here.
@@ -151,10 +195,11 @@ const VariableRow: FC<VariableDisplayProps> = ({ variable, onEdit, onDelete }) =
 			)}
 		</>
 	);
-};
+});
 
+VariableRow.displayName = 'VariableRow';
 
-export const CanvasVariablesViewer: FC<CanvasVariablesViewerProps> = ({
+export const CanvasVariablesViewer: FC<CanvasVariablesViewerProps> = memo(({
 	conversationId,
 }) => {
 	const agentId = conversationId;
@@ -167,6 +212,60 @@ export const CanvasVariablesViewer: FC<CanvasVariablesViewerProps> = ({
 		isError,
 	} = useAgentExecutionVariables(agentId);
 
+	// Memoize variables array
+	const variables = useMemo(() => 
+		variablesResponse?.result?.execution_variables ?? [], 
+		[variablesResponse?.result?.execution_variables]
+	);
+
+	// Memoize callbacks
+	const handleCreateVariable = useCallback(() => {
+		showInfoToast("Create variable functionality not yet implemented.");
+	}, []);
+
+	const handleEditVariable = useCallback((variable: ExecutionVariable) => {
+		showInfoToast(`Edit variable "${variable.key}" functionality not yet implemented.`);
+	}, []);
+
+	const handleDeleteVariable = useCallback((variableKey: string) => {
+		showInfoToast(`Delete variable "${variableKey}" functionality not yet implemented.`);
+	}, []);
+
+	// Memoize static styles
+	const containerStyles = useMemo(() => ({
+		p: 1.5,
+		height: "100%",
+		overflowY: "auto",
+		display: "flex",
+		flexDirection: "column"
+	}), []);
+
+	const headerStyles = useMemo(() => ({
+		display: "flex",
+		justifyContent: "space-between",
+		alignItems: "center",
+		mb: 1,
+		px: 0.5
+	}), []);
+
+	const titleStyles = useMemo(() => ({
+		fontSize: "0.875rem"
+	}), []);
+
+	const createButtonStyles = useMemo(() => ({
+		textTransform: "none",
+		fontSize: "0.8125rem",
+		padding: theme.spacing(0.5, 1.5)
+	}), [theme]);
+
+	const loadingTextStyles = useMemo(() => ({
+		mt: 1.5
+	}), []);
+
+	const emptyStateTextStyles = useMemo(() => ({
+		mb: 1.5
+	}), []);
+
 	useEffect(() => {
 		if (isError && error) {
 			showErrorToast(
@@ -175,23 +274,11 @@ export const CanvasVariablesViewer: FC<CanvasVariablesViewerProps> = ({
 		}
 	}, [isError, error]);
 
-	const handleCreateVariable = () => {
-		showInfoToast("Create variable functionality not yet implemented.");
-	};
-
-	const handleEditVariable = (variable: ExecutionVariable) => {
-		showInfoToast(`Edit variable "${variable.key}" functionality not yet implemented.`);
-	};
-
-	const handleDeleteVariable = (variableKey: string) => {
-		showInfoToast(`Delete variable "${variableKey}" functionality not yet implemented.`);
-	};
-
 	if (isLoading) {
 		return (
 			<CenteredBox>
 				<CircularProgress size={24} />
-				<Typography variant="body2" sx={{ mt: 1.5 }} color="text.secondary">
+				<Typography variant="body2" sx={loadingTextStyles} color="text.secondary">
 					Loading variables...
 				</Typography>
 			</CenteredBox>
@@ -211,15 +298,13 @@ export const CanvasVariablesViewer: FC<CanvasVariablesViewerProps> = ({
 		);
 	}
 
-	const variables = variablesResponse?.result?.execution_variables ?? [];
-
 	if (variables.length === 0) {
 		return (
 			<CenteredBox>
 				<Typography variant="subtitle1" gutterBottom color="text.primary">
 					No Execution Variables
 				</Typography>
-				<Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+				<Typography variant="body2" color="text.secondary" sx={emptyStateTextStyles}>
 					This agent currently has no execution variables set.
 				</Typography>
 				<Button
@@ -227,7 +312,7 @@ export const CanvasVariablesViewer: FC<CanvasVariablesViewerProps> = ({
 					size="small"
 					startIcon={<PlusCircle size={16} />}
 					onClick={handleCreateVariable}
-					sx={{ textTransform: "none", fontSize: "0.8125rem", padding: theme.spacing(0.5, 1.5) }}
+					sx={createButtonStyles}
 				>
 					Create Variable
 				</Button>
@@ -236,9 +321,9 @@ export const CanvasVariablesViewer: FC<CanvasVariablesViewerProps> = ({
 	}
 
 	return (
-		<Box sx={{ p: 1.5, height: "100%", overflowY: "auto", display: "flex", flexDirection: "column" }}>
-			<Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1, px: 0.5 }}>
-				<Typography variant="body1" fontWeight={500} sx={{ fontSize: "0.875rem" }}>
+		<Box sx={containerStyles}>
+			<Box sx={headerStyles}>
+				<Typography variant="body1" fontWeight={500} sx={titleStyles}>
 					Agent Execution Variables
 				</Typography>
 				<Tooltip title="Create New Variable">
@@ -259,4 +344,6 @@ export const CanvasVariablesViewer: FC<CanvasVariablesViewerProps> = ({
 			</VariableListContainer>
 		</Box>
 	);
-};
+});
+
+CanvasVariablesViewer.displayName = 'CanvasVariablesViewer';
