@@ -321,272 +321,278 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			conversationId,
 			messages,
 			currentJobId,
-	onCancelJob,
-	isFarFromBottom = false,
-	scrollToBottom = () => {},
-	initialSuggestions,
-	agentData,
+			onCancelJob,
+			isFarFromBottom = false,
+			scrollToBottom = () => {},
+			initialSuggestions,
+			agentData,
 		},
 		ref,
 	) => {
-	const [attachments, setAttachments] = useState<string[]>([]);
-	const fileInputRef = useRef<HTMLInputElement>(null);
+		const [attachments, setAttachments] = useState<string[]>([]);
+		const fileInputRef = useRef<HTMLInputElement>(null);
 
-	const MAX_SUGGESTIONS = 7;
+		const MAX_SUGGESTIONS = 7;
 
-	const suggestions = useMemo(() => {
-		if (!initialSuggestions || initialSuggestions.length === 0) return [];
-		if (initialSuggestions.length <= MAX_SUGGESTIONS) {
-			return initialSuggestions;
-		}
-		// Randomly select MAX_SUGGESTIONS unique suggestions
-		const shuffled = [...initialSuggestions].sort(() => Math.random() - 0.5);
-		return shuffled.slice(0, MAX_SUGGESTIONS);
-	}, [initialSuggestions]);
-
-	const onSubmit = useMemo(
-		() => (message: string) => {
-			onSendMessage(message, attachments);
-			setAttachments([]);
-		},
-		// attachments is a dependency, but this is safe because attachments is local state
-		// and onSendMessage is a prop (assumed stable)
-		[onSendMessage, attachments],
-	);
-
-	const {
-		inputValue: newMessage,
-		setInputValue: setNewMessage,
-		handleKeyDown,
-		handleSubmit: submitMessage,
-		textareaRef,
-	} = useMessageInput({
-		conversationId,
-		onSubmit,
-		scrollToBottom,
-	});
-
-	// Expose focusInput method via useImperativeHandle
-	useImperativeHandle(ref, () => ({
-		focusInput: () => {
-			textareaRef.current?.focus();
-		},
-	}));
-
-	const handleSubmit = (e: FormEvent) => {
-		e.preventDefault();
-		if (!newMessage.trim() && attachments.length === 0) return;
-		submitMessage();
-	};
-
-	const handleFileSelect = (e: ChangeEvent<HTMLInputElement>) => {
-		if (e.target.files && e.target.files.length > 0) {
-			const newAttachments = Array.from(e.target.files).map((file) => {
-				const filePath = file.path;
-				if (filePath) {
-					return normalizePath(filePath);
-				}
-				return URL.createObjectURL(file);
-			});
-			setAttachments((prev) => [...prev, ...newAttachments]);
-			if (fileInputRef.current) {
-				fileInputRef.current.value = "";
+		const suggestions = useMemo(() => {
+			if (!initialSuggestions || initialSuggestions.length === 0) return [];
+			if (initialSuggestions.length <= MAX_SUGGESTIONS) {
+				return initialSuggestions;
 			}
-		}
-	};
+			// Randomly select MAX_SUGGESTIONS unique suggestions
+			const shuffled = [...initialSuggestions].sort(() => Math.random() - 0.5);
+			return shuffled.slice(0, MAX_SUGGESTIONS);
+		}, [initialSuggestions]);
 
-	const handleRemoveAttachment = (index: number) => {
-		setAttachments((prev) => {
-			const newAttachments = [...prev];
-			if (newAttachments[index].startsWith("blob:")) {
-				URL.revokeObjectURL(newAttachments[index]);
-			}
-			newAttachments.splice(index, 1);
-			return newAttachments;
+		const onSubmit = useMemo(
+			() => (message: string) => {
+				onSendMessage(message, attachments);
+				setAttachments([]);
+			},
+			// attachments is a dependency, but this is safe because attachments is local state
+			// and onSendMessage is a prop (assumed stable)
+			[onSendMessage, attachments],
+		);
+
+		const {
+			inputValue: newMessage,
+			setInputValue: setNewMessage,
+			handleKeyDown,
+			handleSubmit: submitMessage,
+			textareaRef,
+		} = useMessageInput({
+			conversationId,
+			onSubmit,
+			scrollToBottom,
 		});
-	};
 
-	const triggerFileInput = () => {
-		fileInputRef.current?.click();
-	};
+		// Expose focusInput method via useImperativeHandle
+		useImperativeHandle(ref, () => ({
+			focusInput: () => {
+				textareaRef.current?.focus();
+			},
+		}));
 
-	const handlePaste = (event: ClipboardEvent<HTMLDivElement>) => {
-		const items = event.clipboardData?.items;
-		if (items) {
-			for (let i = 0; i < items.length; i++) {
-				if (items[i].type.indexOf("image") !== -1 || items[i].kind === "file") {
-					const file = items[i].getAsFile();
-					if (file) {
-						const reader = new FileReader();
-						reader.onload = (e) => {
-							if (e.target?.result) {
-								setAttachments((prev) => [...prev, e.target?.result as string]);
-							}
-						};
-						reader.readAsDataURL(file);
+		const handleSubmit = (e: FormEvent) => {
+			e.preventDefault();
+			if (!newMessage.trim() && attachments.length === 0) return;
+			submitMessage();
+		};
+
+		const handleFileSelect = (e: ChangeEvent<HTMLInputElement>) => {
+			if (e.target.files && e.target.files.length > 0) {
+				const newAttachments = Array.from(e.target.files).map((file) => {
+					const filePath = file.path;
+					if (filePath) {
+						return normalizePath(filePath);
+					}
+					return URL.createObjectURL(file);
+				});
+				setAttachments((prev) => [...prev, ...newAttachments]);
+				if (fileInputRef.current) {
+					fileInputRef.current.value = "";
+				}
+			}
+		};
+
+		const handleRemoveAttachment = (index: number) => {
+			setAttachments((prev) => {
+				const newAttachments = [...prev];
+				if (newAttachments[index].startsWith("blob:")) {
+					URL.revokeObjectURL(newAttachments[index]);
+				}
+				newAttachments.splice(index, 1);
+				return newAttachments;
+			});
+		};
+
+		const triggerFileInput = () => {
+			fileInputRef.current?.click();
+		};
+
+		const handlePaste = (event: ClipboardEvent<HTMLDivElement>) => {
+			const items = event.clipboardData?.items;
+			if (items) {
+				for (let i = 0; i < items.length; i++) {
+					if (
+						items[i].type.indexOf("image") !== -1 ||
+						items[i].kind === "file"
+					) {
+						const file = items[i].getAsFile();
+						if (file) {
+							const reader = new FileReader();
+							reader.onload = (e) => {
+								if (e.target?.result) {
+									setAttachments((prev) => [
+										...prev,
+										e.target?.result as string,
+									]);
+								}
+							};
+							reader.readAsDataURL(file);
+						}
 					}
 				}
 			}
-		}
-	};
+		};
 
-	const isInputDisabled = Boolean(isLoading && currentJobId);
+		const isInputDisabled = Boolean(isLoading && currentJobId);
 
-	const handleSuggestionClick = (suggestion: string) => {
-		if (isInputDisabled) return;
-		onSendMessage(suggestion, attachments);
-		setAttachments([]);
-		setNewMessage("");
-	};
+		const handleSuggestionClick = (suggestion: string) => {
+			if (isInputDisabled) return;
+			onSendMessage(suggestion, attachments);
+			setAttachments([]);
+			setNewMessage("");
+		};
 
-	const inputContent = (
-		<form onSubmit={handleSubmit} style={{ width: "100%" }}>
-			<InputInnerContainer>
-				{attachments.length > 0 && (
-					<AttachmentsPreview
-						attachments={attachments}
-						onRemoveAttachment={handleRemoveAttachment}
-						disabled={isInputDisabled}
-					/>
-				)}
-
-				<StyledTextField
-					fullWidth
-					placeholder={isInputDisabled ? "Agent is busy" : "Ask me for help"}
-					value={newMessage}
-					onChange={(e) => setNewMessage(e.target.value)}
-					onKeyDown={handleKeyDown}
-					onPaste={handlePaste}
-					multiline
-					maxRows={4}
-					variant="outlined"
-					inputRef={textareaRef}
-					disabled={isInputDisabled}
-					inputProps={{
-						"data-tour-tag": "chat-input-textarea",
-					}}
-				/>
-
-				<ButtonsRow>
-					{/* Left side: attachment button */}
-					<Box display="flex" alignItems="center" gap={1}>
-						<input
-							type="file"
-							ref={fileInputRef}
-							onChange={handleFileSelect}
-							style={{ display: "none" }}
+		const inputContent = (
+			<form onSubmit={handleSubmit} style={{ width: "100%" }}>
+				<InputInnerContainer>
+					{attachments.length > 0 && (
+						<AttachmentsPreview
+							attachments={attachments}
+							onRemoveAttachment={handleRemoveAttachment}
 							disabled={isInputDisabled}
-							multiple
 						/>
-						{/* @ts-ignore Tooltip type issue */}
-						<Tooltip title="Attach file">
-							<span>
-								<AttachmentButton
-									onClick={triggerFileInput}
-									color="primary"
+					)}
+
+					<StyledTextField
+						fullWidth
+						placeholder={isInputDisabled ? "Agent is busy" : "Ask me for help"}
+						value={newMessage}
+						onChange={(e) => setNewMessage(e.target.value)}
+						onKeyDown={handleKeyDown}
+						onPaste={handlePaste}
+						multiline
+						maxRows={4}
+						variant="outlined"
+						inputRef={textareaRef}
+						disabled={isInputDisabled}
+						inputProps={{
+							"data-tour-tag": "chat-input-textarea",
+						}}
+					/>
+
+					<ButtonsRow>
+						{/* Left side: attachment button */}
+						<Box display="flex" alignItems="center" gap={1}>
+							<input
+								type="file"
+								ref={fileInputRef}
+								onChange={handleFileSelect}
+								style={{ display: "none" }}
+								disabled={isInputDisabled}
+								multiple
+							/>
+							{/* @ts-ignore Tooltip type issue */}
+							<Tooltip title="Attach file">
+								<span>
+									<AttachmentButton
+										onClick={triggerFileInput}
+										color="primary"
+										size="small"
+										aria-label="Attach file"
+										data-tour-tag="chat-input-attach-file-button"
+										disabled={isInputDisabled}
+									>
+										<FontAwesomeIcon icon={faPaperclip} />
+									</AttachmentButton>
+								</span>
+							</Tooltip>
+							{conversationId && (
+								<DirectoryIndicator
+									agentId={conversationId}
+									currentWorkingDirectory={agentData?.current_working_directory}
+								/>
+							)}
+						</Box>
+
+						{/* Right side: send or stop button */}
+						<Box display="flex" alignItems="center" gap={1}>
+							{isLoading && currentJobId ? (
+								// @ts-ignore Tooltip type issue
+								<Tooltip title="Stop agent">
+									<span>
+										<SendButton
+											type="button"
+											variant="contained"
+											color="error"
+											onClick={() => onCancelJob?.(currentJobId)}
+											aria-label="Stop agent"
+										>
+											<FontAwesomeIcon icon={faStop} />
+										</SendButton>
+									</span>
+								</Tooltip>
+							) : (
+								// @ts-ignore Tooltip type issue
+								<Tooltip title="Send message">
+									<span>
+										<SendButton
+											type="submit"
+											variant="contained"
+											color="primary"
+											disabled={
+												isLoading ||
+												(!newMessage.trim() && attachments.length === 0)
+											}
+											aria-label="Send message"
+										>
+											<FontAwesomeIcon icon={faPaperPlane} />
+										</SendButton>
+									</span>
+								</Tooltip>
+							)}
+						</Box>
+					</ButtonsRow>
+				</InputInnerContainer>
+
+				{messages.length === 0 && (
+					<SuggestionsContainer>
+						<Box
+							sx={{
+								display: "flex",
+								flexWrap: "wrap",
+								gap: 1,
+								marginTop: 1.5,
+								justifyContent: "center",
+							}}
+						>
+							{suggestions.map((suggestion) => (
+								<SuggestionChip
+									key={suggestion}
+									variant="outlined"
 									size="small"
-									aria-label="Attach file"
-									data-tour-tag="chat-input-attach-file-button"
+									onClick={() => handleSuggestionClick(suggestion)}
 									disabled={isInputDisabled}
 								>
-									<FontAwesomeIcon icon={faPaperclip} />
-								</AttachmentButton>
-							</span>
-						</Tooltip>
-						{conversationId && (
-							<DirectoryIndicator
-								agentId={conversationId}
-								currentWorkingDirectory={agentData?.current_working_directory}
-							/>
-						)}
-					</Box>
+									{suggestion}
+								</SuggestionChip>
+							))}
+						</Box>
+					</SuggestionsContainer>
+				)}
+			</form>
+		);
 
-					{/* Right side: send or stop button */}
-					<Box display="flex" alignItems="center" gap={1}>
-						{isLoading && currentJobId ? (
-							// @ts-ignore Tooltip type issue
-							<Tooltip title="Stop agent">
-								<span>
-									<SendButton
-										type="button"
-										variant="contained"
-										color="error"
-										onClick={() => onCancelJob?.(currentJobId)}
-										aria-label="Stop agent"
-									>
-										<FontAwesomeIcon icon={faStop} />
-									</SendButton>
-								</span>
-							</Tooltip>
-						) : (
-							// @ts-ignore Tooltip type issue
-							<Tooltip title="Send message">
-								<span>
-									<SendButton
-										type="submit"
-										variant="contained"
-										color="primary"
-										disabled={
-											isLoading ||
-											(!newMessage.trim() && attachments.length === 0)
-										}
-										aria-label="Send message"
-									>
-										<FontAwesomeIcon icon={faPaperPlane} />
-									</SendButton>
-								</span>
-							</Tooltip>
-						)}
-					</Box>
-				</ButtonsRow>
-			</InputInnerContainer>
-
-			{messages.length === 0 && (
-				<SuggestionsContainer>
-					<Box
-						sx={{
-							display: "flex",
-							flexWrap: "wrap",
-							gap: 1,
-							marginTop: 1.5,
-							justifyContent: "center",
-						}}
-					>
-						{suggestions.map((suggestion) => (
-							<SuggestionChip
-								key={suggestion}
-								variant="outlined"
-								size="small"
-								onClick={() => handleSuggestionClick(suggestion)}
-								disabled={isInputDisabled}
-							>
-								{suggestion}
-							</SuggestionChip>
-						))}
-					</Box>
-				</SuggestionsContainer>
-			)}
-		</form>
-	);
-
-	return (
-		<InputOuterContainer>
-			{messages.length === 0 ? (
-				<EmptyStateContainer>
-					<EmptyStateTitle variant="h6">
-						What can I help you with today?
-					</EmptyStateTitle>
-					{inputContent}
-				</EmptyStateContainer>
-			) : (
-				inputContent
-			)}
-			<ScrollToBottomButton
-				visible={isFarFromBottom}
-				onClick={scrollToBottom}
-			/>
-		</InputOuterContainer>
-	);
+		return (
+			<InputOuterContainer>
+				{messages.length === 0 ? (
+					<EmptyStateContainer>
+						<EmptyStateTitle variant="h6">
+							What can I help you with today?
+						</EmptyStateTitle>
+						{inputContent}
+					</EmptyStateContainer>
+				) : (
+					inputContent
+				)}
+				<ScrollToBottomButton
+					visible={isFarFromBottom}
+					onClick={scrollToBottom}
+				/>
+			</InputOuterContainer>
+		);
 	},
 );
 

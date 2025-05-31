@@ -1,3 +1,5 @@
+import type { AgentListResult } from "@shared/api/local-operator/types";
+import { useAgents } from "@shared/hooks/use-agents";
 import { useOnboardingStore } from "@shared/store/onboarding-store";
 import React, { useEffect } from "react";
 import {
@@ -5,8 +7,6 @@ import {
 	ShepherdJourneyProvider,
 } from "react-shepherd";
 import { useOnboardingTour } from "../hooks/use-onboarding-tour";
-import { useAgents } from "@shared/hooks/use-agents";
-import type { AgentListResult } from "@shared/api/local-operator/types";
 
 import "shepherd.js/dist/css/shepherd.css";
 
@@ -33,7 +33,13 @@ const TourInitiator: React.FC = () => {
 		}
 
 		return undefined;
-	}, [isModalComplete, isTourComplete, shepherdContext, initiateTourFromHook, agentsData]);
+	}, [
+		isModalComplete,
+		isTourComplete,
+		shepherdContext,
+		initiateTourFromHook,
+		agentsData,
+	]);
 
 	return null; // This component does not render any UI itself
 };

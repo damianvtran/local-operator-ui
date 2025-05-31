@@ -145,7 +145,7 @@ const tourSteps: StepOptions[] = [
 				classes: "shepherd-button-primary",
 				action: function () {
 					const { openCommandPalette } = useUiPreferencesStore.getState();
-		
+
 					openCommandPalette();
 					setTimeout(() => {
 						this.next();
@@ -157,7 +157,10 @@ const tourSteps: StepOptions[] = [
 	{
 		id: "pre-command-palette-open-canvas",
 		title: "Command Palette",
-		attachTo: { element: '[data-tour-tag="command-palette-dialog"]', on: "right" },
+		attachTo: {
+			element: '[data-tour-tag="command-palette-dialog"]',
+			on: "right",
+		},
 		text: "Let's quickly look at another powerful feature: the Command Palette. You can open it anywhere in the app by pressing <code>Cmd+K</code> on Mac and <code>Ctrl+K</code> on Windows or Linux. This is a helpful window that you can open from anywhere in the app to be able to access agents, settings, pages, and much more using your keyboard.  It can often be faster to access sections in the app this way instead of clicking through menus.  You can type an agent's name to find the chat for that agent, and then hit Enter to open it.",
 		buttons: [
 			{
@@ -165,7 +168,7 @@ const tourSteps: StepOptions[] = [
 				classes: "shepherd-button-secondary",
 				action: function () {
 					const { closeCommandPalette } = useUiPreferencesStore.getState();
-		
+
 					closeCommandPalette();
 					setTimeout(() => {
 						this.back();
@@ -177,7 +180,7 @@ const tourSteps: StepOptions[] = [
 				classes: "shepherd-button-primary",
 				action: function () {
 					const { closeCommandPalette } = useUiPreferencesStore.getState();
-		
+
 					closeCommandPalette();
 					setTimeout(() => {
 						this.next();
@@ -199,12 +202,12 @@ const tourSteps: StepOptions[] = [
 				text: "Back",
 				classes: "shepherd-button-secondary",
 				action: function () {
-          const { openCommandPalette } = useUiPreferencesStore.getState();
-		
+					const { openCommandPalette } = useUiPreferencesStore.getState();
+
 					openCommandPalette();
-          setTimeout(() => {
-            this.back();
-          }, 500);
+					setTimeout(() => {
+						this.back();
+					}, 500);
 				},
 			},
 			{

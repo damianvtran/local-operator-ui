@@ -1,4 +1,8 @@
+import { getIconElement } from "@features/command-palette/components/command-palette-utils";
+import { DEFAULT_SETTINGS_SECTIONS } from "@features/settings/components/settings-sidebar";
 import {
+	Box,
+	Chip,
 	Dialog,
 	DialogContent,
 	IconButton,
@@ -10,40 +14,35 @@ import {
 	ListItemText,
 	TextField,
 	Typography,
-	Chip,
-	Box,
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
+import { useTheme } from "@mui/material/styles";
 import type { AgentListResult } from "@shared/api/local-operator/types";
+import { ConfirmationModal } from "@shared/components/common/confirmation-modal";
+import { CreateAgentDialog } from "@shared/components/common/create-agent-dialog";
 import { useAgents } from "@shared/hooks/use-agents";
 import { useClearAgentConversation } from "@shared/hooks/use-clear-agent-conversation";
-import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
+import { useDebounce } from "@shared/hooks/use-debounce";
+import { useAgentRouteParam } from "@shared/hooks/use-route-params";
 import { useAgentSelectionStore } from "@shared/store/agent-selection-store";
+import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import {
-	MessageSquare,
-	Settings,
+	Calendar,
 	FileText,
 	Search as LucideSearch,
-	Users,
-	Store,
-	X,
-	Calendar,
-	Plus,
-	Trash2,
-	PanelRightOpen,
+	MessageSquare,
 	PanelRightClose,
+	PanelRightOpen,
+	Plus,
+	Settings,
+	Store,
+	Trash2,
+	Users,
+	X,
 } from "lucide-react";
 import type { FC } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { useTheme } from "@mui/material/styles";
-import { ConfirmationModal } from "@shared/components/common/confirmation-modal";
-import { DEFAULT_SETTINGS_SECTIONS } from "@features/settings/components/settings-sidebar";
-import { useAgentRouteParam } from "@shared/hooks/use-route-params";
-import { getIconElement } from "@features/command-palette/components/command-palette-utils";
-import { useDebounce } from "@shared/hooks/use-debounce";
-import { CreateAgentDialog } from "@shared/components/common/create-agent-dialog";
-
 
 const StyledDialog = styled(Dialog)(({ theme }) => ({
 	"& .MuiDialog-paper": {
@@ -51,9 +50,9 @@ const StyledDialog = styled(Dialog)(({ theme }) => ({
 		maxWidth: "90vw",
 		borderRadius: theme.shape.borderRadius * 2,
 		backgroundColor: theme.palette.background.default,
-    backgroundImage: "none",
+		backgroundImage: "none",
 		boxShadow: theme.shadows[8],
-    border: `1px solid ${theme.palette.divider}`,
+		border: `1px solid ${theme.palette.divider}`,
 	},
 }));
 
@@ -74,22 +73,29 @@ const ResultsListContainer = styled(List)(({ theme }) => ({
 		background: "transparent",
 	},
 	"&::-webkit-scrollbar-thumb": {
-		background: theme.palette.mode === "dark" ? "rgba(255, 255, 255, 0.2)" : "rgba(0, 0, 0, 0.2)",
+		background:
+			theme.palette.mode === "dark"
+				? "rgba(255, 255, 255, 0.2)"
+				: "rgba(0, 0, 0, 0.2)",
 		borderRadius: "4px",
 		"&:hover": {
-			background: theme.palette.mode === "dark" ? "rgba(255, 255, 255, 0.3)" : "rgba(0, 0, 0, 0.3)",
+			background:
+				theme.palette.mode === "dark"
+					? "rgba(255, 255, 255, 0.3)"
+					: "rgba(0, 0, 0, 0.3)",
 		},
 	},
 	// Firefox scrollbar styles
 	scrollbarWidth: "thin",
-	scrollbarColor: theme.palette.mode === "dark" 
-		? "rgba(255, 255, 255, 0.2) transparent" 
-		: "rgba(0, 0, 0, 0.2) transparent",
+	scrollbarColor:
+		theme.palette.mode === "dark"
+			? "rgba(255, 255, 255, 0.2) transparent"
+			: "rgba(0, 0, 0, 0.2) transparent",
 }));
 
 const ResultItemStyled = styled(ListItemButton)(({ theme }) => ({
 	padding: theme.spacing(0.5, 2),
-  borderRadius: 8,
+	borderRadius: 8,
 	"&:hover": {
 		backgroundColor: theme.palette.action.hover,
 	},
@@ -101,7 +107,14 @@ const ActionChip = styled(Chip)(() => ({
 	marginLeft: "auto",
 }));
 
-type CommandPaletteItemType = "page" | "agent-chat" | "agent-settings" | "settings-section" | "create-agent" | "clear-conversation" | "toggle-canvas";
+type CommandPaletteItemType =
+	| "page"
+	| "agent-chat"
+	| "agent-settings"
+	| "settings-section"
+	| "create-agent"
+	| "clear-conversation"
+	| "toggle-canvas";
 
 interface CommandPaletteItem {
 	id: string;
@@ -169,7 +182,16 @@ const getActionLabel = (type: CommandPaletteItemType): string => {
 	}
 };
 
-const getActionColor = (type: CommandPaletteItemType): "default" | "primary" | "secondary" | "success" | "warning" | "info" | "error" => {
+const getActionColor = (
+	type: CommandPaletteItemType,
+):
+	| "default"
+	| "primary"
+	| "secondary"
+	| "success"
+	| "warning"
+	| "info"
+	| "error" => {
 	switch (type) {
 		case "page":
 			return "primary";
@@ -220,7 +242,6 @@ export const CommandPalette: FC = () => {
 	// Use the agent ID from URL or the last selected agent ID
 	const effectiveAgentId = currentAgentIdFromRoute || getLastAgentId("chat");
 	const isOnChatPage = location.pathname.startsWith("/chat"); // Derive isOnChatPage correctly
-
 
 	// Sync the debounced local query back to the store (but this won't cause re-renders during typing)
 	useEffect(() => {
@@ -292,16 +313,14 @@ export const CommandPalette: FC = () => {
 	}, []);
 
 	const settingsSectionItems = useMemo((): CommandPaletteItem[] => {
-		return DEFAULT_SETTINGS_SECTIONS.map(
-			(section) => ({
-				id: `settings-section-${section.id}`,
-				type: "settings-section",
-				name: section.label,
-				category: "Settings Section",
-				path: `/settings?section=${section.id}`,
-				icon: getIconElement(section),
-			}),
-		);
+		return DEFAULT_SETTINGS_SECTIONS.map((section) => ({
+			id: `settings-section-${section.id}`,
+			type: "settings-section",
+			name: section.label,
+			category: "Settings Section",
+			path: `/settings?section=${section.id}`,
+			icon: getIconElement(section),
+		}));
 	}, []);
 
 	const handleCreateAgent = useCallback(() => {
@@ -334,17 +353,19 @@ export const CommandPalette: FC = () => {
 		// Don't close command palette here, user might want to select another action
 	}, []);
 
-
 	const handleToggleCanvas = useCallback(() => {
 		setCanvasOpen(!isCanvasOpen);
 		closeCommandPalette();
 	}, [isCanvasOpen, setCanvasOpen, closeCommandPalette]);
 
-	const handleAgentCreated = useCallback((agentId: string) => {
-		// Navigate to the new agent's chat page
-		navigate(`/chat/${agentId}`);
-		closeCreateAgentDialog(); // Use global action
-	}, [navigate, closeCreateAgentDialog]);
+	const handleAgentCreated = useCallback(
+		(agentId: string) => {
+			// Navigate to the new agent's chat page
+			navigate(`/chat/${agentId}`);
+			closeCreateAgentDialog(); // Use global action
+		},
+		[navigate, closeCreateAgentDialog],
+	);
 
 	const actionItems = useMemo((): CommandPaletteItem[] => {
 		const items: CommandPaletteItem[] = [];
@@ -378,13 +399,24 @@ export const CommandPalette: FC = () => {
 				type: "toggle-canvas",
 				name: isCanvasOpen ? "Close Canvas" : "Open Canvas",
 				category: "Actions",
-				icon: isCanvasOpen ? <PanelRightClose size={16} /> : <PanelRightOpen size={16} />,
+				icon: isCanvasOpen ? (
+					<PanelRightClose size={16} />
+				) : (
+					<PanelRightOpen size={16} />
+				),
 				action: handleToggleCanvas,
 			});
 		}
 
 		return items;
-	}, [isOnChatPage, effectiveAgentId, isCanvasOpen, handleCreateAgent, handleClearConversation, handleToggleCanvas]);
+	}, [
+		isOnChatPage,
+		effectiveAgentId,
+		isCanvasOpen,
+		handleCreateAgent,
+		handleClearConversation,
+		handleToggleCanvas,
+	]);
 
 	const handleItemClick = useCallback(
 		(item: CommandPaletteItem) => {
@@ -427,14 +459,14 @@ export const CommandPalette: FC = () => {
 		if (!debouncedLocalQuery) {
 			return allItems.slice(0, MAX_SUGGESTIONS);
 		}
-		
+
 		const lowerCaseQuery = debouncedLocalQuery.toLowerCase();
 		const filtered = allItems.filter(
 			(item) =>
 				item.name.toLowerCase().includes(lowerCaseQuery) ||
 				item.category.toLowerCase().includes(lowerCaseQuery),
 		);
-		
+
 		return filtered.slice(0, MAX_SUGGESTIONS);
 	}, [allItems, debouncedLocalQuery]);
 
@@ -469,15 +501,20 @@ export const CommandPalette: FC = () => {
 		return () => {
 			window.removeEventListener("keydown", handleKeyDown);
 		};
-	}, [isCommandPaletteOpen, filteredItems, selectedIndex, closeCommandPalette, handleItemClick]);
-
+	}, [
+		isCommandPaletteOpen,
+		filteredItems,
+		selectedIndex,
+		closeCommandPalette,
+		handleItemClick,
+	]);
 
 	// The CreateAgentDialog is now expected to be rendered globally,
 	// e.g., in App.tsx, controlled by isCreateAgentDialogOpen from the store.
 	// So, we don't render it here anymore if the palette is closed.
 	// We only render the command palette dialog itself.
 	if (!isCommandPaletteOpen) {
-		return null; 
+		return null;
 	}
 
 	return (
@@ -504,24 +541,42 @@ export const CommandPalette: FC = () => {
 				</SearchInputContainer>
 				<DialogContent sx={{ padding: 0 }}>
 					{filteredItems.length === 0 && debouncedLocalQuery && (
-						<Typography sx={{ p: 3, textAlign: "center", color: "text.secondary" }}>
+						<Typography
+							sx={{ p: 3, textAlign: "center", color: "text.secondary" }}
+						>
 							No results found.
 						</Typography>
 					)}
 					<ResultsListContainer sx={{ padding: 0.5 }}>
 						{filteredItems.map((item, index) => (
-							<ListItem key={item.id} disablePadding dense sx={{ padding: 0.5 }}>
+							<ListItem
+								key={item.id}
+								disablePadding
+								dense
+								sx={{ padding: 0.5 }}
+							>
 								<ResultItemStyled
 									selected={selectedIndex === index}
 									onClick={() => handleItemClick(item)}
 									onMouseMove={() => setSelectedIndex(index)}
 								>
-									<ListItemIcon sx={{ minWidth: "20px", display: "flex", alignItems: "center", justifyContent: "center", mr: 1.5, color: "text.secondary" }}>
+									<ListItemIcon
+										sx={{
+											minWidth: "20px",
+											display: "flex",
+											alignItems: "center",
+											justifyContent: "center",
+											mr: 1.5,
+											color: "text.secondary",
+										}}
+									>
 										{item.icon || <FileText size={16} />}
 									</ListItemIcon>
 									<ListItemText
 										primary={
-											<Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+											<Box
+												sx={{ display: "flex", alignItems: "center", gap: 1 }}
+											>
 												<Typography variant="body2">{item.name}</Typography>
 												<Typography variant="caption" color="text.secondary">
 													{item.category}

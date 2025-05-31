@@ -11,7 +11,6 @@ import { AgentDetailsPage } from "@features/agent-hub/agent-details-page";
 import { AgentHubPage } from "@features/agent-hub/agent-hub-page";
 import { AgentsPage } from "@features/agents/components/agents-page";
 import { ChatPage } from "@features/chat/components/chat-page";
-import { CreateAgentDialog } from "@shared/components/common/create-agent-dialog"; // Import CreateAgentDialog
 import { CommandPalette } from "@features/command-palette/components/command-palette";
 import { OnboardingModal } from "@features/onboarding";
 import { OnboardingProvider } from "@features/onboarding/components/onboarding-provider";
@@ -19,6 +18,7 @@ import { OnboardingTourGlobalStyles } from "@features/onboarding/components/onbo
 import { SchedulesPage } from "@features/schedules/components/schedules-page";
 import { SettingsPage } from "@features/settings/components/settings-page";
 import { ConnectivityBanner } from "@shared/components/common/connectivity-banner";
+import { CreateAgentDialog } from "@shared/components/common/create-agent-dialog"; // Import CreateAgentDialog
 import { LowCreditsDialog } from "@shared/components/common/low-credits-dialog";
 import { ModelsInitializer } from "@shared/components/common/models-initializer";
 import { UpdateNotification } from "@shared/components/common/update-notification";

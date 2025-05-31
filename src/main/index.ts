@@ -6,10 +6,10 @@ import {
 	Menu,
 	app,
 	dialog,
+	globalShortcut,
 	ipcMain,
 	nativeImage,
 	shell,
-	globalShortcut,
 } from "electron";
 import { PostHog } from "posthog-node";
 import icon from "../../resources/icon.png?asset";
@@ -753,34 +753,43 @@ app
 			// Handle platform-specific setup for the updater
 			updateService.handlePlatformSpecifics();
 
-	// Check for all updates (UI and backend) after a short delay to ensure the app is fully loaded
-	setTimeout(() => {
-		updateService?.checkForAllUpdates(true);
-	}, 3000);
+			// Check for all updates (UI and backend) after a short delay to ensure the app is fully loaded
+			setTimeout(() => {
+				updateService?.checkForAllUpdates(true);
+			}, 3000);
 
-	// Register local shortcut for Command Palette (only when window is focused)
-	// Use window-level accelerator instead of global shortcut to avoid overriding other apps
-	mainWindow.webContents.on('before-input-event', (event, input) => {
-		if (input.control && input.key.toLowerCase() === 'k' && input.type === 'keyDown') {
-			if (mainWindow?.isFocused() && mainWindow?.isVisible()) {
-				event.preventDefault();
-				mainWindow.webContents.send("toggle-command-palette");
-			}
+			// Register local shortcut for Command Palette (only when window is focused)
+			// Use window-level accelerator instead of global shortcut to avoid overriding other apps
+			mainWindow.webContents.on("before-input-event", (event, input) => {
+				if (
+					input.control &&
+					input.key.toLowerCase() === "k" &&
+					input.type === "keyDown"
+				) {
+					if (mainWindow?.isFocused() && mainWindow?.isVisible()) {
+						event.preventDefault();
+						mainWindow.webContents.send("toggle-command-palette");
+					}
+				}
+				// Handle keydown event on macOS
+				if (
+					input.meta &&
+					input.key.toLowerCase() === "k" &&
+					input.type === "keyDown" &&
+					process.platform === "darwin"
+				) {
+					if (mainWindow?.isFocused() && mainWindow?.isVisible()) {
+						event.preventDefault();
+						mainWindow.webContents.send("toggle-command-palette");
+					}
+				}
+			});
 		}
-		// Handle keydown event on macOS
-		if (input.meta && input.key.toLowerCase() === 'k' && input.type === 'keyDown' && process.platform === 'darwin') {
-			if (mainWindow?.isFocused() && mainWindow?.isVisible()) {
-				event.preventDefault();
-				mainWindow.webContents.send("toggle-command-palette");
-			}
-		}
-	});
-}
 
-// Initial window + update service setup
-setupMainWindowWithUpdateService();
+		// Initial window + update service setup
+		setupMainWindowWithUpdateService();
 
-app.on("activate", () => {
+		app.on("activate", () => {
 			// On macOS it's common to re-create a window in the app when the
 			// dock icon is clicked and there are no other windows open.
 			if (BrowserWindow.getAllWindows().length === 0) {
