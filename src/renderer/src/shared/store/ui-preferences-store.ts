@@ -55,6 +55,22 @@ type UiPreferencesState = {
 	 * @param open - Whether the canvas should be open
 	 */
 	setCanvasOpen: (open: boolean) => void;
+
+	/**
+	 * Whether the create agent dialog is open
+	 */
+	isCreateAgentDialogOpen: boolean;
+
+	/**
+	 * Opens the create agent dialog
+	 */
+	openCreateAgentDialog: () => void;
+
+	/**
+	 * Closes the create agent dialog
+	 */
+	closeCreateAgentDialog: () => void;
+
 	/**
 	 * Whether the navigation sidebar is collapsed
 	 */
@@ -136,6 +152,15 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			canvasWidth: DEFAULT_CANVAS_WIDTH,
 			chatSidebarWidth: DEFAULT_CHAT_SIDEBAR_WIDTH,
 			isCanvasOpen: false,
+			isCreateAgentDialogOpen: false,
+
+			openCreateAgentDialog: () => {
+				set({ isCreateAgentDialogOpen: true });
+			},
+
+			closeCreateAgentDialog: () => {
+				set({ isCreateAgentDialogOpen: false });
+			},
 
 			openCommandPalette: () => {
 				set({ isCommandPaletteOpen: true });
