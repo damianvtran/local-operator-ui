@@ -127,6 +127,8 @@ export const FileAttachment: FC<FileAttachmentProps> = memo(
 		// which is specific to this component's interaction, not the passive metadata collection.
 		// addMentionedFile is removed as its functionality is centralized.
 
+		const { setViewMode } = useCanvasStore(); // Add setViewMode from canvas store
+
 		// Handle click on the file attachment
 		const handleClick = useCallback(async () => {
 			const title = getFileName(file); // This will be "Pasted Image" for image data URIs
@@ -175,6 +177,7 @@ export const FileAttachment: FC<FileAttachmentProps> = memo(
 					setOpenTabs(conversationId, updatedTabs);
 					setSelectedTab(conversationId, docId);
 					setCanvasOpen(true);
+					setViewMode(conversationId, "documents"); // Switch canvas view to documents
 				} else {
 					// Not canvas supported, but it's a data URI.
 					// The server will handle it. For client-side, just call onClick.
@@ -224,6 +227,7 @@ export const FileAttachment: FC<FileAttachmentProps> = memo(
 						setOpenTabs(conversationId, updatedTabs);
 						setSelectedTab(conversationId, docId);
 						setCanvasOpen(true);
+						setViewMode(conversationId, "documents"); // Switch canvas view to documents
 						return;
 					}
 
@@ -242,7 +246,7 @@ export const FileAttachment: FC<FileAttachmentProps> = memo(
 					return fallbackAction(message);
 				}
 			}
-		}, [file, onClick, setCanvasOpen, conversationId]);
+		}, [file, onClick, setCanvasOpen, setViewMode, conversationId]);
 
 		const isPastedImage = file.startsWith("data:image/");
 		return (
