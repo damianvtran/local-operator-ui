@@ -16,7 +16,7 @@ import type { CanvasDocument } from "@features/chat/types/canvas"; // TODO: Shou
 /**
  * Canvas view mode type
  */
-export type CanvasViewMode = "documents" | "files";
+export type CanvasViewMode = "documents" | "files" | "variables";
 
 /**
  * State for a single conversation's canvas
@@ -88,7 +88,7 @@ const defaultConversationCanvasState: ConversationCanvasState = {
 	selectedTabId: null,
 	files: [],
 	mentionedFiles: [],
-	viewMode: "documents",
+	viewMode: "documents", // Default to documents view
 };
 
 /**
