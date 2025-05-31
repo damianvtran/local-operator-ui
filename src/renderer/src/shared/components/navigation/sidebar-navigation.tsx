@@ -19,7 +19,7 @@ import {
 	Bot,
 	CalendarDays,
 	ChevronLeft,
-	ChevronRight, 
+	ChevronRight,
 	MessageSquare,
 	Settings,
 	Store,
