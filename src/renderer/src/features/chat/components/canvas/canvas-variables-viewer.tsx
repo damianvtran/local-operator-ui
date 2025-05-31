@@ -2,51 +2,68 @@ import {
 	Box,
 	Button,
 	CircularProgress,
-	Paper,
 	Table,
 	TableBody,
 	TableCell,
 	TableContainer,
 	TableHead,
 	TableRow,
+	Tooltip,
 	Typography,
 	alpha,
+	IconButton,
 } from "@mui/material";
-import { styled } from "@mui/material/styles";
+import { styled, useTheme } from "@mui/material/styles"; 
+import type { ExecutionVariable } from "@shared/api/local-operator/types";
 import { useAgentExecutionVariables } from "@shared/hooks/use-agent-execution-variables";
-import { showErrorToast } from "@shared/utils/toast-manager";
-import { Edit2, Trash2 } from "lucide-react";
+import { showErrorToast, showInfoToast } from "@shared/utils/toast-manager";
+import { Edit2, Trash2, PlusCircle } from "lucide-react";
 import type { FC } from "react";
 import { useEffect } from "react";
 
 type CanvasVariablesViewerProps = {
 	conversationId: string;
-	// agentId is needed to fetch variables, assuming it can be derived or passed
-	// For now, let's assume agentId is the same as conversationId or can be fetched
-	// based on conversationId. This might need adjustment based on actual app logic.
-	// For the purpose of this task, we'll use conversationId as agentId.
 };
 
-const StyledPaper = styled(Paper)(({ theme }) => ({
-	padding: theme.spacing(2),
-	margin: theme.spacing(2, 0),
-	backgroundColor: alpha(theme.palette.background.default, 0.8),
+// Moved styled components inside or ensure theme is correctly accessed
+const StyledTableContainer = styled(TableContainer)(({ theme }) => ({
+	margin: 0, // Shadcn: often less margin around tables
+	border: `1px solid ${theme.palette.divider}`,
+	borderRadius: theme.shape.borderRadius, // Match theme's border radius
+	backgroundColor: theme.palette.mode === "dark" ? alpha(theme.palette.background.paper, 0.3) : alpha(theme.palette.grey[50], 0.7), // Subtle background
 }));
 
-const CenteredBox = styled(Box)({
+const CenteredBox = styled(Box)(({ theme }) => ({
 	display: "flex",
 	flexDirection: "column",
 	alignItems: "center",
 	justifyContent: "center",
 	height: "100%",
-	padding: 3,
+	padding: theme.spacing(2), // Reduced padding
 	textAlign: "center",
-});
+}));
+
+const StyledTableCell = styled(TableCell)(({ theme }) => ({
+	padding: theme.spacing(0.5, 1), // Shadcn: compact padding
+	fontSize: "0.75rem", // Shadcn: smaller text
+	borderBottom: `1px solid ${theme.palette.divider}`,
+	"&:last-child": {
+		borderBottom: 0,
+	},
+}));
+
+const HeaderTableCell = styled(StyledTableCell)(({ theme }) => ({
+	fontWeight: 500,
+	color: theme.palette.text.secondary, // Subtler header text
+	backgroundColor: alpha(theme.palette.background.default, 0.05)
+}));
+
 
 export const CanvasVariablesViewer: FC<CanvasVariablesViewerProps> = ({
 	conversationId,
 }) => {
-	const agentId = conversationId; // Assuming agentId is derivable from conversationId
+	const agentId = conversationId;
+	const theme = useTheme(); // Access theme for inline styles if needed
 
 	const {
 		data: variablesResponse,
@@ -63,26 +80,37 @@ export const CanvasVariablesViewer: FC<CanvasVariablesViewerProps> = ({
 		}
 	}, [isError, error]);
 
-	// TODO: Implement Create, Update, Delete mutations and UI elements (dialogs, forms)
+	const handleCreateVariable = () => {
+		showInfoToast("Create variable functionality not yet implemented.");
+	};
+
+	const handleEditVariable = (variable: ExecutionVariable) => {
+		showInfoToast(`Edit variable "${variable.key}" functionality not yet implemented.`);
+	};
+
+	const handleDeleteVariable = (variableKey: string) => {
+		showInfoToast(`Delete variable "${variableKey}" functionality not yet implemented.`);
+	};
 
 	if (isLoading) {
 		return (
 			<CenteredBox>
-				<CircularProgress />
-				<Typography sx={{ mt: 2 }}>Loading variables...</Typography>
+				<CircularProgress size={24} />
+				<Typography variant="body2" sx={{ mt: 1.5 }} color="text.secondary">
+					Loading variables...
+				</Typography>
 			</CenteredBox>
 		);
 	}
 
-	// Error display is now handled by the toast, but we can still show a message in the UI
 	if (isError) {
 		return (
 			<CenteredBox>
-				<Typography variant="h6" color="text.secondary">
+				<Typography variant="subtitle1" color="text.secondary" gutterBottom>
 					Could not load variables.
 				</Typography>
-				<Typography color="text.secondary" variant="caption">
-					Please check the notifications or try again later.
+				<Typography variant="caption" color="text.secondary">
+					Please check notifications or try again.
 				</Typography>
 			</CenteredBox>
 		);
@@ -93,79 +121,90 @@ export const CanvasVariablesViewer: FC<CanvasVariablesViewerProps> = ({
 	if (variables.length === 0) {
 		return (
 			<CenteredBox>
-				<Typography variant="h6" gutterBottom>
+				<Typography variant="subtitle1" gutterBottom color="text.primary">
 					No Execution Variables
 				</Typography>
-				<Typography variant="body2" color="text.secondary">
+				<Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
 					This agent currently has no execution variables set.
 				</Typography>
-				{/* TODO: Add button to create a new variable */}
+				<Button
+					variant="outlined"
+					size="small"
+					startIcon={<PlusCircle size={16} />}
+					onClick={handleCreateVariable}
+					sx={{ textTransform: "none", fontSize: "0.8125rem", padding: theme.spacing(0.5, 1.5) }}
+				>
+					Create Variable
+				</Button>
 			</CenteredBox>
 		);
 	}
 
 	return (
-		<Box sx={{ p: 2, height: "100%", overflowY: "auto" }}>
-			<Typography variant="h6" gutterBottom sx={{ mb: 2 }}>
-				Agent Execution Variables
-			</Typography>
-			{/* TODO: Add "Create New Variable" Button here */}
-			<TableContainer component={StyledPaper}>
-				<Table stickyHeader size="small">
+		<Box sx={{ p: 1.5, height: "100%", overflowY: "auto", display: "flex", flexDirection: "column" }}>
+			<Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1, px: 0.5 }}>
+				<Typography variant="body1" fontWeight={600} sx={{ fontSize: "0.875rem" }}>
+					Agent Execution Variables
+				</Typography>
+				<Tooltip title="Create New Variable">
+					<IconButton onClick={handleCreateVariable} size="small">
+						<PlusCircle size={18} />
+					</IconButton>
+				</Tooltip>
+			</Box>
+			<StyledTableContainer>
+				<Table stickyHeader size="small" aria-label="execution variables table">
 					<TableHead>
 						<TableRow>
-							<TableCell>Key</TableCell>
-							<TableCell>Value</TableCell>
-							<TableCell>Type</TableCell>
-							<TableCell align="right">Actions</TableCell>
+							<HeaderTableCell>Key</HeaderTableCell>
+							<HeaderTableCell>Value</HeaderTableCell>
+							<HeaderTableCell>Type</HeaderTableCell>
+							<HeaderTableCell align="right">Actions</HeaderTableCell>
 						</TableRow>
 					</TableHead>
 					<TableBody>
 						{variables.map((variable) => (
-							<TableRow hover key={variable.key}>
-								<TableCell component="th" scope="row">
+							<TableRow hover key={variable.key} sx={{ "&:last-child td, &:last-child th": { border: 0 } }}>
+								<StyledTableCell component="th" scope="row" sx={{ whiteSpace: "nowrap" }}>
 									{variable.key}
-								</TableCell>
-								<TableCell
-									sx={{
-										maxWidth: 200,
-										overflow: "hidden",
-										textOverflow: "ellipsis",
-										whiteSpace: "nowrap",
-									}}
-								>
-									<Typography variant="caption" component="span">
-										{variable.value}
-									</Typography>
-								</TableCell>
-								<TableCell>{variable.type}</TableCell>
-								<TableCell align="right">
-									<Button
-										size="small"
-										startIcon={<Edit2 size={14} />}
-										onClick={() => {
-											/* TODO: Implement edit functionality */
-										}}
-										sx={{ mr: 0.5 }}
-									>
-										Edit
-									</Button>
-									<Button
-										size="small"
-										color="error"
-										startIcon={<Trash2 size={14} />}
-										onClick={() => {
-											/* TODO: Implement delete functionality */
-										}}
-									>
-										Delete
-									</Button>
-								</TableCell>
+								</StyledTableCell>
+								<StyledTableCell sx={{ wordBreak: "break-word", minWidth: 150, maxWidth: 300 }}>
+									<Tooltip title={variable.value} placement="top-start" arrow>
+										<Typography
+											variant="body2"
+											component="span"
+											sx={{
+												display: "-webkit-box",
+												WebkitLineClamp: 3, // Show up to 3 lines
+												WebkitBoxOrient: "vertical",
+												overflow: "hidden",
+												textOverflow: "ellipsis",
+												fontSize: "0.75rem",
+												lineHeight: 1.4,
+											}}
+										>
+											{variable.value}
+										</Typography>
+									</Tooltip>
+								</StyledTableCell>
+								<StyledTableCell sx={{ whiteSpace: "nowrap" }}>{variable.type}</StyledTableCell>
+								<StyledTableCell align="right">
+									<Tooltip title="Edit Variable">
+										<IconButton onClick={() => handleEditVariable(variable)} size="small" sx={{ mr: 0.25, padding: theme.spacing(0.5) }}>
+											<Edit2 size={14} />
+										</IconButton>
+									</Tooltip>
+									<Tooltip title="Delete Variable">
+										<IconButton onClick={() => handleDeleteVariable(variable.key)} size="small" color="error" sx={{ padding: theme.spacing(0.5) }}>
+											<Trash2 size={14} />
+										</IconButton>
+									</Tooltip>
+								</StyledTableCell>
 							</TableRow>
 						))}
 					</TableBody>
 				</Table>
-			</TableContainer>
+			</StyledTableContainer>
 		</Box>
 	);
 };
