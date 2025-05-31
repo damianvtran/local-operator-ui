@@ -347,25 +347,25 @@ const CanvasComponent: FC<CanvasProps> = ({
 			{/* Placeholder if no conversation context for files or variables view */}
 			{(currentView === "files" || currentView === "variables") &&
 				!conversationId && (
-				<Box
-					sx={{
-						display: "flex",
-						flexDirection: "column",
-						alignItems: "center",
-						justifyContent: "center",
-						height: "100%",
-						p: 3,
-						textAlign: "center",
-					}}
-				>
-					<Typography variant="h6" gutterBottom>
-						File Viewer
-					</Typography>
-					<Typography variant="body2" color="text.secondary">
-						No active conversation context to display files.
-					</Typography>
-				</Box>
-			)}
+					<Box
+						sx={{
+							display: "flex",
+							flexDirection: "column",
+							alignItems: "center",
+							justifyContent: "center",
+							height: "100%",
+							p: 3,
+							textAlign: "center",
+						}}
+					>
+						<Typography variant="h6" gutterBottom>
+							File Viewer
+						</Typography>
+						<Typography variant="body2" color="text.secondary">
+							No active conversation context to display files.
+						</Typography>
+					</Box>
+				)}
 		</CanvasContainer>
 	);
 };

@@ -1,12 +1,12 @@
 import { Box, alpha } from "@mui/material";
 import { styled } from "@mui/material/styles";
-import { type FC, memo, useState, useCallback } from "react";
-import { InvalidAttachment } from "./invalid-attachment";
 import { FileActionsMenu } from "@shared/components/common/file-actions-menu";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
+import { type FC, memo, useCallback, useState } from "react";
 import { getFileTypeFromPath } from "../../utils/file-types";
 import { isCanvasSupported } from "../../utils/is-canvas-supported";
+import { InvalidAttachment } from "./invalid-attachment";
 
 /**
  * Props for the VideoAttachment component (base)
@@ -88,7 +88,8 @@ export const VideoAttachment: FC<VideoAttachmentProps> = memo(
 				onClick(file);
 			};
 
-			const { setFiles, setOpenTabs, setSelectedTab } = useCanvasStore.getState();
+			const { setFiles, setOpenTabs, setSelectedTab } =
+				useCanvasStore.getState();
 
 			if (file.startsWith("data:")) {
 				if (isCanvasSupported(title)) {
@@ -197,8 +198,7 @@ export const VideoAttachment: FC<VideoAttachmentProps> = memo(
 			setHasError(true);
 		};
 
-		const isLocalFile =
-			!file.startsWith("data:") && !file.startsWith("http");
+		const isLocalFile = !file.startsWith("data:") && !file.startsWith("http");
 		const normalizedPath = file.startsWith("file://")
 			? file.substring(7)
 			: file;
@@ -220,7 +220,7 @@ export const VideoAttachment: FC<VideoAttachmentProps> = memo(
 				{isLocalFile && (
 					<FileActionsContainer
 						className="file-actions-menu"
-						onClick={e => {
+						onClick={(e) => {
 							e.stopPropagation();
 						}}
 					>

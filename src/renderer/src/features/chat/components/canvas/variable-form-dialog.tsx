@@ -128,10 +128,10 @@ const StyledMenuItem = styled(MenuItem)(({ theme }) => ({
 const VARIABLE_TYPES: ExecutionVariable["type"][] = [
 	"string",
 	"int",
-  "float",
+	"float",
 	"bool",
-  "dict",
-  "list",
+	"dict",
+	"list",
 ];
 
 type VariableFormDialogProps = {
@@ -152,10 +152,7 @@ const getDefaultFormState = (
 ): FormDataType => {
 	if (initialData) {
 		let valueString: string;
-		if (
-			initialData.type === "object" ||
-			initialData.type === "array"
-		) {
+		if (initialData.type === "object" || initialData.type === "array") {
 			try {
 				valueString = JSON.stringify(initialData.value, null, 2);
 			} catch (_) {
@@ -163,8 +160,7 @@ const getDefaultFormState = (
 			}
 		} else if (initialData.type === "boolean") {
 			valueString = String(initialData.value);
-		}
-		else {
+		} else {
 			valueString = String(initialData.value);
 		}
 		return {
@@ -361,7 +357,9 @@ export const VariableFormDialog: FC<VariableFormDialogProps> = ({
 						required
 						disabled={isSubmitting}
 						multiline
-						rows={formData.type === "object" || formData.type === "array" ? 5 : 2}
+						rows={
+							formData.type === "object" || formData.type === "array" ? 5 : 2
+						}
 						placeholder={
 							formData.type === "object"
 								? `{ "example_key": "example_value" }`
@@ -373,7 +371,11 @@ export const VariableFormDialog: FC<VariableFormDialogProps> = ({
 						}
 					/>
 					{(formData.type === "object" || formData.type === "array") && (
-						<Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+						<Typography
+							variant="caption"
+							color="text.secondary"
+							sx={{ mt: 0.5, display: "block" }}
+						>
 							Enter a valid JSON structure.
 						</Typography>
 					)}
