@@ -1,5 +1,5 @@
 import { Menu, MenuItem, IconButton, Tooltip } from "@mui/material";
-import { File as FileIcon, FolderOpen, EllipsisVertical } from "lucide-react";
+import { File as FileIcon, FolderOpen, EllipsisVertical, LayoutGrid } from "lucide-react";
 import { useState, type MouseEvent } from "react";
 
 /**
@@ -22,10 +22,14 @@ export type FileActionsMenuProps = {
    * Optional: aria-label for accessibility.
    */
   "aria-label"?: string;
+  /**
+   * Optional: callback to show the file in the canvas.
+   */
+  onShowInCanvas?: (() => void) | undefined;
 };
 
 /**
- * FileActionsMenu provides actions to open a file or its location in the OS.
+ * FileActionsMenu provides actions to open a file, show in canvas, or its location in the OS.
  * Uses Electron's window.api.openFile and window.api.showItemInFolder.
  */
 export const FileActionsMenu = ({
@@ -33,6 +37,7 @@ export const FileActionsMenu = ({
   tooltip = "File actions",
   icon,
   "aria-label": ariaLabel = "File actions",
+  onShowInCanvas,
 }: FileActionsMenuProps) => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
@@ -51,6 +56,49 @@ export const FileActionsMenu = ({
     }
   };
 
+  const handleShowInCanvas = () => {
+    handleCloseMenu();
+    if (onShowInCanvas) {
+      onShowInCanvas();
+    }
+  };
+
+  // shadcn-like styles
+  const menuPaperProps = {
+    sx: {
+      borderRadius: 2,
+      minWidth: 180,
+      boxShadow: "0px 8px 32px rgba(0,0,0,0.18)",
+      fontFamily: '"Inter", system-ui, sans-serif',
+      fontSize: "0.97rem",
+      fontWeight: 500,
+      p: 0.5,
+      bgcolor: "background.paper",
+      "& .MuiMenuItem-root": {
+        borderRadius: 1,
+        px: 2,
+        py: 1.2,
+        gap: 1.5,
+        fontFamily: '"Inter", system-ui, sans-serif',
+        fontWeight: 500,
+        fontSize: "0.97rem",
+        color: "text.primary",
+        "& svg": {
+          marginRight: 12,
+          color: "text.secondary",
+          width: 18,
+          height: 18,
+        },
+        "&:active": {
+          bgcolor: "action.selected",
+        },
+        "&:hover": {
+          bgcolor: "action.hover",
+        },
+      },
+    },
+  };
+
   return (
     <>
       <Tooltip title={tooltip} arrow>
@@ -58,9 +106,15 @@ export const FileActionsMenu = ({
           size="small"
           onClick={handleOpenMenu}
           aria-label={ariaLabel}
-          sx={{ ml: 0.5 }}
+          sx={{
+            ml: 0.5,
+            borderRadius: 1.5,
+            bgcolor: "background.paper",
+            "&:hover": { bgcolor: "action.hover" },
+            boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
+          }}
         >
-          {icon ?? <EllipsisVertical size={14} />}
+          {icon ?? <EllipsisVertical size={18} />}
         </IconButton>
       </Tooltip>
       <Menu
@@ -69,13 +123,25 @@ export const FileActionsMenu = ({
         onClose={handleCloseMenu}
         anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
         transformOrigin={{ vertical: "top", horizontal: "right" }}
+        PaperProps={menuPaperProps}
+        MenuListProps={{
+          sx: {
+            p: 0,
+          },
+        }}
       >
+        {onShowInCanvas && (
+          <MenuItem onClick={handleShowInCanvas}>
+            <LayoutGrid size={18} style={{ marginRight: 12 }} />
+            Show in Canvas
+          </MenuItem>
+        )}
         <MenuItem onClick={handleOpenFile}>
-          <FileIcon size={16} style={{ marginRight: 8 }} />
+          <FileIcon size={18} style={{ marginRight: 12 }} />
           Open File
         </MenuItem>
         <MenuItem onClick={() => { handleCloseMenu(); window.api.showItemInFolder(filePath); }}>
-          <FolderOpen size={16} style={{ marginRight: 8 }} />
+          <FolderOpen size={18} style={{ marginRight: 12 }} />
           Open Folder
         </MenuItem>
       </Menu>

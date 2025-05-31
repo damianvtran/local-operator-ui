@@ -403,6 +403,7 @@ export const CanvasFileViewer: FC<CanvasFileViewerProps> = ({
 											filePath={normalizedPath}
 											tooltip="File actions"
 											aria-label="File actions"
+											onShowInCanvas={() => handleFileClick(fileDoc)}
 										/>
 									</Box>
 								)}

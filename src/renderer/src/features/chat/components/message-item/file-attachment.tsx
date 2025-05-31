@@ -294,6 +294,7 @@ export const FileAttachment: FC<FileAttachmentProps> = memo(
 									filePath={normalizedPath}
 									tooltip="File actions"
 									aria-label="File actions"
+									onShowInCanvas={handleClick}
 								/>
 							</Box>
 						)}
