@@ -8,13 +8,21 @@ import {
 	IconButton,
 	Collapse,
 } from "@mui/material";
+// Dialog import is not needed as ConfirmationModal handles its own dialog.
 import { styled, useTheme } from "@mui/material/styles";
 import type { ExecutionVariable } from "@shared/api/local-operator/types";
-import { useAgentExecutionVariables } from "@shared/hooks/use-agent-execution-variables";
-import { showErrorToast, showInfoToast } from "@shared/utils/toast-manager";
+import { ConfirmationModal } from "@shared/components/common/confirmation-modal";
+import {
+	useAgentExecutionVariables,
+	useCreateAgentExecutionVariable,
+	useUpdateAgentExecutionVariable,
+	useDeleteAgentExecutionVariable,
+} from "@shared/hooks/use-agent-execution-variables";
+import { showErrorToast } from "@shared/utils/toast-manager";
 import { Edit2, Trash2, PlusCircle, Plus, Minus } from "lucide-react";
 import type { FC } from "react";
 import { useEffect, useState, useMemo, useCallback, memo } from "react";
+import { VariableFormDialog } from "./variable-form-dialog";
 
 type CanvasVariablesViewerProps = {
 	conversationId: string;
@@ -235,31 +243,106 @@ export const CanvasVariablesViewer: FC<CanvasVariablesViewerProps> = memo(({
 	const agentId = conversationId;
 	const theme = useTheme();
 
+	const [isFormOpen, setIsFormOpen] = useState(false);
+	const [editingVariable, setEditingVariable] = useState<ExecutionVariable | null>(null);
+	const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+	const [variableToDeleteKey, setVariableToDeleteKey] = useState<string | null>(null);
+
 	const {
 		data: variablesResponse,
 		isLoading,
 		error,
 		isError,
+		// refetch: refetchVariables, // Not directly used, relying on query invalidation
 	} = useAgentExecutionVariables(agentId);
 
+	const createVariableMutation = useCreateAgentExecutionVariable();
+	const updateVariableMutation = useUpdateAgentExecutionVariable();
+	const deleteVariableMutation = useDeleteAgentExecutionVariable();
+
 	// Memoize variables array
-	const variables = useMemo(() => 
-		variablesResponse?.result?.execution_variables ?? [], 
-		[variablesResponse?.result?.execution_variables]
+	const variables = useMemo(
+		() => variablesResponse?.result?.execution_variables ?? [],
+		[variablesResponse?.result?.execution_variables],
 	);
 
-	// Memoize callbacks
-	const handleCreateVariable = useCallback(() => {
-		showInfoToast("Create variable functionality not yet implemented.");
+	const handleOpenCreateForm = useCallback(() => {
+		setEditingVariable(null);
+		setIsFormOpen(true);
 	}, []);
 
-	const handleEditVariable = useCallback((variable: ExecutionVariable) => {
-		showInfoToast(`Edit variable "${variable.key}" functionality not yet implemented.`);
+	const handleOpenEditForm = useCallback((variable: ExecutionVariable) => {
+		setEditingVariable(variable);
+		setIsFormOpen(true);
 	}, []);
 
-	const handleDeleteVariable = useCallback((variableKey: string) => {
-		showInfoToast(`Delete variable "${variableKey}" functionality not yet implemented.`);
+	const handleCloseForm = useCallback(() => {
+		setIsFormOpen(false);
+		setEditingVariable(null);
 	}, []);
+
+	const handleSubmitVariableForm = useCallback(
+		async (data: ExecutionVariable) => {
+			if (!agentId) {
+				showErrorToast("Agent ID is missing.");
+				return;
+			}
+			try {
+				if (editingVariable) {
+					// Update existing variable
+					await updateVariableMutation.mutateAsync({
+						agentId,
+						variableKey: editingVariable.key, // Key cannot be changed
+						variableData: { ...data, key: editingVariable.key },
+					});
+				} else {
+					// Create new variable
+					await createVariableMutation.mutateAsync({ agentId, variableData: data });
+				}
+				// Toast for success/error is handled by mutation hooks
+				// refetchVariables(); // Implicitly handled by query invalidation in hooks
+			} catch (e) {
+				// Error already shown by mutation hook's onError
+				console.error("Submission failed in component:", e);
+			}
+		},
+		[agentId, editingVariable, createVariableMutation, updateVariableMutation],
+	);
+
+	const handleDeleteVariable = useCallback(
+		async (variableKey: string) => {
+			if (!agentId) {
+				showErrorToast("Agent ID is missing.");
+				return;
+			}
+			setVariableToDeleteKey(variableKey);
+			setIsDeleteConfirmOpen(true);
+		},
+		[agentId], // deleteVariableMutation will be a dependency of confirmDeleteVariable
+	);
+
+	const confirmDeleteVariable = useCallback(async () => {
+		if (!agentId || !variableToDeleteKey) {
+			showErrorToast("Agent ID or variable key is missing for deletion.");
+			setIsDeleteConfirmOpen(false); // Close modal even if there's an issue
+			setVariableToDeleteKey(null);
+			return;
+		}
+		try {
+			await deleteVariableMutation.mutateAsync({
+				agentId,
+				variableKey: variableToDeleteKey,
+			});
+			// Toast for success/error is handled by mutation hooks
+		} catch (e) {
+			// Error already shown by mutation hook's onError
+			// showErrorToast is likely called within the mutation hook's onError
+			console.error("Deletion failed during confirmation:", e);
+		} finally {
+			setIsDeleteConfirmOpen(false);
+			setVariableToDeleteKey(null);
+		}
+	}, [agentId, variableToDeleteKey, deleteVariableMutation]);
 
 	// Memoize static styles
 	const containerStyles = useMemo(() => ({
@@ -342,7 +425,7 @@ export const CanvasVariablesViewer: FC<CanvasVariablesViewerProps> = memo(({
 					variant="outlined"
 					size="small"
 					startIcon={<PlusCircle size={16} />}
-					onClick={handleCreateVariable}
+					onClick={handleOpenCreateForm}
 					sx={createButtonStyles}
 				>
 					Create Variable
@@ -358,7 +441,7 @@ export const CanvasVariablesViewer: FC<CanvasVariablesViewerProps> = memo(({
 					Agent Execution Variables
 				</Typography>
 				<Tooltip title="Create New Variable">
-					<IconButton onClick={handleCreateVariable} size="small">
+					<IconButton onClick={handleOpenCreateForm} size="small">
 						<PlusCircle size={18} />
 					</IconButton>
 				</Tooltip>
@@ -368,11 +451,40 @@ export const CanvasVariablesViewer: FC<CanvasVariablesViewerProps> = memo(({
 					<VariableRow
 						key={variable.key}
 						variable={variable}
-						onEdit={handleEditVariable}
+						onEdit={handleOpenEditForm}
 						onDelete={handleDeleteVariable}
 					/>
 				))}
 			</VariableListContainer>
+			{agentId && ( // Ensure agentId is present before rendering dialog
+				<VariableFormDialog
+					open={isFormOpen}
+					onClose={handleCloseForm}
+					onSubmit={handleSubmitVariableForm}
+					initialData={editingVariable}
+				/>
+			)}
+			{variableToDeleteKey && ( // Render modal only if there's a key to delete
+				<ConfirmationModal
+					open={isDeleteConfirmOpen}
+					title="Delete Variable"
+					message={
+						<Typography>
+							Are you sure you want to delete the variable{" "}
+							<strong>"{variableToDeleteKey}"</strong>? This action cannot be
+							undone.
+						</Typography>
+					}
+					confirmText="Delete"
+					cancelText="Cancel"
+					isDangerous
+					onConfirm={confirmDeleteVariable}
+					onCancel={() => {
+						setIsDeleteConfirmOpen(false);
+						setVariableToDeleteKey(null);
+					}}
+				/>
+			)}
 		</Box>
 	);
 });
