@@ -5,12 +5,13 @@ import { Box, CssBaseline } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import type { FC } from "react";
 import { useEffect } from "react";
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes, useNavigate } from "react-router-dom"; // Import useNavigate
 
 import { AgentDetailsPage } from "@features/agent-hub/agent-details-page";
 import { AgentHubPage } from "@features/agent-hub/agent-hub-page";
 import { AgentsPage } from "@features/agents/components/agents-page";
 import { ChatPage } from "@features/chat/components/chat-page";
+import { CreateAgentDialog } from "@shared/components/common/create-agent-dialog"; // Import CreateAgentDialog
 import { CommandPalette } from "@features/command-palette/components/command-palette";
 import { OnboardingModal } from "@features/onboarding";
 import { OnboardingProvider } from "@features/onboarding/components/onboarding-provider";
@@ -54,7 +55,18 @@ const App: FC = () => {
 		openRadientConsole,
 		onLowCreditsDialogClose,
 	} = useLowCreditsDialog();
-	const { toggleCommandPalette, isCommandPaletteOpen } = useUiPreferencesStore();
+	const {
+		toggleCommandPalette,
+		isCommandPaletteOpen,
+		isCreateAgentDialogOpen, // Get dialog state from store
+		closeCreateAgentDialog, // Get close action from store
+	} = useUiPreferencesStore();
+	const navigate = useNavigate(); // For onAgentCreated
+
+	const handleAgentCreated = (agentId: string) => {
+		navigate(`/chat/${agentId}`);
+		closeCreateAgentDialog();
+	};
 
 	useEffect(() => {
 		const handleToggleCommandPalette = () => {
@@ -102,6 +114,13 @@ const App: FC = () => {
 					open={isLowCreditsDialogOpen}
 					onClose={onLowCreditsDialogClose}
 					onGoToConsole={openRadientConsole}
+				/>
+
+				{/* Create Agent Dialog (Global) */}
+				<CreateAgentDialog
+					open={isCreateAgentDialogOpen}
+					onClose={closeCreateAgentDialog}
+					onAgentCreated={handleAgentCreated}
 				/>
 
 				{/* Sidebar Navigation */}

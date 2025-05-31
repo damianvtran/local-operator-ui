@@ -26,7 +26,6 @@ import { styled } from "@mui/material/styles";
 import type { AgentDetails } from "@shared/api/local-operator/types";
 import { AgentOptionsMenu } from "@shared/components/common/agent-options-menu";
 import { CompactPagination } from "@shared/components/common/compact-pagination";
-import { CreateAgentDialog } from "@shared/components/common/create-agent-dialog";
 import { ImportAgentDialog } from "@shared/components/common/import-agent-dialog";
 import { SidebarHeader } from "@shared/components/common/sidebar-header";
 import {
@@ -36,6 +35,7 @@ import {
 	usePaginationParams,
 } from "@shared/hooks";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
+import { useUiPreferencesStore } from "@shared/store/ui-preferences-store"; // Import store
 import { Bot } from "lucide-react";
 import type { ChangeEvent, FC } from "react";
 import { memo, useCallback, useMemo, useState } from "react";
@@ -327,7 +327,8 @@ export const AgentsSidebar: FC<AgentsSidebarProps> = ({
 }) => {
 	const navigate = useNavigate();
 	const [searchQuery, setSearchQuery] = useState("");
-	const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+	// const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false); // Remove local state
+	const { openCreateAgentDialog } = useUiPreferencesStore(); // Use global actions and state
 	const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
 	const perPage = 50;
 
@@ -399,13 +400,13 @@ export const AgentsSidebar: FC<AgentsSidebarProps> = ({
 		[onSelectAgent],
 	);
 
-	const handleOpenCreateDialog = useCallback(() => {
-		setIsCreateDialogOpen(true);
-	}, []);
+	// const handleOpenCreateDialog = useCallback(() => { // Remove local handler
+	// 	setIsCreateDialogOpen(true);
+	// }, []);
 
-	const handleCloseCreateDialog = useCallback(() => {
-		setIsCreateDialogOpen(false);
-	}, []);
+	// const handleCloseCreateDialog = useCallback(() => { // Remove local handler
+	// 	setIsCreateDialogOpen(false);
+	// }, []);
 
 	const handleOpenImportDialog = useCallback(() => {
 		setIsImportDialogOpen(true);
@@ -578,7 +579,7 @@ export const AgentsSidebar: FC<AgentsSidebarProps> = ({
 				title="Agents"
 				searchQuery={searchQuery}
 				onSearchChange={(query) => setSearchQuery(query)}
-				onNewAgentClick={handleOpenCreateDialog}
+				onNewAgentClick={openCreateAgentDialog} // Use global action
 				onImportAgentClick={handleOpenImportDialog}
 				importAgentTooltip="Import an agent from a ZIP file"
 			/>
@@ -630,11 +631,15 @@ export const AgentsSidebar: FC<AgentsSidebarProps> = ({
 				</AgentsList>
 			)}
 
-			<CreateAgentDialog
-				open={isCreateDialogOpen}
-				onClose={handleCloseCreateDialog}
-				onAgentCreated={handleAgentCreated}
-			/>
+			{/* CreateAgentDialog is now global, rendered in App.tsx.
+			    Ensure its props are correctly passed there if they depend on this component's state/logic.
+			    For now, we assume onAgentCreated in App.tsx handles navigation and closing.
+			*/}
+			{/* <CreateAgentDialog
+				open={isCreateAgentDialogOpen} // This would now come from the global store
+				onClose={closeCreateAgentDialog} // This would now come from the global store
+				onAgentCreated={handleAgentCreated} // This callback might need to be passed to the global dialog if specific logic is needed here
+			/> */}
 
 			<ImportAgentDialog
 				open={isImportDialogOpen}

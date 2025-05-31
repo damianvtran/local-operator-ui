@@ -16,6 +16,7 @@ import {
 import { styled } from "@mui/material/styles";
 import type { AgentListResult } from "@shared/api/local-operator/types";
 import { useAgents } from "@shared/hooks/use-agents";
+import { useClearAgentConversation } from "@shared/hooks/use-clear-agent-conversation";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import {
 	MessageSquare,
@@ -26,14 +27,20 @@ import {
 	Store,
 	X,
 	Calendar,
+	Plus,
+	Trash2,
+	PanelRightOpen,
+	PanelRightClose,
 } from "lucide-react";
 import type { FC } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useTheme } from "@mui/material/styles";
 import { DEFAULT_SETTINGS_SECTIONS } from "@features/settings/components/settings-sidebar";
+import { useAgentRouteParam } from "@shared/hooks/use-route-params";
 import { getIconElement } from "@features/command-palette/components/command-palette-utils";
 import { useDebounce } from "@shared/hooks/use-debounce";
+import { CreateAgentDialog } from "@shared/components/common/create-agent-dialog";
 
 
 const StyledDialog = styled(Dialog)(({ theme }) => ({
@@ -91,15 +98,16 @@ const ActionChip = styled(Chip)(() => ({
 	marginLeft: "auto",
 }));
 
-type CommandPaletteItemType = "page" | "agent-chat" | "agent-settings" | "settings-section";
+type CommandPaletteItemType = "page" | "agent-chat" | "agent-settings" | "settings-section" | "create-agent" | "clear-conversation" | "toggle-canvas";
 
 interface CommandPaletteItem {
 	id: string;
 	type: CommandPaletteItemType;
 	name: string;
 	category: string;
-	path: string;
+	path?: string;
 	icon?: JSX.Element;
+	action?: () => void;
 }
 
 const PAGE_DEFINITIONS: Omit<CommandPaletteItem, "id" | "type">[] = [
@@ -147,6 +155,12 @@ const getActionLabel = (type: CommandPaletteItemType): string => {
 			return "Configure";
 		case "settings-section":
 			return "Configure";
+		case "create-agent":
+			return "Create";
+		case "clear-conversation":
+			return "Clear";
+		case "toggle-canvas":
+			return "Toggle";
 		default:
 			return "Open";
 	}
@@ -162,6 +176,12 @@ const getActionColor = (type: CommandPaletteItemType): "default" | "primary" | "
 			return "warning";
 		case "settings-section":
 			return "info";
+		case "create-agent":
+			return "success";
+		case "clear-conversation":
+			return "error";
+		case "toggle-canvas":
+			return "secondary";
 		default:
 			return "default";
 	}
@@ -169,19 +189,33 @@ const getActionColor = (type: CommandPaletteItemType): "default" | "primary" | "
 
 export const CommandPalette: FC = () => {
 	const navigate = useNavigate();
+	const location = useLocation(); // Keep using useLocation for isOnChatPage
 	const {
 		isCommandPaletteOpen,
 		closeCommandPalette,
 		commandPaletteQuery,
 		setCommandPaletteQuery,
+		isCanvasOpen,
+		setCanvasOpen,
+		isCreateAgentDialogOpen, // Use global state
+		openCreateAgentDialog, // Use global action
+		closeCreateAgentDialog, // Use global action
 	} = useUiPreferencesStore();
 
+	// const navigate = useNavigate(); // Remove redeclaration
+	const { agentId: currentAgentIdFromRoute } = useAgentRouteParam(); // Use hook for agentId
 	const { data: agentsData } = useAgents(1, 20) as { data?: AgentListResult };
 	const theme = useTheme();
+	const clearConversationMutation = useClearAgentConversation();
 
 	const [selectedIndex, setSelectedIndex] = useState(0);
 	const [localQuery, setLocalQuery] = useState(commandPaletteQuery);
 	const debouncedLocalQuery = useDebounce(localQuery, 200);
+
+	// currentAgentId will now come from useAgentRouteParam
+	const currentAgentId = currentAgentIdFromRoute;
+	const isOnChatPage = location.pathname.startsWith("/chat"); // Derive isOnChatPage correctly
+
 
 	// Sync the debounced local query back to the store (but this won't cause re-renders during typing)
 	useEffect(() => {
@@ -265,10 +299,82 @@ export const CommandPalette: FC = () => {
 		);
 	}, []);
 
+	const handleCreateAgent = useCallback(() => {
+		closeCommandPalette();
+		// Navigate to chat page first if not already there
+		// This navigation logic might be better handled by the dialog itself or a dedicated service
+		// For now, let's keep it simple and open the dialog.
+		// Navigation to /chat if not there can be a separate concern or handled by where the dialog leads.
+		openCreateAgentDialog(); // Use global action
+	}, [closeCommandPalette, openCreateAgentDialog]);
+
+	const handleClearConversation = useCallback(() => {
+		if (currentAgentId) {
+			clearConversationMutation.mutate({ agentId: currentAgentId });
+			closeCommandPalette();
+		}
+	}, [currentAgentId, clearConversationMutation, closeCommandPalette]);
+
+
+	const handleToggleCanvas = useCallback(() => {
+		setCanvasOpen(!isCanvasOpen);
+		closeCommandPalette();
+	}, [isCanvasOpen, setCanvasOpen, closeCommandPalette]);
+
+	const handleAgentCreated = useCallback((agentId: string) => {
+		// Navigate to the new agent's chat page
+		navigate(`/chat/${agentId}`);
+		closeCreateAgentDialog(); // Use global action
+	}, [navigate, closeCreateAgentDialog]);
+
+	const actionItems = useMemo((): CommandPaletteItem[] => {
+		const items: CommandPaletteItem[] = [];
+
+		// Create Agent - always available
+		items.push({
+			id: "create-agent",
+			type: "create-agent",
+			name: "Create Agent",
+			category: "Actions",
+			icon: <Plus size={16} />,
+			action: handleCreateAgent,
+		});
+
+		// Clear Conversation - only available on chat page with agent ID
+		if (isOnChatPage && currentAgentId) {
+			items.push({
+				id: "clear-conversation",
+				type: "clear-conversation",
+				name: "Clear Conversation",
+				category: "Actions",
+				icon: <Trash2 size={16} />,
+				action: handleClearConversation,
+			});
+		}
+
+		// Toggle Canvas - only available on chat page
+		if (isOnChatPage) {
+			items.push({
+				id: "toggle-canvas",
+				type: "toggle-canvas",
+				name: isCanvasOpen ? "Close Canvas" : "Open Canvas",
+				category: "Actions",
+				icon: isCanvasOpen ? <PanelRightClose size={16} /> : <PanelRightOpen size={16} />,
+				action: handleToggleCanvas,
+			});
+		}
+
+		return items;
+	}, [isOnChatPage, currentAgentId, isCanvasOpen, handleCreateAgent, handleClearConversation, handleToggleCanvas]);
+
 	const handleItemClick = useCallback(
 		(item: CommandPaletteItem) => {
-			navigate(item.path);
-			closeCommandPalette();
+			if (item.action) {
+				item.action();
+			} else if (item.path) {
+				navigate(item.path);
+				closeCommandPalette();
+			}
 		},
 		[navigate, closeCommandPalette],
 	);
@@ -295,8 +401,8 @@ export const CommandPalette: FC = () => {
 				});
 			}
 		}
-		return [...pages, ...settingsSectionItems, ...agentItems];
-	}, [agentsData, pages, settingsSectionItems]);
+		return [...actionItems, ...pages, ...settingsSectionItems, ...agentItems];
+	}, [agentsData, pages, settingsSectionItems, actionItems]);
 
 	const filteredItems = useMemo(() => {
 		if (!debouncedLocalQuery) {
@@ -347,69 +453,80 @@ export const CommandPalette: FC = () => {
 	}, [isCommandPaletteOpen, filteredItems, selectedIndex, closeCommandPalette, handleItemClick]);
 
 
+	// The CreateAgentDialog is now expected to be rendered globally,
+	// e.g., in App.tsx, controlled by isCreateAgentDialogOpen from the store.
+	// So, we don't render it here anymore if the palette is closed.
+	// We only render the command palette dialog itself.
 	if (!isCommandPaletteOpen) {
-		return null;
+		return null; 
 	}
 
 	return (
-		<StyledDialog
-			data-tour-tag="command-palette-dialog"
-			open={isCommandPaletteOpen}
-			onClose={closeCommandPalette}
-			aria-labelledby="command-palette-dialog-title"
-			fullWidth
-			disableRestoreFocus
-		>
-			<SearchInputContainer>
-				<TextField
-					autoFocus
-					fullWidth
-					variant="standard"
-					placeholder="Search agents and pages..."
-					value={localQuery}
-					onChange={handleQueryChange}
-					InputProps={textFieldInputProps}
-					autoComplete="off"
-				/>
-			</SearchInputContainer>
-			<DialogContent sx={{ padding: 0 }}>
-				{filteredItems.length === 0 && debouncedLocalQuery && (
-					<Typography sx={{ p: 3, textAlign: "center", color: "text.secondary" }}>
-						No results found.
-					</Typography>
-				)}
-				<ResultsListContainer>
-					{filteredItems.map((item, index) => (
-						<ListItem key={item.id} disablePadding dense>
-							<ResultItemStyled
-								selected={selectedIndex === index}
-								onClick={() => handleItemClick(item)}
-								onMouseMove={() => setSelectedIndex(index)}
-							>
-								<ListItemIcon sx={{ minWidth: "20px", display: "flex", alignItems: "center", justifyContent: "center", mr: 1.5, color: "text.secondary" }}>
-									{item.icon || <FileText size={16} />}
-								</ListItemIcon>
-								<ListItemText
-									primary={
-										<Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-											<Typography variant="body2">{item.name}</Typography>
-											<Typography variant="caption" color="text.secondary">
-												{item.category}
-											</Typography>
-										</Box>
-									}
-								/>
-								<ActionChip
-									label={getActionLabel(item.type)}
-									size="small"
-									color={getActionColor(item.type)}
-									variant="outlined"
-								/>
-							</ResultItemStyled>
-						</ListItem>
-					))}
-				</ResultsListContainer>
-			</DialogContent>
-		</StyledDialog>
+		<>
+			<StyledDialog
+				data-tour-tag="command-palette-dialog"
+				open={isCommandPaletteOpen}
+				onClose={closeCommandPalette}
+				aria-labelledby="command-palette-dialog-title"
+				fullWidth
+				disableRestoreFocus
+			>
+				<SearchInputContainer>
+					<TextField
+						autoFocus
+						fullWidth
+						variant="standard"
+						placeholder="Search agents and pages..."
+						value={localQuery}
+						onChange={handleQueryChange}
+						InputProps={textFieldInputProps}
+						autoComplete="off"
+					/>
+				</SearchInputContainer>
+				<DialogContent sx={{ padding: 0 }}>
+					{filteredItems.length === 0 && debouncedLocalQuery && (
+						<Typography sx={{ p: 3, textAlign: "center", color: "text.secondary" }}>
+							No results found.
+						</Typography>
+					)}
+					<ResultsListContainer>
+						{filteredItems.map((item, index) => (
+							<ListItem key={item.id} disablePadding dense>
+								<ResultItemStyled
+									selected={selectedIndex === index}
+									onClick={() => handleItemClick(item)}
+									onMouseMove={() => setSelectedIndex(index)}
+								>
+									<ListItemIcon sx={{ minWidth: "20px", display: "flex", alignItems: "center", justifyContent: "center", mr: 1.5, color: "text.secondary" }}>
+										{item.icon || <FileText size={16} />}
+									</ListItemIcon>
+									<ListItemText
+										primary={
+											<Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+												<Typography variant="body2">{item.name}</Typography>
+												<Typography variant="caption" color="text.secondary">
+													{item.category}
+												</Typography>
+											</Box>
+										}
+									/>
+									<ActionChip
+										label={getActionLabel(item.type)}
+										size="small"
+										color={getActionColor(item.type)}
+										variant="outlined"
+									/>
+								</ResultItemStyled>
+							</ListItem>
+						))}
+					</ResultsListContainer>
+				</DialogContent>
+			</StyledDialog>
+			<CreateAgentDialog
+				open={isCreateAgentDialogOpen} // Controlled by global state
+				onClose={closeCreateAgentDialog} // Controlled by global state
+				onAgentCreated={handleAgentCreated}
+			/>
+		</>
 	);
 };
