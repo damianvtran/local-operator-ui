@@ -749,3 +749,27 @@ export const ALLOWED_AGENT_CATEGORIES = [
 	"social_media",
 	"other",
 ];
+
+// --- Agent Execution Variable Types ---
+
+/**
+ * A single execution variable.
+ */
+export type ExecutionVariable = {
+	/** The key of the execution variable. */
+	key: string;
+	/** The value of the execution variable. */
+	value: string;
+	/** The type of the execution variable. */
+	type: string;
+};
+
+/**
+ * Response model for a list of execution variables.
+ */
+export type ExecutionVariablesResponse = {
+	/** A list of execution variables. */
+	execution_variables: ExecutionVariable[];
+};
+
+// --- End Agent Execution Variable Types ---
