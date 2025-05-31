@@ -7,11 +7,9 @@ import { persist } from "zustand/middleware";
 export type CanvasTab = {
 	id: string;
 	title: string;
-	// Add more tab-specific fields as needed
 };
 
-// import type { CanvasDocument } from "@features/chat/components/canvas/types"; // TODO: Should move this type to feature level
-import type { CanvasDocument } from "@features/chat/types/canvas"; // TODO: Should move this type to feature level
+import type { CanvasDocument } from "@features/chat/types/canvas";
 
 /**
  * Canvas view mode type
