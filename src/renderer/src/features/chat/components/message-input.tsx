@@ -19,12 +19,12 @@ import type { AgentDetails } from "@shared/api/local-operator/types";
 import { useMessageInput } from "@shared/hooks/use-message-input";
 import { normalizePath } from "@shared/utils/path-utils";
 import {
+	forwardRef,
+	useEffect,
+	useImperativeHandle,
 	useMemo,
 	useRef,
 	useState,
-	forwardRef,
-	useImperativeHandle,
-	useEffect,
 } from "react";
 import type { ChangeEvent, ClipboardEvent, FormEvent } from "react";
 import type { Message } from "../types/message";
@@ -380,12 +380,12 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		useEffect(() => {
 			if (!isInputDisabled) {
 				// Check if there's already an active input element focused to prevent
-        // stealing focus from other inputs
+				// stealing focus from other inputs
 				const activeElement = document.activeElement;
-				const isInputFocused = activeElement && (
-					activeElement.tagName === 'INPUT' ||
-					activeElement.tagName === 'TEXTAREA'
-				);
+				const isInputFocused =
+					activeElement &&
+					(activeElement.tagName === "INPUT" ||
+						activeElement.tagName === "TEXTAREA");
 
 				if (!isInputFocused) {
 					textareaRef.current?.focus();
