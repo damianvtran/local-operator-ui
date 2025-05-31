@@ -49,8 +49,9 @@ import { useUsageRollup } from "@shared/hooks/use-usage-rollup";
 import { useUserStore } from "@shared/store/user-store";
 import { format, formatRFC3339, parseISO, subDays } from "date-fns";
 import { Info, PlayCircle, Settings } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"; // Added useCallback
 import type { FC, RefObject } from "react";
+import { useLocation } from "react-router-dom"; // Added useLocation
 import {
 	CartesianGrid,
 	Line,
@@ -482,6 +483,7 @@ export const SettingsPage: FC = () => {
 	const [isScrolling, setIsScrolling] = useState(false);
 	const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null); // Ref for scroll timeout
 	const { startTour: startOnboardingTour } = useOnboardingTour();
+	const location = useLocation(); // Added location
 
 	const theme = useTheme();
 
@@ -529,41 +531,46 @@ export const SettingsPage: FC = () => {
 	}).current;
 
 	// Handle section selection from sidebar
-	const handleSelectSection = (sectionId: string) => {
-		setActiveSection(sectionId); // Update state immediately for visual feedback
-		setIsScrolling(true); // Prevent scroll listener from interfering
+	const handleSelectSection = useCallback(
+		(sectionId: string) => {
+			setActiveSection(sectionId); // Update state immediately for visual feedback
+			setIsScrolling(true); // Prevent scroll listener from interfering
 
-		const ref = sectionRefs[sectionId];
-		const contentContainer = document.querySelector("[data-settings-content]");
+			const ref = sectionRefs[sectionId];
+			const contentContainer = document.querySelector(
+				"[data-settings-content]",
+			);
 
-		if (ref?.current && contentContainer) {
-			const containerRect = contentContainer.getBoundingClientRect();
-			const elementRect = ref.current.getBoundingClientRect();
-			// Calculate scroll position relative to the container, adding container's current scroll position
-			const scrollTop =
-				elementRect.top - containerRect.top + contentContainer.scrollTop;
+			if (ref?.current && contentContainer) {
+				const containerRect = contentContainer.getBoundingClientRect();
+				const elementRect = ref.current.getBoundingClientRect();
+				// Calculate scroll position relative to the container, adding container's current scroll position
+				const scrollTop =
+					elementRect.top - containerRect.top + contentContainer.scrollTop;
 
-			// Scroll with offset for the sticky header/padding
-			contentContainer.scrollTo({
-				top: scrollTop - 80, // Adjust offset as needed (e.g., header height + padding)
-				behavior: "smooth",
-			});
+				// Scroll with offset for the sticky header/padding
+				contentContainer.scrollTo({
+					top: scrollTop - 80, // Adjust offset as needed (e.g., header height + padding)
+					behavior: "smooth",
+				});
 
-			// Clear any existing timeout
-			if (scrollTimeoutRef.current) {
-				clearTimeout(scrollTimeoutRef.current);
+				// Clear any existing timeout
+				if (scrollTimeoutRef.current) {
+					clearTimeout(scrollTimeoutRef.current);
+				}
+
+				// Set a timeout to re-enable scroll listening after the smooth scroll likely finishes
+				scrollTimeoutRef.current = setTimeout(() => {
+					setIsScrolling(false);
+					scrollTimeoutRef.current = null; // Clear the ref after timeout
+				}, 600); // Adjust duration if needed
+			} else {
+				// Fallback or if container not found
+				setIsScrolling(false); // Re-enable immediately if scroll fails
 			}
-
-			// Set a timeout to re-enable scroll listening after the smooth scroll likely finishes
-			scrollTimeoutRef.current = setTimeout(() => {
-				setIsScrolling(false);
-				scrollTimeoutRef.current = null; // Clear the ref after timeout
-			}, 600); // Adjust duration if needed
-		} else {
-			// Fallback or if container not found
-			setIsScrolling(false); // Re-enable immediately if scroll fails
-		}
-	};
+		},
+		[sectionRefs],
+	);
 
 	// Update active section based on scroll position
 	useEffect(() => {
@@ -611,6 +618,24 @@ export const SettingsPage: FC = () => {
 			}
 		};
 	}, [sectionRefs, activeSection, isScrolling]); // Rerun effect if refs, activeSection, or scrolling state changes
+
+	// Effect to handle initial section scrolling from URL query parameter
+	useEffect(() => {
+		const queryParams = new URLSearchParams(location.search);
+		const sectionFromQuery = queryParams.get("section");
+
+		if (sectionFromQuery && sectionRefs[sectionFromQuery]) {
+			// Check if the section exists in our refs
+			// A short delay can help ensure the layout is stable before scrolling
+			const timer = setTimeout(() => {
+				handleSelectSection(sectionFromQuery);
+			}, 100); // 100ms delay, adjust if needed
+
+			return () => clearTimeout(timer); // Cleanup timer
+		}
+
+		return undefined;
+	}, [location.search, sectionRefs, handleSelectSection]); // Rerun when URL search params change or refs are updated
 
 	// Handle updating a specific config field
 	const handleUpdateField = async (

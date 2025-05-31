@@ -4,24 +4,28 @@ import { fas } from "@fortawesome/free-solid-svg-icons";
 import { Box, CssBaseline } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import type { FC } from "react";
-import { Navigate, Route, Routes } from "react-router-dom";
+import { useEffect } from "react";
+import { Navigate, Route, Routes, useNavigate } from "react-router-dom"; // Import useNavigate
 
 import { AgentDetailsPage } from "@features/agent-hub/agent-details-page";
 import { AgentHubPage } from "@features/agent-hub/agent-hub-page";
 import { AgentsPage } from "@features/agents/components/agents-page";
 import { ChatPage } from "@features/chat/components/chat-page";
+import { CommandPalette } from "@features/command-palette/components/command-palette";
 import { OnboardingModal } from "@features/onboarding";
-import { OnboardingProvider } from "@features/onboarding/components/onboarding-provider"; // Import the new provider
+import { OnboardingProvider } from "@features/onboarding/components/onboarding-provider";
 import { OnboardingTourGlobalStyles } from "@features/onboarding/components/onboarding-tour-global.styles";
 import { SchedulesPage } from "@features/schedules/components/schedules-page";
 import { SettingsPage } from "@features/settings/components/settings-page";
 import { ConnectivityBanner } from "@shared/components/common/connectivity-banner";
-import { LowCreditsDialog } from "@shared/components/common/low-credits-dialog"; // Import LowCreditsDialog
+import { CreateAgentDialog } from "@shared/components/common/create-agent-dialog"; // Import CreateAgentDialog
+import { LowCreditsDialog } from "@shared/components/common/low-credits-dialog";
 import { ModelsInitializer } from "@shared/components/common/models-initializer";
 import { UpdateNotification } from "@shared/components/common/update-notification";
 import { SidebarNavigation } from "@shared/components/navigation/sidebar-navigation";
 import { useCheckFirstTimeUser } from "@shared/hooks/use-check-first-time-user";
-import { useLowCreditsDialog } from "@shared/hooks/use-low-credits-dialog"; // Import useLowCreditsDialog
+import { useLowCreditsDialog } from "@shared/hooks/use-low-credits-dialog";
+import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 
 library.add(fas, fab);
 
@@ -51,12 +55,46 @@ const App: FC = () => {
 		openRadientConsole,
 		onLowCreditsDialogClose,
 	} = useLowCreditsDialog();
+	const {
+		toggleCommandPalette,
+		isCommandPaletteOpen,
+		isCreateAgentDialogOpen, // Get dialog state from store
+		closeCreateAgentDialog, // Get close action from store
+	} = useUiPreferencesStore();
+	const navigate = useNavigate(); // For onAgentCreated
+
+	const handleAgentCreated = (agentId: string) => {
+		navigate(`/chat/${agentId}`);
+		closeCreateAgentDialog();
+	};
+
+	useEffect(() => {
+		const handleToggleCommandPalette = () => {
+			toggleCommandPalette();
+		};
+
+		// Listen for the IPC message from the main process
+		const unsubscribe = window.electron.ipcRenderer.on(
+			"toggle-command-palette",
+			handleToggleCommandPalette,
+		);
+
+		// Clean up the listener when the component unmounts
+		return () => {
+			if (unsubscribe) {
+				unsubscribe();
+			}
+		};
+	}, [toggleCommandPalette]);
 
 	return (
 		<OnboardingProvider>
 			<OnboardingTourGlobalStyles />
 			<AppContainer>
 				<CssBaseline />
+
+				{/* Command Palette */}
+				{isCommandPaletteOpen && <CommandPalette />}
 
 				{/* Initialize models store */}
 				<ModelsInitializer />
@@ -76,6 +114,13 @@ const App: FC = () => {
 					open={isLowCreditsDialogOpen}
 					onClose={onLowCreditsDialogClose}
 					onGoToConsole={openRadientConsole}
+				/>
+
+				{/* Create Agent Dialog (Global) */}
+				<CreateAgentDialog
+					open={isCreateAgentDialogOpen}
+					onClose={closeCreateAgentDialog}
+					onAgentCreated={handleAgentCreated}
 				/>
 
 				{/* Sidebar Navigation */}

@@ -20,7 +20,7 @@ import {
 	CalendarDays,
 	ChevronLeft,
 	ChevronRight,
-	MessageCircle,
+	MessageSquare,
 	Settings,
 	Store,
 } from "lucide-react";
@@ -195,7 +195,7 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 		tourTag?: string;
 	}> = [
 		{
-			icon: MessageCircle,
+			icon: MessageSquare,
 			label: "Chat",
 			path: "/chat",
 			isActive: currentView === "chat",
