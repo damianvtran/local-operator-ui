@@ -12,7 +12,7 @@ import { styled, useTheme } from "@mui/material/styles";
 import type { ExecutionVariable } from "@shared/api/local-operator/types";
 import { useAgentExecutionVariables } from "@shared/hooks/use-agent-execution-variables";
 import { showErrorToast, showInfoToast } from "@shared/utils/toast-manager";
-import { Edit2, Trash2, PlusCircle, ChevronRight, ChevronDown } from "lucide-react";
+import { Edit2, Trash2, PlusCircle, Plus, Minus } from "lucide-react";
 import type { FC } from "react";
 import { useEffect, useState, useMemo, useCallback, memo } from "react";
 
@@ -36,7 +36,6 @@ const VariableListContainer = styled(Box)(({ theme }) => ({
         : "rgba(0, 0, 0, 0.2)",
     borderRadius: "4px",
   },
-  // For Firefox
   scrollbarWidth: "thin",
   scrollbarColor:
     theme.palette.mode === "dark"
@@ -57,6 +56,7 @@ const VariableItem = styled(Box)(({ theme }) => ({
 }));
 
 const VariableName = styled(Typography)(({ theme }) => ({
+  marginLeft: theme.spacing(0.5),
 	fontWeight: 500,
 	color: theme.palette.text.primary,
 	marginRight: theme.spacing(1),
@@ -79,7 +79,7 @@ const VariableValue = styled(Typography)(({ theme }) => ({
 	overflow: "hidden",
 	textOverflow: "ellipsis",
 	fontFamily: "monospace",
-	maxWidth: 'calc(100% - 200px)', // Adjust as needed based on other elements
+	maxWidth: "100%",
   fontSize: "0.8rem",
 }));
 
@@ -99,8 +99,17 @@ const CenteredBox = styled(Box)(({ theme }) => ({
 	textAlign: "center",
 }));
 
-// Memoized constants
-const EXPANDABLE_TYPES = ['dict', 'list', 'DataFrame', 'ndarray', 'object', 'array'];
+const ExpandButton = styled(IconButton)(({ theme }) => ({
+	width: 20,
+	height: 20,
+	marginRight: theme.spacing(0.5),
+	border: `1px solid ${theme.palette.divider}`,
+	borderRadius: 2,
+	padding: 0,
+	'&:hover': {
+		backgroundColor: alpha(theme.palette.action.hover, 0.08),
+	},
+}));
 
 // Utility function to truncate text
 const truncateText = (text: string, maxLength: number): string => {
@@ -119,12 +128,6 @@ const VariableRow: FC<VariableDisplayProps> = memo(({ variable, onEdit, onDelete
 	const theme = useTheme();
 	const [expanded, setExpanded] = useState(false);
 
-	// Memoize expandable check
-	const isExpandable = useMemo(() => 
-		EXPANDABLE_TYPES.includes(variable.type), 
-		[variable.type]
-	);
-
 	// Memoize string value conversion with truncation
 	const stringValue = useMemo(() => String(variable.value), [variable.value]);
 	const truncatedValue = useMemo(() => truncateText(stringValue, 200), [stringValue]);
@@ -135,29 +138,44 @@ const VariableRow: FC<VariableDisplayProps> = memo(({ variable, onEdit, onDelete
 
 	// Memoize dynamic styles
 	const itemStyles = useMemo(() => ({
-		cursor: isExpandable ? "pointer" : "default",
+		cursor: "pointer",
 		"&:hover": {
-			backgroundColor: isExpandable ? alpha(theme.palette.action.hover, 0.08) : "transparent",
+			backgroundColor: alpha(theme.palette.action.hover, 0.08),
 		},
-	}), [isExpandable, theme.palette.action.hover]);
+	}), [theme.palette.action.hover]);
 
 	const expandedContentStyles = useMemo(() => ({
 		pl: 4,
 		py: 1,
 		backgroundColor: alpha(theme.palette.background.default, 0.05),
-		borderBottom: `1px solid ${theme.palette.divider}`
-	}), [theme.palette.background.default, theme.palette.divider]);
-
-	const placeholderBoxStyles = useMemo(() => ({
-		width: theme.spacing(3.5)
-	}), [theme]);
+		borderBottom: `1px solid ${theme.palette.divider}`,
+		fontFamily: "monospace",
+		fontSize: "0.8rem",
+		whiteSpace: "pre-wrap",
+		wordBreak: "break-word",
+		maxHeight: "300px",
+		overflow: "auto",
+    "&::-webkit-scrollbar": {
+      width: "8px", 
+    },
+    "&::-webkit-scrollbar-thumb": {
+      backgroundColor:
+        theme.palette.mode === "dark"
+          ? "rgba(255, 255, 255, 0.1)"
+          : "rgba(0, 0, 0, 0.2)",
+      borderRadius: "4px",
+    },
+    scrollbarWidth: "thin",
+    scrollbarColor:
+      theme.palette.mode === "dark"
+        ? "rgba(255,255,255,0.1) transparent"
+        : "rgba(0,0,0,0.2) transparent",
+	}), [theme.palette.background.default, theme.palette.divider, theme.palette.mode]);
 
 	// Memoize callbacks
 	const handleToggleExpand = useCallback(() => {
-		if (isExpandable) {
-			setExpanded(prev => !prev);
-		}
-	}, [isExpandable]);
+		setExpanded(prev => !prev);
+	}, []);
 
 	const handleEdit = useCallback((e: React.MouseEvent) => {
 		e.stopPropagation();
@@ -175,13 +193,9 @@ const VariableRow: FC<VariableDisplayProps> = memo(({ variable, onEdit, onDelete
 				sx={itemStyles}
 				onClick={handleToggleExpand}
 			>
-				{isExpandable ? (
-					<IconButton size="small" sx={{ mr: 0.5, p: 0.25 }} >
-						{expanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-					</IconButton>
-				) : (
-					<Box sx={placeholderBoxStyles} /> // Placeholder for alignment
-				)}
+				<ExpandButton size="small">
+					{expanded ? <Minus size={12} /> : <Plus size={12} />}
+				</ExpandButton>
 				<VariableName variant="body2">{variable.key}</VariableName>
 				<VariableType variant="caption">{typeDisplay}</VariableType>
 				<Tooltip title={tooltipValue} placement="top-start" arrow>
@@ -202,18 +216,13 @@ const VariableRow: FC<VariableDisplayProps> = memo(({ variable, onEdit, onDelete
 					</Tooltip>
 				</VariableActions>
 			</VariableItem>
-			{isExpandable && (
-				<Collapse in={expanded} timeout="auto" unmountOnExit>
-					<Box sx={expandedContentStyles}>
-						{/* Placeholder for expanded content */}
-						<Typography variant="caption" color="text.secondary">
-							Detailed view for {variable.key} (type: {variable.type}) will be shown here.
-							<br />
-							For example, a table for a DataFrame or a formatted list for an array.
-						</Typography>
-					</Box>
-				</Collapse>
-			)}
+			<Collapse in={expanded} timeout="auto" unmountOnExit>
+				<Box sx={expandedContentStyles}>
+					<Typography variant="caption" color="text.secondary" sx={{ fontFamily: "monospace", fontSize: "0.8rem" }}>
+						{stringValue}
+					</Typography>
+				</Box>
+			</Collapse>
 		</>
 	);
 });
