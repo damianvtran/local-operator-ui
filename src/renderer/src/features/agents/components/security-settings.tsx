@@ -102,13 +102,17 @@ export const SecuritySettings: FC<SecuritySettingsProps> = ({
 				</Tooltip>
 			</SectionTitle>
 
-      <Typography
+			<Typography
 				variant="caption"
 				color="text.secondary"
 				sx={{ mb: 1, display: "block" }}
 			>
 				This prompt is directed to the AI security reviewer. It helps the
-				reviewer decide whether to block or allow actions based on safety.  Write as if talking to another agent that is watching this agent (eg. "Allow all git operations", "Don't let the agent access drive files in the restricted folder").  Update this to allow the agent to perform actions if you are getting frequent security blocks.
+				reviewer decide whether to block or allow actions based on safety. Write
+				as if talking to another agent that is watching this agent (eg. "Allow
+				all git operations", "Don't let the agent access drive files in the
+				restricted folder"). Update this to allow the agent to perform actions
+				if you are getting frequent security blocks.
 			</Typography>
 
 			<EditableField

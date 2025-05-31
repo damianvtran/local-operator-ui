@@ -6,7 +6,10 @@ import {
 	Snackbar,
 	Typography,
 } from "@mui/material";
-import { ThemeProvider as MuiThemeProvider, useTheme } from "@mui/material/styles";
+import {
+	ThemeProvider as MuiThemeProvider,
+	useTheme,
+} from "@mui/material/styles";
 import { DEFAULT_THEME, themes } from "@shared/themes";
 import type { Meta, StoryObj } from "@storybook/react";
 import type { ProgressInfo, UpdateInfo } from "electron-updater";
@@ -371,7 +374,9 @@ export const Checking: Story = {
 			if (isChecking) {
 				return (
 					<UpdateContainer>
-						<Typography className="update-title">Checking for Updates</Typography>
+						<Typography className="update-title">
+							Checking for Updates
+						</Typography>
 						<Typography className="update-description">
 							Please wait while we check for available updates...
 						</Typography>
@@ -404,7 +409,7 @@ export const UpdateAvailable: Story = {
 		// Create a component that directly renders the update available state
 		const UpdateAvailableComponent = () => {
 			const theme = useTheme();
-			
+
 			// Use state to force the component to render with update available
 			const [available, setAvailable] = useState(true);
 			const [info, setInfo] = useState({
@@ -557,7 +562,10 @@ export const Downloading: Story = {
 								value={progress.percent}
 								sx={{ mt: 1 }}
 							/>
-							<Typography variant="caption" sx={{ mt: 0.5, display: "block", fontSize: "0.75rem" }}>
+							<Typography
+								variant="caption"
+								sx={{ mt: 0.5, display: "block", fontSize: "0.75rem" }}
+							>
 								{Math.round(progress.transferred / 1024)} KB of{" "}
 								{Math.round(progress.total / 1024)} KB
 							</Typography>
@@ -588,7 +596,7 @@ export const Downloaded: Story = {
 		// Create a component that directly renders the downloaded state
 		const DownloadedComponent = () => {
 			const theme = useTheme();
-			
+
 			// Use state to force the component to render with downloaded state
 			const [downloaded, setDownloaded] = useState(true);
 			const [info, setInfo] = useState(mockUpdateInfo);
@@ -624,7 +632,9 @@ export const Downloaded: Story = {
 			if (downloaded && info) {
 				return (
 					<UpdateContainer>
-						<Typography className="update-title">Update Ready to Install</Typography>
+						<Typography className="update-title">
+							Update Ready to Install
+						</Typography>
 						<Typography className="update-description">
 							Version {info.version} has been downloaded and is ready to
 							install.

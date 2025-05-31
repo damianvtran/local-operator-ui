@@ -4,10 +4,10 @@ import {
 	createLocalOperatorClient,
 } from "@shared/api/local-operator";
 import { apiConfig } from "@shared/config";
-import { type FC, memo, useCallback, useMemo, useEffect } from "react"; // Added useEffect
-import type { Message } from "../../types/message";
-import type { CanvasDocument } from "../../types/canvas"; // Added CanvasDocument import
 import { useCanvasStore } from "@shared/store/canvas-store"; // Added useCanvasStore import
+import { type FC, memo, useCallback, useEffect, useMemo } from "react"; // Added useEffect
+import type { CanvasDocument } from "../../types/canvas"; // Added CanvasDocument import
+import type { Message } from "../../types/message";
 import { getFileTypeFromPath } from "../../utils/file-types"; // Added getFileTypeFromPath import
 import { getFileName } from "../../utils/get-file-name"; // Added getFileName import
 import { ActionBlock } from "./action-block";

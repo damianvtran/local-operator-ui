@@ -54,7 +54,10 @@ export type CanvasStoreState = {
 	/**
 	 * Set the mentioned files for a conversation
 	 */
-	setMentionedFiles: (conversationId: string, mentionedFiles: CanvasDocument[]) => void;
+	setMentionedFiles: (
+		conversationId: string,
+		mentionedFiles: CanvasDocument[],
+	) => void;
 	/**
 	 * Add a single mentioned file (deduplicated) for a conversation
 	 */
@@ -62,7 +65,10 @@ export type CanvasStoreState = {
 	/**
 	 * Add multiple mentioned files (deduplicated) for a conversation
 	 */
-	addMentionedFilesBatch: (conversationId: string, files: CanvasDocument[]) => void;
+	addMentionedFilesBatch: (
+		conversationId: string,
+		files: CanvasDocument[],
+	) => void;
 	/**
 	 * Set the view mode for a conversation's canvas
 	 */
@@ -171,9 +177,14 @@ export const useCanvasStore = create<CanvasStoreState>()(
 			},
 			addMentionedFile: (conversationId, file) => {
 				set((state) => {
-					const conv = getConversationState(state.conversations, conversationId);
+					const conv = getConversationState(
+						state.conversations,
+						conversationId,
+					);
 					const exists = conv.mentionedFiles.find((d) => d.id === file.id);
-					const updated = exists ? conv.mentionedFiles : [...conv.mentionedFiles, file];
+					const updated = exists
+						? conv.mentionedFiles
+						: [...conv.mentionedFiles, file];
 					return {
 						conversations: {
 							...state.conversations,
@@ -187,7 +198,10 @@ export const useCanvasStore = create<CanvasStoreState>()(
 			},
 			addMentionedFilesBatch: (conversationId, filesToAdd) => {
 				set((state) => {
-					const conv = getConversationState(state.conversations, conversationId);
+					const conv = getConversationState(
+						state.conversations,
+						conversationId,
+					);
 					const existingFileIds = new Set(conv.mentionedFiles.map((f) => f.id));
 					const newFiles = filesToAdd.filter(
 						(file) => !existingFileIds.has(file.id),

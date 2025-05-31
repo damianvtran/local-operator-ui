@@ -2,12 +2,12 @@ import { faFile } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, Typography, alpha } from "@mui/material";
 import { styled } from "@mui/material/styles";
-import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { useCanvasStore } from "@shared/store/canvas-store"; // Added back useCanvasStore
+import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import type { FC } from "react";
-import { useCallback, memo } from "react";
-import { isCanvasSupported } from "../../utils/is-canvas-supported";
+import { memo, useCallback } from "react";
 import { getFileTypeFromPath } from "../../utils/file-types"; // Added import for new utility
+import { isCanvasSupported } from "../../utils/is-canvas-supported";
 /**
  * Props for the FileAttachment component (base)
  */
@@ -147,7 +147,7 @@ export const FileAttachment: FC<FileAttachmentProps> = memo(
 						title,
 						path: docId, // Store data URI as path for consistency if needed
 						content: file, // The content is the data URI itself
-						type: getFileTypeFromPath(file) // Ensure type is included
+						type: getFileTypeFromPath(file), // Ensure type is included
 					};
 
 					const state = useCanvasStore.getState();
@@ -195,11 +195,12 @@ export const FileAttachment: FC<FileAttachmentProps> = memo(
 							title,
 							path: normalizedPath,
 							content: result.data,
-							type: getFileTypeFromPath(file) // Ensure type is included
+							type: getFileTypeFromPath(file), // Ensure type is included
 						};
 
 						const state = useCanvasStore.getState();
-						const conversationCanvasState = state.conversations?.[conversationId];
+						const conversationCanvasState =
+							state.conversations?.[conversationId];
 						const filesInState = conversationCanvasState?.files ?? [];
 						const openTabsInState = conversationCanvasState?.openTabs ?? [];
 
@@ -247,36 +248,36 @@ export const FileAttachment: FC<FileAttachmentProps> = memo(
 		return (
 			<FileAttachmentContainer
 				onClick={handleClick}
-			title={`Click to open ${getFileName(file)}`}
-			sx={{
-				// Adjust padding if it's an image to give it more space, or remove padding
-				padding: isPastedImage ? 0 : "8px 12px",
-				// If it's an image, let it define its own aspect ratio, otherwise fix height for icon/text
-				height: isPastedImage ? "auto" : "auto", // Keep auto or set specific for icon
-				maxWidth: isPastedImage ? "200px" : "100%", // Allow images to be a bit wider if needed
-			}}
-		>
-			{isPastedImage ? (
-				<img
-					src={file}
-					alt="Pasted content preview"
-					style={{
-						display: "block",
-						maxWidth: "100%",
-						maxHeight: "150px", // Max height for the preview in message
-						borderRadius: "8px", // Match container's border radius
-						objectFit: "contain",
-					}}
-				/>
-			) : (
-				<>
-					<FileIcon>
-						<FontAwesomeIcon icon={faFile} size="sm" />
-					</FileIcon>
-					<FileName variant="body2">{getFileName(file)}</FileName>
-				</>
-			)}
-		</FileAttachmentContainer>
+				title={`Click to open ${getFileName(file)}`}
+				sx={{
+					// Adjust padding if it's an image to give it more space, or remove padding
+					padding: isPastedImage ? 0 : "8px 12px",
+					// If it's an image, let it define its own aspect ratio, otherwise fix height for icon/text
+					height: isPastedImage ? "auto" : "auto", // Keep auto or set specific for icon
+					maxWidth: isPastedImage ? "200px" : "100%", // Allow images to be a bit wider if needed
+				}}
+			>
+				{isPastedImage ? (
+					<img
+						src={file}
+						alt="Pasted content preview"
+						style={{
+							display: "block",
+							maxWidth: "100%",
+							maxHeight: "150px", // Max height for the preview in message
+							borderRadius: "8px", // Match container's border radius
+							objectFit: "contain",
+						}}
+					/>
+				) : (
+					<>
+						<FileIcon>
+							<FontAwesomeIcon icon={faFile} size="sm" />
+						</FileIcon>
+						<FileName variant="body2">{getFileName(file)}</FileName>
+					</>
+				)}
+			</FileAttachmentContainer>
 		);
 	},
 );

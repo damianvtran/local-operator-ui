@@ -31,7 +31,8 @@ export const UpdateContainer = styled("div")(({ theme }) => ({
 	borderRadius: 8,
 	backgroundColor: theme.palette.background.paper,
 	border: `1px solid ${theme.palette.divider}`,
-	boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
+	boxShadow:
+		"0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
 	position: "fixed",
 	top: theme.spacing(2.5),
 	right: theme.spacing(2.5),
@@ -101,7 +102,7 @@ export const UpdateNotification = ({
 	autoCheck = true,
 }: UpdateNotificationProps) => {
 	const theme = useTheme();
-	
+
 	// State for frontend update status
 	const [checking, setChecking] = useState(false);
 	const [updatingBackend, setUpdatingBackend] = useState(false);
@@ -441,7 +442,10 @@ export const UpdateNotification = ({
 								value={downloadProgress.percent}
 								sx={{ mt: 1 }}
 							/>
-							<Typography variant="caption" sx={{ mt: 0.5, display: "block", fontSize: "0.75rem" }}>
+							<Typography
+								variant="caption"
+								sx={{ mt: 0.5, display: "block", fontSize: "0.75rem" }}
+							>
 								{Math.round(downloadProgress.transferred / 1024)} KB of{" "}
 								{Math.round(downloadProgress.total / 1024)} KB
 							</Typography>
@@ -493,7 +497,9 @@ export const UpdateNotification = ({
 		return (
 			<>
 				<UpdateContainer>
-					<Typography className="update-title">Update Ready to Install</Typography>
+					<Typography className="update-title">
+						Update Ready to Install
+					</Typography>
 					<Typography className="update-description">
 						Version {updateInfo.version} is available. You are currently using
 						version {appVersion}.
@@ -541,7 +547,9 @@ export const UpdateNotification = ({
 		return (
 			<>
 				<UpdateContainer>
-					<Typography className="update-title">Server Update Available</Typography>
+					<Typography className="update-title">
+						Server Update Available
+					</Typography>
 					<Typography className="update-description">
 						Server version {backendUpdateInfo.latestVersion} is available. You
 						are currently using version {backendUpdateInfo.currentVersion}.
@@ -574,7 +582,10 @@ export const UpdateNotification = ({
 						</UpdateActions>
 					) : (
 						<>
-							<Typography variant="body2" sx={{ mt: 2, color: "warning.main", fontSize: "0.8125rem" }}>
+							<Typography
+								variant="body2"
+								sx={{ mt: 2, color: "warning.main", fontSize: "0.8125rem" }}
+							>
 								The backend server is running externally and cannot be updated
 								automatically. Please update it manually using the following
 								command:
@@ -636,7 +647,9 @@ export const UpdateNotification = ({
 						severity="warning"
 						sx={{ width: "100%" }}
 					>
-						<Typography variant="body2" sx={{ fontSize: "0.8125rem" }}>{manualUpdateInfo.message}</Typography>
+						<Typography variant="body2" sx={{ fontSize: "0.8125rem" }}>
+							{manualUpdateInfo.message}
+						</Typography>
 						<Typography
 							variant="body2"
 							sx={{

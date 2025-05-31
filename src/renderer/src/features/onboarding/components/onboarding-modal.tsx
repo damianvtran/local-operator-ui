@@ -522,7 +522,9 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 		}
 		// Otherwise, wrap the dots in the StepIndicatorContainer
 		return (
-			<StepIndicatorContainer>{stepIndicatorDotElements}</StepIndicatorContainer>
+			<StepIndicatorContainer>
+				{stepIndicatorDotElements}
+			</StepIndicatorContainer>
 		);
 	}, [stepIndicatorDotElements]);
 

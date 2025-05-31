@@ -147,12 +147,22 @@ const errorSuggestions: Record<string, React.ReactNode> = {
 	),
 	"Failed to interpret action": (
 		<InfoText>
-			The model tried to perform an action but was unable to express its intent in the required schema.  Typically this is because you're trying to use a model that might not be sophisticated enough to follow the complex instructions required for agentic AI.<br /><br />Change your model in the <MuiLink component={Link} to="/settings" color="inherit">
+			The model tried to perform an action but was unable to express its intent
+			in the required schema. Typically this is because you're trying to use a
+			model that might not be sophisticated enough to follow the complex
+			instructions required for agentic AI.
+			<br />
+			<br />
+			Change your model in the{" "}
+			<MuiLink component={Link} to="/settings" color="inherit">
 				settings page
-			</MuiLink>{" "} to fix this.  We recommend using Radient Automatic to have the best combo of cheap and smart picked for you based on your requests (typically cheaper than bringing your own key), or use one of the recommended models with a star icon.
+			</MuiLink>{" "}
+			to fix this. We recommend using Radient Automatic to have the best combo
+			of cheap and smart picked for you based on your requests (typically
+			cheaper than bringing your own key), or use one of the recommended models
+			with a star icon.
 		</InfoText>
 	),
-  
 };
 
 /**

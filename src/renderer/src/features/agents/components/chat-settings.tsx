@@ -12,10 +12,7 @@ import {
 	UnsetContainer,
 } from "@features/chat/components/chat-options-sidebar-styled";
 import { UnsetSliderSetting } from "@features/chat/components/unset-slider-setting"; // Import shared component
-import {
-	faGear,
-	faInfoCircle,
-} from "@fortawesome/free-solid-svg-icons";
+import { faGear, faInfoCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
 	Box,
@@ -26,12 +23,15 @@ import {
 	Typography,
 } from "@mui/material";
 import { alpha, styled } from "@mui/material/styles"; // Correctly import alpha from styles
-import type { AgentDetails, AgentUpdate } from "@shared/api/local-operator/types";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import type {
+	AgentDetails,
+	AgentUpdate,
+} from "@shared/api/local-operator/types";
 import { EditableField } from "@shared/components/common/editable-field";
 import { SliderSetting } from "@shared/components/common/slider-setting";
 import type { useUpdateAgent } from "@shared/hooks/use-update-agent";
 import { showErrorToast } from "@shared/utils/toast-manager";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import type { FC } from "react";
 import { useEffect, useState } from "react";
 
@@ -146,11 +146,7 @@ export const ChatSettings: FC<ChatSettingsProps> = ({
 				sx={{ cursor: "pointer" }}
 			>
 				<TitleIconContainer>
-					{isExpanded ? (
-						<ChevronDown size={20} />
-					) : (
-						<ChevronRight size={20} />
-					)}
+					{isExpanded ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
 				</TitleIconContainer>
 				Advanced Chat Settings
 				<Tooltip
@@ -166,8 +162,23 @@ export const ChatSettings: FC<ChatSettingsProps> = ({
 
 			<Collapse in={isExpanded} timeout="auto" unmountOnExit>
 				{/* Removed the outer Box with borderLeft and ml. Padding is now applied to a single inner Box. */}
-				<Box sx={{ pt: 1, pb: 2, pl: theme => theme.spacing(1.5 /* Base padding */ + 1.5 /* Icon container margin */ + 0.5 /* Approx icon width / 2 for text alignment */) }}>
-					<Typography variant="caption" color="text.secondary" sx={{ mb: 2, display: "block" }}>
+				<Box
+					sx={{
+						pt: 1,
+						pb: 2,
+						pl: (theme) =>
+							theme.spacing(
+								1.5 /* Base padding */ +
+									1.5 /* Icon container margin */ +
+									0.5 /* Approx icon width / 2 for text alignment */,
+							),
+					}}
+				>
+					<Typography
+						variant="caption"
+						color="text.secondary"
+						sx={{ mb: 2, display: "block" }}
+					>
 						You can set custom values for these settings by updating the options
 						below. If not set, default values will be used that are optimized
 						based on user testing.

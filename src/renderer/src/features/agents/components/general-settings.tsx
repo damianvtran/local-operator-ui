@@ -24,8 +24,8 @@ import { EditableField } from "@shared/components/common/editable-field";
 import { TagsInputChips } from "@shared/components/common/tags-input-chips";
 import { HostingSelect } from "@shared/components/hosting/hosting-select";
 import { ModelSelect } from "@shared/components/hosting/model-select";
-import type { useUpdateAgent } from "@shared/hooks/use-update-agent";
 import { useConfig } from "@shared/hooks/use-config";
+import type { useUpdateAgent } from "@shared/hooks/use-update-agent";
 import { showErrorToast } from "@shared/utils/toast-manager";
 import type { FC } from "react";
 import { useEffect, useState } from "react";
@@ -198,9 +198,7 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 		// Initialize or reset currentHosting when the selected agent changes,
 		// or when the global config loads/changes.
 		if (!isConfigLoading && config?.values) {
-			setCurrentHosting(
-				selectedAgent.hosting || config.values.hosting || "",
-			);
+			setCurrentHosting(selectedAgent.hosting || config.values.hosting || "");
 		} else if (!isConfigLoading) {
 			// Config loaded, but no values (e.g. error or empty config)
 			setCurrentHosting(selectedAgent.hosting || "");
@@ -268,9 +266,7 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 							// Using selectedAgent.id ensures that if the agent changes, the select resets.
 							// Fallback to a string for config?.values.hosting to ensure key is always a string.
 							key={`hosting-select-${selectedAgent.id}-${selectedAgent.hosting || (config?.values.hosting ?? "default")}`}
-							value={
-								selectedAgent.hosting || (config?.values.hosting ?? "")
-							}
+							value={selectedAgent.hosting || (config?.values.hosting ?? "")}
 							isSaving={savingField === "hosting"}
 							onSave={async (value) => {
 								setSavingField("hosting");
@@ -321,8 +317,7 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 								value={
 									selectedAgent.hosting
 										? selectedAgent.model || ""
-										: selectedAgent.model ||
-											(config?.values.model_name ?? "")
+										: selectedAgent.model || (config?.values.model_name ?? "")
 								}
 								hostingId={currentHosting} // This drives which models are available
 								isSaving={savingField === "model"}
