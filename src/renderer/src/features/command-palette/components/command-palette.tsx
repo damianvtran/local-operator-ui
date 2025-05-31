@@ -33,6 +33,7 @@ import { useNavigate } from "react-router-dom";
 import { useTheme } from "@mui/material/styles";
 import { DEFAULT_SETTINGS_SECTIONS } from "@features/settings/components/settings-sidebar";
 import { getIconElement } from "@features/command-palette/components/command-palette-utils";
+import { useDebounce } from "@shared/hooks/use-debounce";
 
 
 const StyledDialog = styled(Dialog)(({ theme }) => ({
@@ -179,6 +180,28 @@ export const CommandPalette: FC = () => {
 	const theme = useTheme();
 
 	const [selectedIndex, setSelectedIndex] = useState(0);
+	const debouncedCommandPaletteQuery = useDebounce(commandPaletteQuery, 200);
+
+	const pages = useMemo((): CommandPaletteItem[] => {
+		return PAGE_DEFINITIONS.map((p, i) => ({
+			...p,
+			id: `page-${i}`,
+			type: "page",
+		}));
+	}, []); // PAGE_DEFINITIONS is constant
+
+	const settingsSectionItems = useMemo((): CommandPaletteItem[] => {
+		return DEFAULT_SETTINGS_SECTIONS.map(
+			(section) => ({
+				id: `settings-section-${section.id}`,
+				type: "settings-section",
+				name: section.label,
+				category: "Settings Section",
+				path: `/settings?section=${section.id}`,
+				icon: getIconElement(section),
+			}),
+		);
+	}, []); // Assuming DEFAULT_SETTINGS_SECTIONS is static
 
 	// useCallback for handleItemClick to stabilize its reference for the useEffect dependency array
 	const handleItemClick = useCallback(
@@ -190,23 +213,6 @@ export const CommandPalette: FC = () => {
 	);
 
 	const allItems = useMemo(() => {
-		const pages: CommandPaletteItem[] = PAGE_DEFINITIONS.map((p, i) => ({
-			...p,
-			id: `page-${i}`,
-			type: "page",
-		}));
-
-		const settingsSectionItems: CommandPaletteItem[] = DEFAULT_SETTINGS_SECTIONS.map(
-			(section) => ({
-				id: `settings-section-${section.id}`,
-				type: "settings-section",
-				name: section.label,
-				category: "Settings Section",
-				path: `/settings?section=${section.id}`,
-				icon: getIconElement(section),
-			}),
-		);
-
 		const agentItems: CommandPaletteItem[] = [];
 		if (agentsData?.agents) {
 			for (const agent of agentsData.agents) {
@@ -229,13 +235,13 @@ export const CommandPalette: FC = () => {
 			}
 		}
 		return [...pages, ...settingsSectionItems, ...agentItems];
-	}, [agentsData]);
+	}, [agentsData, pages, settingsSectionItems]);
 
 	const filteredItems = useMemo(() => {
 		let items = allItems;
 		
-		if (commandPaletteQuery) {
-			const lowerCaseQuery = commandPaletteQuery.toLowerCase();
+		if (debouncedCommandPaletteQuery) {
+			const lowerCaseQuery = debouncedCommandPaletteQuery.toLowerCase();
 			items = allItems.filter(
 				(item) =>
 					item.name.toLowerCase().includes(lowerCaseQuery) ||
@@ -245,14 +251,14 @@ export const CommandPalette: FC = () => {
 		
 		// Limit to top 15 suggestions
 		return items.slice(0, MAX_SUGGESTIONS);
-	}, [allItems, commandPaletteQuery]);
+	}, [allItems, debouncedCommandPaletteQuery]);
 
-	const displayedItems = useMemo(() => filteredItems, [filteredItems]);
+	const displayedItems = filteredItems; // Simplified: displayedItems is always filteredItems
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: reset selected index when filtered items change or palette opens
 	useEffect(() => {
 		setSelectedIndex(0);
-	}, [displayedItems, isCommandPaletteOpen]);
+	}, [displayedItems, isCommandPaletteOpen]); // displayedItems will change less frequently due to debounce
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: handle keyboard navigation
 	useEffect(() => {
