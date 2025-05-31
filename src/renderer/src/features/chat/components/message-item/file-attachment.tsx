@@ -2,11 +2,12 @@ import { faFile } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, Typography, alpha } from "@mui/material";
 import { styled } from "@mui/material/styles";
-import { useCanvasStore } from "@shared/store/canvas-store"; // Added back useCanvasStore
+import { FileActionsMenu } from "@shared/components/common/file-actions-menu";
+import { useCanvasStore } from "@shared/store/canvas-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import type { FC } from "react";
 import { memo, useCallback } from "react";
-import { getFileTypeFromPath } from "../../utils/file-types"; // Added import for new utility
+import { getFileTypeFromPath } from "../../utils/file-types";
 import { isCanvasSupported } from "../../utils/is-canvas-supported";
 /**
  * Props for the FileAttachment component (base)
@@ -44,6 +45,7 @@ const FileAttachmentContainer = styled(Box)(({ theme }) => ({
 	maxWidth: "100%",
 	cursor: "pointer",
 	transition: "all 0.2s ease",
+	position: "relative",
 	"&:hover": {
 		backgroundColor: alpha(
 			theme.palette.mode === "dark"
@@ -53,6 +55,10 @@ const FileAttachmentContainer = styled(Box)(({ theme }) => ({
 		),
 		transform: "translateY(-1px)",
 		boxShadow: `0 2px 5px ${alpha(theme.palette.common.black, theme.palette.mode === "dark" ? 0.15 : 0.1)}`,
+		"& .file-actions-menu": {
+			opacity: 1,
+			visibility: "visible",
+		},
 	},
 	"&:active": {
 		transform: "translateY(0)",
@@ -77,6 +83,13 @@ const FileName = styled(Typography)({
 	"&:hover": {
 		textDecoration: "underline",
 	},
+});
+
+const FileActionsContainer = styled(Box)({
+	marginLeft: 8,
+	opacity: 0,
+	visibility: "hidden",
+	transition: "opacity 0.2s ease, visibility 0.2s ease",
 });
 
 /**
@@ -127,6 +140,8 @@ export const FileAttachment: FC<FileAttachmentProps> = memo(
 		// which is specific to this component's interaction, not the passive metadata collection.
 		// addMentionedFile is removed as its functionality is centralized.
 
+		const { setViewMode } = useCanvasStore(); // Add setViewMode from canvas store
+
 		// Handle click on the file attachment
 		const handleClick = useCallback(async () => {
 			const title = getFileName(file); // This will be "Pasted Image" for image data URIs
@@ -175,6 +190,7 @@ export const FileAttachment: FC<FileAttachmentProps> = memo(
 					setOpenTabs(conversationId, updatedTabs);
 					setSelectedTab(conversationId, docId);
 					setCanvasOpen(true);
+					setViewMode(conversationId, "documents"); // Switch canvas view to documents
 				} else {
 					// Not canvas supported, but it's a data URI.
 					// The server will handle it. For client-side, just call onClick.
@@ -224,6 +240,7 @@ export const FileAttachment: FC<FileAttachmentProps> = memo(
 						setOpenTabs(conversationId, updatedTabs);
 						setSelectedTab(conversationId, docId);
 						setCanvasOpen(true);
+						setViewMode(conversationId, "documents"); // Switch canvas view to documents
 						return;
 					}
 
@@ -242,19 +259,21 @@ export const FileAttachment: FC<FileAttachmentProps> = memo(
 					return fallbackAction(message);
 				}
 			}
-		}, [file, onClick, setCanvasOpen, conversationId]);
+		}, [file, onClick, setCanvasOpen, setViewMode, conversationId]);
 
 		const isPastedImage = file.startsWith("data:image/");
+		const isLocalFile = !file.startsWith("data:") && !file.startsWith("http");
+		const normalizedPath = file.startsWith("file://")
+			? file.substring(7)
+			: file;
 		return (
 			<FileAttachmentContainer
 				onClick={handleClick}
 				title={`Click to open ${getFileName(file)}`}
 				sx={{
-					// Adjust padding if it's an image to give it more space, or remove padding
 					padding: isPastedImage ? 0 : "8px 12px",
-					// If it's an image, let it define its own aspect ratio, otherwise fix height for icon/text
-					height: isPastedImage ? "auto" : "auto", // Keep auto or set specific for icon
-					maxWidth: isPastedImage ? "200px" : "100%", // Allow images to be a bit wider if needed
+					height: isPastedImage ? "auto" : "auto",
+					maxWidth: isPastedImage ? "200px" : "100%",
 				}}
 			>
 				{isPastedImage ? (
@@ -264,8 +283,8 @@ export const FileAttachment: FC<FileAttachmentProps> = memo(
 						style={{
 							display: "block",
 							maxWidth: "100%",
-							maxHeight: "150px", // Max height for the preview in message
-							borderRadius: "8px", // Match container's border radius
+							maxHeight: "150px",
+							borderRadius: "8px",
 							objectFit: "contain",
 						}}
 					/>
@@ -275,6 +294,21 @@ export const FileAttachment: FC<FileAttachmentProps> = memo(
 							<FontAwesomeIcon icon={faFile} size="sm" />
 						</FileIcon>
 						<FileName variant="body2">{getFileName(file)}</FileName>
+						{isLocalFile && (
+							<FileActionsContainer
+								className="file-actions-menu"
+								onClick={(e) => {
+									e.stopPropagation();
+								}}
+							>
+								<FileActionsMenu
+									filePath={normalizedPath}
+									tooltip="File actions"
+									aria-label="File actions"
+									onShowInCanvas={handleClick}
+								/>
+							</FileActionsContainer>
+						)}
 					</>
 				)}
 			</FileAttachmentContainer>

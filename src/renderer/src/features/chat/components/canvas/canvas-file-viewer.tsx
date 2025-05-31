@@ -16,6 +16,7 @@ import {
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import { createLocalOperatorClient } from "@shared/api/local-operator";
+import { FileActionsMenu } from "@shared/components/common/file-actions-menu";
 import { apiConfig } from "@shared/config";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import {
@@ -376,13 +377,36 @@ export const CanvasFileViewer: FC<CanvasFileViewerProps> = ({
 	}
 
 	return (
-		<Box sx={{ p: 2, height: "100%", overflowY: "auto" }}>
+		<Box sx={{ p: 3, height: "100%", overflowY: "auto" }}>
 			<Grid container spacing={2}>
 				{memoizedFiles.map((fileDoc) => {
 					const IconComponent = getIconForFileType(fileDoc.type);
+					const isLocalFile =
+						!fileDoc.path.startsWith("data:") &&
+						!fileDoc.path.startsWith("http");
+					const normalizedPath = fileDoc.path.startsWith("file://")
+						? fileDoc.path.substring(7)
+						: fileDoc.path;
 					return (
 						<Grid item xs={6} sm={4} md={4} key={fileDoc.id}>
-							<StyledCard>
+							<StyledCard sx={{ position: "relative" }}>
+								{isLocalFile && (
+									<Box
+										sx={{
+											position: "absolute",
+											top: 4,
+											right: 4,
+											zIndex: 2,
+										}}
+									>
+										<FileActionsMenu
+											filePath={normalizedPath}
+											tooltip="File actions"
+											aria-label="File actions"
+											onShowInCanvas={() => handleFileClick(fileDoc)}
+										/>
+									</Box>
+								)}
 								<CardActionArea
 									onClick={() => handleFileClick(fileDoc)}
 									sx={{ display: "flex", flexDirection: "column", flexGrow: 1 }}

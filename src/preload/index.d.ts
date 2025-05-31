@@ -13,6 +13,7 @@ declare global {
 			openFile: (filePath: string) => Promise<void>;
 			readFile: (filePath: string) => Promise<ReadFileResponse>;
 			openExternal: (url: string) => Promise<void>;
+			showItemInFolder: (filePath: string) => Promise<void>;
 			session: {
 				getSession: () => Promise<{
 					accessToken: string | undefined;
