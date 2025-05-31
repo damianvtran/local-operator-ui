@@ -35,8 +35,10 @@ const StyledDialog = styled(Dialog)(({ theme }) => ({
 		width: "600px",
 		maxWidth: "90vw",
 		borderRadius: theme.shape.borderRadius * 2,
-		backgroundColor: theme.palette.background.default, // Use default for a slightly different shade if paper is too similar
+		backgroundColor: theme.palette.background.default,
+    backgroundImage: "none",
 		boxShadow: theme.shadows[8],
+    border: `1px solid ${theme.palette.divider}`,
 	},
 }));
 
@@ -45,14 +47,33 @@ const SearchInputContainer = styled("div")(({ theme }) => ({
 	borderBottom: `1px solid ${theme.palette.divider}`,
 }));
 
-const ResultsListContainer = styled(List)(() => ({
+const ResultsListContainer = styled(List)(({ theme }) => ({
 	maxHeight: "400px",
 	overflowY: "auto",
 	padding: 0,
+	// Custom scrollbar styles
+	"&::-webkit-scrollbar": {
+		width: "8px",
+	},
+	"&::-webkit-scrollbar-track": {
+		background: "transparent",
+	},
+	"&::-webkit-scrollbar-thumb": {
+		background: theme.palette.mode === "dark" ? "rgba(255, 255, 255, 0.2)" : "rgba(0, 0, 0, 0.2)",
+		borderRadius: "4px",
+		"&:hover": {
+			background: theme.palette.mode === "dark" ? "rgba(255, 255, 255, 0.3)" : "rgba(0, 0, 0, 0.3)",
+		},
+	},
+	// Firefox scrollbar styles
+	scrollbarWidth: "thin",
+	scrollbarColor: theme.palette.mode === "dark" 
+		? "rgba(255, 255, 255, 0.2) transparent" 
+		: "rgba(0, 0, 0, 0.2) transparent",
 }));
 
 const ResultItemStyled = styled(ListItemButton)(({ theme }) => ({
-	padding: theme.spacing(1, 3),
+	padding: theme.spacing(0.5, 2),
 	"&:hover": {
 		backgroundColor: theme.palette.action.hover,
 	},
@@ -108,6 +129,8 @@ const PAGE_DEFINITIONS: Omit<CommandPaletteItem, "id" | "type">[] = [
 	},
 ];
 
+const MAX_SUGGESTIONS = 15;
+
 export const CommandPalette: FC = () => {
 	const navigate = useNavigate();
 	const {
@@ -117,8 +140,8 @@ export const CommandPalette: FC = () => {
 		setCommandPaletteQuery,
 	} = useUiPreferencesStore();
 
-	const { data: agentsData } = useAgents(1, 200) as { data?: AgentListResult }; // Fetch up to 200 agents
-	const theme = useTheme(); // Get theme for icon color
+	const { data: agentsData } = useAgents(1, 20) as { data?: AgentListResult };
+	const theme = useTheme();
 
 	const [selectedIndex, setSelectedIndex] = useState(0);
 
@@ -163,21 +186,27 @@ export const CommandPalette: FC = () => {
 	}, [agentsData]);
 
 	const filteredItems = useMemo(() => {
-		if (!commandPaletteQuery) {
-			return allItems;
+		let items = allItems;
+		
+		if (commandPaletteQuery) {
+			const lowerCaseQuery = commandPaletteQuery.toLowerCase();
+			items = allItems.filter(
+				(item) =>
+					item.name.toLowerCase().includes(lowerCaseQuery) ||
+					item.category.toLowerCase().includes(lowerCaseQuery),
+			);
 		}
-		const lowerCaseQuery = commandPaletteQuery.toLowerCase();
-		return allItems.filter(
-			(item) =>
-				item.name.toLowerCase().includes(lowerCaseQuery) ||
-				item.category.toLowerCase().includes(lowerCaseQuery),
-		);
+		
+		// Limit to top 15 suggestions
+		return items.slice(0, MAX_SUGGESTIONS);
 	}, [allItems, commandPaletteQuery]);
+
+	const displayedItems = useMemo(() => filteredItems, [filteredItems]);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: reset selected index when filtered items change or palette opens
 	useEffect(() => {
 		setSelectedIndex(0);
-	}, [filteredItems, isCommandPaletteOpen]);
+	}, [displayedItems, isCommandPaletteOpen]);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: handle keyboard navigation
 	useEffect(() => {
@@ -186,16 +215,16 @@ export const CommandPalette: FC = () => {
 
 			if (event.key === "ArrowDown") {
 				event.preventDefault();
-				setSelectedIndex((prev) => (prev + 1) % filteredItems.length);
+				setSelectedIndex((prev) => (prev + 1) % displayedItems.length);
 			} else if (event.key === "ArrowUp") {
 				event.preventDefault();
 				setSelectedIndex(
-					(prev) => (prev - 1 + filteredItems.length) % filteredItems.length,
+					(prev) => (prev - 1 + displayedItems.length) % displayedItems.length,
 				);
 			} else if (event.key === "Enter") {
 				event.preventDefault();
-				if (filteredItems[selectedIndex]) {
-					handleItemClick(filteredItems[selectedIndex]);
+				if (displayedItems[selectedIndex]) {
+					handleItemClick(displayedItems[selectedIndex]);
 				}
 			} else if (event.key === "Escape") {
 				closeCommandPalette();
@@ -206,7 +235,7 @@ export const CommandPalette: FC = () => {
 		return () => {
 			window.removeEventListener("keydown", handleKeyDown);
 		};
-	}, [isCommandPaletteOpen, filteredItems, selectedIndex, closeCommandPalette, navigate, handleItemClick]);
+	}, [isCommandPaletteOpen, displayedItems, selectedIndex, closeCommandPalette, navigate, handleItemClick]);
 
 
 	if (!isCommandPaletteOpen) {
@@ -225,7 +254,7 @@ export const CommandPalette: FC = () => {
 				<TextField
 					autoFocus
 					fullWidth
-					variant="standard" // More shadcn-like
+					variant="standard"
 					placeholder="Search agents and pages..."
 					value={commandPaletteQuery}
 					onChange={(e) => setCommandPaletteQuery(e.target.value)}
@@ -247,20 +276,20 @@ export const CommandPalette: FC = () => {
 								</IconButton>
 							</InputAdornment>
 						) : null,
-						disableUnderline: true, // More shadcn-like
-						style: { fontSize: "1.1rem" },
+						disableUnderline: true, 
+						style: { fontSize: "1rem" },
 					}}
 					autoComplete="off"
 				/>
 			</SearchInputContainer>
 			<DialogContent sx={{ padding: 0 }}>
-				{filteredItems.length === 0 && commandPaletteQuery && (
+				{displayedItems.length === 0 && commandPaletteQuery && (
 					<Typography sx={{ p: 3, textAlign: "center", color: "text.secondary" }}>
 						No results found.
 					</Typography>
 				)}
 				<ResultsListContainer>
-					{filteredItems.map((item, index) => (
+					{displayedItems.map((item, index) => (
 						<ListItem key={item.id} disablePadding dense>
 							<ResultItemStyled
 								selected={selectedIndex === index}
