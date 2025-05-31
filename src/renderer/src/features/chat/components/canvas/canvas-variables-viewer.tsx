@@ -125,6 +125,9 @@ const truncateText = (text: string, maxLength: number): string => {
 	return `${text.substring(0, maxLength)}...`;
 };
 
+// Define editable variable types
+const EDITABLE_TYPES = new Set(['str', 'int', 'float', 'list', 'dict', 'bool']);
+
 // Individual variable display component
 type VariableDisplayProps = {
 	variable: ExecutionVariable;
@@ -135,6 +138,9 @@ type VariableDisplayProps = {
 const VariableRow: FC<VariableDisplayProps> = memo(({ variable, onEdit, onDelete }) => {
 	const theme = useTheme();
 	const [expanded, setExpanded] = useState(false);
+
+	// Check if variable type is editable
+	const isEditable = useMemo(() => EDITABLE_TYPES.has(variable.type), [variable.type]);
 
 	// Memoize string value conversion with truncation
 	const stringValue = useMemo(() => String(variable.value), [variable.value]);
@@ -212,16 +218,32 @@ const VariableRow: FC<VariableDisplayProps> = memo(({ variable, onEdit, onDelete
 					</VariableValue>
 				</Tooltip>
 				<VariableActions>
-					<Tooltip title="Edit Variable">
-						<IconButton onClick={handleEdit} size="small" sx={{ mr: 0.25, padding: theme.spacing(0.5) }}>
-							<Edit2 size={14} />
-						</IconButton>
-					</Tooltip>
-					<Tooltip title="Delete Variable">
-						<IconButton onClick={handleDelete} size="small" color="error" sx={{ padding: theme.spacing(0.5) }}>
-							<Trash2 size={14} />
-						</IconButton>
-					</Tooltip>
+					{isEditable ? (
+						<Tooltip title="Edit Variable">
+							<IconButton onClick={handleEdit} size="small" sx={{ mr: 0.25, padding: theme.spacing(0.5) }}>
+								<Edit2 size={14} />
+							</IconButton>
+						</Tooltip>
+					) : (
+						<Tooltip title="This variable can't be edited because its type is not yet supported for editing.">
+							<IconButton 
+								size="small" 
+								sx={{ 
+									mr: 0.25, 
+									padding: theme.spacing(0.5),
+									opacity: 0.4,
+									cursor: 'not-allowed'
+								}}
+							>
+								<Edit2 size={14} />
+							</IconButton>
+            </Tooltip>
+					)}
+          <Tooltip title="Delete Variable">
+            <IconButton onClick={handleDelete} size="small" color="error" sx={{ padding: theme.spacing(0.5) }}>
+              <Trash2 size={14} />
+            </IconButton>
+          </Tooltip>
 				</VariableActions>
 			</VariableItem>
 			<Collapse in={expanded} timeout="auto" unmountOnExit>
