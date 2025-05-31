@@ -86,13 +86,13 @@ export const SecuritySettings: FC<SecuritySettingsProps> = ({
 	initialSelectedAgentId,
 }) => {
 	return (
-		<Box data-tour-tag="agent-settings-security">
+		<Box data-tour-tag="agent-settings-security" sx={{ mt: 4 }}>
 			<SectionTitle variant="subtitle1">
 				<TitleIcon icon={faShieldAlt} />
-				Security Prompt
+				Security Instructions
 				{/* @ts-ignore - Tooltip has issues with TypeScript but works fine */}
 				<Tooltip
-					title="Security instructions that guide the agent's behavior and limitations"
+					title={`Security instructions that guide the agent's behavior and limitations.  This is the "system prompt" for the security agent.`}
 					arrow
 					placement="top"
 				>
@@ -102,10 +102,23 @@ export const SecuritySettings: FC<SecuritySettingsProps> = ({
 				</Tooltip>
 			</SectionTitle>
 
+			<Typography
+				variant="caption"
+				color="text.secondary"
+				sx={{ mb: 1, display: "block" }}
+			>
+				This prompt is directed to the AI security reviewer. It helps the
+				reviewer decide whether to block or allow actions based on safety. Write
+				as if talking to another agent that is watching this agent (eg. "Allow
+				all git operations", "Don't let the agent access drive files in the
+				restricted folder"). Update this to allow the agent to perform actions
+				if you are getting frequent security blocks.
+			</Typography>
+
 			<EditableField
 				value={selectedAgent.security_prompt || ""}
 				label=""
-				placeholder="Enter security prompt..."
+				placeholder="Enter instructions for the security agent..."
 				multiline
 				rows={6}
 				isSaving={savingField === "security_prompt"}

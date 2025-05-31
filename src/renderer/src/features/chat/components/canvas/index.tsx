@@ -1,5 +1,3 @@
-import { faTimes } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
 	Box,
 	IconButton,
@@ -8,10 +6,13 @@ import {
 	alpha,
 	styled,
 } from "@mui/material";
+import { useCanvasStore } from "@shared/store/canvas-store";
+import { FileText, FolderOpen, X } from "lucide-react";
 import { memo, useCallback, useState } from "react";
 import type { FC } from "react";
 import type { CanvasDocument } from "../../types/canvas";
 import { CanvasContent } from "./canvas-content";
+import { CanvasFileViewer } from "./canvas-file-viewer";
 import { CanvasTabs } from "./canvas-tabs";
 
 type CanvasProps = {
@@ -36,6 +37,11 @@ type CanvasProps = {
 	onClose: () => void;
 
 	onCloseDocument: (docId: string) => void;
+
+	/**
+	 * The conversation ID for the current chat context
+	 */
+	conversationId?: string;
 };
 
 /**
@@ -107,7 +113,24 @@ const CanvasComponent: FC<CanvasProps> = ({
 	onChangeActiveDocument: externalChangeActiveDocument,
 	onClose,
 	onCloseDocument,
+	conversationId,
 }) => {
+	// Get view mode from store if conversationId is available
+	const { setViewMode } = useCanvasStore();
+	const canvasState = useCanvasStore((state) =>
+		conversationId ? state.conversations[conversationId] : undefined,
+	);
+	const currentView = canvasState?.viewMode ?? "documents";
+
+	const setCurrentView = useCallback(
+		(viewMode: "documents" | "files") => {
+			if (conversationId) {
+				setViewMode(conversationId, viewMode);
+			}
+		},
+		[conversationId, setViewMode],
+	);
+
 	// Use the documents prop directly instead of local state
 	const documents = initialDocuments;
 	const [internalActiveDocumentId, setInternalActiveDocumentId] = useState<
@@ -131,6 +154,14 @@ const CanvasComponent: FC<CanvasProps> = ({
 			}
 		},
 		[externalChangeActiveDocument],
+	);
+
+	const handleSwitchToDocumentView = useCallback(
+		(documentId: string) => {
+			setCurrentView("documents");
+			handleChangeActiveDocument(documentId);
+		},
+		[handleChangeActiveDocument, setCurrentView],
 	);
 
 	// Handle closing a document
@@ -168,35 +199,123 @@ const CanvasComponent: FC<CanvasProps> = ({
 						Canvas
 					</Typography>
 					<Typography variant="caption" color="text.secondary">
-						View and manage documents
+						Your visual workspace for files and documents
 					</Typography>
 				</HeaderTitle>
-				<Box sx={{ display: "flex", alignItems: "center" }}>
-					<Tooltip title="Close Canvas" arrow placement="top">
+				<Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+					<Tooltip title="Documents View" arrow placement="top">
+						{/* @ts-ignore MUI Tooltip a11y issue */}
+						<IconButton
+							onClick={() => setCurrentView("documents")}
+							size="large"
+							sx={(theme) => ({
+								color:
+									currentView === "documents"
+										? theme.palette.primary.main
+										: theme.palette.text.secondary,
+								backgroundColor:
+									currentView === "documents"
+										? alpha(theme.palette.primary.main, 0.08)
+										: "transparent",
+								"&:hover": {
+									backgroundColor: alpha(theme.palette.primary.main, 0.12),
+								},
+								width: 36,
+								height: 36,
+								padding: 0,
+							})}
+						>
+							<FileText size={16} />
+						</IconButton>
+					</Tooltip>
+					<Tooltip title="Files View" arrow placement="top">
+						{/* @ts-ignore MUI Tooltip a11y issue */}
+						<IconButton
+							onClick={() => setCurrentView("files")}
+							size="large"
+							sx={(theme) => ({
+								color:
+									currentView === "files"
+										? theme.palette.primary.main
+										: theme.palette.text.secondary,
+								backgroundColor:
+									currentView === "files"
+										? alpha(theme.palette.primary.main, 0.08)
+										: "transparent",
+								"&:hover": {
+									backgroundColor: alpha(theme.palette.primary.main, 0.12),
+								},
+								width: 36,
+								height: 36,
+								padding: 0,
+							})}
+						>
+							<FolderOpen size={16} />
+						</IconButton>
+					</Tooltip>
+					<Tooltip
+						title="Close Canvas"
+						arrow
+						placement="top"
+						sx={{ padding: 0 }}
+					>
+						{/* @ts-ignore MUI Tooltip a11y issue */}
 						<CloseButton
 							onClick={onClose}
 							size="large"
 							data-tour-tag="close-canvas-button"
 						>
-							<FontAwesomeIcon icon={faTimes} size="xs" />
+							<X size={16} />
 						</CloseButton>
 					</Tooltip>
 				</Box>
 			</CanvasHeader>
 
-			{/* Tabs for document navigation */}
-			<CanvasTabs
-				documents={documents}
-				activeDocumentId={activeDocumentId}
-				onChangeActiveDocument={handleChangeActiveDocument}
-				onCloseDocument={handleCloseDocument}
-			/>
+			{currentView === "documents" && (
+				<>
+					{/* Tabs for document navigation */}
+					<CanvasTabs
+						documents={documents}
+						activeDocumentId={activeDocumentId}
+						onChangeActiveDocument={handleChangeActiveDocument}
+						onCloseDocument={handleCloseDocument}
+					/>
 
-			{/* Document content area */}
-			{activeDocument && <CanvasContent document={activeDocument} />}
+					{/* Document content area */}
+					{activeDocument && <CanvasContent document={activeDocument} />}
 
-			{/* Empty state when no documents are open */}
-			{!activeDocument && (
+					{/* Empty state when no documents are open */}
+					{!activeDocument && documents.length === 0 && (
+						<Box
+							sx={{
+								display: "flex",
+								flexDirection: "column",
+								alignItems: "center",
+								justifyContent: "center",
+								height: "100%",
+								p: 3,
+								textAlign: "center",
+							}}
+						>
+							<Typography variant="h6" gutterBottom>
+								No Documents Open
+							</Typography>
+							<Typography variant="body2" color="text.secondary">
+								Click on a file in chat or use the files view to open a file.
+							</Typography>
+						</Box>
+					)}
+				</>
+			)}
+
+			{currentView === "files" && conversationId && (
+				<CanvasFileViewer
+					conversationId={conversationId}
+					onSwitchToDocumentView={handleSwitchToDocumentView}
+				/>
+			)}
+			{/* Placeholder if no conversation context for files view */}
+			{currentView === "files" && !conversationId && (
 				<Box
 					sx={{
 						display: "flex",
@@ -209,10 +328,10 @@ const CanvasComponent: FC<CanvasProps> = ({
 					}}
 				>
 					<Typography variant="h6" gutterBottom>
-						No Documents Open
+						File Viewer
 					</Typography>
 					<Typography variant="body2" color="text.secondary">
-						Click on a file in chat to open it here.
+						No active conversation context to display files.
 					</Typography>
 				</Box>
 			)}

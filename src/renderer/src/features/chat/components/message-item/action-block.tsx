@@ -276,6 +276,7 @@ export const ActionBlock: FC<ActionBlockProps> = ({
 								file={file}
 								src={getUrl(file)}
 								onClick={handleFileClick}
+								conversationId={conversationId}
 							/>
 						))}
 				</Box>
@@ -292,6 +293,7 @@ export const ActionBlock: FC<ActionBlockProps> = ({
 								file={file}
 								src={getUrl(file)}
 								onClick={handleFileClick}
+								conversationId={conversationId}
 							/>
 						))}
 				</Box>

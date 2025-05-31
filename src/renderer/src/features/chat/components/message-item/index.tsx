@@ -4,9 +4,12 @@ import {
 	createLocalOperatorClient,
 } from "@shared/api/local-operator";
 import { apiConfig } from "@shared/config";
-import { useCanvasStore } from "@shared/store/canvas-store";
-import { type FC, memo, useCallback, useEffect, useMemo } from "react";
+import { useCanvasStore } from "@shared/store/canvas-store"; // Added useCanvasStore import
+import { type FC, memo, useCallback, useEffect, useMemo } from "react"; // Added useEffect
+import type { CanvasDocument } from "../../types/canvas"; // Added CanvasDocument import
 import type { Message } from "../../types/message";
+import { getFileTypeFromPath } from "../../utils/file-types"; // Added getFileTypeFromPath import
+import { getFileName } from "../../utils/get-file-name"; // Added getFileName import
 import { ActionBlock } from "./action-block";
 import { CodeBlock } from "./code-block";
 import { CollapsibleMessage } from "./collapsible-message";
@@ -138,7 +141,40 @@ export const MessageItem: FC<MessageItemProps> = memo(
 		conversationId,
 		currentExecution,
 	}) => {
-		const setFiles = useCanvasStore((s) => s.setFiles);
+		const addMentionedFilesBatch = useCanvasStore(
+			(s) => s.addMentionedFilesBatch,
+		);
+
+		useEffect(() => {
+			if (message.files && message.files.length > 0 && conversationId) {
+				const canvasDocuments = message.files
+					.map((fileString): CanvasDocument | null => {
+						if (fileString.startsWith("data:")) {
+							return null;
+						}
+
+						const title = getFileName(fileString);
+						const fileType = getFileTypeFromPath(fileString); // Renamed to avoid conflict
+						const normalizedPath = fileString.startsWith("file://")
+							? fileString.substring(7)
+							: fileString;
+						const id = normalizedPath;
+
+						return {
+							id,
+							title,
+							path: normalizedPath,
+							content: normalizedPath, // Placeholder
+							type: fileType, // type is optional in CanvasDocument, but getFileTypeFromPath provides it
+						};
+					})
+					.filter(Boolean) as CanvasDocument[]; // Filter out nulls and assert type
+
+				if (canvasDocuments.length > 0) {
+					addMentionedFilesBatch(conversationId, canvasDocuments);
+				}
+			}
+		}, [message.files, conversationId, addMentionedFilesBatch]); // Removed message.id from deps
 
 		// Create a Local Operator client using the API config
 		const client = useMemo(() => {
@@ -183,55 +219,6 @@ export const MessageItem: FC<MessageItemProps> = memo(
 				);
 			}
 		}, []);
-
-		useEffect(() => {
-			if (!message.files || message.files.length === 0) return;
-			const state = useCanvasStore.getState();
-			const conv = state.conversations[conversationId];
-			if (!conv) return;
-			const { openTabs, files } = conv;
-			if (!openTabs || openTabs.length === 0) return;
-
-			// For each file in the message that matches an open tab, re-read from disk and update the store if changed
-			(async () => {
-				let updatedFiles = files;
-				let didUpdate = false;
-
-				for (const filePath of message.files ?? []) {
-					const normalizedPath = filePath.startsWith("file://")
-						? filePath.substring(7)
-						: filePath;
-					const tabIsOpen = openTabs.some((tab) => tab.id === normalizedPath);
-					if (!tabIsOpen) continue;
-
-					const fileIdx = updatedFiles.findIndex(
-						(f) => f.id === normalizedPath,
-					);
-					if (fileIdx === -1) continue;
-
-					try {
-						const result = await window.api.readFile(normalizedPath);
-						if (result.success) {
-							const currentDoc = updatedFiles[fileIdx];
-							if (currentDoc.content !== result.data) {
-								const updatedDoc = { ...currentDoc, content: result.data };
-								updatedFiles = [
-									...updatedFiles.slice(0, fileIdx),
-									updatedDoc,
-									...updatedFiles.slice(fileIdx + 1),
-								];
-								didUpdate = true;
-							}
-						}
-					} catch (_) {
-						// Ignore read errors, do not update
-					}
-				}
-				if (didUpdate) {
-					setFiles(conversationId, updatedFiles);
-				}
-			})();
-		}, [message.files, conversationId, setFiles]);
 
 		const isMessageContentEmpty =
 			!message.message &&
@@ -323,6 +310,7 @@ export const MessageItem: FC<MessageItemProps> = memo(
 												file={file}
 												src={getUrl(file)}
 												onClick={handleFileClick}
+												conversationId={conversationId}
 											/>
 										))}
 								</Box>
@@ -339,6 +327,7 @@ export const MessageItem: FC<MessageItemProps> = memo(
 												file={file}
 												src={getUrl(file)}
 												onClick={handleFileClick}
+												conversationId={conversationId}
 											/>
 										))}
 								</Box>
@@ -440,6 +429,7 @@ export const MessageItem: FC<MessageItemProps> = memo(
 											file={file}
 											src={getUrl(file)}
 											onClick={handleFileClick}
+											conversationId={conversationId}
 										/>
 									))}
 							</Box>
@@ -456,6 +446,7 @@ export const MessageItem: FC<MessageItemProps> = memo(
 											file={file}
 											src={getUrl(file)}
 											onClick={handleFileClick}
+											conversationId={conversationId}
 										/>
 									))}
 							</Box>

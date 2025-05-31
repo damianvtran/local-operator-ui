@@ -154,11 +154,11 @@ export const OnboardingDialog = ({
 			<ContentContainer>
 				{title && <StyledDialogTitle>{title}</StyledDialogTitle>}
 				{stepIndicators && (
-					<Box sx={{ px: 3, pt: 0, pb: 0, mb: 0 }}>{stepIndicators}</Box>
+					<Box sx={{ px: 3, pt: 1, pb: 0, mb: 0 }}>{stepIndicators}</Box>
 				)}
 				<Box
 					sx={{
-						padding: theme.spacing(0, 3, 1),
+						padding: theme.spacing(2, 3, 1),
 						flexGrow: 1,
 						overflowY: "auto",
 						"&::-webkit-scrollbar": {

@@ -14,6 +14,11 @@ export type CanvasTab = {
 import type { CanvasDocument } from "@features/chat/types/canvas"; // TODO: Should move this type to feature level
 
 /**
+ * Canvas view mode type
+ */
+export type CanvasViewMode = "documents" | "files";
+
+/**
  * State for a single conversation's canvas
  */
 export type ConversationCanvasState = {
@@ -21,6 +26,8 @@ export type ConversationCanvasState = {
 	openTabs: CanvasTab[];
 	selectedTabId: string | null;
 	files: CanvasDocument[];
+	mentionedFiles: CanvasDocument[];
+	viewMode: CanvasViewMode;
 };
 
 /**
@@ -45,6 +52,28 @@ export type CanvasStoreState = {
 	 */
 	setFiles: (conversationId: string, files: CanvasDocument[]) => void;
 	/**
+	 * Set the mentioned files for a conversation
+	 */
+	setMentionedFiles: (
+		conversationId: string,
+		mentionedFiles: CanvasDocument[],
+	) => void;
+	/**
+	 * Add a single mentioned file (deduplicated) for a conversation
+	 */
+	addMentionedFile: (conversationId: string, file: CanvasDocument) => void;
+	/**
+	 * Add multiple mentioned files (deduplicated) for a conversation
+	 */
+	addMentionedFilesBatch: (
+		conversationId: string,
+		files: CanvasDocument[],
+	) => void;
+	/**
+	 * Set the view mode for a conversation's canvas
+	 */
+	setViewMode: (conversationId: string, viewMode: CanvasViewMode) => void;
+	/**
 	 * Reset the canvas state for a conversation
 	 */
 	resetConversationCanvas: (conversationId: string) => void;
@@ -58,6 +87,8 @@ const defaultConversationCanvasState: ConversationCanvasState = {
 	openTabs: [],
 	selectedTabId: null,
 	files: [],
+	mentionedFiles: [],
+	viewMode: "documents",
 };
 
 /**
@@ -66,8 +97,12 @@ const defaultConversationCanvasState: ConversationCanvasState = {
 const getConversationState = (
 	conversations: Record<string, ConversationCanvasState>,
 	conversationId: string,
-): ConversationCanvasState =>
-	conversations[conversationId] ?? { ...defaultConversationCanvasState };
+): ConversationCanvasState => {
+	const existing = conversations[conversationId];
+	return existing
+		? { ...defaultConversationCanvasState, ...existing }
+		: { ...defaultConversationCanvasState };
+};
 
 /**
  * Zustand store for managing canvas state per conversation
@@ -128,6 +163,73 @@ export const useCanvasStore = create<CanvasStoreState>()(
 					};
 					return { conversations: newConversations };
 				});
+			},
+			setMentionedFiles: (conversationId, mentionedFiles) => {
+				set((state) => ({
+					conversations: {
+						...state.conversations,
+						[conversationId]: {
+							...getConversationState(state.conversations, conversationId),
+							mentionedFiles,
+						},
+					},
+				}));
+			},
+			addMentionedFile: (conversationId, file) => {
+				set((state) => {
+					const conv = getConversationState(
+						state.conversations,
+						conversationId,
+					);
+					const exists = conv.mentionedFiles.find((d) => d.id === file.id);
+					const updated = exists
+						? conv.mentionedFiles
+						: [...conv.mentionedFiles, file];
+					return {
+						conversations: {
+							...state.conversations,
+							[conversationId]: {
+								...conv,
+								mentionedFiles: updated,
+							},
+						},
+					};
+				});
+			},
+			addMentionedFilesBatch: (conversationId, filesToAdd) => {
+				set((state) => {
+					const conv = getConversationState(
+						state.conversations,
+						conversationId,
+					);
+					const existingFileIds = new Set(conv.mentionedFiles.map((f) => f.id));
+					const newFiles = filesToAdd.filter(
+						(file) => !existingFileIds.has(file.id),
+					);
+					if (newFiles.length === 0) {
+						return state; // No changes needed
+					}
+					return {
+						conversations: {
+							...state.conversations,
+							[conversationId]: {
+								...conv,
+								mentionedFiles: [...conv.mentionedFiles, ...newFiles],
+							},
+						},
+					};
+				});
+			},
+			setViewMode: (conversationId, viewMode) => {
+				set((state) => ({
+					conversations: {
+						...state.conversations,
+						[conversationId]: {
+							...getConversationState(state.conversations, conversationId),
+							viewMode,
+						},
+					},
+				}));
 			},
 		}),
 		{
