@@ -18,8 +18,14 @@ import { styled } from "@mui/material/styles";
 import type { AgentDetails } from "@shared/api/local-operator/types";
 import { useMessageInput } from "@shared/hooks/use-message-input";
 import { normalizePath } from "@shared/utils/path-utils";
-import { useMemo, useRef, useState } from "react";
-import type { ChangeEvent, ClipboardEvent, FC, FormEvent } from "react";
+import React, {
+	useMemo,
+	useRef,
+	useState,
+	forwardRef,
+	useImperativeHandle,
+} from "react";
+import type { ChangeEvent, ClipboardEvent, FormEvent } from "react";
 import type { Message } from "../types/message";
 import { AttachmentsPreview } from "./attachments-preview";
 import { DirectoryIndicator } from "./directory-indicator";
@@ -39,6 +45,13 @@ type MessageInputProps = {
 	scrollToBottom?: () => void;
 	initialSuggestions?: string[];
 	agentData?: AgentDetails | null;
+};
+
+/**
+ * Type for the imperative handle to expose focusInput method
+ */
+export type MessageInputHandle = {
+	focusInput: () => void;
 };
 
 /**
@@ -300,18 +313,22 @@ const EmptyStateTitle = styled(Typography)(({ theme }) => ({
 /**
  * MessageInput component
  */
-export const MessageInput: FC<MessageInputProps> = ({
-	onSendMessage,
-	isLoading,
-	conversationId,
-	messages,
-	currentJobId,
+export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
+	(
+		{
+			onSendMessage,
+			isLoading,
+			conversationId,
+			messages,
+			currentJobId,
 	onCancelJob,
 	isFarFromBottom = false,
 	scrollToBottom = () => {},
 	initialSuggestions,
 	agentData,
-}) => {
+		},
+		ref,
+	) => {
 	const [attachments, setAttachments] = useState<string[]>([]);
 	const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -348,6 +365,13 @@ export const MessageInput: FC<MessageInputProps> = ({
 		onSubmit,
 		scrollToBottom,
 	});
+
+	// Expose focusInput method via useImperativeHandle
+	useImperativeHandle(ref, () => ({
+		focusInput: () => {
+			textareaRef.current?.focus();
+		},
+	}));
 
 	const handleSubmit = (e: FormEvent) => {
 		e.preventDefault();
@@ -563,4 +587,7 @@ export const MessageInput: FC<MessageInputProps> = ({
 			/>
 		</InputOuterContainer>
 	);
-};
+	},
+);
+
+MessageInput.displayName = "MessageInput";

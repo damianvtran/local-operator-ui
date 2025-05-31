@@ -31,6 +31,7 @@ import { ChatContent } from "./chat-content";
 import { ChatSidebar } from "./chat-sidebar";
 import { ErrorView } from "./error-view";
 import { PlaceholderView } from "./placeholder-view";
+import type { MessageInputHandle } from "./message-input";
 
 /**
  * Props for the ChatPage component
@@ -46,6 +47,7 @@ type ChatProps = Record<string, never>;
  */
 export const ChatPage: FC<ChatProps> = () => {
 	const didAutoScrollRef = React.useRef(false);
+	const messageInputRef = useRef<MessageInputHandle>(null);
 	// Get agent ID from URL parameters using custom hook
 	const { agentId, navigateToAgent } = useAgentRouteParam();
 	const navigate = useNavigate();
@@ -124,8 +126,10 @@ export const ChatPage: FC<ChatProps> = () => {
 
 	// Update the last selected agent ID when the agent ID changes
 	// Force scroll to bottom only when switching to a new conversation
+	// Also, focus the input if the agentId has changed (intentional navigation)
 	useEffect(() => {
 		if (agentId) {
+			const previousAgentId = previousConversationIdRef.current;
 			setLastChatAgentId(agentId);
 
 			// Only scroll if we have a new conversation with loaded messages
@@ -134,6 +138,13 @@ export const ChatPage: FC<ChatProps> = () => {
 				if (!prevMessages || prevMessages.length === 0) {
 					scrollToBottom();
 				}
+			}
+
+			// Focus input if agentId changed and it's not the initial load
+			if (previousAgentId && previousAgentId !== agentId) {
+				Promise.resolve().then(() => {
+					messageInputRef.current?.focusInput();
+				});
 			}
 		}
 	}, [
@@ -160,7 +171,7 @@ export const ChatPage: FC<ChatProps> = () => {
 			previousConversationIdRef.current = agentId;
 		}
 
-		// Scroll to bottom once after messages load
+		// Scroll to bottom once after messages load and focus input
 		if (
 			!didAutoScrollRef.current &&
 			agentId &&
@@ -170,10 +181,14 @@ export const ChatPage: FC<ChatProps> = () => {
 			// Immediately scroll to bottom (scrollTop = 0 in column-reverse)
 			if (messagesContainerRef.current) {
 				messagesContainerRef.current.scrollTop = 0;
-				didAutoScrollRef.current = true;
 			}
+			// Focus the input after messages are loaded and scrolled
+			Promise.resolve().then(() => {
+				messageInputRef.current?.focusInput();
+			});
+			didAutoScrollRef.current = true; // Mark that auto scroll and focus has happened
 		}
-	}, [agentId, isLoadingMessages, messages.length]);
+	}, [agentId, isLoadingMessages, messages.length, scrollToBottom]); // Added scrollToBottom as it's used indirectly via didAutoScrollRef logic
 
 	// Reference to track previous conversation ID
 	const previousConversationIdRef = useRef<string | undefined>(undefined);
@@ -454,6 +469,7 @@ Store messages: ${JSON.stringify(getMessages(conversationId || ""), null, 2)}`;
 				onCancelJob={handleCancelJob}
 				agentData={agentData}
 				refetch={refetch}
+				messageInputRef={messageInputRef}
 			/>
 		);
 	};
