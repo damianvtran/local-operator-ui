@@ -1,5 +1,5 @@
 import { Menu, MenuItem, IconButton, Tooltip } from "@mui/material";
-import { File as FileIcon, FolderOpen, EllipsisVertical, LayoutGrid } from "lucide-react";
+import { File as FileIcon, FolderOpen, MoreHorizontal, LayoutGrid } from "lucide-react";
 import { useState, type MouseEvent } from "react";
 
 /**
@@ -15,7 +15,7 @@ export type FileActionsMenuProps = {
    */
   tooltip?: string;
   /**
-   * Optional: icon to use for the trigger (defaults to MoreVert).
+   * Optional: icon to use for the trigger (defaults to MoreHorizontal).
    */
   icon?: React.ReactNode;
   /**
@@ -114,7 +114,7 @@ export const FileActionsMenu = ({
             boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
           }}
         >
-          {icon ?? <EllipsisVertical size={18} />}
+          {icon ?? <MoreHorizontal size={18} />}
         </IconButton>
       </Tooltip>
       <Menu
