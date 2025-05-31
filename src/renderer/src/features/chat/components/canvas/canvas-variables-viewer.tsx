@@ -346,7 +346,7 @@ export const CanvasVariablesViewer: FC<CanvasVariablesViewerProps> = memo(({
 
 	// Memoize static styles
 	const containerStyles = useMemo(() => ({
-		p: 1.5,
+		p: 3,
 		height: "100%",
 		display: "flex",
 		flexDirection: "column",
@@ -355,15 +355,27 @@ export const CanvasVariablesViewer: FC<CanvasVariablesViewerProps> = memo(({
 
 	const headerStyles = useMemo(() => ({
 		display: "flex",
-		justifyContent: "space-between",
-		alignItems: "center",
+		flexDirection: "column",
 		mb: 1,
 		px: 0.5,
 		flexShrink: 0, // Prevent header from shrinking
 	}), []);
 
+	const titleRowStyles = useMemo(() => ({
+		display: "flex",
+		justifyContent: "space-between",
+		alignItems: "center",
+		mb: 0.5,
+	}), []);
+
 	const titleStyles = useMemo(() => ({
 		fontSize: "0.875rem"
+	}), []);
+
+	const subtitleStyles = useMemo(() => ({
+		fontSize: "0.75rem",
+		color: "text.secondary",
+		fontStyle: "italic",
 	}), []);
 
 	const createButtonStyles = useMemo(() => ({
@@ -419,7 +431,7 @@ export const CanvasVariablesViewer: FC<CanvasVariablesViewerProps> = memo(({
 					No Execution Variables
 				</Typography>
 				<Typography variant="body2" color="text.secondary" sx={emptyStateTextStyles}>
-					This agent currently has no execution variables set.
+					This agent currently has no execution variables set.  When your agent does work for you, it will store things that it runs with code in its memory, and those elements will show up here.
 				</Typography>
 				<Button
 					variant="outlined"
@@ -440,11 +452,16 @@ export const CanvasVariablesViewer: FC<CanvasVariablesViewerProps> = memo(({
 				<Typography variant="body1" fontWeight={500} sx={titleStyles}>
 					Agent Execution Variables
 				</Typography>
-				<Tooltip title="Create New Variable">
-					<IconButton onClick={handleOpenCreateForm} size="small">
-						<PlusCircle size={18} />
-					</IconButton>
-				</Tooltip>
+				<Box sx={titleRowStyles}>
+					<Typography variant="body2" color="text.secondary" sx={subtitleStyles}>
+						This is code memory that the agent uses to store information.
+					</Typography>
+					<Tooltip title="Create New Variable">
+						<IconButton onClick={handleOpenCreateForm} size="small">
+							<PlusCircle size={18} />
+						</IconButton>
+					</Tooltip>
+				</Box>
 			</Box>
 			<VariableListContainer>
 				{variables.map((variable) => (

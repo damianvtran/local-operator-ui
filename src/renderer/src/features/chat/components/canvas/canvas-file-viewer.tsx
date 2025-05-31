@@ -376,7 +376,7 @@ export const CanvasFileViewer: FC<CanvasFileViewerProps> = ({
 	}
 
 	return (
-		<Box sx={{ p: 2, height: "100%", overflowY: "auto" }}>
+		<Box sx={{ p: 3, height: "100%", overflowY: "auto" }}>
 			<Grid container spacing={2}>
 				{memoizedFiles.map((fileDoc) => {
 					const IconComponent = getIconForFileType(fileDoc.type);
