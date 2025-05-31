@@ -45,6 +45,7 @@ const FileAttachmentContainer = styled(Box)(({ theme }) => ({
 	maxWidth: "100%",
 	cursor: "pointer",
 	transition: "all 0.2s ease",
+	position: "relative",
 	"&:hover": {
 		backgroundColor: alpha(
 			theme.palette.mode === "dark"
@@ -54,6 +55,10 @@ const FileAttachmentContainer = styled(Box)(({ theme }) => ({
 		),
 		transform: "translateY(-1px)",
 		boxShadow: `0 2px 5px ${alpha(theme.palette.common.black, theme.palette.mode === "dark" ? 0.15 : 0.1)}`,
+		"& .file-actions-menu": {
+			opacity: 1,
+			visibility: "visible",
+		},
 	},
 	"&:active": {
 		transform: "translateY(0)",
@@ -78,6 +83,13 @@ const FileName = styled(Typography)({
 	"&:hover": {
 		textDecoration: "underline",
 	},
+});
+
+const FileActionsContainer = styled(Box)({
+	marginLeft: 8,
+	opacity: 0,
+	visibility: "hidden",
+	transition: "opacity 0.2s ease, visibility 0.2s ease",
 });
 
 /**
@@ -284,8 +296,8 @@ export const FileAttachment: FC<FileAttachmentProps> = memo(
 						</FileIcon>
 						<FileName variant="body2">{getFileName(file)}</FileName>
 						{isLocalFile && (
-							<Box
-								sx={{ ml: 1 }}
+							<FileActionsContainer
+								className="file-actions-menu"
 								onClick={e => {
 									e.stopPropagation();
 								}}
@@ -296,7 +308,7 @@ export const FileAttachment: FC<FileAttachmentProps> = memo(
 									aria-label="File actions"
 									onShowInCanvas={handleClick}
 								/>
-							</Box>
+							</FileActionsContainer>
 						)}
 					</>
 				)}
