@@ -127,10 +127,11 @@ const StyledMenuItem = styled(MenuItem)(({ theme }) => ({
 
 const VARIABLE_TYPES: ExecutionVariable["type"][] = [
 	"string",
-	"number",
-	"boolean",
-	"object",
-	"array",
+	"int",
+  "float",
+	"bool",
+  "dict",
+  "list",
 ];
 
 type VariableFormDialogProps = {
