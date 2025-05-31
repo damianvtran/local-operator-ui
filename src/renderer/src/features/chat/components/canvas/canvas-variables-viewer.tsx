@@ -19,7 +19,7 @@ import {
 	useUpdateAgentExecutionVariable,
 } from "@shared/hooks/use-agent-execution-variables";
 import { showErrorToast } from "@shared/utils/toast-manager";
-import { Edit2, Minus, Plus, PlusCircle, Trash2 } from "lucide-react";
+import { Copy, Edit2, Minus, Plus, PlusCircle, Trash2 } from "lucide-react";
 import type { FC } from "react";
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { VariableFormDialog } from "./variable-form-dialog";
@@ -142,6 +142,7 @@ const VariableRow: FC<VariableDisplayProps> = memo(
 	({ variable, onEdit, onDelete }) => {
 		const theme = useTheme();
 		const [expanded, setExpanded] = useState(false);
+		const [copied, setCopied] = useState(false);
 
 		// Check if variable type is editable
 		const isEditable = useMemo(
@@ -230,6 +231,20 @@ const VariableRow: FC<VariableDisplayProps> = memo(
 			[onDelete, variable.key],
 		);
 
+		const handleCopy = useCallback(
+			async (e: React.MouseEvent) => {
+				e.stopPropagation();
+				try {
+					await navigator.clipboard.writeText(stringValue);
+					setCopied(true);
+					setTimeout(() => setCopied(false), 2000);
+				} catch (error) {
+					console.error("Failed to copy to clipboard:", error);
+				}
+			},
+			[stringValue],
+		);
+
 		return (
 			<>
 				<VariableItem sx={itemStyles} onClick={handleToggleExpand}>
@@ -242,6 +257,15 @@ const VariableRow: FC<VariableDisplayProps> = memo(
 						<VariableValue variant="body2">{truncatedValue}</VariableValue>
 					</Tooltip>
 					<VariableActions>
+						<Tooltip title={copied ? "Copied!" : "Copy Value"}>
+							<IconButton
+								onClick={handleCopy}
+								size="small"
+								sx={{ mr: 0.25, padding: theme.spacing(0.5) }}
+							>
+								<Copy size={14} />
+							</IconButton>
+						</Tooltip>
 						{isEditable ? (
 							<Tooltip title="Edit Variable">
 								<IconButton
