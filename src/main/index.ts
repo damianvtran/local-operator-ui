@@ -760,7 +760,7 @@ app
 
 	// Register global shortcut for Command Palette
 	// Ensure mainWindow is available and focused before sending IPC message
-	globalShortcut.register("CommandOrControl+P", () => {
+	globalShortcut.register("CommandOrControl+K", () => {
 		if (mainWindow?.isFocused()) {
 			mainWindow.webContents.send("toggle-command-palette");
 		}
