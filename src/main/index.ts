@@ -758,11 +758,21 @@ app
 		updateService?.checkForAllUpdates(true);
 	}, 3000);
 
-	// Register global shortcut for Command Palette
-	// Ensure mainWindow is available and focused before sending IPC message
-	globalShortcut.register("CommandOrControl+K", () => {
-		if (mainWindow?.isFocused()) {
-			mainWindow.webContents.send("toggle-command-palette");
+	// Register local shortcut for Command Palette (only when window is focused)
+	// Use window-level accelerator instead of global shortcut to avoid overriding other apps
+	mainWindow.webContents.on('before-input-event', (event, input) => {
+		if (input.control && input.key.toLowerCase() === 'k' && input.type === 'keyDown') {
+			if (mainWindow?.isFocused() && mainWindow?.isVisible()) {
+				event.preventDefault();
+				mainWindow.webContents.send("toggle-command-palette");
+			}
+		}
+		// Handle Cmd+P on macOS
+		if (input.meta && input.key.toLowerCase() === 'k' && input.type === 'keyDown' && process.platform === 'darwin') {
+			if (mainWindow?.isFocused() && mainWindow?.isVisible()) {
+				event.preventDefault();
+				mainWindow.webContents.send("toggle-command-palette");
+			}
 		}
 	});
 }
