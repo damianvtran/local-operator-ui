@@ -206,7 +206,9 @@ const tourSteps: StepOptions[] = [
 				text: "Next",
 				classes: "shepherd-button-primary",
 				action: function () {
-					const button = document.querySelector('button[data-tour-tag="canvas-documents-view-button"]');
+					const button = document.querySelector(
+						'button[data-tour-tag="canvas-documents-view-button"]',
+					);
 					if (button) {
 						(button as HTMLButtonElement).click();
 					}
@@ -219,7 +221,10 @@ const tourSteps: StepOptions[] = [
 	},
 	{
 		id: "canvas-documents-view",
-		attachTo: { element: 'button[data-tour-tag="canvas-documents-view-button"]', on: "top" },
+		attachTo: {
+			element: 'button[data-tour-tag="canvas-documents-view-button"]',
+			on: "top",
+		},
 		title: "Documents View",
 		text: "The Documents view shows all your open markdown, code, and HTML documents as tabs. You can switch between documents and see dynamic visualizations in HTML created by your agents. Use this view to work with your notes, reports, and agent-generated content.",
 		buttons: [
@@ -234,7 +239,9 @@ const tourSteps: StepOptions[] = [
 				text: "Next",
 				classes: "shepherd-button-primary",
 				action: function () {
-					const button = document.querySelector('button[data-tour-tag="canvas-files-view-button"]');
+					const button = document.querySelector(
+						'button[data-tour-tag="canvas-files-view-button"]',
+					);
 					if (button) {
 						(button as HTMLButtonElement).click();
 					}
@@ -247,7 +254,10 @@ const tourSteps: StepOptions[] = [
 	},
 	{
 		id: "canvas-files-view",
-		attachTo: { element: 'button[data-tour-tag="canvas-files-view-button"]', on: "top" },
+		attachTo: {
+			element: 'button[data-tour-tag="canvas-files-view-button"]',
+			on: "top",
+		},
 		title: "Files View",
 		text: "The Files view lets you browse and open files that your agents have created or that are relevant to your current conversation. Use this to quickly access, preview, and open files in the Canvas workspace.",
 		buttons: [
@@ -255,7 +265,9 @@ const tourSteps: StepOptions[] = [
 				text: "Back",
 				classes: "shepherd-button-secondary",
 				action: function () {
-					const button = document.querySelector('button[data-tour-tag="canvas-documents-view-button"]');
+					const button = document.querySelector(
+						'button[data-tour-tag="canvas-documents-view-button"]',
+					);
 					if (button) {
 						(button as HTMLButtonElement).click();
 					}
@@ -268,7 +280,9 @@ const tourSteps: StepOptions[] = [
 				text: "Next",
 				classes: "shepherd-button-primary",
 				action: function () {
-					const button = document.querySelector('button[data-tour-tag="canvas-variables-view-button"]');
+					const button = document.querySelector(
+						'button[data-tour-tag="canvas-variables-view-button"]',
+					);
 					if (button) {
 						(button as HTMLButtonElement).click();
 					}
@@ -281,15 +295,20 @@ const tourSteps: StepOptions[] = [
 	},
 	{
 		id: "canvas-variables-view",
-		attachTo: { element: 'button[data-tour-tag="canvas-variables-view-button"]', on: "top" },
+		attachTo: {
+			element: 'button[data-tour-tag="canvas-variables-view-button"]',
+			on: "top",
+		},
 		title: "Variables View",
-		text: "The Variables view displays the \"code memory\" that agents have stored during their work. These are technical variables that include results, intermediate values, and other data that agents use to perform tasks. You can inspect and manage these variables here.<br /><br />This section will be most helpful for more technical users who want to understand how agents are working and what they are doing.",
+		text: 'The Variables view displays the "code memory" that agents have stored during their work. These are technical variables that include results, intermediate values, and other data that agents use to perform tasks. You can inspect and manage these variables here.<br /><br />This section will be most helpful for more technical users who want to understand how agents are working and what they are doing.',
 		buttons: [
 			{
 				text: "Back",
 				classes: "shepherd-button-secondary",
 				action: function () {
-					const button = document.querySelector('button[data-tour-tag="canvas-files-view-button"]');
+					const button = document.querySelector(
+						'button[data-tour-tag="canvas-files-view-button"]',
+					);
 					if (button) {
 						(button as HTMLButtonElement).click();
 					}
@@ -302,7 +321,9 @@ const tourSteps: StepOptions[] = [
 				text: "Next",
 				classes: "shepherd-button-primary",
 				action: function () {
-					const closeButton = document.querySelector('button[data-tour-tag="close-canvas-button"]');
+					const closeButton = document.querySelector(
+						'button[data-tour-tag="close-canvas-button"]',
+					);
 					if (closeButton) {
 						(closeButton as HTMLButtonElement).click();
 					}
