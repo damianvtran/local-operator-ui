@@ -18,6 +18,7 @@ import type { AgentListResult } from "@shared/api/local-operator/types";
 import { useAgents } from "@shared/hooks/use-agents";
 import { useClearAgentConversation } from "@shared/hooks/use-clear-agent-conversation";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
+import { useAgentSelectionStore } from "@shared/store/agent-selection-store";
 import {
 	MessageSquare,
 	Settings,
@@ -36,6 +37,7 @@ import type { FC } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useTheme } from "@mui/material/styles";
+import { ConfirmationModal } from "@shared/components/common/confirmation-modal";
 import { DEFAULT_SETTINGS_SECTIONS } from "@features/settings/components/settings-sidebar";
 import { useAgentRouteParam } from "@shared/hooks/use-route-params";
 import { getIconElement } from "@features/command-palette/components/command-palette-utils";
@@ -204,6 +206,7 @@ export const CommandPalette: FC = () => {
 
 	// const navigate = useNavigate(); // Remove redeclaration
 	const { agentId: currentAgentIdFromRoute } = useAgentRouteParam(); // Use hook for agentId
+	const { getLastAgentId } = useAgentSelectionStore();
 	const { data: agentsData } = useAgents(1, 20) as { data?: AgentListResult };
 	const theme = useTheme();
 	const clearConversationMutation = useClearAgentConversation();
@@ -211,9 +214,10 @@ export const CommandPalette: FC = () => {
 	const [selectedIndex, setSelectedIndex] = useState(0);
 	const [localQuery, setLocalQuery] = useState(commandPaletteQuery);
 	const debouncedLocalQuery = useDebounce(localQuery, 200);
+	const [isClearConfirmationOpen, setIsClearConfirmationOpen] = useState(false);
 
-	// currentAgentId will now come from useAgentRouteParam
-	const currentAgentId = currentAgentIdFromRoute;
+	// Use the agent ID from URL or the last selected agent ID
+	const effectiveAgentId = currentAgentIdFromRoute || getLastAgentId("chat");
 	const isOnChatPage = location.pathname.startsWith("/chat"); // Derive isOnChatPage correctly
 
 
@@ -309,11 +313,25 @@ export const CommandPalette: FC = () => {
 	}, [closeCommandPalette, openCreateAgentDialog]);
 
 	const handleClearConversation = useCallback(() => {
-		if (currentAgentId) {
-			clearConversationMutation.mutate({ agentId: currentAgentId });
-			closeCommandPalette();
+		// This will now open the confirmation dialog
+		if (effectiveAgentId) {
+			setIsClearConfirmationOpen(true);
+			// Keep the command palette open until confirmation
 		}
-	}, [currentAgentId, clearConversationMutation, closeCommandPalette]);
+	}, [effectiveAgentId]);
+
+	const confirmActualClearConversation = useCallback(() => {
+		if (effectiveAgentId) {
+			clearConversationMutation.mutate({ agentId: effectiveAgentId });
+		}
+		setIsClearConfirmationOpen(false);
+		closeCommandPalette(); // Close palette after action
+	}, [effectiveAgentId, clearConversationMutation, closeCommandPalette]);
+
+	const cancelClearConversation = useCallback(() => {
+		setIsClearConfirmationOpen(false);
+		// Don't close command palette here, user might want to select another action
+	}, []);
 
 
 	const handleToggleCanvas = useCallback(() => {
@@ -341,7 +359,7 @@ export const CommandPalette: FC = () => {
 		});
 
 		// Clear Conversation - only available on chat page with agent ID
-		if (isOnChatPage && currentAgentId) {
+		if (isOnChatPage && effectiveAgentId) {
 			items.push({
 				id: "clear-conversation",
 				type: "clear-conversation",
@@ -365,7 +383,7 @@ export const CommandPalette: FC = () => {
 		}
 
 		return items;
-	}, [isOnChatPage, currentAgentId, isCanvasOpen, handleCreateAgent, handleClearConversation, handleToggleCanvas]);
+	}, [isOnChatPage, effectiveAgentId, isCanvasOpen, handleCreateAgent, handleClearConversation, handleToggleCanvas]);
 
 	const handleItemClick = useCallback(
 		(item: CommandPaletteItem) => {
@@ -526,6 +544,16 @@ export const CommandPalette: FC = () => {
 				open={isCreateAgentDialogOpen} // Controlled by global state
 				onClose={closeCreateAgentDialog} // Controlled by global state
 				onAgentCreated={handleAgentCreated}
+			/>
+			<ConfirmationModal
+				open={isClearConfirmationOpen}
+				title="Clear Conversation"
+				message="Are you sure you want to clear this conversation? This action cannot be undone and all messages will be permanently deleted."
+				confirmText="Clear"
+				cancelText="Cancel"
+				isDangerous
+				onConfirm={confirmActualClearConversation}
+				onCancel={cancelClearConversation}
 			/>
 		</>
 	);
