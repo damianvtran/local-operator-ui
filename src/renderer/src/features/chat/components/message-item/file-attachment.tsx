@@ -2,11 +2,12 @@ import { faFile } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, Typography, alpha } from "@mui/material";
 import { styled } from "@mui/material/styles";
-import { useCanvasStore } from "@shared/store/canvas-store"; // Added back useCanvasStore
+import { useCanvasStore } from "@shared/store/canvas-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
+import { FileActionsMenu } from "@shared/components/common/file-actions-menu";
 import type { FC } from "react";
 import { memo, useCallback } from "react";
-import { getFileTypeFromPath } from "../../utils/file-types"; // Added import for new utility
+import { getFileTypeFromPath } from "../../utils/file-types";
 import { isCanvasSupported } from "../../utils/is-canvas-supported";
 /**
  * Props for the FileAttachment component (base)
@@ -249,16 +250,19 @@ export const FileAttachment: FC<FileAttachmentProps> = memo(
 		}, [file, onClick, setCanvasOpen, setViewMode, conversationId]);
 
 		const isPastedImage = file.startsWith("data:image/");
+		const isLocalFile =
+			!file.startsWith("data:") && !file.startsWith("http");
+		const normalizedPath = file.startsWith("file://")
+			? file.substring(7)
+			: file;
 		return (
 			<FileAttachmentContainer
 				onClick={handleClick}
 				title={`Click to open ${getFileName(file)}`}
 				sx={{
-					// Adjust padding if it's an image to give it more space, or remove padding
 					padding: isPastedImage ? 0 : "8px 12px",
-					// If it's an image, let it define its own aspect ratio, otherwise fix height for icon/text
-					height: isPastedImage ? "auto" : "auto", // Keep auto or set specific for icon
-					maxWidth: isPastedImage ? "200px" : "100%", // Allow images to be a bit wider if needed
+					height: isPastedImage ? "auto" : "auto",
+					maxWidth: isPastedImage ? "200px" : "100%",
 				}}
 			>
 				{isPastedImage ? (
@@ -268,8 +272,8 @@ export const FileAttachment: FC<FileAttachmentProps> = memo(
 						style={{
 							display: "block",
 							maxWidth: "100%",
-							maxHeight: "150px", // Max height for the preview in message
-							borderRadius: "8px", // Match container's border radius
+							maxHeight: "150px",
+							borderRadius: "8px",
 							objectFit: "contain",
 						}}
 					/>
@@ -279,6 +283,20 @@ export const FileAttachment: FC<FileAttachmentProps> = memo(
 							<FontAwesomeIcon icon={faFile} size="sm" />
 						</FileIcon>
 						<FileName variant="body2">{getFileName(file)}</FileName>
+						{isLocalFile && (
+							<Box
+								sx={{ ml: 1 }}
+								onClick={e => {
+									e.stopPropagation();
+								}}
+							>
+								<FileActionsMenu
+									filePath={normalizedPath}
+									tooltip="File actions"
+									aria-label="File actions"
+								/>
+							</Box>
+						)}
 					</>
 				)}
 			</FileAttachmentContainer>

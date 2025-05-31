@@ -10,6 +10,7 @@ const api = {
 	readFile: (filePath: string) => ipcRenderer.invoke("read-file", filePath),
 
 	openExternal: (url: string) => ipcRenderer.invoke("open-external", url),
+	showItemInFolder: (filePath: string) => ipcRenderer.invoke("show-item-in-folder", filePath),
 
 	// Session storage methods
 	session: {

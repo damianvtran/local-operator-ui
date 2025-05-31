@@ -428,6 +428,14 @@ app
 			}
 		});
 
+		ipcMain.handle("show-item-in-folder", async (_, filePath) => {
+			try {
+				shell.showItemInFolder(filePath);
+			} catch (error) {
+				console.error("Error showing item in folder:", error);
+			}
+		});
+
 		// --- Directory Selection IPC Handler ---
 		ipcMain.handle("select-directory", async () => {
 			// Ensure mainWindow is available
