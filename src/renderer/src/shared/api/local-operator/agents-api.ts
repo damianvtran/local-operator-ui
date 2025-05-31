@@ -8,6 +8,8 @@ import type {
 	AgentListResult,
 	AgentUpdate,
 	CRUDResponse,
+	ExecutionVariable,
+	ExecutionVariablesResponse,
 } from "./types";
 
 /**
@@ -447,5 +449,174 @@ export const AgentsApi = {
 		}
 
 		return response.json() as Promise<CRUDResponse<AgentDetails>>;
+	},
+
+	/**
+	 * List agent execution variables
+	 * Retrieve all execution variables for a specific agent.
+	 *
+	 * @param baseUrl - The base URL of the Local Operator API
+	 * @param agentId - ID of the agent
+	 * @returns Promise resolving to the execution variables list response
+	 */
+	async listAgentExecutionVariables(
+		baseUrl: string,
+		agentId: string,
+	): Promise<CRUDResponse<ExecutionVariablesResponse>> {
+		const response = await fetch(
+			`${baseUrl}/v1/agents/${agentId}/execution-variables`,
+			{
+				method: "GET",
+				headers: {
+					Accept: "application/json",
+				},
+			},
+		);
+
+		if (!response.ok) {
+			throw new Error(
+				`List agent execution variables request failed: ${response.status} ${response.statusText}`,
+			);
+		}
+
+		return response.json() as Promise<CRUDResponse<ExecutionVariablesResponse>>;
+	},
+
+	/**
+	 * Create an agent execution variable
+	 * Create a new execution variable for a specific agent.
+	 *
+	 * @param baseUrl - The base URL of the Local Operator API
+	 * @param agentId - ID of the agent
+	 * @param variableData - The execution variable data to create
+	 * @returns Promise resolving to the created execution variable response
+	 */
+	async createAgentExecutionVariable(
+		baseUrl: string,
+		agentId: string,
+		variableData: ExecutionVariable,
+	): Promise<CRUDResponse<ExecutionVariable>> {
+		const response = await fetch(
+			`${baseUrl}/v1/agents/${agentId}/execution-variables`,
+			{
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					Accept: "application/json",
+				},
+				body: JSON.stringify(variableData),
+			},
+		);
+
+		if (!response.ok) {
+			throw new Error(
+				`Create agent execution variable request failed: ${response.status} ${response.statusText}`,
+			);
+		}
+
+		return response.json() as Promise<CRUDResponse<ExecutionVariable>>;
+	},
+
+	/**
+	 * Get an agent execution variable
+	 * Retrieve a specific execution variable for an agent by its key.
+	 *
+	 * @param baseUrl - The base URL of the Local Operator API
+	 * @param agentId - ID of the agent
+	 * @param variableKey - Key of the execution variable
+	 * @returns Promise resolving to the execution variable response
+	 */
+	async getAgentExecutionVariable(
+		baseUrl: string,
+		agentId: string,
+		variableKey: string,
+	): Promise<CRUDResponse<ExecutionVariable>> {
+		const response = await fetch(
+			`${baseUrl}/v1/agents/${agentId}/execution-variables/${variableKey}`,
+			{
+				method: "GET",
+				headers: {
+					Accept: "application/json",
+				},
+			},
+		);
+
+		if (!response.ok) {
+			throw new Error(
+				`Get agent execution variable request failed: ${response.status} ${response.statusText}`,
+			);
+		}
+
+		return response.json() as Promise<CRUDResponse<ExecutionVariable>>;
+	},
+
+	/**
+	 * Update an agent execution variable
+	 * Update an existing execution variable for a specific agent.
+	 *
+	 * @param baseUrl - The base URL of the Local Operator API
+	 * @param agentId - ID of the agent
+	 * @param variableKey - Key of the execution variable to update
+	 * @param variableData - The execution variable data to update
+	 * @returns Promise resolving to the updated execution variable response
+	 */
+	async updateAgentExecutionVariable(
+		baseUrl: string,
+		agentId: string,
+		variableKey: string,
+		variableData: ExecutionVariable,
+	): Promise<CRUDResponse<ExecutionVariable>> {
+		const response = await fetch(
+			`${baseUrl}/v1/agents/${agentId}/execution-variables/${variableKey}`,
+			{
+				method: "PATCH",
+				headers: {
+					"Content-Type": "application/json",
+					Accept: "application/json",
+				},
+				body: JSON.stringify(variableData),
+			},
+		);
+
+		if (!response.ok) {
+			throw new Error(
+				`Update agent execution variable request failed: ${response.status} ${response.statusText}`,
+			);
+		}
+
+		return response.json() as Promise<CRUDResponse<ExecutionVariable>>;
+	},
+
+	/**
+	 * Delete an agent execution variable
+	 * Delete an execution variable for a specific agent by its key.
+	 *
+	 * @param baseUrl - The base URL of the Local Operator API
+	 * @param agentId - ID of the agent
+	 * @param variableKey - Key of the execution variable to delete
+	 * @returns Promise resolving to the deletion response
+	 */
+	async deleteAgentExecutionVariable(
+		baseUrl: string,
+		agentId: string,
+		variableKey: string,
+	): Promise<CRUDResponse> {
+		const response = await fetch(
+			`${baseUrl}/v1/agents/${agentId}/execution-variables/${variableKey}`,
+			{
+				method: "DELETE",
+				headers: {
+					Accept: "application/json",
+				},
+			},
+		);
+
+		if (!response.ok) {
+			throw new Error(
+				`Delete agent execution variable request failed: ${response.status} ${response.statusText}`,
+			);
+		}
+
+		return response.json() as Promise<CRUDResponse>;
 	},
 };

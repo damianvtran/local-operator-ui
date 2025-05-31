@@ -6,14 +6,16 @@ import {
 	alpha,
 	styled,
 } from "@mui/material";
+import type { CanvasViewMode } from "@shared/store/canvas-store";
 import { useCanvasStore } from "@shared/store/canvas-store";
-import { FileText, FolderOpen, X } from "lucide-react";
+import { FileText, FolderOpen, ListTree, X } from "lucide-react";
 import { memo, useCallback, useState } from "react";
 import type { FC } from "react";
 import type { CanvasDocument } from "../../types/canvas";
 import { CanvasContent } from "./canvas-content";
 import { CanvasFileViewer } from "./canvas-file-viewer";
 import { CanvasTabs } from "./canvas-tabs";
+import { CanvasVariablesViewer } from "./canvas-variables-viewer";
 
 type CanvasProps = {
 	/**
@@ -123,7 +125,7 @@ const CanvasComponent: FC<CanvasProps> = ({
 	const currentView = canvasState?.viewMode ?? "documents";
 
 	const setCurrentView = useCallback(
-		(viewMode: "documents" | "files") => {
+		(viewMode: CanvasViewMode) => {
 			if (conversationId) {
 				setViewMode(conversationId, viewMode);
 			}
@@ -253,6 +255,31 @@ const CanvasComponent: FC<CanvasProps> = ({
 							<FolderOpen size={16} />
 						</IconButton>
 					</Tooltip>
+					<Tooltip title="Variables View" arrow placement="top">
+						{/* @ts-ignore MUI Tooltip a11y issue */}
+						<IconButton
+							onClick={() => setCurrentView("variables")}
+							size="large"
+							sx={(theme) => ({
+								color:
+									currentView === "variables"
+										? theme.palette.primary.main
+										: theme.palette.text.secondary,
+								backgroundColor:
+									currentView === "variables"
+										? alpha(theme.palette.primary.main, 0.08)
+										: "transparent",
+								"&:hover": {
+									backgroundColor: alpha(theme.palette.primary.main, 0.12),
+								},
+								width: 36,
+								height: 36,
+								padding: 0,
+							})}
+						>
+							<ListTree size={16} />
+						</IconButton>
+					</Tooltip>
 					<Tooltip
 						title="Close Canvas"
 						arrow
@@ -314,8 +341,12 @@ const CanvasComponent: FC<CanvasProps> = ({
 					onSwitchToDocumentView={handleSwitchToDocumentView}
 				/>
 			)}
-			{/* Placeholder if no conversation context for files view */}
-			{currentView === "files" && !conversationId && (
+			{currentView === "variables" && conversationId && (
+				<CanvasVariablesViewer conversationId={conversationId} />
+			)}
+			{/* Placeholder if no conversation context for files or variables view */}
+			{(currentView === "files" || currentView === "variables") &&
+				!conversationId && (
 				<Box
 					sx={{
 						display: "flex",
