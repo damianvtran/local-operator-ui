@@ -23,6 +23,7 @@ import React, {
 	useCallback,
 	useRef,
 } from "react";
+// Removed incorrect import: import type { ElectronApi } from "@preload/index";
 import type { FC } from "react";
 import { useNavigate } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
@@ -195,6 +196,89 @@ export const ChatPage: FC<ChatProps> = () => {
 			});
 		}
 	}, [conversationId, queryClient]);
+
+	// Listen for messages sent from the popup
+	useEffect(() => {
+		const handlePopupMessage = (...args: unknown[]) => {
+			// args[0] is the event, args[1] is the data payload
+			if (args.length < 2) return;
+
+			const data = args[1] as {
+				agentId: string;
+				jobId: string | null;
+				message: { content: string; attachments: string[] };
+			};
+
+			// Ensure data and conversationId are valid before proceeding
+			if (data && typeof data === "object" && data.agentId === conversationId) {
+				// 1. Construct and add the user message to the local store
+				const userMessageFromPopup: Message = {
+					id: uuidv4(), // Generate a new ID for this message instance
+					role: "user",
+					message: data.message.content,
+					timestamp: new Date(),
+					files:
+						data.message.attachments.length > 0
+							? data.message.attachments
+							: undefined,
+				};
+				addMessage(conversationId, userMessageFromPopup);
+
+				// 2. Set the current job ID to start polling
+				if (data.jobId) {
+					setCurrentJobId(data.jobId);
+				} else {
+					// Handle case where jobId might be null (e.g., if backend failed to create job)
+					// You might want to show an error message in the chat here
+					const errorMessage: Message = {
+						id: uuidv4(),
+						role: "system",
+						message:
+							"Failed to initiate job for message sent from popup.",
+						timestamp: new Date(),
+						status: "error",
+					};
+					addMessage(conversationId, errorMessage);
+					setIsLoading(false); // Ensure loading state is reset
+				}
+
+				// 3. Invalidate the conversation messages query to refetch from backend
+				queryClient.invalidateQueries({
+					queryKey: [...conversationMessagesQueryKey, conversationId],
+				});
+
+				// 4. Scroll to bottom
+				scrollToBottom();
+			}
+		};
+
+		// Access ipcRenderer through window.api as defined in src/preload/index.d.ts
+		let cleanupListener: (() => void) | undefined;
+
+		if (window.api?.ipcRenderer) {
+			cleanupListener = window.api.ipcRenderer.on(
+				"message-sent-from-popup",
+				handlePopupMessage,
+			);
+		} else {
+			console.warn(
+				"window.api.ipcRenderer not found. Messages from popup will not be handled in ChatPage.",
+			);
+		}
+
+		return () => {
+			if (cleanupListener) {
+				cleanupListener();
+			}
+		};
+	}, [
+		conversationId,
+		addMessage,
+		setCurrentJobId,
+		queryClient,
+		scrollToBottom,
+		setIsLoading, // Added setIsLoading to dependencies
+	]);
 
 	const handleOpenOptions = useCallback(() => {
 		setIsOptionsSidebarOpen(true);

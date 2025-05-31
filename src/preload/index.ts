@@ -158,6 +158,29 @@ const api = {
 	/** Gets the user's home directory path */
 	getHomeDirectory: (): Promise<string> =>
 		ipcRenderer.invoke("get-home-directory"),
+	
+	// Methods for popup window interaction (hotkey config and message sending)
+	sendHotkey: (hotkey: string): void => {
+		// This is a direct send, ensure 'set-hotkey' is a trusted channel.
+		// For more security, could validate hotkey format here too.
+		if (typeof hotkey === 'string') {
+			ipcRenderer.send('set-hotkey', hotkey);
+		} else {
+			console.error('[Preload API] Invalid hotkey provided to sendHotkey:', hotkey);
+		}
+	},
+	sendPopupMessage: (message: { content: string; attachments: string[] }): void => {
+		if (
+			message &&
+			typeof message.content === 'string' &&
+			Array.isArray(message.attachments) &&
+			message.attachments.every(att => typeof att === 'string')
+		) {
+			ipcRenderer.send('popup-send-message', message);
+		} else {
+			console.error('[Preload API] Invalid message object provided to sendPopupMessage:', message);
+		}
+	},
 
 	// Add methods for installer
 	ipcRenderer: {

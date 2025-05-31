@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Popup Input</title>
+    <style>
+      /* Basic reset and body styling */
+      body, html {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden; /* Prevent scrollbars on the body itself */
+        font-family: sans-serif; /* Basic font */
+        background-color: transparent; /* Allow for potentially themed background from React */
+      }
+      #root {
+        width: 100%;
+        height: 100%;
+        display: flex; /* Allow content to fill */
+        flex-direction: column;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <!-- Entry point for the React app for this popup -->
+    <script type="module" src="/src/popup-main.tsx"></script>
+  </body>
+</html>

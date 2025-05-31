@@ -17,6 +17,9 @@ export type StoreData = {
 	oauth_access_token?: string;
 	oauth_id_token?: string;
 	oauth_expiry?: number;
+
+	// Global hotkey
+	global_hotkey?: string;
 };
 
 /**

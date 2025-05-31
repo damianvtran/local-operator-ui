@@ -18,7 +18,10 @@ export default defineConfig({
 		],
 	},
 	preload: {
-		plugins: [externalizeDepsPlugin(), bytecodePlugin()],
+		input: {
+			index: resolve(__dirname, "src/preload/index.ts"), // Only the main preload script is needed
+		},
+		plugins: [externalizeDepsPlugin()], 
 	},
 	renderer: {
 		resolve: {
@@ -34,15 +37,14 @@ export default defineConfig({
 			},
 		},
 		plugins: [react(), tsconfigPaths()],
-		input: {
-			index: resolve(__dirname, "src/renderer/index.html"),
-			installer: resolve(__dirname, "src/renderer/installer.html"),
-		},
+		// Removed renderer.input to avoid conflict, using build.rollupOptions.input directly
 		build: {
 			rollupOptions: {
 				input: {
 					index: resolve(__dirname, "src/renderer/index.html"),
 					installer: resolve(__dirname, "src/renderer/installer.html"),
+
+					popup: resolve(__dirname, "src/renderer/popup.html"), // Added popup.html here
 				},
 			},
 		},

@@ -128,6 +128,10 @@ declare global {
 			selectDirectory: () => Promise<string | undefined>;
 			/** Gets the user's home directory path */
 			getHomeDirectory: () => Promise<string>;
+
+			// Methods for popup window interaction
+			sendHotkey: (hotkey: string) => void;
+			sendPopupMessage: (message: { content: string; attachments: string[] }) => void;
 		};
 	}
 }

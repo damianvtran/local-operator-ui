@@ -1,17 +1,20 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url"; // Added pathToFileURL
 import { electronApp, is, optimizer } from "@electron-toolkit/utils";
 import {
 	BrowserWindow,
 	Menu,
 	app,
 	dialog,
+	globalShortcut, // Added globalShortcut
 	ipcMain,
 	nativeImage,
 	shell,
 } from "electron";
 import { PostHog } from "posthog-node";
 import icon from "../../resources/icon.png?asset";
+import type { Agent, PaginatedAgentList, RadientApiResponse } from "../renderer/src/shared/api/radient/types";
 import {
 	BackendInstaller,
 	BackendServiceManager,
@@ -151,7 +154,9 @@ function createWindow(): BrowserWindow {
 		title: "Local Operator",
 		icon,
 		webPreferences: {
-			preload: join(__dirname, "../preload/index.js"),
+			preload: is.dev 
+				? join(__dirname, "../../out/preload/index.js") 
+				: join(__dirname, "../preload/index.js"), // Revised dev path using __dirname
 			sandbox: false,
 			// Only enable devTools when running with 'pnpm dev'
 			// Disable for 'pnpm start' and production builds
@@ -275,6 +280,9 @@ try {
 			oauth_access_token: undefined,
 			oauth_id_token: undefined,
 			oauth_expiry: undefined,
+
+			// Global hotkey
+			global_hotkey: "CommandOrControl+Shift+O", // Default hotkey
 		},
 	});
 	logger.info("Session store initialized successfully.", LogFileType.BACKEND);
@@ -321,6 +329,132 @@ const oauthService = new OAuthService(sessionStore);
 // Some APIs can only be used after this event occurs.
 // Define mainWindow at a higher scope to be accessible in event handlers
 let mainWindow: BrowserWindow | null = null;
+let popupWindow: BrowserWindow | null = null; // Added popupWindow
+
+
+// --- Popup Window Creation ---
+function createPopupWindow(): void {
+	if (popupWindow && !popupWindow.isDestroyed()) {
+		popupWindow.focus();
+		return;
+	}
+
+	popupWindow = new BrowserWindow({
+		width: 480, // Increased width for MessageInput
+		height: 420, // Increased height for MessageInput
+    frame: false,
+		alwaysOnTop: true,
+    resizable: false, // Keep non-resizable for now, can be changed
+		movable: true, // Allow moving the window
+		show: false, // Start hidden
+		
+		skipTaskbar: true, // Don't show in taskbar
+		webPreferences: {
+			nodeIntegration: false, 
+			contextIsolation: true, 
+			preload: is.dev 
+				? join(__dirname, "../../out/preload/index.js") // Use main preload (index.js)
+				: join(__dirname, "../preload/index.js"),       // Use main preload (index.js)
+			sandbox: false, 
+			webSecurity: true, 
+		},
+	});
+
+	// Load popup.html from dev server in development, or from file in production
+	if (is.dev && process.env.ELECTRON_RENDERER_URL) {
+		// Open DevTools for the popup window in development for debugging
+		if (popupWindow && popupWindow.webContents && !popupWindow.webContents.isDevToolsOpened()) {
+			popupWindow.webContents.openDevTools({ mode: 'detach' });
+		}
+		// Ensure ELECTRON_RENDERER_URL is treated as a base URL
+		const devServerBaseUrl = process.env.ELECTRON_RENDERER_URL.endsWith('/')
+			? process.env.ELECTRON_RENDERER_URL
+			: `${process.env.ELECTRON_RENDERER_URL}/`;
+		const popupDevUrl = new URL("popup.html", devServerBaseUrl).href;
+		popupWindow.loadURL(popupDevUrl);
+		logger.info(`Popup window loading from dev server: ${popupDevUrl}`, LogFileType.BACKEND);
+	} else {
+		const popupHtmlPath = join(__dirname, "../renderer/popup.html");
+		const popupFileUrl = pathToFileURL(popupHtmlPath).href;
+		popupWindow.loadURL(popupFileUrl);
+		logger.info(`Popup window loading from file: ${popupFileUrl}`, LogFileType.BACKEND);
+	}
+
+	popupWindow.on("closed", () => {
+		popupWindow = null;
+	});
+
+	// Hide the popup window when it loses focus
+	popupWindow.on("blur", () => {
+		if (popupWindow && popupWindow.isVisible()) {
+			popupWindow.hide();
+		}
+	});
+}
+
+// --- Global Shortcut Registration ---
+function registerGlobalShortcut(hotkeyToRegister = "CommandOrControl+Shift+O"): void {
+	globalShortcut.unregisterAll(); // Unregister any existing shortcuts
+
+	const success = globalShortcut.register(hotkeyToRegister, () => {
+		if (!popupWindow || popupWindow.isDestroyed()) {
+			createPopupWindow();
+		}
+
+		// This check is important because createPopupWindow is async in nature with loadFile
+		// We need to ensure popupWindow is valid before interacting
+		if (popupWindow && !popupWindow.isDestroyed()) {
+			if (popupWindow.isVisible()) {
+				popupWindow.hide();
+			} else {
+				// Ensure the window is ready before showing, especially if newly created
+				if (popupWindow.webContents.isLoading()) {
+					popupWindow.once("ready-to-show", () => {
+						popupWindow?.show();
+						popupWindow?.focus();
+					});
+				} else {
+					popupWindow.show();
+					popupWindow.focus();
+				}
+			}
+		} else {
+			// Fallback if popupWindow is still not available (e.g. creation failed)
+			// This might happen if createPopupWindow() was called but didn't complete successfully
+			// or if it was destroyed right after creation.
+			logger.warn("Popup window not available to show/hide.", LogFileType.BACKEND);
+			// Attempt to create it again, then show.
+			createPopupWindow(); 
+			if (popupWindow && !popupWindow.isDestroyed()) {
+				if (popupWindow.webContents.isLoading()) {
+					popupWindow.once("ready-to-show", () => {
+						popupWindow?.show();
+						popupWindow?.focus();
+					});
+				} else {
+					popupWindow.show();
+					popupWindow.focus();
+				}
+			}
+		}
+	});
+
+	if (!success) {
+		logger.error(
+			`Failed to register global shortcut: ${hotkeyToRegister}`,
+			LogFileType.BACKEND,
+		);
+		dialog.showErrorBox(
+			"Hotkey Registration Failed",
+			`Could not register the hotkey "${hotkeyToRegister}". It might be in use by another application or an invalid combination.`,
+		);
+	} else {
+		logger.info(
+			`Global shortcut registered: ${hotkeyToRegister}`,
+			LogFileType.BACKEND,
+		);
+	}
+}
 
 // --- Single Instance Lock ---
 const gotTheLock = app.requestSingleInstanceLock();
@@ -727,6 +861,163 @@ app
 		// Initial window + update service setup
 		setupMainWindowWithUpdateService();
 
+		// Create the popup window (it starts hidden) and register the global shortcut
+		// Deferring popup creation until first hotkey press is also an option
+		// createPopupWindow(); // Create it initially but hidden
+		
+		// Load saved hotkey or use default, then register
+		const OLD_DEFAULT_HOTKEY = "CommandOrControl+Shift+P";
+		const NEW_DEFAULT_HOTKEY = "CommandOrControl+Shift+O";
+
+		let currentHotkeySetting = sessionStore.get("global_hotkey") as string | undefined;
+
+		// Migration: If the stored hotkey is the old default, update it to the new default.
+		if (currentHotkeySetting === OLD_DEFAULT_HOTKEY) {
+			logger.info(
+				`Migrating stored hotkey from old default "${OLD_DEFAULT_HOTKEY}" to new default "${NEW_DEFAULT_HOTKEY}".`,
+				LogFileType.BACKEND,
+			);
+			sessionStore.set("global_hotkey", NEW_DEFAULT_HOTKEY);
+			currentHotkeySetting = NEW_DEFAULT_HOTKEY;
+		} else if (!currentHotkeySetting) {
+			// If no hotkey is stored at all (e.g. very first run or cleared store),
+			// ensure it's initialized to the new default.
+			// The store defaults should handle this, but this is an explicit safeguard.
+			logger.info(
+				`No hotkey stored, ensuring it is set to default "${NEW_DEFAULT_HOTKEY}".`,
+				LogFileType.BACKEND,
+			);
+			// sessionStore.set("global_hotkey", NEW_DEFAULT_HOTKEY); // This is already handled by store defaults.
+			currentHotkeySetting = NEW_DEFAULT_HOTKEY;
+		}
+		// If currentHotkeySetting was a user-customized value (neither old default nor empty), it remains as is.
+		
+		registerGlobalShortcut(currentHotkeySetting || NEW_DEFAULT_HOTKEY); // Use stored/migrated/new default, with a final fallback.
+
+
+		// IPC handler for setting a new hotkey from renderer process
+		ipcMain.on("set-hotkey", (_event, hotkey: string) => {
+			if (typeof hotkey === "string" && hotkey.length > 0) {
+				logger.info(`Received set-hotkey event with hotkey: ${hotkey}`, LogFileType.BACKEND);
+				sessionStore.set("global_hotkey", hotkey);
+				registerGlobalShortcut(hotkey);
+			} else {
+				logger.warn(`Received invalid hotkey value: ${hotkey}`, LogFileType.BACKEND);
+			}
+		});
+
+		// IPC handler for messages sent from the popup's MessageInput
+		ipcMain.on('popup-send-message', async (_event, message: { content: string; attachments: string[] }) => {
+			logger.info(
+				`Received message from popup: Content="${message.content}", Attachments=${message.attachments.length}`,
+				LogFileType.BACKEND
+			);
+
+			try {
+				// 1. Fetch agents
+
+				logger.info('1', LogFileType.BACKEND);
+				const agentsApiUrl = `${backendConfig.VITE_LOCAL_OPERATOR_API_URL}/v1/agents`; // Corrected path
+				logger.info(`Fetching agents from: ${agentsApiUrl}`, LogFileType.BACKEND);
+				const agentsResponse = await fetch(agentsApiUrl);
+				if (!agentsResponse.ok) {
+					throw new Error(`Failed to fetch agents: ${agentsResponse.status} ${agentsResponse.statusText}`);
+				}
+				// Assuming the response is a JSON array of agent objects
+				// const agents = (await agentsResponse.json()) as Agent[];
+				const result = await agentsResponse.json()
+        const agents = result.result.agents
+        console.log({1:result, 2: result.result, 3: result.result.agents})
+				logger.info(`Fetched ${agents.length} agents.`, LogFileType.BACKEND);
+
+				if (agents.length === 0) {
+					logger.warn("No agents available to send message to.", LogFileType.BACKEND);
+					dialog.showErrorBox("No Agents", "There are no agents available to send the message to.");
+					return;
+				}
+
+				const firstAgent = agents[0];
+				logger.info(`Selected first agent: ID=${firstAgent.id}`, LogFileType.BACKEND);
+
+				// 2. Send message to the first agent
+				logger.info('2', LogFileType.BACKEND);
+				// Assuming an endpoint like /api/v1/jobs or /api/v1/agents/{agent_id}/chat
+				// 2. Send message to the first agent using /v1/chat/agents/{agentId}/async
+				const sendMessageApiUrl = `${backendConfig.VITE_LOCAL_OPERATOR_API_URL}/v1/chat/agents/${firstAgent.id}/async`;
+				
+				// Construct payload according to AgentChatRequest type
+				const messagePayload: {
+					hosting: string;
+					model: string;
+					prompt: string;
+					stream?: boolean;
+					persist_conversation?: boolean;
+					attachments?: string[];
+					// options?: ChatOptions; // Not including options for simplicity now
+				} = {
+					hosting: firstAgent.hosting || "",
+					model: firstAgent.model || "",
+					prompt: message.content,
+					attachments: message.attachments.length > 0 ? message.attachments : undefined,
+					stream: false, // Default, can be omitted
+					persist_conversation: true, // Assuming we want to save this message
+				};
+
+				if (!firstAgent.hosting) {
+					logger.warn(
+						`Agent ${firstAgent.id} is missing 'hosting' information. Defaulting to empty string.`,
+						LogFileType.BACKEND,
+					);
+				}
+				if (!firstAgent.model) {
+					logger.warn(
+						`Agent ${firstAgent.id} is missing 'model' information. Defaulting to empty string.`,
+						LogFileType.BACKEND,
+					);
+				}
+
+				logger.info(`Sending message to agent ${firstAgent.id} via: ${sendMessageApiUrl} with payload: ${JSON.stringify(messagePayload)}`, LogFileType.BACKEND);
+				const sendMessageResponse = await fetch(sendMessageApiUrl, {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+					},
+					body: JSON.stringify(messagePayload),
+				});
+
+				if (!sendMessageResponse.ok) {
+					const errorBody = await sendMessageResponse.text();
+					throw new Error(`Failed to send message to agent: ${sendMessageResponse.status} ${sendMessageResponse.statusText} - ${errorBody}`);
+				}
+
+				const jobResult = await sendMessageResponse.json();
+				logger.info(`Message sent successfully to agent ${firstAgent.id}. Job ID: ${jobResult.id || 'N/A'}`, LogFileType.BACKEND);
+				
+				// Notify the main window's renderer about the new message/job
+				if (mainWindow) {
+					mainWindow.webContents.send('message-sent-from-popup', {
+						agentId: firstAgent.id,
+						jobId: jobResult.id || null, // Or however the job ID is returned
+						message, // The original message content and attachments
+					});
+				}
+
+			} catch (error) {
+				logger.error("Error processing message from popup:", LogFileType.BACKEND, error);
+				const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
+				dialog.showErrorBox("Error Sending Message", `Could not send message from popup: ${errorMessage}`);
+			} finally {
+				// Focus main window and hide popup regardless of success/failure of sending
+				if (mainWindow) {
+					if (mainWindow.isMinimized()) mainWindow.restore();
+					mainWindow.focus();
+				}
+				if (popupWindow && popupWindow.isVisible()) {
+					popupWindow.hide();
+				}
+			}
+		});
+
 		app.on("activate", () => {
 			// On macOS it's common to re-create a window in the app when the
 			// dock icon is clicked and there are no other windows open.
@@ -778,6 +1069,10 @@ app.on("window-all-closed", () => {
 
 // Stop backend service when app is quitting
 app.on("will-quit", async (event) => {
+	// Unregister all shortcuts when the application is about to quit.
+	globalShortcut.unregisterAll();
+	logger.info("Unregistered all global shortcuts.", LogFileType.BACKEND);
+
 	// Check if backend manager is disabled
 	const isBackendManagerDisabled =
 		process.env.VITE_DISABLE_BACKEND_MANAGER === "true";
