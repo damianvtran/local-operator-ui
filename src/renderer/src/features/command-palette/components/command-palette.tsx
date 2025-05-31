@@ -495,7 +495,7 @@ export const CommandPalette: FC = () => {
 						autoFocus
 						fullWidth
 						variant="standard"
-						placeholder="Search agents and pages..."
+						placeholder="Search actions, agents, and pages"
 						value={localQuery}
 						onChange={handleQueryChange}
 						InputProps={textFieldInputProps}
