@@ -19,7 +19,7 @@ import {
 	BotMessageSquare,
 	Cog,
 	FileText,
-	Search as LucideSearch, // Renamed to avoid conflict with HTML Search type
+	Search as LucideSearch,
 	Users,
 	Waypoints,
 	X,
@@ -29,6 +29,9 @@ import type { FC } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "@mui/material/styles";
+import { DEFAULT_SETTINGS_SECTIONS } from "@features/settings/components/settings-sidebar";
+import { getIconElement } from "@features/command-palette/components/command-palette-utils";
+
 
 const StyledDialog = styled(Dialog)(({ theme }) => ({
 	"& .MuiDialog-paper": {
@@ -85,7 +88,7 @@ const ResultItemCategory = styled(Typography)(({ theme }) => ({
 	marginLeft: theme.spacing(1),
 }));
 
-type CommandPaletteItemType = "page" | "agent-chat" | "agent-settings";
+type CommandPaletteItemType = "page" | "agent-chat" | "agent-settings" | "settings-section";
 
 interface CommandPaletteItem {
 	id: string;
@@ -157,9 +160,20 @@ export const CommandPalette: FC = () => {
 	const allItems = useMemo(() => {
 		const pages: CommandPaletteItem[] = PAGE_DEFINITIONS.map((p, i) => ({
 			...p,
-			id: `page-${i}`, // Use index for unique page IDs
+			id: `page-${i}`,
 			type: "page",
 		}));
+
+		const settingsSectionItems: CommandPaletteItem[] = DEFAULT_SETTINGS_SECTIONS.map(
+			(section) => ({
+				id: `settings-section-${section.id}`,
+				type: "settings-section",
+				name: section.label,
+				category: "Settings Section",
+				path: `/settings?section=${section.id}`,
+				icon: getIconElement(section),
+			}),
+		);
 
 		const agentItems: CommandPaletteItem[] = [];
 		if (agentsData?.agents) {
@@ -182,7 +196,7 @@ export const CommandPalette: FC = () => {
 				});
 			}
 		}
-		return [...pages, ...agentItems];
+		return [...pages, ...settingsSectionItems, ...agentItems];
 	}, [agentsData]);
 
 	const filteredItems = useMemo(() => {
