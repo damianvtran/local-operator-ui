@@ -96,13 +96,13 @@ export const SystemPromptSettings: FC<SystemPromptSettingsProps> = ({
 	}, [systemPrompt]);
 
 	return (
-		<Box data-tour-tag="agent-settings-system-prompt" sx={{ mt: 4 }}>
+		<Box data-tour-tag="agent-settings-system-prompt" sx={{ mt: 0 }}>
 			<SectionTitle variant="subtitle1">
 				<TitleIcon icon={faRobot} />
-				System Prompt
+				Agent Instructions
 				{/* @ts-ignore - Tooltip has issues with TypeScript but works fine */}
 				<Tooltip
-					title="System instructions that define the agent's behavior and capabilities"
+					title={`System instructions that define the agent's behavior and capabilities.  This is the agent's "system prompt"`}
 					arrow
 					placement="top"
 				>
@@ -112,11 +112,23 @@ export const SystemPromptSettings: FC<SystemPromptSettingsProps> = ({
 				</Tooltip>
 			</SectionTitle>
 
+			<Typography
+				variant="caption"
+				color="text.secondary"
+				sx={{ mb: 1, display: "block" }}
+			>
+				Define the agent's role, personality, or provide context. Write as if
+				talking to the agent (e.g., "You are an expert researcher") and/or about
+				yourself (e.g., "My name is John").
+			</Typography>
+
 			<EditableField
 				value={localSystemPrompt}
 				label=""
 				placeholder={
-					isLoading ? "Loading system prompt..." : "Enter system prompt..."
+					isLoading
+						? "Loading system prompt..."
+						: "Enter instructions for the agent..."
 				}
 				multiline
 				rows={6}

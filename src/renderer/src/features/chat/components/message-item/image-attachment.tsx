@@ -1,14 +1,19 @@
 import { alpha } from "@mui/material";
 import { styled } from "@mui/material/styles";
-import { type FC, useState } from "react";
+import { type FC, memo, useState } from "react";
 import { InvalidAttachment } from "./invalid-attachment";
+
 /**
- * Props for the ImageAttachment component
+ * Props for the ImageAttachment component (base)
  */
-export type ImageAttachmentProps = {
+type BaseImageAttachmentProps = {
 	file: string;
 	src: string;
 	onClick: (file: string) => void;
+};
+
+export type ImageAttachmentProps = BaseImageAttachmentProps & {
+	conversationId: string;
 };
 
 /**
@@ -45,36 +50,38 @@ const getFileName = (path: string): string => {
  * Component for displaying image attachments
  * Handles image loading errors and displays an InvalidAttachment component if the image fails to load
  */
-export const ImageAttachment: FC<ImageAttachmentProps> = ({
-	file,
-	src,
-	onClick,
-}) => {
-	// State to track if the image has failed to load
-	const [hasError, setHasError] = useState(false);
+export const ImageAttachment: FC<ImageAttachmentProps> = memo(
+	({ file, src, onClick }) => {
+		// State to track if the image has failed to load
+		const [hasError, setHasError] = useState(false);
+		// The conversationId and addMentionedFile logic is removed from here
+		// It will be handled by MessageItem
 
-	const handleClick = () => {
-		onClick(file);
-	};
+		const handleClick = () => {
+			onClick(file);
+		};
 
-	const handleError = () => {
-		// Set error state when image fails to load
-		setHasError(true);
-	};
+		const handleError = () => {
+			// Set error state when image fails to load
+			setHasError(true);
+		};
 
-	// If the image failed to load, show the InvalidAttachment component
-	if (hasError) {
-		return <InvalidAttachment file={file} />;
-	}
+		// If the image failed to load, show the InvalidAttachment component
+		if (hasError) {
+			return <InvalidAttachment file={file} />;
+		}
 
-	// Otherwise, render the image with an error handler
-	return (
-		<AttachmentImage
-			src={src}
-			alt={getFileName(file)}
-			onClick={handleClick}
-			onError={handleError}
-			title={`Click to open ${getFileName(file)}`}
-		/>
-	);
-};
+		// Otherwise, render the image with an error handler
+		return (
+			<AttachmentImage
+				src={src}
+				alt={getFileName(file)}
+				onClick={handleClick}
+				onError={handleError}
+				title={`Click to open ${getFileName(file)}`}
+			/>
+		);
+	},
+);
+
+ImageAttachment.displayName = "ImageAttachment";

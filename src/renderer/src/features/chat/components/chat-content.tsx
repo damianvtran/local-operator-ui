@@ -250,6 +250,7 @@ export const ChatContent: FC<ChatContentProps> = ({
 						<Canvas
 							activeDocumentId={selectedTabId}
 							initialDocuments={files}
+							conversationId={conversationId}
 							onChangeActiveDocument={(documentId: string) =>
 								setSelectedTab(conversationId, documentId)
 							}

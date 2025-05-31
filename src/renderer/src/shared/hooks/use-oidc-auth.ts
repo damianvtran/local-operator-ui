@@ -71,6 +71,9 @@ type UseOidcAuthOptions = {
 	onAfterCredentialUpdate?: () => void;
 };
 
+// Module-level lock to prevent concurrent backend auth calls from any instance
+let isAnyBackendAuthInProgress = false;
+
 // Create a Radient API client
 const radientClient = createRadientClient(
 	apiConfig.radientBaseUrl,
@@ -109,7 +112,13 @@ export const useOidcAuth = (
 			googleTokenExpiry?: number,
 			googleRefreshToken?: string,
 		) => {
-			// No need to set loading here, it's handled by the main flow
+			if (isAnyBackendAuthInProgress) {
+				console.warn(
+					"Backend authentication is already in progress globally. Skipping duplicate call.",
+				);
+				return;
+			}
+			isAnyBackendAuthInProgress = true;
 			setError(null); // Clear previous errors
 
 			try {
@@ -266,6 +275,8 @@ export const useOidcAuth = (
 				setError(msg || "Authentication failed during backend processing.");
 				showErrorToast(msg || "Authentication failed");
 				// Let the main flow handle setting loading to false.
+			} finally {
+				isAnyBackendAuthInProgress = false;
 			}
 		},
 		[queryClient, updateConfig, onSuccess, onAfterCredentialUpdate],
