@@ -89,6 +89,7 @@ const ResultsListContainer = styled(List)(({ theme }) => ({
 
 const ResultItemStyled = styled(ListItemButton)(({ theme }) => ({
 	padding: theme.spacing(0.5, 2),
+  borderRadius: 8,
 	"&:hover": {
 		backgroundColor: theme.palette.action.hover,
 	},
@@ -248,8 +249,8 @@ export const CommandPalette: FC = () => {
 
 	const startAdornment = useMemo(
 		() => (
-			<InputAdornment position="start">
-				<LucideSearch size={20} color={theme.palette.action.active} />
+			<InputAdornment position="start" sx={{ width: "28px" }}>
+				<LucideSearch size={16} color={theme.palette.action.active} />
 			</InputAdornment>
 		),
 		[theme.palette.action.active],
@@ -265,7 +266,7 @@ export const CommandPalette: FC = () => {
 						edge="end"
 						size="small"
 					>
-						<X size={20} />
+						<X size={16} />
 					</IconButton>
 				</InputAdornment>
 			) : null,
@@ -507,9 +508,9 @@ export const CommandPalette: FC = () => {
 							No results found.
 						</Typography>
 					)}
-					<ResultsListContainer>
+					<ResultsListContainer sx={{ padding: 0.5 }}>
 						{filteredItems.map((item, index) => (
-							<ListItem key={item.id} disablePadding dense>
+							<ListItem key={item.id} disablePadding dense sx={{ padding: 0.5 }}>
 								<ResultItemStyled
 									selected={selectedIndex === index}
 									onClick={() => handleItemClick(item)}
