@@ -129,7 +129,7 @@ export const AgentSettings: FC<AgentSettingsProps> = ({
 						initialSelectedAgentId={initialSelectedAgentId}
 					/>
 
-          <SystemPromptSettings
+					<SystemPromptSettings
 						selectedAgent={selectedAgent}
 						savingField={savingField}
 						setSavingField={setSavingField}

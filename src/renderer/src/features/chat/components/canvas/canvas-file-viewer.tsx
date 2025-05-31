@@ -1,3 +1,23 @@
+import type {
+	CanvasDocument,
+	CanvasDocumentType,
+} from "@features/chat/types/canvas";
+import { getFileName } from "@features/chat/utils/get-file-name";
+import { isCanvasSupported } from "@features/chat/utils/is-canvas-supported";
+import {
+	Box,
+	Card,
+	CardActionArea,
+	CardContent,
+	Grid,
+	Tooltip,
+	Typography,
+	alpha,
+} from "@mui/material";
+import { styled } from "@mui/material/styles";
+import { createLocalOperatorClient } from "@shared/api/local-operator";
+import { apiConfig } from "@shared/config";
+import { useCanvasStore } from "@shared/store/canvas-store";
 import {
 	Archive,
 	AudioLines,
@@ -10,28 +30,8 @@ import {
 	Presentation,
 	ScrollText,
 } from "lucide-react";
-import {
-	Box,
-	Card,
-	CardActionArea,
-	CardContent,
-	Grid,
-	Tooltip,
-	Typography,
-	alpha,
-} from "@mui/material";
-import { styled } from "@mui/material/styles";
-import type {
-	CanvasDocument,
-	CanvasDocumentType,
-} from "@features/chat/types/canvas";
-import { useCanvasStore } from "@shared/store/canvas-store";
 import type { FC } from "react";
 import { useCallback, useMemo } from "react";
-import { isCanvasSupported } from "@features/chat/utils/is-canvas-supported";
-import { getFileName } from "@features/chat/utils/get-file-name";
-import { createLocalOperatorClient } from "@shared/api/local-operator";
-import { apiConfig } from "@shared/config";
 
 type CanvasFileViewerProps = {
 	conversationId: string;
@@ -46,12 +46,12 @@ const StyledCard = styled(Card)(({ theme }) => ({
 	flexDirection: "column",
 	height: "100%",
 	backgroundColor: alpha(theme.palette.background.paper, 0.8),
-  backgroundImage: "none",
+	backgroundImage: "none",
 	transition: "box-shadow 0.2s ease-in-out",
 	"&:hover": {
 		boxShadow: theme.shadows[6],
 	},
-  borderRadius: 8,
+	borderRadius: 8,
 }));
 
 const StyledImage = styled("img")({
@@ -80,7 +80,7 @@ const FileNameTypography = styled(Typography)(({ theme }) => ({
 	whiteSpace: "nowrap",
 	overflow: "hidden",
 	textOverflow: "ellipsis",
-  fontSize: "0.7rem",
+	fontSize: "0.7rem",
 	padding: theme.spacing(0, 0),
 }));
 
@@ -89,9 +89,22 @@ const FileNameTypography = styled(Typography)(({ theme }) => ({
  */
 const isImage = (path: string): boolean => {
 	const imageExtensions = [
-		".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".svg",
-		".tiff", ".tif", ".ico", ".heic", ".heif", ".avif",
-		".jfif", ".pjpeg", ".pjp"
+		".jpg",
+		".jpeg",
+		".png",
+		".gif",
+		".webp",
+		".bmp",
+		".svg",
+		".tiff",
+		".tif",
+		".ico",
+		".heic",
+		".heif",
+		".avif",
+		".jfif",
+		".pjpeg",
+		".pjp",
 	];
 	const lowerPath = path.toLowerCase();
 	return imageExtensions.some((ext) => lowerPath.endsWith(ext));
@@ -102,8 +115,17 @@ const isImage = (path: string): boolean => {
  */
 const isVideo = (path: string): boolean => {
 	const videoExtensions = [
-		".mp4", ".webm", ".ogg", ".mov", ".avi", ".wmv",
-		".flv", ".mkv", ".m4v", ".3gp", ".3g2"
+		".mp4",
+		".webm",
+		".ogg",
+		".mov",
+		".avi",
+		".wmv",
+		".flv",
+		".mkv",
+		".m4v",
+		".3gp",
+		".3g2",
 	];
 	const lowerPath = path.toLowerCase();
 	return videoExtensions.some((ext) => lowerPath.endsWith(ext));
@@ -277,7 +299,8 @@ export const CanvasFileViewer: FC<CanvasFileViewerProps> = ({
 						};
 
 						const state = useCanvasStore.getState();
-						const conversationCanvasState = state.conversations?.[conversationId];
+						const conversationCanvasState =
+							state.conversations?.[conversationId];
 						const filesInState = conversationCanvasState?.files ?? [];
 						const openTabsInState = conversationCanvasState?.openTabs ?? [];
 
@@ -382,7 +405,9 @@ export const CanvasFileViewer: FC<CanvasFileViewerProps> = ({
 											<IconComponent size={48} strokeWidth={1} />
 										</IconBox>
 									)}
-									<CardContent sx={{ width: "100%", pt: 1, pb: "8px !important" }}>
+									<CardContent
+										sx={{ width: "100%", pt: 1, pb: "8px !important" }}
+									>
 										<Tooltip title={fileDoc.title} placement="bottom" arrow>
 											<FileNameTypography variant="caption">
 												{getFileName(fileDoc.title)}

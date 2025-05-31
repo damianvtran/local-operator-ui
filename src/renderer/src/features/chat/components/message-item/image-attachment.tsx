@@ -1,6 +1,6 @@
 import { alpha } from "@mui/material";
 import { styled } from "@mui/material/styles";
-import { type FC, useState, memo } from "react";
+import { type FC, memo, useState } from "react";
 import { InvalidAttachment } from "./invalid-attachment";
 
 /**
@@ -61,10 +61,10 @@ export const ImageAttachment: FC<ImageAttachmentProps> = memo(
 			onClick(file);
 		};
 
-	const handleError = () => {
-		// Set error state when image fails to load
-		setHasError(true);
-	};
+		const handleError = () => {
+			// Set error state when image fails to load
+			setHasError(true);
+		};
 
 		// If the image failed to load, show the InvalidAttachment component
 		if (hasError) {

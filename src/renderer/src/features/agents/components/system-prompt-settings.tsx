@@ -112,7 +112,7 @@ export const SystemPromptSettings: FC<SystemPromptSettingsProps> = ({
 				</Tooltip>
 			</SectionTitle>
 
-      <Typography
+			<Typography
 				variant="caption"
 				color="text.secondary"
 				sx={{ mb: 1, display: "block" }}
@@ -126,7 +126,9 @@ export const SystemPromptSettings: FC<SystemPromptSettingsProps> = ({
 				value={localSystemPrompt}
 				label=""
 				placeholder={
-					isLoading ? "Loading system prompt..." : "Enter instructions for the agent..."
+					isLoading
+						? "Loading system prompt..."
+						: "Enter instructions for the agent..."
 				}
 				multiline
 				rows={6}

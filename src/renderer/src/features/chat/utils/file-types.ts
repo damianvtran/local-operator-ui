@@ -5,7 +5,9 @@ import type { CanvasDocument } from "@features/chat/types/canvas";
  * @param filePath - The path or data URI of the file.
  * @returns The determined CanvasDocument type.
  */
-export const getFileTypeFromPath = (filePath: string): CanvasDocument["type"] => {
+export const getFileTypeFromPath = (
+	filePath: string,
+): CanvasDocument["type"] => {
 	if (filePath.startsWith("data:image/")) return "image";
 	if (filePath.startsWith("data:video/")) return "video";
 	if (filePath.startsWith("data:application/pdf")) return "pdf";

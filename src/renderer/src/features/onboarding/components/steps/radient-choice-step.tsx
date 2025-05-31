@@ -207,7 +207,10 @@ export const RadientChoiceStep: FC<RadientChoiceStepProps> = ({
 									Get started for free with{" "}
 									<RadientPassText>Radient Pass</RadientPassText>
 								</CardTitle>
-								<CardSubtitle variant="subtitle1" sx={{ mb: 1, fontWeight: 600 }}>
+								<CardSubtitle
+									variant="subtitle1"
+									sx={{ mb: 1, fontWeight: 600 }}
+								>
 									Recommended for most users.
 								</CardSubtitle>
 								<CardSubtitle variant="body2">
@@ -218,7 +221,7 @@ export const RadientChoiceStep: FC<RadientChoiceStepProps> = ({
 									with Local Operator. Get access to all tools and models at
 									once, with potential savings when Radient Automatic picks the
 									best model to handle each step.
-                  <br />
+									<br />
 									<br />
 									Two-click setup that{" "}
 									<RadientBoldTextSpan>
@@ -271,10 +274,11 @@ export const RadientChoiceStep: FC<RadientChoiceStepProps> = ({
 								<Box sx={{ flex: 1, pr: 2 }}>
 									{" "}
 									{/* Text content wrapper */}
-									<CardTitle variant="h6">
-										Set up your own keys
-									</CardTitle>
-									<CardSubtitle variant="subtitle1" sx={{ mb: 1, fontWeight: 600 }}>
+									<CardTitle variant="h6">Set up your own keys</CardTitle>
+									<CardSubtitle
+										variant="subtitle1"
+										sx={{ mb: 1, fontWeight: 600 }}
+									>
 										For advanced and technical users.
 									</CardSubtitle>
 									<CardSubtitle variant="body2" sx={{ mb: 0 }}>

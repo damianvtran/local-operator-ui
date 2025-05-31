@@ -1,4 +1,3 @@
-import { FileText, FolderOpen, X } from "lucide-react";
 import {
 	Box,
 	IconButton,
@@ -7,10 +6,11 @@ import {
 	alpha,
 	styled,
 } from "@mui/material";
+import { useCanvasStore } from "@shared/store/canvas-store";
+import { FileText, FolderOpen, X } from "lucide-react";
 import { memo, useCallback, useState } from "react";
 import type { FC } from "react";
 import type { CanvasDocument } from "../../types/canvas";
-import { useCanvasStore } from "@shared/store/canvas-store";
 import { CanvasContent } from "./canvas-content";
 import { CanvasFileViewer } from "./canvas-file-viewer";
 import { CanvasTabs } from "./canvas-tabs";
@@ -117,8 +117,8 @@ const CanvasComponent: FC<CanvasProps> = ({
 }) => {
 	// Get view mode from store if conversationId is available
 	const { setViewMode } = useCanvasStore();
-	const canvasState = useCanvasStore((state) => 
-		conversationId ? state.conversations[conversationId] : undefined
+	const canvasState = useCanvasStore((state) =>
+		conversationId ? state.conversations[conversationId] : undefined,
 	);
 	const currentView = canvasState?.viewMode ?? "documents";
 
@@ -128,9 +128,8 @@ const CanvasComponent: FC<CanvasProps> = ({
 				setViewMode(conversationId, viewMode);
 			}
 		},
-		[conversationId, setViewMode]
+		[conversationId, setViewMode],
 	);
-
 
 	// Use the documents prop directly instead of local state
 	const documents = initialDocuments;
@@ -223,7 +222,7 @@ const CanvasComponent: FC<CanvasProps> = ({
 								},
 								width: 36,
 								height: 36,
-                padding: 0,
+								padding: 0,
 							})}
 						>
 							<FileText size={16} />
@@ -248,13 +247,18 @@ const CanvasComponent: FC<CanvasProps> = ({
 								},
 								width: 36,
 								height: 36,
-                padding: 0,
+								padding: 0,
 							})}
 						>
 							<FolderOpen size={16} />
 						</IconButton>
 					</Tooltip>
-					<Tooltip title="Close Canvas" arrow placement="top" sx={{ padding: 0 }}>
+					<Tooltip
+						title="Close Canvas"
+						arrow
+						placement="top"
+						sx={{ padding: 0 }}
+					>
 						{/* @ts-ignore MUI Tooltip a11y issue */}
 						<CloseButton
 							onClick={onClose}
