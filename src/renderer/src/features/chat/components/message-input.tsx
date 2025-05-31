@@ -24,6 +24,7 @@ import {
 	useState,
 	forwardRef,
 	useImperativeHandle,
+	useEffect,
 } from "react";
 import type { ChangeEvent, ClipboardEvent, FormEvent } from "react";
 import type { Message } from "../types/message";
@@ -373,6 +374,25 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			},
 		}));
 
+		const isInputDisabled = Boolean(isLoading && currentJobId);
+
+		// Focus input when it becomes enabled, only if no other input is focused
+		useEffect(() => {
+			if (!isInputDisabled) {
+				// Check if there's already an active input element focused to prevent
+        // stealing focus from other inputs
+				const activeElement = document.activeElement;
+				const isInputFocused = activeElement && (
+					activeElement.tagName === 'INPUT' ||
+					activeElement.tagName === 'TEXTAREA'
+				);
+
+				if (!isInputFocused) {
+					textareaRef.current?.focus();
+				}
+			}
+		}, [isInputDisabled, textareaRef.current]);
+
 		const handleSubmit = (e: FormEvent) => {
 			e.preventDefault();
 			if (!newMessage.trim() && attachments.length === 0) return;
@@ -435,8 +455,6 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				}
 			}
 		};
-
-		const isInputDisabled = Boolean(isLoading && currentJobId);
 
 		const handleSuggestionClick = (suggestion: string) => {
 			if (isInputDisabled) return;
