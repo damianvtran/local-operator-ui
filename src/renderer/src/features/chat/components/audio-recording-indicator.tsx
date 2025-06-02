@@ -115,8 +115,9 @@ export const AudioRecordingIndicator = ({
       const { width, height } = canvas.getBoundingClientRect();
       ctx.clearRect(0, 0, width, height);
       const barWidth = width / BUFFER_SIZE;
-      const barSpacing = barWidth * 0.2;
-      const actualBarWidth = barWidth * 0.8;
+      const spacingRatio = 0.4;
+      const barSpacing = barWidth * spacingRatio;
+      const actualBarWidth = barWidth * (1 - spacingRatio);
       const radius = actualBarWidth / 2;
       
       ctx.fillStyle = theme.palette.error.main;
