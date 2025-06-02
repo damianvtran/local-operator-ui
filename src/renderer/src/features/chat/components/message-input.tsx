@@ -32,6 +32,7 @@ import {
 	useState,
 } from "react";
 import type { ChangeEvent, ClipboardEvent, FormEvent } from "react";
+import { useCredentials } from "@shared/hooks/use-credentials";
 import type { Message } from "../types/message";
 import { AttachmentsPreview } from "./attachments-preview";
 import { AudioRecordingIndicator } from "./audio-recording-indicator";
@@ -367,6 +368,19 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 
 		const fileInputRef = useRef<HTMLInputElement>(null);
 
+		const { data: credentialsData, isLoading: isLoadingCredentials } =
+			useCredentials();
+
+		const isRadientApiKeyConfigured = useMemo(
+			() => credentialsData?.keys?.includes("RADIENT_API_KEY"),
+			[credentialsData?.keys],
+		);
+
+		const canEnableRecordingFeature = useMemo(
+			() => isRadientApiKeyConfigured && !isLoadingCredentials,
+			[isRadientApiKeyConfigured, isLoadingCredentials],
+		);
+
 		const MAX_SUGGESTIONS = 7;
 
 		const suggestions = useMemo(() => {
@@ -649,7 +663,13 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 							{!isLoading && !currentJobId && !isTranscribing && (
 								// @ts-ignore Tooltip type issue
 								<Tooltip
-									title={isRecording ? "Stop recording" : "Start recording"}
+									title={
+										!canEnableRecordingFeature
+											? "Sign in to Radient in the settings page to enable audio recording"
+											: isRecording
+												? "Stop recording"
+												: "Start recording"
+									}
 								>
 									<span>
 										<IconButton
@@ -661,7 +681,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 											aria-label={
 												isRecording ? "Stop recording" : "Start recording"
 											}
-											disabled={isLoading}
+											disabled={isLoading || !canEnableRecordingFeature}
 										>
 											{isRecording ? (
 												<StopCircle size={24} />
