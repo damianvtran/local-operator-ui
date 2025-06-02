@@ -4,6 +4,7 @@ import {
 	faStop,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { Mic, StopCircle } from "lucide-react"; // Added StopCircle for recording state
 import {
 	Box,
 	Button,
@@ -25,12 +26,16 @@ import {
 	useMemo,
 	useRef,
 	useState,
+	useCallback,
 } from "react";
 import type { ChangeEvent, ClipboardEvent, FormEvent } from "react";
+import { TranscriptionApi } from "@shared/api/local-operator/transcription-api";
+import { apiConfig } from "@shared/config/api-config";
 import type { Message } from "../types/message";
 import { AttachmentsPreview } from "./attachments-preview";
 import { DirectoryIndicator } from "./directory-indicator";
 import { ScrollToBottomButton } from "./scroll-to-bottom-button";
+import { AudioRecordingIndicator } from "./audio-recording-indicator";
 
 /**
  * Props for the MessageInput component
@@ -331,6 +336,11 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		ref,
 	) => {
 		const [attachments, setAttachments] = useState<string[]>([]);
+		const [isRecording, setIsRecording] = useState(false);
+		const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
+		const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+		const audioChunksRef = useRef<Blob[]>([]);
+
 		const fileInputRef = useRef<HTMLInputElement>(null);
 
 		const MAX_SUGGESTIONS = 7;
@@ -350,8 +360,6 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				onSendMessage(message, attachments);
 				setAttachments([]);
 			},
-			// attachments is a dependency, but this is safe because attachments is local state
-			// and onSendMessage is a prop (assumed stable)
 			[onSendMessage, attachments],
 		);
 
@@ -367,7 +375,6 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			scrollToBottom,
 		});
 
-		// Expose focusInput method via useImperativeHandle
 		useImperativeHandle(ref, () => ({
 			focusInput: () => {
 				textareaRef.current?.focus();
@@ -376,22 +383,92 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 
 		const isInputDisabled = Boolean(isLoading && currentJobId);
 
-		// Focus input when it becomes enabled, only if no other input is focused
 		useEffect(() => {
-			if (!isInputDisabled) {
-				// Check if there's already an active input element focused to prevent
-				// stealing focus from other inputs
+			if (!isInputDisabled && !isRecording) {
 				const activeElement = document.activeElement;
 				const isInputFocused =
 					activeElement &&
 					(activeElement.tagName === "INPUT" ||
 						activeElement.tagName === "TEXTAREA");
-
 				if (!isInputFocused) {
 					textareaRef.current?.focus();
 				}
 			}
-		}, [isInputDisabled, textareaRef.current]);
+		}, [isInputDisabled, isRecording, textareaRef]);
+
+		const handleStartRecording = useCallback(async () => {
+			if (navigator?.mediaDevices?.getUserMedia) {
+				try {
+					const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+					mediaRecorderRef.current = new MediaRecorder(stream);
+					audioChunksRef.current = [];
+
+					mediaRecorderRef.current.ondataavailable = (event) => {
+						audioChunksRef.current.push(event.data);
+					};
+
+					mediaRecorderRef.current.onstop = () => {
+						const completeAudioBlob = new Blob(audioChunksRef.current, {
+							type: "audio/webm", // Or other appropriate type
+						});
+						setAudioBlob(completeAudioBlob);
+						// Stop all tracks on the stream to release the microphone
+						for (const track of stream.getTracks()) {
+							track.stop();
+						}
+					};
+
+					mediaRecorderRef.current.start();
+					setIsRecording(true);
+					setAudioBlob(null); // Clear previous blob
+				} catch (err) {
+					console.error("Error accessing microphone:", err);
+					// TODO: Show error to user via toast or similar
+				}
+			} else {
+				console.error("getUserMedia not supported on your browser!");
+				// TODO: Show error to user
+			}
+		}, []);
+
+		const handleStopRecording = useCallback(() => {
+			if (mediaRecorderRef.current && isRecording) {
+				mediaRecorderRef.current.stop();
+				setIsRecording(false);
+			}
+		}, [isRecording]);
+
+		const handleSendAudio = useCallback(async () => {
+			if (!audioBlob) return;
+
+			try {
+				// TODO: Consider adding a loading state for transcription
+				const response = await TranscriptionApi.createTranscription(
+					apiConfig.baseUrl,
+					{
+						file: new File([audioBlob], "recording.webm", {
+							type: "audio/webm",
+						}),
+						// model: "optional_model_name", // Optional: specify model if needed
+					},
+				);
+				if (response.result?.text) {
+					const newText = response.result?.text || "";
+					setNewMessage(newMessage + newText); 
+				}
+				setAudioBlob(null); // Clear the blob after sending
+			} catch (error) {
+				console.error("Error transcribing audio:", error);
+				// TODO: Show error to user
+			}
+		}, [audioBlob, setNewMessage, newMessage]);
+
+		// Automatically send audio for transcription when audioBlob is set
+		useEffect(() => {
+			if (audioBlob) {
+				handleSendAudio();
+			}
+		}, [audioBlob, handleSendAudio]);
 
 		const handleSubmit = (e: FormEvent) => {
 			e.preventDefault();
@@ -470,26 +547,30 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 						<AttachmentsPreview
 							attachments={attachments}
 							onRemoveAttachment={handleRemoveAttachment}
-							disabled={isInputDisabled}
+							disabled={isInputDisabled || isRecording}
 						/>
 					)}
 
-					<StyledTextField
-						fullWidth
-						placeholder={isInputDisabled ? "Agent is busy" : "Ask me for help"}
-						value={newMessage}
-						onChange={(e) => setNewMessage(e.target.value)}
-						onKeyDown={handleKeyDown}
-						onPaste={handlePaste}
-						multiline
-						maxRows={4}
-						variant="outlined"
-						inputRef={textareaRef}
-						disabled={isInputDisabled}
-						inputProps={{
-							"data-tour-tag": "chat-input-textarea",
-						}}
-					/>
+					{isRecording ? (
+						<AudioRecordingIndicator isRecording={isRecording} />
+					) : (
+						<StyledTextField
+							fullWidth
+							placeholder={isInputDisabled ? "Agent is busy" : "Ask me for help"}
+							value={newMessage}
+							onChange={(e) => setNewMessage(e.target.value)}
+							onKeyDown={handleKeyDown}
+							onPaste={handlePaste}
+							multiline
+							maxRows={4}
+							variant="outlined"
+							inputRef={textareaRef}
+							disabled={isInputDisabled}
+							inputProps={{
+								"data-tour-tag": "chat-input-textarea",
+							}}
+						/>
+					)}
 
 					<ButtonsRow>
 						{/* Left side: attachment button */}
@@ -499,7 +580,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 								ref={fileInputRef}
 								onChange={handleFileSelect}
 								style={{ display: "none" }}
-								disabled={isInputDisabled}
+								disabled={isInputDisabled || isRecording}
 								multiple
 							/>
 							{/* @ts-ignore Tooltip type issue */}
@@ -511,7 +592,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 										size="small"
 										aria-label="Attach file"
 										data-tour-tag="chat-input-attach-file-button"
-										disabled={isInputDisabled}
+										disabled={isInputDisabled || isRecording}
 									>
 										<FontAwesomeIcon icon={faPaperclip} />
 									</AttachmentButton>
@@ -525,8 +606,34 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 							)}
 						</Box>
 
-						{/* Right side: send or stop button */}
+						{/* Right side: microphone, send or stop button */}
 						<Box display="flex" alignItems="center" gap={1}>
+							{!isLoading && !currentJobId && (
+								// @ts-ignore Tooltip type issue
+								<Tooltip title={isRecording ? "Stop recording" : "Start recording"}>
+									<span>
+										<IconButton
+											onClick={
+												isRecording
+													? handleStopRecording
+													: handleStartRecording
+											}
+											color={isRecording ? "error" : "primary"}
+											size="small"
+											aria-label={
+												isRecording ? "Stop recording" : "Start recording"
+											}
+											disabled={isLoading} // Disable if main send is loading
+										>
+											{isRecording ? (
+												<StopCircle size={24} />
+											) : (
+												<Mic size={24} />
+											)}
+										</IconButton>
+									</span>
+								</Tooltip>
+							)}
 							{isLoading && currentJobId ? (
 								// @ts-ignore Tooltip type issue
 								<Tooltip title="Stop agent">
@@ -552,6 +659,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 											color="primary"
 											disabled={
 												isLoading ||
+												isRecording || // Disable send while recording
 												(!newMessage.trim() && attachments.length === 0)
 											}
 											aria-label="Send message"
@@ -582,7 +690,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 									variant="outlined"
 									size="small"
 									onClick={() => handleSuggestionClick(suggestion)}
-									disabled={isInputDisabled}
+									disabled={isInputDisabled || isRecording}
 								>
 									{suggestion}
 								</SuggestionChip>
