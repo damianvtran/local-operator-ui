@@ -773,3 +773,36 @@ export type ExecutionVariablesResponse = {
 };
 
 // --- End Agent Execution Variable Types ---
+
+// --- Transcription API Types ---
+
+/**
+ * Parameters for creating a transcription.
+ * Based on the multipart/form-data for the /v1/transcriptions endpoint.
+ */
+export type CreateTranscriptionParams = {
+	file: File;
+	model?: string;
+	prompt?: string;
+	response_format?: string;
+	temperature?: number;
+	language?: string;
+	provider?: string;
+};
+
+/**
+ * Data part of the response when creating a transcription.
+ * Matches RadientTranscriptionResponseData from the OpenAPI spec.
+ */
+export type RadientTranscriptionResponseData = {
+	text: string;
+	provider: string;
+	status: string;
+	error?: string | null;
+	duration?: number | null;
+	// The OpenAPI spec indicates `additionalProperties: true`,
+	// so we can allow other properties if needed, though not explicitly defined here.
+	[key: string]: unknown;
+};
+
+// --- End Transcription API Types ---
