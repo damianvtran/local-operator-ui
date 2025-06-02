@@ -14,18 +14,18 @@ const MIN_BAR_HEIGHT = 2; // Minimum height of a bar in pixels
 const MAX_BAR_HEIGHT = 24; // Maximum height of a bar in pixels
 const FRAMES_TO_SKIP = 4; // Throttle visual updates
 
-const pulseAnimation = keyframes`
+const createPulseAnimation = (primaryColor: string) => keyframes`
   0% {
     transform: scale(0.95);
-    box-shadow: 0 0 0 0 rgba(255, 82, 82, 0.7);
+    box-shadow: 0 0 0 0 ${alpha(primaryColor, 0.7)};
   }
   70% {
     transform: scale(1);
-    box-shadow: 0 0 0 10px rgba(255, 82, 82, 0);
+    box-shadow: 0 0 0 10px ${alpha(primaryColor, 0)};
   }
   100% {
     transform: scale(0.95);
-    box-shadow: 0 0 0 0 rgba(255, 82, 82, 0);
+    box-shadow: 0 0 0 0 ${alpha(primaryColor, 0)};
   }
 `;
 
@@ -37,24 +37,24 @@ const RecordingIndicatorContainer = styled(Box)(({ theme }) => ({
   minHeight: '50px',
   padding: theme.spacing(1, 2),
   borderRadius: theme.shape.borderRadius * 2,
-  backgroundColor: alpha(theme.palette.error.light, 0.08),
-  border: `1px solid ${alpha(theme.palette.error.main, 0.2)}`,
-  color: theme.palette.error.dark,
+  backgroundColor: alpha(theme.palette.primary.main, 0.08),
+  border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`,
+  color: theme.palette.primary.main,
   gap: theme.spacing(2),
 }));
 
 const RecordingText = styled(Typography)(({ theme }) => ({
   fontSize: '0.9rem',
   fontWeight: 500,
-  color: theme.palette.error.dark,
+  color: theme.palette.primary.main,
 }));
 
 const RecordingDot = styled(Box)(({ theme }) => ({
   width: 8,
   height: 8,
-  backgroundColor: theme.palette.error.main,
+  backgroundColor: theme.palette.primary.main,
   borderRadius: '50%',
-  animation: `${pulseAnimation} 1.5s infinite ease-in-out`,
+  animation: `${createPulseAnimation(theme.palette.primary.main)} 1.5s infinite ease-in-out`,
   flexShrink: 0,
 }));
 
@@ -120,7 +120,7 @@ export const AudioRecordingIndicator = ({
       const actualBarWidth = barWidth * (1 - spacingRatio);
       const radius = actualBarWidth / 2;
       
-      ctx.fillStyle = theme.palette.error.main;
+      ctx.fillStyle = theme.palette.primary.main;
       
       heightsRef.current.forEach((h, i) => {
         const x = i * barWidth + barSpacing / 2;
@@ -222,7 +222,7 @@ export const AudioRecordingIndicator = ({
         audioContextRef.current = null;
       }
     };
-  }, [isRecording, theme.palette.error.main]);
+  }, [isRecording, theme.palette.primary.main]);
 
   if (!isRecording) {
     return null;
