@@ -61,16 +61,6 @@ export const TranscriptionApi = {
 			throw new Error(errorDetail);
 		}
 
-		// Assuming successful responses are not necessarily in CRUDResponse format for this specific endpoint,
-		// but the data itself is RadientTranscriptionResponseData.
-		// If the server wraps this in CRUDResponse, the casting will need to be adjusted.
-		// Based on the OpenAPI spec, the response is directly RadientTranscriptionResponseData for 200.
-		// To align with the pattern of other clients returning CRUDResponse<T>, we'll wrap it.
-		const data = await response.json() as RadientTranscriptionResponseData;
-		return {
-			status: response.status,
-			message: "Transcription successful", // Or derive from response if available
-			result: data,
-		};
+		return response.json();
 	},
 };
