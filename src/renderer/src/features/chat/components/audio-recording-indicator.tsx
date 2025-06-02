@@ -9,7 +9,7 @@ type AudioRecordingIndicatorProps = {
   isRecording: boolean;
 };
 
-const BUFFER_SIZE = 100; // Number of bars in the waveform
+const BUFFER_SIZE = 120; // Number of bars in the waveform
 const MIN_BAR_HEIGHT = 2; // Minimum height of a bar in pixels
 const MAX_BAR_HEIGHT = 24; // Maximum height of a bar in pixels
 const FRAMES_TO_SKIP = 4; // Throttle visual updates
@@ -35,7 +35,7 @@ const RecordingIndicatorContainer = styled(Box)(({ theme }) => ({
   alignItems: 'center',
   justifyContent: 'center',
   minHeight: '50px',
-  padding: theme.spacing(1.5, 2),
+  padding: theme.spacing(1, 2),
   borderRadius: theme.shape.borderRadius * 2,
   backgroundColor: alpha(theme.palette.error.light, 0.08),
   border: `1px solid ${alpha(theme.palette.error.main, 0.2)}`,
@@ -115,11 +115,22 @@ export const AudioRecordingIndicator = ({
       const { width, height } = canvas.getBoundingClientRect();
       ctx.clearRect(0, 0, width, height);
       const barWidth = width / BUFFER_SIZE;
+      const barSpacing = barWidth * 0.2;
+      const actualBarWidth = barWidth * 0.8;
+      const radius = actualBarWidth / 2;
+      
       ctx.fillStyle = theme.palette.error.main;
+      
       heightsRef.current.forEach((h, i) => {
-        const x = i * barWidth;
-        const y = height - h;
-        ctx.fillRect(x, y, barWidth * 0.8, h);
+        const x = i * barWidth + barSpacing / 2;
+        const centerY = height / 2;
+        const barHeight = h;
+        const y = centerY - barHeight / 2;
+        
+        // Draw rounded rectangle (pill shape)
+        ctx.beginPath();
+        ctx.roundRect(x, y, actualBarWidth, barHeight, radius);
+        ctx.fill();
       });
     };
 
