@@ -120,13 +120,17 @@ export const AudioRecordingIndicator = ({
       const actualBarWidth = barWidth * (1 - spacingRatio);
       const radius = actualBarWidth / 2;
       
-      ctx.fillStyle = theme.palette.primary.main;
-      
       heightsRef.current.forEach((h, i) => {
         const x = i * barWidth + barSpacing / 2;
         const centerY = height / 2;
         const barHeight = h;
         const y = centerY - barHeight / 2;
+        
+        // Use different color for bars with zero/minimal data
+        const isMinimalData = h <= MIN_BAR_HEIGHT;
+        ctx.fillStyle = isMinimalData 
+          ? alpha(theme.palette.primary.main, 0.3) 
+          : theme.palette.primary.main;
         
         // Draw rounded rectangle (pill shape)
         ctx.beginPath();
