@@ -13,8 +13,8 @@
 
 <br />
 
-<div style="display: flex; justify-content: center; border-radius: 8px; overflow: hidden;">
-  <img src="./resources/preview-example.gif" alt="Local Operator UI Dashboard Example" style="width: 100%; max-width: 800px;">
+<p align="center">
+  <img src="./resources/preview-example.gif" alt="Local Operator UI Dashboard Example" style="width: 640px">
 </div>
 
 <br />
