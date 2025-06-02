@@ -335,9 +335,10 @@ const TranscriptionIndicator = styled(Box)(({ theme }) => ({
 }));
 
 const TranscriptionText = styled(Typography)(({ theme }) => ({
-	fontSize: "0.9rem",
+	fontSize: "0.875rem",
 	fontWeight: 500,
 	marginRight: theme.spacing(1.5),
+	color: theme.palette.text.secondary,
 }));
 
 /**
@@ -599,7 +600,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					) : isTranscribing ? (
 						<TranscriptionIndicator>
 							<TranscriptionText variant="body2">
-								Processing audio...
+								Processing audio
 							</TranscriptionText>
 							<WaveformAnimation />
 						</TranscriptionIndicator>
