@@ -12,6 +12,7 @@ import { JobsApi as JobsApiImpl } from "./jobs-api";
 import { ModelsApi as ModelsApiImpl } from "./models-api";
 import { SchedulesApi as SchedulesApiImpl } from "./schedules-api";
 import { StaticApi as StaticApiImpl } from "./static-api";
+import { TranscriptionApi as TranscriptionApiImpl } from "./transcription-api";
 
 // Export all API clients
 export { HealthApi } from "./health-api";
@@ -23,6 +24,7 @@ export { CredentialsApi } from "./credentials-api";
 export { ModelsApi } from "./models-api";
 export { SchedulesApi } from "./schedules-api";
 export { StaticApi } from "./static-api";
+export { TranscriptionApi } from "./transcription-api";
 export { WebSocketApi } from "./websocket-api";
 
 // Export all types
@@ -66,6 +68,9 @@ export type {
 	ScheduleResponse,
 	ScheduleListResponse,
 	ScheduleUpdateRequest,
+	// Transcription types
+	CreateTranscriptionParams,
+	RadientTranscriptionResponseData,
 } from "./types";
 
 /**
@@ -173,6 +178,13 @@ export class LocalOperatorClient {
 	 */
 	get schedules(): BoundApi<ApiWithBaseUrl<typeof SchedulesApiImpl>> {
 		return this.bindBaseUrlToApi(SchedulesApiImpl);
+	}
+
+	/**
+	 * Get the Transcription API client with methods bound to the base URL
+	 */
+	get transcription(): BoundApi<ApiWithBaseUrl<typeof TranscriptionApiImpl>> {
+		return this.bindBaseUrlToApi(TranscriptionApiImpl);
 	}
 
 	/**
