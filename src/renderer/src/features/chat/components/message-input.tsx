@@ -4,7 +4,7 @@ import {
 	faStop,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Mic, StopCircle } from "lucide-react"; // Added StopCircle for recording state
+import { Mic, StopCircle } from "lucide-react";
 import {
 	Box,
 	Button,
@@ -37,6 +37,7 @@ import { AttachmentsPreview } from "./attachments-preview";
 import { DirectoryIndicator } from "./directory-indicator";
 import { ScrollToBottomButton } from "./scroll-to-bottom-button";
 import { AudioRecordingIndicator } from "./audio-recording-indicator";
+import { WaveformAnimation } from "./waveform-animation";
 
 /**
  * Props for the MessageInput component
@@ -328,37 +329,14 @@ const TranscriptionIndicator = styled(Box)(({ theme }) => ({
 	minHeight: "50px",
 	padding: theme.spacing(1, 2),
 	borderRadius: theme.shape.borderRadius,
-	backgroundColor: alpha(theme.palette.primary.light, 0.1),
-	border: `1px solid ${alpha(theme.palette.primary.main, 0.3)}`,
 	color: theme.palette.primary.dark,
+	gap: theme.spacing(1),
 }));
 
 const TranscriptionText = styled(Typography)(({ theme }) => ({
 	fontSize: "0.9rem",
 	fontWeight: 500,
 	marginRight: theme.spacing(1.5),
-}));
-
-const TranscriptionDot = styled(Box)(({ theme }) => ({
-	width: 8,
-	height: 8,
-	backgroundColor: theme.palette.primary.main,
-	borderRadius: "50%",
-	animation: "pulse 1.5s infinite ease-in-out",
-	"@keyframes pulse": {
-		"0%": {
-			transform: "scale(0.95)",
-			opacity: 0.7,
-		},
-		"70%": {
-			transform: "scale(1)",
-			opacity: 1,
-		},
-		"100%": {
-			transform: "scale(0.95)",
-			opacity: 0.7,
-		},
-	},
 }));
 
 /**
@@ -605,7 +583,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					) : isTranscribing ? (
 						<TranscriptionIndicator>
 							<TranscriptionText variant="body2">Processing audio...</TranscriptionText>
-							<TranscriptionDot />
+							<WaveformAnimation />
 						</TranscriptionIndicator>
 					) : (
 						<StyledTextField
