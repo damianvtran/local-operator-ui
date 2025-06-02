@@ -31,6 +31,7 @@ import {
 import type { ChangeEvent, ClipboardEvent, FormEvent } from "react";
 import { TranscriptionApi } from "@shared/api/local-operator/transcription-api";
 import { apiConfig } from "@shared/config/api-config";
+import { showErrorToast } from "@shared/utils/toast-manager";
 import type { Message } from "../types/message";
 import { AttachmentsPreview } from "./attachments-preview";
 import { DirectoryIndicator } from "./directory-indicator";
@@ -468,11 +469,13 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					setAudioBlob(null); // Clear previous blob
 				} catch (err) {
 					console.error("Error accessing microphone:", err);
-					// TODO: Show error to user via toast or similar
+					showErrorToast(
+						"Error accessing microphone. Please ensure microphone permissions are granted.",
+					);
 				}
 			} else {
 				console.error("getUserMedia not supported on your browser!");
-				// TODO: Show error to user
+				showErrorToast("Audio recording is not supported on your browser.");
 			}
 		}, []);
 
@@ -503,7 +506,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				setAudioBlob(null); // Clear the blob after sending
 			} catch (error) {
 				console.error("Error transcribing audio:", error);
-				// TODO: Show error to user
+				showErrorToast("Error transcribing audio. Please try again.");
 			} finally {
 				setIsTranscribing(false);
 			}
