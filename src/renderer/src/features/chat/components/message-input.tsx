@@ -4,7 +4,6 @@ import {
 	faStop,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Mic, StopCircle } from "lucide-react";
 import {
 	Box,
 	Button,
@@ -16,27 +15,28 @@ import {
 	darken,
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
+import { TranscriptionApi } from "@shared/api/local-operator/transcription-api";
 import type { AgentDetails } from "@shared/api/local-operator/types";
+import { apiConfig } from "@shared/config/api-config";
 import { useMessageInput } from "@shared/hooks/use-message-input";
 import { normalizePath } from "@shared/utils/path-utils";
+import { showErrorToast } from "@shared/utils/toast-manager";
+import { Mic, StopCircle } from "lucide-react";
 import {
 	forwardRef,
+	useCallback,
 	useEffect,
 	useImperativeHandle,
 	useMemo,
 	useRef,
 	useState,
-	useCallback,
 } from "react";
 import type { ChangeEvent, ClipboardEvent, FormEvent } from "react";
-import { TranscriptionApi } from "@shared/api/local-operator/transcription-api";
-import { apiConfig } from "@shared/config/api-config";
-import { showErrorToast } from "@shared/utils/toast-manager";
 import type { Message } from "../types/message";
 import { AttachmentsPreview } from "./attachments-preview";
+import { AudioRecordingIndicator } from "./audio-recording-indicator";
 import { DirectoryIndicator } from "./directory-indicator";
 import { ScrollToBottomButton } from "./scroll-to-bottom-button";
-import { AudioRecordingIndicator } from "./audio-recording-indicator";
 import { WaveformAnimation } from "./waveform-animation";
 
 /**
@@ -423,7 +423,9 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		const handleStartRecording = useCallback(async () => {
 			if (navigator?.mediaDevices?.getUserMedia) {
 				try {
-					const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+					const stream = await navigator.mediaDevices.getUserMedia({
+						audio: true,
+					});
 					mediaRecorderRef.current = new MediaRecorder(stream);
 					audioChunksRef.current = [];
 
@@ -479,7 +481,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				);
 				if (response.result?.text) {
 					const newText = response.result?.text || "";
-					setNewMessage(newMessage + newText); 
+					setNewMessage(newMessage + newText);
 				}
 				setAudioBlob(null); // Clear the blob after sending
 			} catch (error) {
@@ -582,13 +584,17 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 						<AudioRecordingIndicator isRecording={isRecording} />
 					) : isTranscribing ? (
 						<TranscriptionIndicator>
-							<TranscriptionText variant="body2">Processing audio...</TranscriptionText>
+							<TranscriptionText variant="body2">
+								Processing audio...
+							</TranscriptionText>
 							<WaveformAnimation />
 						</TranscriptionIndicator>
 					) : (
 						<StyledTextField
 							fullWidth
-							placeholder={isInputDisabled ? "Agent is busy" : "Ask me for help"}
+							placeholder={
+								isInputDisabled ? "Agent is busy" : "Ask me for help"
+							}
 							value={newMessage}
 							onChange={(e) => setNewMessage(e.target.value)}
 							onKeyDown={handleKeyDown}
@@ -642,13 +648,13 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 						<Box display="flex" alignItems="center" gap={1}>
 							{!isLoading && !currentJobId && !isTranscribing && (
 								// @ts-ignore Tooltip type issue
-								<Tooltip title={isRecording ? "Stop recording" : "Start recording"}>
+								<Tooltip
+									title={isRecording ? "Stop recording" : "Start recording"}
+								>
 									<span>
 										<IconButton
 											onClick={
-												isRecording
-													? handleStopRecording
-													: handleStartRecording
+												isRecording ? handleStopRecording : handleStartRecording
 											}
 											color={isRecording ? "error" : "primary"}
 											size="small"
