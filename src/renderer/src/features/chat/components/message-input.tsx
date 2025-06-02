@@ -317,6 +317,50 @@ const EmptyStateTitle = styled(Typography)(({ theme }) => ({
 }));
 
 /**
+ * Styled transcription loading indicator
+ */
+const TranscriptionIndicator = styled(Box)(({ theme }) => ({
+	flex: 1,
+	display: "flex",
+	alignItems: "center",
+	justifyContent: "center",
+	minHeight: "50px",
+	padding: theme.spacing(1, 2),
+	borderRadius: theme.shape.borderRadius,
+	backgroundColor: alpha(theme.palette.primary.light, 0.1),
+	border: `1px solid ${alpha(theme.palette.primary.main, 0.3)}`,
+	color: theme.palette.primary.dark,
+}));
+
+const TranscriptionText = styled(Typography)(({ theme }) => ({
+	fontSize: "0.9rem",
+	fontWeight: 500,
+	marginRight: theme.spacing(1.5),
+}));
+
+const TranscriptionDot = styled(Box)(({ theme }) => ({
+	width: 8,
+	height: 8,
+	backgroundColor: theme.palette.primary.main,
+	borderRadius: "50%",
+	animation: "pulse 1.5s infinite ease-in-out",
+	"@keyframes pulse": {
+		"0%": {
+			transform: "scale(0.95)",
+			opacity: 0.7,
+		},
+		"70%": {
+			transform: "scale(1)",
+			opacity: 1,
+		},
+		"100%": {
+			transform: "scale(0.95)",
+			opacity: 0.7,
+		},
+	},
+}));
+
+/**
  * MessageInput component
  */
 export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
@@ -338,6 +382,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		const [attachments, setAttachments] = useState<string[]>([]);
 		const [isRecording, setIsRecording] = useState(false);
 		const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
+		const [isTranscribing, setIsTranscribing] = useState(false);
 		const mediaRecorderRef = useRef<MediaRecorder | null>(null);
 		const audioChunksRef = useRef<Blob[]>([]);
 
@@ -384,7 +429,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		const isInputDisabled = Boolean(isLoading && currentJobId);
 
 		useEffect(() => {
-			if (!isInputDisabled && !isRecording) {
+			if (!isInputDisabled && !isRecording && !isTranscribing) {
 				const activeElement = document.activeElement;
 				const isInputFocused =
 					activeElement &&
@@ -394,7 +439,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					textareaRef.current?.focus();
 				}
 			}
-		}, [isInputDisabled, isRecording, textareaRef]);
+		}, [isInputDisabled, isRecording, isTranscribing, textareaRef]);
 
 		const handleStartRecording = useCallback(async () => {
 			if (navigator?.mediaDevices?.getUserMedia) {
@@ -409,7 +454,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 
 					mediaRecorderRef.current.onstop = () => {
 						const completeAudioBlob = new Blob(audioChunksRef.current, {
-							type: "audio/webm", // Or other appropriate type
+							type: "audio/webm",
 						});
 						setAudioBlob(completeAudioBlob);
 						// Stop all tracks on the stream to release the microphone
@@ -442,14 +487,13 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			if (!audioBlob) return;
 
 			try {
-				// TODO: Consider adding a loading state for transcription
+				setIsTranscribing(true);
 				const response = await TranscriptionApi.createTranscription(
 					apiConfig.baseUrl,
 					{
 						file: new File([audioBlob], "recording.webm", {
 							type: "audio/webm",
 						}),
-						// model: "optional_model_name", // Optional: specify model if needed
 					},
 				);
 				if (response.result?.text) {
@@ -460,6 +504,8 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			} catch (error) {
 				console.error("Error transcribing audio:", error);
 				// TODO: Show error to user
+			} finally {
+				setIsTranscribing(false);
 			}
 		}, [audioBlob, setNewMessage, newMessage]);
 
@@ -547,12 +593,17 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 						<AttachmentsPreview
 							attachments={attachments}
 							onRemoveAttachment={handleRemoveAttachment}
-							disabled={isInputDisabled || isRecording}
+							disabled={isInputDisabled || isRecording || isTranscribing}
 						/>
 					)}
 
 					{isRecording ? (
 						<AudioRecordingIndicator isRecording={isRecording} />
+					) : isTranscribing ? (
+						<TranscriptionIndicator>
+							<TranscriptionText variant="body2">Processing audio...</TranscriptionText>
+							<TranscriptionDot />
+						</TranscriptionIndicator>
 					) : (
 						<StyledTextField
 							fullWidth
@@ -580,7 +631,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 								ref={fileInputRef}
 								onChange={handleFileSelect}
 								style={{ display: "none" }}
-								disabled={isInputDisabled || isRecording}
+								disabled={isInputDisabled || isRecording || isTranscribing}
 								multiple
 							/>
 							{/* @ts-ignore Tooltip type issue */}
@@ -592,7 +643,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 										size="small"
 										aria-label="Attach file"
 										data-tour-tag="chat-input-attach-file-button"
-										disabled={isInputDisabled || isRecording}
+										disabled={isInputDisabled || isRecording || isTranscribing}
 									>
 										<FontAwesomeIcon icon={faPaperclip} />
 									</AttachmentButton>
@@ -608,7 +659,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 
 						{/* Right side: microphone, send or stop button */}
 						<Box display="flex" alignItems="center" gap={1}>
-							{!isLoading && !currentJobId && (
+							{!isLoading && !currentJobId && !isTranscribing && (
 								// @ts-ignore Tooltip type issue
 								<Tooltip title={isRecording ? "Stop recording" : "Start recording"}>
 									<span>
@@ -623,7 +674,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 											aria-label={
 												isRecording ? "Stop recording" : "Start recording"
 											}
-											disabled={isLoading} // Disable if main send is loading
+											disabled={isLoading}
 										>
 											{isRecording ? (
 												<StopCircle size={24} />
@@ -659,7 +710,8 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 											color="primary"
 											disabled={
 												isLoading ||
-												isRecording || // Disable send while recording
+												isRecording ||
+												isTranscribing ||
 												(!newMessage.trim() && attachments.length === 0)
 											}
 											aria-label="Send message"
@@ -690,7 +742,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 									variant="outlined"
 									size="small"
 									onClick={() => handleSuggestionClick(suggestion)}
-									disabled={isInputDisabled || isRecording}
+									disabled={isInputDisabled || isRecording || isTranscribing}
 								>
 									{suggestion}
 								</SuggestionChip>
