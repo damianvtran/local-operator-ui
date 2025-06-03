@@ -63,7 +63,7 @@ export const features: Feature[] = [
 		icon: HardDrive,
 		title: "On-Device Work",
 		description:
-			"Agents can work on-device without relying on the cloud, reducing the back and forth between your files and the cloud, and improving privacy.",
+			"Agents can work on your device, reducing the back and forth between your files and the cloud, and improving privacy.",
 	},
 ];
 
