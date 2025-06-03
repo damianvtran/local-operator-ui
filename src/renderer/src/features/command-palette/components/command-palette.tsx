@@ -230,13 +230,18 @@ export const CommandPalette: FC = () => {
 	// const navigate = useNavigate(); // Remove redeclaration
 	const { agentId: currentAgentIdFromRoute } = useAgentRouteParam(); // Use hook for agentId
 	const { getLastAgentId } = useAgentSelectionStore();
-	const { data: agentsData } = useAgents(1, 20) as { data?: AgentListResult };
+	const [localQuery, setLocalQuery] = useState(commandPaletteQuery);
+	const debouncedLocalQuery = useDebounce(localQuery, 200);
+	const { data: agentsData } = useAgents(
+		1,
+		10,
+		0,
+		debouncedLocalQuery,
+	) as { data?: AgentListResult };
 	const theme = useTheme();
 	const clearConversationMutation = useClearAgentConversation();
 
 	const [selectedIndex, setSelectedIndex] = useState(0);
-	const [localQuery, setLocalQuery] = useState(commandPaletteQuery);
-	const debouncedLocalQuery = useDebounce(localQuery, 200);
 	const [isClearConfirmationOpen, setIsClearConfirmationOpen] = useState(false);
 
 	// Use the agent ID from URL or the last selected agent ID
