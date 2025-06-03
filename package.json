@@ -184,9 +184,15 @@
 				"filter": [
 					"**/*"
 				]
+			},
+			{
+				"from": "resources/python_aarch64",
+				"to": "python_aarch64",
+				"filter": [
+					"**/*"
+				]
 			}
 		],
-		"afterSign": "scripts/notarize.js",
 		"mac": {
 			"notarize": false,
 			"category": "public.app-category.developer-tools",
