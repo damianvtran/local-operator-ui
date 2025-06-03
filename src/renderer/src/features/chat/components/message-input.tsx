@@ -18,6 +18,7 @@ import { styled } from "@mui/material/styles";
 import { TranscriptionApi } from "@shared/api/local-operator/transcription-api";
 import type { AgentDetails } from "@shared/api/local-operator/types";
 import { apiConfig } from "@shared/config/api-config";
+import { useCredentials } from "@shared/hooks/use-credentials";
 import { useMessageInput } from "@shared/hooks/use-message-input";
 import { normalizePath } from "@shared/utils/path-utils";
 import { showErrorToast } from "@shared/utils/toast-manager";
@@ -334,9 +335,10 @@ const TranscriptionIndicator = styled(Box)(({ theme }) => ({
 }));
 
 const TranscriptionText = styled(Typography)(({ theme }) => ({
-	fontSize: "0.9rem",
+	fontSize: "0.875rem",
 	fontWeight: 500,
 	marginRight: theme.spacing(1.5),
+	color: theme.palette.text.secondary,
 }));
 
 /**
@@ -366,6 +368,19 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		const audioChunksRef = useRef<Blob[]>([]);
 
 		const fileInputRef = useRef<HTMLInputElement>(null);
+
+		const { data: credentialsData, isLoading: isLoadingCredentials } =
+			useCredentials();
+
+		const isRadientApiKeyConfigured = useMemo(
+			() => credentialsData?.keys?.includes("RADIENT_API_KEY"),
+			[credentialsData?.keys],
+		);
+
+		const canEnableRecordingFeature = useMemo(
+			() => isRadientApiKeyConfigured && !isLoadingCredentials,
+			[isRadientApiKeyConfigured, isLoadingCredentials],
+		);
 
 		const MAX_SUGGESTIONS = 7;
 
@@ -585,7 +600,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					) : isTranscribing ? (
 						<TranscriptionIndicator>
 							<TranscriptionText variant="body2">
-								Processing audio...
+								Processing audio
 							</TranscriptionText>
 							<WaveformAnimation />
 						</TranscriptionIndicator>
@@ -649,7 +664,13 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 							{!isLoading && !currentJobId && !isTranscribing && (
 								// @ts-ignore Tooltip type issue
 								<Tooltip
-									title={isRecording ? "Stop recording" : "Start recording"}
+									title={
+										!canEnableRecordingFeature
+											? "Sign in to Radient in the settings page to enable audio recording"
+											: isRecording
+												? "Stop recording"
+												: "Start recording"
+									}
 								>
 									<span>
 										<IconButton
@@ -661,7 +682,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 											aria-label={
 												isRecording ? "Stop recording" : "Start recording"
 											}
-											disabled={isLoading}
+											disabled={isLoading || !canEnableRecordingFeature}
 										>
 											{isRecording ? (
 												<StopCircle size={24} />

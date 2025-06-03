@@ -11,44 +11,66 @@ APP_DATA_DIR="$HOME/Library/Application Support/$APP_NAME"
 VENV_PATH="$APP_DATA_DIR/$VENV_NAME"
 LOG_FILE="$APP_DATA_DIR/backend-install.log"
 
+# Determine CPU Architecture and Python Directory Name
+ARCH=$(uname -m)
+PYTHON_DIR_NAME="python" # Default for x86_64
+PYTHON_ARCH_NAME="x86_64" # For logging
+
+if [[ "$ARCH" == "x86_64" ]]; then
+  PYTHON_DIR_NAME="python"
+  PYTHON_ARCH_NAME="x86_64"
+elif [[ "$ARCH" == "arm64" ]] || [[ "$ARCH" == "aarch64" ]]; then # arm64 is what uname -m returns on Apple Silicon
+  PYTHON_DIR_NAME="python_aarch64"
+  PYTHON_ARCH_NAME="aarch64"
+else
+  echo "Error: Unsupported CPU architecture: $ARCH"
+  exit 1
+fi
+echo "Detected CPU architecture: $ARCH, using Python directory name: $PYTHON_DIR_NAME"
+
 # Check if PYTHON_BIN is already set by the installer
 if [[ -n "$PYTHON_BIN" ]]; then
   echo "Using Python executable provided by installer: $PYTHON_BIN"
 else
-  # Get the path to the bundled Python
+  # Get the path to the bundled Python based on architecture
   # Try multiple possible locations to find Python
   POSSIBLE_PYTHON_PATHS=(
     # From environment variable (set by the installer)
-    "$ELECTRON_RESOURCE_PATH/python/bin/python3"
+    "$ELECTRON_RESOURCE_PATH/$PYTHON_DIR_NAME/bin/python3"
     # Absolute paths for packaged app
-    "/Applications/Local Operator.app/Contents/Resources/python/bin/python3"
-    "$HOME/Applications/Local Operator.app/Contents/Resources/python/bin/python3"
+    "/Applications/Local Operator.app/Contents/Resources/$PYTHON_DIR_NAME/bin/python3"
+    "$HOME/Applications/Local Operator.app/Contents/Resources/$PYTHON_DIR_NAME/bin/python3"
     # Development paths
-    "$(dirname "$0")/../../../resources/python/bin/python3"
-    "$(pwd)/resources/python/bin/python3"
-    # System Python as last resort
+    "$(dirname "$0")/../../../resources/$PYTHON_DIR_NAME/bin/python3"
+    "$(pwd)/resources/$PYTHON_DIR_NAME/bin/python3"
+    # System Python as last resort (less ideal as it might not be the version we tested with)
     "/usr/bin/python3"
   )
 
   # Find the first Python that exists
   PYTHON_BIN=""
+  echo "Searching for Python in the following locations for $PYTHON_ARCH_NAME architecture (using directory $PYTHON_DIR_NAME):"
   for path in "${POSSIBLE_PYTHON_PATHS[@]}"; do
+    echo "  - Checking $path"
     if [[ -f "$path" && -x "$path" ]]; then
       PYTHON_BIN="$path"
       echo "Found Python at $path"
       break
+    else
+      echo "    Not found or not executable."
     fi
   done
 
   # If we couldn't find Python, try to use the system Python
   if [[ -z "$PYTHON_BIN" ]]; then
+    echo "Bundled Python for $PYTHON_ARCH_NAME not found in directory $PYTHON_DIR_NAME. Attempting to use system Python..."
     if command -v python3 &>/dev/null; then
       PYTHON_BIN=$(command -v python3)
-      echo "Warning: Using system Python at $PYTHON_BIN"
+      echo "Warning: Using system Python at $PYTHON_BIN. This may lead to unexpected behavior."
     else
-      echo "Error: Could not find Python. Tried the following paths:"
+      echo "Error: Could not find a suitable Python executable. Tried the following paths for $PYTHON_ARCH_NAME (expected in $PYTHON_DIR_NAME):"
       for path in "${POSSIBLE_PYTHON_PATHS[@]}"; do
-        echo "  - $path"
+        echo "  - $path (failed)"
       done
       exit 1
     fi

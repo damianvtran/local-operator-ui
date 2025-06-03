@@ -184,9 +184,15 @@
 				"filter": [
 					"**/*"
 				]
+			},
+			{
+				"from": "resources/python_aarch64",
+				"to": "python_aarch64",
+				"filter": [
+					"**/*"
+				]
 			}
 		],
-		"afterSign": "scripts/notarize.js",
 		"mac": {
 			"notarize": false,
 			"category": "public.app-category.developer-tools",
@@ -194,6 +200,7 @@
 			"gatekeeperAssess": false,
 			"entitlements": "build/entitlements.mac.plist",
 			"entitlementsInherit": "build/entitlements.mac.plist",
+			"x64ArchFiles": "*",
 			"target": [
 				{
 					"target": "dmg",
@@ -208,8 +215,7 @@
 					]
 				}
 			],
-			"artifactName": "${name}-${version}-${arch}.${ext}",
-			"x64ArchFiles": "Contents/Resources/python/**/*"
+			"artifactName": "${name}-${version}-${arch}.${ext}"
 		},
 		"dmg": {
 			"sign": false,
