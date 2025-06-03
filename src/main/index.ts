@@ -47,6 +47,29 @@ function createApplicationMenu(): void {
 	// Check if we're in development mode
 	const isDev = Boolean(process.env.ELECTRON_RENDERER_URL);
 
+	// Define zoom functions
+	const zoomInHandler = () => {
+		if (mainWindow) {
+			const webContents = mainWindow.webContents;
+			const currentZoom = webContents.getZoomFactor();
+			webContents.setZoomFactor(currentZoom + 0.1);
+		}
+	};
+
+	const zoomOutHandler = () => {
+		if (mainWindow) {
+			const webContents = mainWindow.webContents;
+			const currentZoom = webContents.getZoomFactor();
+			webContents.setZoomFactor(currentZoom - 0.1);
+		}
+	};
+
+	const actualSizeHandler = () => {
+		if (mainWindow) {
+			mainWindow.webContents.setZoomFactor(1.0);
+		}
+	};
+
 	// Create menu template
 	const template: Electron.MenuItemConstructorOptions[] = [
 		{
@@ -70,12 +93,30 @@ function createApplicationMenu(): void {
 		{
 			label: "View",
 			submenu: [
-				{ role: "reload" },
-				{ role: "forceReload" },
+				{
+					role: "reload",
+					accelerator: "CmdOrCtrl+R",
+				},
+				{
+					role: "forceReload",
+					accelerator: "CmdOrCtrl+Shift+R",
+				},
 				{ type: "separator" as const },
-				{ role: "resetZoom" },
-				{ role: "zoomIn" },
-				{ role: "zoomOut" },
+				{
+					label: "Actual Size",
+					accelerator: "CmdOrCtrl+O",
+					click: actualSizeHandler,
+				},
+				{
+					label: "Zoom In",
+					accelerator: "CmdOrCtrl+Plus", // On macOS, this often requires Shift as well (Cmd+Shift+=)
+					click: zoomInHandler,
+				},
+				{
+					label: "Zoom Out",
+					accelerator: "CmdOrCtrl+-",
+					click: zoomOutHandler,
+				},
 				{ type: "separator" as const },
 				{ role: "togglefullscreen" },
 			],
@@ -322,6 +363,29 @@ const oauthService = new OAuthService(sessionStore);
 // Some APIs can only be used after this event occurs.
 // Define mainWindow at a higher scope to be accessible in event handlers
 let mainWindow: BrowserWindow | null = null;
+
+// Define zoom functions for before-input-event, ensuring mainWindow is available
+const zoomInFromEvent = () => {
+	if (mainWindow) {
+		const webContents = mainWindow.webContents;
+		const currentZoom = webContents.getZoomFactor();
+		webContents.setZoomFactor(currentZoom + 0.1);
+	}
+};
+
+const zoomOutFromEvent = () => {
+	if (mainWindow) {
+		const webContents = mainWindow.webContents;
+		const currentZoom = webContents.getZoomFactor();
+		webContents.setZoomFactor(currentZoom - 0.1);
+	}
+};
+
+const actualSizeFromEvent = () => {
+	if (mainWindow) {
+		mainWindow.webContents.setZoomFactor(1.0);
+	}
+};
 
 // --- Single Instance Lock ---
 const gotTheLock = app.requestSingleInstanceLock();
@@ -728,6 +792,26 @@ app
 
 			// Pass window reference to OAuthService
 			oauthService.setMainWindow(mainWindow);
+
+			// Add before-input-event listener for zoom control
+			if (mainWindow) {
+				mainWindow.webContents.on("before-input-event", (event, input) => {
+					const isCmdOrCtrl = input.control || input.meta; // Ctrl on Win/Linux, Cmd on macOS
+
+					if (isCmdOrCtrl) {
+						if (input.key === "+" || input.key === "=") {
+							zoomInFromEvent();
+							event.preventDefault();
+						} else if (input.key === "-") {
+							zoomOutFromEvent();
+							event.preventDefault();
+						} else if (input.key === "O") {
+							actualSizeFromEvent();
+							event.preventDefault();
+						}
+					}
+				});
+			}
 
 			// Clean up any previous update service
 			if (updateService) {
