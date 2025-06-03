@@ -44,5 +44,6 @@ coverage/
 *.pem
 
 resources/python
+resources/python_aarch64
 
 *storybook.log
