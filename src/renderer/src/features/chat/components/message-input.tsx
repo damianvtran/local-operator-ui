@@ -18,6 +18,7 @@ import { styled } from "@mui/material/styles";
 import { TranscriptionApi } from "@shared/api/local-operator/transcription-api";
 import type { AgentDetails } from "@shared/api/local-operator/types";
 import { apiConfig } from "@shared/config/api-config";
+import { useCredentials } from "@shared/hooks/use-credentials";
 import { useMessageInput } from "@shared/hooks/use-message-input";
 import { normalizePath } from "@shared/utils/path-utils";
 import { showErrorToast } from "@shared/utils/toast-manager";
@@ -32,7 +33,6 @@ import {
 	useState,
 } from "react";
 import type { ChangeEvent, ClipboardEvent, FormEvent } from "react";
-import { useCredentials } from "@shared/hooks/use-credentials";
 import type { Message } from "../types/message";
 import { AttachmentsPreview } from "./attachments-preview";
 import { AudioRecordingIndicator } from "./audio-recording-indicator";
