@@ -15,7 +15,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
 	Alert,
 	Box,
-	CircularProgress, // Import CircularProgress for loading
+	CircularProgress,
 	FormControl,
 	FormHelperText,
 	MenuItem,
@@ -23,7 +23,7 @@ import {
 	type SelectChangeEvent,
 	Typography,
 	alpha,
-	useTheme, // Import useTheme
+	useTheme,
 } from "@mui/material";
 import { useConfig } from "@shared/hooks/use-config";
 import { useCredentials } from "@shared/hooks/use-credentials";
@@ -33,13 +33,13 @@ import type { FC } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
 	EmojiContainer,
-	FieldLabel, // Import FieldLabel
+	FieldLabel,
 	FormContainer,
-	LabelIcon, // Import LabelIcon
+	LabelIcon,
 	SectionContainer,
 	SectionDescription,
 	SectionTitle,
-	menuPropsSx, // Import shared menu styles
+	menuPropsSx,
 } from "../onboarding-styled";
 
 /**
