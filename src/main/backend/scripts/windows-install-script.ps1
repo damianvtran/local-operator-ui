@@ -19,12 +19,12 @@ if (-not (Test-Path $AppDataDir)) {
 Start-Transcript -Path $LogFile -Append
 Write-Output "$(Get-Date): Starting Local Operator backend installation..."
 
-$FFmpegDir = "$AppDataDir\\ffmpeg"
-$FFmpegBin = "$FFmpegDir\\bin\\ffmpeg.exe" # Path to ffmpeg.exe after extraction
+$BinDir = "$AppDataDir\\bin"
+$FFmpegBin = "$BinDir\\ffmpeg.exe"
 
-Write-Output "Ensuring FFmpeg directory exists: $FFmpegDir"
-if (-not (Test-Path $FFmpegDir)) {
-    New-Item -ItemType Directory -Path $FFmpegDir -Force | Out-Null
+Write-Output "Ensuring bin directory exists: $BinDir"
+if (-not (Test-Path $BinDir)) {
+    New-Item -ItemType Directory -Path $BinDir -Force | Out-Null
 }
 
 # Check if FFmpeg is already installed
@@ -34,44 +34,28 @@ if (Test-Path $FFmpegBin) {
     Write-Output "FFmpeg not found. Attempting to download and install FFmpeg..."
 
     $FFmpegDownloadUrl = ""
-    $FFmpegArchiveName = "ffmpeg-win64-static.zip" # Assuming 64-bit, adjust if 32-bit support is needed
     
-    # Determine architecture (though ffmpeg-static often provides a general 64-bit build for Windows)
-    # For simplicity, using a common 64-bit static build URL.
-    # A more robust solution might check $env:PROCESSOR_ARCHITECTURE
-    $FFmpegDownloadUrl = "https://github.com/eugeneware/ffmpeg-static/releases/download/6.0.0/ffmpeg-win64-static.zip"
-    
-    $TempFFmpegZip = "$env:TEMP\\$FFmpegArchiveName"
+    # Determine architecture and set appropriate download URL
+    if ($env:PROCESSOR_ARCHITECTURE -eq "AMD64" -or $env:PROCESSOR_ARCHITEW6432 -eq "AMD64") {
+        $FFmpegDownloadUrl = "https://github.com/eugeneware/ffmpeg-static/releases/download/b6.0/ffmpeg-win32-x64"
+    } else {
+        Write-Error "Unsupported CPU architecture for FFmpeg download: $env:PROCESSOR_ARCHITECTURE"
+        exit 1
+    }
 
     Write-Output "Downloading FFmpeg from: $FFmpegDownloadUrl"
     try {
-        Invoke-WebRequest -Uri $FFmpegDownloadUrl -OutFile $TempFFmpegZip -ErrorAction Stop
-        Write-Output "FFmpeg downloaded successfully to $TempFFmpegZip"
-
-        Write-Output "Extracting FFmpeg to $FFmpegDir"
-        Expand-Archive -Path $TempFFmpegZip -DestinationPath $FFmpegDir -Force
-        Write-Output "FFmpeg extracted successfully."
-
-        # The ffmpeg-static zip for windows usually has ffmpeg.exe inside a 'bin' folder.
-        # Verify the binary exists
+        Invoke-WebRequest -Uri $FFmpegDownloadUrl -OutFile $FFmpegBin -ErrorAction Stop
+        Write-Output "FFmpeg downloaded successfully to $FFmpegBin"
+        
+        # Verify FFmpeg is accessible after download
         if (-not (Test-Path $FFmpegBin)) {
-            Write-Error "FFmpeg binary not found at $FFmpegBin after extraction."
-            # Attempt to find it if structure is different (e.g., directly in $FFmpegDir)
-            if (Test-Path "$FFmpegDir\\ffmpeg.exe") {
-                $FFmpegBin = "$FFmpegDir\\ffmpeg.exe"
-                Write-Output "Found FFmpeg at $FFmpegBin"
-            } else {
-                 Write-Error "Could not locate ffmpeg.exe in the extracted archive at $FFmpegDir"
-                 exit 1
-            }
+            Write-Error "FFmpeg binary not found at $FFmpegBin after download."
+            exit 1
         }
     } catch {
-        Write-Error "Failed to download or extract FFmpeg: $($_.Exception.Message)"
+        Write-Error "Failed to download FFmpeg: $($_.Exception.Message)"
         exit 1
-    } finally {
-        if (Test-Path $TempFFmpegZip) {
-            Remove-Item $TempFFmpegZip -Force
-        }
     }
 }
 Write-Output "FFmpeg installation complete. FFmpeg binary is at: $FFmpegBin"
