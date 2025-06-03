@@ -194,7 +194,6 @@
 			"gatekeeperAssess": false,
 			"entitlements": "build/entitlements.mac.plist",
 			"entitlementsInherit": "build/entitlements.mac.plist",
-			"NSMicrophoneUsageDescription": "This app needs access to your microphone to enable audio recording for voice messages to your assistants.",
 			"target": [
 				{
 					"target": "dmg",

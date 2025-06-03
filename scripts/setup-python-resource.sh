@@ -12,8 +12,8 @@
 set -euo pipefail
 
 # Configuration
-PYTHON_VERSION="3.12.2"
-PYTHON_BUILD_DATE="20240224"
+PYTHON_VERSION="3.12.10"
+PYTHON_BUILD_DATE="20250529"
 PYTHON_STANDALONE_URL="https://github.com/indygreg/python-build-standalone/releases/download/${PYTHON_BUILD_DATE}/cpython-${PYTHON_VERSION}+${PYTHON_BUILD_DATE}-x86_64-apple-darwin-install_only.tar.gz"
 RESOURCES_DIR="$(dirname "$0")/../resources"
 PYTHON_DIR="${RESOURCES_DIR}/python"
