@@ -92,11 +92,11 @@ echo "Log file: $LOG_FILE"
 echo "=============================================="
 
 # --- FFmpeg Installation ---
-FFMPEG_DIR="$APP_DATA_DIR/ffmpeg"
-FFMPEG_BIN="$FFMPEG_DIR/ffmpeg"
+BIN_DIR="$APP_DATA_DIR/bin"
+FFMPEG_BIN="$BIN_DIR/ffmpeg"
 
-echo "Ensuring FFmpeg directory exists: $FFMPEG_DIR"
-mkdir -p "$FFMPEG_DIR"
+echo "Ensuring bin directory exists: $BIN_DIR"
+mkdir -p "$BIN_DIR"
 
 # Check if FFmpeg is already installed and executable
 if [ -f "$FFMPEG_BIN" ] && [ -x "$FFMPEG_BIN" ]; then
@@ -107,9 +107,9 @@ else
     FFMPEG_DOWNLOAD_URL=""
 
     if [[ "$ARCH" == "x86_64" ]]; then
-        FFMPEG_DOWNLOAD_URL="https://github.com/eugeneware/ffmpeg-static/releases/download/6.0.0/ffmpeg-mac-x64"
+        FFMPEG_DOWNLOAD_URL="https://github.com/eugeneware/ffmpeg-static/releases/download/b6.0/ffmpeg-mac-x64"
     elif [[ "$ARCH" == "arm64" ]] || [[ "$ARCH" == "aarch64" ]]; then
-        FFMPEG_DOWNLOAD_URL="https://github.com/eugeneware/ffmpeg-static/releases/download/6.0.0/ffmpeg-mac-arm64"
+        FFMPEG_DOWNLOAD_URL="https://github.com/eugeneware/ffmpeg-static/releases/download/b6.0/ffmpeg-mac-arm64"
     else
         echo "Error: Unsupported CPU architecture for FFmpeg download: $ARCH"
         exit 1

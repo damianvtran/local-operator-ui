@@ -53,12 +53,12 @@ _log_internal() {
 }
 
 # --- FFmpeg Installation ---
-FFMPEG_DIR="${APP_DATA_DIR}/ffmpeg"
-FFMPEG_BIN="${FFMPEG_DIR}/ffmpeg" # Path to ffmpeg binary after extraction
+BIN_DIR="${APP_DATA_DIR}/bin"
+FFMPEG_BIN="${BIN_DIR}/ffmpeg" # Path to ffmpeg binary
 
-_log_internal "Ensuring FFmpeg directory exists: ${FFMPEG_DIR}"
-if ! mkdir -p "${FFMPEG_DIR}"; then
-    _log_internal "ERROR: Unable to create FFmpeg directory at ${FFMPEG_DIR}"
+_log_internal "Ensuring bin directory exists: ${BIN_DIR}"
+if ! mkdir -p "${BIN_DIR}"; then
+    _log_internal "ERROR: Unable to create bin directory at ${BIN_DIR}"
     exit 1
 fi
 
@@ -69,16 +69,12 @@ else
     _log_internal "FFmpeg not found or not executable. Attempting to download and install FFmpeg..."
 
     FFMPEG_DOWNLOAD_URL=""
-    FFMPEG_ARCHIVE_NAME=""
-    FFMPEG_TEMP_ARCHIVE="${APP_DATA_DIR}/ffmpeg-temp-archive" # Temporary storage for archive
 
     LINUX_ARCH=$(uname -m)
     if [[ "${LINUX_ARCH}" == "x86_64" ]]; then
-        FFMPEG_DOWNLOAD_URL="https://github.com/eugeneware/ffmpeg-static/releases/download/6.0.0/ffmpeg-linux-x64.tar.xz"
-        FFMPEG_ARCHIVE_NAME="ffmpeg-linux-x64.tar.xz"
+        FFMPEG_DOWNLOAD_URL="https://github.com/eugeneware/ffmpeg-static/releases/download/b6.0/ffmpeg-linux-x64"
     elif [[ "${LINUX_ARCH}" == "aarch64" ]] || [[ "${LINUX_ARCH}" == "arm64" ]]; then
-        FFMPEG_DOWNLOAD_URL="https://github.com/eugeneware/ffmpeg-static/releases/download/6.0.0/ffmpeg-linux-arm64.tar.xz"
-        FFMPEG_ARCHIVE_NAME="ffmpeg-linux-arm64.tar.xz"
+        FFMPEG_DOWNLOAD_URL="https://github.com/eugeneware/ffmpeg-static/releases/download/b6.0/ffmpeg-linux-arm64"
     else
         _log_internal "Error: Unsupported CPU architecture for FFmpeg download: ${LINUX_ARCH}"
         exit 1
@@ -86,12 +82,12 @@ else
 
     _log_internal "Downloading FFmpeg from: ${FFMPEG_DOWNLOAD_URL}"
     if command -v curl >/dev/null 2>&1; then
-        if ! curl -L "${FFMPEG_DOWNLOAD_URL}" -o "${FFMPEG_TEMP_ARCHIVE}"; then
+        if ! curl -L "${FFMPEG_DOWNLOAD_URL}" -o "${FFMPEG_BIN}"; then
             _log_internal "Error: Failed to download FFmpeg using curl from ${FFMPEG_DOWNLOAD_URL}"
             exit 1
         fi
     elif command -v wget >/dev/null 2>&1; then
-        if ! wget -O "${FFMPEG_TEMP_ARCHIVE}" "${FFMPEG_DOWNLOAD_URL}"; then
+        if ! wget -O "${FFMPEG_BIN}" "${FFMPEG_DOWNLOAD_URL}"; then
             _log_internal "Error: Failed to download FFmpeg using wget from ${FFMPEG_DOWNLOAD_URL}"
             exit 1
         fi
@@ -99,35 +95,14 @@ else
         _log_internal "Error: Neither curl nor wget found. Cannot download FFmpeg."
         exit 1
     fi
-    _log_internal "FFmpeg archive downloaded successfully to ${FFMPEG_TEMP_ARCHIVE}"
+    _log_internal "FFmpeg binary downloaded successfully to ${FFMPEG_BIN}"
 
-    _log_internal "Extracting FFmpeg archive to ${FFMPEG_DIR}"
-    # The tar.xz from ffmpeg-static usually extracts a single 'ffmpeg' binary directly
-    if ! tar -xf "${FFMPEG_TEMP_ARCHIVE}" -C "${FFMPEG_DIR}"; then
-        _log_internal "Error: Failed to extract FFmpeg archive ${FFMPEG_TEMP_ARCHIVE} to ${FFMPEG_DIR}"
-        rm -f "${FFMPEG_TEMP_ARCHIVE}" # Clean up temp archive
-        exit 1
-    fi
-    _log_internal "FFmpeg extracted successfully."
-    rm -f "${FFMPEG_TEMP_ARCHIVE}" # Clean up temp archive
-
-    # Ensure the binary is named ffmpeg and is in FFMPEG_DIR
-    # Sometimes archives extract into a subdirectory, or the binary has a different name
-    if [ -f "${FFMPEG_DIR}/${FFMPEG_ARCHIVE_NAME%.tar.xz}" ]; then # e.g. ffmpeg-linux-x64
-        mv "${FFMPEG_DIR}/${FFMPEG_ARCHIVE_NAME%.tar.xz}" "${FFMPEG_BIN}"
-    elif [ -f "${FFMPEG_DIR}/ffmpeg" ]; then # Already named ffmpeg
-        : # Do nothing, already correct
-    else
-        _log_internal "Error: Could not find the 'ffmpeg' binary in the extracted archive at ${FFMPEG_DIR}"
-        exit 1
-    fi
-    
     chmod +x "${FFMPEG_BIN}"
     _log_internal "Set executable permissions for ${FFMPEG_BIN}"
 
     # Verify FFmpeg is executable after download
     if [ ! -f "${FFMPEG_BIN}" ] || [ ! -x "${FFMPEG_BIN}" ]; then
-        _log_internal "Error: FFmpeg binary not found or not executable after download and extraction."
+        _log_internal "Error: FFmpeg binary not found or not executable after download."
         exit 1
     fi
 fi
