@@ -88,8 +88,11 @@ jobs:
         run: |
           # Create a simple Python installation to simulate the bundled Python
           mkdir -p resources/python/bin
+          mkdir -p resources/python_aarch64/bin
           ln -s $(which python3) resources/python/bin/python3
+          ln -s $(which python3) resources/python_aarch64/bin/python3
           chmod +x resources/python/bin/python3
+          chmod +x resources/python_aarch64/bin/python3
       
       - name: Run macOS installation script
         run: |
