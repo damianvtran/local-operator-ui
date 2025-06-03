@@ -12,8 +12,10 @@ import {
 	FolderOpen,
 	LayoutGrid,
 	MoreHorizontal,
+	ClipboardCopy,
 } from "lucide-react";
 import { type MouseEvent, useState } from "react";
+import { showSuccessToast, showErrorToast } from "../../utils/toast-manager";
 
 /**
  * Props for FileActionsMenu
@@ -133,6 +135,19 @@ export const FileActionsMenu = ({
 		setAnchorEl(null);
 	};
 
+	const handleCopyFilePath = async () => {
+		handleCloseMenu();
+		if (filePath) {
+			try {
+				await navigator.clipboard.writeText(filePath);
+				showSuccessToast("File path copied to clipboard");
+			} catch (err) {
+				console.error("Failed to copy file path: ", err);
+				showErrorToast("Failed to copy file path");
+			}
+		}
+	};
+
 	const handleOpenFile = () => {
 		handleCloseMenu();
 		if (filePath) {
@@ -195,6 +210,12 @@ export const FileActionsMenu = ({
 						<FolderOpen aria-label="Open Folder" />
 					</MenuItemIcon>
 					<span>Open Folder</span>
+				</StyledMenuItem>
+				<StyledMenuItem onClick={handleCopyFilePath}>
+					<MenuItemIcon>
+						<ClipboardCopy aria-label="Copy File Path" />
+					</MenuItemIcon>
+					<span>Copy File Path</span>
 				</StyledMenuItem>
 			</StyledFileActionsMenu>
 		</>
