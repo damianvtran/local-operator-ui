@@ -22,6 +22,12 @@
     <true/>
     <key>com.apple.security.device.audio-input</key>
     <true/>
+    <key>com.apple.security.device.camera</key>
+    <true/>
+    <key>com.apple.security.device.microphone</key>
+    <true/>
+    <key>com.apple.security.device.screen-capture</key>
+    <true/>
     <key>NSCameraUseContinuityCameraDeviceType</key>
     <true/>
   </dict>
