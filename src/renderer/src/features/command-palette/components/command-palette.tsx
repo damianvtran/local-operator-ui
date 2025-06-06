@@ -227,16 +227,13 @@ export const CommandPalette: FC = () => {
 		closeCreateAgentDialog,
 	} = useUiPreferencesStore();
 
-	const { agentId: currentAgentIdFromRoute } = useAgentRouteParam(); 
+	const { agentId: currentAgentIdFromRoute } = useAgentRouteParam();
 	const { getLastAgentId } = useAgentSelectionStore();
 	const [localQuery, setLocalQuery] = useState(commandPaletteQuery);
 	const debouncedLocalQuery = useDebounce(localQuery, 200);
-	const { data: agentsData } = useAgents(
-		1,
-		10,
-		0,
-		debouncedLocalQuery,
-	) as { data?: AgentListResult };
+	const { data: agentsData } = useAgents(1, 10, 0, debouncedLocalQuery) as {
+		data?: AgentListResult;
+	};
 	const theme = useTheme();
 	const clearConversationMutation = useClearAgentConversation();
 

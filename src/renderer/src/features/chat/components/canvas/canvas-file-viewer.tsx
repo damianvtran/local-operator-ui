@@ -2,6 +2,7 @@ import type {
 	CanvasDocument,
 	CanvasDocumentType,
 } from "@features/chat/types/canvas";
+import { getFileTypeFromPath } from "@features/chat/utils/file-types";
 import { getFileName } from "@features/chat/utils/get-file-name";
 import { isCanvasSupported } from "@features/chat/utils/is-canvas-supported";
 import {
@@ -19,7 +20,6 @@ import { createLocalOperatorClient } from "@shared/api/local-operator";
 import { FileActionsMenu } from "@shared/components/common/file-actions-menu";
 import { apiConfig } from "@shared/config";
 import { useCanvasStore } from "@shared/store/canvas-store";
-import { getFileTypeFromPath } from "@features/chat/utils/file-types";
 import {
 	Archive,
 	AudioLines,
@@ -260,13 +260,13 @@ export const CanvasFileViewer: FC<CanvasFileViewerProps> = ({
 				// Handle base64 data URI
 				if (isCanvasSupported(title)) {
 					const docId = fileDoc.path; // Use the data URI itself as a unique ID
-						const newDoc = {
-							id: docId,
-							title,
-							path: docId, // Store data URI as path for consistency if needed
-							content: fileDoc.path, // The content is the data URI itself
-							type: getFileTypeFromPath(title),
-						};
+					const newDoc = {
+						id: docId,
+						title,
+						path: docId, // Store data URI as path for consistency if needed
+						content: fileDoc.path, // The content is the data URI itself
+						type: getFileTypeFromPath(title),
+					};
 
 					const state = useCanvasStore.getState();
 					const conversationCanvasState = state.conversations?.[conversationId];

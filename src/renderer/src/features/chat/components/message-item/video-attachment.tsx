@@ -4,8 +4,8 @@ import { FileActionsMenu } from "@shared/components/common/file-actions-menu";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { type FC, memo, useCallback, useState } from "react";
-import { getFileName } from "../../utils/get-file-name";
 import { getFileTypeFromPath } from "../../utils/file-types";
+import { getFileName } from "../../utils/get-file-name";
 import { isCanvasSupported } from "../../utils/is-canvas-supported";
 import { InvalidAttachment } from "./invalid-attachment";
 

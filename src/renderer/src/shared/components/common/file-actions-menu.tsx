@@ -8,14 +8,14 @@ import {
 	styled,
 } from "@mui/material";
 import {
+	ClipboardCopy,
 	File as FileIcon,
 	FolderOpen,
 	LayoutGrid,
 	MoreHorizontal,
-	ClipboardCopy,
 } from "lucide-react";
 import { type MouseEvent, useState } from "react";
-import { showSuccessToast, showErrorToast } from "../../utils/toast-manager";
+import { showErrorToast, showSuccessToast } from "../../utils/toast-manager";
 
 /**
  * Props for FileActionsMenu
