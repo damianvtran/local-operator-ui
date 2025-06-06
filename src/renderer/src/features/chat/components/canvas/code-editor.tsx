@@ -23,14 +23,15 @@ export const CodeEditor: FC<CodeEditorProps> = ({ document }) => {
 	const theme = useTheme();
 
 	useEffect(() => {
-		if (document.id !== value?.id) {
+		if (document.id !== value?.id || document.content !== value?.content) {
 			setValue(document);
 			const newLangExtension = loadLanguageExtensions(document.title);
 
-			if (!newLangExtension) return;
-			setLanguageExtensions([newLangExtension]);
+			if (newLangExtension) {
+				setLanguageExtensions([newLangExtension]);
+			}
 		}
-	}, [document, value?.id]);
+	}, [document, value?.id, value?.content]);
 
 	const codeEditorTheme =
 		theme.palette.mode === "light" ? basicLight : basicDark;

@@ -6,7 +6,7 @@ import { FileActionsMenu } from "@shared/components/common/file-actions-menu";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import type { FC } from "react";
-import { memo, useCallback } from "react";
+import { memo, useCallback, useEffect } from "react";
 import { getFileTypeFromPath } from "../../utils/file-types";
 import { isCanvasSupported } from "../../utils/is-canvas-supported";
 /**
@@ -141,6 +141,68 @@ export const FileAttachment: FC<FileAttachmentProps> = memo(
 		// addMentionedFile is removed as its functionality is centralized.
 
 		const { setViewMode } = useCanvasStore(); // Add setViewMode from canvas store
+
+		useEffect(() => {
+			const autoUpdateOpenFile = async () => {
+				const state = useCanvasStore.getState();
+				const conversationCanvasState = state.conversations?.[conversationId];
+				if (!conversationCanvasState) return;
+
+				const openTabs = conversationCanvasState.openTabs ?? [];
+				const filesInState = conversationCanvasState.files ?? [];
+				const title = getFileName(file);
+				const normalizedPath = file.startsWith("file://")
+					? file.substring(7)
+					: file;
+				const docId = file.startsWith("data:") ? file : normalizedPath;
+
+				const isFileOpen = openTabs.some((tab) => tab.id === docId);
+				if (!isFileOpen) return;
+
+				// File is open, so we need to refresh its content
+				if (file.startsWith("data:")) {
+					const newDoc = {
+						id: docId,
+						title,
+						path: docId,
+						content: file,
+						type: getFileTypeFromPath(file),
+					};
+					const fileIndex = filesInState.findIndex((f) => f.id === docId);
+					if (fileIndex !== -1) {
+						const updatedFiles = [...filesInState];
+						updatedFiles[fileIndex] = newDoc;
+						state.setFiles(conversationId, updatedFiles);
+					}
+				} else {
+					try {
+						const result = await window.api.readFile(normalizedPath);
+						if (result.success) {
+							const newDoc = {
+								id: docId,
+								title,
+								path: normalizedPath,
+								content: result.data,
+								type: getFileTypeFromPath(file),
+							};
+							const fileIndex = filesInState.findIndex((f) => f.id === docId);
+							if (fileIndex !== -1) {
+								const updatedFiles = [...filesInState];
+								updatedFiles[fileIndex] = newDoc;
+								state.setFiles(conversationId, updatedFiles);
+							}
+						}
+					} catch (error) {
+						console.error(
+							`Failed to auto-refresh file in canvas: ${normalizedPath}`,
+							error,
+						);
+					}
+				}
+			};
+
+			autoUpdateOpenFile();
+		}, [file, conversationId]);
 
 		// Handle click on the file attachment
 		const handleClick = useCallback(async () => {
