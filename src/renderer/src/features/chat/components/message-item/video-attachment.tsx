@@ -4,6 +4,7 @@ import { FileActionsMenu } from "@shared/components/common/file-actions-menu";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { type FC, memo, useCallback, useState } from "react";
+import { getFileName } from "../../utils/get-file-name";
 import { getFileTypeFromPath } from "../../utils/file-types";
 import { isCanvasSupported } from "../../utils/is-canvas-supported";
 import { InvalidAttachment } from "./invalid-attachment";
@@ -57,18 +58,6 @@ const AttachmentVideoContainer = styled(Box)({
 		visibility: "visible",
 	},
 });
-
-/**
- * Extracts the filename from a path
- * @param path - The file path or URL to check
- * @returns The extracted filename
- */
-const PATH_SEPARATOR_REGEX = /[/\\]/;
-const getFileName = (path: string): string => {
-	// Handle both local paths and URLs
-	const parts = path.split(PATH_SEPARATOR_REGEX);
-	return parts[parts.length - 1];
-};
 
 /**
  * Component for displaying video attachments

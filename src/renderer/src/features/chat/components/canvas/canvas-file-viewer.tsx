@@ -19,6 +19,7 @@ import { createLocalOperatorClient } from "@shared/api/local-operator";
 import { FileActionsMenu } from "@shared/components/common/file-actions-menu";
 import { apiConfig } from "@shared/config";
 import { useCanvasStore } from "@shared/store/canvas-store";
+import { getFileTypeFromPath } from "@features/chat/utils/file-types";
 import {
 	Archive,
 	AudioLines,
@@ -209,7 +210,20 @@ export const CanvasFileViewer: FC<CanvasFileViewerProps> = ({
 	const setSelectedTab = useCanvasStore((s) => s.setSelectedTab);
 
 	// Memoize files to prevent unnecessary re-renders
-	const memoizedFiles = useMemo<CanvasDocument[]>(() => files, [files]);
+	const memoizedFiles = useMemo<CanvasDocument[]>(() => {
+		const filesByBaseName = files.reduce(
+			(acc, file) => {
+				const name = getFileName(file.path);
+				// Prioritize files with absolute paths, assuming they are longer
+				if (!acc[name] || file.path.length > acc[name].path.length) {
+					acc[name] = file;
+				}
+				return acc;
+			},
+			{} as Record<string, CanvasDocument>,
+		);
+		return Object.values(filesByBaseName);
+	}, [files]);
 
 	// Create a Local Operator client using the API config
 	const client = useMemo(() => {
@@ -246,12 +260,13 @@ export const CanvasFileViewer: FC<CanvasFileViewerProps> = ({
 				// Handle base64 data URI
 				if (isCanvasSupported(title)) {
 					const docId = fileDoc.path; // Use the data URI itself as a unique ID
-					const newDoc = {
-						id: docId,
-						title,
-						path: docId, // Store data URI as path for consistency if needed
-						content: fileDoc.path, // The content is the data URI itself
-					};
+						const newDoc = {
+							id: docId,
+							title,
+							path: docId, // Store data URI as path for consistency if needed
+							content: fileDoc.path, // The content is the data URI itself
+							type: getFileTypeFromPath(title),
+						};
 
 					const state = useCanvasStore.getState();
 					const conversationCanvasState = state.conversations?.[conversationId];
@@ -297,6 +312,7 @@ export const CanvasFileViewer: FC<CanvasFileViewerProps> = ({
 							title,
 							path: normalizedPath,
 							content: result.data,
+							type: getFileTypeFromPath(title),
 						};
 
 						const state = useCanvasStore.getState();
