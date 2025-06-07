@@ -22,7 +22,7 @@ import { useCredentials } from "@shared/hooks/use-credentials";
 import { useMessageInput } from "@shared/hooks/use-message-input";
 import { normalizePath } from "@shared/utils/path-utils";
 import { showErrorToast } from "@shared/utils/toast-manager";
-import { Mic, StopCircle } from "lucide-react";
+import { Check, Mic, X } from "lucide-react";
 import {
 	forwardRef,
 	useCallback,
@@ -474,12 +474,51 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			}
 		}, []);
 
-		const handleStopRecording = useCallback(() => {
+		const handleConfirmRecording = useCallback(() => {
 			if (mediaRecorderRef.current && isRecording) {
 				mediaRecorderRef.current.stop();
 				setIsRecording(false);
 			}
 		}, [isRecording]);
+
+		const handleCancelRecording = useCallback(() => {
+			if (mediaRecorderRef.current && isRecording) {
+				// Redefine onstop to just stop the tracks and clean up, without processing audio
+				mediaRecorderRef.current.onstop = () => {
+					if (mediaRecorderRef.current?.stream) {
+						for (const track of mediaRecorderRef.current.stream.getTracks()) {
+							track.stop();
+						}
+					}
+					setAudioBlob(null);
+					audioChunksRef.current = [];
+				};
+				mediaRecorderRef.current.stop();
+				setIsRecording(false);
+			}
+		}, [isRecording]);
+
+		useEffect(() => {
+			if (isRecording) {
+				const handleKeyDown = (event: KeyboardEvent) => {
+					if (event.key === "Enter") {
+						event.preventDefault();
+						handleConfirmRecording();
+					} else if (event.key === "Escape") {
+						event.preventDefault();
+						handleCancelRecording();
+					}
+				};
+
+				window.addEventListener("keydown", handleKeyDown);
+
+				return () => {
+					window.removeEventListener("keydown", handleKeyDown);
+				};
+			}
+
+			return undefined;
+		}, [isRecording, handleConfirmRecording, handleCancelRecording]);
 
 		const handleSendAudio = useCallback(async () => {
 			if (!audioBlob) return;
@@ -661,40 +700,59 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 
 						{/* Right side: microphone, send or stop button */}
 						<Box display="flex" alignItems="center" gap={1}>
-							{!isLoading && !currentJobId && !isTranscribing && (
+							{!isRecording && !isTranscribing && !(isLoading && currentJobId) && (
 								// @ts-ignore Tooltip type issue
 								<Tooltip
 									title={
 										!canEnableRecordingFeature
 											? "Sign in to Radient in the settings page to enable audio recording"
-											: isRecording
-												? "Stop recording"
-												: "Start recording"
+											: "Start recording"
 									}
 								>
 									<span>
 										<IconButton
-											onClick={
-												isRecording ? handleStopRecording : handleStartRecording
-											}
-											color={isRecording ? "error" : "primary"}
+											onClick={handleStartRecording}
+											color="primary"
 											size="small"
-											aria-label={
-												isRecording ? "Stop recording" : "Start recording"
-											}
+											aria-label="Start recording"
 											disabled={isLoading || !canEnableRecordingFeature}
 										>
-											{isRecording ? (
-												<StopCircle size={24} />
-											) : (
-												<Mic size={24} />
-											)}
+											<Mic size={22} />
 										</IconButton>
 									</span>
 								</Tooltip>
 							)}
+							{isRecording && (
+								<>
+									<Tooltip title="Confirm recording (Enter)">
+										<span>
+											<IconButton
+												onClick={handleConfirmRecording}
+												color="success"
+												size="small"
+												aria-label="Confirm recording"
+												disabled={isLoading}
+											>
+												<Check size={18} />
+											</IconButton>
+										</span>
+									</Tooltip>
+									<Tooltip title="Cancel recording (Esc)">
+										<span>
+											<IconButton
+												onClick={handleCancelRecording}
+												color="error"
+												size="small"
+												aria-label="Cancel recording"
+												disabled={isLoading}
+											>
+												<X size={18} />
+											</IconButton>
+										</span>
+									</Tooltip>
+								</>
+							)}
 							{isLoading && currentJobId ? (
-								// @ts-ignore Tooltip type issue
 								<Tooltip title="Stop agent">
 									<span>
 										<SendButton
@@ -709,25 +767,25 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 									</span>
 								</Tooltip>
 							) : (
-								// @ts-ignore Tooltip type issue
-								<Tooltip title="Send message">
-									<span>
-										<SendButton
-											type="submit"
-											variant="contained"
-											color="primary"
-											disabled={
-												isLoading ||
-												isRecording ||
-												isTranscribing ||
-												(!newMessage.trim() && attachments.length === 0)
-											}
-											aria-label="Send message"
-										>
-											<FontAwesomeIcon icon={faPaperPlane} />
-										</SendButton>
-									</span>
-								</Tooltip>
+								!isRecording &&
+								!isTranscribing && (
+									<Tooltip title="Send message">
+										<span>
+											<SendButton
+												type="submit"
+												variant="contained"
+												color="primary"
+												disabled={
+													isLoading ||
+													(!newMessage.trim() && attachments.length === 0)
+												}
+												aria-label="Send message"
+											>
+												<FontAwesomeIcon icon={faPaperPlane} />
+											</SendButton>
+										</span>
+									</Tooltip>
+								)
 							)}
 						</Box>
 					</ButtonsRow>
