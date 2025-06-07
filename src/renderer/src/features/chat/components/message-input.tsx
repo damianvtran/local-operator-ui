@@ -675,7 +675,6 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 								disabled={isInputDisabled || isRecording || isTranscribing}
 								multiple
 							/>
-							{/* @ts-ignore Tooltip type issue */}
 							<Tooltip title="Attach file">
 								<span>
 									<AttachmentButton
@@ -701,7 +700,6 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 						{/* Right side: microphone, send or stop button */}
 						<Box display="flex" alignItems="center" gap={1}>
 							{!isRecording && !isTranscribing && !(isLoading && currentJobId) && (
-								// @ts-ignore Tooltip type issue
 								<Tooltip
 									title={
 										!canEnableRecordingFeature
