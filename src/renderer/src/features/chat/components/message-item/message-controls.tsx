@@ -1,7 +1,7 @@
 import { Box, IconButton, Tooltip } from "@mui/material";
 import { alpha, styled } from "@mui/material/styles";
 import { useSpeechStore } from "@shared/store/speech-store";
-import { Copy, Play, Square } from "lucide-react";
+import { Copy, Volume2, Square } from "lucide-react";
 import type { FC } from "react";
 import { useState } from "react";
 
@@ -130,7 +130,7 @@ export const MessageControls: FC<MessageControlsProps> = ({
 								onClick={hasAudio ? handleReplay : handlePlay}
 								disabled={isLoading}
 							>
-								<Play size={16} />
+								<Volume2 size={16} />
 							</StyledIconButton>
 						</Tooltip>
 					)}
