@@ -4,7 +4,7 @@ import {
 	createLocalOperatorClient,
 } from "@shared/api/local-operator";
 import { apiConfig } from "@shared/config";
-import { useCanvasStore } from "@shared/store/canvas-store"; // Added useCanvasStore import
+import { useCanvasStore } from "@shared/store/canvas-store";
 import { type FC, memo, useCallback, useEffect, useMemo } from "react"; // Added useEffect
 import type { CanvasDocument } from "../../types/canvas"; // Added CanvasDocument import
 import type { Message } from "../../types/message";
@@ -263,6 +263,7 @@ export const MessageItem: FC<MessageItemProps> = memo(
 						onMessageComplete={onMessageComplete}
 						isLastMessage={isLastMessage ?? false}
 						isJobRunning={!!currentExecution}
+						agentId={conversationId}
 					>
 						<ActionBlock
 							message={message.message ?? ""}
@@ -298,6 +299,7 @@ export const MessageItem: FC<MessageItemProps> = memo(
 							onMessageComplete={onMessageComplete}
 							isLastMessage={isLastMessage ?? false}
 							isJobRunning={!!currentExecution}
+							agentId={conversationId}
 						>
 							{/* Render image attachments if any */}
 							{message.files && message.files.length > 0 && (
@@ -417,6 +419,7 @@ export const MessageItem: FC<MessageItemProps> = memo(
 						onMessageComplete={onMessageComplete}
 						isLastMessage={isLastMessage ?? false}
 						isJobRunning={!!currentExecution}
+						agentId={conversationId}
 					>
 						{/* Render image attachments if any */}
 						{message.files && message.files.length > 0 && (

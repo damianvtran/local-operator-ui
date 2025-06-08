@@ -13,6 +13,7 @@ type MessageControlsProps = {
 	content?: string;
 	sx?: SxProps<Theme>;
 	messageId: string;
+	agentId?: string;
 };
 
 // Styled container for the message controls
@@ -56,6 +57,7 @@ export const MessageControls: FC<MessageControlsProps> = ({
 	content,
 	sx,
 	messageId,
+	agentId,
 }) => {
 	const [copied, setCopied] = useState(false);
 	const {
@@ -91,8 +93,8 @@ export const MessageControls: FC<MessageControlsProps> = ({
 	};
 
 	const handlePlay = () => {
-		if (content) {
-			playSpeech(messageId, content);
+		if (agentId && content) {
+			playSpeech(messageId, agentId, content);
 		}
 	};
 
