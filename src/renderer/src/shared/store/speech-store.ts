@@ -39,8 +39,10 @@ export const useSpeechStore = create<SpeechState & SpeechActions>((set, get) => 
 			if (!audioBlob) {
 				const speechRequest: SpeechRequest = {
 					input: text,
-					model: "tts-1", // Or get from settings
-					voice: "alloy", // Or get from settings
+					instructions:
+						"Pay attention to potentially multilingual inputs and make sure to use native accents for all different parts of the text, especially those that are not english",
+					model: "gpt-4o-mini-tts",
+					voice: "nova",
 				};
 				audioBlob = await client.speech.create(speechRequest);
 				if (audioBlob) {
