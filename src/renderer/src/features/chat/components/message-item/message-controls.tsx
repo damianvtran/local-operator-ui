@@ -1,6 +1,7 @@
 import { Box, IconButton, Tooltip } from "@mui/material";
 import { alpha, styled } from "@mui/material/styles";
-import { Copy } from "lucide-react";
+import { useSpeechStore } from "@shared/store/speech-store";
+import { Copy, Play, Square } from "lucide-react";
 import type { FC } from "react";
 import { useState } from "react";
 
@@ -11,6 +12,7 @@ type MessageControlsProps = {
 	isUser: boolean;
 	content?: string;
 	sx?: SxProps<Theme>;
+	messageId: string;
 };
 
 // Styled container for the message controls
@@ -53,8 +55,21 @@ export const MessageControls: FC<MessageControlsProps> = ({
 	isUser,
 	content,
 	sx,
+	messageId,
 }) => {
 	const [copied, setCopied] = useState(false);
+	const {
+		playSpeech,
+		stopSpeech,
+		replaySpeech,
+		loadingMessageId,
+		playingMessageId,
+		audioCache,
+	} = useSpeechStore();
+
+	const isPlaying = playingMessageId === messageId;
+	const isLoading = loadingMessageId === messageId;
+	const hasAudio = audioCache.has(messageId);
 
 	// Only show copy button for assistant messages
 	const showCopyButton = content;
@@ -75,6 +90,20 @@ export const MessageControls: FC<MessageControlsProps> = ({
 		}
 	};
 
+	const handlePlay = () => {
+		if (content) {
+			playSpeech(messageId, content);
+		}
+	};
+
+	const handleReplay = () => {
+		replaySpeech(messageId);
+	};
+
+	const handleStop = () => {
+		stopSpeech();
+	};
+
 	return (
 		<ControlsContainer isUser={isUser} className="message-controls" sx={sx}>
 			{/* Only render the wrapper if there are buttons to show */}
@@ -85,6 +114,26 @@ export const MessageControls: FC<MessageControlsProps> = ({
 							<Copy size={16} />
 						</StyledIconButton>
 					</Tooltip>
+					{isPlaying ? (
+						<Tooltip title="Stop" placement="top">
+							<StyledIconButton size="small" onClick={handleStop}>
+								<Square size={16} />
+							</StyledIconButton>
+						</Tooltip>
+					) : (
+						<Tooltip
+							title={hasAudio ? "Replay Speech" : "Speak Aloud"}
+							placement="top"
+						>
+							<StyledIconButton
+								size="small"
+								onClick={hasAudio ? handleReplay : handlePlay}
+								disabled={isLoading}
+							>
+								<Play size={16} />
+							</StyledIconButton>
+						</Tooltip>
+					)}
 				</ControlsWrapper>
 			)}
 			{/* Additional button wrappers can be added here in the future */}
