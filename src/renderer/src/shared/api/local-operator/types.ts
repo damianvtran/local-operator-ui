@@ -815,6 +815,8 @@ export type RadientTranscriptionResponseData = {
 export type SpeechRequest = {
 	/** The text to generate speech from. */
 	input: string;
+	/** The instructions to use for generation. */
+	instructions?: string;
 	/** The model to use for generation. */
 	model: string;
 	/** The voice to use for generation. */
