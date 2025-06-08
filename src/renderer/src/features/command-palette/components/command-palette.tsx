@@ -222,26 +222,27 @@ export const CommandPalette: FC = () => {
 		setCommandPaletteQuery,
 		isCanvasOpen,
 		setCanvasOpen,
-		isCreateAgentDialogOpen, // Use global state
-		openCreateAgentDialog, // Use global action
-		closeCreateAgentDialog, // Use global action
+		isCreateAgentDialogOpen,
+		openCreateAgentDialog,
+		closeCreateAgentDialog,
 	} = useUiPreferencesStore();
 
-	// const navigate = useNavigate(); // Remove redeclaration
-	const { agentId: currentAgentIdFromRoute } = useAgentRouteParam(); // Use hook for agentId
+	const { agentId: currentAgentIdFromRoute } = useAgentRouteParam();
 	const { getLastAgentId } = useAgentSelectionStore();
-	const { data: agentsData } = useAgents(1, 20) as { data?: AgentListResult };
+	const [localQuery, setLocalQuery] = useState(commandPaletteQuery);
+	const debouncedLocalQuery = useDebounce(localQuery, 200);
+	const { data: agentsData } = useAgents(1, 10, 0, debouncedLocalQuery) as {
+		data?: AgentListResult;
+	};
 	const theme = useTheme();
 	const clearConversationMutation = useClearAgentConversation();
 
 	const [selectedIndex, setSelectedIndex] = useState(0);
-	const [localQuery, setLocalQuery] = useState(commandPaletteQuery);
-	const debouncedLocalQuery = useDebounce(localQuery, 200);
 	const [isClearConfirmationOpen, setIsClearConfirmationOpen] = useState(false);
 
 	// Use the agent ID from URL or the last selected agent ID
 	const effectiveAgentId = currentAgentIdFromRoute || getLastAgentId("chat");
-	const isOnChatPage = location.pathname.startsWith("/chat"); // Derive isOnChatPage correctly
+	const isOnChatPage = location.pathname.startsWith("/chat");
 
 	// Sync the debounced local query back to the store (but this won't cause re-renders during typing)
 	useEffect(() => {

@@ -19,6 +19,47 @@ if (-not (Test-Path $AppDataDir)) {
 Start-Transcript -Path $LogFile -Append
 Write-Output "$(Get-Date): Starting Local Operator backend installation..."
 
+$BinDir = "$AppDataDir\\bin"
+$FFmpegBin = "$BinDir\\ffmpeg.exe"
+
+Write-Output "Ensuring bin directory exists: $BinDir"
+if (-not (Test-Path $BinDir)) {
+    New-Item -ItemType Directory -Path $BinDir -Force | Out-Null
+}
+
+# Check if FFmpeg is already installed
+if (Test-Path $FFmpegBin) {
+    Write-Output "FFmpeg already installed at $FFmpegBin. Skipping download."
+} else {
+    Write-Output "FFmpeg not found. Attempting to download and install FFmpeg..."
+
+    $FFmpegDownloadUrl = ""
+    
+    # Determine architecture and set appropriate download URL
+    if ($env:PROCESSOR_ARCHITECTURE -eq "AMD64" -or $env:PROCESSOR_ARCHITEW6432 -eq "AMD64") {
+        $FFmpegDownloadUrl = "https://github.com/eugeneware/ffmpeg-static/releases/download/b6.0/ffmpeg-win32-x64"
+    } else {
+        Write-Error "Unsupported CPU architecture for FFmpeg download: $env:PROCESSOR_ARCHITECTURE"
+        exit 1
+    }
+
+    Write-Output "Downloading FFmpeg from: $FFmpegDownloadUrl"
+    try {
+        Invoke-WebRequest -Uri $FFmpegDownloadUrl -OutFile $FFmpegBin -ErrorAction Stop
+        Write-Output "FFmpeg downloaded successfully to $FFmpegBin"
+        
+        # Verify FFmpeg is accessible after download
+        if (-not (Test-Path $FFmpegBin)) {
+            Write-Error "FFmpeg binary not found at $FFmpegBin after download."
+            exit 1
+        }
+    } catch {
+        Write-Error "Failed to download FFmpeg: $($_.Exception.Message)"
+        exit 1
+    }
+}
+Write-Output "FFmpeg installation complete. FFmpeg binary is at: $FFmpegBin"
+
 # Function to check if a command exists
 function Test-CommandExists {
     param ($command)

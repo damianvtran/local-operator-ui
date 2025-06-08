@@ -43,12 +43,14 @@ export const HtmlPreview: FC<HtmlPreviewProps> = ({ document }) => {
 	/**
 	 * Create a URL for the HTML document using the static HTML endpoint
 	 * This serves the file through the Local Operator API, simulating opening it in a browser
+	 * We append a timestamp to the URL to force a reload when the content changes.
 	 */
 	const htmlUrl = getHtmlUrl(apiConfig.baseUrl, document.path);
 
 	return (
 		<IframeContainer>
 			<HtmlIframe
+				key={document.content} // Force re-render when content changes
 				src={htmlUrl}
 				title={`HTML Preview: ${document.title}`}
 				sandbox="allow-scripts allow-same-origin allow-forms"
