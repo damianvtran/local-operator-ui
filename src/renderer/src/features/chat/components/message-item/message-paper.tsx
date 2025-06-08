@@ -89,7 +89,13 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 				>
 					{children}
 				</StyledPaper>
-				<MessageControls isUser={isUser} content={content} />
+				{message && (
+					<MessageControls
+						isUser={isUser}
+						content={content}
+						messageId={message.id}
+					/>
+				)}
 			</Box>
 		);
 	}
@@ -270,20 +276,23 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 				/>
 			)}
 			{/* MessageControls: always rendered, conditionally visible/interactive */}
-			<MessageControls
-				isUser={isUser}
-				content={content}
-				sx={{
-					// When streaming, force opacity 0 and disable pointer events.
-					// This inline style for opacity will override the parent's hover rule.
-					...(isStreamable && {
-						opacity: 0,
-						pointerEvents: "none",
-					}),
-					// Assuming MessageControls has its own transition for opacity changes (e.g., for hover).
-					// If not, a transition could be added here for when isStreamable changes.
-				}}
-			/>
+			{message && (
+				<MessageControls
+					isUser={isUser}
+					content={content}
+					messageId={message.id}
+					sx={{
+						// When streaming, force opacity 0 and disable pointer events.
+						// This inline style for opacity will override the parent's hover rule.
+						...(isStreamable && {
+							opacity: 0,
+							pointerEvents: "none",
+						}),
+						// Assuming MessageControls has its own transition for opacity changes (e.g., for hover).
+						// If not, a transition could be added here for when isStreamable changes.
+					}}
+				/>
+			)}
 			{/* Invisible element at the bottom for scroll targeting */}
 			<div ref={scrollRef} style={{ height: 1, width: 1, opacity: 0 }} />
 		</Box>
