@@ -1,5 +1,4 @@
 import { createLocalOperatorClient } from "@shared/api/local-operator";
-import type { SpeechRequest } from "@shared/api/local-operator/types";
 import { apiConfig } from "@shared/config";
 import { create } from "zustand";
 
@@ -12,7 +11,11 @@ type SpeechState = {
 };
 
 type SpeechActions = {
-	playSpeech: (messageId: string, text: string) => Promise<void>;
+	playSpeech: (
+		messageId: string,
+		agentId: string,
+		inputText: string,
+	) => Promise<void>;
 	stopSpeech: () => void;
 	replaySpeech: (messageId: string) => Promise<void>;
 };
@@ -26,7 +29,7 @@ export const useSpeechStore = create<SpeechState & SpeechActions>((set, get) => 
 	error: null,
 	audioElement: null,
 
-	playSpeech: async (messageId: string, text: string) => {
+	playSpeech: async (messageId: string, agentId: string, inputText: string) => {
 		const { audioCache, stopSpeech } = get();
 
 		stopSpeech(); // Stop any currently playing audio
@@ -37,14 +40,9 @@ export const useSpeechStore = create<SpeechState & SpeechActions>((set, get) => 
 			let audioBlob = audioCache.get(messageId);
 
 			if (!audioBlob) {
-				const speechRequest: SpeechRequest = {
-					input: text,
-					instructions:
-						"Pay attention to potentially multilingual inputs and make sure to use native accents for all different parts of the text, especially those that are not english",
-					model: "gpt-4o-mini-tts",
-					voice: "nova",
-				};
-				audioBlob = await client.speech.create(speechRequest);
+				audioBlob = await client.speech.createForAgent(agentId, {
+					input_text: inputText,
+				});
 				if (audioBlob) {
 					set((state) => ({
 						audioCache: new Map(state.audioCache).set(

@@ -829,4 +829,14 @@ export type SpeechRequest = {
 	provider?: string;
 };
 
+/**
+ * Request body for agent speech generation endpoint.
+ */
+export type AgentSpeechRequest = {
+	/** The text to generate speech from. */
+	input_text: string;
+	/** The format of the audio response. Default: "mp3". */
+	response_format?: string;
+};
+
 // --- End Speech API Types ---

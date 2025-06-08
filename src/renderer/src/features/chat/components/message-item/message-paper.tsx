@@ -45,6 +45,7 @@ type MessagePaperProps = {
 	onMessageComplete?: () => void;
 	isLastMessage: boolean;
 	isJobRunning: boolean;
+	agentId?: string;
 };
 
 /**
@@ -61,6 +62,7 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 	onMessageComplete,
 	isLastMessage,
 	isJobRunning,
+	agentId,
 }) => {
 	const theme = useTheme();
 
@@ -94,6 +96,7 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 						isUser={isUser}
 						content={content}
 						messageId={message.id}
+						agentId={agentId}
 					/>
 				)}
 			</Box>
@@ -281,6 +284,7 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 					isUser={isUser}
 					content={content}
 					messageId={message.id}
+					agentId={agentId}
 					sx={{
 						// When streaming, force opacity 0 and disable pointer events.
 						// This inline style for opacity will override the parent's hover rule.
