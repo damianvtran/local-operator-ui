@@ -1,4 +1,4 @@
-import { Box, IconButton, Tooltip } from "@mui/material";
+import { Box, CircularProgress, IconButton, Tooltip } from "@mui/material";
 import { alpha, styled } from "@mui/material/styles";
 import { useCredentials } from "@shared/hooks/use-credentials";
 import { useSpeechStore } from "@shared/store/speech-store";
@@ -153,7 +153,11 @@ export const MessageControls: FC<MessageControlsProps> = ({
 										onClick={hasAudio ? handleReplay : handlePlay}
 										disabled={isLoading || !canEnableSpeechFeature}
 									>
-										<Volume2 size={16} />
+										{isLoading ? (
+											<CircularProgress size={16} />
+										) : (
+											<Volume2 size={16} />
+										)}
 									</StyledIconButton>
 								</span>
 							</Tooltip>
