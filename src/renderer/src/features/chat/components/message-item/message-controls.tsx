@@ -129,33 +129,35 @@ export const MessageControls: FC<MessageControlsProps> = ({
 							<Copy size={16} />
 						</StyledIconButton>
 					</Tooltip>
-					{isPlaying ? (
-						<Tooltip title="Stop" placement="top">
-							<StyledIconButton size="small" onClick={handleStop}>
-								<Square size={16} />
-							</StyledIconButton>
-						</Tooltip>
-					) : (
-						<Tooltip
-							title={
-								!canEnableSpeechFeature
-									? "Sign in to Radient in the settings page to enable text to speech"
-									: hasAudio
-										? "Replay Speech"
-										: "Speak Aloud"
-							}
-							placement="top"
-						>
-							<span>
-								<StyledIconButton
-									size="small"
-									onClick={hasAudio ? handleReplay : handlePlay}
-									disabled={isLoading || !canEnableSpeechFeature}
-								>
-									<Volume2 size={16} />
+					{!isUser && (
+						isPlaying ? (
+							<Tooltip title="Stop" placement="top">
+								<StyledIconButton size="small" onClick={handleStop}>
+									<Square size={16} />
 								</StyledIconButton>
-							</span>
-						</Tooltip>
+							</Tooltip>
+						) : (
+							<Tooltip
+								title={
+									!canEnableSpeechFeature
+										? "Sign in to Radient in the settings page to enable text to speech"
+										: hasAudio
+											? "Replay Speech"
+											: "Speak Aloud"
+								}
+								placement="top"
+							>
+								<span>
+									<StyledIconButton
+										size="small"
+										onClick={hasAudio ? handleReplay : handlePlay}
+										disabled={isLoading || !canEnableSpeechFeature}
+									>
+										<Volume2 size={16} />
+									</StyledIconButton>
+								</span>
+							</Tooltip>
+						)
 					)}
 				</ControlsWrapper>
 			)}

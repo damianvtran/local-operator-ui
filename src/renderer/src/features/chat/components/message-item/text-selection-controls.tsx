@@ -12,6 +12,7 @@ type TextSelectionControlsProps = {
 	messageId: string;
 	agentId?: string;
 	targetRef: React.RefObject<HTMLElement>;
+	isUser: boolean;
 };
 
 // Styled wrapper for the control buttons
@@ -41,6 +42,7 @@ const StyledIconButton = styled(IconButton)(({ theme }) => ({
 export const TextSelectionControls: FC<TextSelectionControlsProps> = ({
 	agentId,
 	targetRef,
+	isUser,
 }) => {
 	const [selection, setSelection] = useState<{
 		text: string;
@@ -118,7 +120,7 @@ export const TextSelectionControls: FC<TextSelectionControlsProps> = ({
 		stopSpeech();
 	};
 
-	if (!selection.rect || !selection.text) {
+	if (!selection.rect || !selection.text || isUser) {
 		return null;
 	}
 
