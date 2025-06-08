@@ -14,6 +14,7 @@ import { ExpandableThinkingContent } from "./expandable-thinking-content";
 import { MessageControls } from "./message-controls";
 import { MessageTimestamp } from "./message-timestamp";
 import { StreamingMessage } from "./streaming-message";
+import { TextSelectionControls } from "./text-selection-controls";
 
 // Create a Paper component with custom styling
 const StyledPaper = styled(Paper)(({ theme }) => ({
@@ -65,6 +66,7 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 	agentId,
 }) => {
 	const theme = useTheme();
+	const messageContentRef = useRef<HTMLDivElement>(null);
 
 	// For user messages, we keep the paper boundary
 	if (isUser) {
@@ -89,7 +91,16 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 						color: theme.palette.text.primary,
 					}}
 				>
-					{children}
+					<Box ref={messageContentRef} sx={{ position: "relative" }}>
+						{children}
+						{message && (
+							<TextSelectionControls
+								messageId={message.id}
+								agentId={agentId}
+								targetRef={messageContentRef}
+							/>
+						)}
+					</Box>
 				</StyledPaper>
 				{message && (
 					<MessageControls
@@ -226,7 +237,7 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 		if ((isStreamable && isJobRunning) || !message) return null;
 
 		return (
-			<Box sx={messageStyles}>
+			<Box sx={messageStyles} ref={messageContentRef}>
 				{message.thinking && !isUser && (
 					<ExpandableThinkingContent
 						thinking={message.thinking}
@@ -236,6 +247,13 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 					/>
 				)}
 				{filteredChildren}
+				{message && (
+					<TextSelectionControls
+						messageId={message.id}
+						agentId={agentId}
+						targetRef={messageContentRef}
+					/>
+				)}
 			</Box>
 		);
 	}, [
@@ -248,6 +266,7 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 		isThinkingExpanded,
 		handleThinkingExpand, // Added
 		handleThinkingCollapse, // Added
+		agentId,
 	]);
 
 	return (
