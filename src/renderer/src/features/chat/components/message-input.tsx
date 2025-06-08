@@ -699,27 +699,29 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 
 						{/* Right side: microphone, send or stop button */}
 						<Box display="flex" alignItems="center" gap={1}>
-							{!isRecording && !isTranscribing && !(isLoading && currentJobId) && (
-								<Tooltip
-									title={
-										!canEnableRecordingFeature
-											? "Sign in to Radient in the settings page to enable audio recording"
-											: "Start recording"
-									}
-								>
-									<span>
-										<IconButton
-											onClick={handleStartRecording}
-											color="primary"
-											size="small"
-											aria-label="Start recording"
-											disabled={isLoading || !canEnableRecordingFeature}
-										>
-											<Mic size={22} />
-										</IconButton>
-									</span>
-								</Tooltip>
-							)}
+							{!isRecording &&
+								!isTranscribing &&
+								!(isLoading && currentJobId) && (
+									<Tooltip
+										title={
+											!canEnableRecordingFeature
+												? "Sign in to Radient in the settings page to enable audio recording"
+												: "Start recording"
+										}
+									>
+										<span>
+											<IconButton
+												onClick={handleStartRecording}
+												color="primary"
+												size="small"
+												aria-label="Start recording"
+												disabled={isLoading || !canEnableRecordingFeature}
+											>
+												<Mic size={22} />
+											</IconButton>
+										</span>
+									</Tooltip>
+								)}
 							{isRecording && (
 								<>
 									<Tooltip title="Confirm recording (Enter)">
