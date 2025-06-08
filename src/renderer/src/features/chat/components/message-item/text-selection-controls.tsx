@@ -16,13 +16,12 @@ type TextSelectionControlsProps = {
 // Styled wrapper for the control buttons
 const ControlsWrapper = styled(Box)(({ theme }) => ({
 	position: "absolute",
-	display: "flex",
-	alignItems: "flex-start",
 	backgroundColor: theme.palette.background.paper,
 	borderRadius: "4px",
-	padding: "2px",
 	boxShadow: theme.shadows[3],
 	zIndex: 10,
+  padding: 4,
+	border: `1px solid ${theme.palette.divider}`,
 }));
 
 // Styled IconButton for controls
@@ -30,6 +29,8 @@ const StyledIconButton = styled(IconButton)(({ theme }) => ({
 	color: theme.palette.text.secondary,
 	width: "34px",
 	height: "34px",
+  padding: 0,
+  margin: 0,
 	"&:hover": {
 		color: theme.palette.primary.main,
 		backgroundColor: alpha(theme.palette.primary.main, 0.1),
@@ -112,9 +113,8 @@ export const TextSelectionControls: FC<TextSelectionControlsProps> = ({
 	if (!containerRect) return null;
 
 	const style = {
-		top: selection.rect.top - containerRect.top - 40, // Position above selection
-		left:
-			selection.rect.left - containerRect.left + selection.rect.width / 2 - 20, // Center on selection
+		top: selection.rect.top - containerRect.top - 52, // Position above selection
+		left: selection.rect.left - containerRect.left, // Align with the left of the selection
 	};
 
 	return (
@@ -122,7 +122,7 @@ export const TextSelectionControls: FC<TextSelectionControlsProps> = ({
 			{isPlaying ? (
 				<Tooltip title="Stop" placement="top">
 					<StyledIconButton size="small" onClick={handleStop}>
-						<Square size={16} />
+						<Square size={14} />
 					</StyledIconButton>
 				</Tooltip>
 			) : (
@@ -132,7 +132,7 @@ export const TextSelectionControls: FC<TextSelectionControlsProps> = ({
 						onClick={handlePlay}
 						disabled={isLoading || !agentId}
 					>
-						<Volume2 size={16} />
+						<Volume2 size={14} />
 					</StyledIconButton>
 				</Tooltip>
 			)}
