@@ -2,6 +2,7 @@ import { faExclamationTriangle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { DialogContentText, Typography, styled } from "@mui/material";
 import type { FC, ReactNode } from "react";
+import { useEffect } from "react";
 import {
 	BaseDialog,
 	DangerButton,
@@ -65,6 +66,25 @@ export const ConfirmationModal: FC<ConfirmationModalProps> = ({
 	onConfirm,
 	onCancel,
 }) => {
+	useEffect(() => {
+		const handleKeyDown = (event: KeyboardEvent): void => {
+			if (!open) {
+				return;
+			}
+			if (event.key === "Enter") {
+				onConfirm();
+			} else if (event.key === "Escape") {
+				onCancel();
+			}
+		};
+
+		document.addEventListener("keydown", handleKeyDown);
+
+		return () => {
+			document.removeEventListener("keydown", handleKeyDown);
+		};
+	}, [open, onConfirm, onCancel]);
+
 	const dialogTitle = isDangerous ? (
 		<TitleContainer>
 			<WarningIcon icon={faExclamationTriangle} />

@@ -91,6 +91,50 @@ echo "App data directory: $APP_DATA_DIR"
 echo "Log file: $LOG_FILE"
 echo "=============================================="
 
+# --- FFmpeg Installation ---
+BIN_DIR="$APP_DATA_DIR/bin"
+FFMPEG_BIN="$BIN_DIR/ffmpeg"
+
+echo "Ensuring bin directory exists: $BIN_DIR"
+mkdir -p "$BIN_DIR"
+
+# Check if FFmpeg is already installed and executable
+if [ -f "$FFMPEG_BIN" ] && [ -x "$FFMPEG_BIN" ]; then
+    echo "FFmpeg already installed at $FFMPEG_BIN. Skipping download."
+else
+    echo "FFmpeg not found or not executable. Attempting to download and install FFmpeg..."
+
+    FFMPEG_DOWNLOAD_URL=""
+
+    if [[ "$ARCH" == "x86_64" ]]; then
+        FFMPEG_DOWNLOAD_URL="https://github.com/eugeneware/ffmpeg-static/releases/download/b6.0/ffmpeg-mac-x64"
+    elif [[ "$ARCH" == "arm64" ]] || [[ "$ARCH" == "aarch64" ]]; then
+        FFMPEG_DOWNLOAD_URL="https://github.com/eugeneware/ffmpeg-static/releases/download/b6.0/ffmpeg-mac-arm64"
+    else
+        echo "Error: Unsupported CPU architecture for FFmpeg download: $ARCH"
+        exit 1
+    fi
+
+    echo "Downloading FFmpeg from: $FFMPEG_DOWNLOAD_URL"
+    if curl -L "$FFMPEG_DOWNLOAD_URL" -o "$FFMPEG_BIN"; then
+        echo "FFmpeg downloaded successfully to $FFMPEG_BIN"
+        chmod +x "$FFMPEG_BIN"
+        echo "Set executable permissions for $FFMPEG_BIN"
+    else
+        echo "Error: Failed to download FFmpeg from $FFMPEG_DOWNLOAD_URL"
+        exit 1
+    fi
+
+    # Verify FFmpeg is executable after download
+    if [ ! -f "$FFMPEG_BIN" ] || [ ! -x "$FFMPEG_BIN" ]; then
+        echo "Error: FFmpeg binary not found or not executable after download."
+        exit 1
+    fi
+fi
+
+echo "FFmpeg installation complete. FFmpeg binary is at: $FFMPEG_BIN"
+# --- End FFmpeg Installation ---
+
 # Verify bundled Python exists
 if [ ! -f "$PYTHON_BIN" ]; then
   echo "Error: Bundled Python not found at $PYTHON_BIN"

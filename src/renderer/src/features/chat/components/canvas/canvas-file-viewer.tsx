@@ -2,6 +2,7 @@ import type {
 	CanvasDocument,
 	CanvasDocumentType,
 } from "@features/chat/types/canvas";
+import { getFileTypeFromPath } from "@features/chat/utils/file-types";
 import { getFileName } from "@features/chat/utils/get-file-name";
 import { isCanvasSupported } from "@features/chat/utils/is-canvas-supported";
 import {
@@ -209,7 +210,20 @@ export const CanvasFileViewer: FC<CanvasFileViewerProps> = ({
 	const setSelectedTab = useCanvasStore((s) => s.setSelectedTab);
 
 	// Memoize files to prevent unnecessary re-renders
-	const memoizedFiles = useMemo<CanvasDocument[]>(() => files, [files]);
+	const memoizedFiles = useMemo<CanvasDocument[]>(() => {
+		const filesByBaseName = files.reduce(
+			(acc, file) => {
+				const name = getFileName(file.path);
+				// Prioritize files with absolute paths, assuming they are longer
+				if (!acc[name] || file.path.length > acc[name].path.length) {
+					acc[name] = file;
+				}
+				return acc;
+			},
+			{} as Record<string, CanvasDocument>,
+		);
+		return Object.values(filesByBaseName);
+	}, [files]);
 
 	// Create a Local Operator client using the API config
 	const client = useMemo(() => {
@@ -251,6 +265,7 @@ export const CanvasFileViewer: FC<CanvasFileViewerProps> = ({
 						title,
 						path: docId, // Store data URI as path for consistency if needed
 						content: fileDoc.path, // The content is the data URI itself
+						type: getFileTypeFromPath(title),
 					};
 
 					const state = useCanvasStore.getState();
@@ -297,6 +312,7 @@ export const CanvasFileViewer: FC<CanvasFileViewerProps> = ({
 							title,
 							path: normalizedPath,
 							content: result.data,
+							type: getFileTypeFromPath(title),
 						};
 
 						const state = useCanvasStore.getState();
