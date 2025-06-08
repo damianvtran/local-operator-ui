@@ -1,9 +1,10 @@
 import { Box, IconButton, Tooltip } from "@mui/material";
 import { alpha, styled } from "@mui/material/styles";
+import { useCredentials } from "@shared/hooks/use-credentials";
 import { useSpeechStore } from "@shared/store/speech-store";
 import { Square, Volume2 } from "lucide-react";
 import type { FC } from "react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
 
 // Props for the TextSelectionControls component
@@ -47,6 +48,18 @@ export const TextSelectionControls: FC<TextSelectionControlsProps> = ({
 	}>({ text: "", rect: null });
 	const { playSpeech, stopSpeech, loadingMessageId, playingMessageId } =
 		useSpeechStore();
+	const { data: credentialsData, isLoading: isLoadingCredentials } =
+		useCredentials();
+
+	const isRadientApiKeyConfigured = useMemo(
+		() => credentialsData?.keys?.includes("RADIENT_API_KEY"),
+		[credentialsData?.keys],
+	);
+
+	const canEnableSpeechFeature = useMemo(
+		() => isRadientApiKeyConfigured && !isLoadingCredentials,
+		[isRadientApiKeyConfigured, isLoadingCredentials],
+	);
 
 	const [currentSelectionId, setCurrentSelectionId] = useState<string | null>(
 		null,
@@ -126,14 +139,23 @@ export const TextSelectionControls: FC<TextSelectionControlsProps> = ({
 					</StyledIconButton>
 				</Tooltip>
 			) : (
-				<Tooltip title="Speak Aloud" placement="top">
-					<StyledIconButton
-						size="small"
-						onClick={handlePlay}
-						disabled={isLoading || !agentId}
-					>
-						<Volume2 size={14} />
-					</StyledIconButton>
+				<Tooltip
+					title={
+						!canEnableSpeechFeature
+							? "Sign in to Radient in the settings page to enable text to speech"
+							: "Speak Aloud"
+					}
+					placement="top"
+				>
+					<span>
+						<StyledIconButton
+							size="small"
+							onClick={handlePlay}
+							disabled={isLoading || !agentId || !canEnableSpeechFeature}
+						>
+							<Volume2 size={14} />
+						</StyledIconButton>
+					</span>
 				</Tooltip>
 			)}
 		</ControlsWrapper>

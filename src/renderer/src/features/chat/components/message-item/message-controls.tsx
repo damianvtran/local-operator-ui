@@ -1,9 +1,10 @@
 import { Box, IconButton, Tooltip } from "@mui/material";
 import { alpha, styled } from "@mui/material/styles";
+import { useCredentials } from "@shared/hooks/use-credentials";
 import { useSpeechStore } from "@shared/store/speech-store";
-import { Copy, Volume2, Square } from "lucide-react";
+import { Copy, Square, Volume2 } from "lucide-react";
 import type { FC } from "react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import type { SxProps, Theme } from "@mui/material";
 
@@ -60,6 +61,8 @@ export const MessageControls: FC<MessageControlsProps> = ({
 	agentId,
 }) => {
 	const [copied, setCopied] = useState(false);
+	const { data: credentialsData, isLoading: isLoadingCredentials } =
+		useCredentials();
 	const {
 		playSpeech,
 		stopSpeech,
@@ -72,6 +75,16 @@ export const MessageControls: FC<MessageControlsProps> = ({
 	const isPlaying = playingMessageId === messageId;
 	const isLoading = loadingMessageId === messageId;
 	const hasAudio = audioCache.has(messageId);
+
+	const isRadientApiKeyConfigured = useMemo(
+		() => credentialsData?.keys?.includes("RADIENT_API_KEY"),
+		[credentialsData?.keys],
+	);
+
+	const canEnableSpeechFeature = useMemo(
+		() => isRadientApiKeyConfigured && !isLoadingCredentials,
+		[isRadientApiKeyConfigured, isLoadingCredentials],
+	);
 
 	// Only show copy button for assistant messages
 	const showCopyButton = content;
@@ -124,16 +137,24 @@ export const MessageControls: FC<MessageControlsProps> = ({
 						</Tooltip>
 					) : (
 						<Tooltip
-							title={hasAudio ? "Replay Speech" : "Speak Aloud"}
+							title={
+								!canEnableSpeechFeature
+									? "Sign in to Radient in the settings page to enable text to speech"
+									: hasAudio
+										? "Replay Speech"
+										: "Speak Aloud"
+							}
 							placement="top"
 						>
-							<StyledIconButton
-								size="small"
-								onClick={hasAudio ? handleReplay : handlePlay}
-								disabled={isLoading}
-							>
-								<Volume2 size={16} />
-							</StyledIconButton>
+							<span>
+								<StyledIconButton
+									size="small"
+									onClick={hasAudio ? handleReplay : handlePlay}
+									disabled={isLoading || !canEnableSpeechFeature}
+								>
+									<Volume2 size={16} />
+								</StyledIconButton>
+							</span>
 						</Tooltip>
 					)}
 				</ControlsWrapper>
