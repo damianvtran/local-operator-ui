@@ -93,13 +93,6 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 				>
 					<Box ref={messageContentRef} sx={{ position: "relative" }}>
 						{children}
-						{message && (
-							<TextSelectionControls
-								messageId={message.id}
-								agentId={agentId}
-								targetRef={messageContentRef}
-							/>
-						)}
 					</Box>
 				</StyledPaper>
 				{message && (
@@ -252,6 +245,7 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 						messageId={message.id}
 						agentId={agentId}
 						targetRef={messageContentRef}
+						isUser={isUser}
 					/>
 				)}
 			</Box>
