@@ -9,6 +9,7 @@ import { getLanguageFromExtension } from "@shared/utils/file-utils";
 import { type FC, useCallback, useMemo, useState } from "react";
 import { ExpandableActionElement } from "../expandable-action-element";
 import { MarkdownRenderer } from "../markdown-renderer";
+import { AudioAttachment } from "./audio-attachment";
 import { CodeBlock } from "./code-block";
 import { ErrorBlock } from "./error-block";
 import { FileAttachment } from "./file-attachment";
@@ -98,6 +99,25 @@ const isVideo = (path: string): boolean => {
 };
 
 /**
+ * Checks if a file is an audio file based on its extension
+ * @param path - The file path or URL to check
+ * @returns True if the file is an audio file, false otherwise
+ */
+const isAudio = (path: string): boolean => {
+	const audioExtensions = [
+		".mp3",
+		".wav",
+		".ogg",
+		".aac",
+		".flac",
+		".m4a",
+		".aiff",
+	];
+	const lowerPath = path.toLowerCase();
+	return audioExtensions.some((ext) => lowerPath.endsWith(ext));
+};
+
+/**
  * Gets the appropriate URL for an attachment
  * Uses the static image endpoint for local image files
  * and the static video endpoint for local video files
@@ -123,6 +143,10 @@ const getAttachmentUrl = (
 
 	if (isVideo(path)) {
 		return client.static.getVideoUrl(normalizedPath);
+	}
+
+	if (isAudio(path)) {
+		return client.static.getAudioUrl(normalizedPath);
 	}
 
 	// For other file types, return the original path
@@ -299,11 +323,29 @@ export const ActionBlock: FC<ActionBlockProps> = ({
 				</Box>
 			)}
 
+			{/* Render audio attachments if any - always visible */}
+			{files &&
+				files.length > 0 &&
+				!isLoading &&
+				files.some((file) => isAudio(file)) && (
+					<Box sx={{ mb: 2 }}>
+						{files
+							.filter((file) => isAudio(file))
+							.map((file) => (
+								<AudioAttachment
+									key={`${file}`}
+									content={getUrl(file)}
+									isUser={isUser}
+								/>
+							))}
+					</Box>
+				)}
+
 			{/* Render non-media file attachments if any - always visible */}
 			{files && files.length > 0 && !isLoading && (
 				<Box sx={{ mt: 2 }}>
 					{files
-						.filter((file) => !isImage(file) && !isVideo(file))
+						.filter((file) => !isImage(file) && !isVideo(file) && !isAudio(file))
 						.map((file) => (
 							<FileAttachment
 								key={`${file}`}
