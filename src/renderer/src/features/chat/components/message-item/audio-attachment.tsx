@@ -16,7 +16,7 @@ import {
 	Volume2,
 	VolumeX,
 } from "lucide-react";
-import { type FC, useEffect, useRef, useState } from "react";
+import { type FC, useEffect, useRef, useState, memo, useCallback } from "react";
 import { InvalidAttachment } from "./invalid-attachment";
 
 const AudioPlayerContainer = styled(Box)(({ theme }) => ({
@@ -27,7 +27,7 @@ const AudioPlayerContainer = styled(Box)(({ theme }) => ({
 	borderRadius: theme.shape.borderRadius,
 	padding: theme.spacing(1, 2),
 	width: "100%",
-	maxWidth: "400px",
+	maxWidth: "600px",
 	border: `1px solid ${theme.palette.sidebar.border}`,
 }));
 
@@ -104,7 +104,7 @@ type AudioAttachmentProps = {
 	isUser: boolean;
 };
 
-export const AudioAttachment: FC<AudioAttachmentProps> = ({ content }) => {
+export const AudioAttachment: FC<AudioAttachmentProps> = memo(({ content }) => {
 	const audioRef = useRef<HTMLAudioElement | null>(null);
 	const [isPlaying, setIsPlaying] = useState(false);
 	const [duration, setDuration] = useState(0);
@@ -156,7 +156,7 @@ export const AudioAttachment: FC<AudioAttachmentProps> = ({ content }) => {
 		};
 	}, [content]);
 
-	const handlePlayPause = () => {
+	const handlePlayPause = useCallback(() => {
 		if (audioRef.current) {
 			if (isPlaying) {
 				audioRef.current.pause();
@@ -165,30 +165,41 @@ export const AudioAttachment: FC<AudioAttachmentProps> = ({ content }) => {
 			}
 			setIsPlaying(!isPlaying);
 		}
-	};
+	}, [isPlaying]);
 
-	const handleSeek = (_: Event, newValue: number | number[]) => {
+	const handleSeek = useCallback((_: Event, newValue: number | number[]) => {
 		if (audioRef.current) {
 			audioRef.current.currentTime = newValue as number;
 			setCurrentTime(newValue as number);
 		}
-	};
+	}, []);
 
-	const handleVolumeChange = (_: Event, newValue: number | number[]) => {
+	const handleVolumeChange = useCallback(
+		(_: Event, newValue: number | number[]) => {
+			if (audioRef.current) {
+				const newVolume = newValue as number;
+				audioRef.current.volume = newVolume;
+				setVolume(newVolume);
+			}
+		},
+		[],
+	);
+
+	const toggleMute = useCallback(() => {
 		if (audioRef.current) {
-			const newVolume = newValue as number;
+			const newVolume = volume > 0 ? 0 : 1;
 			audioRef.current.volume = newVolume;
 			setVolume(newVolume);
 		}
-	};
+	}, [volume]);
 
-	const handlePlaybackRateChange = (rate: number) => {
+	const handlePlaybackRateChange = useCallback((rate: number) => {
 		if (audioRef.current) {
 			audioRef.current.playbackRate = rate;
 			setPlaybackRate(rate);
 		}
 		setAnchorEl(null);
-	};
+	}, []);
 
 	const formatTime = (time: number) => {
 		if (Number.isNaN(time) || time === 0) return "0:00";
@@ -233,9 +244,7 @@ export const AudioAttachment: FC<AudioAttachmentProps> = ({ content }) => {
 			<TimeDisplay>{formatTime(duration)}</TimeDisplay>
 			<VolumeControlContainer>
 				<IconButton
-					onClick={() =>
-						handleVolumeChange(new Event("click"), volume > 0 ? 0 : 1)
-					}
+					onClick={toggleMute}
 					size="small"
 					disabled={hasError}
 				>
@@ -283,4 +292,6 @@ export const AudioAttachment: FC<AudioAttachmentProps> = ({ content }) => {
 			</Menu>
 		</AudioPlayerContainer>
 	);
-};
+});
+
+AudioAttachment.displayName = "AudioAttachment";
