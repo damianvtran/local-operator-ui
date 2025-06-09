@@ -6,8 +6,8 @@ import {
 	MenuItem,
 	Slider,
 	Typography,
-	styled,
 	alpha,
+	styled,
 } from "@mui/material";
 import {
 	PauseCircle,
@@ -16,7 +16,7 @@ import {
 	Volume2,
 	VolumeX,
 } from "lucide-react";
-import { type FC, useEffect, useRef, useState, memo, useCallback } from "react";
+import { type FC, memo, useCallback, useEffect, useRef, useState } from "react";
 import { InvalidAttachment } from "./invalid-attachment";
 
 const AudioPlayerContainer = styled(Box)(({ theme }) => ({
@@ -243,11 +243,7 @@ export const AudioAttachment: FC<AudioAttachmentProps> = memo(({ content }) => {
 			/>
 			<TimeDisplay>{formatTime(duration)}</TimeDisplay>
 			<VolumeControlContainer>
-				<IconButton
-					onClick={toggleMute}
-					size="small"
-					disabled={hasError}
-				>
+				<IconButton onClick={toggleMute} size="small" disabled={hasError}>
 					<VolumeIcon size={16} />
 				</IconButton>
 				<CustomSlider
