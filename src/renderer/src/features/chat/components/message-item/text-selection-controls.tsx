@@ -22,7 +22,7 @@ const ControlsWrapper = styled(Box)(({ theme }) => ({
 	borderRadius: "4px",
 	boxShadow: theme.shadows[3],
 	zIndex: 10,
-  padding: 4,
+	padding: 4,
 	border: `1px solid ${theme.palette.divider}`,
 }));
 
@@ -31,8 +31,8 @@ const StyledIconButton = styled(IconButton)(({ theme }) => ({
 	color: theme.palette.text.secondary,
 	width: "34px",
 	height: "34px",
-  padding: 0,
-  margin: 0,
+	padding: 0,
+	margin: 0,
 	"&:hover": {
 		color: theme.palette.primary.main,
 		backgroundColor: alpha(theme.palette.primary.main, 0.1),

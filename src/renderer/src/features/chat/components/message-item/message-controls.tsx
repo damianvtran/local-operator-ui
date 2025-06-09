@@ -129,8 +129,8 @@ export const MessageControls: FC<MessageControlsProps> = ({
 							<Copy size={16} />
 						</StyledIconButton>
 					</Tooltip>
-					{!isUser && (
-						isPlaying ? (
+					{!isUser &&
+						(isPlaying ? (
 							<Tooltip title="Stop" placement="top">
 								<StyledIconButton size="small" onClick={handleStop}>
 									<Square size={16} />
@@ -161,8 +161,7 @@ export const MessageControls: FC<MessageControlsProps> = ({
 									</StyledIconButton>
 								</span>
 							</Tooltip>
-						)
-					)}
+						))}
 				</ControlsWrapper>
 			)}
 			{/* Additional button wrappers can be added here in the future */}
