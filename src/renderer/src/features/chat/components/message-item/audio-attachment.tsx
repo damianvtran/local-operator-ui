@@ -81,6 +81,24 @@ const PlaybackRateButton = styled(Typography)(({ theme }) => ({
 	},
 }));
 
+const PATH_SEPARATOR_REGEX = /[/\\]/;
+
+const getFileNameFromPath = (path: string) => {
+	try {
+		const url = new URL(path);
+		// For URLs like http://localhost:5173/audio?path=%2FUsers%2Fdamiantran%2F...
+		if (url.searchParams.has("path")) {
+			const filePath = url.searchParams.get("path") ?? "";
+			return filePath.split(PATH_SEPARATOR_REGEX).pop() ?? "";
+		}
+		// For direct file URLs
+		return url.pathname.split(PATH_SEPARATOR_REGEX).pop() ?? "";
+	} catch {
+		// Fallback for local file paths or other non-URL strings
+		return path.split(PATH_SEPARATOR_REGEX).pop() ?? "";
+	}
+};
+
 type AudioAttachmentProps = {
 	content: string;
 	isUser: boolean;
@@ -182,7 +200,8 @@ export const AudioAttachment: FC<AudioAttachmentProps> = ({ content }) => {
 	const VolumeIcon = volume === 0 ? VolumeX : volume < 0.5 ? Volume1 : Volume2;
 
 	if (hasError) {
-		return <InvalidAttachment file={content} />;
+		const fileName = getFileNameFromPath(content);
+		return <InvalidAttachment file={fileName} />;
 	}
 
 	return (
