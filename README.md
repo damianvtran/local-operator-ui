@@ -216,7 +216,7 @@ Contributions are welcome! Please see our [Contributing Guide](./CONTRIBUTING.md
 
 If you encounter issues not covered here, please:
 
-1. Check the [GitHub Issues](https://github.com/local-operator/local-operator-ui/issues) for similar problems
+1. Check the [GitHub Issues](https://github.com/damianvtran/local-operator-ui/issues) for similar problems
 2. Open a new issue if your problem hasn't been reported
 
 ## 📄 License
