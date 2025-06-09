@@ -2,7 +2,7 @@ import { Box, CircularProgress, IconButton, Tooltip } from "@mui/material";
 import { alpha, styled } from "@mui/material/styles";
 import { useCredentials } from "@shared/hooks/use-credentials";
 import { useSpeechStore } from "@shared/store/speech-store";
-import { Square, Volume2 } from "lucide-react";
+import { ClipboardCopy, Copy, Square, Volume2 } from "lucide-react";
 import type { FC } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
@@ -46,8 +46,9 @@ export const TextSelectionControls: FC<TextSelectionControlsProps> = ({
 }) => {
 	const [selection, setSelection] = useState<{
 		text: string;
+		html: string;
 		rect: DOMRect | null;
-	}>({ text: "", rect: null });
+	}>({ text: "", html: "", rect: null });
 	const { playSpeech, stopSpeech, loadingMessageId, playingMessageId } =
 		useSpeechStore();
 	const { data: credentialsData, isLoading: isLoadingCredentials } =
@@ -71,7 +72,7 @@ export const TextSelectionControls: FC<TextSelectionControlsProps> = ({
 
 	const handleMouseUp = useCallback(() => {
 		if (!targetRef.current) {
-			setSelection({ text: "", rect: null });
+			setSelection({ text: "", html: "", rect: null });
 			return;
 		}
 
@@ -85,14 +86,17 @@ export const TextSelectionControls: FC<TextSelectionControlsProps> = ({
 			const range = sel.getRangeAt(0);
 			const rect = range.getBoundingClientRect();
 			const text = sel.toString().trim();
+			const container = document.createElement("div");
+			container.appendChild(range.cloneContents());
+			const html = container.innerHTML;
 
 			if (text) {
-				setSelection({ text, rect });
+				setSelection({ text, html, rect });
 			} else {
-				setSelection({ text: "", rect: null });
+				setSelection({ text: "", html: "", rect: null });
 			}
 		} else {
-			setSelection({ text: "", rect: null });
+			setSelection({ text: "", html: "", rect: null });
 		}
 	}, [targetRef]);
 
@@ -120,6 +124,30 @@ export const TextSelectionControls: FC<TextSelectionControlsProps> = ({
 		stopSpeech();
 	};
 
+	const handleCopy = () => {
+		if (selection.html) {
+			const htmlBlob = new Blob([selection.html], { type: "text/html" });
+			const textBlob = new Blob([selection.text], { type: "text/plain" });
+			const item = new ClipboardItem({
+				"text/html": htmlBlob,
+				"text/plain": textBlob,
+			});
+			navigator.clipboard.write([item]).finally(() => {
+				setSelection({ text: "", html: "", rect: null });
+			});
+		} else {
+			handleCopyWithoutFormatting();
+		}
+	};
+
+	const handleCopyWithoutFormatting = () => {
+		if (selection.text) {
+			navigator.clipboard.writeText(selection.text).finally(() => {
+				setSelection({ text: "", html: "", rect: null });
+			});
+		}
+	};
+
 	if (!selection.rect || !selection.text || isUser) {
 		return null;
 	}
@@ -133,7 +161,7 @@ export const TextSelectionControls: FC<TextSelectionControlsProps> = ({
 	};
 
 	return (
-		<ControlsWrapper style={style}>
+		<ControlsWrapper style={style} onMouseDown={(e) => e.preventDefault()}>
 			{isPlaying ? (
 				<Tooltip title="Stop" placement="top">
 					<StyledIconButton size="small" onClick={handleStop}>
@@ -166,6 +194,16 @@ export const TextSelectionControls: FC<TextSelectionControlsProps> = ({
 					</span>
 				</Tooltip>
 			)}
+			<Tooltip title="Copy" placement="top">
+				<StyledIconButton size="small" onClick={handleCopy}>
+					<Copy size={14} />
+				</StyledIconButton>
+			</Tooltip>
+			<Tooltip title="Copy without formatting" placement="top">
+				<StyledIconButton size="small" onClick={handleCopyWithoutFormatting}>
+					<ClipboardCopy size={14} />
+				</StyledIconButton>
+			</Tooltip>
 		</ControlsWrapper>
 	);
 };
