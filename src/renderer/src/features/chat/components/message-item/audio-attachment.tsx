@@ -5,8 +5,9 @@ import {
 	Menu,
 	MenuItem,
 	Slider,
-	Stack,
 	Typography,
+	styled,
+	alpha,
 } from "@mui/material";
 import {
 	PauseCircle,
@@ -17,9 +18,70 @@ import {
 } from "lucide-react";
 import { type FC, useEffect, useRef, useState } from "react";
 
+const AudioPlayerContainer = styled(Box)(({ theme }) => ({
+	display: "flex",
+	alignItems: "center",
+	gap: theme.spacing(1.5),
+	background: theme.palette.background.paper,
+	borderRadius: theme.shape.borderRadius,
+	padding: theme.spacing(1, 2),
+	width: "100%",
+	maxWidth: "600px",
+	border: `1px solid ${theme.palette.sidebar.border}`,
+}));
+
+const TimeDisplay = styled(Typography)(({ theme }) => ({
+	fontSize: "0.75rem",
+	color: theme.palette.text.secondary,
+	minWidth: "40px",
+	textAlign: "center",
+}));
+
+const CustomSlider = styled(Slider)(({ theme }) => ({
+	color: theme.palette.primary.main,
+	height: 4,
+	"& .MuiSlider-thumb": {
+		width: 12,
+		height: 12,
+		backgroundColor: theme.palette.primary.main,
+		border: `2px solid ${theme.palette.background.paper}`,
+		"&:hover, &.Mui-focusVisible": {
+			boxShadow: `0 0 0 8px ${alpha(theme.palette.primary.main, 0.16)}`,
+		},
+		"&.Mui-active": {
+			width: 16,
+			height: 16,
+		},
+	},
+	"& .MuiSlider-rail": {
+		opacity: 0.3,
+		backgroundColor: theme.palette.text.secondary,
+	},
+	"& .MuiSlider-track": {
+		border: "none",
+	},
+}));
+
+const VolumeControlContainer = styled(Box)({
+	display: "flex",
+	alignItems: "center",
+	gap: "8px",
+});
+
+const PlaybackRateButton = styled(Typography)(({ theme }) => ({
+	fontWeight: "bold",
+	fontSize: "0.75rem",
+	color: theme.palette.text.secondary,
+	cursor: "pointer",
+	padding: theme.spacing(0.5, 1),
+	borderRadius: theme.shape.borderRadius,
+	"&:hover": {
+		backgroundColor: theme.palette.action.hover,
+	},
+}));
+
 type AudioAttachmentProps = {
 	content: string;
-	isUser: boolean;
 };
 
 export const AudioAttachment: FC<AudioAttachmentProps> = ({ content }) => {
@@ -101,6 +163,7 @@ export const AudioAttachment: FC<AudioAttachmentProps> = ({ content }) => {
 	};
 
 	const formatTime = (time: number) => {
+		if (Number.isNaN(time) || time === 0) return "0:00";
 		const minutes = Math.floor(time / 60);
 		const seconds = Math.floor(time % 60);
 		return `${minutes}:${seconds.toString().padStart(2, "0")}`;
@@ -109,63 +172,38 @@ export const AudioAttachment: FC<AudioAttachmentProps> = ({ content }) => {
 	const VolumeIcon = volume === 0 ? VolumeX : volume < 0.5 ? Volume1 : Volume2;
 
 	return (
-		<Box sx={{ width: "100%", p: 2 }}>
-			<Stack
-				direction="row"
-				spacing={2}
-				alignItems="center"
-				sx={{ width: "100%" }}
-			>
-				<IconButton onClick={handlePlayPause} disabled={isLoading}>
-					{isLoading ? (
-						<CircularProgress size={24} />
-					) : isPlaying ? (
-						<PauseCircle size={24} />
-					) : (
-						<PlayCircle size={24} />
-					)}
-				</IconButton>
-				<Slider
-					aria-label="time-indicator"
-					size="small"
-					value={currentTime}
-					min={0}
-					step={1}
-					max={duration}
-					onChange={handleSeek}
-					sx={{
-						height: 4,
-						"& .MuiSlider-thumb": {
-							width: 8,
-							height: 8,
-							transition: "0.3s cubic-bezier(.47,1.64,.41,.8)",
-							"&:before": {
-								boxShadow: "0 2px 12px 0 rgba(0,0,0,0.4)",
-							},
-							"&:hover, &.Mui-focusVisible": {
-								boxShadow: "0px 0px 0px 8px rgb(0 0 0 / 16%)",
-							},
-							"&.Mui-active": {
-								width: 20,
-								height: 20,
-							},
-						},
-						"& .MuiSlider-rail": {
-							opacity: 0.28,
-						},
-					}}
-				/>
-				<Typography>{formatTime(currentTime)}</Typography>
-				<Typography>/</Typography>
-				<Typography>{formatTime(duration)}</Typography>
+		<AudioPlayerContainer>
+			<IconButton onClick={handlePlayPause} disabled={isLoading} size="small">
+				{isLoading ? (
+					<CircularProgress size={20} />
+				) : isPlaying ? (
+					<PauseCircle size={20} />
+				) : (
+					<PlayCircle size={20} />
+				)}
+			</IconButton>
+			<TimeDisplay>{formatTime(currentTime)}</TimeDisplay>
+			<CustomSlider
+				aria-label="time-indicator"
+				size="small"
+				value={currentTime}
+				min={0}
+				step={1}
+				max={duration}
+				onChange={handleSeek}
+				disabled={isLoading}
+			/>
+			<TimeDisplay>{formatTime(duration)}</TimeDisplay>
+			<VolumeControlContainer>
 				<IconButton
 					onClick={() =>
 						handleVolumeChange(new Event("click"), volume > 0 ? 0 : 1)
 					}
+					size="small"
 				>
-					<VolumeIcon />
+					<VolumeIcon size={16} />
 				</IconButton>
-				<Slider
+				<CustomSlider
 					aria-label="volume-control"
 					size="small"
 					value={volume}
@@ -173,27 +211,36 @@ export const AudioAttachment: FC<AudioAttachmentProps> = ({ content }) => {
 					step={0.1}
 					max={1}
 					onChange={handleVolumeChange}
-					sx={{ width: 100 }}
+					sx={{ width: 70 }}
 				/>
-				<IconButton onClick={(event) => setAnchorEl(event.currentTarget)}>
-					<Typography sx={{ fontWeight: "bold" }}>{playbackRate}x</Typography>
-				</IconButton>
-				<Menu
-					anchorEl={anchorEl}
-					open={Boolean(anchorEl)}
-					onClose={() => setAnchorEl(null)}
-				>
-					{[0.5, 1, 1.5, 2].map((rate) => (
-						<MenuItem
-							key={rate}
-							onClick={() => handlePlaybackRateChange(rate)}
-							selected={playbackRate === rate}
-						>
-							{rate}x
-						</MenuItem>
-					))}
-				</Menu>
-			</Stack>
-		</Box>
+			</VolumeControlContainer>
+			<IconButton
+				onClick={(event) => setAnchorEl(event.currentTarget)}
+				size="small"
+			>
+				<PlaybackRateButton>{playbackRate}x</PlaybackRateButton>
+			</IconButton>
+			<Menu
+				anchorEl={anchorEl}
+				open={Boolean(anchorEl)}
+				onClose={() => setAnchorEl(null)}
+				MenuListProps={{
+					sx: {
+						// @ts-ignore
+						backgroundColor: (theme) => theme.palette.background.paper,
+					},
+				}}
+			>
+				{[0.5, 1, 1.5, 2].map((rate) => (
+					<MenuItem
+						key={rate}
+						onClick={() => handlePlaybackRateChange(rate)}
+						selected={playbackRate === rate}
+					>
+						{rate}x
+					</MenuItem>
+				))}
+			</Menu>
+		</AudioPlayerContainer>
 	);
 };
