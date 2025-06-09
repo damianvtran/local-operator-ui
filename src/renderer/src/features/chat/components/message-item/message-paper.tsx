@@ -1,7 +1,7 @@
 import { Box, Paper, useTheme } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import { useScrollToBottom } from "@shared/hooks/use-scroll-to-bottom";
-import {
+import React, {
 	type FC,
 	useCallback,
 	useEffect,
@@ -10,8 +10,10 @@ import {
 	useState,
 } from "react";
 import type { Message } from "../../types/message";
+import { parseReplies } from "../../utils/reply-utils";
 import { ExpandableThinkingContent } from "./expandable-thinking-content";
 import { MessageControls } from "./message-controls";
+import { ReplyPreview } from "../reply-preview";
 import { MessageTimestamp } from "./message-timestamp";
 import { StreamingMessage } from "./streaming-message";
 import { TextSelectionControls } from "./text-selection-controls";
@@ -67,9 +69,24 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 }) => {
 	const theme = useTheme();
 	const messageContentRef = useRef<HTMLDivElement>(null);
+	const { replies, remainingContent } = useMemo(
+		() => parseReplies(content || ""),
+		[content],
+	);
 
 	// For user messages, we keep the paper boundary
 	if (isUser) {
+		const childrenWithoutReplies = useMemo(() => {
+			if (React.isValidElement(children)) {
+				const newProps = {
+					...children.props,
+					content: remainingContent,
+				};
+				return React.cloneElement(children, newProps);
+			}
+			return children;
+		}, [children, remainingContent]);
+
 		return (
 			<Box
 				sx={{
@@ -92,7 +109,8 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 					}}
 				>
 					<Box ref={messageContentRef} sx={{ position: "relative" }}>
-						{children}
+						{replies.length > 0 && <ReplyPreview replies={replies} />}
+						{childrenWithoutReplies}
 					</Box>
 				</StyledPaper>
 				{message && (
@@ -132,21 +150,6 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 		}),
 		[theme.palette.text.primary],
 	);
-
-	// Filter out the timestamp from children for assistant messages - memoized to prevent unnecessary recalculations
-	const filteredChildren = useMemo(() => {
-		// If children is a React element array, filter out the MessageTimestamp component
-		if (Array.isArray(children)) {
-			return children.filter(
-				(child) =>
-					child?.type?.displayName !== "MessageTimestamp" &&
-					child?.type?.name !== "MessageTimestamp",
-			);
-		}
-
-		// Otherwise, just return the children as is
-		return children;
-	}, [children]);
 
 	// Always call hooks at the top level, regardless of conditions
 	// Use the simplified scroll hook to track scroll position and scroll to bottom
@@ -229,8 +232,22 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 	const regularMessageComponents = useMemo(() => {
 		if ((isStreamable && isJobRunning) || !message) return null;
 
+		const childrenWithRemainingContent = React.Children.map(
+			children,
+			(child: React.ReactNode) => {
+				if (React.isValidElement(child) && child.props.content) {
+					return React.cloneElement(
+						child as React.ReactElement<{ content: string }>,
+						{ content: remainingContent },
+					);
+				}
+				return child;
+			},
+		);
+
 		return (
 			<Box sx={messageStyles} ref={messageContentRef}>
+				{replies.length > 0 && <ReplyPreview replies={replies} />}
 				{message.thinking && !isUser && (
 					<ExpandableThinkingContent
 						thinking={message.thinking}
@@ -239,7 +256,7 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 						onCollapse={handleThinkingCollapse}
 					/>
 				)}
-				{filteredChildren}
+				{childrenWithRemainingContent}
 				{message?.conversation_id && (
 					<TextSelectionControls
 						messageId={message.id}
@@ -254,14 +271,16 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 	}, [
 		isStreamable,
 		messageStyles,
-		filteredChildren,
+		children,
 		message,
 		isUser,
 		isJobRunning,
 		isThinkingExpanded,
-		handleThinkingExpand, // Added
-		handleThinkingCollapse, // Added
+		handleThinkingExpand,
+		handleThinkingCollapse,
 		agentId,
+		replies,
+		remainingContent,
 	]);
 
 	return (

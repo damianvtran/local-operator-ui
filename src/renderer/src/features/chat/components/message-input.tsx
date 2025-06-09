@@ -23,7 +23,7 @@ import { useMessageInput } from "@shared/hooks/use-message-input";
 import { useConversationInputStore } from "@shared/store/conversation-input-store";
 import { normalizePath } from "@shared/utils/path-utils";
 import { showErrorToast } from "@shared/utils/toast-manager";
-import { Check, MessageSquareReply, Mic, X } from "lucide-react";
+import { Check, Mic, X } from "lucide-react";
 import {
 	forwardRef,
 	useCallback,
@@ -35,10 +35,10 @@ import {
 } from "react";
 import type { ChangeEvent, ClipboardEvent, FormEvent } from "react";
 import type { Message } from "../types/message";
-import type { Reply } from "@shared/store/conversation-input-store";
 import { AttachmentsPreview } from "./attachments-preview";
 import { AudioRecordingIndicator } from "./audio-recording-indicator";
 import { DirectoryIndicator } from "./directory-indicator";
+import { ReplyPreview } from "./reply-preview";
 import { ScrollToBottomButton } from "./scroll-to-bottom-button";
 import { WaveformAnimation } from "./waveform-animation";
 
@@ -342,61 +342,6 @@ const TranscriptionText = styled(Typography)(({ theme }) => ({
 	marginRight: theme.spacing(1.5),
 	color: theme.palette.text.secondary,
 }));
-
-const ReplyPreviewContainer = styled(Box)(({ theme }) => ({
-	display: "flex",
-	flexDirection: "column",
-	gap: theme.spacing(1),
-	padding: theme.spacing(1),
-	backgroundColor: alpha(theme.palette.primary.main, 0.1),
-	borderRadius: theme.shape.borderRadius,
-	marginBottom: theme.spacing(1),
-}));
-
-const ReplyItem = styled(Box)(({ theme }) => ({
-	display: "flex",
-	alignItems: "center",
-	gap: theme.spacing(1),
-	padding: theme.spacing(0.5, 1),
-	backgroundColor: alpha(theme.palette.background.paper, 0.7),
-	borderRadius: theme.shape.borderRadius,
-}));
-
-const ReplyText = styled(Typography)(({ theme }) => ({
-	flex: 1,
-	fontSize: "0.875rem",
-	color: theme.palette.text.secondary,
-	whiteSpace: "nowrap",
-	overflow: "hidden",
-	textOverflow: "ellipsis",
-}));
-
-type ReplyPreviewProps = {
-	replies: Reply[];
-	onRemoveReply: (replyId: string) => void;
-};
-
-const ReplyPreview: React.FC<ReplyPreviewProps> = ({
-	replies,
-	onRemoveReply,
-}) => (
-	<ReplyPreviewContainer>
-		<Box display="flex" alignItems="center" gap={1} mb={0.5}>
-			<MessageSquareReply size={14} />
-			<Typography variant="caption" color="text.secondary">
-				Replying to:
-			</Typography>
-		</Box>
-		{replies.map((reply) => (
-			<ReplyItem key={reply.id}>
-				<ReplyText>"{reply.text}"</ReplyText>
-				<IconButton size="small" onClick={() => onRemoveReply(reply.id)}>
-					<X size={16} />
-				</IconButton>
-			</ReplyItem>
-		))}
-	</ReplyPreviewContainer>
-);
 
 /**
  * MessageInput component
