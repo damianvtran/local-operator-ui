@@ -17,6 +17,7 @@ import {
 	VolumeX,
 } from "lucide-react";
 import { type FC, useEffect, useRef, useState } from "react";
+import { InvalidAttachment } from "./invalid-attachment";
 
 const AudioPlayerContainer = styled(Box)(({ theme }) => ({
 	display: "flex",
@@ -26,7 +27,7 @@ const AudioPlayerContainer = styled(Box)(({ theme }) => ({
 	borderRadius: theme.shape.borderRadius,
 	padding: theme.spacing(1, 2),
 	width: "100%",
-	maxWidth: "600px",
+	maxWidth: "400px",
 	border: `1px solid ${theme.palette.sidebar.border}`,
 }));
 
@@ -82,6 +83,7 @@ const PlaybackRateButton = styled(Typography)(({ theme }) => ({
 
 type AudioAttachmentProps = {
 	content: string;
+	isUser: boolean;
 };
 
 export const AudioAttachment: FC<AudioAttachmentProps> = ({ content }) => {
@@ -92,6 +94,7 @@ export const AudioAttachment: FC<AudioAttachmentProps> = ({ content }) => {
 	const [volume, setVolume] = useState(1);
 	const [playbackRate, setPlaybackRate] = useState(1);
 	const [isLoading, setIsLoading] = useState(true);
+	const [hasError, setHasError] = useState(false);
 	const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
 	useEffect(() => {
@@ -117,14 +120,21 @@ export const AudioAttachment: FC<AudioAttachmentProps> = ({ content }) => {
 			setCurrentTime(0);
 		};
 
+		const handleError = () => {
+			setHasError(true);
+			setIsLoading(false);
+		};
+
 		audioElement.addEventListener("loadedmetadata", handleLoadedMetadata);
 		audioElement.addEventListener("timeupdate", handleTimeUpdate);
 		audioElement.addEventListener("ended", handleEnded);
+		audioElement.addEventListener("error", handleError);
 
 		return () => {
 			audioElement.removeEventListener("loadedmetadata", handleLoadedMetadata);
 			audioElement.removeEventListener("timeupdate", handleTimeUpdate);
 			audioElement.removeEventListener("ended", handleEnded);
+			audioElement.removeEventListener("error", handleError);
 		};
 	}, [content]);
 
@@ -171,9 +181,17 @@ export const AudioAttachment: FC<AudioAttachmentProps> = ({ content }) => {
 
 	const VolumeIcon = volume === 0 ? VolumeX : volume < 0.5 ? Volume1 : Volume2;
 
+	if (hasError) {
+		return <InvalidAttachment file={content} />;
+	}
+
 	return (
 		<AudioPlayerContainer>
-			<IconButton onClick={handlePlayPause} disabled={isLoading} size="small">
+			<IconButton
+				onClick={handlePlayPause}
+				disabled={isLoading || hasError}
+				size="small"
+			>
 				{isLoading ? (
 					<CircularProgress size={20} />
 				) : isPlaying ? (
@@ -191,7 +209,7 @@ export const AudioAttachment: FC<AudioAttachmentProps> = ({ content }) => {
 				step={1}
 				max={duration}
 				onChange={handleSeek}
-				disabled={isLoading}
+				disabled={isLoading || hasError}
 			/>
 			<TimeDisplay>{formatTime(duration)}</TimeDisplay>
 			<VolumeControlContainer>
@@ -200,6 +218,7 @@ export const AudioAttachment: FC<AudioAttachmentProps> = ({ content }) => {
 						handleVolumeChange(new Event("click"), volume > 0 ? 0 : 1)
 					}
 					size="small"
+					disabled={hasError}
 				>
 					<VolumeIcon size={16} />
 				</IconButton>
@@ -212,11 +231,13 @@ export const AudioAttachment: FC<AudioAttachmentProps> = ({ content }) => {
 					max={1}
 					onChange={handleVolumeChange}
 					sx={{ width: 70 }}
+					disabled={hasError}
 				/>
 			</VolumeControlContainer>
 			<IconButton
 				onClick={(event) => setAnchorEl(event.currentTarget)}
 				size="small"
+				disabled={hasError}
 			>
 				<PlaybackRateButton>{playbackRate}x</PlaybackRateButton>
 			</IconButton>
