@@ -56,6 +56,32 @@ export const getVideoUrl = (baseUrl: string, videoPath: string): string => {
 };
 
 /**
+ * Get the URL for an audio file from the static audio endpoint
+ *
+ * @param baseUrl - The base URL of the Local Operator API
+ * @param audioPath - The path to the audio file on disk
+ * @returns The URL to access the audio via the static endpoint
+ */
+export const getAudioUrl = (baseUrl: string, audioPath: string): string => {
+	// Ensure the base URL doesn't end with a slash
+	const normalizedBaseUrl = baseUrl.endsWith("/")
+		? baseUrl.slice(0, -1)
+		: baseUrl;
+
+	// Remove the file:// protocol if present
+	let normalizedPath = audioPath;
+	if (normalizedPath.startsWith("file://")) {
+		normalizedPath = normalizedPath.substring(7);
+	}
+
+	// Encode the audio path to handle special characters
+	const encodedPath = encodeURIComponent(normalizedPath);
+
+	// Return the full URL to the static audio endpoint
+	return `${normalizedBaseUrl}/v1/static/audio?path=${encodedPath}`;
+};
+
+/**
  * Get the URL for an HTML file from the static HTML endpoint
  *
  * @param baseUrl - The base URL of the Local Operator API
@@ -87,5 +113,6 @@ export const getHtmlUrl = (baseUrl: string, htmlPath: string): string => {
 export const StaticApi = {
 	getImageUrl,
 	getVideoUrl,
+	getAudioUrl,
 	getHtmlUrl,
 };

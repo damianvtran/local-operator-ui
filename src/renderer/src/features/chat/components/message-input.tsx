@@ -366,6 +366,8 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		const [isTranscribing, setIsTranscribing] = useState(false);
 		const mediaRecorderRef = useRef<MediaRecorder | null>(null);
 		const audioChunksRef = useRef<Blob[]>([]);
+		const spacebarTimerRef = useRef<NodeJS.Timeout | null>(null);
+		const [platform, setPlatform] = useState("");
 
 		const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -435,7 +437,19 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			}
 		}, [isInputDisabled, isRecording, isTranscribing, textareaRef]);
 
+		useEffect(() => {
+			window.electron.ipcRenderer
+				.invoke("get-platform-info")
+				.then((info) => {
+					setPlatform(info.platform);
+				})
+				.catch((err) => {
+					console.error("Failed to get platform info:", err);
+				});
+		}, []);
+
 		const handleStartRecording = useCallback(async () => {
+			if (!canEnableRecordingFeature) return;
 			if (navigator?.mediaDevices?.getUserMedia) {
 				try {
 					const stream = await navigator.mediaDevices.getUserMedia({
@@ -472,7 +486,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				console.error("getUserMedia not supported on your browser!");
 				showErrorToast("Audio recording is not supported on your browser.");
 			}
-		}, []);
+		}, [canEnableRecordingFeature]);
 
 		const handleConfirmRecording = useCallback(() => {
 			if (mediaRecorderRef.current && isRecording) {
@@ -553,6 +567,99 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			}
 		}, [audioBlob, handleSendAudio]);
 
+		// Listen for speech to text shortcut from main process
+		useEffect(() => {
+			const handleStartSpeechToText = (): void => {
+				if (
+					!isLoading &&
+					!isRecording &&
+					!isTranscribing &&
+					canEnableRecordingFeature
+				) {
+					handleStartRecording();
+				}
+			};
+			window.electron.ipcRenderer.on(
+				"start-speech-to-text",
+				handleStartSpeechToText,
+			);
+
+			return () => {
+				window.electron.ipcRenderer.removeListener(
+					"start-speech-to-text",
+					handleStartSpeechToText,
+				);
+			};
+		}, [
+			canEnableRecordingFeature,
+			handleStartRecording,
+			isLoading,
+			isRecording,
+			isTranscribing,
+		]);
+
+		// Listen for spacebar hold to start/stop recording
+		useEffect(() => {
+			const handleKeyDown = (event: KeyboardEvent): void => {
+				if (event.code !== "Space" || spacebarTimerRef.current) {
+					return;
+				}
+
+				// Check if an input-like element is focused
+				const activeElement = document.activeElement as HTMLElement;
+				if (
+					activeElement &&
+					(activeElement.tagName === "INPUT" ||
+						activeElement.tagName === "TEXTAREA" ||
+						activeElement.isContentEditable)
+				) {
+					return; // Don't interfere with typing
+				}
+
+				if (isRecording || isTranscribing || !canEnableRecordingFeature) {
+					return;
+				}
+
+				event.preventDefault();
+
+				spacebarTimerRef.current = setTimeout(() => {
+					handleStartRecording();
+				}, 1000);
+			};
+
+			const handleKeyUp = (event: KeyboardEvent): void => {
+				if (event.code !== "Space") {
+					return;
+				}
+
+				if (spacebarTimerRef.current) {
+					clearTimeout(spacebarTimerRef.current);
+					spacebarTimerRef.current = null;
+				}
+
+				if (isRecording) {
+					handleConfirmRecording();
+				}
+			};
+
+			window.addEventListener("keydown", handleKeyDown);
+			window.addEventListener("keyup", handleKeyUp);
+
+			return () => {
+				window.removeEventListener("keydown", handleKeyDown);
+				window.removeEventListener("keyup", handleKeyUp);
+				if (spacebarTimerRef.current) {
+					clearTimeout(spacebarTimerRef.current);
+				}
+			};
+		}, [
+			isRecording,
+			isTranscribing,
+			canEnableRecordingFeature,
+			handleStartRecording,
+			handleConfirmRecording,
+		]);
+
 		const handleSubmit = (e: FormEvent) => {
 			e.preventDefault();
 			if (!newMessage.trim() && attachments.length === 0) return;
@@ -622,6 +729,13 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			setAttachments([]);
 			setNewMessage("");
 		};
+
+		const shortcutText = useMemo(() => {
+			if (platform === "darwin") {
+				return "Cmd+Shift+S";
+			}
+			return "Ctrl+Shift+S";
+		}, [platform]);
 
 		const inputContent = (
 			<form onSubmit={handleSubmit} style={{ width: "100%" }}>
@@ -706,7 +820,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 										title={
 											!canEnableRecordingFeature
 												? "Sign in to Radient in the settings page to enable audio recording"
-												: "Start recording"
+												: `Start recording (${shortcutText} or hold Space)`
 										}
 									>
 										<span>

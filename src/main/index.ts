@@ -842,11 +842,13 @@ app
 				updateService?.checkForAllUpdates(true);
 			}, 3000);
 
-			// Register local shortcut for Command Palette (only when window is focused)
-			// Use window-level accelerator instead of global shortcut to avoid overriding other apps
+			// Register local shortcuts for focused window
 			mainWindow.webContents.on("before-input-event", (event, input) => {
+				const isCmdOrCtrl = input.control || input.meta;
+
+				// Toggle command palette: Cmd/Ctrl + K
 				if (
-					input.control &&
+					isCmdOrCtrl &&
 					input.key.toLowerCase() === "k" &&
 					input.type === "keyDown"
 				) {
@@ -855,16 +857,17 @@ app
 						mainWindow.webContents.send("toggle-command-palette");
 					}
 				}
-				// Handle keydown event on macOS
+
+				// Start speech to text: Cmd/Ctrl + Shift + S
 				if (
-					input.meta &&
-					input.key.toLowerCase() === "k" &&
-					input.type === "keyDown" &&
-					process.platform === "darwin"
+					isCmdOrCtrl &&
+					input.shift &&
+					input.key.toLowerCase() === "s" &&
+					input.type === "keyDown"
 				) {
 					if (mainWindow?.isFocused() && mainWindow?.isVisible()) {
 						event.preventDefault();
-						mainWindow.webContents.send("toggle-command-palette");
+						mainWindow.webContents.send("start-speech-to-text");
 					}
 				}
 			});

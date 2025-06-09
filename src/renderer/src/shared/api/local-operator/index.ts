@@ -11,6 +11,7 @@ import { HealthApi as HealthApiImpl } from "./health-api";
 import { JobsApi as JobsApiImpl } from "./jobs-api";
 import { ModelsApi as ModelsApiImpl } from "./models-api";
 import { SchedulesApi as SchedulesApiImpl } from "./schedules-api";
+import { SpeechApi as SpeechApiImpl } from "./speech-api";
 import { StaticApi as StaticApiImpl } from "./static-api";
 import { TranscriptionApi as TranscriptionApiImpl } from "./transcription-api";
 
@@ -23,6 +24,7 @@ export { ConfigApi } from "./config-api";
 export { CredentialsApi } from "./credentials-api";
 export { ModelsApi } from "./models-api";
 export { SchedulesApi } from "./schedules-api";
+export { SpeechApi } from "./speech-api";
 export { StaticApi } from "./static-api";
 export { TranscriptionApi } from "./transcription-api";
 export { WebSocketApi } from "./websocket-api";
@@ -68,6 +70,8 @@ export type {
 	ScheduleResponse,
 	ScheduleListResponse,
 	ScheduleUpdateRequest,
+	// Speech types
+	SpeechRequest,
 	// Transcription types
 	CreateTranscriptionParams,
 	RadientTranscriptionResponseData,
@@ -185,6 +189,13 @@ export class LocalOperatorClient {
 	 */
 	get transcription(): BoundApi<ApiWithBaseUrl<typeof TranscriptionApiImpl>> {
 		return this.bindBaseUrlToApi(TranscriptionApiImpl);
+	}
+
+	/**
+	 * Get the Speech API client with methods bound to the base URL
+	 */
+	get speech(): BoundApi<ApiWithBaseUrl<typeof SpeechApiImpl>> {
+		return this.bindBaseUrlToApi(SpeechApiImpl);
 	}
 
 	/**
