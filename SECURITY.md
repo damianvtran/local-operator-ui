@@ -6,7 +6,7 @@ Thank you for helping us keep Local Operator UI secure. Local Operator UI strive
 
 ## Supported Versions
 
-It is recommended to use the latest version of the Local Operator UI application. The latest version can be found on our [GitHub releases page](https://github.com/local-operator/local-operator-ui/releases).
+It is recommended to use the latest version of the Local Operator UI application. The latest version can be found on our [GitHub releases page](https://github.com/damianvtran/local-operator-ui/releases).
 
 Local Operator UI is built with:
 
