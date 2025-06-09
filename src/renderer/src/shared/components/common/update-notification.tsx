@@ -705,9 +705,9 @@ const truncateText = (text: string, maxLength: number): string => {
 const getReleaseUrl = (updateInfo: UpdateInfo): string => {
 	if (updateInfo.releaseNotes && typeof updateInfo.releaseNotes !== "string") {
 		const releaseNotesObj = updateInfo.releaseNotes as { path?: string };
-		const defaultUrl = `https://github.com/local-operator/local-operator-ui/releases/tag/v${updateInfo.version}`;
+		const defaultUrl = `https://github.com/damianvtran/local-operator-ui/releases/tag/v${updateInfo.version}`;
 		return releaseNotesObj.path || defaultUrl;
 	}
 
-	return `https://github.com/local-operator/local-operator-ui/releases/tag/v${updateInfo.version}`;
+	return `https://github.com/damianvtran/local-operator-ui/releases/tag/v${updateInfo.version}`;
 };
