@@ -143,9 +143,11 @@ export const TextSelectionControls: FC<TextSelectionControlsProps> = ({
 			) : (
 				<Tooltip
 					title={
-						!canEnableSpeechFeature
-							? "Sign in to Radient in the settings page to enable text to speech"
-							: "Speak Aloud"
+						isLoading
+							? "Loading"
+							: !canEnableSpeechFeature
+								? "Sign in to Radient in the settings page to enable text to speech"
+								: "Speak Aloud"
 					}
 					placement="top"
 				>
