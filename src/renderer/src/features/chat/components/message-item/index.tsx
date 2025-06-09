@@ -4,13 +4,14 @@ import {
 	createLocalOperatorClient,
 } from "@shared/api/local-operator";
 import { apiConfig } from "@shared/config";
-import { useCanvasStore } from "@shared/store/canvas-store"; // Added useCanvasStore import
+import { useCanvasStore } from "@shared/store/canvas-store";
 import { type FC, memo, useCallback, useEffect, useMemo } from "react"; // Added useEffect
 import type { CanvasDocument } from "../../types/canvas"; // Added CanvasDocument import
 import type { Message } from "../../types/message";
 import { getFileTypeFromPath } from "../../utils/file-types"; // Added getFileTypeFromPath import
 import { getFileName } from "../../utils/get-file-name"; // Added getFileName import
 import { ActionBlock } from "./action-block";
+import { AudioAttachment } from "./audio-attachment";
 import { CodeBlock } from "./code-block";
 import { CollapsibleMessage } from "./collapsible-message";
 import { ErrorBlock } from "./error-block";
@@ -98,6 +99,25 @@ const isVideo = (path: string): boolean => {
 };
 
 /**
+ * Checks if a file is an audio file based on its extension
+ * @param path - The file path or URL to check
+ * @returns True if the file is an audio file, false otherwise
+ */
+const isAudio = (path: string): boolean => {
+	const audioExtensions = [
+		".mp3",
+		".wav",
+		".ogg",
+		".aac",
+		".flac",
+		".m4a",
+		".aiff",
+	];
+	const lowerPath = path.toLowerCase();
+	return audioExtensions.some((ext) => lowerPath.endsWith(ext));
+};
+
+/**
  * Gets the appropriate URL for an attachment
  * Uses the static image endpoint for local image files
  * and the static video endpoint for local video files
@@ -123,6 +143,10 @@ const getAttachmentUrl = (
 
 	if (isVideo(path)) {
 		return client.static.getVideoUrl(normalizedPath);
+	}
+
+	if (isAudio(path)) {
+		return client.static.getAudioUrl(normalizedPath);
 	}
 
 	// For other file types, return the original path
@@ -263,6 +287,7 @@ export const MessageItem: FC<MessageItemProps> = memo(
 						onMessageComplete={onMessageComplete}
 						isLastMessage={isLastMessage ?? false}
 						isJobRunning={!!currentExecution}
+						agentId={conversationId}
 					>
 						<ActionBlock
 							message={message.message ?? ""}
@@ -298,6 +323,7 @@ export const MessageItem: FC<MessageItemProps> = memo(
 							onMessageComplete={onMessageComplete}
 							isLastMessage={isLastMessage ?? false}
 							isJobRunning={!!currentExecution}
+							agentId={conversationId}
 						>
 							{/* Render image attachments if any */}
 							{message.files && message.files.length > 0 && (
@@ -417,6 +443,7 @@ export const MessageItem: FC<MessageItemProps> = memo(
 						onMessageComplete={onMessageComplete}
 						isLastMessage={isLastMessage ?? false}
 						isJobRunning={!!currentExecution}
+						agentId={conversationId}
 					>
 						{/* Render image attachments if any */}
 						{message.files && message.files.length > 0 && (
@@ -451,6 +478,23 @@ export const MessageItem: FC<MessageItemProps> = memo(
 									))}
 							</Box>
 						)}
+
+						{/* Render audio attachments if any */}
+						{message.files &&
+							message.files.length > 0 &&
+							message.files.some((file) => isAudio(file)) && (
+								<Box sx={{ mb: 2 }}>
+									{message.files
+										.filter((file) => isAudio(file))
+										.map((file) => (
+											<AudioAttachment
+												key={`${message.id}-${file}`}
+												content={getUrl(file)}
+												isUser={isUser}
+											/>
+										))}
+								</Box>
+							)}
 
 						{/* Only render message content when not streaming */}
 						{message.message &&
@@ -512,7 +556,10 @@ export const MessageItem: FC<MessageItemProps> = memo(
 						{message.files && message.files.length > 0 && (
 							<Box sx={{ mt: 2 }}>
 								{message.files
-									.filter((file) => !isImage(file) && !isVideo(file))
+									.filter(
+										(file) =>
+											!isImage(file) && !isVideo(file) && !isAudio(file),
+									)
 									.map((file) => (
 										<FileAttachment
 											key={`${message.id}-${file}`}

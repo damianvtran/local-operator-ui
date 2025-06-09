@@ -806,3 +806,37 @@ export type RadientTranscriptionResponseData = {
 };
 
 // --- End Transcription API Types ---
+
+// --- Speech API Types ---
+
+/**
+ * Request body for speech generation endpoint.
+ */
+export type SpeechRequest = {
+	/** The text to generate speech from. */
+	input: string;
+	/** The instructions to use for generation. */
+	instructions?: string;
+	/** The model to use for generation. */
+	model: string;
+	/** The voice to use for generation. */
+	voice: string;
+	/** The format of the audio response. Default: "mp3". */
+	response_format?: string;
+	/** The speed of the speech. Default: 1.0. */
+	speed?: number;
+	/** The provider to use for generation. Default: "openai". */
+	provider?: string;
+};
+
+/**
+ * Request body for agent speech generation endpoint.
+ */
+export type AgentSpeechRequest = {
+	/** The text to generate speech from. */
+	input_text: string;
+	/** The format of the audio response. Default: "mp3". */
+	response_format?: string;
+};
+
+// --- End Speech API Types ---

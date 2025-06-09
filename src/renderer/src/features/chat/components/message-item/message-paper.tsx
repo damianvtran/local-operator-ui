@@ -14,6 +14,7 @@ import { ExpandableThinkingContent } from "./expandable-thinking-content";
 import { MessageControls } from "./message-controls";
 import { MessageTimestamp } from "./message-timestamp";
 import { StreamingMessage } from "./streaming-message";
+import { TextSelectionControls } from "./text-selection-controls";
 
 // Create a Paper component with custom styling
 const StyledPaper = styled(Paper)(({ theme }) => ({
@@ -45,6 +46,7 @@ type MessagePaperProps = {
 	onMessageComplete?: () => void;
 	isLastMessage: boolean;
 	isJobRunning: boolean;
+	agentId?: string;
 };
 
 /**
@@ -61,8 +63,10 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 	onMessageComplete,
 	isLastMessage,
 	isJobRunning,
+	agentId,
 }) => {
 	const theme = useTheme();
+	const messageContentRef = useRef<HTMLDivElement>(null);
 
 	// For user messages, we keep the paper boundary
 	if (isUser) {
@@ -87,9 +91,18 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 						color: theme.palette.text.primary,
 					}}
 				>
-					{children}
+					<Box ref={messageContentRef} sx={{ position: "relative" }}>
+						{children}
+					</Box>
 				</StyledPaper>
-				<MessageControls isUser={isUser} content={content} />
+				{message && (
+					<MessageControls
+						isUser={isUser}
+						content={content}
+						messageId={message.id}
+						agentId={agentId}
+					/>
+				)}
 			</Box>
 		);
 	}
@@ -217,7 +230,7 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 		if ((isStreamable && isJobRunning) || !message) return null;
 
 		return (
-			<Box sx={messageStyles}>
+			<Box sx={messageStyles} ref={messageContentRef}>
 				{message.thinking && !isUser && (
 					<ExpandableThinkingContent
 						thinking={message.thinking}
@@ -227,6 +240,14 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 					/>
 				)}
 				{filteredChildren}
+				{message && (
+					<TextSelectionControls
+						messageId={message.id}
+						agentId={agentId}
+						targetRef={messageContentRef}
+						isUser={isUser}
+					/>
+				)}
 			</Box>
 		);
 	}, [
@@ -239,6 +260,7 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 		isThinkingExpanded,
 		handleThinkingExpand, // Added
 		handleThinkingCollapse, // Added
+		agentId,
 	]);
 
 	return (
@@ -270,20 +292,24 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 				/>
 			)}
 			{/* MessageControls: always rendered, conditionally visible/interactive */}
-			<MessageControls
-				isUser={isUser}
-				content={content}
-				sx={{
-					// When streaming, force opacity 0 and disable pointer events.
-					// This inline style for opacity will override the parent's hover rule.
-					...(isStreamable && {
-						opacity: 0,
-						pointerEvents: "none",
-					}),
-					// Assuming MessageControls has its own transition for opacity changes (e.g., for hover).
-					// If not, a transition could be added here for when isStreamable changes.
-				}}
-			/>
+			{message && (
+				<MessageControls
+					isUser={isUser}
+					content={content}
+					messageId={message.id}
+					agentId={agentId}
+					sx={{
+						// When streaming, force opacity 0 and disable pointer events.
+						// This inline style for opacity will override the parent's hover rule.
+						...(isStreamable && {
+							opacity: 0,
+							pointerEvents: "none",
+						}),
+						// Assuming MessageControls has its own transition for opacity changes (e.g., for hover).
+						// If not, a transition could be added here for when isStreamable changes.
+					}}
+				/>
+			)}
 			{/* Invisible element at the bottom for scroll targeting */}
 			<div ref={scrollRef} style={{ height: 1, width: 1, opacity: 0 }} />
 		</Box>
