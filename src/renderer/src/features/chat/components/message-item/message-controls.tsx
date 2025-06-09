@@ -141,9 +141,11 @@ export const MessageControls: FC<MessageControlsProps> = ({
 								title={
 									!canEnableSpeechFeature
 										? "Sign in to Radient in the settings page to enable text to speech"
-										: hasAudio
-											? "Replay Speech"
-											: "Speak Aloud"
+										: isLoading
+											? "Loading"
+											: hasAudio
+												? "Replay Speech"
+												: "Speak Aloud"
 								}
 								placement="top"
 							>
