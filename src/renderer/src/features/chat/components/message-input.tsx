@@ -23,7 +23,7 @@ import { useMessageInput } from "@shared/hooks/use-message-input";
 import { useConversationInputStore } from "@shared/store/conversation-input-store";
 import { normalizePath } from "@shared/utils/path-utils";
 import { showErrorToast } from "@shared/utils/toast-manager";
-import { Check, Mic, X } from "lucide-react";
+import { Check, MessageSquareReply, Mic, X } from "lucide-react";
 import {
 	forwardRef,
 	useCallback,
@@ -381,9 +381,15 @@ const ReplyPreview: React.FC<ReplyPreviewProps> = ({
 	onRemoveReply,
 }) => (
 	<ReplyPreviewContainer>
+		<Box display="flex" alignItems="center" gap={1} mb={0.5}>
+			<MessageSquareReply size={14} />
+			<Typography variant="caption" color="text.secondary">
+				Replying to:
+			</Typography>
+		</Box>
 		{replies.map((reply) => (
 			<ReplyItem key={reply.id}>
-				<ReplyText>{reply.text}</ReplyText>
+				<ReplyText>"{reply.text}"</ReplyText>
 				<IconButton size="small" onClick={() => onRemoveReply(reply.id)}>
 					<X size={16} />
 				</IconButton>
