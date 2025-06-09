@@ -76,16 +76,18 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 
 	// For user messages, we keep the paper boundary
 	if (isUser) {
-		const childrenWithoutReplies = useMemo(() => {
-			if (React.isValidElement(children)) {
-				const newProps = {
-					...children.props,
-					content: remainingContent,
-				};
-				return React.cloneElement(children, newProps);
-			}
-			return children;
-		}, [children, remainingContent]);
+		const childrenWithRemainingContent = React.Children.map(
+			children,
+			(child: React.ReactNode) => {
+				if (React.isValidElement(child) && child.props.content) {
+					return React.cloneElement(
+						child as React.ReactElement<{ content: string }>,
+						{ content: remainingContent },
+					);
+				}
+				return child;
+			},
+		);
 
 		return (
 			<Box
@@ -110,7 +112,7 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 				>
 					<Box ref={messageContentRef} sx={{ position: "relative" }}>
 						{replies.length > 0 && <ReplyPreview replies={replies} />}
-						{childrenWithoutReplies}
+						{childrenWithRemainingContent}
 					</Box>
 				</StyledPaper>
 				{message && (

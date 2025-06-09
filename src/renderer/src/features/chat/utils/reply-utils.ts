@@ -6,17 +6,22 @@ export const parseReplies = (
 ): { replies: Reply[]; remainingContent: string } => {
 	const replyRegex = /<reply-to>(.*?)<\/reply-to>/g;
 	const replies: Reply[] = [];
-	let lastIndex = 0;
-
 	let match: RegExpExecArray | null;
-	match = replyRegex.exec(content);
-	while (match !== null) {
-		replies.push({ id: uuidv4(), text: match[1] });
-		lastIndex = match.index + match[0].length;
+
+	// exec with a global regex is stateful. Each call advances lastIndex.
+	// We need to loop through all matches to extract the reply text.
+	for (;;) {
 		match = replyRegex.exec(content);
+		if (match === null) {
+			break;
+		}
+		// This is the part of the match that is inside the tag
+		replies.push({ id: uuidv4(), text: match[1] });
 	}
 
-	const remainingContent = content.slice(lastIndex).trim();
+	// After extracting all replies, we remove all reply tags from the content.
+	// String.prototype.replace with a global regex will replace all occurrences.
+	const remainingContent = content.replace(replyRegex, "").trim();
 
 	return { replies, remainingContent };
 };
