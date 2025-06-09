@@ -366,6 +366,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		const [isTranscribing, setIsTranscribing] = useState(false);
 		const mediaRecorderRef = useRef<MediaRecorder | null>(null);
 		const audioChunksRef = useRef<Blob[]>([]);
+		const spacebarTimerRef = useRef<NodeJS.Timeout | null>(null);
 
 		const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -552,6 +553,99 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				handleSendAudio();
 			}
 		}, [audioBlob, handleSendAudio]);
+
+		// Listen for speech to text shortcut from main process
+		useEffect(() => {
+			const handleStartSpeechToText = (): void => {
+				if (
+					!isLoading &&
+					!isRecording &&
+					!isTranscribing &&
+					canEnableRecordingFeature
+				) {
+					handleStartRecording();
+				}
+			};
+			window.electron.ipcRenderer.on(
+				"start-speech-to-text",
+				handleStartSpeechToText,
+			);
+
+			return () => {
+				window.electron.ipcRenderer.removeListener(
+					"start-speech-to-text",
+					handleStartSpeechToText,
+				);
+			};
+		}, [
+			canEnableRecordingFeature,
+			handleStartRecording,
+			isLoading,
+			isRecording,
+			isTranscribing,
+		]);
+
+		// Listen for spacebar hold to start/stop recording
+		useEffect(() => {
+			const handleKeyDown = (event: KeyboardEvent): void => {
+				if (event.code !== "Space" || spacebarTimerRef.current) {
+					return;
+				}
+
+				// Check if an input-like element is focused
+				const activeElement = document.activeElement as HTMLElement;
+				if (
+					activeElement &&
+					(activeElement.tagName === "INPUT" ||
+						activeElement.tagName === "TEXTAREA" ||
+						activeElement.isContentEditable)
+				) {
+					return; // Don't interfere with typing
+				}
+
+				if (isRecording || isTranscribing || !canEnableRecordingFeature) {
+					return;
+				}
+
+				event.preventDefault();
+
+				spacebarTimerRef.current = setTimeout(() => {
+					handleStartRecording();
+				}, 1000);
+			};
+
+			const handleKeyUp = (event: KeyboardEvent): void => {
+				if (event.code !== "Space") {
+					return;
+				}
+
+				if (spacebarTimerRef.current) {
+					clearTimeout(spacebarTimerRef.current);
+					spacebarTimerRef.current = null;
+				}
+
+				if (isRecording) {
+					handleConfirmRecording();
+				}
+			};
+
+			window.addEventListener("keydown", handleKeyDown);
+			window.addEventListener("keyup", handleKeyUp);
+
+			return () => {
+				window.removeEventListener("keydown", handleKeyDown);
+				window.removeEventListener("keyup", handleKeyUp);
+				if (spacebarTimerRef.current) {
+					clearTimeout(spacebarTimerRef.current);
+				}
+			};
+		}, [
+			isRecording,
+			isTranscribing,
+			canEnableRecordingFeature,
+			handleStartRecording,
+			handleConfirmRecording,
+		]);
 
 		const handleSubmit = (e: FormEvent) => {
 			e.preventDefault();
