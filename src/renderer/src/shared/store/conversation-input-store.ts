@@ -9,6 +9,14 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
 /**
+ * Represents a reply to a message
+ */
+export type Reply = {
+	id: string;
+	text: string;
+};
+
+/**
  * State for a single conversation's input
  */
 type ConversationInputState = {
@@ -24,6 +32,10 @@ type ConversationInputState = {
 	 * The current index for up/down navigation in the submittedMessages log (null = not navigating)
 	 */
 	currentHistoryIndex: number | null;
+	/**
+	 * A list of replies to be sent with the next message
+	 */
+	replies: Reply[];
 };
 
 /**
@@ -34,6 +46,26 @@ type ConversationInputStoreState = {
 	 * State by conversation ID
 	 */
 	inputByConversation: Record<string, ConversationInputState>;
+
+	/**
+	 * Adds a reply to the list of replies for a conversation
+	 * @param conversationId - The ID of the conversation
+	 * @param reply - The reply to add
+	 */
+	addReply: (conversationId: string, reply: Reply) => void;
+
+	/**
+	 * Removes a reply from the list of replies for a conversation
+	 * @param conversationId - The ID of the conversation
+	 * @param replyId - The ID of the reply to remove
+	 */
+	removeReply: (conversationId: string, replyId: string) => void;
+
+	/**
+	 * Clears all replies for a conversation
+	 * @param conversationId - The ID of the conversation
+	 */
+	clearReplies: (conversationId: string) => void;
 
 	/**
 	 * Set the current input value for a conversation
@@ -112,11 +144,61 @@ export const useConversationInputStore = create<ConversationInputStoreState>()(
 		(set, get) => ({
 			inputByConversation: {},
 
+			addReply: (conversationId, reply) => {
+				const existing = get().inputByConversation[conversationId] || {
+					currentInput: "",
+					submittedMessages: [],
+					currentHistoryIndex: null,
+					replies: [],
+				};
+				const existingReplies = Array.isArray(existing.replies)
+					? existing.replies
+					: [];
+				set({
+					inputByConversation: {
+						...get().inputByConversation,
+						[conversationId]: {
+							...existing,
+							replies: [...existingReplies, reply],
+						},
+					},
+				});
+			},
+
+			removeReply: (conversationId, replyId) => {
+				const existing = get().inputByConversation[conversationId];
+				if (!existing) return;
+				set({
+					inputByConversation: {
+						...get().inputByConversation,
+						[conversationId]: {
+							...existing,
+							replies: existing.replies.filter((r) => r.id !== replyId),
+						},
+					},
+				});
+			},
+
+			clearReplies: (conversationId) => {
+				const existing = get().inputByConversation[conversationId];
+				if (!existing) return;
+				set({
+					inputByConversation: {
+						...get().inputByConversation,
+						[conversationId]: {
+							...existing,
+							replies: [],
+						},
+					},
+				});
+			},
+
 			setCurrentInput: (conversationId, value) => {
 				const existing = get().inputByConversation[conversationId] || {
 					currentInput: "",
 					submittedMessages: [],
 					currentHistoryIndex: null,
+					replies: [],
 				};
 				set({
 					inputByConversation: {
@@ -138,6 +220,7 @@ export const useConversationInputStore = create<ConversationInputStoreState>()(
 					currentInput: "",
 					submittedMessages: [],
 					currentHistoryIndex: null,
+					replies: [],
 				};
 				// Avoid duplicate consecutive entries
 				const last =
@@ -198,6 +281,7 @@ export const useConversationInputStore = create<ConversationInputStoreState>()(
 					currentInput: "",
 					submittedMessages: [],
 					currentHistoryIndex: null,
+					replies: [],
 				};
 				const messages = existing.submittedMessages;
 				let clampedIndex: number | null = null;

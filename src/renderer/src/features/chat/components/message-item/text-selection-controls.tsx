@@ -1,8 +1,9 @@
 import { Box, CircularProgress, IconButton, Tooltip } from "@mui/material";
 import { alpha, styled } from "@mui/material/styles";
 import { useCredentials } from "@shared/hooks/use-credentials";
+import { useConversationInputStore } from "@shared/store/conversation-input-store";
 import { useSpeechStore } from "@shared/store/speech-store";
-import { ClipboardCopy, Copy, Square, Volume2 } from "lucide-react";
+import { ClipboardCopy, Copy, MessageSquareReply, Square, Volume2 } from "lucide-react";
 import type { FC } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
@@ -13,6 +14,7 @@ type TextSelectionControlsProps = {
 	agentId?: string;
 	targetRef: React.RefObject<HTMLElement>;
 	isUser: boolean;
+	conversationId: string;
 };
 
 // Styled wrapper for the control buttons
@@ -43,6 +45,7 @@ export const TextSelectionControls: FC<TextSelectionControlsProps> = ({
 	agentId,
 	targetRef,
 	isUser,
+	conversationId,
 }) => {
 	const [selection, setSelection] = useState<{
 		text: string;
@@ -53,6 +56,7 @@ export const TextSelectionControls: FC<TextSelectionControlsProps> = ({
 		useSpeechStore();
 	const { data: credentialsData, isLoading: isLoadingCredentials } =
 		useCredentials();
+	const { addReply } = useConversationInputStore();
 
 	const isRadientApiKeyConfigured = useMemo(
 		() => credentialsData?.keys?.includes("RADIENT_API_KEY"),
@@ -148,6 +152,16 @@ export const TextSelectionControls: FC<TextSelectionControlsProps> = ({
 		}
 	};
 
+	const handleReply = () => {
+		if (selection.text) {
+			addReply(conversationId, {
+				id: uuidv4(),
+				text: selection.text,
+			});
+			setSelection({ text: "", html: "", rect: null });
+		}
+	};
+
 	if (!selection.rect || !selection.text || isUser) {
 		return null;
 	}
@@ -202,6 +216,11 @@ export const TextSelectionControls: FC<TextSelectionControlsProps> = ({
 			<Tooltip title="Copy without formatting" placement="top">
 				<StyledIconButton size="small" onClick={handleCopyWithoutFormatting}>
 					<ClipboardCopy size={14} />
+				</StyledIconButton>
+			</Tooltip>
+			<Tooltip title="Reply" placement="top">
+				<StyledIconButton size="small" onClick={handleReply}>
+					<MessageSquareReply size={14} />
 				</StyledIconButton>
 			</Tooltip>
 		</ControlsWrapper>
