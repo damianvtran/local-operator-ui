@@ -11,12 +11,12 @@ import type { Message } from "../../types/message";
 import { getFileTypeFromPath } from "../../utils/file-types"; // Added getFileTypeFromPath import
 import { getFileName } from "../../utils/get-file-name"; // Added getFileName import
 import { ActionBlock } from "./action-block";
+import { AudioAttachment } from "./audio-attachment";
 import { CodeBlock } from "./code-block";
 import { CollapsibleMessage } from "./collapsible-message";
 import { ErrorBlock } from "./error-block";
 import { FileAttachment } from "./file-attachment";
 import { ImageAttachment } from "./image-attachment";
-import { AudioAttachment } from "./audio-attachment";
 import { LogBlock } from "./log-block";
 import { MessageAvatar } from "./message-avatar";
 import { MessageContainer } from "./message-container";
@@ -557,7 +557,8 @@ export const MessageItem: FC<MessageItemProps> = memo(
 							<Box sx={{ mt: 2 }}>
 								{message.files
 									.filter(
-										(file) => !isImage(file) && !isVideo(file) && !isAudio(file),
+										(file) =>
+											!isImage(file) && !isVideo(file) && !isAudio(file),
 									)
 									.map((file) => (
 										<FileAttachment

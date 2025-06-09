@@ -345,7 +345,9 @@ export const ActionBlock: FC<ActionBlockProps> = ({
 			{files && files.length > 0 && !isLoading && (
 				<Box sx={{ mt: 2 }}>
 					{files
-						.filter((file) => !isImage(file) && !isVideo(file) && !isAudio(file))
+						.filter(
+							(file) => !isImage(file) && !isVideo(file) && !isAudio(file),
+						)
 						.map((file) => (
 							<FileAttachment
 								key={`${file}`}
