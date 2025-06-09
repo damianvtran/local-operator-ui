@@ -367,6 +367,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		const mediaRecorderRef = useRef<MediaRecorder | null>(null);
 		const audioChunksRef = useRef<Blob[]>([]);
 		const spacebarTimerRef = useRef<NodeJS.Timeout | null>(null);
+		const [platform, setPlatform] = useState("");
 
 		const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -436,7 +437,19 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			}
 		}, [isInputDisabled, isRecording, isTranscribing, textareaRef]);
 
+		useEffect(() => {
+			window.electron.ipcRenderer
+				.invoke("get-platform-info")
+				.then((info) => {
+					setPlatform(info.platform);
+				})
+				.catch((err) => {
+					console.error("Failed to get platform info:", err);
+				});
+		}, []);
+
 		const handleStartRecording = useCallback(async () => {
+			if (!canEnableRecordingFeature) return;
 			if (navigator?.mediaDevices?.getUserMedia) {
 				try {
 					const stream = await navigator.mediaDevices.getUserMedia({
@@ -473,7 +486,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				console.error("getUserMedia not supported on your browser!");
 				showErrorToast("Audio recording is not supported on your browser.");
 			}
-		}, []);
+		}, [canEnableRecordingFeature]);
 
 		const handleConfirmRecording = useCallback(() => {
 			if (mediaRecorderRef.current && isRecording) {
@@ -717,6 +730,13 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			setNewMessage("");
 		};
 
+		const shortcutText = useMemo(() => {
+			if (platform === "darwin") {
+				return "Cmd+Shift+S";
+			}
+			return "Ctrl+Shift+S";
+		}, [platform]);
+
 		const inputContent = (
 			<form onSubmit={handleSubmit} style={{ width: "100%" }}>
 				<InputInnerContainer>
@@ -800,7 +820,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 										title={
 											!canEnableRecordingFeature
 												? "Sign in to Radient in the settings page to enable audio recording"
-												: "Start recording"
+												: `Start recording (${shortcutText} or hold Space)`
 										}
 									>
 										<span>
