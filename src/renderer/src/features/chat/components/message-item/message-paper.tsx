@@ -240,12 +240,13 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 					/>
 				)}
 				{filteredChildren}
-				{message && (
+				{message?.conversation_id && (
 					<TextSelectionControls
 						messageId={message.id}
 						agentId={agentId}
 						targetRef={messageContentRef}
 						isUser={isUser}
+						conversationId={message.conversation_id}
 					/>
 				)}
 			</Box>

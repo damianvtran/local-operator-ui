@@ -20,6 +20,7 @@ import type { AgentDetails } from "@shared/api/local-operator/types";
 import { apiConfig } from "@shared/config/api-config";
 import { useCredentials } from "@shared/hooks/use-credentials";
 import { useMessageInput } from "@shared/hooks/use-message-input";
+import { useConversationInputStore } from "@shared/store/conversation-input-store";
 import { normalizePath } from "@shared/utils/path-utils";
 import { showErrorToast } from "@shared/utils/toast-manager";
 import { Check, Mic, X } from "lucide-react";
@@ -34,6 +35,7 @@ import {
 } from "react";
 import type { ChangeEvent, ClipboardEvent, FormEvent } from "react";
 import type { Message } from "../types/message";
+import type { Reply } from "@shared/store/conversation-input-store";
 import { AttachmentsPreview } from "./attachments-preview";
 import { AudioRecordingIndicator } from "./audio-recording-indicator";
 import { DirectoryIndicator } from "./directory-indicator";
@@ -341,6 +343,55 @@ const TranscriptionText = styled(Typography)(({ theme }) => ({
 	color: theme.palette.text.secondary,
 }));
 
+const ReplyPreviewContainer = styled(Box)(({ theme }) => ({
+	display: "flex",
+	flexDirection: "column",
+	gap: theme.spacing(1),
+	padding: theme.spacing(1),
+	backgroundColor: alpha(theme.palette.primary.main, 0.1),
+	borderRadius: theme.shape.borderRadius,
+	marginBottom: theme.spacing(1),
+}));
+
+const ReplyItem = styled(Box)(({ theme }) => ({
+	display: "flex",
+	alignItems: "center",
+	gap: theme.spacing(1),
+	padding: theme.spacing(0.5, 1),
+	backgroundColor: alpha(theme.palette.background.paper, 0.7),
+	borderRadius: theme.shape.borderRadius,
+}));
+
+const ReplyText = styled(Typography)(({ theme }) => ({
+	flex: 1,
+	fontSize: "0.875rem",
+	color: theme.palette.text.secondary,
+	whiteSpace: "nowrap",
+	overflow: "hidden",
+	textOverflow: "ellipsis",
+}));
+
+type ReplyPreviewProps = {
+	replies: Reply[];
+	onRemoveReply: (replyId: string) => void;
+};
+
+const ReplyPreview: React.FC<ReplyPreviewProps> = ({
+	replies,
+	onRemoveReply,
+}) => (
+	<ReplyPreviewContainer>
+		{replies.map((reply) => (
+			<ReplyItem key={reply.id}>
+				<ReplyText>{reply.text}</ReplyText>
+				<IconButton size="small" onClick={() => onRemoveReply(reply.id)}>
+					<X size={16} />
+				</IconButton>
+			</ReplyItem>
+		))}
+	</ReplyPreviewContainer>
+);
+
 /**
  * MessageInput component
  */
@@ -360,6 +411,15 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		},
 		ref,
 	) => {
+		const {
+			inputByConversation,
+			removeReply,
+			clearReplies,
+		} = useConversationInputStore();
+		const replies = useMemo(
+			() => (conversationId && inputByConversation[conversationId]?.replies) || [],
+			[inputByConversation, conversationId],
+		);
 		const [attachments, setAttachments] = useState<string[]>([]);
 		const [isRecording, setIsRecording] = useState(false);
 		const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
@@ -398,10 +458,20 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 
 		const onSubmit = useMemo(
 			() => (message: string) => {
-				onSendMessage(message, attachments);
+				let messageWithReplies = message;
+				if (replies.length > 0) {
+					const replyContent = replies
+						.map((r) => `<reply-to>${r.text}</reply-to>`)
+						.join("\n");
+					messageWithReplies = `${replyContent}\n${message}`;
+				}
+				onSendMessage(messageWithReplies, attachments);
 				setAttachments([]);
+				if (conversationId) {
+					clearReplies(conversationId);
+				}
 			},
-			[onSendMessage, attachments],
+			[onSendMessage, attachments, replies, conversationId, clearReplies],
 		);
 
 		const {
@@ -737,9 +807,18 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			return "Ctrl+Shift+S";
 		}, [platform]);
 
+		const handleRemoveReply = (replyId: string) => {
+			if (conversationId) {
+				removeReply(conversationId, replyId);
+			}
+		};
+
 		const inputContent = (
 			<form onSubmit={handleSubmit} style={{ width: "100%" }}>
 				<InputInnerContainer>
+					{replies.length > 0 && (
+						<ReplyPreview replies={replies} onRemoveReply={handleRemoveReply} />
+					)}
 					{attachments.length > 0 && (
 						<AttachmentsPreview
 							attachments={attachments}
