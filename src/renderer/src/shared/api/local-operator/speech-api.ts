@@ -7,10 +7,7 @@ export const SpeechApi = {
 	 * @param request - The speech request details.
 	 * @returns A promise that resolves to the audio data as a Blob.
 	 */
-	create: async (
-		baseUrl: string,
-		request: SpeechRequest,
-	): Promise<Blob> => {
+	create: async (baseUrl: string, request: SpeechRequest): Promise<Blob> => {
 		const response = await fetch(`${baseUrl}/v1/tools/speech`, {
 			method: "POST",
 			headers: {
