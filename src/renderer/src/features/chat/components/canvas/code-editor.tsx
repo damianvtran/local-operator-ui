@@ -1,4 +1,4 @@
-import { Box, useTheme } from "@mui/material";
+import { Box, useTheme, styled } from "@mui/material";
 import { loadLanguageExtensions } from "@shared/utils/load-language-extensions";
 import { basicDark, basicLight } from "@uiw/codemirror-theme-basic";
 import CodeMirror, { type Extension } from "@uiw/react-codemirror";
@@ -14,6 +14,28 @@ type CodeEditorProps = {
 	editable?: boolean;
 	onContentChange?: (content: string) => void;
 };
+
+const CodeEditorContainer = styled(Box)(({ theme }) => ({
+	flexGrow: 1,
+	fontSize: theme.typography.pxToRem(12),
+	overflow: "auto",
+	height: "100%",
+
+	"& > *": {
+		height: "100%",
+	},
+
+	"&::-webkit-scrollbar": {
+		width: "8px",
+	},
+	"&::-webkit-scrollbar-thumb": {
+		backgroundColor:
+			theme.palette.mode === "dark"
+				? "rgba(255, 255, 255, 0.1)"
+				: "rgba(0, 0, 0, 0.2)",
+		borderRadius: "4px",
+	},
+}));
 
 /**
  * Content component for the markdown canvas
@@ -64,29 +86,7 @@ export const CodeEditor: FC<CodeEditorProps> = ({
 		theme.palette.mode === "light" ? basicLight : basicDark;
 
 	return (
-		<Box
-			sx={({ typography }) => ({
-				flexGrow: 1,
-				fontSize: typography.pxToRem(12),
-				overflow: "auto",
-				height: "100%",
-
-				"& > *": {
-					height: "100%",
-				},
-
-				"&::-webkit-scrollbar": {
-					width: "8px",
-				},
-				"&::-webkit-scrollbar-thumb": {
-					backgroundColor:
-						theme.palette.mode === "dark"
-							? "rgba(255, 255, 255, 0.1)"
-							: "rgba(0, 0, 0, 0.2)",
-					borderRadius: "4px",
-				},
-			})}
-		>
+		<CodeEditorContainer>
 			<CodeMirror
 				value={content}
 				height="100%"
@@ -95,6 +95,6 @@ export const CodeEditor: FC<CodeEditorProps> = ({
 				extensions={languageExtensions}
 				onChange={handleContentChange}
 			/>
-		</Box>
+		</CodeEditorContainer>
 	);
 };
