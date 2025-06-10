@@ -277,7 +277,6 @@ export const InlineEdit: FC<InlineEditProps> = ({
 				placeholder="Describe your edit..."
 				value={prompt}
 				onChange={(e) => setPrompt(e.target.value)}
-				autoFocus
 				disabled={isLoading}
 			/>
 			{attachments.length > 0 && (
