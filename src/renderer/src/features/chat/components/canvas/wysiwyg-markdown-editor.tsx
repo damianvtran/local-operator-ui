@@ -658,7 +658,6 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 					const selection = window.getSelection();
 					if (selection && selection.rangeCount > 0 && editorRef.current) {
 						const range = selection.getRangeAt(0).cloneRange();
-						const rect = range.getBoundingClientRect();
 						const container = relativeContainerRef.current;
 						if (!container) {
 							break;
@@ -667,13 +666,33 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 						
 						// Get cursor position for empty selections
 						let cursorPosition: number | undefined;
+						let rect: DOMRect;
+						
 						if (selection.isCollapsed) {
 							try {
 								cursorPosition = getCursorPosition(editorRef.current, range);
+								
+								// For collapsed selections, create a temporary text node to get accurate positioning
+								const tempTextNode = window.document.createTextNode('\u200B'); // Zero-width space
+								range.insertNode(tempTextNode);
+								const tempRange = window.document.createRange();
+								tempRange.selectNode(tempTextNode);
+								rect = tempRange.getBoundingClientRect();
+								
+								// Clean up the temporary node
+								tempTextNode.remove();
+								
+								// If the rect is still invalid, fall back to the original range
+								if (rect.width === 0 && rect.height === 0) {
+									rect = range.getBoundingClientRect();
+								}
 							} catch (error) {
 								console.warn('Failed to calculate cursor position:', error);
 								cursorPosition = undefined;
+								rect = range.getBoundingClientRect();
 							}
+						} else {
+							rect = range.getBoundingClientRect();
 						}
 						
 						const selectedText = selection.toString();
