@@ -865,6 +865,8 @@ export type AgentEditFileRequest = {
 	selection?: string;
 	/** The prompt for the edit. */
 	edit_prompt: string;
+	/** The agent to use for the edit. */
+	attachments?: string[];
 };
 
 /**
