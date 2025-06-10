@@ -235,6 +235,21 @@ export const InlineEdit: FC<InlineEditProps> = ({
 		}
 	}, []);
 
+	// Handle escape key to close inline edit
+	useEffect(() => {
+		const handleKeyDown = (event: KeyboardEvent) => {
+			if (event.key === "Escape" && !isLoading && !isRecording && !isTranscribing) {
+				event.preventDefault();
+				onClose();
+			}
+		};
+
+		window.addEventListener("keydown", handleKeyDown);
+		return () => {
+			window.removeEventListener("keydown", handleKeyDown);
+		};
+	}, [onClose, isLoading, isRecording, isTranscribing]);
+
 	const { data: credentialsData, isLoading: isLoadingCredentials } =
 		useCredentials();
 
@@ -568,6 +583,14 @@ export const InlineEdit: FC<InlineEditProps> = ({
 					onPaste={handlePaste}
 					disabled={isLoading}
 					inputRef={textareaRef}
+					onKeyDown={(e) => {
+						if (e.key === "Enter" && !e.shiftKey) {
+							e.preventDefault();
+							if (prompt.trim() || attachments.length > 0) {
+								handleSubmit();
+							}
+						}
+					}}
 				/>
 			)}
 
