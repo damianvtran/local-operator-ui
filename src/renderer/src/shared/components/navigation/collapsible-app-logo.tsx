@@ -31,9 +31,11 @@ const LogoContainer = styled(Box, {
 	display: "flex",
 	alignItems: "center",
 	cursor: "pointer",
+	justifyContent: expanded ? "flex-start" : "center",
 	transition: "all 0.3s ease",
-	width: expanded ? "auto" : 34,
+	width: "100%",
 	position: "relative",
+	padding: expanded ? "0 16px" : 0,
 	zIndex: 1,
 }));
 
@@ -66,12 +68,12 @@ const LogoImage = styled("img", {
 });
 
 const LogoText = styled(Typography)(({ theme }) => ({
-	fontSize: "1.2rem",
+	fontSize: "1rem",
 	fontWeight: 500,
 	color:
 		theme.palette.mode === "dark"
-			? "rgba(255, 255, 255, 0.9)"
-			: "rgba(0, 0, 0, 0.9)",
+			? "rgba(255, 255, 255, 0.95)"
+			: "rgba(0, 0, 0, 0.95)",
 	whiteSpace: "nowrap",
 	overflow: "hidden",
 	textOverflow: "ellipsis",
