@@ -8,6 +8,7 @@ import type { FC, ReactNode } from "react";
 export type MessageContainerProps = {
 	isUser: boolean;
 	children: ReactNode;
+	isSmallView?: boolean;
 };
 
 /**
@@ -16,13 +17,13 @@ export type MessageContainerProps = {
  * Provides increased spacing for assistant messages to account for action banners
  */
 const StyledContainer = styled(Box, {
-	shouldForwardProp: (prop) => prop !== "isUser",
-})<{ isUser: boolean }>(({ isUser }) => ({
+	shouldForwardProp: (prop) => prop !== "isUser" && prop !== "isSmallView",
+})<{ isUser: boolean; isSmallView?: boolean }>(({ isUser, isSmallView }) => ({
 	display: "flex",
 	flexDirection: isUser ? "row-reverse" : "row",
 	alignItems: "flex-start",
-	gap: 16,
-	marginBottom: 12,
+	gap: isSmallView ? 8 : 16,
+	marginBottom: isSmallView ? 8 : 12,
 }));
 
 /**
@@ -32,6 +33,11 @@ const StyledContainer = styled(Box, {
 export const MessageContainer: FC<MessageContainerProps> = ({
 	isUser,
 	children,
+	isSmallView,
 }) => {
-	return <StyledContainer isUser={isUser}>{children}</StyledContainer>;
+	return (
+		<StyledContainer isUser={isUser} isSmallView={isSmallView}>
+			{children}
+		</StyledContainer>
+	);
 };

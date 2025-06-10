@@ -4,7 +4,7 @@ import type {
 	JobStatus,
 } from "@shared/api/local-operator/types";
 import { RingLoadingIndicator } from "@shared/components/common/ring-loading-indicator";
-import type { FC, RefObject } from "react";
+import { type FC, type RefObject, useEffect, useState } from "react";
 import type { Message } from "../types/message";
 import { LoadingIndicator } from "./loading-indicator";
 import { MessageItem } from "./message-item";
@@ -49,13 +49,14 @@ const MessagesViewWrapper = styled(Box, {
  * This container handles scrolling and uses column-reverse to keep new messages at the bottom
  */
 const MessagesContainer = styled(Box, {
-	shouldForwardProp: (prop) => prop !== "collapsed",
-})<{ collapsed?: boolean }>(({ theme, collapsed }) => ({
-	flexGrow: collapsed ? 0 : 1,
-	height: collapsed ? 0 : "100%",
-	overflow: collapsed ? "hidden" : "auto",
-	padding: collapsed ? 0 : 16,
-	width: "100%",
+	shouldForwardProp: (prop) => prop !== "collapsed" && prop !== "isSmallView",
+})<{ collapsed?: boolean; isSmallView?: boolean }>(
+	({ theme, collapsed }) => ({
+		flexGrow: collapsed ? 0 : 1,
+		height: collapsed ? 0 : "100%",
+		overflow: collapsed ? "hidden" : "auto",
+		padding: collapsed ? 0 : 16,
+		width: "100%",
 	display: "flex",
 	flexDirection: "column-reverse", // Key change: reverse column direction for auto-bottom scrolling
 	position: "relative",
@@ -77,11 +78,13 @@ const MessagesContainer = styled(Box, {
 /**
  * Styled component for displaying informational messages as a divider
  */
-const InfoMessageDivider = styled(Box)(({ theme }) => ({
+const InfoMessageDivider = styled(Box, {
+	shouldForwardProp: (prop) => prop !== "isSmallView",
+})<{ isSmallView?: boolean }>(({ theme, isSmallView }) => ({
 	display: "flex",
 	alignItems: "center",
 	textAlign: "center",
-	margin: theme.spacing(2, 0),
+	margin: theme.spacing(isSmallView ? 1 : 2, 0),
 	"&::before, &::after": {
 		content: '""',
 		flex: 1,
@@ -89,9 +92,9 @@ const InfoMessageDivider = styled(Box)(({ theme }) => ({
 	},
 	"& > .MuiTypography-root": {
 		// Target Typography directly for specificity
-		padding: theme.spacing(0, 2), // Increased padding for better spacing around text
+		padding: theme.spacing(0, isSmallView ? 1 : 2), // Increased padding for better spacing around text
 		color: theme.palette.text.secondary,
-		fontSize: "0.875rem",
+		fontSize: isSmallView ? "0.75rem" : "0.875rem",
 		maxWidth: "720px",
 	},
 }));
@@ -101,13 +104,15 @@ const InfoMessageDivider = styled(Box)(({ theme }) => ({
  * Creates a modern chat app layout with centered content
  * The messages are displayed in normal order within this container
  */
-const CenteredMessagesContainer = styled(Box)(({ theme }) => ({
+const CenteredMessagesContainer = styled(Box, {
+	shouldForwardProp: (prop) => prop !== "isSmallView",
+})<{ isSmallView?: boolean }>(({ theme, isSmallView }) => ({
 	width: "100%",
 	maxWidth: "900px",
 	margin: "0 auto",
 	display: "flex",
 	flexDirection: "column", // Normal column direction to display messages in correct order
-	gap: 16,
+	gap: isSmallView ? 8 : 16,
 	[theme.breakpoints.down("sm")]: {
 		maxWidth: "100%",
 	},
@@ -119,17 +124,19 @@ const CenteredMessagesContainer = styled(Box)(({ theme }) => ({
 	},
 }));
 
-const LoadingMoreIndicator = styled(Box)(({ theme }) => ({
+const LoadingMoreIndicator = styled(Box, {
+	shouldForwardProp: (prop) => prop !== "isSmallView",
+})<{ isSmallView?: boolean }>(({ theme, isSmallView }) => ({
 	display: "flex",
 	alignItems: "center",
 	justifyContent: "flex-start",
-	padding: "8px 12px",
+	padding: isSmallView ? "4px 8px" : "8px 12px",
 	color: theme.palette.text.secondary,
 	position: "absolute",
-	top: 16,
-	left: 16,
+	top: isSmallView ? 8 : 16,
+	left: isSmallView ? 8 : 16,
 	zIndex: 10,
-	fontSize: "0.85rem",
+	fontSize: isSmallView ? "0.75rem" : "0.85rem",
 	maxWidth: "fit-content",
 }));
 
@@ -173,6 +180,30 @@ export const MessagesView: FC<MessagesViewProps> = ({
 	refetch,
 	conversationId,
 }) => {
+	const [isSmallView, setIsSmallView] = useState(false);
+
+	useEffect(() => {
+		if (!messagesContainerRef.current) {
+			return;
+		}
+
+		const resizeObserver = new ResizeObserver((entries) => {
+			for (const entry of entries) {
+				if (entry.contentRect.width < 500) {
+					setIsSmallView(true);
+				} else {
+					setIsSmallView(false);
+				}
+			}
+		});
+
+		resizeObserver.observe(messagesContainerRef.current);
+
+		return () => {
+			resizeObserver.disconnect();
+		};
+	}, [messagesContainerRef]);
+
 	const collapsed =
 		messages.length === 0 && !isLoadingMessages && !isFetchingMore;
 
@@ -184,14 +215,18 @@ export const MessagesView: FC<MessagesViewProps> = ({
 		<MessagesViewWrapper collapsed={collapsed}>
 			{/* Fixed position loading indicator for fetching more messages */}
 			{isFetchingMore && (
-				<LoadingMoreIndicator>
+				<LoadingMoreIndicator isSmallView={isSmallView}>
 					<CircularProgress size={16} sx={{ mr: 1 }} />
 					Loading older messages...
 				</LoadingMoreIndicator>
 			)}
 
 			{/* Scrollable messages container */}
-			<MessagesContainer ref={messagesContainerRef} collapsed={collapsed}>
+			<MessagesContainer
+				ref={messagesContainerRef}
+				collapsed={collapsed}
+				isSmallView={isSmallView}
+			>
 				{/* With column-reverse, the content is flipped, so we need to maintain the correct visual order */}
 				{/* The loading indicator and messages are wrapped in a container with normal column direction */}
 
@@ -217,11 +252,11 @@ export const MessagesView: FC<MessagesViewProps> = ({
 
 						{/* Render messages with normal order inside the reversed container */}
 						{messages.length > 0 ? (
-							<CenteredMessagesContainer>
+							<CenteredMessagesContainer isSmallView={isSmallView}>
 								{/* Messages are rendered in normal order */}
 								{messages.map((message, index) =>
 									message.execution_type === "info" ? (
-										<InfoMessageDivider key={message.id}>
+										<InfoMessageDivider key={message.id} isSmallView={isSmallView}>
 											<Typography>{message.message}</Typography>
 										</InfoMessageDivider>
 									) : (
@@ -243,6 +278,7 @@ export const MessagesView: FC<MessagesViewProps> = ({
 													refetch();
 												}
 											}}
+											isSmallView={isSmallView}
 										/>
 									),
 								)}
@@ -254,6 +290,7 @@ export const MessagesView: FC<MessagesViewProps> = ({
 										agentName={agentName}
 										currentExecution={currentExecution}
 										conversationId={conversationId}
+										isSmallView={isSmallView}
 									/>
 								)}
 							</CenteredMessagesContainer>
@@ -267,6 +304,7 @@ export const MessagesView: FC<MessagesViewProps> = ({
 											agentName={agentName}
 											currentExecution={currentExecution}
 											conversationId={conversationId}
+											isSmallView={isSmallView}
 										/>
 									</FullScreenCenteredContainer>
 								)}
