@@ -2,8 +2,6 @@ import {
 	Box,
 	Toolbar,
 	IconButton,
-	Select,
-	MenuItem,
 	Divider,
 	Tooltip,
 	ToggleButton,
@@ -36,6 +34,10 @@ import { useCanvasStore } from "@shared/store/canvas-store";
 import { showSuccessToast } from "@shared/utils/toast-manager";
 import type { CanvasDocument } from "../../types/canvas";
 import { markdownToHtml, htmlToMarkdown } from "@features/chat/components/canvas/wysiwyg-utils";
+import { InsertImageDialog } from "./wysiwyg/insert-image-dialog";
+import { InsertLinkDialog } from "./wysiwyg/insert-link-dialog";
+import { InsertTablePopover } from "./wysiwyg/insert-table-popover";
+import { TextStyleDropdown } from "./wysiwyg/text-style-dropdown";
 
 type WysiwygMarkdownEditorProps = {
 	document: CanvasDocument;
@@ -165,15 +167,6 @@ const EditorContent = styled(Box)(({ theme }) => ({
 	},
 }));
 
-const TextTypeSelect = styled(Select)(() => ({
-	minWidth: "120px",
-	height: "32px",
-	"& .MuiSelect-select": {
-		padding: "4px 8px",
-		fontSize: "0.875rem",
-	},
-}));
-
 const ToolbarButton = styled(IconButton)(({ theme }) => ({
 	width: "32px",
 	height: "32px",
@@ -211,6 +204,9 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 	const [currentTextType, setCurrentTextType] = useState<TextType>("paragraph");
 	const [selectedFormats, setSelectedFormats] = useState<string[]>([]);
 	const [currentAlignment, setCurrentAlignment] = useState("left");
+	const [isLinkDialogOpen, setIsLinkDialogOpen] = useState(false);
+	const [isImageDialogOpen, setIsImageDialogOpen] = useState(false);
+	const [tableAnchorEl, setTableAnchorEl] = useState<HTMLElement | null>(null);
 
 	const debouncedContent = useDebounce(content, 1000);
 	const editorRef = useRef<HTMLDivElement>(null);
@@ -363,6 +359,31 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 		setCurrentTextType(type);
 	}, [executeCommand]);
 
+	const toggleBlockFormat = useCallback((format: "blockquote" | "pre") => {
+		const selection = window.getSelection();
+		if (!selection?.rangeCount) return;
+
+		let element: Node | null = selection.getRangeAt(0).startContainer;
+		if (element.nodeType === Node.TEXT_NODE) {
+			element = element.parentElement;
+		}
+
+		let isFormatted = false;
+		while (element && element !== editorRef.current) {
+			if (element instanceof HTMLElement && element.tagName.toLowerCase() === format) {
+				isFormatted = true;
+				break;
+			}
+			element = element.parentElement;
+		}
+
+		if (isFormatted) {
+			executeCommand("formatBlock", "p");
+		} else {
+			executeCommand("formatBlock", format);
+		}
+	}, [executeCommand]);
+
 	// Handle format toggle
 	const handleFormatToggle = useCallback(
 		(format: string) => {
@@ -401,50 +422,66 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 
 	// Insert link
 	const insertLink = useCallback(() => {
-		const url = prompt('Enter URL:');
-		if (url) {
-			executeCommand('createLink', url);
+		setIsLinkDialogOpen(true);
+	}, []);
+
+	const handleInsertLink = useCallback((url: string, text: string) => {
+		editorRef.current?.focus();
+		const selection = window.getSelection();
+		if (!selection || selection.rangeCount === 0) {
+			return;
+		}
+
+		const range = selection.getRangeAt(0);
+		// To ensure the editor is focused and the range is active
+		selection.removeAllRanges();
+		selection.addRange(range);
+
+		if (range.collapsed) {
+			const linkHtml = `<a href="${url}">${text || url}</a>`;
+			executeCommand("insertHTML", linkHtml);
+		} else {
+			executeCommand("createLink", url);
 		}
 	}, [executeCommand]);
 
 	// Insert image
 	const insertImage = useCallback(() => {
-		const url = prompt('Enter image URL:');
+		setIsImageDialogOpen(true);
+	}, []);
+
+	const handleInsertImage = useCallback((url: string) => {
 		if (url) {
 			executeCommand('insertImage', url);
 		}
 	}, [executeCommand]);
 
 	// Insert table
-	const insertTable = useCallback(() => {
-		const rows = prompt('Number of rows:', '3');
-		const cols = prompt('Number of columns:', '3');
-		
-		if (rows && cols) {
-			const numRows = Number.parseInt(rows, 10);
-			const numCols = Number.parseInt(cols, 10);
+	const insertTable = useCallback((event: React.MouseEvent<HTMLElement>) => {
+		setTableAnchorEl(event.currentTarget);
+	}, []);
+
+	const handleInsertTable = useCallback((rows: number, cols: number) => {
+		if (rows > 0 && cols > 0) {
+			let tableHTML = '<table><thead><tr>';
 			
-			if (numRows > 0 && numCols > 0) {
-				let tableHTML = '<table><thead><tr>';
-				
-				// Create header row
-				for (let j = 0; j < numCols; j++) {
-					tableHTML += '<th>Header</th>';
-				}
-				tableHTML += '</tr></thead><tbody>';
-				
-				// Create body rows
-				for (let i = 0; i < numRows - 1; i++) {
-					tableHTML += '<tr>';
-					for (let j = 0; j < numCols; j++) {
-						tableHTML += '<td>Cell</td>';
-					}
-					tableHTML += '</tr>';
-				}
-				
-				tableHTML += '</tbody></table>';
-				executeCommand('insertHTML', tableHTML);
+			// Create header row
+			for (let j = 0; j < cols; j++) {
+				tableHTML += '<th>Header</th>';
 			}
+			tableHTML += '</tr></thead><tbody>';
+			
+			// Create body rows
+			for (let i = 0; i < rows - 1; i++) {
+				tableHTML += '<tr>';
+				for (let j = 0; j < cols; j++) {
+					tableHTML += '<td>Cell</td>';
+				}
+				tableHTML += '</tr>';
+			}
+			
+			tableHTML += '</tbody></table>';
+			executeCommand('insertHTML', tableHTML);
 		}
 	}, [executeCommand]);
 
@@ -512,19 +549,10 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 		<EditorContainer elevation={1}>
 			<EditorToolbar>
 				{/* Text Type Selector */}
-				<TextTypeSelect
-					value={currentTextType}
-					onChange={(e) => handleTextTypeChange(e.target.value as TextType)}
-					size="small"
-				>
-					<MenuItem value="paragraph">Paragraph</MenuItem>
-					<MenuItem value="h1">Heading 1</MenuItem>
-					<MenuItem value="h2">Heading 2</MenuItem>
-					<MenuItem value="h3">Heading 3</MenuItem>
-					<MenuItem value="h4">Heading 4</MenuItem>
-					<MenuItem value="h5">Heading 5</MenuItem>
-					<MenuItem value="h6">Heading 6</MenuItem>
-				</TextTypeSelect>
+				<TextStyleDropdown
+					currentTextType={currentTextType}
+					onTextTypeChange={handleTextTypeChange}
+				/>
 
 				<ToolbarDivider orientation="vertical" />
 
@@ -587,13 +615,13 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 				</Tooltip>
 				<Tooltip title="Quote">
 					<ToolbarButton
-						onClick={() => executeCommand("formatBlock", "blockquote")}
+						onClick={() => toggleBlockFormat("blockquote")}
 					>
 						<Quote size={16} />
 					</ToolbarButton>
 				</Tooltip>
 				<Tooltip title="Code Block">
-					<ToolbarButton onClick={() => executeCommand("formatBlock", "pre")}>
+					<ToolbarButton onClick={() => toggleBlockFormat("pre")}>
 						<Code size={16} />
 					</ToolbarButton>
 				</Tooltip>
@@ -666,6 +694,21 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 					suppressContentEditableWarning
 				/>
 			</EditorContent>
+			<InsertLinkDialog
+				open={isLinkDialogOpen}
+				onClose={() => setIsLinkDialogOpen(false)}
+				onInsert={handleInsertLink}
+			/>
+			<InsertImageDialog
+				open={isImageDialogOpen}
+				onClose={() => setIsImageDialogOpen(false)}
+				onInsert={handleInsertImage}
+			/>
+			<InsertTablePopover
+				anchorEl={tableAnchorEl}
+				onClose={() => setTableAnchorEl(null)}
+				onInsert={handleInsertTable}
+			/>
 		</EditorContainer>
 	);
 };
