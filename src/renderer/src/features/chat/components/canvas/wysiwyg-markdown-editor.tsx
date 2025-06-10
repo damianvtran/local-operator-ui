@@ -28,9 +28,10 @@ import {
 	Undo,
 } from "lucide-react";
 import type { FC } from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useDebounce } from "@shared/hooks/use-debounce";
 import { useCanvasStore } from "@shared/store/canvas-store";
+import { useConversationMessages } from "@shared/hooks/use-conversation-messages";
 import { showSuccessToast } from "@shared/utils/toast-manager";
 import type { CanvasDocument } from "../../types/canvas";
 import { markdownToHtml, htmlToMarkdown } from "@features/chat/components/canvas/wysiwyg-utils";
@@ -240,6 +241,12 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 	const canvasState = useCanvasStore((state) =>
 		conversationId ? state.conversations[conversationId] : undefined,
 	);
+	const { messages } = useConversationMessages(conversationId);
+	const agentId = useMemo(() => {
+		if (!messages) return undefined;
+		const assistantMessage = messages.find((m) => m.role === "assistant");
+		return assistantMessage?.agent;
+	}, [messages]);
 
 	const updateCurrentTextType = useCallback(() => {
 		const selection = window.getSelection();
@@ -823,8 +830,11 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 					<TextSelectionControls
 						targetRef={editorRef}
 						scrollableContainerRef={editorContentRef}
+						showSpeech
+						showCopy
 						showEdit
 						onEdit={handleEdit}
+						agentId={agentId}
 					/>
 					{inlineEdit && document.path && (
 						<InlineEdit

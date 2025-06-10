@@ -17,7 +17,7 @@ import { ReplyPreview } from "../reply-preview";
 import { MessageContent } from "./message-content";
 import { MessageTimestamp } from "./message-timestamp";
 import { StreamingMessage } from "./streaming-message";
-import { TextSelectionControls } from "./text-selection-controls";
+import { TextSelectionControls } from "@shared/components/common/text-selection-controls";
 
 // Create a Paper component with custom styling
 const StyledPaper = styled(Paper, {
@@ -277,11 +277,13 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 				{childrenWithRemainingContent}
 				{message?.conversation_id && (
 					<TextSelectionControls
-						messageId={message.id}
 						agentId={agentId}
 						targetRef={messageContentRef}
 						isUser={isUser}
 						conversationId={message.conversation_id}
+						showSpeech
+						showCopy
+						showReply
 					/>
 				)}
 			</Box>

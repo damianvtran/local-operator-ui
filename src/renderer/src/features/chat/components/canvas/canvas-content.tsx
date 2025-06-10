@@ -30,7 +30,7 @@ const CanvasContentComponent: FC<CanvasContentProps> = ({ document, conversation
 		return <HtmlPreview document={document} />;
 	}
 
-	return <CodeEditor document={document} />;
+	return <CodeEditor document={document} conversationId={conversationId} />;
 };
 
 export const CanvasContent = memo(CanvasContentComponent);
