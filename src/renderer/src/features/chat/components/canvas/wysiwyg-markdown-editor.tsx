@@ -43,7 +43,7 @@ import { InsertTablePopover } from "./wysiwyg/insert-table-popover";
 import { TextStyleDropdown } from "./wysiwyg/text-style-dropdown";
 
 /**
- * Calculates the cursor position within the text content of a contentEditable element
+ * Calculates the cursor position within the markdown content by converting HTML position to markdown position
  */
 const getCursorPosition = (editorElement: HTMLElement, range: Range): number => {
 	// Create a range from the start of the editor to the cursor position
@@ -51,9 +51,16 @@ const getCursorPosition = (editorElement: HTMLElement, range: Range): number => 
 	preCaretRange.selectNodeContents(editorElement);
 	preCaretRange.setEnd(range.startContainer, range.startOffset);
 	
-	// Get the text content up to the cursor position
-	const textBeforeCursor = preCaretRange.toString();
-	return textBeforeCursor.length;
+	// Get the HTML content up to the cursor position
+	const htmlBeforeCursor = preCaretRange.cloneContents();
+	const tempDiv = document.createElement('div');
+	tempDiv.appendChild(htmlBeforeCursor);
+	
+	// Convert the HTML before cursor to markdown
+	const markdownBeforeCursor = htmlToMarkdown(tempDiv.innerHTML);
+	
+	// Return the length of the markdown content before cursor
+	return markdownBeforeCursor.length;
 };
 
 /**
