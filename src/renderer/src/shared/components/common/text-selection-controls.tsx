@@ -18,6 +18,7 @@ import { v4 as uuidv4 } from "uuid";
 // Props for the TextSelectionControls component
 type TextSelectionControlsProps = {
 	targetRef: React.RefObject<HTMLElement>;
+	scrollableContainerRef?: React.RefObject<HTMLElement>;
 	// Config for buttons
 	showSpeech?: boolean;
 	showCopy?: boolean;
@@ -28,7 +29,7 @@ type TextSelectionControlsProps = {
 	// Props for reply
 	conversationId?: string;
 	// Callback for edit
-	onEdit?: (selection: string, rect: DOMRect) => void;
+	onEdit?: (selection: string, rect: DOMRect, range: Range) => void;
 };
 
 // Styled wrapper for the control buttons
@@ -57,6 +58,7 @@ const StyledIconButton = styled(IconButton)(({ theme }) => ({
 
 export const TextSelectionControls: FC<TextSelectionControlsProps> = ({
 	targetRef,
+	scrollableContainerRef,
 	showSpeech,
 	showCopy,
 	showReply,
@@ -143,14 +145,19 @@ export const TextSelectionControls: FC<TextSelectionControlsProps> = ({
 			}
 		};
 
-		window.addEventListener("scroll", handleScrollAndResize, true);
+		const scrollableElement = scrollableContainerRef?.current || window;
+		scrollableElement.addEventListener("scroll", handleScrollAndResize, true);
 		window.addEventListener("resize", handleScrollAndResize, true);
 
 		return () => {
-			window.removeEventListener("scroll", handleScrollAndResize, true);
+			scrollableElement.removeEventListener(
+				"scroll",
+				handleScrollAndResize,
+				true,
+			);
 			window.removeEventListener("resize", handleScrollAndResize, true);
 		};
-	}, [selection.range]);
+	}, [selection.range, scrollableContainerRef]);
 
 	const handlePlay = () => {
 		if (agentId && selection.text) {
@@ -199,8 +206,8 @@ export const TextSelectionControls: FC<TextSelectionControlsProps> = ({
 	};
 
 	const handleEdit = () => {
-		if (selection.text && selection.rect && onEdit) {
-			onEdit(selection.text, selection.rect);
+		if (selection.text && selection.rect && selection.range && onEdit) {
+			onEdit(selection.text, selection.rect, selection.range);
 			setSelection({ text: "", html: "", rect: null, range: null });
 		}
 	};
