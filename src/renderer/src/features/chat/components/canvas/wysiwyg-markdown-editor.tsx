@@ -7,7 +7,6 @@ import {
 	ToggleButton,
 	ToggleButtonGroup,
 	Paper,
-	alpha,
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import {
@@ -50,7 +49,7 @@ type WysiwygMarkdownEditorProps = {
 };
 
 const SelectionHighlight = styled("span")(({ theme }) => ({
-	backgroundColor: alpha(theme.palette.primary.main, 0.3),
+	backgroundColor: theme.palette.action.hover,
 	borderRadius: "2px",
 }));
 
@@ -597,7 +596,7 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 					event.preventDefault();
 					const selection = window.getSelection();
 					if (selection && !selection.isCollapsed) {
-						const range = selection.getRangeAt(0);
+						const range = selection.getRangeAt(0).cloneRange();
 						const rect = range.getBoundingClientRect();
 						const container = relativeContainerRef.current;
 						if (!container) {
@@ -612,6 +611,7 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 							},
 							range,
 						});
+						selection.removeAllRanges();
 					}
 					break;
 				}
@@ -687,6 +687,7 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 			range,
 		});
 		close();
+		window.getSelection()?.removeAllRanges();
 	};
 
 	return (
