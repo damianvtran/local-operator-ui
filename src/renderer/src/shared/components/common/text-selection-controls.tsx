@@ -29,7 +29,12 @@ type TextSelectionControlsProps = {
 	// Props for reply
 	conversationId?: string;
 	// Callback for edit
-	onEdit?: (selection: string, rect: DOMRect, range: Range) => void;
+	onEdit?: (
+		selection: string,
+		rect: DOMRect,
+		range: Range,
+		close: () => void,
+	) => void;
 	isUser?: boolean;
 };
 
@@ -209,8 +214,9 @@ export const TextSelectionControls: FC<TextSelectionControlsProps> = ({
 
 	const handleEdit = () => {
 		if (selection.text && selection.rect && selection.range && onEdit) {
-			onEdit(selection.text, selection.rect, selection.range);
-			setSelection({ text: "", html: "", rect: null, range: null });
+			onEdit(selection.text, selection.rect, selection.range, () => {
+				setSelection({ text: "", html: "", rect: null, range: null });
+			});
 		}
 	};
 

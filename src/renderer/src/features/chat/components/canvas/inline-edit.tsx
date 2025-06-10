@@ -17,7 +17,7 @@ import { useConfig } from "@shared/hooks/use-config";
 import { useCredentials } from "@shared/hooks/use-credentials";
 import { normalizePath } from "@shared/utils/path-utils";
 import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
-import { Check, Mic, Paperclip, Send, X } from "lucide-react";
+import { Check, Mic, Paperclip, Send, Square, X } from "lucide-react";
 import {
 	type ChangeEvent,
 	type ClipboardEvent,
@@ -227,6 +227,7 @@ export const InlineEdit: FC<InlineEditProps> = ({
 	const [platform, setPlatform] = useState("");
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const textareaRef = useRef<HTMLInputElement>(null);
+	const isCancelledRef = useRef(false);
 
 	const { data: credentialsData, isLoading: isLoadingCredentials } =
 		useCredentials();
@@ -311,6 +312,12 @@ export const InlineEdit: FC<InlineEditProps> = ({
 			setIsRecording(false);
 		}
 	}, [isRecording]);
+
+	const handleCancelEdit = useCallback(() => {
+		isCancelledRef.current = true;
+		setIsLoading(false);
+		onClose();
+	}, [onClose]);
 
 	const handleSendAudio = useCallback(async () => {
 		if (!audioBlob) return;
@@ -530,6 +537,7 @@ export const InlineEdit: FC<InlineEditProps> = ({
 			return;
 		}
 		setIsLoading(true);
+		isCancelledRef.current = false; // Reset on new submission
 		try {
 			const client = createLocalOperatorClient(apiConfig.baseUrl);
 			const request: AgentEditFileRequest = {
@@ -546,6 +554,11 @@ export const InlineEdit: FC<InlineEditProps> = ({
 				request,
 			);
 
+			if (isCancelledRef.current) {
+				showSuccessToast("Edit cancelled.");
+				return;
+			}
+
 			if (response.result) {
 				const originalContent = await window.api.readFile(filePath);
 				if (originalContent.success) {
@@ -558,11 +571,15 @@ export const InlineEdit: FC<InlineEditProps> = ({
 				}
 			}
 		} catch (error) {
-			console.error("Failed to edit file:", error);
-			showSuccessToast("Failed to edit file.");
+			if (!isCancelledRef.current) {
+				console.error("Failed to edit file:", error);
+				showSuccessToast("Failed to edit file.");
+			}
 		} finally {
 			setIsLoading(false);
-			onClose();
+			if (!isCancelledRef.current) {
+				onClose();
+			}
 		}
 	}, [
 		config,
@@ -693,16 +710,28 @@ export const InlineEdit: FC<InlineEditProps> = ({
 							</Tooltip>
 						</>
 					)}
-					{!isRecording && !isTranscribing && (
-						<Tooltip title={isLoading ? "Editing..." : "Edit"}>
+					{!isRecording && !isTranscribing && !isLoading && (
+						<Tooltip title="Edit">
 							<div>
 								<SendButton
 									onClick={handleSubmit}
-									disabled={isLoading || (!prompt.trim() && attachments.length === 0)}
+									disabled={!prompt.trim() && attachments.length === 0}
 								>
 									<Send size={iconSize} />
 								</SendButton>
 							</div>
+						</Tooltip>
+					)}
+					{isLoading && (
+						<Tooltip title="Cancel Edit">
+							<IconButton
+								onClick={handleCancelEdit}
+								color="error"
+								size="small"
+								aria-label="Cancel edit"
+							>
+								<Square size={iconSize} />
+							</IconButton>
 						</Tooltip>
 					)}
 				</Box>
