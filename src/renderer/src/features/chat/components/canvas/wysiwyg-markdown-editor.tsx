@@ -35,6 +35,7 @@ import { showSuccessToast } from "@shared/utils/toast-manager";
 import type { CanvasDocument } from "../../types/canvas";
 import { markdownToHtml, htmlToMarkdown } from "@features/chat/components/canvas/wysiwyg-utils";
 import { InsertImageDialog } from "./wysiwyg/insert-image-dialog";
+import type { LinkDialogData } from "./wysiwyg/insert-link-dialog";
 import { InsertLinkDialog } from "./wysiwyg/insert-link-dialog";
 import { InsertTablePopover } from "./wysiwyg/insert-table-popover";
 import { TextStyleDropdown } from "./wysiwyg/text-style-dropdown";
@@ -205,8 +206,10 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 	const [selectedFormats, setSelectedFormats] = useState<string[]>([]);
 	const [currentAlignment, setCurrentAlignment] = useState("left");
 	const [isLinkDialogOpen, setIsLinkDialogOpen] = useState(false);
+	const [linkDialogData, setLinkDialogData] = useState<LinkDialogData>({ url: "", text: "" });
 	const [isImageDialogOpen, setIsImageDialogOpen] = useState(false);
 	const [tableAnchorEl, setTableAnchorEl] = useState<HTMLElement | null>(null);
+	const selectionRef = useRef<Range | null>(null);
 
 	const debouncedContent = useDebounce(content, 1000);
 	const editorRef = useRef<HTMLDivElement>(null);
@@ -422,28 +425,45 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 
 	// Insert link
 	const insertLink = useCallback(() => {
+		const selection = window.getSelection();
+		if (!selection?.rangeCount) return;
+
+		selectionRef.current = selection.getRangeAt(0).cloneRange();
+		let element: Node | null = selection.anchorNode;
+
+		while (element && element !== editorRef.current) {
+			if (element.nodeName === "A") {
+				const anchor = element as HTMLAnchorElement;
+				setLinkDialogData({ url: anchor.href, text: anchor.innerText });
+				setIsLinkDialogOpen(true);
+				return;
+			}
+			element = element.parentNode;
+		}
+
+		setLinkDialogData({ url: "", text: selection.toString() });
 		setIsLinkDialogOpen(true);
 	}, []);
 
 	const handleInsertLink = useCallback((url: string, text: string) => {
 		editorRef.current?.focus();
 		const selection = window.getSelection();
-		if (!selection || selection.rangeCount === 0) {
-			return;
-		}
+		if (!selection || !selectionRef.current) return;
 
-		const range = selection.getRangeAt(0);
-		// To ensure the editor is focused and the range is active
 		selection.removeAllRanges();
-		selection.addRange(range);
+		selection.addRange(selectionRef.current);
 
-		if (range.collapsed) {
+		const anchor = selection.anchorNode?.parentElement;
+		if (anchor?.nodeName === "A") {
+			anchor.setAttribute("href", url);
+			anchor.textContent = text;
+		} else {
 			const linkHtml = `<a href="${url}">${text || url}</a>`;
 			executeCommand("insertHTML", linkHtml);
-		} else {
-			executeCommand("createLink", url);
 		}
-	}, [executeCommand]);
+
+		handleContentChange();
+	}, [executeCommand, handleContentChange]);
 
 	// Insert image
 	const insertImage = useCallback(() => {
@@ -698,6 +718,7 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 				open={isLinkDialogOpen}
 				onClose={() => setIsLinkDialogOpen(false)}
 				onInsert={handleInsertLink}
+				initialData={linkDialogData}
 			/>
 			<InsertImageDialog
 				open={isImageDialogOpen}
