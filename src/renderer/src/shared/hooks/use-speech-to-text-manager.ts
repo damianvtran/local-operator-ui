@@ -23,6 +23,8 @@ type SpeechToTextHandler = {
 class SpeechToTextManager {
 	private handlers = new Map<string, SpeechToTextHandler>();
 	private isListening = false;
+	private isSpacebarListening = false;
+	private spacebarTimerRef: NodeJS.Timeout | null = null;
 
 	/**
 	 * Register a speech-to-text handler
@@ -35,6 +37,7 @@ class SpeechToTextManager {
 	): void {
 		this.handlers.set(id, { id, priority, handler, isActive });
 		this.setupListener();
+		this.setupSpacebarListener();
 	}
 
 	/**
@@ -44,6 +47,7 @@ class SpeechToTextManager {
 		this.handlers.delete(id);
 		if (this.handlers.size === 0) {
 			this.removeListener();
+			this.removeSpacebarListener();
 		}
 	}
 
@@ -63,6 +67,60 @@ class SpeechToTextManager {
 	};
 
 	/**
+	 * Handle spacebar keydown events for hold-to-talk functionality
+	 */
+	private handleSpacebarKeyDown = (event: KeyboardEvent): void => {
+		if (event.code !== "Space" || this.spacebarTimerRef) {
+			return;
+		}
+
+		// Check if an input-like element is focused
+		const activeElement = document.activeElement as HTMLElement;
+		if (
+			activeElement &&
+			(activeElement.tagName === "INPUT" ||
+				activeElement.tagName === "TEXTAREA" ||
+				activeElement.isContentEditable)
+		) {
+			return; // Don't interfere with typing
+		}
+
+		// Get the highest priority active handler
+		const activeHandlers = Array.from(this.handlers.values())
+			.filter((h) => h.isActive())
+			.sort((a, b) => b.priority - a.priority);
+
+		if (activeHandlers.length === 0) {
+			return;
+		}
+
+		event.preventDefault();
+
+		// Start timer for hold-to-talk (1 second delay)
+		this.spacebarTimerRef = setTimeout(() => {
+			activeHandlers[0].handler();
+		}, 1000);
+	};
+
+	/**
+	 * Handle spacebar keyup events to cancel timer or stop recording
+	 */
+	private handleSpacebarKeyUp = (event: KeyboardEvent): void => {
+		if (event.code !== "Space") {
+			return;
+		}
+
+		// Clear the timer if it exists
+		if (this.spacebarTimerRef) {
+			clearTimeout(this.spacebarTimerRef);
+			this.spacebarTimerRef = null;
+		}
+
+		// Note: We don't handle stopping recording here as that's component-specific
+		// Each component should handle their own recording state management
+	};
+
+	/**
 	 * Setup the IPC listener if not already listening
 	 */
 	private setupListener(): void {
@@ -72,6 +130,17 @@ class SpeechToTextManager {
 				this.handleSpeechToText,
 			);
 			this.isListening = true;
+		}
+	}
+
+	/**
+	 * Setup spacebar event listeners if not already listening
+	 */
+	private setupSpacebarListener(): void {
+		if (!this.isSpacebarListening) {
+			window.addEventListener("keydown", this.handleSpacebarKeyDown);
+			window.addEventListener("keyup", this.handleSpacebarKeyUp);
+			this.isSpacebarListening = true;
 		}
 	}
 
@@ -87,6 +156,23 @@ class SpeechToTextManager {
 			this.isListening = false;
 		}
 	}
+
+	/**
+	 * Remove spacebar event listeners
+	 */
+	private removeSpacebarListener(): void {
+		if (this.isSpacebarListening) {
+			window.removeEventListener("keydown", this.handleSpacebarKeyDown);
+			window.removeEventListener("keyup", this.handleSpacebarKeyUp);
+			this.isSpacebarListening = false;
+		}
+		
+		// Clean up any pending timer
+		if (this.spacebarTimerRef) {
+			clearTimeout(this.spacebarTimerRef);
+			this.spacebarTimerRef = null;
+		}
+	}
 }
 
 // Global singleton instance
@@ -94,6 +180,9 @@ const speechToTextManager = new SpeechToTextManager();
 
 /**
  * Hook for registering a speech-to-text handler with priority-based dispatch
+ * 
+ * This hook handles both IPC events and spacebar hold functionality globally.
+ * Components no longer need to implement their own spacebar handling logic.
  * 
  * @param id - Unique identifier for this handler
  * @param priority - Priority level (higher numbers have higher priority)

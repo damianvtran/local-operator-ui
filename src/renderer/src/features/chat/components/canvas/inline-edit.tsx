@@ -224,7 +224,6 @@ export const InlineEdit: FC<InlineEditProps> = ({
 	const [isTranscribing, setIsTranscribing] = useState(false);
 	const mediaRecorderRef = useRef<MediaRecorder | null>(null);
 	const audioChunksRef = useRef<Blob[]>([]);
-	const spacebarTimerRef = useRef<NodeJS.Timeout | null>(null);
 	const [platform, setPlatform] = useState("");
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const textareaRef = useRef<HTMLInputElement>(null);
@@ -381,10 +380,19 @@ export const InlineEdit: FC<InlineEditProps> = ({
 				}
 			};
 
+			const handleKeyUp = (event: KeyboardEvent) => {
+				if (event.code === "Space") {
+					event.preventDefault();
+					handleConfirmRecording();
+				}
+			};
+
 			window.addEventListener("keydown", handleKeyDown);
+			window.addEventListener("keyup", handleKeyUp);
 
 			return () => {
 				window.removeEventListener("keydown", handleKeyDown);
+				window.removeEventListener("keyup", handleKeyUp);
 			};
 		}
 
@@ -398,66 +406,6 @@ export const InlineEdit: FC<InlineEditProps> = ({
 		handleStartRecording,
 		() => Boolean(!isLoading && !isRecording && !isTranscribing && canEnableRecordingFeature)
 	);
-
-	useEffect(() => {
-		const handleKeyDown = (event: KeyboardEvent): void => {
-			if (event.code !== "Space" || spacebarTimerRef.current) {
-				return;
-			}
-
-			const activeElement = document.activeElement as HTMLElement;
-			if (
-				activeElement &&
-				(activeElement.tagName === "INPUT" ||
-					activeElement.tagName === "TEXTAREA" ||
-					activeElement.isContentEditable)
-			) {
-				return;
-			}
-
-			if (isRecording || isTranscribing || !canEnableRecordingFeature) {
-				return;
-			}
-
-			event.preventDefault();
-
-			spacebarTimerRef.current = setTimeout(() => {
-				handleStartRecording();
-			}, 1000);
-		};
-
-		const handleKeyUp = (event: KeyboardEvent): void => {
-			if (event.code !== "Space") {
-				return;
-			}
-
-			if (spacebarTimerRef.current) {
-				clearTimeout(spacebarTimerRef.current);
-				spacebarTimerRef.current = null;
-			}
-
-			if (isRecording) {
-				handleConfirmRecording();
-			}
-		};
-
-		window.addEventListener("keydown", handleKeyDown);
-		window.addEventListener("keyup", handleKeyUp);
-
-		return () => {
-			window.removeEventListener("keydown", handleKeyDown);
-			window.removeEventListener("keyup", handleKeyUp);
-			if (spacebarTimerRef.current) {
-				clearTimeout(spacebarTimerRef.current);
-			}
-		};
-	}, [
-		isRecording,
-		isTranscribing,
-		canEnableRecordingFeature,
-		handleStartRecording,
-		handleConfirmRecording,
-	]);
 
 	const triggerFileInput = () => {
 		fileInputRef.current?.click();
