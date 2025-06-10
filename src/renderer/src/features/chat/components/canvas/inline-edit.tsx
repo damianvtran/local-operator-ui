@@ -15,6 +15,7 @@ import { apiConfig } from "@shared/config";
 import { useAgentSelectionStore } from "@shared/store/agent-selection-store";
 import { useConfig } from "@shared/hooks/use-config";
 import { useCredentials } from "@shared/hooks/use-credentials";
+import { useSpeechToTextManager, SpeechToTextPriority } from "@shared/hooks/use-speech-to-text-manager";
 import { normalizePath } from "@shared/utils/path-utils";
 import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
 import { Check, Mic, Paperclip, Send, Square, X } from "lucide-react";
@@ -390,35 +391,13 @@ export const InlineEdit: FC<InlineEditProps> = ({
 		return undefined;
 	}, [isRecording, handleConfirmRecording, handleCancelRecording]);
 
-	useEffect(() => {
-		const handleStartSpeechToText = (): void => {
-			if (
-				!isLoading &&
-				!isRecording &&
-				!isTranscribing &&
-				canEnableRecordingFeature
-			) {
-				handleStartRecording();
-			}
-		};
-		window.electron.ipcRenderer.on(
-			"start-speech-to-text",
-			handleStartSpeechToText,
-		);
-
-		return () => {
-			window.electron.ipcRenderer.removeListener(
-				"start-speech-to-text",
-				handleStartSpeechToText,
-			);
-		};
-	}, [
-		canEnableRecordingFeature,
+	// Register with speech-to-text manager
+	useSpeechToTextManager(
+		'inline-edit',
+		SpeechToTextPriority.INLINE_EDIT,
 		handleStartRecording,
-		isLoading,
-		isRecording,
-		isTranscribing,
-	]);
+		() => Boolean(!isLoading && !isRecording && !isTranscribing && canEnableRecordingFeature)
+	);
 
 	useEffect(() => {
 		const handleKeyDown = (event: KeyboardEvent): void => {

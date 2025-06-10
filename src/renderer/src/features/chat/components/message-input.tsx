@@ -20,6 +20,7 @@ import type { AgentDetails } from "@shared/api/local-operator/types";
 import { apiConfig } from "@shared/config/api-config";
 import { useCredentials } from "@shared/hooks/use-credentials";
 import { useMessageInput } from "@shared/hooks/use-message-input";
+import { useSpeechToTextManager, SpeechToTextPriority } from "@shared/hooks/use-speech-to-text-manager";
 import { useConversationInputStore } from "@shared/store/conversation-input-store";
 import { normalizePath } from "@shared/utils/path-utils";
 import { showErrorToast } from "@shared/utils/toast-manager";
@@ -602,36 +603,13 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			}
 		}, [audioBlob, handleSendAudio]);
 
-		// Listen for speech to text shortcut from main process
-		useEffect(() => {
-			const handleStartSpeechToText = (): void => {
-				if (
-					!isLoading &&
-					!isRecording &&
-					!isTranscribing &&
-					canEnableRecordingFeature
-				) {
-					handleStartRecording();
-				}
-			};
-			window.electron.ipcRenderer.on(
-				"start-speech-to-text",
-				handleStartSpeechToText,
-			);
-
-			return () => {
-				window.electron.ipcRenderer.removeListener(
-					"start-speech-to-text",
-					handleStartSpeechToText,
-				);
-			};
-		}, [
-			canEnableRecordingFeature,
+		// Register with speech-to-text manager
+		useSpeechToTextManager(
+			'message-input',
+			SpeechToTextPriority.MESSAGE_INPUT,
 			handleStartRecording,
-			isLoading,
-			isRecording,
-			isTranscribing,
-		]);
+			() => Boolean(!isLoading && !isRecording && !isTranscribing && canEnableRecordingFeature)
+		);
 
 		// Listen for spacebar hold to start/stop recording
 		useEffect(() => {
