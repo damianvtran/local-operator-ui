@@ -840,3 +840,45 @@ export type AgentSpeechRequest = {
 };
 
 // --- End Speech API Types ---
+
+// --- Agent Edit Types ---
+
+/**
+ * A single edit diff.
+ */
+export type EditDiff = {
+	find: string;
+	replace: string;
+};
+
+/**
+ * Request body for agent edit endpoint.
+ */
+export type AgentEditFileRequest = {
+	/** The hosting service to use for the edit. */
+	hosting: string;
+	/** The model to use for the edit. */
+	model: string;
+	/** The path to the file to edit. */
+	file_path: string;
+	/** The selection to edit. */
+	selection?: string;
+	/** The prompt for the edit. */
+	edit_prompt: string;
+};
+
+/**
+ * Response from agent edit endpoint.
+ */
+export type AgentEditFileResponse = {
+	/** The path to the file that was edited. */
+	file_path: string;
+	/** The raw response from the model. */
+	raw_response: string;
+	/** The prompt for the edit. */
+	edit_prompt: string;
+	/** The generated edit diffs. */
+	edit_diffs: EditDiff[];
+};
+
+// --- End Agent Edit Types ---
