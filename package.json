@@ -74,6 +74,8 @@
 		"build-storybook": "storybook build"
 	},
 	"dependencies": {
+		"@codemirror/state": "^6.5.2",
+		"@codemirror/view": "^6.37.1",
 		"@electron-toolkit/utils": "^4.0.0",
 		"@emotion/react": "^11.14.0",
 		"@emotion/styled": "^11.14.0",
@@ -194,7 +196,7 @@
 				]
 			}
 		],
-    "afterSign": "scripts/notarize.js",
+		"afterSign": "scripts/notarize.js",
 		"mac": {
 			"notarize": false,
 			"category": "public.app-category.developer-tools",

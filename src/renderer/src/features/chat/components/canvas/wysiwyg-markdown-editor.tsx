@@ -7,6 +7,7 @@ import {
 	ToggleButton,
 	ToggleButtonGroup,
 	Paper,
+	alpha,
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import {
@@ -47,6 +48,11 @@ type WysiwygMarkdownEditorProps = {
 	conversationId?: string;
 	agentId?: string;
 };
+
+const SelectionHighlight = styled("span")(({ theme }) => ({
+	backgroundColor: alpha(theme.palette.primary.main, 0.3),
+	borderRadius: "2px",
+}));
 
 const EditorContainer = styled(Paper)(({ theme }) => ({
 	display: "flex",
@@ -650,14 +656,23 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 	}, [handleFormatToggle, executeCommand]);
 
 	const handleApplyChanges = (newContent: string) => {
-		if (editorRef.current) {
-			editorRef.current.innerHTML = markdownToHtml(newContent);
+		if (editorRef.current && selectionRef.current) {
+			const selection = window.getSelection();
+			selection?.removeAllRanges();
+			selection?.addRange(selectionRef.current);
+			executeCommand("insertHTML", markdownToHtml(newContent));
 			handleContentChange();
 		}
 		setInlineEdit(null);
+		selectionRef.current = null;
 	};
 
-	const handleEdit = (selection: string, rect: DOMRect, range: Range) => {
+	const handleEdit = (
+		selection: string,
+		rect: DOMRect,
+		range: Range,
+		close: () => void,
+	) => {
 		const container = relativeContainerRef.current;
 		if (!container) {
 			return;
@@ -671,6 +686,7 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 			},
 			range,
 		});
+		close();
 	};
 
 	return (
@@ -821,7 +837,28 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 						onInput={handleContentChange}
 						onKeyDown={handleKeyDown}
 						suppressContentEditableWarning
+						onBlur={() => {
+							if (inlineEdit) {
+								selectionRef.current = inlineEdit.range;
+							}
+						}}
 					/>
+					{inlineEdit?.range && (
+						<SelectionHighlight
+							style={{
+								position: "absolute",
+								left:
+									inlineEdit.range.getBoundingClientRect().left -
+									(relativeContainerRef.current?.getBoundingClientRect().left ??
+										0),
+								top:
+									inlineEdit.range.getBoundingClientRect().top -
+									(relativeContainerRef.current?.getBoundingClientRect().top ?? 0),
+								width: inlineEdit.range.getBoundingClientRect().width,
+								height: inlineEdit.range.getBoundingClientRect().height,
+							}}
+						/>
+					)}
 					<TextSelectionControls
 						targetRef={editorRef}
 						scrollableContainerRef={editorContentRef}
@@ -836,7 +873,10 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 							selection={inlineEdit.selection}
 							position={inlineEdit.position}
 							filePath={document.path}
-							onClose={() => setInlineEdit(null)}
+							onClose={() => {
+								setInlineEdit(null);
+								selectionRef.current = null;
+							}}
 							onApplyChanges={handleApplyChanges}
 						/>
 					)}

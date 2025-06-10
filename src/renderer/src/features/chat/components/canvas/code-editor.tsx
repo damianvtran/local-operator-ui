@@ -1,12 +1,20 @@
-import { Box, useTheme, styled } from "@mui/material";
+import { Box, useTheme, styled, alpha } from "@mui/material";
 import { TextSelectionControls } from "@shared/components/common/text-selection-controls";
 import { loadLanguageExtensions } from "@shared/utils/load-language-extensions";
 import { basicDark, basicLight } from "@uiw/codemirror-theme-basic";
+import { Decoration, ViewPlugin, type DecorationSet } from "@codemirror/view";
 import CodeMirror, {
 	type Extension,
 	type ReactCodeMirrorRef,
 } from "@uiw/react-codemirror";
-import { type FC, useCallback, useEffect, useState, useRef } from "react";
+import {
+	type FC,
+	useCallback,
+	useEffect,
+	useState,
+	useRef,
+	useMemo,
+} from "react";
 import { useDebounce } from "../../../../shared/hooks/use-debounce";
 import type { CanvasDocument } from "../../types/canvas";
 import { InlineEdit } from "./inline-edit";
@@ -62,7 +70,9 @@ export const CodeEditor: FC<CodeEditorProps> = ({
 	const [inlineEdit, setInlineEdit] = useState<{
 		selection: string;
 		position: { top: number; left: number };
-		range: Range | null;
+		range: globalThis.Range | null;
+		from: number;
+		to: number;
 	} | null>(null);
 	const editorRef = useRef<ReactCodeMirrorRef>(null);
 	const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -102,6 +112,33 @@ export const CodeEditor: FC<CodeEditorProps> = ({
 	const codeEditorTheme =
 		theme.palette.mode === "light" ? basicLight : basicDark;
 
+	const highlightPlugin = useMemo(() => {
+		return ViewPlugin.fromClass(
+			class {
+				decorations: DecorationSet;
+
+				constructor() {
+					this.decorations = Decoration.none;
+				}
+
+				update() {
+					if (!inlineEdit) {
+						this.decorations = Decoration.none;
+						return;
+					}
+					const { from, to } = inlineEdit;
+					const highlightMark = Decoration.mark({
+						style: `background-color: ${alpha(
+							theme.palette.primary.main,
+							0.3,
+						)}`,
+					});
+					this.decorations = Decoration.set([highlightMark.range(from, to)]);
+				}
+			},
+		);
+	}, [inlineEdit, theme.palette.primary.main]);
+
 	const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
 		if ((event.metaKey || event.ctrlKey) && event.key === "k") {
 			event.preventDefault();
@@ -123,6 +160,8 @@ export const CodeEditor: FC<CodeEditorProps> = ({
 								left: rect.left - containerRect.left,
 							},
 							range: selectionRange || null,
+							from,
+							to,
 						});
 					}
 				}
@@ -131,25 +170,39 @@ export const CodeEditor: FC<CodeEditorProps> = ({
 	};
 
 	const handleApplyChanges = (newContent: string) => {
-		setContent(newContent);
-		if (onContentChange) {
-			onContentChange(newContent);
+		const view = editorRef.current?.view;
+		if (view && inlineEdit) {
+			view.dispatch({
+				changes: { from: inlineEdit.from, to: inlineEdit.to, insert: newContent },
+			});
 		}
 		setInlineEdit(null);
 	};
 
-	const handleEdit = (selection: string, rect: DOMRect, range: Range) => {
+	const handleEdit = (
+		selection: string,
+		rect: DOMRect,
+		range: globalThis.Range,
+		close: () => void,
+	) => {
 		const container = scrollContainerRef.current;
 		if (!container) return;
 		const containerRect = container.getBoundingClientRect();
-		setInlineEdit({
-			selection,
-			position: {
-				top: rect.bottom - containerRect.top,
-				left: rect.left - containerRect.left,
-			},
-			range,
-		});
+		const view = editorRef.current?.view;
+		if (view) {
+			const { from, to } = view.state.selection.main;
+			setInlineEdit({
+				selection,
+				position: {
+					top: rect.bottom - containerRect.top,
+					left: rect.left - containerRect.left,
+				},
+				range,
+				from,
+				to,
+			});
+			close();
+		}
 	};
 
 	return (
@@ -159,7 +212,7 @@ export const CodeEditor: FC<CodeEditorProps> = ({
 				height="100%"
 				theme={codeEditorTheme}
 				editable={editable}
-				extensions={languageExtensions}
+				extensions={[...languageExtensions, highlightPlugin]}
 				onChange={handleContentChange}
 				ref={editorRef}
 			/>
