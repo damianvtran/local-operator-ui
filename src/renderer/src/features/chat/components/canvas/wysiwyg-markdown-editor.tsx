@@ -791,18 +791,20 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 			</EditorToolbar>
 
 			<EditorContent>
-				<div
-					ref={editorRef}
-					contentEditable
-					onInput={handleContentChange}
-					onKeyDown={handleKeyDown}
-					suppressContentEditableWarning
-				/>
-				<TextSelectionControls
-					targetRef={editorRef}
-					showEdit
-					onEdit={handleEdit}
-				/>
+				<Box sx={{ position: "relative" }}>
+					<div
+						ref={editorRef}
+						contentEditable
+						onInput={handleContentChange}
+						onKeyDown={handleKeyDown}
+						suppressContentEditableWarning
+					/>
+					<TextSelectionControls
+						targetRef={editorRef}
+						showEdit
+						onEdit={handleEdit}
+					/>
+				</Box>
 			</EditorContent>
 			<InsertLinkDialog
 				open={isLinkDialogOpen}
