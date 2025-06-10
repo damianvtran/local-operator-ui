@@ -589,7 +589,7 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
             const rect = range.getBoundingClientRect();
             setInlineEdit({
               selection: selection.toString(),
-              position: { top: rect.bottom, left: rect.left },
+              position: { top: rect.top, left: rect.left },
             });
           }
 					break;
@@ -636,17 +636,8 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 
 	const handleApplyChanges = (newContent: string) => {
 		if (editorRef.current) {
-			const currentContent = htmlToMarkdown(editorRef.current.innerHTML);
-			const selection = window.getSelection();
-			if (selection && !selection.isCollapsed) {
-				const originalSelection = selection.toString();
-				const updatedContent = currentContent.replace(
-					originalSelection,
-					newContent,
-				);
-				editorRef.current.innerHTML = markdownToHtml(updatedContent);
-				handleContentChange();
-			}
+			editorRef.current.innerHTML = markdownToHtml(newContent);
+			handleContentChange();
 		}
 		setInlineEdit(null);
 	};
