@@ -582,8 +582,8 @@ export const InlineEdit: FC<InlineEditProps> = ({
 			elevation={4}
 			sx={{
 				top: position.top,
-				left: 12,
-				transform: "translateY(calc(-100% - 12px))",
+				left: 0,
+				transform: "translateY(calc(-100% - 8px))",
 			}}
 		>
 			<CloseButton onClick={onClose} disabled={isLoading}>
