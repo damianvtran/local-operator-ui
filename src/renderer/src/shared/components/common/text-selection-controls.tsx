@@ -30,6 +30,7 @@ type TextSelectionControlsProps = {
 	conversationId?: string;
 	// Callback for edit
 	onEdit?: (selection: string, rect: DOMRect, range: Range) => void;
+	isUser?: boolean;
 };
 
 // Styled wrapper for the control buttons
@@ -66,6 +67,7 @@ export const TextSelectionControls: FC<TextSelectionControlsProps> = ({
 	agentId,
 	conversationId,
 	onEdit,
+	isUser,
 }) => {
 	const [selection, setSelection] = useState<{
 		text: string;
@@ -212,7 +214,7 @@ export const TextSelectionControls: FC<TextSelectionControlsProps> = ({
 		}
 	};
 
-	if (!selection.rect || !selection.text) {
+	if (!selection.rect || !selection.text || isUser) {
 		return null;
 	}
 
