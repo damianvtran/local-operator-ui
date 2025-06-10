@@ -3,8 +3,8 @@ import type { CanvasDocument } from "../../types/canvas";
 import { isHtmlFile } from "../../utils/is-html-file";
 import { isMarkdownFile } from "../../utils/is-markdown-file";
 import { CodeEditor } from "./code-editor";
-import { EditableMarkdownRenderer } from "./editable-markdown-renderer";
 import { HtmlPreview } from "./html-preview";
+import { WysiwygMarkdownEditor } from "./wysiwyg-markdown-editor";
 
 type CanvasContentProps = {
 	/**
@@ -23,7 +23,7 @@ type CanvasContentProps = {
  */
 const CanvasContentComponent: FC<CanvasContentProps> = ({ document, conversationId }) => {
 	if (isMarkdownFile(document.title)) {
-		return <EditableMarkdownRenderer document={document} conversationId={conversationId} />;
+		return <WysiwygMarkdownEditor document={document} conversationId={conversationId} />;
 	}
 
 	if (isHtmlFile(document.title)) {
