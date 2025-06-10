@@ -846,10 +846,10 @@ app
 			mainWindow.webContents.on("before-input-event", (event, input) => {
 				const isCmdOrCtrl = input.control || input.meta;
 
-				// Toggle command palette: Cmd/Ctrl + K
+				// Toggle command palette: Cmd/Ctrl + P
 				if (
 					isCmdOrCtrl &&
-					input.key.toLowerCase() === "k" &&
+					input.key.toLowerCase() === "p" &&
 					input.type === "keyDown"
 				) {
 					if (mainWindow?.isFocused() && mainWindow?.isVisible()) {
