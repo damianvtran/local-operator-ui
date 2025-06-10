@@ -4,17 +4,33 @@ import {
 	Paper,
 	TextField,
 	Tooltip,
+	Typography,
 	alpha,
 	styled,
 } from "@mui/material";
 import { createLocalOperatorClient } from "@shared/api/local-operator";
+import { TranscriptionApi } from "@shared/api/local-operator/transcription-api";
 import type { AgentEditFileRequest } from "@shared/api/local-operator/types";
 import { apiConfig } from "@shared/config";
 import { useAgentSelectionStore } from "@shared/store/agent-selection-store";
 import { useConfig } from "@shared/hooks/use-config";
-import { showSuccessToast } from "@shared/utils/toast-manager";
-import { Paperclip, Send, X } from "lucide-react";
-import { type FC, useCallback, useState } from "react";
+import { useCredentials } from "@shared/hooks/use-credentials";
+import { normalizePath } from "@shared/utils/path-utils";
+import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
+import { Check, Mic, Paperclip, Send, X } from "lucide-react";
+import {
+	type ChangeEvent,
+	type ClipboardEvent,
+	type FC,
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
+import { AttachmentsPreview } from "../attachments-preview";
+import { AudioRecordingIndicator } from "../audio-recording-indicator";
+import { WaveformAnimation } from "../waveform-animation";
 
 type InlineEditProps = {
 	selection: string;
@@ -170,19 +186,23 @@ const SendButton = styled(IconButton)(({ theme }) => ({
 	},
 }));
 
-const AttachmentsPreviewContainer = styled(Box)(({ theme }) => ({
+const TranscriptionIndicator = styled(Box)(({ theme }) => ({
+	flex: 1,
 	display: "flex",
-	flexWrap: "wrap",
+	alignItems: "center",
+	justifyContent: "center",
+	minHeight: "50px",
+	padding: theme.spacing(1, 2),
+	borderRadius: theme.shape.borderRadius,
+	color: theme.palette.primary.dark,
 	gap: theme.spacing(1),
-	marginTop: theme.spacing(1),
 }));
 
-const AttachmentChip = styled(Box)(({ theme }) => ({
-	backgroundColor: alpha(theme.palette.primary.main, 0.1),
-	color: theme.palette.primary.main,
-	padding: theme.spacing(0.5, 1),
-	borderRadius: theme.shape.borderRadius,
-	fontSize: "0.8rem",
+const TranscriptionText = styled(Typography)(({ theme }) => ({
+	fontSize: "0.875rem",
+	fontWeight: 500,
+	marginRight: theme.spacing(1.5),
+	color: theme.palette.text.secondary,
 }));
 
 export const InlineEdit: FC<InlineEditProps> = ({
@@ -198,13 +218,310 @@ export const InlineEdit: FC<InlineEditProps> = ({
 	const { lastChatAgentId } = useAgentSelectionStore();
 	const { data: config } = useConfig();
 
-	const handleAttachmentClick = async () => {
-		// const selectedFiles = await window.api.openFileDialog();
-		// if (selectedFiles) {
-		// 	setAttachments((prev) => [...prev, ...selectedFiles]);
-		// }
-		// TODO: Implement file dialog
-		showSuccessToast("File attachments are not yet supported in this view.");
+	const [isRecording, setIsRecording] = useState(false);
+	const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
+	const [isTranscribing, setIsTranscribing] = useState(false);
+	const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+	const audioChunksRef = useRef<Blob[]>([]);
+	const spacebarTimerRef = useRef<NodeJS.Timeout | null>(null);
+	const [platform, setPlatform] = useState("");
+	const fileInputRef = useRef<HTMLInputElement>(null);
+	const textareaRef = useRef<HTMLInputElement>(null);
+
+	const { data: credentialsData, isLoading: isLoadingCredentials } =
+		useCredentials();
+
+	const isRadientApiKeyConfigured = useMemo(
+		() => credentialsData?.keys?.includes("RADIENT_API_KEY"),
+		[credentialsData?.keys],
+	);
+
+	const canEnableRecordingFeature = useMemo(
+		() => isRadientApiKeyConfigured && !isLoadingCredentials,
+		[isRadientApiKeyConfigured, isLoadingCredentials],
+	);
+
+	const shortcutText = useMemo(() => {
+		if (platform === "darwin") {
+			return "Cmd+Shift+S";
+		}
+		return "Ctrl+Shift+S";
+	}, [platform]);
+
+	const handleStartRecording = useCallback(async () => {
+		if (!canEnableRecordingFeature) return;
+		if (navigator?.mediaDevices?.getUserMedia) {
+			try {
+				const stream = await navigator.mediaDevices.getUserMedia({
+					audio: true,
+				});
+				mediaRecorderRef.current = new MediaRecorder(stream);
+				audioChunksRef.current = [];
+
+				mediaRecorderRef.current.ondataavailable = (event) => {
+					audioChunksRef.current.push(event.data);
+				};
+
+				mediaRecorderRef.current.onstop = () => {
+					const completeAudioBlob = new Blob(audioChunksRef.current, {
+						type: "audio/webm",
+					});
+					setAudioBlob(completeAudioBlob);
+					// Stop all tracks on the stream to release the microphone
+					for (const track of stream.getTracks()) {
+						track.stop();
+					}
+				};
+
+				mediaRecorderRef.current.start();
+				setIsRecording(true);
+				setAudioBlob(null); // Clear previous blob
+			} catch (err) {
+				console.error("Error accessing microphone:", err);
+				showErrorToast(
+					"Error accessing microphone. Please ensure microphone permissions are granted.",
+				);
+			}
+		} else {
+			console.error("getUserMedia not supported on your browser!");
+			showErrorToast("Audio recording is not supported on your browser.");
+		}
+	}, [canEnableRecordingFeature]);
+
+	const handleConfirmRecording = useCallback(() => {
+		if (mediaRecorderRef.current && isRecording) {
+			mediaRecorderRef.current.stop();
+			setIsRecording(false);
+		}
+	}, [isRecording]);
+
+	const handleCancelRecording = useCallback(() => {
+		if (mediaRecorderRef.current && isRecording) {
+			// Redefine onstop to just stop the tracks and clean up, without processing audio
+			mediaRecorderRef.current.onstop = () => {
+				if (mediaRecorderRef.current?.stream) {
+					for (const track of mediaRecorderRef.current.stream.getTracks()) {
+						track.stop();
+					}
+				}
+				setAudioBlob(null);
+				audioChunksRef.current = [];
+			};
+			mediaRecorderRef.current.stop();
+			setIsRecording(false);
+		}
+	}, [isRecording]);
+
+	const handleSendAudio = useCallback(async () => {
+		if (!audioBlob) return;
+
+		try {
+			setIsTranscribing(true);
+			const response = await TranscriptionApi.createTranscription(
+				apiConfig.baseUrl,
+				{
+					file: new File([audioBlob], "recording.webm", {
+						type: "audio/webm",
+					}),
+				},
+			);
+			if (response.result?.text) {
+				const newText = response.result?.text || "";
+				setPrompt((p) => p + newText);
+			}
+			setAudioBlob(null); // Clear the blob after sending
+		} catch (error) {
+			console.error("Error transcribing audio:", error);
+			showErrorToast("Error transcribing audio. Please try again.");
+		} finally {
+			setIsTranscribing(false);
+		}
+	}, [audioBlob]);
+
+	useEffect(() => {
+		if (audioBlob) {
+			handleSendAudio();
+		}
+	}, [audioBlob, handleSendAudio]);
+
+	useEffect(() => {
+		window.electron.ipcRenderer
+			.invoke("get-platform-info")
+			.then((info) => {
+				setPlatform(info.platform);
+			})
+			.catch((err) => {
+				console.error("Failed to get platform info:", err);
+			});
+	}, []);
+
+	useEffect(() => {
+		if (isRecording) {
+			const handleKeyDown = (event: KeyboardEvent) => {
+				if (event.key === "Enter") {
+					event.preventDefault();
+					handleConfirmRecording();
+				} else if (event.key === "Escape") {
+					event.preventDefault();
+					handleCancelRecording();
+				}
+			};
+
+			window.addEventListener("keydown", handleKeyDown);
+
+			return () => {
+				window.removeEventListener("keydown", handleKeyDown);
+			};
+		}
+
+		return undefined;
+	}, [isRecording, handleConfirmRecording, handleCancelRecording]);
+
+	useEffect(() => {
+		const handleStartSpeechToText = (): void => {
+			if (
+				!isLoading &&
+				!isRecording &&
+				!isTranscribing &&
+				canEnableRecordingFeature
+			) {
+				handleStartRecording();
+			}
+		};
+		window.electron.ipcRenderer.on(
+			"start-speech-to-text",
+			handleStartSpeechToText,
+		);
+
+		return () => {
+			window.electron.ipcRenderer.removeListener(
+				"start-speech-to-text",
+				handleStartSpeechToText,
+			);
+		};
+	}, [
+		canEnableRecordingFeature,
+		handleStartRecording,
+		isLoading,
+		isRecording,
+		isTranscribing,
+	]);
+
+	useEffect(() => {
+		const handleKeyDown = (event: KeyboardEvent): void => {
+			if (event.code !== "Space" || spacebarTimerRef.current) {
+				return;
+			}
+
+			const activeElement = document.activeElement as HTMLElement;
+			if (
+				activeElement &&
+				(activeElement.tagName === "INPUT" ||
+					activeElement.tagName === "TEXTAREA" ||
+					activeElement.isContentEditable)
+			) {
+				return;
+			}
+
+			if (isRecording || isTranscribing || !canEnableRecordingFeature) {
+				return;
+			}
+
+			event.preventDefault();
+
+			spacebarTimerRef.current = setTimeout(() => {
+				handleStartRecording();
+			}, 1000);
+		};
+
+		const handleKeyUp = (event: KeyboardEvent): void => {
+			if (event.code !== "Space") {
+				return;
+			}
+
+			if (spacebarTimerRef.current) {
+				clearTimeout(spacebarTimerRef.current);
+				spacebarTimerRef.current = null;
+			}
+
+			if (isRecording) {
+				handleConfirmRecording();
+			}
+		};
+
+		window.addEventListener("keydown", handleKeyDown);
+		window.addEventListener("keyup", handleKeyUp);
+
+		return () => {
+			window.removeEventListener("keydown", handleKeyDown);
+			window.removeEventListener("keyup", handleKeyUp);
+			if (spacebarTimerRef.current) {
+				clearTimeout(spacebarTimerRef.current);
+			}
+		};
+	}, [
+		isRecording,
+		isTranscribing,
+		canEnableRecordingFeature,
+		handleStartRecording,
+		handleConfirmRecording,
+	]);
+
+	const triggerFileInput = () => {
+		fileInputRef.current?.click();
+	};
+
+	const handleFileSelect = (e: ChangeEvent<HTMLInputElement>) => {
+		if (e.target.files && e.target.files.length > 0) {
+			const newAttachments = Array.from(e.target.files).map((file) => {
+				const filePath = file.path;
+				if (filePath) {
+					return normalizePath(filePath);
+				}
+				return URL.createObjectURL(file);
+			});
+			setAttachments((prev) => [...prev, ...newAttachments]);
+			if (fileInputRef.current) {
+				fileInputRef.current.value = "";
+			}
+		}
+	};
+
+	const handleRemoveAttachment = (index: number) => {
+		setAttachments((prev) => {
+			const newAttachments = [...prev];
+			if (newAttachments[index].startsWith("blob:")) {
+				URL.revokeObjectURL(newAttachments[index]);
+			}
+			newAttachments.splice(index, 1);
+			return newAttachments;
+		});
+	};
+
+	const handlePaste = (event: ClipboardEvent<HTMLDivElement>) => {
+		const items = event.clipboardData?.items;
+		if (items) {
+			for (let i = 0; i < items.length; i++) {
+				if (
+					items[i].type.indexOf("image") !== -1 ||
+					items[i].kind === "file"
+				) {
+					const file = items[i].getAsFile();
+					if (file) {
+						const reader = new FileReader();
+						reader.onload = (e) => {
+							if (e.target?.result) {
+								setAttachments((prev) => [
+									...prev,
+									e.target?.result as string,
+								]);
+							}
+						};
+						reader.readAsDataURL(file);
+					}
+				}
+			}
+		}
 	};
 
 	const handleSubmit = useCallback(async () => {
@@ -258,6 +575,8 @@ export const InlineEdit: FC<InlineEditProps> = ({
 		onClose,
 	]);
 
+	const iconSize = 18;
+
 	return (
 		<InputInnerContainer
 			elevation={4}
@@ -270,38 +589,123 @@ export const InlineEdit: FC<InlineEditProps> = ({
 			<CloseButton onClick={onClose} disabled={isLoading}>
 				<X size={18} />
 			</CloseButton>
-			<StyledTextField
-				fullWidth
-				multiline
-				maxRows={8}
-				placeholder="Describe your edit..."
-				value={prompt}
-				onChange={(e) => setPrompt(e.target.value)}
-				disabled={isLoading}
-			/>
+
 			{attachments.length > 0 && (
-				<AttachmentsPreviewContainer>
-					{attachments.map((att) => (
-						<AttachmentChip key={att}>
-							{att.split("/").pop()}
-						</AttachmentChip>
-					))}
-				</AttachmentsPreviewContainer>
+				<AttachmentsPreview
+					attachments={attachments}
+					onRemoveAttachment={handleRemoveAttachment}
+					disabled={isLoading || isRecording || isTranscribing}
+				/>
 			)}
+
+			{isRecording ? (
+				<AudioRecordingIndicator isRecording={isRecording} />
+			) : isTranscribing ? (
+				<TranscriptionIndicator>
+					<TranscriptionText variant="body2">
+						Processing audio
+					</TranscriptionText>
+					<WaveformAnimation />
+				</TranscriptionIndicator>
+			) : (
+				<StyledTextField
+					fullWidth
+					multiline
+					maxRows={8}
+					placeholder="Describe your edit..."
+					value={prompt}
+					onChange={(e) => setPrompt(e.target.value)}
+					onPaste={handlePaste}
+					disabled={isLoading}
+					inputRef={textareaRef}
+				/>
+			)}
+
 			<ButtonsRow>
-				<Tooltip title="Add attachments">
-					<AttachmentButton onClick={handleAttachmentClick} disabled={isLoading}>
-						<Paperclip size={18} />
-					</AttachmentButton>
-				</Tooltip>
-				<Tooltip title={isLoading ? "Editing..." : "Edit"}>
-					<SendButton
-						onClick={handleSubmit}
-						disabled={isLoading || !prompt}
-					>
-						<Send size={18} />
-					</SendButton>
-				</Tooltip>
+				<Box display="flex" alignItems="center" gap={1}>
+					<input
+						type="file"
+						ref={fileInputRef}
+						onChange={handleFileSelect}
+						style={{ display: "none" }}
+						disabled={isLoading || isRecording || isTranscribing}
+						multiple
+					/>
+					<Tooltip title="Add attachments">
+						<AttachmentButton
+							onClick={triggerFileInput}
+							disabled={isLoading || isRecording || isTranscribing}
+						>
+							<Paperclip size={iconSize} />
+						</AttachmentButton>
+					</Tooltip>
+				</Box>
+
+				<Box display="flex" alignItems="center" gap={1}>
+					{!isRecording && !isTranscribing && !isLoading && (
+						<Tooltip
+							title={
+								!canEnableRecordingFeature
+									? "Sign in to Radient in the settings page to enable audio recording"
+									: `Start recording (${shortcutText} or hold Space)`
+							}
+						>
+							<span>
+								<IconButton
+									onClick={handleStartRecording}
+									color="primary"
+									size="small"
+									aria-label="Start recording"
+									disabled={isLoading || !canEnableRecordingFeature}
+								>
+									<Mic size={iconSize} />
+								</IconButton>
+							</span>
+						</Tooltip>
+					)}
+					{isRecording && (
+						<>
+							<Tooltip title="Confirm recording (Enter)">
+								<span>
+									<IconButton
+										onClick={handleConfirmRecording}
+										color="success"
+										size="small"
+										aria-label="Confirm recording"
+										disabled={isLoading}
+									>
+										<Check size={iconSize} />
+									</IconButton>
+								</span>
+							</Tooltip>
+							<Tooltip title="Cancel recording (Esc)">
+								<span>
+									<IconButton
+										onClick={handleCancelRecording}
+										color="error"
+										size="small"
+										aria-label="Cancel recording"
+										disabled={isLoading}
+									>
+										<X size={iconSize} />
+									</IconButton>
+								</span>
+							</Tooltip>
+						</>
+					)}
+					{!isRecording && !isTranscribing && (
+						<Tooltip title={isLoading ? "Editing..." : "Edit"}>
+							<div>
+								<SendButton
+									onClick={handleSubmit}
+									disabled={isLoading || (!prompt.trim() && attachments.length === 0)}
+								>
+									<Send size={iconSize} />
+								</SendButton>
+							</div>
+						</Tooltip>
+					)}
+				</Box>
 			</ButtonsRow>
 		</InputInnerContainer>
 	);
