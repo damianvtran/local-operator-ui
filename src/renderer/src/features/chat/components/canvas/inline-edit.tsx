@@ -497,6 +497,8 @@ export const InlineEdit: FC<InlineEditProps> = ({
 				attachments,
 			};
 
+			console.dir(request, { depth: null });
+
 			const response = await client.chat.editFileWithAgent(
 				lastChatAgentId,
 				request,
@@ -546,9 +548,9 @@ export const InlineEdit: FC<InlineEditProps> = ({
 		<InputInnerContainer
 			elevation={4}
 			sx={{
-				top: position.top,
+				top: Math.max(0, position.top),
 				left: 0,
-				transform: "translateY(calc(-100% - 8px))",
+				transform: position.top <= 0 ? "translateY(8px)" : "translateY(calc(-100% - 8px))",
 			}}
 		>
 			<CloseButton onClick={onClose} disabled={isLoading}>

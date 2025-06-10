@@ -146,24 +146,37 @@ export const CodeEditor: FC<CodeEditorProps> = ({
 			if (view) {
 				const { from, to } = view.state.selection.main;
 				const selection = view.state.doc.sliceString(from, to);
-				if (selection) {
-					const rect = view.coordsAtPos(from);
-					if (rect) {
-						const container = scrollContainerRef.current;
-						if (!container) return;
-						const containerRect = container.getBoundingClientRect();
-						const selectionRange = window.getSelection()?.getRangeAt(0);
-						setInlineEdit({
-							selection,
-							position: {
-								top: rect.bottom - containerRect.top,
-								left: rect.left - containerRect.left,
-							},
-							range: selectionRange || null,
-							from,
-							to,
-						});
-					}
+				const fullContent = view.state.doc.toString();
+				
+				// Format selection with context for the edit API
+				const textBefore = fullContent.substring(0, from);
+				const textAfter = fullContent.substring(to);
+				
+				// Truncate text before and after to 120 chars max with ellipsis
+				const truncatedTextBefore = textBefore.length > 120 
+					? `...${textBefore.slice(-120)}` 
+					: textBefore;
+				const truncatedTextAfter = textAfter.length > 120 
+					? `${textAfter.slice(0, 120)}...` 
+					: textAfter;
+				
+				const formattedSelection = `<text_before>${truncatedTextBefore}</text_before><selected_text>${selection}</selected_text><text_after>${truncatedTextAfter}</text_after>`;
+				const rect = view.coordsAtPos(from);
+				if (rect) {
+					const container = scrollContainerRef.current;
+					if (!container) return;
+					const containerRect = container.getBoundingClientRect();
+					const selectionRange = window.getSelection()?.getRangeAt(0);
+					setInlineEdit({
+						selection: formattedSelection,
+						position: {
+							top: Math.max(0, rect.bottom - containerRect.top),
+							left: rect.left - containerRect.left,
+						},
+						range: selectionRange || null,
+						from,
+						to,
+					});
 				}
 			}
 		}

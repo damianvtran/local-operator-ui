@@ -42,6 +42,67 @@ import { InsertLinkDialog } from "./wysiwyg/insert-link-dialog";
 import { InsertTablePopover } from "./wysiwyg/insert-table-popover";
 import { TextStyleDropdown } from "./wysiwyg/text-style-dropdown";
 
+/**
+ * Calculates the cursor position within the text content of a contentEditable element
+ */
+const getCursorPosition = (editorElement: HTMLElement, range: Range): number => {
+	// Create a range from the start of the editor to the cursor position
+	const preCaretRange = document.createRange();
+	preCaretRange.selectNodeContents(editorElement);
+	preCaretRange.setEnd(range.startContainer, range.startOffset);
+	
+	// Get the text content up to the cursor position
+	const textBeforeCursor = preCaretRange.toString();
+	return textBeforeCursor.length;
+};
+
+/**
+ * Formats selection with context for the edit API
+ */
+const formatSelectionWithContext = (fullContent: string, selectedText: string, cursorPosition?: number): string => {
+
+	if (selectedText) {
+		// Find the position of the selected text in the full content
+		const selectionStart = fullContent.indexOf(selectedText);
+		if (selectionStart === -1) {
+			// Fallback if we can't find the selection
+			return `<text_before></text_before><selected_text>${selectedText}</selected_text><text_after></text_after>`;
+		}
+		
+		const textBefore = fullContent.substring(0, selectionStart);
+		const textAfter = fullContent.substring(selectionStart + selectedText.length);
+
+		// Truncate text before and after to 120 chars max with ellipsis
+		const truncatedTextBefore = textBefore.length > 120 
+			? `...${textBefore.slice(-120)}` 
+			: textBefore;
+		const truncatedTextAfter = textAfter.length > 120 
+			? `${textAfter.slice(0, 120)}...` 
+			: textAfter;
+		
+		return `<text_before>${truncatedTextBefore}</text_before><selected_text>${selectedText}</selected_text><text_after>${truncatedTextAfter}</text_after>`;
+	}
+	
+	if (cursorPosition !== undefined && cursorPosition >= 0) {
+		// Empty selection at cursor position
+		const textBefore = fullContent.substring(0, cursorPosition);
+		const textAfter = fullContent.substring(cursorPosition);
+		
+		// Truncate text before and after to 120 chars max with ellipsis
+		const truncatedTextBefore = textBefore.length > 120 
+			? `...${textBefore.slice(-120)}` 
+			: textBefore;
+		const truncatedTextAfter = textAfter.length > 120 
+			? `${textAfter.slice(0, 120)}...` 
+			: textAfter;
+		
+		return `<text_before>${truncatedTextBefore}</text_before><selected_text></selected_text><text_after>${truncatedTextAfter}</text_after>`;
+	}
+	
+	// Fallback
+	return `<text_before>${fullContent}</text_before><selected_text></selected_text><text_after></text_after>`;
+};
+
 type WysiwygMarkdownEditorProps = {
 	document: CanvasDocument;
 	conversationId?: string;
@@ -595,7 +656,7 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 				case 'k': {
 					event.preventDefault();
 					const selection = window.getSelection();
-					if (selection && !selection.isCollapsed) {
+					if (selection && selection.rangeCount > 0 && editorRef.current) {
 						const range = selection.getRangeAt(0).cloneRange();
 						const rect = range.getBoundingClientRect();
 						const container = relativeContainerRef.current;
@@ -603,8 +664,23 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 							break;
 						}
 						const containerRect = container.getBoundingClientRect();
+						
+						// Get cursor position for empty selections
+						let cursorPosition: number | undefined;
+						if (selection.isCollapsed) {
+							try {
+								cursorPosition = getCursorPosition(editorRef.current, range);
+							} catch (error) {
+								console.warn('Failed to calculate cursor position:', error);
+								cursorPosition = undefined;
+							}
+						}
+						
+						const selectedText = selection.toString();
+						const formattedSelection = formatSelectionWithContext(content, selectedText, cursorPosition);
+
 						setInlineEdit({
-							selection: selection.toString(),
+							selection: formattedSelection,
 							position: {
 								top: rect.top - containerRect.top,
 								left: rect.left - containerRect.left,
@@ -653,7 +729,7 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 				}
 			}
 		}
-	}, [handleFormatToggle, executeCommand]);
+	}, [handleFormatToggle, executeCommand, content]);
 
 	const handleApplyChanges = (newContent: string) => {
 		if (editorRef.current && selectionRef.current) {
@@ -674,12 +750,26 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 		close: () => void,
 	) => {
 		const container = relativeContainerRef.current;
-		if (!container) {
+		if (!container || !editorRef.current) {
 			return;
 		}
 		const containerRect = container.getBoundingClientRect();
+		
+		// Calculate cursor position if no text is selected
+		let cursorPosition: number | undefined;
+		if (!selection && range.collapsed) {
+			try {
+				cursorPosition = getCursorPosition(editorRef.current, range);
+			} catch (error) {
+				console.warn('Failed to calculate cursor position in handleEdit:', error);
+				cursorPosition = undefined;
+			}
+		}
+		
+		const formattedSelection = formatSelectionWithContext(content, selection, cursorPosition);
+
 		setInlineEdit({
-			selection,
+			selection: formattedSelection,
 			position: {
 				top: rect.top - containerRect.top,
 				left: rect.left - containerRect.left,
