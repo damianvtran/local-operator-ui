@@ -3,8 +3,8 @@ import type { CanvasDocument } from "../../types/canvas";
 import { isHtmlFile } from "../../utils/is-html-file";
 import { isMarkdownFile } from "../../utils/is-markdown-file";
 import { CodeEditor } from "./code-editor";
+import { EditableMarkdownRenderer } from "./editable-markdown-renderer";
 import { HtmlPreview } from "./html-preview";
-import { MarkdownPreview } from "./markdown-preview";
 
 type CanvasContentProps = {
 	/**
@@ -19,7 +19,7 @@ type CanvasContentProps = {
  */
 const CanvasContentComponent: FC<CanvasContentProps> = ({ document }) => {
 	if (isMarkdownFile(document.title)) {
-		return <MarkdownPreview document={document} />;
+		return <EditableMarkdownRenderer document={document} />;
 	}
 
 	if (isHtmlFile(document.title)) {

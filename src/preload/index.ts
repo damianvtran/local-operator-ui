@@ -164,6 +164,10 @@ const api = {
 	getHomeDirectory: (): Promise<string> =>
 		ipcRenderer.invoke("get-home-directory"),
 
+	/** Saves a file to the specified path */
+	saveFile: (filePath: string, content: string): Promise<void> =>
+		ipcRenderer.invoke("save-file", filePath, content),
+
 	// Add methods for installer
 	ipcRenderer: {
 		send: (channel: string, ...args: unknown[]) => {
