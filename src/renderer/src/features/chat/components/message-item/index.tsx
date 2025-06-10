@@ -437,7 +437,11 @@ export const MessageItem: FC<MessageItemProps> = memo(
 							)}
 
 							{/* Message timestamp */}
-							<MessageTimestamp timestamp={message.timestamp} isUser={isUser} />
+							<MessageTimestamp
+								timestamp={message.timestamp}
+								isUser={isUser}
+								isSmallView={isSmallView}
+							/>
 						</MessagePaper>
 					</SecurityCheckHighlight>
 				) : (
@@ -578,7 +582,11 @@ export const MessageItem: FC<MessageItemProps> = memo(
 						)}
 
 						{/* Message timestamp */}
-						<MessageTimestamp timestamp={message.timestamp} isUser={isUser} />
+						<MessageTimestamp
+							timestamp={message.timestamp}
+							isUser={isUser}
+							isSmallView={isSmallView}
+						/>
 					</MessagePaper>
 				)}
 			</MessageContainer>

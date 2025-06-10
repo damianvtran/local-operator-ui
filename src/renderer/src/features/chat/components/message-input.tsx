@@ -56,6 +56,7 @@ type MessageInputProps = {
 	scrollToBottom?: () => void;
 	initialSuggestions?: string[];
 	agentData?: AgentDetails | null;
+	isSmallView?: boolean;
 };
 
 /**
@@ -68,7 +69,9 @@ export type MessageInputHandle = {
 /**
  * Outer container that wraps the entire input area
  */
-const InputOuterContainer = styled(Box)(({ theme }) => ({
+const InputOuterContainer = styled(Box, {
+	shouldForwardProp: (prop) => prop !== "isSmallView",
+})<{ isSmallView?: boolean }>(({ theme, isSmallView }) => ({
 	width: "100%",
 	flexGrow: 1,
 	flexShrink: 0,
@@ -77,10 +80,10 @@ const InputOuterContainer = styled(Box)(({ theme }) => ({
 	flexDirection: "column",
 	alignItems: "center",
 	justifyContent: "center",
-	padding: theme.spacing(1),
-	paddingLeft: theme.spacing(2),
-	paddingRight: theme.spacing(2),
-	paddingBottom: theme.spacing(2),
+	padding: isSmallView ? theme.spacing(0.5) : theme.spacing(1),
+	paddingLeft: isSmallView ? theme.spacing(1) : theme.spacing(2),
+	paddingRight: isSmallView ? theme.spacing(1) : theme.spacing(2),
+	paddingBottom: isSmallView ? theme.spacing(1) : theme.spacing(2),
 	backgroundColor: theme.palette.messagesView.background,
 }));
 
@@ -91,21 +94,25 @@ const InputOuterContainer = styled(Box)(({ theme }) => ({
  * When the text input inside is focused, increase border thickness and style
  * without changing the container size by using outline instead of border change
  */
-const InputInnerContainer = styled(Box)(({ theme }) => ({
+const InputInnerContainer = styled(Box, {
+	shouldForwardProp: (prop) => prop !== "isSmallView",
+})<{ isSmallView?: boolean }>(({ theme, isSmallView }) => ({
 	width: "100%",
 	maxWidth: "900px",
 	margin: "0 auto",
 	display: "flex",
 	flexDirection: "column",
-	gap: theme.spacing(1.5),
+	gap: isSmallView ? theme.spacing(1) : theme.spacing(1.5),
 	outline: "none",
-	borderRadius: theme.shape.borderRadius * 4,
+	borderRadius: isSmallView
+		? theme.shape.borderRadius * 2
+		: theme.shape.borderRadius * 4,
 	border: `1px solid ${alpha(theme.palette.divider, theme.palette.mode === "light" ? 0.3 : 0.1)}`,
 	backgroundColor:
 		theme.palette.mode === "light"
 			? alpha(theme.palette.background.paper, 0.9)
 			: alpha(theme.palette.background.paper, 0.6),
-	padding: theme.spacing(2),
+	padding: isSmallView ? theme.spacing(1) : theme.spacing(2),
 	transition: "box-shadow 0.2s ease-in-out, outline 0.2s ease-in-out",
 	boxSizing: "border-box",
 	[theme.breakpoints.down("sm")]: {
@@ -176,12 +183,14 @@ const SuggestionChip = styled(Button)(({ theme }) => ({
  *
  * Also customizes the scrollbar appearance when multiline text causes overflow.
  */
-const StyledTextField = styled(TextField)(({ theme }) => ({
+const StyledTextField = styled(TextField, {
+	shouldForwardProp: (prop) => prop !== "isSmallView",
+})<{ isSmallView?: boolean }>(({ theme, isSmallView }) => ({
 	flex: 1,
 	"& .MuiOutlinedInput-root": {
 		backgroundColor: "transparent",
-		padding: "6px 8px",
-		fontSize: "1rem",
+		padding: isSmallView ? "4px 6px" : "6px 8px",
+		fontSize: isSmallView ? "0.9rem" : "1rem",
 		display: "flex",
 		alignItems: "center",
 		"& fieldset": {
@@ -244,14 +253,16 @@ const ButtonsRow = styled(Box)(({ theme }) => ({
 /**
  * Styled attachment button
  */
-const AttachmentButton = styled(IconButton)(({ theme }) => ({
+const AttachmentButton = styled(IconButton, {
+	shouldForwardProp: (prop) => prop !== "isSmallView",
+})<{ isSmallView?: boolean }>(({ theme, isSmallView }) => ({
 	backgroundColor:
 		theme.palette.mode === "light"
 			? alpha(theme.palette.primary.main, 0.1)
 			: alpha(theme.palette.primary.main, 0.15),
 	color: theme.palette.primary.main,
-	width: 40,
-	height: 40,
+	width: isSmallView ? 32 : 40,
+	height: isSmallView ? 32 : 40,
 	borderRadius: "100%",
 	transition: "all 0.2s ease-in-out",
 	"&:hover": {
@@ -273,9 +284,11 @@ const AttachmentButton = styled(IconButton)(({ theme }) => ({
 /**
  * Styled send/stop button
  */
-const SendButton = styled(Button)(({ theme }) => ({
-	minWidth: 40,
-	height: 40,
+const SendButton = styled(Button, {
+	shouldForwardProp: (prop) => prop !== "isSmallView",
+})<{ isSmallView?: boolean }>(({ theme, isSmallView }) => ({
+	minWidth: isSmallView ? 32 : 40,
+	height: isSmallView ? 32 : 40,
 	borderRadius: "100%",
 	padding: 0,
 	display: "flex",
@@ -359,6 +372,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			scrollToBottom = () => {},
 			initialSuggestions,
 			agentData,
+			isSmallView = false,
 		},
 		ref,
 	) => {
@@ -764,9 +778,11 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			}
 		};
 
+		const iconSize = isSmallView ? 16 : 22;
+
 		const inputContent = (
 			<form onSubmit={handleSubmit} style={{ width: "100%" }}>
-				<InputInnerContainer>
+				<InputInnerContainer isSmallView={isSmallView}>
 					{replies.length > 0 && (
 						<ReplyPreview replies={replies} onRemoveReply={handleRemoveReply} />
 					)}
@@ -793,6 +809,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 							placeholder={
 								isInputDisabled ? "Agent is busy" : "Ask me for help"
 							}
+							isSmallView={isSmallView}
 							value={newMessage}
 							onChange={(e) => setNewMessage(e.target.value)}
 							onKeyDown={handleKeyDown}
@@ -828,8 +845,12 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 										aria-label="Attach file"
 										data-tour-tag="chat-input-attach-file-button"
 										disabled={isInputDisabled || isRecording || isTranscribing}
+										isSmallView={isSmallView}
 									>
-										<FontAwesomeIcon icon={faPaperclip} />
+										<FontAwesomeIcon
+											icon={faPaperclip}
+											fontSize={iconSize * 0.8}
+										/>
 									</AttachmentButton>
 								</span>
 							</Tooltip>
@@ -861,7 +882,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 												aria-label="Start recording"
 												disabled={isLoading || !canEnableRecordingFeature}
 											>
-												<Mic size={22} />
+												<Mic size={iconSize} />
 											</IconButton>
 										</span>
 									</Tooltip>
@@ -877,7 +898,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 												aria-label="Confirm recording"
 												disabled={isLoading}
 											>
-												<Check size={18} />
+												<Check size={iconSize} />
 											</IconButton>
 										</span>
 									</Tooltip>
@@ -890,7 +911,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 												aria-label="Cancel recording"
 												disabled={isLoading}
 											>
-												<X size={18} />
+												<X size={iconSize} />
 											</IconButton>
 										</span>
 									</Tooltip>
@@ -905,8 +926,9 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 											color="error"
 											onClick={() => onCancelJob?.(currentJobId)}
 											aria-label="Stop agent"
+											isSmallView={isSmallView}
 										>
-											<FontAwesomeIcon icon={faStop} />
+											<FontAwesomeIcon icon={faStop} fontSize={iconSize * 0.8} />
 										</SendButton>
 									</span>
 								</Tooltip>
@@ -924,8 +946,12 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 													(!newMessage.trim() && attachments.length === 0)
 												}
 												aria-label="Send message"
+												isSmallView={isSmallView}
 											>
-												<FontAwesomeIcon icon={faPaperPlane} />
+												<FontAwesomeIcon
+													icon={faPaperPlane}
+													fontSize={iconSize * 0.8}
+												/>
 											</SendButton>
 										</span>
 									</Tooltip>
@@ -935,7 +961,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					</ButtonsRow>
 				</InputInnerContainer>
 
-				{messages.length === 0 && (
+				{messages.length === 0 && !isSmallView && (
 					<SuggestionsContainer>
 						<Box
 							sx={{
@@ -964,8 +990,8 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		);
 
 		return (
-			<InputOuterContainer>
-				{messages.length === 0 ? (
+			<InputOuterContainer isSmallView={isSmallView}>
+				{messages.length === 0 && !isSmallView ? (
 					<EmptyStateContainer>
 						<EmptyStateTitle variant="h6">
 							What can I help you with today?
@@ -978,6 +1004,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				<ScrollToBottomButton
 					visible={isFarFromBottom}
 					onClick={scrollToBottom}
+					bottomDistance={isSmallView ? 120 : 160}
 				/>
 			</InputOuterContainer>
 		);

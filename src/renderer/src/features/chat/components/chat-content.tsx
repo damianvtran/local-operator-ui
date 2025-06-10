@@ -9,7 +9,7 @@ import { useCanvasStore } from "@shared/store/canvas-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { isDevelopmentMode } from "@shared/utils/env-utils";
 import type React from "react";
-import { type FC, useRef } from "react";
+import { type FC, useEffect, useRef, useState } from "react";
 import type { Message } from "../types/message";
 import { Canvas } from "./canvas";
 import { ChatHeader } from "./chat-header";
@@ -128,7 +128,31 @@ export const ChatContent: FC<ChatContentProps> = ({
 	refetch,
 	messageInputRef,
 }) => {
+	const [isSmallView, setIsSmallView] = useState(false);
+	const chatContainerRef = useRef<HTMLDivElement>(null);
 	const canvasContainerRef = useRef<HTMLDivElement>(null);
+
+	useEffect(() => {
+		if (!chatContainerRef.current) {
+			return;
+		}
+
+		const resizeObserver = new ResizeObserver((entries) => {
+			for (const entry of entries) {
+				if (entry.contentRect.width < 500) {
+					setIsSmallView(true);
+				} else {
+					setIsSmallView(false);
+				}
+			}
+		});
+
+		resizeObserver.observe(chatContainerRef.current);
+
+		return () => {
+			resizeObserver.disconnect();
+		};
+	}, []);
 
 	const canvasPanelWidth = useUiPreferencesStore((s) => s.canvasWidth);
 	const setCanvasPanelWidth = useUiPreferencesStore((s) => s.setCanvasWidth);
@@ -167,12 +191,12 @@ export const ChatContent: FC<ChatContentProps> = ({
 			<Box
 				sx={{
 					flex: 1,
-					minWidth: 500,
+					minWidth: 220,
 					height: "100%",
 					position: "relative",
 				}}
 			>
-				<ChatContainer elevation={0}>
+				<ChatContainer elevation={0} ref={chatContainerRef}>
 					{/* Chat header */}
 					<ChatHeader
 						agentName={agentName}
@@ -205,6 +229,7 @@ export const ChatContent: FC<ChatContentProps> = ({
 							scrollToBottom={scrollToBottom}
 							refetch={refetch}
 							conversationId={agentId}
+							isSmallView={isSmallView}
 						/>
 					) : (
 						/* Raw information tab - only accessible in development mode */
@@ -224,6 +249,7 @@ export const ChatContent: FC<ChatContentProps> = ({
 							isFarFromBottom={isFarFromBottom}
 							scrollToBottom={scrollToBottom}
 							agentData={agentData}
+							isSmallView={isSmallView}
 						/>
 					)}
 				</ChatContainer>
@@ -235,7 +261,7 @@ export const ChatContent: FC<ChatContentProps> = ({
 						sidebarWidth={effectiveCanvasPanelWidth}
 						onSidebarWidthChange={setCanvasPanelWidth}
 						minWidth={220}
-						maxWidth={800}
+						maxWidth={1000}
 						side="left"
 						onDoubleClick={restoreDefaultCanvasPanelWidth}
 					/>
