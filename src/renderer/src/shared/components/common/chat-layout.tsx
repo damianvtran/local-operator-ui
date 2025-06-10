@@ -38,6 +38,7 @@ const ContentContainer = styled(Box)({
  */
 export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 	const sidebarWidth = useUiPreferencesStore((s) => s.chatSidebarWidth);
+	console.log("sidebarWidth", sidebarWidth);
 	const setSidebarWidth = useUiPreferencesStore((s) => s.setChatSidebarWidth);
 	const restoreDefaultSidebarWidth = useUiPreferencesStore(
 		(s) => s.restoreDefaultChatSidebarWidth,
