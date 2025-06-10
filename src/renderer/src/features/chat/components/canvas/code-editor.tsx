@@ -1,4 +1,5 @@
 import { Box, useTheme, styled } from "@mui/material";
+import { TextSelectionControls } from "@shared/components/common/text-selection-controls";
 import { loadLanguageExtensions } from "@shared/utils/load-language-extensions";
 import { basicDark, basicLight } from "@uiw/codemirror-theme-basic";
 import CodeMirror, {
@@ -122,6 +123,13 @@ export const CodeEditor: FC<CodeEditorProps> = ({
 		setInlineEdit(null);
 	};
 
+	const handleEdit = (selection: string, rect: DOMRect) => {
+		setInlineEdit({
+			selection,
+			position: { top: rect.bottom, left: rect.left },
+		});
+	};
+
 	return (
 		<CodeEditorContainer onKeyDown={handleKeyDown}>
 			<CodeMirror
@@ -132,6 +140,11 @@ export const CodeEditor: FC<CodeEditorProps> = ({
 				extensions={languageExtensions}
 				onChange={handleContentChange}
 				ref={editorRef}
+			/>
+			<TextSelectionControls
+				targetRef={editorRef as React.RefObject<HTMLElement>}
+				showEdit
+				onEdit={handleEdit}
 			/>
 			{inlineEdit && document.path && (
 				<InlineEdit

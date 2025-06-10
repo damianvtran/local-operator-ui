@@ -34,6 +34,7 @@ import { useCanvasStore } from "@shared/store/canvas-store";
 import { showSuccessToast } from "@shared/utils/toast-manager";
 import type { CanvasDocument } from "../../types/canvas";
 import { markdownToHtml, htmlToMarkdown } from "@features/chat/components/canvas/wysiwyg-utils";
+import { TextSelectionControls } from "@shared/components/common/text-selection-controls";
 import { InlineEdit } from "./inline-edit";
 import { InsertImageDialog } from "./wysiwyg/insert-image-dialog";
 import type { LinkDialogData } from "./wysiwyg/insert-link-dialog";
@@ -642,6 +643,13 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 		setInlineEdit(null);
 	};
 
+	const handleEdit = (selection: string, rect: DOMRect) => {
+		setInlineEdit({
+			selection,
+			position: { top: rect.top, left: rect.left },
+		});
+	};
+
 	return (
 		<EditorContainer elevation={1}>
 			<EditorToolbar>
@@ -789,6 +797,11 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 					onInput={handleContentChange}
 					onKeyDown={handleKeyDown}
 					suppressContentEditableWarning
+				/>
+				<TextSelectionControls
+					targetRef={editorRef}
+					showEdit
+					onEdit={handleEdit}
 				/>
 			</EditorContent>
 			<InsertLinkDialog
