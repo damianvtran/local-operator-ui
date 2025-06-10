@@ -1,8 +1,15 @@
-import { Box, styled } from "@mui/material";
+import {
+	Box,
+	Button,
+	IconButton,
+	styled,
+} from "@mui/material";
 import { getHtmlUrl } from "@shared/api/local-operator/static-api";
 import { apiConfig } from "@shared/config";
-import type { FC } from "react";
+import { type FC, useState } from "react";
 import type { CanvasDocument } from "../../types/canvas";
+import { CodeEditor } from "./code-editor";
+import { RefreshCw as RefreshIcon } from "lucide-react";
 
 type HtmlPreviewProps = {
 	/**
@@ -11,15 +18,70 @@ type HtmlPreviewProps = {
 	document: CanvasDocument;
 };
 
-/**
- * Styled iframe container for HTML preview
- */
-const IframeContainer = styled(Box)(({ theme }) => ({
+const PreviewContainer = styled(Box)({
 	height: "100%",
 	width: "100%",
 	display: "flex",
 	flexDirection: "column",
+});
+
+const ControlsBar = styled(Box)(({ theme }) => ({
+	display: "flex",
+	alignItems: "center",
+	justifyContent: "flex-end",
+	gap: "4px",
+	padding: "6px 8px",
+	borderBottom: `1px solid ${theme.palette.divider}`,
 	backgroundColor: theme.palette.background.paper,
+	minHeight: "32px",
+}));
+
+const StyledButton = styled(Button)(({ theme }) => ({
+	height: "32px",
+	minWidth: "64px",
+	padding: "0 8px",
+	fontSize: "0.8rem",
+	fontWeight: 500,
+	borderRadius: "6px",
+	textTransform: "none",
+	border: `1px solid ${theme.palette.divider}`,
+	backgroundColor: theme.palette.background.paper,
+	color: theme.palette.text.primary,
+	boxShadow: "0 1px 2px 0 rgb(0 0 0 / 0.05)",
+	transition: "all 0.15s ease-in-out",
+	"&:hover": {
+		backgroundColor: theme.palette.action.hover,
+		borderColor: theme.palette.action.hover,
+		boxShadow: "0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px 0 rgb(0 0 0 / 0.06)",
+	},
+	"&:active": {
+		transform: "translateY(0.5px)",
+	},
+}));
+
+const StyledIconButton = styled(IconButton)(({ theme }) => ({
+	width: "32px",
+	height: "32px",
+	padding: "4px",
+	borderRadius: "6px",
+	border: `1px solid ${theme.palette.divider}`,
+	backgroundColor: theme.palette.background.paper,
+	color: theme.palette.text.secondary,
+	boxShadow: "0 1px 2px 0 rgb(0 0 0 / 0.05)",
+	transition: "all 0.15s ease-in-out",
+	"&:hover": {
+		backgroundColor: theme.palette.action.hover,
+		borderColor: theme.palette.action.hover,
+		color: theme.palette.text.primary,
+		boxShadow: "0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px 0 rgb(0 0 0 / 0.06)",
+	},
+	"&:active": {
+		transform: "translateY(0.5px)",
+	},
+	"& svg": {
+		width: "12px",
+		height: "12px",
+	},
 }));
 
 /**
@@ -30,7 +92,7 @@ const HtmlIframe = styled("iframe")(({ theme }) => ({
 	height: "100%",
 	border: "none",
 	backgroundColor: theme.palette.background.paper,
-	borderRadius: theme.shape.borderRadius,
+	borderRadius: "0",
 }));
 
 /**
@@ -40,21 +102,48 @@ const HtmlIframe = styled("iframe")(({ theme }) => ({
  * This simulates opening the HTML file in a local browser by serving it through the API
  */
 export const HtmlPreview: FC<HtmlPreviewProps> = ({ document }) => {
-	/**
-	 * Create a URL for the HTML document using the static HTML endpoint
-	 * This serves the file through the Local Operator API, simulating opening it in a browser
-	 * We append a timestamp to the URL to force a reload when the content changes.
-	 */
+	const [isEditMode, setIsEditMode] = useState(false);
+	const [content, setContent] = useState(document.content);
+	const [key, setKey] = useState(Date.now());
+
+	const handleToggleMode = () => {
+		setIsEditMode((prev) => !prev);
+		if (!isEditMode) {
+			setKey(Date.now());
+		}
+	};
+
+	const handleRefresh = () => {
+		setKey(Date.now());
+	};
+
 	const htmlUrl = getHtmlUrl(apiConfig.baseUrl, document.path);
 
 	return (
-		<IframeContainer>
-			<HtmlIframe
-				key={document.content} // Force re-render when content changes
-				src={htmlUrl}
-				title={`HTML Preview: ${document.title}`}
-				sandbox="allow-scripts allow-same-origin allow-forms"
-			/>
-		</IframeContainer>
+		<PreviewContainer>
+			<ControlsBar>
+				<StyledButton onClick={handleToggleMode}>
+					{isEditMode ? "Preview" : "Edit"}
+				</StyledButton>
+				<StyledIconButton onClick={handleRefresh}>
+					<RefreshIcon />
+				</StyledIconButton>
+			</ControlsBar>
+			<Box sx={{ flexGrow: 1, overflow: "hidden" }}>
+				{isEditMode ? (
+					<CodeEditor
+						document={{ ...document, content }}
+						onContentChange={setContent}
+					/>
+				) : (
+					<HtmlIframe
+						key={key}
+						src={htmlUrl}
+						title={`HTML Preview: ${document.title}`}
+						sandbox="allow-scripts allow-same-origin allow-forms"
+					/>
+				)}
+			</Box>
+		</PreviewContainer>
 	);
 };
