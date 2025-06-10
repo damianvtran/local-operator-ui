@@ -215,6 +215,7 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 	const editorRef = useRef<HTMLDivElement>(null);
 	const originalContentRef = useRef(document.content);
 	const isInitialLoadRef = useRef(true);
+	const isMounted = useRef(false);
 
 	const { setFiles } = useCanvasStore();
 	const canvasState = useCanvasStore((state) =>
@@ -287,7 +288,11 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 
 	// Initialize editor content from markdown
 	useEffect(() => {
-		if (editorRef.current && document.content !== originalContentRef.current) {
+		if (
+			editorRef.current &&
+			(!isMounted.current || document.content !== originalContentRef.current)
+		) {
+			isMounted.current = true;
 			const htmlContent = markdownToHtml(document.content);
 			editorRef.current.innerHTML = htmlContent;
 			setContent(document.content);
