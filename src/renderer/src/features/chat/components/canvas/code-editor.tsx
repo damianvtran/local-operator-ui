@@ -22,6 +22,7 @@ type CodeEditorProps = {
 
 const CodeEditorContainer = styled(Box)(({ theme }) => ({
 	flexGrow: 1,
+	position: "relative",
 	fontSize: theme.typography.pxToRem(12),
 	overflow: "auto",
 	height: "100%",
@@ -107,10 +108,16 @@ export const CodeEditor: FC<CodeEditorProps> = ({
 				if (selection) {
 					const rect = view.coordsAtPos(from);
 					if (rect) {
+						const container = scrollContainerRef.current;
+						if (!container) return;
+						const containerRect = container.getBoundingClientRect();
 						const selectionRange = window.getSelection()?.getRangeAt(0);
 						setInlineEdit({
 							selection,
-							position: { top: rect.bottom, left: rect.left },
+							position: {
+								top: rect.bottom - containerRect.top,
+								left: rect.left - containerRect.left,
+							},
 							range: selectionRange || null,
 						});
 					}
@@ -128,36 +135,18 @@ export const CodeEditor: FC<CodeEditorProps> = ({
 	};
 
 	const handleEdit = (selection: string, rect: DOMRect, range: Range) => {
+		const container = scrollContainerRef.current;
+		if (!container) return;
+		const containerRect = container.getBoundingClientRect();
 		setInlineEdit({
 			selection,
-			position: { top: rect.bottom, left: rect.left },
+			position: {
+				top: rect.bottom - containerRect.top,
+				left: rect.left - containerRect.left,
+			},
 			range,
 		});
 	};
-
-	useEffect(() => {
-		const handleScroll = () => {
-			if (inlineEdit?.range) {
-				const rect = inlineEdit.range.getBoundingClientRect();
-				setInlineEdit((prev) =>
-					prev
-						? { ...prev, position: { top: rect.bottom, left: rect.left } }
-						: null,
-				);
-			}
-		};
-
-		const scrollableElement = scrollContainerRef.current;
-		if (scrollableElement) {
-			scrollableElement.addEventListener("scroll", handleScroll, true);
-		}
-
-		return () => {
-			if (scrollableElement) {
-				scrollableElement.removeEventListener("scroll", handleScroll, true);
-			}
-		};
-	}, [inlineEdit?.range]);
 
 	return (
 		<CodeEditorContainer onKeyDown={handleKeyDown} ref={scrollContainerRef}>
