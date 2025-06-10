@@ -15,22 +15,26 @@ type CanvasContentProps = {
 	 * The conversation ID for the current chat context
 	 */
 	conversationId?: string;
+	/**
+	 * The agent ID for the current chat context
+	 */
+	agentId?: string;
 };
 
 /**
  * Content component for the canvas
  * Displays content based on file type - markdown preview, HTML preview, or code editor
  */
-const CanvasContentComponent: FC<CanvasContentProps> = ({ document, conversationId }) => {
+const CanvasContentComponent: FC<CanvasContentProps> = ({ document, conversationId, agentId }) => {
 	if (isMarkdownFile(document.title)) {
-		return <WysiwygMarkdownEditor document={document} conversationId={conversationId} />;
+		return <WysiwygMarkdownEditor document={document} conversationId={conversationId} agentId={agentId} />;
 	}
 
 	if (isHtmlFile(document.title)) {
 		return <HtmlPreview document={document} />;
 	}
 
-	return <CodeEditor document={document} conversationId={conversationId} />;
+	return <CodeEditor document={document} conversationId={conversationId} agentId={agentId} />;
 };
 
 export const CanvasContent = memo(CanvasContentComponent);

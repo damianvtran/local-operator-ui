@@ -41,6 +41,11 @@ type CanvasProps = {
 	onCloseDocument: (docId: string) => void;
 
 	/**
+	 * The agent ID for the current chat context
+	 */
+	agentId?: string;
+
+	/**
 	 * The conversation ID for the current chat context
 	 */
 	conversationId?: string;
@@ -116,6 +121,7 @@ const CanvasComponent: FC<CanvasProps> = ({
 	onClose,
 	onCloseDocument,
 	conversationId,
+	agentId,
 }) => {
 	// Get view mode from store if conversationId is available
 	const { setViewMode } = useCanvasStore();
@@ -312,7 +318,13 @@ const CanvasComponent: FC<CanvasProps> = ({
 					/>
 
 					{/* Document content area */}
-					{activeDocument && <CanvasContent document={activeDocument} conversationId={conversationId} />}
+					{activeDocument && (
+						<CanvasContent
+							document={activeDocument}
+							conversationId={conversationId}
+							agentId={agentId}
+						/>
+					)}
 
 					{/* Empty state when no documents are open */}
 					{!activeDocument && documents.length === 0 && (
