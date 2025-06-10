@@ -154,10 +154,10 @@ export const CodeEditor: FC<CodeEditorProps> = ({
 				
 				// Truncate text before and after to 120 chars max with ellipsis
 				const truncatedTextBefore = textBefore.length > 120 
-					? `...${textBefore.slice(-120)}` 
+					? `${textBefore.slice(-120)}` 
 					: textBefore;
 				const truncatedTextAfter = textAfter.length > 120 
-					? `${textAfter.slice(0, 120)}...` 
+					? `${textAfter.slice(0, 120)}` 
 					: textAfter;
 				
 				const formattedSelection = `<text_before>${truncatedTextBefore}</text_before><selected_text>${selection}</selected_text><text_after>${truncatedTextAfter}</text_after>`;
@@ -182,12 +182,15 @@ export const CodeEditor: FC<CodeEditorProps> = ({
 		}
 	};
 
-	const handleApplyChanges = (newContent: string) => {
+	const handleApplyChanges = (editDiffs: Array<{ find: string; replace: string }>) => {
 		const view = editorRef.current?.view;
 		if (view && inlineEdit) {
-			view.dispatch({
-				changes: { from: inlineEdit.from, to: inlineEdit.to, insert: newContent },
-			});
+			for (const diff of editDiffs) {
+				view.dispatch({
+					changes: { from: inlineEdit.from, to: inlineEdit.to, insert: diff.replace },
+				});
+			}
+			setContent(view.state.doc.toString());
 		}
 		setInlineEdit(null);
 	};

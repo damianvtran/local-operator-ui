@@ -38,7 +38,7 @@ type InlineEditProps = {
 	position: { top: number; left: number };
 	filePath: string;
 	onClose: () => void;
-	onApplyChanges: (newContent: string) => void;
+	onApplyChanges: (editDiffs: Array<{ find: string; replace: string }>) => void;
 };
 
 const InputInnerContainer = styled(Paper)(({ theme }) => ({
@@ -497,8 +497,6 @@ export const InlineEdit: FC<InlineEditProps> = ({
 				attachments,
 			};
 
-			console.dir(request, { depth: null });
-
 			const response = await client.chat.editFileWithAgent(
 				lastChatAgentId,
 				request,
@@ -509,16 +507,9 @@ export const InlineEdit: FC<InlineEditProps> = ({
 				return;
 			}
 
-			if (response.result) {
-				const originalContent = await window.api.readFile(filePath);
-				if (originalContent.success) {
-					let newContent = originalContent.data;
-					for (const diff of response.result.edit_diffs) {
-						newContent = newContent.replace(diff.find, diff.replace);
-					}
-					onApplyChanges(newContent);
-					showSuccessToast("File edited successfully!");
-				}
+			if (response.result && response.result.edit_diffs.length > 0) {
+				onApplyChanges(response.result.edit_diffs);
+				showSuccessToast("File edited successfully!");
 			}
 		} catch (error) {
 			if (!isCancelledRef.current) {
