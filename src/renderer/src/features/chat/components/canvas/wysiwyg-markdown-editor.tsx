@@ -81,10 +81,10 @@ const formatSelectionWithContext = (fullContent: string, selectedText: string, c
 
 		// Truncate text before and after to 120 chars max with ellipsis
 		const truncatedTextBefore = textBefore.length > 120 
-			? `...${textBefore.slice(-120)}` 
+			? `${textBefore.slice(-120)}` 
 			: textBefore;
 		const truncatedTextAfter = textAfter.length > 120 
-			? `${textAfter.slice(0, 120)}...` 
+			? `${textAfter.slice(0, 120)}` 
 			: textAfter;
 		
 		return `<text_before>${truncatedTextBefore}</text_before><selected_text>${selectedText}</selected_text><text_after>${truncatedTextAfter}</text_after>`;
@@ -97,10 +97,10 @@ const formatSelectionWithContext = (fullContent: string, selectedText: string, c
 		
 		// Truncate text before and after to 120 chars max with ellipsis
 		const truncatedTextBefore = textBefore.length > 120 
-			? `...${textBefore.slice(-120)}` 
+			? `${textBefore.slice(-120)}` 
 			: textBefore;
 		const truncatedTextAfter = textAfter.length > 120 
-			? `${textAfter.slice(0, 120)}...` 
+			? `${textAfter.slice(0, 120)}` 
 			: textAfter;
 		
 		return `<text_before>${truncatedTextBefore}</text_before><selected_text></selected_text><text_after>${truncatedTextAfter}</text_after>`;
@@ -757,14 +757,23 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 		}
 	}, [handleFormatToggle, executeCommand, content]);
 
-	const handleApplyChanges = (newContent: string) => {
-		if (editorRef.current && selectionRef.current) {
-			const selection = window.getSelection();
-			selection?.removeAllRanges();
-			selection?.addRange(selectionRef.current);
-			executeCommand("insertHTML", markdownToHtml(newContent));
-			handleContentChange();
+	const handleApplyChanges = (editDiffs: Array<{ find: string; replace: string }>) => {
+		// Apply all diffs to the current content
+		let updatedContent = content;
+		for (const diff of editDiffs) {
+			updatedContent = updatedContent.replace(diff.find, diff.replace);
 		}
+		
+		// Update the content state
+		setContent(updatedContent);
+		setHasUserChanges(true);
+		
+		// Re-render the editor with the updated markdown
+		if (editorRef.current) {
+			const htmlContent = markdownToHtml(updatedContent);
+			editorRef.current.innerHTML = htmlContent;
+		}
+		
 		setInlineEdit(null);
 		selectionRef.current = null;
 	};
