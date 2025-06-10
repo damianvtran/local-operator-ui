@@ -3,6 +3,8 @@
  */
 import type {
 	AgentChatRequest,
+	AgentEditFileRequest,
+	AgentEditFileResponse,
 	CRUDResponse,
 	ChatRequest,
 	ChatResponse,
@@ -151,6 +153,48 @@ export const ChatApi = {
 			return (await response.json()) as CRUDResponse<JobDetails>;
 		} catch (error) {
 			console.error("Error in processAgentChatAsync:", error);
+			throw error;
+		}
+	},
+
+	/**
+	 * Edit a file using a specific agent with an edit prompt.
+	 * The endpoint loads the specified file, applies the agent's conversation history,
+	 * and uses the agent to generate edit diffs based on the provided edit prompt.
+	 *
+	 * @param baseUrl - The base URL of the Local Operator API
+	 * @param agentId - ID of the agent to use for editing
+	 * @param request - The edit request containing file path and edit prompt
+	 * @returns A response containing the generated edit diffs
+	 * @throws Error if the request fails
+	 */
+	async editFileWithAgent(
+		baseUrl: string,
+		agentId: string,
+		request: AgentEditFileRequest,
+	): Promise<CRUDResponse<AgentEditFileResponse>> {
+		try {
+			const response = await fetch(
+				`${baseUrl}/v1/chat/agents/${agentId}/edit`,
+				{
+					method: "POST",
+					headers: {
+						"Content-Type": "application/json",
+						Accept: "application/json",
+					},
+					body: JSON.stringify(request),
+				},
+			);
+
+			if (!response.ok) {
+				throw new Error(
+					`Edit file with agent request failed: ${response.status} ${response.statusText}`,
+				);
+			}
+
+			return (await response.json()) as CRUDResponse<AgentEditFileResponse>;
+		} catch (error) {
+			console.error("Error in editFileWithAgent:", error);
 			throw error;
 		}
 	},
