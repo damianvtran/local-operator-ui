@@ -478,14 +478,24 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 
 	// Insert table
 	const insertTable = useCallback((event: React.MouseEvent<HTMLElement>) => {
+		const selection = window.getSelection();
+		if (selection?.rangeCount) {
+			selectionRef.current = selection.getRangeAt(0).cloneRange();
+		}
 		setTableAnchorEl(event.currentTarget);
 	}, []);
 
 	const handleInsertTable = useCallback(
 		(rows: number, cols: number) => {
 			if (rows > 0 && cols > 0) {
+				editorRef.current?.focus();
 				const selection = window.getSelection();
-				if (!selection?.rangeCount) return;
+				if (!selection) return;
+
+				if (selectionRef.current) {
+					selection.removeAllRanges();
+					selection.addRange(selectionRef.current);
+				}
 
 				const range = selection.getRangeAt(0);
 				range.deleteContents();
