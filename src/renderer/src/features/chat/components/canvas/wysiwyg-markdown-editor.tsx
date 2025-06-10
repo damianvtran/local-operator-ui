@@ -228,6 +228,7 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 	} | null>(null);
 	const selectionRef = useRef<Range | null>(null);
 	const editorContentRef = useRef<HTMLDivElement>(null);
+	const relativeContainerRef = useRef<HTMLDivElement>(null);
 
 	const debouncedContent = useDebounce(content, 1000);
 	const editorRef = useRef<HTMLDivElement>(null);
@@ -586,18 +587,26 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 					break;
 				case 'k': {
 					event.preventDefault();
-          const selection = window.getSelection();
-          if (selection && !selection.isCollapsed) {
-            const range = selection.getRangeAt(0);
-            const rect = range.getBoundingClientRect();
-            setInlineEdit({
-              selection: selection.toString(),
-              position: { top: rect.top, left: rect.left },
-              range,
-            });
-          }
+					const selection = window.getSelection();
+					if (selection && !selection.isCollapsed) {
+						const range = selection.getRangeAt(0);
+						const rect = range.getBoundingClientRect();
+						const container = relativeContainerRef.current;
+						if (!container) {
+							break;
+						}
+						const containerRect = container.getBoundingClientRect();
+						setInlineEdit({
+							selection: selection.toString(),
+							position: {
+								top: rect.top - containerRect.top,
+								left: rect.left - containerRect.left,
+							},
+							range,
+						});
+					}
 					break;
-        }
+				}
 				case 'z':
 					if (event.shiftKey) {
 						event.preventDefault();
@@ -646,32 +655,18 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 		setInlineEdit(null);
 	};
 
-	useEffect(() => {
-		const handleScroll = () => {
-			if (inlineEdit?.range) {
-				const rect = inlineEdit.range.getBoundingClientRect();
-				setInlineEdit((prev) =>
-					prev ? { ...prev, position: { top: rect.top, left: rect.left } } : null,
-				);
-			}
-		};
-
-		const scrollableElement = editorContentRef.current;
-		if (scrollableElement) {
-			scrollableElement.addEventListener("scroll", handleScroll, true);
-		}
-
-		return () => {
-			if (scrollableElement) {
-				scrollableElement.removeEventListener("scroll", handleScroll, true);
-			}
-		};
-	}, [inlineEdit?.range]);
-
 	const handleEdit = (selection: string, rect: DOMRect, range: Range) => {
+		const container = relativeContainerRef.current;
+		if (!container) {
+			return;
+		}
+		const containerRect = container.getBoundingClientRect();
 		setInlineEdit({
 			selection,
-			position: { top: rect.top, left: rect.left },
+			position: {
+				top: rect.top - containerRect.top,
+				left: rect.left - containerRect.left,
+			},
 			range,
 		});
 	};
@@ -817,7 +812,7 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 			</EditorToolbar>
 
 			<EditorContent ref={editorContentRef}>
-				<Box sx={{ position: "relative" }}>
+				<Box sx={{ position: "relative" }} ref={relativeContainerRef}>
 					<div
 						ref={editorRef}
 						contentEditable
@@ -831,6 +826,15 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 						showEdit
 						onEdit={handleEdit}
 					/>
+					{inlineEdit && document.path && (
+						<InlineEdit
+							selection={inlineEdit.selection}
+							position={inlineEdit.position}
+							filePath={document.path}
+							onClose={() => setInlineEdit(null)}
+							onApplyChanges={handleApplyChanges}
+						/>
+					)}
 				</Box>
 			</EditorContent>
 			<InsertLinkDialog
@@ -849,15 +853,6 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 				onClose={() => setTableAnchorEl(null)}
 				onInsert={handleInsertTable}
 			/>
-			{inlineEdit && document.path && (
-				<InlineEdit
-					selection={inlineEdit.selection}
-					position={inlineEdit.position}
-					filePath={document.path}
-					onClose={() => setInlineEdit(null)}
-					onApplyChanges={handleApplyChanges}
-				/>
-			)}
 		</EditorContainer>
 	);
 };
