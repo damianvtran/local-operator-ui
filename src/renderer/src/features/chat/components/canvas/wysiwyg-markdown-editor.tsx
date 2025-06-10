@@ -481,29 +481,59 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 		setTableAnchorEl(event.currentTarget);
 	}, []);
 
-	const handleInsertTable = useCallback((rows: number, cols: number) => {
-		if (rows > 0 && cols > 0) {
-			let tableHTML = '<table><thead><tr>';
-			
-			// Create header row
-			for (let j = 0; j < cols; j++) {
-				tableHTML += '<th>Header</th>';
-			}
-			tableHTML += '</tr></thead><tbody>';
-			
-			// Create body rows
-			for (let i = 0; i < rows - 1; i++) {
-				tableHTML += '<tr>';
+	const handleInsertTable = useCallback(
+		(rows: number, cols: number) => {
+			if (rows > 0 && cols > 0) {
+				const selection = window.getSelection();
+				if (!selection?.rangeCount) return;
+
+				const range = selection.getRangeAt(0);
+				range.deleteContents();
+
+				// Create a new paragraph for spacing
+				const p1 = window.document.createElement("p");
+				p1.innerHTML = "<br>";
+
+				// Create the table element
+				const table = window.document.createElement("table");
+				const thead = table.createTHead();
+				const tbody = table.createTBody();
+				const headerRow = thead.insertRow();
+
 				for (let j = 0; j < cols; j++) {
-					tableHTML += '<td>Cell</td>';
+					const th = window.document.createElement("th");
+					th.textContent = `Header ${j + 1}`;
+					headerRow.appendChild(th);
 				}
-				tableHTML += '</tr>';
+
+				for (let i = 0; i < rows; i++) {
+					const bodyRow = tbody.insertRow();
+					for (let j = 0; j < cols; j++) {
+						const td = bodyRow.insertCell();
+						td.textContent = `Cell ${i + 1}, ${j + 1}`;
+					}
+				}
+
+				// Create another paragraph for spacing
+				const p2 = window.document.createElement("p");
+				p2.innerHTML = "<br>";
+
+				// Insert the elements into the document
+				range.insertNode(p2);
+				range.insertNode(table);
+				range.insertNode(p1);
+
+				// Move the cursor to after the table
+				range.setStartAfter(p2);
+				range.collapse(true);
+				selection.removeAllRanges();
+				selection.addRange(range);
+
+				handleContentChange();
 			}
-			
-			tableHTML += '</tbody></table>';
-			executeCommand('insertHTML', tableHTML);
-		}
-	}, [executeCommand]);
+		},
+		[handleContentChange],
+	);
 
 	// Handle keyboard shortcuts
 	const handleKeyDown = useCallback((event: React.KeyboardEvent) => {
