@@ -28,10 +28,9 @@ import {
 	Undo,
 } from "lucide-react";
 import type { FC } from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useDebounce } from "@shared/hooks/use-debounce";
 import { useCanvasStore } from "@shared/store/canvas-store";
-import { useConversationMessages } from "@shared/hooks/use-conversation-messages";
 import { showSuccessToast } from "@shared/utils/toast-manager";
 import type { CanvasDocument } from "../../types/canvas";
 import { markdownToHtml, htmlToMarkdown } from "@features/chat/components/canvas/wysiwyg-utils";
@@ -46,6 +45,7 @@ import { TextStyleDropdown } from "./wysiwyg/text-style-dropdown";
 type WysiwygMarkdownEditorProps = {
 	document: CanvasDocument;
 	conversationId?: string;
+	agentId?: string;
 };
 
 const EditorContainer = styled(Paper)(({ theme }) => ({
@@ -212,6 +212,7 @@ type TextType = "paragraph" | "h1" | "h2" | "h3" | "h4" | "h5" | "h6";
 export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 	document,
 	conversationId,
+	agentId,
 }) => {
 	const [content, setContent] = useState(document.content);
 	const [hasUserChanges, setHasUserChanges] = useState(false);
@@ -241,12 +242,6 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 	const canvasState = useCanvasStore((state) =>
 		conversationId ? state.conversations[conversationId] : undefined,
 	);
-	const { messages } = useConversationMessages(conversationId);
-	const agentId = useMemo(() => {
-		if (!messages) return undefined;
-		const assistantMessage = messages.find((m) => m.role === "assistant");
-		return assistantMessage?.agent;
-	}, [messages]);
 
 	const updateCurrentTextType = useCallback(() => {
 		const selection = window.getSelection();
@@ -834,7 +829,7 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 						showCopy
 						showEdit
 						onEdit={handleEdit}
-						agentId={agentId}
+						agentId={agentId ?? undefined}
 					/>
 					{inlineEdit && document.path && (
 						<InlineEdit

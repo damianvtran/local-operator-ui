@@ -281,6 +281,7 @@ export const ChatContent: FC<ChatContentProps> = ({
 							activeDocumentId={selectedTabId}
 							initialDocuments={files}
 							conversationId={conversationId}
+							agentId={agentId}
 							onChangeActiveDocument={(documentId: string) =>
 								setSelectedTab(conversationId, documentId)
 							}

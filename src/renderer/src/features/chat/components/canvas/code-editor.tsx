@@ -6,9 +6,8 @@ import CodeMirror, {
 	type Extension,
 	type ReactCodeMirrorRef,
 } from "@uiw/react-codemirror";
-import { type FC, useCallback, useEffect, useState, useRef, useMemo } from "react";
+import { type FC, useCallback, useEffect, useState, useRef } from "react";
 import { useDebounce } from "../../../../shared/hooks/use-debounce";
-import { useConversationMessages } from "@shared/hooks/use-conversation-messages";
 import type { CanvasDocument } from "../../types/canvas";
 import { InlineEdit } from "./inline-edit";
 
@@ -20,6 +19,7 @@ type CodeEditorProps = {
 	editable?: boolean;
 	onContentChange?: (content: string) => void;
 	conversationId?: string;
+	agentId?: string;
 };
 
 const CodeEditorContainer = styled(Box)(({ theme }) => ({
@@ -54,14 +54,9 @@ export const CodeEditor: FC<CodeEditorProps> = ({
 	editable = true,
 	onContentChange,
 	conversationId,
+	agentId,
 }) => {
 	const [content, setContent] = useState(document.content);
-	const { messages } = useConversationMessages(conversationId);
-	const agentId = useMemo(() => {
-		if (!messages) return undefined;
-		const assistantMessage = messages.find((m) => m.role === "assistant");
-		return assistantMessage?.agent;
-	}, [messages]);
 	const [languageExtensions, setLanguageExtensions] = useState<Extension[]>([]);
 	const debouncedContent = useDebounce(content, 1000);
 	const [inlineEdit, setInlineEdit] = useState<{
@@ -175,7 +170,8 @@ export const CodeEditor: FC<CodeEditorProps> = ({
 				showCopy
 				showEdit
 				onEdit={handleEdit}
-				agentId={agentId}
+				conversationId={conversationId}
+				agentId={agentId ?? undefined}
 			/>
 			{inlineEdit && document.path && (
 				<InlineEdit
