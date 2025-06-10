@@ -224,8 +224,10 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 	const [inlineEdit, setInlineEdit] = useState<{
 		selection: string;
 		position: { top: number; left: number };
+		range: Range | null;
 	} | null>(null);
 	const selectionRef = useRef<Range | null>(null);
+	const editorContentRef = useRef<HTMLDivElement>(null);
 
 	const debouncedContent = useDebounce(content, 1000);
 	const editorRef = useRef<HTMLDivElement>(null);
@@ -591,6 +593,7 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
             setInlineEdit({
               selection: selection.toString(),
               position: { top: rect.top, left: rect.left },
+              range,
             });
           }
 					break;
@@ -643,10 +646,33 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 		setInlineEdit(null);
 	};
 
-	const handleEdit = (selection: string, rect: DOMRect) => {
+	useEffect(() => {
+		const handleScroll = () => {
+			if (inlineEdit?.range) {
+				const rect = inlineEdit.range.getBoundingClientRect();
+				setInlineEdit((prev) =>
+					prev ? { ...prev, position: { top: rect.top, left: rect.left } } : null,
+				);
+			}
+		};
+
+		const scrollableElement = editorContentRef.current;
+		if (scrollableElement) {
+			scrollableElement.addEventListener("scroll", handleScroll, true);
+		}
+
+		return () => {
+			if (scrollableElement) {
+				scrollableElement.removeEventListener("scroll", handleScroll, true);
+			}
+		};
+	}, [inlineEdit?.range]);
+
+	const handleEdit = (selection: string, rect: DOMRect, range: Range) => {
 		setInlineEdit({
 			selection,
 			position: { top: rect.top, left: rect.left },
+			range,
 		});
 	};
 
@@ -790,7 +816,7 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 				</Tooltip>
 			</EditorToolbar>
 
-			<EditorContent>
+			<EditorContent ref={editorContentRef}>
 				<Box sx={{ position: "relative" }}>
 					<div
 						ref={editorRef}
@@ -801,6 +827,7 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 					/>
 					<TextSelectionControls
 						targetRef={editorRef}
+						scrollableContainerRef={editorContentRef}
 						showEdit
 						onEdit={handleEdit}
 					/>

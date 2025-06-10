@@ -57,8 +57,10 @@ export const CodeEditor: FC<CodeEditorProps> = ({
 	const [inlineEdit, setInlineEdit] = useState<{
 		selection: string;
 		position: { top: number; left: number };
+		range: Range | null;
 	} | null>(null);
 	const editorRef = useRef<ReactCodeMirrorRef>(null);
+	const scrollContainerRef = useRef<HTMLDivElement>(null);
 
 	const theme = useTheme();
 
@@ -105,9 +107,11 @@ export const CodeEditor: FC<CodeEditorProps> = ({
 				if (selection) {
 					const rect = view.coordsAtPos(from);
 					if (rect) {
+						const selectionRange = window.getSelection()?.getRangeAt(0);
 						setInlineEdit({
 							selection,
 							position: { top: rect.bottom, left: rect.left },
+							range: selectionRange || null,
 						});
 					}
 				}
@@ -123,15 +127,40 @@ export const CodeEditor: FC<CodeEditorProps> = ({
 		setInlineEdit(null);
 	};
 
-	const handleEdit = (selection: string, rect: DOMRect) => {
+	const handleEdit = (selection: string, rect: DOMRect, range: Range) => {
 		setInlineEdit({
 			selection,
 			position: { top: rect.bottom, left: rect.left },
+			range,
 		});
 	};
 
+	useEffect(() => {
+		const handleScroll = () => {
+			if (inlineEdit?.range) {
+				const rect = inlineEdit.range.getBoundingClientRect();
+				setInlineEdit((prev) =>
+					prev
+						? { ...prev, position: { top: rect.bottom, left: rect.left } }
+						: null,
+				);
+			}
+		};
+
+		const scrollableElement = scrollContainerRef.current;
+		if (scrollableElement) {
+			scrollableElement.addEventListener("scroll", handleScroll, true);
+		}
+
+		return () => {
+			if (scrollableElement) {
+				scrollableElement.removeEventListener("scroll", handleScroll, true);
+			}
+		};
+	}, [inlineEdit?.range]);
+
 	return (
-		<CodeEditorContainer onKeyDown={handleKeyDown}>
+		<CodeEditorContainer onKeyDown={handleKeyDown} ref={scrollContainerRef}>
 			<CodeMirror
 				value={content}
 				height="100%"
@@ -143,6 +172,7 @@ export const CodeEditor: FC<CodeEditorProps> = ({
 			/>
 			<TextSelectionControls
 				targetRef={editorRef as React.RefObject<HTMLElement>}
+				scrollableContainerRef={scrollContainerRef}
 				showEdit
 				onEdit={handleEdit}
 			/>
