@@ -34,6 +34,7 @@ import { useCanvasStore } from "@shared/store/canvas-store";
 import { showSuccessToast } from "@shared/utils/toast-manager";
 import type { CanvasDocument } from "../../types/canvas";
 import { markdownToHtml, htmlToMarkdown } from "@features/chat/components/canvas/wysiwyg-utils";
+import { InlineEdit } from "./inline-edit";
 import { InsertImageDialog } from "./wysiwyg/insert-image-dialog";
 import type { LinkDialogData } from "./wysiwyg/insert-link-dialog";
 import { InsertLinkDialog } from "./wysiwyg/insert-link-dialog";
@@ -219,6 +220,10 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 	const [linkDialogData, setLinkDialogData] = useState<LinkDialogData>({ url: "", text: "" });
 	const [isImageDialogOpen, setIsImageDialogOpen] = useState(false);
 	const [tableAnchorEl, setTableAnchorEl] = useState<HTMLElement | null>(null);
+	const [inlineEdit, setInlineEdit] = useState<{
+		selection: string;
+		position: { top: number; left: number };
+	} | null>(null);
 	const selectionRef = useRef<Range | null>(null);
 
 	const debouncedContent = useDebounce(content, 1000);
@@ -576,10 +581,19 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 					event.preventDefault();
 					handleFormatToggle('underline');
 					break;
-				case 'k':
+				case 'k': {
 					event.preventDefault();
-					insertLink();
+          const selection = window.getSelection();
+          if (selection && !selection.isCollapsed) {
+            const range = selection.getRangeAt(0);
+            const rect = range.getBoundingClientRect();
+            setInlineEdit({
+              selection: selection.toString(),
+              position: { top: rect.bottom, left: rect.left },
+            });
+          }
 					break;
+        }
 				case 'z':
 					if (event.shiftKey) {
 						event.preventDefault();
@@ -618,7 +632,24 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 				}
 			}
 		}
-	}, [handleFormatToggle, insertLink, executeCommand]);
+	}, [handleFormatToggle, executeCommand]);
+
+	const handleApplyChanges = (newContent: string) => {
+		if (editorRef.current) {
+			const currentContent = htmlToMarkdown(editorRef.current.innerHTML);
+			const selection = window.getSelection();
+			if (selection && !selection.isCollapsed) {
+				const originalSelection = selection.toString();
+				const updatedContent = currentContent.replace(
+					originalSelection,
+					newContent,
+				);
+				editorRef.current.innerHTML = markdownToHtml(updatedContent);
+				handleContentChange();
+			}
+		}
+		setInlineEdit(null);
+	};
 
 	return (
 		<EditorContainer elevation={1}>
@@ -729,7 +760,7 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 				<ToolbarDivider orientation="vertical" />
 
 				{/* Insert Elements */}
-				<Tooltip title="Insert Link (Ctrl+K)">
+				<Tooltip title="Insert Link">
 					<ToolbarButton onClick={insertLink}>
 						<Link size={16} />
 					</ToolbarButton>
@@ -785,6 +816,15 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 				onClose={() => setTableAnchorEl(null)}
 				onInsert={handleInsertTable}
 			/>
+			{inlineEdit && document.path && (
+				<InlineEdit
+					selection={inlineEdit.selection}
+					position={inlineEdit.position}
+					filePath={document.path}
+					onClose={() => setInlineEdit(null)}
+					onApplyChanges={handleApplyChanges}
+				/>
+			)}
 		</EditorContainer>
 	);
 };

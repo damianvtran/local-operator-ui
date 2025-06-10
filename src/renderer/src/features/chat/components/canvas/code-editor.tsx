@@ -1,10 +1,14 @@
 import { Box, useTheme, styled } from "@mui/material";
 import { loadLanguageExtensions } from "@shared/utils/load-language-extensions";
 import { basicDark, basicLight } from "@uiw/codemirror-theme-basic";
-import CodeMirror, { type Extension } from "@uiw/react-codemirror";
-import { type FC, useCallback, useEffect, useState } from "react";
+import CodeMirror, {
+	type Extension,
+	type ReactCodeMirrorRef,
+} from "@uiw/react-codemirror";
+import { type FC, useCallback, useEffect, useState, useRef } from "react";
 import { useDebounce } from "../../../../shared/hooks/use-debounce";
 import type { CanvasDocument } from "../../types/canvas";
+import { InlineEdit } from "./inline-edit";
 
 type CodeEditorProps = {
 	/**
@@ -49,6 +53,11 @@ export const CodeEditor: FC<CodeEditorProps> = ({
 	const [content, setContent] = useState(document.content);
 	const [languageExtensions, setLanguageExtensions] = useState<Extension[]>([]);
 	const debouncedContent = useDebounce(content, 1000);
+	const [inlineEdit, setInlineEdit] = useState<{
+		selection: string;
+		position: { top: number; left: number };
+	} | null>(null);
+	const editorRef = useRef<ReactCodeMirrorRef>(null);
 
 	const theme = useTheme();
 
@@ -85,8 +94,36 @@ export const CodeEditor: FC<CodeEditorProps> = ({
 	const codeEditorTheme =
 		theme.palette.mode === "light" ? basicLight : basicDark;
 
+	const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+		if ((event.metaKey || event.ctrlKey) && event.key === "k") {
+			event.preventDefault();
+			const view = editorRef.current?.view;
+			if (view) {
+				const { from, to } = view.state.selection.main;
+				const selection = view.state.doc.sliceString(from, to);
+				if (selection) {
+					const rect = view.coordsAtPos(from);
+					if (rect) {
+						setInlineEdit({
+							selection,
+							position: { top: rect.bottom, left: rect.left },
+						});
+					}
+				}
+			}
+		}
+	};
+
+	const handleApplyChanges = (newContent: string) => {
+		setContent(newContent);
+		if (onContentChange) {
+			onContentChange(newContent);
+		}
+		setInlineEdit(null);
+	};
+
 	return (
-		<CodeEditorContainer>
+		<CodeEditorContainer onKeyDown={handleKeyDown}>
 			<CodeMirror
 				value={content}
 				height="100%"
@@ -94,7 +131,17 @@ export const CodeEditor: FC<CodeEditorProps> = ({
 				editable={editable}
 				extensions={languageExtensions}
 				onChange={handleContentChange}
+				ref={editorRef}
 			/>
+			{inlineEdit && document.path && (
+				<InlineEdit
+					selection={inlineEdit.selection}
+					position={inlineEdit.position}
+					filePath={document.path}
+					onClose={() => setInlineEdit(null)}
+					onApplyChanges={handleApplyChanges}
+				/>
+			)}
 		</CodeEditorContainer>
 	);
 };
