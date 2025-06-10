@@ -320,6 +320,7 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 				<MessageTimestamp
 					timestamp={message.timestamp}
 					isUser={isUser}
+					isSmallView={isSmallView}
 					sx={{
 						opacity: isStreamable ? 0 : 1,
 						pointerEvents: isStreamable ? "none" : "auto",

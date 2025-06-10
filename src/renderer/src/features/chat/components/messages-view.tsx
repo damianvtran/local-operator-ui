@@ -4,7 +4,7 @@ import type {
 	JobStatus,
 } from "@shared/api/local-operator/types";
 import { RingLoadingIndicator } from "@shared/components/common/ring-loading-indicator";
-import { type FC, type RefObject, useEffect, useState } from "react";
+import type { FC, RefObject } from "react";
 import type { Message } from "../types/message";
 import { LoadingIndicator } from "./loading-indicator";
 import { MessageItem } from "./message-item";
@@ -25,6 +25,7 @@ type MessagesViewProps = {
 	scrollToBottom?: () => void;
 	refetch?: () => void;
 	conversationId: string;
+	isSmallView: boolean;
 };
 
 /**
@@ -52,11 +53,11 @@ const MessagesContainer = styled(Box, {
 	shouldForwardProp: (prop) => prop !== "collapsed" && prop !== "isSmallView",
 })<{ collapsed?: boolean; isSmallView?: boolean }>(
 	({ theme, collapsed }) => ({
-		flexGrow: collapsed ? 0 : 1,
-		height: collapsed ? 0 : "100%",
-		overflow: collapsed ? "hidden" : "auto",
-		padding: collapsed ? 0 : 16,
-		width: "100%",
+  flexGrow: collapsed ? 0 : 1,
+  height: collapsed ? 0 : "100%",
+  overflow: collapsed ? "hidden" : "auto",
+  padding: collapsed ? 0 : 16,
+  width: "100%",
 	display: "flex",
 	flexDirection: "column-reverse", // Key change: reverse column direction for auto-bottom scrolling
 	position: "relative",
@@ -179,31 +180,8 @@ export const MessagesView: FC<MessagesViewProps> = ({
 	messagesEndRef,
 	refetch,
 	conversationId,
+	isSmallView,
 }) => {
-	const [isSmallView, setIsSmallView] = useState(false);
-
-	useEffect(() => {
-		if (!messagesContainerRef.current) {
-			return;
-		}
-
-		const resizeObserver = new ResizeObserver((entries) => {
-			for (const entry of entries) {
-				if (entry.contentRect.width < 500) {
-					setIsSmallView(true);
-				} else {
-					setIsSmallView(false);
-				}
-			}
-		});
-
-		resizeObserver.observe(messagesContainerRef.current);
-
-		return () => {
-			resizeObserver.disconnect();
-		};
-	}, [messagesContainerRef]);
-
 	const collapsed =
 		messages.length === 0 && !isLoadingMessages && !isFetchingMore;
 
