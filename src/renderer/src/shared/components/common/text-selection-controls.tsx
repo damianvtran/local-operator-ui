@@ -69,7 +69,8 @@ export const TextSelectionControls: FC<TextSelectionControlsProps> = ({
 		text: string;
 		html: string;
 		rect: DOMRect | null;
-	}>({ text: "", html: "", rect: null });
+		range: Range | null;
+	}>({ text: "", html: "", rect: null, range: null });
 	const { playSpeech, stopSpeech, loadingMessageId, playingMessageId } =
 		useSpeechStore();
 	const { data: credentialsData, isLoading: isLoadingCredentials } =
@@ -94,7 +95,7 @@ export const TextSelectionControls: FC<TextSelectionControlsProps> = ({
 
 	const handleMouseUp = useCallback(() => {
 		if (!targetRef.current) {
-			setSelection({ text: "", html: "", rect: null });
+			setSelection({ text: "", html: "", rect: null, range: null });
 			return;
 		}
 
@@ -113,12 +114,12 @@ export const TextSelectionControls: FC<TextSelectionControlsProps> = ({
 			const html = container.innerHTML;
 
 			if (text) {
-				setSelection({ text, html, rect });
+				setSelection({ text, html, rect, range });
 			} else {
-				setSelection({ text: "", html: "", rect: null });
+				setSelection({ text: "", html: "", rect: null, range: null });
 			}
 		} else {
-			setSelection({ text: "", html: "", rect: null });
+			setSelection({ text: "", html: "", rect: null, range: null });
 		}
 	}, [targetRef]);
 
@@ -133,6 +134,23 @@ export const TextSelectionControls: FC<TextSelectionControlsProps> = ({
 			document.removeEventListener("mouseup", handleMouseUpEvent);
 		};
 	}, [handleMouseUp]);
+
+	useEffect(() => {
+		const handleScrollAndResize = () => {
+			if (selection.range) {
+				const rect = selection.range.getBoundingClientRect();
+				setSelection((s) => ({ ...s, rect }));
+			}
+		};
+
+		window.addEventListener("scroll", handleScrollAndResize, true);
+		window.addEventListener("resize", handleScrollAndResize, true);
+
+		return () => {
+			window.removeEventListener("scroll", handleScrollAndResize, true);
+			window.removeEventListener("resize", handleScrollAndResize, true);
+		};
+	}, [selection.range]);
 
 	const handlePlay = () => {
 		if (agentId && selection.text) {
@@ -155,7 +173,7 @@ export const TextSelectionControls: FC<TextSelectionControlsProps> = ({
 				"text/plain": textBlob,
 			});
 			navigator.clipboard.write([item]).finally(() => {
-				setSelection({ text: "", html: "", rect: null });
+				setSelection({ text: "", html: "", rect: null, range: null });
 			});
 		} else {
 			handleCopyWithoutFormatting();
@@ -165,7 +183,7 @@ export const TextSelectionControls: FC<TextSelectionControlsProps> = ({
 	const handleCopyWithoutFormatting = () => {
 		if (selection.text) {
 			navigator.clipboard.writeText(selection.text).finally(() => {
-				setSelection({ text: "", html: "", rect: null });
+				setSelection({ text: "", html: "", rect: null, range: null });
 			});
 		}
 	};
@@ -176,14 +194,14 @@ export const TextSelectionControls: FC<TextSelectionControlsProps> = ({
 				id: uuidv4(),
 				text: selection.text,
 			});
-			setSelection({ text: "", html: "", rect: null });
+			setSelection({ text: "", html: "", rect: null, range: null });
 		}
 	};
 
 	const handleEdit = () => {
 		if (selection.text && selection.rect && onEdit) {
 			onEdit(selection.text, selection.rect);
-			setSelection({ text: "", html: "", rect: null });
+			setSelection({ text: "", html: "", rect: null, range: null });
 		}
 	};
 
