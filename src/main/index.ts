@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { electronApp, is, optimizer } from "@electron-toolkit/utils";
 import {
@@ -500,6 +500,17 @@ app
 				console.error("Error showing item in folder:", error);
 			}
 		});
+
+		ipcMain.handle(
+			"save-file",
+			async (_, filePath: string, content: string) => {
+				try {
+					writeFileSync(filePath, content, "utf-8");
+				} catch (error) {
+					logger.error("Error saving file:", LogFileType.BACKEND, error);
+				}
+			},
+		);
 
 		// --- Directory Selection IPC Handler ---
 		ipcMain.handle("select-directory", async () => {

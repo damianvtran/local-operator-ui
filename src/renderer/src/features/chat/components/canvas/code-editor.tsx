@@ -2,7 +2,8 @@ import { Box, useTheme } from "@mui/material";
 import { loadLanguageExtensions } from "@shared/utils/load-language-extensions";
 import { basicDark, basicLight } from "@uiw/codemirror-theme-basic";
 import CodeMirror, { type Extension } from "@uiw/react-codemirror";
-import { type FC, useEffect, useState } from "react";
+import { type FC, useCallback, useEffect, useState } from "react";
+import { useDebounce } from "../../../../shared/hooks/use-debounce";
 import type { CanvasDocument } from "../../types/canvas";
 
 type CodeEditorProps = {
@@ -10,28 +11,54 @@ type CodeEditorProps = {
 	 * The document to display
 	 */
 	document: CanvasDocument;
+	editable?: boolean;
+	onContentChange?: (content: string) => void;
 };
 
 /**
  * Content component for the markdown canvas
  * Displays the markdown content with syntax highlighting
  */
-export const CodeEditor: FC<CodeEditorProps> = ({ document }) => {
-	const [value, setValue] = useState<CanvasDocument | null>(null);
+export const CodeEditor: FC<CodeEditorProps> = ({
+	document,
+	editable = true,
+	onContentChange,
+}) => {
+	const [content, setContent] = useState(document.content);
 	const [languageExtensions, setLanguageExtensions] = useState<Extension[]>([]);
+	const debouncedContent = useDebounce(content, 1000);
 
 	const theme = useTheme();
 
 	useEffect(() => {
-		if (document.id !== value?.id || document.content !== value?.content) {
-			setValue(document);
-			const newLangExtension = loadLanguageExtensions(document.title);
+		setContent(document.content);
+		const newLangExtension = loadLanguageExtensions(document.title);
 
-			if (newLangExtension) {
-				setLanguageExtensions([newLangExtension]);
-			}
+		if (newLangExtension) {
+			setLanguageExtensions([newLangExtension]);
 		}
-	}, [document, value?.id, value?.content]);
+	}, [document]);
+
+	useEffect(() => {
+		if (
+			editable &&
+			debouncedContent !== document.content &&
+			document.path &&
+			window.api.saveFile
+		) {
+			window.api.saveFile(document.path, debouncedContent);
+		}
+	}, [debouncedContent, document.content, document.path, editable]);
+
+	const handleContentChange = useCallback(
+		(value: string) => {
+			setContent(value);
+			if (onContentChange) {
+				onContentChange(value);
+			}
+		},
+		[onContentChange],
+	);
 
 	const codeEditorTheme =
 		theme.palette.mode === "light" ? basicLight : basicDark;
@@ -42,6 +69,7 @@ export const CodeEditor: FC<CodeEditorProps> = ({ document }) => {
 				flexGrow: 1,
 				fontSize: typography.pxToRem(12),
 				overflow: "auto",
+				height: "100%",
 
 				"& > *": {
 					height: "100%",
@@ -60,11 +88,12 @@ export const CodeEditor: FC<CodeEditorProps> = ({ document }) => {
 			})}
 		>
 			<CodeMirror
-				value={value?.content ?? ""}
+				value={content}
 				height="100%"
 				theme={codeEditorTheme}
-				editable={false}
+				editable={editable}
 				extensions={languageExtensions}
+				onChange={handleContentChange}
 			/>
 		</Box>
 	);
