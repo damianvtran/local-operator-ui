@@ -312,7 +312,7 @@ const CanvasComponent: FC<CanvasProps> = ({
 					/>
 
 					{/* Document content area */}
-					{activeDocument && <CanvasContent document={activeDocument} />}
+					{activeDocument && <CanvasContent document={activeDocument} conversationId={conversationId} />}
 
 					{/* Empty state when no documents are open */}
 					{!activeDocument && documents.length === 0 && (
