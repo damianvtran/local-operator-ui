@@ -21,10 +21,12 @@ const textStrobeAnimation = keyframes`
 `;
 
 // Styled components
-const LoadingContainer = styled(Box)(() => ({
+const LoadingContainer = styled(Box, {
+	shouldForwardProp: (prop) => prop !== "isSmallView",
+})<{ isSmallView?: boolean }>(({ isSmallView }) => ({
 	display: "flex",
 	alignItems: "center",
-	gap: 0,
+	gap: isSmallView ? 8 : 0,
 }));
 
 const AgentAvatar = styled(Avatar)(({ theme }) => ({
@@ -46,10 +48,13 @@ const StatusContainer = styled(Box)(() => ({
 	gap: 8,
 }));
 
-const StatusText = styled(Typography)(({ theme }) => ({
+const StatusText = styled(Typography, {
+	shouldForwardProp: (prop) => prop !== "isSmallView",
+})<{ isSmallView?: boolean }>(({ theme, isSmallView }) => ({
 	color: theme.palette.text.secondary,
 	display: "flex",
-	marginLeft: 16,
+	marginLeft: isSmallView ? 0 : 16,
+	fontSize: isSmallView ? "0.75rem" : "inherit",
 	position: "relative",
 	animation: `${textStrobeAnimation} 3s ease-in-out infinite`,
 }));
@@ -179,7 +184,8 @@ export const LoadingIndicator: FC<{
 	agentName?: string;
 	currentExecution?: AgentExecutionRecord | null;
 	conversationId?: string;
-}> = memo(({ status, currentExecution }) => {
+	isSmallView?: boolean;
+}> = memo(({ status, currentExecution, isSmallView }) => {
 	const { getStreamingMessage } = useStreamingMessagesStore();
 	const streamingMessage = getStreamingMessage(currentExecution?.id || "");
 	const isStreaming = !!streamingMessage && !streamingMessage.isComplete;
@@ -209,14 +215,16 @@ export const LoadingIndicator: FC<{
 	}
 
 	return (
-		<LoadingContainer>
-			<AgentAvatar>
-				<Bot size={22} />
-			</AgentAvatar>
+		<LoadingContainer isSmallView={isSmallView}>
+			{!isSmallView && (
+				<AgentAvatar>
+					<Bot size={22} />
+				</AgentAvatar>
+			)}
 
 			<ContentContainer>
 				<StatusContainer>
-					<StatusText variant="body2">
+					<StatusText variant="body2" isSmallView={isSmallView}>
 						<StatusTextContent>{statusText}</StatusTextContent>
 						<StatusControls>
 							<DotContainer>

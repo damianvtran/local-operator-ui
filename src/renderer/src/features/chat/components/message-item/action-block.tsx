@@ -23,7 +23,7 @@ import { VideoAttachment } from "./video-attachment";
  */
 export type ActionBlockProps = {
 	message: string;
-	content?: string;
+	fileContent?: string;
 	action?: ActionType;
 	replacements?: string;
 	executionType: ExecutionType;
@@ -36,6 +36,7 @@ export type ActionBlockProps = {
 	conversationId: string;
 	filePath?: string;
 	isLoading?: boolean;
+	isSmallView?: boolean;
 };
 
 /**
@@ -162,7 +163,7 @@ const getAttachmentUrl = (
 export const ActionBlock: FC<ActionBlockProps> = ({
 	message,
 	replacements,
-	content,
+	fileContent,
 	action,
 	executionType,
 	isUser,
@@ -174,6 +175,7 @@ export const ActionBlock: FC<ActionBlockProps> = ({
 	filePath,
 	conversationId,
 	isLoading,
+	isSmallView,
 }) => {
 	const [isExpanded, setIsExpanded] = useState(false);
 
@@ -185,6 +187,14 @@ export const ActionBlock: FC<ActionBlockProps> = ({
 		e.stopPropagation();
 		setIsExpanded(false);
 	};
+
+	const markdownStyleProps = useMemo(
+		() => ({
+			fontSize: isSmallView ? "0.9rem" : "1.05rem",
+			lineHeight: isSmallView ? 1.4 : 1.6,
+		}),
+		[isSmallView],
+	);
 
 	// Create a Local Operator client using the API config
 	const client = useMemo(() => {
@@ -251,7 +261,10 @@ export const ActionBlock: FC<ActionBlockProps> = ({
 						mb: 2,
 					}}
 				>
-					<MarkdownRenderer content={trimmedMessage} />
+					<MarkdownRenderer
+						content={trimmedMessage}
+						styleProps={markdownStyleProps}
+					/>
 				</Box>
 			)}
 
@@ -268,10 +281,10 @@ export const ActionBlock: FC<ActionBlockProps> = ({
 			>
 				{/* Technical details for action messages */}
 				{code && <CodeBlock code={code} isUser={isUser} />}
-				{content && (
+				{fileContent && (
 					<CodeBlock
 						header="Content"
-						code={content}
+						code={fileContent}
 						isUser={isUser}
 						language={fileLanguage}
 					/>

@@ -14,12 +14,15 @@ import { parseReplies } from "../../utils/reply-utils";
 import { ExpandableThinkingContent } from "./expandable-thinking-content";
 import { MessageControls } from "./message-controls";
 import { ReplyPreview } from "../reply-preview";
+import { MessageContent } from "./message-content";
 import { MessageTimestamp } from "./message-timestamp";
 import { StreamingMessage } from "./streaming-message";
 import { TextSelectionControls } from "./text-selection-controls";
 
 // Create a Paper component with custom styling
-const StyledPaper = styled(Paper)(({ theme }) => ({
+const StyledPaper = styled(Paper, {
+	shouldForwardProp: (prop) => prop !== "isSmallView",
+})<{ isSmallView?: boolean }>(({ theme }) => ({
 	[theme.breakpoints.down("sm")]: {
 		maxWidth: "85%",
 	},
@@ -49,6 +52,7 @@ type MessagePaperProps = {
 	isLastMessage: boolean;
 	isJobRunning: boolean;
 	agentId?: string;
+	isSmallView?: boolean;
 };
 
 /**
@@ -66,6 +70,7 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 	isLastMessage,
 	isJobRunning,
 	agentId,
+	isSmallView,
 }) => {
 	const theme = useTheme();
 	const messageContentRef = useRef<HTMLDivElement>(null);
@@ -74,26 +79,21 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 		[content],
 	);
 
+	const markdownStyleProps = useMemo(
+		() => ({
+			fontSize: isSmallView ? "0.9rem" : "1rem",
+			lineHeight: isSmallView ? 1.4 : 1.6,
+		}),
+		[isSmallView],
+	);
+
 	// For user messages, we keep the paper boundary
 	if (isUser) {
-		const childrenWithRemainingContent = React.Children.map(
-			children,
-			(child: React.ReactNode) => {
-				if (React.isValidElement(child) && child.props.content) {
-					return React.cloneElement(
-						child as React.ReactElement<{ content: string }>,
-						{ content: remainingContent },
-					);
-				}
-				return child;
-			},
-		);
-
 		return (
 			<Box
 				sx={{
 					position: "relative",
-					width: "calc(100% - 56px)",
+					width: isSmallView ? "100%" : "calc(100% - 56px)",
 					display: "flex",
 					justifyContent: "flex-end",
 					"&:hover .message-controls": {
@@ -103,6 +103,7 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 			>
 				<StyledPaper
 					elevation={elevation}
+					isSmallView={isSmallView}
 					sx={{
 						backgroundColor: theme.palette.userMessage.background,
 						border: `1px solid ${theme.palette.userMessage.border}`,
@@ -112,7 +113,11 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 				>
 					<Box ref={messageContentRef} sx={{ position: "relative" }}>
 						{replies.length > 0 && <ReplyPreview replies={replies} />}
-						{childrenWithRemainingContent}
+						<MessageContent
+							content={remainingContent}
+							isUser={isUser}
+							styleProps={markdownStyleProps}
+						/>
 					</Box>
 				</StyledPaper>
 				{message && (
@@ -145,12 +150,12 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 			borderRadius: 2,
 			padding: 0,
 			color: theme.palette.text.primary,
-			width: "calc(100% - 52px)", // Take full width minus padding
+			width: isSmallView ? "100%" : "calc(100% - 52px)", // Take full width minus padding
 			wordBreak: "break-word",
 			overflowWrap: "break-word",
 			position: "relative",
 		}),
-		[theme.palette.text.primary],
+		[theme.palette.text.primary, isSmallView],
 	);
 
 	// Always call hooks at the top level, regardless of conditions
@@ -215,9 +220,17 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 						onMessageComplete();
 					}
 				}}
+				styleProps={markdownStyleProps}
 			/>
 		);
-	}, [isStreamable, message, messageStyles, onMessageComplete, isJobRunning]);
+	}, [
+		isStreamable,
+		message,
+		messageStyles,
+		onMessageComplete,
+		isJobRunning,
+		markdownStyleProps,
+	]);
 
 	// State for expanding thinking content in non-streaming messages
 	const [isThinkingExpanded, setIsThinkingExpanded] = useState(false);
@@ -239,8 +252,11 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 			(child: React.ReactNode) => {
 				if (React.isValidElement(child) && child.props.content) {
 					return React.cloneElement(
-						child as React.ReactElement<{ content: string }>,
-						{ content: remainingContent },
+						child as React.ReactElement<{
+							content: string;
+							styleProps: Record<string, unknown>;
+						}>,
+						{ content: remainingContent, styleProps: markdownStyleProps },
 					);
 				}
 				return child;
@@ -283,13 +299,14 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 		agentId,
 		replies,
 		remainingContent,
+		markdownStyleProps,
 	]);
 
 	return (
 		<Box
 			sx={{
 				position: "relative",
-				width: "calc(100% - 56px)",
+				width: isSmallView ? "100%" : "calc(100% - 56px)",
 				"&:hover .message-controls": {
 					// This hover effect is for when MessageControls is not explicitly hidden by streaming state
 					opacity: 1,

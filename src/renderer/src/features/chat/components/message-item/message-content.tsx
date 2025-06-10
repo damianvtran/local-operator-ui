@@ -8,6 +8,7 @@ import { MarkdownRenderer } from "../markdown-renderer";
 export type MessageContentProps = {
 	content?: string;
 	isUser: boolean;
+	styleProps?: Record<string, unknown>;
 };
 
 /**
@@ -20,12 +21,15 @@ const ContentContainer = styled(Box)(() => ({
 /**
  * Component for rendering message content with markdown support
  */
-export const MessageContent: FC<MessageContentProps> = ({ content }) => {
+export const MessageContent: FC<MessageContentProps> = ({
+	content,
+	styleProps,
+}) => {
 	if (!content) return null;
 
 	return (
 		<ContentContainer>
-			<MarkdownRenderer content={content} />
+			<MarkdownRenderer content={content} styleProps={styleProps} />
 		</ContentContainer>
 	);
 };
