@@ -229,6 +229,12 @@ export const InlineEdit: FC<InlineEditProps> = ({
 	const textareaRef = useRef<HTMLInputElement>(null);
 	const isCancelledRef = useRef(false);
 
+	useEffect(() => {
+		if (textareaRef.current) {
+			textareaRef.current.focus();
+		}
+	}, []);
+
 	const { data: credentialsData, isLoading: isLoadingCredentials } =
 		useCredentials();
 
