@@ -58,7 +58,7 @@ const Divider = styled("div")(({ theme }) => ({
 type FindReplaceWidgetProps = {
 	onFind: (query: string) => void;
 	onNavigate: (direction: "next" | "prev") => void;
-	onReplace: (replaceText: string) => void;
+	onReplace: (replaceText: string, onComplete?: () => void) => void;
 	onReplaceAll: (findText: string, replaceText: string) => void;
 	onClose: () => void;
 	show: boolean;
@@ -121,7 +121,10 @@ export const FindReplaceWidget: FC<FindReplaceWidgetProps> = ({
 			if (e.metaKey || e.ctrlKey) {
 				onReplaceAll(findValue, replaceValue);
 			} else {
-				onReplace(replaceValue);
+				onReplace(replaceValue, () => {
+					// Refocus after a short delay to ensure it happens after scrolling
+					setTimeout(() => replaceInputRef.current?.focus(), 50);
+				});
 			}
 		}
 		if (e.key === "Escape") {
@@ -172,7 +175,14 @@ export const FindReplaceWidget: FC<FindReplaceWidgetProps> = ({
 				<>
 					<Divider />
 					<Tooltip title="Replace (Enter)">
-						<ActionButton onClick={() => onReplace(replaceValue)}>
+						<ActionButton
+							onClick={() =>
+								onReplace(replaceValue, () => {
+									// Refocus after a short delay to ensure it happens after scrolling
+									setTimeout(() => replaceInputRef.current?.focus(), 50);
+								})
+							}
+						>
 							<Replace size={16} />
 						</ActionButton>
 					</Tooltip>

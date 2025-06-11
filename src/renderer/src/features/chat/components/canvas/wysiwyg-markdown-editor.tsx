@@ -206,6 +206,14 @@ const EditorContent = styled(Box)(({ theme }) => ({
 		color: theme.palette.text.primary,
 		fontFamily: theme.typography.fontFamily,
 	},
+	"&::highlight(find-highlight)": {
+		backgroundColor: "yellow",
+		color: "black",
+	},
+	"&::highlight(current-find-highlight)": {
+		backgroundColor: "orange",
+		color: "black",
+	},
 	"& h1, & h2, & h3, & h4, & h5, & h6": {
 		margin: "16px 0 8px 0",
 		fontWeight: 600,
@@ -360,6 +368,20 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 	const isInitialLoadRef = useRef(true);
 	const isMounted = useRef(false);
 
+	const findHighlightRegistry = "find-highlight";
+	const currentFindHighlightRegistry = "current-find-highlight";
+
+	useEffect(() => {
+		if (window.CSS && CSS.highlights) {
+			if (!CSS.highlights.has(findHighlightRegistry)) {
+				CSS.highlights.set(findHighlightRegistry, new Highlight());
+			}
+			if (!CSS.highlights.has(currentFindHighlightRegistry)) {
+				CSS.highlights.set(currentFindHighlightRegistry, new Highlight());
+			}
+		}
+	}, []);
+
 	const { setFiles } = useCanvasStore();
 	const canvasState = useCanvasStore((state) =>
 		conversationId ? state.conversations[conversationId] : undefined,
@@ -429,16 +451,24 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 	}, [updateCurrentTextType, updateSelectedFormats]);
 
 	const clearHighlights = useCallback(() => {
-		if (!editorRef.current) return;
-		const highlights = editorRef.current.querySelectorAll("span[data-highlight='true']");
-		for (const node of highlights) {
-			const parent = node.parentNode;
-			if (parent) {
-				while (node.firstChild) {
-					parent.insertBefore(node.firstChild, node);
+		if (window.CSS && CSS.highlights) {
+			CSS.highlights.get(findHighlightRegistry)?.clear();
+			CSS.highlights.get(currentFindHighlightRegistry)?.clear();
+		} else {
+			// Fallback for browsers that don't support the Highlight API
+			if (!editorRef.current) return;
+			const highlights = editorRef.current.querySelectorAll(
+				"span[data-highlight='true']",
+			);
+			for (const node of highlights) {
+				const parent = node.parentNode;
+				if (parent) {
+					while (node.firstChild) {
+						parent.insertBefore(node.firstChild, node);
+					}
+					parent.removeChild(node);
+					parent.normalize();
 				}
-				parent.removeChild(node);
-				parent.normalize();
 			}
 		}
 	}, []);
@@ -483,7 +513,6 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 			if (ranges.length > 0) {
 				if (startAfterRange) {
 					for (let i = 0; i < ranges.length; i++) {
-						// Find first range that starts at or after the end of startAfterRange
 						if (
 							startAfterRange.compareBoundaryPoints(
 								Range.END_TO_START,
@@ -495,7 +524,6 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 						}
 					}
 					if (newIndex === -1) {
-						// wrap around
 						newIndex = 0;
 					}
 				} else {
@@ -504,20 +532,37 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 
 				setCurrentMatchIndex(newIndex);
 
-				for (let i = 0; i < ranges.length; i++) {
-					const range = ranges[i];
-					const highlightSpan = window.document.createElement("span");
-					highlightSpan.dataset.highlight = "true";
-					const isCurrent = i === newIndex;
-					highlightSpan.style.backgroundColor = isCurrent ? "orange" : "yellow";
-					range.surroundContents(highlightSpan);
+				const activeRange = ranges[newIndex];
+
+				if (window.CSS && CSS.highlights) {
+					const findHighlights = new Highlight(...ranges);
+					CSS.highlights.set(findHighlightRegistry, findHighlights);
+
+					const currentHighlight = new Highlight(activeRange);
+					CSS.highlights.set(currentFindHighlightRegistry, currentHighlight);
+				} else {
+					// Fallback to span-based highlighting
+					for (let i = 0; i < ranges.length; i++) {
+						const range = ranges[i];
+						const highlightSpan = window.document.createElement("span");
+						highlightSpan.dataset.highlight = "true";
+						const isCurrent = i === newIndex;
+						highlightSpan.style.backgroundColor = isCurrent ? "orange" : "yellow";
+						range.surroundContents(highlightSpan);
+					}
 				}
 
-				const activeHighlight = editorRef.current.querySelectorAll(
-					"span[data-highlight='true']",
-				)[newIndex] as HTMLElement;
-				if (activeHighlight) {
-					activeHighlight.scrollIntoView({ behavior: "smooth", block: "center" });
+				// Scroll to the active match
+				const activeElement = window.document.activeElement;
+				activeRange.startContainer.parentElement?.scrollIntoView({
+					behavior: "smooth",
+					block: "center",
+				});
+				if (
+					activeElement instanceof HTMLElement &&
+					activeElement !== window.document.body
+				) {
+					activeElement.focus({ preventScroll: true });
 				}
 			} else {
 				setCurrentMatchIndex(-1);
@@ -538,25 +583,47 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 					: (currentMatchIndex - 1 + matchRanges.length) % matchRanges.length;
 
 			setCurrentMatchIndex(newIndex);
+			const activeRange = matchRanges[newIndex];
 
-			const highlights = editorRef.current?.querySelectorAll(
-				"span[data-highlight='true']",
-			);
-			if (highlights) {
-				highlights.forEach((h, i) => {
-					const highlight = h as HTMLElement;
-					highlight.style.backgroundColor = i === newIndex ? "orange" : "yellow";
-				});
-				const activeHighlight = highlights[newIndex] as HTMLElement;
-				activeHighlight?.scrollIntoView({ behavior: "smooth", block: "center" });
+			if (window.CSS && CSS.highlights) {
+				const currentHighlight = CSS.highlights.get(currentFindHighlightRegistry);
+				currentHighlight?.clear();
+				currentHighlight?.add(activeRange);
+			} else {
+				// Fallback
+				const highlights = editorRef.current?.querySelectorAll(
+					"span[data-highlight='true']",
+				);
+				if (highlights) {
+					highlights.forEach((h, i) => {
+						const highlight = h as HTMLElement;
+						highlight.style.backgroundColor = i === newIndex ? "orange" : "yellow";
+					});
+				}
+			}
+
+			// Scroll to the active match
+			const activeElement = window.document.activeElement;
+			activeRange.startContainer.parentElement?.scrollIntoView({
+				behavior: "smooth",
+				block: "center",
+			});
+			if (
+				activeElement instanceof HTMLElement &&
+				activeElement !== window.document.body
+			) {
+				activeElement.focus({ preventScroll: true });
 			}
 		},
 		[matchRanges, currentMatchIndex],
 	);
 
 	const handleReplace = useCallback(
-		(replaceText: string) => {
-			if (currentMatchIndex === -1 || !matchRanges[currentMatchIndex]) return;
+		(replaceText: string, onComplete?: () => void) => {
+			if (currentMatchIndex === -1 || !matchRanges[currentMatchIndex]) {
+				onComplete?.();
+				return;
+			}
 
 			const range = matchRanges[currentMatchIndex];
 			const selection = window.getSelection();
@@ -566,7 +633,14 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 				window.document.execCommand("insertText", false, replaceText);
 				// After execCommand, selection is collapsed at the end of insertion.
 				const caretRange = selection.getRangeAt(0);
-				handleFind(searchQuery, caretRange);
+
+				// Defer find to separate it from the undo stack and focus back
+				setTimeout(() => {
+					handleFind(searchQuery, caretRange);
+					onComplete?.();
+				}, 0);
+			} else {
+				onComplete?.();
 			}
 		},
 		[currentMatchIndex, matchRanges, handleFind, searchQuery],
