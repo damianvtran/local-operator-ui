@@ -345,6 +345,7 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 	const selectionRef = useRef<Range | null>(null);
 	const editorContentRef = useRef<HTMLDivElement>(null);
 	const relativeContainerRef = useRef<HTMLDivElement>(null);
+	const scrollPositionRef = useRef<number | null>(null);
 
 	const debouncedContent = useDebounce(content, 1000);
 	const editorRef = useRef<HTMLDivElement>(null);
@@ -467,6 +468,14 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 		canvasState,
 		setFiles,
 	]);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: We need to run this effect when content changes to restore the scroll position.
+	useEffect(() => {
+		if (scrollPositionRef.current !== null && editorContentRef.current) {
+			editorContentRef.current.scrollTop = scrollPositionRef.current;
+			scrollPositionRef.current = null;
+		}
+	}, [content]);
 
 	const handleSelectionChange = useCallback(() => {
 		updateCurrentTextType();
@@ -805,7 +814,10 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 	}, [handleFormatToggle, executeCommand, content]);
 	// Start of Selection
 	const handleApplyChanges = (editDiffs: Array<{ find: string; replace: string }>) => {
-		if (!editorRef.current) return;
+		if (!editorRef.current || !editorContentRef.current) return;
+
+		// Store scroll position
+		scrollPositionRef.current = editorContentRef.current.scrollTop;
 
 		// Compute updated markdown content
 		const updatedContent = editDiffs.reduce(
@@ -820,10 +832,10 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 			const el = editorRef.current;
 			el.focus();
 			// Replace entire content in a single undo step
-			window.document.execCommand('selectAll', false);
-			window.document.execCommand('insertHTML', false, htmlContent);
+			window.document.execCommand("selectAll", false);
+			window.document.execCommand("insertHTML", false, htmlContent);
 		} catch (error) {
-			console.warn('Undoable apply failed, falling back to direct update:', error);
+			console.warn("Undoable apply failed, falling back to direct update:", error);
 		}
 
 		// Update state
@@ -833,7 +845,7 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 		// Cleanup inline edit
 		setInlineEdit(null);
 		selectionRef.current = null;
-  };
+	};
 	
 
 	const handleEdit = (
