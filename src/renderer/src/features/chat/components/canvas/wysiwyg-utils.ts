@@ -66,6 +66,74 @@ const HTML_QUOT_REGEX = /&quot;/g;
 const HTML_APOS_REGEX = /&#39;/g;
 
 /**
+ * Convert markdown tables to HTML tables
+ */
+const convertMarkdownTablesToHtml = (text: string): string => {
+	// Match markdown table pattern
+	const tableRegex = /(?:^|\n)((?:\|[^\n]*\|(?:\n|$))+)/gm;
+	
+	return text.replace(tableRegex, (match, tableContent) => {
+		const lines = tableContent.trim().split('\n').map(line => line.trim());
+		
+		if (lines.length < 2) return match;
+		
+		// Parse header row
+		const headerRow = lines[0];
+		if (!headerRow.startsWith('|') || !headerRow.endsWith('|')) return match;
+		
+		// Parse separator row (should contain dashes)
+		const separatorRow = lines[1];
+		if (!separatorRow.includes('---')) return match;
+		
+		// Extract headers
+		const headers = headerRow
+			.slice(1, -1) // Remove leading and trailing |
+			.split('|')
+			.map(cell => cell.trim());
+		
+		// Extract data rows
+		const dataRows = lines.slice(2).map(line => {
+			if (!line.startsWith('|') || !line.endsWith('|')) return null;
+			return line
+				.slice(1, -1) // Remove leading and trailing |
+				.split('|')
+				.map(cell => cell.trim());
+		}).filter(row => row !== null);
+		
+		// Build HTML table
+		let tableHtml = '<table>';
+		
+		// Add header
+		if (headers.length > 0) {
+			tableHtml += '<thead><tr>';
+			for (const header of headers) {
+				tableHtml += `<th>${header}</th>`;
+			}
+			tableHtml += '</tr></thead>';
+		}
+		
+		// Add body
+		if (dataRows.length > 0) {
+			tableHtml += '<tbody>';
+			for (const row of dataRows) {
+				if (row) {
+					tableHtml += '<tr>';
+					for (const cell of row) {
+						tableHtml += `<td>${cell}</td>`;
+					}
+					tableHtml += '</tr>';
+				}
+			}
+			tableHtml += '</tbody>';
+		}
+		
+		tableHtml += '</table>';
+		
+		return tableHtml;
+	});
+};
+
+/**
  * Convert markdown to HTML for display in the contentEditable div
  * This is a simplified converter that handles basic markdown elements
  */
@@ -102,6 +170,9 @@ export const markdownToHtml = (markdown: string): string => {
 
 	// Convert images
 	html = html.replace(IMAGE_REGEX, '<img src="$2" alt="$1" />');
+
+	// Convert tables
+	html = convertMarkdownTablesToHtml(html);
 
 	// Convert blockquotes
 	html = html.replace(BLOCKQUOTE_REGEX, '<blockquote>$1</blockquote>');
