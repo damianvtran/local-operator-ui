@@ -220,8 +220,8 @@ export const CodeEditor: FC<CodeEditorProps> = ({
 					setInlineEdit({
 						selection: formattedSelection,
 						position: {
-							top: Math.max(0, rect.bottom - containerRect.top) + scrollTop,
-							left: 36,
+							top: Math.max(0, rect.bottom - containerRect.top) + scrollTop - 16,
+							left: 42,
 						},
 						range: selectionRange || null,
 						from,
@@ -265,8 +265,8 @@ export const CodeEditor: FC<CodeEditorProps> = ({
 			setInlineEdit({
 				selection,
 				position: {
-					top: rect.bottom - containerRect.top + scrollTop,
-					left: 36,
+					top: Math.max(0, rect.bottom - containerRect.top) + scrollTop - 16,
+					left: 42,
 				},
 				range,
 				from,
