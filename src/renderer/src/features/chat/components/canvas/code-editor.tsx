@@ -16,6 +16,7 @@ import {
 	useMemo,
 } from "react";
 import { useDebounce } from "../../../../shared/hooks/use-debounce";
+import { useCanvasStore } from "../../../../shared/store/canvas-store";
 import type { CanvasDocument } from "../../types/canvas";
 import { InlineEdit } from "./inline-edit";
 
@@ -61,6 +62,13 @@ export const CodeEditor: FC<CodeEditorProps> = ({
 	agentId,
 }) => {
 	const [content, setContent] = useState(document.content);
+	const [hasUserChanges, setHasUserChanges] = useState(false);
+	const originalContentRef = useRef(document.content);
+	const isInitialLoadRef = useRef(true);
+	const { setFiles } = useCanvasStore();
+	const canvasState = useCanvasStore((state) =>
+		conversationId ? state.conversations[conversationId] : undefined,
+	);
 	const [languageExtensions, setLanguageExtensions] = useState<Extension[]>([]);
 	const debouncedContent = useDebounce(content, 1000);
 	const [inlineEdit, setInlineEdit] = useState<{
@@ -76,28 +84,63 @@ export const CodeEditor: FC<CodeEditorProps> = ({
 	const theme = useTheme();
 
 	useEffect(() => {
-		setContent(document.content);
-		const newLangExtension = loadLanguageExtensions(document.title);
+		if (document.content !== originalContentRef.current) {
+			setContent(document.content);
+			setHasUserChanges(false);
+			originalContentRef.current = document.content;
+			isInitialLoadRef.current = true;
+		}
+	}, [document.content]);
 
+	useEffect(() => {
+		const newLangExtension = loadLanguageExtensions(document.title);
 		if (newLangExtension) {
 			setLanguageExtensions([newLangExtension]);
 		}
-	}, [document]);
+	}, [document.title]);
 
 	useEffect(() => {
 		if (
 			editable &&
-			debouncedContent !== document.content &&
+			hasUserChanges &&
+			!isInitialLoadRef.current &&
+			debouncedContent !== originalContentRef.current &&
 			document.path &&
 			window.api.saveFile
 		) {
 			window.api.saveFile(document.path, debouncedContent);
+			originalContentRef.current = debouncedContent;
+			setHasUserChanges(false);
+
+			if (conversationId && canvasState) {
+				const updatedFiles = canvasState.files.map((file) =>
+					file.id === document.id
+						? { ...file, content: debouncedContent }
+						: file,
+				);
+				setFiles(conversationId, updatedFiles);
+			}
 		}
-	}, [debouncedContent, document.content, document.path, editable]);
+	}, [
+		debouncedContent,
+		document.path,
+		document.id,
+		editable,
+		hasUserChanges,
+		conversationId,
+		canvasState,
+		setFiles,
+	]);
 
 	const handleContentChange = useCallback(
 		(value: string) => {
 			setContent(value);
+			if (isInitialLoadRef.current) {
+				isInitialLoadRef.current = false;
+			}
+			if (value !== originalContentRef.current) {
+				setHasUserChanges(true);
+			}
 			if (onContentChange) {
 				onContentChange(value);
 			}
