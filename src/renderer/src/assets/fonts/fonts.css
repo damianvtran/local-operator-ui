@@ -13,3 +13,53 @@
 	font-display: swap;
 	src: url("./RobotoMono-Bold.ttf") format("truetype");
 }
+
+@font-face {
+	font-family: "Geist Mono";
+	src: url("./GeistMonoNerdFontMono-Thin.otf") format("opentype");
+	font-weight: 100;
+	font-style: normal;
+}
+
+@font-face {
+	font-family: "Geist Mono";
+	src: url("./GeistMonoNerdFontMono-Light.otf") format("opentype");
+	font-weight: 300;
+	font-style: normal;
+}
+
+@font-face {
+	font-family: "Geist Mono";
+	src: url("./GeistMonoNerdFontMono-Regular.otf") format("opentype");
+	font-weight: 400;
+	font-style: normal;
+}
+
+@font-face {
+	font-family: "Geist Mono";
+	src: url("./GeistMonoNerdFontMono-Medium.otf") format("opentype");
+	font-weight: 500;
+	font-style: normal;
+}
+
+@font-face {
+	font-family: "Geist Mono";
+	src: url("./GeistMonoNerdFontMono-Bold.otf") format("opentype");
+	font-weight: 700;
+	font-style: normal;
+}
+
+@font-face {
+	font-family: "Geist Mono";
+	src: url("./GeistMonoNerdFontMono-Black.otf") format("opentype");
+	font-weight: 900;
+	font-style: normal;
+}
+
+@font-face {
+	font-family: "Geist Mono";
+	src: url("./GeistMonoNerdFontMono-UltraBlack.otf") format("opentype");
+	font-weight: 950;
+	font-style: normal;
+}
+
