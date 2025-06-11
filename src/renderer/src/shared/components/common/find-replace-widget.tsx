@@ -58,7 +58,7 @@ const Divider = styled("div")(({ theme }) => ({
 type FindReplaceWidgetProps = {
 	onFind: (query: string) => void;
 	onNavigate: (direction: "next" | "prev") => void;
-	onReplace: (replaceText: string, onComplete?: () => void) => void;
+	onReplace: (replaceText: string) => Promise<void>;
 	onReplaceAll: (findText: string, replaceText: string) => void;
 	onClose: () => void;
 	show: boolean;
@@ -66,6 +66,8 @@ type FindReplaceWidgetProps = {
 	matchCount: number;
 	currentMatch: number;
 	containerSx?: SxProps<Theme>;
+	findValue: string;
+	onFindValueChange: (value: string) => void;
 };
 
 export const FindReplaceWidget: FC<FindReplaceWidgetProps> = ({
@@ -79,9 +81,10 @@ export const FindReplaceWidget: FC<FindReplaceWidgetProps> = ({
 	matchCount,
 	currentMatch,
 	containerSx,
+	findValue,
+	onFindValueChange,
 }) => {
 	const [mode, setMode] = useState(initialMode);
-	const [findValue, setFindValue] = useState("");
 	const [replaceValue, setReplaceValue] = useState("");
 
 	const findInputRef = useRef<HTMLInputElement>(null);
@@ -115,16 +118,14 @@ export const FindReplaceWidget: FC<FindReplaceWidgetProps> = ({
 		}
 	};
 
-	const handleReplaceKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+	const handleReplaceKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
 		if (e.key === "Enter") {
 			e.preventDefault();
 			if (e.metaKey || e.ctrlKey) {
 				onReplaceAll(findValue, replaceValue);
 			} else {
-				onReplace(replaceValue, () => {
-					// Refocus after a short delay to ensure it happens after scrolling
-					setTimeout(() => replaceInputRef.current?.focus(), 50);
-				});
+				await onReplace(replaceValue);
+				replaceInputRef.current?.focus();
 			}
 		}
 		if (e.key === "Escape") {
@@ -145,15 +146,15 @@ export const FindReplaceWidget: FC<FindReplaceWidgetProps> = ({
 			</Tooltip>
 			<Box display="flex" flexDirection="column" gap="4px">
 				<StyledInputBase
-					ref={findInputRef}
+					inputRef={findInputRef}
 					placeholder="Find"
 					value={findValue}
-					onChange={(e) => setFindValue(e.target.value)}
+					onChange={(e) => onFindValueChange(e.target.value)}
 					onKeyDown={handleFindKeyDown}
 				/>
 				{mode === "replace" && (
 					<StyledInputBase
-						ref={replaceInputRef}
+						inputRef={replaceInputRef}
 						placeholder="Replace"
 						value={replaceValue}
 						onChange={(e) => setReplaceValue(e.target.value)}
@@ -176,12 +177,10 @@ export const FindReplaceWidget: FC<FindReplaceWidgetProps> = ({
 					<Divider />
 					<Tooltip title="Replace (Enter)">
 						<ActionButton
-							onClick={() =>
-								onReplace(replaceValue, () => {
-									// Refocus after a short delay to ensure it happens after scrolling
-									setTimeout(() => replaceInputRef.current?.focus(), 50);
-								})
-							}
+							onClick={async () => {
+								await onReplace(replaceValue);
+								replaceInputRef.current?.focus();
+							}}
 						>
 							<Replace size={16} />
 						</ActionButton>
