@@ -640,7 +640,6 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 					// Defer find to separate it from the undo stack and focus back
 					setTimeout(() => {
 						handleFind(searchQuery, caretRange, false);
-						editorRef.current?.focus();
 						resolve();
 					}, 0);
 				} else {
