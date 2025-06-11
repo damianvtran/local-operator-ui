@@ -9,6 +9,7 @@ import {
 	Button,
 	CircularProgress,
 	FormControl,
+	ListSubheader,
 	MenuItem,
 	OutlinedInput,
 	Select,
@@ -20,7 +21,7 @@ import {
 import type { Theme } from "@mui/material/styles";
 import { useAgents } from "@shared/hooks/use-agents";
 import { BaseDialog } from "@shared/components/common/base-dialog";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { FC } from "react";
 import { ConfirmationModal } from "@shared/components/common/confirmation-modal";
 import { DirectoryIndicator } from "../directory-indicator";
@@ -144,6 +145,63 @@ const LabelIcon = styled(Box)({
 	alignItems: "center",
 });
 
+const fileTypeGroups = [
+	{
+		label: "General",
+		options: [
+			{ value: "md", text: "Markdown (.md)" },
+			{ value: "txt", text: "Plain Text (.txt)" },
+		],
+	},
+	{
+		label: "Web Development",
+		options: [
+			{ value: "html", text: "HTML (.html)" },
+			{ value: "css", text: "CSS (.css)" },
+			{ value: "js", text: "JavaScript (.js)" },
+			{ value: "jsx", text: "JSX (.jsx)" },
+			{ value: "ts", text: "TypeScript (.ts)" },
+			{ value: "tsx", text: "TSX (.tsx)" },
+		],
+	},
+	{
+		label: "Backend & Scripting",
+		options: [
+			{ value: "py", text: "Python (.py)" },
+			{ value: "go", text: "Go (.go)" },
+			{ value: "java", text: "Java (.java)" },
+			{ value: "cs", text: "C# (.cs)" },
+			{ value: "php", text: "PHP (.php)" },
+			{ value: "rb", text: "Ruby (.rb)" },
+			{ value: "rs", text: "Rust (.rs)" },
+			{ value: "sh", text: "Shell Script (.sh)" },
+		],
+	},
+	{
+		label: "Configuration",
+		options: [
+			{ value: "json", text: "JSON (.json)" },
+			{ value: "yaml", text: "YAML (.yaml)" },
+			{ value: "yml", text: "YAML (.yml)" },
+			{ value: "xml", text: "XML (.xml)" },
+			{ value: "toml", text: "TOML (.toml)" },
+			{ value: "ini", text: "INI (.ini)" },
+			{ value: "env", text: ".env" },
+			{ value: "dockerfile", text: "Dockerfile" },
+		],
+	},
+	{
+		label: "Other Languages",
+		options: [
+			{ value: "c", text: "C (.c)" },
+			{ value: "cpp", text: "C++ (.cpp)" },
+			{ value: "swift", text: "Swift (.swift)" },
+			{ value: "kt", text: "Kotlin (.kt)" },
+			{ value: "scala", text: "Scala (.scala)" },
+		],
+	},
+];
+
 export type CreateFileDialogProps = {
 	open: boolean;
 	onClose: () => void;
@@ -166,6 +224,14 @@ export const CreateFileDialog: FC<CreateFileDialogProps> = ({
 	const [fileName, setFileName] = useState("");
 	const [fileType, setFileType] = useState("md");
 	const [isConfirmingOverwrite, setConfirmingOverwrite] = useState(false);
+
+	// Reset state when the dialog opens to ensure a fresh form
+	useEffect(() => {
+		if (open) {
+			setFileName("");
+			setFileType("md");
+		}
+	}, [open]);
 
 	const { data: agentListResult } = useAgents();
 	const agent = useMemo(
@@ -291,15 +357,14 @@ export const CreateFileDialog: FC<CreateFileDialogProps> = ({
 						input={<StyledOutlinedInput notched={false} label={undefined} />}
 						MenuProps={menuPropsSx(theme)}
 					>
-						<MenuItem value="md">Markdown (.md)</MenuItem>
-						<MenuItem value="txt">Plain Text (.txt)</MenuItem>
-						<MenuItem value="py">Python (.py)</MenuItem>
-						<MenuItem value="js">JavaScript (.js)</MenuItem>
-						<MenuItem value="ts">TypeScript (.ts)</MenuItem>
-						<MenuItem value="html">HTML (.html)</MenuItem>
-						<MenuItem value="css">CSS (.css)</MenuItem>
-						<MenuItem value="json">JSON (.json)</MenuItem>
-						<MenuItem value="sh">Shell Script (.sh)</MenuItem>
+						{fileTypeGroups.flatMap((group) => [
+							<ListSubheader key={group.label}>{group.label}</ListSubheader>,
+							...group.options.map((option) => (
+								<MenuItem key={option.value} value={option.value}>
+									{option.text}
+								</MenuItem>
+							)),
+						])}
 					</Select>
 				</FormControl>
 
