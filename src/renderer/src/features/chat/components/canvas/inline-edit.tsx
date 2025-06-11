@@ -39,6 +39,7 @@ type InlineEditProps = {
 	filePath: string;
 	onClose: () => void;
 	onApplyChanges: (editDiffs: Array<{ find: string; replace: string }>) => void;
+	agentId?: string;
 };
 
 const InputInnerContainer = styled(Paper)(({ theme }) => ({
@@ -212,12 +213,14 @@ export const InlineEdit: FC<InlineEditProps> = ({
 	filePath,
 	onClose,
 	onApplyChanges,
+	agentId,
 }) => {
 	const [prompt, setPrompt] = useState("");
 	const [attachments, setAttachments] = useState<string[]>([]);
 	const [isLoading, setIsLoading] = useState(false);
 	const { lastChatAgentId } = useAgentSelectionStore();
 	const { data: config } = useConfig();
+	const agentToUse = agentId || lastChatAgentId;
 
 	const [isRecording, setIsRecording] = useState(false);
 	const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
@@ -480,7 +483,7 @@ export const InlineEdit: FC<InlineEditProps> = ({
 	};
 
 	const handleSubmit = useCallback(async () => {
-		if (!lastChatAgentId) {
+		if (!agentToUse) {
 			showErrorToast("Please select an agent first.");
 			return;
 		}
@@ -498,7 +501,7 @@ export const InlineEdit: FC<InlineEditProps> = ({
 			};
 
 			const response = await client.chat.editFileWithAgent(
-				lastChatAgentId,
+				agentToUse,
 				request,
 			);
 
@@ -527,7 +530,7 @@ export const InlineEdit: FC<InlineEditProps> = ({
 		prompt,
 		selection,
 		attachments,
-		lastChatAgentId,
+		agentToUse,
 		onApplyChanges,
 		onClose,
 	]);

@@ -178,15 +178,19 @@ export const CodeEditor: FC<CodeEditorProps> = ({
 		}
 	};
 
-	const handleApplyChanges = (editDiffs: Array<{ find: string; replace: string }>) => {
+	const handleApplyChanges = (
+		editDiffs: Array<{ find: string; replace: string }>,
+	) => {
 		const view = editorRef.current?.view;
-		if (view && inlineEdit) {
-			for (const diff of editDiffs) {
-				view.dispatch({
-					changes: { from: inlineEdit.from, to: inlineEdit.to, insert: diff.replace },
-				});
-			}
-			setContent(view.state.doc.toString());
+		if (view) {
+			const newContent = editDiffs.reduce(
+				(currentDoc, diff) => currentDoc.replace(diff.find, diff.replace),
+				view.state.doc.toString(),
+			);
+
+			view.dispatch({
+				changes: { from: 0, to: view.state.doc.length, insert: newContent },
+			});
 		}
 		setInlineEdit(null);
 	};
@@ -247,6 +251,7 @@ export const CodeEditor: FC<CodeEditorProps> = ({
 					filePath={document.path}
 					onClose={() => setInlineEdit(null)}
 					onApplyChanges={handleApplyChanges}
+					agentId={agentId}
 				/>
 			)}
 		</CodeEditorContainer>

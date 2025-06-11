@@ -1082,6 +1082,7 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 								selectionRef.current = null;
 							}}
 							onApplyChanges={handleApplyChanges}
+							agentId={agentId}
 						/>
 					)}
 				</Box>
