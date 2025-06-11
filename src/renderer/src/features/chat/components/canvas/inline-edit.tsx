@@ -569,7 +569,7 @@ export const InlineEdit: FC<InlineEditProps> = ({
 					fullWidth
 					multiline
 					maxRows={8}
-					placeholder="Describe your edit..."
+					placeholder="Ask for an edit..."
 					value={prompt}
 					onChange={(e) => setPrompt(e.target.value)}
 					onPaste={handlePaste}
