@@ -11,6 +11,7 @@ import {
 	nativeImage,
 	shell,
 } from "electron";
+import { existsSync } from "node:fs";
 import { PostHog } from "posthog-node";
 import icon from "../../resources/icon.png?asset";
 import {
@@ -476,7 +477,10 @@ app
 			"read-file",
 			async (_, filePath: string): Promise<ReadFileResponse> => {
 				try {
-					const data = readFileSync(filePath, "utf-8");
+					const normalizedPath = filePath.startsWith("~/")
+						? join(app.getPath("home"), filePath.slice(2))
+						: filePath;
+					const data = readFileSync(normalizedPath, "utf-8");
 					return { success: true, data };
 				} catch (error) {
 					logger.error("Error reading file:", LogFileType.BACKEND, error);
@@ -505,12 +509,23 @@ app
 			"save-file",
 			async (_, filePath: string, content: string) => {
 				try {
-					writeFileSync(filePath, content, "utf-8");
+					const normalizedPath = filePath.startsWith("~/")
+						? join(app.getPath("home"), filePath.slice(2))
+						: filePath;
+					writeFileSync(normalizedPath, content, "utf-8");
 				} catch (error) {
 					logger.error("Error saving file:", LogFileType.BACKEND, error);
+					throw error; // Re-throw the error to be caught by the renderer
 				}
 			},
 		);
+
+		ipcMain.handle("file-exists", async (_, filePath: string) => {
+			const normalizedPath = filePath.startsWith("~/")
+				? join(app.getPath("home"), filePath.slice(2))
+				: filePath;
+			return existsSync(normalizedPath);
+		});
 
 		// --- Directory Selection IPC Handler ---
 		ipcMain.handle("select-directory", async () => {

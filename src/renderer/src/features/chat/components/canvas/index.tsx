@@ -130,14 +130,17 @@ const CanvasComponent: FC<CanvasProps> = ({
 
 	const { addFileAndSelect, setViewMode } = useCanvasStore();
 
-	const handleCreateFile = async (details: {
-		name: string;
-		type: string;
-		location: string;
-	}) => {
+	const handleCreateFile = async (
+		details: {
+			name: string;
+			type: string;
+			location: string;
+		},
+		overwrite = false,
+	) => {
 		setIsCreatingFile(true);
 		try {
-			await createFile(details.name, details.type, details.location);
+			await createFile(details.name, details.type, details.location, overwrite);
 			if (conversationId) {
 				const newFile: CanvasDocument = {
 					id: `${details.location}/${details.name}.${details.type}`,

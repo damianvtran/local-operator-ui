@@ -168,6 +168,10 @@ const api = {
 	saveFile: (filePath: string, content: string): Promise<void> =>
 		ipcRenderer.invoke("save-file", filePath, content),
 
+	/** Checks if a file exists at the specified path */
+	fileExists: (filePath: string): Promise<boolean> =>
+		ipcRenderer.invoke("file-exists", filePath),
+
 	// Add methods for installer
 	ipcRenderer: {
 		send: (channel: string, ...args: unknown[]) => {

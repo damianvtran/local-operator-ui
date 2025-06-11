@@ -15,11 +15,27 @@ export const createFile = async (
 	name: string,
 	type: string,
 	location: string,
+	overwrite = false,
 ): Promise<void> => {
+	const filePath = `${location}/${name}.${type}`;
+
 	try {
-		const filePath = `${location}/${name}.${type}`;
+		if (!overwrite) {
+			const exists = await window.api.fileExists(filePath);
+			if (exists) {
+				showErrorToast("File already exists. Creation cancelled.");
+				return;
+			}
+		}
+
 		await window.api.saveFile(filePath, "");
-		showSuccessToast(`File "${name}.${type}" created successfully!`);
+
+		const fileWasCreated = await window.api.fileExists(filePath);
+		if (fileWasCreated) {
+			showSuccessToast(`File "${name}.${type}" created successfully!`);
+		} else {
+			throw new Error("File creation failed.");
+		}
 	} catch (error) {
 		const errorMessage =
 			error instanceof Error
