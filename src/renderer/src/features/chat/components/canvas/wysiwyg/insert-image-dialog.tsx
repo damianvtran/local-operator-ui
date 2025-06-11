@@ -1,12 +1,11 @@
 import {
 	Button,
-	DialogActions,
-	DialogContent,
 	TextField,
 	Box,
 	Typography,
 	InputAdornment,
 	styled,
+	useTheme,
 } from "@mui/material";
 import { UploadCloud, Link } from "lucide-react";
 import type { FC, DragEvent } from "react";
@@ -92,6 +91,7 @@ export const InsertImageDialog: FC<InsertImageDialogProps> = ({
 	onClose,
 	onInsert,
 }) => {
+	const theme = useTheme();
 	const [url, setUrl] = useState("");
 
 	const handleFile = useCallback(
@@ -149,9 +149,40 @@ export const InsertImageDialog: FC<InsertImageDialogProps> = ({
 		}
 	};
 
+	const dialogActions = (
+		<>
+			<Button
+				onClick={onClose}
+				variant="outlined"
+				size="small"
+				sx={{
+					borderColor: theme.palette.divider,
+					color: theme.palette.text.secondary,
+					textTransform: "none",
+					fontSize: "0.8125rem",
+					padding: theme.spacing(0.75, 2),
+					borderRadius: theme.shape.borderRadius * 0.75,
+					"&:hover": {
+						backgroundColor: theme.palette.action.hover,
+						borderColor: theme.palette.divider,
+					},
+				}}
+			>
+				Cancel
+			</Button>
+		</>
+	);
+
 	return (
-		<BaseDialog open={open} onClose={onClose} title="Insert Image">
-			<DialogContent sx={{ pt: "20px !important" }}>
+		<BaseDialog 
+			open={open} 
+			onClose={onClose} 
+			title="Insert Image"
+			actions={dialogActions}
+			maxWidth="sm"
+			fullWidth
+		>
+			<Box sx={{ pt: 2 }}>
 				<FieldContainer>
 					<FieldLabel>Image URL</FieldLabel>
 					<Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
@@ -175,8 +206,22 @@ export const InsertImageDialog: FC<InsertImageDialogProps> = ({
 						<Button
 							onClick={handleInsertFromUrl}
 							variant="contained"
+							color="primary"
+							size="small"
 							disabled={!url.trim()}
-							sx={{ height: "36px", minWidth: "80px" }}
+							sx={{
+								textTransform: "none",
+								fontSize: "0.8125rem",
+								padding: theme.spacing(0.75, 2),
+								borderRadius: theme.shape.borderRadius * 0.75,
+								boxShadow: "none",
+								height: "36px",
+								minWidth: "80px",
+								"&:hover": {
+									boxShadow: "none",
+									opacity: 0.9,
+								},
+							}}
 						>
 							Insert
 						</Button>
@@ -200,10 +245,7 @@ export const InsertImageDialog: FC<InsertImageDialogProps> = ({
 						</Typography>
 					</Dropzone>
 				</label>
-			</DialogContent>
-			<DialogActions>
-				<Button onClick={onClose}>Cancel</Button>
-			</DialogActions>
+			</Box>
 		</BaseDialog>
 	);
 };
