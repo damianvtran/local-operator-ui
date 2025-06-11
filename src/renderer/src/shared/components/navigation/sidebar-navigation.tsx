@@ -100,7 +100,7 @@ const NavItemIcon = styled(ListItemIcon, {
 		minWidth: 0,
 		width: 20,
 		height: 20,
-		marginRight: isExpanded ? 12 : "auto",
+		marginRight: isExpanded ? 12 : 0,
 		justifyContent: "center",
 		color: isActive
 			? theme.palette.sidebar.itemActiveText
@@ -133,7 +133,9 @@ const ToggleButtonContainer = styled(Box, {
 	display: "flex",
 	justifyContent: isExpanded ? "flex-end" : "center",
 	alignItems: "center",
-	padding: theme.spacing(0, isExpanded ? 2 : 0, 2),
+	paddingRight: isExpanded ? theme.spacing(2) : 0,
+  paddingLeft: isExpanded ? 0 : theme.spacing(1),
+	paddingBottom: theme.spacing(2),
 	width: "100%",
 	marginTop: 8,
 }));
