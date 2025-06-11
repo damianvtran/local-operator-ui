@@ -240,12 +240,14 @@ export const useCanvasStore = create<CanvasStoreState>()(
 						conversationId,
 					);
 					const updatedFiles = [...conv.files, file];
+					const updatedMentionedFiles = [...conv.mentionedFiles, file];
 					return {
 						conversations: {
 							...state.conversations,
 							[conversationId]: {
 								...conv,
 								files: updatedFiles,
+								mentionedFiles: updatedMentionedFiles,
 								openTabs: [...conv.openTabs, { id: file.id, title: file.title }],
 								selectedTabId: file.id,
 								viewMode: "documents",
