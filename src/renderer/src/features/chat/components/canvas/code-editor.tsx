@@ -1,12 +1,8 @@
 import { Box, useTheme, styled, alpha } from "@mui/material";
-import {
-	search,
-	searchKeymap,
-} from "@codemirror/search";
+import { search, searchKeymap } from "@codemirror/search";
 import { TextSelectionControls } from "@shared/components/common/text-selection-controls";
 import { getSearchTheme } from "@shared/themes/search-theme";
 import { loadLanguageExtensions } from "@shared/utils/load-language-extensions";
-import { basicDark, basicLight } from "@uiw/codemirror-theme-basic";
 import { Decoration, ViewPlugin, type DecorationSet, keymap } from "@codemirror/view";
 import CodeMirror, {
 	type Extension,
@@ -22,6 +18,7 @@ import {
 } from "react";
 import { useDebounce } from "../../../../shared/hooks/use-debounce";
 import { useCanvasStore } from "../../../../shared/store/canvas-store";
+import { getCodeMirrorTheme } from "../../../../shared/themes/code-mirror-theme";
 import type { CanvasDocument } from "../../types/canvas";
 import { InlineEdit } from "./inline-edit";
 
@@ -39,9 +36,10 @@ type CodeEditorProps = {
 const CodeEditorContainer = styled(Box)(({ theme }) => ({
 	flexGrow: 1,
 	position: "relative",
-	fontSize: theme.typography.pxToRem(12),
 	overflow: "auto",
 	height: "100%",
+	fontSize: theme.typography.pxToRem(13),
+	fontFamily: "'Geist Mono', monospace",
 
 	"&::-webkit-scrollbar": {
 		width: "8px",
@@ -91,6 +89,7 @@ export const CodeEditor: FC<CodeEditorProps> = ({
 
 	const theme = useTheme();
 	const searchTheme = useMemo(() => getSearchTheme(theme), [theme]);
+	const codeEditorTheme = useMemo(() => getCodeMirrorTheme(theme), [theme]);
 
 	useEffect(() => {
 		if (editorRef.current) {
@@ -163,9 +162,6 @@ export const CodeEditor: FC<CodeEditorProps> = ({
 		},
 		[onContentChange],
 	);
-
-	const codeEditorTheme =
-		theme.palette.mode === "light" ? basicLight : basicDark;
 
 	const highlightPlugin = useMemo(() => {
 		return ViewPlugin.fromClass(
@@ -283,9 +279,10 @@ export const CodeEditor: FC<CodeEditorProps> = ({
 			<CodeMirror
 				value={content}
 				height="100%"
-				theme={codeEditorTheme}
+				theme="none"
 				editable={editable}
 				extensions={[
+					codeEditorTheme,
 					...languageExtensions,
 					highlightPlugin,
 					search({ top: true }),
