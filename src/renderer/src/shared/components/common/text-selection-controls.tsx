@@ -7,6 +7,7 @@ import {
 	ClipboardCopy,
 	Copy,
 	Edit3,
+  ReplyIcon,
 	MessageSquareReply,
 	Square,
 	Volume2,
@@ -24,10 +25,12 @@ type TextSelectionControlsProps = {
 	showCopy?: boolean;
 	showReply?: boolean;
 	showEdit?: boolean;
+	showRefer?: boolean;
 	// Props for speech
 	agentId?: string;
 	// Props for reply
 	conversationId?: string;
+	filePath?: string;
 	// Callback for edit
 	onEdit?: (
 		selection: string,
@@ -69,8 +72,10 @@ export const TextSelectionControls: FC<TextSelectionControlsProps> = ({
 	showCopy,
 	showReply,
 	showEdit,
+	showRefer,
 	agentId,
 	conversationId,
+	filePath,
 	onEdit,
 	isUser,
 }) => {
@@ -84,7 +89,7 @@ export const TextSelectionControls: FC<TextSelectionControlsProps> = ({
 		useSpeechStore();
 	const { data: credentialsData, isLoading: isLoadingCredentials } =
 		useCredentials();
-	const { addReply } = useConversationInputStore();
+	const { addReply, addAttachment } = useConversationInputStore();
 
 	const isRadientApiKeyConfigured = useMemo(
 		() => credentialsData?.keys?.includes("RADIENT_API_KEY"),
@@ -212,6 +217,20 @@ export const TextSelectionControls: FC<TextSelectionControlsProps> = ({
 		}
 	};
 
+	const handleRefer = () => {
+		if (selection.text && conversationId && filePath) {
+			addReply(conversationId, {
+				id: uuidv4(),
+				text: selection.text,
+			});
+			addAttachment(conversationId, {
+				id: uuidv4(),
+				path: filePath,
+			});
+			setSelection({ text: "", html: "", rect: null, range: null });
+		}
+	};
+
 	const handleEdit = () => {
 		if (selection.text && selection.rect && selection.range && onEdit) {
 			onEdit(selection.text, selection.rect, selection.range, () => {
@@ -285,6 +304,13 @@ export const TextSelectionControls: FC<TextSelectionControlsProps> = ({
 				<Tooltip title="Reply" placement="top">
 					<StyledIconButton size="small" onClick={handleReply}>
 						<MessageSquareReply size={14} />
+					</StyledIconButton>
+				</Tooltip>
+			)}
+			{showRefer && (
+				<Tooltip title="Refer to this from File" placement="top">
+					<StyledIconButton size="small" onClick={handleRefer}>
+						<ReplyIcon size={14} />
 					</StyledIconButton>
 				</Tooltip>
 			)}

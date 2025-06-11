@@ -238,9 +238,11 @@ export const CodeEditor: FC<CodeEditorProps> = ({
 				showSpeech
 				showCopy
 				showEdit
+				showRefer={!!document.path}
 				onEdit={handleEdit}
 				conversationId={conversationId}
 				agentId={agentId ?? undefined}
+				filePath={document.path}
 			/>
 			{inlineEdit && document.path && (
 				<InlineEdit
