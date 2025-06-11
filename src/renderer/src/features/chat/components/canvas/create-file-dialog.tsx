@@ -5,14 +5,12 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
+	Autocomplete,
 	Box,
 	Button,
 	CircularProgress,
 	FormControl,
-	ListSubheader,
 	MenuItem,
-	OutlinedInput,
-	Select,
 	TextField,
 	Typography,
 	styled,
@@ -27,48 +25,6 @@ import { ConfirmationModal } from "@shared/components/common/confirmation-modal"
 import { DirectoryIndicator } from "../directory-indicator";
 
 /**
- * Styled OutlinedInput for Select to achieve shadcn/modern look
- */
-const StyledOutlinedInput = styled(OutlinedInput)(({ theme }) => ({
-	borderRadius: theme.shape.borderRadius * 0.75,
-	backgroundColor: theme.palette.background.paper,
-	border: `1px solid ${theme.palette.divider}`,
-	minHeight: "40px",
-	height: "40px",
-	fontSize: "0.875rem",
-	paddingRight: 0,
-	"& .MuiOutlinedInput-notchedOutline": {
-		border: "none",
-	},
-	"& .MuiSelect-select": {
-		display: "flex",
-		alignItems: "center",
-		gap: theme.spacing(1),
-		fontSize: "0.875rem",
-		padding: theme.spacing(1, 1.5),
-		height: "calc(40px - 16px)",
-		boxSizing: "border-box",
-	},
-	"& .MuiInputBase-input": {
-		padding: theme.spacing(1, 1.5),
-		fontSize: "0.875rem",
-		height: "calc(40px - 16px)",
-		boxSizing: "border-box",
-	},
-	"& .MuiInputBase-input::placeholder": {
-		color: theme.palette.text.disabled,
-		opacity: 1,
-	},
-	"&:hover": {
-		borderColor: theme.palette.text.secondary,
-	},
-	"&.Mui-focused": {
-		borderColor: theme.palette.primary.main,
-		boxShadow: `0 0 0 2px ${theme.palette.primary.main}33`,
-	},
-}));
-
-/**
  * Shadcn-inspired menu props for Select dropdown
  */
 const menuPropsSx = (theme: Theme) => ({
@@ -77,10 +33,15 @@ const menuPropsSx = (theme: Theme) => ({
 			borderRadius: theme.shape.borderRadius * 0.75,
 			boxShadow: theme.shadows[2],
 			mt: 0.5,
+			maxHeight: 300, // Set a max height for the dropdown
 			"& .MuiMenuItem-root": {
-				fontSize: "0.875rem",
-				minHeight: "40px",
-				px: 2,
+				fontSize: "0.8125rem", // Smaller font size
+				minHeight: "32px", // More compact items
+				padding: theme.spacing(0.5, 2),
+			},
+			"& .MuiListSubheader-root": {
+				fontSize: "0.75rem",
+				lineHeight: "2.5",
 			},
 		},
 	},
@@ -145,61 +106,41 @@ const LabelIcon = styled(Box)({
 	alignItems: "center",
 });
 
-const fileTypeGroups = [
-	{
-		label: "General",
-		options: [
-			{ value: "md", text: "Markdown (.md)" },
-			{ value: "txt", text: "Plain Text (.txt)" },
-		],
-	},
-	{
-		label: "Web Development",
-		options: [
-			{ value: "html", text: "HTML (.html)" },
-			{ value: "css", text: "CSS (.css)" },
-			{ value: "js", text: "JavaScript (.js)" },
-			{ value: "jsx", text: "JSX (.jsx)" },
-			{ value: "ts", text: "TypeScript (.ts)" },
-			{ value: "tsx", text: "TSX (.tsx)" },
-		],
-	},
-	{
-		label: "Backend & Scripting",
-		options: [
-			{ value: "py", text: "Python (.py)" },
-			{ value: "go", text: "Go (.go)" },
-			{ value: "java", text: "Java (.java)" },
-			{ value: "cs", text: "C# (.cs)" },
-			{ value: "php", text: "PHP (.php)" },
-			{ value: "rb", text: "Ruby (.rb)" },
-			{ value: "rs", text: "Rust (.rs)" },
-			{ value: "sh", text: "Shell Script (.sh)" },
-		],
-	},
-	{
-		label: "Configuration",
-		options: [
-			{ value: "json", text: "JSON (.json)" },
-			{ value: "yaml", text: "YAML (.yaml)" },
-			{ value: "yml", text: "YAML (.yml)" },
-			{ value: "xml", text: "XML (.xml)" },
-			{ value: "toml", text: "TOML (.toml)" },
-			{ value: "ini", text: "INI (.ini)" },
-			{ value: "env", text: ".env" },
-			{ value: "dockerfile", text: "Dockerfile" },
-		],
-	},
-	{
-		label: "Other Languages",
-		options: [
-			{ value: "c", text: "C (.c)" },
-			{ value: "cpp", text: "C++ (.cpp)" },
-			{ value: "swift", text: "Swift (.swift)" },
-			{ value: "kt", text: "Kotlin (.kt)" },
-			{ value: "scala", text: "Scala (.scala)" },
-		],
-	},
+const fileTypeOptions = [
+	// General
+	{ value: "md", text: "Markdown (.md)", group: "General" },
+	{ value: "txt", text: "Plain Text (.txt)", group: "General" },
+	// Web Development
+	{ value: "html", text: "HTML (.html)", group: "Web Development" },
+	{ value: "css", text: "CSS (.css)", group: "Web Development" },
+	{ value: "js", text: "JavaScript (.js)", group: "Web Development" },
+	{ value: "jsx", text: "JSX (.jsx)", group: "Web Development" },
+	{ value: "ts", text: "TypeScript (.ts)", group: "Web Development" },
+	{ value: "tsx", text: "TSX (.tsx)", group: "Web Development" },
+	// Backend & Scripting
+	{ value: "py", text: "Python (.py)", group: "Backend & Scripting" },
+	{ value: "go", text: "Go (.go)", group: "Backend & Scripting" },
+	{ value: "java", text: "Java (.java)", group: "Backend & Scripting" },
+	{ value: "cs", text: "C# (.cs)", group: "Backend & Scripting" },
+	{ value: "php", text: "PHP (.php)", group: "Backend & Scripting" },
+	{ value: "rb", text: "Ruby (.rb)", group: "Backend & Scripting" },
+	{ value: "rs", text: "Rust (.rs)", group: "Backend & Scripting" },
+	{ value: "sh", text: "Shell Script (.sh)", group: "Backend & Scripting" },
+	// Configuration
+	{ value: "json", text: "JSON (.json)", group: "Configuration" },
+	{ value: "yaml", text: "YAML (.yaml)", group: "Configuration" },
+	{ value: "yml", text: "YAML (.yml)", group: "Configuration" },
+	{ value: "xml", text: "XML (.xml)", group: "Configuration" },
+	{ value: "toml", text: "TOML (.toml)", group: "Configuration" },
+	{ value: "ini", text: "INI (.ini)", group: "Configuration" },
+	{ value: "env", text: ".env", group: "Configuration" },
+	{ value: "dockerfile", text: "Dockerfile", group: "Configuration" },
+	// Other Languages
+	{ value: "c", text: "C (.c)", group: "Other Languages" },
+	{ value: "cpp", text: "C++ (.cpp)", group: "Other Languages" },
+	{ value: "swift", text: "Swift (.swift)", group: "Other Languages" },
+	{ value: "kt", text: "Kotlin (.kt)", group: "Other Languages" },
+	{ value: "scala", text: "Scala (.scala)", group: "Other Languages" },
 ];
 
 export type CreateFileDialogProps = {
@@ -351,21 +292,48 @@ export const CreateFileDialog: FC<CreateFileDialogProps> = ({
 						</LabelIcon>
 						File Type
 					</FieldLabel>
-					<Select
+					<Autocomplete
+						freeSolo
 						value={fileType}
-						onChange={(e) => setFileType(e.target.value as string)}
-						input={<StyledOutlinedInput notched={false} label={undefined} />}
-						MenuProps={menuPropsSx(theme)}
-					>
-						{fileTypeGroups.flatMap((group) => [
-							<ListSubheader key={group.label}>{group.label}</ListSubheader>,
-							...group.options.map((option) => (
-								<MenuItem key={option.value} value={option.value}>
-									{option.text}
-								</MenuItem>
-							)),
-						])}
-					</Select>
+						onChange={(_, newValue) => {
+							if (typeof newValue === "string") {
+								setFileType(newValue);
+							} else if (newValue) {
+								setFileType(newValue.value);
+							}
+						}}
+						options={fileTypeOptions}
+						groupBy={(option) => option.group}
+						getOptionLabel={(option) => {
+							if (typeof option === "string") {
+								const foundOption = fileTypeOptions.find(
+									(o) => o.value === option,
+								);
+								return foundOption ? foundOption.text : option;
+							}
+							return option.text;
+						}}
+						// @ts-ignore - MUI's types for freeSolo Autocomplete are tricky.
+						// This works at runtime.
+						isOptionEqualToValue={(option, value) => option.value === value}
+						renderInput={(params) => (
+							<TextField
+								{...params}
+								placeholder="Select or type an extension"
+								sx={textFieldInputSx(theme)}
+							/>
+						)}
+						renderOption={(props, option) => (
+							<MenuItem {...props} key={option.value}>
+								{option.text}
+							</MenuItem>
+						)}
+						slotProps={{
+							paper: {
+								sx: menuPropsSx(theme).PaperProps.sx,
+							},
+						}}
+					/>
 				</FormControl>
 
 				<FormControl fullWidth>
