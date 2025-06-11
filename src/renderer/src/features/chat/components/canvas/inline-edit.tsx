@@ -540,7 +540,7 @@ export const InlineEdit: FC<InlineEditProps> = ({
 			sx={{
 				top: Math.max(0, position.top),
 				left: 0,
-				transform: position.top <= 0 ? "translateY(8px)" : "translateY(calc(-100% - 8px))",
+				transform: position.top <= 50 ? "translateY(-8px)" : "translateY(calc(-100% - 8px))",
 			}}
 		>
 			<CloseButton onClick={onClose} disabled={isLoading}>
