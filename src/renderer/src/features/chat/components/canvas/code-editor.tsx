@@ -215,12 +215,13 @@ export const CodeEditor: FC<CodeEditorProps> = ({
 					const container = scrollContainerRef.current;
 					if (!container) return;
 					const containerRect = container.getBoundingClientRect();
+					const scrollTop = container.scrollTop;
 					const selectionRange = window.getSelection()?.getRangeAt(0);
 					setInlineEdit({
 						selection: formattedSelection,
 						position: {
-							top: Math.max(0, rect.bottom - containerRect.top),
-							left: rect.left - containerRect.left,
+							top: Math.max(0, rect.bottom - containerRect.top) + scrollTop,
+							left: 36,
 						},
 						range: selectionRange || null,
 						from,
@@ -257,14 +258,15 @@ export const CodeEditor: FC<CodeEditorProps> = ({
 		const container = scrollContainerRef.current;
 		if (!container) return;
 		const containerRect = container.getBoundingClientRect();
+		const scrollTop = container.scrollTop;
 		const view = editorRef.current?.view;
 		if (view) {
 			const { from, to } = view.state.selection.main;
 			setInlineEdit({
 				selection,
 				position: {
-					top: rect.bottom - containerRect.top,
-					left: rect.left - containerRect.left,
+					top: rect.bottom - containerRect.top + scrollTop,
+					left: 36,
 				},
 				range,
 				from,

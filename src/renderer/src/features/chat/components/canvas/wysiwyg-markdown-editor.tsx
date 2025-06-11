@@ -1028,7 +1028,7 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 								selection: formattedSelection,
 								position: {
 									top: rect.top - containerRect.top,
-									left: rect.left - containerRect.left,
+									left: 0,
 								},
 								range,
 							});
@@ -1152,7 +1152,7 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 			selection: formattedSelection,
 			position: {
 				top: rect.top - containerRect.top,
-				left: rect.left - containerRect.left,
+				left: 0,
 			},
 			range,
 		});
