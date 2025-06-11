@@ -26,45 +26,6 @@ const ORDERED_LIST_BLOCK_REGEX = /((?:^[ \t]*\d+\. .*(?:\n|$))+)/gm;
 const UNORDERED_LIST_DASH_REGEX = /^[ \t]*[*-] /g;
 const ORDERED_LIST_DOT_REGEX = /^[ \t]*\d+\. /g;
 
-// HTML to Markdown regex patterns
-const H1_TAG_REGEX = /<h1[^>]*>(.*?)<\/h1>/gi;
-const H2_TAG_REGEX = /<h2[^>]*>(.*?)<\/h2>/gi;
-const H3_TAG_REGEX = /<h3[^>]*>(.*?)<\/h3>/gi;
-const H4_TAG_REGEX = /<h4[^>]*>(.*?)<\/h4>/gi;
-const H5_TAG_REGEX = /<h5[^>]*>(.*?)<\/h5>/gi;
-const H6_TAG_REGEX = /<h6[^>]*>(.*?)<\/h6>/gi;
-const STRONG_TAG_REGEX = /<(strong|b)[^>]*>(.*?)<\/(strong|b)>/gi;
-const EM_TAG_REGEX = /<(em|i)[^>]*>(.*?)<\/(em|i)>/gi;
-const DEL_TAG_REGEX = /<(del|s|strike)[^>]*>(.*?)<\/(del|s|strike)>/gi;
-const U_TAG_REGEX = /<u[^>]*>(.*?)<\/u>/gi;
-const CODE_TAG_REGEX = /<code[^>]*>(.*?)<\/code>/gi;
-const PRE_CODE_TAG_REGEX = /<pre[^>]*><code[^>]*>(.*?)<\/code><\/pre>/gis;
-const A_TAG_REGEX = /<a[^>]*href="([^"]*)"[^>]*>(.*?)<\/a>/gi;
-const IMG_WITH_ALT_REGEX = /<img[^>]*src="([^"]*)"[^>]*alt="([^"]*)"[^>]*\/?>/gi;
-const IMG_WITHOUT_ALT_REGEX = /<img[^>]*src="([^"]*)"[^>]*\/?>/gi;
-const BLOCKQUOTE_TAG_REGEX = /<blockquote[^>]*>(.*?)<\/blockquote>/gis;
-const UL_TAG_REGEX = /<ul[^>]*>(.*?)<\/ul>/gis;
-const OL_TAG_REGEX = /<ol[^>]*>(.*?)<\/ol>/gis;
-const LI_TAG_REGEX = /<li[^>]*>(.*?)<\/li>/gis;
-const TABLE_TAG_REGEX = /<table[^>]*>(.*?)<\/table>/gis;
-const THEAD_TAG_REGEX = /<thead[^>]*>(.*?)<\/thead>/is;
-const TR_TAG_REGEX = /<tr[^>]*>(.*?)<\/tr>/gis;
-const TH_TAG_REGEX = /<th[^>]*>(.*?)<\/th>/gis;
-const TH_REPLACE_REGEX = /<th[^>]*>(.*?)<\/th>/gi;
-const TBODY_TAG_REGEX = /<tbody[^>]*>(.*?)<\/tbody>/is;
-const TD_TAG_REGEX = /<td[^>]*>(.*?)<\/td>/gis;
-const TD_REPLACE_REGEX = /<td[^>]*>(.*?)<\/td>/gi;
-const P_TAG_REGEX = /<p[^>]*>(.*?)<\/p>/gis;
-const BR_TAG_REGEX = /<br[^>]*\/?>/gi;
-const MULTIPLE_NEWLINES_REGEX = /\n{3,}/g;
-const TRIM_WHITESPACE_REGEX = /^\s+|\s+$/g;
-const HTML_TAGS_REGEX = /<[^>]*>/g;
-const HTML_LT_REGEX = /&lt;/g;
-const HTML_GT_REGEX = /&gt;/g;
-const HTML_AMP_REGEX = /&amp;/g;
-const HTML_QUOT_REGEX = /&quot;/g;
-const HTML_APOS_REGEX = /&#39;/g;
-
 /**
  * Convert markdown tables to HTML tables
  */
@@ -223,117 +184,191 @@ export const markdownToHtml = (markdown: string): string => {
 	return html;
 };
 
+const domToMarkdown = (
+	node: Node,
+	listLevel = 0,
+	isOrdered = false,
+	itemIndex = 1,
+): string => {
+	if (node.nodeType === Node.TEXT_NODE) {
+		return (node.textContent ?? "").replace(/&nbsp;/g, " ");
+	}
+
+	if (node.nodeType !== Node.ELEMENT_NODE) {
+		return "";
+	}
+
+	const element = node as HTMLElement;
+	let content = "";
+	let childrenMarkdown = "";
+
+	if (element.childNodes.length > 0) {
+		for (const [index, child] of Array.from(element.childNodes).entries()) {
+			childrenMarkdown += domToMarkdown(
+				child,
+				listLevel,
+				isOrdered,
+				index + 1,
+			);
+		}
+	}
+
+	const tagName = element.tagName.toLowerCase();
+
+	switch (tagName) {
+		case "h1":
+			content = `# ${childrenMarkdown}\n\n`;
+			break;
+		case "h2":
+			content = `## ${childrenMarkdown}\n\n`;
+			break;
+		case "h3":
+			content = `### ${childrenMarkdown}\n\n`;
+			break;
+		case "h4":
+			content = `#### ${childrenMarkdown}\n\n`;
+			break;
+		case "h5":
+			content = `##### ${childrenMarkdown}\n\n`;
+			break;
+		case "h6":
+			content = `###### ${childrenMarkdown}\n\n`;
+			break;
+		case "p":
+			content = `${childrenMarkdown}\n\n`;
+			break;
+		case "div":
+			content = `${childrenMarkdown}\n`;
+			break;
+		case "strong":
+		case "b":
+			if (childrenMarkdown.trim()) {
+				content = `**${childrenMarkdown}**`;
+			}
+			break;
+		case "em":
+		case "i":
+			if (childrenMarkdown.trim()) {
+				content = `*${childrenMarkdown}*`;
+			}
+			break;
+		case "del":
+		case "s":
+		case "strike":
+			if (childrenMarkdown.trim()) {
+				content = `~~${childrenMarkdown}~~`;
+			}
+			break;
+		case "u":
+			if (childrenMarkdown.trim()) {
+				content = `<u>${childrenMarkdown}</u>`;
+			}
+			break;
+		case "code":
+			if (element.closest("pre")) {
+				content = childrenMarkdown;
+			} else {
+				content = `\`${childrenMarkdown}\``;
+			}
+			break;
+		case "pre":
+			content = `\`\`\`\n${childrenMarkdown}\n\`\`\`\n\n`;
+			break;
+		case "a": {
+			const href = element.getAttribute("href");
+			if (href) {
+				content = `[${childrenMarkdown}](${href})`;
+			} else {
+				content = childrenMarkdown;
+			}
+			break;
+		}
+		case "img": {
+			const src = element.getAttribute("src");
+			const alt = element.getAttribute("alt") ?? "";
+			content = `![${alt}](${src})`;
+			break;
+		}
+		case "blockquote":
+			content = `> ${childrenMarkdown.trim().replace(/\n/g, "\n> ")}\n\n`;
+			break;
+		case "ul": {
+			let listContent = "";
+			for (const [index, child] of Array.from(
+				element.childNodes,
+			).entries()) {
+				listContent += domToMarkdown(child, listLevel + 1, false, index + 1);
+			}
+			content = `${listContent}\n`;
+			break;
+		}
+		case "ol": {
+			let listContent = "";
+			for (const [index, child] of Array.from(
+				element.childNodes,
+			).entries()) {
+				listContent += domToMarkdown(child, listLevel + 1, true, index + 1);
+			}
+			content = `${listContent}\n`;
+			break;
+		}
+		case "li": {
+			const indent = "  ".repeat(listLevel > 0 ? listLevel - 1 : 0);
+			if (isOrdered) {
+				content = `${indent}${itemIndex}. ${childrenMarkdown.trim()}\n`;
+			} else {
+				content = `${indent}- ${childrenMarkdown.trim()}\n`;
+			}
+			break;
+		}
+		case "br":
+			content = "\n";
+			break;
+		case "table": {
+			let tableContent = "";
+			const headerRow = element.querySelector("thead tr");
+			if (headerRow) {
+				const headers = Array.from(headerRow.querySelectorAll("th"))
+					.map((th) => domToMarkdown(th).trim())
+					.join(" | ");
+				const separator = Array.from(headerRow.querySelectorAll("th"))
+					.map(() => "---")
+					.join(" | ");
+				tableContent += `| ${headers} |\n| ${separator} |\n`;
+			}
+			const bodyRows = element.querySelectorAll("tbody tr");
+			for (const row of Array.from(bodyRows)) {
+				const cells = Array.from(row.querySelectorAll("td"))
+					.map((td) => domToMarkdown(td).trim())
+					.join(" | ");
+				tableContent += `| ${cells} |\n`;
+			}
+			content = `\n${tableContent}\n`;
+			break;
+		}
+		default:
+			content = childrenMarkdown;
+	}
+
+	return content;
+};
+
 /**
  * Convert HTML from contentEditable div back to markdown
  * This handles the conversion from rich text back to markdown syntax
  */
 export const htmlToMarkdown = (html: string): string => {
-	let markdown = html;
+	if (typeof DOMParser === "undefined") {
+		return ""; // Or fallback to a simpler regex-based conversion
+	}
 
-	// Convert headers
-	markdown = markdown.replace(H1_TAG_REGEX, '# $1\n\n');
-	markdown = markdown.replace(H2_TAG_REGEX, '## $1\n\n');
-	markdown = markdown.replace(H3_TAG_REGEX, '### $1\n\n');
-	markdown = markdown.replace(H4_TAG_REGEX, '#### $1\n\n');
-	markdown = markdown.replace(H5_TAG_REGEX, '##### $1\n\n');
-	markdown = markdown.replace(H6_TAG_REGEX, '###### $1\n\n');
+	const parser = new DOMParser();
+	const doc = parser.parseFromString(html, "text/html");
+	let markdown = domToMarkdown(doc.body);
 
-	// Convert bold
-	markdown = markdown.replace(STRONG_TAG_REGEX, '**$2**');
-
-	// Convert italic
-	markdown = markdown.replace(EM_TAG_REGEX, '*$2*');
-
-	// Convert strikethrough
-	markdown = markdown.replace(DEL_TAG_REGEX, '~~$2~~');
-
-	// Convert underline (not standard markdown, but we'll use HTML)
-	markdown = markdown.replace(U_TAG_REGEX, '<u>$1</u>');
-
-	// Convert inline code
-	markdown = markdown.replace(CODE_TAG_REGEX, '`$1`');
-
-	// Convert code blocks
-	markdown = markdown.replace(PRE_CODE_TAG_REGEX, '```\n$1\n```\n\n');
-
-	// Convert links
-	markdown = markdown.replace(A_TAG_REGEX, '[$2]($1)');
-
-	// Convert images
-	markdown = markdown.replace(IMG_WITH_ALT_REGEX, '![$2]($1)');
-	markdown = markdown.replace(IMG_WITHOUT_ALT_REGEX, '![]($1)');
-
-	// Convert blockquotes
-	markdown = markdown.replace(BLOCKQUOTE_TAG_REGEX, '> $1\n\n');
-
-	// Convert unordered lists
-	markdown = markdown.replace(UL_TAG_REGEX, (_, content) => {
-		const items = content.replace(LI_TAG_REGEX, '- $1\n');
-		return `${items}\n`;
-	});
-
-	// Convert ordered lists
-	markdown = markdown.replace(OL_TAG_REGEX, (_, content) => {
-		let counter = 1;
-		const items = content.replace(LI_TAG_REGEX, (_, item) => {
-			return `${counter++}. ${item}\n`;
-		});
-		return `${items}\n`;
-	});
-
-	// Convert tables
-	markdown = markdown.replace(TABLE_TAG_REGEX, (_, content) => {
-		let tableMarkdown = '';
-		
-		// Extract header
-		const headerMatch = content.match(THEAD_TAG_REGEX);
-		if (headerMatch) {
-			const headerRow = headerMatch[1].replace(TR_TAG_REGEX, '$1');
-			const headers = headerRow.match(TH_TAG_REGEX);
-			if (headers) {
-				const headerText = headers.map(h => h.replace(TH_REPLACE_REGEX, '$1')).join(' | ');
-				const separator = headers.map(() => '---').join(' | ');
-				tableMarkdown = `${tableMarkdown}| ${headerText} |\n| ${separator} |\n`;
-			}
-		}
-
-		// Extract body
-		const bodyMatch = content.match(TBODY_TAG_REGEX);
-		if (bodyMatch) {
-			const rows = bodyMatch[1].match(TR_TAG_REGEX);
-			if (rows) {
-				for (const row of rows) {
-					const cells = row.match(TD_TAG_REGEX);
-					if (cells) {
-						const cellText = cells.map(c => c.replace(TD_REPLACE_REGEX, '$1')).join(' | ');
-						tableMarkdown = `${tableMarkdown}| ${cellText} |\n`;
-					}
-				}
-			}
-		}
-
-		return `${tableMarkdown}\n`;
-	});
-
-	// Convert paragraphs
-	markdown = markdown.replace(P_TAG_REGEX, '$1\n\n');
-
-	// Convert line breaks
-	markdown = markdown.replace(BR_TAG_REGEX, '\n');
-
-	// Clean up extra whitespace
-	markdown = markdown.replace(MULTIPLE_NEWLINES_REGEX, '\n\n');
-	markdown = markdown.replace(TRIM_WHITESPACE_REGEX, '');
-
-	// Remove any remaining HTML tags
-	markdown = markdown.replace(HTML_TAGS_REGEX, '');
-
-	// Decode HTML entities
-	markdown = markdown.replace(HTML_LT_REGEX, '<');
-	markdown = markdown.replace(HTML_GT_REGEX, '>');
-	markdown = markdown.replace(HTML_AMP_REGEX, '&');
-	markdown = markdown.replace(HTML_QUOT_REGEX, '"');
-	markdown = markdown.replace(HTML_APOS_REGEX, "'");
+	// Final cleanup
+	markdown = markdown.replace(/\n{3,}/g, "\n\n");
+	markdown = markdown.trim();
 
 	return markdown;
 };
