@@ -242,9 +242,13 @@ export const InlineEdit: FC<InlineEditProps> = ({
 	// Handle escape key to close inline edit
 	useEffect(() => {
 		const handleKeyDown = (event: KeyboardEvent) => {
-			if (event.key === "Escape" && !isLoading && !isRecording && !isTranscribing) {
+			if (event.key === "Escape") {
 				event.preventDefault();
-				onClose();
+				if (isLoading) {
+					handleCancelEdit();
+				} else if (!isRecording && !isTranscribing) {
+					onClose();
+				}
 			}
 		};
 
@@ -343,6 +347,14 @@ export const InlineEdit: FC<InlineEditProps> = ({
 		setIsLoading(false);
 		onClose();
 	}, [onClose]);
+
+  const handleXClick = useCallback(() => {
+    if (isLoading) {
+      handleCancelEdit();
+    } else {
+      onClose();
+    }
+  }, [isLoading, handleCancelEdit, onClose]);
 
 	const handleSendAudio = useCallback(async () => {
 		if (!audioBlob) return;
@@ -547,7 +559,7 @@ export const InlineEdit: FC<InlineEditProps> = ({
 				transform: position.top <= 50 ? "translateY(-8px)" : "translateY(calc(-100% - 8px))",
 			}}
 		>
-			<CloseButton onClick={onClose} disabled={isLoading}>
+			<CloseButton onClick={handleXClick} disabled={isLoading}>
 				<X size={18} />
 			</CloseButton>
 
