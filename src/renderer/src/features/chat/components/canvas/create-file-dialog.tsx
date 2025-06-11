@@ -43,6 +43,16 @@ const menuPropsSx = (theme: Theme) => ({
 				fontSize: "0.75rem",
 				lineHeight: "2.5",
 			},
+			"&::-webkit-scrollbar": {
+				width: "8px",
+			},
+			"&::-webkit-scrollbar-thumb": {
+				backgroundColor:
+					theme.palette.mode === "dark"
+						? "rgba(255, 255, 255, 0.1)"
+						: "rgba(0, 0, 0, 0.2)",
+				borderRadius: "4px",
+			},
 		},
 	},
 });
@@ -331,6 +341,13 @@ export const CreateFileDialog: FC<CreateFileDialogProps> = ({
 						slotProps={{
 							paper: {
 								sx: menuPropsSx(theme).PaperProps.sx,
+							},
+							listbox: {
+								sx: {
+									// Unset the maxHeight to prevent the listbox from scrolling internally.
+									// The Paper component will handle the scrolling.
+									maxHeight: "unset",
+								},
 							},
 						}}
 					/>
