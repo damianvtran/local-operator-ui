@@ -125,7 +125,7 @@ export const FindReplaceWidget: FC<FindReplaceWidgetProps> = ({
 				onReplaceAll(findValue, replaceValue);
 			} else {
 				await onReplace(replaceValue);
-				replaceInputRef.current?.focus();
+				replaceInputRef.current?.focus({ preventScroll: true });
 			}
 		}
 		if (e.key === "Escape") {
@@ -179,7 +179,7 @@ export const FindReplaceWidget: FC<FindReplaceWidgetProps> = ({
 						<ActionButton
 							onClick={async () => {
 								await onReplace(replaceValue);
-								replaceInputRef.current?.focus();
+								replaceInputRef.current?.focus({ preventScroll: true });
 							}}
 						>
 							<Replace size={16} />
