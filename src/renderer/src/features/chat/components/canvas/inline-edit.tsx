@@ -514,7 +514,7 @@ export const InlineEdit: FC<InlineEditProps> = ({
 		} catch (error) {
 			if (!isCancelledRef.current) {
 				console.error("Failed to edit file:", error);
-				showSuccessToast("Failed to edit file.");
+				showErrorToast("Failed to edit file.");
 			}
 		} finally {
 			setIsLoading(false);
