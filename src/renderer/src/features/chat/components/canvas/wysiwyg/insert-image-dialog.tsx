@@ -6,12 +6,68 @@ import {
 	Box,
 	Typography,
 	InputAdornment,
+	styled,
 } from "@mui/material";
-import { styled } from "@mui/material/styles";
 import { UploadCloud, Link } from "lucide-react";
 import type { FC, DragEvent } from "react";
 import { useState, useCallback } from "react";
 import { BaseDialog } from "@shared/components/common/base-dialog";
+
+const FieldContainer = styled(Box)({
+	marginBottom: 16,
+});
+
+const FieldLabel = styled("label")(({ theme }) => ({
+	display: "flex",
+	alignItems: "center",
+	marginBottom: 6,
+	color: theme.palette.text.secondary,
+	fontWeight: 500,
+	fontSize: "0.875rem",
+	fontFamily: theme.typography.fontFamily,
+	lineHeight: theme.typography.body2.lineHeight,
+}));
+
+const StyledTextField = styled(TextField)(({ theme }) => ({
+	"& .MuiOutlinedInput-root": {
+		borderRadius: 6,
+		backgroundColor: theme.palette.background.paper,
+		border: `1px solid ${theme.palette.divider}`,
+		padding: 0,
+		minHeight: "36px",
+		height: "36px",
+		alignItems: "center",
+		transition: "border-color 0.2s ease, box-shadow 0.2s ease",
+		"&:hover": {
+			borderColor: theme.palette.text.secondary,
+			backgroundColor: theme.palette.background.paper,
+		},
+		"&.Mui-focused": {
+			backgroundColor: theme.palette.background.paper,
+			borderColor: theme.palette.primary.main,
+			boxShadow: `0 0 0 2px ${theme.palette.primary.main}33`,
+		},
+		"& .MuiOutlinedInput-notchedOutline": {
+			border: "none",
+		},
+	},
+	"& .MuiInputBase-input": {
+		padding: "4px 12px",
+		fontSize: "0.875rem",
+		lineHeight: 1.5,
+		fontFamily: "inherit",
+		height: "calc(36px - 8px)",
+		overflow: "hidden",
+		textOverflow: "ellipsis",
+		whiteSpace: "nowrap",
+		wordBreak: "break-word",
+		alignSelf: "center",
+	},
+	"& .MuiInputBase-input::placeholder": {
+		color: theme.palette.text.disabled,
+		opacity: 1,
+	},
+}));
 
 const Dropzone = styled(Box)(({ theme }) => ({
 	border: `2px dashed ${theme.palette.divider}`,
@@ -84,36 +140,48 @@ export const InsertImageDialog: FC<InsertImageDialogProps> = ({
 		}
 	};
 
+	const handleKeyDown = (e: React.KeyboardEvent) => {
+		if (e.key === "Enter") {
+			e.preventDefault();
+			if (url.trim()) {
+				handleInsertFromUrl();
+			}
+		}
+	};
+
 	return (
 		<BaseDialog open={open} onClose={onClose} title="Insert Image">
 			<DialogContent sx={{ pt: "20px !important" }}>
-				<Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
-					<TextField
-						autoFocus
-						margin="dense"
-						label="Image URL"
-						type="url"
-						fullWidth
-						variant="outlined"
-						value={url}
-						onChange={(e) => setUrl(e.target.value)}
-						InputProps={{
-							startAdornment: (
-								<InputAdornment position="start">
-									<Link size={16} />
-								</InputAdornment>
-							),
-						}}
-					/>
-					<Button
-						onClick={handleInsertFromUrl}
-						variant="contained"
-						disabled={!url}
-						sx={{ height: "40px", mt: "4px" }}
-					>
-						Insert
-					</Button>
-				</Box>
+				<FieldContainer>
+					<FieldLabel>Image URL</FieldLabel>
+					<Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
+						<StyledTextField
+							autoFocus
+							fullWidth
+							variant="outlined"
+							type="url"
+							placeholder="https://example.com/image.jpg"
+							value={url}
+							onChange={(e) => setUrl(e.target.value)}
+							onKeyDown={handleKeyDown}
+							InputProps={{
+								startAdornment: (
+									<InputAdornment position="start" sx={{ paddingLeft: 1 }}>
+										<Link size={16} />
+									</InputAdornment>
+								),
+							}}
+						/>
+						<Button
+							onClick={handleInsertFromUrl}
+							variant="contained"
+							disabled={!url.trim()}
+							sx={{ height: "36px", minWidth: "80px" }}
+						>
+							Insert
+						</Button>
+					</Box>
+				</FieldContainer>
 				<Typography align="center" sx={{ my: 2, fontSize: "0.875rem" }}>
 					OR
 				</Typography>
