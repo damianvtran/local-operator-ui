@@ -14,7 +14,6 @@ import { parseReplies } from "../../utils/reply-utils";
 import { ExpandableThinkingContent } from "./expandable-thinking-content";
 import { MessageControls } from "./message-controls";
 import { ReplyPreview } from "../reply-preview";
-import { MessageContent } from "./message-content";
 import { MessageTimestamp } from "./message-timestamp";
 import { StreamingMessage } from "./streaming-message";
 import { TextSelectionControls } from "@shared/components/common/text-selection-controls";
@@ -89,6 +88,21 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 
 	// For user messages, we keep the paper boundary
 	if (isUser) {
+		const childrenWithRemainingContent = React.Children.map(
+			children,
+			(child: React.ReactNode) => {
+				if (React.isValidElement(child) && child.props.content) {
+					return React.cloneElement(
+						child as React.ReactElement<{
+							content: string;
+							styleProps: Record<string, unknown>;
+						}>,
+						{ content: remainingContent, styleProps: markdownStyleProps },
+					);
+				}
+				return child;
+			},
+		);
 		return (
 			<Box
 				sx={{
@@ -113,12 +127,7 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 				>
 					<Box ref={messageContentRef} sx={{ position: "relative" }}>
 						{replies.length > 0 && <ReplyPreview replies={replies} />}
-						<MessageContent
-							content={remainingContent}
-							isUser={isUser}
-							styleProps={markdownStyleProps}
-						/>
-						{message && <MessageTimestamp timestamp={message.timestamp} isUser={isUser} isSmallView={isSmallView} />}
+						{childrenWithRemainingContent}
 					</Box>
 				</StyledPaper>
 				{message && (
