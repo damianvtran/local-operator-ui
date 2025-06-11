@@ -40,6 +40,7 @@ import { InsertImageDialog } from "./wysiwyg/insert-image-dialog";
 import type { LinkDialogData } from "./wysiwyg/insert-link-dialog";
 import { InsertLinkDialog } from "./wysiwyg/insert-link-dialog";
 import { InsertTablePopover } from "./wysiwyg/insert-table-popover";
+import { FindReplaceWidget } from "@shared/components/common/find-replace-widget";
 import { TextStyleDropdown } from "./wysiwyg/text-style-dropdown";
 
 /**
@@ -337,6 +338,11 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 	const [linkDialogData, setLinkDialogData] = useState<LinkDialogData>({ url: "", text: "" });
 	const [isImageDialogOpen, setIsImageDialogOpen] = useState(false);
 	const [tableAnchorEl, setTableAnchorEl] = useState<HTMLElement | null>(null);
+	const [showFindReplace, setShowFindReplace] = useState(false);
+	const [findReplaceMode, setFindReplaceMode] = useState<"find" | "replace">("find");
+	const [searchQuery, setSearchQuery] = useState("");
+	const [matchRanges, setMatchRanges] = useState<Range[]>([]);
+	const [currentMatchIndex, setCurrentMatchIndex] = useState(-1);
 	const [inlineEdit, setInlineEdit] = useState<{
 		selection: string;
 		position: { top: number; left: number };
@@ -420,6 +426,112 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 		updateCurrentTextType();
 		updateSelectedFormats();
 	}, [updateCurrentTextType, updateSelectedFormats]);
+
+	const clearHighlights = useCallback(() => {
+		if (!editorRef.current) return;
+		const highlights = editorRef.current.querySelectorAll("span[data-highlight='true']");
+		for (const node of highlights) {
+			const parent = node.parentNode;
+			if (parent) {
+				while (node.firstChild) {
+					parent.insertBefore(node.firstChild, node);
+				}
+				parent.removeChild(node);
+				parent.normalize();
+			}
+		}
+	}, []);
+
+	const handleFind = useCallback((query: string) => {
+		clearHighlights();
+		setSearchQuery(query);
+		if (!query || !editorRef.current) {
+			setMatchRanges([]);
+			setCurrentMatchIndex(-1);
+			return 0;
+		}
+
+		const ranges: Range[] = [];
+		const walker = window.document.createTreeWalker(editorRef.current, NodeFilter.SHOW_TEXT);
+		let node: Node | null = walker.nextNode();
+		while (node) {
+			const textNode = node as Text;
+			const text = textNode.nodeValue;
+			if (text) {
+				let fromIndex = 0;
+				let matchIndex = text.toLowerCase().indexOf(query.toLowerCase(), fromIndex);
+				while (matchIndex !== -1) {
+					const range = window.document.createRange();
+					range.setStart(textNode, matchIndex);
+					range.setEnd(textNode, matchIndex + query.length);
+					ranges.push(range);
+					fromIndex = matchIndex + query.length;
+					matchIndex = text.toLowerCase().indexOf(query.toLowerCase(), fromIndex);
+				}
+			}
+			node = walker.nextNode();
+		}
+
+		setMatchRanges(ranges);
+		if (ranges.length > 0) {
+			setCurrentMatchIndex(0);
+			for (const range of ranges) {
+				const highlightSpan = window.document.createElement("span");
+				highlightSpan.dataset.highlight = "true";
+				const isCurrent = ranges.indexOf(range) === 0;
+				highlightSpan.style.backgroundColor = isCurrent ? "orange" : "yellow";
+				range.surroundContents(highlightSpan);
+			}
+		} else {
+			setCurrentMatchIndex(-1);
+		}
+
+		return ranges.length;
+	}, [clearHighlights]);
+
+	const handleNavigate = useCallback((direction: "next" | "prev") => {
+		if (matchRanges.length === 0) return;
+
+		const newIndex = direction === "next"
+			? (currentMatchIndex + 1) % matchRanges.length
+			: (currentMatchIndex - 1 + matchRanges.length) % matchRanges.length;
+
+		setCurrentMatchIndex(newIndex);
+
+		const highlights = editorRef.current?.querySelectorAll("span[data-highlight='true']");
+		if (highlights) {
+			highlights.forEach((h, i) => {
+				const highlight = h as HTMLElement;
+				highlight.style.backgroundColor = i === newIndex ? "orange" : "yellow";
+			});
+			const activeHighlight = highlights[newIndex] as HTMLElement;
+			activeHighlight?.scrollIntoView({ behavior: "smooth", block: "center" });
+		}
+	}, [matchRanges, currentMatchIndex]);
+
+	const handleReplace = useCallback((replaceText: string) => {
+		if (currentMatchIndex === -1 || !matchRanges[currentMatchIndex]) return;
+
+		const range = matchRanges[currentMatchIndex];
+		range.deleteContents();
+		range.insertNode(window.document.createTextNode(replaceText));
+		handleContentChange();
+		handleFind(searchQuery);
+	}, [currentMatchIndex, matchRanges, handleContentChange, handleFind, searchQuery]);
+
+	const handleReplaceAll = useCallback((findText: string, replaceText: string) => {
+		if (!findText || !editorRef.current) return;
+		clearHighlights();
+		
+		let html = editorRef.current.innerHTML;
+		const regex = new RegExp(findText, "gi");
+		html = html.replace(regex, replaceText);
+		editorRef.current.innerHTML = html;
+
+		handleContentChange();
+		setMatchRanges([]);
+		setCurrentMatchIndex(-1);
+	}, [clearHighlights, handleContentChange]);
 
 	// Initialize editor content from markdown
 	useEffect(() => {
@@ -697,6 +809,11 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 	const handleKeyDown = useCallback((event: React.KeyboardEvent) => {
 		if (event.metaKey || event.ctrlKey) {
 			switch (event.key) {
+				case "f":
+					event.preventDefault();
+					setFindReplaceMode(event.altKey ? "replace" : "find");
+					setShowFindReplace(true);
+					break;
 				case 'b':
 					event.preventDefault();
 					handleFormatToggle('bold');
@@ -1085,6 +1202,19 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 							agentId={agentId}
 						/>
 					)}
+					<FindReplaceWidget
+						editor={editorRef.current}
+						show={showFindReplace}
+						initialMode={findReplaceMode}
+						onClose={() => {
+							setShowFindReplace(false);
+							clearHighlights();
+						}}
+						onFind={handleFind}
+						onNavigate={handleNavigate}
+						onReplace={handleReplace}
+						onReplaceAll={handleReplaceAll}
+					/>
 				</Box>
 			</EditorContent>
 			<InsertLinkDialog
