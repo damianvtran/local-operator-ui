@@ -84,10 +84,20 @@ export const CodeEditor: FC<CodeEditorProps> = ({
 		to: number;
 	} | null>(null);
 	const editorRef = useRef<ReactCodeMirrorRef>(null);
+	const [editorContainer, setEditorContainer] = useState<HTMLElement | null>(
+		null,
+	);
 	const scrollContainerRef = useRef<HTMLDivElement>(null);
 
 	const theme = useTheme();
 	const searchTheme = useMemo(() => getSearchTheme(theme), [theme]);
+
+	useEffect(() => {
+		if (editorRef.current) {
+			// @ts-ignore
+			setEditorContainer(editorRef.current.container);
+		}
+	});
 
 	useEffect(() => {
 		if (document.content !== originalContentRef.current) {
@@ -175,7 +185,7 @@ export const CodeEditor: FC<CodeEditorProps> = ({
 					const highlightMark = Decoration.mark({
 						style: `background-color: ${alpha(
 							theme.palette.primary.main,
-							0.3,
+							0.9,
 						)}`,
 					});
 					this.decorations = Decoration.set([highlightMark.range(from, to)]);
@@ -286,7 +296,7 @@ export const CodeEditor: FC<CodeEditorProps> = ({
 				ref={editorRef}
 			/>
 			<TextSelectionControls
-				targetRef={editorRef as React.RefObject<HTMLElement>}
+				targetRef={{ current: editorContainer }}
 				scrollableContainerRef={scrollContainerRef}
 				showSpeech
 				showCopy
