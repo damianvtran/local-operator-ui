@@ -21,10 +21,10 @@ const INLINE_CODE_REGEX = /`(.*?)`/g;
 const LINK_REGEX = /\[([^\]]+)\]\(([^)]+)\)/g;
 const IMAGE_REGEX = /!\[([^\]]*)\]\(([^)]+)\)/g;
 const BLOCKQUOTE_REGEX = /^> (.*$)/gim;
-const UNORDERED_LIST_ASTERISK_REGEX = /^\* (.*$)/gim;
-const UNORDERED_LIST_DASH_REGEX = /^- (.*$)/gim;
-const LIST_ITEMS_REGEX = /(<li>.*<\/li>)/s;
-const ORDERED_LIST_REGEX = /^\d+\. (.*$)/gim;
+const UNORDERED_LIST_BLOCK_REGEX = /((?:^[ \t]*[*-] .*(?:\n|$))+)/gm;
+const ORDERED_LIST_BLOCK_REGEX = /((?:^[ \t]*\d+\. .*(?:\n|$))+)/gm;
+const UNORDERED_LIST_DASH_REGEX = /^[ \t]*[*-] /g;
+const ORDERED_LIST_DOT_REGEX = /^[ \t]*\d+\. /g;
 
 // HTML to Markdown regex patterns
 const H1_TAG_REGEX = /<h1[^>]*>(.*?)<\/h1>/gi;
@@ -165,11 +165,14 @@ export const markdownToHtml = (markdown: string): string => {
 		return `<pre><code>${code}</code></pre>`;
 	});
 
+	// Convert images before links to avoid conflicts
+	html = html.replace(
+		IMAGE_REGEX,
+		'<img src="$2" alt="$1" onerror="this.outerHTML = `<span>[Image: ${this.alt}]</span>`" />',
+	);
+
 	// Convert links
 	html = html.replace(LINK_REGEX, '<a href="$2">$1</a>');
-
-	// Convert images
-	html = html.replace(IMAGE_REGEX, '<img src="$2" alt="$1" />');
 
 	// Convert tables
 	html = convertMarkdownTablesToHtml(html);
@@ -178,25 +181,44 @@ export const markdownToHtml = (markdown: string): string => {
 	html = html.replace(BLOCKQUOTE_REGEX, '<blockquote>$1</blockquote>');
 
 	// Convert unordered lists
-	html = html.replace(UNORDERED_LIST_ASTERISK_REGEX, '<li>$1</li>');
-	html = html.replace(UNORDERED_LIST_DASH_REGEX, '<li>$1</li>');
-	html = html.replace(LIST_ITEMS_REGEX, '<ul>$1</ul>');
+	html = html.replace(UNORDERED_LIST_BLOCK_REGEX, (match) => {
+		const listItems = match
+			.trim()
+			.split('\n')
+			.map((line) => `<li>${line.replace(UNORDERED_LIST_DASH_REGEX, '')}</li>`)
+			.join('');
+		return `<ul>${listItems}</ul>`;
+	});
 
 	// Convert ordered lists
-	html = html.replace(ORDERED_LIST_REGEX, '<li>$1</li>');
+	html = html.replace(ORDERED_LIST_BLOCK_REGEX, (match) => {
+		const listItems = match
+			.trim()
+			.split('\n')
+			.map((line) => `<li>${line.replace(ORDERED_LIST_DOT_REGEX, '')}</li>`)
+			.join('');
+		return `<ol>${listItems}</ol>`;
+	});
 
 	// Convert line breaks to paragraphs
-	const paragraphs = html.split('\n\n').filter(p => p.trim());
-	html = paragraphs.map(p => {
-		const trimmed = p.trim();
-		// Don't wrap if it's already a block element
-		if (trimmed.startsWith('<h') || trimmed.startsWith('<ul') || 
-			trimmed.startsWith('<ol') || trimmed.startsWith('<blockquote') ||
-			trimmed.startsWith('<pre') || trimmed.startsWith('<table')) {
-			return trimmed;
-		}
-		return `<p>${trimmed}</p>`;
-	}).join('');
+	const paragraphs = html.split('\n\n').filter((p) => p.trim());
+	html = paragraphs
+		.map((p) => {
+			const trimmed = p.trim();
+			// Don't wrap if it's already a block element
+			if (
+				trimmed.startsWith('<h') ||
+				trimmed.startsWith('<ul') ||
+				trimmed.startsWith('<ol') ||
+				trimmed.startsWith('<blockquote') ||
+				trimmed.startsWith('<pre') ||
+				trimmed.startsWith('<table')
+			) {
+				return trimmed;
+			}
+			return `<p>${trimmed}</p>`;
+		})
+		.join('');
 
 	return html;
 };
