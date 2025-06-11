@@ -25,6 +25,7 @@ import { useConversationInputStore } from "@shared/store/conversation-input-stor
 import { normalizePath } from "@shared/utils/path-utils";
 import { showErrorToast } from "@shared/utils/toast-manager";
 import { Check, Mic, X } from "lucide-react";
+import { v4 as uuidv4 } from "uuid";
 import {
 	forwardRef,
 	useCallback,
@@ -381,12 +382,20 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			inputByConversation,
 			removeReply,
 			clearReplies,
+			addAttachment,
+			removeAttachment,
+			clearAttachments,
 		} = useConversationInputStore();
 		const replies = useMemo(
 			() => (conversationId && inputByConversation[conversationId]?.replies) || [],
 			[inputByConversation, conversationId],
 		);
-		const [attachments, setAttachments] = useState<string[]>([]);
+		const attachments = useMemo(
+			() =>
+				(conversationId && inputByConversation[conversationId]?.attachments) ||
+				[],
+			[inputByConversation, conversationId],
+		);
 		const [isRecording, setIsRecording] = useState(false);
 		const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
 		const [isTranscribing, setIsTranscribing] = useState(false);
@@ -430,13 +439,23 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 						.join("\n");
 					messageWithReplies = `${replyContent}\n${message}`;
 				}
-				onSendMessage(messageWithReplies, attachments);
-				setAttachments([]);
+				onSendMessage(
+					messageWithReplies,
+					attachments.map((a) => a.path),
+				);
 				if (conversationId) {
 					clearReplies(conversationId);
+					clearAttachments(conversationId);
 				}
 			},
-			[onSendMessage, attachments, replies, conversationId, clearReplies],
+			[
+				onSendMessage,
+				attachments,
+				replies,
+				conversationId,
+				clearReplies,
+				clearAttachments,
+			],
 		);
 
 		const {
@@ -635,22 +654,21 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					}
 					return URL.createObjectURL(file);
 				});
-				setAttachments((prev) => [...prev, ...newAttachments]);
+				if (conversationId) {
+					for (const path of newAttachments) {
+						addAttachment(conversationId, { id: uuidv4(), path });
+					}
+				}
 				if (fileInputRef.current) {
 					fileInputRef.current.value = "";
 				}
 			}
 		};
 
-		const handleRemoveAttachment = (index: number) => {
-			setAttachments((prev) => {
-				const newAttachments = [...prev];
-				if (newAttachments[index].startsWith("blob:")) {
-					URL.revokeObjectURL(newAttachments[index]);
-				}
-				newAttachments.splice(index, 1);
-				return newAttachments;
-			});
+		const handleRemoveAttachment = (id: string) => {
+			if (conversationId) {
+				removeAttachment(conversationId, id);
+			}
 		};
 
 		const triggerFileInput = () => {
@@ -669,11 +687,11 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 						if (file) {
 							const reader = new FileReader();
 							reader.onload = (e) => {
-								if (e.target?.result) {
-									setAttachments((prev) => [
-										...prev,
-										e.target?.result as string,
-									]);
+								if (e.target?.result && conversationId) {
+									addAttachment(conversationId, {
+										id: uuidv4(),
+										path: e.target.result as string,
+									});
 								}
 							};
 							reader.readAsDataURL(file);
@@ -685,8 +703,13 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 
 		const handleSuggestionClick = (suggestion: string) => {
 			if (isInputDisabled) return;
-			onSendMessage(suggestion, attachments);
-			setAttachments([]);
+			onSendMessage(
+				suggestion,
+				attachments.map((a) => a.path),
+			);
+			if (conversationId) {
+				clearAttachments(conversationId);
+			}
 			setNewMessage("");
 		};
 
@@ -713,8 +736,10 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					)}
 					{attachments.length > 0 && (
 						<AttachmentsPreview
-							attachments={attachments}
-							onRemoveAttachment={handleRemoveAttachment}
+							attachments={attachments.map((a) => a.path)}
+							onRemoveAttachment={(index) =>
+								handleRemoveAttachment(attachments[index].id)
+							}
 							disabled={isInputDisabled || isRecording || isTranscribing}
 						/>
 					)}

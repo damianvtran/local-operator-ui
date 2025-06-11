@@ -357,7 +357,6 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 	const canvasState = useCanvasStore((state) =>
 		conversationId ? state.conversations[conversationId] : undefined,
 	);
-
 	const updateCurrentTextType = useCallback(() => {
 		const selection = window.getSelection();
 		if (!selection?.rangeCount) return;
@@ -1067,8 +1066,11 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 						showSpeech
 						showCopy
 						showEdit
+						showRefer={!!document.path}
 						onEdit={handleEdit}
 						agentId={agentId ?? undefined}
+						filePath={document.path}
+						conversationId={conversationId}
 					/>
 					{inlineEdit && document.path && (
 						<InlineEdit

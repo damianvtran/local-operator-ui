@@ -16,6 +16,11 @@ export type Reply = {
 	text: string;
 };
 
+export type Attachment = {
+	id: string;
+	path: string;
+};
+
 /**
  * State for a single conversation's input
  */
@@ -36,6 +41,10 @@ type ConversationInputState = {
 	 * A list of replies to be sent with the next message
 	 */
 	replies: Reply[];
+	/**
+	 * A list of attachments to be sent with the next message
+	 */
+	attachments: Attachment[];
 };
 
 /**
@@ -66,6 +75,12 @@ type ConversationInputStoreState = {
 	 * @param conversationId - The ID of the conversation
 	 */
 	clearReplies: (conversationId: string) => void;
+
+	addAttachment: (conversationId: string, attachment: Attachment) => void;
+
+	removeAttachment: (conversationId: string, attachmentId: string) => void;
+
+	clearAttachments: (conversationId: string) => void;
 
 	/**
 	 * Set the current input value for a conversation
@@ -150,6 +165,7 @@ export const useConversationInputStore = create<ConversationInputStoreState>()(
 					submittedMessages: [],
 					currentHistoryIndex: null,
 					replies: [],
+					attachments: [],
 				};
 				const existingReplies = Array.isArray(existing.replies)
 					? existing.replies
@@ -193,12 +209,65 @@ export const useConversationInputStore = create<ConversationInputStoreState>()(
 				});
 			},
 
+			addAttachment: (conversationId, attachment) => {
+				const existing = get().inputByConversation[conversationId] || {
+					currentInput: "",
+					submittedMessages: [],
+					currentHistoryIndex: null,
+					replies: [],
+					attachments: [],
+				};
+				const existingAttachments = Array.isArray(existing.attachments)
+					? existing.attachments
+					: [];
+				set({
+					inputByConversation: {
+						...get().inputByConversation,
+						[conversationId]: {
+							...existing,
+							attachments: [...existingAttachments, attachment],
+						},
+					},
+				});
+			},
+
+			removeAttachment: (conversationId, attachmentId) => {
+				const existing = get().inputByConversation[conversationId];
+				if (!existing) return;
+				set({
+					inputByConversation: {
+						...get().inputByConversation,
+						[conversationId]: {
+							...existing,
+							attachments: existing.attachments.filter(
+								(a) => a.id !== attachmentId,
+							),
+						},
+					},
+				});
+			},
+
+			clearAttachments: (conversationId) => {
+				const existing = get().inputByConversation[conversationId];
+				if (!existing) return;
+				set({
+					inputByConversation: {
+						...get().inputByConversation,
+						[conversationId]: {
+							...existing,
+							attachments: [],
+						},
+					},
+				});
+			},
+
 			setCurrentInput: (conversationId, value) => {
 				const existing = get().inputByConversation[conversationId] || {
 					currentInput: "",
 					submittedMessages: [],
 					currentHistoryIndex: null,
 					replies: [],
+					attachments: [],
 				};
 				set({
 					inputByConversation: {
@@ -221,6 +290,7 @@ export const useConversationInputStore = create<ConversationInputStoreState>()(
 					submittedMessages: [],
 					currentHistoryIndex: null,
 					replies: [],
+					attachments: [],
 				};
 				// Avoid duplicate consecutive entries
 				const last =
@@ -282,6 +352,7 @@ export const useConversationInputStore = create<ConversationInputStoreState>()(
 					submittedMessages: [],
 					currentHistoryIndex: null,
 					replies: [],
+					attachments: [],
 				};
 				const messages = existing.submittedMessages;
 				let clampedIndex: number | null = null;
