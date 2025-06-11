@@ -481,7 +481,7 @@ export const InlineEdit: FC<InlineEditProps> = ({
 
 	const handleSubmit = useCallback(async () => {
 		if (!lastChatAgentId) {
-			showSuccessToast("Please select an agent first.");
+			showErrorToast("Please select an agent first.");
 			return;
 		}
 		setIsLoading(true);
@@ -503,7 +503,6 @@ export const InlineEdit: FC<InlineEditProps> = ({
 			);
 
 			if (isCancelledRef.current) {
-				showSuccessToast("Edit cancelled.");
 				return;
 			}
 
