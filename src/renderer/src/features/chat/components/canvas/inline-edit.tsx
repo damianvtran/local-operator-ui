@@ -232,6 +232,7 @@ export const InlineEdit: FC<InlineEditProps> = ({
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const textareaRef = useRef<HTMLInputElement>(null);
 	const isCancelledRef = useRef(false);
+	const containerRef = useRef<HTMLDivElement>(null);
 
 	useEffect(() => {
 		if (textareaRef.current) {
@@ -550,13 +551,19 @@ export const InlineEdit: FC<InlineEditProps> = ({
 
 	const iconSize = 18;
 
+	const containerHeight = containerRef.current?.offsetHeight || 0;
+	const showAbove = position.top > containerHeight + 10;
+
 	return (
 		<InputInnerContainer
+			ref={containerRef}
 			elevation={4}
 			sx={{
 				top: Math.max(0, position.top),
-				left: 0,
-				transform: position.top <= 50 ? "translateY(-8px)" : "translateY(calc(-100% - 8px))",
+				left: position.left,
+				transform: showAbove
+					? "translateY(calc(-100% - 8px))"
+					: "translateY(8px)",
 			}}
 		>
 			<CloseButton onClick={handleXClick} disabled={isLoading}>
