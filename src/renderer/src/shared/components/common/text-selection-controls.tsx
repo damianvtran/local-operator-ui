@@ -118,6 +118,7 @@ export const TextSelectionControls: FC<TextSelectionControlsProps> = ({
 			sel &&
 			sel.rangeCount > 0 &&
 			!sel.isCollapsed &&
+			sel.anchorNode &&
 			targetRef.current.contains(sel.anchorNode)
 		) {
 			const range = sel.getRangeAt(0);

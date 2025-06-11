@@ -22,6 +22,7 @@ import { useAgents } from "@shared/hooks/use-agents";
 import { BaseDialog } from "@shared/components/common/base-dialog";
 import { useMemo, useState } from "react";
 import type { FC } from "react";
+import { ConfirmationModal } from "@shared/components/common/confirmation-modal";
 import { DirectoryIndicator } from "../directory-indicator";
 
 /**
@@ -146,7 +147,10 @@ const LabelIcon = styled(Box)({
 export type CreateFileDialogProps = {
 	open: boolean;
 	onClose: () => void;
-	onSave: (details: { name: string; type: string; location: string }) => void;
+	onSave: (
+		details: { name: string; type: string; location: string },
+		overwrite?: boolean,
+	) => void;
 	isSaving: boolean;
 	agentId: string;
 };
@@ -161,6 +165,7 @@ export const CreateFileDialog: FC<CreateFileDialogProps> = ({
 	const theme = useTheme();
 	const [fileName, setFileName] = useState("");
 	const [fileType, setFileType] = useState("md");
+	const [isConfirmingOverwrite, setConfirmingOverwrite] = useState(false);
 
 	const { data: agentListResult } = useAgents();
 	const agent = useMemo(
@@ -171,13 +176,25 @@ export const CreateFileDialog: FC<CreateFileDialogProps> = ({
 
 	const canSave = fileName.trim() !== "" && !isSaving;
 
-	const handleSave = () => {
+	const handleSave = async (overwrite = false) => {
 		if (!canSave) return;
-		onSave({
-			name: fileName,
-			type: fileType,
-			location: currentWorkingDirectory,
-		});
+
+		const filePath = `${currentWorkingDirectory}/${fileName}.${fileType}`;
+		const exists = await window.api.fileExists(filePath);
+
+		if (exists && !overwrite) {
+			setConfirmingOverwrite(true);
+			return;
+		}
+
+		onSave(
+			{
+				name: fileName,
+				type: fileType,
+				location: currentWorkingDirectory,
+			},
+			overwrite,
+		);
 	};
 
 	const dialogActions = (
@@ -202,7 +219,7 @@ export const CreateFileDialog: FC<CreateFileDialogProps> = ({
 				Cancel
 			</Button>
 			<Button
-				onClick={handleSave}
+				onClick={() => handleSave()}
 				variant="contained" // Primary action
 				color="primary"
 				size="small"
@@ -228,17 +245,18 @@ export const CreateFileDialog: FC<CreateFileDialogProps> = ({
 	);
 
 	return (
-		<BaseDialog
-			open={open}
-			onClose={onClose}
-			title="Create New File"
-			actions={dialogActions}
-			maxWidth="sm"
-			fullWidth
-		>
-			<Box sx={{ pt: 2 }}>
-				<FormControl fullWidth sx={{ mb: 2.5 }}>
-					<FieldLabel>
+		<>
+			<BaseDialog
+				open={open && !isConfirmingOverwrite}
+				onClose={onClose}
+				title="Create New File"
+				actions={dialogActions}
+				maxWidth="sm"
+				fullWidth
+			>
+				<Box sx={{ pt: 2 }}>
+					<FormControl fullWidth sx={{ mb: 2.5 }}>
+						<FieldLabel>
 						<LabelIcon>
 							<FontAwesomeIcon icon={faFile} size="sm" />
 						</LabelIcon>
@@ -296,11 +314,28 @@ export const CreateFileDialog: FC<CreateFileDialogProps> = ({
 						agentId={agentId}
 						currentWorkingDirectory={currentWorkingDirectory}
 					/>
-					<Typography variant="caption" color="text.secondary" sx={{ mt: 1 }}>
-						The file will be created in the selected working directory.
-					</Typography>
-				</FormControl>
-			</Box>
-		</BaseDialog>
+						<Typography
+							variant="caption"
+							color="text.secondary"
+							sx={{ mt: 1 }}
+						>
+							The file will be created in the selected working directory.
+						</Typography>
+					</FormControl>
+				</Box>
+			</BaseDialog>
+			<ConfirmationModal
+				open={isConfirmingOverwrite}
+				title="File Already Exists"
+				message={`A file named "${fileName}.${fileType}" already exists. Do you want to overwrite it?`}
+				confirmText="Overwrite"
+				onConfirm={() => {
+					setConfirmingOverwrite(false);
+					handleSave(true);
+				}}
+				onCancel={() => setConfirmingOverwrite(false)}
+				isDangerous
+			/>
+		</>
 	);
 };
