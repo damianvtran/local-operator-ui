@@ -1,10 +1,9 @@
 import {
 	Button,
-	DialogActions,
-	DialogContent,
 	TextField,
 	Box,
 	styled,
+	useTheme,
 } from "@mui/material";
 import type { FC } from "react";
 import { useEffect, useState } from "react";
@@ -84,6 +83,7 @@ export const InsertLinkDialog: FC<InsertLinkDialogProps> = ({
 	onInsert,
 	initialData,
 }) => {
+	const theme = useTheme();
 	const [url, setUrl] = useState("");
 	const [text, setText] = useState("");
 
@@ -112,9 +112,60 @@ export const InsertLinkDialog: FC<InsertLinkDialogProps> = ({
 		}
 	};
 
+	const dialogActions = (
+		<>
+			<Button
+				onClick={onClose}
+				variant="outlined" // Secondary action
+				size="small"
+				sx={{
+					borderColor: theme.palette.divider,
+					color: theme.palette.text.secondary,
+					textTransform: "none",
+					fontSize: "0.8125rem",
+					padding: theme.spacing(0.75, 2),
+					borderRadius: theme.shape.borderRadius * 0.75,
+					"&:hover": {
+						backgroundColor: theme.palette.action.hover,
+						borderColor: theme.palette.divider,
+					},
+				}}
+			>
+				Cancel
+			</Button>
+			<Button
+				onClick={handleInsert}
+				variant="contained" // Primary action
+				color="primary"
+				size="small"
+				disabled={!isUrlValid}
+				sx={{
+					textTransform: "none",
+					fontSize: "0.8125rem",
+					padding: theme.spacing(0.75, 2),
+					borderRadius: theme.shape.borderRadius * 0.75,
+					boxShadow: "none",
+					"&:hover": {
+						boxShadow: "none",
+						opacity: 0.9,
+					},
+				}}
+			>
+				Insert
+			</Button>
+		</>
+	);
+
 	return (
-		<BaseDialog open={open} onClose={onClose} title="Insert Link">
-			<DialogContent sx={{ pt: "20px !important" }}>
+		<BaseDialog 
+			open={open} 
+			onClose={onClose} 
+			title="Insert Link"
+			actions={dialogActions}
+			maxWidth="sm"
+			fullWidth
+		>
+			<Box sx={{ pt: 2 }}>
 				<FieldContainer>
 					<FieldLabel>URL *</FieldLabel>
 					<StyledTextField
@@ -142,17 +193,7 @@ export const InsertLinkDialog: FC<InsertLinkDialogProps> = ({
 						onKeyDown={handleKeyDown}
 					/>
 				</FieldContainer>
-			</DialogContent>
-			<DialogActions>
-				<Button onClick={onClose}>Cancel</Button>
-				<Button 
-					onClick={handleInsert} 
-					variant="contained"
-					disabled={!isUrlValid}
-				>
-					Insert
-				</Button>
-			</DialogActions>
+			</Box>
 		</BaseDialog>
 	);
 };
