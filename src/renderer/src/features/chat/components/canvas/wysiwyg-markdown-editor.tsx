@@ -803,7 +803,7 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 			}
 		}
 	}, [handleFormatToggle, executeCommand, content]);
-
+	// Start of Selection
 	const handleApplyChanges = (editDiffs: Array<{ find: string; replace: string }>) => {
 		if (!editorRef.current) return;
 
@@ -819,25 +819,11 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 		try {
 			const el = editorRef.current;
 			el.focus();
-			const sel = window.getSelection();
-			if (sel) {
-				// Select all existing content
-				sel.removeAllRanges();
-				const range = window.document.createRange();
-				range.selectNodeContents(el);
-				sel.addRange(range);
-
-				// Replace entire content in one undo step
-				window.document.execCommand('insertHTML', false, htmlContent);
-
-				// Collapse selection to the start of editor
-				range.collapse(true);
-				sel.removeAllRanges();
-				sel.addRange(range);
-			}
+			// Replace entire content in a single undo step
+			window.document.execCommand('selectAll', false);
+			window.document.execCommand('insertHTML', false, htmlContent);
 		} catch (error) {
 			console.warn('Undoable apply failed, falling back to direct update:', error);
-			editorRef.current.innerHTML = htmlContent;
 		}
 
 		// Update state
@@ -847,7 +833,8 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 		// Cleanup inline edit
 		setInlineEdit(null);
 		selectionRef.current = null;
-	}
+  };
+	
 
 	const handleEdit = (
 		selection: string,
