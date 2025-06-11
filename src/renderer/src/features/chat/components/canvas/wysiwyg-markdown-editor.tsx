@@ -806,7 +806,7 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 
 	const handleApplyChanges = (editDiffs: Array<{ find: string; replace: string }>) => {
 		if (!editorRef.current) return;
-		
+
 		// Compute updated markdown content
 		const updatedContent = editDiffs.reduce(
 			(acc, { find, replace }) => acc.replace(find, replace),
@@ -817,49 +817,33 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 		const htmlContent = markdownToHtml(updatedContent);
 
 		try {
-			// Focus editor first
-			editorRef.current.focus();
-			
+			const el = editorRef.current;
+			el.focus();
 			const sel = window.getSelection();
 			if (sel) {
-				// Select all content
+				// Select all existing content
 				sel.removeAllRanges();
 				const range = window.document.createRange();
-				range.selectNodeContents(editorRef.current);
+				range.selectNodeContents(el);
 				sel.addRange(range);
-				
-				// Use a different approach: temporarily disable contentEditable to prevent browser interference
-				// then use a single insertHTML command with the complete content
-				editorRef.current.contentEditable = 'false';
-				
-				// Clear content first
-				executeCommand('selectAll');
-				executeCommand('delete');
-				
-				// Re-enable contentEditable
-				editorRef.current.contentEditable = 'true';
-				editorRef.current.focus();
-				
-				// Create a new selection at the beginning
-				const newRange = window.document.createRange();
-				newRange.setStart(editorRef.current, 0);
-				newRange.collapse(true);
+
+				// Replace entire content in one undo step
+				window.document.execCommand('insertHTML', false, htmlContent);
+
+				// Collapse selection to the start of editor
+				range.collapse(true);
 				sel.removeAllRanges();
-				sel.addRange(newRange);
-				
-				// Insert the complete HTML content as a single operation
-				// This should preserve undo history while avoiding browser wrapping
-				executeCommand('insertHTML', htmlContent);
+				sel.addRange(range);
 			}
 		} catch (error) {
 			console.warn('Undoable apply failed, falling back to direct update:', error);
 			editorRef.current.innerHTML = htmlContent;
 		}
-		
+
 		// Update state
 		setContent(updatedContent);
 		setHasUserChanges(true);
-		
+
 		// Cleanup inline edit
 		setInlineEdit(null);
 		selectionRef.current = null;
