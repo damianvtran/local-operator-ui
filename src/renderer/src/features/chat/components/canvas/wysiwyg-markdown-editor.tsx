@@ -66,7 +66,48 @@ const getCursorPosition = (editorElement: HTMLElement, range: Range): number => 
 /**
  * Formats selection with context for the edit API
  */
-const formatSelectionWithContext = (fullContent: string, selectedText: string, cursorPosition?: number): string => {
+const formatSelectionWithContext = (
+	fullContent: string,
+	selectedText: string,
+	cursorPosition?: number,
+	editorElement?: HTMLElement | null,
+	range?: Range,
+): string => {
+	if (editorElement && range && !range.collapsed) {
+		const beforeRange = document.createRange();
+		beforeRange.selectNodeContents(editorElement);
+		beforeRange.setEnd(range.startContainer, range.startOffset);
+
+		const afterRange = document.createRange();
+		afterRange.selectNodeContents(editorElement);
+		afterRange.setStart(range.endContainer, range.endOffset);
+
+		const tempDiv = document.createElement("div");
+
+		tempDiv.appendChild(range.cloneContents());
+		const selectedHtml = tempDiv.innerHTML;
+		tempDiv.innerHTML = "";
+
+		tempDiv.appendChild(beforeRange.cloneContents());
+		const beforeHtml = tempDiv.innerHTML;
+		tempDiv.innerHTML = "";
+
+		tempDiv.appendChild(afterRange.cloneContents());
+		const afterHtml = tempDiv.innerHTML;
+		tempDiv.innerHTML = "";
+
+		const textBefore = htmlToMarkdown(beforeHtml);
+		const selectedTextMd = htmlToMarkdown(selectedHtml);
+		const textAfter = htmlToMarkdown(afterHtml);
+
+		// Truncate text before and after to 120 chars max with ellipsis
+		const truncatedTextBefore =
+			textBefore.length > 120 ? `${textBefore.slice(-120)}` : textBefore;
+		const truncatedTextAfter =
+			textAfter.length > 120 ? `${textAfter.slice(0, 120)}` : textAfter;
+
+		return `<text_before>${truncatedTextBefore}</text_before><selected_text>${selectedTextMd}</selected_text><text_after>${truncatedTextAfter}</text_after>`;
+	}
 
 	if (selectedText) {
 		// Find the position of the selected text in the full content
@@ -703,7 +744,13 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 						}
 						
 						const selectedText = selection.toString();
-						const formattedSelection = formatSelectionWithContext(content, selectedText, cursorPosition);
+						const formattedSelection = formatSelectionWithContext(
+							content,
+							selectedText,
+							cursorPosition,
+							editorRef.current,
+							range,
+						);
 
 						setInlineEdit({
 							selection: formattedSelection,
@@ -841,7 +888,13 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 			}
 		}
 		
-		const formattedSelection = formatSelectionWithContext(content, selection, cursorPosition);
+		const formattedSelection = formatSelectionWithContext(
+			content,
+			selection,
+			cursorPosition,
+			editorRef.current,
+			range,
+		);
 
 		setInlineEdit({
 			selection: formattedSelection,
