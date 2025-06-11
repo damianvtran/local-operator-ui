@@ -164,6 +164,7 @@ const SelectionHighlight = styled("span")(({ theme }) => ({
 }));
 
 const EditorContainer = styled(Paper)(({ theme }) => ({
+	position: "relative",
 	display: "flex",
 	flexDirection: "column",
 	height: "100%",
@@ -442,96 +443,158 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 		}
 	}, []);
 
-	const handleFind = useCallback((query: string) => {
-		clearHighlights();
-		setSearchQuery(query);
-		if (!query || !editorRef.current) {
+	const handleFind = useCallback(
+		(query: string, startAfterRange?: Range) => {
+			clearHighlights();
+			setSearchQuery(query);
+			if (!query || !editorRef.current) {
+				setMatchRanges([]);
+				setCurrentMatchIndex(-1);
+				return 0;
+			}
+
+			const ranges: Range[] = [];
+			const walker = window.document.createTreeWalker(
+				editorRef.current,
+				NodeFilter.SHOW_TEXT,
+			);
+			let node: Node | null = walker.nextNode();
+			while (node) {
+				const textNode = node as Text;
+				const text = textNode.nodeValue;
+				if (text) {
+					let fromIndex = 0;
+					let matchIndex = text.toLowerCase().indexOf(query.toLowerCase(), fromIndex);
+					while (matchIndex !== -1) {
+						const range = window.document.createRange();
+						range.setStart(textNode, matchIndex);
+						range.setEnd(textNode, matchIndex + query.length);
+						ranges.push(range);
+						fromIndex = matchIndex + query.length;
+						matchIndex = text.toLowerCase().indexOf(query.toLowerCase(), fromIndex);
+					}
+				}
+				node = walker.nextNode();
+			}
+
+			setMatchRanges(ranges);
+			let newIndex = -1;
+
+			if (ranges.length > 0) {
+				if (startAfterRange) {
+					for (let i = 0; i < ranges.length; i++) {
+						// Find first range that starts at or after the end of startAfterRange
+						if (
+							startAfterRange.compareBoundaryPoints(
+								Range.END_TO_START,
+								ranges[i],
+							) <= 0
+						) {
+							newIndex = i;
+							break;
+						}
+					}
+					if (newIndex === -1) {
+						// wrap around
+						newIndex = 0;
+					}
+				} else {
+					newIndex = 0;
+				}
+
+				setCurrentMatchIndex(newIndex);
+
+				for (let i = 0; i < ranges.length; i++) {
+					const range = ranges[i];
+					const highlightSpan = window.document.createElement("span");
+					highlightSpan.dataset.highlight = "true";
+					const isCurrent = i === newIndex;
+					highlightSpan.style.backgroundColor = isCurrent ? "orange" : "yellow";
+					range.surroundContents(highlightSpan);
+				}
+
+				const activeHighlight = editorRef.current.querySelectorAll(
+					"span[data-highlight='true']",
+				)[newIndex] as HTMLElement;
+				if (activeHighlight) {
+					activeHighlight.scrollIntoView({ behavior: "smooth", block: "center" });
+				}
+			} else {
+				setCurrentMatchIndex(-1);
+			}
+
+			return ranges.length;
+		},
+		[clearHighlights],
+	);
+
+	const handleNavigate = useCallback(
+		(direction: "next" | "prev") => {
+			if (matchRanges.length === 0) return;
+
+			const newIndex =
+				direction === "next"
+					? (currentMatchIndex + 1) % matchRanges.length
+					: (currentMatchIndex - 1 + matchRanges.length) % matchRanges.length;
+
+			setCurrentMatchIndex(newIndex);
+
+			const highlights = editorRef.current?.querySelectorAll(
+				"span[data-highlight='true']",
+			);
+			if (highlights) {
+				highlights.forEach((h, i) => {
+					const highlight = h as HTMLElement;
+					highlight.style.backgroundColor = i === newIndex ? "orange" : "yellow";
+				});
+				const activeHighlight = highlights[newIndex] as HTMLElement;
+				activeHighlight?.scrollIntoView({ behavior: "smooth", block: "center" });
+			}
+		},
+		[matchRanges, currentMatchIndex],
+	);
+
+	const handleReplace = useCallback(
+		(replaceText: string) => {
+			if (currentMatchIndex === -1 || !matchRanges[currentMatchIndex]) return;
+
+			const range = matchRanges[currentMatchIndex];
+			const selection = window.getSelection();
+			if (selection) {
+				selection.removeAllRanges();
+				selection.addRange(range);
+				window.document.execCommand("insertText", false, replaceText);
+				// After execCommand, selection is collapsed at the end of insertion.
+				const caretRange = selection.getRangeAt(0);
+				handleFind(searchQuery, caretRange);
+			}
+		},
+		[currentMatchIndex, matchRanges, handleFind, searchQuery],
+	);
+
+	const handleReplaceAll = useCallback(
+		(findText: string, replaceText: string) => {
+			if (!findText || !editorRef.current) return;
+			clearHighlights();
+
+			const originalHtml = editorRef.current.innerHTML;
+			const regex = new RegExp(
+				findText.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&"),
+				"gi",
+			);
+			const newHtml = originalHtml.replace(regex, replaceText);
+
+			if (originalHtml !== newHtml) {
+				editorRef.current.focus();
+				window.document.execCommand("selectAll", false);
+				window.document.execCommand("insertHTML", false, newHtml);
+			}
+
 			setMatchRanges([]);
 			setCurrentMatchIndex(-1);
-			return 0;
-		}
-
-		const ranges: Range[] = [];
-		const walker = window.document.createTreeWalker(editorRef.current, NodeFilter.SHOW_TEXT);
-		let node: Node | null = walker.nextNode();
-		while (node) {
-			const textNode = node as Text;
-			const text = textNode.nodeValue;
-			if (text) {
-				let fromIndex = 0;
-				let matchIndex = text.toLowerCase().indexOf(query.toLowerCase(), fromIndex);
-				while (matchIndex !== -1) {
-					const range = window.document.createRange();
-					range.setStart(textNode, matchIndex);
-					range.setEnd(textNode, matchIndex + query.length);
-					ranges.push(range);
-					fromIndex = matchIndex + query.length;
-					matchIndex = text.toLowerCase().indexOf(query.toLowerCase(), fromIndex);
-				}
-			}
-			node = walker.nextNode();
-		}
-
-		setMatchRanges(ranges);
-		if (ranges.length > 0) {
-			setCurrentMatchIndex(0);
-			for (const range of ranges) {
-				const highlightSpan = window.document.createElement("span");
-				highlightSpan.dataset.highlight = "true";
-				const isCurrent = ranges.indexOf(range) === 0;
-				highlightSpan.style.backgroundColor = isCurrent ? "orange" : "yellow";
-				range.surroundContents(highlightSpan);
-			}
-		} else {
-			setCurrentMatchIndex(-1);
-		}
-
-		return ranges.length;
-	}, [clearHighlights]);
-
-	const handleNavigate = useCallback((direction: "next" | "prev") => {
-		if (matchRanges.length === 0) return;
-
-		const newIndex = direction === "next"
-			? (currentMatchIndex + 1) % matchRanges.length
-			: (currentMatchIndex - 1 + matchRanges.length) % matchRanges.length;
-
-		setCurrentMatchIndex(newIndex);
-
-		const highlights = editorRef.current?.querySelectorAll("span[data-highlight='true']");
-		if (highlights) {
-			highlights.forEach((h, i) => {
-				const highlight = h as HTMLElement;
-				highlight.style.backgroundColor = i === newIndex ? "orange" : "yellow";
-			});
-			const activeHighlight = highlights[newIndex] as HTMLElement;
-			activeHighlight?.scrollIntoView({ behavior: "smooth", block: "center" });
-		}
-	}, [matchRanges, currentMatchIndex]);
-
-	const handleReplace = useCallback((replaceText: string) => {
-		if (currentMatchIndex === -1 || !matchRanges[currentMatchIndex]) return;
-
-		const range = matchRanges[currentMatchIndex];
-		range.deleteContents();
-		range.insertNode(window.document.createTextNode(replaceText));
-		handleContentChange();
-		handleFind(searchQuery);
-	}, [currentMatchIndex, matchRanges, handleContentChange, handleFind, searchQuery]);
-
-	const handleReplaceAll = useCallback((findText: string, replaceText: string) => {
-		if (!findText || !editorRef.current) return;
-		clearHighlights();
-		
-		let html = editorRef.current.innerHTML;
-		const regex = new RegExp(findText, "gi");
-		html = html.replace(regex, replaceText);
-		editorRef.current.innerHTML = html;
-
-		handleContentChange();
-		setMatchRanges([]);
-		setCurrentMatchIndex(-1);
-	}, [clearHighlights, handleContentChange]);
+		},
+		[clearHighlights],
+	);
 
 	// Initialize editor content from markdown
 	useEffect(() => {
@@ -1198,25 +1261,27 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 								setInlineEdit(null);
 								selectionRef.current = null;
 							}}
-							onApplyChanges={handleApplyChanges}
-							agentId={agentId}
-						/>
-					)}
-					<FindReplaceWidget
-						editor={editorRef.current}
-						show={showFindReplace}
-						initialMode={findReplaceMode}
-						onClose={() => {
-							setShowFindReplace(false);
-							clearHighlights();
-						}}
-						onFind={handleFind}
-						onNavigate={handleNavigate}
-						onReplace={handleReplace}
-						onReplaceAll={handleReplaceAll}
+						onApplyChanges={handleApplyChanges}
+						agentId={agentId}
 					/>
+				)}
 				</Box>
 			</EditorContent>
+			<FindReplaceWidget
+				show={showFindReplace}
+				initialMode={findReplaceMode}
+				onClose={() => {
+					setShowFindReplace(false);
+					clearHighlights();
+				}}
+				onFind={handleFind}
+				onNavigate={handleNavigate}
+				onReplace={handleReplace}
+				onReplaceAll={handleReplaceAll}
+				matchCount={matchRanges.length}
+				currentMatch={currentMatchIndex + 1}
+				containerSx={{ top: "56px", right: "16px" }}
+			/>
 			<InsertLinkDialog
 				open={isLinkDialogOpen}
 				onClose={() => setIsLinkDialogOpen(false)}

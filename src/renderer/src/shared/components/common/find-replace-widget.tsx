@@ -1,4 +1,5 @@
 import { Box, IconButton, InputBase, Paper, Tooltip, Typography } from "@mui/material";
+import type { SxProps, Theme } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import { ChevronLeft, ChevronRight, X, Replace } from "lucide-react";
 import type { FC } from "react";
@@ -55,14 +56,16 @@ const Divider = styled("div")(({ theme }) => ({
 }));
 
 type FindReplaceWidgetProps = {
-	editor: HTMLDivElement | null;
-	onFind: (query: string) => number;
+	onFind: (query: string) => void;
 	onNavigate: (direction: "next" | "prev") => void;
 	onReplace: (replaceText: string) => void;
 	onReplaceAll: (findText: string, replaceText: string) => void;
 	onClose: () => void;
 	show: boolean;
 	initialMode?: "find" | "replace";
+	matchCount: number;
+	currentMatch: number;
+	containerSx?: SxProps<Theme>;
 };
 
 export const FindReplaceWidget: FC<FindReplaceWidgetProps> = ({
@@ -73,12 +76,13 @@ export const FindReplaceWidget: FC<FindReplaceWidgetProps> = ({
 	onClose,
 	show,
 	initialMode = "find",
+	matchCount,
+	currentMatch,
+	containerSx,
 }) => {
 	const [mode, setMode] = useState(initialMode);
 	const [findValue, setFindValue] = useState("");
 	const [replaceValue, setReplaceValue] = useState("");
-	const [matchCount, setMatchCount] = useState(0);
-	const [currentMatch, setCurrentMatch] = useState(0);
 
 	const findInputRef = useRef<HTMLInputElement>(null);
 	const replaceInputRef = useRef<HTMLInputElement>(null);
@@ -96,14 +100,7 @@ export const FindReplaceWidget: FC<FindReplaceWidgetProps> = ({
 	}, [show, mode]);
 
 	useEffect(() => {
-		if (debouncedFindValue) {
-			const count = onFind(debouncedFindValue);
-			setMatchCount(count);
-			setCurrentMatch(count > 0 ? 1 : 0);
-		} else {
-			setMatchCount(0);
-			setCurrentMatch(0);
-		}
+		onFind(debouncedFindValue);
 	}, [debouncedFindValue, onFind]);
 
 	const handleFindKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -111,7 +108,6 @@ export const FindReplaceWidget: FC<FindReplaceWidgetProps> = ({
 			e.preventDefault();
 			if (matchCount > 0) {
 				onNavigate("next");
-				setCurrentMatch((prev) => (prev % matchCount) + 1);
 			}
 		}
 		if (e.key === "Escape") {
@@ -138,7 +134,7 @@ export const FindReplaceWidget: FC<FindReplaceWidgetProps> = ({
 	}
 
 	return (
-		<WidgetContainer>
+		<WidgetContainer sx={containerSx}>
 			<Tooltip title={mode === "find" ? "Switch to Replace" : "Switch to Find"}>
 				<ActionButton onClick={() => setMode(mode === "find" ? "replace" : "find")}>
 					<ChevronLeft size={16} />
