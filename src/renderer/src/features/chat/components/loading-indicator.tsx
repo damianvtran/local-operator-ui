@@ -54,7 +54,7 @@ const StatusText = styled(Typography, {
 	color: theme.palette.text.secondary,
 	display: "flex",
 	marginLeft: isSmallView ? 0 : 16,
-	fontSize: isSmallView ? "0.75rem" : "inherit",
+	fontSize: isSmallView ? "0.75rem" : "1rem",
 	position: "relative",
 	animation: `${textStrobeAnimation} 3s ease-in-out infinite`,
 }));
