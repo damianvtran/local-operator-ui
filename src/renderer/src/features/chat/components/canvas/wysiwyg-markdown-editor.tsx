@@ -474,7 +474,7 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 	}, []);
 
 	const handleFind = useCallback(
-		(query: string, startAfterRange?: Range) => {
+		(query: string, startAfterRange?: Range, manageFocus = true) => {
 			clearHighlights();
 			setSearchQuery(query);
 			if (!query || !editorRef.current) {
@@ -558,11 +558,13 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 					behavior: "smooth",
 					block: "center",
 				});
-				if (
-					activeElement instanceof HTMLElement &&
-					activeElement !== window.document.body
-				) {
-					activeElement.focus({ preventScroll: true });
+				if (manageFocus) {
+					if (
+						activeElement instanceof HTMLElement &&
+						activeElement !== window.document.body
+					) {
+						activeElement.focus({ preventScroll: true });
+					}
 				}
 			} else {
 				setCurrentMatchIndex(-1);
@@ -619,29 +621,32 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 	);
 
 	const handleReplace = useCallback(
-		(replaceText: string, onComplete?: () => void) => {
-			if (currentMatchIndex === -1 || !matchRanges[currentMatchIndex]) {
-				onComplete?.();
-				return;
-			}
+		(replaceText: string): Promise<void> => {
+			return new Promise((resolve) => {
+				if (currentMatchIndex === -1 || !matchRanges[currentMatchIndex]) {
+					resolve();
+					return;
+				}
 
-			const range = matchRanges[currentMatchIndex];
-			const selection = window.getSelection();
-			if (selection) {
-				selection.removeAllRanges();
-				selection.addRange(range);
-				window.document.execCommand("insertText", false, replaceText);
-				// After execCommand, selection is collapsed at the end of insertion.
-				const caretRange = selection.getRangeAt(0);
+				const range = matchRanges[currentMatchIndex];
+				const selection = window.getSelection();
+				if (selection) {
+					selection.removeAllRanges();
+					selection.addRange(range);
+					window.document.execCommand("insertText", false, replaceText);
+					// After execCommand, selection is collapsed at the end of insertion.
+					const caretRange = selection.getRangeAt(0);
 
-				// Defer find to separate it from the undo stack and focus back
-				setTimeout(() => {
-					handleFind(searchQuery, caretRange);
-					onComplete?.();
-				}, 0);
-			} else {
-				onComplete?.();
-			}
+					// Defer find to separate it from the undo stack and focus back
+					setTimeout(() => {
+						handleFind(searchQuery, caretRange, false);
+						editorRef.current?.focus();
+						resolve();
+					}, 0);
+				} else {
+					resolve();
+				}
+			});
 		},
 		[currentMatchIndex, matchRanges, handleFind, searchQuery],
 	);
@@ -943,129 +948,141 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 	);
 
 	// Handle keyboard shortcuts
-	const handleKeyDown = useCallback((event: React.KeyboardEvent) => {
-		if (event.metaKey || event.ctrlKey) {
-			switch (event.key) {
-				case "f":
-					event.preventDefault();
-					setFindReplaceMode(event.altKey ? "replace" : "find");
-					setShowFindReplace(true);
-					break;
-				case 'b':
-					event.preventDefault();
-					handleFormatToggle('bold');
-					break;
-				case 'i':
-					event.preventDefault();
-					handleFormatToggle('italic');
-					break;
-				case 'u':
-					event.preventDefault();
-					handleFormatToggle('underline');
-					break;
-				case 'k': {
-					event.preventDefault();
-					const selection = window.getSelection();
-					if (selection && selection.rangeCount > 0 && editorRef.current) {
-						const range = selection.getRangeAt(0).cloneRange();
-						const container = relativeContainerRef.current;
-						if (!container) {
-							break;
+	const handleKeyDown = useCallback(
+		(event: React.KeyboardEvent) => {
+			if (event.metaKey || event.ctrlKey) {
+				switch (event.key) {
+					case "f": {
+						event.preventDefault();
+						const selection = window.getSelection()?.toString();
+						if (selection) {
+							setSearchQuery(selection);
 						}
-						const containerRect = container.getBoundingClientRect();
-						
-						// Get cursor position for empty selections
-						let cursorPosition: number | undefined;
-						let rect: DOMRect;
-						
-						if (selection.isCollapsed) {
-							try {
-								cursorPosition = getCursorPosition(editorRef.current, range);
-								
-								// For collapsed selections, create a temporary text node to get accurate positioning
-								const tempTextNode = window.document.createTextNode('\u200B'); // Zero-width space
-								range.insertNode(tempTextNode);
-								const tempRange = window.document.createRange();
-								tempRange.selectNode(tempTextNode);
-								rect = tempRange.getBoundingClientRect();
-								
-								// Clean up the temporary node
-								tempTextNode.remove();
-								
-								// If the rect is still invalid, fall back to the original range
-								if (rect.width === 0 && rect.height === 0) {
+						setFindReplaceMode(event.altKey ? "replace" : "find");
+						setShowFindReplace(true);
+						break;
+					}
+					case "b":
+						event.preventDefault();
+						handleFormatToggle("bold");
+						break;
+					case "i":
+						event.preventDefault();
+						handleFormatToggle("italic");
+						break;
+					case "u":
+						event.preventDefault();
+						handleFormatToggle("underline");
+						break;
+					case "k": {
+						event.preventDefault();
+						const selection = window.getSelection();
+						if (selection && selection.rangeCount > 0 && editorRef.current) {
+							const range = selection.getRangeAt(0).cloneRange();
+							const container = relativeContainerRef.current;
+							if (!container) {
+								break;
+							}
+							const containerRect = container.getBoundingClientRect();
+
+							// Get cursor position for empty selections
+							let cursorPosition: number | undefined;
+							let rect: DOMRect;
+
+							if (selection.isCollapsed) {
+								try {
+									cursorPosition = getCursorPosition(editorRef.current, range);
+
+									// For collapsed selections, create a temporary text node to get accurate positioning
+									const tempTextNode = window.document.createTextNode("\u200B"); // Zero-width space
+									range.insertNode(tempTextNode);
+									const tempRange = window.document.createRange();
+									tempRange.selectNode(tempTextNode);
+									rect = tempRange.getBoundingClientRect();
+
+									// Clean up the temporary node
+									tempTextNode.remove();
+
+									// If the rect is still invalid, fall back to the original range
+									if (rect.width === 0 && rect.height === 0) {
+										rect = range.getBoundingClientRect();
+									}
+								} catch (error) {
+									console.warn("Failed to calculate cursor position:", error);
+									cursorPosition = undefined;
 									rect = range.getBoundingClientRect();
 								}
-							} catch (error) {
-								console.warn('Failed to calculate cursor position:', error);
-								cursorPosition = undefined;
+							} else {
 								rect = range.getBoundingClientRect();
 							}
-						} else {
-							rect = range.getBoundingClientRect();
-						}
-						
-						const selectedText = selection.toString();
-						const formattedSelection = formatSelectionWithContext(
-							content,
-							selectedText,
-							cursorPosition,
-							editorRef.current,
-							range,
-						);
 
-						setInlineEdit({
-							selection: formattedSelection,
-							position: {
-								top: rect.top - containerRect.top,
-								left: rect.left - containerRect.left,
-							},
-							range,
-						});
-						selection.removeAllRanges();
-					}
-					break;
-				}
-				case 'z':
-					if (event.shiftKey) {
-						event.preventDefault();
-						executeCommand('redo');
-					} else {
-						event.preventDefault();
-						executeCommand('undo');
-					}
-					break;
-			}
-		}
+							const selectedText = selection.toString();
+							const formattedSelection = formatSelectionWithContext(
+								content,
+								selectedText,
+								cursorPosition,
+								editorRef.current,
+								range,
+							);
 
-		// Handle Enter key in lists
-		if (event.key === "Enter") {
-			const selection = window.getSelection();
-			if (selection?.rangeCount) {
-				const range = selection.getRangeAt(0);
-				let element: Node | null = range.startContainer;
-				
-				if (element.nodeType === Node.TEXT_NODE && element.parentElement) {
-					element = element.parentElement;
-				}
-
-				// Check if we're in a list item
-				while (element && element !== editorRef.current && element instanceof Element) {
-					if (element.tagName === 'LI') {
-						// If the list item is empty, break out of the list
-						if (element.textContent?.trim() === '') {
-							event.preventDefault();
-							executeCommand('outdent');
-							executeCommand('formatBlock', 'p');
+							setInlineEdit({
+								selection: formattedSelection,
+								position: {
+									top: rect.top - containerRect.top,
+									left: rect.left - containerRect.left,
+								},
+								range,
+							});
+							selection.removeAllRanges();
 						}
 						break;
 					}
-					element = element.parentElement;
+					case "z":
+						if (event.shiftKey) {
+							event.preventDefault();
+							executeCommand("redo");
+						} else {
+							event.preventDefault();
+							executeCommand("undo");
+						}
+						break;
 				}
 			}
-		}
-	}, [handleFormatToggle, executeCommand, content]);
-	// Start of Selection
+
+			// Handle Enter key in lists
+			if (event.key === "Enter") {
+				const selection = window.getSelection();
+				if (selection?.rangeCount) {
+					const range = selection.getRangeAt(0);
+					let element: Node | null = range.startContainer;
+
+					if (element.nodeType === Node.TEXT_NODE && element.parentElement) {
+						element = element.parentElement;
+					}
+
+					// Check if we're in a list item
+					while (
+						element &&
+						element !== editorRef.current &&
+						element instanceof Element
+					) {
+						if (element.tagName === "LI") {
+							// If the list item is empty, break out of the list
+							if (element.textContent?.trim() === "") {
+								event.preventDefault();
+								executeCommand("outdent");
+								executeCommand("formatBlock", "p");
+							}
+							break;
+						}
+						element = element.parentElement;
+					}
+				}
+			}
+		},
+		[handleFormatToggle, executeCommand, content],
+	);
+
 	const handleApplyChanges = (editDiffs: Array<{ find: string; replace: string }>) => {
 		if (!editorRef.current || !editorContentRef.current) return;
 
@@ -1347,6 +1364,7 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 				onClose={() => {
 					setShowFindReplace(false);
 					clearHighlights();
+					editorRef.current?.focus();
 				}}
 				onFind={handleFind}
 				onNavigate={handleNavigate}
@@ -1355,6 +1373,8 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 				matchCount={matchRanges.length}
 				currentMatch={currentMatchIndex + 1}
 				containerSx={{ top: "56px", right: "16px" }}
+				findValue={searchQuery}
+				onFindValueChange={setSearchQuery}
 			/>
 			<InsertLinkDialog
 				open={isLinkDialogOpen}
