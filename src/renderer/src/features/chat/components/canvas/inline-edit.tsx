@@ -1,5 +1,6 @@
 import {
 	Box,
+	CircularProgress,
 	IconButton,
 	Paper,
 	TextField,
@@ -675,14 +676,25 @@ export const InlineEdit: FC<InlineEditProps> = ({
 					)}
 					{isLoading && (
 						<Tooltip title="Cancel Edit">
-							<IconButton
-								onClick={handleCancelEdit}
-								color="error"
-								size="small"
-								aria-label="Cancel edit"
-							>
-								<Square size={iconSize} />
-							</IconButton>
+							<Box sx={{ position: "relative", display: "inline-flex" }}>
+                <CircularProgress
+                  size={28}
+                  sx={{
+                    color: (theme) => alpha(theme.palette.primary.main, 0.5),
+                    position: "absolute",
+                    transform: "translate(-50%, -50%)",
+                    transformOrigin: "center",
+                  }}
+                />
+								<IconButton
+									onClick={handleCancelEdit}
+									color="primary"
+									aria-label="Cancel edit"
+									sx={{ width: 28, height: 28 }}
+								>
+									<Square size={14} />
+								</IconButton>
+							</Box>
 						</Tooltip>
 					)}
 				</Box>
