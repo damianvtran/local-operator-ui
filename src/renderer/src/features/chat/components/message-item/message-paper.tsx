@@ -118,6 +118,7 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 							isUser={isUser}
 							styleProps={markdownStyleProps}
 						/>
+						{message && <MessageTimestamp timestamp={message.timestamp} isUser={isUser} isSmallView={isSmallView} />}
 					</Box>
 				</StyledPaper>
 				{message && (
@@ -329,7 +330,6 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 						transition: theme.transitions.create("opacity", {
 							duration: theme.transitions.duration.short,
 						}),
-						// Ensure positioning is consistent with how it was before
 					}}
 				/>
 			)}

@@ -22,7 +22,7 @@ const ControlsContainer = styled(Box, {
 	shouldForwardProp: (prop) => prop !== "isUser",
 })<{ isUser: boolean }>(({ isUser }) => ({
 	position: "absolute",
-	bottom: isUser ? 12 : -12, // Position below the message
+	bottom: isUser ? 8 : -12, // Position below the message
 	display: "flex",
 	alignItems: "center",
 	justifyContent: isUser ? "flex-end" : "flex-start",
