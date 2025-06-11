@@ -1,5 +1,14 @@
 import { Box, useTheme, styled, alpha } from "@mui/material";
+import {
+	search,
+	SearchQuery,
+	setSearchQuery,
+	findNext,
+	findPrevious,
+	replaceAll,
+} from "@codemirror/search";
 import { TextSelectionControls } from "@shared/components/common/text-selection-controls";
+import { FindReplaceWidget } from "@shared/components/common/find-replace-widget";
 import { loadLanguageExtensions } from "@shared/utils/load-language-extensions";
 import { basicDark, basicLight } from "@uiw/codemirror-theme-basic";
 import { Decoration, ViewPlugin, type DecorationSet } from "@codemirror/view";
@@ -80,6 +89,13 @@ export const CodeEditor: FC<CodeEditorProps> = ({
 	} | null>(null);
 	const editorRef = useRef<ReactCodeMirrorRef>(null);
 	const scrollContainerRef = useRef<HTMLDivElement>(null);
+	const [showFindReplace, setShowFindReplace] = useState(false);
+	const [findReplaceMode, setFindReplaceMode] = useState<"find" | "replace">(
+		"find",
+	);
+	const [findValue, setFindValue] = useState("");
+	const [matchCount] = useState(0);
+	const [currentMatch] = useState(0);
 
 	const theme = useTheme();
 
@@ -178,7 +194,73 @@ export const CodeEditor: FC<CodeEditorProps> = ({
 		);
 	}, [inlineEdit, theme.palette.primary.main]);
 
+	const handleFind = useCallback((query: string) => {
+		setFindValue(query);
+		const view = editorRef.current?.view;
+		if (view) {
+			const newQuery = new SearchQuery({
+				search: query,
+				caseSensitive: true,
+				regexp: false,
+			});
+			view.dispatch({ effects: setSearchQuery.of(newQuery) });
+		}
+	}, []);
+
+	const handleNavigate = useCallback(
+		(direction: "next" | "prev") => {
+			const view = editorRef.current?.view;
+			if (view) {
+				if (direction === "next") {
+					findNext(view);
+				} else {
+					findPrevious(view);
+				}
+			}
+		},
+		[],
+	);
+
+	const handleReplace = useCallback(
+		async (replaceText: string) => {
+			const view = editorRef.current?.view;
+			if (view) {
+				view.dispatch({
+					changes: {
+						from: view.state.selection.main.from,
+						to: view.state.selection.main.to,
+						insert: replaceText,
+					},
+				});
+			}
+		},
+		[],
+	);
+
+	const handleReplaceAll = useCallback(
+		(find: string, replaceText: string) => {
+			const view = editorRef.current?.view;
+			if (view) {
+				const query = new SearchQuery({
+					search: find,
+					caseSensitive: true,
+					regexp: false,
+					replace: replaceText,
+				});
+				view.dispatch({ effects: setSearchQuery.of(query) });
+				replaceAll(view);
+			}
+		},
+		[],
+	);
+
 	const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+		if ((event.metaKey || event.ctrlKey) && event.key === "f") {
+			event.preventDefault();
+			setShowFindReplace(true);
+			setFindReplaceMode(event.altKey ? "replace" : "find");
+		}
+
 		if ((event.metaKey || event.ctrlKey) && event.key === "k") {
 			event.preventDefault();
 			const view = editorRef.current?.view;
@@ -186,19 +268,17 @@ export const CodeEditor: FC<CodeEditorProps> = ({
 				const { from, to } = view.state.selection.main;
 				const selection = view.state.doc.sliceString(from, to);
 				const fullContent = view.state.doc.toString();
-				
+
 				// Format selection with context for the edit API
 				const textBefore = fullContent.substring(0, from);
 				const textAfter = fullContent.substring(to);
-				
+
 				// Truncate text before and after to 120 chars max with ellipsis
-				const truncatedTextBefore = textBefore.length > 120 
-					? `${textBefore.slice(-120)}` 
-					: textBefore;
-				const truncatedTextAfter = textAfter.length > 120 
-					? `${textAfter.slice(0, 120)}` 
-					: textAfter;
-				
+				const truncatedTextBefore =
+					textBefore.length > 120 ? `${textBefore.slice(-120)}` : textBefore;
+				const truncatedTextAfter =
+					textAfter.length > 120 ? `${textAfter.slice(0, 120)}` : textAfter;
+
 				const formattedSelection = `<text_before>${truncatedTextBefore}</text_before><selected_text>${selection}</selected_text><text_after>${truncatedTextAfter}</text_after>`;
 				const rect = view.coordsAtPos(from);
 				if (rect) {
@@ -271,9 +351,22 @@ export const CodeEditor: FC<CodeEditorProps> = ({
 				height="100%"
 				theme={codeEditorTheme}
 				editable={editable}
-				extensions={[...languageExtensions, highlightPlugin]}
+				extensions={[...languageExtensions, highlightPlugin, search({ top: true })]}
 				onChange={handleContentChange}
 				ref={editorRef}
+			/>
+			<FindReplaceWidget
+				show={showFindReplace}
+				initialMode={findReplaceMode}
+				onClose={() => setShowFindReplace(false)}
+				onFind={handleFind}
+				onNavigate={handleNavigate}
+				onReplace={handleReplace}
+				onReplaceAll={(replaceText) => handleReplaceAll(findValue, replaceText)}
+				matchCount={matchCount}
+				currentMatch={currentMatch}
+				findValue={findValue}
+				onFindValueChange={setFindValue}
 			/>
 			<TextSelectionControls
 				targetRef={editorRef as React.RefObject<HTMLElement>}
