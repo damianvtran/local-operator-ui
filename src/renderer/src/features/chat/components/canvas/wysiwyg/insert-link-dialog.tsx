@@ -3,6 +3,8 @@ import {
 	DialogActions,
 	DialogContent,
 	TextField,
+	Box,
+	styled,
 } from "@mui/material";
 import type { FC } from "react";
 import { useEffect, useState } from "react";
@@ -20,6 +22,62 @@ type InsertLinkDialogProps = {
 	initialData: LinkDialogData;
 };
 
+const FieldContainer = styled(Box)({
+	marginBottom: 16,
+});
+
+const FieldLabel = styled("label")(({ theme }) => ({
+	display: "flex",
+	alignItems: "center",
+	marginBottom: 6,
+	color: theme.palette.text.secondary,
+	fontWeight: 500,
+	fontSize: "0.875rem",
+	fontFamily: theme.typography.fontFamily,
+	lineHeight: theme.typography.body2.lineHeight,
+}));
+
+const StyledTextField = styled(TextField)(({ theme }) => ({
+	"& .MuiOutlinedInput-root": {
+		borderRadius: 6,
+		backgroundColor: theme.palette.background.paper,
+		border: `1px solid ${theme.palette.divider}`,
+		padding: 0,
+		minHeight: "36px",
+		height: "36px",
+		alignItems: "center",
+		transition: "border-color 0.2s ease, box-shadow 0.2s ease",
+		"&:hover": {
+			borderColor: theme.palette.text.secondary,
+			backgroundColor: theme.palette.background.paper,
+		},
+		"&.Mui-focused": {
+			backgroundColor: theme.palette.background.paper,
+			borderColor: theme.palette.primary.main,
+			boxShadow: `0 0 0 2px ${theme.palette.primary.main}33`,
+		},
+		"& .MuiOutlinedInput-notchedOutline": {
+			border: "none",
+		},
+	},
+	"& .MuiInputBase-input": {
+		padding: "4px 12px",
+		fontSize: "0.875rem",
+		lineHeight: 1.5,
+		fontFamily: "inherit",
+		height: "calc(36px - 8px)",
+		overflow: "hidden",
+		textOverflow: "ellipsis",
+		whiteSpace: "nowrap",
+		wordBreak: "break-word",
+		alignSelf: "center",
+	},
+	"& .MuiInputBase-input::placeholder": {
+		color: theme.palette.text.disabled,
+		opacity: 1,
+	},
+}));
+
 export const InsertLinkDialog: FC<InsertLinkDialogProps> = ({
 	open,
 	onClose,
@@ -36,39 +94,62 @@ export const InsertLinkDialog: FC<InsertLinkDialogProps> = ({
 		}
 	}, [open, initialData]);
 
+	const isUrlValid = url.trim().length > 0;
+
 	const handleInsert = () => {
-		if (url) {
-			onInsert(url, text || url);
+		if (isUrlValid) {
+			onInsert(url.trim(), text.trim() || url.trim());
 			onClose();
+		}
+	};
+
+	const handleKeyDown = (e: React.KeyboardEvent) => {
+		if (e.key === "Enter") {
+			e.preventDefault();
+			if (isUrlValid) {
+				handleInsert();
+			}
 		}
 	};
 
 	return (
 		<BaseDialog open={open} onClose={onClose} title="Insert Link">
 			<DialogContent sx={{ pt: "20px !important" }}>
-				<TextField
-					autoFocus
-					margin="dense"
-					label="URL"
-					type="url"
-					fullWidth
-					variant="outlined"
-					value={url}
-					onChange={(e) => setUrl(e.target.value)}
-				/>
-				<TextField
-					margin="dense"
-					label="Text to display"
-					type="text"
-					fullWidth
-					variant="outlined"
-					value={text}
-					onChange={(e) => setText(e.target.value)}
-				/>
+				<FieldContainer>
+					<FieldLabel>URL *</FieldLabel>
+					<StyledTextField
+						autoFocus
+						fullWidth
+						variant="outlined"
+						type="url"
+						placeholder="https://example.com"
+						value={url}
+						onChange={(e) => setUrl(e.target.value)}
+						onKeyDown={handleKeyDown}
+						required
+						error={url.length > 0 && !isUrlValid}
+					/>
+				</FieldContainer>
+				<FieldContainer>
+					<FieldLabel>Text to display</FieldLabel>
+					<StyledTextField
+						fullWidth
+						variant="outlined"
+						type="text"
+						placeholder="Link text (optional)"
+						value={text}
+						onChange={(e) => setText(e.target.value)}
+						onKeyDown={handleKeyDown}
+					/>
+				</FieldContainer>
 			</DialogContent>
 			<DialogActions>
 				<Button onClick={onClose}>Cancel</Button>
-				<Button onClick={handleInsert} variant="contained">
+				<Button 
+					onClick={handleInsert} 
+					variant="contained"
+					disabled={!isUrlValid}
+				>
 					Insert
 				</Button>
 			</DialogActions>
