@@ -758,25 +758,65 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 	}, [handleFormatToggle, executeCommand, content]);
 
 	const handleApplyChanges = (editDiffs: Array<{ find: string; replace: string }>) => {
-		// Apply all diffs to the current content
-		let updatedContent = content;
-		for (const diff of editDiffs) {
-			updatedContent = updatedContent.replace(diff.find, diff.replace);
-		}
+		if (!editorRef.current) return;
 		
-		// Update the content state
-		setContent(updatedContent);
-		setHasUserChanges(true);
-		
-		// Re-render the editor with the updated markdown
-		if (editorRef.current) {
-			const htmlContent = markdownToHtml(updatedContent);
+		// Compute updated markdown content
+		const updatedContent = editDiffs.reduce(
+			(acc, { find, replace }) => acc.replace(find, replace),
+			content,
+		);
+
+		// Convert updated markdown to HTML
+		const htmlContent = markdownToHtml(updatedContent);
+
+		try {
+			// Focus editor first
+			editorRef.current.focus();
+			
+			const sel = window.getSelection();
+			if (sel) {
+				// Select all content
+				sel.removeAllRanges();
+				const range = window.document.createRange();
+				range.selectNodeContents(editorRef.current);
+				sel.addRange(range);
+				
+				// Use a different approach: temporarily disable contentEditable to prevent browser interference
+				// then use a single insertHTML command with the complete content
+				editorRef.current.contentEditable = 'false';
+				
+				// Clear content first
+				executeCommand('selectAll');
+				executeCommand('delete');
+				
+				// Re-enable contentEditable
+				editorRef.current.contentEditable = 'true';
+				editorRef.current.focus();
+				
+				// Create a new selection at the beginning
+				const newRange = window.document.createRange();
+				newRange.setStart(editorRef.current, 0);
+				newRange.collapse(true);
+				sel.removeAllRanges();
+				sel.addRange(newRange);
+				
+				// Insert the complete HTML content as a single operation
+				// This should preserve undo history while avoiding browser wrapping
+				executeCommand('insertHTML', htmlContent);
+			}
+		} catch (error) {
+			console.warn('Undoable apply failed, falling back to direct update:', error);
 			editorRef.current.innerHTML = htmlContent;
 		}
 		
+		// Update state
+		setContent(updatedContent);
+		setHasUserChanges(true);
+		
+		// Cleanup inline edit
 		setInlineEdit(null);
 		selectionRef.current = null;
-	};
+	}
 
 	const handleEdit = (
 		selection: string,
