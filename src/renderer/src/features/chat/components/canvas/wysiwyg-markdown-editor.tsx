@@ -180,7 +180,7 @@ const EditorContainer = styled(Paper)(({ theme }) => ({
 
 const EditorToolbar = styled(Toolbar)(({ theme }) => ({
 	minHeight: "48px !important",
-	padding: "0 8px",
+	padding: "4px 8px",
 	borderBottom: `1px solid ${theme.palette.divider}`,
 	backgroundColor: theme.palette.background.default,
 	gap: "4px",
@@ -262,18 +262,31 @@ const EditorContent = styled(Box)(({ theme }) => ({
 		padding: "8px 16px",
 	},
 	"& code": {
-		backgroundColor: theme.palette.action.hover,
-		padding: "2px 4px",
+    backgroundImage: "none",
+		padding: "2px 2px",
 		borderRadius: "4px",
-		fontFamily: '"Roboto Mono", monospace',
-		fontSize: "0.9em",
+		fontFamily: '"Geist Mono", "Roboto Mono", monospace',
+    letterSpacing: "0.05em",
+		fontSize: "0.8em",
 	},
 	"& pre": {
-		backgroundColor: theme.palette.action.hover,
+		backgroundColor: theme.palette.background.default,
+    backgroundImage: "none",
 		padding: "12px",
 		borderRadius: "8px",
 		overflow: "auto",
 		margin: "12px 0",
+    "&::-webkit-scrollbar": {
+      width: "8px",
+      height: "8px",
+    },
+    "&::-webkit-scrollbar-thumb": {
+      backgroundColor:
+        theme.palette.mode === "dark"
+          ? "rgba(255, 255, 255, 0.1)"
+          : "rgba(0, 0, 0, 0.2)",
+      borderRadius: "4px",
+    },
 		"& code": {
 			backgroundColor: "transparent",
 			padding: 0,
