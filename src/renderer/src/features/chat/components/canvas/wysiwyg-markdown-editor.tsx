@@ -1183,12 +1183,12 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 
 			const oldCode = window.document.createElement("div");
 			oldCode.innerHTML = markdownToHtml(diff.find);
-			oldCode.style.backgroundColor = "rgba(255, 0, 0, 0.2)";
+			oldCode.style.backgroundColor = "rgba(255, 0, 0, 0.1)";
 			diffContainer.appendChild(oldCode);
 
 			const newCode = window.document.createElement("div");
 			newCode.innerHTML = markdownToHtml(diff.replace);
-			newCode.style.backgroundColor = "rgba(0, 255, 0, 0.2)";
+			newCode.style.backgroundColor = "rgba(0, 255, 0, 0.1)";
 			diffContainer.appendChild(newCode);
 
 			range.deleteContents();
