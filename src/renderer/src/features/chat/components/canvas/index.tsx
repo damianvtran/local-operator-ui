@@ -9,7 +9,7 @@ import {
 import type { CanvasViewMode } from "@shared/store/canvas-store";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import { FilePlus, FileText, FolderOpen, ListTree, X } from "lucide-react";
-import { memo, useCallback, useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 import type { FC } from "react";
 import type { CanvasDocument } from "../../types/canvas";
 import { createFile } from "../../utils/file-creation";
@@ -181,8 +181,10 @@ const CanvasComponent: FC<CanvasProps> = ({
 	const activeDocumentId = externalActiveDocumentId ?? internalActiveDocumentId;
 
 	// Get the active document
-	const activeDocument =
-		documents.find((doc) => doc.id === activeDocumentId) || null;
+	const activeDocument = useMemo(
+		() => documents.find((doc) => doc.id === activeDocumentId) || null,
+		[documents, activeDocumentId],
+	);
 
 	// Handle changing the active document
 	const handleChangeActiveDocument = useCallback(
