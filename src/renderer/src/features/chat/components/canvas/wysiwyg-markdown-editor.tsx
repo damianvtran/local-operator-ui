@@ -45,8 +45,6 @@ import { InsertTablePopover } from "./wysiwyg/insert-table-popover";
 import { FindReplaceWidget } from "@shared/components/common/find-replace-widget";
 import { TextStyleDropdown } from "./wysiwyg/text-style-dropdown";
 
-const WHITESPACE_REGEX = /\s/g;
-
 /**
  * Calculates the cursor position within the markdown content by converting HTML position to markdown position
  */
@@ -1122,118 +1120,136 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 		setInlineEdit(null);
 		selectionRef.current = null;
 	};
+    
+  /**
+   * Highlights a diff inline by mapping markdown positions to the corresponding HTML elements
+   * and inserting a diff container showing the old and new HTML representations.
+   *
+   * @param diff - The diff containing 'find' and 'replace' markdown strings.
+   * @param markdownContent - The full markdown content currently displayed.
+   */
+  const showDiffInline = useCallback<(diff: EditDiff, markdownContent: string) => void>(
+    (diff, markdownContent) => {
+      if (!editorRef.current) return;
 
-	const showDiffInline = useCallback((diff: EditDiff) => {
-		if (!editorRef.current) return;
+      try {
+        const normalizedMarkdown = markdownContent.replace(/\r\n/g, "\n");
+        const normalizedFind = diff.find.replace(/\r\n/g, "\n");
 
-		const tempDiv = window.document.createElement("div");
-		tempDiv.innerHTML = editorRef.current.innerHTML;
+        const startIndex = normalizedMarkdown.indexOf(normalizedFind);
+        if (startIndex === -1) {
+          console.error("Diff not found in markdown content", { diff });
+          return;
+        }
 
-		const walker = window.document.createTreeWalker(tempDiv, NodeFilter.SHOW_TEXT);
-		const textNodes: Node[] = [];
-		let node: Node | null = walker.nextNode();
-		while (node !== null) {
-			textNodes.push(node);
-			node = walker.nextNode();
-		}
+        const getLineNumber = (text: string, index: number) => {
+          const lines = text.slice(0, index).split("\n");
+          return lines.length;
+        };
 
-		const fullText = textNodes.map((n) => n.nodeValue).join("");
-		const findText = diff.find.replace(WHITESPACE_REGEX, "");
-		const startIndex = fullText.replace(WHITESPACE_REGEX, "").indexOf(findText);
+        const startLine = getLineNumber(normalizedMarkdown, startIndex);
+        const endLine = getLineNumber(normalizedMarkdown, startIndex + normalizedFind.length);
 
-		if (startIndex === -1) {
-			return;
-		}
+        // Look for elements with data-line attributes that match our line range
+        const allElements = editorRef.current.querySelectorAll<HTMLElement>("[data-line]");
+        const elementsInRange: HTMLElement[] = [];
 
-		let charCount = 0;
-		let startNode: Node | null = null;
-		let startOffset = 0;
-		let endNode: Node | null = null;
-		let endOffset = 0;
+        for (const el of allElements) {
+          const lineAttr = el.getAttribute("data-line");
+          if (!lineAttr) continue;
 
-		for (const n of textNodes) {
-			const nodeText = n.nodeValue || "";
-			const nodeTextSanitized = nodeText.replace(WHITESPACE_REGEX, "");
-			const nextCharCount = charCount + nodeTextSanitized.length;
+          const elementLine = Number.parseInt(lineAttr, 10);
+          if (elementLine >= startLine && elementLine <= endLine) {
+            elementsInRange.push(el);
+          }
+        }
 
-			if (!startNode && nextCharCount > startIndex) {
-				startNode = n;
-				let i = 0;
-				let count = 0;
-				while (count < startIndex - charCount) {
-					if (!WHITESPACE_REGEX.test(nodeText[i])) {
-						count++;
-					}
-					i++;
-				}
-				startOffset = i;
-			}
+        // If no elements found with exact line match, try to find elements containing the diff text
+        if (elementsInRange.length === 0) {
+          const allTextElements = editorRef.current.querySelectorAll<HTMLElement>("p, h1, h2, h3, h4, h5, h6, li, td, th");
+          for (const el of allTextElements) {
+            if (el.textContent?.includes(normalizedFind.trim())) {
+              elementsInRange.push(el);
+              break; // Take the first match
+            }
+          }
+        }
 
-			if (nextCharCount >= startIndex + findText.length) {
-				endNode = n;
-				let i = 0;
-				let count = 0;
-				while (count < startIndex + findText.length - charCount) {
-					if (!WHITESPACE_REGEX.test(nodeText[i])) {
-						count++;
-					}
-					i++;
-				}
-				endOffset = i;
-				break;
-			}
-			charCount = nextCharCount;
-		}
+        if (elementsInRange.length === 0) {
+          console.warn("No HTML elements match diff range", { startLine, endLine, diff });
+          // Fallback: insert at the end of the editor
+          const diffContainer = window.document.createElement("div");
+          diffContainer.setAttribute("data-diff-container", "true");
+          diffContainer.contentEditable = "false";
+          diffContainer.style.border = "2px solid #ccc";
+          diffContainer.style.margin = "10px 0";
+          diffContainer.style.padding = "10px";
 
-		if (startNode && endNode) {
-			const range = window.document.createRange();
-			range.setStart(startNode, startOffset);
-			range.setEnd(endNode, endOffset);
+          const oldDiv = window.document.createElement("div");
+          oldDiv.innerHTML = markdownToHtml(diff.find);
+          oldDiv.style.backgroundColor = "rgba(255, 0, 0, 0.1)";
+          oldDiv.style.marginBottom = "5px";
+          diffContainer.appendChild(oldDiv);
 
-			const diffContainer = window.document.createElement("div");
-			diffContainer.setAttribute("data-diff-container", "true");
-			diffContainer.contentEditable = "false";
+          const newDiv = window.document.createElement("div");
+          newDiv.innerHTML = markdownToHtml(diff.replace);
+          newDiv.style.backgroundColor = "rgba(0, 255, 0, 0.1)";
+          diffContainer.appendChild(newDiv);
 
-			const oldCode = window.document.createElement("div");
-			oldCode.innerHTML = markdownToHtml(diff.find);
-			oldCode.style.backgroundColor = "rgba(255, 0, 0, 0.1)";
-			diffContainer.appendChild(oldCode);
+          editorRef.current.appendChild(diffContainer);
+          diffContainer.scrollIntoView({ behavior: "smooth", block: "center" });
+          return;
+        }
 
-			const newCode = window.document.createElement("div");
-			newCode.innerHTML = markdownToHtml(diff.replace);
-			newCode.style.backgroundColor = "rgba(0, 255, 0, 0.1)";
-			diffContainer.appendChild(newCode);
+        const rangeObj = window.document.createRange();
+        rangeObj.setStartBefore(elementsInRange[0]);
+        rangeObj.setEndAfter(elementsInRange[elementsInRange.length - 1]);
 
-			range.deleteContents();
-			range.insertNode(diffContainer);
-			editorRef.current.innerHTML = tempDiv.innerHTML;
-			diffContainer.scrollIntoView({ behavior: "smooth", block: "center" });
-		}
-	}, []);
+        const diffContainer = window.document.createElement("div");
+        diffContainer.setAttribute("data-diff-container", "true");
+        diffContainer.contentEditable = "false";
 
-	useEffect(() => {
-		if (reviewState && editorRef.current) {
-			const { diffs, currentIndex, approvedDiffs, originalContent } = reviewState;
-			let contentToShow = originalContent;
-			for (const approved of approvedDiffs) {
-				contentToShow = contentToShow.replace(approved.find, approved.replace);
-			}
-			editorRef.current.innerHTML = markdownToHtml(contentToShow);
+        const oldDiv = window.document.createElement("div");
+        oldDiv.innerHTML = markdownToHtml(diff.find);
+        oldDiv.style.backgroundColor = "rgba(255, 0, 0, 0.1)";
+        diffContainer.appendChild(oldDiv);
 
-			setTimeout(() => showDiffInline(diffs[currentIndex]), 0);
-		}
-	}, [reviewState, showDiffInline]);
+        const newDiv = window.document.createElement("div");
+        newDiv.innerHTML = markdownToHtml(diff.replace);
+        newDiv.style.backgroundColor = "rgba(0, 255, 0, 0.1)";
+        diffContainer.appendChild(newDiv);
 
-	const handleApplyChanges = (diffs: EditDiff[]) => {
-		if (!editorRef.current) return;
-		setReviewState({
-			diffs,
-			currentIndex: 0,
-			approvedDiffs: [],
-			originalContent: content,
-		});
-	};
-	
+        rangeObj.deleteContents();
+        rangeObj.insertNode(diffContainer);
+        diffContainer.scrollIntoView({ behavior: "smooth", block: "center" });
+      } catch (error) {
+        console.error("Failed to show diff inline:", error, { diff });
+      }
+    },
+    [],
+  );
+
+  useEffect(() => {
+    if (!reviewState || !editorRef.current) return;
+    const { diffs, currentIndex, approvedDiffs, originalContent } = reviewState;
+    let contentToRender = originalContent;
+    for (const { find, replace } of approvedDiffs) {
+      contentToRender = contentToRender.replace(find, replace);
+    }
+    editorRef.current.innerHTML = markdownToHtml(contentToRender);
+    // Delay to ensure DOM updates before highlighting
+    setTimeout(() => showDiffInline(diffs[currentIndex], contentToRender), 0);
+  }, [reviewState, showDiffInline]);
+
+  const handleApplyChanges = (diffs: EditDiff[]) => {
+    if (!editorRef.current) return;
+    setReviewState({
+      diffs,
+      currentIndex: 0,
+      approvedDiffs: [],
+      originalContent: content,
+    });
+  };
 
 	const handleEdit = (
 		selection: string,
