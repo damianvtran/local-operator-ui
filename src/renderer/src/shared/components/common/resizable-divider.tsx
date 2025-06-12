@@ -1,5 +1,31 @@
+// Start of Selection
 import { Box, alpha, styled } from "@mui/material";
 import { useRef, useState } from "react";
+
+let cursorOverlay: HTMLDivElement | null = null;
+
+const addResizeCursorOverlay = (): void => {
+	if (!cursorOverlay) {
+		cursorOverlay = document.createElement("div");
+		Object.assign(cursorOverlay.style, {
+			position: "fixed",
+			top: "0",
+			left: "0",
+			width: "100vw",
+			height: "100vh",
+			cursor: "col-resize",
+			zIndex: "9999",
+		});
+		document.body.appendChild(cursorOverlay);
+	}
+};
+
+const removeResizeCursorOverlay = (): void => {
+	if (cursorOverlay) {
+		document.body.removeChild(cursorOverlay);
+		cursorOverlay = null;
+	}
+};
 
 /**
  * Props for the ResizableDivider component
@@ -33,25 +59,23 @@ const DividerFlexItem = styled(Box)({
 });
 
 /**
- * Hover/click area for the divider (centered, does not take up layout space)
+ * Hover/click area for the divider (constant width to ensure stable cursor)
  */
 const DividerHoverArea = styled(Box, {
 	shouldForwardProp: (prop) => prop !== "$active" && prop !== "$side",
 })<{
 	$active: boolean;
 	$side: "left" | "right";
-}>(({ $active, $side }) => ({
+}>(({ $side }) => ({
 	position: "absolute",
 	top: 0,
-	[$side]: 0,
-	transform: "none",
-	width: $active ? 32 : 16,
+	left: $side === "left" ? -16 : "auto",
+	right: $side === "right" ? -16 : "auto",
+	width: 32,
 	height: "100%",
 	cursor: "col-resize",
-	pointerEvents: "auto",
 	background: "none",
 	zIndex: 11,
-	transition: "width 0.2s cubic-bezier(0.4,0,0.2,1)",
 }));
 
 /**
@@ -85,11 +109,11 @@ const DividerLine = styled(Box, {
  */
 const DragHandle = styled(Box, {
 	shouldForwardProp: (prop) => prop !== "$active",
-})<{ $active: boolean }>(({ theme, $active }) => ({
+})<{ $active: boolean; $side: "left" | "right" }>(({ theme, $active, $side }) => ({
 	position: "absolute",
-	left: "50%",
+	left: $side === "right" ? "-4px" : "auto",
+	right: $side === "left" ? "-4px" : "auto",
 	top: "50%",
-	transform: "translate(-50%, -50%)",
 	width: 12,
 	display: "flex",
 	alignItems: "center",
@@ -146,47 +170,47 @@ export const ResizableDivider = ({
 	const [active, setActive] = useState(false);
 	const dragging = useRef(false);
 
-	// Mouse event handlers for resizing
 	const onMouseDown = (e: React.MouseEvent) => {
+		e.preventDefault();
 		dragging.current = true;
 		setActive(true);
 		const startX = e.clientX;
 		const startWidth = sidebarWidth;
 
-		// Disable text selection while dragging
+		// Disable text selection and show global resize cursor overlay
 		document.body.style.userSelect = "none";
+		addResizeCursorOverlay();
 
 		const onMouseMove = (moveEvent: MouseEvent) => {
 			if (!dragging.current) return;
 			const delta = moveEvent.clientX - startX;
-			let newWidth: number;
-			if (side === "right") {
-				// Sidebar on the left, drag right increases width
-				newWidth = startWidth + delta;
-			} else {
-				// Canvas on the right, drag left increases width
-				newWidth = startWidth - delta;
-			}
-			newWidth = Math.max(minWidth, Math.min(maxWidth, newWidth));
+			const rawWidth =
+				side === "right" ? startWidth + delta : startWidth - delta;
+			const newWidth = Math.max(minWidth, Math.min(maxWidth, rawWidth));
 			onSidebarWidthChange(newWidth);
 		};
 
 		const onMouseUp = () => {
+			if (!dragging.current) return;
 			dragging.current = false;
 			setActive(false);
 
-			// Re-enable text selection
+			// Re-enable text selection and remove cursor overlay
 			document.body.style.userSelect = "";
+			removeResizeCursorOverlay();
 
 			window.removeEventListener("mousemove", onMouseMove);
 			window.removeEventListener("mouseup", onMouseUp);
+			window.removeEventListener("blur", onMouseUp);
+			document.documentElement.removeEventListener("mouseleave", onMouseUp);
 		};
 
 		window.addEventListener("mousemove", onMouseMove);
 		window.addEventListener("mouseup", onMouseUp);
+		window.addEventListener("blur", onMouseUp);
+		document.documentElement.addEventListener("mouseleave", onMouseUp);
 	};
 
-	// Show handle and divider on hover or while dragging
 	const showActive = active;
 
 	return (
@@ -196,13 +220,17 @@ export const ResizableDivider = ({
 				$active={showActive}
 				$side={side}
 				onMouseEnter={() => setActive(true)}
-				onMouseLeave={() => !dragging.current && setActive(false)}
+				onMouseLeave={() => {
+					if (!dragging.current) {
+						setActive(false);
+					}
+				}}
 				onMouseDown={onMouseDown}
 				onDoubleClick={onDoubleClick}
 				aria-orientation="vertical"
 				tabIndex={-1}
 			>
-				<DragHandle $active={showActive}>
+				<DragHandle $active={showActive} $side={side}>
 					<span className="grip">
 						<span className="grip-dot" />
 						<span className="grip-dot" />
