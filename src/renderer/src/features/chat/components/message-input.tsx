@@ -1,7 +1,6 @@
 import {
 	faPaperPlane,
 	faPaperclip,
-	faStop,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -24,7 +23,7 @@ import { useSpeechToTextManager, SpeechToTextPriority } from "@shared/hooks/use-
 import { useConversationInputStore } from "@shared/store/conversation-input-store";
 import { normalizePath } from "@shared/utils/path-utils";
 import { showErrorToast } from "@shared/utils/toast-manager";
-import { Check, Mic, X } from "lucide-react";
+import { Check, Mic, X, Square } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
 import {
 	forwardRef,
@@ -726,7 +725,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			}
 		};
 
-		const iconSize = isSmallView ? 16 : 22;
+		const iconSize = isSmallView ? 16 : 18;
 
 		const inputContent = (
 			<form onSubmit={handleSubmit} style={{ width: "100%" }}>
@@ -799,7 +798,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 									>
 										<FontAwesomeIcon
 											icon={faPaperclip}
-											fontSize={iconSize * 0.8}
+											fontSize={iconSize}
 										/>
 									</AttachmentButton>
 								</span>
@@ -832,7 +831,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 												aria-label="Start recording"
 												disabled={isLoading || !canEnableRecordingFeature}
 											>
-												<Mic size={iconSize} />
+												<Mic size={iconSize * 1.1} style={{ width: iconSize * 1.4, height: iconSize * 1.4, padding: "2px" }} />
 											</IconButton>
 										</span>
 									</Tooltip>
@@ -878,7 +877,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 											aria-label="Stop agent"
 											isSmallView={isSmallView}
 										>
-											<FontAwesomeIcon icon={faStop} fontSize={iconSize * 0.8} />
+											<Square size={iconSize} />
 										</SendButton>
 									</span>
 								</Tooltip>
