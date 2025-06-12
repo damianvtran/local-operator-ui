@@ -241,7 +241,7 @@ const CanvasComponent: FC<CanvasProps> = ({
 						Canvas
 					</Typography>
 					<Typography variant="caption" color="text.secondary">
-						Your visual workspace for files and documents
+						Your visual workspace
 					</Typography>
 				</HeaderTitle>
 				<Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>

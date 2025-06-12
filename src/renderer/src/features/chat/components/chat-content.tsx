@@ -294,8 +294,8 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 					<ResizableDivider
 						sidebarWidth={effectiveCanvasPanelWidth}
 						onSidebarWidthChange={setCanvasPanelWidth}
-						minWidth={220}
-						maxWidth={1000}
+						minWidth={400}
+						maxWidth={1200}
 						side="left"
 						onDoubleClick={restoreDefaultCanvasPanelWidth}
 					/>
