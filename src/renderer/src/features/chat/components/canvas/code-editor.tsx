@@ -15,6 +15,7 @@ import {
 	useState,
 	useRef,
 	useMemo,
+	memo,
 } from "react";
 import { useDebounce } from "../../../../shared/hooks/use-debounce";
 import { useCanvasStore } from "../../../../shared/store/canvas-store";
@@ -57,7 +58,7 @@ const CodeEditorContainer = styled(Box)(({ theme }) => ({
  * Content component for the markdown canvas
  * Displays the markdown content with syntax highlighting
  */
-export const CodeEditor: FC<CodeEditorProps> = ({
+const CodeEditorComponent: FC<CodeEditorProps> = ({
 	document,
 	editable = true,
 	onContentChange,
@@ -232,49 +233,53 @@ export const CodeEditor: FC<CodeEditorProps> = ({
 		}
 	};
 
-	const handleApplyChanges = (
-		editDiffs: Array<{ find: string; replace: string }>,
-	) => {
-		const view = editorRef.current?.view;
-		if (view) {
-			const newContent = editDiffs.reduce(
-				(currentDoc, diff) => currentDoc.replace(diff.find, diff.replace),
-				view.state.doc.toString(),
-			);
+	const handleApplyChanges = useCallback(
+		(editDiffs: Array<{ find: string; replace: string }>) => {
+			const view = editorRef.current?.view;
+			if (view) {
+				const newContent = editDiffs.reduce(
+					(currentDoc, diff) => currentDoc.replace(diff.find, diff.replace),
+					view.state.doc.toString(),
+				);
 
-			view.dispatch({
-				changes: { from: 0, to: view.state.doc.length, insert: newContent },
-			});
-		}
-		setInlineEdit(null);
-	};
+				view.dispatch({
+					changes: { from: 0, to: view.state.doc.length, insert: newContent },
+				});
+			}
+			setInlineEdit(null);
+		},
+		[],
+	);
 
-	const handleEdit = (
-		selection: string,
-		rect: DOMRect,
-		range: globalThis.Range,
-		close: () => void,
-	) => {
-		const container = scrollContainerRef.current;
-		if (!container) return;
-		const containerRect = container.getBoundingClientRect();
-		const scrollTop = container.scrollTop;
-		const view = editorRef.current?.view;
-		if (view) {
-			const { from, to } = view.state.selection.main;
-			setInlineEdit({
-				selection,
-				position: {
-					top: Math.max(0, rect.bottom - containerRect.top) + scrollTop - 16,
-					left: 42,
-				},
-				range,
-				from,
-				to,
-			});
-			close();
-		}
-	};
+	const handleEdit = useCallback(
+		(
+			selection: string,
+			rect: DOMRect,
+			range: globalThis.Range,
+			close: () => void,
+		) => {
+			const container = scrollContainerRef.current;
+			if (!container) return;
+			const containerRect = container.getBoundingClientRect();
+			const scrollTop = container.scrollTop;
+			const view = editorRef.current?.view;
+			if (view) {
+				const { from, to } = view.state.selection.main;
+				setInlineEdit({
+					selection,
+					position: {
+						top: Math.max(0, rect.bottom - containerRect.top) + scrollTop - 16,
+						left: 42,
+					},
+					range,
+					from,
+					to,
+				});
+				close();
+			}
+		},
+		[],
+	);
 
 	return (
 		<CodeEditorContainer onKeyDown={handleKeyDown} ref={scrollContainerRef}>
@@ -319,3 +324,5 @@ export const CodeEditor: FC<CodeEditorProps> = ({
 		</CodeEditorContainer>
 	);
 };
+
+export const CodeEditor = memo(CodeEditorComponent);

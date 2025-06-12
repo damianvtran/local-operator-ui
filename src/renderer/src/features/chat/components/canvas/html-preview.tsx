@@ -6,7 +6,7 @@ import {
 } from "@mui/material";
 import { getHtmlUrl } from "@shared/api/local-operator/static-api";
 import { apiConfig } from "@shared/config";
-import { type FC, useState } from "react";
+import { type FC, useState, useMemo, useCallback, memo } from "react";
 import type { CanvasDocument } from "../../types/canvas";
 import { CodeEditor } from "./code-editor";
 import { RefreshCw as RefreshIcon } from "lucide-react";
@@ -101,23 +101,26 @@ const HtmlIframe = styled("iframe")(({ theme }) => ({
  * Renders HTML content in an iframe using the Local Operator static HTML endpoint
  * This simulates opening the HTML file in a local browser by serving it through the API
  */
-export const HtmlPreview: FC<HtmlPreviewProps> = ({ document }) => {
+const HtmlPreviewComponent: FC<HtmlPreviewProps> = ({ document }) => {
 	const [isEditMode, setIsEditMode] = useState(false);
 	const [content, setContent] = useState(document.content);
 	const [key, setKey] = useState(Date.now());
 
-	const handleToggleMode = () => {
+	const handleToggleMode = useCallback(() => {
 		setIsEditMode((prev) => !prev);
 		if (!isEditMode) {
 			setKey(Date.now());
 		}
-	};
+	}, [isEditMode]);
 
-	const handleRefresh = () => {
+	const handleRefresh = useCallback(() => {
 		setKey(Date.now());
-	};
+	}, []);
 
-	const htmlUrl = getHtmlUrl(apiConfig.baseUrl, document.path);
+	const htmlUrl = useMemo(
+		() => getHtmlUrl(apiConfig.baseUrl, document.path),
+		[document.path],
+	);
 
 	return (
 		<PreviewContainer>
@@ -147,3 +150,5 @@ export const HtmlPreview: FC<HtmlPreviewProps> = ({ document }) => {
 		</PreviewContainer>
 	);
 };
+
+export const HtmlPreview = memo(HtmlPreviewComponent);

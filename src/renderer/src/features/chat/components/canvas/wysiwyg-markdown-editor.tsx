@@ -27,7 +27,7 @@ import {
 	Underline,
 	Undo,
 } from "lucide-react";
-import type { FC } from "react";
+import { type FC, memo } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useDebounce } from "@shared/hooks/use-debounce";
 import { useCanvasStore } from "@shared/store/canvas-store";
@@ -333,7 +333,7 @@ type TextType = "paragraph" | "h1" | "h2" | "h3" | "h4" | "h5" | "h6";
  * - Link and image insertion
  * - Keyboard shortcuts
  */
-export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
+const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 	document,
 	conversationId,
 	agentId,
@@ -734,9 +734,11 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 		updateSelectedFormats();
 	}, [updateCurrentTextType, updateSelectedFormats]);
 
+	const debouncedSelectionChange = useDebounce(handleSelectionChange, 150);
+
 	useEffect(() => {
 		const handleSelection = () => {
-			handleSelectionChange();
+			debouncedSelectionChange();
 		};
 
 		window.document.addEventListener("selectionchange", handleSelection);
@@ -744,7 +746,7 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 		return () => {
 			window.document.removeEventListener("selectionchange", handleSelection);
 		};
-	}, [handleSelectionChange]);
+	}, [debouncedSelectionChange]);
 
 	// Execute formatting command
 	const executeCommand = useCallback((command: string, value?: string) => {
@@ -1394,3 +1396,5 @@ export const WysiwygMarkdownEditor: FC<WysiwygMarkdownEditorProps> = ({
 		</EditorContainer>
 	);
 };
+
+export const WysiwygMarkdownEditor = memo(WysiwygMarkdownEditorComponent);
