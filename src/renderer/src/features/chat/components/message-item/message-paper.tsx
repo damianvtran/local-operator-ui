@@ -81,7 +81,7 @@ export const MessagePaper: FC<MessagePaperProps> = React.memo(
 
 	const markdownStyleProps = useMemo(
 		() => ({
-			fontSize: isSmallView ? "0.9rem" : "1rem",
+			fontSize: isSmallView ? "0.9rem" : "1.05rem",
 			lineHeight: isSmallView ? 1.4 : 1.6,
 		}),
 		[isSmallView],
