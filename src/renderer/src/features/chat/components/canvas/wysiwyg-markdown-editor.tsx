@@ -1462,32 +1462,6 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 							onApplyChanges={handleApplyChanges}
 							agentId={agentId}
 							reviewState={reviewState}
-							onAcceptDiff={() => {
-								if (!reviewState) return;
-								const { diffs, currentIndex, approvedDiffs } = reviewState;
-								const newApproved = [...approvedDiffs, diffs[currentIndex]];
-								if (currentIndex + 1 >= diffs.length) {
-									handleFinalizeChanges(newApproved);
-								} else {
-									setReviewState({
-										...reviewState,
-										currentIndex: currentIndex + 1,
-										approvedDiffs: newApproved,
-									});
-								}
-							}}
-							onRejectDiff={() => {
-								if (!reviewState) return;
-								const { diffs, currentIndex } = reviewState;
-								if (currentIndex + 1 >= diffs.length) {
-									handleFinalizeChanges(reviewState.approvedDiffs);
-								} else {
-									setReviewState({
-										...reviewState,
-										currentIndex: currentIndex + 1,
-									});
-								}
-							}}
 							onApplyAll={() => {
 								if (!reviewState) return;
 								handleFinalizeChanges(reviewState.diffs);

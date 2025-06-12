@@ -22,7 +22,7 @@ import { ConfirmationModal } from "@shared/components/common/confirmation-modal"
 import { CreateAgentDialog } from "@shared/components/common/create-agent-dialog";
 import { useAgents } from "@shared/hooks/use-agents";
 import { useClearAgentConversation } from "@shared/hooks/use-clear-agent-conversation";
-import { useDebounce } from "@shared/hooks/use-debounce";
+import { useDebouncedValue } from "@shared/hooks/use-debounced-value";
 import { useAgentRouteParam } from "@shared/hooks/use-route-params";
 import { useAgentSelectionStore } from "@shared/store/agent-selection-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
@@ -230,8 +230,13 @@ export const CommandPalette: FC = () => {
 	const { agentId: currentAgentIdFromRoute } = useAgentRouteParam();
 	const { getLastAgentId } = useAgentSelectionStore();
 	const [localQuery, setLocalQuery] = useState(commandPaletteQuery);
-	const debouncedLocalQuery = useDebounce(localQuery, 200);
-	const { data: agentsData } = useAgents(1, 10, 0, debouncedLocalQuery) as {
+	const debouncedLocalQuery = useDebouncedValue(localQuery, 200);
+	const { data: agentsData } = useAgents(
+		1,
+		10,
+		0,
+		debouncedLocalQuery,
+	) as {
 		data?: AgentListResult;
 	};
 	const theme = useTheme();

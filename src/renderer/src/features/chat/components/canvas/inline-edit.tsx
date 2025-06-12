@@ -50,8 +50,6 @@ type InlineEditProps = {
 		currentIndex: number;
 		approvedDiffs: EditDiff[];
 	} | null;
-	onAcceptDiff: () => void;
-	onRejectDiff: () => void;
 	onApplyAll: () => void;
 	onRejectAll: () => void;
 };
@@ -148,7 +146,7 @@ const ButtonsRow = styled(Box)(({ theme }) => ({
 	alignItems: "center",
 	justifyContent: "space-between",
 	gap: theme.spacing(1),
-	padding: theme.spacing(0, 1, 1, 1),
+	padding: 0
 }));
 
 const AttachmentButton = styled(IconButton)(({ theme }) => ({
@@ -222,6 +220,46 @@ const TranscriptionText = styled(Typography)(({ theme }) => ({
 	color: theme.palette.text.secondary,
 }));
 
+const ReviewHeader = styled(Box)(({ theme }) => ({
+	display: "flex",
+	alignItems: "flex-start",
+	padding: theme.spacing(0, 2, 0, 1),
+	gap: theme.spacing(1),
+	height: "64px",
+}));
+
+const ReviewPrompt = styled(Typography)(({ theme }) => ({
+	flexGrow: 1,
+	whiteSpace: "nowrap",
+	overflow: "hidden",
+	textOverflow: "ellipsis",
+	fontSize: "0.875rem",
+	color: alpha(theme.palette.text.primary, 0.5),
+}));
+
+const ReviewButton = styled(Button)(({ theme }) => ({
+	textTransform: "none",
+	fontWeight: 300,
+	fontSize: "0.75rem",
+  border: `1px solid ${theme.palette.divider}`,
+  borderRadius: 16,
+  padding: theme.spacing(0.5, 2),
+  marginTop: "auto",
+  "&:hover": {
+    backgroundColor: theme.palette.action.hover,
+  },
+  "&:active": {
+    backgroundColor: theme.palette.action.active,
+  },
+  "&:focus": {
+    outline: "none",
+    boxShadow: `0 0 0 2px ${theme.palette.primary.main}`,
+  },
+	"& .MuiButton-startIcon": {
+		marginRight: theme.spacing(0.5),
+	},
+}));
+
 export const InlineEdit: FC<InlineEditProps> = ({
 	selection,
 	position,
@@ -230,8 +268,6 @@ export const InlineEdit: FC<InlineEditProps> = ({
 	onApplyChanges,
 	agentId,
 	reviewState,
-	onAcceptDiff,
-	onRejectDiff,
 	onApplyAll,
 	onRejectAll,
 }) => {
@@ -275,13 +311,7 @@ export const InlineEdit: FC<InlineEditProps> = ({
 
 			if (reviewState) {
 				if (event.metaKey || event.ctrlKey) {
-					if (event.key === "y") {
-						event.preventDefault();
-						onAcceptDiff();
-					} else if (event.key === "n") {
-						event.preventDefault();
-						onRejectDiff();
-					} else if (event.key === "Enter") {
+					if (event.key === "Enter") {
 						event.preventDefault();
 						onApplyAll();
 					}
@@ -299,8 +329,6 @@ export const InlineEdit: FC<InlineEditProps> = ({
 		isRecording,
 		isTranscribing,
 		reviewState,
-		onAcceptDiff,
-		onRejectDiff,
 		onApplyAll,
 		onRejectAll,
 	]);
@@ -607,11 +635,31 @@ export const InlineEdit: FC<InlineEditProps> = ({
 			</CloseButton>
 
 			{reviewState ? (
-				<Box sx={{ p: 1 }}>
-					<Typography variant="subtitle2" sx={{ mb: 1 }}>
-						Suggested Change {reviewState.currentIndex + 1} of {reviewState.diffs.length}
-					</Typography>
-				</Box>
+				<ReviewHeader>
+					<ReviewPrompt>
+						{prompt || `Reviewing ${reviewState.diffs.length} changes`}
+					</ReviewPrompt>
+					<Tooltip title="Reject All (Esc)">
+						<ReviewButton
+							onClick={onRejectAll}
+							color="error"
+							size="small"
+							startIcon={<ThumbsDown size={12} />}
+						>
+							Reject
+						</ReviewButton>
+					</Tooltip>
+					<Tooltip title="Apply All (Cmd+Enter)">
+						<ReviewButton
+							onClick={onApplyAll}
+							color="success"
+							size="small"
+							startIcon={<ThumbsUp size={12} />}
+						>
+							Accept
+						</ReviewButton>
+					</Tooltip>
+				</ReviewHeader>
 			) : (
 				<>
 					{attachments.length > 0 && (
@@ -651,36 +699,8 @@ export const InlineEdit: FC<InlineEditProps> = ({
 							}}
 						/>
 					)}
-				</>
-			)}
-
-			<ButtonsRow>
-				<Box display="flex" alignItems="center" gap={1}>
-					{reviewState ? (
-						<>
-							<Tooltip title="Reject All (Esc)">
-								<Button
-									onClick={onRejectAll}
-									color="error"
-									variant="outlined"
-									size="small"
-								>
-									Reject All
-								</Button>
-							</Tooltip>
-							<Tooltip title="Apply All (Cmd+Enter)">
-								<Button
-									onClick={onApplyAll}
-									color="success"
-									variant="contained"
-									size="small"
-								>
-									Apply All
-								</Button>
-							</Tooltip>
-						</>
-					) : (
-						<>
+					<ButtonsRow>
+						<Box display="flex" alignItems="center" gap={1}>
 							<input
 								type="file"
 								ref={fileInputRef}
@@ -699,26 +719,9 @@ export const InlineEdit: FC<InlineEditProps> = ({
 									<Paperclip size={iconSize} />
 								</AttachmentButton>
 							</Tooltip>
-						</>
-					)}
-				</Box>
+						</Box>
 
-				<Box display="flex" alignItems="center" gap={1}>
-					{reviewState ? (
-						<>
-							<Tooltip title="Reject (Cmd+N)">
-								<IconButton onClick={onRejectDiff} color="error">
-									<ThumbsDown size={iconSize} />
-								</IconButton>
-							</Tooltip>
-							<Tooltip title="Approve (Cmd+Y)">
-								<IconButton onClick={onAcceptDiff} color="success">
-									<ThumbsUp size={iconSize} />
-								</IconButton>
-							</Tooltip>
-						</>
-					) : (
-						<>
+						<Box display="flex" alignItems="center" gap={1}>
 							{!isRecording && !isTranscribing && !isLoading && (
 								<Tooltip
 									title={
@@ -806,10 +809,10 @@ export const InlineEdit: FC<InlineEditProps> = ({
 									</Box>
 								</Tooltip>
 							)}
-						</>
-					)}
-				</Box>
-			</ButtonsRow>
+						</Box>
+					</ButtonsRow>
+				</>
+			)}
 		</InputInnerContainer>
 	);
 };

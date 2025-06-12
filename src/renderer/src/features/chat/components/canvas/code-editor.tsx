@@ -321,8 +321,6 @@ const CodeEditorComponent: FC<CodeEditorProps> = ({
 					onApplyChanges={handleApplyChanges}
 					agentId={agentId}
 					reviewState={null}
-					onAcceptDiff={() => {}}
-					onRejectDiff={() => {}}
 					onApplyAll={() => {}}
 					onRejectAll={() => {}}
 				/>
