@@ -8,6 +8,7 @@ import {
 	ToggleButtonGroup,
 	Paper,
 } from "@mui/material";
+import type { EditDiff } from "@shared/api/local-operator/types";
 import { styled } from "@mui/material/styles";
 import {
 	AlignLeft,
@@ -43,6 +44,8 @@ import { InsertLinkDialog } from "./wysiwyg/insert-link-dialog";
 import { InsertTablePopover } from "./wysiwyg/insert-table-popover";
 import { FindReplaceWidget } from "@shared/components/common/find-replace-widget";
 import { TextStyleDropdown } from "./wysiwyg/text-style-dropdown";
+
+const WHITESPACE_REGEX = /\s/g;
 
 /**
  * Calculates the cursor position within the markdown content by converting HTML position to markdown position
@@ -357,6 +360,12 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 		selection: string;
 		position: { top: number; left: number };
 		range: Range | null;
+	} | null>(null);
+	const [reviewState, setReviewState] = useState<{
+		diffs: EditDiff[];
+		currentIndex: number;
+		approvedDiffs: EditDiff[];
+		originalContent: string;
 	} | null>(null);
 	const selectionRef = useRef<Range | null>(null);
 	const editorContentRef = useRef<HTMLDivElement>(null);
@@ -1085,38 +1094,131 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 		[handleFormatToggle, executeCommand, content],
 	);
 
-	const handleApplyChanges = (editDiffs: Array<{ find: string; replace: string }>) => {
-		if (!editorRef.current || !editorContentRef.current) return;
+	const handleFinalizeChanges = (finalDiffs: EditDiff[]) => {
+		if (!editorRef.current) return;
 
-		// Store scroll position
-		scrollPositionRef.current = editorContentRef.current.scrollTop;
-
-		// Compute updated markdown content
-		const updatedContent = editDiffs.reduce(
-			(acc, { find, replace }) => acc.replace(find, replace),
-			content,
-		);
-
-		// Convert updated markdown to HTML
-		const htmlContent = markdownToHtml(updatedContent);
-
-		try {
-			const el = editorRef.current;
-			el.focus();
-			// Replace entire content in a single undo step
-			window.document.execCommand("selectAll", false);
-			window.document.execCommand("insertHTML", false, htmlContent);
-		} catch (error) {
-			console.warn("Undoable apply failed, falling back to direct update:", error);
+		let finalContent = reviewState?.originalContent ?? content;
+		for (const diff of finalDiffs) {
+			finalContent = finalContent.replace(diff.find, diff.replace);
 		}
 
-		// Update state
-		setContent(updatedContent);
+		editorRef.current.innerHTML = markdownToHtml(finalContent);
+		setContent(finalContent);
 		setHasUserChanges(true);
-
-		// Cleanup inline edit
+		setReviewState(null);
 		setInlineEdit(null);
 		selectionRef.current = null;
+	};
+
+	const showDiffInline = useCallback((diff: EditDiff) => {
+		if (!editorRef.current) return;
+
+		const tempDiv = window.document.createElement("div");
+		tempDiv.innerHTML = editorRef.current.innerHTML;
+
+		const walker = window.document.createTreeWalker(tempDiv, NodeFilter.SHOW_TEXT);
+		const textNodes: Node[] = [];
+		let node: Node | null = walker.nextNode();
+		while (node !== null) {
+			textNodes.push(node);
+			node = walker.nextNode();
+		}
+
+		const fullText = textNodes.map((n) => n.nodeValue).join("");
+		const findText = diff.find.replace(WHITESPACE_REGEX, "");
+		const startIndex = fullText.replace(WHITESPACE_REGEX, "").indexOf(findText);
+
+		if (startIndex === -1) {
+			return;
+		}
+
+		let charCount = 0;
+		let startNode: Node | null = null;
+		let startOffset = 0;
+		let endNode: Node | null = null;
+		let endOffset = 0;
+
+		for (const n of textNodes) {
+			const nodeText = n.nodeValue || "";
+			const nodeTextSanitized = nodeText.replace(WHITESPACE_REGEX, "");
+			const nextCharCount = charCount + nodeTextSanitized.length;
+
+			if (!startNode && nextCharCount > startIndex) {
+				startNode = n;
+				let i = 0;
+				let count = 0;
+				while (count < startIndex - charCount) {
+					if (!WHITESPACE_REGEX.test(nodeText[i])) {
+						count++;
+					}
+					i++;
+				}
+				startOffset = i;
+			}
+
+			if (nextCharCount >= startIndex + findText.length) {
+				endNode = n;
+				let i = 0;
+				let count = 0;
+				while (count < startIndex + findText.length - charCount) {
+					if (!WHITESPACE_REGEX.test(nodeText[i])) {
+						count++;
+					}
+					i++;
+				}
+				endOffset = i;
+				break;
+			}
+			charCount = nextCharCount;
+		}
+
+		if (startNode && endNode) {
+			const range = window.document.createRange();
+			range.setStart(startNode, startOffset);
+			range.setEnd(endNode, endOffset);
+
+			const diffContainer = window.document.createElement("div");
+			diffContainer.setAttribute("data-diff-container", "true");
+			diffContainer.contentEditable = "false";
+
+			const oldCode = window.document.createElement("div");
+			oldCode.innerHTML = markdownToHtml(diff.find);
+			oldCode.style.backgroundColor = "rgba(255, 0, 0, 0.2)";
+			diffContainer.appendChild(oldCode);
+
+			const newCode = window.document.createElement("div");
+			newCode.innerHTML = markdownToHtml(diff.replace);
+			newCode.style.backgroundColor = "rgba(0, 255, 0, 0.2)";
+			diffContainer.appendChild(newCode);
+
+			range.deleteContents();
+			range.insertNode(diffContainer);
+			editorRef.current.innerHTML = tempDiv.innerHTML;
+			diffContainer.scrollIntoView({ behavior: "smooth", block: "center" });
+		}
+	}, []);
+
+	useEffect(() => {
+		if (reviewState && editorRef.current) {
+			const { diffs, currentIndex, approvedDiffs, originalContent } = reviewState;
+			let contentToShow = originalContent;
+			for (const approved of approvedDiffs) {
+				contentToShow = contentToShow.replace(approved.find, approved.replace);
+			}
+			editorRef.current.innerHTML = markdownToHtml(contentToShow);
+
+			setTimeout(() => showDiffInline(diffs[currentIndex]), 0);
+		}
+	}, [reviewState, showDiffInline]);
+
+	const handleApplyChanges = (diffs: EditDiff[]) => {
+		if (!editorRef.current) return;
+		setReviewState({
+			diffs,
+			currentIndex: 0,
+			approvedDiffs: [],
+			originalContent: content,
+		});
 	};
 	
 
@@ -1307,7 +1409,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 				<Box sx={{ position: "relative" }} ref={relativeContainerRef}>
 					<div
 						ref={editorRef}
-						contentEditable
+						contentEditable={!reviewState}
 						onInput={handleContentChange}
 						onKeyDown={handleKeyDown}
 						suppressContentEditableWarning
@@ -1317,7 +1419,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 							}
 						}}
 					/>
-					{inlineEdit?.range && (
+					{inlineEdit?.range && !reviewState && (
 						<SelectionHighlight
 							style={{
 								position: "absolute",
@@ -1353,11 +1455,49 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 							onClose={() => {
 								setInlineEdit(null);
 								selectionRef.current = null;
+								if (reviewState) {
+									handleFinalizeChanges(reviewState.approvedDiffs);
+								}
 							}}
-						onApplyChanges={handleApplyChanges}
-						agentId={agentId}
-					/>
-				)}
+							onApplyChanges={handleApplyChanges}
+							agentId={agentId}
+							reviewState={reviewState}
+							onAcceptDiff={() => {
+								if (!reviewState) return;
+								const { diffs, currentIndex, approvedDiffs } = reviewState;
+								const newApproved = [...approvedDiffs, diffs[currentIndex]];
+								if (currentIndex + 1 >= diffs.length) {
+									handleFinalizeChanges(newApproved);
+								} else {
+									setReviewState({
+										...reviewState,
+										currentIndex: currentIndex + 1,
+										approvedDiffs: newApproved,
+									});
+								}
+							}}
+							onRejectDiff={() => {
+								if (!reviewState) return;
+								const { diffs, currentIndex } = reviewState;
+								if (currentIndex + 1 >= diffs.length) {
+									handleFinalizeChanges(reviewState.approvedDiffs);
+								} else {
+									setReviewState({
+										...reviewState,
+										currentIndex: currentIndex + 1,
+									});
+								}
+							}}
+							onApplyAll={() => {
+								if (!reviewState) return;
+								handleFinalizeChanges(reviewState.diffs);
+							}}
+							onRejectAll={() => {
+								if (!reviewState) return;
+								handleFinalizeChanges([]);
+							}}
+						/>
+					)}
 				</Box>
 			</EditorContent>
 			<FindReplaceWidget

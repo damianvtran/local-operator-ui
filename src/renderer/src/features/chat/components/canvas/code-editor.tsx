@@ -22,6 +22,7 @@ import { useCanvasStore } from "../../../../shared/store/canvas-store";
 import { getCodeMirrorTheme } from "../../../../shared/themes/code-mirror-theme";
 import type { CanvasDocument } from "../../types/canvas";
 import { InlineEdit } from "./inline-edit";
+import type { EditDiff } from "@shared/api/local-operator/types";
 
 type CodeEditorProps = {
 	/**
@@ -234,7 +235,7 @@ const CodeEditorComponent: FC<CodeEditorProps> = ({
 	};
 
 	const handleApplyChanges = useCallback(
-		(editDiffs: Array<{ find: string; replace: string }>) => {
+		(editDiffs: EditDiff[]) => {
 			const view = editorRef.current?.view;
 			if (view) {
 				const newContent = editDiffs.reduce(
@@ -319,6 +320,11 @@ const CodeEditorComponent: FC<CodeEditorProps> = ({
 					onClose={() => setInlineEdit(null)}
 					onApplyChanges={handleApplyChanges}
 					agentId={agentId}
+					reviewState={null}
+					onAcceptDiff={() => {}}
+					onRejectDiff={() => {}}
+					onApplyAll={() => {}}
+					onRejectAll={() => {}}
 				/>
 			)}
 		</CodeEditorContainer>
