@@ -1,5 +1,6 @@
 import {
 	Box,
+	Button,
 	CircularProgress,
 	IconButton,
 	Paper,
@@ -11,15 +12,18 @@ import {
 } from "@mui/material";
 import { createLocalOperatorClient } from "@shared/api/local-operator";
 import { TranscriptionApi } from "@shared/api/local-operator/transcription-api";
-import type { AgentEditFileRequest } from "@shared/api/local-operator/types";
+import type { AgentEditFileRequest, EditDiff } from "@shared/api/local-operator/types";
 import { apiConfig } from "@shared/config";
 import { useAgentSelectionStore } from "@shared/store/agent-selection-store";
 import { useConfig } from "@shared/hooks/use-config";
 import { useCredentials } from "@shared/hooks/use-credentials";
-import { useSpeechToTextManager, SpeechToTextPriority } from "@shared/hooks/use-speech-to-text-manager";
+import {
+	SpeechToTextPriority,
+	useSpeechToTextManager,
+} from "@shared/hooks/use-speech-to-text-manager";
 import { normalizePath } from "@shared/utils/path-utils";
 import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
-import { Check, Mic, Paperclip, Send, Square, X } from "lucide-react";
+import { Check, Mic, Paperclip, Send, Square, ThumbsDown, ThumbsUp, X } from "lucide-react";
 import {
 	type ChangeEvent,
 	type ClipboardEvent,
@@ -39,8 +43,17 @@ type InlineEditProps = {
 	position: { top: number; left: number };
 	filePath: string;
 	onClose: () => void;
-	onApplyChanges: (editDiffs: Array<{ find: string; replace: string }>) => void;
+	onApplyChanges: (editDiffs: EditDiff[]) => void;
 	agentId?: string;
+	reviewState: {
+		diffs: EditDiff[];
+		currentIndex: number;
+		approvedDiffs: EditDiff[];
+	} | null;
+	onAcceptDiff: () => void;
+	onRejectDiff: () => void;
+	onApplyAll: () => void;
+	onRejectAll: () => void;
 };
 
 const InputInnerContainer = styled(Paper)(({ theme }) => ({
@@ -135,6 +148,7 @@ const ButtonsRow = styled(Box)(({ theme }) => ({
 	alignItems: "center",
 	justifyContent: "space-between",
 	gap: theme.spacing(1),
+	padding: theme.spacing(0, 1, 1, 1),
 }));
 
 const AttachmentButton = styled(IconButton)(({ theme }) => ({
@@ -215,6 +229,11 @@ export const InlineEdit: FC<InlineEditProps> = ({
 	onClose,
 	onApplyChanges,
 	agentId,
+	reviewState,
+	onAcceptDiff,
+	onRejectDiff,
+	onApplyAll,
+	onRejectAll,
 }) => {
 	const [prompt, setPrompt] = useState("");
 	const [attachments, setAttachments] = useState<string[]>([]);
@@ -247,8 +266,25 @@ export const InlineEdit: FC<InlineEditProps> = ({
 				event.preventDefault();
 				if (isLoading) {
 					handleCancelEdit();
+				} else if (reviewState) {
+					onRejectAll();
 				} else if (!isRecording && !isTranscribing) {
 					onClose();
+				}
+			}
+
+			if (reviewState) {
+				if (event.metaKey || event.ctrlKey) {
+					if (event.key === "y") {
+						event.preventDefault();
+						onAcceptDiff();
+					} else if (event.key === "n") {
+						event.preventDefault();
+						onRejectDiff();
+					} else if (event.key === "Enter") {
+						event.preventDefault();
+						onApplyAll();
+					}
 				}
 			}
 		};
@@ -257,7 +293,17 @@ export const InlineEdit: FC<InlineEditProps> = ({
 		return () => {
 			window.removeEventListener("keydown", handleKeyDown);
 		};
-	}, [onClose, isLoading, isRecording, isTranscribing]);
+	}, [
+		onClose,
+		isLoading,
+		isRecording,
+		isTranscribing,
+		reviewState,
+		onAcceptDiff,
+		onRejectDiff,
+		onApplyAll,
+		onRejectAll,
+	]);
 
 	const { data: credentialsData, isLoading: isLoadingCredentials } =
 		useCredentials();
@@ -525,7 +571,9 @@ export const InlineEdit: FC<InlineEditProps> = ({
 
 			if (response.result && response.result.edit_diffs.length > 0) {
 				onApplyChanges(response.result.edit_diffs);
-				showSuccessToast("File edited successfully!");
+			} else {
+				showSuccessToast("No changes were needed.");
+				onClose();
 			}
 		} catch (error) {
 			if (!isCancelledRef.current) {
@@ -534,20 +582,8 @@ export const InlineEdit: FC<InlineEditProps> = ({
 			}
 		} finally {
 			setIsLoading(false);
-			if (!isCancelledRef.current) {
-				onClose();
-			}
 		}
-	}, [
-		config,
-		filePath,
-		prompt,
-		selection,
-		attachments,
-		agentToUse,
-		onApplyChanges,
-		onClose,
-	]);
+	}, [config, filePath, prompt, selection, attachments, agentToUse, onClose, onApplyChanges]);
 
 	const iconSize = 18;
 
@@ -570,151 +606,207 @@ export const InlineEdit: FC<InlineEditProps> = ({
 				<X size={18} />
 			</CloseButton>
 
-			{attachments.length > 0 && (
-				<AttachmentsPreview
-					attachments={attachments}
-					onRemoveAttachment={handleRemoveAttachment}
-					disabled={isLoading || isRecording || isTranscribing}
-				/>
-			)}
-
-			{isRecording ? (
-				<AudioRecordingIndicator isRecording={isRecording} />
-			) : isTranscribing ? (
-				<TranscriptionIndicator>
-					<TranscriptionText variant="body2">
-						Processing audio
-					</TranscriptionText>
-					<WaveformAnimation />
-				</TranscriptionIndicator>
+			{reviewState ? (
+				<Box sx={{ p: 1 }}>
+					<Typography variant="subtitle2" sx={{ mb: 1 }}>
+						Suggested Change {reviewState.currentIndex + 1} of {reviewState.diffs.length}
+					</Typography>
+				</Box>
 			) : (
-				<StyledTextField
-					fullWidth
-					multiline
-					maxRows={8}
-					placeholder="Ask for an edit..."
-					value={prompt}
-					onChange={(e) => setPrompt(e.target.value)}
-					onPaste={handlePaste}
-					disabled={isLoading}
-					inputRef={textareaRef}
-					onKeyDown={(e) => {
-						if (e.key === "Enter" && !e.shiftKey) {
-							e.preventDefault();
-							if (prompt.trim() || attachments.length > 0) {
-								handleSubmit();
-							}
-						}
-					}}
-				/>
+				<>
+					{attachments.length > 0 && (
+						<AttachmentsPreview
+							attachments={attachments}
+							onRemoveAttachment={handleRemoveAttachment}
+							disabled={isLoading || isRecording || isTranscribing}
+						/>
+					)}
+					{isRecording ? (
+						<AudioRecordingIndicator isRecording={isRecording} />
+					) : isTranscribing ? (
+						<TranscriptionIndicator>
+							<TranscriptionText variant="body2">
+								Processing audio
+							</TranscriptionText>
+							<WaveformAnimation />
+						</TranscriptionIndicator>
+					) : (
+						<StyledTextField
+							fullWidth
+							multiline
+							maxRows={8}
+							placeholder="Ask for an edit..."
+							value={prompt}
+							onChange={(e) => setPrompt(e.target.value)}
+							onPaste={handlePaste}
+							disabled={isLoading}
+							inputRef={textareaRef}
+							onKeyDown={(e) => {
+								if (e.key === "Enter" && !e.shiftKey) {
+									e.preventDefault();
+									if (prompt.trim() || attachments.length > 0) {
+										handleSubmit();
+									}
+								}
+							}}
+						/>
+					)}
+				</>
 			)}
 
 			<ButtonsRow>
 				<Box display="flex" alignItems="center" gap={1}>
-					<input
-						type="file"
-						ref={fileInputRef}
-						onChange={handleFileSelect}
-						style={{ display: "none" }}
-						disabled={isLoading || isRecording || isTranscribing}
-						multiple
-					/>
-					<Tooltip title="Add attachments">
-						<AttachmentButton
-							onClick={triggerFileInput}
-							disabled={isLoading || isRecording || isTranscribing}
-						>
-							<Paperclip size={iconSize} />
-						</AttachmentButton>
-					</Tooltip>
-				</Box>
-
-				<Box display="flex" alignItems="center" gap={1}>
-					{!isRecording && !isTranscribing && !isLoading && (
-						<Tooltip
-							title={
-								!canEnableRecordingFeature
-									? "Sign in to Radient in the settings page to enable audio recording"
-									: `Start recording (${shortcutText} or hold Space)`
-							}
-						>
-							<span>
-								<IconButton
-									onClick={handleStartRecording}
-									color="primary"
-									size="small"
-									aria-label="Start recording"
-									disabled={isLoading || !canEnableRecordingFeature}
-								>
-									<Mic size={iconSize} />
-								</IconButton>
-							</span>
-						</Tooltip>
-					)}
-					{isRecording && (
+					{reviewState ? (
 						<>
-							<Tooltip title="Confirm recording (Enter)">
-								<span>
-									<IconButton
-										onClick={handleConfirmRecording}
-										color="success"
-										size="small"
-										aria-label="Confirm recording"
-										disabled={isLoading}
-									>
-										<Check size={iconSize} />
-									</IconButton>
-								</span>
+							<Tooltip title="Reject All (Esc)">
+								<Button
+									onClick={onRejectAll}
+									color="error"
+									variant="outlined"
+									size="small"
+								>
+									Reject All
+								</Button>
 							</Tooltip>
-							<Tooltip title="Cancel recording (Esc)">
-								<span>
-									<IconButton
-										onClick={handleCancelRecording}
-										color="error"
-										size="small"
-										aria-label="Cancel recording"
-										disabled={isLoading}
-									>
-										<X size={iconSize} />
-									</IconButton>
-								</span>
+							<Tooltip title="Apply All (Cmd+Enter)">
+								<Button
+									onClick={onApplyAll}
+									color="success"
+									variant="contained"
+									size="small"
+								>
+									Apply All
+								</Button>
+							</Tooltip>
+						</>
+					) : (
+						<>
+							<input
+								type="file"
+								ref={fileInputRef}
+								onChange={handleFileSelect}
+								style={{ display: "none" }}
+								disabled={isLoading || isRecording || isTranscribing}
+								multiple
+							/>
+							<Tooltip title="Add attachments">
+								<AttachmentButton
+									onClick={triggerFileInput}
+									disabled={
+										isLoading || isRecording || isTranscribing || !!reviewState
+									}
+								>
+									<Paperclip size={iconSize} />
+								</AttachmentButton>
 							</Tooltip>
 						</>
 					)}
-					{!isRecording && !isTranscribing && !isLoading && (
-						<Tooltip title="Edit">
-							<div>
-								<SendButton
-									onClick={handleSubmit}
-									disabled={!prompt.trim() && attachments.length === 0}
-								>
-									<Send size={iconSize} />
-								</SendButton>
-							</div>
-						</Tooltip>
-					)}
-					{isLoading && (
-						<Tooltip title="Cancel Edit">
-							<Box sx={{ position: "relative", display: "inline-flex" }}>
-                <CircularProgress
-                  size={28}
-                  sx={{
-                    color: (theme) => alpha(theme.palette.primary.main, 0.5),
-                    position: "absolute",
-                    transform: "translate(-50%, -50%)",
-                    transformOrigin: "center",
-                  }}
-                />
-								<IconButton
-									onClick={handleCancelEdit}
-									color="primary"
-									aria-label="Cancel edit"
-									sx={{ width: 28, height: 28 }}
-								>
-									<Square size={14} />
+				</Box>
+
+				<Box display="flex" alignItems="center" gap={1}>
+					{reviewState ? (
+						<>
+							<Tooltip title="Reject (Cmd+N)">
+								<IconButton onClick={onRejectDiff} color="error">
+									<ThumbsDown size={iconSize} />
 								</IconButton>
-							</Box>
-						</Tooltip>
+							</Tooltip>
+							<Tooltip title="Approve (Cmd+Y)">
+								<IconButton onClick={onAcceptDiff} color="success">
+									<ThumbsUp size={iconSize} />
+								</IconButton>
+							</Tooltip>
+						</>
+					) : (
+						<>
+							{!isRecording && !isTranscribing && !isLoading && (
+								<Tooltip
+									title={
+										!canEnableRecordingFeature
+											? "Sign in to Radient in the settings page to enable audio recording"
+											: `Start recording (${shortcutText} or hold Space)`
+									}
+								>
+									<span>
+										<IconButton
+											onClick={handleStartRecording}
+											color="primary"
+											size="small"
+											aria-label="Start recording"
+											disabled={isLoading || !canEnableRecordingFeature}
+										>
+											<Mic size={iconSize} />
+										</IconButton>
+									</span>
+								</Tooltip>
+							)}
+							{isRecording && (
+								<>
+									<Tooltip title="Confirm recording (Enter)">
+										<span>
+											<IconButton
+												onClick={handleConfirmRecording}
+												color="success"
+												size="small"
+												aria-label="Confirm recording"
+												disabled={isLoading}
+											>
+												<Check size={iconSize} />
+											</IconButton>
+										</span>
+									</Tooltip>
+									<Tooltip title="Cancel recording (Esc)">
+										<span>
+											<IconButton
+												onClick={handleCancelRecording}
+												color="error"
+												size="small"
+												aria-label="Cancel recording"
+												disabled={isLoading}
+											>
+												<X size={iconSize} />
+											</IconButton>
+										</span>
+									</Tooltip>
+								</>
+							)}
+							{!isRecording && !isTranscribing && !isLoading && (
+								<Tooltip title="Edit">
+									<div>
+										<SendButton
+											onClick={handleSubmit}
+											disabled={!prompt.trim() && attachments.length === 0}
+										>
+											<Send size={iconSize} />
+										</SendButton>
+									</div>
+								</Tooltip>
+							)}
+							{isLoading && (
+								<Tooltip title="Cancel Edit">
+									<Box sx={{ position: "relative", display: "inline-flex" }}>
+										<CircularProgress
+											size={28}
+											sx={{
+												color: (theme) =>
+													alpha(theme.palette.primary.main, 0.5),
+												position: "absolute",
+												transform: "translate(-50%, -50%)",
+												transformOrigin: "center",
+											}}
+										/>
+										<IconButton
+											onClick={handleCancelEdit}
+											color="primary"
+											aria-label="Cancel edit"
+											sx={{ width: 28, height: 28 }}
+										>
+											<Square size={14} />
+										</IconButton>
+									</Box>
+								</Tooltip>
+							)}
+						</>
 					)}
 				</Box>
 			</ButtonsRow>
