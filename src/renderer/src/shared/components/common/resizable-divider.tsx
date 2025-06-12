@@ -153,6 +153,9 @@ export const ResizableDivider = ({
 		const startX = e.clientX;
 		const startWidth = sidebarWidth;
 
+		// Disable text selection while dragging
+		document.body.style.userSelect = "none";
+
 		const onMouseMove = (moveEvent: MouseEvent) => {
 			if (!dragging.current) return;
 			const delta = moveEvent.clientX - startX;
@@ -171,6 +174,10 @@ export const ResizableDivider = ({
 		const onMouseUp = () => {
 			dragging.current = false;
 			setActive(false);
+
+			// Re-enable text selection
+			document.body.style.userSelect = "";
+
 			window.removeEventListener("mousemove", onMouseMove);
 			window.removeEventListener("mouseup", onMouseUp);
 		};
