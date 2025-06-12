@@ -15,7 +15,7 @@ export const OnboardingTourGlobalStyles: FC = () => {
 			borderRadius: "6px", // Reduced border radius
 			boxShadow: `0 8px 30px ${alpha(theme.palette.common.black, 0.35)}`, // Slightly adjusted shadow
 			border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-			maxWidth: "400px",
+			maxWidth: "500px",
 			"&.shepherd-has-title .shepherd-content .shepherd-header": {
 				borderTopLeftRadius: "6px", // Adjusted
 				borderTopRightRadius: "6px", // Adjusted
@@ -58,8 +58,8 @@ export const OnboardingTourGlobalStyles: FC = () => {
 			backgroundColor: theme.palette.background.default,
 			padding: "16px 20px",
 			color: theme.palette.text.secondary,
-			fontSize: "1rem", // body1 equivalent
-			lineHeight: 1.6,
+			fontSize: "0.875rem", // body1 equivalent
+			lineHeight: 1.5,
 			"& p": {
 				// Ensure paragraphs within text are styled correctly
 				margin: 0,
