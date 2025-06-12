@@ -4,7 +4,7 @@ import type {
 	JobStatus,
 } from "@shared/api/local-operator/types";
 import { RingLoadingIndicator } from "@shared/components/common/ring-loading-indicator";
-import type { FC, RefObject } from "react";
+import React, { type FC, type RefObject, useCallback } from "react";
 import type { Message } from "../types/message";
 import { LoadingIndicator } from "./loading-indicator";
 import { MessageItem } from "./message-item";
@@ -168,28 +168,35 @@ const FullScreenCenteredContainer = styled(Box)({
  * Displays the list of messages in a conversation using a column-reverse layout
  * for automatic scroll-to-bottom behavior
  */
-export const MessagesView: FC<MessagesViewProps> = ({
-	messages,
-	isLoading,
-	isLoadingMessages,
-	isFetchingMore,
-	jobStatus,
-	agentName,
-	currentExecution,
-	messagesContainerRef,
-	messagesEndRef,
-	refetch,
-	conversationId,
-	isSmallView,
-}) => {
-	const collapsed =
-		messages.length === 0 && !isLoadingMessages && !isFetchingMore;
+export const MessagesView: FC<MessagesViewProps> = React.memo(
+	({
+		messages,
+		isLoading,
+		isLoadingMessages,
+		isFetchingMore,
+		jobStatus,
+		agentName,
+		currentExecution,
+		messagesContainerRef,
+		messagesEndRef,
+		refetch,
+		conversationId,
+		isSmallView,
+	}) => {
+		const collapsed =
+			messages.length === 0 && !isLoadingMessages && !isFetchingMore;
 
-	const lastMessageIsStreaming =
-		messages[messages.length - 1]?.is_streamable &&
-		!messages[messages.length - 1]?.is_complete;
+		const lastMessageIsStreaming =
+			messages[messages.length - 1]?.is_streamable &&
+			!messages[messages.length - 1]?.is_complete;
 
-	return (
+		const handleMessageComplete = useCallback(() => {
+			if (refetch) {
+				refetch();
+			}
+		}, [refetch]);
+
+		return (
 		<MessagesViewWrapper collapsed={collapsed}>
 			{/* Fixed position loading indicator for fetching more messages */}
 			{isFetchingMore && (
@@ -251,11 +258,7 @@ export const MessagesView: FC<MessagesViewProps> = ({
 													: undefined
 											}
 											isLastMessage={index === messages.length - 1}
-											onMessageComplete={() => {
-												if (refetch) {
-													refetch();
-												}
-											}}
+											onMessageComplete={handleMessageComplete}
 											isSmallView={isSmallView}
 										/>
 									),
@@ -293,4 +296,4 @@ export const MessagesView: FC<MessagesViewProps> = ({
 			</MessagesContainer>
 		</MessagesViewWrapper>
 	);
-};
+});
