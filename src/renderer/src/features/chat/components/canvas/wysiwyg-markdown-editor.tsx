@@ -33,6 +33,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useDebounce } from "@shared/hooks/use-debounce";
 import { useDebouncedValue } from "@shared/hooks/use-debounced-value";
 import { useCanvasStore } from "@shared/store/canvas-store";
+import { useWysiwygEditorHistory } from "@features/chat/hooks/use-wysiwyg-editor-history";
 import { showSuccessToast } from "@shared/utils/toast-manager";
 import type { CanvasDocument } from "../../types/canvas";
 import { markdownToHtml, htmlToMarkdown } from "@features/chat/components/canvas/wysiwyg-utils";
@@ -354,6 +355,16 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 	agentId,
 }) => {
 	const [content, setContent] = useState(document.content);
+	const { undo, redo, canUndo, canRedo, addToHistory } = useWysiwygEditorHistory({
+		documentTitle: document.title,
+		documentContent: content,
+		onContentChange: (newContent) => {
+			if (editorRef.current) {
+				editorRef.current.innerHTML = markdownToHtml(newContent);
+				setContent(newContent);
+			}
+		},
+	});
 	const [hasUserChanges, setHasUserChanges] = useState(false);
 	const [currentTextType, setCurrentTextType] = useState<TextType>("paragraph");
 	const [selectedFormats, setSelectedFormats] = useState<string[]>([]);
@@ -387,7 +398,6 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 	const editorRef = useRef<HTMLDivElement>(null);
 	const originalContentRef = useRef(document.content);
 	const isInitialLoadRef = useRef(true);
-	const isMounted = useRef(false);
 
 	const findHighlightRegistry = "find-highlight";
 	const currentFindHighlightRegistry = "current-find-highlight";
@@ -461,6 +471,9 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 		
 		if (isInitialLoadRef.current) {
 			isInitialLoadRef.current = false;
+		} else {
+			// Add to history for user changes (not initial load)
+			addToHistory(markdownContent);
 		}
 		
 		if (markdownContent !== originalContentRef.current) {
@@ -469,7 +482,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 
 		updateCurrentTextType();
 		updateSelectedFormats();
-	}, [updateCurrentTextType, updateSelectedFormats]);
+	}, [updateCurrentTextType, updateSelectedFormats, addToHistory]);
 
 	const clearHighlights = useCallback(() => {
 		if (window.CSS && CSS.highlights) {
@@ -697,11 +710,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 
 	// Initialize editor content from markdown
 	useEffect(() => {
-		if (
-			editorRef.current &&
-			(!isMounted.current || document.content !== originalContentRef.current)
-		) {
-			isMounted.current = true;
+		if (editorRef.current) {
 			const htmlContent = markdownToHtml(document.content);
 			editorRef.current.innerHTML = htmlContent;
 			setContent(document.content);
@@ -1060,12 +1069,11 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 						break;
 					}
 					case "z":
+						event.preventDefault();
 						if (event.shiftKey) {
-							event.preventDefault();
-							executeCommand("redo");
+							redo();
 						} else {
-							event.preventDefault();
-							executeCommand("undo");
+							undo();
 						}
 						break;
 				}
@@ -1102,7 +1110,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 				}
 			}
 		},
-		[handleFormatToggle, executeCommand, content],
+		[handleFormatToggle, executeCommand, content, undo, redo],
 	);
 
 	const handleFinalizeChanges = (finalDiffs: EditDiff[]) => {
@@ -1423,14 +1431,18 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 
 				{/* Undo/Redo */}
 				<Tooltip title="Undo (Ctrl+Z)">
-					<ToolbarButton onClick={() => executeCommand('undo')}>
-						<Undo size={16} />
-					</ToolbarButton>
+					<span>
+						<ToolbarButton onClick={undo} disabled={!canUndo}>
+							<Undo size={16} />
+						</ToolbarButton>
+					</span>
 				</Tooltip>
 				<Tooltip title="Redo (Ctrl+Shift+Z)">
-					<ToolbarButton onClick={() => executeCommand('redo')}>
-						<Redo size={16} />
-					</ToolbarButton>
+					<span>
+						<ToolbarButton onClick={redo} disabled={!canRedo}>
+							<Redo size={16} />
+						</ToolbarButton>
+					</span>
 				</Tooltip>
 			</EditorToolbar>
 
