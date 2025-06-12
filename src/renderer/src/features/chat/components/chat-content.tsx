@@ -8,8 +8,7 @@ import { ResizableDivider } from "@shared/components/common/resizable-divider";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { isDevelopmentMode } from "@shared/utils/env-utils";
-import type React from "react";
-import { type FC, useEffect, useRef, useState } from "react";
+import React, { type FC, useCallback, useEffect, useRef, useState } from "react";
 import type { Message } from "../types/message";
 import { Canvas } from "./canvas";
 import { ChatHeader } from "./chat-header";
@@ -101,7 +100,15 @@ const FlexRow = styled(Box)({
  *
  * Displays the main chat content area with tabs, messages, and input
  */
-export const ChatContent: FC<ChatContentProps> = ({
+const defaultCanvasState = {
+	isOpen: false,
+	openTabs: [],
+	selectedTabId: null,
+	files: [],
+};
+
+export const ChatContent: FC<ChatContentProps> = React.memo(
+	({
 	activeTab,
 	onTabChange,
 	agentName,
@@ -163,13 +170,6 @@ export const ChatContent: FC<ChatContentProps> = ({
 	// Get canvas state for the current conversation
 	const conversationId = agentId; // assuming agentId is the conversation ID
 	const canvasState = useCanvasStore((s) => s.conversations[conversationId]);
-
-	const defaultCanvasState = {
-		isOpen: false,
-		openTabs: [],
-		selectedTabId: null,
-		files: [],
-	};
 	const setOpenTabs = useCanvasStore((s) => s.setOpenTabs);
 	const setSelectedTab = useCanvasStore((s) => s.setSelectedTab);
 	const setFiles = useCanvasStore((s) => s.setFiles);
@@ -185,6 +185,40 @@ export const ChatContent: FC<ChatContentProps> = ({
 	// No effect needed: always use the value from the store, or fallback to default if 0
 	const effectiveCanvasPanelWidth =
 		canvasPanelWidth === 0 ? 450 : canvasPanelWidth;
+
+	const handleChangeActiveDocument = useCallback(
+		(documentId: string) => setSelectedTab(conversationId, documentId),
+		[conversationId, setSelectedTab],
+	);
+
+	const handleCloseCanvas = useCallback(() => {
+		useUiPreferencesStore.getState().setCanvasOpen(false);
+	}, []);
+
+	const handleCloseDocument = useCallback(
+		(docId: string) => {
+			// Remove from openTabs and files, update selectedTabId if needed
+			const newTabs = openTabs.filter((tab) => tab.id !== docId);
+			const newFiles = files.filter((file) => file.id !== docId);
+			setOpenTabs(conversationId, newTabs);
+			setFiles(conversationId, newFiles);
+			if (selectedTabId === docId) {
+				setSelectedTab(
+					conversationId,
+					newTabs.length > 0 ? newTabs[0].id : null,
+				);
+			}
+		},
+		[
+			conversationId,
+			files,
+			openTabs,
+			selectedTabId,
+			setFiles,
+			setOpenTabs,
+			setSelectedTab,
+		],
+	);
 
 	return (
 		<FlexRow>
@@ -282,29 +316,13 @@ export const ChatContent: FC<ChatContentProps> = ({
 							initialDocuments={files}
 							conversationId={conversationId}
 							agentId={agentId}
-							onChangeActiveDocument={(documentId: string) =>
-								setSelectedTab(conversationId, documentId)
-							}
-							onClose={() =>
-								useUiPreferencesStore.getState().setCanvasOpen(false)
-							}
-							onCloseDocument={(docId: string) => {
-								// Remove from openTabs and files, update selectedTabId if needed
-								const newTabs = openTabs.filter((tab) => tab.id !== docId);
-								const newFiles = files.filter((file) => file.id !== docId);
-								setOpenTabs(conversationId, newTabs);
-								setFiles(conversationId, newFiles);
-								if (selectedTabId === docId) {
-									setSelectedTab(
-										conversationId,
-										newTabs.length > 0 ? newTabs[0].id : null,
-									);
-								}
-							}}
+							onChangeActiveDocument={handleChangeActiveDocument}
+							onClose={handleCloseCanvas}
+							onCloseDocument={handleCloseDocument}
 						/>
 					</Box>
 				</>
 			)}
 		</FlexRow>
 	);
-};
+});

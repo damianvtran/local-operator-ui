@@ -59,7 +59,8 @@ type MessagePaperProps = {
  * Handles styling based on whether the message is from the user or assistant
  * For a modern AI chat app look, assistant messages don't have a paper boundary
  */
-export const MessagePaper: FC<MessagePaperProps> = ({
+export const MessagePaper: FC<MessagePaperProps> = React.memo(
+	({
 	isUser,
 	elevation = isUser ? 2 : 0,
 	children,
@@ -365,4 +366,4 @@ export const MessagePaper: FC<MessagePaperProps> = ({
 			<div ref={scrollRef} style={{ height: 1, width: 1, opacity: 0 }} />
 		</Box>
 	);
-};
+});
