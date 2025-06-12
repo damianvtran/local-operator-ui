@@ -4,7 +4,7 @@ import { styled } from "@mui/material/styles";
 import { ChevronLeft, ChevronRight, X, Replace } from "lucide-react";
 import type { FC } from "react";
 import { useState, useEffect, useRef } from "react";
-import { useDebounce } from "@shared/hooks/use-debounce";
+import { useDebouncedValue } from "@shared/hooks/use-debounced-value";
 
 const WidgetContainer = styled(Paper)(({ theme }) => ({
 	position: "absolute",
@@ -90,7 +90,7 @@ export const FindReplaceWidget: FC<FindReplaceWidgetProps> = ({
 	const findInputRef = useRef<HTMLInputElement>(null);
 	const replaceInputRef = useRef<HTMLInputElement>(null);
 
-	const debouncedFindValue = useDebounce(findValue, 300);
+	const debouncedFindValue = useDebouncedValue(findValue, 300);
 
 	useEffect(() => {
 		if (show) {

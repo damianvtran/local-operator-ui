@@ -17,7 +17,7 @@ import {
 	useMemo,
 	memo,
 } from "react";
-import { useDebounce } from "../../../../shared/hooks/use-debounce";
+import { useDebouncedValue } from "../../../../shared/hooks/use-debounced-value";
 import { useCanvasStore } from "../../../../shared/store/canvas-store";
 import { getCodeMirrorTheme } from "../../../../shared/themes/code-mirror-theme";
 import type { CanvasDocument } from "../../types/canvas";
@@ -74,7 +74,7 @@ const CodeEditorComponent: FC<CodeEditorProps> = ({
 		conversationId ? state.conversations[conversationId] : undefined,
 	);
 	const [languageExtensions, setLanguageExtensions] = useState<Extension[]>([]);
-	const debouncedContent = useDebounce(content, 1000);
+	const debouncedContent = useDebouncedValue(content, 1000);
 	const [inlineEdit, setInlineEdit] = useState<{
 		selection: string;
 		position: { top: number; left: number };
