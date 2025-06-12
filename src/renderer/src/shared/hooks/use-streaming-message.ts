@@ -276,6 +276,7 @@ export const useStreamingMessage = ({
 						if (mountedRef.current) {
 							// Use a local function to avoid dependency on refetchMessage
 							const doRefetch = async () => {
+								if (isRefetching) return; // Prevent concurrent refetches
 								try {
 									setIsRefetching(true);
 
@@ -383,6 +384,7 @@ export const useStreamingMessage = ({
 			updateMessage,
 			addMessage,
 			baseUrl,
+			isRefetching,
 		],
 	);
 
