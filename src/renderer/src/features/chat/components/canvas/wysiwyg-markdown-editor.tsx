@@ -189,7 +189,7 @@ const EditorToolbar = styled(Toolbar)(({ theme }) => ({
 
 const EditorContent = styled(Box)(({ theme }) => ({
 	flex: 1,
-	padding: "16px",
+	padding: "32px",
 	overflowY: "auto",
 	backgroundColor: theme.palette.background.paper,
 	"&::-webkit-scrollbar": {
