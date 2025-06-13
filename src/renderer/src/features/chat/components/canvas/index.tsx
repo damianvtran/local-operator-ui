@@ -8,6 +8,7 @@ import {
 } from "@mui/material";
 import type { CanvasViewMode } from "@shared/store/canvas-store";
 import { useCanvasStore } from "@shared/store/canvas-store";
+import { useUndoManagerStore } from "@shared/store/undo-manager-store";
 import { FilePlus, FileText, FolderOpen, ListTree, X } from "lucide-react";
 import { memo, useCallback, useMemo, useState } from "react";
 import type { FC } from "react";
@@ -129,6 +130,7 @@ const CanvasComponent: FC<CanvasProps> = ({
 	const [isCreatingFile, setIsCreatingFile] = useState(false);
 
 	const { addFileAndSelect, setViewMode } = useCanvasStore();
+	const { removeManager } = useUndoManagerStore();
 
 	const handleCreateFile = async (
 		details: {
@@ -211,6 +213,7 @@ const CanvasComponent: FC<CanvasProps> = ({
 		(documentId: string) => {
 			// Remove the document
 			onCloseDocument(documentId);
+			removeManager(documentId);
 
 			// If we're closing the active document, set the active document to the first remaining document
 			if (activeDocumentId === documentId) {
@@ -230,6 +233,7 @@ const CanvasComponent: FC<CanvasProps> = ({
 			activeDocumentId,
 			externalChangeActiveDocument,
 			onCloseDocument,
+			removeManager,
 		],
 	);
 
