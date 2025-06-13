@@ -132,6 +132,10 @@ declare global {
 			};
 			/** Opens a native dialog to select a directory */
 			selectDirectory: () => Promise<string | undefined>;
+			/** Opens a native dialog to select a file and returns its path and content */
+			selectFile: () => Promise<
+				{ path: string; content: string } | undefined
+			>;
 			/** Gets the user's home directory path */
 			getHomeDirectory: () => Promise<string>;
 			/** Saves a file to the specified path */

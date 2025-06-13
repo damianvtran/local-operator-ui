@@ -9,8 +9,15 @@ import {
 import type { CanvasViewMode } from "@shared/store/canvas-store";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import { useUndoManagerStore } from "@shared/store/undo-manager-store";
-import { FilePlus, FileText, FolderOpen, ListTree, X } from "lucide-react";
-import { memo, useCallback, useMemo, useState } from "react";
+import {
+	FilePlus,
+	FileText,
+	FolderOpen,
+	ListTree,
+	FileUp,
+	X,
+} from "lucide-react";
+import { memo, useCallback, useMemo, useState, useEffect } from "react";
 import type { FC } from "react";
 import type { CanvasDocument } from "../../types/canvas";
 import { createFile } from "../../utils/file-creation";
@@ -128,9 +135,50 @@ const CanvasComponent: FC<CanvasProps> = ({
 }) => {
 	const [isCreateFileDialogOpen, setCreateFileDialogOpen] = useState(false);
 	const [isCreatingFile, setIsCreatingFile] = useState(false);
+	const [modifierKey, setModifierKey] = useState("Ctrl");
+
+	useEffect(() => {
+		const getPlatform = async () => {
+			const platformInfo = await window.api.systemInfo.getPlatformInfo();
+			setModifierKey(platformInfo.platform === "darwin" ? "⌘" : "Ctrl");
+		};
+		getPlatform();
+	}, []);
 
 	const { addFileAndSelect, setViewMode } = useCanvasStore();
 	const { removeManager } = useUndoManagerStore();
+
+	const handleOpenFile = useCallback(async () => {
+		if (conversationId) {
+			const result = await window.api.selectFile();
+			if (result) {
+				const newFile: CanvasDocument = {
+					id: result.path,
+					title: result.path.split("/").pop() || result.path,
+					content: result.content,
+					path: result.path,
+				};
+				addFileAndSelect(conversationId, newFile);
+			}
+		}
+	}, [addFileAndSelect, conversationId]);
+
+	useEffect(() => {
+		const handleKeyDown = (event: KeyboardEvent) => {
+			if ((event.metaKey || event.ctrlKey) && event.key === "o") {
+				event.preventDefault();
+				handleOpenFile();
+			}
+			if ((event.metaKey || event.ctrlKey) && event.key === "n") {
+				event.preventDefault();
+				setCreateFileDialogOpen(true);
+			}
+		};
+		window.addEventListener("keydown", handleKeyDown);
+		return () => {
+			window.removeEventListener("keydown", handleKeyDown);
+		};
+	}, [handleOpenFile]);
 
 	const handleCreateFile = async (
 		details: {
@@ -249,7 +297,11 @@ const CanvasComponent: FC<CanvasProps> = ({
 					</Typography>
 				</HeaderTitle>
 				<Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-					<Tooltip title="Create New File" arrow placement="top">
+					<Tooltip
+						title={`Create New File (${modifierKey} + N)`}
+						arrow
+						placement="top"
+					>
 						{/* @ts-ignore MUI Tooltip a11y issue */}
 						<IconButton
 							onClick={() => setCreateFileDialogOpen(true)}
@@ -266,6 +318,28 @@ const CanvasComponent: FC<CanvasProps> = ({
 							})}
 						>
 							<FilePlus size={16} />
+						</IconButton>
+					</Tooltip>
+					<Tooltip
+						title={`Open File (${modifierKey} + O)`}
+						arrow
+						placement="top"
+					>
+						{/* @ts-ignore MUI Tooltip a11y issue */}
+						<IconButton
+							onClick={handleOpenFile}
+							size="large"
+							sx={(theme) => ({
+								color: theme.palette.text.secondary,
+								"&:hover": {
+									backgroundColor: alpha(theme.palette.primary.main, 0.12),
+								},
+								width: 36,
+								height: 36,
+								padding: 0,
+							})}
+						>
+							<FileUp size={16} />
 						</IconButton>
 					</Tooltip>
 					<Tooltip title="Documents View" arrow placement="top">
