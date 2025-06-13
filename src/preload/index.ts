@@ -160,6 +160,10 @@ const api = {
 	selectDirectory: (): Promise<string | undefined> =>
 		ipcRenderer.invoke("select-directory"),
 
+	/** Opens a native dialog to select a file and returns its path and content */
+	selectFile: (): Promise<{ path: string; content: string } | undefined> =>
+		ipcRenderer.invoke("select-file"),
+
 	/** Gets the user's home directory path */
 	getHomeDirectory: (): Promise<string> =>
 		ipcRenderer.invoke("get-home-directory"),

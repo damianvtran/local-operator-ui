@@ -549,6 +549,33 @@ app
 			return undefined; // Return undefined if canceled or no path selected
 		});
 
+		ipcMain.handle("select-file", async () => {
+			if (!mainWindow) {
+				logger.error(
+					"Cannot show open file dialog: mainWindow is not available.",
+					LogFileType.BACKEND,
+				);
+				return undefined;
+			}
+			const result = await dialog.showOpenDialog(mainWindow, {
+				properties: ["openFile"],
+				title: "Select File",
+				buttonLabel: "Open",
+			});
+
+			if (!result.canceled && result.filePaths.length > 0) {
+				const filePath = result.filePaths[0];
+				try {
+					const data = readFileSync(filePath, "utf-8");
+					return { path: filePath, content: data };
+				} catch (error) {
+					logger.error("Error reading file:", LogFileType.BACKEND, error);
+					return undefined;
+				}
+			}
+			return undefined;
+		});
+
 		// --- Session storage handlers (using the already initialized sessionStore) ---
 		ipcMain.handle("get-session", () => {
 			const accessToken = sessionStore.get("radient_access_token");
