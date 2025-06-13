@@ -1,18 +1,30 @@
 import {
+	htmlToMarkdown,
+	markdownToHtml,
+} from "@features/chat/components/canvas/wysiwyg-utils";
+import {
 	Box,
-	Toolbar,
-	IconButton,
 	Divider,
-	Tooltip,
+	IconButton,
+	Paper,
 	ToggleButton,
 	ToggleButtonGroup,
-	Paper,
+	Toolbar,
+	Tooltip,
 } from "@mui/material";
-import type { EditDiff } from "@shared/api/local-operator/types";
 import { styled } from "@mui/material/styles";
+import type { EditDiff } from "@shared/api/local-operator/types";
+import { FindReplaceWidget } from "@shared/components/common/find-replace-widget";
+import { TextSelectionControls } from "@shared/components/common/text-selection-controls";
+import { useDebounce } from "@shared/hooks/use-debounce";
+import { useDebouncedValue } from "@shared/hooks/use-debounced-value";
+import type { UndoManager } from "@shared/lib/undo-manager";
+import { useCanvasStore } from "@shared/store/canvas-store";
+import { useUndoManagerStore } from "@shared/store/undo-manager-store";
+import { showSuccessToast } from "@shared/utils/toast-manager";
 import {
-	AlignLeft,
 	AlignCenter,
+	AlignLeft,
 	AlignRight,
 	Bold,
 	Code,
@@ -30,40 +42,34 @@ import {
 } from "lucide-react";
 import { type FC, memo } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useDebounce } from "@shared/hooks/use-debounce";
-import { useDebouncedValue } from "@shared/hooks/use-debounced-value";
-import { useCanvasStore } from "@shared/store/canvas-store";
-import { showSuccessToast } from "@shared/utils/toast-manager";
-import type { UndoManager } from "@shared/lib/undo-manager";
-import { useUndoManagerStore } from "@shared/store/undo-manager-store";
 import type { CanvasDocument } from "../../types/canvas";
-import { markdownToHtml, htmlToMarkdown } from "@features/chat/components/canvas/wysiwyg-utils";
-import { TextSelectionControls } from "@shared/components/common/text-selection-controls";
 import { InlineEdit } from "./inline-edit";
 import { InsertImageDialog } from "./wysiwyg/insert-image-dialog";
 import type { LinkDialogData } from "./wysiwyg/insert-link-dialog";
 import { InsertLinkDialog } from "./wysiwyg/insert-link-dialog";
 import { InsertTablePopover } from "./wysiwyg/insert-table-popover";
-import { FindReplaceWidget } from "@shared/components/common/find-replace-widget";
 import { TextStyleDropdown } from "./wysiwyg/text-style-dropdown";
 
 /**
  * Calculates the cursor position within the markdown content by converting HTML position to markdown position
  */
-const getCursorPosition = (editorElement: HTMLElement, range: Range): number => {
+const getCursorPosition = (
+	editorElement: HTMLElement,
+	range: Range,
+): number => {
 	// Create a range from the start of the editor to the cursor position
 	const preCaretRange = document.createRange();
 	preCaretRange.selectNodeContents(editorElement);
 	preCaretRange.setEnd(range.startContainer, range.startOffset);
-	
+
 	// Get the HTML content up to the cursor position
 	const htmlBeforeCursor = preCaretRange.cloneContents();
-	const tempDiv = document.createElement('div');
+	const tempDiv = document.createElement("div");
 	tempDiv.appendChild(htmlBeforeCursor);
-	
+
 	// Convert the HTML before cursor to markdown
 	const markdownBeforeCursor = htmlToMarkdown(tempDiv.innerHTML);
-	
+
 	// Return the length of the markdown content before cursor
 	return markdownBeforeCursor.length;
 };
@@ -121,37 +127,35 @@ const formatSelectionWithContext = (
 			// Fallback if we can't find the selection
 			return `<text_before></text_before><selected_text>${selectedText}</selected_text><text_after></text_after>`;
 		}
-		
+
 		const textBefore = fullContent.substring(0, selectionStart);
-		const textAfter = fullContent.substring(selectionStart + selectedText.length);
+		const textAfter = fullContent.substring(
+			selectionStart + selectedText.length,
+		);
 
 		// Truncate text before and after to 120 chars max with ellipsis
-		const truncatedTextBefore = textBefore.length > 120 
-			? `${textBefore.slice(-120)}` 
-			: textBefore;
-		const truncatedTextAfter = textAfter.length > 120 
-			? `${textAfter.slice(0, 120)}` 
-			: textAfter;
-		
+		const truncatedTextBefore =
+			textBefore.length > 120 ? `${textBefore.slice(-120)}` : textBefore;
+		const truncatedTextAfter =
+			textAfter.length > 120 ? `${textAfter.slice(0, 120)}` : textAfter;
+
 		return `<text_before>${truncatedTextBefore}</text_before><selected_text>${selectedText}</selected_text><text_after>${truncatedTextAfter}</text_after>`;
 	}
-	
+
 	if (cursorPosition !== undefined && cursorPosition >= 0) {
 		// Empty selection at cursor position
 		const textBefore = fullContent.substring(0, cursorPosition);
 		const textAfter = fullContent.substring(cursorPosition);
-		
+
 		// Truncate text before and after to 120 chars max with ellipsis
-		const truncatedTextBefore = textBefore.length > 120 
-			? `${textBefore.slice(-120)}` 
-			: textBefore;
-		const truncatedTextAfter = textAfter.length > 120 
-			? `${textAfter.slice(0, 120)}` 
-			: textAfter;
-		
+		const truncatedTextBefore =
+			textBefore.length > 120 ? `${textBefore.slice(-120)}` : textBefore;
+		const truncatedTextAfter =
+			textAfter.length > 120 ? `${textAfter.slice(0, 120)}` : textAfter;
+
 		return `<text_before>${truncatedTextBefore}</text_before><selected_text></selected_text><text_after>${truncatedTextAfter}</text_after>`;
 	}
-	
+
 	// Fallback
 	return `<text_before>${fullContent}</text_before><selected_text></selected_text><text_after></text_after>`;
 };
@@ -262,31 +266,31 @@ const EditorContent = styled(Box)(({ theme }) => ({
 		padding: "8px 16px",
 	},
 	"& code": {
-    backgroundImage: "none",
+		backgroundImage: "none",
 		padding: "2px 2px",
 		borderRadius: "4px",
 		fontFamily: '"Geist Mono", "Roboto Mono", monospace',
-    letterSpacing: "0.05em",
+		letterSpacing: "0.05em",
 		fontSize: "0.8em",
 	},
 	"& pre": {
 		backgroundColor: theme.palette.background.default,
-    backgroundImage: "none",
+		backgroundImage: "none",
 		padding: "12px",
 		borderRadius: "8px",
 		overflow: "auto",
 		margin: "12px 0",
-    "&::-webkit-scrollbar": {
-      width: "8px",
-      height: "8px",
-    },
-    "&::-webkit-scrollbar-thumb": {
-      backgroundColor:
-        theme.palette.mode === "dark"
-          ? "rgba(255, 255, 255, 0.1)"
-          : "rgba(0, 0, 0, 0.2)",
-      borderRadius: "4px",
-    },
+		"&::-webkit-scrollbar": {
+			width: "8px",
+			height: "8px",
+		},
+		"&::-webkit-scrollbar-thumb": {
+			backgroundColor:
+				theme.palette.mode === "dark"
+					? "rgba(255, 255, 255, 0.1)"
+					: "rgba(0, 0, 0, 0.2)",
+			borderRadius: "4px",
+		},
 		"& code": {
 			backgroundColor: "transparent",
 			padding: 0,
@@ -340,7 +344,7 @@ type TextType = "paragraph" | "h1" | "h2" | "h3" | "h4" | "h5" | "h6";
 
 /**
  * WYSIWYG Markdown Editor Component
- * 
+ *
  * Features:
  * - Rich text editing with markdown output
  * - Toolbar with formatting options
@@ -361,11 +365,16 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 	const [selectedFormats, setSelectedFormats] = useState<string[]>([]);
 	const [currentAlignment, setCurrentAlignment] = useState("left");
 	const [isLinkDialogOpen, setIsLinkDialogOpen] = useState(false);
-	const [linkDialogData, setLinkDialogData] = useState<LinkDialogData>({ url: "", text: "" });
+	const [linkDialogData, setLinkDialogData] = useState<LinkDialogData>({
+		url: "",
+		text: "",
+	});
 	const [isImageDialogOpen, setIsImageDialogOpen] = useState(false);
 	const [tableAnchorEl, setTableAnchorEl] = useState<HTMLElement | null>(null);
 	const [showFindReplace, setShowFindReplace] = useState(false);
-	const [findReplaceMode, setFindReplaceMode] = useState<"find" | "replace">("find");
+	const [findReplaceMode, setFindReplaceMode] = useState<"find" | "replace">(
+		"find",
+	);
 	const [searchQuery, setSearchQuery] = useState("");
 	const [matchRanges, setMatchRanges] = useState<Range[]>([]);
 	const [currentMatchIndex, setCurrentMatchIndex] = useState(-1);
@@ -416,7 +425,11 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 
 	// Manual save function that bypasses debounce
 	const handleManualSave = useCallback(() => {
-		if (!document.path || !hasUserChanges || content === originalContentRef.current) {
+		if (
+			!document.path ||
+			!hasUserChanges ||
+			content === originalContentRef.current
+		) {
 			return;
 		}
 
@@ -427,34 +440,44 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 
 		if (conversationId && canvasState) {
 			const updatedFiles = canvasState.files.map((file) =>
-				file.id === document.id
-					? { ...file, content }
-					: file,
+				file.id === document.id ? { ...file, content } : file,
 			);
 			setFiles(conversationId, updatedFiles);
 		}
-	}, [document.path, document.id, hasUserChanges, content, conversationId, canvasState, setFiles]);
-  
+	}, [
+		document.path,
+		document.id,
+		hasUserChanges,
+		content,
+		conversationId,
+		canvasState,
+		setFiles,
+	]);
+
 	const updateCurrentTextType = useCallback(() => {
 		const selection = window.getSelection();
 		if (!selection?.rangeCount) return;
 
 		const range = selection.getRangeAt(0);
 		let element: Node | null = range.startContainer;
-		
+
 		if (element.nodeType === Node.TEXT_NODE && element.parentElement) {
 			element = element.parentElement;
 		}
 
-		while (element && element !== editorRef.current && element instanceof Element) {
+		while (
+			element &&
+			element !== editorRef.current &&
+			element instanceof Element
+		) {
 			const tagName = element.tagName?.toLowerCase();
-			if (tagName && ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'].includes(tagName)) {
+			if (tagName && ["h1", "h2", "h3", "h4", "h5", "h6"].includes(tagName)) {
 				setCurrentTextType(tagName as TextType);
 				return;
 			}
 			element = element.parentElement;
 		}
-		
+
 		setCurrentTextType("paragraph");
 	}, []);
 
@@ -484,13 +507,13 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 
 		const htmlContent = editorRef.current.innerHTML;
 		const markdownContent = htmlToMarkdown(htmlContent);
-		
+
 		setContent(markdownContent);
-		
+
 		if (isInitialLoadRef.current) {
 			isInitialLoadRef.current = false;
 		}
-		
+
 		if (markdownContent !== originalContentRef.current) {
 			setHasUserChanges(true);
 		}
@@ -543,14 +566,18 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 				const text = textNode.nodeValue;
 				if (text) {
 					let fromIndex = 0;
-					let matchIndex = text.toLowerCase().indexOf(query.toLowerCase(), fromIndex);
+					let matchIndex = text
+						.toLowerCase()
+						.indexOf(query.toLowerCase(), fromIndex);
 					while (matchIndex !== -1) {
 						const range = window.document.createRange();
 						range.setStart(textNode, matchIndex);
 						range.setEnd(textNode, matchIndex + query.length);
 						ranges.push(range);
 						fromIndex = matchIndex + query.length;
-						matchIndex = text.toLowerCase().indexOf(query.toLowerCase(), fromIndex);
+						matchIndex = text
+							.toLowerCase()
+							.indexOf(query.toLowerCase(), fromIndex);
 					}
 				}
 				node = walker.nextNode();
@@ -596,7 +623,9 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 						const highlightSpan = window.document.createElement("span");
 						highlightSpan.dataset.highlight = "true";
 						const isCurrent = i === newIndex;
-						highlightSpan.style.backgroundColor = isCurrent ? "orange" : "yellow";
+						highlightSpan.style.backgroundColor = isCurrent
+							? "orange"
+							: "yellow";
 						range.surroundContents(highlightSpan);
 					}
 				}
@@ -637,7 +666,9 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 			const activeRange = matchRanges[newIndex];
 
 			if (window.CSS && CSS.highlights) {
-				const currentHighlight = CSS.highlights.get(currentFindHighlightRegistry);
+				const currentHighlight = CSS.highlights.get(
+					currentFindHighlightRegistry,
+				);
 				currentHighlight?.clear();
 				currentHighlight?.add(activeRange);
 			} else {
@@ -648,7 +679,8 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 				if (highlights) {
 					highlights.forEach((h, i) => {
 						const highlight = h as HTMLElement;
-						highlight.style.backgroundColor = i === newIndex ? "orange" : "yellow";
+						highlight.style.backgroundColor =
+							i === newIndex ? "orange" : "yellow";
 					});
 				}
 			}
@@ -804,7 +836,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 		setFiles,
 	]);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: We need to run this effect when content changes to restore the scroll position.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: We need to run this effect when content changes to restore the scroll position.
 	useEffect(() => {
 		if (scrollPositionRef.current !== null && editorContentRef.current) {
 			editorContentRef.current.scrollTop = scrollPositionRef.current;
@@ -832,46 +864,58 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 	}, [debouncedSelectionChange]);
 
 	// Execute formatting command
-	const executeCommand = useCallback((command: string, value?: string) => {
-		window.document.execCommand(command, false, value);
-		handleContentChange();
-		editorRef.current?.focus();
-	}, [handleContentChange]);
+	const executeCommand = useCallback(
+		(command: string, value?: string) => {
+			window.document.execCommand(command, false, value);
+			handleContentChange();
+			editorRef.current?.focus();
+		},
+		[handleContentChange],
+	);
 
 	// Handle text type change
-	const handleTextTypeChange = useCallback((type: TextType) => {
-		if (type === "paragraph") {
-			executeCommand('formatBlock', 'p');
-		} else {
-			executeCommand('formatBlock', type);
-		}
-		setCurrentTextType(type);
-	}, [executeCommand]);
-
-	const toggleBlockFormat = useCallback((format: "blockquote" | "pre") => {
-		const selection = window.getSelection();
-		if (!selection?.rangeCount) return;
-
-		let element: Node | null = selection.getRangeAt(0).startContainer;
-		if (element.nodeType === Node.TEXT_NODE) {
-			element = element.parentElement;
-		}
-
-		let isFormatted = false;
-		while (element && element !== editorRef.current) {
-			if (element instanceof HTMLElement && element.tagName.toLowerCase() === format) {
-				isFormatted = true;
-				break;
+	const handleTextTypeChange = useCallback(
+		(type: TextType) => {
+			if (type === "paragraph") {
+				executeCommand("formatBlock", "p");
+			} else {
+				executeCommand("formatBlock", type);
 			}
-			element = element.parentElement;
-		}
+			setCurrentTextType(type);
+		},
+		[executeCommand],
+	);
 
-		if (isFormatted) {
-			executeCommand("formatBlock", "p");
-		} else {
-			executeCommand("formatBlock", format);
-		}
-	}, [executeCommand]);
+	const toggleBlockFormat = useCallback(
+		(format: "blockquote" | "pre") => {
+			const selection = window.getSelection();
+			if (!selection?.rangeCount) return;
+
+			let element: Node | null = selection.getRangeAt(0).startContainer;
+			if (element.nodeType === Node.TEXT_NODE) {
+				element = element.parentElement;
+			}
+
+			let isFormatted = false;
+			while (element && element !== editorRef.current) {
+				if (
+					element instanceof HTMLElement &&
+					element.tagName.toLowerCase() === format
+				) {
+					isFormatted = true;
+					break;
+				}
+				element = element.parentElement;
+			}
+
+			if (isFormatted) {
+				executeCommand("formatBlock", "p");
+			} else {
+				executeCommand("formatBlock", format);
+			}
+		},
+		[executeCommand],
+	);
 
 	// Handle format toggle
 	const handleFormatToggle = useCallback(
@@ -931,36 +975,42 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 		setIsLinkDialogOpen(true);
 	}, []);
 
-	const handleInsertLink = useCallback((url: string, text: string) => {
-		editorRef.current?.focus();
-		const selection = window.getSelection();
-		if (!selection || !selectionRef.current) return;
+	const handleInsertLink = useCallback(
+		(url: string, text: string) => {
+			editorRef.current?.focus();
+			const selection = window.getSelection();
+			if (!selection || !selectionRef.current) return;
 
-		selection.removeAllRanges();
-		selection.addRange(selectionRef.current);
+			selection.removeAllRanges();
+			selection.addRange(selectionRef.current);
 
-		const anchor = selection.anchorNode?.parentElement;
-		if (anchor?.nodeName === "A") {
-			anchor.setAttribute("href", url);
-			anchor.textContent = text;
-		} else {
-			const linkHtml = `<a href="${url}">${text || url}</a>`;
-			executeCommand("insertHTML", linkHtml);
-		}
+			const anchor = selection.anchorNode?.parentElement;
+			if (anchor?.nodeName === "A") {
+				anchor.setAttribute("href", url);
+				anchor.textContent = text;
+			} else {
+				const linkHtml = `<a href="${url}">${text || url}</a>`;
+				executeCommand("insertHTML", linkHtml);
+			}
 
-		handleContentChange();
-	}, [executeCommand, handleContentChange]);
+			handleContentChange();
+		},
+		[executeCommand, handleContentChange],
+	);
 
 	// Insert image
 	const insertImage = useCallback(() => {
 		setIsImageDialogOpen(true);
 	}, []);
 
-	const handleInsertImage = useCallback((url: string) => {
-		if (url) {
-			executeCommand('insertImage', url);
-		}
-	}, [executeCommand]);
+	const handleInsertImage = useCallback(
+		(url: string) => {
+			if (url) {
+				executeCommand("insertImage", url);
+			}
+		},
+		[executeCommand],
+	);
 
 	// Insert table
 	const insertTable = useCallback((event: React.MouseEvent<HTMLElement>) => {
@@ -1208,7 +1258,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 		setInlineEdit(null);
 		selectionRef.current = null;
 		undoManagerRef.current?.saveCurrentState();
-		
+
 		// Force save the changes immediately since they came from inline edit
 		if (document.path && finalContent !== originalContentRef.current) {
 			window.api.saveFile(document.path, finalContent);
@@ -1218,145 +1268,152 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 
 			if (conversationId && canvasState) {
 				const updatedFiles = canvasState.files.map((file) =>
-					file.id === document.id
-						? { ...file, content: finalContent }
-						: file,
+					file.id === document.id ? { ...file, content: finalContent } : file,
 				);
 				setFiles(conversationId, updatedFiles);
 			}
 		}
 	};
-    
-  /**
-   * Highlights a diff inline by mapping markdown positions to the corresponding HTML elements
-   * and inserting a diff container showing the old and new HTML representations.
-   *
-   * @param diff - The diff containing 'find' and 'replace' markdown strings.
-   * @param markdownContent - The full markdown content currently displayed.
-   */
-  const showDiffInline = useCallback<(diff: EditDiff, markdownContent: string) => void>(
-    (diff, markdownContent) => {
-      if (!editorRef.current) return;
 
-      try {
-        const normalizedMarkdown = markdownContent.replace(/\r\n/g, "\n");
-        const normalizedFind = diff.find.replace(/\r\n/g, "\n");
+	/**
+	 * Highlights a diff inline by mapping markdown positions to the corresponding HTML elements
+	 * and inserting a diff container showing the old and new HTML representations.
+	 *
+	 * @param diff - The diff containing 'find' and 'replace' markdown strings.
+	 * @param markdownContent - The full markdown content currently displayed.
+	 */
+	const showDiffInline = useCallback<
+		(diff: EditDiff, markdownContent: string) => void
+	>((diff, markdownContent) => {
+		if (!editorRef.current) return;
 
-        const startIndex = normalizedMarkdown.indexOf(normalizedFind);
-        if (startIndex === -1) {
-          console.error("Diff not found in markdown content", { diff });
-          return;
-        }
+		try {
+			const normalizedMarkdown = markdownContent.replace(/\r\n/g, "\n");
+			const normalizedFind = diff.find.replace(/\r\n/g, "\n");
 
-        const getLineNumber = (text: string, index: number) => {
-          const lines = text.slice(0, index).split("\n");
-          return lines.length;
-        };
+			const startIndex = normalizedMarkdown.indexOf(normalizedFind);
+			if (startIndex === -1) {
+				console.error("Diff not found in markdown content", { diff });
+				return;
+			}
 
-        const startLine = getLineNumber(normalizedMarkdown, startIndex);
-        const endLine = getLineNumber(normalizedMarkdown, startIndex + normalizedFind.length);
+			const getLineNumber = (text: string, index: number) => {
+				const lines = text.slice(0, index).split("\n");
+				return lines.length;
+			};
 
-        // Look for elements with data-line attributes that match our line range
-        const allElements = editorRef.current.querySelectorAll<HTMLElement>("[data-line]");
-        const elementsInRange: HTMLElement[] = [];
+			const startLine = getLineNumber(normalizedMarkdown, startIndex);
+			const endLine = getLineNumber(
+				normalizedMarkdown,
+				startIndex + normalizedFind.length,
+			);
 
-        for (const el of allElements) {
-          const lineAttr = el.getAttribute("data-line");
-          if (!lineAttr) continue;
+			// Look for elements with data-line attributes that match our line range
+			const allElements =
+				editorRef.current.querySelectorAll<HTMLElement>("[data-line]");
+			const elementsInRange: HTMLElement[] = [];
 
-          const elementLine = Number.parseInt(lineAttr, 10);
-          if (elementLine >= startLine && elementLine <= endLine) {
-            elementsInRange.push(el);
-          }
-        }
+			for (const el of allElements) {
+				const lineAttr = el.getAttribute("data-line");
+				if (!lineAttr) continue;
 
-        // If no elements found with exact line match, try to find elements containing the diff text
-        if (elementsInRange.length === 0) {
-          const allTextElements = editorRef.current.querySelectorAll<HTMLElement>("p, h1, h2, h3, h4, h5, h6, li, td, th");
-          for (const el of allTextElements) {
-            if (el.textContent?.includes(normalizedFind.trim())) {
-              elementsInRange.push(el);
-              break; // Take the first match
-            }
-          }
-        }
+				const elementLine = Number.parseInt(lineAttr, 10);
+				if (elementLine >= startLine && elementLine <= endLine) {
+					elementsInRange.push(el);
+				}
+			}
 
-        if (elementsInRange.length === 0) {
-          console.warn("No HTML elements match diff range", { startLine, endLine, diff });
-          // Fallback: insert at the end of the editor
-          const diffContainer = window.document.createElement("div");
-          diffContainer.setAttribute("data-diff-container", "true");
-          diffContainer.contentEditable = "false";
-          diffContainer.style.border = "2px solid #ccc";
-          diffContainer.style.margin = "10px 0";
-          diffContainer.style.padding = "10px";
+			// If no elements found with exact line match, try to find elements containing the diff text
+			if (elementsInRange.length === 0) {
+				const allTextElements = editorRef.current.querySelectorAll<HTMLElement>(
+					"p, h1, h2, h3, h4, h5, h6, li, td, th",
+				);
+				for (const el of allTextElements) {
+					if (el.textContent?.includes(normalizedFind.trim())) {
+						elementsInRange.push(el);
+						break; // Take the first match
+					}
+				}
+			}
 
-          const oldDiv = window.document.createElement("div");
-          oldDiv.innerHTML = markdownToHtml(diff.find);
-          oldDiv.style.backgroundColor = "rgba(255, 0, 0, 0.1)";
-          oldDiv.style.marginBottom = "5px";
-          diffContainer.appendChild(oldDiv);
+			if (elementsInRange.length === 0) {
+				console.warn("No HTML elements match diff range", {
+					startLine,
+					endLine,
+					diff,
+				});
+				// Fallback: insert at the end of the editor
+				const diffContainer = window.document.createElement("div");
+				diffContainer.setAttribute("data-diff-container", "true");
+				diffContainer.contentEditable = "false";
+				diffContainer.style.border = "2px solid #ccc";
+				diffContainer.style.margin = "10px 0";
+				diffContainer.style.padding = "10px";
 
-          const newDiv = window.document.createElement("div");
-          newDiv.innerHTML = markdownToHtml(diff.replace);
-          newDiv.style.backgroundColor = "rgba(0, 255, 0, 0.1)";
-          diffContainer.appendChild(newDiv);
+				const oldDiv = window.document.createElement("div");
+				oldDiv.innerHTML = markdownToHtml(diff.find);
+				oldDiv.style.backgroundColor = "rgba(255, 0, 0, 0.1)";
+				oldDiv.style.marginBottom = "5px";
+				diffContainer.appendChild(oldDiv);
 
-          editorRef.current.appendChild(diffContainer);
-          diffContainer.scrollIntoView({ behavior: "smooth", block: "center" });
-          return;
-        }
+				const newDiv = window.document.createElement("div");
+				newDiv.innerHTML = markdownToHtml(diff.replace);
+				newDiv.style.backgroundColor = "rgba(0, 255, 0, 0.1)";
+				diffContainer.appendChild(newDiv);
 
-        const rangeObj = window.document.createRange();
-        rangeObj.setStartBefore(elementsInRange[0]);
-        rangeObj.setEndAfter(elementsInRange[elementsInRange.length - 1]);
+				editorRef.current.appendChild(diffContainer);
+				diffContainer.scrollIntoView({ behavior: "smooth", block: "center" });
+				return;
+			}
 
-        const diffContainer = window.document.createElement("div");
-        diffContainer.setAttribute("data-diff-container", "true");
-        diffContainer.contentEditable = "false";
+			const rangeObj = window.document.createRange();
+			rangeObj.setStartBefore(elementsInRange[0]);
+			rangeObj.setEndAfter(elementsInRange[elementsInRange.length - 1]);
 
-        const oldDiv = window.document.createElement("div");
-        oldDiv.innerHTML = markdownToHtml(diff.find);
-        oldDiv.style.backgroundColor = "rgba(255, 0, 0, 0.1)";
-        diffContainer.appendChild(oldDiv);
+			const diffContainer = window.document.createElement("div");
+			diffContainer.setAttribute("data-diff-container", "true");
+			diffContainer.contentEditable = "false";
 
-        const newDiv = window.document.createElement("div");
-        newDiv.innerHTML = markdownToHtml(diff.replace);
-        newDiv.style.backgroundColor = "rgba(0, 255, 0, 0.1)";
-        diffContainer.appendChild(newDiv);
+			const oldDiv = window.document.createElement("div");
+			oldDiv.innerHTML = markdownToHtml(diff.find);
+			oldDiv.style.backgroundColor = "rgba(255, 0, 0, 0.1)";
+			diffContainer.appendChild(oldDiv);
 
-        rangeObj.deleteContents();
-        rangeObj.insertNode(diffContainer);
-        diffContainer.scrollIntoView({ behavior: "smooth", block: "center" });
-      } catch (error) {
-        console.error("Failed to show diff inline:", error, { diff });
-      }
-    },
-    [],
-  );
+			const newDiv = window.document.createElement("div");
+			newDiv.innerHTML = markdownToHtml(diff.replace);
+			newDiv.style.backgroundColor = "rgba(0, 255, 0, 0.1)";
+			diffContainer.appendChild(newDiv);
 
-  useEffect(() => {
-    if (!reviewState || !editorRef.current) return;
-    const { diffs, currentIndex, approvedDiffs, originalContent } = reviewState;
-    let contentToRender = originalContent;
-    for (const { find, replace } of approvedDiffs) {
-      contentToRender = contentToRender.replace(find, replace);
-    }
-    editorRef.current.innerHTML = markdownToHtml(contentToRender);
-    
-    // Delay to ensure DOM updates before highlighting
-    setTimeout(() => showDiffInline(diffs[currentIndex], contentToRender), 0);
-  }, [reviewState, showDiffInline]);
+			rangeObj.deleteContents();
+			rangeObj.insertNode(diffContainer);
+			diffContainer.scrollIntoView({ behavior: "smooth", block: "center" });
+		} catch (error) {
+			console.error("Failed to show diff inline:", error, { diff });
+		}
+	}, []);
 
-  const handleApplyChanges = (diffs: EditDiff[]) => {
-    if (!editorRef.current) return;
-    setReviewState({
-      diffs,
-      currentIndex: 0,
-      approvedDiffs: [],
-      originalContent: content,
-    });
-  };
+	useEffect(() => {
+		if (!reviewState || !editorRef.current) return;
+		const { diffs, currentIndex, approvedDiffs, originalContent } = reviewState;
+		let contentToRender = originalContent;
+		for (const { find, replace } of approvedDiffs) {
+			contentToRender = contentToRender.replace(find, replace);
+		}
+		editorRef.current.innerHTML = markdownToHtml(contentToRender);
+
+		// Delay to ensure DOM updates before highlighting
+		setTimeout(() => showDiffInline(diffs[currentIndex], contentToRender), 0);
+	}, [reviewState, showDiffInline]);
+
+	const handleApplyChanges = (diffs: EditDiff[]) => {
+		if (!editorRef.current) return;
+		setReviewState({
+			diffs,
+			currentIndex: 0,
+			approvedDiffs: [],
+			originalContent: content,
+		});
+	};
 
 	const handleEdit = (
 		selection: string,
@@ -1369,18 +1426,21 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 			return;
 		}
 		const containerRect = container.getBoundingClientRect();
-		
+
 		// Calculate cursor position if no text is selected
 		let cursorPosition: number | undefined;
 		if (!selection && range.collapsed) {
 			try {
 				cursorPosition = getCursorPosition(editorRef.current, range);
 			} catch (error) {
-				console.warn('Failed to calculate cursor position in handleEdit:', error);
+				console.warn(
+					"Failed to calculate cursor position in handleEdit:",
+					error,
+				);
 				cursorPosition = undefined;
 			}
 		}
-		
+
 		const formattedSelection = formatSelectionWithContext(
 			content,
 			selection,
@@ -1420,7 +1480,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 				>
 					<ToggleButton
 						value="bold"
-						onClick={() => handleFormatToggle('bold')}
+						onClick={() => handleFormatToggle("bold")}
 						size="small"
 					>
 						<Tooltip title="Bold (Ctrl+B)">
@@ -1429,7 +1489,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 					</ToggleButton>
 					<ToggleButton
 						value="italic"
-						onClick={() => handleFormatToggle('italic')}
+						onClick={() => handleFormatToggle("italic")}
 						size="small"
 					>
 						<Tooltip title="Italic (Ctrl+I)">
@@ -1438,7 +1498,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 					</ToggleButton>
 					<ToggleButton
 						value="underline"
-						onClick={() => handleFormatToggle('underline')}
+						onClick={() => handleFormatToggle("underline")}
 						size="small"
 					>
 						<Tooltip title="Underline (Ctrl+U)">
@@ -1447,7 +1507,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 					</ToggleButton>
 					<ToggleButton
 						value="strikethrough"
-						onClick={() => handleFormatToggle('strikethrough')}
+						onClick={() => handleFormatToggle("strikethrough")}
 						size="small"
 					>
 						<Tooltip title="Strikethrough">
@@ -1460,19 +1520,17 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 
 				{/* Lists and Quotes */}
 				<Tooltip title="Bullet List">
-					<ToolbarButton onClick={() => executeCommand('insertUnorderedList')}>
+					<ToolbarButton onClick={() => executeCommand("insertUnorderedList")}>
 						<List size={16} />
 					</ToolbarButton>
 				</Tooltip>
 				<Tooltip title="Numbered List">
-					<ToolbarButton onClick={() => executeCommand('insertOrderedList')}>
+					<ToolbarButton onClick={() => executeCommand("insertOrderedList")}>
 						<ListOrdered size={16} />
 					</ToolbarButton>
 				</Tooltip>
 				<Tooltip title="Quote">
-					<ToolbarButton
-						onClick={() => toggleBlockFormat("blockquote")}
-					>
+					<ToolbarButton onClick={() => toggleBlockFormat("blockquote")}>
 						<Quote size={16} />
 					</ToolbarButton>
 				</Tooltip>
@@ -1530,7 +1588,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 
 				{/* Undo/Redo */}
 				<Tooltip title="Undo (Ctrl+Z)">
-					<ToolbarButton 
+					<ToolbarButton
 						onClick={() => {
 							if (undoManagerRef.current?.canUndo()) {
 								undoManagerRef.current.undo();
@@ -1551,7 +1609,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 					</ToolbarButton>
 				</Tooltip>
 				<Tooltip title="Redo (Ctrl+Shift+Z)">
-					<ToolbarButton 
+					<ToolbarButton
 						onClick={() => {
 							if (undoManagerRef.current?.canRedo()) {
 								undoManagerRef.current.redo();
@@ -1597,7 +1655,8 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 										0),
 								top:
 									inlineEdit.range.getBoundingClientRect().top -
-									(relativeContainerRef.current?.getBoundingClientRect().top ?? 0),
+									(relativeContainerRef.current?.getBoundingClientRect().top ??
+										0),
 								width: inlineEdit.range.getBoundingClientRect().width,
 								height: inlineEdit.range.getBoundingClientRect().height,
 							}}

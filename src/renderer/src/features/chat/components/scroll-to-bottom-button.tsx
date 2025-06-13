@@ -22,18 +22,20 @@ type ScrollToBottomButtonProps = {
 	 */
 	className?: string;
 
-  bottomDistance?: number;
+	bottomDistance?: number;
 };
 
-const ButtonContainer = styled(Box)(({ bottomDistance }: { bottomDistance: number }) => ({
-	position: "absolute",
-	bottom: bottomDistance,
-	zIndex: 1000,
-	display: "flex",
-	justifyContent: "center",
-	alignItems: "center",
-	pointerEvents: "none", // Prevent container from blocking clicks
-}));
+const ButtonContainer = styled(Box)(
+	({ bottomDistance }: { bottomDistance: number }) => ({
+		position: "absolute",
+		bottom: bottomDistance,
+		zIndex: 1000,
+		display: "flex",
+		justifyContent: "center",
+		alignItems: "center",
+		pointerEvents: "none", // Prevent container from blocking clicks
+	}),
+);
 
 const StyledButton = styled(IconButton)(({ theme }) => ({
 	backgroundColor: theme.palette.background.paper,

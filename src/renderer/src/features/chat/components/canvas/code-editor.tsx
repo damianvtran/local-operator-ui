@@ -1,28 +1,33 @@
-import { Box, useTheme, styled, alpha } from "@mui/material";
 import { search, searchKeymap } from "@codemirror/search";
+import {
+	Decoration,
+	type DecorationSet,
+	ViewPlugin,
+	keymap,
+} from "@codemirror/view";
+import { Box, alpha, styled, useTheme } from "@mui/material";
+import type { EditDiff } from "@shared/api/local-operator/types";
 import { TextSelectionControls } from "@shared/components/common/text-selection-controls";
 import { getSearchTheme } from "@shared/themes/search-theme";
 import { loadLanguageExtensions } from "@shared/utils/load-language-extensions";
-import { Decoration, ViewPlugin, type DecorationSet, keymap } from "@codemirror/view";
 import CodeMirror, {
 	type Extension,
 	type ReactCodeMirrorRef,
 } from "@uiw/react-codemirror";
 import {
 	type FC,
+	memo,
 	useCallback,
 	useEffect,
-	useState,
-	useRef,
 	useMemo,
-	memo,
+	useRef,
+	useState,
 } from "react";
 import { useDebouncedValue } from "../../../../shared/hooks/use-debounced-value";
 import { useCanvasStore } from "../../../../shared/store/canvas-store";
 import { getCodeMirrorTheme } from "../../../../shared/themes/code-mirror-theme";
 import type { CanvasDocument } from "../../types/canvas";
 import { InlineEdit } from "./inline-edit";
-import type { EditDiff } from "@shared/api/local-operator/types";
 
 type CodeEditorProps = {
 	/**
@@ -222,7 +227,8 @@ const CodeEditorComponent: FC<CodeEditorProps> = ({
 					setInlineEdit({
 						selection: formattedSelection,
 						position: {
-							top: Math.max(0, rect.bottom - containerRect.top) + scrollTop - 16,
+							top:
+								Math.max(0, rect.bottom - containerRect.top) + scrollTop - 16,
 							left: 42,
 						},
 						range: selectionRange || null,
@@ -234,23 +240,20 @@ const CodeEditorComponent: FC<CodeEditorProps> = ({
 		}
 	};
 
-	const handleApplyChanges = useCallback(
-		(editDiffs: EditDiff[]) => {
-			const view = editorRef.current?.view;
-			if (view) {
-				const newContent = editDiffs.reduce(
-					(currentDoc, diff) => currentDoc.replace(diff.find, diff.replace),
-					view.state.doc.toString(),
-				);
+	const handleApplyChanges = useCallback((editDiffs: EditDiff[]) => {
+		const view = editorRef.current?.view;
+		if (view) {
+			const newContent = editDiffs.reduce(
+				(currentDoc, diff) => currentDoc.replace(diff.find, diff.replace),
+				view.state.doc.toString(),
+			);
 
-				view.dispatch({
-					changes: { from: 0, to: view.state.doc.length, insert: newContent },
-				});
-			}
-			setInlineEdit(null);
-		},
-		[],
-	);
+			view.dispatch({
+				changes: { from: 0, to: view.state.doc.length, insert: newContent },
+			});
+		}
+		setInlineEdit(null);
+	}, []);
 
 	const handleEdit = useCallback(
 		(

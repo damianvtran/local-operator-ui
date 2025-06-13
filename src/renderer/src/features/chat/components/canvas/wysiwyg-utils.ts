@@ -1,12 +1,12 @@
-import { unified } from "unified";
-import remarkParse from "remark-parse";
-import remarkGfm from "remark-gfm";
-import remarkRehype from "remark-rehype";
-import { rehypeSourceMap } from "rehype-source-map";
-import rehypeStringify from "rehype-stringify";
 import rehypeParse from "rehype-parse";
 import rehypeRemark from "rehype-remark";
+import { rehypeSourceMap } from "rehype-source-map";
+import rehypeStringify from "rehype-stringify";
+import remarkGfm from "remark-gfm";
+import remarkParse from "remark-parse";
+import remarkRehype from "remark-rehype";
 import remarkStringify from "remark-stringify";
+import { unified } from "unified";
 
 /**
  * Utility functions for converting between HTML and Markdown in the WYSIWYG editor
@@ -52,10 +52,10 @@ export const htmlToMarkdown = (html: string): string => {
  */
 export const cleanHtml = (inputHtml: string): string => {
 	// Remove script tags and other potentially dangerous elements
-	let cleanedHtml = inputHtml.replace(SCRIPT_TAG_REGEX, '');
-	cleanedHtml = cleanedHtml.replace(STYLE_TAG_REGEX, '');
-	cleanedHtml = cleanedHtml.replace(EVENT_HANDLER_REGEX, ''); // Remove event handlers
-	
+	let cleanedHtml = inputHtml.replace(SCRIPT_TAG_REGEX, "");
+	cleanedHtml = cleanedHtml.replace(STYLE_TAG_REGEX, "");
+	cleanedHtml = cleanedHtml.replace(EVENT_HANDLER_REGEX, ""); // Remove event handlers
+
 	return cleanedHtml;
 };
 
@@ -79,7 +79,7 @@ export const insertHtmlAtCursor = (html: string): void => {
 		range.deleteContents();
 		const fragment = range.createContextualFragment(html);
 		range.insertNode(fragment);
-		
+
 		// Move cursor to end of inserted content
 		range.collapse(false);
 		const selection = window.getSelection();
@@ -99,7 +99,7 @@ export const isSelectionInElement = (tagName: string): boolean => {
 
 	const range = selection.getRangeAt(0);
 	let element: Node | null = range.startContainer;
-	
+
 	if (element.nodeType === Node.TEXT_NODE) {
 		element = element.parentElement;
 	}

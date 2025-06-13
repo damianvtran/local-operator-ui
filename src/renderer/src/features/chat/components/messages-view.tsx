@@ -51,13 +51,12 @@ const MessagesViewWrapper = styled(Box, {
  */
 const MessagesContainer = styled(Box, {
 	shouldForwardProp: (prop) => prop !== "collapsed" && prop !== "isSmallView",
-})<{ collapsed?: boolean; isSmallView?: boolean }>(
-	({ theme, collapsed }) => ({
-  flexGrow: collapsed ? 0 : 1,
-  height: collapsed ? 0 : "100%",
-  overflow: collapsed ? "hidden" : "auto",
-  padding: collapsed ? 0 : 16,
-  width: "100%",
+})<{ collapsed?: boolean; isSmallView?: boolean }>(({ theme, collapsed }) => ({
+	flexGrow: collapsed ? 0 : 1,
+	height: collapsed ? 0 : "100%",
+	overflow: collapsed ? "hidden" : "auto",
+	padding: collapsed ? 0 : 16,
+	width: "100%",
 	display: "flex",
 	flexDirection: "column-reverse", // Key change: reverse column direction for auto-bottom scrolling
 	position: "relative",
@@ -197,89 +196,78 @@ export const MessagesView: FC<MessagesViewProps> = React.memo(
 		}, [refetch]);
 
 		return (
-		<MessagesViewWrapper collapsed={collapsed}>
-			{/* Fixed position loading indicator for fetching more messages */}
-			{isFetchingMore && (
-				<LoadingMoreIndicator isSmallView={isSmallView}>
-					<CircularProgress size={16} sx={{ mr: 1 }} />
-					Loading older messages...
-				</LoadingMoreIndicator>
-			)}
+			<MessagesViewWrapper collapsed={collapsed}>
+				{/* Fixed position loading indicator for fetching more messages */}
+				{isFetchingMore && (
+					<LoadingMoreIndicator isSmallView={isSmallView}>
+						<CircularProgress size={16} sx={{ mr: 1 }} />
+						Loading older messages...
+					</LoadingMoreIndicator>
+				)}
 
-			{/* Scrollable messages container */}
-			<MessagesContainer
-				ref={messagesContainerRef}
-				collapsed={collapsed}
-				isSmallView={isSmallView}
-			>
-				{/* With column-reverse, the content is flipped, so we need to maintain the correct visual order */}
-				{/* The loading indicator and messages are wrapped in a container with normal column direction */}
+				{/* Scrollable messages container */}
+				<MessagesContainer
+					ref={messagesContainerRef}
+					collapsed={collapsed}
+					isSmallView={isSmallView}
+				>
+					{/* With column-reverse, the content is flipped, so we need to maintain the correct visual order */}
+					{/* The loading indicator and messages are wrapped in a container with normal column direction */}
 
-				{/* Show loading indicator when initially loading messages */}
-				{isLoadingMessages && !messages.length ? (
-					<LoadingBox>
-						<RingLoadingIndicator size={68} />
-					</LoadingBox>
-				) : (
-					<>
-						{/* Reference element for backwards compatibility */}
-						<div
-							ref={messagesEndRef}
-							style={{
-								height: 1,
-								width: "100%",
-								opacity: 0,
-								position: "relative",
-								pointerEvents: "none",
-							}}
-							id="messages-end-anchor"
-						/>
+					{/* Show loading indicator when initially loading messages */}
+					{isLoadingMessages && !messages.length ? (
+						<LoadingBox>
+							<RingLoadingIndicator size={68} />
+						</LoadingBox>
+					) : (
+						<>
+							{/* Reference element for backwards compatibility */}
+							<div
+								ref={messagesEndRef}
+								style={{
+									height: 1,
+									width: "100%",
+									opacity: 0,
+									position: "relative",
+									pointerEvents: "none",
+								}}
+								id="messages-end-anchor"
+							/>
 
-						{/* Render messages with normal order inside the reversed container */}
-						{messages.length > 0 ? (
-							<CenteredMessagesContainer isSmallView={isSmallView}>
-								{/* Messages are rendered in normal order */}
-								{messages.map((message, index) =>
-									message.execution_type === "info" ? (
-										<InfoMessageDivider key={message.id} isSmallView={isSmallView}>
-											<Typography>{message.message}</Typography>
-										</InfoMessageDivider>
-									) : (
-										<MessageItem
-											key={message.id}
-											message={{
-												...message,
-												conversation_id: conversationId, // Add conversation ID to message
-											}}
-											conversationId={conversationId}
-											currentExecution={
-												index === messages.length - 1 && currentExecution
-													? currentExecution
-													: undefined
-											}
-											isLastMessage={index === messages.length - 1}
-											onMessageComplete={handleMessageComplete}
-											isSmallView={isSmallView}
-										/>
-									),
-								)}
+							{/* Render messages with normal order inside the reversed container */}
+							{messages.length > 0 ? (
+								<CenteredMessagesContainer isSmallView={isSmallView}>
+									{/* Messages are rendered in normal order */}
+									{messages.map((message, index) =>
+										message.execution_type === "info" ? (
+											<InfoMessageDivider
+												key={message.id}
+												isSmallView={isSmallView}
+											>
+												<Typography>{message.message}</Typography>
+											</InfoMessageDivider>
+										) : (
+											<MessageItem
+												key={message.id}
+												message={{
+													...message,
+													conversation_id: conversationId, // Add conversation ID to message
+												}}
+												conversationId={conversationId}
+												currentExecution={
+													index === messages.length - 1 && currentExecution
+														? currentExecution
+														: undefined
+												}
+												isLastMessage={index === messages.length - 1}
+												onMessageComplete={handleMessageComplete}
+												isSmallView={isSmallView}
+											/>
+										),
+									)}
 
-								{/* Loading indicator for new message at the bottom */}
-								{isLoading && !lastMessageIsStreaming && (
-									<LoadingIndicator
-										status={jobStatus}
-										agentName={agentName}
-										currentExecution={currentExecution}
-										conversationId={conversationId}
-										isSmallView={isSmallView}
-									/>
-								)}
-							</CenteredMessagesContainer>
-						) : (
-							<>
-								{/* When no messages, center the loading indicator fullscreen */}
-								{isLoadingMessages && (
-									<FullScreenCenteredContainer>
+									{/* Loading indicator for new message at the bottom */}
+									{isLoading && !lastMessageIsStreaming && (
 										<LoadingIndicator
 											status={jobStatus}
 											agentName={agentName}
@@ -287,13 +275,28 @@ export const MessagesView: FC<MessagesViewProps> = React.memo(
 											conversationId={conversationId}
 											isSmallView={isSmallView}
 										/>
-									</FullScreenCenteredContainer>
-								)}
-							</>
-						)}
-					</>
-				)}
-			</MessagesContainer>
-		</MessagesViewWrapper>
-	);
-});
+									)}
+								</CenteredMessagesContainer>
+							) : (
+								<>
+									{/* When no messages, center the loading indicator fullscreen */}
+									{isLoadingMessages && (
+										<FullScreenCenteredContainer>
+											<LoadingIndicator
+												status={jobStatus}
+												agentName={agentName}
+												currentExecution={currentExecution}
+												conversationId={conversationId}
+												isSmallView={isSmallView}
+											/>
+										</FullScreenCenteredContainer>
+									)}
+								</>
+							)}
+						</>
+					)}
+				</MessagesContainer>
+			</MessagesViewWrapper>
+		);
+	},
+);

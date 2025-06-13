@@ -1,4 +1,5 @@
 import { readFileSync, writeFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { electronApp, is, optimizer } from "@electron-toolkit/utils";
 import {
@@ -11,7 +12,6 @@ import {
 	nativeImage,
 	shell,
 } from "electron";
-import { existsSync } from "node:fs";
 import { PostHog } from "posthog-node";
 import icon from "../../resources/icon.png?asset";
 import {

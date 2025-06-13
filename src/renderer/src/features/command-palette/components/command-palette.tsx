@@ -231,12 +231,7 @@ export const CommandPalette: FC = () => {
 	const { getLastAgentId } = useAgentSelectionStore();
 	const [localQuery, setLocalQuery] = useState(commandPaletteQuery);
 	const debouncedLocalQuery = useDebouncedValue(localQuery, 200);
-	const { data: agentsData } = useAgents(
-		1,
-		10,
-		0,
-		debouncedLocalQuery,
-	) as {
+	const { data: agentsData } = useAgents(1, 10, 0, debouncedLocalQuery) as {
 		data?: AgentListResult;
 	};
 	const theme = useTheme();

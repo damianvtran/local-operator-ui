@@ -25,16 +25,32 @@ type CanvasContentProps = {
  * Content component for the canvas
  * Displays content based on file type - markdown preview, HTML preview, or code editor
  */
-const CanvasContentComponent: FC<CanvasContentProps> = ({ document, conversationId, agentId }) => {
+const CanvasContentComponent: FC<CanvasContentProps> = ({
+	document,
+	conversationId,
+	agentId,
+}) => {
 	if (isMarkdownFile(document.title)) {
-		return <WysiwygMarkdownEditor document={document} conversationId={conversationId} agentId={agentId} />;
+		return (
+			<WysiwygMarkdownEditor
+				document={document}
+				conversationId={conversationId}
+				agentId={agentId}
+			/>
+		);
 	}
 
 	if (isHtmlFile(document.title)) {
 		return <HtmlPreview document={document} />;
 	}
 
-	return <CodeEditor document={document} conversationId={conversationId} agentId={agentId} />;
+	return (
+		<CodeEditor
+			document={document}
+			conversationId={conversationId}
+			agentId={agentId}
+		/>
+	);
 };
 
 export const CanvasContent = memo(CanvasContentComponent);

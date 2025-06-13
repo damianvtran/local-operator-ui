@@ -248,7 +248,10 @@ export const useCanvasStore = create<CanvasStoreState>()(
 								...conv,
 								files: updatedFiles,
 								mentionedFiles: updatedMentionedFiles,
-								openTabs: [...conv.openTabs, { id: file.id, title: file.title }],
+								openTabs: [
+									...conv.openTabs,
+									{ id: file.id, title: file.title },
+								],
 								selectedTabId: file.id,
 								viewMode: "documents",
 							},

@@ -12,18 +12,30 @@ import {
 } from "@mui/material";
 import { createLocalOperatorClient } from "@shared/api/local-operator";
 import { TranscriptionApi } from "@shared/api/local-operator/transcription-api";
-import type { AgentEditFileRequest, EditDiff } from "@shared/api/local-operator/types";
+import type {
+	AgentEditFileRequest,
+	EditDiff,
+} from "@shared/api/local-operator/types";
 import { apiConfig } from "@shared/config";
-import { useAgentSelectionStore } from "@shared/store/agent-selection-store";
 import { useConfig } from "@shared/hooks/use-config";
 import { useCredentials } from "@shared/hooks/use-credentials";
 import {
 	SpeechToTextPriority,
 	useSpeechToTextManager,
 } from "@shared/hooks/use-speech-to-text-manager";
+import { useAgentSelectionStore } from "@shared/store/agent-selection-store";
 import { normalizePath } from "@shared/utils/path-utils";
 import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
-import { Check, Mic, Paperclip, Send, Square, ThumbsDown, ThumbsUp, X } from "lucide-react";
+import {
+	Check,
+	Mic,
+	Paperclip,
+	Send,
+	Square,
+	ThumbsDown,
+	ThumbsUp,
+	X,
+} from "lucide-react";
 import {
 	type ChangeEvent,
 	type ClipboardEvent,
@@ -146,7 +158,7 @@ const ButtonsRow = styled(Box)(({ theme }) => ({
 	alignItems: "center",
 	justifyContent: "space-between",
 	gap: theme.spacing(1),
-	padding: 0
+	padding: 0,
 }));
 
 const AttachmentButton = styled(IconButton)(({ theme }) => ({
@@ -241,20 +253,20 @@ const ReviewButton = styled(Button)(({ theme }) => ({
 	textTransform: "none",
 	fontWeight: 300,
 	fontSize: "0.75rem",
-  border: `1px solid ${theme.palette.divider}`,
-  borderRadius: 16,
-  padding: theme.spacing(0.5, 2),
-  marginTop: "auto",
-  "&:hover": {
-    backgroundColor: theme.palette.action.hover,
-  },
-  "&:active": {
-    backgroundColor: theme.palette.action.active,
-  },
-  "&:focus": {
-    outline: "none",
-    boxShadow: `0 0 0 2px ${theme.palette.primary.main}`,
-  },
+	border: `1px solid ${theme.palette.divider}`,
+	borderRadius: 16,
+	padding: theme.spacing(0.5, 2),
+	marginTop: "auto",
+	"&:hover": {
+		backgroundColor: theme.palette.action.hover,
+	},
+	"&:active": {
+		backgroundColor: theme.palette.action.active,
+	},
+	"&:focus": {
+		outline: "none",
+		boxShadow: `0 0 0 2px ${theme.palette.primary.main}`,
+	},
 	"& .MuiButton-startIcon": {
 		marginRight: theme.spacing(0.5),
 	},
@@ -423,13 +435,13 @@ export const InlineEdit: FC<InlineEditProps> = ({
 		onClose();
 	}, [onClose]);
 
-  const handleXClick = useCallback(() => {
-    if (isLoading) {
-      handleCancelEdit();
-    } else {
-      onClose();
-    }
-  }, [isLoading, handleCancelEdit, onClose]);
+	const handleXClick = useCallback(() => {
+		if (isLoading) {
+			handleCancelEdit();
+		} else {
+			onClose();
+		}
+	}, [isLoading, handleCancelEdit, onClose]);
 
 	const handleSendAudio = useCallback(async () => {
 		if (!audioBlob) return;
@@ -507,10 +519,16 @@ export const InlineEdit: FC<InlineEditProps> = ({
 
 	// Register with speech-to-text manager
 	useSpeechToTextManager(
-		'inline-edit',
+		"inline-edit",
 		SpeechToTextPriority.INLINE_EDIT,
 		handleStartRecording,
-		() => Boolean(!isLoading && !isRecording && !isTranscribing && canEnableRecordingFeature)
+		() =>
+			Boolean(
+				!isLoading &&
+					!isRecording &&
+					!isTranscribing &&
+					canEnableRecordingFeature,
+			),
 	);
 
 	const triggerFileInput = () => {
@@ -548,19 +566,13 @@ export const InlineEdit: FC<InlineEditProps> = ({
 		const items = event.clipboardData?.items;
 		if (items) {
 			for (let i = 0; i < items.length; i++) {
-				if (
-					items[i].type.indexOf("image") !== -1 ||
-					items[i].kind === "file"
-				) {
+				if (items[i].type.indexOf("image") !== -1 || items[i].kind === "file") {
 					const file = items[i].getAsFile();
 					if (file) {
 						const reader = new FileReader();
 						reader.onload = (e) => {
 							if (e.target?.result) {
-								setAttachments((prev) => [
-									...prev,
-									e.target?.result as string,
-								]);
+								setAttachments((prev) => [...prev, e.target?.result as string]);
 							}
 						};
 						reader.readAsDataURL(file);
@@ -588,10 +600,7 @@ export const InlineEdit: FC<InlineEditProps> = ({
 				attachments,
 			};
 
-			const response = await client.chat.editFileWithAgent(
-				agentToUse,
-				request,
-			);
+			const response = await client.chat.editFileWithAgent(agentToUse, request);
 
 			if (isCancelledRef.current) {
 				return;
@@ -611,7 +620,16 @@ export const InlineEdit: FC<InlineEditProps> = ({
 		} finally {
 			setIsLoading(false);
 		}
-	}, [config, filePath, prompt, selection, attachments, agentToUse, onClose, onApplyChanges]);
+	}, [
+		config,
+		filePath,
+		prompt,
+		selection,
+		attachments,
+		agentToUse,
+		onClose,
+		onApplyChanges,
+	]);
 
 	const iconSize = 18;
 
