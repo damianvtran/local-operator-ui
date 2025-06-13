@@ -34,6 +34,8 @@ import { useDebounce } from "@shared/hooks/use-debounce";
 import { useDebouncedValue } from "@shared/hooks/use-debounced-value";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import { showSuccessToast } from "@shared/utils/toast-manager";
+import type { UndoManager } from "@shared/lib/undo-manager";
+import { useUndoManagerStore } from "@shared/store/undo-manager-store";
 import type { CanvasDocument } from "../../types/canvas";
 import { markdownToHtml, htmlToMarkdown } from "@features/chat/components/canvas/wysiwyg-utils";
 import { TextSelectionControls } from "@shared/components/common/text-selection-controls";
@@ -388,6 +390,11 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 	const originalContentRef = useRef(document.content);
 	const isInitialLoadRef = useRef(true);
 	const isMounted = useRef(false);
+	const [canUndo, setCanUndo] = useState(false);
+	const [canRedo, setCanRedo] = useState(false);
+
+	const { getManager, createManager, removeManager } = useUndoManagerStore();
+	const undoManagerRef = useRef<UndoManager | null>(null);
 
 	const findHighlightRegistry = "find-highlight";
 	const currentFindHighlightRegistry = "current-find-highlight";
@@ -694,6 +701,42 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 		},
 		[clearHighlights],
 	);
+
+	// Initialize UndoManager per document
+	useEffect(() => {
+		if (editorRef.current && document.id) {
+			const onStateChange = (canUndo: boolean, canRedo: boolean) => {
+				setCanUndo(canUndo);
+				setCanRedo(canRedo);
+			};
+
+			// Get or create manager for this document
+			const manager = getManager(document.id, editorRef.current, onStateChange);
+			if (!manager) {
+				undoManagerRef.current = createManager(document.id, editorRef.current, onStateChange);
+			} else {
+				undoManagerRef.current = manager;
+			}
+
+			// Update initial state
+			setCanUndo(undoManagerRef.current.canUndo());
+			setCanRedo(undoManagerRef.current.canRedo());
+		}
+
+		return () => {
+			// Don't disconnect here - let the store manage the lifecycle
+			undoManagerRef.current = null;
+		};
+	}, [document.id, getManager, createManager]);
+
+	// Cleanup manager when component unmounts
+	useEffect(() => {
+		return () => {
+			if (document.id) {
+				removeManager(document.id);
+			}
+		};
+	}, [document.id, removeManager]);
 
 	// Initialize editor content from markdown
 	useEffect(() => {
@@ -1062,10 +1105,18 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 					case "z":
 						if (event.shiftKey) {
 							event.preventDefault();
-							executeCommand("redo");
+							if (undoManagerRef.current?.canRedo()) {
+								undoManagerRef.current.redo();
+								setCanUndo(undoManagerRef.current.canUndo());
+								setCanRedo(undoManagerRef.current.canRedo());
+							}
 						} else {
 							event.preventDefault();
-							executeCommand("undo");
+							if (undoManagerRef.current?.canUndo()) {
+								undoManagerRef.current.undo();
+								setCanUndo(undoManagerRef.current.canUndo());
+								setCanRedo(undoManagerRef.current.canRedo());
+							}
 						}
 						break;
 				}
@@ -1423,12 +1474,30 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 
 				{/* Undo/Redo */}
 				<Tooltip title="Undo (Ctrl+Z)">
-					<ToolbarButton onClick={() => executeCommand('undo')}>
+					<ToolbarButton 
+						onClick={() => {
+							if (undoManagerRef.current?.canUndo()) {
+								undoManagerRef.current.undo();
+								setCanUndo(undoManagerRef.current.canUndo());
+								setCanRedo(undoManagerRef.current.canRedo());
+							}
+						}}
+						disabled={!canUndo}
+					>
 						<Undo size={16} />
 					</ToolbarButton>
 				</Tooltip>
 				<Tooltip title="Redo (Ctrl+Shift+Z)">
-					<ToolbarButton onClick={() => executeCommand('redo')}>
+					<ToolbarButton 
+						onClick={() => {
+							if (undoManagerRef.current?.canRedo()) {
+								undoManagerRef.current.redo();
+								setCanUndo(undoManagerRef.current.canUndo());
+								setCanRedo(undoManagerRef.current.canRedo());
+							}
+						}}
+						disabled={!canRedo}
+					>
 						<Redo size={16} />
 					</ToolbarButton>
 				</Tooltip>
