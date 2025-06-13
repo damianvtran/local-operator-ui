@@ -1,15 +1,10 @@
-import {
-	Box,
-	Button,
-	IconButton,
-	styled,
-} from "@mui/material";
+import { Box, Button, IconButton, styled } from "@mui/material";
 import { getHtmlUrl } from "@shared/api/local-operator/static-api";
 import { apiConfig } from "@shared/config";
-import { type FC, useState, useMemo, useCallback, memo } from "react";
+import { RefreshCw as RefreshIcon } from "lucide-react";
+import { type FC, memo, useCallback, useMemo, useState } from "react";
 import type { CanvasDocument } from "../../types/canvas";
 import { CodeEditor } from "./code-editor";
-import { RefreshCw as RefreshIcon } from "lucide-react";
 
 type HtmlPreviewProps = {
 	/**

@@ -1,10 +1,17 @@
-import { Box, IconButton, InputBase, Paper, Tooltip, Typography } from "@mui/material";
+import {
+	Box,
+	IconButton,
+	InputBase,
+	Paper,
+	Tooltip,
+	Typography,
+} from "@mui/material";
 import type { SxProps, Theme } from "@mui/material";
 import { styled } from "@mui/material/styles";
-import { ChevronLeft, ChevronRight, X, Replace } from "lucide-react";
-import type { FC } from "react";
-import { useState, useEffect, useRef } from "react";
 import { useDebouncedValue } from "@shared/hooks/use-debounced-value";
+import { ChevronLeft, ChevronRight, Replace, X } from "lucide-react";
+import type { FC } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const WidgetContainer = styled(Paper)(({ theme }) => ({
 	position: "absolute",
@@ -118,7 +125,9 @@ export const FindReplaceWidget: FC<FindReplaceWidgetProps> = ({
 		}
 	};
 
-	const handleReplaceKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
+	const handleReplaceKeyDown = async (
+		e: React.KeyboardEvent<HTMLInputElement>,
+	) => {
 		if (e.key === "Enter") {
 			e.preventDefault();
 			if (e.metaKey || e.ctrlKey) {
@@ -140,7 +149,9 @@ export const FindReplaceWidget: FC<FindReplaceWidgetProps> = ({
 	return (
 		<WidgetContainer sx={containerSx}>
 			<Tooltip title={mode === "find" ? "Switch to Replace" : "Switch to Find"}>
-				<ActionButton onClick={() => setMode(mode === "find" ? "replace" : "find")}>
+				<ActionButton
+					onClick={() => setMode(mode === "find" ? "replace" : "find")}
+				>
 					<ChevronLeft size={16} />
 				</ActionButton>
 			</Tooltip>
@@ -187,7 +198,7 @@ export const FindReplaceWidget: FC<FindReplaceWidgetProps> = ({
 					</Tooltip>
 					<Tooltip title="Replace All (Cmd/Ctrl+Enter)">
 						<ActionButton onClick={() => onReplaceAll(findValue, replaceValue)}>
-							<Box sx={{ fontSize: '0.7rem', fontWeight: 'bold' }}>All</Box>
+							<Box sx={{ fontSize: "0.7rem", fontWeight: "bold" }}>All</Box>
 						</ActionButton>
 					</Tooltip>
 				</>

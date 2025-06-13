@@ -1,4 +1,12 @@
-import { Popover, Box, Grid, TextField, Button, Typography, useTheme } from "@mui/material";
+import {
+	Box,
+	Button,
+	Grid,
+	Popover,
+	TextField,
+	Typography,
+	useTheme,
+} from "@mui/material";
 import { styled } from "@mui/material/styles";
 import type { Theme } from "@mui/material/styles";
 import type { FC } from "react";
@@ -145,10 +153,10 @@ export const InsertTablePopover: FC<InsertTablePopoverProps> = ({
 		>
 			<PopoverContent>
 				<Box>
-					<Typography 
-						variant="body2" 
-						sx={{ 
-							mb: 1.5, 
+					<Typography
+						variant="body2"
+						sx={{
+							mb: 1.5,
 							color: "text.secondary",
 							fontSize: "0.875rem",
 							fontWeight: 500,
@@ -177,42 +185,51 @@ export const InsertTablePopover: FC<InsertTablePopoverProps> = ({
 												cols: colIndex + 1,
 											})
 										}
-										onClick={() =>
-											handleGridSelect(rowIndex + 1, colIndex + 1)
-										}
+										onClick={() => handleGridSelect(rowIndex + 1, colIndex + 1)}
 									/>
 								</Grid>
 							)),
 						)}
 					</Grid>
 				</Box>
-				
+
 				<Box>
 					<FieldLabel>Custom size</FieldLabel>
 					<Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
 						<TextField
 							type="number"
 							value={customRows}
-							onChange={(e) => setCustomRows(Math.max(1, Number(e.target.value)))}
+							onChange={(e) =>
+								setCustomRows(Math.max(1, Number(e.target.value)))
+							}
 							inputProps={{ min: 1, "aria-label": "Rows" }}
 							placeholder="Rows"
 							sx={textFieldInputSx(theme)}
 						/>
-						<Typography variant="body2" sx={{ color: "text.secondary", fontSize: "0.875rem" }}>
+						<Typography
+							variant="body2"
+							sx={{ color: "text.secondary", fontSize: "0.875rem" }}
+						>
 							×
 						</Typography>
 						<TextField
 							type="number"
 							value={customCols}
-							onChange={(e) => setCustomCols(Math.max(1, Number(e.target.value)))}
+							onChange={(e) =>
+								setCustomCols(Math.max(1, Number(e.target.value)))
+							}
 							inputProps={{ min: 1, "aria-label": "Columns" }}
 							placeholder="Columns"
 							sx={textFieldInputSx(theme)}
 						/>
 					</Box>
 				</Box>
-				
-				<StyledButton onClick={handleCustomInsert} variant="contained" fullWidth>
+
+				<StyledButton
+					onClick={handleCustomInsert}
+					variant="contained"
+					fullWidth
+				>
 					Insert Table
 				</StyledButton>
 			</PopoverContent>

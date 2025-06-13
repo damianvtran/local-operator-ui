@@ -1,16 +1,16 @@
+import tourAgenticSequenceImage from "@assets/images/tour/agentic-sequence.png";
+import tourCanvasCodeInlineEditImage from "@assets/images/tour/canvas-code-inline-edit.png";
+import tourCanvasOverviewImage from "@assets/images/tour/canvas-overview.png";
+import tourCanvasVariablesImage from "@assets/images/tour/canvas-variables-view.png";
+import tourChatAttachmentsImage from "@assets/images/tour/chat-attachments.png";
+import tourChatFullViewImage from "@assets/images/tour/chat-full-view.png";
+import tourInlineEditCanvasImage from "@assets/images/tour/inline-edit-canvas.png";
 import { useOnboardingStore } from "@shared/store/onboarding-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import { ShepherdJourneyContext } from "react-shepherd";
 import type { StepOptions, Tour } from "shepherd.js";
-import tourInlineEditCanvasImage from "@assets/images/tour/inline-edit-canvas.png";
-import tourCanvasOverviewImage from "@assets/images/tour/canvas-overview.png";
-import tourCanvasVariablesImage from "@assets/images/tour/canvas-variables-view.png";
-import tourChatAttachmentsImage from "@assets/images/tour/chat-attachments.png";
-import tourCanvasCodeInlineEditImage from "@assets/images/tour/canvas-code-inline-edit.png";
-import tourAgenticSequenceImage from "@assets/images/tour/agentic-sequence.png";
-import tourChatFullViewImage from "@assets/images/tour/chat-full-view.png";
 
 const tourSteps: StepOptions[] = [
 	{

@@ -6,9 +6,9 @@ import { useSpeechStore } from "@shared/store/speech-store";
 import {
 	ClipboardCopy,
 	Copy,
-	Sparkles,
-  ReplyIcon,
 	MessageSquareReply,
+	ReplyIcon,
+	Sparkles,
 	Square,
 	Volume2,
 } from "lucide-react";
@@ -254,7 +254,7 @@ export const TextSelectionControls: FC<TextSelectionControlsProps> = ({
 
 	return (
 		<ControlsWrapper style={style} onMouseDown={(e) => e.preventDefault()}>
-      {showEdit && (
+			{showEdit && (
 				<Tooltip title="Ask for an Edit" placement="top">
 					<StyledIconButton size="small" onClick={handleEdit}>
 						<Sparkles size={14} />
@@ -302,7 +302,10 @@ export const TextSelectionControls: FC<TextSelectionControlsProps> = ({
 						</StyledIconButton>
 					</Tooltip>
 					<Tooltip title="Copy without formatting" placement="top">
-						<StyledIconButton size="small" onClick={handleCopyWithoutFormatting}>
+						<StyledIconButton
+							size="small"
+							onClick={handleCopyWithoutFormatting}
+						>
 							<ClipboardCopy size={14} />
 						</StyledIconButton>
 					</Tooltip>

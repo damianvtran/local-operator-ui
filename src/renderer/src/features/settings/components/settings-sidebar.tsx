@@ -212,15 +212,13 @@ export const SettingsSidebar: FC<SettingsSidebarProps> = ({
 	};
 
 	// Group sections by category for better organization
-	const coreSettings = sections.filter((s) => 
-		["general", "appearance"].includes(s.id)
+	const coreSettings = sections.filter((s) =>
+		["general", "appearance"].includes(s.id),
 	);
-	const accountSettings = sections.filter((s) => 
-		["radient", "credentials", "integrations"].includes(s.id)
+	const accountSettings = sections.filter((s) =>
+		["radient", "credentials", "integrations"].includes(s.id),
 	);
-	const systemSettings = sections.filter((s) => 
-		["updates"].includes(s.id)
-	);
+	const systemSettings = sections.filter((s) => ["updates"].includes(s.id));
 
 	return (
 		<SidebarContainer elevation={0}>

@@ -134,7 +134,7 @@ const ToggleButtonContainer = styled(Box, {
 	justifyContent: isExpanded ? "flex-end" : "center",
 	alignItems: "center",
 	paddingRight: isExpanded ? theme.spacing(2) : 0,
-  paddingLeft: isExpanded ? 0 : theme.spacing(1),
+	paddingLeft: isExpanded ? 0 : theme.spacing(1),
 	paddingBottom: theme.spacing(2),
 	width: "100%",
 	marginTop: 8,
@@ -289,7 +289,13 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 					width: "100%",
 				}}
 			>
-				<Divider sx={{ margin: "8px 0", width: "calc(100% - 16px)", borderColor: "divider" }} />
+				<Divider
+					sx={{
+						margin: "8px 0",
+						width: "calc(100% - 16px)",
+						borderColor: "divider",
+					}}
+				/>
 
 				{/* User Profile */}
 				<UserProfileSidebar expanded={expanded} />

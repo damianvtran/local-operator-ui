@@ -1,16 +1,16 @@
 import {
-	Button,
-	TextField,
 	Box,
-	Typography,
+	Button,
 	InputAdornment,
+	TextField,
+	Typography,
 	styled,
 	useTheme,
 } from "@mui/material";
-import { UploadCloud, Link } from "lucide-react";
-import type { FC, DragEvent } from "react";
-import { useState, useCallback } from "react";
 import { BaseDialog } from "@shared/components/common/base-dialog";
+import { Link, UploadCloud } from "lucide-react";
+import type { DragEvent, FC } from "react";
+import { useCallback, useState } from "react";
 
 const FieldContainer = styled(Box)({
 	marginBottom: 16,
@@ -174,9 +174,9 @@ export const InsertImageDialog: FC<InsertImageDialogProps> = ({
 	);
 
 	return (
-		<BaseDialog 
-			open={open} 
-			onClose={onClose} 
+		<BaseDialog
+			open={open}
+			onClose={onClose}
 			title="Insert Image"
 			actions={dialogActions}
 			maxWidth="sm"

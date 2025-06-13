@@ -1,9 +1,6 @@
-import type { FC } from "react";
-import {
-	Select,
-	MenuItem,
-} from "@mui/material";
+import { MenuItem, Select } from "@mui/material";
 import { styled } from "@mui/material/styles";
+import type { FC } from "react";
 
 const StyledSelect = styled(Select)(() => ({
 	minWidth: "120px",

@@ -1,7 +1,7 @@
-import { EditorView } from "@codemirror/view";
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
-import { tags as t } from "@lezer/highlight";
 import type { Extension } from "@codemirror/state";
+import { EditorView } from "@codemirror/view";
+import { tags as t } from "@lezer/highlight";
 import type { Theme } from "@mui/material";
 
 export const getCodeMirrorTheme = (theme: Theme): Extension => {

@@ -1,13 +1,7 @@
-import {
-	Button,
-	TextField,
-	Box,
-	styled,
-	useTheme,
-} from "@mui/material";
+import { Box, Button, TextField, styled, useTheme } from "@mui/material";
+import { BaseDialog } from "@shared/components/common/base-dialog";
 import type { FC } from "react";
 import { useEffect, useState } from "react";
-import { BaseDialog } from "@shared/components/common/base-dialog";
 
 export type LinkDialogData = {
 	url: string;
@@ -157,9 +151,9 @@ export const InsertLinkDialog: FC<InsertLinkDialogProps> = ({
 	);
 
 	return (
-		<BaseDialog 
-			open={open} 
-			onClose={onClose} 
+		<BaseDialog
+			open={open}
+			onClose={onClose}
 			title="Insert Link"
 			actions={dialogActions}
 			maxWidth="sm"

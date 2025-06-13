@@ -109,51 +109,53 @@ const DividerLine = styled(Box, {
  */
 const DragHandle = styled(Box, {
 	shouldForwardProp: (prop) => prop !== "$active",
-})<{ $active: boolean; $side: "left" | "right" }>(({ theme, $active, $side }) => ({
-	position: "absolute",
-	left: $side === "right" ? "-4px" : "auto",
-	right: $side === "left" ? "-4px" : "auto",
-	top: "50%",
-	width: 12,
-	display: "flex",
-	alignItems: "center",
-	justifyContent: "center",
-	pointerEvents: "none",
-	opacity: $active ? 1 : 0,
-	transition: "opacity 0.2s",
-	zIndex: 13,
-	"& .grip": {
+})<{ $active: boolean; $side: "left" | "right" }>(
+	({ theme, $active, $side }) => ({
+		position: "absolute",
+		left: $side === "right" ? "-4px" : "auto",
+		right: $side === "left" ? "-4px" : "auto",
+		top: "50%",
 		width: 12,
-		height: 36,
-		borderRadius: 4,
-		background: $active
-			? alpha(theme.palette.primary.main, 0.18)
-			: alpha(theme.palette.action.selected, 0.18),
-		border: $active
-			? `1px solid ${theme.palette.primary.main}`
-			: `1px solid ${alpha(theme.palette.divider, 0.7)}`,
 		display: "flex",
-		flexDirection: "column",
-		justifyContent: "center",
 		alignItems: "center",
-		gap: 2,
-		padding: 4,
-		transition: "background 0.2s, border 0.2s, box-shadow 0.2s",
-	},
-	"& .grip-dot": {
-		width: 2,
-		height: 2,
-		minHeight: 2,
-		borderRadius: "50%",
-		background: $active
-			? theme.palette.mode === "dark"
-				? theme.palette.primary.light
-				: theme.palette.primary.main
-			: alpha(theme.palette.text.primary, 0.32),
-		margin: "1px 0",
-		transition: "background 0.2s",
-	},
-}));
+		justifyContent: "center",
+		pointerEvents: "none",
+		opacity: $active ? 1 : 0,
+		transition: "opacity 0.2s",
+		zIndex: 13,
+		"& .grip": {
+			width: 12,
+			height: 36,
+			borderRadius: 4,
+			background: $active
+				? alpha(theme.palette.primary.main, 0.18)
+				: alpha(theme.palette.action.selected, 0.18),
+			border: $active
+				? `1px solid ${theme.palette.primary.main}`
+				: `1px solid ${alpha(theme.palette.divider, 0.7)}`,
+			display: "flex",
+			flexDirection: "column",
+			justifyContent: "center",
+			alignItems: "center",
+			gap: 2,
+			padding: 4,
+			transition: "background 0.2s, border 0.2s, box-shadow 0.2s",
+		},
+		"& .grip-dot": {
+			width: 2,
+			height: 2,
+			minHeight: 2,
+			borderRadius: "50%",
+			background: $active
+				? theme.palette.mode === "dark"
+					? theme.palette.primary.light
+					: theme.palette.primary.main
+				: alpha(theme.palette.text.primary, 0.32),
+			margin: "1px 0",
+			transition: "background 0.2s",
+		},
+	}),
+);
 
 /**
  * Resizable divider between panels.

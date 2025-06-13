@@ -1,7 +1,4 @@
-import {
-	showErrorToast,
-	showSuccessToast,
-} from "@shared/utils/toast-manager";
+import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
 
 /**
  * Creates a new file with the given details.

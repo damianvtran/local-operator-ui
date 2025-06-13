@@ -166,7 +166,7 @@ class SpeechToTextManager {
 			window.removeEventListener("keyup", this.handleSpacebarKeyUp);
 			this.isSpacebarListening = false;
 		}
-		
+
 		// Clean up any pending timer
 		if (this.spacebarTimerRef) {
 			clearTimeout(this.spacebarTimerRef);
@@ -180,15 +180,15 @@ const speechToTextManager = new SpeechToTextManager();
 
 /**
  * Hook for registering a speech-to-text handler with priority-based dispatch
- * 
+ *
  * This hook handles both IPC events and spacebar hold functionality globally.
  * Components no longer need to implement their own spacebar handling logic.
- * 
+ *
  * @param id - Unique identifier for this handler
  * @param priority - Priority level (higher numbers have higher priority)
  * @param handler - Function to call when speech-to-text is triggered
  * @param isActive - Function that returns whether this handler should be active
- * 
+ *
  * @example
  * ```tsx
  * useSpeechToTextManager(

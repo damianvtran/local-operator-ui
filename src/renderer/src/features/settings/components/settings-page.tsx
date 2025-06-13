@@ -336,11 +336,11 @@ const UsageInfo: FC = () => {
 // --- Main Settings Page Component ---
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
-	height: "100%", 
-	width: "100%", 
+	height: "100%",
+	width: "100%",
 	display: "flex",
-	overflow: "hidden", 
-	backgroundColor: theme.palette.background.default, 
+	overflow: "hidden",
+	backgroundColor: theme.palette.background.default,
 	[theme.breakpoints.down("md")]: {
 		flexDirection: "column",
 	},
@@ -348,43 +348,43 @@ const StyledPaper = styled(Paper)(({ theme }) => ({
 
 const ContentContainer = styled(Box)(({ theme }) => ({
 	flexGrow: 1,
-	overflowY: "auto", 
-	overflowX: "hidden", 
-	padding: theme.spacing(4), 
+	overflowY: "auto",
+	overflowX: "hidden",
+	padding: theme.spacing(4),
 	[theme.breakpoints.down("md")]: {
-		padding: theme.spacing(3), 
+		padding: theme.spacing(3),
 	},
 	[theme.breakpoints.down("sm")]: {
-		padding: theme.spacing(2), 
+		padding: theme.spacing(2),
 	},
 	"&::-webkit-scrollbar": {
 		width: "8px",
-		height: "8px", 
+		height: "8px",
 	},
 	"&::-webkit-scrollbar-track": {
-		backgroundColor: "transparent", 
+		backgroundColor: "transparent",
 	},
 	"&::-webkit-scrollbar-thumb": {
-		backgroundColor: theme.palette.divider, 
+		backgroundColor: theme.palette.divider,
 		borderRadius: "4px",
-		border: `2px solid ${theme.palette.background.default}`, 
+		border: `2px solid ${theme.palette.background.default}`,
 		"&:hover": {
-			backgroundColor: theme.palette.text.disabled, 
+			backgroundColor: theme.palette.text.disabled,
 		},
 	},
 }));
 
 const SidebarContainer = styled(Box)(({ theme }) => ({
-	width: 220, 
+	width: 220,
 	flexShrink: 0,
-	borderRight: `1px solid ${theme.palette.divider}`, 
-	backgroundColor: theme.palette.background.paper, 
-	overflowY: "auto", 
+	borderRight: `1px solid ${theme.palette.divider}`,
+	backgroundColor: theme.palette.background.paper,
+	overflowY: "auto",
 	[theme.breakpoints.down("md")]: {
 		width: "100%",
-		borderRight: "none", 
-		borderBottom: `1px solid ${theme.palette.divider}`, 
-		maxHeight: "40vh", 
+		borderRight: "none",
+		borderBottom: `1px solid ${theme.palette.divider}`,
+		maxHeight: "40vh",
 	},
 }));
 
@@ -392,11 +392,11 @@ const LoadingContainer = styled(Box)({
 	display: "flex",
 	justifyContent: "center",
 	alignItems: "center",
-	height: "100%", 
+	height: "100%",
 });
 
 const ErrorContainer = styled(Box)(({ theme }) => ({
-	padding: theme.spacing(3), 
+	padding: theme.spacing(3),
 	display: "flex",
 	justifyContent: "center",
 	alignItems: "center",
@@ -410,7 +410,7 @@ const MainContentWrapper = styled(Box)(({ theme }) => ({
 
 // Specific styling for the Radient icon image
 const IconImage = styled("img")({
-	width: 32, 
+	width: 32,
 	height: 32,
 	objectFit: "contain",
 });
@@ -419,36 +419,36 @@ const IconImage = styled("img")({
 const RadientSectionTitle: FC = () => (
 	<Stack
 		direction={{ xs: "column", sm: "row" }}
-		spacing={{ xs: 1.5, sm: 2 }} 
+		spacing={{ xs: 1.5, sm: 2 }}
 		justifyContent="space-between"
 		alignItems={{ xs: "flex-start", sm: "center" }}
-		mb={3} 
+		mb={3}
 	>
 		<Box>
 			<Typography
-				variant="h5" 
+				variant="h5"
 				fontWeight="500"
 				display="flex"
 				alignItems="center"
-				gap={1.5} 
-				mb={0.5} 
+				gap={1.5}
+				mb={0.5}
 			>
 				<IconImage src={radientIcon} alt="Radient Icon" />
 				Radient Account
 			</Typography>
 		</Box>
 		<Button
-			variant="outlined" 
+			variant="outlined"
 			color="primary"
 			href="https://console.radienthq.com"
 			target="_blank"
 			rel="noopener noreferrer"
-			endIcon={<FontAwesomeIcon icon={faExternalLinkAlt} size="xs" />} 
+			endIcon={<FontAwesomeIcon icon={faExternalLinkAlt} size="xs" />}
 			sx={(theme) => ({
 				borderColor: theme.palette.divider,
 				color: theme.palette.text.secondary,
 				textTransform: "none",
-				fontSize: "0.8125rem", 
+				fontSize: "0.8125rem",
 				padding: theme.spacing(0.5, 1.5),
 				borderRadius: theme.shape.borderRadius * 0.75,
 				"&:hover": {
@@ -469,7 +469,7 @@ export const SettingsPage: FC = () => {
 		data: config,
 		isLoading: isConfigLoading,
 		error: configError,
-		refetch, 
+		refetch,
 	} = useConfig();
 	const updateConfigMutation = useUpdateConfig();
 	const [savingField, setSavingField] = useState<string | null>(null);
@@ -477,10 +477,10 @@ export const SettingsPage: FC = () => {
 	const { isAuthenticated, isLoading: isAuthLoading } = useRadientAuth();
 	const [activeSection, setActiveSection] = useState<string>("general");
 	const [isScrolling, setIsScrolling] = useState(false);
-	const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null); 
+	const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 	const contentContainerRef = useRef<HTMLDivElement>(null);
 	const { startTour: startOnboardingTour } = useOnboardingTour();
-	const location = useLocation(); 
+	const location = useLocation();
 
 	const theme = useTheme();
 
@@ -539,7 +539,7 @@ export const SettingsPage: FC = () => {
 			if (ref?.current && contentContainer) {
 				// Get the element's position relative to the container's scroll area
 				const elementOffsetTop = ref.current.offsetTop;
-				
+
 				// Scroll with offset for better positioning (accounting for header/padding)
 				const targetScrollTop = Math.max(0, elementOffsetTop - 80);
 
@@ -571,7 +571,7 @@ export const SettingsPage: FC = () => {
 		// Use a small delay to ensure DOM is ready
 		const timer = setTimeout(() => {
 			const contentContainer = contentContainerRef.current;
-			
+
 			if (!contentContainer) {
 				return;
 			}
@@ -584,7 +584,7 @@ export const SettingsPage: FC = () => {
 
 				const containerRect = contentContainer.getBoundingClientRect();
 				const viewportHeight = containerRect.height;
-				
+
 				// Find the section that is most visible in the viewport
 				let bestSection = "";
 				let bestVisibility = 0;
@@ -593,21 +593,22 @@ export const SettingsPage: FC = () => {
 					if (ref.current) {
 						const elementRect = ref.current.getBoundingClientRect();
 						const containerTop = containerRect.top;
-						
+
 						// Calculate the element's position relative to the container
 						const elementTop = elementRect.top - containerTop;
 						const elementBottom = elementRect.bottom - containerTop;
 						const elementHeight = elementRect.height;
-						
+
 						// Calculate how much of the element is visible in the viewport
 						const visibleTop = Math.max(0, elementTop);
 						const visibleBottom = Math.min(viewportHeight, elementBottom);
 						const visibleHeight = Math.max(0, visibleBottom - visibleTop);
 						const visibilityRatio = visibleHeight / elementHeight;
-						
+
 						// Prefer sections that are more visible, with a bias towards sections near the top
-						const score = visibilityRatio + (elementTop < viewportHeight * 0.3 ? 0.1 : 0);
-						
+						const score =
+							visibilityRatio + (elementTop < viewportHeight * 0.3 ? 0.1 : 0);
+
 						if (score > bestVisibility && visibilityRatio > 0.1) {
 							bestVisibility = score;
 							bestSection = sectionId;
@@ -931,7 +932,7 @@ export const SettingsPage: FC = () => {
 						</Grid>
 					</Box>
 
-          {/* Appearance Section */}
+					{/* Appearance Section */}
 					<SettingsSectionCard
 						title="Appearance"
 						icon={faAdjust}

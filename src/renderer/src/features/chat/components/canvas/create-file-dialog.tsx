@@ -1,8 +1,4 @@
-import {
-	faCode,
-	faFile,
-	faFolder,
-} from "@fortawesome/free-solid-svg-icons";
+import { faCode, faFile, faFolder } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
 	Autocomplete,
@@ -17,11 +13,11 @@ import {
 	useTheme,
 } from "@mui/material";
 import type { Theme } from "@mui/material/styles";
-import { useAgents } from "@shared/hooks/use-agents";
 import { BaseDialog } from "@shared/components/common/base-dialog";
+import { ConfirmationModal } from "@shared/components/common/confirmation-modal";
+import { useAgents } from "@shared/hooks/use-agents";
 import { useEffect, useMemo, useState } from "react";
 import type { FC } from "react";
-import { ConfirmationModal } from "@shared/components/common/confirmation-modal";
 import { DirectoryIndicator } from "../directory-indicator";
 
 /**
@@ -274,101 +270,97 @@ export const CreateFileDialog: FC<CreateFileDialogProps> = ({
 				<Box sx={{ pt: 2 }}>
 					<FormControl fullWidth sx={{ mb: 2.5 }}>
 						<FieldLabel>
-						<LabelIcon>
-							<FontAwesomeIcon icon={faFile} size="sm" />
-						</LabelIcon>
-						File Name
-					</FieldLabel>
-					<TextField
-						fullWidth
-						value={fileName}
-						onChange={(e) => setFileName(e.target.value)}
-						required
-						autoFocus
-						placeholder="Enter file name (e.g., my-new-script)"
-						sx={textFieldInputSx(theme)}
-						onKeyDown={(e) => {
-							if (e.key === "Enter" && canSave) {
-								handleSave();
-							}
-						}}
-					/>
-				</FormControl>
+							<LabelIcon>
+								<FontAwesomeIcon icon={faFile} size="sm" />
+							</LabelIcon>
+							File Name
+						</FieldLabel>
+						<TextField
+							fullWidth
+							value={fileName}
+							onChange={(e) => setFileName(e.target.value)}
+							required
+							autoFocus
+							placeholder="Enter file name (e.g., my-new-script)"
+							sx={textFieldInputSx(theme)}
+							onKeyDown={(e) => {
+								if (e.key === "Enter" && canSave) {
+									handleSave();
+								}
+							}}
+						/>
+					</FormControl>
 
-				<FormControl fullWidth sx={{ mb: 2.5 }}>
-					<FieldLabel>
-						<LabelIcon>
-							<FontAwesomeIcon icon={faCode} size="sm" />
-						</LabelIcon>
-						File Type
-					</FieldLabel>
-					<Autocomplete
-						freeSolo
-						value={fileType}
-						onChange={(_, newValue) => {
-							if (typeof newValue === "string") {
-								setFileType(newValue);
-							} else if (newValue) {
-								setFileType(newValue.value);
-							}
-						}}
-						options={fileTypeOptions}
-						groupBy={(option) => option.group}
-						getOptionLabel={(option) => {
-							if (typeof option === "string") {
-								const foundOption = fileTypeOptions.find(
-									(o) => o.value === option,
-								);
-								return foundOption ? foundOption.text : option;
-							}
-							return option.text;
-						}}
-						// @ts-ignore - MUI's types for freeSolo Autocomplete are tricky.
-						// This works at runtime.
-						isOptionEqualToValue={(option, value) => option.value === value}
-						renderInput={(params) => (
-							<TextField
-								{...params}
-								placeholder="Select or type an extension"
-								sx={textFieldInputSx(theme)}
-							/>
-						)}
-						renderOption={(props, option) => (
-							<MenuItem {...props} key={option.value}>
-								{option.text}
-							</MenuItem>
-						)}
-						slotProps={{
-							paper: {
-								sx: menuPropsSx(theme).PaperProps.sx,
-							},
-							listbox: {
-								sx: {
-									// Unset the maxHeight to prevent the listbox from scrolling internally.
-									// The Paper component will handle the scrolling.
-									maxHeight: "unset",
+					<FormControl fullWidth sx={{ mb: 2.5 }}>
+						<FieldLabel>
+							<LabelIcon>
+								<FontAwesomeIcon icon={faCode} size="sm" />
+							</LabelIcon>
+							File Type
+						</FieldLabel>
+						<Autocomplete
+							freeSolo
+							value={fileType}
+							onChange={(_, newValue) => {
+								if (typeof newValue === "string") {
+									setFileType(newValue);
+								} else if (newValue) {
+									setFileType(newValue.value);
+								}
+							}}
+							options={fileTypeOptions}
+							groupBy={(option) => option.group}
+							getOptionLabel={(option) => {
+								if (typeof option === "string") {
+									const foundOption = fileTypeOptions.find(
+										(o) => o.value === option,
+									);
+									return foundOption ? foundOption.text : option;
+								}
+								return option.text;
+							}}
+							// @ts-ignore - MUI's types for freeSolo Autocomplete are tricky.
+							// This works at runtime.
+							isOptionEqualToValue={(option, value) => option.value === value}
+							renderInput={(params) => (
+								<TextField
+									{...params}
+									placeholder="Select or type an extension"
+									sx={textFieldInputSx(theme)}
+								/>
+							)}
+							renderOption={(props, option) => (
+								<MenuItem {...props} key={option.value}>
+									{option.text}
+								</MenuItem>
+							)}
+							slotProps={{
+								paper: {
+									sx: menuPropsSx(theme).PaperProps.sx,
 								},
-							},
-						}}
-					/>
-				</FormControl>
+								listbox: {
+									sx: {
+										// Unset the maxHeight to prevent the listbox from scrolling internally.
+										// The Paper component will handle the scrolling.
+										maxHeight: "unset",
+									},
+								},
+							}}
+						/>
+					</FormControl>
 
-				<FormControl fullWidth>
-					<FieldLabel>
-						<LabelIcon>
-							<FontAwesomeIcon icon={faFolder} size="sm" />
-						</LabelIcon>
-						Location
-					</FieldLabel>
-					<DirectoryIndicator
-						agentId={agentId}
-						currentWorkingDirectory={currentWorkingDirectory}
-					/>
-						<Typography
-							variant="caption"
-							color="text.secondary"
-							sx={{ mt: 1 }}
-						>
+					<FormControl fullWidth>
+						<FieldLabel>
+							<LabelIcon>
+								<FontAwesomeIcon icon={faFolder} size="sm" />
+							</LabelIcon>
+							Location
+						</FieldLabel>
+						<DirectoryIndicator
+							agentId={agentId}
+							currentWorkingDirectory={currentWorkingDirectory}
+						/>
+						<Typography variant="caption" color="text.secondary" sx={{ mt: 1 }}>
 							The file will be created in the selected working directory.
 						</Typography>
 					</FormControl>

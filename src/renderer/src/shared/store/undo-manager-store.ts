@@ -1,5 +1,5 @@
-import { create } from 'zustand';
-import { UndoManager } from '@shared/lib/undo-manager';
+import { UndoManager } from "@shared/lib/undo-manager";
+import { create } from "zustand";
 
 type UndoManagerState = {
 	managers: Map<string, UndoManager>;
@@ -40,28 +40,28 @@ export const useUndoManagerStore = create<UndoManagerState>((set, get) => ({
 	},
 
 	removeManager: (documentId: string) => {
-    const state = get();
-    const manager = state.managers.get(documentId);
-    
-    if (manager) {
-      manager.disconnect();
-      
-      set(state => {
-        const newManagers = new Map(state.managers);
-        newManagers.delete(documentId);
-        return { managers: newManagers };
-      });
-    }
-  },
+		const state = get();
+		const manager = state.managers.get(documentId);
 
-  clearAllManagers: () => {
-    const state = get();
-    
-    // Disconnect all managers
-    for (const manager of state.managers.values()) {
-      manager.disconnect();
-    }
-    
-    set({ managers: new Map() });
-  },
+		if (manager) {
+			manager.disconnect();
+
+			set((state) => {
+				const newManagers = new Map(state.managers);
+				newManagers.delete(documentId);
+				return { managers: newManagers };
+			});
+		}
+	},
+
+	clearAllManagers: () => {
+		const state = get();
+
+		// Disconnect all managers
+		for (const manager of state.managers.values()) {
+			manager.disconnect();
+		}
+
+		set({ managers: new Map() });
+	},
 }));

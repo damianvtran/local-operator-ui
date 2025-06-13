@@ -1,7 +1,4 @@
-import {
-	faPaperPlane,
-	faPaperclip,
-} from "@fortawesome/free-solid-svg-icons";
+import { faPaperPlane, faPaperclip } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
 	Box,
@@ -19,12 +16,14 @@ import type { AgentDetails } from "@shared/api/local-operator/types";
 import { apiConfig } from "@shared/config/api-config";
 import { useCredentials } from "@shared/hooks/use-credentials";
 import { useMessageInput } from "@shared/hooks/use-message-input";
-import { useSpeechToTextManager, SpeechToTextPriority } from "@shared/hooks/use-speech-to-text-manager";
+import {
+	SpeechToTextPriority,
+	useSpeechToTextManager,
+} from "@shared/hooks/use-speech-to-text-manager";
 import { useConversationInputStore } from "@shared/store/conversation-input-store";
 import { normalizePath } from "@shared/utils/path-utils";
 import { showErrorToast } from "@shared/utils/toast-manager";
-import { Check, Mic, X, Square } from "lucide-react";
-import { v4 as uuidv4 } from "uuid";
+import { Check, Mic, Square, X } from "lucide-react";
 import {
 	forwardRef,
 	useCallback,
@@ -35,6 +34,7 @@ import {
 	useState,
 } from "react";
 import type { ChangeEvent, ClipboardEvent, FormEvent } from "react";
+import { v4 as uuidv4 } from "uuid";
 import type { Message } from "../types/message";
 import { AttachmentsPreview } from "./attachments-preview";
 import { AudioRecordingIndicator } from "./audio-recording-indicator";
@@ -386,7 +386,8 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			clearAttachments,
 		} = useConversationInputStore();
 		const replies = useMemo(
-			() => (conversationId && inputByConversation[conversationId]?.replies) || [],
+			() =>
+				(conversationId && inputByConversation[conversationId]?.replies) || [],
 			[inputByConversation, conversationId],
 		);
 		const attachments = useMemo(
@@ -400,7 +401,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		const [isTranscribing, setIsTranscribing] = useState(false);
 		const mediaRecorderRef = useRef<MediaRecorder | null>(null);
 		const audioChunksRef = useRef<Blob[]>([]);
-			const [platform, setPlatform] = useState("");
+		const [platform, setPlatform] = useState("");
 
 		const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -565,36 +566,36 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			}
 		}, [isRecording]);
 
-	useEffect(() => {
-		if (isRecording) {
-			const handleKeyDown = (event: KeyboardEvent) => {
-				if (event.key === "Enter") {
-					event.preventDefault();
-					handleConfirmRecording();
-				} else if (event.key === "Escape") {
-					event.preventDefault();
-					handleCancelRecording();
-				}
-			};
+		useEffect(() => {
+			if (isRecording) {
+				const handleKeyDown = (event: KeyboardEvent) => {
+					if (event.key === "Enter") {
+						event.preventDefault();
+						handleConfirmRecording();
+					} else if (event.key === "Escape") {
+						event.preventDefault();
+						handleCancelRecording();
+					}
+				};
 
-			const handleKeyUp = (event: KeyboardEvent) => {
-				if (event.code === "Space") {
-					event.preventDefault();
-					handleConfirmRecording();
-				}
-			};
+				const handleKeyUp = (event: KeyboardEvent) => {
+					if (event.code === "Space") {
+						event.preventDefault();
+						handleConfirmRecording();
+					}
+				};
 
-			window.addEventListener("keydown", handleKeyDown);
-			window.addEventListener("keyup", handleKeyUp);
+				window.addEventListener("keydown", handleKeyDown);
+				window.addEventListener("keyup", handleKeyUp);
 
-			return () => {
-				window.removeEventListener("keydown", handleKeyDown);
-				window.removeEventListener("keyup", handleKeyUp);
-			};
-		}
+				return () => {
+					window.removeEventListener("keydown", handleKeyDown);
+					window.removeEventListener("keyup", handleKeyUp);
+				};
+			}
 
-		return undefined;
-	}, [isRecording, handleConfirmRecording, handleCancelRecording]);
+			return undefined;
+		}, [isRecording, handleConfirmRecording, handleCancelRecording]);
 
 		const handleSendAudio = useCallback(async () => {
 			if (!audioBlob) return;
@@ -631,12 +632,17 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 
 		// Register with speech-to-text manager
 		useSpeechToTextManager(
-			'message-input',
+			"message-input",
 			SpeechToTextPriority.MESSAGE_INPUT,
 			handleStartRecording,
-			() => Boolean(!isLoading && !isRecording && !isTranscribing && canEnableRecordingFeature)
+			() =>
+				Boolean(
+					!isLoading &&
+						!isRecording &&
+						!isTranscribing &&
+						canEnableRecordingFeature,
+				),
 		);
-
 
 		const handleSubmit = (e: FormEvent) => {
 			e.preventDefault();
@@ -796,10 +802,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 										disabled={isInputDisabled || isRecording || isTranscribing}
 										isSmallView={isSmallView}
 									>
-										<FontAwesomeIcon
-											icon={faPaperclip}
-											fontSize={iconSize}
-										/>
+										<FontAwesomeIcon icon={faPaperclip} fontSize={iconSize} />
 									</AttachmentButton>
 								</span>
 							</Tooltip>
@@ -831,7 +834,14 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 												aria-label="Start recording"
 												disabled={isLoading || !canEnableRecordingFeature}
 											>
-												<Mic size={iconSize * 1.1} style={{ width: iconSize * 1.4, height: iconSize * 1.4, padding: "2px" }} />
+												<Mic
+													size={iconSize * 1.1}
+													style={{
+														width: iconSize * 1.4,
+														height: iconSize * 1.4,
+														padding: "2px",
+													}}
+												/>
 											</IconButton>
 										</span>
 									</Tooltip>

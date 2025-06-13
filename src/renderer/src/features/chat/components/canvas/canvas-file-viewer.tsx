@@ -33,7 +33,7 @@ import {
 	ScrollText,
 } from "lucide-react";
 import type { FC } from "react";
-import { useCallback, useMemo, memo } from "react";
+import { memo, useCallback, useMemo } from "react";
 
 type CanvasFileViewerProps = {
 	conversationId: string;
