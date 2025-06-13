@@ -42,7 +42,7 @@ const SidebarContainer = styled(Paper)(({ theme }) => ({
 	width: "100%",
 	height: "100%",
 	borderRadius: 0,
-	backgroundColor: theme.palette.sidebar.secondaryBackground,
+	backgroundColor: theme.palette.sidebar.background,
 	boxShadow: "none",
 	display: "flex",
 	flexDirection: "column",
@@ -51,73 +51,83 @@ const SidebarContainer = styled(Paper)(({ theme }) => ({
 }));
 
 const SidebarHeader = styled(Box)(({ theme }) => ({
-	padding: theme.spacing(3),
+	display: "flex",
+	alignItems: "center",
+	justifyContent: "flex-start",
+	padding: theme.spacing(3, 2, 2, 2),
 	borderBottom: `1px solid ${theme.palette.sidebar.border}`,
 }));
 
 const SidebarTitle = styled(Typography)(({ theme }) => ({
+	fontSize: "1.125rem",
 	fontWeight: 600,
-	fontSize: "1rem",
 	color: theme.palette.text.primary,
+	letterSpacing: "-0.025em",
 }));
 
 const SidebarList = styled(List)(({ theme }) => ({
-	padding: theme.spacing(2),
+	padding: theme.spacing(2, 1),
 	flexGrow: 1,
+	"& > *:not(:last-child)": {
+		marginBottom: theme.spacing(0.5),
+	},
+}));
+
+const SectionGroup = styled(Box)(({ theme }) => ({
+	marginBottom: theme.spacing(3),
+	"&:last-child": {
+		marginBottom: 0,
+	},
+}));
+
+const SectionLabel = styled(Typography)(({ theme }) => ({
+	fontSize: "0.75rem",
+	fontWeight: 600,
+	color: theme.palette.text.secondary,
+	textTransform: "uppercase",
+	letterSpacing: "0.05em",
+	padding: theme.spacing(0, 1.5, 1, 1.5),
+	marginBottom: theme.spacing(0.5),
 }));
 
 const SidebarItemButton = styled(ListItemButton, {
 	shouldForwardProp: (prop) => prop !== "isActive",
 })<{ isActive: boolean }>(({ theme, isActive }) => ({
-	borderRadius: 8,
+	borderRadius: 6,
 	marginBottom: 4,
-	paddingTop: 10,
-	paddingBottom: 10,
+	padding: "4px 12px",
+	minHeight: 36,
 	color: isActive
 		? theme.palette.sidebar.itemActiveText
 		: theme.palette.sidebar.itemText,
 	backgroundColor: isActive ? theme.palette.sidebar.itemActive : "transparent",
-	transition: "all 0.2s ease-out",
-	position: "relative",
-	overflow: "hidden",
+	transition: "background-color 0.2s ease-out, color 0.2s ease-out",
 	"&:hover": {
 		backgroundColor: isActive
 			? theme.palette.sidebar.itemActiveHover
 			: theme.palette.sidebar.itemHover,
-		transform: "translateX(4px)",
 	},
-	...(isActive && {
-		"&::before": {
-			content: '""',
-			position: "absolute",
-			left: 0,
-			top: "50%",
-			transform: "translateY(-50%)",
-			width: 4,
-			height: "60%",
-			backgroundColor: theme.palette.sidebar.itemActiveText,
-			borderRadius: "0 4px 4px 0",
-		},
-	}),
 }));
 
 const SidebarItemIcon = styled(ListItemIcon, {
 	shouldForwardProp: (prop) => prop !== "isActive",
 })<{ isActive: boolean }>(({ theme, isActive }) => ({
-	minWidth: 40,
+	minWidth: 0,
+	width: 20,
+	height: 20,
+	marginRight: 12,
+	justifyContent: "center",
 	color: isActive
 		? theme.palette.sidebar.itemActiveText
 		: theme.palette.icon.text,
-	transition: "transform 0.2s ease, color 0.2s ease",
-	...(isActive && {
-		transform: "scale(1.1)",
-	}),
+	display: "flex",
+	alignItems: "center",
+	transition: "color 0.2s ease",
 }));
 
 const IconImage = styled("img")(() => ({
-	width: 30,
-	height: 30,
-	marginLeft: -4,
+	width: 18,
+	height: 18,
 	objectFit: "contain",
 }));
 
@@ -131,69 +141,115 @@ export const SettingsSidebar: FC<SettingsSidebarProps> = ({
 	onSelectSection,
 	sections,
 }) => {
+	const renderSection = (section: SettingsSection) => {
+		let tourTag: string | undefined;
+		switch (section.id) {
+			case "general":
+				tourTag = "settings-sidebar-general";
+				break;
+			case "radient":
+				tourTag = "settings-sidebar-radient-account";
+				break;
+			case "integrations":
+				tourTag = "settings-sidebar-integrations";
+				break;
+			case "appearance":
+				tourTag = "settings-sidebar-appearance";
+				break;
+			case "credentials":
+				tourTag = "settings-sidebar-api-credentials";
+				break;
+			case "updates":
+				tourTag = "settings-sidebar-application-updates";
+				break;
+			default:
+				tourTag = undefined;
+		}
+
+		const isActive = activeSection === section.id;
+
+		return (
+			<SidebarItemButton
+				key={section.id}
+				isActive={isActive}
+				onClick={() => onSelectSection(section.id)}
+				data-tour-tag={tourTag}
+			>
+				<SidebarItemIcon isActive={isActive}>
+					{section.isImage ? (
+						<IconImage src={section.icon as string} alt={section.label} />
+					) : section.isFontAwesome ? (
+						<FontAwesomeIcon
+							icon={section.icon as IconDefinition}
+							style={{ fontSize: 18, display: "block" }}
+						/>
+					) : (
+						(() => {
+							const IconComponent = section.icon as LucideIcon;
+							return (
+								<IconComponent
+									size={18}
+									strokeWidth={1.5}
+									style={{ display: "block" }}
+									aria-label={section.label}
+								/>
+							);
+						})()
+					)}
+				</SidebarItemIcon>
+				<ListItemText
+					primary={section.label}
+					primaryTypographyProps={{
+						fontWeight: isActive ? 500 : 400,
+						fontSize: "0.875rem",
+						whiteSpace: "nowrap",
+						overflow: "hidden",
+						textOverflow: "ellipsis",
+					}}
+				/>
+			</SidebarItemButton>
+		);
+	};
+
+	// Group sections by category for better organization
+	const coreSettings = sections.filter((s) =>
+		["general", "appearance"].includes(s.id),
+	);
+	const accountSettings = sections.filter((s) =>
+		["radient", "credentials", "integrations"].includes(s.id),
+	);
+	const systemSettings = sections.filter((s) => ["updates"].includes(s.id));
+
 	return (
 		<SidebarContainer elevation={0}>
 			<SidebarHeader>
-				<SidebarTitle variant="subtitle1">Settings Navigation</SidebarTitle>
+				<SidebarTitle>Settings</SidebarTitle>
 			</SidebarHeader>
 
 			<SidebarList>
-				{sections.map((section) => {
-					let tourTag: string | undefined;
-					switch (section.id) {
-						case "general":
-							tourTag = "settings-sidebar-general";
-							break;
-						case "radient":
-							tourTag = "settings-sidebar-radient-account";
-							break;
-						case "integrations":
-							tourTag = "settings-sidebar-integrations";
-							break;
-						case "appearance":
-							tourTag = "settings-sidebar-appearance";
-							break;
-						case "credentials":
-							tourTag = "settings-sidebar-api-credentials";
-							break;
-						case "updates":
-							tourTag = "settings-sidebar-application-updates";
-							break;
-						default:
-							tourTag = undefined;
-					}
-					return (
-						<SidebarItemButton
-							key={section.id}
-							isActive={activeSection === section.id}
-							onClick={() => onSelectSection(section.id)}
-							data-tour-tag={tourTag}
-						>
-							<SidebarItemIcon isActive={activeSection === section.id}>
-								{section.isImage ? (
-									<IconImage src={section.icon as string} alt={section.label} />
-								) : section.isFontAwesome ? (
-									<FontAwesomeIcon
-										icon={section.icon as IconDefinition}
-										style={{ fontSize: 20 }} // Adjusted size for FA icons
-									/>
-								) : (
-									(() => {
-										const IconComponent = section.icon as LucideIcon;
-										return <IconComponent size={22} strokeWidth={2.1} />;
-									})()
-								)}
-							</SidebarItemIcon>
-							<ListItemText
-								primary={section.label}
-								primaryTypographyProps={{
-									fontWeight: activeSection === section.id ? 600 : 500,
-									fontSize: "0.95rem",
-								}}
-							/>
-						</SidebarItemButton>
-					);
-				})}
+				{/* Core Settings */}
+				{coreSettings.length > 0 && (
+					<SectionGroup>
+						<SectionLabel>General</SectionLabel>
+						{coreSettings.map(renderSection)}
+					</SectionGroup>
+				)}
+
+				{/* Account Settings */}
+				{accountSettings.length > 0 && (
+					<SectionGroup>
+						<SectionLabel>Account</SectionLabel>
+						{accountSettings.map(renderSection)}
+					</SectionGroup>
+				)}
+
+				{/* System Settings */}
+				{systemSettings.length > 0 && (
+					<SectionGroup>
+						<SectionLabel>System</SectionLabel>
+						{systemSettings.map(renderSection)}
+					</SectionGroup>
+				)}
 			</SidebarList>
 		</SidebarContainer>
 	);

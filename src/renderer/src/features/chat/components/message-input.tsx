@@ -1,8 +1,4 @@
-import {
-	faPaperPlane,
-	faPaperclip,
-	faStop,
-} from "@fortawesome/free-solid-svg-icons";
+import { faPaperPlane, faPaperclip } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
 	Box,
@@ -20,9 +16,14 @@ import type { AgentDetails } from "@shared/api/local-operator/types";
 import { apiConfig } from "@shared/config/api-config";
 import { useCredentials } from "@shared/hooks/use-credentials";
 import { useMessageInput } from "@shared/hooks/use-message-input";
+import {
+	SpeechToTextPriority,
+	useSpeechToTextManager,
+} from "@shared/hooks/use-speech-to-text-manager";
+import { useConversationInputStore } from "@shared/store/conversation-input-store";
 import { normalizePath } from "@shared/utils/path-utils";
 import { showErrorToast } from "@shared/utils/toast-manager";
-import { Check, Mic, X } from "lucide-react";
+import { Check, Mic, Square, X } from "lucide-react";
 import {
 	forwardRef,
 	useCallback,
@@ -33,10 +34,12 @@ import {
 	useState,
 } from "react";
 import type { ChangeEvent, ClipboardEvent, FormEvent } from "react";
+import { v4 as uuidv4 } from "uuid";
 import type { Message } from "../types/message";
 import { AttachmentsPreview } from "./attachments-preview";
 import { AudioRecordingIndicator } from "./audio-recording-indicator";
 import { DirectoryIndicator } from "./directory-indicator";
+import { ReplyPreview } from "./reply-preview";
 import { ScrollToBottomButton } from "./scroll-to-bottom-button";
 import { WaveformAnimation } from "./waveform-animation";
 
@@ -54,6 +57,7 @@ type MessageInputProps = {
 	scrollToBottom?: () => void;
 	initialSuggestions?: string[];
 	agentData?: AgentDetails | null;
+	isSmallView?: boolean;
 };
 
 /**
@@ -66,7 +70,9 @@ export type MessageInputHandle = {
 /**
  * Outer container that wraps the entire input area
  */
-const InputOuterContainer = styled(Box)(({ theme }) => ({
+const InputOuterContainer = styled(Box, {
+	shouldForwardProp: (prop) => prop !== "isSmallView",
+})<{ isSmallView?: boolean }>(({ theme, isSmallView }) => ({
 	width: "100%",
 	flexGrow: 1,
 	flexShrink: 0,
@@ -75,10 +81,10 @@ const InputOuterContainer = styled(Box)(({ theme }) => ({
 	flexDirection: "column",
 	alignItems: "center",
 	justifyContent: "center",
-	padding: theme.spacing(1),
-	paddingLeft: theme.spacing(2),
-	paddingRight: theme.spacing(2),
-	paddingBottom: theme.spacing(2),
+	padding: isSmallView ? theme.spacing(0.5) : theme.spacing(1),
+	paddingLeft: isSmallView ? theme.spacing(1) : theme.spacing(2),
+	paddingRight: isSmallView ? theme.spacing(1) : theme.spacing(2),
+	paddingBottom: isSmallView ? theme.spacing(1) : theme.spacing(2),
 	backgroundColor: theme.palette.messagesView.background,
 }));
 
@@ -89,21 +95,25 @@ const InputOuterContainer = styled(Box)(({ theme }) => ({
  * When the text input inside is focused, increase border thickness and style
  * without changing the container size by using outline instead of border change
  */
-const InputInnerContainer = styled(Box)(({ theme }) => ({
+const InputInnerContainer = styled(Box, {
+	shouldForwardProp: (prop) => prop !== "isSmallView",
+})<{ isSmallView?: boolean }>(({ theme, isSmallView }) => ({
 	width: "100%",
 	maxWidth: "900px",
 	margin: "0 auto",
 	display: "flex",
 	flexDirection: "column",
-	gap: theme.spacing(1.5),
+	gap: isSmallView ? theme.spacing(1) : theme.spacing(1.5),
 	outline: "none",
-	borderRadius: theme.shape.borderRadius * 4,
+	borderRadius: isSmallView
+		? theme.shape.borderRadius * 2
+		: theme.shape.borderRadius * 4,
 	border: `1px solid ${alpha(theme.palette.divider, theme.palette.mode === "light" ? 0.3 : 0.1)}`,
 	backgroundColor:
 		theme.palette.mode === "light"
 			? alpha(theme.palette.background.paper, 0.9)
 			: alpha(theme.palette.background.paper, 0.6),
-	padding: theme.spacing(2),
+	padding: isSmallView ? theme.spacing(1) : theme.spacing(2),
 	transition: "box-shadow 0.2s ease-in-out, outline 0.2s ease-in-out",
 	boxSizing: "border-box",
 	[theme.breakpoints.down("sm")]: {
@@ -174,12 +184,14 @@ const SuggestionChip = styled(Button)(({ theme }) => ({
  *
  * Also customizes the scrollbar appearance when multiline text causes overflow.
  */
-const StyledTextField = styled(TextField)(({ theme }) => ({
+const StyledTextField = styled(TextField, {
+	shouldForwardProp: (prop) => prop !== "isSmallView",
+})<{ isSmallView?: boolean }>(({ theme, isSmallView }) => ({
 	flex: 1,
 	"& .MuiOutlinedInput-root": {
 		backgroundColor: "transparent",
-		padding: "6px 8px",
-		fontSize: "1rem",
+		padding: isSmallView ? "4px 6px" : "6px 8px",
+		fontSize: isSmallView ? "0.9rem" : "1rem",
 		display: "flex",
 		alignItems: "center",
 		"& fieldset": {
@@ -242,14 +254,16 @@ const ButtonsRow = styled(Box)(({ theme }) => ({
 /**
  * Styled attachment button
  */
-const AttachmentButton = styled(IconButton)(({ theme }) => ({
+const AttachmentButton = styled(IconButton, {
+	shouldForwardProp: (prop) => prop !== "isSmallView",
+})<{ isSmallView?: boolean }>(({ theme, isSmallView }) => ({
 	backgroundColor:
 		theme.palette.mode === "light"
 			? alpha(theme.palette.primary.main, 0.1)
 			: alpha(theme.palette.primary.main, 0.15),
 	color: theme.palette.primary.main,
-	width: 40,
-	height: 40,
+	width: isSmallView ? 32 : 40,
+	height: isSmallView ? 32 : 40,
 	borderRadius: "100%",
 	transition: "all 0.2s ease-in-out",
 	"&:hover": {
@@ -271,9 +285,11 @@ const AttachmentButton = styled(IconButton)(({ theme }) => ({
 /**
  * Styled send/stop button
  */
-const SendButton = styled(Button)(({ theme }) => ({
-	minWidth: 40,
-	height: 40,
+const SendButton = styled(Button, {
+	shouldForwardProp: (prop) => prop !== "isSmallView",
+})<{ isSmallView?: boolean }>(({ theme, isSmallView }) => ({
+	minWidth: isSmallView ? 32 : 40,
+	height: isSmallView ? 32 : 40,
 	borderRadius: "100%",
 	padding: 0,
 	display: "flex",
@@ -357,16 +373,34 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			scrollToBottom = () => {},
 			initialSuggestions,
 			agentData,
+			isSmallView = false,
 		},
 		ref,
 	) => {
-		const [attachments, setAttachments] = useState<string[]>([]);
+		const {
+			inputByConversation,
+			removeReply,
+			clearReplies,
+			addAttachment,
+			removeAttachment,
+			clearAttachments,
+		} = useConversationInputStore();
+		const replies = useMemo(
+			() =>
+				(conversationId && inputByConversation[conversationId]?.replies) || [],
+			[inputByConversation, conversationId],
+		);
+		const attachments = useMemo(
+			() =>
+				(conversationId && inputByConversation[conversationId]?.attachments) ||
+				[],
+			[inputByConversation, conversationId],
+		);
 		const [isRecording, setIsRecording] = useState(false);
 		const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
 		const [isTranscribing, setIsTranscribing] = useState(false);
 		const mediaRecorderRef = useRef<MediaRecorder | null>(null);
 		const audioChunksRef = useRef<Blob[]>([]);
-		const spacebarTimerRef = useRef<NodeJS.Timeout | null>(null);
 		const [platform, setPlatform] = useState("");
 
 		const fileInputRef = useRef<HTMLInputElement>(null);
@@ -398,10 +432,30 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 
 		const onSubmit = useMemo(
 			() => (message: string) => {
-				onSendMessage(message, attachments);
-				setAttachments([]);
+				let messageWithReplies = message;
+				if (replies.length > 0) {
+					const replyContent = replies
+						.map((r) => `<reply-to>${r.text}</reply-to>`)
+						.join("\n");
+					messageWithReplies = `${replyContent}\n${message}`;
+				}
+				onSendMessage(
+					messageWithReplies,
+					attachments.map((a) => a.path),
+				);
+				if (conversationId) {
+					clearReplies(conversationId);
+					clearAttachments(conversationId);
+				}
 			},
-			[onSendMessage, attachments],
+			[
+				onSendMessage,
+				attachments,
+				replies,
+				conversationId,
+				clearReplies,
+				clearAttachments,
+			],
 		);
 
 		const {
@@ -524,10 +578,19 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					}
 				};
 
+				const handleKeyUp = (event: KeyboardEvent) => {
+					if (event.code === "Space") {
+						event.preventDefault();
+						handleConfirmRecording();
+					}
+				};
+
 				window.addEventListener("keydown", handleKeyDown);
+				window.addEventListener("keyup", handleKeyUp);
 
 				return () => {
 					window.removeEventListener("keydown", handleKeyDown);
+					window.removeEventListener("keyup", handleKeyUp);
 				};
 			}
 
@@ -567,98 +630,19 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			}
 		}, [audioBlob, handleSendAudio]);
 
-		// Listen for speech to text shortcut from main process
-		useEffect(() => {
-			const handleStartSpeechToText = (): void => {
-				if (
+		// Register with speech-to-text manager
+		useSpeechToTextManager(
+			"message-input",
+			SpeechToTextPriority.MESSAGE_INPUT,
+			handleStartRecording,
+			() =>
+				Boolean(
 					!isLoading &&
-					!isRecording &&
-					!isTranscribing &&
-					canEnableRecordingFeature
-				) {
-					handleStartRecording();
-				}
-			};
-			window.electron.ipcRenderer.on(
-				"start-speech-to-text",
-				handleStartSpeechToText,
-			);
-
-			return () => {
-				window.electron.ipcRenderer.removeListener(
-					"start-speech-to-text",
-					handleStartSpeechToText,
-				);
-			};
-		}, [
-			canEnableRecordingFeature,
-			handleStartRecording,
-			isLoading,
-			isRecording,
-			isTranscribing,
-		]);
-
-		// Listen for spacebar hold to start/stop recording
-		useEffect(() => {
-			const handleKeyDown = (event: KeyboardEvent): void => {
-				if (event.code !== "Space" || spacebarTimerRef.current) {
-					return;
-				}
-
-				// Check if an input-like element is focused
-				const activeElement = document.activeElement as HTMLElement;
-				if (
-					activeElement &&
-					(activeElement.tagName === "INPUT" ||
-						activeElement.tagName === "TEXTAREA" ||
-						activeElement.isContentEditable)
-				) {
-					return; // Don't interfere with typing
-				}
-
-				if (isRecording || isTranscribing || !canEnableRecordingFeature) {
-					return;
-				}
-
-				event.preventDefault();
-
-				spacebarTimerRef.current = setTimeout(() => {
-					handleStartRecording();
-				}, 1000);
-			};
-
-			const handleKeyUp = (event: KeyboardEvent): void => {
-				if (event.code !== "Space") {
-					return;
-				}
-
-				if (spacebarTimerRef.current) {
-					clearTimeout(spacebarTimerRef.current);
-					spacebarTimerRef.current = null;
-				}
-
-				if (isRecording) {
-					handleConfirmRecording();
-				}
-			};
-
-			window.addEventListener("keydown", handleKeyDown);
-			window.addEventListener("keyup", handleKeyUp);
-
-			return () => {
-				window.removeEventListener("keydown", handleKeyDown);
-				window.removeEventListener("keyup", handleKeyUp);
-				if (spacebarTimerRef.current) {
-					clearTimeout(spacebarTimerRef.current);
-				}
-			};
-		}, [
-			isRecording,
-			isTranscribing,
-			canEnableRecordingFeature,
-			handleStartRecording,
-			handleConfirmRecording,
-		]);
+						!isRecording &&
+						!isTranscribing &&
+						canEnableRecordingFeature,
+				),
+		);
 
 		const handleSubmit = (e: FormEvent) => {
 			e.preventDefault();
@@ -675,22 +659,21 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					}
 					return URL.createObjectURL(file);
 				});
-				setAttachments((prev) => [...prev, ...newAttachments]);
+				if (conversationId) {
+					for (const path of newAttachments) {
+						addAttachment(conversationId, { id: uuidv4(), path });
+					}
+				}
 				if (fileInputRef.current) {
 					fileInputRef.current.value = "";
 				}
 			}
 		};
 
-		const handleRemoveAttachment = (index: number) => {
-			setAttachments((prev) => {
-				const newAttachments = [...prev];
-				if (newAttachments[index].startsWith("blob:")) {
-					URL.revokeObjectURL(newAttachments[index]);
-				}
-				newAttachments.splice(index, 1);
-				return newAttachments;
-			});
+		const handleRemoveAttachment = (id: string) => {
+			if (conversationId) {
+				removeAttachment(conversationId, id);
+			}
 		};
 
 		const triggerFileInput = () => {
@@ -709,11 +692,11 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 						if (file) {
 							const reader = new FileReader();
 							reader.onload = (e) => {
-								if (e.target?.result) {
-									setAttachments((prev) => [
-										...prev,
-										e.target?.result as string,
-									]);
+								if (e.target?.result && conversationId) {
+									addAttachment(conversationId, {
+										id: uuidv4(),
+										path: e.target.result as string,
+									});
 								}
 							};
 							reader.readAsDataURL(file);
@@ -725,8 +708,13 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 
 		const handleSuggestionClick = (suggestion: string) => {
 			if (isInputDisabled) return;
-			onSendMessage(suggestion, attachments);
-			setAttachments([]);
+			onSendMessage(
+				suggestion,
+				attachments.map((a) => a.path),
+			);
+			if (conversationId) {
+				clearAttachments(conversationId);
+			}
 			setNewMessage("");
 		};
 
@@ -737,13 +725,26 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			return "Ctrl+Shift+S";
 		}, [platform]);
 
+		const handleRemoveReply = (replyId: string) => {
+			if (conversationId) {
+				removeReply(conversationId, replyId);
+			}
+		};
+
+		const iconSize = isSmallView ? 16 : 18;
+
 		const inputContent = (
 			<form onSubmit={handleSubmit} style={{ width: "100%" }}>
-				<InputInnerContainer>
+				<InputInnerContainer isSmallView={isSmallView}>
+					{replies.length > 0 && (
+						<ReplyPreview replies={replies} onRemoveReply={handleRemoveReply} />
+					)}
 					{attachments.length > 0 && (
 						<AttachmentsPreview
-							attachments={attachments}
-							onRemoveAttachment={handleRemoveAttachment}
+							attachments={attachments.map((a) => a.path)}
+							onRemoveAttachment={(index) =>
+								handleRemoveAttachment(attachments[index].id)
+							}
 							disabled={isInputDisabled || isRecording || isTranscribing}
 						/>
 					)}
@@ -763,6 +764,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 							placeholder={
 								isInputDisabled ? "Agent is busy" : "Ask me for help"
 							}
+							isSmallView={isSmallView}
 							value={newMessage}
 							onChange={(e) => setNewMessage(e.target.value)}
 							onKeyDown={handleKeyDown}
@@ -798,8 +800,9 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 										aria-label="Attach file"
 										data-tour-tag="chat-input-attach-file-button"
 										disabled={isInputDisabled || isRecording || isTranscribing}
+										isSmallView={isSmallView}
 									>
-										<FontAwesomeIcon icon={faPaperclip} />
+										<FontAwesomeIcon icon={faPaperclip} fontSize={iconSize} />
 									</AttachmentButton>
 								</span>
 							</Tooltip>
@@ -831,7 +834,14 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 												aria-label="Start recording"
 												disabled={isLoading || !canEnableRecordingFeature}
 											>
-												<Mic size={22} />
+												<Mic
+													size={iconSize * 1.1}
+													style={{
+														width: iconSize * 1.4,
+														height: iconSize * 1.4,
+														padding: "2px",
+													}}
+												/>
 											</IconButton>
 										</span>
 									</Tooltip>
@@ -847,7 +857,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 												aria-label="Confirm recording"
 												disabled={isLoading}
 											>
-												<Check size={18} />
+												<Check size={iconSize} />
 											</IconButton>
 										</span>
 									</Tooltip>
@@ -860,7 +870,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 												aria-label="Cancel recording"
 												disabled={isLoading}
 											>
-												<X size={18} />
+												<X size={iconSize} />
 											</IconButton>
 										</span>
 									</Tooltip>
@@ -875,8 +885,9 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 											color="error"
 											onClick={() => onCancelJob?.(currentJobId)}
 											aria-label="Stop agent"
+											isSmallView={isSmallView}
 										>
-											<FontAwesomeIcon icon={faStop} />
+											<Square size={iconSize} />
 										</SendButton>
 									</span>
 								</Tooltip>
@@ -894,8 +905,12 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 													(!newMessage.trim() && attachments.length === 0)
 												}
 												aria-label="Send message"
+												isSmallView={isSmallView}
 											>
-												<FontAwesomeIcon icon={faPaperPlane} />
+												<FontAwesomeIcon
+													icon={faPaperPlane}
+													fontSize={iconSize * 0.8}
+												/>
 											</SendButton>
 										</span>
 									</Tooltip>
@@ -905,7 +920,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					</ButtonsRow>
 				</InputInnerContainer>
 
-				{messages.length === 0 && (
+				{messages.length === 0 && !isSmallView && (
 					<SuggestionsContainer>
 						<Box
 							sx={{
@@ -934,8 +949,8 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		);
 
 		return (
-			<InputOuterContainer>
-				{messages.length === 0 ? (
+			<InputOuterContainer isSmallView={isSmallView}>
+				{messages.length === 0 && !isSmallView ? (
 					<EmptyStateContainer>
 						<EmptyStateTitle variant="h6">
 							What can I help you with today?
@@ -948,6 +963,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				<ScrollToBottomButton
 					visible={isFarFromBottom}
 					onClick={scrollToBottom}
+					bottomDistance={isSmallView ? 120 : 160}
 				/>
 			</InputOuterContainer>
 		);

@@ -1,4 +1,5 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { electronApp, is, optimizer } from "@electron-toolkit/utils";
 import {
@@ -476,7 +477,10 @@ app
 			"read-file",
 			async (_, filePath: string): Promise<ReadFileResponse> => {
 				try {
-					const data = readFileSync(filePath, "utf-8");
+					const normalizedPath = filePath.startsWith("~/")
+						? join(app.getPath("home"), filePath.slice(2))
+						: filePath;
+					const data = readFileSync(normalizedPath, "utf-8");
 					return { success: true, data };
 				} catch (error) {
 					logger.error("Error reading file:", LogFileType.BACKEND, error);
@@ -499,6 +503,28 @@ app
 			} catch (error) {
 				console.error("Error showing item in folder:", error);
 			}
+		});
+
+		ipcMain.handle(
+			"save-file",
+			async (_, filePath: string, content: string) => {
+				try {
+					const normalizedPath = filePath.startsWith("~/")
+						? join(app.getPath("home"), filePath.slice(2))
+						: filePath;
+					writeFileSync(normalizedPath, content, "utf-8");
+				} catch (error) {
+					logger.error("Error saving file:", LogFileType.BACKEND, error);
+					throw error; // Re-throw the error to be caught by the renderer
+				}
+			},
+		);
+
+		ipcMain.handle("file-exists", async (_, filePath: string) => {
+			const normalizedPath = filePath.startsWith("~/")
+				? join(app.getPath("home"), filePath.slice(2))
+				: filePath;
+			return existsSync(normalizedPath);
 		});
 
 		// --- Directory Selection IPC Handler ---
@@ -846,10 +872,10 @@ app
 			mainWindow.webContents.on("before-input-event", (event, input) => {
 				const isCmdOrCtrl = input.control || input.meta;
 
-				// Toggle command palette: Cmd/Ctrl + K
+				// Toggle command palette: Cmd/Ctrl + P
 				if (
 					isCmdOrCtrl &&
-					input.key.toLowerCase() === "k" &&
+					input.key.toLowerCase() === "p" &&
 					input.type === "keyDown"
 				) {
 					if (mainWindow?.isFocused() && mainWindow?.isVisible()) {

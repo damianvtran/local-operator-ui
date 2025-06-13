@@ -21,7 +21,6 @@ import type { AgentDetails } from "@shared/api/local-operator/types";
 import {
 	AgentOptionsMenu,
 	CompactPagination,
-	// CreateAgentDialog, // Now global
 	ImportAgentDialog,
 	SidebarHeader,
 } from "@shared/components/common";
@@ -33,7 +32,7 @@ import {
 	usePaginationParams,
 } from "@shared/hooks";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
-import { useUiPreferencesStore } from "@shared/store/ui-preferences-store"; // Import store
+import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import {
 	formatMessageDateTime,
 	getFullDateTime,
@@ -90,10 +89,10 @@ const AgentsList = styled(List)(({ theme }) => ({
 const AgentListItemButton = styled(ListItemButton)(({ theme }) => ({
 	margin: "0 8px 8px",
 	borderRadius: 8,
-	paddingRight: 12,
-	paddingTop: 6,
-	paddingBottom: 6,
-	paddingLeft: 12,
+	paddingRight: 8,
+	paddingTop: 4,
+	paddingBottom: 4,
+	paddingLeft: 8,
 	position: "relative",
 	"&.Mui-selected": {
 		backgroundColor: alpha(theme.palette.sidebar.itemActive, 0.1),
@@ -117,8 +116,8 @@ const AgentAvatar = styled(Avatar, {
 		? theme.palette.sidebar.itemActiveText
 		: theme.palette.icon.text,
 	boxShadow: `0 2px 4px ${alpha(theme.palette.common.black, 0.15)}`,
-	width: 42,
-	height: 42,
+	width: 36,
+	height: 36,
 }));
 
 // Message bubble styling
@@ -275,9 +274,9 @@ const ChatSidebarItem: FC<ChatSidebarItemProps> = ({
 				selected={isSelected}
 				onClick={() => onSelectConversation(agent.id)}
 			>
-				<ListItemAvatar>
+				<ListItemAvatar sx={{ minWidth: 48, width: 48 }}>
 					<AgentAvatar selected={isSelected}>
-						<Bot size={22} strokeWidth={2.1} aria-label="Agent" />
+						<Bot size={18} strokeWidth={2} aria-label="Agent" />
 					</AgentAvatar>
 				</ListItemAvatar>
 				<MessageBubble>
@@ -380,8 +379,7 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 	onNavigateToAgentSettings,
 }) => {
 	const [searchQuery, setSearchQuery] = useState("");
-	// const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false); // Remove local state
-	const { openCreateAgentDialog } = useUiPreferencesStore(); // Use global action
+	const { openCreateAgentDialog } = useUiPreferencesStore();
 	const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
 	const perPage = 50;
 
@@ -405,10 +403,8 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 	// Use the pagination hook to get and set the page from URL
 	const { page, setPage } = usePaginationParams();
 
-	// Set up periodic refetch every 5 seconds to check for new messages
-	// Pass the search query, sort, and direction parameters
 	const {
-		data: agentListResult, // Rename data to agentListResult
+		data: agentListResult,
 		isLoading,
 		isError,
 		refetch,
@@ -459,14 +455,6 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 		},
 		[onSelectConversation],
 	);
-
-	// const handleOpenCreateDialog = useCallback(() => { // Remove local handler
-	// 	setIsCreateDialogOpen(true);
-	// }, []);
-
-	// const handleCloseCreateDialog = useCallback(() => { // Remove local handler
-	// 	setIsCreateDialogOpen(false);
-	// }, []);
 
 	const handleOpenImportDialog = useCallback(() => {
 		setIsImportDialogOpen(true);
@@ -614,7 +602,7 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 				title="Agents"
 				searchQuery={searchQuery}
 				onSearchChange={(query) => setSearchQuery(query)}
-				onNewAgentClick={openCreateAgentDialog} // Use global action
+				onNewAgentClick={openCreateAgentDialog}
 				onImportAgentClick={handleOpenImportDialog}
 				importAgentTooltip="Import an agent from a ZIP file"
 			/>
@@ -670,17 +658,6 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 				</AgentsList>
 			)}
 
-			{/* CreateAgentDialog is now global, rendered in App.tsx.
-			    The onAgentCreated logic in App.tsx handles navigation.
-			    If chat-sidebar needs specific actions post-creation (like refetch/selection),
-			    it should rely on route changes or data updates triggered by global actions.
-			 */}
-			{/* <CreateAgentDialog
-				open={isCreateDialogOpen} // This would be from global store if needed here
-				onClose={handleCloseCreateDialog} // This would be from global store
-				onAgentCreated={handleAgentCreated} // This callback might be simplified or removed
-			/> */}
-
 			<ImportAgentDialog
 				open={isImportDialogOpen}
 				onClose={handleCloseImportDialog}
@@ -696,7 +673,7 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 					}
 				/>
 			)}
-			{/* Upload Agent Dialog */}
+
 			<UploadAgentDialog
 				open={isUploadDialogOpen}
 				onClose={handleCloseUploadDialog}

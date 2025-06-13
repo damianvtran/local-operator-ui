@@ -33,7 +33,7 @@ import {
 	ScrollText,
 } from "lucide-react";
 import type { FC } from "react";
-import { useCallback, useMemo } from "react";
+import { memo, useCallback, useMemo } from "react";
 
 type CanvasFileViewerProps = {
 	conversationId: string;
@@ -194,7 +194,7 @@ const getIconForFileType = (type?: CanvasDocumentType) => {
 	}
 };
 
-export const CanvasFileViewer: FC<CanvasFileViewerProps> = ({
+const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 	conversationId,
 	onSwitchToDocumentView,
 }) => {
@@ -463,3 +463,5 @@ export const CanvasFileViewer: FC<CanvasFileViewerProps> = ({
 		</Box>
 	);
 };
+
+export const CanvasFileViewer = memo(CanvasFileViewerComponent);

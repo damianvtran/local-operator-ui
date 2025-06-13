@@ -55,6 +55,7 @@ type StreamingMessageProps = {
 	className?: string;
 	conversationId?: string;
 	refetchOnComplete?: boolean;
+	styleProps?: Record<string, unknown>;
 };
 
 export const StreamingMessage = ({
@@ -70,6 +71,7 @@ export const StreamingMessage = ({
 	className,
 	conversationId,
 	refetchOnComplete = true,
+	styleProps,
 }: StreamingMessageProps) => {
 	const { getStreamingMessage, isMessageStreamingComplete } =
 		useStreamingMessagesStore();
@@ -290,10 +292,10 @@ export const StreamingMessage = ({
 					mb: 2,
 				}}
 			>
-				<MarkdownRenderer content={message.message} />
+				<MarkdownRenderer content={message.message} styleProps={styleProps} />
 			</Box>
 		);
-	}, [message?.message]);
+	}, [message?.message, styleProps]);
 
 	const streamingLoader = useMemo(() => {
 		if (status === "connected" && !message?.message) {

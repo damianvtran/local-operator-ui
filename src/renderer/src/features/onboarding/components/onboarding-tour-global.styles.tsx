@@ -15,7 +15,19 @@ export const OnboardingTourGlobalStyles: FC = () => {
 			borderRadius: "6px", // Reduced border radius
 			boxShadow: `0 8px 30px ${alpha(theme.palette.common.black, 0.35)}`, // Slightly adjusted shadow
 			border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-			maxWidth: "400px",
+			maxWidth: "500px",
+			maxHeight: "95vh",
+			overflowY: "auto",
+			"&::-webkit-scrollbar": {
+				width: "8px",
+			},
+			"&::-webkit-scrollbar-thumb": {
+				backgroundColor:
+					theme.palette.mode === "dark"
+						? "rgba(255, 255, 255, 0.1)"
+						: "rgba(0, 0, 0, 0.2)",
+				borderRadius: "4px",
+			},
 			"&.shepherd-has-title .shepherd-content .shepherd-header": {
 				borderTopLeftRadius: "6px", // Adjusted
 				borderTopRightRadius: "6px", // Adjusted
@@ -58,8 +70,8 @@ export const OnboardingTourGlobalStyles: FC = () => {
 			backgroundColor: theme.palette.background.default,
 			padding: "16px 20px",
 			color: theme.palette.text.secondary,
-			fontSize: "1rem", // body1 equivalent
-			lineHeight: 1.6,
+			fontSize: "0.875rem", // body1 equivalent
+			lineHeight: 1.5,
 			"& p": {
 				// Ensure paragraphs within text are styled correctly
 				margin: 0,
