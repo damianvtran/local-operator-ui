@@ -28,7 +28,7 @@ export const useUndoManagerStore = create<UndoManagerState>((set, get) => ({
 
 		const manager = new UndoManager(element, {
 			maxHistory: 50,
-			debounceDelay: 250,
+			debounceDelay: 350,
 			onStateChange,
 		});
 
