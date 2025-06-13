@@ -413,6 +413,28 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 	const canvasState = useCanvasStore((state) =>
 		conversationId ? state.conversations[conversationId] : undefined,
 	);
+
+	// Manual save function that bypasses debounce
+	const handleManualSave = useCallback(() => {
+		if (!document.path || !hasUserChanges || content === originalContentRef.current) {
+			return;
+		}
+
+		window.api.saveFile(document.path, content);
+		showSuccessToast("File saved successfully");
+		originalContentRef.current = content;
+		setHasUserChanges(false);
+
+		if (conversationId && canvasState) {
+			const updatedFiles = canvasState.files.map((file) =>
+				file.id === document.id
+					? { ...file, content }
+					: file,
+			);
+			setFiles(conversationId, updatedFiles);
+		}
+	}, [document.path, document.id, hasUserChanges, content, conversationId, canvasState, setFiles]);
+  
 	const updateCurrentTextType = useCallback(() => {
 		const selection = window.getSelection();
 		if (!selection?.rangeCount) return;
@@ -1036,6 +1058,10 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 						event.preventDefault();
 						handleFormatToggle("underline");
 						break;
+					case "s":
+						event.preventDefault();
+						handleManualSave();
+						break;
 					case "k": {
 						event.preventDefault();
 						const selection = window.getSelection();
@@ -1164,7 +1190,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 				}
 			}
 		},
-		[handleFormatToggle, executeCommand, content],
+		[handleFormatToggle, executeCommand, content, handleManualSave],
 	);
 
 	const handleFinalizeChanges = (finalDiffs: EditDiff[]) => {
