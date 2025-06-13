@@ -1131,6 +1131,31 @@ A good description helps you and others understand what the agent does and any s
 		],
 	},
 	{
+		id: "appearance-settings",
+		attachTo: {
+			element: '[data-tour-tag="settings-appearance-section"]',
+			on: "right",
+		},
+		title: "Customize Appearance",
+		text: "Choose from various themes to change the look and feel of Local Operator. Find one that suits your style!",
+		buttons: [
+			{
+				text: "Back",
+				classes: "shepherd-button-secondary",
+				action: function () {
+					this.back();
+				},
+			},
+			{
+				text: "Next",
+				classes: "shepherd-button-primary",
+				action: function () {
+					this.next();
+				},
+			},
+		],
+	},
+	{
 		id: "radient-account-settings",
 		attachTo: {
 			element: '[data-tour-tag="settings-radient-account-section"]',
@@ -1163,31 +1188,6 @@ A good description helps you and others understand what the agent does and any s
 		},
 		title: "Connect Your Services",
 		text: "Enhance your agents' capabilities by connecting your Google services like Gmail, Calendar, and Drive. This allows agents to access and manage your information with your permission.<br /><br />You need to be logged in to a Radient account to use this feature, however it is free to use and doesn't cost any additional Radient Credits per action.",
-		buttons: [
-			{
-				text: "Back",
-				classes: "shepherd-button-secondary",
-				action: function () {
-					this.back();
-				},
-			},
-			{
-				text: "Next",
-				classes: "shepherd-button-primary",
-				action: function () {
-					this.next();
-				},
-			},
-		],
-	},
-	{
-		id: "appearance-settings",
-		attachTo: {
-			element: '[data-tour-tag="settings-appearance-section"]',
-			on: "right",
-		},
-		title: "Customize Appearance",
-		text: "Choose from various themes to change the look and feel of Local Operator. Find one that suits your style!",
 		buttons: [
 			{
 				text: "Back",
