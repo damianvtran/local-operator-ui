@@ -146,7 +146,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 
 		const resizeObserver = new ResizeObserver((entries) => {
 			for (const entry of entries) {
-				if (entry.contentRect.width < 500) {
+				if (entry.contentRect.width < 550) {
 					setIsSmallView(true);
 				} else {
 					setIsSmallView(false);

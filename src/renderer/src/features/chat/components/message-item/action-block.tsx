@@ -190,8 +190,8 @@ export const ActionBlock: FC<ActionBlockProps> = ({
 
 	const markdownStyleProps = useMemo(
 		() => ({
-			fontSize: isSmallView ? "0.9rem" : "1.05rem",
-			lineHeight: isSmallView ? 1.4 : 1.6,
+			fontSize: isSmallView ? "0.95rem" : "1.05rem",
+			lineHeight: isSmallView ? 1.45 : 1.6,
 		}),
 		[isSmallView],
 	);
