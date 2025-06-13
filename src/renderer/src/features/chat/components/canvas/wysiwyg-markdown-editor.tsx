@@ -394,7 +394,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 	const relativeContainerRef = useRef<HTMLDivElement>(null);
 	const scrollPositionRef = useRef<number | null>(null);
 
-	const debouncedContent = useDebouncedValue(content, 1000);
+	const debouncedContent = useDebouncedValue(content, 15000);
 	const editorRef = useRef<HTMLDivElement>(null);
 	const originalContentRef = useRef(document.content);
 	const isInitialLoadRef = useRef(true);
@@ -760,7 +760,11 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 		if (editorRef.current) {
 			// Set editor content
 			const htmlContent = markdownToHtml(document.content);
-			editorRef.current.innerHTML = htmlContent;
+
+			if (editorRef.current.innerHTML !== htmlContent) {
+				editorRef.current.innerHTML = htmlContent;
+			}
+      
 			setContent(document.content);
 			setHasUserChanges(false);
 			originalContentRef.current = document.content;
@@ -1739,4 +1743,37 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 	);
 };
 
-export const WysiwygMarkdownEditor = memo(WysiwygMarkdownEditorComponent);
+/**
+ * Custom comparison function for memoization that only checks properties
+ * that actually affect the rendering of the editor component.
+ * This prevents unnecessary re-renders when metadata like lastModified changes
+ * but the actual document content and title remain the same.
+ */
+const arePropsEqual = (
+	prevProps: WysiwygMarkdownEditorProps,
+	nextProps: WysiwygMarkdownEditorProps,
+): boolean => {
+	// Check if conversationId or agentId changed
+	if (
+		prevProps.conversationId !== nextProps.conversationId ||
+		prevProps.agentId !== nextProps.agentId
+	) {
+		return false;
+	}
+
+	// Check document properties that affect rendering
+	const prevDoc = prevProps.document;
+	const nextDoc = nextProps.document;
+
+	// These are the only document properties that affect the editor rendering
+	return (
+		prevDoc.id === nextDoc.id &&
+		prevDoc.title === nextDoc.title &&
+		prevDoc.content === nextDoc.content &&
+		prevDoc.path === nextDoc.path &&
+		prevDoc.type === nextDoc.type
+	);
+	// Note: lastModified is intentionally excluded as it doesn't affect rendering
+};
+
+export const WysiwygMarkdownEditor = memo(WysiwygMarkdownEditorComponent, arePropsEqual);
