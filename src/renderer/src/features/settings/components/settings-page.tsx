@@ -336,11 +336,11 @@ const UsageInfo: FC = () => {
 // --- Main Settings Page Component ---
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
-	height: "100%", // Occupy full viewport height
-	width: "100%", // Occupy full viewport width
+	height: "100%", 
+	width: "100%", 
 	display: "flex",
-	overflow: "hidden", // Prevent layout issues with fixed sidebar/scrollable content
-	backgroundColor: theme.palette.background.default, // Use default background
+	overflow: "hidden", 
+	backgroundColor: theme.palette.background.default, 
 	[theme.breakpoints.down("md")]: {
 		flexDirection: "column",
 	},
@@ -348,44 +348,43 @@ const StyledPaper = styled(Paper)(({ theme }) => ({
 
 const ContentContainer = styled(Box)(({ theme }) => ({
 	flexGrow: 1,
-	overflowY: "auto", // Only vertical scroll
-	overflowX: "hidden", // Hide horizontal scroll
-	padding: theme.spacing(4), // Consistent padding (32px)
+	overflowY: "auto", 
+	overflowX: "hidden", 
+	padding: theme.spacing(4), 
 	[theme.breakpoints.down("md")]: {
-		padding: theme.spacing(3), // Reduce padding on medium screens (24px)
+		padding: theme.spacing(3), 
 	},
 	[theme.breakpoints.down("sm")]: {
-		padding: theme.spacing(2), // Reduce padding on small screens (16px)
+		padding: theme.spacing(2), 
 	},
-	// Shadcn-like scrollbar styling
 	"&::-webkit-scrollbar": {
 		width: "8px",
-		height: "8px", // Also style horizontal scrollbar if it appears
+		height: "8px", 
 	},
 	"&::-webkit-scrollbar-track": {
-		backgroundColor: "transparent", // Make track invisible
+		backgroundColor: "transparent", 
 	},
 	"&::-webkit-scrollbar-thumb": {
-		backgroundColor: theme.palette.divider, // Use divider color for thumb
+		backgroundColor: theme.palette.divider, 
 		borderRadius: "4px",
-		border: `2px solid ${theme.palette.background.default}`, // Create padding around thumb
+		border: `2px solid ${theme.palette.background.default}`, 
 		"&:hover": {
-			backgroundColor: theme.palette.text.disabled, // Slightly darker on hover
+			backgroundColor: theme.palette.text.disabled, 
 		},
 	},
 }));
 
 const SidebarContainer = styled(Box)(({ theme }) => ({
-	width: 260, // Slightly narrower sidebar
+	width: 220, 
 	flexShrink: 0,
-	borderRight: `1px solid ${theme.palette.divider}`, // Add border like shadcn examples
-	backgroundColor: theme.palette.background.paper, // Sidebar background
-	overflowY: "auto", // Allow sidebar scrolling if needed
+	borderRight: `1px solid ${theme.palette.divider}`, 
+	backgroundColor: theme.palette.background.paper, 
+	overflowY: "auto", 
 	[theme.breakpoints.down("md")]: {
 		width: "100%",
-		borderRight: "none", // Remove border on mobile
-		borderBottom: `1px solid ${theme.palette.divider}`, // Add bottom border instead
-		maxHeight: "40vh", // Limit height on mobile
+		borderRight: "none", 
+		borderBottom: `1px solid ${theme.palette.divider}`, 
+		maxHeight: "40vh", 
 	},
 }));
 
@@ -393,11 +392,11 @@ const LoadingContainer = styled(Box)({
 	display: "flex",
 	justifyContent: "center",
 	alignItems: "center",
-	height: "100%", // Take full height of parent
+	height: "100%", 
 });
 
 const ErrorContainer = styled(Box)(({ theme }) => ({
-	padding: theme.spacing(3), // Consistent padding
+	padding: theme.spacing(3), 
 	display: "flex",
 	justifyContent: "center",
 	alignItems: "center",
@@ -411,7 +410,7 @@ const MainContentWrapper = styled(Box)(({ theme }) => ({
 
 // Specific styling for the Radient icon image
 const IconImage = styled("img")({
-	width: 32, // Slightly smaller icon
+	width: 32, 
 	height: 32,
 	objectFit: "contain",
 });
@@ -420,45 +419,42 @@ const IconImage = styled("img")({
 const RadientSectionTitle: FC = () => (
 	<Stack
 		direction={{ xs: "column", sm: "row" }}
-		spacing={{ xs: 1.5, sm: 2 }} // Responsive spacing
+		spacing={{ xs: 1.5, sm: 2 }} 
 		justifyContent="space-between"
 		alignItems={{ xs: "flex-start", sm: "center" }}
-		mb={3} // Margin below the entire title block
+		mb={3} 
 	>
 		<Box>
 			<Typography
-				variant="h5" // Keep h5 for major section title
+				variant="h5" 
 				fontWeight="500"
 				display="flex"
 				alignItems="center"
-				gap={1.5} // Consistent gap
-				mb={0.5} // Reduced margin bottom
+				gap={1.5} 
+				mb={0.5} 
 			>
 				<IconImage src={radientIcon} alt="Radient Icon" />
 				Radient Account
 			</Typography>
-			{/* Description moved to SettingsSectionCard prop */}
 		</Box>
 		<Button
-			variant="outlined" // Use outlined for secondary action
+			variant="outlined" 
 			color="primary"
 			href="https://console.radienthq.com"
 			target="_blank"
 			rel="noopener noreferrer"
-			endIcon={<FontAwesomeIcon icon={faExternalLinkAlt} size="xs" />} // xs icon
+			endIcon={<FontAwesomeIcon icon={faExternalLinkAlt} size="xs" />} 
 			sx={(theme) => ({
-				// Shadcn-inspired subtle outline button
 				borderColor: theme.palette.divider,
 				color: theme.palette.text.secondary,
 				textTransform: "none",
-				fontSize: "0.8125rem", // ~13px
+				fontSize: "0.8125rem", 
 				padding: theme.spacing(0.5, 1.5),
 				borderRadius: theme.shape.borderRadius * 0.75,
 				"&:hover": {
 					backgroundColor: theme.palette.action.hover,
 					borderColor: theme.palette.divider,
 				},
-				// Responsive alignment
 				mt: { xs: 1, sm: 0 },
 				alignSelf: { xs: "flex-start", sm: "center" },
 			})}
@@ -473,7 +469,7 @@ export const SettingsPage: FC = () => {
 		data: config,
 		isLoading: isConfigLoading,
 		error: configError,
-		refetch, // Keep refetch
+		refetch, 
 	} = useConfig();
 	const updateConfigMutation = useUpdateConfig();
 	const [savingField, setSavingField] = useState<string | null>(null);
@@ -481,9 +477,10 @@ export const SettingsPage: FC = () => {
 	const { isAuthenticated, isLoading: isAuthLoading } = useRadientAuth();
 	const [activeSection, setActiveSection] = useState<string>("general");
 	const [isScrolling, setIsScrolling] = useState(false);
-	const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null); // Ref for scroll timeout
+	const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null); 
+	const contentContainerRef = useRef<HTMLDivElement>(null);
 	const { startTour: startOnboardingTour } = useOnboardingTour();
-	const location = useLocation(); // Added location
+	const location = useLocation(); 
 
 	const theme = useTheme();
 
@@ -537,20 +534,17 @@ export const SettingsPage: FC = () => {
 			setIsScrolling(true); // Prevent scroll listener from interfering
 
 			const ref = sectionRefs[sectionId];
-			const contentContainer = document.querySelector(
-				"[data-settings-content]",
-			);
+			const contentContainer = contentContainerRef.current;
 
 			if (ref?.current && contentContainer) {
-				const containerRect = contentContainer.getBoundingClientRect();
-				const elementRect = ref.current.getBoundingClientRect();
-				// Calculate scroll position relative to the container, adding container's current scroll position
-				const scrollTop =
-					elementRect.top - containerRect.top + contentContainer.scrollTop;
+				// Get the element's position relative to the container's scroll area
+				const elementOffsetTop = ref.current.offsetTop;
+				
+				// Scroll with offset for better positioning (accounting for header/padding)
+				const targetScrollTop = Math.max(0, elementOffsetTop - 80);
 
-				// Scroll with offset for the sticky header/padding
 				contentContainer.scrollTo({
-					top: scrollTop - 80, // Adjust offset as needed (e.g., header height + padding)
+					top: targetScrollTop,
 					behavior: "smooth",
 				});
 
@@ -559,14 +553,14 @@ export const SettingsPage: FC = () => {
 					clearTimeout(scrollTimeoutRef.current);
 				}
 
-				// Set a timeout to re-enable scroll listening after the smooth scroll likely finishes
+				// Set a timeout to re-enable scroll listening after the smooth scroll finishes
 				scrollTimeoutRef.current = setTimeout(() => {
 					setIsScrolling(false);
-					scrollTimeoutRef.current = null; // Clear the ref after timeout
-				}, 600); // Adjust duration if needed
+					scrollTimeoutRef.current = null;
+				}, 800); // Slightly longer timeout to ensure smooth scroll completes
 			} else {
-				// Fallback or if container not found
-				setIsScrolling(false); // Re-enable immediately if scroll fails
+				// Fallback if container or ref not found
+				setIsScrolling(false);
 			}
 		},
 		[sectionRefs],
@@ -574,50 +568,76 @@ export const SettingsPage: FC = () => {
 
 	// Update active section based on scroll position
 	useEffect(() => {
-		const contentContainer = document.querySelector("[data-settings-content]");
-		if (!contentContainer) return undefined; // Exit if container not found
+		// Use a small delay to ensure DOM is ready
+		const timer = setTimeout(() => {
+			const contentContainer = contentContainerRef.current;
+			
+			if (!contentContainer) {
+				return;
+			}
 
-		const handleScroll = () => {
-			// If programmatic scrolling is active, or timeout is running, ignore scroll events
-			if (isScrolling || scrollTimeoutRef.current) return;
+			const handleScroll = () => {
+				// If programmatic scrolling is active, ignore scroll events
+				if (isScrolling) {
+					return;
+				}
 
-			const scrollPosition = contentContainer.scrollTop + 100; // Offset for activation point
+				const containerRect = contentContainer.getBoundingClientRect();
+				const viewportHeight = containerRect.height;
+				
+				// Find the section that is most visible in the viewport
+				let bestSection = "";
+				let bestVisibility = 0;
 
-			// Find the section currently in view
-			let currentSection = "";
-			for (const [sectionId, ref] of Object.entries(sectionRefs)) {
-				if (ref.current) {
-					const { offsetTop, offsetHeight } = ref.current;
-					// Check if the top of the section is within the activation zone
-					if (
-						scrollPosition >= offsetTop &&
-						scrollPosition < offsetTop + offsetHeight
-					) {
-						currentSection = sectionId;
-						break; // Found the active section
+				for (const [sectionId, ref] of Object.entries(sectionRefs)) {
+					if (ref.current) {
+						const elementRect = ref.current.getBoundingClientRect();
+						const containerTop = containerRect.top;
+						
+						// Calculate the element's position relative to the container
+						const elementTop = elementRect.top - containerTop;
+						const elementBottom = elementRect.bottom - containerTop;
+						const elementHeight = elementRect.height;
+						
+						// Calculate how much of the element is visible in the viewport
+						const visibleTop = Math.max(0, elementTop);
+						const visibleBottom = Math.min(viewportHeight, elementBottom);
+						const visibleHeight = Math.max(0, visibleBottom - visibleTop);
+						const visibilityRatio = visibleHeight / elementHeight;
+						
+						// Prefer sections that are more visible, with a bias towards sections near the top
+						const score = visibilityRatio + (elementTop < viewportHeight * 0.3 ? 0.1 : 0);
+						
+						if (score > bestVisibility && visibilityRatio > 0.1) {
+							bestVisibility = score;
+							bestSection = sectionId;
+						}
 					}
 				}
-			}
 
-			// Update state only if the active section has changed
-			if (currentSection && currentSection !== activeSection) {
-				setActiveSection(currentSection);
-			}
-		};
+				// Update state only if the active section has changed
+				if (bestSection && bestSection !== activeSection) {
+					setActiveSection(bestSection);
+				}
+			};
 
-		contentContainer.addEventListener("scroll", handleScroll, {
-			passive: true,
-		}); // Use passive listener
+			// Initial call to set the correct section on mount
+			handleScroll();
 
-		// Cleanup function
-		return () => {
-			contentContainer.removeEventListener("scroll", handleScroll);
-			// Clear timeout on unmount
-			if (scrollTimeoutRef.current) {
-				clearTimeout(scrollTimeoutRef.current);
-			}
-		};
-	}, [sectionRefs, activeSection, isScrolling]); // Rerun effect if refs, activeSection, or scrolling state changes
+			contentContainer.addEventListener("scroll", handleScroll, {
+				passive: true,
+			});
+
+			return () => {
+				contentContainer.removeEventListener("scroll", handleScroll);
+				if (scrollTimeoutRef.current) {
+					clearTimeout(scrollTimeoutRef.current);
+				}
+			};
+		}, 100);
+
+		return () => clearTimeout(timer);
+	}, [sectionRefs, activeSection, isScrolling]);
 
 	// Effect to handle initial section scrolling from URL query parameter
 	useEffect(() => {
@@ -693,6 +713,7 @@ export const SettingsPage: FC = () => {
 
 			{/* Scrollable Content Area */}
 			<ContentContainer
+				ref={contentContainerRef}
 				data-settings-content
 				data-tour-tag="settings-general-section"
 			>
@@ -910,6 +931,17 @@ export const SettingsPage: FC = () => {
 						</Grid>
 					</Box>
 
+          {/* Appearance Section */}
+					<SettingsSectionCard
+						title="Appearance"
+						icon={faAdjust}
+						description="Customize the look and feel of Local Operator"
+						cardRef={sectionRefs.appearance} // Assign ref
+						dataTourTag="settings-appearance-section"
+					>
+						<ThemeSelector />
+					</SettingsSectionCard>
+
 					{/* Radient Account Section */}
 					<SettingsSectionCard
 						title="Radient Account" // Title is handled by titleComponent
@@ -942,17 +974,6 @@ export const SettingsPage: FC = () => {
 					<Box ref={sectionRefs.integrations}>
 						<GoogleIntegrationsSection />
 					</Box>
-
-					{/* Appearance Section */}
-					<SettingsSectionCard
-						title="Appearance"
-						icon={faAdjust}
-						description="Customize the look and feel of Local Operator"
-						cardRef={sectionRefs.appearance} // Assign ref
-						dataTourTag="settings-appearance-section"
-					>
-						<ThemeSelector />
-					</SettingsSectionCard>
 
 					{/* API Credentials Section */}
 					<SettingsSectionCard
