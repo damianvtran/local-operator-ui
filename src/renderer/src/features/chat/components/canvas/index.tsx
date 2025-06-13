@@ -296,7 +296,7 @@ const CanvasComponent: FC<CanvasProps> = ({
 						Your visual workspace
 					</Typography>
 				</HeaderTitle>
-				<Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+				<Box sx={{ display: "flex", alignItems: "center", gap: 0 }}>
 					<Tooltip
 						title={`Create New File (${modifierKey} + N)`}
 						arrow
