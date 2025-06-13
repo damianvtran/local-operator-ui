@@ -1182,6 +1182,23 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 		setInlineEdit(null);
 		selectionRef.current = null;
 		undoManagerRef.current?.saveCurrentState();
+		
+		// Force save the changes immediately since they came from inline edit
+		if (document.path && finalContent !== originalContentRef.current) {
+			window.api.saveFile(document.path, finalContent);
+			showSuccessToast("File saved successfully");
+			originalContentRef.current = finalContent;
+			setHasUserChanges(false);
+
+			if (conversationId && canvasState) {
+				const updatedFiles = canvasState.files.map((file) =>
+					file.id === document.id
+						? { ...file, content: finalContent }
+						: file,
+				);
+				setFiles(conversationId, updatedFiles);
+			}
+		}
 	};
     
   /**
@@ -1300,6 +1317,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
       contentToRender = contentToRender.replace(find, replace);
     }
     editorRef.current.innerHTML = markdownToHtml(contentToRender);
+    
     // Delay to ensure DOM updates before highlighting
     setTimeout(() => showDiffInline(diffs[currentIndex], contentToRender), 0);
   }, [reviewState, showDiffInline]);
