@@ -389,11 +389,10 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 	const editorRef = useRef<HTMLDivElement>(null);
 	const originalContentRef = useRef(document.content);
 	const isInitialLoadRef = useRef(true);
-	const isMounted = useRef(false);
 	const [canUndo, setCanUndo] = useState(false);
 	const [canRedo, setCanRedo] = useState(false);
 
-	const { getManager, createManager, removeManager } = useUndoManagerStore();
+	const { getOrCreateManager } = useUndoManagerStore();
 	const undoManagerRef = useRef<UndoManager | null>(null);
 
 	const findHighlightRegistry = "find-highlight";
@@ -702,49 +701,10 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 		[clearHighlights],
 	);
 
-	// Initialize UndoManager per document
+	// Initialize editor content
 	useEffect(() => {
-		if (editorRef.current && document.id) {
-			const onStateChange = (canUndo: boolean, canRedo: boolean) => {
-				setCanUndo(canUndo);
-				setCanRedo(canRedo);
-			};
-
-			// Get or create manager for this document
-			const manager = getManager(document.id, editorRef.current, onStateChange);
-			if (!manager) {
-				undoManagerRef.current = createManager(document.id, editorRef.current, onStateChange);
-			} else {
-				undoManagerRef.current = manager;
-			}
-
-			// Update initial state
-			setCanUndo(undoManagerRef.current.canUndo());
-			setCanRedo(undoManagerRef.current.canRedo());
-		}
-
-		return () => {
-			// Don't disconnect here - let the store manage the lifecycle
-			undoManagerRef.current = null;
-		};
-	}, [document.id, getManager, createManager]);
-
-	// Cleanup manager when component unmounts
-	useEffect(() => {
-		return () => {
-			if (document.id) {
-				removeManager(document.id);
-			}
-		};
-	}, [document.id, removeManager]);
-
-	// Initialize editor content from markdown
-	useEffect(() => {
-		if (
-			editorRef.current &&
-			(!isMounted.current || document.content !== originalContentRef.current)
-		) {
-			isMounted.current = true;
+		if (editorRef.current) {
+			// Set editor content
 			const htmlContent = markdownToHtml(document.content);
 			editorRef.current.innerHTML = htmlContent;
 			setContent(document.content);
@@ -753,6 +713,43 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 			isInitialLoadRef.current = true;
 		}
 	}, [document.content]);
+
+	// Manage UndoManager lifecycle
+	useEffect(() => {
+		const onStateChange = (canUndo: boolean, canRedo: boolean) => {
+			setCanUndo(canUndo);
+			setCanRedo(canRedo);
+		};
+
+		if (editorRef.current && document.id) {
+			// Disconnect previous manager
+			if (undoManagerRef.current) {
+				undoManagerRef.current.disconnect();
+			}
+
+			// Get or create a manager for the new document
+			const manager = getOrCreateManager(
+				document.id,
+				editorRef.current,
+				onStateChange,
+			);
+			undoManagerRef.current = manager;
+
+			// Connect the manager and update its state
+			if (!manager.isConnectedToElement()) {
+				manager.connect();
+			}
+			setCanUndo(manager.canUndo());
+			setCanRedo(manager.canRedo());
+		}
+
+		return () => {
+			// Disconnect the manager on cleanup
+			if (undoManagerRef.current) {
+				undoManagerRef.current.disconnect();
+			}
+		};
+	}, [document.id, getOrCreateManager]);
 
 	// Save content when debounced
 	useEffect(() => {
@@ -1107,6 +1104,13 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 							event.preventDefault();
 							if (undoManagerRef.current?.canRedo()) {
 								undoManagerRef.current.redo();
+								// Update content state after redo
+								if (editorRef.current) {
+									const htmlContent = editorRef.current.innerHTML;
+									const markdownContent = htmlToMarkdown(htmlContent);
+									setContent(markdownContent);
+									setHasUserChanges(true);
+								}
 								setCanUndo(undoManagerRef.current.canUndo());
 								setCanRedo(undoManagerRef.current.canRedo());
 							}
@@ -1114,6 +1118,13 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 							event.preventDefault();
 							if (undoManagerRef.current?.canUndo()) {
 								undoManagerRef.current.undo();
+								// Update content state after undo
+								if (editorRef.current) {
+									const htmlContent = editorRef.current.innerHTML;
+									const markdownContent = htmlToMarkdown(htmlContent);
+									setContent(markdownContent);
+									setHasUserChanges(true);
+								}
 								setCanUndo(undoManagerRef.current.canUndo());
 								setCanRedo(undoManagerRef.current.canRedo());
 							}
@@ -1170,6 +1181,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 		setReviewState(null);
 		setInlineEdit(null);
 		selectionRef.current = null;
+		undoManagerRef.current?.saveCurrentState();
 	};
     
   /**
@@ -1478,6 +1490,13 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 						onClick={() => {
 							if (undoManagerRef.current?.canUndo()) {
 								undoManagerRef.current.undo();
+								// Update content state after undo
+								if (editorRef.current) {
+									const htmlContent = editorRef.current.innerHTML;
+									const markdownContent = htmlToMarkdown(htmlContent);
+									setContent(markdownContent);
+									setHasUserChanges(true);
+								}
 								setCanUndo(undoManagerRef.current.canUndo());
 								setCanRedo(undoManagerRef.current.canRedo());
 							}
@@ -1492,6 +1511,13 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 						onClick={() => {
 							if (undoManagerRef.current?.canRedo()) {
 								undoManagerRef.current.redo();
+								// Update content state after redo
+								if (editorRef.current) {
+									const htmlContent = editorRef.current.innerHTML;
+									const markdownContent = htmlToMarkdown(htmlContent);
+									setContent(markdownContent);
+									setHasUserChanges(true);
+								}
 								setCanUndo(undoManagerRef.current.canUndo());
 								setCanRedo(undoManagerRef.current.canRedo());
 							}

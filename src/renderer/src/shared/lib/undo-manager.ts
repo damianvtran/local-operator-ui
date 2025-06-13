@@ -50,9 +50,6 @@ export class UndoManager {
 
     // Initialize mutation observer
     this.mutationObserver = new MutationObserver(this.mutationHandler);
-
-    // Add initial state
-    this.addState(this.element.innerHTML);
   }
 
   /**
@@ -60,6 +57,11 @@ export class UndoManager {
    */
   public connect(): void {
     if (this.isConnected) return;
+
+    // Add initial state if history is empty
+    if (this.history.length === 0) {
+        this.addState(this.element.innerHTML);
+    }
 
     this.element.addEventListener('beforeinput', this.beforeInputListener);
     this.mutationObserver.observe(this.element, {
@@ -214,8 +216,8 @@ export class UndoManager {
       }
     } catch (error) {
       console.warn('Failed to restore selection:', error);
-      // Fallback: place cursor at the end
-      this.placeCursorAtEnd();
+      // Fallback: try to place cursor at a reasonable position instead of end
+      this.restoreSelectionFallback(selectionState);
     }
   }
 
@@ -237,15 +239,79 @@ export class UndoManager {
   }
 
   /**
-   * Place cursor at the end of the content
+   * Fallback selection restoration when exact restoration fails
    */
-  private placeCursorAtEnd(): void {
+  private restoreSelectionFallback(selectionState: HistoryState['selection']): void {
+    if (!selectionState) {
+      this.placeCursorAtBeginning();
+      return;
+    }
+
+    try {
+      // Try to find a text node at approximately the same position
+      const walker = document.createTreeWalker(
+        this.element,
+        NodeFilter.SHOW_TEXT,
+        null
+      );
+
+      let textNode: Node | null = walker.nextNode();
+      let currentOffset = 0;
+      const targetOffset = selectionState.startOffset;
+
+      while (textNode) {
+        const textLength = textNode.textContent?.length || 0;
+        if (currentOffset + textLength >= targetOffset) {
+          // Found a suitable text node
+          const range = document.createRange();
+          const localOffset = Math.min(targetOffset - currentOffset, textLength);
+          range.setStart(textNode, localOffset);
+          range.collapse(true);
+
+          const selection = window.getSelection();
+          if (selection) {
+            selection.removeAllRanges();
+            selection.addRange(range);
+          }
+          return;
+        }
+        currentOffset += textLength;
+        textNode = walker.nextNode();
+      }
+
+      // If all else fails, place cursor at the beginning of the first text node
+      walker.currentNode = this.element;
+      textNode = walker.nextNode();
+      if (textNode) {
+        const range = document.createRange();
+        range.setStart(textNode, 0);
+        range.collapse(true);
+
+        const selection = window.getSelection();
+        if (selection) {
+          selection.removeAllRanges();
+          selection.addRange(range);
+        }
+      } else {
+        // Last resort: place cursor at the beginning of the element
+        this.placeCursorAtBeginning();
+      }
+    } catch (error) {
+      console.warn('Fallback selection restoration failed:', error);
+      this.placeCursorAtBeginning();
+    }
+  }
+
+  /**
+   * Place cursor at the beginning of the content
+   */
+  private placeCursorAtBeginning(): void {
     const selection = window.getSelection();
     if (!selection) return;
 
     const range = document.createRange();
     range.selectNodeContents(this.element);
-    range.collapse(false);
+    range.collapse(true);
     selection.removeAllRanges();
     selection.addRange(range);
   }
@@ -332,6 +398,30 @@ export class UndoManager {
     this.history = [];
     this.pointer = -1;
     this.addState(this.element.innerHTML);
+  }
+
+  /**
+   * Reset the manager for a new document
+   */
+  public resetForNewDocument(newElement: HTMLElement): void {
+    // Disconnect from old element
+    this.disconnect();
+    
+    // Update element reference
+    this.element = newElement;
+    
+    // Clear history and start fresh
+    this.history = [];
+    this.pointer = -1;
+    
+    // Reconnect to new element
+    this.connect();
+    
+    // Add initial state for new document
+    this.addState(this.element.innerHTML);
+    
+    // Notify state change
+    this.notifyStateChange();
   }
 
   /**
