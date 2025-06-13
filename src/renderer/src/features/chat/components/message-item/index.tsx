@@ -36,6 +36,7 @@ export type MessageItemProps = {
 	isLastMessage?: boolean;
 	conversationId: string;
 	currentExecution?: AgentExecutionRecord | null;
+	isSmallView?: boolean;
 };
 
 /**
@@ -164,6 +165,7 @@ export const MessageItem: FC<MessageItemProps> = memo(
 		isLastMessage,
 		conversationId,
 		currentExecution,
+		isSmallView,
 	}) => {
 		const addMentionedFilesBatch = useCanvasStore(
 			(s) => s.addMentionedFilesBatch,
@@ -278,11 +280,12 @@ export const MessageItem: FC<MessageItemProps> = memo(
 
 		if (shouldUseActionBlock) {
 			return (
-				<MessageContainer isUser={isUser}>
-					<MessageAvatar isUser={isUser} />
+				<MessageContainer isUser={isUser} isSmallView={isSmallView}>
+					{!isSmallView && <MessageAvatar isUser={isUser} />}
 					<MessagePaper
 						isUser={isUser}
 						content={message.message}
+						isSmallView={isSmallView}
 						message={message}
 						onMessageComplete={onMessageComplete}
 						isLastMessage={isLastMessage ?? false}
@@ -291,7 +294,7 @@ export const MessageItem: FC<MessageItemProps> = memo(
 					>
 						<ActionBlock
 							message={message.message ?? ""}
-							content={message.content}
+							fileContent={message.content}
 							replacements={message.replacements}
 							action={message.action}
 							executionType={message.execution_type || "action"}
@@ -304,6 +307,7 @@ export const MessageItem: FC<MessageItemProps> = memo(
 							conversationId={conversationId}
 							filePath={message.file_path}
 							isLoading={isLastMessage && !!currentExecution}
+							isSmallView={isSmallView}
 						/>
 					</MessagePaper>
 				</MessageContainer>
@@ -311,14 +315,15 @@ export const MessageItem: FC<MessageItemProps> = memo(
 		}
 
 		return (
-			<MessageContainer isUser={isUser}>
-				<MessageAvatar isUser={isUser} />
+			<MessageContainer isUser={isUser} isSmallView={isSmallView}>
+				{!isSmallView && <MessageAvatar isUser={isUser} />}
 
 				{isSecurityCheck ? (
 					<SecurityCheckHighlight isUser={isUser}>
 						<MessagePaper
 							isUser={isUser}
 							content={message.message}
+							isSmallView={isSmallView}
 							message={message}
 							onMessageComplete={onMessageComplete}
 							isLastMessage={isLastMessage ?? false}
@@ -432,7 +437,11 @@ export const MessageItem: FC<MessageItemProps> = memo(
 							)}
 
 							{/* Message timestamp */}
-							<MessageTimestamp timestamp={message.timestamp} isUser={isUser} />
+							<MessageTimestamp
+								timestamp={message.timestamp}
+								isUser={isUser}
+								isSmallView={isSmallView}
+							/>
 						</MessagePaper>
 					</SecurityCheckHighlight>
 				) : (
@@ -440,6 +449,7 @@ export const MessageItem: FC<MessageItemProps> = memo(
 						isUser={isUser}
 						content={message.message}
 						message={message}
+						isSmallView={isSmallView}
 						onMessageComplete={onMessageComplete}
 						isLastMessage={isLastMessage ?? false}
 						isJobRunning={!!currentExecution}
@@ -572,28 +582,14 @@ export const MessageItem: FC<MessageItemProps> = memo(
 						)}
 
 						{/* Message timestamp */}
-						<MessageTimestamp timestamp={message.timestamp} isUser={isUser} />
+						<MessageTimestamp
+							timestamp={message.timestamp}
+							isUser={isUser}
+							isSmallView={isSmallView}
+						/>
 					</MessagePaper>
 				)}
 			</MessageContainer>
-		);
-	},
-	(prevProps, nextProps) => {
-		// Custom comparison function for memo
-		// Re-render if any of these properties have changed
-		return (
-			prevProps.message.id === nextProps.message.id &&
-			prevProps.message.message === nextProps.message.message &&
-			prevProps.message.status === nextProps.message.status &&
-			prevProps.message.is_complete === nextProps.message.is_complete &&
-			prevProps.message.is_streamable === nextProps.message.is_streamable &&
-			prevProps.currentExecution?.id === nextProps.currentExecution?.id &&
-			prevProps.currentExecution?.stdout ===
-				nextProps.currentExecution?.stdout &&
-			prevProps.currentExecution?.stderr ===
-				nextProps.currentExecution?.stderr &&
-			prevProps.currentExecution?.logging ===
-				nextProps.currentExecution?.logging
 		);
 	},
 );

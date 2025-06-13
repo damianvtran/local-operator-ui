@@ -8,7 +8,6 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
 	Avatar,
 	Box,
-	Divider,
 	Menu,
 	MenuItem,
 	Tooltip,
@@ -34,27 +33,18 @@ type UserProfileSidebarProps = {
 const ProfileContainer = styled(Box)(() => ({
 	display: "flex",
 	flexDirection: "column",
-}));
-
-const ProfileDivider = styled(Divider, {
-	shouldForwardProp: (prop) => prop !== "expanded",
-})<{ expanded: boolean }>(({ theme, expanded }) => ({
-	margin: "8px 0",
-	borderColor: theme.palette.sidebar.border,
-	marginLeft: expanded ? 16 : 8,
-	marginRight: expanded ? 16 : 8,
+	width: "100%",
 }));
 
 const ProfileBox = styled(Box, {
 	shouldForwardProp: (prop) => prop !== "expanded",
-})<{ expanded: boolean }>(({ theme, expanded }) => ({
+})<{ expanded: boolean }>(({ theme }) => ({
 	display: "flex",
 	alignItems: "center",
-	padding: "8px 16px",
+	padding: "4px 12px",
 	cursor: "pointer",
-	borderRadius: 8,
-	marginLeft: expanded ? 8 : "auto",
-	marginRight: expanded ? 8 : "auto",
+	borderRadius: 6,
+	margin: "0 8px",
 	transition: "all 0.2s ease",
 	"&:hover": {
 		backgroundColor: theme.palette.sidebar.itemHover,
@@ -62,17 +52,13 @@ const ProfileBox = styled(Box, {
 }));
 
 const UserAvatar = styled(Avatar)(({ theme }) => ({
-	width: 36,
-	height: 36,
+	width: 28,
+	height: 28,
 	backgroundColor: theme.palette.primary.main,
-	transition: "all 0.3s ease",
-	"&:hover": {
-		boxShadow: `0 0 15px ${alpha(theme.palette.primary.main, 0.5)}`,
-	},
 }));
 
 const UserInitials = styled("span")(() => ({
-	fontSize: "0.95rem",
+	fontSize: "0.75rem",
 	fontWeight: 500,
 }));
 
@@ -83,6 +69,7 @@ const UserInfoContainer = styled(Box)(() => ({
 
 const UserName = styled(Typography)(() => ({
 	fontWeight: 500,
+	fontSize: "0.875rem",
 	whiteSpace: "nowrap",
 	overflow: "hidden",
 	textOverflow: "ellipsis",
@@ -90,6 +77,7 @@ const UserName = styled(Typography)(() => ({
 
 const UserEmail = styled(Typography)(() => ({
 	color: "text.secondary",
+	fontSize: "0.75rem",
 	whiteSpace: "nowrap",
 	overflow: "hidden",
 	textOverflow: "ellipsis",
@@ -254,8 +242,6 @@ export const UserProfileSidebar: FC<UserProfileSidebarProps> = React.memo(
 
 		return (
 			<ProfileContainer>
-				<ProfileDivider expanded={expanded} />
-
 				<ProfileBox expanded={expanded} onClick={handleClick}>
 					{!expanded ? (
 						<StyledTooltip title="Account Settings" placement="right" arrow>

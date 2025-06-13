@@ -1,5 +1,6 @@
 import {
 	Box,
+	Divider,
 	Drawer,
 	IconButton,
 	List,
@@ -7,7 +8,6 @@ import {
 	ListItemIcon,
 	ListItemText,
 	Tooltip,
-	alpha,
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import { CollapsibleAppLogo } from "@shared/components/navigation/collapsible-app-logo";
@@ -59,13 +59,12 @@ const LogoContainer = styled(Box)(({ theme }) => ({
 	display: "flex",
 	alignItems: "center",
 	justifyContent: "center",
-	padding: theme.spacing(3),
+	padding: theme.spacing(2, 0),
 	marginBottom: theme.spacing(1),
 }));
 
 const NavList = styled(List)(({ theme }) => ({
-	paddingLeft: theme.spacing(1.5),
-	paddingRight: theme.spacing(1.5),
+	padding: theme.spacing(1),
 }));
 
 const NavItemButton = styled(ListItemButton, {
@@ -73,11 +72,10 @@ const NavItemButton = styled(ListItemButton, {
 		!["isActive", "isExpanded"].includes(prop as string),
 })<{ isActive: boolean; isExpanded: boolean }>(
 	({ theme, isActive, isExpanded }) => ({
-		borderRadius: 8,
-		marginBottom: 8,
-		paddingTop: 12,
-		paddingBottom: 12,
-		minHeight: 48,
+		borderRadius: 6,
+		marginBottom: 4,
+		padding: "4px 12px",
+		minHeight: 36,
 		justifyContent: isExpanded ? "initial" : "center",
 		color: isActive
 			? theme.palette.sidebar.itemActiveText
@@ -85,28 +83,12 @@ const NavItemButton = styled(ListItemButton, {
 		backgroundColor: isActive
 			? theme.palette.sidebar.itemActive
 			: "transparent",
-		transition: "all 0.2s ease-out",
-		position: "relative",
-		overflow: "hidden",
+		transition: "background-color 0.2s ease-out, color 0.2s ease-out",
 		"&:hover": {
 			backgroundColor: isActive
 				? theme.palette.sidebar.itemActiveHover
 				: theme.palette.sidebar.itemHover,
-			transform: "translateX(4px)",
 		},
-		...(isActive && {
-			"&::before": {
-				content: '""',
-				position: "absolute",
-				left: 0,
-				top: "50%",
-				transform: "translateY(-50%)",
-				width: 4,
-				height: "60%",
-				backgroundColor: theme.palette.sidebar.itemActiveText,
-				borderRadius: "0 4px 4px 0",
-			},
-		}),
 	}),
 );
 
@@ -115,19 +97,17 @@ const NavItemIcon = styled(ListItemIcon, {
 		!["isActive", "isExpanded"].includes(prop as string),
 })<{ isActive: boolean; isExpanded: boolean }>(
 	({ theme, isActive, isExpanded }) => ({
-		minWidth: isExpanded ? 40 : 0,
-		width: 24,
-		marginRight: isExpanded ? 16 : "auto",
+		minWidth: 0,
+		width: 20,
+		height: 20,
+		marginRight: isExpanded ? 12 : 0,
 		justifyContent: "center",
 		color: isActive
 			? theme.palette.sidebar.itemActiveText
 			: theme.palette.icon.text,
 		display: "flex",
 		alignItems: "center",
-		transition: "transform 0.2s ease, color 0.2s ease",
-		...(isActive && {
-			transform: "scale(1.1)",
-		}),
+		transition: "color 0.2s ease",
 	}),
 );
 
@@ -151,26 +131,25 @@ const ToggleButtonContainer = styled(Box, {
 	shouldForwardProp: (prop) => prop !== "isExpanded",
 })<{ isExpanded: boolean }>(({ theme, isExpanded }) => ({
 	display: "flex",
-	justifyContent: "center",
+	justifyContent: isExpanded ? "flex-end" : "center",
 	alignItems: "center",
-	marginTop: theme.spacing(1),
-	marginBottom: theme.spacing(2),
+	paddingRight: isExpanded ? theme.spacing(2) : 0,
+	paddingLeft: isExpanded ? 0 : theme.spacing(1),
+	paddingBottom: theme.spacing(2),
 	width: "100%",
-	paddingLeft: isExpanded ? 0 : theme.spacing(1), // Adjust padding when collapsed to center the button
+	marginTop: 8,
 }));
 
 const ToggleButton = styled(IconButton)(({ theme }) => ({
-	borderRadius: "50%",
-	backgroundColor: theme.palette.sidebar.toggleButton.background,
+	borderRadius: 6,
+	backgroundColor: "transparent",
 	border: `1px solid ${theme.palette.sidebar.toggleButton.border}`,
-	width: 36,
-	height: 36,
-	transition: "all 0.2s ease-out",
+	width: 28,
+	height: 28,
+	transition: "background-color 0.2s ease-out, border-color 0.2s ease-out",
 	"&:hover": {
 		backgroundColor: theme.palette.sidebar.toggleButton.hoverBackground,
 		borderColor: theme.palette.sidebar.toggleButton.hoverBorder,
-		transform: "scale(1.05)",
-		boxShadow: `0 2px 8px ${alpha(theme.palette.primary.main, 0.2)}`,
 	},
 }));
 
@@ -231,7 +210,7 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 		},
 	];
 
-	const drawerWidth = expanded ? 240 : 72;
+	const drawerWidth = expanded ? 220 : 68;
 
 	// Handle navigation
 	const handleNavigate = (path: string) => {
@@ -249,8 +228,8 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 			>
 				<NavItemIcon isActive={item.isActive} isExpanded={expanded}>
 					<item.icon
-						size={22}
-						strokeWidth={2.1}
+						size={18}
+						strokeWidth={1.5}
 						style={{ display: "block" }}
 						aria-label={item.label}
 					/>
@@ -259,9 +238,11 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 					<ListItemText
 						primary={item.label}
 						primaryTypographyProps={{
-							fontWeight: item.isActive ? 600 : 500,
-							letterSpacing: item.isActive ? "0.02em" : "normal",
-							fontSize: "0.95rem",
+							fontWeight: item.isActive ? 500 : 400,
+							fontSize: "0.875rem",
+							whiteSpace: "nowrap",
+							overflow: "hidden",
+							textOverflow: "ellipsis",
 						}}
 					/>
 				)}
@@ -308,6 +289,14 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 					width: "100%",
 				}}
 			>
+				<Divider
+					sx={{
+						margin: "8px 0",
+						width: "calc(100% - 16px)",
+						borderColor: "divider",
+					}}
+				/>
+
 				{/* User Profile */}
 				<UserProfileSidebar expanded={expanded} />
 
@@ -324,9 +313,9 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 							aria-label={expanded ? "Collapse sidebar" : "Expand sidebar"}
 						>
 							{expanded ? (
-								<ChevronLeft size={18} aria-label="Collapse sidebar" />
+								<ChevronLeft size={16} aria-label="Collapse sidebar" />
 							) : (
-								<ChevronRight size={18} aria-label="Expand sidebar" />
+								<ChevronRight size={16} aria-label="Expand sidebar" />
 							)}
 						</ToggleButton>
 					</StyledTooltip>

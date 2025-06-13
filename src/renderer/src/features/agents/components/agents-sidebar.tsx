@@ -89,10 +89,10 @@ const AgentsList = styled(List)(({ theme }) => ({
 const AgentListItemButton = styled(ListItemButton)(({ theme }) => ({
 	margin: "0 8px 8px",
 	borderRadius: 8,
-	paddingRight: 12,
-	paddingTop: 6,
-	paddingBottom: 6,
-	paddingLeft: 12,
+	paddingRight: 8,
+	paddingTop: 4,
+	paddingBottom: 4,
+	paddingLeft: 8,
 	position: "relative",
 	"&.Mui-selected": {
 		backgroundColor: alpha(theme.palette.sidebar.itemActive, 0.1),
@@ -116,8 +116,8 @@ const AgentAvatar = styled(Avatar, {
 		? theme.palette.sidebar.itemActiveText
 		: theme.palette.icon.text,
 	boxShadow: `0 2px 4px ${alpha(theme.palette.common.black, 0.15)}`,
-	width: 42,
-	height: 42,
+	width: 36,
+	height: 36,
 }));
 
 // Agent name styling (similar to chat sidebar)
@@ -215,9 +215,9 @@ const AgentsSidebarItem: FC<AgentsSidebarItemProps> = ({
 				onClick={() => onSelectAgent(agent)}
 				data-tour-tag="agent-list-item-button"
 			>
-				<ListItemAvatar>
+				<ListItemAvatar sx={{ minWidth: 48, width: 48 }}>
 					<AgentAvatar selected={isSelected}>
-						<Bot size={22} strokeWidth={2.1} aria-label="Agent" />
+						<Bot size={18} strokeWidth={2} aria-label="Agent" />
 					</AgentAvatar>
 				</ListItemAvatar>
 				<ListItemText disableTypography>
@@ -327,8 +327,7 @@ export const AgentsSidebar: FC<AgentsSidebarProps> = ({
 }) => {
 	const navigate = useNavigate();
 	const [searchQuery, setSearchQuery] = useState("");
-	// const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false); // Remove local state
-	const { openCreateAgentDialog } = useUiPreferencesStore(); // Use global actions and state
+	const { openCreateAgentDialog } = useUiPreferencesStore();
 	const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
 	const perPage = 50;
 
@@ -399,14 +398,6 @@ export const AgentsSidebar: FC<AgentsSidebarProps> = ({
 		},
 		[onSelectAgent],
 	);
-
-	// const handleOpenCreateDialog = useCallback(() => { // Remove local handler
-	// 	setIsCreateDialogOpen(true);
-	// }, []);
-
-	// const handleCloseCreateDialog = useCallback(() => { // Remove local handler
-	// 	setIsCreateDialogOpen(false);
-	// }, []);
 
 	const handleOpenImportDialog = useCallback(() => {
 		setIsImportDialogOpen(true);
@@ -579,7 +570,7 @@ export const AgentsSidebar: FC<AgentsSidebarProps> = ({
 				title="Agents"
 				searchQuery={searchQuery}
 				onSearchChange={(query) => setSearchQuery(query)}
-				onNewAgentClick={openCreateAgentDialog} // Use global action
+				onNewAgentClick={openCreateAgentDialog}
 				onImportAgentClick={handleOpenImportDialog}
 				importAgentTooltip="Import an agent from a ZIP file"
 			/>
@@ -631,16 +622,6 @@ export const AgentsSidebar: FC<AgentsSidebarProps> = ({
 				</AgentsList>
 			)}
 
-			{/* CreateAgentDialog is now global, rendered in App.tsx.
-			    Ensure its props are correctly passed there if they depend on this component's state/logic.
-			    For now, we assume onAgentCreated in App.tsx handles navigation and closing.
-			*/}
-			{/* <CreateAgentDialog
-				open={isCreateAgentDialogOpen} // This would now come from the global store
-				onClose={closeCreateAgentDialog} // This would now come from the global store
-				onAgentCreated={handleAgentCreated} // This callback might need to be passed to the global dialog if specific logic is needed here
-			/> */}
-
 			<ImportAgentDialog
 				open={isImportDialogOpen}
 				onClose={handleCloseImportDialog}
@@ -656,7 +637,7 @@ export const AgentsSidebar: FC<AgentsSidebarProps> = ({
 					}
 				/>
 			)}
-			{/* Upload Agent Dialog */}
+
 			<UploadAgentDialog
 				open={isUploadDialogOpen}
 				onClose={handleCloseUploadDialog}

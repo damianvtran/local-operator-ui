@@ -134,6 +134,10 @@ declare global {
 			selectDirectory: () => Promise<string | undefined>;
 			/** Gets the user's home directory path */
 			getHomeDirectory: () => Promise<string>;
+			/** Saves a file to the specified path */
+			saveFile: (filePath: string, content: string) => Promise<void>;
+			/** Checks if a file exists at the specified path */
+			fileExists: (filePath: string) => Promise<boolean>;
 		};
 	}
 }

@@ -21,17 +21,21 @@ type ScrollToBottomButtonProps = {
 	 * Optional className for additional styling
 	 */
 	className?: string;
+
+	bottomDistance?: number;
 };
 
-const ButtonContainer = styled(Box)(() => ({
-	position: "absolute",
-	bottom: 160,
-	zIndex: 1000,
-	display: "flex",
-	justifyContent: "center",
-	alignItems: "center",
-	pointerEvents: "none", // Prevent container from blocking clicks
-}));
+const ButtonContainer = styled(Box)(
+	({ bottomDistance }: { bottomDistance: number }) => ({
+		position: "absolute",
+		bottom: bottomDistance,
+		zIndex: 1000,
+		display: "flex",
+		justifyContent: "center",
+		alignItems: "center",
+		pointerEvents: "none", // Prevent container from blocking clicks
+	}),
+);
 
 const StyledButton = styled(IconButton)(({ theme }) => ({
 	backgroundColor: theme.palette.background.paper,
@@ -76,6 +80,7 @@ export const ScrollToBottomButton: FC<ScrollToBottomButtonProps> = ({
 	visible,
 	onClick,
 	className,
+	bottomDistance = 160,
 }) => {
 	const handleClick = useCallback(() => {
 		onClick();
@@ -83,7 +88,7 @@ export const ScrollToBottomButton: FC<ScrollToBottomButtonProps> = ({
 
 	return (
 		<Fade in={visible} timeout={200}>
-			<ButtonContainer className={className}>
+			<ButtonContainer className={className} bottomDistance={bottomDistance}>
 				<StyledButton
 					aria-label="Scroll to bottom"
 					onClick={handleClick}

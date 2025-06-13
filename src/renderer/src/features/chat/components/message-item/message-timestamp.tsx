@@ -13,6 +13,7 @@ import type { FC } from "react";
 export type MessageTimestampProps = {
 	timestamp: Date;
 	isUser: boolean;
+	isSmallView?: boolean;
 	sx?: SxProps<Theme>;
 };
 
@@ -23,15 +24,17 @@ export type MessageTimestampProps = {
  */
 const StyledTimestamp = styled(Typography, {
 	shouldForwardProp: (prop) => prop !== "isUser",
-})<{ isUser: boolean }>(({ isUser, theme }) => ({
-	display: "block",
-	marginTop: 8,
-	textAlign: isUser ? "left" : "right",
-	color: theme.palette.text.secondary,
-	fontSize: "0.7rem",
-	width: isUser ? "auto" : "calc(100% - 52px)",
-	cursor: "help", // Indicate that hovering will show more information
-}));
+})<{ isUser: boolean; isSmallView?: boolean }>(
+	({ isUser, theme, isSmallView }) => ({
+		display: "block",
+		marginTop: 8,
+		textAlign: isUser ? "left" : "right",
+		color: theme.palette.text.secondary,
+		fontSize: "0.7rem",
+		width: isUser ? "auto" : isSmallView ? "100%" : "calc(100% - 52px)",
+		cursor: "help", // Indicate that hovering will show more information
+	}),
+);
 
 /**
  * Component for displaying message timestamps
@@ -42,6 +45,7 @@ export const MessageTimestamp: FC<MessageTimestampProps> = ({
 	timestamp,
 	isUser,
 	sx,
+	isSmallView,
 }) => {
 	// Format the timestamp using our utility function
 	const formattedTime = formatMessageDateTime(timestamp);
@@ -58,7 +62,11 @@ export const MessageTimestamp: FC<MessageTimestampProps> = ({
 			sx={sx}
 		>
 			{/* @ts-ignore - MUI Tooltip type issue */}
-			<StyledTimestamp variant="caption" isUser={isUser}>
+			<StyledTimestamp
+				variant="caption"
+				isUser={isUser}
+				isSmallView={isSmallView}
+			>
 				{formattedTime}
 			</StyledTimestamp>
 		</Tooltip>

@@ -1,3 +1,10 @@
+import tourAgenticSequenceImage from "@assets/images/tour/agentic-sequence.png";
+import tourCanvasCodeInlineEditImage from "@assets/images/tour/canvas-code-inline-edit.png";
+import tourCanvasOverviewImage from "@assets/images/tour/canvas-overview.png";
+import tourCanvasVariablesImage from "@assets/images/tour/canvas-variables-view.png";
+import tourChatAttachmentsImage from "@assets/images/tour/chat-attachments.png";
+import tourChatFullViewImage from "@assets/images/tour/chat-full-view.png";
+import tourInlineEditCanvasImage from "@assets/images/tour/inline-edit-canvas.png";
 import { useOnboardingStore } from "@shared/store/onboarding-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { useContext } from "react";
@@ -9,7 +16,7 @@ const tourSteps: StepOptions[] = [
 	{
 		id: "welcome",
 		title: "Welcome to Local Operator!",
-		text: "Local Operator is an AI agents platform that allows you to create a team of proactive AI agents that support you and help to reduce your daily workload.<br/><br/>These agents are different from simple chatbots because they can actually do things for you on your computer like create files, run code and analytics, edit images, videos, and PDFs, organize your system, and much more.<br/><br/>In this walkthrough we'll cover:<ul><li>Creating agents</li><li>Making agents do things</li><li>The canvas workspace</li><li>Customizing agents</li><li>Agent Hub for sharing and collaborating</li><li>Schedules for proactive agents</li><li>Settings for customization</li></ul>Let's explore how it works!",
+		text: `Local Operator is an AI agents platform that allows you to create a team of proactive AI agents that support you and help to reduce your daily workload.<br/><img src="${tourChatFullViewImage}" alt="Chat Full View" style="width: 100%; height: 350px; object-fit: contain; border-radius: 8px;"/><br />These agents are different from simple chatbots because they can actually do things for you on your computer like create files, run code and analytics, edit images, videos, and PDFs, organize your system, and much more.<br/><br/>In this walkthrough we'll cover:<ul><li>Creating agents</li><li>Making agents do things</li><li>The canvas workspace</li><li>Customizing agents</li><li>Agent Hub for sharing and collaborating</li><li>Schedules for proactive agents</li><li>Settings for customization</li></ul>Let's explore how it works!`,
 		buttons: [
 			{
 				text: "Next",
@@ -109,7 +116,7 @@ const tourSteps: StepOptions[] = [
 			on: "top",
 		},
 		title: "Attach Files to Your Message",
-		text: "You can attach any files, images, or documents to your message by clicking this paperclip button, there are no limitations on the file types. Your agent can process, analyze, or translate these attachments as part of your request.<br /><br />Try attaching a PDF, image, or text file and then ask your agent to summarize, translate, or extract information from it!<br /><br />Images like PNGs, JPGs, and PDFs are natively streamed into the model context window, so they can understand them directly without needing to run any code.  Other files like Excel, Word, and CSV files are included as file paths on your device to direct the model's attention to work with them using code.  You can attach massive files like million line CSVs and have the agent work with them using code.<br /><br />You can also paste images into the chat input, and attach multiple files at once to achieve more complex tasks.  Try taking a screenshot of a website and then asking your agent to try to code it!",
+		text: `You can attach any files, images, or documents to your message by clicking this paperclip button, there are no limitations on the file types. Your agent can process, analyze, or translate these attachments as part of your request.<br /><br />Try attaching a PDF, image, or text file and then ask your agent to summarize, translate, or extract information from it!<br /><img src="${tourChatAttachmentsImage}" alt="Chat Attachments" style="width: 100%; height: 200px; object-fit: contain; border-radius: 8px;"/><br />Images like PNGs, JPGs, and PDFs are natively streamed into the model context window, so they can understand them directly without needing to run any code.  Other files like Excel, Word, and CSV files are included as file paths on your device to direct the model's attention to work with them using code.  You can attach massive files like million line CSVs and have the agent work with them using code.<br /><br />You can also paste images into the chat input, and attach multiple files at once to achieve more complex tasks.  Try taking a screenshot of a website and then asking your agent to try to code it!`,
 		buttons: [
 			{
 				text: "Back",
@@ -131,7 +138,7 @@ const tourSteps: StepOptions[] = [
 		id: "agent-capabilities",
 		attachTo: { element: '[data-tour-tag="chat-header"]', on: "top" },
 		title: "More Than Just Chat",
-		text: 'Local Operator agents are different from simple chatbots. They can perform actions on your computer, like creating files, running code, or browsing the web, based on your instructions. You\'ll see them use "tools" like reading, writing, and executing code to get things done!  Agents have memory of the conversation, previous steps, learnings, and even store the execution variables of previous steps in code to be able to use them later in the conversation.<br /><br />Local Operator agents are extremely flexible, so they can bounce back and forth with you for simple chatting, and know when they need to embark on a work journey to get things done in multiple steps with tool use!',
+		text: `Local Operator agents are different from simple chatbots. They can perform actions on your computer, like creating files, running code, or browsing the web, based on your instructions. You'll see them use "tools" like reading, writing, and executing code to get things done!  Agents have memory of the conversation, previous steps, learnings, and even store the execution variables of previous steps in code to be able to use them later in the conversation.<br /><img src="${tourAgenticSequenceImage}" alt="Agentic Sequence" style="width: 100%; height: 350px; object-fit: contain; border-radius: 8px;"/><br />Local Operator agents are extremely flexible, so they can bounce back and forth with you for simple chatting, and know when they need to embark on a work journey to get things done in multiple steps with tool use!`,
 		buttons: [
 			{
 				text: "Back",
@@ -161,7 +168,7 @@ const tourSteps: StepOptions[] = [
 			element: '[data-tour-tag="command-palette-dialog"]',
 			on: "right",
 		},
-		text: "Let's quickly look at another powerful feature: the Command Palette. You can open it anywhere in the app by pressing <code>Cmd+K</code> on Mac and <code>Ctrl+K</code> on Windows or Linux. This is a helpful window that you can open from anywhere in the app to be able to access agents, settings, pages, and much more using your keyboard.  It can often be faster to access sections in the app this way instead of clicking through menus.  You can type an agent's name to find the chat for that agent, and then hit Enter to open it.",
+		text: "Let's quickly look at another powerful feature: the Command Palette. You can open it anywhere in the app by pressing <code>Cmd+P</code> on Mac and <code>Ctrl+P</code> on Windows or Linux. This is a helpful window that you can open from anywhere in the app to be able to access agents, settings, pages, and much more using your keyboard.  It can often be faster to access sections in the app this way instead of clicking through menus.  You can type an agent's name to find the chat for that agent, and then hit Enter to open it.",
 		buttons: [
 			{
 				text: "Back",
@@ -231,7 +238,7 @@ const tourSteps: StepOptions[] = [
 		id: "canvas-feature",
 		attachTo: { element: '[data-tour-tag="canvas-container"]', on: "left" },
 		title: "The Canvas: Your Visual Workspace",
-		text: "This is the Canvas, your workspace for files and dynamic visualizations where you can organize, plan, and interact with your agents in a more flexible way.  Any files that your agents create on your device can be opened here by clicking on the file icons that you see as they work.<br/><br/>Agents can make dynamic visualizations like games, charts, maps, and more in HTML files.  Any HTML files you open will be rendered dynamically in an iframe.  Any markdown files that you open will be rendered in full markdown viewer with support for code blocks, tables, mermaid diagrams, and more.",
+		text: `This is the Canvas, your workspace for files and dynamic visualizations where you can organize, plan, and interact with your agents in a more flexible way.  Any files that your agents create on your device can be opened here by clicking on the file icons that you see as they work.<br/><br/>Agents can make dynamic visualizations like games, charts, maps, and more in HTML files.  Any HTML files you open will be rendered dynamically in an iframe.  Any markdown files that you open will be rendered in full markdown viewer with support for code blocks, tables, mermaid diagrams, and more.<br/><img src="${tourCanvasOverviewImage}" alt="Canvas Overview" style="width: 100%; height: 300px; object-fit: contain; border-radius: 8px;"/>`,
 		buttons: [
 			{
 				text: "Back",
@@ -272,7 +279,8 @@ const tourSteps: StepOptions[] = [
 			on: "top",
 		},
 		title: "Documents View",
-		text: "The Documents view shows all your open markdown, code, and HTML documents as tabs. You can switch between documents and see dynamic visualizations in HTML created by your agents. Use this view to work with your notes, reports, and agent-generated content.",
+		text: `The Documents view shows all your open markdown, code, and HTML documents as tabs. You can switch between documents and see dynamic visualizations in HTML created by your agents. Use this view to work with your notes, reports, and agent-generated content.<br /><br />This is where you can get more precise around your agents' work.<br/><img src="${tourInlineEditCanvasImage}" alt="Inline Edit Canvas" style="width: 100%; height: 200px; object-fit: contain; border-radius: 8px;"/><br />In your documents, highlight any text that you want your agent to improve and press Cmd/Ctrl+K to bring up the inline AI editor.  
+    <br /><img src="${tourCanvasCodeInlineEditImage}" alt="Canvas Code Inline Edit" style="width: 100%; height: 200px; object-fit: cover; object-position: top; border-radius: 8px;"/><br />You can be as precise as you want and the agent will edit the document for you in place, using its memories and context so you don't have to re-explain things!`,
 		buttons: [
 			{
 				text: "Back",
@@ -346,7 +354,7 @@ const tourSteps: StepOptions[] = [
 			on: "top",
 		},
 		title: "Variables View",
-		text: 'The Variables view displays the "code memory" that agents have stored during their work. These are technical variables that include results, intermediate values, and other data that agents use to perform tasks. You can inspect and manage these variables here.<br /><br />This section will be most helpful for more technical users who want to understand how agents are working and what they are doing.',
+		text: `The Variables view displays the "code memory" that agents have stored during their work. These are technical variables that include results, intermediate values, and other data that agents use to perform tasks. You can inspect and manage these variables here.<br /><br />This section will be most helpful for more technical users who want to understand how agents are working and what they are doing.<br/><img src="${tourCanvasVariablesImage}" alt="Canvas Variables" style="width: 100%; height: 350px; object-fit: contain; border-radius: 8px;"/>`,
 		buttons: [
 			{
 				text: "Back",
@@ -1123,6 +1131,31 @@ A good description helps you and others understand what the agent does and any s
 		],
 	},
 	{
+		id: "appearance-settings",
+		attachTo: {
+			element: '[data-tour-tag="settings-appearance-section"]',
+			on: "right",
+		},
+		title: "Customize Appearance",
+		text: "Choose from various themes to change the look and feel of Local Operator. Find one that suits your style!",
+		buttons: [
+			{
+				text: "Back",
+				classes: "shepherd-button-secondary",
+				action: function () {
+					this.back();
+				},
+			},
+			{
+				text: "Next",
+				classes: "shepherd-button-primary",
+				action: function () {
+					this.next();
+				},
+			},
+		],
+	},
+	{
 		id: "radient-account-settings",
 		attachTo: {
 			element: '[data-tour-tag="settings-radient-account-section"]',
@@ -1155,31 +1188,6 @@ A good description helps you and others understand what the agent does and any s
 		},
 		title: "Connect Your Services",
 		text: "Enhance your agents' capabilities by connecting your Google services like Gmail, Calendar, and Drive. This allows agents to access and manage your information with your permission.<br /><br />You need to be logged in to a Radient account to use this feature, however it is free to use and doesn't cost any additional Radient Credits per action.",
-		buttons: [
-			{
-				text: "Back",
-				classes: "shepherd-button-secondary",
-				action: function () {
-					this.back();
-				},
-			},
-			{
-				text: "Next",
-				classes: "shepherd-button-primary",
-				action: function () {
-					this.next();
-				},
-			},
-		],
-	},
-	{
-		id: "appearance-settings",
-		attachTo: {
-			element: '[data-tour-tag="settings-appearance-section"]',
-			on: "right",
-		},
-		title: "Customize Appearance",
-		text: "Choose from various themes to change the look and feel of Local Operator. Find one that suits your style!",
 		buttons: [
 			{
 				text: "Back",

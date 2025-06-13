@@ -75,6 +75,10 @@ export type CanvasStoreState = {
 	 * Reset the canvas state for a conversation
 	 */
 	resetConversationCanvas: (conversationId: string) => void;
+	/**
+	 * Add a file and select it
+	 */
+	addFileAndSelect: (conversationId: string, file: CanvasDocument) => void;
 };
 
 /**
@@ -228,6 +232,32 @@ export const useCanvasStore = create<CanvasStoreState>()(
 						},
 					},
 				}));
+			},
+			addFileAndSelect: (conversationId, file) => {
+				set((state) => {
+					const conv = getConversationState(
+						state.conversations,
+						conversationId,
+					);
+					const updatedFiles = [...conv.files, file];
+					const updatedMentionedFiles = [...conv.mentionedFiles, file];
+					return {
+						conversations: {
+							...state.conversations,
+							[conversationId]: {
+								...conv,
+								files: updatedFiles,
+								mentionedFiles: updatedMentionedFiles,
+								openTabs: [
+									...conv.openTabs,
+									{ id: file.id, title: file.title },
+								],
+								selectedTabId: file.id,
+								viewMode: "documents",
+							},
+						},
+					};
+				});
 			},
 		}),
 		{

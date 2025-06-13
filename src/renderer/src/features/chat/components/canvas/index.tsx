@@ -8,14 +8,17 @@ import {
 } from "@mui/material";
 import type { CanvasViewMode } from "@shared/store/canvas-store";
 import { useCanvasStore } from "@shared/store/canvas-store";
-import { FileText, FolderOpen, ListTree, X } from "lucide-react";
-import { memo, useCallback, useState } from "react";
+import { useUndoManagerStore } from "@shared/store/undo-manager-store";
+import { FilePlus, FileText, FolderOpen, ListTree, X } from "lucide-react";
+import { memo, useCallback, useMemo, useState } from "react";
 import type { FC } from "react";
 import type { CanvasDocument } from "../../types/canvas";
+import { createFile } from "../../utils/file-creation";
 import { CanvasContent } from "./canvas-content";
 import { CanvasFileViewer } from "./canvas-file-viewer";
 import { CanvasTabs } from "./canvas-tabs";
 import { CanvasVariablesViewer } from "./canvas-variables-viewer";
+import { CreateFileDialog } from "./create-file-dialog";
 
 type CanvasProps = {
 	/**
@@ -39,6 +42,11 @@ type CanvasProps = {
 	onClose: () => void;
 
 	onCloseDocument: (docId: string) => void;
+
+	/**
+	 * The agent ID for the current chat context
+	 */
+	agentId?: string;
 
 	/**
 	 * The conversation ID for the current chat context
@@ -116,9 +124,41 @@ const CanvasComponent: FC<CanvasProps> = ({
 	onClose,
 	onCloseDocument,
 	conversationId,
+	agentId,
 }) => {
-	// Get view mode from store if conversationId is available
-	const { setViewMode } = useCanvasStore();
+	const [isCreateFileDialogOpen, setCreateFileDialogOpen] = useState(false);
+	const [isCreatingFile, setIsCreatingFile] = useState(false);
+
+	const { addFileAndSelect, setViewMode } = useCanvasStore();
+	const { removeManager } = useUndoManagerStore();
+
+	const handleCreateFile = async (
+		details: {
+			name: string;
+			type: string;
+			location: string;
+		},
+		overwrite = false,
+	) => {
+		setIsCreatingFile(true);
+		try {
+			await createFile(details.name, details.type, details.location, overwrite);
+			if (conversationId) {
+				const newFile: CanvasDocument = {
+					id: `${details.location}/${details.name}.${details.type}`,
+					title: `${details.name}.${details.type}`,
+					content: "",
+					path: `${details.location}/${details.name}.${details.type}`,
+				};
+				addFileAndSelect(conversationId, newFile);
+			}
+			setCreateFileDialogOpen(false);
+		} catch (_) {
+			// Error is already handled by the toast manager
+		} finally {
+			setIsCreatingFile(false);
+		}
+	};
 	const canvasState = useCanvasStore((state) =>
 		conversationId ? state.conversations[conversationId] : undefined,
 	);
@@ -143,8 +183,10 @@ const CanvasComponent: FC<CanvasProps> = ({
 	const activeDocumentId = externalActiveDocumentId ?? internalActiveDocumentId;
 
 	// Get the active document
-	const activeDocument =
-		documents.find((doc) => doc.id === activeDocumentId) || null;
+	const activeDocument = useMemo(
+		() => documents.find((doc) => doc.id === activeDocumentId) || null,
+		[documents, activeDocumentId],
+	);
 
 	// Handle changing the active document
 	const handleChangeActiveDocument = useCallback(
@@ -171,6 +213,7 @@ const CanvasComponent: FC<CanvasProps> = ({
 		(documentId: string) => {
 			// Remove the document
 			onCloseDocument(documentId);
+			removeManager(documentId);
 
 			// If we're closing the active document, set the active document to the first remaining document
 			if (activeDocumentId === documentId) {
@@ -190,6 +233,7 @@ const CanvasComponent: FC<CanvasProps> = ({
 			activeDocumentId,
 			externalChangeActiveDocument,
 			onCloseDocument,
+			removeManager,
 		],
 	);
 
@@ -201,10 +245,29 @@ const CanvasComponent: FC<CanvasProps> = ({
 						Canvas
 					</Typography>
 					<Typography variant="caption" color="text.secondary">
-						Your visual workspace for files and documents
+						Your visual workspace
 					</Typography>
 				</HeaderTitle>
 				<Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+					<Tooltip title="Create New File" arrow placement="top">
+						{/* @ts-ignore MUI Tooltip a11y issue */}
+						<IconButton
+							onClick={() => setCreateFileDialogOpen(true)}
+							size="large"
+							data-tour-tag="canvas-create-file-button"
+							sx={(theme) => ({
+								color: theme.palette.text.secondary,
+								"&:hover": {
+									backgroundColor: alpha(theme.palette.primary.main, 0.12),
+								},
+								width: 36,
+								height: 36,
+								padding: 0,
+							})}
+						>
+							<FilePlus size={16} />
+						</IconButton>
+					</Tooltip>
 					<Tooltip title="Documents View" arrow placement="top">
 						{/* @ts-ignore MUI Tooltip a11y issue */}
 						<IconButton
@@ -312,7 +375,13 @@ const CanvasComponent: FC<CanvasProps> = ({
 					/>
 
 					{/* Document content area */}
-					{activeDocument && <CanvasContent document={activeDocument} />}
+					{activeDocument && (
+						<CanvasContent
+							document={activeDocument}
+							conversationId={conversationId}
+							agentId={agentId}
+						/>
+					)}
 
 					{/* Empty state when no documents are open */}
 					{!activeDocument && documents.length === 0 && (
@@ -369,6 +438,15 @@ const CanvasComponent: FC<CanvasProps> = ({
 						</Typography>
 					</Box>
 				)}
+			{agentId && (
+				<CreateFileDialog
+					open={isCreateFileDialogOpen}
+					onClose={() => setCreateFileDialogOpen(false)}
+					onSave={handleCreateFile}
+					isSaving={isCreatingFile}
+					agentId={agentId}
+				/>
+			)}
 		</CanvasContainer>
 	);
 };
