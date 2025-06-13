@@ -6,7 +6,7 @@ import { useSpeechStore } from "@shared/store/speech-store";
 import {
 	ClipboardCopy,
 	Copy,
-	Edit3,
+	Sparkles,
   ReplyIcon,
 	MessageSquareReply,
 	Square,
@@ -254,6 +254,13 @@ export const TextSelectionControls: FC<TextSelectionControlsProps> = ({
 
 	return (
 		<ControlsWrapper style={style} onMouseDown={(e) => e.preventDefault()}>
+      {showEdit && (
+				<Tooltip title="Ask for an Edit" placement="top">
+					<StyledIconButton size="small" onClick={handleEdit}>
+						<Sparkles size={14} />
+					</StyledIconButton>
+				</Tooltip>
+			)}
 			{showSpeech &&
 				(isPlaying ? (
 					<Tooltip title="Stop" placement="top">
@@ -312,13 +319,6 @@ export const TextSelectionControls: FC<TextSelectionControlsProps> = ({
 				<Tooltip title="Refer to this from File" placement="top">
 					<StyledIconButton size="small" onClick={handleRefer}>
 						<ReplyIcon size={14} />
-					</StyledIconButton>
-				</Tooltip>
-			)}
-			{showEdit && (
-				<Tooltip title="Ask for an Edit" placement="top">
-					<StyledIconButton size="small" onClick={handleEdit}>
-						<Edit3 size={14} />
 					</StyledIconButton>
 				</Tooltip>
 			)}
