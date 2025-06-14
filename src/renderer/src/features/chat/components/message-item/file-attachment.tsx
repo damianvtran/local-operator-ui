@@ -225,6 +225,7 @@ export const FileAttachment: FC<FileAttachmentProps> = memo(
 						path: docId,
 						content: file,
 						type: getFileTypeFromPath(file),
+						lastAgentModified: Date.now(),
 					};
 					const fileIndex = filesInState.findIndex((f) => f.id === docId);
 					if (fileIndex !== -1) {
@@ -244,6 +245,7 @@ export const FileAttachment: FC<FileAttachmentProps> = memo(
 								path: normalizedPath,
 								content: result.data,
 								type: getFileTypeFromPath(file),
+								lastAgentModified: Date.now(),
 							};
 							const fileIndex = filesInState.findIndex((f) => f.id === docId);
 							if (fileIndex !== -1) {

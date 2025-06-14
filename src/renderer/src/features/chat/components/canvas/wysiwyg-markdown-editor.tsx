@@ -749,6 +749,20 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 		}
 	}, [document.id]);
 
+	// Update content when lastAgentModified changes
+	useEffect(() => {
+		if (document.lastAgentModified && editorRef.current) {
+			const htmlContent = markdownToHtml(document.content);
+			if (editorRef.current.innerHTML !== htmlContent) {
+				editorRef.current.innerHTML = htmlContent;
+				setContent(document.content);
+				originalContentRef.current = document.content;
+				setHasUserChanges(false);
+				undoManagerRef.current?.saveCurrentState();
+			}
+		}
+	}, [document.lastAgentModified]);
+
 	// Manage UndoManager lifecycle
 	useEffect(() => {
 		const onStateChange = (canUndo: boolean, canRedo: boolean) => {
@@ -1760,9 +1774,9 @@ const arePropsEqual = (
 		prevDoc.title === nextDoc.title &&
 		prevDoc.content === nextDoc.content &&
 		prevDoc.path === nextDoc.path &&
-		prevDoc.type === nextDoc.type
+		prevDoc.type === nextDoc.type &&
+		prevDoc.lastAgentModified === nextDoc.lastAgentModified
 	);
-	// Note: lastModified is intentionally excluded as it doesn't affect rendering
 };
 
 export const WysiwygMarkdownEditor = memo(WysiwygMarkdownEditorComponent, arePropsEqual);
