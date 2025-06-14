@@ -29,10 +29,12 @@ import {
 	Bold,
 	Code,
 	Image,
+	Indent,
 	Italic,
 	Link,
 	List,
 	ListOrdered,
+	Outdent,
 	Quote,
 	Redo,
 	Strikethrough,
@@ -187,7 +189,7 @@ const EditorToolbar = styled(Toolbar)(({ theme }) => ({
 	padding: "4px 8px",
 	borderBottom: `1px solid ${theme.palette.divider}`,
 	backgroundColor: theme.palette.background.default,
-	gap: "4px",
+	gap: "2px",
 	flexWrap: "wrap",
 }));
 
@@ -307,9 +309,9 @@ const EditorContent = styled(Box)(({ theme }) => ({
 }));
 
 const ToolbarButton = styled(IconButton)(({ theme }) => ({
-	width: "32px",
-	height: "32px",
-	padding: "4px",
+	width: "30px",
+	height: "30px",
+	padding: "2px",
 	"&:hover": {
 		backgroundColor: theme.palette.action.hover,
 	},
@@ -1096,6 +1098,16 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 	// Handle keyboard shortcuts
 	const handleKeyDown = useCallback(
 		(event: React.KeyboardEvent) => {
+			if (event.key === "Tab") {
+				event.preventDefault();
+				if (event.shiftKey) {
+					executeCommand("outdent");
+				} else {
+					executeCommand("indent");
+				}
+				return;
+			}
+
 			if (event.metaKey || event.ctrlKey) {
 				switch (event.key) {
 					case "f": {
@@ -1493,7 +1505,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 						size="small"
 					>
 						<Tooltip title="Bold (Ctrl+B)">
-							<Bold size={16} />
+							<Bold size={14} />
 						</Tooltip>
 					</ToggleButton>
 					<ToggleButton
@@ -1502,7 +1514,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 						size="small"
 					>
 						<Tooltip title="Italic (Ctrl+I)">
-							<Italic size={16} />
+							<Italic size={14} />
 						</Tooltip>
 					</ToggleButton>
 					<ToggleButton
@@ -1511,7 +1523,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 						size="small"
 					>
 						<Tooltip title="Underline (Ctrl+U)">
-							<Underline size={16} />
+							<Underline size={14} />
 						</Tooltip>
 					</ToggleButton>
 					<ToggleButton
@@ -1520,7 +1532,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 						size="small"
 					>
 						<Tooltip title="Strikethrough">
-							<Strikethrough size={16} />
+							<Strikethrough size={14} />
 						</Tooltip>
 					</ToggleButton>
 				</ToggleButtonGroup>
@@ -1530,22 +1542,32 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 				{/* Lists and Quotes */}
 				<Tooltip title="Bullet List">
 					<ToolbarButton onClick={() => executeCommand("insertUnorderedList")}>
-						<List size={16} />
+						<List size={14} />
 					</ToolbarButton>
 				</Tooltip>
 				<Tooltip title="Numbered List">
 					<ToolbarButton onClick={() => executeCommand("insertOrderedList")}>
-						<ListOrdered size={16} />
+						<ListOrdered size={14} />
+					</ToolbarButton>
+				</Tooltip>
+				<Tooltip title="Indent">
+					<ToolbarButton onClick={() => executeCommand("indent")}>
+						<Indent size={14} />
+					</ToolbarButton>
+				</Tooltip>
+				<Tooltip title="Outdent">
+					<ToolbarButton onClick={() => executeCommand("outdent")}>
+						<Outdent size={14} />
 					</ToolbarButton>
 				</Tooltip>
 				<Tooltip title="Quote">
 					<ToolbarButton onClick={() => toggleBlockFormat("blockquote")}>
-						<Quote size={16} />
+						<Quote size={14} />
 					</ToolbarButton>
 				</Tooltip>
 				<Tooltip title="Code Block">
 					<ToolbarButton onClick={() => toggleBlockFormat("pre")}>
-						<Code size={16} />
+						<Code size={14} />
 					</ToolbarButton>
 				</Tooltip>
 
@@ -1559,17 +1581,17 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 				>
 					<ToggleButton value="left" size="small">
 						<Tooltip title="Align Left">
-							<AlignLeft size={16} />
+							<AlignLeft size={14} />
 						</Tooltip>
 					</ToggleButton>
 					<ToggleButton value="center" size="small">
 						<Tooltip title="Align Center">
-							<AlignCenter size={16} />
+							<AlignCenter size={14} />
 						</Tooltip>
 					</ToggleButton>
 					<ToggleButton value="right" size="small">
 						<Tooltip title="Align Right">
-							<AlignRight size={16} />
+							<AlignRight size={14} />
 						</Tooltip>
 					</ToggleButton>
 				</ToggleButtonGroup>
@@ -1579,17 +1601,17 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 				{/* Insert Elements */}
 				<Tooltip title="Insert Link">
 					<ToolbarButton onClick={insertLink}>
-						<Link size={16} />
+						<Link size={14} />
 					</ToolbarButton>
 				</Tooltip>
 				<Tooltip title="Insert Image">
 					<ToolbarButton onClick={insertImage}>
-						<Image size={16} />
+						<Image size={14} />
 					</ToolbarButton>
 				</Tooltip>
 				<Tooltip title="Insert Table">
 					<ToolbarButton onClick={insertTable}>
-						<Table size={16} />
+						<Table size={14} />
 					</ToolbarButton>
 				</Tooltip>
 
@@ -1614,7 +1636,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 						}}
 						disabled={!canUndo}
 					>
-						<Undo size={16} />
+						<Undo size={14} />
 					</ToolbarButton>
 				</Tooltip>
 				<Tooltip title="Redo (Ctrl+Shift+Z)">
@@ -1635,7 +1657,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 						}}
 						disabled={!canRedo}
 					>
-						<Redo size={16} />
+						<Redo size={14} />
 					</ToolbarButton>
 				</Tooltip>
 			</EditorToolbar>
