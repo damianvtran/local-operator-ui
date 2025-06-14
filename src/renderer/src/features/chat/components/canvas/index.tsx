@@ -151,7 +151,7 @@ const CanvasComponent: FC<CanvasProps> = ({
 
 	const handleOpenFile = useCallback(async () => {
 		if (conversationId) {
-			const result = await window.api.selectFile("base64");
+			const result = await window.api.selectFile();
 			if (result) {
 				const newFile: CanvasDocument = {
 					id: result.path,
