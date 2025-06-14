@@ -47,7 +47,13 @@ const CanvasContentComponent: FC<CanvasContentProps> = ({
 	}
 
 	if (isSpreadsheetFile(document.title)) {
-		return <SpreadsheetPreview document={document} />;
+		return (
+			<SpreadsheetPreview
+				document={document}
+				conversationId={conversationId}
+				agentId={agentId}
+			/>
+		);
 	}
 
 	return (
