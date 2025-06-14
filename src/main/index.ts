@@ -475,12 +475,16 @@ app
 
 		ipcMain.handle(
 			"read-file",
-			async (_, filePath: string): Promise<ReadFileResponse> => {
+			async (
+				_,
+				filePath: string,
+				encoding: BufferEncoding = "utf-8",
+			): Promise<ReadFileResponse> => {
 				try {
 					const normalizedPath = filePath.startsWith("~/")
 						? join(app.getPath("home"), filePath.slice(2))
 						: filePath;
-					const data = readFileSync(normalizedPath, "utf-8");
+					const data = readFileSync(normalizedPath, encoding);
 					return { success: true, data };
 				} catch (error) {
 					logger.error("Error reading file:", LogFileType.BACKEND, error);
@@ -507,12 +511,17 @@ app
 
 		ipcMain.handle(
 			"save-file",
-			async (_, filePath: string, content: string) => {
+			async (
+				_,
+				filePath: string,
+				content: string,
+				encoding: BufferEncoding = "utf-8",
+			) => {
 				try {
 					const normalizedPath = filePath.startsWith("~/")
 						? join(app.getPath("home"), filePath.slice(2))
 						: filePath;
-					writeFileSync(normalizedPath, content, "utf-8");
+					writeFileSync(normalizedPath, content, encoding);
 				} catch (error) {
 					logger.error("Error saving file:", LogFileType.BACKEND, error);
 					throw error; // Re-throw the error to be caught by the renderer
@@ -549,7 +558,7 @@ app
 			return undefined; // Return undefined if canceled or no path selected
 		});
 
-		ipcMain.handle("select-file", async () => {
+		ipcMain.handle("select-file", async (_, encoding: BufferEncoding = "utf-8") => {
 			if (!mainWindow) {
 				logger.error(
 					"Cannot show open file dialog: mainWindow is not available.",
@@ -566,7 +575,7 @@ app
 			if (!result.canceled && result.filePaths.length > 0) {
 				const filePath = result.filePaths[0];
 				try {
-					const data = readFileSync(filePath, "utf-8");
+					const data = readFileSync(filePath, encoding);
 					return { path: filePath, content: data };
 				} catch (error) {
 					logger.error("Error reading file:", LogFileType.BACKEND, error);

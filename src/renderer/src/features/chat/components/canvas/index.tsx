@@ -21,6 +21,7 @@ import { memo, useCallback, useMemo, useState, useEffect } from "react";
 import type { FC } from "react";
 import type { CanvasDocument } from "../../types/canvas";
 import { createFile } from "../../utils/file-creation";
+import { getFileTypeFromPath } from "../../utils/file-types";
 import { CanvasContent } from "./canvas-content";
 import { CanvasFileViewer } from "./canvas-file-viewer";
 import { CanvasTabs } from "./canvas-tabs";
@@ -150,18 +151,20 @@ const CanvasComponent: FC<CanvasProps> = ({
 
 	const handleOpenFile = useCallback(async () => {
 		if (conversationId) {
-			const result = await window.api.selectFile();
+			const result = await window.api.selectFile("base64");
 			if (result) {
 				const newFile: CanvasDocument = {
 					id: result.path,
 					title: result.path.split("/").pop() || result.path,
 					content: result.content,
 					path: result.path,
+					type: getFileTypeFromPath(result.path),
 				};
 				addFileAndSelect(conversationId, newFile);
+				setViewMode(conversationId, "documents");
 			}
 		}
-	}, [addFileAndSelect, conversationId]);
+	}, [addFileAndSelect, conversationId, setViewMode]);
 
 	useEffect(() => {
 		const handleKeyDown = (event: KeyboardEvent) => {

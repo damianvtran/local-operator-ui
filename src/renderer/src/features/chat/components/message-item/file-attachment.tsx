@@ -9,6 +9,7 @@ import type { FC } from "react";
 import { memo, useCallback, useEffect } from "react";
 import { getFileTypeFromPath } from "../../utils/file-types";
 import { isCanvasSupported } from "../../utils/is-canvas-supported";
+import { isSpreadsheetFile } from "../../utils/is-spreadsheet-file";
 /**
  * Props for the FileAttachment component (base)
  */
@@ -142,6 +143,63 @@ export const FileAttachment: FC<FileAttachmentProps> = memo(
 
 		const { setViewMode } = useCanvasStore(); // Add setViewMode from canvas store
 
+		const handleSpreadsheetClick = useCallback(
+			async (file: string) => {
+				const title = getFileName(file);
+				if (isSpreadsheetFile(title)) {
+					const { setFiles, setOpenTabs, setSelectedTab } =
+						useCanvasStore.getState();
+					const normalizedPath = file.startsWith("file://")
+						? file.substring(7)
+						: file;
+					try {
+						const result = await window.api.readFile(normalizedPath, "base64");
+						if (result.success) {
+							const docId = normalizedPath;
+							const newDoc = {
+								id: docId,
+								title,
+								path: normalizedPath,
+								content: result.data,
+								type: getFileTypeFromPath(file),
+							};
+
+							const state = useCanvasStore.getState();
+							const conversationCanvasState =
+								state.conversations?.[conversationId];
+							const filesInState = conversationCanvasState?.files ?? [];
+							const openTabsInState = conversationCanvasState?.openTabs ?? [];
+
+							const updatedFiles = (() => {
+								const idx = filesInState.findIndex((d) => d.id === docId);
+								if (idx !== -1) {
+									return [
+										...filesInState.slice(0, idx),
+										newDoc,
+										...filesInState.slice(idx + 1),
+									];
+								}
+								return [...filesInState, newDoc];
+							})();
+							setFiles(conversationId, updatedFiles);
+
+							const existsTab = openTabsInState.some((t) => t.id === docId);
+							const updatedTabs = existsTab
+								? openTabsInState
+								: [...openTabsInState, { id: docId, title }];
+							setOpenTabs(conversationId, updatedTabs);
+							setSelectedTab(conversationId, docId);
+							setCanvasOpen(true);
+							setViewMode(conversationId, "documents");
+						}
+					} catch (error) {
+						console.error("Error processing spreadsheet file:", error);
+					}
+				}
+			},
+			[conversationId, setCanvasOpen, setViewMode],
+		);
+
 		useEffect(() => {
 			const autoUpdateOpenFile = async () => {
 				const state = useCanvasStore.getState();
@@ -176,7 +234,7 @@ export const FileAttachment: FC<FileAttachmentProps> = memo(
 					}
 				} else {
 					try {
-						const result = await window.api.readFile(normalizedPath);
+						const result = await window.api.readFile(normalizedPath, "base64");
 						if (result.success) {
 							const newDoc = {
 								id: docId,
@@ -206,6 +264,10 @@ export const FileAttachment: FC<FileAttachmentProps> = memo(
 
 		// Handle click on the file attachment
 		const handleClick = useCallback(async () => {
+			if (isSpreadsheetFile(file)) {
+				await handleSpreadsheetClick(file);
+				return;
+			}
 			const title = getFileName(file); // This will be "Pasted Image" for image data URIs
 			const fallbackAction = (err?: string) => {
 				if (err) console.error("Error processing file:", err);
@@ -264,7 +326,7 @@ export const FileAttachment: FC<FileAttachmentProps> = memo(
 					? file.substring(7)
 					: file;
 				try {
-					const result = await window.api.readFile(normalizedPath);
+					const result = await window.api.readFile(normalizedPath, "base64");
 
 					if (result.success && isCanvasSupported(title)) {
 						const docId = normalizedPath;
@@ -321,7 +383,16 @@ export const FileAttachment: FC<FileAttachmentProps> = memo(
 					return fallbackAction(message);
 				}
 			}
-		}, [file, onClick, setCanvasOpen, setViewMode, conversationId]);
+		},
+		[
+			file,
+			onClick,
+			setCanvasOpen,
+			setViewMode,
+			conversationId,
+			handleSpreadsheetClick,
+		],
+	);
 
 		const isPastedImage = file.startsWith("data:image/");
 		const isLocalFile = !file.startsWith("data:") && !file.startsWith("http");
