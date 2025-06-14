@@ -191,7 +191,7 @@ export const useCanvasStore = create<CanvasStoreState>()(
       updateOneFile: (conversationId, updatedFile) => {
 				set((state) => {
 					const conv = getConversationState(state.conversations, conversationId);
-					const updatedFiles = conv.files.map((f) => 
+					const updatedFiles = conv.files.map((f) =>
 						f.id === updatedFile.id ? updatedFile : f
 					);
 					return {

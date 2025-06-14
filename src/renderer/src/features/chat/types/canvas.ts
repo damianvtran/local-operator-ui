@@ -38,9 +38,9 @@ export type CanvasDocument = {
 	content: string;
 
 	/**
-	 * Timestamp when the document was last modified
+	 * Timestamp when the document was last modified by an agent
 	 */
-	lastModified?: Date;
+	lastAgentModified?: number;
 
 	/**
 	 * Type of the document/file
