@@ -374,7 +374,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 	const relativeContainerRef = useRef<HTMLDivElement>(null);
 	const scrollPositionRef = useRef<number | null>(null);
 
-	const debouncedContent = useDebouncedValue(content, 15000);
+	const debouncedContent = useDebouncedValue(content, 3000);
 	const editorRef = useRef<HTMLDivElement>(null);
 	const originalContentRef = useRef(document.content);
 	const isInitialLoadRef = useRef(true);
