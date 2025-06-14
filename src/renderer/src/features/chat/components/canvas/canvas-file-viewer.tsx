@@ -5,6 +5,7 @@ import type {
 import { getFileTypeFromPath } from "@features/chat/utils/file-types";
 import { getFileName } from "@features/chat/utils/get-file-name";
 import { isCanvasSupported } from "@features/chat/utils/is-canvas-supported";
+import { isSpreadsheetFile } from "@features/chat/utils/is-spreadsheet-file";
 import {
 	Box,
 	Card,
@@ -208,6 +209,7 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 	const setFiles = useCanvasStore((s) => s.setFiles);
 	const setOpenTabs = useCanvasStore((s) => s.setOpenTabs);
 	const setSelectedTab = useCanvasStore((s) => s.setSelectedTab);
+	const setViewMode = useCanvasStore((s) => s.setViewMode);
 
 	// Memoize files to prevent unnecessary re-renders
 	const memoizedFiles = useMemo<CanvasDocument[]>(() => {
@@ -258,7 +260,7 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 
 			if (fileDoc.path.startsWith("data:")) {
 				// Handle base64 data URI
-				if (isCanvasSupported(title)) {
+				if (isCanvasSupported(title) || isSpreadsheetFile(title)) {
 					const docId = fileDoc.path; // Use the data URI itself as a unique ID
 					const newDoc = {
 						id: docId,
@@ -292,6 +294,7 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 						: [...openTabsInState, { id: docId, title }];
 					setOpenTabs(conversationId, updatedTabs);
 					setSelectedTab(conversationId, docId);
+					setViewMode(conversationId, "documents");
 					onSwitchToDocumentView(docId);
 				} else {
 					// Not canvas supported, but it's a data URI.
@@ -303,9 +306,11 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 					? fileDoc.path.substring(7)
 					: fileDoc.path;
 				try {
-					const result = await window.api.readFile(normalizedPath);
+					// Use base64 encoding for spreadsheet files, utf-8 for others
+					const encoding = isSpreadsheetFile(title) ? "base64" : "utf-8";
+					const result = await window.api.readFile(normalizedPath, encoding);
 
-					if (result.success && isCanvasSupported(title)) {
+					if (result.success && (isCanvasSupported(title) || isSpreadsheetFile(title))) {
 						const docId = normalizedPath;
 						const newDoc = {
 							id: docId,
@@ -340,6 +345,7 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 							: [...openTabsInState, { id: docId, title }];
 						setOpenTabs(conversationId, updatedTabs);
 						setSelectedTab(conversationId, docId);
+						setViewMode(conversationId, "documents");
 						onSwitchToDocumentView(docId);
 						return;
 					}
@@ -365,6 +371,7 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 			setFiles,
 			setOpenTabs,
 			setSelectedTab,
+			setViewMode,
 			onSwitchToDocumentView,
 		],
 	);
