@@ -73,7 +73,7 @@ const EmptyStateContainer = styled(Box)({
 const AgentsList = styled(List)(() => ({
 	overflowY: "auto",
 	flexGrow: 1,
-	padding: "8px 0px"
+	padding: "8px 0px",
 }));
 
 const AgentListItemButton = styled(ListItemButton)(({ theme }) => ({

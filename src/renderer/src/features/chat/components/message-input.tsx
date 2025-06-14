@@ -213,7 +213,7 @@ const StyledTextField = styled(TextField, {
 	},
 	"& .MuiInputBase-input": {
 		color: theme.palette.text.primary,
-		overflowY: "auto"
+		overflowY: "auto",
 	},
 	"& .MuiInputBase-input::placeholder": {
 		color:

@@ -250,7 +250,7 @@ export const TextSelectionControls: FC<TextSelectionControlsProps> = ({
 		// Check if the selection contains or is within a link element
 		const container = document.createElement("div");
 		container.appendChild(selection.range.cloneContents());
-		
+
 		// Look for anchor tags in the selected content
 		const linkElement = container.querySelector("a");
 		if (linkElement?.href) {
@@ -260,7 +260,10 @@ export const TextSelectionControls: FC<TextSelectionControlsProps> = ({
 		// Check if the selection is within a link element
 		let node: Node | null = selection.range.startContainer;
 		while (node && node !== targetRef.current) {
-			if (node.nodeType === Node.ELEMENT_NODE && (node as Element).tagName === "A") {
+			if (
+				node.nodeType === Node.ELEMENT_NODE &&
+				(node as Element).tagName === "A"
+			) {
 				const anchor = node as HTMLAnchorElement;
 				if (anchor.href) {
 					return anchor.href;

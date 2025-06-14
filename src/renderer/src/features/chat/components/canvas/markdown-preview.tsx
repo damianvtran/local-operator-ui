@@ -15,7 +15,7 @@ export const MarkdownPreview: FC<MarkdownPreviewProps> = ({ document }) => {
 		<Box
 			sx={(theme) => ({
 				padding: `${theme.spacing(2)} ${theme.spacing(4)}`,
-				overflow: "auto"
+				overflow: "auto",
 			})}
 		>
 			<MarkdownRenderer content={document.content} />

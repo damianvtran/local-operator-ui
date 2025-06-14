@@ -178,8 +178,7 @@ export const ResizableDivider = ({
 				onDoubleClick={onDoubleClick}
 				aria-orientation="vertical"
 				tabIndex={-1}
-			>
-			</DividerHoverArea>
+			/>
 		</DividerFlexItem>
 	);
 };

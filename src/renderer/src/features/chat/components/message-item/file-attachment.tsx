@@ -388,16 +388,14 @@ export const FileAttachment: FC<FileAttachmentProps> = memo(
 					return fallbackAction(message);
 				}
 			}
-		},
-		[
+		}, [
 			file,
 			onClick,
 			setCanvasOpen,
 			setViewMode,
 			conversationId,
 			handleSpreadsheetClick,
-		],
-	);
+		]);
 
 		const isPastedImage = file.startsWith("data:image/");
 		const isLocalFile = !file.startsWith("data:") && !file.startsWith("http");

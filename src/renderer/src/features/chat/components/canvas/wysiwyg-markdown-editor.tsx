@@ -422,10 +422,9 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 			updateOneFile(conversationId, { ...document, content });
 		}
 	}, [
-		document.path,
-		document.id,
 		hasUserChanges,
 		content,
+		document,
 		conversationId,
 		canvasState,
 		updateOneFile,
@@ -733,6 +732,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 	);
 
 	// Initialize editor content
+	// biome-ignore lint/correctness/useExhaustiveDependencies: We need to run this effect only when the document is changed by the user
 	useEffect(() => {
 		if (editorRef.current && document.id) {
 			// Set editor content
@@ -741,7 +741,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 			if (editorRef.current.innerHTML !== htmlContent) {
 				editorRef.current.innerHTML = htmlContent;
 			}
-      
+
 			setContent(document.content);
 			setHasUserChanges(false);
 			originalContentRef.current = document.content;
@@ -750,6 +750,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 	}, [document.id]);
 
 	// Update content when lastAgentModified changes
+	// biome-ignore lint/correctness/useExhaustiveDependencies: We need to run this effect only when lastAgentModified changes
 	useEffect(() => {
 		if (document.lastAgentModified && editorRef.current) {
 			const htmlContent = markdownToHtml(document.content);
@@ -813,16 +814,18 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 			originalContentRef.current = debouncedContent;
 
 			if (conversationId && canvasState) {
-				updateOneFile(conversationId, { ...document, content: debouncedContent });
+				updateOneFile(conversationId, {
+					...document,
+					content: debouncedContent,
+				});
 			}
 		}
 	}, [
 		debouncedContent,
 		hasUserChanges,
-		document.path,
-		document.id,
 		conversationId,
 		canvasState,
+		document,
 		updateOneFile,
 	]);
 
@@ -1074,7 +1077,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 	// Handle double-click on links to open in new tab
 	const handleDoubleClick = useCallback((event: React.MouseEvent) => {
 		const target = event.target as HTMLElement;
-		
+
 		// Check if the clicked element is a link or is within a link
 		let linkElement: HTMLAnchorElement | null = null;
 		if (target.tagName === "A") {
@@ -1779,4 +1782,7 @@ const arePropsEqual = (
 	);
 };
 
-export const WysiwygMarkdownEditor = memo(WysiwygMarkdownEditorComponent, arePropsEqual);
+export const WysiwygMarkdownEditor = memo(
+	WysiwygMarkdownEditorComponent,
+	arePropsEqual,
+);

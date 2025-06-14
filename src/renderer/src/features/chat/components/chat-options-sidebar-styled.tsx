@@ -60,7 +60,7 @@ export const CloseButton = styled(IconButton)(({ theme }) => ({
 export const SidebarContent = styled(Box)(() => ({
 	flexGrow: 1,
 	overflowY: "auto",
-	padding: "16px 24px"
+	padding: "16px 24px",
 }));
 
 export const SectionTitle = styled(Typography)(({ theme }) => ({
