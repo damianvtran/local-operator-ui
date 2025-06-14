@@ -13,13 +13,6 @@ const RawInfoContainer = styled(Box)({
 	overflow: "auto",
 	padding: 24,
 	backgroundColor: "rgba(0, 0, 0, 0.2)",
-	"&::-webkit-scrollbar": {
-		width: "8px",
-	},
-	"&::-webkit-scrollbar-thumb": {
-		backgroundColor: "rgba(255, 255, 255, 0.1)",
-		borderRadius: "4px",
-	},
 });
 
 const RawInfoContent = styled(Box)({

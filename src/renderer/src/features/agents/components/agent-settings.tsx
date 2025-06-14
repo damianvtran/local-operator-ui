@@ -58,30 +58,11 @@ const DetailsPaper = styled(Paper)(({ theme }) => ({
 	overflow: "hidden",
 }));
 
-const ScrollableContent = styled(Box)(({ theme }) => ({
+const ScrollableContent = styled(Box)(() => ({
 	display: "flex",
 	flexDirection: "column",
 	height: "100%",
 	overflow: "auto",
-	"&::-webkit-scrollbar": {
-		width: "6px",
-	},
-	"&::-webkit-scrollbar-track": {
-		backgroundColor: "transparent",
-	},
-	"&::-webkit-scrollbar-thumb": {
-		backgroundColor:
-			theme.palette.mode === "dark"
-				? "rgba(255, 255, 255, 0.1)"
-				: "rgba(0, 0, 0, 0.1)",
-		borderRadius: "10px",
-		"&:hover": {
-			backgroundColor:
-				theme.palette.mode === "dark"
-					? "rgba(255, 255, 255, 0.2)"
-					: "rgba(0, 0, 0, 0.2)",
-		},
-	},
 }));
 
 const EmptyStateContainer = styled(Box)(({ theme }) => ({

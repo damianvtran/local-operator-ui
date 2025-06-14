@@ -16,6 +16,9 @@ import type { ProgressInfo, UpdateInfo } from "electron-updater";
 import parse from "html-react-parser";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+const RELEASE_ARTIFACT_ERROR_REGEX =
+	/cannot find .* in the latest release artifacts/i;
+
 // Define types for backend update info
 type BackendUpdateInfo = {
 	currentVersion: string;
@@ -151,9 +154,16 @@ export const UpdateNotification = ({
 			setError(null);
 			await window.api.updater.checkForUpdates();
 		} catch (err) {
-			setError(
-				`Error checking for updates: ${err instanceof Error ? err.message : String(err)}`,
-			);
+			const errorMessage = err instanceof Error ? err.message : String(err);
+			// If the error is because the release artifact is not found, don't show an error
+			if (RELEASE_ARTIFACT_ERROR_REGEX.test(errorMessage)) {
+				setUpdateAvailable(false);
+				setUpdateInfo(null);
+				console.warn(`Error checking for updates: ${errorMessage}`);
+				return;
+			}
+
+			setError(`Error checking for updates: ${errorMessage}`);
 			setSnackbarOpen(true);
 		} finally {
 			setChecking(false);

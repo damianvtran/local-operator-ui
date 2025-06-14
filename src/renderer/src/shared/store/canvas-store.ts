@@ -26,6 +26,7 @@ export type ConversationCanvasState = {
 	files: CanvasDocument[];
 	mentionedFiles: CanvasDocument[];
 	viewMode: CanvasViewMode;
+	spreadsheetData: Record<string, Record<string, Record<string, unknown>[]>>;
 };
 
 /**
@@ -33,6 +34,11 @@ export type ConversationCanvasState = {
  */
 export type CanvasStoreState = {
 	conversations: Record<string, ConversationCanvasState>;
+	setSpreadsheetData: (
+		conversationId: string,
+		fileId: string,
+		data: Record<string, Record<string, unknown>[]>,
+	) => void;
 	/**
 	 * Set the open status for a conversation's canvas
 	 */
@@ -49,6 +55,10 @@ export type CanvasStoreState = {
 	 * Set the files for a conversation
 	 */
 	setFiles: (conversationId: string, files: CanvasDocument[]) => void;
+	/**
+	 * Set a single file for a conversation
+	 */
+	updateOneFile: (conversationId: string, file: CanvasDocument) => void;
 	/**
 	 * Set the mentioned files for a conversation
 	 */
@@ -91,6 +101,7 @@ const defaultConversationCanvasState: ConversationCanvasState = {
 	files: [],
 	mentionedFiles: [],
 	viewMode: "documents", // Default to documents view
+	spreadsheetData: {},
 };
 
 /**
@@ -113,6 +124,26 @@ export const useCanvasStore = create<CanvasStoreState>()(
 	persist(
 		(set, _) => ({
 			conversations: {},
+			setSpreadsheetData: (conversationId, fileId, data) => {
+				set((state) => {
+					const conv = getConversationState(
+						state.conversations,
+						conversationId,
+					);
+					return {
+						conversations: {
+							...state.conversations,
+							[conversationId]: {
+								...conv,
+								spreadsheetData: {
+									...conv.spreadsheetData,
+									[fileId]: data,
+								},
+							},
+						},
+					};
+				});
+			},
 			setCanvasOpen: (conversationId, isOpen) => {
 				set((state) => ({
 					conversations: {
@@ -156,6 +187,26 @@ export const useCanvasStore = create<CanvasStoreState>()(
 						},
 					},
 				}));
+			},
+			updateOneFile: (conversationId, updatedFile) => {
+				set((state) => {
+					const conv = getConversationState(
+						state.conversations,
+						conversationId,
+					);
+					const updatedFiles = conv.files.map((f) =>
+						f.id === updatedFile.id ? updatedFile : f,
+					);
+					return {
+						conversations: {
+							...state.conversations,
+							[conversationId]: {
+								...conv,
+								files: updatedFiles,
+							},
+						},
+					};
+				});
 			},
 			resetConversationCanvas: (conversationId) => {
 				set((state) => {
@@ -239,19 +290,26 @@ export const useCanvasStore = create<CanvasStoreState>()(
 						state.conversations,
 						conversationId,
 					);
-					const updatedFiles = [...conv.files, file];
-					const updatedMentionedFiles = [...conv.mentionedFiles, file];
+
+					// Check if the file already exists in openTabs
+					const tabExists = conv.openTabs.some((tab) => tab.id === file.id);
+
+					const updatedTabs = tabExists
+						? conv.openTabs
+						: [...conv.openTabs, { id: file.id, title: file.title }];
+
+					// Check if the file already exists in files
+					const fileExists = conv.files.some((f) => f.id === file.id);
+
+					const updatedFiles = fileExists ? conv.files : [...conv.files, file];
+
 					return {
 						conversations: {
 							...state.conversations,
 							[conversationId]: {
 								...conv,
 								files: updatedFiles,
-								mentionedFiles: updatedMentionedFiles,
-								openTabs: [
-									...conv.openTabs,
-									{ id: file.id, title: file.title },
-								],
+								openTabs: updatedTabs,
 								selectedTabId: file.id,
 								viewMode: "documents",
 							},

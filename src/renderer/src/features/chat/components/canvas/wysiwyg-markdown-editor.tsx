@@ -12,7 +12,7 @@ import {
 	Toolbar,
 	Tooltip,
 } from "@mui/material";
-import { styled } from "@mui/material/styles";
+import { alpha, styled } from "@mui/material/styles";
 import type { EditDiff } from "@shared/api/local-operator/types";
 import { FindReplaceWidget } from "@shared/components/common/find-replace-widget";
 import { TextSelectionControls } from "@shared/components/common/text-selection-controls";
@@ -196,16 +196,6 @@ const EditorContent = styled(Box)(({ theme }) => ({
 	padding: "32px",
 	overflowY: "auto",
 	backgroundColor: theme.palette.background.paper,
-	"&::-webkit-scrollbar": {
-		width: "8px",
-	},
-	"&::-webkit-scrollbar-thumb": {
-		backgroundColor:
-			theme.palette.mode === "dark"
-				? "rgba(255, 255, 255, 0.1)"
-				: "rgba(0, 0, 0, 0.2)",
-		borderRadius: "4px",
-	},
 	"& [contenteditable]": {
 		outline: "none",
 		minHeight: "200px",
@@ -274,23 +264,13 @@ const EditorContent = styled(Box)(({ theme }) => ({
 		fontSize: "0.8em",
 	},
 	"& pre": {
-		backgroundColor: theme.palette.background.default,
+		backgroundColor: alpha(theme.palette.action.hover, 0.02),
 		backgroundImage: "none",
 		padding: "12px",
 		borderRadius: "8px",
 		overflow: "auto",
+		border: `1px solid ${theme.palette.divider}`,
 		margin: "12px 0",
-		"&::-webkit-scrollbar": {
-			width: "8px",
-			height: "8px",
-		},
-		"&::-webkit-scrollbar-thumb": {
-			backgroundColor:
-				theme.palette.mode === "dark"
-					? "rgba(255, 255, 255, 0.1)"
-					: "rgba(0, 0, 0, 0.2)",
-			borderRadius: "4px",
-		},
 		"& code": {
 			backgroundColor: "transparent",
 			padding: 0,
@@ -394,7 +374,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 	const relativeContainerRef = useRef<HTMLDivElement>(null);
 	const scrollPositionRef = useRef<number | null>(null);
 
-	const debouncedContent = useDebouncedValue(content, 1000);
+	const debouncedContent = useDebouncedValue(content, 3000);
 	const editorRef = useRef<HTMLDivElement>(null);
 	const originalContentRef = useRef(document.content);
 	const isInitialLoadRef = useRef(true);
@@ -418,7 +398,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 		}
 	}, []);
 
-	const { setFiles } = useCanvasStore();
+	const { updateOneFile } = useCanvasStore();
 	const canvasState = useCanvasStore((state) =>
 		conversationId ? state.conversations[conversationId] : undefined,
 	);
@@ -439,19 +419,15 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 		setHasUserChanges(false);
 
 		if (conversationId && canvasState) {
-			const updatedFiles = canvasState.files.map((file) =>
-				file.id === document.id ? { ...file, content } : file,
-			);
-			setFiles(conversationId, updatedFiles);
+			updateOneFile(conversationId, { ...document, content });
 		}
 	}, [
-		document.path,
-		document.id,
 		hasUserChanges,
 		content,
+		document,
 		conversationId,
 		canvasState,
-		setFiles,
+		updateOneFile,
 	]);
 
 	const updateCurrentTextType = useCallback(() => {
@@ -756,17 +732,37 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 	);
 
 	// Initialize editor content
+	// biome-ignore lint/correctness/useExhaustiveDependencies: We need to run this effect only when the document is changed by the user
 	useEffect(() => {
-		if (editorRef.current) {
+		if (editorRef.current && document.id) {
 			// Set editor content
 			const htmlContent = markdownToHtml(document.content);
-			editorRef.current.innerHTML = htmlContent;
+
+			if (editorRef.current.innerHTML !== htmlContent) {
+				editorRef.current.innerHTML = htmlContent;
+			}
+
 			setContent(document.content);
 			setHasUserChanges(false);
 			originalContentRef.current = document.content;
 			isInitialLoadRef.current = true;
 		}
-	}, [document.content]);
+	}, [document.id]);
+
+	// Update content when lastAgentModified changes
+	// biome-ignore lint/correctness/useExhaustiveDependencies: We need to run this effect only when lastAgentModified changes
+	useEffect(() => {
+		if (document.lastAgentModified && editorRef.current) {
+			const htmlContent = markdownToHtml(document.content);
+			if (editorRef.current.innerHTML !== htmlContent) {
+				editorRef.current.innerHTML = htmlContent;
+				setContent(document.content);
+				originalContentRef.current = document.content;
+				setHasUserChanges(false);
+				undoManagerRef.current?.saveCurrentState();
+			}
+		}
+	}, [document.lastAgentModified]);
 
 	// Manage UndoManager lifecycle
 	useEffect(() => {
@@ -818,22 +814,19 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 			originalContentRef.current = debouncedContent;
 
 			if (conversationId && canvasState) {
-				const updatedFiles = canvasState.files.map((file) =>
-					file.id === document.id
-						? { ...file, content: debouncedContent }
-						: file,
-				);
-				setFiles(conversationId, updatedFiles);
+				updateOneFile(conversationId, {
+					...document,
+					content: debouncedContent,
+				});
 			}
 		}
 	}, [
 		debouncedContent,
 		hasUserChanges,
-		document.path,
-		document.id,
 		conversationId,
 		canvasState,
-		setFiles,
+		document,
+		updateOneFile,
 	]);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: We need to run this effect when content changes to restore the scroll position.
@@ -1081,6 +1074,25 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 		[handleContentChange],
 	);
 
+	// Handle double-click on links to open in new tab
+	const handleDoubleClick = useCallback((event: React.MouseEvent) => {
+		const target = event.target as HTMLElement;
+
+		// Check if the clicked element is a link or is within a link
+		let linkElement: HTMLAnchorElement | null = null;
+		if (target.tagName === "A") {
+			linkElement = target as HTMLAnchorElement;
+		} else {
+			// Check if the target is within a link element using closest
+			linkElement = target.closest?.("a") ?? null;
+		}
+
+		if (linkElement?.href) {
+			event.preventDefault();
+			window.open(linkElement.href, "_blank", "noopener,noreferrer");
+		}
+	}, []);
+
 	// Handle keyboard shortcuts
 	const handleKeyDown = useCallback(
 		(event: React.KeyboardEvent) => {
@@ -1267,10 +1279,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 			setHasUserChanges(false);
 
 			if (conversationId && canvasState) {
-				const updatedFiles = canvasState.files.map((file) =>
-					file.id === document.id ? { ...file, content: finalContent } : file,
-				);
-				setFiles(conversationId, updatedFiles);
+				updateOneFile(conversationId, { ...document, content: finalContent });
 			}
 		}
 	};
@@ -1638,6 +1647,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 						contentEditable={!reviewState}
 						onInput={handleContentChange}
 						onKeyDown={handleKeyDown}
+						onDoubleClick={handleDoubleClick}
 						suppressContentEditableWarning
 						onBlur={() => {
 							if (inlineEdit) {
@@ -1739,4 +1749,40 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 	);
 };
 
-export const WysiwygMarkdownEditor = memo(WysiwygMarkdownEditorComponent);
+/**
+ * Custom comparison function for memoization that only checks properties
+ * that actually affect the rendering of the editor component.
+ * This prevents unnecessary re-renders when metadata like lastModified changes
+ * but the actual document content and title remain the same.
+ */
+const arePropsEqual = (
+	prevProps: WysiwygMarkdownEditorProps,
+	nextProps: WysiwygMarkdownEditorProps,
+): boolean => {
+	// Check if conversationId or agentId changed
+	if (
+		prevProps.conversationId !== nextProps.conversationId ||
+		prevProps.agentId !== nextProps.agentId
+	) {
+		return false;
+	}
+
+	// Check document properties that affect rendering
+	const prevDoc = prevProps.document;
+	const nextDoc = nextProps.document;
+
+	// These are the only document properties that affect the editor rendering
+	return (
+		prevDoc.id === nextDoc.id &&
+		prevDoc.title === nextDoc.title &&
+		prevDoc.content === nextDoc.content &&
+		prevDoc.path === nextDoc.path &&
+		prevDoc.type === nextDoc.type &&
+		prevDoc.lastAgentModified === nextDoc.lastAgentModified
+	);
+};
+
+export const WysiwygMarkdownEditor = memo(
+	WysiwygMarkdownEditorComponent,
+	arePropsEqual,
+);

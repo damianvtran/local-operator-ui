@@ -125,23 +125,6 @@ const StyledTextField = styled(TextField)(({ theme }) => ({
 	"& .MuiInputBase-input": {
 		color: theme.palette.text.primary,
 		overflowY: "auto",
-		scrollbarWidth: "thin",
-		scrollbarColor: `${alpha(theme.palette.text.primary, 0.5)} transparent`,
-		/* Firefox */
-		"&::-webkit-scrollbar": {
-			width: "8px",
-			height: "8px",
-		},
-		"&::-webkit-scrollbar-track": {
-			background: "transparent",
-		},
-		"&::-webkit-scrollbar-thumb": {
-			backgroundColor: alpha(theme.palette.text.primary, 0.5),
-			borderRadius: "4px",
-		},
-		"&::-webkit-scrollbar-thumb:hover": {
-			backgroundColor: alpha(theme.palette.text.primary, 0.7),
-		},
 	},
 	"& .MuiInputBase-input::placeholder": {
 		fontSize: "0.875rem",
@@ -538,7 +521,7 @@ export const InlineEdit: FC<InlineEditProps> = ({
 	const handleFileSelect = (e: ChangeEvent<HTMLInputElement>) => {
 		if (e.target.files && e.target.files.length > 0) {
 			const newAttachments = Array.from(e.target.files).map((file) => {
-				const filePath = file.path;
+				const filePath = file.name;
 				if (filePath) {
 					return normalizePath(filePath);
 				}

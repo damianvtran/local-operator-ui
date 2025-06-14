@@ -1,5 +1,5 @@
 import { Box, Typography } from "@mui/material";
-import { alpha, styled } from "@mui/material/styles";
+import { styled } from "@mui/material/styles";
 import type { FC } from "react";
 import SyntaxHighlighter from "react-syntax-highlighter";
 import { atomOneDark } from "react-syntax-highlighter/dist/esm/styles/hljs";
@@ -47,24 +47,7 @@ const BlockScrollWrapper = styled(Box, {
 			overflowY: "auto",
 			width: "100%",
 			borderRadius: "8px",
-			"&::-webkit-scrollbar": {
-				width: "6px",
-				height: "6px",
-			},
 			boxShadow: "0 2px 6px rgba(0, 0, 0, 0.2)",
-			"&::-webkit-scrollbar-thumb": {
-				backgroundColor: alpha(
-					theme.palette.mode === "dark"
-						? theme.palette.common.white
-						: theme.palette.common.black,
-					0.1,
-				),
-				borderRadius: "3px",
-			},
-			"&::-webkit-scrollbar-corner": {
-				backgroundColor:
-					theme.palette.mode === "dark" ? "#282c34" : theme.palette.grey[200],
-			},
 			display: "flex",
 			flexDirection: flexDirection || "column",
 			whiteSpace: "pre",
