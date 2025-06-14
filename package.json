@@ -1,6 +1,6 @@
 {
 	"name": "local-operator-ui",
-	"version": "0.12.0",
+	"version": "0.12.1",
 	"productName": "Local Operator",
 	"description": "User interface for AI agent assistants that run Python code safely on your device through an intuitive chat interface. Supports local and cloud LLM models with built-in security features.",
 	"main": "./out/main/index.js",
@@ -162,7 +162,7 @@
 		"@vitejs/plugin-react": "^4.3.4",
 		"dotenv": "^16.5.0",
 		"dotenv-cli": "^8.0.0",
-		"electron": "^36.4.0",
+		"electron": "^35.5.1",
 		"electron-builder": "^26.0.12",
 		"electron-vite": "^3.0.0",
 		"esbuild": "^0.25.1",
