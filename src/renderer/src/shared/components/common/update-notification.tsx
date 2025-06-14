@@ -159,6 +159,7 @@ export const UpdateNotification = ({
 			if (RELEASE_ARTIFACT_ERROR_REGEX.test(errorMessage)) {
 				setUpdateAvailable(false);
 				setUpdateInfo(null);
+				console.warn(errorMessage);
 				return;
 			}
 
