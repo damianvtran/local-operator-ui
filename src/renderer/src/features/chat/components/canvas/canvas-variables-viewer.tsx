@@ -171,7 +171,7 @@ const VariableRow: FC<VariableDisplayProps> = memo(
 				whiteSpace: "pre-wrap",
 				wordBreak: "break-word",
 				maxHeight: "300px",
-				overflow: "auto"
+				overflow: "auto",
 			}),
 			[theme.palette.background.default, theme.palette.divider],
 		);

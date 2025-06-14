@@ -12,12 +12,12 @@ import { useUndoManagerStore } from "@shared/store/undo-manager-store";
 import {
 	FilePlus,
 	FileText,
+	FileUp,
 	FolderOpen,
 	ListTree,
-	FileUp,
 	X,
 } from "lucide-react";
-import { memo, useCallback, useMemo, useState, useEffect } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import type { FC } from "react";
 import type { CanvasDocument } from "../../types/canvas";
 import { createFile } from "../../utils/file-creation";

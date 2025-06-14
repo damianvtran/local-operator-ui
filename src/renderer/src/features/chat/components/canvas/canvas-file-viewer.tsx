@@ -310,7 +310,10 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 					const encoding = isSpreadsheetFile(title) ? "base64" : "utf-8";
 					const result = await window.api.readFile(normalizedPath, encoding);
 
-					if (result.success && (isCanvasSupported(title) || isSpreadsheetFile(title))) {
+					if (
+						result.success &&
+						(isCanvasSupported(title) || isSpreadsheetFile(title))
+					) {
 						const docId = normalizedPath;
 						const newDoc = {
 							id: docId,

@@ -12,7 +12,7 @@ const RawInfoContainer = styled(Box)({
 	flexGrow: 1,
 	overflow: "auto",
 	padding: 24,
-	backgroundColor: "rgba(0, 0, 0, 0.2)"
+	backgroundColor: "rgba(0, 0, 0, 0.2)",
 });
 
 const RawInfoContent = styled(Box)({

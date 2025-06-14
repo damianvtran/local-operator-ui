@@ -188,11 +188,14 @@ export const useCanvasStore = create<CanvasStoreState>()(
 					},
 				}));
 			},
-      updateOneFile: (conversationId, updatedFile) => {
+			updateOneFile: (conversationId, updatedFile) => {
 				set((state) => {
-					const conv = getConversationState(state.conversations, conversationId);
+					const conv = getConversationState(
+						state.conversations,
+						conversationId,
+					);
 					const updatedFiles = conv.files.map((f) =>
-						f.id === updatedFile.id ? updatedFile : f
+						f.id === updatedFile.id ? updatedFile : f,
 					);
 					return {
 						conversations: {
@@ -287,21 +290,19 @@ export const useCanvasStore = create<CanvasStoreState>()(
 						state.conversations,
 						conversationId,
 					);
-			
+
 					// Check if the file already exists in openTabs
-					const tabExists = conv.openTabs.some(tab => tab.id === file.id);
-			
-					const updatedTabs = tabExists 
-						? conv.openTabs 
+					const tabExists = conv.openTabs.some((tab) => tab.id === file.id);
+
+					const updatedTabs = tabExists
+						? conv.openTabs
 						: [...conv.openTabs, { id: file.id, title: file.title }];
-			
+
 					// Check if the file already exists in files
-					const fileExists = conv.files.some(f => f.id === file.id);
-			
-					const updatedFiles = fileExists
-						? conv.files
-						: [...conv.files, file];
-			
+					const fileExists = conv.files.some((f) => f.id === file.id);
+
+					const updatedFiles = fileExists ? conv.files : [...conv.files, file];
+
 					return {
 						conversations: {
 							...state.conversations,

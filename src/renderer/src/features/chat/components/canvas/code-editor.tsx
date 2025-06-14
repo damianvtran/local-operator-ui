@@ -46,7 +46,7 @@ const CodeEditorContainer = styled(Box)(({ theme }) => ({
 	overflow: "auto",
 	height: "100%",
 	fontSize: theme.typography.pxToRem(13),
-	fontFamily: "'Geist Mono', monospace"
+	fontFamily: "'Geist Mono', monospace",
 }));
 
 /**

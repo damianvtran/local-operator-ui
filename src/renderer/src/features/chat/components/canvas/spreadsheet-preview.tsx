@@ -1,17 +1,21 @@
+import {
+	AllCommunityModule,
+	ModuleRegistry,
+	themeQuartz,
+} from "ag-grid-community";
 import { AgGridReact } from "ag-grid-react";
-import { AllCommunityModule, ModuleRegistry, themeQuartz } from "ag-grid-community";
 import type { FC } from "react";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as XLSX from "xlsx";
 
-import type { CellValueChangedEvent, ColDef } from "ag-grid-community";
-import { iconSetQuartz } from "ag-grid-community";
-import { getFileTypeFromPath } from "../../utils/file-types";
-import { useTheme, styled, alpha } from "@mui/material";
+import { alpha, styled, useTheme } from "@mui/material";
 import { useDebouncedValue } from "@shared/hooks/use-debounced-value";
 import { useCanvasStore } from "@shared/store/canvas-store";
-import { showSuccessToast, showErrorToast } from "@shared/utils/toast-manager";
+import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
+import type { CellValueChangedEvent, ColDef } from "ag-grid-community";
+import { iconSetQuartz } from "ag-grid-community";
 import type { CanvasDocument } from "../../types/canvas";
+import { getFileTypeFromPath } from "../../utils/file-types";
 
 type SpreadsheetPreviewProps = {
 	document: CanvasDocument;
@@ -26,7 +30,7 @@ const SpreadsheetContainer = styled("div")({
 	width: "100%",
 	display: "flex",
 	flexDirection: "column",
-  maskImage: "none",
+	maskImage: "none",
 });
 
 const GridWrapper = styled("div")(() => ({
@@ -92,7 +96,7 @@ const SpreadsheetPreviewComponent: FC<SpreadsheetPreviewProps> = ({
 	const [isSaving, setIsSaving] = useState(false);
 	const originalDataRef = useRef<Record<string, Record<string, unknown>[]>>({});
 	const isInitialLoadRef = useRef(true);
-	
+
 	const { setFiles, setSpreadsheetData } = useCanvasStore();
 	const canvasState = useCanvasStore((state) =>
 		conversationId ? state.conversations[conversationId] : undefined,
@@ -126,9 +130,10 @@ const SpreadsheetPreviewComponent: FC<SpreadsheetPreviewProps> = ({
 			const newSheetsData: Record<string, Record<string, unknown>[]> = {};
 			for (const sheetName of workbook.SheetNames) {
 				const worksheet = workbook.Sheets[sheetName];
-				const jsonSheet = XLSX.utils.sheet_to_json(
-					worksheet,
-				) as Record<string, unknown>[];
+				const jsonSheet = XLSX.utils.sheet_to_json(worksheet) as Record<
+					string,
+					unknown
+				>[];
 				newSheetsData[sheetName] = jsonSheet;
 			}
 			setSheetsData(newSheetsData);
@@ -151,17 +156,20 @@ const SpreadsheetPreviewComponent: FC<SpreadsheetPreviewProps> = ({
 	}, [document.content, document.path, parseFile]);
 
 	// Helper function to compare spreadsheet data
-	const isDataEqual = useCallback((
-		data1: Record<string, Record<string, unknown>[]>,
-		data2: Record<string, Record<string, unknown>[]>
-	): boolean => {
-		return JSON.stringify(data1) === JSON.stringify(data2);
-	}, []);
+	const isDataEqual = useCallback(
+		(
+			data1: Record<string, Record<string, unknown>[]>,
+			data2: Record<string, Record<string, unknown>[]>,
+		): boolean => {
+			return JSON.stringify(data1) === JSON.stringify(data2);
+		},
+		[],
+	);
 
 	const saveChanges = useCallback(async () => {
 		if (
-			!document.path || 
-			Object.keys(debouncedSheetsData).length === 0 || 
+			!document.path ||
+			Object.keys(debouncedSheetsData).length === 0 ||
 			isSaving ||
 			!hasUserChanges
 		) {
@@ -178,9 +186,7 @@ const SpreadsheetPreviewComponent: FC<SpreadsheetPreviewProps> = ({
 		setIsSaving(true);
 
 		const workbook = XLSX.utils.book_new();
-		for (const [sheetName, sheetData] of Object.entries(
-			debouncedSheetsData,
-		)) {
+		for (const [sheetName, sheetData] of Object.entries(debouncedSheetsData)) {
 			const worksheet = XLSX.utils.json_to_sheet(sheetData);
 			XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
 		}
@@ -206,9 +212,7 @@ const SpreadsheetPreviewComponent: FC<SpreadsheetPreviewProps> = ({
 			// Update canvas store with new content only after successful save
 			if (conversationId && canvasState) {
 				const updatedFiles = canvasState.files.map((file) =>
-					file.id === document.id
-						? { ...file, content: newContent }
-						: file,
+					file.id === document.id ? { ...file, content: newContent } : file,
 				);
 				setFiles(conversationId, updatedFiles);
 			}
@@ -220,17 +224,29 @@ const SpreadsheetPreviewComponent: FC<SpreadsheetPreviewProps> = ({
 			showSuccessToast("Spreadsheet saved successfully");
 		} catch (error) {
 			console.error("Failed to save file:", error);
-			showErrorToast(`Failed to save spreadsheet: ${error instanceof Error ? error.message : 'Unknown error'}`);
+			showErrorToast(
+				`Failed to save spreadsheet: ${error instanceof Error ? error.message : "Unknown error"}`,
+			);
 		} finally {
 			setIsSaving(false);
 		}
-	}, [document.path, document.id, debouncedSheetsData, conversationId, canvasState, setFiles, hasUserChanges, isSaving, isDataEqual]);
+	}, [
+		document.path,
+		document.id,
+		debouncedSheetsData,
+		conversationId,
+		canvasState,
+		setFiles,
+		hasUserChanges,
+		isSaving,
+		isDataEqual,
+	]);
 
 	useEffect(() => {
 		// Only save if we have data, user has made changes, and it's not the initial load
 		if (
-			Object.keys(debouncedSheetsData).length > 0 && 
-			hasUserChanges && 
+			Object.keys(debouncedSheetsData).length > 0 &&
+			hasUserChanges &&
 			!isInitialLoadRef.current
 		) {
 			saveChanges();
@@ -278,11 +294,20 @@ const SpreadsheetPreviewComponent: FC<SpreadsheetPreviewProps> = ({
 				}
 			}
 		},
-		[activeSheetName, sheetsData, conversationId, document.id, setSpreadsheetData],
+		[
+			activeSheetName,
+			sheetsData,
+			conversationId,
+			document.id,
+			setSpreadsheetData,
+		],
 	);
 
 	const columnDefs = useMemo<ColDef[]>(() => {
-		if (!sheetsData[activeSheetName] || sheetsData[activeSheetName].length === 0) {
+		if (
+			!sheetsData[activeSheetName] ||
+			sheetsData[activeSheetName].length === 0
+		) {
 			return [];
 		}
 		const firstRow = sheetsData[activeSheetName][0];
@@ -312,7 +337,7 @@ const SpreadsheetPreviewComponent: FC<SpreadsheetPreviewProps> = ({
 			spacing: 8,
 			headerHeight: 36,
 			rowHeight: 36,
-      headerFontSize: 14,
+			headerFontSize: 14,
 			fontSize: 12,
 		});
 	}, [theme]);
