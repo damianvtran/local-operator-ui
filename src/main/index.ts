@@ -25,6 +25,8 @@ import { OAuthService } from "./oauth-service";
 import { Store, type StoreData } from "./store";
 import { UpdateService } from "./update-service";
 
+const BASE64_FILE_EXTENSIONS = ["csv", "tsv", "xls", "xlsx", "ods"];
+
 export type ReadFileResponse =
 	| { success: true; data: string }
 	| { success: false; error: unknown }; // or use `string` if you always send error.message
@@ -560,7 +562,7 @@ app
 
 		ipcMain.handle(
 			"select-file",
-			async (_, encoding: BufferEncoding = "utf-8") => {
+			async () => {
 				if (!mainWindow) {
 					logger.error(
 						"Cannot show open file dialog: mainWindow is not available.",
@@ -577,7 +579,12 @@ app
 				if (!result.canceled && result.filePaths.length > 0) {
 					const filePath = result.filePaths[0];
 					try {
-						const data = readFileSync(filePath, encoding);
+						const extension = filePath.split(".").pop() || "";
+						const isSpreadsheet = BASE64_FILE_EXTENSIONS.includes(
+							extension.toLowerCase(),
+						);
+            
+						const data = readFileSync(filePath, isSpreadsheet ? "base64" : "utf8");
 						return { path: filePath, content: data };
 					} catch (error) {
 						logger.error("Error reading file:", LogFileType.BACKEND, error);
