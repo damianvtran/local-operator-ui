@@ -253,15 +253,6 @@ export const CategoriesInputChips: FC<CategoriesInputChipsProps> = ({
 						scrollbar-width: thin;
 						scrollbar-color: ${theme.palette.action.selected} ${theme.palette.background.paper};
 					}
-					.MuiAutocomplete-popper .MuiPaper-root::-webkit-scrollbar {
-						width: 8px;
-						background: ${theme.palette.background.paper};
-						border-radius: 8px;
-					}
-					.MuiAutocomplete-popper .MuiPaper-root::-webkit-scrollbar-thumb {
-						background: ${theme.palette.action.selected};
-						border-radius: 8px;
-					}
 					`}
 				</style>
 			</ChipsContainer>

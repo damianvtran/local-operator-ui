@@ -46,18 +46,7 @@ const CodeEditorContainer = styled(Box)(({ theme }) => ({
 	overflow: "auto",
 	height: "100%",
 	fontSize: theme.typography.pxToRem(13),
-	fontFamily: "'Geist Mono', monospace",
-
-	"&::-webkit-scrollbar": {
-		width: "8px",
-	},
-	"&::-webkit-scrollbar-thumb": {
-		backgroundColor:
-			theme.palette.mode === "dark"
-				? "rgba(255, 255, 255, 0.1)"
-				: "rgba(0, 0, 0, 0.2)",
-		borderRadius: "4px",
-	},
+	fontFamily: "'Geist Mono', monospace"
 }));
 
 /**

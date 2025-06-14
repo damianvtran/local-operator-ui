@@ -29,11 +29,11 @@ const SpreadsheetContainer = styled("div")({
   maskImage: "none",
 });
 
-const GridWrapper = styled("div")({
+const GridWrapper = styled("div")(() => ({
 	flex: 1,
 	height: "calc(100% - 40px)",
 	width: "100%",
-});
+}));
 
 const SheetTabsContainer = styled("div")(({ theme }) => ({
 	display: "flex",

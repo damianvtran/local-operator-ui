@@ -37,21 +37,6 @@ const VariableListContainer = styled(Box)(({ theme }) => ({
 			: alpha(theme.palette.grey[50], 0.7),
 	overflow: "auto",
 	maxHeight: "100%",
-	"&::-webkit-scrollbar": {
-		width: "8px",
-	},
-	"&::-webkit-scrollbar-thumb": {
-		backgroundColor:
-			theme.palette.mode === "dark"
-				? "rgba(255, 255, 255, 0.1)"
-				: "rgba(0, 0, 0, 0.2)",
-		borderRadius: "4px",
-	},
-	scrollbarWidth: "thin",
-	scrollbarColor:
-		theme.palette.mode === "dark"
-			? "rgba(255,255,255,0.1) transparent"
-			: "rgba(0,0,0,0.2) transparent",
 	flex: 1,
 }));
 
@@ -186,28 +171,9 @@ const VariableRow: FC<VariableDisplayProps> = memo(
 				whiteSpace: "pre-wrap",
 				wordBreak: "break-word",
 				maxHeight: "300px",
-				overflow: "auto",
-				"&::-webkit-scrollbar": {
-					width: "8px",
-				},
-				"&::-webkit-scrollbar-thumb": {
-					backgroundColor:
-						theme.palette.mode === "dark"
-							? "rgba(255, 255, 255, 0.1)"
-							: "rgba(0, 0, 0, 0.2)",
-					borderRadius: "4px",
-				},
-				scrollbarWidth: "thin",
-				scrollbarColor:
-					theme.palette.mode === "dark"
-						? "rgba(255,255,255,0.1) transparent"
-						: "rgba(0,0,0,0.2) transparent",
+				overflow: "auto"
 			}),
-			[
-				theme.palette.background.default,
-				theme.palette.divider,
-				theme.palette.mode,
-			],
+			[theme.palette.background.default, theme.palette.divider],
 		);
 
 		// Memoize callbacks

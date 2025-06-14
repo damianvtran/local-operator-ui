@@ -61,36 +61,10 @@ const SearchInputContainer = styled("div")(({ theme }) => ({
 	borderBottom: `1px solid ${theme.palette.divider}`,
 }));
 
-const ResultsListContainer = styled(List)(({ theme }) => ({
+const ResultsListContainer = styled(List)(() => ({
 	maxHeight: "400px",
 	overflowY: "auto",
 	padding: 0,
-	// Custom scrollbar styles
-	"&::-webkit-scrollbar": {
-		width: "8px",
-	},
-	"&::-webkit-scrollbar-track": {
-		background: "transparent",
-	},
-	"&::-webkit-scrollbar-thumb": {
-		background:
-			theme.palette.mode === "dark"
-				? "rgba(255, 255, 255, 0.2)"
-				: "rgba(0, 0, 0, 0.2)",
-		borderRadius: "4px",
-		"&:hover": {
-			background:
-				theme.palette.mode === "dark"
-					? "rgba(255, 255, 255, 0.3)"
-					: "rgba(0, 0, 0, 0.3)",
-		},
-	},
-	// Firefox scrollbar styles
-	scrollbarWidth: "thin",
-	scrollbarColor:
-		theme.palette.mode === "dark"
-			? "rgba(255, 255, 255, 0.2) transparent"
-			: "rgba(0, 0, 0, 0.2) transparent",
 }));
 
 const ResultItemStyled = styled(ListItemButton)(({ theme }) => ({
