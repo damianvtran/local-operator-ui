@@ -398,7 +398,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 		}
 	}, []);
 
-	const { setFiles } = useCanvasStore();
+	const { updateOneFile } = useCanvasStore();
 	const canvasState = useCanvasStore((state) =>
 		conversationId ? state.conversations[conversationId] : undefined,
 	);
@@ -419,10 +419,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 		setHasUserChanges(false);
 
 		if (conversationId && canvasState) {
-			const updatedFiles = canvasState.files.map((file) =>
-				file.id === document.id ? { ...file, content } : file,
-			);
-			setFiles(conversationId, updatedFiles);
+			updateOneFile(conversationId, { ...document, content });
 		}
 	}, [
 		document.path,
@@ -431,7 +428,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 		content,
 		conversationId,
 		canvasState,
-		setFiles,
+		updateOneFile,
 	]);
 
 	const updateCurrentTextType = useCallback(() => {
@@ -737,7 +734,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 
 	// Initialize editor content
 	useEffect(() => {
-		if (editorRef.current) {
+		if (editorRef.current && document.id) {
 			// Set editor content
 			const htmlContent = markdownToHtml(document.content);
 
@@ -750,7 +747,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 			originalContentRef.current = document.content;
 			isInitialLoadRef.current = true;
 		}
-	}, [document.content]);
+	}, [document.id]);
 
 	// Manage UndoManager lifecycle
 	useEffect(() => {
@@ -802,12 +799,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 			originalContentRef.current = debouncedContent;
 
 			if (conversationId && canvasState) {
-				const updatedFiles = canvasState.files.map((file) =>
-					file.id === document.id
-						? { ...file, content: debouncedContent }
-						: file,
-				);
-				setFiles(conversationId, updatedFiles);
+				updateOneFile(conversationId, { ...document, content: debouncedContent });
 			}
 		}
 	}, [
@@ -817,7 +809,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 		document.id,
 		conversationId,
 		canvasState,
-		setFiles,
+		updateOneFile,
 	]);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: We need to run this effect when content changes to restore the scroll position.
@@ -1270,10 +1262,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 			setHasUserChanges(false);
 
 			if (conversationId && canvasState) {
-				const updatedFiles = canvasState.files.map((file) =>
-					file.id === document.id ? { ...file, content: finalContent } : file,
-				);
-				setFiles(conversationId, updatedFiles);
+				updateOneFile(conversationId, { ...document, content: finalContent });
 			}
 		}
 	};

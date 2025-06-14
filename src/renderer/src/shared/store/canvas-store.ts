@@ -56,6 +56,10 @@ export type CanvasStoreState = {
 	 */
 	setFiles: (conversationId: string, files: CanvasDocument[]) => void;
 	/**
+	 * Set a single file for a conversation
+	 */
+	updateOneFile: (conversationId: string, file: CanvasDocument) => void;
+	/**
 	 * Set the mentioned files for a conversation
 	 */
 	setMentionedFiles: (
@@ -183,6 +187,23 @@ export const useCanvasStore = create<CanvasStoreState>()(
 						},
 					},
 				}));
+			},
+      updateOneFile: (conversationId, updatedFile) => {
+				set((state) => {
+					const conv = getConversationState(state.conversations, conversationId);
+					const updatedFiles = conv.files.map((f) => 
+						f.id === updatedFile.id ? updatedFile : f
+					);
+					return {
+						conversations: {
+							...state.conversations,
+							[conversationId]: {
+								...conv,
+								files: updatedFiles,
+							},
+						},
+					};
+				});
 			},
 			resetConversationCanvas: (conversationId) => {
 				set((state) => {
