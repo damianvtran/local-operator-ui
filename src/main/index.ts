@@ -560,40 +560,40 @@ app
 			return undefined; // Return undefined if canceled or no path selected
 		});
 
-		ipcMain.handle(
-			"select-file",
-			async () => {
-				if (!mainWindow) {
-					logger.error(
-						"Cannot show open file dialog: mainWindow is not available.",
-						LogFileType.BACKEND,
+		ipcMain.handle("select-file", async () => {
+			if (!mainWindow) {
+				logger.error(
+					"Cannot show open file dialog: mainWindow is not available.",
+					LogFileType.BACKEND,
+				);
+				return undefined;
+			}
+			const result = await dialog.showOpenDialog(mainWindow, {
+				properties: ["openFile"],
+				title: "Select File",
+				buttonLabel: "Open",
+			});
+
+			if (!result.canceled && result.filePaths.length > 0) {
+				const filePath = result.filePaths[0];
+				try {
+					const extension = filePath.split(".").pop() || "";
+					const isSpreadsheet = BASE64_FILE_EXTENSIONS.includes(
+						extension.toLowerCase(),
 					);
+
+					const data = readFileSync(
+						filePath,
+						isSpreadsheet ? "base64" : "utf8",
+					);
+					return { path: filePath, content: data };
+				} catch (error) {
+					logger.error("Error reading file:", LogFileType.BACKEND, error);
 					return undefined;
 				}
-				const result = await dialog.showOpenDialog(mainWindow, {
-					properties: ["openFile"],
-					title: "Select File",
-					buttonLabel: "Open",
-				});
-
-				if (!result.canceled && result.filePaths.length > 0) {
-					const filePath = result.filePaths[0];
-					try {
-						const extension = filePath.split(".").pop() || "";
-						const isSpreadsheet = BASE64_FILE_EXTENSIONS.includes(
-							extension.toLowerCase(),
-						);
-            
-						const data = readFileSync(filePath, isSpreadsheet ? "base64" : "utf8");
-						return { path: filePath, content: data };
-					} catch (error) {
-						logger.error("Error reading file:", LogFileType.BACKEND, error);
-						return undefined;
-					}
-				}
-				return undefined;
-			},
-		);
+			}
+			return undefined;
+		});
 
 		// --- Session storage handlers (using the already initialized sessionStore) ---
 		ipcMain.handle("get-session", () => {
