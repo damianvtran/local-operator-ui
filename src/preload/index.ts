@@ -7,7 +7,8 @@ import type { BackendUpdateInfo } from "../main/update-service";
 const api = {
 	// Add methods to open files and URLs
 	openFile: (filePath: string) => ipcRenderer.invoke("open-file", filePath),
-	readFile: (filePath: string) => ipcRenderer.invoke("read-file", filePath),
+	readFile: (filePath: string, encoding?: BufferEncoding) =>
+		ipcRenderer.invoke("read-file", filePath, encoding),
 
 	openExternal: (url: string) => ipcRenderer.invoke("open-external", url),
 	showItemInFolder: (filePath: string) =>
@@ -160,13 +161,23 @@ const api = {
 	selectDirectory: (): Promise<string | undefined> =>
 		ipcRenderer.invoke("select-directory"),
 
+	/** Opens a native dialog to select a file and returns its path and content */
+	selectFile: (
+		encoding?: BufferEncoding,
+	): Promise<{ path: string; content: string } | undefined> =>
+		ipcRenderer.invoke("select-file", encoding),
+
 	/** Gets the user's home directory path */
 	getHomeDirectory: (): Promise<string> =>
 		ipcRenderer.invoke("get-home-directory"),
 
 	/** Saves a file to the specified path */
-	saveFile: (filePath: string, content: string): Promise<void> =>
-		ipcRenderer.invoke("save-file", filePath, content),
+	saveFile: (
+		filePath: string,
+		content: string,
+		encoding?: BufferEncoding,
+	): Promise<void> =>
+		ipcRenderer.invoke("save-file", filePath, content, encoding),
 
 	/** Checks if a file exists at the specified path */
 	fileExists: (filePath: string): Promise<boolean> =>

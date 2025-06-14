@@ -57,22 +57,10 @@ export const CloseButton = styled(IconButton)(({ theme }) => ({
 	},
 }));
 
-export const SidebarContent = styled(Box)(({ theme }) => ({
+export const SidebarContent = styled(Box)(() => ({
 	flexGrow: 1,
 	overflowY: "auto",
 	padding: "16px 24px",
-	"&::-webkit-scrollbar": {
-		width: "8px",
-	},
-	"&::-webkit-scrollbar-thumb": {
-		backgroundColor: alpha(
-			theme.palette.mode === "dark"
-				? theme.palette.common.white
-				: theme.palette.common.black,
-			0.1,
-		),
-		borderRadius: "4px",
-	},
 }));
 
 export const SectionTitle = styled(Typography)(({ theme }) => ({

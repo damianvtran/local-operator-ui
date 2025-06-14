@@ -2,8 +2,10 @@ import { type FC, memo } from "react";
 import type { CanvasDocument } from "../../types/canvas";
 import { isHtmlFile } from "../../utils/is-html-file";
 import { isMarkdownFile } from "../../utils/is-markdown-file";
+import { isSpreadsheetFile } from "../../utils/is-spreadsheet-file";
 import { CodeEditor } from "./code-editor";
 import { HtmlPreview } from "./html-preview";
+import { SpreadsheetPreview } from "./spreadsheet-preview";
 import { WysiwygMarkdownEditor } from "./wysiwyg-markdown-editor";
 
 type CanvasContentProps = {
@@ -42,6 +44,16 @@ const CanvasContentComponent: FC<CanvasContentProps> = ({
 
 	if (isHtmlFile(document.title)) {
 		return <HtmlPreview document={document} />;
+	}
+
+	if (isSpreadsheetFile(document.title)) {
+		return (
+			<SpreadsheetPreview
+				document={document}
+				conversationId={conversationId}
+				agentId={agentId}
+			/>
+		);
 	}
 
 	return (

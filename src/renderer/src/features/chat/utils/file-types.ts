@@ -24,7 +24,7 @@ export const getFileTypeFromPath = (
 	if (["md", "markdown"].includes(extension)) return "markdown";
 	if (["html", "htm"].includes(extension)) return "html";
 	if (["zip", "tar", "gz", "rar", "7z"].includes(extension)) return "archive";
-	if (["txt", "log", "csv", "json", "xml", "yaml", "yml"].includes(extension))
+	if (["txt", "log", "json", "xml", "yaml", "yml"].includes(extension))
 		return "text"; // Grouping common text-based formats
 	if (
 		[
@@ -48,7 +48,7 @@ export const getFileTypeFromPath = (
 	)
 		return "code";
 	if (["doc", "docx", "odt"].includes(extension)) return "document";
-	if (["xls", "xlsx", "ods"].includes(extension)) return "spreadsheet";
+	if (["xls", "xlsx", "ods", "csv"].includes(extension)) return "spreadsheet";
 	if (["ppt", "pptx", "odp"].includes(extension)) return "presentation";
 	if (["mp3", "wav", "aac", "flac"].includes(extension)) return "audio";
 

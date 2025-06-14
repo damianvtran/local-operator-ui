@@ -23,13 +23,6 @@ const SidebarContainer = styled(Box)(({ theme }) => ({
 	marginRight: theme.spacing(3),
 	height: "100%",
 	overflowY: "auto",
-	"&::-webkit-scrollbar": {
-		width: "8px",
-	},
-	"&::-webkit-scrollbar-thumb": {
-		backgroundColor: theme.palette.mode === "dark" ? "#888" : "#ccc",
-		borderRadius: "4px",
-	},
 }));
 
 const CategoryList = styled(Box)(({ theme }) => ({

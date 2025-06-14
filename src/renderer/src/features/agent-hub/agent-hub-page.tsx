@@ -66,22 +66,6 @@ const ScrollContainer = styled(Box)(({ theme }) => ({
 	overflowY: "auto",
 	overflowX: "hidden",
 	padding: theme.spacing(0, 0),
-	"&::-webkit-scrollbar": {
-		width: "8px",
-	},
-	"&::-webkit-scrollbar-thumb": {
-		backgroundColor:
-			theme.palette.mode === "dark"
-				? "rgba(255, 255, 255, 0.1)"
-				: "rgba(0, 0, 0, 0.2)",
-		borderRadius: "4px",
-	},
-	// For Firefox
-	scrollbarWidth: "thin",
-	scrollbarColor:
-		theme.palette.mode === "dark"
-			? "rgba(255,255,255,0.1) transparent"
-			: "rgba(0,0,0,0.2) transparent",
 }));
 
 /**

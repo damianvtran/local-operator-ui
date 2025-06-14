@@ -44,27 +44,6 @@ const OutputContainer = styled(Box)(({ theme }) => ({
 	overflowX: "auto",
 	display: "flex",
 	flexDirection: "column-reverse",
-	"&::-webkit-scrollbar": {
-		width: "6px",
-		height: "6px",
-	},
-	"&::-webkit-scrollbar-thumb": {
-		backgroundColor: alpha(
-			theme.palette.mode === "dark"
-				? theme.palette.common.white
-				: theme.palette.common.black,
-			0.1,
-		),
-		borderRadius: "3px",
-	},
-	"&::-webkit-scrollbar-corner": {
-		backgroundColor: alpha(
-			theme.palette.mode === "dark"
-				? theme.palette.common.black
-				: theme.palette.grey[200],
-			theme.palette.mode === "dark" ? 0.3 : 0.5,
-		),
-	},
 }));
 
 /**

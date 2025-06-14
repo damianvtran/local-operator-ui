@@ -12,6 +12,7 @@ import type { PostHogConfig } from "posthog-js";
 import App from "./app";
 import { queryClient } from "./shared/api/query-client";
 import { ErrorBoundary } from "./shared/components/common/error-boundary";
+import { GlobalScrollbarStyles } from "./shared/components/common/global-scrollbar-styles";
 import { RadientTokenRefresherRunner } from "./shared/components/system/RadientTokenRefresherRunner";
 import { AuthProviders } from "./shared/providers/auth";
 import { FeatureFlagProvider } from "./shared/providers/feature-flags";
@@ -38,6 +39,7 @@ document.addEventListener("DOMContentLoaded", () => {
 						<AuthProviders>
 							<ThemeProvider>
 								<CssBaseline />
+								<GlobalScrollbarStyles />
 								<ErrorBoundary>
 									<HashRouter>
 										<App />
