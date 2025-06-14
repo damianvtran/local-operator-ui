@@ -11,7 +11,10 @@ declare global {
 		electron: ElectronAPI;
 		api: {
 			openFile: (filePath: string) => Promise<void>;
-			readFile: (filePath: string) => Promise<ReadFileResponse>;
+			readFile: (
+				filePath: string,
+				encoding?: BufferEncoding,
+			) => Promise<ReadFileResponse>;
 			openExternal: (url: string) => Promise<void>;
 			showItemInFolder: (filePath: string) => Promise<void>;
 			session: {
@@ -133,13 +136,17 @@ declare global {
 			/** Opens a native dialog to select a directory */
 			selectDirectory: () => Promise<string | undefined>;
 			/** Opens a native dialog to select a file and returns its path and content */
-			selectFile: () => Promise<
+			selectFile: (encoding?: BufferEncoding) => Promise<
 				{ path: string; content: string } | undefined
 			>;
 			/** Gets the user's home directory path */
 			getHomeDirectory: () => Promise<string>;
 			/** Saves a file to the specified path */
-			saveFile: (filePath: string, content: string) => Promise<void>;
+			saveFile: (
+				filePath: string,
+				content: string,
+				encoding?: BufferEncoding,
+			) => Promise<void>;
 			/** Checks if a file exists at the specified path */
 			fileExists: (filePath: string) => Promise<boolean>;
 		};
