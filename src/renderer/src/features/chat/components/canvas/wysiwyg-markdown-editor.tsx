@@ -196,16 +196,6 @@ const EditorContent = styled(Box)(({ theme }) => ({
 	padding: "32px",
 	overflowY: "auto",
 	backgroundColor: theme.palette.background.paper,
-	"&::-webkit-scrollbar": {
-		width: "8px",
-	},
-	"&::-webkit-scrollbar-thumb": {
-		backgroundColor:
-			theme.palette.mode === "dark"
-				? "rgba(255, 255, 255, 0.1)"
-				: "rgba(0, 0, 0, 0.2)",
-		borderRadius: "4px",
-	},
 	"& [contenteditable]": {
 		outline: "none",
 		minHeight: "200px",
@@ -280,17 +270,6 @@ const EditorContent = styled(Box)(({ theme }) => ({
 		borderRadius: "8px",
 		overflow: "auto",
 		margin: "12px 0",
-		"&::-webkit-scrollbar": {
-			width: "8px",
-			height: "8px",
-		},
-		"&::-webkit-scrollbar-thumb": {
-			backgroundColor:
-				theme.palette.mode === "dark"
-					? "rgba(255, 255, 255, 0.1)"
-					: "rgba(0, 0, 0, 0.2)",
-			borderRadius: "4px",
-		},
 		"& code": {
 			backgroundColor: "transparent",
 			padding: 0,

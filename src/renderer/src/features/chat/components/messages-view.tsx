@@ -51,7 +51,7 @@ const MessagesViewWrapper = styled(Box, {
  */
 const MessagesContainer = styled(Box, {
 	shouldForwardProp: (prop) => prop !== "collapsed" && prop !== "isSmallView",
-})<{ collapsed?: boolean; isSmallView?: boolean }>(({ theme, collapsed }) => ({
+})<{ collapsed?: boolean; isSmallView?: boolean }>(({ collapsed }) => ({
 	flexGrow: collapsed ? 0 : 1,
 	height: collapsed ? 0 : "100%",
 	overflow: collapsed ? "hidden" : "auto",
@@ -60,16 +60,6 @@ const MessagesContainer = styled(Box, {
 	display: "flex",
 	flexDirection: "column-reverse", // Key change: reverse column direction for auto-bottom scrolling
 	position: "relative",
-	"&::-webkit-scrollbar": {
-		width: "8px",
-	},
-	"&::-webkit-scrollbar-thumb": {
-		backgroundColor:
-			theme.palette.mode === "dark"
-				? "rgba(255, 255, 255, 0.1)"
-				: "rgba(0, 0, 0, 0.2)",
-		borderRadius: "4px",
-	},
 	transform: "translateZ(0)",
 	willChange: "scroll-position",
 	overflowAnchor: "auto", // Ensures browser maintains scroll position when content changes

@@ -18,16 +18,6 @@ export const OnboardingTourGlobalStyles: FC = () => {
 			maxWidth: "500px",
 			maxHeight: "95vh",
 			overflowY: "auto",
-			"&::-webkit-scrollbar": {
-				width: "8px",
-			},
-			"&::-webkit-scrollbar-thumb": {
-				backgroundColor:
-					theme.palette.mode === "dark"
-						? "rgba(255, 255, 255, 0.1)"
-						: "rgba(0, 0, 0, 0.2)",
-				borderRadius: "4px",
-			},
 			"&.shepherd-has-title .shepherd-content .shepherd-header": {
 				borderTopLeftRadius: "6px", // Adjusted
 				borderTopRightRadius: "6px", // Adjusted

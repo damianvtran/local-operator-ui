@@ -357,21 +357,6 @@ const ContentContainer = styled(Box)(({ theme }) => ({
 	[theme.breakpoints.down("sm")]: {
 		padding: theme.spacing(2),
 	},
-	"&::-webkit-scrollbar": {
-		width: "8px",
-		height: "8px",
-	},
-	"&::-webkit-scrollbar-track": {
-		backgroundColor: "transparent",
-	},
-	"&::-webkit-scrollbar-thumb": {
-		backgroundColor: theme.palette.divider,
-		borderRadius: "4px",
-		border: `2px solid ${theme.palette.background.default}`,
-		"&:hover": {
-			backgroundColor: theme.palette.text.disabled,
-		},
-	},
 }));
 
 const SidebarContainer = styled(Box)(({ theme }) => ({

@@ -41,18 +41,6 @@ const LogContainer = styled(Box, {
 	color: isUser ? theme.palette.info.main : theme.palette.info.light,
 	width: "100%",
 	boxShadow: `0 2px 6px ${alpha(theme.palette.common.black, theme.palette.mode === "dark" ? 0.15 : 0.1)}`,
-	"&::-webkit-scrollbar": {
-		width: "6px",
-	},
-	"&::-webkit-scrollbar-thumb": {
-		backgroundColor: alpha(
-			theme.palette.mode === "dark"
-				? theme.palette.common.white
-				: theme.palette.common.black,
-			0.1,
-		),
-		borderRadius: "3px",
-	},
 }));
 
 /**

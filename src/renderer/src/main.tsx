@@ -16,6 +16,7 @@ import { RadientTokenRefresherRunner } from "./shared/components/system/RadientT
 import { AuthProviders } from "./shared/providers/auth";
 import { FeatureFlagProvider } from "./shared/providers/feature-flags";
 import { ThemeProvider } from "./shared/themes/theme-provider";
+import { GlobalScrollbarStyles } from "./shared/components/common/global-scrollbar-styles";
 import { isDevelopmentMode } from "./shared/utils/env-utils";
 
 const posthogOptions: Partial<PostHogConfig> = {
@@ -38,6 +39,7 @@ document.addEventListener("DOMContentLoaded", () => {
 						<AuthProviders>
 							<ThemeProvider>
 								<CssBaseline />
+								<GlobalScrollbarStyles />
 								<ErrorBoundary>
 									<HashRouter>
 										<App />

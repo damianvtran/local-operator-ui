@@ -53,22 +53,6 @@ const StyledTextField = styled(TextField)(({ theme }) => ({
 		lineHeight: 1.5,
 		whiteSpace: "pre-wrap", // Ensure text wraps within the input
 		wordBreak: "break-word", // Break long words to prevent overflow
-		// Shadcn-like scrollbar
-		"&::-webkit-scrollbar": {
-			width: "8px",
-			height: "8px",
-		},
-		"&::-webkit-scrollbar-track": {
-			backgroundColor: "transparent",
-		},
-		"&::-webkit-scrollbar-thumb": {
-			backgroundColor: theme.palette.divider,
-			borderRadius: "4px",
-			border: `2px solid ${theme.palette.background.paper}`, // Match input background
-			"&:hover": {
-				backgroundColor: theme.palette.text.disabled,
-			},
-		},
 	},
 	"& .MuiInputLabel-root": {
 		// Style label if needed

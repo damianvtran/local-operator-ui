@@ -161,22 +161,6 @@ export const OnboardingDialog = ({
 						padding: theme.spacing(2, 3, 1),
 						flexGrow: 1,
 						overflowY: "auto",
-						"&::-webkit-scrollbar": {
-							width: "8px",
-							height: "8px",
-						},
-						"&::-webkit-scrollbar-track": {
-							backgroundColor: "transparent",
-						},
-						"&::-webkit-scrollbar-thumb": {
-							backgroundColor: alpha(theme.palette.text.primary, 0.2),
-							borderRadius: "4px",
-							border: "2px solid transparent",
-							backgroundClip: "padding-box",
-							"&:hover": {
-								backgroundColor: alpha(theme.palette.text.primary, 0.3),
-							},
-						},
 					}}
 				>
 					{children}
