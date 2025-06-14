@@ -48,7 +48,8 @@ export const getFileTypeFromPath = (
 	)
 		return "code";
 	if (["doc", "docx", "odt"].includes(extension)) return "document";
-	if (["xls", "xlsx", "ods", "csv"].includes(extension)) return "spreadsheet";
+	if (["xls", "xlsx", "ods", "csv", "tsv"].includes(extension))
+		return "spreadsheet";
 	if (["ppt", "pptx", "odp"].includes(extension)) return "presentation";
 	if (["mp3", "wav", "aac", "flac"].includes(extension)) return "audio";
 
