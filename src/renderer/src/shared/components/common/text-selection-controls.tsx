@@ -6,6 +6,7 @@ import { useSpeechStore } from "@shared/store/speech-store";
 import {
 	ClipboardCopy,
 	Copy,
+	ExternalLink,
 	MessageSquareReply,
 	ReplyIcon,
 	Sparkles,
@@ -15,6 +16,8 @@ import {
 import type { FC } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
+
+const URL_REGEX = /https?:\/\/[^\s]+/i;
 
 // Props for the TextSelectionControls component
 type TextSelectionControlsProps = {
@@ -240,6 +243,50 @@ export const TextSelectionControls: FC<TextSelectionControlsProps> = ({
 		}
 	};
 
+	// Extract link URL from selected content
+	const extractLinkFromSelection = useCallback(() => {
+		if (!selection.range) return null;
+
+		// Check if the selection contains or is within a link element
+		const container = document.createElement("div");
+		container.appendChild(selection.range.cloneContents());
+		
+		// Look for anchor tags in the selected content
+		const linkElement = container.querySelector("a");
+		if (linkElement?.href) {
+			return linkElement.href;
+		}
+
+		// Check if the selection is within a link element
+		let node: Node | null = selection.range.startContainer;
+		while (node && node !== targetRef.current) {
+			if (node.nodeType === Node.ELEMENT_NODE && (node as Element).tagName === "A") {
+				const anchor = node as HTMLAnchorElement;
+				if (anchor.href) {
+					return anchor.href;
+				}
+			}
+			node = node.parentNode;
+		}
+
+		// Check if the selected text looks like a URL
+		const match = selection.text.match(URL_REGEX);
+		if (match) {
+			return match[0];
+		}
+
+		return null;
+	}, [selection.range, selection.text, targetRef]);
+
+	const linkUrl = extractLinkFromSelection();
+
+	const handleOpenInBrowser = () => {
+		if (linkUrl) {
+			window.open(linkUrl, "_blank", "noopener,noreferrer");
+			setSelection({ text: "", html: "", rect: null, range: null });
+		}
+	};
+
 	if (!selection.rect || !selection.text || isUser) {
 		return null;
 	}
@@ -322,6 +369,13 @@ export const TextSelectionControls: FC<TextSelectionControlsProps> = ({
 				<Tooltip title="Refer to this from File" placement="top">
 					<StyledIconButton size="small" onClick={handleRefer}>
 						<ReplyIcon size={14} />
+					</StyledIconButton>
+				</Tooltip>
+			)}
+			{linkUrl && (
+				<Tooltip title="Open in Browser" placement="top">
+					<StyledIconButton size="small" onClick={handleOpenInBrowser}>
+						<ExternalLink size={14} />
 					</StyledIconButton>
 				</Tooltip>
 			)}

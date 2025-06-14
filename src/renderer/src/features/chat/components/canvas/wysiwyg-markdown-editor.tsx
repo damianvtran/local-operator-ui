@@ -1065,6 +1065,25 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 		[handleContentChange],
 	);
 
+	// Handle double-click on links to open in new tab
+	const handleDoubleClick = useCallback((event: React.MouseEvent) => {
+		const target = event.target as HTMLElement;
+		
+		// Check if the clicked element is a link or is within a link
+		let linkElement: HTMLAnchorElement | null = null;
+		if (target.tagName === "A") {
+			linkElement = target as HTMLAnchorElement;
+		} else {
+			// Check if the target is within a link element using closest
+			linkElement = target.closest?.("a") ?? null;
+		}
+
+		if (linkElement?.href) {
+			event.preventDefault();
+			window.open(linkElement.href, "_blank", "noopener,noreferrer");
+		}
+	}, []);
+
 	// Handle keyboard shortcuts
 	const handleKeyDown = useCallback(
 		(event: React.KeyboardEvent) => {
@@ -1622,6 +1641,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 						contentEditable={!reviewState}
 						onInput={handleContentChange}
 						onKeyDown={handleKeyDown}
+						onDoubleClick={handleDoubleClick}
 						suppressContentEditableWarning
 						onBlur={() => {
 							if (inlineEdit) {
