@@ -12,7 +12,7 @@ import {
 	Toolbar,
 	Tooltip,
 } from "@mui/material";
-import { styled } from "@mui/material/styles";
+import { alpha, styled } from "@mui/material/styles";
 import type { EditDiff } from "@shared/api/local-operator/types";
 import { FindReplaceWidget } from "@shared/components/common/find-replace-widget";
 import { TextSelectionControls } from "@shared/components/common/text-selection-controls";
@@ -264,11 +264,12 @@ const EditorContent = styled(Box)(({ theme }) => ({
 		fontSize: "0.8em",
 	},
 	"& pre": {
-		backgroundColor: theme.palette.background.default,
+		backgroundColor: alpha(theme.palette.action.hover, 0.02),
 		backgroundImage: "none",
 		padding: "12px",
 		borderRadius: "8px",
 		overflow: "auto",
+		border: `1px solid ${theme.palette.divider}`,
 		margin: "12px 0",
 		"& code": {
 			backgroundColor: "transparent",

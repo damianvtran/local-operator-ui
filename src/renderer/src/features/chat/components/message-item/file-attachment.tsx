@@ -234,7 +234,9 @@ export const FileAttachment: FC<FileAttachmentProps> = memo(
 					}
 				} else {
 					try {
-						const result = await window.api.readFile(normalizedPath, "base64");
+						const encoding = isSpreadsheetFile(title) ? "base64" : "utf-8";
+
+						const result = await window.api.readFile(normalizedPath, encoding);
 						if (result.success) {
 							const newDoc = {
 								id: docId,
@@ -326,7 +328,8 @@ export const FileAttachment: FC<FileAttachmentProps> = memo(
 					? file.substring(7)
 					: file;
 				try {
-					const result = await window.api.readFile(normalizedPath, "base64");
+					const encoding = isSpreadsheetFile(title) ? "base64" : "utf-8";
+					const result = await window.api.readFile(normalizedPath, encoding);
 
 					if (result.success && isCanvasSupported(title)) {
 						const docId = normalizedPath;
