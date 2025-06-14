@@ -9,10 +9,14 @@ import { iconSetQuartz } from "ag-grid-community";
 import { getFileTypeFromPath } from "../../utils/file-types";
 import { useTheme, styled, alpha } from "@mui/material";
 import { useDebouncedValue } from "@shared/hooks/use-debounced-value";
+import { useCanvasStore } from "@shared/store/canvas-store";
+import { showSuccessToast, showErrorToast } from "@shared/utils/toast-manager";
 import type { CanvasDocument } from "../../types/canvas";
 
 type SpreadsheetPreviewProps = {
 	document: CanvasDocument;
+	conversationId?: string;
+	agentId?: string;
 };
 
 ModuleRegistry.registerModules([AllCommunityModule]);
@@ -76,6 +80,7 @@ const SheetTab = styled("button")<{ "data-active": boolean }>(
 
 const SpreadsheetPreviewComponent: FC<SpreadsheetPreviewProps> = ({
 	document,
+	conversationId,
 }) => {
 	const theme = useTheme();
 	const gridRef = useRef<AgGridReact>(null);
@@ -83,8 +88,17 @@ const SpreadsheetPreviewComponent: FC<SpreadsheetPreviewProps> = ({
 		Record<string, Record<string, unknown>[]>
 	>({});
 	const [activeSheetName, setActiveSheetName] = useState("");
+	const [hasUserChanges, setHasUserChanges] = useState(false);
+	const [isSaving, setIsSaving] = useState(false);
+	const originalDataRef = useRef<Record<string, Record<string, unknown>[]>>({});
+	const isInitialLoadRef = useRef(true);
+	
+	const { setFiles, setSpreadsheetData } = useCanvasStore();
+	const canvasState = useCanvasStore((state) =>
+		conversationId ? state.conversations[conversationId] : undefined,
+	);
 
-	const debouncedSheetsData = useDebouncedValue(sheetsData, 5000);
+	const debouncedSheetsData = useDebouncedValue(sheetsData, 3000);
 
 	const parseFile = useCallback((fileContent: string, filePath: string) => {
 		try {
@@ -118,6 +132,10 @@ const SpreadsheetPreviewComponent: FC<SpreadsheetPreviewProps> = ({
 				newSheetsData[sheetName] = jsonSheet;
 			}
 			setSheetsData(newSheetsData);
+			// Deep clone the original data to prevent reference issues
+			originalDataRef.current = JSON.parse(JSON.stringify(newSheetsData));
+			setHasUserChanges(false);
+			isInitialLoadRef.current = true;
 			if (workbook.SheetNames.length > 0) {
 				setActiveSheetName(workbook.SheetNames[0]);
 			}
@@ -132,8 +150,32 @@ const SpreadsheetPreviewComponent: FC<SpreadsheetPreviewProps> = ({
 		}
 	}, [document.content, document.path, parseFile]);
 
+	// Helper function to compare spreadsheet data
+	const isDataEqual = useCallback((
+		data1: Record<string, Record<string, unknown>[]>,
+		data2: Record<string, Record<string, unknown>[]>
+	): boolean => {
+		return JSON.stringify(data1) === JSON.stringify(data2);
+	}, []);
+
 	const saveChanges = useCallback(async () => {
-		if (!document.path || Object.keys(debouncedSheetsData).length === 0) return;
+		if (
+			!document.path || 
+			Object.keys(debouncedSheetsData).length === 0 || 
+			isSaving ||
+			!hasUserChanges
+		) {
+			return;
+		}
+
+		// Final check - compare data to prevent unnecessary saves
+		if (isDataEqual(debouncedSheetsData, originalDataRef.current)) {
+			// Data is the same, reset the hasUserChanges flag
+			setHasUserChanges(false);
+			return;
+		}
+
+		setIsSaving(true);
 
 		const workbook = XLSX.utils.book_new();
 		for (const [sheetName, sheetData] of Object.entries(
@@ -160,16 +202,40 @@ const SpreadsheetPreviewComponent: FC<SpreadsheetPreviewProps> = ({
 				newContent,
 				isCsv ? "utf8" : "base64",
 			);
+
+			// Update canvas store with new content only after successful save
+			if (conversationId && canvasState) {
+				const updatedFiles = canvasState.files.map((file) =>
+					file.id === document.id
+						? { ...file, content: newContent }
+						: file,
+				);
+				setFiles(conversationId, updatedFiles);
+			}
+
+			// Update the original data reference and reset change flags
+			originalDataRef.current = JSON.parse(JSON.stringify(debouncedSheetsData));
+			setHasUserChanges(false);
+
+			showSuccessToast("Spreadsheet saved successfully");
 		} catch (error) {
 			console.error("Failed to save file:", error);
+			showErrorToast(`Failed to save spreadsheet: ${error instanceof Error ? error.message : 'Unknown error'}`);
+		} finally {
+			setIsSaving(false);
 		}
-	}, [document.path, debouncedSheetsData]);
+	}, [document.path, document.id, debouncedSheetsData, conversationId, canvasState, setFiles, hasUserChanges, isSaving, isDataEqual]);
 
 	useEffect(() => {
-		if (Object.keys(debouncedSheetsData).length > 0) {
+		// Only save if we have data, user has made changes, and it's not the initial load
+		if (
+			Object.keys(debouncedSheetsData).length > 0 && 
+			hasUserChanges && 
+			!isInitialLoadRef.current
+		) {
 			saveChanges();
 		}
-	}, [debouncedSheetsData, saveChanges]);
+	}, [debouncedSheetsData, saveChanges, hasUserChanges]);
 
 	useEffect(() => {
 		const handleKeyDown = (event: KeyboardEvent) => {
@@ -196,13 +262,23 @@ const SpreadsheetPreviewComponent: FC<SpreadsheetPreviewProps> = ({
 				};
 				const updatedSheetData = [...sheetData];
 				updatedSheetData[rowIndex] = updatedRow;
-				setSheetsData((prev) => ({
-					...prev,
+				const newSheetsData = {
+					...sheetsData,
 					[activeSheetName]: updatedSheetData,
-				}));
+				};
+				setSheetsData(newSheetsData);
+
+				// Mark that user has made changes and this is no longer initial load
+				isInitialLoadRef.current = false;
+				setHasUserChanges(true);
+
+				// Update canvas store immediately for real-time sync (but don't save to disk yet)
+				if (conversationId) {
+					setSpreadsheetData(conversationId, document.id, newSheetsData);
+				}
 			}
 		},
-		[activeSheetName, sheetsData],
+		[activeSheetName, sheetsData, conversationId, document.id, setSpreadsheetData],
 	);
 
 	const columnDefs = useMemo<ColDef[]>(() => {

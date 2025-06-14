@@ -26,7 +26,7 @@ export type ConversationCanvasState = {
 	files: CanvasDocument[];
 	mentionedFiles: CanvasDocument[];
 	viewMode: CanvasViewMode;
-	spreadsheetData: Record<string, Record<string, unknown>[]>;
+	spreadsheetData: Record<string, Record<string, Record<string, unknown>[]>>;
 };
 
 /**
@@ -37,7 +37,7 @@ export type CanvasStoreState = {
 	setSpreadsheetData: (
 		conversationId: string,
 		fileId: string,
-		data: Record<string, unknown>[],
+		data: Record<string, Record<string, unknown>[]>,
 	) => void;
 	/**
 	 * Set the open status for a conversation's canvas
