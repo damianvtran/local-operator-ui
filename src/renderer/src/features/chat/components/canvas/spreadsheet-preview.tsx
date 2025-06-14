@@ -93,6 +93,7 @@ const SpreadsheetPreviewComponent: FC<SpreadsheetPreviewProps> = ({
 
 			let workbook: XLSX.WorkBook;
 			if (isCsv) {
+				// For CSV files, keep the original logic that was working
 				let csvText = fileContent;
 				// CSVs are text but might be base64 encoded from certain app flows.
 				// We try to decode it, and if it fails, assume it's plain text.
@@ -103,6 +104,8 @@ const SpreadsheetPreviewComponent: FC<SpreadsheetPreviewProps> = ({
 				}
 				workbook = XLSX.read(csvText, { type: "string" });
 			} else {
+				// For XLSX files, the content is base64-encoded binary data
+				// Pass it directly to XLSX.read with type "base64"
 				workbook = XLSX.read(fileContent, { type: "base64" });
 			}
 
