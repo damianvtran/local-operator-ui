@@ -16,6 +16,7 @@ import type {
 	AgentEditFileRequest,
 	EditDiff,
 } from "@shared/api/local-operator/types";
+import { KeyboardShortcut } from "@shared/components/common/keyboard-shortcut";
 import { apiConfig } from "@shared/config";
 import { useConfig } from "@shared/hooks/use-config";
 import { useCredentials } from "@shared/hooks/use-credentials";
@@ -28,12 +29,12 @@ import { normalizePath } from "@shared/utils/path-utils";
 import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
 import {
 	Check,
+	ChevronLeft,
+	ChevronRight,
 	Mic,
 	Paperclip,
 	Send,
 	Square,
-	ThumbsDown,
-	ThumbsUp,
 	X,
 } from "lucide-react";
 import {
@@ -64,6 +65,9 @@ type InlineEditProps = {
 	} | null;
 	onApplyAll: () => void;
 	onRejectAll: () => void;
+	onAcceptDiff: () => void;
+	onRejectDiff: () => void;
+	onNavigateDiff: (direction: "next" | "prev") => void;
 };
 
 const InputInnerContainer = styled(Paper)(({ theme }) => ({
@@ -217,42 +221,17 @@ const TranscriptionText = styled(Typography)(({ theme }) => ({
 
 const ReviewHeader = styled(Box)(({ theme }) => ({
 	display: "flex",
-	alignItems: "flex-start",
-	padding: theme.spacing(0, 2, 0, 1),
+	flexDirection: "column",
+	justifyContent: "space-between",
+	padding: theme.spacing(0.5, 2, 1, 1),
 	gap: theme.spacing(1),
 	height: "64px",
 }));
 
 const ReviewPrompt = styled(Typography)(({ theme }) => ({
 	flexGrow: 1,
-	whiteSpace: "nowrap",
-	overflow: "hidden",
-	textOverflow: "ellipsis",
 	fontSize: "0.875rem",
-	color: alpha(theme.palette.text.primary, 0.5),
-}));
-
-const ReviewButton = styled(Button)(({ theme }) => ({
-	textTransform: "none",
-	fontWeight: 300,
-	fontSize: "0.75rem",
-	border: `1px solid ${theme.palette.divider}`,
-	borderRadius: 16,
-	padding: theme.spacing(0.5, 2),
-	marginTop: "auto",
-	"&:hover": {
-		backgroundColor: theme.palette.action.hover,
-	},
-	"&:active": {
-		backgroundColor: theme.palette.action.active,
-	},
-	"&:focus": {
-		outline: "none",
-		boxShadow: `0 0 0 2px ${theme.palette.primary.main}`,
-	},
-	"& .MuiButton-startIcon": {
-		marginRight: theme.spacing(0.5),
-	},
+	color: theme.palette.text.secondary,
 }));
 
 export const InlineEdit: FC<InlineEditProps> = ({
@@ -265,6 +244,9 @@ export const InlineEdit: FC<InlineEditProps> = ({
 	reviewState,
 	onApplyAll,
 	onRejectAll,
+	onAcceptDiff,
+	onRejectDiff,
+	onNavigateDiff,
 }) => {
 	const [prompt, setPrompt] = useState("");
 	const [attachments, setAttachments] = useState<string[]>([]);
@@ -343,9 +325,23 @@ export const InlineEdit: FC<InlineEditProps> = ({
 
 	const shortcutText = useMemo(() => {
 		if (platform === "darwin") {
-			return "Cmd+Shift+S";
+			return "⌘+Shift+S";
 		}
 		return "Ctrl+Shift+S";
+	}, [platform]);
+
+	const acceptAllTooltipText = useMemo(() => {
+		if (platform === "darwin") {
+			return "Apply All (⌘+Enter)";
+		}
+		return "Apply All (Ctrl+Enter)";
+	}, [platform]);
+
+	const acceptAllShortcut = useMemo(() => {
+		if (platform === "darwin") {
+			return "⌘+Enter";
+		}
+		return "Ctrl+Enter";
 	}, [platform]);
 
 	const handleStartRecording = useCallback(async () => {
@@ -638,28 +634,103 @@ export const InlineEdit: FC<InlineEditProps> = ({
 			{reviewState ? (
 				<ReviewHeader>
 					<ReviewPrompt>
-						{prompt || `Reviewing ${reviewState.diffs.length} changes`}
+						{prompt ||
+							`Reviewing Changes (${reviewState.currentIndex + 1}/${
+								reviewState.diffs.length
+							})`}
 					</ReviewPrompt>
-					<Tooltip title="Reject All (Esc)">
-						<ReviewButton
-							onClick={onRejectAll}
-							color="error"
-							size="small"
-							startIcon={<ThumbsDown size={12} />}
-						>
-							Reject
-						</ReviewButton>
-					</Tooltip>
-					<Tooltip title="Apply All (Cmd+Enter)">
-						<ReviewButton
-							onClick={onApplyAll}
-							color="success"
-							size="small"
-							startIcon={<ThumbsUp size={12} />}
-						>
-							Accept
-						</ReviewButton>
-					</Tooltip>
+					<Box
+						sx={{
+							width: "100%",
+							display: "flex",
+							alignItems: "center",
+							gap: 1,
+							justifyContent: "flex-end",
+						}}
+					>
+						<Tooltip title="Previous">
+							<span>
+								<IconButton
+									onClick={() => onNavigateDiff("prev")}
+									size="small"
+									disabled={reviewState.currentIndex === 0}
+								>
+									<ChevronLeft size={14} />
+								</IconButton>
+							</span>
+						</Tooltip>
+						<Tooltip title="Next">
+							<span>
+								<IconButton
+									onClick={() => onNavigateDiff("next")}
+									size="small"
+									disabled={
+										reviewState.currentIndex >= reviewState.diffs.length - 1
+									}
+								>
+									<ChevronRight size={14} />
+								</IconButton>
+							</span>
+						</Tooltip>
+						<Box
+							sx={{
+								borderLeft: 1,
+								borderColor: "divider",
+								height: 18,
+								mx: 0.5,
+							}}
+						/>
+						<Tooltip title="Reject this change">
+							<IconButton onClick={onRejectDiff} color="error" size="small">
+								<X size={14} />
+							</IconButton>
+						</Tooltip>
+						<Tooltip title="Accept this change">
+							<IconButton onClick={onAcceptDiff} color="success" size="small">
+								<Check size={14} />
+							</IconButton>
+						</Tooltip>
+						<Box
+							sx={{
+								borderLeft: 1,
+								borderColor: "divider",
+								height: 18,
+								mx: 0.5,
+							}}
+						/>
+						<Tooltip title="Reject All (Esc)">
+							<Button
+								onClick={onRejectAll}
+								color="error"
+								size="small"
+								startIcon={<KeyboardShortcut shortcut="Esc" />}
+								sx={{
+									textTransform: "none",
+									fontSize: "0.8rem",
+									padding: "2px 4px",
+									whiteSpace: "nowrap",
+								}}
+							>
+								Reject All
+							</Button>
+						</Tooltip>
+						<Tooltip title={acceptAllTooltipText}>
+							<Button
+								onClick={onApplyAll}
+								color="success"
+								size="small"
+								startIcon={<KeyboardShortcut shortcut={acceptAllShortcut} />}
+								sx={{
+									textTransform: "none",
+									fontSize: "0.8rem",
+									padding: "2px 4px",
+									whiteSpace: "nowrap",
+								}}
+							>
+								Accept All
+							</Button>
+						</Tooltip>
+					</Box>
 				</ReviewHeader>
 			) : (
 				<>

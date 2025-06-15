@@ -27,6 +27,7 @@ import {
 	AlignLeft,
 	AlignRight,
 	Bold,
+	CheckSquare,
 	Code,
 	Image,
 	Indent,
@@ -245,8 +246,17 @@ const EditorContent = styled(Box)(({ theme }) => ({
 		paddingLeft: "24px",
 		margin: "8px 0",
 	},
+	"& ul li": {
+		listStyleType: "disc",
+	},
+	"& ol li": {
+		listStyleType: "decimal",
+	},
 	"& li": {
 		margin: "4px 0",
+		"&.task-list-item": {
+			listStyleType: "none",
+		},
 	},
 	"& blockquote": {
 		borderLeft: `4px solid ${theme.palette.primary.main}`,
@@ -858,6 +868,49 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 		};
 	}, [debouncedSelectionChange]);
 
+	const toggleList = useCallback(
+		(type: "ordered" | "unordered" | "task") => {
+			if (!editorRef.current) return;
+
+			if (type === "ordered") {
+				window.document.execCommand("insertOrderedList", false);
+			} else {
+				window.document.execCommand("insertUnorderedList", false);
+			}
+
+			if (type === "task") {
+				const selection = window.getSelection();
+				if (!selection?.rangeCount) return;
+
+				const range = selection.getRangeAt(0);
+				const listElement = (range.startContainer as HTMLElement).closest(
+					"ul, ol",
+				);
+
+				if (listElement) {
+					// If we're in an ordered list, convert it to an unordered one for tasks.
+					if (listElement.tagName === "OL") {
+						window.document.execCommand("insertUnorderedList", false);
+					}
+
+					const listItems = listElement.querySelectorAll("li");
+					for (const li of listItems) {
+						if (!li.querySelector('input[type="checkbox"]')) {
+							li.classList.add("task-list-item");
+							const checkbox = window.document.createElement("input");
+							checkbox.type = "checkbox";
+							li.prepend(checkbox, " ");
+						}
+					}
+				}
+			}
+
+			handleContentChange();
+			editorRef.current.focus();
+		},
+		[handleContentChange],
+	);
+
 	// Execute formatting command
 	const executeCommand = useCallback(
 		(command: string, value?: string) => {
@@ -1095,6 +1148,26 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 		}
 	}, []);
 
+	const handleClick = useCallback(
+		(event: React.MouseEvent) => {
+			const target = event.target as HTMLInputElement;
+			if (target.tagName === "INPUT" && target.type === "checkbox") {
+				// Manually update the 'checked' attribute to reflect the new state.
+				// The 'checked' property gives the current state post-click.
+				if (target.checked) {
+					target.setAttribute("checked", "");
+				} else {
+					target.removeAttribute("checked");
+				}
+
+				// The checked state is already updated by the browser, so we just need to
+				// trigger our content change handler to convert the new HTML to markdown
+				handleContentChange();
+			}
+		},
+		[handleContentChange],
+	);
+
 	// Handle keyboard shortcuts
 	const handleKeyDown = useCallback(
 		(event: React.KeyboardEvent) => {
@@ -1236,35 +1309,69 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 			// Handle Enter key in lists
 			if (event.key === "Enter") {
 				const selection = window.getSelection();
-				if (selection?.rangeCount) {
-					const range = selection.getRangeAt(0);
-					let element: Node | null = range.startContainer;
+				if (!selection?.rangeCount) return;
 
-					if (element.nodeType === Node.TEXT_NODE && element.parentElement) {
-						element = element.parentElement;
+				const range = selection.getRangeAt(0);
+				const container = range.startContainer;
+				const startElement =
+					container.nodeType === Node.TEXT_NODE
+						? container.parentElement
+						: (container as Element);
+				const listItem = startElement?.closest("li");
+
+				if (listItem) {
+					// If the list item is empty, break out of the list.
+					if (listItem.textContent?.trim() === "") {
+						event.preventDefault();
+						executeCommand("outdent");
+						executeCommand("formatBlock", "p");
+						return;
 					}
 
-					// Check if we're in a list item
-					while (
-						element &&
-						element !== editorRef.current &&
-						element instanceof Element
-					) {
-						if (element.tagName === "LI") {
-							// If the list item is empty, break out of the list
-							if (element.textContent?.trim() === "") {
-								event.preventDefault();
-								executeCommand("outdent");
-								executeCommand("formatBlock", "p");
+					// Handle creating new task list items.
+					if (listItem.classList.contains("task-list-item")) {
+						// Defer to let the browser create the new LI, then add a checkbox.
+						setTimeout(() => {
+							const newSelection = window.getSelection();
+							if (!newSelection?.rangeCount) return;
+
+							const newRange = newSelection.getRangeAt(0);
+							const newStartContainer = newRange.startContainer;
+							const newStartElement =
+								newStartContainer.nodeType === Node.TEXT_NODE
+									? newStartContainer.parentElement
+									: (newStartContainer as Element);
+							const newListItem = newStartElement?.closest("li");
+
+							if (
+								newListItem &&
+								!newListItem.querySelector('input[type="checkbox"]')
+							) {
+								newListItem.classList.add("task-list-item");
+								const checkbox = window.document.createElement("input");
+								checkbox.type = "checkbox";
+								newListItem.prepend(checkbox, " ");
+
+								// Set the cursor position after the checkbox
+								newRange.setStart(newListItem, 1);
+								newRange.collapse(true);
+								newSelection.removeAllRanges();
+								newSelection.addRange(newRange);
+
+								handleContentChange();
 							}
-							break;
-						}
-						element = element.parentElement;
+						}, 0);
 					}
 				}
 			}
 		},
-		[handleFormatToggle, executeCommand, content, handleManualSave],
+		[
+			handleFormatToggle,
+			executeCommand,
+			content,
+			handleManualSave,
+			handleContentChange,
+		],
 	);
 
 	const handleFinalizeChanges = (finalDiffs: EditDiff[]) => {
@@ -1541,13 +1648,18 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 
 				{/* Lists and Quotes */}
 				<Tooltip title="Bullet List">
-					<ToolbarButton onClick={() => executeCommand("insertUnorderedList")}>
+					<ToolbarButton onClick={() => toggleList("unordered")}>
 						<List size={14} />
 					</ToolbarButton>
 				</Tooltip>
 				<Tooltip title="Numbered List">
-					<ToolbarButton onClick={() => executeCommand("insertOrderedList")}>
+					<ToolbarButton onClick={() => toggleList("ordered")}>
 						<ListOrdered size={14} />
+					</ToolbarButton>
+				</Tooltip>
+				<Tooltip title="Checkbox List">
+					<ToolbarButton onClick={() => toggleList("task")}>
+						<CheckSquare size={14} />
 					</ToolbarButton>
 				</Tooltip>
 				<Tooltip title="Indent">
@@ -1669,6 +1781,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 						contentEditable={!reviewState}
 						onInput={handleContentChange}
 						onKeyDown={handleKeyDown}
+						onClick={handleClick}
 						onDoubleClick={handleDoubleClick}
 						suppressContentEditableWarning
 						onBlur={() => {
@@ -1728,6 +1841,44 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 							onRejectAll={() => {
 								if (!reviewState) return;
 								handleFinalizeChanges([]);
+							}}
+							onAcceptDiff={() => {
+								if (!reviewState) return;
+								const currentDiff = reviewState.diffs[reviewState.currentIndex];
+								const newApprovedDiffs = [
+									...reviewState.approvedDiffs,
+									currentDiff,
+								];
+								if (reviewState.currentIndex >= reviewState.diffs.length - 1) {
+									handleFinalizeChanges(newApprovedDiffs);
+								} else {
+									setReviewState({
+										...reviewState,
+										approvedDiffs: newApprovedDiffs,
+										currentIndex: reviewState.currentIndex + 1,
+									});
+								}
+							}}
+							onRejectDiff={() => {
+								if (!reviewState) return;
+								if (reviewState.currentIndex >= reviewState.diffs.length - 1) {
+									handleFinalizeChanges(reviewState.approvedDiffs);
+								} else {
+									setReviewState({
+										...reviewState,
+										currentIndex: reviewState.currentIndex + 1,
+									});
+								}
+							}}
+							onNavigateDiff={(direction) => {
+								if (!reviewState) return;
+								const newIndex =
+									direction === "next"
+										? reviewState.currentIndex + 1
+										: reviewState.currentIndex - 1;
+								if (newIndex >= 0 && newIndex < reviewState.diffs.length) {
+									setReviewState({ ...reviewState, currentIndex: newIndex });
+								}
 							}}
 						/>
 					)}
