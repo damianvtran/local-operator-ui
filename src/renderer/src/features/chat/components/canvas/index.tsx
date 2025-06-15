@@ -146,7 +146,7 @@ const CanvasComponent: FC<CanvasProps> = ({
 		getPlatform();
 	}, []);
 
-	const { addFileAndSelect, setViewMode } = useCanvasStore();
+	const { addFileAndSelect, setViewMode, addMentionedFile } = useCanvasStore();
 	const { removeManager } = useUndoManagerStore();
 
 	const handleOpenFile = useCallback(async () => {
@@ -161,10 +161,11 @@ const CanvasComponent: FC<CanvasProps> = ({
 					type: getFileTypeFromPath(result.path),
 				};
 				addFileAndSelect(conversationId, newFile);
+				addMentionedFile(conversationId, newFile);
 				setViewMode(conversationId, "documents");
 			}
 		}
-	}, [addFileAndSelect, conversationId, setViewMode]);
+	}, [addFileAndSelect, addMentionedFile, conversationId, setViewMode]);
 
 	useEffect(() => {
 		const handleKeyDown = (event: KeyboardEvent) => {
@@ -202,6 +203,7 @@ const CanvasComponent: FC<CanvasProps> = ({
 					path: `${details.location}/${details.name}.${details.type}`,
 				};
 				addFileAndSelect(conversationId, newFile);
+				addMentionedFile(conversationId, newFile);
 			}
 			setCreateFileDialogOpen(false);
 		} catch (_) {

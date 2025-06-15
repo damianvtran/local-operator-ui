@@ -80,12 +80,22 @@ export class BackendInstaller {
 	 * @returns Path to Python executable or null if not found
 	 */
 	private findPython(): string | null {
-		const possibilities = [
-			// In packaged app (standalone Python)
-			join(process.resourcesPath, "python", "bin", "python3"),
-			// In development (standalone Python)
-			join(process.cwd(), "resources", "python", "bin", "python3"),
-		];
+		const possibilities: string[] = [];
+
+		// Prioritize architecture-specific paths based on current process architecture
+		if (process.arch === "arm64") {
+			// For Apple Silicon (arm64)
+			possibilities.push(
+				join(process.resourcesPath, "python_aarch64", "bin", "python3"), // Packaged app (aarch64)
+				join(process.cwd(), "resources", "python_aarch64", "bin", "python3"), // Development (aarch64)
+			);
+		} else if (process.arch === "x64") {
+			// For Intel (x86_64)
+			possibilities.push(
+				join(process.resourcesPath, "python", "bin", "python3"), // Packaged app (x86_64)
+				join(process.cwd(), "resources", "python", "bin", "python3"), // Development (x86_64)
+			);
+		}
 
 		// Add Windows-specific paths
 		if (process.platform === "win32") {
