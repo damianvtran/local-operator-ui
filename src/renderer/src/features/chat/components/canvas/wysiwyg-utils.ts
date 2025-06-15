@@ -29,7 +29,8 @@ export const markdownToHtml = (markdown: string): string => {
 		.use(rehypeStringify)
 		.processSync(markdown);
 
-	return String(file);
+	// In a WYSIWYG context, we don't want checkboxes to be disabled
+	return String(file).replace(/ disabled=""/g, "");
 };
 
 /**
