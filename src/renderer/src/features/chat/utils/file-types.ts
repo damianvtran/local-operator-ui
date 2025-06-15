@@ -24,8 +24,7 @@ export const getFileTypeFromPath = (
 	if (["md", "markdown"].includes(extension)) return "markdown";
 	if (["html", "htm"].includes(extension)) return "html";
 	if (["zip", "tar", "gz", "rar", "7z"].includes(extension)) return "archive";
-	if (["txt", "log"].includes(extension))
-		return "text"; // Grouping common text-based formats
+	if (["txt", "log"].includes(extension)) return "text"; // Grouping common text-based formats
 	if (
 		[
 			"js",
@@ -44,10 +43,10 @@ export const getFileTypeFromPath = (
 			"css",
 			"scss",
 			"less",
-      "json",
-      "xml",
-      "yaml",
-      "yml",
+			"json",
+			"xml",
+			"yaml",
+			"yml",
 		].includes(extension)
 	)
 		return "code";

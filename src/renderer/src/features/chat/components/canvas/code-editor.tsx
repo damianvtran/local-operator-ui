@@ -288,9 +288,7 @@ const CodeEditorComponent: FC<CodeEditorProps> = ({
 
 			if (conversationId && canvasState) {
 				const updatedFiles = canvasState.files.map((file) =>
-					file.id === document.id
-						? { ...file, content: finalContent }
-						: file,
+					file.id === document.id ? { ...file, content: finalContent } : file,
 				);
 				setFiles(conversationId, updatedFiles);
 			}
@@ -383,7 +381,10 @@ const CodeEditorComponent: FC<CodeEditorProps> = ({
 					onAcceptDiff={() => {
 						if (!reviewState) return;
 						const currentDiff = reviewState.diffs[reviewState.currentIndex];
-						const newApprovedDiffs = [...reviewState.approvedDiffs, currentDiff];
+						const newApprovedDiffs = [
+							...reviewState.approvedDiffs,
+							currentDiff,
+						];
 						if (reviewState.currentIndex >= reviewState.diffs.length - 1) {
 							handleFinalizeChanges(newApprovedDiffs);
 						} else {

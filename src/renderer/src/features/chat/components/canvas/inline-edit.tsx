@@ -16,6 +16,7 @@ import type {
 	AgentEditFileRequest,
 	EditDiff,
 } from "@shared/api/local-operator/types";
+import { KeyboardShortcut } from "@shared/components/common/keyboard-shortcut";
 import { apiConfig } from "@shared/config";
 import { useConfig } from "@shared/hooks/use-config";
 import { useCredentials } from "@shared/hooks/use-credentials";
@@ -46,7 +47,6 @@ import {
 	useRef,
 	useState,
 } from "react";
-import { KeyboardShortcut } from "@shared/components/common/keyboard-shortcut";
 import { AttachmentsPreview } from "../attachments-preview";
 import { AudioRecordingIndicator } from "../audio-recording-indicator";
 import { WaveformAnimation } from "../waveform-animation";
@@ -639,7 +639,15 @@ export const InlineEdit: FC<InlineEditProps> = ({
 								reviewState.diffs.length
 							})`}
 					</ReviewPrompt>
-					<Box sx={{ width: "100%", display: "flex", alignItems: "center", gap: 1, justifyContent: "flex-end" }}>
+					<Box
+						sx={{
+							width: "100%",
+							display: "flex",
+							alignItems: "center",
+							gap: 1,
+							justifyContent: "flex-end",
+						}}
+					>
 						<Tooltip title="Previous">
 							<span>
 								<IconButton
@@ -664,7 +672,14 @@ export const InlineEdit: FC<InlineEditProps> = ({
 								</IconButton>
 							</span>
 						</Tooltip>
-						<Box sx={{ borderLeft: 1, borderColor: "divider", height: 18, mx: 0.5 }} />
+						<Box
+							sx={{
+								borderLeft: 1,
+								borderColor: "divider",
+								height: 18,
+								mx: 0.5,
+							}}
+						/>
 						<Tooltip title="Reject this change">
 							<IconButton onClick={onRejectDiff} color="error" size="small">
 								<X size={14} />
@@ -675,14 +690,26 @@ export const InlineEdit: FC<InlineEditProps> = ({
 								<Check size={14} />
 							</IconButton>
 						</Tooltip>
-						<Box sx={{ borderLeft: 1, borderColor: "divider", height: 18, mx: 0.5 }} />
+						<Box
+							sx={{
+								borderLeft: 1,
+								borderColor: "divider",
+								height: 18,
+								mx: 0.5,
+							}}
+						/>
 						<Tooltip title="Reject All (Esc)">
 							<Button
 								onClick={onRejectAll}
 								color="error"
 								size="small"
 								startIcon={<KeyboardShortcut shortcut="Esc" />}
-								sx={{ textTransform: "none", fontSize: "0.8rem", padding: "2px 4px", whiteSpace: "nowrap" }}
+								sx={{
+									textTransform: "none",
+									fontSize: "0.8rem",
+									padding: "2px 4px",
+									whiteSpace: "nowrap",
+								}}
 							>
 								Reject All
 							</Button>
@@ -693,7 +720,12 @@ export const InlineEdit: FC<InlineEditProps> = ({
 								color="success"
 								size="small"
 								startIcon={<KeyboardShortcut shortcut={acceptAllShortcut} />}
-								sx={{ textTransform: "none", fontSize: "0.8rem", padding: "2px 4px", whiteSpace: "nowrap" }}
+								sx={{
+									textTransform: "none",
+									fontSize: "0.8rem",
+									padding: "2px 4px",
+									whiteSpace: "nowrap",
+								}}
 							>
 								Accept All
 							</Button>

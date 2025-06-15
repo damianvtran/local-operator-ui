@@ -1,6 +1,6 @@
 import { Box, Typography, styled, useTheme } from "@mui/material";
 import { Command, CornerDownLeft } from "lucide-react";
-import type { FC, ElementType } from "react";
+import type { ElementType, FC } from "react";
 
 type KeyboardShortcutProps = {
 	shortcut: string;

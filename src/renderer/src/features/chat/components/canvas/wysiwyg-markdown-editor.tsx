@@ -1845,7 +1845,10 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 							onAcceptDiff={() => {
 								if (!reviewState) return;
 								const currentDiff = reviewState.diffs[reviewState.currentIndex];
-								const newApprovedDiffs = [...reviewState.approvedDiffs, currentDiff];
+								const newApprovedDiffs = [
+									...reviewState.approvedDiffs,
+									currentDiff,
+								];
 								if (reviewState.currentIndex >= reviewState.diffs.length - 1) {
 									handleFinalizeChanges(newApprovedDiffs);
 								} else {
