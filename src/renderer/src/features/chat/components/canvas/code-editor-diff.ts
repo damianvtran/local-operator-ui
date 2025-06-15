@@ -28,6 +28,7 @@ class DiffWidget extends WidgetType {
 		container.style.borderRadius = `${this.theme.shape.borderRadius}px`;
 		container.style.padding = "8px";
 		container.style.margin = "4px 0";
+		container.style.transform = "translate(-12px, 12px)";
 		container.style.fontFamily = "'Geist Mono', monospace";
 		container.style.fontSize = "13px";
 		container.style.backgroundColor = alpha(this.theme.palette.background.paper, 0.9);
