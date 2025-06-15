@@ -27,6 +27,7 @@ import {
 	AlignLeft,
 	AlignRight,
 	Bold,
+	CheckSquare,
 	Code,
 	Image,
 	Indent,
@@ -245,8 +246,17 @@ const EditorContent = styled(Box)(({ theme }) => ({
 		paddingLeft: "24px",
 		margin: "8px 0",
 	},
+	"& ul li": {
+		listStyleType: "disc",
+	},
+	"& ol li": {
+		listStyleType: "decimal",
+	},
 	"& li": {
 		margin: "4px 0",
+		"&.task-list-item": {
+			listStyleType: "none",
+		},
 	},
 	"& blockquote": {
 		borderLeft: `4px solid ${theme.palette.primary.main}`,
@@ -858,6 +868,55 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 		};
 	}, [debouncedSelectionChange]);
 
+	const toggleList = useCallback(
+		(type: "ordered" | "unordered" | "task") => {
+			if (!editorRef.current) return;
+
+			if (type === "ordered") {
+				window.document.execCommand("insertOrderedList", false);
+			} else {
+				window.document.execCommand("insertUnorderedList", false);
+			}
+
+			if (type === "task") {
+				const selection = window.getSelection();
+				if (!selection?.rangeCount) return;
+
+				const range = selection.getRangeAt(0);
+				let listElement: HTMLElement | null = null;
+
+				// Find the parent list element
+				let currentNode: Node | null = range.startContainer;
+				while (currentNode && currentNode !== editorRef.current) {
+					if (
+						currentNode.nodeName === "UL" ||
+						(currentNode.nodeName === "OL" && currentNode instanceof HTMLElement)
+					) {
+						listElement = currentNode as HTMLElement;
+						break;
+					}
+					currentNode = currentNode.parentNode;
+				}
+
+				if (listElement) {
+					const listItems = listElement.querySelectorAll("li");
+					for (const li of listItems) {
+						if (!li.querySelector('input[type="checkbox"]')) {
+							li.classList.add("task-list-item");
+							const checkbox = window.document.createElement("input");
+							checkbox.type = "checkbox";
+							li.prepend(checkbox, " ");
+						}
+					}
+				}
+			}
+
+			handleContentChange();
+			editorRef.current.focus();
+		},
+		[handleContentChange],
+	);
+
 	// Execute formatting command
 	const executeCommand = useCallback(
 		(command: string, value?: string) => {
@@ -1094,6 +1153,21 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 			window.open(linkElement.href, "_blank", "noopener,noreferrer");
 		}
 	}, []);
+
+	const handleClick = useCallback(
+		(event: React.MouseEvent) => {
+			const target = event.target as HTMLElement;
+			if (
+				target.tagName === "INPUT" &&
+				target.getAttribute("type") === "checkbox"
+			) {
+				// The checked state is already updated by the browser, so we just need to
+				// trigger our content change handler to convert the new HTML to markdown
+				handleContentChange();
+			}
+		},
+		[handleContentChange],
+	);
 
 	// Handle keyboard shortcuts
 	const handleKeyDown = useCallback(
@@ -1541,13 +1615,18 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 
 				{/* Lists and Quotes */}
 				<Tooltip title="Bullet List">
-					<ToolbarButton onClick={() => executeCommand("insertUnorderedList")}>
+					<ToolbarButton onClick={() => toggleList("unordered")}>
 						<List size={14} />
 					</ToolbarButton>
 				</Tooltip>
 				<Tooltip title="Numbered List">
-					<ToolbarButton onClick={() => executeCommand("insertOrderedList")}>
+					<ToolbarButton onClick={() => toggleList("ordered")}>
 						<ListOrdered size={14} />
+					</ToolbarButton>
+				</Tooltip>
+				<Tooltip title="Checkbox List">
+					<ToolbarButton onClick={() => toggleList("task")}>
+						<CheckSquare size={14} />
 					</ToolbarButton>
 				</Tooltip>
 				<Tooltip title="Indent">
@@ -1669,6 +1748,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 						contentEditable={!reviewState}
 						onInput={handleContentChange}
 						onKeyDown={handleKeyDown}
+						onClick={handleClick}
 						onDoubleClick={handleDoubleClick}
 						suppressContentEditableWarning
 						onBlur={() => {
