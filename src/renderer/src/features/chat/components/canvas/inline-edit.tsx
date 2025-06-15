@@ -28,13 +28,13 @@ import { normalizePath } from "@shared/utils/path-utils";
 import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
 import {
 	Check,
+	ChevronLeft,
+	ChevronRight,
 	Mic,
 	Paperclip,
 	Send,
 	Square,
 	X,
-	ChevronLeft,
-	ChevronRight,
 } from "lucide-react";
 import {
 	type ChangeEvent,
@@ -46,6 +46,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { KeyboardShortcut } from "@shared/components/common/keyboard-shortcut";
 import { AttachmentsPreview } from "../attachments-preview";
 import { AudioRecordingIndicator } from "../audio-recording-indicator";
 import { WaveformAnimation } from "../waveform-animation";
@@ -325,9 +326,23 @@ export const InlineEdit: FC<InlineEditProps> = ({
 
 	const shortcutText = useMemo(() => {
 		if (platform === "darwin") {
-			return "Cmd+Shift+S";
+			return "⌘+Shift+S";
 		}
 		return "Ctrl+Shift+S";
+	}, [platform]);
+
+	const acceptAllTooltipText = useMemo(() => {
+		if (platform === "darwin") {
+			return "Apply All (⌘+Enter)";
+		}
+		return "Apply All (Ctrl+Enter)";
+	}, [platform]);
+
+	const acceptAllShortcut = useMemo(() => {
+		if (platform === "darwin") {
+			return "⌘+Enter";
+		}
+		return "Ctrl+Enter";
 	}, [platform]);
 
 	const handleStartRecording = useCallback(async () => {
@@ -667,17 +682,19 @@ export const InlineEdit: FC<InlineEditProps> = ({
 								onClick={onRejectAll}
 								color="error"
 								size="small"
-								sx={{ textTransform: "none", fontSize: "0.8rem", padding: 0.5, whiteSpace: "nowrap" }}
+								startIcon={<KeyboardShortcut shortcut="Esc" />}
+								sx={{ textTransform: "none", fontSize: "0.8rem", padding: "2px 4px", whiteSpace: "nowrap" }}
 							>
 								Reject All
 							</Button>
 						</Tooltip>
-						<Tooltip title="Apply All (Cmd+Enter)">
+						<Tooltip title={acceptAllTooltipText}>
 							<Button
 								onClick={onApplyAll}
 								color="success"
 								size="small"
-								sx={{ textTransform: "none", fontSize: "0.8rem", padding: 0.5, whiteSpace: "nowrap" }}
+								startIcon={<KeyboardShortcut shortcut={acceptAllShortcut} />}
+								sx={{ textTransform: "none", fontSize: "0.8rem", padding: "2px 4px", whiteSpace: "nowrap" }}
 							>
 								Accept All
 							</Button>
