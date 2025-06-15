@@ -883,22 +883,16 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 				if (!selection?.rangeCount) return;
 
 				const range = selection.getRangeAt(0);
-				let listElement: HTMLElement | null = null;
-
-				// Find the parent list element
-				let currentNode: Node | null = range.startContainer;
-				while (currentNode && currentNode !== editorRef.current) {
-					if (
-						currentNode.nodeName === "UL" ||
-						(currentNode.nodeName === "OL" && currentNode instanceof HTMLElement)
-					) {
-						listElement = currentNode as HTMLElement;
-						break;
-					}
-					currentNode = currentNode.parentNode;
-				}
+				const listElement = (range.startContainer as HTMLElement).closest(
+					"ul, ol",
+				);
 
 				if (listElement) {
+					// If we're in an ordered list, convert it to an unordered one for tasks.
+					if (listElement.tagName === "OL") {
+						window.document.execCommand("insertUnorderedList", false);
+					}
+
 					const listItems = listElement.querySelectorAll("li");
 					for (const li of listItems) {
 						if (!li.querySelector('input[type="checkbox"]')) {
@@ -1310,35 +1304,69 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 			// Handle Enter key in lists
 			if (event.key === "Enter") {
 				const selection = window.getSelection();
-				if (selection?.rangeCount) {
-					const range = selection.getRangeAt(0);
-					let element: Node | null = range.startContainer;
+				if (!selection?.rangeCount) return;
 
-					if (element.nodeType === Node.TEXT_NODE && element.parentElement) {
-						element = element.parentElement;
+				const range = selection.getRangeAt(0);
+				const container = range.startContainer;
+				const startElement =
+					container.nodeType === Node.TEXT_NODE
+						? container.parentElement
+						: (container as Element);
+				const listItem = startElement?.closest("li");
+
+				if (listItem) {
+					// If the list item is empty, break out of the list.
+					if (listItem.textContent?.trim() === "") {
+						event.preventDefault();
+						executeCommand("outdent");
+						executeCommand("formatBlock", "p");
+						return;
 					}
 
-					// Check if we're in a list item
-					while (
-						element &&
-						element !== editorRef.current &&
-						element instanceof Element
-					) {
-						if (element.tagName === "LI") {
-							// If the list item is empty, break out of the list
-							if (element.textContent?.trim() === "") {
-								event.preventDefault();
-								executeCommand("outdent");
-								executeCommand("formatBlock", "p");
+					// Handle creating new task list items.
+					if (listItem.classList.contains("task-list-item")) {
+						// Defer to let the browser create the new LI, then add a checkbox.
+						setTimeout(() => {
+							const newSelection = window.getSelection();
+							if (!newSelection?.rangeCount) return;
+
+							const newRange = newSelection.getRangeAt(0);
+							const newStartContainer = newRange.startContainer;
+							const newStartElement =
+								newStartContainer.nodeType === Node.TEXT_NODE
+									? newStartContainer.parentElement
+									: (newStartContainer as Element);
+							const newListItem = newStartElement?.closest("li");
+
+							if (
+								newListItem &&
+								!newListItem.querySelector('input[type="checkbox"]')
+							) {
+								newListItem.classList.add("task-list-item");
+								const checkbox = window.document.createElement("input");
+								checkbox.type = "checkbox";
+								newListItem.prepend(checkbox, " ");
+
+								// Set the cursor position after the checkbox
+								newRange.setStart(newListItem, 1);
+								newRange.collapse(true);
+								newSelection.removeAllRanges();
+								newSelection.addRange(newRange);
+
+								handleContentChange();
 							}
-							break;
-						}
-						element = element.parentElement;
+						}, 0);
 					}
 				}
 			}
 		},
-		[handleFormatToggle, executeCommand, content, handleManualSave],
+		[
+			handleFormatToggle,
+			executeCommand,
+			content,
+			handleManualSave,
+			handleContentChange,
+		],
 	);
 
 	const handleFinalizeChanges = (finalDiffs: EditDiff[]) => {

@@ -6,7 +6,9 @@ import remarkGfm from "remark-gfm";
 import remarkParse from "remark-parse";
 import remarkRehype from "remark-rehype";
 import remarkStringify from "remark-stringify";
+import type { Root } from "hast";
 import { unified } from "unified";
+import { visit } from "unist-util-visit";
 
 /**
  * Utility functions for converting between HTML and Markdown in the WYSIWYG editor
@@ -17,6 +19,20 @@ const STYLE_TAG_REGEX = /<style[^>]*>.*?<\/style>/gis;
 const EVENT_HANDLER_REGEX = /on\w+="[^"]*"/gi;
 
 /**
+ * Custom rehype plugin to remove the 'disabled' attribute from input elements.
+ * In a WYSIWYG context, we don't want checkboxes to be disabled.
+ */
+const rehypeRemoveDisabled =
+	() =>
+	(tree: Root): void => {
+		visit(tree, "element", (node) => {
+			if (node.tagName === "input" && node.properties?.disabled) {
+				node.properties.disabled = undefined;
+			}
+		});
+	};
+
+/**
  * Convert markdown to HTML for display in the contentEditable div
  * This uses the unified ecosystem to provide a robust conversion with source maps
  */
@@ -24,13 +40,13 @@ export const markdownToHtml = (markdown: string): string => {
 	const file = unified()
 		.use(remarkParse)
 		.use(remarkGfm)
-		.use(remarkRehype)
+		.use(remarkRehype, { allowDangerousHtml: true })
+		.use(rehypeRemoveDisabled)
 		.use(rehypeSourceMap)
 		.use(rehypeStringify)
 		.processSync(markdown);
 
-	// In a WYSIWYG context, we don't want checkboxes to be disabled
-	return String(file).replace(/ disabled=""/g, "");
+	return String(file);
 };
 
 /**
