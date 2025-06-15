@@ -1150,11 +1150,16 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 
 	const handleClick = useCallback(
 		(event: React.MouseEvent) => {
-			const target = event.target as HTMLElement;
-			if (
-				target.tagName === "INPUT" &&
-				target.getAttribute("type") === "checkbox"
-			) {
+			const target = event.target as HTMLInputElement;
+			if (target.tagName === "INPUT" && target.type === "checkbox") {
+				// Manually update the 'checked' attribute to reflect the new state.
+				// The 'checked' property gives the current state post-click.
+				if (target.checked) {
+					target.setAttribute("checked", "");
+				} else {
+					target.removeAttribute("checked");
+				}
+
 				// The checked state is already updated by the browser, so we just need to
 				// trigger our content change handler to convert the new HTML to markdown
 				handleContentChange();
