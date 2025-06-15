@@ -27,6 +27,7 @@ import { useDebouncedValue } from "../../../../shared/hooks/use-debounced-value"
 import { useCanvasStore } from "../../../../shared/store/canvas-store";
 import { getCodeMirrorTheme } from "../../../../shared/themes/code-mirror-theme";
 import type { CanvasDocument } from "../../types/canvas";
+import { diffHighlight } from "./code-editor-diff";
 import { InlineEdit } from "./inline-edit";
 
 type CodeEditorProps = {
@@ -77,6 +78,12 @@ const CodeEditorComponent: FC<CodeEditorProps> = ({
 		from: number;
 		to: number;
 	} | null>(null);
+	const [reviewState, setReviewState] = useState<{
+		diffs: EditDiff[];
+		currentIndex: number;
+		approvedDiffs: EditDiff[];
+		originalContent: string;
+	} | null>(null);
 	const editorRef = useRef<ReactCodeMirrorRef>(null);
 	const [editorContainer, setEditorContainer] = useState<HTMLElement | null>(
 		null,
@@ -86,6 +93,10 @@ const CodeEditorComponent: FC<CodeEditorProps> = ({
 	const theme = useTheme();
 	const searchTheme = useMemo(() => getSearchTheme(theme), [theme]);
 	const codeEditorTheme = useMemo(() => getCodeMirrorTheme(theme), [theme]);
+	const diffExtension = useMemo(
+		() => diffHighlight(theme, reviewState),
+		[theme, reviewState],
+	);
 
 	useEffect(() => {
 		if (editorRef.current) {
@@ -169,7 +180,7 @@ const CodeEditorComponent: FC<CodeEditorProps> = ({
 				}
 
 				update() {
-					if (!inlineEdit) {
+					if (!inlineEdit || reviewState) {
 						this.decorations = Decoration.none;
 						return;
 					}
@@ -184,7 +195,7 @@ const CodeEditorComponent: FC<CodeEditorProps> = ({
 				}
 			},
 		);
-	}, [inlineEdit, theme.palette.primary.main]);
+	}, [inlineEdit, theme.palette.primary.main, reviewState]);
 
 	const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
 		if ((event.metaKey || event.ctrlKey) && event.key === "k") {
@@ -229,20 +240,62 @@ const CodeEditorComponent: FC<CodeEditorProps> = ({
 		}
 	};
 
-	const handleApplyChanges = useCallback((editDiffs: EditDiff[]) => {
-		const view = editorRef.current?.view;
-		if (view) {
-			const newContent = editDiffs.reduce(
-				(currentDoc, diff) => currentDoc.replace(diff.find, diff.replace),
-				view.state.doc.toString(),
-			);
+	const handleApplyChanges = useCallback(
+		(diffs: EditDiff[]) => {
+			const view = editorRef.current?.view;
+			if (!view) return;
 
-			view.dispatch({
-				changes: { from: 0, to: view.state.doc.length, insert: newContent },
+			// Keep the original content in the editor during review
+			setReviewState({
+				diffs,
+				currentIndex: 0,
+				approvedDiffs: [],
+				originalContent: content,
 			});
+
+			// Force a view update to trigger diff highlighting
+			setTimeout(() => {
+				if (editorRef.current?.view) {
+					editorRef.current.view.dispatch({});
+				}
+			}, 0);
+		},
+		[content],
+	);
+
+	const handleFinalizeChanges = (finalDiffs: EditDiff[]) => {
+		const view = editorRef.current?.view;
+		if (!view) return;
+
+		let finalContent = reviewState?.originalContent ?? content;
+		for (const diff of finalDiffs) {
+			finalContent = finalContent.replace(diff.find, diff.replace);
 		}
+
+		view.dispatch({
+			changes: { from: 0, to: view.state.doc.length, insert: finalContent },
+		});
+
+		setContent(finalContent);
+		setHasUserChanges(true);
+		setReviewState(null);
 		setInlineEdit(null);
-	}, []);
+
+		if (document.path && finalContent !== originalContentRef.current) {
+			window.api.saveFile(document.path, finalContent);
+			originalContentRef.current = finalContent;
+			setHasUserChanges(false);
+
+			if (conversationId && canvasState) {
+				const updatedFiles = canvasState.files.map((file) =>
+					file.id === document.id
+						? { ...file, content: finalContent }
+						: file,
+				);
+				setFiles(conversationId, updatedFiles);
+			}
+		}
+	};
 
 	const handleEdit = useCallback(
 		(
@@ -280,11 +333,12 @@ const CodeEditorComponent: FC<CodeEditorProps> = ({
 				value={content}
 				height="100%"
 				theme="none"
-				editable={editable}
+				editable={editable && !reviewState}
 				extensions={[
 					codeEditorTheme,
 					...languageExtensions,
 					highlightPlugin,
+					diffExtension,
 					search({ top: true }),
 					searchTheme,
 					keymap.of(searchKeymap),
@@ -309,12 +363,76 @@ const CodeEditorComponent: FC<CodeEditorProps> = ({
 					selection={inlineEdit.selection}
 					position={inlineEdit.position}
 					filePath={document.path}
-					onClose={() => setInlineEdit(null)}
+					onClose={() => {
+						setInlineEdit(null);
+						if (reviewState) {
+							handleFinalizeChanges(reviewState.approvedDiffs);
+						}
+					}}
 					onApplyChanges={handleApplyChanges}
 					agentId={agentId}
-					reviewState={null}
-					onApplyAll={() => {}}
-					onRejectAll={() => {}}
+					reviewState={reviewState}
+					onApplyAll={() => {
+						if (!reviewState) return;
+						handleFinalizeChanges(reviewState.diffs);
+					}}
+					onRejectAll={() => {
+						if (!reviewState) return;
+						handleFinalizeChanges([]);
+					}}
+					onAcceptDiff={() => {
+						if (!reviewState) return;
+						const currentDiff = reviewState.diffs[reviewState.currentIndex];
+						const newApprovedDiffs = [...reviewState.approvedDiffs, currentDiff];
+						if (reviewState.currentIndex >= reviewState.diffs.length - 1) {
+							handleFinalizeChanges(newApprovedDiffs);
+						} else {
+							setReviewState({
+								...reviewState,
+								approvedDiffs: newApprovedDiffs,
+								currentIndex: reviewState.currentIndex + 1,
+							});
+							// Force view update to show next diff
+							setTimeout(() => {
+								if (editorRef.current?.view) {
+									editorRef.current.view.dispatch({});
+								}
+							}, 0);
+						}
+					}}
+					onRejectDiff={() => {
+						if (!reviewState) return;
+						if (reviewState.currentIndex >= reviewState.diffs.length - 1) {
+							handleFinalizeChanges(reviewState.approvedDiffs);
+						} else {
+							setReviewState({
+								...reviewState,
+								currentIndex: reviewState.currentIndex + 1,
+							});
+							// Force view update to show next diff
+							setTimeout(() => {
+								if (editorRef.current?.view) {
+									editorRef.current.view.dispatch({});
+								}
+							}, 0);
+						}
+					}}
+					onNavigateDiff={(direction) => {
+						if (!reviewState) return;
+						const newIndex =
+							direction === "next"
+								? reviewState.currentIndex + 1
+								: reviewState.currentIndex - 1;
+						if (newIndex >= 0 && newIndex < reviewState.diffs.length) {
+							setReviewState({ ...reviewState, currentIndex: newIndex });
+							// Force view update to show the navigated diff
+							setTimeout(() => {
+								if (editorRef.current?.view) {
+									editorRef.current.view.dispatch({});
+								}
+							}, 0);
+						}
+					}}
 				/>
 			)}
 		</CodeEditorContainer>

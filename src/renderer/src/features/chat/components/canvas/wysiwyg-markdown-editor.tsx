@@ -1842,6 +1842,41 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 								if (!reviewState) return;
 								handleFinalizeChanges([]);
 							}}
+							onAcceptDiff={() => {
+								if (!reviewState) return;
+								const currentDiff = reviewState.diffs[reviewState.currentIndex];
+								const newApprovedDiffs = [...reviewState.approvedDiffs, currentDiff];
+								if (reviewState.currentIndex >= reviewState.diffs.length - 1) {
+									handleFinalizeChanges(newApprovedDiffs);
+								} else {
+									setReviewState({
+										...reviewState,
+										approvedDiffs: newApprovedDiffs,
+										currentIndex: reviewState.currentIndex + 1,
+									});
+								}
+							}}
+							onRejectDiff={() => {
+								if (!reviewState) return;
+								if (reviewState.currentIndex >= reviewState.diffs.length - 1) {
+									handleFinalizeChanges(reviewState.approvedDiffs);
+								} else {
+									setReviewState({
+										...reviewState,
+										currentIndex: reviewState.currentIndex + 1,
+									});
+								}
+							}}
+							onNavigateDiff={(direction) => {
+								if (!reviewState) return;
+								const newIndex =
+									direction === "next"
+										? reviewState.currentIndex + 1
+										: reviewState.currentIndex - 1;
+								if (newIndex >= 0 && newIndex < reviewState.diffs.length) {
+									setReviewState({ ...reviewState, currentIndex: newIndex });
+								}
+							}}
 						/>
 					)}
 				</Box>
