@@ -1,3 +1,4 @@
+import type { Root } from "hast";
 import rehypeParse from "rehype-parse";
 import rehypeRemark from "rehype-remark";
 import { rehypeSourceMap } from "rehype-source-map";
@@ -6,7 +7,6 @@ import remarkGfm from "remark-gfm";
 import remarkParse from "remark-parse";
 import remarkRehype from "remark-rehype";
 import remarkStringify from "remark-stringify";
-import type { Root } from "hast";
 import { unified } from "unified";
 import { visit } from "unist-util-visit";
 
