@@ -220,18 +220,17 @@ const TranscriptionText = styled(Typography)(({ theme }) => ({
 }));
 
 const ReviewHeader = styled(Box)(({ theme }) => ({
-	padding: theme.spacing(1, 2, 1, 2),
+	display: "flex",
+	flexDirection: "column",
+	justifyContent: "space-between",
+	padding: theme.spacing(0.5, 2, 1, 1),
 	gap: theme.spacing(1),
 	height: "64px",
 }));
 
 const ReviewPrompt = styled(Typography)(({ theme }) => ({
 	flexGrow: 1,
-	whiteSpace: "nowrap",
-	overflow: "hidden",
-	textOverflow: "ellipsis",
 	fontSize: "0.875rem",
-	marginBottom: theme.spacing(1),
 	color: theme.palette.text.secondary,
 }));
 
@@ -665,7 +664,7 @@ export const InlineEdit: FC<InlineEditProps> = ({
 								</IconButton>
 							</span>
 						</Tooltip>
-						<Box sx={{ borderLeft: 1, borderColor: "divider", height: 24, mx: 0.5 }} />
+						<Box sx={{ borderLeft: 1, borderColor: "divider", height: 18, mx: 0.5 }} />
 						<Tooltip title="Reject this change">
 							<IconButton onClick={onRejectDiff} color="error" size="small">
 								<X size={14} />
@@ -676,7 +675,7 @@ export const InlineEdit: FC<InlineEditProps> = ({
 								<Check size={14} />
 							</IconButton>
 						</Tooltip>
-						<Box sx={{ borderLeft: 1, borderColor: "divider", height: 24, mx: 0.5 }} />
+						<Box sx={{ borderLeft: 1, borderColor: "divider", height: 18, mx: 0.5 }} />
 						<Tooltip title="Reject All (Esc)">
 							<Button
 								onClick={onRejectAll}
