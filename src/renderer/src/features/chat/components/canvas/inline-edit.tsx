@@ -225,7 +225,7 @@ const ReviewHeader = styled(Box)(({ theme }) => ({
 	justifyContent: "space-between",
 	padding: theme.spacing(0.5, 2, 1, 1),
 	gap: theme.spacing(1),
-	height: "64px",
+	minHeight: "64px",
 }));
 
 const ReviewPrompt = styled(Typography)(({ theme }) => ({
