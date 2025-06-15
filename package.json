@@ -100,6 +100,7 @@
 		"ag-grid-react": "^33.3.2",
 		"date-fns": "^4.1.0",
 		"diff": "^8.0.2",
+		"diff-match-patch": "^1.0.5",
 		"dmg-builder": "26.0.12",
 		"electron-builder-squirrel-windows": "26.0.12",
 		"electron-debug": "^3.2.0",
