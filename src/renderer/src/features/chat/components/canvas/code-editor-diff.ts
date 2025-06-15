@@ -63,10 +63,10 @@ class DiffWidget extends WidgetType {
 			oldCode.textContent = this.oldText;
 			oldCode.style.backgroundColor = alpha(this.theme.palette.error.main, 0.2);
 			oldCode.style.color = this.theme.palette.error.main;
-			oldCode.style.textDecoration = "line-through";
 			oldCode.style.padding = "4px 6px";
 			oldCode.style.borderRadius = "4px";
 			oldCode.style.whiteSpace = "pre-wrap";
+      oldCode.style.fontFamily = "'Geist Mono', 'Roboto Mono', monospace";
 			oldCode.style.border = `1px solid ${alpha(this.theme.palette.error.main, 0.5)}`;
 			diffWrapper.appendChild(oldCode);
 		}
@@ -88,6 +88,7 @@ class DiffWidget extends WidgetType {
 			newCode.style.padding = "4px 6px";
 			newCode.style.borderRadius = "4px";
 			newCode.style.whiteSpace = "pre-wrap";
+      newCode.style.fontFamily = "'Geist Mono', 'Roboto Mono', monospace";
 			newCode.style.border = `1px solid ${alpha(this.theme.palette.success.main, 0.5)}`;
 			diffWrapper.appendChild(newCode);
 		}
