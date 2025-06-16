@@ -8,7 +8,7 @@ import {
 	useTheme,
 } from "@mui/material";
 import { BaseDialog } from "@shared/components/common/base-dialog";
-import { Link, UploadCloud } from "lucide-react";
+import { File, UploadCloud } from "lucide-react";
 import type { DragEvent, FC } from "react";
 import { useCallback, useState } from "react";
 
@@ -92,7 +92,7 @@ export const InsertImageDialog: FC<InsertImageDialogProps> = ({
 	onInsert,
 }) => {
 	const theme = useTheme();
-	const [url, setUrl] = useState("");
+	const [path, setPath] = useState("");
 
 	const handleFile = useCallback(
 		(file: File) => {
@@ -132,19 +132,19 @@ export const InsertImageDialog: FC<InsertImageDialogProps> = ({
 		}
 	};
 
-	const handleInsertFromUrl = () => {
-		if (url) {
-			onInsert(url);
+	const handleInsertFromPath = () => {
+		if (path) {
+			onInsert(path);
 			onClose();
-			setUrl("");
+			setPath("");
 		}
 	};
 
 	const handleKeyDown = (e: React.KeyboardEvent) => {
 		if (e.key === "Enter") {
 			e.preventDefault();
-			if (url.trim()) {
-				handleInsertFromUrl();
+			if (path.trim()) {
+				handleInsertFromPath();
 			}
 		}
 	};
@@ -184,31 +184,31 @@ export const InsertImageDialog: FC<InsertImageDialogProps> = ({
 		>
 			<Box sx={{ pt: 2 }}>
 				<FieldContainer>
-					<FieldLabel>Image URL</FieldLabel>
+					<FieldLabel>Image Path on Device</FieldLabel>
 					<Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
 						<StyledTextField
 							autoFocus
 							fullWidth
 							variant="outlined"
-							type="url"
-							placeholder="https://example.com/image.jpg"
-							value={url}
-							onChange={(e) => setUrl(e.target.value)}
+							type="text"
+							placeholder="/Users/eren/Documents/image.png"
+							value={path}
+							onChange={(e) => setPath(e.target.value)}
 							onKeyDown={handleKeyDown}
 							InputProps={{
 								startAdornment: (
 									<InputAdornment position="start" sx={{ paddingLeft: 1 }}>
-										<Link size={16} />
+										<File size={16} />
 									</InputAdornment>
 								),
 							}}
 						/>
 						<Button
-							onClick={handleInsertFromUrl}
+							onClick={handleInsertFromPath}
 							variant="contained"
 							color="primary"
 							size="small"
-							disabled={!url.trim()}
+							disabled={!path.trim()}
 							sx={{
 								textTransform: "none",
 								fontSize: "0.8125rem",

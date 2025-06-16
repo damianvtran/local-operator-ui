@@ -51,6 +51,9 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 	const setCanvasOpen = useUiPreferencesStore((s) => s.setCanvasOpen);
 	const isCanvasOpen = useUiPreferencesStore((s) => s.isCanvasOpen);
 
+	const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
+	const shortcut = isMac ? "⌘+Shift+C" : "Ctrl+Shift+C";
+
 	return (
 		<Box
 			sx={(theme) => ({
@@ -103,7 +106,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 			</DescriptionBox>
 
 			{onOpenOptions && !isCanvasOpen && (
-				<Tooltip title="Open Canvas" arrow placement="top">
+				<Tooltip title={`Open Canvas (${shortcut})`} arrow placement="top">
 					<OptionsButton
 						onClick={() => setCanvasOpen(true)}
 						size="medium"

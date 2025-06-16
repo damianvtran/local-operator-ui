@@ -38,7 +38,6 @@ import {
 	X,
 } from "lucide-react";
 import {
-	type ChangeEvent,
 	type ClipboardEvent,
 	type FC,
 	useCallback,
@@ -225,7 +224,7 @@ const ReviewHeader = styled(Box)(({ theme }) => ({
 	justifyContent: "space-between",
 	padding: theme.spacing(0.5, 2, 1, 1),
 	gap: theme.spacing(1),
-	height: "64px",
+	minHeight: "64px",
 }));
 
 const ReviewPrompt = styled(Typography)(({ theme }) => ({
@@ -261,7 +260,6 @@ export const InlineEdit: FC<InlineEditProps> = ({
 	const mediaRecorderRef = useRef<MediaRecorder | null>(null);
 	const audioChunksRef = useRef<Blob[]>([]);
 	const [platform, setPlatform] = useState("");
-	const fileInputRef = useRef<HTMLInputElement>(null);
 	const textareaRef = useRef<HTMLInputElement>(null);
 	const isCancelledRef = useRef(false);
 	const containerRef = useRef<HTMLDivElement>(null);
@@ -510,23 +508,19 @@ export const InlineEdit: FC<InlineEditProps> = ({
 			),
 	);
 
-	const triggerFileInput = () => {
-		fileInputRef.current?.click();
-	};
+	const handleAttachFile = async () => {
+		const result = await window.electron.ipcRenderer.invoke(
+			"show-open-dialog",
+			{
+				properties: ["openFile", "multiSelections"],
+			},
+		);
 
-	const handleFileSelect = (e: ChangeEvent<HTMLInputElement>) => {
-		if (e.target.files && e.target.files.length > 0) {
-			const newAttachments = Array.from(e.target.files).map((file) => {
-				const filePath = file.name;
-				if (filePath) {
-					return normalizePath(filePath);
-				}
-				return URL.createObjectURL(file);
-			});
+		if (!result.canceled && result.filePaths.length > 0) {
+			const newAttachments = result.filePaths.map((path: string) =>
+				normalizePath(path),
+			);
 			setAttachments((prev) => [...prev, ...newAttachments]);
-			if (fileInputRef.current) {
-				fileInputRef.current.value = "";
-			}
 		}
 	};
 
@@ -773,17 +767,9 @@ export const InlineEdit: FC<InlineEditProps> = ({
 					)}
 					<ButtonsRow>
 						<Box display="flex" alignItems="center" gap={1}>
-							<input
-								type="file"
-								ref={fileInputRef}
-								onChange={handleFileSelect}
-								style={{ display: "none" }}
-								disabled={isLoading || isRecording || isTranscribing}
-								multiple
-							/>
 							<Tooltip title="Add attachments">
 								<AttachmentButton
-									onClick={triggerFileInput}
+									onClick={handleAttachFile}
 									disabled={
 										isLoading || isRecording || isTranscribing || !!reviewState
 									}
