@@ -517,7 +517,7 @@ export const InlineEdit: FC<InlineEditProps> = ({
 		);
 
 		if (!result.canceled && result.filePaths.length > 0) {
-			const newAttachments = result.filePaths.map((path) =>
+			const newAttachments = result.filePaths.map((path: string) =>
 				normalizePath(path),
 			);
 			setAttachments((prev) => [...prev, ...newAttachments]);
