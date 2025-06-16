@@ -182,7 +182,8 @@ const EditorContainer = styled(Paper)(({ theme }) => ({
 	width: "100%",
 	overflow: "hidden",
 	backgroundColor: theme.palette.background.paper,
-	border: `1px solid ${theme.palette.divider}`,
+	borderRadius: "0px",
+	border: "none",
 }));
 
 const EditorToolbar = styled(Toolbar)(({ theme }) => ({
