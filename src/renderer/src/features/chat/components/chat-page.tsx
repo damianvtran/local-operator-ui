@@ -14,6 +14,7 @@ import { useAgentRouteParam } from "@shared/hooks/use-route-params";
 import { useScrollToBottom } from "@shared/hooks/use-scroll-to-bottom";
 import { useAgentSelectionStore } from "@shared/store/agent-selection-store";
 import { useChatStore } from "@shared/store/chat-store";
+import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { isDevelopmentMode } from "@shared/utils/env-utils";
 import { useQueryClient } from "@tanstack/react-query";
 import React, {
@@ -52,6 +53,27 @@ export const ChatPage: FC<ChatProps> = () => {
 	const { agentId, navigateToAgent } = useAgentRouteParam();
 	const navigate = useNavigate();
 	const queryClient = useQueryClient();
+
+	const { isCanvasOpen, setCanvasOpen } = useUiPreferencesStore();
+
+	useEffect(() => {
+		const handleKeyDown = (event: KeyboardEvent) => {
+			if (
+				event.key === "c" &&
+				(event.metaKey || event.ctrlKey) &&
+				event.shiftKey
+			) {
+				event.preventDefault();
+				setCanvasOpen(!isCanvasOpen);
+			}
+		};
+
+		document.addEventListener("keydown", handleKeyDown);
+
+		return () => {
+			document.removeEventListener("keydown", handleKeyDown);
+		};
+	}, [isCanvasOpen, setCanvasOpen]);
 
 	// Get agent selection store functions
 	const { setLastChatAgentId, getLastAgentId } = useAgentSelectionStore();

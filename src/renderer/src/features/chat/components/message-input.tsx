@@ -33,7 +33,7 @@ import {
 	useRef,
 	useState,
 } from "react";
-import type { ChangeEvent, ClipboardEvent, FormEvent } from "react";
+import type { ClipboardEvent, FormEvent } from "react";
 import { v4 as uuidv4 } from "uuid";
 import type { Message } from "../types/message";
 import { AttachmentsPreview } from "./attachments-preview";
@@ -386,8 +386,6 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		const audioChunksRef = useRef<Blob[]>([]);
 		const [platform, setPlatform] = useState("");
 
-		const fileInputRef = useRef<HTMLInputElement>(null);
-
 		const { data: credentialsData, isLoading: isLoadingCredentials } =
 			useCredentials();
 
@@ -633,34 +631,30 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			submitMessage();
 		};
 
-		const handleFileSelect = (e: ChangeEvent<HTMLInputElement>) => {
-			if (e.target.files && e.target.files.length > 0) {
-				const newAttachments = Array.from(e.target.files).map((file) => {
-					const filePath = file.name;
-					if (filePath) {
-						return normalizePath(filePath);
-					}
-					return URL.createObjectURL(file);
-				});
-				if (conversationId) {
-					for (const path of newAttachments) {
-						addAttachment(conversationId, { id: uuidv4(), path });
-					}
-				}
-				if (fileInputRef.current) {
-					fileInputRef.current.value = "";
-				}
-			}
-		};
-
 		const handleRemoveAttachment = (id: string) => {
 			if (conversationId) {
 				removeAttachment(conversationId, id);
 			}
 		};
 
-		const triggerFileInput = () => {
-			fileInputRef.current?.click();
+		const handleAttachFile = async () => {
+			const result = await window.electron.ipcRenderer.invoke(
+				"show-open-dialog",
+				{
+					properties: ["openFile", "multiSelections"],
+				},
+			);
+
+			if (!result.canceled && result.filePaths.length > 0) {
+				if (conversationId) {
+					for (const path of result.filePaths) {
+						addAttachment(conversationId, {
+							id: uuidv4(),
+							path: normalizePath(path),
+						});
+					}
+				}
+			}
 		};
 
 		const handlePaste = (event: ClipboardEvent<HTMLDivElement>) => {
@@ -718,7 +712,10 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 
 		const inputContent = (
 			<form onSubmit={handleSubmit} style={{ width: "100%" }}>
-				<InputInnerContainer isSmallView={isSmallView}>
+				<InputInnerContainer
+					isSmallView={isSmallView}
+					data-tour-tag="chat-input-textarea"
+				>
 					{replies.length > 0 && (
 						<ReplyPreview replies={replies} onRemoveReply={handleRemoveReply} />
 					)}
@@ -757,27 +754,16 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 							variant="outlined"
 							inputRef={textareaRef}
 							disabled={isInputDisabled}
-							inputProps={{
-								"data-tour-tag": "chat-input-textarea",
-							}}
 						/>
 					)}
 
 					<ButtonsRow>
 						{/* Left side: attachment button */}
 						<Box display="flex" alignItems="center" gap={1}>
-							<input
-								type="file"
-								ref={fileInputRef}
-								onChange={handleFileSelect}
-								style={{ display: "none" }}
-								disabled={isInputDisabled || isRecording || isTranscribing}
-								multiple
-							/>
 							<Tooltip title="Attach file">
 								<span>
 									<AttachmentButton
-										onClick={triggerFileInput}
+										onClick={handleAttachFile}
 										color="primary"
 										size="small"
 										aria-label="Attach file"
