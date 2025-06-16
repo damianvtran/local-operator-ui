@@ -5,6 +5,7 @@ import tourCanvasVariablesImage from "@assets/images/tour/canvas-variables-view.
 import tourChatAttachmentsImage from "@assets/images/tour/chat-attachments.png";
 import tourChatFullViewImage from "@assets/images/tour/chat-full-view.png";
 import tourInlineEditCanvasImage from "@assets/images/tour/inline-edit-canvas.png";
+import tourChatInputImage from "@assets/images/tour/chat-input.png";
 import { useOnboardingStore } from "@shared/store/onboarding-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { useContext } from "react";
@@ -87,11 +88,11 @@ const tourSteps: StepOptions[] = [
 	{
 		id: "chat-input",
 		attachTo: {
-			element: 'textarea[data-tour-tag="chat-input-textarea"]',
+			element: '[data-tour-tag="chat-input-textarea"]',
 			on: "top",
 		},
 		title: "Ask Your Agent Anything",
-		text: 'Type your request here. Agents can answer questions, perform tasks, search the web, and much more. When you create a new agent, you\'ll see suggested prompts for ideas!<br /><br />Some powerful requests that you can try:<br /><br /><ul><li>"Create a spreadsheet in my Documents folder with all the major cities in Canada."</li><li>"Search the web for the latest news on AI and make a thorough report."</li><li>Select an attachment and then "translate this document to French."</li></ul>',
+		text: `Type your request here. Agents can answer questions, perform tasks, search the web, and much more. When you create a new agent, you\'ll see suggested prompts for ideas!<br /><br />Some powerful requests that you can try:<br /><br /><ul><li>"Create a spreadsheet in my Documents folder with all the major cities in Canada."</li><li>"Search the web for the latest news on AI and make a thorough report."</li><li>Select an attachment and then "translate this document to French."</li></ul><br /><img src="${tourChatInputImage}" alt="Chat Input" style="width: 100%; height: 200px; object-fit: contain; border-radius: 8px;"/><br />You can also attach files to your message by clicking the paperclip button, which we will cover in the next step.`,
 		buttons: [
 			{
 				text: "Back",
@@ -279,7 +280,7 @@ const tourSteps: StepOptions[] = [
 			on: "top",
 		},
 		title: "Documents View",
-		text: `The Documents view shows all your open markdown, code, and HTML documents as tabs. You can switch between documents and see dynamic visualizations in HTML created by your agents. Use this view to work with your notes, reports, and agent-generated content.<br /><br />This is where you can get more precise around your agents' work.<br/><img src="${tourInlineEditCanvasImage}" alt="Inline Edit Canvas" style="width: 100%; height: 200px; object-fit: contain; border-radius: 8px;"/><br />In your documents, highlight any text that you want your agent to improve and press Cmd/Ctrl+K to bring up the inline AI editor.  
+		text: `The Documents view shows all your open notes, blog articles, code, and visualizations as tabs. You can switch between documents to edit them and see dynamic visualizations in HTML created by your agents. Use this view to work with your notes, reports, and agent-generated content.<br /><br />This is where you can get more precise around your agents' work.<br/><img src="${tourInlineEditCanvasImage}" alt="Inline Edit Canvas" style="width: 100%; height: 200px; object-fit: contain; border-radius: 8px;"/><br />In your documents, highlight any text that you want your agent to improve and press Cmd/Ctrl+K to bring up the inline AI editor.  
     <br /><img src="${tourCanvasCodeInlineEditImage}" alt="Canvas Code Inline Edit" style="width: 100%; height: 200px; object-fit: cover; object-position: top; border-radius: 8px;"/><br />You can be as precise as you want and the agent will edit the document for you in place, using its memories and context so you don't have to re-explain things!`,
 		buttons: [
 			{
