@@ -509,12 +509,17 @@ export const InlineEdit: FC<InlineEditProps> = ({
 	);
 
 	const handleAttachFile = async () => {
-		const result = await window.electron.ipcRenderer.invoke("show-open-dialog", {
-			properties: ["openFile", "multiSelections"],
-		});
+		const result = await window.electron.ipcRenderer.invoke(
+			"show-open-dialog",
+			{
+				properties: ["openFile", "multiSelections"],
+			},
+		);
 
 		if (!result.canceled && result.filePaths.length > 0) {
-			const newAttachments = result.filePaths.map((path) => normalizePath(path));
+			const newAttachments = result.filePaths.map((path) =>
+				normalizePath(path),
+			);
 			setAttachments((prev) => [...prev, ...newAttachments]);
 		}
 	};
