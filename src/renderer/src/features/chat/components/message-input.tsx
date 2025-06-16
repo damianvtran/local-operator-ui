@@ -712,7 +712,10 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 
 		const inputContent = (
 			<form onSubmit={handleSubmit} style={{ width: "100%" }}>
-				<InputInnerContainer isSmallView={isSmallView}>
+				<InputInnerContainer
+					isSmallView={isSmallView}
+					data-tour-tag="chat-input-textarea"
+				>
 					{replies.length > 0 && (
 						<ReplyPreview replies={replies} onRemoveReply={handleRemoveReply} />
 					)}
@@ -751,9 +754,6 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 							variant="outlined"
 							inputRef={textareaRef}
 							disabled={isInputDisabled}
-							inputProps={{
-								"data-tour-tag": "chat-input-textarea",
-							}}
 						/>
 					)}
 
