@@ -1048,16 +1048,30 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 
 	// Insert image
 	const insertImage = useCallback(() => {
+		const selection = window.getSelection();
+		if (selection?.rangeCount) {
+			selectionRef.current = selection.getRangeAt(0).cloneRange();
+		}
 		setIsImageDialogOpen(true);
 	}, []);
 
 	const handleInsertImage = useCallback(
 		(url: string) => {
+			editorRef.current?.focus();
+			const selection = window.getSelection();
+			if (!selection) return;
+
+			if (selectionRef.current) {
+				selection.removeAllRanges();
+				selection.addRange(selectionRef.current);
+			}
+
 			if (url) {
 				executeCommand("insertImage", url);
 			}
+			handleContentChange();
 		},
-		[executeCommand],
+		[executeCommand, handleContentChange],
 	);
 
 	// Insert table
