@@ -538,6 +538,17 @@ app
 			return existsSync(normalizedPath);
 		});
 
+		ipcMain.handle("show-open-dialog", async (_, options) => {
+			if (!mainWindow) {
+				logger.error(
+					"Cannot show open dialog: mainWindow is not available.",
+					LogFileType.BACKEND,
+				);
+				return { canceled: true, filePaths: [] };
+			}
+			return dialog.showOpenDialog(mainWindow, options);
+		});
+
 		// --- Directory Selection IPC Handler ---
 		ipcMain.handle("select-directory", async () => {
 			// Ensure mainWindow is available
