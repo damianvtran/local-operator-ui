@@ -31,7 +31,7 @@ const tourSteps: StepOptions[] = [
 		id: "agent-list",
 		attachTo: { element: '[data-tour-tag="agent-list-panel"]', on: "right" },
 		title: "Your Agents",
-		text: "On the left, you'll see a list of your available AI agents. You can select an agent to start a conversation or manage its settings.  Think of this as your WhatsApp chat list, but for AI agents!  There are no limits to how many agents you can have, so create as many as you need to handle all your daily tasks.",
+		text: "On the left, you'll see a list of your available AI agents. You can select an agent to start a conversation or manage its settings.  Think of this as your messenger contacts list, but for AI agents!  There are no limits to how many agents you can have, so create as many as you need to handle all your daily tasks.<br/><br/>Use the create agents button at the top of the toolbar to create a new agent at any time.  You can also import agents from the Agent Hub, which we will cover later in this tour.",
 		buttons: [
 			{
 				text: "Back",
