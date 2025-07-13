@@ -17,8 +17,8 @@ CE DOCUMENT CONTIENT DES INFORMATIONS JURIDIQUES IMPORTANTES. VEUILLEZ LE LIRE A
 2.1 Licence d'installation
 Sous réserve des termes et conditions de ce CLUF, le Concédant vous accorde une licence limitée, non exclusive et non transférable pour utiliser l'installateur du Logiciel dans le seul but d'installer l'application Local Operator sur votre/vos appareil(s).
 
-2.2 Licence GPL 3.0
-L'application Local Operator qui sera installée par ce Logiciel est sous licence GNU General Public License version 3.0 (GPL 3.0), dont une copie peut être consultée à l'adresse https://www.gnu.org/licenses/gpl-3.0.en.html. Vos droits d'utilisation, de copie, de modification et de distribution de l'application Local Operator après installation sont régis par la licence GPL 3.0.
+2.2 Licence MIT
+L'application Local Operator qui sera installée par ce Logiciel est sous licence MIT, dont une copie peut être consultée à l'adresse https://opensource.org/licenses/MIT. Vos droits d'utilisation, de copie, de modification et de distribution de l'application Local Operator après installation sont régis par la licence MIT.
 
 2.3 Réserve de droits
 Tous les droits qui ne vous sont pas expressément accordés dans ce CLUF sont réservés par le Concédant et ses concédants.
@@ -198,4 +198,3 @@ EN INSTALLANT OU EN UTILISANT L'INSTALLATEUR DU LOGICIEL, VOUS RECONNAISSEZ AVOI
 ---
 
 © 2025 Radient Inc. Tous droits réservés.
-
