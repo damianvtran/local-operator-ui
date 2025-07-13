@@ -29,7 +29,7 @@
 
 🔧 **Problem Solving** - Intelligently handles errors and roadblocks by adapting approaches and finding alternative solutions
 
-This project is proudly open source under the GPL-3.0 license. We believe AI tools should be accessible to everyone, given their transformative impact on productivity. Your contributions and feedback help make this vision a reality!
+This project is proudly open source under the MIT license. We believe AI tools should be accessible to everyone, given their transformative impact on productivity. Your contributions and feedback help make this vision a reality!
 
 > "Democratizing AI-powered productivity, one conversation at a time."
 
@@ -133,6 +133,7 @@ The codebase is organized for modularity and code reuse:
 - `build/`, `resources/`, `scripts/`: Build assets, static resources, and build scripts.
 
 **Import Conventions:**
+
 - Use `@shared/` for shared modules (e.g., `import { useAgents } from "@shared/hooks/use-agents"`).
 - Use `@features/` for feature-specific modules.
 - The old aliases (`@renderer`, `@components`, `@hooks`, etc.) have been removed in favor of this unified structure.
@@ -221,4 +222,4 @@ If you encounter issues not covered here, please:
 
 ## 📄 License
 
-This project is licensed under the GPL-3.0 License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

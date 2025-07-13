@@ -17,8 +17,8 @@ THIS DOCUMENT CONTAINS IMPORTANT LEGAL INFORMATION. PLEASE READ IT CAREFULLY BEF
 2.1 Installer License
 Subject to the terms and conditions of this EULA, Licensor hereby grants you a limited, non-exclusive, non-transferable license to use the Software installer for the sole purpose of installing the Local Operator application on your device(s).
 
-2.2 GPL 3.0 License
-The Local Operator application that will be installed by this Software is licensed under the GNU General Public License version 3.0 (GPL 3.0), a copy of which can be found at https://www.gnu.org/licenses/gpl-3.0.en.html. Your rights to use, copy, modify, and distribute the Local Operator application after installation are governed by the GPL 3.0 license.
+2.2 MIT License
+The Local Operator application that will be installed by this Software is licensed under the MIT License, a copy of which can be found at https://opensource.org/licenses/MIT. Your rights to use, copy, modify, and distribute the Local Operator application after installation are governed by the MIT license.
 
 2.3 Reservation of Rights
 All rights not expressly granted to you in this EULA are reserved by Licensor and its licensors.

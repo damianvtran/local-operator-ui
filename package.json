@@ -7,7 +7,7 @@
 	"bin": {
 		"local-operator-ui": "./bin/local-operator-ui.js"
 	},
-	"license": "GPL-3.0-or-later",
+	"license": "MIT",
 	"author": {
 		"name": "Radient Inc.",
 		"email": "contact@radienthq.com",
@@ -39,12 +39,7 @@
 		"electron",
 		"react"
 	],
-	"files": [
-		"out",
-		"bin",
-		"LICENSE",
-		"README.md"
-	],
+	"files": ["out", "bin", "LICENSE", "README.md"],
 	"publishConfig": {
 		"access": "public"
 	},
@@ -192,12 +187,7 @@
 		"productName": "Local Operator",
 		"copyright": "Copyright © 2025 Radient Inc.",
 		"asar": true,
-		"files": [
-			"out/**/*",
-			"bin/**/*",
-			"LICENSE",
-			"README.md"
-		],
+		"files": ["out/**/*", "bin/**/*", "LICENSE", "README.md"],
 		"directories": {
 			"output": "dist",
 			"buildResources": "build"
@@ -206,16 +196,12 @@
 			{
 				"from": "resources/python",
 				"to": "python",
-				"filter": [
-					"**/*"
-				]
+				"filter": ["**/*"]
 			},
 			{
 				"from": "resources/python_aarch64",
 				"to": "python_aarch64",
-				"filter": [
-					"**/*"
-				]
+				"filter": ["**/*"]
 			}
 		],
 		"afterSign": "scripts/notarize.js",
@@ -230,15 +216,11 @@
 			"target": [
 				{
 					"target": "dmg",
-					"arch": [
-						"universal"
-					]
+					"arch": ["universal"]
 				},
 				{
 					"target": "zip",
-					"arch": [
-						"universal"
-					]
+					"arch": ["universal"]
 				}
 			],
 			"artifactName": "${name}-${version}-${arch}.${ext}"
@@ -266,10 +248,7 @@
 			"target": [
 				{
 					"target": "nsis",
-					"arch": [
-						"x64",
-						"arm64"
-					]
+					"arch": ["x64", "arm64"]
 				}
 			],
 			"artifactName": "${name}-setup-${version}-${arch}.${ext}",
@@ -309,16 +288,10 @@
 			}
 		},
 		"deb": {
-			"depends": [
-				"python3.12-full",
-				"python3.12-venv"
-			]
+			"depends": ["python3.12-full", "python3.12-venv"]
 		},
 		"rpm": {
-			"depends": [
-				"python3.12-full",
-				"python3.12-venv"
-			]
+			"depends": ["python3.12-full", "python3.12-venv"]
 		},
 		"publish": [
 			{

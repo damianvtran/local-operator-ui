@@ -1,6 +1,6 @@
 # Contributing to Local Operator UI
 
-Thank you for your interest in contributing to Local Operator UI! We welcome all contributions, including bug reports, feature requests, documentation improvements, and code contributions. By participating in this project, you agree to abide by its [GPL-3.0 License](LICENSE).
+Thank you for your interest in contributing to Local Operator UI! We welcome all contributions, including bug reports, feature requests, documentation improvements, and code contributions. By participating in this project, you agree to abide by its [MIT License](LICENSE).
 
 ## Project Structure
 
@@ -99,13 +99,13 @@ We enforce consistent code style and quality checks:
   ```bash
   # Check for linting issues
   pnpm lint
-  
+
   # Fix linting issues
   pnpm lint:fix
-  
+
   # Format code
   pnpm format
-  
+
   # Fix formatting issues
   pnpm format:fix
   ```
@@ -150,6 +150,7 @@ Please follow the following steps to contribute:
    ```
 
 3. Commit changes with descriptive messages
+
    - Use the present tense
    - Keep commits small and atomic
 

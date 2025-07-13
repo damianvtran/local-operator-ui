@@ -17,8 +17,8 @@ DIESES DOKUMENT ENTHÄLT WICHTIGE RECHTLICHE INFORMATIONEN. BITTE LESEN SIE ES S
 2.1 Installer-Lizenz
 Vorbehaltlich der Bedingungen dieser EULA gewährt der Lizenzgeber Ihnen hiermit eine beschränkte, nicht-exklusive, nicht übertragbare Lizenz zur Nutzung des Software-Installers zum alleinigen Zweck der Installation der Local Operator Anwendung auf Ihrem/Ihren Gerät(en).
 
-2.2 GPL 3.0 Lizenz
-Die Local Operator Anwendung, die durch diese Software installiert wird, ist unter der GNU General Public License Version 3.0 (GPL 3.0) lizenziert, deren Kopie unter https://www.gnu.org/licenses/gpl-3.0.en.html zu finden ist. Ihre Rechte zur Nutzung, zum Kopieren, zur Änderung und zur Verbreitung der Local Operator Anwendung nach der Installation unterliegen der GPL 3.0-Lizenz.
+2.2 MIT Lizenz
+Die Local Operator Anwendung, die durch diese Software installiert wird, ist unter der MIT-Lizenz lizenziert, deren Kopie unter https://opensource.org/licenses/MIT zu finden ist. Ihre Rechte zur Nutzung, zum Kopieren, zur Änderung und zur Verbreitung der Local Operator Anwendung nach der Installation unterliegen der MIT-Lizenz.
 
 2.3 Vorbehalt von Rechten
 Alle Rechte, die Ihnen in dieser EULA nicht ausdrücklich gewährt werden, sind dem Lizenzgeber und seinen Lizenzgebern vorbehalten.
