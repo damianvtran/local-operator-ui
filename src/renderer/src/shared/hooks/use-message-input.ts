@@ -145,9 +145,10 @@ export const useMessageInput = ({
 		resetCurrentHistoryIndex(conversationId);
 		draftMessageRef.current = "";
 		if (scrollToBottom) {
-			setTimeout(() => {
+			// Use requestAnimationFrame to ensure DOM updates before scrolling
+			requestAnimationFrame(() => {
 				scrollToBottom();
-			}, 150);
+			});
 		}
 	}, [
 		inputValue,
