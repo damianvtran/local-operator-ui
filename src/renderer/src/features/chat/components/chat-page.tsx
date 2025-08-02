@@ -323,7 +323,9 @@ export const ChatPage: FC<ChatProps> = () => {
 
 			// Scroll to bottom immediately after adding the message
 			// This ensures the user sees their message right away
-			scrollToBottom();
+			requestAnimationFrame(() => {
+				scrollToBottom();
+			});
 
 			// Set loading state
 			setIsLoading(true);

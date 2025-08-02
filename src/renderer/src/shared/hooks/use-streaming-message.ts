@@ -170,6 +170,7 @@ export const useStreamingMessage = ({
 			const agentId = registryEntry?.conversationId || conversationId;
 
 			if (!agentId) {
+				// If we can't find the agent ID, we can't refetch
 				return;
 			}
 
@@ -190,6 +191,30 @@ export const useStreamingMessage = ({
 			);
 
 			if (!messageData) {
+				// Message not found in history, but this might be expected if it's already complete
+				// Check if we already have a complete message in the registry
+				if (registryEntry?.messageData && registryEntry.isComplete) {
+					// Use the registry data
+					completeStreamingMessage(messageId, registryEntry.messageData);
+
+					// If we have a conversation ID, update the chat store as well
+					if (conversationId) {
+						const messageForStore = convertToMessage(
+							registryEntry.messageData,
+							conversationId,
+						);
+						// Try to update the message first, if it doesn't exist, add it
+						const updated = updateMessage(conversationId, messageForStore);
+						if (!updated) {
+							addMessage(conversationId, messageForStore);
+						}
+					}
+
+					// Call the onComplete callback if provided
+					if (onComplete && mountedRef.current) {
+						onComplete(registryEntry.messageData);
+					}
+				}
 				return;
 			}
 
@@ -264,112 +289,61 @@ export const useStreamingMessage = ({
 				...update,
 			} as AgentExecutionRecord;
 
+			// Track if we've already handled completion for this message
+			const currentRegistryEntry = globalConnectionRegistry.get(messageId);
+			const alreadyCompleted = currentRegistryEntry?.isComplete;
+
 			// If the message is complete, mark it as complete in the store
-			if (update.is_complete) {
+			if (update.is_complete && !alreadyCompleted) {
 				completeStreamingMessage(messageId, messageData);
 
-				// Trigger a refetch to get the final state if needed
-				if (refetchOnComplete) {
+				// Update the global registry to mark as complete
+				if (currentRegistryEntry) {
+					currentRegistryEntry.isComplete = true;
+				}
+
+				// If we have a conversation ID, update the chat store immediately
+				if (conversationId && messageData.id) {
+					const messageForStore = convertToMessage(messageData, conversationId);
+					// Try to update the message first, if it doesn't exist, add it
+					const updated = updateMessage(conversationId, messageForStore);
+					if (!updated) {
+						addMessage(conversationId, messageForStore);
+					}
+				}
+
+				// Trigger a refetch to get the final state if needed, but only if not already refetching
+				if (refetchOnComplete && !isRefetching) {
 					// Use setTimeout to ensure this happens after the current execution,
 					// giving the backend time to persist the final message state.
 					setTimeout(() => {
 						if (mountedRef.current) {
-							// Use a local function to avoid dependency on refetchMessage
-							const doRefetch = async () => {
-								if (isRefetching) return; // Prevent concurrent refetches
-								try {
-									setIsRefetching(true);
-
-									const client = createLocalOperatorClient(baseUrl);
-
-									// Find the agent ID from the registry
-									const entry = globalConnectionRegistry.get(messageId);
-									const agentId = entry?.conversationId || conversationId;
-
-									if (!agentId) return;
-
-									// Get the execution history for this message
-									const response = await client.agents.getAgentExecutionHistory(
-										agentId,
-										1,
-										20,
-									);
-
-									if (response.status >= 400 || !response.result) {
-										throw new Error(
-											response.message || "Failed to fetch message data",
-										);
-									}
-
-									// Find the message in the history
-									const msgData = response.result.history.find(
-										(record) => record.id === messageId,
-									);
-
-									if (!msgData) return;
-
-									// Update the streaming messages store with the complete message
-									completeStreamingMessage(messageId, msgData);
-
-									// Update the global registry
-									if (entry) {
-										entry.messageData = msgData;
-										entry.isComplete = true;
-										entry.isStreamable = !!msgData.is_streamable;
-									}
-
-									// If we have a conversation ID, update the chat store as well
-									if (conversationId) {
-										const msgForStore = convertToMessage(
-											msgData,
-											conversationId,
-										);
-										// Try to update the message first, if it doesn't exist, add it
-										const updated = updateMessage(conversationId, msgForStore);
-										if (!updated) {
-											addMessage(conversationId, msgForStore);
-										}
-									}
-
-									// Call the onComplete callback if provided
-									if (onComplete && mountedRef.current) {
-										onComplete(msgData);
-									}
-								} catch (error) {
-									const errorMessage =
-										error instanceof Error ? error.message : String(error);
-									console.error(
-										`Error auto-refetching message: ${errorMessage}`,
-									);
-								} finally {
-									setIsRefetching(false);
-								}
-							};
-
-							doRefetch();
+							refetchMessage().catch((error) => {
+								console.error("Error during refetch after completion:", error);
+							});
 						}
-					}, 500); // Increased delay to 500ms
+					}, 150); // Increased delay to ensure all updates are processed
 				}
-			} else {
+			} else if (!update.is_complete) {
 				// Just update the streaming message store for regular updates
 				updateStreamingMessage(messageId, messageData);
-			}
 
-			// If we have a conversation ID, update the chat store as well
-			// But throttle these updates to prevent excessive re-renders
-			if (conversationId && messageData.id) {
-				const messageForStore = convertToMessage(messageData, conversationId);
+				// If we have a conversation ID, update the chat store as well
+				// But throttle these updates to prevent excessive re-renders
+				if (conversationId && messageData.id) {
+					const messageForStore = convertToMessage(messageData, conversationId);
 
-				// Use a debounced update for chat store to reduce render cycles
-				if (!updateChatStoreTimeoutRef.current) {
-					updateChatStoreTimeoutRef.current = setTimeout(() => {
-						// Try to update the message first, if it doesn't exist, add it
-						const updated = updateMessage(conversationId, messageForStore);
-						if (!updated) {
-							addMessage(conversationId, messageForStore);
-						}
-						updateChatStoreTimeoutRef.current = null;
-					}, 100); // Throttle to 100ms
+					// Use a debounced update for chat store to reduce render cycles
+					if (!updateChatStoreTimeoutRef.current) {
+						updateChatStoreTimeoutRef.current = setTimeout(() => {
+							// Try to update the message first, if it doesn't exist, add it
+							const updated = updateMessage(conversationId, messageForStore);
+							if (!updated) {
+								addMessage(conversationId, messageForStore);
+							}
+							updateChatStoreTimeoutRef.current = null;
+						}, 50); // Reduced throttle to 50ms for more responsive updates
+					}
 				}
 			}
 		},
@@ -377,14 +351,13 @@ export const useStreamingMessage = ({
 			messageId,
 			conversationId,
 			onUpdate,
-			onComplete,
 			refetchOnComplete,
 			updateStreamingMessage,
 			completeStreamingMessage,
 			updateMessage,
 			addMessage,
-			baseUrl,
 			isRefetching,
+			refetchMessage,
 		],
 	);
 
@@ -678,7 +651,12 @@ export const useStreamingMessage = ({
 
 			// Call the onComplete callback prop if provided
 			if (onComplete) {
-				onComplete(message);
+				// Add a small delay to ensure all store updates are processed
+				setTimeout(() => {
+					if (mountedRef.current) {
+						onComplete(message);
+					}
+				}, 50);
 			}
 
 			// Disconnect if keepAlive is false (refetch is handled in handleUpdate)
@@ -697,6 +675,30 @@ export const useStreamingMessage = ({
 		messageId,
 		completeStreamingMessage,
 	]);
+
+	// Additional cleanup and debugging
+	useEffect(() => {
+		return () => {
+			// Cleanup any pending timeouts or connections
+			if (globalConnectionRegistry.has(messageId)) {
+				const entry = globalConnectionRegistry.get(messageId);
+				if (entry && entry.instanceCount > 0) {
+					entry.instanceCount = Math.max(0, entry.instanceCount - 1);
+					if (entry.instanceCount === 0 && !entry.keepAlive) {
+						try {
+							wsDisconnect();
+							entry.connected = false;
+							entry.connecting = false;
+							entry.connectionPromise = null;
+							entry.wsClient = null;
+						} catch (error) {
+							console.warn("Error during cleanup:", error);
+						}
+					}
+				}
+			}
+		};
+	}, [messageId, wsDisconnect]);
 
 	return {
 		message,

@@ -35,9 +35,13 @@ export const useScrollToBottom = (
 	const scrollToBottom = useCallback(() => {
 		const container = containerRef.current;
 		if (!container) return;
-		container.scrollTo({ top: 0, behavior: "smooth" });
-		// Recheck after the animation kicks off
-		requestAnimationFrame(updateScrollPosition);
+
+		// Use requestAnimationFrame to ensure DOM is updated before scrolling
+		requestAnimationFrame(() => {
+			container.scrollTo({ top: 0, behavior: "smooth" });
+			// Recheck after the animation kicks off
+			requestAnimationFrame(updateScrollPosition);
+		});
 	}, [containerRef, updateScrollPosition]);
 
 	/**
