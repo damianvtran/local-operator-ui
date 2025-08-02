@@ -182,7 +182,7 @@ export const StreamingMessage = ({
 			return wsMessage;
 		}
 		const result =
-			storeMessage?.content || wsMessage || lastValidMessageRef.current;
+			wsMessage || storeMessage?.content || lastValidMessageRef.current;
 		if (result) {
 			lastValidMessageRef.current = result;
 		}

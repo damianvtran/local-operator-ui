@@ -261,11 +261,7 @@ export const MessageItem: FC<MessageItemProps> = memo(
 			((message.action === "DONE" || message.action === "ASK") &&
 				message.execution_type === "action" &&
 				message.task_classification === "conversation") ||
-			(isMessageContentEmpty && message.is_complete) ||
-			(message.is_streamable &&
-				!message.is_complete &&
-				isMessageContentEmpty &&
-				!currentExecution);
+			(isMessageContentEmpty && message.is_complete);
 
 		if (shouldHide) {
 			return null;
