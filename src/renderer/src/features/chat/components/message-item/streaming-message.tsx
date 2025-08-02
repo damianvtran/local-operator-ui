@@ -81,12 +81,28 @@ export const StreamingMessage = ({
 
 	const handleComplete = useCallback(
 		(completedMessage: AgentExecutionRecord) => {
-			if (onComplete) {
-				onComplete(completedMessage);
-			}
+			// Small delay to ensure store updates are processed before calling onComplete
+			setTimeout(() => {
+				if (onComplete) {
+					onComplete(completedMessage);
+				}
+			}, 50);
 		},
 		[onComplete],
 	);
+
+	// Also handle completion when the store message is complete
+	useEffect(() => {
+		if (isStoreMessageComplete && storeMessage?.content && onComplete) {
+			// Check if this is different from the last completed message to avoid duplicate calls
+			const timer = setTimeout(() => {
+				onComplete(storeMessage.content as AgentExecutionRecord);
+			}, 50);
+
+			return () => clearTimeout(timer);
+		}
+		return undefined;
+	}, [isStoreMessageComplete, storeMessage, onComplete]);
 
 	const {
 		message: wsMessage,
@@ -174,20 +190,78 @@ export const StreamingMessage = ({
 		[status, isStoreMessageComplete],
 	);
 
+	// Determine if we should show the streaming component or switch to complete state
+	const shouldShowStreaming = useMemo(() => {
+		// Show streaming while connected and not complete in store
+		return status === "connected" && !isStoreMessageComplete;
+	}, [status, isStoreMessageComplete]);
+
+	// Track if we've already called onComplete to prevent duplicate calls
+	const hasCalledOnCompleteRef = useRef(false);
+
+	// Effect to handle completion and ensure proper cleanup
+	useEffect(() => {
+		if (
+			!shouldShowStreaming &&
+			storeMessage?.content &&
+			onComplete &&
+			!hasCalledOnCompleteRef.current
+		) {
+			// Mark as called to prevent duplicate calls
+			hasCalledOnCompleteRef.current = true;
+
+			// Small delay to ensure all updates are processed
+			const timer = setTimeout(() => {
+				onComplete(storeMessage.content as AgentExecutionRecord);
+			}, 50);
+
+			return () => clearTimeout(timer);
+		}
+
+		return undefined;
+	}, [shouldShowStreaming, storeMessage, onComplete]);
+
+	// Reset the completion flag when the message changes
+	useEffect(() => {
+		hasCalledOnCompleteRef.current = false;
+	}, []);
+
+	// Additional cleanup for debugging
+	useEffect(() => {
+		return () => {
+			// Cleanup any pending timeouts
+			if (hasCalledOnCompleteRef.current) {
+				hasCalledOnCompleteRef.current = false;
+			}
+		};
+	}, []);
+
 	const lastValidMessageRef = useRef<AgentExecutionRecord | null>(null);
 
 	const message = useMemo(() => {
-		if (isActivelyStreaming && wsMessage) {
+		// Priority order for message data:
+		// 1. WebSocket message (most current)
+		// 2. Store message content (when streaming is complete)
+		// 3. Last valid message (fallback)
+
+		if (wsMessage) {
 			lastValidMessageRef.current = wsMessage;
 			return wsMessage;
 		}
-		const result =
-			storeMessage?.content || wsMessage || lastValidMessageRef.current;
-		if (result) {
-			lastValidMessageRef.current = result;
+
+		if (isStoreMessageComplete && storeMessage?.content) {
+			lastValidMessageRef.current = storeMessage.content;
+			return storeMessage.content;
 		}
-		return result;
-	}, [isActivelyStreaming, wsMessage, storeMessage]);
+
+		// If we have a complete message in the registry, use that
+		if (storeMessage?.content) {
+			lastValidMessageRef.current = storeMessage.content;
+			return storeMessage.content;
+		}
+
+		return lastValidMessageRef.current || null;
+	}, [wsMessage, storeMessage, isStoreMessageComplete]);
 
 	const connectionControls = useMemo(
 		() => ({

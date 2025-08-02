@@ -4,7 +4,7 @@ import type {
 	JobStatus,
 } from "@shared/api/local-operator/types";
 import { RingLoadingIndicator } from "@shared/components/common/ring-loading-indicator";
-import React, { type FC, type RefObject, useCallback } from "react";
+import React, { type FC, type RefObject, useCallback, useEffect } from "react";
 import type { Message } from "../types/message";
 import { LoadingIndicator } from "./loading-indicator";
 import { MessageItem } from "./message-item";
@@ -180,10 +180,25 @@ export const MessagesView: FC<MessagesViewProps> = React.memo(
 			!messages[messages.length - 1]?.is_complete;
 
 		const handleMessageComplete = useCallback(() => {
-			if (refetch) {
-				refetch();
-			}
+			// Add a small delay to ensure all store updates are processed before refetching
+			// Increased delay to ensure proper completion handling
+			setTimeout(() => {
+				if (refetch) {
+					refetch();
+				}
+			}, 200);
 		}, [refetch]);
+
+		// Additional debugging for message completion
+		useEffect(() => {
+			// Log when messages change to help with debugging
+			if (messages.length > 0) {
+				const lastMessage = messages[messages.length - 1];
+				if (lastMessage?.is_complete && lastMessage?.is_streamable) {
+					console.debug("Last message completed:", lastMessage.id);
+				}
+			}
+		}, [messages]);
 
 		return (
 			<MessagesViewWrapper collapsed={collapsed}>

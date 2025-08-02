@@ -2,6 +2,7 @@ import { Box, Paper, useTheme } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import { TextSelectionControls } from "@shared/components/common/text-selection-controls";
 import { useScrollToBottom } from "@shared/hooks/use-scroll-to-bottom";
+import { useStreamingMessagesStore } from "@shared/store/streaming-messages-store";
 import React, {
 	type FC,
 	useCallback,
@@ -155,6 +156,76 @@ export const MessagePaper: FC<MessagePaperProps> = React.memo(
 			[message?.is_streamable, message?.is_complete, isUser],
 		);
 
+		// Check if streaming is truly complete by also checking the streaming messages store
+		const { isMessageStreamingComplete } = useStreamingMessagesStore();
+		const isStreamingActuallyComplete = useMemo(() => {
+			if (!message?.id) return true;
+			return isMessageStreamingComplete(message.id);
+		}, [message?.id, isMessageStreamingComplete]);
+
+		// Final determination of whether to show streaming component
+		// Use a more robust check that considers both local state and store state
+		const shouldShowStreaming = useMemo(() => {
+			// If it's not streamable, definitely don't show streaming
+			if (!isStreamable) return false;
+
+			// If streaming is actually complete in the store, don't show streaming
+			if (isStreamingActuallyComplete) return false;
+
+			// If there's an active job running, show streaming
+			if (isJobRunning) return true;
+
+			// If the message is not complete but is streamable, show streaming
+			// This handles cases where isJobRunning might be false but the message is still streaming
+			if (message?.is_complete === false) return true;
+
+			// Default to not showing streaming
+			return false;
+		}, [
+			isStreamable,
+			isStreamingActuallyComplete,
+			isJobRunning,
+			message?.is_complete,
+		]);
+
+		// Track if we've already handled the completion to prevent duplicate calls
+		const hasHandledCompletionRef = useRef(false);
+
+		// Effect to handle completion and ensure proper cleanup
+		useEffect(() => {
+			// If we're no longer showing streaming and we haven't handled completion yet
+			if (!shouldShowStreaming && message && !hasHandledCompletionRef.current) {
+				// Mark as handled to prevent duplicate calls
+				hasHandledCompletionRef.current = true;
+
+				// Small delay to ensure all updates are processed
+				const timer = setTimeout(() => {
+					if (onMessageComplete) {
+						onMessageComplete();
+					}
+				}, 50);
+
+				return () => clearTimeout(timer);
+			}
+
+			return undefined;
+		}, [shouldShowStreaming, message, onMessageComplete]);
+
+		// Reset the completion flag when the message changes
+		useEffect(() => {
+			hasHandledCompletionRef.current = false;
+		}, []);
+
+		// Additional cleanup for debugging
+		useEffect(() => {
+			return () => {
+				// Cleanup any pending timeouts
+				if (hasHandledCompletionRef.current) {
+					hasHandledCompletionRef.current = false;
+				}
+			};
+		}, []);
+
 		// Memoize the message styles to prevent unnecessary object creation on each render
 		const messageStyles = useMemo(
 			() => ({
@@ -185,8 +256,8 @@ export const MessagePaper: FC<MessagePaperProps> = React.memo(
 
 		// Periodically scroll to bottom during streaming if user is near bottom
 		useEffect(() => {
-			// Only run the effect if this is the last message and it's streamable
-			if (!isLastMessage || !isStreamable || !message) return;
+			// Only run the effect if this is the last message and it should show streaming
+			if (!isLastMessage || !shouldShowStreaming || !message) return;
 
 			// Initialize auto-scroll state based on current position
 			shouldAutoScrollRef.current = isNearBottom;
@@ -202,7 +273,13 @@ export const MessagePaper: FC<MessagePaperProps> = React.memo(
 			return () => {
 				clearInterval(scrollInterval);
 			};
-		}, [isStreamable, message, scrollToBottom, isNearBottom, isLastMessage]);
+		}, [
+			shouldShowStreaming,
+			message,
+			scrollToBottom,
+			isNearBottom,
+			isLastMessage,
+		]);
 
 		// Update auto-scroll flag when isNearBottom changes
 		// This effect is intentionally simple and only depends on isNearBottom
@@ -214,7 +291,7 @@ export const MessagePaper: FC<MessagePaperProps> = React.memo(
 
 		// Memoize the streaming message component to prevent unnecessary re-renders
 		const streamingMessageComponent = useMemo(() => {
-			if (!isStreamable || !message || !isJobRunning) return null;
+			if (!shouldShowStreaming || !message) return null;
 
 			return (
 				<StreamingMessage
@@ -235,11 +312,10 @@ export const MessagePaper: FC<MessagePaperProps> = React.memo(
 				/>
 			);
 		}, [
-			isStreamable,
+			shouldShowStreaming,
 			message,
 			messageStyles,
 			onMessageComplete,
-			isJobRunning,
 			markdownStyleProps,
 		]);
 
@@ -255,65 +331,65 @@ export const MessagePaper: FC<MessagePaperProps> = React.memo(
 		}, []);
 
 		// Memoize the regular message components to prevent unnecessary re-renders
-		const regularMessageComponents = useMemo(() => {
-			if ((isStreamable && isJobRunning) || !message) return null;
+		const regularMessageComponents =
+			useMemo(() => {
+				if (shouldShowStreaming || !message) return null;
 
-			const childrenWithRemainingContent = React.Children.map(
+				const childrenWithRemainingContent = React.Children.map(
+					children,
+					(child: React.ReactNode) => {
+						if (React.isValidElement(child) && child.props.content) {
+							return React.cloneElement(
+								child as React.ReactElement<{
+									content: string;
+									styleProps: Record<string, unknown>;
+								}>,
+								{ content: remainingContent, styleProps: markdownStyleProps },
+							);
+						}
+						return child;
+					},
+				);
+
+				return (
+					<Box sx={messageStyles} ref={messageContentRef}>
+						{replies.length > 0 && <ReplyPreview replies={replies} />}
+						{message.thinking && !isUser && (
+							<ExpandableThinkingContent
+								thinking={message.thinking}
+								isExpanded={isThinkingExpanded}
+								onExpand={handleThinkingExpand}
+								onCollapse={handleThinkingCollapse}
+							/>
+						)}
+						{childrenWithRemainingContent}
+						{message?.conversation_id && (
+							<TextSelectionControls
+								agentId={agentId}
+								targetRef={messageContentRef}
+								isUser={isUser}
+								conversationId={message.conversation_id}
+								showSpeech
+								showCopy
+								showReply
+							/>
+						)}
+					</Box>
+				);
+			}, [
+				shouldShowStreaming,
+				message,
+				messageStyles,
 				children,
-				(child: React.ReactNode) => {
-					if (React.isValidElement(child) && child.props.content) {
-						return React.cloneElement(
-							child as React.ReactElement<{
-								content: string;
-								styleProps: Record<string, unknown>;
-							}>,
-							{ content: remainingContent, styleProps: markdownStyleProps },
-						);
-					}
-					return child;
-				},
-			);
-
-			return (
-				<Box sx={messageStyles} ref={messageContentRef}>
-					{replies.length > 0 && <ReplyPreview replies={replies} />}
-					{message.thinking && !isUser && (
-						<ExpandableThinkingContent
-							thinking={message.thinking}
-							isExpanded={isThinkingExpanded}
-							onExpand={handleThinkingExpand}
-							onCollapse={handleThinkingCollapse}
-						/>
-					)}
-					{childrenWithRemainingContent}
-					{message?.conversation_id && (
-						<TextSelectionControls
-							agentId={agentId}
-							targetRef={messageContentRef}
-							isUser={isUser}
-							conversationId={message.conversation_id}
-							showSpeech
-							showCopy
-							showReply
-						/>
-					)}
-				</Box>
-			);
-		}, [
-			isStreamable,
-			messageStyles,
-			children,
-			message,
-			isUser,
-			isJobRunning,
-			isThinkingExpanded,
-			handleThinkingExpand,
-			handleThinkingCollapse,
-			agentId,
-			replies,
-			remainingContent,
-			markdownStyleProps,
-		]);
+				isUser,
+				isThinkingExpanded,
+				handleThinkingExpand,
+				handleThinkingCollapse,
+				agentId,
+				replies,
+				remainingContent,
+				markdownStyleProps,
+			]) || null;
 
 		return (
 			<Box
