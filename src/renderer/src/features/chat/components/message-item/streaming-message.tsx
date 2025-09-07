@@ -1,23 +1,23 @@
 import { Box, CircularProgress, Typography, styled } from "@mui/material";
 import type { AgentExecutionRecord } from "@shared/api/local-operator";
+import { createLocalOperatorClient } from "@shared/api/local-operator";
 import { RingLoadingIndicator } from "@shared/components/common/ring-loading-indicator";
+import { apiConfig } from "@shared/config";
 import { useStreamingMessage } from "@shared/hooks/use-streaming-message";
 import { useStreamingMessagesStore } from "@shared/store/streaming-messages-store";
 import { getLanguageFromExtension } from "@shared/utils/file-utils";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ExpandableActionElement } from "../expandable-action-element";
 import { MarkdownRenderer } from "../markdown-renderer";
+import { AudioAttachment } from "./audio-attachment";
 import { CodeBlock } from "./code-block";
 import { ErrorBlock } from "./error-block";
 import { ExpandableThinkingContent } from "./expandable-thinking-content";
+import { FileAttachment } from "./file-attachment";
+import { ImageAttachment } from "./image-attachment";
 import { LogBlock } from "./log-block";
 import { OutputBlock } from "./output-block";
-import { createLocalOperatorClient } from "@shared/api/local-operator";
-import { apiConfig } from "@shared/config";
-import { ImageAttachment } from "./image-attachment";
 import { VideoAttachment } from "./video-attachment";
-import { AudioAttachment } from "./audio-attachment";
-import { FileAttachment } from "./file-attachment";
 
 // Module-level helpers for attachment handling to keep hook deps clean and stable
 const isWebUrl = (path: string): boolean =>
