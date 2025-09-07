@@ -1,17 +1,94 @@
 import { Box, CircularProgress, Typography, styled } from "@mui/material";
 import type { AgentExecutionRecord } from "@shared/api/local-operator";
+import { createLocalOperatorClient } from "@shared/api/local-operator";
 import { RingLoadingIndicator } from "@shared/components/common/ring-loading-indicator";
+import { apiConfig } from "@shared/config";
 import { useStreamingMessage } from "@shared/hooks/use-streaming-message";
 import { useStreamingMessagesStore } from "@shared/store/streaming-messages-store";
 import { getLanguageFromExtension } from "@shared/utils/file-utils";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ExpandableActionElement } from "../expandable-action-element";
 import { MarkdownRenderer } from "../markdown-renderer";
+import { AudioAttachment } from "./audio-attachment";
 import { CodeBlock } from "./code-block";
 import { ErrorBlock } from "./error-block";
 import { ExpandableThinkingContent } from "./expandable-thinking-content";
+import { FileAttachment } from "./file-attachment";
+import { ImageAttachment } from "./image-attachment";
 import { LogBlock } from "./log-block";
 import { OutputBlock } from "./output-block";
+import { VideoAttachment } from "./video-attachment";
+
+// Module-level helpers for attachment handling to keep hook deps clean and stable
+const isWebUrl = (path: string): boolean =>
+	path.startsWith("http://") || path.startsWith("https://");
+
+const isImage = (path: string): boolean => {
+	const imageExtensions = [
+		".jpg",
+		".jpeg",
+		".png",
+		".gif",
+		".webp",
+		".bmp",
+		".svg",
+		".tiff",
+		".tif",
+		".ico",
+		".heic",
+		".heif",
+		".avif",
+		".jfif",
+		".pjpeg",
+		".pjp",
+	];
+	const lowerPath = path.toLowerCase();
+	return imageExtensions.some((ext) => lowerPath.endsWith(ext));
+};
+
+const isVideo = (path: string): boolean => {
+	const videoExtensions = [
+		".mp4",
+		".webm",
+		".ogg",
+		".mov",
+		".avi",
+		".wmv",
+		".flv",
+		".mkv",
+		".m4v",
+		".3gp",
+		".3g2",
+	];
+	const lowerPath = path.toLowerCase();
+	return videoExtensions.some((ext) => lowerPath.endsWith(ext));
+};
+
+const isAudio = (path: string): boolean => {
+	const audioExtensions = [
+		".mp3",
+		".wav",
+		".ogg",
+		".aac",
+		".flac",
+		".m4a",
+		".aiff",
+	];
+	const lowerPath = path.toLowerCase();
+	return audioExtensions.some((ext) => lowerPath.endsWith(ext));
+};
+
+const getAttachmentUrl = (
+	client: ReturnType<typeof createLocalOperatorClient>,
+	path: string,
+): string => {
+	if (path.startsWith("http")) return path;
+	const normalizedPath = path.startsWith("file://") ? path : `file://${path}`;
+	if (isImage(path)) return client.static.getImageUrl(normalizedPath);
+	if (isVideo(path)) return client.static.getVideoUrl(normalizedPath);
+	if (isAudio(path)) return client.static.getAudioUrl(normalizedPath);
+	return path;
+};
 
 const StreamingContainer = styled(Box)(() => ({
 	position: "relative",
@@ -423,6 +500,33 @@ export const StreamingMessage = ({
 
 	const fileLanguage = getLanguageFromExtension(message?.file_path || "");
 
+	const client = useMemo(
+		() => createLocalOperatorClient(apiConfig.baseUrl),
+		[],
+	);
+	const getUrl = useCallback(
+		(path: string) => getAttachmentUrl(client, path),
+		[client],
+	);
+
+	const handleFileClick = useCallback(async (filePath: string) => {
+		try {
+			if (isWebUrl(filePath)) {
+				await window.api.openExternal(filePath);
+			} else {
+				const normalizedPath = filePath.startsWith("file://")
+					? filePath.substring(7)
+					: filePath;
+				await window.api.openFile(normalizedPath);
+			}
+		} catch (error) {
+			console.error("Error opening file:", error);
+			alert(
+				`Unable to open file: ${filePath}. The file may be incomplete, deleted, or moved.`,
+			);
+		}
+	}, []);
+
 	return (
 		<StreamingContainer
 			className={`${isStreamable ? "streamable-message" : ""} ${className || ""}`}
@@ -487,6 +591,72 @@ export const StreamingMessage = ({
 				)}
 				{message?.logging && <LogBlock log={message.logging} isUser={false} />}
 			</ExpandableActionElement>
+
+			{/* Live attachments during streaming - render BELOW the action element to match final layout */}
+			{message?.files && message.files.length > 0 && (
+				<Box sx={{ mb: 2, mt: 2 }}>
+					{message.files
+						.filter((file) => isImage(file))
+						.map((file) => (
+							<ImageAttachment
+								key={`${messageId}-${file}`}
+								file={file}
+								src={getUrl(file)}
+								onClick={handleFileClick}
+								conversationId={conversationId ?? ""}
+							/>
+						))}
+				</Box>
+			)}
+
+			{message?.files && message.files.length > 0 && (
+				<Box sx={{ mb: 2 }}>
+					{message.files
+						.filter((file) => isVideo(file))
+						.map((file) => (
+							<VideoAttachment
+								key={`${messageId}-${file}`}
+								file={file}
+								src={getUrl(file)}
+								onClick={handleFileClick}
+								conversationId={conversationId ?? ""}
+							/>
+						))}
+				</Box>
+			)}
+
+			{message?.files &&
+				message.files.length > 0 &&
+				message.files.some((file) => isAudio(file)) && (
+					<Box sx={{ mb: 2 }}>
+						{message.files
+							.filter((file) => isAudio(file))
+							.map((file) => (
+								<AudioAttachment
+									key={`${messageId}-${file}`}
+									content={getUrl(file)}
+									isUser={false}
+								/>
+							))}
+					</Box>
+				)}
+
+			{message?.files && message.files.length > 0 && (
+				<Box sx={{ mt: 2 }}>
+					{message.files
+						.filter(
+							(file) => !isImage(file) && !isVideo(file) && !isAudio(file),
+						)
+						.map((file) => (
+							<FileAttachment
+								key={`${messageId}-${file}`}
+								file={file}
+								onClick={handleFileClick}
+								conversationId={conversationId ?? ""}
+							/>
+						))}
+				</Box>
+			)}
 
 			{errorDisplay}
 			<div ref={scrollRef} style={{ height: 1, width: 1, opacity: 0 }} />

@@ -4,6 +4,7 @@ import type {
 	JobStatus,
 } from "@shared/api/local-operator/types";
 import { RingLoadingIndicator } from "@shared/components/common/ring-loading-indicator";
+import { useStreamingMessagesStore } from "@shared/store/streaming-messages-store";
 import React, { type FC, type RefObject, useCallback, useEffect } from "react";
 import type { Message } from "../types/message";
 import { LoadingIndicator } from "./loading-indicator";
@@ -175,9 +176,16 @@ export const MessagesView: FC<MessagesViewProps> = React.memo(
 		const collapsed =
 			messages.length === 0 && !isLoadingMessages && !isFetchingMore;
 
-		const lastMessageIsStreaming =
-			messages[messages.length - 1]?.is_streamable &&
-			!messages[messages.length - 1]?.is_complete;
+		const lastMessage = messages[messages.length - 1];
+		const { isMessageStreamingComplete } = useStreamingMessagesStore();
+		const lastStreamComplete = lastMessage?.id
+			? isMessageStreamingComplete(lastMessage.id)
+			: false;
+
+		const lastMessageIsStreaming = Boolean(
+			lastMessage?.is_streamable &&
+				!(lastMessage?.is_complete || lastStreamComplete),
+		);
 
 		const handleMessageComplete = useCallback(() => {
 			// Add a small delay to ensure all store updates are processed before refetching
