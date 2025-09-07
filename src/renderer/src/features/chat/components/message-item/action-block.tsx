@@ -303,7 +303,7 @@ export const ActionBlock: FC<ActionBlockProps> = ({
 			</ExpandableActionElement>
 
 			{/* Render image attachments if any - always visible */}
-			{files && files.length > 0 && !isLoading && (
+			{files && files.length > 0 && (
 				<Box sx={{ mb: 2, mt: 2 }}>
 					{files
 						.filter((file) => isImage(file))
@@ -320,7 +320,7 @@ export const ActionBlock: FC<ActionBlockProps> = ({
 			)}
 
 			{/* Render video attachments if any - always visible */}
-			{files && files.length > 0 && !isLoading && (
+			{files && files.length > 0 && (
 				<Box sx={{ mb: 2 }}>
 					{files
 						.filter((file) => isVideo(file))
@@ -337,25 +337,22 @@ export const ActionBlock: FC<ActionBlockProps> = ({
 			)}
 
 			{/* Render audio attachments if any - always visible */}
-			{files &&
-				files.length > 0 &&
-				!isLoading &&
-				files.some((file) => isAudio(file)) && (
-					<Box sx={{ mb: 2 }}>
-						{files
-							.filter((file) => isAudio(file))
-							.map((file) => (
-								<AudioAttachment
-									key={`${file}`}
-									content={getUrl(file)}
-									isUser={isUser}
-								/>
-							))}
-					</Box>
-				)}
+			{files && files.length > 0 && files.some((file) => isAudio(file)) && (
+				<Box sx={{ mb: 2 }}>
+					{files
+						.filter((file) => isAudio(file))
+						.map((file) => (
+							<AudioAttachment
+								key={`${file}`}
+								content={getUrl(file)}
+								isUser={isUser}
+							/>
+						))}
+				</Box>
+			)}
 
 			{/* Render non-media file attachments if any - always visible */}
-			{files && files.length > 0 && !isLoading && (
+			{files && files.length > 0 && (
 				<Box sx={{ mt: 2 }}>
 					{files
 						.filter(
