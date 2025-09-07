@@ -164,29 +164,12 @@ export const MessagePaper: FC<MessagePaperProps> = React.memo(
 		}, [message?.id, isMessageStreamingComplete]);
 
 		// Final determination of whether to show streaming component
-		// Use a more robust check that considers both local state and store state
+		// Only show while a job is actively running to avoid lingering loaders when backend is done
 		const shouldShowStreaming = useMemo(() => {
-			// If it's not streamable, definitely don't show streaming
 			if (!isStreamable) return false;
-
-			// If streaming is actually complete in the store, don't show streaming
 			if (isStreamingActuallyComplete) return false;
-
-			// If there's an active job running, show streaming
-			if (isJobRunning) return true;
-
-			// If the message is not complete but is streamable, show streaming
-			// This handles cases where isJobRunning might be false but the message is still streaming
-			if (message?.is_complete === false) return true;
-
-			// Default to not showing streaming
-			return false;
-		}, [
-			isStreamable,
-			isStreamingActuallyComplete,
-			isJobRunning,
-			message?.is_complete,
-		]);
+			return isJobRunning;
+		}, [isStreamable, isStreamingActuallyComplete, isJobRunning]);
 
 		// Track if we've already handled the completion to prevent duplicate calls
 		const hasHandledCompletionRef = useRef(false);
