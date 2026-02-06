@@ -328,14 +328,14 @@ export const ActionBlock: FC<ActionBlockProps> = ({
 					onClick={handleCompactToggle}
 					sx={{
 						display: "flex",
-						justifyContent: "center",
+						justifyContent: "flex-start",
 						alignItems: "center",
 						width: "100%",
 						border: "none",
 						background: "transparent",
 						padding: "2px 0",
 						cursor: "pointer",
-						textAlign: "center",
+						textAlign: "left",
 						minHeight: 28,
 					}}
 				>
