@@ -410,7 +410,7 @@ export const StreamingMessage = ({
 				onClick={toggleInProgressDetails}
 				sx={{
 					display: "flex",
-					justifyContent: "center",
+					justifyContent: "flex-start",
 					alignItems: "center",
 					cursor: "pointer",
 					minHeight: 28,
@@ -420,7 +420,7 @@ export const StreamingMessage = ({
 					width: "100%",
 					border: "none",
 					background: "transparent",
-					textAlign: "center",
+					textAlign: "left",
 				}}
 			>
 				<Box
