@@ -88,7 +88,7 @@ Set up the following secrets in your GitHub repository:
 - `APPLE_ID_PASSWORD`: App-specific password for your Apple ID
 - `APPLE_TEAM_ID`: Your Apple Developer Team ID
 - `GITHUB_TOKEN`: Automatically provided by GitHub
-- `NPM_TOKEN`: For publishing to npm
+- `NPM_TOKEN`: Not required when using npm Trusted Publisher (OIDC) with GitHub Actions
 
 ## Troubleshooting
 
