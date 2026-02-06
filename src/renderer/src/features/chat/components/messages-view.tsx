@@ -5,7 +5,7 @@ import type {
 } from "@shared/api/local-operator/types";
 import { RingLoadingIndicator } from "@shared/components/common/ring-loading-indicator";
 import { useStreamingMessagesStore } from "@shared/store/streaming-messages-store";
-import React, { type FC, type RefObject, useCallback, useEffect } from "react";
+import React, { type FC, type RefObject, useCallback } from "react";
 import type { Message } from "../types/message";
 import { LoadingIndicator } from "./loading-indicator";
 import { MessageItem } from "./message-item";
@@ -177,10 +177,10 @@ export const MessagesView: FC<MessagesViewProps> = React.memo(
 			messages.length === 0 && !isLoadingMessages && !isFetchingMore;
 
 		const lastMessage = messages[messages.length - 1];
-		const { isMessageStreamingComplete } = useStreamingMessagesStore();
-		const lastStreamComplete = lastMessage?.id
-			? isMessageStreamingComplete(lastMessage.id)
-			: false;
+		const lastMessageId = lastMessage?.id ?? "";
+		const lastStreamComplete = useStreamingMessagesStore(
+			(state) => state.streamingMessages[lastMessageId]?.isComplete ?? false,
+		);
 
 		const lastMessageIsStreaming = Boolean(
 			lastMessage?.is_streamable &&
@@ -188,25 +188,8 @@ export const MessagesView: FC<MessagesViewProps> = React.memo(
 		);
 
 		const handleMessageComplete = useCallback(() => {
-			// Add a small delay to ensure all store updates are processed before refetching
-			// Increased delay to ensure proper completion handling
-			setTimeout(() => {
-				if (refetch) {
-					refetch();
-				}
-			}, 200);
+			refetch?.();
 		}, [refetch]);
-
-		// Additional debugging for message completion
-		useEffect(() => {
-			// Log when messages change to help with debugging
-			if (messages.length > 0) {
-				const lastMessage = messages[messages.length - 1];
-				if (lastMessage?.is_complete && lastMessage?.is_streamable) {
-					console.debug("Last message completed:", lastMessage.id);
-				}
-			}
-		}, [messages]);
 
 		return (
 			<MessagesViewWrapper collapsed={collapsed}>

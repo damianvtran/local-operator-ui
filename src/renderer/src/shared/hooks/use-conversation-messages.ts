@@ -13,7 +13,7 @@ import { apiConfig } from "@shared/config";
 import { useChatStore } from "@shared/store/chat-store";
 import { showErrorToast } from "@shared/utils/toast-manager";
 import { useInfiniteQuery } from "@tanstack/react-query";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useConnectivityGate } from "./use-connectivity-gate";
 
 /**
@@ -30,6 +30,13 @@ type PaginatedMessagesResponse = {
 	totalPages: number;
 	hasMore: boolean;
 };
+
+const EMPTY_MESSAGES: Message[] = [];
+const DEFAULT_PAGINATION = {
+	currentPage: 1,
+	totalPages: 1,
+	hasMore: false,
+} as const;
 
 /**
  * Convert a AgentExecutionRecord from the API to a Message for the UI
@@ -103,17 +110,27 @@ export const useConversationMessages = (
 	// Track the last scroll position to avoid unnecessary updates
 	const lastScrollPositionRef = useRef<number>(0);
 
-	// Get store functions
-	const {
-		getMessages,
-		addMessages,
-		setMessages,
-		lastUpdated,
-		updatePagination,
-		getPagination,
-		updateScrollPosition,
-		getScrollPosition,
-	} = useChatStore();
+	// Get store functions using stable, single-field selectors to avoid
+	// creating new snapshot objects on each render.
+	const addMessages = useChatStore((state) => state.addMessages);
+	const setMessages = useChatStore((state) => state.setMessages);
+	const updatePagination = useChatStore((state) => state.updatePagination);
+	const getPagination = useChatStore((state) => state.getPagination);
+	const updateScrollPosition = useChatStore(
+		(state) => state.updateScrollPosition,
+	);
+	const getScrollPosition = useChatStore((state) => state.getScrollPosition);
+	const getMessages = useChatStore((state) => state.getMessages);
+	const messages = useChatStore((state) =>
+		conversationId
+			? state.messagesByConversation[conversationId] || EMPTY_MESSAGES
+			: EMPTY_MESSAGES,
+	);
+	const pagination = useChatStore((state) =>
+		conversationId
+			? state.paginationByConversation[conversationId] || DEFAULT_PAGINATION
+			: DEFAULT_PAGINATION,
+	);
 
 	// Use the connectivity gate to check if the query should be enabled
 	const { shouldEnableQuery, getConnectivityError } = useConnectivityGate();
@@ -428,20 +445,6 @@ export const useConversationMessages = (
 			}
 		}
 	}, [data, conversationId, addMessages, setMessages, getMessages]);
-
-	// Get messages from the store with memoization to prevent unnecessary re-renders
-	// Include lastUpdated in dependencies to trigger re-renders when the store is updated
-	// biome-ignore lint/correctness/useExhaustiveDependencies: lastUpdated is needed to trigger re-renders
-	const messages = useMemo(() => {
-		return conversationId ? getMessages(conversationId) : [];
-	}, [conversationId, getMessages, lastUpdated]);
-
-	// Get pagination info from the store
-	const pagination = useMemo(() => {
-		return conversationId
-			? getPagination(conversationId)
-			: { currentPage: 1, totalPages: 1, hasMore: false };
-	}, [conversationId, getPagination]);
 
 	return {
 		messages,

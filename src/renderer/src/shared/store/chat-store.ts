@@ -8,6 +8,50 @@
 import type { Message } from "@features/chat/types";
 import { create } from "zustand";
 
+const areStringArraysEqual = (a?: string[], b?: string[]): boolean => {
+	if (a === b) return true;
+	if (!a || !b) return !a && !b;
+	if (a.length !== b.length) return false;
+	return a.every((value, index) => value === b[index]);
+};
+
+const areMessagesEqual = (current: Message, next: Message): boolean => {
+	const currentTimestamp =
+		current.timestamp instanceof Date
+			? current.timestamp.getTime()
+			: new Date(current.timestamp).getTime();
+	const nextTimestamp =
+		next.timestamp instanceof Date
+			? next.timestamp.getTime()
+			: new Date(next.timestamp).getTime();
+
+	return (
+		current.id === next.id &&
+		current.role === next.role &&
+		currentTimestamp === nextTimestamp &&
+		current.message === next.message &&
+		current.code === next.code &&
+		current.stdout === next.stdout &&
+		current.stderr === next.stderr &&
+		current.logging === next.logging &&
+		current.formatted_print === next.formatted_print &&
+		current.status === next.status &&
+		current.task_classification === next.task_classification &&
+		current.action === next.action &&
+		current.execution_type === next.execution_type &&
+		current.is_streamable === next.is_streamable &&
+		current.is_complete === next.is_complete &&
+		current.conversation_id === next.conversation_id &&
+		current.content === next.content &&
+		current.file_path === next.file_path &&
+		current.replacements === next.replacements &&
+		current.agent === next.agent &&
+		current.learnings === next.learnings &&
+		current.thinking === next.thinking &&
+		areStringArraysEqual(current.files, next.files)
+	);
+};
+
 /**
  * Pagination state for a conversation
  */
@@ -248,6 +292,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
 			// Find the message with the same ID
 			const updatedMessages = existingMessages.map((msg) => {
 				if (msg.id === message.id) {
+					if (areMessagesEqual(msg, message)) {
+						return msg;
+					}
 					updated = true;
 					return message;
 				}

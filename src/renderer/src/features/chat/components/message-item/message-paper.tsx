@@ -1,7 +1,6 @@
 import { Box, Paper, useTheme } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import { TextSelectionControls } from "@shared/components/common/text-selection-controls";
-import { useScrollToBottom } from "@shared/hooks/use-scroll-to-bottom";
 import { useStreamingMessagesStore } from "@shared/store/streaming-messages-store";
 import React, {
 	type FC,
@@ -68,8 +67,6 @@ export const MessagePaper: FC<MessagePaperProps> = React.memo(
 		content,
 		message,
 		onMessageComplete,
-		isLastMessage,
-		isJobRunning,
 		agentId,
 		isSmallView,
 	}) => {
@@ -157,57 +154,34 @@ export const MessagePaper: FC<MessagePaperProps> = React.memo(
 		);
 
 		// Check if streaming is truly complete by also checking the streaming messages store
-		const { isMessageStreamingComplete } = useStreamingMessagesStore();
-		const isStreamingActuallyComplete = useMemo(() => {
-			if (!message?.id) return true;
-			return isMessageStreamingComplete(message.id);
-		}, [message?.id, isMessageStreamingComplete]);
+		const isStreamingActuallyComplete = useStreamingMessagesStore((state) =>
+			message?.id
+				? (state.streamingMessages[message.id]?.isComplete ?? false)
+				: true,
+		);
 
 		// Final determination of whether to show streaming component
-		// Only show while a job is actively running to avoid lingering loaders when backend is done
 		const shouldShowStreaming = useMemo(() => {
 			if (!isStreamable) return false;
 			if (isStreamingActuallyComplete) return false;
-			return isJobRunning;
-		}, [isStreamable, isStreamingActuallyComplete, isJobRunning]);
+			return true;
+		}, [isStreamable, isStreamingActuallyComplete]);
 
-		// Track if we've already handled the completion to prevent duplicate calls
-		const hasHandledCompletionRef = useRef(false);
+		const completionNotifiedRef = useRef<string | null>(null);
 
-		// Effect to handle completion and ensure proper cleanup
 		useEffect(() => {
-			// If we're no longer showing streaming and we haven't handled completion yet
-			if (!shouldShowStreaming && message && !hasHandledCompletionRef.current) {
-				// Mark as handled to prevent duplicate calls
-				hasHandledCompletionRef.current = true;
+			if (!message?.id) return;
 
-				// Small delay to ensure all updates are processed
-				const timer = setTimeout(() => {
-					if (onMessageComplete) {
-						onMessageComplete();
-					}
-				}, 50);
-
-				return () => clearTimeout(timer);
+			if (shouldShowStreaming) {
+				completionNotifiedRef.current = null;
+				return;
 			}
 
-			return undefined;
-		}, [shouldShowStreaming, message, onMessageComplete]);
-
-		// Reset the completion flag when the message changes
-		useEffect(() => {
-			hasHandledCompletionRef.current = false;
-		}, []);
-
-		// Additional cleanup for debugging
-		useEffect(() => {
-			return () => {
-				// Cleanup any pending timeouts
-				if (hasHandledCompletionRef.current) {
-					hasHandledCompletionRef.current = false;
-				}
-			};
-		}, []);
+			if (onMessageComplete && completionNotifiedRef.current !== message.id) {
+				completionNotifiedRef.current = message.id;
+				onMessageComplete();
+			}
+		}, [message?.id, onMessageComplete, shouldShowStreaming]);
 
 		// Memoize the message styles to prevent unnecessary object creation on each render
 		const messageStyles = useMemo(
@@ -222,55 +196,6 @@ export const MessagePaper: FC<MessagePaperProps> = React.memo(
 			}),
 			[theme.palette.text.primary, isSmallView],
 		);
-
-		// Always call hooks at the top level, regardless of conditions
-		// Use the simplified scroll hook to track scroll position and scroll to bottom
-		const {
-			containerRef: scrollRef,
-			scrollToBottom,
-			isFarFromBottom,
-		} = useScrollToBottom();
-
-		// Invert isFarFromBottom to get isNearBottom for compatibility with existing code
-		const isNearBottom = !isFarFromBottom;
-
-		// Track if we should auto-scroll based on user's scroll position
-		const shouldAutoScrollRef = useRef(true);
-
-		// Periodically scroll to bottom during streaming if user is near bottom
-		useEffect(() => {
-			// Only run the effect if this is the last message and it should show streaming
-			if (!isLastMessage || !shouldShowStreaming || !message) return;
-
-			// Initialize auto-scroll state based on current position
-			shouldAutoScrollRef.current = isNearBottom;
-
-			// Set up interval to check and scroll if needed during streaming
-			const scrollInterval = setInterval(() => {
-				// Only scroll if the user is near the bottom (using the ref for performance)
-				if (shouldAutoScrollRef.current) {
-					scrollToBottom();
-				}
-			}, 350); // Check every 350ms while streaming
-
-			return () => {
-				clearInterval(scrollInterval);
-			};
-		}, [
-			shouldShowStreaming,
-			message,
-			scrollToBottom,
-			isNearBottom,
-			isLastMessage,
-		]);
-
-		// Update auto-scroll flag when isNearBottom changes
-		// This effect is intentionally simple and only depends on isNearBottom
-		// to avoid unnecessary re-renders
-		useEffect(() => {
-			// Update the ref without causing re-renders
-			shouldAutoScrollRef.current = isNearBottom;
-		}, [isNearBottom]);
 
 		// Memoize the streaming message component to prevent unnecessary re-renders
 		const streamingMessageComponent = useMemo(() => {
@@ -292,6 +217,7 @@ export const MessagePaper: FC<MessagePaperProps> = React.memo(
 						}
 					}}
 					styleProps={markdownStyleProps}
+					compactInProgress={true}
 				/>
 			);
 		}, [
@@ -421,8 +347,6 @@ export const MessagePaper: FC<MessagePaperProps> = React.memo(
 						}}
 					/>
 				)}
-				{/* Invisible element at the bottom for scroll targeting */}
-				<div ref={scrollRef} style={{ height: 1, width: 1, opacity: 0 }} />
 			</Box>
 		);
 	},

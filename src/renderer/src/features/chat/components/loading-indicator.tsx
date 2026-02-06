@@ -186,8 +186,10 @@ export const LoadingIndicator: FC<{
 	conversationId?: string;
 	isSmallView?: boolean;
 }> = memo(({ status, currentExecution, isSmallView }) => {
-	const { getStreamingMessage } = useStreamingMessagesStore();
-	const streamingMessage = getStreamingMessage(currentExecution?.id || "");
+	const currentExecutionId = currentExecution?.id ?? "";
+	const streamingMessage = useStreamingMessagesStore(
+		(state) => state.streamingMessages[currentExecutionId] ?? null,
+	);
 	const isStreaming = !!streamingMessage && !streamingMessage.isComplete;
 
 	if (isStreaming) {

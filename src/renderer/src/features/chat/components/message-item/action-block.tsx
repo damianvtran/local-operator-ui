@@ -37,6 +37,7 @@ export type ActionBlockProps = {
 	filePath?: string;
 	isLoading?: boolean;
 	isSmallView?: boolean;
+	compact?: boolean;
 };
 
 /**
@@ -176,17 +177,10 @@ export const ActionBlock: FC<ActionBlockProps> = ({
 	conversationId,
 	isLoading,
 	isSmallView,
+	compact = false,
 }) => {
-	const [isExpanded, setIsExpanded] = useState(false);
-
-	const handleExpand = () => {
-		setIsExpanded(true);
-	};
-
-	const handleCollapse = (e: React.MouseEvent) => {
-		e.stopPropagation();
-		setIsExpanded(false);
-	};
+	const [isRowExpanded, setIsRowExpanded] = useState(!compact);
+	const [isDetailsExpanded, setIsDetailsExpanded] = useState(false);
 
 	const markdownStyleProps = useMemo(
 		() => ({
@@ -245,128 +239,195 @@ export const ActionBlock: FC<ActionBlockProps> = ({
 	const trimmedMessage = message
 		? message.replace(/(```\w+\s*)+$/g, "").trimEnd()
 		: message;
+	const compactPreviewText = trimmedMessage
+		? trimmedMessage.replace(/\s+/g, " ").trim()
+		: action === "CODE"
+			? "Executing code"
+			: "Working on your request";
+
+	const handleExpand = () => {
+		setIsRowExpanded(true);
+		setIsDetailsExpanded(true);
+	};
+
+	const handleCollapse = (e: React.MouseEvent) => {
+		e.stopPropagation();
+		setIsDetailsExpanded(false);
+		if (compact) {
+			setIsRowExpanded(false);
+		}
+	};
+
+	const handleCompactToggle = () => {
+		if (!compact) return;
+		setIsRowExpanded((previous) => {
+			const next = !previous;
+			setIsDetailsExpanded(next);
+			return next;
+		});
+	};
 
 	return (
 		<Box sx={{ position: "relative", width: "100%" }}>
-			{/* Message content displayed outside and above the collapsible block */}
-			{message && (
+			{compact && !isRowExpanded && (
 				<Box
+					component="button"
+					type="button"
+					aria-expanded={false}
+					onClick={handleCompactToggle}
 					sx={{
-						borderRadius: 2,
-						color: (theme) => theme.palette.text.primary,
+						display: "flex",
+						alignItems: "center",
+						gap: 1,
 						width: "100%",
-						wordBreak: "break-word",
-						overflowWrap: "break-word",
-						position: "relative",
-						mb: 2,
+						border: "none",
+						background: "transparent",
+						padding: 0,
+						cursor: "pointer",
+						textAlign: "left",
+						minHeight: 28,
 					}}
 				>
-					<MarkdownRenderer
-						content={trimmedMessage}
-						styleProps={markdownStyleProps}
-					/>
+					<Box
+						component="span"
+						sx={{
+							flex: 1,
+							color: "text.disabled",
+							fontSize: "0.82rem",
+							lineHeight: 1.35,
+							overflow: "hidden",
+							whiteSpace: "nowrap",
+							textOverflow: "ellipsis",
+						}}
+					>
+						{compactPreviewText}
+					</Box>
 				</Box>
 			)}
 
-			{/* Use the shared expandable action element */}
-			<ExpandableActionElement
-				executionType={executionType}
-				action={action}
-				isUser={isUser}
-				isExpanded={isExpanded}
-				onExpand={handleExpand}
-				onCollapse={handleCollapse}
-				hasCollapsibleContent={hasCollapsibleContent}
-				isLoading={isLoading ?? false}
-			>
-				{/* Technical details for action messages */}
-				{code && <CodeBlock code={code} isUser={isUser} />}
-				{fileContent && (
-					<CodeBlock
-						header="Content"
-						code={fileContent}
-						isUser={isUser}
-						language={fileLanguage}
-					/>
-				)}
-				{replacements && (
-					<CodeBlock
-						header="Replacements"
-						code={replacements}
-						isUser={isUser}
-						language="diff"
-					/>
-				)}
-				{stdout && <OutputBlock output={stdout} isUser={isUser} />}
-				{stderr && <ErrorBlock error={stderr} isUser={isUser} />}
-				{logging && <LogBlock log={logging} isUser={isUser} />}
-			</ExpandableActionElement>
-
-			{/* Render image attachments if any - always visible */}
-			{files && files.length > 0 && (
-				<Box sx={{ mb: 2, mt: 2 }}>
-					{files
-						.filter((file) => isImage(file))
-						.map((file) => (
-							<ImageAttachment
-								key={`${file}`}
-								file={file}
-								src={getUrl(file)}
-								onClick={handleFileClick}
-								conversationId={conversationId}
+			{(!compact || isRowExpanded) && (
+				<>
+					{/* Message content displayed outside and above the collapsible block */}
+					{message && (
+						<Box
+							sx={{
+								borderRadius: 2,
+								color: (theme) => theme.palette.text.primary,
+								width: "100%",
+								wordBreak: "break-word",
+								overflowWrap: "break-word",
+								position: "relative",
+								mb: 2,
+							}}
+						>
+							<MarkdownRenderer
+								content={trimmedMessage}
+								styleProps={markdownStyleProps}
 							/>
-						))}
-				</Box>
-			)}
+						</Box>
+					)}
 
-			{/* Render video attachments if any - always visible */}
-			{files && files.length > 0 && (
-				<Box sx={{ mb: 2 }}>
-					{files
-						.filter((file) => isVideo(file))
-						.map((file) => (
-							<VideoAttachment
-								key={`${file}`}
-								file={file}
-								src={getUrl(file)}
-								onClick={handleFileClick}
-								conversationId={conversationId}
-							/>
-						))}
-				</Box>
-			)}
-
-			{/* Render audio attachments if any - always visible */}
-			{files && files.length > 0 && files.some((file) => isAudio(file)) && (
-				<Box sx={{ mb: 2 }}>
-					{files
-						.filter((file) => isAudio(file))
-						.map((file) => (
-							<AudioAttachment
-								key={`${file}`}
-								content={getUrl(file)}
+					{/* Use the shared expandable action element */}
+					<ExpandableActionElement
+						executionType={executionType}
+						action={action}
+						isUser={isUser}
+						isExpanded={isDetailsExpanded}
+						onExpand={handleExpand}
+						onCollapse={handleCollapse}
+						hasCollapsibleContent={hasCollapsibleContent}
+						isLoading={isLoading ?? false}
+					>
+						{/* Technical details for action messages */}
+						{code && <CodeBlock code={code} isUser={isUser} />}
+						{fileContent && (
+							<CodeBlock
+								header="Content"
+								code={fileContent}
 								isUser={isUser}
+								language={fileLanguage}
 							/>
-						))}
-				</Box>
-			)}
+						)}
+						{replacements && (
+							<CodeBlock
+								header="Replacements"
+								code={replacements}
+								isUser={isUser}
+								language="diff"
+							/>
+						)}
+						{stdout && <OutputBlock output={stdout} isUser={isUser} />}
+						{stderr && <ErrorBlock error={stderr} isUser={isUser} />}
+						{logging && <LogBlock log={logging} isUser={isUser} />}
+					</ExpandableActionElement>
 
-			{/* Render non-media file attachments if any - always visible */}
-			{files && files.length > 0 && (
-				<Box sx={{ mt: 2 }}>
-					{files
-						.filter(
-							(file) => !isImage(file) && !isVideo(file) && !isAudio(file),
-						)
-						.map((file) => (
-							<FileAttachment
-								key={`${file}`}
-								file={file}
-								onClick={handleFileClick}
-								conversationId={conversationId}
-							/>
-						))}
-				</Box>
+					{/* Render image attachments if any - always visible */}
+					{files && files.length > 0 && (
+						<Box sx={{ mb: 2, mt: 2 }}>
+							{files
+								.filter((file) => isImage(file))
+								.map((file) => (
+									<ImageAttachment
+										key={`${file}`}
+										file={file}
+										src={getUrl(file)}
+										onClick={handleFileClick}
+										conversationId={conversationId}
+									/>
+								))}
+						</Box>
+					)}
+
+					{/* Render video attachments if any - always visible */}
+					{files && files.length > 0 && (
+						<Box sx={{ mb: 2 }}>
+							{files
+								.filter((file) => isVideo(file))
+								.map((file) => (
+									<VideoAttachment
+										key={`${file}`}
+										file={file}
+										src={getUrl(file)}
+										onClick={handleFileClick}
+										conversationId={conversationId}
+									/>
+								))}
+						</Box>
+					)}
+
+					{/* Render audio attachments if any - always visible */}
+					{files && files.length > 0 && files.some((file) => isAudio(file)) && (
+						<Box sx={{ mb: 2 }}>
+							{files
+								.filter((file) => isAudio(file))
+								.map((file) => (
+									<AudioAttachment
+										key={`${file}`}
+										content={getUrl(file)}
+										isUser={isUser}
+									/>
+								))}
+						</Box>
+					)}
+
+					{/* Render non-media file attachments if any - always visible */}
+					{files && files.length > 0 && (
+						<Box sx={{ mt: 2 }}>
+							{files
+								.filter(
+									(file) => !isImage(file) && !isVideo(file) && !isAudio(file),
+								)
+								.map((file) => (
+									<FileAttachment
+										key={`${file}`}
+										file={file}
+										onClick={handleFileClick}
+										conversationId={conversationId}
+									/>
+								))}
+						</Box>
+					)}
+				</>
 			)}
 		</Box>
 	);

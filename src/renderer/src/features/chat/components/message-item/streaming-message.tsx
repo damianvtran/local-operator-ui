@@ -90,6 +90,34 @@ const getAttachmentUrl = (
 	return path;
 };
 
+const getStreamingPreviewText = (
+	message: AgentExecutionRecord | null,
+): string => {
+	const cleanedMessage = message?.message
+		?.replace(/\s+/g, " ")
+		.replace(/(```\w+\s*)+$/g, "")
+		.trim();
+
+	if (cleanedMessage) {
+		return cleanedMessage;
+	}
+
+	switch (message?.action) {
+		case "CODE":
+			return "Executing code";
+		case "READ":
+			return "Reading content";
+		case "WRITE":
+			return "Writing content";
+		case "EDIT":
+			return "Editing content";
+		case "ASK":
+			return "Formulating a question";
+		default:
+			return "Working on your request";
+	}
+};
+
 const StreamingContainer = styled(Box)(() => ({
 	position: "relative",
 	overflow: "hidden",
@@ -133,6 +161,7 @@ type StreamingMessageProps = {
 	conversationId?: string;
 	refetchOnComplete?: boolean;
 	styleProps?: Record<string, unknown>;
+	compactInProgress?: boolean;
 };
 
 export const StreamingMessage = ({
@@ -149,37 +178,12 @@ export const StreamingMessage = ({
 	conversationId,
 	refetchOnComplete = true,
 	styleProps,
+	compactInProgress = false,
 }: StreamingMessageProps) => {
-	const { getStreamingMessage, isMessageStreamingComplete } =
-		useStreamingMessagesStore();
-
-	const storeMessage = getStreamingMessage(messageId);
-	const isStoreMessageComplete = isMessageStreamingComplete(messageId);
-
-	const handleComplete = useCallback(
-		(completedMessage: AgentExecutionRecord) => {
-			// Small delay to ensure store updates are processed before calling onComplete
-			setTimeout(() => {
-				if (onComplete) {
-					onComplete(completedMessage);
-				}
-			}, 50);
-		},
-		[onComplete],
+	const storeMessage = useStreamingMessagesStore(
+		(state) => state.streamingMessages[messageId] ?? null,
 	);
-
-	// Also handle completion when the store message is complete
-	useEffect(() => {
-		if (isStoreMessageComplete && storeMessage?.content && onComplete) {
-			// Check if this is different from the last completed message to avoid duplicate calls
-			const timer = setTimeout(() => {
-				onComplete(storeMessage.content as AgentExecutionRecord);
-			}, 50);
-
-			return () => clearTimeout(timer);
-		}
-		return undefined;
-	}, [isStoreMessageComplete, storeMessage, onComplete]);
+	const isStoreMessageComplete = storeMessage?.isComplete ?? false;
 
 	const {
 		message: wsMessage,
@@ -194,7 +198,7 @@ export const StreamingMessage = ({
 	} = useStreamingMessage({
 		messageId,
 		autoConnect,
-		onComplete: handleComplete,
+		onComplete,
 		onUpdate,
 		keepAlive,
 		conversationId,
@@ -267,52 +271,6 @@ export const StreamingMessage = ({
 		[status, isStoreMessageComplete],
 	);
 
-	// Determine if we should show the streaming component or switch to complete state
-	const shouldShowStreaming = useMemo(() => {
-		// Show streaming while connected and not complete in store
-		return status === "connected" && !isStoreMessageComplete;
-	}, [status, isStoreMessageComplete]);
-
-	// Track if we've already called onComplete to prevent duplicate calls
-	const hasCalledOnCompleteRef = useRef(false);
-
-	// Effect to handle completion and ensure proper cleanup
-	useEffect(() => {
-		if (
-			!shouldShowStreaming &&
-			storeMessage?.content &&
-			onComplete &&
-			!hasCalledOnCompleteRef.current
-		) {
-			// Mark as called to prevent duplicate calls
-			hasCalledOnCompleteRef.current = true;
-
-			// Small delay to ensure all updates are processed
-			const timer = setTimeout(() => {
-				onComplete(storeMessage.content as AgentExecutionRecord);
-			}, 50);
-
-			return () => clearTimeout(timer);
-		}
-
-		return undefined;
-	}, [shouldShowStreaming, storeMessage, onComplete]);
-
-	// Reset the completion flag when the message changes
-	useEffect(() => {
-		hasCalledOnCompleteRef.current = false;
-	}, []);
-
-	// Additional cleanup for debugging
-	useEffect(() => {
-		return () => {
-			// Cleanup any pending timeouts
-			if (hasCalledOnCompleteRef.current) {
-				hasCalledOnCompleteRef.current = false;
-			}
-		};
-	}, []);
-
 	const lastValidMessageRef = useRef<AgentExecutionRecord | null>(null);
 
 	const message = useMemo(() => {
@@ -355,8 +313,92 @@ export const StreamingMessage = ({
 		}
 	}, [onConnectionControls, connectionControls]);
 
+	const [isActionExpanded, setIsActionExpanded] = useState(!compactInProgress);
+	const [isThinkingExpanded, setIsThinkingExpanded] = useState(false);
+	const [isInProgressDetailsExpanded, setIsInProgressDetailsExpanded] =
+		useState(!compactInProgress);
+
+	useEffect(() => {
+		if (!messageId) {
+			return;
+		}
+		setIsActionExpanded(!compactInProgress);
+		setIsThinkingExpanded(false);
+		setIsInProgressDetailsExpanded(!compactInProgress);
+	}, [messageId, compactInProgress]);
+
+	const useCompactInProgressMode = compactInProgress && !isStoreMessageComplete;
+	const showExpandedStreamingDetails =
+		!useCompactInProgressMode || isInProgressDetailsExpanded;
+
+	useEffect(() => {
+		if (useCompactInProgressMode && isInProgressDetailsExpanded) {
+			setIsActionExpanded(true);
+		}
+	}, [useCompactInProgressMode, isInProgressDetailsExpanded]);
+
+	const compactPreviewText = useMemo(
+		() => getStreamingPreviewText(message),
+		[message],
+	);
+
+	const toggleInProgressDetails = useCallback(() => {
+		if (!useCompactInProgressMode) return;
+		setIsInProgressDetailsExpanded((prev) => !prev);
+	}, [useCompactInProgressMode]);
+
+	const compactSummaryLine = useMemo(() => {
+		if (!useCompactInProgressMode) {
+			return null;
+		}
+
+		return (
+			<Box
+				component="button"
+				type="button"
+				aria-expanded={isInProgressDetailsExpanded}
+				onClick={toggleInProgressDetails}
+				sx={{
+					display: "flex",
+					alignItems: "center",
+					gap: 1,
+					cursor: "pointer",
+					minHeight: 28,
+					opacity: 0.9,
+					mb: showExpandedStreamingDetails ? 1 : 0,
+					padding: 0,
+					width: "100%",
+					border: "none",
+					background: "transparent",
+					textAlign: "left",
+				}}
+			>
+				<Typography
+					variant="body2"
+					noWrap
+					sx={{
+						flex: 1,
+						fontSize: "0.82rem",
+						lineHeight: 1.35,
+						color: "text.disabled",
+					}}
+				>
+					{compactPreviewText}
+				</Typography>
+				{isActivelyStreaming && <CircularProgress size={12} thickness={4} />}
+			</Box>
+		);
+	}, [
+		useCompactInProgressMode,
+		isInProgressDetailsExpanded,
+		showExpandedStreamingDetails,
+		compactPreviewText,
+		isActivelyStreaming,
+		toggleInProgressDetails,
+	]);
+
 	const statusIndicator = useMemo(() => {
-		if (!showStatus) return null;
+		if (!showStatus || useCompactInProgressMode) return null;
 		switch (status) {
 			case "connecting":
 			case "reconnecting":
@@ -413,7 +455,7 @@ export const StreamingMessage = ({
 			default:
 				return null;
 		}
-	}, [status, showStatus]);
+	}, [status, showStatus, useCompactInProgressMode]);
 
 	const loadingIndicator = useMemo(() => {
 		if (!isLoading && !isRefetching) return null;
@@ -479,9 +521,6 @@ export const StreamingMessage = ({
 		);
 	}, [error]);
 
-	const [isActionExpanded, setIsActionExpanded] = useState(false);
-	const [isThinkingExpanded, setIsThinkingExpanded] = useState(false);
-
 	const handleActionExpand = () => setIsActionExpanded(true);
 	const handleActionCollapse = (e: React.MouseEvent) => {
 		e.stopPropagation();
@@ -534,131 +573,139 @@ export const StreamingMessage = ({
 			data-streaming={isActivelyStreaming ? "true" : "false"}
 		>
 			{statusIndicator}
-			{children}
-			{loadingIndicator}
-			{message?.thinking && (
-				<ExpandableThinkingContent
-					thinking={message.thinking}
-					isExpanded={isThinkingExpanded}
-					onExpand={handleThinkingExpand}
-					onCollapse={handleThinkingCollapse}
-				/>
-			)}
-			{messageContent}
-			{streamingLoader}
+			{compactSummaryLine}
 
-			{/* Use the shared expandable action element */}
-			<ExpandableActionElement
-				executionType={message?.execution_type || "action"}
-				action={message?.action}
-				isUser={false}
-				isExpanded={isActionExpanded}
-				onExpand={handleActionExpand}
-				onCollapse={handleActionCollapse}
-				hasCollapsibleContent={hasCollapsibleContent}
-				isLoading={isActivelyStreaming}
-			>
-				{message?.code && (
-					<CodeBlock
-						code={message.code}
+			{showExpandedStreamingDetails && (
+				<>
+					{children}
+					{loadingIndicator}
+					{message?.thinking && (
+						<ExpandableThinkingContent
+							thinking={message.thinking}
+							isExpanded={isThinkingExpanded}
+							onExpand={handleThinkingExpand}
+							onCollapse={handleThinkingCollapse}
+						/>
+					)}
+					{messageContent}
+					{streamingLoader}
+
+					{/* Use the shared expandable action element */}
+					<ExpandableActionElement
+						executionType={message?.execution_type || "action"}
+						action={message?.action}
 						isUser={false}
-						flexDirection="column-reverse"
-					/>
-				)}
-				{message?.content && (
-					<CodeBlock
-						header="Content"
-						code={message.content}
-						isUser={false}
-						language={fileLanguage}
-						flexDirection="column-reverse"
-					/>
-				)}
-				{message?.replacements && (
-					<CodeBlock
-						header="Replacements"
-						code={message.replacements}
-						isUser={false}
-						language="diff"
-						flexDirection="column-reverse"
-					/>
-				)}
-				{message?.stdout && (
-					<OutputBlock output={message.stdout} isUser={false} />
-				)}
-				{message?.stderr && (
-					<ErrorBlock error={message.stderr} isUser={false} />
-				)}
-				{message?.logging && <LogBlock log={message.logging} isUser={false} />}
-			</ExpandableActionElement>
-
-			{/* Live attachments during streaming - render BELOW the action element to match final layout */}
-			{message?.files && message.files.length > 0 && (
-				<Box sx={{ mb: 2, mt: 2 }}>
-					{message.files
-						.filter((file) => isImage(file))
-						.map((file) => (
-							<ImageAttachment
-								key={`${messageId}-${file}`}
-								file={file}
-								src={getUrl(file)}
-								onClick={handleFileClick}
-								conversationId={conversationId ?? ""}
+						isExpanded={isActionExpanded}
+						onExpand={handleActionExpand}
+						onCollapse={handleActionCollapse}
+						hasCollapsibleContent={hasCollapsibleContent}
+						isLoading={isActivelyStreaming}
+					>
+						{message?.code && (
+							<CodeBlock
+								code={message.code}
+								isUser={false}
+								flexDirection="column-reverse"
 							/>
-						))}
-				</Box>
-			)}
-
-			{message?.files && message.files.length > 0 && (
-				<Box sx={{ mb: 2 }}>
-					{message.files
-						.filter((file) => isVideo(file))
-						.map((file) => (
-							<VideoAttachment
-								key={`${messageId}-${file}`}
-								file={file}
-								src={getUrl(file)}
-								onClick={handleFileClick}
-								conversationId={conversationId ?? ""}
+						)}
+						{message?.content && (
+							<CodeBlock
+								header="Content"
+								code={message.content}
+								isUser={false}
+								language={fileLanguage}
+								flexDirection="column-reverse"
 							/>
-						))}
-				</Box>
-			)}
-
-			{message?.files &&
-				message.files.length > 0 &&
-				message.files.some((file) => isAudio(file)) && (
-					<Box sx={{ mb: 2 }}>
-						{message.files
-							.filter((file) => isAudio(file))
-							.map((file) => (
-								<AudioAttachment
-									key={`${messageId}-${file}`}
-									content={getUrl(file)}
-									isUser={false}
-								/>
-							))}
-					</Box>
-				)}
-
-			{message?.files && message.files.length > 0 && (
-				<Box sx={{ mt: 2 }}>
-					{message.files
-						.filter(
-							(file) => !isImage(file) && !isVideo(file) && !isAudio(file),
-						)
-						.map((file) => (
-							<FileAttachment
-								key={`${messageId}-${file}`}
-								file={file}
-								onClick={handleFileClick}
-								conversationId={conversationId ?? ""}
+						)}
+						{message?.replacements && (
+							<CodeBlock
+								header="Replacements"
+								code={message.replacements}
+								isUser={false}
+								language="diff"
+								flexDirection="column-reverse"
 							/>
-						))}
-				</Box>
-			)}
+						)}
+						{message?.stdout && (
+							<OutputBlock output={message.stdout} isUser={false} />
+						)}
+						{message?.stderr && (
+							<ErrorBlock error={message.stderr} isUser={false} />
+						)}
+						{message?.logging && (
+							<LogBlock log={message.logging} isUser={false} />
+						)}
+					</ExpandableActionElement>
 
-			{errorDisplay}
+					{/* Live attachments during streaming - render BELOW the action element to match final layout */}
+					{message?.files && message.files.length > 0 && (
+						<Box sx={{ mb: 2, mt: 2 }}>
+							{message.files
+								.filter((file) => isImage(file))
+								.map((file) => (
+									<ImageAttachment
+										key={`${messageId}-${file}`}
+										file={file}
+										src={getUrl(file)}
+										onClick={handleFileClick}
+										conversationId={conversationId ?? ""}
+									/>
+								))}
+						</Box>
+					)}
+
+					{message?.files && message.files.length > 0 && (
+						<Box sx={{ mb: 2 }}>
+							{message.files
+								.filter((file) => isVideo(file))
+								.map((file) => (
+									<VideoAttachment
+										key={`${messageId}-${file}`}
+										file={file}
+										src={getUrl(file)}
+										onClick={handleFileClick}
+										conversationId={conversationId ?? ""}
+									/>
+								))}
+						</Box>
+					)}
+
+					{message?.files &&
+						message.files.length > 0 &&
+						message.files.some((file) => isAudio(file)) && (
+							<Box sx={{ mb: 2 }}>
+								{message.files
+									.filter((file) => isAudio(file))
+									.map((file) => (
+										<AudioAttachment
+											key={`${messageId}-${file}`}
+											content={getUrl(file)}
+											isUser={false}
+										/>
+									))}
+							</Box>
+						)}
+
+					{message?.files && message.files.length > 0 && (
+						<Box sx={{ mt: 2 }}>
+							{message.files
+								.filter(
+									(file) => !isImage(file) && !isVideo(file) && !isAudio(file),
+								)
+								.map((file) => (
+									<FileAttachment
+										key={`${messageId}-${file}`}
+										file={file}
+										onClick={handleFileClick}
+										conversationId={conversationId ?? ""}
+									/>
+								))}
+						</Box>
+					)}
+
+					{errorDisplay}
+				</>
+			)}
 			<div ref={scrollRef} style={{ height: 1, width: 1, opacity: 0 }} />
 		</StreamingContainer>
 	);
