@@ -52,6 +52,25 @@ const areMessagesEqual = (current: Message, next: Message): boolean => {
 	);
 };
 
+const getMessageTimestamp = (message: Message): number => {
+	return message.timestamp instanceof Date
+		? message.timestamp.getTime()
+		: new Date(message.timestamp).getTime();
+};
+
+const isSortedByTimestamp = (messages: Message[]): boolean => {
+	for (let index = 1; index < messages.length; index += 1) {
+		if (
+			getMessageTimestamp(messages[index - 1]) >
+			getMessageTimestamp(messages[index])
+		) {
+			return false;
+		}
+	}
+
+	return true;
+};
+
 /**
  * Pagination state for a conversation
  */
@@ -209,28 +228,35 @@ export const useChatStore = create<ChatState>((set, get) => ({
 				return state;
 			}
 
-			// Sort messages by timestamp to ensure correct order
-			const allMessages = prepend
-				? [...uniqueNewMessages, ...existingMessages]
-				: [...existingMessages, ...uniqueNewMessages];
+			const sortedNewMessages = isSortedByTimestamp(uniqueNewMessages)
+				? uniqueNewMessages
+				: [...uniqueNewMessages].sort(
+						(a, b) => getMessageTimestamp(a) - getMessageTimestamp(b),
+					);
 
-			// Sort by timestamp (oldest first)
-			const sortedMessages = [...allMessages].sort((a, b) => {
-				const timeA =
-					a.timestamp instanceof Date
-						? a.timestamp.getTime()
-						: new Date(a.timestamp).getTime();
-				const timeB =
-					b.timestamp instanceof Date
-						? b.timestamp.getTime()
-						: new Date(b.timestamp).getTime();
-				return timeA - timeB;
-			});
+			let mergedMessages = prepend
+				? [...sortedNewMessages, ...existingMessages]
+				: [...existingMessages, ...sortedNewMessages];
+
+			const canSkipGlobalSort =
+				existingMessages.length === 0 ||
+				(prepend
+					? getMessageTimestamp(
+							sortedNewMessages[sortedNewMessages.length - 1],
+						) <= getMessageTimestamp(existingMessages[0])
+					: getMessageTimestamp(sortedNewMessages[0]) >=
+						getMessageTimestamp(existingMessages[existingMessages.length - 1]));
+
+			if (!canSkipGlobalSort) {
+				mergedMessages = [...mergedMessages].sort(
+					(a, b) => getMessageTimestamp(a) - getMessageTimestamp(b),
+				);
+			}
 
 			return {
 				messagesByConversation: {
 					...state.messagesByConversation,
-					[conversationId]: sortedMessages,
+					[conversationId]: mergedMessages,
 				},
 				lastUpdated: Date.now(),
 			};
@@ -239,18 +265,36 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
 	setMessages: (conversationId, messages) => {
 		set((state) => {
-			// Sort messages by timestamp (oldest first)
-			const sortedMessages = [...messages].sort((a, b) => {
-				const timeA =
-					a.timestamp instanceof Date
-						? a.timestamp.getTime()
-						: new Date(a.timestamp).getTime();
-				const timeB =
-					b.timestamp instanceof Date
-						? b.timestamp.getTime()
-						: new Date(b.timestamp).getTime();
-				return timeA - timeB;
-			});
+			const sortedMessages = isSortedByTimestamp(messages)
+				? messages
+				: [...messages].sort(
+						(a, b) => getMessageTimestamp(a) - getMessageTimestamp(b),
+					);
+			const existingMessages =
+				state.messagesByConversation[conversationId] || [];
+
+			if (existingMessages.length === sortedMessages.length) {
+				let hasChanges = false;
+				for (
+					let messageIndex = 0;
+					messageIndex < existingMessages.length;
+					messageIndex += 1
+				) {
+					if (
+						!areMessagesEqual(
+							existingMessages[messageIndex],
+							sortedMessages[messageIndex],
+						)
+					) {
+						hasChanges = true;
+						break;
+					}
+				}
+
+				if (!hasChanges) {
+					return state;
+				}
+			}
 
 			return {
 				messagesByConversation: {

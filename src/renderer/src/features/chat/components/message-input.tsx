@@ -20,7 +20,11 @@ import {
 	SpeechToTextPriority,
 	useSpeechToTextManager,
 } from "@shared/hooks/use-speech-to-text-manager";
-import { useConversationInputStore } from "@shared/store/conversation-input-store";
+import {
+	type Attachment,
+	type Reply,
+	useConversationInputStore,
+} from "@shared/store/conversation-input-store";
 import { normalizePath } from "@shared/utils/path-utils";
 import { showErrorToast } from "@shared/utils/toast-manager";
 import { Check, Mic, Square, X } from "lucide-react";
@@ -59,6 +63,9 @@ type MessageInputProps = {
 	agentData?: AgentDetails | null;
 	isSmallView?: boolean;
 };
+
+const EMPTY_REPLIES: Reply[] = [];
+const EMPTY_ATTACHMENTS: Attachment[] = [];
 
 /**
  * Type for the imperative handle to expose focusInput method
@@ -360,24 +367,38 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		},
 		ref,
 	) => {
-		const {
-			inputByConversation,
-			removeReply,
-			clearReplies,
-			addAttachment,
-			removeAttachment,
-			clearAttachments,
-		} = useConversationInputStore();
-		const replies = useMemo(
-			() =>
-				(conversationId && inputByConversation[conversationId]?.replies) || [],
-			[inputByConversation, conversationId],
+		const removeReply = useConversationInputStore((state) => state.removeReply);
+		const clearReplies = useConversationInputStore(
+			(state) => state.clearReplies,
 		);
-		const attachments = useMemo(
-			() =>
-				(conversationId && inputByConversation[conversationId]?.attachments) ||
-				[],
-			[inputByConversation, conversationId],
+		const addAttachment = useConversationInputStore(
+			(state) => state.addAttachment,
+		);
+		const removeAttachment = useConversationInputStore(
+			(state) => state.removeAttachment,
+		);
+		const clearAttachments = useConversationInputStore(
+			(state) => state.clearAttachments,
+		);
+		const replies = useConversationInputStore(
+			useCallback(
+				(state) =>
+					conversationId
+						? (state.inputByConversation[conversationId]?.replies ??
+							EMPTY_REPLIES)
+						: EMPTY_REPLIES,
+				[conversationId],
+			),
+		);
+		const attachments = useConversationInputStore(
+			useCallback(
+				(state) =>
+					conversationId
+						? (state.inputByConversation[conversationId]?.attachments ??
+							EMPTY_ATTACHMENTS)
+						: EMPTY_ATTACHMENTS,
+				[conversationId],
+			),
 		);
 		const [isRecording, setIsRecording] = useState(false);
 		const [audioBlob, setAudioBlob] = useState<Blob | null>(null);

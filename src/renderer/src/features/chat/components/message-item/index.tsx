@@ -5,7 +5,7 @@ import {
 } from "@shared/api/local-operator";
 import { apiConfig } from "@shared/config";
 import { useCanvasStore } from "@shared/store/canvas-store";
-import { type FC, memo, useCallback, useEffect, useMemo } from "react"; // Added useEffect
+import { type FC, memo, useCallback, useEffect } from "react"; // Added useEffect
 import type { CanvasDocument } from "../../types/canvas"; // Added CanvasDocument import
 import type { Message } from "../../types/message";
 import { getFileTypeFromPath } from "../../utils/file-types"; // Added getFileTypeFromPath import
@@ -26,6 +26,8 @@ import { MessageTimestamp } from "./message-timestamp";
 import { OutputBlock } from "./output-block";
 import { SecurityCheckHighlight } from "./security-check-highlight";
 import { VideoAttachment } from "./video-attachment";
+
+const localOperatorClient = createLocalOperatorClient(apiConfig.baseUrl);
 
 /**
  * Props for the MessageItem component
@@ -202,15 +204,10 @@ export const MessageItem: FC<MessageItemProps> = memo(
 			}
 		}, [message.files, conversationId, addMentionedFilesBatch]); // Removed message.id from deps
 
-		// Create a Local Operator client using the API config
-		const client = useMemo(() => {
-			return createLocalOperatorClient(apiConfig.baseUrl);
-		}, []);
-
 		// Get the URL for an attachment
 		const getUrl = useCallback(
-			(path: string) => getAttachmentUrl(client, path),
-			[client],
+			(path: string) => getAttachmentUrl(localOperatorClient, path),
+			[],
 		);
 
 		/**
