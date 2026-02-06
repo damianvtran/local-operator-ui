@@ -86,12 +86,13 @@ export const useAgents = (
 				throw error;
 			}
 		},
-		// Prevent automatic refetches on window focus
-		refetchOnWindowFocus: true,
+		// Avoid eager focus-based refetches to reduce sidebar churn.
+		refetchOnWindowFocus: false,
+		refetchOnMount: false,
 		// Set refetch interval if provided
 		refetchInterval: refetchInterval,
-		// Prevent stale time to avoid unnecessary refetches
-		staleTime: 5000,
+		placeholderData: (previousData) => previousData,
+		staleTime: 30 * 1000,
 	});
 };
 
@@ -156,5 +157,8 @@ export const useAgent = (agentId: string | undefined) => {
 				throw error;
 			}
 		},
+		refetchOnWindowFocus: false,
+		refetchOnMount: false,
+		staleTime: 30 * 1000,
 	});
 };

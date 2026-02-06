@@ -13,7 +13,7 @@ import { apiConfig } from "@shared/config";
 import { useChatStore } from "@shared/store/chat-store";
 import { showErrorToast } from "@shared/utils/toast-manager";
 import { useInfiniteQuery } from "@tanstack/react-query";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useConnectivityGate } from "./use-connectivity-gate";
 
 /**
@@ -134,6 +134,10 @@ export const useConversationMessages = (
 
 	// Use the connectivity gate to check if the query should be enabled
 	const { shouldEnableQuery, getConnectivityError } = useConnectivityGate();
+	const client = useMemo(
+		() => createLocalOperatorClient(apiConfig.baseUrl),
+		[],
+	);
 
 	// Get the connectivity error if any
 	const connectivityError = getConnectivityError();
@@ -163,8 +167,9 @@ export const useConversationMessages = (
 		enabled:
 			shouldEnableQuery({ bypassInternetCheck: true }) && !!conversationId,
 		queryKey: [...conversationMessagesQueryKey, conversationId],
-		// Set stale time to 0 to ensure refetch always gets fresh data
-		staleTime: 0,
+		staleTime: 15 * 1000,
+		refetchOnWindowFocus: false,
+		refetchOnMount: false,
 		queryFn: async ({ pageParam }) => {
 			try {
 				// If no conversation ID, return empty result
@@ -179,8 +184,6 @@ export const useConversationMessages = (
 
 				const page = pageParam as number;
 
-				// Use the properly typed client
-				const client = createLocalOperatorClient(apiConfig.baseUrl);
 				const response = await client.agents.getAgentExecutionHistory(
 					conversationId,
 					page,

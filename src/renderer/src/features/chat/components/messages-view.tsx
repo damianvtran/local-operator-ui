@@ -245,10 +245,7 @@ export const MessagesView: FC<MessagesViewProps> = React.memo(
 										) : (
 											<MessageItem
 												key={message.id}
-												message={{
-													...message,
-													conversation_id: conversationId, // Add conversation ID to message
-												}}
+												message={message}
 												conversationId={conversationId}
 												currentExecution={
 													index === messages.length - 1 && currentExecution

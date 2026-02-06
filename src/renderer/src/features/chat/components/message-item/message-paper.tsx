@@ -84,6 +84,7 @@ export const MessagePaper: FC<MessagePaperProps> = React.memo(
 			}),
 			[isSmallView],
 		);
+		const resolvedConversationId = message?.conversation_id ?? agentId;
 
 		// For user messages, we keep the paper boundary
 		if (isUser) {
@@ -209,7 +210,7 @@ export const MessagePaper: FC<MessagePaperProps> = React.memo(
 					keepAlive={true}
 					sx={messageStyles}
 					// Pass the conversation ID if available
-					conversationId={message.conversation_id}
+					conversationId={resolvedConversationId}
 					refetchOnComplete={true}
 					onComplete={() => {
 						if (onMessageComplete) {
@@ -223,6 +224,7 @@ export const MessagePaper: FC<MessagePaperProps> = React.memo(
 		}, [
 			shouldShowStreaming,
 			message,
+			resolvedConversationId,
 			messageStyles,
 			onMessageComplete,
 			markdownStyleProps,
@@ -272,12 +274,12 @@ export const MessagePaper: FC<MessagePaperProps> = React.memo(
 							/>
 						)}
 						{childrenWithRemainingContent}
-						{message?.conversation_id && (
+						{resolvedConversationId && (
 							<TextSelectionControls
 								agentId={agentId}
 								targetRef={messageContentRef}
 								isUser={isUser}
-								conversationId={message.conversation_id}
+								conversationId={resolvedConversationId}
 								showSpeech
 								showCopy
 								showReply
@@ -295,6 +297,7 @@ export const MessagePaper: FC<MessagePaperProps> = React.memo(
 				handleThinkingExpand,
 				handleThinkingCollapse,
 				agentId,
+				resolvedConversationId,
 				replies,
 				remainingContent,
 				markdownStyleProps,

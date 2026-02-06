@@ -7,6 +7,20 @@ import type {
 	ConversationRecord,
 	JobStatus,
 } from "@shared/api/local-operator/types";
+import { apiConfig } from "@shared/config";
+import { useChatStore } from "@shared/store/chat-store";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+/**
+ * Custom hook for polling job status using React Query
+ * Handles polling for job status and provides state for tracking job progress
+ *
+ * This hook is gated by connectivity checks to ensure the server is online
+ * and the user has internet connectivity if required by the hosting provider.
+ */
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { agentsQueryKey } from "./use-agents";
+import { useConnectivityGate } from "./use-connectivity-gate";
+import { convertToMessage } from "./use-conversation-messages";
 
 // Extend the JobDetails type to include the error field in the result
 interface JobDetails extends Omit<BaseJobDetails, "result"> {
@@ -18,21 +32,6 @@ interface JobDetails extends Omit<BaseJobDetails, "result"> {
 	};
 	current_execution?: AgentExecutionRecord;
 }
-import { apiConfig } from "@shared/config";
-import { useChatStore } from "@shared/store/chat-store";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-/**
- * Custom hook for polling job status using React Query
- * Handles polling for job status and provides state for tracking job progress
- *
- * This hook is gated by connectivity checks to ensure the server is online
- * and the user has internet connectivity if required by the hosting provider.
- */
-import { useCallback, useEffect, useRef, useState } from "react";
-import { agentsQueryKey } from "./use-agents";
-import { useConnectivityGate } from "./use-connectivity-gate";
-import { convertToMessage } from "./use-conversation-messages";
-import { conversationMessagesQueryKey } from "./use-conversation-messages";
 
 type UseJobPollingParams = {
 	conversationId?: string;
@@ -47,6 +46,45 @@ type UseJobPollingResult = {
 	setIsLoading: (isLoading: boolean) => void;
 	checkForActiveJobs: (agentId: string) => Promise<boolean>;
 	currentExecution: AgentExecutionRecord | null;
+};
+
+const HISTORY_SYNC_INTERVAL_MS = 3000;
+
+const hasMeaningfulMessageChanges = (
+	existing: Message | undefined,
+	next: Message,
+): boolean => {
+	if (!existing) return true;
+
+	const existingTimestamp =
+		existing.timestamp instanceof Date
+			? existing.timestamp.getTime()
+			: new Date(existing.timestamp).getTime();
+	const nextTimestamp =
+		next.timestamp instanceof Date
+			? next.timestamp.getTime()
+			: new Date(next.timestamp).getTime();
+
+	return (
+		existingTimestamp !== nextTimestamp ||
+		existing.message !== next.message ||
+		existing.code !== next.code ||
+		existing.stdout !== next.stdout ||
+		existing.stderr !== next.stderr ||
+		existing.logging !== next.logging ||
+		existing.status !== next.status ||
+		existing.action !== next.action ||
+		existing.execution_type !== next.execution_type ||
+		existing.task_classification !== next.task_classification ||
+		existing.is_complete !== next.is_complete ||
+		existing.is_streamable !== next.is_streamable ||
+		existing.content !== next.content ||
+		existing.file_path !== next.file_path ||
+		existing.replacements !== next.replacements ||
+		existing.agent !== next.agent ||
+		existing.learnings !== next.learnings ||
+		existing.thinking !== next.thinking
+	);
 };
 
 /**
@@ -72,10 +110,15 @@ export const useJobPolling = ({
 		}
 	}, []);
 	const queryClient = useQueryClient();
-	const { getMessages, setMessages } = useChatStore();
+	const getMessages = useChatStore((state) => state.getMessages);
+	const setMessages = useChatStore((state) => state.setMessages);
 	const lastProcessedJobDataRef = useRef<string | null>(null);
-	const client = createLocalOperatorClient(apiConfig.baseUrl);
-	const previousConversationIdRef = useRef<string | undefined>(conversationId);
+	const client = useMemo(
+		() => createLocalOperatorClient(apiConfig.baseUrl),
+		[],
+	);
+	const previousConversationIdRef = useRef<string | undefined>(undefined);
+	const lastHistorySyncAtRef = useRef(0);
 
 	// Use the connectivity gate to check if the query should be enabled
 	const { shouldEnableQuery, getConnectivityError } = useConnectivityGate();
@@ -104,11 +147,10 @@ export const useJobPolling = ({
 
 			try {
 				// Get active jobs for this agent (pending or processing)
-				const pendingResponse = await client.jobs.listJobs(agentId, "pending");
-				const processingResponse = await client.jobs.listJobs(
-					agentId,
-					"processing",
-				);
+				const [pendingResponse, processingResponse] = await Promise.all([
+					client.jobs.listJobs(agentId, "pending"),
+					client.jobs.listJobs(agentId, "processing"),
+				]);
 
 				const pendingJobs = pendingResponse.result?.jobs || [];
 				const processingJobs = processingResponse.result?.jobs || [];
@@ -127,12 +169,13 @@ export const useJobPolling = ({
 					// Only update if this is a different job than we're currently tracking
 					if (mostRecentJob.id !== currentJobId) {
 						setCurrentJobId(mostRecentJob.id);
-						setIsLoading(true);
 					}
+					setIsLoading(true);
 
 					return true;
 				}
 
+				setIsLoading(false);
 				return false;
 			} catch (error) {
 				console.error("Error checking for active jobs:", error);
@@ -150,75 +193,21 @@ export const useJobPolling = ({
 
 	// Reset loading state, job ID, and execution state when switching agents
 	useEffect(() => {
-		// If the conversation ID has changed, reset the states
-		if (conversationId !== previousConversationIdRef.current) {
-			// Reset the loading state, job ID, and current execution
-			setIsLoading(false);
-			setCurrentJobId(null);
-
-			// If we have a new conversation ID, check for active jobs
-			if (conversationId) {
-				// We need to check for active jobs for the new agent
-				const checkNewAgentJobs = async () => {
-					// Check connectivity before making API calls (bypass internet check)
-					if (!shouldEnableQuery({ bypassInternetCheck: true })) {
-						const error = getConnectivityError();
-						if (error) {
-							console.error(
-								"Cannot check for active jobs due to connectivity issue:",
-								error.message,
-							);
-						}
-						return;
-					}
-
-					try {
-						// Get active jobs for this agent (pending or processing)
-						const pendingResponse = await client.jobs.listJobs(
-							conversationId,
-							"pending",
-						);
-						const processingResponse = await client.jobs.listJobs(
-							conversationId,
-							"processing",
-						);
-
-						const pendingJobs = pendingResponse.result?.jobs || [];
-						const processingJobs = processingResponse.result?.jobs || [];
-
-						// If there are any active jobs, update the current job ID and loading state
-						const activeJobs = [...pendingJobs, ...processingJobs];
-
-						if (activeJobs.length > 0) {
-							// Use the most recent job
-							const mostRecentJob = activeJobs.sort((a, b) => {
-								const dateA = new Date(a.created_at || 0);
-								const dateB = new Date(b.created_at || 0);
-								return dateB.getTime() - dateA.getTime();
-							})[0];
-
-							// Set the current job ID and loading state
-							setCurrentJobId(mostRecentJob.id);
-							setIsLoading(true);
-						}
-					} catch (error) {
-						console.error("Error checking for active jobs:", error);
-					}
-				};
-
-				checkNewAgentJobs();
-			}
+		if (conversationId === previousConversationIdRef.current) {
+			return;
 		}
 
-		// Update the ref
 		previousConversationIdRef.current = conversationId;
-	}, [
-		conversationId,
-		client.jobs,
-		shouldEnableQuery,
-		getConnectivityError,
-		setCurrentJobId,
-	]);
+		lastProcessedJobDataRef.current = null;
+		lastHistorySyncAtRef.current = 0;
+
+		setIsLoading(false);
+		setCurrentJobId(null);
+
+		if (conversationId) {
+			void checkForActiveJobs(conversationId);
+		}
+	}, [conversationId, checkForActiveJobs, setCurrentJobId]);
 
 	/**
 	 * Update conversation messages from execution history
@@ -243,9 +232,6 @@ export const useJobPolling = ({
 			}
 
 			try {
-				// Create a client instance to use the properly typed API
-				const client = createLocalOperatorClient(apiConfig.baseUrl);
-
 				// Fetch the execution history for the agent
 				const response = await client.agents.getAgentExecutionHistory(
 					agentId,
@@ -266,29 +252,22 @@ export const useJobPolling = ({
 				const existingMessages = getMessages(agentId);
 
 				// Convert API execution records to UI messages
-				const apiMessages = executionRecords.map((record) => {
-					return convertToMessage(record, agentId);
-				});
+				const apiMessages = executionRecords.map((record) =>
+					convertToMessage(record, agentId),
+				);
+				const existingById = new Map(existingMessages.map((m) => [m.id, m]));
 
-				// Find new messages that don't exist in the store
-				// We'll consider a message new if we don't have a message with the same ID
-				const existingIds = new Set(existingMessages.map((m) => m.id));
-				const newMessages = apiMessages.filter((m) => !existingIds.has(m.id));
+				let hasChanges = false;
+				for (const apiMessage of apiMessages) {
+					const existingMessage = existingById.get(apiMessage.id);
+					if (hasMeaningfulMessageChanges(existingMessage, apiMessage)) {
+						existingById.set(apiMessage.id, apiMessage);
+						hasChanges = true;
+					}
+				}
 
-				if (newMessages.length > 0) {
-					// Add new messages to the store
-					const updatedMessages = [...existingMessages, ...newMessages];
-					setMessages(agentId, updatedMessages);
-
-					// Invalidate the conversation messages query to trigger a refetch
-					queryClient.invalidateQueries({
-						queryKey: [...conversationMessagesQueryKey, agentId],
-					});
-
-					// Invalidate the agents query to update the sidebar with the latest message
-					queryClient.invalidateQueries({
-						queryKey: agentsQueryKey,
-					});
+				if (hasChanges) {
+					setMessages(agentId, Array.from(existingById.values()));
 				}
 
 				return true;
@@ -297,17 +276,10 @@ export const useJobPolling = ({
 				return false;
 			}
 		},
-		[
-			getMessages,
-			setMessages,
-			queryClient,
-			shouldEnableQuery,
-			getConnectivityError,
-		],
+		[getMessages, setMessages, shouldEnableQuery, getConnectivityError, client],
 	);
 
 	// Handle job completion or cancellation
-	// biome-ignore lint/correctness/useExhaustiveDependencies: queryClient.invalidateQueries is intentionally omitted to prevent infinite loops
 	const handleJobCompletion = useCallback(
 		async (job: JobDetails) => {
 			if (!conversationId) return;
@@ -358,7 +330,13 @@ export const useJobPolling = ({
 			setCurrentJobId(null);
 			setIsLoading(false);
 		},
-		[conversationId, addMessage, updateConversationMessages, setCurrentJobId],
+		[
+			conversationId,
+			addMessage,
+			updateConversationMessages,
+			setCurrentJobId,
+			queryClient,
+		],
 	);
 
 	// Use React Query to poll for job status
@@ -395,10 +373,10 @@ export const useJobPolling = ({
 		enabled: shouldEnableQuery({ bypassInternetCheck: true }) && !!currentJobId,
 		refetchInterval: currentJobId ? 1000 : false,
 		refetchIntervalInBackground: false,
-		refetchOnWindowFocus: true,
-		gcTime: 0,
-		staleTime: 0,
-		retry: true,
+		refetchOnWindowFocus: false,
+		gcTime: 60 * 1000,
+		staleTime: 500,
+		retry: 1,
 		retryDelay: 1000,
 	});
 
@@ -441,14 +419,16 @@ export const useJobPolling = ({
 				}
 
 				if (jobData.status === "processing") {
-					const debounceTimeout = setTimeout(() => {
-						updateConversationMessages(conversationId);
-					}, 500);
-					return () => clearTimeout(debounceTimeout);
+					const now = Date.now();
+					if (now - lastHistorySyncAtRef.current >= HISTORY_SYNC_INTERVAL_MS) {
+						lastHistorySyncAtRef.current = now;
+						void updateConversationMessages(conversationId);
+					}
 				}
 
 				if (jobData.status === "completed" || jobData.status === "failed") {
-					handleJobCompletion(jobData);
+					lastHistorySyncAtRef.current = 0;
+					void handleJobCompletion(jobData);
 					setCurrentExecution(null);
 				}
 			}
@@ -468,12 +448,8 @@ export const useJobPolling = ({
 	useEffect(() => {
 		if (error) {
 			console.error("Error polling job status:", error);
-			// Force refetch on error to ensure polling continues
-			if (currentJobId) {
-				queryClient.invalidateQueries({ queryKey: ["job", currentJobId] });
-			}
 		}
-	}, [error, currentJobId, queryClient]);
+	}, [error]);
 
 	// Only allow valid JobStatus values for jobStatus
 	const validJobStatuses: JobStatus[] = [
