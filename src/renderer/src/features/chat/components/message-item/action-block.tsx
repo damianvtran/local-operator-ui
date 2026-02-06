@@ -1,4 +1,4 @@
-import { Box } from "@mui/material";
+import { Box, Typography, alpha } from "@mui/material";
 import { createLocalOperatorClient } from "@shared/api/local-operator";
 import type {
 	ActionType,
@@ -6,7 +6,19 @@ import type {
 } from "@shared/api/local-operator/types";
 import { apiConfig } from "@shared/config";
 import { getLanguageFromExtension } from "@shared/utils/file-utils";
-import { type FC, useCallback, useMemo, useState } from "react";
+import {
+	Book,
+	Check,
+	ChevronUp,
+	Code2,
+	HelpCircle,
+	Lightbulb,
+	MessageSquare,
+	Pencil,
+	PencilLine,
+	Share2,
+} from "lucide-react";
+import { type FC, type ReactNode, useCallback, useMemo, useState } from "react";
 import { ExpandableActionElement } from "../expandable-action-element";
 import { MarkdownRenderer } from "../markdown-renderer";
 import { AudioAttachment } from "./audio-attachment";
@@ -15,6 +27,8 @@ import { ErrorBlock } from "./error-block";
 import { FileAttachment } from "./file-attachment";
 import { ImageAttachment } from "./image-attachment";
 import { LogBlock } from "./log-block";
+import { MessageControls } from "./message-controls";
+import { MessageTimestamp } from "./message-timestamp";
 import { OutputBlock } from "./output-block";
 import { VideoAttachment } from "./video-attachment";
 
@@ -38,7 +52,12 @@ export type ActionBlockProps = {
 	isLoading?: boolean;
 	isSmallView?: boolean;
 	compact?: boolean;
+	messageId?: string;
+	timestamp?: Date;
+	agentId?: string;
 };
+
+const localOperatorClient = createLocalOperatorClient(apiConfig.baseUrl);
 
 /**
  * Checks if a file is a web URL
@@ -155,6 +174,36 @@ const getAttachmentUrl = (
 	return path;
 };
 
+const getCompactIcon = (
+	action?: ActionType,
+	executionType?: ExecutionType,
+): ReactNode => {
+	switch (action) {
+		case "DONE":
+			return <Check size={14} />;
+		case "ASK":
+			return <HelpCircle size={14} />;
+		case "CODE":
+			return <Code2 size={14} />;
+		case "WRITE":
+			return <Pencil size={12} />;
+		case "EDIT":
+			return <PencilLine size={14} />;
+		case "READ":
+			return <Book size={14} />;
+		case "DELEGATE":
+			return <Share2 size={14} />;
+		default:
+			return executionType === "plan" ? (
+				<Lightbulb size={14} />
+			) : executionType === "action" ? (
+				<Code2 size={14} />
+			) : (
+				<MessageSquare size={14} />
+			);
+	}
+};
+
 /**
  * Component for displaying plan, reflection, and action execution types
  * Shows as a single line with truncation when collapsed
@@ -178,6 +227,9 @@ export const ActionBlock: FC<ActionBlockProps> = ({
 	isLoading,
 	isSmallView,
 	compact = false,
+	messageId,
+	timestamp,
+	agentId,
 }) => {
 	const [isRowExpanded, setIsRowExpanded] = useState(!compact);
 	const [isDetailsExpanded, setIsDetailsExpanded] = useState(false);
@@ -190,15 +242,10 @@ export const ActionBlock: FC<ActionBlockProps> = ({
 		[isSmallView],
 	);
 
-	// Create a Local Operator client using the API config
-	const client = useMemo(() => {
-		return createLocalOperatorClient(apiConfig.baseUrl);
-	}, []);
-
 	// Get the URL for an attachment
 	const getUrl = useCallback(
-		(path: string) => getAttachmentUrl(client, path),
-		[client],
+		(path: string) => getAttachmentUrl(localOperatorClient, path),
+		[],
 	);
 
 	/**
@@ -244,6 +291,10 @@ export const ActionBlock: FC<ActionBlockProps> = ({
 		: action === "CODE"
 			? "Executing code"
 			: "Working on your request";
+	const compactIcon = useMemo(
+		() => getCompactIcon(action, executionType),
+		[action, executionType],
+	);
 
 	const handleExpand = () => {
 		setIsRowExpanded(true);
@@ -277,30 +328,62 @@ export const ActionBlock: FC<ActionBlockProps> = ({
 					onClick={handleCompactToggle}
 					sx={{
 						display: "flex",
+						justifyContent: "center",
 						alignItems: "center",
-						gap: 1,
 						width: "100%",
 						border: "none",
 						background: "transparent",
-						padding: 0,
+						padding: "2px 0",
 						cursor: "pointer",
-						textAlign: "left",
+						textAlign: "center",
 						minHeight: 28,
 					}}
 				>
 					<Box
-						component="span"
-						sx={{
-							flex: 1,
-							color: "text.disabled",
-							fontSize: "0.82rem",
-							lineHeight: 1.35,
-							overflow: "hidden",
-							whiteSpace: "nowrap",
-							textOverflow: "ellipsis",
-						}}
+						sx={(theme) => ({
+							display: "inline-flex",
+							alignItems: "center",
+							gap: 1,
+							maxWidth: "100%",
+							padding: "5px 10px",
+							borderRadius: "999px",
+							color: theme.palette.text.secondary,
+							backgroundColor: alpha(
+								theme.palette.common.black,
+								theme.palette.mode === "dark" ? 0.14 : 0.04,
+							),
+						})}
 					>
-						{compactPreviewText}
+						<Box
+							component="span"
+							sx={{
+								width: 20,
+								height: 20,
+								borderRadius: "100%",
+								display: "flex",
+								alignItems: "center",
+								justifyContent: "center",
+								flexShrink: 0,
+							}}
+						>
+							{compactIcon}
+						</Box>
+						<Typography
+							variant="body2"
+							noWrap
+							component="span"
+							sx={{
+								maxWidth: "100%",
+								color: "inherit",
+								fontSize: "0.82rem",
+								lineHeight: 1.35,
+								overflow: "hidden",
+								textOverflow: "ellipsis",
+								whiteSpace: "nowrap",
+							}}
+						>
+							{compactPreviewText}
+						</Typography>
 					</Box>
 				</Box>
 			)}
@@ -425,6 +508,59 @@ export const ActionBlock: FC<ActionBlockProps> = ({
 										conversationId={conversationId}
 									/>
 								))}
+						</Box>
+					)}
+
+					{isRowExpanded && messageId && timestamp && (
+						<Box
+							sx={{
+								display: "flex",
+								alignItems: "center",
+								justifyContent: "space-between",
+								gap: 1,
+								mt: 1.25,
+							}}
+						>
+							<MessageControls
+								inline
+								isUser={isUser}
+								content={trimmedMessage}
+								messageId={messageId}
+								agentId={agentId || conversationId}
+							/>
+							<MessageTimestamp
+								inline
+								timestamp={timestamp}
+								isUser={isUser}
+								isSmallView={isSmallView}
+							/>
+						</Box>
+					)}
+
+					{compact && isRowExpanded && !hasCollapsibleContent && (
+						<Box
+							component="button"
+							type="button"
+							onClick={handleCompactToggle}
+							aria-expanded={false}
+							sx={(theme) => ({
+								marginTop: 1.25,
+								display: "inline-flex",
+								alignItems: "center",
+								gap: 0.5,
+								padding: "4px 8px",
+								borderRadius: 1,
+								border: "none",
+								cursor: "pointer",
+								backgroundColor: alpha(
+									theme.palette.common.black,
+									theme.palette.mode === "dark" ? 0.12 : 0.04,
+								),
+								color: theme.palette.text.secondary,
+							})}
+						>
+							<ChevronUp size={14} />
+							<Typography variant="caption">Condense</Typography>
 						</Box>
 					)}
 				</>

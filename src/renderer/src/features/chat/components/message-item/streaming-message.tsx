@@ -1,4 +1,10 @@
-import { Box, CircularProgress, Typography, styled } from "@mui/material";
+import {
+	Box,
+	CircularProgress,
+	Typography,
+	alpha,
+	styled,
+} from "@mui/material";
 import type { AgentExecutionRecord } from "@shared/api/local-operator";
 import { createLocalOperatorClient } from "@shared/api/local-operator";
 import { RingLoadingIndicator } from "@shared/components/common/ring-loading-indicator";
@@ -6,6 +12,17 @@ import { apiConfig } from "@shared/config";
 import { useStreamingMessage } from "@shared/hooks/use-streaming-message";
 import { useStreamingMessagesStore } from "@shared/store/streaming-messages-store";
 import { getLanguageFromExtension } from "@shared/utils/file-utils";
+import {
+	Book,
+	Check,
+	Code2,
+	HelpCircle,
+	Lightbulb,
+	MessageSquare,
+	Pencil,
+	PencilLine,
+	Share2,
+} from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ExpandableActionElement } from "../expandable-action-element";
 import { MarkdownRenderer } from "../markdown-renderer";
@@ -115,6 +132,35 @@ const getStreamingPreviewText = (
 			return "Formulating a question";
 		default:
 			return "Working on your request";
+	}
+};
+
+const getStreamingCompactIcon = (
+	message: AgentExecutionRecord | null,
+): JSX.Element => {
+	switch (message?.action) {
+		case "DONE":
+			return <Check size={14} />;
+		case "ASK":
+			return <HelpCircle size={14} />;
+		case "CODE":
+			return <Code2 size={14} />;
+		case "WRITE":
+			return <Pencil size={12} />;
+		case "EDIT":
+			return <PencilLine size={14} />;
+		case "READ":
+			return <Book size={14} />;
+		case "DELEGATE":
+			return <Share2 size={14} />;
+		default:
+			return message?.execution_type === "plan" ? (
+				<Lightbulb size={14} />
+			) : message?.execution_type === "action" ? (
+				<Code2 size={14} />
+			) : (
+				<MessageSquare size={14} />
+			);
 	}
 };
 
@@ -341,6 +387,10 @@ export const StreamingMessage = ({
 		() => getStreamingPreviewText(message),
 		[message],
 	);
+	const compactSummaryIcon = useMemo(
+		() => getStreamingCompactIcon(message),
+		[message],
+	);
 
 	const toggleInProgressDetails = useCallback(() => {
 		if (!useCompactInProgressMode) return;
@@ -360,8 +410,8 @@ export const StreamingMessage = ({
 				onClick={toggleInProgressDetails}
 				sx={{
 					display: "flex",
+					justifyContent: "center",
 					alignItems: "center",
-					gap: 1,
 					cursor: "pointer",
 					minHeight: 28,
 					opacity: 0.9,
@@ -370,28 +420,62 @@ export const StreamingMessage = ({
 					width: "100%",
 					border: "none",
 					background: "transparent",
-					textAlign: "left",
+					textAlign: "center",
 				}}
 			>
-				<Typography
-					variant="body2"
-					noWrap
-					sx={{
-						flex: 1,
-						fontSize: "0.82rem",
-						lineHeight: 1.35,
-						color: "text.disabled",
-					}}
+				<Box
+					sx={(theme) => ({
+						display: "inline-flex",
+						alignItems: "center",
+						gap: 1,
+						maxWidth: "100%",
+						padding: "5px 10px",
+						borderRadius: "999px",
+						color: theme.palette.text.secondary,
+						backgroundColor: alpha(
+							theme.palette.common.black,
+							theme.palette.mode === "dark" ? 0.14 : 0.04,
+						),
+					})}
 				>
-					{compactPreviewText}
-				</Typography>
-				{isActivelyStreaming && <CircularProgress size={12} thickness={4} />}
+					<Box
+						component="span"
+						sx={{
+							width: 20,
+							height: 20,
+							borderRadius: "100%",
+							display: "flex",
+							alignItems: "center",
+							justifyContent: "center",
+							flexShrink: 0,
+						}}
+					>
+						{compactSummaryIcon}
+					</Box>
+					<Typography
+						variant="body2"
+						noWrap
+						sx={{
+							maxWidth: "100%",
+							fontSize: "0.82rem",
+							lineHeight: 1.35,
+							color: "inherit",
+							overflow: "hidden",
+							textOverflow: "ellipsis",
+							whiteSpace: "nowrap",
+						}}
+					>
+						{compactPreviewText}
+					</Typography>
+					{isActivelyStreaming && <CircularProgress size={12} thickness={4} />}
+				</Box>
 			</Box>
 		);
 	}, [
 		useCompactInProgressMode,
 		isInProgressDetailsExpanded,
 		showExpandedStreamingDetails,
+		compactSummaryIcon,
 		compactPreviewText,
 		isActivelyStreaming,
 		toggleInProgressDetails,

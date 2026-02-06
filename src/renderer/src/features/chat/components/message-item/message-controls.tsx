@@ -15,19 +15,20 @@ type MessageControlsProps = {
 	sx?: SxProps<Theme>;
 	messageId: string;
 	agentId?: string;
+	inline?: boolean;
 };
 
 // Styled container for the message controls
 const ControlsContainer = styled(Box, {
-	shouldForwardProp: (prop) => prop !== "isUser",
-})<{ isUser: boolean }>(({ isUser }) => ({
-	position: "absolute",
-	bottom: isUser ? 8 : -12, // Position below the message
+	shouldForwardProp: (prop) => prop !== "isUser" && prop !== "inline",
+})<{ isUser: boolean; inline?: boolean }>(({ isUser, inline }) => ({
+	position: inline ? "static" : "absolute",
+	bottom: inline ? "auto" : isUser ? 8 : -12, // Position below the message
 	display: "flex",
 	alignItems: "center",
 	justifyContent: isUser ? "flex-end" : "flex-start",
-	width: "100%",
-	opacity: 0,
+	width: inline ? "auto" : "100%",
+	opacity: inline ? 1 : 0,
 	transition: "opacity 0.2s ease-in-out",
 	zIndex: 1,
 }));
@@ -59,6 +60,7 @@ export const MessageControls: FC<MessageControlsProps> = ({
 	sx,
 	messageId,
 	agentId,
+	inline = false,
 }) => {
 	const [copied, setCopied] = useState(false);
 	const { data: credentialsData, isLoading: isLoadingCredentials } =
@@ -120,7 +122,12 @@ export const MessageControls: FC<MessageControlsProps> = ({
 	};
 
 	return (
-		<ControlsContainer isUser={isUser} className="message-controls" sx={sx}>
+		<ControlsContainer
+			isUser={isUser}
+			inline={inline}
+			className={inline ? undefined : "message-controls"}
+			sx={sx}
+		>
 			{/* Only render the wrapper if there are buttons to show */}
 			{showCopyButton && (
 				<ControlsWrapper>

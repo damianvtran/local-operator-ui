@@ -167,6 +167,7 @@ export const MessagePaper: FC<MessagePaperProps> = React.memo(
 			if (isStreamingActuallyComplete) return false;
 			return true;
 		}, [isStreamable, isStreamingActuallyComplete]);
+		const showInlineActionMeta = !isUser && Boolean(message?.action);
 
 		const completionNotifiedRef = useRef<string | null>(null);
 
@@ -317,7 +318,7 @@ export const MessagePaper: FC<MessagePaperProps> = React.memo(
 				{streamingMessageComponent}
 				{regularMessageComponents}
 				{/* MessageTimestamp: always rendered, conditionally visible/interactive */}
-				{message && (
+				{message && !showInlineActionMeta && (
 					<MessageTimestamp
 						timestamp={message.timestamp}
 						isUser={isUser}
@@ -332,7 +333,7 @@ export const MessagePaper: FC<MessagePaperProps> = React.memo(
 					/>
 				)}
 				{/* MessageControls: always rendered, conditionally visible/interactive */}
-				{message && (
+				{message && !showInlineActionMeta && (
 					<MessageControls
 						isUser={isUser}
 						content={content}
