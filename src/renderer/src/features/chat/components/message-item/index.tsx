@@ -274,6 +274,7 @@ export const MessageItem: FC<MessageItemProps> = memo(
 		}
 
 		const isUser = message.role === "user";
+		const isCompactAssistantMessage = !isUser && Boolean(message.action);
 		const isAction = message.execution_type === "action";
 		const isSecurityCheck = message.execution_type === "security_check";
 		const shouldUseActionBlock =
@@ -282,8 +283,17 @@ export const MessageItem: FC<MessageItemProps> = memo(
 
 		if (shouldUseActionBlock) {
 			return (
-				<MessageContainer isUser={isUser} isSmallView={isSmallView}>
-					{!isSmallView && <MessageAvatar isUser={isUser} />}
+				<MessageContainer
+					isUser={isUser}
+					isSmallView={isSmallView}
+					compact={isCompactAssistantMessage}
+				>
+					{!isSmallView && (
+						<MessageAvatar
+							isUser={isUser}
+							compact={isCompactAssistantMessage}
+						/>
+					)}
 					<MessagePaper
 						isUser={isUser}
 						content={message.message}
@@ -310,6 +320,7 @@ export const MessageItem: FC<MessageItemProps> = memo(
 							filePath={message.file_path}
 							isLoading={isLastMessage && !!currentExecution}
 							isSmallView={isSmallView}
+							compact={isCompactAssistantMessage}
 						/>
 					</MessagePaper>
 				</MessageContainer>
@@ -317,8 +328,14 @@ export const MessageItem: FC<MessageItemProps> = memo(
 		}
 
 		return (
-			<MessageContainer isUser={isUser} isSmallView={isSmallView}>
-				{!isSmallView && <MessageAvatar isUser={isUser} />}
+			<MessageContainer
+				isUser={isUser}
+				isSmallView={isSmallView}
+				compact={isCompactAssistantMessage}
+			>
+				{!isSmallView && (
+					<MessageAvatar isUser={isUser} compact={isCompactAssistantMessage} />
+				)}
 
 				{isSecurityCheck ? (
 					<SecurityCheckHighlight isUser={isUser}>

@@ -9,6 +9,7 @@ export type MessageContainerProps = {
 	isUser: boolean;
 	children: ReactNode;
 	isSmallView?: boolean;
+	compact?: boolean;
 };
 
 /**
@@ -17,14 +18,17 @@ export type MessageContainerProps = {
  * Provides increased spacing for assistant messages to account for action banners
  */
 const StyledContainer = styled(Box, {
-	shouldForwardProp: (prop) => prop !== "isUser" && prop !== "isSmallView",
-})<{ isUser: boolean; isSmallView?: boolean }>(({ isUser, isSmallView }) => ({
-	display: "flex",
-	flexDirection: isUser ? "row-reverse" : "row",
-	alignItems: "flex-start",
-	gap: isSmallView ? 8 : 16,
-	marginBottom: isSmallView ? 8 : 12,
-}));
+	shouldForwardProp: (prop) =>
+		prop !== "isUser" && prop !== "isSmallView" && prop !== "compact",
+})<{ isUser: boolean; isSmallView?: boolean; compact?: boolean }>(
+	({ isUser, isSmallView, compact }) => ({
+		display: "flex",
+		flexDirection: isUser ? "row-reverse" : "row",
+		alignItems: "flex-start",
+		gap: compact ? (isSmallView ? 6 : 10) : isSmallView ? 8 : 16,
+		marginBottom: compact ? (isSmallView ? 6 : 8) : isSmallView ? 8 : 12,
+	}),
+);
 
 /**
  * Container component for message items
@@ -34,9 +38,14 @@ export const MessageContainer: FC<MessageContainerProps> = ({
 	isUser,
 	children,
 	isSmallView,
+	compact,
 }) => {
 	return (
-		<StyledContainer isUser={isUser} isSmallView={isSmallView}>
+		<StyledContainer
+			isUser={isUser}
+			isSmallView={isSmallView}
+			compact={compact}
+		>
 			{children}
 		</StyledContainer>
 	);

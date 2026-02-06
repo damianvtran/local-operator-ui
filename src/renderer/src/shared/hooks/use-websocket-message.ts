@@ -10,6 +10,14 @@ import {
 	WebsocketConnectionType,
 } from "../api/local-operator/websocket-api";
 
+const autoConnectLocks = new Set<string>();
+
+type CallbackRefs = {
+	onUpdate?: (update: UpdateMessage) => void;
+	onStatusChange?: (status: WebSocketConnectionStatus) => void;
+	onError?: (error: Error) => void;
+};
+
 /**
  * Options for the useWebSocketMessage hook
  */
@@ -61,14 +69,6 @@ export type UseWebSocketMessageResult = {
 /**
  * Hook for managing WebSocket connections to stream message updates
  *
- * This hook combines job polling with WebSocket updates to provide a seamless
- * experience for streaming message updates. It handles the following scenarios:
- *
- * 1. Initial job polling to get the message data
- * 2. WebSocket connection to stream updates for the message
- * 3. Reconnection logic if the WebSocket connection is lost
- * 4. Cleanup when the component unmounts
- *
  * @param options - Options for the WebSocket connection
  * @returns The current message data and connection status
  */
@@ -88,229 +88,182 @@ export const useWebSocketMessage = (
 		onError,
 	} = options;
 
-	// State for the message data
 	const [message, setMessage] = useState<AgentExecutionRecord | null>(null);
-	const [isComplete, setIsComplete] = useState<boolean>(false);
-	const [isStreamable, setIsStreamable] = useState<boolean>(false);
+	const [isComplete, setIsComplete] = useState(false);
+	const [isStreamable, setIsStreamable] = useState(false);
 	const [status, setStatus] =
 		useState<WebSocketConnectionStatus>("disconnected");
 	const [error, setError] = useState<Error | null>(null);
-	const [isLoading, setIsLoading] = useState<boolean>(false);
+	const [isLoading, setIsLoading] = useState(false);
 
-	// Refs for the WebSocket client and cleanup function
 	const clientRef = useRef<WebSocketClient | null>(null);
-	const cleanupRef = useRef<(() => void) | null>(null);
-	const connectRef = useRef<(() => Promise<void>) | null>(null);
-	// Store the current message in a ref to avoid dependency issues
-	const messageRef = useRef<AgentExecutionRecord | null>(null);
+	const callbackRefs = useRef<CallbackRefs>({
+		onUpdate,
+		onStatusChange,
+		onError,
+	});
 
-	// Keep messageRef in sync with message state
 	useEffect(() => {
-		messageRef.current = message;
-	}, [message]);
+		callbackRefs.current = {
+			onUpdate,
+			onStatusChange,
+			onError,
+		};
+	}, [onUpdate, onStatusChange, onError]);
 
-	// Connect to the WebSocket
-	const connect = useCallback(async () => {
-		if (!messageId || !baseUrl) {
-			return Promise.reject(new Error("Missing messageId or baseUrl"));
+	const detachClient = useCallback(() => {
+		if (!clientRef.current) {
+			return;
 		}
 
-		try {
-			setIsLoading(true);
-			setError(null);
+		clientRef.current.removeAllListeners();
+		clientRef.current.disconnect();
+		clientRef.current = null;
+	}, []);
 
-			// Create a new WebSocket client if one doesn't exist
-			if (!clientRef.current) {
-				// Use a longer message delay to ensure the connection is fully established
-				clientRef.current = new WebSocketClient(
-					baseUrl,
-					messageId,
-					{
-						autoReconnect,
-						reconnectInterval,
-						maxReconnectAttempts,
-						pingInterval,
-						messageDelay: 350,
-					},
-					WebsocketConnectionType.MESSAGE,
-				);
+	const createClient = useCallback(() => {
+		if (clientRef.current) {
+			return clientRef.current;
+		}
 
-				// Set up event listeners
-				clientRef.current.on("status", (newStatus: unknown) => {
-					const typedStatus = newStatus as WebSocketConnectionStatus;
-					setStatus(typedStatus);
-					onStatusChange?.(typedStatus);
-				});
+		const client = new WebSocketClient(
+			baseUrl,
+			messageId,
+			{
+				autoReconnect,
+				reconnectInterval,
+				maxReconnectAttempts,
+				pingInterval,
+				messageDelay: 250,
+			},
+			WebsocketConnectionType.MESSAGE,
+		);
 
-				clientRef.current.on(`update:${messageId}`, (update: unknown) => {
-					const typedUpdate = update as UpdateMessage;
+		client.on("status", (newStatus: unknown) => {
+			const typedStatus = newStatus as WebSocketConnectionStatus;
+			setStatus(typedStatus);
+			callbackRefs.current.onStatusChange?.(typedStatus);
+		});
 
-					// Use the ref to avoid dependency on message state
-					setMessage((prevMessage) => {
-						const updatedMessage = !prevMessage
-							? (typedUpdate as unknown as AgentExecutionRecord)
-							: ({
-									...prevMessage,
-									...typedUpdate,
-								} as AgentExecutionRecord);
-						return updatedMessage;
-					});
+		client.on(`update:${messageId}`, (update: unknown) => {
+			const typedUpdate = update as UpdateMessage;
 
-					// Batch state updates to avoid excessive renders
-					const isMessageComplete = typedUpdate.is_complete || false;
-					const isMessageStreamable = typedUpdate.is_streamable || false;
+			setMessage((previous) => {
+				if (!previous) {
+					return typedUpdate as unknown as AgentExecutionRecord;
+				}
 
-					if (isMessageComplete) {
-						setIsComplete(true);
-					}
+				return {
+					...previous,
+					...typedUpdate,
+				} as AgentExecutionRecord;
+			});
 
-					if (isMessageStreamable) {
-						setIsStreamable(true);
-					}
-
-					// Call the onUpdate callback with the updated message
-					onUpdate?.(typedUpdate);
-				});
-
-				clientRef.current.on("error", (wsError: unknown) => {
-					// Ensure we have a proper Error object with a meaningful message
-					let typedError: Error;
-					if (wsError instanceof Error) {
-						typedError = wsError;
-					} else if (typeof wsError === "string") {
-						typedError = new Error(wsError);
-					} else {
-						typedError = new Error(`WebSocket error for ${messageId}`);
-					}
-
-					console.error(`WebSocket error for ${messageId}:`, typedError);
-					setError(typedError);
-					onError?.(typedError);
-				});
-
-				// Set up cleanup function
-				cleanupRef.current = () => {
-					if (clientRef.current) {
-						clientRef.current.disconnect();
-						clientRef.current = null;
-					}
-				};
+			if (typeof typedUpdate.is_complete === "boolean") {
+				setIsComplete(typedUpdate.is_complete);
 			}
 
-			// Connect to the WebSocket
-			await clientRef.current.connect();
-			setIsLoading(false);
-			return Promise.resolve();
-		} catch (err) {
-			const formattedError =
-				err instanceof Error ? err : new Error(String(err));
-			console.error(
-				`Error connecting to WebSocket for ${messageId}:`,
-				formattedError,
-			);
-			setError(formattedError);
-			setIsLoading(false);
-			onError?.(formattedError);
-			return Promise.reject(formattedError);
-		}
+			if (typeof typedUpdate.is_streamable === "boolean") {
+				setIsStreamable(typedUpdate.is_streamable);
+			}
+
+			callbackRefs.current.onUpdate?.(typedUpdate);
+		});
+
+		client.on("error", (wsError: unknown) => {
+			const typedError =
+				wsError instanceof Error
+					? wsError
+					: new Error(
+							typeof wsError === "string"
+								? wsError
+								: `WebSocket error for ${messageId}`,
+						);
+
+			setError(typedError);
+			callbackRefs.current.onError?.(typedError);
+		});
+
+		clientRef.current = client;
+		return client;
 	}, [
-		messageId,
 		baseUrl,
+		messageId,
 		autoReconnect,
 		reconnectInterval,
 		maxReconnectAttempts,
 		pingInterval,
-		onUpdate,
-		onStatusChange,
-		onError,
 	]);
 
-	// Store the connect function in a ref to avoid circular dependencies
-	useEffect(() => {
-		connectRef.current = connect;
-	}, [connect]);
+	const connect = useCallback(async () => {
+		if (!messageId || !baseUrl) {
+			throw new Error("Missing messageId or baseUrl");
+		}
 
-	// Global registry of active WebSocket clients to prevent duplicate connections
-	// This is a static variable shared across all instances of the hook
-	const globalClientsRef = useRef<Record<string, boolean>>({});
+		setError(null);
+		setIsLoading(true);
 
-	// Connect to the WebSocket when the component mounts if autoConnect is true
-	// This is a separate effect from the cleanup effect to avoid reconnection loops
-	useEffect(() => {
-		// Skip auto-connect if:
-		// 1. autoConnect is false
-		// 2. We don't have a messageId or baseUrl
-		// 3. We don't have a connect function
-		// 4. We already have a client for this messageId
-		// 5. There's already a global client for this messageId
+		const client = createClient();
+		const currentStatus = client.getStatus();
 		if (
-			autoConnect &&
-			messageId &&
-			baseUrl &&
-			connectRef.current &&
-			!clientRef.current &&
-			!globalClientsRef.current[messageId]
+			currentStatus === "connected" ||
+			currentStatus === "connecting" ||
+			currentStatus === "reconnecting"
 		) {
-			const timestamp = new Date().toISOString().substring(11, 23);
-
-			// Mark this messageId as having an active client
-			globalClientsRef.current[messageId] = true;
-
-			// Connect with a delay to allow for component stabilization
-			setTimeout(() => {
-				if (connectRef.current) {
-					connectRef.current().catch((err) => {
-						console.warn(
-							`[${timestamp}] Error auto-connecting WebSocket for ${messageId}:`,
-							err,
-						);
-						// Remove from global registry if connection failed
-						globalClientsRef.current[messageId] = false;
-					});
-				}
-			}, 500);
+			setIsLoading(false);
+			return;
 		}
-	}, [autoConnect, messageId, baseUrl]);
 
-	// Disconnect from the WebSocket
+		try {
+			await client.connect();
+		} catch (connectError) {
+			const formattedError =
+				connectError instanceof Error
+					? connectError
+					: new Error(String(connectError));
+			setError(formattedError);
+			callbackRefs.current.onError?.(formattedError);
+			throw formattedError;
+		} finally {
+			setIsLoading(false);
+		}
+	}, [messageId, baseUrl, createClient]);
+
 	const disconnect = useCallback(() => {
-		if (clientRef.current) {
-			clientRef.current.disconnect();
-			clientRef.current = null;
-		}
+		detachClient();
 		setStatus("disconnected");
-	}, []);
+		setIsLoading(false);
+	}, [detachClient]);
 
-	// Connect to the WebSocket when the component mounts
-	// This effect only runs once on mount and handles cleanup on unmount
 	useEffect(() => {
-		// Store a reference to the current cleanup function and messageId
-		const currentCleanup = cleanupRef.current;
-		const currentMessageId = messageId;
+		if (!autoConnect || !messageId || !baseUrl) {
+			return;
+		}
 
-		// Return cleanup function that will be called when component unmounts
+		if (autoConnectLocks.has(messageId)) {
+			return;
+		}
+
+		autoConnectLocks.add(messageId);
+		void connect()
+			.catch((connectError) => {
+				console.warn(
+					`Error auto-connecting WebSocket for ${messageId}:`,
+					connectError,
+				);
+			})
+			.finally(() => {
+				autoConnectLocks.delete(messageId);
+			});
+	}, [autoConnect, messageId, baseUrl, connect]);
+
+	useEffect(() => {
 		return () => {
-			// Set a small delay before cleanup to allow for component re-mounting
-			setTimeout(() => {
-				// Only run cleanup if we have a cleanup function
-				if (currentCleanup) {
-					const timestamp = new Date().toISOString().substring(11, 23);
-					console.log(
-						`[${timestamp}] Running delayed cleanup for WebSocket ${currentMessageId}`,
-					);
-
-					// Remove from global registry
-					if (globalClientsRef.current[currentMessageId]) {
-						globalClientsRef.current[currentMessageId] = false;
-					}
-
-					currentCleanup();
-				}
-			}, 200);
+			autoConnectLocks.delete(messageId);
+			disconnect();
 		};
-	}, [messageId]); // Empty dependency array ensures this only runs on mount/unmount
+	}, [messageId, disconnect]);
 
-	// Update loading state based on WebSocket status
 	useEffect(() => {
 		setIsLoading(status === "connecting" || status === "reconnecting");
 	}, [status]);

@@ -8,6 +8,7 @@ import type { FC } from "react";
  */
 export type MessageAvatarProps = {
 	isUser: boolean;
+	compact?: boolean;
 };
 
 /**
@@ -15,14 +16,16 @@ export type MessageAvatarProps = {
  * Changes appearance based on whether the message is from the user or assistant
  */
 const StyledAvatar = styled(Avatar, {
-	shouldForwardProp: (prop) => prop !== "isUser",
-})<{ isUser: boolean }>(({ isUser, theme }) => ({
+	shouldForwardProp: (prop) => prop !== "isUser" && prop !== "compact",
+})<{ isUser: boolean; compact?: boolean }>(({ isUser, compact, theme }) => ({
 	backgroundColor: isUser
 		? theme.palette.userMessage.background
 		: theme.palette.icon.background,
 	color: isUser ? "white" : theme.palette.icon.text,
 	boxShadow: isUser ? theme.palette.userMessage.shadow : "none",
 	border: isUser ? `1px solid ${theme.palette.userMessage.border}` : "none",
+	width: compact ? 34 : 40,
+	height: compact ? 34 : 40,
 }));
 
 /**
@@ -32,13 +35,15 @@ const StyledAvatar = styled(Avatar, {
  * @param isUser - Whether the message is from the user
  * @returns The avatar component with the appropriate icon
  */
-export const MessageAvatar: FC<MessageAvatarProps> = ({ isUser }) => {
+export const MessageAvatar: FC<MessageAvatarProps> = ({ isUser, compact }) => {
+	const iconSize = compact ? 18 : 22;
+
 	return (
-		<StyledAvatar isUser={isUser}>
+		<StyledAvatar isUser={isUser} compact={compact}>
 			{isUser ? (
-				<User size={22} aria-label="User" />
+				<User size={iconSize} aria-label="User" />
 			) : (
-				<Bot size={22} aria-label="Assistant" />
+				<Bot size={iconSize} aria-label="Assistant" />
 			)}
 		</StyledAvatar>
 	);
