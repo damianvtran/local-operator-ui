@@ -22,6 +22,9 @@ jobs:
   npm-publish:
     name: Build and Publish to NPM
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
 
     steps:
       - name: Checkout code
@@ -38,6 +41,11 @@ jobs:
           node-version: '22.13.1'
           cache: 'pnpm'
           registry-url: 'https://registry.npmjs.org'
+
+      - name: Ensure npm supports trusted publishing
+        run: |
+          npm install -g npm@^11.5.1
+          npm --version
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -58,9 +66,8 @@ jobs:
 
       - name: Publish to npm
         if: steps.check_version.outputs.published == 'false'
-        run: npm publish
+        run: npm publish --provenance
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           VITE_GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           VITE_GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
           VITE_MICROSOFT_CLIENT_ID: ${{ secrets.MICROSOFT_CLIENT_ID }}
