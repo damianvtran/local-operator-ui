@@ -52,6 +52,7 @@ type MessagePaperProps = {
 	isJobRunning: boolean;
 	agentId?: string;
 	isSmallView?: boolean;
+	metadataMode?: "default" | "custom";
 };
 
 /**
@@ -69,9 +70,11 @@ export const MessagePaper: FC<MessagePaperProps> = React.memo(
 		onMessageComplete,
 		agentId,
 		isSmallView,
+		metadataMode = "default",
 	}) => {
 		const theme = useTheme();
 		const messageContentRef = useRef<HTMLDivElement>(null);
+		const shouldRenderDefaultMetadata = metadataMode === "default";
 		const { replies, remainingContent } = useMemo(
 			() => parseReplies(content || ""),
 			[content],
@@ -130,7 +133,7 @@ export const MessagePaper: FC<MessagePaperProps> = React.memo(
 							{childrenWithRemainingContent}
 						</Box>
 					</StyledPaper>
-					{message && (
+					{message && shouldRenderDefaultMetadata && (
 						<MessageControls
 							isUser={isUser}
 							content={content}
@@ -167,8 +170,6 @@ export const MessagePaper: FC<MessagePaperProps> = React.memo(
 			if (isStreamingActuallyComplete) return false;
 			return true;
 		}, [isStreamable, isStreamingActuallyComplete]);
-		const showInlineActionMeta = !isUser && Boolean(message?.action);
-
 		const completionNotifiedRef = useRef<string | null>(null);
 
 		useEffect(() => {
@@ -318,7 +319,7 @@ export const MessagePaper: FC<MessagePaperProps> = React.memo(
 				{streamingMessageComponent}
 				{regularMessageComponents}
 				{/* MessageTimestamp: always rendered, conditionally visible/interactive */}
-				{message && !showInlineActionMeta && (
+				{message && shouldRenderDefaultMetadata && (
 					<MessageTimestamp
 						timestamp={message.timestamp}
 						isUser={isUser}
@@ -333,7 +334,7 @@ export const MessagePaper: FC<MessagePaperProps> = React.memo(
 					/>
 				)}
 				{/* MessageControls: always rendered, conditionally visible/interactive */}
-				{message && !showInlineActionMeta && (
+				{message && shouldRenderDefaultMetadata && (
 					<MessageControls
 						isUser={isUser}
 						content={content}
