@@ -300,6 +300,7 @@ export const MessageItem: FC<MessageItemProps> = memo(
 						isLastMessage={isLastMessage ?? false}
 						isJobRunning={!!currentExecution}
 						agentId={conversationId}
+						metadataMode="custom"
 					>
 						<ActionBlock
 							message={message.message ?? ""}
@@ -455,12 +456,14 @@ export const MessageItem: FC<MessageItemProps> = memo(
 								</Box>
 							)}
 
-							{/* Message timestamp */}
-							<MessageTimestamp
-								timestamp={message.timestamp}
-								isUser={isUser}
-								isSmallView={isSmallView}
-							/>
+							{/* Message timestamp for user messages */}
+							{isUser && (
+								<MessageTimestamp
+									timestamp={message.timestamp}
+									isUser={isUser}
+									isSmallView={isSmallView}
+								/>
+							)}
 						</MessagePaper>
 					</SecurityCheckHighlight>
 				) : (
@@ -600,12 +603,14 @@ export const MessageItem: FC<MessageItemProps> = memo(
 							</Box>
 						)}
 
-						{/* Message timestamp */}
-						<MessageTimestamp
-							timestamp={message.timestamp}
-							isUser={isUser}
-							isSmallView={isSmallView}
-						/>
+						{/* Message timestamp for user messages */}
+						{isUser && (
+							<MessageTimestamp
+								timestamp={message.timestamp}
+								isUser={isUser}
+								isSmallView={isSmallView}
+							/>
+						)}
 					</MessagePaper>
 				)}
 			</MessageContainer>
