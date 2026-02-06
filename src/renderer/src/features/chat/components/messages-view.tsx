@@ -5,7 +5,15 @@ import type {
 } from "@shared/api/local-operator/types";
 import { RingLoadingIndicator } from "@shared/components/common/ring-loading-indicator";
 import { useStreamingMessagesStore } from "@shared/store/streaming-messages-store";
-import React, { type FC, type RefObject, useCallback } from "react";
+import React, {
+	type FC,
+	type RefObject,
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import type { Message } from "../types/message";
 import { LoadingIndicator } from "./loading-indicator";
 import { MessageItem } from "./message-item";
@@ -152,6 +160,16 @@ const FullScreenCenteredContainer = styled(Box)({
 	width: "100%",
 });
 
+const INITIAL_RENDERED_MESSAGES = 40;
+const BACKGROUND_HYDRATION_BATCH_SIZE = 25;
+const BACKGROUND_HYDRATION_INTERVAL_MS = 40;
+const FAST_SCROLL_HYDRATION_BATCH_SIZE = 120;
+
+const getInitialRenderedCount = (totalMessages: number): number =>
+	totalMessages > INITIAL_RENDERED_MESSAGES
+		? INITIAL_RENDERED_MESSAGES
+		: totalMessages;
+
 /**
  * MessagesView Component
  *
@@ -173,8 +191,108 @@ export const MessagesView: FC<MessagesViewProps> = React.memo(
 		conversationId,
 		isSmallView,
 	}) => {
+		const [renderedMessageCount, setRenderedMessageCount] = useState(() =>
+			getInitialRenderedCount(messages.length),
+		);
+		const previousConversationIdRef = useRef(conversationId);
+		const previousMessageCountRef = useRef(messages.length);
+
 		const collapsed =
 			messages.length === 0 && !isLoadingMessages && !isFetchingMore;
+
+		useEffect(() => {
+			const previousMessageCount = previousMessageCountRef.current;
+			const hasConversationChanged =
+				previousConversationIdRef.current !== conversationId;
+
+			if (hasConversationChanged) {
+				previousConversationIdRef.current = conversationId;
+				setRenderedMessageCount(getInitialRenderedCount(messages.length));
+				previousMessageCountRef.current = messages.length;
+				return;
+			}
+
+			if (messages.length < previousMessageCount) {
+				setRenderedMessageCount((current) =>
+					Math.min(current, messages.length),
+				);
+			} else if (messages.length > previousMessageCount) {
+				const delta = messages.length - previousMessageCount;
+				setRenderedMessageCount((current) => {
+					if (current >= previousMessageCount) {
+						return messages.length;
+					}
+
+					// Keep newest messages visible while progressively hydrating older history.
+					return Math.min(messages.length, current + Math.min(delta, 1));
+				});
+			}
+
+			previousMessageCountRef.current = messages.length;
+		}, [conversationId, messages.length]);
+
+		useEffect(() => {
+			if (renderedMessageCount >= messages.length) {
+				return;
+			}
+
+			const timeoutId = window.setTimeout(() => {
+				setRenderedMessageCount((current) =>
+					Math.min(messages.length, current + BACKGROUND_HYDRATION_BATCH_SIZE),
+				);
+			}, BACKGROUND_HYDRATION_INTERVAL_MS);
+
+			return () => {
+				window.clearTimeout(timeoutId);
+			};
+		}, [messages.length, renderedMessageCount]);
+
+		useEffect(() => {
+			const container = messagesContainerRef.current;
+			if (!container || renderedMessageCount >= messages.length) {
+				return;
+			}
+
+			const handlePrioritizeHistoryHydration = () => {
+				const { scrollTop, scrollHeight, clientHeight } = container;
+				const maxScrollValue = Math.abs(scrollHeight - clientHeight);
+				const absScrollTop = Math.abs(scrollTop);
+				const distanceFromTop =
+					scrollTop < 0
+						? maxScrollValue - absScrollTop
+						: maxScrollValue - scrollTop;
+
+				if (distanceFromTop < 260) {
+					setRenderedMessageCount((current) =>
+						Math.min(
+							messages.length,
+							current + FAST_SCROLL_HYDRATION_BATCH_SIZE,
+						),
+					);
+				}
+			};
+
+			container.addEventListener("scroll", handlePrioritizeHistoryHydration, {
+				passive: true,
+			});
+
+			return () => {
+				container.removeEventListener(
+					"scroll",
+					handlePrioritizeHistoryHydration,
+				);
+			};
+		}, [messages.length, renderedMessageCount, messagesContainerRef]);
+
+		const renderedMessages = useMemo(() => {
+			if (renderedMessageCount >= messages.length) {
+				return messages;
+			}
+
+			return messages.slice(messages.length - renderedMessageCount);
+		}, [messages, renderedMessageCount]);
+
+		const hiddenMessageCount = messages.length - renderedMessages.length;
 
 		const lastMessage = messages[messages.length - 1];
 		const lastMessageId = lastMessage?.id ?? "";
@@ -198,6 +316,11 @@ export const MessagesView: FC<MessagesViewProps> = React.memo(
 					<LoadingMoreIndicator isSmallView={isSmallView}>
 						<CircularProgress size={16} sx={{ mr: 1 }} />
 						Loading older messages...
+					</LoadingMoreIndicator>
+				)}
+				{!isFetchingMore && hiddenMessageCount > 0 && (
+					<LoadingMoreIndicator isSmallView={isSmallView}>
+						Rendering {hiddenMessageCount} earlier messages...
 					</LoadingMoreIndicator>
 				)}
 
@@ -231,10 +354,10 @@ export const MessagesView: FC<MessagesViewProps> = React.memo(
 							/>
 
 							{/* Render messages with normal order inside the reversed container */}
-							{messages.length > 0 ? (
+							{renderedMessages.length > 0 ? (
 								<CenteredMessagesContainer isSmallView={isSmallView}>
 									{/* Messages are rendered in normal order */}
-									{messages.map((message, index) =>
+									{renderedMessages.map((message, index) =>
 										message.execution_type === "info" ? (
 											<InfoMessageDivider
 												key={message.id}
@@ -248,11 +371,12 @@ export const MessagesView: FC<MessagesViewProps> = React.memo(
 												message={message}
 												conversationId={conversationId}
 												currentExecution={
-													index === messages.length - 1 && currentExecution
+													index === renderedMessages.length - 1 &&
+													currentExecution
 														? currentExecution
 														: undefined
 												}
-												isLastMessage={index === messages.length - 1}
+												isLastMessage={index === renderedMessages.length - 1}
 												onMessageComplete={handleMessageComplete}
 												isSmallView={isSmallView}
 											/>

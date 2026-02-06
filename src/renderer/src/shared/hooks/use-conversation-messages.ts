@@ -109,6 +109,8 @@ export const useConversationMessages = (
 
 	// Track the last scroll position to avoid unnecessary updates
 	const lastScrollPositionRef = useRef<number>(0);
+	const processedPagesRef = useRef<Map<number, string>>(new Map());
+	const processedConversationIdRef = useRef<string | undefined>(conversationId);
 
 	// Get store functions using stable, single-field selectors to avoid
 	// creating new snapshot objects on each render.
@@ -431,8 +433,27 @@ export const useConversationMessages = (
 		// Skip if no conversation ID or no data
 		if (!conversationId || !data?.pages) return;
 
+		if (processedConversationIdRef.current !== conversationId) {
+			processedPagesRef.current.clear();
+			processedConversationIdRef.current = conversationId;
+		}
+
+		const processedPages = processedPagesRef.current;
+
 		// Process each page of messages
 		for (const page of data.pages) {
+			const firstMessageId = page.messages[0]?.id ?? "";
+			const lastMessage = page.messages[page.messages.length - 1];
+			const lastMessageId = lastMessage?.id ?? "";
+			const lastMessageCompletionState = lastMessage?.is_complete ?? false;
+			const signature = `${page.messages.length}:${firstMessageId}:${lastMessageId}:${lastMessageCompletionState}:${lastMessage?.message?.length ?? 0}:${lastMessage?.code?.length ?? 0}:${lastMessage?.stdout?.length ?? 0}:${lastMessage?.stderr?.length ?? 0}`;
+
+			if (processedPages.get(page.page) === signature) {
+				continue;
+			}
+
+			processedPages.set(page.page, signature);
+
 			// If this is a new page (not the first page), prepend the messages
 			if (page.page > 1) {
 				addMessages(conversationId, page.messages, true); // prepend = true
