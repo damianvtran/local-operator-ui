@@ -15,6 +15,7 @@ export type MessageTimestampProps = {
 	isUser: boolean;
 	isSmallView?: boolean;
 	sx?: SxProps<Theme>;
+	inline?: boolean;
 };
 
 /**
@@ -23,15 +24,21 @@ export type MessageTimestampProps = {
  * For assistant messages, width is set to match the content width (100% - 52px for avatar space)
  */
 const StyledTimestamp = styled(Typography, {
-	shouldForwardProp: (prop) => prop !== "isUser",
-})<{ isUser: boolean; isSmallView?: boolean }>(
-	({ isUser, theme, isSmallView }) => ({
+	shouldForwardProp: (prop) => prop !== "isUser" && prop !== "inline",
+})<{ isUser: boolean; isSmallView?: boolean; inline?: boolean }>(
+	({ isUser, theme, isSmallView, inline }) => ({
 		display: "block",
-		marginTop: 8,
+		marginTop: inline ? 0 : 8,
 		textAlign: isUser ? "left" : "right",
 		color: theme.palette.text.secondary,
 		fontSize: "0.7rem",
-		width: isUser ? "auto" : isSmallView ? "100%" : "calc(100% - 52px)",
+		width: inline
+			? "auto"
+			: isUser
+				? "auto"
+				: isSmallView
+					? "100%"
+					: "calc(100% - 52px)",
 		cursor: "help", // Indicate that hovering will show more information
 	}),
 );
@@ -46,6 +53,7 @@ export const MessageTimestamp: FC<MessageTimestampProps> = ({
 	isUser,
 	sx,
 	isSmallView,
+	inline = false,
 }) => {
 	// Format the timestamp using our utility function
 	const formattedTime = formatMessageDateTime(timestamp);
@@ -66,6 +74,7 @@ export const MessageTimestamp: FC<MessageTimestampProps> = ({
 				variant="caption"
 				isUser={isUser}
 				isSmallView={isSmallView}
+				inline={inline}
 			>
 				{formattedTime}
 			</StyledTimestamp>

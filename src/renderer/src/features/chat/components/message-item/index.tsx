@@ -318,6 +318,9 @@ export const MessageItem: FC<MessageItemProps> = memo(
 							isLoading={isLastMessage && !!currentExecution}
 							isSmallView={isSmallView}
 							compact={isCompactAssistantMessage}
+							messageId={message.id}
+							timestamp={message.timestamp}
+							agentId={conversationId}
 						/>
 					</MessagePaper>
 				</MessageContainer>
