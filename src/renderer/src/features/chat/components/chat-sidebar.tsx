@@ -31,6 +31,7 @@ import {
 	useExportAgent,
 	usePaginationParams,
 } from "@shared/hooks";
+import { useDebouncedValue } from "@shared/hooks/use-debounced-value";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import {
@@ -355,7 +356,30 @@ const ChatSidebarItem: FC<ChatSidebarItemProps> = ({
 	);
 };
 
-const MemoizedChatSidebarItem = memo(ChatSidebarItem);
+const areChatSidebarItemsEqual = (
+	prev: Readonly<ChatSidebarItemProps>,
+	next: Readonly<ChatSidebarItemProps>,
+): boolean => {
+	return (
+		prev.isSelected === next.isSelected &&
+		prev.index === next.index &&
+		prev.agent.id === next.agent.id &&
+		prev.agent.name === next.agent.name &&
+		prev.agent.last_message === next.agent.last_message &&
+		prev.agent.last_message_datetime === next.agent.last_message_datetime &&
+		prev.onSelectConversation === next.onSelectConversation &&
+		prev.onNavigateToAgentSettings === next.onNavigateToAgentSettings &&
+		prev.onExportAgent === next.onExportAgent &&
+		prev.onClearAgentConversation === next.onClearAgentConversation &&
+		prev.onAgentDeleted === next.onAgentDeleted &&
+		prev.onUploadAgentToHub === next.onUploadAgentToHub &&
+		prev.getFullDateTime === next.getFullDateTime &&
+		prev.formatMessageDateTime === next.formatMessageDateTime &&
+		prev.truncateMessage === next.truncateMessage
+	);
+};
+
+const MemoizedChatSidebarItem = memo(ChatSidebarItem, areChatSidebarItemsEqual);
 
 /**
  * Chat Sidebar Component
@@ -363,13 +387,16 @@ const MemoizedChatSidebarItem = memo(ChatSidebarItem);
  * Displays a list of agents with search, create, and delete functionality
  * Uses React Router for navigation
  */
-export const ChatSidebar: FC<ChatSidebarProps> = ({
+const ChatSidebarComponent: FC<ChatSidebarProps> = ({
 	selectedConversation,
 	onSelectConversation,
 	onNavigateToAgentSettings,
 }) => {
 	const [searchQuery, setSearchQuery] = useState("");
-	const { openCreateAgentDialog } = useUiPreferencesStore();
+	const openCreateAgentDialog = useUiPreferencesStore(
+		(state) => state.openCreateAgentDialog,
+	);
+	const debouncedSearchQuery = useDebouncedValue(searchQuery.trim(), 250);
 	const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
 	const perPage = 50;
 
@@ -401,8 +428,8 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 	} = useAgents(
 		page,
 		perPage,
-		5000,
-		searchQuery,
+		0,
+		debouncedSearchQuery || undefined,
 		"last_message_datetime",
 		"desc",
 	);
@@ -507,16 +534,16 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 		[getAgentUploadValidationIssues],
 	);
 
-	const handleCloseUploadDialog = () => {
+	const handleCloseUploadDialog = useCallback(() => {
 		setIsUploadDialogOpen(false);
 		setUploadAgent(null);
 		setUploadValidationIssues([]);
-	};
+	}, []);
 
-	const handleConfirmUpload = () => {
+	const handleConfirmUpload = useCallback(() => {
 		// Implement actual upload logic here if needed
 		handleCloseUploadDialog();
-	};
+	}, [handleCloseUploadDialog]);
 
 	const handleAgentCreated = useCallback(
 		(agentId: string) => {
@@ -579,12 +606,12 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 		[handleOpenUploadDialog], // handleOpenUploadDialog is stable as it's not in deps array of its own useCallback
 	);
 
-	const truncateMessage = (message?: string, maxLength = 60) => {
+	const truncateMessage = useCallback((message?: string, maxLength = 60) => {
 		if (!message) return "";
 		return message.length > maxLength
 			? `${message.substring(0, maxLength)}...`
 			: message;
-	};
+	}, []);
 
 	return (
 		<SidebarContainer elevation={0} data-tour-tag="agent-list-panel">
@@ -675,3 +702,5 @@ export const ChatSidebar: FC<ChatSidebarProps> = ({
 		</SidebarContainer>
 	);
 };
+
+export const ChatSidebar = memo(ChatSidebarComponent);

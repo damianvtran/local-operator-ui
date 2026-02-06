@@ -5,10 +5,7 @@ import { ChatLayout } from "@shared/components/common/chat-layout";
 import { apiConfig } from "@shared/config";
 import { useAgent } from "@shared/hooks/use-agents";
 import { useConfig } from "@shared/hooks/use-config";
-import {
-	conversationMessagesQueryKey,
-	useConversationMessages,
-} from "@shared/hooks/use-conversation-messages";
+import { useConversationMessages } from "@shared/hooks/use-conversation-messages";
 import { useJobPolling } from "@shared/hooks/use-job-polling";
 import { useAgentRouteParam } from "@shared/hooks/use-route-params";
 import { useScrollToBottom } from "@shared/hooks/use-scroll-to-bottom";
@@ -16,7 +13,6 @@ import { useAgentSelectionStore } from "@shared/store/agent-selection-store";
 import { useChatStore } from "@shared/store/chat-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { isDevelopmentMode } from "@shared/utils/env-utils";
-import { useQueryClient } from "@tanstack/react-query";
 import React, {
 	useState,
 	useMemo,
@@ -52,9 +48,8 @@ export const ChatPage: FC<ChatProps> = () => {
 	// Get agent ID from URL parameters using custom hook
 	const { agentId, navigateToAgent } = useAgentRouteParam();
 	const navigate = useNavigate();
-	const queryClient = useQueryClient();
-
-	const { isCanvasOpen, setCanvasOpen } = useUiPreferencesStore();
+	const isCanvasOpen = useUiPreferencesStore((state) => state.isCanvasOpen);
+	const setCanvasOpen = useUiPreferencesStore((state) => state.setCanvasOpen);
 
 	useEffect(() => {
 		const handleKeyDown = (event: KeyboardEvent) => {
@@ -76,7 +71,12 @@ export const ChatPage: FC<ChatProps> = () => {
 	}, [isCanvasOpen, setCanvasOpen]);
 
 	// Get agent selection store functions
-	const { setLastChatAgentId, getLastAgentId } = useAgentSelectionStore();
+	const setLastChatAgentId = useAgentSelectionStore(
+		(state) => state.setLastChatAgentId,
+	);
+	const getLastAgentId = useAgentSelectionStore(
+		(state) => state.getLastAgentId,
+	);
 
 	// Use the agent ID from URL or the last selected agent ID
 	const effectiveAgentId = agentId || getLastAgentId("chat");
@@ -101,7 +101,7 @@ export const ChatPage: FC<ChatProps> = () => {
 	);
 
 	// Get the chat store functions
-	const { getMessages } = useChatStore();
+	const getMessages = useChatStore((state) => state.getMessages);
 
 	// Fetch agent details for the current conversation
 	const { data: agentData } = useAgent(conversationId);
@@ -119,7 +119,7 @@ export const ChatPage: FC<ChatProps> = () => {
 	} = useConversationMessages(conversationId);
 
 	// Get the addMessage function from the chat store
-	const { addMessage } = useChatStore();
+	const addMessage = useChatStore((state) => state.addMessage);
 
 	// Use the job polling hook
 	const {
@@ -128,7 +128,6 @@ export const ChatPage: FC<ChatProps> = () => {
 		jobStatus,
 		isLoading,
 		setIsLoading,
-		checkForActiveJobs,
 		currentExecution,
 	} = useJobPolling({
 		conversationId,
@@ -214,25 +213,6 @@ export const ChatPage: FC<ChatProps> = () => {
 
 	// Reference to track previous conversation ID
 	const previousConversationIdRef = useRef<string | undefined>(undefined);
-
-	// Check for active jobs on initial page load
-	useEffect(() => {
-		if (conversationId) {
-			// Check for active jobs for the current agent
-			// The checkForActiveJobs function will update the loading state and set the current job ID if needed
-			checkForActiveJobs(conversationId);
-		}
-	}, [conversationId, checkForActiveJobs]);
-
-	// Refetch messages when the conversation ID changes
-	useEffect(() => {
-		if (conversationId) {
-			// Refetch messages to ensure we have the latest conversation
-			queryClient.invalidateQueries({
-				queryKey: [...conversationMessagesQueryKey, conversationId],
-			});
-		}
-	}, [conversationId, queryClient]);
 
 	const handleOpenOptions = useCallback(() => {
 		setIsOptionsSidebarOpen(true);

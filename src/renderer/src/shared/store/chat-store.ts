@@ -347,6 +347,14 @@ export const useChatStore = create<ChatState>((set, get) => ({
 				hasMore: false,
 			};
 
+			if (
+				existingPagination.currentPage === page &&
+				existingPagination.totalPages === totalPages &&
+				existingPagination.hasMore === hasMore
+			) {
+				return state;
+			}
+
 			return {
 				paginationByConversation: {
 					...state.paginationByConversation,
@@ -381,6 +389,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
 				totalPages: 1,
 				hasMore: false,
 			};
+
+			if (existingPagination.scrollPosition === scrollPosition) {
+				return state;
+			}
 
 			return {
 				paginationByConversation: {

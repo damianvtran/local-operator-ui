@@ -23,19 +23,22 @@ import {
 	alpha,
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
+import { createLocalOperatorClient } from "@shared/api/local-operator";
 import type { AgentDetails } from "@shared/api/local-operator/types";
 import { AgentOptionsMenu } from "@shared/components/common/agent-options-menu";
 import { CompactPagination } from "@shared/components/common/compact-pagination";
 import { ImportAgentDialog } from "@shared/components/common/import-agent-dialog";
 import { SidebarHeader } from "@shared/components/common/sidebar-header";
+import { apiConfig } from "@shared/config";
 import {
 	useAgent,
 	useAgents,
 	useExportAgent,
 	usePaginationParams,
 } from "@shared/hooks";
+import { useDebouncedValue } from "@shared/hooks/use-debounced-value";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
-import { useUiPreferencesStore } from "@shared/store/ui-preferences-store"; // Import store
+import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { Bot } from "lucide-react";
 import type { ChangeEvent, FC } from "react";
 import { memo, useCallback, useMemo, useState } from "react";
@@ -291,7 +294,29 @@ const AgentsSidebarItem: FC<AgentsSidebarItemProps> = ({
 	);
 };
 
-const MemoizedAgentsSidebarItem = memo(AgentsSidebarItem);
+const areAgentsSidebarItemsEqual = (
+	prev: Readonly<AgentsSidebarItemProps>,
+	next: Readonly<AgentsSidebarItemProps>,
+): boolean => {
+	return (
+		prev.isSelected === next.isSelected &&
+		prev.agent.id === next.agent.id &&
+		prev.agent.name === next.agent.name &&
+		prev.agent.description === next.agent.description &&
+		prev.agent.created_date === next.agent.created_date &&
+		prev.onSelectAgent === next.onSelectAgent &&
+		prev.formatDate === next.formatDate &&
+		prev.onChatWithAgent === next.onChatWithAgent &&
+		prev.onExportAgent === next.onExportAgent &&
+		prev.onAgentDeleted === next.onAgentDeleted &&
+		prev.onUploadAgentToHub === next.onUploadAgentToHub
+	);
+};
+
+const MemoizedAgentsSidebarItem = memo(
+	AgentsSidebarItem,
+	areAgentsSidebarItemsEqual,
+);
 
 /**
  * Formats a date string into a more readable format
@@ -311,13 +336,16 @@ const formatDate = (dateString: string): string => {
  *
  * Displays a list of agents with search, create, and delete functionality
  */
-export const AgentsSidebar: FC<AgentsSidebarProps> = ({
+const AgentsSidebarComponent: FC<AgentsSidebarProps> = ({
 	selectedAgentId,
 	onSelectAgent,
 }) => {
 	const navigate = useNavigate();
 	const [searchQuery, setSearchQuery] = useState("");
-	const { openCreateAgentDialog } = useUiPreferencesStore();
+	const openCreateAgentDialog = useUiPreferencesStore(
+		(state) => state.openCreateAgentDialog,
+	);
+	const debouncedSearchQuery = useDebouncedValue(searchQuery.trim(), 250);
 	const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
 	const perPage = 50;
 
@@ -328,6 +356,10 @@ export const AgentsSidebar: FC<AgentsSidebarProps> = ({
 		string[]
 	>([]);
 	const { isAuthenticated } = useRadientAuth();
+	const agentClient = useMemo(
+		() => createLocalOperatorClient(apiConfig.baseUrl),
+		[],
+	);
 
 	// Export agent mutation
 	const exportAgentMutation = useExportAgent();
@@ -341,7 +373,14 @@ export const AgentsSidebar: FC<AgentsSidebarProps> = ({
 		isLoading,
 		isError,
 		refetch,
-	} = useAgents(page, perPage, 0, searchQuery, "created_date", "desc");
+	} = useAgents(
+		page,
+		perPage,
+		0,
+		debouncedSearchQuery || undefined,
+		"created_date",
+		"desc",
+	);
 
 	// Extract agents and total count from the result
 	const agents = agentListResult?.agents || [];
@@ -450,78 +489,39 @@ export const AgentsSidebar: FC<AgentsSidebarProps> = ({
 		[getAgentUploadValidationIssues],
 	);
 
-	const handleCloseUploadDialog = () => {
+	const handleCloseUploadDialog = useCallback(() => {
 		setIsUploadDialogOpen(false);
 		setUploadAgent(null);
 		setUploadValidationIssues([]);
-	};
+	}, []);
 
-	const handleConfirmUpload = () => {
+	const handleConfirmUpload = useCallback(() => {
 		// Implement actual upload logic here if needed
 		handleCloseUploadDialog();
-	};
+	}, [handleCloseUploadDialog]);
 
 	const handleAgentCreated = useCallback(
-		(agentId: string) => {
-			// Fetch the agent details to get the full agent object
-			const fetchAndSelectAgent = async () => {
-				try {
-					// Refetch the agents list to update the UI
-					const result = await refetch();
+		async (agentId: string) => {
+			try {
+				const result = await refetch();
+				const createdAgent = (result.data?.agents || []).find(
+					(agent: AgentDetails) => agent.id === agentId,
+				);
 
-					// Get the updated agents list from the refetch result
-					const updatedAgentList = result.data?.agents || [];
-
-					// Find the newly created agent in the updated list
-					const createdAgent = updatedAgentList.find(
-						(agent: AgentDetails) => agent.id === agentId,
-					);
-
-					// Select the newly created agent if found
-					if (createdAgent) {
-						onSelectAgent(createdAgent);
-					} else {
-						// If the agent wasn't found in the updated list, still select it
-						// The agent details will be fetched when needed by the useAgent hook
-						// if it becomes the selected agent
-						// We need to manually fetch here to pass the full object to onSelectAgent
-						try {
-							// Use the useAgent hook's underlying fetch logic or a direct client call
-							// For simplicity, let's assume we can trigger selection and let the main view handle fetching if needed,
-							// OR fetch it here if onSelectAgent *requires* the full object immediately.
-							// Let's fetch it to be safe, similar to the original logic but simplified.
-							const { data: newAgentDetails } = await refetch(); // Refetch might return the new agent
-							const foundAgent = (newAgentDetails?.agents || []).find(
-								(a) => a.id === agentId,
-							);
-							if (foundAgent) {
-								onSelectAgent(foundAgent);
-							} else {
-								// Fallback if refetch didn't include it (e.g., pagination)
-								// This part might need adjustment based on how `onSelectAgent` is used
-								console.warn(
-									"Newly created agent not found immediately after refetch.",
-								);
-								// Potentially navigate or just set the ID, letting the main view load it
-								// For now, just log and don't select if not found
-							}
-						} catch (fetchError) {
-							console.error(
-								"Error fetching newly created agent details:",
-								fetchError,
-							);
-							// Optionally select with partial data or handle error
-						}
-					}
-				} catch (error) {
-					console.error("Error refetching agents list:", error);
-					// Handle error appropriately
+				if (createdAgent) {
+					onSelectAgent(createdAgent);
+					return;
 				}
-			};
 
-			fetchAndSelectAgent();
+				const detailsResponse = await agentClient.agents.getAgent(agentId);
+				if (detailsResponse.status < 400 && detailsResponse.result) {
+					onSelectAgent(detailsResponse.result as AgentDetails);
+				}
+			} catch (error) {
+				console.error("Error selecting newly created agent:", error);
+			}
 		},
-		[onSelectAgent, refetch], // Keep dependencies
+		[onSelectAgent, refetch, agentClient],
 	);
 
 	const handleChatWithAgent = useCallback(
@@ -639,3 +639,5 @@ export const AgentsSidebar: FC<AgentsSidebarProps> = ({
 		</SidebarContainer>
 	);
 };
+
+export const AgentsSidebar = memo(AgentsSidebarComponent);
