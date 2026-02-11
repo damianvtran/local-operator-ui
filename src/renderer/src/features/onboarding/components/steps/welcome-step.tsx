@@ -6,9 +6,17 @@
  */
 
 import { Box, Typography } from "@mui/material";
+import {
+	Bot,
+	KeyRound,
+	Lightbulb,
+	Search,
+	Sparkles,
+	UserRound,
+} from "lucide-react";
 import type { FC } from "react";
 import {
-	EmojiContainer,
+	InlineIcon,
 	SectionContainer,
 	SectionDescription,
 } from "../onboarding-styled";
@@ -46,24 +54,34 @@ export const WelcomeStep: FC = () => {
 				<SectionDescription>
 					<Box sx={{ mt: 0 }}>
 						<Box sx={{ mb: 1.5, display: "flex", alignItems: "flex-start" }}>
-							<EmojiContainer>👤</EmojiContainer> Setting up your personalized
-							user profile
+							<InlineIcon>
+								<UserRound size={16} />
+							</InlineIcon>
+							Setting up your personalized user profile
 						</Box>
 						<Box sx={{ mb: 1.5, display: "flex", alignItems: "flex-start" }}>
-							<EmojiContainer>🔑</EmojiContainer> Adding your first AI model
-							provider credential
+							<InlineIcon>
+								<KeyRound size={16} />
+							</InlineIcon>
+							Adding your first AI model provider credential
 						</Box>
 						<Box sx={{ mb: 1.5, display: "flex", alignItems: "flex-start" }}>
-							<EmojiContainer>🔍</EmojiContainer> Supercharging your AI with web
-							search capabilities
+							<InlineIcon>
+								<Search size={16} />
+							</InlineIcon>
+							Supercharging your AI with web search capabilities
 						</Box>
 						<Box sx={{ mb: 1.5, display: "flex", alignItems: "flex-start" }}>
-							<EmojiContainer>🤖</EmojiContainer> Selecting your perfect default
-							AI model
+							<InlineIcon>
+								<Bot size={16} />
+							</InlineIcon>
+							Selecting your perfect default AI model
 						</Box>
 						<Box sx={{ display: "flex", alignItems: "flex-start" }}>
-							<EmojiContainer>✨</EmojiContainer> Creating your first
-							intelligent AI assistant
+							<InlineIcon>
+								<Sparkles size={16} />
+							</InlineIcon>
+							Creating your first intelligent AI assistant
 						</Box>
 					</Box>
 				</SectionDescription>
@@ -79,8 +97,11 @@ export const WelcomeStep: FC = () => {
 					color: "text.secondary",
 				}}
 			>
-				<EmojiContainer>💡</EmojiContainer> Don't worry! You can always
-				customize these settings later in the Settings page.
+				<InlineIcon>
+					<Lightbulb size={16} />
+				</InlineIcon>
+				Don't worry! You can always customize these settings later in the
+				Settings page.
 			</Box>
 		</Box>
 	);

@@ -33,14 +33,16 @@ import {
 	alpha,
 	useTheme,
 } from "@mui/material";
+import { OrbitSpark } from "@shared/components/icons";
 import { useCredentials } from "@shared/hooks/use-credentials";
 import { useUpdateCredential } from "@shared/hooks/use-update-credential";
+import { Globe, Lightbulb, Link2, PartyPopper, Search } from "lucide-react";
 import type { FC } from "react";
 import { useEffect, useRef, useState } from "react";
 import {
-	EmojiContainer,
 	FieldLabel,
 	FormContainer,
+	InlineIcon,
 	LabelIcon,
 	SectionContainer,
 	SectionDescription,
@@ -228,9 +230,11 @@ export const SearchApiStep: FC = () => {
 	return (
 		<SectionContainer>
 			<SectionDescription>
-				<EmojiContainer>🌐</EmojiContainer> Supercharge your AI agents with web
-				search for real-time information. This optional step gives your AI
-				access to the latest data online.
+				<InlineIcon>
+					<Globe size={16} />
+				</InlineIcon>
+				Supercharge your AI agents with web search for real-time information.
+				This optional step gives your AI access to the latest data online.
 			</SectionDescription>
 
 			<FormContainer>
@@ -262,7 +266,9 @@ export const SearchApiStep: FC = () => {
 				<Box>
 					{" "}
 					<FieldLabel>
-						<LabelIcon>🔎</LabelIcon>
+						<LabelIcon>
+							<Search size={14} />
+						</LabelIcon>
 						Search API Provider
 					</FieldLabel>
 					<FormControl fullWidth variant="outlined" sx={inputSx}>
@@ -296,7 +302,9 @@ export const SearchApiStep: FC = () => {
 							variant="body2"
 							sx={{ mb: 1, display: "flex", alignItems: "center", gap: 0.5 }}
 						>
-							<EmojiContainer sx={{ mb: 0 }}>💡</EmojiContainer>{" "}
+							<InlineIcon sx={{ mb: 0 }}>
+								<Lightbulb size={14} />
+							</InlineIcon>{" "}
 							{selectedCredentialInfo.description}
 						</Typography>
 						<Link
@@ -316,8 +324,10 @@ export const SearchApiStep: FC = () => {
 								},
 							}}
 						>
-							<EmojiContainer sx={{ mb: 0 }}>🔗</EmojiContainer> Get{" "}
-							{selectedCredentialInfo.name}{" "}
+							<InlineIcon sx={{ mb: 0 }}>
+								<Link2 size={14} />
+							</InlineIcon>
+							Get {selectedCredentialInfo.name}{" "}
 							<FontAwesomeIcon icon={faExternalLinkAlt} size="xs" />
 						</Link>
 					</Box>
@@ -331,8 +341,10 @@ export const SearchApiStep: FC = () => {
 						sx={successAlertSx}
 					>
 						<Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-							<EmojiContainer sx={{ mb: 0 }}>🎉</EmojiContainer> Search API
-							credential saved!
+							<InlineIcon sx={{ mb: 0 }}>
+								<PartyPopper size={14} />
+							</InlineIcon>
+							Search API credential saved!
 						</Box>
 					</Alert>
 				)}
@@ -383,7 +395,9 @@ export const SearchApiStep: FC = () => {
 
 				{/* Optional Step Note */}
 				<Box sx={optionalNoteSx}>
-					<EmojiContainer sx={{ mb: 0 }}>💫</EmojiContainer>
+					<InlineIcon sx={{ mb: 0 }}>
+						<OrbitSpark size={14} />
+					</InlineIcon>
 					<Typography variant="body2" color="text.secondary">
 						This step is optional! You can skip it and add search capabilities
 						later in Settings.

@@ -20,7 +20,7 @@ export {
 	CongratulationsIcon,
 	CongratulationsTitle,
 	CongratulationsMessage,
-	EmojiContainer,
+	InlineIcon,
 } from "./components/onboarding-styled";
 export { RadientChoiceStep } from "./components/steps/radient-choice-step";
 export { RadientSignInStep } from "./components/steps/radient-signin-step";

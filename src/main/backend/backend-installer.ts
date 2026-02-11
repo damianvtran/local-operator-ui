@@ -197,7 +197,7 @@ export class BackendInstaller {
 				type: "info",
 				title: "First-Time Setup Required",
 				message:
-					"🚀 Local Operator needs to set up some components to work properly. This one-time process will take just a few moments.",
+					"Local Operator needs to set up some components to work properly. This one-time process will take just a few moments.",
 				buttons: ["Set Up Now", "Cancel"],
 				defaultId: 0,
 				cancelId: 1,
@@ -510,7 +510,7 @@ export class BackendInstaller {
 						type: "info",
 						title: "Setup Complete",
 						message:
-							"✅ Local Operator is ready to use! Everything has been set up successfully.",
+							"Local Operator is ready to use. Everything has been set up successfully.",
 						buttons: ["Let's Go!", "Cancel"],
 						defaultId: 0,
 						cancelId: 1,
@@ -590,7 +590,7 @@ export class BackendInstaller {
 			// Show error dialog
 			electronDialog.showErrorBox(
 				"Setup Failed",
-				"❌ We couldn't complete the setup process. Please try restarting the application or contact support if the problem persists.",
+				"We couldn't complete the setup process. Please try restarting the application or contact support if the problem persists.",
 			);
 
 			return false;
@@ -607,7 +607,7 @@ export class BackendInstaller {
 			// Show error dialog
 			electronDialog.showErrorBox(
 				"Installation Error",
-				`❌ Error installing the Local Operator backend: ${error instanceof Error ? error.message : String(error)}`,
+				`Error installing the Local Operator backend: ${error instanceof Error ? error.message : String(error)}`,
 			);
 
 			return false;
