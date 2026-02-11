@@ -21,11 +21,11 @@ import {
 } from "@mui/material";
 import type { Agent } from "@shared/api/radient/types";
 import { useAgents } from "@shared/hooks/use-agents";
-import { CheckCircle } from "lucide-react";
+import { Bot, CheckCircle } from "lucide-react";
 import type { FC } from "react";
 import { useEffect, useState } from "react";
 import {
-	EmojiContainer,
+	InlineIcon,
 	SectionContainer,
 	SectionDescription,
 	SectionTitle,
@@ -156,8 +156,10 @@ export const CreateAgentStep: FC<CreateAgentStepProps> = ({
 	return (
 		<SectionContainer sx={{ display: "flex", flexDirection: "column" }}>
 			<SectionTitle>
-				<EmojiContainer sx={{ mb: 0 }}>🤖</EmojiContainer> Add Your First AI
-				Assistants
+				<InlineIcon sx={{ mb: 0 }}>
+					<Bot size={18} />
+				</InlineIcon>
+				Add Your First AI Assistants
 			</SectionTitle>
 			<SectionDescription>
 				Select from our recommended agents to get started quickly, or click the

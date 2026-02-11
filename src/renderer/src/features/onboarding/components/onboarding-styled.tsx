@@ -280,12 +280,19 @@ export const CongratulationsMessage = styled(Typography)(({ theme }) => ({
 }));
 
 /**
- * Emoji container (no changes needed, seems fine)
+ * Inline icon container for text/content rows.
  */
-export const EmojiContainer = styled(Box)(({ theme }) => ({
+export const InlineIcon = styled(Box)(({ theme }) => ({
 	display: "inline-flex",
+	alignItems: "center",
+	justifyContent: "center",
 	marginRight: theme.spacing(1),
-	fontSize: "1em", // Inherit font size
+	lineHeight: 0,
+	color: "inherit",
+	"& > svg": {
+		flexShrink: 0,
+		strokeWidth: 2,
+	},
 }));
 
 /**

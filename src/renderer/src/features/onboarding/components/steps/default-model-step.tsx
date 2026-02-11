@@ -29,12 +29,13 @@ import { useConfig } from "@shared/hooks/use-config";
 import { useCredentials } from "@shared/hooks/use-credentials";
 import { useModels } from "@shared/hooks/use-models";
 import { useUpdateConfig } from "@shared/hooks/use-update-config";
+import { PartyPopper, Rocket, Sparkles } from "lucide-react";
 import type { FC } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-	EmojiContainer,
 	FieldLabel,
 	FormContainer,
+	InlineIcon,
 	LabelIcon,
 	SectionContainer,
 	SectionDescription,
@@ -311,8 +312,10 @@ export const DefaultModelStep: FC = () => {
 		<SectionContainer>
 			{/* Use SectionTitle from onboarding-styled */}
 			<SectionTitle>
-				<EmojiContainer sx={{ mb: 0 }}>✨</EmojiContainer> Choose Your Default
-				Model
+				<InlineIcon sx={{ mb: 0 }}>
+					<Sparkles size={18} />
+				</InlineIcon>
+				Choose Your Default Model
 			</SectionTitle>
 			<SectionDescription>
 				Select the default AI model and provider for your agents. You can
@@ -432,8 +435,10 @@ export const DefaultModelStep: FC = () => {
 								sx={successAlertSx}
 							>
 								<Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-									<EmojiContainer sx={{ mb: 0 }}>🎉</EmojiContainer> Default
-									model saved!
+									<InlineIcon sx={{ mb: 0 }}>
+										<PartyPopper size={14} />
+									</InlineIcon>
+									Default model saved!
 								</Box>
 							</Alert>
 						)}
@@ -441,7 +446,9 @@ export const DefaultModelStep: FC = () => {
 						{/* Confirmation Box */}
 						{selectedProvider && selectedModel && !isSaving && (
 							<Box sx={confirmationBoxSx}>
-								<EmojiContainer sx={{ mb: 0, mt: 0.2 }}>🚀</EmojiContainer>
+								<InlineIcon sx={{ mb: 0, mt: 0.2 }}>
+									<Rocket size={14} />
+								</InlineIcon>
 								<Typography variant="body2" color="text.secondary">
 									Default set to{" "}
 									<Typography

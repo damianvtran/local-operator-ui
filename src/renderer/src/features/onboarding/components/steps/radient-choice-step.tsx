@@ -15,9 +15,14 @@ import {
 	useOnboardingStore,
 } from "@shared/store/onboarding-store";
 import { radientTheme } from "@shared/themes"; // Keep for Radient specific colors if needed
+import { Lightbulb, Wrench } from "lucide-react";
 import type { FC } from "react";
 import { useCallback } from "react";
-import { SectionContainer, SectionDescription } from "../onboarding-styled";
+import {
+	InlineIcon,
+	SectionContainer,
+	SectionDescription,
+} from "../onboarding-styled";
 
 // --- Styled Components (Simplified for shadcn aesthetic) ---
 
@@ -296,8 +301,7 @@ export const RadientChoiceStep: FC<RadientChoiceStepProps> = ({
 										justifyContent: "center", // Horizontally center icon in its box
 									}}
 								>
-									<Typography fontSize="3rem">🔧</Typography>{" "}
-									{/* Adjusted emoji size */}
+									<Wrench size={48} />
 								</Box>
 							</Box>
 							<ChooseOption className="choose-option">
@@ -311,9 +315,9 @@ export const RadientChoiceStep: FC<RadientChoiceStepProps> = ({
 
 			{/* Use standard SectionDescription styling */}
 			<SectionDescription sx={{ mt: 2, textAlign: "center" }}>
-				<Box component="span" sx={{ mr: 0.5 }}>
-					💡
-				</Box>
+				<InlineIcon sx={{ mr: 0.5 }}>
+					<Lightbulb size={16} />
+				</InlineIcon>
 				You can always change your setup later in Settings.
 			</SectionDescription>
 		</Box>

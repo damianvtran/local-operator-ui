@@ -7,12 +7,13 @@
 
 import { Box, TextField, useTheme } from "@mui/material";
 import { useUserStore } from "@shared/store/user-store";
+import { Lightbulb, Lock, Mail, UserRound } from "lucide-react";
 import type { FC } from "react";
 import { useEffect, useState } from "react";
 import {
-	EmojiContainer,
 	FieldLabel,
 	FormContainer,
+	InlineIcon,
 	LabelIcon,
 	SectionContainer,
 	SectionDescription,
@@ -106,8 +107,11 @@ export const UserProfileStep: FC = () => {
 	return (
 		<SectionContainer>
 			<SectionDescription>
-				<EmojiContainer>🔒</EmojiContainer> This info is stored locally to
-				personalize your AI experience and is never shared externally.
+				<InlineIcon>
+					<Lock size={16} />
+				</InlineIcon>
+				This info is stored locally to personalize your AI experience and is
+				never shared externally.
 			</SectionDescription>
 
 			<FormContainer>
@@ -116,7 +120,9 @@ export const UserProfileStep: FC = () => {
 					{" "}
 					{/* Wrap Label and Input */}
 					<FieldLabel>
-						<LabelIcon>😎</LabelIcon> {/* Use LabelIcon */}
+						<LabelIcon>
+							<UserRound size={14} />
+						</LabelIcon>
 						Your Name
 					</FieldLabel>
 					<TextField
@@ -140,7 +146,9 @@ export const UserProfileStep: FC = () => {
 					{" "}
 					{/* Wrap Label and Input */}
 					<FieldLabel>
-						<LabelIcon>📧</LabelIcon> {/* Use LabelIcon */}
+						<LabelIcon>
+							<Mail size={14} />
+						</LabelIcon>
 						Email Address (Optional)
 					</FieldLabel>
 					<TextField
@@ -161,7 +169,9 @@ export const UserProfileStep: FC = () => {
 
 			{/* Use SectionDescription for the final tip */}
 			<SectionDescription sx={{ mt: 3, textAlign: "center" }}>
-				<EmojiContainer sx={{ mr: 0.5 }}>💡</EmojiContainer>
+				<InlineIcon sx={{ mr: 0.5 }}>
+					<Lightbulb size={16} />
+				</InlineIcon>
 				Personalizing your profile helps AI assistants provide a more tailored
 				experience!
 			</SectionDescription>

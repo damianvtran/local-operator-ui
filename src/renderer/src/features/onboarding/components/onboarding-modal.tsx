@@ -5,8 +5,6 @@
  * Manages the flow between different onboarding steps.
  */
 
-import { faCheck } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, Tooltip, useTheme } from "@mui/material";
 import { getUserInfo } from "@shared/api/radient/auth-api";
 import { apiConfig } from "@shared/config";
@@ -18,6 +16,7 @@ import {
 import { useUserStore } from "@shared/store/user-store";
 import { clearSession, getSession } from "@shared/utils/session-store";
 import { useQueryClient } from "@tanstack/react-query";
+import { CircleCheck, PartyPopper, Rocket } from "lucide-react";
 import type { FC } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -51,7 +50,7 @@ const stepTitles: Partial<Record<OnboardingStep, string>> = {
 	[OnboardingStep.SEARCH_API]: "Enable Web Search (Recommended)",
 	[OnboardingStep.DEFAULT_MODEL]: "Choose Your Default Model",
 	[OnboardingStep.CREATE_AGENT]: "Create Your First Agent",
-	[OnboardingStep.CONGRATULATIONS]: "🎉 Setup Complete!",
+	[OnboardingStep.CONGRATULATIONS]: "Setup Complete",
 };
 
 /**
@@ -234,10 +233,10 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 			case OnboardingStep.RADIENT_CHOICE:
 				return "Choose Your Setup Option"; // More specific title
 			case OnboardingStep.CONGRATULATIONS:
-				return "🎉 Setup Complete!";
+				return "Setup Complete";
 			default:
 				// Use the title defined for tooltips if not overridden
-				return stepTitles[currentStep] || "🚀 First-Time Setup";
+				return stepTitles[currentStep] || "First-Time Setup";
 		}
 	}, [currentStep]); // Remove stepTitles from dependency array
 
@@ -282,9 +281,33 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 				return (
 					<CongratulationsContainer>
 						<CongratulationsIcon>
-							<FontAwesomeIcon icon={faCheck} />
+							<CircleCheck size={48} />
 						</CongratulationsIcon>
-						<CongratulationsTitle>🎉 You're all set! 🚀</CongratulationsTitle>
+						<CongratulationsTitle>
+							<Box
+								component="span"
+								sx={{
+									display: "inline-flex",
+									alignItems: "center",
+									mr: 1,
+									verticalAlign: "middle",
+								}}
+							>
+								<PartyPopper size={24} />
+							</Box>
+							You're all set!
+							<Box
+								component="span"
+								sx={{
+									display: "inline-flex",
+									alignItems: "center",
+									ml: 1,
+									verticalAlign: "middle",
+								}}
+							>
+								<Rocket size={24} />
+							</Box>
+						</CongratulationsTitle>
 						<CongratulationsMessage>
 							Amazing! Your Local Operator is now configured and ready to use.
 							You can start chatting with your new AI assistant right away or
@@ -425,9 +448,7 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 	 * Get the text for the 'Next'/'Finish' button
 	 */
 	const nextButtonText =
-		currentStep === OnboardingStep.CONGRATULATIONS
-			? "🚀 Get Started"
-			: "Next →";
+		currentStep === OnboardingStep.CONGRATULATIONS ? "Get Started" : "Next →";
 
 	// Determine if the Next button should be disabled
 	const isNextDisabled =

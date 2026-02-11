@@ -544,7 +544,7 @@ const tourSteps: StepOptions[] = [
 			on: "left",
 		},
 		title: "Select AI Model",
-		text: "After selecting a provider, choose an AI model. Models marked with a star (⭐) are 'Recommended' and known to work well with Local Operator. Non-starred models might have inconsistent performance. If a model you expect to be recommended isn't listed, please let us know if it works well for you in Local Operator via GitHub Issues or email.",
+		text: "After selecting a provider, choose an AI model. Models marked as 'Recommended' are known to work well with Local Operator. Other models might have inconsistent performance. If a model you expect to be recommended isn't listed, please let us know if it works well for you in Local Operator via GitHub Issues or email.",
 		buttons: [
 			{
 				text: "Back",

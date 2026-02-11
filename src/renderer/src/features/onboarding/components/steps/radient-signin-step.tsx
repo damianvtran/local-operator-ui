@@ -15,9 +15,10 @@ import {
 import { RadientAuthButtons } from "@shared/components/auth";
 import { useRadientPricesQuery } from "@shared/hooks/use-radient-prices-query";
 import { radientTheme } from "@shared/themes";
+import { Lightbulb } from "lucide-react";
 import type { FC } from "react";
 import {
-	EmojiContainer,
+	InlineIcon,
 	SectionContainer,
 	SectionDescription,
 } from "../onboarding-styled";
@@ -142,7 +143,9 @@ export const RadientSignInStep: FC<RadientSignInStepProps> = ({
 
 			{/* Use SectionDescription for the final note, centered */}
 			<SectionDescription sx={{ textAlign: "center" }}>
-				<EmojiContainer>💡</EmojiContainer> {/* Use EmojiContainer */}
+				<InlineIcon>
+					<Lightbulb size={16} />
+				</InlineIcon>
 				Your account is used for authentication and managing your Radient Pass
 				subscription.
 			</SectionDescription>

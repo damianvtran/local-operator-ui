@@ -35,12 +35,13 @@ import {
 import { useCredentials } from "@shared/hooks/use-credentials";
 import { useModels } from "@shared/hooks/use-models";
 import { useUpdateCredential } from "@shared/hooks/use-update-credential";
+import { Bot, Link2, Lock, PartyPopper, Sparkles } from "lucide-react";
 import type { FC } from "react";
 import { useEffect, useRef, useState } from "react";
 import {
-	EmojiContainer,
 	FieldLabel,
 	FormContainer,
+	InlineIcon,
 	LabelIcon,
 	SectionContainer,
 	SectionDescription,
@@ -228,9 +229,11 @@ export const ModelCredentialStep: FC = () => {
 	return (
 		<SectionContainer>
 			<SectionDescription>
-				<EmojiContainer>✨</EmojiContainer> Add an API key for at least one
-				model provider to enable AI features. Your keys are stored securely on
-				your device.
+				<InlineIcon>
+					<Sparkles size={16} />
+				</InlineIcon>
+				Add an API key for at least one model provider to enable AI features.
+				Your keys are stored securely on your device.
 			</SectionDescription>
 
 			<FormContainer>
@@ -238,7 +241,9 @@ export const ModelCredentialStep: FC = () => {
 				<Box>
 					{" "}
 					<FieldLabel>
-						<LabelIcon>🤖</LabelIcon>
+						<LabelIcon>
+							<Bot size={14} />
+						</LabelIcon>
 						Model Provider
 					</FieldLabel>
 					<FormControl fullWidth variant="outlined" sx={inputSx}>
@@ -286,8 +291,10 @@ export const ModelCredentialStep: FC = () => {
 								},
 							}}
 						>
-							<EmojiContainer sx={{ mb: 0 }}>🔗</EmojiContainer> Get{" "}
-							{selectedCredentialInfo.name}{" "}
+							<InlineIcon sx={{ mb: 0 }}>
+								<Link2 size={14} />
+							</InlineIcon>
+							Get {selectedCredentialInfo.name}{" "}
 							<FontAwesomeIcon icon={faExternalLinkAlt} size="xs" />
 						</Link>
 					</Box>
@@ -301,8 +308,10 @@ export const ModelCredentialStep: FC = () => {
 						sx={successAlertSx}
 					>
 						<Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-							<EmojiContainer sx={{ mb: 0 }}>🎉</EmojiContainer> Credential
-							saved successfully!
+							<InlineIcon sx={{ mb: 0 }}>
+								<PartyPopper size={14} />
+							</InlineIcon>
+							Credential saved successfully!
 						</Box>
 					</Alert>
 				)}
@@ -354,7 +363,9 @@ export const ModelCredentialStep: FC = () => {
 
 				{/* Security Note */}
 				<Box sx={securityNoteSx}>
-					<EmojiContainer sx={{ mb: 0 }}>🔒</EmojiContainer>
+					<InlineIcon sx={{ mb: 0 }}>
+						<Lock size={14} />
+					</InlineIcon>
 					<Typography variant="body2" color="text.secondary">
 						Your API keys are stored securely on your device and never shared.
 					</Typography>
