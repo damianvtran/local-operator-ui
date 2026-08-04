@@ -57,16 +57,21 @@ export const AgentQuestion = ({ content, className }: AgentQuestionProps) => {
 				<p className="font-medium text-accent text-meta">
 					Waiting for your answer
 				</p>
-				{/* The question body is the accent ink too: ink-on-accent-wash is the
-				 * one pairing the contrast contract does not measure, while
-				 * accent-on-accent-wash is verified per palette.
+				{/* The body is `ink`, not `accent`.
 				 *
-				 * Inline code loses its `sunken` chip here. A neutral fill on a
-				 * tinted ground is the "grey text on a coloured background" defect,
-				 * and the chips read as holes punched in the callout. The monospace
-				 * face is what marks machine voice (§ 4); the fill was carrying
-				 * nothing the type was not already saying. */}
-				<div className={cn("lo-on-wash text-accent [&_p]:text-accent")}>
+				 * Accent ink on accent wash passes the contract, but the contract
+				 * measures accent as a *badge* colour — a short label, at 12px, on
+				 * its own tint. This is the one sentence in the app the user has to
+				 * read and answer before anything continues, and at 4.59:1 it was
+				 * the faintest prose on screen while ordinary assistant text next
+				 * to it sat above 7:1. Importance was signalled by making the most
+				 * important text hardest to read.
+				 *
+				 * Identity still comes from the icon, the border and the eyebrow
+				 * label, which are the parts accent is actually good at. Measured
+				 * on `bg-accent-wash` across all twelve palettes: accent floored at
+				 * 4.59:1 (localOperatorLight), ink floors at 8.36:1 (iceberg). */}
+				<div className="lo-on-wash text-ink">
 					<MarkdownRenderer content={content} />
 				</div>
 			</div>

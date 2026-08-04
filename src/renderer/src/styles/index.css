@@ -91,10 +91,23 @@
 	--text-mono-sm: 0.75rem;
 	--text-mono-sm--line-height: 1.45;
 
-	--font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
-		sans-serif;
-	--font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo,
-		monospace;
+	/*
+	 * Only name faces this app actually ships or the OS actually has.
+	 *
+	 * CSP is `font-src 'self' data:`, so a remote face cannot load — naming one
+	 * is not a graceful degradation, it is a silent substitution. The previous
+	 * stack asked for "Inter" and "JetBrains Mono"; neither is bundled, so sans
+	 * silently rendered as the OS UI font and mono fell through to whatever the
+	 * platform had. That last one is the damaging half: CodeMirror pins "Geist
+	 * Mono", so machine voice rendered in two unrelated faces on the same
+	 * screen, and on Windows the non-CodeMirror half landed on Courier New.
+	 *
+	 * Sans is deliberately the OS UI font. This is a desktop app, that is what
+	 * it has always actually rendered, and bundling a webfont to change it
+	 * would add weight to restate a decision the platform already makes well.
+	 */
+	--font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+	--font-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 
 	/* ---- space -----------------------------------------------------------
 	 * 4px base. Tailwind's default ramp already is this; it is restated so the
@@ -154,28 +167,14 @@
 
 @layer base {
 	/*
-	 * The focus ring, defined once.
+	 * The zero-specificity half of the focus ring: shape only.
 	 *
-	 * `outline` rather than `box-shadow`, because an outline is painted outside
-	 * the element and is not clipped by an ancestor's `overflow: hidden` — which
-	 * is what makes box-shadow rings vanish inside scroll containers, and this
-	 * app is mostly scroll containers. A modern outline also follows the
-	 * element's own `border-radius` automatically, so the ring is correctly
-	 * shaped without being told.
-	 *
-	 * Deliberately NOT setting `border-radius: inherit` here. That instruction
-	 * belongs to box-shadow or pseudo-element rings, which have to be told what
-	 * shape to be; applied to a real outline it does nothing useful and, on an
-	 * element with no radius class of its own, it actively reshapes the element
-	 * the moment it takes focus.
+	 * The ring itself is authored UNLAYERED at the bottom of this file — see the
+	 * comment there for why it cannot live in this layer.
 	 *
 	 * `:focus-visible` only: a mouse user clicking a button should not get a
 	 * ring, a keyboard user tabbing to it must.
 	 */
-	:where(:focus-visible) {
-		outline: 2px solid var(--color-accent);
-		outline-offset: 2px;
-	}
 
 	/*
 	 * Disabled changes colour, never opacity.
@@ -221,4 +220,53 @@
 			scroll-behavior: auto !important;
 		}
 	}
+}
+
+/*
+ * The focus ring, authoritative and deliberately UNLAYERED.
+ *
+ * Three constraints stack here, and getting any one wrong silently removes the
+ * keyboard focus indicator from part of the app.
+ *
+ * 1. It cannot live in `@layer base`. An unlayered declaration beats a layered
+ *    one regardless of specificity, and MUI/Emotion injects unlayered. While
+ *    any MUI survives — the date-picker, plus anything a future dependency
+ *    brings — a layered rule loses to `.MuiButtonBase-root { outline: 0 }`
+ *    even at higher specificity.
+ *
+ * 2. It cannot rely on MUI's own CssBaseline override. The base theme authors
+ *    an equivalent rule under `MuiCssBaseline`, but those styles only inject
+ *    when `<CssBaseline/>` is actually rendered — and the app stopped
+ *    rendering it once Tailwind's preflight replaced it. Storybook still
+ *    renders one, which is worse than neither: the ring was present in every
+ *    story and absent in the shipped app, so the verification surface
+ *    disagreed with the product. This rule is what makes them agree.
+ *
+ * 3. The `html` prefix is load-bearing. `.MuiButtonBase-root { outline: 0 }`
+ *    is (0,1,0); a bare `:focus-visible` ties and loses on order. `html
+ *    :focus-visible` is (0,1,1) and wins.
+ *
+ * `outline` rather than `box-shadow`, because an outline is painted outside the
+ * element and is not clipped by an ancestor's `overflow: hidden` — this app is
+ * mostly scroll containers. `box-shadow: none` is forced because MUI ships
+ * shadow rings at two-class specificity (`.MuiSlider-thumb.Mui-focusVisible`).
+ */
+html :focus-visible,
+html .Mui-focusVisible {
+	outline: 2px solid var(--color-accent);
+	outline-offset: 2px;
+	box-shadow: none !important;
+}
+
+/*
+ * Tailwind v4's `outline-none` sets `--tw-outline-style: none`, which survives
+ * into the focus state and cancels the ring above for any element carrying it.
+ * A component that wants to suppress the default ring because it draws its own
+ * must not also lose the fallback, so the token is restored under
+ * `:focus-visible` and the ring re-asserted.
+ */
+html :focus-visible:where(.outline-none, [class*="outline-none"]) {
+	--tw-outline-style: solid;
+	outline: 2px solid var(--color-accent);
+	outline-offset: 2px;
 }

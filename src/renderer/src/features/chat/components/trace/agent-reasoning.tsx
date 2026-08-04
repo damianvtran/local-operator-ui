@@ -13,9 +13,9 @@
  * read "Reasoning" while a thinking field on an answer reads "Thinking".
  */
 
+import { Disclosure } from "@shared/components/ui/disclosure";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { MarkdownRenderer } from "../markdown-renderer";
-import { Disclosure } from "./disclosure";
 
 export type AgentReasoningProps = {
 	/** Trigger label shown when the preference allows reasoning. */

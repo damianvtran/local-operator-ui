@@ -179,10 +179,22 @@ const main = async () => {
 					JSON.stringify({ state: { themeName: ${JSON.stringify(theme)} }, version: 0 })
 				);`,
 			});
+			/*
+			 * Pass the theme as a story ARG as well as through the store.
+			 *
+			 * Some stories own their own theme — the primitives sheet has a
+			 * `theme` control and sets `data-theme` from it in a layout effect,
+			 * which runs after navigation and overwrites anything set from
+			 * outside. Without this the capture produced twelve files named for
+			 * twelve themes that were all the story's default, which is worse
+			 * than no evidence because the filenames assert something false.
+			 * Storybook ignores an `args` key a story does not declare, so this
+			 * is safe for the stories that take their theme from the store.
+			 */
 			await cdp.send("Page.navigate", {
-				url: `${ORIGIN}/iframe.html?id=${story}&viewMode=story`,
+				url: `${ORIGIN}/iframe.html?id=${story}&viewMode=story&args=theme:${theme}`,
 			});
-			await sleep(1600);
+			await sleep(900);
 			/* Belt and braces for stories that mount no ThemeProvider of their
 			   own: the attribute still has to be right for Tailwind utilities. */
 			await cdp.send("Runtime.evaluate", {
@@ -191,7 +203,7 @@ const main = async () => {
 					document.documentElement.classList.toggle("dark", ${!LIGHT.has(theme)});
 				`,
 			});
-			await sleep(500);
+			await sleep(250);
 
 			/*
 			 * Settle animations before the shutter.
@@ -212,7 +224,7 @@ const main = async () => {
 					document.head.appendChild(s);
 				})()`,
 			});
-			await sleep(250);
+			await sleep(120);
 
 			/* Assert the capture is of a rendered story, not Storybook's own
 			   error page. A screenshot of "Configuration validation failed" is

@@ -361,3 +361,23 @@ A short checklist, in the order that catches problems earliest.
    border, add it to `CONTROLS` in the contrast script.
 9. Screenshot it in `localOperatorLight` and `localOperatorDark` at minimum. The
    light themes are where contrast defects hide.
+
+### Disclosure
+
+**The chevron swaps, it never rotates.** `ChevronRight` collapsed,
+`ChevronDown` expanded, 14px, `text-ink-dim`. Rotation is a transition on a
+toggle, and § Motion reserves transitions for entrances.
+
+The canonical implementation is `@shared/components/ui/disclosure`. Import it.
+
+Two places legitimately cannot: `canvas-variables-viewer` and
+`chat-settings` both place action buttons as *siblings* of the trigger, and a
+button nested in a button is not markup a browser can resolve. Reimplementing
+the trigger is allowed there; reinventing the signal is not.
+
+This rule exists because the codebase reached three disclosure idioms, two of
+them carrying comments that each declared themselves "the app's one disclosure
+idiom" - and they disagreed. The cause was structural: the canonical component
+was buried in `features/chat/components/trace/`, so no other feature could
+import it even when its author wanted to. A shared idiom has to live in the
+shared layer or it is not one.

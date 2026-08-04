@@ -26,6 +26,7 @@ import {
 	type LocalOperatorClient,
 	createLocalOperatorClient,
 } from "@shared/api/local-operator";
+import { Disclosure } from "@shared/components/ui/disclosure";
 import { apiConfig } from "@shared/config";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
@@ -39,7 +40,6 @@ import { isMessageHidden } from "../../utils/message-grouping";
 import {
 	AgentQuestion,
 	AgentReasoning,
-	Disclosure,
 	SecurityNotice,
 	TraceLine,
 } from "../trace";

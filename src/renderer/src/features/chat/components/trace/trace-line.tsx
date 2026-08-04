@@ -12,10 +12,10 @@
  */
 
 import type { ActionType } from "@shared/api/local-operator/types";
+import { Disclosure } from "@shared/components/ui/disclosure";
 import { cn } from "@shared/lib/utils";
 import { CircleAlert } from "lucide-react";
 import type { ReactNode } from "react";
-import { Disclosure } from "./disclosure";
 import { getTraceLabel } from "./trace-labels";
 
 export type TraceLineProps = {
