@@ -1,29 +1,30 @@
 /**
  * User Profile Step Component
  *
- * Second step in the onboarding process that allows the user to set up their profile
- * with a clean and modern interface.
+ * Second step in the onboarding process. Two fields, one of them optional, and
+ * a line saying where the answers go.
  */
 
-import { Box, TextField, useTheme } from "@mui/material";
+import { Input, Label } from "@shared/components/ui";
+import { cn } from "@shared/lib/utils";
 import { useUserStore } from "@shared/store/user-store";
-import { Lightbulb, Lock, Mail, UserRound } from "lucide-react";
 import type { FC } from "react";
 import { useEffect, useState } from "react";
-import {
-	FieldLabel,
-	FormContainer,
-	InlineIcon,
-	LabelIcon,
-	SectionContainer,
-	SectionDescription,
-} from "../onboarding-styled";
+
+/*
+ * Ids are named once and shared by each label, its input, and its help text. A
+ * typo in an inline `htmlFor` breaks the association silently: the field still
+ * looks labelled and only a screen reader finds out otherwise.
+ */
+const NAME_INPUT_ID = "onboarding-profile-name";
+const NAME_HELP_ID = "onboarding-profile-name-help";
+const EMAIL_INPUT_ID = "onboarding-profile-email";
+const EMAIL_HELP_ID = "onboarding-profile-email-help";
 
 /**
  * User profile step in the onboarding process
  */
 export const UserProfileStep: FC = () => {
-	const theme = useTheme();
 	const { profile, updateProfile } = useUserStore();
 	const [name, setName] = useState(profile.name === "User" ? "" : profile.name);
 	const [email, setEmail] = useState(
@@ -54,127 +55,55 @@ export const UserProfileStep: FC = () => {
 		}
 	};
 
-	// Handle email change
-	const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-		setEmail(e.target.value);
-	};
-
-	// Define shadcn-like input styles using sx prop for simplicity
-	const inputSx = {
-		"& .MuiOutlinedInput-root": {
-			borderRadius: theme.shape.borderRadius * 0.75, // Consistent radius
-			backgroundColor: theme.palette.background.paper,
-			border: `1px solid ${theme.palette.divider}`,
-			minHeight: "40px", // Slightly taller for better touch targets/visuals
-			height: "40px",
-			transition: "border-color 0.2s ease, box-shadow 0.2s ease",
-			"&:hover": {
-				borderColor: theme.palette.text.secondary,
-			},
-			"&.Mui-focused": {
-				borderColor: theme.palette.primary.main,
-				boxShadow: `0 0 0 2px ${theme.palette.primary.main}33`,
-			},
-			"& .MuiOutlinedInput-notchedOutline": {
-				border: "none", // Remove the default notch
-			},
-			"& .MuiInputBase-input": {
-				padding: theme.spacing(1, 1.5), // Adjusted padding
-				fontSize: "0.875rem",
-				height: "calc(40px - 16px)", // Adjust height based on padding
-				boxSizing: "border-box",
-			},
-			"& .MuiInputBase-input::placeholder": {
-				color: theme.palette.text.disabled,
-				opacity: 1,
-			},
-			// Adjust adornment position if needed
-			"& .MuiInputAdornment-root": {
-				marginRight: theme.spacing(0.5), // Ensure space between adornment and text
-			},
-		},
-		// Style helper text
-		"& .MuiFormHelperText-root": {
-			fontSize: "0.75rem",
-			mt: 0.5,
-			ml: 0.5, // Keep margin for alignment under the input
-		},
-		// Remove MUI label specific styles from inputSx
-		// "& .MuiInputLabel-root": { ... },
-		// "& .MuiInputLabel-outlined.MuiInputLabel-shrink": { ... },
-	};
-
 	return (
-		<SectionContainer>
-			<SectionDescription>
-				<InlineIcon>
-					<Lock size={16} />
-				</InlineIcon>
-				This info is stored locally to personalize your AI experience and is
-				never shared externally.
-			</SectionDescription>
+		<div className="flex flex-col gap-6">
+			<p className="text-body text-ink-muted">
+				This is stored on your device to personalize how your agents talk to
+				you. It is never sent anywhere.
+			</p>
 
-			<FormContainer>
-				{/* Name Field */}
-				<Box>
-					{" "}
-					{/* Wrap Label and Input */}
-					<FieldLabel>
-						<LabelIcon>
-							<UserRound size={14} />
-						</LabelIcon>
-						Your Name
-					</FieldLabel>
-					<TextField
-						// Remove label prop
-						variant="outlined"
-						fullWidth
+			<div className="flex flex-col gap-5">
+				<div className="flex flex-col gap-2">
+					<Label htmlFor={NAME_INPUT_ID}>Your name</Label>
+					<Input
+						id={NAME_INPUT_ID}
+						inputSize="lg"
 						value={name}
 						onChange={handleNameChange}
-						error={!!nameError}
-						helperText={nameError || "Used to personalize your AI interactions"}
 						placeholder="Enter your name"
 						required
-						// Remove InputProps startAdornment if icon moved to label
-						// InputProps={{ ... }}
-						sx={inputSx} // Apply shared input styles
+						/* The invalid border is painted from this attribute alone, so
+						   the red edge and the announced error cannot disagree. */
+						aria-invalid={nameError ? true : undefined}
+						aria-describedby={NAME_HELP_ID}
 					/>
-				</Box>
+					<p
+						id={NAME_HELP_ID}
+						className={cn(
+							"text-meta",
+							nameError ? "text-danger" : "text-ink-dim",
+						)}
+					>
+						{nameError || "Used to personalize how your agents address you"}
+					</p>
+				</div>
 
-				{/* Email Field */}
-				<Box>
-					{" "}
-					{/* Wrap Label and Input */}
-					<FieldLabel>
-						<LabelIcon>
-							<Mail size={14} />
-						</LabelIcon>
-						Email Address (Optional)
-					</FieldLabel>
-					<TextField
-						// Remove label prop
-						variant="outlined"
-						fullWidth
-						value={email}
-						onChange={handleEmailChange}
-						helperText="Stored locally for convenience, not shared"
-						placeholder="Enter your email address"
+				<div className="flex flex-col gap-2">
+					<Label htmlFor={EMAIL_INPUT_ID}>Email address (optional)</Label>
+					<Input
+						id={EMAIL_INPUT_ID}
+						inputSize="lg"
 						type="email"
-						// Remove InputProps startAdornment if icon moved to label
-						// InputProps={{ ... }}
-						sx={inputSx} // Apply shared input styles
+						value={email}
+						onChange={(e) => setEmail(e.target.value)}
+						placeholder="Enter your email address"
+						aria-describedby={EMAIL_HELP_ID}
 					/>
-				</Box>
-			</FormContainer>
-
-			{/* Use SectionDescription for the final tip */}
-			<SectionDescription sx={{ mt: 3, textAlign: "center" }}>
-				<InlineIcon sx={{ mr: 0.5 }}>
-					<Lightbulb size={16} />
-				</InlineIcon>
-				Personalizing your profile helps AI assistants provide a more tailored
-				experience!
-			</SectionDescription>
-		</SectionContainer>
+					<p id={EMAIL_HELP_ID} className="text-ink-dim text-meta">
+						Stored on your device for convenience, not shared
+					</p>
+				</div>
+			</div>
+		</div>
 	);
 };

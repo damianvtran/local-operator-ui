@@ -19,13 +19,6 @@ import { useUpdateAgent } from "@shared/hooks/use-update-agent";
 import { Trash2, X } from "lucide-react";
 import type { FC } from "react";
 import { useEffect, useState } from "react";
-import {
-	CloseButton,
-	HeaderTitle,
-	SidebarContainer,
-	SidebarContent,
-	SidebarHeader,
-} from "./chat-options-sidebar-styled";
 import { GenerationSettingsSection } from "./generation-settings-section";
 import { ModelHostingSection } from "./model-hosting-section";
 
@@ -70,13 +63,13 @@ const ClearConversationSection: FC<{
 				onClick={() => setIsConfirmationOpen(true)}
 			>
 				<Trash2 size={16} aria-hidden="true" />
-				Clear Conversation
+				Clear conversation
 			</Button>
 
 			<ConfirmationModal
 				open={isConfirmationOpen}
-				title="Clear Conversation"
-				message="Are you sure you want to clear this conversation? This action cannot be undone and all messages will be permanently deleted."
+				title="Clear conversation"
+				message="This permanently deletes every message in this conversation. It cannot be undone."
 				confirmText="Clear"
 				cancelText="Cancel"
 				isDangerous
@@ -129,46 +122,49 @@ export const ChatOptionsSidebar: FC<ChatOptionsSidebarProps> = ({
 				showClose={false}
 				className="w-[380px] max-w-[380px] gap-0 bg-surface p-0"
 			>
-				<SidebarContainer>
-					<SidebarHeader>
-						<HeaderTitle>
-							<SheetTitle className="font-semibold text-heading text-ink">
-								Chat Options
-							</SheetTitle>
-							<SheetDescription className="text-body-sm text-ink-muted">
-								Customize settings for this agent
-							</SheetDescription>
-						</HeaderTitle>
-						<CloseButton onClick={onClose}>
-							<X size={14} aria-hidden="true" />
-						</CloseButton>
-					</SidebarHeader>
+				<div className="flex items-center justify-between border-hairline border-b px-6 py-4">
+					<div className="flex flex-col gap-0.5">
+						<SheetTitle className="font-semibold text-heading text-ink">
+							Chat Options
+						</SheetTitle>
+						<SheetDescription className="text-body-sm text-ink-muted">
+							Customize settings for this agent
+						</SheetDescription>
+					</div>
+					<Button
+						variant="ghost"
+						size="icon"
+						onClick={onClose}
+						aria-label="Close"
+					>
+						<X size={14} aria-hidden="true" />
+					</Button>
+				</div>
 
-					<SidebarContent>
-						{/* Model and Hosting Section */}
-						<ModelHostingSection
-							agent={localAgent}
-							savingField={savingField}
-							setSavingField={setSavingField}
-							setLocalAgent={setLocalAgent}
-							refetchAgent={refetchAgent}
-							updateAgentMutation={updateAgentMutation}
-						/>
+				<div className="grow overflow-y-auto px-6 py-4">
+					{/* Model and Hosting Section */}
+					<ModelHostingSection
+						agent={localAgent}
+						savingField={savingField}
+						setSavingField={setSavingField}
+						setLocalAgent={setLocalAgent}
+						refetchAgent={refetchAgent}
+						updateAgentMutation={updateAgentMutation}
+					/>
 
-						{/* Generation Settings Section */}
-						<GenerationSettingsSection
-							agent={localAgent}
-							savingField={savingField}
-							setSavingField={setSavingField}
-							setLocalAgent={setLocalAgent}
-							refetchAgent={refetchAgent}
-							updateAgentMutation={updateAgentMutation}
-						/>
+					{/* Generation Settings Section */}
+					<GenerationSettingsSection
+						agent={localAgent}
+						savingField={savingField}
+						setSavingField={setSavingField}
+						setLocalAgent={setLocalAgent}
+						refetchAgent={refetchAgent}
+						updateAgentMutation={updateAgentMutation}
+					/>
 
-						{/* Clear Conversation Section */}
-						{agentId && <ClearConversationSection agentId={agentId} />}
-					</SidebarContent>
-				</SidebarContainer>
+					{/* Clear Conversation Section */}
+					{agentId && <ClearConversationSection agentId={agentId} />}
+				</div>
 			</SheetContent>
 		</Sheet>
 	);

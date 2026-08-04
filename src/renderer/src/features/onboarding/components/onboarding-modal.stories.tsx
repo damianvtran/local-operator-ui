@@ -4,6 +4,9 @@ import {
 } from "@shared/store/onboarding-store";
 import type { Meta, StoryObj } from "@storybook/react";
 import React from "react"; // Add React import
+/* Storybook's preview does not load the app's stylesheet, so a story that
+   renders ported components has to bring it or it renders with no utilities. */
+import "../../../styles/index.css";
 import { OnboardingModal } from "./onboarding-modal";
 
 /**

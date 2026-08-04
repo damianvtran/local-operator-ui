@@ -1,54 +1,37 @@
 /**
  * Default Model Step Component
  *
- * Fifth step in the onboarding process that allows the user to select a default model
- * with an exciting and engaging interface.
+ * Fifth step in the onboarding process: which model agents use unless an agent
+ * says otherwise. The choice saves itself, and the line under the fields is the
+ * receipt.
  */
 
+import { Spinner } from "@shared/components/common/spinner";
 import {
 	Alert,
-	Box,
-	CircularProgress,
-	FormControl,
-	FormHelperText,
-	MenuItem,
+	Label,
 	Select,
-	type SelectChangeEvent,
-	Typography,
-	alpha,
-	useTheme,
-} from "@mui/material";
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@shared/components/ui";
 import { useConfig } from "@shared/hooks/use-config";
 import { useCredentials } from "@shared/hooks/use-credentials";
 import { useModels } from "@shared/hooks/use-models";
 import { useUpdateConfig } from "@shared/hooks/use-update-config";
-import {
-	Bot,
-	Brain,
-	Check,
-	PartyPopper,
-	Rocket,
-	Sparkles,
-	WandSparkles,
-} from "lucide-react";
 import type { FC } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-	FieldLabel,
-	FormContainer,
-	InlineIcon,
-	LabelIcon,
-	SectionContainer,
-	SectionDescription,
-	SectionTitle,
-	menuPropsSx,
-} from "../onboarding-styled";
+
+const PROVIDER_SELECT_ID = "onboarding-default-provider";
+const PROVIDER_HELP_ID = "onboarding-default-provider-help";
+const MODEL_SELECT_ID = "onboarding-default-model";
+const MODEL_HELP_ID = "onboarding-default-model-help";
 
 /**
  * Default model step in the onboarding process
  */
 export const DefaultModelStep: FC = () => {
-	const theme = useTheme(); // Get theme context
 	// Get models, credentials, and config
 	const {
 		providers,
@@ -68,7 +51,7 @@ export const DefaultModelStep: FC = () => {
 	const [saveSuccess, setSaveSuccess] = useState(false);
 
 	// Reference to store the timeout ID for clearing
-	const successTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+	const successTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
 	// Reference to track if models have been refreshed
 	const hasRefreshedModelsRef = useRef(false);
@@ -91,26 +74,6 @@ export const DefaultModelStep: FC = () => {
 		return models.filter((model) => model.provider === selectedProvider);
 	}, [models, selectedProvider]);
 
-	// Handle provider selection change
-	const handleProviderChange = (event: SelectChangeEvent) => {
-		const newProvider = event.target.value;
-		setSelectedProvider(newProvider);
-		setSelectedModel(""); // Reset model when provider changes
-		setSaveSuccess(false);
-	};
-
-	// Handle model selection change
-	const handleModelChange = (event: SelectChangeEvent) => {
-		const newModel = event.target.value;
-		setSelectedModel(newModel);
-		setSaveSuccess(false);
-
-		// Only save when the user explicitly selects a model (and provider is already selected)
-		if (selectedProvider && newModel) {
-			saveModelConfig(selectedProvider, newModel);
-		}
-	};
-
 	// Save the model configuration when selections are complete
 	const saveModelConfig = useCallback(
 		async (provider: string, model: string) => {
@@ -124,10 +87,8 @@ export const DefaultModelStep: FC = () => {
 					});
 					setSaveSuccess(true);
 
-					// Clear any existing timeout
-					if (successTimeoutRef.current) {
-						clearTimeout(successTimeoutRef.current);
-					}
+					// Replace any pending hide, so the message lives 3s from this save
+					clearTimeout(successTimeoutRef.current);
 
 					// Set a timeout to hide the success message after 3 seconds
 					successTimeoutRef.current = setTimeout(() => {
@@ -146,11 +107,7 @@ export const DefaultModelStep: FC = () => {
 
 	// Clean up the timeout when the component unmounts
 	useEffect(() => {
-		return () => {
-			if (successTimeoutRef.current) {
-				clearTimeout(successTimeoutRef.current);
-			}
-		};
+		return () => clearTimeout(successTimeoutRef.current);
 	}, []);
 
 	// Refresh models when credentials change - only once when credentials are loaded
@@ -221,263 +178,105 @@ export const DefaultModelStep: FC = () => {
 	// Loading state
 	const isLoading = isLoadingModels || isLoadingCredentials || isLoadingConfig;
 
-	// Define shadcn-like input styles using sx prop
-	const inputSx = {
-		"& .MuiOutlinedInput-root": {
-			borderRadius: theme.shape.borderRadius * 0.75,
-			backgroundColor: theme.palette.background.paper,
-			border: `1px solid ${theme.palette.divider}`,
-			minHeight: "40px",
-			height: "40px",
-			transition: "border-color 0.2s ease, box-shadow 0.2s ease",
-			"&:hover": {
-				borderColor: theme.palette.text.secondary,
-			},
-			"&.Mui-focused": {
-				borderColor: theme.palette.primary.main,
-				boxShadow: `0 0 0 2px ${theme.palette.primary.main}33`,
-			},
-			"& .MuiOutlinedInput-notchedOutline": {
-				border: "none",
-			},
-			"& .MuiInputBase-input": {
-				// Covers TextField input
-				padding: theme.spacing(1, 1.5),
-				fontSize: "0.875rem",
-				height: "calc(40px - 16px)",
-				boxSizing: "border-box",
-			},
-			"& .MuiSelect-select": {
-				// Specific styles for Select input
-				paddingTop: theme.spacing(1),
-				paddingBottom: theme.spacing(1),
-				paddingLeft: theme.spacing(1.5),
-				display: "flex",
-				alignItems: "center",
-				gap: theme.spacing(1),
-				height: "calc(40px - 16px) !important", // Ensure height matches
-				minHeight: "calc(40px - 16px) !important",
-			},
-			"& .MuiInputAdornment-root": {
-				color: theme.palette.text.secondary,
-				marginRight: theme.spacing(0.5),
-			},
-		},
-		"& .MuiFormHelperText-root": {
-			fontSize: "0.75rem",
-			mt: 0.5,
-			ml: 0.5,
-		},
-		// Remove MUI label specific styles from inputSx
-		// "& .MuiInputLabel-root": { ... },
-		// "& .MuiInputLabel-outlined.MuiInputLabel-shrink": { ... },
-	};
-
-	// Style for info boxes
-	const infoBoxSx = {
-		p: 1.5,
-		borderRadius: theme.shape.borderRadius * 0.75,
-		border: `1px solid ${theme.palette.divider}`,
-		backgroundColor: alpha(theme.palette.background.default, 0.5),
-		display: "flex",
-		alignItems: "center",
-		gap: 1.5,
-	};
-
-	// Style for the success alert
-	const successAlertSx = {
-		mt: 2, // Adjusted margin
-		mb: 1, // Adjusted margin
-		borderRadius: theme.shape.borderRadius * 0.75,
-		border: `1px solid ${theme.palette.success.main}`,
-		backgroundColor: alpha(theme.palette.success.main, 0.1),
-		color: theme.palette.success.dark,
-		"& .MuiAlert-icon": {
-			color: theme.palette.success.main,
-		},
-	};
-
-	// Style for the final confirmation box
-	const confirmationBoxSx = {
-		mt: 2, // Adjusted margin
-		p: 1.5, // Adjusted padding
-		borderRadius: theme.shape.borderRadius * 0.75,
-		backgroundColor: alpha(theme.palette.success.main, 0.08),
-		border: `1px solid ${alpha(theme.palette.success.main, 0.2)}`,
-		display: "flex",
-		alignItems: "flex-start", // Align items start for potentially wrapping text
-		gap: theme.spacing(1),
-	};
+	const selectedModelName = availableModels.find(
+		(model) => model.id === selectedModel,
+	)?.name;
+	const selectedProviderName = availableProviders.find(
+		(provider) => provider.id === selectedProvider,
+	)?.name;
 
 	return (
-		<SectionContainer>
-			{/* Use SectionTitle from onboarding-styled */}
-			<SectionTitle>
-				<InlineIcon sx={{ mb: 0 }}>
-					<Sparkles size={18} />
-				</InlineIcon>
-				Choose Your Default Model
-			</SectionTitle>
-			<SectionDescription>
-				Select the default AI model and provider for your agents. You can
-				customize this per agent later.
-			</SectionDescription>
+		<div className="flex flex-col gap-6">
+			<p className="text-body text-ink-muted">
+				Pick the model your agents use by default. Models differ in speed, cost
+				and capability, and every agent can override this later.
+			</p>
 
-			{/* "Choose wisely" Info Box */}
-			<Box sx={{ ...infoBoxSx, mb: 2 }}>
-				<Brain size={20} color={theme.palette.primary.main} />
-				<Typography variant="body2">
-					<Typography component="span" fontWeight="medium">
-						Choose wisely!
-					</Typography>{" "}
-					Different models have different capabilities and costs. Pick one that
-					suits your general needs.
-				</Typography>
-			</Box>
-
-			<FormContainer>
-				{isLoading ? (
-					// Simple loading indicator
-					<Box
-						sx={{
-							display: "flex",
-							justifyContent: "center",
-							alignItems: "center",
-							p: 3,
-							gap: 1,
-						}}
-					>
-						<CircularProgress size={20} />
-						<Typography variant="body2" color="text.secondary">
-							Loading available models...
-						</Typography>
-					</Box>
-				) : (
-					<>
-						{/* Provider Selection */}
-						<Box>
-							{" "}
-							{/* Wrap Label and Input */}
-							<FieldLabel>
-								<LabelIcon>
-									<Bot size={14} />
-								</LabelIcon>
-								Model Provider
-							</FieldLabel>
-							<FormControl fullWidth variant="outlined" sx={inputSx}>
-								{/* Remove InputLabel */}
-								<Select
-									// Remove labelId and label props
-									id="provider-select"
-									value={selectedProvider}
-									onChange={handleProviderChange}
-									MenuProps={menuPropsSx(theme)} // Apply dropdown styles
-									// Remove startAdornment
-								>
-									{availableProviders.map((provider) => (
-										<MenuItem key={provider.id} value={provider.id}>
-											{provider.name}
-										</MenuItem>
-									))}
-								</Select>
-								<FormHelperText>
-									Providers you've added credentials for
-								</FormHelperText>
-							</FormControl>
-						</Box>
-
-						{/* Model Selection */}
-						{selectedProvider && (
-							<Box sx={{ mt: 1.5 }}>
-								{" "}
-								{/* Wrap Label and Input */}
-								<FieldLabel>
-									<LabelIcon>
-										<WandSparkles size={14} />
-									</LabelIcon>
-									AI Model
-								</FieldLabel>
-								<FormControl fullWidth variant="outlined" sx={inputSx}>
-									{/* Remove InputLabel */}
-									<Select
-										// Remove labelId and label props
-										id="model-select"
-										value={selectedModel}
-										onChange={handleModelChange}
-										MenuProps={menuPropsSx(theme)} // Apply dropdown styles
-										// Remove startAdornment
-										disabled={availableModels.length === 0} // Disable if no models
-									>
-										{availableModels.length === 0 && (
-											<MenuItem disabled value="">
-												No models found for this provider
-											</MenuItem>
-										)}
-										{availableModels.map((model) => (
-											<MenuItem key={model.id} value={model.id}>
-												{model.name}
-											</MenuItem>
-										))}
-									</Select>
-									<FormHelperText>Select the specific AI model</FormHelperText>
-								</FormControl>
-							</Box>
-						)}
-
-						{/* Save Success Alert */}
-						{saveSuccess && (
-							<Alert
-								severity="success"
-								icon={<Check size={16} />}
-								sx={successAlertSx}
+			{isLoading ? (
+				<div className="flex items-center justify-center gap-3 py-8">
+					<Spinner size="sm" />
+					<p className="text-body-sm text-ink-muted">Loading your models</p>
+				</div>
+			) : (
+				<div className="flex flex-col gap-5">
+					<div className="flex flex-col gap-2">
+						<Label htmlFor={PROVIDER_SELECT_ID}>Model provider</Label>
+						<Select
+							value={selectedProvider}
+							onValueChange={(value) => {
+								setSelectedProvider(value);
+								setSelectedModel(""); // Reset model when provider changes
+								setSaveSuccess(false);
+							}}
+						>
+							<SelectTrigger
+								id={PROVIDER_SELECT_ID}
+								className="h-9.5 text-body"
+								aria-describedby={PROVIDER_HELP_ID}
 							>
-								<Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-									<InlineIcon sx={{ mb: 0 }}>
-										<PartyPopper size={14} />
-									</InlineIcon>
-									Default model saved!
-								</Box>
-							</Alert>
-						)}
+								<SelectValue placeholder="Select a provider" />
+							</SelectTrigger>
+							<SelectContent>
+								{availableProviders.map((provider) => (
+									<SelectItem key={provider.id} value={provider.id}>
+										{provider.name}
+									</SelectItem>
+								))}
+							</SelectContent>
+						</Select>
+						<p id={PROVIDER_HELP_ID} className="text-ink-dim text-meta">
+							Providers you have added credentials for
+						</p>
+					</div>
 
-						{/* Confirmation Box */}
-						{selectedProvider && selectedModel && !isSaving && (
-							<Box sx={confirmationBoxSx}>
-								<InlineIcon sx={{ mb: 0, mt: 0.2 }}>
-									<Rocket size={14} />
-								</InlineIcon>
-								<Typography variant="body2" color="text.secondary">
-									Default set to{" "}
-									<Typography
-										component="span"
-										fontWeight="medium"
-										color="text.primary"
-									>
-										{
-											availableModels.find(
-												(model) => model.id === selectedModel,
-											)?.name
+					{selectedProvider && (
+						<div className="flex flex-col gap-2">
+							<Label htmlFor={MODEL_SELECT_ID}>Model</Label>
+							<Select
+								value={selectedModel}
+								onValueChange={(value) => {
+									setSelectedModel(value);
+									setSaveSuccess(false);
+
+									// Only save when the user explicitly picks a model
+									if (selectedProvider && value) {
+										saveModelConfig(selectedProvider, value);
+									}
+								}}
+								disabled={availableModels.length === 0}
+							>
+								<SelectTrigger
+									id={MODEL_SELECT_ID}
+									className="h-9.5 text-body"
+									aria-describedby={MODEL_HELP_ID}
+								>
+									<SelectValue
+										placeholder={
+											availableModels.length === 0
+												? "No models available for this provider"
+												: "Select a model"
 										}
-									</Typography>{" "}
-									from{" "}
-									<Typography
-										component="span"
-										fontWeight="medium"
-										color="text.primary"
-									>
-										{
-											availableProviders.find(
-												(provider) => provider.id === selectedProvider,
-											)?.name
-										}
-									</Typography>
-									.
-								</Typography>
-							</Box>
-						)}
-					</>
-				)}
-			</FormContainer>
-		</SectionContainer>
+									/>
+								</SelectTrigger>
+								<SelectContent>
+									{availableModels.map((model) => (
+										<SelectItem key={model.id} value={model.id}>
+											{model.name}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+							<p id={MODEL_HELP_ID} className="text-ink-dim text-meta">
+								{selectedModelName && selectedProviderName && !isSaving
+									? `Agents will use ${selectedModelName} from ${selectedProviderName}`
+									: "The model your agents start with"}
+							</p>
+						</div>
+					)}
+
+					{saveSuccess && <Alert variant="success">Default model saved</Alert>}
+				</div>
+			)}
+		</div>
 	);
 };

@@ -10,17 +10,12 @@ import type {
 } from "@shared/api/local-operator/types";
 import { EditableField } from "@shared/components/common/editable-field";
 import { SliderSetting } from "@shared/components/common/slider-setting";
-import { Tooltip } from "@shared/components/ui";
+import { Button, Tooltip } from "@shared/components/ui";
 import { showErrorToast } from "@shared/utils/toast-manager";
 import type { UseMutationResult } from "@tanstack/react-query";
 import { Info, Settings, SlidersHorizontal } from "lucide-react";
 import type { FC } from "react";
 import { updateAgentSetting } from "../utils/chat-options-utils";
-import {
-	InfoButton,
-	SectionTitle,
-	TitleIcon,
-} from "./chat-options-sidebar-styled";
 import { UnsetSliderSetting } from "./unset-slider-setting";
 import { UnsetTextSetting } from "./unset-text-setting";
 
@@ -76,17 +71,23 @@ export const GenerationSettingsSection: FC<GenerationSettingsSectionProps> = ({
 }) => {
 	return (
 		<>
-			<SectionTitle>
-				<TitleIcon icon={SlidersHorizontal} />
-				Generation Settings
+			<h3 className="mt-6 mb-4 flex items-center font-semibold text-heading text-ink">
+				<span className="mr-2 flex items-center rounded-sm bg-accent-wash p-1 text-accent">
+					<SlidersHorizontal size={16} aria-hidden="true" />
+				</span>
+				Generation settings
 				<Tooltip content="Settings that control how the agent generates responses">
-					<span>
-						<InfoButton>
-							<Info size={12} aria-hidden="true" />
-						</InfoButton>
-					</span>
+					<Button
+						variant="ghost"
+						size="icon-sm"
+						type="button"
+						className="ml-1 text-accent"
+						aria-label="More info"
+					>
+						<Info size={12} aria-hidden="true" />
+					</Button>
 				</Tooltip>
-			</SectionTitle>
+			</h3>
 
 			<div className="mb-4">
 				<p className="mb-4 text-body-sm text-ink-muted">
@@ -222,7 +223,7 @@ export const GenerationSettingsSection: FC<GenerationSettingsSectionProps> = ({
 			{/* Max Tokens Setting */}
 			{agent.max_tokens === null ? (
 				<UnsetSliderSetting
-					label="Max Tokens"
+					label="Max tokens"
 					description="Maximum tokens to generate in response."
 					defaultValue={4096}
 					onSetValue={async (value) => {
@@ -240,7 +241,7 @@ export const GenerationSettingsSection: FC<GenerationSettingsSectionProps> = ({
 			) : (
 				<SliderSetting
 					value={agent.max_tokens ?? 4096}
-					label="Max Tokens"
+					label="Max tokens"
 					description="Maximum tokens to generate in response."
 					min={1}
 					max={8192}
@@ -263,7 +264,7 @@ export const GenerationSettingsSection: FC<GenerationSettingsSectionProps> = ({
 			{/* Stop Sequences Setting */}
 			{agent.stop === null ? (
 				<UnsetTextSetting
-					label="Stop Sequences"
+					label="Stop sequences"
 					description="Sequences that will cause the model to stop generating text."
 					defaultValue={[]}
 					defaultDisplayText="empty"
@@ -283,7 +284,7 @@ export const GenerationSettingsSection: FC<GenerationSettingsSectionProps> = ({
 			) : (
 				<EditableField
 					value={agent.stop?.join("\n") || ""}
-					label="Stop Sequences"
+					label="Stop sequences"
 					placeholder="Enter stop sequences (one per line)..."
 					icon={<Settings size={16} />}
 					multiline
@@ -312,7 +313,7 @@ export const GenerationSettingsSection: FC<GenerationSettingsSectionProps> = ({
 			{/* Frequency Penalty Setting */}
 			{agent.frequency_penalty === null ? (
 				<UnsetSliderSetting
-					label="Frequency Penalty"
+					label="Frequency penalty"
 					description="Reduces repetition by lowering likelihood of repeated tokens (-2.0 to 2.0)."
 					defaultValue={0}
 					onSetValue={async (value) => {
@@ -330,7 +331,7 @@ export const GenerationSettingsSection: FC<GenerationSettingsSectionProps> = ({
 			) : (
 				<SliderSetting
 					value={agent.frequency_penalty ?? 0}
-					label="Frequency Penalty"
+					label="Frequency penalty"
 					description="Reduces repetition by lowering likelihood of repeated tokens (-2.0 to 2.0)."
 					min={-2}
 					max={2}
@@ -353,7 +354,7 @@ export const GenerationSettingsSection: FC<GenerationSettingsSectionProps> = ({
 			{/* Presence Penalty Setting */}
 			{agent.presence_penalty === null ? (
 				<UnsetSliderSetting
-					label="Presence Penalty"
+					label="Presence penalty"
 					description="Increases diversity by lowering likelihood of prompt tokens (-2.0 to 2.0)."
 					defaultValue={0}
 					onSetValue={async (value) => {
@@ -371,7 +372,7 @@ export const GenerationSettingsSection: FC<GenerationSettingsSectionProps> = ({
 			) : (
 				<SliderSetting
 					value={agent.presence_penalty ?? 0}
-					label="Presence Penalty"
+					label="Presence penalty"
 					description="Increases diversity by lowering likelihood of prompt tokens (-2.0 to 2.0)."
 					min={-2}
 					max={2}

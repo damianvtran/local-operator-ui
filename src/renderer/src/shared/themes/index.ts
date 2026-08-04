@@ -99,10 +99,13 @@ export const applyThemeToDocument = (themeName: ThemeName): void => {
 /*
  * The default palette, published at import.
  *
- * The installer window mounts MUI's own `ThemeProvider` with `DEFAULT_THEME`
- * rather than this directory's `ThemeProvider`, so nothing there would ever
- * set the attribute. Guarded on the attribute being absent so the React
- * provider, which runs later and knows the user's choice, always wins.
+ * A document that renders app components without this directory's
+ * `ThemeProvider` — Storybook, and any surface that paints before the provider
+ * mounts — would otherwise carry no `data-theme` at all, and every Tailwind
+ * role utility would resolve to nothing. Guarded on the attribute being absent
+ * so the React provider, which runs later and knows the user's choice, always
+ * wins; the installer entry calls `applyThemeToDocument` itself for the same
+ * reason, before its first render.
  */
 if (
 	typeof document !== "undefined" &&
@@ -113,12 +116,13 @@ if (
 
 export type { ThemeName, ThemeOption };
 
-/**
- * The Radient theme as a bare MUI theme.
+/*
+ * There is no named export for a single palette, and there should not be.
  *
- * The onboarding Radient sign-in and choice steps paint themselves in Radient
- * blue regardless of which theme the user has picked, because they are
- * branding a third-party account, not the app. That is the only reason a
- * single theme is exported by name.
+ * The onboarding Radient steps do paint in Radient blue whichever theme the
+ * user picked — they brand a third-party account, not the app — but they get
+ * there with `data-theme="radient"` on the branded subtree, because the
+ * `[data-theme="<id>"]` blocks in themes.generated.css are plain attribute
+ * selectors and re-point `--lo-*` for their descendants alone. Reaching into
+ * one theme object to read a hex out of it is what that replaced.
  */
-export const radientTheme = themes.radient.theme;

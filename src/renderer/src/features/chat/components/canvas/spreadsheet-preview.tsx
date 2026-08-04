@@ -8,8 +8,8 @@ import type { FC } from "react";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as XLSX from "xlsx";
 
-import { alpha, styled, useTheme } from "@mui/material";
 import { useDebouncedValue } from "@shared/hooks/use-debounced-value";
+import { cn } from "@shared/lib/utils";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
 import type { CellValueChangedEvent, ColDef } from "ag-grid-community";
@@ -25,68 +25,111 @@ type SpreadsheetPreviewProps = {
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
-const SpreadsheetContainer = styled("div")({
-	height: "100%",
-	width: "100%",
-	display: "flex",
-	flexDirection: "column",
-	maskImage: "none",
+/**
+ * The grid's palette, expressed entirely in role variables.
+ *
+ * Every value here is a `var(--color-*)` / `var(--font-*)` read rather than a
+ * resolved colour, which is what lets a module-level constant be correct: the
+ * theme changes the variables, the browser recomputes, and the grid never
+ * re-renders or re-reads anything from JS. The params ag-grid derives from
+ * these (row hover mixes, focus ring, subtle text) are computed in CSS with
+ * `color-mix()`, so they follow the variables too.
+ *
+ * Only the base params are set. ag-grid's remaining defaults are `{ref: ...}`
+ * or mixes of `backgroundColor` / `foregroundColor` / `accentColor` /
+ * `borderColor`, so overriding those four carries most of the grid; the rest of
+ * this list is the surfaces whose defaults are literal light-theme colours
+ * (menus, tooltips, inputs, shadows) and would otherwise stay light in a dark
+ * theme.
+ */
+const SPREADSHEET_THEME = themeQuartz.withPart(iconSetQuartz).withParams({
+	// Grounds, ink and lines.
+	backgroundColor: "var(--color-surface)",
+	foregroundColor: "var(--color-ink)",
+	cellTextColor: "var(--color-ink)",
+	borderColor: "var(--color-hairline)",
+	chromeBackgroundColor: "var(--color-sunken)",
+	headerBackgroundColor: "var(--color-sunken)",
+	headerTextColor: "var(--color-ink-muted)",
+	// Zebra striping is one ground step, not a re-derived alpha.
+	oddRowBackgroundColor: "var(--color-canvas)",
+	rowHoverColor: "var(--color-accent-wash)",
+	selectedRowBackgroundColor: "var(--color-accent-wash)",
+	accentColor: "var(--color-accent)",
+	invalidColor: "var(--color-danger)",
+	// Native scrollbars and form controls inside the grid follow the palette.
+	browserColorScheme: "inherit",
+
+	// Type: chrome in the app's sans, cell data in the machine voice.
+	fontFamily: "var(--font-sans)",
+	headerFontFamily: "var(--font-sans)",
+	cellFontFamily: "var(--font-mono)",
+	fontSize: "var(--text-meta)",
+	headerFontSize: "var(--text-body)",
+	dataFontSize: "var(--text-mono-sm)",
+
+	// Sort, filter and menu icons.
+	iconColor: "var(--color-ink-muted)",
+	iconButtonColor: "var(--color-ink-muted)",
+	iconButtonHoverColor: "var(--color-ink)",
+	iconButtonBackgroundColor: "transparent",
+	iconButtonHoverBackgroundColor: "var(--color-accent-wash)",
+
+	// Column menus, filter popups and tooltips: true overlays, so the one
+	// shadow applies and the ground is `elevated`.
+	menuBackgroundColor: "var(--color-elevated)",
+	menuTextColor: "var(--color-ink)",
+	menuBorder: "solid 1px var(--color-hairline)",
+	tooltipBackgroundColor: "var(--color-elevated)",
+	tooltipTextColor: "var(--color-ink)",
+	tooltipBorder: "solid 1px var(--color-hairline)",
+	popupShadow: "var(--shadow-overlay)",
+	cardShadow: "var(--shadow-overlay)",
+	modalOverlayBackgroundColor: "var(--color-scrim)",
+
+	// Filter inputs.
+	inputBackgroundColor: "var(--color-surface)",
+	inputTextColor: "var(--color-ink)",
+	inputPlaceholderTextColor: "var(--color-ink-dim)",
+	inputBorder: "solid 1px var(--color-control)",
+	inputFocusBorder: "solid 1px var(--color-accent)",
+	inputDisabledBackgroundColor: "var(--color-sunken)",
+	inputDisabledTextColor: "var(--color-ink-disabled)",
+
+	// Filter buttons. Disabled is a colour, never a transparency.
+	buttonBackgroundColor: "var(--color-surface)",
+	buttonTextColor: "var(--color-ink)",
+	buttonBorder: "solid 1px var(--color-control)",
+	buttonHoverBackgroundColor: "var(--color-elevated)",
+	buttonHoverTextColor: "var(--color-ink)",
+	buttonDisabledBackgroundColor: "var(--color-sunken)",
+	buttonDisabledTextColor: "var(--color-ink-disabled)",
+
+	// Set-filter checkboxes.
+	checkboxUncheckedBackgroundColor: "transparent",
+	checkboxUncheckedBorderColor: "var(--color-control)",
+	checkboxCheckedBackgroundColor: "var(--color-accent)",
+	checkboxCheckedBorderColor: "var(--color-accent)",
+	checkboxCheckedShapeColor: "var(--color-on-accent)",
+
+	// An editing cell is marked by its border, not by lifting off the sheet.
+	cellEditingBorder: "solid 1px var(--color-accent)",
+	cellEditingShadow: "none",
+
+	// Metrics. The canvas panel already draws the outer boundary, so the grid
+	// does not draw a second one.
+	wrapperBorder: false,
+	wrapperBorderRadius: 0,
+	borderRadius: "var(--radius-sm)",
+	spacing: 8,
+	headerHeight: 36,
+	rowHeight: 36,
 });
-
-const GridWrapper = styled("div")(() => ({
-	flex: 1,
-	height: "calc(100% - 40px)",
-	width: "100%",
-}));
-
-const SheetTabsContainer = styled("div")(({ theme }) => ({
-	display: "flex",
-	borderTop: `1px solid ${theme.palette.divider}`,
-	padding: theme.spacing(0, 1),
-	background: theme.palette.background.paper,
-	height: "40px",
-	alignItems: "center",
-}));
-
-const SheetTab = styled("button")<{ "data-active": boolean }>(
-	({ theme, "data-active": active }) => ({
-		background: "none",
-		border: "none",
-		padding: theme.spacing(1, 2),
-		cursor: "pointer",
-		color: active ? theme.palette.text.primary : theme.palette.text.secondary,
-		position: "relative",
-		fontWeight: active ? 600 : 400,
-		transition: "color 0.3s",
-
-		"&:after": {
-			content: '""',
-			display: "block",
-			position: "absolute",
-			bottom: 0,
-			left: "50%",
-			transform: "translateX(-50%)",
-			width: active ? "100%" : "0%",
-			height: "2px",
-			backgroundColor: theme.palette.primary.main,
-			transition: "width 0.3s ease-in-out",
-		},
-
-		"&:hover": {
-			color: theme.palette.text.primary,
-		},
-
-		"&:hover:after": {
-			width: "100%",
-		},
-	}),
-);
 
 const SpreadsheetPreviewComponent: FC<SpreadsheetPreviewProps> = ({
 	document,
 	conversationId,
 }) => {
-	const theme = useTheme();
 	const gridRef = useRef<AgGridReact>(null);
 	const [sheetsData, setSheetsData] = useState<
 		Record<string, Record<string, unknown>[]>
@@ -117,7 +160,7 @@ const SpreadsheetPreviewComponent: FC<SpreadsheetPreviewProps> = ({
 				// We try to decode it, and if it fails, assume it's plain text.
 				try {
 					csvText = atob(fileContent);
-				} catch (_) {
+				} catch {
 					// Not a valid base64 string, so use content as is.
 				}
 				workbook = XLSX.read(csvText, { type: "string" });
@@ -155,17 +198,6 @@ const SpreadsheetPreviewComponent: FC<SpreadsheetPreviewProps> = ({
 		}
 	}, [document.content, document.path, parseFile]);
 
-	// Helper function to compare spreadsheet data
-	const isDataEqual = useCallback(
-		(
-			data1: Record<string, Record<string, unknown>[]>,
-			data2: Record<string, Record<string, unknown>[]>,
-		): boolean => {
-			return JSON.stringify(data1) === JSON.stringify(data2);
-		},
-		[],
-	);
-
 	const saveChanges = useCallback(async () => {
 		if (
 			!document.path ||
@@ -177,7 +209,10 @@ const SpreadsheetPreviewComponent: FC<SpreadsheetPreviewProps> = ({
 		}
 
 		// Final check - compare data to prevent unnecessary saves
-		if (isDataEqual(debouncedSheetsData, originalDataRef.current)) {
+		if (
+			JSON.stringify(debouncedSheetsData) ===
+			JSON.stringify(originalDataRef.current)
+		) {
 			// Data is the same, reset the hasUserChanges flag
 			setHasUserChanges(false);
 			return;
@@ -239,7 +274,6 @@ const SpreadsheetPreviewComponent: FC<SpreadsheetPreviewProps> = ({
 		setFiles,
 		hasUserChanges,
 		isSaving,
-		isDataEqual,
 	]);
 
 	useEffect(() => {
@@ -320,31 +354,9 @@ const SpreadsheetPreviewComponent: FC<SpreadsheetPreviewProps> = ({
 		}));
 	}, [activeSheetName, sheetsData]);
 
-	const customTheme = useMemo(() => {
-		return themeQuartz.withPart(iconSetQuartz).withParams({
-			backgroundColor: theme.palette.background.paper,
-			foregroundColor: theme.palette.text.primary,
-			borderColor: theme.palette.divider,
-			chromeBackgroundColor: theme.palette.background.default,
-			headerBackgroundColor: theme.palette.background.default,
-			headerTextColor: theme.palette.text.primary,
-			cellTextColor: theme.palette.text.primary,
-			oddRowBackgroundColor: alpha(theme.palette.action.hover, 0.03),
-			rowHoverColor: theme.palette.action.hover,
-			iconButtonBackgroundColor: theme.palette.background.paper,
-			iconButtonHoverBackgroundColor: alpha(theme.palette.action.hover, 0.03),
-			iconColor: theme.palette.text.secondary,
-			spacing: 8,
-			headerHeight: 36,
-			rowHeight: 36,
-			headerFontSize: 14,
-			fontSize: 12,
-		});
-	}, [theme]);
-
 	return (
-		<SpreadsheetContainer>
-			<GridWrapper>
+		<div className={cn("flex h-full w-full flex-col")}>
+			<div className={cn("min-h-0 w-full flex-1")}>
 				<AgGridReact
 					ref={gridRef}
 					rowData={sheetsData[activeSheetName] || []}
@@ -353,21 +365,45 @@ const SpreadsheetPreviewComponent: FC<SpreadsheetPreviewProps> = ({
 					defaultColDef={{
 						resizable: true,
 					}}
-					theme={customTheme}
+					theme={SPREADSHEET_THEME}
 				/>
-			</GridWrapper>
-			<SheetTabsContainer>
-				{Object.keys(sheetsData).map((sheetName) => (
-					<SheetTab
-						key={sheetName}
-						data-active={activeSheetName === sheetName}
-						onClick={() => setActiveSheetName(sheetName)}
-					>
-						{sheetName}
-					</SheetTab>
-				))}
-			</SheetTabsContainer>
-		</SpreadsheetContainer>
+			</div>
+			{/*
+			 * Sheet selection is the segmented-control idiom the app's Tabs
+			 * primitive defines — a sunken track with the active sheet raised to
+			 * `surface` — rather than the growing underline this used to draw.
+			 * Plain buttons because the grid above is a single instance shared by
+			 * every sheet, so there is no per-sheet panel for `role="tab"` to own.
+			 */}
+			<div
+				className={cn(
+					"flex h-10 shrink-0 items-center overflow-x-auto border-hairline border-t bg-surface px-2",
+				)}
+			>
+				<div
+					className={cn(
+						"inline-flex h-8 w-fit items-center gap-1 rounded-md bg-sunken p-1",
+					)}
+				>
+					{Object.keys(sheetsData).map((sheetName) => (
+						<button
+							key={sheetName}
+							type="button"
+							aria-pressed={activeSheetName === sheetName}
+							onClick={() => setActiveSheetName(sheetName)}
+							className={cn(
+								"inline-flex h-6 shrink-0 items-center justify-center whitespace-nowrap rounded-sm px-3 font-medium text-body-sm transition-colors duration-fast ease-out-quart",
+								activeSheetName === sheetName
+									? "bg-surface text-ink"
+									: "text-ink-muted hover:text-ink",
+							)}
+						>
+							{sheetName}
+						</button>
+					))}
+				</div>
+			</div>
+		</div>
 	);
 };
 

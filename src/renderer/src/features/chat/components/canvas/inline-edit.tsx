@@ -1,15 +1,3 @@
-import {
-	Box,
-	Button,
-	CircularProgress,
-	IconButton,
-	Paper,
-	TextField,
-	Tooltip,
-	Typography,
-	alpha,
-	styled,
-} from "@mui/material";
 import { createLocalOperatorClient } from "@shared/api/local-operator";
 import { TranscriptionApi } from "@shared/api/local-operator/transcription-api";
 import type {
@@ -17,6 +5,8 @@ import type {
 	EditDiff,
 } from "@shared/api/local-operator/types";
 import { KeyboardShortcut } from "@shared/components/common/keyboard-shortcut";
+import { Spinner } from "@shared/components/common/spinner";
+import { Button, Separator, Tooltip } from "@shared/components/ui";
 import { apiConfig } from "@shared/config";
 import { useConfig } from "@shared/hooks/use-config";
 import { useCredentials } from "@shared/hooks/use-credentials";
@@ -24,6 +14,7 @@ import {
 	SpeechToTextPriority,
 	useSpeechToTextManager,
 } from "@shared/hooks/use-speech-to-text-manager";
+import { cn } from "@shared/lib/utils";
 import { useAgentSelectionStore } from "@shared/store/agent-selection-store";
 import { normalizePath } from "@shared/utils/path-utils";
 import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
@@ -69,169 +60,26 @@ type InlineEditProps = {
 	onNavigateDiff: (direction: "next" | "prev") => void;
 };
 
-const InputInnerContainer = styled(Paper)(({ theme }) => ({
-	position: "absolute",
-	zIndex: 1300, // Ensure it's above other elements
-	width: 500,
-	display: "flex",
-	flexDirection: "column",
-	gap: theme.spacing(1.5),
-	outline: "none",
-	borderRadius: theme.shape.borderRadius * 2,
-	border: `1px solid ${theme.palette.divider}`,
-	backgroundColor: theme.palette.background.paper,
-	backgroundImage: "none",
-	padding: theme.spacing(1),
-	transition: "box-shadow 0.2s ease-in-out, outline 0.2s ease-in-out",
-	boxSizing: "border-box",
-}));
+/*
+ * The popover is hand-positioned against a CodeMirror selection rectangle by
+ * the caller, so it stays an absolutely-positioned element rather than moving
+ * onto the `Popover` primitive — Radix would want an anchor element that does
+ * not exist here. `z-[1300]` is kept verbatim: it has to clear the editor's own
+ * layers and the canvas chrome, and no role token covers that.
+ *
+ * It is a genuine floating overlay, so it is the one place in this file that
+ * earns `shadow-overlay`, on `elevated` above the editor's ground.
+ */
+const POPOVER = cn(
+	"absolute z-[1300] box-border flex w-[500px] flex-col gap-3",
+	"rounded-lg border border-hairline bg-elevated p-2 shadow-overlay outline-none",
+);
 
-const CloseButton = styled(IconButton)(({ theme }) => ({
-	position: "absolute",
-	top: theme.spacing(1),
-	right: theme.spacing(1),
-	width: 28,
-	height: 28,
-	zIndex: 1301,
-	color: theme.palette.text.secondary,
-	"&:hover": {
-		backgroundColor: alpha(theme.palette.action.hover, 0.1),
-		color: theme.palette.text.primary,
-	},
-}));
-
-const StyledTextField = styled(TextField)(({ theme }) => ({
-	flex: 1,
-	"& .MuiOutlinedInput-root": {
-		backgroundColor: "transparent",
-		padding: "4px 6px",
-		fontSize: "0.875rem",
-		display: "flex",
-		alignItems: "center",
-		"& fieldset": {
-			border: "none",
-		},
-		"&:hover fieldset": {
-			border: "none",
-		},
-		"&.Mui-focused fieldset": {
-			border: "none",
-		},
-		"&.Mui-focused": {
-			backgroundColor: "transparent",
-			boxShadow: "none",
-		},
-		"&:hover": {
-			backgroundColor: "transparent",
-		},
-	},
-	"& .MuiInputBase-input": {
-		color: theme.palette.text.primary,
-		overflowY: "auto",
-	},
-	"& .MuiInputBase-input::placeholder": {
-		fontSize: "0.875rem",
-		color:
-			theme.palette.mode === "light"
-				? alpha(theme.palette.text.secondary, 0.7)
-				: alpha(theme.palette.text.secondary, 0.5),
-		opacity: 1,
-	},
-}));
-
-const ButtonsRow = styled(Box)(({ theme }) => ({
-	display: "flex",
-	alignItems: "center",
-	justifyContent: "space-between",
-	gap: theme.spacing(1),
-	padding: 0,
-}));
-
-const AttachmentButton = styled(IconButton)(({ theme }) => ({
-	backgroundColor:
-		theme.palette.mode === "light"
-			? alpha(theme.palette.primary.main, 0.1)
-			: alpha(theme.palette.primary.main, 0.15),
-	color: theme.palette.primary.main,
-	width: 28,
-	height: 28,
-	borderRadius: "100%",
-	transition: "all 0.2s ease-in-out",
-	"&:hover": {
-		backgroundColor:
-			theme.palette.mode === "light"
-				? alpha(theme.palette.primary.main, 0.2)
-				: alpha(theme.palette.primary.main, 0.25),
-		transform: "scale(1.1)",
-	},
-	"&:active": {
-		transform: "scale(1)",
-	},
-	"&.Mui-disabled": {
-		backgroundColor: alpha(theme.palette.action.disabled, 0.1),
-		color: theme.palette.action.disabled,
-	},
-}));
-
-const SendButton = styled(IconButton)(({ theme }) => ({
-	backgroundColor:
-		theme.palette.mode === "light"
-			? alpha(theme.palette.primary.main, 0.1)
-			: alpha(theme.palette.primary.main, 0.15),
-	color: theme.palette.primary.main,
-	width: 28,
-	height: 28,
-	borderRadius: "100%",
-	transition: "all 0.2s ease-in-out",
-	"&:hover": {
-		backgroundColor:
-			theme.palette.mode === "light"
-				? alpha(theme.palette.primary.main, 0.2)
-				: alpha(theme.palette.primary.main, 0.25),
-		transform: "scale(1.1)",
-	},
-	"&:active": {
-		transform: "scale(1)",
-	},
-	"&.Mui-disabled": {
-		backgroundColor: alpha(theme.palette.action.disabled, 0.1),
-		color: theme.palette.action.disabled,
-	},
-}));
-
-const TranscriptionIndicator = styled(Box)(({ theme }) => ({
-	flex: 1,
-	display: "flex",
-	alignItems: "center",
-	justifyContent: "center",
-	minHeight: "50px",
-	padding: theme.spacing(1, 2),
-	borderRadius: theme.shape.borderRadius,
-	color: theme.palette.primary.dark,
-	gap: theme.spacing(1),
-}));
-
-const TranscriptionText = styled(Typography)(({ theme }) => ({
-	fontSize: "0.875rem",
-	fontWeight: 500,
-	marginRight: theme.spacing(1.5),
-	color: theme.palette.text.secondary,
-}));
-
-const ReviewHeader = styled(Box)(({ theme }) => ({
-	display: "flex",
-	flexDirection: "column",
-	justifyContent: "space-between",
-	padding: theme.spacing(0.5, 2, 1, 1),
-	gap: theme.spacing(1),
-	minHeight: "64px",
-}));
-
-const ReviewPrompt = styled(Typography)(({ theme }) => ({
-	flexGrow: 1,
-	fontSize: "0.875rem",
-	color: theme.palette.text.secondary,
-}));
+/*
+ * The shortcut caps carry their own 10px glyphs; the button's `[&_svg]:size-3.5`
+ * would inflate them to icon size, so the caps opt back out.
+ */
+const SHORTCUT_BUTTON = cn("whitespace-nowrap [&_svg]:size-2.5");
 
 export const InlineEdit: FC<InlineEditProps> = ({
 	selection,
@@ -260,7 +108,7 @@ export const InlineEdit: FC<InlineEditProps> = ({
 	const mediaRecorderRef = useRef<MediaRecorder | null>(null);
 	const audioChunksRef = useRef<Blob[]>([]);
 	const [platform, setPlatform] = useState("");
-	const textareaRef = useRef<HTMLInputElement>(null);
+	const textareaRef = useRef<HTMLTextAreaElement>(null);
 	const isCancelledRef = useRef(false);
 	const containerRef = useRef<HTMLDivElement>(null);
 
@@ -330,9 +178,9 @@ export const InlineEdit: FC<InlineEditProps> = ({
 
 	const acceptAllTooltipText = useMemo(() => {
 		if (platform === "darwin") {
-			return "Apply All (⌘+Enter)";
+			return "Apply all (⌘+Enter)";
 		}
-		return "Apply All (Ctrl+Enter)";
+		return "Apply all (Ctrl+Enter)";
 	}, [platform]);
 
 	const acceptAllShortcut = useMemo(() => {
@@ -535,7 +383,7 @@ export const InlineEdit: FC<InlineEditProps> = ({
 		});
 	};
 
-	const handlePaste = (event: ClipboardEvent<HTMLDivElement>) => {
+	const handlePaste = (event: ClipboardEvent<HTMLTextAreaElement>) => {
 		const items = event.clipboardData?.items;
 		if (items) {
 			for (let i = 0; i < items.length; i++) {
@@ -610,10 +458,10 @@ export const InlineEdit: FC<InlineEditProps> = ({
 	const showAbove = position.top > containerHeight + 10;
 
 	return (
-		<InputInnerContainer
+		<div
 			ref={containerRef}
-			elevation={4}
-			sx={{
+			className={POPOVER}
+			style={{
 				top: Math.max(0, position.top),
 				left: position.left,
 				transform: showAbove
@@ -621,111 +469,109 @@ export const InlineEdit: FC<InlineEditProps> = ({
 					: "translateY(8px)",
 			}}
 		>
-			<CloseButton onClick={handleXClick} disabled={isLoading}>
-				<X size={18} />
-			</CloseButton>
+			<Tooltip content="Close">
+				<span className={cn("absolute right-2 top-2 z-[1301]")}>
+					<Button
+						variant="ghost"
+						size="icon-sm"
+						aria-label="Close"
+						onClick={handleXClick}
+						disabled={isLoading}
+					>
+						<X size={18} aria-hidden="true" />
+					</Button>
+				</span>
+			</Tooltip>
 
 			{reviewState ? (
-				<ReviewHeader>
-					<ReviewPrompt>
+				<div
+					className={cn(
+						"flex min-h-16 flex-col justify-between gap-2 pb-2 pl-2 pr-4 pt-1",
+					)}
+				>
+					<p className={cn("grow text-body-sm text-ink-muted")}>
 						{prompt ||
-							`Reviewing Changes (${reviewState.currentIndex + 1}/${
+							`Reviewing changes (${reviewState.currentIndex + 1}/${
 								reviewState.diffs.length
 							})`}
-					</ReviewPrompt>
-					<Box
-						sx={{
-							width: "100%",
-							display: "flex",
-							alignItems: "center",
-							gap: 1,
-							justifyContent: "flex-end",
-						}}
-					>
-						<Tooltip title="Previous">
+					</p>
+					<div className={cn("flex w-full items-center justify-end gap-1")}>
+						<Tooltip content="Previous">
 							<span>
-								<IconButton
+								<Button
+									variant="ghost"
+									size="icon-sm"
+									aria-label="Previous change"
 									onClick={() => onNavigateDiff("prev")}
-									size="small"
 									disabled={reviewState.currentIndex === 0}
 								>
-									<ChevronLeft size={14} />
-								</IconButton>
+									<ChevronLeft size={14} aria-hidden="true" />
+								</Button>
 							</span>
 						</Tooltip>
-						<Tooltip title="Next">
+						<Tooltip content="Next">
 							<span>
-								<IconButton
+								<Button
+									variant="ghost"
+									size="icon-sm"
+									aria-label="Next change"
 									onClick={() => onNavigateDiff("next")}
-									size="small"
 									disabled={
 										reviewState.currentIndex >= reviewState.diffs.length - 1
 									}
 								>
-									<ChevronRight size={14} />
-								</IconButton>
+									<ChevronRight size={14} aria-hidden="true" />
+								</Button>
 							</span>
 						</Tooltip>
-						<Box
-							sx={{
-								borderLeft: 1,
-								borderColor: "divider",
-								height: 18,
-								mx: 0.5,
-							}}
-						/>
-						<Tooltip title="Reject this change">
-							<IconButton onClick={onRejectDiff} color="error" size="small">
-								<X size={14} />
-							</IconButton>
-						</Tooltip>
-						<Tooltip title="Accept this change">
-							<IconButton onClick={onAcceptDiff} color="success" size="small">
-								<Check size={14} />
-							</IconButton>
-						</Tooltip>
-						<Box
-							sx={{
-								borderLeft: 1,
-								borderColor: "divider",
-								height: 18,
-								mx: 0.5,
-							}}
-						/>
-						<Tooltip title="Reject All (Esc)">
+						<Separator orientation="vertical" className={cn("mx-1 h-4")} />
+						<Tooltip content="Reject this change">
 							<Button
+								variant="ghost"
+								size="icon-sm"
+								aria-label="Reject this change"
+								onClick={onRejectDiff}
+								className={cn("text-danger hover:bg-danger-wash")}
+							>
+								<X size={14} aria-hidden="true" />
+							</Button>
+						</Tooltip>
+						<Tooltip content="Accept this change">
+							<Button
+								variant="ghost"
+								size="icon-sm"
+								aria-label="Accept this change"
+								onClick={onAcceptDiff}
+								className={cn("text-success hover:bg-success-wash")}
+							>
+								<Check size={14} aria-hidden="true" />
+							</Button>
+						</Tooltip>
+						<Separator orientation="vertical" className={cn("mx-1 h-4")} />
+						<Tooltip content="Reject all (Esc)">
+							<Button
+								variant="outline"
+								size="sm"
 								onClick={onRejectAll}
-								color="error"
-								size="small"
-								startIcon={<KeyboardShortcut shortcut="Esc" />}
-								sx={{
-									textTransform: "none",
-									fontSize: "0.8rem",
-									padding: "2px 4px",
-									whiteSpace: "nowrap",
-								}}
+								className={SHORTCUT_BUTTON}
 							>
-								Reject All
+								<KeyboardShortcut shortcut="Esc" />
+								Reject all
 							</Button>
 						</Tooltip>
-						<Tooltip title={acceptAllTooltipText}>
+						<Tooltip content={acceptAllTooltipText}>
 							<Button
+								variant="primary"
+								size="sm"
 								onClick={onApplyAll}
-								color="success"
-								size="small"
-								startIcon={<KeyboardShortcut shortcut={acceptAllShortcut} />}
-								sx={{
-									textTransform: "none",
-									fontSize: "0.8rem",
-									padding: "2px 4px",
-									whiteSpace: "nowrap",
-								}}
+								className={SHORTCUT_BUTTON}
 							>
-								Accept All
+								<KeyboardShortcut shortcut={acceptAllShortcut} />
+								Accept all
 							</Button>
 						</Tooltip>
-					</Box>
-				</ReviewHeader>
+					</div>
+				</div>
 			) : (
 				<>
 					{attachments.length > 0 && (
@@ -738,23 +584,33 @@ export const InlineEdit: FC<InlineEditProps> = ({
 					{isRecording ? (
 						<AudioRecordingIndicator isRecording={isRecording} />
 					) : isTranscribing ? (
-						<TranscriptionIndicator>
-							<TranscriptionText variant="body2">
+						<div
+							className={cn(
+								"flex min-h-[50px] flex-1 items-center justify-center gap-2 px-4 py-2",
+							)}
+						>
+							<span
+								className={cn("mr-1 font-medium text-body-sm text-ink-muted")}
+							>
 								Processing audio
-							</TranscriptionText>
+							</span>
 							<WaveformAnimation />
-						</TranscriptionIndicator>
+						</div>
 					) : (
-						<StyledTextField
-							fullWidth
-							multiline
-							maxRows={8}
+						<textarea
+							ref={textareaRef}
+							className={cn(
+								"w-full resize-none overflow-y-auto bg-transparent px-1.5 py-1",
+								"max-h-40 text-body-sm text-ink outline-none",
+								"placeholder:text-ink-dim disabled:text-ink-disabled",
+							)}
+							rows={1}
 							placeholder="Ask for an edit..."
+							aria-label="Edit instructions"
 							value={prompt}
 							onChange={(e) => setPrompt(e.target.value)}
 							onPaste={handlePaste}
 							disabled={isLoading}
-							inputRef={textareaRef}
 							onKeyDown={(e) => {
 								if (e.key === "Enter" && !e.shiftKey) {
 									e.preventDefault();
@@ -765,112 +621,128 @@ export const InlineEdit: FC<InlineEditProps> = ({
 							}}
 						/>
 					)}
-					<ButtonsRow>
-						<Box display="flex" alignItems="center" gap={1}>
-							<Tooltip title="Add attachments">
-								<AttachmentButton
-									onClick={handleAttachFile}
-									disabled={
-										isLoading || isRecording || isTranscribing || !!reviewState
-									}
-								>
-									<Paperclip size={iconSize} />
-								</AttachmentButton>
+					<div className={cn("flex items-center justify-between gap-2")}>
+						<div className={cn("flex items-center gap-2")}>
+							<Tooltip content="Add attachments">
+								<span>
+									<Button
+										variant="ghost"
+										size="icon-sm"
+										aria-label="Add attachments"
+										className={cn(
+											"text-accent hover:bg-accent-wash hover:text-accent",
+										)}
+										onClick={handleAttachFile}
+										disabled={
+											isLoading ||
+											isRecording ||
+											isTranscribing ||
+											!!reviewState
+										}
+									>
+										<Paperclip size={iconSize} aria-hidden="true" />
+									</Button>
+								</span>
 							</Tooltip>
-						</Box>
+						</div>
 
-						<Box display="flex" alignItems="center" gap={1}>
+						<div className={cn("flex items-center gap-2")}>
 							{!isRecording && !isTranscribing && !isLoading && (
 								<Tooltip
-									title={
+									content={
 										!canEnableRecordingFeature
 											? "Sign in to Radient in the settings page to enable audio recording"
 											: `Start recording (${shortcutText} or hold Space)`
 									}
 								>
 									<span>
-										<IconButton
-											onClick={handleStartRecording}
-											color="primary"
-											size="small"
+										<Button
+											variant="ghost"
+											size="icon-sm"
 											aria-label="Start recording"
+											className={cn(
+												"text-accent hover:bg-accent-wash hover:text-accent",
+											)}
+											onClick={handleStartRecording}
 											disabled={isLoading || !canEnableRecordingFeature}
 										>
-											<Mic size={iconSize} />
-										</IconButton>
+											<Mic size={iconSize} aria-hidden="true" />
+										</Button>
 									</span>
 								</Tooltip>
 							)}
 							{isRecording && (
 								<>
-									<Tooltip title="Confirm recording (Enter)">
+									<Tooltip content="Confirm recording (Enter)">
 										<span>
-											<IconButton
-												onClick={handleConfirmRecording}
-												color="success"
-												size="small"
+											<Button
+												variant="ghost"
+												size="icon-sm"
 												aria-label="Confirm recording"
+												className={cn(
+													"text-success hover:bg-success-wash hover:text-success",
+												)}
+												onClick={handleConfirmRecording}
 												disabled={isLoading}
 											>
-												<Check size={iconSize} />
-											</IconButton>
+												<Check size={iconSize} aria-hidden="true" />
+											</Button>
 										</span>
 									</Tooltip>
-									<Tooltip title="Cancel recording (Esc)">
+									<Tooltip content="Cancel recording (Esc)">
 										<span>
-											<IconButton
-												onClick={handleCancelRecording}
-												color="error"
-												size="small"
+											<Button
+												variant="ghost"
+												size="icon-sm"
 												aria-label="Cancel recording"
+												className={cn(
+													"text-danger hover:bg-danger-wash hover:text-danger",
+												)}
+												onClick={handleCancelRecording}
 												disabled={isLoading}
 											>
-												<X size={iconSize} />
-											</IconButton>
+												<X size={iconSize} aria-hidden="true" />
+											</Button>
 										</span>
 									</Tooltip>
 								</>
 							)}
 							{!isRecording && !isTranscribing && !isLoading && (
-								<Tooltip title="Edit">
-									<div>
-										<SendButton
+								<Tooltip content="Edit">
+									<span>
+										<Button
+											variant="primary"
+											size="icon-sm"
+											aria-label="Edit"
 											onClick={handleSubmit}
 											disabled={!prompt.trim() && attachments.length === 0}
 										>
-											<Send size={iconSize} />
-										</SendButton>
-									</div>
+											<Send size={iconSize} aria-hidden="true" />
+										</Button>
+									</span>
 								</Tooltip>
 							)}
 							{isLoading && (
-								<Tooltip title="Cancel Edit">
-									<Box sx={{ position: "relative", display: "inline-flex" }}>
-										<CircularProgress
-											size={28}
-											sx={{
-												color: (theme) =>
-													alpha(theme.palette.primary.main, 0.5),
-												position: "absolute",
-												transform: "translate(-50%, -50%)",
-												transformOrigin: "center",
-											}}
-										/>
-										<IconButton
-											onClick={handleCancelEdit}
-											color="primary"
-											aria-label="Cancel edit"
-											sx={{ width: 28, height: 28 }}
-										>
-											<Square size={14} />
-										</IconButton>
-									</Box>
-								</Tooltip>
+								<>
+									<Spinner size="sm" label="Editing" />
+									<Tooltip content="Cancel edit">
+										<span>
+											<Button
+												variant="danger"
+												size="icon-sm"
+												aria-label="Cancel edit"
+												onClick={handleCancelEdit}
+											>
+												<Square size={14} aria-hidden="true" />
+											</Button>
+										</span>
+									</Tooltip>
+								</>
 							)}
-						</Box>
-					</ButtonsRow>
+						</div>
+					</div>
 				</>
 			)}
-		</InputInnerContainer>
+		</div>
 	);
 };

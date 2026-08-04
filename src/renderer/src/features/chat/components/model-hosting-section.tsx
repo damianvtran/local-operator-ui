@@ -9,17 +9,11 @@ import type {
 	AgentUpdate,
 } from "@shared/api/local-operator/types";
 import { HostingSelect, ModelSelect } from "@shared/components/hosting";
-import { Tooltip } from "@shared/components/ui";
+import { Button, Tooltip } from "@shared/components/ui";
 import type { UseMutationResult } from "@tanstack/react-query";
 import { Info, Server } from "lucide-react";
 import type { FC } from "react";
 import { updateAgentSetting } from "../utils/chat-options-utils";
-import {
-	InfoButton,
-	SectionTitle,
-	ModelHostingSection as StyledModelHostingSection,
-	TitleIcon,
-} from "./chat-options-sidebar-styled";
 
 type ModelHostingSectionProps = {
 	/**
@@ -73,19 +67,25 @@ export const ModelHostingSection: FC<ModelHostingSectionProps> = ({
 }) => {
 	return (
 		<>
-			<SectionTitle>
-				<TitleIcon icon={Server} />
-				Model & Hosting
+			<h3 className="mt-6 mb-4 flex items-center font-semibold text-heading text-ink">
+				<span className="mr-2 flex items-center rounded-sm bg-accent-wash p-1 text-accent">
+					<Server size={16} aria-hidden="true" />
+				</span>
+				Model and hosting
 				<Tooltip content="Configure which model and hosting provider to use">
-					<span>
-						<InfoButton>
-							<Info size={12} aria-hidden="true" />
-						</InfoButton>
-					</span>
+					<Button
+						variant="ghost"
+						size="icon-sm"
+						type="button"
+						className="ml-1 text-accent"
+						aria-label="More info"
+					>
+						<Info size={12} aria-hidden="true" />
+					</Button>
 				</Tooltip>
-			</SectionTitle>
+			</h3>
 
-			<StyledModelHostingSection>
+			<div className="mb-4 rounded-md border border-hairline bg-sunken p-4">
 				<HostingSelect
 					value={agent.hosting || ""}
 					isSaving={savingField === "hosting"}
@@ -118,7 +118,7 @@ export const ModelHostingSection: FC<ModelHostingSectionProps> = ({
 						);
 					}}
 				/>
-			</StyledModelHostingSection>
+			</div>
 		</>
 	);
 };

@@ -154,14 +154,37 @@ const main = async () => {
 				deviceScaleFactor: 1,
 				mobile: false,
 			});
+			/*
+			 * Set the theme through the app's OWN persisted store, before the
+			 * page loads, rather than by poking `data-theme` afterwards.
+			 *
+			 * This is not a style preference, it is the only correct way during
+			 * the migration. The bridge has two halves that are populated at
+			 * different times: MUI bakes palette values into Emotion classes as
+			 * literal hexes when `createBaseTheme` runs, while Tailwind reads
+			 * `--lo-*` live off `data-theme`. Setting the attribute alone moves
+			 * only the Tailwind half, so every still-MUI-styled element keeps the
+			 * previous palette's colour — which renders as dark ink on light
+			 * paper and looks exactly like a contrast bug in the product. The
+			 * real ThemeProvider moves both together because it reads this store;
+			 * driving the store is what reproduces that.
+			 */
+			await cdp.send("Page.navigate", { url: "about:blank" });
+			await sleep(150);
+			await cdp.send("Page.navigate", { url: `${ORIGIN}/iframe.html` });
+			await sleep(400);
+			await cdp.send("Runtime.evaluate", {
+				expression: `localStorage.setItem(
+					"ui-preferences-storage",
+					JSON.stringify({ state: { themeName: ${JSON.stringify(theme)} }, version: 0 })
+				);`,
+			});
 			await cdp.send("Page.navigate", {
 				url: `${ORIGIN}/iframe.html?id=${story}&viewMode=story`,
 			});
-			// networkidle0 equivalent: wait for load plus a settle window.
-			await sleep(1200);
-			/* The story wrappers set data-theme themselves; force it here too so
-			   the capture is honest about which palette it shows even for stories
-			   that do not carry the wrapper. */
+			await sleep(1600);
+			/* Belt and braces for stories that mount no ThemeProvider of their
+			   own: the attribute still has to be right for Tailwind utilities. */
 			await cdp.send("Runtime.evaluate", {
 				expression: `
 					document.documentElement.dataset.theme = ${JSON.stringify(theme)};
@@ -169,6 +192,46 @@ const main = async () => {
 				`,
 			});
 			await sleep(500);
+
+			/*
+			 * Settle animations before the shutter.
+			 *
+			 * Entrance fades are real product behaviour, but a screenshot taken
+			 * mid-fade records a half-opacity paragraph and reads as a contrast
+			 * defect — which cost a full review cycle here. Removing the
+			 * animation outright (rather than pausing it) is safe precisely
+			 * because the system requires every animated element's RESTING state
+			 * to be the visible one: `animation: none` drops the element back to
+			 * its own `opacity: 1`. If this ever leaves something invisible, the
+			 * animation was violating that rule and the evidence should show it.
+			 */
+			await cdp.send("Runtime.evaluate", {
+				expression: `(() => {
+					const s = document.createElement("style");
+					s.textContent = "*,*::before,*::after{animation:none !important;transition:none !important}";
+					document.head.appendChild(s);
+				})()`,
+			});
+			await sleep(250);
+
+			/* Assert the capture is of a rendered story, not Storybook's own
+			   error page. A screenshot of "Configuration validation failed" is
+			   indistinguishable from a real frame in a directory listing, and a
+			   whole evidence set was once captured that way. */
+			const { result: sane } = await cdp.send("Runtime.evaluate", {
+				returnByValue: true,
+				expression: `(() => {
+					const t = document.body.innerText || "";
+					if (/Configuration validation failed|no stories|Story not found/i.test(t)) return "storybook-error";
+					if (t.trim().length < 20) return "empty";
+					return "ok";
+				})()`,
+			});
+			if (sane.value !== "ok") {
+				throw new Error(
+					`${story} @ ${theme}: story did not render (${sane.value})`,
+				);
+			}
 			const { data } = await cdp.send("Page.captureScreenshot", {
 				format: "webp",
 				quality: 88,

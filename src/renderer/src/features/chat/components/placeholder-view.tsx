@@ -1,5 +1,5 @@
-import { Box, Paper, Typography, styled } from "@mui/material";
-import { ArrowRight, Bot } from "lucide-react";
+import { cn } from "@shared/lib/utils";
+import { ArrowLeft, Bot } from "lucide-react";
 import type { FC } from "react";
 
 /**
@@ -10,30 +10,6 @@ type PlaceholderViewProps = {
 	description: string;
 	directionText?: string;
 };
-
-const PlaceholderContainer = styled(Paper)({
-	display: "flex",
-	flexDirection: "column",
-	height: "100%",
-	flexGrow: 1,
-	borderRadius: 0,
-	justifyContent: "center",
-	alignItems: "center",
-	padding: 24,
-});
-
-// lucide ignores CSS font-size, so the 3rem sizing moved to the size prop below.
-const PlaceholderIcon = styled(Bot)({
-	marginBottom: "1rem",
-	opacity: 0.5,
-});
-
-const DirectionIndicator = styled(Box)(({ theme }) => ({
-	display: "flex",
-	alignItems: "center",
-	color: theme.palette.primary.main,
-	opacity: 0.7,
-}));
 
 /**
  * PlaceholderView Component
@@ -46,28 +22,26 @@ export const PlaceholderView: FC<PlaceholderViewProps> = ({
 	directionText,
 }) => {
 	return (
-		<PlaceholderContainer elevation={0}>
-			<PlaceholderIcon size={48} />
-			<Typography variant="h6" sx={{ mb: 1, fontWeight: 500 }}>
-				{title}
-			</Typography>
-			<Typography
-				variant="body2"
-				color="text.secondary"
-				align="center"
-				sx={{ mb: 2, maxWidth: 500 }}
+		<div
+			className={cn(
+				"flex h-full grow flex-col items-center justify-center bg-surface p-6",
+			)}
+		>
+			<Bot size={48} className={cn("mb-4 text-ink-dim")} aria-hidden={true} />
+			<h2 className={cn("mb-1 text-heading text-ink")}>{title}</h2>
+			<p
+				className={cn(
+					"mb-4 max-w-[500px] text-center text-body-sm text-ink-muted",
+				)}
 			>
 				{description}
-			</Typography>
+			</p>
 			{directionText && (
-				<DirectionIndicator>
-					<ArrowRight
-						size={16}
-						style={{ transform: "rotate(180deg)", marginRight: "0.5rem" }}
-					/>
-					<Typography variant="body2">{directionText}</Typography>
-				</DirectionIndicator>
+				<p className={cn("flex items-center gap-2 text-accent text-body-sm")}>
+					<ArrowLeft size={16} aria-hidden={true} />
+					{directionText}
+				</p>
 			)}
-		</PlaceholderContainer>
+		</div>
 	);
 };

@@ -1,149 +1,22 @@
 /**
  * Radient Choice Step Component
  *
- * Presents the user with two options for onboarding:
- * 1. Get started with Radient Pass (managed option)
- * 2. Set up their own keys (DIY option)
+ * The first thing a new user is asked: let Radient Pass supply the models, or
+ * bring your own provider keys. Two cards, one recommendation, no third option
+ * dressed up as one.
  */
 
 import radientLogo from "@assets/radient-icon-1024x1024.png";
-import { Box, Grid, Typography, alpha, styled } from "@mui/material"; // Removed useTheme
 import {
 	OnboardingStep,
 	useOnboardingStore,
 } from "@shared/store/onboarding-store";
-import { radientTheme } from "@shared/themes"; // Keep for Radient specific colors if needed
-import { ArrowRight, Lightbulb, Wrench } from "lucide-react";
+import { ArrowRight, Wrench } from "lucide-react";
 import type { FC } from "react";
 import { useCallback } from "react";
-import {
-	InlineIcon,
-	SectionContainer,
-	SectionDescription,
-} from "../onboarding-styled";
+/* Re-points the role variables inside `data-theme="radient"`; see the file. */
+import "../../radient-brand.css";
 
-// --- Styled Components (Simplified for shadcn aesthetic) ---
-
-const ChoiceCard = styled(Box)(({ theme }) => ({
-	display: "flex",
-	flexDirection: "column",
-	// alignItems: "center", // Align items to start for better text layout
-	justifyContent: "space-between", // Keep space-between
-	padding: theme.spacing(3), // Consistent padding
-	borderRadius: theme.shape.borderRadius * 1.5, // Slightly larger radius
-	border: `1px solid ${theme.palette.divider}`, // Standard border
-	backgroundColor: theme.palette.background.paper, // Use paper background
-	cursor: "pointer",
-	transition:
-		"transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out, border-color 0.2s ease-in-out", // Smooth transitions
-	height: "100%",
-	minHeight: 300, // Adjusted min height
-	position: "relative", // Keep for potential absolute elements if needed later
-	overflow: "hidden", // Keep overflow hidden
-	"&:hover": {
-		transform: "translateY(-4px)", // Subtle lift
-		boxShadow: theme.shadows[3], // Subtle shadow
-		borderColor: theme.palette.primary.main, // Highlight border on hover
-		// Make the "Choose Option" text visible on hover
-		"& .choose-option": {
-			opacity: 1,
-		},
-	},
-}));
-
-// Specific styling for the Radient option card
-const RadientChoiceCard = styled(ChoiceCard)(({ theme }) => ({
-	minHeight: 380, // Size for Radient card
-	borderColor: alpha(radientTheme.palette.primary.main, 0.5), // Example: Use Radient color for border
-	"&:hover": {
-		transform: "translateY(-4px)",
-		boxShadow: theme.shadows[3],
-		borderColor: radientTheme.palette.primary.main, // Stronger Radient border on hover
-		"& .choose-option": {
-			opacity: 1,
-		},
-	},
-}));
-
-// Specific styling for the DIY option card
-const DiyChoiceCard = styled(ChoiceCard)(({ theme }) => ({
-	minHeight: 170, // Further reduced size for DIY card
-	paddingBottom: theme.spacing(6), // Ensure space for absolute positioned ChooseOption
-}));
-
-const CardTitle = styled(Typography)(({ theme }) => ({
-	fontSize: "1.25rem", // Adjusted size
-	fontWeight: 600, // Slightly less bold
-	marginBottom: theme.spacing(0.5), // Reduced margin
-	color: theme.palette.text.primary,
-	lineHeight: 1.3,
-}));
-
-const CardSubtitle = styled(Typography)(({ theme }) => ({
-	fontSize: "0.875rem", // Consistent small text size
-	color: theme.palette.text.secondary,
-	marginBottom: theme.spacing(2), // Consistent margin
-	lineHeight: 1.5,
-}));
-
-const CardIcon = styled(Box)(({ theme }) => ({
-	width: 92,
-	height: 92,
-	display: "flex",
-	alignItems: "center",
-	justifyContent: "center",
-	marginTop: "auto", // Push icon towards the bottom before the 'Choose' text
-	marginBottom: theme.spacing(4), // Space above the 'Choose' text
-	alignSelf: "center", // Center the icon horizontally
-}));
-
-// Use Typography for Radient Pass text, potentially with specific color
-const RadientPassText = styled(Typography)(() => ({
-	fontSize: "1.25rem",
-	fontWeight: 600,
-	color: radientTheme.palette.primary.main, // Use Radient primary color
-	display: "inline", // Keep inline if needed within CardTitle
-}));
-
-// Styled span for Radient bold text
-const RadientBoldTextSpan = styled("span")(() => ({
-	fontWeight: "bold",
-	color: radientTheme.palette.primary.main,
-}));
-
-// Simplified "Choose Option" text, appears on hover
-const ChooseOption = styled(Typography)(({ theme }) => ({
-	position: "absolute",
-	bottom: theme.spacing(2), // Positioned at the bottom
-	left: 0,
-	right: 0,
-	textAlign: "center",
-	opacity: 0, // Hidden by default
-	transition: "opacity 0.2s ease-in-out", // Fade in/out
-	color: theme.palette.primary.main, // Use primary color
-	fontWeight: 500,
-	fontSize: "0.875rem",
-	display: "flex",
-	alignItems: "center",
-	justifyContent: "center",
-	gap: theme.spacing(0.5),
-	"& svg": {
-		transition: "transform 0.2s ease",
-	},
-	// Remove hover effect on the text itself, rely on card hover
-}));
-
-/**
- * Radient Choice Step Component
- *
- * Presents the user with two options for onboarding:
- * 1. Get started with Radient Pass (managed option)
- * 2. Set up their own keys (DIY option)
- *
- * @param props - Optional callbacks for handling card selection.
- *   - onDoItYourself: Called when the DIY card is clicked.
- *   - onRadientSignIn: Called when the Radient Pass card is clicked.
- */
 type RadientChoiceStepProps = {
 	/**
 	 * Called when the user selects the DIY option.
@@ -185,137 +58,104 @@ export const RadientChoiceStep: FC<RadientChoiceStepProps> = ({
 	}, [onDoItYourself, setCurrentStep]);
 
 	return (
-		<Box sx={{ animation: "fadeIn 0.6s ease-out" }}>
-			{/* Use SectionDescription for introductory text (defaults to 0.875rem) */}
-			<SectionDescription sx={{ mb: 2 }}>
-				Choose how you'd like to get started:
-			</SectionDescription>
+		<div className="flex flex-col gap-6">
+			<p className="text-body text-ink-muted">
+				Choose how you would like to get started.
+			</p>
 
-			<SectionContainer>
-				<Grid container spacing={2.5}>
-					{" "}
-					{/* Slightly reduced spacing */}
-					{/* Radient Pass Option */}
-					<Grid item xs={12} md={12}>
-						{" "}
-						{/* Changed md to 12 for vertical stacking */}
-						{/* Use the specific RadientChoiceCard */}
-						<RadientChoiceCard onClick={handleRadientPassChoice}>
-							<Box>
-								{" "}
-								{/* Wrap text content */}
-								<CardTitle variant="h6">
-									{" "}
-									{/* Use variant */}
-									Get started for free with{" "}
-									<RadientPassText>Radient Pass</RadientPassText>
-								</CardTitle>
-								<CardSubtitle
-									variant="subtitle1"
-									sx={{ mb: 1, fontWeight: 600 }}
-								>
-									Recommended for most users.
-								</CardSubtitle>
-								<CardSubtitle variant="body2">
-									Designed for{" "}
-									<RadientBoldTextSpan>
-										low cost and best speed, accuracy, and performance
-									</RadientBoldTextSpan>{" "}
-									with Local Operator. Get access to all tools and models at
-									once, with potential savings when Radient Automatic picks the
-									best model to handle each step.
-									<br />
-									<br />
-									Two-click setup that{" "}
-									<RadientBoldTextSpan>
-										works out of the box
-									</RadientBoldTextSpan>
-									, no credit card required.
-								</CardSubtitle>
-							</Box>
-							<CardIcon sx={{ width: 150, height: 150, mb: 1 }}>
-								{" "}
-								{/* Further Increased icon size */}
-								<img
-									src={radientLogo}
-									alt="Radient Logo"
-									style={{
-										width: "100%",
-										height: "100%",
-										objectFit: "contain",
-									}}
-								/>
-							</CardIcon>
-							{/* Simplified ChooseOption text, color overridden for Radient */}
-							<ChooseOption
-								className="choose-option"
-								sx={{ color: radientTheme.palette.primary.main }}
-							>
-								Choose Radient Pass <ArrowRight size={14} />
-							</ChooseOption>
-						</RadientChoiceCard>
-					</Grid>
-					{/* DIY Option */}
-					<Grid item xs={12} md={12}>
-						{" "}
-						{/* Changed md to 12 for vertical stacking */}
-						<DiyChoiceCard onClick={handleDiyChoice}>
-							{" "}
-							{/* Use DiyChoiceCard */}
-							<Box
-								sx={{
-									display: "flex",
-									flexDirection: "row",
-									alignItems: "center",
-									flexGrow: 1,
-									width: "100%",
-								}}
-							>
-								{" "}
-								{/* Changed alignItems to center */}
-								<Box sx={{ flex: 1, pr: 2 }}>
-									{" "}
-									{/* Text content wrapper */}
-									<CardTitle variant="h6">Set up your own keys</CardTitle>
-									<CardSubtitle
-										variant="subtitle1"
-										sx={{ mb: 1, fontWeight: 600 }}
-									>
-										For advanced and technical users.
-									</CardSubtitle>
-									<CardSubtitle variant="body2" sx={{ mb: 0 }}>
-										Bring your own API keys for providers like OpenRouter,
-										OpenAI, Anthropic, Google, Tavily API, FAL, and manage
-										billing with providers separately. Experiment manually to
-										find the best models and providers for your needs.
-									</CardSubtitle>
-								</Box>
-								{/* DIY Icon - styled for right alignment and vertical centering */}
-								<Box
-									sx={{
-										display: "flex",
-										alignItems: "center", // Vertically center icon
-										justifyContent: "center", // Horizontally center icon in its box
-									}}
-								>
-									<Wrench size={48} />
-								</Box>
-							</Box>
-							<ChooseOption className="choose-option">
-								Choose DIY Setup <ArrowRight size={14} />
-							</ChooseOption>
-						</DiyChoiceCard>
-					</Grid>
-				</Grid>
-			</SectionContainer>
+			{/*
+			 * Both options are buttons, not clickable divs: they are the two things
+			 * this screen exists to do, so they are reachable by keyboard and
+			 * announced as choices. The whole card is the target — a card with a
+			 * "choose this" link inside it has two hit areas and one of them is
+			 * smaller than it looks.
+			 */}
+			<div className="flex flex-col gap-4">
+				{/*
+				 * DELIBERATE THEME EXCEPTION — do not "fix" this to the active theme.
+				 *
+				 * This card brands a third-party account rather than the app, so it
+				 * paints in Radient's own palette whichever theme the user picked.
+				 * `themes.generated.css` emits one `[data-theme="<id>"]` block per
+				 * palette as a plain attribute selector, so the attribute here
+				 * re-points every `--lo-*` variable for this subtree alone and the
+				 * ordinary role utilities below resolve to Radient navy and blue.
+				 * Taking the whole palette, rather than only the blue, is what keeps
+				 * it readable: Radient blue measures about 2:1 on a light theme's
+				 * white ground, and on its own navy ground it is a pairing the
+				 * contrast contract has already checked.
+				 */}
+				<button
+					type="button"
+					data-theme="radient"
+					onClick={handleRadientPassChoice}
+					className="flex flex-col items-start gap-4 rounded-lg border border-accent bg-surface p-6 text-left transition-colors duration-base ease-out-quart hover:bg-elevated"
+				>
+					<div className="flex w-full items-start justify-between gap-4">
+						<div className="flex flex-col gap-1">
+							<h3 className="text-title text-ink">
+								Get started free with{" "}
+								<span className="text-accent">Radient Pass</span>
+							</h3>
+							<p className="font-medium text-body-sm text-ink-muted">
+								Recommended for most people
+							</p>
+						</div>
+						<img
+							src={radientLogo}
+							alt=""
+							aria-hidden="true"
+							className="size-16 shrink-0 object-contain"
+						/>
+					</div>
 
-			{/* Use standard SectionDescription styling */}
-			<SectionDescription sx={{ mt: 2, textAlign: "center" }}>
-				<InlineIcon sx={{ mr: 0.5 }}>
-					<Lightbulb size={16} />
-				</InlineIcon>
-				You can always change your setup later in Settings.
-			</SectionDescription>
-		</Box>
+					<p className="text-body text-ink-muted">
+						One pass for every tool and model, with Radient Automatic picking a
+						model per step so simple work does not pay for the largest one. Two
+						clicks, no credit card.
+					</p>
+
+					<span className="flex items-center gap-1.5 font-medium text-accent text-body-sm">
+						Choose Radient Pass
+						<ArrowRight size={14} aria-hidden="true" />
+					</span>
+				</button>
+
+				<button
+					type="button"
+					onClick={handleDiyChoice}
+					className="flex flex-col items-start gap-4 rounded-lg border border-hairline bg-surface p-6 text-left transition-colors duration-base ease-out-quart hover:bg-elevated"
+				>
+					<div className="flex w-full items-start justify-between gap-4">
+						<div className="flex flex-col gap-1">
+							<h3 className="text-title text-ink">Use your own keys</h3>
+							<p className="font-medium text-body-sm text-ink-muted">
+								For people who already have provider accounts
+							</p>
+						</div>
+						<Wrench
+							size={24}
+							strokeWidth={1.5}
+							className="shrink-0 text-ink-dim"
+							aria-hidden="true"
+						/>
+					</div>
+
+					<p className="text-body text-ink-muted">
+						Bring API keys for OpenRouter, OpenAI, Anthropic, Google, Tavily or
+						FAL, and keep billing with each provider.
+					</p>
+
+					<span className="flex items-center gap-1.5 font-medium text-body-sm text-ink-muted">
+						Set up my own keys
+						<ArrowRight size={14} aria-hidden="true" />
+					</span>
+				</button>
+			</div>
+
+			<p className="text-center text-ink-dim text-meta">
+				You can change this later in Settings.
+			</p>
+		</div>
 	);
 };

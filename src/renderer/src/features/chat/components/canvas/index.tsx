@@ -1,11 +1,5 @@
-import {
-	Box,
-	IconButton,
-	Tooltip,
-	Typography,
-	alpha,
-	styled,
-} from "@mui/material";
+import { Button, Tooltip } from "@shared/components/ui";
+import { cn } from "@shared/lib/utils";
 import type { CanvasViewMode } from "@shared/store/canvas-store";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import { useUndoManagerStore } from "@shared/store/undo-manager-store";
@@ -18,7 +12,7 @@ import {
 	X,
 } from "lucide-react";
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
-import type { FC } from "react";
+import type { FC, ReactNode } from "react";
 import type { CanvasDocument } from "../../types/canvas";
 import { createFile } from "../../utils/file-creation";
 import { getFileTypeFromPath } from "../../utils/file-types";
@@ -63,67 +57,62 @@ type CanvasProps = {
 };
 
 /**
- * Styled container for the markdown canvas
+ * Canvas view toggle button
+ *
+ * One ghost button with two states: the active view is an accent-wash colour
+ * step, the rest are plain ghost. No border, no underline, nothing that moves.
  */
-const CanvasContainer = styled(Box)(({ theme }) => ({
-	height: "100%",
-	display: "flex",
-	flexDirection: "column",
-	backgroundColor: theme.palette.background.paper,
-	boxShadow:
-		theme.palette.mode === "light"
-			? `-4px 0 20px ${alpha(theme.palette.common.black, 0.15)}`
-			: `-4px 0 20px ${alpha(theme.palette.common.black, 0.2)}`,
-	border:
-		theme.palette.mode === "light"
-			? `1px solid ${alpha(theme.palette.grey[300], 0.5)}`
-			: "none",
-}));
+const ViewToggleButton: FC<{
+	label: string;
+	isActive: boolean;
+	onClick: () => void;
+	tourTag?: string;
+	icon: ReactNode;
+}> = ({ label, isActive, onClick, tourTag, icon }) => (
+	<Tooltip content={label}>
+		<Button
+			variant="ghost"
+			size="icon"
+			aria-label={label}
+			aria-pressed={isActive}
+			onClick={onClick}
+			data-tour-tag={tourTag}
+			className={cn(
+				isActive &&
+					"bg-accent-wash text-accent hover:bg-accent-wash hover:text-accent",
+			)}
+		>
+			{icon}
+		</Button>
+	</Tooltip>
+);
 
 /**
- * Styled header for the markdown canvas
+ * Empty state panel for the canvas
  */
-const CanvasHeader = styled(Box)(({ theme }) => ({
-	display: "flex",
-	alignItems: "center",
-	justifyContent: "space-between",
-	padding: theme.spacing(2, 3),
-	height: "84px",
-	borderBottom: `1px solid ${alpha(
-		theme.palette.divider,
-		theme.palette.mode === "light" ? 0.2 : 0.1,
-	)}`,
-	backgroundColor:
-		theme.palette.mode === "light"
-			? alpha(theme.palette.grey[100], 0.5)
-			: "transparent",
-}));
-
-/**
- * Styled title container for the markdown canvas
- */
-const HeaderTitle = styled(Box)({
-	display: "flex",
-	flexDirection: "column",
-});
-
-/**
- * Styled close button for the markdown canvas
- */
-const CloseButton = styled(IconButton)(({ theme }) => ({
-	color: theme.palette.text.secondary,
-	width: 36,
-	height: 36,
-	"&:hover": {
-		backgroundColor: alpha(theme.palette.primary.main, 0.08),
-	},
-}));
+const EmptyState: FC<{ title: string; description: string }> = ({
+	title,
+	description,
+}) => (
+	<div
+		className={cn(
+			"flex h-full flex-col items-center justify-center gap-1 bg-canvas p-6 text-center",
+		)}
+	>
+		<h3 className={cn("text-heading text-ink")}>{title}</h3>
+		<p className={cn("text-body-sm text-ink-muted")}>{description}</p>
+	</div>
+);
 
 /**
  * Markdown Canvas Component
  *
  * A sidebar component that displays markdown documents in tabs
  * Replaces the agent options sidebar with a markdown canvas
+ *
+ * The shell is one surface with ground steps, not a stack of bordered
+ * panels: the header sits on `surface`, the tab strip and empty states sit on
+ * `sunken`/`canvas`, and regions separate by that lightness step alone.
  */
 const CanvasComponent: FC<CanvasProps> = ({
 	activeDocumentId: externalActiveDocumentId,
@@ -206,7 +195,7 @@ const CanvasComponent: FC<CanvasProps> = ({
 				addMentionedFile(conversationId, newFile);
 			}
 			setCreateFileDialogOpen(false);
-		} catch (_) {
+		} catch {
 			// Error is already handled by the toast manager
 		} finally {
 			setIsCreatingFile(false);
@@ -291,157 +280,77 @@ const CanvasComponent: FC<CanvasProps> = ({
 	);
 
 	return (
-		<CanvasContainer data-tour-tag="canvas-container">
-			<CanvasHeader>
-				<HeaderTitle>
-					<Typography variant="h6" fontWeight={600}>
-						Canvas
-					</Typography>
-					<Typography variant="caption" color="text.secondary">
+		<div
+			data-tour-tag="canvas-container"
+			className={cn("flex h-full flex-col bg-surface")}
+		>
+			<div
+				className={cn(
+					"flex h-[84px] shrink-0 items-center justify-between gap-2 px-6",
+				)}
+			>
+				<div className={cn("flex min-w-0 flex-col")}>
+					<h2 className={cn("text-heading text-ink")}>Canvas</h2>
+					<p className={cn("text-meta text-ink-muted")}>
 						Your visual workspace
-					</Typography>
-				</HeaderTitle>
-				<Box sx={{ display: "flex", alignItems: "center", gap: 0 }}>
-					<Tooltip
-						title={`Create New File (${modifierKey} + N)`}
-						arrow
-						placement="top"
-					>
-						{/* @ts-ignore MUI Tooltip a11y issue */}
-						<IconButton
+					</p>
+				</div>
+				<div className={cn("flex shrink-0 items-center gap-1")}>
+					<Tooltip content={`Create new file (${modifierKey} + N)`}>
+						<Button
+							variant="ghost"
+							size="icon"
+							aria-label={`Create new file (${modifierKey} + N)`}
 							onClick={() => setCreateFileDialogOpen(true)}
-							size="large"
 							data-tour-tag="canvas-create-file-button"
-							sx={(theme) => ({
-								color: theme.palette.text.secondary,
-								"&:hover": {
-									backgroundColor: alpha(theme.palette.primary.main, 0.12),
-								},
-								width: 36,
-								height: 36,
-								padding: 0,
-							})}
 						>
-							<FilePlus size={16} />
-						</IconButton>
+							<FilePlus aria-hidden="true" />
+						</Button>
 					</Tooltip>
-					<Tooltip
-						title={`Open File (${modifierKey} + O)`}
-						arrow
-						placement="top"
-					>
-						{/* @ts-ignore MUI Tooltip a11y issue */}
-						<IconButton
+					<Tooltip content={`Open file (${modifierKey} + O)`}>
+						<Button
+							variant="ghost"
+							size="icon"
+							aria-label={`Open file (${modifierKey} + O)`}
 							onClick={handleOpenFile}
-							size="large"
-							sx={(theme) => ({
-								color: theme.palette.text.secondary,
-								"&:hover": {
-									backgroundColor: alpha(theme.palette.primary.main, 0.12),
-								},
-								width: 36,
-								height: 36,
-								padding: 0,
-							})}
 						>
-							<FileUp size={16} />
-						</IconButton>
+							<FileUp aria-hidden="true" />
+						</Button>
 					</Tooltip>
-					<Tooltip title="Documents View" arrow placement="top">
-						{/* @ts-ignore MUI Tooltip a11y issue */}
-						<IconButton
-							onClick={() => setCurrentView("documents")}
-							size="large"
-							data-tour-tag="canvas-documents-view-button"
-							sx={(theme) => ({
-								color:
-									currentView === "documents"
-										? theme.palette.primary.main
-										: theme.palette.text.secondary,
-								backgroundColor:
-									currentView === "documents"
-										? alpha(theme.palette.primary.main, 0.08)
-										: "transparent",
-								"&:hover": {
-									backgroundColor: alpha(theme.palette.primary.main, 0.12),
-								},
-								width: 36,
-								height: 36,
-								padding: 0,
-							})}
-						>
-							<FileText size={16} />
-						</IconButton>
-					</Tooltip>
-					<Tooltip title="Files View" arrow placement="top">
-						{/* @ts-ignore MUI Tooltip a11y issue */}
-						<IconButton
-							onClick={() => setCurrentView("files")}
-							size="large"
-							data-tour-tag="canvas-files-view-button"
-							sx={(theme) => ({
-								color:
-									currentView === "files"
-										? theme.palette.primary.main
-										: theme.palette.text.secondary,
-								backgroundColor:
-									currentView === "files"
-										? alpha(theme.palette.primary.main, 0.08)
-										: "transparent",
-								"&:hover": {
-									backgroundColor: alpha(theme.palette.primary.main, 0.12),
-								},
-								width: 36,
-								height: 36,
-								padding: 0,
-							})}
-						>
-							<FolderOpen size={16} />
-						</IconButton>
-					</Tooltip>
-					<Tooltip title="Variables View" arrow placement="top">
-						{/* @ts-ignore MUI Tooltip a11y issue */}
-						<IconButton
-							onClick={() => setCurrentView("variables")}
-							size="large"
-							data-tour-tag="canvas-variables-view-button"
-							sx={(theme) => ({
-								color:
-									currentView === "variables"
-										? theme.palette.primary.main
-										: theme.palette.text.secondary,
-								backgroundColor:
-									currentView === "variables"
-										? alpha(theme.palette.primary.main, 0.08)
-										: "transparent",
-								"&:hover": {
-									backgroundColor: alpha(theme.palette.primary.main, 0.12),
-								},
-								width: 36,
-								height: 36,
-								padding: 0,
-							})}
-						>
-							<ListTree size={16} />
-						</IconButton>
-					</Tooltip>
-					<Tooltip
-						title="Close Canvas"
-						arrow
-						placement="top"
-						sx={{ padding: 0 }}
-					>
-						{/* @ts-ignore MUI Tooltip a11y issue */}
-						<CloseButton
+					<ViewToggleButton
+						label="Documents view"
+						isActive={currentView === "documents"}
+						onClick={() => setCurrentView("documents")}
+						tourTag="canvas-documents-view-button"
+						icon={<FileText aria-hidden="true" />}
+					/>
+					<ViewToggleButton
+						label="Files view"
+						isActive={currentView === "files"}
+						onClick={() => setCurrentView("files")}
+						tourTag="canvas-files-view-button"
+						icon={<FolderOpen aria-hidden="true" />}
+					/>
+					<ViewToggleButton
+						label="Variables view"
+						isActive={currentView === "variables"}
+						onClick={() => setCurrentView("variables")}
+						tourTag="canvas-variables-view-button"
+						icon={<ListTree aria-hidden="true" />}
+					/>
+					<Tooltip content="Close canvas">
+						<Button
+							variant="ghost"
+							size="icon"
+							aria-label="Close canvas"
 							onClick={onClose}
-							size="large"
 							data-tour-tag="close-canvas-button"
 						>
-							<X size={16} />
-						</CloseButton>
+							<X aria-hidden="true" />
+						</Button>
 					</Tooltip>
-				</Box>
-			</CanvasHeader>
+				</div>
+			</div>
 
 			{currentView === "documents" && (
 				<>
@@ -464,24 +373,10 @@ const CanvasComponent: FC<CanvasProps> = ({
 
 					{/* Empty state when no documents are open */}
 					{!activeDocument && documents.length === 0 && (
-						<Box
-							sx={{
-								display: "flex",
-								flexDirection: "column",
-								alignItems: "center",
-								justifyContent: "center",
-								height: "100%",
-								p: 3,
-								textAlign: "center",
-							}}
-						>
-							<Typography variant="h6" gutterBottom>
-								No Documents Open
-							</Typography>
-							<Typography variant="body2" color="text.secondary">
-								Click on a file in chat or use the files view to open a file.
-							</Typography>
-						</Box>
+						<EmptyState
+							title="No documents open"
+							description="Click on a file in chat or use the files view to open a file."
+						/>
 					)}
 				</>
 			)}
@@ -498,24 +393,10 @@ const CanvasComponent: FC<CanvasProps> = ({
 			{/* Placeholder if no conversation context for files or variables view */}
 			{(currentView === "files" || currentView === "variables") &&
 				!conversationId && (
-					<Box
-						sx={{
-							display: "flex",
-							flexDirection: "column",
-							alignItems: "center",
-							justifyContent: "center",
-							height: "100%",
-							p: 3,
-							textAlign: "center",
-						}}
-					>
-						<Typography variant="h6" gutterBottom>
-							File Viewer
-						</Typography>
-						<Typography variant="body2" color="text.secondary">
-							No active conversation context to display files.
-						</Typography>
-					</Box>
+					<EmptyState
+						title="File viewer"
+						description="No active conversation context to display files."
+					/>
 				)}
 			{agentId && (
 				<CreateFileDialog
@@ -526,7 +407,7 @@ const CanvasComponent: FC<CanvasProps> = ({
 					agentId={agentId}
 				/>
 			)}
-		</CanvasContainer>
+		</div>
 	);
 };
 

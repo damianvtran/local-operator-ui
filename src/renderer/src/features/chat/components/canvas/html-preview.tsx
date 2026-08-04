@@ -1,6 +1,7 @@
-import { Box, Button, IconButton, styled } from "@mui/material";
 import { getHtmlUrl } from "@shared/api/local-operator/static-api";
+import { Button, Tooltip } from "@shared/components/ui";
 import { apiConfig } from "@shared/config";
+import { cn } from "@shared/lib/utils";
 import { RefreshCw as RefreshIcon } from "lucide-react";
 import { type FC, memo, useCallback, useMemo, useState } from "react";
 import type { CanvasDocument } from "../../types/canvas";
@@ -13,88 +14,15 @@ type HtmlPreviewProps = {
 	document: CanvasDocument;
 };
 
-const PreviewContainer = styled(Box)({
-	height: "100%",
-	width: "100%",
-	display: "flex",
-	flexDirection: "column",
-});
-
-const ControlsBar = styled(Box)(({ theme }) => ({
-	display: "flex",
-	alignItems: "center",
-	justifyContent: "flex-end",
-	gap: "4px",
-	padding: "6px 8px",
-	borderBottom: `1px solid ${theme.palette.divider}`,
-	backgroundColor: theme.palette.background.paper,
-	minHeight: "32px",
-}));
-
-const StyledButton = styled(Button)(({ theme }) => ({
-	height: "32px",
-	minWidth: "64px",
-	padding: "0 8px",
-	fontSize: "0.8rem",
-	fontWeight: 500,
-	borderRadius: "6px",
-	textTransform: "none",
-	border: `1px solid ${theme.palette.divider}`,
-	backgroundColor: theme.palette.background.paper,
-	color: theme.palette.text.primary,
-	boxShadow: "0 1px 2px 0 rgb(0 0 0 / 0.05)",
-	transition: "all 0.15s ease-in-out",
-	"&:hover": {
-		backgroundColor: theme.palette.action.hover,
-		borderColor: theme.palette.action.hover,
-		boxShadow: "0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px 0 rgb(0 0 0 / 0.06)",
-	},
-	"&:active": {
-		transform: "translateY(0.5px)",
-	},
-}));
-
-const StyledIconButton = styled(IconButton)(({ theme }) => ({
-	width: "32px",
-	height: "32px",
-	padding: "4px",
-	borderRadius: "6px",
-	border: `1px solid ${theme.palette.divider}`,
-	backgroundColor: theme.palette.background.paper,
-	color: theme.palette.text.secondary,
-	boxShadow: "0 1px 2px 0 rgb(0 0 0 / 0.05)",
-	transition: "all 0.15s ease-in-out",
-	"&:hover": {
-		backgroundColor: theme.palette.action.hover,
-		borderColor: theme.palette.action.hover,
-		color: theme.palette.text.primary,
-		boxShadow: "0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px 0 rgb(0 0 0 / 0.06)",
-	},
-	"&:active": {
-		transform: "translateY(0.5px)",
-	},
-	"& svg": {
-		width: "12px",
-		height: "12px",
-	},
-}));
-
-/**
- * Styled iframe for HTML content
- */
-const HtmlIframe = styled("iframe")(({ theme }) => ({
-	width: "100%",
-	height: "100%",
-	border: "none",
-	backgroundColor: theme.palette.background.paper,
-	borderRadius: "0",
-}));
-
 /**
  * HTML Preview Component
  *
  * Renders HTML content in an iframe using the Local Operator static HTML endpoint
  * This simulates opening the HTML file in a local browser by serving it through the API
+ *
+ * The iframe is a separate document: our Tailwind classes and `--color-*` vars do
+ * not reach inside it, so only the chrome around it is styled here. The page keeps
+ * whatever styling its own markup declares.
  */
 const HtmlPreviewComponent: FC<HtmlPreviewProps> = ({ document }) => {
 	const [isEditMode, setIsEditMode] = useState(false);
@@ -118,31 +46,44 @@ const HtmlPreviewComponent: FC<HtmlPreviewProps> = ({ document }) => {
 	);
 
 	return (
-		<PreviewContainer>
-			<ControlsBar>
-				<StyledButton onClick={handleToggleMode}>
+		<div className={cn("flex h-full w-full flex-col")}>
+			<div
+				className={cn(
+					"flex min-h-8 items-center justify-end gap-1",
+					"border-hairline border-b bg-surface px-2 py-1.5",
+				)}
+			>
+				<Button variant="outline" size="sm" onClick={handleToggleMode}>
 					{isEditMode ? "Preview" : "Edit"}
-				</StyledButton>
-				<StyledIconButton onClick={handleRefresh}>
-					<RefreshIcon />
-				</StyledIconButton>
-			</ControlsBar>
-			<Box sx={{ flexGrow: 1, overflow: "hidden" }}>
+				</Button>
+				<Tooltip content="Reload preview">
+					<Button
+						variant="ghost"
+						size="icon"
+						onClick={handleRefresh}
+						aria-label="Reload preview"
+					>
+						<RefreshIcon />
+					</Button>
+				</Tooltip>
+			</div>
+			<div className={cn("flex-1 overflow-hidden")}>
 				{isEditMode ? (
 					<CodeEditor
 						document={{ ...document, content }}
 						onContentChange={setContent}
 					/>
 				) : (
-					<HtmlIframe
+					<iframe
 						key={key}
 						src={htmlUrl}
 						title={`HTML Preview: ${document.title}`}
 						sandbox="allow-scripts allow-same-origin allow-forms"
+						className={cn("h-full w-full border-0 bg-surface")}
 					/>
 				)}
-			</Box>
-		</PreviewContainer>
+			</div>
+		</div>
 	);
 };
 

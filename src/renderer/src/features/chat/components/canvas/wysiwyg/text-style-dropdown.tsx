@@ -1,15 +1,12 @@
-import { MenuItem, Select } from "@mui/material";
-import { styled } from "@mui/material/styles";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@shared/components/ui";
+import { cn } from "@shared/lib/utils";
 import type { FC } from "react";
-
-const StyledSelect = styled(Select)(() => ({
-	minWidth: "120px",
-	height: "32px",
-	"& .MuiSelect-select": {
-		padding: "4px 8px",
-		fontSize: "0.875rem",
-	},
-}));
 
 type TextType = "paragraph" | "h1" | "h2" | "h3" | "h4" | "h5" | "h6";
 
@@ -18,23 +15,42 @@ type TextStyleDropdownProps = {
 	onTextTypeChange: (type: TextType) => void;
 };
 
+const TEXT_TYPES: { value: TextType; label: string }[] = [
+	{ value: "paragraph", label: "Paragraph" },
+	{ value: "h1", label: "Heading 1" },
+	{ value: "h2", label: "Heading 2" },
+	{ value: "h3", label: "Heading 3" },
+	{ value: "h4", label: "Heading 4" },
+	{ value: "h5", label: "Heading 5" },
+	{ value: "h6", label: "Heading 6" },
+];
+
+/**
+ * Block-type picker for the editor toolbar.
+ *
+ * The primitive reports the new value directly rather than through a change
+ * event, so the cast back to `TextType` happens here and the component's own
+ * `onTextTypeChange` signature is unchanged.
+ */
 export const TextStyleDropdown: FC<TextStyleDropdownProps> = ({
 	currentTextType,
 	onTextTypeChange,
 }) => {
 	return (
-		<StyledSelect
+		<Select
 			value={currentTextType}
-			onChange={(e) => onTextTypeChange(e.target.value as TextType)}
-			size="small"
+			onValueChange={(value) => onTextTypeChange(value as TextType)}
 		>
-			<MenuItem value="paragraph">Paragraph</MenuItem>
-			<MenuItem value="h1">Heading 1</MenuItem>
-			<MenuItem value="h2">Heading 2</MenuItem>
-			<MenuItem value="h3">Heading 3</MenuItem>
-			<MenuItem value="h4">Heading 4</MenuItem>
-			<MenuItem value="h5">Heading 5</MenuItem>
-			<MenuItem value="h6">Heading 6</MenuItem>
-		</StyledSelect>
+			<SelectTrigger aria-label="Text style" className={cn("w-30")}>
+				<SelectValue />
+			</SelectTrigger>
+			<SelectContent>
+				{TEXT_TYPES.map((textType) => (
+					<SelectItem key={textType.value} value={textType.value}>
+						{textType.label}
+					</SelectItem>
+				))}
+			</SelectContent>
+		</Select>
 	);
 };

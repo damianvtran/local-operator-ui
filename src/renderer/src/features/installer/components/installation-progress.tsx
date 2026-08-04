@@ -1,15 +1,16 @@
-import { Box, Button, Typography, alpha, useTheme } from "@mui/material";
+import { Spinner } from "@shared/components/common/spinner";
+import { Button } from "@shared/components/ui";
 import type React from "react";
-import { Spinner, SpinnerContainer } from "./installer-styled";
 
 /**
  * InstallationProgress component
  *
- * Displays the installation progress UI with a spinner, progress bar, and cancel button
+ * The right half of the installer: what is happening, how long it takes, and
+ * the one way out. There is no progress bar because the backend reports no
+ * progress — a bar that cannot move is a lie, so the spinner carries the
+ * "still working" signal and the copy carries the expectation.
  */
 export const InstallationProgress: React.FC = () => {
-	const theme = useTheme();
-
 	/**
 	 * Handle cancel button click
 	 * Sends a message to the main process to cancel the installation
@@ -20,77 +21,26 @@ export const InstallationProgress: React.FC = () => {
 	};
 
 	return (
-		<Box
-			sx={{
-				display: "flex",
-				flexDirection: "column",
-				gap: 4,
-				width: "100%",
-				maxWidth: "520px",
-			}}
-		>
-			<Box sx={{ textAlign: "center" }}>
-				<Typography variant="gradientTitle">
-					Setting Up Your Environment
-				</Typography>
-			</Box>
+		<div className="flex w-full max-w-130 flex-col items-center gap-6 text-center">
+			<h2 className="text-display text-ink">Setting up your environment</h2>
 
-			<Box sx={{ width: "100%" }}>
-				<Typography
-					variant="body1"
-					color="text.secondary"
-					sx={{ textAlign: "center", mb: 3, fontSize: "1rem" }}
-				>
-					We're preparing the magic behind the scenes! This one-time setup
-					ensures you'll have the best experience with Local Operator.
-				</Typography>
-				{/* LinearProgress removed as per feedback */}
-			</Box>
+			<p className="text-body text-ink-muted">
+				This one-time setup installs Python and the AI dependencies that Local
+				Operator's assistants run on, on your device.
+			</p>
 
-			<SpinnerContainer sx={{ my: 2 }}>
-				{" "}
-				{/* Added some margin for better spacing */}
-				<Spinner />
-			</SpinnerContainer>
+			{/* The one live region on this screen: the label is what a screen reader
+			    gets in place of a spinning ring. */}
+			<Spinner size="lg" label="Installing dependencies" />
 
-			<Typography
-				variant="body1"
-				sx={{ textAlign: "center", color: "text.secondary", fontSize: "1rem" }}
-			>
-				Installing Python and other AI dependencies for Local Operator
-				assistants on your device...
-			</Typography>
-			<Typography
-				variant="body1"
-				sx={{
-					textAlign: "center",
-					color: "text.secondary",
-					fontSize: "0.875rem",
-				}}
-			>
-				This will take a few minutes. You can minimize this window and continue
-				using your computer in the meantime, you will get a notification when
-				it's done.
-			</Typography>
+			<p className="text-body-sm text-ink-muted">
+				This takes a few minutes. You can minimize this window and keep using
+				your computer — you will get a notification when it is done.
+			</p>
 
-			<Button
-				variant="outlined"
-				color="error"
-				onClick={handleCancel}
-				sx={{
-					alignSelf: "center",
-					px: 3,
-					py: 1,
-					borderRadius: theme.shape.borderRadius,
-					borderColor: theme.palette.error.main,
-					"&:hover": {
-						backgroundColor: alpha(theme.palette.error.main, 0.08),
-						borderColor: theme.palette.error.dark,
-					},
-				}}
-			>
-				Cancel Setup
+			<Button variant="danger" onClick={handleCancel}>
+				Cancel setup
 			</Button>
-		</Box>
+		</div>
 	);
 };

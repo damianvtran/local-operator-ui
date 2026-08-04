@@ -8,7 +8,6 @@ import { ChatPage } from "@features/chat/components/chat-page";
 import { CommandPalette } from "@features/command-palette/components/command-palette";
 import { OnboardingModal } from "@features/onboarding";
 import { OnboardingProvider } from "@features/onboarding/components/onboarding-provider";
-import { OnboardingTourGlobalStyles } from "@features/onboarding/components/onboarding-tour-global.styles";
 
 import { ConnectivityBanner } from "@shared/components/common/connectivity-banner";
 import { CreateAgentDialog } from "@shared/components/common/create-agent-dialog";
@@ -97,7 +96,6 @@ const App: FC = () => {
 
 	return (
 		<OnboardingProvider>
-			<OnboardingTourGlobalStyles />
 			<div className="flex h-screen overflow-hidden">
 				{isCommandPaletteOpen && <CommandPalette />}
 

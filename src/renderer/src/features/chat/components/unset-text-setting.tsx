@@ -6,12 +6,6 @@
 
 import { Button } from "@shared/components/ui";
 import type { FC } from "react";
-import {
-	DescriptionText,
-	LabelText,
-	LabelWrapper,
-	UnsetContainer,
-} from "./chat-options-sidebar-styled";
 
 type UnsetTextSettingProps = {
 	/**
@@ -58,16 +52,16 @@ export const UnsetTextSetting: FC<UnsetTextSettingProps> = ({
 	icon,
 }) => {
 	return (
-		<UnsetContainer>
-			<LabelWrapper>
-				<LabelText>
-					{icon && icon}
+		<div className="mb-4 flex flex-col rounded-md border border-control bg-surface p-4">
+			<div className="mb-2">
+				<span className="mb-1 flex items-center font-medium text-body-sm text-ink">
+					{icon}
 					{label}
-				</LabelText>
-				<DescriptionText>{description}</DescriptionText>
-			</LabelWrapper>
+				</span>
+				<span className="mb-3 text-body-sm text-ink-muted">{description}</span>
+			</div>
 			<div className="flex items-center justify-between">
-				<span className="text-body-sm italic text-ink-muted">Not set yet</span>
+				<span className="text-meta text-ink-dim">Not set yet</span>
 				<Button
 					variant="outline"
 					size="sm"
@@ -78,6 +72,6 @@ export const UnsetTextSetting: FC<UnsetTextSettingProps> = ({
 					Set to default ({defaultDisplayText})
 				</Button>
 			</div>
-		</UnsetContainer>
+		</div>
 	);
 };

@@ -1,61 +1,43 @@
 /**
  * Model Credential Step Component
  *
- * Third step in the onboarding process that allows the user to add their first model provider credential
- * with an exciting and engaging interface.
+ * Third step in the onboarding process: pick a model provider and paste its API
+ * key. The key is saved on blur, so the step has no save button of its own —
+ * the confirmation is the only thing that appears afterwards.
  */
 
 import {
 	CREDENTIAL_MANIFEST,
 	CredentialType,
 } from "@features/settings/components/credential-manifest";
+import { Spinner } from "@shared/components/common/spinner";
 import {
 	Alert,
-	Box,
-	CircularProgress,
-	FormControl,
-	FormHelperText,
-	InputAdornment,
-	Link,
-	MenuItem,
+	Input,
+	Label,
 	Select,
-	type SelectChangeEvent,
-	TextField,
-	Typography,
-	alpha,
-	useTheme,
-} from "@mui/material";
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@shared/components/ui";
 import { useCredentials } from "@shared/hooks/use-credentials";
 import { useModels } from "@shared/hooks/use-models";
 import { useUpdateCredential } from "@shared/hooks/use-update-credential";
-import {
-	Bot,
-	Check,
-	ExternalLink,
-	Key,
-	Link2,
-	Lock,
-	PartyPopper,
-	Shield,
-	Sparkles,
-} from "lucide-react";
+import { cn } from "@shared/lib/utils";
+import { ExternalLink } from "lucide-react";
 import type { FC } from "react";
 import { useEffect, useRef, useState } from "react";
-import {
-	FieldLabel,
-	FormContainer,
-	InlineIcon,
-	LabelIcon,
-	SectionContainer,
-	SectionDescription,
-	menuPropsSx,
-} from "../onboarding-styled";
+
+const PROVIDER_SELECT_ID = "onboarding-model-provider";
+const PROVIDER_HELP_ID = "onboarding-model-provider-help";
+const KEY_INPUT_ID = "onboarding-model-key";
+const KEY_HELP_ID = "onboarding-model-key-help";
 
 /**
  * Model credential step in the onboarding process
  */
 export const ModelCredentialStep: FC = () => {
-	const theme = useTheme(); // Get theme context
 	// Get the list of model provider credentials
 	const modelProviderCredentials = CREDENTIAL_MANIFEST.filter(
 		(cred) => cred.type === CredentialType.Hosting,
@@ -75,14 +57,6 @@ export const ModelCredentialStep: FC = () => {
 	const updateCredentialMutation = useUpdateCredential();
 	const { refreshModels } = useModels();
 
-	// Handle credential selection change
-	const handleCredentialChange = (event: SelectChangeEvent) => {
-		setSelectedCredential(event.target.value);
-		setCredentialValue("");
-		setError("");
-		setSaveSuccess(false);
-	};
-
 	// Handle credential value change
 	const handleCredentialValueChange = (
 		event: React.ChangeEvent<HTMLInputElement>,
@@ -97,7 +71,7 @@ export const ModelCredentialStep: FC = () => {
 	};
 
 	// Reference to store the timeout ID for clearing
-	const successTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+	const successTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
 	// Save the credential when the input field loses focus (blur event)
 	const handleSaveCredential = async () => {
@@ -119,10 +93,8 @@ export const ModelCredentialStep: FC = () => {
 				// Refresh models when a credential is successfully saved
 				refreshModels();
 
-				// Clear any existing timeout
-				if (successTimeoutRef.current) {
-					clearTimeout(successTimeoutRef.current);
-				}
+				// Replace any pending hide, so the message lives 3s from this save
+				clearTimeout(successTimeoutRef.current);
 
 				// Set a timeout to hide the success message after 3 seconds
 				successTimeoutRef.current = setTimeout(() => {
@@ -139,11 +111,7 @@ export const ModelCredentialStep: FC = () => {
 
 	// Clean up the timeout when the component unmounts
 	useEffect(() => {
-		return () => {
-			if (successTimeoutRef.current) {
-				clearTimeout(successTimeoutRef.current);
-			}
-		};
+		return () => clearTimeout(successTimeoutRef.current);
 	}, []);
 
 	// Get the selected credential info
@@ -151,228 +119,111 @@ export const ModelCredentialStep: FC = () => {
 		(cred) => cred.key === selectedCredential,
 	);
 
-	const inputSx = {
-		"& .MuiOutlinedInput-root": {
-			borderRadius: theme.shape.borderRadius * 0.75,
-			backgroundColor: theme.palette.background.paper,
-			border: `1px solid ${theme.palette.divider}`,
-			minHeight: "40px",
-			height: "40px",
-			transition: "border-color 0.2s ease, box-shadow 0.2s ease",
-			"&:hover": {
-				borderColor: theme.palette.text.secondary,
-			},
-			"&.Mui-focused": {
-				borderColor: theme.palette.primary.main,
-				boxShadow: `0 0 0 2px ${theme.palette.primary.main}33`,
-			},
-			"& .MuiOutlinedInput-notchedOutline": {
-				border: "none",
-			},
-			"& .MuiInputBase-input": {
-				padding: theme.spacing(1, 1.5),
-				fontSize: "0.875rem",
-				height: "calc(40px - 16px)",
-				boxSizing: "border-box",
-			},
-			"& .MuiInputBase-input::placeholder": {
-				color: theme.palette.text.disabled,
-				opacity: 1,
-			},
-			"& .MuiSelect-select": {
-				display: "flex",
-				alignItems: "center",
-				gap: theme.spacing(1),
-			},
-			"& .MuiInputAdornment-root": {
-				color: theme.palette.text.secondary,
-				marginRight: theme.spacing(0.5),
-			},
-		},
-		"& .MuiFormHelperText-root": {
-			fontSize: "0.75rem",
-			mt: 0.5,
-			ml: 0.5,
-		},
-	};
-
-	// Style for the info box
-	const infoBoxSx = {
-		mt: 1.5,
-		p: 1.5,
-		borderRadius: theme.shape.borderRadius * 0.75,
-		border: `1px solid ${theme.palette.divider}`,
-		backgroundColor: alpha(theme.palette.background.default, 0.5),
-	};
-
-	// Style for the success alert
-	const successAlertSx = {
-		mb: 2,
-		borderRadius: theme.shape.borderRadius * 0.75,
-		border: `1px solid ${theme.palette.success.main}`,
-		backgroundColor: alpha(theme.palette.success.main, 0.1),
-		color: theme.palette.success.dark,
-		"& .MuiAlert-icon": {
-			color: theme.palette.success.main,
-		},
-	};
-
-	// Style for the final security note box
-	const securityNoteSx = {
-		mt: 2,
-		p: 1.5,
-		borderRadius: theme.shape.borderRadius * 0.75,
-		backgroundColor: alpha(theme.palette.info.main, 0.08),
-		border: `1px solid ${alpha(theme.palette.info.main, 0.2)}`,
-		display: "flex",
-		alignItems: "center",
-		gap: theme.spacing(1),
-	};
-
 	return (
-		<SectionContainer>
-			<SectionDescription>
-				<InlineIcon>
-					<Sparkles size={16} />
-				</InlineIcon>
-				Add an API key for at least one model provider to enable AI features.
-				Your keys are stored securely on your device.
-			</SectionDescription>
+		<div className="flex flex-col gap-6">
+			<p className="text-body text-ink-muted">
+				Add an API key for at least one model provider. Keys are stored on your
+				device and never shared.
+			</p>
 
-			<FormContainer>
-				{/* Provider Selection */}
-				<Box>
-					{" "}
-					<FieldLabel>
-						<LabelIcon>
-							<Bot size={14} />
-						</LabelIcon>
-						Model Provider
-					</FieldLabel>
-					<FormControl fullWidth variant="outlined" sx={inputSx}>
-						<Select
-							id="credential-select"
-							value={selectedCredential}
-							onChange={handleCredentialChange}
-							MenuProps={menuPropsSx(theme)}
-						>
-							{modelProviderCredentials.map((cred) => (
-								<MenuItem key={cred.key} value={cred.key}>
-									{cred.name}
-								</MenuItem>
-							))}
-						</Select>
-						<FormHelperText
-							sx={{ display: "flex", alignItems: "center", gap: 0.5 }}
-						>
-							<Shield size={12} />
-							Select your preferred AI model provider
-						</FormHelperText>
-					</FormControl>
-				</Box>
-
-				{/* Provider Info Box */}
-				{selectedCredentialInfo && (
-					<Box sx={infoBoxSx}>
-						<Typography variant="body2" sx={{ mb: 1 }}>
-							{selectedCredentialInfo.description}
-						</Typography>
-						<Link
-							href={selectedCredentialInfo.url}
-							target="_blank"
-							rel="noopener noreferrer"
-							variant="body2"
-							sx={{
-								display: "inline-flex",
-								alignItems: "center",
-								gap: 0.5,
-								fontWeight: 500,
-								color: "primary.main",
-								"&:hover": {
-									textDecoration: "underline",
-									color: "primary.dark",
-								},
-							}}
-						>
-							<InlineIcon sx={{ mb: 0 }}>
-								<Link2 size={14} />
-							</InlineIcon>
-							Get {selectedCredentialInfo.name} <ExternalLink size={12} />
-						</Link>
-					</Box>
-				)}
-
-				{/* Success Alert */}
-				{saveSuccess && (
-					<Alert
-						severity="success"
-						icon={<Check size={16} />}
-						sx={successAlertSx}
+			<div className="flex flex-col gap-5">
+				<div className="flex flex-col gap-2">
+					<Label htmlFor={PROVIDER_SELECT_ID}>Model provider</Label>
+					<Select
+						value={selectedCredential}
+						onValueChange={(value) => {
+							setSelectedCredential(value);
+							setCredentialValue("");
+							setError("");
+							setSaveSuccess(false);
+						}}
 					>
-						<Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-							<InlineIcon sx={{ mb: 0 }}>
-								<PartyPopper size={14} />
-							</InlineIcon>
-							Credential saved successfully!
-						</Box>
-					</Alert>
-				)}
-
-				{/* API Key Input */}
-				<Box>
-					{" "}
-					{/* Wrap Label and Input */}
-					<FieldLabel>
-						<LabelIcon>
-							<Key size={14} />
-						</LabelIcon>
-						API Key
-					</FieldLabel>
-					<TextField
-						// Remove label prop
-						variant="outlined"
-						fullWidth
-						value={credentialValue}
-						onChange={handleCredentialValueChange}
-						error={!!error}
-						helperText={error || "Enter the API key for the selected provider"}
-						placeholder="Enter your API key here"
-						required
-						type="password"
-						onBlur={handleSaveCredential}
-						onKeyDown={(e) => {
-							if (
-								e.key === "Enter" &&
-								selectedCredential &&
-								credentialValue.trim() &&
-								!error &&
-								!isSaving
-							) {
-								handleSaveCredential();
+						<SelectTrigger
+							id={PROVIDER_SELECT_ID}
+							className="h-9.5 text-body"
+							aria-describedby={
+								selectedCredentialInfo ? PROVIDER_HELP_ID : undefined
 							}
-						}}
-						InputProps={{
-							endAdornment: isSaving ? (
-								<InputAdornment position="end">
-									<CircularProgress size={20} />
-								</InputAdornment>
-							) : null,
-						}}
-						disabled={isSaving}
-						sx={inputSx}
-					/>
-				</Box>
+						>
+							<SelectValue placeholder="Select a provider" />
+						</SelectTrigger>
+						<SelectContent>
+							{modelProviderCredentials.map((cred) => (
+								<SelectItem key={cred.key} value={cred.key}>
+									{cred.name}
+								</SelectItem>
+							))}
+						</SelectContent>
+					</Select>
 
-				{/* Security Note */}
-				<Box sx={securityNoteSx}>
-					<InlineIcon sx={{ mb: 0 }}>
-						<Lock size={14} />
-					</InlineIcon>
-					<Typography variant="body2" color="text.secondary">
-						Your API keys are stored securely on your device and never shared.
-					</Typography>
-				</Box>
-			</FormContainer>
-		</SectionContainer>
+					{/*
+					 * The provider blurb and its sign-up link are help text for the
+					 * select above them, so they read as help text. This used to be a
+					 * filled, bordered well inside an already bordered dialog.
+					 */}
+					{selectedCredentialInfo && (
+						<div
+							id={PROVIDER_HELP_ID}
+							className="flex flex-col items-start gap-1"
+						>
+							<p className="text-ink-dim text-meta">
+								{selectedCredentialInfo.description}
+							</p>
+							<a
+								href={selectedCredentialInfo.url}
+								target="_blank"
+								rel="noopener noreferrer"
+								className="inline-flex items-center gap-1 text-accent text-meta underline-offset-4 hover:text-accent-hover hover:underline"
+							>
+								Get a {selectedCredentialInfo.name} key
+								<ExternalLink size={12} aria-hidden="true" />
+							</a>
+						</div>
+					)}
+				</div>
+
+				<div className="flex flex-col gap-2">
+					<Label htmlFor={KEY_INPUT_ID}>API key</Label>
+					{/* The spinner sits beside the field rather than inside it: an
+					    adornment inside a password input competes with the reveal
+					    control the platform draws there. */}
+					<div className="flex items-center gap-2">
+						<Input
+							id={KEY_INPUT_ID}
+							inputSize="lg"
+							type="password"
+							value={credentialValue}
+							onChange={handleCredentialValueChange}
+							onBlur={handleSaveCredential}
+							onKeyDown={(e) => {
+								if (
+									e.key === "Enter" &&
+									selectedCredential &&
+									credentialValue.trim() &&
+									!error &&
+									!isSaving
+								) {
+									handleSaveCredential();
+								}
+							}}
+							placeholder="Paste your API key"
+							required
+							disabled={isSaving}
+							aria-invalid={error ? true : undefined}
+							aria-describedby={KEY_HELP_ID}
+						/>
+						{isSaving && <Spinner size="sm" label="Saving credential" />}
+					</div>
+					<p
+						id={KEY_HELP_ID}
+						className={cn("text-meta", error ? "text-danger" : "text-ink-dim")}
+					>
+						{error || "Saved on your device as soon as you leave the field"}
+					</p>
+				</div>
+
+				{saveSuccess && <Alert variant="success">Credential saved</Alert>}
+			</div>
+		</div>
 	);
 };

@@ -1,4 +1,5 @@
-import { Tab, Tabs, alpha, styled } from "@mui/material";
+import { Tabs, TabsList, TabsTrigger } from "@shared/components/ui";
+import { cn } from "@shared/lib/utils";
 import { Code, MessageCircleMore } from "lucide-react";
 import type { FC } from "react";
 
@@ -10,71 +11,34 @@ type ChatTabsProps = {
 	onChange: (newTab: "chat" | "raw") => void;
 };
 
-const StyledTabs = styled(Tabs)(({ theme }) => ({
-	borderBottom: `1px solid ${alpha(theme.palette.divider, 0.05)}`,
-	minHeight: "42px",
-	"& .MuiTabs-indicator": {
-		height: 2,
-		borderRadius: "2px 2px 0 0",
-	},
-}));
-
-const StyledTab = styled(Tab, {
-	shouldForwardProp: (prop) => prop !== "isActive",
-})<{ isActive?: boolean }>(({ theme, isActive }) => ({
-	minHeight: "42px",
-	padding: "4px 0",
-	textTransform: "none",
-	fontSize: "0.85rem",
-	fontWeight: 500,
-	transition: "all 0.2s ease",
-	opacity: isActive ? 1 : 0.7,
-	"&:hover": {
-		opacity: 1,
-		backgroundColor: alpha(
-			theme.palette.mode === "dark"
-				? theme.palette.common.white
-				: theme.palette.common.black,
-			0.05,
-		),
-	},
-	"& .MuiTab-iconWrapper": {
-		marginRight: 6,
-		fontSize: "0.9rem",
-	},
-}));
-
 /**
  * ChatTabs Component
  *
- * Displays tabs for switching between chat and raw views
+ * Displays tabs for switching between chat and raw views.
+ *
+ * This is a real tablist — two mutually exclusive views of the same
+ * conversation — so it keeps the Tabs primitive rather than becoming a row of
+ * buttons: `role="tab"`, `aria-selected` and arrow-key navigation come with
+ * it. Selection is the segmented control's `surface` step; the full-width
+ * underlined bar and its indicator are gone.
  */
 export const ChatTabs: FC<ChatTabsProps> = ({ activeTab, onChange }) => {
 	return (
-		<StyledTabs
+		<Tabs
 			value={activeTab}
-			onChange={(_, newValue) => onChange(newValue)}
-			variant="fullWidth"
-			TabIndicatorProps={{
-				style: {
-					transition: "all 0.3s ease",
-				},
-			}}
+			onValueChange={(value) => onChange(value as "chat" | "raw")}
+			className={cn("px-4 py-2")}
 		>
-			<StyledTab
-				icon={<MessageCircleMore size={16} />}
-				iconPosition="start"
-				label="Chat"
-				value="chat"
-				isActive={activeTab === "chat"}
-			/>
-			<StyledTab
-				icon={<Code size={16} />}
-				iconPosition="start"
-				label="Raw"
-				value="raw"
-				isActive={activeTab === "raw"}
-			/>
-		</StyledTabs>
+			<TabsList>
+				<TabsTrigger value="chat">
+					<MessageCircleMore aria-hidden={true} />
+					Chat
+				</TabsTrigger>
+				<TabsTrigger value="raw">
+					<Code aria-hidden={true} />
+					Raw
+				</TabsTrigger>
+			</TabsList>
+		</Tabs>
 	);
 };

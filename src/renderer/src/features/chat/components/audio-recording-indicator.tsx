@@ -62,11 +62,12 @@ export const AudioRecordingIndicator = ({
 			return;
 		}
 
-		// Canvas draws resolve CSS variables, so the waveform keeps following
-		// the active theme's accent role without a theme object.
-		const accent =
-			getComputedStyle(canvas).getPropertyValue("--lo-accent").trim() ||
-			"#3b82f6";
+		// A canvas 2D context cannot resolve `var()`, so the accent has to be read
+		// back as a computed value. Reading `color` rather than the custom property
+		// is what removes the need for a literal fallback: the element carries
+		// `text-accent`, and `color` always computes to a real colour, whereas a
+		// custom property read returns "" before the theme is applied.
+		const accent = getComputedStyle(canvas).color;
 
 		// Resize canvas to match its container
 		const resizeCanvas = () => {
@@ -215,7 +216,7 @@ export const AudioRecordingIndicator = ({
 				aria-hidden="true"
 			/>
 			<span className="font-medium text-body-sm text-accent">Recording</span>
-			<canvas ref={canvasRef} className="block h-6 flex-1" />
+			<canvas ref={canvasRef} className="block h-6 flex-1 text-accent" />
 		</div>
 	);
 };
