@@ -79,6 +79,12 @@ export const TagsInputChips: FC<TagsInputChipsProps> = ({
 			<div
 				className={cn(
 					"flex min-h-11 flex-wrap items-center gap-2 rounded-sm border border-control bg-surface p-2",
+					// The field inside suppresses its own outline so there is never a
+					// ring inside a ring; that makes drawing one here mandatory, not
+					// optional. `outline-solid` is required because Tailwind v4's
+					// `outline-none` on the input pins `--tw-outline-style: none`.
+					"has-[:focus-visible]:outline-solid has-[:focus-visible]:outline-2",
+					"has-[:focus-visible]:outline-accent has-[:focus-visible]:outline-offset-2",
 					disabled && "border-hairline bg-sunken",
 				)}
 			>
