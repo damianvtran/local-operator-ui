@@ -1,15 +1,8 @@
-import {
-	Box,
-	Chip,
-	IconButton,
-	Paper,
-	Skeleton,
-	Typography,
-} from "@mui/material";
-import { alpha, styled } from "@mui/material/styles";
 import type { ScheduleResponse } from "@shared/api/local-operator";
 import { AgentsApi } from "@shared/api/local-operator/agents-api";
+import { Badge, Button, Skeleton, Tooltip } from "@shared/components/ui";
 import { apiConfig } from "@shared/config";
+import { cn } from "@shared/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { Edit, Trash2, User } from "lucide-react";
 import type { FC } from "react";
@@ -93,52 +86,6 @@ type ScheduleListItemProps = {
 	onToggleActive: (schedule: ScheduleResponse) => void;
 };
 
-const ListItemPaper = styled(Paper)(({ theme }) => ({
-	padding: theme.spacing(2),
-	marginBottom: theme.spacing(2),
-	display: "grid",
-	gridTemplateAreas: `
-    "prompt prompt actions"
-    "info info info"
-    "footer footer footer"
-  `,
-	gridTemplateColumns: "1fr auto auto",
-	gap: theme.spacing(1),
-	backgroundImage: "none",
-	border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-	borderRadius: theme.shape.borderRadius,
-	transition: "border-color 0.2s ease",
-	"&:hover": {
-		borderColor: alpha(theme.palette.divider, 0.4),
-	},
-}));
-
-const PromptSection = styled(Box)({
-	gridArea: "prompt",
-	wordBreak: "break-word",
-});
-
-const InfoSection = styled(Box)(({ theme }) => ({
-	gridArea: "info",
-	display: "flex",
-	flexDirection: "column",
-	gap: theme.spacing(0.5),
-}));
-
-const ActionsSection = styled(Box)(({ theme }) => ({
-	gridArea: "actions",
-	display: "flex",
-	gap: theme.spacing(1),
-	alignSelf: "start",
-}));
-
-const FooterSection = styled(Box)({
-	gridArea: "footer",
-	display: "flex",
-	justifyContent: "flex-end",
-	alignItems: "center",
-});
-
 const useAgentName = (agentId: string) => {
 	const baseUrl = apiConfig.baseUrl;
 
@@ -159,15 +106,11 @@ const useAgentName = (agentId: string) => {
 };
 
 /**
- * ScheduleListItem component
+ * One schedule row.
  *
- * Displays a single schedule item with actions to edit, delete, and toggle active state.
- *
- * @param schedule - The schedule object to display.
- * @param onEdit - Callback for editing the schedule.
- * @param onDelete - Callback for deleting the schedule.
- * @param onToggleActive - Callback for toggling the schedule's active state.
- * @throws Will throw if agent name cannot be fetched.
+ * Rows are separated by hairlines on the list side, not boxed per row: the
+ * old bordered Paper-per-row doubled the boundary the container already
+ * provides. Hover only nudges the row to the next ground step.
  */
 export const ScheduleListItem: FC<ScheduleListItemProps> = ({
 	schedule,
@@ -179,86 +122,63 @@ export const ScheduleListItem: FC<ScheduleListItemProps> = ({
 	);
 
 	return (
-		<ListItemPaper elevation={0}>
-			<PromptSection>
-				<Typography
-					variant="body2"
-					color="text.secondary"
-					fontSize="0.875rem"
-					sx={{ mt: 0.5 }}
-				>
-					{schedule.prompt}
-				</Typography>
-			</PromptSection>
+		<div className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-1 border-b border-hairline px-4 py-3 transition-colors duration-fast ease-out-quart last:border-b-0 hover:bg-surface">
+			<p className="min-w-0 break-words text-body-sm text-ink-muted">
+				{schedule.prompt}
+			</p>
 
-			<ActionsSection>
-				<IconButton
-					onClick={() => onEdit(schedule)}
-					size="small"
-					title="Edit Schedule"
-				>
-					<Edit size={20} />
-				</IconButton>
-				<IconButton
-					onClick={() => onDelete(schedule.id)}
-					size="small"
-					title="Delete Schedule"
-				>
-					<Trash2 size={20} />
-				</IconButton>
-			</ActionsSection>
+			<div className="flex items-start gap-1">
+				<Tooltip content="Edit schedule">
+					<Button
+						variant="ghost"
+						size="icon"
+						onClick={() => onEdit(schedule)}
+						aria-label="Edit Schedule"
+					>
+						<Edit />
+					</Button>
+				</Tooltip>
+				<Tooltip content="Delete schedule">
+					<Button
+						variant="ghost"
+						size="icon"
+						onClick={() => onDelete(schedule.id)}
+						aria-label="Delete Schedule"
+					>
+						<Trash2 />
+					</Button>
+				</Tooltip>
+			</div>
 
-			<InfoSection>
-				<Box sx={{ display: "flex", alignItems: "center", minHeight: 28 }}>
+			<div className="col-span-2 flex flex-col gap-1">
+				<div className="flex min-h-7 items-center">
 					{isLoadingAgentName ? (
-						<Skeleton
-							width={80}
-							height={28}
-							variant="rectangular"
-							sx={{ borderRadius: 1 }}
-						/>
+						<Skeleton className="h-6 w-20 rounded-full" />
 					) : (
-						<Chip
-							icon={<User size={12} style={{ marginLeft: 2 }} />}
-							label={agentName || schedule.agent_id.substring(0, 8)}
-							variant="outlined"
-							color="primary"
-							size="small"
-							sx={{
-								fontSize: "0.75rem",
-								height: 24,
-								maxWidth: 180,
-								overflow: "hidden",
-								textOverflow: "ellipsis",
-								pl: 1,
-								pr: 0.5,
-							}}
-							aria-label="Agent Name"
-						/>
+						<Badge variant="accent" shape="pill" aria-label="Agent Name">
+							<User size={12} aria-hidden="true" />
+							<span className="max-w-40 truncate">
+								{agentName || schedule.agent_id.substring(0, 8)}
+							</span>
+						</Badge>
 					)}
-				</Box>
-				<Typography variant="caption" color="text.secondary">
+				</div>
+				<p className="text-ink-muted text-meta">
 					{createScheduleDisplayString(schedule)}
-				</Typography>
-				<Typography
-					variant="caption"
-					display="block"
-					color={schedule.is_active ? "success.main" : "error.main"}
+				</p>
+				<p
+					className={cn(
+						"text-meta",
+						schedule.is_active ? "text-success" : "text-danger",
+					)}
 				>
 					Status: {schedule.is_active ? "Active" : "Inactive"}
-				</Typography>
-			</InfoSection>
+				</p>
+			</div>
 
-			<FooterSection>
-				<Typography
-					variant="caption"
-					color="text.secondary"
-					fontSize="0.75rem"
-					sx={{ opacity: 0.6 }}
-				>
-					ID: {schedule.id}
-				</Typography>
-			</FooterSection>
-		</ListItemPaper>
+			<p className="col-span-2 text-right text-ink-dim text-mono-sm">
+				ID: {schedule.id}
+			</p>
+		</div>
 	);
 };

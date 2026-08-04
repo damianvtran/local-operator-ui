@@ -1,147 +1,165 @@
 /**
- * Styled components for the Chat Options Sidebar
+ * Layout pieces for the chat options sidebar and its settings sections.
+ *
+ * These used to be MUI styled components; they are now thin Tailwind
+ * wrappers so the sidebar and its sections share one visual language
+ * without each re-deriving spacing, radii, and ink roles.
  */
 
-import {
-	Box,
-	IconButton,
-	Paper,
-	Typography,
-	alpha,
-	styled,
-} from "@mui/material";
+import { Button } from "@shared/components/ui";
+import { cn } from "@shared/lib/utils";
 import type { LucideIcon } from "lucide-react";
-import type { FC } from "react";
+import type { FC, HTMLAttributes, ReactNode } from "react";
 
-export const SidebarContainer = styled(Box)(({ theme }) => ({
-	width: 380,
-	height: "100%",
-	display: "flex",
-	flexDirection: "column",
-	backgroundColor: theme.palette.background.paper,
-	boxShadow:
-		theme.palette.mode === "light"
-			? `-4px 0 20px ${alpha(theme.palette.common.black, 0.15)}`
-			: `-4px 0 20px ${alpha(theme.palette.common.black, 0.2)}`,
-	border:
-		theme.palette.mode === "light"
-			? `1px solid ${alpha(theme.palette.grey[300], 0.5)}`
-			: "none",
-}));
-
-export const SidebarHeader = styled(Box)(({ theme }) => ({
-	display: "flex",
-	alignItems: "center",
-	justifyContent: "space-between",
-	padding: theme.spacing(2, 3),
-	borderBottom: `1px solid ${alpha(
-		theme.palette.divider,
-		theme.palette.mode === "light" ? 0.2 : 0.1,
-	)}`,
-	backgroundColor:
-		theme.palette.mode === "light"
-			? alpha(theme.palette.grey[100], 0.5)
-			: "transparent",
-}));
-
-export const HeaderTitle = styled(Box)({
-	display: "flex",
-	flexDirection: "column",
-});
-
-export const CloseButton = styled(IconButton)(({ theme }) => ({
-	color: theme.palette.text.secondary,
-	width: 36,
-	height: 36,
-	"&:hover": {
-		backgroundColor: alpha(theme.palette.primary.main, 0.08),
-	},
-}));
-
-export const SidebarContent = styled(Box)(() => ({
-	flexGrow: 1,
-	overflowY: "auto",
-	padding: "16px 24px",
-}));
-
-export const SectionTitle = styled(Typography)(({ theme }) => ({
-	fontWeight: 600,
-	marginBottom: theme.spacing(2),
-	marginTop: theme.spacing(3),
-	display: "flex",
-	alignItems: "center",
-	color: theme.palette.text.primary,
-}));
-
-// TitleIcon is shared by call sites that each pass a different icon, so it wraps
-// an arbitrary lucide component rather than styling one directly.
-const TitleIconWrapper = styled(Box)(({ theme }) => ({
-	marginRight: 10,
-	color: theme.palette.primary.main,
-	padding: theme.spacing(0.5),
-	borderRadius: theme.shape.borderRadius,
-	backgroundColor: alpha(theme.palette.primary.main, 0.1),
-	display: "flex",
-	alignItems: "center",
-}));
-
-export const TitleIcon: FC<{ icon: LucideIcon }> = ({ icon: Icon }) => (
-	<TitleIconWrapper>
-		<Icon size={16} />
-	</TitleIconWrapper>
+export const SidebarContainer: FC<HTMLAttributes<HTMLDivElement>> = ({
+	className,
+	...props
+}) => (
+	<div
+		className={cn("flex h-full w-[380px] flex-col bg-surface", className)}
+		{...props}
+	/>
 );
 
-export const InfoButton = styled(IconButton)(({ theme }) => ({
-	marginLeft: theme.spacing(1),
-	color: theme.palette.primary.main,
-	"&:hover": {
-		backgroundColor: alpha(theme.palette.primary.main, 0.08),
-	},
-}));
+export const SidebarHeader: FC<HTMLAttributes<HTMLDivElement>> = ({
+	className,
+	...props
+}) => (
+	<div
+		className={cn(
+			"flex items-center justify-between border-hairline border-b px-6 py-4",
+			className,
+		)}
+		{...props}
+	/>
+);
 
-export const ModelHostingSection = styled(Box)(({ theme }) => ({
-	marginBottom: theme.spacing(2),
-	padding: theme.spacing(2),
-	backgroundColor:
-		theme.palette.mode === "light"
-			? alpha(theme.palette.grey[200], 0.7)
-			: alpha(theme.palette.background.default, 0.4),
-	border:
-		theme.palette.mode === "light"
-			? `1px solid ${alpha(theme.palette.grey[300], 0.5)}`
-			: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-	borderRadius: theme.shape.borderRadius * 1.5, // Adjusted border radius
-}));
+export const HeaderTitle: FC<HTMLAttributes<HTMLDivElement>> = ({
+	className,
+	...props
+}) => <div className={cn("flex flex-col gap-0.5", className)} {...props} />;
 
-// --- Styles for UnsetSliderSetting and similar "unset" cards ---
+export const CloseButton: FC<
+	Omit<HTMLAttributes<HTMLButtonElement>, "children"> & {
+		children?: ReactNode;
+		onClick?: () => void;
+	}
+> = ({ className, children, onClick }) => (
+	<Button
+		variant="ghost"
+		size="icon"
+		onClick={onClick}
+		className={className}
+		aria-label="Close"
+	>
+		{children}
+	</Button>
+);
 
-export const UnsetContainer = styled(Paper)(({ theme }) => ({
-	padding: theme.spacing(2), // Adjusted padding
-	borderRadius: theme.shape.borderRadius * 1.5, // Adjusted border radius (consistent with SliderSetting)
-	backgroundColor: theme.palette.background.paper, // Use paper background
-	border: `1px solid ${theme.palette.divider}`, // Use theme divider color
-	transition: "border-color 0.2s ease", // Simplified transition
-	marginBottom: theme.spacing(2),
-	display: "flex",
-	flexDirection: "column",
-	// Removed hover effect for consistency
-}));
+export const SidebarContent: FC<HTMLAttributes<HTMLDivElement>> = ({
+	className,
+	...props
+}) => (
+	<div className={cn("grow overflow-y-auto px-6 py-4", className)} {...props} />
+);
 
-export const LabelWrapper = styled(Box)(({ theme }) => ({
-	marginBottom: theme.spacing(1), // Adjusted margin (consistent with SliderSetting)
-}));
+export const SectionTitle: FC<HTMLAttributes<HTMLHeadingElement>> = ({
+	className,
+	...props
+}) => (
+	<h3
+		className={cn(
+			"mb-4 mt-6 flex items-center font-semibold text-heading text-ink",
+			className,
+		)}
+		{...props}
+	/>
+);
 
-export const LabelText = styled(Typography)(({ theme }) => ({
-	fontWeight: 500, // Slightly reduced weight (consistent with SliderSetting)
-	display: "flex",
-	alignItems: "center",
-	color: theme.palette.text.primary,
-	marginBottom: theme.spacing(0.5), // Add small margin below label (consistent with SliderSetting)
-}));
+/**
+ * TitleIcon is shared by call sites that each pass a different icon, so it
+ * wraps an arbitrary lucide component rather than styling one directly.
+ */
+export const TitleIcon: FC<{ icon: LucideIcon }> = ({ icon: Icon }) => (
+	<span className="mr-2 flex items-center rounded-sm bg-accent-wash p-1 text-accent">
+		<Icon size={16} aria-hidden="true" />
+	</span>
+);
 
-export const DescriptionText = styled(Typography)(({ theme }) => ({
-	fontSize: "0.8rem", // Slightly smaller description (consistent with SliderSetting)
-	color: theme.palette.text.secondary, // Use secondary text color
-	lineHeight: 1.4,
-	marginBottom: theme.spacing(1.5), // Adjusted margin (consistent with SliderSetting)
-}));
+export const InfoButton: FC<HTMLAttributes<HTMLButtonElement>> = ({
+	className,
+	children,
+}) => (
+	<Button
+		variant="ghost"
+		size="icon-sm"
+		className={cn("ml-1 text-accent", className)}
+		aria-label="More info"
+		type="button"
+		tabIndex={0}
+	>
+		{children}
+	</Button>
+);
+
+/**
+ * The panel holding the hosting/model selects. Sunken ground separates it
+ * from the sidebar surface; the hairline edge marks it as a grouping.
+ */
+export const ModelHostingSection: FC<HTMLAttributes<HTMLDivElement>> = ({
+	className,
+	...props
+}) => (
+	<div
+		className={cn(
+			"mb-4 rounded-md border border-hairline bg-sunken p-4",
+			className,
+		)}
+		{...props}
+	/>
+);
+
+/**
+ * The "not set yet" card used by the unset-* settings. One border-control
+ * edge; nothing else separates it from its neighbours.
+ */
+export const UnsetContainer: FC<HTMLAttributes<HTMLDivElement>> = ({
+	className,
+	...props
+}) => (
+	<div
+		className={cn(
+			"mb-4 flex flex-col rounded-md border border-control bg-surface p-4",
+			className,
+		)}
+		{...props}
+	/>
+);
+
+export const LabelWrapper: FC<HTMLAttributes<HTMLDivElement>> = ({
+	className,
+	...props
+}) => <div className={cn("mb-2", className)} {...props} />;
+
+export const LabelText: FC<HTMLAttributes<HTMLSpanElement>> = ({
+	className,
+	...props
+}) => (
+	<span
+		className={cn(
+			"mb-1 flex items-center font-medium text-body-sm text-ink",
+			className,
+		)}
+		{...props}
+	/>
+);
+
+export const DescriptionText: FC<HTMLAttributes<HTMLSpanElement>> = ({
+	className,
+	...props
+}) => (
+	<span
+		className={cn("mb-3 text-body-sm text-ink-muted", className)}
+		{...props}
+	/>
+);

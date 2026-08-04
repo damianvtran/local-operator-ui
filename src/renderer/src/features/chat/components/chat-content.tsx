@@ -1,4 +1,3 @@
-import { Box, Paper, styled } from "@mui/material";
 import type {
 	AgentDetails,
 	AgentExecutionRecord,
@@ -82,24 +81,6 @@ type ChatContentProps = {
 	refetch?: () => void;
 	messageInputRef?: React.Ref<MessageInputHandle>;
 };
-
-const ChatContainer = styled(Paper)(({ theme }) => ({
-	display: "flex",
-	flex: 1,
-	flexDirection: "column",
-	height: "100%",
-	flexGrow: 1,
-	borderRadius: 0,
-	backgroundColor: theme.palette.background.paper,
-}));
-
-const FlexRow = styled(Box)({
-	display: "flex",
-	flexDirection: "row",
-	width: "100%",
-	height: "100%",
-	position: "relative",
-});
 
 /**
  * ChatContent Component
@@ -185,9 +166,6 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		const selectedTabId = (canvasState ?? defaultCanvasState).selectedTabId;
 		const files = (canvasState ?? defaultCanvasState).files;
 
-		// On conversation change, ensure canvas state is initialized/restored
-		// (No longer needed: Zustand store now always provides a default state for any conversationId)
-
 		// No effect needed: always use the value from the store, or fallback to default if 0
 		const effectiveCanvasPanelWidth =
 			canvasPanelWidth === 0 ? 450 : canvasPanelWidth;
@@ -227,16 +205,12 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		);
 
 		return (
-			<FlexRow>
-				<Box
-					sx={{
-						flex: 1,
-						minWidth: 220,
-						height: "100%",
-						position: "relative",
-					}}
-				>
-					<ChatContainer elevation={0} ref={chatContainerRef}>
+			<div className="relative flex h-full w-full flex-row">
+				<div className="relative h-full min-w-[220px] flex-1">
+					<div
+						ref={chatContainerRef}
+						className="flex h-full grow flex-col rounded-none bg-surface"
+					>
 						{/* Chat header */}
 						<ChatHeader
 							agentName={agentName}
@@ -292,8 +266,8 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								isSmallView={isSmallView}
 							/>
 						)}
-					</ChatContainer>
-				</Box>
+					</div>
+				</div>
 
 				{isCanvasOpen && (
 					<>
@@ -305,17 +279,13 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							side="left"
 							onDoubleClick={restoreDefaultCanvasPanelWidth}
 						/>
-						<Box
+						<div
 							ref={canvasContainerRef}
-							sx={(theme) => ({
+							style={{
 								minWidth: effectiveCanvasPanelWidth,
 								width: effectiveCanvasPanelWidth,
-								overflow: "hidden",
-								height: "100%",
-								transition: "width 0.2s cubic-bezier(0.4,0,0.2,1)",
-								position: "relative",
-								borderLeft: `1px solid ${theme.palette.divider}`,
-							})}
+							}}
+							className="relative h-full overflow-hidden border-l border-hairline transition-[width] duration-base ease-out-quart"
 						>
 							<Canvas
 								activeDocumentId={selectedTabId}
@@ -326,10 +296,10 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								onClose={handleCloseCanvas}
 								onCloseDocument={handleCloseDocument}
 							/>
-						</Box>
+						</div>
 					</>
 				)}
-			</FlexRow>
+			</div>
 		);
 	},
 );

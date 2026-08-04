@@ -1,5 +1,3 @@
-import { Box } from "@mui/material";
-import { styled } from "@mui/material/styles";
 import {
 	BarChart2,
 	Briefcase,
@@ -28,67 +26,67 @@ export const CATEGORY_ICON_MAP: Record<
 	{ icon: React.ReactNode; label: string }
 > = {
 	investment: {
-		icon: <Briefcase size={14} style={{ marginRight: 4 }} />,
+		icon: <Briefcase size={14} aria-hidden="true" />,
 		label: "Investment",
 	},
 	accounting: {
-		icon: <Briefcase size={14} style={{ marginRight: 4 }} />,
+		icon: <Briefcase size={14} aria-hidden="true" />,
 		label: "Accounting",
 	},
 	healthcare: {
-		icon: <HeartPulse size={14} style={{ marginRight: 4 }} />,
+		icon: <HeartPulse size={14} aria-hidden="true" />,
 		label: "Healthcare",
 	},
 	legal: {
-		icon: <Scale size={14} style={{ marginRight: 4 }} />,
+		icon: <Scale size={14} aria-hidden="true" />,
 		label: "Legal",
 	},
 	software: {
-		icon: <Code2 size={14} style={{ marginRight: 4 }} />,
+		icon: <Code2 size={14} aria-hidden="true" />,
 		label: "Software",
 	},
 	security: {
-		icon: <Shield size={14} style={{ marginRight: 4 }} />,
+		icon: <Shield size={14} aria-hidden="true" />,
 		label: "Security",
 	},
 	role_play: {
-		icon: <Users size={14} style={{ marginRight: 4 }} />,
+		icon: <Users size={14} aria-hidden="true" />,
 		label: "Role Play",
 	},
 	personal_assistance: {
-		icon: <User size={14} style={{ marginRight: 4 }} />,
+		icon: <User size={14} aria-hidden="true" />,
 		label: "Personal Assistance",
 	},
 	education: {
-		icon: <GraduationCap size={14} style={{ marginRight: 4 }} />,
+		icon: <GraduationCap size={14} aria-hidden="true" />,
 		label: "Education",
 	},
 	marketing: {
-		icon: <Megaphone size={14} style={{ marginRight: 4 }} />,
+		icon: <Megaphone size={14} aria-hidden="true" />,
 		label: "Marketing",
 	},
 	sales: {
-		icon: <ShoppingCart size={14} style={{ marginRight: 4 }} />,
+		icon: <ShoppingCart size={14} aria-hidden="true" />,
 		label: "Sales",
 	},
 	research: {
-		icon: <FlaskConical size={14} style={{ marginRight: 4 }} />,
+		icon: <FlaskConical size={14} aria-hidden="true" />,
 		label: "Research",
 	},
 	analysis: {
-		icon: <BarChart2 size={14} style={{ marginRight: 4 }} />,
+		icon: <BarChart2 size={14} aria-hidden="true" />,
 		label: "Analysis",
 	},
 	management: {
-		icon: <ClipboardList size={14} style={{ marginRight: 4 }} />,
+		icon: <ClipboardList size={14} aria-hidden="true" />,
 		label: "Management",
 	},
 	social_media: {
-		icon: <Globe2 size={14} style={{ marginRight: 4 }} />,
+		icon: <Globe2 size={14} aria-hidden="true" />,
 		label: "Social Media",
 	},
 	other: {
-		icon: <FileQuestion size={14} style={{ marginRight: 4 }} />,
+		icon: <FileQuestion size={14} aria-hidden="true" />,
 		label: "Other",
 	},
 };
@@ -103,54 +101,13 @@ function formatLabel(str: string): string {
 		.join(" ");
 }
 
-const PillsContainer = styled(Box)(({ theme }) => ({
-	display: "flex",
-	flexWrap: "wrap",
-	gap: theme.spacing(0.75),
-	marginTop: theme.spacing(0.5),
-	marginBottom: theme.spacing(1),
-	alignItems: "center",
-	overflow: "hidden",
-	position: "relative",
-}));
-
-const CategoryPill = styled(Box)(({ theme }) => ({
-	display: "inline-flex",
-	alignItems: "center",
-	borderRadius: 12,
-	border: `1px solid ${theme.palette.divider}`,
-	background:
-		theme.palette.mode === "dark"
-			? theme.palette.action.selected
-			: theme.palette.action.hover,
-	color: theme.palette.text.secondary,
-	fontSize: "0.75rem",
-	fontWeight: 500,
-	padding: "2px 10px 2px 6px",
-	minHeight: 22,
-	lineHeight: 1.2,
-	letterSpacing: 0.01,
-	transition: "background 0.2s",
-}));
-
-const TagPill = styled(Box)(({ theme }) => ({
-	display: "inline-flex",
-	alignItems: "center",
-	borderRadius: 12,
-	border: `1px solid ${theme.palette.divider}`,
-	background:
-		theme.palette.mode === "dark"
-			? theme.palette.action.selected
-			: theme.palette.action.hover,
-	color: theme.palette.text.disabled,
-	fontSize: "0.75rem",
-	fontWeight: 400,
-	padding: "2px 10px 2px 8px",
-	minHeight: 22,
-	lineHeight: 1.2,
-	letterSpacing: 0.01,
-	transition: "background 0.2s",
-}));
+/**
+ * Shared pill shape for tags and categories: `sunken` fill on `surface`,
+ * hairline edge. Display-only — if these ever become filters they become
+ * buttons.
+ */
+const pillClassName =
+	"inline-flex min-h-5.5 items-center rounded-full border border-hairline bg-sunken px-2 text-meta leading-none";
 
 type AgentTagsAndCategoriesProps = {
 	tags?: string[];
@@ -161,9 +118,6 @@ type AgentTagsAndCategoriesProps = {
 /**
  * Minimal, theme-aware, display-only pills for agent tags and categories.
  *
- * @param tags - Optional array of tag strings to display.
- * @param categories - Optional array of category strings to display.
- * @param className - Optional className for styling.
  * @returns React element with pills for tags and categories, or null if none provided.
  */
 export const AgentTagsAndCategories: FC<AgentTagsAndCategoriesProps> = ({
@@ -179,28 +133,34 @@ export const AgentTagsAndCategories: FC<AgentTagsAndCategoriesProps> = ({
 	}
 
 	return (
-		<PillsContainer
-			className={className}
+		<div
+			className={`relative flex flex-wrap items-center gap-1.5 overflow-hidden ${className ?? ""}`}
 			data-testid="agent-tags-and-categories"
 		>
 			{categories?.map((cat) => {
 				const entry = CATEGORY_ICON_MAP[cat] || {
-					icon: <Tag size={14} style={{ marginRight: 4 }} />,
+					icon: <Tag size={14} aria-hidden="true" />,
 					label: formatLabel(cat),
 				};
 				return (
-					<CategoryPill key={cat}>
+					<span
+						key={cat}
+						className={`${pillClassName} gap-1 font-medium text-ink-muted`}
+					>
 						{entry.icon}
 						{entry.label}
-					</CategoryPill>
+					</span>
 				);
 			})}
 			{tags?.map((tag) => (
-				<TagPill key={tag}>
-					<Tag size={12} style={{ marginRight: 4, opacity: 0.7 }} />
+				<span
+					key={tag}
+					className={`${pillClassName} gap-1 font-normal text-ink-dim`}
+				>
+					<Tag size={12} className="opacity-70" aria-hidden="true" />
 					{formatLabel(tag)}
-				</TagPill>
+				</span>
 			))}
-		</PillsContainer>
+		</div>
 	);
 };

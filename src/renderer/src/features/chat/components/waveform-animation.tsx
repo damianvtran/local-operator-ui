@@ -1,35 +1,45 @@
-import { Box } from "@mui/material";
-import { keyframes, styled } from "@mui/material/styles";
 import type { FC } from "react";
 
-const waveformAnimation = keyframes`
+/*
+ * Keyframes live with the only component that uses them — `styles/**` is
+ * shared infrastructure, and this animation is chat-composer chrome, not a
+ * token.
+ */
+const WAVEFORM_KEYFRAMES = `
+@keyframes waveform-bar {
   0%, 100% { height: 2px; }
   50% { height: 16px; }
-`;
+}`;
 
-const WaveformContainer = styled(Box)(() => ({
-	display: "flex",
-	alignItems: "center",
-	height: "24px",
-	gap: "2px",
-}));
-
-const WaveformBar = styled(Box)(({ theme }) => ({
-	width: "3px",
-	backgroundColor: theme.palette.primary.main,
-	animation: `${waveformAnimation} 1.2s infinite ease-in-out`,
-	borderRadius: "1px",
-}));
-
+/**
+ * The three-bar "processing" waveform shown in the composer while a voice
+ * note is transcribed. Bars are plain divs tinted with the accent role.
+ */
 export const WaveformAnimation: FC = () => {
 	return (
-		<WaveformContainer>
-			<WaveformBar sx={{ animationDelay: "0s" }} />
-			<WaveformBar sx={{ animationDelay: "0.2s", height: "8px" }} />
-			<WaveformBar sx={{ animationDelay: "0.4s" }} />
-			<WaveformBar sx={{ animationDelay: "0.6s", height: "12px" }} />
-			<WaveformBar sx={{ animationDelay: "0.8s" }} />
-		</WaveformContainer>
+		<div
+			className="flex h-6 items-center gap-0.5 [&>span]:animate-[waveform-bar_1.2s_infinite_ease-in-out]"
+			aria-hidden="true"
+		>
+			<style>{WAVEFORM_KEYFRAMES}</style>
+			<span className="size-[3px] rounded-[1px] bg-accent" />
+			<span
+				className="h-2 size-[3px] rounded-[1px] bg-accent"
+				style={{ animationDelay: "0.2s" }}
+			/>
+			<span
+				className="size-[3px] rounded-[1px] bg-accent"
+				style={{ animationDelay: "0.4s" }}
+			/>
+			<span
+				className="h-3 size-[3px] rounded-[1px] bg-accent"
+				style={{ animationDelay: "0.6s" }}
+			/>
+			<span
+				className="size-[3px] rounded-[1px] bg-accent"
+				style={{ animationDelay: "0.8s" }}
+			/>
+		</div>
 	);
 };
 

@@ -1,21 +1,3 @@
-import {
-	Autocomplete,
-	Box,
-	CircularProgress,
-	FormControl,
-	FormControlLabel,
-	Grid,
-	IconButton,
-	MenuItem,
-	Select,
-	Switch,
-	TextField,
-	Tooltip,
-	Typography,
-	alpha,
-} from "@mui/material";
-import type { SelectChangeEvent } from "@mui/material";
-import { styled } from "@mui/material/styles";
 import type {
 	AgentDetails,
 	ScheduleCreateRequest,
@@ -29,253 +11,48 @@ import {
 	SecondaryButton,
 } from "@shared/components/common/base-dialog";
 import { DateTimePicker } from "@shared/components/common/date-time-picker";
+import { Spinner } from "@shared/components/common/spinner";
+import {
+	Input,
+	Label,
+	Popover,
+	PopoverAnchor,
+	PopoverContent,
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+	Switch,
+	Textarea,
+	Tooltip,
+} from "@shared/components/ui";
 import { useAgents } from "@shared/hooks/use-agents";
+import { cn } from "@shared/lib/utils";
 import { showErrorToast } from "@shared/utils/toast-manager";
-import { Info, Save, XSquare } from "lucide-react";
-import type { FC } from "react";
-import { useEffect, useMemo, useState } from "react";
-
-// Styled components
-const StyledFormGrid = styled(Grid)(({ theme }) => ({
-	paddingTop: theme.spacing(1),
-}));
-
-// FieldLabel for external labels, similar to other shadcn-styled components
-const FieldLabel = styled("label")(({ theme }) => ({
-	display: "block",
-	marginBottom: theme.spacing(0.75),
-	color: theme.palette.text.secondary,
-	fontWeight: 500,
-	fontSize: "0.875rem",
-	lineHeight: 1.5,
-}));
-
-// FullWidthTextField remains largely the same, but label prop will not be used.
-const FullWidthTextField = styled(TextField)(({ theme }) => ({
-	width: "100%",
-	"& .MuiOutlinedInput-root": {
-		borderRadius: 6,
-		border: `1px solid ${theme.palette.divider}`,
-		backgroundColor: theme.palette.background.paper,
-		minHeight: "36px",
-		height: "36px",
-		padding: 0,
-		transition: "border-color 0.2s ease, box-shadow 0.2s ease",
-		"&:hover": {
-			borderColor: theme.palette.text.secondary,
-		},
-		"&.Mui-focused": {
-			borderColor: theme.palette.primary.main,
-			boxShadow: `0 0 0 2px ${alpha(theme.palette.primary.main, 0.2)}`,
-		},
-		"& .MuiOutlinedInput-notchedOutline": {
-			border: "none",
-		},
-		"&:not(.MuiInputBase-multiline) .MuiInputBase-input": {
-			height: "calc(36px - 16px)",
-			padding: "8px 12px",
-		},
-		"&.MuiInputBase-multiline": {
-			minHeight: "36px",
-			height: "auto",
-			padding: "8px 12px",
-		},
-	},
-	"& .MuiInputBase-input": {
-		fontSize: "0.875rem",
-		lineHeight: 1.5,
-		boxSizing: "border-box",
-		"&.MuiInputBase-inputMultiline": {
-			padding: "0px",
-			height: "auto",
-		},
-	},
-}));
-
-// FullWidthFormControl for Select, label prop will not be used.
-const FullWidthFormControl = styled(FormControl)(({ theme }) => ({
-	width: "100%",
-	"& .MuiOutlinedInput-root": {
-		borderRadius: 6,
-		border: `1px solid ${theme.palette.divider}`,
-		backgroundColor: theme.palette.background.paper,
-		minHeight: "36px",
-		height: "36px",
-		padding: "0 !important",
-		transition: "border-color 0.2s ease, box-shadow 0.2s ease",
-		"&:hover": {
-			borderColor: theme.palette.text.secondary,
-		},
-		"&.Mui-focused": {
-			borderColor: theme.palette.primary.main,
-			boxShadow: `0 0 0 2px ${alpha(theme.palette.primary.main, 0.2)}`,
-		},
-		"& .MuiOutlinedInput-notchedOutline": {
-			border: "none",
-		},
-	},
-	"& .MuiSelect-select": {
-		padding: "8px 12px !important",
-		fontSize: "0.875rem",
-		lineHeight: 1.5,
-		height: "calc(36px - 16px) !important",
-		boxSizing: "border-box",
-		display: "flex",
-		alignItems: "center",
-	},
-}));
-
-// Styled Autocomplete (for agent selection)
-// No need for AgentAutocompleteProps type alias if styled() handles generics correctly
-const StyledAutocomplete = styled(
-	Autocomplete<AgentDetails, false, false, false>,
-)(({ theme }) => ({
-	"& .MuiOutlinedInput-root": {
-		borderRadius: 6,
-		border: `1px solid ${theme.palette.divider}`,
-		backgroundColor: theme.palette.background.paper,
-		minHeight: "36px",
-		height: "36px",
-		padding: "0 !important",
-		transition: "border-color 0.2s ease, box-shadow 0.2s ease",
-		"&:hover": {
-			borderColor: theme.palette.text.secondary,
-		},
-		"&.Mui-focused": {
-			borderColor: theme.palette.primary.main,
-			boxShadow: `0 0 0 2px ${alpha(theme.palette.primary.main, 0.2)}`,
-		},
-		"& .MuiOutlinedInput-notchedOutline": {
-			border: "none",
-		},
-		"& .MuiInputBase-input": {
-			padding: "8px 12px !important",
-			fontSize: "0.875rem",
-			lineHeight: 1.5,
-			height: "calc(36px - 16px)",
-			boxSizing: "border-box",
-		},
-	},
-	"& .MuiAutocomplete-endAdornment": {
-		right: "8px",
-		top: "50%",
-		transform: "translateY(-50%)",
-	},
-	"& .MuiAutocomplete-clearIndicator, & .MuiAutocomplete-popupIndicator": {
-		color: theme.palette.text.secondary,
-		"&:hover": {
-			color: theme.palette.text.primary,
-			backgroundColor: alpha(theme.palette.action.active, 0.04),
-		},
-	},
-}));
-
-// Styled FormHelperText using Typography for more control over error class
-const StyledFormHelperText = styled(Typography, {
-	shouldForwardProp: (prop) => prop !== "error",
-})<{ error?: boolean }>(({ theme, error }) => ({
-	fontSize: "0.75rem",
-	marginTop: theme.spacing(0.5),
-	marginLeft: theme.spacing(0.25),
-	color: error ? theme.palette.error.main : theme.palette.text.secondary,
-}));
-
-// Styled Switch and FormControlLabel
-const StyledSwitch = styled(Switch)(({ theme }) => ({
-	width: 42,
-	height: 26,
-	padding: 0,
-	"& .MuiSwitch-switchBase": {
-		padding: 0,
-		margin: 2,
-		transitionDuration: "300ms",
-		"&.Mui-checked": {
-			transform: "translateX(16px)",
-			color: "#fff",
-			"& + .MuiSwitch-track": {
-				backgroundColor: theme.palette.primary.main,
-				opacity: 1,
-				border: 0,
-			},
-			"&.Mui-disabled + .MuiSwitch-track": {
-				opacity: 0.5,
-			},
-		},
-		"&.Mui-focusVisible .MuiSwitch-thumb": {
-			color: theme.palette.primary.main,
-			border: "6px solid #fff",
-		},
-		"&.Mui-disabled .MuiSwitch-thumb": {
-			color:
-				theme.palette.mode === "light"
-					? theme.palette.grey[100]
-					: theme.palette.grey[600],
-		},
-		"&.Mui-disabled + .MuiSwitch-track": {
-			opacity: theme.palette.mode === "light" ? 0.7 : 0.3,
-		},
-	},
-	"& .MuiSwitch-thumb": {
-		boxSizing: "border-box",
-		width: 22,
-		height: 22,
-		boxShadow: "none",
-	},
-	"& .MuiSwitch-track": {
-		borderRadius: 26 / 2,
-		backgroundColor:
-			theme.palette.mode === "light" ? "#E9E9EA" : theme.palette.grey[700],
-		opacity: 1,
-		transition: theme.transitions.create(["background-color"], {
-			duration: 500,
-		}),
-	},
-}));
-
-const StyledFormControlLabel = styled(FormControlLabel)(({ theme }) => ({
-	marginLeft: 0,
-	marginRight: theme.spacing(1),
-	"& .MuiTypography-root": {
-		fontSize: "0.875rem",
-		color: theme.palette.text.primary,
-		paddingLeft: theme.spacing(1),
-	},
-}));
-
-// Styled MenuItem for Select
-const StyledMenuItem = styled(MenuItem)(({ theme }) => ({
-	fontSize: "0.875rem",
-	paddingTop: theme.spacing(1),
-	paddingBottom: theme.spacing(1),
-	"&:hover": {
-		backgroundColor: alpha(theme.palette.action.hover, 0.08),
-	},
-	"&.Mui-selected": {
-		backgroundColor: alpha(theme.palette.primary.main, 0.12),
-		"&:hover": {
-			backgroundColor: alpha(theme.palette.primary.main, 0.16),
-		},
-	},
-}));
+import { ChevronDown, Info, Save, XSquare } from "lucide-react";
+import type { FC, KeyboardEvent } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 
 type ScheduleFormDialogProps = {
 	open: boolean;
 	onClose: () => void;
 	onSubmit: (
 		data: ScheduleCreateRequest | ScheduleUpdateRequest,
-		agentId: string, // AgentId is now mandatory for submission from this form
+		agentId: string, // AgentId is mandatory for submission from this form
 	) => Promise<void>;
 	initialData?: ScheduleResponse | null;
-	// agentId prop is removed as it's now selected within the dialog
 };
 
-// Represents the form state.
-type FormDataType = ScheduleCreateRequest & {
-	selectedAgentId: string | null; // Add selectedAgentId to form data
+// Represents the form state. `interval` is `number | ""` because the number
+// input passes through an empty intermediate state while typing.
+type FormDataType = Omit<ScheduleCreateRequest, "interval"> & {
+	interval: number | "";
+	selectedAgentId: string | null;
 };
 
 const defaultFormState: FormDataType = {
-	selectedAgentId: null, // Initialize selectedAgentId
+	selectedAgentId: null,
 	prompt: "",
 	interval: 1,
 	unit: "hours",
@@ -283,6 +60,247 @@ const defaultFormState: FormDataType = {
 	one_time: false,
 	start_time_utc: null,
 	end_time_utc: null,
+};
+
+/**
+ * Type-to-filter agent combobox with server-side search.
+ *
+ * The primitive layer has no Autocomplete, so this is assembled from
+ * `Popover` + `Input` + a hand-rolled listbox, the same shape as
+ * `hosting/searchable-select`. The difference is deliberate: the schedule
+ * form searches the agent API (debounced 300ms) rather than filtering a
+ * static list, because the agent list is paginated and client-side filtering
+ * would only ever see the first page.
+ *
+ * ARIA follows the WAI-ARIA combobox pattern: focus stays in the text field
+ * and `aria-activedescendant` names the active row.
+ */
+const AgentSelect: FC<{
+	options: AgentDetails[];
+	selected: AgentDetails | null;
+	onSelect: (agent: AgentDetails | null) => void;
+	onQueryChange: (query: string) => void;
+	loading: boolean;
+	invalid: boolean;
+}> = ({ options, selected, onSelect, onQueryChange, loading, invalid }) => {
+	const baseId = useId();
+	const inputId = `${baseId}-input`;
+	const listId = `${baseId}-listbox`;
+
+	const anchorRef = useRef<HTMLDivElement>(null);
+	const optionRefs = useRef<(HTMLLIElement | null)[]>([]);
+
+	const selectedName =
+		selected?.name ||
+		(selected ? `Agent ID: ${selected.id.substring(0, 8)}...` : "");
+	const [query, setQuery] = useState(selectedName);
+	const [open, setOpen] = useState(false);
+	const [activeIndex, setActiveIndex] = useState(-1);
+
+	// The owner's selection wins over whatever is typed, so a reopen after a
+	// cancelled edit shows the chosen agent rather than stale text.
+	useEffect(() => {
+		setQuery(selectedName);
+	}, [selectedName]);
+
+	optionRefs.current.length = options.length;
+
+	// A stale highlight after the list changes would put Enter on a row the
+	// user can no longer see.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: keyed on the list
+	useEffect(() => {
+		setActiveIndex(-1);
+	}, [options]);
+
+	useEffect(() => {
+		if (!open || activeIndex < 0) return;
+		optionRefs.current[activeIndex]?.scrollIntoView({ block: "nearest" });
+	}, [open, activeIndex]);
+
+	const commit = (agent: AgentDetails) => {
+		setOpen(false);
+		setQuery(agent.name || `Agent ID: ${agent.id.substring(0, 8)}...`);
+		onSelect(agent);
+	};
+
+	const revert = () => {
+		setOpen(false);
+		setQuery(selectedName);
+	};
+
+	const move = (delta: number) => {
+		if (options.length === 0) return;
+		setActiveIndex((previous) => {
+			const next = previous + delta;
+			if (next < 0) return options.length - 1;
+			if (next >= options.length) return 0;
+			return next;
+		});
+	};
+
+	const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+		switch (event.key) {
+			case "ArrowDown":
+			case "ArrowUp": {
+				event.preventDefault();
+				if (!open) {
+					setOpen(true);
+					return;
+				}
+				move(event.key === "ArrowDown" ? 1 : -1);
+				return;
+			}
+			case "Home":
+			case "End": {
+				if (!open || options.length === 0) return;
+				event.preventDefault();
+				setActiveIndex(event.key === "Home" ? 0 : options.length - 1);
+				return;
+			}
+			case "Enter": {
+				// Unconditional: the field sits in a dialog and a bare Enter must
+				// pick a row, not submit the form behind the popover.
+				event.preventDefault();
+				if (open && activeIndex >= 0) {
+					commit(options[activeIndex]);
+				}
+				return;
+			}
+			case "Escape": {
+				if (!open) return;
+				// Stop here rather than let the dialog's dismiss layer also see
+				// it: a second listener would close the form itself.
+				event.preventDefault();
+				event.stopPropagation();
+				revert();
+				return;
+			}
+			default:
+		}
+	};
+
+	const activeOptionId =
+		open && activeIndex >= 0 ? `${baseId}-option-${activeIndex}` : undefined;
+
+	return (
+		<div className="relative">
+			<Popover
+				open={open}
+				onOpenChange={(next) => {
+					if (next) setOpen(true);
+					else revert();
+				}}
+			>
+				<PopoverAnchor asChild>
+					<div ref={anchorRef} className="relative">
+						<Input
+							id={inputId}
+							role="combobox"
+							aria-expanded={open}
+							aria-controls={listId}
+							aria-autocomplete="list"
+							aria-activedescendant={activeOptionId}
+							aria-invalid={invalid || undefined}
+							autoComplete="off"
+							className="pr-8"
+							placeholder="Search or select an agent..."
+							value={query}
+							onChange={(event) => {
+								setQuery(event.target.value);
+								onQueryChange(event.target.value);
+								setOpen(true);
+							}}
+							onFocus={() => setOpen(true)}
+							// Focus fires only once; without this, clicking an
+							// already-focused field after a selection can't reopen the list.
+							onClick={() => setOpen(true)}
+							onBlur={revert}
+							onKeyDown={handleKeyDown}
+						/>
+						<span className="pointer-events-none absolute top-1/2 right-2 flex -translate-y-1/2 items-center">
+							{loading ? (
+								<Spinner size="sm" label="Loading agents" />
+							) : (
+								<ChevronDown
+									className="size-4 text-ink-dim"
+									aria-hidden="true"
+								/>
+							)}
+						</span>
+					</div>
+				</PopoverAnchor>
+
+				<PopoverContent
+					align="start"
+					className="w-(--radix-popover-trigger-width) p-1"
+					// Focus stays in the text field; that is the difference between
+					// a combobox and a popover holding a list.
+					onOpenAutoFocus={(event) => event.preventDefault()}
+					onCloseAutoFocus={(event) => event.preventDefault()}
+					// Clicking the field while the list is open must not dismiss it —
+					// the field is the anchor, so Radix counts it as "outside".
+					onPointerDownOutside={(event) => {
+						if (anchorRef.current?.contains(event.target as Node)) {
+							event.preventDefault();
+						}
+					}}
+					onFocusOutside={(event) => {
+						if (anchorRef.current?.contains(event.target as Node)) {
+							event.preventDefault();
+						}
+					}}
+					// Keeps the field focused when a row is clicked, so `onBlur` stays
+					// free to mean "the user left the control".
+					onMouseDown={(event) => event.preventDefault()}
+				>
+					{/* biome-ignore lint/a11y/useFocusableInteractive: the text input keeps focus; the list is reached through aria-activedescendant, so it must not be in the tab order. */}
+					<ul
+						id={listId}
+						// biome-ignore lint/a11y/useSemanticElements: a type-to-filter combobox cannot be a native <select>.
+						// biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: the listbox role is the WAI-ARIA combobox pattern for a popup driven from a text input.
+						role="listbox"
+						aria-label="Select Agent"
+						className="max-h-72 overflow-y-auto"
+					>
+						{options.length === 0 && (
+							<li
+								role="presentation"
+								className="px-2 py-1.5 text-body-sm text-ink-dim"
+							>
+								{loading ? "Loading agents..." : "No matching agents"}
+							</li>
+						)}
+						{options.map((option, index) => (
+							/* biome-ignore lint/a11y/useFocusableInteractive: focus stays in the combobox input; the active option is announced through aria-activedescendant. */
+							/* biome-ignore lint/a11y/useKeyWithClickEvents: Arrow keys, Enter and Escape are handled on the combobox input, not on the option. */
+							<li
+								key={option.id}
+								id={`${baseId}-option-${index}`}
+								// biome-ignore lint/a11y/useSemanticElements: a combobox option cannot be a native <option>.
+								// biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: the option role is part of the combobox listbox pattern.
+								role="option"
+								aria-selected={option.id === selected?.id}
+								ref={(node) => {
+									optionRefs.current[index] = node;
+								}}
+								className={cn(
+									"cursor-pointer rounded-sm px-2 py-1.5",
+									"transition-colors duration-fast ease-out-quart",
+									index === activeIndex && "bg-accent-wash",
+								)}
+								onMouseEnter={() => setActiveIndex(index)}
+								onClick={() => commit(option)}
+							>
+								<span className="font-medium text-body-sm text-ink">
+									{option.name || "Unnamed Agent"}
+								</span>
+							</li>
+						))}
+					</ul>
+				</PopoverContent>
+			</Popover>
+		</div>
+	);
 };
 
 /**
@@ -295,22 +313,31 @@ export const ScheduleFormDialog: FC<ScheduleFormDialogProps> = ({
 	onClose,
 	onSubmit,
 	initialData,
-	// agentId prop removed
 }) => {
 	const [formData, setFormData] = useState<FormDataType>(defaultFormState);
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [agentSearchQuery, setAgentSearchQuery] = useState("");
+	const [debouncedAgentQuery, setDebouncedAgentQuery] = useState("");
 	const [selectedAgentForForm, setSelectedAgentForForm] =
 		useState<AgentDetails | null>(null);
 
 	const isEditMode = !!initialData;
 
-	// Fetch agents for the Autocomplete
+	// Debounce the combobox text before it becomes an API search query; the
+	// old Autocomplete fired a timer per keystroke, this collapses them.
+	useEffect(() => {
+		const timer = setTimeout(() => {
+			setDebouncedAgentQuery(agentSearchQuery);
+		}, 300);
+		return () => clearTimeout(timer);
+	}, [agentSearchQuery]);
+
+	// Fetch agents for the combobox
 	const {
 		data: agentsListResult,
 		isLoading: isLoadingAgents,
 		isError: isAgentsError,
-	} = useAgents(1, 50, 0, agentSearchQuery || undefined);
+	} = useAgents(1, 50, 0, debouncedAgentQuery || undefined);
 
 	const agentOptions = useMemo(
 		() => agentsListResult?.agents || [],
@@ -335,64 +362,26 @@ export const ScheduleFormDialog: FC<ScheduleFormDialogProps> = ({
 						? new Date(initialData.end_time_utc).toISOString()
 						: null,
 				});
-				// Attempt to find and set the agent object for the Autocomplete if editing
+				// Attempt to find and set the agent object for display if editing
 				const currentAgent = agentOptions.find(
 					(agent) => agent.id === initialData.agent_id,
 				);
 				if (currentAgent) {
 					setSelectedAgentForForm(currentAgent);
-				} else if (
-					initialData.agent_id &&
-					!isLoadingAgents &&
-					agentOptions.length > 0
-				) {
-					// If agent not in initial list (e.g. due to pagination/search),
-					// this part might need enhancement to fetch the specific agent by ID if crucial for display.
-					// For now, ID is set, Autocomplete might not show the name until list is broader.
 				}
 			} else {
 				// Creating new schedule, reset to default
 				setFormData(defaultFormState);
 				setSelectedAgentForForm(null);
-				setAgentSearchQuery(""); // Reset search
+				setAgentSearchQuery("");
 			}
 		}
-	}, [open, initialData, agentOptions, isLoadingAgents]);
-
-	const handleChange = (
-		event:
-			| React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-			| SelectChangeEvent<ScheduleUnit>,
-	) => {
-		const { name, value } = event.target;
-		let processedValue: string | number | boolean = value;
-
-		// Check if the event target has a 'type' property (like HTMLInputElement)
-		if ("type" in event.target) {
-			const targetType = (event.target as HTMLInputElement).type;
-			if (targetType === "number" && name === "interval") {
-				processedValue = value === "" ? "" : Number.parseInt(value, 10); // Allow empty string for temporary input state
-			}
-		}
-
-		setFormData((prev) => ({
-			...prev,
-			[name]: processedValue,
-		}));
-	};
-
-	const handleSwitchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-		setFormData((prev) => ({
-			...prev,
-			[event.target.name]: event.target.checked,
-		}));
-	};
+	}, [open, initialData, agentOptions]);
 
 	const handleSubmit = async () => {
 		setIsSubmitting(true);
 		try {
 			if (!isEditMode && !formData.selectedAgentId) {
-				// This should ideally be caught by form validation (e.g. making Autocomplete required)
 				console.error("Agent ID is required to create a schedule.");
 				setIsSubmitting(false);
 				return;
@@ -420,16 +409,14 @@ export const ScheduleFormDialog: FC<ScheduleFormDialogProps> = ({
 				: formData.selectedAgentId;
 
 			if (!agentForSubmit) {
-				// Should not happen if validation and button disabled state are correct
 				console.error("Agent ID is missing for submission.");
 				setIsSubmitting(false);
 				return;
 			}
 
 			await onSubmit(scheduleData, agentForSubmit);
-			// Toast for success is handled by the handleSubmitForm in schedules-page.tsx
-			// No separate toast here to avoid duplicates, unless a more specific message is needed for the dialog context.
-			// For now, we assume the parent page's toast is sufficient.
+			// Success toast comes from the parent page; a second one here would
+			// duplicate it.
 			onClose();
 		} catch (error) {
 			console.error("Failed to submit schedule:", error);
@@ -442,6 +429,9 @@ export const ScheduleFormDialog: FC<ScheduleFormDialogProps> = ({
 	};
 
 	const dialogTitle = isEditMode ? "Edit Schedule" : "Create New Schedule";
+
+	const agentInvalid =
+		isAgentsError || (!isEditMode && !formData.selectedAgentId && isSubmitting);
 
 	const dialogActions = (
 		<>
@@ -458,16 +448,11 @@ export const ScheduleFormDialog: FC<ScheduleFormDialogProps> = ({
 				disabled={
 					isSubmitting ||
 					!formData.prompt ||
-					(formData.interval != null && formData.interval < 1) ||
+					formData.interval === "" ||
+					formData.interval < 1 ||
 					(!isEditMode && !formData.selectedAgentId)
 				}
-				startIcon={
-					isSubmitting ? (
-						<CircularProgress size={18} color="inherit" />
-					) : (
-						<Save size={18} />
-					)
-				}
+				startIcon={isSubmitting ? <Spinner size="sm" /> : <Save size={18} />}
 			>
 				{isSubmitting
 					? "Saving..."
@@ -488,272 +473,186 @@ export const ScheduleFormDialog: FC<ScheduleFormDialogProps> = ({
 			fullWidth
 			dataTourTag="create-schedule-dialog"
 		>
-			<StyledFormGrid container spacing={2}>
-				{/* Tooltip with info icon at the top of the modal content */}
-				<Grid item xs={12}>
-					<Box display="flex" alignItems="center" mb={1}>
-						<IconButton size="small" sx={{ mr: 1, color: "info.main" }}>
-							<Info size={16} />
-						</IconButton>
-						<Typography
-							variant="body2"
-							color="text.secondary"
-							fontSize="0.875rem"
-						>
-							Tip: It is often easier to ask an agent through chat to do
-							something for you on a regular basis, like "Send me an email with
-							the latest news at 8am every day".
-						</Typography>
-					</Box>
-				</Grid>
+			<div className="grid grid-cols-2 gap-4">
+				<div className="col-span-2 flex items-start gap-2">
+					<Info
+						size={16}
+						aria-hidden="true"
+						className="mt-0.5 shrink-0 text-info"
+					/>
+					<p className="text-body-sm text-ink-muted">
+						Tip: It is often easier to ask an agent through chat to do something
+						for you on a regular basis, like "Send me an email with the latest
+						news at 8am every day".
+					</p>
+				</div>
+
 				{!isEditMode && (
-					<Grid item xs={12}>
-						<FieldLabel htmlFor="agent-select-for-schedule">
-							Select Agent{" "}
-							{isEditMode ? (
-								""
-							) : (
-								<Typography
-									component="span"
-									color="error.main"
-									sx={{ ml: 0.5 }}
-								>
-									*
-								</Typography>
-							)}
-						</FieldLabel>
-						<StyledAutocomplete
-							id="agent-select-for-schedule"
+					<div className="col-span-2 flex flex-col gap-1.5">
+						<Label htmlFor="agent-select-for-schedule">
+							Select Agent <span className="text-danger">*</span>
+						</Label>
+						<AgentSelect
 							options={agentOptions}
-							value={selectedAgentForForm}
-							getOptionLabel={(option) =>
-								option.name || `Agent ID: ${option.id.substring(0, 8)}...`
-							}
-							isOptionEqualToValue={(option, value) => option.id === value.id}
-							onChange={(_event, newValue) => {
-								setSelectedAgentForForm(newValue);
+							selected={selectedAgentForForm}
+							onSelect={(agent) => {
+								setSelectedAgentForForm(agent);
 								setFormData((prev) => ({
 									...prev,
-									selectedAgentId: newValue ? newValue.id : null,
+									selectedAgentId: agent ? agent.id : null,
 								}));
 							}}
-							onInputChange={(_event, newInputValue) => {
-								const timer = setTimeout(() => {
-									setAgentSearchQuery(newInputValue);
-								}, 300);
-								return () => clearTimeout(timer);
-							}}
+							onQueryChange={setAgentSearchQuery}
 							loading={isLoadingAgents}
-							disabled={isSubmitting || isEditMode}
-							renderInput={(params) => (
-								<TextField
-									{...params}
-									placeholder="Search or select an agent..."
-									error={
-										isAgentsError ||
-										(!isEditMode && !formData.selectedAgentId && isSubmitting)
-									}
-									InputProps={{
-										...params.InputProps,
-										endAdornment: (
-											<>
-												{isLoadingAgents ? (
-													<CircularProgress color="inherit" size={20} />
-												) : null}
-												{params.InputProps.endAdornment}
-											</>
-										),
-									}}
-								/>
-							)}
-							renderOption={(props, option: AgentDetails) => (
-								<Box
-									component="li"
-									{...props}
-									key={option.id}
-									sx={(theme) => ({
-										display: "flex",
-										justifyContent: "left",
-										alignItems: "flex-start",
-										"&:hover": {
-											backgroundColor: alpha(theme.palette.action.hover, 0.08),
-										},
-										'&[aria-selected="true"]': {
-											backgroundColor: alpha(theme.palette.primary.main, 0.12),
-										},
-									})}
-								>
-									<Typography
-										variant="body2"
-										component="span"
-										sx={{ fontWeight: 500 }}
-									>
-										{option.name || "Unnamed Agent"}
-									</Typography>
-								</Box>
-							)}
+							invalid={agentInvalid}
 						/>
-						{(isAgentsError ||
-							(!isEditMode && !formData.selectedAgentId && isSubmitting)) && (
-							<StyledFormHelperText
-								error={
-									!!isAgentsError ||
-									(!isEditMode && !formData.selectedAgentId && !!isSubmitting)
-								}
-							>
+						{agentInvalid && (
+							<p className="text-danger text-meta">
 								{isAgentsError
 									? "Failed to load agents."
 									: "Agent selection is required."}
-							</StyledFormHelperText>
+							</p>
 						)}
-					</Grid>
+					</div>
 				)}
 				{isEditMode && initialData && (
-					<Grid item xs={12}>
-						<Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-							Editing schedule for Agent:{" "}
-							<Typography component="span" sx={{ fontWeight: 500 }}>
-								{selectedAgentForForm?.name ||
-									`${initialData.agent_id.substring(0, 8)}...`}
-							</Typography>{" "}
-							(Agent cannot be changed)
-						</Typography>
-					</Grid>
+					<p className="col-span-2 text-body-sm text-ink-muted">
+						Editing schedule for Agent:{" "}
+						<span className="font-medium text-ink">
+							{selectedAgentForForm?.name ||
+								`${initialData.agent_id.substring(0, 8)}...`}
+						</span>{" "}
+						(Agent cannot be changed)
+					</p>
 				)}
-				<Grid item xs={12}>
-					<div>
-						<FieldLabel htmlFor="prompt">
-							Prompt{" "}
-							<Typography component="span" color="error.main" sx={{ ml: 0.5 }}>
-								*
-							</Typography>
-							<Tooltip
-								title={
-									<>
-										<Typography variant="caption" display="block" gutterBottom>
-											This is the message that will be sent to the agent on the
-											schedule.
-										</Typography>
-										<Typography variant="caption" display="block">
-											Example: "Send me an email with a detailed world news
-											breakdown with key events"
-										</Typography>
-									</>
-								}
-								placement="top-start"
-								arrow
-							>
-								<IconButton size="small" sx={{ color: "info.main" }}>
-									<Info size={14} />
-								</IconButton>
-							</Tooltip>
-						</FieldLabel>
-						<FullWidthTextField
-							id="prompt"
-							name="prompt"
-							value={formData.prompt}
-							onChange={handleChange}
-							required
-							multiline
-							rows={3}
-							disabled={isSubmitting}
-							placeholder="e.g., Send me an email with a detailed world news breakdown..."
-						/>
-					</div>
-				</Grid>
-				<Grid item xs={6}>
-					<FieldLabel htmlFor="interval">
-						Interval{" "}
-						<Typography component="span" color="error.main" sx={{ ml: 0.5 }}>
-							*
-						</Typography>
-					</FieldLabel>
-					<FullWidthTextField
+
+				<div className="col-span-2 flex flex-col gap-1.5">
+					<Label htmlFor="prompt" className="items-center">
+						Prompt <span className="text-danger">*</span>
+						<Tooltip
+							side="top"
+							align="start"
+							content={
+								<div className="flex flex-col gap-1">
+									<span>
+										This is the message that will be sent to the agent on the
+										schedule.
+									</span>
+									<span>
+										Example: "Send me an email with a detailed world news
+										breakdown with key events"
+									</span>
+								</div>
+							}
+						>
+							<Info size={14} aria-hidden="true" className="text-info" />
+						</Tooltip>
+					</Label>
+					<Textarea
+						id="prompt"
+						name="prompt"
+						value={formData.prompt}
+						onChange={(event) =>
+							setFormData((prev) => ({ ...prev, prompt: event.target.value }))
+						}
+						required
+						rows={3}
+						disabled={isSubmitting}
+						placeholder="e.g., Send me an email with a detailed world news breakdown..."
+					/>
+				</div>
+
+				<div className="flex flex-col gap-1.5">
+					<Label htmlFor="interval">
+						Interval <span className="text-danger">*</span>
+					</Label>
+					<Input
 						id="interval"
 						name="interval"
 						type="number"
-						value={formData.interval === null ? "" : formData.interval}
-						onChange={handleChange}
+						min={1}
+						value={formData.interval}
+						onChange={(event) => {
+							const value = event.target.value;
+							setFormData((prev) => ({
+								...prev,
+								// Allow the empty intermediate state while typing.
+								interval: value === "" ? "" : Number.parseInt(value, 10),
+							}));
+						}}
 						required
 						disabled={isSubmitting}
-						InputProps={{ inputProps: { min: 1 } }}
 						placeholder="e.g., 1"
 					/>
-				</Grid>
-				<Grid item xs={6}>
-					<FieldLabel htmlFor="unit-select">
-						Unit{" "}
-						<Typography component="span" color="error.main" sx={{ ml: 0.5 }}>
-							*
-						</Typography>
-					</FieldLabel>
-					<FullWidthFormControl
-						required
+				</div>
+
+				<div className="flex flex-col gap-1.5">
+					<Label htmlFor="unit-select">
+						Unit <span className="text-danger">*</span>
+					</Label>
+					<Select
+						value={formData.unit || "hours"}
+						onValueChange={(value) =>
+							setFormData((prev) => ({
+								...prev,
+								unit: value as ScheduleUnit,
+							}))
+						}
 						disabled={isSubmitting}
-						id="unit-select-formcontrol"
 					>
-						<Select
-							id="unit-select"
-							name="unit"
-							value={formData.unit || "hours"}
-							onChange={handleChange}
-							displayEmpty
-						>
-							<StyledMenuItem value="minutes">Minutes</StyledMenuItem>
-							<StyledMenuItem value="hours">Hours</StyledMenuItem>
-							<StyledMenuItem value="days">Days</StyledMenuItem>
-						</Select>
-					</FullWidthFormControl>
-				</Grid>
-				<Grid item xs={12} sm={6}>
-					<DateTimePicker
-						label="Start Time"
-						value={formData.start_time_utc ?? null}
-						onChange={(newValue) =>
-							setFormData((prev) => ({ ...prev, start_time_utc: newValue }))
+						<SelectTrigger id="unit-select" name="unit">
+							<SelectValue placeholder="Select unit" />
+						</SelectTrigger>
+						<SelectContent>
+							<SelectItem value="minutes">Minutes</SelectItem>
+							<SelectItem value="hours">Hours</SelectItem>
+							<SelectItem value="days">Days</SelectItem>
+						</SelectContent>
+					</Select>
+				</div>
+
+				<DateTimePicker
+					label="Start Time"
+					value={formData.start_time_utc ?? null}
+					onChange={(newValue) =>
+						setFormData((prev) => ({ ...prev, start_time_utc: newValue }))
+					}
+					disabled={isSubmitting}
+					helperText="If not set, starts immediately or on next interval."
+				/>
+				<DateTimePicker
+					label="End Time (Optional)"
+					value={formData.end_time_utc ?? null}
+					onChange={(newValue) =>
+						setFormData((prev) => ({ ...prev, end_time_utc: newValue }))
+					}
+					disabled={isSubmitting}
+					helperText="If not set, schedule runs indefinitely."
+				/>
+
+				<div className="flex items-center gap-2">
+					<Switch
+						id="is-active"
+						checked={formData.is_active || false}
+						onCheckedChange={(checked) =>
+							setFormData((prev) => ({ ...prev, is_active: checked }))
 						}
 						disabled={isSubmitting}
-						helperText="If not set, starts immediately or on next interval."
 					/>
-				</Grid>
-				<Grid item xs={12} sm={6}>
-					<DateTimePicker
-						label="End Time (Optional)"
-						value={formData.end_time_utc ?? null}
-						onChange={(newValue) =>
-							setFormData((prev) => ({ ...prev, end_time_utc: newValue }))
+					<Label htmlFor="is-active">Active</Label>
+				</div>
+				<div className="flex items-center gap-2">
+					<Switch
+						id="one-time"
+						checked={formData.one_time || false}
+						onCheckedChange={(checked) =>
+							setFormData((prev) => ({ ...prev, one_time: checked }))
 						}
 						disabled={isSubmitting}
-						helperText="If not set, schedule runs indefinitely."
 					/>
-				</Grid>
-				<Grid item xs={6} sx={{ display: "flex", alignItems: "center", mt: 1 }}>
-					<StyledFormControlLabel
-						control={
-							<StyledSwitch
-								checked={formData.is_active || false}
-								onChange={handleSwitchChange}
-								name="is_active"
-								disabled={isSubmitting}
-							/>
-						}
-						label="Active"
-					/>
-				</Grid>
-				<Grid item xs={6} sx={{ display: "flex", alignItems: "center", mt: 1 }}>
-					<StyledFormControlLabel
-						control={
-							<StyledSwitch
-								checked={formData.one_time || false}
-								onChange={handleSwitchChange}
-								name="one_time"
-								disabled={isSubmitting}
-							/>
-						}
-						label="One-time"
-					/>
-				</Grid>
-			</StyledFormGrid>
+					<Label htmlFor="one-time">One-time</Label>
+				</div>
+			</div>
 		</BaseDialog>
 	);
 };

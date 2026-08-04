@@ -1,16 +1,6 @@
-import {
-	Box,
-	Button,
-	IconButton,
-	TextField,
-	Tooltip,
-	Typography,
-	alpha,
-	darken,
-} from "@mui/material";
-import { styled } from "@mui/material/styles";
 import { TranscriptionApi } from "@shared/api/local-operator/transcription-api";
 import type { AgentDetails } from "@shared/api/local-operator/types";
+import { Button, Tooltip } from "@shared/components/ui";
 import { apiConfig } from "@shared/config/api-config";
 import { useCredentials } from "@shared/hooks/use-credentials";
 import { useMessageInput } from "@shared/hooks/use-message-input";
@@ -18,6 +8,7 @@ import {
 	SpeechToTextPriority,
 	useSpeechToTextManager,
 } from "@shared/hooks/use-speech-to-text-manager";
+import { cn } from "@shared/lib/utils";
 import {
 	type Attachment,
 	type Reply,
@@ -72,278 +63,20 @@ export type MessageInputHandle = {
 	focusInput: () => void;
 };
 
-/**
- * Outer container that wraps the entire input area
+/*
+ * The composer boundary, defined once: one `border-control` edge on a
+ * `bg-surface` ground. The focus ring is the base-layer `:focus-visible`
+ * outline, promoted from the textarea to this box via `:has` so the whole
+ * composer — previews and toolbar included — reads as one control; the
+ * textarea suppresses its own outline so there is never a second ring inside
+ * the box. No decorative shadow.
  */
-const InputOuterContainer = styled(Box, {
-	shouldForwardProp: (prop) => prop !== "isSmallView",
-})<{ isSmallView?: boolean }>(({ theme, isSmallView }) => ({
-	width: "100%",
-	flexGrow: 1,
-	flexShrink: 0,
-	minHeight: 0,
-	display: "flex",
-	flexDirection: "column",
-	alignItems: "center",
-	justifyContent: "center",
-	padding: isSmallView ? theme.spacing(0.5) : theme.spacing(1),
-	paddingLeft: isSmallView ? theme.spacing(1) : theme.spacing(2),
-	paddingRight: isSmallView ? theme.spacing(1) : theme.spacing(2),
-	paddingBottom: isSmallView ? theme.spacing(1) : theme.spacing(2),
-	backgroundColor: theme.palette.messagesView.background,
-}));
-
-/**
- * Constrains the input area to the same max width as messages
- * and centers it horizontally
- *
- * When the text input inside is focused, increase border thickness and style
- * without changing the container size by using outline instead of border change
- */
-const InputInnerContainer = styled(Box, {
-	shouldForwardProp: (prop) => prop !== "isSmallView",
-})<{ isSmallView?: boolean }>(({ theme, isSmallView }) => ({
-	width: "100%",
-	maxWidth: "900px",
-	margin: "0 auto",
-	display: "flex",
-	flexDirection: "column",
-	gap: isSmallView ? theme.spacing(1) : theme.spacing(1.5),
-	outline: "none",
-	borderRadius: isSmallView
-		? theme.shape.borderRadius * 2
-		: theme.shape.borderRadius * 4,
-	border: `1px solid ${alpha(theme.palette.divider, theme.palette.mode === "light" ? 0.3 : 0.1)}`,
-	backgroundColor:
-		theme.palette.mode === "light"
-			? alpha(theme.palette.background.paper, 0.9)
-			: alpha(theme.palette.background.paper, 0.6),
-	padding: isSmallView ? theme.spacing(1) : theme.spacing(2),
-	transition: "box-shadow 0.2s ease-in-out, outline 0.2s ease-in-out",
-	boxSizing: "border-box",
-	[theme.breakpoints.down("sm")]: {
-		maxWidth: "100%",
-	},
-	[theme.breakpoints.between("sm", "md")]: {
-		maxWidth: "90%",
-	},
-	[theme.breakpoints.up("md")]: {
-		maxWidth: "900px",
-	},
-	// When the input inside is focused, add an outline instead of increasing border thickness
-	"&:has(.MuiOutlinedInput-root.Mui-focused)": {
-		outline: `2px solid ${theme.palette.primary.main}`,
-		outlineOffset: "0px",
-		boxShadow: `0 0 0 2px ${alpha(theme.palette.primary.main, 0.2)}`,
-	},
-}));
-
-const SuggestionsContainer = styled(Box)(({ theme }) => ({
-	width: "100%",
-	maxWidth: "900px",
-	margin: "0 auto",
-	marginTop: theme.spacing(4),
-	[theme.breakpoints.down("sm")]: {
-		maxWidth: "100%",
-	},
-	[theme.breakpoints.between("sm", "md")]: {
-		maxWidth: "90%",
-	},
-	[theme.breakpoints.up("md")]: {
-		maxWidth: "900px",
-	},
-}));
-
-/**
- * Styled suggestion chip button
- */
-const SuggestionChip = styled(Button)(({ theme }) => ({
-	borderRadius: 999,
-	textTransform: "none",
-	fontSize: "0.85rem",
-	paddingLeft: theme.spacing(1.5),
-	paddingRight: theme.spacing(1.5),
-	paddingTop: theme.spacing(0.5),
-	paddingBottom: theme.spacing(0.5),
-	whiteSpace: "normal", // allow wrapping instead of nowrap
-	wordBreak: "break-word", // break long words if needed
-	variant: "outlined",
-	size: "small",
-	maxWidth: "100%", // ensure chip doesn't overflow container
-	...(theme.palette.mode === "light" && {
-		backgroundColor: alpha(theme.palette.primary.main, 0.15),
-		color: darken(theme.palette.primary.main, 0.4),
-		borderColor: alpha(theme.palette.primary.main, 0.5),
-		"&:hover": {
-			backgroundColor: alpha(theme.palette.primary.main, 0.25),
-			borderColor: alpha(theme.palette.primary.main, 0.7),
-		},
-	}),
-}));
-
-/**
- * Styled text input with no visible border
- *
- * This component customizes the MUI TextField to remove all borders,
- * including the default outlined border, focused border, and hover border.
- *
- * Also customizes the scrollbar appearance when multiline text causes overflow.
- */
-const StyledTextField = styled(TextField, {
-	shouldForwardProp: (prop) => prop !== "isSmallView",
-})<{ isSmallView?: boolean }>(({ theme, isSmallView }) => ({
-	flex: 1,
-	"& .MuiOutlinedInput-root": {
-		backgroundColor: "transparent",
-		padding: isSmallView ? "4px 6px" : "6px 8px",
-		fontSize: isSmallView ? "0.9rem" : "1rem",
-		display: "flex",
-		alignItems: "center",
-		"& fieldset": {
-			border: "none",
-		},
-		"&:hover fieldset": {
-			border: "none",
-		},
-		"&.Mui-focused fieldset": {
-			border: "none",
-		},
-		"&.Mui-focused": {
-			backgroundColor: "transparent",
-			boxShadow: "none",
-		},
-		"&:hover": {
-			backgroundColor: "transparent",
-		},
-	},
-	"& .MuiInputBase-input": {
-		color: theme.palette.text.primary,
-		overflowY: "auto",
-	},
-	"& .MuiInputBase-input::placeholder": {
-		color:
-			theme.palette.mode === "light"
-				? alpha(theme.palette.text.secondary, 0.7)
-				: alpha(theme.palette.text.secondary, 0.5),
-		opacity: 1,
-	},
-}));
-
-/**
- * Container for buttons below the input
- */
-const ButtonsRow = styled(Box)(({ theme }) => ({
-	display: "flex",
-	alignItems: "center",
-	justifyContent: "space-between",
-	gap: theme.spacing(1),
-}));
-
-/**
- * Styled attachment button
- */
-const AttachmentButton = styled(IconButton, {
-	shouldForwardProp: (prop) => prop !== "isSmallView",
-})<{ isSmallView?: boolean }>(({ theme, isSmallView }) => ({
-	backgroundColor:
-		theme.palette.mode === "light"
-			? alpha(theme.palette.primary.main, 0.1)
-			: alpha(theme.palette.primary.main, 0.15),
-	color: theme.palette.primary.main,
-	width: isSmallView ? 32 : 40,
-	height: isSmallView ? 32 : 40,
-	borderRadius: "100%",
-	transition: "all 0.2s ease-in-out",
-	"&:hover": {
-		backgroundColor:
-			theme.palette.mode === "light"
-				? alpha(theme.palette.primary.main, 0.2)
-				: alpha(theme.palette.primary.main, 0.25),
-		transform: "scale(1.1)",
-	},
-	"&:active": {
-		transform: "scale(1)",
-	},
-	"&.Mui-disabled": {
-		backgroundColor: alpha(theme.palette.action.disabled, 0.1),
-		color: theme.palette.action.disabled,
-	},
-}));
-
-/**
- * Styled send/stop button
- */
-const SendButton = styled(Button, {
-	shouldForwardProp: (prop) => prop !== "isSmallView",
-})<{ isSmallView?: boolean }>(({ theme, isSmallView }) => ({
-	minWidth: isSmallView ? 32 : 40,
-	height: isSmallView ? 32 : 40,
-	borderRadius: "100%",
-	padding: 0,
-	display: "flex",
-	alignItems: "center",
-	justifyContent: "center",
-	transition: "all 0.2s ease-in-out",
-	"&:hover": {
-		transform: "scale(1.1)",
-	},
-	"&:active": {
-		transform: "scale(1)",
-	},
-	"&.Mui-disabled": {
-		backgroundColor: alpha(theme.palette.action.disabled, 0.1),
-		color: alpha(theme.palette.common.white, 0.5),
-	},
-}));
-
-/**
- * Container for empty state with title and centered input
- */
-const EmptyStateContainer = styled(Box)(({ theme }) => ({
-	display: "flex",
-	flexDirection: "column",
-	alignItems: "center",
-	justifyContent: "center",
-	padding: theme.spacing(4),
-	gap: theme.spacing(2),
-}));
-
-/**
- * Styled empty state title text
- */
-const EmptyStateTitle = styled(Typography)(({ theme }) => ({
-	fontSize: "1.25rem",
-	fontWeight: 500,
-	color: theme.palette.text.secondary,
-	textAlign: "center",
-	marginBottom: theme.spacing(1),
-	[theme.breakpoints.up("sm")]: {
-		fontSize: "1.5rem",
-		marginBottom: theme.spacing(2),
-	},
-}));
-
-/**
- * Styled transcription loading indicator
- */
-const TranscriptionIndicator = styled(Box)(({ theme }) => ({
-	flex: 1,
-	display: "flex",
-	alignItems: "center",
-	justifyContent: "center",
-	minHeight: "50px",
-	padding: theme.spacing(1, 2),
-	borderRadius: theme.shape.borderRadius,
-	color: theme.palette.primary.dark,
-	gap: theme.spacing(1),
-}));
-
-const TranscriptionText = styled(Typography)(({ theme }) => ({
-	fontSize: "0.875rem",
-	fontWeight: 500,
-	marginRight: theme.spacing(1.5),
-	color: theme.palette.text.secondary,
-}));
+const COMPOSER_BOX = cn(
+	"mx-auto flex w-full flex-col border border-control bg-surface",
+	"box-border outline-none transition-colors duration-fast ease-out-quart",
+	"has-[:focus-visible]:outline has-[:focus-visible]:outline-2",
+	"has-[:focus-visible]:outline-accent",
+);
 
 /**
  * MessageInput component
@@ -477,6 +210,25 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		}));
 
 		const isInputDisabled = Boolean(isLoading && currentJobId);
+
+		/*
+		 * Grow with the draft up to `max-h`, then scroll. Runs on every value
+		 * change — typed, transcribed, or restored from the draft store —
+		 * because a native textarea does not grow on its own.
+		 *
+		 * `newMessage`, `isRecording` and `isTranscribing` are triggers, not
+		 * reads: the body only touches the ref, so the linter sees them as
+		 * surplus. They are what tell the textarea to re-measure, and removing
+		 * them leaves it stuck at its previous height after a transcription
+		 * lands or a draft is restored.
+		 */
+		// biome-ignore lint/correctness/useExhaustiveDependencies: deps are re-measure triggers, not values read in the body
+		useEffect(() => {
+			const el = textareaRef.current;
+			if (!el) return;
+			el.style.height = "auto";
+			el.style.height = `${el.scrollHeight}px`;
+		}, [newMessage, textareaRef, isRecording, isTranscribing]);
 
 		useEffect(() => {
 			if (!isInputDisabled && !isRecording && !isTranscribing) {
@@ -676,7 +428,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			}
 		};
 
-		const handlePaste = (event: ClipboardEvent<HTMLDivElement>) => {
+		const handlePaste = (event: ClipboardEvent<HTMLTextAreaElement>) => {
 			const items = event.clipboardData?.items;
 			if (items) {
 				for (let i = 0; i < items.length; i++) {
@@ -730,9 +482,13 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		const iconSize = isSmallView ? 16 : 18;
 
 		const inputContent = (
-			<form onSubmit={handleSubmit} style={{ width: "100%" }}>
-				<InputInnerContainer
-					isSmallView={isSmallView}
+			<form onSubmit={handleSubmit} className="w-full">
+				<div
+					className={cn(
+						COMPOSER_BOX,
+						isSmallView ? "gap-2 rounded-md p-2" : "gap-3 rounded-frame p-4",
+						"w-full max-w-full sm:max-w-[90%] md:max-w-[900px]",
+					)}
 					data-tour-tag="chat-input-textarea"
 				>
 					{replies.length > 0 && (
@@ -751,47 +507,51 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					{isRecording ? (
 						<AudioRecordingIndicator isRecording={isRecording} />
 					) : isTranscribing ? (
-						<TranscriptionIndicator>
-							<TranscriptionText variant="body2">
+						<div className="flex flex-1 items-center justify-center gap-2 rounded-sm px-4 py-2 [min-height:50px]">
+							<span className="mr-1 font-medium text-body-sm text-ink-muted">
 								Processing audio
-							</TranscriptionText>
+							</span>
 							<WaveformAnimation />
-						</TranscriptionIndicator>
+						</div>
 					) : (
-						<StyledTextField
-							fullWidth
+						<textarea
+							ref={textareaRef}
+							className={cn(
+								"w-full resize-none overflow-y-auto bg-transparent",
+								"text-ink outline-none placeholder:text-ink-dim",
+								isSmallView
+									? "max-h-24 px-1.5 py-1 text-body-sm"
+									: "max-h-28 px-2 py-1.5 text-body",
+							)}
 							placeholder={
 								isInputDisabled ? "Agent is busy" : "Ask me for help"
 							}
-							isSmallView={isSmallView}
 							value={newMessage}
 							onChange={(e) => setNewMessage(e.target.value)}
 							onKeyDown={handleKeyDown}
 							onPaste={handlePaste}
-							multiline
-							maxRows={4}
-							variant="outlined"
-							inputRef={textareaRef}
+							rows={1}
 							disabled={isInputDisabled}
+							aria-label="Message"
 						/>
 					)}
 
-					<ButtonsRow>
+					<div className="flex items-center justify-between gap-2">
 						{/* Left side: attachment button */}
-						<Box display="flex" alignItems="center" gap={1}>
-							<Tooltip title="Attach file">
+						<div className="flex items-center gap-2">
+							<Tooltip content="Attach file">
 								<span>
-									<AttachmentButton
+									<Button
+										variant="ghost"
+										size={isSmallView ? "icon-sm" : "icon"}
+										className="text-accent hover:bg-accent-wash hover:text-accent"
 										onClick={handleAttachFile}
-										color="primary"
-										size="small"
 										aria-label="Attach file"
 										data-tour-tag="chat-input-attach-file-button"
 										disabled={isInputDisabled || isRecording || isTranscribing}
-										isSmallView={isSmallView}
 									>
-										<Paperclip size={iconSize} />
-									</AttachmentButton>
+										<Paperclip size={iconSize} aria-hidden="true" />
+									</Button>
 								</span>
 							</Tooltip>
 							{conversationId && (
@@ -800,148 +560,143 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 									currentWorkingDirectory={agentData?.current_working_directory}
 								/>
 							)}
-						</Box>
+						</div>
 
 						{/* Right side: microphone, send or stop button */}
-						<Box display="flex" alignItems="center" gap={1}>
+						<div className="flex items-center gap-2">
 							{!isRecording &&
 								!isTranscribing &&
 								!(isLoading && currentJobId) && (
 									<Tooltip
-										title={
+										content={
 											!canEnableRecordingFeature
 												? "Sign in to Radient in the settings page to enable audio recording"
 												: `Start recording (${shortcutText} or hold Space)`
 										}
 									>
 										<span>
-											<IconButton
+											<Button
+												variant="ghost"
+												size={isSmallView ? "icon-sm" : "icon"}
+												className="text-accent hover:bg-accent-wash hover:text-accent"
 												onClick={handleStartRecording}
-												color="primary"
-												size="small"
 												aria-label="Start recording"
 												disabled={isLoading || !canEnableRecordingFeature}
 											>
-												<Mic
-													size={iconSize * 1.1}
-													style={{
-														width: iconSize * 1.4,
-														height: iconSize * 1.4,
-														padding: "2px",
-													}}
-												/>
-											</IconButton>
+												<Mic size={iconSize} aria-hidden="true" />
+											</Button>
 										</span>
 									</Tooltip>
 								)}
 							{isRecording && (
 								<>
-									<Tooltip title="Confirm recording (Enter)">
+									<Tooltip content="Confirm recording (Enter)">
 										<span>
-											<IconButton
+											<Button
+												variant="ghost"
+												size={isSmallView ? "icon-sm" : "icon"}
+												className="text-success hover:bg-success-wash hover:text-success"
 												onClick={handleConfirmRecording}
-												color="success"
-												size="small"
 												aria-label="Confirm recording"
 												disabled={isLoading}
 											>
-												<Check size={iconSize} />
-											</IconButton>
+												<Check size={iconSize} aria-hidden="true" />
+											</Button>
 										</span>
 									</Tooltip>
-									<Tooltip title="Cancel recording (Esc)">
+									<Tooltip content="Cancel recording (Esc)">
 										<span>
-											<IconButton
+											<Button
+												variant="ghost"
+												size={isSmallView ? "icon-sm" : "icon"}
+												className="text-danger hover:bg-danger-wash hover:text-danger"
 												onClick={handleCancelRecording}
-												color="error"
-												size="small"
 												aria-label="Cancel recording"
 												disabled={isLoading}
 											>
-												<X size={iconSize} />
-											</IconButton>
+												<X size={iconSize} aria-hidden="true" />
+											</Button>
 										</span>
 									</Tooltip>
 								</>
 							)}
 							{isLoading && currentJobId ? (
-								<Tooltip title="Stop agent">
+								<Tooltip content="Stop agent">
 									<span>
-										<SendButton
+										<Button
+											variant="danger"
+											size={isSmallView ? "icon-sm" : "icon"}
 											type="button"
-											variant="contained"
-											color="error"
 											onClick={() => onCancelJob?.(currentJobId)}
 											aria-label="Stop agent"
-											isSmallView={isSmallView}
 										>
-											<Square size={iconSize} />
-										</SendButton>
+											<Square size={iconSize} aria-hidden="true" />
+										</Button>
 									</span>
 								</Tooltip>
 							) : (
 								!isRecording &&
 								!isTranscribing && (
-									<Tooltip title="Send message">
+									<Tooltip content="Send message">
 										<span>
-											<SendButton
+											<Button
+												variant="primary"
+												size={isSmallView ? "icon-sm" : "icon"}
 												type="submit"
-												variant="contained"
-												color="primary"
 												disabled={
 													isLoading ||
 													(!newMessage.trim() && attachments.length === 0)
 												}
 												aria-label="Send message"
-												isSmallView={isSmallView}
 											>
-												<Send size={iconSize * 0.8} />
-											</SendButton>
+												<Send
+													size={Math.round(iconSize * 0.8)}
+													aria-hidden="true"
+												/>
+											</Button>
 										</span>
 									</Tooltip>
 								)
 							)}
-						</Box>
-					</ButtonsRow>
-				</InputInnerContainer>
+						</div>
+					</div>
+				</div>
 
 				{messages.length === 0 && !isSmallView && (
-					<SuggestionsContainer>
-						<Box
-							sx={{
-								display: "flex",
-								flexWrap: "wrap",
-								gap: 1,
-								marginTop: 1.5,
-								justifyContent: "center",
-							}}
-						>
+					<div className="mx-auto mt-8 w-full max-w-full sm:max-w-[90%] md:max-w-[900px]">
+						<div className="flex flex-wrap justify-center gap-2">
 							{suggestions.map((suggestion) => (
-								<SuggestionChip
+								<Button
 									key={suggestion}
-									variant="outlined"
-									size="small"
+									variant="outline"
+									size="sm"
+									className="h-auto max-w-full whitespace-normal break-words border-accent/50 bg-accent-wash px-3 py-1 text-body-sm text-accent hover:border-accent/70"
 									onClick={() => handleSuggestionClick(suggestion)}
 									disabled={isInputDisabled || isRecording || isTranscribing}
 								>
 									{suggestion}
-								</SuggestionChip>
+								</Button>
 							))}
-						</Box>
-					</SuggestionsContainer>
+						</div>
+					</div>
 				)}
 			</form>
 		);
 
 		return (
-			<InputOuterContainer isSmallView={isSmallView}>
+			<div
+				className={cn(
+					"flex w-full shrink-0 grow flex-col items-center justify-center bg-canvas",
+					isSmallView ? "px-1 pb-1 pt-0.5" : "px-4 pb-4 pt-2",
+				)}
+			>
 				{messages.length === 0 && !isSmallView ? (
-					<EmptyStateContainer>
-						<EmptyStateTitle variant="h6">
+					<div className="flex flex-col items-center justify-center gap-2 p-4">
+						<h2 className="mb-2 text-center font-medium text-title text-ink-muted sm:mb-4">
 							What can I help you with today?
-						</EmptyStateTitle>
+						</h2>
 						{inputContent}
-					</EmptyStateContainer>
+					</div>
 				) : (
 					inputContent
 				)}
@@ -950,7 +705,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					onClick={scrollToBottom}
 					bottomDistance={isSmallView ? 120 : 160}
 				/>
-			</InputOuterContainer>
+			</div>
 		);
 	},
 );
