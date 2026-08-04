@@ -4,7 +4,7 @@
  * Displays a "Not set" state with a button to set the value for text-based settings
  */
 
-import { Box, Button, Typography } from "@mui/material";
+import { Button } from "@shared/components/ui";
 import type { FC } from "react";
 import {
 	DescriptionText,
@@ -58,36 +58,26 @@ export const UnsetTextSetting: FC<UnsetTextSettingProps> = ({
 	icon,
 }) => {
 	return (
-		<UnsetContainer elevation={0}>
+		<UnsetContainer>
 			<LabelWrapper>
-				<LabelText variant="subtitle2">
+				<LabelText>
 					{icon && icon}
 					{label}
 				</LabelText>
-				<DescriptionText variant="body2" color="text.secondary">
-					{description}
-				</DescriptionText>
+				<DescriptionText>{description}</DescriptionText>
 			</LabelWrapper>
-			<Box
-				sx={{
-					display: "flex",
-					alignItems: "center",
-					justifyContent: "space-between",
-				}}
-			>
-				<Typography variant="body2" color="text.secondary" fontStyle="italic">
-					Not set yet
-				</Typography>
+			<div className="flex items-center justify-between">
+				<span className="text-body-sm italic text-ink-muted">Not set yet</span>
 				<Button
-					variant="outlined"
-					size="small"
+					variant="outline"
+					size="sm"
 					onClick={async () => {
 						await onSetValue();
 					}}
 				>
 					Set to default ({defaultDisplayText})
 				</Button>
-			</Box>
+			</div>
 		</UnsetContainer>
 	);
 };

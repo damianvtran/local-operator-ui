@@ -1,21 +1,15 @@
+import type { Agent } from "@shared/api/radient/types";
 import {
 	Avatar,
-	Box,
-	ButtonBase,
-	Card,
-	CardActions,
-	CardContent,
-	Chip,
-	IconButton,
+	AvatarFallback,
+	Badge,
+	Button,
 	Skeleton,
 	Tooltip,
-	Typography,
-} from "@mui/material";
-import { styled } from "@mui/material/styles";
-import type { Agent } from "@shared/api/radient/types";
+} from "@shared/components/ui";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import { formatDistanceToNowStrict } from "date-fns";
-import { Bot, Download, Heart, Info, Star } from "lucide-react";
+import { Bot, Download, Heart, Star } from "lucide-react";
 import type React from "react";
 import { useNavigate } from "react-router-dom";
 import { useAgentDownloadCountQuery } from "../hooks/use-agent-download-count-query";
@@ -30,148 +24,30 @@ type AgentCardProps = {
 	isFavourited: boolean;
 	onLikeToggle: (agentId: string) => void;
 	onFavouriteToggle: (agentId: string) => void;
-	isLikeActionLoading?: boolean; // Optional: Loading state for like button
-	isFavouriteActionLoading?: boolean; // Optional: Loading state for favourite button
-	showActions?: boolean; // Optional: Whether to show like/favourite buttons
+	isLikeActionLoading?: boolean;
+	isFavouriteActionLoading?: boolean;
+	showActions?: boolean;
 };
 
-const CountDisplay = styled("span")(({ theme }) => ({
-	fontSize: "0.8rem",
-	marginLeft: theme.spacing(0.75),
-	color: theme.palette.text.secondary,
-	display: "inline-flex",
-	alignItems: "center",
-	minWidth: "20px",
-	height: "1em",
-}));
-
-const StyledCard = styled(Card)(({ theme }) => ({
-	display: "flex",
-	flexDirection: "column",
-	height: 410,
-	maxHeight: 410,
-	border: `1px solid ${theme.palette.divider}`,
-	backgroundImage: "none",
-	backgroundColor: theme.palette.background.default,
-	borderRadius: theme.shape.borderRadius * 2,
-	transition: "box-shadow 0.3s, border-color 0.3s",
-	"&:hover": {
-		boxShadow: theme.shadows[4],
-		borderColor: theme.palette.primary.main,
-		cursor: "pointer",
-	},
-	overflow: "hidden",
-}));
-
-const StyledCardContent = styled(CardContent)({
-	display: "flex",
-	flexDirection: "column",
-	flexGrow: 1,
-	minHeight: 0,
-	paddingBottom: 0,
-});
-
-const AgentName = styled(Typography)(({ theme }) => ({
-	fontWeight: 500,
-	marginBottom: theme.spacing(1),
-	overflow: "hidden",
-	textOverflow: "ellipsis",
-	whiteSpace: "nowrap",
-}));
-
-// New AgentDescription style: no minHeight, no line clamp, just ellipsis for single line
-const AgentDescription = styled(Typography)(({ theme }) => ({
-	color: theme.palette.text.secondary,
-	marginBottom: theme.spacing(2),
-	fontSize: "0.875rem",
-}));
-
-const MetaInfoContainer = styled(Box)(({ theme }) => ({
-	display: "flex",
-	flexDirection: "column",
-	gap: theme.spacing(0.5),
-	marginBottom: theme.spacing(2),
-}));
-
-const MetaInfoItem = styled(Typography)(({ theme }) => ({
-	fontSize: "0.75rem",
-	color: theme.palette.text.secondary,
-	display: "flex",
-	alignItems: "center",
-	gap: theme.spacing(0.5),
-}));
-
-const StyledCardActions = styled(CardActions)(({ theme }) => ({
-	justifyContent: "space-between",
-	padding: theme.spacing(1, 2),
-	borderTop: `1px solid ${theme.palette.divider}`,
-}));
-
-const ActionButtonGroup = styled(Box)({
-	display: "flex",
-	alignItems: "center",
-});
-
-const DownloadChip = styled(Chip)(({ theme }) => ({
-	marginLeft: theme.spacing(1),
-	fontSize: "0.75rem",
-	height: "24px",
-}));
-
-/**
- * Allowed palette color keys for LikeFavouriteButton.
+/*
+ * The two semantic hues the heart and star carry when active. They were
+ * hardcoded in the MUI version too (`#e53935`, `#ffb300`) and have no role
+ * in the palette contract — there is no "liked" role to spend a semantic
+ * triple on — so they stay as named values at their two call sites.
  */
-type LikeFavouriteButtonColor =
-	| "primary"
-	| "secondary"
-	| "error"
-	| "warning"
-	| "info"
-	| "success";
+const LIKE_ACTIVE_COLOR = "#e53935";
+const FAVOURITE_ACTIVE_COLOR = "#ffb300";
 
 /**
- * Like/Favourite button styled for palette safety.
- */
-const LikeFavouriteButton = styled(ButtonBase, {
-	shouldForwardProp: (prop) => prop !== "color",
-})<{ color?: LikeFavouriteButtonColor }>(({ theme, color }) => ({
-	display: "inline-flex",
-	alignItems: "center",
-	justifyContent: "center",
-	borderRadius: 8,
-	padding: theme.spacing(0.5, 1),
-	color: color ? theme.palette[color].main : theme.palette.text.primary,
-	background: "transparent",
-	transition: "background 0.2s, color 0.2s",
-	width: "fit-content",
-	"&:hover": {
-		background: theme.palette.action.hover,
-		textDecoration: "none",
-	},
-	"&:disabled": {
-		opacity: 0.5,
-		pointerEvents: "none",
-	},
-}));
-
-// Helper function to truncate text with ellipsis if over 140 chars
-function truncateWithEllipsis(text: string, maxLength = 140): string {
-	if (!text) return "";
-	if (text.length <= maxLength) return text;
-	return `${text.slice(0, maxLength - 1)}…`;
-}
-
-/**
- * Renders a card displaying information about a public agent, with avatar and details icon.
+ * Renders a card displaying information about a public agent.
  *
- * @param agent - The agent data to display.
- * @param isLiked - Whether the agent is liked by the user.
- * @param isFavourited - Whether the agent is favourited by the user.
- * @param onLikeToggle - Callback for toggling like state.
- * @param onFavouriteToggle - Callback for toggling favourite state.
- * @param isLikeActionLoading - Loading state for like button.
- * @param isFavouriteActionLoading - Loading state for favourite button.
- * @param showActions - Whether to show like/favourite buttons.
+ * One boundary per card: a `bg-surface` panel with a hairline edge, rounded
+ * `lg`. Hover is a colour step on the border only — nothing lifts.
+ *
+ * Structure note: the info half is one native `<button>` (the card is the
+ * "open details" affordance), and like/favourite/download live in their own
+ * bar beside it. A card-wide click target with nested buttons would need
+ * `stopPropagation` hacks and focus traps; two adjacent targets need neither.
  */
 export const AgentCard: React.FC<AgentCardProps> = ({
 	agent,
@@ -200,32 +76,13 @@ export const AgentCard: React.FC<AgentCardProps> = ({
 			agentId: agent.id,
 		});
 
-	const handleCardClick = () => {
-		navigate(`/agent-hub/${agent.id}`);
-	};
-
-	const handleActionClick = (
-		event: React.MouseEvent<HTMLButtonElement>,
-		action: (agentId: string) => void,
-	) => {
-		event.stopPropagation();
-		action(agent.id);
-	};
-
-	const handleDownloadClick = (event: React.MouseEvent<HTMLButtonElement>) => {
-		event.stopPropagation();
-		if (!downloadMutation.isPending) {
-			downloadMutation.mutate({ agentId: agent.id, agentName: agent.name });
-		}
-	};
-
-	const handleDetailsClick = (event: React.MouseEvent<HTMLButtonElement>) => {
-		event.stopPropagation();
-		navigate(`/agent-hub/${agent.id}`);
-	};
-
 	const description = agent.description ?? "";
-	const truncatedDescription = truncateWithEllipsis(description, 140);
+	// Long descriptions are clamped at 140 characters; the tooltip carries the
+	// full text exactly when something was cut.
+	const isTruncated = description.length > 140;
+	const truncatedDescription = isTruncated
+		? `${description.slice(0, 139)}…`
+		: description;
 
 	const likeTooltip = isAuthenticated
 		? isLiked
@@ -237,209 +94,154 @@ export const AgentCard: React.FC<AgentCardProps> = ({
 			? "Unfavourite agent"
 			: "Favourite agent"
 		: "Log in to Radient to favourite agents";
-	const downloadTooltip = "Download agent to your computer";
 
 	return (
-		<StyledCard onClick={handleCardClick}>
-			<Box
-				sx={{
-					display: "flex",
-					alignItems: "flex-start",
-					justifyContent: "space-between",
-					px: 2,
-					pt: 2,
-					pb: 0,
-				}}
+		<div className="flex flex-col overflow-hidden rounded-lg border border-hairline bg-surface transition-colors duration-fast ease-out-quart hover:border-control">
+			<button
+				type="button"
+				onClick={() => navigate(`/agent-hub/${agent.id}`)}
+				className="flex min-h-0 flex-1 cursor-pointer flex-col gap-3 p-4 text-left"
+				aria-label={`View details for ${agent.name}`}
 			>
-				<Avatar
-					sx={{
-						bgcolor: (theme) => theme.palette.icon.background,
-						color: (theme) => theme.palette.icon.text,
-						width: 44,
-						height: 44,
-						boxShadow: 2,
-						border: (theme) => `2px solid ${theme.palette.primary.main}`,
-					}}
-					variant="circular"
-				>
-					<Bot size={24} />
+				<Avatar className="size-11 self-start">
+					<AvatarFallback>
+						<Bot size={22} aria-hidden="true" />
+					</AvatarFallback>
 				</Avatar>
-				{/* @ts-ignore - Tooltip title prop type issue */}
-				<Tooltip title="See details">
-					<IconButton
-						size="small"
-						onClick={handleDetailsClick}
-						sx={{
-							color: (theme) => theme.palette.icon.text,
-							borderRadius: 2,
-							ml: 1,
-						}}
-						aria-label="See details"
-					>
-						<Info size={18} />
-					</IconButton>
-				</Tooltip>
-			</Box>
-			<StyledCardContent>
-				<AgentName variant="h6">{agent.name}</AgentName>
-				<Box
-					sx={{
-						flexGrow: 1,
-						minHeight: 0,
-						display: "flex",
-						flexDirection: "column",
-					}}
-				>
-					{description.length > 140 ? (
-						<Tooltip title={description} arrow>
-							<span>
-								<AgentDescription
-									variant="body2"
-									sx={{ flexGrow: 1, minHeight: 0 }}
-								>
-									{truncatedDescription}
-								</AgentDescription>
+
+				<div className="flex min-h-0 flex-1 flex-col gap-2">
+					<h3 className="truncate font-medium text-heading text-ink">
+						{agent.name}
+					</h3>
+					{isTruncated ? (
+						<Tooltip content={description}>
+							<span className="min-h-0 text-body-sm text-ink-muted">
+								{truncatedDescription}
 							</span>
 						</Tooltip>
 					) : (
-						<AgentDescription
-							variant="body2"
-							sx={{ flexGrow: 1, minHeight: 0 }}
-						>
+						<p className="min-h-0 text-body-sm text-ink-muted">
 							{truncatedDescription}
-						</AgentDescription>
+						</p>
 					)}
-				</Box>
-				<Box>
+				</div>
+
+				<div className="flex flex-col gap-2">
 					<AgentTagsAndCategories
 						tags={agent.tags}
 						categories={agent.categories}
 					/>
-					<MetaInfoContainer>
-						<MetaInfoItem>
+					<div className="flex flex-col gap-0.5 text-ink-muted text-meta">
+						<p>
 							Creator: {agent.account_metadata?.name ?? "Unknown"} (
 							{agent.account_metadata?.email ?? "No email"})
-						</MetaInfoItem>
-						<MetaInfoItem>
+						</p>
+						<p>
 							Created: {formatDistanceToNowStrict(new Date(agent.created_at))}{" "}
 							ago
-						</MetaInfoItem>
-						<MetaInfoItem>
+						</p>
+						<p>
 							Updated: {formatDistanceToNowStrict(new Date(agent.updated_at))}{" "}
 							ago
-						</MetaInfoItem>
-					</MetaInfoContainer>
-				</Box>
-			</StyledCardContent>
-			<StyledCardActions>
-				<ActionButtonGroup>
-					{/* @ts-ignore - Tooltip title prop type issue */}
-					<Tooltip title={likeTooltip}>
+						</p>
+					</div>
+				</div>
+			</button>
+
+			<div className="flex items-center justify-between gap-2 border-t border-hairline px-4 py-2">
+				<div className="flex items-center gap-1">
+					<Tooltip content={likeTooltip}>
 						<span>
-							<LikeFavouriteButton
+							<Button
+								variant="ghost"
+								size="sm"
 								onClick={
-									isAuthenticated
-										? (e) => handleActionClick(e, onLikeToggle)
-										: undefined
+									isAuthenticated ? () => onLikeToggle(agent.id) : undefined
 								}
 								disabled={isLikeActionLoading || !isAuthenticated}
-								color={isLiked ? "error" : undefined}
 								aria-label={isLiked ? "Unlike agent" : "Like agent"}
-								focusRipple
-								tabIndex={0}
-								type="button"
 							>
 								<Heart
 									size={18}
 									strokeWidth={2}
-									fill={isLiked ? "#e53935" : "none"}
-									color={isLiked ? "#e53935" : undefined}
-									style={{ verticalAlign: "middle" }}
+									fill={isLiked ? LIKE_ACTIVE_COLOR : "none"}
+									color={isLiked ? LIKE_ACTIVE_COLOR : undefined}
 									data-testid="agent-like-heart"
 								/>
-								<CountDisplay>
+								<span className="inline-flex h-4 min-w-5 items-center text-meta text-ink-muted">
 									{isLoadingLikes ? (
-										<Skeleton variant="text" width={20} />
+										<Skeleton className="h-3.5 w-5" />
 									) : (
 										(likeCount ?? 0)
 									)}
-								</CountDisplay>
-							</LikeFavouriteButton>
+								</span>
+							</Button>
 						</span>
 					</Tooltip>
-					{/* @ts-ignore - Tooltip title prop type issue */}
-					<Tooltip title={favouriteTooltip}>
+					<Tooltip content={favouriteTooltip}>
 						<span>
-							<LikeFavouriteButton
+							<Button
+								variant="ghost"
+								size="sm"
 								onClick={
 									isAuthenticated
-										? (e) => handleActionClick(e, onFavouriteToggle)
+										? () => onFavouriteToggle(agent.id)
 										: undefined
 								}
 								disabled={isFavouriteActionLoading || !isAuthenticated}
-								color={isFavourited ? "warning" : undefined}
 								aria-label={
 									isFavourited ? "Unfavourite agent" : "Favourite agent"
 								}
-								focusRipple
-								tabIndex={0}
-								type="button"
 							>
 								<Star
 									size={18}
 									strokeWidth={2}
-									fill={isFavourited ? "#ffb300" : "none"}
-									color={isFavourited ? "#ffb300" : undefined}
-									style={{ verticalAlign: "middle" }}
+									fill={isFavourited ? FAVOURITE_ACTIVE_COLOR : "none"}
+									color={isFavourited ? FAVOURITE_ACTIVE_COLOR : undefined}
 									data-testid="agent-favourite-star"
 								/>
-								<CountDisplay>
+								<span className="inline-flex h-4 min-w-5 items-center text-meta text-ink-muted">
 									{isLoadingFavourites ? (
-										<Skeleton variant="text" width={20} />
+										<Skeleton className="h-3.5 w-5" />
 									) : (
 										(favouriteCount ?? 0)
 									)}
-								</CountDisplay>
-							</LikeFavouriteButton>
+								</span>
+							</Button>
 						</span>
 					</Tooltip>
-				</ActionButtonGroup>
-				<ActionButtonGroup>
-					{/* @ts-ignore - Tooltip title prop type issue */}
-					<Tooltip title={downloadTooltip}>
+				</div>
+				<div className="flex items-center gap-2">
+					<Tooltip content="Download agent to your computer">
 						<span>
-							<IconButton
-								size="small"
-								onClick={handleDownloadClick}
+							<Button
+								variant="ghost"
+								size="icon"
+								onClick={() => {
+									if (!downloadMutation.isPending) {
+										downloadMutation.mutate({
+											agentId: agent.id,
+											agentName: agent.name,
+										});
+									}
+								}}
 								disabled={downloadMutation.isPending}
 								aria-label="Download agent"
 								data-tour-tag="agent-hub-download-button"
 							>
-								<Download
-									size={18}
-									strokeWidth={2}
-									style={{ verticalAlign: "middle" }}
-									data-testid="agent-download"
-								/>
-							</IconButton>
+								<Download data-testid="agent-download" />
+							</Button>
 						</span>
 					</Tooltip>
 					{isLoadingDownloads || downloadMutation.isPending ? (
-						<Skeleton
-							variant="rounded"
-							width={100}
-							height={24}
-							sx={{ ml: 1 }}
-						/>
+						<Skeleton className="h-5 w-24 rounded-full" />
 					) : (
-						<DownloadChip
-							label={`${downloadCount ?? 0} Download${downloadCount !== 1 ? "s" : ""}`}
-							size="small"
-							variant="outlined"
-						/>
+						<Badge variant="outline" shape="pill">
+							{downloadCount ?? 0} Download{downloadCount !== 1 ? "s" : ""}
+						</Badge>
 					)}
-				</ActionButtonGroup>
-			</StyledCardActions>
-		</StyledCard>
+				</div>
+			</div>
+		</div>
 	);
 };

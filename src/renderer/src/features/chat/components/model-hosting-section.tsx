@@ -4,12 +4,12 @@
  * Displays and manages model and hosting provider settings
  */
 
-import { Tooltip } from "@mui/material";
 import type {
 	AgentDetails,
 	AgentUpdate,
 } from "@shared/api/local-operator/types";
 import { HostingSelect, ModelSelect } from "@shared/components/hosting";
+import { Tooltip } from "@shared/components/ui";
 import type { UseMutationResult } from "@tanstack/react-query";
 import { Info, Server } from "lucide-react";
 import type { FC } from "react";
@@ -73,18 +73,15 @@ export const ModelHostingSection: FC<ModelHostingSectionProps> = ({
 }) => {
 	return (
 		<>
-			<SectionTitle variant="subtitle1">
+			<SectionTitle>
 				<TitleIcon icon={Server} />
 				Model & Hosting
-				{/* @ts-ignore - Tooltip has issues with TypeScript but works fine */}
-				<Tooltip
-					title="Configure which model and hosting provider to use"
-					arrow
-					placement="top"
-				>
-					<InfoButton size="small">
-						<Info size={12} />
-					</InfoButton>
+				<Tooltip content="Configure which model and hosting provider to use">
+					<span>
+						<InfoButton>
+							<Info size={12} aria-hidden="true" />
+						</InfoButton>
+					</span>
 				</Tooltip>
 			</SectionTitle>
 

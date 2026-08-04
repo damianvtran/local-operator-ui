@@ -1,5 +1,3 @@
-import { Box, Typography, alpha } from "@mui/material";
-import { keyframes, styled, useTheme } from "@mui/material/styles";
 import { useEffect, useRef } from "react";
 
 /**
@@ -14,56 +12,26 @@ const MIN_BAR_HEIGHT = 2; // Minimum height of a bar in pixels
 const MAX_BAR_HEIGHT = 24; // Maximum height of a bar in pixels
 const FRAMES_TO_SKIP = 4; // Throttle visual updates
 
-const createPulseAnimation = (primaryColor: string) => keyframes`
+/*
+ * The recording dot's pulse, kept in-component: `styles/**` is shared
+ * infrastructure and this animation is composer chrome. The ring fades out of
+ * the accent role via `color-mix` so no theme has its colour guessed.
+ */
+const PULSE_KEYFRAMES = `
+@keyframes recording-pulse {
   0% {
     transform: scale(0.95);
-    box-shadow: 0 0 0 0 ${alpha(primaryColor, 0.7)};
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--lo-accent) 70%, transparent);
   }
   70% {
     transform: scale(1);
-    box-shadow: 0 0 0 10px ${alpha(primaryColor, 0)};
+    box-shadow: 0 0 0 10px color-mix(in srgb, var(--lo-accent) 0%, transparent);
   }
   100% {
     transform: scale(0.95);
-    box-shadow: 0 0 0 0 ${alpha(primaryColor, 0)};
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--lo-accent) 0%, transparent);
   }
-`;
-
-const RecordingIndicatorContainer = styled(Box)(({ theme }) => ({
-	flex: 1,
-	display: "flex",
-	alignItems: "center",
-	justifyContent: "center",
-	minHeight: "50px",
-	padding: theme.spacing(1, 2),
-	borderRadius: theme.shape.borderRadius * 2,
-	backgroundColor: alpha(theme.palette.primary.main, 0.08),
-	border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`,
-	color: theme.palette.primary.main,
-	gap: theme.spacing(2),
-}));
-
-const RecordingText = styled(Typography)(({ theme }) => ({
-	fontSize: "0.9rem",
-	fontWeight: 500,
-	color: theme.palette.primary.main,
-}));
-
-const RecordingDot = styled(Box)(({ theme }) => ({
-	width: 8,
-	height: 8,
-	backgroundColor: theme.palette.primary.main,
-	borderRadius: "50%",
-	animation: `${createPulseAnimation(theme.palette.primary.main)} 1.5s infinite ease-in-out`,
-	flexShrink: 0,
-}));
-
-const WaveformCanvas = styled("canvas")(() => ({
-	display: "block",
-	width: "100%",
-	height: `${MAX_BAR_HEIGHT}px`,
-	flex: 1,
-}));
+}`;
 
 /**
  * AudioRecordingIndicator component
@@ -72,7 +40,6 @@ const WaveformCanvas = styled("canvas")(() => ({
 export const AudioRecordingIndicator = ({
 	isRecording,
 }: AudioRecordingIndicatorProps): JSX.Element | null => {
-	const theme = useTheme();
 	const canvasRef = useRef<HTMLCanvasElement | null>(null);
 	const animationFrameRef = useRef<number>();
 	const mediaStreamRef = useRef<MediaStream | null>(null);
@@ -94,6 +61,12 @@ export const AudioRecordingIndicator = ({
 		if (!ctx) {
 			return;
 		}
+
+		// Canvas draws resolve CSS variables, so the waveform keeps following
+		// the active theme's accent role without a theme object.
+		const accent =
+			getComputedStyle(canvas).getPropertyValue("--lo-accent").trim() ||
+			"#3b82f6";
 
 		// Resize canvas to match its container
 		const resizeCanvas = () => {
@@ -129,8 +102,8 @@ export const AudioRecordingIndicator = ({
 				// Use different color for bars with zero/minimal data
 				const isMinimalData = h <= MIN_BAR_HEIGHT;
 				ctx.fillStyle = isMinimalData
-					? alpha(theme.palette.primary.main, 0.3)
-					: theme.palette.primary.main;
+					? `color-mix(in srgb, ${accent} 30%, transparent)`
+					: accent;
 
 				// Draw rounded rectangle (pill shape)
 				ctx.beginPath();
@@ -228,18 +201,22 @@ export const AudioRecordingIndicator = ({
 				audioContextRef.current = null;
 			}
 		};
-	}, [isRecording, theme.palette.primary.main]);
+	}, [isRecording]);
 
 	if (!isRecording) {
 		return null;
 	}
 
 	return (
-		<RecordingIndicatorContainer>
-			<RecordingDot />
-			<RecordingText variant="body2">Recording</RecordingText>
-			<WaveformCanvas ref={canvasRef} />
-		</RecordingIndicatorContainer>
+		<div className="flex flex-1 items-center justify-center gap-4 rounded-md border border-accent/20 bg-accent-wash px-4 py-2 text-accent [min-height:50px]">
+			<style>{PULSE_KEYFRAMES}</style>
+			<span
+				className="size-2 shrink-0 rounded-full bg-accent animate-[recording-pulse_1.5s_infinite_ease-in-out]"
+				aria-hidden="true"
+			/>
+			<span className="font-medium text-body-sm text-accent">Recording</span>
+			<canvas ref={canvasRef} className="block h-6 flex-1" />
+		</div>
 	);
 };
 

@@ -1,5 +1,4 @@
-import { Box, Typography } from "@mui/material";
-import { styled } from "@mui/material/styles";
+import { cn } from "@shared/lib/utils";
 import { CircleEllipsis, Layers } from "lucide-react";
 import type { FC } from "react";
 import { CATEGORY_ICON_MAP } from "./agent-tags-and-categories";
@@ -9,53 +8,33 @@ type AgentCategoriesSidebarProps = {
 	onSelectCategory: (category: string | null) => void;
 };
 
-const SidebarContainer = styled(Box)(({ theme }) => ({
-	width: 240,
-	minWidth: 200,
-	maxWidth: 280,
-	backgroundColor: theme.palette.background.default,
-	border: `1px solid ${theme.palette.divider}`,
-	borderRadius: theme.shape.borderRadius * 2,
-	padding: theme.spacing(2, 0),
-	display: "flex",
-	flexDirection: "column",
-	boxShadow: theme.shadows[1],
-	marginRight: theme.spacing(3),
-	height: "100%",
-	overflowY: "auto",
-}));
-
-const CategoryList = styled(Box)(({ theme }) => ({
-	display: "flex",
-	flexDirection: "column",
-	gap: theme.spacing(0.5),
-}));
-
-const CategoryItem = styled(Box, {
-	shouldForwardProp: (prop) => prop !== "selected",
-})<{ selected: boolean }>(({ theme, selected }) => ({
-	display: "flex",
-	alignItems: "center",
-	cursor: "pointer",
-	borderRadius: theme.shape.borderRadius,
-	padding: theme.spacing(1.2, 2),
-	background: selected ? theme.palette.action.selected : "transparent",
-	color: selected ? theme.palette.primary.main : theme.palette.text.primary,
-	fontWeight: selected ? 600 : 400,
-	fontSize: "0.95rem",
-	transition: "background 0.2s, color 0.2s",
-	"&:hover": {
-		background: theme.palette.action.hover,
-	},
-	// Ensure icon and text are perfectly aligned
-	gap: theme.spacing(1.2),
-}));
-
-const AllCategoriesItem = styled(CategoryItem)(({ theme }) => ({
-	fontWeight: 500,
-	color: theme.palette.text.secondary,
-	marginBottom: theme.spacing(1),
-}));
+/**
+ * One category row. Selected rows read as `accent-wash` with accent ink —
+ * the same highlight language as every other selected row in the app — and
+ * hover is a colour step to `elevated`, never a lift.
+ */
+const CategoryItem: FC<{
+	selected: boolean;
+	onClick: () => void;
+	"data-testid"?: string;
+	children: React.ReactNode;
+}> = ({ selected, onClick, children, ...rest }) => (
+	<button
+		type="button"
+		onClick={onClick}
+		aria-pressed={selected}
+		className={cn(
+			"flex w-full cursor-pointer items-center gap-3 rounded-md px-3 py-2 text-left",
+			"text-body-sm transition-colors duration-fast ease-out-quart",
+			selected
+				? "bg-accent-wash font-semibold text-accent"
+				: "text-ink hover:bg-elevated",
+		)}
+		{...rest}
+	>
+		{children}
+	</button>
+);
 
 /**
  * Sidebar for selecting agent categories.
@@ -64,44 +43,29 @@ export const AgentCategoriesSidebar: FC<AgentCategoriesSidebarProps> = ({
 	selectedCategory,
 	onSelectCategory,
 }) => {
-	// Get all unique category keys from CATEGORY_ICON_MAP
 	const categories = Object.keys(CATEGORY_ICON_MAP);
 
 	return (
-		<SidebarContainer>
-			<Typography variant="subtitle1" sx={{ px: 2, mb: 1, fontWeight: 600 }}>
+		<div className="flex h-full flex-col overflow-y-auto rounded-lg border border-hairline bg-surface py-2">
+			<h2 className="mb-1 px-3 font-semibold text-heading text-ink">
 				Categories
-			</Typography>
-			<CategoryList>
-				<AllCategoriesItem
+			</h2>
+			<div className="flex flex-col gap-0.5 px-1">
+				<CategoryItem
 					selected={selectedCategory === null}
 					onClick={() => onSelectCategory(null)}
 					data-testid="category-all"
 				>
-					<Box
-						sx={{
-							display: "flex",
-							alignItems: "center",
-							justifyContent: "center",
-							opacity: 0.7,
-							height: 22,
-							width: 22,
-							minWidth: 22,
-						}}
-					>
-						<Layers size={18} style={{ display: "block" }} />
-					</Box>
-					<span style={{ lineHeight: 1.2 }}>All Categories</span>
-				</AllCategoriesItem>
+					<span className="flex size-5.5 shrink-0 items-center justify-center opacity-70">
+						<Layers size={18} aria-hidden="true" />
+					</span>
+					All Categories
+				</CategoryItem>
 				{categories.map((cat) => {
 					const entry = CATEGORY_ICON_MAP[cat];
 					// Use a special icon for "other"
 					const icon =
-						cat === "other" ? (
-							<CircleEllipsis size={16} style={{ display: "block" }} />
-						) : (
-							entry.icon
-						);
+						cat === "other" ? <CircleEllipsis size={16} /> : entry.icon;
 					return (
 						<CategoryItem
 							key={cat}
@@ -109,23 +73,14 @@ export const AgentCategoriesSidebar: FC<AgentCategoriesSidebarProps> = ({
 							onClick={() => onSelectCategory(cat)}
 							data-testid={`category-${cat}`}
 						>
-							<Box
-								sx={{
-									display: "flex",
-									alignItems: "center",
-									justifyContent: "center",
-									height: 22,
-									width: 22,
-									minWidth: 22,
-								}}
-							>
+							<span className="flex size-5.5 shrink-0 items-center justify-center">
 								{icon}
-							</Box>
-							<span style={{ lineHeight: 1.2 }}>{entry.label}</span>
+							</span>
+							{entry.label}
 						</CategoryItem>
 					);
 				})}
-			</CategoryList>
-		</SidebarContainer>
+			</div>
+		</div>
 	);
 };

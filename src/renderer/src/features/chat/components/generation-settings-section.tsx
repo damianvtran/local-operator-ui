@@ -4,13 +4,13 @@
  * Displays and manages generation settings for the agent
  */
 
-import { Box, Tooltip, Typography } from "@mui/material";
 import type {
 	AgentDetails,
 	AgentUpdate,
 } from "@shared/api/local-operator/types";
 import { EditableField } from "@shared/components/common/editable-field";
 import { SliderSetting } from "@shared/components/common/slider-setting";
+import { Tooltip } from "@shared/components/ui";
 import { showErrorToast } from "@shared/utils/toast-manager";
 import type { UseMutationResult } from "@tanstack/react-query";
 import { Info, Settings, SlidersHorizontal } from "lucide-react";
@@ -76,28 +76,25 @@ export const GenerationSettingsSection: FC<GenerationSettingsSectionProps> = ({
 }) => {
 	return (
 		<>
-			<SectionTitle variant="subtitle1">
+			<SectionTitle>
 				<TitleIcon icon={SlidersHorizontal} />
 				Generation Settings
-				{/* @ts-ignore - Tooltip has issues with TypeScript but works fine */}
-				<Tooltip
-					title="Settings that control how the agent generates responses"
-					arrow
-					placement="top"
-				>
-					<InfoButton size="small">
-						<Info size={12} />
-					</InfoButton>
+				<Tooltip content="Settings that control how the agent generates responses">
+					<span>
+						<InfoButton>
+							<Info size={12} aria-hidden="true" />
+						</InfoButton>
+					</span>
 				</Tooltip>
 			</SectionTitle>
 
-			<Box sx={{ mb: 2 }}>
-				<Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+			<div className="mb-4">
+				<p className="mb-4 text-body-sm text-ink-muted">
 					You can set custom values for these settings by updating the options
 					below. If not set, default values will be used that are optimized
 					based on user testing.
-				</Typography>
-			</Box>
+				</p>
+			</div>
 
 			{/* Temperature Setting */}
 			{agent.temperature === null ? (
@@ -270,7 +267,7 @@ export const GenerationSettingsSection: FC<GenerationSettingsSectionProps> = ({
 					description="Sequences that will cause the model to stop generating text."
 					defaultValue={[]}
 					defaultDisplayText="empty"
-					icon={<Settings size={16} style={{ marginRight: "10px" }} />}
+					icon={<Settings size={16} className="mr-2.5" aria-hidden="true" />}
 					onSetValue={async () => {
 						await updateAgentSetting(
 							"stop",
@@ -401,7 +398,7 @@ export const GenerationSettingsSection: FC<GenerationSettingsSectionProps> = ({
 					description="Random number seed for deterministic generation."
 					defaultValue={42}
 					defaultDisplayText="42"
-					icon={<Settings size={16} style={{ marginRight: "10px" }} />}
+					icon={<Settings size={16} className="mr-2.5" aria-hidden="true" />}
 					onSetValue={async () => {
 						await updateAgentSetting(
 							"seed",
