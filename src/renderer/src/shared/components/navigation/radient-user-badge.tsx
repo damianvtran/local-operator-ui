@@ -1,13 +1,5 @@
-/**
- * @file radient-user-badge.tsx
- * @description
- * A component that displays a badge with the user's Radient authentication status.
- * This is a simple example of how to use the useRadientAuth hook.
- */
-
-import { Box, Chip, Tooltip, Typography } from "@mui/material";
-import { styled } from "@mui/material/styles";
-import { useRadientAuth } from "@shared/hooks/use-radient-auth"; // TODO: Advise on this type of import/export
+import { Badge, Tooltip } from "@shared/components/ui";
+import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import type { FC } from "react";
 
 /**
@@ -20,78 +12,62 @@ type RadientUserBadgeProps = {
 	showDetails?: boolean;
 };
 
-const BadgeContainer = styled(Box)(({ theme }) => ({
-	display: "flex",
-	alignItems: "center",
-	gap: theme.spacing(1),
-	padding: theme.spacing(1),
-}));
-
-const UserInfoContainer = styled(Box)(({ theme }) => ({
-	display: "flex",
-	flexDirection: "column",
-	gap: theme.spacing(0.5),
-}));
-
 /**
- * RadientUserBadge component
+ * The user's Radient authentication status, with optional account detail.
  *
- * Displays a badge with the user's Radient authentication status.
- * If authenticated, shows the user's name and email.
- * If not authenticated, shows a message indicating that the user is not authenticated.
+ * The account id is machine voice — an identifier nobody reads as prose — so it
+ * is `text-mono-sm`, which is what lets it sit under the email without a box
+ * drawn around it.
  */
 export const RadientUserBadge: FC<RadientUserBadgeProps> = ({
 	showDetails = false,
 }) => {
 	const { isAuthenticated, isLoading, user, error } = useRadientAuth();
 
-	// Only show loading if we're loading and not authenticated yet
+	/* Loading only matters before the first success; a refresh behind an already
+	   authenticated session must not flicker the badge back to "Checking". */
 	if (isLoading && !isAuthenticated) {
 		return (
-			<BadgeContainer>
-				<Chip label="Loading..." color="default" size="small" />
-			</BadgeContainer>
+			<div className="flex items-center gap-2 p-2">
+				<Badge variant="neutral">Checking</Badge>
+			</div>
 		);
 	}
 
-	// Show error only if there's an error and we're not authenticated
 	if (error && !isAuthenticated) {
 		const errorMessage = error instanceof Error ? error.message : String(error);
 		return (
-			<Tooltip title={errorMessage} arrow>
-				<BadgeContainer>
-					<Chip label="Auth Error" color="error" size="small" />
-				</BadgeContainer>
+			<Tooltip content={errorMessage}>
+				<div className="flex items-center gap-2 p-2">
+					<Badge variant="danger">Sign-in error</Badge>
+				</div>
 			</Tooltip>
 		);
 	}
 
-	// Show not authenticated state
 	if (!isAuthenticated) {
 		return (
-			<BadgeContainer>
-				<Chip label="Not Authenticated" color="default" size="small" />
-			</BadgeContainer>
+			<div className="flex items-center gap-2 p-2">
+				<Badge variant="neutral">Not signed in</Badge>
+			</div>
 		);
 	}
 
 	return (
-		<BadgeContainer>
-			<Chip label="Radient Authenticated" color="success" size="small" />
+		<div className="flex items-center gap-2 p-2">
+			<Badge variant="success">Signed in</Badge>
 
 			{showDetails && user && (
-				<UserInfoContainer>
-					<Typography variant="subtitle2">{user.name}</Typography>
-					<Typography variant="caption" color="text.secondary">
-						{user.email}
-					</Typography>
+				<div className="flex flex-col gap-1">
+					<span className="text-body text-ink">{user.name}</span>
+					<span className="text-meta text-ink-dim">{user.email}</span>
 					{user.radientUser && (
-						<Typography variant="caption" color="text.secondary">
-							Account ID: {user.radientUser.account.id}
-						</Typography>
+						<span className="text-ink-dim text-mono-sm">
+							Account {user.radientUser.account.id}
+						</span>
 					)}
-				</UserInfoContainer>
+				</div>
 			)}
-		</BadgeContainer>
+		</div>
 	);
 };

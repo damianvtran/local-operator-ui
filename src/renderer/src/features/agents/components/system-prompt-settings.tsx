@@ -4,10 +4,9 @@
  * Component for displaying and editing agent system prompt settings
  */
 
-import { Box, IconButton, Tooltip, Typography, alpha } from "@mui/material";
-import { styled } from "@mui/material/styles";
 import type { AgentDetails } from "@shared/api/local-operator/types";
 import { EditableField } from "@shared/components/common/editable-field";
+import { Button, Tooltip } from "@shared/components/ui";
 import {
 	useAgentSystemPrompt,
 	useUpdateAgentSystemPrompt,
@@ -43,30 +42,6 @@ type SystemPromptSettingsProps = {
 	initialSelectedAgentId?: string;
 };
 
-const SectionTitle = styled(Typography)(({ theme }) => ({
-	fontWeight: 600,
-	marginBottom: theme.spacing(2),
-	display: "flex",
-	alignItems: "center",
-	color: theme.palette.text.primary,
-}));
-
-const TitleIcon = styled(Bot)(({ theme }) => ({
-	marginRight: 10,
-	color: theme.palette.primary.main,
-	padding: theme.spacing(0.5),
-	borderRadius: 999,
-	backgroundColor: alpha(theme.palette.primary.main, 0.1),
-}));
-
-const InfoButton = styled(IconButton)(({ theme }) => ({
-	marginLeft: theme.spacing(1),
-	color: theme.palette.primary.main,
-	"&:hover": {
-		backgroundColor: alpha(theme.palette.primary.main, 0.08),
-	},
-}));
-
 /**
  * System Prompt Settings Component
  *
@@ -95,58 +70,66 @@ export const SystemPromptSettings: FC<SystemPromptSettingsProps> = ({
 	}, [systemPrompt]);
 
 	return (
-		<Box data-tour-tag="agent-settings-system-prompt" sx={{ mt: 0 }}>
-			<SectionTitle variant="subtitle1">
-				<TitleIcon size={16} />
-				Agent Instructions
-				{/* @ts-ignore - Tooltip has issues with TypeScript but works fine */}
+		/*
+		 * No margin here: the settings shell owns the gap between panes, so a
+		 * margin on the pane itself would stack with it. The tour matches this tag
+		 * by value, so it must survive verbatim.
+		 */
+		<div data-tour-tag="agent-settings-system-prompt">
+			<h2 className="flex items-center gap-2 text-heading text-ink">
+				<Bot size={16} className="shrink-0 text-ink-dim" />
+				Agent instructions
+				{/*
+				 * A real button rather than a bare icon: the tooltip is keyboard
+				 * reachable only if its trigger can take focus.
+				 */}
 				<Tooltip
-					title={`System instructions that define the agent's behavior and capabilities.  This is the agent's "system prompt"`}
-					arrow
-					placement="top"
+					content={`System instructions that define the agent's behavior and capabilities. This is the agent's "system prompt".`}
 				>
-					<InfoButton size="small">
-						<Info size={12} />
-					</InfoButton>
+					<Button
+						variant="ghost"
+						size="icon-sm"
+						aria-label="About agent instructions"
+					>
+						<Info />
+					</Button>
 				</Tooltip>
-			</SectionTitle>
+			</h2>
 
-			<Typography
-				variant="caption"
-				color="text.secondary"
-				sx={{ mb: 1, display: "block" }}
-			>
+			<p className="mt-1 max-w-2xl text-body-sm text-ink-muted">
 				Define the agent's role, personality, or provide context. Write as if
 				talking to the agent (e.g., "You are an expert researcher") and/or about
 				yourself (e.g., "My name is John").
-			</Typography>
+			</p>
 
-			<EditableField
-				value={localSystemPrompt}
-				label=""
-				placeholder={
-					isLoading
-						? "Loading system prompt..."
-						: "Enter instructions for the agent..."
-				}
-				multiline
-				rows={6}
-				isSaving={savingField === "system_prompt"}
-				onSave={async (value) => {
-					setSavingField("system_prompt");
-					try {
-						await updateSystemPromptMutation.mutateAsync(value);
-						// Explicitly refetch the agent data to update the UI
-						if (selectedAgent.id === initialSelectedAgentId && refetchAgent) {
-							await refetchAgent();
-						}
-					} catch (_error) {
-						// Error is already handled in the mutation
-					} finally {
-						setSavingField(null);
+			<div className="mt-4">
+				<EditableField
+					value={localSystemPrompt}
+					label=""
+					placeholder={
+						isLoading
+							? "Loading system prompt..."
+							: "Enter instructions for the agent..."
 					}
-				}}
-			/>
-		</Box>
+					multiline
+					rows={6}
+					isSaving={savingField === "system_prompt"}
+					onSave={async (value) => {
+						setSavingField("system_prompt");
+						try {
+							await updateSystemPromptMutation.mutateAsync(value);
+							// Explicitly refetch the agent data to update the UI
+							if (selectedAgent.id === initialSelectedAgentId && refetchAgent) {
+								await refetchAgent();
+							}
+						} catch {
+							// Error is already handled in the mutation
+						} finally {
+							setSavingField(null);
+						}
+					}}
+				/>
+			</div>
+		</div>
 	);
 };

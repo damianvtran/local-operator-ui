@@ -3,21 +3,17 @@
  * @description Dialog component for confirming agent upload to the Agent Hub.
  */
 
-import {
-	Box,
-	Checkbox,
-	FormControlLabel,
-	Link,
-	Typography,
-} from "@mui/material";
 import { RadientAuthButtons } from "@shared/components/auth/radient-auth-buttons";
+import { BaseDialog } from "@shared/components/common/base-dialog";
 import {
-	BaseDialog,
-	PrimaryButton,
-	SecondaryButton,
-} from "@shared/components/common/base-dialog";
+	Alert,
+	AlertTitle,
+	Button,
+	Checkbox,
+	Label,
+} from "@shared/components/ui";
 import type { FC } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 
 /**
  * Props for the UploadAgentDialog component
@@ -55,11 +51,15 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 	validationIssues = [],
 }) => {
 	const [agreedToTerms, setAgreedToTerms] = useState(false);
+	// Generated rather than a literal: three surfaces mount this dialog (agents
+	// page, agents sidebar, chat sidebar) and two can be in the tree at once, so
+	// a fixed id would make one label toggle the other dialog's checkbox.
+	const termsCheckboxId = useId();
 
-	const handleAgreementChange = (
-		event: React.ChangeEvent<HTMLInputElement>,
-	) => {
-		setAgreedToTerms(event.target.checked);
+	// Radix reports a `CheckedState`; this control never goes indeterminate, so
+	// anything other than `true` is unchecked.
+	const handleAgreementChange = (checked: boolean | "indeterminate") => {
+		setAgreedToTerms(checked === true);
 	};
 
 	const handleConfirm = () => {
@@ -84,114 +84,105 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 			fullWidth
 			dataTourTag="upload-agent-dialog"
 		>
-			{validationIssues.length > 0 && (
-				<Box sx={{ mb: 2 }}>
-					<Typography
-						variant="body2"
-						color="error"
-						sx={{ fontWeight: 400, fontSize: "0.875rem" }}
-					>
-						Agent is missing required fields:
-					</Typography>
-					<ul style={{ margin: 0, paddingLeft: 20 }}>
-						{validationIssues.map((issue) => (
-							<li key={issue}>
-								<Typography
-									variant="body2"
-									color="error"
-									sx={{ fontSize: "0.875rem" }}
-								>
-									{issue}
-								</Typography>
-							</li>
-						))}
-					</ul>
-				</Box>
-			)}
-			{!isAuthenticated ? (
-				<Box sx={{ textAlign: "center", p: 2 }}>
-					<Typography variant="body1" sx={{ mb: 3, fontSize: "0.875rem" }}>
-						You need to be signed in to Radient to upload agents to the Agent
-						Hub.
-					</Typography>
-					<RadientAuthButtons
-						titleText="Sign in to continue"
-						descriptionText=""
-						onSignInSuccess={onSignInSuccess} // Pass down the success handler
-					/>
-				</Box>
-			) : (
-				<Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-					<Typography variant="body1" sx={{ fontSize: "0.875rem" }}>
-						You are about to upload the agent{" "}
-						<Typography
-							component="span"
-							fontWeight="bold"
-							sx={{ fontSize: "0.875rem" }}
-						>
-							{agentName}
-						</Typography>{" "}
-						to the public Agent Hub. This will include:
-					</Typography>
-					<ul>
-						<li style={{ fontSize: "0.875rem" }}>
-							Agent Configuration & Settings
-						</li>
-						<li style={{ fontSize: "0.875rem" }}>Conversation History</li>
-						<li style={{ fontSize: "0.875rem" }}>Execution History</li>
-						<li style={{ fontSize: "0.875rem" }}>Learnings & Memory</li>
-						<li style={{ fontSize: "0.875rem" }}>Current Plan (if any)</li>
-					</ul>
-					<Typography variant="body1" sx={{ fontSize: "0.875rem" }}>
-						This information will be publicly visible and downloadable by other
-						users. Please ensure you are not uploading sensitive or private
-						information.
-					</Typography>
-					<FormControlLabel
-						control={
-							<Checkbox
-								checked={agreedToTerms}
-								onChange={handleAgreementChange}
-								name="termsAgreement"
-								color="primary"
-							/>
-						}
-						label={
-							<Typography variant="body2" sx={{ fontSize: "0.875rem" }}>
+			<div className="flex flex-col gap-4">
+				{validationIssues.length > 0 && (
+					// The only boundary inside the dialog: the missing-field list has to
+					// read as a blocker rather than as more body copy, and it is what
+					// disables the confirm button.
+					<Alert variant="danger">
+						<AlertTitle>Agent is missing required fields</AlertTitle>
+						<ul className="list-disc space-y-1 pl-5">
+							{validationIssues.map((issue) => (
+								<li key={issue}>{issue}</li>
+							))}
+						</ul>
+					</Alert>
+				)}
+
+				{!isAuthenticated ? (
+					<div className="flex flex-col items-center gap-6 text-center">
+						<p className="text-body text-ink">
+							You need to be signed in to Radient to upload agents to the Agent
+							Hub.
+						</p>
+						<RadientAuthButtons
+							titleText="Sign in to continue"
+							descriptionText=""
+							onSignInSuccess={onSignInSuccess}
+						/>
+					</div>
+				) : (
+					<>
+						<p className="text-body text-ink">
+							You are about to upload the agent{" "}
+							<span className="font-semibold">{agentName}</span> to the public
+							Agent Hub. This will include:
+						</p>
+						<ul className="list-disc space-y-1 pl-5 text-body text-ink-muted">
+							<li>Agent configuration and settings</li>
+							<li>Conversation history</li>
+							<li>Execution history</li>
+							<li>Learnings and memory</li>
+							<li>Current plan (if any)</li>
+						</ul>
+						<p className="text-body text-ink">
+							This information will be publicly visible and downloadable by
+							other users. Please ensure you are not uploading sensitive or
+							private information.
+						</p>
+						<div className="flex gap-3">
+							{/* The box is centred in the first line of the consent text
+							    rather than nudged with a margin, so it stays aligned if the
+							    copy rewraps. */}
+							<span className="flex h-5 shrink-0 items-center">
+								<Checkbox
+									id={termsCheckboxId}
+									name="termsAgreement"
+									checked={agreedToTerms}
+									onCheckedChange={handleAgreementChange}
+								/>
+							</span>
+							<Label
+								htmlFor={termsCheckboxId}
+								className="block font-normal text-body text-ink"
+							>
 								I confirm that I have read and agree to the{" "}
-								<Link
+								{/* An anchor is interactive content, so clicking it does not
+								    also toggle the checkbox the label owns. */}
+								<a
 									href="https://radienthq.com/terms"
 									target="_blank"
 									rel="noopener noreferrer"
+									className="text-accent underline-offset-4 hover:text-accent-hover hover:underline"
 								>
-									Terms & Conditions
-								</Link>{" "}
+									terms and conditions
+								</a>{" "}
 								and that this agent does not contain malicious content or
 								violate usage policies.
-							</Typography>
-						}
-						sx={{ mt: 1 }}
-					/>
-				</Box>
-			)}
-			<Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2, mt: 2 }}>
-				<SecondaryButton
-					variant="outlined"
-					onClick={onClose}
-					data-tour-tag="upload-agent-dialog-cancel-button"
-				>
-					Cancel
-				</SecondaryButton>
-				{isAuthenticated && (
-					<PrimaryButton
-						onClick={handleConfirm}
-						disabled={!agreedToTerms || validationIssues.length > 0}
-						variant="contained"
-					>
-						Confirm Upload
-					</PrimaryButton>
+							</Label>
+						</div>
+					</>
 				)}
-			</Box>
+
+				<div className="flex justify-end gap-3">
+					<Button
+						variant="secondary"
+						onClick={onClose}
+						data-tour-tag="upload-agent-dialog-cancel-button"
+					>
+						Cancel
+					</Button>
+					{isAuthenticated && (
+						<Button
+							variant="primary"
+							onClick={handleConfirm}
+							disabled={!agreedToTerms || validationIssues.length > 0}
+						>
+							Confirm upload
+						</Button>
+					)}
+				</div>
+			</div>
 		</BaseDialog>
 	);
 };

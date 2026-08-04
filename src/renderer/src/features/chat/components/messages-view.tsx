@@ -1,9 +1,10 @@
-import { Box, CircularProgress, Typography, styled } from "@mui/material";
 import type {
 	AgentExecutionRecord,
 	JobStatus,
 } from "@shared/api/local-operator/types";
 import { RingLoadingIndicator } from "@shared/components/common/ring-loading-indicator";
+import { Spinner } from "@shared/components/common/spinner";
+import { cn } from "@shared/lib/utils";
 import { useStreamingMessagesStore } from "@shared/store/streaming-messages-store";
 import React, {
 	type FC,
@@ -37,129 +38,6 @@ type MessagesViewProps = {
 	isSmallView: boolean;
 };
 
-/**
- * Wrapper container that holds both the scrollable messages and the loading indicator
- * This allows the loading indicator to be positioned absolutely relative to this wrapper
- */
-const MessagesViewWrapper = styled(Box, {
-	shouldForwardProp: (prop) => prop !== "collapsed",
-})<{ collapsed?: boolean }>(({ theme, collapsed }) => ({
-	height: collapsed ? 0 : "100%",
-	flexGrow: collapsed ? 0 : 1,
-	overflow: collapsed ? "hidden" : "auto",
-	position: "relative",
-	backgroundColor: theme.palette.messagesView.background,
-	display: "flex",
-	alignItems: "center",
-	justifyContent: "center",
-}));
-
-/**
- * Main messages container with column-reverse layout for automatic scroll-to-bottom
- * This container handles scrolling and uses column-reverse to keep new messages at the bottom
- */
-const MessagesContainer = styled(Box, {
-	shouldForwardProp: (prop) => prop !== "collapsed" && prop !== "isSmallView",
-})<{ collapsed?: boolean; isSmallView?: boolean }>(({ collapsed }) => ({
-	flexGrow: collapsed ? 0 : 1,
-	height: collapsed ? 0 : "100%",
-	overflow: collapsed ? "hidden" : "auto",
-	padding: collapsed ? 0 : 16,
-	width: "100%",
-	display: "flex",
-	flexDirection: "column-reverse", // Key change: reverse column direction for auto-bottom scrolling
-	position: "relative",
-	transform: "translateZ(0)",
-	willChange: "scroll-position",
-	overflowAnchor: "auto", // Ensures browser maintains scroll position when content changes
-}));
-
-/**
- * Styled component for displaying informational messages as a divider
- */
-const InfoMessageDivider = styled(Box, {
-	shouldForwardProp: (prop) => prop !== "isSmallView",
-})<{ isSmallView?: boolean }>(({ theme, isSmallView }) => ({
-	display: "flex",
-	alignItems: "center",
-	textAlign: "center",
-	margin: theme.spacing(isSmallView ? 1 : 2, 0),
-	"&::before, &::after": {
-		content: '""',
-		flex: 1,
-		borderBottom: `1px solid ${theme.palette.divider}`,
-	},
-	"& > .MuiTypography-root": {
-		// Target Typography directly for specificity
-		padding: theme.spacing(0, isSmallView ? 1 : 2), // Increased padding for better spacing around text
-		color: theme.palette.text.secondary,
-		fontSize: isSmallView ? "0.75rem" : "0.875rem",
-		maxWidth: "720px",
-	},
-}));
-
-/**
- * Container for centering and constraining message width
- * Creates a modern chat app layout with centered content
- * The messages are displayed in normal order within this container
- */
-const CenteredMessagesContainer = styled(Box, {
-	shouldForwardProp: (prop) => prop !== "isSmallView",
-})<{ isSmallView?: boolean }>(({ theme, isSmallView }) => ({
-	width: "100%",
-	maxWidth: "900px",
-	margin: "0 auto",
-	display: "flex",
-	flexDirection: "column", // Normal column direction to display messages in correct order
-	gap: isSmallView ? 8 : 16,
-	[theme.breakpoints.down("sm")]: {
-		maxWidth: "100%",
-	},
-	[theme.breakpoints.between("sm", "md")]: {
-		maxWidth: "90%",
-	},
-	[theme.breakpoints.up("md")]: {
-		maxWidth: "900px",
-	},
-}));
-
-const LoadingMoreIndicator = styled(Box, {
-	shouldForwardProp: (prop) => prop !== "isSmallView",
-})<{ isSmallView?: boolean }>(({ theme, isSmallView }) => ({
-	display: "flex",
-	alignItems: "center",
-	justifyContent: "flex-start",
-	padding: isSmallView ? "4px 8px" : "8px 12px",
-	color: theme.palette.text.secondary,
-	position: "absolute",
-	top: isSmallView ? 8 : 16,
-	left: isSmallView ? 8 : 16,
-	zIndex: 10,
-	fontSize: isSmallView ? "0.75rem" : "0.85rem",
-	maxWidth: "fit-content",
-}));
-
-const LoadingBox = styled(Box)({
-	display: "flex",
-	justifyContent: "center",
-	alignItems: "center",
-	padding: 32,
-	height: "100%",
-	flexGrow: 1,
-});
-
-/**
- * Container to center the loading indicator fullscreen when no messages
- */
-const FullScreenCenteredContainer = styled(Box)({
-	display: "flex",
-	justifyContent: "center",
-	alignItems: "center",
-	flexGrow: 1,
-	height: "100%",
-	width: "100%",
-});
-
 const INITIAL_RENDERED_MESSAGES = 40;
 const BACKGROUND_HYDRATION_BATCH_SIZE = 25;
 const BACKGROUND_HYDRATION_INTERVAL_MS = 40;
@@ -173,8 +51,13 @@ const getInitialRenderedCount = (totalMessages: number): number =>
 /**
  * MessagesView Component
  *
- * Displays the list of messages in a conversation using a column-reverse layout
- * for automatic scroll-to-bottom behavior
+ * Renders the list of messages in a conversation, along with loading indicators.
+ *
+ * The scroll container is `column-reverse`, so scrollTop 0 is the bottom and the
+ * browser's overflow anchor keeps the newest content pinned as it grows — which
+ * is why nothing in this tree should ever call scrollIntoView on its own; the
+ * anchor and any manual scrolling fight, and the anchor is the one that respects
+ * a reader who scrolled up.
  */
 export const MessagesView: FC<MessagesViewProps> = React.memo(
 	({
@@ -310,34 +193,62 @@ export const MessagesView: FC<MessagesViewProps> = React.memo(
 		}, [refetch]);
 
 		return (
-			<MessagesViewWrapper collapsed={collapsed}>
+			<div
+				className={cn(
+					"relative flex items-center justify-center bg-canvas",
+					collapsed
+						? "h-0 grow-0 overflow-hidden"
+						: "h-full grow overflow-auto",
+				)}
+			>
 				{/* Fixed position loading indicator for fetching more messages */}
 				{isFetchingMore && (
-					<LoadingMoreIndicator isSmallView={isSmallView}>
-						<CircularProgress size={16} sx={{ mr: 1 }} />
+					<div
+						className={cn(
+							"absolute z-10 flex w-fit items-center text-ink-muted",
+							isSmallView
+								? "top-2 left-2 px-2 py-1 text-meta"
+								: "top-4 left-4 px-3 py-2 text-body-sm",
+						)}
+					>
+						<Spinner size="sm" className="mr-2" />
 						Loading older messages...
-					</LoadingMoreIndicator>
+					</div>
 				)}
 				{!isFetchingMore && hiddenMessageCount > 0 && (
-					<LoadingMoreIndicator isSmallView={isSmallView}>
+					<div
+						className={cn(
+							"absolute z-10 flex w-fit items-center text-ink-muted",
+							isSmallView
+								? "top-2 left-2 px-2 py-1 text-meta"
+								: "top-4 left-4 px-3 py-2 text-body-sm",
+						)}
+					>
 						Rendering {hiddenMessageCount} earlier messages...
-					</LoadingMoreIndicator>
+					</div>
 				)}
 
-				{/* Scrollable messages container */}
-				<MessagesContainer
+				{/*
+				 * Scrollable messages container.
+				 *
+				 * `column-reverse` is the layout, not a detail: new messages land at
+				 * scrollTop 0, and `overflow-anchor: auto` is what keeps the view
+				 * pinned there while content above the anchor grows. The translateZ
+				 * layer keeps long lists from repainting the whole scrollport.
+				 */}
+				<div
 					ref={messagesContainerRef}
-					collapsed={collapsed}
-					isSmallView={isSmallView}
+					className={cn(
+						"relative flex w-full flex-col-reverse will-change-[scroll-position] [overflow-anchor:auto] [transform:translateZ(0)]",
+						collapsed
+							? "h-0 grow-0 overflow-hidden p-0"
+							: "h-full grow overflow-auto p-4",
+					)}
 				>
-					{/* With column-reverse, the content is flipped, so we need to maintain the correct visual order */}
-					{/* The loading indicator and messages are wrapped in a container with normal column direction */}
-
-					{/* Show loading indicator when initially loading messages */}
 					{isLoadingMessages && !messages.length ? (
-						<LoadingBox>
+						<div className="flex h-full grow items-center justify-center p-8">
 							<RingLoadingIndicator size={68} />
-						</LoadingBox>
+						</div>
 					) : (
 						<>
 							{/* Reference element for backwards compatibility */}
@@ -353,18 +264,35 @@ export const MessagesView: FC<MessagesViewProps> = React.memo(
 								id="messages-end-anchor"
 							/>
 
-							{/* Render messages with normal order inside the reversed container */}
 							{renderedMessages.length > 0 ? (
-								<CenteredMessagesContainer isSmallView={isSmallView}>
-									{/* Messages are rendered in normal order */}
+								<div
+									className={cn(
+										"mx-auto flex w-full max-w-[900px] flex-col sm:max-w-[90%] md:max-w-[900px]",
+										isSmallView ? "gap-2" : "gap-4",
+									)}
+								>
 									{renderedMessages.map((message, index) =>
 										message.execution_type === "info" ? (
-											<InfoMessageDivider
+											<div
 												key={message.id}
-												isSmallView={isSmallView}
+												className={cn(
+													"flex items-center text-center",
+													isSmallView ? "my-1" : "my-2",
+												)}
 											>
-												<Typography>{message.message}</Typography>
-											</InfoMessageDivider>
+												<div className="flex-1 border-hairline border-t" />
+												<span
+													className={cn(
+														"max-w-[720px] text-ink-muted",
+														isSmallView
+															? "px-1 text-meta"
+															: "px-2 text-body-sm",
+													)}
+												>
+													{message.message}
+												</span>
+												<div className="flex-1 border-hairline border-t" />
+											</div>
 										) : (
 											<MessageItem
 												key={message.id}
@@ -393,12 +321,11 @@ export const MessagesView: FC<MessagesViewProps> = React.memo(
 											isSmallView={isSmallView}
 										/>
 									)}
-								</CenteredMessagesContainer>
+								</div>
 							) : (
 								<>
-									{/* When no messages, center the loading indicator fullscreen */}
 									{isLoadingMessages && (
-										<FullScreenCenteredContainer>
+										<div className="flex h-full w-full grow items-center justify-center">
 											<LoadingIndicator
 												status={jobStatus}
 												agentName={agentName}
@@ -406,14 +333,16 @@ export const MessagesView: FC<MessagesViewProps> = React.memo(
 												conversationId={conversationId}
 												isSmallView={isSmallView}
 											/>
-										</FullScreenCenteredContainer>
+										</div>
 									)}
 								</>
 							)}
 						</>
 					)}
-				</MessagesContainer>
-			</MessagesViewWrapper>
+				</div>
+			</div>
 		);
 	},
 );
+
+MessagesView.displayName = "MessagesView";

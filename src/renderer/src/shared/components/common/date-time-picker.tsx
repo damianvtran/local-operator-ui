@@ -1,85 +1,138 @@
-import {
-	Box,
-	IconButton,
-	TextField,
-	Tooltip,
-	Typography,
-	alpha,
-} from "@mui/material";
-import { styled } from "@mui/material/styles";
+/**
+ * Combined date and time field.
+ *
+ * Named exception in the MUI removal: the calendar and clock themselves are
+ * still `@mui/x-date-pickers`, because the primitive layer has no calendar and
+ * hand-rolling one is its own project. What changed is everything around them —
+ * the field chrome is a plain input that the pickers drive through their
+ * `textField` slot, so no `@mui/material` import remains here.
+ *
+ * The slot receives MUI TextField-shaped props (an `InputProps` object for the
+ * box and an `inputProps` object for the element) because that is the contract
+ * `enableAccessibleFieldDOMStructure={false}` still speaks. The mapping below
+ * is deliberate, not decorative: `InputProps.ref` is where the popper anchors,
+ * and the handlers the pickers put on the wrapper manage the section-based
+ * editing inside the field, so dropping any of them silently breaks typing.
+ */
+
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { TimePicker } from "@mui/x-date-pickers/TimePicker";
+import { Button, Tooltip } from "@shared/components/ui";
+import { cn } from "@shared/lib/utils";
 import { isValid, parseISO } from "date-fns";
 import { CalendarDays, Clock, History } from "lucide-react";
-import type { FC } from "react";
-import { useEffect, useState } from "react";
+import { forwardRef, useEffect, useId, useState } from "react";
+import type { FC, InputHTMLAttributes, ReactNode, Ref } from "react";
 
-const StyledTextField = styled(TextField)(({ theme }) => ({
-	width: "100%",
-	"& .MuiOutlinedInput-root": {
-		borderRadius: 6,
-		border: `1px solid ${theme.palette.divider}`,
-		backgroundColor: theme.palette.background.paper,
-		minHeight: "36px",
-		height: "36px",
-		padding: 0,
-		transition: "border-color 0.2s ease, box-shadow 0.2s ease",
-		"&:hover": {
-			borderColor: theme.palette.text.secondary,
+type PickerTextFieldProps = {
+	id?: string;
+	className?: string;
+	placeholder?: string;
+	value?: string;
+	disabled?: boolean;
+	readOnly?: boolean;
+	required?: boolean;
+	name?: string;
+	autoComplete?: string;
+	autoFocus?: boolean;
+	error?: boolean;
+	/** MUI styling hook the pickers send; consumed so it never hits the DOM. */
+	focused?: boolean;
+	onChange?: InputHTMLAttributes<HTMLInputElement>["onChange"];
+	onBlur?: InputHTMLAttributes<HTMLDivElement>["onBlur"];
+	onFocus?: InputHTMLAttributes<HTMLDivElement>["onFocus"];
+	onClick?: InputHTMLAttributes<HTMLDivElement>["onClick"];
+	InputProps?: {
+		ref?: Ref<HTMLDivElement>;
+		startAdornment?: ReactNode;
+		endAdornment?: ReactNode;
+	};
+	inputProps?: InputHTMLAttributes<HTMLInputElement> & {
+		ref?: Ref<HTMLInputElement>;
+	};
+};
+
+const assignRef = <T,>(ref: Ref<T> | undefined, node: T | null) => {
+	if (typeof ref === "function") ref(node);
+	else if (ref) (ref as { current: T | null }).current = node;
+};
+
+const PickerTextField = forwardRef<HTMLDivElement, PickerTextFieldProps>(
+	(
+		{
+			id,
+			className,
+			placeholder,
+			value,
+			disabled,
+			readOnly,
+			required,
+			name,
+			autoComplete,
+			autoFocus,
+			error,
+			focused: _focused,
+			onChange,
+			onBlur,
+			onFocus,
+			onClick,
+			InputProps,
+			inputProps,
 		},
-		"&.Mui-focused": {
-			borderColor: theme.palette.primary.main,
-			boxShadow: `0 0 0 2px ${alpha(theme.palette.primary.main, 0.2)}`,
-		},
-		"& .MuiOutlinedInput-notchedOutline": {
-			border: "none",
-		},
-		"& .MuiInputBase-input": {
-			padding: "8px 12px",
-			fontSize: "0.875rem",
-			lineHeight: 1.5,
-			height: "calc(36px - 16px)",
-			boxSizing: "border-box",
-		},
-	},
-	"& .MuiInputAdornment-root .MuiIconButton-root": {
-		color: theme.palette.text.secondary,
-		padding: theme.spacing(0.5),
-	},
-}));
-
-const DateTimePickerContainer = styled(Box)({
-	display: "flex",
-	alignItems: "flex-start",
-	gap: "8px",
-});
-
-const PickerWrapper = styled(Box)({
-	flexGrow: 1,
-	minWidth: 0,
-});
-
-// Styled FormHelperText for consistency
-const StyledFormHelperText = styled(Typography, {
-	shouldForwardProp: (prop) => prop !== "error",
-})<{ error?: boolean }>(({ theme, error }) => ({
-	fontSize: "0.75rem",
-	marginTop: theme.spacing(0.5),
-	marginLeft: theme.spacing(0.25),
-	color: error ? theme.palette.error.main : theme.palette.text.secondary,
-}));
-
-// FieldLabel for static label above the input, similar to other components
-const FieldLabel = styled("label")(({ theme }) => ({
-	display: "block",
-	marginBottom: theme.spacing(0.75),
-	color: theme.palette.text.secondary,
-	fontWeight: 500,
-	fontSize: "0.875rem",
-	lineHeight: 1.5,
-}));
+		ref,
+	) => (
+		// biome-ignore lint/a11y/useKeyWithClickEvents: the click is forwarded to the MUI date-pickers widget behind the field, which owns the keyboard semantics; this div is its anchor, not an independent control.
+		<div
+			ref={(node) => {
+				// Both refs point at the same box: the pickers' rootRef measures the
+				// field and the triggerRef anchors the popper to it.
+				assignRef(ref, node);
+				assignRef(InputProps?.ref, node);
+			}}
+			onBlur={onBlur}
+			onFocus={onFocus}
+			onClick={onClick}
+			className={cn(
+				"flex h-9 items-center gap-1 rounded-md border border-control bg-surface px-3",
+				"transition-colors duration-fast ease-out-quart",
+				error && "border-danger",
+				disabled && "border-hairline bg-sunken",
+				className,
+			)}
+		>
+			{InputProps?.startAdornment}
+			<input
+				id={id}
+				name={name}
+				placeholder={placeholder}
+				value={value ?? ""}
+				disabled={disabled}
+				readOnly={readOnly}
+				required={required}
+				autoComplete={autoComplete}
+				aria-invalid={error || undefined}
+				onChange={onChange}
+				{...inputProps}
+				ref={(node) => {
+					/* Compose with the ref the pickers pass in `inputProps` — that one
+					   drives section-based editing, so it must not be clobbered. The
+					   autofocus focus is the one extra behaviour on top. */
+					assignRef(inputProps?.ref, node);
+					if (autoFocus && node) node.focus();
+				}}
+				className={cn(
+					"h-full min-w-0 flex-1 bg-transparent outline-none",
+					"text-body-sm text-ink placeholder:text-ink-dim",
+					"disabled:text-ink-disabled disabled:placeholder:text-ink-disabled",
+				)}
+			/>
+			{InputProps?.endAdornment}
+		</div>
+	),
+);
+PickerTextField.displayName = "PickerTextField";
 
 type DateTimePickerProps = {
 	label: string; // This will be the static label
@@ -98,6 +151,7 @@ export const DateTimePicker: FC<DateTimePickerProps> = ({
 }) => {
 	const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 	const [selectedTime, setSelectedTime] = useState<Date | null>(null);
+	const baseId = useId();
 
 	useEffect(() => {
 		if (value && isValid(parseISO(value))) {
@@ -123,11 +177,8 @@ export const DateTimePicker: FC<DateTimePickerProps> = ({
 				newDateTime.setHours(0, 0, 0, 0);
 			}
 			onChange(newDateTime.toISOString());
-		} else if (date === null && selectedTime) {
-			// Date cleared, but time exists - this case might need specific handling
-			// For now, if date is cleared, consider the whole value cleared or invalid
-			onChange(null);
 		} else {
+			// Date cleared or invalid: the pair is meaningless without a date.
 			onChange(null);
 		}
 	};
@@ -135,14 +186,12 @@ export const DateTimePicker: FC<DateTimePickerProps> = ({
 	const handleTimeChange = (time: Date | null) => {
 		setSelectedTime(time);
 		if (time && isValid(time)) {
-			const newDateTime = selectedDate ? new Date(selectedDate) : new Date(); // Use current date if no date selected
+			// Time picked with no date yet means today.
+			const newDateTime = selectedDate ? new Date(selectedDate) : new Date();
 			newDateTime.setHours(time.getHours());
 			newDateTime.setMinutes(time.getMinutes());
 			newDateTime.setSeconds(time.getSeconds());
 			if (!selectedDate) {
-				// If no date was selected, also set the date part of newDateTime to today
-				// This ensures that if only time is picked, it's for today.
-				// However, the primary flow expects a date to be picked first or concurrently.
 				setSelectedDate(
 					new Date(
 						newDateTime.getFullYear(),
@@ -156,7 +205,7 @@ export const DateTimePicker: FC<DateTimePickerProps> = ({
 			// Time cleared, but date exists. Set time to midnight.
 			const newDateTime = new Date(selectedDate);
 			newDateTime.setHours(0, 0, 0, 0);
-			setSelectedTime(newDateTime); // update time state to midnight
+			setSelectedTime(newDateTime);
 			onChange(newDateTime.toISOString());
 		} else {
 			onChange(null);
@@ -172,100 +221,74 @@ export const DateTimePicker: FC<DateTimePickerProps> = ({
 
 	return (
 		<LocalizationProvider dateAdapter={AdapterDateFns}>
-			<Box>
-				{/* Static FieldLabel above the pickers */}
-				<FieldLabel
-					htmlFor={`${label.toLowerCase().replace(/\s/g, "-")}-date-field`}
+			<div>
+				<label
+					htmlFor={`${baseId}-date-field`}
+					className="mb-1.5 block font-medium text-body-sm text-ink-muted"
 				>
 					{label}
-				</FieldLabel>
-				<DateTimePickerContainer>
-					<PickerWrapper>
+				</label>
+				<div className="flex items-center gap-2">
+					<div className="min-w-0 flex-1">
 						<DatePicker
-							// label prop removed to prevent floating label
 							value={selectedDate}
 							onChange={handleDateChange}
 							disabled={disabled}
 							enableAccessibleFieldDOMStructure={false}
 							slots={{
-								textField: (params) => (
-									<StyledTextField
-										{...params}
-										id={`${label.toLowerCase().replace(/\s/g, "-")}-date-field`} // Keep id for FieldLabel htmlFor
-										placeholder="Select Date" // Placeholder instead of label
-									/>
-								),
-								openPickerIcon: () => <CalendarDays size={18} />, // Use Lucide icon
+								textField: PickerTextField,
+								openPickerIcon: () => <CalendarDays size={16} />,
 							}}
 							slotProps={{
-								openPickerButton: {
-									"aria-label": `Choose ${label} Date`,
-									size: "small",
+								textField: {
+									id: `${baseId}-date-field`,
+									placeholder: "Select date",
 								},
-								desktopPaper: {
-									sx: (theme) => ({
-										borderRadius: "6px",
-										boxShadow: theme.shadows[2],
-										border: `1px solid ${theme.palette.divider}`,
-										backgroundColor: theme.palette.background.paper,
-										backgroundImage: "none",
-									}),
+								openPickerButton: {
+									"aria-label": `Choose ${label} date`,
+									size: "small",
 								},
 							}}
 						/>
-					</PickerWrapper>
-					<PickerWrapper>
+					</div>
+					<div className="min-w-0 flex-1">
 						<TimePicker
-							// label prop removed
 							value={selectedTime}
 							onChange={handleTimeChange}
 							disabled={disabled}
 							enableAccessibleFieldDOMStructure={false}
 							slots={{
-								textField: (params) => (
-									<StyledTextField
-										{...params}
-										id={`${label.toLowerCase().replace(/\s/g, "-")}-time-field`}
-										placeholder="Select Time"
-									/>
-								),
-								openPickerIcon: () => <Clock size={18} />, // Use Lucide icon
+								textField: PickerTextField,
+								openPickerIcon: () => <Clock size={16} />,
 							}}
 							slotProps={{
 								textField: {
-									// id is on the StyledTextField itself
+									id: `${baseId}-time-field`,
+									placeholder: "Select time",
 								},
 								openPickerButton: {
-									"aria-label": `Choose ${label} Time`,
+									"aria-label": `Choose ${label} time`,
 									size: "small",
-								},
-								desktopPaper: {
-									sx: (theme) => ({
-										borderRadius: "6px",
-										boxShadow: theme.shadows[2],
-										border: `1px solid ${theme.palette.divider}`,
-										backgroundColor: theme.palette.background.paper,
-										backgroundImage: "none",
-									}),
 								},
 							}}
 						/>
-					</PickerWrapper>
-					<Tooltip title="Set to current time">
-						<IconButton
+					</div>
+					<Tooltip content="Set to current time">
+						<Button
+							variant="ghost"
+							size="icon-sm"
 							onClick={handleSetToCurrent}
 							disabled={disabled}
-							size="small"
-							sx={{ mt: "4px" /* Align with top of text fields */ }}
+							aria-label={`Set ${label} to current time`}
 						>
-							<History size={20} />
-						</IconButton>
+							<History />
+						</Button>
 					</Tooltip>
-				</DateTimePickerContainer>
+				</div>
 				{helperText && (
-					<StyledFormHelperText>{helperText}</StyledFormHelperText>
+					<p className="mt-1 ml-0.5 text-ink-muted text-meta">{helperText}</p>
 				)}
-			</Box>
+			</div>
 		</LocalizationProvider>
 	);
 };

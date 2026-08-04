@@ -1,17 +1,10 @@
-import {
-	Alert,
-	Box,
-	Button,
-	CssBaseline,
-	Snackbar,
-	Typography,
-} from "@mui/material";
-import { ThemeProvider as MuiThemeProvider } from "@mui/material/styles";
-import { DEFAULT_THEME, themes } from "@shared/themes";
+import { Spinner } from "@shared/components/common/spinner";
+import { Button } from "@shared/components/ui";
 import type { Meta, StoryObj } from "@storybook/react";
 import type { ProgressInfo, UpdateInfo } from "electron-updater";
 import { useEffect, useState } from "react";
 import { CheckForUpdatesButton } from "./check-for-updates-button";
+import { FloatingAlert } from "./floating-alert";
 
 // Initialize window.api if it doesn't exist
 if (typeof window.api === "undefined") {
@@ -270,15 +263,10 @@ const meta = {
 				context.parameters.triggerUpdateError,
 			]);
 
-			const theme = themes[DEFAULT_THEME];
-
 			return (
-				<MuiThemeProvider theme={theme}>
-					<CssBaseline />
-					<div style={{ padding: "20px" }}>
-						<Story />
-					</div>
-				</MuiThemeProvider>
+				<div className="p-5">
+					<Story />
+				</div>
 			);
 		},
 	],
@@ -317,16 +305,14 @@ export const ButtonDefault: Story = {
 			}, []);
 
 			return (
-				<div style={{ minHeight: "100px", position: "relative" }}>
+				<div className="relative min-h-25">
 					<Button
-						variant="outlined"
+						variant="outline"
 						onClick={() => window.api.updater.checkForUpdates()}
 						disabled={checking}
-						startIcon={
-							checking ? <Box sx={{ width: 16, height: 16 }} /> : undefined
-						}
 					>
-						{checking ? "Checking..." : "Check for Updates"}
+						{checking ? <Spinner size="sm" /> : null}
+						{checking ? "Checking..." : "Check for updates"}
 					</Button>
 				</div>
 			);
@@ -441,28 +427,24 @@ export const ButtonNoUpdateAvailable: Story = {
 			}, [noUpdateAvailable]);
 
 			return (
-				<div style={{ minHeight: "100px", position: "relative" }}>
+				<div className="relative min-h-25">
 					<Button
-						variant="outlined"
+						variant="outline"
 						onClick={() => window.api.updater.checkForUpdates()}
 						disabled={checking}
-						startIcon={
-							checking ? <Box sx={{ width: 16, height: 16 }} /> : undefined
-						}
 					>
-						{checking ? "Checking..." : "Check for Updates"}
+						{checking ? <Spinner size="sm" /> : null}
+						{checking ? "Checking..." : "Check for updates"}
 					</Button>
 
-					<Snackbar
+					<FloatingAlert
 						open={snackbarOpen}
 						autoHideDuration={6000}
 						onClose={() => setSnackbarOpen(false)}
-						anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+						variant="info"
 					>
-						<Alert onClose={() => setSnackbarOpen(false)} severity="info">
-							You're using the latest version
-						</Alert>
-					</Snackbar>
+						You're using the latest version
+					</FloatingAlert>
 				</div>
 			);
 		};
@@ -572,28 +554,24 @@ export const ButtonErrorState: Story = {
 			}, [error]);
 
 			return (
-				<div style={{ minHeight: "100px", position: "relative" }}>
+				<div className="relative min-h-25">
 					<Button
-						variant="outlined"
+						variant="outline"
 						onClick={() => window.api.updater.checkForUpdates()}
 						disabled={checking}
-						startIcon={
-							checking ? <Box sx={{ width: 16, height: 16 }} /> : undefined
-						}
 					>
-						{checking ? "Checking..." : "Check for Updates"}
+						{checking ? <Spinner size="sm" /> : null}
+						{checking ? "Checking..." : "Check for updates"}
 					</Button>
 
-					<Snackbar
+					<FloatingAlert
 						open={snackbarOpen}
 						autoHideDuration={6000}
 						onClose={() => setSnackbarOpen(false)}
-						anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+						variant="danger"
 					>
-						<Alert onClose={() => setSnackbarOpen(false)} severity="error">
-							{error}
-						</Alert>
-					</Snackbar>
+						{error}
+					</FloatingAlert>
 				</div>
 			);
 		};
@@ -639,26 +617,19 @@ export const DevMode: Story = {
 			}, []);
 
 			return (
-				<div style={{ minHeight: "100px", position: "relative" }}>
-					<Button
-						variant="outlined"
-						onClick={() => {}}
-						disabled={false}
-						startIcon={undefined}
-					>
-						Check for Updates
+				<div className="relative min-h-25">
+					<Button variant="outline" onClick={() => {}} disabled={false}>
+						Check for updates
 					</Button>
 
-					<Snackbar
+					<FloatingAlert
 						open={snackbarOpen}
 						autoHideDuration={6000}
 						onClose={() => setSnackbarOpen(false)}
-						anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+						variant="info"
 					>
-						<Alert onClose={() => setSnackbarOpen(false)} severity="info">
-							{devModeMessage}
-						</Alert>
-					</Snackbar>
+						{devModeMessage}
+					</FloatingAlert>
 				</div>
 			);
 		};
@@ -723,44 +694,33 @@ export const NpxUpdateAvailable: Story = {
 			};
 
 			return (
-				<div style={{ minHeight: "100px", position: "relative" }}>
-					<Button
-						variant="outlined"
-						onClick={() => {}}
-						disabled={false}
-						startIcon={undefined}
-					>
-						Check for Updates
+				<div className="relative min-h-25">
+					<Button variant="outline" onClick={() => {}} disabled={false}>
+						Check for updates
 					</Button>
 
-					<Snackbar
+					<FloatingAlert
 						open={snackbarOpen}
 						autoHideDuration={10000}
 						onClose={() => setSnackbarOpen(false)}
-						anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+						variant="info"
+						action={
+							<Button variant="ghost" size="sm" onClick={handleCopyNpxCommand}>
+								Copy
+							</Button>
+						}
 					>
-						<Alert
-							onClose={() => setSnackbarOpen(false)}
-							severity="info"
-							action={
-								<Button
-									color="inherit"
-									size="small"
-									onClick={handleCopyNpxCommand}
-								>
-									Copy
-								</Button>
-							}
-						>
-							<Typography variant="body2" sx={{ mb: 1 }}>
-								Update available: {npxUpdateInfo?.latestVersion} (current:{" "}
-								{npxUpdateInfo?.currentVersion})
-							</Typography>
-							<Typography variant="body2">
-								To update, run: <code>{npxUpdateInfo?.updateCommand}</code>
-							</Typography>
-						</Alert>
-					</Snackbar>
+						<p className="text-body-sm">
+							Update available: {npxUpdateInfo?.latestVersion} (current:{" "}
+							{npxUpdateInfo?.currentVersion})
+						</p>
+						<p className="text-body-sm">
+							To update, run:{" "}
+							<code className="text-mono-sm">
+								{npxUpdateInfo?.updateCommand}
+							</code>
+						</p>
+					</FloatingAlert>
 				</div>
 			);
 		};
@@ -836,56 +796,43 @@ export const BackendUpdateAvailable: Story = {
 			};
 
 			return (
-				<div style={{ minHeight: "100px", position: "relative" }}>
-					<Button
-						variant="outlined"
-						onClick={() => {}}
-						disabled={false}
-						startIcon={undefined}
-					>
-						Check for Updates
+				<div className="relative min-h-25">
+					<Button variant="outline" onClick={() => {}} disabled={false}>
+						Check for updates
 					</Button>
 
-					<Snackbar
+					<FloatingAlert
 						open={snackbarOpen}
 						autoHideDuration={10000}
 						onClose={() => setSnackbarOpen(false)}
-						anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+						variant="info"
+						action={
+							<>
+								<Button variant="ghost" size="sm" onClick={handleCopyCommand}>
+									Copy
+								</Button>
+								<Button
+									variant="primary"
+									size="sm"
+									onClick={updateBackend}
+									disabled={updatingBackend}
+								>
+									{updatingBackend ? "Updating..." : "Update"}
+								</Button>
+							</>
+						}
 					>
-						<Alert
-							onClose={() => setSnackbarOpen(false)}
-							severity="info"
-							action={
-								<>
-									<Button
-										color="inherit"
-										size="small"
-										onClick={handleCopyCommand}
-										sx={{ mr: 1 }}
-									>
-										Copy
-									</Button>
-									<Button
-										color="primary"
-										size="small"
-										onClick={updateBackend}
-										disabled={updatingBackend}
-									>
-										{updatingBackend ? "Updating..." : "Update"}
-									</Button>
-								</>
-							}
-						>
-							<Typography variant="body2" sx={{ mb: 1 }}>
-								Backend update available: {backendUpdateInfo?.latestVersion}{" "}
-								(current: {backendUpdateInfo?.currentVersion})
-							</Typography>
-							<Typography variant="body2">
-								To update manually, run:{" "}
-								<code>{backendUpdateInfo?.updateCommand}</code>
-							</Typography>
-						</Alert>
-					</Snackbar>
+						<p className="text-body-sm">
+							Backend update available: {backendUpdateInfo?.latestVersion}{" "}
+							(current: {backendUpdateInfo?.currentVersion})
+						</p>
+						<p className="text-body-sm">
+							To update manually, run:{" "}
+							<code className="text-mono-sm">
+								{backendUpdateInfo?.updateCommand}
+							</code>
+						</p>
+					</FloatingAlert>
 				</div>
 			);
 		};
@@ -926,26 +873,19 @@ export const BackendUpdateCompleted: Story = {
 			}, []);
 
 			return (
-				<div style={{ minHeight: "100px", position: "relative" }}>
-					<Button
-						variant="outlined"
-						onClick={() => {}}
-						disabled={false}
-						startIcon={undefined}
-					>
-						Check for Updates
+				<div className="relative min-h-25">
+					<Button variant="outline" onClick={() => {}} disabled={false}>
+						Check for updates
 					</Button>
 
-					<Snackbar
+					<FloatingAlert
 						open={snackbarOpen}
 						autoHideDuration={6000}
 						onClose={() => setSnackbarOpen(false)}
-						anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+						variant="success"
 					>
-						<Alert onClose={() => setSnackbarOpen(false)} severity="success">
-							Backend updated successfully
-						</Alert>
-					</Snackbar>
+						Backend updated successfully
+					</FloatingAlert>
 				</div>
 			);
 		};
@@ -986,26 +926,19 @@ export const BackendUpdateNotAvailable: Story = {
 			}, []);
 
 			return (
-				<div style={{ minHeight: "100px", position: "relative" }}>
-					<Button
-						variant="outlined"
-						onClick={() => {}}
-						disabled={false}
-						startIcon={undefined}
-					>
-						Check for Updates
+				<div className="relative min-h-25">
+					<Button variant="outline" onClick={() => {}} disabled={false}>
+						Check for updates
 					</Button>
 
-					<Snackbar
+					<FloatingAlert
 						open={snackbarOpen}
 						autoHideDuration={6000}
 						onClose={() => setSnackbarOpen(false)}
-						anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+						variant="info"
 					>
-						<Alert onClose={() => setSnackbarOpen(false)} severity="info">
-							You're using the latest version
-						</Alert>
-					</Snackbar>
+						You're using the latest version
+					</FloatingAlert>
 				</div>
 			);
 		};

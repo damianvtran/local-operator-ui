@@ -1,4 +1,3 @@
-import { Box } from "@mui/material";
 import { useLowCreditsStore } from "@shared/store/low-credits-store";
 import type { Meta, StoryObj } from "@storybook/react";
 import { LowCreditsDialog } from "./low-credits-dialog";
@@ -40,17 +39,9 @@ const meta: Meta<typeof LowCreditsDialog> = {
 			}
 
 			return (
-				<Box
-					sx={{
-						p: 3,
-						display: "flex",
-						justifyContent: "center",
-						alignItems: "center",
-						minHeight: "100vh",
-					}}
-				>
+				<div className="flex min-h-screen items-center justify-center p-6">
 					<Story />
-				</Box>
+				</div>
 			);
 		},
 	],

@@ -1,35 +1,7 @@
-import { Box, Grid, Typography, styled } from "@mui/material";
-import { SectionTitle as CommonSectionTitle } from "@shared/components/common/section-title";
+import { Card } from "@shared/components/ui";
+import { cn } from "@shared/lib/utils";
 import { Check, Key } from "lucide-react";
 import type { FC, ReactNode } from "react";
-
-// Styling for the section description
-const SectionDescription = styled(Typography)(({ theme }) => ({
-	marginBottom: theme.spacing(2.5),
-	color: theme.palette.text.secondary,
-	fontSize: "0.875rem",
-	lineHeight: 1.5,
-}));
-
-// Shadcn-inspired empty state container
-const EmptyStateContainer = styled(Box)(({ theme }) => ({
-	padding: theme.spacing(4, 3),
-	textAlign: "center",
-	backgroundColor: theme.palette.action.hover,
-	border: `1px dashed ${theme.palette.divider}`,
-	borderRadius: theme.shape.borderRadius * 0.75,
-	marginBottom: theme.spacing(3),
-	display: "flex",
-	flexDirection: "column",
-	alignItems: "center",
-	justifyContent: "center",
-}));
-
-// Styling for the icon within the empty state
-const EmptyStateIcon = styled(Box)(({ theme }) => ({
-	marginBottom: theme.spacing(1.5),
-	color: theme.palette.text.disabled,
-}));
 
 type CredentialsSectionProps = {
 	title: string;
@@ -37,12 +9,28 @@ type CredentialsSectionProps = {
 	children: ReactNode;
 	isEmpty?: boolean;
 	emptyStateType?: "noCredentials" | "allConfigured";
-	isFirstSection?: boolean;
 };
 
 /**
- * Component for displaying a section of credentials (e.g., Configured, Available).
- * Uses shadcn-inspired styling for title, description, and empty state.
+ * One group of credential cards — configured, or available to configure.
+ *
+ * ## Where the single boundary lives
+ *
+ * This was the worst nesting on the settings page: a bordered settings card
+ * held a bordered group, which held a grid of bordered credential cards, and
+ * the empty state added a fourth edge in a dashed border of its own. The
+ * settings section above is borderless now, and `CredentialCard` is borderless
+ * and unfilled, so the panel below is the *only* edge in the group — the
+ * heading and the gap separate one group from the next.
+ *
+ * That split is deliberate rather than arbitrary: the cards hover to
+ * `elevated`, which only reads as a step when they sit on `surface`. Giving the
+ * ground to the panel buys the hover state and costs one border instead of
+ * eight.
+ *
+ * The grid is `auto-fit` rather than viewport breakpoints because the settings
+ * content column is narrowed by a sidebar, so `md:` would wrap on the wrong
+ * measurement — the columns should follow the space the cards actually have.
  */
 export const CredentialsSection: FC<CredentialsSectionProps> = ({
 	title,
@@ -50,69 +38,60 @@ export const CredentialsSection: FC<CredentialsSectionProps> = ({
 	children,
 	isEmpty = false,
 	emptyStateType = "noCredentials",
-	isFirstSection = false,
 }) => {
 	return (
-		<Box sx={{ mb: 4 }}>
-			{" "}
-			{/* Add margin bottom to separate sections */}
-			<CommonSectionTitle
-				title={title}
-				variant="h6"
-				sx={{
-					mt: isFirstSection ? 0 : 3,
-					mb: 1,
-				}}
-			/>
-			<SectionDescription variant="body2">{description}</SectionDescription>
-			{isEmpty ? (
-				<EmptyState type={emptyStateType} />
-			) : (
-				<Grid container spacing={2}>
-					{children}
-				</Grid>
-			)}
-		</Box>
+		<section>
+			<h3 className="text-body font-medium text-ink">{title}</h3>
+			<p className="mt-1 max-w-2xl text-body-sm text-ink-muted">
+				{description}
+			</p>
+			<Card variant="surface" padding="sm" className="mt-3">
+				{isEmpty ? (
+					<EmptyState type={emptyStateType} />
+				) : (
+					<div className="grid grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-2">
+						{children}
+					</div>
+				)}
+			</Card>
+		</section>
 	);
 };
 
-// --- Empty State Component ---
-
 type EmptyStateProps = {
 	type: "noCredentials" | "allConfigured";
+	className?: string;
 };
 
 /**
- * Component for displaying an empty state message within a CredentialsSection.
+ * The group's message when it has nothing to list.
+ *
+ * Unfilled and unbordered: it already sits inside the group's panel, and a
+ * dashed box inside a solid one is a boundary drawn around a boundary. Vertical
+ * padding gives it the same presence the box used to.
  */
-export const EmptyState: FC<EmptyStateProps> = ({ type }) => {
+const EmptyState: FC<EmptyStateProps> = ({ type, className }) => {
 	const isNoCredentials = type === "noCredentials";
 	const StateIcon = isNoCredentials ? Key : Check;
 
 	return (
-		<EmptyStateContainer>
-			<EmptyStateIcon>
-				<StateIcon size={20} />
-			</EmptyStateIcon>
-			<Typography
-				variant="subtitle1" // Use subtitle1 for slightly smaller heading
-				fontWeight={500} // Medium weight
-				gutterBottom
-				sx={{ mb: 0.5 }} // Reduced margin
-			>
+		<div
+			className={cn(
+				"flex flex-col items-center px-4 py-8 text-center",
+				className,
+			)}
+		>
+			<StateIcon size={20} className="text-ink-dim" aria-hidden={true} />
+			<p className="mt-3 text-body font-medium text-ink">
 				{isNoCredentials
-					? "No Credentials Configured"
-					: "All Available Credentials Configured"}
-			</Typography>
-			<Typography
-				variant="body2"
-				color="text.secondary"
-				sx={{ maxWidth: 400, margin: "0 auto" }} // Limit width for readability
-			>
+					? "No credentials configured"
+					: "All available credentials configured"}
+			</p>
+			<p className="mt-1 max-w-sm text-body-sm text-ink-muted">
 				{isNoCredentials
 					? "You haven't set up any API credentials yet. Add credentials from the available options or add a custom one."
 					: "You've configured all the common API credentials. You can still add custom credentials if needed."}
-			</Typography>
-		</EmptyStateContainer>
+			</p>
+		</div>
 	);
 };

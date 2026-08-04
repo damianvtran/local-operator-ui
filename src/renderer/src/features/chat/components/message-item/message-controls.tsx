@@ -1,63 +1,37 @@
-import { Box, CircularProgress, IconButton, Tooltip } from "@mui/material";
-import { alpha, styled } from "@mui/material/styles";
+/**
+ * Component for the message control buttons (copy, speech) that appear on
+ * hover. Visibility is driven by the parent's `group` class: the controls
+ * stay at `opacity-0` until `group-hover`, and the streaming state hides them
+ * with `invisible` from the call site — visibility wins over the hover
+ * opacity rule regardless of utility order, which a second opacity class
+ * would not.
+ *
+ * The `sx` prop became `className` in the Tailwind port.
+ */
+
+import { Spinner } from "@shared/components/common/spinner";
+import { Button, Tooltip } from "@shared/components/ui";
 import { useCredentials } from "@shared/hooks/use-credentials";
+import { cn } from "@shared/lib/utils";
 import { useSpeechStore } from "@shared/store/speech-store";
 import { Copy, Square, Volume2 } from "lucide-react";
 import type { FC } from "react";
 import { useMemo, useState } from "react";
 
-import type { SxProps, Theme } from "@mui/material";
-
 // Props for the MessageControls component
 type MessageControlsProps = {
 	isUser: boolean;
 	content?: string;
-	sx?: SxProps<Theme>;
+	className?: string;
 	messageId: string;
 	agentId?: string;
 	inline?: boolean;
 };
 
-// Styled container for the message controls
-const ControlsContainer = styled(Box, {
-	shouldForwardProp: (prop) => prop !== "isUser" && prop !== "inline",
-})<{ isUser: boolean; inline?: boolean }>(({ isUser, inline }) => ({
-	position: inline ? "static" : "absolute",
-	bottom: inline ? "auto" : isUser ? 8 : -12, // Position below the message
-	display: "flex",
-	alignItems: "center",
-	justifyContent: isUser ? "flex-end" : "flex-start",
-	width: inline ? "auto" : "100%",
-	opacity: inline ? 1 : 0,
-	transition: "opacity 0.2s ease-in-out",
-	zIndex: 1,
-}));
-
-// Styled wrapper for the control buttons
-const ControlsWrapper = styled(Box)(() => ({
-	display: "flex",
-	alignItems: "flex-start",
-}));
-
-// Styled IconButton for controls
-const StyledIconButton = styled(IconButton)(({ theme }) => ({
-	color: theme.palette.text.secondary,
-	width: "34px",
-	height: "34px",
-	"&:hover": {
-		color: theme.palette.primary.main,
-		backgroundColor: alpha(theme.palette.primary.main, 0.1),
-	},
-}));
-
-/**
- * Component for message control buttons that appear on hover
- * Currently includes a copy button for copying message content
- */
 export const MessageControls: FC<MessageControlsProps> = ({
 	isUser,
 	content,
-	sx,
+	className,
 	messageId,
 	agentId,
 	inline = false,
@@ -121,59 +95,80 @@ export const MessageControls: FC<MessageControlsProps> = ({
 		stopSpeech();
 	};
 
+	const buttonClass = "text-ink-dim hover:bg-accent-wash hover:text-accent";
+
 	return (
-		<ControlsContainer
-			isUser={isUser}
-			inline={inline}
-			className={inline ? undefined : "message-controls"}
-			sx={sx}
+		<div
+			className={cn(
+				"flex items-center",
+				inline
+					? "w-auto"
+					: cn(
+							"message-controls absolute z-10 w-full opacity-0 transition-opacity duration-fast ease-out-quart group-hover:opacity-100",
+							isUser ? "bottom-2 justify-end" : "-bottom-3 justify-start",
+						),
+				className,
+			)}
 		>
 			{/* Only render the wrapper if there are buttons to show */}
 			{showCopyButton && (
-				<ControlsWrapper>
-					<Tooltip title={copied ? "Copied!" : "Copy message"} placement="top">
-						<StyledIconButton size="small" onClick={handleCopy}>
-							<Copy size={16} />
-						</StyledIconButton>
+				<div className="flex items-start">
+					<Tooltip content={copied ? "Copied!" : "Copy message"} side="top">
+						<Button
+							variant="ghost"
+							size="icon-sm"
+							aria-label={copied ? "Copied" : "Copy message"}
+							className={buttonClass}
+							onClick={handleCopy}
+						>
+							<Copy />
+						</Button>
 					</Tooltip>
 					{!isUser &&
 						(isPlaying ? (
-							<Tooltip title="Stop" placement="top">
-								<StyledIconButton size="small" onClick={handleStop}>
-									<Square size={16} />
-								</StyledIconButton>
+							<Tooltip content="Stop" side="top">
+								<Button
+									variant="ghost"
+									size="icon-sm"
+									aria-label="Stop speech"
+									className={buttonClass}
+									onClick={handleStop}
+								>
+									<Square />
+								</Button>
 							</Tooltip>
 						) : (
 							<Tooltip
-								title={
+								content={
 									!canEnableSpeechFeature
 										? "Sign in to Radient in the settings page to enable text to speech"
 										: isLoading
 											? "Loading"
 											: hasAudio
-												? "Replay Speech"
-												: "Speak Aloud"
+												? "Replay speech"
+												: "Speak aloud"
 								}
-								placement="top"
+								side="top"
 							>
+								{/* The span wrapper keeps the tooltip alive on the disabled
+								 * button, which swallows its own pointer events. */}
 								<span>
-									<StyledIconButton
-										size="small"
+									<Button
+										variant="ghost"
+										size="icon-sm"
+										aria-label={hasAudio ? "Replay speech" : "Speak aloud"}
+										className={buttonClass}
 										onClick={hasAudio ? handleReplay : handlePlay}
 										disabled={isLoading || !canEnableSpeechFeature}
 									>
-										{isLoading ? (
-											<CircularProgress size={16} />
-										) : (
-											<Volume2 size={16} />
-										)}
-									</StyledIconButton>
+										{isLoading ? <Spinner size="sm" /> : <Volume2 />}
+									</Button>
 								</span>
 							</Tooltip>
 						))}
-				</ControlsWrapper>
+				</div>
 			)}
 			{/* Additional button wrappers can be added here in the future */}
-		</ControlsContainer>
+		</div>
 	);
 };

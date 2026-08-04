@@ -1,4 +1,4 @@
-import { DialogContentText, Typography, styled } from "@mui/material";
+import { DialogDescription } from "@shared/components/ui";
 import { TriangleAlert } from "lucide-react";
 import type { FC, ReactNode } from "react";
 import { useEffect } from "react";
@@ -7,7 +7,6 @@ import {
 	DangerButton,
 	PrimaryButton,
 	SecondaryButton,
-	TitleContainer,
 } from "./base-dialog";
 
 type ConfirmationModalProps = {
@@ -45,10 +44,6 @@ type ConfirmationModalProps = {
 	onCancel: () => void;
 };
 
-const WarningIcon = styled(TriangleAlert)(({ theme }) => ({
-	color: theme.palette.error.main,
-}));
-
 /**
  * A reusable confirmation modal component
  *
@@ -64,15 +59,20 @@ export const ConfirmationModal: FC<ConfirmationModalProps> = ({
 	onConfirm,
 	onCancel,
 }) => {
+	/*
+	 * Enter confirms from anywhere in the dialog, which is the whole point of a
+	 * confirmation step being one keystroke. Escape is deliberately not handled
+	 * here: the dialog primitive already cancels on Escape, and a second
+	 * listener would call `onCancel` twice per press.
+	 */
 	useEffect(() => {
+		if (!open) {
+			return;
+		}
+
 		const handleKeyDown = (event: KeyboardEvent): void => {
-			if (!open) {
-				return;
-			}
 			if (event.key === "Enter") {
 				onConfirm();
-			} else if (event.key === "Escape") {
-				onCancel();
 			}
 		};
 
@@ -81,32 +81,24 @@ export const ConfirmationModal: FC<ConfirmationModalProps> = ({
 		return () => {
 			document.removeEventListener("keydown", handleKeyDown);
 		};
-	}, [open, onConfirm, onCancel]);
+	}, [open, onConfirm]);
 
 	const dialogTitle = isDangerous ? (
-		<TitleContainer>
-			<WarningIcon size={19} />
-			<Typography variant="h6" component="span" color="error">
-				{title}
-			</Typography>
-		</TitleContainer>
+		<>
+			<TriangleAlert size={19} className="text-danger" aria-hidden="true" />
+			<span className="text-danger">{title}</span>
+		</>
 	) : (
 		title
 	);
 
 	const dialogActions = (
 		<>
-			<SecondaryButton onClick={onCancel} variant="outlined">
-				{cancelText}
-			</SecondaryButton>
+			<SecondaryButton onClick={onCancel}>{cancelText}</SecondaryButton>
 			{isDangerous ? (
-				<DangerButton onClick={onConfirm} autoFocus>
-					{confirmText}
-				</DangerButton>
+				<DangerButton onClick={onConfirm}>{confirmText}</DangerButton>
 			) : (
-				<PrimaryButton onClick={onConfirm} autoFocus>
-					{confirmText}
-				</PrimaryButton>
+				<PrimaryButton onClick={onConfirm}>{confirmText}</PrimaryButton>
 			)}
 		</>
 	);
@@ -118,14 +110,15 @@ export const ConfirmationModal: FC<ConfirmationModalProps> = ({
 			title={dialogTitle}
 			actions={dialogActions}
 			maxWidth="xs"
-			dialogProps={{
-				"aria-labelledby": "confirmation-dialog-title",
-				"aria-describedby": "confirmation-dialog-description",
-			}}
 		>
-			<DialogContentText id="confirmation-dialog-description">
-				{message}
-			</DialogContentText>
+			{/*
+			 * `asChild` so the description is a `div`: callers pass paragraphs as
+			 * `message`, and a `p` inside a `p` is invalid and gets unnested by the
+			 * parser.
+			 */}
+			<DialogDescription asChild>
+				<div className="text-body text-ink-muted">{message}</div>
+			</DialogDescription>
 		</BaseDialog>
 	);
 };

@@ -1,6 +1,15 @@
-import { Tooltip, Typography } from "@mui/material";
-import type { SxProps, Theme } from "@mui/material";
-import { styled } from "@mui/material/styles";
+/**
+ * Component for displaying message timestamps.
+ * Shows a smart formatted time based on when the message was sent, with the
+ * full date and time behind a tooltip on hover.
+ *
+ * The `sx` prop became `className` in the Tailwind port; the two former
+ * behaviours it carried (opacity hiding while streaming) are now expressed
+ * with `invisible` from the call site.
+ */
+
+import { Tooltip } from "@shared/components/ui";
+import { cn } from "@shared/lib/utils";
 import {
 	formatMessageDateTime,
 	getFullDateTime,
@@ -14,70 +23,37 @@ export type MessageTimestampProps = {
 	timestamp: Date;
 	isUser: boolean;
 	isSmallView?: boolean;
-	sx?: SxProps<Theme>;
+	className?: string;
 	inline?: boolean;
 };
 
-/**
- * Styled component for message timestamps
- * Positioned differently based on whether the message is from the user or assistant
- * For assistant messages, width is set to match the content width (100% - 52px for avatar space)
- */
-const StyledTimestamp = styled(Typography, {
-	shouldForwardProp: (prop) => prop !== "isUser" && prop !== "inline",
-})<{ isUser: boolean; isSmallView?: boolean; inline?: boolean }>(
-	({ isUser, theme, isSmallView, inline }) => ({
-		display: "block",
-		marginTop: inline ? 0 : 8,
-		textAlign: isUser ? "left" : "right",
-		color: theme.palette.text.secondary,
-		fontSize: "0.7rem",
-		width: inline
-			? "auto"
-			: isUser
-				? "auto"
-				: isSmallView
-					? "100%"
-					: "calc(100% - 52px)",
-		cursor: "help", // Indicate that hovering will show more information
-	}),
-);
-
-/**
- * Component for displaying message timestamps
- * Shows a smart formatted time based on when the message was sent
- * Includes a tooltip with the full date and time on hover
- */
 export const MessageTimestamp: FC<MessageTimestampProps> = ({
 	timestamp,
 	isUser,
-	sx,
+	className,
 	isSmallView,
 	inline = false,
 }) => {
-	// Format the timestamp using our utility function
 	const formattedTime = formatMessageDateTime(timestamp);
-	// Get the full date and time for the tooltip
 	const fullDateTime = getFullDateTime(timestamp);
 
 	return (
-		<Tooltip
-			title={fullDateTime}
-			arrow
-			placement="bottom"
-			enterDelay={1200}
-			enterNextDelay={1200}
-			sx={sx}
-		>
-			{/* @ts-ignore - MUI Tooltip type issue */}
-			<StyledTimestamp
-				variant="caption"
-				isUser={isUser}
-				isSmallView={isSmallView}
-				inline={inline}
+		<Tooltip content={fullDateTime} side="bottom" delayDuration={1200}>
+			<span
+				className={cn(
+					"block cursor-help text-ink-dim text-meta",
+					!inline && "mt-2",
+					isUser ? "text-left" : "text-right",
+					// Assistant timestamps span the content column, which is the full
+					// width minus the avatar column (40px avatar + 12px gap).
+					!inline &&
+						!isUser &&
+						(isSmallView ? "w-full" : "w-[calc(100%-52px)]"),
+					className,
+				)}
 			>
 				{formattedTime}
-			</StyledTimestamp>
+			</span>
 		</Tooltip>
 	);
 };

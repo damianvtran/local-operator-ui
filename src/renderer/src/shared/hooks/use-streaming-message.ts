@@ -13,28 +13,43 @@ const COMPLETE_REFETCH_DELAY_MS = 180;
 
 type TimeoutHandle = ReturnType<typeof setTimeout>;
 
+/**
+ * What we need to know about an in-flight message, shared across every
+ * component instance pointed at it.
+ *
+ * The entry is deleted the moment the last instance unmounts. It used to
+ * survive, gated on a `keepAlive` flag that the only call site always passed as
+ * true, so every streamed message left its full `AgentExecutionRecord` in this
+ * map for the life of the session. The flag was not buying anything in
+ * exchange: the socket lives in `useWebSocketMessage`, whose cleanup closes it
+ * unconditionally, so nothing was being kept alive except the memory.
+ */
 type RegistryEntry = {
 	connected: boolean;
 	connecting: boolean;
 	connectionPromise: Promise<void> | null;
-	keepAlive: boolean;
 	instanceCount: number;
 	messageData: AgentExecutionRecord | null;
 	isComplete: boolean;
 	isStreamable: boolean;
 	conversationId?: string;
+	/**
+	 * Closes the socket for this message. Published by the mounted hook so that
+	 * a cancellation arriving from outside the component tree — the stop button
+	 * in the composer — can tear the connection down instead of waiting for a
+	 * render to notice.
+	 */
+	disconnect: (() => void) | null;
 };
 
 const globalConnectionRegistry = new Map<string, RegistryEntry>();
 
 const ensureRegistryEntry = (
 	messageId: string,
-	keepAlive: boolean,
 	conversationId?: string,
 ): RegistryEntry => {
 	const existing = globalConnectionRegistry.get(messageId);
 	if (existing) {
-		existing.keepAlive = keepAlive;
 		if (conversationId) {
 			existing.conversationId = conversationId;
 		}
@@ -45,23 +60,86 @@ const ensureRegistryEntry = (
 		connected: false,
 		connecting: false,
 		connectionPromise: null,
-		keepAlive,
 		instanceCount: 0,
 		messageData: null,
 		isComplete: false,
 		isStreamable: false,
 		conversationId,
+		disconnect: null,
 	};
 	globalConnectionRegistry.set(messageId, created);
 	return created;
 };
+
+/**
+ * End every stream belonging to a conversation, as though the backend had sent
+ * a final frame.
+ *
+ * Cancelling a job used to clear the job id and nothing else. The socket stayed
+ * open, the store never learned the message was finished, and the reconnect
+ * effect below — which only stands down once `isComplete` is true — re-armed
+ * itself every 1600ms for the rest of the session, against a job that no longer
+ * existed. Marking the stream complete is what actually stops it: it unblocks
+ * the reconnect guard, and it lets the message unmount its streaming view.
+ *
+ * @param conversationId - Agent conversation whose streams should be stopped
+ * @returns The message ids that were terminated
+ */
+export const terminateStreamingMessages = (
+	conversationId: string,
+): string[] => {
+	const { streamingMessages, completeStreamingMessage } =
+		useStreamingMessagesStore.getState();
+
+	const terminated: string[] = [];
+
+	for (const [messageId, entry] of globalConnectionRegistry) {
+		if (entry.conversationId !== conversationId) continue;
+
+		const known = entry.messageData ?? streamingMessages[messageId]?.content;
+		if (known) {
+			completeStreamingMessage(messageId, { ...known, is_complete: true });
+		}
+
+		entry.disconnect?.();
+		globalConnectionRegistry.delete(messageId);
+		terminated.push(messageId);
+	}
+
+	return terminated;
+};
+
+/**
+ * Read-only view of the connection registry, for tests and fixtures.
+ *
+ * The registry's size is what the leak this module fixed is measured in: one
+ * entry per message that ever streamed, retained until the process ends. The
+ * fixture stories read this to prove entries now disappear when their last
+ * listener unmounts or the stream terminates.
+ */
+export const getStreamingRegistryStats = (): {
+	size: number;
+	entries: Array<{
+		messageId: string;
+		connected: boolean;
+		isComplete: boolean;
+	}>;
+} => ({
+	size: globalConnectionRegistry.size,
+	entries: [...globalConnectionRegistry.entries()].map(
+		([messageId, entry]) => ({
+			messageId,
+			connected: entry.connected,
+			isComplete: entry.isComplete,
+		}),
+	),
+});
 
 export type UseStreamingMessageOptions = {
 	messageId: string;
 	autoConnect?: boolean;
 	onComplete?: (message: AgentExecutionRecord) => void;
 	onUpdate?: (message: AgentExecutionRecord) => void;
-	keepAlive?: boolean;
 	baseUrl?: string;
 	conversationId?: string;
 	refetchOnComplete?: boolean;
@@ -85,7 +163,6 @@ export const useStreamingMessage = ({
 	autoConnect = true,
 	onComplete,
 	onUpdate,
-	keepAlive = true,
 	baseUrl = apiConfig.baseUrl,
 	conversationId,
 	refetchOnComplete = true,
@@ -187,7 +264,7 @@ export const useStreamingMessage = ({
 
 			if (messageData) {
 				completeStreamingMessage(messageId, messageData);
-				const entry = ensureRegistryEntry(messageId, keepAlive, conversationId);
+				const entry = ensureRegistryEntry(messageId, conversationId);
 				entry.messageData = messageData;
 				entry.isComplete = true;
 				entry.isStreamable = !!messageData.is_streamable;
@@ -214,7 +291,6 @@ export const useStreamingMessage = ({
 		conversationId,
 		completeStreamingMessage,
 		pushMessageToChatStore,
-		keepAlive,
 		notifyCompleteOnce,
 	]);
 
@@ -243,13 +319,12 @@ export const useStreamingMessage = ({
 	} = useWebSocketMessage({
 		baseUrl,
 		messageId,
-		autoConnect: false,
 		onUpdate: (update) => {
 			if (onUpdate && mountedRef.current) {
 				onUpdate(update as AgentExecutionRecord);
 			}
 
-			const entry = ensureRegistryEntry(messageId, keepAlive, conversationId);
+			const entry = ensureRegistryEntry(messageId, conversationId);
 			const messageData = {
 				...entry.messageData,
 				...update,
@@ -293,7 +368,7 @@ export const useStreamingMessage = ({
 		}
 		lastConnectionAttemptRef.current = now;
 
-		const entry = ensureRegistryEntry(messageId, keepAlive, conversationId);
+		const entry = ensureRegistryEntry(messageId, conversationId);
 		if (entry.connected) {
 			return;
 		}
@@ -340,7 +415,6 @@ export const useStreamingMessage = ({
 		isComplete,
 		isStoreMessageComplete,
 		messageId,
-		keepAlive,
 		conversationId,
 		wsConnect,
 	]);
@@ -348,10 +422,10 @@ export const useStreamingMessage = ({
 	const safeDisconnect = useCallback(() => {
 		const entry = globalConnectionRegistry.get(messageId);
 		if (entry) {
-			entry.keepAlive = false;
 			entry.connected = false;
 			entry.connecting = false;
 			entry.connectionPromise = null;
+			entry.disconnect = null;
 			if (entry.instanceCount <= 1) {
 				globalConnectionRegistry.delete(messageId);
 			}
@@ -364,10 +438,18 @@ export const useStreamingMessage = ({
 		wsCompletionHandledRef.current = false;
 		completionNotifiedRef.current = null;
 
-		const entry = ensureRegistryEntry(messageId, keepAlive, conversationId);
-		if (!isRegisteredInstanceRef.current) {
-			entry.instanceCount += 1;
-			isRegisteredInstanceRef.current = true;
+		// A stream already marked complete in the store — notably one ended by
+		// `terminateStreamingMessages`, which deletes its registry entry — must not
+		// be re-registered just because this effect re-runs: doing so resurrects the
+		// very entry cancellation removed. The unregistration path below only runs
+		// for instances this run registered, so the counting stays balanced.
+		if (!isStoreMessageComplete) {
+			const entry = ensureRegistryEntry(messageId, conversationId);
+			entry.disconnect = wsDisconnect;
+			if (!isRegisteredInstanceRef.current) {
+				entry.instanceCount += 1;
+				isRegisteredInstanceRef.current = true;
+			}
 		}
 
 		let connectTimer: TimeoutHandle | null = null;
@@ -408,11 +490,13 @@ export const useStreamingMessage = ({
 						currentEntry.connected = false;
 						currentEntry.connecting = false;
 						currentEntry.connectionPromise = null;
+						currentEntry.disconnect = null;
 
-						if (!currentEntry.keepAlive) {
-							globalConnectionRegistry.delete(messageId);
-							wsDisconnect();
-						}
+						// Nobody is listening any more, so the entry — full record and
+						// all — goes with it. The completed content lives in the
+						// streaming and chat stores, which are the durable homes.
+						globalConnectionRegistry.delete(messageId);
+						wsDisconnect();
 					}
 				}
 				isRegisteredInstanceRef.current = false;
@@ -424,20 +508,11 @@ export const useStreamingMessage = ({
 		isStoreMessageComplete,
 		attemptConnection,
 		messageId,
-		keepAlive,
 		conversationId,
 		flushPendingChatUpdate,
 		pruneStreamingMessages,
 		wsDisconnect,
 	]);
-
-	useEffect(() => {
-		const entry = ensureRegistryEntry(messageId, keepAlive, conversationId);
-		entry.keepAlive = keepAlive;
-		if (conversationId) {
-			entry.conversationId = conversationId;
-		}
-	}, [messageId, keepAlive, conversationId]);
 
 	useEffect(() => {
 		const entry = globalConnectionRegistry.get(messageId);
@@ -482,7 +557,7 @@ export const useStreamingMessage = ({
 		}
 		wsCompletionHandledRef.current = true;
 
-		const entry = ensureRegistryEntry(messageId, keepAlive, conversationId);
+		const entry = ensureRegistryEntry(messageId, conversationId);
 		entry.isComplete = true;
 		entry.messageData = message;
 		entry.isStreamable = !!message.is_streamable;
@@ -493,14 +568,15 @@ export const useStreamingMessage = ({
 		notifyCompleteOnce(message);
 		scheduleCompletionRefetch();
 
-		if (!keepAlive && entry.instanceCount <= 1) {
-			safeDisconnect();
-		}
+		// A completed stream has no further frames to deliver, so the socket's
+		// work is done. Leaving it open meant relying on the server to close it,
+		// and it made "disconnected, reconnect in 1600ms" a reachable state for a
+		// stream that will never produce another byte.
+		safeDisconnect();
 	}, [
 		isComplete,
 		message,
 		messageId,
-		keepAlive,
 		conversationId,
 		completeStreamingMessage,
 		flushPendingChatUpdate,

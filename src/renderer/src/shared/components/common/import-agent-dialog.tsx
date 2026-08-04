@@ -4,26 +4,14 @@
  * A dialog for importing agents from ZIP files
  */
 
-import {
-	Box,
-	CircularProgress,
-	type Theme,
-	Typography,
-	alpha,
-	styled,
-} from "@mui/material";
 import type { AgentDetails } from "@shared/api/local-operator/types";
+import { Spinner } from "@shared/components/common/spinner";
 import { useImportAgent } from "@shared/hooks/use-agent-mutations";
+import { cn } from "@shared/lib/utils";
 import { FileInput as FileImportIcon, Upload } from "lucide-react";
 import type { FC } from "react";
 import { useCallback, useRef, useState } from "react";
-import {
-	BaseDialog,
-	FormContainer,
-	PrimaryButton,
-	SecondaryButton,
-	TitleContainer,
-} from "./base-dialog";
+import { BaseDialog, PrimaryButton, SecondaryButton } from "./base-dialog";
 
 /**
  * Props for the ImportAgentDialog component
@@ -43,57 +31,6 @@ type ImportAgentDialogProps = {
 	onAgentImported?: (agentId: string) => void;
 };
 
-const StyledIcon = styled(FileImportIcon)(({ theme }) => ({
-	color: theme.palette.primary.main,
-}));
-
-const UploadArea = styled(Box)(({ theme }) => ({
-	border: `2px dashed ${theme.palette.divider}`,
-	borderRadius: theme.shape.borderRadius * 2,
-	padding: theme.spacing(4),
-	textAlign: "center",
-	cursor: "pointer",
-	transition: "all 0.2s ease-in-out",
-	backgroundColor: alpha(theme.palette.background.paper, 0.6),
-	"&:hover": {
-		borderColor: theme.palette.primary.main,
-		backgroundColor: alpha(theme.palette.action.hover, 0.1),
-	},
-	"&.drag-active": {
-		borderColor: theme.palette.primary.main,
-		backgroundColor: alpha(theme.palette.primary.main, 0.05),
-		boxShadow: `0 0 0 3px ${alpha(theme.palette.primary.main, 0.15)}`,
-	},
-}));
-
-// The upload area shows two different glyphs and a styled lucide component is
-// bound to a single icon, so the shared style is applied to each glyph.
-const uploadIconStyle = ({ theme }: { theme: Theme }) => ({
-	color: theme.palette.text.secondary,
-	marginBottom: theme.spacing(2),
-});
-
-const SelectedFileIcon = styled(FileImportIcon)(uploadIconStyle);
-
-const DropzoneIcon = styled(Upload)(uploadIconStyle);
-
-const FileInput = styled("input")({
-	display: "none",
-});
-
-const Subtitle = styled(Typography)(({ theme }) => ({
-	color: theme.palette.text.secondary,
-	fontSize: "0.875rem",
-	marginTop: 4,
-	marginBottom: 16,
-}));
-
-const ErrorMessage = styled(Typography)(({ theme }) => ({
-	color: theme.palette.error.main,
-	fontSize: "0.875rem",
-	marginTop: theme.spacing(2),
-}));
-
 /**
  * Import Agent Dialog Component
  *
@@ -111,19 +48,19 @@ export const ImportAgentDialog: FC<ImportAgentDialogProps> = ({
 
 	const importAgentMutation = useImportAgent();
 
-	const handleDragEnter = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+	const handleDragEnter = useCallback((e: React.DragEvent<HTMLElement>) => {
 		e.preventDefault();
 		e.stopPropagation();
 		setIsDragActive(true);
 	}, []);
 
-	const handleDragLeave = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+	const handleDragLeave = useCallback((e: React.DragEvent<HTMLElement>) => {
 		e.preventDefault();
 		e.stopPropagation();
 		setIsDragActive(false);
 	}, []);
 
-	const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+	const handleDragOver = useCallback((e: React.DragEvent<HTMLElement>) => {
 		e.preventDefault();
 		e.stopPropagation();
 	}, []);
@@ -141,7 +78,7 @@ export const ImportAgentDialog: FC<ImportAgentDialogProps> = ({
 	}, []);
 
 	const handleDrop = useCallback(
-		(e: React.DragEvent<HTMLDivElement>) => {
+		(e: React.DragEvent<HTMLElement>) => {
 			e.preventDefault();
 			e.stopPropagation();
 			setIsDragActive(false);
@@ -205,29 +142,23 @@ export const ImportAgentDialog: FC<ImportAgentDialogProps> = ({
 	const isSubmitDisabled = isLoading || !file;
 
 	const dialogTitle = (
-		<TitleContainer>
-			<StyledIcon size={19} />
-			Import Agent
-		</TitleContainer>
+		<>
+			<FileImportIcon size={19} className="text-accent" aria-hidden="true" />
+			Import agent
+		</>
 	);
 
 	const dialogActions = (
 		<>
-			<SecondaryButton
-				onClick={handleClose}
-				variant="outlined"
-				disabled={isLoading}
-			>
+			<SecondaryButton onClick={handleClose} disabled={isLoading}>
 				Cancel
 			</SecondaryButton>
 			<PrimaryButton
 				onClick={handleSubmit}
 				disabled={isSubmitDisabled}
-				startIcon={
-					isLoading ? <CircularProgress size={20} color="inherit" /> : null
-				}
+				startIcon={isLoading ? <Spinner /> : null}
 			>
-				Import Agent
+				Import agent
 			</PrimaryButton>
 		</>
 	);
@@ -240,51 +171,74 @@ export const ImportAgentDialog: FC<ImportAgentDialogProps> = ({
 			actions={dialogActions}
 			maxWidth="sm"
 		>
-			<Subtitle>
+			<p className="mb-4 text-body-sm text-ink-muted">
 				Import an agent from a ZIP file exported from Local Operator. The file
 				should contain an agent.yml file.
-			</Subtitle>
-			<FormContainer>
-				<FileInput
+			</p>
+			<div className="flex flex-col gap-5">
+				<input
 					ref={fileInputRef}
 					type="file"
 					accept=".zip"
 					onChange={handleFileSelect}
 					disabled={isLoading}
+					className="hidden"
 				/>
-				<UploadArea
+				{/*
+				 * The drop target: `border-control` is its sole boundary, so it is
+				 * structural, and dragging swaps it to the accent as state feedback.
+				 */}
+				<button
+					type="button"
 					onClick={handleClickUpload}
 					onDragEnter={handleDragEnter}
 					onDragLeave={handleDragLeave}
 					onDragOver={handleDragOver}
 					onDrop={handleDrop}
-					className={isDragActive ? "drag-active" : ""}
+					disabled={isLoading}
+					className={cn(
+						"cursor-pointer rounded-lg border-2 border-control border-dashed bg-surface p-4 text-center",
+						"transition-colors duration-base ease-out-quart",
+						"hover:bg-accent-wash",
+						"disabled:border-hairline disabled:bg-sunken disabled:text-ink-disabled",
+						isDragActive && "border-accent bg-accent-wash",
+					)}
 				>
 					{file ? (
 						<>
-							<SelectedFileIcon size={32} />
-							<Typography variant="body1" gutterBottom>
-								{file.name}
-							</Typography>
-							<Typography variant="body2" color="text.secondary">
+							<FileImportIcon
+								size={32}
+								className="mx-auto mb-2 text-ink-muted"
+								aria-hidden="true"
+							/>
+							<p className="text-body text-ink">{file.name}</p>
+							<p className="text-body-sm text-ink-muted">
 								Click or drag to replace
-							</Typography>
+							</p>
 						</>
 					) : (
 						<>
-							<DropzoneIcon size={32} />
-							<Typography variant="body1" gutterBottom>
+							<Upload
+								size={32}
+								className="mx-auto mb-2 text-ink-muted"
+								aria-hidden="true"
+							/>
+							<p className="text-body text-ink">
 								Drag and drop a ZIP file here
-							</Typography>
-							<Typography variant="body2" color="text.secondary">
+							</p>
+							<p className="text-body-sm text-ink-muted">
 								or click to select a file
-							</Typography>
+							</p>
 						</>
 					)}
-				</UploadArea>
+				</button>
 
-				{error && <ErrorMessage>{error}</ErrorMessage>}
-			</FormContainer>
+				{error && (
+					<p role="alert" className="text-body-sm text-danger">
+						{error}
+					</p>
+				)}
+			</div>
 		</BaseDialog>
 	);
 };

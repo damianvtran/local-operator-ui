@@ -1,4 +1,3 @@
-import CssBaseline from "@mui/material/CssBaseline";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { PostHogProvider } from "posthog-js/react";
@@ -39,7 +38,6 @@ document.addEventListener("DOMContentLoaded", () => {
 					<FeatureFlagProvider>
 						<AuthProviders>
 							<ThemeProvider>
-								<CssBaseline />
 								<GlobalScrollbarStyles />
 								<ErrorBoundary>
 									<HashRouter>

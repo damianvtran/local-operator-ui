@@ -1,5 +1,5 @@
-import { Box, CircularProgress, IconButton, Tooltip } from "@mui/material";
-import { alpha, styled } from "@mui/material/styles";
+import { Spinner } from "@shared/components/common/spinner";
+import { Button, Tooltip } from "@shared/components/ui";
 import { useCredentials } from "@shared/hooks/use-credentials";
 import { useConversationInputStore } from "@shared/store/conversation-input-store";
 import { useSpeechStore } from "@shared/store/speech-store";
@@ -44,29 +44,15 @@ type TextSelectionControlsProps = {
 	isUser?: boolean;
 };
 
-// Styled wrapper for the control buttons
-const ControlsWrapper = styled(Box)(({ theme }) => ({
-	position: "absolute",
-	backgroundColor: theme.palette.background.paper,
-	borderRadius: "4px",
-	boxShadow: theme.shadows[3],
-	zIndex: 10,
-	padding: 4,
-	border: `1px solid ${theme.palette.divider}`,
-}));
-
-// Styled IconButton for controls
-const StyledIconButton = styled(IconButton)(({ theme }) => ({
-	color: theme.palette.text.secondary,
-	width: "34px",
-	height: "34px",
-	padding: 0,
-	margin: 0,
-	"&:hover": {
-		color: theme.palette.primary.main,
-		backgroundColor: alpha(theme.palette.primary.main, 0.1),
-	},
-}));
+/*
+ * The toolbar leaves the flow — it is positioned over the selected text — so
+ * it takes the elevated ground and the one overlay shadow. It is not a Radix
+ * popover: its anchor is a `Range`, which no popover primitive can take, and
+ * the positioning is recomputed from the range's own rect on scroll and
+ * resize.
+ */
+const CONTROLS_WRAPPER_CLASSES =
+	"absolute z-10 flex items-center gap-1 rounded-sm border border-hairline bg-elevated p-1 shadow-overlay";
 
 export const TextSelectionControls: FC<TextSelectionControlsProps> = ({
 	targetRef,
@@ -298,90 +284,140 @@ export const TextSelectionControls: FC<TextSelectionControlsProps> = ({
 	if (!containerRect) return null;
 
 	const style = {
-		top: selection.rect.top - containerRect.top - 52, // Position above selection
-		left: selection.rect.left - containerRect.left, // Align with the left of the selection
+		// The toolbar is 38px tall (28px control + 4px padding + 1px border, both
+		// sides), so this clears the selection by 8px.
+		top: selection.rect.top - containerRect.top - 46,
+		left: selection.rect.left - containerRect.left,
 	};
 
 	return (
-		<ControlsWrapper style={style} onMouseDown={(e) => e.preventDefault()}>
+		/*
+		 * Preventing mousedown keeps the browser from collapsing the selection
+		 * the toolbar exists to act on.
+		 */
+		<div
+			className={CONTROLS_WRAPPER_CLASSES}
+			style={style}
+			onMouseDown={(e) => e.preventDefault()}
+		>
 			{showEdit && (
-				<Tooltip title="Ask for an Edit" placement="top">
-					<StyledIconButton size="small" onClick={handleEdit}>
-						<Sparkles size={14} />
-					</StyledIconButton>
+				<Tooltip content="Ask for an edit">
+					<Button
+						variant="ghost"
+						size="icon-sm"
+						aria-label="Ask for an edit"
+						onClick={handleEdit}
+					>
+						<Sparkles aria-hidden="true" />
+					</Button>
 				</Tooltip>
 			)}
 			{showSpeech &&
 				(isPlaying ? (
-					<Tooltip title="Stop" placement="top">
-						<StyledIconButton size="small" onClick={handleStop}>
-							<Square size={14} />
-						</StyledIconButton>
+					<Tooltip content="Stop">
+						<Button
+							variant="ghost"
+							size="icon-sm"
+							aria-label="Stop"
+							onClick={handleStop}
+						>
+							<Square aria-hidden="true" />
+						</Button>
 					</Tooltip>
 				) : (
 					<Tooltip
-						title={
+						content={
 							isLoading
 								? "Loading"
 								: !canEnableSpeechFeature
 									? "Sign in to Radient in the settings page to enable text to speech"
-									: "Speak Aloud"
+									: "Speak aloud"
 						}
-						placement="top"
 					>
-						<span>
-							<StyledIconButton
-								size="small"
+						{/*
+						 * A disabled button fires no pointer events, so the tooltip needs
+						 * a wrapper that does — which is also the only way the reason it
+						 * is disabled reaches the user.
+						 */}
+						<span className="flex">
+							<Button
+								variant="ghost"
+								size="icon-sm"
+								// The spinner is hidden from the accessibility tree, so the
+								// button's own name is what says the app is busy.
+								aria-label={isLoading ? "Loading speech" : "Speak aloud"}
 								onClick={handlePlay}
 								disabled={isLoading || !agentId || !canEnableSpeechFeature}
 							>
 								{isLoading ? (
-									<CircularProgress size={14} />
+									<Spinner size="xs" />
 								) : (
-									<Volume2 size={14} />
+									<Volume2 aria-hidden="true" />
 								)}
-							</StyledIconButton>
+							</Button>
 						</span>
 					</Tooltip>
 				))}
 			{showCopy && (
 				<>
-					<Tooltip title="Copy" placement="top">
-						<StyledIconButton size="small" onClick={handleCopy}>
-							<Copy size={14} />
-						</StyledIconButton>
+					<Tooltip content="Copy">
+						<Button
+							variant="ghost"
+							size="icon-sm"
+							aria-label="Copy"
+							onClick={handleCopy}
+						>
+							<Copy aria-hidden="true" />
+						</Button>
 					</Tooltip>
-					<Tooltip title="Copy without formatting" placement="top">
-						<StyledIconButton
-							size="small"
+					<Tooltip content="Copy without formatting">
+						<Button
+							variant="ghost"
+							size="icon-sm"
+							aria-label="Copy without formatting"
 							onClick={handleCopyWithoutFormatting}
 						>
-							<ClipboardCopy size={14} />
-						</StyledIconButton>
+							<ClipboardCopy aria-hidden="true" />
+						</Button>
 					</Tooltip>
 				</>
 			)}
 			{showReply && (
-				<Tooltip title="Reply" placement="top">
-					<StyledIconButton size="small" onClick={handleReply}>
-						<MessageSquareReply size={14} />
-					</StyledIconButton>
+				<Tooltip content="Reply">
+					<Button
+						variant="ghost"
+						size="icon-sm"
+						aria-label="Reply"
+						onClick={handleReply}
+					>
+						<MessageSquareReply aria-hidden="true" />
+					</Button>
 				</Tooltip>
 			)}
 			{showRefer && (
-				<Tooltip title="Refer to this from File" placement="top">
-					<StyledIconButton size="small" onClick={handleRefer}>
-						<ReplyIcon size={14} />
-					</StyledIconButton>
+				<Tooltip content="Refer to this from file">
+					<Button
+						variant="ghost"
+						size="icon-sm"
+						aria-label="Refer to this from file"
+						onClick={handleRefer}
+					>
+						<ReplyIcon aria-hidden="true" />
+					</Button>
 				</Tooltip>
 			)}
 			{linkUrl && (
-				<Tooltip title="Open in Browser" placement="top">
-					<StyledIconButton size="small" onClick={handleOpenInBrowser}>
-						<ExternalLink size={14} />
-					</StyledIconButton>
+				<Tooltip content="Open in browser">
+					<Button
+						variant="ghost"
+						size="icon-sm"
+						aria-label="Open in browser"
+						onClick={handleOpenInBrowser}
+					>
+						<ExternalLink aria-hidden="true" />
+					</Button>
 				</Tooltip>
 			)}
-		</ControlsWrapper>
+		</div>
 	);
 };

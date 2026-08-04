@@ -1,14 +1,4 @@
-import {
-	Box,
-	CircularProgress,
-	IconButton,
-	Menu,
-	MenuItem,
-	Slider,
-	Typography,
-	alpha,
-	styled,
-} from "@mui/material";
+import { Spinner } from "@shared/components/common/spinner";
 import {
 	PauseCircle,
 	PlayCircle,
@@ -16,70 +6,16 @@ import {
 	Volume2,
 	VolumeX,
 } from "lucide-react";
-import { type FC, memo, useCallback, useEffect, useRef, useState } from "react";
+import {
+	type ChangeEvent,
+	type FC,
+	memo,
+	useCallback,
+	useEffect,
+	useRef,
+	useState,
+} from "react";
 import { InvalidAttachment } from "./invalid-attachment";
-
-const AudioPlayerContainer = styled(Box)(({ theme }) => ({
-	display: "flex",
-	alignItems: "center",
-	gap: theme.spacing(1.5),
-	background: theme.palette.background.paper,
-	borderRadius: theme.shape.borderRadius,
-	padding: theme.spacing(1, 2),
-	width: "100%",
-	maxWidth: "600px",
-	border: `1px solid ${theme.palette.sidebar.border}`,
-}));
-
-const TimeDisplay = styled(Typography)(({ theme }) => ({
-	fontSize: "0.75rem",
-	color: theme.palette.text.secondary,
-	minWidth: "40px",
-	textAlign: "center",
-}));
-
-const CustomSlider = styled(Slider)(({ theme }) => ({
-	color: theme.palette.primary.main,
-	height: 4,
-	"& .MuiSlider-thumb": {
-		width: 12,
-		height: 12,
-		backgroundColor: theme.palette.primary.main,
-		border: `2px solid ${theme.palette.background.paper}`,
-		"&:hover, &.Mui-focusVisible": {
-			boxShadow: `0 0 0 8px ${alpha(theme.palette.primary.main, 0.16)}`,
-		},
-		"&.Mui-active": {
-			width: 16,
-			height: 16,
-		},
-	},
-	"& .MuiSlider-rail": {
-		opacity: 0.3,
-		backgroundColor: theme.palette.text.secondary,
-	},
-	"& .MuiSlider-track": {
-		border: "none",
-	},
-}));
-
-const VolumeControlContainer = styled(Box)({
-	display: "flex",
-	alignItems: "center",
-	gap: "8px",
-});
-
-const PlaybackRateButton = styled(Typography)(({ theme }) => ({
-	fontWeight: "bold",
-	fontSize: "0.75rem",
-	color: theme.palette.text.secondary,
-	cursor: "pointer",
-	padding: theme.spacing(0.5, 1),
-	borderRadius: theme.shape.borderRadius,
-	"&:hover": {
-		backgroundColor: theme.palette.action.hover,
-	},
-}));
 
 const PATH_SEPARATOR_REGEX = /[/\\]/;
 
@@ -104,6 +40,9 @@ type AudioAttachmentProps = {
 	isUser: boolean;
 };
 
+const ICON_BUTTON_CLASS =
+	"flex shrink-0 items-center justify-center text-ink-muted transition-colors duration-fast ease-out-quart hover:text-ink disabled:pointer-events-none disabled:opacity-50";
+
 export const AudioAttachment: FC<AudioAttachmentProps> = memo(({ content }) => {
 	const audioRef = useRef<HTMLAudioElement | null>(null);
 	const [isPlaying, setIsPlaying] = useState(false);
@@ -113,7 +52,6 @@ export const AudioAttachment: FC<AudioAttachmentProps> = memo(({ content }) => {
 	const [playbackRate, setPlaybackRate] = useState(1);
 	const [isLoading, setIsLoading] = useState(true);
 	const [hasError, setHasError] = useState(false);
-	const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
 	useEffect(() => {
 		const audioElement = new Audio(content);
@@ -167,17 +105,18 @@ export const AudioAttachment: FC<AudioAttachmentProps> = memo(({ content }) => {
 		}
 	}, [isPlaying]);
 
-	const handleSeek = useCallback((_: Event, newValue: number | number[]) => {
+	const handleSeek = useCallback((event: ChangeEvent<HTMLInputElement>) => {
+		const newValue = Number(event.target.value);
 		if (audioRef.current) {
-			audioRef.current.currentTime = newValue as number;
-			setCurrentTime(newValue as number);
+			audioRef.current.currentTime = newValue;
+			setCurrentTime(newValue);
 		}
 	}, []);
 
 	const handleVolumeChange = useCallback(
-		(_: Event, newValue: number | number[]) => {
+		(event: ChangeEvent<HTMLInputElement>) => {
+			const newVolume = Number(event.target.value);
 			if (audioRef.current) {
-				const newVolume = newValue as number;
 				audioRef.current.volume = newVolume;
 				setVolume(newVolume);
 			}
@@ -198,7 +137,6 @@ export const AudioAttachment: FC<AudioAttachmentProps> = memo(({ content }) => {
 			audioRef.current.playbackRate = rate;
 			setPlaybackRate(rate);
 		}
-		setAnchorEl(null);
 	}, []);
 
 	const formatTime = (time: number) => {
@@ -216,24 +154,29 @@ export const AudioAttachment: FC<AudioAttachmentProps> = memo(({ content }) => {
 	}
 
 	return (
-		<AudioPlayerContainer>
-			<IconButton
+		<div className="flex w-full max-w-[600px] items-center gap-3 rounded-sm border border-hairline bg-surface px-4 py-2">
+			<button
+				type="button"
+				className={ICON_BUTTON_CLASS}
 				onClick={handlePlayPause}
 				disabled={isLoading || hasError}
-				size="small"
+				aria-label={isPlaying ? "Pause" : "Play"}
 			>
 				{isLoading ? (
-					<CircularProgress size={20} />
+					<Spinner size="sm" />
 				) : isPlaying ? (
 					<PauseCircle size={20} />
 				) : (
 					<PlayCircle size={20} />
 				)}
-			</IconButton>
-			<TimeDisplay>{formatTime(currentTime)}</TimeDisplay>
-			<CustomSlider
+			</button>
+			<span className="min-w-10 text-center text-meta text-ink-muted">
+				{formatTime(currentTime)}
+			</span>
+			<input
+				type="range"
 				aria-label="time-indicator"
-				size="small"
+				className="h-1 min-w-0 flex-1 cursor-pointer accent-accent disabled:pointer-events-none disabled:opacity-50"
 				value={currentTime}
 				min={0}
 				step={1}
@@ -241,52 +184,47 @@ export const AudioAttachment: FC<AudioAttachmentProps> = memo(({ content }) => {
 				onChange={handleSeek}
 				disabled={isLoading || hasError}
 			/>
-			<TimeDisplay>{formatTime(duration)}</TimeDisplay>
-			<VolumeControlContainer>
-				<IconButton onClick={toggleMute} size="small" disabled={hasError}>
-					<VolumeIcon size={16} />
-				</IconButton>
-				<CustomSlider
+			<span className="min-w-10 text-center text-meta text-ink-muted">
+				{formatTime(duration)}
+			</span>
+			<div className="flex items-center gap-2">
+				<button
+					type="button"
+					className={ICON_BUTTON_CLASS}
+					onClick={toggleMute}
+					disabled={hasError}
+					aria-label={volume === 0 ? "Unmute" : "Mute"}
+				>
+					<VolumeIcon size={20} />
+				</button>
+				<input
+					type="range"
 					aria-label="volume-control"
-					size="small"
+					className="h-1 w-[70px] cursor-pointer accent-accent disabled:pointer-events-none disabled:opacity-50"
 					value={volume}
 					min={0}
 					step={0.1}
 					max={1}
 					onChange={handleVolumeChange}
-					sx={{ width: 70 }}
 					disabled={hasError}
 				/>
-			</VolumeControlContainer>
-			<IconButton
-				onClick={(event) => setAnchorEl(event.currentTarget)}
-				size="small"
+			</div>
+			<select
+				aria-label="Playback rate"
+				className="shrink-0 cursor-pointer rounded-sm border border-control bg-surface px-2 py-0.5 text-body-sm text-ink-muted transition-colors duration-fast ease-out-quart hover:text-ink disabled:pointer-events-none disabled:opacity-50"
+				value={playbackRate}
+				onChange={(event) =>
+					handlePlaybackRateChange(Number(event.target.value))
+				}
 				disabled={hasError}
 			>
-				<PlaybackRateButton>{playbackRate}x</PlaybackRateButton>
-			</IconButton>
-			<Menu
-				anchorEl={anchorEl}
-				open={Boolean(anchorEl)}
-				onClose={() => setAnchorEl(null)}
-				MenuListProps={{
-					sx: {
-						// @ts-ignore
-						backgroundColor: (theme) => theme.palette.background.paper,
-					},
-				}}
-			>
 				{[0.5, 1, 1.5, 2].map((rate) => (
-					<MenuItem
-						key={rate}
-						onClick={() => handlePlaybackRateChange(rate)}
-						selected={playbackRate === rate}
-					>
+					<option key={rate} value={rate}>
 						{rate}x
-					</MenuItem>
+					</option>
 				))}
-			</Menu>
-		</AudioPlayerContainer>
+			</select>
+		</div>
 	);
 });
 

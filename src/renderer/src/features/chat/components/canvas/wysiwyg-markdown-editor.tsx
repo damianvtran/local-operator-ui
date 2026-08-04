@@ -1913,7 +1913,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 				onReplaceAll={handleReplaceAll}
 				matchCount={matchRanges.length}
 				currentMatch={currentMatchIndex + 1}
-				containerSx={{ top: "56px", right: "16px" }}
+				containerClassName="top-14 right-4"
 				findValue={searchQuery}
 				onFindValueChange={setSearchQuery}
 			/>

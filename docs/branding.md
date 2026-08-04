@@ -282,6 +282,34 @@ Full treatment in the kit's `voice.md`. The rules that bite hardest in an app:
 - Sentence case for everything — buttons, headings, menu items, labels. Title
   Case is a marketing register and it makes a tool shout.
 
+### Implementation traps
+
+Three defects this system has already produced, each of which looked fine.
+
+**`cn` is not optional.** Route every `className` through `cn` from
+`@shared/lib/utils`. It registers our custom scales with `tailwind-merge`,
+which otherwise classifies the type steps (`text-body`, `text-meta`, ...) as
+*text colours* and puts them in the same conflict group as `text-ink` and
+`text-ink-muted`. One of the pair is then dropped **silently**:
+`twMerge("text-ink text-body-sm")` returned `"text-body-sm"`. The component
+still looks right, because colour inherits from `body` — until it renders on a
+ground where the inherited colour is wrong, at which point it looks like a
+theme bug in a file nobody edited.
+
+**Tailwind v4 namespaces are not guessable.** `duration-*` utilities generate
+from `--transition-duration-*`, not from `--duration-*`. A token in the wrong
+namespace compiles to nothing at all — no error, no warning, the utility simply
+never appears and the element animates at Tailwind's stock 150ms. If a utility
+seems not to apply, check that it exists in the compiled CSS before assuming
+the value is wrong.
+
+**MUI wins specificity fights during the migration.** Emotion injects component
+styles after the CssBaseline globals, and `MuiButtonBase` sets `outline: 0`, so
+a naive global focus rule applies its `outline-offset` and no outline. Rules
+that must beat MUI need the `html` prefix. This disappears as the port
+completes; until then, verify a global rule in a browser rather than assuming
+it landed.
+
 ---
 
 ## 9. Adding something new

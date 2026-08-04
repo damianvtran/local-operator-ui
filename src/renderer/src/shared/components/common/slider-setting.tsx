@@ -1,24 +1,28 @@
 /**
  * Slider Setting Component
  *
- * A component for adjusting numeric settings with a slider and direct input
+ * A numeric setting with a range slider and a directly editable field.
+ *
+ * The slider is a native `<input type="range">` rather than a rebuilt widget:
+ * keyboard support, `aria-valuenow` and form semantics come with it, which is
+ * exactly the list of things a hand-rolled div slider would have to
+ * re-implement. There is no slider primitive in the shared layer because this
+ * is its only consumer.
+ *
+ * The track is drawn as the input's background: a 6px-tall horizontal
+ * gradient, accent up to the current fill and `sunken` past it. An overlay
+ * div for the fill would sit behind a transparent thumb and is one more
+ * element to keep in sync; a background cannot drift out of sync because it
+ * is the element. Thumb styling has to use the `::-webkit-slider-thumb`
+ * arbitrary variants — this app renders in Chromium, so no `-moz-` path is
+ * declared.
  */
 
-import {
-	Box,
-	CircularProgress,
-	InputAdornment,
-	Paper,
-	Slider,
-	TextField,
-	Typography,
-	styled,
-	useTheme, // Import useTheme
-} from "@mui/material";
-import { alpha } from "@mui/material/styles"; // Import alpha from styles
+import { Spinner } from "@shared/components/common/spinner";
+import { Card, Input } from "@shared/components/ui";
 import type { LucideIcon } from "lucide-react";
-import { useEffect, useState } from "react";
-import type { ChangeEvent, FC, KeyboardEvent, SyntheticEvent } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
+import type { CSSProperties, ChangeEvent, FC, KeyboardEvent } from "react";
 
 type SliderSettingProps = {
 	/**
@@ -73,160 +77,6 @@ type SliderSettingProps = {
 	isSaving?: boolean;
 };
 
-const SettingContainer = styled(Paper)(({ theme }) => ({
-	padding: theme.spacing(2), // Adjusted padding
-	borderRadius: theme.shape.borderRadius * 1.5, // Adjusted border radius
-	backgroundColor: theme.palette.background.paper, // Use paper background
-	border: `1px solid ${theme.palette.divider}`, // Use theme divider color
-	transition: "border-color 0.2s ease", // Simplified transition
-	marginBottom: theme.spacing(2),
-	// Removed hover effect for a cleaner look, consistent with shadcn cards
-}));
-
-// --- Label and Description ---
-
-const LabelWrapper = styled(Box)(({ theme }) => ({
-	marginBottom: theme.spacing(1), // Adjusted margin
-}));
-
-const LabelText = styled(Typography)(({ theme }) => ({
-	// Use variant="subtitle1" or "h6" for consistency if needed elsewhere
-	fontWeight: 500, // Slightly reduced weight
-	display: "flex",
-	alignItems: "center",
-	color: theme.palette.text.primary,
-	marginBottom: theme.spacing(0.5), // Add small margin below label
-}));
-
-const IconWrapper = styled(Box)(({ theme }) => ({
-	marginRight: theme.spacing(1), // Adjusted margin
-	color: theme.palette.text.secondary, // Use secondary text color for icon
-	display: "flex", // Ensure icon aligns well
-	alignItems: "center",
-}));
-
-const DescriptionText = styled(Typography)(({ theme }) => ({
-	fontSize: "0.8rem", // Slightly smaller description
-	color: theme.palette.text.secondary, // Use secondary text color
-	lineHeight: 1.4,
-	marginBottom: theme.spacing(1.5), // Adjusted margin
-}));
-
-// --- Slider ---
-
-const SliderContainer = styled(Box)({
-	flexGrow: 1,
-	paddingRight: "8px", // Add slight padding to avoid thumb collision with input
-});
-
-const StyledSlider = styled(Slider)(({ theme }) => ({
-	color: theme.palette.primary.main, // Use primary color
-	height: 6, // Slightly thinner slider
-	padding: "13px 0", // Adjust padding for interaction area
-	"& .MuiSlider-thumb": {
-		height: 16, // Slightly larger thumb
-		width: 16,
-		backgroundColor: theme.palette.primary.main, // Thumb color
-		border: `2px solid ${theme.palette.background.paper}`, // Border to match background
-		"&:focus, &:hover, &.Mui-active, &.Mui-focusVisible": {
-			boxShadow: `0 0 0 6px ${alpha(theme.palette.primary.main, 0.16)}`, // Consistent focus/hover ring
-		},
-		"&:before": {
-			display: "none", // Remove default pseudo-element
-		},
-	},
-	"& .MuiSlider-valueLabel": {
-		// Style value label if needed, similar to shadcn tooltip
-		fontSize: 12,
-		fontWeight: "normal",
-		top: -6,
-		backgroundColor: alpha(theme.palette.grey[900], 0.85),
-		color: theme.palette.common.white,
-		borderRadius: theme.shape.borderRadius,
-		padding: "2px 6px",
-		"&:before": {
-			display: "none", // Remove arrow
-		},
-	},
-	"& .MuiSlider-track": {
-		height: 6,
-		border: "none",
-		borderRadius: theme.shape.borderRadius, // Rounded track
-	},
-	"& .MuiSlider-rail": {
-		height: 6,
-		opacity: 0.3, // Subtle rail
-		backgroundColor: theme.palette.grey[400], // Use grey for rail
-		borderRadius: theme.shape.borderRadius, // Rounded rail
-	},
-}));
-
-// --- Input ---
-
-const InputContainer = styled(Box)({
-	display: "flex",
-	alignItems: "center",
-	minWidth: "110px", // Increased min-width for wider input
-});
-
-const StyledTextField = styled(TextField)(({ theme }) => ({
-	width: "110px", // Increased width for wider input
-	"& .MuiOutlinedInput-root": {
-		borderRadius: theme.shape.borderRadius, // Standard border radius
-		backgroundColor: theme.palette.background.default, // Use default background
-		fontSize: "0.875rem", // Match typical input text size
-		height: "36px", // Consistent height
-		"& fieldset": {
-			borderColor: theme.palette.divider, // Use divider color for border
-		},
-		"&:hover fieldset": {
-			borderColor: theme.palette.grey[500], // Slightly darker border on hover
-		},
-		"&.Mui-focused fieldset": {
-			borderColor: theme.palette.primary.main, // Primary color border on focus
-			borderWidth: "1px", // Ensure border width consistency
-		},
-		// Remove inner padding if adornment exists to prevent layout shift
-		"& .MuiInputAdornment-root + .MuiOutlinedInput-input": {
-			paddingRight: theme.spacing(0.5),
-		},
-	},
-	"& .MuiOutlinedInput-input": {
-		padding: theme.spacing(1, 1.5), // Adjust padding
-		textAlign: "right",
-	},
-	"& input[type=number]": {
-		// Improve number input appearance
-		appearance: "textfield",
-	},
-	"& input[type=number]::-webkit-outer-spin-button, & input[type=number]::-webkit-inner-spin-button":
-		{
-			// Hide number spinners
-			appearance: "none",
-			margin: 0,
-		},
-}));
-
-const UnitText = styled(Typography)(({ theme }) => ({
-	fontSize: "0.8rem",
-	color: theme.palette.text.secondary,
-	paddingLeft: theme.spacing(0.5), // Add padding for spacing
-	paddingRight: theme.spacing(1), // Ensure space after unit
-}));
-
-// --- Min/Max Labels ---
-
-const MinMaxContainer = styled(Box)(({ theme }) => ({
-	display: "flex",
-	justifyContent: "space-between",
-	marginTop: theme.spacing(0.5), // Reduced margin top
-}));
-
-const MinMaxText = styled(Typography)(({ theme }) => ({
-	fontSize: "0.75rem", // Smaller text for min/max
-	color: theme.palette.text.disabled, // Use disabled color for less emphasis
-}));
-
 /**
  * Slider Setting Component
  *
@@ -247,10 +97,18 @@ export const SliderSetting: FC<SliderSettingProps> = ({
 	icon: Icon,
 	isSaving = false,
 }) => {
-	const theme = useTheme(); // Get theme for conditional styles if needed later
 	const [sliderValue, setSliderValue] = useState<number>(value);
 	const [inputValue, setInputValue] = useState<string>(value.toString());
-	const [isEditing, setIsEditing] = useState(false); // Renamed state variable
+	const [isEditing, setIsEditing] = useState(false);
+
+	const fieldId = useId();
+	const labelId = `${fieldId}-label`;
+	const descriptionId = `${fieldId}-description`;
+
+	// The value the next commit writes. A ref, because the commit is triggered
+	// by window-level listeners that would otherwise capture a stale state.
+	const latestValue = useRef(sliderValue);
+	latestValue.current = sliderValue;
 
 	// Update local state when the external value prop changes
 	useEffect(() => {
@@ -259,31 +117,18 @@ export const SliderSetting: FC<SliderSettingProps> = ({
 			setSliderValue(value);
 			setInputValue(value.toString());
 		}
-	}, [value, isEditing]); // Add isEditing to dependency array
+	}, [value, isEditing]);
 
 	/**
-	 * Handles slider change events
+	 * Commits the current slider position: what MUI's `onChangeCommitted` did.
+	 * Invoked on pointer release, on key release after an arrow adjustment, and
+	 * on blur, so a release that lands outside the input after a drag is not
+	 * lost.
 	 */
-	const handleSliderChange = (_event: Event, newValue: number | number[]) => {
-		const numValue = newValue as number;
-		setSliderValue(numValue);
-		setInputValue(numValue.toString());
-		// Optionally trigger onChange immediately for smoother feedback,
-		// but handleSliderChangeCommitted is usually preferred for performance.
-	};
-
-	/**
-	 * Handles slider change completion (when the user releases the slider).
-	 */
-	const handleSliderChangeCommitted = async (
-		_event: Event | SyntheticEvent<Element, Event>,
-		newValue: number | number[],
-	) => {
+	const commitValue = useCallback(async () => {
 		if (isSaving) return;
 
-		const numValue = newValue as number;
-		// Ensure the committed value is within bounds (Slider should handle this, but double-check)
-		const clampedValue = Math.max(min, Math.min(max, numValue));
+		const clampedValue = Math.max(min, Math.min(max, latestValue.current));
 
 		setSliderValue(clampedValue);
 		setInputValue(clampedValue.toString());
@@ -297,6 +142,37 @@ export const SliderSetting: FC<SliderSettingProps> = ({
 				setSliderValue(value);
 				setInputValue(value.toString());
 			}
+		}
+	}, [isSaving, min, max, value, onChange]);
+
+	/**
+	 * Handles slider change events (live, while dragging or pressing arrows)
+	 */
+	const handleSliderChange = (e: ChangeEvent<HTMLInputElement>) => {
+		const numValue = Number(e.target.value);
+		setSliderValue(numValue);
+		setInputValue(numValue.toString());
+		// The commit happens on pointer/key release, not here, so one drag is one save.
+	};
+
+	/**
+	 * Starts watching for the pointer release that ends this drag. The release
+	 * can land anywhere once the thumb is captured, so the listener is global.
+	 */
+	const handleSliderPointerDown = () => {
+		const onPointerUp = () => {
+			window.removeEventListener("pointerup", onPointerUp);
+			void commitValue();
+		};
+		window.addEventListener("pointerup", onPointerUp);
+	};
+
+	/**
+	 * Commits after an arrow-key adjustment once the key is released.
+	 */
+	const handleSliderKeyUp = (e: KeyboardEvent<HTMLInputElement>) => {
+		if (e.key.startsWith("Arrow") || e.key === "Home" || e.key === "End") {
+			void commitValue();
 		}
 	};
 
@@ -322,10 +198,10 @@ export const SliderSetting: FC<SliderSettingProps> = ({
 			numValue = value; // Reset to original value if invalid
 		} else {
 			numValue = Math.max(min, Math.min(max, numValue));
-			// Optional: Snap to the nearest step
+			// Snap to the nearest step
 			if (step) {
 				numValue = Math.round(numValue / step) * step;
-				// Handle potential floating point inaccuracies if needed
+				// Handle potential floating point inaccuracies
 				const precision = step.toString().split(".")[1]?.length || 0;
 				numValue = Number.parseFloat(numValue.toFixed(precision));
 			}
@@ -367,79 +243,102 @@ export const SliderSetting: FC<SliderSettingProps> = ({
 		}
 	};
 
+	// Fraction of the track that is filled, driving the accent/sunken split.
+	const fill =
+		max > min
+			? `${(((sliderValue - min) / (max - min)) * 100).toFixed(2)}%`
+			: "0%";
+
 	return (
-		<SettingContainer elevation={0}>
-			{/* Label and Description */}
-			<LabelWrapper>
-				<LabelText variant="subtitle1">
+		<Card className="mb-4">
+			<div>
+				<label
+					id={labelId}
+					htmlFor={`${fieldId}-range`}
+					className="flex items-center gap-2 text-body text-ink"
+				>
 					{Icon && (
-						<IconWrapper>
-							<Icon size={14} />
-						</IconWrapper>
+						<Icon size={14} aria-hidden="true" className="text-ink-muted" />
 					)}
 					{label}
-				</LabelText>
+				</label>
 				{description && (
-					<DescriptionText variant="body2">{description}</DescriptionText>
+					<p id={descriptionId} className="mt-1 text-body-sm text-ink-muted">
+						{description}
+					</p>
 				)}
-			</LabelWrapper>
+			</div>
 
-			{/* Slider and Input Row */}
-			<Box
-				sx={{ display: "flex", alignItems: "center", gap: theme.spacing(2) }}
-			>
-				<SliderContainer>
-					<StyledSlider
+			<div className="flex items-center gap-4">
+				<div className="flex-1 pr-2">
+					<input
+						id={`${fieldId}-range`}
+						type="range"
 						value={sliderValue}
 						min={min}
 						max={max}
 						step={step}
-						onChange={handleSliderChange}
-						onChangeCommitted={handleSliderChangeCommitted}
 						disabled={isSaving}
-						valueLabelDisplay="auto" // Show label on hover/drag
+						onChange={handleSliderChange}
+						onPointerDown={handleSliderPointerDown}
+						onKeyUp={handleSliderKeyUp}
+						onBlur={() => void commitValue()}
+						aria-labelledby={labelId}
+						aria-describedby={description ? descriptionId : undefined}
+						style={{ "--fill": fill } as CSSProperties}
+						className={
+							// The track is the background: accent up to --fill, sunken
+							// past it, 6px tall and centred in the 16px hit area. Disabled
+							// drops the gradient so the whole track reads as one sunken bar
+							// rather than an accent fill that only looks interactive.
+							"h-4 w-full cursor-pointer appearance-none bg-transparent bg-center bg-no-repeat " +
+							"bg-[length:100%_6px] " +
+							"bg-[linear-gradient(to_right,var(--color-accent)_0_var(--fill),var(--color-sunken)_var(--fill)_100%)] " +
+							"disabled:cursor-not-allowed disabled:bg-none disabled:bg-sunken " +
+							// rounded-full on the thumb: the same status-dot exception the
+							// Switch primitive takes — a squared slider thumb reads as a bug.
+							"[&::-webkit-slider-thumb]:size-4 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-accent " +
+							"[&::-webkit-slider-thumb]:transition-colors [&::-webkit-slider-thumb]:duration-fast [&::-webkit-slider-thumb]:ease-out-quart " +
+							"[&::-webkit-slider-thumb]:hover:bg-accent-hover " +
+							"disabled:[&::-webkit-slider-thumb]:bg-ink-disabled"
+						}
 					/>
-					{/* MinMax Labels below Slider */}
-					<MinMaxContainer>
-						<MinMaxText>{min}</MinMaxText>
-						<MinMaxText>{max}</MinMaxText>
-					</MinMaxContainer>
-				</SliderContainer>
+					<div className="mt-0.5 flex justify-between font-mono text-mono-sm text-ink-dim">
+						<span>{min}</span>
+						<span>{max}</span>
+					</div>
+				</div>
 
-				<InputContainer>
+				<div className="flex min-w-27.5 items-center justify-end gap-1">
 					{isSaving ? (
-						// Consistent loading indicator size
-						<CircularProgress size={20} sx={{ margin: "8px 12px" }} />
+						<Spinner size="md" label={`Saving ${label}`} />
 					) : (
-						<StyledTextField
-							value={inputValue}
-							onChange={handleInputChange}
-							onBlur={handleInputBlur}
-							onFocus={handleInputFocus}
-							onKeyDown={handleKeyPress} // Use onKeyDown for Enter
-							variant="outlined"
-							size="small" // Keep size small for compactness
-							type="number"
-							disabled={isSaving}
-							inputProps={{
-								min,
-								max,
-								step,
-								// Removed inline styles, handled by StyledTextField
-							}}
-							InputProps={{
-								endAdornment: unit ? (
-									// Use position="end" correctly
-									<InputAdornment position="end" sx={{ mr: 0, ml: -1 }}>
-										<UnitText>{unit}</UnitText>
-									</InputAdornment>
-								) : undefined,
-								// Removed sx padding, handled by StyledTextField
-							}}
-						/>
+						<>
+							<Input
+								inputSize="sm"
+								type="number"
+								value={inputValue}
+								onChange={handleInputChange}
+								onBlur={handleInputBlur}
+								onFocus={handleInputFocus}
+								onKeyDown={handleKeyPress}
+								min={min}
+								max={max}
+								step={step}
+								disabled={isSaving}
+								aria-labelledby={labelId}
+								aria-describedby={description ? descriptionId : undefined}
+								className="w-20 text-right [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+							/>
+							{unit && (
+								<span className="shrink-0 text-meta text-ink-muted">
+									{unit}
+								</span>
+							)}
+						</>
 					)}
-				</InputContainer>
-			</Box>
-		</SettingContainer>
+				</div>
+			</div>
+		</Card>
 	);
 };

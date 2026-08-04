@@ -1,5 +1,25 @@
-// Start of Selection
-import { Box, alpha, styled } from "@mui/material";
+/**
+ * Drag handle between resizable panels.
+ *
+ * The pointer logic is unchanged: mouse down captures, move clamps the width,
+ * up (or window blur, or the pointer leaving the document) releases, and a
+ * full-viewport overlay keeps `col-resize` on screen for the whole drag
+ * because the cursor otherwise flickers back to whatever it crosses.
+ *
+ * The handle has no keyboard affordance and never had one: it is
+ * `tabIndex={-1}` and out of the tab order, so there is no keyboard resize to
+ * preserve. Panel sizes are not exposed to the keyboard anywhere else either
+ * — that is a gap this port does not silently fix.
+ *
+ * The line is information, not decoration: invisible at rest, a 2px accent
+ * line on hover or drag. It is the only thing saying "this gap is grabbable",
+ * and the state change is why it appears. The old version faded a
+ * semi-transparent divider colour in and out and thickened 1px to 3px; a
+ * constant-width accent line carries the same two states without animating
+ * layout, and the 2px radius is gone with the width change.
+ */
+
+import { cn } from "@shared/lib/utils";
 import { useRef, useState } from "react";
 
 let cursorOverlay: HTMLDivElement | null = null;
@@ -46,63 +66,6 @@ export type ResizableDividerProps = {
 	 */
 	onDoubleClick?: () => void;
 };
-
-/**
- * Flex item for the divider, does not take up space but anchors the overlay
- */
-const DividerFlexItem = styled(Box)({
-	position: "relative",
-	width: 0,
-	height: "100%",
-	flexShrink: 0,
-	zIndex: 10,
-});
-
-/**
- * Hover/click area for the divider (constant width to ensure stable cursor)
- */
-const DividerHoverArea = styled(Box, {
-	shouldForwardProp: (prop) => prop !== "$active" && prop !== "$side",
-})<{
-	$active: boolean;
-	$side: "left" | "right";
-}>(({ $side }) => ({
-	position: "absolute",
-	top: 0,
-	left: $side === "left" ? -6 : "auto",
-	right: $side === "right" ? -6 : "auto",
-	width: 12,
-	height: "100%",
-	cursor: "col-resize",
-	background: "none",
-	zIndex: 11,
-}));
-
-/**
- * Styled thin divider line
- */
-const DividerLine = styled(Box, {
-	shouldForwardProp: (prop) => prop !== "$active" && prop !== "$side",
-})<{ $side: "left" | "right"; $active: boolean }>(
-	({ theme, $side, $active }) => ({
-		position: "absolute",
-		top: 0,
-		[$side]: 0,
-		width: $active ? "3px" : "1px",
-		height: "100%",
-		background: $active
-			? theme.palette.mode === "dark"
-				? theme.palette.primary.light
-				: theme.palette.primary.main
-			: alpha(theme.palette.divider, 0.7),
-		borderRadius: 2,
-		pointerEvents: "none",
-		zIndex: 12,
-		opacity: $active ? 1 : 0,
-		transition:
-			"width 0.2s cubic-bezier(0.4,0,0.2,1), background 0.2s, opacity 0.2s",
-	}),
-);
 
 /**
  * Resizable divider between panels.
@@ -163,11 +126,22 @@ export const ResizableDivider = ({
 	const showActive = active;
 
 	return (
-		<DividerFlexItem>
-			<DividerLine $side={side} $active={showActive} />
-			<DividerHoverArea
-				$active={showActive}
-				$side={side}
+		<div className="relative z-10 h-full w-0 shrink-0">
+			{/* The grabbable-state line. Opacity only: width would animate layout. */}
+			<div
+				aria-hidden="true"
+				className={cn(
+					"pointer-events-none absolute top-0 z-12 h-full w-0.5 bg-accent transition-opacity duration-fast ease-out-quart",
+					side === "left" ? "left-0" : "right-0",
+					showActive ? "opacity-100" : "opacity-0",
+				)}
+			/>
+			{/* Constant-width hit area, so the cursor is stable near the edge. */}
+			<div
+				className={cn(
+					"absolute top-0 z-11 h-full w-3 cursor-col-resize",
+					side === "left" ? "-left-1.5" : "-right-1.5",
+				)}
 				onMouseEnter={() => setActive(true)}
 				onMouseLeave={() => {
 					if (!dragging.current) {
@@ -179,6 +153,6 @@ export const ResizableDivider = ({
 				aria-orientation="vertical"
 				tabIndex={-1}
 			/>
-		</DividerFlexItem>
+		</div>
 	);
 };

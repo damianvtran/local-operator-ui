@@ -1,28 +1,13 @@
 import radientIcon from "@assets/radient-icon-1024x1024.png";
 import { useOnboardingTour } from "@features/onboarding/hooks/use-onboarding-tour";
-import {
-	Alert,
-	Box,
-	Button,
-	CircularProgress,
-	Divider,
-	Grid,
-	Paper,
-	Skeleton,
-	Stack,
-	ToggleButton,
-	ToggleButtonGroup,
-	Typography,
-	useTheme,
-} from "@mui/material";
-import { styled } from "@mui/material/styles";
 import type { ConfigUpdate } from "@shared/api/local-operator/types";
 import { EditableField } from "@shared/components/common/editable-field";
 import { PageHeader } from "@shared/components/common/page-header";
-import { SectionTitle } from "@shared/components/common/section-title";
 import { SliderSetting } from "@shared/components/common/slider-setting";
+import { Spinner } from "@shared/components/common/spinner";
 import { HostingSelect } from "@shared/components/hosting/hosting-select";
 import { ModelSelect } from "@shared/components/hosting/model-select";
+import { Alert, Button, Skeleton } from "@shared/components/ui";
 import { useConfig } from "@shared/hooks/use-config";
 import { useCredentials } from "@shared/hooks/use-credentials";
 import { useCreditBalance } from "@shared/hooks/use-credit-balance";
@@ -30,6 +15,7 @@ import { useModels } from "@shared/hooks/use-models";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import { useUpdateConfig } from "@shared/hooks/use-update-config";
 import { useUsageRollup } from "@shared/hooks/use-usage-rollup";
+import { cn } from "@shared/lib/utils";
 import { useUserStore } from "@shared/store/user-store";
 import { format, formatRFC3339, parseISO, subDays } from "date-fns";
 import {
@@ -49,15 +35,15 @@ import {
 	Settings,
 	User,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"; // Added useCallback
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FC, RefObject } from "react";
-import { useLocation } from "react-router-dom"; // Added useLocation
+import { useLocation } from "react-router-dom";
 import {
 	CartesianGrid,
 	Line,
 	LineChart,
+	Tooltip as RechartsTooltip,
 	ResponsiveContainer,
-	Tooltip,
 	XAxis,
 	YAxis,
 } from "recharts";
@@ -65,21 +51,12 @@ import { AppUpdatesSection } from "./app-updates-section";
 import { Credentials } from "./credentials";
 import { GoogleIntegrationsSection } from "./integrations-section";
 import { RadientAccountSection } from "./radient-account-section";
-import {
-	FieldsContainer,
-	InfoBox,
-	InfoGrid,
-	InfoLabel,
-	InfoValue,
-	SettingsSectionCard,
-} from "./settings-section-card";
+import { InfoGrid, InfoItem, SettingsSection } from "./settings-section";
 import { DEFAULT_SETTINGS_SECTIONS, SettingsSidebar } from "./settings-sidebar";
 import { SystemPrompt } from "./system-prompt";
 import { ThemeSelector } from "./theme-selector";
 
-// --- Billing Info Component ---
 const BillingInfo: FC = () => {
-	const theme = useTheme(); // Get theme for styling
 	const {
 		data: creditData,
 		isLoading,
@@ -87,66 +64,84 @@ const BillingInfo: FC = () => {
 	} = useCreditBalance({ enabled: true });
 
 	return (
-		<Box>
-			<SectionTitle
-				title="Radient Pass"
-				icon={CreditCard}
-				variant="h6" // Use h6 for subsection title
-				gutterBottom
-			/>
-			{isLoading && <Skeleton variant="text" width={150} height={24} />}
+		<div>
+			{/*
+			 * `h3`, not the shared `SectionTitle`: billing and usage are subsections
+			 * of the Radient section's own `h2`, and `SectionTitle` renders an `h2`
+			 * with no way to pick a level. A heading that lies about its depth is
+			 * worse than four lines of markup.
+			 */}
+			<h3 className="mb-3 flex items-center gap-2 text-heading text-ink">
+				<CreditCard size={16} className="shrink-0 text-ink-dim" />
+				Radient Pass
+			</h3>
+			{isLoading && <Skeleton className="h-6 w-36" />}
 			{error && (
-				<Alert severity="warning" sx={{ mb: 2 }}>
-					Could not load credit balance: {error.message}
+				<Alert variant="warning">
+					Could not load your credit balance. {error.message}
 				</Alert>
 			)}
 			{creditData && !isLoading && !error && (
-				<Stack
-					direction={{ xs: "column", sm: "row" }} // Stack vertically on small screens
-					spacing={1.5} // Consistent spacing
-					alignItems={{ xs: "flex-start", sm: "center" }} // Align items
-				>
-					<Typography variant="body2" sx={{ flexGrow: 1 }}>
-						{" "}
-						{/* Use body2 for consistency */}
-						Available Credits:{" "}
-						<Typography component="span" fontWeight="medium">
+				<div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+					<p className="flex-1 text-body-sm text-ink-muted">
+						Available credits{" "}
+						<span className="font-medium text-ink">
 							{creditData.balance.toFixed(2)}
-						</Typography>
-					</Typography>
-					<Button
-						variant="outlined"
-						size="small" // Keep size small
-						href="https://console.radienthq.com/dashboard/billing"
-						target="_blank"
-						rel="noopener noreferrer"
-						startIcon={<CirclePlus size={12} />} // Smaller icon
-						sx={{
-							// Shadcn-like subtle outline button
-							borderColor: theme.palette.divider,
-							color: theme.palette.text.secondary,
-							textTransform: "none",
-							fontSize: "0.8125rem", // ~13px
-							padding: theme.spacing(0.5, 1.5),
-							borderRadius: theme.shape.borderRadius * 0.75,
-							"&:hover": {
-								backgroundColor: theme.palette.action.hover,
-								borderColor: theme.palette.divider,
-							},
-						}}
-					>
-						Add Credits
+						</span>
+					</p>
+					<Button variant="secondary" size="sm" asChild>
+						<a
+							href="https://console.radienthq.com/dashboard/billing"
+							target="_blank"
+							rel="noopener noreferrer"
+						>
+							<CirclePlus />
+							Add credits
+						</a>
 					</Button>
-				</Stack>
+				</div>
 			)}
-		</Box>
+		</div>
 	);
 };
 
-// --- Usage Info Component ---
+type UsageMetric = "credits" | "tokens";
+
+const USAGE_METRICS: { id: UsageMetric; label: string }[] = [
+	{ id: "credits", label: "Credits" },
+	{ id: "tokens", label: "Tokens" },
+];
+
+/**
+ * The usage chart's own tooltip.
+ *
+ * Recharts' default panel is configured with `contentStyle` / `itemStyle` /
+ * `labelStyle` objects, which take literal colours and cannot read a role. A
+ * custom renderer is the only way to theme it, and it also lets the panel use
+ * the same anatomy as every other overlay in the app: `elevated` ground,
+ * `shadow-overlay`, and monospace for the number because a number is machine
+ * voice.
+ */
+const UsageTooltip: FC<{
+	active?: boolean;
+	label?: string;
+	payload?: { value?: number | string; name?: string }[];
+	unit: string;
+}> = ({ active, label, payload, unit }) => {
+	if (!active || !payload?.length) return null;
+
+	return (
+		<div className="rounded-md border border-hairline bg-elevated px-3 py-2 shadow-overlay">
+			<p className="text-meta text-ink-dim">{label}</p>
+			<p className="text-mono text-ink">
+				{payload[0]?.value} {unit}
+			</p>
+		</div>
+	);
+};
+
 const UsageInfo: FC = () => {
-	const theme = useTheme();
-	const [dataType, setDataType] = useState<"credits" | "tokens">("credits");
+	const [dataType, setDataType] = useState<UsageMetric>("credits");
 
 	const usageParams = useMemo(() => {
 		const endDate = new Date();
@@ -177,276 +172,131 @@ const UsageInfo: FC = () => {
 		}));
 	}, [usageData]);
 
-	const handleDataTypeChange = (
-		_: React.MouseEvent<HTMLElement>,
-		newDataType: "credits" | "tokens" | null,
-	) => {
-		if (newDataType !== null) {
-			setDataType(newDataType);
-		}
-	};
-
-	const yAxisLabel =
-		dataType === "credits" ? "Credits Consumed" : "Tokens Used";
-	const lineDataKey = dataType === "credits" ? "credits" : "tokens";
-	const lineColor = theme.palette.primary.main;
-
 	return (
-		<Box>
-			<Stack
-				direction={{ xs: "column", sm: "row" }} // Responsive direction
-				justifyContent="space-between"
-				alignItems={{ xs: "flex-start", sm: "center" }} // Responsive alignment
-				mb={2.5} // Consistent margin
-				gap={1.5} // Add gap for spacing on small screens
-			>
-				<SectionTitle
-					title="Usage (Last 30 Days)"
-					icon={ChartLine}
-					variant="h6" // Use h6 for subsection title
-					// Remove margin bottom as Stack handles spacing
-				/>
-				<ToggleButtonGroup
-					value={dataType}
-					exclusive
-					onChange={handleDataTypeChange}
-					aria-label="Usage data type"
-					size="small"
-					sx={{
-						"& .MuiToggleButtonGroup-grouped": {
-							margin: theme.spacing(0.5),
-							border: 0,
-							"&.Mui-selected": {
-								backgroundColor: theme.palette.action.selected,
-								color: theme.palette.text.primary,
-								"&:hover": {
-									backgroundColor: theme.palette.action.selected,
-								},
-							},
-							"&:not(.Mui-selected)": {
-								color: theme.palette.text.secondary,
-							},
-							"&:hover": {
-								backgroundColor: theme.palette.action.hover,
-							},
-							borderRadius: `${theme.shape.borderRadius * 0.75}px !important`,
-							padding: theme.spacing(0.5, 1.5),
-							textTransform: "none",
-							fontSize: "0.8125rem",
-						},
-						border: `1px solid ${theme.palette.divider}`,
-						borderRadius: theme.shape.borderRadius * 0.5,
-						padding: theme.spacing(0.25),
-						backgroundColor: theme.palette.background.default,
-					}}
-				>
-					<ToggleButton value="credits" aria-label="Show credits">
-						Credits
-					</ToggleButton>
-					<ToggleButton value="tokens" aria-label="Show tokens">
-						Tokens
-					</ToggleButton>
-				</ToggleButtonGroup>
-			</Stack>
+		<div>
+			<div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+				<h3 className="flex items-center gap-2 text-heading text-ink">
+					<ChartLine size={16} className="shrink-0 text-ink-dim" />
+					Usage (last 30 days)
+				</h3>
+				{/*
+				 * A segmented pair rather than `Tabs`: the two options change which
+				 * series the one chart plots, they do not swap panels, and Radix's
+				 * `TabsTrigger` would point `aria-controls` at a `TabsContent` that
+				 * does not exist. `aria-pressed` describes what these actually are.
+				 */}
+				<fieldset className="m-0 w-fit border-0 p-0">
+					<legend className="sr-only">Usage metric</legend>
+					<div className="flex gap-0.5 rounded-md bg-sunken p-0.5">
+						{USAGE_METRICS.map(({ id, label }) => (
+							<Button
+								key={id}
+								variant="ghost"
+								size="sm"
+								aria-pressed={dataType === id}
+								onClick={() => setDataType(id)}
+								className={cn(
+									dataType === id && "bg-surface text-ink hover:bg-surface",
+								)}
+							>
+								{label}
+							</Button>
+						))}
+					</div>
+				</fieldset>
+			</div>
 
-			{isLoading && (
-				<Skeleton variant="rectangular" width="100%" height={250} />
-			)}
+			{isLoading && <Skeleton className="h-62 w-full" />}
 			{error && (
-				<Alert severity="warning" sx={{ mb: 2 }}>
-					Could not load usage data: {error.message}
+				<Alert variant="warning">
+					Could not load your usage data. {error.message}
 				</Alert>
 			)}
 			{!isLoading && !error && usageData && chartData.length > 0 && (
-				<Box sx={{ width: "100%", height: 250 }}>
+				/*
+				 * Recharts is styled from here, by descendant selector, rather than
+				 * through its colour props. Those props land as SVG presentation
+				 * attributes, which cannot take a `var()`, so a themed chart would
+				 * otherwise have to read palette hexes through `useTheme` — the one
+				 * thing this port is removing. A CSS rule beats a presentation
+				 * attribute, so these win, and the class names are recharts' own
+				 * documented ones.
+				 */
+				<div
+					className={cn(
+						"h-62 w-full",
+						"[&_.recharts-cartesian-grid_line]:stroke-hairline",
+						"[&_.recharts-cartesian-axis-tick-value]:fill-ink-dim [&_.recharts-cartesian-axis-tick-value]:text-meta",
+						"[&_.recharts-line-curve]:stroke-accent",
+						"[&_.recharts-active-dot_circle]:fill-accent",
+						"[&_.recharts-tooltip-cursor]:stroke-hairline",
+					)}
+				>
 					<ResponsiveContainer width="100%" height="100%">
 						<LineChart
 							data={chartData}
 							margin={{ top: 5, right: 20, left: 10, bottom: 5 }}
 						>
-							<CartesianGrid
-								strokeDasharray="3 3"
-								stroke={theme.palette.divider}
-							/>
-							<XAxis
-								dataKey="date"
-								stroke={theme.palette.text.secondary}
-								fontSize={12}
-								tickLine={false} // Cleaner look
-								axisLine={false} // Cleaner look
-							/>
-							<YAxis
-								stroke={theme.palette.text.secondary}
-								fontSize={12}
-								tickLine={false}
-								axisLine={false}
-								label={{
-									value: yAxisLabel,
-									angle: -90,
-									position: "insideLeft",
-									offset: -5,
-									style: {
-										textAnchor: "middle",
-										fill: theme.palette.text.secondary,
-										fontSize: 12,
-									},
-								}}
-							/>
-							<Tooltip
-								cursor={{ fill: theme.palette.action.hover }} // Subtle hover effect
-								contentStyle={{
-									backgroundColor: theme.palette.background.paper,
-									borderColor: theme.palette.divider,
-									borderRadius: theme.shape.borderRadius * 0.75, // Consistent radius
-									padding: theme.spacing(1, 1.5), // Adjust padding
-									boxShadow: theme.shadows[2], // Subtle shadow
-								}}
-								itemStyle={{
-									color: theme.palette.text.primary,
-									fontSize: "0.8125rem",
-								}}
-								labelStyle={{
-									color: theme.palette.text.secondary,
-									fontSize: "0.75rem",
-									marginBottom: theme.spacing(0.5),
-								}}
+							<CartesianGrid strokeDasharray="3 3" />
+							<XAxis dataKey="date" tickLine={false} axisLine={false} />
+							<YAxis tickLine={false} axisLine={false} width={48} />
+							<RechartsTooltip
+								content={
+									<UsageTooltip
+										unit={dataType === "credits" ? "credits" : "tokens"}
+									/>
+								}
 							/>
 							<Line
 								type="monotone"
-								dataKey={lineDataKey}
-								stroke={lineColor}
+								dataKey={dataType}
 								strokeWidth={2}
 								dot={false}
-								activeDot={{ r: 6, strokeWidth: 0, fill: lineColor }} // Style active dot
-								name={yAxisLabel}
+								activeDot={{ r: 4, strokeWidth: 0 }}
+								name={
+									dataType === "credits" ? "Credits consumed" : "Tokens used"
+								}
 							/>
 						</LineChart>
 					</ResponsiveContainer>
-				</Box>
+				</div>
 			)}
 			{!isLoading && !error && (!usageData || chartData.length === 0) && (
-				<Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-					No usage data available for the selected period.
-				</Typography>
+				<p className="text-body-sm text-ink-muted">
+					No usage recorded in the last 30 days.
+				</p>
 			)}
-		</Box>
+		</div>
 	);
 };
 
-// --- Main Settings Page Component ---
-
-const StyledPaper = styled(Paper)(({ theme }) => ({
-	height: "100%",
-	width: "100%",
-	display: "flex",
-	overflow: "hidden",
-	backgroundColor: theme.palette.background.default,
-	[theme.breakpoints.down("md")]: {
-		flexDirection: "column",
-	},
-}));
-
-const ContentContainer = styled(Box)(({ theme }) => ({
-	flexGrow: 1,
-	overflowY: "auto",
-	overflowX: "hidden",
-	padding: theme.spacing(4),
-	[theme.breakpoints.down("md")]: {
-		padding: theme.spacing(3),
-	},
-	[theme.breakpoints.down("sm")]: {
-		padding: theme.spacing(2),
-	},
-}));
-
-const SidebarContainer = styled(Box)(({ theme }) => ({
-	width: 220,
-	flexShrink: 0,
-	borderRight: `1px solid ${theme.palette.divider}`,
-	backgroundColor: theme.palette.background.paper,
-	overflowY: "auto",
-	[theme.breakpoints.down("md")]: {
-		width: "100%",
-		borderRight: "none",
-		borderBottom: `1px solid ${theme.palette.divider}`,
-		maxHeight: "40vh",
-	},
-}));
-
-const LoadingContainer = styled(Box)({
-	display: "flex",
-	justifyContent: "center",
-	alignItems: "center",
-	height: "100%",
-});
-
-const ErrorContainer = styled(Box)(({ theme }) => ({
-	padding: theme.spacing(3),
-	display: "flex",
-	justifyContent: "center",
-	alignItems: "center",
-	height: "100%",
-}));
-
-// Main content area wrapper within ContentContainer
-const MainContentWrapper = styled(Box)(({ theme }) => ({
-	paddingTop: theme.spacing(1),
-}));
-
-// Specific styling for the Radient icon image
-const IconImage = styled("img")({
-	width: 32,
-	height: 32,
-	objectFit: "contain",
-});
-
-// Custom Title Component for Radient Section
+/**
+ * The Radient section's heading, which carries the console link beside the
+ * title. Supplied through `titleComponent` because the link belongs to the
+ * heading row, not to the section body.
+ */
 const RadientSectionTitle: FC = () => (
-	<Stack
-		direction={{ xs: "column", sm: "row" }}
-		spacing={{ xs: 1.5, sm: 2 }}
-		justifyContent="space-between"
-		alignItems={{ xs: "flex-start", sm: "center" }}
-		mb={3}
-	>
-		<Box>
-			<Typography
-				variant="h5"
-				fontWeight="500"
-				display="flex"
-				alignItems="center"
-				gap={1.5}
-				mb={0.5}
-			>
-				<IconImage src={radientIcon} alt="Radient Icon" />
-				Radient Account
-			</Typography>
-		</Box>
+	<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+		<h2 className="flex items-center gap-3 text-title text-ink">
+			<img src={radientIcon} alt="" className="size-8 object-contain" />
+			Radient account
+		</h2>
 		<Button
-			variant="outlined"
-			color="primary"
-			href="https://console.radienthq.com"
-			target="_blank"
-			rel="noopener noreferrer"
-			endIcon={<ExternalLink size={12} />}
-			sx={(theme) => ({
-				borderColor: theme.palette.divider,
-				color: theme.palette.text.secondary,
-				textTransform: "none",
-				fontSize: "0.8125rem",
-				padding: theme.spacing(0.5, 1.5),
-				borderRadius: theme.shape.borderRadius * 0.75,
-				"&:hover": {
-					backgroundColor: theme.palette.action.hover,
-					borderColor: theme.palette.divider,
-				},
-				mt: { xs: 1, sm: 0 },
-				alignSelf: { xs: "flex-start", sm: "center" },
-			})}
+			variant="secondary"
+			size="sm"
+			className="self-start sm:self-center"
+			asChild
 		>
-			Go to Radient Console
+			<a
+				href="https://console.radienthq.com"
+				target="_blank"
+				rel="noopener noreferrer"
+			>
+				Go to Radient console
+				<ExternalLink />
+			</a>
 		</Button>
-	</Stack>
+	</div>
 );
 
 export const SettingsPage: FC = () => {
@@ -466,8 +316,6 @@ export const SettingsPage: FC = () => {
 	const contentContainerRef = useRef<HTMLDivElement>(null);
 	const { startTour: startOnboardingTour } = useOnboardingTour();
 	const location = useLocation();
-
-	const theme = useTheme();
 
 	const { data: credentialsData, refetch: refetchCredentials } =
 		useCredentials();
@@ -533,10 +381,9 @@ export const SettingsPage: FC = () => {
 					behavior: "smooth",
 				});
 
-				// Clear any existing timeout
-				if (scrollTimeoutRef.current) {
-					clearTimeout(scrollTimeoutRef.current);
-				}
+				// No guard: clearing is a no-op on a missing handle. `?? undefined`
+				// only because the Node timer types accept `undefined` and not `null`.
+				clearTimeout(scrollTimeoutRef.current ?? undefined);
 
 				// Set a timeout to re-enable scroll listening after the smooth scroll finishes
 				scrollTimeoutRef.current = setTimeout(() => {
@@ -616,9 +463,7 @@ export const SettingsPage: FC = () => {
 
 			return () => {
 				contentContainer.removeEventListener("scroll", handleScroll);
-				if (scrollTimeoutRef.current) {
-					clearTimeout(scrollTimeoutRef.current);
-				}
+				clearTimeout(scrollTimeoutRef.current ?? undefined);
 			};
 		}, 100);
 
@@ -665,43 +510,43 @@ export const SettingsPage: FC = () => {
 
 	if (isLoading) {
 		return (
-			<StyledPaper elevation={0}>
-				<LoadingContainer>
-					<CircularProgress />
-				</LoadingContainer>
-			</StyledPaper>
+			<div className="flex h-full w-full items-center justify-center bg-canvas">
+				<Spinner size="lg" label="Loading settings" />
+			</div>
 		);
 	}
 
 	if (configError || !config) {
 		return (
-			<StyledPaper elevation={0}>
-				<ErrorContainer>
-					<Alert severity="error" sx={{ width: "100%", maxWidth: 600 }}>
-						Failed to load configuration. Please try again later.{" "}
-						{configError?.message}
-					</Alert>
-				</ErrorContainer>
-			</StyledPaper>
+			<div className="flex h-full w-full items-center justify-center bg-canvas p-6">
+				<Alert variant="danger" className="w-full max-w-xl">
+					Could not load your settings. The Local Operator server may not be
+					running. {configError?.message}
+				</Alert>
+			</div>
 		);
 	}
 
 	return (
-		<StyledPaper elevation={0}>
-			{/* Settings Sidebar */}
-			<SidebarContainer>
+		<div className="flex h-full w-full overflow-hidden bg-canvas max-md:flex-col">
+			{/*
+			 * The rail's edge lives here rather than on the nav, because only the
+			 * container knows which way the layout is running: the same hairline has
+			 * to be a right edge beside the content and a bottom edge above it.
+			 */}
+			<div className="w-55 shrink-0 overflow-y-auto border-r border-hairline max-md:max-h-[40vh] max-md:w-full max-md:border-r-0 max-md:border-b">
 				<SettingsSidebar
 					activeSection={activeSection}
 					onSelectSection={handleSelectSection}
 					sections={DEFAULT_SETTINGS_SECTIONS}
 				/>
-			</SidebarContainer>
+			</div>
 
-			{/* Scrollable Content Area */}
-			<ContentContainer
+			<div
 				ref={contentContainerRef}
 				data-settings-content
 				data-tour-tag="settings-general-section"
+				className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 md:p-8"
 			>
 				<PageHeader
 					title="Settings"
@@ -709,276 +554,255 @@ export const SettingsPage: FC = () => {
 					subtitle="Configure your application preferences and settings"
 				/>
 
-				{/* Main Content Wrapper */}
-				<MainContentWrapper>
-					{/* General Settings Section (using Grid for layout) */}
-					{/* Assign ref directly to the outer Box for scrolling */}
-					<Box ref={sectionRefs.general}>
-						<Grid container spacing={3}>
-							{/* Left Column */}
-							<Grid item xs={12} md={6}>
-								{/* User Profile Settings */}
-								<SettingsSectionCard
-									title="User Profile"
-									icon={User}
-									description={`Your user profile information displayed in the application.  This information is not provided to the agents.  ${isAuthenticated ? "These details are provided through your Radient Account." : ""}`}
-								>
-									<FieldsContainer>
-										<EditableField
-											value={userStore.profile.name}
-											label="Display Name"
-											placeholder="Enter your name..."
-											icon={<User size={16} />}
-											isSaving={savingField === "user_name"}
-											onSave={async (value) => {
-												setSavingField("user_name");
-												try {
-													userStore.updateName(value);
-												} finally {
-													setSavingField(null);
-												}
-											}}
-											readOnly={isAuthenticated}
-										/>
-										<EditableField
-											value={userStore.profile.email}
-											label="Email Address"
-											placeholder="Enter your email..."
-											icon={<Mail size={16} />}
-											isSaving={savingField === "user_email"}
-											onSave={async (value) => {
-												setSavingField("user_email");
-												try {
-													userStore.updateEmail(value);
-												} finally {
-													setSavingField(null);
-												}
-											}}
-											readOnly={isAuthenticated}
-										/>
-									</FieldsContainer>
-								</SettingsSectionCard>
-
-								{/* Onboarding Tour Button */}
-								<SettingsSectionCard
-									title="Application Tour"
-									description="Missed the application onboarding tour or want a refresher? Start it again here."
-								>
-									<FieldsContainer>
-										<Button
-											variant="outlined"
-											onClick={() => {
-												startOnboardingTour({ forceModalCompleted: true });
-											}}
-											startIcon={<PlayCircle size={18} />} // Lucide icon used directly in startIcon
-										>
-											Take the Tour
-										</Button>
-									</FieldsContainer>
-								</SettingsSectionCard>
-
-								{/* Model Settings */}
-								<SettingsSectionCard
-									title="Model Settings"
-									icon={Bot}
-									description="Configure the default AI model and hosting providers used for generating responses.  This will be used for all agents that don't have a specific model or hosting provider configured.  You can override these settings for individual agents in the agent settings."
-								>
-									<FieldsContainer>
-										<HostingSelect
-											value={config.values.hosting}
-											isSaving={savingField === "hosting"}
-											onSave={(value) => handleUpdateField("hosting", value)}
-											filterByCredentials={true}
-											allowCustom={true}
-											allowDefault={false}
-										/>
-										<ModelSelect
-											value={config.values.model_name}
-											hostingId={config.values.hosting}
-											isSaving={savingField === "model_name"}
-											onSave={(value) => handleUpdateField("model_name", value)}
-											allowCustom={true}
-											allowDefault={false}
-										/>
-										<Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
-											<Info size={28} />
-											<Typography
-												variant="subtitle2"
-												sx={{
-													color: theme.palette.text.secondary,
-													fontSize: "0.8rem",
-													lineHeight: 1.4,
-													fontWeight: 300,
-												}}
-											>
-												You need a Radient Account or to bring your own API keys
-												to access cloud providers. If you don't see more options
-												for hosting providers and models, you may need to add
-												credentials or sign in to Radient.
-											</Typography>
-										</Box>
-									</FieldsContainer>
-								</SettingsSectionCard>
-
-								{/* System Prompt Settings - Assuming SystemPrompt is already a card-like structure or self-contained */}
-								<SystemPrompt />
-							</Grid>
-
-							{/* Right Column */}
-							<Grid item xs={12} md={6}>
-								{/* History Settings */}
-								<SettingsSectionCard
-									title="History Settings"
-									icon={History}
-									description="Configure how much conversation history is retained and displayed.  These are tools to help balance cost and performance by controlling the amount of data used by the agents."
-								>
-									{/* Assuming SliderSetting is styled appropriately */}
-									<FieldsContainer>
-										<SliderSetting
-											value={config.values.conversation_length}
-											label="Maximum Conversation History"
-											description="Number of messages to keep in conversation history for context. More messages will make the agents have longer memory but more expensive to run.  Recommended: 100"
-											min={10}
-											max={500}
-											step={10}
-											unit="msgs"
-											icon={History}
-											isSaving={savingField === "conversation_length"}
-											onChange={(value) =>
-												handleUpdateField("conversation_length", value)
+				{/* Section tier: 32px between groupings, and no boundary between them. */}
+				<div className="mt-6 flex flex-col gap-8">
+					<div
+						ref={sectionRefs.general}
+						className="grid gap-8 md:grid-cols-2 md:gap-6"
+					>
+						<div className="flex flex-col gap-8">
+							<SettingsSection
+								title="User profile"
+								icon={User}
+								description={`Your user profile information displayed in the application. This information is not provided to the agents. ${isAuthenticated ? "These details are provided through your Radient account." : ""}`}
+							>
+								<div className="flex flex-col gap-4">
+									<EditableField
+										value={userStore.profile.name}
+										label="Display name"
+										placeholder="Enter your name..."
+										icon={<User size={16} />}
+										isSaving={savingField === "user_name"}
+										onSave={async (value) => {
+											setSavingField("user_name");
+											try {
+												userStore.updateName(value);
+											} finally {
+												setSavingField(null);
 											}
-										/>
-										<SliderSetting
-											value={config.values.detail_length}
-											label="Detail View Length"
-											description="Maximum number of messages to show in the detailed conversation view. Messages beyond this limit will be summarized. Shortening this will decrease costs but some important details could get lost from earlier messages.  Recommended: 15"
-											min={10}
-											max={500}
-											step={5}
-											unit="msgs"
-											icon={List}
-											isSaving={savingField === "detail_length"}
-											onChange={(value) =>
-												handleUpdateField("detail_length", value)
+										}}
+										readOnly={isAuthenticated}
+									/>
+									<EditableField
+										value={userStore.profile.email}
+										label="Email address"
+										placeholder="Enter your email..."
+										icon={<Mail size={16} />}
+										isSaving={savingField === "user_email"}
+										onSave={async (value) => {
+											setSavingField("user_email");
+											try {
+												userStore.updateEmail(value);
+											} finally {
+												setSavingField(null);
 											}
-										/>
-										<SliderSetting
-											value={config.values.max_learnings_history}
-											label="Maximum Learnings History"
-											description="Agents note down specific insights and key learnings in memory which persist beyond the maximum conversation history and summarization.  This setting controls the maximum number of learning items to retain.  More items will make the agents acquire a longer history of knowledge from your conversations but more expensive to run.  Recommended: 50"
-											min={10}
-											max={200}
-											step={10}
-											unit="notes"
-											icon={Database}
-											isSaving={savingField === "max_learnings_history"}
-											onChange={(value) =>
-												handleUpdateField("max_learnings_history", value)
-											}
-										/>
-									</FieldsContainer>
-								</SettingsSectionCard>
+										}}
+										readOnly={isAuthenticated}
+									/>
+								</div>
+							</SettingsSection>
 
-								{/* Configuration Metadata */}
-								<SettingsSectionCard
-									title="Configuration Information"
-									icon={Info}
-									description="System information about the current configuration."
+							<SettingsSection
+								title="Application tour"
+								description="Missed the application onboarding tour or want a refresher? Start it again here."
+							>
+								<Button
+									variant="secondary"
+									onClick={() => {
+										startOnboardingTour({ forceModalCompleted: true });
+									}}
 								>
-									<InfoGrid>
-										<InfoBox>
-											<InfoLabel>Version</InfoLabel>
-											<InfoValue>{config.version}</InfoValue>
-										</InfoBox>
-										<InfoBox>
-											<InfoLabel>Created At</InfoLabel>
-											<InfoValue>
-												{new Date(config.metadata.created_at).toLocaleString()}
-											</InfoValue>
-										</InfoBox>
-										<InfoBox>
-											<InfoLabel>Last Modified</InfoLabel>
-											<InfoValue>
-												{new Date(
-													config.metadata.last_modified,
-												).toLocaleString()}
-											</InfoValue>
-										</InfoBox>
-										<InfoBox>
-											<InfoLabel>Description</InfoLabel>
-											<InfoValue>
-												{config.metadata.description ||
-													"No description available"}
-											</InfoValue>
-										</InfoBox>
-									</InfoGrid>
-								</SettingsSectionCard>
-							</Grid>
-						</Grid>
-					</Box>
+									<PlayCircle />
+									Take the tour
+								</Button>
+							</SettingsSection>
 
-					{/* Appearance Section */}
-					<SettingsSectionCard
+							<SettingsSection
+								title="Model settings"
+								icon={Bot}
+								description="Configure the default AI model and hosting providers used for generating responses. This will be used for all agents that don't have a specific model or hosting provider configured. You can override these settings for individual agents in the agent settings."
+							>
+								<div className="flex flex-col gap-4">
+									<HostingSelect
+										value={config.values.hosting}
+										isSaving={savingField === "hosting"}
+										onSave={(value) => handleUpdateField("hosting", value)}
+										filterByCredentials={true}
+										allowCustom={true}
+										allowDefault={false}
+									/>
+									<ModelSelect
+										value={config.values.model_name}
+										hostingId={config.values.hosting}
+										isSaving={savingField === "model_name"}
+										onSave={(value) => handleUpdateField("model_name", value)}
+										allowCustom={true}
+										allowDefault={false}
+									/>
+									<Alert
+										variant="neutral"
+										icon={<Info className="size-4" aria-hidden="true" />}
+									>
+										You need a Radient account or your own API keys to reach
+										cloud providers. If you don't see more hosting providers and
+										models here, add credentials or sign in to Radient.
+									</Alert>
+								</div>
+							</SettingsSection>
+
+							<SystemPrompt />
+						</div>
+
+						<div className="flex flex-col gap-8">
+							<SettingsSection
+								title="History settings"
+								icon={History}
+								description="Configure how much conversation history is retained and displayed. These are tools to help balance cost and performance by controlling the amount of data used by the agents."
+							>
+								<div className="flex flex-col gap-4">
+									<SliderSetting
+										value={config.values.conversation_length}
+										label="Maximum conversation history"
+										description="Number of messages to keep in conversation history for context. More messages will make the agents have longer memory but more expensive to run. Recommended: 100"
+										min={10}
+										max={500}
+										step={10}
+										unit="msgs"
+										icon={History}
+										isSaving={savingField === "conversation_length"}
+										onChange={(value) =>
+											handleUpdateField("conversation_length", value)
+										}
+									/>
+									<SliderSetting
+										value={config.values.detail_length}
+										label="Detail view length"
+										description="Maximum number of messages to show in the detailed conversation view. Messages beyond this limit will be summarized. Shortening this will decrease costs but some important details could get lost from earlier messages. Recommended: 15"
+										min={10}
+										max={500}
+										step={5}
+										unit="msgs"
+										icon={List}
+										isSaving={savingField === "detail_length"}
+										onChange={(value) =>
+											handleUpdateField("detail_length", value)
+										}
+									/>
+									<SliderSetting
+										value={config.values.max_learnings_history}
+										label="Maximum learnings history"
+										description="Agents note down specific insights and key learnings in memory which persist beyond the maximum conversation history and summarization. This setting controls the maximum number of learning items to retain. More items will make the agents acquire a longer history of knowledge from your conversations but more expensive to run. Recommended: 50"
+										min={10}
+										max={200}
+										step={10}
+										unit="notes"
+										icon={Database}
+										isSaving={savingField === "max_learnings_history"}
+										onChange={(value) =>
+											handleUpdateField("max_learnings_history", value)
+										}
+									/>
+								</div>
+							</SettingsSection>
+
+							<SettingsSection
+								title="Configuration information"
+								icon={Info}
+								description="System information about the current configuration."
+							>
+								<InfoGrid>
+									<InfoItem
+										label="Version"
+										value={
+											<span className="text-mono-sm">{config.version}</span>
+										}
+									/>
+									<InfoItem
+										label="Created at"
+										value={new Date(
+											config.metadata.created_at,
+										).toLocaleString()}
+									/>
+									<InfoItem
+										label="Last modified"
+										value={new Date(
+											config.metadata.last_modified,
+										).toLocaleString()}
+									/>
+									<InfoItem
+										label="Description"
+										value={
+											config.metadata.description || "No description available"
+										}
+									/>
+								</InfoGrid>
+							</SettingsSection>
+						</div>
+					</div>
+
+					<SettingsSection
 						title="Appearance"
 						icon={Contrast}
 						description="Customize the look and feel of Local Operator"
-						cardRef={sectionRefs.appearance} // Assign ref
+						sectionRef={sectionRefs.appearance}
 						dataTourTag="settings-appearance-section"
 					>
 						<ThemeSelector />
-					</SettingsSectionCard>
+					</SettingsSection>
 
-					{/* Radient Account Section */}
-					<SettingsSectionCard
-						title="Radient Account" // Title is handled by titleComponent
+					<SettingsSection
+						title="Radient account"
 						titleComponent={<RadientSectionTitle />}
-						description="Manage your Radient account, Radient Pass details, and credits." // Description passed here
-						cardRef={sectionRefs.radient} // Assign ref
+						description="Manage your Radient account, Radient Pass details, and credits."
+						sectionRef={sectionRefs.radient}
 						dataTourTag="settings-radient-account-section"
 					>
-						{/* Render RadientAccountSection always */}
-						<RadientAccountSection
-							onAfterCredentialUpdate={() => {
-								refreshModels();
-								refetchCredentials();
-							}}
-						/>
+						{/*
+						 * Account, billing and usage were separated by `Divider`s. They are
+						 * three groups inside one grouping, so the section tier gap says
+						 * the same thing without drawing two more lines on a page that
+						 * already has enough.
+						 */}
+						<div className="flex flex-col gap-8">
+							<RadientAccountSection
+								onAfterCredentialUpdate={() => {
+									refreshModels();
+									refetchCredentials();
+								}}
+							/>
 
-						{/* Conditionally render Billing and Usage if authenticated */}
-						{isAuthenticated && (
-							<>
-								<Divider sx={{ my: 3 }} />
-								<BillingInfo />
-								<Divider sx={{ my: 3 }} />
-								<UsageInfo />
-							</>
-						)}
-					</SettingsSectionCard>
+							{isAuthenticated && (
+								<>
+									<BillingInfo />
+									<UsageInfo />
+								</>
+							)}
+						</div>
+					</SettingsSection>
 
-					{/* Google Integrations Section - Rendered Unconditionally */}
-					{/* The component itself will handle auth state for its connect buttons */}
-					<Box ref={sectionRefs.integrations}>
+					{/*
+					 * Rendered unconditionally: the section handles its own auth state
+					 * for the connect buttons.
+					 */}
+					<div ref={sectionRefs.integrations}>
 						<GoogleIntegrationsSection />
-					</Box>
+					</div>
 
-					{/* API Credentials Section */}
-					<SettingsSectionCard
-						title="API Credentials"
+					<SettingsSection
+						title="API credentials"
 						icon={Key}
 						description="Manage your API keys for various services and integrations"
-						cardRef={sectionRefs.credentials} // Assign ref
+						sectionRef={sectionRefs.credentials}
 						dataTourTag="settings-api-credentials-section"
 					>
 						<Credentials />
-					</SettingsSectionCard>
+					</SettingsSection>
 
-					{/* App Updates Section - Assuming AppUpdatesSection is self-contained */}
-					{/* Assign ref directly to the component if it renders a suitable root element, or wrap */}
-					<Box ref={sectionRefs.updates}>
+					<div ref={sectionRefs.updates}>
 						<AppUpdatesSection />
-					</Box>
-				</MainContentWrapper>
-			</ContentContainer>
-		</StyledPaper>
+					</div>
+				</div>
+			</div>
+		</div>
 	);
 };

@@ -9,6 +9,7 @@ import { useConversationMessages } from "@shared/hooks/use-conversation-messages
 import { useJobPolling } from "@shared/hooks/use-job-polling";
 import { useAgentRouteParam } from "@shared/hooks/use-route-params";
 import { useScrollToBottom } from "@shared/hooks/use-scroll-to-bottom";
+import { terminateStreamingMessages } from "@shared/hooks/use-streaming-message";
 import { useAgentSelectionStore } from "@shared/store/agent-selection-store";
 import { useChatStore } from "@shared/store/chat-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
@@ -247,6 +248,17 @@ export const ChatPage: FC<ChatProps> = () => {
 			try {
 				// Call the cancelJob API
 				await JobsApi.cancelJob(apiConfig.baseUrl, jobId);
+
+				// The backend no longer sends frames for a cancelled job, but
+				// nothing told the client the stream was over: the store never
+				// marked it complete, the socket stayed open, and the reconnect
+				// effect re-armed every 1600ms for the rest of the session. Marking
+				// the stream finished is what actually stops it — it stands the
+				// reconnect guard down, closes the socket, and lets the message
+				// settle into its final rendered state.
+				if (conversationId) {
+					terminateStreamingMessages(conversationId);
+				}
 
 				// Clear the current job ID and loading state
 				setCurrentJobId(null);

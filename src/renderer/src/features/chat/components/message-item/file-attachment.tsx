@@ -1,6 +1,5 @@
-import { Box, Typography, alpha } from "@mui/material";
-import { styled } from "@mui/material/styles";
 import { FileActionsMenu } from "@shared/components/common/file-actions-menu";
+import { cn } from "@shared/lib/utils";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { File } from "lucide-react";
@@ -22,75 +21,6 @@ type FileAttachmentProps = BaseFileAttachmentProps & {
 };
 
 const RESOURCE_NAME_REGEX = /name=([^;,]+)/;
-
-/**
- * Styled component for non-image file attachments
- * Displays a file icon and filename in a container
- * Includes interactive styling to indicate clickability
- */
-const FileAttachmentContainer = styled(Box)(({ theme }) => ({
-	display: "flex",
-	alignItems: "center",
-	padding: "8px 12px",
-	marginTop: 8,
-	backgroundColor: alpha(
-		theme.palette.mode === "dark"
-			? theme.palette.common.black
-			: theme.palette.grey[200],
-		theme.palette.mode === "dark" ? 0.1 : 0.5,
-	),
-	borderRadius: 8,
-	boxShadow: `0 1px 4px ${alpha(theme.palette.common.black, theme.palette.mode === "dark" ? 0.1 : 0.05)}`,
-	width: "fit-content",
-	maxWidth: "100%",
-	cursor: "pointer",
-	transition: "all 0.2s ease",
-	position: "relative",
-	"&:hover": {
-		backgroundColor: alpha(
-			theme.palette.mode === "dark"
-				? theme.palette.common.black
-				: theme.palette.grey[300],
-			theme.palette.mode === "dark" ? 0.15 : 0.5,
-		),
-		transform: "translateY(-1px)",
-		boxShadow: `0 2px 5px ${alpha(theme.palette.common.black, theme.palette.mode === "dark" ? 0.15 : 0.1)}`,
-		"& .file-actions-menu": {
-			opacity: 1,
-			visibility: "visible",
-		},
-	},
-	"&:active": {
-		transform: "translateY(0)",
-		boxShadow: `0 1px 3px ${alpha(theme.palette.common.black, theme.palette.mode === "dark" ? 0.1 : 0.05)}`,
-	},
-}));
-
-const FileIcon = styled(Box)(({ theme }) => ({
-	marginRight: 8,
-	color: theme.palette.primary.main,
-	display: "flex",
-	alignItems: "center",
-}));
-
-const FileName = styled(Typography)({
-	fontSize: "0.85rem",
-	overflow: "hidden",
-	textOverflow: "ellipsis",
-	whiteSpace: "nowrap",
-	maxWidth: "100%",
-	textDecoration: "none",
-	"&:hover": {
-		textDecoration: "underline",
-	},
-});
-
-const FileActionsContainer = styled(Box)({
-	marginLeft: 8,
-	opacity: 0,
-	visibility: "hidden",
-	transition: "opacity 0.2s ease, visibility 0.2s ease",
-});
 
 /**
  * Extracts the filename from a path
@@ -402,51 +332,49 @@ export const FileAttachment: FC<FileAttachmentProps> = memo(
 			? file.substring(7)
 			: file;
 		return (
-			<FileAttachmentContainer
-				onClick={handleClick}
-				title={`Click to open ${getFileName(file)}`}
-				sx={{
-					padding: isPastedImage ? 0 : "8px 12px",
-					height: isPastedImage ? "auto" : "auto",
-					maxWidth: isPastedImage ? "200px" : "100%",
-				}}
-			>
-				{isPastedImage ? (
-					<img
-						src={file}
-						alt="Pasted content preview"
-						style={{
-							display: "block",
-							maxWidth: "100%",
-							maxHeight: "150px",
-							borderRadius: "8px",
-							objectFit: "contain",
-						}}
-					/>
-				) : (
-					<>
-						<FileIcon>
-							<File size={14} />
-						</FileIcon>
-						<FileName variant="body2">{getFileName(file)}</FileName>
-						{isLocalFile && (
-							<FileActionsContainer
-								className="file-actions-menu"
-								onClick={(e) => {
-									e.stopPropagation();
-								}}
-							>
-								<FileActionsMenu
-									filePath={normalizedPath}
-									tooltip="File actions"
-									aria-label="File actions"
-									onShowInCanvas={handleClick}
-								/>
-							</FileActionsContainer>
-						)}
-					</>
+			<div
+				className={cn(
+					"group relative mt-2 flex w-fit max-w-full items-center rounded-sm border border-hairline bg-surface transition-colors duration-fast ease-out-quart hover:bg-elevated",
+					isPastedImage ? "max-w-[200px] p-0" : "px-3 py-2",
 				)}
-			</FileAttachmentContainer>
+			>
+				{/* The card is a real button holding only the content; the actions
+				 * menu is a sibling, because nesting a button in a button is
+				 * invalid HTML. */}
+				<button
+					type="button"
+					className="min-w-0 flex-1 cursor-pointer text-left"
+					onClick={handleClick}
+					title={`Click to open ${getFileName(file)}`}
+				>
+					{isPastedImage ? (
+						<img
+							src={file}
+							alt="Pasted content preview"
+							className="block max-h-[150px] max-w-full rounded-sm object-contain"
+						/>
+					) : (
+						<div className="flex items-center">
+							<span className="mr-2 flex shrink-0 items-center text-accent">
+								<File size={14} />
+							</span>
+							<span className="truncate text-body-sm text-ink">
+								{getFileName(file)}
+							</span>
+						</div>
+					)}
+				</button>
+				{isLocalFile && (
+					<div className="file-actions-menu invisible ml-2 opacity-0 transition-[opacity,visibility] duration-fast ease-out-quart group-hover:visible group-hover:opacity-100">
+						<FileActionsMenu
+							filePath={normalizedPath}
+							tooltip="File actions"
+							aria-label="File actions"
+							onShowInCanvas={handleClick}
+						/>
+					</div>
+				)}
+			</div>
 		);
 	},
 );

@@ -1,5 +1,4 @@
-import { Box, Typography } from "@mui/material";
-import { styled } from "@mui/material/styles";
+import { cn } from "@shared/lib/utils";
 import type { FC } from "react";
 import armasm from "react-syntax-highlighter/dist/esm/languages/hljs/armasm";
 import bash from "react-syntax-highlighter/dist/esm/languages/hljs/bash";
@@ -118,52 +117,6 @@ for (const [name, definition] of Object.entries(LANGUAGES)) {
 	SyntaxHighlighter.registerLanguage(name, definition);
 }
 
-const CodeContainer = styled(Box)({
-	marginBottom: 16,
-	width: "100%",
-});
-
-const SectionLabel = styled(Typography)(({ theme }) => ({
-	display: "block",
-	marginBottom: 4,
-	color: theme.palette.text.secondary,
-}));
-
-/**
- * Wrapper for the syntax highlighter with max height and custom scrollbars.
- *
- * @param theme - The MUI theme object injected by the styled utility.
- * @param flexDirection - The flex direction for the wrapper ("column" or "column-reverse").
- * @returns The style object for the BlockScrollWrapper.
- * @throws {Error} If theme is not provided by the styled utility.
- */
-const BlockScrollWrapper = styled(Box, {
-	shouldForwardProp: (prop) => prop !== "flexDirection",
-})<{ flexDirection?: "column" | "column-reverse" }>(
-	({ theme, flexDirection }) => {
-		if (!theme) {
-			throw new Error("Theme is required for BlockScrollWrapper styles.");
-		}
-		return {
-			maxHeight: 320,
-			overflowY: "auto",
-			width: "100%",
-			borderRadius: "8px",
-			boxShadow: "0 2px 6px rgba(0, 0, 0, 0.2)",
-			display: "flex",
-			flexDirection: flexDirection || "column",
-			whiteSpace: "pre",
-			// atomOneDark sets a font-family on every token span, so the override has
-			// to reach descendants. This used to be a styled-components
-			// createGlobalStyle; scoping it to the wrapper drops that dependency and
-			// stops the rule leaking to the rest of the app.
-			"& .react-syntax-highlighter-code-block *": {
-				fontFamily: "'Roboto Mono', monospace !important",
-			},
-		};
-	},
-);
-
 /**
  * Component for displaying code with syntax highlighting
  *
@@ -182,23 +135,30 @@ export const CodeBlock: FC<CodeBlockProps> = ({
 	if (!code) return null;
 
 	return (
-		<CodeContainer>
-			<SectionLabel variant="caption">{header || "Code"}</SectionLabel>
-			<BlockScrollWrapper flexDirection={flexDirection}>
+		<div className="mb-4 w-full">
+			<span className="mb-1 block text-ink-dim text-meta">
+				{header || "Code"}
+			</span>
+			<div
+				className={cn(
+					"flex w-full whitespace-pre rounded-sm",
+					"max-h-80 w-full overflow-y-auto",
+					// atomOneDark sets a font-family on every token span, so the
+					// override has to reach descendants with !important. Machine voice
+					// is the app's mono (--font-mono), per the type contract.
+					"[&_.react-syntax-highlighter-code-block_*]:font-mono!",
+					flexDirection === "column-reverse" ? "flex-col-reverse" : "flex-col",
+				)}
+			>
 				<SyntaxHighlighter
 					language={language || "python"}
 					style={atomOneDark}
 					customStyle={{
-						borderRadius: "8px",
-						fontSize: "0.85rem",
+						borderRadius: "6px",
+						fontSize: "0.8125rem",
 						width: "100%",
 						padding: "0.75rem",
 						margin: 0,
-					}}
-					codeTagProps={{
-						style: {
-							fontFamily: '"Roboto Mono", monospace !important',
-						},
 					}}
 					className="react-syntax-highlighter-code-block"
 					wrapLines={true}
@@ -206,7 +166,7 @@ export const CodeBlock: FC<CodeBlockProps> = ({
 				>
 					{code}
 				</SyntaxHighlighter>
-			</BlockScrollWrapper>
-		</CodeContainer>
+			</div>
+		</div>
 	);
 };

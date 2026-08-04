@@ -1,16 +1,6 @@
-import { Alert, Box, Button, styled } from "@mui/material";
+import { Alert, AlertDescription, Button } from "@shared/components/ui";
 import { useConnectivityStatus } from "@shared/hooks/use-connectivity-status";
 import { useEffect, useState } from "react";
-
-// Styled components
-const BannerContainer = styled(Box)(() => ({
-	position: "fixed",
-	top: 0,
-	left: 0,
-	right: 0,
-	zIndex: 2200, // High z-index to ensure it's above other content
-	width: "100%",
-}));
 
 /**
  * Props for the ConnectivityBanner component
@@ -124,45 +114,48 @@ export const ConnectivityBanner = ({
 		return null;
 	}
 
+	const isInternetIssue = connectivityIssue === "internet_offline";
+
 	return (
-		<BannerContainer>
+		/*
+		 * Fixed and full-bleed: the banner spans the window rather than sitting
+		 * inside the layout, so it is square-cornered and borderless on the left,
+		 * right and top edges. The z-index clears the app chrome it covers.
+		 */
+		<div className="fixed inset-x-0 top-0 z-2200 w-full">
 			<Alert
-				severity={
-					connectivityIssue === "internet_offline" ? "warning" : "error"
-				}
-				action={
-					<>
-						<Button color="inherit" size="small" onClick={handleRetry}>
+				variant={isInternetIssue ? "warning" : "danger"}
+				// The banner appears in response to connectivity dropping while the
+				// user is working, so it interrupts rather than waits to be found.
+				role="alert"
+				className="items-center rounded-none border-x-0 border-t-0"
+			>
+				<div className="flex w-full items-center justify-between gap-4">
+					<AlertDescription>
+						{connectivityIssue === "server_offline"
+							? "The server is offline. The interface will not function properly until the server is back online."
+							: isInternetIssue
+								? `You are offline. Your configured hosting provider (${hostingProvider}) requires an internet connection.`
+								: "A connectivity issue has been detected."}
+					</AlertDescription>
+
+					<div className="flex shrink-0 items-center gap-2">
+						<Button variant="ghost" size="sm" onClick={handleRetry}>
 							Retry
 						</Button>
-						{connectivityIssue === "internet_offline" && (
+						{isInternetIssue && (
 							<Button
+								variant="ghost"
+								size="sm"
 								aria-label="dismiss"
-								color="inherit"
-								size="small"
 								onClick={handleDismiss}
 							>
 								Dismiss
 							</Button>
 						)}
-					</>
-				}
-				sx={{ borderRadius: 0 }}
-			>
-				{connectivityIssue === "server_offline" ? (
-					<>
-						The server is offline. The interface will not function properly
-						until the server is back online.
-					</>
-				) : connectivityIssue === "internet_offline" ? (
-					<>
-						You are offline. Your configured hosting provider ({hostingProvider}
-						) requires an internet connection.
-					</>
-				) : (
-					<>A connectivity issue has been detected.</>
-				)}
+					</div>
+				</div>
 			</Alert>
-		</BannerContainer>
+		</div>
 	);
 };

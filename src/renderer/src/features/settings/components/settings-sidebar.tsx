@@ -1,14 +1,5 @@
 import radientIcon from "@assets/radient-icon-1024x1024.png";
-import {
-	Box,
-	List,
-	ListItemButton,
-	ListItemIcon,
-	ListItemText,
-	Paper,
-	Typography,
-} from "@mui/material";
-import { styled } from "@mui/material/styles";
+import { cn } from "@shared/lib/utils";
 import type { LucideIcon } from "lucide-react";
 import { Download, Key, Paintbrush, Puzzle, Settings } from "lucide-react";
 import type { FC } from "react";
@@ -35,103 +26,54 @@ type SettingsSidebarProps = {
 	sections: SettingsSection[];
 };
 
-const SidebarContainer = styled(Paper)(({ theme }) => ({
-	width: "100%",
-	height: "100%",
-	borderRadius: 0,
-	backgroundColor: theme.palette.sidebar.background,
-	boxShadow: "none",
-	display: "flex",
-	flexDirection: "column",
-	overflow: "hidden",
-	borderRight: `1px solid ${theme.palette.sidebar.border}`,
-}));
+/**
+ * Onboarding tour anchors, keyed by section id. A section with no entry gets no
+ * tag, which is what the tour expects — `features/onboarding` matches these
+ * values by selector, so a renamed value breaks the tour silently.
+ */
+const TOUR_TAGS: Record<string, string> = {
+	general: "settings-sidebar-general",
+	radient: "settings-sidebar-radient-account",
+	integrations: "settings-sidebar-integrations",
+	appearance: "settings-sidebar-appearance",
+	credentials: "settings-sidebar-api-credentials",
+	updates: "settings-sidebar-application-updates",
+};
 
-const SidebarHeader = styled(Box)(({ theme }) => ({
-	display: "flex",
-	alignItems: "center",
-	justifyContent: "flex-start",
-	padding: theme.spacing(3, 2, 2, 2),
-	borderBottom: `1px solid ${theme.palette.sidebar.border}`,
-}));
-
-const SidebarTitle = styled(Typography)(({ theme }) => ({
-	fontSize: "1.125rem",
-	fontWeight: 600,
-	color: theme.palette.text.primary,
-	letterSpacing: "-0.025em",
-}));
-
-const SidebarList = styled(List)(({ theme }) => ({
-	padding: theme.spacing(2, 1),
-	flexGrow: 1,
-	"& > *:not(:last-child)": {
-		marginBottom: theme.spacing(0.5),
-	},
-}));
-
-const SectionGroup = styled(Box)(({ theme }) => ({
-	marginBottom: theme.spacing(3),
-	"&:last-child": {
-		marginBottom: 0,
-	},
-}));
-
-const SectionLabel = styled(Typography)(({ theme }) => ({
-	fontSize: "0.75rem",
-	fontWeight: 600,
-	color: theme.palette.text.secondary,
-	textTransform: "uppercase",
-	letterSpacing: "0.05em",
-	padding: theme.spacing(0, 1.5, 1, 1.5),
-	marginBottom: theme.spacing(0.5),
-}));
-
-const SidebarItemButton = styled(ListItemButton, {
-	shouldForwardProp: (prop) => prop !== "isActive",
-})<{ isActive: boolean }>(({ theme, isActive }) => ({
-	borderRadius: 6,
-	marginBottom: 4,
-	padding: "4px 12px",
-	minHeight: 36,
-	color: isActive
-		? theme.palette.sidebar.itemActiveText
-		: theme.palette.sidebar.itemText,
-	backgroundColor: isActive ? theme.palette.sidebar.itemActive : "transparent",
-	transition: "background-color 0.2s ease-out, color 0.2s ease-out",
-	"&:hover": {
-		backgroundColor: isActive
-			? theme.palette.sidebar.itemActiveHover
-			: theme.palette.sidebar.itemHover,
-	},
-}));
-
-const SidebarItemIcon = styled(ListItemIcon, {
-	shouldForwardProp: (prop) => prop !== "isActive",
-})<{ isActive: boolean }>(({ theme, isActive }) => ({
-	minWidth: 0,
-	width: 20,
-	height: 20,
-	marginRight: 12,
-	justifyContent: "center",
-	color: isActive
-		? theme.palette.sidebar.itemActiveText
-		: theme.palette.icon.text,
-	display: "flex",
-	alignItems: "center",
-	transition: "color 0.2s ease",
-}));
-
-const IconImage = styled("img")(() => ({
-	width: 18,
-	height: 18,
-	objectFit: "contain",
-}));
+/**
+ * The rail's groups, in render order. Sections are matched by id rather than
+ * sliced by position, so a section this file does not know about is left out of
+ * every group instead of landing under the wrong heading.
+ */
+const SECTION_GROUPS: { label: string; ids: string[] }[] = [
+	{ label: "General", ids: ["general", "appearance"] },
+	{ label: "Account", ids: ["radient", "credentials", "integrations"] },
+	{ label: "System", ids: ["updates"] },
+];
 
 /**
  * SettingsSidebar component
  *
- * Displays a sidebar with navigation for different settings sections
+ * Displays a sidebar with navigation for different settings sections.
+ *
+ * ## Why plain list markup
+ *
+ * A nav rail is a list of destinations, so it is `nav > ul > li > button` and
+ * nothing more: a row must be a real control to be reachable by keyboard, and
+ * the active row carries `aria-current="page"` as well as its colour, because
+ * the accent wash behind it is invisible to assistive tech — colour alone is
+ * not a state.
+ *
+ * The active row is the rail's single accent spend (wash ground, accent icon),
+ * so hover is a neutral ground step to `elevated` rather than a second tint.
+ *
+ * ## Why no edge of its own
+ *
+ * The rail draws no border. `settings-page` stacks it above the content below
+ * the `md` breakpoint, where the single hairline has to move from right to
+ * bottom, and this component cannot know which layout it is in — a hardcoded
+ * `border-r` here becomes a stray vertical line in the stacked layout. The page
+ * wrapper owns that one edge and moves it.
  */
 export const SettingsSidebar: FC<SettingsSidebarProps> = ({
 	activeSection,
@@ -139,111 +81,82 @@ export const SettingsSidebar: FC<SettingsSidebarProps> = ({
 	sections,
 }) => {
 	const renderSection = (section: SettingsSection) => {
-		let tourTag: string | undefined;
-		switch (section.id) {
-			case "general":
-				tourTag = "settings-sidebar-general";
-				break;
-			case "radient":
-				tourTag = "settings-sidebar-radient-account";
-				break;
-			case "integrations":
-				tourTag = "settings-sidebar-integrations";
-				break;
-			case "appearance":
-				tourTag = "settings-sidebar-appearance";
-				break;
-			case "credentials":
-				tourTag = "settings-sidebar-api-credentials";
-				break;
-			case "updates":
-				tourTag = "settings-sidebar-application-updates";
-				break;
-			default:
-				tourTag = undefined;
-		}
-
 		const isActive = activeSection === section.id;
 
 		return (
-			<SidebarItemButton
-				key={section.id}
-				isActive={isActive}
-				onClick={() => onSelectSection(section.id)}
-				data-tour-tag={tourTag}
-			>
-				<SidebarItemIcon isActive={isActive}>
-					{section.isImage ? (
-						<IconImage src={section.icon as string} alt={section.label} />
-					) : (
-						(() => {
-							const IconComponent = section.icon as LucideIcon;
-							return (
-								<IconComponent
-									size={18}
-									strokeWidth={1.5}
-									style={{ display: "block" }}
-									aria-label={section.label}
-								/>
-							);
-						})()
+			<li key={section.id}>
+				<button
+					type="button"
+					onClick={() => onSelectSection(section.id)}
+					aria-current={isActive ? "page" : undefined}
+					data-tour-tag={TOUR_TAGS[section.id]}
+					className={cn(
+						"flex w-full items-center gap-3 rounded-sm px-3 py-2 text-left text-body-sm",
+						"transition-colors duration-fast ease-out-quart",
+						isActive
+							? "bg-accent-wash font-medium text-ink"
+							: "text-ink-muted hover:bg-elevated hover:text-ink",
 					)}
-				</SidebarItemIcon>
-				<ListItemText
-					primary={section.label}
-					primaryTypographyProps={{
-						fontWeight: isActive ? 500 : 400,
-						fontSize: "0.875rem",
-						whiteSpace: "nowrap",
-						overflow: "hidden",
-						textOverflow: "ellipsis",
-					}}
-				/>
-			</SidebarItemButton>
+				>
+					{/* The label beside it already names the destination, so the mark is
+					    decorative and must not be announced a second time. */}
+					<span
+						aria-hidden="true"
+						className={cn(
+							"flex size-5 shrink-0 items-center justify-center",
+							isActive ? "text-accent" : "text-ink-dim",
+						)}
+					>
+						{section.isImage ? (
+							<img
+								src={section.icon as string}
+								alt=""
+								className="size-[18px] object-contain"
+							/>
+						) : (
+							(() => {
+								const IconComponent = section.icon as LucideIcon;
+								return <IconComponent size={18} strokeWidth={1.5} />;
+							})()
+						)}
+					</span>
+					<span className="truncate">{section.label}</span>
+				</button>
+			</li>
 		);
 	};
 
-	// Group sections by category for better organization
-	const coreSettings = sections.filter((s) =>
-		["general", "appearance"].includes(s.id),
-	);
-	const accountSettings = sections.filter((s) =>
-		["radient", "credentials", "integrations"].includes(s.id),
-	);
-	const systemSettings = sections.filter((s) => ["updates"].includes(s.id));
-
 	return (
-		<SidebarContainer elevation={0}>
-			<SidebarHeader>
-				<SidebarTitle>Settings</SidebarTitle>
-			</SidebarHeader>
+		<nav
+			aria-label="Settings sections"
+			className="flex h-full w-full flex-col overflow-hidden bg-surface"
+		>
+			{/* No rule under the title: the page's single hairline bounds this
+			    region, and the group labels below separate the lists. */}
+			<div className="px-4 pt-6 pb-4">
+				<h2 className="text-heading text-ink">Settings</h2>
+			</div>
 
-			<SidebarList>
-				{/* Core Settings */}
-				{coreSettings.length > 0 && (
-					<SectionGroup>
-						<SectionLabel>General</SectionLabel>
-						{coreSettings.map(renderSection)}
-					</SectionGroup>
-				)}
+			<div className="flex-1 overflow-y-auto px-2 pb-4">
+				{SECTION_GROUPS.map((group) => {
+					const groupSections = sections.filter((s) =>
+						group.ids.includes(s.id),
+					);
+					if (groupSections.length === 0) return null;
 
-				{/* Account Settings */}
-				{accountSettings.length > 0 && (
-					<SectionGroup>
-						<SectionLabel>Account</SectionLabel>
-						{accountSettings.map(renderSection)}
-					</SectionGroup>
-				)}
-
-				{/* System Settings */}
-				{systemSettings.length > 0 && (
-					<SectionGroup>
-						<SectionLabel>System</SectionLabel>
-						{systemSettings.map(renderSection)}
-					</SectionGroup>
-				)}
-			</SidebarList>
-		</SidebarContainer>
+					return (
+						<div key={group.label} className="mb-6 last:mb-0">
+							<div className="px-3 pb-1 text-meta tracking-wide text-ink-dim">
+								{group.label}
+							</div>
+							<ul className="flex flex-col gap-1">
+								{groupSections.map(renderSection)}
+							</ul>
+						</div>
+					);
+				})}
+			</div>
+		</nav>
 	);
 };
 
@@ -253,12 +166,12 @@ export const SettingsSidebar: FC<SettingsSidebarProps> = ({
 export const DEFAULT_SETTINGS_SECTIONS: SettingsSection[] = [
 	{
 		id: "general",
-		label: "General Settings",
+		label: "General settings",
 		icon: Settings,
 	},
 	{
 		id: "radient",
-		label: "Radient Account",
+		label: "Radient account",
 		icon: radientIcon,
 		isImage: true,
 	},
@@ -274,12 +187,12 @@ export const DEFAULT_SETTINGS_SECTIONS: SettingsSection[] = [
 	},
 	{
 		id: "credentials",
-		label: "API Credentials",
+		label: "API credentials",
 		icon: Key,
 	},
 	{
 		id: "updates",
-		label: "Application Updates",
+		label: "Application updates",
 		icon: Download,
 	},
 ];

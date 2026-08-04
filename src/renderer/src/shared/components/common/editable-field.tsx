@@ -1,19 +1,15 @@
 /**
- * Editable Field Component
+ * Inline text field with an explicit save step.
  *
- * A component that allows for inline editing of text fields with explicit save
+ * The value is not committed on blur. Blurring with unsaved changes keeps the
+ * field in edit mode, because this field edits agent configuration that is
+ * persisted server-side and a stray click should not write it.
  */
 
-import {
-	Box,
-	Button,
-	IconButton,
-	TextField,
-	Typography,
-	styled,
-} from "@mui/material";
+import { Button, Input, Label, Textarea } from "@shared/components/ui";
+import { cn } from "@shared/lib/utils";
 import { Check, Eraser, Pencil, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import type React from "react";
 import type { ChangeEvent, FC, FocusEvent, KeyboardEvent } from "react";
 
@@ -65,234 +61,6 @@ type EditableFieldProps = {
 	readOnly?: boolean;
 };
 
-const FieldContainer = styled(Box)({
-	marginBottom: 16, // Reduced margin
-});
-
-// Change from styled(Typography) to styled('label') and apply styles directly
-const FieldLabel = styled("label")(({ theme }) => ({
-	display: "flex",
-	alignItems: "center",
-	marginBottom: 6,
-	color: theme.palette.text.secondary,
-	fontWeight: 500,
-	fontSize: "0.875rem",
-	fontFamily: theme.typography.fontFamily,
-	lineHeight: theme.typography.body2.lineHeight,
-}));
-
-const LabelIcon = styled(Box)({
-	marginRight: 8,
-	opacity: 0.9,
-	display: "flex",
-	alignItems: "center",
-});
-
-const StyledTextField = styled(TextField)<{ multiline?: boolean }>(
-	({ theme, multiline }) => ({
-		"& .MuiOutlinedInput-root": {
-			borderRadius: 6,
-			backgroundColor: theme.palette.background.paper,
-			border: `1px solid ${theme.palette.divider}`,
-			padding: 0,
-			minHeight: multiline ? "auto" : "36px",
-			height: multiline ? "auto" : "36px",
-			alignItems: multiline ? "flex-start" : "center",
-			transition: "border-color 0.2s ease, box-shadow 0.2s ease",
-			"&:hover": {
-				borderColor: theme.palette.text.secondary,
-				backgroundColor: theme.palette.background.paper,
-			},
-			"&.Mui-focused": {
-				backgroundColor: theme.palette.background.paper,
-				borderColor: theme.palette.primary.main,
-				boxShadow: `0 0 0 2px ${theme.palette.primary.main}33`,
-			},
-			"& .MuiOutlinedInput-notchedOutline": {
-				border: "none",
-			},
-		},
-		"& .MuiInputBase-input": {
-			padding: multiline ? "8px 12px" : "4px 12px",
-			fontSize: "0.875rem",
-			lineHeight: 1.5,
-			fontFamily: "inherit",
-			height: multiline ? "auto" : "calc(36px - 8px)",
-			overflow: "hidden",
-			textOverflow: "ellipsis",
-			whiteSpace: multiline ? "pre-wrap" : "nowrap",
-			wordBreak: "break-word",
-			alignSelf: multiline ? "flex-start" : "center",
-		},
-		"& .MuiInputBase-input::placeholder": {
-			color: theme.palette.text.disabled,
-			opacity: 1,
-		},
-	}),
-);
-
-// Container for buttons inside the input field
-const ActionButtonsContainer = styled(Box)({
-	position: "absolute",
-	top: "50%",
-	transform: "translateY(-50%)",
-	right: 6,
-	display: "flex",
-	alignItems: "center",
-	gap: 4,
-	zIndex: 10,
-});
-
-// Base styles for icon buttons mimicking shadcn ghost/icon button
-const ActionIconButton = styled(IconButton)(({ theme }) => ({
-	padding: 4,
-	borderRadius: 4,
-	height: 24,
-	width: 24,
-	color: theme.palette.text.secondary,
-	"&:hover": {
-		backgroundColor: theme.palette.action.hover,
-		color: theme.palette.text.primary,
-	},
-}));
-
-// Specific styles for Save button
-const SaveButton = styled(ActionIconButton)(({ theme }) => ({
-	color: theme.palette.success.main,
-	"&:hover": {
-		backgroundColor: `${theme.palette.success.main}1A`,
-		color: theme.palette.success.dark,
-	},
-}));
-
-// Specific styles for Cancel button
-const CancelButton = styled(ActionIconButton)(({ theme }) => ({
-	color: theme.palette.error.main,
-	"&:hover": {
-		backgroundColor: `${theme.palette.error.main}1A`,
-		color: theme.palette.error.dark,
-	},
-}));
-
-// Mimic shadcn secondary/destructive button for Clear
-const ClearButton = styled(Button)(({ theme }) => ({
-	backgroundColor: theme.palette.action.selected,
-	color: theme.palette.error.main,
-	minWidth: "auto",
-	height: 24,
-	padding: "0 8px",
-	fontSize: "0.75rem",
-	borderRadius: 4,
-	textTransform: "none",
-	boxShadow: "none",
-	border: `1px solid ${theme.palette.action.disabledBackground}`,
-	marginLeft: 4,
-	marginRight: 16,
-	"&:hover": {
-		backgroundColor: theme.palette.action.hover,
-		borderColor: theme.palette.error.light,
-		boxShadow: "none",
-	},
-	"& .MuiButton-startIcon": {
-		marginRight: 4,
-		marginLeft: -2,
-		"& > *:nth-of-type(1)": {
-			fontSize: "0.8rem",
-		},
-	},
-}));
-
-/**
- * DisplayContainer is a styled native button for accessibility.
- * Interactive children (edit/clear) are rendered outside the button to avoid nested button issues.
- */
-const DisplayContainer = styled("button", {
-	shouldForwardProp: (prop) => prop !== "multiline" && prop !== "readOnly",
-})<{ multiline?: boolean; readOnly?: boolean }>(
-	({ theme, multiline, readOnly }) => ({
-		padding: multiline ? "8px 12px" : "4px 12px",
-		borderRadius: 6,
-		backgroundColor: readOnly
-			? theme.palette.action.disabledBackground
-			: theme.palette.background.paper,
-		border: `1px solid ${theme.palette.divider}`,
-		position: "relative",
-		minHeight: multiline ? "auto" : "36px",
-		height: multiline ? "auto" : "36px",
-		display: "flex",
-		alignItems: multiline ? "flex-start" : "center",
-		transition: "border-color 0.2s ease, background-color 0.2s ease",
-		cursor: readOnly ? "default" : "pointer",
-		boxSizing: "border-box",
-		width: "100%",
-		textAlign: "left",
-		textTransform: "none",
-		justifyContent: "flex-start",
-		color: readOnly ? theme.palette.text.disabled : theme.palette.text.primary,
-		fontWeight: "normal",
-		fontFamily: "inherit",
-		outline: "none",
-		...(!readOnly && {
-			"&:hover, &:focus": {
-				borderColor: theme.palette.text.secondary,
-				backgroundColor: theme.palette.action.hover,
-			},
-			"&:focus-visible": {
-				outline: `2px solid ${theme.palette.primary.main}`,
-			},
-		}),
-	}),
-);
-
-// Adjust display text style
-const DisplayText = styled(Typography, {
-	shouldForwardProp: (prop) => prop !== "multiline",
-})<{ multiline?: boolean }>(({ multiline }) => ({
-	fontSize: "0.875rem",
-	lineHeight: 1.5,
-	fontFamily: "inherit",
-	whiteSpace: multiline ? "pre-wrap" : "nowrap",
-	wordBreak: "break-word",
-	paddingRight: 30,
-	overflow: "hidden",
-	textOverflow: "ellipsis",
-	flexGrow: 1,
-	alignSelf: multiline ? "flex-start" : "center",
-}));
-
-// Adjust placeholder style
-const PlaceholderText = styled(Typography)(({ theme }) => ({
-	color: theme.palette.text.disabled,
-	fontStyle: "normal",
-	fontSize: "0.875rem",
-	lineHeight: 1.5,
-	paddingRight: 30,
-	overflow: "hidden",
-	textOverflow: "ellipsis",
-	whiteSpace: "nowrap",
-	flexGrow: 1,
-}));
-
-// Mimic shadcn icon button for Edit button
-const EditButton = styled(IconButton)(({ theme }) => ({
-	position: "absolute",
-	top: "50%",
-	transform: "translateY(-50%)",
-	right: 6,
-	color: theme.palette.text.secondary,
-	opacity: 0,
-	transition: "opacity 0.2s ease, background-color 0.2s ease, color 0.2s ease",
-	padding: 4,
-	borderRadius: 4,
-	height: 24,
-	width: 24,
-	marginLeft: 4,
-	"&:hover": {
-		backgroundColor: theme.palette.action.hover,
-		color: theme.palette.text.primary,
-	},
-}));
-
 /**
  * Editable Field Component
  *
@@ -308,7 +76,7 @@ export const EditableField: FC<EditableFieldProps> = ({
 	rows = 4,
 	placeholder = "Enter value...",
 	icon,
-	isSaving: externalIsSaving = false, // Rename prop to avoid conflict
+	isSaving: externalIsSaving = false,
 	readOnly = false,
 }) => {
 	const [isEditing, setIsEditing] = useState(false);
@@ -317,8 +85,9 @@ export const EditableField: FC<EditableFieldProps> = ({
 	const [originalValue, setOriginalValue] = useState(value);
 	const [internalIsSaving, setInternalIsSaving] = useState(false);
 	const [isClearing, setIsClearing] = useState(false);
-	const inputRef = useRef<HTMLInputElement>(null);
+	const inputRef = useRef<HTMLInputElement & HTMLTextAreaElement>(null);
 	const actionButtonsRef = useRef<HTMLDivElement>(null);
+	const inputId = useId();
 
 	const isSaving = externalIsSaving || internalIsSaving;
 
@@ -336,7 +105,7 @@ export const EditableField: FC<EditableFieldProps> = ({
 	// Focus the input and select text when entering edit mode
 	useEffect(() => {
 		if (isEditing) {
-			// Timeout needed to ensure the input is rendered and focusable
+			// Deferred a tick: the input does not exist until this render commits.
 			const timer = setTimeout(() => {
 				if (inputRef.current) {
 					inputRef.current.focus();
@@ -362,7 +131,9 @@ export const EditableField: FC<EditableFieldProps> = ({
 	 *
 	 * @param e - The change event.
 	 */
-	const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
+	const handleChange = (
+		e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+	) => {
 		setEditValue(e.target.value);
 	};
 
@@ -380,21 +151,19 @@ export const EditableField: FC<EditableFieldProps> = ({
 	const handleSave = async () => {
 		if (isSaving || editValue === originalValue) return; // Prevent saving if already saving or no changes
 
-		setInternalIsSaving(true); // Set internal saving state
+		setInternalIsSaving(true);
 		try {
 			await onSave(editValue);
 			// On successful save, update the baseline values and exit edit mode
 			setOriginalValue(editValue);
-			setDisplayValue(editValue); // Update display value immediately
+			setDisplayValue(editValue);
 			setIsEditing(false);
 		} catch (error) {
 			console.error("Failed to save editable field:", error);
-			// Optionally: Add user feedback about the failure (e.g., toast notification)
-			// Revert edit value to the last known good state (originalValue)
+			// Stay in edit mode on failure so the user can retry or cancel.
 			setEditValue(originalValue);
-			// Do not exit edit mode on failure, allow user to retry or cancel
 		} finally {
-			setInternalIsSaving(false); // Reset internal saving state
+			setInternalIsSaving(false);
 		}
 	};
 
@@ -407,9 +176,8 @@ export const EditableField: FC<EditableFieldProps> = ({
 	const handleBlur = (
 		e: FocusEvent<HTMLInputElement | HTMLTextAreaElement>,
 	) => {
-		// Use setTimeout to allow click events on buttons to register before blur cancels edit mode
+		// Deferred so a click on a save/cancel button lands before edit mode ends.
 		setTimeout(() => {
-			// Check if the new focused element is one of the action buttons or the clear button
 			const relatedTarget = e.relatedTarget as Node | null;
 			const isFocusWithinActionButtons =
 				actionButtonsRef.current?.contains(relatedTarget) ?? false;
@@ -455,12 +223,12 @@ export const EditableField: FC<EditableFieldProps> = ({
 	 */
 	const clearField = (e: React.MouseEvent) => {
 		e.preventDefault(); // Prevent triggering edit mode if clicking clear on display view
-		e.stopPropagation(); // Stop propagation
+		e.stopPropagation();
 
 		if (readOnly || isSaving || isClearing) return; // Prevent action if already busy
 
 		setIsClearing(true);
-		setInternalIsSaving(true); // Use internal saving state for visual feedback
+		setInternalIsSaving(true);
 
 		// Optimistically update UI
 		setEditValue("");
@@ -468,16 +236,13 @@ export const EditableField: FC<EditableFieldProps> = ({
 
 		onSave("")
 			.then(() => {
-				// Confirm state on success
 				setOriginalValue("");
-				setIsEditing(false); // Exit edit mode after successful clear
+				setIsEditing(false);
 			})
 			.catch((error) => {
 				console.error("Failed to clear field:", error);
-				// Revert optimistic updates on failure
 				setEditValue(originalValue);
 				setDisplayValue(originalValue);
-				// Optionally provide user feedback
 			})
 			.finally(() => {
 				setIsClearing(false);
@@ -504,138 +269,185 @@ export const EditableField: FC<EditableFieldProps> = ({
 	// Show clear button if not saving, and the *original* value isn't empty.
 	// This prevents showing clear immediately after clearing until a save happens.
 	const showClearButton = !readOnly && !isSaving && originalValue !== "";
+	const showClearWhileEditing = showClearButton && !hasChanged;
+
+	// The action buttons float over the field, so the text has to stop short of
+	// them: sized to whichever set is actually rendered rather than to the
+	// widest possible one, which would leave a permanent gutter.
+	const inputPadding = isSaving
+		? "pr-20"
+		: showClearWhileEditing
+			? "pr-28"
+			: hasChanged
+				? "pr-18"
+				: "pr-10";
+
+	// Reveal-on-hover overlay controls. Focus is included so they are reachable
+	// without a pointer; they stay out of the tab order because the display
+	// button is the field's single stop.
+	const overlayReveal =
+		"opacity-0 transition-opacity duration-fast ease-out-quart group-hover:opacity-100 group-focus-within:opacity-100";
 
 	return (
-		<FieldContainer>
-			<FieldLabel>
-				{icon && <LabelIcon>{icon}</LabelIcon>}
+		<div className="mb-4">
+			<Label
+				htmlFor={inputId}
+				className="mb-1.5 flex items-center gap-2 text-ink-muted"
+			>
+				{icon}
 				{label}
-			</FieldLabel>
+			</Label>
 
 			{isEditing ? (
-				<Box sx={{ position: "relative" }}>
-					<StyledTextField
-						fullWidth
-						variant="outlined" // Keep variant for structure, style overrides hide default look
-						value={editValue}
-						onChange={handleChange}
-						onBlur={handleBlur}
-						onKeyDown={handleKeyDown} // Use onKeyDown for Escape/Enter
-						multiline={multiline}
-						rows={multiline ? rows : undefined}
-						placeholder={placeholder}
-						inputRef={inputRef}
-						// size="small" // Size is controlled by styled component height/padding
-						autoComplete="off" // Disable browser autocomplete
-					/>
-					<ActionButtonsContainer ref={actionButtonsRef}>
+				<div className="relative">
+					{multiline ? (
+						<Textarea
+							id={inputId}
+							ref={inputRef}
+							value={editValue}
+							onChange={handleChange}
+							onBlur={handleBlur}
+							onKeyDown={handleKeyDown}
+							rows={rows}
+							placeholder={placeholder}
+							autoComplete="off"
+							className={cn("min-h-9", inputPadding)}
+						/>
+					) : (
+						<Input
+							id={inputId}
+							ref={inputRef}
+							value={editValue}
+							onChange={handleChange}
+							onBlur={handleBlur}
+							onKeyDown={handleKeyDown}
+							placeholder={placeholder}
+							autoComplete="off"
+							className={cn("text-ellipsis", inputPadding)}
+						/>
+					)}
+					<div
+						ref={actionButtonsRef}
+						className={cn(
+							"absolute right-1.5 z-10 flex items-center gap-1",
+							multiline ? "top-1.5" : "top-1/2 -translate-y-1/2",
+						)}
+					>
 						{isSaving ? (
-							// Simple text indicator instead of CircularProgress
-							<Typography
-								variant="caption"
-								sx={{ color: "text.secondary", px: 1 }}
-							>
+							<span className="px-2 text-ink-dim text-meta">
 								{isClearing ? "Clearing..." : "Saving..."}
-							</Typography>
+							</span>
 						) : (
 							<>
 								{hasChanged && (
-									<SaveButton
-										size="small" // MUI size prop might affect internal padding, rely on styled-component
+									<Button
+										variant="ghost"
+										size="icon-sm"
 										onClick={handleSave}
 										title="Save changes (Enter)"
+										aria-label={`Save ${label}`}
+										className="text-success hover:bg-success-wash hover:text-success"
 									>
-										{/* Use smaller icon */}
-										<Check size={14} />
-									</SaveButton>
+										<Check />
+									</Button>
 								)}
-								<CancelButton
-									size="small"
+								<Button
+									variant="ghost"
+									size="icon-sm"
 									onClick={handleCancel}
 									title="Cancel (Escape)"
+									aria-label={`Cancel editing ${label}`}
+									className="text-danger hover:bg-danger-wash hover:text-danger"
 								>
-									<X size={14} />
-								</CancelButton>
-								{/* Conditionally render Clear button only when editing and no changes */}
-								{showClearButton && !hasChanged && (
-									<ClearButton
-										size="small"
+									<X />
+								</Button>
+								{showClearWhileEditing && (
+									<Button
+										variant="danger"
+										size="sm"
 										onClick={clearField}
 										title="Clear field"
-										startIcon={<Eraser size={16} />} // Default size might be better
+										aria-label={`Clear ${label}`}
 									>
+										<Eraser />
 										Clear
-									</ClearButton>
+									</Button>
 								)}
 							</>
 						)}
-					</ActionButtonsContainer>
-				</Box>
+					</div>
+				</div>
 			) : (
-				<Box sx={{ position: "relative", width: "100%" }}>
-					<DisplayContainer
+				<div className="group relative w-full">
+					{/*
+					 * A native button so the whole display area is one keyboard stop.
+					 * The edit and clear controls are siblings rather than children:
+					 * a button cannot contain a button.
+					 */}
+					<button
 						type="button"
 						onClick={handleEdit}
-						multiline={multiline}
-						readOnly={readOnly}
 						aria-label={`Current value: ${displayValue || placeholder}.${readOnly ? "" : " Click to edit."}`}
 						onKeyDown={handleDisplayContainerKeyDown}
-						disabled={readOnly} // Disable the button if readOnly
+						disabled={readOnly}
+						className={cn(
+							"flex w-full rounded-md border border-control bg-surface px-3 text-left text-body-sm text-ink",
+							"transition-colors duration-fast ease-out-quart",
+							"disabled:cursor-default disabled:border-hairline disabled:bg-sunken disabled:text-ink-disabled",
+							multiline ? "min-h-8 items-start py-2" : "h-8 items-center",
+							!readOnly && "cursor-pointer hover:bg-elevated",
+						)}
 					>
 						{displayValue ? (
-							<DisplayText multiline={multiline}>{displayValue}</DisplayText>
+							<span
+								className={cn(
+									"min-w-0 flex-1 pr-8",
+									multiline ? "whitespace-pre-wrap break-words" : "truncate",
+								)}
+							>
+								{displayValue}
+							</span>
 						) : (
-							<PlaceholderText>{placeholder}</PlaceholderText>
+							<span className="min-w-0 flex-1 truncate pr-8 text-ink-dim">
+								{placeholder}
+							</span>
 						)}
-					</DisplayContainer>
-					{/* Absolutely position edit/clear buttons visually inside, but outside the button in DOM */}
+					</button>
 					{!readOnly && (
-						<EditButton
-							className="edit-button"
-							size="small"
-							sx={{
-								position: "absolute",
-								top: "50%",
-								right: 6,
-								transform: "translateY(-50%)",
-								opacity: 0,
-								transition: "opacity 0.2s ease",
-								pointerEvents: "auto",
-								"&:hover, &:focus, button:focus + &": { opacity: 1 },
-							}}
+						<Button
+							variant="ghost"
+							size="icon-sm"
 							onClick={handleEdit}
 							title="Edit"
 							aria-label={`Edit ${label}`}
-							tabIndex={-1} // Keep focus on the main button
+							tabIndex={-1}
+							className={cn(
+								"absolute top-1/2 right-1.5 -translate-y-1/2",
+								overlayReveal,
+							)}
 						>
-							<Pencil size={12} />
-						</EditButton>
+							<Pencil />
+						</Button>
 					)}
-					{showClearButton && !readOnly && (
-						<ClearButton
-							className="edit-button" // Re-use class for hover effect if needed
-							sx={{
-								position: "absolute",
-								top: "50%",
-								right: 36, // Adjust position if EditButton is present
-								transform: "translateY(-50%)",
-								opacity: 0,
-								transition: "opacity 0.2s ease",
-								pointerEvents: "auto",
-								"&:hover, &:focus, button:focus + &": { opacity: 1 },
-							}}
-							size="small"
+					{showClearButton && (
+						<Button
+							variant="danger"
+							size="sm"
 							onClick={clearField}
 							title="Clear field"
 							aria-label={`Clear ${label}`}
-							startIcon={<Eraser size={16} />}
-							tabIndex={-1} // Keep focus on the main button
+							tabIndex={-1}
+							className={cn(
+								"absolute top-1/2 right-9 -translate-y-1/2",
+								overlayReveal,
+							)}
 						>
+							<Eraser />
 							Clear
-						</ClearButton>
+						</Button>
 					)}
-				</Box>
+				</div>
 			)}
-		</FieldContainer>
+		</div>
 	);
 };

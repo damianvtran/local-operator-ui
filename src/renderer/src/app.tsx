@@ -1,8 +1,6 @@
-import { Box, CircularProgress, CssBaseline } from "@mui/material";
-import { styled } from "@mui/material/styles";
 import type { FC } from "react";
 import { Suspense, lazy, useEffect } from "react";
-import { Navigate, Route, Routes, useNavigate } from "react-router-dom"; // Import useNavigate
+import { Navigate, Route, Routes, useNavigate } from "react-router-dom";
 
 // ChatPage is the boot route (/ redirects to /chat), so it stays statically
 // imported: lazy-loading it would put a Suspense fallback on first paint.
@@ -13,9 +11,10 @@ import { OnboardingProvider } from "@features/onboarding/components/onboarding-p
 import { OnboardingTourGlobalStyles } from "@features/onboarding/components/onboarding-tour-global.styles";
 
 import { ConnectivityBanner } from "@shared/components/common/connectivity-banner";
-import { CreateAgentDialog } from "@shared/components/common/create-agent-dialog"; // Import CreateAgentDialog
+import { CreateAgentDialog } from "@shared/components/common/create-agent-dialog";
 import { LowCreditsDialog } from "@shared/components/common/low-credits-dialog";
 import { ModelsInitializer } from "@shared/components/common/models-initializer";
+import { Spinner } from "@shared/components/common/spinner";
 import { UpdateNotification } from "@shared/components/common/update-notification";
 import { SidebarNavigation } from "@shared/components/navigation/sidebar-navigation";
 import { useCheckFirstTimeUser } from "@shared/hooks/use-check-first-time-user";
@@ -50,26 +49,6 @@ const SettingsPage = lazy(() =>
 		default: m.SettingsPage,
 	})),
 );
-
-const AppContainer = styled(Box)(() => ({
-	display: "flex",
-	height: "100vh",
-	overflow: "hidden",
-}));
-
-const MainContent = styled(Box)(() => ({
-	flexGrow: 1,
-	overflow: "hidden",
-	display: "flex",
-	flexDirection: "column",
-}));
-
-const RouteFallback = styled(Box)(() => ({
-	flexGrow: 1,
-	display: "flex",
-	alignItems: "center",
-	justifyContent: "center",
-}));
 
 /**
  * Main application component
@@ -119,82 +98,57 @@ const App: FC = () => {
 	return (
 		<OnboardingProvider>
 			<OnboardingTourGlobalStyles />
-			<AppContainer>
-				<CssBaseline />
-
-				{/* Command Palette */}
+			<div className="flex h-screen overflow-hidden">
 				{isCommandPaletteOpen && <CommandPalette />}
 
-				{/* Initialize models store */}
 				<ModelsInitializer />
 
-				{/* First-time setup onboarding (existing modal) */}
-				{/* This might need to be coordinated with the new Shepherd tour */}
 				<OnboardingModal open={isOnboardingActive} />
 
-				{/* Connectivity status banner */}
 				<ConnectivityBanner />
 
-				{/* Auto-update notification */}
 				<UpdateNotification />
 
-				{/* Low Credits Dialog */}
 				<LowCreditsDialog
 					open={isLowCreditsDialogOpen}
 					onClose={onLowCreditsDialogClose}
 					onGoToConsole={openRadientConsole}
 				/>
 
-				{/* Create Agent Dialog (Global) */}
 				<CreateAgentDialog
 					open={isCreateAgentDialogOpen}
 					onClose={closeCreateAgentDialog}
 					onAgentCreated={handleAgentCreated}
 				/>
 
-				{/* Sidebar Navigation */}
 				<SidebarNavigation />
 
-				{/* Main Content Area */}
-				<MainContent>
+				<main className="flex grow flex-col overflow-hidden">
 					<Suspense
 						fallback={
-							<RouteFallback>
-								<CircularProgress size={40} thickness={4} />
-							</RouteFallback>
+							<div className="flex grow items-center justify-center">
+								<Spinner size="lg" label="Loading page" />
+							</div>
 						}
 					>
 						<Routes>
-							{/* Redirect root to chat */}
 							<Route path="/" element={<Navigate to="/chat" replace />} />
-
-							{/* Chat routes */}
 							<Route path="/chat" element={<ChatPage />} />
 							<Route path="/chat/:agentId" element={<ChatPage />} />
-
-							{/* Agents routes */}
 							<Route path="/agents" element={<AgentsPage />} />
 							<Route path="/agents/:agentId" element={<AgentsPage />} />
-
-							{/* Settings route */}
 							<Route path="/settings" element={<SettingsPage />} />
-
-							{/* Agent Hub routes */}
 							<Route path="/agent-hub" element={<AgentHubPage />} />
 							<Route
 								path="/agent-hub/:agentId"
 								element={<AgentDetailsPage />}
 							/>
-
-							{/* Schedules route */}
 							<Route path="/schedules" element={<SchedulesPage />} />
-
-							{/* Fallback route - redirect to chat */}
 							<Route path="*" element={<Navigate to="/chat" replace />} />
 						</Routes>
 					</Suspense>
-				</MainContent>
-			</AppContainer>
+				</main>
+			</div>
 		</OnboardingProvider>
 	);
 };
