@@ -43,9 +43,20 @@ export const ModelCredentialStep: FC = () => {
 		(cred) => cred.type === CredentialType.Hosting,
 	);
 
-	// State for the selected credential and its value
+	/*
+	 * Default to the first provider that is not Radient Pass.
+	 *
+	 * Radient is first in the manifest, and this step is only reached from the
+	 * "use your own keys" branch — so the pre-selected option was the one the
+	 * user had just declined one screen earlier, with help text telling them to
+	 * sign in above, on a screen with nothing above. Radient stays in the list;
+	 * it is simply not the default here.
+	 */
 	const [selectedCredential, setSelectedCredential] = useState(
-		modelProviderCredentials[0]?.key || "",
+		(
+			modelProviderCredentials.find((cred) => cred.key !== "RADIENT_API_KEY") ??
+			modelProviderCredentials[0]
+		)?.key || "",
 	);
 	const [credentialValue, setCredentialValue] = useState("");
 	const [error, setError] = useState("");
@@ -122,8 +133,8 @@ export const ModelCredentialStep: FC = () => {
 	return (
 		<div className="flex flex-col gap-6">
 			<p className="text-body text-ink-muted">
-				Add an API key for at least one model provider. Keys are stored on your
-				device and never shared.
+				Pick a provider and paste its key. Keys are stored on this computer and
+				never sent anywhere else.
 			</p>
 
 			<div className="flex flex-col gap-5">
@@ -140,7 +151,7 @@ export const ModelCredentialStep: FC = () => {
 					>
 						<SelectTrigger
 							id={PROVIDER_SELECT_ID}
-							className="h-9.5 text-body"
+							selectSize="lg"
 							aria-describedby={
 								selectedCredentialInfo ? PROVIDER_HELP_ID : undefined
 							}

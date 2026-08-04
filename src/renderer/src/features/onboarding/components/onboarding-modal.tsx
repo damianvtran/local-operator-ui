@@ -30,17 +30,24 @@ import { RadientSignInStep } from "./steps/radient-signin-step";
 import { SearchApiStep } from "./steps/search-api-step";
 import { UserProfileStep } from "./steps/user-profile-step";
 
-// Define step titles outside the component for stability
-// Use Partial<> as not all steps might have explicit titles defined here anymore
+/*
+ * One title per step, each a plain verb phrase naming the single thing that
+ * step asks for. "Add model provider credentials" and "Enable web search"
+ * were the two that named the machinery instead of the outcome; the audience
+ * here has used a chat assistant and has not used a build tool.
+ *
+ * These double as the accessible names of the progress segments, so they have
+ * to survive being read on their own, out of order.
+ */
 const stepTitles: Partial<Record<OnboardingStep, string>> = {
 	[OnboardingStep.RADIENT_CHOICE]: "Choose your setup",
-	[OnboardingStep.RADIENT_SIGNIN]: "Set up with Radient Pass",
-	[OnboardingStep.USER_PROFILE]: "Set up your profile",
-	[OnboardingStep.MODEL_CREDENTIAL]: "Add model provider credentials",
-	[OnboardingStep.SEARCH_API]: "Enable web search",
-	[OnboardingStep.DEFAULT_MODEL]: "Choose your default model",
+	[OnboardingStep.RADIENT_SIGNIN]: "Sign in to Radient Pass",
+	[OnboardingStep.USER_PROFILE]: "Your name",
+	[OnboardingStep.MODEL_CREDENTIAL]: "Add a model key",
+	[OnboardingStep.SEARCH_API]: "Turn on web search",
+	[OnboardingStep.DEFAULT_MODEL]: "Pick a default model",
 	[OnboardingStep.CREATE_AGENT]: "Create your first agent",
-	[OnboardingStep.CONGRATULATIONS]: "Setup complete",
+	[OnboardingStep.CONGRATULATIONS]: "You're all set",
 };
 
 /**
@@ -261,20 +268,23 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 				 * The one accent moment in the flow, spent here. Setup ending is the
 				 * only thing in onboarding worth a colour, and it gets a single mark
 				 * rather than the three stacked celebration glyphs this used to have.
+				 *
+				 * No heading of its own: the dialog's own title already reads "You're
+				 * all set", and this step used to repeat it two rows below itself.
+				 * Left-aligned like every other step, so the last screen of the flow
+				 * does not change alignment on the way out.
 				 */
 				return (
-					<div className="flex flex-col items-center gap-4 py-6 text-center">
+					<div className="flex flex-col gap-4">
 						<CircleCheck
-							size={40}
+							size={28}
 							strokeWidth={1.5}
 							className="text-accent"
 							aria-hidden="true"
 						/>
-						<h2 className="text-title text-ink">You're all set</h2>
-						<p className="max-w-110 text-body text-ink-muted">
-							Local Operator is configured and ready. Start a conversation with
-							your new assistant, or change anything you picked here later in
-							Settings.
+						<p className="text-body text-ink-muted">
+							Local Operator is ready. Start a conversation with your new agent,
+							or change anything you picked here later in Settings.
 						</p>
 					</div>
 				);
@@ -461,69 +471,98 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 			</div>
 		) : null;
 
-	// Generate the actual dot elements or null
-	const stepIndicatorDotElements = useMemo(() => {
-		// If currentStep is not yet defined, or if there are no steps in the current flow
+	/*
+	 * Progress, as a count and a track.
+	 *
+	 * It was six 8px dots and nothing else. A dot carries position but not
+	 * length or name — you could not tell how much was left without counting,
+	 * and the step's name existed only inside a tooltip, so the one piece of
+	 * information a first-run user actually wants was behind a hover. Cron and
+	 * Things both write the count out; the track is what makes the remaining
+	 * distance readable at a glance.
+	 *
+	 * Segments stay individually clickable back to visited steps, which is the
+	 * behaviour the dots had. `rounded-xs` on a 4px bar rather than a pill:
+	 * `rounded-full` is reserved, and `progress.tsx` already sets the
+	 * precedent for a bar this size.
+	 */
+	const finalStepIndicatorsProp = useMemo(() => {
 		if (!currentStep || steps.length === 0) {
 			return null;
 		}
 
-		return steps.map((step) => {
-			const isActive = currentStep === step;
-			const isVisited = visitedSteps.has(step);
+		const activeIndex = steps.indexOf(currentStep);
 
-			// Special case: Don't allow navigating back to CHOICE/SIGNIN via dots
-			const isNonNavigableRadientStep =
-				step === OnboardingStep.RADIENT_CHOICE ||
-				step === OnboardingStep.RADIENT_SIGNIN;
-
-			// Allow navigation only to visited steps that are not the current one
-			const canNavigate = isVisited && !isActive && !isNonNavigableRadientStep;
-
-			return (
-				<Tooltip key={step} content={stepTitles[step]}>
-					{/*
-					 * A real button, so the row is tabbable and the step name is
-					 * announced. `aria-disabled` rather than `disabled`: a disabled
-					 * button swallows pointer events, which would take the tooltip —
-					 * the only place the step's name is written — with it.
-					 */}
-					<button
-						type="button"
-						aria-label={stepTitles[step]}
-						aria-current={isActive ? "step" : undefined}
-						aria-disabled={!canNavigate}
-						onClick={() => {
-							if (canNavigate) {
-								setCurrentStep(step);
-							}
-						}}
-						className={cn(
-							"size-2 rounded-full transition-colors duration-base ease-out-quart",
-							isActive && "bg-accent",
-							!isActive && isVisited && "bg-ink-dim",
-							/* `control`, not `hairline`: a hairline-filled dot is a line
-							   weight, and at 8px it disappeared against `elevated`. */
-							!isActive && !isVisited && "bg-control",
-						)}
-					/>
-				</Tooltip>
-			);
-		});
-	}, [currentStep, steps, visitedSteps, setCurrentStep]); // stepTitles is stable
-
-	// Prepare the final stepIndicators prop for OnboardingDialog
-	const finalStepIndicatorsProp = useMemo(() => {
-		// If there are no dot elements to render, pass null to OnboardingDialog
-		if (!stepIndicatorDotElements) {
-			return null;
-		}
 		return (
-			<div className="flex items-center justify-center gap-2">
-				{stepIndicatorDotElements}
+			<div className="flex shrink-0 items-center gap-3">
+				<span className="whitespace-nowrap text-ink-dim text-meta">
+					{activeIndex >= 0
+						? `Step ${activeIndex + 1} of ${steps.length}`
+						: `${steps.length} steps`}
+				</span>
+				{/* `list`, not a bare row of buttons: it has a length, and a screen
+				    reader saying "5 items" is the same fact the count above shows. */}
+				<ol className="flex items-center gap-1">
+					{steps.map((step, index) => {
+						const isActive = currentStep === step;
+						const isVisited = visitedSteps.has(step);
+
+						// Never navigable via the track: these two precede the numbered
+						// flow and going back to them would unpick the chosen path.
+						const isNonNavigableRadientStep =
+							step === OnboardingStep.RADIENT_CHOICE ||
+							step === OnboardingStep.RADIENT_SIGNIN;
+
+						const canNavigate =
+							isVisited && !isActive && !isNonNavigableRadientStep;
+
+						// Filled up to and including the current step, so the track
+						// reads as distance covered rather than as six lit dots.
+						const isCovered = index <= activeIndex;
+
+						return (
+							<li key={step} className="flex">
+								<Tooltip content={stepTitles[step]}>
+									{/*
+									 * A real button, so the track is tabbable and each step's
+									 * name is announced. `aria-disabled` rather than
+									 * `disabled`: a disabled button swallows pointer events,
+									 * and the tooltip is the only place the name is written.
+									 */}
+									<button
+										type="button"
+										aria-label={stepTitles[step]}
+										aria-current={isActive ? "step" : undefined}
+										aria-disabled={!canNavigate}
+										onClick={() => {
+											if (canNavigate) {
+												setCurrentStep(step);
+											}
+										}}
+										/* The bar is 4px; the button around it is 16px, so the
+										   thing you can hit and the thing you can see are not
+										   the same size. A 4px-tall click target is a target
+										   only in the sense that it can be missed. */
+										className="flex h-4 w-4 items-center"
+									>
+										<span
+											className={cn(
+												"h-1 w-full rounded-xs transition-colors duration-base ease-out-quart",
+												/* `control`, not `hairline`: hairline is a line
+												   weight and a 4px bar filled with it vanishes
+												   against `elevated`. */
+												isCovered ? "bg-accent" : "bg-control",
+											)}
+										/>
+									</button>
+								</Tooltip>
+							</li>
+						);
+					})}
+				</ol>
 			</div>
 		);
-	}, [stepIndicatorDotElements]);
+	}, [currentStep, steps, visitedSteps, setCurrentStep]); // stepTitles is stable
 
 	return (
 		<OnboardingDialog

@@ -1,7 +1,6 @@
 /**
- * Paper component for message content.
+ * The body of one turn.
  *
- * Handles styling based on whether the message is from the user or assistant.
  * Assistant messages have no paper boundary at all — full reading weight on
  * the canvas, which is the chat-app look the old version already aimed at.
  * User messages are a right-aligned bubble on `surface` with a hairline edge;
@@ -9,6 +8,18 @@
  * and a shadow, and both are gone: a surface ground with a hairline edge is
  * the designed pairing, and § 5 reserves the shadow for objects leaving the
  * flow.
+ *
+ * ## Measure
+ *
+ * Prose is capped at `MEASURE`, not at the width of the column. The column is
+ * 900px; at the size this used to render — a hardcoded `1.05rem`, the only
+ * 16.8px text anywhere in the app and not a step on the § 4 ramp — a
+ * paragraph ran to about 104 characters per line, well past the 60-80 that
+ * reading research and every reading pane worth copying (Superhuman, Notion,
+ * Things) settle on. Both halves of that are fixed here: the size is the
+ * ramp's `text-body`, and the measure is what buys the comfort back. The user
+ * bubble gets a narrower cap again, which is what makes a user turn read as
+ * an aside and the agent's answer read as the document.
  *
  * The `thinking` field renders through `AgentReasoning`, which honours the
  * `showAgentReasoning` preference (default false, § 7). The word "Thinking"
@@ -24,8 +35,10 @@ import { parseReplies } from "../../utils/reply-utils";
 import { ReplyPreview } from "../reply-preview";
 import { AgentReasoning } from "../trace";
 import { MessageControls } from "./message-controls";
-import { MessageTimestamp } from "./message-timestamp";
 import { StreamingMessage } from "./streaming-message";
+
+/** Opts the prose elements into the ~72-character cap defined in `markdown.css`. */
+const MEASURE = "lo-measured";
 
 // Props for the MessagePaper component
 type MessagePaperProps = {
@@ -81,10 +94,13 @@ export const MessagePaper: FC<MessagePaperProps> = React.memo(
 			[content],
 		);
 
+		// Both values are § 4 steps rather than the former hardcoded rems: the
+		// compact column drops one step, exactly like every other dense surface
+		// in the app.
 		const markdownStyleProps = useMemo(
 			() => ({
-				fontSize: isSmallView ? "0.95rem" : "1.05rem",
-				lineHeight: isSmallView ? 1.45 : 1.6,
+				fontSize: isSmallView ? "var(--text-body-sm)" : "var(--text-body)",
+				lineHeight: 1.6,
 			}),
 			[isSmallView],
 		);
@@ -93,14 +109,14 @@ export const MessagePaper: FC<MessagePaperProps> = React.memo(
 		// User messages keep the paper boundary.
 		if (isUser) {
 			return (
-				<div
-					className={cn(
-						"group relative flex justify-end",
-						isSmallView ? "w-full" : "w-[calc(100%-56px)]",
-					)}
-				>
-					<div className="relative max-w-[85%] rounded-frame border border-hairline bg-surface p-4 text-ink break-words sm:max-w-[80%]">
-						<div ref={messageContentRef} className="relative">
+				<div className="group relative flex w-full justify-end">
+					<div
+						className={cn(
+							"relative rounded-frame border border-hairline bg-surface text-ink break-words",
+							isSmallView ? "max-w-[92%] px-3 py-2" : "max-w-[75%] px-4 py-3",
+						)}
+					>
+						<div ref={messageContentRef} className={cn("relative", MEASURE)}>
 							{replies.length > 0 && <ReplyPreview replies={replies} />}
 							{cloneContentChildren(
 								children,
@@ -115,6 +131,7 @@ export const MessagePaper: FC<MessagePaperProps> = React.memo(
 							content={content}
 							messageId={message.id}
 							agentId={agentId}
+							timestamp={message.timestamp}
 						/>
 					)}
 				</div>
@@ -153,8 +170,6 @@ export const MessagePaper: FC<MessagePaperProps> = React.memo(
 			}
 		}, [message?.id, onMessageComplete, shouldShowStreaming]);
 
-		const streamingWidthClass = isSmallView ? "w-full" : "w-[calc(100%-52px)]";
-
 		const streamingMessageComponent = shouldShowStreaming && message && (
 			<StreamingMessage
 				messageId={message.id}
@@ -167,14 +182,14 @@ export const MessagePaper: FC<MessagePaperProps> = React.memo(
 					}
 				}}
 				styleProps={markdownStyleProps}
-				className={cn("relative break-words text-ink", streamingWidthClass)}
+				className={cn("relative w-full break-words text-ink", MEASURE)}
 			/>
 		);
 
 		const regularMessageComponents =
 			!shouldShowStreaming && message ? (
 				<div
-					className={cn("relative break-words text-ink", streamingWidthClass)}
+					className={cn("relative w-full break-words text-ink", MEASURE)}
 					ref={messageContentRef}
 				>
 					{replies.length > 0 && <ReplyPreview replies={replies} />}
@@ -197,31 +212,19 @@ export const MessagePaper: FC<MessagePaperProps> = React.memo(
 			) : null;
 
 		return (
-			<div
-				className={cn(
-					"group relative",
-					isSmallView ? "w-full" : "w-[calc(100%-56px)]",
-				)}
-			>
+			<div className="group relative w-full">
 				{streamingMessageComponent}
 				{regularMessageComponents}
-				{/* Timestamp and controls render always; the streaming state hides
-				 * them with `invisible`, which wins over the group-hover opacity
-				 * rule regardless of utility order. */}
-				{message && shouldRenderDefaultMetadata && (
-					<MessageTimestamp
-						timestamp={message.timestamp}
-						isUser={isUser}
-						isSmallView={isSmallView}
-						className={isStreamable ? "invisible" : undefined}
-					/>
-				)}
+				{/* One hover affordance carrying copy, speak and the exact time.
+				 * The streaming state hides it with `invisible`, which wins over the
+				 * group-hover opacity rule regardless of utility order. */}
 				{message && shouldRenderDefaultMetadata && (
 					<MessageControls
 						isUser={isUser}
 						content={content}
 						messageId={message.id}
 						agentId={agentId}
+						timestamp={message.timestamp}
 						className={isStreamable ? "invisible" : undefined}
 					/>
 				)}

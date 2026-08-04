@@ -1,4 +1,5 @@
 import { cn } from "@shared/lib/utils";
+import { type VariantProps, cva } from "class-variance-authority";
 import { Check, ChevronDown, ChevronUp } from "lucide-react";
 import { Select as SelectPrimitive } from "radix-ui";
 import {
@@ -16,9 +17,41 @@ import {
  * form where the two controls disagree about their own height is the most
  * common way a settings screen looks unfinished.
  *
+ * `selectSize` mirrors `Input`'s `inputSize` step for step, and exists
+ * because the four onboarding forms were each hand-writing `h-9.5 text-body`
+ * onto the trigger to reach the large size. Four call sites reproducing the
+ * same two utilities is the shape of a missing variant, and the moment the
+ * ramp moves they all go stale silently.
+ *
  * The panel matches `DropdownMenu`: `elevated`, one shadow, `accent-wash`
  * highlight. Two overlay panels that look different is a bug, not a choice.
  */
+
+const selectTriggerVariants = cva(
+	[
+		"flex w-full items-center justify-between gap-2 rounded-sm",
+		"border border-control bg-surface text-ink",
+		"transition-colors duration-fast ease-out-quart",
+		"[&>span]:truncate",
+		// Scoped away from the disabled state for the same reason as the
+		// checked colours in `checkbox.tsx`: Tailwind emits `data-[disabled]:*`
+		// first, so an unscoped placeholder rule wins over it and a disabled
+		// select keeps live placeholder ink.
+		"data-[placeholder]:not-data-[disabled]:text-ink-dim",
+		"aria-invalid:border-danger",
+		"data-[disabled]:border-hairline data-[disabled]:bg-sunken data-[disabled]:text-ink-disabled",
+	],
+	{
+		variants: {
+			selectSize: {
+				sm: "h-7 px-2 text-meta focus-visible:outline-offset-1",
+				md: "h-8 px-3 text-body-sm",
+				lg: "h-9 px-3 text-body",
+			},
+		},
+		defaultVariants: { selectSize: "md" },
+	},
+);
 
 export const Select = SelectPrimitive.Root;
 export const SelectGroup = SelectPrimitive.Group;
@@ -26,24 +59,12 @@ export const SelectValue = SelectPrimitive.Value;
 
 export const SelectTrigger = forwardRef<
 	ElementRef<typeof SelectPrimitive.Trigger>,
-	ComponentPropsWithoutRef<typeof SelectPrimitive.Trigger>
->(({ className, children, ...props }, ref) => (
+	ComponentPropsWithoutRef<typeof SelectPrimitive.Trigger> &
+		VariantProps<typeof selectTriggerVariants>
+>(({ className, children, selectSize, ...props }, ref) => (
 	<SelectPrimitive.Trigger
 		ref={ref}
-		className={cn(
-			"flex h-8 w-full items-center justify-between gap-2 rounded-md",
-			"border border-control bg-surface px-3 text-body-sm text-ink",
-			"transition-colors duration-fast ease-out-quart",
-			"[&>span]:truncate",
-			// Scoped away from the disabled state for the same reason as the
-			// checked colours in `checkbox.tsx`: Tailwind emits `data-[disabled]:*`
-			// first, so an unscoped placeholder rule wins over it and a disabled
-			// select keeps live placeholder ink.
-			"data-[placeholder]:not-data-[disabled]:text-ink-dim",
-			"aria-invalid:border-danger",
-			"data-[disabled]:border-hairline data-[disabled]:bg-sunken data-[disabled]:text-ink-disabled",
-			className,
-		)}
+		className={cn(selectTriggerVariants({ selectSize }), className)}
 		{...props}
 	>
 		{children}

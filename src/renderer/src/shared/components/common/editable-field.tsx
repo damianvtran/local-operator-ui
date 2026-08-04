@@ -4,6 +4,17 @@
  * The value is not committed on blur. Blurring with unsaved changes keeps the
  * field in edit mode, because this field edits agent configuration that is
  * persisted server-side and a stray click should not write it.
+ *
+ * It carries no outer margin. The container owns the gap between fields: a
+ * component that ships `mb-4` stacks with every parent that has a `gap`, and
+ * the failure is silent because the result is still spacing, just the wrong
+ * tier. Every settings form here sat at 32px — the section tier — between two
+ * fields of the same group.
+ *
+ * The display state is a `button` dressed as an `Input`, so its border, height
+ * and radius must track the `Input` primitive exactly. A read state and an
+ * edit state of one field that disagree about their corners is the kind of
+ * detail that reads as sloppiness without anyone being able to name it.
  */
 
 import { Button, Input, Label, Textarea } from "@shared/components/ui";
@@ -289,14 +300,19 @@ export const EditableField: FC<EditableFieldProps> = ({
 		"opacity-0 transition-opacity duration-fast ease-out-quart group-hover:opacity-100 group-focus-within:opacity-100";
 
 	return (
-		<div className="mb-4">
-			<Label
-				htmlFor={inputId}
-				className="mb-1.5 flex items-center gap-2 text-ink-muted"
-			>
-				{icon}
-				{label}
-			</Label>
+		<div>
+			{/* Several call sites pass `label=""` because the surrounding heading
+			    already names the field. Rendering the element anyway leaves an
+			    empty flex row and its margin above the control. */}
+			{(label || icon) && (
+				<Label
+					htmlFor={inputId}
+					className="mb-1.5 flex items-center gap-2 text-ink-muted"
+				>
+					{icon}
+					{label}
+				</Label>
+			)}
 
 			{isEditing ? (
 				<div className="relative">
@@ -391,7 +407,7 @@ export const EditableField: FC<EditableFieldProps> = ({
 						onKeyDown={handleDisplayContainerKeyDown}
 						disabled={readOnly}
 						className={cn(
-							"flex w-full rounded-md border border-control bg-surface px-3 text-left text-body-sm text-ink",
+							"flex w-full rounded-sm border border-control bg-surface px-3 text-left text-body-sm text-ink",
 							"transition-colors duration-fast ease-out-quart",
 							"disabled:cursor-default disabled:border-hairline disabled:bg-sunken disabled:text-ink-disabled",
 							multiline ? "min-h-8 items-start py-2" : "h-8 items-center",

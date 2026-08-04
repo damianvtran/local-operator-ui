@@ -448,7 +448,7 @@ Store messages: ${JSON.stringify(getMessages(conversationId || ""), null, 2)}`;
 		if (!conversationId) {
 			return (
 				<PlaceholderView
-					title="No Agent Selected"
+					title="No agent selected"
 					description="Select an agent from the sidebar to start a conversation."
 					directionText="Choose an agent from the list"
 				/>

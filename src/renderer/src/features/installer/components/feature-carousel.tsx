@@ -20,42 +20,52 @@ type Feature = {
 	description: string;
 };
 
+/*
+ * Six panes, each one event the reader could actually witness.
+ *
+ * The previous set was written in the vocabulary of the thing rather than the
+ * vocabulary of the person waiting for it — "agentic problem solving",
+ * "universal problem solvers", "agent-to-agent communication" — and two of
+ * the six were the same claim under different jargon. Someone reading this is
+ * three minutes into their first contact with the product and has not agreed
+ * to learn a vocabulary yet.
+ */
 export const features: Feature[] = [
 	{
 		icon: Target,
-		title: "Plans and executes",
+		title: "Breaks work into steps",
 		description:
-			"Breaks down complex goals into manageable steps and executes them with precision.",
-	},
-	{
-		icon: ShieldCheck,
-		title: "Prioritizes security",
-		description:
-			"Built-in safety checks by independent AI review and user confirmations keep your system protected.",
-	},
-	{
-		icon: Wrench,
-		title: "Agentic problem solving",
-		description:
-			"Agents can intelligently handle errors and roadblocks by adapting approaches and finding alternative solutions.",
+			"Give it a goal in a sentence. It works out the steps and does them in order.",
 	},
 	{
 		icon: Code,
-		title: "Universal problem solvers",
+		title: "Writes and runs code",
 		description:
-			"Local Operator agents use code as a universal tool to make their own integrations on the fly and creatively solve problems.",
-	},
-	{
-		icon: Handshake,
-		title: "Agent-to-agent communication",
-		description:
-			"Agents can delegate tasks and communicate with each other to solve more complex problems.",
+			"Code is how it reads a spreadsheet, calls an API or renames a folder — written for the job in front of it.",
 	},
 	{
 		icon: HardDrive,
-		title: "On-device work",
+		title: "Works on your files",
 		description:
-			"Agents can work on your device, reducing the back and forth between your files and the cloud, and improving privacy.",
+			"Your documents stay on this computer. No uploading a folder to get an answer about it.",
+	},
+	{
+		icon: ShieldCheck,
+		title: "Checks before it acts",
+		description:
+			"A second model reviews anything risky, and you confirm the rest.",
+	},
+	{
+		icon: Wrench,
+		title: "Recovers from errors",
+		description:
+			"When something fails it reads the error and tries another way, rather than stopping and asking you.",
+	},
+	{
+		icon: Handshake,
+		title: "Agents hand work to each other",
+		description:
+			"A researcher can pass what it found to a writer, without you carrying it across.",
 	},
 ];
 
@@ -84,7 +94,10 @@ export const FeatureCarousel: React.FC = () => {
 
 	return (
 		<div className="flex w-full flex-col items-center">
-			<div className="relative flex h-60 w-full items-center justify-center">
+			{/* Reserved for the tallest pane and no more. At 240px the block held
+			    about 90px of nothing under every one of the six, which read as the
+			    installer having lost its place rather than as breathing room. */}
+			<div className="relative flex h-44 w-full items-center justify-center">
 				{features.map((feature, index) => {
 					const isActive = index === activeFeature;
 					return (
@@ -103,7 +116,7 @@ export const FeatureCarousel: React.FC = () => {
 								className="mb-5 text-accent"
 								aria-hidden="true"
 							/>
-							<h2 className="mb-2 text-title text-ink">{feature.title}</h2>
+							<h2 className="mb-2 text-heading text-ink">{feature.title}</h2>
 							<p className="max-w-100 text-body text-ink-muted">
 								{feature.description}
 							</p>
@@ -112,7 +125,7 @@ export const FeatureCarousel: React.FC = () => {
 				})}
 			</div>
 
-			<div className="flex justify-center gap-2">
+			<div className="mt-6 flex justify-center gap-2">
 				{features.map((feature, index) => (
 					<button
 						key={`dot-${feature.title}`}
@@ -121,9 +134,9 @@ export const FeatureCarousel: React.FC = () => {
 						aria-current={index === activeFeature}
 						onClick={() => setActiveFeature(index)}
 						className={cn(
-							"size-2.5 rounded-full transition-colors duration-base ease-out-quart",
+							"size-2 rounded-full transition-colors duration-base ease-out-quart",
 							/* `control` rather than `hairline`: hairline is a line weight and
-							   a 10px disc filled with it does not read against `surface`. */
+							   an 8px disc filled with it does not read against `surface`. */
 							index === activeFeature ? "bg-accent" : "bg-control",
 						)}
 					/>

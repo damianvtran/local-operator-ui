@@ -2,11 +2,11 @@ import type {
 	AgentExecutionRecord,
 	JobStatus,
 } from "@shared/api/local-operator/types";
-import { Avatar, AvatarFallback } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
 import { useStreamingMessagesStore } from "@shared/store/streaming-messages-store";
-import { Bot } from "lucide-react";
 import { type FC, memo } from "react";
+import { MessageAvatar } from "./message-item/message-avatar";
+import { AGENT_GUTTER } from "./message-item/message-container";
 
 /**
  * The waiting dots stagger their pulses with inline delays rather than three
@@ -94,14 +94,20 @@ const getDetailedStatusText = (
 };
 
 /**
- * Loading indicator component that displays the current status of a job
- * and execution details if available. Only shows when the current message is not streaming.
+ * The agent is working but has produced nothing to show yet.
+ *
+ * It sits on the agent rail — the same 40px gutter every agent row uses — and
+ * carries the avatar, because it *is* the opening of an agent turn: the first
+ * real row of that turn replaces it in place. Before this it drew a 40px
+ * avatar of its own and indented the text another 16px, putting the status on
+ * a left edge no other row in the list shared.
  *
  * @param status - Optional job status to display
  * @param agentName - Optional agent name to display
  * @param currentExecution - Optional current execution details
  * @param conversationId - Optional conversation ID to check for streaming messages
  * @param isSmallView - Whether to render the compact variant
+ * @param className - Spacing, supplied by the list that owns the rhythm
  */
 export const LoadingIndicator: FC<{
 	status?: JobStatus | null;
@@ -109,7 +115,8 @@ export const LoadingIndicator: FC<{
 	currentExecution?: AgentExecutionRecord | null;
 	conversationId?: string;
 	isSmallView?: boolean;
-}> = memo(({ status, currentExecution, isSmallView }) => {
+	className?: string;
+}> = memo(({ status, currentExecution, isSmallView, className }) => {
 	const currentExecutionId = currentExecution?.id ?? "";
 	const streamingMessage = useStreamingMessagesStore(
 		(state) => state.streamingMessages[currentExecutionId] ?? null,
@@ -141,36 +148,27 @@ export const LoadingIndicator: FC<{
 	}
 
 	return (
-		<div className={cn("flex items-center", isSmallView ? "gap-2" : "gap-0")}>
-			{!isSmallView && (
-				<Avatar>
-					<AvatarFallback>
-						<Bot size={22} />
-					</AvatarFallback>
-				</Avatar>
-			)}
-
-			<div className="flex max-w-[calc(100%-60px)] flex-col gap-2">
-				<div className="flex items-center gap-2">
-					<p
-						className={cn(
-							"animate-pulse break-words text-ink-muted",
-							isSmallView ? "text-meta" : "ml-4 text-body",
-						)}
-					>
-						{statusText}
-						<span className="relative z-[2] ml-1 inline-flex items-center">
-							{DELAY_BY_INDEX.map((delay) => (
-								<span
-									key={delay}
-									className="mx-px size-1 animate-pulse rounded-full bg-ink-muted"
-									style={{ animationDelay: `${delay}ms` }}
-								/>
-							))}
-						</span>
-					</p>
-				</div>
-			</div>
+		<div
+			className={cn("relative w-full", !isSmallView && AGENT_GUTTER, className)}
+		>
+			{!isSmallView && <MessageAvatar className="absolute top-0 left-0" />}
+			<p
+				className={cn(
+					"flex min-h-7 items-center break-words text-ink-muted",
+					isSmallView ? "text-meta" : "text-body",
+				)}
+			>
+				{statusText}
+				<span className="ml-1 inline-flex items-center">
+					{DELAY_BY_INDEX.map((delay) => (
+						<span
+							key={delay}
+							className="mx-px size-1 animate-pulse rounded-full bg-ink-dim"
+							style={{ animationDelay: `${delay}ms` }}
+						/>
+					))}
+				</span>
+			</p>
 		</div>
 	);
 });

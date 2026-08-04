@@ -7,7 +7,7 @@ import { PageHeader } from "@shared/components/common/page-header";
 import { Spinner } from "@shared/components/common/spinner";
 import { Alert, Button } from "@shared/components/ui";
 import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
-import { CalendarDays, PlusCircle } from "lucide-react";
+import { CalendarDays, Plus } from "lucide-react";
 import type { FC } from "react";
 import { useState } from "react";
 import {
@@ -117,21 +117,22 @@ export const SchedulesPage: FC = () => {
 	const schedules = schedulesResponse?.result?.schedules || [];
 
 	return (
-		<div className="flex h-full flex-col p-6">
+		/* `gap-8`: `PageHeader` no longer ships its own bottom margin. */
+		<div className="flex h-full flex-col gap-8 p-6">
 			<PageHeader
 				title="Schedules"
 				icon={CalendarDays}
-				subtitle="View and manage scheduled tasks for your AI team."
+				subtitle="Work your agents do on a repeating schedule."
 			>
 				{/* Opens ScheduleFormDialog for a new schedule */}
 				<Button
-					variant="outline"
-					size="lg"
+					variant="secondary"
+					size="md"
 					onClick={() => handleOpenForm()}
 					data-tour-tag="create-schedule-button"
 				>
-					<PlusCircle />
-					Create Schedule
+					<Plus />
+					New schedule
 				</Button>
 			</PageHeader>
 
@@ -149,11 +150,25 @@ export const SchedulesPage: FC = () => {
 					</div>
 				)}
 				{!isLoading && !error && schedules.length === 0 && (
-					<p className="py-16 text-center text-body-sm text-ink-muted">
-						No schedules found. Simply ask an agent to do a daily/weekly task
-						for you, or to handle something in the future and that task will
-						appear here.
-					</p>
+					/* An empty state that names the easier route rather than just
+					   reporting the absence. */
+					<div className="flex flex-col items-center gap-2 px-6 py-16 text-center">
+						<p className="text-heading text-ink">No schedules yet</p>
+						<p className="max-w-100 text-body-sm text-ink-muted">
+							Ask an agent in chat to do something on a regular basis — "send me
+							the news at 8am every day" — and it will appear here. You can also
+							set one up by hand.
+						</p>
+						<Button
+							variant="secondary"
+							size="sm"
+							onClick={() => handleOpenForm()}
+							className="mt-2"
+						>
+							<Plus />
+							New schedule
+						</Button>
+					</div>
 				)}
 				{!isLoading && !error && schedules.length > 0 && (
 					<div>

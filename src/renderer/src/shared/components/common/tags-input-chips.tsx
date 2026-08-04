@@ -67,7 +67,8 @@ export const TagsInputChips: FC<TagsInputChipsProps> = ({
 	};
 
 	return (
-		<div className="mb-4">
+		/* No outer margin: the container owns the gap between fields. */
+		<div>
 			<Label
 				htmlFor={inputId}
 				className="mb-1.5 flex items-center gap-2 text-ink-muted"
@@ -77,7 +78,7 @@ export const TagsInputChips: FC<TagsInputChipsProps> = ({
 			</Label>
 			<div
 				className={cn(
-					"flex min-h-11 flex-wrap items-center gap-2 rounded-md border border-control bg-surface p-2",
+					"flex min-h-11 flex-wrap items-center gap-2 rounded-sm border border-control bg-surface p-2",
 					disabled && "border-hairline bg-sunken",
 				)}
 			>

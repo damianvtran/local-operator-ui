@@ -1,6 +1,6 @@
 import { Spinner } from "@shared/components/common/spinner";
 import { Button, Tooltip } from "@shared/components/ui";
-import { useCredentials } from "@shared/hooks/use-credentials";
+import { useRadientCredentialProbe } from "@shared/hooks/use-credentials";
 import { useConversationInputStore } from "@shared/store/conversation-input-store";
 import { useSpeechStore } from "@shared/store/speech-store";
 import {
@@ -14,7 +14,7 @@ import {
 	Volume2,
 } from "lucide-react";
 import type { FC } from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
 
 const URL_REGEX = /https?:\/\/[^\s]+/i;
@@ -76,19 +76,18 @@ export const TextSelectionControls: FC<TextSelectionControlsProps> = ({
 	}>({ text: "", html: "", rect: null, range: null });
 	const { playSpeech, stopSpeech, loadingMessageId, playingMessageId } =
 		useSpeechStore();
-	const { data: credentialsData, isLoading: isLoadingCredentials } =
-		useCredentials();
+
 	const { addReply, addAttachment } = useConversationInputStore();
 
-	const isRadientApiKeyConfigured = useMemo(
-		() => credentialsData?.keys?.includes("RADIENT_API_KEY"),
-		[credentialsData?.keys],
-	);
+	const { hasRadientApiKey, isUnavailable } = useRadientCredentialProbe();
+	const canEnableSpeechFeature = hasRadientApiKey && !isUnavailable;
 
-	const canEnableSpeechFeature = useMemo(
-		() => isRadientApiKeyConfigured && !isLoadingCredentials,
-		[isRadientApiKeyConfigured, isLoadingCredentials],
-	);
+	// The probe returns no keys both when nothing is configured and when the
+	// local server cannot be reached, and those need different copy — one sends
+	// the reader to settings, the other tells them to wait.
+	const speechUnavailableReason = isUnavailable
+		? "Text to speech is unavailable while Local Operator is offline"
+		: "Sign in to Radient in the settings page to enable text to speech";
 
 	const [currentSelectionId, setCurrentSelectionId] = useState<string | null>(
 		null,
@@ -330,7 +329,7 @@ export const TextSelectionControls: FC<TextSelectionControlsProps> = ({
 							isLoading
 								? "Loading"
 								: !canEnableSpeechFeature
-									? "Sign in to Radient in the settings page to enable text to speech"
+									? speechUnavailableReason
 									: "Speak aloud"
 						}
 					>

@@ -1,5 +1,5 @@
 import { cn } from "@shared/lib/utils";
-import { ArrowLeft, Bot } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import type { FC } from "react";
 
 /**
@@ -12,9 +12,19 @@ type PlaceholderViewProps = {
 };
 
 /**
- * PlaceholderView Component
+ * The pane before a conversation exists.
  *
- * Displays a placeholder when no content is available
+ * Three deliberate subtractions from what was here:
+ *
+ * - **The 48px robot is gone.** A large glyph floating above a heading is the
+ *   most recognisable template in AI-product design and it told the reader
+ *   nothing they could not read in the next line. Type hierarchy carries an
+ *   empty state on its own — this is Things', Linear's and Cron's treatment.
+ * - **The ground is `canvas`,** the same ground the conversation uses, so
+ *   selecting an agent does not repaint the pane a different colour.
+ * - **The hint is not accent.** § 2 spends the accent about three times per
+ *   screen on things you act on; a sentence pointing at the sidebar is not one
+ *   of them, and dimming it is what lets the title read first.
  */
 export const PlaceholderView: FC<PlaceholderViewProps> = ({
 	title,
@@ -24,24 +34,25 @@ export const PlaceholderView: FC<PlaceholderViewProps> = ({
 	return (
 		<div
 			className={cn(
-				"flex h-full grow flex-col items-center justify-center bg-surface p-6",
+				"flex h-full grow flex-col items-center justify-center bg-canvas p-6",
 			)}
 		>
-			<Bot size={48} className={cn("mb-4 text-ink-dim")} aria-hidden={true} />
-			<h2 className={cn("mb-1 text-heading text-ink")}>{title}</h2>
-			<p
-				className={cn(
-					"mb-4 max-w-[500px] text-center text-body-sm text-ink-muted",
-				)}
-			>
-				{description}
-			</p>
-			{directionText && (
-				<p className={cn("flex items-center gap-2 text-accent text-body-sm")}>
-					<ArrowLeft size={16} aria-hidden={true} />
-					{directionText}
+			<div className={cn("flex max-w-[420px] flex-col items-center gap-2")}>
+				<h2 className={cn("text-ink text-title")}>{title}</h2>
+				<p className={cn("text-center text-body text-ink-muted")}>
+					{description}
 				</p>
-			)}
+				{directionText && (
+					<p
+						className={cn(
+							"mt-4 flex items-center gap-2 text-ink-dim text-body-sm",
+						)}
+					>
+						<ArrowLeft size={14} aria-hidden={true} />
+						{directionText}
+					</p>
+				)}
+			</div>
 		</div>
 	);
 };

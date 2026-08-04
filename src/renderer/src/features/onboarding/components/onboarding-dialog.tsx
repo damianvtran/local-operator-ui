@@ -28,7 +28,8 @@ export type OnboardingDialogProps = {
 	 */
 	title?: ReactNode;
 	/**
-	 * Optional step indicators (e.g., dots)
+	 * Progress for the current flow, rendered on the title's row at its right
+	 * edge. Omitted on the steps that come before the numbered flow.
 	 */
 	stepIndicators?: ReactNode;
 	/**
@@ -87,24 +88,53 @@ export const OnboardingDialog = ({
 					contentRef.current?.focus();
 				}}
 				className={cn(
-					"max-h-[calc(100vh-4rem)] max-w-165 gap-0 overflow-hidden p-0",
+					/*
+					 * 560px, down from 660. The choice step was the only one that
+					 * wanted the width; every other step is a two-field form, and a
+					 * 612px-wide box for "Your name" is a web signup page rather than
+					 * a desktop setup dialog. Raycast, Cron and Things all run first
+					 * run at roughly this measure — wide enough for a sentence of
+					 * explanation, narrow enough that one decision fills the frame.
+					 */
+					"max-h-[calc(100vh-4rem)] max-w-140 gap-0 overflow-hidden p-0",
 					className,
 				)}
 			>
-				{title && (
-					<DialogTitle className="shrink-0 border-hairline border-b px-6 py-4 text-title">
-						{title}
-					</DialogTitle>
+				{/*
+				 * Title and progress share one row. They were two stacked bands, so
+				 * the eye crossed a title, a rule, a row of dots and then finally
+				 * the step — three horizontal divisions before any content. The
+				 * progress belongs beside the title because it qualifies it.
+				 */}
+				{(title || stepIndicators) && (
+					<div className="flex shrink-0 items-center justify-between gap-4 border-hairline border-b px-6 py-4">
+						{title ? (
+							<DialogTitle className="text-title">{title}</DialogTitle>
+						) : (
+							<DialogTitle className="sr-only">Setup</DialogTitle>
+						)}
+						{stepIndicators}
+					</div>
 				)}
 
-				{stepIndicators && (
-					<div className="shrink-0 px-6 pt-4">{stepIndicators}</div>
-				)}
-
+				{/*
+				 * `outline-none!` because this element is focused programmatically on
+				 * open, and Chrome counts a scripted `.focus()` as focus-visible when
+				 * the last input was not a pointer — so the app's accent ring was
+				 * drawn around the whole scrolling body of the dialog, appearing as a
+				 * 2px green line directly under the title on the first frame a new
+				 * user ever sees. It is a scroll container, not a control; the ring
+				 * marks nothing actionable.
+				 *
+				 * The `!` is required rather than tidy: the ring is re-asserted by an
+				 * unlayered `html :focus-visible` rule injected by the MUI baseline,
+				 * which outranks every Tailwind utility regardless of specificity.
+				 * See docs/branding.md § 8, "MUI wins specificity fights".
+				 */}
 				<div
 					ref={contentRef}
 					tabIndex={-1}
-					className="min-h-0 flex-1 overflow-y-auto px-6 py-6"
+					className="min-h-0 flex-1 overflow-y-auto px-6 py-6 outline-none!"
 				>
 					{children}
 				</div>

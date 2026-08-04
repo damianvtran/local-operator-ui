@@ -1,11 +1,13 @@
 /**
- * Component for displaying message timestamps.
- * Shows a smart formatted time based on when the message was sent, with the
- * full date and time behind a tooltip on hover.
+ * The exact time of one message.
  *
- * The `sx` prop became `className` in the Tailwind port; the two former
- * behaviours it carried (opacity hiding while streaming) are now expressed
- * with `invisible` from the call site.
+ * It used to print under every single turn, so a nine-row conversation carried
+ * nine copies of "2026-03-14" — the same fact, nine times, in the position the
+ * eye lands on after finishing a paragraph. Ambient time is now carried by the
+ * dividers the message list inserts on a day change or a long pause, and this
+ * component appears only inside the hover meta row, next to copy and speak.
+ * That is Slack's model: one visible stamp per block, the rest on hover, the
+ * full date in the title.
  */
 
 import { Tooltip } from "@shared/components/ui";
@@ -16,44 +18,27 @@ import {
 } from "@shared/utils/date-utils";
 import type { FC } from "react";
 
-/**
- * Props for the MessageTimestamp component
- */
 export type MessageTimestampProps = {
 	timestamp: Date;
-	isUser: boolean;
-	isSmallView?: boolean;
 	className?: string;
-	inline?: boolean;
 };
 
 export const MessageTimestamp: FC<MessageTimestampProps> = ({
 	timestamp,
-	isUser,
 	className,
-	isSmallView,
-	inline = false,
-}) => {
-	const formattedTime = formatMessageDateTime(timestamp);
-	const fullDateTime = getFullDateTime(timestamp);
-
-	return (
-		<Tooltip content={fullDateTime} side="bottom" delayDuration={1200}>
-			<span
-				className={cn(
-					"block cursor-help text-ink-dim text-meta",
-					!inline && "mt-2",
-					isUser ? "text-left" : "text-right",
-					// Assistant timestamps span the content column, which is the full
-					// width minus the avatar column (40px avatar + 12px gap).
-					!inline &&
-						!isUser &&
-						(isSmallView ? "w-full" : "w-[calc(100%-52px)]"),
-					className,
-				)}
-			>
-				{formattedTime}
-			</span>
-		</Tooltip>
-	);
-};
+}) => (
+	<Tooltip
+		content={getFullDateTime(timestamp)}
+		side="bottom"
+		delayDuration={1200}
+	>
+		<span
+			className={cn(
+				"shrink-0 cursor-help whitespace-nowrap text-ink-dim text-meta",
+				className,
+			)}
+		>
+			{formatMessageDateTime(timestamp)}
+		</span>
+	</Tooltip>
+);

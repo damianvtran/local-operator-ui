@@ -247,7 +247,11 @@ export const SearchableSelect: FC<SearchableSelectProps> = ({
 		open && activeIndex >= 0 ? `${baseId}-option-${activeIndex}` : undefined;
 
 	return (
-		<div className="relative mb-4">
+		/* No outer margin: the container owns the gap between fields. A component
+		   that ships one stacks with every parent that has a `gap`, and the
+		   result is still spacing, just the wrong tier — which is how the settings
+		   forms ended up with 32px between two fields of the same group. */
+		<div className="relative">
 			<Tooltip content={labelTooltip}>
 				<label
 					htmlFor={inputId}

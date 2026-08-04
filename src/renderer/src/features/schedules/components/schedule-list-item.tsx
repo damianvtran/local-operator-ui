@@ -1,11 +1,12 @@
 import type { ScheduleResponse } from "@shared/api/local-operator";
 import { AgentsApi } from "@shared/api/local-operator/agents-api";
-import { Badge, Button, Skeleton, Tooltip } from "@shared/components/ui";
+import { Button, Skeleton, Switch, Tooltip } from "@shared/components/ui";
 import { apiConfig } from "@shared/config";
 import { cn } from "@shared/lib/utils";
 import { useQuery } from "@tanstack/react-query";
-import { Edit, Trash2, User } from "lucide-react";
+import { Edit, Trash2 } from "lucide-react";
 import type { FC } from "react";
+import { useId } from "react";
 
 const formatTime = (date: Date): string => {
 	return date.toLocaleTimeString(navigator.language, {
@@ -40,7 +41,7 @@ const createScheduleDisplayString = (schedule: ScheduleResponse): string => {
 
 	if (schedule.start_time_utc) {
 		const startTime = new Date(schedule.start_time_utc);
-		displayString += ` @ ${formatTime(startTime)}`;
+		displayString += ` at ${formatTime(startTime)}`;
 		if (schedule.one_time) {
 			const startYear = startTime.getFullYear();
 			displayString += ` on ${formatDate(startTime, startYear !== currentYear)}`;
@@ -64,7 +65,7 @@ const createScheduleDisplayString = (schedule: ScheduleResponse): string => {
 			}
 		} else {
 			// If no start time, "ends @ ..."
-			displayString += ` ending @ ${formatTime(endTime)}`;
+			displayString += ` ending at ${formatTime(endTime)}`;
 			if (schedule.one_time) {
 				const endYear = endTime.getFullYear();
 				displayString += ` on ${formatDate(endTime, endYear !== currentYear)}`;
@@ -73,7 +74,7 @@ const createScheduleDisplayString = (schedule: ScheduleResponse): string => {
 	}
 
 	if (schedule.one_time && !schedule.start_time_utc && !schedule.end_time_utc) {
-		displayString += " (One-time)";
+		displayString += ", once";
 	}
 
 	return displayString;
@@ -108,77 +109,130 @@ const useAgentName = (agentId: string) => {
 /**
  * One schedule row.
  *
- * Rows are separated by hairlines on the list side, not boxed per row: the
- * old bordered Paper-per-row doubled the boundary the container already
- * provides. Hover only nudges the row to the next ground step.
+ * ## What the row says now, and what it stopped saying
+ *
+ * It was five stacked blocks — prompt, an accent pill for the agent, the
+ * cadence, a coloured `Status: Active` sentence, and a right-aligned raw UUID —
+ * running about 166px per schedule. Four schedules did not fit on a laptop
+ * screen.
+ *
+ * It is now two lines in a fixed rhythm, the shape Fantastical and Notion
+ * Calendar use for an agenda row: **what it does** at reading weight on line
+ * one, and **when, and who for** as one caption on line two. That is 64px.
+ *
+ * Specifics worth writing down:
+ *
+ * - **The prompt is `ink`, not `ink-muted`.** It was the only content in the
+ *   row and it was set as secondary text under an accent-coloured badge.
+ * - **The agent is plain text, not an accent pill.** The accent is spent about
+ *   three times per screen; a list of twenty schedules was spending it twenty.
+ * - **The UUID is gone from the surface** and lives on the row's `title`, so it
+ *   is still there for anyone debugging and absent for everyone else.
+ * - **`Status: Active` is a switch.** The page already implements and passes
+ *   `onToggleActive`, and the row never called it — so the list could tell you
+ *   a schedule was inactive and offer no way to change that. Reporting a state
+ *   with no affordance to change it is the definition of a dead end.
+ * - **Hover is `elevated`.** It was `hover:bg-surface` inside a `bg-surface`
+ *   container, so hovering a row did nothing at all.
  */
 export const ScheduleListItem: FC<ScheduleListItemProps> = ({
 	schedule,
 	onEdit,
 	onDelete,
+	onToggleActive,
 }) => {
 	const { data: agentName, isLoading: isLoadingAgentName } = useAgentName(
 		schedule.agent_id,
 	);
+	const switchId = useId();
 
 	return (
-		<div className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-1 border-b border-hairline px-4 py-3 transition-colors duration-fast ease-out-quart last:border-b-0 hover:bg-surface">
-			<p className="min-w-0 break-words text-body-sm text-ink-muted">
-				{schedule.prompt}
-			</p>
-
-			<div className="flex items-start gap-1">
-				<Tooltip content="Edit schedule">
-					<Button
-						variant="ghost"
-						size="icon"
-						onClick={() => onEdit(schedule)}
-						aria-label="Edit Schedule"
-					>
-						<Edit />
-					</Button>
-				</Tooltip>
-				<Tooltip content="Delete schedule">
-					<Button
-						variant="ghost"
-						size="icon"
-						onClick={() => onDelete(schedule.id)}
-						aria-label="Delete Schedule"
-					>
-						<Trash2 />
-					</Button>
-				</Tooltip>
-			</div>
-
-			<div className="col-span-2 flex flex-col gap-1">
-				<div className="flex min-h-7 items-center">
-					{isLoadingAgentName ? (
-						<Skeleton className="h-6 w-20 rounded-full" />
-					) : (
-						<Badge variant="accent" shape="pill" aria-label="Agent Name">
-							<User size={12} aria-hidden="true" />
-							<span className="max-w-40 truncate">
-								{agentName || schedule.agent_id.substring(0, 8)}
-							</span>
-						</Badge>
-					)}
-				</div>
-				<p className="text-ink-muted text-meta">
-					{createScheduleDisplayString(schedule)}
-				</p>
+		<div
+			title={`Schedule ID: ${schedule.id}`}
+			className={cn(
+				"group flex items-start gap-3 border-hairline border-b px-4 py-3 last:border-b-0",
+				"transition-colors duration-fast ease-out-quart hover:bg-elevated",
+			)}
+		>
+			<div className={cn("flex min-w-0 flex-1 flex-col gap-1")}>
 				<p
 					className={cn(
-						"text-meta",
-						schedule.is_active ? "text-success" : "text-danger",
+						"min-w-0 break-words text-body-sm",
+						// An inactive schedule is not running, and its prompt reads back
+						// at caption weight to say so without a coloured label.
+						schedule.is_active ? "text-ink" : "text-ink-muted",
 					)}
 				>
-					Status: {schedule.is_active ? "Active" : "Inactive"}
+					{schedule.prompt}
+				</p>
+				<p className={cn("flex flex-wrap items-center gap-x-1.5 text-meta")}>
+					<span className={cn("text-ink-muted")}>
+						{createScheduleDisplayString(schedule)}
+					</span>
+					<span aria-hidden="true" className={cn("text-ink-dim")}>
+						·
+					</span>
+					{isLoadingAgentName ? (
+						<Skeleton className={cn("h-3 w-24")} />
+					) : (
+						<span className={cn("truncate text-ink-dim")}>
+							{agentName || schedule.agent_id.substring(0, 8)}
+						</span>
+					)}
 				</p>
 			</div>
 
-			<p className="col-span-2 text-right text-ink-dim text-mono-sm">
-				ID: {schedule.id}
-			</p>
+			<div className={cn("flex shrink-0 items-center gap-1")}>
+				{/*
+				 * The switch is always drawn — it carries the schedule's state, so
+				 * hiding it until hover would hide the state. Edit and delete are
+				 * actions, and they reveal like every other row action in the app.
+				 */}
+				<Tooltip
+					content={schedule.is_active ? "Pause schedule" : "Resume schedule"}
+				>
+					<span className={cn("flex items-center pr-1")}>
+						<Switch
+							id={switchId}
+							checked={schedule.is_active}
+							onCheckedChange={() => onToggleActive(schedule)}
+							aria-label={
+								schedule.is_active ? "Pause schedule" : "Resume schedule"
+							}
+						/>
+					</span>
+				</Tooltip>
+				<div
+					className={cn(
+						"flex items-center gap-0.5",
+						"pointer-events-none opacity-0",
+						"group-hover:pointer-events-auto group-hover:opacity-100",
+						"group-focus-within:pointer-events-auto group-focus-within:opacity-100",
+					)}
+				>
+					<Tooltip content="Edit schedule">
+						<Button
+							variant="ghost"
+							size="icon-sm"
+							onClick={() => onEdit(schedule)}
+							aria-label="Edit schedule"
+						>
+							<Edit />
+						</Button>
+					</Tooltip>
+					<Tooltip content="Delete schedule">
+						<Button
+							variant="ghost"
+							size="icon-sm"
+							onClick={() => onDelete(schedule.id)}
+							aria-label="Delete schedule"
+							className={cn("hover:bg-danger-wash hover:text-danger")}
+						>
+							<Trash2 />
+						</Button>
+					</Tooltip>
+				</div>
+			</div>
 		</div>
 	);
 };

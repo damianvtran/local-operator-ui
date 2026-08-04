@@ -19,6 +19,8 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { type ReactNode, useEffect, useLayoutEffect } from "react";
 import "../../../../styles/index.css";
 import type { Message } from "../../types/message";
+import { boundarySpacing, groupMessages } from "../../utils/message-grouping";
+import { ConversationDivider } from "../conversation-divider";
 import { MessageItem } from "../message-item";
 import { AgentQuestion, SecurityNotice, TraceGroup, TraceLine } from "./index";
 
@@ -74,10 +76,10 @@ const ThemeFrame = ({
 
 const at = (iso: string) => new Date(iso);
 
-// A 8x6 pasted chart image as a data URI — what the app stores when a user
-// pastes an image into the composer.
+// A 360x200 pasted chart screenshot as a data URI — what the app stores when
+// a user pastes an image into the composer.
 const PASTED_IMAGE =
-	"data:image/png;name=chart-preview.png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAGCAYAAAD+Bd/7AAAAKElEQVR4nGP48OHdf3yYAZkj1JPwH53PgMxBVgDjMyBzYAqQ+ZQrAAA1o4rxQkGqIAAAAABJRU5ErkJggg==";
+	"data:image/png;name=chart-preview.png;base64,iVBORw0KGgoAAAANSUhEUgAAAWgAAADICAIAAABK7OzYAAAETklEQVR42u3UsQmAQBAEwCtEDCzH3MTwe7IxK9IWHhT2dWBjWc79qWleHs+2tzc+KyIhKXCICDhEBBwiAg4RAQc4RMABjgGznkdI/AtwgAMc4BBwgAMcAg4Bh4BDwCHgAAc4BBzgAAc4BBzgAIeAAxzgEHAIOAQcAg4BBzjAAQ5wgAMc4BBwgAMcAg4Bh4BDwCHgAAc4wAEOcIADHAIOcIBDwCHgkK/DYdDgEHCAAxzgEHCAw50FHOBwZwGHQYNDwGHQ4BBwgAMc4AAHOMDhzgIOcLizgMOgwSHgMGhwCDjAAQ5wgAMc4HBnAQc43FnAYdDgEHAYNDgEHOAAh4ADHOBwZwEHONxZwGHQ7izgMGhwCDgMGhwCDnCAAxwCDnC4s4ADHO4s4DBocAg4DBocAg5wgAMc4AAHONxZwAEOdxZwGDQ43DnnzuAwaHd2Z3AYtDu7MzgM2qDdGRwGbdDuDA5wGLQ7gwMcBu3O7gwOg3ZndwaHQRu0O4PDoA3ancEBDoN2Z3CAw6Dd2Z3BYdDu7M7gMGiDdmdwGLRBuzM4HNqg3Rkc4DBod3ZncBi0O7szOAzand0ZHAZt0O4MDoc2aHcGBzgM2p3BAQ6Ddmd3BodBu7M7g8OgDdqdwRF9aJ3B4c7gAAc4wAEOj9CgwQEOjxAc4AAHOHQGBzjAoTM43Bkc4AAHOMDhERo0OMDhEYIDHODwCHUGBzjAoTM43Bkc4AAHOMABDoMGBzg8QnCAAxweoc7gAAc4dAYHOMABDnC4MzjAAQ5wgMMjNGhwgMMj1Bkc4ACHzuAABzh0Boc7gwMc4AAHODxCgwYHODxCcIADHODQGRzgAIfO4HBncIADHOAAh0do0OAAh0cIDnCAwyPUGRzgAIfO4HBncIADHOAABzgMGhzg8AgNGhzg8Ah11hkc4NBZZ3CAw6B1Bgc4DFpnncFhHDrrDA7j0FlncIBDZ53BAQ6ddQYHOAxaZ3CAwzh01hkcxqGzzuAAh846gwMcOusMDnAYtM7gAIdx6KwzOIxDZ53BYRw66wwOcOisMzjAYdA6gwMcBq2zzuAwDp11Bodx6KwzOMChs87gAIdB6wwOcBi0zuAAh3HorDM4jENnncEBDp11Bgc4dNYZHOAwaJ3BAQ7j0FlncBiHzjqDAxw66wwOcOisMzjAYdA6gwMcBq2zzuAwDp11Bodx6KwzOMChs87gAIdB6wwOcBi0zjqDwzh01hkcxqGzzuAAh846gwMcOusMDnAYtM7gAIdx6KwzOIxDZ53BAQ6ddQYHOHTWGRzgMGidwQEO49BZZ3AYh846gwMcOusMDnDorDM4wGHQOoMDHAats87gMA6ddQaHceisMzjAobPOv4fjfuQiIl2pBL1EZKyAQ0TAISLgEBFwiAg4RAQcIiLgEBFwiAg4RAQcIgIOERFwiAg4RAQcIgIOEQGHiAg4RAQcIgIOEQGHiIBDRMDhCiLSlwsX1QYGTiNZfAAAAABJRU5ErkJggg==";
 
 const userQuestion: Message = {
 	id: "m-user-1",
@@ -255,11 +257,65 @@ const finalAnswer: Message = {
 	files: ["reports/unpaid-march.md"],
 };
 
+// A follow-up the next morning. Present so the story exercises the day
+// divider the message list inserts when a conversation is put down and picked
+// up again — the thing that replaced a date printed under every single turn.
+const nextDayFollowUp: Message = {
+	id: "m-user-3",
+	role: "user",
+	timestamp: at("2026-03-15T09:02:00Z"),
+	execution_type: "user_input",
+	conversation_id: "conv-1",
+	message: "Did Contoso pay overnight?",
+};
+
+const nextDayCheck: Message = {
+	id: "m-read-2",
+	role: "assistant",
+	timestamp: at("2026-03-15T09:02:14Z"),
+	execution_type: "action",
+	action: "READ",
+	task_classification: "continue",
+	conversation_id: "conv-1",
+	file_path: "invoices/march.csv",
+	message: "Re-reading the invoice export.",
+};
+
+const nextDayAnswer: Message = {
+	id: "m-answer-2",
+	role: "assistant",
+	timestamp: at("2026-03-15T09:02:20Z"),
+	execution_type: "response",
+	task_classification: "continue",
+	conversation_id: "conv-1",
+	is_complete: true,
+	message: "Not yet — the Contoso row still reads `unpaid`.",
+};
+
+const startedInfo: Message = {
+	id: "m-info-1",
+	role: "system",
+	timestamp: at("2026-03-14T10:21:00Z"),
+	execution_type: "info",
+	conversation_id: "conv-1",
+	message: "Conversation started in the invoices workspace",
+};
+
+const savedInfo: Message = {
+	id: "m-info-2",
+	role: "system",
+	timestamp: at("2026-03-15T09:02:40Z"),
+	execution_type: "info",
+	conversation_id: "conv-1",
+	message: "Session saved",
+};
+
 /* ------------------------------------------------------------------ */
 /* The list, rendered through the production MessageItem path          */
 /* ------------------------------------------------------------------ */
 
 const CONVERSATION: Message[] = [
+	startedInfo,
 	userQuestion,
 	plan,
 	readInvoices,
@@ -273,35 +329,52 @@ const CONVERSATION: Message[] = [
 	userReply,
 	fixedStep,
 	finalAnswer,
+	nextDayFollowUp,
+	nextDayCheck,
+	nextDayAnswer,
+	savedInfo,
 ];
 
 /**
- * The info divider is owned by messages-view in the app; it is reproduced
- * here in the same shape so the story stands alone.
+ * The list is rendered through the same grouping pass the app uses, not a
+ * simplified copy of it: turn spacing, avatar placement and the day divider
+ * are the story's subject, so reproducing them by hand would make the story
+ * evidence about the story.
  */
-const InfoDivider = ({ children }: { children: ReactNode }) => (
-	<div className="my-2 flex items-center text-center">
-		<div className="h-px flex-1 bg-hairline" />
-		<span className="px-4 text-ink-dim text-meta">{children}</span>
-		<div className="h-px flex-1 bg-hairline" />
-	</div>
-);
+const ConversationList = () => {
+	const showAgentReasoning = useUiPreferencesStore(
+		(state) => state.showAgentReasoning,
+	);
+	const rows = groupMessages(CONVERSATION, showAgentReasoning);
 
-const ConversationList = () => (
-	<div className="mx-auto flex w-full max-w-[900px] flex-col gap-4">
-		<InfoDivider>Conversation started in the invoices workspace</InfoDivider>
-		{CONVERSATION.map((message) => (
-			<MessageItem
-				key={message.id}
-				message={message}
-				conversationId="conv-1"
-				isLastMessage={false}
-				isSmallView={false}
-			/>
-		))}
-		<InfoDivider>Session saved</InfoDivider>
-	</div>
-);
+	return (
+		<div className="mx-auto flex w-full max-w-[900px] flex-col">
+			{rows.map((row) => (
+				<div
+					key={row.message.id}
+					className={boundarySpacing(row.boundary, false)}
+				>
+					{row.divider && (
+						<ConversationDivider className="mb-6">
+							{row.divider}
+						</ConversationDivider>
+					)}
+					{row.kind === "divider" ? (
+						<ConversationDivider>{row.message.message}</ConversationDivider>
+					) : (
+						<MessageItem
+							message={row.message}
+							conversationId="conv-1"
+							isLastMessage={false}
+							isTurnStart={row.isTurnStart}
+							isSmallView={false}
+						/>
+					)}
+				</div>
+			))}
+		</div>
+	);
+};
 
 const withReasoningOn = (Story: () => ReactNode) => {
 	useEffect(() => {

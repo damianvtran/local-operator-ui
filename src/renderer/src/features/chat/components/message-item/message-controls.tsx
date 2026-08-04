@@ -1,22 +1,26 @@
 /**
- * Component for the message control buttons (copy, speech) that appear on
- * hover. Visibility is driven by the parent's `group` class: the controls
- * stay at `opacity-0` until `group-hover`, and the streaming state hides them
- * with `invisible` from the call site — visibility wins over the hover
- * opacity rule regardless of utility order, which a second opacity class
- * would not.
+ * The per-turn meta row: copy, speak, and the exact time.
  *
- * The `sx` prop became `className` in the Tailwind port.
+ * One hover affordance instead of two. The timestamp used to be a permanent
+ * line under every turn while the buttons appeared on hover, which meant the
+ * noisy half was always on and the useful half was hidden. Both now live in
+ * the same strip, revealed together by the parent's `group` class.
+ *
+ * Visibility is driven by the parent's `group`: the strip stays at
+ * `opacity-0` until `group-hover`, and the streaming state hides it with
+ * `invisible` from the call site — visibility wins over the hover opacity
+ * rule regardless of utility order, which a second opacity class would not.
  */
 
 import { Spinner } from "@shared/components/common/spinner";
 import { Button, Tooltip } from "@shared/components/ui";
-import { useCredentials } from "@shared/hooks/use-credentials";
+import { useRadientCredentialProbe } from "@shared/hooks/use-credentials";
 import { cn } from "@shared/lib/utils";
 import { useSpeechStore } from "@shared/store/speech-store";
 import { Copy, Square, Volume2 } from "lucide-react";
 import type { FC } from "react";
-import { useMemo, useState } from "react";
+import { useState } from "react";
+import { MessageTimestamp } from "./message-timestamp";
 
 // Props for the MessageControls component
 type MessageControlsProps = {
@@ -26,6 +30,8 @@ type MessageControlsProps = {
 	messageId: string;
 	agentId?: string;
 	inline?: boolean;
+	/** Rendered at the trailing end of the strip when supplied. */
+	timestamp?: Date;
 };
 
 export const MessageControls: FC<MessageControlsProps> = ({
@@ -35,10 +41,10 @@ export const MessageControls: FC<MessageControlsProps> = ({
 	messageId,
 	agentId,
 	inline = false,
+	timestamp,
 }) => {
 	const [copied, setCopied] = useState(false);
-	const { data: credentialsData, isLoading: isLoadingCredentials } =
-		useCredentials();
+	const { hasRadientApiKey, isUnavailable } = useRadientCredentialProbe();
 	const {
 		playSpeech,
 		stopSpeech,
@@ -52,15 +58,14 @@ export const MessageControls: FC<MessageControlsProps> = ({
 	const isLoading = loadingMessageId === messageId;
 	const hasAudio = audioCache.has(messageId);
 
-	const isRadientApiKeyConfigured = useMemo(
-		() => credentialsData?.keys?.includes("RADIENT_API_KEY"),
-		[credentialsData?.keys],
-	);
+	const canEnableSpeechFeature = hasRadientApiKey && !isUnavailable;
 
-	const canEnableSpeechFeature = useMemo(
-		() => isRadientApiKeyConfigured && !isLoadingCredentials,
-		[isRadientApiKeyConfigured, isLoadingCredentials],
-	);
+	// "Not signed in" and "could not reach the server to find out" look
+	// identical from the probe, and sending someone to the settings page to fix
+	// an account that is fine is the worse of the two mistakes.
+	const speechTooltip = isUnavailable
+		? "Text to speech is unavailable while Local Operator is offline"
+		: "Sign in to Radient in the settings page to enable text to speech";
 
 	// Only show copy button for assistant messages
 	const showCopyButton = content;
@@ -100,19 +105,27 @@ export const MessageControls: FC<MessageControlsProps> = ({
 	return (
 		<div
 			className={cn(
-				"flex items-center",
+				"flex items-center gap-0.5",
 				inline
 					? "w-auto"
 					: cn(
-							"message-controls absolute z-10 w-full opacity-0 transition-opacity duration-fast ease-out-quart group-hover:opacity-100",
-							isUser ? "bottom-2 justify-end" : "-bottom-3 justify-start",
+							// Slack's and Linear's hover toolbar: a small group pinned to
+							// the turn's top-right corner rather than a strip reserved
+							// under every message. Nothing is reserved, so the rhythm
+							// between turns stays exactly what the grouping asked for, and
+							// nothing shifts when it appears. The `elevated` ground plus a
+							// hairline is what makes it read as floating — § 2 keeps the
+							// one shadow for objects that genuinely leave the flow.
+							"message-controls absolute -top-2 right-0 z-10 h-8 rounded-md border border-hairline bg-elevated px-1",
+							"pointer-events-none opacity-0 transition-opacity duration-fast ease-out-quart",
+							"group-hover:pointer-events-auto group-hover:opacity-100",
 						),
 				className,
 			)}
 		>
-			{/* Only render the wrapper if there are buttons to show */}
+			{timestamp && <MessageTimestamp timestamp={timestamp} className="px-1" />}
 			{showCopyButton && (
-				<div className="flex items-start">
+				<div className="flex items-center">
 					<Tooltip content={copied ? "Copied!" : "Copy message"} side="top">
 						<Button
 							variant="ghost"
@@ -141,7 +154,7 @@ export const MessageControls: FC<MessageControlsProps> = ({
 							<Tooltip
 								content={
 									!canEnableSpeechFeature
-										? "Sign in to Radient in the settings page to enable text to speech"
+										? speechTooltip
 										: isLoading
 											? "Loading"
 											: hasAudio

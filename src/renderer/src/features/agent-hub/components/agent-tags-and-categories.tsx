@@ -1,3 +1,4 @@
+import { cn } from "@shared/lib/utils";
 import {
 	BarChart2,
 	Briefcase,
@@ -51,11 +52,11 @@ export const CATEGORY_ICON_MAP: Record<
 	},
 	role_play: {
 		icon: <Users size={14} aria-hidden="true" />,
-		label: "Role Play",
+		label: "Role play",
 	},
 	personal_assistance: {
 		icon: <User size={14} aria-hidden="true" />,
-		label: "Personal Assistance",
+		label: "Personal assistance",
 	},
 	education: {
 		icon: <GraduationCap size={14} aria-hidden="true" />,
@@ -83,7 +84,7 @@ export const CATEGORY_ICON_MAP: Record<
 	},
 	social_media: {
 		icon: <Globe2 size={14} aria-hidden="true" />,
-		label: "Social Media",
+		label: "Social media",
 	},
 	other: {
 		icon: <FileQuestion size={14} aria-hidden="true" />,
@@ -92,13 +93,12 @@ export const CATEGORY_ICON_MAP: Record<
 };
 
 /**
- * Converts snake_case to Normal Upper Case with spaces.
+ * Converts snake_case to a sentence-case label. Title Case is a marketing
+ * register; a tag on a card is a label, so only the first word is capitalised.
  */
 function formatLabel(str: string): string {
-	return str
-		.split("_")
-		.map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-		.join(" ");
+	const words = str.split("_").join(" ");
+	return words.charAt(0).toUpperCase() + words.slice(1);
 }
 
 /**
@@ -132,9 +132,26 @@ export const AgentTagsAndCategories: FC<AgentTagsAndCategoriesProps> = ({
 		return null;
 	}
 
+	/*
+	 * A tag that repeats a category is noise: cards were showing "Finance"
+	 * twice and "Research" twice, in two pills that look almost identical.
+	 * Categories win, because they are the axis the sidebar filters on.
+	 */
+	const categoryLabels = new Set(
+		(categories ?? []).map((cat) =>
+			(CATEGORY_ICON_MAP[cat]?.label ?? formatLabel(cat)).toLowerCase(),
+		),
+	);
+	const distinctTags = (tags ?? []).filter(
+		(tag) => !categoryLabels.has(formatLabel(tag).toLowerCase()),
+	);
+
 	return (
 		<div
-			className={`relative flex flex-wrap items-center gap-1.5 overflow-hidden ${className ?? ""}`}
+			className={cn(
+				"relative flex flex-wrap items-center gap-1.5 overflow-hidden",
+				className,
+			)}
 			data-testid="agent-tags-and-categories"
 		>
 			{categories?.map((cat) => {
@@ -145,19 +162,19 @@ export const AgentTagsAndCategories: FC<AgentTagsAndCategoriesProps> = ({
 				return (
 					<span
 						key={cat}
-						className={`${pillClassName} gap-1 font-medium text-ink-muted`}
+						className={cn(pillClassName, "gap-1 font-medium text-ink-muted")}
 					>
 						{entry.icon}
 						{entry.label}
 					</span>
 				);
 			})}
-			{tags?.map((tag) => (
+			{distinctTags.map((tag) => (
 				<span
 					key={tag}
-					className={`${pillClassName} gap-1 font-normal text-ink-dim`}
+					className={cn(pillClassName, "gap-1 font-normal text-ink-dim")}
 				>
-					<Tag size={12} className="opacity-70" aria-hidden="true" />
+					<Tag size={12} aria-hidden="true" />
 					{formatLabel(tag)}
 				</span>
 			))}

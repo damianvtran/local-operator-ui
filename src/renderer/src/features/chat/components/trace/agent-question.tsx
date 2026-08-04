@@ -59,8 +59,14 @@ export const AgentQuestion = ({ content, className }: AgentQuestionProps) => {
 				</p>
 				{/* The question body is the accent ink too: ink-on-accent-wash is the
 				 * one pairing the contrast contract does not measure, while
-				 * accent-on-accent-wash is verified per palette. */}
-				<div className="text-accent [&_p]:text-accent">
+				 * accent-on-accent-wash is verified per palette.
+				 *
+				 * Inline code loses its `sunken` chip here. A neutral fill on a
+				 * tinted ground is the "grey text on a coloured background" defect,
+				 * and the chips read as holes punched in the callout. The monospace
+				 * face is what marks machine voice (§ 4); the fill was carrying
+				 * nothing the type was not already saying. */}
+				<div className={cn("lo-on-wash text-accent [&_p]:text-accent")}>
 					<MarkdownRenderer content={content} />
 				</div>
 			</div>

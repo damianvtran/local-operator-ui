@@ -6,6 +6,7 @@ import { RingLoadingIndicator } from "@shared/components/common/ring-loading-ind
 import { Spinner } from "@shared/components/common/spinner";
 import { cn } from "@shared/lib/utils";
 import { useStreamingMessagesStore } from "@shared/store/streaming-messages-store";
+import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import React, {
 	type FC,
 	type RefObject,
@@ -16,6 +17,8 @@ import React, {
 	useState,
 } from "react";
 import type { Message } from "../types/message";
+import { boundarySpacing, groupMessages } from "../utils/message-grouping";
+import { ConversationDivider } from "./conversation-divider";
 import { LoadingIndicator } from "./loading-indicator";
 import { MessageItem } from "./message-item";
 
@@ -175,6 +178,17 @@ export const MessagesView: FC<MessagesViewProps> = React.memo(
 			return messages.slice(messages.length - renderedMessageCount);
 		}, [messages, renderedMessageCount]);
 
+		// One pass turns the flat record list into turns: how much air each row
+		// gets, which row carries the avatar, and where a time divider is due.
+		// See `utils/message-grouping` for the rules.
+		const showAgentReasoning = useUiPreferencesStore(
+			(state) => state.showAgentReasoning,
+		);
+		const groupedMessages = useMemo(
+			() => groupMessages(renderedMessages, showAgentReasoning),
+			[renderedMessages, showAgentReasoning],
+		);
+
 		const hiddenMessageCount = messages.length - renderedMessages.length;
 
 		const lastMessage = messages[messages.length - 1];
@@ -264,52 +278,47 @@ export const MessagesView: FC<MessagesViewProps> = React.memo(
 								id="messages-end-anchor"
 							/>
 
-							{renderedMessages.length > 0 ? (
+							{groupedMessages.length > 0 ? (
 								<div
 									className={cn(
 										"mx-auto flex w-full max-w-[900px] flex-col sm:max-w-[90%] md:max-w-[900px]",
-										isSmallView ? "gap-2" : "gap-4",
 									)}
 								>
-									{renderedMessages.map((message, index) =>
-										message.execution_type === "info" ? (
-											<div
-												key={message.id}
-												className={cn(
-													"flex items-center text-center",
-													isSmallView ? "my-1" : "my-2",
-												)}
-											>
-												<div className="flex-1 border-hairline border-t" />
-												<span
-													className={cn(
-														"max-w-[720px] text-ink-muted",
-														isSmallView
-															? "px-1 text-meta"
-															: "px-2 text-body-sm",
-													)}
+									{groupedMessages.map((row, index) => (
+										<div
+											key={row.message.id}
+											className={cn(boundarySpacing(row.boundary, isSmallView))}
+										>
+											{row.divider && (
+												<ConversationDivider
+													isSmallView={isSmallView}
+													className={isSmallView ? "mb-4" : "mb-6"}
 												>
-													{message.message}
-												</span>
-												<div className="flex-1 border-hairline border-t" />
-											</div>
-										) : (
-											<MessageItem
-												key={message.id}
-												message={message}
-												conversationId={conversationId}
-												currentExecution={
-													index === renderedMessages.length - 1 &&
-													currentExecution
-														? currentExecution
-														: undefined
-												}
-												isLastMessage={index === renderedMessages.length - 1}
-												onMessageComplete={handleMessageComplete}
-												isSmallView={isSmallView}
-											/>
-										),
-									)}
+													{row.divider}
+												</ConversationDivider>
+											)}
+											{row.kind === "divider" ? (
+												<ConversationDivider isSmallView={isSmallView}>
+													{row.message.message}
+												</ConversationDivider>
+											) : (
+												<MessageItem
+													message={row.message}
+													conversationId={conversationId}
+													currentExecution={
+														index === groupedMessages.length - 1 &&
+														currentExecution
+															? currentExecution
+															: undefined
+													}
+													isLastMessage={index === groupedMessages.length - 1}
+													isTurnStart={row.isTurnStart}
+													onMessageComplete={handleMessageComplete}
+													isSmallView={isSmallView}
+												/>
+											)}
+										</div>
+									))}
 
 									{/* Loading indicator for new message at the bottom */}
 									{isLoading && !lastMessageIsStreaming && (
@@ -319,6 +328,7 @@ export const MessagesView: FC<MessagesViewProps> = React.memo(
 											currentExecution={currentExecution}
 											conversationId={conversationId}
 											isSmallView={isSmallView}
+											className={isSmallView ? "mt-4" : "mt-6"}
 										/>
 									)}
 								</div>

@@ -10,7 +10,7 @@ import {
 } from "@shared/hooks/use-agent-execution-variables";
 import { cn } from "@shared/lib/utils";
 import { showErrorToast } from "@shared/utils/toast-manager";
-import { Copy, Edit2, Minus, Plus, PlusCircle, Trash2 } from "lucide-react";
+import { ChevronRight, Copy, Edit2, Plus, Trash2 } from "lucide-react";
 import type { FC, ReactNode } from "react";
 import { memo, useCallback, useEffect, useId, useMemo, useState } from "react";
 import { VariableFormDialog } from "./variable-form-dialog";
@@ -79,8 +79,10 @@ const VariableRow: FC<VariableDisplayProps> = memo(
 			[stringValue],
 		);
 
-		// Memoize variable type display
-		const typeDisplay = useMemo(() => `{${variable.type}}`, [variable.type]);
+		// The braces were Python `repr` punctuation leaking into the UI. The type
+		// is already set apart by its dim ink and its position between the name
+		// and the value.
+		const typeDisplay = variable.type;
 
 		// Memoize callbacks
 		const handleToggleExpand = useCallback(() => {
@@ -118,10 +120,11 @@ const VariableRow: FC<VariableDisplayProps> = memo(
 		);
 
 		return (
-			<div className={cn("border-hairline border-b last:border-b-0")}>
+			<div className={cn("group border-hairline border-b last:border-b-0")}>
 				<div
 					className={cn(
-						"flex items-center gap-1 transition-colors duration-fast ease-out-quart hover:bg-elevated",
+						"flex min-h-8 items-center gap-1 pr-1",
+						"transition-colors duration-fast ease-out-quart hover:bg-elevated",
 					)}
 				>
 					{/*
@@ -135,25 +138,50 @@ const VariableRow: FC<VariableDisplayProps> = memo(
 						aria-expanded={expanded}
 						aria-controls={contentId}
 						className={cn(
-							"flex min-w-0 flex-1 cursor-pointer select-none items-center gap-2 px-2 py-1.5 text-left font-mono text-mono-sm",
+							"flex min-w-0 flex-1 cursor-pointer select-none items-center gap-2 px-2 py-1 text-left font-mono text-mono-sm",
 						)}
 					>
-						<span className={cn("shrink-0 text-ink-dim")}>
-							{expanded ? <Minus size={12} /> : <Plus size={12} />}
-						</span>
+						{/*
+						 * A chevron, not a plus. The app's one disclosure idiom is a
+						 * chevron that rotates; a `+`/`−` pair here was a second
+						 * expand/collapse language in a panel that already had one,
+						 * and `+` also reads as "add" beside a create control that
+						 * means exactly that.
+						 */}
+						<ChevronRight
+							aria-hidden="true"
+							className={cn(
+								"size-3 shrink-0 text-ink-dim",
+								"transition-transform duration-fast ease-out-quart",
+								expanded && "rotate-90",
+							)}
+						/>
 						<span className={cn("shrink-0 font-medium text-ink")}>
 							{variable.key}
 						</span>
-						<span className={cn("shrink-0 text-ink-dim italic")}>
-							{typeDisplay}
-						</span>
+						<span className={cn("shrink-0 text-ink-dim")}>{typeDisplay}</span>
 						<Tooltip content={tooltipValue} align="start">
 							<span className={cn("min-w-0 flex-1 truncate text-ink-muted")}>
 								{truncatedValue}
 							</span>
 						</Tooltip>
 					</button>
-					<div className={cn("flex shrink-0 items-center gap-0.5 pr-1.5")}>
+					{/*
+					 * Row actions appear on hover or keyboard focus. Twenty-one
+					 * permanently drawn icons down a seven-row list — seven of them
+					 * red — read as a warning rather than as a set of controls, and
+					 * they competed with the values, which are what the panel is for.
+					 * Linear and Notion both reveal row actions this way. Focus goes
+					 * through `group-focus-within`, so they stay keyboard-reachable.
+					 */}
+					<div
+						className={cn(
+							"flex shrink-0 items-center gap-0.5",
+							"pointer-events-none opacity-0",
+							"group-hover:pointer-events-auto group-hover:opacity-100",
+							"group-focus-within:pointer-events-auto group-focus-within:opacity-100",
+						)}
+					>
 						<Tooltip content={copied ? "Copied" : "Copy value"}>
 							<Button
 								variant="ghost"
@@ -161,7 +189,7 @@ const VariableRow: FC<VariableDisplayProps> = memo(
 								onClick={handleCopy}
 								aria-label="Copy value"
 							>
-								<Copy size={14} />
+								<Copy />
 							</Button>
 						</Tooltip>
 						{isEditable ? (
@@ -172,7 +200,7 @@ const VariableRow: FC<VariableDisplayProps> = memo(
 									onClick={handleEdit}
 									aria-label="Edit variable"
 								>
-									<Edit2 size={14} />
+									<Edit2 />
 								</Button>
 							</Tooltip>
 						) : (
@@ -191,21 +219,23 @@ const VariableRow: FC<VariableDisplayProps> = memo(
 										"cursor-default text-ink-disabled hover:bg-transparent hover:text-ink-disabled",
 									)}
 								>
-									<Edit2 size={14} />
+									<Edit2 />
 								</Button>
 							</Tooltip>
 						)}
+						{/*
+						 * Neutral at rest, danger on hover. A red glyph on every row
+						 * spends the danger role on a state where nothing is wrong.
+						 */}
 						<Tooltip content="Delete variable">
 							<Button
 								variant="ghost"
 								size="icon-sm"
 								onClick={handleDelete}
 								aria-label="Delete variable"
-								className={cn(
-									"text-danger hover:bg-danger-wash hover:text-danger",
-								)}
+								className={cn("hover:bg-danger-wash hover:text-danger")}
 							>
-								<Trash2 size={14} />
+								<Trash2 />
 							</Button>
 						</Tooltip>
 					</div>
@@ -214,7 +244,7 @@ const VariableRow: FC<VariableDisplayProps> = memo(
 					<div
 						id={contentId}
 						className={cn(
-							"max-h-75 overflow-auto whitespace-pre-wrap break-words bg-sunken px-8 py-2 font-mono text-ink-muted text-mono-sm",
+							"max-h-75 overflow-auto whitespace-pre-wrap break-words bg-sunken px-7 py-2 font-mono text-ink-muted text-mono-sm",
 						)}
 					>
 						{stringValue}
@@ -355,9 +385,7 @@ export const CanvasVariablesViewer: FC<CanvasVariablesViewerProps> = memo(
 			return (
 				<CenteredState>
 					<Spinner size="sm" />
-					<p className={cn("text-body-sm text-ink-muted")}>
-						Loading variables...
-					</p>
+					<p className={cn("text-body-sm text-ink-muted")}>Loading variables</p>
 				</CenteredState>
 			);
 		}
@@ -366,10 +394,11 @@ export const CanvasVariablesViewer: FC<CanvasVariablesViewerProps> = memo(
 			return (
 				<CenteredState>
 					<p className={cn("text-heading text-ink")}>
-						Could not load variables.
+						Could not load variables
 					</p>
-					<p className={cn("text-ink-muted text-meta")}>
-						Please check notifications or try again.
+					<p className={cn("max-w-80 text-body-sm text-ink-muted")}>
+						The agent's code memory could not be read. Check that Local Operator
+						is running, then try again.
 					</p>
 				</CenteredState>
 			);
@@ -378,45 +407,49 @@ export const CanvasVariablesViewer: FC<CanvasVariablesViewerProps> = memo(
 		if (variables.length === 0) {
 			return (
 				<CenteredState>
-					<p className={cn("text-heading text-ink")}>No execution variables</p>
-					<p className={cn("max-w-md text-body-sm text-ink-muted")}>
-						This agent currently has no execution variables set. When your agent
-						does work for you, it will store things that it runs with code in
-						its memory, and those elements will show up here.
+					<p className={cn("text-heading text-ink")}>Nothing stored yet</p>
+					<p className={cn("max-w-80 text-body-sm text-ink-muted")}>
+						When the agent runs code for you, the values it keeps around between
+						steps show up here. You can add one yourself too.
 					</p>
-					<Button variant="outline" size="sm" onClick={handleOpenCreateForm}>
-						<PlusCircle size={16} />
-						Create variable
+					<Button variant="secondary" size="sm" onClick={handleOpenCreateForm}>
+						<Plus aria-hidden="true" />
+						New variable
 					</Button>
 				</CenteredState>
 			);
 		}
 
 		return (
-			<div className={cn("flex h-full min-h-0 flex-col gap-3 p-6")}>
-				<div className={cn("flex shrink-0 items-start justify-between gap-3")}>
-					<div className={cn("min-w-0")}>
-						<h2 className={cn("text-heading text-ink")}>
-							Agent execution variables
-						</h2>
-						<p className={cn("mt-0.5 text-body-sm text-ink-muted")}>
-							This is code memory that the agent uses to store information.
-						</p>
-					</div>
-					<Tooltip content="Create new variable">
-						<Button
-							variant="ghost"
-							size="icon-sm"
-							onClick={handleOpenCreateForm}
-							aria-label="Create new variable"
-						>
-							<PlusCircle size={18} />
-						</Button>
-					</Tooltip>
-				</div>
+			<div className={cn("flex h-full min-h-0 flex-col")}>
+				{/*
+				 * A one-line header, not a page masthead. The view switcher in the
+				 * panel chrome already says which view this is, so a 16px title and
+				 * a sentence of description restated it and spent 60px doing so.
+				 * What is worth saying here is how many there are.
+				 */}
 				<div
-					className={cn("min-h-0 flex-1 overflow-auto rounded-md bg-surface")}
+					className={cn(
+						"flex h-10 shrink-0 items-center justify-between gap-3 border-hairline border-b px-3",
+					)}
 				>
+					<p className={cn("min-w-0 truncate text-body-sm text-ink-muted")}>
+						<span className={cn("font-medium text-ink")}>Code memory</span>
+						<span className={cn("mx-1.5 text-ink-dim")}>·</span>
+						{variables.length}{" "}
+						{variables.length === 1 ? "variable" : "variables"}
+					</p>
+					<Button variant="ghost" size="sm" onClick={handleOpenCreateForm}>
+						<Plus aria-hidden="true" />
+						New
+					</Button>
+				</div>
+				{/*
+				 * Full-bleed rows. The list used to sit in a `rounded-md bg-surface`
+				 * box inset 24px inside a panel that is already `surface` — an
+				 * invisible container costing 48px of the width the values need.
+				 */}
+				<div className={cn("min-h-0 flex-1 overflow-auto")}>
 					{variables.map((variable) => (
 						<VariableRow
 							key={variable.key}

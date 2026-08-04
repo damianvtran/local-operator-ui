@@ -9,8 +9,6 @@ import { RadientAuthButtons } from "@shared/components/auth";
 import { Spinner } from "@shared/components/common/spinner";
 import { useRadientPricesQuery } from "@shared/hooks/use-radient-prices-query";
 import type { FC } from "react";
-/* Re-points the role variables inside `data-theme="radient"`; see the file. */
-import "../../radient-brand.css";
 
 /**
  * Props for the RadientSignInStep component
@@ -64,24 +62,21 @@ export const RadientSignInStep: FC<RadientSignInStepProps> = ({
 		 */
 		<div
 			data-theme="radient"
-			className="flex flex-col gap-6 rounded-lg bg-surface p-6 text-ink"
+			className="flex flex-col gap-5 rounded-lg bg-surface p-5 text-ink"
 		>
-			<div className="flex flex-col gap-4 text-body text-ink-muted">
-				<p>
-					Radient Pass gives your agents{" "}
-					<strong className="font-semibold text-accent">
-						hundreds of models
-					</strong>
-					, updated in real time, plus web search, image generation and site
-					crawling — all inside Local Operator.
-				</p>
-				<p>
-					It is often cheaper than a single provider's API key, because Radient
-					Automatic picks a model per step instead of sending everything to the
-					largest one. The same pass works in other agentic tools such as Cline
-					and Cursor.
-				</p>
-			</div>
+			{/*
+			 * Two sentences, not four. This is the screen where a new user decides
+			 * whether to hand over an account, and the previous version answered
+			 * questions nobody had asked yet — real-time model updates, site
+			 * crawling, which other tools the pass works in. What matters here is
+			 * what it does, what it costs, and how to start.
+			 */}
+			<p className="text-body text-ink-muted">
+				One pass for{" "}
+				<span className="font-medium text-accent">hundreds of models</span>,
+				plus web search, image generation and site crawling. A model is picked
+				per step, so simple work does not pay for the largest one.
+			</p>
 
 			<p className="text-body text-ink-muted">
 				You start with{" "}
@@ -109,18 +104,20 @@ export const RadientSignInStep: FC<RadientSignInStepProps> = ({
 				</p>
 			)}
 
-			<div className="flex flex-col items-center gap-4 py-2">
+			<div className="flex flex-col items-center gap-4">
 				{/* RadientAuthButtons owns its own layout and provider marks */}
 				<RadientAuthButtons
 					titleText=""
 					descriptionText=""
 					onSignInSuccess={onSignInSuccess}
 				/>
+				{/* Centred with the buttons it qualifies, not with the paragraphs
+				    above: it explains what signing in does, so it belongs to the
+				    control group. */}
+				<p className="text-center text-ink-dim text-meta">
+					Your account signs you in and manages your subscription.
+				</p>
 			</div>
-
-			<p className="text-center text-ink-dim text-meta">
-				Your account signs you in and manages your Radient Pass subscription.
-			</p>
 		</div>
 	);
 };

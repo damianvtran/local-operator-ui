@@ -192,6 +192,24 @@
 }
 
 /*
+ * Reading measure.
+ *
+ * The message column is 900px wide because tables, code and diagrams need the
+ * room. Prose does not: at 900px a paragraph runs past 100 characters a line,
+ * roughly a third longer than any reading pane worth copying allows, and the
+ * eye loses the line return. Capping the *text* elements rather than the
+ * container is what lets both be true at once — a `<pre>` or a `<table>` in
+ * the same message still spans the full column.
+ *
+ * `ch` resolves against each element's own font, so the cap tracks the type
+ * step automatically instead of being a pixel value that goes stale.
+ */
+.lo-measured .lo-markdown > :is(p, ul, ol, blockquote, h1, h2, h3, h4, h5, h6),
+.lo-measured .lo-stream-tail {
+	max-width: 62ch;
+}
+
+/*
  * The in-flight block.
  *
  * Rendered `pre-wrap` so the raw source keeps its line structure while it is
@@ -232,4 +250,23 @@
 
 .lo-stream-chunk {
 	animation: lo-stream-chunk-in var(--duration-slow) var(--ease-out-quart) both;
+}
+
+/*
+ * Markdown inside a tinted callout.
+ *
+ * Inline code normally takes the `sunken` ground, which is right on canvas and
+ * wrong on an accent wash: a neutral fill on a tinted ground reads as a hole
+ * punched through the callout, and it is the "grey on a coloured background"
+ * pairing the contrast contract cannot measure. The monospace face is already
+ * what marks machine voice (§ 4), so dropping the fill loses nothing.
+ *
+ * This has to live in the stylesheet rather than as a Tailwind arbitrary
+ * variant: `.lo-markdown code` is unlayered CSS and unlayered rules beat
+ * anything in `@layer utilities` regardless of specificity.
+ */
+.lo-on-wash .lo-markdown code {
+	background-color: transparent;
+	padding-inline: 0;
+	color: inherit;
 }

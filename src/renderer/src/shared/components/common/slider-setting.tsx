@@ -16,10 +16,32 @@
  * is the element. Thumb styling has to use the `::-webkit-slider-thumb`
  * arbitrary variants — this app renders in Chromium, so no `-moz-` path is
  * declared.
+ *
+ * ## Why it is no longer a `Card`, and carries no margin
+ *
+ * It was a bordered, filled card with `mb-4`. Both were wrong for the same
+ * reason: the settings surfaces went borderless around it, so eight sliders
+ * drew eight boxes inside a section that had deliberately given up its own —
+ * and on the agent pane, inside another card as well. A busy panel loses a
+ * border rather than gaining tighter spacing (branding § 5).
+ *
+ * The margin is the container's business. A component that ships its own outer
+ * margin cannot be composed: it stacks with every parent that has a `gap`, and
+ * the failure is silent because the result is still *some* spacing, just the
+ * wrong tier. These sliders sat 32px apart — the section tier — inside groups
+ * whose other rows sat at 16px.
+ *
+ * ## Why the value moved up to the label row
+ *
+ * Reading a column of settings, the question is "what is this set to?", and
+ * the answer used to sit mid-row beside the track, at a different height in
+ * every row. On the label row it lands on one right-hand edge the eye can run
+ * down — the arrangement macOS System Settings and Raycast both use for a
+ * numeric slider.
  */
 
 import { Spinner } from "@shared/components/common/spinner";
-import { Card, Input } from "@shared/components/ui";
+import { Input } from "@shared/components/ui";
 import type { LucideIcon } from "lucide-react";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import type { CSSProperties, ChangeEvent, FC, KeyboardEvent } from "react";
@@ -250,66 +272,30 @@ export const SliderSetting: FC<SliderSettingProps> = ({
 			: "0%";
 
 	return (
-		<Card className="mb-4">
-			<div>
+		<div>
+			{/*
+			 * Label and current value share one row, so a column of settings has a
+			 * single right-hand edge of values rather than one per row height.
+			 * `min-h-8` reserves the input's own height on the row whether or not
+			 * the input is currently swapped out for the saving spinner.
+			 */}
+			<div className="flex min-h-8 items-center justify-between gap-4">
 				<label
 					id={labelId}
 					htmlFor={`${fieldId}-range`}
-					className="flex items-center gap-2 text-body text-ink"
+					className="flex min-w-0 items-center gap-2 text-body text-ink"
 				>
 					{Icon && (
-						<Icon size={14} aria-hidden="true" className="text-ink-muted" />
+						<Icon
+							size={14}
+							aria-hidden="true"
+							className="shrink-0 text-ink-dim"
+						/>
 					)}
-					{label}
+					<span className="truncate">{label}</span>
 				</label>
-				{description && (
-					<p id={descriptionId} className="mt-1 text-body-sm text-ink-muted">
-						{description}
-					</p>
-				)}
-			</div>
 
-			<div className="flex items-center gap-4">
-				<div className="flex-1 pr-2">
-					<input
-						id={`${fieldId}-range`}
-						type="range"
-						value={sliderValue}
-						min={min}
-						max={max}
-						step={step}
-						disabled={isSaving}
-						onChange={handleSliderChange}
-						onPointerDown={handleSliderPointerDown}
-						onKeyUp={handleSliderKeyUp}
-						onBlur={() => void commitValue()}
-						aria-labelledby={labelId}
-						aria-describedby={description ? descriptionId : undefined}
-						style={{ "--fill": fill } as CSSProperties}
-						className={
-							// The track is the background: accent up to --fill, sunken
-							// past it, 6px tall and centred in the 16px hit area. Disabled
-							// drops the gradient so the whole track reads as one sunken bar
-							// rather than an accent fill that only looks interactive.
-							"h-4 w-full cursor-pointer appearance-none bg-transparent bg-center bg-no-repeat " +
-							"bg-[length:100%_6px] " +
-							"bg-[linear-gradient(to_right,var(--color-accent)_0_var(--fill),var(--color-sunken)_var(--fill)_100%)] " +
-							"disabled:cursor-not-allowed disabled:bg-none disabled:bg-sunken " +
-							// rounded-full on the thumb: the same status-dot exception the
-							// Switch primitive takes — a squared slider thumb reads as a bug.
-							"[&::-webkit-slider-thumb]:size-4 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-accent " +
-							"[&::-webkit-slider-thumb]:transition-colors [&::-webkit-slider-thumb]:duration-fast [&::-webkit-slider-thumb]:ease-out-quart " +
-							"[&::-webkit-slider-thumb]:hover:bg-accent-hover " +
-							"disabled:[&::-webkit-slider-thumb]:bg-ink-disabled"
-						}
-					/>
-					<div className="mt-0.5 flex justify-between font-mono text-mono-sm text-ink-dim">
-						<span>{min}</span>
-						<span>{max}</span>
-					</div>
-				</div>
-
-				<div className="flex min-w-27.5 items-center justify-end gap-1">
+				<div className="flex shrink-0 items-center gap-2">
 					{isSaving ? (
 						<Spinner size="md" label={`Saving ${label}`} />
 					) : (
@@ -328,17 +314,62 @@ export const SliderSetting: FC<SliderSettingProps> = ({
 								disabled={isSaving}
 								aria-labelledby={labelId}
 								aria-describedby={description ? descriptionId : undefined}
-								className="w-20 text-right [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+								className="w-18 text-right [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
 							/>
 							{unit && (
-								<span className="shrink-0 text-meta text-ink-muted">
-									{unit}
-								</span>
+								<span className="shrink-0 text-meta text-ink-dim">{unit}</span>
 							)}
 						</>
 					)}
 				</div>
 			</div>
-		</Card>
+
+			{description && (
+				<p
+					id={descriptionId}
+					className="mt-0.5 max-w-2xl text-body-sm text-ink-muted"
+				>
+					{description}
+				</p>
+			)}
+
+			<input
+				id={`${fieldId}-range`}
+				type="range"
+				value={sliderValue}
+				min={min}
+				max={max}
+				step={step}
+				disabled={isSaving}
+				onChange={handleSliderChange}
+				onPointerDown={handleSliderPointerDown}
+				onKeyUp={handleSliderKeyUp}
+				onBlur={() => void commitValue()}
+				aria-labelledby={labelId}
+				aria-describedby={description ? descriptionId : undefined}
+				style={{ "--fill": fill } as CSSProperties}
+				className={
+					// The track is the background: accent up to --fill, sunken
+					// past it, 6px tall and centred in the 16px hit area. Disabled
+					// drops the gradient so the whole track reads as one sunken bar
+					// rather than an accent fill that only looks interactive.
+					"mt-3 h-4 w-full cursor-pointer appearance-none bg-transparent bg-center bg-no-repeat " +
+					"bg-[length:100%_6px] " +
+					"bg-[linear-gradient(to_right,var(--color-accent)_0_var(--fill),var(--color-sunken)_var(--fill)_100%)] " +
+					"disabled:cursor-not-allowed disabled:bg-none disabled:bg-sunken " +
+					// rounded-full on the thumb: the same status-dot exception the
+					// Switch primitive takes — a squared slider thumb reads as a bug.
+					"[&::-webkit-slider-thumb]:size-4 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-accent " +
+					"[&::-webkit-slider-thumb]:transition-colors [&::-webkit-slider-thumb]:duration-fast [&::-webkit-slider-thumb]:ease-out-quart " +
+					"[&::-webkit-slider-thumb]:hover:bg-accent-hover " +
+					"disabled:[&::-webkit-slider-thumb]:bg-ink-disabled"
+				}
+			/>
+			{/* The bounds are counts, so they are machine voice. */}
+			<div className="flex justify-between font-mono text-mono-sm text-ink-dim">
+				<span>{min}</span>
+				<span>{max}</span>
+			</div>
+		</div>
 	);
 };

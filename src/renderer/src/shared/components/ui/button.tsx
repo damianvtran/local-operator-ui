@@ -25,9 +25,37 @@ import { type ButtonHTMLAttributes, forwardRef } from "react";
  *
  * ## Focus
  *
- * Not declared here. `styles/index.css` gives every `:focus-visible` element a
- * 2px accent outline at 2px offset; a per-component ring would be a second
- * source of truth for the same pixel.
+ * The ring itself is not declared here. `styles/index.css` gives every
+ * `:focus-visible` element a 2px accent outline at 2px offset, and a
+ * per-component ring would be a second source of truth for the same pixel.
+ *
+ * The two dense sizes pull the *offset* in to 1px, and only the offset. A 2px
+ * ring at 2px offset bleeds 4px past a 28px control on every side; in a
+ * toolbar of icon-sm buttons that ring lands on top of both neighbours, so
+ * the focused control reads as three controls. Nothing else about the ring
+ * changes, which keeps the accent colour and the 2px weight single-sourced.
+ *
+ * ## The size ramp: 28 / 32 / 36
+ *
+ * One 4px step apart, each paired with one step of the type scale — 12px
+ * `meta`, 13px `body-sm`, 14px `body`. The previous large was 38px, a
+ * half-step off the 4px ramp, and the cost of that showed up as four call
+ * sites hardcoding `h-9.5` onto other controls to line up with it. An
+ * off-ramp control height does not stay contained; it propagates.
+ *
+ * Horizontal padding is exactly twice the icon-to-label gap at every size
+ * (8/4, 12/6, 16/8). That ratio is what makes an icon read as part of its
+ * label rather than as a second object sharing the box: the space inside the
+ * pair has to be visibly tighter than the space around it.
+ *
+ * ## Radius: controls are 6px
+ *
+ * The app's radius assignment is controls 6, floating panels 10, cards and
+ * dialogs 14 — chosen by the size of the object, not by novelty. A 10px
+ * corner on a 32px control eats a third of its height and reads as a
+ * lozenge; every desktop tool that feels precise sits at 4-6. All six sizes
+ * take the same 6px, so a button, an input and a select trigger sitting in
+ * one row agree with each other.
  */
 const buttonVariants = cva(
 	[
@@ -41,12 +69,13 @@ const buttonVariants = cva(
 	{
 		variants: {
 			size: {
-				sm: "h-7 gap-1.5 rounded-sm px-2.5 text-meta [&_svg]:size-3.5",
-				md: "h-8 gap-2 rounded-md px-3 text-body-sm [&_svg]:size-4",
-				lg: "h-9.5 gap-2 rounded-md px-4 text-body [&_svg]:size-4",
-				icon: "size-8 rounded-md [&_svg]:size-4",
-				"icon-sm": "size-7 rounded-sm [&_svg]:size-3.5",
-				"icon-lg": "size-9.5 rounded-md [&_svg]:size-5",
+				sm: "h-7 gap-1 rounded-sm px-2 text-meta [&_svg]:size-3.5 focus-visible:outline-offset-1",
+				md: "h-8 gap-1.5 rounded-sm px-3 text-body-sm [&_svg]:size-4",
+				lg: "h-9 gap-2 rounded-sm px-4 text-body [&_svg]:size-4",
+				icon: "size-8 rounded-sm [&_svg]:size-4",
+				"icon-sm":
+					"size-7 rounded-sm [&_svg]:size-3.5 focus-visible:outline-offset-1",
+				"icon-lg": "size-9 rounded-sm [&_svg]:size-5",
 			},
 			variant: {
 				primary: [

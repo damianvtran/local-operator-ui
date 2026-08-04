@@ -70,27 +70,33 @@ export const GenerationSettingsSection: FC<GenerationSettingsSectionProps> = ({
 	updateAgentMutation,
 }) => {
 	return (
-		<>
-			<h3 className="mt-6 mb-4 flex items-center font-semibold text-heading text-ink">
-				<span className="mr-2 flex items-center rounded-sm bg-accent-wash p-1 text-accent">
-					<SlidersHorizontal size={16} aria-hidden="true" />
-				</span>
-				Generation settings
-				<Tooltip content="Settings that control how the agent generates responses">
-					<Button
-						variant="ghost"
-						size="icon-sm"
-						type="button"
-						className="ml-1 text-accent"
-						aria-label="More info"
-					>
-						<Info size={12} aria-hidden="true" />
-					</Button>
-				</Tooltip>
-			</h3>
+		/*
+		 * `gap-4` on the container, not margins on the rows: `SliderSetting`,
+		 * `EditableField` and `UnsetSliderSetting` no longer ship an outer margin
+		 * of their own, because a component that does cannot be composed — it
+		 * stacks with whatever gap its parent sets.
+		 */
+		<div className="flex flex-col gap-4 pt-6">
+			<div>
+				<h3 className="flex items-center font-semibold text-heading text-ink">
+					<span className="mr-2 flex items-center rounded-sm bg-accent-wash p-1 text-accent">
+						<SlidersHorizontal size={16} aria-hidden="true" />
+					</span>
+					Generation settings
+					<Tooltip content="Settings that control how the agent generates responses">
+						<Button
+							variant="ghost"
+							size="icon-sm"
+							type="button"
+							className="ml-1 text-accent"
+							aria-label="More info"
+						>
+							<Info size={12} aria-hidden="true" />
+						</Button>
+					</Tooltip>
+				</h3>
 
-			<div className="mb-4">
-				<p className="mb-4 text-body-sm text-ink-muted">
+				<p className="mt-1 text-body-sm text-ink-muted">
 					You can set custom values for these settings by updating the options
 					below. If not set, default values will be used that are optimized
 					based on user testing.
@@ -442,6 +448,6 @@ export const GenerationSettingsSection: FC<GenerationSettingsSectionProps> = ({
 					}}
 				/>
 			)}
-		</>
+		</div>
 	);
 };

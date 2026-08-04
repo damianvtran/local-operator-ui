@@ -38,12 +38,39 @@ type NavItem = {
  * it, and this one does neither.
  *
  * The old paper carried `boxShadow: 0 4px 20px rgba(0,0,0,0.2)` and a 1px right
- * border. Both are gone: `bg-surface` against the route's `bg-canvas` already
- * separates the two grounds, so the border carried no information, and a shadow
- * on an in-flow panel is exactly what the branding contract reserves for
+ * border. Both are gone: elevation in this system is a ground step, and a
+ * shadow on an in-flow panel is exactly what the branding contract reserves for
  * objects that leave the flow.
+ *
+ * ## Why the rail is `sunken` and not `surface`
+ *
+ * It was `surface` — a step *above* the `canvas` page — which is backwards for
+ * a permanent rail and produced a visible defect: on the agents and settings
+ * routes this rail sits directly against another `surface` list panel with no
+ * boundary between them, so the two merged into one 480px slab and the app
+ * looked like it had one enormous sidebar.
+ *
+ * On `sunken` the app reads as three planes left to right, which is the depth
+ * model the theme picker's own preview has always advertised and the one every
+ * three-pane desktop app uses (1Password, Slack, Linear, Mail):
+ *
+ *   sunken app rail  ->  surface list panel  ->  canvas working surface
+ *
+ * permanent chrome recedes, the secondary list sits between, and the thing you
+ * are working on comes forward. No border is needed to separate any of them.
+ *
+ * ## Density
+ *
+ * 220px expanded, 48px collapsed. 48 is the VS Code activity-bar width and it
+ * is what a 32px square button plus the list's own 8px inset comes to — the
+ * previous 68px was a 36px button floating in 32px of air, which read as an
+ * unfinished panel rather than as an icon rail.
+ *
+ * Rows are 32px with 16px marks and 13px labels, matching the settings rail
+ * exactly. The two are visible in the same viewport, so anything they disagree
+ * about reads as a mistake.
  */
-const RAIL_WIDTH = { expanded: "w-55", collapsed: "w-17" } as const;
+const RAIL_WIDTH = { expanded: "w-55", collapsed: "w-12" } as const;
 
 export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 	const navigate = useNavigate();
@@ -103,14 +130,25 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 				data-tour-tag={item.tourTag}
 				aria-current={item.isActive ? "page" : undefined}
 				className={cn(
-					"flex min-h-9 w-full items-center rounded-sm px-3 py-1 text-body transition-colors duration-fast ease-out-quart",
-					expanded ? "justify-start gap-3" : "justify-center",
+					"flex h-8 w-full items-center rounded-sm text-body-sm transition-colors duration-fast ease-out-quart",
+					expanded ? "justify-start gap-2 px-3" : "justify-center",
+					/*
+					 * The wash is the state and the mark is the accent; the label
+					 * stays `ink`. Tinting ground, mark and text is three signals for
+					 * one fact, and it leaves the destination you are already on as
+					 * the loudest text on the rail.
+					 */
 					item.isActive
-						? "bg-accent-wash text-accent"
+						? "bg-accent-wash font-medium text-ink"
 						: "text-ink-muted hover:bg-elevated hover:text-ink",
 				)}
 			>
-				<item.icon size={18} strokeWidth={1.5} aria-hidden="true" />
+				<item.icon
+					size={16}
+					strokeWidth={1.75}
+					aria-hidden="true"
+					className={cn("shrink-0", item.isActive && "text-accent")}
+				/>
 				{expanded && <span className="truncate">{item.label}</span>}
 			</button>
 		);
@@ -129,53 +167,93 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 
 	const toggleLabel = expanded ? "Collapse sidebar" : "Expand sidebar";
 
+	/*
+	 * The collapse control lives in the header, revealed when the rail is
+	 * pointed at or contains focus.
+	 *
+	 * It used to have a full-width row of its own at the foot of the rail, above
+	 * a hairline drawn only so the chevron would not read as a sixth nav item —
+	 * about 40px of permanent chrome and one border, to hold a control that is
+	 * used a few times a week. Linear, Notion and Slack all put it in the header
+	 * and all reveal it on hover; collapsed, it takes the logo's place, because
+	 * a 48px rail has room for exactly one thing.
+	 *
+	 * `pointer-events-none` gates the mouse only. Focus is unaffected by it, so
+	 * the button keeps its place in the tab order and reveals itself with
+	 * `group-focus-within` when a keyboard reaches it — the same idiom the agent
+	 * rows and the editable fields use.
+	 */
+	const collapseToggle = (
+		<div
+			className={cn(
+				"pointer-events-none opacity-0 transition-opacity duration-fast ease-out-quart",
+				"group-hover:pointer-events-auto group-hover:opacity-100",
+				"group-focus-within:pointer-events-auto group-focus-within:opacity-100",
+			)}
+		>
+			<Tooltip content={toggleLabel} side="right">
+				<Button
+					variant="ghost"
+					size="icon-sm"
+					onClick={toggleSidebar}
+					aria-label={toggleLabel}
+					aria-expanded={expanded}
+				>
+					{expanded ? (
+						<ChevronLeft size={16} aria-hidden="true" />
+					) : (
+						<ChevronRight size={16} aria-hidden="true" />
+					)}
+				</Button>
+			</Tooltip>
+		</div>
+	);
+
 	return (
 		<nav
 			className={cn(
-				"flex shrink-0 flex-col justify-between overflow-x-hidden bg-surface transition-[width] duration-base ease-out-quart",
+				"group flex shrink-0 flex-col overflow-x-hidden bg-sunken transition-[width] duration-base ease-out-quart",
 				expanded ? RAIL_WIDTH.expanded : RAIL_WIDTH.collapsed,
 			)}
 		>
-			<div>
-				<div className="flex items-center justify-center py-4">
-					<CollapsibleAppLogo expanded={expanded} />
-				</div>
-
-				<ul className="flex flex-col gap-1 p-2">
-					{navItems.map(renderNavItem)}
-				</ul>
+			{/*
+			 * A 48px header, square with the collapsed rail. `px-5` is not
+			 * arbitrary: the list's 8px inset plus a row's 12px padding puts every
+			 * nav mark 20px from the rail's edge, and the logo has to start on that
+			 * same line or the rail reads as two columns that nearly agree.
+			 */}
+			<div
+				className={cn(
+					"flex h-12 shrink-0 items-center",
+					expanded ? "justify-between pr-2 pl-5" : "justify-center",
+				)}
+			>
+				{/* Collapsed, the mark and the expand control occupy one slot and
+				    cross-fade; stacking them keeps the header from resizing. */}
+				{expanded ? (
+					<>
+						<CollapsibleAppLogo expanded />
+						{collapseToggle}
+					</>
+				) : (
+					<div className="relative flex size-8 items-center justify-center">
+						<div className="transition-opacity duration-fast ease-out-quart group-hover:opacity-0 group-focus-within:opacity-0">
+							<CollapsibleAppLogo expanded={false} />
+						</div>
+						<div className="absolute inset-0 flex items-center justify-center">
+							{collapseToggle}
+						</div>
+					</div>
+				)}
 			</div>
 
-			<div className="flex flex-col pb-4">
-				<UserProfileSidebar expanded={expanded} />
+			<ul className="flex flex-col gap-1 p-2">{navItems.map(renderNavItem)}</ul>
 
-				{/*
-				 * The rule between the account row and the collapse control is the
-				 * one border kept in this file: without it the toggle reads as a
-				 * sixth nav item rather than as chrome belonging to the rail.
-				 */}
-				<div
-					className={cn(
-						"mt-2 flex items-center border-hairline border-t pt-2",
-						expanded ? "justify-end pr-4" : "justify-center",
-					)}
-				>
-					<Tooltip content={toggleLabel} side="right">
-						<Button
-							variant="ghost"
-							size="icon-sm"
-							onClick={toggleSidebar}
-							aria-label={toggleLabel}
-							aria-expanded={expanded}
-						>
-							{expanded ? (
-								<ChevronLeft size={16} aria-hidden="true" />
-							) : (
-								<ChevronRight size={16} aria-hidden="true" />
-							)}
-						</Button>
-					</Tooltip>
-				</div>
+			{/* `mt-auto` rather than `justify-between` on the nav: the account row
+			    is the only thing at the foot now, and space is what separates it
+			    from the list — the hairline it used to need went with the toggle. */}
+			<div className="mt-auto p-2">
+				<UserProfileSidebar expanded={expanded} />
 			</div>
 		</nav>
 	);

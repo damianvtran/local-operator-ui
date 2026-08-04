@@ -47,7 +47,8 @@ export const UnsetSliderSetting: FC<UnsetSliderSettingProps> = ({
 	icon,
 }) => {
 	return (
-		<div className="mb-4 flex flex-col rounded-md border border-control bg-surface p-4">
+		/* No outer margin: the container owns the gap between rows. */
+		<div className="flex flex-col rounded-md border border-control bg-surface p-4">
 			<div className="mb-2">
 				<span className="mb-1 flex items-center font-medium text-body-sm text-ink">
 					{icon}

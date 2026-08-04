@@ -1,5 +1,4 @@
 import type { AgentDetails } from "@shared/api/local-operator/types";
-import { Card } from "@shared/components/ui";
 import { useUpdateAgent } from "@shared/hooks/use-update-agent";
 import { ArrowLeft, Bot } from "lucide-react";
 import { useState } from "react";
@@ -27,22 +26,28 @@ type AgentSettingsProps = {
 };
 
 /**
- * The agent details pane: the one boundary around the four settings panes.
+ * The agent details pane.
  *
- * The panes themselves are borderless, so this card is the only edge in view
- * and the 32px section gap below is what separates one pane from the next.
- * Wrapping each pane in its own card would put a boundary inside a boundary
- * and say nothing the outer one already says (branding § 5).
+ * ## Why it draws nothing
+ *
+ * It was a bordered `surface` card with 24px of padding, sitting inside a page
+ * that already insets its content by 32px — a 56px double gutter, and a
+ * boundary drawn around the whole right-hand pane when the pane is already
+ * bounded by the window on one side and the agent list on the other. It also
+ * meant the four settings panes rendered inside a box while the settings page's
+ * identical panes render on the page, so the same content had two different
+ * anatomies depending on the route.
+ *
+ * Now it is content on `canvas`, in a measured column, exactly like Settings.
+ * The 32px gap between panes is what separates one from the next.
  *
  * Two structural details worth keeping:
  *
  * - It must stay a `div`. The onboarding tour matches
  *   `div[data-tour-tag="agent-settings-details-paper"]` with the element name
  *   in the selector, so replacing it with a `section` breaks the tour silently.
- *   `Card` renders a `div`, which is why it is used here rather than hand-rolled
- *   markup that could drift.
- * - The padding sits on this element and the scroll lives on the child, so the
- *   pane's inset stays put instead of scrolling away with the content.
+ * - The scroll lives on the inner element, so the column's measure and centring
+ *   stay put instead of scrolling with the content.
  */
 export const AgentSettings: FC<AgentSettingsProps> = ({
 	selectedAgent,
@@ -53,50 +58,51 @@ export const AgentSettings: FC<AgentSettingsProps> = ({
 	const updateAgentMutation = useUpdateAgent();
 
 	return (
-		<Card
+		<div
 			data-tour-tag="agent-settings-details-paper"
-			padding="none"
-			className="h-full overflow-hidden p-6"
+			className="h-full overflow-hidden"
 		>
 			{selectedAgent ? (
-				<div className="flex h-full flex-col gap-8 overflow-auto">
-					<GeneralSettings
-						selectedAgent={selectedAgent}
-						savingField={savingField}
-						setSavingField={setSavingField}
-						updateAgentMutation={updateAgentMutation}
-						refetchAgent={refetchAgent}
-						initialSelectedAgentId={initialSelectedAgentId}
-					/>
+				<div className="h-full overflow-y-auto">
+					<div className="mx-auto flex w-full max-w-4xl flex-col gap-8 pb-8">
+						<GeneralSettings
+							selectedAgent={selectedAgent}
+							savingField={savingField}
+							setSavingField={setSavingField}
+							updateAgentMutation={updateAgentMutation}
+							refetchAgent={refetchAgent}
+							initialSelectedAgentId={initialSelectedAgentId}
+						/>
 
-					<SystemPromptSettings
-						selectedAgent={selectedAgent}
-						savingField={savingField}
-						setSavingField={setSavingField}
-						refetchAgent={refetchAgent}
-						initialSelectedAgentId={initialSelectedAgentId}
-					/>
+						<SystemPromptSettings
+							selectedAgent={selectedAgent}
+							savingField={savingField}
+							setSavingField={setSavingField}
+							refetchAgent={refetchAgent}
+							initialSelectedAgentId={initialSelectedAgentId}
+						/>
 
-					<SecuritySettings
-						selectedAgent={selectedAgent}
-						savingField={savingField}
-						setSavingField={setSavingField}
-						updateAgentMutation={updateAgentMutation}
-						refetchAgent={refetchAgent}
-						initialSelectedAgentId={initialSelectedAgentId}
-					/>
+						<SecuritySettings
+							selectedAgent={selectedAgent}
+							savingField={savingField}
+							setSavingField={setSavingField}
+							updateAgentMutation={updateAgentMutation}
+							refetchAgent={refetchAgent}
+							initialSelectedAgentId={initialSelectedAgentId}
+						/>
 
-					<ChatSettings
-						selectedAgent={selectedAgent}
-						savingField={savingField}
-						setSavingField={setSavingField}
-						updateAgentMutation={updateAgentMutation}
-						refetchAgent={refetchAgent}
-						initialSelectedAgentId={initialSelectedAgentId}
-					/>
+						<ChatSettings
+							selectedAgent={selectedAgent}
+							savingField={savingField}
+							setSavingField={setSavingField}
+							updateAgentMutation={updateAgentMutation}
+							refetchAgent={refetchAgent}
+							initialSelectedAgentId={initialSelectedAgentId}
+						/>
+					</div>
 				</div>
 			) : (
-				<div className="flex flex-1 flex-col items-center justify-center gap-2 p-8 text-center">
+				<div className="flex h-full flex-col items-center justify-center gap-2 p-8 text-center">
 					{/* The glyph is scenery, so it stays ink; the accent is spent once,
 					    on the one thing here that tells you what to do next. */}
 					<Bot size={48} className="text-ink-dim" aria-hidden="true" />
@@ -110,6 +116,6 @@ export const AgentSettings: FC<AgentSettingsProps> = ({
 					</div>
 				</div>
 			)}
-		</Card>
+		</div>
 	);
 };
