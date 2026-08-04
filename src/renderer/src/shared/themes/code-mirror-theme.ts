@@ -4,20 +4,36 @@ import { EditorView } from "@codemirror/view";
 import { tags as t } from "@lezer/highlight";
 import type { Theme } from "@mui/material";
 
+/**
+ * The editor's syntax colours, taken from the theme's roles.
+ *
+ * Every hue here is an authored, contrast-checked role rather than a literal.
+ * This used to hardcode three Monokai values — a purple, a yellow and a green
+ * — so every theme's editor was partly Monokai, and on the two light themes
+ * those three landed at roughly 2:1 on the editor ground.
+ *
+ * Five hues is the whole budget: the semantic four plus the accent. Anything
+ * finer would need colours no palette authors, and inventing them per theme is
+ * what this port removed.
+ */
 export const getCodeMirrorTheme = (theme: Theme): Extension => {
+	const roles = theme.palette.roles;
 	const colors = {
-		background: theme.palette.background.paper,
-		foreground: theme.palette.text.primary,
-		selection: theme.palette.action.selected,
-		comment: theme.palette.text.secondary,
-		keyword: theme.palette.secondary.main,
-		operator: theme.palette.text.secondary,
-		string: theme.palette.primary.main,
-		number: "#ae81ff", // Monokai purple
-		regexp: "#e6db74", // Monokai yellow
-		className: "#a6e22e", // Monokai green
-		variableName: theme.palette.text.primary,
-		base: theme.palette.text.primary,
+		/* `sunken` rather than `surface`: the role contract names code grounds as
+		   the recessed step, and a recessed editor reads as a well in the panel
+		   rather than as another card stacked on it. */
+		background: roles.sunken,
+		foreground: roles.ink,
+		selection: roles.accentWash,
+		comment: roles.inkDim,
+		keyword: roles.accent,
+		operator: roles.inkMuted,
+		string: roles.success,
+		number: roles.warning,
+		regexp: roles.danger,
+		className: roles.info,
+		variableName: roles.ink,
+		base: roles.ink,
 	};
 
 	const fontFamily = "'Geist Mono', 'Roboto Mono', monospace";
@@ -32,21 +48,23 @@ export const getCodeMirrorTheme = (theme: Theme): Extension => {
 				letterSpacing: "0.05em",
 			},
 			".cm-content": {
-				caretColor: theme.palette.primary.main,
+				caretColor: roles.accent,
 				fontFamily: fontFamily,
 			},
 			".cm-content *": {
 				fontFamily: `${fontFamily} !important`,
 			},
 			"&.cm-focused .cm-cursor": {
-				borderLeftColor: theme.palette.primary.main,
+				borderLeftColor: roles.accent,
 			},
 			"&.cm-focused .cm-selectionBackground, ::selection": {
 				backgroundColor: colors.selection,
 			},
 			".cm-gutters": {
 				backgroundColor: colors.background,
-				color: theme.palette.text.disabled,
+				/* `inkDim`, not `inkDisabled`: line numbers are read, and
+				   `inkDisabled` is the one role exempt from the contrast floors. */
+				color: roles.inkDim,
 				border: "none",
 				fontFamily: fontFamily,
 			},
@@ -54,7 +72,7 @@ export const getCodeMirrorTheme = (theme: Theme): Extension => {
 				fontFamily: fontFamily,
 			},
 		},
-		{ dark: theme.palette.mode === "dark" },
+		{ dark: roles.mode === "dark" },
 	);
 
 	const highlightStyle = HighlightStyle.define([
@@ -111,7 +129,7 @@ export const getCodeMirrorTheme = (theme: Theme): Extension => {
 			tag: [t.processingInstruction, t.string, t.inserted],
 			color: colors.string,
 		},
-		{ tag: t.invalid, color: theme.palette.error.main },
+		{ tag: t.invalid, color: roles.danger },
 	]);
 
 	return [editorTheme, syntaxHighlighting(highlightStyle)];

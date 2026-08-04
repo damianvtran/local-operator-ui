@@ -1,28 +1,3 @@
-import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
-import {
-	faArchive,
-	faBook,
-	faBox,
-	faBoxOpen,
-	faClock,
-	faDatabase,
-	faDesktop,
-	faDownload,
-	faFileAlt,
-	faFolder,
-	faFolderOpen,
-	faFolderTree,
-	faHdd,
-	faHome,
-	faImage,
-	faLaptop,
-	faMusic,
-	faNetworkWired,
-	faServer,
-	faUsers,
-	faVideo,
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
 	Box,
 	Chip,
@@ -39,6 +14,30 @@ import {
 import type { AgentUpdate } from "@shared/api/local-operator/types";
 import { useUpdateAgent } from "@shared/hooks/use-update-agent";
 import { useRecentDirectoriesStore } from "@shared/store/recent-directories-store";
+import type { LucideIcon } from "lucide-react";
+import {
+	Archive,
+	Book,
+	Clock,
+	Database,
+	Download,
+	FileText,
+	Folder,
+	FolderOpen,
+	FolderTree,
+	HardDrive,
+	House,
+	Image as ImageIcon,
+	Laptop,
+	Monitor,
+	Music,
+	Network,
+	Package,
+	PackageOpen,
+	Server,
+	Users,
+	Video,
+} from "lucide-react";
 import {
 	type FC,
 	useCallback,
@@ -61,77 +60,77 @@ type DirectoryIndicatorProps = {
 type DirectoryInfo = {
 	name: string;
 	path: string;
-	icon: IconDefinition;
+	icon: LucideIcon;
 };
 
 /**
- * Maps directory names to appropriate FontAwesome icons
+ * Maps directory names to appropriate icons
  */
-const getDirectoryIcon = (name: string, path: string): IconDefinition => {
+const getDirectoryIcon = (name: string, path: string): LucideIcon => {
 	const lowerName = name.toLowerCase();
 	const lowerPath = path.toLowerCase();
 
-	if (name === "Home" || path === "~") return faHome;
-	if (lowerName.includes("download")) return faDownload;
-	if (lowerName.includes("document")) return faFileAlt;
-	if (lowerName.includes("desktop")) return faDesktop;
-	if (lowerName.includes("picture")) return faImage;
-	if (lowerName.includes("music")) return faMusic;
-	if (lowerName.includes("video")) return faVideo;
-	if (lowerName.includes("program")) return faLaptop;
-	if (lowerName.includes("user")) return faUsers;
-	if (lowerPath.includes("programdata")) return faDatabase;
-	if (lowerName.includes("application")) return faBoxOpen;
-	if (lowerName.includes("library")) return faBook;
-	if (lowerName.includes("volume")) return faHdd;
-	if (lowerName.includes("etc")) return faServer;
-	if (lowerName.includes("usr")) return faUsers;
-	if (lowerName.includes("var")) return faDatabase;
-	if (lowerName.includes("opt")) return faBox;
-	if (lowerName.includes("mnt")) return faHdd;
-	if (lowerName.includes("media")) return faArchive;
-	if (lowerName.includes("srv")) return faNetworkWired;
+	if (name === "Home" || path === "~") return House;
+	if (lowerName.includes("download")) return Download;
+	if (lowerName.includes("document")) return FileText;
+	if (lowerName.includes("desktop")) return Monitor;
+	if (lowerName.includes("picture")) return ImageIcon;
+	if (lowerName.includes("music")) return Music;
+	if (lowerName.includes("video")) return Video;
+	if (lowerName.includes("program")) return Laptop;
+	if (lowerName.includes("user")) return Users;
+	if (lowerPath.includes("programdata")) return Database;
+	if (lowerName.includes("application")) return PackageOpen;
+	if (lowerName.includes("library")) return Book;
+	if (lowerName.includes("volume")) return HardDrive;
+	if (lowerName.includes("etc")) return Server;
+	if (lowerName.includes("usr")) return Users;
+	if (lowerName.includes("var")) return Database;
+	if (lowerName.includes("opt")) return Package;
+	if (lowerName.includes("mnt")) return HardDrive;
+	if (lowerName.includes("media")) return Archive;
+	if (lowerName.includes("srv")) return Network;
 
-	return faFolder;
+	return Folder;
 };
 
 /**
  * Default directories to offer as quick selections based on OS
  */
 const DEFAULT_DIRECTORIES: DirectoryInfo[] = [
-	{ name: "Home", path: "~", icon: faHome },
-	{ name: "Downloads", path: "~/Downloads", icon: faDownload },
-	{ name: "Documents", path: "~/Documents", icon: faFileAlt },
-	{ name: "Desktop", path: "~/Desktop", icon: faDesktop },
-	{ name: "Pictures", path: "~/Pictures", icon: faImage },
-	{ name: "Music", path: "~/Music", icon: faMusic },
-	{ name: "Videos", path: "~/Videos", icon: faVideo },
+	{ name: "Home", path: "~", icon: House },
+	{ name: "Downloads", path: "~/Downloads", icon: Download },
+	{ name: "Documents", path: "~/Documents", icon: FileText },
+	{ name: "Desktop", path: "~/Desktop", icon: Monitor },
+	{ name: "Pictures", path: "~/Pictures", icon: ImageIcon },
+	{ name: "Music", path: "~/Music", icon: Music },
+	{ name: "Videos", path: "~/Videos", icon: Video },
 	...(navigator.userAgent.indexOf("Win") !== -1
 		? [
-				{ name: "Program Files", path: "C:\\Program Files", icon: faLaptop },
+				{ name: "Program Files", path: "C:\\Program Files", icon: Laptop },
 				{
 					name: "Program Files (x86)",
 					path: "C:\\Program Files (x86)",
-					icon: faLaptop,
+					icon: Laptop,
 				},
-				{ name: "Users", path: "C:\\Users", icon: faUsers },
-				{ name: "ProgramData", path: "C:\\ProgramData", icon: faDatabase },
+				{ name: "Users", path: "C:\\Users", icon: Users },
+				{ name: "ProgramData", path: "C:\\ProgramData", icon: Database },
 			]
 		: navigator.userAgent.indexOf("Mac") !== -1
 			? [
-					{ name: "Applications", path: "/Applications", icon: faBoxOpen },
-					{ name: "Library", path: "~/Library", icon: faBook },
-					{ name: "Users", path: "/Users", icon: faUsers },
-					{ name: "Volumes", path: "/Volumes", icon: faHdd },
+					{ name: "Applications", path: "/Applications", icon: PackageOpen },
+					{ name: "Library", path: "~/Library", icon: Book },
+					{ name: "Users", path: "/Users", icon: Users },
+					{ name: "Volumes", path: "/Volumes", icon: HardDrive },
 				]
 			: [
-					{ name: "etc", path: "/etc", icon: faServer },
-					{ name: "usr", path: "/usr", icon: faUsers },
-					{ name: "var", path: "/var", icon: faDatabase },
-					{ name: "opt", path: "/opt", icon: faBox },
-					{ name: "mnt", path: "/mnt", icon: faHdd },
-					{ name: "media", path: "/media", icon: faArchive },
-					{ name: "srv", path: "/srv", icon: faNetworkWired },
+					{ name: "etc", path: "/etc", icon: Server },
+					{ name: "usr", path: "/usr", icon: Users },
+					{ name: "var", path: "/var", icon: Database },
+					{ name: "opt", path: "/opt", icon: Package },
+					{ name: "mnt", path: "/mnt", icon: HardDrive },
+					{ name: "media", path: "/media", icon: Archive },
+					{ name: "srv", path: "/srv", icon: Network },
 				]
 	).map((dir) => ({
 		...dir,
@@ -376,7 +375,7 @@ export const DirectoryIndicator: FC<DirectoryIndicatorProps> = ({
 			<Box sx={{ display: "flex", alignItems: "center", ml: 1 }}>
 				<Tooltip title="Click to set working directory" arrow placement="right">
 					<DirectoryChip
-						icon={<FontAwesomeIcon icon={faFolder} size="sm" />}
+						icon={<Folder size={14} />}
 						label="No working directory set"
 						onClick={handleStartEdit}
 						clickable
@@ -409,13 +408,7 @@ export const DirectoryIndicator: FC<DirectoryIndicatorProps> = ({
 						placement="right"
 					>
 						<DirectoryChip
-							icon={
-								<FontAwesomeIcon
-									icon={faFolderOpen}
-									size="sm"
-									onClick={handleBrowseForDirectory}
-								/>
-							}
+							icon={<FolderOpen size={14} onClick={handleBrowseForDirectory} />}
 							label={formatDirectory(currentWorkingDirectory || "")}
 							onClick={handleOpenMenu}
 							clickable
@@ -482,7 +475,7 @@ export const DirectoryIndicator: FC<DirectoryIndicatorProps> = ({
 
 						<MenuItem onClick={handleBrowseForDirectory} dense>
 							<MenuItemIcon>
-								<FontAwesomeIcon icon={faFolderTree} size="sm" />
+								<FolderTree size={14} />
 							</MenuItemIcon>
 							<Typography variant="body2">Browse for directory...</Typography>
 						</MenuItem>
@@ -506,7 +499,7 @@ export const DirectoryIndicator: FC<DirectoryIndicatorProps> = ({
 									dense
 								>
 									<MenuItemIcon>
-										<FontAwesomeIcon icon={faClock} size="sm" />
+										<Clock size={14} />
 									</MenuItemIcon>
 									{formatDirectory(path).length > 42 ? (
 										<Tooltip
@@ -548,25 +541,28 @@ export const DirectoryIndicator: FC<DirectoryIndicatorProps> = ({
 							Default Directories
 						</Typography>
 
-						{DEFAULT_DIRECTORIES.map((dir) => (
-							<MenuItem
-								key={dir.path}
-								onClick={() => handleSelectDirectory(dir.path)}
-								dense
-							>
-								<MenuItemIcon>
-									<FontAwesomeIcon icon={dir.icon} size="sm" />
-								</MenuItemIcon>
-								<Typography variant="body2">{dir.name}</Typography>
-								<Typography
-									variant="caption"
-									color="text.secondary"
-									sx={{ ml: 1 }}
+						{DEFAULT_DIRECTORIES.map((dir) => {
+							const DirIcon = dir.icon;
+							return (
+								<MenuItem
+									key={dir.path}
+									onClick={() => handleSelectDirectory(dir.path)}
+									dense
 								>
-									{formatDirectory(dir.path)}
-								</Typography>
-							</MenuItem>
-						))}
+									<MenuItemIcon>
+										<DirIcon size={14} />
+									</MenuItemIcon>
+									<Typography variant="body2">{dir.name}</Typography>
+									<Typography
+										variant="caption"
+										color="text.secondary"
+										sx={{ ml: 1 }}
+									>
+										{formatDirectory(dir.path)}
+									</Typography>
+								</MenuItem>
+							);
+						})}
 					</Menu>
 				</>
 			)}

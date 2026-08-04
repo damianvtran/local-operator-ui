@@ -1,6 +1,5 @@
-import { faCode, faCommentDots } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Tab, Tabs, alpha, styled } from "@mui/material";
+import { Code, MessageCircleMore } from "lucide-react";
 import type { FC } from "react";
 
 /**
@@ -63,14 +62,14 @@ export const ChatTabs: FC<ChatTabsProps> = ({ activeTab, onChange }) => {
 			}}
 		>
 			<StyledTab
-				icon={<FontAwesomeIcon icon={faCommentDots} />}
+				icon={<MessageCircleMore size={16} />}
 				iconPosition="start"
 				label="Chat"
 				value="chat"
 				isActive={activeTab === "chat"}
 			/>
 			<StyledTab
-				icon={<FontAwesomeIcon icon={faCode} />}
+				icon={<Code size={16} />}
 				iconPosition="start"
 				label="Raw"
 				value="raw"

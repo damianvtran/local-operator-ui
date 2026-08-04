@@ -8,8 +8,6 @@
 import { AgentCard } from "@features/agent-hub/components/agent-card";
 import { useDownloadAgentMutation } from "@features/agent-hub/hooks/use-download-agent-mutation";
 import { usePublicAgentsQuery } from "@features/agent-hub/hooks/use-public-agents-query";
-import { faDownload } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
 	Box,
 	Button,
@@ -21,7 +19,7 @@ import {
 } from "@mui/material";
 import type { Agent } from "@shared/api/radient/types";
 import { useAgents } from "@shared/hooks/use-agents";
-import { Bot, CheckCircle } from "lucide-react";
+import { Bot, CheckCircle, Download } from "lucide-react";
 import type { FC } from "react";
 import { useEffect, useState } from "react";
 import {
@@ -181,7 +179,7 @@ export const CreateAgentStep: FC<CreateAgentStepProps> = ({
 						isAddingAll ? (
 							<CircularProgress size={20} color="inherit" />
 						) : (
-							<FontAwesomeIcon icon={faDownload} />
+							<Download size={16} />
 						)
 					}
 				>

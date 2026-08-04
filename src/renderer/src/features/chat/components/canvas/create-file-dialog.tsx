@@ -1,5 +1,3 @@
-import { faCode, faFile, faFolder } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
 	Autocomplete,
 	Box,
@@ -16,6 +14,7 @@ import type { Theme } from "@mui/material/styles";
 import { BaseDialog } from "@shared/components/common/base-dialog";
 import { ConfirmationModal } from "@shared/components/common/confirmation-modal";
 import { useAgents } from "@shared/hooks/use-agents";
+import { Code, File, Folder } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type { FC } from "react";
 import { DirectoryIndicator } from "../directory-indicator";
@@ -261,7 +260,7 @@ export const CreateFileDialog: FC<CreateFileDialogProps> = ({
 					<FormControl fullWidth sx={{ mb: 2.5 }}>
 						<FieldLabel>
 							<LabelIcon>
-								<FontAwesomeIcon icon={faFile} size="sm" />
+								<File size={14} />
 							</LabelIcon>
 							File Name
 						</FieldLabel>
@@ -284,7 +283,7 @@ export const CreateFileDialog: FC<CreateFileDialogProps> = ({
 					<FormControl fullWidth sx={{ mb: 2.5 }}>
 						<FieldLabel>
 							<LabelIcon>
-								<FontAwesomeIcon icon={faCode} size="sm" />
+								<Code size={14} />
 							</LabelIcon>
 							File Type
 						</FieldLabel>
@@ -342,7 +341,7 @@ export const CreateFileDialog: FC<CreateFileDialogProps> = ({
 					<FormControl fullWidth>
 						<FieldLabel>
 							<LabelIcon>
-								<FontAwesomeIcon icon={faFolder} size="sm" />
+								<Folder size={14} />
 							</LabelIcon>
 							Location
 						</FieldLabel>

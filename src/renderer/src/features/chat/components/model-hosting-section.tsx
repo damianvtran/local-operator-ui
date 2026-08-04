@@ -4,8 +4,6 @@
  * Displays and manages model and hosting provider settings
  */
 
-import { faInfoCircle, faServer } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Tooltip } from "@mui/material";
 import type {
 	AgentDetails,
@@ -13,6 +11,7 @@ import type {
 } from "@shared/api/local-operator/types";
 import { HostingSelect, ModelSelect } from "@shared/components/hosting";
 import type { UseMutationResult } from "@tanstack/react-query";
+import { Info, Server } from "lucide-react";
 import type { FC } from "react";
 import { updateAgentSetting } from "../utils/chat-options-utils";
 import {
@@ -75,7 +74,7 @@ export const ModelHostingSection: FC<ModelHostingSectionProps> = ({
 	return (
 		<>
 			<SectionTitle variant="subtitle1">
-				<TitleIcon icon={faServer} />
+				<TitleIcon icon={Server} />
 				Model & Hosting
 				{/* @ts-ignore - Tooltip has issues with TypeScript but works fine */}
 				<Tooltip
@@ -84,7 +83,7 @@ export const ModelHostingSection: FC<ModelHostingSectionProps> = ({
 					placement="top"
 				>
 					<InfoButton size="small">
-						<FontAwesomeIcon icon={faInfoCircle} size="xs" />
+						<Info size={12} />
 					</InfoButton>
 				</Tooltip>
 			</SectionTitle>

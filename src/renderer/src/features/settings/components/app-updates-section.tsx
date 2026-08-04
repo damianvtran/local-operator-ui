@@ -1,5 +1,3 @@
-import { faDownload, faInfoCircle } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, Tooltip } from "@mui/material"; // Keep Grid and Tooltip
 // Remove styled from here if not used locally
 import {
@@ -7,6 +5,7 @@ import {
 	type HealthCheckResponse,
 } from "@shared/api/local-operator";
 import { apiConfig } from "@shared/config";
+import { Download, Info } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { FC } from "react";
 import { AppUpdates } from "./app-updates"; // Keep this import
@@ -96,9 +95,8 @@ export const AppUpdatesSection: FC = () => {
 						component="span"
 						sx={{ display: "inline-flex", alignItems: "center" }}
 					>
-						<FontAwesomeIcon
-							icon={faInfoCircle}
-							size="xs"
+						<Info
+							size={12}
 							style={{ marginRight: 6 }} // Adjust spacing
 						/>
 						{label}
@@ -112,7 +110,7 @@ export const AppUpdatesSection: FC = () => {
 	return (
 		<SettingsSectionCard
 			title="Application Updates & Info"
-			icon={faDownload}
+			icon={Download}
 			description="Check for updates and view information about your Local Operator installation."
 			dataTourTag="settings-app-updates-section"
 		>

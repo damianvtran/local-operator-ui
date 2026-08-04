@@ -2,7 +2,6 @@
  * Styled components for the Chat Options Sidebar
  */
 
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
 	Box,
 	IconButton,
@@ -11,6 +10,8 @@ import {
 	alpha,
 	styled,
 } from "@mui/material";
+import type { LucideIcon } from "lucide-react";
+import type { FC } from "react";
 
 export const SidebarContainer = styled(Box)(({ theme }) => ({
 	width: 380,
@@ -72,13 +73,23 @@ export const SectionTitle = styled(Typography)(({ theme }) => ({
 	color: theme.palette.text.primary,
 }));
 
-export const TitleIcon = styled(FontAwesomeIcon)(({ theme }) => ({
+// TitleIcon is shared by call sites that each pass a different icon, so it wraps
+// an arbitrary lucide component rather than styling one directly.
+const TitleIconWrapper = styled(Box)(({ theme }) => ({
 	marginRight: 10,
 	color: theme.palette.primary.main,
 	padding: theme.spacing(0.5),
 	borderRadius: theme.shape.borderRadius,
 	backgroundColor: alpha(theme.palette.primary.main, 0.1),
+	display: "flex",
+	alignItems: "center",
 }));
+
+export const TitleIcon: FC<{ icon: LucideIcon }> = ({ icon: Icon }) => (
+	<TitleIconWrapper>
+		<Icon size={16} />
+	</TitleIconWrapper>
+);
 
 export const InfoButton = styled(IconButton)(({ theme }) => ({
 	marginLeft: theme.spacing(1),

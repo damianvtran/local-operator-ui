@@ -1,23 +1,22 @@
-import {
-	faAdjust,
-	faBolt,
-	faCode,
-	faFire,
-	faHexagonNodes,
-	faIcicles,
-	faLeaf,
-	faMoon,
-	faMountain,
-	faSkull,
-	faSun,
-	faWaveSquare,
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, Card, CardContent, Grid, Typography } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { themes } from "@shared/themes";
 import type { ThemeName } from "@shared/themes";
+import {
+	AudioWaveform,
+	Code,
+	Contrast,
+	Flame,
+	Hexagon,
+	Leaf,
+	Moon,
+	Mountain,
+	Skull,
+	Snowflake,
+	Sun,
+	Zap,
+} from "lucide-react";
 import type { FC } from "react";
 
 const StyledCardContent = styled(CardContent)(({ theme }) => ({
@@ -540,7 +539,7 @@ export const ThemeSelector: FC = () => {
 								<DarkPreview />
 							</ThemePreview>
 							<ThemeLabel>
-								<FontAwesomeIcon icon={faMoon} />
+								<Moon size={16} />
 								<Typography
 									variant="body2"
 									fontWeight={
@@ -563,7 +562,7 @@ export const ThemeSelector: FC = () => {
 								<LightPreview />
 							</ThemePreview>
 							<ThemeLabel>
-								<FontAwesomeIcon icon={faSun} />
+								<Sun size={16} />
 								<Typography
 									variant="body2"
 									fontWeight={
@@ -586,7 +585,7 @@ export const ThemeSelector: FC = () => {
 								<RadientPreview />
 							</ThemePreview>
 							<ThemeLabel>
-								<FontAwesomeIcon icon={faHexagonNodes} />
+								<Hexagon size={16} />
 								<Typography
 									variant="body2"
 									fontWeight={themeName === "radient" ? "bold" : "normal"}
@@ -607,7 +606,7 @@ export const ThemeSelector: FC = () => {
 								<DraculaPreview />
 							</ThemePreview>
 							<ThemeLabel>
-								<FontAwesomeIcon icon={faSkull} />
+								<Skull size={16} />
 								<Typography
 									variant="body2"
 									fontWeight={themeName === "dracula" ? "bold" : "normal"}
@@ -628,7 +627,7 @@ export const ThemeSelector: FC = () => {
 								<SagePreview />
 							</ThemePreview>
 							<ThemeLabel>
-								<FontAwesomeIcon icon={faLeaf} />
+								<Leaf size={16} />
 								<Typography
 									variant="body2"
 									fontWeight={themeName === "sage" ? "bold" : "normal"}
@@ -649,7 +648,7 @@ export const ThemeSelector: FC = () => {
 								<MonokaiPreview />
 							</ThemePreview>
 							<ThemeLabel>
-								<FontAwesomeIcon icon={faCode} />
+								<Code size={16} />
 								<Typography
 									variant="body2"
 									fontWeight={themeName === "monokai" ? "bold" : "normal"}
@@ -670,7 +669,7 @@ export const ThemeSelector: FC = () => {
 								<TokyoNightPreview />
 							</ThemePreview>
 							<ThemeLabel>
-								<FontAwesomeIcon icon={faMountain} />
+								<Mountain size={16} />
 								<Typography
 									variant="body2"
 									fontWeight={themeName === "tokyoNight" ? "bold" : "normal"}
@@ -691,7 +690,7 @@ export const ThemeSelector: FC = () => {
 								<DunePreview />
 							</ThemePreview>
 							<ThemeLabel>
-								<FontAwesomeIcon icon={faFire} />
+								<Flame size={16} />
 								<Typography
 									variant="body2"
 									fontWeight={themeName === "dune" ? "bold" : "normal"}
@@ -712,7 +711,7 @@ export const ThemeSelector: FC = () => {
 								<IcebergPreview />
 							</ThemePreview>
 							<ThemeLabel>
-								<FontAwesomeIcon icon={faIcicles} />
+								<Snowflake size={16} />
 								<Typography
 									variant="body2"
 									fontWeight={themeName === "iceberg" ? "bold" : "normal"}
@@ -733,7 +732,7 @@ export const ThemeSelector: FC = () => {
 								<NeonPreview />
 							</ThemePreview>
 							<ThemeLabel>
-								<FontAwesomeIcon icon={faBolt} />
+								<Zap size={16} />
 								<Typography
 									variant="body2"
 									fontWeight={themeName === "neon" ? "bold" : "normal"}
@@ -754,7 +753,7 @@ export const ThemeSelector: FC = () => {
 								<ObsidianPreview />
 							</ThemePreview>
 							<ThemeLabel>
-								<FontAwesomeIcon icon={faAdjust} />
+								<Contrast size={16} />
 								<Typography
 									variant="body2"
 									fontWeight={themeName === "obsidian" ? "bold" : "normal"}
@@ -775,7 +774,7 @@ export const ThemeSelector: FC = () => {
 								<SynthPreview />
 							</ThemePreview>
 							<ThemeLabel>
-								<FontAwesomeIcon icon={faWaveSquare} />
+								<AudioWaveform size={16} />
 								<Typography
 									variant="body2"
 									fontWeight={themeName === "synth" ? "bold" : "normal"}

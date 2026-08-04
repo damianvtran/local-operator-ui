@@ -1,22 +1,6 @@
 import radientIcon from "@assets/radient-icon-1024x1024.png";
 import { useOnboardingTour } from "@features/onboarding/hooks/use-onboarding-tour";
 import {
-	faAdjust,
-	faChartLine,
-	faCreditCard,
-	faDatabase,
-	faEnvelope,
-	faExternalLinkAlt,
-	faHistory,
-	faInfoCircle,
-	faKey,
-	faListAlt,
-	faPlusCircle,
-	faRobot,
-	faUser,
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
 	Alert,
 	Box,
 	Button,
@@ -48,7 +32,23 @@ import { useUpdateConfig } from "@shared/hooks/use-update-config";
 import { useUsageRollup } from "@shared/hooks/use-usage-rollup";
 import { useUserStore } from "@shared/store/user-store";
 import { format, formatRFC3339, parseISO, subDays } from "date-fns";
-import { Info, PlayCircle, Settings } from "lucide-react";
+import {
+	Bot,
+	ChartLine,
+	CirclePlus,
+	Contrast,
+	CreditCard,
+	Database,
+	ExternalLink,
+	History,
+	Info,
+	Key,
+	List,
+	Mail,
+	PlayCircle,
+	Settings,
+	User,
+} from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"; // Added useCallback
 import type { FC, RefObject } from "react";
 import { useLocation } from "react-router-dom"; // Added useLocation
@@ -90,7 +90,7 @@ const BillingInfo: FC = () => {
 		<Box>
 			<SectionTitle
 				title="Radient Pass"
-				icon={faCreditCard}
+				icon={CreditCard}
 				variant="h6" // Use h6 for subsection title
 				gutterBottom
 			/>
@@ -120,7 +120,7 @@ const BillingInfo: FC = () => {
 						href="https://console.radienthq.com/dashboard/billing"
 						target="_blank"
 						rel="noopener noreferrer"
-						startIcon={<FontAwesomeIcon icon={faPlusCircle} size="xs" />} // Smaller icon
+						startIcon={<CirclePlus size={12} />} // Smaller icon
 						sx={{
 							// Shadcn-like subtle outline button
 							borderColor: theme.palette.divider,
@@ -202,7 +202,7 @@ const UsageInfo: FC = () => {
 			>
 				<SectionTitle
 					title="Usage (Last 30 Days)"
-					icon={faChartLine}
+					icon={ChartLine}
 					variant="h6" // Use h6 for subsection title
 					// Remove margin bottom as Stack handles spacing
 				/>
@@ -428,7 +428,7 @@ const RadientSectionTitle: FC = () => (
 			href="https://console.radienthq.com"
 			target="_blank"
 			rel="noopener noreferrer"
-			endIcon={<FontAwesomeIcon icon={faExternalLinkAlt} size="xs" />}
+			endIcon={<ExternalLink size={12} />}
 			sx={(theme) => ({
 				borderColor: theme.palette.divider,
 				color: theme.palette.text.secondary,
@@ -720,7 +720,7 @@ export const SettingsPage: FC = () => {
 								{/* User Profile Settings */}
 								<SettingsSectionCard
 									title="User Profile"
-									icon={faUser}
+									icon={User}
 									description={`Your user profile information displayed in the application.  This information is not provided to the agents.  ${isAuthenticated ? "These details are provided through your Radient Account." : ""}`}
 								>
 									<FieldsContainer>
@@ -728,7 +728,7 @@ export const SettingsPage: FC = () => {
 											value={userStore.profile.name}
 											label="Display Name"
 											placeholder="Enter your name..."
-											icon={<FontAwesomeIcon icon={faUser} fixedWidth />}
+											icon={<User size={16} />}
 											isSaving={savingField === "user_name"}
 											onSave={async (value) => {
 												setSavingField("user_name");
@@ -744,7 +744,7 @@ export const SettingsPage: FC = () => {
 											value={userStore.profile.email}
 											label="Email Address"
 											placeholder="Enter your email..."
-											icon={<FontAwesomeIcon icon={faEnvelope} fixedWidth />}
+											icon={<Mail size={16} />}
 											isSaving={savingField === "user_email"}
 											onSave={async (value) => {
 												setSavingField("user_email");
@@ -780,7 +780,7 @@ export const SettingsPage: FC = () => {
 								{/* Model Settings */}
 								<SettingsSectionCard
 									title="Model Settings"
-									icon={faRobot}
+									icon={Bot}
 									description="Configure the default AI model and hosting providers used for generating responses.  This will be used for all agents that don't have a specific model or hosting provider configured.  You can override these settings for individual agents in the agent settings."
 								>
 									<FieldsContainer>
@@ -829,7 +829,7 @@ export const SettingsPage: FC = () => {
 								{/* History Settings */}
 								<SettingsSectionCard
 									title="History Settings"
-									icon={faHistory}
+									icon={History}
 									description="Configure how much conversation history is retained and displayed.  These are tools to help balance cost and performance by controlling the amount of data used by the agents."
 								>
 									{/* Assuming SliderSetting is styled appropriately */}
@@ -842,7 +842,7 @@ export const SettingsPage: FC = () => {
 											max={500}
 											step={10}
 											unit="msgs"
-											icon={faHistory}
+											icon={History}
 											isSaving={savingField === "conversation_length"}
 											onChange={(value) =>
 												handleUpdateField("conversation_length", value)
@@ -856,7 +856,7 @@ export const SettingsPage: FC = () => {
 											max={500}
 											step={5}
 											unit="msgs"
-											icon={faListAlt}
+											icon={List}
 											isSaving={savingField === "detail_length"}
 											onChange={(value) =>
 												handleUpdateField("detail_length", value)
@@ -870,7 +870,7 @@ export const SettingsPage: FC = () => {
 											max={200}
 											step={10}
 											unit="notes"
-											icon={faDatabase}
+											icon={Database}
 											isSaving={savingField === "max_learnings_history"}
 											onChange={(value) =>
 												handleUpdateField("max_learnings_history", value)
@@ -882,7 +882,7 @@ export const SettingsPage: FC = () => {
 								{/* Configuration Metadata */}
 								<SettingsSectionCard
 									title="Configuration Information"
-									icon={faInfoCircle}
+									icon={Info}
 									description="System information about the current configuration."
 								>
 									<InfoGrid>
@@ -920,7 +920,7 @@ export const SettingsPage: FC = () => {
 					{/* Appearance Section */}
 					<SettingsSectionCard
 						title="Appearance"
-						icon={faAdjust}
+						icon={Contrast}
 						description="Customize the look and feel of Local Operator"
 						cardRef={sectionRefs.appearance} // Assign ref
 						dataTourTag="settings-appearance-section"
@@ -964,7 +964,7 @@ export const SettingsPage: FC = () => {
 					{/* API Credentials Section */}
 					<SettingsSectionCard
 						title="API Credentials"
-						icon={faKey}
+						icon={Key}
 						description="Manage your API keys for various services and integrations"
 						cardRef={sectionRefs.credentials} // Assign ref
 						dataTourTag="settings-api-credentials-section"

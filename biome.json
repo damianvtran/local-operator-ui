@@ -7,7 +7,12 @@
 	},
 	"files": {
 		"ignoreUnknown": false,
-		"ignore": ["dist/**", "out/**", "node_modules/**"]
+		"ignore": [
+			"dist/**",
+			"out/**",
+			"node_modules/**",
+			"src/renderer/src/styles/themes.generated.css"
+		]
 	},
 	"formatter": {
 		"enabled": true,
@@ -23,10 +28,10 @@
 			"correctness": {
 				"noUnusedVariables": "warn"
 			},
-      "performance": {
-        "noReExportAll": "warn",
-        "useTopLevelRegex":"warn"
-      }
+			"performance": {
+				"noReExportAll": "warn",
+				"useTopLevelRegex": "warn"
+			}
 		}
 	},
 	"javascript": {
@@ -40,4 +45,3 @@
 		}
 	}
 }
-

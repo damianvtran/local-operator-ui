@@ -1,6 +1,5 @@
-import { faTimes } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, Tab, Tabs, alpha, styled } from "@mui/material";
+import { X } from "lucide-react";
 import { type FC, memo, useCallback, useEffect, useState } from "react";
 import type { CanvasDocument } from "../../types/canvas";
 
@@ -172,7 +171,7 @@ const CanvasTabsComponent: FC<CanvasTabsProps> = ({
 								onClick={(e) => handleCloseTab(e, doc.id)}
 								aria-label={`Close ${doc.title}`}
 							>
-								<FontAwesomeIcon icon={faTimes} size="xs" />
+								<X size={12} />
 							</CloseTabButton>
 						}
 						iconPosition="end"

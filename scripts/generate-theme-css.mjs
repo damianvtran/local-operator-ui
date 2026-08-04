@@ -1,0 +1,115 @@
+#!/usr/bin/env node
+/**
+ * Generates `src/renderer/src/styles/themes.generated.css` from the palette
+ * files.
+ *
+ *     node scripts/generate-theme-css.mjs           # write
+ *     node scripts/generate-theme-css.mjs --check   # verify up to date, CI
+ *
+ * ## Why generate rather than hand-write
+ *
+ * Two systems need the same colours during this migration: MUI (still styling
+ * most of the app) and Tailwind (styling everything already ported). If those
+ * two read from different places they drift, and the drift shows up as a card
+ * that is one shade off from the card beside it — the exact defect that makes
+ * a half-migrated app look broken rather than in progress.
+ *
+ * So the palette TypeScript is the single source. MUI consumes it directly as
+ * hex values, which matters because ~299 `alpha()` call sites need a real
+ * colour and cannot take a `var()`. Tailwind consumes the CSS variables this
+ * script emits. Same numbers, two consumers, no hand-copying.
+ *
+ * ## Why static CSS rather than setting variables at runtime
+ *
+ * The theme provider could set these on `document.documentElement` at boot.
+ * Emitting them as static CSS instead means the correct palette is present in
+ * the stylesheet before first paint, so switching themes is a class change
+ * rather than a scripted restyle, and a cold start has no flash of the wrong
+ * ramp.
+ */
+
+import { readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
+const PALETTE_DIR = join(ROOT, "src/renderer/src/shared/themes/palettes");
+const OUT = join(ROOT, "src/renderer/src/styles/themes.generated.css");
+
+/** camelCase role -> kebab-case custom property suffix. */
+const kebab = (s) => s.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`);
+
+const loadPalettes = () => {
+	const out = [];
+	for (const file of readdirSync(PALETTE_DIR).filter((f) => f.endsWith(".ts"))) {
+		const src = readFileSync(join(PALETTE_DIR, file), "utf8");
+		for (const chunk of src.split(/\bid:\s*"/).slice(1)) {
+			const id = chunk.slice(0, chunk.indexOf('"'));
+			const pStart = chunk.indexOf("palette: {");
+			if (pStart === -1) continue;
+			const entries = {};
+			for (const m of chunk.slice(pStart).matchAll(/(\w+):\s*"([^"]+)"/g)) {
+				if (!(m[1] in entries)) entries[m[1]] = m[2];
+			}
+			out.push({ id, palette: entries });
+		}
+	}
+	return out.sort((a, b) => a.id.localeCompare(b.id));
+};
+
+const palettes = loadPalettes();
+if (palettes.length === 0) {
+	console.error(`No palettes found in ${PALETTE_DIR}`);
+	process.exit(1);
+}
+
+const block = ({ id, palette }) => {
+	const lines = Object.entries(palette)
+		.filter(([role]) => role !== "mode")
+		.map(([role, value]) => `\t--lo-${kebab(role)}: ${value};`)
+		.join("\n");
+	/* `color-scheme` makes the platform paint native scrollbars, form controls
+	   and the caret to match the palette. Without it a dark theme keeps a white
+	   scrollbar track, which is the single most visible "unthemed" artefact in
+	   an Electron app. */
+	return `[data-theme="${id}"] {\n\tcolor-scheme: ${palette.mode};\n${lines}\n}`;
+};
+
+const body = [
+	"/*",
+	" * GENERATED FILE — do not edit.",
+	" *",
+	" * Regenerate with `node scripts/generate-theme-css.mjs` after changing any",
+	" * palette in src/renderer/src/shared/themes/palettes/. `pnpm check-themes`",
+	" * fails if this file is stale.",
+	" *",
+	" * Source of truth: the ThemePalette objects in that directory. The floors",
+	" * these values must satisfy live in docs/branding.md § 3 and are enforced",
+	" * by scripts/contrast-contract.mjs.",
+	" */",
+	"",
+	...palettes.map(block),
+	"",
+].join("\n");
+
+if (process.argv.includes("--check")) {
+	let current = "";
+	try {
+		current = readFileSync(OUT, "utf8");
+	} catch {
+		console.error(`${OUT} does not exist. Run: node scripts/generate-theme-css.mjs`);
+		process.exit(1);
+	}
+	if (current !== body) {
+		console.error(
+			"themes.generated.css is stale. Run: node scripts/generate-theme-css.mjs",
+		);
+		process.exit(1);
+	}
+	console.log(`themes.generated.css is up to date (${palettes.length} themes).`);
+} else {
+	writeFileSync(OUT, body);
+	console.log(
+		`Wrote ${OUT} — ${palettes.length} themes, ${Object.keys(palettes[0].palette).length - 1} roles each.`,
+	);
+}

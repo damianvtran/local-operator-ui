@@ -1,5 +1,3 @@
-import { faPlus } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
 	Alert,
 	Box,
@@ -12,6 +10,7 @@ import { styled } from "@mui/material/styles";
 import type { CredentialUpdate } from "@shared/api/local-operator/types";
 import { useCredentials } from "@shared/hooks/use-credentials";
 import { useUpdateCredential } from "@shared/hooks/use-update-credential";
+import { Plus } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { FC } from "react";
 import { CredentialCard } from "./credential-card";
@@ -155,7 +154,7 @@ export const Credentials: FC = () => {
 					<Button
 						variant="outlined"
 						color="primary"
-						startIcon={<FontAwesomeIcon icon={faPlus} size="sm" />}
+						startIcon={<Plus size={14} />}
 						onClick={() => handleAddCredential(null)}
 						sx={{
 							textTransform: "none",

@@ -1,7 +1,6 @@
-import { faExclamationTriangle } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, alpha } from "@mui/material";
 import { styled } from "@mui/material/styles";
+import { TriangleAlert } from "lucide-react";
 import type { FC, ReactNode } from "react";
 
 /**
@@ -60,7 +59,7 @@ export const SecurityCheckHighlight: FC<SecurityCheckHighlightProps> = ({
 	return (
 		<HighlightContainer isUser={isUser}>
 			<SecurityBadge>
-				<FontAwesomeIcon icon={faExclamationTriangle} size="xs" />
+				<TriangleAlert size={12} />
 				AI SECURITY BLOCK
 			</SecurityBadge>
 			{children}

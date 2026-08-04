@@ -12,8 +12,6 @@ import {
 	UnsetContainer,
 } from "@features/chat/components/chat-options-sidebar-styled";
 import { UnsetSliderSetting } from "@features/chat/components/unset-slider-setting"; // Import shared component
-import { faGear, faInfoCircle } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
 	Box,
 	Button,
@@ -31,7 +29,7 @@ import { EditableField } from "@shared/components/common/editable-field";
 import { SliderSetting } from "@shared/components/common/slider-setting";
 import type { useUpdateAgent } from "@shared/hooks/use-update-agent";
 import { showErrorToast } from "@shared/utils/toast-manager";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight, Info, Settings } from "lucide-react";
 import type { FC } from "react";
 import { useEffect, useState } from "react";
 
@@ -155,7 +153,7 @@ export const ChatSettings: FC<ChatSettingsProps> = ({
 					placement="top"
 				>
 					<InfoButton size="small">
-						<FontAwesomeIcon icon={faInfoCircle} size="xs" />
+						<Info size={12} />
 					</InfoButton>
 				</Tooltip>
 			</SectionTitle>
@@ -507,7 +505,7 @@ export const ChatSettings: FC<ChatSettingsProps> = ({
 							value={localAgent.stop?.join("\n") || ""}
 							label="Stop Sequences"
 							placeholder="Enter stop sequences (one per line)..."
-							icon={<FontAwesomeIcon icon={faGear} />}
+							icon={<Settings size={16} />}
 							multiline
 							rows={3}
 							isSaving={savingField === "stop"}
@@ -735,7 +733,7 @@ export const ChatSettings: FC<ChatSettingsProps> = ({
 							value={localAgent.seed?.toString() || ""}
 							label="Seed"
 							placeholder="Random number seed for deterministic generation"
-							icon={<FontAwesomeIcon icon={faGear} />}
+							icon={<Settings size={16} />}
 							isSaving={savingField === "seed"}
 							onSave={async (value) => {
 								setSavingField("seed");

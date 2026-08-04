@@ -1,12 +1,4 @@
 import {
-	faComment,
-	faEdit,
-	faSave,
-	faTimes,
-	faTrashAlt,
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
 	Avatar,
 	Box,
 	Button,
@@ -25,6 +17,7 @@ import { styled } from "@mui/material/styles";
 import type { AgentComment } from "@shared/api/radient/types";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import { formatDistanceToNowStrict } from "date-fns";
+import { MessageCircle, Save, SquarePen, Trash2, X } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
 import {
@@ -250,7 +243,7 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
 				<CommentFormContainer>
 					<CommentLabel>
 						<LabelIcon>
-							<FontAwesomeIcon icon={faComment} size="sm" />
+							<MessageCircle size={14} />
 						</LabelIcon>
 						Leave a comment
 					</CommentLabel>
@@ -359,7 +352,7 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
 											<Button
 												size="small"
 												onClick={handleCancelEdit}
-												startIcon={<FontAwesomeIcon icon={faTimes} />}
+												startIcon={<X size={16} />}
 											>
 												Cancel
 											</Button>
@@ -374,7 +367,7 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
 													updateCommentMutation.isPending ? (
 														<CircularProgress size={16} color="inherit" />
 													) : (
-														<FontAwesomeIcon icon={faSave} />
+														<Save size={16} />
 													)
 												}
 											>
@@ -414,7 +407,7 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
 															}
 															disabled={!!editingCommentId}
 														>
-															<FontAwesomeIcon icon={faEdit} size="xs" />
+															<SquarePen size={12} />
 														</IconButton>
 													</Tooltip>
 													<Tooltip title="Delete Comment">
@@ -424,7 +417,7 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
 															onClick={() => handleDeleteComment(comment.id)}
 															disabled={!!editingCommentId}
 														>
-															<FontAwesomeIcon icon={faTrashAlt} size="xs" />
+															<Trash2 size={12} />
 														</IconButton>
 													</Tooltip>
 												</CommentActions>

@@ -7,15 +7,13 @@
  */
 
 import radientLogo from "@assets/radient-icon-1024x1024.png";
-import { faArrowRight } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, Grid, Typography, alpha, styled } from "@mui/material"; // Removed useTheme
 import {
 	OnboardingStep,
 	useOnboardingStore,
 } from "@shared/store/onboarding-store";
 import { radientTheme } from "@shared/themes"; // Keep for Radient specific colors if needed
-import { Lightbulb, Wrench } from "lucide-react";
+import { ArrowRight, Lightbulb, Wrench } from "lucide-react";
 import type { FC } from "react";
 import { useCallback } from "react";
 import {
@@ -253,8 +251,7 @@ export const RadientChoiceStep: FC<RadientChoiceStepProps> = ({
 								className="choose-option"
 								sx={{ color: radientTheme.palette.primary.main }}
 							>
-								Choose Radient Pass{" "}
-								<FontAwesomeIcon icon={faArrowRight} size="sm" />
+								Choose Radient Pass <ArrowRight size={14} />
 							</ChooseOption>
 						</RadientChoiceCard>
 					</Grid>
@@ -305,8 +302,7 @@ export const RadientChoiceStep: FC<RadientChoiceStepProps> = ({
 								</Box>
 							</Box>
 							<ChooseOption className="choose-option">
-								Choose DIY Setup{" "}
-								<FontAwesomeIcon icon={faArrowRight} size="sm" />
+								Choose DIY Setup <ArrowRight size={14} />
 							</ChooseOption>
 						</DiyChoiceCard>
 					</Grid>

@@ -1,7 +1,6 @@
-import { faExclamationCircle } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, Typography, alpha } from "@mui/material";
 import { styled } from "@mui/material/styles";
+import { CircleAlert } from "lucide-react";
 import type { FC } from "react";
 /**
  * Props for the InvalidAttachment component
@@ -67,7 +66,7 @@ export const InvalidAttachment: FC<InvalidAttachmentProps> = ({ file }) => {
 			title={`File not viewable: ${getFileName(file)}`}
 		>
 			<ErrorIcon>
-				<FontAwesomeIcon icon={faExclamationCircle} size="sm" />
+				<CircleAlert size={14} />
 			</ErrorIcon>
 			<ErrorText variant="body2">
 				{getFileName(file)} is not viewable (file may be incomplete, deleted, or

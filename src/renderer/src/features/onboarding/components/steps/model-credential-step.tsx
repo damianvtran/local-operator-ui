@@ -10,13 +10,6 @@ import {
 	CredentialType,
 } from "@features/settings/components/credential-manifest";
 import {
-	faCheck,
-	faExternalLinkAlt,
-	faKey,
-	faShieldAlt,
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
 	Alert,
 	Box,
 	CircularProgress,
@@ -35,7 +28,17 @@ import {
 import { useCredentials } from "@shared/hooks/use-credentials";
 import { useModels } from "@shared/hooks/use-models";
 import { useUpdateCredential } from "@shared/hooks/use-update-credential";
-import { Bot, Link2, Lock, PartyPopper, Sparkles } from "lucide-react";
+import {
+	Bot,
+	Check,
+	ExternalLink,
+	Key,
+	Link2,
+	Lock,
+	PartyPopper,
+	Shield,
+	Sparkles,
+} from "lucide-react";
 import type { FC } from "react";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -262,7 +265,7 @@ export const ModelCredentialStep: FC = () => {
 						<FormHelperText
 							sx={{ display: "flex", alignItems: "center", gap: 0.5 }}
 						>
-							<FontAwesomeIcon icon={faShieldAlt} size="xs" />
+							<Shield size={12} />
 							Select your preferred AI model provider
 						</FormHelperText>
 					</FormControl>
@@ -294,8 +297,7 @@ export const ModelCredentialStep: FC = () => {
 							<InlineIcon sx={{ mb: 0 }}>
 								<Link2 size={14} />
 							</InlineIcon>
-							Get {selectedCredentialInfo.name}{" "}
-							<FontAwesomeIcon icon={faExternalLinkAlt} size="xs" />
+							Get {selectedCredentialInfo.name} <ExternalLink size={12} />
 						</Link>
 					</Box>
 				)}
@@ -304,7 +306,7 @@ export const ModelCredentialStep: FC = () => {
 				{saveSuccess && (
 					<Alert
 						severity="success"
-						icon={<FontAwesomeIcon icon={faCheck} />}
+						icon={<Check size={16} />}
 						sx={successAlertSx}
 					>
 						<Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
@@ -322,7 +324,7 @@ export const ModelCredentialStep: FC = () => {
 					{/* Wrap Label and Input */}
 					<FieldLabel>
 						<LabelIcon>
-							<FontAwesomeIcon icon={faKey} size="sm" />
+							<Key size={14} />
 						</LabelIcon>
 						API Key
 					</FieldLabel>

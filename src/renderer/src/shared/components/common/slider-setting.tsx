@@ -4,8 +4,6 @@
  * A component for adjusting numeric settings with a slider and direct input
  */
 
-import type { IconDefinition } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
 	Box,
 	CircularProgress,
@@ -18,6 +16,7 @@ import {
 	useTheme, // Import useTheme
 } from "@mui/material";
 import { alpha } from "@mui/material/styles"; // Import alpha from styles
+import type { LucideIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { ChangeEvent, FC, KeyboardEvent, SyntheticEvent } from "react";
 
@@ -66,7 +65,7 @@ type SliderSettingProps = {
 	/**
 	 * Optional icon to display next to the label
 	 */
-	icon?: IconDefinition;
+	icon?: LucideIcon;
 
 	/**
 	 * Whether the setting is currently being saved
@@ -245,7 +244,7 @@ export const SliderSetting: FC<SliderSettingProps> = ({
 	step = 1,
 	unit,
 	onChange,
-	icon,
+	icon: Icon,
 	isSaving = false,
 }) => {
 	const theme = useTheme(); // Get theme for conditional styles if needed later
@@ -373,10 +372,9 @@ export const SliderSetting: FC<SliderSettingProps> = ({
 			{/* Label and Description */}
 			<LabelWrapper>
 				<LabelText variant="subtitle1">
-					{icon && (
+					{Icon && (
 						<IconWrapper>
-							{/* Ensure FontAwesomeIcon size/color is appropriate */}
-							<FontAwesomeIcon icon={icon} size="sm" />
+							<Icon size={14} />
 						</IconWrapper>
 					)}
 					{label}

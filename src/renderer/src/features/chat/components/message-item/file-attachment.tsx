@@ -1,10 +1,9 @@
-import { faFile } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, Typography, alpha } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import { FileActionsMenu } from "@shared/components/common/file-actions-menu";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
+import { File } from "lucide-react";
 import type { FC } from "react";
 import { memo, useCallback, useEffect } from "react";
 import { getFileTypeFromPath } from "../../utils/file-types";
@@ -427,7 +426,7 @@ export const FileAttachment: FC<FileAttachmentProps> = memo(
 				) : (
 					<>
 						<FileIcon>
-							<FontAwesomeIcon icon={faFile} size="sm" />
+							<File size={14} />
 						</FileIcon>
 						<FileName variant="body2">{getFileName(file)}</FileName>
 						{isLocalFile && (

@@ -1,14 +1,28 @@
 import type React from "react";
+import type { ThemePalette } from "./palette-contract";
 
 /**
- * Theme interface declarations for Material-UI
+ * Theme interface declarations for Material-UI.
  *
- * This file centralizes all theme interface extensions to avoid redundancy
- * across individual theme files.
+ * Centralised so the augmentations are declared once rather than in every
+ * theme file, which is how they used to drift.
  */
 
 declare module "@mui/material/styles" {
 	interface Palette {
+		/**
+		 * The palette this theme was built from, verbatim.
+		 *
+		 * The MUI keys below are a projection: they cover what MUI itself needs
+		 * and what the ~1405 existing `theme.palette.*` call sites already read,
+		 * but MUI has no key for `elevated`, `sunken`, `inkDim`, `borderControl`
+		 * or any of the twelve wash/border values. Rather than invent a MUI key
+		 * for each, the roles are carried through intact so a consumer that needs
+		 * one can reach it without a second source of truth appearing.
+		 *
+		 * Reach for a MUI key first; use this when the role has no MUI analogue.
+		 */
+		roles: ThemePalette;
 		caption: string;
 		sidebar: {
 			background: string;
@@ -61,6 +75,7 @@ declare module "@mui/material/styles" {
 		};
 	}
 	interface PaletteOptions {
+		roles?: ThemePalette;
 		caption?: string;
 		sidebar?: {
 			background?: string;

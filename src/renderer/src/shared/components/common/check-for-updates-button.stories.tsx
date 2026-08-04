@@ -11,7 +11,6 @@ import { DEFAULT_THEME, themes } from "@shared/themes";
 import type { Meta, StoryObj } from "@storybook/react";
 import type { ProgressInfo, UpdateInfo } from "electron-updater";
 import { useEffect, useState } from "react";
-import { ThemeProvider as StyledThemeProvider } from "styled-components";
 import { CheckForUpdatesButton } from "./check-for-updates-button";
 
 // Initialize window.api if it doesn't exist
@@ -275,12 +274,10 @@ const meta = {
 
 			return (
 				<MuiThemeProvider theme={theme}>
-					<StyledThemeProvider theme={theme}>
-						<CssBaseline />
-						<div style={{ padding: "20px" }}>
-							<Story />
-						</div>
-					</StyledThemeProvider>
+					<CssBaseline />
+					<div style={{ padding: "20px" }}>
+						<Story />
+					</div>
 				</MuiThemeProvider>
 			);
 		},

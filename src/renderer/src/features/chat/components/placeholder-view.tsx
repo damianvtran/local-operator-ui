@@ -1,6 +1,5 @@
-import { faArrowRight, faRobot } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, Paper, Typography, styled } from "@mui/material";
+import { ArrowRight, Bot } from "lucide-react";
 import type { FC } from "react";
 
 /**
@@ -23,8 +22,8 @@ const PlaceholderContainer = styled(Paper)({
 	padding: 24,
 });
 
-const PlaceholderIcon = styled(FontAwesomeIcon)({
-	fontSize: "3rem",
+// lucide ignores CSS font-size, so the 3rem sizing moved to the size prop below.
+const PlaceholderIcon = styled(Bot)({
 	marginBottom: "1rem",
 	opacity: 0.5,
 });
@@ -48,7 +47,7 @@ export const PlaceholderView: FC<PlaceholderViewProps> = ({
 }) => {
 	return (
 		<PlaceholderContainer elevation={0}>
-			<PlaceholderIcon icon={faRobot} />
+			<PlaceholderIcon size={48} />
 			<Typography variant="h6" sx={{ mb: 1, fontWeight: 500 }}>
 				{title}
 			</Typography>
@@ -62,8 +61,8 @@ export const PlaceholderView: FC<PlaceholderViewProps> = ({
 			</Typography>
 			{directionText && (
 				<DirectionIndicator>
-					<FontAwesomeIcon
-						icon={faArrowRight}
+					<ArrowRight
+						size={16}
 						style={{ transform: "rotate(180deg)", marginRight: "0.5rem" }}
 					/>
 					<Typography variant="body2">{directionText}</Typography>

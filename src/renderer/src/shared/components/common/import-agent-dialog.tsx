@@ -4,17 +4,17 @@
  * A dialog for importing agents from ZIP files
  */
 
-import { faFileImport, faUpload } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
 	Box,
 	CircularProgress,
+	type Theme,
 	Typography,
 	alpha,
 	styled,
 } from "@mui/material";
 import type { AgentDetails } from "@shared/api/local-operator/types";
 import { useImportAgent } from "@shared/hooks/use-agent-mutations";
+import { FileInput as FileImportIcon, Upload } from "lucide-react";
 import type { FC } from "react";
 import { useCallback, useRef, useState } from "react";
 import {
@@ -43,9 +43,8 @@ type ImportAgentDialogProps = {
 	onAgentImported?: (agentId: string) => void;
 };
 
-const StyledIcon = styled(FontAwesomeIcon)(({ theme }) => ({
+const StyledIcon = styled(FileImportIcon)(({ theme }) => ({
 	color: theme.palette.primary.main,
-	fontSize: "1.2rem",
 }));
 
 const UploadArea = styled(Box)(({ theme }) => ({
@@ -67,11 +66,16 @@ const UploadArea = styled(Box)(({ theme }) => ({
 	},
 }));
 
-const UploadIcon = styled(FontAwesomeIcon)(({ theme }) => ({
-	fontSize: "2rem",
+// The upload area shows two different glyphs and a styled lucide component is
+// bound to a single icon, so the shared style is applied to each glyph.
+const uploadIconStyle = ({ theme }: { theme: Theme }) => ({
 	color: theme.palette.text.secondary,
 	marginBottom: theme.spacing(2),
-}));
+});
+
+const SelectedFileIcon = styled(FileImportIcon)(uploadIconStyle);
+
+const DropzoneIcon = styled(Upload)(uploadIconStyle);
 
 const FileInput = styled("input")({
 	display: "none",
@@ -202,7 +206,7 @@ export const ImportAgentDialog: FC<ImportAgentDialogProps> = ({
 
 	const dialogTitle = (
 		<TitleContainer>
-			<StyledIcon icon={faFileImport} />
+			<StyledIcon size={19} />
 			Import Agent
 		</TitleContainer>
 	);
@@ -258,7 +262,7 @@ export const ImportAgentDialog: FC<ImportAgentDialogProps> = ({
 				>
 					{file ? (
 						<>
-							<UploadIcon icon={faFileImport} />
+							<SelectedFileIcon size={32} />
 							<Typography variant="body1" gutterBottom>
 								{file.name}
 							</Typography>
@@ -268,7 +272,7 @@ export const ImportAgentDialog: FC<ImportAgentDialogProps> = ({
 						</>
 					) : (
 						<>
-							<UploadIcon icon={faUpload} />
+							<DropzoneIcon size={32} />
 							<Typography variant="body1" gutterBottom>
 								Drag and drop a ZIP file here
 							</Typography>

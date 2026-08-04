@@ -4,12 +4,6 @@
  * Displays and manages generation settings for the agent
  */
 
-import {
-	faGear,
-	faInfoCircle,
-	faSliders,
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, Tooltip, Typography } from "@mui/material";
 import type {
 	AgentDetails,
@@ -19,6 +13,7 @@ import { EditableField } from "@shared/components/common/editable-field";
 import { SliderSetting } from "@shared/components/common/slider-setting";
 import { showErrorToast } from "@shared/utils/toast-manager";
 import type { UseMutationResult } from "@tanstack/react-query";
+import { Info, Settings, SlidersHorizontal } from "lucide-react";
 import type { FC } from "react";
 import { updateAgentSetting } from "../utils/chat-options-utils";
 import {
@@ -82,7 +77,7 @@ export const GenerationSettingsSection: FC<GenerationSettingsSectionProps> = ({
 	return (
 		<>
 			<SectionTitle variant="subtitle1">
-				<TitleIcon icon={faSliders} />
+				<TitleIcon icon={SlidersHorizontal} />
 				Generation Settings
 				{/* @ts-ignore - Tooltip has issues with TypeScript but works fine */}
 				<Tooltip
@@ -91,7 +86,7 @@ export const GenerationSettingsSection: FC<GenerationSettingsSectionProps> = ({
 					placement="top"
 				>
 					<InfoButton size="small">
-						<FontAwesomeIcon icon={faInfoCircle} size="xs" />
+						<Info size={12} />
 					</InfoButton>
 				</Tooltip>
 			</SectionTitle>
@@ -275,9 +270,7 @@ export const GenerationSettingsSection: FC<GenerationSettingsSectionProps> = ({
 					description="Sequences that will cause the model to stop generating text."
 					defaultValue={[]}
 					defaultDisplayText="empty"
-					icon={
-						<FontAwesomeIcon icon={faGear} style={{ marginRight: "10px" }} />
-					}
+					icon={<Settings size={16} style={{ marginRight: "10px" }} />}
 					onSetValue={async () => {
 						await updateAgentSetting(
 							"stop",
@@ -295,7 +288,7 @@ export const GenerationSettingsSection: FC<GenerationSettingsSectionProps> = ({
 					value={agent.stop?.join("\n") || ""}
 					label="Stop Sequences"
 					placeholder="Enter stop sequences (one per line)..."
-					icon={<FontAwesomeIcon icon={faGear} />}
+					icon={<Settings size={16} />}
 					multiline
 					rows={3}
 					isSaving={savingField === "stop"}
@@ -408,9 +401,7 @@ export const GenerationSettingsSection: FC<GenerationSettingsSectionProps> = ({
 					description="Random number seed for deterministic generation."
 					defaultValue={42}
 					defaultDisplayText="42"
-					icon={
-						<FontAwesomeIcon icon={faGear} style={{ marginRight: "10px" }} />
-					}
+					icon={<Settings size={16} style={{ marginRight: "10px" }} />}
 					onSetValue={async () => {
 						await updateAgentSetting(
 							"seed",
@@ -428,7 +419,7 @@ export const GenerationSettingsSection: FC<GenerationSettingsSectionProps> = ({
 					value={agent.seed?.toString() || ""}
 					label="Seed"
 					placeholder="Random number seed for deterministic generation"
-					icon={<FontAwesomeIcon icon={faGear} />}
+					icon={<Settings size={16} />}
 					isSaving={savingField === "seed"}
 					onSave={async (value) => {
 						const seedValue = value.trim()

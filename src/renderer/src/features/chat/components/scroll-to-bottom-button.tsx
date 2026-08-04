@@ -1,6 +1,5 @@
-import { faArrowDown } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, Fade, IconButton, styled } from "@mui/material";
+import { ArrowDown } from "lucide-react";
 import { useCallback } from "react";
 import type { FC } from "react";
 /**
@@ -94,7 +93,7 @@ export const ScrollToBottomButton: FC<ScrollToBottomButtonProps> = ({
 					onClick={handleClick}
 					size="small"
 				>
-					<FontAwesomeIcon icon={faArrowDown} style={{ fontSize: 14 }} />
+					<ArrowDown size={14} />
 				</StyledButton>
 			</ButtonContainer>
 		</Fade>

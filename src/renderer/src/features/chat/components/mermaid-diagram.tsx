@@ -11,7 +11,7 @@ import {
 	ZoomIn,
 	ZoomOut,
 } from "lucide-react";
-import mermaid from "mermaid";
+import type { Mermaid } from "mermaid";
 import type { FC, ReactNode } from "react";
 import {
 	Component,
@@ -21,6 +21,34 @@ import {
 	useRef,
 	useState,
 } from "react";
+
+// mermaid drags in cytoscape plus a per-diagram-type chunk for every syntax it
+// supports (roughly 3.6 MB of JS). A static import puts all of it in the startup
+// path even for sessions that never render a diagram, so the module is fetched
+// on first use and the promise memoised at module scope.
+//
+// initialize() belongs to that one-time setup: mermaid is a singleton, and this
+// call used to sit inside renderDiagram, reconfiguring it on every render.
+let mermaidPromise: Promise<Mermaid> | null = null;
+
+const getMermaid = (): Promise<Mermaid> => {
+	if (!mermaidPromise) {
+		mermaidPromise = import("mermaid").then(({ default: mermaid }) => {
+			mermaid.initialize({
+				startOnLoad: true,
+				theme: "default",
+				securityLevel: "loose",
+				fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
+				fontSize: 14,
+				// Prevents mermaid inserting global error elements into the DOM;
+				// this component renders its own error state.
+				suppressErrorRendering: true,
+			});
+			return mermaid;
+		});
+	}
+	return mermaidPromise;
+};
 
 type MermaidDiagramProps = {
 	chart: string;
@@ -225,15 +253,7 @@ const MermaidDiagramCore: FC<MermaidDiagramProps> = memo(({ chart, id }) => {
 				throw new Error("Invalid or empty chart content");
 			}
 
-			// Initialize mermaid with configuration that prevents global error rendering
-			mermaid.initialize({
-				startOnLoad: true,
-				theme: "default",
-				securityLevel: "loose",
-				fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
-				fontSize: 14,
-				suppressErrorRendering: true, // Prevents global error elements from being inserted into DOM
-			});
+			const mermaid = await getMermaid();
 
 			// Generate unique ID for the diagram
 			const diagramId =

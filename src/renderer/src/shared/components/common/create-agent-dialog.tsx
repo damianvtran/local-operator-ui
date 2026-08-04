@@ -1,5 +1,3 @@
-import { faRobot } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
 	CircularProgress,
 	TextField,
@@ -9,7 +7,7 @@ import {
 } from "@mui/material";
 import type { AgentCreate } from "@shared/api/local-operator/types";
 import { useCreateAgent } from "@shared/hooks";
-import { ExternalLink } from "lucide-react";
+import { Bot, ExternalLink } from "lucide-react";
 import type { FC, FormEvent } from "react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -36,9 +34,8 @@ type CreateAgentDialogProps = {
 	onAgentCreated?: (agentId: string) => void;
 };
 
-const StyledIcon = styled(FontAwesomeIcon)(({ theme }) => ({
+const StyledIcon = styled(Bot)(({ theme }) => ({
 	color: theme.palette.primary.main,
-	fontSize: "1.2rem",
 }));
 
 const StyledTextField = styled(TextField)(({ theme }) => ({
@@ -157,7 +154,7 @@ export const CreateAgentDialog: FC<CreateAgentDialogProps> = ({
 
 	const dialogTitle = (
 		<TitleContainer>
-			<StyledIcon icon={faRobot} />
+			<StyledIcon size={19} />
 			Create New Agent
 		</TitleContainer>
 	);

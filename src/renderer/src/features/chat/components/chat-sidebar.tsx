@@ -1,6 +1,4 @@
 import { UploadAgentDialog } from "@features/agents/components/upload-agent-dialog";
-import { faCommentSlash } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
 	Alert,
 	Avatar,
@@ -38,7 +36,7 @@ import {
 	formatMessageDateTime,
 	getFullDateTime,
 } from "@shared/utils/date-utils";
-import { Bot } from "lucide-react";
+import { Bot, MessageCircleOff } from "lucide-react";
 import type { ChangeEvent, FC } from "react";
 import { memo, useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -342,11 +340,7 @@ const ChatSidebarItem: FC<ChatSidebarItemProps> = ({
 						</Tooltip>
 					) : (
 						<NoMessagesContainer>
-							<FontAwesomeIcon
-								icon={faCommentSlash}
-								size="xs"
-								style={{ marginRight: "4px" }}
-							/>
+							<MessageCircleOff size={12} style={{ marginRight: "4px" }} />
 							<span>No messages yet</span>
 						</NoMessagesContainer>
 					)}

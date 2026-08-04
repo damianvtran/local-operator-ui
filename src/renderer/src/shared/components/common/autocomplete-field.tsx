@@ -5,8 +5,6 @@
  * Users can select from suggestions or enter their own custom value.
  */
 
-import { faCheck, faTimes } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
 	Autocomplete,
 	Box,
@@ -17,6 +15,7 @@ import {
 	alpha,
 	styled,
 } from "@mui/material";
+import { Check, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { ReactNode, SyntheticEvent } from "react";
 
@@ -356,7 +355,7 @@ export const AutocompleteField = ({
 										title="Save changes"
 										sx={{ marginRight: 1 }} // Add extra margin between buttons
 									>
-										<FontAwesomeIcon icon={faCheck} size="xs" />
+										<Check size={12} />
 									</SaveButton>
 									<CancelButton
 										size="small"
@@ -364,7 +363,7 @@ export const AutocompleteField = ({
 										title="Cancel"
 										sx={{ marginRight: 1 }} // Add extra margin between buttons
 									>
-										<FontAwesomeIcon icon={faTimes} size="xs" />
+										<X size={12} />
 									</CancelButton>
 								</>
 							)}

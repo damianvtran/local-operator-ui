@@ -7,8 +7,6 @@
  * - Theme-aware, shadcn/MUI style, consistent with EditableField
  */
 
-import { faPlus, faTimes } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
 	Box,
 	Chip,
@@ -18,6 +16,7 @@ import {
 	styled,
 	useTheme,
 } from "@mui/material";
+import { Plus, X } from "lucide-react";
 import { useRef, useState } from "react";
 import type { ChangeEvent, FC, KeyboardEvent } from "react";
 
@@ -157,7 +156,7 @@ export const TagsInputChips: FC<TagsInputChipsProps> = ({
 									"&:hover": { color: theme.palette.error.main },
 								}}
 							>
-								<FontAwesomeIcon icon={faTimes} size="xs" />
+								<X size={12} />
 							</IconButton>
 						}
 						sx={{ marginRight: 0.5 }}
@@ -195,7 +194,7 @@ export const TagsInputChips: FC<TagsInputChipsProps> = ({
 							"&:hover": { color: theme.palette.primary.dark },
 						}}
 					>
-						<FontAwesomeIcon icon={faPlus} size="xs" />
+						<Plus size={12} />
 					</IconButton>
 				)}
 			</ChipsContainer>

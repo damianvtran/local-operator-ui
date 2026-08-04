@@ -1,22 +1,17 @@
-import { library } from "@fortawesome/fontawesome-svg-core";
-import { fab } from "@fortawesome/free-brands-svg-icons";
-import { fas } from "@fortawesome/free-solid-svg-icons";
-import { Box, CssBaseline } from "@mui/material";
+import { Box, CircularProgress, CssBaseline } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import type { FC } from "react";
-import { useEffect } from "react";
+import { Suspense, lazy, useEffect } from "react";
 import { Navigate, Route, Routes, useNavigate } from "react-router-dom"; // Import useNavigate
 
-import { AgentDetailsPage } from "@features/agent-hub/agent-details-page";
-import { AgentHubPage } from "@features/agent-hub/agent-hub-page";
-import { AgentsPage } from "@features/agents/components/agents-page";
+// ChatPage is the boot route (/ redirects to /chat), so it stays statically
+// imported: lazy-loading it would put a Suspense fallback on first paint.
 import { ChatPage } from "@features/chat/components/chat-page";
 import { CommandPalette } from "@features/command-palette/components/command-palette";
 import { OnboardingModal } from "@features/onboarding";
 import { OnboardingProvider } from "@features/onboarding/components/onboarding-provider";
 import { OnboardingTourGlobalStyles } from "@features/onboarding/components/onboarding-tour-global.styles";
-import { SchedulesPage } from "@features/schedules/components/schedules-page";
-import { SettingsPage } from "@features/settings/components/settings-page";
+
 import { ConnectivityBanner } from "@shared/components/common/connectivity-banner";
 import { CreateAgentDialog } from "@shared/components/common/create-agent-dialog"; // Import CreateAgentDialog
 import { LowCreditsDialog } from "@shared/components/common/low-credits-dialog";
@@ -27,7 +22,34 @@ import { useCheckFirstTimeUser } from "@shared/hooks/use-check-first-time-user";
 import { useLowCreditsDialog } from "@shared/hooks/use-low-credits-dialog";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 
-library.add(fas, fab);
+// The other five routes are split out so a cold start neither downloads nor
+// parses them. They export named components rather than defaults, so each
+// import is remapped to the { default } shape React.lazy requires.
+const AgentDetailsPage = lazy(() =>
+	import("@features/agent-hub/agent-details-page").then((m) => ({
+		default: m.AgentDetailsPage,
+	})),
+);
+const AgentHubPage = lazy(() =>
+	import("@features/agent-hub/agent-hub-page").then((m) => ({
+		default: m.AgentHubPage,
+	})),
+);
+const AgentsPage = lazy(() =>
+	import("@features/agents/components/agents-page").then((m) => ({
+		default: m.AgentsPage,
+	})),
+);
+const SchedulesPage = lazy(() =>
+	import("@features/schedules/components/schedules-page").then((m) => ({
+		default: m.SchedulesPage,
+	})),
+);
+const SettingsPage = lazy(() =>
+	import("@features/settings/components/settings-page").then((m) => ({
+		default: m.SettingsPage,
+	})),
+);
 
 const AppContainer = styled(Box)(() => ({
 	display: "flex",
@@ -40,6 +62,13 @@ const MainContent = styled(Box)(() => ({
 	overflow: "hidden",
 	display: "flex",
 	flexDirection: "column",
+}));
+
+const RouteFallback = styled(Box)(() => ({
+	flexGrow: 1,
+	display: "flex",
+	alignItems: "center",
+	justifyContent: "center",
 }));
 
 /**
@@ -128,31 +157,42 @@ const App: FC = () => {
 
 				{/* Main Content Area */}
 				<MainContent>
-					<Routes>
-						{/* Redirect root to chat */}
-						<Route path="/" element={<Navigate to="/chat" replace />} />
+					<Suspense
+						fallback={
+							<RouteFallback>
+								<CircularProgress size={40} thickness={4} />
+							</RouteFallback>
+						}
+					>
+						<Routes>
+							{/* Redirect root to chat */}
+							<Route path="/" element={<Navigate to="/chat" replace />} />
 
-						{/* Chat routes */}
-						<Route path="/chat" element={<ChatPage />} />
-						<Route path="/chat/:agentId" element={<ChatPage />} />
+							{/* Chat routes */}
+							<Route path="/chat" element={<ChatPage />} />
+							<Route path="/chat/:agentId" element={<ChatPage />} />
 
-						{/* Agents routes */}
-						<Route path="/agents" element={<AgentsPage />} />
-						<Route path="/agents/:agentId" element={<AgentsPage />} />
+							{/* Agents routes */}
+							<Route path="/agents" element={<AgentsPage />} />
+							<Route path="/agents/:agentId" element={<AgentsPage />} />
 
-						{/* Settings route */}
-						<Route path="/settings" element={<SettingsPage />} />
+							{/* Settings route */}
+							<Route path="/settings" element={<SettingsPage />} />
 
-						{/* Agent Hub routes */}
-						<Route path="/agent-hub" element={<AgentHubPage />} />
-						<Route path="/agent-hub/:agentId" element={<AgentDetailsPage />} />
+							{/* Agent Hub routes */}
+							<Route path="/agent-hub" element={<AgentHubPage />} />
+							<Route
+								path="/agent-hub/:agentId"
+								element={<AgentDetailsPage />}
+							/>
 
-						{/* Schedules route */}
-						<Route path="/schedules" element={<SchedulesPage />} />
+							{/* Schedules route */}
+							<Route path="/schedules" element={<SchedulesPage />} />
 
-						{/* Fallback route - redirect to chat */}
-						<Route path="*" element={<Navigate to="/chat" replace />} />
-					</Routes>
+							{/* Fallback route - redirect to chat */}
+							<Route path="*" element={<Navigate to="/chat" replace />} />
+						</Routes>
+					</Suspense>
 				</MainContent>
 			</AppContainer>
 		</OnboardingProvider>

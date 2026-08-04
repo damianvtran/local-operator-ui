@@ -1,7 +1,6 @@
-import { faCheck, faKey } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, Grid, Typography, styled } from "@mui/material";
 import { SectionTitle as CommonSectionTitle } from "@shared/components/common/section-title";
+import { Check, Key } from "lucide-react";
 import type { FC, ReactNode } from "react";
 
 // Styling for the section description
@@ -88,14 +87,12 @@ type EmptyStateProps = {
  */
 export const EmptyState: FC<EmptyStateProps> = ({ type }) => {
 	const isNoCredentials = type === "noCredentials";
+	const StateIcon = isNoCredentials ? Key : Check;
 
 	return (
 		<EmptyStateContainer>
 			<EmptyStateIcon>
-				<FontAwesomeIcon
-					icon={isNoCredentials ? faKey : faCheck}
-					size="lg" // Slightly smaller icon
-				/>
+				<StateIcon size={20} />
 			</EmptyStateIcon>
 			<Typography
 				variant="subtitle1" // Use subtitle1 for slightly smaller heading

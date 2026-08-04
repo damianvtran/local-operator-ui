@@ -5,8 +5,6 @@
  * Filters available options based on user credentials.
  */
 
-import { faServer } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
 	Autocomplete,
 	Box,
@@ -18,6 +16,7 @@ import {
 	styled,
 } from "@mui/material";
 import { useCredentials, useModels } from "@shared/hooks";
+import { Server } from "lucide-react";
 import type { FC, SyntheticEvent } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -459,7 +458,7 @@ export const HostingSelect: FC<HostingSelectProps> = ({
 			<Tooltip title="Select the AI provider that you want to use.  Each provider has different models available.  Recommended: Radient">
 				<FieldLabel variant="subtitle2">
 					<LabelIcon>
-						<FontAwesomeIcon icon={faServer} />
+						<Server size={16} />
 					</LabelIcon>
 					Hosting Provider
 				</FieldLabel>

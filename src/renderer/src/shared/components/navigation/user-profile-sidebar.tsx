@@ -1,11 +1,4 @@
 import {
-	faGear,
-	faShield,
-	faSignOut,
-	faUser,
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
 	Avatar,
 	Box,
 	Menu,
@@ -16,6 +9,7 @@ import {
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
+import { LogOut, Settings, Shield, User } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import React, { type FC } from "react";
 import { useNavigate } from "react-router-dom";
@@ -233,7 +227,7 @@ export const UserProfileSidebar: FC<UserProfileSidebarProps> = React.memo(
 					{userInitials ? (
 						<UserInitials>{userInitials}</UserInitials>
 					) : (
-						<FontAwesomeIcon icon={faUser} size="sm" />
+						<User size={14} />
 					)}
 				</UserAvatar>
 			),
@@ -272,20 +266,20 @@ export const UserProfileSidebar: FC<UserProfileSidebarProps> = React.memo(
 					>
 						<MenuItemStyled onClick={() => handleNavigate("/settings")}>
 							<IconWrapper>
-								<FontAwesomeIcon icon={faGear} />
+								<Settings size={16} />
 							</IconWrapper>
 							Settings
 						</MenuItemStyled>
 						<MenuItemStyled onClick={handleClose}>
 							<IconWrapper>
-								<FontAwesomeIcon icon={faShield} />
+								<Shield size={16} />
 							</IconWrapper>
 							Privacy & Security
 						</MenuItemStyled>
 						<MenuDivider />
 						<MenuItemDanger onClick={handleSignOut}>
 							<IconWrapper>
-								<FontAwesomeIcon icon={faSignOut} />
+								<LogOut size={16} />
 							</IconWrapper>
 							Sign out
 						</MenuItemDanger>

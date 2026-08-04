@@ -4,15 +4,6 @@
  * Component for displaying and editing general agent settings
  */
 
-import {
-	faCalendarAlt,
-	faCodeBranch,
-	faIdCard,
-	faInfoCircle,
-	faRobot,
-	faTag,
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, Divider, Grid, Tooltip, Typography, alpha } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import type {
@@ -27,6 +18,7 @@ import { ModelSelect } from "@shared/components/hosting/model-select";
 import { useConfig } from "@shared/hooks/use-config";
 import type { useUpdateAgent } from "@shared/hooks/use-update-agent";
 import { showErrorToast } from "@shared/utils/toast-manager";
+import { Bot, Calendar, GitBranch, IdCard, Info, Tag } from "lucide-react";
 import type { FC } from "react";
 import { useEffect, useState } from "react";
 
@@ -103,7 +95,7 @@ const SectionTitle = styled(Typography)(({ theme }) => ({
 	color: theme.palette.text.primary,
 }));
 
-const TitleIcon = styled(FontAwesomeIcon)(({ theme }) => ({
+const TitleIcon = styled(Info)(({ theme }) => ({
 	marginRight: 10,
 	color: theme.palette.primary.main,
 	padding: theme.spacing(0.5),
@@ -218,7 +210,7 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 						value={selectedAgent.name}
 						label="Agent Name"
 						placeholder="Enter agent name..."
-						icon={<FontAwesomeIcon icon={faRobot} />}
+						icon={<Bot size={16} />}
 						isSaving={savingField === "name"}
 						onSave={async (value) => {
 							if (!value.trim()) {
@@ -353,7 +345,7 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 								<Tooltip title="Select a hosting provider first, and then select the AI model that you want to use.  Each model has different capabilities and costs.  Recommended: Automatic">
 									<FieldLabel>
 										<LabelIcon>
-											<FontAwesomeIcon icon={faRobot} />
+											<Bot size={16} />
 										</LabelIcon>
 										Model
 									</FieldLabel>
@@ -373,7 +365,7 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 
 			<Box sx={{ mb: 3 }}>
 				<SectionTitle variant="subtitle1">
-					<TitleIcon icon={faInfoCircle} />
+					<TitleIcon size={16} />
 					Agent Information
 				</SectionTitle>
 
@@ -381,7 +373,7 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 					value={selectedAgent.description || ""}
 					label="Description"
 					placeholder="Enter agent description..."
-					icon={<FontAwesomeIcon icon={faTag} />}
+					icon={<Tag size={16} />}
 					multiline
 					rows={3}
 					isSaving={savingField === "description"}
@@ -413,7 +405,7 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 				<TagsInputChips
 					value={selectedAgent.tags || []}
 					label="Tags"
-					icon={<FontAwesomeIcon icon={faTag} />}
+					icon={<Tag size={16} />}
 					placeholder="Add tag..."
 					disabled={tagsSaving}
 					onChange={async (tags) => {
@@ -446,7 +438,7 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 				<CategoriesInputChips
 					value={selectedAgent.categories || []}
 					label="Categories"
-					icon={<FontAwesomeIcon icon={faInfoCircle} />}
+					icon={<Info size={16} />}
 					placeholder="Add category..."
 					disabled={categoriesSaving}
 					onChange={async (categories) => {
@@ -481,7 +473,7 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 						{/* Use updated FieldLabel and LabelIcon */}
 						<FieldLabel>
 							<LabelIcon>
-								<FontAwesomeIcon icon={faIdCard} size="xs" />
+								<IdCard size={12} />
 							</LabelIcon>
 							ID
 						</FieldLabel>
@@ -495,7 +487,7 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 						{/* Use updated FieldLabel and LabelIcon */}
 						<FieldLabel>
 							<LabelIcon>
-								<FontAwesomeIcon icon={faCalendarAlt} size="xs" />
+								<Calendar size={12} />
 							</LabelIcon>
 							Created
 						</FieldLabel>
@@ -513,7 +505,7 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 						{/* Use updated FieldLabel and LabelIcon */}
 						<FieldLabel>
 							<LabelIcon>
-								<FontAwesomeIcon icon={faCodeBranch} size="xs" />
+								<GitBranch size={12} />
 							</LabelIcon>
 							Version
 						</FieldLabel>

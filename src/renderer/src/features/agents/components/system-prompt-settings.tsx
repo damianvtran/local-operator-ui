@@ -4,8 +4,6 @@
  * Component for displaying and editing agent system prompt settings
  */
 
-import { faInfoCircle, faRobot } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, IconButton, Tooltip, Typography, alpha } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import type { AgentDetails } from "@shared/api/local-operator/types";
@@ -14,6 +12,7 @@ import {
 	useAgentSystemPrompt,
 	useUpdateAgentSystemPrompt,
 } from "@shared/hooks/use-agent-system-prompt";
+import { Bot, Info } from "lucide-react";
 import type { FC } from "react";
 import { useEffect, useState } from "react";
 
@@ -52,7 +51,7 @@ const SectionTitle = styled(Typography)(({ theme }) => ({
 	color: theme.palette.text.primary,
 }));
 
-const TitleIcon = styled(FontAwesomeIcon)(({ theme }) => ({
+const TitleIcon = styled(Bot)(({ theme }) => ({
 	marginRight: 10,
 	color: theme.palette.primary.main,
 	padding: theme.spacing(0.5),
@@ -98,7 +97,7 @@ export const SystemPromptSettings: FC<SystemPromptSettingsProps> = ({
 	return (
 		<Box data-tour-tag="agent-settings-system-prompt" sx={{ mt: 0 }}>
 			<SectionTitle variant="subtitle1">
-				<TitleIcon icon={faRobot} />
+				<TitleIcon size={16} />
 				Agent Instructions
 				{/* @ts-ignore - Tooltip has issues with TypeScript but works fine */}
 				<Tooltip
@@ -107,7 +106,7 @@ export const SystemPromptSettings: FC<SystemPromptSettingsProps> = ({
 					placement="top"
 				>
 					<InfoButton size="small">
-						<FontAwesomeIcon icon={faInfoCircle} size="xs" />
+						<Info size={12} />
 					</InfoButton>
 				</Tooltip>
 			</SectionTitle>
