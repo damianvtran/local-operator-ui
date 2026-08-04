@@ -1,93 +1,20 @@
-import { keyframes } from "@emotion/react";
-import { Avatar, Box, Typography, styled } from "@mui/material";
 import type {
 	AgentExecutionRecord,
 	JobStatus,
 } from "@shared/api/local-operator/types";
+import { Avatar, AvatarFallback } from "@shared/components/ui";
+import { cn } from "@shared/lib/utils";
 import { useStreamingMessagesStore } from "@shared/store/streaming-messages-store";
 import { Bot } from "lucide-react";
-import { type FC, memo } from "react"; // Import memo
+import { type FC, memo } from "react";
 
-// Define the animations
-const dotAnimation = keyframes`
-  0%, 100% { opacity: 0.3; }
-  50% { opacity: 1; }
-`;
-
-const textStrobeAnimation = keyframes`
-  0% { opacity: 0.6; }
-  50% { opacity: 1; }
-  100% { opacity: 0.6; }
-`;
-
-// Styled components
-const LoadingContainer = styled(Box, {
-	shouldForwardProp: (prop) => prop !== "isSmallView",
-})<{ isSmallView?: boolean }>(({ isSmallView }) => ({
-	display: "flex",
-	alignItems: "center",
-	gap: isSmallView ? 8 : 0,
-}));
-
-const AgentAvatar = styled(Avatar)(({ theme }) => ({
-	backgroundColor: theme.palette.icon.background,
-	color: theme.palette.icon.text,
-	boxShadow: "none",
-	border: "none",
-}));
-
-const ContentContainer = styled(Box)(() => ({
-	display: "flex",
-	flexDirection: "column",
-	gap: 8,
-	maxWidth: "calc(100% - 60px)",
-}));
-const StatusContainer = styled(Box)(() => ({
-	display: "flex",
-	alignItems: "center",
-	gap: 8,
-}));
-
-const StatusText = styled(Typography, {
-	shouldForwardProp: (prop) => prop !== "isSmallView",
-})<{ isSmallView?: boolean }>(({ theme, isSmallView }) => ({
-	color: theme.palette.text.secondary,
-	display: "flex",
-	marginLeft: isSmallView ? 0 : 16,
-	fontSize: isSmallView ? "0.75rem" : "1rem",
-	position: "relative",
-	animation: `${textStrobeAnimation} 3s ease-in-out infinite`,
-}));
-
-const StatusTextContent = styled("span")(() => ({
-	wordBreak: "break-word",
-	display: "inline",
-}));
-
-const StatusControls = styled("span")(() => ({
-	display: "inline-flex",
-	alignItems: "center",
-	marginLeft: 4,
-	whiteSpace: "nowrap",
-}));
-
-const DotContainer = styled("span")(() => ({
-	display: "inline-flex",
-	alignItems: "center",
-	position: "relative",
-	zIndex: 2,
-	marginLeft: 4,
-}));
-
-const Dot = styled("span")<{ delay: number }>(({ theme, delay }) => ({
-	width: 4,
-	height: 4,
-	borderRadius: "50%",
-	backgroundColor: theme.palette.text.secondary,
-	margin: "0 1px",
-	animation: `${dotAnimation} 1.4s infinite ease-in-out`,
-	animationDelay: `${delay}s`,
-}));
+/**
+ * The waiting dots stagger their pulses with inline delays rather than three
+ * separate keyframe definitions, which is all the Emotion version was doing.
+ * Under reduced motion the base layer caps every animation, so the dots sit
+ * still at full opacity — "thinking" is already carried by the text.
+ */
+const DELAY_BY_INDEX = [0, 200, 400] as const;
 
 /**
  * Get a user-friendly text representation of a job status
@@ -123,7 +50,6 @@ const getDetailedStatusText = (
 	status: JobStatus | null | undefined,
 	execution: AgentExecutionRecord,
 ): string => {
-	// If we have an action, use that for more specific status
 	if (execution.action) {
 		switch (execution.action) {
 			case "CODE":
@@ -143,7 +69,6 @@ const getDetailedStatusText = (
 		}
 	}
 
-	// If no action but we have execution type, use that
 	if (execution.execution_type) {
 		switch (execution.execution_type) {
 			case "plan":
@@ -165,7 +90,6 @@ const getDetailedStatusText = (
 		}
 	}
 
-	// Fall back to basic status
 	return status ? getStatusText(status) : "thinking";
 };
 
@@ -176,8 +100,8 @@ const getDetailedStatusText = (
  * @param status - Optional job status to display
  * @param agentName - Optional agent name to display
  * @param currentExecution - Optional current execution details
- * @param scrollToBottom - Optional function to scroll to the bottom of the chat
  * @param conversationId - Optional conversation ID to check for streaming messages
+ * @param isSmallView - Whether to render the compact variant
  */
 export const LoadingIndicator: FC<{
 	status?: JobStatus | null;
@@ -217,27 +141,38 @@ export const LoadingIndicator: FC<{
 	}
 
 	return (
-		<LoadingContainer isSmallView={isSmallView}>
+		<div className={cn("flex items-center", isSmallView ? "gap-2" : "gap-0")}>
 			{!isSmallView && (
-				<AgentAvatar>
-					<Bot size={22} />
-				</AgentAvatar>
+				<Avatar>
+					<AvatarFallback>
+						<Bot size={22} />
+					</AvatarFallback>
+				</Avatar>
 			)}
 
-			<ContentContainer>
-				<StatusContainer>
-					<StatusText variant="body2" isSmallView={isSmallView}>
-						<StatusTextContent>{statusText}</StatusTextContent>
-						<StatusControls>
-							<DotContainer>
-								<Dot delay={0} />
-								<Dot delay={0.2} />
-								<Dot delay={0.4} />
-							</DotContainer>
-						</StatusControls>
-					</StatusText>
-				</StatusContainer>
-			</ContentContainer>
-		</LoadingContainer>
+			<div className="flex max-w-[calc(100%-60px)] flex-col gap-2">
+				<div className="flex items-center gap-2">
+					<p
+						className={cn(
+							"animate-pulse break-words text-ink-muted",
+							isSmallView ? "text-meta" : "ml-4 text-body",
+						)}
+					>
+						{statusText}
+						<span className="relative z-[2] ml-1 inline-flex items-center">
+							{DELAY_BY_INDEX.map((delay) => (
+								<span
+									key={delay}
+									className="mx-px size-1 animate-pulse rounded-full bg-ink-muted"
+									style={{ animationDelay: `${delay}ms` }}
+								/>
+							))}
+						</span>
+					</p>
+				</div>
+			</div>
+		</div>
 	);
 });
+
+LoadingIndicator.displayName = "LoadingIndicator";

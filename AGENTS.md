@@ -5,7 +5,7 @@ This file defines project-specific operating guidelines for AI coding agents wor
 ## Repository Context
 
 - Project: `local-operator-ui`
-- Stack: Electron + React + TypeScript
+- Stack: Electron + React + TypeScript, **Tailwind v4 + shadcn** (migrating off MUI 6 + Emotion)
 - Primary branch for releases: `main`
 - Version source of truth: `package.json` (`version`)
 - Release tag format: `v<semver>` (example: `v0.12.8`)
@@ -18,15 +18,72 @@ This file defines project-specific operating guidelines for AI coding agents wor
 - Prefer small, explicit commits with clear conventional-style messages.
 - Before finalizing, run the narrowest relevant checks for touched code.
 - Follow existing code style and project conventions (Biomes/TS settings already configured).
+- No emojis in code, comments, UI copy, or commit messages.
+
+## Design and branding — read before any visual change
+
+**`docs/branding.md` is the design contract.** Read it before changing any
+visual surface, and read § 7 before touching anything that renders agent
+output. The short version of the parts most often got wrong:
+
+- **Name roles, never colours.** `bg-surface`, `text-ink-muted`,
+  `border-control` — never a hex, never `theme.palette.*` in ported files. If a
+  value maps to no role, the system is missing one; add it to the contract
+  rather than working around it.
+- **Twelve themes are user-selectable.** A "Dracula" theme is a promise to a
+  user, so the brand ports as roles with contrast floors, not as brand green
+  applied everywhere. Only the two `localOperator*` palettes are the brand.
+- **`hairline` vs `border-control`.** Decorative rules vs the sole boundary of
+  a control. The second has a 3:1 floor; conflating them is how the app once
+  shipped inputs bounded at 1.25:1.
+- **Elevation is a lightness step, not a shadow.** One shadow exists, only for
+  things that leave the flow (menu, dialog, drawer, popover, tooltip, select).
+- **Disabled changes colour, never opacity. Focus is `outline`, never
+  `box-shadow`** — this app is mostly scroll containers, and box-shadow rings
+  get clipped by `overflow: hidden`.
+- **Nothing lifts, scales or translates on hover.** Hover is a colour step.
+- **Agent output has a hierarchy** (§ 7): a question for the user is the most
+  prominent thing on screen; internal reasoning is hidden by default. A
+  completed action is one quiet line, not a card.
+- Sentence case everywhere. Monospace is machine voice only.
+
+### Where colour comes from
+
+One source, two consumers. `shared/themes/palettes/*.ts` holds twelve
+`ThemePalette` objects; MUI consumes them as hex (≈299 `alpha()` call sites
+cannot take a `var()`), and Tailwind consumes CSS variables generated from the
+same objects. After editing any palette run `pnpm gen-themes`, and never
+hand-edit `styles/themes.generated.css`.
+
+`pnpm check-themes` enforces both freshness and the contrast floors, asserting
+over component triples (ground + fill + border + ink) rather than token pairs.
+**Adding a component with its own fill and border means adding a row to
+`CONTROLS` in `scripts/contrast-contract.mjs`** — green output about a
+component nobody listed is not evidence about that component.
+
+### One trap worth knowing
+
+Always route `className` through `cn` from `@shared/lib/utils`. It registers
+our custom scales with `tailwind-merge`; without that, a type step and an ink
+role in the same call collide and one is dropped **silently** — the component
+still looks right because colour inherits from `body`, until it renders on a
+ground where it does not.
 
 ## Useful Commands
 
 - Install deps: `pnpm install`
-- Dev app: `pnpm dev`
+- Dev app: `pnpm dev` (needs `.env`; copy from `.env.template`)
 - Lint: `pnpm lint`
 - Lint fix: `pnpm lint:fix`
 - Typecheck: `pnpm check-types`
 - Build: `pnpm build`
+- Theme gates: `pnpm check-themes` (freshness + contrast floors)
+- Regenerate theme CSS: `pnpm gen-themes`
+- Bundle size: `pnpm bundle-size`, `pnpm startup-closure`
+- Component gallery: `pnpm storybook`
+
+There is **no test runner** in this repository. Verification is typecheck,
+lint, the theme gates, a real build, and visual evidence from Storybook.
 
 ## Release Bump Runbook (Major/Minor/Patch)
 

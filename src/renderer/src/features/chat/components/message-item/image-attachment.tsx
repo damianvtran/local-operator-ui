@@ -1,5 +1,3 @@
-import { Box, alpha } from "@mui/material";
-import { styled } from "@mui/material/styles";
 import { FileActionsMenu } from "@shared/components/common/file-actions-menu";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
@@ -20,43 +18,6 @@ type BaseImageAttachmentProps = {
 export type ImageAttachmentProps = BaseImageAttachmentProps & {
 	conversationId: string;
 };
-
-/**
- * Styled component for image attachments
- * Includes hover effects and styling
- */
-const AttachmentImage = styled("img")(({ theme }) => ({
-	maxWidth: "100%",
-	maxHeight: 200,
-	borderRadius: 8,
-	marginBottom: 8,
-	boxShadow: `0 2px 8px ${alpha(theme.palette.common.black, theme.palette.mode === "dark" ? 0.15 : 0.1)}`,
-	cursor: "pointer",
-	transition: "transform 0.2s ease, box-shadow 0.2s ease",
-	"&:hover": {
-		transform: "scale(1.02)",
-		boxShadow: `0 4px 12px ${alpha(theme.palette.common.black, theme.palette.mode === "dark" ? 0.25 : 0.15)}`,
-	},
-}));
-
-const FileActionsContainer = styled(Box)({
-	position: "absolute",
-	top: 4,
-	right: 4,
-	zIndex: 2,
-	opacity: 0,
-	visibility: "hidden",
-	transition: "opacity 0.2s ease, visibility 0.2s ease",
-});
-
-const AttachmentImageContainer = styled(Box)({
-	position: "relative",
-	display: "inline-block",
-	"&:hover .file-actions-menu": {
-		opacity: 1,
-		visibility: "visible",
-	},
-});
 
 /**
  * Extracts the filename from a path
@@ -208,20 +169,27 @@ export const ImageAttachment: FC<ImageAttachmentProps> = memo(
 		}
 
 		return (
-			<AttachmentImageContainer>
-				<AttachmentImage
-					src={src}
-					alt={getFileName(file)}
+			<div className="group relative inline-block">
+				<button
+					type="button"
+					className="block cursor-pointer"
 					onClick={handleClick}
-					onError={handleError}
 					title={`Click to open ${getFileName(file)}`}
-				/>
+				>
+					<img
+						className="mb-2 max-h-[200px] max-w-full rounded-sm"
+						src={src}
+						alt={getFileName(file)}
+						onError={handleError}
+					/>
+				</button>
 				{isLocalFile && (
-					<FileActionsContainer
-						className="file-actions-menu"
+					<div
+						className="file-actions-menu invisible absolute right-1 top-1 z-[2] opacity-0 transition-[opacity,visibility] duration-fast ease-out-quart group-hover:visible group-hover:opacity-100"
 						onClick={(e) => {
 							e.stopPropagation();
 						}}
+						onKeyDown={(e) => e.stopPropagation()}
 					>
 						<FileActionsMenu
 							filePath={normalizedPath}
@@ -229,9 +197,9 @@ export const ImageAttachment: FC<ImageAttachmentProps> = memo(
 							aria-label="File actions"
 							onShowInCanvas={handleShowInCanvas}
 						/>
-					</FileActionsContainer>
+					</div>
 				)}
-			</AttachmentImageContainer>
+			</div>
 		);
 	},
 );

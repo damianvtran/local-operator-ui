@@ -1,19 +1,49 @@
-import { Box } from "@mui/material";
+/**
+ * Renders one conversation message according to the § 7 trace hierarchy
+ * (docs/branding.md). One record is one Message; its kind decides the whole
+ * presentation:
+ *
+ *  1. question   — `action === "ASK"`: the accent-washed AgentQuestion
+ *     affordance. The only thing on screen that needs a decision.
+ *  2. answer     — prose addressed to the user at full reading weight.
+ *  3. trace      — `execution_type === "action"`: one quiet monospace line
+ *     per action; the how-it-did-it (code, stdout, logs, diffs) sits behind
+ *     the line itself, closed by default. No avatar, no card.
+ *  4. security   — `execution_type === "security_check"`: retrospective
+ *     warning notice, never a prompt.
+ *  5. reasoning  — `plan` / `reflection` turns: hidden unless the
+ *     `showAgentReasoning` preference is on (default off).
+ *
+ * The suppressed record keeps its old suppression: `ASK`/`DONE` with
+ * `execution_type === "action"` and `task_classification === "conversation"`
+ * render nothing — they duplicate the paired response record. In particular
+ * the question never double-renders: the ASK the user sees arrives as the
+ * `response`-typed record.
+ */
+
 import {
 	type AgentExecutionRecord,
+	type LocalOperatorClient,
 	createLocalOperatorClient,
 } from "@shared/api/local-operator";
 import { apiConfig } from "@shared/config";
+import { cn } from "@shared/lib/utils";
 import { useCanvasStore } from "@shared/store/canvas-store";
-import { type FC, memo, useCallback, useEffect } from "react"; // Added useEffect
-import type { CanvasDocument } from "../../types/canvas"; // Added CanvasDocument import
+import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
+import { type FC, memo, useCallback, useEffect } from "react";
+import type { CanvasDocument } from "../../types/canvas";
 import type { Message } from "../../types/message";
-import { getFileTypeFromPath } from "../../utils/file-types"; // Added getFileTypeFromPath import
-import { getFileName } from "../../utils/get-file-name"; // Added getFileName import
-import { ActionBlock } from "./action-block";
+import { getFileTypeFromPath } from "../../utils/file-types";
+import { getFileName } from "../../utils/get-file-name";
+import {
+	AgentQuestion,
+	AgentReasoning,
+	Disclosure,
+	SecurityNotice,
+	TraceLine,
+} from "../trace";
 import { AudioAttachment } from "./audio-attachment";
 import { CodeBlock } from "./code-block";
-import { CollapsibleMessage } from "./collapsible-message";
 import { ErrorBlock } from "./error-block";
 import { FileAttachment } from "./file-attachment";
 import { ImageAttachment } from "./image-attachment";
@@ -21,10 +51,10 @@ import { LogBlock } from "./log-block";
 import { MessageAvatar } from "./message-avatar";
 import { MessageContainer } from "./message-container";
 import { MessageContent } from "./message-content";
+import { MessageControls } from "./message-controls";
 import { MessagePaper } from "./message-paper";
 import { MessageTimestamp } from "./message-timestamp";
 import { OutputBlock } from "./output-block";
-import { SecurityCheckHighlight } from "./security-check-highlight";
 import { VideoAttachment } from "./video-attachment";
 
 const localOperatorClient = createLocalOperatorClient(apiConfig.baseUrl);
@@ -34,10 +64,10 @@ const localOperatorClient = createLocalOperatorClient(apiConfig.baseUrl);
  */
 export type MessageItemProps = {
 	message: Message;
-	onMessageComplete?: () => void;
-	isLastMessage?: boolean;
 	conversationId: string;
 	currentExecution?: AgentExecutionRecord | null;
+	onMessageComplete?: () => void;
+	isLastMessage: boolean;
 	isSmallView?: boolean;
 };
 
@@ -52,7 +82,7 @@ const isWebUrl = (path: string): boolean => {
 
 /**
  * Checks if a file is an image based on its extension
- * @param path - The file path or URL to check
+ * @param path - The file path to check
  * @returns True if the file is an image, false otherwise
  */
 const isImage = (path: string): boolean => {
@@ -61,18 +91,9 @@ const isImage = (path: string): boolean => {
 		".jpeg",
 		".png",
 		".gif",
-		".webp",
 		".bmp",
+		".webp",
 		".svg",
-		".tiff",
-		".tif",
-		".ico",
-		".heic",
-		".heif",
-		".avif",
-		".jfif",
-		".pjpeg",
-		".pjp",
 	];
 	const lowerPath = path.toLowerCase();
 	return imageExtensions.some((ext) => lowerPath.endsWith(ext));
@@ -80,41 +101,29 @@ const isImage = (path: string): boolean => {
 
 /**
  * Checks if a file is a video based on its extension
- * @param path - The file path or URL to check
+ * @param path - The file path to check
  * @returns True if the file is a video, false otherwise
  */
 const isVideo = (path: string): boolean => {
-	const videoExtensions = [
-		".mp4",
-		".webm",
-		".ogg",
-		".mov",
-		".avi",
-		".wmv",
-		".flv",
-		".mkv",
-		".m4v",
-		".3gp",
-		".3g2",
-	];
+	const videoExtensions = [".mp4", ".webm", ".ogg", ".mov", ".avi", ".mkv"];
 	const lowerPath = path.toLowerCase();
 	return videoExtensions.some((ext) => lowerPath.endsWith(ext));
 };
 
 /**
  * Checks if a file is an audio file based on its extension
- * @param path - The file path or URL to check
- * @returns True if the file is an audio file, false otherwise
+ * @param path - The file path to check
+ * @returns True if the file is an audio, false otherwise
  */
 const isAudio = (path: string): boolean => {
 	const audioExtensions = [
 		".mp3",
 		".wav",
 		".ogg",
-		".aac",
-		".flac",
 		".m4a",
-		".aiff",
+		".flac",
+		".aac",
+		".wma",
 	];
 	const lowerPath = path.toLowerCase();
 	return audioExtensions.some((ext) => lowerPath.endsWith(ext));
@@ -122,14 +131,12 @@ const isAudio = (path: string): boolean => {
 
 /**
  * Gets the appropriate URL for an attachment
- * Uses the static image endpoint for local image files
- * and the static video endpoint for local video files
  * @param client - The Local Operator client
  * @param path - The file path or URL
  * @returns The URL to access the attachment
  */
 const getAttachmentUrl = (
-	client: ReturnType<typeof createLocalOperatorClient>,
+	client: LocalOperatorClient,
 	path: string,
 ): string => {
 	// If it's a web URL, return it as is
@@ -157,8 +164,7 @@ const getAttachmentUrl = (
 };
 
 /**
- * Memoized message item component to prevent unnecessary re-renders
- * Only re-renders when the message content changes
+ * One message. See the module comment for the kind → presentation table.
  */
 export const MessageItem: FC<MessageItemProps> = memo(
 	({
@@ -172,6 +178,9 @@ export const MessageItem: FC<MessageItemProps> = memo(
 		const addMentionedFilesBatch = useCanvasStore(
 			(s) => s.addMentionedFilesBatch,
 		);
+		const showAgentReasoning = useUiPreferencesStore(
+			(state) => state.showAgentReasoning,
+		);
 
 		useEffect(() => {
 			if (message.files && message.files.length > 0 && conversationId) {
@@ -182,7 +191,7 @@ export const MessageItem: FC<MessageItemProps> = memo(
 						}
 
 						const title = getFileName(fileString);
-						const fileType = getFileTypeFromPath(fileString); // Renamed to avoid conflict
+						const fileType = getFileTypeFromPath(fileString);
 						const normalizedPath = fileString.startsWith("file://")
 							? fileString.substring(7)
 							: fileString;
@@ -193,16 +202,16 @@ export const MessageItem: FC<MessageItemProps> = memo(
 							title,
 							path: normalizedPath,
 							content: normalizedPath, // Placeholder
-							type: fileType, // type is optional in CanvasDocument, but getFileTypeFromPath provides it
+							type: fileType,
 						};
 					})
-					.filter(Boolean) as CanvasDocument[]; // Filter out nulls and assert type
+					.filter(Boolean) as CanvasDocument[];
 
 				if (canvasDocuments.length > 0) {
 					addMentionedFilesBatch(conversationId, canvasDocuments);
 				}
 			}
-		}, [message.files, conversationId, addMentionedFilesBatch]); // Removed message.id from deps
+		}, [message.files, conversationId, addMentionedFilesBatch]);
 
 		// Get the URL for an attachment
 		const getUrl = useCallback(
@@ -211,21 +220,15 @@ export const MessageItem: FC<MessageItemProps> = memo(
 		);
 
 		/**
-		 * Handles clicking on a file attachment
-		 * Opens local files with the system's default application
-		 * Opens web URLs in the default browser
-		 * Shows an error message if the file can't be opened
+		 * Handles clicking on a file attachment: web URLs open in the default
+		 * browser, local files in their default application.
 		 * @param filePath - The path or URL of the file to open
 		 */
 		const handleFileClick = useCallback(async (filePath: string) => {
 			try {
-				// If it's a web URL
 				if (isWebUrl(filePath)) {
-					// Open in default browser
 					await window.api.openExternal(filePath);
 				} else {
-					// It's a local file, open with default application
-					// Remove file:// prefix if present
 					const normalizedPath = filePath.startsWith("file://")
 						? filePath.substring(7)
 						: filePath;
@@ -235,8 +238,6 @@ export const MessageItem: FC<MessageItemProps> = memo(
 			} catch (error) {
 				console.error("Error opening file:", error);
 
-				// Show an error message to the user
-				// This could be replaced with a toast notification if available
 				alert(
 					`Unable to open file: ${filePath}. The file may be incomplete, deleted, or moved.`,
 				);
@@ -251,18 +252,22 @@ export const MessageItem: FC<MessageItemProps> = memo(
 			!message.stderr &&
 			!message.logging;
 
-		// Hide messages with action DONE, execution_type "action", and task_classification "conversation"
-		// These are redundant to the response execution_type messages.
-		// Do NOT hide completed action/reflection/security_check messages even if they have no content,
-		// so short operational messages like READ remain visible.
-		const isActionish =
-			message.execution_type === "action" ||
-			message.execution_type === "reflection" ||
-			message.execution_type === "security_check";
+		const isUser = message.role === "user";
+		const executionType = message.execution_type;
+		const isQuestion = message.action === "ASK";
+		const isTrace = executionType === "action";
+		const isSecurity = executionType === "security_check";
+		const isReasoning =
+			executionType === "plan" || executionType === "reflection";
+		const isActionish = isTrace || isReasoning || isSecurity;
 
+		// ASK/DONE action records of a conversation task duplicate the paired
+		// response record (the response is where the question/answer lives), so
+		// they render nothing. Empty completed records also render nothing
+		// unless they carry operational content of their own.
 		const shouldHide =
 			((message.action === "DONE" || message.action === "ASK") &&
-				message.execution_type === "action" &&
+				executionType === "action" &&
 				message.task_classification === "conversation") ||
 			(isMessageContentEmpty && message.is_complete && !isActionish);
 
@@ -270,349 +275,317 @@ export const MessageItem: FC<MessageItemProps> = memo(
 			return null;
 		}
 
-		const isUser = message.role === "user";
-		const isCompactAssistantMessage = !isUser && Boolean(message.action);
-		const isAction = message.execution_type === "action";
-		const isSecurityCheck = message.execution_type === "security_check";
-		const shouldUseActionBlock =
-			message.execution_type === "reflection" ||
-			message.execution_type === "action";
+		// Reasoning turns are the fifth tier of § 7 and stay hidden unless the
+		// preference is on. When hidden they render nothing at all — a
+		// collapsed disclosure would still be chrome on every turn.
+		if (isReasoning && !showAgentReasoning) {
+			return null;
+		}
 
-		if (shouldUseActionBlock) {
+		const running = isLastMessage && !!currentExecution;
+		const files = message.files ?? [];
+		const imageFiles = files.filter((file) => isImage(file));
+		const videoFiles = files.filter((file) => isVideo(file));
+		const audioFiles = files.filter((file) => isAudio(file));
+		const otherFiles = files.filter(
+			(file) => !isImage(file) && !isVideo(file) && !isAudio(file),
+		);
+
+		const renderMedia = (
+			<>
+				{imageFiles.length > 0 && (
+					<div className="mb-2 flex flex-col gap-2">
+						{imageFiles.map((file) => (
+							<ImageAttachment
+								key={`${message.id}-${file}`}
+								file={file}
+								src={getUrl(file)}
+								onClick={handleFileClick}
+								conversationId={conversationId}
+							/>
+						))}
+					</div>
+				)}
+				{videoFiles.length > 0 && (
+					<div className="mb-2 flex flex-col gap-2">
+						{videoFiles.map((file) => (
+							<VideoAttachment
+								key={`${message.id}-${file}`}
+								file={file}
+								src={getUrl(file)}
+								onClick={handleFileClick}
+								conversationId={conversationId}
+							/>
+						))}
+					</div>
+				)}
+				{audioFiles.length > 0 && (
+					<div className="mb-2 flex flex-col gap-2">
+						{audioFiles.map((file) => (
+							<AudioAttachment
+								key={`${message.id}-${file}`}
+								content={getUrl(file)}
+								isUser={isUser}
+							/>
+						))}
+					</div>
+				)}
+				{otherFiles.length > 0 && (
+					<div className="flex flex-col gap-2">
+						{otherFiles.map((file) => (
+							<FileAttachment
+								key={`${message.id}-${file}`}
+								file={file}
+								onClick={handleFileClick}
+								conversationId={conversationId}
+							/>
+						))}
+					</div>
+				)}
+			</>
+		);
+
+		// ---------------------------------------------------------------- 1.
+		// The question for the user. Rendered inside MessagePaper so the reply
+		// preview, thinking disclosure and selection controls keep the same
+		// wiring as any other assistant message.
+		if (isQuestion) {
 			return (
-				<MessageContainer
-					isUser={isUser}
-					isSmallView={isSmallView}
-					compact={isCompactAssistantMessage}
-				>
-					{!isSmallView && (
-						<MessageAvatar
-							isUser={isUser}
-							compact={isCompactAssistantMessage}
-						/>
-					)}
+				<MessageContainer isUser={false} isSmallView={isSmallView}>
+					{!isSmallView && <MessageAvatar isUser={false} />}
 					<MessagePaper
-						isUser={isUser}
+						isUser={false}
 						content={message.message}
-						isSmallView={isSmallView}
 						message={message}
 						onMessageComplete={onMessageComplete}
 						isLastMessage={isLastMessage ?? false}
 						isJobRunning={!!currentExecution}
 						agentId={conversationId}
-						metadataMode="custom"
+						isSmallView={isSmallView}
 					>
-						<ActionBlock
-							message={message.message ?? ""}
-							fileContent={message.content}
-							replacements={message.replacements}
-							action={message.action}
-							executionType={message.execution_type || "action"}
-							isUser={isUser}
-							code={message.code}
-							stdout={currentExecution?.stdout ?? message.stdout}
-							stderr={currentExecution?.stderr ?? message.stderr}
-							logging={currentExecution?.logging ?? message.logging}
-							files={message.files}
-							conversationId={conversationId}
-							filePath={message.file_path}
-							isLoading={isLastMessage && !!currentExecution}
-							isSmallView={isSmallView}
-							compact={isCompactAssistantMessage}
-							messageId={message.id}
-							timestamp={message.timestamp}
-							agentId={conversationId}
-						/>
+						<AgentQuestion content={message.message} />
+						{renderMedia}
 					</MessagePaper>
 				</MessageContainer>
 			);
 		}
 
-		return (
-			<MessageContainer
-				isUser={isUser}
-				isSmallView={isSmallView}
-				compact={isCompactAssistantMessage}
-			>
-				{!isSmallView && (
-					<MessageAvatar isUser={isUser} compact={isCompactAssistantMessage} />
-				)}
+		// ---------------------------------------------------------- 3 (5).
+		// A completed action is one line. data-lo-trace plus the sibling rule
+		// collapse the list gap between adjacent trace rows, so a run of
+		// actions reads as one quiet block rather than spaced entries.
+		if (isTrace) {
+			const stdout = currentExecution?.stdout ?? message.stdout;
+			const stderr = currentExecution?.stderr ?? message.stderr;
+			const logging = currentExecution?.logging ?? message.logging;
+			const narration = message.message
+				? message.message.replace(/(```\w+\s*)+$/g, "").trim()
+				: undefined;
 
-				{isSecurityCheck ? (
-					<SecurityCheckHighlight isUser={isUser}>
-						<MessagePaper
+			const technicalDetail = (
+				<>
+					{narration && (
+						<p className="text-body-sm text-ink-muted">{narration}</p>
+					)}
+					{message.code && <CodeBlock code={message.code} isUser={isUser} />}
+					{message.content && (
+						<CodeBlock
+							code={message.content}
 							isUser={isUser}
-							content={message.message}
-							isSmallView={isSmallView}
-							message={message}
-							onMessageComplete={onMessageComplete}
-							isLastMessage={isLastMessage ?? false}
-							isJobRunning={!!currentExecution}
-							agentId={conversationId}
-						>
-							{/* Render image attachments if any */}
-							{message.files && message.files.length > 0 && (
-								<Box sx={{ mb: 2 }}>
-									{message.files
-										.filter((file) => isImage(file))
-										.map((file) => (
-											<ImageAttachment
-												key={`${message.id}-${file}`}
-												file={file}
-												src={getUrl(file)}
-												onClick={handleFileClick}
-												conversationId={conversationId}
-											/>
-										))}
-								</Box>
-							)}
-
-							{/* Render video attachments if any */}
-							{message.files && message.files.length > 0 && (
-								<Box sx={{ mb: 2 }}>
-									{message.files
-										.filter((file) => isVideo(file))
-										.map((file) => (
-											<VideoAttachment
-												key={`${message.id}-${file}`}
-												file={file}
-												src={getUrl(file)}
-												onClick={handleFileClick}
-												conversationId={conversationId}
-											/>
-										))}
-								</Box>
-							)}
-
-							{/* Only render message content when not streaming */}
-							{message.message &&
-								!(message.is_streamable && !message.is_complete) && (
-									<MessageContent content={message.message} isUser={isUser} />
-								)}
-
-							{/* Determine if we have any collapsible content */}
-							{(() => {
-								const hasCollapsibleContent =
-									isSecurityCheck &&
-									(message.code ||
-										message.stdout ||
-										message.stderr ||
-										message.logging);
-
-								// Content to be rendered inside the collapsible section
-								const contentBlocks = (
-									<>
-										{/* Render code with syntax highlighting */}
-										{message.code && (
-											<CodeBlock code={message.code} isUser={isUser} />
-										)}
-
-										{/* Render stdout */}
-										{message.stdout && (
-											<OutputBlock output={message.stdout} isUser={isUser} />
-										)}
-
-										{/* Render stderr */}
-										{message.stderr && (
-											<ErrorBlock error={message.stderr} isUser={isUser} />
-										)}
-
-										{/* Render logging */}
-										{message.logging && (
-											<LogBlock log={message.logging} isUser={isUser} />
-										)}
-									</>
-								);
-
-								// If it's a security check with collapsible content, wrap in CollapsibleMessage
-								if (hasCollapsibleContent) {
-									return (
-										<CollapsibleMessage
-											defaultCollapsed={true}
-											hasContent={hasCollapsibleContent}
-										>
-											{contentBlocks}
-										</CollapsibleMessage>
-									);
-								}
-
-								// Otherwise, render content normally
-								return contentBlocks;
-							})()}
-
-							{/* Render non-media file attachments if any */}
-							{message.files && message.files.length > 0 && (
-								<Box sx={{ mt: 2 }}>
-									{message.files
-										.filter((file) => !isImage(file) && !isVideo(file))
-										.map((file) => (
-											<FileAttachment
-												key={`${message.id}-${file}`}
-												file={file}
-												onClick={handleFileClick}
-												conversationId={conversationId}
-											/>
-										))}
-								</Box>
-							)}
-
-							{/* Message timestamp for user messages */}
-							{isUser && (
-								<MessageTimestamp
-									timestamp={message.timestamp}
-									isUser={isUser}
-									isSmallView={isSmallView}
-								/>
-							)}
-						</MessagePaper>
-					</SecurityCheckHighlight>
-				) : (
-					<MessagePaper
-						isUser={isUser}
-						content={message.message}
-						message={message}
-						isSmallView={isSmallView}
-						onMessageComplete={onMessageComplete}
-						isLastMessage={isLastMessage ?? false}
-						isJobRunning={!!currentExecution}
-						agentId={conversationId}
-					>
-						{/* Render image attachments if any */}
-						{message.files && message.files.length > 0 && (
-							<Box sx={{ mb: 2 }}>
-								{message.files
-									.filter((file) => isImage(file))
-									.map((file) => (
-										<ImageAttachment
-											key={`${message.id}-${file}`}
-											file={file}
-											src={getUrl(file)}
-											onClick={handleFileClick}
-											conversationId={conversationId}
-										/>
-									))}
-							</Box>
-						)}
-
-						{/* Render video attachments if any */}
-						{message.files && message.files.length > 0 && (
-							<Box sx={{ mb: 2 }}>
-								{message.files
-									.filter((file) => isVideo(file))
-									.map((file) => (
-										<VideoAttachment
-											key={`${message.id}-${file}`}
-											file={file}
-											src={getUrl(file)}
-											onClick={handleFileClick}
-											conversationId={conversationId}
-										/>
-									))}
-							</Box>
-						)}
-
-						{/* Render audio attachments if any */}
-						{message.files &&
-							message.files.length > 0 &&
-							message.files.some((file) => isAudio(file)) && (
-								<Box sx={{ mb: 2 }}>
-									{message.files
-										.filter((file) => isAudio(file))
-										.map((file) => (
-											<AudioAttachment
-												key={`${message.id}-${file}`}
-												content={getUrl(file)}
-												isUser={isUser}
-											/>
-										))}
-								</Box>
-							)}
-
-						{/* Only render message content when not streaming */}
-						{message.message &&
-							!(message.is_streamable && !message.is_complete) && (
-								<MessageContent content={message.message} isUser={isUser} />
-							)}
-
-						{/* Determine if we have any collapsible content */}
-						{(() => {
-							const hasCollapsibleContent =
-								isAction &&
-								(message.code ||
-									message.stdout ||
-									message.stderr ||
-									message.logging);
-
-							// Content to be rendered inside the collapsible section
-							const contentBlocks = (
-								<>
-									{/* Render code with syntax highlighting */}
-									{message.code && (
-										<CodeBlock code={message.code} isUser={isUser} />
-									)}
-
-									{/* Render stdout */}
-									{message.stdout && (
-										<OutputBlock output={message.stdout} isUser={isUser} />
-									)}
-
-									{/* Render stderr */}
-									{message.stderr && (
-										<ErrorBlock error={message.stderr} isUser={isUser} />
-									)}
-
-									{/* Render logging */}
-									{message.logging && (
-										<LogBlock log={message.logging} isUser={isUser} />
-									)}
-								</>
-							);
-
-							// If it's an action type with collapsible content, wrap in CollapsibleMessage
-							if (hasCollapsibleContent) {
-								return (
-									<CollapsibleMessage
-										defaultCollapsed={true}
-										hasContent={hasCollapsibleContent}
-									>
-										{contentBlocks}
-									</CollapsibleMessage>
-								);
-							}
-
-							// Otherwise, render content normally
-							return contentBlocks;
-						})()}
-
-						{/* Render non-media file attachments if any */}
-						{message.files && message.files.length > 0 && (
-							<Box sx={{ mt: 2 }}>
-								{message.files
-									.filter(
-										(file) =>
-											!isImage(file) && !isVideo(file) && !isAudio(file),
-									)
-									.map((file) => (
-										<FileAttachment
-											key={`${message.id}-${file}`}
-											file={file}
-											onClick={handleFileClick}
-											conversationId={conversationId}
-										/>
-									))}
-							</Box>
-						)}
-
-						{/* Message timestamp for user messages */}
-						{isUser && (
+							header="Content"
+						/>
+					)}
+					{message.replacements && (
+						<CodeBlock
+							code={message.replacements}
+							isUser={isUser}
+							header="Replacements"
+						/>
+					)}
+					{stdout && <OutputBlock output={stdout} isUser={isUser} />}
+					{stderr && <ErrorBlock error={stderr} isUser={isUser} />}
+					{logging && <LogBlock log={logging} isUser={isUser} />}
+					{message.id && message.timestamp && (
+						<div className="mt-2 flex items-center justify-between gap-2">
+							<MessageControls
+								inline
+								isUser={isUser}
+								content={narration}
+								messageId={message.id}
+								agentId={conversationId}
+							/>
 							<MessageTimestamp
+								inline
 								timestamp={message.timestamp}
 								isUser={isUser}
 								isSmallView={isSmallView}
 							/>
+						</div>
+					)}
+				</>
+			);
+			const hasDetail = Boolean(
+				message.code ||
+					message.content ||
+					message.replacements ||
+					stdout ||
+					stderr ||
+					logging ||
+					(message.id && message.timestamp),
+			);
+
+			return (
+				<div
+					data-lo-trace={true}
+					className={cn(
+						// The negative margin exactly cancels the messages-view row
+						// gap between adjacent trace rows, and the attribute selector
+						// scopes it to rows that follow a trace row. The gap comes
+						// from the `isSmallView` prop, not the viewport, so the
+						// compensation keys off the same prop.
+						isSmallView
+							? "[[data-lo-trace]+&]:-mt-2"
+							: "[[data-lo-trace]+&]:-mt-4",
+						"w-full",
+						!isSmallView && "pl-14",
+					)}
+				>
+					<TraceLine
+						action={message.action}
+						filePath={message.file_path}
+						files={message.files}
+						narration={narration}
+						running={running}
+						failed={Boolean(stderr)}
+						details={hasDetail ? technicalDetail : undefined}
+					/>
+					{renderMedia}
+				</div>
+			);
+		}
+
+		// --------------------------------------------------------------- 5.
+		// Internal reasoning, shown only behind the preference and then only
+		// behind the quiet disclosure. A turn whose entire content is
+		// reasoning renders as a single quiet row.
+		if (isReasoning) {
+			const reasoningText = [message.message, message.thinking]
+				.filter(Boolean)
+				.join("\n\n");
+
+			return (
+				<div className={cn("w-full", !isSmallView && "pl-14")}>
+					<AgentReasoning content={reasoningText || undefined} />
+					{files.length > 0 && <div className="mt-2">{renderMedia}</div>}
+				</div>
+			);
+		}
+
+		// --------------------------------------------------------------- 4.
+		// A security notice is retrospective: a warning notice, past tense,
+		// no actions to take.
+		if (isSecurity) {
+			const details =
+				message.code || message.stdout || message.stderr || message.logging ? (
+					<>
+						{message.code && <CodeBlock code={message.code} isUser={isUser} />}
+						{message.stdout && (
+							<OutputBlock output={message.stdout} isUser={isUser} />
 						)}
-					</MessagePaper>
+						{message.stderr && (
+							<ErrorBlock error={message.stderr} isUser={isUser} />
+						)}
+						{message.logging && (
+							<LogBlock log={message.logging} isUser={isUser} />
+						)}
+					</>
+				) : undefined;
+
+			return (
+				<MessageContainer isUser={false} isSmallView={isSmallView}>
+					{!isSmallView && <MessageAvatar isUser={false} />}
+					<div
+						className={cn(
+							"group relative flex w-full flex-col",
+							isSmallView ? "" : "w-[calc(100%-56px)]",
+						)}
+					>
+						<SecurityNotice content={message.message} details={details} />
+						{files.length > 0 && <div className="mt-2">{renderMedia}</div>}
+						{message.id && message.timestamp && (
+							<MessageTimestamp
+								timestamp={message.timestamp}
+								isUser={false}
+								isSmallView={isSmallView}
+							/>
+						)}
+					</div>
+				</MessageContainer>
+			);
+		}
+
+		// --------------------------------------------------------------- 2.
+		// The answer: prose at full reading weight, plus any attachments.
+		// Technical payload on a non-trace assistant record still goes
+		// behind the one disclosure idiom rather than rendering inline.
+		const technicalBlocks = (
+			<>
+				{message.code && <CodeBlock code={message.code} isUser={isUser} />}
+				{message.stdout && (
+					<OutputBlock output={message.stdout} isUser={isUser} />
 				)}
+				{message.stderr && (
+					<ErrorBlock error={message.stderr} isUser={isUser} />
+				)}
+				{message.logging && <LogBlock log={message.logging} isUser={isUser} />}
+			</>
+		);
+		const hasTechnicalBlocks = Boolean(
+			message.code || message.stdout || message.stderr || message.logging,
+		);
+
+		return (
+			<MessageContainer
+				isUser={isUser}
+				isSmallView={isSmallView}
+				compact={Boolean(message.action)}
+			>
+				{!isSmallView && <MessageAvatar isUser={isUser} />}
+				<MessagePaper
+					isUser={isUser}
+					content={message.message}
+					message={message}
+					onMessageComplete={onMessageComplete}
+					isLastMessage={isLastMessage ?? false}
+					isJobRunning={!!currentExecution}
+					agentId={conversationId}
+					isSmallView={isSmallView}
+				>
+					{renderMedia}
+					{/* Render message content only once it is not mid-stream; the
+					 * streaming component shows the arriving text instead. */}
+					{message.message &&
+						!(message.is_streamable && !message.is_complete) && (
+							<MessageContent content={message.message} isUser={isUser} />
+						)}
+					{!isUser && hasTechnicalBlocks && (
+						<Disclosure
+							summary={<span className="text-meta">Technical details</span>}
+							triggerClassName="mt-2 min-h-6 py-0.5"
+							contentClassName="ml-5 mt-1 flex flex-col gap-2 pb-1"
+						>
+							{technicalBlocks}
+						</Disclosure>
+					)}
+					{isUser && technicalBlocks}
+					{isUser && (
+						<MessageTimestamp
+							timestamp={message.timestamp}
+							isUser={isUser}
+							isSmallView={isSmallView}
+						/>
+					)}
+				</MessagePaper>
 			</MessageContainer>
 		);
 	},

@@ -1,4 +1,4 @@
-import { Box, Button, Paper, Typography } from "@mui/material";
+import { Button } from "@shared/components/ui";
 import { isDevelopmentMode } from "@shared/utils/env-utils";
 import { RotateCw, TriangleAlert } from "lucide-react";
 import type React from "react";
@@ -24,93 +24,52 @@ type ErrorBoundaryProps = {
 };
 
 /**
- * Error fallback component that displays error details
+ * What the user sees when a subtree has crashed.
+ *
+ * The panel sits directly on `canvas` rather than on its own `surface` card:
+ * this fills the whole route, so there is nothing behind it for a card to be
+ * raised above, and the border and radius only drew a box around an empty
+ * screen. The message is the object here.
+ *
+ * The warning glyph was a hardcoded `#f44336`, a red belonging to no theme.
+ * `text-danger` is the role for it.
+ *
+ * In development the message and stack are rendered as machine voice on
+ * `sunken` — a code ground for code, which is the whole reason `sunken` exists
+ * and is why the block needs no border to read as output.
  */
-const ErrorFallback = ({ error, resetErrorBoundary }: FallbackProps) => {
-	return (
-		<Paper
-			elevation={0}
-			sx={{
-				p: 4,
-				m: 2,
-				borderRadius: 2,
-				display: "flex",
-				flexDirection: "column",
-				alignItems: "center",
-				justifyContent: "center",
-				textAlign: "center",
-				height: "100%",
-			}}
-		>
-			<TriangleAlert
-				size={48}
-				style={{
-					color: "#f44336",
-					marginBottom: "1rem",
-				}}
-			/>
+const ErrorFallback = ({ error, resetErrorBoundary }: FallbackProps) => (
+	<div className="flex h-full flex-col items-center justify-center gap-6 p-8 text-center">
+		<TriangleAlert size={48} aria-hidden="true" className="text-danger" />
 
-			<Typography variant="h5" gutterBottom>
-				Something went wrong
-			</Typography>
+		<div className="flex flex-col gap-2">
+			<h2 className="text-title text-ink">Something went wrong</h2>
+			<p className="max-w-150 text-body text-ink-muted">
+				The application encountered an error. Try again, or contact support if
+				the problem persists.
+			</p>
+		</div>
 
-			<Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-				The application encountered an error. Please try again or contact
-				support if the problem persists.
-			</Typography>
+		<Button variant="primary" onClick={resetErrorBoundary}>
+			<RotateCw size={16} aria-hidden="true" />
+			Try again
+		</Button>
 
-			<Button
-				variant="contained"
-				color="primary"
-				startIcon={<RotateCw size={16} />}
-				onClick={resetErrorBoundary}
-				sx={{ mb: 3 }}
-			>
-				Try Again
-			</Button>
+		{isDevelopmentMode() && (
+			<div className="w-full max-w-200 overflow-auto rounded-md bg-sunken p-4 text-left">
+				<h3 className="mb-1 text-heading text-ink">Error details</h3>
+				<pre className="mb-4 whitespace-pre-wrap text-ink-muted text-mono-sm">
+					{error?.message}
+				</pre>
 
-			{/* Show error details only in development mode */}
-			{isDevelopmentMode() && (
-				<Box
-					sx={{
-						mt: 2,
-						p: 2,
-						bgcolor: "rgba(0, 0, 0, 0.1)",
-						borderRadius: 1,
-						width: "100%",
-						maxWidth: "800px",
-						overflow: "auto",
-						textAlign: "left",
-					}}
-				>
-					<Typography variant="subtitle2" gutterBottom>
-						Error Details:
-					</Typography>
-
-					<Typography
-						variant="body2"
-						component="pre"
-						sx={{ whiteSpace: "pre-wrap", mb: 2 }}
-					>
-						{error?.message}
-					</Typography>
-
-					<Typography variant="subtitle2" gutterBottom>
-						Stack Trace:
-					</Typography>
-
-					<Typography
-						variant="body2"
-						component="pre"
-						sx={{ whiteSpace: "pre-wrap" }}
-					>
-						{error?.stack}
-					</Typography>
-				</Box>
-			)}
-		</Paper>
-	);
-};
+				<h3 className="mb-1 text-heading text-ink">Stack trace</h3>
+				<pre className="whitespace-pre-wrap text-ink-muted text-mono-sm">
+					{error?.stack}
+				</pre>
+			</div>
+		)}
+	</div>
+);
 
 /**
  * Error boundary component that catches JavaScript errors in its child component tree
@@ -120,7 +79,6 @@ export const ErrorBoundary: React.FC<ErrorBoundaryProps> = ({
 	children,
 	fallback,
 }) => {
-	// Log errors to console
 	const onError = (error: Error, info: ErrorInfo) => {
 		console.error("Error caught by ErrorBoundary:", error, info);
 	};

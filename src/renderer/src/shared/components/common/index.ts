@@ -15,6 +15,7 @@ export { PageHeader } from "./page-header";
 export { ResizableDivider } from "./resizable-divider";
 export { SidebarHeader } from "./sidebar-header";
 export { SliderSetting } from "./slider-setting";
+export { Spinner } from "./spinner";
 export { ThemedToastContainer } from "./themed-toast-container";
 export { ToggleSetting } from "./toggle-setting";
 export {

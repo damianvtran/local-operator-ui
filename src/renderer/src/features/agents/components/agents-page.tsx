@@ -1,15 +1,14 @@
 /**
  * Agents Page Component
  *
- * Main page for displaying and managing agents with enhanced UI/UX
- * Uses React Router for navigation and state management
- * Layout follows the pattern of other pages with a sidebar and content area
+ * Main page for displaying and managing agents.
+ * Uses React Router for navigation and state management.
+ * A fixed-width agent list sits beside the settings for the selected agent.
  */
 
-import { Box, Button, Tooltip } from "@mui/material";
-import { styled, useTheme } from "@mui/material/styles";
 import type { AgentDetails } from "@shared/api/local-operator/types";
 import { PageHeader } from "@shared/components/common/page-header";
+import { Button, Tooltip } from "@shared/components/ui";
 import {
 	useExportAgent,
 	useUploadAgentToRadientMutation,
@@ -32,54 +31,14 @@ import { UploadAgentDialog } from "./upload-agent-dialog";
  */
 type AgentsPageProps = Record<string, never>;
 
-const Container = styled(Box)({
-	display: "flex",
-	height: "100%",
-	width: "100%",
-	overflow: "hidden",
-});
-
-const SidebarContainer = styled(Box)({
-	flexShrink: 0,
-	width: 280,
-	height: "100%",
-});
-
-const ContentContainer = styled(Box)({
-	flexGrow: 1,
-	height: "100%",
-	overflow: "hidden",
-});
-
-const ContentInnerContainer = styled(Box)(({ theme }) => ({
-	height: "100%",
-	display: "flex",
-	flexDirection: "column",
-	padding: theme.spacing(4),
-	gap: theme.spacing(2),
-	[theme.breakpoints.down("sm")]: {
-		padding: theme.spacing(2),
-	},
-	[theme.breakpoints.between("sm", "md")]: {
-		padding: theme.spacing(3),
-	},
-}));
-
-const AgentDetailsContainer = styled(Box)({
-	flexGrow: 1,
-	overflow: "hidden",
-	transition: "opacity 0.15s ease-in-out",
-});
-
 /**
  * Agents Page Component
  *
- * Main page for displaying and managing agents with enhanced UI/UX
- * Uses React Router for navigation and state management
- * Layout follows the pattern of other pages with a sidebar and content area
+ * Main page for displaying and managing agents.
+ * Uses React Router for navigation and state management.
+ * Layout follows the pattern of other pages with a sidebar and content area.
  */
 export const AgentsPage: FC<AgentsPageProps> = () => {
-	const theme = useTheme(); // Get theme for button styles
 	const { agentId, navigateToAgent } = useAgentRouteParam();
 	const navigate = useNavigate();
 	const { isAuthenticated } = useRadientAuth(); // Get auth status
@@ -174,111 +133,76 @@ export const AgentsPage: FC<AgentsPageProps> = () => {
 		navigateToAgent(agent.id, "agents");
 	};
 
-	const buttonSx = {
-		textTransform: "none",
-		fontSize: "0.8125rem",
-		padding: theme.spacing(0.5, 1.5),
-		borderRadius: theme.shape.borderRadius * 0.75,
-	};
-
-	const secondaryButtonSx = {
-		...buttonSx,
-		borderColor: theme.palette.divider,
-		color: theme.palette.text.secondary,
-		"&:hover": {
-			backgroundColor: theme.palette.action.hover,
-			borderColor: theme.palette.divider,
-		},
-	};
-
-	const primaryButtonSx = {
-		...buttonSx,
-		"&:hover": {
-			backgroundColor: theme.palette.action.hover,
-			borderColor: theme.palette.divider,
-		},
-	};
-
 	return (
-		<Container>
-			{/* Agents Sidebar - fixed width */}
-			<SidebarContainer>
+		<div className="flex h-full w-full overflow-hidden">
+			{/* The sidebar itself is width:100% — the 280px lives here, and the
+			    pane must not shrink when the agent list has a long name in it. */}
+			<div className="h-full w-70 shrink-0">
 				<AgentsSidebar
 					selectedAgentId={selectedAgent?.id}
 					onSelectAgent={handleSelectAgent}
 				/>
-			</SidebarContainer>
+			</div>
 
-			{/* Content Area */}
-			<ContentContainer>
-				<ContentInnerContainer>
-					{/* Page Header with Action Buttons as Children */}
+			{/* `grow` rather than `flex-1`: the content pane keeps an auto basis so
+			    it fills the space the sidebar leaves, and `overflow-hidden` is what
+			    keeps its scrolling inside the pane instead of the window. */}
+			<div className="h-full grow overflow-hidden">
+				<div className="flex h-full flex-col gap-4 p-4 sm:p-6 lg:p-8">
 					<PageHeader
-						title="Agent Management"
+						title="Agent management"
 						icon={Bot}
-						subtitle="View, configure and manage your AI agents from a central dashboard"
+						subtitle="View, configure and manage your agents"
 					>
-						{/* Action buttons passed as children */}
 						{selectedAgent && (
-							<Box sx={{ display: "flex", gap: 1 }}>
-								<Tooltip title="Export Agent">
-									<Button
-										variant="outlined"
-										size="small"
-										startIcon={<FileUp size={16} strokeWidth={2} />}
-										onClick={handleExportAgent}
-										disabled={exportAgentMutation.isPending}
-										sx={secondaryButtonSx}
-									>
-										Export
-									</Button>
-								</Tooltip>
+							<div className="flex items-center gap-2">
+								<Button
+									variant="secondary"
+									onClick={handleExportAgent}
+									disabled={exportAgentMutation.isPending}
+								>
+									<FileUp aria-hidden="true" />
+									Export
+								</Button>
 
-								{/* Upload to Agent Hub Button */}
-								<Tooltip title="Upload Agent to Hub">
-									<Button
-										data-tour-tag="upload-to-hub-header-button"
-										variant="outlined"
-										size="small"
-										startIcon={<CloudUpload size={16} strokeWidth={2} />}
-										onClick={handleOpenUploadDialog}
-										disabled={uploadAgentMutation.isPending}
-										sx={secondaryButtonSx}
-									>
-										{uploadAgentMutation.isPending
-											? "Uploading..."
-											: "Upload to Hub"}
-									</Button>
-								</Tooltip>
+								<Button
+									data-tour-tag="upload-to-hub-header-button"
+									variant="secondary"
+									onClick={handleOpenUploadDialog}
+									disabled={uploadAgentMutation.isPending}
+								>
+									<CloudUpload aria-hidden="true" />
+									{uploadAgentMutation.isPending
+										? "Uploading..."
+										: "Upload to hub"}
+								</Button>
 
+								{/* The only tooltip here: it names the agent, which the
+								    button label cannot. */}
 								<Tooltip
-									title={`Chat with ${selectedAgent?.name || "this Agent"}`}
+									content={`Chat with ${selectedAgent.name || "this agent"}`}
 								>
 									<Button
-										variant="outlined"
-										color="primary"
-										size="small"
-										startIcon={<MessageCircle size={16} strokeWidth={2} />}
+										variant="primary"
 										onClick={() => navigate(`/chat/${selectedAgent.id}`)}
-										sx={primaryButtonSx}
 									>
+										<MessageCircle aria-hidden="true" />
 										Chat
 									</Button>
 								</Tooltip>
-							</Box>
+							</div>
 						)}
 					</PageHeader>
 
-					{/* Agent Details Section */}
-					<AgentDetailsContainer sx={{ opacity: selectedAgent ? 1 : 0.7 }}>
+					<div className="grow overflow-hidden">
 						<AgentSettings
 							selectedAgent={selectedAgent ?? null}
 							refetchAgent={refetchAgent}
 							initialSelectedAgentId={agentId}
 						/>
-					</AgentDetailsContainer>
-				</ContentInnerContainer>
-			</ContentContainer>
+					</div>
+				</div>
+			</div>
 
 			{/* Render the Upload Confirmation Dialog */}
 			{selectedAgent && (
@@ -291,6 +215,6 @@ export const AgentsPage: FC<AgentsPageProps> = () => {
 					validationIssues={uploadValidationIssues}
 				/>
 			)}
-		</Container>
+		</div>
 	);
 };

@@ -1,23 +1,12 @@
-import {
-	CircularProgress,
-	TextField,
-	Typography,
-	alpha,
-	styled,
-} from "@mui/material";
 import type { AgentCreate } from "@shared/api/local-operator/types";
+import { Spinner } from "@shared/components/common/spinner";
+import { Button, Input, Label, Textarea } from "@shared/components/ui";
 import { useCreateAgent } from "@shared/hooks";
 import { Bot, ExternalLink } from "lucide-react";
 import type { FC, FormEvent } from "react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-	BaseDialog,
-	FormContainer,
-	PrimaryButton,
-	SecondaryButton,
-	TitleContainer,
-} from "./base-dialog";
+import { BaseDialog, PrimaryButton, SecondaryButton } from "./base-dialog";
 
 type CreateAgentDialogProps = {
 	/**
@@ -34,68 +23,6 @@ type CreateAgentDialogProps = {
 	onAgentCreated?: (agentId: string) => void;
 };
 
-const StyledIcon = styled(Bot)(({ theme }) => ({
-	color: theme.palette.primary.main,
-}));
-
-const StyledTextField = styled(TextField)(({ theme }) => ({
-	"& .MuiOutlinedInput-root": {
-		borderRadius: 8,
-		transition: "all 0.2s ease-in-out",
-		fontSize: "0.95rem",
-		"&:hover .MuiOutlinedInput-notchedOutline": {
-			borderColor: alpha(theme.palette.primary.main, 0.5),
-		},
-		"&.Mui-focused .MuiOutlinedInput-notchedOutline": {
-			borderColor: theme.palette.primary.main,
-			borderWidth: 1,
-			boxShadow: `0 0 0 3px ${alpha(theme.palette.primary.main, 0.15)}`,
-		},
-	},
-	"& .MuiInputLabel-root": {
-		fontSize: "0.9rem",
-	},
-	"& .MuiInputBase-input": {
-		padding: "12px 14px",
-	},
-}));
-
-const NameField = styled(StyledTextField)({
-	marginBottom: 12,
-	"& .MuiInputLabel-root": {
-		transform: "translate(12px, 12px) scale(1)",
-	},
-	"& .MuiInputLabel-shrink": {
-		transform: "translate(14px, -9px) scale(0.75)",
-	},
-});
-
-const Subtitle = styled(Typography)(({ theme }) => ({
-	color: theme.palette.text.secondary,
-	fontSize: "0.875rem",
-	marginTop: 4,
-	marginBottom: 8,
-}));
-
-const AgentHubLink = styled("button")(({ theme }) => ({
-	display: "inline-flex",
-	alignItems: "center",
-	gap: 4,
-	fontWeight: 500,
-	fontSize: "0.92rem",
-	color: theme.palette.primary.main,
-	textDecoration: "none",
-	marginBottom: 16,
-	background: "none",
-	border: "none",
-	padding: 0,
-	cursor: "pointer",
-	"&:hover": {
-		textDecoration: "underline",
-		color: theme.palette.primary.dark,
-	},
-}));
-
 /**
  * Dialog for creating a new agent
  *
@@ -109,6 +36,7 @@ export const CreateAgentDialog: FC<CreateAgentDialogProps> = ({
 	const navigate = useNavigate();
 	const [name, setName] = useState("");
 	const [description, setDescription] = useState("");
+	const nameFieldRef = useRef<HTMLInputElement>(null);
 
 	const handleAgentHubClick = () => {
 		onClose();
@@ -153,17 +81,16 @@ export const CreateAgentDialog: FC<CreateAgentDialogProps> = ({
 	const isSubmitDisabled = isLoading || !name.trim();
 
 	const dialogTitle = (
-		<TitleContainer>
-			<StyledIcon size={19} />
-			Create New Agent
-		</TitleContainer>
+		<>
+			<Bot size={19} className="text-accent" aria-hidden="true" />
+			Create new agent
+		</>
 	);
 
 	const dialogActions = (
 		<>
 			<SecondaryButton
 				onClick={onClose}
-				variant="outlined"
 				disabled={isLoading}
 				data-tour-tag="create-agent-dialog-cancel-button"
 			>
@@ -173,11 +100,9 @@ export const CreateAgentDialog: FC<CreateAgentDialogProps> = ({
 				type="submit"
 				form="create-agent-form"
 				disabled={isSubmitDisabled}
-				startIcon={
-					isLoading ? <CircularProgress size={20} color="inherit" /> : null
-				}
+				startIcon={isLoading ? <Spinner /> : null}
 			>
-				Create Agent
+				Create agent
 			</PrimaryButton>
 		</>
 	);
@@ -190,45 +115,55 @@ export const CreateAgentDialog: FC<CreateAgentDialogProps> = ({
 			actions={dialogActions}
 			maxWidth="sm"
 			dataTourTag="create-agent-dialog"
+			dialogProps={{
+				// The first tabbable element is the Agent Hub link, but the name
+				// field is what the user opened this dialog to type into.
+				onOpenAutoFocus: (event: Event) => {
+					event.preventDefault();
+					nameFieldRef.current?.focus();
+				},
+			}}
 		>
-			<Subtitle>
+			<p className="text-body-sm text-ink-muted">
 				Configure your new AI assistant with a name and optional description
-			</Subtitle>
-			<AgentHubLink onClick={handleAgentHubClick}>
+			</p>
+			<Button
+				variant="link"
+				onClick={handleAgentHubClick}
+				className="mt-1 mb-4 text-body-sm"
+			>
 				Browse Agent Hub to fetch ready-made agents
-				<ExternalLink size={18} style={{ marginLeft: 4 }} />
-			</AgentHubLink>
+				<ExternalLink aria-hidden="true" />
+			</Button>
 			<form id="create-agent-form" onSubmit={handleSubmit}>
-				<FormContainer>
-					<NameField
-						autoFocus
-						margin="dense"
-						id="name"
-						label="Agent Name"
-						type="text"
-						fullWidth
-						variant="outlined"
-						value={name}
-						onChange={(e) => setName(e.target.value)}
-						required
-						disabled={isLoading}
-						placeholder="Enter a name for your agent"
-					/>
-					<StyledTextField
-						margin="dense"
-						id="description"
-						label="Description (optional)"
-						type="text"
-						fullWidth
-						variant="outlined"
-						value={description}
-						onChange={(e) => setDescription(e.target.value)}
-						disabled={isLoading}
-						multiline
-						rows={2}
-						placeholder="Describe what this agent does"
-					/>
-				</FormContainer>
+				<div className="flex flex-col gap-5">
+					<div className="flex flex-col gap-2">
+						<Label htmlFor="create-agent-name">Agent name</Label>
+						<Input
+							ref={nameFieldRef}
+							id="create-agent-name"
+							inputSize="lg"
+							value={name}
+							onChange={(e) => setName(e.target.value)}
+							required
+							disabled={isLoading}
+							placeholder="Enter a name for your agent"
+						/>
+					</div>
+					<div className="flex flex-col gap-2">
+						<Label htmlFor="create-agent-description">
+							Description (optional)
+						</Label>
+						<Textarea
+							id="create-agent-description"
+							rows={2}
+							value={description}
+							onChange={(e) => setDescription(e.target.value)}
+							disabled={isLoading}
+							placeholder="Describe what this agent does"
+						/>
+					</div>
+				</div>
 			</form>
 		</BaseDialog>
 	);

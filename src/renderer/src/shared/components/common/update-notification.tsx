@@ -1,25 +1,23 @@
-import {
-	Alert,
-	Button,
-	LinearProgress,
-	Link,
-	Snackbar,
-	Typography,
-	styled,
-} from "@mui/material";
-import { useTheme } from "@mui/material/styles";
+import { FloatingAlert } from "@shared/components/common/floating-alert";
+import { Button, Progress } from "@shared/components/ui";
+import { cn } from "@shared/lib/utils";
 import {
 	UpdateType,
 	useDeferredUpdatesStore,
 } from "@shared/store/deferred-updates-store";
 import type { ProgressInfo, UpdateInfo } from "electron-updater";
 import parse from "html-react-parser";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+	type HTMLAttributes,
+	useCallback,
+	useEffect,
+	useRef,
+	useState,
+} from "react";
 
 const RELEASE_ARTIFACT_ERROR_REGEX =
 	/cannot find .* in the latest release artifacts/i;
 
-// Define types for backend update info
 type BackendUpdateInfo = {
 	currentVersion: string;
 	latestVersion: string;
@@ -28,71 +26,43 @@ type BackendUpdateInfo = {
 	startupMode?: string;
 };
 
-// Styled components following shadcn design patterns
-export const UpdateContainer = styled("div")(({ theme }) => ({
-	padding: theme.spacing(2.5),
-	borderRadius: 8,
-	backgroundColor: theme.palette.background.paper,
-	border: `1px solid ${theme.palette.divider}`,
-	boxShadow:
-		"0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
-	position: "fixed",
-	top: theme.spacing(2.5),
-	right: theme.spacing(2.5),
-	zIndex: 1300,
-	width: 400,
-	maxWidth: "calc(100vw - 40px)",
-	backgroundImage: "none",
-	"& .update-title": {
-		fontSize: "1.125rem",
-		fontWeight: 600,
-		lineHeight: 1.4,
-		marginBottom: theme.spacing(1.5),
-		color: theme.palette.text.primary,
-	},
-	"& .update-description": {
-		fontSize: "0.875rem",
-		lineHeight: 1.5,
-		color: theme.palette.text.secondary,
-		marginBottom: theme.spacing(1),
-	},
-	"& .update-notes": {
-		fontSize: "0.8125rem",
-		lineHeight: 1.4,
-		color: theme.palette.text.secondary,
-	},
-	"& a": {
-		color: theme.palette.primary.main,
-		textDecoration: "none",
-		fontWeight: 500,
-		"&:hover": {
-			textDecoration: "underline",
-		},
-	},
-	[theme.breakpoints.down("sm")]: {
-		width: "calc(100vw - 32px)",
-		left: theme.spacing(2),
-		right: theme.spacing(2),
-		top: theme.spacing(2),
-		padding: theme.spacing(2),
-	},
-}));
-
-export const UpdateActions = styled("div")(({ theme }) => ({
-	display: "flex",
-	justifyContent: "flex-end",
-	gap: theme.spacing(1.5),
-	marginTop: theme.spacing(3),
-}));
-
-export const ProgressContainer = styled("div")(({ theme }) => ({
-	marginTop: theme.spacing(2),
-	marginBottom: theme.spacing(1),
-}));
-
 /**
- * Props for the UpdateNotification component
+ * The notification panel itself.
+ *
+ * It leaves the flow, so it takes `elevated` plus the one shadow rather than a
+ * border. The `[&_a]` rule is the only descendant selector kept from the MUI
+ * version: release notes arrive as HTML from GitHub, so their anchors cannot be
+ * given a class at the call site.
  */
+export const UpdateContainer = ({
+	className,
+	...props
+}: HTMLAttributes<HTMLDivElement>) => (
+	<div
+		className={cn(
+			"fixed top-4 right-4 z-50 w-100 max-w-[calc(100vw-2rem)]",
+			"rounded-lg bg-elevated p-4 shadow-overlay",
+			"[&_a]:text-accent [&_a]:underline-offset-4 [&_a]:hover:underline",
+			className,
+		)}
+		{...props}
+	/>
+);
+
+export const UpdateActions = ({
+	className,
+	...props
+}: HTMLAttributes<HTMLDivElement>) => (
+	<div className={cn("mt-6 flex justify-end gap-3", className)} {...props} />
+);
+
+export const ProgressContainer = ({
+	className,
+	...props
+}: HTMLAttributes<HTMLDivElement>) => (
+	<div className={cn("mt-4 mb-2", className)} {...props} />
+);
+
 type UpdateNotificationProps = {
 	/** Whether to automatically check for updates on mount */
 	autoCheck?: boolean;
@@ -104,8 +74,6 @@ type UpdateNotificationProps = {
 export const UpdateNotification = ({
 	autoCheck = true,
 }: UpdateNotificationProps) => {
-	const theme = useTheme();
-
 	// State for frontend update status
 	const [checking, setChecking] = useState(false);
 	const [updatingBackend, setUpdatingBackend] = useState(false);
@@ -350,56 +318,36 @@ export const UpdateNotification = ({
 		setSnackbarOpen(false);
 	};
 
-	// Button styling to match agent header buttons
-	const buttonSx = {
-		textTransform: "none",
-		fontSize: "0.8125rem",
-		padding: theme.spacing(0.5, 1.5),
-		borderRadius: theme.shape.borderRadius * 0.75,
-	};
-
-	const secondaryButtonSx = {
-		...buttonSx,
-		borderColor: theme.palette.divider,
-		color: theme.palette.text.secondary,
-		"&:hover": {
-			backgroundColor: theme.palette.action.hover,
-			borderColor: theme.palette.divider,
-		},
-	};
-
 	// If checking for updates or updating backend, show a loading indicator
 	if (checking) {
 		return (
 			<UpdateContainer>
-				<Typography className="update-title">
-					{updatingBackend ? "Updating Server" : "Checking for Updates"}
-				</Typography>
-				<Typography className="update-description">
+				<h2 className="mb-3 text-heading text-ink">
+					{updatingBackend ? "Updating server" : "Checking for updates"}
+				</h2>
+				<p className="mb-2 text-body text-ink-muted">
 					{updatingBackend
 						? "Please wait while the server is being updated. The server will temporarily go offline while it restarts to apply the update."
 						: "Please wait while we check for available updates..."}
-				</Typography>
+				</p>
 				<ProgressContainer>
-					<LinearProgress />
+					<Progress />
 				</ProgressContainer>
 			</UpdateContainer>
 		);
 	}
 
-	// If there's an error, show a snackbar
+	// If there's an error, show a toast
 	if (error) {
 		return (
-			<Snackbar
+			<FloatingAlert
 				open={snackbarOpen}
 				autoHideDuration={6000}
 				onClose={handleSnackbarClose}
-				anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+				variant="danger"
 			>
-				<Alert onClose={handleSnackbarClose} severity="error">
-					{error}
-				</Alert>
-			</Snackbar>
+				{error}
+			</FloatingAlert>
 		);
 	}
 
@@ -408,57 +356,53 @@ export const UpdateNotification = ({
 		return (
 			<>
 				<UpdateContainer>
-					<Typography className="update-title">Update Available</Typography>
-					<Typography className="update-description">
+					<h2 className="mb-3 text-heading text-ink">Update available</h2>
+					<p className="mb-2 text-body text-ink-muted">
 						Version {updateInfo.version} is available. You are currently using
 						version {appVersion}.
-					</Typography>
+					</p>
 					{updateInfo.releaseNotes && (
-						<Typography className="update-notes" sx={{ mt: 1 }}>
-							Release Notes:{" "}
+						// A div rather than a paragraph: GitHub's release notes arrive as
+						// HTML and routinely contain block elements, which a <p> cannot
+						// legally hold.
+						<div className="mt-2 text-body text-ink-muted">
+							Release notes:{" "}
 							{typeof updateInfo.releaseNotes === "string" ? (
 								<>
 									{parse(truncateText(updateInfo.releaseNotes, 400))}
 									{updateInfo.releaseNotes.length > 400 && (
-										<Link
+										<a
 											href={getReleaseUrl(updateInfo)}
 											target="_blank"
 											rel="noopener noreferrer"
-											sx={{ ml: 1 }}
+											className="ml-2"
 										>
 											View full release notes
-										</Link>
+										</a>
 									)}
 								</>
 							) : (
-								<Link
+								<a
 									href={getReleaseUrl(updateInfo)}
 									target="_blank"
 									rel="noopener noreferrer"
 								>
 									See release notes on GitHub
-								</Link>
+								</a>
 							)}
-						</Typography>
+						</div>
 					)}
 
 					{downloading && downloadProgress && (
 						<ProgressContainer>
-							<Typography variant="body2" sx={{ fontSize: "0.8125rem" }}>
+							<p className="text-body-sm text-ink-muted">
 								Downloading: {Math.round(downloadProgress.percent)}%
-							</Typography>
-							<LinearProgress
-								variant="determinate"
-								value={downloadProgress.percent}
-								sx={{ mt: 1 }}
-							/>
-							<Typography
-								variant="caption"
-								sx={{ mt: 0.5, display: "block", fontSize: "0.75rem" }}
-							>
+							</p>
+							<Progress value={downloadProgress.percent} className="mt-2" />
+							<p className="mt-1 text-mono-sm text-ink-dim">
 								{Math.round(downloadProgress.transferred / 1024)} KB of{" "}
 								{Math.round(downloadProgress.total / 1024)} KB
-							</Typography>
+							</p>
 						</ProgressContainer>
 					)}
 
@@ -466,38 +410,34 @@ export const UpdateNotification = ({
 						{!downloading && (
 							<>
 								<Button
-									variant="contained"
-									size="small"
+									variant="primary"
+									size="sm"
 									onClick={downloadUpdate}
 									disabled={downloading}
-									sx={buttonSx}
 								>
-									Download Update
+									Download update
 								</Button>
 								<Button
-									variant="outlined"
-									size="small"
+									variant="outline"
+									size="sm"
 									onClick={handleDeferUpdate}
 									disabled={downloading}
-									sx={secondaryButtonSx}
 								>
-									Update Later
+									Update later
 								</Button>
 							</>
 						)}
 					</UpdateActions>
 				</UpdateContainer>
 
-				<Snackbar
+				<FloatingAlert
 					open={snackbarOpen}
 					autoHideDuration={6000}
 					onClose={handleSnackbarClose}
-					anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+					variant="info"
 				>
-					<Alert onClose={handleSnackbarClose} severity="info">
-						A new update is available: v{updateInfo.version}
-					</Alert>
-				</Snackbar>
+					A new update is available: v{updateInfo.version}
+				</FloatingAlert>
 			</>
 		);
 	}
@@ -507,47 +447,35 @@ export const UpdateNotification = ({
 		return (
 			<>
 				<UpdateContainer>
-					<Typography className="update-title">
-						Update Ready to Install
-					</Typography>
-					<Typography className="update-description">
+					<h2 className="mb-3 text-heading text-ink">
+						Update ready to install
+					</h2>
+					<p className="mb-2 text-body text-ink-muted">
 						Version {updateInfo.version} is available. You are currently using
 						version {appVersion}.
-					</Typography>
-					<Typography className="update-notes" sx={{ mt: 1 }}>
+					</p>
+					<p className="mt-2 text-body-sm text-ink-muted">
 						The application will restart to apply the update.
-					</Typography>
+					</p>
 
 					<UpdateActions>
-						<Button
-							variant="contained"
-							size="small"
-							onClick={installUpdate}
-							sx={buttonSx}
-						>
-							Install Now
+						<Button variant="primary" size="sm" onClick={installUpdate}>
+							Install now
 						</Button>
-						<Button
-							variant="outlined"
-							size="small"
-							onClick={handleDeferUpdate}
-							sx={secondaryButtonSx}
-						>
-							Update Later
+						<Button variant="outline" size="sm" onClick={handleDeferUpdate}>
+							Update later
 						</Button>
 					</UpdateActions>
 				</UpdateContainer>
 
-				<Snackbar
+				<FloatingAlert
 					open={snackbarOpen}
 					autoHideDuration={6000}
 					onClose={handleSnackbarClose}
-					anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+					variant="success"
 				>
-					<Alert onClose={handleSnackbarClose} severity="success">
-						Update downloaded and ready to install
-					</Alert>
-				</Snackbar>
+					Update downloaded and ready to install
+				</FloatingAlert>
 			</>
 		);
 	}
@@ -557,69 +485,53 @@ export const UpdateNotification = ({
 		return (
 			<>
 				<UpdateContainer>
-					<Typography className="update-title">
-						Server Update Available
-					</Typography>
-					<Typography className="update-description">
+					<h2 className="mb-3 text-heading text-ink">
+						Server update available
+					</h2>
+					<p className="mb-2 text-body text-ink-muted">
 						Server version {backendUpdateInfo.latestVersion} is available. You
 						are currently using version {backendUpdateInfo.currentVersion}.
-					</Typography>
-					<Typography className="update-notes" sx={{ mt: 1 }}>
+					</p>
+					<p className="mt-2 text-body-sm text-ink-muted">
 						Updating the server will improve AI functionality, improve security,
 						and fix bugs.
-					</Typography>
+					</p>
 
 					{backendUpdateInfo.canManageUpdate ? (
 						<UpdateActions>
 							<Button
-								variant="contained"
-								size="small"
+								variant="primary"
+								size="sm"
 								onClick={updateBackend}
 								disabled={checking}
-								sx={buttonSx}
 							>
-								{checking ? "Updating..." : "Update Server"}
+								{checking ? "Updating..." : "Update server"}
 							</Button>
 							<Button
-								variant="outlined"
-								size="small"
+								variant="outline"
+								size="sm"
 								onClick={handleDeferBackendUpdate}
 								disabled={checking}
-								sx={secondaryButtonSx}
 							>
-								Update Later
+								Update later
 							</Button>
 						</UpdateActions>
 					) : (
 						<>
-							<Typography
-								variant="body2"
-								sx={{ mt: 2, color: "warning.main", fontSize: "0.8125rem" }}
-							>
+							<p className="mt-4 text-body-sm text-warning">
 								The backend server is running externally and cannot be updated
 								automatically. Please update it manually using the following
 								command:
-							</Typography>
-							<Typography
-								variant="body2"
-								sx={{
-									mt: 1,
-									p: 1,
-									backgroundColor: "background.default",
-									borderRadius: 1,
-									fontFamily: "monospace",
-									fontSize: "0.8125rem",
-								}}
-							>
+							</p>
+							<code className="mt-2 block rounded-sm bg-sunken p-2 text-mono-sm text-ink">
 								{backendUpdateInfo.updateCommand}
-							</Typography>
+							</code>
 							<UpdateActions>
 								<Button
-									variant="outlined"
-									size="small"
+									variant="outline"
+									size="sm"
 									onClick={handleDeferBackendUpdate}
 									disabled={checking}
-									sx={secondaryButtonSx}
 								>
 									Dismiss
 								</Button>
@@ -628,16 +540,14 @@ export const UpdateNotification = ({
 					)}
 				</UpdateContainer>
 
-				<Snackbar
+				<FloatingAlert
 					open={snackbarOpen}
 					autoHideDuration={6000}
 					onClose={handleSnackbarClose}
-					anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+					variant="info"
 				>
-					<Alert onClose={handleSnackbarClose} severity="info">
-						A new server update is available: v{backendUpdateInfo.latestVersion}
-					</Alert>
-				</Snackbar>
+					A new server update is available: v{backendUpdateInfo.latestVersion}
+				</FloatingAlert>
 			</>
 		);
 	}
@@ -645,56 +555,31 @@ export const UpdateNotification = ({
 	// If a manual update is required
 	if (manualUpdateRequired && manualUpdateInfo) {
 		return (
-			<>
-				<Snackbar
-					open={snackbarOpen}
-					autoHideDuration={10000}
-					onClose={handleSnackbarClose}
-					anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-				>
-					<Alert
-						onClose={handleSnackbarClose}
-						severity="warning"
-						sx={{ width: "100%" }}
-					>
-						<Typography variant="body2" sx={{ fontSize: "0.8125rem" }}>
-							{manualUpdateInfo.message}
-						</Typography>
-						<Typography
-							variant="body2"
-							sx={{
-								mt: 1,
-								p: 1,
-								backgroundColor: "background.default",
-								borderRadius: 1,
-								fontFamily: "monospace",
-								fontSize: "0.8125rem",
-							}}
-						>
-							{manualUpdateInfo.command}
-						</Typography>
-					</Alert>
-				</Snackbar>
-			</>
+			<FloatingAlert
+				open={snackbarOpen}
+				autoHideDuration={10000}
+				onClose={handleSnackbarClose}
+				variant="warning"
+			>
+				<p className="text-body-sm">{manualUpdateInfo.message}</p>
+				<code className="mt-2 block rounded-sm bg-sunken p-2 text-mono-sm text-ink">
+					{manualUpdateInfo.command}
+				</code>
+			</FloatingAlert>
 		);
 	}
 
 	// If a backend update has been completed
 	if (backendUpdateCompleted) {
 		return (
-			<Snackbar
+			<FloatingAlert
 				open={true}
 				autoHideDuration={6000}
 				onClose={() => setBackendUpdateCompleted(false)}
-				anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+				variant="success"
 			>
-				<Alert
-					onClose={() => setBackendUpdateCompleted(false)}
-					severity="success"
-				>
-					Server update completed successfully
-				</Alert>
-			</Snackbar>
+				Server update completed successfully
+			</FloatingAlert>
 		);
 	}
 

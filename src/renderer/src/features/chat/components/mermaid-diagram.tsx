@@ -633,11 +633,7 @@ const MermaidDiagramCore: FC<MermaidDiagramProps> = memo(({ chart, id }) => {
 				title="Mermaid Diagram"
 				maxWidth="xl"
 				fullWidth
-				dialogProps={{
-					PaperProps: {
-						sx: { maxHeight: "90vh", height: "90vh" },
-					},
-				}}
+				dialogProps={{ className: "h-[90vh] max-h-[90vh]" }}
 			>
 				<FullscreenContainer>
 					{renderDiagramContent(true)}

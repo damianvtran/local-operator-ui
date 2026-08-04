@@ -1,20 +1,17 @@
 /**
  * Toggle Setting Component
  *
- * A component for toggling boolean settings with a clean, modern UI
+ * A labelled row for a boolean setting that takes effect immediately.
+ *
+ * The label is a `span` with `aria-labelledby` rather than a `label` with
+ * `htmlFor`: the switch renders as a `button`, which is not a labelable
+ * element, so `htmlFor` would associate with nothing at all.
  */
 
-import {
-	Box,
-	CircularProgress,
-	Paper,
-	Switch,
-	Typography,
-	alpha,
-	styled,
-} from "@mui/material";
+import { Spinner } from "@shared/components/common/spinner";
+import { Card, Switch } from "@shared/components/ui";
 import type { LucideIcon } from "lucide-react";
-import { useState } from "react";
+import { useId, useState } from "react";
 import type { FC } from "react";
 
 type ToggleSettingProps = {
@@ -50,64 +47,6 @@ type ToggleSettingProps = {
 	isSaving?: boolean;
 };
 
-const SettingContainer = styled(Paper)(({ theme }) => ({
-	padding: theme.spacing(2.5),
-	borderRadius: theme.shape.borderRadius * 2,
-	backgroundColor: alpha(theme.palette.background.default, 0.7),
-	transition: "all 0.2s ease",
-	"&:hover": {
-		backgroundColor: alpha(theme.palette.background.default, 0.9),
-		boxShadow: `0 4px 12px ${alpha(
-			theme.palette.mode === "dark"
-				? theme.palette.common.black
-				: theme.palette.common.black,
-			theme.palette.mode === "dark" ? 0.2 : 0.08,
-		)}`,
-	},
-	display: "flex",
-	justifyContent: "space-between",
-	alignItems: "center",
-	marginBottom: theme.spacing(2),
-}));
-
-const ContentBox = styled(Box)({
-	flexGrow: 1,
-});
-
-const LabelText = styled(Typography)(({ theme }) => ({
-	marginBottom: theme.spacing(0.5),
-	display: "flex",
-	alignItems: "center",
-	color: theme.palette.text.primary,
-	fontWeight: 600,
-}));
-
-const IconWrapper = styled(Box)(({ theme }) => ({
-	marginRight: theme.spacing(1.5),
-	opacity: 0.8,
-}));
-
-const DescriptionText = styled(Typography)(({ theme }) => ({
-	fontSize: "0.875rem",
-	lineHeight: 1.5,
-	maxWidth: "90%",
-	color: theme.palette.text.secondary,
-}));
-
-const ControlBox = styled(Box)({
-	display: "flex",
-	alignItems: "center",
-});
-
-const StyledSwitch = styled(Switch)(({ theme }) => ({
-	"& .MuiSwitch-switchBase.Mui-checked": {
-		color: theme.palette.primary.main,
-	},
-	"& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": {
-		backgroundColor: theme.palette.primary.main,
-	},
-}));
-
 /**
  * Toggle Setting Component
  *
@@ -124,53 +63,52 @@ export const ToggleSetting: FC<ToggleSettingProps> = ({
 	isSaving = false,
 }) => {
 	const [isOn, setIsOn] = useState(value);
+	const fieldId = useId();
+	const labelId = `${fieldId}-label`;
+	const descriptionId = `${fieldId}-description`;
 
 	/**
 	 * Handles toggling the switch
 	 */
-	const handleToggle = async () => {
+	const handleToggle = async (checked: boolean) => {
 		if (isSaving) return;
 
-		const newValue = !isOn;
-		setIsOn(newValue);
+		setIsOn(checked);
 
 		try {
-			await onChange(newValue);
+			await onChange(checked);
 		} catch (error) {
 			// If there's an error, revert the UI state
-			setIsOn(!newValue);
+			setIsOn(!checked);
 			console.error("Error toggling setting:", error);
 		}
 	};
 
 	return (
-		<SettingContainer elevation={0}>
-			<ContentBox>
-				<LabelText variant="subtitle2">
-					{Icon && (
-						<IconWrapper>
-							<Icon size={16} />
-						</IconWrapper>
-					)}
+		<Card className="mb-4 flex-row items-center justify-between">
+			<div className="flex-1">
+				<span id={labelId} className="flex items-center gap-2 text-ink">
+					{Icon && <Icon size={16} aria-hidden="true" />}
 					{label}
-				</LabelText>
+				</span>
 
 				{description && (
-					<DescriptionText variant="body2">{description}</DescriptionText>
+					<p id={descriptionId} className="mt-1 text-body-sm text-ink-muted">
+						{description}
+					</p>
 				)}
-			</ContentBox>
+			</div>
 
-			<ControlBox>
-				{isSaving ? (
-					<CircularProgress size={24} sx={{ mr: 1 }} />
-				) : (
-					<StyledSwitch
-						checked={isOn}
-						onChange={handleToggle}
-						color="primary"
-					/>
-				)}
-			</ControlBox>
-		</SettingContainer>
+			{isSaving ? (
+				<Spinner size="md" label={`Saving ${label}`} />
+			) : (
+				<Switch
+					checked={isOn}
+					onCheckedChange={handleToggle}
+					aria-labelledby={labelId}
+					aria-describedby={description ? descriptionId : undefined}
+				/>
+			)}
+		</Card>
 	);
 };

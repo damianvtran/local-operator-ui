@@ -1,18 +1,8 @@
-import {
-	Box,
-	Divider,
-	Drawer,
-	IconButton,
-	List,
-	ListItemButton,
-	ListItemIcon,
-	ListItemText,
-	Tooltip,
-} from "@mui/material";
-import { styled } from "@mui/material/styles";
 import { CollapsibleAppLogo } from "@shared/components/navigation/collapsible-app-logo";
 import { UserProfileSidebar } from "@shared/components/navigation/user-profile-sidebar";
+import { Button, Tooltip } from "@shared/components/ui";
 import { useCurrentView } from "@shared/hooks/use-route-params";
+import { cn } from "@shared/lib/utils";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import type { LucideIcon } from "lucide-react";
 import {
@@ -33,146 +23,36 @@ import { useNavigate } from "react-router-dom";
  */
 type SidebarNavigationProps = Record<string, never>;
 
-const StyledDrawer = styled(Drawer, {
-	shouldForwardProp: (prop) => prop !== "width",
-})<{ width: number }>(({ theme, width }) => ({
-	width,
-	flexShrink: 0,
-	"& .MuiDrawer-paper": {
-		width,
-		boxSizing: "border-box",
-		background: theme.palette.sidebar.background,
-		borderRight: `1px solid ${theme.palette.sidebar.border}`,
-		boxShadow: "0 4px 20px rgba(0,0,0,0.2)",
-		transition: theme.transitions.create("width", {
-			easing: theme.transitions.easing.sharp,
-			duration: theme.transitions.duration.enteringScreen,
-		}),
-		overflowX: "hidden",
-		display: "flex",
-		flexDirection: "column",
-		justifyContent: "space-between",
-	},
-}));
+type NavItem = {
+	icon: LucideIcon;
+	label: string;
+	path: string;
+	isActive: boolean;
+	tourTag: string;
+};
 
-const LogoContainer = styled(Box)(({ theme }) => ({
-	display: "flex",
-	alignItems: "center",
-	justifyContent: "center",
-	padding: theme.spacing(2, 0),
-	marginBottom: theme.spacing(1),
-}));
-
-const NavList = styled(List)(({ theme }) => ({
-	padding: theme.spacing(1),
-}));
-
-const NavItemButton = styled(ListItemButton, {
-	shouldForwardProp: (prop) =>
-		!["isActive", "isExpanded"].includes(prop as string),
-})<{ isActive: boolean; isExpanded: boolean }>(
-	({ theme, isActive, isExpanded }) => ({
-		borderRadius: 6,
-		marginBottom: 4,
-		padding: "4px 12px",
-		minHeight: 36,
-		justifyContent: isExpanded ? "initial" : "center",
-		color: isActive
-			? theme.palette.sidebar.itemActiveText
-			: theme.palette.sidebar.itemText,
-		backgroundColor: isActive
-			? theme.palette.sidebar.itemActive
-			: "transparent",
-		transition: "background-color 0.2s ease-out, color 0.2s ease-out",
-		"&:hover": {
-			backgroundColor: isActive
-				? theme.palette.sidebar.itemActiveHover
-				: theme.palette.sidebar.itemHover,
-		},
-	}),
-);
-
-const NavItemIcon = styled(ListItemIcon, {
-	shouldForwardProp: (prop) =>
-		!["isActive", "isExpanded"].includes(prop as string),
-})<{ isActive: boolean; isExpanded: boolean }>(
-	({ theme, isActive, isExpanded }) => ({
-		minWidth: 0,
-		width: 20,
-		height: 20,
-		marginRight: isExpanded ? 12 : 0,
-		justifyContent: "center",
-		color: isActive
-			? theme.palette.sidebar.itemActiveText
-			: theme.palette.icon.text,
-		display: "flex",
-		alignItems: "center",
-		transition: "color 0.2s ease",
-	}),
-);
-
-const StyledTooltip = styled(Tooltip)(({ theme }) => ({
-	"& .MuiTooltip-tooltip": {
-		backgroundColor: theme.palette.tooltip.background,
-		color: theme.palette.tooltip.text,
-		fontSize: 12,
-		fontWeight: 500,
-		borderRadius: 8,
-		padding: "8px 14px",
-		boxShadow: "0 4px 14px rgba(0, 0, 0, 0.3)",
-		border: `1px solid ${theme.palette.tooltip.border}`,
-	},
-	"& .MuiTooltip-arrow": {
-		color: theme.palette.tooltip.background,
-	},
-}));
-
-const ToggleButtonContainer = styled(Box, {
-	shouldForwardProp: (prop) => prop !== "isExpanded",
-})<{ isExpanded: boolean }>(({ theme, isExpanded }) => ({
-	display: "flex",
-	justifyContent: isExpanded ? "flex-end" : "center",
-	alignItems: "center",
-	paddingRight: isExpanded ? theme.spacing(2) : 0,
-	paddingLeft: isExpanded ? 0 : theme.spacing(1),
-	paddingBottom: theme.spacing(2),
-	width: "100%",
-	marginTop: 8,
-}));
-
-const ToggleButton = styled(IconButton)(({ theme }) => ({
-	borderRadius: 6,
-	backgroundColor: "transparent",
-	border: `1px solid ${theme.palette.sidebar.toggleButton.border}`,
-	width: 28,
-	height: 28,
-	transition: "background-color 0.2s ease-out, border-color 0.2s ease-out",
-	"&:hover": {
-		backgroundColor: theme.palette.sidebar.toggleButton.hoverBackground,
-		borderColor: theme.palette.sidebar.toggleButton.hoverBorder,
-	},
-}));
-
-/**
- * SidebarNavigation component that provides a collapsible sidebar for application navigation
- * Uses React Router for navigation and persists sidebar state using the UI preferences store
+/*
+ * The sidebar was a permanent MUI `Drawer`, which is a flex child with a fixed
+ * width and nothing modal about it — so it is now a plain `<nav>`, not a
+ * `Sheet`. `Sheet` is for a panel that leaves the flow and takes a scrim with
+ * it, and this one does neither.
+ *
+ * The old paper carried `boxShadow: 0 4px 20px rgba(0,0,0,0.2)` and a 1px right
+ * border. Both are gone: `bg-surface` against the route's `bg-canvas` already
+ * separates the two grounds, so the border carried no information, and a shadow
+ * on an in-flow panel is exactly what the branding contract reserves for
+ * objects that leave the flow.
  */
+const RAIL_WIDTH = { expanded: "w-55", collapsed: "w-17" } as const;
+
 export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 	const navigate = useNavigate();
 	const currentView = useCurrentView();
 	const { isSidebarCollapsed, toggleSidebar } = useUiPreferencesStore();
 
-	// Invert the collapsed state to get expanded state
 	const expanded = !isSidebarCollapsed;
 
-	// Navigation items configuration
-	const navItems: Array<{
-		icon: LucideIcon;
-		label: string;
-		path: string;
-		isActive: boolean;
-		tourTag?: string;
-	}> = [
+	const navItems: NavItem[] = [
 		{
 			icon: MessageSquare,
 			label: "Chat",
@@ -182,14 +62,14 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 		},
 		{
 			icon: Bot,
-			label: "My Agents",
+			label: "My agents",
 			path: "/agents",
 			isActive: currentView === "agents",
 			tourTag: "nav-item-agents",
 		},
 		{
 			icon: Store,
-			label: "Agent Hub",
+			label: "Agent hub",
 			path: "/agent-hub",
 			isActive: currentView === "agent-hub",
 			tourTag: "nav-item-agent-hub",
@@ -210,117 +90,93 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 		},
 	];
 
-	const drawerWidth = expanded ? 220 : 68;
-
-	// Handle navigation
-	const handleNavigate = (path: string) => {
-		navigate(path);
-	};
-
-	// Render a navigation item with or without tooltip based on sidebar state
-	const renderNavItem = (item: (typeof navItems)[0]) => {
-		const navButton = (
-			<NavItemButton
-				onClick={() => handleNavigate(item.path)}
-				isActive={item.isActive}
-				isExpanded={expanded}
+	const renderNavItem = (item: NavItem) => {
+		/*
+		 * The tour clicks these by `[data-tour-tag="nav-item-chat"]`, so the tag
+		 * has to stay on the button itself. Putting it on a wrapper would leave
+		 * the tour dispatching a click at a div and silently doing nothing.
+		 */
+		const button = (
+			<button
+				type="button"
+				onClick={() => navigate(item.path)}
 				data-tour-tag={item.tourTag}
-			>
-				<NavItemIcon isActive={item.isActive} isExpanded={expanded}>
-					<item.icon
-						size={18}
-						strokeWidth={1.5}
-						style={{ display: "block" }}
-						aria-label={item.label}
-					/>
-				</NavItemIcon>
-				{expanded && (
-					<ListItemText
-						primary={item.label}
-						primaryTypographyProps={{
-							fontWeight: item.isActive ? 500 : 400,
-							fontSize: "0.875rem",
-							whiteSpace: "nowrap",
-							overflow: "hidden",
-							textOverflow: "ellipsis",
-						}}
-					/>
+				aria-current={item.isActive ? "page" : undefined}
+				className={cn(
+					"flex min-h-9 w-full items-center rounded-sm px-3 py-1 text-body transition-colors duration-fast ease-out-quart",
+					expanded ? "justify-start gap-3" : "justify-center",
+					item.isActive
+						? "bg-accent-wash text-accent"
+						: "text-ink-muted hover:bg-elevated hover:text-ink",
 				)}
-			</NavItemButton>
+			>
+				<item.icon size={18} strokeWidth={1.5} aria-hidden="true" />
+				{expanded && <span className="truncate">{item.label}</span>}
+			</button>
 		);
 
-		// If sidebar is collapsed, use custom tooltip
-		if (!expanded) {
-			// @ts-ignore Tooltip type issue workaround
-			return (
-				<StyledTooltip
-					key={item.path}
-					title={item.label}
-					placement="right"
-					arrow
-				>
-					<Box sx={{ position: "relative" }}>{navButton}</Box>
-				</StyledTooltip>
-			);
-		}
-
-		// Otherwise return just the button
-		return <Box key={item.path}>{navButton}</Box>;
+		/* Collapsed, the icon is unlabelled, so the tooltip is the only name. */
+		return expanded ? (
+			<li key={item.path}>{button}</li>
+		) : (
+			<li key={item.path}>
+				<Tooltip content={item.label} side="right">
+					{button}
+				</Tooltip>
+			</li>
+		);
 	};
 
+	const toggleLabel = expanded ? "Collapse sidebar" : "Expand sidebar";
+
 	return (
-		<StyledDrawer variant="permanent" width={drawerWidth}>
-			<Box>
-				{/* App Logo */}
-				<LogoContainer>
+		<nav
+			className={cn(
+				"flex shrink-0 flex-col justify-between overflow-x-hidden bg-surface transition-[width] duration-base ease-out-quart",
+				expanded ? RAIL_WIDTH.expanded : RAIL_WIDTH.collapsed,
+			)}
+		>
+			<div>
+				<div className="flex items-center justify-center py-4">
 					<CollapsibleAppLogo expanded={expanded} />
-				</LogoContainer>
+				</div>
 
-				{/* Navigation Items */}
-				<NavList>{navItems.map(renderNavItem)}</NavList>
-			</Box>
+				<ul className="flex flex-col gap-1 p-2">
+					{navItems.map(renderNavItem)}
+				</ul>
+			</div>
 
-			{/* User Profile and Toggle Button at Bottom */}
-			<Box
-				sx={{
-					display: "flex",
-					flexDirection: "column",
-					alignItems: "center",
-					width: "100%",
-				}}
-			>
-				<Divider
-					sx={{
-						margin: "8px 0",
-						width: "calc(100% - 16px)",
-						borderColor: "divider",
-					}}
-				/>
-
-				{/* User Profile */}
+			<div className="flex flex-col pb-4">
 				<UserProfileSidebar expanded={expanded} />
 
-				{/* Toggle Button - Now positioned below user profile */}
-				<ToggleButtonContainer isExpanded={expanded}>
-					<StyledTooltip
-						title={expanded ? "Collapse sidebar" : "Expand sidebar"}
-						placement="right"
-						arrow
-					>
-						<ToggleButton
+				{/*
+				 * The rule between the account row and the collapse control is the
+				 * one border kept in this file: without it the toggle reads as a
+				 * sixth nav item rather than as chrome belonging to the rail.
+				 */}
+				<div
+					className={cn(
+						"mt-2 flex items-center border-hairline border-t pt-2",
+						expanded ? "justify-end pr-4" : "justify-center",
+					)}
+				>
+					<Tooltip content={toggleLabel} side="right">
+						<Button
+							variant="ghost"
+							size="icon-sm"
 							onClick={toggleSidebar}
-							size="small"
-							aria-label={expanded ? "Collapse sidebar" : "Expand sidebar"}
+							aria-label={toggleLabel}
+							aria-expanded={expanded}
 						>
 							{expanded ? (
-								<ChevronLeft size={16} aria-label="Collapse sidebar" />
+								<ChevronLeft size={16} aria-hidden="true" />
 							) : (
-								<ChevronRight size={16} aria-label="Expand sidebar" />
+								<ChevronRight size={16} aria-hidden="true" />
 							)}
-						</ToggleButton>
-					</StyledTooltip>
-				</ToggleButtonContainer>
-			</Box>
-		</StyledDrawer>
+						</Button>
+					</Tooltip>
+				</div>
+			</div>
+		</nav>
 	);
 };

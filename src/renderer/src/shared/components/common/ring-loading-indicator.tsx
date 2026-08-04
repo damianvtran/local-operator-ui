@@ -1,5 +1,5 @@
-import { Box } from "@mui/material";
-import type { Theme } from "@mui/material/styles";
+import { Spinner } from "@shared/components/common/spinner";
+import type { FC } from "react";
 
 /**
  * Props for the RingLoadingIndicator component.
@@ -8,121 +8,42 @@ type RingLoadingIndicatorProps = {
 	size?: number;
 };
 
+/*
+ * What used to be a bespoke four-part animation — two counter-rotating rings, a
+ * pulsing outer ring and a glowing accent core with `box-shadow` keyframes —
+ * is now one indivisible thing. Three of those four parts were decoration, and
+ * the glow was a shadow this app no longer uses for in-flow elements. The
+ * loading state the rings existed to show is carried by `Spinner`.
+ *
+ * The public props are kept on purpose. Chat renders this while an agent is
+ * thinking, at `size={30}` inline in a message and `size={68}` as an empty
+ * state, and its owner is migrating those files right now — a prop break there
+ * is a regression mid-conversation. The numbers map onto the nearest `Spinner`
+ * size step rather than being rendered literally, because the four sizes are
+ * the affordance and a 30px spinner at 32px is not a visual regression.
+ */
+const SIZE_STEPS = [
+	{ max: 15, size: "xs" },
+	{ max: 17, size: "sm" },
+	{ max: 24, size: "md" },
+] as const;
+
 /**
- * A sophisticated loading indicator with multiple animated rings and a glowing core.
- * This component is designed to provide a visually engaging loading experience.
+ * The loading indicator shown while the agent is thinking.
  *
  * @param {RingLoadingIndicatorProps} props - The props for the component.
- * @param {number} [props.size=30] - The base size of the loading indicator. All elements will scale relative to this.
- * @returns {JSX.Element} The rendered sophisticated loading indicator.
+ * @param {number} [props.size=30] - Approximate diameter in px, mapped onto the
+ *   nearest `Spinner` size step.
  */
-export const RingLoadingIndicator = ({
+export const RingLoadingIndicator: FC<RingLoadingIndicatorProps> = ({
 	size = 30,
-}: RingLoadingIndicatorProps): JSX.Element => {
+}) => {
+	const step = SIZE_STEPS.find((s) => size <= s.max)?.size ?? "lg";
+
 	return (
-		<Box
-			sx={{
-				mt: 1,
-				mb: 1,
-				display: "flex",
-				justifyContent: "center",
-				alignItems: "center",
-				height: size,
-				width: size,
-				position: "relative",
-				"@keyframes outerPulse": {
-					"0%": {
-						transform: "scale(1)",
-						opacity: 0.8,
-					},
-					"50%": {
-						transform: "scale(1.1)",
-						opacity: 0.4,
-					},
-					"100%": {
-						transform: "scale(1)",
-						opacity: 0.8,
-					},
-				},
-				"@keyframes innerRotate": {
-					"0%": { transform: "rotate(0deg)" },
-					"100%": { transform: "rotate(360deg)" },
-				},
-				"@keyframes middleRotate": {
-					"0%": { transform: "rotate(0deg)" },
-					"100%": { transform: "rotate(-360deg)" },
-				},
-				"@keyframes glow": {
-					"0%": {
-						boxShadow: (theme: Theme) =>
-							`0 0 ${size * 0.16}px ${theme.palette.primary.main}40`,
-					},
-					"50%": {
-						boxShadow: (theme: Theme) =>
-							`0 0 ${size * 0.66}px ${theme.palette.primary.main}80, 0 0 ${size}px ${theme.palette.primary.main}40`,
-					},
-					"100%": {
-						boxShadow: (theme: Theme) =>
-							`0 0 ${size * 0.16}px ${theme.palette.primary.main}40`,
-					},
-				},
-			}}
-		>
-			{/* Outer pulsing ring */}
-			<Box
-				sx={{
-					position: "absolute",
-					width: size,
-					height: size,
-					borderRadius: "50%",
-					border: (theme: Theme) => `2px solid ${theme.palette.primary.main}60`,
-					animation: "outerPulse 2s ease-in-out infinite",
-				}}
-			/>
-
-			{/* Middle rotating ring */}
-			<Box
-				sx={{
-					position: "absolute",
-					width: size * 0.73, // 22/30
-					height: size * 0.73, // 22/30
-					borderRadius: "50%",
-					border: () => "2px solid transparent",
-					borderTop: (theme: Theme) =>
-						`2px solid ${theme.palette.primary.main}`,
-					borderRight: (theme: Theme) =>
-						`2px solid ${theme.palette.primary.main}80`,
-					animation: "middleRotate 1.5s linear infinite",
-				}}
-			/>
-
-			{/* Inner fast rotating ring */}
-			<Box
-				sx={{
-					position: "absolute",
-					width: size * 0.5, // 15/30
-					height: size * 0.5, // 15/30
-					borderRadius: "50%",
-					border: () => "2px solid transparent",
-					borderTop: (theme: Theme) =>
-						`2px solid ${theme.palette.primary.main}`,
-					borderLeft: (theme: Theme) =>
-						`2px solid ${theme.palette.primary.main}60`,
-					animation: "innerRotate 1s linear infinite",
-				}}
-			/>
-
-			{/* Central glowing core */}
-			<Box
-				sx={{
-					width: size * 0.2, // 6/30
-					height: size * 0.2, // 6/30
-					borderRadius: "50%",
-					backgroundColor: (theme: Theme) => theme.palette.primary.main,
-					animation: "glow 2s ease-in-out infinite",
-				}}
-			/>
-		</Box>
+		<div className="my-2 flex items-center justify-center">
+			<Spinner size={step} label="Loading" />
+		</div>
 	);
 };
 

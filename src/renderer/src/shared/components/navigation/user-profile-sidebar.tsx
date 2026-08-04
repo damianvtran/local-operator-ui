@@ -1,16 +1,16 @@
 import {
 	Avatar,
-	Box,
-	Menu,
-	MenuItem,
+	AvatarFallback,
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
 	Tooltip,
-	Typography,
-	alpha,
-} from "@mui/material";
-import { styled } from "@mui/material/styles";
+} from "@shared/components/ui";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import { LogOut, Settings, Shield, User } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
 import React, { type FC } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -24,191 +24,53 @@ type UserProfileSidebarProps = {
 	useAuth?: boolean;
 };
 
-const ProfileContainer = styled(Box)(() => ({
-	display: "flex",
-	flexDirection: "column",
-	width: "100%",
-}));
-
-const ProfileBox = styled(Box, {
-	shouldForwardProp: (prop) => prop !== "expanded",
-})<{ expanded: boolean }>(({ theme }) => ({
-	display: "flex",
-	alignItems: "center",
-	padding: "4px 12px",
-	cursor: "pointer",
-	borderRadius: 6,
-	margin: "0 8px",
-	transition: "all 0.2s ease",
-	"&:hover": {
-		backgroundColor: theme.palette.sidebar.itemHover,
-	},
-}));
-
-const UserAvatar = styled(Avatar)(({ theme }) => ({
-	width: 28,
-	height: 28,
-	backgroundColor: theme.palette.primary.main,
-}));
-
-const UserInitials = styled("span")(() => ({
-	fontSize: "0.75rem",
-	fontWeight: 500,
-}));
-
-const UserInfoContainer = styled(Box)(() => ({
-	marginLeft: 12,
-	overflow: "hidden",
-}));
-
-const UserName = styled(Typography)(() => ({
-	fontWeight: 500,
-	fontSize: "0.875rem",
-	whiteSpace: "nowrap",
-	overflow: "hidden",
-	textOverflow: "ellipsis",
-}));
-
-const UserEmail = styled(Typography)(() => ({
-	color: "text.secondary",
-	fontSize: "0.75rem",
-	whiteSpace: "nowrap",
-	overflow: "hidden",
-	textOverflow: "ellipsis",
-	display: "block",
-}));
-
-const StyledMenu = styled(Menu)(({ theme }) => ({
-	"& .MuiPaper-root": {
-		marginTop: theme.spacing(1.5),
-		backgroundColor: theme.palette.background.paper,
-		backgroundImage:
-			theme.palette.mode === "dark"
-				? "linear-gradient(rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.03))"
-				: "linear-gradient(rgba(0, 0, 0, 0.01), rgba(0, 0, 0, 0.02))",
-		border: `1px solid ${theme.palette.sidebar.border}`,
-		borderRadius: 16,
-		minWidth: 200,
-		overflow: "visible",
-		boxShadow: theme.shadows[3],
-		"&:before": {
-			content: '""',
-			display: "block",
-			position: "absolute",
-			top: 0,
-			right: 14,
-			width: 10,
-			height: 10,
-			bgcolor: theme.palette.background.paper,
-			transform: "translateY(-50%) rotate(45deg)",
-			zIndex: 0,
-			borderTop: `1px solid ${theme.palette.sidebar.border}`,
-			borderLeft: `1px solid ${theme.palette.sidebar.border}`,
-		},
-	},
-}));
-
-const MenuItemStyled = styled(MenuItem)(({ theme }) => ({
-	padding: "12px 12px",
-	borderRadius: 8,
-	margin: "4px 8px",
-	transition: "all 0.2s ease",
-	"&:hover": {
-		backgroundColor: theme.palette.sidebar.itemHover,
-		transform: "translateX(5px)",
-	},
-}));
-
-const MenuItemDanger = styled(MenuItemStyled)(() => ({
-	color: alpha("#ff6b6b", 0.9),
-	"&:hover": {
-		backgroundColor: alpha("#ff6b6b", 0.1),
-		transform: "translateX(5px)",
-	},
-}));
-
-const MenuDivider = styled(Box)(({ theme }) => ({
-	borderTop: `1px solid ${theme.palette.sidebar.border}`,
-	margin: "8px 0",
-}));
-
-const IconWrapper = styled("span")(() => ({
-	marginRight: 12,
-	width: 16,
-	height: 16,
-	display: "inline-flex",
-	alignItems: "center",
-	justifyContent: "center",
-}));
-
-const StyledTooltip = styled(Tooltip)(({ theme }) => ({
-	"& .MuiTooltip-tooltip": {
-		backgroundColor: theme.palette.tooltip.background,
-		color: theme.palette.tooltip.text,
-		fontSize: 12,
-		borderRadius: 8,
-		padding: "5px 10px",
-		border: `1px solid ${theme.palette.tooltip.border}`,
-	},
-	"& .MuiTooltip-arrow": {
-		color: theme.palette.tooltip.background,
-	},
-}));
-
 /**
- * UserProfileSidebar component displays user information at the bottom of the sidebar
- * Shows only the avatar when collapsed, and user details when expanded
- * Uses React Router for navigation
+ * The account row at the foot of the sidebar: avatar alone when collapsed,
+ * avatar plus name and email when expanded.
+ *
+ * ## One button, two behaviours
+ *
+ * With `useAuth` the row opens an account menu; without it, it navigates
+ * straight to settings. Both branches render the same `<button>`, and the menu
+ * branch reaches it through `DropdownMenuTrigger asChild` rather than letting
+ * the trigger render its own button. That keeps the settings branch free of the
+ * menu semantics (`aria-haspopup`, `aria-expanded`) it would otherwise
+ * advertise without having a menu.
+ *
+ * When collapsed the row has no visible label, so it gets a tooltip. Both
+ * triggers compose onto the single button via `asChild`, which is why the
+ * tooltip wraps the menu trigger rather than the other way round.
+ *
+ * ## Removed rather than translated
+ *
+ * The old menu carried a lot that was not information: a light/dark
+ * `linear-gradient` overlay on the panel, a rotated 10px pseudo-element arrow,
+ * `theme.shadows[3]` on top of the system's single overlay shadow, and
+ * `transform: translateX(5px)` on every item hover. The sign-out item was
+ * `alpha("#ff6b6b", 0.9)` — a hardcoded red belonging to no theme; it is now
+ * `text-danger`, the role that exists for exactly this.
  */
-// Use React.memo to prevent unnecessary re-renders of the entire component
 export const UserProfileSidebar: FC<UserProfileSidebarProps> = React.memo(
 	({ expanded, useAuth = false }) => {
 		const navigate = useNavigate();
-		const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-		const open = Boolean(anchorEl);
 
-		// Get user profile from Radient auth or fallback to user store
 		const { user, isAuthenticated, signOut } = useRadientAuth();
 		const userName = user?.name ?? "User";
 		const userEmail = user?.email ?? "";
 
-		// Memoize handlers to prevent unnecessary re-renders
-		const handleClick = useCallback(
-			(event: React.MouseEvent<HTMLElement>) => {
-				if (useAuth) {
-					setAnchorEl(event.currentTarget);
-				} else {
-					navigate("/settings");
-				}
-			},
-			[useAuth, navigate],
-		);
-
-		const handleClose = useCallback(() => {
-			setAnchorEl(null);
-		}, []);
-
-		const handleNavigate = useCallback(
-			(path: string) => {
-				handleClose();
-				navigate(path);
-			},
-			[handleClose, navigate],
-		);
-
 		const handleSignOut = useCallback(async () => {
-			// If authenticated with Radient, sign out
 			if (isAuthenticated) {
 				await signOut();
-				console.log("Signed out from Radient session");
-
-				// Refresh the page to reset the auth state
+				/*
+				 * A full reload rather than a state reset: auth state is spread
+				 * across the query cache, the token refresher and the Radient
+				 * provider, and reloading is the only way to be certain none of it
+				 * survives the sign-out.
+				 */
 				window.location.reload();
 			}
-			handleClose();
-		}, [isAuthenticated, signOut, handleClose]);
+		}, [isAuthenticated, signOut]);
 
-		// Memoize user initials calculation
 		const userInitials = useMemo(() => {
 			if (!userName) return null;
 
@@ -220,72 +82,81 @@ export const UserProfileSidebar: FC<UserProfileSidebarProps> = React.memo(
 				.substring(0, 2);
 		}, [userName]);
 
-		// Memoize avatar component to prevent unnecessary re-renders
-		const avatarComponent = useMemo(
-			() => (
-				<UserAvatar>
-					{userInitials ? (
-						<UserInitials>{userInitials}</UserInitials>
-					) : (
-						<User size={14} />
-					)}
-				</UserAvatar>
-			),
-			[userInitials],
+		const row = (
+			<button
+				type="button"
+				onClick={useAuth ? undefined : () => navigate("/settings")}
+				className="mx-2 flex items-center gap-3 rounded-sm px-3 py-1 transition-colors duration-fast ease-out-quart hover:bg-elevated"
+			>
+				<Avatar className="size-7">
+					<AvatarFallback className="bg-accent text-on-accent">
+						{userInitials ?? <User size={14} aria-hidden="true" />}
+					</AvatarFallback>
+				</Avatar>
+				{expanded && userName && (
+					<span className="min-w-0 text-left">
+						<span className="block truncate text-body text-ink">
+							{userName}
+						</span>
+						{userEmail && (
+							<span className="block truncate text-meta text-ink-dim">
+								{userEmail}
+							</span>
+						)}
+					</span>
+				)}
+			</button>
 		);
 
+		/* Collapsed, the avatar is the whole row and nothing on screen names it. */
+		const labelled = expanded ? (
+			row
+		) : (
+			<Tooltip content="Account settings" side="right">
+				{row}
+			</Tooltip>
+		);
+
+		if (!useAuth) return labelled;
+
+		/*
+		 * The trigger reaches the button through `asChild` in both branches so
+		 * the menu and the tooltip anchor to the same real element. The order
+		 * matters: `TooltipTrigger asChild` may wrap `DropdownMenuTrigger`,
+		 * because both forward refs down the chain, but the reverse would ask
+		 * the menu to clone a composite component that does not forward a ref,
+		 * and the trigger would silently lose its anchor.
+		 */
 		return (
-			<ProfileContainer>
-				<ProfileBox expanded={expanded} onClick={handleClick}>
-					{!expanded ? (
-						<StyledTooltip title="Account Settings" placement="right" arrow>
-							<Box>{avatarComponent}</Box>
-						</StyledTooltip>
-					) : (
-						avatarComponent
-					)}
-
-					{expanded && userName && (
-						<UserInfoContainer>
-							<UserName variant="subtitle2">{userName}</UserName>
-							{userEmail && (
-								<UserEmail variant="caption">{userEmail}</UserEmail>
-							)}
-						</UserInfoContainer>
-					)}
-				</ProfileBox>
-
-				{useAuth ? (
-					<StyledMenu
-						anchorEl={anchorEl}
-						id="account-menu"
-						open={open}
-						onClose={handleClose}
-						transformOrigin={{ horizontal: "right", vertical: "top" }}
-						anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
+			<DropdownMenu>
+				{expanded ? (
+					<DropdownMenuTrigger asChild>{row}</DropdownMenuTrigger>
+				) : (
+					<Tooltip content="Account settings" side="right">
+						<DropdownMenuTrigger asChild>{row}</DropdownMenuTrigger>
+					</Tooltip>
+				)}
+				<DropdownMenuContent align="end" side="top" className="min-w-50">
+					<DropdownMenuItem onSelect={() => navigate("/settings")}>
+						<Settings size={16} aria-hidden="true" />
+						Settings
+					</DropdownMenuItem>
+					<DropdownMenuItem>
+						<Shield size={16} aria-hidden="true" />
+						Privacy and security
+					</DropdownMenuItem>
+					<DropdownMenuSeparator />
+					<DropdownMenuItem
+						onSelect={handleSignOut}
+						className="text-danger focus:bg-danger-wash focus:text-danger"
 					>
-						<MenuItemStyled onClick={() => handleNavigate("/settings")}>
-							<IconWrapper>
-								<Settings size={16} />
-							</IconWrapper>
-							Settings
-						</MenuItemStyled>
-						<MenuItemStyled onClick={handleClose}>
-							<IconWrapper>
-								<Shield size={16} />
-							</IconWrapper>
-							Privacy & Security
-						</MenuItemStyled>
-						<MenuDivider />
-						<MenuItemDanger onClick={handleSignOut}>
-							<IconWrapper>
-								<LogOut size={16} />
-							</IconWrapper>
-							Sign out
-						</MenuItemDanger>
-					</StyledMenu>
-				) : null}
-			</ProfileContainer>
+						<LogOut size={16} aria-hidden="true" />
+						Sign out
+					</DropdownMenuItem>
+				</DropdownMenuContent>
+			</DropdownMenu>
 		);
 	},
 );
+
+UserProfileSidebar.displayName = "UserProfileSidebar";

@@ -1,5 +1,11 @@
-import { Box } from "@mui/material";
-import { styled } from "@mui/material/styles";
+/**
+ * Container component for message items.
+ * Handles the layout direction based on whether the message is from the user
+ * or assistant. Assistant messages get the wider gap so the content clears
+ * the avatar column.
+ */
+
+import { cn } from "@shared/lib/utils";
 import type { FC, ReactNode } from "react";
 
 /**
@@ -12,28 +18,6 @@ export type MessageContainerProps = {
 	compact?: boolean;
 };
 
-/**
- * Container component for message items
- * Handles the layout direction based on whether the message is from the user or assistant
- * Provides increased spacing for assistant messages to account for action banners
- */
-const StyledContainer = styled(Box, {
-	shouldForwardProp: (prop) =>
-		prop !== "isUser" && prop !== "isSmallView" && prop !== "compact",
-})<{ isUser: boolean; isSmallView?: boolean; compact?: boolean }>(
-	({ isUser, isSmallView, compact }) => ({
-		display: "flex",
-		flexDirection: isUser ? "row-reverse" : "row",
-		alignItems: "flex-start",
-		gap: compact ? (isSmallView ? 6 : 10) : isSmallView ? 8 : 16,
-		marginBottom: compact ? (isSmallView ? 6 : 8) : isSmallView ? 8 : 12,
-	}),
-);
-
-/**
- * Container component for message items
- * Handles the layout direction based on whether the message is from the user or assistant
- */
 export const MessageContainer: FC<MessageContainerProps> = ({
 	isUser,
 	children,
@@ -41,12 +25,20 @@ export const MessageContainer: FC<MessageContainerProps> = ({
 	compact,
 }) => {
 	return (
-		<StyledContainer
-			isUser={isUser}
-			isSmallView={isSmallView}
-			compact={compact}
+		<div
+			className={cn(
+				"flex items-start",
+				isUser ? "flex-row-reverse" : "flex-row",
+				compact
+					? isSmallView
+						? "mb-1.5 gap-1.5"
+						: "mb-2 gap-2.5"
+					: isSmallView
+						? "mb-2 gap-2"
+						: "mb-3 gap-4",
+			)}
 		>
 			{children}
-		</StyledContainer>
+		</div>
 	);
 };

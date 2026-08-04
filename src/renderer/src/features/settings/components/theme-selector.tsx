@@ -1,15 +1,15 @@
-import { Box, Card, CardContent, Grid, Typography } from "@mui/material";
-import { styled } from "@mui/material/styles";
+import { cn } from "@shared/lib/utils";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
-import { themes } from "@shared/themes";
-import type { ThemeName } from "@shared/themes";
+import { type ThemeName, themes } from "@shared/themes";
 import {
 	AudioWaveform,
+	Check,
 	Code,
 	Contrast,
 	Flame,
 	Hexagon,
 	Leaf,
+	type LucideIcon,
 	Moon,
 	Mountain,
 	Skull,
@@ -19,773 +19,131 @@ import {
 } from "lucide-react";
 import type { FC } from "react";
 
-const StyledCardContent = styled(CardContent)(({ theme }) => ({
-	[theme.breakpoints.down("sm")]: {
-		padding: 16,
-	},
-	[theme.breakpoints.up("sm")]: {
-		padding: 24,
-	},
-}));
-
-const ThemePreview = styled(Box)(({ theme }) => ({
-	width: "100%",
-	height: 120,
-	borderRadius: 8,
-	overflow: "hidden",
-	marginBottom: 8,
-	border: `1px solid ${theme.palette.divider}`,
-}));
-
-const ThemeOption = styled(Box, {
-	shouldForwardProp: (prop) => prop !== "isSelected",
-})<{ isSelected?: boolean }>(({ theme, isSelected }) => ({
-	display: "flex",
-	flexDirection: "column",
-	alignItems: "flex-start",
-	width: "100%",
-	cursor: "pointer",
-	borderRadius: 8,
-	padding: 8,
-	transition: "all 0.2s ease",
-	border: isSelected
-		? `2px solid ${theme.palette.primary.main}`
-		: "2px solid transparent",
-	borderBottom: isSelected
-		? `4px solid ${theme.palette.primary.main}`
-		: "4px solid transparent",
-	backgroundColor: isSelected ? theme.palette.action.selected : "transparent",
-	"&:hover": {
-		backgroundColor: theme.palette.action.hover,
-	},
-}));
-
-const ThemeLabel = styled(Box)(() => ({
-	display: "flex",
-	alignItems: "center",
-	gap: 8,
-	marginTop: 4,
-}));
-
-// Dark theme preview
-const DarkPreview = styled(Box)(() => {
-	// Use the actual dark theme colors from the theme
-	const darkTheme = themes.localOperatorDark.theme;
-
-	return {
-		width: "100%",
-		height: "100%",
-		background: `linear-gradient(to bottom, ${darkTheme.palette.sidebar.background} 0%, ${darkTheme.palette.sidebar.background} 30%, ${darkTheme.palette.background.paper} 30%, ${darkTheme.palette.background.paper} 100%)`,
-		position: "relative",
-		boxShadow: "0 2px 8px rgba(0, 0, 0, 0.2)",
-		borderRadius: 4,
-		"&::after": {
-			content: '""',
-			position: "absolute",
-			top: "50%",
-			left: "50%",
-			transform: "translate(-50%, -50%)",
-			width: "40%",
-			height: "20%",
-			backgroundColor: darkTheme.palette.primary.main,
-			borderRadius: 4,
-		},
-		// Add a sidebar-like element
-		"&::before": {
-			content: '""',
-			position: "absolute",
-			left: 0,
-			top: 0,
-			height: "100%",
-			width: "20%",
-			backgroundColor: darkTheme.palette.sidebar.background,
-			borderRight: `1px solid ${darkTheme.palette.sidebar.border}`,
-		},
-	};
-});
-
-// Light theme preview
-const LightPreview = styled(Box)(() => {
-	// Use the actual light theme colors from the theme
-	const lightTheme = themes.localOperatorLight.theme;
-
-	return {
-		width: "100%",
-		height: "100%",
-		background: `linear-gradient(to bottom, ${lightTheme.palette.sidebar.background} 0%, ${lightTheme.palette.sidebar.background} 30%, ${lightTheme.palette.background.paper} 30%, ${lightTheme.palette.background.paper} 100%)`,
-		position: "relative",
-		boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)",
-		borderRadius: 4,
-		"&::after": {
-			content: '""',
-			position: "absolute",
-			top: "50%",
-			left: "50%",
-			transform: "translate(-50%, -50%)",
-			width: "40%",
-			height: "20%",
-			backgroundColor: lightTheme.palette.primary.main,
-			borderRadius: 4,
-		},
-		// Add a sidebar-like element
-		"&::before": {
-			content: '""',
-			position: "absolute",
-			left: 0,
-			top: 0,
-			height: "100%",
-			width: "20%",
-			backgroundColor: lightTheme.palette.sidebar.background,
-			borderRight: `1px solid ${lightTheme.palette.sidebar.border}`,
-		},
-	};
-});
-
-// Dracula theme preview
-const DraculaPreview = styled(Box)(() => {
-	// Use the actual dracula theme colors from the theme
-	const draculaTheme = themes.dracula.theme;
-
-	return {
-		width: "100%",
-		height: "100%",
-		background: `linear-gradient(to bottom, ${draculaTheme.palette.sidebar.background} 0%, ${draculaTheme.palette.sidebar.background} 30%, ${draculaTheme.palette.background.paper} 30%, ${draculaTheme.palette.background.paper} 100%)`,
-		position: "relative",
-		boxShadow: "0 2px 8px rgba(0, 0, 0, 0.2)",
-		borderRadius: 4,
-		"&::after": {
-			content: '""',
-			position: "absolute",
-			top: "50%",
-			left: "50%",
-			transform: "translate(-50%, -50%)",
-			width: "40%",
-			height: "20%",
-			backgroundColor: draculaTheme.palette.primary.main,
-			borderRadius: 4,
-		},
-		// Add a sidebar-like element
-		"&::before": {
-			content: '""',
-			position: "absolute",
-			left: 0,
-			top: 0,
-			height: "100%",
-			width: "20%",
-			backgroundColor: draculaTheme.palette.sidebar.background,
-			borderRight: `1px solid ${draculaTheme.palette.sidebar.border}`,
-		},
-	};
-});
-
-// Sage theme preview
-const SagePreview = styled(Box)(() => {
-	// Use the actual sage theme colors from the theme
-	const sageTheme = themes.sage.theme;
-
-	return {
-		width: "100%",
-		height: "100%",
-		background: `linear-gradient(to bottom, ${sageTheme.palette.sidebar.background} 0%, ${sageTheme.palette.sidebar.background} 30%, ${sageTheme.palette.background.paper} 30%, ${sageTheme.palette.background.paper} 100%)`,
-		position: "relative",
-		boxShadow: "0 2px 8px rgba(46, 61, 28, 0.1)",
-		borderRadius: 4,
-		"&::after": {
-			content: '""',
-			position: "absolute",
-			top: "50%",
-			left: "50%",
-			transform: "translate(-50%, -50%)",
-			width: "40%",
-			height: "20%",
-			backgroundColor: sageTheme.palette.primary.main,
-			borderRadius: 4,
-		},
-		// Add a sidebar-like element
-		"&::before": {
-			content: '""',
-			position: "absolute",
-			left: 0,
-			top: 0,
-			height: "100%",
-			width: "20%",
-			backgroundColor: sageTheme.palette.sidebar.background,
-			borderRight: `1px solid ${sageTheme.palette.sidebar.border}`,
-		},
-	};
-});
-
-// Monokai theme preview
-const MonokaiPreview = styled(Box)(() => {
-	// Use the actual monokai theme colors from the theme
-	const monokaiTheme = themes.monokai.theme;
-
-	return {
-		width: "100%",
-		height: "100%",
-		background: `linear-gradient(to bottom, ${monokaiTheme.palette.sidebar.background} 0%, ${monokaiTheme.palette.sidebar.background} 30%, ${monokaiTheme.palette.background.paper} 30%, ${monokaiTheme.palette.background.paper} 100%)`,
-		position: "relative",
-		boxShadow: "0 2px 8px rgba(0, 0, 0, 0.2)",
-		borderRadius: 4,
-		"&::after": {
-			content: '""',
-			position: "absolute",
-			top: "50%",
-			left: "50%",
-			transform: "translate(-50%, -50%)",
-			width: "40%",
-			height: "20%",
-			backgroundColor: monokaiTheme.palette.primary.main,
-			borderRadius: 4,
-		},
-		// Add a sidebar-like element
-		"&::before": {
-			content: '""',
-			position: "absolute",
-			left: 0,
-			top: 0,
-			height: "100%",
-			width: "20%",
-			backgroundColor: monokaiTheme.palette.sidebar.background,
-			borderRight: `1px solid ${monokaiTheme.palette.sidebar.border}`,
-		},
-	};
-});
-
-// Tokyo Night theme preview
-const TokyoNightPreview = styled(Box)(() => {
-	// Use the actual Tokyo Night theme colors from the theme
-	const tokyoNightTheme = themes.tokyoNight.theme;
-
-	return {
-		width: "100%",
-		height: "100%",
-		background: `linear-gradient(to bottom, ${tokyoNightTheme.palette.sidebar.background} 0%, ${tokyoNightTheme.palette.sidebar.background} 30%, ${tokyoNightTheme.palette.background.paper} 30%, ${tokyoNightTheme.palette.background.paper} 100%)`,
-		position: "relative",
-		boxShadow: "0 2px 8px rgba(0, 0, 0, 0.2)",
-		borderRadius: 4,
-		"&::after": {
-			content: '""',
-			position: "absolute",
-			top: "50%",
-			left: "50%",
-			transform: "translate(-50%, -50%)",
-			width: "40%",
-			height: "20%",
-			backgroundColor: tokyoNightTheme.palette.primary.main,
-			borderRadius: 4,
-		},
-		// Add a sidebar-like element
-		"&::before": {
-			content: '""',
-			position: "absolute",
-			left: 0,
-			top: 0,
-			height: "100%",
-			width: "20%",
-			backgroundColor: tokyoNightTheme.palette.sidebar.background,
-			borderRight: `1px solid ${tokyoNightTheme.palette.sidebar.border}`,
-		},
-	};
-});
-
-// Dune theme preview
-const DunePreview = styled(Box)(() => {
-	// Use the actual Dune theme colors from the theme
-	const duneTheme = themes.dune.theme;
-
-	return {
-		width: "100%",
-		height: "100%",
-		background: `linear-gradient(to bottom, ${duneTheme.palette.sidebar.background} 0%, ${duneTheme.palette.sidebar.background} 30%, ${duneTheme.palette.background.paper} 30%, ${duneTheme.palette.background.paper} 100%)`,
-		position: "relative",
-		boxShadow: "0 2px 8px rgba(255, 140, 56, 0.2)",
-		borderRadius: 4,
-		"&::after": {
-			content: '""',
-			position: "absolute",
-			top: "50%",
-			left: "50%",
-			transform: "translate(-50%, -50%)",
-			width: "40%",
-			height: "20%",
-			backgroundColor: duneTheme.palette.primary.main,
-			borderRadius: 4,
-		},
-		// Add a sidebar-like element
-		"&::before": {
-			content: '""',
-			position: "absolute",
-			left: 0,
-			top: 0,
-			height: "100%",
-			width: "20%",
-			backgroundColor: duneTheme.palette.sidebar.background,
-			borderRight: `1px solid ${duneTheme.palette.sidebar.border}`,
-		},
-	};
-});
-
-// Iceberg theme preview
-const IcebergPreview = styled(Box)(() => {
-	// Use the actual Iceberg theme colors from the theme
-	const icebergTheme = themes.iceberg.theme;
-
-	return {
-		width: "100%",
-		height: "100%",
-		background: `linear-gradient(to bottom, ${icebergTheme.palette.sidebar.background} 0%, ${icebergTheme.palette.sidebar.background} 30%, ${icebergTheme.palette.background.paper} 30%, ${icebergTheme.palette.background.paper} 100%)`,
-		position: "relative",
-		boxShadow: "0 2px 8px rgba(45, 83, 158, 0.1)",
-		borderRadius: 4,
-		"&::after": {
-			content: '""',
-			position: "absolute",
-			top: "50%",
-			left: "50%",
-			transform: "translate(-50%, -50%)",
-			width: "40%",
-			height: "20%",
-			backgroundColor: icebergTheme.palette.primary.main,
-			borderRadius: 4,
-		},
-		// Add a sidebar-like element
-		"&::before": {
-			content: '""',
-			position: "absolute",
-			left: 0,
-			top: 0,
-			height: "100%",
-			width: "20%",
-			backgroundColor: icebergTheme.palette.sidebar.background,
-			borderRight: `1px solid ${icebergTheme.palette.sidebar.border}`,
-		},
-	};
-});
-
-// Radient theme preview
-const RadientPreview = styled(Box)(() => {
-	// Use the actual Radient theme colors from the theme
-	const radientTheme = themes.radient.theme;
-
-	return {
-		width: "100%",
-		height: "100%",
-		background: `linear-gradient(to bottom, ${radientTheme.palette.sidebar.background} 0%, ${radientTheme.palette.sidebar.background} 30%, ${radientTheme.palette.background.paper} 30%, ${radientTheme.palette.background.paper} 100%)`,
-		position: "relative",
-		boxShadow: "0 2px 8px rgba(255, 100, 200, 0.2)",
-		borderRadius: 4,
-		"&::after": {
-			content: '""',
-			position: "absolute",
-			top: "50%",
-			left: "50%",
-			transform: "translate(-50%, -50%)",
-			width: "40%",
-			height: "20%",
-			backgroundColor: radientTheme.palette.primary.main,
-			borderRadius: 4,
-		},
-		// Add a sidebar-like element
-		"&::before": {
-			content: '""',
-			position: "absolute",
-			left: 0,
-			top: 0,
-			height: "100%",
-			width: "20%",
-			backgroundColor: radientTheme.palette.sidebar.background,
-			borderRight: `1px solid ${radientTheme.palette.sidebar.border}`,
-		},
-	};
-});
-
-// Neon theme preview
-const NeonPreview = styled(Box)(() => {
-	// Use the actual Neon theme colors from the theme
-	const neonTheme = themes.neon.theme;
-
-	return {
-		width: "100%",
-		height: "100%",
-		background: `linear-gradient(to bottom, ${neonTheme.palette.sidebar.background} 0%, ${neonTheme.palette.sidebar.background} 30%, ${neonTheme.palette.background.paper} 30%, ${neonTheme.palette.background.paper} 100%)`,
-		position: "relative",
-		boxShadow: `0 2px 8px ${neonTheme.palette.primary.main}33`,
-		borderRadius: 4,
-		"&::after": {
-			content: '""',
-			position: "absolute",
-			top: "50%",
-			left: "50%",
-			transform: "translate(-50%, -50%)",
-			width: "40%",
-			height: "20%",
-			backgroundColor: neonTheme.palette.primary.main,
-			borderRadius: 4,
-			boxShadow: `0 0 10px ${neonTheme.palette.primary.main}77`,
-		},
-		// Add a sidebar-like element
-		"&::before": {
-			content: '""',
-			position: "absolute",
-			left: 0,
-			top: 0,
-			height: "100%",
-			width: "20%",
-			backgroundColor: neonTheme.palette.sidebar.background,
-			borderRight: `1px solid ${neonTheme.palette.sidebar.border}`,
-		},
-	};
-});
-
-// Obsidian theme preview
-const ObsidianPreview = styled(Box)(() => {
-	// Use the actual Obsidian theme colors from the theme
-	const obsidianTheme = themes.obsidian.theme;
-
-	return {
-		width: "100%",
-		height: "100%",
-		background: `linear-gradient(to bottom, ${obsidianTheme.palette.sidebar.background} 0%, ${obsidianTheme.palette.sidebar.background} 30%, ${obsidianTheme.palette.background.paper} 30%, ${obsidianTheme.palette.background.paper} 100%)`,
-		position: "relative",
-		boxShadow: `0 2px 8px ${obsidianTheme.palette.text.primary}1A`, // Use text primary with low alpha for subtle shadow
-		borderRadius: 4,
-		"&::after": {
-			content: '""',
-			position: "absolute",
-			top: "50%",
-			left: "50%",
-			transform: "translate(-50%, -50%)",
-			width: "40%",
-			height: "20%",
-			backgroundColor: obsidianTheme.palette.text.primary, // Use primary text as accent
-			borderRadius: 4,
-		},
-		// Add a sidebar-like element
-		"&::before": {
-			content: '""',
-			position: "absolute",
-			left: 0,
-			top: 0,
-			height: "100%",
-			width: "20%",
-			backgroundColor: obsidianTheme.palette.sidebar.background,
-			borderRight: `1px solid ${obsidianTheme.palette.sidebar.border}`,
-		},
-	};
-});
-
-// Synth theme preview
-const SynthPreview = styled(Box)(() => {
-	// Use the actual Synth theme colors from the theme
-	const synthTheme = themes.synth.theme;
-
-	return {
-		width: "100%",
-		height: "100%",
-		background: `linear-gradient(to bottom, ${synthTheme.palette.sidebar.background} 0%, ${synthTheme.palette.sidebar.background} 30%, ${synthTheme.palette.background.paper} 30%, ${synthTheme.palette.background.paper} 100%)`,
-		position: "relative",
-		boxShadow: `0 2px 8px ${synthTheme.palette.primary.main}33`,
-		borderRadius: 4,
-		"&::after": {
-			content: '""',
-			position: "absolute",
-			top: "50%",
-			left: "50%",
-			transform: "translate(-50%, -50%)",
-			width: "40%",
-			height: "20%",
-			backgroundColor: synthTheme.palette.primary.main,
-			borderRadius: 4,
-			boxShadow: `0 0 10px ${synthTheme.palette.primary.main}77`,
-		},
-		// Add a sidebar-like element
-		"&::before": {
-			content: '""',
-			position: "absolute",
-			left: 0,
-			top: 0,
-			height: "100%",
-			width: "20%",
-			backgroundColor: synthTheme.palette.sidebar.background,
-			borderRight: `1px solid ${synthTheme.palette.sidebar.border}`,
-		},
-	};
-});
+/**
+ * The mark shown beside each theme's name.
+ *
+ * Identity, not colour, so it lives here rather than in the palette: a palette
+ * says what a theme looks like, and none of them should have to know that a
+ * picker exists. Exhaustive over `ThemeName`, so adding a theme fails to
+ * compile until it has a mark.
+ */
+const THEME_ICONS: Record<ThemeName, LucideIcon> = {
+	localOperatorDark: Moon,
+	localOperatorLight: Sun,
+	radient: Hexagon,
+	dracula: Skull,
+	dune: Flame,
+	sage: Leaf,
+	monokai: Code,
+	tokyoNight: Mountain,
+	iceberg: Snowflake,
+	neon: Zap,
+	obsidian: Contrast,
+	synth: AudioWaveform,
+};
 
 /**
- * Theme selector component
+ * A miniature of the app in one theme.
  *
- * Allows the user to select a theme for the application
+ * ## Where the colours come from
+ *
+ * From the theme itself, at paint time. The wrapper carries
+ * `data-theme={id}`, which is the same attribute the theme provider sets on
+ * `documentElement`, and every rule in `themes.generated.css` is scoped to
+ * `[data-theme="…"]` rather than to `:root`. So the `--lo-*` variables are
+ * rebound for this subtree and the ordinary role utilities inside — `bg-canvas`,
+ * `bg-surface`, `bg-sunken`, `bg-ink`, `bg-accent`, `border-control` — resolve
+ * to *that* theme's values while the rest of the app stays on the active one.
+ *
+ * The point is that a palette edit shows up here with no code change: the
+ * swatch names roles, `pnpm gen-themes` rewrites the variables, and the preview
+ * is correct by construction. The previous version hardcoded a
+ * `linear-gradient` per theme in twelve `styled(Box)` blocks reading
+ * `theme.palette.sidebar.*`, which is how a picker ends up advertising colours
+ * a palette stopped using.
+ *
+ * What it shows is chosen to be the part of a palette a user is actually
+ * choosing between: the three grounds in the arrangement the app uses them
+ * (sunken rail, canvas page, surface panel), ink at two weights, the accent,
+ * and one control edge. `aria-hidden` because the theme's name and description
+ * beside it are the real label — a screen reader gains nothing from eleven
+ * empty spans.
+ */
+const ThemeSwatch: FC<{ id: ThemeName }> = ({ id }) => (
+	<div
+		data-theme={id}
+		aria-hidden="true"
+		className="flex h-24 overflow-hidden rounded-md border border-hairline bg-canvas"
+	>
+		<div className="flex w-1/5 flex-col gap-1.5 bg-sunken p-2">
+			<span className="h-1 w-full rounded-xs bg-ink-dim" />
+			<span className="h-1 w-2/3 rounded-xs bg-ink-dim" />
+			<span className="h-1 w-2/3 rounded-xs bg-ink-dim" />
+		</div>
+		<div className="flex flex-1 flex-col justify-between p-2">
+			<div className="flex flex-col gap-1.5 rounded-sm bg-surface p-2">
+				<span className="h-1.5 w-3/5 rounded-xs bg-ink" />
+				<span className="h-1 w-full rounded-xs bg-ink-dim" />
+				<span className="h-1 w-4/5 rounded-xs bg-ink-dim" />
+			</div>
+			<div className="flex items-center gap-1.5">
+				<span className="h-3 w-9 rounded-xs bg-accent" />
+				<span className="h-3 w-6 rounded-xs border border-control" />
+			</div>
+		</div>
+	</div>
+);
+
+/**
+ * The appearance picker: twelve themes, each shown as itself.
+ *
+ * The options are buttons rather than clickable `div`s so they are reachable by
+ * keyboard, and the selected one is marked with `aria-pressed` plus a check —
+ * the accent border and wash are a second signal, not the only one.
  */
 export const ThemeSelector: FC = () => {
 	const { themeName, setTheme } = useUiPreferencesStore();
 
-	const handleThemeChange = (newTheme: ThemeName) => {
-		setTheme(newTheme);
-	};
-
 	return (
-		<Card>
-			<StyledCardContent>
-				<Grid container spacing={2} sx={{ mt: 1 }}>
-					{/* Dark Theme Option */}
-					<Grid item xs={12} sm={6} md={4} lg={3}>
-						<ThemeOption
-							isSelected={themeName === "localOperatorDark"}
-							onClick={() => handleThemeChange("localOperatorDark")}
-						>
-							<ThemePreview>
-								<DarkPreview />
-							</ThemePreview>
-							<ThemeLabel>
-								<Moon size={16} />
-								<Typography
-									variant="body2"
-									fontWeight={
-										themeName === "localOperatorDark" ? "bold" : "normal"
-									}
-								>
-									{themes.localOperatorDark.name}
-								</Typography>
-							</ThemeLabel>
-						</ThemeOption>
-					</Grid>
+		<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+			{Object.values(themes).map(({ id, name, description }) => {
+				const Icon = THEME_ICONS[id];
+				const isSelected = id === themeName;
 
-					{/* Light Theme Option */}
-					<Grid item xs={12} sm={6} md={4} lg={3}>
-						<ThemeOption
-							isSelected={themeName === "localOperatorLight"}
-							onClick={() => handleThemeChange("localOperatorLight")}
-						>
-							<ThemePreview>
-								<LightPreview />
-							</ThemePreview>
-							<ThemeLabel>
-								<Sun size={16} />
-								<Typography
-									variant="body2"
-									fontWeight={
-										themeName === "localOperatorLight" ? "bold" : "normal"
-									}
-								>
-									{themes.localOperatorLight.name}
-								</Typography>
-							</ThemeLabel>
-						</ThemeOption>
-					</Grid>
-
-					{/* Radient Theme Option */}
-					<Grid item xs={12} sm={6} md={4} lg={3}>
-						<ThemeOption
-							isSelected={themeName === "radient"}
-							onClick={() => handleThemeChange("radient")}
-						>
-							<ThemePreview>
-								<RadientPreview />
-							</ThemePreview>
-							<ThemeLabel>
-								<Hexagon size={16} />
-								<Typography
-									variant="body2"
-									fontWeight={themeName === "radient" ? "bold" : "normal"}
-								>
-									{themes.radient.name}
-								</Typography>
-							</ThemeLabel>
-						</ThemeOption>
-					</Grid>
-
-					{/* Dracula Theme Option */}
-					<Grid item xs={12} sm={6} md={4} lg={3}>
-						<ThemeOption
-							isSelected={themeName === "dracula"}
-							onClick={() => handleThemeChange("dracula")}
-						>
-							<ThemePreview>
-								<DraculaPreview />
-							</ThemePreview>
-							<ThemeLabel>
-								<Skull size={16} />
-								<Typography
-									variant="body2"
-									fontWeight={themeName === "dracula" ? "bold" : "normal"}
-								>
-									{themes.dracula.name}
-								</Typography>
-							</ThemeLabel>
-						</ThemeOption>
-					</Grid>
-
-					{/* Sage Theme Option */}
-					<Grid item xs={12} sm={6} md={4} lg={3}>
-						<ThemeOption
-							isSelected={themeName === "sage"}
-							onClick={() => handleThemeChange("sage")}
-						>
-							<ThemePreview>
-								<SagePreview />
-							</ThemePreview>
-							<ThemeLabel>
-								<Leaf size={16} />
-								<Typography
-									variant="body2"
-									fontWeight={themeName === "sage" ? "bold" : "normal"}
-								>
-									{themes.sage.name}
-								</Typography>
-							</ThemeLabel>
-						</ThemeOption>
-					</Grid>
-
-					{/* Monokai Theme Option */}
-					<Grid item xs={12} sm={6} md={4} lg={3}>
-						<ThemeOption
-							isSelected={themeName === "monokai"}
-							onClick={() => handleThemeChange("monokai")}
-						>
-							<ThemePreview>
-								<MonokaiPreview />
-							</ThemePreview>
-							<ThemeLabel>
-								<Code size={16} />
-								<Typography
-									variant="body2"
-									fontWeight={themeName === "monokai" ? "bold" : "normal"}
-								>
-									{themes.monokai.name}
-								</Typography>
-							</ThemeLabel>
-						</ThemeOption>
-					</Grid>
-
-					{/* Tokyo Night Theme Option */}
-					<Grid item xs={12} sm={6} md={4} lg={3}>
-						<ThemeOption
-							isSelected={themeName === "tokyoNight"}
-							onClick={() => handleThemeChange("tokyoNight")}
-						>
-							<ThemePreview>
-								<TokyoNightPreview />
-							</ThemePreview>
-							<ThemeLabel>
-								<Mountain size={16} />
-								<Typography
-									variant="body2"
-									fontWeight={themeName === "tokyoNight" ? "bold" : "normal"}
-								>
-									{themes.tokyoNight.name}
-								</Typography>
-							</ThemeLabel>
-						</ThemeOption>
-					</Grid>
-
-					{/* Dune Theme Option */}
-					<Grid item xs={12} sm={6} md={4} lg={3}>
-						<ThemeOption
-							isSelected={themeName === "dune"}
-							onClick={() => handleThemeChange("dune")}
-						>
-							<ThemePreview>
-								<DunePreview />
-							</ThemePreview>
-							<ThemeLabel>
-								<Flame size={16} />
-								<Typography
-									variant="body2"
-									fontWeight={themeName === "dune" ? "bold" : "normal"}
-								>
-									{themes.dune.name}
-								</Typography>
-							</ThemeLabel>
-						</ThemeOption>
-					</Grid>
-
-					{/* Iceberg Theme Option */}
-					<Grid item xs={12} sm={6} md={4} lg={3}>
-						<ThemeOption
-							isSelected={themeName === "iceberg"}
-							onClick={() => handleThemeChange("iceberg")}
-						>
-							<ThemePreview>
-								<IcebergPreview />
-							</ThemePreview>
-							<ThemeLabel>
-								<Snowflake size={16} />
-								<Typography
-									variant="body2"
-									fontWeight={themeName === "iceberg" ? "bold" : "normal"}
-								>
-									{themes.iceberg.name}
-								</Typography>
-							</ThemeLabel>
-						</ThemeOption>
-					</Grid>
-
-					{/* Neon Theme Option */}
-					<Grid item xs={12} sm={6} md={4} lg={3}>
-						<ThemeOption
-							isSelected={themeName === "neon"}
-							onClick={() => handleThemeChange("neon")}
-						>
-							<ThemePreview>
-								<NeonPreview />
-							</ThemePreview>
-							<ThemeLabel>
-								<Zap size={16} />
-								<Typography
-									variant="body2"
-									fontWeight={themeName === "neon" ? "bold" : "normal"}
-								>
-									{themes.neon.name}
-								</Typography>
-							</ThemeLabel>
-						</ThemeOption>
-					</Grid>
-
-					{/* Obsidian Theme Option */}
-					<Grid item xs={12} sm={6} md={4} lg={3}>
-						<ThemeOption
-							isSelected={themeName === "obsidian"}
-							onClick={() => handleThemeChange("obsidian")}
-						>
-							<ThemePreview>
-								<ObsidianPreview />
-							</ThemePreview>
-							<ThemeLabel>
-								<Contrast size={16} />
-								<Typography
-									variant="body2"
-									fontWeight={themeName === "obsidian" ? "bold" : "normal"}
-								>
-									{themes.obsidian.name}
-								</Typography>
-							</ThemeLabel>
-						</ThemeOption>
-					</Grid>
-
-					{/* Synth Theme Option */}
-					<Grid item xs={12} sm={6} md={4} lg={3}>
-						<ThemeOption
-							isSelected={themeName === "synth"}
-							onClick={() => handleThemeChange("synth")}
-						>
-							<ThemePreview>
-								<SynthPreview />
-							</ThemePreview>
-							<ThemeLabel>
-								<AudioWaveform size={16} />
-								<Typography
-									variant="body2"
-									fontWeight={themeName === "synth" ? "bold" : "normal"}
-								>
-									{themes.synth.name}
-								</Typography>
-							</ThemeLabel>
-						</ThemeOption>
-					</Grid>
-				</Grid>
-			</StyledCardContent>
-		</Card>
+				return (
+					<button
+						key={id}
+						type="button"
+						aria-pressed={isSelected}
+						onClick={() => setTheme(id)}
+						className={cn(
+							"flex flex-col gap-2 rounded-lg border p-2 text-left transition-colors duration-fast ease-out-quart",
+							isSelected
+								? "border-accent bg-accent-wash"
+								: "border-transparent hover:bg-elevated",
+						)}
+					>
+						<ThemeSwatch id={id} />
+						<span className="flex items-center gap-2 px-1">
+							<Icon size={14} className="shrink-0 text-ink-dim" />
+							<span
+								className={cn(
+									"flex-1 text-body-sm text-ink",
+									isSelected && "font-medium",
+								)}
+							>
+								{name}
+							</span>
+							{isSelected && (
+								<Check size={14} className="shrink-0 text-accent" />
+							)}
+						</span>
+						<span className="px-1 pb-1 text-meta text-ink-muted">
+							{description}
+						</span>
+					</button>
+				);
+			})}
+		</div>
 	);
 };

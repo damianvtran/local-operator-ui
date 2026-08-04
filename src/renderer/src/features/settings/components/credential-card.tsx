@@ -1,68 +1,7 @@
-import {
-	Box,
-	Button,
-	IconButton,
-	Tooltip,
-	Typography,
-	alpha,
-	styled,
-	useTheme,
-} from "@mui/material";
-import { Info, Key, Lock, SquarePen, Trash2 } from "lucide-react";
+import { Button, Tooltip } from "@shared/components/ui";
+import { ExternalLink, Key, Lock, SquarePen, Trash2 } from "lucide-react";
 import type { FC } from "react";
 import { getCredentialInfo } from "./credential-manifest";
-
-// Shadcn-inspired card container
-const CredentialCardContainer = styled(Box)(({ theme }) => ({
-	padding: theme.spacing(2),
-	height: "100%",
-	display: "flex",
-	flexDirection: "column",
-	borderRadius: theme.shape.borderRadius * 0.75,
-	border: `1px solid ${theme.palette.divider}`,
-	backgroundColor: theme.palette.background.paper,
-	transition: "border-color 0.2s ease-in-out",
-	"&:hover": {
-		borderColor: theme.palette.text.disabled,
-	},
-}));
-
-// Styling for the credential name (title)
-const CredentialName = styled(Typography)(({ theme }) => ({
-	fontWeight: 500,
-	display: "flex",
-	alignItems: "center",
-	gap: theme.spacing(1),
-	fontSize: "0.9375rem",
-	marginBottom: theme.spacing(0.25),
-}));
-
-// Styling for the credential key (subtitle)
-const CredentialKey = styled(Typography)(({ theme }) => ({
-	color: theme.palette.text.secondary,
-	fontSize: "0.75rem",
-	fontFamily: "'Roboto Mono', monospace",
-	marginBottom: theme.spacing(1),
-	wordBreak: "break-all",
-}));
-
-// Styling for the credential description
-const CredentialDescription = styled(Typography)(({ theme }) => ({
-	color: theme.palette.text.secondary,
-	fontSize: "0.8125rem",
-	lineHeight: 1.5,
-	marginBottom: theme.spacing(2),
-	flexGrow: 1,
-}));
-
-// Container for action buttons at the bottom
-const CredentialActions = styled(Box)(({ theme }) => ({
-	display: "flex",
-	justifyContent: "flex-end",
-	alignItems: "center",
-	marginTop: "auto",
-	gap: theme.spacing(1),
-}));
 
 type CredentialCardProps = {
 	credentialKey: string;
@@ -73,8 +12,22 @@ type CredentialCardProps = {
 };
 
 /**
- * Component for displaying a credential card with shadcn-inspired styling.
- * Shows details and actions based on whether the credential is configured.
+ * One credential in the credentials list: what it is, its key, and the actions
+ * available on it.
+ *
+ * ## Why it draws no boundary of its own
+ *
+ * It used to be a bordered, filled card — inside a bordered section, inside the
+ * bordered settings page. Three nested edges say nothing that one says, so the
+ * single boundary belongs to the grid container in `credentials-section.tsx`
+ * and this renders as a plain cell on whatever ground it lands on. It sets no
+ * fill and no height: the grid already stretches its cells, so `mt-auto` on the
+ * action row is what keeps the actions aligned across a row of cards whose
+ * descriptions differ in length.
+ *
+ * Hover is a colour step to `elevated` and nothing else — no lift, no shadow
+ * (branding § 5). Elevation in this system is a ground step; a shadow belongs
+ * only to things that leave the flow.
  */
 export const CredentialCard: FC<CredentialCardProps> = ({
 	credentialKey,
@@ -83,126 +36,76 @@ export const CredentialCard: FC<CredentialCardProps> = ({
 	onClear,
 	onAdd,
 }) => {
-	const theme = useTheme();
 	const credInfo = getCredentialInfo(credentialKey);
 	const StatusIcon = isConfigured ? Lock : Key;
 
-	// Common button styles based on shadcn
-	const buttonSx = {
-		textTransform: "none",
-		fontSize: "0.8125rem",
-		padding: theme.spacing(0.5, 1.5),
-		borderRadius: theme.shape.borderRadius * 0.75,
-	};
-
-	const secondaryButtonSx = {
-		...buttonSx,
-		borderColor: theme.palette.divider,
-		color: theme.palette.text.secondary,
-		"&:hover": {
-			backgroundColor: theme.palette.action.hover,
-			borderColor: theme.palette.divider,
-		},
-	};
-
-	const destructiveButtonSx = {
-		...buttonSx,
-		borderColor: theme.palette.divider,
-		color: theme.palette.error.main,
-		"&:hover": {
-			backgroundColor: alpha(theme.palette.error.main, 0.05),
-			borderColor: alpha(theme.palette.error.main, 0.5),
-		},
-	};
-
-	const primaryButtonSx = {
-		...buttonSx,
-	};
-
 	return (
-		<CredentialCardContainer>
-			{/* Card Header */}
-			<Box sx={{ display: "flex", alignItems: "center", mb: 0.5 }}>
-				<CredentialName>
-					{/* Icon based on configured status */}
-					<StatusIcon size={14} style={{ marginRight: theme.spacing(0.5) }} />
+		<div className="flex flex-col rounded-md p-3 transition-colors duration-fast ease-out-quart hover:bg-elevated">
+			<div className="min-w-0">
+				<h3 className="flex items-center gap-2 text-body font-medium text-ink">
+					<StatusIcon className="size-3.5 shrink-0 text-ink-dim" />
 					{credInfo.name}
-				</CredentialName>
-				<Tooltip title={credInfo.description} placement="top">
-					<IconButton
-						size="small"
-						sx={{ ml: "auto", color: theme.palette.text.disabled }}
-					>
-						<Info size={12} />
-					</IconButton>
-				</Tooltip>
-			</Box>
+				</h3>
+				{/* The key is an identifier the user pastes into a config, so it is
+				    machine voice and must break rather than overflow its column. */}
+				<p className="mt-1 break-all text-mono-sm text-ink-dim">
+					{credentialKey}
+				</p>
+				<p className="mt-2 text-body-sm text-ink-muted">
+					{credInfo.description}
+				</p>
+			</div>
 
-			{/* Credential Key */}
-			<CredentialKey>{credentialKey}</CredentialKey>
-
-			{/* Description */}
-			<CredentialDescription variant="body2">
-				{credInfo.description}
-			</CredentialDescription>
-
-			{/* Action Buttons */}
-			<CredentialActions>
+			<div className="mt-auto flex flex-wrap items-center justify-end gap-2 pt-4">
 				{isConfigured ? (
 					<>
-						{/* Update Button (Secondary Style) */}
 						<Button
-							variant="outlined"
-							size="small"
-							startIcon={<SquarePen size={12} />}
+							variant="ghost"
+							size="sm"
 							onClick={() => onEdit?.(credentialKey)}
-							sx={secondaryButtonSx}
 						>
+							<SquarePen />
 							Update
 						</Button>
-						{/* Clear Button (Destructive Style) */}
+						{/* Destructive, but one of many rows: danger ink on a ghost box
+						    rather than a red-bordered slab repeated down the list. */}
 						<Button
-							variant="outlined"
-							size="small"
-							startIcon={<Trash2 size={12} />}
+							variant="ghost"
+							size="sm"
+							className="text-danger hover:bg-danger-wash hover:text-danger"
 							onClick={() => onClear?.(credentialKey)}
-							sx={destructiveButtonSx}
 						>
+							<Trash2 />
 							Clear
 						</Button>
 					</>
 				) : (
 					<>
-						{/* Configure Button (Primary Style) */}
 						<Button
-							variant="outlined"
-							size="small"
-							color="primary"
-							startIcon={<Key size={12} />}
+							variant="outline"
+							size="sm"
 							onClick={() => onAdd?.(credentialKey)}
-							sx={{ ...primaryButtonSx, boxShadow: "none" }}
 						>
+							<Key />
 							Configure
 						</Button>
-						{/* Link to get key (if URL exists) */}
 						{credInfo.url && (
-							<Tooltip title={`Get your ${credInfo.name} key`} placement="top">
-								<IconButton
-									size="small"
-									sx={{ color: theme.palette.text.disabled }} // Subtle color
-									component="a"
-									href={credInfo.url}
-									target="_blank"
-									rel="noopener noreferrer"
-									aria-label={`Get your ${credInfo.name} key`}
-								>
-									<Info size={12} />
-								</IconButton>
+							<Tooltip content={`Get your ${credInfo.name} key`}>
+								<Button variant="ghost" size="icon-sm" asChild>
+									<a
+										href={credInfo.url}
+										target="_blank"
+										rel="noopener noreferrer"
+										aria-label={`Get your ${credInfo.name} key`}
+									>
+										<ExternalLink />
+									</a>
+								</Button>
 							</Tooltip>
 						)}
 					</>
 				)}
-			</CredentialActions>
-		</CredentialCardContainer>
+			</div>
+		</div>
 	);
 };

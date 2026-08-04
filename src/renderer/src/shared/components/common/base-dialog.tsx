@@ -1,15 +1,19 @@
 import {
-	Box,
 	Button,
+	type ButtonProps,
 	Dialog,
-	DialogActions,
 	DialogContent,
+	DialogFooter,
+	DialogHeader,
 	DialogTitle,
-	Typography,
-	alpha,
-	styled,
-} from "@mui/material";
-import type { FC, ReactNode } from "react";
+} from "@shared/components/ui";
+import { cn } from "@shared/lib/utils";
+import {
+	type ComponentPropsWithoutRef,
+	type FC,
+	type ReactNode,
+	forwardRef,
+} from "react";
 
 /**
  * Props for the BaseDialog component
@@ -55,81 +59,30 @@ export type BaseDialogProps = {
 	 */
 	dataTourTag?: string;
 };
-/**
- * Styled Dialog component with consistent styling
- */
-export const StyledDialog = styled(Dialog)(({ theme }) => ({
-	"& .MuiBackdrop-root": {
-		backdropFilter: "blur(8px)",
-		backgroundColor: alpha(theme.palette.background.default, 0.7),
-	},
-	"& .MuiPaper-root": {
-		borderRadius: 8,
-		backgroundColor: alpha(theme.palette.background.paper, 0.9),
-		boxShadow: `0 10px 40px ${alpha(theme.palette.common.black, 0.4)}`,
-		border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-		[theme.breakpoints.up("xs")]: {
-			minWidth: "300px",
-		},
-		[theme.breakpoints.up("sm")]: {
-			minWidth: "400px",
-		},
-		[theme.breakpoints.up("md")]: {
-			minWidth: "500px",
-		},
-	},
-	"& .MuiDialogTitle-root": {
-		padding: "20px 24px 12px 24px",
-		borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-		backgroundColor: theme.palette.background.default,
-	},
-	"& .MuiDialogContent-root": {
-		padding: "16px 24px",
-		backgroundColor: theme.palette.background.default,
-		"&:first-of-type": {
-			paddingTop: 16,
-		},
-		overflow: "auto",
-	},
-	"& .MuiDialogActions-root": {
-		backgroundColor: theme.palette.background.default,
-	},
-}));
 
 /**
- * Styled DialogActions component with consistent padding
+ * The `maxWidth` steps, kept at their old breakpoint names because five
+ * feature dialogs pass them. The pixel targets are MUI's own
+ * (444/600/900/1200/1536) rounded to the nearest Tailwind step, so nothing
+ * visibly resizes; `false` means "as wide as the viewport allows".
  */
-export const StyledDialogActions = styled(DialogActions)(({ theme }) => ({
-	padding: "12px 24px 20px 24px",
-	gap: 12,
-	borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-}));
-
-/**
- * Styled Button component for dialog actions
- */
-export const DialogButton = styled(Button)(() => ({
-	borderRadius: 6,
-	textTransform: "none",
-	fontWeight: 500,
-	padding: "8px 20px",
-	minWidth: 100,
-}));
-
-/**
- * Title container with icon support
- */
-export const TitleContainer = styled(Box)({
-	display: "flex",
-	alignItems: "center",
-	gap: 12,
-});
+const MAX_WIDTHS = {
+	xs: "max-w-md",
+	sm: "max-w-xl",
+	md: "max-w-4xl",
+	lg: "max-w-6xl",
+	xl: "max-w-7xl",
+} as const;
 
 /**
  * Base dialog component with consistent styling
  *
  * This component provides a foundation for all dialogs in the application
  * to ensure a consistent look and feel.
+ *
+ * The panel, scrim, close button, focus trap, Escape handling and
+ * close-on-outside-click all come from the `Dialog` primitive. Only the
+ * header/body/footer split and the width steps live here.
  */
 export const BaseDialog: FC<BaseDialogProps> = ({
 	open,
@@ -142,73 +95,114 @@ export const BaseDialog: FC<BaseDialogProps> = ({
 	dialogProps = {},
 	dataTourTag,
 }) => {
+	/*
+	 * `className` is lifted out of the escape hatch and merged: spread after
+	 * the base classes it would replace them wholesale, dropping the height
+	 * cap and width steps the panel relies on.
+	 */
+	const { className: dialogClassName, ...restDialogProps } =
+		dialogProps as Partial<ComponentPropsWithoutRef<typeof DialogContent>>;
+
 	return (
-		<StyledDialog
+		<Dialog
 			open={open}
-			onClose={onClose}
-			maxWidth={maxWidth}
-			fullWidth={fullWidth}
-			{...dialogProps}
+			onOpenChange={(next) => {
+				if (!next) {
+					onClose();
+				}
+			}}
 		>
-			<DialogTitle>
-				{typeof title === "string" ? (
-					<Typography variant="h6" fontWeight={600}>
-						{title}
-					</Typography>
-				) : (
-					title
+			<DialogContent
+				className={cn(
+					// Cap the panel rather than the body so the header and footer stay
+					// put and only the content between them scrolls.
+					"max-h-[calc(100vh-4rem)]",
+					fullWidth ? "w-full" : "w-auto min-w-80",
+					maxWidth === false
+						? "max-w-[calc(100vw-4rem)]"
+						: MAX_WIDTHS[maxWidth],
+					dialogClassName,
 				)}
-			</DialogTitle>
-			<DialogContent data-tour-tag={dataTourTag}>{children}</DialogContent>
-			{actions && <StyledDialogActions>{actions}</StyledDialogActions>}
-		</StyledDialog>
+				/*
+				 * Escape hatch. The record is spread untyped onto the content panel
+				 * rather than rejected, so callers can pass content-level props
+				 * (aria attributes, onInteractOutside, onOpenAutoFocus) without this
+				 * component having to know about each one.
+				 */
+				{...restDialogProps}
+			>
+				<DialogHeader className="shrink-0">
+					{/*
+					 * Always a flex row: several dialogs pass an icon plus a label as
+					 * `title`, and this is the gap they used to get from a wrapper.
+					 */}
+					<DialogTitle className="flex items-center gap-3">{title}</DialogTitle>
+				</DialogHeader>
+				{/* `min-h-0` is what lets this shrink below its content and scroll. */}
+				<div className="min-h-0 overflow-y-auto" data-tour-tag={dataTourTag}>
+					{children}
+				</div>
+				{actions && <DialogFooter className="shrink-0">{actions}</DialogFooter>}
+			</DialogContent>
+		</Dialog>
 	);
 };
 
 /**
+ * Props shared by the dialog action buttons.
+ */
+export type DialogButtonProps = Omit<ButtonProps, "variant"> & {
+	/**
+	 * Icon rendered before the label. Kept from the previous signature because
+	 * feature dialogs pass a `Spinner` through it while submitting.
+	 */
+	startIcon?: ReactNode;
+};
+
+type ActionButtonProps = DialogButtonProps & {
+	variant: NonNullable<ButtonProps["variant"]>;
+};
+
+/**
+ * The shared dialog action button. `min-w-25` is the one thing it adds over
+ * the primitive: a row of dialog buttons whose widths track their labels reads
+ * as ragged, and 100px was the old floor.
+ */
+const ActionButton = forwardRef<HTMLButtonElement, ActionButtonProps>(
+	({ startIcon, children, className, ...props }, ref) => (
+		<Button
+			ref={ref}
+			size="lg"
+			className={cn("min-w-25", className)}
+			{...props}
+		>
+			{startIcon}
+			{children}
+		</Button>
+	),
+);
+ActionButton.displayName = "ActionButton";
+
+/**
  * Primary action button for dialogs
  */
-export const PrimaryButton = styled(DialogButton)(({ theme }) => ({
-	backgroundColor: theme.palette.primary.main,
-	color: theme.palette.primary.contrastText,
-	"&:hover": {
-		backgroundColor: theme.palette.primary.dark,
-		boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.4)}`,
-	},
-	transition: "all 0.2s ease-in-out",
-}));
+export const PrimaryButton = forwardRef<HTMLButtonElement, DialogButtonProps>(
+	(props, ref) => <ActionButton ref={ref} variant="primary" {...props} />,
+);
+PrimaryButton.displayName = "PrimaryButton";
 
 /**
  * Secondary action button for dialogs
  */
-export const SecondaryButton = styled(DialogButton)(({ theme }) => ({
-	borderColor: alpha(theme.palette.divider, 0.5),
-	color: theme.palette.text.secondary,
-	"&:hover": {
-		backgroundColor: alpha(theme.palette.action.hover, 0.1),
-		color: theme.palette.text.primary,
-	},
-	transition: "all 0.2s ease-in-out",
-}));
+export const SecondaryButton = forwardRef<HTMLButtonElement, DialogButtonProps>(
+	(props, ref) => <ActionButton ref={ref} variant="secondary" {...props} />,
+);
+SecondaryButton.displayName = "SecondaryButton";
 
 /**
  * Danger action button for dialogs
  */
-export const DangerButton = styled(DialogButton)(({ theme }) => ({
-	backgroundColor: theme.palette.error.main,
-	color: theme.palette.error.contrastText,
-	"&:hover": {
-		backgroundColor: theme.palette.error.dark,
-		boxShadow: `0 4px 12px ${alpha(theme.palette.error.main, 0.4)}`,
-	},
-	transition: "all 0.2s ease-in-out",
-}));
-
-/**
- * Form container for dialog forms
- */
-export const FormContainer = styled(Box)({
-	display: "flex",
-	flexDirection: "column",
-	gap: 20,
-});
+export const DangerButton = forwardRef<HTMLButtonElement, DialogButtonProps>(
+	(props, ref) => <ActionButton ref={ref} variant="danger" {...props} />,
+);
+DangerButton.displayName = "DangerButton";
