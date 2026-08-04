@@ -17,7 +17,16 @@ import { CircleCheck, Download } from "lucide-react";
 import type { FC } from "react";
 import { useEffect, useState } from "react";
 
-const RECOMMENDED_AGENT_COUNT = 8;
+/*
+ * Four, not eight.
+ *
+ * This is the last decision of first run and it was the only screen in the
+ * flow that scrolled: eight cards in a 560px dialog is a marketplace, and the
+ * step's own copy already points at the Agent Hub for the rest. Four fits
+ * without scrolling, which is what makes "pick one and continue" read as the
+ * small ask it is.
+ */
+const RECOMMENDED_AGENT_COUNT = 4;
 
 type CreateAgentStepProps = {
 	/** Callback to inform the parent modal about the step's validity */
@@ -134,37 +143,41 @@ export const CreateAgentStep: FC<CreateAgentStepProps> = ({
 
 	return (
 		<div className="flex flex-col gap-5">
-			<p className="text-body text-ink-muted">
-				Add one of these agents to get started, or let us set up a team from the
-				most popular ones. You can add more any time from the Agent Hub.
-			</p>
-
-			<div className="flex justify-center">
+			{/* Description and the bulk action on one row: the button is an
+			    alternative to reading the list, so it belongs beside the sentence
+			    that offers it rather than centred on a line of its own. */}
+			<div className="flex flex-wrap items-start justify-between gap-3">
+				<p className="min-w-60 flex-1 text-body text-ink-muted">
+					Pick an agent to start with, or add the popular ones as a set. More
+					are in the Agent Hub whenever you want them.
+				</p>
 				<Button
 					variant="secondary"
-					size="lg"
 					onClick={handleAddRecommended}
 					disabled={isLoadingAgents || isAddingAll || allAdded}
 				>
 					{isAddingAll ? (
 						<Spinner size="sm" />
 					) : (
-						<Download size={16} aria-hidden="true" />
+						<Download aria-hidden="true" />
 					)}
-					{isAddingAll ? "Adding agents" : "Set up a team for me"}
+					{isAddingAll ? "Adding" : allAdded ? "All added" : "Add all four"}
 				</Button>
 			</div>
 
 			{isLoadingAgents && (
-				<div className="flex h-75 items-center justify-center">
+				<div className="flex h-60 items-center justify-center">
 					<Spinner size="lg" label="Loading recommended agents" />
 				</div>
 			)}
 
 			{agentsError && (
-				<div className="flex h-75 items-center justify-center">
-					<p className="text-body-sm text-danger">
-						Could not load recommended agents: {agentsError.message}
+				<div className="flex h-60 flex-col items-center justify-center gap-1 text-center">
+					<p className="text-body-sm text-ink">
+						The recommended agents could not be loaded.
+					</p>
+					<p className="text-ink-dim text-meta">
+						Continue without one and add agents later from the Agent Hub.
 					</p>
 				</div>
 			)}

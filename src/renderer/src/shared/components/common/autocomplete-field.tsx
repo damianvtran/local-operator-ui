@@ -319,10 +319,11 @@ export const AutocompleteField = ({
 	let renderIndex = -1;
 
 	return (
-		<div className="mb-6">
+		/* No outer margin: the container owns the gap between fields. */
+		<div>
 			<Label
 				htmlFor={inputId}
-				className="mb-2 flex items-center gap-3 text-ink-muted"
+				className="mb-1.5 flex items-center gap-2 text-ink-muted"
 			>
 				{icon}
 				{label}

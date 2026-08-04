@@ -148,53 +148,58 @@ export const AgentsPage: FC<AgentsPageProps> = () => {
 			    it fills the space the sidebar leaves, and `overflow-hidden` is what
 			    keeps its scrolling inside the pane instead of the window. */}
 			<div className="h-full grow overflow-hidden">
-				<div className="flex h-full flex-col gap-4 p-4 sm:p-6 lg:p-8">
-					<PageHeader
-						title="Agent management"
-						icon={Bot}
-						subtitle="View, configure and manage your agents"
-					>
-						{selectedAgent && (
-							<div className="flex items-center gap-2">
-								<Button
-									variant="secondary"
-									onClick={handleExportAgent}
-									disabled={exportAgentMutation.isPending}
-								>
-									<FileUp aria-hidden="true" />
-									Export
-								</Button>
-
-								<Button
-									data-tour-tag="upload-to-hub-header-button"
-									variant="secondary"
-									onClick={handleOpenUploadDialog}
-									disabled={uploadAgentMutation.isPending}
-								>
-									<CloudUpload aria-hidden="true" />
-									{uploadAgentMutation.isPending
-										? "Uploading..."
-										: "Upload to hub"}
-								</Button>
-
-								{/* The only tooltip here: it names the agent, which the
-								    button label cannot. */}
-								<Tooltip
-									content={`Chat with ${selectedAgent.name || "this agent"}`}
-								>
+				{/* `gap-8`: `PageHeader` no longer ships its own bottom margin. The
+				    header sits in the same measured column as the settings below it,
+				    so the page title and the fields it heads share one left edge. */}
+				<div className="flex h-full flex-col gap-8 p-4 sm:p-6 lg:p-8">
+					<div className="mx-auto w-full max-w-4xl">
+						<PageHeader
+							title="Agent management"
+							icon={Bot}
+							subtitle="View, configure and manage your agents"
+						>
+							{selectedAgent && (
+								<div className="flex items-center gap-2">
 									<Button
-										variant="primary"
-										onClick={() => navigate(`/chat/${selectedAgent.id}`)}
+										variant="secondary"
+										onClick={handleExportAgent}
+										disabled={exportAgentMutation.isPending}
 									>
-										<MessageCircle aria-hidden="true" />
-										Chat
+										<FileUp aria-hidden="true" />
+										Export
 									</Button>
-								</Tooltip>
-							</div>
-						)}
-					</PageHeader>
 
-					<div className="grow overflow-hidden">
+									<Button
+										data-tour-tag="upload-to-hub-header-button"
+										variant="secondary"
+										onClick={handleOpenUploadDialog}
+										disabled={uploadAgentMutation.isPending}
+									>
+										<CloudUpload aria-hidden="true" />
+										{uploadAgentMutation.isPending
+											? "Uploading..."
+											: "Upload to hub"}
+									</Button>
+
+									{/* The only tooltip here: it names the agent, which the
+								    button label cannot. */}
+									<Tooltip
+										content={`Chat with ${selectedAgent.name || "this agent"}`}
+									>
+										<Button
+											variant="primary"
+											onClick={() => navigate(`/chat/${selectedAgent.id}`)}
+										>
+											<MessageCircle aria-hidden="true" />
+											Chat
+										</Button>
+									</Tooltip>
+								</div>
+							)}
+						</PageHeader>
+					</div>
+
+					<div className="min-h-0 grow overflow-hidden">
 						<AgentSettings
 							selectedAgent={selectedAgent ?? null}
 							refetchAgent={refetchAgent}

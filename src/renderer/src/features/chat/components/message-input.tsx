@@ -2,7 +2,7 @@ import { TranscriptionApi } from "@shared/api/local-operator/transcription-api";
 import type { AgentDetails } from "@shared/api/local-operator/types";
 import { Button, Tooltip } from "@shared/components/ui";
 import { apiConfig } from "@shared/config/api-config";
-import { useCredentials } from "@shared/hooks/use-credentials";
+import { useRadientCredentialProbe } from "@shared/hooks/use-credentials";
 import { useMessageInput } from "@shared/hooks/use-message-input";
 import {
 	SpeechToTextPriority,
@@ -138,18 +138,15 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		const audioChunksRef = useRef<Blob[]>([]);
 		const [platform, setPlatform] = useState("");
 
-		const { data: credentialsData, isLoading: isLoadingCredentials } =
-			useCredentials();
+		const { hasRadientApiKey, isUnavailable } = useRadientCredentialProbe();
+		const canEnableRecordingFeature = hasRadientApiKey && !isUnavailable;
 
-		const isRadientApiKeyConfigured = useMemo(
-			() => credentialsData?.keys?.includes("RADIENT_API_KEY"),
-			[credentialsData?.keys],
-		);
-
-		const canEnableRecordingFeature = useMemo(
-			() => isRadientApiKeyConfigured && !isLoadingCredentials,
-			[isRadientApiKeyConfigured, isLoadingCredentials],
-		);
+		// The probe cannot tell "no key" apart from "could not ask", so the
+		// offline case is named separately rather than sending the user to the
+		// settings page to fix an account that is not broken.
+		const recordingUnavailableReason = isUnavailable
+			? "Voice input is unavailable while Local Operator is offline"
+			: "Sign in to Radient in the settings page to enable audio recording";
 
 		const MAX_SUGGESTIONS = 7;
 
@@ -536,15 +533,20 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 						/>
 					)}
 
+					{/* § 2 budgets the accent at about three spends per screen and the
+					 * composer was taking three on its own — attach, microphone and
+					 * send — before the suggestion chips added a dozen more. Send is
+					 * the primary action and keeps it; the two secondary tools are
+					 * neutral until you reach for them. */}
 					<div className="flex items-center justify-between gap-2">
 						{/* Left side: attachment button */}
-						<div className="flex items-center gap-2">
+						<div className="flex items-center gap-1">
 							<Tooltip content="Attach file">
 								<span>
 									<Button
 										variant="ghost"
 										size={isSmallView ? "icon-sm" : "icon"}
-										className="text-accent hover:bg-accent-wash hover:text-accent"
+										className="text-ink-dim hover:bg-elevated hover:text-ink"
 										onClick={handleAttachFile}
 										aria-label="Attach file"
 										data-tour-tag="chat-input-attach-file-button"
@@ -563,14 +565,14 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 						</div>
 
 						{/* Right side: microphone, send or stop button */}
-						<div className="flex items-center gap-2">
+						<div className="flex items-center gap-1">
 							{!isRecording &&
 								!isTranscribing &&
 								!(isLoading && currentJobId) && (
 									<Tooltip
 										content={
 											!canEnableRecordingFeature
-												? "Sign in to Radient in the settings page to enable audio recording"
+												? recordingUnavailableReason
 												: `Start recording (${shortcutText} or hold Space)`
 										}
 									>
@@ -578,7 +580,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 											<Button
 												variant="ghost"
 												size={isSmallView ? "icon-sm" : "icon"}
-												className="text-accent hover:bg-accent-wash hover:text-accent"
+												className="text-ink-dim hover:bg-elevated hover:text-ink"
 												onClick={handleStartRecording}
 												aria-label="Start recording"
 												disabled={isLoading || !canEnableRecordingFeature}
@@ -663,14 +665,20 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				</div>
 
 				{messages.length === 0 && !isSmallView && (
-					<div className="mx-auto mt-8 w-full max-w-full sm:max-w-[90%] md:max-w-[900px]">
+					<div className="mx-auto mt-6 w-full max-w-full sm:max-w-[90%] md:max-w-[900px]">
+						{/* Neutral chips. Twelve accent-washed pills was the accent
+						 * budget spent four times over on the one screen that has no
+						 * content to compete with them; as quiet outlines they read as
+						 * what they are — examples, not the primary action. Raycast and
+						 * Linear's command palettes hold suggestions at exactly this
+						 * weight. */}
 						<div className="flex flex-wrap justify-center gap-2">
 							{suggestions.map((suggestion) => (
 								<Button
 									key={suggestion}
 									variant="outline"
 									size="sm"
-									className="h-auto max-w-full whitespace-normal break-words border-accent/50 bg-accent-wash px-3 py-1 text-body-sm text-accent hover:border-accent/70"
+									className="h-auto max-w-full whitespace-normal break-words px-3 py-1 text-body-sm text-ink-muted hover:bg-elevated hover:text-ink"
 									onClick={() => handleSuggestionClick(suggestion)}
 									disabled={isInputDisabled || isRecording || isTranscribing}
 								>
@@ -691,8 +699,8 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				)}
 			>
 				{messages.length === 0 && !isSmallView ? (
-					<div className="flex flex-col items-center justify-center gap-2 p-4">
-						<h2 className="mb-2 text-center font-medium text-title text-ink-muted sm:mb-4">
+					<div className="flex w-full flex-col items-center justify-center gap-6 p-4">
+						<h2 className="text-center text-ink text-title">
 							What can I help you with today?
 						</h2>
 						{inputContent}

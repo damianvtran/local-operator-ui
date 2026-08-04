@@ -191,9 +191,39 @@ unconsidered.
 Default to more air and less chrome. When a panel feels busy, the fix is almost
 always removing a border or a background, not tightening the spacing.
 
-**Radii**: 2 / 6 / 10 / 14 / 16, and nothing else. `rounded-full` is allowed on
-exactly three things: avatars, status dots, and pill-shaped badges (including
-the tool-trace pill).
+**A component does not own its outer margin. The container owns the gap.**
+
+A component that ships `mb-4` cannot be composed: it stacks with every parent
+that has an opinion, and the failure is silent because the result is still
+*some* spacing, just the wrong tier. That is exactly how every settings form in
+this app came to sit at 32px between fields — a component's own `mb-4` plus its
+container's `gap-4` — which is section-tier spacing on component-tier content.
+
+Margins between a component's own internals are fine; it is the **root element**
+that must be free. If every caller genuinely wants the same spacing, that is
+still a container concern, not a reason to keep it.
+
+**Radii**: 2 / 6 / 10 / 14 / 16, and nothing else.
+
+**Radius is assigned by what the object is, not by what looks good on it in
+isolation.**
+
+- **6px, controls.** Anything you click or type into — button, input, select
+  trigger, textarea, tab — plus the small blocks that live at control scale:
+  tooltip, badge, skeleton. A 32px-tall control cannot carry more: 10px eats a
+  third of its height and reads as a lozenge, and every desktop tool that feels
+  precise sits at 4–6.
+- **10px, panels and callouts.** Things that sit over or beside content and are
+  read as one block: menu, popover, select panel, alert.
+- **14px, frames.** Cards and dialogs — the containers other things sit inside.
+- **2px** is for bars too small to carry 6: the progress track, the scrollbar
+  thumb, the checkbox.
+- **16px (`frame`)** is for the two objects that span their whole column: the
+  composer and the message bubble.
+- **Nested radii are concentric, not repeated:** an inner radius is the outer
+  radius minus the padding between them. The tabs track is 10 with 4px padding,
+  so its pills are 6.
+- `rounded-full` stays reserved for avatars, status dots and pill badges.
 
 **Motion** — durations 80 / 120 / 180 / 240ms. Nothing in this app animates for
 longer than 240ms, and only something entering the screen earns that.

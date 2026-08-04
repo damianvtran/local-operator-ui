@@ -36,6 +36,14 @@ type PageHeaderProps = {
  * The title is `text-display` — 28px, the largest step in the app, and the only
  * place it is used. There is no step above it on purpose: a desktop app has no
  * hero.
+ *
+ * ## No bottom margin
+ *
+ * It shipped `mb-8`, which stacked with whatever gap its page already had —
+ * every one of the four routes that use it lays its content out as a flex
+ * column. A component does not own its outer margin; the container owns the
+ * gap, and all four containers now set `gap-8` explicitly, which is the same
+ * 32px said once in a place you can see it.
  */
 export const PageHeader: FC<PageHeaderProps> = ({
 	title,
@@ -43,7 +51,7 @@ export const PageHeader: FC<PageHeaderProps> = ({
 	subtitle,
 	children,
 }) => (
-	<div className="mb-8 flex items-start justify-between gap-4">
+	<div className="flex items-start justify-between gap-4">
 		<div className="flex items-start gap-4">
 			<Icon
 				size={24}

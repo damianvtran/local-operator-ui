@@ -274,11 +274,21 @@ const UsageInfo: FC = () => {
  * The Radient section's heading, which carries the console link beside the
  * title. Supplied through `titleComponent` because the link belongs to the
  * heading row, not to the section body.
+ *
+ * It matches `SettingsSection`'s own heading exactly — `text-heading`, a 16px
+ * mark, `gap-2`. It used to be `text-title` with a 32px logo, so one section on
+ * the page shouted a step louder than its five siblings and the eye read the
+ * page as having two levels of grouping where it has one. A brand mark is not
+ * a reason to leave the type scale.
  */
 const RadientSectionTitle: FC = () => (
 	<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-		<h2 className="flex items-center gap-3 text-title text-ink">
-			<img src={radientIcon} alt="" className="size-8 object-contain" />
+		<h2 className="flex items-center gap-2 text-heading text-ink">
+			<img
+				src={radientIcon}
+				alt=""
+				className="size-4 shrink-0 object-contain"
+			/>
 			Radient account
 		</h2>
 		<Button
@@ -548,19 +558,28 @@ export const SettingsPage: FC = () => {
 				data-tour-tag="settings-general-section"
 				className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 md:p-8"
 			>
-				<PageHeader
-					title="Settings"
-					icon={Settings}
-					subtitle="Configure your application preferences and settings"
-				/>
+				{/*
+				 * One measured column, centred, rather than two.
+				 *
+				 * The two-column grid this replaces made the eye zig-zag to find a
+				 * setting, left the right-hand column ending in a void wherever the
+				 * two ran to different heights, and broke the rail's meaning: the
+				 * scroll-spy highlights whichever section is most visible, which is
+				 * not a question with one answer when two sections are side by side.
+				 *
+				 * 896px is the widest the content actually wants — three theme
+				 * previews, or a four-column info grid — and it is narrow enough that
+				 * a section description is not a 1300px line. Every settings surface
+				 * worth copying does this: Linear, Notion, GitHub and macOS System
+				 * Settings all cap the detail pane and none of them column it.
+				 */}
+				<div className="mx-auto flex w-full max-w-4xl flex-col gap-8 pb-8">
+					<PageHeader title="Settings" icon={Settings} />
 
-				{/* Section tier: 32px between groupings, and no boundary between them. */}
-				<div className="mt-6 flex flex-col gap-8">
-					<div
-						ref={sectionRefs.general}
-						className="grid gap-8 md:grid-cols-2 md:gap-6"
-					>
-						<div className="flex flex-col gap-8">
+					{/* Section tier: 32px between groupings, and no boundary between
+					    them. */}
+					<div className="flex flex-col gap-8">
+						<div ref={sectionRefs.general} className="flex flex-col gap-8">
 							<SettingsSection
 								title="User profile"
 								icon={User}
@@ -651,9 +670,7 @@ export const SettingsPage: FC = () => {
 							</SettingsSection>
 
 							<SystemPrompt />
-						</div>
 
-						<div className="flex flex-col gap-8">
 							<SettingsSection
 								title="History settings"
 								icon={History}
@@ -738,68 +755,68 @@ export const SettingsPage: FC = () => {
 								</InfoGrid>
 							</SettingsSection>
 						</div>
-					</div>
 
-					<SettingsSection
-						title="Appearance"
-						icon={Contrast}
-						description="Customize the look and feel of Local Operator"
-						sectionRef={sectionRefs.appearance}
-						dataTourTag="settings-appearance-section"
-					>
-						<ThemeSelector />
-					</SettingsSection>
+						<SettingsSection
+							title="Appearance"
+							icon={Contrast}
+							description="Customize the look and feel of Local Operator"
+							sectionRef={sectionRefs.appearance}
+							dataTourTag="settings-appearance-section"
+						>
+							<ThemeSelector />
+						</SettingsSection>
 
-					<SettingsSection
-						title="Radient account"
-						titleComponent={<RadientSectionTitle />}
-						description="Manage your Radient account, Radient Pass details, and credits."
-						sectionRef={sectionRefs.radient}
-						dataTourTag="settings-radient-account-section"
-					>
+						<SettingsSection
+							title="Radient account"
+							titleComponent={<RadientSectionTitle />}
+							description="Manage your Radient account, Radient Pass details, and credits."
+							sectionRef={sectionRefs.radient}
+							dataTourTag="settings-radient-account-section"
+						>
+							{/*
+							 * Account, billing and usage were separated by `Divider`s. They are
+							 * three groups inside one grouping, so the section tier gap says
+							 * the same thing without drawing two more lines on a page that
+							 * already has enough.
+							 */}
+							<div className="flex flex-col gap-8">
+								<RadientAccountSection
+									onAfterCredentialUpdate={() => {
+										refreshModels();
+										refetchCredentials();
+									}}
+								/>
+
+								{isAuthenticated && (
+									<>
+										<BillingInfo />
+										<UsageInfo />
+									</>
+								)}
+							</div>
+						</SettingsSection>
+
 						{/*
-						 * Account, billing and usage were separated by `Divider`s. They are
-						 * three groups inside one grouping, so the section tier gap says
-						 * the same thing without drawing two more lines on a page that
-						 * already has enough.
+						 * Rendered unconditionally: the section handles its own auth state
+						 * for the connect buttons.
 						 */}
-						<div className="flex flex-col gap-8">
-							<RadientAccountSection
-								onAfterCredentialUpdate={() => {
-									refreshModels();
-									refetchCredentials();
-								}}
-							/>
-
-							{isAuthenticated && (
-								<>
-									<BillingInfo />
-									<UsageInfo />
-								</>
-							)}
+						<div ref={sectionRefs.integrations}>
+							<GoogleIntegrationsSection />
 						</div>
-					</SettingsSection>
 
-					{/*
-					 * Rendered unconditionally: the section handles its own auth state
-					 * for the connect buttons.
-					 */}
-					<div ref={sectionRefs.integrations}>
-						<GoogleIntegrationsSection />
-					</div>
+						<SettingsSection
+							title="API credentials"
+							icon={Key}
+							description="Manage your API keys for various services and integrations"
+							sectionRef={sectionRefs.credentials}
+							dataTourTag="settings-api-credentials-section"
+						>
+							<Credentials />
+						</SettingsSection>
 
-					<SettingsSection
-						title="API credentials"
-						icon={Key}
-						description="Manage your API keys for various services and integrations"
-						sectionRef={sectionRefs.credentials}
-						dataTourTag="settings-api-credentials-section"
-					>
-						<Credentials />
-					</SettingsSection>
-
-					<div ref={sectionRefs.updates}>
-						<AppUpdatesSection />
+						<div ref={sectionRefs.updates}>
+							<AppUpdatesSection />
+						</div>
 					</div>
 				</div>
 			</div>

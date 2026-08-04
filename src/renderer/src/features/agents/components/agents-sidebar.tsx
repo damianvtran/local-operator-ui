@@ -32,7 +32,7 @@ import { useDebouncedValue } from "@shared/hooks/use-debounced-value";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import { cn } from "@shared/lib/utils";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
-import { Bot, Clock } from "lucide-react";
+import { Bot } from "lucide-react";
 import type { FC } from "react";
 import { memo, useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -62,7 +62,6 @@ type AgentsSidebarItemProps = {
 	agent: AgentDetails;
 	isSelected: boolean;
 	onSelectAgent: (agent: AgentDetails) => void;
-	formatDate: (dateString: string) => string;
 	onChatWithAgent: (agentId: string) => void;
 	onExportAgent: (agentId: string) => void;
 	onAgentDeleted: (deletedAgentId: string) => void;
@@ -81,6 +80,19 @@ type AgentsSidebarItemProps = {
  * because tinting three things to say one thing spends the screen's accent
  * budget on a state the ground already carries.
  *
+ * ## Two lines, not three
+ *
+ * The row used to carry a third line — a clock glyph and the creation date, on
+ * every agent. That is 20px and a second icon per row, repeated down the whole
+ * list, for a fact nobody scans a list by; it made a 72px row out of a 52px
+ * one and cut the number of agents visible at once by a third. The date is
+ * still one click away, in the agent's own information grid, which is where a
+ * detail you look up rather than scan belongs.
+ *
+ * Name at 13px medium over description at 12px dim: two steps apart, so the
+ * name leads without needing semibold. A list row is a dense surface, and
+ * `text-body-sm` is the step the branding scale names for one.
+ *
  * ## Why the options menu is a sibling of the row button
  *
  * It used to be nested inside the `ListItemButton`, which is a button inside a
@@ -94,14 +106,12 @@ const AgentsSidebarItem: FC<AgentsSidebarItemProps> = ({
 	agent,
 	isSelected,
 	onSelectAgent,
-	formatDate,
 	onChatWithAgent,
 	onExportAgent,
 	onAgentDeleted,
 	onUploadAgentToHub,
 }) => {
 	const description = agent.description || "No description";
-	const createdDate = formatDate(agent.created_date);
 
 	return (
 		<li className="group relative">
@@ -115,35 +125,25 @@ const AgentsSidebarItem: FC<AgentsSidebarItemProps> = ({
 				// is fixed; changing it breaks the tour silently.
 				data-tour-tag="agent-list-item-button"
 				className={cn(
-					"flex w-full items-center gap-3 rounded-md py-1.5 pr-9 pl-2 text-left",
+					"flex w-full items-center gap-2 rounded-sm py-1.5 pr-9 pl-2 text-left",
 					"transition-colors duration-fast ease-out-quart",
 					isSelected ? "bg-accent-wash" : "hover:bg-elevated",
 				)}
 			>
-				<Avatar className="size-9">
+				<Avatar className="size-8 shrink-0">
 					<AvatarFallback>
-						<Bot size={18} strokeWidth={2} aria-hidden={true} />
+						<Bot size={16} strokeWidth={1.75} aria-hidden={true} />
 					</AvatarFallback>
 				</Avatar>
 				<span className="min-w-0 flex-1">
 					<Tooltip content={agent.name} side="top" align="start">
-						<span className="block truncate font-semibold text-body text-ink">
+						<span className="block truncate font-medium text-body-sm text-ink">
 							{agent.name}
 						</span>
 					</Tooltip>
 					<Tooltip content={description} side="bottom" align="start">
-						<span className="block truncate text-body-sm text-ink-muted">
+						<span className="block truncate text-meta text-ink-dim">
 							{description}
-						</span>
-					</Tooltip>
-					<Tooltip
-						content={`Created: ${createdDate}`}
-						side="bottom"
-						align="start"
-					>
-						<span className="mt-0.5 flex items-center gap-1 text-meta text-ink-dim">
-							<Clock size={12} aria-hidden={true} />
-							{createdDate}
 						</span>
 					</Tooltip>
 				</span>
@@ -191,9 +191,7 @@ const areAgentsSidebarItemsEqual = (
 		prev.agent.id === next.agent.id &&
 		prev.agent.name === next.agent.name &&
 		prev.agent.description === next.agent.description &&
-		prev.agent.created_date === next.agent.created_date &&
 		prev.onSelectAgent === next.onSelectAgent &&
-		prev.formatDate === next.formatDate &&
 		prev.onChatWithAgent === next.onChatWithAgent &&
 		prev.onExportAgent === next.onExportAgent &&
 		prev.onAgentDeleted === next.onAgentDeleted &&
@@ -205,19 +203,6 @@ const MemoizedAgentsSidebarItem = memo(
 	AgentsSidebarItem,
 	areAgentsSidebarItemsEqual,
 );
-
-/**
- * Formats a date string into a more readable format
- */
-const formatDate = (dateString: string): string => {
-	if (!dateString) return "Unknown date";
-	const date = new Date(dateString);
-	return date.toLocaleDateString(undefined, {
-		year: "numeric",
-		month: "short",
-		day: "numeric",
-	});
-};
 
 /**
  * Agents Sidebar Component
@@ -503,7 +488,6 @@ const AgentsSidebarComponent: FC<AgentsSidebarProps> = ({
 									selectedAgentDetails?.id === agent.id
 								}
 								onSelectAgent={handleSelectAgent}
-								formatDate={formatDate}
 								onChatWithAgent={handleChatWithAgent}
 								onExportAgent={handleExportAgent}
 								onAgentDeleted={handleAgentDeletedFromItem}

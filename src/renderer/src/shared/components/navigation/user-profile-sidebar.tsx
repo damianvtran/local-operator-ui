@@ -9,6 +9,7 @@ import {
 	Tooltip,
 } from "@shared/components/ui";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
+import { cn } from "@shared/lib/utils";
 import { LogOut, Settings, Shield, User } from "lucide-react";
 import { useCallback, useMemo } from "react";
 import React, { type FC } from "react";
@@ -86,16 +87,36 @@ export const UserProfileSidebar: FC<UserProfileSidebarProps> = React.memo(
 			<button
 				type="button"
 				onClick={useAuth ? undefined : () => navigate("/settings")}
-				className="mx-2 flex items-center gap-3 rounded-sm px-3 py-1 transition-colors duration-fast ease-out-quart hover:bg-elevated"
+				className={cn(
+					"flex w-full items-center gap-2 rounded-sm transition-colors duration-fast ease-out-quart hover:bg-elevated",
+					/*
+					 * `px-3` matches a nav row exactly, so the avatar sits on the same
+					 * 20px line as every nav mark above it. Collapsed, the rail is 48px
+					 * and there is only room to centre.
+					 */
+					expanded ? "px-3 py-1.5" : "justify-center py-1.5",
+				)}
 			>
-				<Avatar className="size-7">
-					<AvatarFallback className="bg-accent text-on-accent">
+				{/*
+				 * A neutral plate, not an accent fill. The rail already spends the
+				 * accent on the active destination; a solid accent disc at the foot
+				 * is a second, larger spend on the one row that is not a
+				 * destination. `elevated` because the rail's own ground is `sunken`
+				 * and the fallback's default `sunken` would vanish into it.
+				 */}
+				<Avatar className="size-7 shrink-0">
+					<AvatarFallback className="bg-elevated text-ink">
 						{userInitials ?? <User size={14} aria-hidden="true" />}
 					</AvatarFallback>
 				</Avatar>
 				{expanded && userName && (
 					<span className="min-w-0 text-left">
-						<span className="block truncate text-body text-ink">
+						{/*
+						 * 13px, one step under the nav labels' weight rather than one
+						 * above: the account is the quietest thing on the rail, not the
+						 * loudest.
+						 */}
+						<span className="block truncate text-body-sm text-ink">
 							{userName}
 						</span>
 						{userEmail && (

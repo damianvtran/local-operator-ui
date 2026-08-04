@@ -1,4 +1,4 @@
-import { AgentReasoning, Disclosure } from "@features/chat/components/trace";
+import { AgentReasoning, TraceLine } from "@features/chat/components/trace";
 import type {
 	AgentExecutionRecord,
 	LocalOperatorClient,
@@ -11,17 +11,7 @@ import { useStreamingMessage } from "@shared/hooks/use-streaming-message";
 import { cn } from "@shared/lib/utils";
 import { useStreamingMessagesStore } from "@shared/store/streaming-messages-store";
 import { getLanguageFromExtension } from "@shared/utils/file-utils";
-import {
-	Book,
-	Check,
-	Code2,
-	HelpCircle,
-	Lightbulb,
-	MessageSquare,
-	Pencil,
-	PencilLine,
-	Share2,
-} from "lucide-react";
+import { showErrorToast } from "@shared/utils/toast-manager";
 import { useCallback, useMemo, useRef } from "react";
 import { MarkdownRenderer, StreamingMarkdown } from "../markdown-renderer";
 import { AudioAttachment } from "./audio-attachment";
@@ -98,54 +88,6 @@ const getAttachmentUrl = (
 	if (hasExtension(path, AUDIO_EXTENSIONS))
 		return client.static.getAudioUrl(normalizedPath);
 	return path;
-};
-
-/**
- * A short verb-plus-object label for the in-flight step, in the user's terms.
- * Names the file the step touches when there is one — "Read invoices/march.csv"
- * answers "what is it doing?" better than "Executing" ever will.
- */
-const getActionSummary = (
-	message: AgentExecutionRecord | null,
-): { icon: JSX.Element; label: string } => {
-	const file = message?.file_path?.split("/").pop();
-
-	switch (message?.action) {
-		case "DONE":
-			return { icon: <Check size={14} />, label: "Finished" };
-		case "ASK":
-			return { icon: <HelpCircle size={14} />, label: "Asking you" };
-		case "CODE":
-			return { icon: <Code2 size={14} />, label: "Running code" };
-		case "WRITE":
-			return {
-				icon: <Pencil size={12} />,
-				label: file ? `Wrote ${file}` : "Writing",
-			};
-		case "EDIT":
-			return {
-				icon: <PencilLine size={14} />,
-				label: file ? `Edited ${file}` : "Editing",
-			};
-		case "READ":
-			return {
-				icon: <Book size={14} />,
-				label: file ? `Read ${file}` : "Reading",
-			};
-		case "DELEGATE":
-			return {
-				icon: <Share2 size={14} />,
-				label: message.agent ? `Delegated to ${message.agent}` : "Delegating",
-			};
-		default:
-			if (message?.execution_type === "plan") {
-				return { icon: <Lightbulb size={14} />, label: "Planning" };
-			}
-			if (message?.execution_type === "action") {
-				return { icon: <Code2 size={14} />, label: "Working" };
-			}
-			return { icon: <MessageSquare size={14} />, label: "Responding" };
-	}
 };
 
 /**
@@ -238,8 +180,6 @@ export const StreamingMessage = ({
 		return lastValidMessageRef.current || null;
 	}, [wsMessage, storeMessage]);
 
-	const actionSummary = useMemo(() => getActionSummary(message), [message]);
-
 	const fileLanguage = getLanguageFromExtension(message?.file_path || "");
 
 	const hasToolDetail = Boolean(
@@ -272,8 +212,11 @@ export const StreamingMessage = ({
 			}
 		} catch (error) {
 			console.error("Error opening file:", error);
-			alert(
-				`Unable to open file: ${filePath}. The file may be incomplete, deleted, or moved.`,
+			// Not `alert()`: a blocking OS modal for a file that moved is heavier
+			// than the failure. See `error-view` for where each kind of failure
+			// belongs.
+			showErrorToast(
+				`Could not open ${filePath.split("/").pop()}. The file may have been moved, renamed, or deleted.`,
 			);
 		}
 	}, []);
@@ -337,54 +280,60 @@ export const StreamingMessage = ({
 				</div>
 			)}
 
+			{/* The in-flight step is the same object as a completed one, so it is
+			 * the same component: `TraceLine`, running, with the payload behind
+			 * its own disclosure. It used to be a second expander with a round
+			 * icon tile, its own duplicate label table, and a spinner beside the
+			 * label — two of the three things § 7 names outright ("prefer one
+			 * disclosure idiom app-wide", "never show a spinner and a trace line
+			 * for the same action"). The line's running verb carries the state. */}
 			{hasToolDetail && (
-				<Disclosure
-					summary={
-						<span className="inline-flex items-center gap-2">
-							<span className="inline-flex size-5 items-center justify-center rounded-full text-ink-muted">
-								{actionSummary.icon}
-							</span>
-							<span>{actionSummary.label}</span>
-							{isActivelyStreaming && <Spinner size="xs" />}
-						</span>
+				<TraceLine
+					className="mt-2"
+					action={message?.action}
+					filePath={message?.file_path}
+					files={message?.files}
+					running={isActivelyStreaming}
+					failed={Boolean(message?.stderr)}
+					details={
+						<>
+							{message?.code && (
+								<CodeBlock
+									code={message.code}
+									isUser={false}
+									flexDirection="column-reverse"
+								/>
+							)}
+							{message?.content && (
+								<CodeBlock
+									header="Content"
+									code={message.content}
+									isUser={false}
+									language={fileLanguage}
+									flexDirection="column-reverse"
+								/>
+							)}
+							{message?.replacements && (
+								<CodeBlock
+									header="Replacements"
+									code={message.replacements}
+									isUser={false}
+									language="diff"
+									flexDirection="column-reverse"
+								/>
+							)}
+							{message?.stdout && (
+								<OutputBlock output={message.stdout} isUser={false} />
+							)}
+							{message?.stderr && (
+								<ErrorBlock error={message.stderr} isUser={false} />
+							)}
+							{message?.logging && (
+								<LogBlock log={message.logging} isUser={false} />
+							)}
+						</>
 					}
-					defaultOpen={false}
-				>
-					{message?.code && (
-						<CodeBlock
-							code={message.code}
-							isUser={false}
-							flexDirection="column-reverse"
-						/>
-					)}
-					{message?.content && (
-						<CodeBlock
-							header="Content"
-							code={message.content}
-							isUser={false}
-							language={fileLanguage}
-							flexDirection="column-reverse"
-						/>
-					)}
-					{message?.replacements && (
-						<CodeBlock
-							header="Replacements"
-							code={message.replacements}
-							isUser={false}
-							language="diff"
-							flexDirection="column-reverse"
-						/>
-					)}
-					{message?.stdout && (
-						<OutputBlock output={message.stdout} isUser={false} />
-					)}
-					{message?.stderr && (
-						<ErrorBlock error={message.stderr} isUser={false} />
-					)}
-					{message?.logging && (
-						<LogBlock log={message.logging} isUser={false} />
-					)}
-				</Disclosure>
+				/>
 			)}
 
 			{imageFiles.length > 0 && (

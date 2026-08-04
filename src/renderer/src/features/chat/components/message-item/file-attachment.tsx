@@ -4,10 +4,11 @@ import { useCanvasStore } from "@shared/store/canvas-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { File } from "lucide-react";
 import type { FC } from "react";
-import { memo, useCallback, useEffect } from "react";
+import { memo, useCallback, useEffect, useState } from "react";
 import { getFileTypeFromPath } from "../../utils/file-types";
 import { isCanvasSupported } from "../../utils/is-canvas-supported";
 import { isSpreadsheetFile } from "../../utils/is-spreadsheet-file";
+import { AttachmentFrame, BrokenAttachment } from "./attachment-frame";
 /**
  * Props for the FileAttachment component (base)
  */
@@ -60,10 +61,13 @@ const getFileName = (path: string): string => {
 };
 
 /**
- * Component for displaying non-image file attachments
+ * A file the conversation carries: a named card for anything with a path, and
+ * the same reserved picture frame as `image-attachment` for a pasted image.
  */
 export const FileAttachment: FC<FileAttachmentProps> = memo(
 	({ file, onClick, conversationId }) => {
+		const [hasError, setHasError] = useState(false);
+		const [isLoaded, setIsLoaded] = useState(false);
 		const setCanvasOpen = useUiPreferencesStore((s) => s.setCanvasOpen);
 		// Access canvas store methods directly via getState() if needed for click, or pass them down if they vary
 		// For this refactor, setFiles, setOpenTabs, setSelectedTab are part of the click handler,
@@ -331,11 +335,46 @@ export const FileAttachment: FC<FileAttachmentProps> = memo(
 		const normalizedPath = file.startsWith("file://")
 			? file.substring(7)
 			: file;
+		// A pasted image is a picture, so it renders as one: same reserved frame
+		// and same failure copy as any other image. It used to render as a bare
+		// `<img>` inside a 200px card with no minimum, which is how an 8x6 pasted
+		// PNG turned into an 8px speck at the top of a message.
+		if (isPastedImage) {
+			return (
+				<div className="group relative inline-block max-w-full">
+					{hasError ? (
+						<BrokenAttachment name={getFileName(file)} />
+					) : (
+						<button
+							type="button"
+							className="block max-w-full cursor-pointer"
+							onClick={handleClick}
+							title={`Click to open ${getFileName(file)}`}
+						>
+							<AttachmentFrame>
+								<img
+									src={file}
+									alt={getFileName(file)}
+									className={cn(
+										"max-h-[240px] max-w-full object-contain",
+										isLoaded ? "opacity-100" : "opacity-0",
+									)}
+									onLoad={() => setIsLoaded(true)}
+									onError={() => setHasError(true)}
+								/>
+							</AttachmentFrame>
+						</button>
+					)}
+				</div>
+			);
+		}
+
 		return (
 			<div
 				className={cn(
-					"group relative mt-2 flex w-fit max-w-full items-center rounded-sm border border-hairline bg-surface transition-colors duration-fast ease-out-quart hover:bg-elevated",
-					isPastedImage ? "max-w-[200px] p-0" : "px-3 py-2",
+					"group relative flex w-fit max-w-full items-center gap-2.5 rounded-sm",
+					"border border-hairline bg-surface px-3 py-2",
+					"transition-colors duration-fast ease-out-quart hover:bg-elevated",
 				)}
 			>
 				{/* The card is a real button holding only the content; the actions
@@ -343,29 +382,20 @@ export const FileAttachment: FC<FileAttachmentProps> = memo(
 				 * invalid HTML. */}
 				<button
 					type="button"
-					className="min-w-0 flex-1 cursor-pointer text-left"
+					className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 text-left"
 					onClick={handleClick}
 					title={`Click to open ${getFileName(file)}`}
 				>
-					{isPastedImage ? (
-						<img
-							src={file}
-							alt="Pasted content preview"
-							className="block max-h-[150px] max-w-full rounded-sm object-contain"
-						/>
-					) : (
-						<div className="flex items-center">
-							<span className="mr-2 flex shrink-0 items-center text-accent">
-								<File size={14} />
-							</span>
-							<span className="truncate text-body-sm text-ink">
-								{getFileName(file)}
-							</span>
-						</div>
-					)}
+					{/* Neutral, not accent. A conversation can carry a dozen of these
+					 * and § 2 budgets the accent at about three spends per screen —
+					 * the file glyph is identification, not an action. */}
+					<File className="size-4 shrink-0 text-ink-dim" aria-hidden={true} />
+					<span className="truncate text-body-sm text-ink">
+						{getFileName(file)}
+					</span>
 				</button>
 				{isLocalFile && (
-					<div className="file-actions-menu invisible ml-2 opacity-0 transition-[opacity,visibility] duration-fast ease-out-quart group-hover:visible group-hover:opacity-100">
+					<div className="file-actions-menu invisible opacity-0 transition-[opacity,visibility] duration-fast ease-out-quart group-hover:visible group-hover:opacity-100">
 						<FileActionsMenu
 							filePath={normalizedPath}
 							tooltip="File actions"

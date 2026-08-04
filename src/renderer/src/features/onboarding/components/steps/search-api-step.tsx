@@ -107,9 +107,9 @@ export const SearchApiStep: FC = () => {
 	return (
 		<div className="flex flex-col gap-6">
 			<p className="text-body text-ink-muted">
-				With a search key, agents can look things up as they work — current
-				prices, recent news, documentation — instead of relying on what the
-				model already knows. You can skip this and add it later in Settings.
+				With a search key, agents can look things up while they work — today's
+				prices, this week's news — instead of relying on what the model already
+				knows. Skip it and add one later if you prefer.
 			</p>
 
 			<div className="flex flex-col gap-5">
@@ -125,7 +125,7 @@ export const SearchApiStep: FC = () => {
 					>
 						<SelectTrigger
 							id={PROVIDER_SELECT_ID}
-							className="h-9.5 text-body"
+							selectSize="lg"
 							aria-describedby={
 								selectedCredentialInfo ? PROVIDER_HELP_ID : undefined
 							}

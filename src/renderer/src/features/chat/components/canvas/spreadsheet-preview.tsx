@@ -61,11 +61,17 @@ const SPREADSHEET_THEME = themeQuartz.withPart(iconSetQuartz).withParams({
 	browserColorScheme: "inherit",
 
 	// Type: chrome in the app's sans, cell data in the machine voice.
+	//
+	// The header was `text-body` (14px) over `text-mono-sm` (12px) data — the
+	// column label set larger than the number under it, which reads as though
+	// the labels are the content. Chrome never out-sizes data, so the header
+	// drops to the caption step and carries its weight in the font instead.
 	fontFamily: "var(--font-sans)",
 	headerFontFamily: "var(--font-sans)",
 	cellFontFamily: "var(--font-mono)",
 	fontSize: "var(--text-meta)",
-	headerFontSize: "var(--text-body)",
+	headerFontSize: "var(--text-meta)",
+	headerFontWeight: "600",
 	dataFontSize: "var(--text-mono-sm)",
 
 	// Sort, filter and menu icons.
@@ -121,9 +127,27 @@ const SPREADSHEET_THEME = themeQuartz.withPart(iconSetQuartz).withParams({
 	wrapperBorder: false,
 	wrapperBorderRadius: 0,
 	borderRadius: "var(--radius-sm)",
-	spacing: 8,
+
+	// Density. ag-grid's stock 36px row at 12px mono is 24px of padding around
+	// 12px of data — a table of two-word cells reading as a list of cards.
+	// Numbers' and Airtable's compact rows sit at 24-32px; 32 keeps a
+	// comfortable click target, stays on the 4px ramp, and shows four more rows
+	// per screen in a panel where vertical space is the scarce thing.
+	//
+	// The header is one ramp step taller than a row rather than identical to
+	// it. Equal heights gave the header no presence at all; the extra 4px plus
+	// the sunken ground is what makes it read as the edge of the data.
+	spacing: 6,
 	headerHeight: 36,
-	rowHeight: 36,
+	rowHeight: 32,
+
+	// Vertical rules. A sheet of numbers with only horizontal lines makes the
+	// eye track across rows when the question is almost always about a column.
+	// The header's rules are full-height so the columns start at a hard edge.
+	columnBorder: "solid 1px var(--color-hairline)",
+	headerColumnBorder: "solid 1px var(--color-hairline)",
+	headerColumnBorderHeight: "100%",
+	headerRowBorder: "solid 1px var(--color-hairline)",
 });
 
 const SpreadsheetPreviewComponent: FC<SpreadsheetPreviewProps> = ({
@@ -345,13 +369,21 @@ const SpreadsheetPreviewComponent: FC<SpreadsheetPreviewProps> = ({
 			return [];
 		}
 		const firstRow = sheetsData[activeSheetName][0];
-		return Object.keys(firstRow).map((key) => ({
-			field: key,
-			headerName: key,
-			editable: true,
-			sortable: true,
-			filter: true,
-		}));
+		return Object.keys(firstRow).map((key) => {
+			// Numbers right-align so their digits line up by place value; that is
+			// the whole reason a spreadsheet is readable at a glance, and it was
+			// the difference between this grid and a considered one. The header
+			// follows the cells, or the label floats away from its column.
+			const isNumeric = typeof firstRow[key] === "number";
+			return {
+				field: key,
+				headerName: key,
+				editable: true,
+				sortable: true,
+				filter: true,
+				type: isNumeric ? "numericColumn" : undefined,
+			};
+		});
 	}, [activeSheetName, sheetsData]);
 
 	return (

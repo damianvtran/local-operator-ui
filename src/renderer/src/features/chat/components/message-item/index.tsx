@@ -27,14 +27,15 @@ import {
 	createLocalOperatorClient,
 } from "@shared/api/local-operator";
 import { apiConfig } from "@shared/config";
-import { cn } from "@shared/lib/utils";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
+import { showErrorToast } from "@shared/utils/toast-manager";
 import { type FC, memo, useCallback, useEffect } from "react";
 import type { CanvasDocument } from "../../types/canvas";
 import type { Message } from "../../types/message";
 import { getFileTypeFromPath } from "../../utils/file-types";
 import { getFileName } from "../../utils/get-file-name";
+import { isMessageHidden } from "../../utils/message-grouping";
 import {
 	AgentQuestion,
 	AgentReasoning,
@@ -48,7 +49,6 @@ import { ErrorBlock } from "./error-block";
 import { FileAttachment } from "./file-attachment";
 import { ImageAttachment } from "./image-attachment";
 import { LogBlock } from "./log-block";
-import { MessageAvatar } from "./message-avatar";
 import { MessageContainer } from "./message-container";
 import { MessageContent } from "./message-content";
 import { MessageControls } from "./message-controls";
@@ -69,6 +69,11 @@ export type MessageItemProps = {
 	onMessageComplete?: () => void;
 	isLastMessage: boolean;
 	isSmallView?: boolean;
+	/**
+	 * The row opens an agent turn and carries the avatar. Computed by the
+	 * grouping pass in `messages-view` so a hidden record never takes it.
+	 */
+	isTurnStart?: boolean;
 };
 
 /**
@@ -174,6 +179,7 @@ export const MessageItem: FC<MessageItemProps> = memo(
 		conversationId,
 		currentExecution,
 		isSmallView,
+		isTurnStart = false,
 	}) => {
 		const addMentionedFilesBatch = useCanvasStore(
 			(s) => s.addMentionedFilesBatch,
@@ -237,20 +243,16 @@ export const MessageItem: FC<MessageItemProps> = memo(
 				}
 			} catch (error) {
 				console.error("Error opening file:", error);
-
-				alert(
-					`Unable to open file: ${filePath}. The file may be incomplete, deleted, or moved.`,
+				// A native `alert()` is a modal the user has to dismiss before they
+				// can do anything else, for a failure they did not cause and cannot
+				// act on from the dialog. A user-initiated action that fails is
+				// exactly what a toast is for; see `error-view` for the other half
+				// of the policy.
+				showErrorToast(
+					`Could not open ${getFileName(filePath)}. The file may have been moved, renamed, or deleted.`,
 				);
 			}
 		}, []);
-
-		const isMessageContentEmpty =
-			!message.message &&
-			(!message.files || message.files.length === 0) &&
-			!message.code &&
-			!message.stdout &&
-			!message.stderr &&
-			!message.logging;
 
 		const isUser = message.role === "user";
 		const executionType = message.execution_type;
@@ -259,26 +261,11 @@ export const MessageItem: FC<MessageItemProps> = memo(
 		const isSecurity = executionType === "security_check";
 		const isReasoning =
 			executionType === "plan" || executionType === "reflection";
-		const isActionish = isTrace || isReasoning || isSecurity;
 
-		// ASK/DONE action records of a conversation task duplicate the paired
-		// response record (the response is where the question/answer lives), so
-		// they render nothing. Empty completed records also render nothing
-		// unless they carry operational content of their own.
-		const shouldHide =
-			((message.action === "DONE" || message.action === "ASK") &&
-				executionType === "action" &&
-				message.task_classification === "conversation") ||
-			(isMessageContentEmpty && message.is_complete && !isActionish);
-
-		if (shouldHide) {
-			return null;
-		}
-
-		// Reasoning turns are the fifth tier of § 7 and stay hidden unless the
-		// preference is on. When hidden they render nothing at all — a
-		// collapsed disclosure would still be chrome on every turn.
-		if (isReasoning && !showAgentReasoning) {
+		// The suppression rules live with the grouping pass, because the two
+		// have to agree exactly: a record that renders nothing here must not
+		// consume the turn's avatar or leave its gap behind in the list.
+		if (isMessageHidden(message, showAgentReasoning)) {
 			return null;
 		}
 
@@ -351,8 +338,11 @@ export const MessageItem: FC<MessageItemProps> = memo(
 		// wiring as any other assistant message.
 		if (isQuestion) {
 			return (
-				<MessageContainer isUser={false} isSmallView={isSmallView}>
-					{!isSmallView && <MessageAvatar isUser={false} />}
+				<MessageContainer
+					isUser={false}
+					isSmallView={isSmallView}
+					showAvatar={isTurnStart}
+				>
 					<MessagePaper
 						isUser={false}
 						content={message.message}
@@ -371,9 +361,9 @@ export const MessageItem: FC<MessageItemProps> = memo(
 		}
 
 		// ---------------------------------------------------------- 3 (5).
-		// A completed action is one line. data-lo-trace plus the sibling rule
-		// collapse the list gap between adjacent trace rows, so a run of
-		// actions reads as one quiet block rather than spaced entries.
+		// A completed action is one line. Adjacent trace rows are pulled to the
+		// 4px tier by the grouping pass in `messages-view`, so a run of actions
+		// reads as one quiet block rather than as spaced entries.
 		if (isTrace) {
 			const stdout = currentExecution?.stdout ?? message.stdout;
 			const stderr = currentExecution?.stderr ?? message.stderr;
@@ -406,7 +396,7 @@ export const MessageItem: FC<MessageItemProps> = memo(
 					{stderr && <ErrorBlock error={stderr} isUser={isUser} />}
 					{logging && <LogBlock log={logging} isUser={isUser} />}
 					{message.id && message.timestamp && (
-						<div className="mt-2 flex items-center justify-between gap-2">
+						<div className="flex items-center justify-between gap-2 pt-1">
 							<MessageControls
 								inline
 								isUser={isUser}
@@ -414,12 +404,7 @@ export const MessageItem: FC<MessageItemProps> = memo(
 								messageId={message.id}
 								agentId={conversationId}
 							/>
-							<MessageTimestamp
-								inline
-								timestamp={message.timestamp}
-								isUser={isUser}
-								isSmallView={isSmallView}
-							/>
+							<MessageTimestamp timestamp={message.timestamp} />
 						</div>
 					)}
 				</>
@@ -435,20 +420,10 @@ export const MessageItem: FC<MessageItemProps> = memo(
 			);
 
 			return (
-				<div
-					data-lo-trace={true}
-					className={cn(
-						// The negative margin exactly cancels the messages-view row
-						// gap between adjacent trace rows, and the attribute selector
-						// scopes it to rows that follow a trace row. The gap comes
-						// from the `isSmallView` prop, not the viewport, so the
-						// compensation keys off the same prop.
-						isSmallView
-							? "[[data-lo-trace]+&]:-mt-2"
-							: "[[data-lo-trace]+&]:-mt-4",
-						"w-full",
-						!isSmallView && "pl-14",
-					)}
+				<MessageContainer
+					isUser={false}
+					isSmallView={isSmallView}
+					showAvatar={isTurnStart}
 				>
 					<TraceLine
 						action={message.action}
@@ -460,7 +435,7 @@ export const MessageItem: FC<MessageItemProps> = memo(
 						details={hasDetail ? technicalDetail : undefined}
 					/>
 					{renderMedia}
-				</div>
+				</MessageContainer>
 			);
 		}
 
@@ -474,10 +449,14 @@ export const MessageItem: FC<MessageItemProps> = memo(
 				.join("\n\n");
 
 			return (
-				<div className={cn("w-full", !isSmallView && "pl-14")}>
+				<MessageContainer
+					isUser={false}
+					isSmallView={isSmallView}
+					showAvatar={isTurnStart}
+				>
 					<AgentReasoning content={reasoningText || undefined} />
 					{files.length > 0 && <div className="mt-2">{renderMedia}</div>}
-				</div>
+				</MessageContainer>
 			);
 		}
 
@@ -502,24 +481,13 @@ export const MessageItem: FC<MessageItemProps> = memo(
 				) : undefined;
 
 			return (
-				<MessageContainer isUser={false} isSmallView={isSmallView}>
-					{!isSmallView && <MessageAvatar isUser={false} />}
-					<div
-						className={cn(
-							"group relative flex w-full flex-col",
-							isSmallView ? "" : "w-[calc(100%-56px)]",
-						)}
-					>
-						<SecurityNotice content={message.message} details={details} />
-						{files.length > 0 && <div className="mt-2">{renderMedia}</div>}
-						{message.id && message.timestamp && (
-							<MessageTimestamp
-								timestamp={message.timestamp}
-								isUser={false}
-								isSmallView={isSmallView}
-							/>
-						)}
-					</div>
+				<MessageContainer
+					isUser={false}
+					isSmallView={isSmallView}
+					showAvatar={isTurnStart}
+				>
+					<SecurityNotice content={message.message} details={details} />
+					{files.length > 0 && <div className="mt-2">{renderMedia}</div>}
 				</MessageContainer>
 			);
 		}
@@ -548,9 +516,8 @@ export const MessageItem: FC<MessageItemProps> = memo(
 			<MessageContainer
 				isUser={isUser}
 				isSmallView={isSmallView}
-				compact={Boolean(message.action)}
+				showAvatar={isTurnStart}
 			>
-				{!isSmallView && <MessageAvatar isUser={isUser} />}
 				<MessagePaper
 					isUser={isUser}
 					content={message.message}
@@ -578,13 +545,6 @@ export const MessageItem: FC<MessageItemProps> = memo(
 						</Disclosure>
 					)}
 					{isUser && technicalBlocks}
-					{isUser && (
-						<MessageTimestamp
-							timestamp={message.timestamp}
-							isUser={isUser}
-							isSmallView={isSmallView}
-						/>
-					)}
 				</MessagePaper>
 			</MessageContainer>
 		);

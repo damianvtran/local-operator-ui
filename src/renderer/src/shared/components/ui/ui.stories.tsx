@@ -290,6 +290,68 @@ const Buttons = () => (
 	</div>
 );
 
+/**
+ * The three radii in one frame, at the sizes they are actually used at.
+ *
+ * Each tier is defensible on its own and the set is only defensible together:
+ * a 6px control beside a 10px panel beside a 14px card has to read as three
+ * deliberate tiers rather than as three people's preferences. Screenshotting
+ * them apart is how a radius ramp drifts.
+ */
+const RadiusTiers = () => (
+	<div className="flex flex-wrap items-start gap-6">
+		<div className="flex flex-col gap-1.5">
+			<span className="font-mono text-ink-dim text-mono-sm">control · 6</span>
+			<div className="flex items-center gap-2">
+				<Button variant="secondary">Run</Button>
+				<Input className="w-40" placeholder="invoices/march.csv" />
+			</div>
+		</div>
+		<div className="flex flex-col gap-1.5">
+			<span className="font-mono text-ink-dim text-mono-sm">panel · 10</span>
+			<div className="w-52 rounded-md border border-hairline bg-elevated p-1 shadow-overlay">
+				<div className="rounded-sm bg-accent-wash px-2 py-1.5 text-body-sm text-ink">
+					Duplicate
+				</div>
+				<div className="px-2 py-1.5 text-body-sm text-ink">Rename</div>
+			</div>
+		</div>
+		<div className="flex flex-col gap-1.5">
+			<span className="font-mono text-ink-dim text-mono-sm">
+				card, dialog · 14
+			</span>
+			<div className="w-64 rounded-lg border border-hairline bg-surface p-4">
+				<p className="text-heading text-ink">March invoices</p>
+				<p className="text-ink-muted text-meta">Sorted, totalled, saved.</p>
+			</div>
+		</div>
+	</div>
+);
+
+/**
+ * The case the dense focus offset exists for: nineteen 28px controls in one
+ * row. At the base 2px offset the ring bleeds 4px and lands on both
+ * neighbours; the third button carries a faked ring so a screenshot shows it.
+ */
+const DenseToolbar = () => (
+	<div className="inline-flex items-center gap-1 rounded-sm border border-hairline bg-surface p-1">
+		{[Copy, Settings, Plus, Trash2, Check, ChevronDown].map((Icon, index) => (
+			<Button
+				// biome-ignore lint/suspicious/noArrayIndexKey: fixed demo row, no reordering
+				key={index}
+				variant="ghost"
+				size="icon-sm"
+				aria-label={`Action ${index + 1}`}
+				className={
+					index === 2 ? "outline-2 outline-accent outline-offset-1" : undefined
+				}
+			>
+				<Icon aria-hidden="true" />
+			</Button>
+		))}
+	</div>
+);
+
 const Fields = () => (
 	<div className="grid max-w-3xl grid-cols-2 gap-4">
 		<div className="flex flex-col gap-1.5">
@@ -302,7 +364,7 @@ const Fields = () => (
 		</div>
 		<div className="flex flex-col gap-1.5">
 			<Label htmlFor="field-lg">Large</Label>
-			<Input id="field-lg" inputSize="lg" placeholder="38px" />
+			<Input id="field-lg" inputSize="lg" placeholder="36px" />
 		</div>
 		<div className="flex flex-col gap-1.5">
 			<Label htmlFor="field-value">With a value</Label>
@@ -365,6 +427,44 @@ const Fields = () => (
 					<SelectItem value="none">Nothing here</SelectItem>
 				</SelectContent>
 			</Select>
+		</div>
+		{/* The three trigger sizes beside the three field sizes above: this pair
+		    of rows is the whole claim that a select and an input are the same
+		    object to the person filling in the form. */}
+		<div className="col-span-2 flex items-end gap-3">
+			<div className="flex flex-1 flex-col gap-1.5">
+				<Label htmlFor="field-select-sm">Select, 28px</Label>
+				<Select>
+					<SelectTrigger id="field-select-sm" selectSize="sm">
+						<SelectValue placeholder="Small" />
+					</SelectTrigger>
+					<SelectContent>
+						<SelectItem value="a">Small</SelectItem>
+					</SelectContent>
+				</Select>
+			</div>
+			<div className="flex flex-1 flex-col gap-1.5">
+				<Label htmlFor="field-select-md">Select, 32px</Label>
+				<Select>
+					<SelectTrigger id="field-select-md" selectSize="md">
+						<SelectValue placeholder="Medium" />
+					</SelectTrigger>
+					<SelectContent>
+						<SelectItem value="a">Medium</SelectItem>
+					</SelectContent>
+				</Select>
+			</div>
+			<div className="flex flex-1 flex-col gap-1.5">
+				<Label htmlFor="field-select-lg">Select, 36px</Label>
+				<Select>
+					<SelectTrigger id="field-select-lg" selectSize="lg">
+						<SelectValue placeholder="Large" />
+					</SelectTrigger>
+					<SelectContent>
+						<SelectItem value="a">Large</SelectItem>
+					</SelectContent>
+				</Select>
+			</div>
 		</div>
 		<div className="col-span-2 flex flex-col gap-1.5">
 			<Label htmlFor="field-textarea">Textarea</Label>
@@ -1022,6 +1122,18 @@ export const AllPrimitives: Story = {
 					note="6 variants x 4 sizes, plus icon sizes, disabled and focus."
 				>
 					<Buttons />
+				</Section>
+				<Section
+					title="Radius tiers"
+					note="Controls 6, floating panels 10, cards and dialogs 14 — together, because that is the only way the set can be judged."
+				>
+					<RadiusTiers />
+				</Section>
+				<Section
+					title="Dense toolbar"
+					note="icon-sm at 4px gaps, with the focus offset pulled to 1px. The third control shows the ring."
+				>
+					<DenseToolbar />
 				</Section>
 				<Section
 					title="Fields"

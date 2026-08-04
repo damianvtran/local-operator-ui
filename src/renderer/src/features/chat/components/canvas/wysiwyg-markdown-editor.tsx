@@ -5,7 +5,15 @@ import {
 import type { EditDiff } from "@shared/api/local-operator/types";
 import { FindReplaceWidget } from "@shared/components/common/find-replace-widget";
 import { TextSelectionControls } from "@shared/components/common/text-selection-controls";
-import { Button, Separator, Tooltip } from "@shared/components/ui";
+import {
+	Button,
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+	Tooltip,
+} from "@shared/components/ui";
 import { useDebounce } from "@shared/hooks/use-debounce";
 import { useDebouncedValue } from "@shared/hooks/use-debounced-value";
 import type { UndoManager } from "@shared/lib/undo-manager";
@@ -18,6 +26,7 @@ import {
 	AlignLeft,
 	AlignRight,
 	Bold,
+	Check,
 	CheckSquare,
 	Code,
 	Image,
@@ -26,6 +35,7 @@ import {
 	Link,
 	List,
 	ListOrdered,
+	MoreHorizontal,
 	Outdent,
 	Quote,
 	Redo,
@@ -193,10 +203,14 @@ const editorProseClasses = cn(
 	"[&_code]:rounded-xs [&_code]:bg-sunken [&_code]:bg-none [&_code]:p-0.5 [&_code]:font-mono [&_code]:text-mono-sm",
 	"[&_pre]:my-3 [&_pre]:overflow-auto [&_pre]:rounded-sm [&_pre]:bg-sunken [&_pre]:bg-none [&_pre]:p-3",
 	"[&_pre_code]:bg-transparent [&_pre_code]:p-0",
-	// Tables. The cell hairlines carry the structure, so there is no outer frame.
+	// Tables. Horizontal rules only: a full grid of cell borders turns a
+	// three-row table in a document into a spreadsheet embedded in prose, which
+	// is the wrong reading. The header earns a rule and semibold weight rather
+	// than a fill, so the table has no boxes at all.
 	"[&_table]:my-3 [&_table]:w-full [&_table]:border-collapse",
-	"[&_:is(th,td)]:border [&_:is(th,td)]:border-hairline [&_:is(th,td)]:px-2.5 [&_:is(th,td)]:py-1.5 [&_:is(th,td)]:text-left",
-	"[&_th]:bg-sunken [&_th]:font-semibold",
+	"[&_:is(th,td)]:border-hairline [&_:is(th,td)]:border-b [&_:is(th,td)]:py-1.5 [&_:is(th,td)]:pr-4 [&_:is(th,td)]:text-left [&_:is(th,td):last-child]:pr-0",
+	"[&_th]:font-semibold [&_th]:text-ink-muted",
+	"[&_tbody_tr:last-child_td]:border-b-0",
 	// Links and images.
 	"[&_a]:text-accent [&_a]:underline [&_a:hover]:text-accent-hover",
 	"[&_img]:my-2 [&_img]:h-auto [&_img]:max-w-full [&_img]:rounded-xs",
@@ -232,15 +246,31 @@ const ACTIVE_TOGGLE_CLASS =
 
 /**
  * The two toggle groups. Both render the same button with the same pressed
- * treatment, so they are data rather than fourteen near-identical JSX blocks.
+ * treatment, so they are data rather than near-identical JSX blocks.
+ *
+ * `TEXT_FORMATS` is split into the pair that stays on the bar and the pair
+ * that moves into the overflow menu. Bold and italic are the two markdown
+ * carries natively and the two everyone reaches for; underline has no
+ * markdown at all and strikethrough is an extension, so neither earns a
+ * permanent 28px of a panel that is 440px wide at its narrowest.
  */
-const TEXT_FORMATS = [
+const PRIMARY_TEXT_FORMATS = [
 	{ value: "bold", label: "Bold (Ctrl+B)", Icon: Bold },
 	{ value: "italic", label: "Italic (Ctrl+I)", Icon: Italic },
+] as const;
+
+const OVERFLOW_TEXT_FORMATS = [
 	{ value: "underline", label: "Underline (Ctrl+U)", Icon: Underline },
 	{ value: "strikethrough", label: "Strikethrough", Icon: Strikethrough },
 ] as const;
 
+/**
+ * Alignment lives in the overflow menu because it does not survive a save:
+ * `wysiwyg-utils` has no `text-align` handling in either direction, so an
+ * aligned paragraph round-trips through markdown as a plain one. Three
+ * permanent buttons for a setting the file cannot hold was the toolbar's most
+ * expensive piece of furniture.
+ */
 const ALIGNMENTS = [
 	{ value: "left", label: "Align left", Icon: AlignLeft },
 	{ value: "center", label: "Align center", Icon: AlignCenter },
@@ -278,6 +308,9 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 	});
 	const [isImageDialogOpen, setIsImageDialogOpen] = useState(false);
 	const [tableAnchorEl, setTableAnchorEl] = useState<HTMLElement | null>(null);
+	// The overflow menu's trigger doubles as the anchor for the table-size grid
+	// launched from inside that menu.
+	const overflowTriggerRef = useRef<HTMLButtonElement>(null);
 	const [showFindReplace, setShowFindReplace] = useState(false);
 	const [findReplaceMode, setFindReplaceMode] = useState<"find" | "replace">(
 		"find",
@@ -902,7 +935,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 	);
 
 	const handleAlignmentChange = useCallback(
-		(_: React.MouseEvent<HTMLElement>, newAlignment: string | null) => {
+		(newAlignment: string | null) => {
 			if (newAlignment) {
 				const commandMap: { [key: string]: string } = {
 					left: "justifyLeft",
@@ -989,13 +1022,15 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 		[executeCommand, handleContentChange],
 	);
 
-	// Insert table
-	const insertTable = useCallback((event: React.MouseEvent<HTMLElement>) => {
+	// Insert table. Takes the anchor rather than an event because the control
+	// that opens it is sometimes a menu item that unmounts as the menu closes,
+	// and a popover anchored to a removed node has nothing to position against.
+	const insertTable = useCallback((anchor: HTMLElement) => {
 		const selection = window.getSelection();
 		if (selection?.rangeCount) {
 			selectionRef.current = selection.getRangeAt(0).cloneRange();
 		}
-		setTableAnchorEl(event.currentTarget);
+		setTableAnchorEl(anchor);
 	}, []);
 
 	const handleInsertTable = useCallback(
@@ -1519,232 +1554,298 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 	return (
 		<div
 			className={cn(
-				"relative flex h-full w-full flex-col overflow-hidden bg-surface",
+				// A query container, so the toolbar can respond to how wide the
+				// canvas panel has been dragged rather than to the window. A
+				// viewport breakpoint is the wrong instrument inside a resizable
+				// dock: it reports 1440px while the panel is 400px.
+				"@container relative flex h-full w-full flex-col overflow-hidden bg-surface",
 			)}
 		>
+			{/*
+			 * The toolbar.
+			 *
+			 * It used to be nineteen controls in six groups behind five dividers,
+			 * on `flex-wrap`, which meant it silently became two rows at 720px and
+			 * was two rows at every width the panel actually opens at. A toolbar
+			 * that reflows is the "2010 word processor" tell, and the fix is not a
+			 * smaller gap — it is deciding which controls are worth permanent
+			 * space.
+			 *
+			 * Eight are: block type, bold, italic, the three list kinds, link, and
+			 * the overflow. Undo and redo pin to the right, because they act on
+			 * the document rather than on the selection and every drawing app from
+			 * Figma to Sketch reads left-to-right as tools-then-history. The other
+			 * eleven — underline, strikethrough, quote, code block, indent,
+			 * outdent, three alignments, image, table — sit one click away in a
+			 * single grouped menu, which is what Craft, Dropbox Paper and Linear's
+			 * editor all do rather than showing every command at once.
+			 *
+			 * `flex-nowrap`: at the panel's 400px minimum the bar must clip or
+			 * stack, and it does neither, because the list group steps out at
+			 * 520px and everything left fits inside 400.
+			 */}
 			<div
 				className={cn(
-					"flex min-h-12 flex-wrap items-center gap-0.5",
-					"border-hairline border-b bg-canvas px-2 py-1",
+					// Groups are 8px apart and members 4px apart — both tier-one
+					// values from the 4px ramp, so the rhythm alone carries the
+					// grouping and the five vertical rules that used to are gone.
+					"flex h-10 shrink-0 flex-nowrap items-center gap-2",
+					// `surface`, the document's own ground: the toolbar acts on what
+					// is below it, so it belongs to the document rather than to the
+					// panel chrome above. The hairline is what stops it reading as
+					// content.
+					"border-hairline border-b bg-surface px-2",
 				)}
 			>
-				{/* Text type */}
 				<TextStyleDropdown
 					currentTextType={currentTextType}
 					onTextTypeChange={handleTextTypeChange}
 				/>
 
-				<Separator orientation="vertical" className={cn("mx-1 h-6")} />
-
 				{/* Character formatting */}
-				{TEXT_FORMATS.map(({ value, label, Icon }) => {
-					const isActive = selectedFormats.includes(value);
-					return (
-						<Tooltip key={value} content={label}>
-							<Button
-								variant="ghost"
-								size="icon-sm"
-								aria-label={label}
-								aria-pressed={isActive}
-								onClick={() => handleFormatToggle(value)}
-								className={cn(isActive && ACTIVE_TOGGLE_CLASS)}
-							>
-								<Icon />
-							</Button>
+				<div className={cn("flex shrink-0 items-center gap-1")}>
+					{PRIMARY_TEXT_FORMATS.map(({ value, label, Icon }) => {
+						const isActive = selectedFormats.includes(value);
+						return (
+							<Tooltip key={value} content={label}>
+								<Button
+									variant="ghost"
+									size="icon-sm"
+									aria-label={label}
+									aria-pressed={isActive}
+									onClick={() => handleFormatToggle(value)}
+									className={cn(isActive && ACTIVE_TOGGLE_CLASS)}
+								>
+									<Icon />
+								</Button>
+							</Tooltip>
+						);
+					})}
+				</div>
+
+				{/*
+				 * Lists. Hidden below a 520px *panel* — a container query, not a
+				 * viewport one, because the canvas is a resizable dock and its
+				 * width has nothing to do with the size of the window. They stay
+				 * reachable in the overflow menu at every width, which is why the
+				 * menu lists them too.
+				 */}
+				<div
+					className={cn(
+						"flex shrink-0 items-center gap-1",
+						"@max-[520px]:hidden",
+					)}
+				>
+					<Tooltip content="Bullet list">
+						<Button
+							variant="ghost"
+							size="icon-sm"
+							aria-label="Bullet list"
+							onClick={() => toggleList("unordered")}
+						>
+							<List />
+						</Button>
+					</Tooltip>
+					<Tooltip content="Numbered list">
+						<Button
+							variant="ghost"
+							size="icon-sm"
+							aria-label="Numbered list"
+							onClick={() => toggleList("ordered")}
+						>
+							<ListOrdered />
+						</Button>
+					</Tooltip>
+					<Tooltip content="Checklist">
+						<Button
+							variant="ghost"
+							size="icon-sm"
+							aria-label="Checklist"
+							onClick={() => toggleList("task")}
+						>
+							<CheckSquare />
+						</Button>
+					</Tooltip>
+				</div>
+
+				<div className={cn("flex shrink-0 items-center gap-1")}>
+					<Tooltip content="Insert link">
+						<Button
+							variant="ghost"
+							size="icon-sm"
+							aria-label="Insert link"
+							onClick={insertLink}
+						>
+							<Link />
+						</Button>
+					</Tooltip>
+
+					{/* Everything else, grouped the way the menu reads */}
+					<DropdownMenu>
+						<Tooltip content="More formatting">
+							<DropdownMenuTrigger asChild>
+								<Button
+									ref={overflowTriggerRef}
+									variant="ghost"
+									size="icon-sm"
+									aria-label="More formatting"
+								>
+									<MoreHorizontal />
+								</Button>
+							</DropdownMenuTrigger>
 						</Tooltip>
-					);
-				})}
-
-				<Separator orientation="vertical" className={cn("mx-1 h-6")} />
-
-				{/* Lists, indentation and blocks */}
-				<Tooltip content="Bullet list">
-					<Button
-						variant="ghost"
-						size="icon-sm"
-						aria-label="Bullet list"
-						onClick={() => toggleList("unordered")}
-					>
-						<List />
-					</Button>
-				</Tooltip>
-				<Tooltip content="Numbered list">
-					<Button
-						variant="ghost"
-						size="icon-sm"
-						aria-label="Numbered list"
-						onClick={() => toggleList("ordered")}
-					>
-						<ListOrdered />
-					</Button>
-				</Tooltip>
-				<Tooltip content="Checkbox list">
-					<Button
-						variant="ghost"
-						size="icon-sm"
-						aria-label="Checkbox list"
-						onClick={() => toggleList("task")}
-					>
-						<CheckSquare />
-					</Button>
-				</Tooltip>
-				<Tooltip content="Indent">
-					<Button
-						variant="ghost"
-						size="icon-sm"
-						aria-label="Indent"
-						onClick={() => executeCommand("indent")}
-					>
-						<Indent />
-					</Button>
-				</Tooltip>
-				<Tooltip content="Outdent">
-					<Button
-						variant="ghost"
-						size="icon-sm"
-						aria-label="Outdent"
-						onClick={() => executeCommand("outdent")}
-					>
-						<Outdent />
-					</Button>
-				</Tooltip>
-				<Tooltip content="Quote">
-					<Button
-						variant="ghost"
-						size="icon-sm"
-						aria-label="Quote"
-						onClick={() => toggleBlockFormat("blockquote")}
-					>
-						<Quote />
-					</Button>
-				</Tooltip>
-				<Tooltip content="Code block">
-					<Button
-						variant="ghost"
-						size="icon-sm"
-						aria-label="Code block"
-						onClick={() => toggleBlockFormat("pre")}
-					>
-						<Code />
-					</Button>
-				</Tooltip>
-
-				<Separator orientation="vertical" className={cn("mx-1 h-6")} />
-
-				{/* Alignment */}
-				{ALIGNMENTS.map(({ value, label, Icon }) => {
-					const isActive = currentAlignment === value;
-					return (
-						<Tooltip key={value} content={label}>
-							<Button
-								variant="ghost"
-								size="icon-sm"
-								aria-label={label}
-								aria-pressed={isActive}
-								onClick={(event) => handleAlignmentChange(event, value)}
-								className={cn(isActive && ACTIVE_TOGGLE_CLASS)}
+						<DropdownMenuContent align="start" className={cn("w-52")}>
+							{OVERFLOW_TEXT_FORMATS.map(({ value, label, Icon }) => (
+								<DropdownMenuItem
+									key={value}
+									onSelect={() => handleFormatToggle(value)}
+								>
+									<Icon aria-hidden="true" />
+									{label}
+								</DropdownMenuItem>
+							))}
+							<DropdownMenuSeparator />
+							<DropdownMenuItem onSelect={() => toggleList("unordered")}>
+								<List aria-hidden="true" />
+								Bullet list
+							</DropdownMenuItem>
+							<DropdownMenuItem onSelect={() => toggleList("ordered")}>
+								<ListOrdered aria-hidden="true" />
+								Numbered list
+							</DropdownMenuItem>
+							<DropdownMenuItem onSelect={() => toggleList("task")}>
+								<CheckSquare aria-hidden="true" />
+								Checklist
+							</DropdownMenuItem>
+							<DropdownMenuSeparator />
+							<DropdownMenuItem
+								onSelect={() => toggleBlockFormat("blockquote")}
 							>
-								<Icon />
-							</Button>
-						</Tooltip>
-					);
-				})}
+								<Quote aria-hidden="true" />
+								Quote
+							</DropdownMenuItem>
+							<DropdownMenuItem onSelect={() => toggleBlockFormat("pre")}>
+								<Code aria-hidden="true" />
+								Code block
+							</DropdownMenuItem>
+							<DropdownMenuItem onSelect={() => executeCommand("indent")}>
+								<Indent aria-hidden="true" />
+								Indent
+							</DropdownMenuItem>
+							<DropdownMenuItem onSelect={() => executeCommand("outdent")}>
+								<Outdent aria-hidden="true" />
+								Outdent
+							</DropdownMenuItem>
+							<DropdownMenuSeparator />
+							<DropdownMenuItem onSelect={insertImage}>
+								<Image aria-hidden="true" />
+								Insert image
+							</DropdownMenuItem>
+							<DropdownMenuItem
+								onSelect={() => {
+									// The menu item is gone by the time the popover mounts,
+									// so the table grid hangs off the trigger that opened
+									// the menu.
+									if (overflowTriggerRef.current) {
+										insertTable(overflowTriggerRef.current);
+									}
+								}}
+							>
+								<Table aria-hidden="true" />
+								Insert table
+							</DropdownMenuItem>
+							<DropdownMenuSeparator />
+							{ALIGNMENTS.map(({ value, label, Icon }) => (
+								<DropdownMenuItem
+									key={value}
+									onSelect={() => handleAlignmentChange(value)}
+								>
+									<Icon aria-hidden="true" />
+									{label}
+									{currentAlignment === value && (
+										<Check
+											aria-hidden="true"
+											className={cn("ml-auto text-accent")}
+										/>
+									)}
+								</DropdownMenuItem>
+							))}
+						</DropdownMenuContent>
+					</DropdownMenu>
+				</div>
 
-				<Separator orientation="vertical" className={cn("mx-1 h-6")} />
-
-				{/* Insert */}
-				<Tooltip content="Insert link">
-					<Button
-						variant="ghost"
-						size="icon-sm"
-						aria-label="Insert link"
-						onClick={insertLink}
-					>
-						<Link />
-					</Button>
-				</Tooltip>
-				<Tooltip content="Insert image">
-					<Button
-						variant="ghost"
-						size="icon-sm"
-						aria-label="Insert image"
-						onClick={insertImage}
-					>
-						<Image />
-					</Button>
-				</Tooltip>
-				<Tooltip content="Insert table">
-					<Button
-						variant="ghost"
-						size="icon-sm"
-						aria-label="Insert table"
-						onClick={insertTable}
-					>
-						<Table />
-					</Button>
-				</Tooltip>
-
-				<Separator orientation="vertical" className={cn("mx-1 h-6")} />
-
-				{/* History */}
-				<Tooltip content="Undo (Ctrl+Z)">
-					<Button
-						variant="ghost"
-						size="icon-sm"
-						aria-label="Undo"
-						onClick={() => {
-							if (undoManagerRef.current?.canUndo()) {
-								undoManagerRef.current.undo();
-								// Update content state after undo
-								if (editorRef.current) {
-									const htmlContent = editorRef.current.innerHTML;
-									const markdownContent = htmlToMarkdown(htmlContent);
-									setContent(markdownContent);
-									setHasUserChanges(true);
+				{/* History: document-scoped, so it sits opposite the selection tools */}
+				<div className={cn("ml-auto flex shrink-0 items-center gap-1")}>
+					<Tooltip content="Undo (Ctrl+Z)">
+						<Button
+							variant="ghost"
+							size="icon-sm"
+							aria-label="Undo"
+							onClick={() => {
+								if (undoManagerRef.current?.canUndo()) {
+									undoManagerRef.current.undo();
+									// Update content state after undo
+									if (editorRef.current) {
+										const htmlContent = editorRef.current.innerHTML;
+										const markdownContent = htmlToMarkdown(htmlContent);
+										setContent(markdownContent);
+										setHasUserChanges(true);
+									}
+									setCanUndo(undoManagerRef.current.canUndo());
+									setCanRedo(undoManagerRef.current.canRedo());
 								}
-								setCanUndo(undoManagerRef.current.canUndo());
-								setCanRedo(undoManagerRef.current.canRedo());
-							}
-						}}
-						disabled={!canUndo}
-					>
-						<Undo />
-					</Button>
-				</Tooltip>
-				<Tooltip content="Redo (Ctrl+Shift+Z)">
-					<Button
-						variant="ghost"
-						size="icon-sm"
-						aria-label="Redo"
-						onClick={() => {
-							if (undoManagerRef.current?.canRedo()) {
-								undoManagerRef.current.redo();
-								// Update content state after redo
-								if (editorRef.current) {
-									const htmlContent = editorRef.current.innerHTML;
-									const markdownContent = htmlToMarkdown(htmlContent);
-									setContent(markdownContent);
-									setHasUserChanges(true);
+							}}
+							disabled={!canUndo}
+						>
+							<Undo />
+						</Button>
+					</Tooltip>
+					<Tooltip content="Redo (Ctrl+Shift+Z)">
+						<Button
+							variant="ghost"
+							size="icon-sm"
+							aria-label="Redo"
+							onClick={() => {
+								if (undoManagerRef.current?.canRedo()) {
+									undoManagerRef.current.redo();
+									// Update content state after redo
+									if (editorRef.current) {
+										const htmlContent = editorRef.current.innerHTML;
+										const markdownContent = htmlToMarkdown(htmlContent);
+										setContent(markdownContent);
+										setHasUserChanges(true);
+									}
+									setCanUndo(undoManagerRef.current.canUndo());
+									setCanRedo(undoManagerRef.current.canRedo());
 								}
-								setCanUndo(undoManagerRef.current.canUndo());
-								setCanRedo(undoManagerRef.current.canRedo());
-							}
-						}}
-						disabled={!canRedo}
-					>
-						<Redo />
-					</Button>
-				</Tooltip>
+							}}
+							disabled={!canRedo}
+						>
+							<Redo />
+						</Button>
+					</Tooltip>
+				</div>
 			</div>
 
 			<div
 				ref={editorContentRef}
 				className={cn(
-					"flex-1 overflow-y-auto bg-surface p-8",
+					// 24px at the panel's narrowest, 32px once there is room. The old
+					// flat 32px took 64px of a 400px panel.
+					"flex-1 overflow-y-auto bg-surface px-6 py-6 @min-[560px]:px-8 @min-[560px]:py-8",
 					editorProseClasses,
 				)}
 			>
-				<div className={cn("relative")} ref={relativeContainerRef}>
+				{/*
+				 * A measure, not a full-bleed column. Dragged wide the panel is
+				 * 1200px, and 14px body text set across 1136px is about 140
+				 * characters a line — unreadable in the way a document nobody
+				 * measured always is. 640px lands at roughly 80.
+				 */}
+				<div
+					className={cn("relative mx-auto w-full max-w-160")}
+					ref={relativeContainerRef}
+				>
 					<div
 						ref={editorRef}
 						contentEditable={!reviewState}

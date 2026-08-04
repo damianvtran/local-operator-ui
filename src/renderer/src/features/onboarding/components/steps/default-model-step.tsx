@@ -211,7 +211,7 @@ export const DefaultModelStep: FC = () => {
 						>
 							<SelectTrigger
 								id={PROVIDER_SELECT_ID}
-								className="h-9.5 text-body"
+								selectSize="lg"
 								aria-describedby={PROVIDER_HELP_ID}
 							>
 								<SelectValue placeholder="Select a provider" />
@@ -247,7 +247,7 @@ export const DefaultModelStep: FC = () => {
 							>
 								<SelectTrigger
 									id={MODEL_SELECT_ID}
-									className="h-9.5 text-body"
+									selectSize="lg"
 									aria-describedby={MODEL_HELP_ID}
 								>
 									<SelectValue

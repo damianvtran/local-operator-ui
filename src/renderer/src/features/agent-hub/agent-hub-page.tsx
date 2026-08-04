@@ -40,13 +40,14 @@ export const AgentHubPage: React.FC = () => {
 	};
 
 	return (
-		<div className="flex h-full flex-col p-6">
+		/* `gap-8`: `PageHeader` no longer ships its own bottom margin. */
+		<div className="flex h-full flex-col gap-8 p-6">
 			<PageHeader
 				title="Agent Hub"
 				subtitle="Discover and download community agents on Radient"
 				icon={Store}
 			/>
-			<div className="mt-2 flex min-h-0 flex-1 flex-row overflow-hidden">
+			<div className="flex min-h-0 flex-1 flex-row overflow-hidden">
 				{/* The category rail is hidden below the first grid breakpoint,
 				    where the cards are already full-width. */}
 				<div

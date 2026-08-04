@@ -168,8 +168,10 @@ export const CreateFileDialog: FC<CreateFileDialogProps> = ({
 				 * Deliberately not a `form`: `DirectoryIndicator` contains its own
 				 * text field, and Enter in a nested field would submit this one.
 				 */}
-				<div className={cn("pt-2")}>
-					<div className={cn("mb-4")}>
+				{/* `gap-4`, not child margins: `SearchableSelect` no longer ships an
+				    outer margin, because the container owns the gap. */}
+				<div className={cn("flex flex-col gap-4 pt-2")}>
+					<div>
 						<Label htmlFor="create-file-name" className={cn(FIELD_LABEL_CLASS)}>
 							<File size={16} aria-hidden="true" />
 							File name

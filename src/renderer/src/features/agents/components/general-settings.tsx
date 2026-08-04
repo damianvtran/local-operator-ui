@@ -96,9 +96,11 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 	return (
 		/*
 		 * No outer margin: the settings shell owns the gap between panes, so a
-		 * margin here would stack with it on this one pane only.
+		 * margin here would stack with it on this one pane only. Inside, the same
+		 * rule applies one level down — `gap-4` between fields, because the field
+		 * components no longer carry a bottom margin of their own.
 		 */
-		<div>
+		<div className="flex flex-col gap-4">
 			<EditableField
 				value={selectedAgent.name}
 				label="Agent name"
@@ -132,13 +134,8 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 				}}
 			/>
 
-			{/*
-			 * Hosting and model sit side by side from `md` up. Vertical rhythm comes
-			 * from each field's own root margin rather than a row gap, because the
-			 * field components own their bottom spacing and a `gap-4` here would
-			 * double it.
-			 */}
-			<div className="grid gap-x-4 md:grid-cols-2">
+			{/* Hosting and model sit side by side from `md` up. */}
+			<div className="grid gap-4 md:grid-cols-2">
 				{/* The tour matches this tag by value; it must survive verbatim. */}
 				<div data-tour-tag="agent-settings-hosting-select">
 					<HostingSelect
@@ -235,14 +232,17 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 						 * not move the layout. It is intentionally not interactive: there
 						 * is nothing to choose until hosting is set.
 						 */
-						<div className="relative mb-4">
+						<div className="relative">
 							<Tooltip content="Select a hosting provider first, and then select the AI model that you want to use.  Each model has different capabilities and costs.  Recommended: Automatic">
 								<div className="mb-1.5 flex w-fit items-center gap-2 text-body-sm text-ink-muted">
 									<Bot size={16} aria-hidden="true" />
 									Model
 								</div>
 							</Tooltip>
-							<div className="flex h-8 w-full items-center rounded-md border border-control bg-surface px-3">
+							{/* `rounded-sm` because the real control it stands in for is an
+							    `Input`, and a placeholder with different corners tells you
+							    the layout moved when it did not. */}
+							<div className="flex h-8 w-full items-center rounded-sm border border-control bg-surface px-3">
 								<span className="truncate text-body-sm text-ink-disabled">
 									Select a hosting provider first...
 								</span>
@@ -252,12 +252,17 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 				</div>
 			</div>
 
-			<h2 className="flex items-center gap-2 text-heading text-ink">
+			{/*
+			 * A second grouping inside the pane, so it takes the between-components
+			 * tier above it rather than another gap-4: `mt-4` on top of the
+			 * container's `gap-4` makes 32px, the section tier.
+			 */}
+			<h2 className="mt-4 flex items-center gap-2 text-heading text-ink">
 				<Info size={16} className="shrink-0 text-ink-dim" />
 				Agent information
 			</h2>
 
-			<div className="mt-4">
+			<div className="flex flex-col gap-4">
 				<EditableField
 					value={selectedAgent.description || ""}
 					label="Description"

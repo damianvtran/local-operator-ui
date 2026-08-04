@@ -203,7 +203,7 @@ const AgentSelect: FC<{
 							aria-invalid={invalid || undefined}
 							autoComplete="off"
 							className="pr-8"
-							placeholder="Search or select an agent..."
+							placeholder="Search agents"
 							value={query}
 							onChange={(event) => {
 								setQuery(event.target.value);
@@ -267,7 +267,7 @@ const AgentSelect: FC<{
 								role="presentation"
 								className="px-2 py-1.5 text-body-sm text-ink-dim"
 							>
-								{loading ? "Loading agents..." : "No matching agents"}
+								{loading ? "Loading agents" : "No matching agents"}
 							</li>
 						)}
 						{options.map((option, index) => (
@@ -428,7 +428,7 @@ export const ScheduleFormDialog: FC<ScheduleFormDialogProps> = ({
 		}
 	};
 
-	const dialogTitle = isEditMode ? "Edit Schedule" : "Create New Schedule";
+	const dialogTitle = isEditMode ? "Edit schedule" : "New schedule";
 
 	const agentInvalid =
 		isAgentsError || (!isEditMode && !formData.selectedAgentId && isSubmitting);
@@ -455,10 +455,10 @@ export const ScheduleFormDialog: FC<ScheduleFormDialogProps> = ({
 				startIcon={isSubmitting ? <Spinner size="sm" /> : <Save size={18} />}
 			>
 				{isSubmitting
-					? "Saving..."
+					? "Saving"
 					: isEditMode
-						? "Save Changes"
-						: "Create Schedule"}
+						? "Save changes"
+						: "Create schedule"}
 			</PrimaryButton>
 		</>
 	);
@@ -481,16 +481,16 @@ export const ScheduleFormDialog: FC<ScheduleFormDialogProps> = ({
 						className="mt-0.5 shrink-0 text-info"
 					/>
 					<p className="text-body-sm text-ink-muted">
-						Tip: It is often easier to ask an agent through chat to do something
-						for you on a regular basis, like "Send me an email with the latest
-						news at 8am every day".
+						It is usually quicker to ask an agent in chat — "send me an email
+						with the latest news at 8am every day" — and it will set this up for
+						you.
 					</p>
 				</div>
 
 				{!isEditMode && (
 					<div className="col-span-2 flex flex-col gap-1.5">
 						<Label htmlFor="agent-select-for-schedule">
-							Select Agent <span className="text-danger">*</span>
+							Agent <span className="text-danger">*</span>
 						</Label>
 						<AgentSelect
 							options={agentOptions}
@@ -517,12 +517,12 @@ export const ScheduleFormDialog: FC<ScheduleFormDialogProps> = ({
 				)}
 				{isEditMode && initialData && (
 					<p className="col-span-2 text-body-sm text-ink-muted">
-						Editing schedule for Agent:{" "}
+						Runs as{" "}
 						<span className="font-medium text-ink">
 							{selectedAgentForForm?.name ||
-								`${initialData.agent_id.substring(0, 8)}...`}
-						</span>{" "}
-						(Agent cannot be changed)
+								`${initialData.agent_id.substring(0, 8)}…`}
+						</span>
+						. The agent cannot be changed after a schedule is created.
 					</p>
 				)}
 
@@ -558,7 +558,7 @@ export const ScheduleFormDialog: FC<ScheduleFormDialogProps> = ({
 						required
 						rows={3}
 						disabled={isSubmitting}
-						placeholder="e.g., Send me an email with a detailed world news breakdown..."
+						placeholder="Send me an email with a detailed world news breakdown"
 					/>
 				</div>
 
@@ -582,7 +582,7 @@ export const ScheduleFormDialog: FC<ScheduleFormDialogProps> = ({
 						}}
 						required
 						disabled={isSubmitting}
-						placeholder="e.g., 1"
+						placeholder="1"
 					/>
 				</div>
 
@@ -612,7 +612,7 @@ export const ScheduleFormDialog: FC<ScheduleFormDialogProps> = ({
 				</div>
 
 				<DateTimePicker
-					label="Start Time"
+					label="Start time"
 					value={formData.start_time_utc ?? null}
 					onChange={(newValue) =>
 						setFormData((prev) => ({ ...prev, start_time_utc: newValue }))
@@ -621,7 +621,7 @@ export const ScheduleFormDialog: FC<ScheduleFormDialogProps> = ({
 					helperText="If not set, starts immediately or on next interval."
 				/>
 				<DateTimePicker
-					label="End Time (Optional)"
+					label="End time (optional)"
 					value={formData.end_time_utc ?? null}
 					onChange={(newValue) =>
 						setFormData((prev) => ({ ...prev, end_time_utc: newValue }))
@@ -650,7 +650,7 @@ export const ScheduleFormDialog: FC<ScheduleFormDialogProps> = ({
 						}
 						disabled={isSubmitting}
 					/>
-					<Label htmlFor="one-time">One-time</Label>
+					<Label htmlFor="one-time">Run once</Label>
 				</div>
 			</div>
 		</BaseDialog>

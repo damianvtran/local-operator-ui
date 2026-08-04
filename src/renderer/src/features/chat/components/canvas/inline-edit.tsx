@@ -6,7 +6,7 @@ import type {
 } from "@shared/api/local-operator/types";
 import { KeyboardShortcut } from "@shared/components/common/keyboard-shortcut";
 import { Spinner } from "@shared/components/common/spinner";
-import { Button, Separator, Tooltip } from "@shared/components/ui";
+import { Button, Tooltip } from "@shared/components/ui";
 import { apiConfig } from "@shared/config";
 import { useConfig } from "@shared/hooks/use-config";
 import { useCredentials } from "@shared/hooks/use-credentials";
@@ -71,9 +71,17 @@ type InlineEditProps = {
  * earns `shadow-overlay`, on `elevated` above the editor's ground.
  */
 const POPOVER = cn(
-	"absolute z-[1300] box-border flex w-[500px] flex-col gap-3",
+	"absolute z-[1300] box-border flex flex-col gap-3",
 	"rounded-lg border border-hairline bg-elevated p-2 shadow-overlay outline-none",
 );
+
+/*
+ * The review bar is narrower than the prompt. The prompt is a text field and
+ * wants the room; the review bar sits on top of the very text it is asking you
+ * to judge, so every pixel of width is a pixel of the change it hides.
+ */
+const POPOVER_PROMPT_WIDTH = "w-125";
+const POPOVER_REVIEW_WIDTH = "w-90";
 
 /*
  * The shortcut caps carry their own 10px glyphs; the button's `[&_svg]:size-3.5`
@@ -452,15 +460,16 @@ export const InlineEdit: FC<InlineEditProps> = ({
 		onApplyChanges,
 	]);
 
-	const iconSize = 18;
-
 	const containerHeight = containerRef.current?.offsetHeight || 0;
 	const showAbove = position.top > containerHeight + 10;
 
 	return (
 		<div
 			ref={containerRef}
-			className={POPOVER}
+			className={cn(
+				POPOVER,
+				reviewState ? POPOVER_REVIEW_WIDTH : POPOVER_PROMPT_WIDTH,
+			)}
 			style={{
 				top: Math.max(0, position.top),
 				left: position.left,
@@ -469,111 +478,183 @@ export const InlineEdit: FC<InlineEditProps> = ({
 					: "translateY(8px)",
 			}}
 		>
-			<Tooltip content="Close">
-				<span className={cn("absolute right-2 top-2 z-[1301]")}>
-					<Button
-						variant="ghost"
-						size="icon-sm"
-						aria-label="Close"
-						onClick={handleXClick}
-						disabled={isLoading}
-					>
-						<X size={18} aria-hidden="true" />
-					</Button>
-				</span>
-			</Tooltip>
-
 			{reviewState ? (
-				<div
-					className={cn(
-						"flex min-h-16 flex-col justify-between gap-2 pb-2 pl-2 pr-4 pt-1",
-					)}
-				>
-					<p className={cn("grow text-body-sm text-ink-muted")}>
-						{prompt ||
-							`Reviewing changes (${reviewState.currentIndex + 1}/${
-								reviewState.diffs.length
-							})`}
-					</p>
-					<div className={cn("flex w-full items-center justify-end gap-1")}>
-						<Tooltip content="Previous">
-							<span>
-								<Button
-									variant="ghost"
-									size="icon-sm"
-									aria-label="Previous change"
-									onClick={() => onNavigateDiff("prev")}
-									disabled={reviewState.currentIndex === 0}
-								>
-									<ChevronLeft size={14} aria-hidden="true" />
-								</Button>
-							</span>
-						</Tooltip>
-						<Tooltip content="Next">
-							<span>
-								<Button
-									variant="ghost"
-									size="icon-sm"
-									aria-label="Next change"
-									onClick={() => onNavigateDiff("next")}
-									disabled={
-										reviewState.currentIndex >= reviewState.diffs.length - 1
-									}
-								>
-									<ChevronRight size={14} aria-hidden="true" />
-								</Button>
-							</span>
-						</Tooltip>
-						<Separator orientation="vertical" className={cn("mx-1 h-4")} />
-						<Tooltip content="Reject this change">
+				<div className={cn("flex flex-col gap-2 p-1")}>
+					{/*
+					 * Row one: where you are, and what you have already decided.
+					 *
+					 * The count used to be a parenthetical inside a muted sentence —
+					 * the quietest thing in the only approval interaction the app
+					 * has. It is now the subject, at reading weight.
+					 */}
+					<div className={cn("flex items-center gap-3")}>
+						<p className={cn("shrink-0 font-medium text-body-sm text-ink")}>
+							Change {reviewState.currentIndex + 1} of{" "}
+							{reviewState.diffs.length}
+						</p>
+						{/*
+						 * One segment per change, carrying the decision already made
+						 * on it. Accepts are recorded in `approvedDiffs`; anything
+						 * behind the cursor that is not in there was rejected, so
+						 * every segment's state is derivable rather than tracked
+						 * twice. This is the only place the running tally exists.
+						 *
+						 * The current segment is twice as thick as the rest, because
+						 * in the two brand palettes `accent` and `success` are both
+						 * green and hue alone would not separate "reviewing this
+						 * one" from "accepted that one". Undecided segments take
+						 * `control` rather than `hairline`: hairline is decorative
+						 * and has no contrast floor, and a progress track nobody can
+						 * see is not a progress track.
+						 */}
+						<ol
+							aria-label="Review progress"
+							className={cn(
+								"flex h-2 min-w-0 max-w-40 flex-1 items-center gap-1",
+							)}
+						>
+							{reviewState.diffs.map((diff, index) => {
+								const isCurrent = index === reviewState.currentIndex;
+								const isDecided = index < reviewState.currentIndex;
+								const isAccepted =
+									isDecided && reviewState.approvedDiffs.includes(diff);
+								const state = isCurrent
+									? "Reviewing now"
+									: isAccepted
+										? "Accepted"
+										: isDecided
+											? "Rejected"
+											: "Not reviewed yet";
+								return (
+									<li
+										// biome-ignore lint/suspicious/noArrayIndexKey: a diff is a plain find/replace pair with no id, and two identical replacements in one response are legitimate; position is the only stable identity.
+										key={index}
+										aria-label={`Change ${index + 1}: ${state}`}
+										className={cn(
+											"min-w-2 flex-1 rounded-full",
+											isCurrent ? "h-1 bg-accent" : "h-0.5",
+											isAccepted && "bg-success",
+											isDecided && !isAccepted && "bg-danger",
+											!isCurrent && !isDecided && "bg-control",
+										)}
+									/>
+								);
+							})}
+						</ol>
+						<Tooltip content="Stop reviewing">
 							<Button
 								variant="ghost"
 								size="icon-sm"
-								aria-label="Reject this change"
-								onClick={onRejectDiff}
-								className={cn("text-danger hover:bg-danger-wash")}
+								aria-label="Stop reviewing"
+								onClick={handleXClick}
+								className={cn("shrink-0")}
 							>
-								<X size={14} aria-hidden="true" />
+								<X aria-hidden="true" />
 							</Button>
 						</Tooltip>
-						<Tooltip content="Accept this change">
-							<Button
-								variant="ghost"
-								size="icon-sm"
-								aria-label="Accept this change"
-								onClick={onAcceptDiff}
-								className={cn("text-success hover:bg-success-wash")}
-							>
-								<Check size={14} aria-hidden="true" />
+					</div>
+
+					{/*
+					 * Row two: the decision on the change in front of you.
+					 *
+					 * These two are the primary actions — you take one of them once
+					 * per change — so they are labelled buttons, not a bare ✓ and ✕
+					 * you have to hover to identify. Accept is the affirmative
+					 * default and takes the accent; reject is the danger triple,
+					 * which is a red-bordered control rather than a red slab.
+					 */}
+					<div className={cn("flex items-center justify-between gap-2")}>
+						<div className={cn("flex items-center gap-0.5")}>
+							<Tooltip content="Previous change">
+								<span>
+									<Button
+										variant="ghost"
+										size="icon-sm"
+										aria-label="Previous change"
+										onClick={() => onNavigateDiff("prev")}
+										disabled={reviewState.currentIndex === 0}
+									>
+										<ChevronLeft aria-hidden="true" />
+									</Button>
+								</span>
+							</Tooltip>
+							<Tooltip content="Next change">
+								<span>
+									<Button
+										variant="ghost"
+										size="icon-sm"
+										aria-label="Next change"
+										onClick={() => onNavigateDiff("next")}
+										disabled={
+											reviewState.currentIndex >= reviewState.diffs.length - 1
+										}
+									>
+										<ChevronRight aria-hidden="true" />
+									</Button>
+								</span>
+							</Tooltip>
+						</div>
+						<div className={cn("flex items-center gap-2")}>
+							<Button variant="danger" size="sm" onClick={onRejectDiff}>
+								<X aria-hidden="true" />
+								Reject
 							</Button>
-						</Tooltip>
-						<Separator orientation="vertical" className={cn("mx-1 h-4")} />
-						<Tooltip content="Reject all (Esc)">
-							<Button
-								variant="outline"
-								size="sm"
-								onClick={onRejectAll}
-								className={SHORTCUT_BUTTON}
-							>
-								<KeyboardShortcut shortcut="Esc" />
-								Reject all
+							<Button variant="primary" size="sm" onClick={onAcceptDiff}>
+								<Check aria-hidden="true" />
+								Accept
 							</Button>
-						</Tooltip>
-						<Tooltip content={acceptAllTooltipText}>
-							<Button
-								variant="primary"
-								size="sm"
-								onClick={onApplyAll}
-								className={SHORTCUT_BUTTON}
-							>
-								<KeyboardShortcut shortcut={acceptAllShortcut} />
-								Accept all
-							</Button>
-						</Tooltip>
+						</div>
+					</div>
+
+					{/*
+					 * Row three: the escape hatches, deliberately subordinate.
+					 *
+					 * Deciding all three at once is the shortcut, not the job, so it
+					 * reads at caption weight below the per-change pair rather than
+					 * as the two largest buttons in the popover. Only these two have
+					 * key bindings, so only these two wear caps.
+					 */}
+					<div
+						className={cn(
+							"flex items-center justify-end gap-1 border-hairline border-t pt-1.5",
+						)}
+					>
+						<Button
+							variant="ghost"
+							size="sm"
+							onClick={onRejectAll}
+							className={SHORTCUT_BUTTON}
+						>
+							<KeyboardShortcut shortcut="Esc" />
+							Reject all
+						</Button>
+						<Button
+							variant="ghost"
+							size="sm"
+							onClick={onApplyAll}
+							aria-label={acceptAllTooltipText}
+							className={SHORTCUT_BUTTON}
+						>
+							<KeyboardShortcut shortcut={acceptAllShortcut} />
+							Accept all
+						</Button>
 					</div>
 				</div>
 			) : (
 				<>
+					<Tooltip content="Close">
+						<span className={cn("absolute top-2 right-2 z-[1301]")}>
+							<Button
+								variant="ghost"
+								size="icon-sm"
+								aria-label="Close"
+								onClick={handleXClick}
+								disabled={isLoading}
+							>
+								<X aria-hidden="true" />
+							</Button>
+						</span>
+					</Tooltip>
 					{attachments.length > 0 && (
 						<AttachmentsPreview
 							attachments={attachments}
@@ -600,12 +681,15 @@ export const InlineEdit: FC<InlineEditProps> = ({
 						<textarea
 							ref={textareaRef}
 							className={cn(
-								"w-full resize-none overflow-y-auto bg-transparent px-1.5 py-1",
+								// `pr-9` keeps the first line clear of the absolutely
+								// positioned close control, which used to sit on top of
+								// whatever was typed.
+								"w-full resize-none overflow-y-auto bg-transparent py-1 pr-9 pl-1.5",
 								"max-h-40 text-body-sm text-ink outline-none",
 								"placeholder:text-ink-dim disabled:text-ink-disabled",
 							)}
 							rows={1}
-							placeholder="Ask for an edit..."
+							placeholder="Ask for an edit"
 							aria-label="Edit instructions"
 							value={prompt}
 							onChange={(e) => setPrompt(e.target.value)}
@@ -640,7 +724,7 @@ export const InlineEdit: FC<InlineEditProps> = ({
 											!!reviewState
 										}
 									>
-										<Paperclip size={iconSize} aria-hidden="true" />
+										<Paperclip aria-hidden="true" />
 									</Button>
 								</span>
 							</Tooltip>
@@ -666,7 +750,7 @@ export const InlineEdit: FC<InlineEditProps> = ({
 											onClick={handleStartRecording}
 											disabled={isLoading || !canEnableRecordingFeature}
 										>
-											<Mic size={iconSize} aria-hidden="true" />
+											<Mic aria-hidden="true" />
 										</Button>
 									</span>
 								</Tooltip>
@@ -685,7 +769,7 @@ export const InlineEdit: FC<InlineEditProps> = ({
 												onClick={handleConfirmRecording}
 												disabled={isLoading}
 											>
-												<Check size={iconSize} aria-hidden="true" />
+												<Check aria-hidden="true" />
 											</Button>
 										</span>
 									</Tooltip>
@@ -701,7 +785,7 @@ export const InlineEdit: FC<InlineEditProps> = ({
 												onClick={handleCancelRecording}
 												disabled={isLoading}
 											>
-												<X size={iconSize} aria-hidden="true" />
+												<X aria-hidden="true" />
 											</Button>
 										</span>
 									</Tooltip>
@@ -717,7 +801,7 @@ export const InlineEdit: FC<InlineEditProps> = ({
 											onClick={handleSubmit}
 											disabled={!prompt.trim() && attachments.length === 0}
 										>
-											<Send size={iconSize} aria-hidden="true" />
+											<Send aria-hidden="true" />
 										</Button>
 									</span>
 								</Tooltip>
@@ -733,7 +817,7 @@ export const InlineEdit: FC<InlineEditProps> = ({
 												aria-label="Cancel edit"
 												onClick={handleCancelEdit}
 											>
-												<Square size={14} aria-hidden="true" />
+												<Square aria-hidden="true" />
 											</Button>
 										</span>
 									</Tooltip>

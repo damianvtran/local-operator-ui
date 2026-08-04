@@ -38,8 +38,14 @@ type CanvasFileViewerProps = {
 
 const defaultFiles: CanvasDocument[] = [];
 
-/** Thumbnail band height, shared by the image, video and icon tiles. */
-const THUMBNAIL = "h-35 w-full";
+/**
+ * Thumbnail band height, shared by the image, video and icon tiles.
+ *
+ * Was 140px, which in a three-column 720px panel made each tile taller than it
+ * was wide and pushed the file name — the only thing anyone reads here — below
+ * the fold of the first row. 96px is enough to recognise an image by.
+ */
+const THUMBNAIL = "h-24 w-full";
 
 /**
  * Checks if a file is an image based on its extension
@@ -342,8 +348,8 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 			>
 				<h2 className={cn("text-heading text-ink")}>No files yet</h2>
 				<p className={cn("max-w-80 text-body-sm text-ink-muted")}>
-					Files you attach to a message in this conversation appear here, ready
-					to open.
+					Files you attach to a message, and files the agent works on, appear
+					here ready to open.
 				</p>
 			</div>
 		);
@@ -351,7 +357,17 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 
 	return (
 		<div className={cn("h-full overflow-y-auto p-6")}>
-			<div className={cn("grid grid-cols-2 gap-4 sm:grid-cols-3")}>
+			{/*
+			 * `auto-fill` rather than `sm:grid-cols-3`. A viewport breakpoint is
+			 * meaningless inside a resizable dock: `sm:` was true at a 1440px
+			 * window while the panel itself was 400px wide, so the grid drew three
+			 * 120px columns. Tracks sized against the panel cannot lie.
+			 */}
+			<div
+				className={cn(
+					"grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-3",
+				)}
+			>
 				{memoizedFiles.map((fileDoc) => {
 					const IconComponent = getIconForFileType(fileDoc.type);
 					const isLocalFile =
@@ -363,12 +379,26 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 					return (
 						<Card
 							key={fileDoc.id}
-							variant="plain"
+							variant="surface"
 							padding="none"
-							className={cn("relative overflow-hidden")}
+							className={cn(
+								"group relative overflow-hidden",
+								"transition-colors duration-fast ease-out-quart hover:border-control",
+							)}
 						>
 							{isLocalFile && (
-								<div className={cn("absolute top-1 right-1 z-10")}>
+								<div
+									className={cn(
+										"absolute top-1 right-1 z-10",
+										// Revealed on hover or keyboard focus, like every
+										// other row/tile action in the app. Nine permanent
+										// "…" glyphs over nine thumbnails was chrome
+										// competing with the content it sat on.
+										"pointer-events-none opacity-0",
+										"group-hover:pointer-events-auto group-hover:opacity-100",
+										"group-focus-within:pointer-events-auto group-focus-within:opacity-100",
+									)}
+								>
 									<FileActionsMenu
 										filePath={normalizedPath}
 										tooltip="File actions"
@@ -408,12 +438,14 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 												"flex items-center justify-center text-ink-muted",
 											)}
 										>
-											<IconComponent size={48} strokeWidth={1} />
+											<IconComponent size={26} strokeWidth={1.5} />
 										</span>
 									)}
+									{/* The file name is the content of the tile, so it is
+									    `ink` at the body step, not a caption. */}
 									<span
 										className={cn(
-											"block w-full truncate px-3 py-2 text-meta text-ink-muted",
+											"block w-full truncate border-hairline border-t px-2.5 py-2 text-body-sm text-ink",
 										)}
 									>
 										{getFileName(fileDoc.title)}

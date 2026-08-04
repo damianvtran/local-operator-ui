@@ -1,10 +1,11 @@
 import { FileActionsMenu } from "@shared/components/common/file-actions-menu";
+import { cn } from "@shared/lib/utils";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { type FC, memo, useCallback, useState } from "react";
 import { getFileTypeFromPath } from "../../utils/file-types";
 import { isCanvasSupported } from "../../utils/is-canvas-supported";
-import { InvalidAttachment } from "./invalid-attachment";
+import { AttachmentFrame, BrokenAttachment } from "./attachment-frame";
 
 /**
  * Props for the ImageAttachment component (base)
@@ -32,12 +33,17 @@ const getFileName = (path: string): string => {
 };
 
 /**
- * Component for displaying image attachments
- * Handles image loading errors and displays an InvalidAttachment component if the image fails to load
+ * An image sent or produced in the conversation.
+ *
+ * Every state it can be in — decoding, decoded, unreadable — is drawn by
+ * `attachment-frame`, so the box never collapses, never reflows the message
+ * when the picture lands, and never falls through to the browser's own broken
+ * image glyph.
  */
 export const ImageAttachment: FC<ImageAttachmentProps> = memo(
 	({ file, src, onClick, conversationId }) => {
 		const [hasError, setHasError] = useState(false);
+		const [isLoaded, setIsLoaded] = useState(false);
 		const setCanvasOpen = useUiPreferencesStore((s) => s.setCanvasOpen);
 		const { setViewMode } = useCanvasStore();
 
@@ -165,27 +171,36 @@ export const ImageAttachment: FC<ImageAttachmentProps> = memo(
 			: file;
 
 		if (hasError) {
-			return <InvalidAttachment file={file} />;
+			return <BrokenAttachment name={getFileName(file)} />;
 		}
 
 		return (
 			<div className="group relative inline-block">
 				<button
 					type="button"
-					className="block cursor-pointer"
+					className="block max-w-full cursor-pointer"
 					onClick={handleClick}
 					title={`Click to open ${getFileName(file)}`}
 				>
-					<img
-						className="mb-2 max-h-[200px] max-w-full rounded-sm"
-						src={src}
-						alt={getFileName(file)}
-						onError={handleError}
-					/>
+					<AttachmentFrame>
+						<img
+							className={cn(
+								"max-h-[240px] max-w-full object-contain",
+								// The picture is invisible, not absent, until it decodes:
+								// the frame has already reserved the box, so nothing moves
+								// when it appears.
+								isLoaded ? "opacity-100" : "opacity-0",
+							)}
+							src={src}
+							alt={getFileName(file)}
+							onLoad={() => setIsLoaded(true)}
+							onError={handleError}
+						/>
+					</AttachmentFrame>
 				</button>
 				{isLocalFile && (
 					<div
-						className="file-actions-menu invisible absolute right-1 top-1 z-[2] opacity-0 transition-[opacity,visibility] duration-fast ease-out-quart group-hover:visible group-hover:opacity-100"
+						className="file-actions-menu invisible absolute top-1 right-1 z-[2] opacity-0 transition-[opacity,visibility] duration-fast ease-out-quart group-hover:visible group-hover:opacity-100"
 						onClick={(e) => {
 							e.stopPropagation();
 						}}

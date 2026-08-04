@@ -85,7 +85,9 @@ export const ModelHostingSection: FC<ModelHostingSectionProps> = ({
 				</Tooltip>
 			</h3>
 
-			<div className="mb-4 rounded-md border border-hairline bg-sunken p-4">
+			{/* `gap-4`, not child margins: `SearchableSelect` no longer ships an
+			    outer margin, because the container owns the gap. */}
+			<div className="mb-4 flex flex-col gap-4 rounded-md border border-hairline bg-sunken p-4">
 				<HostingSelect
 					value={agent.hosting || ""}
 					isSaving={savingField === "hosting"}

@@ -3,132 +3,130 @@ import {
 	useOnboardingStore,
 } from "@shared/store/onboarding-store";
 import type { Meta, StoryObj } from "@storybook/react";
-import React from "react"; // Add React import
+import { useLayoutEffect } from "react";
 /* Storybook's preview does not load the app's stylesheet, so a story that
    renders ported components has to bring it or it renders with no utilities. */
 import "../../../styles/index.css";
 import { OnboardingModal } from "./onboarding-modal";
 
 /**
- * Storybook stories for the OnboardingModal component.
+ * The first-run flow, one story per step.
  *
- * This showcases the full onboarding flow with mocked Zustand store state.
- * The onboarding steps are displayed inside a fullscreen modal with theme-aware styling.
+ * ## Why every step has its own story
+ *
+ * The flow is eight screens and only three of them used to be reachable here,
+ * so the four form steps — where the control heights, the label rhythm and the
+ * help-text register actually live — were reviewed by clicking through the
+ * running app or not at all. Pacing is a property of the sequence, and you
+ * cannot judge a sequence you can only enter at one end.
+ *
+ * ## Why `data-theme` goes on `documentElement`
+ *
+ * The dialog portals to `document.body`, outside any wrapper a story could
+ * render. With the theme only on a wrapper every `--lo-*` read inside the
+ * portal resolves to nothing and the panel comes out unstyled — while the page
+ * behind it looks correct, which makes it slow to diagnose.
+ *
+ * ## What is not real here
+ *
+ * There is no backend, so the steps that read credentials, models or public
+ * agents render their loading or empty branch. That is the honest thing to
+ * screenshot: those branches are states a real user hits too.
  */
-const meta: Meta<typeof OnboardingModal> = {
+const THEME_IDS = [
+	"localOperatorDark",
+	"localOperatorLight",
+	"dracula",
+	"dune",
+	"sage",
+	"monokai",
+	"tokyoNight",
+	"iceberg",
+	"radient",
+	"neon",
+	"obsidian",
+	"synth",
+] as const;
+
+type StoryArgs = {
+	theme: (typeof THEME_IDS)[number];
+	step: OnboardingStep;
+};
+
+const OnboardingFrame = ({ theme, step }: StoryArgs) => {
+	useLayoutEffect(() => {
+		const previous = document.documentElement.dataset.theme;
+		document.documentElement.dataset.theme = theme;
+
+		const state = useOnboardingStore.getState();
+		state.resetOnboarding();
+		state.setCurrentStep(step);
+		// Cleared so the modal's session-restore effect does not jump the flow
+		// to Create agent on every re-render of a story.
+		window.sessionStorage.removeItem("mock-radient-session");
+
+		return () => {
+			if (previous === undefined) {
+				document.documentElement.removeAttribute("data-theme");
+			} else {
+				document.documentElement.dataset.theme = previous;
+			}
+		};
+	}, [theme, step]);
+
+	return (
+		<div data-theme={theme} className="min-h-screen bg-canvas font-sans">
+			<OnboardingModal open={true} />
+		</div>
+	);
+};
+
+const meta: Meta<StoryArgs> = {
 	title: "Onboarding/OnboardingModal",
-	component: OnboardingModal,
-	parameters: {
-		layout: "fullscreen",
-		viewport: {
-			defaultViewport: "custom",
-			viewports: {
-				custom: {
-					name: "Onboarding Window",
-				},
-			},
-		},
+	parameters: { layout: "fullscreen" },
+	argTypes: {
+		theme: { control: "select", options: THEME_IDS },
+		step: { control: "select", options: Object.values(OnboardingStep) },
 	},
-	decorators: [
-		(Story) => {
-			const state = useOnboardingStore.getState();
-			state.resetOnboarding();
-			// Default start step is now RADIENT_CHOICE
-			state.setCurrentStep(OnboardingStep.RADIENT_CHOICE);
-
-			// Clear the session to allow re-running the story
-			window.sessionStorage.removeItem("mock-radient-session");
-
-			return <Story />;
-		},
-	],
-	tags: ["autodocs"],
+	args: { theme: "localOperatorDark", step: OnboardingStep.RADIENT_CHOICE },
+	render: (args) => <OnboardingFrame {...args} />,
 };
 
 export default meta;
+type Story = StoryObj<StoryArgs>;
 
-type Story = StoryObj<typeof meta>;
+/** The first screen: two options, one recommended, nothing else. */
+export const Default: Story = {};
 
-/**
- * Default onboarding flow starting at the welcome step.
- */
-export const Default: Story = {
-	args: {
-		open: true,
-	},
-};
-
-/**
- * Onboarding flow showcasing the congratulations step.
- */
-export const Congratulations: Story = {
-	args: {
-		open: true,
-	},
-	render: () => {
-		const state = useOnboardingStore.getState();
-		state.resetOnboarding();
-		state.setCurrentStep(OnboardingStep.CONGRATULATIONS);
-
-		return <OnboardingModal open={true} />;
-	},
-};
-
-/**
- * Onboarding flow showcasing the Radient sign-in step.
- */
+/** What Radient Pass is, and the two ways in. */
 export const RadientSignIn: Story = {
-	args: {
-		open: true,
-	},
-	render: () => {
-		const state = useOnboardingStore.getState();
-		state.resetOnboarding();
-		state.setCurrentStep(OnboardingStep.RADIENT_SIGNIN);
-
-		return <OnboardingModal open={true} />;
-	},
+	args: { step: OnboardingStep.RADIENT_SIGNIN },
 };
 
-/**
- * Onboarding flow when Radient Pass (Provider Auth) is disabled.
- * The modal should automatically start at the User Profile step.
- */
-export const RadientPassDisabled: Story = {
-	args: {
-		open: true,
-	},
-	render: () => {
-		// Temporarily override the mock for this story
-		// biome-ignore lint/suspicious/noExplicitAny: Mocking window API
-		const originalCheck = (window as any).api.ipcRenderer
-			.checkProviderAuthEnabled;
-		// biome-ignore lint/suspicious/noExplicitAny: Mocking window API
-		(window as any).api.ipcRenderer.checkProviderAuthEnabled = async () => {
-			console.log(
-				"[Storybook Mock Override] checkProviderAuthEnabled returning false",
-			);
-			return false;
-		};
+/** First step of the do-it-yourself path. Two fields, one optional. */
+export const UserProfile: Story = {
+	args: { step: OnboardingStep.USER_PROFILE },
+};
 
-		// Reset state - start at RADIENT_CHOICE, the component should redirect
-		const state = useOnboardingStore.getState();
-		state.resetOnboarding();
-		state.setCurrentStep(OnboardingStep.RADIENT_CHOICE);
+/** A select and a password field at the large control size. */
+export const ModelCredential: Story = {
+	args: { step: OnboardingStep.MODEL_CREDENTIAL },
+};
 
-		// Restore the original mock when the component unmounts
-		// biome-ignore lint/correctness/useExhaustiveDependencies: Effect runs once on mount/unmount
-		React.useEffect(() => {
-			return () => {
-				// biome-ignore lint/suspicious/noExplicitAny: Mocking window API
-				(window as any).api.ipcRenderer.checkProviderAuthEnabled =
-					originalCheck;
-				console.log(
-					"[Storybook Mock Override] Restored checkProviderAuthEnabled",
-				);
-			};
-		}, []); // Empty dependency array ensures this runs only on mount and unmount
+/** The one skippable step in the flow. */
+export const SearchApi: Story = { args: { step: OnboardingStep.SEARCH_API } };
 
-		return <OnboardingModal open={true} />;
-	},
+/** Two dependent selects; renders its loading branch without a backend. */
+export const DefaultModel: Story = {
+	args: { step: OnboardingStep.DEFAULT_MODEL },
+};
+
+/** The last decision. Without a backend this shows the load-failure branch. */
+export const CreateAgent: Story = {
+	args: { step: OnboardingStep.CREATE_AGENT },
+};
+
+/** The end of the flow, and the one place the accent is spent on celebration. */
+export const Congratulations: Story = {
+	args: { step: OnboardingStep.CONGRATULATIONS },
 };

@@ -44,10 +44,17 @@ const TOUR_TAGS: Record<string, string> = {
  * The rail's groups, in render order. Sections are matched by id rather than
  * sliced by position, so a section this file does not know about is left out of
  * every group instead of landing under the wrong heading.
+ *
+ * The order within a group must match the order the sections appear in
+ * `settings-page`. This is a jump list over one long document, not a page
+ * switcher, and the active row is chosen by whichever section is most visible
+ * — so a rail that disagrees with document order makes the highlight jump
+ * backwards as you scroll forwards. Account used to list credentials before
+ * integrations while the page rendered them the other way round.
  */
 const SECTION_GROUPS: { label: string; ids: string[] }[] = [
 	{ label: "General", ids: ["general", "appearance"] },
-	{ label: "Account", ids: ["radient", "credentials", "integrations"] },
+	{ label: "Account", ids: ["radient", "integrations", "credentials"] },
 	{ label: "System", ids: ["updates"] },
 ];
 
@@ -66,6 +73,23 @@ const SECTION_GROUPS: { label: string; ids: string[] }[] = [
  *
  * The active row is the rail's single accent spend (wash ground, accent icon),
  * so hover is a neutral ground step to `elevated` rather than a second tint.
+ * Its label stays `ink` rather than going accent: tinting the ground and the
+ * mark and the text is three signals for one state, and it makes the row you
+ * are already on the loudest text in the rail.
+ *
+ * ## Density
+ *
+ * 32px rows, 16px marks, 13px labels, 8px between mark and label — the same
+ * numbers as the app rail, because two rails sitting side by side that
+ * disagree about row height read as a mistake rather than as a hierarchy.
+ *
+ * ## Why there is no "Settings" title above the list
+ *
+ * There was, and the word then appeared three times in one viewport: on the
+ * app rail's nav item, at the head of this rail, and as the page's own `h1`
+ * beside it. This rail is a jump list within one page, and the page already
+ * carries the title — so the groups start at the top, which is how Linear's
+ * and 1Password's settings rails are built.
  *
  * ## Why no edge of its own
  *
@@ -91,7 +115,7 @@ export const SettingsSidebar: FC<SettingsSidebarProps> = ({
 					aria-current={isActive ? "page" : undefined}
 					data-tour-tag={TOUR_TAGS[section.id]}
 					className={cn(
-						"flex w-full items-center gap-3 rounded-sm px-3 py-2 text-left text-body-sm",
+						"flex h-8 w-full items-center gap-2 rounded-sm px-3 text-left text-body-sm",
 						"transition-colors duration-fast ease-out-quart",
 						isActive
 							? "bg-accent-wash font-medium text-ink"
@@ -103,7 +127,7 @@ export const SettingsSidebar: FC<SettingsSidebarProps> = ({
 					<span
 						aria-hidden="true"
 						className={cn(
-							"flex size-5 shrink-0 items-center justify-center",
+							"flex size-4 shrink-0 items-center justify-center",
 							isActive ? "text-accent" : "text-ink-dim",
 						)}
 					>
@@ -111,12 +135,12 @@ export const SettingsSidebar: FC<SettingsSidebarProps> = ({
 							<img
 								src={section.icon as string}
 								alt=""
-								className="size-[18px] object-contain"
+								className="size-4 object-contain"
 							/>
 						) : (
 							(() => {
 								const IconComponent = section.icon as LucideIcon;
-								return <IconComponent size={18} strokeWidth={1.5} />;
+								return <IconComponent size={16} strokeWidth={1.75} />;
 							})()
 						)}
 					</span>
@@ -131,13 +155,10 @@ export const SettingsSidebar: FC<SettingsSidebarProps> = ({
 			aria-label="Settings sections"
 			className="flex h-full w-full flex-col overflow-hidden bg-surface"
 		>
-			{/* No rule under the title: the page's single hairline bounds this
-			    region, and the group labels below separate the lists. */}
-			<div className="px-4 pt-6 pb-4">
-				<h2 className="text-heading text-ink">Settings</h2>
-			</div>
-
-			<div className="flex-1 overflow-y-auto px-2 pb-4">
+			{/* `gap-6` between groups rather than a margin on each: a stacking
+			    margin needs a `last:` reset to stop it adding a phantom row of
+			    space under the final group. */}
+			<div className="flex flex-1 flex-col gap-6 overflow-y-auto px-2 py-4">
 				{SECTION_GROUPS.map((group) => {
 					const groupSections = sections.filter((s) =>
 						group.ids.includes(s.id),
@@ -145,11 +166,14 @@ export const SettingsSidebar: FC<SettingsSidebarProps> = ({
 					if (groupSections.length === 0) return null;
 
 					return (
-						<div key={group.label} className="mb-6 last:mb-0">
-							<div className="px-3 pb-1 text-meta tracking-wide text-ink-dim">
+						<div key={group.label}>
+							{/* Sentence case, dim, one step below the rows: a group label
+							    is a divider that happens to have a name, not a heading
+							    competing with the destinations under it. */}
+							<div className="px-3 pb-1 text-meta text-ink-dim">
 								{group.label}
 							</div>
-							<ul className="flex flex-col gap-1">
+							<ul className="flex flex-col gap-0.5">
 								{groupSections.map(renderSection)}
 							</ul>
 						</div>

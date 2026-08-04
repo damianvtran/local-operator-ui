@@ -15,10 +15,16 @@ import { type InputHTMLAttributes, forwardRef } from "react";
  * red is the same thing that tells a screen reader the field is wrong. There
  * is no `error` prop, because a prop can be set without the ARIA and then the
  * field is red for sighted users only.
+ *
+ * Heights and radius track `Button` exactly — 28 / 32 / 36 at 6px corners.
+ * A form is read as one row of controls, and the fastest way to make a
+ * settings screen look unfinished is to let a field and the button beside it
+ * disagree about their own height. See the size-ramp and radius notes in
+ * `button.tsx`; this is the other half of the same decision.
  */
 const inputVariants = cva(
 	[
-		"w-full rounded-md border border-control bg-surface text-ink",
+		"w-full rounded-sm border border-control bg-surface text-ink",
 		"placeholder:text-ink-dim",
 		"transition-colors duration-fast ease-out-quart",
 		"aria-invalid:border-danger",
@@ -34,9 +40,9 @@ const inputVariants = cva(
 			// Named `inputSize` and not `size`: `size` is a real numeric HTML
 			// attribute on `input`, and shadowing it would silently drop it.
 			inputSize: {
-				sm: "h-7 px-2 text-meta",
+				sm: "h-7 px-2 text-meta focus-visible:outline-offset-1",
 				md: "h-8 px-3 text-body-sm",
-				lg: "h-9.5 px-3 text-body",
+				lg: "h-9 px-3 text-body",
 			},
 		},
 		defaultVariants: { inputSize: "md" },

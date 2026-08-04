@@ -58,8 +58,8 @@ export const UserProfileStep: FC = () => {
 	return (
 		<div className="flex flex-col gap-6">
 			<p className="text-body text-ink-muted">
-				This is stored on your device to personalize how your agents talk to
-				you. It is never sent anywhere.
+				So your agents know what to call you. Both fields stay on this computer
+				and are never sent anywhere.
 			</p>
 
 			<div className="flex flex-col gap-5">
@@ -70,7 +70,9 @@ export const UserProfileStep: FC = () => {
 						inputSize="lg"
 						value={name}
 						onChange={handleNameChange}
-						placeholder="Enter your name"
+						/* No placeholder. The label above already says what goes here,
+						   and "Enter your name" under "Your name" is the same words
+						   twice in a field that is about to be typed into. */
 						required
 						/* The invalid border is painted from this attribute alone, so
 						   the red edge and the announced error cannot disagree. */
@@ -84,7 +86,7 @@ export const UserProfileStep: FC = () => {
 							nameError ? "text-danger" : "text-ink-dim",
 						)}
 					>
-						{nameError || "Used to personalize how your agents address you"}
+						{nameError || "Used when an agent addresses you"}
 					</p>
 				</div>
 
@@ -96,11 +98,11 @@ export const UserProfileStep: FC = () => {
 						type="email"
 						value={email}
 						onChange={(e) => setEmail(e.target.value)}
-						placeholder="Enter your email address"
+						autoComplete="email"
 						aria-describedby={EMAIL_HELP_ID}
 					/>
 					<p id={EMAIL_HELP_ID} className="text-ink-dim text-meta">
-						Stored on your device for convenience, not shared
+						Kept for convenience, never shared
 					</p>
 				</div>
 			</div>

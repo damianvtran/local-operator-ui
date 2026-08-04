@@ -149,7 +149,7 @@ const ChatSidebarItem: FC<ChatSidebarItemProps> = ({
 					"group-focus-within:pointer-events-auto group-focus-within:opacity-100",
 				)}
 			>
-				<Tooltip content="Agent Options">
+				<Tooltip content="Agent options">
 					<span>
 						<AgentOptionsMenu
 							agentId={agent.id}

@@ -24,7 +24,7 @@ const CategoryItem: FC<{
 		onClick={onClick}
 		aria-pressed={selected}
 		className={cn(
-			"flex w-full cursor-pointer items-center gap-3 rounded-md px-3 py-2 text-left",
+			"flex w-full cursor-pointer items-center gap-2.5 rounded-sm px-3 py-1.5 text-left",
 			"text-body-sm transition-colors duration-fast ease-out-quart",
 			selected
 				? "bg-accent-wash font-semibold text-accent"
@@ -46,20 +46,23 @@ export const AgentCategoriesSidebar: FC<AgentCategoriesSidebarProps> = ({
 	const categories = Object.keys(CATEGORY_ICON_MAP);
 
 	return (
-		<div className="flex h-full flex-col overflow-y-auto rounded-lg border border-hairline bg-surface py-2">
-			<h2 className="mb-1 px-3 font-semibold text-heading text-ink">
+		/* A rail, not a card. The grid beside it is already eight bordered
+			   panels; a ninth box around the filter list added a boundary that
+			   carried no information. */
+		<div className="flex h-full flex-col overflow-y-auto">
+			<h2 className="mb-2 px-3 font-medium text-ink-dim text-meta">
 				Categories
 			</h2>
-			<div className="flex flex-col gap-0.5 px-1">
+			<div className="flex flex-col gap-0.5">
 				<CategoryItem
 					selected={selectedCategory === null}
 					onClick={() => onSelectCategory(null)}
 					data-testid="category-all"
 				>
-					<span className="flex size-5.5 shrink-0 items-center justify-center opacity-70">
-						<Layers size={18} aria-hidden="true" />
+					<span className="flex size-4 shrink-0 items-center justify-center">
+						<Layers size={16} aria-hidden="true" />
 					</span>
-					All Categories
+					All categories
 				</CategoryItem>
 				{categories.map((cat) => {
 					const entry = CATEGORY_ICON_MAP[cat];
@@ -73,7 +76,7 @@ export const AgentCategoriesSidebar: FC<AgentCategoriesSidebarProps> = ({
 							onClick={() => onSelectCategory(cat)}
 							data-testid={`category-${cat}`}
 						>
-							<span className="flex size-5.5 shrink-0 items-center justify-center">
+							<span className="flex size-4 shrink-0 items-center justify-center">
 								{icon}
 							</span>
 							{entry.label}

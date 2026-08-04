@@ -126,8 +126,13 @@ export const TraceLine = ({
 			chevron="leading"
 			defaultOpen={defaultOpen}
 			className={className}
-			triggerClassName="min-h-6 py-0.5"
-			contentClassName="ml-5 mt-1 flex flex-col gap-2 border-hairline border-l-2 pl-3 pb-1"
+			// The whole row is the target, so it gets a row-shaped hover ground
+			// the way a list row does in Warp, Zed and VS Code: the negative
+			// margin lets the ground bleed 8px past the text on both sides while
+			// the text stays on the rail. Elevation by colour step, per § 2 —
+			// nothing moves, nothing lifts.
+			triggerClassName="-mx-2 min-h-6 rounded-sm px-2 py-0.5 hover:bg-elevated"
+			contentClassName="mt-1 ml-5 flex flex-col gap-2 border-hairline border-l pb-1 pl-3"
 		>
 			{details}
 		</Disclosure>

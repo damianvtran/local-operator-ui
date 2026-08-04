@@ -41,7 +41,9 @@ export const RingLoadingIndicator: FC<RingLoadingIndicatorProps> = ({
 	const step = SIZE_STEPS.find((s) => size <= s.max)?.size ?? "lg";
 
 	return (
-		<div className="my-2 flex items-center justify-center">
+		/* No outer margin: both call sites already centre it inside their own
+		   container, and an outer margin here stacks with whatever they set. */
+		<div className="flex items-center justify-center">
 			<Spinner size={step} label="Loading" />
 		</div>
 	);
