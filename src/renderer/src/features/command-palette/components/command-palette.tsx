@@ -1,29 +1,21 @@
 import { getIconElement } from "@features/command-palette/components/command-palette-utils";
 import { DEFAULT_SETTINGS_SECTIONS } from "@features/settings/components/settings-sidebar";
-import {
-	Box,
-	Chip,
-	Dialog,
-	DialogContent,
-	IconButton,
-	InputAdornment,
-	List,
-	ListItem,
-	ListItemButton,
-	ListItemIcon,
-	ListItemText,
-	TextField,
-	Typography,
-} from "@mui/material";
-import { styled } from "@mui/material/styles";
-import { useTheme } from "@mui/material/styles";
 import type { AgentListResult } from "@shared/api/local-operator/types";
 import { ConfirmationModal } from "@shared/components/common/confirmation-modal";
 import { CreateAgentDialog } from "@shared/components/common/create-agent-dialog";
+import {
+	Badge,
+	Button,
+	Dialog,
+	DialogContent,
+	DialogTitle,
+	Input,
+} from "@shared/components/ui";
 import { useAgents } from "@shared/hooks/use-agents";
 import { useClearAgentConversation } from "@shared/hooks/use-clear-agent-conversation";
 import { useDebouncedValue } from "@shared/hooks/use-debounced-value";
 import { useAgentRouteParam } from "@shared/hooks/use-route-params";
+import { cn } from "@shared/lib/utils";
 import { useAgentSelectionStore } from "@shared/store/agent-selection-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import {
@@ -43,43 +35,6 @@ import {
 import type { FC } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-
-const StyledDialog = styled(Dialog)(({ theme }) => ({
-	"& .MuiDialog-paper": {
-		width: "600px",
-		maxWidth: "90vw",
-		borderRadius: theme.shape.borderRadius * 2,
-		backgroundColor: theme.palette.background.default,
-		backgroundImage: "none",
-		boxShadow: theme.shadows[8],
-		border: `1px solid ${theme.palette.divider}`,
-	},
-}));
-
-const SearchInputContainer = styled("div")(({ theme }) => ({
-	padding: theme.spacing(2, 3),
-	borderBottom: `1px solid ${theme.palette.divider}`,
-}));
-
-const ResultsListContainer = styled(List)(() => ({
-	maxHeight: "400px",
-	overflowY: "auto",
-	padding: 0,
-}));
-
-const ResultItemStyled = styled(ListItemButton)(({ theme }) => ({
-	padding: theme.spacing(0.5, 2),
-	borderRadius: 8,
-	"&:hover": {
-		backgroundColor: theme.palette.action.hover,
-	},
-}));
-
-const ActionChip = styled(Chip)(() => ({
-	fontSize: "0.7rem",
-	height: "20px",
-	marginLeft: "auto",
-}));
 
 type CommandPaletteItemType =
 	| "page"
@@ -135,55 +90,23 @@ const PAGE_DEFINITIONS: Omit<CommandPaletteItem, "id" | "type">[] = [
 
 const MAX_SUGGESTIONS = 15;
 
-const getActionLabel = (type: CommandPaletteItemType): string => {
-	switch (type) {
-		case "page":
-			return "Navigate";
-		case "agent-chat":
-			return "Chat";
-		case "agent-settings":
-			return "Configure";
-		case "settings-section":
-			return "Configure";
-		case "create-agent":
-			return "Create";
-		case "clear-conversation":
-			return "Clear";
-		case "toggle-canvas":
-			return "Toggle";
-		default:
-			return "Open";
-	}
-};
+const LIST_ID = "command-palette-results";
+const INPUT_ID = "command-palette-input";
 
-const getActionColor = (
-	type: CommandPaletteItemType,
-):
-	| "default"
-	| "primary"
-	| "secondary"
-	| "success"
-	| "warning"
-	| "info"
-	| "error" => {
-	switch (type) {
-		case "page":
-			return "primary";
-		case "agent-chat":
-			return "success";
-		case "agent-settings":
-			return "warning";
-		case "settings-section":
-			return "info";
-		case "create-agent":
-			return "success";
-		case "clear-conversation":
-			return "error";
-		case "toggle-canvas":
-			return "secondary";
-		default:
-			return "default";
-	}
+/**
+ * The verb each row performs, shown on its right edge.
+ *
+ * A static table rather than a switch: the row renders it, nothing branches on
+ * it, and the seven cases are the seven item types.
+ */
+const ACTION_LABELS: Record<CommandPaletteItemType, string> = {
+	page: "Navigate",
+	"agent-chat": "Chat",
+	"agent-settings": "Configure",
+	"settings-section": "Configure",
+	"create-agent": "Create",
+	"clear-conversation": "Clear",
+	"toggle-canvas": "Toggle",
 };
 
 export const CommandPalette: FC = () => {
@@ -208,7 +131,6 @@ export const CommandPalette: FC = () => {
 	const { data: agentsData } = useAgents(1, 10, 0, debouncedLocalQuery) as {
 		data?: AgentListResult;
 	};
-	const theme = useTheme();
 	const clearConversationMutation = useClearAgentConversation();
 
 	const [selectedIndex, setSelectedIndex] = useState(0);
@@ -229,55 +151,6 @@ export const CommandPalette: FC = () => {
 			setLocalQuery(commandPaletteQuery);
 		}
 	}, [isCommandPaletteOpen, commandPaletteQuery]);
-
-	const handleQueryChange = useCallback(
-		(event: React.ChangeEvent<HTMLInputElement>) => {
-			setLocalQuery(event.target.value);
-		},
-		[],
-	);
-
-	const handleClearSearch = useCallback(() => {
-		setLocalQuery("");
-	}, []);
-
-	const inputPropsStyle = useMemo(() => ({ fontSize: "1rem" }), []);
-
-	const startAdornment = useMemo(
-		() => (
-			<InputAdornment position="start" sx={{ width: "28px" }}>
-				<LucideSearch size={16} color={theme.palette.action.active} />
-			</InputAdornment>
-		),
-		[theme.palette.action.active],
-	);
-
-	const endAdornment = useMemo(
-		() =>
-			localQuery ? (
-				<InputAdornment position="end">
-					<IconButton
-						aria-label="clear search"
-						onClick={handleClearSearch}
-						edge="end"
-						size="small"
-					>
-						<X size={16} />
-					</IconButton>
-				</InputAdornment>
-			) : null,
-		[localQuery, handleClearSearch],
-	);
-
-	const textFieldInputProps = useMemo(
-		() => ({
-			startAdornment,
-			endAdornment,
-			disableUnderline: true,
-			style: inputPropsStyle,
-		}),
-		[startAdornment, endAdornment, inputPropsStyle],
-	);
 
 	const pages = useMemo((): CommandPaletteItem[] => {
 		return PAGE_DEFINITIONS.map((p, i) => ({
@@ -492,85 +365,137 @@ export const CommandPalette: FC = () => {
 		return null;
 	}
 
+	const activeItem = filteredItems[selectedIndex];
+
 	return (
 		<>
-			<StyledDialog
-				data-tour-tag="command-palette-dialog"
+			<Dialog
 				open={isCommandPaletteOpen}
-				onClose={closeCommandPalette}
-				aria-labelledby="command-palette-dialog-title"
-				fullWidth
-				disableRestoreFocus
+				onOpenChange={(open) => {
+					if (!open) closeCommandPalette();
+				}}
 			>
-				<SearchInputContainer>
-					<TextField
-						autoFocus
-						fullWidth
-						variant="standard"
-						placeholder="Search actions, agents, and pages"
-						value={localQuery}
-						onChange={handleQueryChange}
-						InputProps={textFieldInputProps}
-						autoComplete="off"
-					/>
-				</SearchInputContainer>
-				<DialogContent sx={{ padding: 0 }}>
-					{filteredItems.length === 0 && debouncedLocalQuery && (
-						<Typography
-							sx={{ p: 3, textAlign: "center", color: "text.secondary" }}
-						>
-							No results found.
-						</Typography>
-					)}
-					<ResultsListContainer sx={{ padding: 0.5 }}>
-						{filteredItems.map((item, index) => (
-							<ListItem
-								key={item.id}
-								disablePadding
-								dense
-								sx={{ padding: 0.5 }}
+				<DialogContent
+					data-tour-tag="command-palette-dialog"
+					showClose={false}
+					className="w-150 max-w-[90vw] gap-0 overflow-hidden p-0"
+					/*
+					 * Focus goes to the query field and stays there. The rows are
+					 * driven by `aria-activedescendant` rather than by moving focus,
+					 * which is what lets Up/Down browse the list while every keystroke
+					 * still reaches the input — the reason this surface exists.
+					 */
+					onOpenAutoFocus={(event) => {
+						event.preventDefault();
+						document.getElementById(INPUT_ID)?.focus();
+					}}
+				>
+					{/* The palette announces itself; the title is not drawn, because the
+					    field's placeholder already says what to do. */}
+					<DialogTitle className="sr-only">Command palette</DialogTitle>
+
+					<div className="relative border-hairline border-b p-3">
+						<LucideSearch
+							size={16}
+							aria-hidden="true"
+							className="pointer-events-none absolute top-1/2 left-6 -translate-y-1/2 text-ink-dim"
+						/>
+						<Input
+							id={INPUT_ID}
+							inputSize="lg"
+							role="combobox"
+							aria-expanded={true}
+							aria-controls={LIST_ID}
+							aria-activedescendant={activeItem?.id}
+							aria-autocomplete="list"
+							autoComplete="off"
+							placeholder="Search actions, agents, and pages"
+							value={localQuery}
+							onChange={(event) => setLocalQuery(event.target.value)}
+							className={cn(
+								"border-0 bg-transparent pl-9",
+								localQuery && "pr-9",
+							)}
+						/>
+						{localQuery && (
+							<Button
+								variant="ghost"
+								size="icon-sm"
+								aria-label="Clear search"
+								onClick={() => setLocalQuery("")}
+								className="absolute top-1/2 right-4 -translate-y-1/2"
 							>
-								<ResultItemStyled
-									selected={selectedIndex === index}
+								<X aria-hidden="true" />
+							</Button>
+						)}
+					</div>
+
+					{filteredItems.length === 0 ? (
+						<p className="p-6 text-center text-body-sm text-ink-muted">
+							{debouncedLocalQuery
+								? `Nothing matches "${debouncedLocalQuery}".`
+								: "Nothing to show."}
+						</p>
+					) : (
+						<div
+							// biome-ignore lint/a11y/useSemanticElements: `select`/`option` is a native popup control, not a listbox whose rows are browsed by aria-activedescendant while focus stays in a text field.
+							role="listbox"
+							id={LIST_ID}
+							aria-label="Results"
+							/* Focusable only programmatically: the query field keeps focus,
+							   and this is here so the container can be scrolled into view. */
+							tabIndex={-1}
+							className="max-h-100 overflow-y-auto p-2"
+						>
+							{filteredItems.map((item, index) => (
+								<button
+									key={item.id}
+									id={item.id}
+									type="button"
+									// biome-ignore lint/a11y/useSemanticElements: an `option` element is only valid inside `select`/`datalist`; these rows carry icons, a category and a verb badge.
+									role="option"
+									aria-selected={selectedIndex === index}
+									/* Out of the tab order on purpose: focus belongs to the
+									   query field, and Up/Down is how the list is walked. */
+									tabIndex={-1}
 									onClick={() => handleItemClick(item)}
 									onMouseMove={() => setSelectedIndex(index)}
+									className={cn(
+										"flex w-full items-center gap-3 rounded-sm px-3 py-2 text-left",
+										"transition-colors duration-fast ease-out-quart",
+										selectedIndex === index
+											? "bg-accent-wash"
+											: "bg-transparent",
+									)}
 								>
-									<ListItemIcon
-										sx={{
-											minWidth: "20px",
-											display: "flex",
-											alignItems: "center",
-											justifyContent: "center",
-											mr: 1.5,
-											color: "text.secondary",
-										}}
-									>
-										{item.icon || <FileText size={16} />}
-									</ListItemIcon>
-									<ListItemText
-										primary={
-											<Box
-												sx={{ display: "flex", alignItems: "center", gap: 1 }}
-											>
-												<Typography variant="body2">{item.name}</Typography>
-												<Typography variant="caption" color="text.secondary">
-													{item.category}
-												</Typography>
-											</Box>
+									<span className="flex size-4 shrink-0 items-center justify-center text-ink-dim">
+										{item.icon || <FileText size={16} aria-hidden="true" />}
+									</span>
+									<span className="min-w-0 flex-1 truncate text-body-sm text-ink">
+										{item.name}
+									</span>
+									<span className="shrink-0 text-ink-dim text-meta">
+										{item.category}
+									</span>
+									{/*
+									 * Only the destructive row is coloured. Seven categories in
+									 * seven hues taught the eye nothing — the verb is written
+									 * out — while red on "Clear" is information.
+									 */}
+									<Badge
+										variant={
+											item.type === "clear-conversation" ? "danger" : "neutral"
 										}
-									/>
-									<ActionChip
-										label={getActionLabel(item.type)}
-										size="small"
-										color={getActionColor(item.type)}
-										variant="outlined"
-									/>
-								</ResultItemStyled>
-							</ListItem>
-						))}
-					</ResultsListContainer>
+										className="shrink-0"
+									>
+										{ACTION_LABELS[item.type]}
+									</Badge>
+								</button>
+							))}
+						</div>
+					)}
 				</DialogContent>
-			</StyledDialog>
+			</Dialog>
 			<CreateAgentDialog
 				open={isCreateAgentDialogOpen} // Controlled by global state
 				onClose={closeCreateAgentDialog} // Controlled by global state

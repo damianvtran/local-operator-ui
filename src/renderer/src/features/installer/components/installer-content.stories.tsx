@@ -1,13 +1,11 @@
-import { CssBaseline } from "@mui/material";
-import { ThemeProvider } from "@mui/material/styles";
-import { DEFAULT_THEME, themes } from "@shared/themes";
 import type { Meta, StoryObj } from "@storybook/react";
+import "../../../styles/index.css";
 import { InstallerContent } from "./installer-content";
-import { AppContainer } from "./installer-styled";
 
 /**
- * The InstallerContent component displays a modern, full-screen installation experience
- * with a feature carousel and progress UI. It's used during the one-time setup process.
+ * The InstallerContent component is the whole of the installer window: the
+ * product on the left, the install on the right. It renders inside its own html
+ * entry, so the story reproduces that entry's wrapper rather than the app shell.
  */
 const meta = {
 	title: "Installer/InstallerContent",
@@ -29,12 +27,9 @@ const meta = {
 	},
 	decorators: [
 		(Story) => (
-			<ThemeProvider theme={themes[DEFAULT_THEME]}>
-				<CssBaseline />
-				<AppContainer>
-					<Story />
-				</AppContainer>
-			</ThemeProvider>
+			<div className="flex h-screen w-screen overflow-hidden bg-canvas">
+				<Story />
+			</div>
 		),
 	],
 	tags: ["autodocs"],

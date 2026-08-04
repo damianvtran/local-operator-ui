@@ -1,84 +1,9 @@
-import {
-	Box,
-	Button,
-	InputAdornment,
-	TextField,
-	Typography,
-	styled,
-	useTheme,
-} from "@mui/material";
 import { BaseDialog } from "@shared/components/common/base-dialog";
-import { File, UploadCloud } from "lucide-react";
+import { Button, Input, Label } from "@shared/components/ui";
+import { cn } from "@shared/lib/utils";
+import { File as FileIcon, UploadCloud } from "lucide-react";
 import type { DragEvent, FC } from "react";
-import { useCallback, useState } from "react";
-
-const FieldContainer = styled(Box)({
-	marginBottom: 16,
-});
-
-const FieldLabel = styled("label")(({ theme }) => ({
-	display: "flex",
-	alignItems: "center",
-	marginBottom: 6,
-	color: theme.palette.text.secondary,
-	fontWeight: 500,
-	fontSize: "0.875rem",
-	fontFamily: theme.typography.fontFamily,
-	lineHeight: theme.typography.body2.lineHeight,
-}));
-
-const StyledTextField = styled(TextField)(({ theme }) => ({
-	"& .MuiOutlinedInput-root": {
-		borderRadius: 6,
-		backgroundColor: theme.palette.background.paper,
-		border: `1px solid ${theme.palette.divider}`,
-		padding: 0,
-		minHeight: "36px",
-		height: "36px",
-		alignItems: "center",
-		transition: "border-color 0.2s ease, box-shadow 0.2s ease",
-		"&:hover": {
-			borderColor: theme.palette.text.secondary,
-			backgroundColor: theme.palette.background.paper,
-		},
-		"&.Mui-focused": {
-			backgroundColor: theme.palette.background.paper,
-			borderColor: theme.palette.primary.main,
-			boxShadow: `0 0 0 2px ${theme.palette.primary.main}33`,
-		},
-		"& .MuiOutlinedInput-notchedOutline": {
-			border: "none",
-		},
-	},
-	"& .MuiInputBase-input": {
-		padding: "4px 12px",
-		fontSize: "0.875rem",
-		lineHeight: 1.5,
-		fontFamily: "inherit",
-		height: "calc(36px - 8px)",
-		overflow: "hidden",
-		textOverflow: "ellipsis",
-		whiteSpace: "nowrap",
-		wordBreak: "break-word",
-		alignSelf: "center",
-	},
-	"& .MuiInputBase-input::placeholder": {
-		color: theme.palette.text.disabled,
-		opacity: 1,
-	},
-}));
-
-const Dropzone = styled(Box)(({ theme }) => ({
-	border: `2px dashed ${theme.palette.divider}`,
-	borderRadius: theme.shape.borderRadius,
-	padding: theme.spacing(4),
-	textAlign: "center",
-	cursor: "pointer",
-	backgroundColor: theme.palette.action.hover,
-	"&:hover": {
-		backgroundColor: theme.palette.action.selected,
-	},
-}));
+import { useCallback, useId, useRef, useState } from "react";
 
 type InsertImageDialogProps = {
 	open: boolean;
@@ -86,12 +11,23 @@ type InsertImageDialogProps = {
 	onInsert: (url: string) => void;
 };
 
+/**
+ * Two ways to get an image into the document: a path typed into the field, or a
+ * file dropped on (or picked through) the dropzone.
+ *
+ * The dropzone is a real `button` that forwards its click to the hidden file
+ * input, rather than a `label` wrapping a `div`. That is the one behavioural
+ * change here: a label is not focusable and a `display: none` input cannot take
+ * the focus either, so the dropzone used to be pointer-only. As a button it
+ * tabs, takes Enter and Space, and picks up the base layer's focus ring.
+ */
 export const InsertImageDialog: FC<InsertImageDialogProps> = ({
 	open,
 	onClose,
 	onInsert,
 }) => {
-	const theme = useTheme();
+	const pathId = useId();
+	const fileInputRef = useRef<HTMLInputElement>(null);
 	const [path, setPath] = useState("");
 
 	const handleFile = useCallback(
@@ -109,7 +45,7 @@ export const InsertImageDialog: FC<InsertImageDialogProps> = ({
 	);
 
 	const handleDrop = useCallback(
-		(event: DragEvent<HTMLDivElement>) => {
+		(event: DragEvent<HTMLElement>) => {
 			event.preventDefault();
 			event.stopPropagation();
 			const file = event.dataTransfer.files?.[0];
@@ -120,7 +56,7 @@ export const InsertImageDialog: FC<InsertImageDialogProps> = ({
 		[handleFile],
 	);
 
-	const handleDragOver = (event: DragEvent<HTMLDivElement>) => {
+	const handleDragOver = (event: DragEvent<HTMLElement>) => {
 		event.preventDefault();
 		event.stopPropagation();
 	};
@@ -150,102 +86,87 @@ export const InsertImageDialog: FC<InsertImageDialogProps> = ({
 	};
 
 	const dialogActions = (
-		<>
-			<Button
-				onClick={onClose}
-				variant="outlined"
-				size="small"
-				sx={{
-					borderColor: theme.palette.divider,
-					color: theme.palette.text.secondary,
-					textTransform: "none",
-					fontSize: "0.8125rem",
-					padding: theme.spacing(0.75, 2),
-					borderRadius: theme.shape.borderRadius * 0.75,
-					"&:hover": {
-						backgroundColor: theme.palette.action.hover,
-						borderColor: theme.palette.divider,
-					},
-				}}
-			>
-				Cancel
-			</Button>
-		</>
+		<Button variant="outline" onClick={onClose}>
+			Cancel
+		</Button>
 	);
 
 	return (
 		<BaseDialog
 			open={open}
 			onClose={onClose}
-			title="Insert Image"
+			title="Insert image"
 			actions={dialogActions}
 			maxWidth="sm"
 			fullWidth
 		>
-			<Box sx={{ pt: 2 }}>
-				<FieldContainer>
-					<FieldLabel>Image Path on Device</FieldLabel>
-					<Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
-						<StyledTextField
-							autoFocus
-							fullWidth
-							variant="outlined"
-							type="text"
-							placeholder="/Users/eren/Documents/image.png"
-							value={path}
-							onChange={(e) => setPath(e.target.value)}
-							onKeyDown={handleKeyDown}
-							InputProps={{
-								startAdornment: (
-									<InputAdornment position="start" sx={{ paddingLeft: 1 }}>
-										<File size={16} />
-									</InputAdornment>
-								),
-							}}
-						/>
+			<div className={cn("flex flex-col gap-4 pt-2")}>
+				<div className={cn("flex flex-col gap-1.5")}>
+					<Label htmlFor={pathId}>Image path on device</Label>
+					<div className={cn("flex items-center gap-2")}>
+						{/*
+						 * The icon sits inside the field rather than beside it, so the
+						 * field keeps one boundary instead of gaining a second box for
+						 * the adornment.
+						 */}
+						<div className={cn("relative flex-1")}>
+							<FileIcon
+								size={16}
+								aria-hidden="true"
+								className={cn(
+									"pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-dim",
+								)}
+							/>
+							<Input
+								autoFocus
+								id={pathId}
+								type="text"
+								placeholder="/Users/eren/Documents/image.png"
+								value={path}
+								onChange={(e) => setPath(e.target.value)}
+								onKeyDown={handleKeyDown}
+								className={cn("pl-9")}
+							/>
+						</div>
 						<Button
+							variant="primary"
 							onClick={handleInsertFromPath}
-							variant="contained"
-							color="primary"
-							size="small"
 							disabled={!path.trim()}
-							sx={{
-								textTransform: "none",
-								fontSize: "0.8125rem",
-								padding: theme.spacing(0.75, 2),
-								borderRadius: theme.shape.borderRadius * 0.75,
-								boxShadow: "none",
-								height: "36px",
-								minWidth: "80px",
-								"&:hover": {
-									boxShadow: "none",
-									opacity: 0.9,
-								},
-							}}
+							className={cn("min-w-20")}
 						>
 							Insert
 						</Button>
-					</Box>
-				</FieldContainer>
-				<Typography align="center" sx={{ my: 2, fontSize: "0.875rem" }}>
-					OR
-				</Typography>
+					</div>
+				</div>
+				<p className={cn("text-center text-ink-muted text-meta")}>or</p>
 				<input
+					ref={fileInputRef}
 					accept="image/*"
-					style={{ display: "none" }}
-					id="raised-button-file"
+					className={cn("hidden")}
 					type="file"
 					onChange={handleFileChange}
 				/>
-				<label htmlFor="raised-button-file">
-					<Dropzone onDrop={handleDrop} onDragOver={handleDragOver}>
-						<UploadCloud size={32} />
-						<Typography sx={{ mt: 1, fontSize: "0.875rem" }}>
-							Drag & drop an image here, or click to select one
-						</Typography>
-					</Dropzone>
-				</label>
-			</Box>
+				<button
+					type="button"
+					onClick={() => fileInputRef.current?.click()}
+					onDrop={handleDrop}
+					onDragOver={handleDragOver}
+					className={cn(
+						"flex w-full flex-col items-center gap-2 rounded-lg",
+						"border border-hairline border-dashed bg-sunken p-6 text-center",
+						"transition-colors duration-fast ease-out-quart hover:bg-accent-wash",
+					)}
+				>
+					<UploadCloud
+						size={32}
+						aria-hidden="true"
+						className={cn("text-ink-dim")}
+					/>
+					<span className={cn("text-body-sm text-ink-muted")}>
+						Drag and drop an image here, or click to select one
+					</span>
+				</button>
+			</div>
 		</BaseDialog>
 	);
 };

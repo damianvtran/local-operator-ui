@@ -1,0 +1,144 @@
+/*
+ * Shepherd tour skin.
+ *
+ * Shepherd renders its own DOM outside React, so this is the one place in the
+ * feature that is hand-written CSS rather than utilities. Every value is a role
+ * variable (`--color-*`, which resolve to the active theme's `--lo-*` block) or
+ * a token from the ramps, so a tour follows the theme the same way the rest of
+ * the app does. The colours here used to be read off the MUI theme in JS and
+ * injected per render; hexes or `alpha()` calls do not belong in this file.
+ *
+ * Loaded next to `shepherd.js`'s own stylesheet in `onboarding-provider.tsx`,
+ * which is mounted at the app root — a tour started from any surface gets it.
+ */
+
+.shepherd-element {
+	max-width: 500px;
+	max-height: 95vh;
+	overflow-y: auto;
+	border: 1px solid var(--color-hairline);
+	border-radius: var(--radius-md);
+	background-color: var(--color-elevated);
+	box-shadow: var(--shadow-overlay);
+}
+
+.shepherd-element .shepherd-content {
+	border-radius: var(--radius-md);
+}
+
+.shepherd-element.shepherd-has-title .shepherd-content .shepherd-header {
+	border-top-left-radius: var(--radius-md);
+	border-top-right-radius: var(--radius-md);
+}
+
+.shepherd-arrow::before {
+	border: 1px solid var(--color-hairline);
+	background-color: var(--color-elevated);
+}
+
+/* Header: same ground as the panel, separated by the hairline alone. */
+.shepherd-header {
+	padding: 12px 20px;
+	border-bottom: 1px solid var(--color-hairline);
+	background-color: var(--color-elevated) !important;
+	background-image: none;
+}
+
+.shepherd-title {
+	font-size: var(--text-heading);
+	font-weight: 600;
+	letter-spacing: var(--text-heading--letter-spacing);
+	color: var(--color-ink);
+}
+
+.shepherd-cancel-icon {
+	padding: 4px;
+	border-radius: var(--radius-sm);
+	font-size: 1.5rem;
+	color: var(--color-ink-muted);
+	transition: background-color var(--duration-fast) var(--ease-out-quart);
+}
+
+.shepherd-cancel-icon:hover {
+	background-color: var(--color-accent-wash);
+	color: var(--color-ink);
+}
+
+/* Body: one step back from the header's ground, which is the whole of the
+   separation — there is no second border inside the panel. */
+.shepherd-text {
+	padding: 16px 20px;
+	background-color: var(--color-surface);
+	font-size: var(--text-body-sm);
+	line-height: 1.55;
+	color: var(--color-ink-muted);
+}
+
+.shepherd-text p {
+	margin: 0;
+	padding: 0;
+	color: inherit;
+	font-size: inherit;
+	line-height: inherit;
+}
+
+.shepherd-footer {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	padding: 12px 20px;
+	border-top: 1px solid var(--color-hairline);
+	border-bottom-left-radius: var(--radius-md);
+	border-bottom-right-radius: var(--radius-md);
+	background-color: var(--color-elevated);
+}
+
+/* Buttons: the `Button` primitive's md size and shape, in CSS, because these
+   elements are created by Shepherd and never pass through React. */
+.shepherd-button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 100px;
+	height: 32px;
+	margin-right: 0; /* shepherd's own spacing; the footer's `gap` owns this */
+	padding: 0 12px;
+	border: 1px solid transparent;
+	border-radius: var(--radius-md);
+	font-size: var(--text-body-sm);
+	font-weight: 500;
+	text-transform: none;
+	cursor: pointer;
+	transition: background-color var(--duration-fast) var(--ease-out-quart), color
+		var(--duration-fast) var(--ease-out-quart);
+}
+
+.shepherd-button.shepherd-button-primary,
+.shepherd-footer
+	.shepherd-button:only-child:not(.shepherd-button-primary):not(
+		.shepherd-button-secondary
+	) {
+	background-color: var(--color-accent);
+	color: var(--color-on-accent);
+}
+
+.shepherd-button.shepherd-button-primary:hover,
+.shepherd-footer
+	.shepherd-button:only-child:not(.shepherd-button-primary):not(
+		.shepherd-button-secondary
+	):hover {
+	background-color: var(--color-accent-hover);
+	color: var(--color-on-accent);
+}
+
+.shepherd-button.shepherd-button-secondary {
+	border-color: var(--color-control);
+	background-color: transparent;
+	color: var(--color-ink);
+}
+
+.shepherd-button.shepherd-button-secondary:hover {
+	background-color: var(--color-accent-wash);
+	color: var(--color-ink);
+}

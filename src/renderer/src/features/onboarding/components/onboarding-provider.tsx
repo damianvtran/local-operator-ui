@@ -8,7 +8,18 @@ import {
 } from "react-shepherd";
 import { useOnboardingTour } from "../hooks/use-onboarding-tour";
 
+/*
+ * Shepherd's stock stylesheet, then our skin over it.
+ *
+ * Order matters and is the whole reason these sit together: both files carry
+ * plain class selectors, so the later import wins. The skin is a stylesheet
+ * rather than a React component because Shepherd builds its own DOM outside
+ * React, and because this provider wraps the whole app — a tour opened from
+ * any surface is already covered, which a component mounted beside the
+ * onboarding modal would not be.
+ */
 import "shepherd.js/dist/css/shepherd.css";
+import "../onboarding-tour.css";
 
 type OnboardingProviderProps = {
 	children: React.ReactNode;

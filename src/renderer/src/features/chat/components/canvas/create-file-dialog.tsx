@@ -1,141 +1,70 @@
 import {
-	Autocomplete,
-	Box,
-	Button,
-	CircularProgress,
-	FormControl,
-	MenuItem,
-	TextField,
-	Typography,
-	styled,
-	useTheme,
-} from "@mui/material";
-import type { Theme } from "@mui/material/styles";
-import { BaseDialog } from "@shared/components/common/base-dialog";
+	BaseDialog,
+	PrimaryButton,
+	SecondaryButton,
+} from "@shared/components/common/base-dialog";
 import { ConfirmationModal } from "@shared/components/common/confirmation-modal";
+import { Spinner } from "@shared/components/common/spinner";
+import {
+	type SearchableOption,
+	SearchableSelect,
+} from "@shared/components/hosting/searchable-select";
+import { Input, Label } from "@shared/components/ui";
 import { useAgents } from "@shared/hooks/use-agents";
+import { cn } from "@shared/lib/utils";
 import { Code, File, Folder } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type { FC } from "react";
 import { DirectoryIndicator } from "../directory-indicator";
 
 /**
- * Shadcn-inspired menu props for Select dropdown
+ * The one label shape this form uses. `SearchableSelect` renders its own
+ * label with exactly these classes, so the two fields it does not own have to
+ * repeat them rather than take the primitive's default weight and ink.
  */
-const menuPropsSx = (theme: Theme) => ({
-	PaperProps: {
-		sx: {
-			borderRadius: theme.shape.borderRadius * 0.75,
-			boxShadow: theme.shadows[2],
-			mt: 0.5,
-			maxHeight: 300, // Set a max height for the dropdown
-			"& .MuiMenuItem-root": {
-				fontSize: "0.8125rem", // Smaller font size
-				minHeight: "32px", // More compact items
-				padding: theme.spacing(0.5, 2),
-			},
-			"& .MuiListSubheader-root": {
-				fontSize: "0.75rem",
-				lineHeight: "2.5",
-			},
-		},
-	},
-});
+const FIELD_LABEL_CLASS =
+	"mb-1.5 flex w-fit items-center gap-2 font-normal text-ink-muted";
 
 /**
- * TextField input styles for custom key and credential value fields
+ * Extensions offered by the type field. Ordered by group, because
+ * `SearchableSelect` emits a heading whenever the group changes and does not
+ * sort.
  */
-const textFieldInputSx = (theme: Theme) => ({
-	"& .MuiOutlinedInput-root": {
-		borderRadius: theme.shape.borderRadius * 0.75,
-		backgroundColor: theme.palette.background.paper,
-		border: `1px solid ${theme.palette.divider}`,
-		minHeight: "40px",
-		height: "40px",
-		transition: "border-color 0.2s ease, box-shadow 0.2s ease",
-		"&:hover": {
-			borderColor: theme.palette.text.secondary,
-		},
-		"&.Mui-focused": {
-			borderColor: theme.palette.primary.main,
-			boxShadow: `0 0 0 2px ${theme.palette.primary.main}33`,
-		},
-		"& .MuiOutlinedInput-notchedOutline": {
-			border: "none",
-		},
-	},
-	"& .MuiInputBase-input": {
-		padding: theme.spacing(1, 1.5),
-		fontSize: "0.875rem",
-		height: "calc(40px - 16px)",
-		boxSizing: "border-box",
-	},
-	"& .MuiInputBase-input::placeholder": {
-		color: theme.palette.text.disabled,
-		opacity: 1,
-	},
-	"& .MuiFormHelperText-root": {
-		fontSize: "0.75rem",
-		mt: 0.5,
-		ml: 0.5,
-	},
-});
-
-/**
- * Styled label and icon (matches EditableField/GeneralSettings)
- */
-const FieldLabel = styled("div")(({ theme }) => ({
-	fontFamily: theme.typography.fontFamily,
-	fontSize: "0.875rem",
-	fontWeight: 500,
-	color: theme.palette.text.secondary,
-	marginBottom: 6,
-	display: "flex",
-	alignItems: "center",
-}));
-
-const LabelIcon = styled(Box)({
-	marginRight: 8,
-	opacity: 0.9,
-	display: "flex",
-	alignItems: "center",
-});
-
-const fileTypeOptions = [
+const fileTypeOptions: SearchableOption[] = [
 	// General
-	{ value: "md", text: "Markdown (.md)", group: "General" },
-	{ value: "txt", text: "Plain Text (.txt)", group: "General" },
-	// Web Development
-	{ value: "html", text: "HTML (.html)", group: "Web Development" },
-	{ value: "css", text: "CSS (.css)", group: "Web Development" },
-	{ value: "js", text: "JavaScript (.js)", group: "Web Development" },
-	{ value: "jsx", text: "JSX (.jsx)", group: "Web Development" },
-	{ value: "ts", text: "TypeScript (.ts)", group: "Web Development" },
-	{ value: "tsx", text: "TSX (.tsx)", group: "Web Development" },
-	// Backend & Scripting
-	{ value: "py", text: "Python (.py)", group: "Backend & Scripting" },
-	{ value: "go", text: "Go (.go)", group: "Backend & Scripting" },
-	{ value: "java", text: "Java (.java)", group: "Backend & Scripting" },
-	{ value: "cs", text: "C# (.cs)", group: "Backend & Scripting" },
-	{ value: "php", text: "PHP (.php)", group: "Backend & Scripting" },
-	{ value: "rb", text: "Ruby (.rb)", group: "Backend & Scripting" },
-	{ value: "rs", text: "Rust (.rs)", group: "Backend & Scripting" },
-	{ value: "sh", text: "Shell Script (.sh)", group: "Backend & Scripting" },
+	{ id: "md", name: "Markdown (.md)", group: "General" },
+	{ id: "txt", name: "Plain text (.txt)", group: "General" },
+	// Web development
+	{ id: "html", name: "HTML (.html)", group: "Web development" },
+	{ id: "css", name: "CSS (.css)", group: "Web development" },
+	{ id: "js", name: "JavaScript (.js)", group: "Web development" },
+	{ id: "jsx", name: "JSX (.jsx)", group: "Web development" },
+	{ id: "ts", name: "TypeScript (.ts)", group: "Web development" },
+	{ id: "tsx", name: "TSX (.tsx)", group: "Web development" },
+	// Backend and scripting
+	{ id: "py", name: "Python (.py)", group: "Backend and scripting" },
+	{ id: "go", name: "Go (.go)", group: "Backend and scripting" },
+	{ id: "java", name: "Java (.java)", group: "Backend and scripting" },
+	{ id: "cs", name: "C# (.cs)", group: "Backend and scripting" },
+	{ id: "php", name: "PHP (.php)", group: "Backend and scripting" },
+	{ id: "rb", name: "Ruby (.rb)", group: "Backend and scripting" },
+	{ id: "rs", name: "Rust (.rs)", group: "Backend and scripting" },
+	{ id: "sh", name: "Shell script (.sh)", group: "Backend and scripting" },
 	// Configuration
-	{ value: "json", text: "JSON (.json)", group: "Configuration" },
-	{ value: "yaml", text: "YAML (.yaml)", group: "Configuration" },
-	{ value: "yml", text: "YAML (.yml)", group: "Configuration" },
-	{ value: "xml", text: "XML (.xml)", group: "Configuration" },
-	{ value: "toml", text: "TOML (.toml)", group: "Configuration" },
-	{ value: "ini", text: "INI (.ini)", group: "Configuration" },
-	{ value: "env", text: ".env", group: "Configuration" },
-	{ value: "dockerfile", text: "Dockerfile", group: "Configuration" },
-	// Other Languages
-	{ value: "c", text: "C (.c)", group: "Other Languages" },
-	{ value: "cpp", text: "C++ (.cpp)", group: "Other Languages" },
-	{ value: "swift", text: "Swift (.swift)", group: "Other Languages" },
-	{ value: "kt", text: "Kotlin (.kt)", group: "Other Languages" },
-	{ value: "scala", text: "Scala (.scala)", group: "Other Languages" },
+	{ id: "json", name: "JSON (.json)", group: "Configuration" },
+	{ id: "yaml", name: "YAML (.yaml)", group: "Configuration" },
+	{ id: "yml", name: "YAML (.yml)", group: "Configuration" },
+	{ id: "xml", name: "XML (.xml)", group: "Configuration" },
+	{ id: "toml", name: "TOML (.toml)", group: "Configuration" },
+	{ id: "ini", name: "INI (.ini)", group: "Configuration" },
+	{ id: "env", name: ".env", group: "Configuration" },
+	{ id: "dockerfile", name: "Dockerfile", group: "Configuration" },
+	// Other languages
+	{ id: "c", name: "C (.c)", group: "Other languages" },
+	{ id: "cpp", name: "C++ (.cpp)", group: "Other languages" },
+	{ id: "swift", name: "Swift (.swift)", group: "Other languages" },
+	{ id: "kt", name: "Kotlin (.kt)", group: "Other languages" },
+	{ id: "scala", name: "Scala (.scala)", group: "Other languages" },
 ];
 
 export type CreateFileDialogProps = {
@@ -156,7 +85,6 @@ export const CreateFileDialog: FC<CreateFileDialogProps> = ({
 	isSaving,
 	agentId,
 }) => {
-	const theme = useTheme();
 	const [fileName, setFileName] = useState("");
 	const [fileType, setFileType] = useState("md");
 	const [isConfirmingOverwrite, setConfirmingOverwrite] = useState(false);
@@ -175,6 +103,18 @@ export const CreateFileDialog: FC<CreateFileDialogProps> = ({
 		[agentListResult, agentId],
 	);
 	const currentWorkingDirectory = agent?.current_working_directory ?? "~";
+
+	/*
+	 * A typed extension that matches nothing in the list is still a valid
+	 * choice, so it is shown back as its own row rather than clearing the
+	 * field.
+	 */
+	const selectedFileType = useMemo(
+		() =>
+			fileTypeOptions.find((option) => option.id === fileType) ??
+			(fileType ? { id: fileType, name: fileType } : null),
+		[fileType],
+	);
 
 	const canSave = fileName.trim() !== "" && !isSaving;
 
@@ -201,48 +141,16 @@ export const CreateFileDialog: FC<CreateFileDialogProps> = ({
 
 	const dialogActions = (
 		<>
-			<Button
-				onClick={onClose}
-				variant="outlined" // Secondary action
-				size="small"
-				sx={{
-					borderColor: theme.palette.divider,
-					color: theme.palette.text.secondary,
-					textTransform: "none",
-					fontSize: "0.8125rem",
-					padding: theme.spacing(0.75, 2),
-					borderRadius: theme.shape.borderRadius * 0.75,
-					"&:hover": {
-						backgroundColor: theme.palette.action.hover,
-						borderColor: theme.palette.divider,
-					},
-				}}
-			>
+			<SecondaryButton onClick={onClose} disabled={isSaving}>
 				Cancel
-			</Button>
-			<Button
-				onClick={() => handleSave()}
-				variant="contained" // Primary action
-				color="primary"
-				size="small"
+			</SecondaryButton>
+			<PrimaryButton
+				onClick={() => void handleSave()}
 				disabled={!canSave}
-				startIcon={
-					isSaving ? <CircularProgress size={16} color="inherit" /> : null
-				}
-				sx={{
-					textTransform: "none",
-					fontSize: "0.8125rem",
-					padding: theme.spacing(0.75, 2),
-					borderRadius: theme.shape.borderRadius * 0.75,
-					boxShadow: "none",
-					"&:hover": {
-						boxShadow: "none",
-						opacity: 0.9,
-					},
-				}}
+				startIcon={isSaving ? <Spinner /> : null}
 			>
-				{isSaving ? "Creating..." : "Create File"}
-			</Button>
+				{isSaving ? "Creating..." : "Create file"}
+			</PrimaryButton>
 		</>
 	);
 
@@ -251,118 +159,73 @@ export const CreateFileDialog: FC<CreateFileDialogProps> = ({
 			<BaseDialog
 				open={open && !isConfirmingOverwrite}
 				onClose={onClose}
-				title="Create New File"
+				title="Create new file"
 				actions={dialogActions}
 				maxWidth="sm"
 				fullWidth
 			>
-				<Box sx={{ pt: 2 }}>
-					<FormControl fullWidth sx={{ mb: 2.5 }}>
-						<FieldLabel>
-							<LabelIcon>
-								<File size={14} />
-							</LabelIcon>
-							File Name
-						</FieldLabel>
-						<TextField
-							fullWidth
+				{/*
+				 * Deliberately not a `form`: `DirectoryIndicator` contains its own
+				 * text field, and Enter in a nested field would submit this one.
+				 */}
+				<div className={cn("pt-2")}>
+					<div className={cn("mb-4")}>
+						<Label htmlFor="create-file-name" className={cn(FIELD_LABEL_CLASS)}>
+							<File size={16} aria-hidden="true" />
+							File name
+						</Label>
+						<Input
+							id="create-file-name"
 							value={fileName}
 							onChange={(e) => setFileName(e.target.value)}
 							required
 							autoFocus
+							disabled={isSaving}
 							placeholder="Enter file name (e.g., my-new-script)"
-							sx={textFieldInputSx(theme)}
 							onKeyDown={(e) => {
 								if (e.key === "Enter" && canSave) {
-									handleSave();
+									void handleSave();
 								}
 							}}
 						/>
-					</FormControl>
+					</div>
 
-					<FormControl fullWidth sx={{ mb: 2.5 }}>
-						<FieldLabel>
-							<LabelIcon>
-								<Code size={14} />
-							</LabelIcon>
-							File Type
-						</FieldLabel>
-						<Autocomplete
-							freeSolo
-							value={fileType}
-							onChange={(_, newValue) => {
-								if (typeof newValue === "string") {
-									setFileType(newValue);
-								} else if (newValue) {
-									setFileType(newValue.value);
-								}
-							}}
-							options={fileTypeOptions}
-							groupBy={(option) => option.group}
-							getOptionLabel={(option) => {
-								if (typeof option === "string") {
-									const foundOption = fileTypeOptions.find(
-										(o) => o.value === option,
-									);
-									return foundOption ? foundOption.text : option;
-								}
-								return option.text;
-							}}
-							// @ts-ignore - MUI's types for freeSolo Autocomplete are tricky.
-							// This works at runtime.
-							isOptionEqualToValue={(option, value) => option.value === value}
-							renderInput={(params) => (
-								<TextField
-									{...params}
-									placeholder="Select or type an extension"
-									sx={textFieldInputSx(theme)}
-								/>
-							)}
-							renderOption={(props, option) => (
-								<MenuItem {...props} key={option.value}>
-									{option.text}
-								</MenuItem>
-							)}
-							slotProps={{
-								paper: {
-									sx: menuPropsSx(theme).PaperProps.sx,
-								},
-								listbox: {
-									sx: {
-										// Unset the maxHeight to prevent the listbox from scrolling internally.
-										// The Paper component will handle the scrolling.
-										maxHeight: "unset",
-									},
-								},
-							}}
-						/>
-					</FormControl>
+					<SearchableSelect
+						label="File type"
+						icon={<Code size={16} aria-hidden="true" />}
+						labelTooltip="Pick an extension, or type one that is not listed."
+						placeholder="Select or type an extension"
+						options={fileTypeOptions}
+						selected={selectedFileType}
+						onSelect={(option) => setFileType(option.id)}
+						onCustomSubmit={(text) => setFileType(text)}
+						busyLabel="Loading file types"
+						disabled={isSaving}
+					/>
 
-					<FormControl fullWidth>
-						<FieldLabel>
-							<LabelIcon>
-								<Folder size={14} />
-							</LabelIcon>
+					<div>
+						<p className={cn(FIELD_LABEL_CLASS, "text-body-sm")}>
+							<Folder size={16} aria-hidden="true" />
 							Location
-						</FieldLabel>
+						</p>
 						<DirectoryIndicator
 							agentId={agentId}
 							currentWorkingDirectory={currentWorkingDirectory}
 						/>
-						<Typography variant="caption" color="text.secondary" sx={{ mt: 1 }}>
+						<p className={cn("mt-2 text-ink-muted text-meta")}>
 							The file will be created in the selected working directory.
-						</Typography>
-					</FormControl>
-				</Box>
+						</p>
+					</div>
+				</div>
 			</BaseDialog>
 			<ConfirmationModal
 				open={isConfirmingOverwrite}
-				title="File Already Exists"
+				title="File already exists"
 				message={`A file named "${fileName}.${fileType}" already exists. Do you want to overwrite it?`}
 				confirmText="Overwrite"
 				onConfirm={() => {
 					setConfirmingOverwrite(false);
-					handleSave(true);
+					void handleSave(true);
 				}}
 				onCancel={() => setConfirmingOverwrite(false)}
 				isDangerous

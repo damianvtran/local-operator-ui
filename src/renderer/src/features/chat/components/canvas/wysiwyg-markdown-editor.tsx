@@ -2,23 +2,14 @@ import {
 	htmlToMarkdown,
 	markdownToHtml,
 } from "@features/chat/components/canvas/wysiwyg-utils";
-import {
-	Box,
-	Divider,
-	IconButton,
-	Paper,
-	ToggleButton,
-	ToggleButtonGroup,
-	Toolbar,
-	Tooltip,
-} from "@mui/material";
-import { alpha, styled } from "@mui/material/styles";
 import type { EditDiff } from "@shared/api/local-operator/types";
 import { FindReplaceWidget } from "@shared/components/common/find-replace-widget";
 import { TextSelectionControls } from "@shared/components/common/text-selection-controls";
+import { Button, Separator, Tooltip } from "@shared/components/ui";
 import { useDebounce } from "@shared/hooks/use-debounce";
 import { useDebouncedValue } from "@shared/hooks/use-debounced-value";
 import type { UndoManager } from "@shared/lib/undo-manager";
+import { cn } from "@shared/lib/utils";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import { useUndoManagerStore } from "@shared/store/undo-manager-store";
 import { showSuccessToast } from "@shared/utils/toast-manager";
@@ -169,169 +160,92 @@ type WysiwygMarkdownEditorProps = {
 	agentId?: string;
 };
 
-const SelectionHighlight = styled("span")(({ theme }) => ({
-	backgroundColor: theme.palette.action.hover,
-	borderRadius: "2px",
-}));
+/**
+ * Prose rules for the contentEditable subtree.
+ *
+ * These have to reach elements the component never renders: the editable
+ * markup is produced by `markdownToHtml` and written straight into the DOM, so
+ * there is no React node to hang a class on. Every rule here is a single
+ * descendant selector, which is exactly what an arbitrary variant expresses —
+ * so they live on the scroll container as `[&_blockquote]:…` rather than in a
+ * second stylesheet that would have to be kept in sync by hand. Values follow
+ * `markdown.css`, so the editor and the rendered preview read the same.
+ */
+const editorProseClasses = cn(
+	// The editable surface itself.
+	"[&_[contenteditable]]:min-h-50 [&_[contenteditable]]:text-body [&_[contenteditable]]:leading-relaxed [&_[contenteditable]]:text-ink [&_[contenteditable]]:outline-none",
+	// Find/replace, painted through the CSS Custom Highlight API. Highlight
+	// pseudo-elements inherit down the tree, so declaring them on the container
+	// covers every match inside it.
+	"[&::highlight(find-highlight)]:bg-accent-wash [&::highlight(find-highlight)]:text-ink",
+	"[&::highlight(current-find-highlight)]:bg-accent [&::highlight(current-find-highlight)]:text-on-accent",
+	// Headings.
+	"[&_:is(h1,h2,h3,h4,h5,h6)]:mt-4 [&_:is(h1,h2,h3,h4,h5,h6)]:mb-2 [&_:is(h1,h2,h3,h4,h5,h6)]:font-semibold [&_:is(h1,h2,h3,h4,h5,h6):first-child]:mt-0",
+	"[&_h1]:text-title [&_h2]:text-heading [&_h3]:text-heading [&_h4]:text-body [&_h5]:text-body [&_h6]:text-body-sm",
+	// Paragraphs.
+	"[&_p]:my-2 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0",
+	// Lists. A task list drops its marker because the checkbox is the marker.
+	"[&_:is(ul,ol)]:my-2 [&_:is(ul,ol)]:pl-6 [&_ul_li]:list-disc [&_ol_li]:list-decimal [&_li]:my-1 [&_li.task-list-item]:list-none",
+	// Quotes: a left rule and a ground step, no card.
+	"[&_blockquote]:my-3 [&_blockquote]:rounded-r-xs [&_blockquote]:border-hairline [&_blockquote]:border-l-2 [&_blockquote]:bg-sunken [&_blockquote]:px-3 [&_blockquote]:py-2 [&_blockquote]:text-ink-muted",
+	// Code. The `pre` already carries the ground; a nested `code` keeping its
+	// own would paint a box inside a box.
+	"[&_code]:rounded-xs [&_code]:bg-sunken [&_code]:bg-none [&_code]:p-0.5 [&_code]:font-mono [&_code]:text-mono-sm",
+	"[&_pre]:my-3 [&_pre]:overflow-auto [&_pre]:rounded-sm [&_pre]:bg-sunken [&_pre]:bg-none [&_pre]:p-3",
+	"[&_pre_code]:bg-transparent [&_pre_code]:p-0",
+	// Tables. The cell hairlines carry the structure, so there is no outer frame.
+	"[&_table]:my-3 [&_table]:w-full [&_table]:border-collapse",
+	"[&_:is(th,td)]:border [&_:is(th,td)]:border-hairline [&_:is(th,td)]:px-2.5 [&_:is(th,td)]:py-1.5 [&_:is(th,td)]:text-left",
+	"[&_th]:bg-sunken [&_th]:font-semibold",
+	// Links and images.
+	"[&_a]:text-accent [&_a]:underline [&_a:hover]:text-accent-hover",
+	"[&_img]:my-2 [&_img]:h-auto [&_img]:max-w-full [&_img]:rounded-xs",
+);
 
-const EditorContainer = styled(Paper)(({ theme }) => ({
-	position: "relative",
-	display: "flex",
-	flexDirection: "column",
-	height: "100%",
-	width: "100%",
-	overflow: "hidden",
-	backgroundColor: theme.palette.background.paper,
-	borderRadius: "0px",
-	border: "none",
-}));
+/**
+ * The inline diff block shown while a suggested edit is under review.
+ *
+ * Built imperatively (it is injected into the contentEditable subtree), so the
+ * classes are named here rather than set as inline styles — an inline
+ * `background-color` would have to be a literal, which is how the old version
+ * ended up with a red and a green that no theme could reach.
+ */
+const DIFF_CONTAINER_CLASS = "my-3 overflow-hidden rounded-sm";
+const DIFF_REMOVED_CLASS =
+	"border-danger-border border-l-2 bg-danger-wash px-3 py-2";
+const DIFF_ADDED_CLASS =
+	"border-success-border border-l-2 bg-success-wash px-3 py-2";
 
-const EditorToolbar = styled(Toolbar)(({ theme }) => ({
-	minHeight: "48px !important",
-	padding: "4px 8px",
-	borderBottom: `1px solid ${theme.palette.divider}`,
-	backgroundColor: theme.palette.background.default,
-	gap: "2px",
-	flexWrap: "wrap",
-}));
+/**
+ * Find-match highlighting for browsers without `CSS.highlights`. Same two roles
+ * the highlight pseudo-elements above use, so the fallback is indistinguishable.
+ */
+const FIND_MATCH_CLASS = "bg-accent-wash text-ink";
+const FIND_CURRENT_MATCH_CLASS = "bg-accent text-on-accent";
 
-const EditorContent = styled(Box)(({ theme }) => ({
-	flex: 1,
-	padding: "32px",
-	overflowY: "auto",
-	backgroundColor: theme.palette.background.paper,
-	"& [contenteditable]": {
-		outline: "none",
-		minHeight: "200px",
-		lineHeight: 1.6,
-		fontSize: "1rem",
-		color: theme.palette.text.primary,
-		fontFamily: theme.typography.fontFamily,
-	},
-	"&::highlight(find-highlight)": {
-		backgroundColor: "yellow",
-		color: "black",
-	},
-	"&::highlight(current-find-highlight)": {
-		backgroundColor: "orange",
-		color: "black",
-	},
-	"& h1, & h2, & h3, & h4, & h5, & h6": {
-		margin: "16px 0 8px 0",
-		fontWeight: 600,
-		"&:first-child": {
-			marginTop: 0,
-		},
-	},
-	"& h1": {
-		fontSize: "1.5rem",
-		borderBottom: `1px solid ${theme.palette.divider}`,
-		paddingBottom: "8px",
-	},
-	"& h2": {
-		fontSize: "1.3rem",
-	},
-	"& h3": {
-		fontSize: "1.1rem",
-	},
-	"& p": {
-		margin: "8px 0",
-		"&:first-child": {
-			marginTop: 0,
-		},
-		"&:last-child": {
-			marginBottom: 0,
-		},
-	},
-	"& ul, & ol": {
-		paddingLeft: "24px",
-		margin: "8px 0",
-	},
-	"& ul li": {
-		listStyleType: "disc",
-	},
-	"& ol li": {
-		listStyleType: "decimal",
-	},
-	"& li": {
-		margin: "4px 0",
-		"&.task-list-item": {
-			listStyleType: "none",
-		},
-	},
-	"& blockquote": {
-		borderLeft: `4px solid ${theme.palette.primary.main}`,
-		paddingLeft: "16px",
-		margin: "16px 0",
-		fontStyle: "italic",
-		backgroundColor: theme.palette.action.hover,
-		borderRadius: "0 4px 4px 0",
-		padding: "8px 16px",
-	},
-	"& code": {
-		backgroundImage: "none",
-		padding: "2px 2px",
-		borderRadius: "4px",
-		fontFamily: '"Geist Mono", "Roboto Mono", monospace',
-		letterSpacing: "0.05em",
-		fontSize: "0.8em",
-	},
-	"& pre": {
-		backgroundColor: alpha(theme.palette.action.hover, 0.02),
-		backgroundImage: "none",
-		padding: "12px",
-		borderRadius: "8px",
-		overflow: "auto",
-		border: `1px solid ${theme.palette.divider}`,
-		margin: "12px 0",
-		"& code": {
-			backgroundColor: "transparent",
-			padding: 0,
-		},
-	},
-	"& table": {
-		borderCollapse: "collapse",
-		width: "100%",
-		margin: "16px 0",
-		border: `1px solid ${theme.palette.divider}`,
-	},
-	"& th, & td": {
-		border: `1px solid ${theme.palette.divider}`,
-		padding: "8px 12px",
-		textAlign: "left",
-	},
-	"& th": {
-		backgroundColor: theme.palette.action.hover,
-		fontWeight: 600,
-	},
-	"& a": {
-		color: theme.palette.primary.main,
-		textDecoration: "underline",
-		"&:hover": {
-			color: theme.palette.primary.dark,
-		},
-	},
-	"& img": {
-		maxWidth: "100%",
-		height: "auto",
-		borderRadius: "4px",
-		margin: "8px 0",
-	},
-}));
+/**
+ * A formatting toggle that is on. A colour step, not a raised slab — and it
+ * holds that colour on hover so the state does not read as a hover artefact.
+ */
+const ACTIVE_TOGGLE_CLASS =
+	"bg-accent-wash text-accent hover:bg-accent-wash hover:text-accent";
 
-const ToolbarButton = styled(IconButton)(({ theme }) => ({
-	width: "30px",
-	height: "30px",
-	padding: "2px",
-	"&:hover": {
-		backgroundColor: theme.palette.action.hover,
-	},
-}));
+/**
+ * The two toggle groups. Both render the same button with the same pressed
+ * treatment, so they are data rather than fourteen near-identical JSX blocks.
+ */
+const TEXT_FORMATS = [
+	{ value: "bold", label: "Bold (Ctrl+B)", Icon: Bold },
+	{ value: "italic", label: "Italic (Ctrl+I)", Icon: Italic },
+	{ value: "underline", label: "Underline (Ctrl+U)", Icon: Underline },
+	{ value: "strikethrough", label: "Strikethrough", Icon: Strikethrough },
+] as const;
 
-const ToolbarDivider = styled(Divider)({
-	height: "24px",
-	margin: "0 4px",
-});
+const ALIGNMENTS = [
+	{ value: "left", label: "Align left", Icon: AlignLeft },
+	{ value: "center", label: "Align center", Icon: AlignCenter },
+	{ value: "right", label: "Align right", Icon: AlignRight },
+] as const;
 
 type TextType = "paragraph" | "h1" | "h2" | "h3" | "h4" | "h5" | "h6";
 
@@ -612,9 +526,9 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 						const highlightSpan = window.document.createElement("span");
 						highlightSpan.dataset.highlight = "true";
 						const isCurrent = i === newIndex;
-						highlightSpan.style.backgroundColor = isCurrent
-							? "orange"
-							: "yellow";
+						highlightSpan.className = isCurrent
+							? FIND_CURRENT_MATCH_CLASS
+							: FIND_MATCH_CLASS;
 						range.surroundContents(highlightSpan);
 					}
 				}
@@ -668,8 +582,8 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 				if (highlights) {
 					highlights.forEach((h, i) => {
 						const highlight = h as HTMLElement;
-						highlight.style.backgroundColor =
-							i === newIndex ? "orange" : "yellow";
+						highlight.className =
+							i === newIndex ? FIND_CURRENT_MATCH_CLASS : FIND_MATCH_CLASS;
 					});
 				}
 			}
@@ -1489,19 +1403,16 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 				const diffContainer = window.document.createElement("div");
 				diffContainer.setAttribute("data-diff-container", "true");
 				diffContainer.contentEditable = "false";
-				diffContainer.style.border = "2px solid #ccc";
-				diffContainer.style.margin = "10px 0";
-				diffContainer.style.padding = "10px";
+				diffContainer.className = DIFF_CONTAINER_CLASS;
 
 				const oldDiv = window.document.createElement("div");
 				oldDiv.innerHTML = markdownToHtml(diff.find);
-				oldDiv.style.backgroundColor = "rgba(255, 0, 0, 0.1)";
-				oldDiv.style.marginBottom = "5px";
+				oldDiv.className = DIFF_REMOVED_CLASS;
 				diffContainer.appendChild(oldDiv);
 
 				const newDiv = window.document.createElement("div");
 				newDiv.innerHTML = markdownToHtml(diff.replace);
-				newDiv.style.backgroundColor = "rgba(0, 255, 0, 0.1)";
+				newDiv.className = DIFF_ADDED_CLASS;
 				diffContainer.appendChild(newDiv);
 
 				editorRef.current.appendChild(diffContainer);
@@ -1516,15 +1427,16 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 			const diffContainer = window.document.createElement("div");
 			diffContainer.setAttribute("data-diff-container", "true");
 			diffContainer.contentEditable = "false";
+			diffContainer.className = DIFF_CONTAINER_CLASS;
 
 			const oldDiv = window.document.createElement("div");
 			oldDiv.innerHTML = markdownToHtml(diff.find);
-			oldDiv.style.backgroundColor = "rgba(255, 0, 0, 0.1)";
+			oldDiv.className = DIFF_REMOVED_CLASS;
 			diffContainer.appendChild(oldDiv);
 
 			const newDiv = window.document.createElement("div");
 			newDiv.innerHTML = markdownToHtml(diff.replace);
-			newDiv.style.backgroundColor = "rgba(0, 255, 0, 0.1)";
+			newDiv.className = DIFF_ADDED_CLASS;
 			diffContainer.appendChild(newDiv);
 
 			rangeObj.deleteContents();
@@ -1605,148 +1517,181 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 	};
 
 	return (
-		<EditorContainer elevation={1}>
-			<EditorToolbar>
-				{/* Text Type Selector */}
+		<div
+			className={cn(
+				"relative flex h-full w-full flex-col overflow-hidden bg-surface",
+			)}
+		>
+			<div
+				className={cn(
+					"flex min-h-12 flex-wrap items-center gap-0.5",
+					"border-hairline border-b bg-canvas px-2 py-1",
+				)}
+			>
+				{/* Text type */}
 				<TextStyleDropdown
 					currentTextType={currentTextType}
 					onTextTypeChange={handleTextTypeChange}
 				/>
 
-				<ToolbarDivider orientation="vertical" />
+				<Separator orientation="vertical" className={cn("mx-1 h-6")} />
 
-				{/* Text Formatting */}
-				<ToggleButtonGroup
-					value={selectedFormats}
-					onChange={(_, formats) => setSelectedFormats(formats)}
-					size="small"
-				>
-					<ToggleButton
-						value="bold"
-						onClick={() => handleFormatToggle("bold")}
-						size="small"
+				{/* Character formatting */}
+				{TEXT_FORMATS.map(({ value, label, Icon }) => {
+					const isActive = selectedFormats.includes(value);
+					return (
+						<Tooltip key={value} content={label}>
+							<Button
+								variant="ghost"
+								size="icon-sm"
+								aria-label={label}
+								aria-pressed={isActive}
+								onClick={() => handleFormatToggle(value)}
+								className={cn(isActive && ACTIVE_TOGGLE_CLASS)}
+							>
+								<Icon />
+							</Button>
+						</Tooltip>
+					);
+				})}
+
+				<Separator orientation="vertical" className={cn("mx-1 h-6")} />
+
+				{/* Lists, indentation and blocks */}
+				<Tooltip content="Bullet list">
+					<Button
+						variant="ghost"
+						size="icon-sm"
+						aria-label="Bullet list"
+						onClick={() => toggleList("unordered")}
 					>
-						<Tooltip title="Bold (Ctrl+B)">
-							<Bold size={14} />
-						</Tooltip>
-					</ToggleButton>
-					<ToggleButton
-						value="italic"
-						onClick={() => handleFormatToggle("italic")}
-						size="small"
+						<List />
+					</Button>
+				</Tooltip>
+				<Tooltip content="Numbered list">
+					<Button
+						variant="ghost"
+						size="icon-sm"
+						aria-label="Numbered list"
+						onClick={() => toggleList("ordered")}
 					>
-						<Tooltip title="Italic (Ctrl+I)">
-							<Italic size={14} />
-						</Tooltip>
-					</ToggleButton>
-					<ToggleButton
-						value="underline"
-						onClick={() => handleFormatToggle("underline")}
-						size="small"
+						<ListOrdered />
+					</Button>
+				</Tooltip>
+				<Tooltip content="Checkbox list">
+					<Button
+						variant="ghost"
+						size="icon-sm"
+						aria-label="Checkbox list"
+						onClick={() => toggleList("task")}
 					>
-						<Tooltip title="Underline (Ctrl+U)">
-							<Underline size={14} />
-						</Tooltip>
-					</ToggleButton>
-					<ToggleButton
-						value="strikethrough"
-						onClick={() => handleFormatToggle("strikethrough")}
-						size="small"
+						<CheckSquare />
+					</Button>
+				</Tooltip>
+				<Tooltip content="Indent">
+					<Button
+						variant="ghost"
+						size="icon-sm"
+						aria-label="Indent"
+						onClick={() => executeCommand("indent")}
 					>
-						<Tooltip title="Strikethrough">
-							<Strikethrough size={14} />
+						<Indent />
+					</Button>
+				</Tooltip>
+				<Tooltip content="Outdent">
+					<Button
+						variant="ghost"
+						size="icon-sm"
+						aria-label="Outdent"
+						onClick={() => executeCommand("outdent")}
+					>
+						<Outdent />
+					</Button>
+				</Tooltip>
+				<Tooltip content="Quote">
+					<Button
+						variant="ghost"
+						size="icon-sm"
+						aria-label="Quote"
+						onClick={() => toggleBlockFormat("blockquote")}
+					>
+						<Quote />
+					</Button>
+				</Tooltip>
+				<Tooltip content="Code block">
+					<Button
+						variant="ghost"
+						size="icon-sm"
+						aria-label="Code block"
+						onClick={() => toggleBlockFormat("pre")}
+					>
+						<Code />
+					</Button>
+				</Tooltip>
+
+				<Separator orientation="vertical" className={cn("mx-1 h-6")} />
+
+				{/* Alignment */}
+				{ALIGNMENTS.map(({ value, label, Icon }) => {
+					const isActive = currentAlignment === value;
+					return (
+						<Tooltip key={value} content={label}>
+							<Button
+								variant="ghost"
+								size="icon-sm"
+								aria-label={label}
+								aria-pressed={isActive}
+								onClick={(event) => handleAlignmentChange(event, value)}
+								className={cn(isActive && ACTIVE_TOGGLE_CLASS)}
+							>
+								<Icon />
+							</Button>
 						</Tooltip>
-					</ToggleButton>
-				</ToggleButtonGroup>
+					);
+				})}
 
-				<ToolbarDivider orientation="vertical" />
+				<Separator orientation="vertical" className={cn("mx-1 h-6")} />
 
-				{/* Lists and Quotes */}
-				<Tooltip title="Bullet List">
-					<ToolbarButton onClick={() => toggleList("unordered")}>
-						<List size={14} />
-					</ToolbarButton>
+				{/* Insert */}
+				<Tooltip content="Insert link">
+					<Button
+						variant="ghost"
+						size="icon-sm"
+						aria-label="Insert link"
+						onClick={insertLink}
+					>
+						<Link />
+					</Button>
 				</Tooltip>
-				<Tooltip title="Numbered List">
-					<ToolbarButton onClick={() => toggleList("ordered")}>
-						<ListOrdered size={14} />
-					</ToolbarButton>
+				<Tooltip content="Insert image">
+					<Button
+						variant="ghost"
+						size="icon-sm"
+						aria-label="Insert image"
+						onClick={insertImage}
+					>
+						<Image />
+					</Button>
 				</Tooltip>
-				<Tooltip title="Checkbox List">
-					<ToolbarButton onClick={() => toggleList("task")}>
-						<CheckSquare size={14} />
-					</ToolbarButton>
-				</Tooltip>
-				<Tooltip title="Indent">
-					<ToolbarButton onClick={() => executeCommand("indent")}>
-						<Indent size={14} />
-					</ToolbarButton>
-				</Tooltip>
-				<Tooltip title="Outdent">
-					<ToolbarButton onClick={() => executeCommand("outdent")}>
-						<Outdent size={14} />
-					</ToolbarButton>
-				</Tooltip>
-				<Tooltip title="Quote">
-					<ToolbarButton onClick={() => toggleBlockFormat("blockquote")}>
-						<Quote size={14} />
-					</ToolbarButton>
-				</Tooltip>
-				<Tooltip title="Code Block">
-					<ToolbarButton onClick={() => toggleBlockFormat("pre")}>
-						<Code size={14} />
-					</ToolbarButton>
+				<Tooltip content="Insert table">
+					<Button
+						variant="ghost"
+						size="icon-sm"
+						aria-label="Insert table"
+						onClick={insertTable}
+					>
+						<Table />
+					</Button>
 				</Tooltip>
 
-				<ToolbarDivider orientation="vertical" />
+				<Separator orientation="vertical" className={cn("mx-1 h-6")} />
 
-				<ToggleButtonGroup
-					value={currentAlignment}
-					exclusive
-					onChange={handleAlignmentChange}
-					size="small"
-				>
-					<ToggleButton value="left" size="small">
-						<Tooltip title="Align Left">
-							<AlignLeft size={14} />
-						</Tooltip>
-					</ToggleButton>
-					<ToggleButton value="center" size="small">
-						<Tooltip title="Align Center">
-							<AlignCenter size={14} />
-						</Tooltip>
-					</ToggleButton>
-					<ToggleButton value="right" size="small">
-						<Tooltip title="Align Right">
-							<AlignRight size={14} />
-						</Tooltip>
-					</ToggleButton>
-				</ToggleButtonGroup>
-
-				<ToolbarDivider orientation="vertical" />
-
-				{/* Insert Elements */}
-				<Tooltip title="Insert Link">
-					<ToolbarButton onClick={insertLink}>
-						<Link size={14} />
-					</ToolbarButton>
-				</Tooltip>
-				<Tooltip title="Insert Image">
-					<ToolbarButton onClick={insertImage}>
-						<Image size={14} />
-					</ToolbarButton>
-				</Tooltip>
-				<Tooltip title="Insert Table">
-					<ToolbarButton onClick={insertTable}>
-						<Table size={14} />
-					</ToolbarButton>
-				</Tooltip>
-
-				<ToolbarDivider orientation="vertical" />
-
-				{/* Undo/Redo */}
-				<Tooltip title="Undo (Ctrl+Z)">
-					<ToolbarButton
+				{/* History */}
+				<Tooltip content="Undo (Ctrl+Z)">
+					<Button
+						variant="ghost"
+						size="icon-sm"
+						aria-label="Undo"
 						onClick={() => {
 							if (undoManagerRef.current?.canUndo()) {
 								undoManagerRef.current.undo();
@@ -1763,11 +1708,14 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 						}}
 						disabled={!canUndo}
 					>
-						<Undo size={14} />
-					</ToolbarButton>
+						<Undo />
+					</Button>
 				</Tooltip>
-				<Tooltip title="Redo (Ctrl+Shift+Z)">
-					<ToolbarButton
+				<Tooltip content="Redo (Ctrl+Shift+Z)">
+					<Button
+						variant="ghost"
+						size="icon-sm"
+						aria-label="Redo"
 						onClick={() => {
 							if (undoManagerRef.current?.canRedo()) {
 								undoManagerRef.current.redo();
@@ -1784,13 +1732,19 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 						}}
 						disabled={!canRedo}
 					>
-						<Redo size={14} />
-					</ToolbarButton>
+						<Redo />
+					</Button>
 				</Tooltip>
-			</EditorToolbar>
+			</div>
 
-			<EditorContent ref={editorContentRef}>
-				<Box sx={{ position: "relative" }} ref={relativeContainerRef}>
+			<div
+				ref={editorContentRef}
+				className={cn(
+					"flex-1 overflow-y-auto bg-surface p-8",
+					editorProseClasses,
+				)}
+			>
+				<div className={cn("relative")} ref={relativeContainerRef}>
 					<div
 						ref={editorRef}
 						contentEditable={!reviewState}
@@ -1806,9 +1760,12 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 						}}
 					/>
 					{inlineEdit?.range && !reviewState && (
-						<SelectionHighlight
+						<span
+							aria-hidden
+							className={cn(
+								"pointer-events-none absolute rounded-xs bg-accent-wash",
+							)}
 							style={{
-								position: "absolute",
 								left:
 									inlineEdit.range.getBoundingClientRect().left -
 									(relativeContainerRef.current?.getBoundingClientRect().left ??
@@ -1897,8 +1854,8 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 							}}
 						/>
 					)}
-				</Box>
-			</EditorContent>
+				</div>
+			</div>
 			<FindReplaceWidget
 				show={showFindReplace}
 				initialMode={findReplaceMode}
@@ -1933,7 +1890,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 				onClose={() => setTableAnchorEl(null)}
 				onInsert={handleInsertTable}
 			/>
-		</EditorContainer>
+		</div>
 	);
 };
 

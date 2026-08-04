@@ -1,58 +1,30 @@
 import logo from "@assets/clear-icon-with-text.png";
-import { Box, Typography, useTheme } from "@mui/material";
 import type React from "react";
-import { LogoContainer } from "./installer-styled";
 
 /**
  * LogoSection component
  *
- * Displays the Local Operator logo and title
+ * The product mark and its one-line promise, above the feature carousel.
  */
 export const LogoSection: React.FC = () => {
-	const theme = useTheme();
-
 	return (
 		<>
-			<LogoContainer>
-				<Box
-					component="img"
-					src={logo}
-					alt="Local Operator Logo"
-					sx={{
-						width: "auto",
-						height: 120,
-						objectFit: "contain",
-						display: "block",
-					}}
-					onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
-						// Fallback if the path is incorrect
-						e.currentTarget.src = "../assets/icon.png";
-					}}
-				/>
-			</LogoContainer>
-			<Typography
-				variant="h3"
-				sx={{
-					textAlign: "center",
-					mb: 2,
-					fontWeight: 700,
-					color: theme.palette.text.primary,
+			<img
+				src={logo}
+				alt="Local Operator"
+				className="mb-6 block h-30 w-auto object-contain"
+				onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
+					// Fallback if the path is incorrect
+					e.currentTarget.src = "../assets/icon.png";
 				}}
-			>
-				Local Operator
-			</Typography>
-			<Typography
-				variant="h6"
-				sx={{
-					textAlign: "center",
-					mb: 4,
-					color: theme.palette.text.secondary,
-					maxWidth: "500px",
-					fontWeight: 400,
-				}}
-			>
-				Personal AI Assistants that Turn Ideas into Action
-			</Typography>
+			/>
+			{/* The mark already carries the name, so this heading is the accessible
+			    one and the image above it is decorative-adjacent; both name the
+			    product, which is what a splash screen is for. */}
+			<h1 className="text-center text-display text-ink">Local Operator</h1>
+			<p className="mt-2 mb-8 max-w-125 text-center text-body text-ink-muted">
+				Personal AI assistants that turn ideas into action
+			</p>
 		</>
 	);
 };

@@ -1,7 +1,8 @@
-import { Box, Button, TextField, styled, useTheme } from "@mui/material";
 import { BaseDialog } from "@shared/components/common/base-dialog";
+import { Button, Input, Label } from "@shared/components/ui";
+import { cn } from "@shared/lib/utils";
 import type { FC } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 
 export type LinkDialogData = {
 	url: string;
@@ -15,69 +16,19 @@ type InsertLinkDialogProps = {
 	initialData: LinkDialogData;
 };
 
-const FieldContainer = styled(Box)({
-	marginBottom: 16,
-});
-
-const FieldLabel = styled("label")(({ theme }) => ({
-	display: "flex",
-	alignItems: "center",
-	marginBottom: 6,
-	color: theme.palette.text.secondary,
-	fontWeight: 500,
-	fontSize: "0.875rem",
-	fontFamily: theme.typography.fontFamily,
-	lineHeight: theme.typography.body2.lineHeight,
-}));
-
-const StyledTextField = styled(TextField)(({ theme }) => ({
-	"& .MuiOutlinedInput-root": {
-		borderRadius: 6,
-		backgroundColor: theme.palette.background.paper,
-		border: `1px solid ${theme.palette.divider}`,
-		padding: 0,
-		minHeight: "36px",
-		height: "36px",
-		alignItems: "center",
-		transition: "border-color 0.2s ease, box-shadow 0.2s ease",
-		"&:hover": {
-			borderColor: theme.palette.text.secondary,
-			backgroundColor: theme.palette.background.paper,
-		},
-		"&.Mui-focused": {
-			backgroundColor: theme.palette.background.paper,
-			borderColor: theme.palette.primary.main,
-			boxShadow: `0 0 0 2px ${theme.palette.primary.main}33`,
-		},
-		"& .MuiOutlinedInput-notchedOutline": {
-			border: "none",
-		},
-	},
-	"& .MuiInputBase-input": {
-		padding: "4px 12px",
-		fontSize: "0.875rem",
-		lineHeight: 1.5,
-		fontFamily: "inherit",
-		height: "calc(36px - 8px)",
-		overflow: "hidden",
-		textOverflow: "ellipsis",
-		whiteSpace: "nowrap",
-		wordBreak: "break-word",
-		alignSelf: "center",
-	},
-	"& .MuiInputBase-input::placeholder": {
-		color: theme.palette.text.disabled,
-		opacity: 1,
-	},
-}));
-
+/**
+ * The invalid state rides on `aria-invalid` rather than a styling prop, so the
+ * red border and the announced state come from the same attribute.
+ */
 export const InsertLinkDialog: FC<InsertLinkDialogProps> = ({
 	open,
 	onClose,
 	onInsert,
 	initialData,
 }) => {
-	const theme = useTheme();
+	const baseId = useId();
+	const urlId = `${baseId}-url`;
+	const textId = `${baseId}-text`;
 	const [url, setUrl] = useState("");
 	const [text, setText] = useState("");
 
@@ -108,43 +59,10 @@ export const InsertLinkDialog: FC<InsertLinkDialogProps> = ({
 
 	const dialogActions = (
 		<>
-			<Button
-				onClick={onClose}
-				variant="outlined" // Secondary action
-				size="small"
-				sx={{
-					borderColor: theme.palette.divider,
-					color: theme.palette.text.secondary,
-					textTransform: "none",
-					fontSize: "0.8125rem",
-					padding: theme.spacing(0.75, 2),
-					borderRadius: theme.shape.borderRadius * 0.75,
-					"&:hover": {
-						backgroundColor: theme.palette.action.hover,
-						borderColor: theme.palette.divider,
-					},
-				}}
-			>
+			<Button variant="outline" onClick={onClose}>
 				Cancel
 			</Button>
-			<Button
-				onClick={handleInsert}
-				variant="contained" // Primary action
-				color="primary"
-				size="small"
-				disabled={!isUrlValid}
-				sx={{
-					textTransform: "none",
-					fontSize: "0.8125rem",
-					padding: theme.spacing(0.75, 2),
-					borderRadius: theme.shape.borderRadius * 0.75,
-					boxShadow: "none",
-					"&:hover": {
-						boxShadow: "none",
-						opacity: 0.9,
-					},
-				}}
-			>
+			<Button variant="primary" onClick={handleInsert} disabled={!isUrlValid}>
 				Insert
 			</Button>
 		</>
@@ -154,40 +72,40 @@ export const InsertLinkDialog: FC<InsertLinkDialogProps> = ({
 		<BaseDialog
 			open={open}
 			onClose={onClose}
-			title="Insert Link"
+			title="Insert link"
 			actions={dialogActions}
 			maxWidth="sm"
 			fullWidth
 		>
-			<Box sx={{ pt: 2 }}>
-				<FieldContainer>
-					<FieldLabel>URL *</FieldLabel>
-					<StyledTextField
+			<div className={cn("flex flex-col gap-4 pt-2")}>
+				<div className={cn("flex flex-col gap-1.5")}>
+					<Label htmlFor={urlId}>
+						URL <span className={cn("text-danger")}>*</span>
+					</Label>
+					<Input
 						autoFocus
-						fullWidth
-						variant="outlined"
+						id={urlId}
 						type="url"
 						placeholder="https://example.com"
 						value={url}
 						onChange={(e) => setUrl(e.target.value)}
 						onKeyDown={handleKeyDown}
 						required
-						error={url.length > 0 && !isUrlValid}
+						aria-invalid={url.length > 0 && !isUrlValid ? true : undefined}
 					/>
-				</FieldContainer>
-				<FieldContainer>
-					<FieldLabel>Text to display</FieldLabel>
-					<StyledTextField
-						fullWidth
-						variant="outlined"
+				</div>
+				<div className={cn("flex flex-col gap-1.5")}>
+					<Label htmlFor={textId}>Text to display</Label>
+					<Input
+						id={textId}
 						type="text"
 						placeholder="Link text (optional)"
 						value={text}
 						onChange={(e) => setText(e.target.value)}
 						onKeyDown={handleKeyDown}
 					/>
-				</FieldContainer>
-			</Box>
+				</div>
+			</div>
 		</BaseDialog>
 	);
 };

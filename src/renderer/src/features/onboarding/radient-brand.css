@@ -1,0 +1,62 @@
+/*
+ * The Radient brand scope.
+ *
+ * The onboarding Radient steps brand a third-party account rather than the app,
+ * so they paint in Radient's palette whichever theme the user picked. Setting
+ * `data-theme="radient"` on the subtree is half of that: it does re-point every
+ * `--lo-*` variable there, because themes.generated.css writes plain attribute
+ * selectors.
+ *
+ * The other half is this file, and the reason it has to exist is a CSS rule
+ * that is easy to get wrong. Tailwind's `@theme` block declares the role
+ * variables ON `:root`:
+ *
+ *     :root { --color-surface: var(--lo-surface) }
+ *
+ * A `var()` inside a custom property is substituted where the property is
+ * *declared*, not where it is *used*. So `--color-surface` computes to the
+ * root palette's surface once, and every descendant inherits that finished
+ * colour — including a descendant that just re-pointed `--lo-surface`. Without
+ * the re-declaration below, `bg-surface` inside the Radient scope silently
+ * paints the active theme's surface and the branding does not happen.
+ *
+ * `:not(:root)` keeps this to nested scopes: the document element gets its
+ * mapping from `@theme` and does not need a second copy.
+ */
+
+[data-theme="radient"]:not(:root) {
+	--color-canvas: var(--lo-canvas);
+	--color-surface: var(--lo-surface);
+	--color-elevated: var(--lo-elevated);
+	--color-sunken: var(--lo-sunken);
+
+	--color-ink: var(--lo-ink);
+	--color-ink-muted: var(--lo-ink-muted);
+	--color-ink-dim: var(--lo-ink-dim);
+	--color-ink-disabled: var(--lo-ink-disabled);
+
+	--color-hairline: var(--lo-hairline);
+	--color-control: var(--lo-border-control);
+
+	--color-accent: var(--lo-accent);
+	--color-accent-hover: var(--lo-accent-hover);
+	--color-accent-active: var(--lo-accent-active);
+	--color-accent-wash: var(--lo-accent-wash);
+	--color-on-accent: var(--lo-on-accent);
+
+	--color-success: var(--lo-success);
+	--color-success-wash: var(--lo-success-wash);
+	--color-success-border: var(--lo-success-border);
+	--color-warning: var(--lo-warning);
+	--color-warning-wash: var(--lo-warning-wash);
+	--color-warning-border: var(--lo-warning-border);
+	--color-danger: var(--lo-danger);
+	--color-danger-wash: var(--lo-danger-wash);
+	--color-danger-border: var(--lo-danger-border);
+	--color-info: var(--lo-info);
+	--color-info-wash: var(--lo-info-wash);
+	--color-info-border: var(--lo-info-border);
+
+	--color-scrim: var(--lo-scrim);
+	--shadow-overlay: var(--lo-overlay-shadow);
+}

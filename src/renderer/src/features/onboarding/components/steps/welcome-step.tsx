@@ -1,108 +1,54 @@
 /**
  * Welcome Step Component
  *
- * First step in the onboarding process that introduces the user to the app
- * with an exciting and engaging presentation.
+ * First step in the onboarding process. Says what the next few minutes cover,
+ * in the order they happen, and nothing else.
  */
 
-import { Box, Typography } from "@mui/material";
-import {
-	Bot,
-	KeyRound,
-	Lightbulb,
-	Search,
-	Sparkles,
-	UserRound,
-} from "lucide-react";
+import { Bot, KeyRound, Search, Sparkles, UserRound } from "lucide-react";
 import type { FC } from "react";
-import {
-	InlineIcon,
-	SectionContainer,
-	SectionDescription,
-} from "../onboarding-styled";
+
+const SETUP_STEPS = [
+	{ icon: UserRound, label: "Set up your profile" },
+	{ icon: KeyRound, label: "Add a model provider credential" },
+	{ icon: Search, label: "Turn on web search" },
+	{ icon: Bot, label: "Pick a default model" },
+	{ icon: Sparkles, label: "Create your first assistant" },
+] as const;
 
 /**
  * Welcome step in the onboarding process
  */
 export const WelcomeStep: FC = () => {
 	return (
-		<Box sx={{ animation: "fadeIn 0.6s ease-out" }}>
-			<Typography
-				variant="body1"
-				sx={{
-					fontSize: "1.1rem",
-					fontWeight: 500,
-					lineHeight: 1.6,
-					mb: 2,
-				}}
-			>
-				Let's set up your AI environment so you can start creating amazing
-				things with AI agents!
-			</Typography>
+		<div className="flex flex-col gap-6">
+			<p className="text-body text-ink">
+				Let's set up your AI environment so your agents have what they need to
+				work.
+			</p>
 
-			<Typography
-				variant="body1"
-				sx={{
-					fontSize: "1.05rem",
-					mb: 3,
-				}}
-			>
-				This quick setup will guide you through:
-			</Typography>
+			<div className="flex flex-col gap-4">
+				<h3 className="text-heading text-ink">This setup covers</h3>
+				{/* A list, so it is announced as one and its length is known up front.
+				    No icon plates: the glyph is a marker beside the line, not an
+				    object of its own. */}
+				<ul className="flex flex-col gap-3">
+					{SETUP_STEPS.map(({ icon: Icon, label }) => (
+						<li key={label} className="flex items-center gap-3 text-body">
+							<Icon
+								size={16}
+								className="shrink-0 text-ink-dim"
+								aria-hidden="true"
+							/>
+							{label}
+						</li>
+					))}
+				</ul>
+			</div>
 
-			<SectionContainer>
-				<SectionDescription>
-					<Box sx={{ mt: 0 }}>
-						<Box sx={{ mb: 1.5, display: "flex", alignItems: "flex-start" }}>
-							<InlineIcon>
-								<UserRound size={16} />
-							</InlineIcon>
-							Setting up your personalized user profile
-						</Box>
-						<Box sx={{ mb: 1.5, display: "flex", alignItems: "flex-start" }}>
-							<InlineIcon>
-								<KeyRound size={16} />
-							</InlineIcon>
-							Adding your first AI model provider credential
-						</Box>
-						<Box sx={{ mb: 1.5, display: "flex", alignItems: "flex-start" }}>
-							<InlineIcon>
-								<Search size={16} />
-							</InlineIcon>
-							Supercharging your AI with web search capabilities
-						</Box>
-						<Box sx={{ mb: 1.5, display: "flex", alignItems: "flex-start" }}>
-							<InlineIcon>
-								<Bot size={16} />
-							</InlineIcon>
-							Selecting your perfect default AI model
-						</Box>
-						<Box sx={{ display: "flex", alignItems: "flex-start" }}>
-							<InlineIcon>
-								<Sparkles size={16} />
-							</InlineIcon>
-							Creating your first intelligent AI assistant
-						</Box>
-					</Box>
-				</SectionDescription>
-			</SectionContainer>
-
-			<Box
-				sx={{
-					mt: 3,
-					fontStyle: "italic",
-					display: "flex",
-					alignItems: "center",
-					fontSize: "0.875rem", // Equivalent to variant="body2"
-					color: "text.secondary",
-				}}
-			>
-				<InlineIcon>
-					<Lightbulb size={16} />
-				</InlineIcon>
-				Don't worry! You can always customize these settings later in the
-				Settings page.
-			</Box>
-		</Box>
+			<p className="text-body-sm text-ink-muted">
+				You can change any of this later in Settings.
+			</p>
+		</div>
 	);
 };

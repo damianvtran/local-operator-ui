@@ -6,97 +6,94 @@ import {
 	type ViewUpdate,
 	WidgetType,
 } from "@codemirror/view";
-import { alpha } from "@mui/material";
-import type { Theme } from "@mui/material/styles";
 import type { EditDiff } from "@shared/api/local-operator/types";
+
+const MONO_FAMILY = "'Geist Mono', 'Roboto Mono', monospace";
 
 const GLOBAL_WHITE_SPACE_REGEX = /\s+/g;
 const SINGLE_WHITE_SPACE_REGEX = /\s/;
+
+/**
+ * One side of the proposed change: a heading and the affected text, both in
+ * the semantic role for that side.
+ *
+ * The colours are `var(--color-*)` rather than resolved values. This widget is
+ * raw DOM inside CodeMirror's content, so it cannot carry role *classes* — but
+ * a variable is resolved by the browser at paint, which is what lets the
+ * widget follow a theme swap without being rebuilt.
+ */
+const appendDiffBlock = (
+	parent: HTMLElement,
+	label: string,
+	text: string,
+	role: "danger" | "success",
+) => {
+	const heading = document.createElement("div");
+	heading.textContent = label;
+	/* 4px within a group, 8px between them: the wrapper's gap covers the first,
+	   so only a second group needs the step up. */
+	heading.style.marginTop = parent.hasChildNodes() ? "8px" : "0";
+	heading.style.fontSize = "var(--text-meta)";
+	heading.style.fontWeight = "600";
+	heading.style.color = `var(--color-${role})`;
+	parent.appendChild(heading);
+
+	const code = document.createElement("div");
+	code.textContent = text;
+	code.style.backgroundColor = `var(--color-${role}-wash)`;
+	code.style.color = `var(--color-${role})`;
+	code.style.border = `1px solid var(--color-${role}-border)`;
+	code.style.padding = "4px 6px";
+	code.style.borderRadius = "var(--radius-sm)";
+	code.style.whiteSpace = "pre-wrap";
+	code.style.fontFamily = MONO_FAMILY;
+	parent.appendChild(code);
+};
 
 class DiffWidget extends WidgetType {
 	constructor(
 		readonly oldText: string,
 		readonly newText: string,
-		readonly theme: Theme,
 	) {
 		super();
 	}
 
 	toDOM() {
 		const container = document.createElement("div");
-		container.style.border = `1px solid ${this.theme.palette.divider}`;
-		container.style.borderRadius = `${this.theme.shape.borderRadius}px`;
-		container.style.padding = "8px";
-		container.style.margin = "4px 0";
-		container.style.transform = "translate(-12px, 12px)";
-		container.style.fontFamily = "'Geist Mono', monospace";
-		container.style.fontSize = "13px";
-		container.style.backgroundColor = alpha(
-			this.theme.palette.background.paper,
-			0.9,
-		);
 		container.style.display = "inline-block";
 		container.style.minWidth = "200px";
+		container.style.margin = "4px 0";
+		container.style.transform = "translate(-12px, 12px)";
+		container.style.padding = "8px";
+		container.style.borderRadius = "var(--radius-md)";
+		/* `elevated` plus the one overlay shadow, and no border: the widget
+		   floats over the editor's `sunken` ground, so the ground step and the
+		   shadow already separate it and the border it used to carry was a
+		   third boundary saying the same thing. */
+		container.style.backgroundColor = "var(--color-elevated)";
+		container.style.boxShadow = "var(--shadow-overlay)";
+		container.style.fontFamily = MONO_FAMILY;
+		container.style.fontSize = "var(--text-mono)";
 
-		// Add a label
 		const label = document.createElement("div");
-		label.textContent = "Proposed Change:";
-		label.style.fontSize = "11px";
-		label.style.fontWeight = "bold";
-		label.style.color = this.theme.palette.info.main;
+		label.textContent = "Proposed change:";
+		label.style.fontSize = "var(--text-meta)";
+		label.style.fontWeight = "600";
+		label.style.color = "var(--color-info)";
 		label.style.marginBottom = "4px";
 		container.appendChild(label);
 
-		// Create a wrapper for the diff content
 		const diffWrapper = document.createElement("div");
 		diffWrapper.style.display = "flex";
 		diffWrapper.style.flexDirection = "column";
 		diffWrapper.style.gap = "4px";
 
-		// Old text (what will be removed)
 		if (this.oldText.trim()) {
-			const oldLabel = document.createElement("div");
-			oldLabel.textContent = "- Remove:";
-			oldLabel.style.fontSize = "10px";
-			oldLabel.style.color = this.theme.palette.error.main;
-			oldLabel.style.fontWeight = "bold";
-			diffWrapper.appendChild(oldLabel);
-
-			const oldCode = document.createElement("div");
-			oldCode.textContent = this.oldText;
-			oldCode.style.backgroundColor = alpha(this.theme.palette.error.main, 0.2);
-			oldCode.style.color = this.theme.palette.error.main;
-			oldCode.style.padding = "4px 6px";
-			oldCode.style.borderRadius = "4px";
-			oldCode.style.whiteSpace = "pre-wrap";
-			oldCode.style.fontFamily = "'Geist Mono', 'Roboto Mono', monospace";
-			oldCode.style.border = `1px solid ${alpha(this.theme.palette.error.main, 0.5)}`;
-			diffWrapper.appendChild(oldCode);
+			appendDiffBlock(diffWrapper, "- Remove:", this.oldText, "danger");
 		}
 
-		// New text (what will be added)
 		if (this.newText.trim()) {
-			const newLabel = document.createElement("div");
-			newLabel.textContent = "+ Add:";
-			newLabel.style.fontSize = "10px";
-			newLabel.style.color = this.theme.palette.success.main;
-			newLabel.style.fontWeight = "bold";
-			newLabel.style.marginTop = "4px";
-			diffWrapper.appendChild(newLabel);
-
-			const newCode = document.createElement("div");
-			newCode.textContent = this.newText;
-			newCode.style.backgroundColor = alpha(
-				this.theme.palette.success.main,
-				0.2,
-			);
-			newCode.style.color = this.theme.palette.success.main;
-			newCode.style.padding = "4px 6px";
-			newCode.style.borderRadius = "4px";
-			newCode.style.whiteSpace = "pre-wrap";
-			newCode.style.fontFamily = "'Geist Mono', 'Roboto Mono', monospace";
-			newCode.style.border = `1px solid ${alpha(this.theme.palette.success.main, 0.5)}`;
-			diffWrapper.appendChild(newCode);
+			appendDiffBlock(diffWrapper, "+ Add:", this.newText, "success");
 		}
 
 		container.appendChild(diffWrapper);
@@ -110,7 +107,6 @@ class DiffWidget extends WidgetType {
 }
 
 export const diffHighlight = (
-	theme: Theme,
 	reviewState: {
 		diffs: EditDiff[];
 		currentIndex: number;
@@ -279,32 +275,22 @@ export const diffHighlight = (
 					// For multi-line diffs, use mark decoration with a custom widget at the end
 					const highlightMark = Decoration.mark({
 						attributes: {
-							style: `background-color: ${alpha(
-								theme.palette.info.main,
-								0.3,
-							)}; border-left: 3px solid ${theme.palette.info.main}; padding-left: 4px;`,
+							style:
+								"background-color: var(--color-info-wash); border-left: 3px solid var(--color-info); padding-left: 4px;",
 						},
 					});
 					builder.push(highlightMark.range(startIndex, endIndex));
 
 					// Add a widget at the end to show the replacement
 					const infoWidget = Decoration.widget({
-						widget: new DiffWidget(
-							currentDiff.find,
-							currentDiff.replace,
-							theme,
-						),
+						widget: new DiffWidget(currentDiff.find, currentDiff.replace),
 						side: 1, // Place after the content
 					});
 					builder.push(infoWidget.range(endIndex));
 				} else {
 					// For single-line diffs, use the widget replacement
 					const widget = Decoration.replace({
-						widget: new DiffWidget(
-							currentDiff.find,
-							currentDiff.replace,
-							theme,
-						),
+						widget: new DiffWidget(currentDiff.find, currentDiff.replace),
 					});
 
 					builder.push(widget.range(startIndex, endIndex));

@@ -5,10 +5,11 @@
  * Manages the flow between different onboarding steps.
  */
 
-import { Box, Tooltip, useTheme } from "@mui/material";
 import { getUserInfo } from "@shared/api/radient/auth-api";
+import { Button, Tooltip } from "@shared/components/ui";
 import { apiConfig } from "@shared/config";
 import { radientUserKeys } from "@shared/hooks/use-radient-user-query";
+import { cn } from "@shared/lib/utils";
 import {
 	OnboardingStep,
 	useOnboardingStore,
@@ -16,22 +17,11 @@ import {
 import { useUserStore } from "@shared/store/user-store";
 import { clearSession, getSession } from "@shared/utils/session-store";
 import { useQueryClient } from "@tanstack/react-query";
-import { CircleCheck, PartyPopper, Rocket } from "lucide-react";
+import { CircleCheck } from "lucide-react";
 import type { FC } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { OnboardingDialog } from "./onboarding-dialog";
-import {
-	CongratulationsContainer,
-	CongratulationsIcon,
-	CongratulationsMessage,
-	CongratulationsTitle,
-	PrimaryButton,
-	SecondaryButton,
-	SkipButton,
-	StepDot,
-	StepIndicatorContainer,
-} from "./onboarding-styled";
 import { CreateAgentStep } from "./steps/create-agent-step";
 import { DefaultModelStep } from "./steps/default-model-step";
 import { ModelCredentialStep } from "./steps/model-credential-step";
@@ -43,14 +33,14 @@ import { UserProfileStep } from "./steps/user-profile-step";
 // Define step titles outside the component for stability
 // Use Partial<> as not all steps might have explicit titles defined here anymore
 const stepTitles: Partial<Record<OnboardingStep, string>> = {
-	[OnboardingStep.RADIENT_CHOICE]: "Choose Your Setup Option",
-	[OnboardingStep.RADIENT_SIGNIN]: "Set Up With Radient Pass",
-	[OnboardingStep.USER_PROFILE]: "Set Up Your Profile",
-	[OnboardingStep.MODEL_CREDENTIAL]: "Add Model Provider Credentials",
-	[OnboardingStep.SEARCH_API]: "Enable Web Search (Recommended)",
-	[OnboardingStep.DEFAULT_MODEL]: "Choose Your Default Model",
-	[OnboardingStep.CREATE_AGENT]: "Create Your First Agent",
-	[OnboardingStep.CONGRATULATIONS]: "Setup Complete",
+	[OnboardingStep.RADIENT_CHOICE]: "Choose your setup",
+	[OnboardingStep.RADIENT_SIGNIN]: "Set up with Radient Pass",
+	[OnboardingStep.USER_PROFILE]: "Set up your profile",
+	[OnboardingStep.MODEL_CREDENTIAL]: "Add model provider credentials",
+	[OnboardingStep.SEARCH_API]: "Enable web search",
+	[OnboardingStep.DEFAULT_MODEL]: "Choose your default model",
+	[OnboardingStep.CREATE_AGENT]: "Create your first agent",
+	[OnboardingStep.CONGRATULATIONS]: "Setup complete",
 };
 
 /**
@@ -69,7 +59,6 @@ type OnboardingModalProps = {
  * Manages the first-time setup experience with multiple steps
  */
 export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
-	const theme = useTheme(); // Get theme for spacing
 	const { currentStep, setCurrentStep, completeModalOnboarding } =
 		useOnboardingStore();
 	const navigate = useNavigate();
@@ -195,7 +184,6 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 	 * AND navigates to the next step.
 	 */
 	const handleRadientSignInSuccess = useCallback(() => {
-		console.log("handleRadientSignInSuccess");
 		setIsUsingRadientPass(true);
 		setCurrentStep(OnboardingStep.CREATE_AGENT);
 	}, [setCurrentStep]);
@@ -228,16 +216,7 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 		// Handle undefined currentStep during hydration
 		if (!currentStep) return "Loading...";
 
-		// Use specific titles, fallback to the tooltip title
-		switch (currentStep) {
-			case OnboardingStep.RADIENT_CHOICE:
-				return "Choose Your Setup Option"; // More specific title
-			case OnboardingStep.CONGRATULATIONS:
-				return "Setup Complete";
-			default:
-				// Use the title defined for tooltips if not overridden
-				return stepTitles[currentStep] || "First-Time Setup";
-		}
+		return stepTitles[currentStep] || "First-time setup";
 	}, [currentStep]); // Remove stepTitles from dependency array
 
 	/**
@@ -278,43 +257,26 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 				// Pass the validity callback
 				return <CreateAgentStep onValidityChange={setIsCreateAgentStepValid} />;
 			case OnboardingStep.CONGRATULATIONS:
+				/*
+				 * The one accent moment in the flow, spent here. Setup ending is the
+				 * only thing in onboarding worth a colour, and it gets a single mark
+				 * rather than the three stacked celebration glyphs this used to have.
+				 */
 				return (
-					<CongratulationsContainer>
-						<CongratulationsIcon>
-							<CircleCheck size={48} />
-						</CongratulationsIcon>
-						<CongratulationsTitle>
-							<Box
-								component="span"
-								sx={{
-									display: "inline-flex",
-									alignItems: "center",
-									mr: 1,
-									verticalAlign: "middle",
-								}}
-							>
-								<PartyPopper size={24} />
-							</Box>
-							You're all set!
-							<Box
-								component="span"
-								sx={{
-									display: "inline-flex",
-									alignItems: "center",
-									ml: 1,
-									verticalAlign: "middle",
-								}}
-							>
-								<Rocket size={24} />
-							</Box>
-						</CongratulationsTitle>
-						<CongratulationsMessage>
-							Amazing! Your Local Operator is now configured and ready to use.
-							You can start chatting with your new AI assistant right away or
-							explore more exciting features in the settings. Get ready for an
-							incredible AI experience!
-						</CongratulationsMessage>
-					</CongratulationsContainer>
+					<div className="flex flex-col items-center gap-4 py-6 text-center">
+						<CircleCheck
+							size={40}
+							strokeWidth={1.5}
+							className="text-accent"
+							aria-hidden="true"
+						/>
+						<h2 className="text-title text-ink">You're all set</h2>
+						<p className="max-w-110 text-body text-ink-muted">
+							Local Operator is configured and ready. Start a conversation with
+							your new assistant, or change anything you picked here later in
+							Settings.
+						</p>
+					</div>
 				);
 			default:
 				return null; // Should not happen
@@ -448,54 +410,56 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 	 * Get the text for the 'Next'/'Finish' button
 	 */
 	const nextButtonText =
-		currentStep === OnboardingStep.CONGRATULATIONS ? "Get Started" : "Next →";
+		currentStep === OnboardingStep.CONGRATULATIONS ? "Get started" : "Next";
 
 	// Determine if the Next button should be disabled
 	const isNextDisabled =
 		// Disable on Create Agent step if it's not valid (no agents added)
 		currentStep === OnboardingStep.CREATE_AGENT && !isCreateAgentStepValid;
 
-	// Render dialog actions (Back, Skip, Next buttons)
-	// Render dialog actions (Back, Skip, Next buttons) - Adjusted layout
-	const dialogActions = (
-		<Box
-			sx={{
-				display: "flex",
-				justifyContent: "space-between", // Space out Back and Next/Skip
-				width: "100%",
-				alignItems: "center",
-				gap: theme.spacing(1.5), // Consistent gap
-			}}
-		>
-			{/* Back Button Area - Use flex-start alignment */}
-			<Box sx={{ display: "flex", justifyContent: "flex-start" }}>
-				{canGoBack ? (
-					<SecondaryButton onClick={handleBack}>Back</SecondaryButton>
-				) : (
-					<Box sx={{ minWidth: 100 }} /> // Placeholder to maintain alignment
-				)}
-			</Box>
+	/* The choice and sign-in steps advance by being answered, not by Next. */
+	const showNext =
+		currentStep !== OnboardingStep.RADIENT_CHOICE &&
+		currentStep !== OnboardingStep.RADIENT_SIGNIN;
 
-			{/* Skip/Next Button Area - Use flex-end alignment */}
-			<Box
-				sx={{
-					display: "flex",
-					justifyContent: "flex-end",
-					gap: theme.spacing(1.5), // Consistent gap
-					alignItems: "center",
-				}}
-			>
-				{canSkip && <SkipButton onClick={handleSkip}>Skip</SkipButton>}
-				{/* Hide Next button on choice/signin steps */}
-				{currentStep !== OnboardingStep.RADIENT_CHOICE &&
-					currentStep !== OnboardingStep.RADIENT_SIGNIN && (
-						<PrimaryButton onClick={handleNext} disabled={isNextDisabled}>
-							{nextButtonText}
-						</PrimaryButton>
+	/*
+	 * Back on the left, forward on the right, and the row keeps its height when
+	 * there is no Back — `justify-between` with an empty first slot rather than
+	 * a spacer element of a guessed width.
+	 *
+	 * `null` when the step has no buttons at all, so the dialog does not draw a
+	 * bordered footer band around nothing.
+	 */
+	const dialogActions =
+		canGoBack || canSkip || showNext ? (
+			<div className="flex w-full items-center justify-between gap-3">
+				<div>
+					{canGoBack && (
+						<Button variant="secondary" size="lg" onClick={handleBack}>
+							Back
+						</Button>
 					)}
-			</Box>
-		</Box>
-	);
+				</div>
+
+				<div className="flex items-center gap-3">
+					{canSkip && (
+						<Button variant="ghost" size="lg" onClick={handleSkip}>
+							Skip
+						</Button>
+					)}
+					{showNext && (
+						<Button
+							variant="primary"
+							size="lg"
+							onClick={handleNext}
+							disabled={isNextDisabled}
+						>
+							{nextButtonText}
+						</Button>
+					)}
+				</div>
+			</div>
+		) : null;
 
 	// Generate the actual dot elements or null
 	const stepIndicatorDotElements = useMemo(() => {
@@ -507,28 +471,41 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 		return steps.map((step) => {
 			const isActive = currentStep === step;
 			const isVisited = visitedSteps.has(step);
-			// Allow navigation only to visited steps that are not the current one
-			const canNavigate = isVisited && step !== currentStep;
 
 			// Special case: Don't allow navigating back to CHOICE/SIGNIN via dots
 			const isNonNavigableRadientStep =
 				step === OnboardingStep.RADIENT_CHOICE ||
 				step === OnboardingStep.RADIENT_SIGNIN;
 
+			// Allow navigation only to visited steps that are not the current one
+			const canNavigate = isVisited && !isActive && !isNonNavigableRadientStep;
+
 			return (
-				// @ts-ignore - Ignore potential TS issue with Tooltip wrapping custom component
-				<Tooltip key={step} title={stepTitles[step]} arrow>
-					{/* Wrap StepDot directly if it forwards refs, otherwise use a Box */}
-					{/* The updated StepDot handles cursor styling internally */}
-					<StepDot
-						active={isActive}
-						visited={isVisited}
+				<Tooltip key={step} content={stepTitles[step]}>
+					{/*
+					 * A real button, so the row is tabbable and the step name is
+					 * announced. `aria-disabled` rather than `disabled`: a disabled
+					 * button swallows pointer events, which would take the tooltip —
+					 * the only place the step's name is written — with it.
+					 */}
+					<button
+						type="button"
+						aria-label={stepTitles[step]}
+						aria-current={isActive ? "step" : undefined}
+						aria-disabled={!canNavigate}
 						onClick={() => {
-							// Navigation logic remains the same
-							if (canNavigate && !isNonNavigableRadientStep) {
+							if (canNavigate) {
 								setCurrentStep(step);
 							}
 						}}
+						className={cn(
+							"size-2 rounded-full transition-colors duration-base ease-out-quart",
+							isActive && "bg-accent",
+							!isActive && isVisited && "bg-ink-dim",
+							/* `control`, not `hairline`: a hairline-filled dot is a line
+							   weight, and at 8px it disappeared against `elevated`. */
+							!isActive && !isVisited && "bg-control",
+						)}
 					/>
 				</Tooltip>
 			);
@@ -541,11 +518,10 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 		if (!stepIndicatorDotElements) {
 			return null;
 		}
-		// Otherwise, wrap the dots in the StepIndicatorContainer
 		return (
-			<StepIndicatorContainer>
+			<div className="flex items-center justify-center gap-2">
 				{stepIndicatorDotElements}
-			</StepIndicatorContainer>
+			</div>
 		);
 	}, [stepIndicatorDotElements]);
 
@@ -555,9 +531,6 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 			title={dialogTitle}
 			stepIndicators={finalStepIndicatorsProp} // Use the new variable
 			actions={dialogActions}
-			dialogProps={{
-				disableEscapeKeyDown: true, // Prevent closing with Escape key
-			}}
 		>
 			{/* Render the actual step content - Loading indicator removed */}
 			{stepContent}
