@@ -97,6 +97,13 @@ const PickerTextField = forwardRef<HTMLDivElement, PickerTextFieldProps>(
 			className={cn(
 				"flex h-9 items-center gap-1 rounded-md border border-control bg-surface px-3",
 				"transition-colors duration-fast ease-out-quart",
+				// The field suppresses its own outline because this box is the
+				// visible control - adornments included - so the ring belongs here.
+				// `outline-solid` is required: `outline-none` on the input pins
+				// `--tw-outline-style: none`, which the width utility alone cannot
+				// undo.
+				"has-[:focus-visible]:outline-solid has-[:focus-visible]:outline-2",
+				"has-[:focus-visible]:outline-accent has-[:focus-visible]:outline-offset-2",
 				error && "border-danger",
 				disabled && "border-hairline bg-sunken",
 				className,

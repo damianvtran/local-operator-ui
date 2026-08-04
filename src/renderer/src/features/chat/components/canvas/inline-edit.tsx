@@ -72,7 +72,15 @@ type InlineEditProps = {
  */
 const POPOVER = cn(
 	"absolute z-[1300] box-border flex flex-col gap-3",
-	"rounded-lg border border-hairline bg-elevated p-2 shadow-overlay outline-none",
+	"rounded-lg border border-hairline bg-elevated p-2 shadow-overlay",
+	// This panel is the prompt field's visible frame, so it draws the field's
+	// focus ring and the textarea suppresses its own - a ring inside this
+	// border would read as a second frame. Scoped to `textarea` on purpose:
+	// the panel also holds buttons, and ringing the whole panel when a button
+	// takes focus would point at the wrong thing. `outline-solid` is required
+	// because `outline-none` on the textarea pins `--tw-outline-style: none`.
+	"has-[textarea:focus-visible]:outline-solid has-[textarea:focus-visible]:outline-2",
+	"has-[textarea:focus-visible]:outline-accent has-[textarea:focus-visible]:outline-offset-2",
 );
 
 /*

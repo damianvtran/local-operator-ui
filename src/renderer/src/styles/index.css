@@ -250,23 +250,38 @@
  * element and is not clipped by an ancestor's `overflow: hidden` — this app is
  * mostly scroll containers. `box-shadow: none` is forced because MUI ships
  * shadow rings at two-class specificity (`.MuiSlider-thumb.Mui-focusVisible`).
+ *
+ * 4. The style comes from Tailwind's own `--tw-outline-style` token rather than
+ *    being hardcoded to `solid`. Because this rule is unlayered it outranks the
+ *    `outline-none` utility, and hardcoding the style would make it override
+ *    every deliberate suppression — putting a ring on the composer's textarea
+ *    *inside* the ring its wrapper already draws. Reading the token means
+ *    `outline-none` keeps meaning what it says, and everything that has not
+ *    asked for silence still gets a ring. The `solid` fallback covers elements
+ *    with no Tailwind outline utility at all, such as the MUI date-picker.
  */
 html :focus-visible,
 html .Mui-focusVisible {
-	outline: 2px solid var(--color-accent);
+	outline-width: 2px;
+	outline-style: var(--tw-outline-style, solid);
+	outline-color: var(--color-accent);
 	outline-offset: 2px;
 	box-shadow: none !important;
 }
 
 /*
- * Tailwind v4's `outline-none` sets `--tw-outline-style: none`, which survives
- * into the focus state and cancels the ring above for any element carrying it.
- * A component that wants to suppress the default ring because it draws its own
- * must not also lose the fallback, so the token is restored under
- * `:focus-visible` and the ring re-asserted.
+ * `outline-none` is deliberately NOT reversed here.
+ *
+ * The tempting fix for Tailwind v4's `outline-none` (which pins
+ * `--tw-outline-style: none` and so cancels the ring above) is a blanket
+ * restore under `:focus-visible`. That is wrong twice over. It double-rings
+ * every composite control that legitimately suppresses the inner field's
+ * outline because the wrapper draws one — you get a ring inside a ring — and
+ * it hides the real defect, which is a focusable element with no indicator at
+ * all, behind a global that makes the symptom disappear.
+ *
+ * The rule instead: an element may carry `outline-none` only if a wrapper
+ * draws the ring for it with `has-[:focus-visible]:outline-solid`, or focus is
+ * moved there programmatically and a ring would be noise. Both cases are a
+ * component-level decision that has to be visible in the component.
  */
-html :focus-visible:where(.outline-none, [class*="outline-none"]) {
-	--tw-outline-style: solid;
-	outline: 2px solid var(--color-accent);
-	outline-offset: 2px;
-}

@@ -183,6 +183,13 @@ type WysiwygMarkdownEditorProps = {
  */
 const editorProseClasses = cn(
 	// The editable surface itself.
+	//
+	// `outline-none` here is a deliberate exception to the rule that a
+	// focusable element must show a ring or have a wrapper draw one. This
+	// surface fills its entire pane, so a ring would trace the pane border and
+	// say nothing about where typing goes; the caret is the focus indicator, as
+	// it is in every text editor. The exception holds only because this is a
+	// full-pane editing surface - it does not extend to the fields around it.
 	"[&_[contenteditable]]:min-h-50 [&_[contenteditable]]:text-body [&_[contenteditable]]:leading-relaxed [&_[contenteditable]]:text-ink [&_[contenteditable]]:outline-none",
 	// Find/replace, painted through the CSS Custom Highlight API. Highlight
 	// pseudo-elements inherit down the tree, so declaring them on the container

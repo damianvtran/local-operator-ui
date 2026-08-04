@@ -170,6 +170,11 @@ export const CategoriesInputChips: FC<CategoriesInputChipsProps> = ({
 			<div
 				className={cn(
 					"flex min-h-11 flex-wrap items-center gap-2 rounded-sm border border-control bg-surface p-2",
+					// See tags-input-chips: the inner field suppresses its own outline,
+					// so this wrapper owns the ring. `outline-solid` is required
+					// because `outline-none` on the input pins the style token to none.
+					"has-[:focus-visible]:outline-solid has-[:focus-visible]:outline-2",
+					"has-[:focus-visible]:outline-accent has-[:focus-visible]:outline-offset-2",
 					disabled && "border-hairline bg-sunken",
 				)}
 			>
