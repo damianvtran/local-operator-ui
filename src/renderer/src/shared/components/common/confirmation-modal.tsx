@@ -1,6 +1,5 @@
-import { faExclamationTriangle } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { DialogContentText, Typography, styled } from "@mui/material";
+import { TriangleAlert } from "lucide-react";
 import type { FC, ReactNode } from "react";
 import { useEffect } from "react";
 import {
@@ -46,9 +45,8 @@ type ConfirmationModalProps = {
 	onCancel: () => void;
 };
 
-const WarningIcon = styled(FontAwesomeIcon)(({ theme }) => ({
+const WarningIcon = styled(TriangleAlert)(({ theme }) => ({
 	color: theme.palette.error.main,
-	fontSize: "1.2rem",
 }));
 
 /**
@@ -87,7 +85,7 @@ export const ConfirmationModal: FC<ConfirmationModalProps> = ({
 
 	const dialogTitle = isDangerous ? (
 		<TitleContainer>
-			<WarningIcon icon={faExclamationTriangle} />
+			<WarningIcon size={19} />
 			<Typography variant="h6" component="span" color="error">
 				{title}
 			</Typography>

@@ -4,8 +4,6 @@
  * Displays a list of agents with search, create, and delete functionality
  */
 
-import { faClock } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
 	Alert,
 	Avatar,
@@ -39,7 +37,7 @@ import {
 import { useDebouncedValue } from "@shared/hooks/use-debounced-value";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
-import { Bot } from "lucide-react";
+import { Bot, Clock } from "lucide-react";
 import type { ChangeEvent, FC } from "react";
 import { memo, useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -253,7 +251,7 @@ const AgentsSidebarItem: FC<AgentsSidebarItemProps> = ({
 								enterNextDelay={1200}
 							>
 								<CreationDateText>
-									<FontAwesomeIcon icon={faClock} size="xs" />
+									<Clock size={12} />
 									<span>{formatDate(agent.created_date)}</span>
 								</CreationDateText>
 							</Tooltip>

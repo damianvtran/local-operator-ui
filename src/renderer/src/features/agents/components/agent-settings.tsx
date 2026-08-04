@@ -4,13 +4,11 @@
  * Component for displaying and editing agent settings
  */
 
-import { faArrowLeft } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, Paper, Typography, alpha, useTheme } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import type { AgentDetails } from "@shared/api/local-operator/types";
 import { useUpdateAgent } from "@shared/hooks/use-update-agent";
-import { Bot } from "lucide-react";
+import { ArrowLeft, Bot } from "lucide-react";
 import { useState } from "react";
 import type { FC } from "react";
 import { ChatSettings } from "./chat-settings";
@@ -155,10 +153,7 @@ export const AgentSettings: FC<AgentSettingsProps> = ({
 						Select an agent from the list to view its configuration and details
 					</Typography>
 					<DirectionIndicator>
-						<FontAwesomeIcon
-							icon={faArrowLeft}
-							style={{ marginRight: "0.5rem" }}
-						/>
+						<ArrowLeft size={16} style={{ marginRight: "0.5rem" }} />
 						<Typography variant="body2">Select an Agent</Typography>
 					</DirectionIndicator>
 				</EmptyStateContainer>

@@ -7,8 +7,6 @@
  * - Theme-aware, shadcn/MUI style, consistent with EditableField and TagsInputChips
  */
 
-import { faTimes } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
 	Autocomplete,
 	Box,
@@ -20,6 +18,7 @@ import {
 	useTheme,
 } from "@mui/material";
 import { ALLOWED_AGENT_CATEGORIES } from "@shared/api/local-operator/types";
+import { X } from "lucide-react";
 import { useState } from "react";
 import type { FC } from "react";
 
@@ -145,7 +144,7 @@ export const CategoriesInputChips: FC<CategoriesInputChipsProps> = ({
 									"&:hover": { color: theme.palette.error.main },
 								}}
 							>
-								<FontAwesomeIcon icon={faTimes} size="xs" />
+								<X size={12} />
 							</IconButton>
 						}
 						sx={{ marginRight: 0.5 }}

@@ -5,6 +5,7 @@ import {
 	bytecodePlugin,
 } from "electron-vite";
 import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
 import tsconfigPaths from "vite-tsconfig-paths";
 import { replaceBackendConfigPlugin } from "./scripts/vite-plugins/replace-backend-config";
 
@@ -33,12 +34,21 @@ export default defineConfig({
 				"@store": resolve("src/renderer/src/store"),
 			},
 		},
-		plugins: [react(), tsconfigPaths()],
+		// tailwindcss() must run for BOTH renderer html entries (index.html and
+		// installer.html); it is a renderer-level plugin, so registering it here
+		// covers both inputs declared below.
+		plugins: [react(), tailwindcss(), tsconfigPaths()],
 		input: {
 			index: resolve(__dirname, "src/renderer/index.html"),
 			installer: resolve(__dirname, "src/renderer/installer.html"),
 		},
 		build: {
+			// electron-vite defaults the renderer to minify:false on the assumption
+			// that a local app does not pay for bytes. It still pays for parse time,
+			// and this renderer is large enough that the unminified entry chunk was
+			// over 13 MB. esbuild minification is name-mangling plus whitespace
+			// removal only; nothing here reads Function.name or constructor.name.
+			minify: "esbuild",
 			rollupOptions: {
 				input: {
 					index: resolve(__dirname, "src/renderer/index.html"),

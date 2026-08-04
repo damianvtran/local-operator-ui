@@ -15,7 +15,6 @@ import type { Meta, StoryObj } from "@storybook/react";
 import type { ProgressInfo, UpdateInfo } from "electron-updater";
 import parse from "html-react-parser";
 import { useEffect, useState } from "react";
-import { ThemeProvider as StyledThemeProvider } from "styled-components";
 import {
 	ProgressContainer,
 	UpdateActions,
@@ -285,12 +284,10 @@ const meta = {
 
 			return (
 				<MuiThemeProvider theme={theme}>
-					<StyledThemeProvider theme={theme}>
-						<CssBaseline />
-						<div style={{ width: "600px", padding: "20px" }}>
-							<Story />
-						</div>
-					</StyledThemeProvider>
+					<CssBaseline />
+					<div style={{ width: "600px", padding: "20px" }}>
+						<Story />
+					</div>
 				</MuiThemeProvider>
 			);
 		},

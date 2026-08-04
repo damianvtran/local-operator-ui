@@ -1,6 +1,5 @@
-import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, Card, CardContent, Typography, styled } from "@mui/material";
+import type { LucideIcon } from "lucide-react";
 import type { FC, ReactNode, RefObject } from "react";
 
 const StyledCard = styled(Card)(({ theme }) => ({
@@ -39,7 +38,7 @@ const CardDescription = styled(Typography)(({ theme }) => ({
 type SettingsSectionCardProps = {
 	title: string;
 	description?: string;
-	icon?: IconDefinition;
+	icon?: LucideIcon;
 	children: ReactNode;
 	titleComponent?: ReactNode;
 	contentProps?: Record<string, unknown>;
@@ -54,7 +53,7 @@ type SettingsSectionCardProps = {
 export const SettingsSectionCard: FC<SettingsSectionCardProps> = ({
 	title,
 	description,
-	icon,
+	icon: Icon,
 	children,
 	titleComponent,
 	contentProps,
@@ -69,8 +68,7 @@ export const SettingsSectionCard: FC<SettingsSectionCardProps> = ({
 					titleComponent
 				) : (
 					<CardTitle variant="h6">
-						{/* Use fixedWidth for consistent icon spacing */}
-						{icon && <FontAwesomeIcon icon={icon} fixedWidth />}
+						{Icon && <Icon size={16} />}
 						{title}
 					</CardTitle>
 				)}

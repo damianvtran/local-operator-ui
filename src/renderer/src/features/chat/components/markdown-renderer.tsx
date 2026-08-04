@@ -1,13 +1,30 @@
 import { Box, alpha } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import type { FC } from "react";
-import { memo, useMemo } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeKatex from "rehype-katex";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
-import "katex/dist/katex.min.css"; // Import KaTeX CSS
 import { MermaidDiagram } from "./mermaid-diagram";
+
+// katex.min.css is unconditional dead weight for the vast majority of messages,
+// which contain no math. Vite turns this dynamic import into a chunk that
+// injects the stylesheet, so it is fetched the first time a message actually
+// needs it. Module-level state keeps that to one fetch per session and lets
+// later renderers start in the loaded state instead of flashing.
+let katexStylesLoaded = false;
+let katexStylesPromise: Promise<unknown> | null = null;
+
+const loadKatexStyles = (): Promise<unknown> => {
+	if (!katexStylesPromise) {
+		katexStylesPromise = import("katex/dist/katex.min.css").then((mod) => {
+			katexStylesLoaded = true;
+			return mod;
+		});
+	}
+	return katexStylesPromise;
+};
 
 type MarkdownStyleProps = {
 	fontSize?: string;
@@ -317,14 +334,32 @@ export const MarkdownRenderer: FC<MarkdownRendererProps> = memo(
 			[processedContent],
 		);
 
+		// The math plugins wait for the stylesheet: rendering KaTeX markup before
+		// its CSS arrives shows visibly broken layout, whereas holding the plugins
+		// back for that one frame just leaves the raw "$x$" source on screen.
+		const [mathEnabled, setMathEnabled] = useState(
+			() => hasLatex && katexStylesLoaded,
+		);
+
+		useEffect(() => {
+			if (!hasLatex || mathEnabled) return;
+			let cancelled = false;
+			loadKatexStyles().then(() => {
+				if (!cancelled) setMathEnabled(true);
+			});
+			return () => {
+				cancelled = true;
+			};
+		}, [hasLatex, mathEnabled]);
+
 		// Select plugins based on content
 		const remarkPlugins = useMemo(() => {
-			return hasLatex ? [remarkGfm, remarkMath] : [remarkGfm];
-		}, [hasLatex]);
+			return mathEnabled ? [remarkGfm, remarkMath] : [remarkGfm];
+		}, [mathEnabled]);
 
 		const rehypePlugins = useMemo(() => {
-			return hasLatex ? [rehypeKatex] : [];
-		}, [hasLatex]);
+			return mathEnabled ? [rehypeKatex] : [];
+		}, [mathEnabled]);
 
 		return (
 			<MarkdownContent {...styleProps}>

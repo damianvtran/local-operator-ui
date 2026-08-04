@@ -4,8 +4,6 @@
  * A component for toggling boolean settings with a clean, modern UI
  */
 
-import type { IconDefinition } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
 	Box,
 	CircularProgress,
@@ -15,6 +13,7 @@ import {
 	alpha,
 	styled,
 } from "@mui/material";
+import type { LucideIcon } from "lucide-react";
 import { useState } from "react";
 import type { FC } from "react";
 
@@ -43,7 +42,7 @@ type ToggleSettingProps = {
 	/**
 	 * Optional icon to display next to the label
 	 */
-	icon?: IconDefinition;
+	icon?: LucideIcon;
 
 	/**
 	 * Whether the setting is currently being saved
@@ -121,7 +120,7 @@ export const ToggleSetting: FC<ToggleSettingProps> = ({
 	label,
 	description,
 	onChange,
-	icon,
+	icon: Icon,
 	isSaving = false,
 }) => {
 	const [isOn, setIsOn] = useState(value);
@@ -148,9 +147,9 @@ export const ToggleSetting: FC<ToggleSettingProps> = ({
 		<SettingContainer elevation={0}>
 			<ContentBox>
 				<LabelText variant="subtitle2">
-					{icon && (
+					{Icon && (
 						<IconWrapper>
-							<FontAwesomeIcon icon={icon} />
+							<Icon size={16} />
 						</IconWrapper>
 					)}
 					{label}

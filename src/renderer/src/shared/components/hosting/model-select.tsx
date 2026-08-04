@@ -5,8 +5,6 @@
  * Filters available options based on the selected hosting provider.
  */
 
-import { faRobot, faStar } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
 	Autocomplete,
 	Box,
@@ -18,6 +16,7 @@ import {
 	styled,
 } from "@mui/material";
 import { useModels } from "@shared/hooks";
+import { Bot, Star } from "lucide-react";
 import type { FC, SyntheticEvent } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
@@ -502,7 +501,7 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 			<Tooltip title="Select the AI model that you want to use.  Each model has different capabilities and costs.  Recommended: Automatic">
 				<FieldLabel variant="subtitle2">
 					<LabelIcon>
-						<FontAwesomeIcon icon={faRobot} />
+						<Bot size={16} />
 					</LabelIcon>
 					Model
 				</FieldLabel>
@@ -570,7 +569,7 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 										// @ts-ignore
 										<Tooltip title="Recommended based on community usage and feedback">
 											<RecommendedStar>
-												<FontAwesomeIcon icon={faStar} size="xs" />
+												<Star size={12} />
 											</RecommendedStar>
 										</Tooltip>
 									)}

@@ -4,8 +4,6 @@
  * Component for displaying and editing security settings
  */
 
-import { faInfoCircle, faShieldAlt } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, IconButton, Tooltip, Typography, alpha } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import type {
@@ -14,6 +12,7 @@ import type {
 } from "@shared/api/local-operator/types";
 import { EditableField } from "@shared/components/common/editable-field";
 import type { useUpdateAgent } from "@shared/hooks/use-update-agent";
+import { Info, Shield } from "lucide-react";
 import type { FC } from "react";
 
 type SecuritySettingsProps = {
@@ -56,7 +55,7 @@ const SectionTitle = styled(Typography)(({ theme }) => ({
 	color: theme.palette.text.primary,
 }));
 
-const TitleIcon = styled(FontAwesomeIcon)(({ theme }) => ({
+const TitleIcon = styled(Shield)(({ theme }) => ({
 	marginRight: 10,
 	color: theme.palette.primary.main,
 	padding: theme.spacing(0.5),
@@ -88,7 +87,7 @@ export const SecuritySettings: FC<SecuritySettingsProps> = ({
 	return (
 		<Box data-tour-tag="agent-settings-security" sx={{ mt: 4 }}>
 			<SectionTitle variant="subtitle1">
-				<TitleIcon icon={faShieldAlt} />
+				<TitleIcon size={16} />
 				Security Instructions
 				{/* @ts-ignore - Tooltip has issues with TypeScript but works fine */}
 				<Tooltip
@@ -97,7 +96,7 @@ export const SecuritySettings: FC<SecuritySettingsProps> = ({
 					placement="top"
 				>
 					<InfoButton size="small">
-						<FontAwesomeIcon icon={faInfoCircle} size="xs" />
+						<Info size={12} />
 					</InfoButton>
 				</Tooltip>
 			</SectionTitle>

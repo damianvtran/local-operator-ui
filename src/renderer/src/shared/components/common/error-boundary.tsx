@@ -1,10 +1,6 @@
-import {
-	faExclamationTriangle,
-	faRedo,
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, Button, Paper, Typography } from "@mui/material";
 import { isDevelopmentMode } from "@shared/utils/env-utils";
+import { RotateCw, TriangleAlert } from "lucide-react";
 import type React from "react";
 import type { ErrorInfo, ReactNode } from "react";
 import {
@@ -46,10 +42,9 @@ const ErrorFallback = ({ error, resetErrorBoundary }: FallbackProps) => {
 				height: "100%",
 			}}
 		>
-			<FontAwesomeIcon
-				icon={faExclamationTriangle}
+			<TriangleAlert
+				size={48}
 				style={{
-					fontSize: "3rem",
 					color: "#f44336",
 					marginBottom: "1rem",
 				}}
@@ -67,7 +62,7 @@ const ErrorFallback = ({ error, resetErrorBoundary }: FallbackProps) => {
 			<Button
 				variant="contained"
 				color="primary"
-				startIcon={<FontAwesomeIcon icon={faRedo} />}
+				startIcon={<RotateCw size={16} />}
 				onClick={resetErrorBoundary}
 				sx={{ mb: 3 }}
 			>

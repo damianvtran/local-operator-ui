@@ -1,4 +1,3 @@
-import { faPuzzlePiece } from "@fortawesome/free-solid-svg-icons";
 import {
 	Box,
 	Button,
@@ -18,6 +17,7 @@ import {
 	HardDrive,
 	Link as LinkIcon,
 	Mail,
+	Puzzle,
 } from "lucide-react";
 import type { FC } from "react";
 import { SettingsSectionCard } from "./settings-section-card";
@@ -180,7 +180,7 @@ export const GoogleIntegrationsSection: FC = () => {
 	return (
 		<SettingsSectionCard
 			title="Integrations"
-			icon={faPuzzlePiece} // Use FontAwesome Puzzle icon
+			icon={Puzzle}
 			description="Connect your Google services like Gmail, Calendar, and Drive to enhance Local Operator's capabilities."
 			dataTourTag="settings-integrations-section"
 		>

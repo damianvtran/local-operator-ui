@@ -32,6 +32,12 @@ export type ThemeOption = {
 	id: ThemeName;
 
 	/**
+	 * One line, shown under the name in the theme picker. Carried through from
+	 * the theme's `ThemeDefinition`.
+	 */
+	description: string;
+
+	/**
 	 * The MUI theme object
 	 */
 	theme: Theme;

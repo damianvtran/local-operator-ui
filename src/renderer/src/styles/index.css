@@ -1,0 +1,224 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "./themes.generated.css";
+
+/*
+ * The single token source for everything already ported to Tailwind.
+ *
+ * Colour comes in as `var(--lo-*)`, defined per theme in themes.generated.css
+ * and generated from the ThemePalette objects. Everything else — type, space,
+ * radii, motion — is palette-independent and lives here as literal values,
+ * once, instead of being repeated in twelve theme files as it was before.
+ *
+ * @see docs/branding.md for the reasoning behind each ramp.
+ */
+
+@theme {
+	/* ---- colour: role names, not hues -------------------------------------
+	 * Utilities read `bg-surface`, `text-ink-muted`, `border-control`. A
+	 * component never names a colour, so a theme swap is a variable swap and
+	 * nothing in a component has to know it happened.
+	 */
+	--color-canvas: var(--lo-canvas);
+	--color-surface: var(--lo-surface);
+	--color-elevated: var(--lo-elevated);
+	--color-sunken: var(--lo-sunken);
+
+	--color-ink: var(--lo-ink);
+	--color-ink-muted: var(--lo-ink-muted);
+	--color-ink-dim: var(--lo-ink-dim);
+	--color-ink-disabled: var(--lo-ink-disabled);
+
+	--color-hairline: var(--lo-hairline);
+	--color-control: var(--lo-border-control);
+
+	--color-accent: var(--lo-accent);
+	--color-accent-hover: var(--lo-accent-hover);
+	--color-accent-active: var(--lo-accent-active);
+	--color-accent-wash: var(--lo-accent-wash);
+	--color-on-accent: var(--lo-on-accent);
+
+	--color-success: var(--lo-success);
+	--color-success-wash: var(--lo-success-wash);
+	--color-success-border: var(--lo-success-border);
+	--color-warning: var(--lo-warning);
+	--color-warning-wash: var(--lo-warning-wash);
+	--color-warning-border: var(--lo-warning-border);
+	--color-danger: var(--lo-danger);
+	--color-danger-wash: var(--lo-danger-wash);
+	--color-danger-border: var(--lo-danger-border);
+	--color-info: var(--lo-info);
+	--color-info-wash: var(--lo-info-wash);
+	--color-info-border: var(--lo-info-border);
+
+	/* ---- type ------------------------------------------------------------
+	 * A desktop app is not a marketing page: it is read at arm's length for
+	 * hours, and it has no hero. So this is the site's scale with the display
+	 * steps removed and the body steps kept — the app's largest routine text
+	 * is a page title, not a headline.
+	 *
+	 * Sizes are rem against a 16px root. Line-heights are unitless.
+	 */
+	--text-display: 1.75rem;
+	--text-display--line-height: 1.2;
+	--text-display--letter-spacing: -0.02em;
+	--text-display--font-weight: 600;
+
+	--text-title: 1.25rem;
+	--text-title--line-height: 1.3;
+	--text-title--letter-spacing: -0.012em;
+	--text-title--font-weight: 600;
+
+	--text-heading: 1rem;
+	--text-heading--line-height: 1.4;
+	--text-heading--letter-spacing: -0.006em;
+	--text-heading--font-weight: 600;
+
+	--text-body: 0.875rem;
+	--text-body--line-height: 1.55;
+
+	--text-body-sm: 0.8125rem;
+	--text-body-sm--line-height: 1.5;
+
+	--text-meta: 0.75rem;
+	--text-meta--line-height: 1.45;
+
+	/* Machine voice: paths, code, counts, timestamps, trace labels. The one
+	   place monospace is permitted, and the reason it reads as machine output
+	   without needing a box drawn around it. */
+	--text-mono: 0.8125rem;
+	--text-mono--line-height: 1.5;
+	--text-mono-sm: 0.75rem;
+	--text-mono-sm--line-height: 1.45;
+
+	--font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+		sans-serif;
+	--font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo,
+		monospace;
+
+	/* ---- space -----------------------------------------------------------
+	 * 4px base. Tailwind's default ramp already is this; it is restated so the
+	 * branding doc has something to point at, and so the three-tier grouping
+	 * rule (4/8 within a component, 12/16/24 between components, 32/48/64
+	 * between sections) has named steps.
+	 */
+	--spacing: 0.25rem;
+
+	/* ---- radii -----------------------------------------------------------
+	 * Five steps. Anything not on this list is a mistake, and `rounded-full`
+	 * is allowed on exactly three things: avatars, status dots, and the
+	 * trace pill.
+	 */
+	--radius-xs: 2px;
+	--radius-sm: 6px;
+	--radius-md: 10px;
+	--radius-lg: 14px;
+	--radius-frame: 16px;
+
+	/* ---- motion ----------------------------------------------------------
+	 * Durations are short because this is a tool. The longest thing a user
+	 * waits on is 240ms, and only for something entering the screen.
+	 *
+	 * Declared in BOTH namespaces on purpose. Tailwind v4 generates the
+	 * `duration-*` utilities from `--transition-duration-*`; `--duration-*`
+	 * alone compiles to nothing, silently — `.duration-fast` simply never
+	 * appears in the output and the element animates at Tailwind's stock
+	 * 150ms. The plain `--duration-*` names are kept because hand-written CSS
+	 * and Emotion styles in the not-yet-ported half of the app read them as
+	 * raw `var()`s.
+	 */
+	--transition-duration-instant: 80ms;
+	--transition-duration-fast: 120ms;
+	--transition-duration-base: 180ms;
+	--transition-duration-slow: 240ms;
+
+	--duration-instant: 80ms;
+	--duration-fast: 120ms;
+	--duration-base: 180ms;
+	--duration-slow: 240ms;
+
+	--ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+	--ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+	--ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+
+	/* The modal/drawer scrim. Mapped as a colour so overlays can reach it as
+	   `bg-scrim` instead of hardcoding a black alpha that ignores the theme. */
+	--color-scrim: var(--lo-scrim);
+
+	/* ---- elevation -------------------------------------------------------
+	 * One shadow. Elevation between in-flow surfaces is a lightness step; the
+	 * shadow is only for objects that leave the flow.
+	 */
+	--shadow-overlay: var(--lo-overlay-shadow);
+}
+
+@layer base {
+	/*
+	 * The focus ring, defined once.
+	 *
+	 * `outline` rather than `box-shadow`, because an outline is painted outside
+	 * the element and is not clipped by an ancestor's `overflow: hidden` — which
+	 * is what makes box-shadow rings vanish inside scroll containers, and this
+	 * app is mostly scroll containers. A modern outline also follows the
+	 * element's own `border-radius` automatically, so the ring is correctly
+	 * shaped without being told.
+	 *
+	 * Deliberately NOT setting `border-radius: inherit` here. That instruction
+	 * belongs to box-shadow or pseudo-element rings, which have to be told what
+	 * shape to be; applied to a real outline it does nothing useful and, on an
+	 * element with no radius class of its own, it actively reshapes the element
+	 * the moment it takes focus.
+	 *
+	 * `:focus-visible` only: a mouse user clicking a button should not get a
+	 * ring, a keyboard user tabbing to it must.
+	 */
+	:where(:focus-visible) {
+		outline: 2px solid var(--color-accent);
+		outline-offset: 2px;
+	}
+
+	/*
+	 * Disabled changes colour, never opacity.
+	 *
+	 * An opacity-faded control fades its own background too, so the same
+	 * disabled button lands on a different colour over `surface` than over
+	 * `sunken`, and neither was designed. MUI applies `disabledOpacity` in
+	 * eight components; those are neutralised in the base theme factory.
+	 */
+	:where(:disabled, [aria-disabled="true"]) {
+		opacity: 1;
+		cursor: not-allowed;
+	}
+
+	body {
+		background-color: var(--color-canvas);
+		color: var(--color-ink);
+		font-family: var(--font-sans);
+		font-size: var(--text-body);
+		line-height: 1.55;
+		-webkit-font-smoothing: antialiased;
+		text-rendering: optimizeLegibility;
+	}
+
+	/*
+	 * Reduced motion is a contract, not a courtesy.
+	 *
+	 * Everything animated in this app is decorative — an entrance, a hover
+	 * lift, the streaming text fade. None of it carries information, so all of
+	 * it can be reduced to near-zero without losing meaning. The one thing
+	 * that must NOT be disabled is a state change the user needs to perceive,
+	 * which is why this caps duration rather than setting `animation: none` —
+	 * a cancelled animation can leave an element at its `from` keyframe, and
+	 * that is how content ends up permanently invisible.
+	 */
+	@media (prefers-reduced-motion: reduce) {
+		*,
+		*::before,
+		*::after {
+			animation-duration: 0.01ms !important;
+			animation-iteration-count: 1 !important;
+			transition-duration: 0.01ms !important;
+			scroll-behavior: auto !important;
+		}
+	}
+}

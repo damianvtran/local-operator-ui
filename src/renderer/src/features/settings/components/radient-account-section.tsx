@@ -5,8 +5,6 @@
  * Shows sign-in buttons if not authenticated, or account information and sign-out button if authenticated.
  */
 
-import { faSignOut } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
 	Box,
 	Button,
@@ -20,6 +18,7 @@ import {
 import { RadientAuthButtons } from "@shared/components/auth";
 import { useRadientAuth } from "@shared/hooks";
 import { useUserStore } from "@shared/store/user-store";
+import { LogOut } from "lucide-react";
 import { type FC, useCallback, useMemo } from "react";
 
 // Shadcn-inspired container for info rows
@@ -194,7 +193,7 @@ export const RadientAccountSection: FC<RadientAccountSectionProps> = ({
 					</Typography>
 					<SignOutButton
 						variant="outlined"
-						startIcon={<FontAwesomeIcon icon={faSignOut} size="sm" />}
+						startIcon={<LogOut size={14} />}
 						onClick={handleSignOut}
 					>
 						Sign Out from Radient

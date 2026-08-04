@@ -1,6 +1,4 @@
 import radientIcon from "@assets/radient-icon-1024x1024.png";
-import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
 	Box,
 	List,
@@ -21,9 +19,8 @@ import type { FC } from "react";
 export type SettingsSection = {
 	id: string;
 	label: string;
-	icon: LucideIcon | IconDefinition | string;
+	icon: LucideIcon | string;
 	isImage?: boolean;
-	isFontAwesome?: boolean;
 };
 
 /**
@@ -178,11 +175,6 @@ export const SettingsSidebar: FC<SettingsSidebarProps> = ({
 				<SidebarItemIcon isActive={isActive}>
 					{section.isImage ? (
 						<IconImage src={section.icon as string} alt={section.label} />
-					) : section.isFontAwesome ? (
-						<FontAwesomeIcon
-							icon={section.icon as IconDefinition}
-							style={{ fontSize: 18, display: "block" }}
-						/>
 					) : (
 						(() => {
 							const IconComponent = section.icon as LucideIcon;

@@ -1,53 +1,68 @@
 import { EditorView } from "@codemirror/view";
 import type { Theme } from "@mui/material";
 
-export const getSearchTheme = (theme: Theme) =>
-	EditorView.theme(
+/**
+ * CodeMirror's find/replace panel, dressed in the theme's roles.
+ *
+ * The panel floats over the editor, so it takes `elevated` and the one overlay
+ * shadow; its text field is a control, so its sole boundary is `borderControl`
+ * — the role floored at 3:1 on every ground — rather than the hairline that
+ * used to bound it at roughly 1.25:1 on the light themes.
+ */
+export const getSearchTheme = (theme: Theme) => {
+	const roles = theme.palette.roles;
+
+	return EditorView.theme(
 		{
 			".cm-panel.cm-search": {
 				gap: "8px",
 				padding: "8px",
-				borderRadius: theme.shape.borderRadius * 1.5,
-				backgroundColor: theme.palette.background.default,
-				boxShadow: theme.shadows[3],
-				border: `1px solid ${theme.palette.divider}`,
+				borderRadius: "10px",
+				backgroundColor: roles.elevated,
+				boxShadow: roles.overlayShadow,
+				border: `1px solid ${roles.hairline}`,
 			},
 			".cm-search .cm-textfield": {
-				fontSize: "0.875rem",
+				fontSize: "0.8125rem",
 				padding: "8px 12px",
-				backgroundColor: theme.palette.background.paper,
-				borderRadius: "8px",
-				border: `1px solid ${theme.palette.divider}`,
-				color: theme.palette.text.primary,
+				backgroundColor: roles.surface,
+				borderRadius: "6px",
+				border: `1px solid ${roles.borderControl}`,
+				color: roles.ink,
 				"&:focus": {
-					borderColor: theme.palette.primary.main,
-					outline: "none",
+					borderColor: roles.accent,
+					/* The focus ring is an outline everywhere else in the app; this
+					   panel lives inside the editor's scroll container, which is
+					   exactly where a box-shadow ring would be clipped away. */
+					outline: `2px solid ${roles.accent}`,
+					outlineOffset: "2px",
 				},
 			},
 			".cm-search-results": {
-				fontSize: "0.85rem",
-				color: theme.palette.text.secondary,
+				fontSize: "0.75rem",
+				color: roles.inkMuted,
 				padding: "0 8px",
 				userSelect: "none",
 			},
 			"button.cm-button": {
 				padding: "6px 10px",
-				border: `1px solid ${theme.palette.divider}`,
-				borderRadius: "8px",
+				border: `1px solid ${roles.borderControl}`,
+				borderRadius: "6px",
 				backgroundColor: "transparent",
 				backgroundImage: "none",
 				cursor: "pointer",
-				color: theme.palette.text.secondary,
-				fontSize: "0.7rem",
+				color: roles.inkMuted,
+				fontSize: "0.75rem",
 				"&:hover": {
-					backgroundColor: theme.palette.action.hover,
-					borderColor: theme.palette.primary.main,
+					backgroundColor: roles.accentWash,
+					borderColor: roles.accent,
+					color: roles.ink,
 				},
 			},
 			".cm-search label": {
 				gap: "8px",
-				fontSize: "0.85rem",
-				color: theme.palette.text.secondary,
+				fontSize: "0.75rem",
+				color: roles.inkMuted,
 				cursor: "pointer",
 			},
 			".cm-search input[type='checkbox']": {
@@ -55,18 +70,18 @@ export const getSearchTheme = (theme: Theme) =>
 				width: "16px",
 				height: "16px",
 				transform: "translateY(50%)",
-				border: `1px solid ${theme.palette.divider}`,
+				border: `1px solid ${roles.borderControl}`,
 				borderRadius: "4px",
 				position: "relative",
 				cursor: "pointer",
 				"&:checked": {
-					backgroundColor: theme.palette.background.default,
-					borderColor: theme.palette.primary.main,
+					backgroundColor: roles.accentWash,
+					borderColor: roles.accent,
 				},
 				"&:checked::before": {
-					content: "'✓'",
+					content: "'\\2713'",
 					position: "absolute",
-					color: theme.palette.primary.main,
+					color: roles.accent,
 					backgroundColor: "transparent",
 					top: "50%",
 					left: "50%",
@@ -75,5 +90,6 @@ export const getSearchTheme = (theme: Theme) =>
 				},
 			},
 		},
-		{ dark: theme.palette.mode === "dark" },
+		{ dark: roles.mode === "dark" },
 	);
+};

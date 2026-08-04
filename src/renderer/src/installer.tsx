@@ -3,6 +3,7 @@ import CssBaseline from "@mui/material/CssBaseline";
 import React from "react";
 import ReactDOM from "react-dom/client";
 import "./assets/fonts/fonts.css";
+import "@renderer/styles/index.css";
 import { DEFAULT_THEME, getTheme } from "@shared/themes";
 import { InstallerApp } from "./installer-app";
 import { ErrorBoundary } from "./shared/components/common/error-boundary";

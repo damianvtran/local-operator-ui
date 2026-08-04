@@ -1,6 +1,4 @@
 import { CREDENTIAL_MANIFEST } from "@features/settings/components/credential-manifest";
-import { faKey } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
 	Box,
 	Button,
@@ -19,6 +17,7 @@ import {
 import type { Theme } from "@mui/material/styles";
 import type { CredentialUpdate } from "@shared/api/local-operator/types";
 import { BaseDialog } from "@shared/components/common/base-dialog";
+import { Key } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { FC } from "react";
 
@@ -316,7 +315,7 @@ export const CredentialDialog: FC<CredentialDialogProps> = ({
 						<FormControl fullWidth sx={{ mb: 2.5 }}>
 							<FieldLabel>
 								<LabelIcon>
-									<FontAwesomeIcon icon={faKey} size="sm" />
+									<Key size={14} />
 								</LabelIcon>
 								Credential Type
 							</FieldLabel>
@@ -399,7 +398,7 @@ export const CredentialDialog: FC<CredentialDialogProps> = ({
 				{/* Credential Value Label and Input */}
 				<FieldLabel>
 					<LabelIcon>
-						<FontAwesomeIcon icon={faKey} size="sm" />
+						<Key size={14} />
 					</LabelIcon>
 					Credential Value
 				</FieldLabel>

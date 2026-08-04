@@ -1,20 +1,20 @@
-import React from "react";
-import type { Preview } from "@storybook/react";
-import { ThemeProvider } from "@mui/material/styles";
 import { CssBaseline } from "@mui/material";
+import { ThemeProvider } from "@mui/material/styles";
 // @ts-ignore Path aliases don't work for Storybook root
-import { getTheme, DEFAULT_THEME } from "@renderer/shared/themes";
+import { config } from "@renderer/shared/config";
 // @ts-ignore Path aliases don't work for Storybook root
 import { AuthProviders } from "@renderer/shared/providers/auth";
 // @ts-ignore Path aliases don't work for Storybook root
 import { FeatureFlagProvider } from "@renderer/shared/providers/feature-flags";
 // @ts-ignore Path aliases don't work for Storybook root
-import { config } from "@renderer/shared/config";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { MemoryRouter } from "react-router-dom";
-import { PostHogProvider } from "posthog-js/react";
+import { DEFAULT_THEME, getTheme } from "@renderer/shared/themes";
 // @ts-ignore Path aliases don't work for Storybook root
 import { ThemedToastContainer } from "@shared/components/common/themed-toast-container";
+import type { Preview } from "@storybook/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { PostHogProvider } from "posthog-js/react";
+import React from "react";
+import { MemoryRouter } from "react-router-dom";
 
 // Mock the Electron preload API for Storybook
 if (typeof window !== "undefined") {

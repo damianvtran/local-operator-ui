@@ -1,12 +1,4 @@
 import {
-	faEdit,
-	faInfoCircle,
-	faKey,
-	faLock,
-	faTrash,
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
 	Box,
 	Button,
 	IconButton,
@@ -16,6 +8,7 @@ import {
 	styled,
 	useTheme,
 } from "@mui/material";
+import { Info, Key, Lock, SquarePen, Trash2 } from "lucide-react";
 import type { FC } from "react";
 import { getCredentialInfo } from "./credential-manifest";
 
@@ -92,6 +85,7 @@ export const CredentialCard: FC<CredentialCardProps> = ({
 }) => {
 	const theme = useTheme();
 	const credInfo = getCredentialInfo(credentialKey);
+	const StatusIcon = isConfigured ? Lock : Key;
 
 	// Common button styles based on shadcn
 	const buttonSx = {
@@ -131,12 +125,7 @@ export const CredentialCard: FC<CredentialCardProps> = ({
 			<Box sx={{ display: "flex", alignItems: "center", mb: 0.5 }}>
 				<CredentialName>
 					{/* Icon based on configured status */}
-					<FontAwesomeIcon
-						icon={isConfigured ? faLock : faKey}
-						size="sm"
-						fixedWidth
-						style={{ marginRight: theme.spacing(0.5) }}
-					/>
+					<StatusIcon size={14} style={{ marginRight: theme.spacing(0.5) }} />
 					{credInfo.name}
 				</CredentialName>
 				<Tooltip title={credInfo.description} placement="top">
@@ -144,7 +133,7 @@ export const CredentialCard: FC<CredentialCardProps> = ({
 						size="small"
 						sx={{ ml: "auto", color: theme.palette.text.disabled }}
 					>
-						<FontAwesomeIcon icon={faInfoCircle} size="xs" />
+						<Info size={12} />
 					</IconButton>
 				</Tooltip>
 			</Box>
@@ -165,7 +154,7 @@ export const CredentialCard: FC<CredentialCardProps> = ({
 						<Button
 							variant="outlined"
 							size="small"
-							startIcon={<FontAwesomeIcon icon={faEdit} size="xs" />}
+							startIcon={<SquarePen size={12} />}
 							onClick={() => onEdit?.(credentialKey)}
 							sx={secondaryButtonSx}
 						>
@@ -175,7 +164,7 @@ export const CredentialCard: FC<CredentialCardProps> = ({
 						<Button
 							variant="outlined"
 							size="small"
-							startIcon={<FontAwesomeIcon icon={faTrash} size="xs" />}
+							startIcon={<Trash2 size={12} />}
 							onClick={() => onClear?.(credentialKey)}
 							sx={destructiveButtonSx}
 						>
@@ -189,13 +178,7 @@ export const CredentialCard: FC<CredentialCardProps> = ({
 							variant="outlined"
 							size="small"
 							color="primary"
-							startIcon={
-								<FontAwesomeIcon
-									icon={faKey}
-									size="xs"
-									style={{ fontSize: "0.875rem" }}
-								/>
-							}
+							startIcon={<Key size={12} />}
 							onClick={() => onAdd?.(credentialKey)}
 							sx={{ ...primaryButtonSx, boxShadow: "none" }}
 						>
@@ -213,7 +196,7 @@ export const CredentialCard: FC<CredentialCardProps> = ({
 									rel="noopener noreferrer"
 									aria-label={`Get your ${credInfo.name} key`}
 								>
-									<FontAwesomeIcon icon={faInfoCircle} size="xs" />
+									<Info size={12} />
 								</IconButton>
 							</Tooltip>
 						)}

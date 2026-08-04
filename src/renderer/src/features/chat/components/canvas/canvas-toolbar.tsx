@@ -1,11 +1,4 @@
 import {
-	faDownload,
-	faFileExport,
-	faFilePdf,
-	faFileWord,
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
 	Box,
 	Button,
 	Menu,
@@ -15,6 +8,7 @@ import {
 	alpha,
 	styled,
 } from "@mui/material";
+import { Download, FileOutput, FileText, FileType } from "lucide-react";
 import type { FC } from "react";
 import { useCallback, useState } from "react";
 import type { CanvasDocument, ExportFormat } from "../../types/canvas";
@@ -119,7 +113,7 @@ export const CanvasToolbar: FC<CanvasToolbarProps> = ({ document }) => {
 						size="small"
 						variant="text"
 						onClick={() => handleExport("md" as ExportFormat)}
-						startIcon={<FontAwesomeIcon icon={faDownload} />}
+						startIcon={<Download size={16} />}
 					>
 						Download
 					</ToolbarButton>
@@ -131,7 +125,7 @@ export const CanvasToolbar: FC<CanvasToolbarProps> = ({ document }) => {
 						size="small"
 						variant="text"
 						onClick={handleOpenExportMenu}
-						startIcon={<FontAwesomeIcon icon={faFileExport} />}
+						startIcon={<FileOutput size={16} />}
 					>
 						Export
 					</ToolbarButton>
@@ -152,17 +146,11 @@ export const CanvasToolbar: FC<CanvasToolbarProps> = ({ document }) => {
 					}}
 				>
 					<MenuItem onClick={() => handleExport("pdf")}>
-						<FontAwesomeIcon
-							icon={faFilePdf}
-							style={{ marginRight: 8, color: "#e53935" }}
-						/>
+						<FileText size={16} style={{ marginRight: 8, color: "#e53935" }} />
 						Export as PDF
 					</MenuItem>
 					<MenuItem onClick={() => handleExport("docx")}>
-						<FontAwesomeIcon
-							icon={faFileWord}
-							style={{ marginRight: 8, color: "#2196f3" }}
-						/>
+						<FileType size={16} style={{ marginRight: 8, color: "#2196f3" }} />
 						Export as DOCX
 					</MenuItem>
 				</Menu>

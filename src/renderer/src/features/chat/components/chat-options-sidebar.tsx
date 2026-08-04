@@ -5,14 +5,13 @@
  * for the currently selected agent.
  */
 
-import { faTimes, faTrash } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, Button, Drawer, Typography, alpha, styled } from "@mui/material";
 import type { AgentDetails } from "@shared/api/local-operator/types";
 import { ConfirmationModal } from "@shared/components/common/confirmation-modal";
 import { useAgent } from "@shared/hooks/use-agents";
 import { useClearAgentConversation } from "@shared/hooks/use-clear-agent-conversation";
 import { useUpdateAgent } from "@shared/hooks/use-update-agent";
+import { Trash2, X } from "lucide-react";
 import type { FC } from "react";
 import { useEffect, useState } from "react";
 import {
@@ -80,7 +79,7 @@ const ClearConversationSection: FC<{
 		<Box>
 			<ClearConversationButton
 				fullWidth
-				startIcon={<FontAwesomeIcon icon={faTrash} />}
+				startIcon={<Trash2 size={16} />}
 				onClick={() => setIsConfirmationOpen(true)}
 			>
 				Clear Conversation
@@ -158,7 +157,7 @@ export const ChatOptionsSidebar: FC<ChatOptionsSidebarProps> = ({
 						</Typography>
 					</HeaderTitle>
 					<CloseButton onClick={onClose} size="large">
-						<FontAwesomeIcon icon={faTimes} size="xs" />
+						<X size={12} />
 					</CloseButton>
 				</SidebarHeader>
 

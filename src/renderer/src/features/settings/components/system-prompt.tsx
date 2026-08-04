@@ -1,5 +1,3 @@
-import { faRobot, faSave } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
 	Alert,
 	Box,
@@ -13,6 +11,7 @@ import {
 import type { SystemPromptUpdate } from "@shared/api/local-operator/types";
 import { useSystemPrompt } from "@shared/hooks/use-system-prompt";
 import { useUpdateSystemPrompt } from "@shared/hooks/use-update-system-prompt";
+import { Bot, Save } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { FC } from "react";
 import { SettingsSectionCard } from "./settings-section-card"; // Import the reusable card
@@ -164,7 +163,7 @@ export const SystemPrompt: FC = () => {
 						isSaving ? (
 							<CircularProgress size={16} color="inherit" />
 						) : (
-							<FontAwesomeIcon icon={faSave} size="sm" />
+							<Save size={14} />
 						)
 					}
 					onClick={handleSave}
@@ -220,7 +219,7 @@ export const SystemPrompt: FC = () => {
 	return (
 		<SettingsSectionCard
 			title="System Prompt"
-			icon={faRobot}
+			icon={Bot}
 			description="This system prompt is given to all Local Operator agents. It is useful to define baseline expectations for the behavior of every agent in your environment. These instructions are provided in addition to any specific instructions defined for each agent.  You can elect to provide more specific information about yourself such as your location, name, age, preferences, and any other details that all agents should know about you.  Keep in mind that information in here is shared with your selected hosting provider."
 		>
 			{isLoading ? (

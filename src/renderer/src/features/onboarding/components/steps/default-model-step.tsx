@@ -6,13 +6,6 @@
  */
 
 import {
-	faBrain,
-	faCheck,
-	faRobot,
-	faWandMagicSparkles,
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
 	Alert,
 	Box,
 	CircularProgress,
@@ -29,7 +22,15 @@ import { useConfig } from "@shared/hooks/use-config";
 import { useCredentials } from "@shared/hooks/use-credentials";
 import { useModels } from "@shared/hooks/use-models";
 import { useUpdateConfig } from "@shared/hooks/use-update-config";
-import { PartyPopper, Rocket, Sparkles } from "lucide-react";
+import {
+	Bot,
+	Brain,
+	Check,
+	PartyPopper,
+	Rocket,
+	Sparkles,
+	WandSparkles,
+} from "lucide-react";
 import type { FC } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -324,11 +325,7 @@ export const DefaultModelStep: FC = () => {
 
 			{/* "Choose wisely" Info Box */}
 			<Box sx={{ ...infoBoxSx, mb: 2 }}>
-				<FontAwesomeIcon
-					icon={faBrain}
-					size="lg"
-					color={theme.palette.primary.main}
-				/>
+				<Brain size={20} color={theme.palette.primary.main} />
 				<Typography variant="body2">
 					<Typography component="span" fontWeight="medium">
 						Choose wisely!
@@ -363,7 +360,7 @@ export const DefaultModelStep: FC = () => {
 							{/* Wrap Label and Input */}
 							<FieldLabel>
 								<LabelIcon>
-									<FontAwesomeIcon icon={faRobot} size="sm" />
+									<Bot size={14} />
 								</LabelIcon>
 								Model Provider
 							</FieldLabel>
@@ -396,7 +393,7 @@ export const DefaultModelStep: FC = () => {
 								{/* Wrap Label and Input */}
 								<FieldLabel>
 									<LabelIcon>
-										<FontAwesomeIcon icon={faWandMagicSparkles} size="sm" />
+										<WandSparkles size={14} />
 									</LabelIcon>
 									AI Model
 								</FieldLabel>
@@ -431,7 +428,7 @@ export const DefaultModelStep: FC = () => {
 						{saveSuccess && (
 							<Alert
 								severity="success"
-								icon={<FontAwesomeIcon icon={faCheck} />}
+								icon={<Check size={16} />}
 								sx={successAlertSx}
 							>
 								<Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>

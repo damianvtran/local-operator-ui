@@ -1,5 +1,3 @@
-import { faPaperPlane, faPaperclip } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
 	Box,
 	Button,
@@ -27,7 +25,7 @@ import {
 } from "@shared/store/conversation-input-store";
 import { normalizePath } from "@shared/utils/path-utils";
 import { showErrorToast } from "@shared/utils/toast-manager";
-import { Check, Mic, Square, X } from "lucide-react";
+import { Check, Mic, Paperclip, Send, Square, X } from "lucide-react";
 import {
 	forwardRef,
 	useCallback,
@@ -792,7 +790,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 										disabled={isInputDisabled || isRecording || isTranscribing}
 										isSmallView={isSmallView}
 									>
-										<FontAwesomeIcon icon={faPaperclip} fontSize={iconSize} />
+										<Paperclip size={iconSize} />
 									</AttachmentButton>
 								</span>
 							</Tooltip>
@@ -897,10 +895,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 												aria-label="Send message"
 												isSmallView={isSmallView}
 											>
-												<FontAwesomeIcon
-													icon={faPaperPlane}
-													fontSize={iconSize * 0.8}
-												/>
+												<Send size={iconSize * 0.8} />
 											</SendButton>
 										</span>
 									</Tooltip>

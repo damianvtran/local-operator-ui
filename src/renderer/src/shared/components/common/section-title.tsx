@@ -1,13 +1,13 @@
-import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, Typography } from "@mui/material";
 import type { TypographyProps } from "@mui/material";
+import type { LucideIcon } from "lucide-react";
 import type { FC } from "react";
 
 type SectionTitleProps = TypographyProps & {
 	title: string;
-	icon?: IconDefinition;
-	iconSize?: "xs" | "sm" | "lg" | "1x" | "2x"; // Allow specifying icon size
+	icon?: LucideIcon;
+	/** Icon edge length in px. Lucide takes pixels, not FontAwesome's em keywords. */
+	iconSize?: number;
 };
 
 /**
@@ -16,8 +16,8 @@ type SectionTitleProps = TypographyProps & {
  */
 export const SectionTitle: FC<SectionTitleProps> = ({
 	title,
-	icon,
-	iconSize = "sm",
+	icon: Icon,
+	iconSize = 14,
 	variant = "h6",
 	gutterBottom = false,
 	sx,
@@ -38,11 +38,11 @@ export const SectionTitle: FC<SectionTitleProps> = ({
 			}}
 			{...props}
 		>
-			{icon && (
+			{Icon && (
 				<Box sx={{ width: 20, textAlign: "center" }}>
 					{" "}
 					{/* Container for fixed width */}
-					<FontAwesomeIcon icon={icon} size={iconSize} />
+					<Icon size={iconSize} />
 				</Box>
 			)}
 			{title}

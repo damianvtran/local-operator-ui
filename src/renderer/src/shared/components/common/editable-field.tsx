@@ -5,13 +5,6 @@
  */
 
 import {
-	faCheck,
-	faEraser,
-	faPen,
-	faTimes,
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
 	Box,
 	Button,
 	IconButton,
@@ -19,6 +12,7 @@ import {
 	Typography,
 	styled,
 } from "@mui/material";
+import { Check, Eraser, Pencil, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type React from "react";
 import type { ChangeEvent, FC, FocusEvent, KeyboardEvent } from "react";
@@ -552,7 +546,7 @@ export const EditableField: FC<EditableFieldProps> = ({
 										title="Save changes (Enter)"
 									>
 										{/* Use smaller icon */}
-										<FontAwesomeIcon icon={faCheck} size="sm" />
+										<Check size={14} />
 									</SaveButton>
 								)}
 								<CancelButton
@@ -560,7 +554,7 @@ export const EditableField: FC<EditableFieldProps> = ({
 									onClick={handleCancel}
 									title="Cancel (Escape)"
 								>
-									<FontAwesomeIcon icon={faTimes} size="sm" />
+									<X size={14} />
 								</CancelButton>
 								{/* Conditionally render Clear button only when editing and no changes */}
 								{showClearButton && !hasChanged && (
@@ -568,7 +562,7 @@ export const EditableField: FC<EditableFieldProps> = ({
 										size="small"
 										onClick={clearField}
 										title="Clear field"
-										startIcon={<FontAwesomeIcon icon={faEraser} />} // Default size might be better
+										startIcon={<Eraser size={16} />} // Default size might be better
 									>
 										Clear
 									</ClearButton>
@@ -614,7 +608,7 @@ export const EditableField: FC<EditableFieldProps> = ({
 							aria-label={`Edit ${label}`}
 							tabIndex={-1} // Keep focus on the main button
 						>
-							<FontAwesomeIcon icon={faPen} size="xs" />
+							<Pencil size={12} />
 						</EditButton>
 					)}
 					{showClearButton && !readOnly && (
@@ -634,7 +628,7 @@ export const EditableField: FC<EditableFieldProps> = ({
 							onClick={clearField}
 							title="Clear field"
 							aria-label={`Clear ${label}`}
-							startIcon={<FontAwesomeIcon icon={faEraser} />}
+							startIcon={<Eraser size={16} />}
 							tabIndex={-1} // Keep focus on the main button
 						>
 							Clear

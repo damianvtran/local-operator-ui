@@ -10,14 +10,6 @@ import {
 	CredentialType,
 } from "@features/settings/components/credential-manifest";
 import {
-	faCheck,
-	faExternalLinkAlt,
-	faGlobe,
-	faKey,
-	faSearch,
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
 	Alert,
 	Box,
 	CircularProgress,
@@ -36,7 +28,16 @@ import {
 import { OrbitSpark } from "@shared/components/icons";
 import { useCredentials } from "@shared/hooks/use-credentials";
 import { useUpdateCredential } from "@shared/hooks/use-update-credential";
-import { Globe, Lightbulb, Link2, PartyPopper, Search } from "lucide-react";
+import {
+	Check,
+	ExternalLink,
+	Globe,
+	Key,
+	Lightbulb,
+	Link2,
+	PartyPopper,
+	Search,
+} from "lucide-react";
 import type { FC } from "react";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -248,11 +249,7 @@ export const SearchApiStep: FC = () => {
 						gap: 1.5,
 					}}
 				>
-					<FontAwesomeIcon
-						icon={faGlobe}
-						size="lg" // Use FontAwesome size prop
-						color={theme.palette.primary.main} // Use theme color
-					/>
+					<Globe size={20} color={theme.palette.primary.main} />
 					<Typography variant="body2">
 						<Typography component="span" fontWeight="medium">
 							Web-enabled AI is more powerful!
@@ -289,7 +286,7 @@ export const SearchApiStep: FC = () => {
 						<FormHelperText
 							sx={{ display: "flex", alignItems: "center", gap: 0.5 }}
 						>
-							<FontAwesomeIcon icon={faSearch} size="xs" />
+							<Search size={12} />
 							Choose your preferred search provider (Tavily recommended)
 						</FormHelperText>
 					</FormControl>
@@ -327,8 +324,7 @@ export const SearchApiStep: FC = () => {
 							<InlineIcon sx={{ mb: 0 }}>
 								<Link2 size={14} />
 							</InlineIcon>
-							Get {selectedCredentialInfo.name}{" "}
-							<FontAwesomeIcon icon={faExternalLinkAlt} size="xs" />
+							Get {selectedCredentialInfo.name} <ExternalLink size={12} />
 						</Link>
 					</Box>
 				)}
@@ -337,7 +333,7 @@ export const SearchApiStep: FC = () => {
 				{saveSuccess && (
 					<Alert
 						severity="success"
-						icon={<FontAwesomeIcon icon={faCheck} />}
+						icon={<Check size={16} />}
 						sx={successAlertSx}
 					>
 						<Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
@@ -355,7 +351,7 @@ export const SearchApiStep: FC = () => {
 					{/* Wrap Label and Input */}
 					<FieldLabel>
 						<LabelIcon>
-							<FontAwesomeIcon icon={faKey} size="sm" />
+							<Key size={14} />
 						</LabelIcon>
 						API Key (Optional)
 					</FieldLabel>

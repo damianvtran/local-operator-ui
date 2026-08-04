@@ -4,13 +4,9 @@
  * A sleek, minimal pagination component for sidebars
  */
 
-import {
-	faChevronLeft,
-	faChevronRight,
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, IconButton, Typography } from "@mui/material";
 import { styled } from "@mui/material/styles";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { FC } from "react";
 
 const PaginationContainer = styled(Box)(({ theme }) => ({
@@ -114,7 +110,7 @@ export const CompactPagination: FC<CompactPaginationProps> = ({
 				disabled={page <= 1}
 				aria-label="Previous page"
 			>
-				<FontAwesomeIcon icon={faChevronLeft} size="xs" />
+				<ChevronLeft size={12} />
 			</NavButton>
 
 			<PageInfo>
@@ -127,7 +123,7 @@ export const CompactPagination: FC<CompactPaginationProps> = ({
 				disabled={page >= count}
 				aria-label="Next page"
 			>
-				<FontAwesomeIcon icon={faChevronRight} size="xs" />
+				<ChevronRight size={12} />
 			</NavButton>
 		</PaginationContainer>
 	);

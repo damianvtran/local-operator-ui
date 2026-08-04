@@ -1,5 +1,3 @@
-import { faTimes } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
 	Box,
 	IconButton,
@@ -11,6 +9,7 @@ import {
 } from "@mui/material";
 import { createLocalOperatorClient } from "@shared/api/local-operator";
 import { apiConfig } from "@shared/config";
+import { X } from "lucide-react";
 import type { FC } from "react";
 import { useCallback, useMemo } from "react";
 
@@ -341,7 +340,7 @@ export const AttachmentsPreview: FC<AttachmentsPreviewProps> = ({
 								onClick={handleRemove(index)}
 								disabled={disabled}
 							>
-								<FontAwesomeIcon icon={faTimes} size="xs" />
+								<X size={12} />
 							</RemoveButton>
 						</Tooltip>
 					</AttachmentItem>

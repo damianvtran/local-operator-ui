@@ -1,7 +1,6 @@
 import type { SettingsSection } from "@features/settings/components/settings-sidebar";
-import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import type { FC, ReactElement } from "react";
+import type { LucideIcon } from "lucide-react";
+import type { ReactElement } from "react";
 
 export const getIconElement = (section: SettingsSection): ReactElement => {
 	if (section.isImage && typeof section.icon === "string") {
@@ -13,18 +12,6 @@ export const getIconElement = (section: SettingsSection): ReactElement => {
 			/>
 		);
 	}
-	if (section.isFontAwesome) {
-		return (
-			<FontAwesomeIcon
-				icon={section.icon as IconDefinition}
-				size="lg"
-				style={{ width: 16, height: 16 }}
-			/>
-		);
-	}
-	const IconComponent = section.icon as FC<{
-		size?: number;
-		strokeWidth?: number;
-	}>;
+	const IconComponent = section.icon as LucideIcon;
 	return <IconComponent size={16} />;
 };

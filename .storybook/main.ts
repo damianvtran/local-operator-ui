@@ -1,5 +1,6 @@
-import type { StorybookConfig } from "@storybook/react-vite";
 import { dirname, join, resolve } from "node:path";
+import type { StorybookConfig } from "@storybook/react-vite";
+import tailwindcss from "@tailwindcss/vite";
 
 /**
  * This function is used to resolve the absolute path of a package.
@@ -32,6 +33,12 @@ const config: StorybookConfig = {
 			...config.esbuild,
 			jsx: "automatic",
 		};
+
+		// Tailwind v4 is a Vite plugin, not a PostCSS step. Without it here,
+		// `@import "tailwindcss"` in styles/index.css resolves to nothing and
+		// every role utility silently reads as absent — the stories render as
+		// unstyled HTML rather than failing, which is the confusing failure.
+		config.plugins = [...(config.plugins ?? []), tailwindcss()];
 
 		// Add path aliases to match electron.vite.config.js and tsconfig.app.json
 		config.resolve = {

@@ -1,10 +1,6 @@
-import {
-	faChevronDown,
-	faChevronRight,
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Box, Collapse, IconButton, Typography, alpha } from "@mui/material";
 import { styled } from "@mui/material/styles";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import { type FC, useState } from "react";
 
 const SectionHeader = styled(Box)(({ theme }) => ({
@@ -63,10 +59,7 @@ export const CollapsibleMessage: FC<{
 		<Box sx={{ width: "100%" }}>
 			<SectionHeader onClick={toggleCollapse}>
 				<ToggleButton size="small" disableRipple>
-					<FontAwesomeIcon
-						icon={isCollapsed ? faChevronRight : faChevronDown}
-						size="sm"
-					/>
+					{isCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
 				</ToggleButton>
 				<SectionLabel variant="caption">
 					{isCollapsed ? "Show technical details" : "Hide technical details"}
