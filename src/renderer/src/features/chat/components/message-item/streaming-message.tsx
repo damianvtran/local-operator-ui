@@ -4,7 +4,6 @@ import type {
 	LocalOperatorClient,
 } from "@shared/api/local-operator";
 import { createLocalOperatorClient } from "@shared/api/local-operator";
-import { RingLoadingIndicator } from "@shared/components/common/ring-loading-indicator";
 import { Spinner } from "@shared/components/common/spinner";
 import { apiConfig } from "@shared/config";
 import { useStreamingMessage } from "@shared/hooks/use-streaming-message";
@@ -276,7 +275,7 @@ export const StreamingMessage = ({
 
 			{status === "connected" && !message?.message && (
 				<div className="flex justify-start">
-					<RingLoadingIndicator size={30} />
+					<Spinner size="lg" label="Waiting for the agent" />
 				</div>
 			)}
 

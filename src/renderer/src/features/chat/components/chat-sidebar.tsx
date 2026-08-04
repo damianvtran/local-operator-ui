@@ -103,7 +103,7 @@ const ChatSidebarItem: FC<ChatSidebarItemProps> = ({
 			>
 				<Avatar className="size-9 shrink-0">
 					<AvatarFallback>
-						<Bot size={18} strokeWidth={2} aria-hidden={true} />
+						<Bot size={18} aria-hidden={true} />
 					</AvatarFallback>
 				</Avatar>
 				<span className="relative isolate min-w-0 flex-1 overflow-hidden">

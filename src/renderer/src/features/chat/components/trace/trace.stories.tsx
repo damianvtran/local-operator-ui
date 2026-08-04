@@ -5,18 +5,15 @@
  * path so the story judges exactly what ships: the question affordance, the
  * one-line traces, the grouped run, reasoning hidden or shown by preference,
  * the retrospective security notice, a failed step, attachments, and info
- * dividers. Switch the theme control to check a palette.
- *
- * ## Why `data-theme` goes on `documentElement`
- *
- * Portalled overlays (tooltips) read the theme off the document root; the
- * wrapper attribute alone leaves them unstyled. Same constraint as the
- * primitives story.
+ * dividers. Switch the theme control to check a palette; the control is
+ * declared once for every story in `.storybook/preview.tsx`, which also puts
+ * `data-theme` on `documentElement` — portalled overlays such as tooltips read
+ * the theme off the root and a wrapper attribute alone leaves them unstyled.
  */
 
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import type { Meta, StoryObj } from "@storybook/react";
-import { type ReactNode, useEffect, useLayoutEffect } from "react";
+import { type ReactNode, useEffect } from "react";
 import "../../../../styles/index.css";
 import type { Message } from "../../types/message";
 import { boundarySpacing, groupMessages } from "../../utils/message-grouping";
@@ -24,51 +21,13 @@ import { ConversationDivider } from "../conversation-divider";
 import { MessageItem } from "../message-item";
 import { AgentQuestion, SecurityNotice, TraceGroup, TraceLine } from "./index";
 
-const THEME_IDS = [
-	"localOperatorDark",
-	"localOperatorLight",
-	"dracula",
-	"dune",
-	"sage",
-	"monokai",
-	"tokyoNight",
-	"iceberg",
-	"radient",
-	"neon",
-	"obsidian",
-	"synth",
-] as const;
-
-type StoryArgs = { theme: (typeof THEME_IDS)[number] };
-
-const ThemeFrame = ({
-	theme,
-	children,
-}: {
-	theme: string;
-	children: ReactNode;
-}) => {
-	useLayoutEffect(() => {
-		const previous = document.documentElement.dataset.theme;
-		document.documentElement.dataset.theme = theme;
-		return () => {
-			if (previous === undefined) {
-				document.documentElement.removeAttribute("data-theme");
-			} else {
-				document.documentElement.dataset.theme = previous;
-			}
-		};
-	}, [theme]);
-
-	return (
-		<div
-			data-theme={theme}
-			className="min-h-screen bg-canvas p-8 font-sans text-body text-ink"
-		>
-			{children}
-		</div>
-	);
-};
+/**
+ * The padded sheet these stories are read on. Layout only: the ground and the
+ * type come from the preview frame.
+ */
+const Sheet = ({ children }: { children: ReactNode }) => (
+	<div className="p-8">{children}</div>
+);
 
 /* ------------------------------------------------------------------ */
 /* Fixtures                                                            */
@@ -388,23 +347,14 @@ const withReasoningOn = (Story: () => ReactNode) => {
 /* Meta                                                                */
 /* ------------------------------------------------------------------ */
 
-const meta: Meta<StoryArgs> = {
+const meta: Meta = {
 	title: "Chat/Trace",
 	parameters: { layout: "fullscreen" },
-	argTypes: {
-		theme: {
-			control: { type: "select" },
-			options: [...THEME_IDS],
-			description:
-				"Sets data-theme on the document root, which is what portalled overlays read.",
-		},
-	},
-	args: { theme: "localOperatorDark" },
 };
 
 export default meta;
 
-type Story = StoryObj<StoryArgs>;
+type Story = StoryObj;
 
 /**
  * The whole conversation, reasoning hidden — the default state. The plan
@@ -412,19 +362,19 @@ type Story = StoryObj<StoryArgs>;
  * `showAgentReasoning` preference.
  */
 export const Conversation: Story = {
-	render: ({ theme }) => (
-		<ThemeFrame theme={theme}>
+	render: () => (
+		<Sheet>
 			<ConversationList />
-		</ThemeFrame>
+		</Sheet>
 	),
 };
 
 /** The same conversation with the reasoning preference switched on. */
 export const ConversationWithReasoning: Story = {
-	render: ({ theme }) => (
-		<ThemeFrame theme={theme}>
+	render: () => (
+		<Sheet>
 			<ConversationList />
-		</ThemeFrame>
+		</Sheet>
 	),
 	decorators: [withReasoningOn],
 };
@@ -434,8 +384,8 @@ export const ConversationWithReasoning: Story = {
  * grouped. Same component, same label derivation — only state differs.
  */
 export const TraceStates: Story = {
-	render: ({ theme }) => (
-		<ThemeFrame theme={theme}>
+	render: () => (
+		<Sheet>
 			<div className="mx-auto flex w-full max-w-[700px] flex-col gap-6">
 				<h2 className="text-heading">One line per action</h2>
 				<TraceGroup>
@@ -500,26 +450,26 @@ export const TraceStates: Story = {
 				<h2 className="text-heading">No detail — static text, not a button</h2>
 				<TraceLine action="DELEGATE" narration="Asked a research agent" />
 			</div>
-		</ThemeFrame>
+		</Sheet>
 	),
 };
 
 /** The question affordance on its own. */
 export const QuestionCallout: Story = {
-	render: ({ theme }) => (
-		<ThemeFrame theme={theme}>
+	render: () => (
+		<Sheet>
 			<div className="mx-auto flex w-full max-w-[700px] flex-col gap-6">
 				<AgentQuestion content={askQuestion.message} />
 				<AgentQuestion content="No content — renders nothing, so this slot stays empty." />
 			</div>
-		</ThemeFrame>
+		</Sheet>
 	),
 };
 
 /** The security notice, retrospective: with and without payload. */
 export const SecurityNoticeStates: Story = {
-	render: ({ theme }) => (
-		<ThemeFrame theme={theme}>
+	render: () => (
+		<Sheet>
 			<div className="mx-auto flex w-full max-w-[700px] flex-col gap-6">
 				<SecurityNotice content={securityCheck.message} />
 				<SecurityNotice
@@ -531,6 +481,6 @@ export const SecurityNoticeStates: Story = {
 					}
 				/>
 			</div>
-		</ThemeFrame>
+		</Sheet>
 	),
 };

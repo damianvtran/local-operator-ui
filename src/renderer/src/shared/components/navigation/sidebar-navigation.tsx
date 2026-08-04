@@ -69,6 +69,23 @@ type NavItem = {
  * Rows are 32px with 16px marks and 13px labels, matching the settings rail
  * exactly. The two are visible in the same viewport, so anything they disagree
  * about reads as a mistake.
+ *
+ * ## Why the expanded width does NOT shrink on a narrow window
+ *
+ * On the settings screen this rail and the settings jump list are both on
+ * screen, and at 220px each they took roughly half a 900px window before any
+ * setting was drawn. The settings rail is what gives: below 1040px it becomes
+ * a 48px icon rail, which takes a 900px window from 49% chrome to 30%.
+ *
+ * This rail was narrowed to 180px alongside it and the change was reverted,
+ * because 180 clips the wordmark: "Local Operator" measures 100px and the
+ * header leaves it 92px once the 20px inset that aligns the mark with the nav
+ * marks, the 8px right padding and the 32px collapse control are taken out.
+ * The first width that clears it with any margin is 200px, and 20px of content
+ * is not worth putting the product's own name 12px from an ellipsis on the one
+ * piece of chrome that is on screen everywhere. Global navigation is also the
+ * wrong thing to shrink first: the user can already collapse this rail to 48px
+ * and that choice is remembered.
  */
 const RAIL_WIDTH = { expanded: "w-55", collapsed: "w-12" } as const;
 
@@ -145,7 +162,6 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 			>
 				<item.icon
 					size={16}
-					strokeWidth={1.75}
 					aria-hidden="true"
 					className={cn("shrink-0", item.isActive && "text-accent")}
 				/>

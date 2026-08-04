@@ -90,7 +90,7 @@ const getProviderFromId = (id: string): string => {
  */
 const getGroupForModel = (modelId: string, hostingId: string): string => {
 	if (hostingId === "radient" && modelId === "auto") {
-		return "Auto (Recommended)";
+		return "Auto (recommended)";
 	}
 	if (modelId === "") {
 		return "General";
@@ -109,7 +109,7 @@ const getGroupForModel = (modelId: string, hostingId: string): string => {
 		// The manifest does not know this provider, but the id still names one.
 		return providerId;
 	}
-	return "Other Models";
+	return "Other models";
 };
 
 /**

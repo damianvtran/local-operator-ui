@@ -13,23 +13,44 @@ const MAX_BAR_HEIGHT = 24; // Maximum height of a bar in pixels
 const FRAMES_TO_SKIP = 4; // Throttle visual updates
 
 /*
- * The recording dot's pulse, kept in-component: `styles/**` is shared
- * infrastructure and this animation is composer chrome. The ring fades out of
- * the accent role via `color-mix` so no theme has its colour guessed.
+ * The recording pulse, kept in-component: `styles/**` is shared infrastructure
+ * and this animation is composer chrome.
+ *
+ * It is an expanding ring, not a `box-shadow`. The system has exactly one
+ * shadow and it belongs to objects that leave the flow — menu, dialog, drawer,
+ * popover, tooltip, select (docs/branding.md § 2). A status dot sitting in the
+ * composer is not one of those, and a shadow keyframe here is also the one
+ * shape of ring that an ancestor's `overflow: hidden` can clip away.
+ *
+ * Two things about the split into a static dot and an animated ring are
+ * load-bearing:
+ *
+ * - The dot is the state; the ring is only emphasis. Under
+ *   `prefers-reduced-motion` the global rule in `styles/index.css` caps every
+ *   animation at 0.01ms with a single iteration, so this one finishes at once
+ *   and — `animation-fill-mode` being `none` — the animated element reverts to
+ *   its unanimated style. The ring's unanimated style is `opacity: 0`, so it
+ *   is simply absent rather than frozen half-drawn. Pulsing the dot's own
+ *   opacity instead would have put the state itself on the animated element,
+ *   and whatever resting opacity that dot declared is then what a
+ *   reduced-motion user is left looking at. Here they get a solid accent dot
+ *   beside the word "Recording", which is the whole message.
+ * - The ring takes `border-accent`, so no theme has its colour guessed.
+ *
+ * The 1.6s period is deliberately outside the 80/120/180/240ms ramp. That ramp
+ * governs entrances and state changes, where the duration is time the user is
+ * made to wait; a continuous "still recording" signal is a heartbeat, and at
+ * 240ms it would strobe. `Spinner`'s rotation is the same exception.
  */
 const PULSE_KEYFRAMES = `
-@keyframes recording-pulse {
-  0% {
-    transform: scale(0.95);
-    box-shadow: 0 0 0 0 color-mix(in srgb, var(--lo-accent) 70%, transparent);
-  }
-  70% {
+@keyframes recording-ping {
+  from {
     transform: scale(1);
-    box-shadow: 0 0 0 10px color-mix(in srgb, var(--lo-accent) 0%, transparent);
+    opacity: 0.6;
   }
-  100% {
-    transform: scale(0.95);
-    box-shadow: 0 0 0 0 color-mix(in srgb, var(--lo-accent) 0%, transparent);
+  to {
+    transform: scale(2.4);
+    opacity: 0;
   }
 }`;
 
@@ -211,10 +232,10 @@ export const AudioRecordingIndicator = ({
 	return (
 		<div className="flex flex-1 items-center justify-center gap-4 rounded-md border border-accent/20 bg-accent-wash px-4 py-2 text-accent [min-height:50px]">
 			<style>{PULSE_KEYFRAMES}</style>
-			<span
-				className="size-2 shrink-0 rounded-full bg-accent animate-[recording-pulse_1.5s_infinite_ease-in-out]"
-				aria-hidden="true"
-			/>
+			<span className="relative block size-2 shrink-0" aria-hidden="true">
+				<span className="absolute inset-0 rounded-full border border-accent opacity-0 animate-[recording-ping_1.6s_ease-out_infinite]" />
+				<span className="block size-2 rounded-full bg-accent" />
+			</span>
 			<span className="font-medium text-body-sm text-accent">Recording</span>
 			<canvas ref={canvasRef} className="block h-6 flex-1 text-accent" />
 		</div>

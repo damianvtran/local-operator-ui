@@ -69,7 +69,6 @@ const IntegrationRow: FC<IntegrationRowProps> = ({
 			<div className="flex min-w-0 items-center gap-3">
 				<Icon
 					size={20}
-					strokeWidth={1.75}
 					className="shrink-0 text-ink-muted"
 					aria-hidden="true"
 				/>

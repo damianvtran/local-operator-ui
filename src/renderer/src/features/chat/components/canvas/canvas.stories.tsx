@@ -12,17 +12,14 @@
  * execution-variables endpoint, `window.api` for the file bridge — so the real
  * components run rather than a re-drawn copy of them.
  *
- * ## Why the theme is set on `documentElement` *and* in the store
- *
- * Tailwind role utilities resolve against `data-theme`; CodeMirror and the
- * remaining MUI-era surfaces read `useUiPreferencesStore`. Setting one and not
- * the other renders a half-themed panel.
+ * The theme comes from the preview-level frame in `.storybook/preview.tsx`,
+ * which moves MUI context, `data-theme` and the preferences store together.
+ * CodeMirror in particular reads the store rather than the attribute, so a
+ * story that set only one of the two rendered a half-themed panel.
  */
 
-import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
-import type { ThemeName } from "@shared/themes";
 import type { Meta, StoryObj } from "@storybook/react";
-import { type ReactNode, useLayoutEffect, useMemo } from "react";
+import { type ReactNode, useMemo } from "react";
 import "../../../../styles/index.css";
 import type { EditDiff } from "@shared/api/local-operator/types";
 import { useCanvasStore } from "@shared/store/canvas-store";
@@ -30,54 +27,14 @@ import type { CanvasDocument } from "../../types/canvas";
 import { Canvas } from "./index";
 import { InlineEdit } from "./inline-edit";
 
-const THEME_IDS = [
-	"localOperatorDark",
-	"localOperatorLight",
-	"dracula",
-	"dune",
-	"sage",
-	"monokai",
-	"tokyoNight",
-	"iceberg",
-	"radient",
-	"neon",
-	"obsidian",
-	"synth",
-] as const;
-
-type StoryArgs = { theme: (typeof THEME_IDS)[number] };
-
-const ThemeFrame = ({
-	theme,
-	children,
-}: {
-	theme: ThemeName;
-	children: ReactNode;
-}) => {
-	useLayoutEffect(() => {
-		const previousAttr = document.documentElement.dataset.theme;
-		const previousName = useUiPreferencesStore.getState().themeName;
-		document.documentElement.dataset.theme = theme;
-		useUiPreferencesStore.setState({ themeName: theme });
-		return () => {
-			if (previousAttr === undefined) {
-				document.documentElement.removeAttribute("data-theme");
-			} else {
-				document.documentElement.dataset.theme = previousAttr;
-			}
-			useUiPreferencesStore.setState({ themeName: previousName });
-		};
-	}, [theme]);
-
-	return (
-		<div
-			data-theme={theme}
-			className="flex h-screen bg-canvas font-sans text-body text-ink"
-		>
-			{children}
-		</div>
-	);
-};
+/**
+ * The chat column beside the panel, which is the only reason the canvas has a
+ * width to be judged at. Layout only — the ground and the type come from the
+ * preview frame.
+ */
+const SplitFrame = ({ children }: { children: ReactNode }) => (
+	<div className="flex h-screen">{children}</div>
+);
 
 /* ------------------------------------------------------------------ */
 /* Fixtures                                                            */
@@ -328,12 +285,10 @@ const ChatColumnMock = () => (
 );
 
 const CanvasFrame = ({
-	theme,
 	view,
 	activeId,
 	width = 720,
 }: {
-	theme: ThemeName;
 	view: "documents" | "files" | "variables";
 	activeId: string;
 	width?: number;
@@ -357,7 +312,7 @@ const CanvasFrame = ({
 	}, [view, activeId]);
 
 	return (
-		<ThemeFrame theme={theme}>
+		<SplitFrame>
 			<ChatColumnMock />
 			<div
 				style={{ width, minWidth: width }}
@@ -373,68 +328,49 @@ const CanvasFrame = ({
 					onCloseDocument={() => {}}
 				/>
 			</div>
-		</ThemeFrame>
+		</SplitFrame>
 	);
 };
 
-const meta: Meta<StoryArgs> = {
+const meta: Meta = {
 	title: "Canvas/Workspace",
 	parameters: { layout: "fullscreen" },
-	argTypes: {
-		theme: { control: { type: "select" }, options: THEME_IDS },
-	},
-	args: { theme: "localOperatorDark" },
 };
 
 export default meta;
 
-type Story = StoryObj<StoryArgs>;
+type Story = StoryObj;
 
 /** Markdown editor: the toolbar, the tab strip under load, and prose. */
 export const MarkdownDocument: Story = {
-	render: ({ theme }) => (
-		<CanvasFrame theme={theme} view="documents" activeId={DOCUMENTS[0].id} />
-	),
+	render: () => <CanvasFrame view="documents" activeId={DOCUMENTS[0].id} />,
 };
 
 /** The same panel at its minimum width, where the toolbar is under pressure. */
 export const MarkdownDocumentNarrow: Story = {
-	render: ({ theme }) => (
-		<CanvasFrame
-			theme={theme}
-			view="documents"
-			activeId={DOCUMENTS[0].id}
-			width={440}
-		/>
+	render: () => (
+		<CanvasFrame view="documents" activeId={DOCUMENTS[0].id} width={440} />
 	),
 };
 
 /** Spreadsheet: ag-grid density, header treatment and the sheet switcher. */
 export const Spreadsheet: Story = {
-	render: ({ theme }) => (
-		<CanvasFrame theme={theme} view="documents" activeId={DOCUMENTS[1].id} />
-	),
+	render: () => <CanvasFrame view="documents" activeId={DOCUMENTS[1].id} />,
 };
 
 /** Code editor. */
 export const Code: Story = {
-	render: ({ theme }) => (
-		<CanvasFrame theme={theme} view="documents" activeId={DOCUMENTS[2].id} />
-	),
+	render: () => <CanvasFrame view="documents" activeId={DOCUMENTS[2].id} />,
 };
 
 /** Files view: the attachment grid. */
 export const Files: Story = {
-	render: ({ theme }) => (
-		<CanvasFrame theme={theme} view="files" activeId={DOCUMENTS[0].id} />
-	),
+	render: () => <CanvasFrame view="files" activeId={DOCUMENTS[0].id} />,
 };
 
 /** Variables view: row density and the disclosure. */
 export const Variables: Story = {
-	render: ({ theme }) => (
-		<CanvasFrame theme={theme} view="variables" activeId={DOCUMENTS[0].id} />
-	),
+	render: () => <CanvasFrame view="variables" activeId={DOCUMENTS[0].id} />,
 };
 
 /* ------------------------------------------------------------------ */
@@ -463,8 +399,8 @@ const DIFFS: EditDiff[] = [
  * where the user accepts or rejects agent output change by change.
  */
 export const DiffReview: Story = {
-	render: ({ theme }) => (
-		<ThemeFrame theme={theme}>
+	render: () => (
+		<SplitFrame>
 			<div className="relative flex-1 bg-surface p-10">
 				<div className="max-w-160 text-body text-ink">
 					<h1 className="mb-3 font-semibold text-title">Q1 invoice review</h1>
@@ -503,14 +439,14 @@ export const DiffReview: Story = {
 					/>
 				</div>
 			</div>
-		</ThemeFrame>
+		</SplitFrame>
 	),
 };
 
 /** The prompt state of the same popover, before any changes exist. */
 export const EditPrompt: Story = {
-	render: ({ theme }) => (
-		<ThemeFrame theme={theme}>
+	render: () => (
+		<SplitFrame>
 			<div className="relative flex-1 bg-surface p-10">
 				<div className="relative h-64">
 					<InlineEdit
@@ -529,6 +465,6 @@ export const EditPrompt: Story = {
 					/>
 				</div>
 			</div>
-		</ThemeFrame>
+		</SplitFrame>
 	),
 };

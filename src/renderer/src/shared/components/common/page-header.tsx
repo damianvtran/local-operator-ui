@@ -55,7 +55,6 @@ export const PageHeader: FC<PageHeaderProps> = ({
 		<div className="flex items-start gap-4">
 			<Icon
 				size={24}
-				strokeWidth={2}
 				aria-hidden="true"
 				className="mt-1 shrink-0 text-ink-muted"
 			/>

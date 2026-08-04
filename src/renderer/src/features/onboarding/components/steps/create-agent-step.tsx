@@ -149,7 +149,7 @@ export const CreateAgentStep: FC<CreateAgentStepProps> = ({
 			<div className="flex flex-wrap items-start justify-between gap-3">
 				<p className="min-w-60 flex-1 text-body text-ink-muted">
 					Pick an agent to start with, or add the popular ones as a set. More
-					are in the Agent Hub whenever you want them.
+					are in the Agent hub whenever you want them.
 				</p>
 				<Button
 					variant="secondary"
@@ -177,7 +177,7 @@ export const CreateAgentStep: FC<CreateAgentStepProps> = ({
 						The recommended agents could not be loaded.
 					</p>
 					<p className="text-ink-dim text-meta">
-						Continue without one and add agents later from the Agent Hub.
+						Continue without one and add agents later from the Agent hub.
 					</p>
 				</div>
 			)}
@@ -187,7 +187,7 @@ export const CreateAgentStep: FC<CreateAgentStepProps> = ({
 					{recommendedAgents.length === 0 ? (
 						<p className="text-center text-body-sm text-ink-muted sm:col-span-2">
 							No recommended agents right now. Continue, and add agents later
-							from the Agent Hub.
+							from the Agent hub.
 						</p>
 					) : (
 						recommendedAgents.map((agent) => {

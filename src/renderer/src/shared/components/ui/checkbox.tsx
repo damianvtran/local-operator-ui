@@ -44,10 +44,20 @@ export const Checkbox = forwardRef<
 		{...props}
 	>
 		<CheckboxPrimitive.Indicator className="flex items-center justify-center text-current">
+			{/*
+			 * 14px glyph, no `strokeWidth`. The app runs one pen weight — lucide's
+			 * default 2 on its 24px grid — so when a glyph reads thin the lever is
+			 * its size, not its stroke. This one carried `strokeWidth={3}` at 12px,
+			 * which bought the weight back by putting a second pen in the tree.
+			 * 14px at the standard weight is the same optical density as every
+			 * other 14px icon, and it fills the 16px box's content area exactly —
+			 * the 1px border is the whole gap, which is enough because neither a
+			 * tick nor a dash puts ink in its bounding box corners.
+			 */}
 			{checked === "indeterminate" ? (
-				<Minus className="size-3" strokeWidth={3} aria-hidden="true" />
+				<Minus className="size-3.5" aria-hidden="true" />
 			) : (
-				<Check className="size-3" strokeWidth={3} aria-hidden="true" />
+				<Check className="size-3.5" aria-hidden="true" />
 			)}
 		</CheckboxPrimitive.Indicator>
 	</CheckboxPrimitive.Root>

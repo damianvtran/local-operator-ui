@@ -28,7 +28,8 @@
  * ramp.
  */
 
-import { readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
+import { loadPalettes } from "./palette-source.mjs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -40,23 +41,6 @@ const THEME_CSS = join(ROOT, "src/renderer/src/styles/index.css");
 /** camelCase role -> kebab-case custom property suffix. */
 const kebab = (s) => s.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`);
 
-const loadPalettes = () => {
-	const out = [];
-	for (const file of readdirSync(PALETTE_DIR).filter((f) => f.endsWith(".ts"))) {
-		const src = readFileSync(join(PALETTE_DIR, file), "utf8");
-		for (const chunk of src.split(/\bid:\s*"/).slice(1)) {
-			const id = chunk.slice(0, chunk.indexOf('"'));
-			const pStart = chunk.indexOf("palette: {");
-			if (pStart === -1) continue;
-			const entries = {};
-			for (const m of chunk.slice(pStart).matchAll(/(\w+):\s*"([^"]+)"/g)) {
-				if (!(m[1] in entries)) entries[m[1]] = m[2];
-			}
-			out.push({ id, palette: entries });
-		}
-	}
-	return out.sort((a, b) => a.id.localeCompare(b.id));
-};
 
 const palettes = loadPalettes();
 if (palettes.length === 0) {

@@ -467,6 +467,13 @@ export const CommandPalette: FC = () => {
 
 	const activeItem = filteredItems[selectedIndex];
 
+	// The listbox is only in the document when there is something to list — a
+	// no-match query swaps it for the empty state below. Both of the combobox's
+	// popup attributes therefore have to follow it: a literal
+	// `aria-expanded={true}` announced an open popup that was not there, and an
+	// unconditional `aria-controls` pointed at an id that never rendered.
+	const hasResults = filteredItems.length > 0;
+
 	return (
 		<>
 			<Dialog
@@ -513,8 +520,8 @@ export const CommandPalette: FC = () => {
 							id={INPUT_ID}
 							type="text"
 							role="combobox"
-							aria-expanded={true}
-							aria-controls={LIST_ID}
+							aria-expanded={hasResults}
+							aria-controls={hasResults ? LIST_ID : undefined}
 							aria-activedescendant={activeItem?.id}
 							aria-autocomplete="list"
 							autoComplete="off"
@@ -552,7 +559,7 @@ export const CommandPalette: FC = () => {
 						)}
 					</div>
 
-					{filteredItems.length === 0 ? (
+					{!hasResults ? (
 						/*
 						 * An empty state that says what to do next. "Nothing matches"
 						 * is a status; the second line is the part that gets the user

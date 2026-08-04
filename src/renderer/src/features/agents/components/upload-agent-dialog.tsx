@@ -79,7 +79,7 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 		<BaseDialog
 			open={open}
 			onClose={onClose}
-			title={`Upload "${agentName}" to Agent Hub?`}
+			title={`Upload "${agentName}" to Agent hub?`}
 			maxWidth="sm"
 			fullWidth
 			dataTourTag="upload-agent-dialog"
@@ -103,7 +103,7 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 					<div className="flex flex-col items-center gap-6 text-center">
 						<p className="text-body text-ink">
 							You need to be signed in to Radient to upload agents to the Agent
-							Hub.
+							hub.
 						</p>
 						<RadientAuthButtons
 							titleText="Sign in to continue"
@@ -116,7 +116,7 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 						<p className="text-body text-ink">
 							You are about to upload the agent{" "}
 							<span className="font-semibold">{agentName}</span> to the public
-							Agent Hub. This will include:
+							Agent hub. This will include:
 						</p>
 						<ul className="list-disc space-y-1 pl-5 text-body text-ink-muted">
 							<li>Agent configuration and settings</li>

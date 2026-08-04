@@ -59,7 +59,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 						aria-label={`Open canvas (${shortcut})`}
 						data-tour-tag="open-canvas-button"
 					>
-						<FileText strokeWidth={1.5} aria-hidden={true} />
+						<FileText aria-hidden={true} />
 					</Button>
 				</Tooltip>
 			)}

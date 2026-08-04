@@ -4,8 +4,8 @@ import {
 } from "@shared/store/onboarding-store";
 import type { Meta, StoryObj } from "@storybook/react";
 import { useLayoutEffect } from "react";
-/* Storybook's preview does not load the app's stylesheet, so a story that
-   renders ported components has to bring it or it renders with no utilities. */
+/* Also imported by the Storybook preview; kept here so the file is honest
+   about what it needs to render, and so it renders if run in isolation. */
 import "../../../styles/index.css";
 import { OnboardingModal } from "./onboarding-modal";
 
@@ -25,7 +25,8 @@ import { OnboardingModal } from "./onboarding-modal";
  * The dialog portals to `document.body`, outside any wrapper a story could
  * render. With the theme only on a wrapper every `--lo-*` read inside the
  * portal resolves to nothing and the panel comes out unstyled — while the page
- * behind it looks correct, which makes it slow to diagnose.
+ * behind it looks correct, which makes it slow to diagnose. The preview frame
+ * in `.storybook/preview.tsx` puts it on the root for every story.
  *
  * ## What is not real here
  *
@@ -33,63 +34,31 @@ import { OnboardingModal } from "./onboarding-modal";
  * agents render their loading or empty branch. That is the honest thing to
  * screenshot: those branches are states a real user hits too.
  */
-const THEME_IDS = [
-	"localOperatorDark",
-	"localOperatorLight",
-	"dracula",
-	"dune",
-	"sage",
-	"monokai",
-	"tokyoNight",
-	"iceberg",
-	"radient",
-	"neon",
-	"obsidian",
-	"synth",
-] as const;
-
 type StoryArgs = {
-	theme: (typeof THEME_IDS)[number];
 	step: OnboardingStep;
 };
 
-const OnboardingFrame = ({ theme, step }: StoryArgs) => {
+const OnboardingFrame = ({ step }: StoryArgs) => {
 	useLayoutEffect(() => {
-		const previous = document.documentElement.dataset.theme;
-		document.documentElement.dataset.theme = theme;
-
 		const state = useOnboardingStore.getState();
 		state.resetOnboarding();
 		state.setCurrentStep(step);
 		// Cleared so the modal's session-restore effect does not jump the flow
 		// to Create agent on every re-render of a story.
 		window.sessionStorage.removeItem("mock-radient-session");
+	}, [step]);
 
-		return () => {
-			if (previous === undefined) {
-				document.documentElement.removeAttribute("data-theme");
-			} else {
-				document.documentElement.dataset.theme = previous;
-			}
-		};
-	}, [theme, step]);
-
-	return (
-		<div data-theme={theme} className="min-h-screen bg-canvas font-sans">
-			<OnboardingModal open={true} />
-		</div>
-	);
+	return <OnboardingModal open={true} />;
 };
 
 const meta: Meta<StoryArgs> = {
 	title: "Onboarding/OnboardingModal",
 	parameters: { layout: "fullscreen" },
 	argTypes: {
-		theme: { control: "select", options: THEME_IDS },
 		step: { control: "select", options: Object.values(OnboardingStep) },
 	},
-	args: { theme: "localOperatorDark", step: OnboardingStep.RADIENT_CHOICE },
-	render: (args) => <OnboardingFrame {...args} />,
+	args: { step: OnboardingStep.RADIENT_CHOICE },
+	render: ({ step }) => <OnboardingFrame step={step} />,
 };
 
 export default meta;

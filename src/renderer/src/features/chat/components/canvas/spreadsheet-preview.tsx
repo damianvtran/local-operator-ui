@@ -150,6 +150,24 @@ const SPREADSHEET_THEME = themeQuartz.withPart(iconSetQuartz).withParams({
 	headerRowBorder: "solid 1px var(--color-hairline)",
 });
 
+/*
+ * A quantity as it appears once a cell has been rendered for display: an
+ * optional sign, an optional leading currency symbol, digits with optional
+ * thousands grouping and decimals, and an optional trailing percent.
+ *
+ * The grid receives display text rather than JS numbers, because that is the
+ * only way a cell keeps the trailing zero on `2310.50` and the format its
+ * author chose. So the column that decides right-alignment can no longer ask
+ * `typeof value === "number"`; it has to read the text, and it has to read
+ * past the format, because `$2,310.50` and `12.5%` are quantities and belong
+ * in a column whose digits line up.
+ */
+const QUANTITY_TEXT = /^[+-]?[$€£¥]?\s?\d[\d,]*(\.\d+)?\s?%?$/;
+
+const readsAsQuantity = (value: unknown): boolean =>
+	typeof value === "number" ||
+	(typeof value === "string" && QUANTITY_TEXT.test(value.trim()));
+
 const SpreadsheetPreviewComponent: FC<SpreadsheetPreviewProps> = ({
 	document,
 	conversationId,
@@ -187,7 +205,17 @@ const SpreadsheetPreviewComponent: FC<SpreadsheetPreviewProps> = ({
 				} catch {
 					// Not a valid base64 string, so use content as is.
 				}
-				workbook = XLSX.read(csvText, { type: "string" });
+				/*
+				 * `raw` keeps every cell as the text the file actually contains.
+				 * A CSV carries no cell formats, so the parser's default is to
+				 * guess one: `2026-03-15` becomes the Excel serial `46095.83`
+				 * (the fraction is the UTC-to-local offset) and then renders as
+				 * `3/14/26`, a day earlier than what was pasted, while
+				 * `2026-03-15 14:30` loses its time entirely. There is nothing
+				 * in the file to recover the intended format from, so the
+				 * literal text is the only value that cannot be wrong.
+				 */
+				workbook = XLSX.read(csvText, { type: "string", raw: true });
 			} else {
 				// For XLSX files, the content is base64-encoded binary data
 				// Pass it directly to XLSX.read with type "base64"
@@ -197,10 +225,18 @@ const SpreadsheetPreviewComponent: FC<SpreadsheetPreviewProps> = ({
 			const newSheetsData: Record<string, Record<string, unknown>[]> = {};
 			for (const sheetName of workbook.SheetNames) {
 				const worksheet = workbook.Sheets[sheetName];
-				const jsonSheet = XLSX.utils.sheet_to_json(worksheet) as Record<
-					string,
-					unknown
-				>[];
+				/*
+				 * `raw: false` reads each cell's rendered text rather than its
+				 * underlying value, which is what keeps trailing zeros and
+				 * currency symbols: an invoice total of `2310.50` arrives as
+				 * `2310.50`, not `2310.5`. For an xlsx that rendering uses the
+				 * number format the sheet's author chose, so dates and money
+				 * display the way they do in Excel; for a CSV the cells are
+				 * already text, so it is a no-op.
+				 */
+				const jsonSheet = XLSX.utils.sheet_to_json(worksheet, {
+					raw: false,
+				}) as Record<string, unknown>[];
 				newSheetsData[sheetName] = jsonSheet;
 			}
 			setSheetsData(newSheetsData);
@@ -374,7 +410,7 @@ const SpreadsheetPreviewComponent: FC<SpreadsheetPreviewProps> = ({
 			// the whole reason a spreadsheet is readable at a glance, and it was
 			// the difference between this grid and a considered one. The header
 			// follows the cells, or the label floats away from its column.
-			const isNumeric = typeof firstRow[key] === "number";
+			const isNumeric = readsAsQuantity(firstRow[key]);
 			return {
 				field: key,
 				headerName: key,

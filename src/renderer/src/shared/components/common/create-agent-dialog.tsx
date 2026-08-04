@@ -132,7 +132,7 @@ export const CreateAgentDialog: FC<CreateAgentDialogProps> = ({
 				onClick={handleAgentHubClick}
 				className="mt-1 mb-4 text-body-sm"
 			>
-				Browse Agent Hub to fetch ready-made agents
+				Browse Agent hub to fetch ready-made agents
 				<ExternalLink aria-hidden="true" />
 			</Button>
 			<form id="create-agent-form" onSubmit={handleSubmit}>

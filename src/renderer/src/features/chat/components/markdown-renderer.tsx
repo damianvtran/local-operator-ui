@@ -191,16 +191,35 @@ MarkdownRenderer.displayName = "MarkdownRenderer";
  * Memoised on its source, which by construction never changes once the block
  * has closed — so a block is parsed on the frame it closes and is untouched for
  * the rest of the message. This is the whole point of the block split.
+ *
+ * The plugin set is derived from the block's own source by the same hook the
+ * completed render uses. Hardcoding GFM-only here meant a closed block holding
+ * LaTeX showed its raw "$x$" source for the rest of the stream and then
+ * re-rendered through KaTeX the moment the message completed and
+ * `MarkdownRenderer` took over — the equation visibly jumped. Deriving it means
+ * the block reaches its final layout as soon as the KaTeX stylesheet resolves,
+ * and completion is a no-op for it.
+ *
+ * Detection is per block rather than per document on purpose: the block's
+ * source is frozen, so its decision is made once and can never flip, whereas a
+ * document-level scan would have to re-run on the whole message every frame and
+ * would re-render every earlier block the first time math appeared anywhere.
+ * The two only disagree where `containsLatex` deliberately reads a
+ * digit-leading "$1.00$" as currency for the block but the completed
+ * document-level render enables math because of a formula elsewhere.
  */
-const StableBlock = memo(({ source }: { source: string }) => (
-	<ReactMarkdown
-		remarkPlugins={GFM_ONLY}
-		rehypePlugins={NO_REHYPE}
-		components={MARKDOWN_COMPONENTS}
-	>
-		{source}
-	</ReactMarkdown>
-));
+const StableBlock = memo(({ source }: { source: string }) => {
+	const { remarkPlugins, rehypePlugins } = useMathPipeline(source);
+	return (
+		<ReactMarkdown
+			remarkPlugins={remarkPlugins}
+			rehypePlugins={rehypePlugins}
+			components={MARKDOWN_COMPONENTS}
+		>
+			{source}
+		</ReactMarkdown>
+	);
+});
 
 StableBlock.displayName = "StableBlock";
 

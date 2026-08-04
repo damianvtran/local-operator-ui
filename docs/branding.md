@@ -237,6 +237,49 @@ longer than 240ms, and only something entering the screen earns that.
   permanently invisible. (That exact defect shipped on the marketing site: 16
   elements with `opacity: 0` that never animated away under reduced motion.)
 
+### Icons
+
+**`lucide-react`, one stroke weight, and the weight is never written down.**
+
+The weight is lucide's own default of 2. The rule is expressed as an absence —
+`strokeWidth` does not appear on an icon anywhere in the tree — because a
+default costs nothing to keep in sync and a restated value drifts. It already
+had: five weights (1.5, 1.75, 2, 2.2 and 3) had accumulated across 18 call
+sites while the other ~290 icon renders in the app sat on the default and
+looked fine.
+
+Lucide draws on a 24px grid and scales the stroke with the box, so one value
+is one pen at different zooms. At the sizes below, a 2 renders as 1.17px,
+1.33px, 1.67px and 2px — the range where an icon still outweighs the 1px
+`hairline` beside it and roughly matches the stems of the 500-weight label it
+weighs against. A 1.5 at 16px renders at exactly 1px, which is what the chat
+header's canvas toggle was doing: an icon with the visual weight of a divider.
+
+**Sizes: 14 / 16 / 20 / 24.** These are not free choices. They are the icon
+slots `Button` already defines, and an icon inside a control has to agree with
+the control.
+
+| Size | Where |
+|---|---|
+| 14 | `Button` `sm` and `icon-sm`; inline with `body-sm` or `meta` |
+| 16 | the default — `Button` `md`, `lg` and `icon`; list rows, nav items |
+| 20 | `Button` `icon-lg`; a standalone glyph labelling a settings row |
+| 24 | a page header, beside the `display` step |
+
+Above 24 is illustration rather than iconography — the onboarding and
+installer moments — and it does not belong in a toolbar or a row. Sizes off
+this ramp still exist in the tree (18, 19, 22, 26) and are drift, not
+exceptions.
+
+**When a glyph reads thin, change its size, not its stroke.** The checkbox is
+the worked example: a 12px tick needed `strokeWidth={3}` to hold its weight,
+so it became a 14px tick at the standard weight instead. One pen at four sizes
+is a system; two pens is a defect a viewer notices without being able to name
+it.
+
+`strokeWidth` on a recharts `<Line>` is chart geometry, not an icon, and is
+the one place the prop legitimately appears.
+
 ---
 
 ## 6. Focus, disabled, and the two rules people break
@@ -333,12 +376,28 @@ never appears and the element animates at Tailwind's stock 150ms. If a utility
 seems not to apply, check that it exists in the compiled CSS before assuming
 the value is wrong.
 
-**MUI wins specificity fights during the migration.** Emotion injects component
-styles after the CssBaseline globals, and `MuiButtonBase` sets `outline: 0`, so
-a naive global focus rule applies its `outline-offset` and no outline. Rules
-that must beat MUI need the `html` prefix. This disappears as the port
-completes; until then, verify a global rule in a browser rather than assuming
-it landed.
+**MUI wins cascade fights during the migration, and specificity is not the
+reason.** Emotion injects its styles *unlayered*, and an unlayered declaration
+beats a layered one no matter how specific the layered one is. Tailwind's
+utilities and this app's base rules are all layered. So a rule authored in
+`@layer base` loses to `MuiButtonBase`'s `outline: 0` even at higher
+specificity - and it loses in the most confusing possible way, applying its
+`outline-width` and `outline-color` while `outline-style` stays `none`, so the
+values are visible in devtools and nothing paints.
+
+A rule that must beat MUI has to be **unlayered** (see the focus ring at the
+bottom of `styles/index.css`), or carry `!important`. The `html` prefix is
+still needed on top of that, to beat `.MuiButtonBase-root` on specificity once
+both are unlayered.
+
+This section previously said the `html` prefix alone was sufficient. It is not,
+and that error is why the app shipped for a while with no keyboard focus ring
+at all: the rule was correct, layered, and silently inert. Two further lessons
+are worth keeping from that one bug. **Verify a global rule in a browser, in
+the app** - not in Storybook, which renders a `<CssBaseline/>` the app does not
+and therefore had a focus ring the product lacked. And **a verification surface
+that differs from the product will eventually certify a defect**; when they
+disagree, fix the surface first.
 
 ---
 

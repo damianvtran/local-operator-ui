@@ -43,7 +43,7 @@ export const AgentHubPage: React.FC = () => {
 		/* `gap-8`: `PageHeader` no longer ships its own bottom margin. */
 		<div className="flex h-full flex-col gap-8 p-6">
 			<PageHeader
-				title="Agent Hub"
+				title="Agent hub"
 				subtitle="Discover and download community agents on Radient"
 				icon={Store}
 			/>

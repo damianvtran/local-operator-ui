@@ -1,8 +1,8 @@
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import type { Meta, StoryObj } from "@storybook/react";
-import { useEffect, useLayoutEffect } from "react";
-/* Storybook's preview does not load the app's stylesheet, so a story that
-   renders ported components has to bring it or it renders with no utilities. */
+import { useEffect } from "react";
+/* Also imported by the Storybook preview; kept here so the file is honest
+   about what it needs to render, and so it renders if run in isolation. */
 import "../../../styles/index.css";
 import { CommandPalette } from "./command-palette";
 
@@ -21,7 +21,8 @@ import { CommandPalette } from "./command-palette";
  * The palette is a Radix dialog and portals to `document.body`, outside any
  * wrapper this story could render. With the theme only on a wrapper every
  * `--lo-*` read inside the portal resolves to nothing and the panel comes out
- * unstyled.
+ * unstyled. The preview frame in `.storybook/preview.tsx` puts it on the root
+ * for every story.
  *
  * ## What the agent rows do here
  *
@@ -30,41 +31,12 @@ import { CommandPalette } from "./command-palette";
  * render in full, which is enough to judge row rhythm, the section headings,
  * the active row and the key legend.
  */
-const THEME_IDS = [
-	"localOperatorDark",
-	"localOperatorLight",
-	"dracula",
-	"dune",
-	"sage",
-	"monokai",
-	"tokyoNight",
-	"iceberg",
-	"radient",
-	"neon",
-	"obsidian",
-	"synth",
-] as const;
-
 type StoryArgs = {
-	theme: (typeof THEME_IDS)[number];
 	/** Seeded into the store before the palette opens. */
 	query: string;
 };
 
-const PaletteFrame = ({ theme, query }: StoryArgs) => {
-	// Theme first and synchronously, so no frame is painted unthemed.
-	useLayoutEffect(() => {
-		const previous = document.documentElement.dataset.theme;
-		document.documentElement.dataset.theme = theme;
-		return () => {
-			if (previous === undefined) {
-				document.documentElement.removeAttribute("data-theme");
-			} else {
-				document.documentElement.dataset.theme = previous;
-			}
-		};
-	}, [theme]);
-
+const PaletteFrame = ({ query }: StoryArgs) => {
 	/*
 	 * Deliberately a passive effect, not a layout effect.
 	 *
@@ -84,25 +56,17 @@ const PaletteFrame = ({ theme, query }: StoryArgs) => {
 		};
 	}, [query]);
 
-	return (
-		<div
-			data-theme={theme}
-			className="min-h-screen bg-canvas font-sans text-body text-ink"
-		>
-			<CommandPalette />
-		</div>
-	);
+	return <CommandPalette />;
 };
 
 const meta: Meta<StoryArgs> = {
 	title: "Command palette/CommandPalette",
 	parameters: { layout: "fullscreen" },
 	argTypes: {
-		theme: { control: "select", options: THEME_IDS },
 		query: { control: "text" },
 	},
-	args: { theme: "localOperatorDark", query: "" },
-	render: (args) => <PaletteFrame {...args} />,
+	args: { query: "" },
+	render: ({ query }) => <PaletteFrame query={query} />,
 };
 
 export default meta;

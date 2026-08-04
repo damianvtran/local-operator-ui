@@ -2,7 +2,6 @@ import type {
 	AgentExecutionRecord,
 	JobStatus,
 } from "@shared/api/local-operator/types";
-import { RingLoadingIndicator } from "@shared/components/common/ring-loading-indicator";
 import { Spinner } from "@shared/components/common/spinner";
 import { cn } from "@shared/lib/utils";
 import { useStreamingMessagesStore } from "@shared/store/streaming-messages-store";
@@ -261,7 +260,7 @@ export const MessagesView: FC<MessagesViewProps> = React.memo(
 				>
 					{isLoadingMessages && !messages.length ? (
 						<div className="flex h-full grow items-center justify-center p-8">
-							<RingLoadingIndicator size={68} />
+							<Spinner size="lg" label="Loading messages" />
 						</div>
 					) : (
 						<>

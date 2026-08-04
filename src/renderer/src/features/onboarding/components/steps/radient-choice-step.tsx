@@ -136,7 +136,6 @@ export const RadientChoiceStep: FC<RadientChoiceStepProps> = ({
 					    the two rows start on the same vertical line. */}
 					<Wrench
 						size={24}
-						strokeWidth={1.5}
 						className="mx-2 shrink-0 text-ink-dim"
 						aria-hidden="true"
 					/>

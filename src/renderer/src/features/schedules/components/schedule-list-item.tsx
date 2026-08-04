@@ -99,7 +99,7 @@ const useAgentName = (agentId: string) => {
 				return "Agent ID";
 			}
 			const response = await AgentsApi.getAgent(baseUrl, agentId);
-			return response.result?.name || "Unknown Agent";
+			return response.result?.name || "Unknown agent";
 		},
 		enabled: !!agentId && !!baseUrl,
 		staleTime: 1000 * 60 * 5,

@@ -154,7 +154,7 @@ export const AgentDetailsPage: React.FC = () => {
 						variant="ghost"
 						size="icon"
 						onClick={handleBack}
-						aria-label="Back to Agent Hub"
+						aria-label="Back to Agent hub"
 					>
 						<ArrowLeft />
 					</Button>
@@ -182,7 +182,6 @@ export const AgentDetailsPage: React.FC = () => {
 							>
 								<Heart
 									size={18}
-									strokeWidth={2.2}
 									fill={isLiked ? "currentColor" : "none"}
 									style={isLiked ? { color: LIKE_ACTIVE_COLOR } : undefined}
 								/>
@@ -213,7 +212,6 @@ export const AgentDetailsPage: React.FC = () => {
 							>
 								<Star
 									size={18}
-									strokeWidth={2.2}
 									fill={isFavourited ? "currentColor" : "none"}
 									style={
 										isFavourited ? { color: FAVOURITE_ACTIVE_COLOR } : undefined
@@ -252,7 +250,7 @@ export const AgentDetailsPage: React.FC = () => {
 					</Tooltip>
 
 					{isOwner && (
-						<Tooltip content="Permanently delist this agent from Agent Hub">
+						<Tooltip content="Permanently delist this agent from Agent hub">
 							<span>
 								<Button
 									variant="ghost"
@@ -297,7 +295,7 @@ export const AgentDetailsPage: React.FC = () => {
 			<BaseDialog
 				open={isDelistDialogOpen}
 				onClose={() => setIsDelistDialogOpen(false)}
-				title="Confirm Delist Agent"
+				title="Delist this agent?"
 				actions={
 					<>
 						<SecondaryButton onClick={() => setIsDelistDialogOpen(false)}>

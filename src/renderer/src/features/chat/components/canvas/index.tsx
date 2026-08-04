@@ -1,4 +1,4 @@
-import { Button, Tooltip } from "@shared/components/ui";
+import { Button, TabPanel, Tooltip } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
 import type { CanvasViewMode } from "@shared/store/canvas-store";
 import { useCanvasStore } from "@shared/store/canvas-store";
@@ -18,7 +18,11 @@ import { createFile } from "../../utils/file-creation";
 import { getFileTypeFromPath } from "../../utils/file-types";
 import { CanvasContent } from "./canvas-content";
 import { CanvasFileViewer } from "./canvas-file-viewer";
-import { CanvasTabs } from "./canvas-tabs";
+import {
+	CANVAS_DOCUMENT_PANEL_ID,
+	CANVAS_SELECTED_TAB_ID,
+	CanvasTabs,
+} from "./canvas-tabs";
 import { CanvasVariablesViewer } from "./canvas-variables-viewer";
 import { CreateFileDialog } from "./create-file-dialog";
 
@@ -426,13 +430,23 @@ const CanvasComponent: FC<CanvasProps> = ({
 						onCloseDocument={handleCloseDocument}
 					/>
 
-					{/* Document content area */}
+					{/*
+					 * Document content area, and the panel half of the tab strip
+					 * above it. It is only wrapped when a document is actually
+					 * mounted, which is the same condition under which the strip
+					 * puts `aria-controls` on the selected tab.
+					 */}
 					{activeDocument && (
-						<CanvasContent
-							document={activeDocument}
-							conversationId={conversationId}
-							agentId={agentId}
-						/>
+						<TabPanel
+							id={CANVAS_DOCUMENT_PANEL_ID}
+							labelledBy={CANVAS_SELECTED_TAB_ID}
+						>
+							<CanvasContent
+								document={activeDocument}
+								conversationId={conversationId}
+								agentId={agentId}
+							/>
+						</TabPanel>
 					)}
 
 					{/* Empty state when no documents are open */}

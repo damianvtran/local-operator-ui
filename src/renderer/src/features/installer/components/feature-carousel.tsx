@@ -112,7 +112,6 @@ export const FeatureCarousel: React.FC = () => {
 						>
 							<feature.icon
 								size={32}
-								strokeWidth={1.5}
 								className="mb-5 text-accent"
 								aria-hidden="true"
 							/>

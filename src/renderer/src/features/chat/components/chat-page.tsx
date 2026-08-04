@@ -14,6 +14,7 @@ import { useAgentSelectionStore } from "@shared/store/agent-selection-store";
 import { useChatStore } from "@shared/store/chat-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { isDevelopmentMode } from "@shared/utils/env-utils";
+import { showErrorToast } from "@shared/utils/toast-manager";
 import React, {
 	useState,
 	useMemo,
@@ -245,50 +246,59 @@ export const ChatPage: FC<ChatProps> = () => {
 		async (jobId: string) => {
 			if (!jobId) return;
 
+			let cancelError: unknown = null;
 			try {
-				// Call the cancelJob API
 				await JobsApi.cancelJob(apiConfig.baseUrl, jobId);
-
-				// The backend no longer sends frames for a cancelled job, but
-				// nothing told the client the stream was over: the store never
-				// marked it complete, the socket stayed open, and the reconnect
-				// effect re-armed every 1600ms for the rest of the session. Marking
-				// the stream finished is what actually stops it — it stands the
-				// reconnect guard down, closes the socket, and lets the message
-				// settle into its final rendered state.
-				if (conversationId) {
-					terminateStreamingMessages(conversationId);
-				}
-
-				// Clear the current job ID and loading state
-				setCurrentJobId(null);
-				setIsLoading(false);
-
-				// Add a system message indicating the job was cancelled
-				if (conversationId) {
-					const cancelMessage: Message = {
-						id: Date.now().toString(),
-						role: "system",
-						message: "Job cancelled by user.",
-						timestamp: new Date(),
-					};
-
-					addMessage(conversationId, cancelMessage);
-				}
 			} catch (error) {
 				console.error("Error cancelling job:", error);
-				// Show error message if cancellation fails
-				if (conversationId) {
-					const errorMessage: Message = {
-						id: Date.now().toString(),
-						role: "system",
-						message: "Failed to cancel job. Please try again.",
-						timestamp: new Date(),
-						status: "error",
-					};
+				cancelError = error;
+			}
 
-					addMessage(conversationId, errorMessage);
-				}
+			// The local teardown runs whether or not the backend accepted the
+			// cancel. The user asked to stop, so the UI has to read as stopped:
+			// bailing out on a rejected request left the stream armed, which kept
+			// the composer disabled and the reconnect effect re-firing every
+			// 1600ms for the rest of the session with no way for the user back
+			// out — the cancel button appeared to do nothing, permanently.
+			//
+			// The backend no longer sends frames for a cancelled job, but nothing
+			// tells the client the stream was over: the store never marks it
+			// complete and the socket stays open. Marking the stream finished is
+			// what actually stops it — it stands the reconnect guard down, closes
+			// the socket, and lets the message settle into its final rendered
+			// state.
+			if (conversationId) {
+				terminateStreamingMessages(conversationId);
+			}
+
+			// Clear the current job ID and loading state
+			setCurrentJobId(null);
+			setIsLoading(false);
+
+			if (cancelError) {
+				// Said plainly rather than as a clean cancel: the local stream is
+				// down but the server never acknowledged, so the agent may still
+				// be working and the user needs to know that before they retry.
+				showErrorToast(
+					`Stopped locally, but the server did not confirm the cancellation: ${
+						cancelError instanceof Error ? cancelError.message : "unknown error"
+					}. The agent may still be running.`,
+				);
+			}
+
+			// Record the outcome in the transcript so it survives the toast.
+			if (conversationId) {
+				const outcomeMessage: Message = {
+					id: Date.now().toString(),
+					role: "system",
+					message: cancelError
+						? "Stopped by user. The server did not confirm the cancellation, so the agent may still be running."
+						: "Job cancelled by user.",
+					timestamp: new Date(),
+					status: cancelError ? "error" : undefined,
+				};
+
+				addMessage(conversationId, outcomeMessage);
 			}
 		},
 		[addMessage, conversationId, setCurrentJobId, setIsLoading],

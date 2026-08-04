@@ -17,7 +17,7 @@ const tourSteps: StepOptions[] = [
 	{
 		id: "welcome",
 		title: "Welcome to Local Operator!",
-		text: `Local Operator is an AI agents platform that allows you to create a team of proactive AI agents that support you and help to reduce your daily workload.<br/><img src="${tourChatFullViewImage}" alt="Chat Full View" style="width: 100%; height: 350px; object-fit: contain; border-radius: 8px;"/><br />These agents are different from simple chatbots because they can actually do things for you on your computer like create files, run code and analytics, edit images, videos, and PDFs, organize your system, and much more.<br/><br/>In this walkthrough we'll cover:<ul><li>Creating agents</li><li>Making agents do things</li><li>The canvas workspace</li><li>Customizing agents</li><li>Agent Hub for sharing and collaborating</li><li>Schedules for proactive agents</li><li>Settings for customization</li></ul>Let's explore how it works!`,
+		text: `Local Operator is an AI agents platform that allows you to create a team of proactive AI agents that support you and help to reduce your daily workload.<br/><img src="${tourChatFullViewImage}" alt="Chat full view" style="width: 100%; height: 350px; object-fit: contain; border-radius: 8px;"/><br />These agents are different from simple chatbots because they can actually do things for you on your computer like create files, run code and analytics, edit images, videos, and PDFs, organize your system, and much more.<br/><br/>In this walkthrough we'll cover:<ul><li>Creating agents</li><li>Making agents do things</li><li>The canvas workspace</li><li>Customizing agents</li><li>Agent hub for sharing and collaborating</li><li>Schedules for proactive agents</li><li>Settings for customization</li></ul>Let's explore how it works!`,
 		buttons: [
 			{
 				text: "Next",
@@ -31,8 +31,8 @@ const tourSteps: StepOptions[] = [
 	{
 		id: "agent-list",
 		attachTo: { element: '[data-tour-tag="agent-list-panel"]', on: "right" },
-		title: "Your Agents",
-		text: "On the left, you'll see a list of your available AI agents. You can select an agent to start a conversation or manage its settings.  Think of this as your messenger contacts list, but for AI agents!  There are no limits to how many agents you can have, so create as many as you need to handle all your daily tasks.<br/><br/>Use the create agents button at the top of the toolbar to create a new agent at any time.  You can also import agents from the Agent Hub, which we will cover later in this tour.",
+		title: "Your agents",
+		text: "On the left, you'll see a list of your available AI agents. You can select an agent to start a conversation or manage its settings.  Think of this as your messenger contacts list, but for AI agents!  There are no limits to how many agents you can have, so create as many as you need to handle all your daily tasks.<br/><br/>Use the create agents button at the top of the toolbar to create a new agent at any time.  You can also import agents from the Agent hub, which we will cover later in this tour.",
 		buttons: [
 			{
 				text: "Back",
@@ -57,7 +57,7 @@ const tourSteps: StepOptions[] = [
 			element: '[data-tour-tag="agent-list-item-button-0"]',
 			on: "right",
 		},
-		title: "Select an Agent",
+		title: "Select an agent",
 		text: "Click on an agent to open the chat window to pull up your conversation with it.  This will show the messages that you have sent them and the responses and actions that they have taken.",
 		buttons: [
 			{
@@ -91,8 +91,8 @@ const tourSteps: StepOptions[] = [
 			element: '[data-tour-tag="chat-input-textarea"]',
 			on: "top",
 		},
-		title: "Ask Your Agent Anything",
-		text: `Type your request here. Agents can answer questions, perform tasks, search the web, and much more. When you create a new agent, you\'ll see suggested prompts for ideas!<br /><br />Some powerful requests that you can try:<br /><br /><ul><li>"Create a spreadsheet in my Documents folder with all the major cities in Canada."</li><li>"Search the web for the latest news on AI and make a thorough report."</li><li>Select an attachment and then "translate this document to French."</li></ul><br /><img src="${tourChatInputImage}" alt="Chat Input" style="width: 100%; height: 200px; object-fit: contain; border-radius: 8px;"/><br />You can also attach files to your message by clicking the paperclip button, which we will cover in the next step.`,
+		title: "Ask your agent anything",
+		text: `Type your request here. Agents can answer questions, perform tasks, search the web, and much more. When you create a new agent, you\'ll see suggested prompts for ideas!<br /><br />Some powerful requests that you can try:<br /><br /><ul><li>"Create a spreadsheet in my Documents folder with all the major cities in Canada."</li><li>"Search the web for the latest news on AI and make a thorough report."</li><li>Select an attachment and then "translate this document to French."</li></ul><br /><img src="${tourChatInputImage}" alt="Chat input" style="width: 100%; height: 200px; object-fit: contain; border-radius: 8px;"/><br />You can also attach files to your message by clicking the paperclip button, which we will cover in the next step.`,
 		buttons: [
 			{
 				text: "Back",
@@ -116,8 +116,8 @@ const tourSteps: StepOptions[] = [
 			element: 'button[data-tour-tag="chat-input-attach-file-button"]',
 			on: "top",
 		},
-		title: "Attach Files to Your Message",
-		text: `You can attach any files, images, or documents to your message by clicking this paperclip button, there are no limitations on the file types. Your agent can process, analyze, or translate these attachments as part of your request.<br /><br />Try attaching a PDF, image, or text file and then ask your agent to summarize, translate, or extract information from it!<br /><img src="${tourChatAttachmentsImage}" alt="Chat Attachments" style="width: 100%; height: 200px; object-fit: contain; border-radius: 8px;"/><br />Images like PNGs, JPGs, and PDFs are natively streamed into the model context window, so they can understand them directly without needing to run any code.  Other files like Excel, Word, and CSV files are included as file paths on your device to direct the model's attention to work with them using code.  You can attach massive files like million line CSVs and have the agent work with them using code.<br /><br />You can also paste images into the chat input, and attach multiple files at once to achieve more complex tasks.  Try taking a screenshot of a website and then asking your agent to try to code it!`,
+		title: "Attach files to your message",
+		text: `You can attach any files, images, or documents to your message by clicking this paperclip button, there are no limitations on the file types. Your agent can process, analyze, or translate these attachments as part of your request.<br /><br />Try attaching a PDF, image, or text file and then ask your agent to summarize, translate, or extract information from it!<br /><img src="${tourChatAttachmentsImage}" alt="Chat attachments" style="width: 100%; height: 200px; object-fit: contain; border-radius: 8px;"/><br />Images like PNGs, JPGs, and PDFs are natively streamed into the model context window, so they can understand them directly without needing to run any code.  Other files like Excel, Word, and CSV files are included as file paths on your device to direct the model's attention to work with them using code.  You can attach massive files like million line CSVs and have the agent work with them using code.<br /><br />You can also paste images into the chat input, and attach multiple files at once to achieve more complex tasks.  Try taking a screenshot of a website and then asking your agent to try to code it!`,
 		buttons: [
 			{
 				text: "Back",
@@ -138,8 +138,8 @@ const tourSteps: StepOptions[] = [
 	{
 		id: "agent-capabilities",
 		attachTo: { element: '[data-tour-tag="chat-header"]', on: "top" },
-		title: "More Than Just Chat",
-		text: `Local Operator agents are different from simple chatbots. They can perform actions on your computer, like creating files, running code, or browsing the web, based on your instructions. You'll see them use "tools" like reading, writing, and executing code to get things done!  Agents have memory of the conversation, previous steps, learnings, and even store the execution variables of previous steps in code to be able to use them later in the conversation.<br /><img src="${tourAgenticSequenceImage}" alt="Agentic Sequence" style="width: 100%; height: 350px; object-fit: contain; border-radius: 8px;"/><br />Local Operator agents are extremely flexible, so they can bounce back and forth with you for simple chatting, and know when they need to embark on a work journey to get things done in multiple steps with tool use!`,
+		title: "More than just chat",
+		text: `Local Operator agents are different from simple chatbots. They can perform actions on your computer, like creating files, running code, or browsing the web, based on your instructions. You'll see them use "tools" like reading, writing, and executing code to get things done!  Agents have memory of the conversation, previous steps, learnings, and even store the execution variables of previous steps in code to be able to use them later in the conversation.<br /><img src="${tourAgenticSequenceImage}" alt="Agentic sequence" style="width: 100%; height: 350px; object-fit: contain; border-radius: 8px;"/><br />Local Operator agents are extremely flexible, so they can bounce back and forth with you for simple chatting, and know when they need to embark on a work journey to get things done in multiple steps with tool use!`,
 		buttons: [
 			{
 				text: "Back",
@@ -164,7 +164,7 @@ const tourSteps: StepOptions[] = [
 	},
 	{
 		id: "pre-command-palette-open-canvas",
-		title: "Command Palette",
+		title: "Command palette",
 		attachTo: {
 			element: '[data-tour-tag="command-palette-dialog"]',
 			on: "right",
@@ -203,7 +203,7 @@ const tourSteps: StepOptions[] = [
 			element: 'button[data-tour-tag="open-canvas-button"]',
 			on: "left",
 		},
-		title: "Open the Canvas",
+		title: "Open the canvas",
 		text: "Click here to open the Canvas, a workspace for files and dynamic visualizations where you can organize, plan, and interact with your agents in a more flexible way.",
 		buttons: [
 			{
@@ -238,8 +238,8 @@ const tourSteps: StepOptions[] = [
 	{
 		id: "canvas-feature",
 		attachTo: { element: '[data-tour-tag="canvas-container"]', on: "left" },
-		title: "The Canvas: Your Visual Workspace",
-		text: `This is the Canvas, your workspace for files and dynamic visualizations where you can organize, plan, and interact with your agents in a more flexible way.  Any files that your agents create on your device can be opened here by clicking on the file icons that you see as they work.<br/><br/>Agents can make dynamic visualizations like games, charts, maps, and more in HTML files.  Any HTML files you open will be rendered dynamically in an iframe.  Any markdown files that you open will be rendered in full markdown viewer with support for code blocks, tables, mermaid diagrams, and more.<br/><img src="${tourCanvasOverviewImage}" alt="Canvas Overview" style="width: 100%; height: 300px; object-fit: contain; border-radius: 8px;"/>`,
+		title: "The canvas: your visual workspace",
+		text: `This is the Canvas, your workspace for files and dynamic visualizations where you can organize, plan, and interact with your agents in a more flexible way.  Any files that your agents create on your device can be opened here by clicking on the file icons that you see as they work.<br/><br/>Agents can make dynamic visualizations like games, charts, maps, and more in HTML files.  Any HTML files you open will be rendered dynamically in an iframe.  Any markdown files that you open will be rendered in full markdown viewer with support for code blocks, tables, mermaid diagrams, and more.<br/><img src="${tourCanvasOverviewImage}" alt="Canvas overview" style="width: 100%; height: 300px; object-fit: contain; border-radius: 8px;"/>`,
 		buttons: [
 			{
 				text: "Back",
@@ -279,9 +279,9 @@ const tourSteps: StepOptions[] = [
 			element: 'button[data-tour-tag="canvas-documents-view-button"]',
 			on: "top",
 		},
-		title: "Documents View",
-		text: `The Documents view shows all your open notes, blog articles, code, and visualizations as tabs. You can switch between documents to edit them and see dynamic visualizations in HTML created by your agents. Use this view to work with your notes, reports, and agent-generated content.<br /><br />This is where you can get more precise around your agents' work.<br/><img src="${tourInlineEditCanvasImage}" alt="Inline Edit Canvas" style="width: 100%; height: 200px; object-fit: contain; border-radius: 8px;"/><br />In your documents, highlight any text that you want your agent to improve and press Cmd/Ctrl+K to bring up the inline AI editor.  
-    <br /><img src="${tourCanvasCodeInlineEditImage}" alt="Canvas Code Inline Edit" style="width: 100%; height: 200px; object-fit: cover; object-position: top; border-radius: 8px;"/><br />You can be as precise as you want and the agent will edit the document for you in place, using its memories and context so you don't have to re-explain things!`,
+		title: "Documents view",
+		text: `The Documents view shows all your open notes, blog articles, code, and visualizations as tabs. You can switch between documents to edit them and see dynamic visualizations in HTML created by your agents. Use this view to work with your notes, reports, and agent-generated content.<br /><br />This is where you can get more precise around your agents' work.<br/><img src="${tourInlineEditCanvasImage}" alt="Inline edit canvas" style="width: 100%; height: 200px; object-fit: contain; border-radius: 8px;"/><br />In your documents, highlight any text that you want your agent to improve and press Cmd/Ctrl+K to bring up the inline AI editor.  
+    <br /><img src="${tourCanvasCodeInlineEditImage}" alt="Canvas code inline edit" style="width: 100%; height: 200px; object-fit: cover; object-position: top; border-radius: 8px;"/><br />You can be as precise as you want and the agent will edit the document for you in place, using its memories and context so you don't have to re-explain things!`,
 		buttons: [
 			{
 				text: "Back",
@@ -313,7 +313,7 @@ const tourSteps: StepOptions[] = [
 			element: 'button[data-tour-tag="canvas-files-view-button"]',
 			on: "top",
 		},
-		title: "Files View",
+		title: "Files view",
 		text: "The Files view lets you browse and open files that your agents have created or that are relevant to your current conversation. Use this to quickly access, preview, and open files in the Canvas workspace.",
 		buttons: [
 			{
@@ -354,8 +354,8 @@ const tourSteps: StepOptions[] = [
 			element: 'button[data-tour-tag="canvas-variables-view-button"]',
 			on: "top",
 		},
-		title: "Variables View",
-		text: `The Variables view displays the "code memory" that agents have stored during their work. These are technical variables that include results, intermediate values, and other data that agents use to perform tasks. You can inspect and manage these variables here.<br /><br />This section will be most helpful for more technical users who want to understand how agents are working and what they are doing.<br/><img src="${tourCanvasVariablesImage}" alt="Canvas Variables" style="width: 100%; height: 350px; object-fit: contain; border-radius: 8px;"/>`,
+		title: "Variables view",
+		text: `The Variables view displays the "code memory" that agents have stored during their work. These are technical variables that include results, intermediate values, and other data that agents use to perform tasks. You can inspect and manage these variables here.<br /><br />This section will be most helpful for more technical users who want to understand how agents are working and what they are doing.<br/><img src="${tourCanvasVariablesImage}" alt="Canvas variables" style="width: 100%; height: 350px; object-fit: contain; border-radius: 8px;"/>`,
 		buttons: [
 			{
 				text: "Back",
@@ -395,7 +395,7 @@ const tourSteps: StepOptions[] = [
 			element: 'button[data-tour-tag="agent-options-button"]',
 			on: "right",
 		},
-		title: "Agent Options",
+		title: "Agent options",
 		text: "Click here to see options for the currently selected agent, like viewing its settings, exporting it, or deleting it.",
 		buttons: [
 			{
@@ -439,8 +439,8 @@ const tourSteps: StepOptions[] = [
 				'[role="menuitem"][data-tour-tag="view-agent-settings-menu-item"]',
 			on: "right",
 		},
-		title: "View Configuration",
-		text: 'Click "View Agent Settings" to see and change how this agent works and change things like its name, description, hosting provider, and AI model.',
+		title: "View configuration",
+		text: 'Click "View agent settings" to see and change how this agent works and change things like its name, description, hosting provider, and AI model.',
 		buttons: [
 			{
 				text: "Back",
@@ -474,7 +474,7 @@ const tourSteps: StepOptions[] = [
 			element: 'div[data-tour-tag="agent-settings-details-paper"]',
 			on: "left",
 		},
-		title: "Agent Configuration",
+		title: "Agent configuration",
 		text: "This is where you can customize and configure your agent. You can change its name, description, the AI model it uses, its temperature for creativity, and other chat settings.<br /><br />The agents will already have default settings that work well for most use cases, but if you want to roll up your sleeves and customize, you can do so here!",
 		buttons: [
 			{
@@ -518,8 +518,8 @@ const tourSteps: StepOptions[] = [
 			element: '[data-tour-tag="agent-settings-hosting-select"]',
 			on: "left",
 		},
-		title: "Select Hosting Provider",
-		text: 'Choose an AI provider for your agent. If you don\'t pick one here, then the default provider from the Settings Page will be used.  Providers offer different AI models and pricing. Radient is recommended for Local Operator as its "Automatic" mode is optimized for the lowest cost and best performance.',
+		title: "Select hosting provider",
+		text: 'Choose an AI provider for your agent. If you don\'t pick one here, then the default provider from the settings page will be used.  Providers offer different AI models and pricing. Radient is recommended for Local Operator as its "Automatic" mode is optimized for the lowest cost and best performance.',
 		buttons: [
 			{
 				text: "Back",
@@ -543,7 +543,7 @@ const tourSteps: StepOptions[] = [
 			element: '[data-tour-tag="agent-settings-model-select"]',
 			on: "left",
 		},
-		title: "Select AI Model",
+		title: "Select AI model",
 		text: "After selecting a provider, choose an AI model. Models marked as 'Recommended' are known to work well with Local Operator. Other models might have inconsistent performance. If a model you expect to be recommended isn't listed, please let us know if it works well for you in Local Operator via GitHub Issues or email.",
 		buttons: [
 			{
@@ -568,7 +568,7 @@ const tourSteps: StepOptions[] = [
 			element: '[data-tour-tag="agent-settings-security"]',
 			on: "left",
 		}, // Attaching to the broader "Model Settings" card as a proxy
-		title: "Customize Security Behaviors",
+		title: "Customize security behaviors",
 		text: "This prompt provides separate instructions to the security agent that reviews this agent's work. You can explicitly allow certain actions that would normally be blocked. If you encounter frequent security interventions, consider adding a note here for the security agent.",
 		buttons: [
 			{
@@ -593,7 +593,7 @@ const tourSteps: StepOptions[] = [
 			element: '[data-tour-tag="agent-settings-system-prompt"]',
 			on: "left",
 		},
-		title: "Customize the Agent's Behavior",
+		title: "Customize the agent's behavior",
 		text: "This prompt allows you to customize the baseline behavior of the agent. While most customization can happen by talking to the agent (it records learnings in its notebook), you can provide specific workflow instructions here that will be followed separately.",
 		buttons: [
 			{
@@ -618,7 +618,7 @@ const tourSteps: StepOptions[] = [
 			element: 'button[data-tour-tag="create-new-agent-button"]',
 			on: "bottom",
 		},
-		title: "Create a New Agent",
+		title: "Create a new agent",
 		text: 'Click the "+" button to create a brand new agent from scratch. You can then customize its behavior and capabilities.',
 		buttons: [
 			{
@@ -682,7 +682,7 @@ const tourSteps: StepOptions[] = [
 	{
 		id: "agent-naming-guidelines",
 		attachTo: { element: '[data-tour-tag="create-agent-dialog"]', on: "right" },
-		title: "Naming and Describing Your Agent",
+		title: "Naming and describing your agent",
 		text: `Give your agent a clear, descriptive name that reflects its purpose (e.g., "File Organizer" or "Web Researcher"). 
 A good description helps you and others understand what the agent does and any special instructions. The descriptions are also used by other agents to help them understand how to tag each other in for certain tasks.<br /><br />If you want this agent to be part of the agent-to-agent communication network, it will need to have a description that captures its purpose and capabilities.  Be concise and specific!`,
 		buttons: [
@@ -724,8 +724,8 @@ A good description helps you and others understand what the agent does and any s
 		id: "navigate-agent-hub",
 		// Targets the NavItemButton for Agent Hub via its icon's aria-label
 		attachTo: { element: '[data-tour-tag="nav-item-agent-hub"]', on: "right" },
-		title: "Discover More Agents",
-		text: 'Let\'s visit the Agent Hub to find community-created agents. Click on the "Agent Hub" icon in the navigation bar.',
+		title: "Discover more agents",
+		text: 'Let\'s visit the Agent hub to find community-created agents. Click on the "Agent hub" icon in the navigation bar.',
 		buttons: [
 			{
 				text: "Back",
@@ -776,7 +776,7 @@ A good description helps you and others understand what the agent does and any s
 			element: '[data-tour-tag="agent-hub-sidebar-container"]',
 			on: "right",
 		},
-		title: "The Agent Hub",
+		title: "The Agent hub",
 		text: "Here you can browse agents by category or search for specific ones. These agents are shared by the community and can perform various specialized tasks.",
 		buttons: [
 			{
@@ -802,8 +802,8 @@ A good description helps you and others understand what the agent does and any s
 			element: 'button[data-tour-tag="agent-hub-download-button"]',
 			on: "bottom",
 		},
-		title: "Download an Agent",
-		text: 'Find an agent that interests you and click the "Download" button to add it to your local agent list.',
+		title: "Download an agent",
+		text: 'Find an agent that interests you and click the "Get" button to add it to your local agent list.',
 		buttons: [
 			{
 				text: "Back",
@@ -836,8 +836,8 @@ A good description helps you and others understand what the agent does and any s
 			element: 'button[data-tour-tag="upload-to-hub-header-button"]',
 			on: "bottom",
 		},
-		title: "Share Your Agents",
-		text: "If you create a useful agent, you can also share it with the community by uploading it to the Hub from the Agent Options menu.",
+		title: "Share your agents",
+		text: "If you create a useful agent, you can also share it with the community by uploading it to the Agent hub from the agent options menu.",
 		buttons: [
 			{
 				text: "Back",
@@ -875,8 +875,8 @@ A good description helps you and others understand what the agent does and any s
 		id: "upload-agent-hub-dialog",
 		// Targets the UploadAgentDialog modal, which should be open after clicking "Upload to Hub"
 		attachTo: { element: '[data-tour-tag="upload-agent-dialog"]', on: "right" },
-		title: "Upload Agent to Hub",
-		text: "This dialog allows you to share your agent with the community. You need to have a Radient Account to upload an agent, which is free to create and doesn't cost anything per upload.  You can review the agent details and confirm the upload. Make sure your agent meets the required criteria before submitting.  Also be aware that any conversation history and learnings for this agent will be part of its training and will be visible to the public.  So don't share agents publicly that know sensitive information!",
+		title: "Upload agent to hub",
+		text: "This dialog allows you to share your agent with the community. You need to have a Radient account to upload an agent, which is free to create and doesn't cost anything per upload.  You can review the agent details and confirm the upload. Make sure your agent meets the required criteria before submitting.  Also be aware that any conversation history and learnings for this agent will be part of its training and will be visible to the public.  So don't share agents publicly that know sensitive information!",
 		buttons: [
 			{
 				text: "Back",
@@ -915,7 +915,7 @@ A good description helps you and others understand what the agent does and any s
 	{
 		id: "navigate-schedules",
 		attachTo: { element: '[data-tour-tag="nav-item-schedules"]', on: "right" },
-		title: "Automate Tasks with Schedules",
+		title: "Automate tasks with schedules",
 		text: "Local Operator can run tasks for you on a regular basis. Let's check out the Schedules section.",
 		buttons: [
 			{
@@ -961,7 +961,7 @@ A good description helps you and others understand what the agent does and any s
 	},
 	{
 		id: "schedules-overview",
-		title: "Proactive Agents with Schedules",
+		title: "Proactive agents with schedules",
 		text: "A powerful feature of Local Operator is the ability to ask agents to perform tasks on their own on a recurring basis.  This turns them from reactive agent bots to proactive agents that work on their own in the background to support you without you needing to continually ask them to do things.<br /><br />You can simply ask any agent to do something at some point in the future, or to handle some daily task at a certain time, and it will create a prompt for itself that will be executed at the specified times.<br /><br />Here, you can view, create, and manage all your scheduled tasks in one place to streamline your workflow and ensure important actions happen automatically.",
 		buttons: [
 			{
@@ -987,8 +987,8 @@ A good description helps you and others understand what the agent does and any s
 			element: 'button[data-tour-tag="create-schedule-button"]',
 			on: "bottom",
 		},
-		title: "Set Up a Recurring Task",
-		text: 'Click "Create Schedule" to ask an agent to perform a task for you regularly, like sending a daily report or checking for news updates.<br /><br />You can also create one-off tasks that only run once at some point in the future.',
+		title: "Set up a recurring task",
+		text: 'Click "Create schedule" to ask an agent to perform a task for you regularly, like sending a daily report or checking for news updates.<br /><br />You can also create one-off tasks that only run once at some point in the future.',
 		buttons: [
 			{
 				text: "Back",
@@ -1020,7 +1020,7 @@ A good description helps you and others understand what the agent does and any s
 			element: '[data-tour-tag="create-schedule-dialog"]',
 			on: "right",
 		},
-		title: "Configure Your Schedule",
+		title: "Configure your schedule",
 		text: "While it is often much easier to simply ask the agent to do a task on a recurring basis for you, you can also manually set up a schedule for a task here or update existing tasks.<br /><br />The prompt is the message that will be sent to the agent at the predefined schedule.  You can update the time of day in your local timezone, the frequency of the task, and even specify a specific date or time that the task should stop running at.<br /><br />You can also schedule one-off tasks that only run once at some point in the future.",
 		buttons: [
 			{
@@ -1060,7 +1060,7 @@ A good description helps you and others understand what the agent does and any s
 	{
 		id: "navigate-settings",
 		attachTo: { element: '[data-tour-tag="nav-item-settings"]', on: "right" },
-		title: "Personalize Your Experience",
+		title: "Personalize your experience",
 		text: "Now, let's explore the Settings menu to customize Local Operator to your liking.",
 		buttons: [
 			{
@@ -1112,7 +1112,7 @@ A good description helps you and others understand what the agent does and any s
 			element: 'div[data-tour-tag="settings-general-section"]',
 			on: "right",
 		},
-		title: "General Settings",
+		title: "General settings",
 		text: "Here you can update your user profile, configure model settings (like default hosting provider and model), and adjust history settings for conversations and learnings.",
 		buttons: [
 			{
@@ -1137,7 +1137,7 @@ A good description helps you and others understand what the agent does and any s
 			element: '[data-tour-tag="settings-appearance-section"]',
 			on: "right",
 		},
-		title: "Customize Appearance",
+		title: "Customize appearance",
 		text: "Choose from various themes to change the look and feel of Local Operator. Find one that suits your style!",
 		buttons: [
 			{
@@ -1162,8 +1162,8 @@ A good description helps you and others understand what the agent does and any s
 			element: '[data-tour-tag="settings-radient-account-section"]',
 			on: "right",
 		},
-		title: "Radient Account",
-		text: "Connect your Radient Account to access your Radient Pass details, credits, and unlock unified access to models and tools.  Radient is the best way to use Local Operator since it powers the AI models, web search, image generation, and much more with a single integration.  You get free credits when you sign up to try it out and bonus credits when you top up!<br /><br />When you sign in for the first time, it will automatically create a Radient Pass for you and save it securely to your computer.  This will power your Local Operator agents with Radient Automatic, which mixes and matches AI models to get you the best balance of speed, accuracy, and cost in every step of your agents' workflows.",
+		title: "Radient account",
+		text: "Connect your Radient account to access your Radient Pass details, credits, and unlock unified access to models and tools.  Radient is the best way to use Local Operator since it powers the AI models, web search, image generation, and much more with a single integration.  You get free credits when you sign up to try it out and bonus credits when you top up!<br /><br />When you sign in for the first time, it will automatically create a Radient Pass for you and save it securely to your computer.  This will power your Local Operator agents with Radient Automatic, which mixes and matches AI models to get you the best balance of speed, accuracy, and cost in every step of your agents' workflows.",
 		buttons: [
 			{
 				text: "Back",
@@ -1187,8 +1187,8 @@ A good description helps you and others understand what the agent does and any s
 			element: '[data-tour-tag="settings-integrations-section"]',
 			on: "right",
 		},
-		title: "Connect Your Services",
-		text: "Enhance your agents' capabilities by connecting your Google services like Gmail, Calendar, and Drive. This allows agents to access and manage your information with your permission.<br /><br />You need to be logged in to a Radient account to use this feature, however it is free to use and doesn't cost any additional Radient Credits per action.",
+		title: "Connect your services",
+		text: "Enhance your agents' capabilities by connecting your Google services like Gmail, Calendar, and Drive. This allows agents to access and manage your information with your permission.<br /><br />You need to be logged in to a Radient account to use this feature, however it is free to use and doesn't cost any additional Radient credits per action.",
 		buttons: [
 			{
 				text: "Back",
@@ -1212,7 +1212,7 @@ A good description helps you and others understand what the agent does and any s
 			element: '[data-tour-tag="settings-api-credentials-section"]',
 			on: "right",
 		},
-		title: "Manage API Keys",
+		title: "Manage API keys",
 		text: "Configure API keys for various services and AI models here. This allows your agents to access external tools and capabilities.",
 		buttons: [
 			{
@@ -1237,7 +1237,7 @@ A good description helps you and others understand what the agent does and any s
 			element: '[data-tour-tag="settings-app-updates-section"]',
 			on: "right",
 		},
-		title: "Stay Up-to-Date",
+		title: "Stay up to date",
 		text: "Check for updates to Local Operator here to ensure you have the latest features and improvements. You can see your current version information below.",
 		buttons: [
 			{
@@ -1258,7 +1258,7 @@ A good description helps you and others understand what the agent does and any s
 	},
 	{
 		id: "tour-complete",
-		title: "Tour Complete!",
+		title: "Tour complete",
 		text: "You've now seen the main features of Local Operator. Feel free to explore further and discover all the ways your AI agents can assist you. Happy automating!",
 		buttons: [
 			{

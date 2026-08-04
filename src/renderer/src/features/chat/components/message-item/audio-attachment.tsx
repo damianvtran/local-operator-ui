@@ -1,4 +1,5 @@
 import { Spinner } from "@shared/components/common/spinner";
+import { cn } from "@shared/lib/utils";
 import {
 	PauseCircle,
 	PlayCircle,
@@ -40,8 +41,23 @@ type AudioAttachmentProps = {
 	isUser: boolean;
 };
 
+/*
+ * Disabled is a colour change, never `opacity`. A faded control fades its own
+ * ground too, so the same disabled transport button would land on one colour
+ * inside a `surface` bubble and another inside a `sunken` one, and neither
+ * was designed. See docs/branding.md § 6.
+ */
 const ICON_BUTTON_CLASS =
-	"flex shrink-0 items-center justify-center text-ink-muted transition-colors duration-fast ease-out-quart hover:text-ink disabled:pointer-events-none disabled:opacity-50";
+	"flex shrink-0 items-center justify-center text-ink-muted transition-colors duration-fast ease-out-quart hover:text-ink disabled:pointer-events-none disabled:text-ink-disabled";
+
+/*
+ * The two sliders are native `input[type=range]`, so the only role colour the
+ * browser will take from us is `accent-color` — it paints the thumb and the
+ * filled part of the track. Stepping it to `ink-disabled` is the same colour
+ * move the buttons make, applied to the one property a range exposes.
+ */
+const RANGE_CLASS =
+	"h-1 cursor-pointer accent-accent disabled:pointer-events-none disabled:accent-ink-disabled";
 
 export const AudioAttachment: FC<AudioAttachmentProps> = memo(({ content }) => {
 	const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -176,7 +192,7 @@ export const AudioAttachment: FC<AudioAttachmentProps> = memo(({ content }) => {
 			<input
 				type="range"
 				aria-label="time-indicator"
-				className="h-1 min-w-0 flex-1 cursor-pointer accent-accent disabled:pointer-events-none disabled:opacity-50"
+				className={cn(RANGE_CLASS, "min-w-0 flex-1")}
 				value={currentTime}
 				min={0}
 				step={1}
@@ -200,7 +216,7 @@ export const AudioAttachment: FC<AudioAttachmentProps> = memo(({ content }) => {
 				<input
 					type="range"
 					aria-label="volume-control"
-					className="h-1 w-[70px] cursor-pointer accent-accent disabled:pointer-events-none disabled:opacity-50"
+					className={cn(RANGE_CLASS, "w-[70px]")}
 					value={volume}
 					min={0}
 					step={0.1}
@@ -211,7 +227,7 @@ export const AudioAttachment: FC<AudioAttachmentProps> = memo(({ content }) => {
 			</div>
 			<select
 				aria-label="Playback rate"
-				className="shrink-0 cursor-pointer rounded-sm border border-control bg-surface px-2 py-0.5 text-body-sm text-ink-muted transition-colors duration-fast ease-out-quart hover:text-ink disabled:pointer-events-none disabled:opacity-50"
+				className="shrink-0 cursor-pointer rounded-sm border border-control bg-surface px-2 py-0.5 text-body-sm text-ink-muted transition-colors duration-fast ease-out-quart hover:text-ink disabled:pointer-events-none disabled:border-hairline disabled:bg-sunken disabled:text-ink-disabled"
 				value={playbackRate}
 				onChange={(event) =>
 					handlePlaybackRateChange(Number(event.target.value))
