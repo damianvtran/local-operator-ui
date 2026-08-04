@@ -26,10 +26,10 @@
  * the palette contract never verified, and a shadow.
  */
 
+import { Disclosure } from "@shared/components/ui/disclosure";
 import { cn } from "@shared/lib/utils";
 import { ShieldAlert } from "lucide-react";
 import type { ReactNode } from "react";
-import { Disclosure } from "./disclosure";
 
 export type SecurityNoticeProps = {
 	/** The notice text recorded by the security check. */

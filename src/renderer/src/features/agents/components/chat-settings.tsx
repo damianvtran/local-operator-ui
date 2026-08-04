@@ -163,8 +163,15 @@ export const ChatSettings: FC<ChatSettingsProps> = ({
 					aria-controls={contentId}
 					className="group flex items-center gap-2 py-1 text-left text-heading text-ink"
 				>
+					{/*
+					 * Matches `@shared/components/ui/disclosure`: the chevron swaps,
+					 * it does not rotate, and it is 14px. This heading cannot use
+					 * that component directly because the tooltip button below is a
+					 * sibling of the trigger, not content inside it — so it
+					 * reimplements the trigger and must not also reinvent the signal.
+					 */}
 					<Chevron
-						size={16}
+						size={14}
 						aria-hidden="true"
 						className="shrink-0 text-ink-dim transition-colors duration-fast ease-out-quart group-hover:text-ink"
 					/>

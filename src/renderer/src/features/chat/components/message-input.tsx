@@ -73,8 +73,14 @@ export type MessageInputHandle = {
  */
 const COMPOSER_BOX = cn(
 	"mx-auto flex w-full flex-col border border-control bg-surface",
-	"box-border outline-none transition-colors duration-fast ease-out-quart",
-	"has-[:focus-visible]:outline has-[:focus-visible]:outline-2",
+	"box-border transition-colors duration-fast ease-out-quart",
+	// `outline-solid` is required, not decorative. Tailwind v4's `outline-none`
+	// sets `--tw-outline-style: none`, and that token survives into the
+	// `has-[:focus-visible]` state — so with it on this wrapper the width from
+	// `outline-2` applied and no outline ever painted, leaving the app's primary
+	// input with no keyboard focus indicator. The wrapper is not focusable, so
+	// there was no default outline here to suppress in the first place.
+	"has-[:focus-visible]:outline-solid has-[:focus-visible]:outline-2",
 	"has-[:focus-visible]:outline-accent",
 );
 

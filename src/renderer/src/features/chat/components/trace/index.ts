@@ -10,8 +10,6 @@ export { AgentQuestion } from "./agent-question";
 export type { AgentQuestionProps } from "./agent-question";
 export { AgentReasoning } from "./agent-reasoning";
 export type { AgentReasoningProps } from "./agent-reasoning";
-export { Disclosure } from "./disclosure";
-export type { DisclosureProps } from "./disclosure";
 export { SecurityNotice } from "./security-notice";
 export type { SecurityNoticeProps } from "./security-notice";
 export { TraceGroup } from "./trace-group";

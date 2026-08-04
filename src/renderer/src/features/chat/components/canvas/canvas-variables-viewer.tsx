@@ -10,7 +10,14 @@ import {
 } from "@shared/hooks/use-agent-execution-variables";
 import { cn } from "@shared/lib/utils";
 import { showErrorToast } from "@shared/utils/toast-manager";
-import { ChevronRight, Copy, Edit2, Plus, Trash2 } from "lucide-react";
+import {
+	ChevronDown,
+	ChevronRight,
+	Copy,
+	Edit2,
+	Plus,
+	Trash2,
+} from "lucide-react";
 import type { FC, ReactNode } from "react";
 import { memo, useCallback, useEffect, useId, useMemo, useState } from "react";
 import { VariableFormDialog } from "./variable-form-dialog";
@@ -142,20 +149,31 @@ const VariableRow: FC<VariableDisplayProps> = memo(
 						)}
 					>
 						{/*
-						 * A chevron, not a plus. The app's one disclosure idiom is a
-						 * chevron that rotates; a `+`/`−` pair here was a second
-						 * expand/collapse language in a panel that already had one,
-						 * and `+` also reads as "add" beside a create control that
-						 * means exactly that.
+						 * A chevron, not a plus: a `+`/`-` pair here was a second
+						 * expand/collapse language in a panel that already had one, and
+						 * `+` also reads as "add" beside a create control that means
+						 * exactly that.
+						 *
+						 * The chevron SWAPS rather than rotates, matching
+						 * `@shared/components/ui/disclosure`. This row cannot use that
+						 * component directly — the trigger is only the reading half of
+						 * the row, with sibling action buttons outside it, and nesting a
+						 * button inside a button is invalid HTML — so it reimplements the
+						 * trigger and must not also reinvent the signal. Rotation was
+						 * additionally a motion-rule violation: transitions are for
+						 * entrances, and a toggle is not one.
 						 */}
-						<ChevronRight
-							aria-hidden="true"
-							className={cn(
-								"size-3 shrink-0 text-ink-dim",
-								"transition-transform duration-fast ease-out-quart",
-								expanded && "rotate-90",
-							)}
-						/>
+						{expanded ? (
+							<ChevronDown
+								aria-hidden="true"
+								className="size-3 shrink-0 text-ink-dim"
+							/>
+						) : (
+							<ChevronRight
+								aria-hidden="true"
+								className="size-3 shrink-0 text-ink-dim"
+							/>
+						)}
 						<span className={cn("shrink-0 font-medium text-ink")}>
 							{variable.key}
 						</span>

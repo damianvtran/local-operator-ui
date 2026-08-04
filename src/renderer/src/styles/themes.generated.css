@@ -426,4 +426,5 @@
 	--color-info-wash: var(--lo-info-wash);
 	--color-info-border: var(--lo-info-border);
 	--color-scrim: var(--lo-scrim);
+	--shadow-overlay: var(--lo-overlay-shadow);
 }

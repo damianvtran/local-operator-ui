@@ -47,6 +47,16 @@
  * so any split artefact is transient by construction.
  */
 
+/**
+ * Strip one trailing carriage return, for CRLF input.
+ *
+ * Cheap by design: the common case is LF, where this is a single charCodeAt
+ * miss and the original string is returned unallocated. This runs per line per
+ * streaming chunk, so it must not allocate when there is nothing to trim.
+ */
+const stripCr = (line: string): string =>
+	line.charCodeAt(line.length - 1) === 13 ? line.slice(0, -1) : line;
+
 const BLANK_LINE = /^[ \t]*$/;
 const FENCE_OPEN = /^ {0,3}(`{3,}|~{3,})/;
 const LIST_ITEM = /^ {0,3}(?:[-*+]|\d{1,9}[.)])(?:[ \t]|$)/;
@@ -166,7 +176,15 @@ export const scanMarkdownBlocks = (
 		// and is rescanned next time. That is the only work this loop repeats.
 		if (newline === -1) break;
 
-		const line = source.slice(index, newline);
+		// Trim the carriage return of a CRLF pair before any line test.
+		// Everything below matches against line *content* — a closing fence, a
+		// blank line, a list marker — and a trailing "\r" defeats every anchored
+		// pattern. The visible symptom is a fence that never closes, which pins
+		// the rest of the message in the tail and streams it to the user as raw
+		// markdown source. Agents write files and echo their contents back, so
+		// CRLF reaches this scanner from any Windows-authored file the agent
+		// reads, not just from a Windows user.
+		const line = stripCr(source.slice(index, newline));
 
 		if (scanner.fence) {
 			if (closesFence(line, scanner.fence)) scanner.fence = null;

@@ -97,14 +97,40 @@ const block = ({ id, palette }) => {
  */
 const scopedRoleBlock = () => {
 	const css = readFileSync(THEME_CSS, "utf8");
-	const start = css.indexOf("@theme {");
-	if (start === -1) throw new Error("no @theme block in styles/index.css");
-	const pairs = [
-		...css
-			.slice(start, css.indexOf("\n}", start))
-			.matchAll(/(--color-[\w-]+):\s*var\((--lo-[\w-]+)\)/g),
-	];
-	if (pairs.length === 0) throw new Error("no --color-* -> --lo-* pairs found");
+	const open = css.indexOf("@theme {");
+	if (open === -1) throw new Error("no @theme block in styles/index.css");
+
+	/* Find the block's real end by matching braces, not by the first "\n}".
+	   A nested rule or an added media query inside @theme would truncate a
+	   naive search and silently drop every declaration after it — the failure
+	   mode being a scoped theme that is correct for the first N roles and
+	   stale for the rest, which is far harder to spot than all of them being
+	   wrong. */
+	let depth = 0;
+	let close = -1;
+	for (let i = css.indexOf("{", open); i < css.length; i++) {
+		if (css[i] === "{") depth++;
+		else if (css[i] === "}") {
+			depth--;
+			if (depth === 0) {
+				close = i;
+				break;
+			}
+		}
+	}
+	if (close === -1) throw new Error("unterminated @theme block");
+
+	/* Strip comments before harvesting, so a pair mentioned in prose is not
+	   emitted as a declaration. */
+	const block = css.slice(open, close).replace(/\/\*[\s\S]*?\*\//g, "");
+
+	/* Match ANY custom property whose value is a single --lo-* reference, not
+	   just --color-*. `--shadow-overlay: var(--lo-overlay-shadow)` is exactly
+	   such a pair and was being dropped, so a scoped subtree kept the root
+	   theme's shadow. */
+	const pairs = [...block.matchAll(/(--[\w-]+):\s*var\((--lo-[\w-]+)\)\s*;/g)];
+	if (pairs.length === 0) throw new Error("no --* -> --lo-* pairs found");
+
 	const lines = pairs.map(([, name, src]) => `\t${name}: var(${src});`).join("\n");
 	return [
 		"/* Scoped theme subtrees: see scripts/generate-theme-css.mjs for why this",
