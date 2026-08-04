@@ -83,8 +83,22 @@ export const localOperatorLight: ThemeDefinition = {
 	palette: {
 		mode: "light",
 
+		/*
+		 * The four grounds are a lightness ladder, and on a light theme the top
+		 * of it is cramped: `elevated` is already a shade off white, so there is
+		 * almost no headroom above `surface`. `surface` was #fcfbf7, which left
+		 * only 1.0267:1 against `elevated` - below the 1.03 separation floor,
+		 * and passing only because the gate rounded before comparing. Popovers
+		 * and dropdowns were relying on their shadow alone to be a different
+		 * surface.
+		 *
+		 * #faf9f5 spends the room evenly instead of scraping the floor on one
+		 * side: 1.0420 against `canvas` below and 1.0446 against `elevated`
+		 * above. Change one of these four and re-run `pnpm check-themes`; they
+		 * are a ladder and only make sense relative to each other.
+		 */
 		canvas: "#f7f4ee",
-		surface: "#fcfbf7",
+		surface: "#faf9f5",
 		elevated: "#fffefb",
 		sunken: "#efece3",
 

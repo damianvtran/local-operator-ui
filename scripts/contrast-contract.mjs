@@ -55,7 +55,8 @@
  * pairing we have written down still holds, on all twelve themes".
  */
 
-import { readFileSync, readdirSync } from "node:fs";
+import { readFileSync } from "node:fs";
+import { loadPalettes } from "./palette-source.mjs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -103,38 +104,9 @@ const isHex = (v) => typeof v === "string" && /^#[0-9a-fA-F]{3,8}$/.test(v);
 
 /* ---- 3. loading the palettes ------------------------------------------- */
 
-/**
- * Palettes are TypeScript, and this script deliberately has no build step, so
- * it reads the source and extracts the object literals textually rather than
- * importing them. That is a real constraint worth stating: it means a palette
- * assembled at runtime, or spread from another object, is invisible here. The
- * contract in `palette-contract.ts` requires every role to be written out
- * literally in each palette file, which is what keeps this parse honest — and
- * a palette that omits a role fails the completeness check below rather than
- * being silently skipped.
- */
-const loadPalettes = () => {
-	const out = [];
-	for (const file of readdirSync(PALETTE_DIR).filter((f) => f.endsWith(".ts"))) {
-		const src = readFileSync(join(PALETTE_DIR, file), "utf8");
-		// Each exported ThemeDefinition opens with `id: "..."` and carries one
-		// `palette: { ... }` block. Split on the id so multi-theme files (the
-		// brand pair lives in one) yield one entry each.
-		const chunks = src.split(/\bid:\s*"/).slice(1);
-		for (const chunk of chunks) {
-			const id = chunk.slice(0, chunk.indexOf('"'));
-			const pStart = chunk.indexOf("palette: {");
-			if (pStart === -1) continue;
-			const body = chunk.slice(pStart);
-			const entries = {};
-			for (const m of body.matchAll(/(\w+):\s*"([^"]+)"/g)) {
-				if (!(m[1] in entries)) entries[m[1]] = m[2];
-			}
-			out.push({ id, file, p: entries });
-		}
-	}
-	return out;
-};
+/* Palette loading lives in palette-source.mjs so this gate and the CSS
+   generator cannot read the same files differently. */
+
 
 /* ---- 4. what the system permits ---------------------------------------- */
 
@@ -255,13 +227,24 @@ const findException = (theme, fg, bg, got) =>
 			e.theme === theme && e.fg === fg && e.bg === bg && Math.abs(e.got - got) < 0.01,
 	);
 
+/*
+ * Compare the raw ratio; round only to report it.
+ *
+ * Rounding first quietly widens every floor in this file by half a hundredth:
+ * 4.4951 becomes 4.5 and clears a 4.5 floor it does not actually meet. That is
+ * a gate reporting on its own rounding rather than on the palette, and it is
+ * exactly how `localOperatorLight`'s 1.02666 ground separation passed a 1.03
+ * requirement. The displayed value stays rounded because three decimal places
+ * of a contrast ratio are noise to the person reading the failure.
+ */
 const assertPair = (theme, p, fg, bg, floor, label) => {
 	const a = p[fg];
 	const b = p[bg];
 	if (!isHex(a) || !isHex(b)) return;
 	assertions++;
-	const got = r2(ratio(a, b));
-	if (got >= floor) return;
+	const raw = ratio(a, b);
+	if (raw >= floor) return;
+	const got = r2(raw);
 	if (findException(theme, fg, bg, got)) return;
 	fail(`${theme}: ${label} — ${fg} ${a} on ${bg} ${b} = ${got}:1, need ${floor}:1`);
 };
@@ -303,7 +286,7 @@ if (palettes.length === 0) {
 	process.exit(1);
 }
 
-for (const { id, p } of palettes) {
+for (const { id, palette: p } of palettes) {
 	/* Completeness first. A missing role is a worse defect than a low ratio,
 	   because it silently falls through to MUI's stock palette — which is how
 	   this app shipped a blue `info` that appeared in no theme file. */
@@ -330,7 +313,7 @@ for (const { id, p } of palettes) {
 			const b = p[GROUNDS[j]];
 			if (!isHex(a) || !isHex(b)) continue;
 			assertions++;
-			if (r2(ratio(a, b)) < 1.03) {
+			if (ratio(a, b) < 1.03) {
 				fail(
 					`${id}: grounds \`${GROUNDS[i]}\` ${a} and \`${GROUNDS[j]}\` ${b} are indistinguishable (${r2(ratio(a, b))}:1) — elevation is a lightness step here, so they must differ`,
 				);
@@ -363,7 +346,7 @@ for (const { id, p } of palettes) {
 
 			/* The control's own label against the control's own fill. */
 			assertions++;
-			const inkOnFill = r2(ratio(ink, fill));
+			const inkOnFill = ratio(ink, fill);
 			if (
 				inkOnFill < FLOOR.text &&
 				!findException(id, c.ink, c.fill ?? g, inkOnFill)
@@ -375,8 +358,8 @@ for (const { id, p } of palettes) {
 
 			/* The control's edge against the ground behind it: fill OR border. */
 			assertions++;
-			const fillEdge = r2(ratio(fill, ground));
-			const borderEdge = isHex(border) ? r2(ratio(border, ground)) : 0;
+			const fillEdge = ratio(fill, ground);
+			const borderEdge = isHex(border) ? ratio(border, ground) : 0;
 			if (Math.max(fillEdge, borderEdge) < FLOOR.nonText) {
 				fail(
 					`${id}: ${c.name} on ${g} has no perceivable edge — fill ${fillEdge}:1, border ${borderEdge}:1, need one at ${FLOOR.nonText}:1`,

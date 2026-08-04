@@ -132,7 +132,7 @@ const AgentsSidebarItem: FC<AgentsSidebarItemProps> = ({
 			>
 				<Avatar className="size-8 shrink-0">
 					<AvatarFallback>
-						<Bot size={16} strokeWidth={1.75} aria-hidden={true} />
+						<Bot size={16} aria-hidden={true} />
 					</AvatarFallback>
 				</Avatar>
 				<span className="min-w-0 flex-1">

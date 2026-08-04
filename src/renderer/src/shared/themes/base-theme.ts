@@ -1,9 +1,6 @@
 import type { Shadows, Theme } from "@mui/material/styles";
 import { createTheme } from "@mui/material/styles";
 import type { ThemePalette } from "./palette-contract";
-// Side-effect import: brings the `Palette` / `PaletteOptions` / typography
-// module augmentations into scope so the custom roots below type-check.
-import "./theme-interfaces";
 
 /**
  * The one MUI theme factory.
@@ -356,11 +353,6 @@ export const createBaseTheme = (palette: ThemePalette): Theme => {
 		palette: {
 			mode: palette.mode,
 
-			/* The roles carried through intact. MUI has no key for `elevated`,
-			   `sunken`, `borderControl` or the wash/border pairs, and a consumer
-			   that needs one should read it here rather than re-deriving it. */
-			roles: palette,
-
 			background: {
 				default: palette.canvas,
 				paper: palette.surface,
@@ -437,83 +429,6 @@ export const createBaseTheme = (palette: ThemePalette): Theme => {
 				disabledOpacity: 1,
 				activatedOpacity: 0.12,
 			},
-
-			/* ---- custom roots ------------------------------------------------
-			 * Read by application code through the augmentations in
-			 * theme-interfaces.ts. Each is derived from a role: the twelve themes
-			 * used to author these as literals, which is how the sidebar in one
-			 * theme ended up a different colour from its own page ground.
-			 */
-
-			caption: palette.inkDim,
-
-			sidebar: {
-				/* The nav rail is the page ground and the chat/agent rails are one
-				   step up, so the rail reads as behind the content rather than as a
-				   panel floating on it. */
-				background: palette.canvas,
-				secondaryBackground: palette.surface,
-				border: palette.hairline,
-				itemHover: palette.elevated,
-				itemActive: palette.accentWash,
-				itemActiveHover: mix(palette.accentWash, palette.accent, 0.18),
-				itemText: palette.inkMuted,
-				itemActiveText: palette.accent,
-				toggleButton: {
-					background: palette.surface,
-					border: palette.hairline,
-					hoverBackground: palette.accentWash,
-					hoverBorder: palette.accent,
-				},
-			},
-
-			icon: {
-				background: palette.accentWash,
-				text: palette.accent,
-			},
-
-			tooltip: {
-				/* A tooltip leaves the flow, so it sits on `elevated` and takes the
-				   overlay shadow from `shadows[8]` rather than inventing one. */
-				background: palette.elevated,
-				border: palette.hairline,
-				text: palette.ink,
-			},
-
-			userMessage: {
-				/* `elevated` rather than `accentWash`: a long conversation is dozens
-				   of user turns, and washing every one of them in the accent spends
-				   the accent hundreds of times per screen. A lightness step
-				   separates the two speakers without a second colour, and the
-				   shadow is `none` because a message never leaves the flow. */
-				background: palette.elevated,
-				border: palette.hairline,
-				shadow: "none",
-			},
-
-			messagesView: {
-				background: palette.canvas,
-			},
-
-			inputField: {
-				/* `borderControl` is the role that exists for exactly this: the sole
-				   visual boundary of an input, floored at 3:1 on every ground. */
-				background: palette.surface,
-				hoverBackground: palette.elevated,
-				focusBackground: palette.elevated,
-				border: palette.borderControl,
-			},
-
-			actionHighlight: {
-				done: {
-					background: palette.successWash,
-					border: palette.successBorder,
-				},
-				ask: {
-					background: palette.infoWash,
-					border: palette.infoBorder,
-				},
-			},
 		},
 
 		/**
@@ -582,19 +497,6 @@ export const createBaseTheme = (palette: ThemePalette): Theme => {
 				lineHeight: 1.5,
 				fontWeight: 500,
 				textTransform: "none",
-			},
-
-			/* The one gradient in the system, and it is a gradient between two
-			   inks rather than between two hues — it reads as a weight shift, not
-			   as decoration. The old themes hardcoded white stops here, which is
-			   why it was invisible on the two light themes. */
-			gradientTitle: {
-				fontSize: "1.25rem",
-				fontWeight: 600,
-				letterSpacing: "-0.012em",
-				background: `linear-gradient(90deg, ${palette.ink}, ${palette.inkMuted})`,
-				WebkitBackgroundClip: "text",
-				WebkitTextFillColor: "transparent",
 			},
 		},
 
@@ -715,21 +617,6 @@ export const createBaseTheme = (palette: ThemePalette): Theme => {
 			},
 
 			MuiButton: {
-				variants: [
-					{
-						props: { variant: "nav" },
-						style: {
-							color: palette.inkMuted,
-							margin: "0 4px",
-							padding: "8px 16px",
-							borderRadius: 10,
-							"&:hover": {
-								backgroundColor: palette.elevated,
-								color: palette.ink,
-							},
-						},
-					},
-				],
 				styleOverrides: {
 					root: {
 						borderRadius: 6,

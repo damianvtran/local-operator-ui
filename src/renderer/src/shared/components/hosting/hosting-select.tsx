@@ -259,7 +259,7 @@ export const HostingSelect: FC<HostingSelectProps> = ({
 
 	return (
 		<SearchableSelect
-			label="Hosting Provider"
+			label="Hosting provider"
 			icon={<Server size={16} aria-hidden="true" />}
 			labelTooltip="Select the AI provider that you want to use.  Each provider has different models available.  Recommended: Radient"
 			placeholder="Select a hosting provider..."

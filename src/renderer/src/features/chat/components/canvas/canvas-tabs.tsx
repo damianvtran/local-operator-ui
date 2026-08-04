@@ -34,6 +34,17 @@ type CanvasTabsProps = {
 };
 
 /**
+ * The two halves of the canvas tab relationship.
+ *
+ * The strip is here and the document panel is in `canvas/index.tsx`, so there
+ * is no shared root to mint ids from the way Radix's `Tabs` would. `role="tab"`
+ * used to name no region at all, which left a screen reader announcing a
+ * selection whose target it could not describe.
+ */
+export const CANVAS_SELECTED_TAB_ID = "canvas-selected-tab";
+export const CANVAS_DOCUMENT_PANEL_ID = "canvas-document-panel";
+
+/**
  * Tabs component for the markdown canvas
  * Displays a tab for each open document
  *
@@ -166,6 +177,22 @@ const CanvasTabsComponent: FC<CanvasTabsProps> = ({
 								type="button"
 								role="tab"
 								aria-selected={isSelected}
+								// Both ends of the relationship are keyed on one pair of
+								// constants rather than on the document id, for two
+								// reasons. Document ids are file paths, and a path with a
+								// space in it cannot be written into an id-reference list
+								// at all. And the panel is rendered by `canvas/index.tsx`,
+								// which derives its own selection from `activeDocumentId`
+								// while this strip falls back to the first tab — keying on
+								// "the selected one" is the only form the two cannot
+								// disagree about. Exactly one tab is selected, so the id
+								// stays unique, and the unselected tabs carry no
+								// `aria-controls` because only the selected document's
+								// panel is mounted.
+								id={isSelected ? CANVAS_SELECTED_TAB_ID : undefined}
+								aria-controls={
+									isSelected ? CANVAS_DOCUMENT_PANEL_ID : undefined
+								}
 								tabIndex={isSelected ? 0 : -1}
 								title={doc.path ?? doc.title}
 								ref={(node) => {

@@ -1,4 +1,6 @@
 import radientIcon from "@assets/radient-icon-1024x1024.png";
+import { Tooltip } from "@shared/components/ui/tooltip";
+import { useMediaQuery } from "@shared/hooks/use-media-query";
 import { cn } from "@shared/lib/utils";
 import type { LucideIcon } from "lucide-react";
 import { Download, Key, Paintbrush, Puzzle, Settings } from "lucide-react";
@@ -98,54 +100,97 @@ const SECTION_GROUPS: { label: string; ids: string[] }[] = [
  * bottom, and this component cannot know which layout it is in — a hardcoded
  * `border-r` here becomes a stray vertical line in the stacked layout. The page
  * wrapper owns that one edge and moves it.
+ *
+ * ## Why it drops its labels below 1040px
+ *
+ * This rail and the global app rail are both 220px and both on screen at once,
+ * so on a 900px window the two of them plus their gaps took roughly half the
+ * width before any setting was drawn. Of the two, this is the one that gives:
+ * the app rail is global navigation and is reachable from every screen, while
+ * this is a jump list within a page the user is already on.
+ *
+ * So below 1040px it becomes a 48px icon rail with tooltips, the same
+ * treatment and the same width as the collapsed app rail. 1040 is where two
+ * 220px rails still leave 600px of content; under it, 220px of labels is a
+ * fifth of the window spent on a jump list.
+ *
+ * It does not narrow instead, because it cannot usefully: "Application
+ * updates" measures 121px of text and needs a 186px rail to render whole, so
+ * every width between 48 and 220 costs a destination its name and returns
+ * almost nothing.
  */
 export const SettingsSidebar: FC<SettingsSidebarProps> = ({
 	activeSection,
 	onSelectSection,
 	sections,
 }) => {
+	/*
+	 * Paired with the `min-[1040px]:` width class on the rail's wrapper in
+	 * `settings-page`. The two carry the same breakpoint and have to move
+	 * together: a mismatch shows labels in a 48px rail or a 220px rail of bare
+	 * icons. It is a hook rather than a Tailwind variant because what changes
+	 * is what is RENDERED — a tooltip is a portalled subtree, and one hidden
+	 * with a `hidden` variant would still mount on every row at every width.
+	 */
+	const labelled = useMediaQuery("(min-width: 1040px)");
+
 	const renderSection = (section: SettingsSection) => {
 		const isActive = activeSection === section.id;
 
-		return (
-			<li key={section.id}>
-				<button
-					type="button"
-					onClick={() => onSelectSection(section.id)}
-					aria-current={isActive ? "page" : undefined}
-					data-tour-tag={TOUR_TAGS[section.id]}
+		const button = (
+			<button
+				type="button"
+				onClick={() => onSelectSection(section.id)}
+				aria-current={isActive ? "page" : undefined}
+				data-tour-tag={TOUR_TAGS[section.id]}
+				className={cn(
+					"flex h-8 w-full items-center rounded-sm text-left text-body-sm",
+					"transition-colors duration-fast ease-out-quart",
+					labelled ? "justify-start gap-2 px-3" : "justify-center",
+					isActive
+						? "bg-accent-wash font-medium text-ink"
+						: "text-ink-muted hover:bg-elevated hover:text-ink",
+				)}
+			>
+				{/* Labelled, the text beside it already names the destination, so the
+				    mark is decorative and must not be announced a second time.
+				    Unlabelled, the tooltip carries the name instead — still not this
+				    span, which would read the label out twice to a screen reader
+				    that follows the tooltip's `aria-describedby`. */}
+				<span
+					aria-hidden="true"
 					className={cn(
-						"flex h-8 w-full items-center gap-2 rounded-sm px-3 text-left text-body-sm",
-						"transition-colors duration-fast ease-out-quart",
-						isActive
-							? "bg-accent-wash font-medium text-ink"
-							: "text-ink-muted hover:bg-elevated hover:text-ink",
+						"flex size-4 shrink-0 items-center justify-center",
+						isActive ? "text-accent" : "text-ink-dim",
 					)}
 				>
-					{/* The label beside it already names the destination, so the mark is
-					    decorative and must not be announced a second time. */}
-					<span
-						aria-hidden="true"
-						className={cn(
-							"flex size-4 shrink-0 items-center justify-center",
-							isActive ? "text-accent" : "text-ink-dim",
-						)}
-					>
-						{section.isImage ? (
-							<img
-								src={section.icon as string}
-								alt=""
-								className="size-4 object-contain"
-							/>
-						) : (
-							(() => {
-								const IconComponent = section.icon as LucideIcon;
-								return <IconComponent size={16} strokeWidth={1.75} />;
-							})()
-						)}
-					</span>
-					<span className="truncate">{section.label}</span>
-				</button>
+					{section.isImage ? (
+						<img
+							src={section.icon as string}
+							alt=""
+							className="size-4 object-contain"
+						/>
+					) : (
+						(() => {
+							const IconComponent = section.icon as LucideIcon;
+							return <IconComponent size={16} />;
+						})()
+					)}
+				</span>
+				{labelled && <span className="truncate">{section.label}</span>}
+			</button>
+		);
+
+		/* Unlabelled, the icon is the only thing on the row, so the tooltip is
+		   the only name it has — including for a keyboard, which is why it wraps
+		   the button rather than sitting beside it. */
+		return labelled ? (
+			<li key={section.id}>{button}</li>
+		) : (
+			<li key={section.id}>
+				<Tooltip content={section.label} side="right">
+					{button}
+				</Tooltip>
 			</li>
 		);
 	};
@@ -169,10 +214,14 @@ export const SettingsSidebar: FC<SettingsSidebarProps> = ({
 						<div key={group.label}>
 							{/* Sentence case, dim, one step below the rows: a group label
 							    is a divider that happens to have a name, not a heading
-							    competing with the destinations under it. */}
-							<div className="px-3 pb-1 text-meta text-ink-dim">
-								{group.label}
-							</div>
+							    competing with the destinations under it. Unlabelled there
+							    is no room for the name and the `gap-6` between groups is
+							    left to carry the grouping on its own. */}
+							{labelled && (
+								<div className="px-3 pb-1 text-meta text-ink-dim">
+									{group.label}
+								</div>
+							)}
 							<ul className="flex flex-col gap-0.5">
 								{groupSections.map(renderSection)}
 							</ul>

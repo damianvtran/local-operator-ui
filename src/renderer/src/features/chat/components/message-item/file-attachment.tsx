@@ -39,10 +39,10 @@ const getFileName = (path: string): string => {
 				return decodeURIComponent(nameMatch[1]);
 			} catch (_) {
 				// Fallback if decoding fails
-				return "Pasted Image";
+				return "Pasted image";
 			}
 		}
-		return "Pasted Image";
+		return "Pasted image";
 	}
 	if (path.startsWith("data:")) {
 		const nameMatch = path.match(RESOURCE_NAME_REGEX);
@@ -50,10 +50,10 @@ const getFileName = (path: string): string => {
 			try {
 				return decodeURIComponent(nameMatch[1]);
 			} catch (_) {
-				return "Pasted File";
+				return "Pasted file";
 			}
 		}
-		return "Pasted File";
+		return "Pasted file";
 	}
 	// Handle both local paths and URLs
 	const parts = path.split(PATH_SEPARATOR_REGEX);
@@ -205,7 +205,7 @@ export const FileAttachment: FC<FileAttachmentProps> = memo(
 				await handleSpreadsheetClick(file);
 				return;
 			}
-			const title = getFileName(file); // This will be "Pasted Image" for image data URIs
+			const title = getFileName(file); // This will be "Pasted image" for image data URIs
 			const fallbackAction = (err?: string) => {
 				if (err) console.error("Error processing file:", err);
 				onClick(file); // Pass the original file string (path or data URI)

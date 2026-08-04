@@ -5,6 +5,7 @@ import { flushSync } from "react-dom";
 // --lo-* colours). The app entry imports this stylesheet; Storybook stories
 // do not, so stories rendering real components bring it in themselves.
 import "../../../styles/index.css";
+import { Button } from "@shared/components/ui/button";
 import { MarkdownRenderer, StreamingMarkdown } from "./markdown-renderer";
 
 /**
@@ -261,14 +262,14 @@ const StreamingPerfHarness = ({
 	return (
 		<div className="p-4">
 			<div className="mb-4 flex items-center gap-3 text-body-sm">
-				<button
+				<Button
 					type="button"
 					onClick={run}
 					disabled={running}
-					className="rounded-sm bg-accent px-3 py-1.5 text-on-accent disabled:opacity-60"
+					variant="primary"
 				>
 					{running ? "Replaying..." : `Replay ${mode} stream`}
-				</button>
+				</Button>
 				<span className="text-ink-muted">
 					{charsPerChunk} chars/chunk, fixture {fixture.length} chars
 				</span>

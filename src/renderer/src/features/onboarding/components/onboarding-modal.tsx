@@ -276,12 +276,7 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 				 */
 				return (
 					<div className="flex flex-col gap-4">
-						<CircleCheck
-							size={28}
-							strokeWidth={1.5}
-							className="text-accent"
-							aria-hidden="true"
-						/>
+						<CircleCheck size={28} className="text-accent" aria-hidden="true" />
 						<p className="text-body text-ink-muted">
 							Local Operator is ready. Start a conversation with your new agent,
 							or change anything you picked here later in Settings.

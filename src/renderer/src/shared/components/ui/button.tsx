@@ -23,6 +23,46 @@ import { type ButtonHTMLAttributes, forwardRef } from "react";
  * contract actually verifies, so destructive reads as a red-bordered control
  * that fills with the danger wash rather than as a red slab.
  *
+ * ## Pressed states, and why only `primary` gets `accent-active`
+ *
+ * The palette contract ships exactly one pressed colour, `accentActive`, and
+ * it is authored as a **ground** — the thing `onAccent` is designed to sit on
+ * top of. `primary` is therefore the only variant that may take it. The other
+ * five build their pressed step out of roles used in the capacity they were
+ * authored for, because borrowing a fill role as an ink is how a control ends
+ * up at 3.55:1 while every token in it is individually "fine".
+ *
+ * - `secondary` presses down the ground ramp: hover steps up
+ *   `surface -> elevated`, active drops to `sunken`. Grounds used as grounds.
+ *   The two ends stay clear of each other in every palette (elevated/sunken
+ *   measures 1.17:1 at worst), so hover and pressed are never the same pixel.
+ * - `outline` and `danger` have no fill of their own to move, so the edge
+ *   deepens instead: the muted `-border` role steps to the full role colour
+ *   while the wash stays put. `accent` and `danger` are both floored as text
+ *   at 4.5:1, so as a 3:1 structural edge they are far clear (5.04:1 and
+ *   4.72:1 at worst).
+ * - `ghost` has neither fill nor edge at rest, so its ink carries the press:
+ *   `ink-muted -> ink` on hover, `accent` on press. Branding § 2 spends the
+ *   accent on "primary action, active state, focus ring", and this is that
+ *   middle one. It lands on `accent`, which is floored as an ink, and not on
+ *   `accent-active`, which is not.
+ * - `link` does not change colour at all. It thickens its own underline. A
+ *   text link has no fill, no edge and no ground to step, so the only colour
+ *   move left would be an ink the palette does not have — and underline
+ *   weight is the established pressed affordance for a link anyway. The ink
+ *   stays on `accent`/`accent-hover`, both of which already clear their
+ *   floors.
+ *
+ * Each pressed rule restates its own properties instead of leaning on the
+ * hover ones. A keyboard user holding Space matches `:active` without ever
+ * matching `:hover`, so a pressed state written as a delta from hover does
+ * not exist for them — and "it is only visible while the button is held" is
+ * not a reason to let one slide, since that is the moment the user is looking
+ * hardest at what they just clicked, and a motor-impaired user holds it far
+ * longer than a quick mouse click. Tailwind emits `hover` before `active`
+ * before `disabled`, so the three resolve in that priority without
+ * `!important`.
+ *
  * ## Focus
  *
  * The ring itself is not declared here. `styles/index.css` gives every
@@ -85,27 +125,29 @@ const buttonVariants = cva(
 				],
 				secondary: [
 					"border border-control bg-surface text-ink",
-					"hover:bg-elevated",
+					"hover:bg-elevated active:bg-sunken",
 					"disabled:border-hairline disabled:bg-sunken disabled:text-ink-disabled",
 				],
 				outline: [
 					"border border-control text-ink",
-					"hover:bg-accent-wash",
+					"hover:bg-accent-wash active:border-accent active:bg-accent-wash",
 					"disabled:border-hairline disabled:bg-transparent disabled:text-ink-disabled",
 				],
 				ghost: [
 					"text-ink-muted",
 					"hover:bg-accent-wash hover:text-ink",
+					"active:bg-accent-wash active:text-accent",
 					"disabled:bg-transparent disabled:text-ink-disabled",
 				],
 				danger: [
 					"border border-danger-border text-danger",
-					"hover:bg-danger-wash",
+					"hover:bg-danger-wash active:border-danger active:bg-danger-wash",
 					"disabled:border-hairline disabled:bg-transparent disabled:text-ink-disabled",
 				],
 				link: [
 					"h-auto rounded-xs p-0 text-accent underline-offset-4",
 					"hover:text-accent-hover hover:underline",
+					"active:underline active:decoration-2",
 					"disabled:text-ink-disabled disabled:no-underline",
 				],
 			},

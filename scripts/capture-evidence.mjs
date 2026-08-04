@@ -46,9 +46,6 @@ const THEMES = [
 	"synth",
 ];
 
-/** Light-mode themes, used only to set the `dark` class correctly. */
-const LIGHT = new Set(["localOperatorLight", "sage", "dune"]);
-
 /**
  * The stories that constitute the evidence set: story id plus the viewport it
  * is captured at. Chat surfaces are wide; the primitives sheet is tall.
@@ -155,55 +152,48 @@ const main = async () => {
 				mobile: false,
 			});
 			/*
-			 * Set the theme through the app's OWN persisted store, before the
-			 * page loads, rather than by poking `data-theme` afterwards.
+			 * The theme is driven ONLY by the story arg.
 			 *
-			 * This is not a style preference, it is the only correct way during
-			 * the migration. The bridge has two halves that are populated at
-			 * different times: MUI bakes palette values into Emotion classes as
-			 * literal hexes when `createBaseTheme` runs, while Tailwind reads
-			 * `--lo-*` live off `data-theme`. Setting the attribute alone moves
-			 * only the Tailwind half, so every still-MUI-styled element keeps the
-			 * previous palette's colour — which renders as dark ink on light
-			 * paper and looks exactly like a contrast bug in the product. The
-			 * real ThemeProvider moves both together because it reads this store;
-			 * driving the store is what reproduces that.
+			 * `.storybook/preview.tsx` wraps every story in one frame that reads
+			 * `args.theme` and moves all three halves of the bridge together:
+			 * the MUI theme object through context (MUI bakes palette values
+			 * into Emotion classes as literal hexes when `createBaseTheme` runs,
+			 * so it needs the object, not an attribute), `data-theme` plus the
+			 * `dark` class on the document element for the Tailwind role
+			 * utilities, and the preferences store for the components that read
+			 * the palette from there. The arg is declared at preview level, so
+			 * every story has it and none can ignore it.
+			 *
+			 * This used to be three mechanisms at once — seeding
+			 * `ui-preferences-storage` before load, passing the arg, then poking
+			 * `data-theme` and `dark` afterwards — because only eight of the
+			 * fifteen story files implemented a theme decorator and the other
+			 * seven rendered the default palette whatever was asked for. Two of
+			 * those three could disagree, and did: the hardcoded light-theme
+			 * list used by the last step had `dune` (a dark palette) in it and
+			 * was missing `iceberg` (a light one), so every Dune and Iceberg
+			 * frame was captured with the wrong `dark` class. One source cannot
+			 * disagree with itself.
 			 */
 			await cdp.send("Page.navigate", { url: "about:blank" });
 			await sleep(150);
-			await cdp.send("Page.navigate", { url: `${ORIGIN}/iframe.html` });
-			await sleep(400);
-			await cdp.send("Runtime.evaluate", {
-				expression: `localStorage.setItem(
-					"ui-preferences-storage",
-					JSON.stringify({ state: { themeName: ${JSON.stringify(theme)} }, version: 0 })
-				);`,
-			});
-			/*
-			 * Pass the theme as a story ARG as well as through the store.
-			 *
-			 * Some stories own their own theme — the primitives sheet has a
-			 * `theme` control and sets `data-theme` from it in a layout effect,
-			 * which runs after navigation and overwrites anything set from
-			 * outside. Without this the capture produced twelve files named for
-			 * twelve themes that were all the story's default, which is worse
-			 * than no evidence because the filenames assert something false.
-			 * Storybook ignores an `args` key a story does not declare, so this
-			 * is safe for the stories that take their theme from the store.
-			 */
 			await cdp.send("Page.navigate", {
 				url: `${ORIGIN}/iframe.html?id=${story}&viewMode=story&args=theme:${theme}`,
 			});
 			await sleep(900);
-			/* Belt and braces for stories that mount no ThemeProvider of their
-			   own: the attribute still has to be right for Tailwind utilities. */
-			await cdp.send("Runtime.evaluate", {
-				expression: `
-					document.documentElement.dataset.theme = ${JSON.stringify(theme)};
-					document.documentElement.classList.toggle("dark", ${!LIGHT.has(theme)});
-				`,
+
+			/* Assert the frame really is the theme this file is about to be
+			   named after, rather than trusting the navigation. A mis-named
+			   evidence file is worse than a missing one. */
+			const { result: applied } = await cdp.send("Runtime.evaluate", {
+				returnByValue: true,
+				expression: "document.documentElement.dataset.theme || ''",
 			});
-			await sleep(250);
+			if (applied.value !== theme) {
+				throw new Error(
+					`${story} @ ${theme}: document carries theme "${applied.value}"`,
+				);
+			}
 
 			/*
 			 * Settle animations before the shutter.

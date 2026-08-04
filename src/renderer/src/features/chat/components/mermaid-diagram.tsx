@@ -7,6 +7,7 @@ import {
 	Tooltip,
 } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
+import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import {
 	Copy as CopyIcon,
 	Download,
@@ -53,11 +54,13 @@ import {
  *    so they are seeded with the *resolved* value of a role read off the
  *    document, and mermaid derives its categorical scales from them.
  *
- * The seeds are read once, when mermaid is first loaded, so they and anything
- * mermaid derives from them are fixed to the theme that was active then — the
- * flowchart node fill is one of these, because flowchart-v2 paints it from
- * `mainBkg`. Everything carrying a `var()` follows a later theme switch with
- * no re-render; the seeded colours follow it on the next render of the chart.
+ * The seeds are resolved when `initialize()` runs, so they — and everything
+ * mermaid derives from them — are frozen into whichever palette was active for
+ * that call. The flowchart node fill is one of these, because flowchart-v2
+ * paints it from `mainBkg`. That is why the singleton is re-initialised on a
+ * theme change and every mounted diagram re-renders: the `var()` half of this
+ * table repaints on its own, but the seeded half only moves when mermaid
+ * recomputes the SVG.
  */
 const ROLE_INK = "var(--color-ink)";
 const ROLE_INK_MUTED = "var(--color-ink-muted)";
@@ -294,31 +297,44 @@ const buildThemeVariables = (): Record<string, unknown> => {
 // supports (roughly 3.6 MB of JS). A static import puts all of it in the startup
 // path even for sessions that never render a diagram, so the module is fetched
 // on first use and the promise memoised at module scope.
-//
-// initialize() belongs to that one-time setup: mermaid is a singleton, and this
-// call used to sit inside renderDiagram, reconfiguring it on every render.
-let mermaidPromise: Promise<Mermaid> | null = null;
+let mermaidModulePromise: Promise<Mermaid> | null = null;
 
-const getMermaid = (): Promise<Mermaid> => {
-	if (!mermaidPromise) {
-		mermaidPromise = import("mermaid").then(({ default: mermaid }) => {
-			mermaid.initialize({
-				startOnLoad: true,
-				// `base` is the only built-in theme that takes an override table;
-				// the rest hardcode a palette.
-				theme: "base",
-				securityLevel: "loose",
-				fontFamily: "var(--font-sans)",
-				fontSize: 14,
-				// Prevents mermaid inserting global error elements into the DOM;
-				// this component renders its own error state.
-				suppressErrorRendering: true,
-				themeVariables: buildThemeVariables(),
-			});
-			return mermaid;
-		});
+// The theme the singleton is currently configured for.
+//
+// initialize() is not per-render setup — mermaid is a singleton and this call
+// used to sit inside renderDiagram, reconfiguring it for every diagram on every
+// render. But it is not one-time setup either: buildThemeVariables() resolves
+// its seed colours off the document, so a given config is only correct for the
+// theme that was active when it ran. Keying it on the theme id re-themes
+// diagrams on a switch while still importing the module exactly once.
+let configuredThemeName: string | null = null;
+
+const getMermaid = async (themeName: string): Promise<Mermaid> => {
+	if (!mermaidModulePromise) {
+		mermaidModulePromise = import("mermaid").then(
+			({ default: mermaid }) => mermaid,
+		);
 	}
-	return mermaidPromise;
+	const mermaid = await mermaidModulePromise;
+
+	if (configuredThemeName !== themeName) {
+		mermaid.initialize({
+			startOnLoad: true,
+			// `base` is the only built-in theme that takes an override table;
+			// the rest hardcode a palette.
+			theme: "base",
+			securityLevel: "loose",
+			fontFamily: "var(--font-sans)",
+			fontSize: 14,
+			// Prevents mermaid inserting global error elements into the DOM;
+			// this component renders its own error state.
+			suppressErrorRendering: true,
+			themeVariables: buildThemeVariables(),
+		});
+		configuredThemeName = themeName;
+	}
+
+	return mermaid;
 };
 
 type MermaidDiagramProps = {
@@ -517,6 +533,13 @@ const MermaidDiagramCore: FC<MermaidDiagramProps> = memo(({ chart, id }) => {
 		"idle" | "copied"
 	>("idle");
 
+	/* The seeded half of the mermaid palette is baked into the SVG at render
+	   time, so a theme switch has to reach mermaid rather than just the
+	   stylesheet. ThemeProvider publishes `data-theme` in a layout effect,
+	   which runs before this component's passive effect, so the role variables
+	   the new config resolves are already the new theme's. */
+	const themeName = useUiPreferencesStore((state) => state.themeName);
+
 	const renderDiagram = useCallback(async () => {
 		try {
 			setIsLoading(true);
@@ -528,7 +551,7 @@ const MermaidDiagramCore: FC<MermaidDiagramProps> = memo(({ chart, id }) => {
 				throw new Error("Invalid or empty chart content");
 			}
 
-			const mermaid = await getMermaid();
+			const mermaid = await getMermaid(themeName);
 
 			// Generate unique ID for the diagram
 			const diagramId =
@@ -552,7 +575,7 @@ const MermaidDiagramCore: FC<MermaidDiagramProps> = memo(({ chart, id }) => {
 		} finally {
 			setIsLoading(false);
 		}
-	}, [chart, id]);
+	}, [chart, id, themeName]);
 
 	useEffect(() => {
 		// Wrap the async call in a try-catch to prevent unhandled promise rejections

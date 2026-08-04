@@ -126,7 +126,7 @@ export const AttachmentsPreview: FC<AttachmentsPreviewProps> = ({
 			if (mimeTypeMatch?.[1]) {
 				return `Pasted ${mimeTypeMatch[1]}`;
 			}
-			return "Pasted File"; // Generic fallback for non-image data URIs
+			return "Pasted file"; // Generic fallback for non-image data URIs
 		}
 		// Handle both local paths and URLs for actual files
 		const parts = path.split(PATH_SEPARATOR_REGEX);

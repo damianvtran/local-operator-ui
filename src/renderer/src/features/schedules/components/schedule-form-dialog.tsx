@@ -259,7 +259,7 @@ const AgentSelect: FC<{
 						// biome-ignore lint/a11y/useSemanticElements: a type-to-filter combobox cannot be a native <select>.
 						// biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: the listbox role is the WAI-ARIA combobox pattern for a popup driven from a text input.
 						role="listbox"
-						aria-label="Select Agent"
+						aria-label="Select agent"
 						className="max-h-72 overflow-y-auto"
 					>
 						{options.length === 0 && (
@@ -292,7 +292,7 @@ const AgentSelect: FC<{
 								onClick={() => commit(option)}
 							>
 								<span className="font-medium text-body-sm text-ink">
-									{option.name || "Unnamed Agent"}
+									{option.name || "Unnamed agent"}
 								</span>
 							</li>
 						))}

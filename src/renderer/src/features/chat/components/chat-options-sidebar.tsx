@@ -125,7 +125,7 @@ export const ChatOptionsSidebar: FC<ChatOptionsSidebarProps> = ({
 				<div className="flex items-center justify-between border-hairline border-b px-6 py-4">
 					<div className="flex flex-col gap-0.5">
 						<SheetTitle className="font-semibold text-heading text-ink">
-							Chat Options
+							Chat options
 						</SheetTitle>
 						<SheetDescription className="text-body-sm text-ink-muted">
 							Customize settings for this agent

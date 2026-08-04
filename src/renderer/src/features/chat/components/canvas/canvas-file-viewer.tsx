@@ -438,7 +438,7 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 												"flex items-center justify-center text-ink-muted",
 											)}
 										>
-											<IconComponent size={26} strokeWidth={1.5} />
+											<IconComponent size={26} />
 										</span>
 									)}
 									{/* The file name is the content of the tile, so it is

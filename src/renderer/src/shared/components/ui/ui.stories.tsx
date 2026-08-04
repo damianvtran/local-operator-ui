@@ -2,7 +2,7 @@ import { cn } from "@shared/lib/utils";
 import type { Meta, StoryObj } from "@storybook/react";
 import { expect } from "@storybook/test";
 import { Check, ChevronDown, Copy, Plus, Settings, Trash2 } from "lucide-react";
-import { type ReactNode, useLayoutEffect, useState } from "react";
+import { type ReactNode, useState } from "react";
 import "../../../styles/index.css";
 import {
 	Alert,
@@ -81,14 +81,14 @@ import {
  * The whole primitive layer on one page, for screenshotting across every
  * theme.
  *
- * ## Why `data-theme` goes on `documentElement` and not just on the wrapper
+ * ## Why `data-theme` goes on `documentElement` and not just on a wrapper
  *
  * Tooltips, dialogs, menus, selects, popovers and sheets all portal to
  * `document.body`, which is outside any wrapper this story could render. With
  * the theme only on a wrapper, every `--lo-*` read in a portal resolves to
  * nothing and the overlays come out unstyled — while the in-flow half of the
- * page looks perfect, which makes it a slow thing to diagnose. The app has the
- * same constraint, so the attribute belongs on the root element.
+ * page looks perfect, which makes it a slow thing to diagnose. The preview
+ * frame in `.storybook/preview.tsx` puts it on the root for every story.
  *
  * ## Faked focus rings
  *
@@ -99,51 +99,13 @@ import {
  * utilities so this file still names no colour.
  */
 
-const THEME_IDS = [
-	"localOperatorDark",
-	"localOperatorLight",
-	"dracula",
-	"dune",
-	"sage",
-	"monokai",
-	"tokyoNight",
-	"iceberg",
-	"radient",
-	"neon",
-	"obsidian",
-	"synth",
-] as const;
-
-type StoryArgs = { theme: (typeof THEME_IDS)[number] };
-
-const ThemeFrame = ({
-	theme,
-	children,
-}: {
-	theme: string;
-	children: ReactNode;
-}) => {
-	useLayoutEffect(() => {
-		const previous = document.documentElement.dataset.theme;
-		document.documentElement.dataset.theme = theme;
-		return () => {
-			if (previous === undefined) {
-				document.documentElement.removeAttribute("data-theme");
-			} else {
-				document.documentElement.dataset.theme = previous;
-			}
-		};
-	}, [theme]);
-
-	return (
-		<div
-			data-theme={theme}
-			className="min-h-screen bg-canvas p-8 font-sans text-body text-ink"
-		>
-			{children}
-		</div>
-	);
-};
+/**
+ * The padded page this sheet is read on. Layout only: the ground and the type
+ * come from the preview frame.
+ */
+const Page = ({ children }: { children: ReactNode }) => (
+	<div className="p-8">{children}</div>
+);
 
 const Section = ({
 	title,
@@ -1070,28 +1032,19 @@ const MergeContract = () => {
 	);
 };
 
-const meta: Meta<StoryArgs> = {
+const meta: Meta = {
 	title: "Design system/Primitives",
 	parameters: { layout: "fullscreen" },
-	argTypes: {
-		theme: {
-			control: { type: "select" },
-			options: [...THEME_IDS],
-			description:
-				"Sets data-theme on the document root, which is what portalled overlays read.",
-		},
-	},
-	args: { theme: "localOperatorDark" },
 };
 
 export default meta;
 
-type Story = StoryObj<StoryArgs>;
+type Story = StoryObj;
 
 /** Everything that renders in the flow, plus the anchored overlays. */
 export const AllPrimitives: Story = {
-	render: ({ theme }) => (
-		<ThemeFrame theme={theme}>
+	render: () => (
+		<Page>
 			<div className="flex flex-col gap-10">
 				<header className="flex flex-col gap-1">
 					<h1 className="text-display">Primitives</h1>
@@ -1172,7 +1125,7 @@ export const AllPrimitives: Story = {
 					<AnchoredOverlays />
 				</Section>
 			</div>
-		</ThemeFrame>
+		</Page>
 	),
 	// The executable half of the class-merge contract. The panel above shows
 	// the result in a screenshot; this fails the story if a tailwind-merge
@@ -1185,8 +1138,8 @@ export const AllPrimitives: Story = {
 
 /** The select panel open, which blocks pointer events and so lives alone. */
 export const SelectOpen: Story = {
-	render: ({ theme }) => (
-		<ThemeFrame theme={theme}>
+	render: () => (
+		<Page>
 			<div className="flex max-w-xs flex-col gap-1.5">
 				<Label htmlFor="open-select">Model</Label>
 				<Select open defaultValue="claude">
@@ -1210,14 +1163,14 @@ export const SelectOpen: Story = {
 					</SelectContent>
 				</Select>
 			</div>
-		</ThemeFrame>
+		</Page>
 	),
 };
 
 /** The dialog open over the scrim. */
 export const DialogOpen: Story = {
-	render: ({ theme }) => (
-		<ThemeFrame theme={theme}>
+	render: () => (
+		<Page>
 			<Cards />
 			<Dialog open>
 				<DialogContent>
@@ -1240,14 +1193,14 @@ export const DialogOpen: Story = {
 					</DialogFooter>
 				</DialogContent>
 			</Dialog>
-		</ThemeFrame>
+		</Page>
 	),
 };
 
 /** The sheet open over the scrim. */
 export const SheetOpen: Story = {
-	render: ({ theme }) => (
-		<ThemeFrame theme={theme}>
+	render: () => (
+		<Page>
 			<Cards />
 			<Sheet open>
 				<SheetContent side="right">
@@ -1281,6 +1234,6 @@ export const SheetOpen: Story = {
 					</SheetFooter>
 				</SheetContent>
 			</Sheet>
-		</ThemeFrame>
+		</Page>
 	),
 };

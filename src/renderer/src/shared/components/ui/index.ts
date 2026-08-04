@@ -102,7 +102,14 @@ export {
 export type { SheetContentProps } from "./sheet";
 export { Skeleton } from "./skeleton";
 export { Switch } from "./switch";
-export { Tabs, TabsContent, TabsList, TabsTrigger } from "./tabs";
+export {
+	TabPanel,
+	Tabs,
+	TabsContent,
+	TabsList,
+	TabsTrigger,
+} from "./tabs";
+export type { TabPanelProps } from "./tabs";
 export { Textarea } from "./textarea";
 export type { TextareaProps } from "./textarea";
 export {

@@ -148,7 +148,7 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
 							{createCommentMutation.isPending ? (
 								<Spinner size="sm" label="Posting comment" />
 							) : (
-								"Post Comment"
+								"Post comment"
 							)}
 						</Button>
 					</form>
@@ -265,7 +265,7 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
 											</div>
 											{canEditOrDelete(comment) && (
 												<div className="flex gap-0.5">
-													<Tooltip content="Edit Comment">
+													<Tooltip content="Edit comment">
 														{/* Disable edit button while another edit is in progress */}
 														<Button
 															variant="ghost"
@@ -274,19 +274,19 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
 																handleEditComment(comment.id, comment.text)
 															}
 															disabled={!!editingCommentId}
-															aria-label="Edit Comment"
+															aria-label="Edit comment"
 														>
 															<SquarePen />
 														</Button>
 													</Tooltip>
-													<Tooltip content="Delete Comment">
+													<Tooltip content="Delete comment">
 														{/* Disable delete button while an edit is in progress */}
 														<Button
 															variant="ghost"
 															size="icon-sm"
 															onClick={() => handleDeleteComment(comment.id)}
 															disabled={!!editingCommentId}
-															aria-label="Delete Comment"
+															aria-label="Delete comment"
 														>
 															<Trash2 />
 														</Button>

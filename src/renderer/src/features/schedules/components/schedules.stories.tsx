@@ -6,61 +6,9 @@
  * the real page, the real query layer and the real row component all run.
  */
 
-import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
-import type { ThemeName } from "@shared/themes";
 import type { Meta, StoryObj } from "@storybook/react";
-import { type ReactNode, useLayoutEffect } from "react";
 import "../../../styles/index.css";
 import { SchedulesPage } from "./schedules-page";
-
-const THEME_IDS = [
-	"localOperatorDark",
-	"localOperatorLight",
-	"dracula",
-	"dune",
-	"sage",
-	"monokai",
-	"tokyoNight",
-	"iceberg",
-	"radient",
-	"neon",
-	"obsidian",
-	"synth",
-] as const;
-
-type StoryArgs = { theme: (typeof THEME_IDS)[number] };
-
-const ThemeFrame = ({
-	theme,
-	children,
-}: {
-	theme: ThemeName;
-	children: ReactNode;
-}) => {
-	useLayoutEffect(() => {
-		const previousAttr = document.documentElement.dataset.theme;
-		const previousName = useUiPreferencesStore.getState().themeName;
-		document.documentElement.dataset.theme = theme;
-		useUiPreferencesStore.setState({ themeName: theme });
-		return () => {
-			if (previousAttr === undefined) {
-				document.documentElement.removeAttribute("data-theme");
-			} else {
-				document.documentElement.dataset.theme = previousAttr;
-			}
-			useUiPreferencesStore.setState({ themeName: previousName });
-		};
-	}, [theme]);
-
-	return (
-		<div
-			data-theme={theme}
-			className="h-screen bg-canvas font-sans text-body text-ink"
-		>
-			{children}
-		</div>
-	);
-};
 
 const AGENTS = [
 	{ id: "3f21c0aa-1d55-4a8b-9a1e-27a4f0d9b111", name: "Inbox triage" },
@@ -178,24 +126,16 @@ const installFetchStub = () => {
 
 installFetchStub();
 
-const meta: Meta<StoryArgs> = {
+const meta: Meta = {
 	title: "Schedules/Page",
 	parameters: { layout: "fullscreen" },
-	argTypes: {
-		theme: { control: { type: "select" }, options: THEME_IDS },
-	},
-	args: { theme: "localOperatorDark" },
 };
 
 export default meta;
 
-type Story = StoryObj<StoryArgs>;
+type Story = StoryObj;
 
 /** The populated list. */
 export const List: Story = {
-	render: ({ theme }) => (
-		<ThemeFrame theme={theme}>
-			<SchedulesPage />
-		</ThemeFrame>
-	),
+	render: () => <SchedulesPage />,
 };

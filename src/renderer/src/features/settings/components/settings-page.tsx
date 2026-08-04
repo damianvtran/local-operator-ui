@@ -543,8 +543,20 @@ export const SettingsPage: FC = () => {
 			 * The rail's edge lives here rather than on the nav, because only the
 			 * container knows which way the layout is running: the same hairline has
 			 * to be a right edge beside the content and a bottom edge above it.
+			 *
+			 * Two widths, and the `min-[1040px]:` step is paired with the
+			 * `(min-width: 1040px)` query inside `SettingsSidebar`, which is what
+			 * swaps the rows between labels and icons-with-tooltips. Changing one
+			 * without the other leaves labels clipped in a 48px column or a 220px
+			 * column of bare marks. 1040 is where this rail and the 220px app rail
+			 * beside it still leave 600px of content.
+			 *
+			 * There is no intermediate width because there is no useful one:
+			 * "Application updates" measures 121px of text and needs a 186px rail
+			 * to render whole, so anything between 48 and 220 buys a few pixels of
+			 * content in exchange for an ellipsis on a destination's name.
 			 */}
-			<div className="w-55 shrink-0 overflow-y-auto border-r border-hairline max-md:max-h-[40vh] max-md:w-full max-md:border-r-0 max-md:border-b">
+			<div className="w-12 shrink-0 overflow-y-auto border-r border-hairline min-[1040px]:w-55 max-md:max-h-[40vh] max-md:w-full max-md:border-r-0 max-md:border-b">
 				<SettingsSidebar
 					activeSection={activeSection}
 					onSelectSection={handleSelectSection}

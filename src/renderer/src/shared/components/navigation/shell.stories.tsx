@@ -5,7 +5,6 @@ import { SidebarNavigation } from "@shared/components/navigation/sidebar-navigat
 import { cn } from "@shared/lib/utils";
 import { useAgentSelectionStore } from "@shared/store/agent-selection-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
-import { applyThemeToDocument } from "@shared/themes";
 import type { Meta, StoryObj } from "@storybook/react";
 import { type FC, type ReactNode, useLayoutEffect } from "react";
 
@@ -23,13 +22,13 @@ import { type FC, type ReactNode, useLayoutEffect } from "react";
  * not recognise, so a Radient call still fails the way it would offline and the
  * signed-out branches render honestly.
  *
- * ## Why it sets the theme through the store
+ * ## Where the theme comes from
  *
- * `data-theme` on the document element only moves the Tailwind half of the
- * bridge. The MUI half reads the theme object out of the preferences store, so
- * a story that sets the attribute alone renders half the screen in one palette
- * and half in another. Setting the store and letting `applyThemeToDocument`
- * follow is what the app itself does.
+ * The preview-level frame in `.storybook/preview.tsx`, which moves the MUI
+ * theme object, `data-theme` and the preferences store together from one
+ * `theme` arg. This file used to drive the store itself, which meant the
+ * Storybook theme control did nothing here and an evidence run of the shell
+ * produced one palette under twelve filenames.
  */
 
 const NOW = "2025-11-04T09:12:00Z";
@@ -244,25 +243,14 @@ const useFixtureFetch = () => {
 };
 
 /*
- * The theme is whatever the preferences store holds, and the store is
- * persisted, so a screenshot run picks a palette by writing
- * `ui-preferences-storage` before the page loads — the same key the app writes.
- * Deliberately not a Storybook arg: an arg would let the control and the
- * persisted value disagree, and the one that lost would still be driving MUI.
- *
  * No `MemoryRouter` here. The preview already wraps every story in one, and
  * react-router throws outright on a nested `Router` — which renders as a
- * Storybook configuration error rather than as a screen, so it is worth naming.
- * The two pages this frames read the route through hooks that fall back to
- * their own stores, which is what `AgentsSelection` below sets.
+ * Storybook configuration error rather than as a screen, so it is worth
+ * naming. The two pages this frames read the route through hooks that fall
+ * back to their own stores, which is what `useSelectedAgent` below sets.
  */
 const ShellFrame: FC<{ children: ReactNode }> = ({ children }) => {
-	const themeName = useUiPreferencesStore((state) => state.themeName);
 	useFixtureFetch();
-
-	useLayoutEffect(() => {
-		applyThemeToDocument(themeName);
-	}, [themeName]);
 
 	return (
 		<div className={cn("flex h-screen overflow-hidden bg-canvas")}>
