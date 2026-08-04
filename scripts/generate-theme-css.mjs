@@ -35,6 +35,7 @@ import { fileURLToPath } from "node:url";
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const PALETTE_DIR = join(ROOT, "src/renderer/src/shared/themes/palettes");
 const OUT = join(ROOT, "src/renderer/src/styles/themes.generated.css");
+const THEME_CSS = join(ROOT, "src/renderer/src/styles/index.css");
 
 /** camelCase role -> kebab-case custom property suffix. */
 const kebab = (s) => s.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`);
@@ -75,6 +76,43 @@ const block = ({ id, palette }) => {
 	return `[data-theme="${id}"] {\n\tcolor-scheme: ${palette.mode};\n${lines}\n}`;
 };
 
+/**
+ * Re-declare Tailwind's role variables inside any scoped theme subtree.
+ *
+ * THE DEFECT THIS FIXES. `@theme` emits `--color-canvas: var(--lo-canvas)` on
+ * `:root`. A `var()` inside a custom property is substituted where the property
+ * is DECLARED, not where it is used, so `--color-canvas` is frozen to the root
+ * palette's value and every descendant inherits that already-resolved colour.
+ * Putting `data-theme="dracula"` on a wrapper therefore rebinds `--lo-*` for
+ * the subtree while every Tailwind role utility inside it keeps painting the
+ * ACTIVE theme.
+ *
+ * Measured before this existed, with root dark and a light-scoped subtree:
+ * `--lo-canvas` was #f7f4ee (correct) while `--color-canvas` was #16130e and
+ * `bg-canvas` painted rgb(22,19,14). The twelve previews in the theme picker
+ * were all showing the active theme.
+ *
+ * The pairs are parsed out of index.css rather than restated here, so adding a
+ * role to `@theme` cannot silently leave scoped previews stale.
+ */
+const scopedRoleBlock = () => {
+	const css = readFileSync(THEME_CSS, "utf8");
+	const start = css.indexOf("@theme {");
+	if (start === -1) throw new Error("no @theme block in styles/index.css");
+	const pairs = [
+		...css
+			.slice(start, css.indexOf("\n}", start))
+			.matchAll(/(--color-[\w-]+):\s*var\((--lo-[\w-]+)\)/g),
+	];
+	if (pairs.length === 0) throw new Error("no --color-* -> --lo-* pairs found");
+	const lines = pairs.map(([, name, src]) => `\t${name}: var(${src});`).join("\n");
+	return [
+		"/* Scoped theme subtrees: see scripts/generate-theme-css.mjs for why this",
+		"   re-declaration is required rather than redundant. */",
+		`[data-theme]:not(:root) {\n${lines}\n}`,
+	].join("\n");
+};
+
 const body = [
 	"/*",
 	" * GENERATED FILE — do not edit.",
@@ -89,6 +127,8 @@ const body = [
 	" */",
 	"",
 	...palettes.map(block),
+	"",
+	scopedRoleBlock(),
 	"",
 ].join("\n");
 

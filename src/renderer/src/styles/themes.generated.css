@@ -394,3 +394,36 @@
 	--lo-overlay-shadow: 0 12px 32px -12px rgb(9 9 14 / 0.7);
 	--lo-scrim: rgb(9 9 14 / 0.6);
 }
+
+/* Scoped theme subtrees: see scripts/generate-theme-css.mjs for why this
+   re-declaration is required rather than redundant. */
+[data-theme]:not(:root) {
+	--color-canvas: var(--lo-canvas);
+	--color-surface: var(--lo-surface);
+	--color-elevated: var(--lo-elevated);
+	--color-sunken: var(--lo-sunken);
+	--color-ink: var(--lo-ink);
+	--color-ink-muted: var(--lo-ink-muted);
+	--color-ink-dim: var(--lo-ink-dim);
+	--color-ink-disabled: var(--lo-ink-disabled);
+	--color-hairline: var(--lo-hairline);
+	--color-control: var(--lo-border-control);
+	--color-accent: var(--lo-accent);
+	--color-accent-hover: var(--lo-accent-hover);
+	--color-accent-active: var(--lo-accent-active);
+	--color-accent-wash: var(--lo-accent-wash);
+	--color-on-accent: var(--lo-on-accent);
+	--color-success: var(--lo-success);
+	--color-success-wash: var(--lo-success-wash);
+	--color-success-border: var(--lo-success-border);
+	--color-warning: var(--lo-warning);
+	--color-warning-wash: var(--lo-warning-wash);
+	--color-warning-border: var(--lo-warning-border);
+	--color-danger: var(--lo-danger);
+	--color-danger-wash: var(--lo-danger-wash);
+	--color-danger-border: var(--lo-danger-border);
+	--color-info: var(--lo-info);
+	--color-info-wash: var(--lo-info-wash);
+	--color-info-border: var(--lo-info-border);
+	--color-scrim: var(--lo-scrim);
+}
