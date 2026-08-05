@@ -243,6 +243,16 @@ export const AgentsPage: FC<AgentsPageProps> = () => {
 
 									<Button
 										data-tour-tag="upload-to-hub-header-button"
+										/*
+										 * A second, action-specific tag. The tour tag now sits
+										 * on two controls so the spotlight can find whichever
+										 * is visible, but they do different things: this one
+										 * opens the upload dialog, the overflow trigger opens
+										 * a menu. `click()` does not need visibility, so the
+										 * tour presses THIS one for the action and anchors to
+										 * the visible one for the highlight.
+										 */
+										data-tour-action="open-upload-dialog"
 										variant="secondary"
 										onClick={handleOpenUploadDialog}
 										disabled={uploadAgentMutation.isPending}

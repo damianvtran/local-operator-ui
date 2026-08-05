@@ -29,6 +29,23 @@ const visibleTourTarget = (tag: string): HTMLElement | null => {
 	return carriers.find((el) => el.offsetParent !== null) ?? carriers[0] ?? null;
 };
 
+/**
+ * Press the control that performs a tour action, visible or not.
+ *
+ * Separate from `visibleTourTarget` because the two questions have different
+ * answers when a surface collapses: the agents header shows either its wide
+ * "Upload to hub" button or an overflow trigger, and only the wide one opens
+ * the dialog - the trigger just opens a menu. The spotlight must follow what
+ * the user can see; the action must follow what does the work. `click()` does
+ * not require visibility, so pressing the hidden carrier is legitimate and is
+ * what the tour did before it had two carriers to choose between.
+ */
+const pressTourAction = (action: string): void => {
+	document
+		.querySelector<HTMLElement>(`[data-tour-action="${action}"]`)
+		?.click();
+};
+
 const tourSteps: StepOptions[] = [
 	{
 		id: "welcome",
@@ -874,7 +891,7 @@ A good description helps you and others understand what the agent does and any s
 				text: "Next",
 				classes: "shepherd-button-primary",
 				action: function () {
-					visibleTourTarget("upload-to-hub-header-button")?.click();
+					pressTourAction("open-upload-dialog");
 					setTimeout(() => {
 						this.next();
 					}, 500);
@@ -940,7 +957,7 @@ A good description helps you and others understand what the agent does and any s
 						(button as HTMLButtonElement).click();
 					}
 					setTimeout(() => {
-						visibleTourTarget("upload-to-hub-header-button")?.click();
+						pressTourAction("open-upload-dialog");
 					}, 500);
 					setTimeout(() => {
 						this.back();

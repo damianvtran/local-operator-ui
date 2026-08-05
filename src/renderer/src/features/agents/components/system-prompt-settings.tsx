@@ -11,7 +11,7 @@ import {
 	useAgentSystemPrompt,
 	useUpdateAgentSystemPrompt,
 } from "@shared/hooks/use-agent-system-prompt";
-import { Info, ScrollText } from "lucide-react";
+import { Info, MessageSquareText } from "lucide-react";
 import type { FC } from "react";
 import { useEffect, useState } from "react";
 
@@ -77,7 +77,7 @@ export const SystemPromptSettings: FC<SystemPromptSettingsProps> = ({
 		 */
 		<div data-tour-tag="agent-settings-system-prompt">
 			<h2 className="flex items-center gap-2 text-heading text-ink">
-				<ScrollText size={16} className="shrink-0 text-ink-dim" />
+				<MessageSquareText size={16} className="shrink-0 text-ink-dim" />
 				Agent instructions
 				{/*
 				 * A real button rather than a bare icon: the tooltip is keyboard

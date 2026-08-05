@@ -569,20 +569,30 @@ for (const { id, palette: p } of palettes) {
 	   near-black palettes at all: obsidian's canvas is #09090B and its sunken
 	   #030307, ΔE00 1.23, and there is no darker value left to move to that is
 	   not black. So those two blocks now carry `border-hairline`, the same
-	   treatment their sibling `error-block.tsx` always had, and the hairline is
-	   asserted against every ground by the STRUCTURAL loop above. The
-	   separation is real and gated; it is an edge rather than a step. */
+	   treatment their sibling `error-block.tsx` always had.
+
+	   That edge is asserted here, against both grounds it separates. It is NOT
+	   in `STRUCTURAL`, and an earlier version of this comment claimed it was:
+	   `STRUCTURAL` holds `borderControl` and asserts a 3:1 ratio, which a
+	   hairline is designed never to reach - all 48 hairline/ground pairs sit
+	   between 1.04:1 and 1.92:1, because a separator that shouted would be a
+	   border. Perceptibility is the right question for it, and that is what
+	   ΔE00 asks: worst case localOperatorLight, 4.35 against canvas and 3.28
+	   against sunken, both well over the 2.0 floor and both far more than the
+	   1.23 step the edge stands in for. */
 	for (const [a, b] of [
 		["canvas", "surface"],
 		["surface", "elevated"],
 		["elevated", "sunken"],
+		["hairline", "canvas"],
+		["hairline", "sunken"],
 	]) {
 		if (!isHex(p[a]) || !isHex(p[b])) continue;
 		assertions++;
 		const got = deltaE(p[a], p[b]);
 		if (got < 2.0) {
 			fail(
-				`${id}: adjacent grounds \`${a}\` and \`${b}\` are ΔE00 ${r2(got)} apart (need 2.0) — a step the eye cannot see is not a step`,
+				`${id}: adjacent \`${a}\` and \`${b}\` are ΔE00 ${r2(got)} apart (need 2.0) — a separation the eye cannot see is not a separation`,
 			);
 		}
 	}
