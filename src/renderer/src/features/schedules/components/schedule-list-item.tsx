@@ -65,14 +65,23 @@ const createScheduleDisplayString = (schedule: ScheduleResponse): string => {
 		return `${formatTime(date)} on ${dated}`;
 	};
 
-	/* The end of a recurrence is the exception, and it is not an occurrence.
-	   "Every day at 8:16 PM to 11:30 PM" is what a schedule running for four
-	   days rendered as - character-identical to one that stops the same night,
-	   because the rule above dropped the date that was the entire difference
-	   between them. When a recurrence stops IS a fact about the schedule, so
-	   it always carries its day. */
+	/* Both bounds of a recurrence are facts about the schedule, and neither is
+	   an occurrence, so both always carry their day.
+
+	   The end learned this first: "Every day at 8:16 PM to 11:30 PM" was what a
+	   schedule running for four days rendered as, character-identical to one
+	   stopping the same night. The start had the same defect one clause over -
+	   a daily job starting tonight and one starting three weeks out both read
+	   "Every day at 12:25 AM", so a schedule that has not begun looked like one
+	   that is running, beside an active toggle. */
 	const alwaysDated = (date: Date): string =>
 		`${formatTime(date)} on ${formatDate(date, date.getFullYear() !== currentYear)}`;
+
+	/* "from" rather than "on", because the day a recurrence starts bounds it
+	   rather than naming the day it runs: "Every day at 8:16 PM on Wednesday"
+	   says the opposite of what it means. */
+	const fromDay = (date: Date): string =>
+		`, from ${formatDate(date, date.getFullYear() !== currentYear)}`;
 
 	let displayString: string;
 	if (schedule.one_time) {
@@ -122,8 +131,11 @@ const createScheduleDisplayString = (schedule: ScheduleResponse): string => {
 						? " on the hour"
 						: ` at ${past} minute${past === 1 ? "" : "s"} past`;
 			}
-		} else {
+			displayString += fromDay(startTime);
+		} else if (schedule.one_time) {
 			displayString += ` at ${withDate(startTime)}`;
+		} else {
+			displayString += ` at ${formatTime(startTime)}${fromDay(startTime)}`;
 		}
 	}
 

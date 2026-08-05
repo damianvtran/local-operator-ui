@@ -517,8 +517,6 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 
 		if (window.document.queryCommandState("bold")) formats.push("bold");
 		if (window.document.queryCommandState("italic")) formats.push("italic");
-		if (window.document.queryCommandState("underline"))
-			formats.push("underline");
 		if (window.document.queryCommandState("strikeThrough"))
 			formats.push("strikethrough");
 
@@ -1010,9 +1008,6 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 				case "italic":
 					executeCommand("italic");
 					break;
-				case "underline":
-					executeCommand("underline");
-					break;
 				case "strikethrough":
 					executeCommand("strikeThrough");
 					break;
@@ -1208,12 +1203,25 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 	const handleKeyDown = useCallback(
 		(event: React.KeyboardEvent) => {
 			if (event.key === "Tab") {
+				/*
+				 * Tab nests a list item, and does nothing anywhere else.
+				 *
+				 * `execCommand("indent")` on a paragraph emits a styled
+				 * `<blockquote>`, which saves as `> text` - byte-identical to
+				 * what Quote writes. A user pressing Tab, usually by accident,
+				 * got a blockquote they did not ask for and could not tell apart
+				 * from one they did. Inside a list the same command nests the
+				 * item and round-trips through markdown correctly, which is the
+				 * only reason this key still does anything.
+				 */
+				const anchor = window.getSelection()?.anchorNode;
+				const element =
+					anchor?.nodeType === Node.ELEMENT_NODE
+						? (anchor as Element)
+						: anchor?.parentElement;
+				if (!element?.closest("li")) return;
 				event.preventDefault();
-				if (event.shiftKey) {
-					executeCommand("outdent");
-				} else {
-					executeCommand("indent");
-				}
+				executeCommand(event.shiftKey ? "outdent" : "indent");
 				return;
 			}
 
@@ -1237,10 +1245,10 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 						event.preventDefault();
 						handleFormatToggle("italic");
 						break;
-					case "u":
-						event.preventDefault();
-						handleFormatToggle("underline");
-						break;
+					/* No `case "u"`: `execCommand("underline")` emits `<u>`, which
+					   the save path turns into `*text*` and reopens as italic. A
+					   shortcut that silently rewrites the user's formatting as a
+					   different one is worse than no shortcut. */
 					case "s":
 						event.preventDefault();
 						handleManualSave();
@@ -1620,11 +1628,20 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 			 * Eight are: block type, bold, italic, the three list kinds, link, and
 			 * the overflow. Undo and redo pin to the right, because they act on
 			 * the document rather than on the selection and every drawing app from
-			 * Figma to Sketch reads left-to-right as tools-then-history. The other
-			 * eleven — underline, strikethrough, quote, code block, indent,
-			 * outdent, three alignments, image, table — sit one click away in a
-			 * single grouped menu, which is what Craft, Dropbox Paper and Linear's
-			 * editor all do rather than showing every command at once.
+			 * Figma to Sketch reads left-to-right as tools-then-history.
+			 *
+			 * The overflow holds eight: strikethrough, the three list kinds,
+			 * quote, code block, image and table. The lists appear in both
+			 * places deliberately - they are frequent enough to earn a permanent
+			 * button and structural enough that someone hunting for "make this a
+			 * list" opens the menu first. Everything else there is one click
+			 * away, which is what Craft, Dropbox Paper and Linear's editor all
+			 * do rather than showing every command at once.
+			 *
+			 * Underline, indent, outdent and the three alignments are in neither
+			 * place, and not on a keyboard shortcut either: none of them
+			 * survives a markdown round trip, so the editor no longer offers a
+			 * control whose effect the next save discards.
 			 *
 			 * `flex-nowrap`: at the panel's 400px minimum the bar must clip or
 			 * stack, and it does neither, because the list group steps out at
@@ -1740,7 +1757,12 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 								</Button>
 							</DropdownMenuTrigger>
 						</Tooltip>
-						<DropdownMenuContent align="start" className={cn("w-52")}>
+						{/* w-44 (176px), not w-52: the old width was sized for
+						    "Underline (Ctrl+U)" and "Align center", and both are
+						    gone. The widest surviving label is "Numbered list" at
+						    106px, which with the icon column and padding needs
+						    176px and left 42% of a 208px menu empty. */}
+						<DropdownMenuContent align="start" className={cn("w-44")}>
 							{OVERFLOW_TEXT_FORMATS.map(({ value, label, Icon }) => (
 								<DropdownMenuItem
 									key={value}

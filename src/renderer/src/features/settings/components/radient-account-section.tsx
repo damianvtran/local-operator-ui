@@ -11,6 +11,7 @@ import { Spinner } from "@shared/components/common/spinner";
 import { Alert, Badge, Button } from "@shared/components/ui";
 import { useRadientAuth } from "@shared/hooks";
 import { useUserStore } from "@shared/store/user-store";
+import { formatCalendarDate } from "@shared/utils/date-utils";
 import { LogOut } from "lucide-react";
 import { type FC, useCallback, useMemo } from "react";
 import { InfoGrid, InfoItem } from "./settings-section";
@@ -70,7 +71,7 @@ export const RadientAccountSection: FC<RadientAccountSectionProps> = ({
 					/>
 					<InfoItem
 						label="Created"
-						value={new Date(account.created_at).toLocaleString()}
+						value={formatCalendarDate(account.created_at)}
 					/>
 				</InfoGrid>
 

@@ -17,6 +17,7 @@ import { useUpdateConfig } from "@shared/hooks/use-update-config";
 import { useUsageRollup } from "@shared/hooks/use-usage-rollup";
 import { cn } from "@shared/lib/utils";
 import { useUserStore } from "@shared/store/user-store";
+import { formatCalendarDate } from "@shared/utils/date-utils";
 import { format, formatRFC3339, parseISO, subDays } from "date-fns";
 import {
 	ChartLine,
@@ -760,10 +761,8 @@ export const SettingsPage: FC = () => {
 										}
 									/>
 									<InfoItem
-										label="Created at"
-										value={new Date(
-											config.metadata.created_at,
-										).toLocaleString()}
+										label="Created"
+										value={formatCalendarDate(config.metadata.created_at)}
 									/>
 									<InfoItem
 										label="Last modified"
