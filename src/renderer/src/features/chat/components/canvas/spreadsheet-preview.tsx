@@ -183,6 +183,10 @@ const readsAsQuantity = (value: unknown): boolean =>
  * 19-digit reference silently becoming ...6800 is worse than leaving it text.
  */
 const PLAIN_DECIMAL = /^-?(0|[1-9]\d*)(\.\d+)?$/;
+/** Sign and decimal point, removed before counting significant digits. */
+const NON_DIGITS = /[-.]/g;
+/** Leading zeros, which do not count toward precision. */
+const LEADING_ZEROS = /^0+/;
 
 /*
  * Turn a cell the user just edited back into a typed value.
@@ -198,7 +202,8 @@ const coerceEditedCell = (value: unknown): unknown => {
 	if (typeof value !== "string") return value;
 	const trimmed = value.trim();
 	if (!PLAIN_DECIMAL.test(trimmed)) return value;
-	if (trimmed.replace(/[-.]/g, "").replace(/^0+/, "").length > 15) return value;
+	if (trimmed.replace(NON_DIGITS, "").replace(LEADING_ZEROS, "").length > 15)
+		return value;
 	const asNumber = Number(trimmed);
 	return Number.isFinite(asNumber) ? asNumber : value;
 };
