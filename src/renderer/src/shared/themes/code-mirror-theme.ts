@@ -56,7 +56,14 @@ const colors = {
 	string: "var(--color-warning)",
 	number: "var(--color-danger)",
 	regexp: "var(--color-info)",
-	className: "var(--color-info)",
+	/*
+	 * Class and type names deliberately do NOT ride `info`. In four palettes
+	 * `info` is `accent`'s twin, and in obsidian it is `ink` itself, so a
+	 * className on `info` collapses into the variable names beside it. `ink`
+	 * at a heavier weight is the treatment: the same hue the names carry, one
+	 * step of emphasis, readable in every palette.
+	 */
+	className: "var(--color-ink)",
 	functionName: "var(--color-info)",
 	variableName: "var(--color-ink)",
 	base: "var(--color-ink)",
@@ -166,8 +173,8 @@ const highlightStyle = HighlightStyle.define([
 		color: colors.base,
 	},
 	{
-		tag: [t.function(t.variableName), t.labelName],
-		color: colors.foreground,
+		tag: [t.function(t.variableName), t.functionName, t.labelName],
+		color: colors.functionName,
 	},
 	{
 		tag: [t.color, t.constant(t.name), t.standard(t.name)],
@@ -186,6 +193,7 @@ const highlightStyle = HighlightStyle.define([
 			t.namespace,
 		],
 		color: colors.className,
+		fontWeight: "500",
 	},
 	{
 		tag: [
