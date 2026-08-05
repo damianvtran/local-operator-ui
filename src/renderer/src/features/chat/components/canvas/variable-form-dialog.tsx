@@ -19,7 +19,7 @@ import {
 } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
 import { showErrorToast } from "@shared/utils/toast-manager";
-import { Info, Save, XSquare } from "lucide-react";
+import { Info, Save, SquareX } from "lucide-react";
 import type { FC } from "react";
 import { useEffect, useMemo, useState } from "react";
 
@@ -137,7 +137,7 @@ export const VariableFormDialog: FC<VariableFormDialogProps> = ({
 			<SecondaryButton
 				onClick={onClose}
 				disabled={isSubmitting}
-				startIcon={<XSquare size={18} aria-hidden="true" />}
+				startIcon={<SquareX size={18} aria-hidden="true" />}
 			>
 				Cancel
 			</SecondaryButton>

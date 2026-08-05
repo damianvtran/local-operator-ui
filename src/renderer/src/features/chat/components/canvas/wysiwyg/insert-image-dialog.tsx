@@ -1,7 +1,7 @@
 import { BaseDialog } from "@shared/components/common/base-dialog";
 import { Button, Input, Label } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
-import { File as FileIcon, UploadCloud } from "lucide-react";
+import { CloudUpload, File as FileIcon } from "lucide-react";
 import type { DragEvent, FC } from "react";
 import { useCallback, useId, useRef, useState } from "react";
 
@@ -157,7 +157,7 @@ export const InsertImageDialog: FC<InsertImageDialogProps> = ({
 						"transition-colors duration-fast ease-out-quart hover:bg-accent-wash",
 					)}
 				>
-					<UploadCloud
+					<CloudUpload
 						size={32}
 						aria-hidden="true"
 						className={cn("text-ink-dim")}

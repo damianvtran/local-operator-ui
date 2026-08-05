@@ -4,7 +4,7 @@ import { useOidcAuth } from "@shared/hooks/use-oidc-auth";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import {
 	CalendarDays,
-	CheckCircle2,
+	CircleCheck,
 	HardDrive,
 	Link as LinkIcon,
 	type LucideIcon,
@@ -83,7 +83,7 @@ const IntegrationRow: FC<IntegrationRowProps> = ({
 			<div className="flex h-7 shrink-0 items-center justify-end">
 				{isConnected ? (
 					<Badge variant="success">
-						<CheckCircle2 aria-hidden="true" />
+						<CircleCheck aria-hidden="true" />
 						Connected
 					</Badge>
 				) : (

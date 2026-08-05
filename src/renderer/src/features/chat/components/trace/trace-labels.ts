@@ -20,9 +20,9 @@ import type { ActionType } from "@shared/api/local-operator/types";
 import {
 	Book,
 	CircleCheck,
-	Code2,
+	CircleHelp,
+	CodeXml,
 	DoorOpen,
-	HelpCircle,
 	type LucideIcon,
 	Pencil,
 	PencilLine,
@@ -73,14 +73,14 @@ const ACTION_META: Record<
 	READ: { verb: "Read", runningVerb: "Reading", icon: Book },
 	WRITE: { verb: "Wrote", runningVerb: "Writing", icon: Pencil },
 	EDIT: { verb: "Edited", runningVerb: "Editing", icon: PencilLine },
-	CODE: { verb: "Ran code", runningVerb: "Running code", icon: Code2 },
+	CODE: { verb: "Ran code", runningVerb: "Running code", icon: CodeXml },
 	DELEGATE: {
 		verb: "Delegated work",
 		runningVerb: "Delegating work",
 		icon: Share2,
 	},
 	DONE: { verb: "Finished", runningVerb: "Finishing", icon: CircleCheck },
-	ASK: { verb: "Asked", runningVerb: "Asking", icon: HelpCircle },
+	ASK: { verb: "Asked", runningVerb: "Asking", icon: CircleHelp },
 	BYE: {
 		verb: "Ended the conversation",
 		runningVerb: "Ending",
@@ -91,7 +91,7 @@ const ACTION_META: Record<
 const FALLBACK = {
 	verb: "Worked on the request",
 	runningVerb: "Working on the request",
-	icon: Code2,
+	icon: CodeXml,
 };
 
 /**

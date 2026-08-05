@@ -8,10 +8,10 @@ import {
 } from "@shared/components/ui";
 import {
 	ClipboardCopy,
+	Ellipsis,
 	File as FileIcon,
 	FolderOpen,
 	LayoutGrid,
-	MoreHorizontal,
 } from "lucide-react";
 import { showErrorToast, showSuccessToast } from "../../utils/toast-manager";
 
@@ -28,7 +28,7 @@ export type FileActionsMenuProps = {
 	 */
 	tooltip?: string;
 	/**
-	 * Optional: icon to use for the trigger (defaults to MoreHorizontal).
+	 * Optional: icon to use for the trigger (defaults to Ellipsis).
 	 */
 	icon?: React.ReactNode;
 	/**
@@ -81,7 +81,7 @@ export const FileActionsMenu = ({
 						// the attachment opens behind the menu.
 						onClick={(e) => e.stopPropagation()}
 					>
-						{icon ?? <MoreHorizontal aria-hidden="true" />}
+						{icon ?? <Ellipsis aria-hidden="true" />}
 					</Button>
 				</DropdownMenuTrigger>
 			</Tooltip>

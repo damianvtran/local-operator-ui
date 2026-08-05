@@ -443,11 +443,27 @@ const main = async () => {
 		)
 			.toString()
 			.trim().length > 0;
+	/*
+	 * Tree hashes, not just the head.
+	 *
+	 * A head SHA only answers "is this set current?" if the reader also works
+	 * out which commits since then were docs-only - which is judgement, and
+	 * judgement is what the manifest exists to remove. `git rev-parse HEAD:src`
+	 * is the identity of the source that produced these pixels: if it matches
+	 * the head under review, the frames are current no matter how many commits
+	 * separate them.
+	 */
+	const treeHash = (path) =>
+		execFileSync("git", ["rev-parse", `HEAD:${path}`], { cwd: ROOT })
+			.toString()
+			.trim();
 	writeFileSync(
 		join(OUT, "manifest.json"),
 		`${JSON.stringify(
 			{
 				head,
+				srcTree: treeHash("src"),
+				scriptsTree: treeHash("scripts"),
 				dirtyWorkingTree: dirty,
 				capturedAt: new Date().toISOString(),
 				frames: captured,

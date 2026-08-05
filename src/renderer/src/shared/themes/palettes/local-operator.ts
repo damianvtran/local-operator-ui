@@ -58,7 +58,7 @@ export const localOperatorDark: ThemeDefinition = {
 		inkDim: "#918b7d",
 		inkDisabled: "#5f5a4e",
 
-		hairline: "#2e291c",
+		hairline: "#353022",
 		borderControl: "#837c6d",
 
 		accent: "#38c96a",
@@ -171,7 +171,7 @@ export const localOperatorLight: ThemeDefinition = {
 		// role that has to move when its grounds do: left where it was, it fell
 		// to ΔE00 3.50 against the new `canvas` and 2.31 against `sunken`,
 		// undoing on the dividers exactly what the ramp bought on the panels.
-		hairline: "#e1dcd2",
+		hairline: "#ddd8ce",
 		// #857f70 measures 3.29:1 on `sunken` and 3.95:1 on `elevated`. The
 		// binding ground is the darkest one, not the lightest — a mid grey has
 		// its easiest time against white — so `sunken` is the case that has to

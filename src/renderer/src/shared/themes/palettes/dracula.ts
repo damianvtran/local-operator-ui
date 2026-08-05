@@ -36,7 +36,7 @@ export const dracula: ThemeDefinition = {
 		inkDim: "#A3ACC9",
 		inkDisabled: "#6272A4",
 
-		hairline: "#434557",
+		hairline: "#4A4C5E",
 		// The same comment blue lightened further. The old theme bounded every
 		// input with white at 10 percent alpha, which measured about 1.2:1.
 		borderControl: "#7D8BB4",
