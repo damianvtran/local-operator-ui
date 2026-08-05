@@ -8,6 +8,7 @@
 
 import type { Meta, StoryObj } from "@storybook/react";
 import "../../../styles/index.css";
+import { DateTimePicker } from "@shared/components/common/date-time-picker";
 import { SchedulesPage } from "./schedules-page";
 
 const AGENTS = [
@@ -138,4 +139,26 @@ type Story = StoryObj;
 /** The populated list. */
 export const List: Story = {
 	render: () => <SchedulesPage />,
+};
+
+/**
+ * The date-time picker, open.
+ *
+ * The picker's calendar never had a frame in any round - nothing ever opened
+ * it - so its one MUI surface was reviewed from the stylesheet alone. The
+ * wrapper takes `initialOpen` for exactly this.
+ */
+export const PickerOpen: Story = {
+	render: () => (
+		<div className="flex h-screen items-center justify-center bg-canvas p-8">
+			<div className="w-90 rounded-lg border border-hairline bg-surface p-4">
+				<DateTimePicker
+					label="Starts"
+					value="2026-08-06T01:05:00.000Z"
+					onChange={() => {}}
+					initialOpen
+				/>
+			</div>
+		</div>
+	),
 };

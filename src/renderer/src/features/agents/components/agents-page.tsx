@@ -8,7 +8,14 @@
 
 import type { AgentDetails } from "@shared/api/local-operator/types";
 import { PageHeader } from "@shared/components/common/page-header";
-import { Button, Tooltip } from "@shared/components/ui";
+import {
+	Button,
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+	Tooltip,
+} from "@shared/components/ui";
 import {
 	useExportAgent,
 	useUploadAgentToRadientMutation,
@@ -17,7 +24,13 @@ import { useAgent } from "@shared/hooks/use-agents";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import { useAgentRouteParam } from "@shared/hooks/use-route-params";
 import { useAgentSelectionStore } from "@shared/store/agent-selection-store";
-import { Bot, CloudUpload, FileUp, MessageCircle } from "lucide-react";
+import {
+	Bot,
+	CloudUpload,
+	FileUp,
+	MessageCircle,
+	MoreHorizontal,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import type { FC } from "react";
 import { useNavigate } from "react-router-dom";
@@ -160,10 +173,59 @@ export const AgentsPage: FC<AgentsPageProps> = () => {
 						>
 							{selectedAgent && (
 								<div className="flex items-center gap-2">
+									{/*
+									 * The two secondary actions collapse into a menu once the
+									 * header has less than 400px to work with. `PageHeader`
+									 * already wraps them onto a line of their own, and the
+									 * three buttons need about 360px side by side, so 400 is
+									 * the width below which wrapping stops being enough and
+									 * they would be clipped by the page's `overflow-hidden`.
+									 * The threshold is on the header's own width because the
+									 * app rail and the agent list between it and the window
+									 * edge both collapse independently of the viewport.
+									 *
+									 * These same two actions are already in the menu on every
+									 * row of the agent list, so folding them here repeats an
+									 * affordance the user has met rather than inventing one.
+									 */}
+									<DropdownMenu>
+										<DropdownMenuTrigger asChild>
+											<Button
+												variant="secondary"
+												size="icon"
+												aria-label="More agent actions"
+												className="@min-[400px]:hidden"
+											>
+												<MoreHorizontal aria-hidden="true" />
+											</Button>
+										</DropdownMenuTrigger>
+										<DropdownMenuContent align="end" className="min-w-45">
+											<DropdownMenuItem
+												disabled={exportAgentMutation.isPending}
+												onSelect={handleExportAgent}
+											>
+												<FileUp aria-hidden="true" />
+												<span>Export</span>
+											</DropdownMenuItem>
+											<DropdownMenuItem
+												disabled={uploadAgentMutation.isPending}
+												onSelect={handleOpenUploadDialog}
+											>
+												<CloudUpload aria-hidden="true" />
+												<span>
+													{uploadAgentMutation.isPending
+														? "Uploading..."
+														: "Upload to hub"}
+												</span>
+											</DropdownMenuItem>
+										</DropdownMenuContent>
+									</DropdownMenu>
+
 									<Button
 										variant="secondary"
 										onClick={handleExportAgent}
 										disabled={exportAgentMutation.isPending}
+										className="hidden @min-[400px]:inline-flex"
 									>
 										<FileUp aria-hidden="true" />
 										Export
@@ -174,6 +236,7 @@ export const AgentsPage: FC<AgentsPageProps> = () => {
 										variant="secondary"
 										onClick={handleOpenUploadDialog}
 										disabled={uploadAgentMutation.isPending}
+										className="hidden @min-[400px]:inline-flex"
 									>
 										<CloudUpload aria-hidden="true" />
 										{uploadAgentMutation.isPending

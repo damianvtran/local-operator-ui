@@ -5,6 +5,7 @@ import { cn } from "@shared/lib/utils";
 import { formatDistanceToNowStrict } from "date-fns";
 import { Download, Heart, Star } from "lucide-react";
 import type React from "react";
+import { useCallback, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAgentDownloadCountQuery } from "../hooks/use-agent-download-count-query";
 import { useAgentFavouriteCountQuery } from "../hooks/use-agent-favourite-count-query";
@@ -62,12 +63,34 @@ export const AgentCard: React.FC<AgentCardProps> = ({
 		});
 
 	const description = agent.description ?? "";
-	// Long descriptions are clamped at 140 characters; the tooltip carries the
-	// full text exactly when something was cut.
-	const isTruncated = description.length > 140;
-	const truncatedDescription = isTruncated
-		? `${description.slice(0, 139)}…`
-		: description;
+
+	/*
+	 * Whether the three-line clamp is actually cutting anything. This used to
+	 * be `description.length > 140`, which is a different question: how many
+	 * lines a description takes depends on the column width, so a 100-character
+	 * description in a narrow card clamped with no tooltip to read it in, and a
+	 * 150-character one in a wide card offered a tooltip repeating what was
+	 * already on screen. `scrollHeight` against `clientHeight` asks the clamp
+	 * itself, re-asked whenever the card is resized.
+	 */
+	const [isClipped, setIsClipped] = useState(false);
+	const clampObserver = useRef<ResizeObserver | null>(null);
+
+	// A ref callback rather than an effect: toggling the tooltip on remounts
+	// the element it wraps, and the observer has to follow the live node or it
+	// keeps measuring a detached one — which reads 0 and flaps the flag back.
+	const measureClamp = useCallback((node: HTMLSpanElement | null) => {
+		clampObserver.current?.disconnect();
+		clampObserver.current = null;
+		if (!node) return;
+		// 1px: the two heights are rounded independently.
+		const measure = () =>
+			setIsClipped(node.scrollHeight - node.clientHeight > 1);
+		measure();
+		const observer = new ResizeObserver(measure);
+		observer.observe(node);
+		clampObserver.current = observer;
+	}, []);
 
 	const likeTooltip = isAuthenticated
 		? isLiked
@@ -95,19 +118,23 @@ export const AgentCard: React.FC<AgentCardProps> = ({
 				 * A fixed three-line description. Clamping rather than truncating
 				 * at a character count keeps every card's footer on the same
 				 * baseline, which is the difference between a grid and eight
-				 * boxes of different heights.
+				 * boxes of different heights. The text is no longer pre-cut at 139
+				 * characters either — the clamp already ends the line with an
+				 * ellipsis, and cutting first meant a card wide enough to show the
+				 * whole description still showed a truncated one.
+				 *
+				 * `Tooltip` renders its child bare when `content` is empty, so
+				 * there is one element here and it only gains a tooltip once the
+				 * clamp is measurably cutting text.
 				 */}
-				{isTruncated ? (
-					<Tooltip content={description}>
-						<span className="line-clamp-3 min-h-0 text-body-sm text-ink-muted">
-							{truncatedDescription}
-						</span>
-					</Tooltip>
-				) : (
-					<p className="line-clamp-3 min-h-0 text-body-sm text-ink-muted">
-						{truncatedDescription}
-					</p>
-				)}
+				<Tooltip content={isClipped ? description : ""}>
+					<span
+						ref={measureClamp}
+						className="line-clamp-3 min-h-0 text-body-sm text-ink-muted"
+					>
+						{description}
+					</span>
+				</Tooltip>
 
 				<div className="mt-auto flex flex-col gap-2 pt-2">
 					<AgentTagsAndCategories

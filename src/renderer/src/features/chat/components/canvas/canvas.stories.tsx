@@ -19,7 +19,7 @@
  */
 
 import type { Meta, StoryObj } from "@storybook/react";
-import { type FC, type ReactNode, useMemo } from "react";
+import { type FC, type ReactNode, useEffect, useMemo } from "react";
 import "../../../../styles/index.css";
 import type { EditDiff } from "@shared/api/local-operator/types";
 import { useCanvasStore } from "@shared/store/canvas-store";
@@ -281,7 +281,26 @@ const ChatColumnMock = () => (
 			Three customers are outstanding: Northwind, Contoso and Fabrikam, for
 			$6,290 in total. The write-up is open in the canvas.
 		</p>
-		<div className="mt-auto h-24 rounded-lg border border-hairline bg-surface" />
+		{/*
+		 * A faithful composer stand-in rather than an empty box. The previous
+		 * `h-24` div made every canvas frame claim a chat column while showing
+		 * a blank rounded rectangle where the composer lives; a reviewer
+		 * judging the canvas was judging a hole. This carries the composer's
+		 * real geometry - the box, the placeholder line, the attach and send
+		 * affordances - without importing the live component, which drags in
+		 * the backend client the stories deliberately stub.
+		 */}
+		<div className="mt-auto flex flex-col gap-2 rounded-lg border border-control bg-surface p-3">
+			<p className="text-body-sm text-ink-dim">
+				Ask a follow-up about the write-up
+			</p>
+			<div className="flex items-center justify-between">
+				<span className="text-meta text-ink-dim">Paperclip · Model</span>
+				<span className="rounded-sm bg-accent px-3 py-1 text-meta text-on-accent">
+					Send
+				</span>
+			</div>
+		</div>
 	</div>
 );
 
@@ -364,6 +383,28 @@ export const Code: Story = {
 	render: () => <CanvasFrame view="documents" activeId={DOCUMENTS[2].id} />,
 };
 
+/**
+ * Code editor, focused.
+ *
+ * The inset focus ring has never had a frame: none of the captured surfaces
+ * shows the editor with focus, so the one keyboard indicator on the app's
+ * code surface was reviewed from the stylesheet alone. CodeMirror has no
+ * autofocus prop here, so the story focuses the content once after mount;
+ * `cm-focused` lands on the editor root and the ring paints.
+ */
+export const CodeFocused: Story = {
+	render: () => <FocusedCanvasFrame />,
+};
+
+const FocusedCanvasFrame = () => {
+	useEffect(() => {
+		const id = window.setTimeout(() => {
+			document.querySelector<HTMLElement>(".cm-content")?.focus();
+		}, 250);
+		return () => window.clearTimeout(id);
+	}, []);
+	return <CanvasFrame view="documents" activeId={DOCUMENTS[2].id} />;
+};
 /** Files view: the attachment grid. */
 export const Files: Story = {
 	render: () => <CanvasFrame view="files" activeId={DOCUMENTS[0].id} />,

@@ -1,10 +1,28 @@
-import radientIcon from "@assets/radient-icon-1024x1024.png";
+import { RadientMark } from "@shared/components/common/radient-mark";
 import { Tooltip } from "@shared/components/ui/tooltip";
 import { useMediaQuery } from "@shared/hooks/use-media-query";
 import { cn } from "@shared/lib/utils";
-import type { LucideIcon } from "lucide-react";
 import { Download, Key, Paintbrush, Puzzle, Settings } from "lucide-react";
-import type { FC } from "react";
+import type { ComponentType, FC } from "react";
+
+/**
+ * A section's glyph. Every entry is now a component that draws itself in
+ * `currentColor` at a given size — lucide's shape, which `RadientMark` also
+ * satisfies. It used to be `LucideIcon | string` with an `isImage` flag, so
+ * that one section could hand over a PNG; both call sites then carried a
+ * branch, and the image branch had to be sized separately to stop the list
+ * jumping. One kind of glyph needs neither.
+ */
+/*
+ * `ComponentType`, not `FC`: lucide icons are forward-ref components, which
+ * are not `FC`s. The old type only ever passed because every section icon
+ * happened to be a plain function component; the first forward-ref icon
+ * (RadientMark) broke it.
+ */
+export type SectionIcon = ComponentType<{
+	size?: string | number;
+	className?: string;
+}>;
 
 /**
  * Type definition for settings sections
@@ -12,8 +30,7 @@ import type { FC } from "react";
 export type SettingsSection = {
 	id: string;
 	label: string;
-	icon: LucideIcon | string;
-	isImage?: boolean;
+	icon: SectionIcon;
 };
 
 /**
@@ -166,18 +183,7 @@ export const SettingsSidebar: FC<SettingsSidebarProps> = ({
 						isActive ? "text-accent" : "text-ink-dim",
 					)}
 				>
-					{section.isImage ? (
-						<img
-							src={section.icon as string}
-							alt=""
-							className="size-4 object-contain"
-						/>
-					) : (
-						(() => {
-							const IconComponent = section.icon as LucideIcon;
-							return <IconComponent size={16} />;
-						})()
-					)}
+					<section.icon size={16} />
 				</span>
 				{labelled && <span className="truncate">{section.label}</span>}
 			</button>
@@ -247,8 +253,7 @@ export const DEFAULT_SETTINGS_SECTIONS: SettingsSection[] = [
 	{
 		id: "radient",
 		label: "Radient account",
-		icon: radientIcon,
-		isImage: true,
+		icon: RadientMark,
 	},
 	{
 		id: "integrations",

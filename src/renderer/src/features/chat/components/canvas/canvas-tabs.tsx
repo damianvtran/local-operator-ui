@@ -8,7 +8,7 @@ import {
 } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
 import { Check, ChevronDown, X } from "lucide-react";
-import { type FC, memo, useCallback, useEffect, useRef } from "react";
+import { type FC, memo, useCallback, useEffect, useRef, useState } from "react";
 import type { CanvasDocument } from "../../types/canvas";
 
 type CanvasTabsProps = {
@@ -81,6 +81,44 @@ const CanvasTabsComponent: FC<CanvasTabsProps> = ({
 	onCloseDocument,
 }) => {
 	const tabRefs = useRef(new Map<string, HTMLButtonElement>());
+	const stripRef = useRef<HTMLDivElement>(null);
+
+	/*
+	 * Whether there is strip left of the right edge to scroll to. The fade is
+	 * a promise that the row continues; drawn unconditionally it ghosted the
+	 * last filename of a row that ended there, and it did the same again once
+	 * the strip was scrolled to its end. So it tracks the scroll position, not
+	 * just the overflow — one boolean, recomputed on scroll and on resize, the
+	 * same `ResizeObserver` shape `use-scroll-to-bottom.ts` already uses for
+	 * the message list.
+	 */
+	const [hasMoreRight, setHasMoreRight] = useState(false);
+
+	// biome-ignore lint/correctness/useExhaustiveDependencies: adding or closing a tab changes the strip's scrollable width without resizing the strip itself, so the measurement must re-run when documents change even though the body never reads them.
+	useEffect(() => {
+		const strip = stripRef.current;
+		if (!strip) return;
+
+		const measure = () => {
+			// 1px: `scrollWidth` and `clientWidth` are rounded independently, so
+			// a fully scrolled strip lands a fraction short of equal.
+			setHasMoreRight(
+				strip.scrollWidth - strip.clientWidth - strip.scrollLeft > 1,
+			);
+		};
+
+		measure();
+		strip.addEventListener("scroll", measure, { passive: true });
+		const observer = new ResizeObserver(measure);
+		observer.observe(strip);
+
+		return () => {
+			strip.removeEventListener("scroll", measure);
+			observer.disconnect();
+		};
+		// `documents` is a dependency because adding or closing a tab changes
+		// the scrollable width without resizing the strip itself.
+	}, [documents]);
 
 	// The active id can point at a document that has just been closed, so the
 	// selection is derived rather than stored: falling back to the first tab
@@ -148,6 +186,7 @@ const CanvasTabsComponent: FC<CanvasTabsProps> = ({
 	return (
 		<div className={cn("flex shrink-0 items-stretch border-hairline border-b")}>
 			<div
+				ref={stripRef}
 				role="tablist"
 				aria-label="Open documents"
 				aria-orientation="horizontal"
@@ -155,9 +194,10 @@ const CanvasTabsComponent: FC<CanvasTabsProps> = ({
 					"flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto bg-sunken px-1 py-1",
 					// Native scrollbars steal 15px from a 32px strip and appear only
 					// on some platforms, so the strip is scrolled without one and the
-					// mask is what says the row continues.
+					// mask is what says the row continues — only when it does.
 					"[-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
-					"[mask-image:linear-gradient(to_right,black_calc(100%-24px),transparent)]",
+					hasMoreRight &&
+						"[mask-image:linear-gradient(to_right,black_calc(100%-24px),transparent)]",
 				)}
 			>
 				{documents.map((doc, index) => {

@@ -82,8 +82,29 @@ export const sage: ThemeDefinition = {
 		// reads as a member of this palette rather than a swatch borrowed from
 		// a cooler one. Now ΔE00 46.9 from `success` and 36.8 from `accent`.
 		info: "#3C67A1",
-		infoWash: "#E1E7F6",
-		infoBorder: "#6C82AA",
+		// The wash and the border are seated by loudness, not by eye. Sage's
+		// other four washes sit ΔE00 3.98-5.70 from `canvas` — the tightest
+		// family in the twelve palettes, because each is a warm tint of a warm
+		// paper and hue costs nothing when the hue already matches. The first
+		// blue wash tried here sat at 13.75: 2.4x the loudest of the family it
+		// had just joined, so the one callout that means "nothing is wrong"
+		// shouted over the one that means "this failed".
+		//
+		// On paper this warm, that loudness is bought entirely by hue, not by
+		// lightness or chroma — the old wash was already at the family's L* and
+		// chroma. Measured against this canvas, a wash at b* 0 costs 6.16 and
+		// b* -1 costs 7.10, both already over the family's ceiling. So the fill
+		// stops at the coolest point the budget reaches (b* +1.0, ΔE00 5.52,
+		// between `successWash` 5.54 and `dangerWash` 5.70) and reads cool by
+		// being neutral beside cream rather than by being blue. The blue moves
+		// to the border, which is where `warning` already keeps its ochre.
+		infoWash: "#E9E9E7",
+		// Lab hue 276, the same as `info` itself, at L*56.4 and 3.09:1 against
+		// canvas — the family's own border lightness (56.4/56.6/56.5) and its
+		// own contrast (3.09/3.07/3.08). It carries more chroma than the border
+		// it replaces, not less: with the fill neutral the edge is what says
+		// which callout this is, and its ΔE00 from canvas is unchanged at 38.
+		infoBorder: "#6888BE",
 
 		overlayShadow: "0 12px 32px -12px rgb(34 44 31 / 0.22)",
 		scrim: "rgb(34 44 31 / 0.35)",

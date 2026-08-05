@@ -197,13 +197,19 @@ export const localOperatorLight: ThemeDefinition = {
 		dangerBorder: "#96544c",
 		// A blue, for the reasons written out at `info` in `localOperatorDark`;
 		// same Lab hue 272, at L*43 C*40 to sit in this palette's ink family.
-		// Measured: 5.11:1 on `canvas`, 5.46:1 on `surface`, 4.94:1 on its own
+		// Measured: 5.11:1 on `canvas`, 5.46:1 on `surface`, 4.86:1 on its own
 		// wash, with the border at 5.03:1 against `canvas`. ΔE00 38.9 from
-		// `success` and 41.4 from `accent`, against 2.2 and 0.0 before. The
-		// wash holds R 231 where `successWash` holds 230, so it is a blue tint
-		// of the warm ground rather than a cool patch laid over it.
+		// `success` and 41.4 from `accent`, against 2.2 and 0.0 before.
+		//
+		// The wash is seated by loudness, not by eye. Every other wash in this
+		// palette sits ΔE00 3.69-7.19 from `canvas`; the first blue tried here
+		// sat at 10.29, so the one cool callout in the set arrived 1.4x louder
+		// than the four warm ones it joined. Cool is expensive on warm paper —
+		// hue distance, not lightness, is what costs — so this holds b* at -2.2
+		// instead of -6.0: still visibly the cool one beside `warningWash`, now
+		// ΔE00 7.06, just inside `dangerWash`'s 7.19 at the top of the family.
 		info: "#2368a8",
-		infoWash: "#e7edf8",
+		infoWash: "#e9ebef",
 		infoBorder: "#486893",
 
 		overlayShadow: "0 12px 32px -12px rgb(20 17 12 / 0.25)",

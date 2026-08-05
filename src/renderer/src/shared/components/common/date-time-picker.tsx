@@ -147,17 +147,28 @@ type DateTimePickerProps = {
 	onChange: (isoDateString: string | null) => void;
 	disabled?: boolean;
 	helperText?: string;
+	/**
+	 * Open the date popup on mount.
+	 *
+	 * A capture surface for the evidence set: the picker's calendar had no
+	 * frame in any round because nothing ever opened it. It is controlled
+	 * state, so the story that wants the popup visible asks for it here
+	 * rather than clicking.
+	 */
+	initialOpen?: boolean;
 };
 
 export const DateTimePicker: FC<DateTimePickerProps> = ({
 	label,
 	value,
 	onChange,
+	initialOpen = false,
 	disabled,
 	helperText,
 }) => {
 	const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 	const [selectedTime, setSelectedTime] = useState<Date | null>(null);
+	const [dateOpen, setDateOpen] = useState(initialOpen);
 	const baseId = useId();
 
 	useEffect(() => {
@@ -241,6 +252,9 @@ export const DateTimePicker: FC<DateTimePickerProps> = ({
 							value={selectedDate}
 							onChange={handleDateChange}
 							disabled={disabled}
+							open={initialOpen ? dateOpen : undefined}
+							onOpen={() => setDateOpen(true)}
+							onClose={() => setDateOpen(false)}
 							enableAccessibleFieldDOMStructure={false}
 							slots={{
 								textField: PickerTextField,
