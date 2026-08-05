@@ -169,20 +169,36 @@ const readsAsQuantity = (value: unknown): boolean =>
 	(typeof value === "string" && QUANTITY_TEXT.test(value.trim()));
 
 /*
+ * A plain decimal, and nothing cleverer.
+ *
+ * `Number()` accepts far more than a spreadsheet cell should: it reads `0x1A`
+ * as 26, `1e3` as 1000, and it strips the leading zeros off `0800`. Those are
+ * not numbers a user typed, they are identifiers - zip codes, account numbers,
+ * phone extensions, part numbers - and silently renumbering one is exactly the
+ * corruption this path exists to prevent.
+ *
+ * A leading zero is therefore disqualifying (except a bare `0`), as is any
+ * exponent, sign other than `-`, or separator. Fifteen significant digits is
+ * the ceiling because a double cannot hold more without rounding, and a
+ * 19-digit reference silently becoming ...6800 is worse than leaving it text.
+ */
+const PLAIN_DECIMAL = /^-?(0|[1-9]\d*)(\.\d+)?$/;
+
+/*
  * Turn a cell the user just edited back into a typed value.
  *
- * Only a value that is wholly and unambiguously numeric becomes a number.
- * Anything carrying a currency symbol, a thousands separator or a percent sign
- * is left as text on purpose: re-typing `$2,310.50` as 2310.5 would silently
- * discard the formatting the user is looking at, which is the same class of
- * loss this whole path exists to prevent. Cells the user never touched do not
- * come through here at all - they are written from the typed copy read off the
- * original sheet.
+ * Only a plain decimal becomes a number. Anything carrying a currency symbol,
+ * a thousands separator or a percent sign is left as text on purpose:
+ * re-typing `$2,310.50` as 2310.5 would discard the formatting the user is
+ * looking at, which is the same class of loss as the above. Cells the user
+ * never touched do not come through here at all - they are written from the
+ * typed copy read off the original sheet, formats intact.
  */
 const coerceEditedCell = (value: unknown): unknown => {
 	if (typeof value !== "string") return value;
 	const trimmed = value.trim();
-	if (trimmed === "") return value;
+	if (!PLAIN_DECIMAL.test(trimmed)) return value;
+	if (trimmed.replace(/[-.]/g, "").replace(/^0+/, "").length > 15) return value;
 	const asNumber = Number(trimmed);
 	return Number.isFinite(asNumber) ? asNumber : value;
 };
