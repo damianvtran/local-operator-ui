@@ -136,11 +136,29 @@ const scopedRoleBlock = () => {
 		throw new Error("more than one @theme block in styles/index.css");
 	}
 
+	/* Skip braces inside string literals.
+	 *
+	 * `stripCssComments` already removes comment braces, but a `}` inside a
+	 * quoted value - a `content:` string, a font name - is still counted as
+	 * structure and ends the block early. And an UNTERMINATED string makes the
+	 * comment stripper copy the remainder of the file verbatim, which brings
+	 * the comment-brace truncation straight back. Both produce a short harvest
+	 * with every gate green, which is the one failure shape this function
+	 * exists to make impossible, so the matcher has to understand quotes for
+	 * the same reason the stripper does. */
 	let depth = 0;
 	let close = -1;
+	let quote = null;
 	for (let i = css.indexOf("{", open); i < css.length; i++) {
-		if (css[i] === "{") depth++;
-		else if (css[i] === "}") {
+		const c = css[i];
+		if (quote) {
+			if (c === "\\") i++;
+			else if (c === quote) quote = null;
+			continue;
+		}
+		if (c === '"' || c === "'") quote = c;
+		else if (c === "{") depth++;
+		else if (c === "}") {
 			depth--;
 			if (depth === 0) {
 				close = i;
@@ -182,6 +200,42 @@ const scopedRoleBlock = () => {
 			`@theme is missing ${missing.length} role pair(s): ${missing.join(", ")}. ` +
 				`Every palette role needs a \`--x: var(--lo-x);\` line inside @theme, ` +
 				`or it reaches :root and never reaches a [data-theme] subtree.`,
+		);
+	}
+
+	/* And the converse, in two parts: every pair must name a real role, and no
+	 * two pairs may name the SAME role.
+	 *
+	 * Without these the guard only asserts paletteRoles subset-of harvested,
+	 * which is blind to a pair whose `--lo-*` source another pair already
+	 * supplies. Today the two sets are a bijection - 29 roles, 29 pairs - and
+	 * it is that coincidence, not the guard, that makes a short harvest loud:
+	 * add one alias and a truncated block passes every gate with output
+	 * byte-identical to the committed file, which is the round-1
+	 * `--shadow-overlay` defect restored. The duplicate check is the half that
+	 * closes it, because an alias is exactly a duplicate source. Together they
+	 * make the bijection an invariant this script enforces rather than a
+	 * property it happens to have. */
+	const unknown = [...harvested].filter((r) => !paletteRoles.has(r));
+	if (unknown.length > 0) {
+		throw new Error(
+			`@theme references ${unknown.length} role(s) no palette defines: ` +
+				`${unknown.join(", ")}. Check the spelling against the palette keys.`,
+		);
+	}
+	if (pairs.length !== harvested.size) {
+		const seen = new Set();
+		const dupes = [
+			...new Set(
+				pairs
+					.map(([, , src]) => src)
+					.filter((r) => (seen.has(r) ? true : (seen.add(r), false))),
+			),
+		];
+		throw new Error(
+			`@theme maps ${dupes.join(", ")} more than once. Aliases are not ` +
+				`allowed here: two properties sharing one role break the one-to-one ` +
+				`mapping that is what makes a truncated harvest detectable at all.`,
 		);
 	}
 

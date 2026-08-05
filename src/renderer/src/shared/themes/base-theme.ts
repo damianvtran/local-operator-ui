@@ -503,67 +503,27 @@ export const createBaseTheme = (palette: ThemePalette): Theme => {
 		components: {
 			...disabledOverrides,
 
-			MuiCssBaseline: {
-				styleOverrides: {
-					/**
-					 * The focus ring, MUI's half. One ring, defined once.
-					 *
-					 * NOTE: the authoritative copy is the unlayered rule at the bottom
-					 * of `styles/index.css`. This one only reaches surfaces that
-					 * render a `<CssBaseline/>`, which the app does not - Storybook
-					 * did, which is how the app shipped without a ring while every
-					 * story had one. It is kept so those surfaces stay consistent,
-					 * not because anything depends on it.
-					 *
-					 * `outline` rather than `box-shadow`, but NOT because outlines
-					 * escape clipping - they do not. An outline is ink overflow and
-					 * an ancestor's `overflow: hidden` clips it just as it clips an
-					 * outset shadow. This comment previously asserted the opposite;
-					 * the conclusion was right and the reason was wrong, which is the
-					 * more dangerous combination because the reason is what gets
-					 * reused. Outline is correct here because it follows the
-					 * element's own `border-radius` without being told, stays out of
-					 * layout, and is what `:focus-visible` tooling expects.
-					 *
-					 * `:focus-visible` only: a mouse user clicking a button should not
-					 * get a ring, a keyboard user tabbing to it must.
-					 *
-					 * The `html` prefix is load-bearing. `MuiButtonBase` and `MuiChip`
-					 * both set `outline: 0` on their own root at single-class
-					 * specificity, and emotion injects component styles after the
-					 * CssBaseline globals — so an unprefixed `:focus-visible` ties on
-					 * specificity and loses on order, and every button, tab, menu item
-					 * and list row in the app ends up with no ring at all. Verified in
-					 * a browser: without the prefix the computed `outline-offset`
-					 * applies and the `outline` does not.
-					 *
-					 * `!important` is confined to the box-shadow reset, which has to
-					 * reach rings MUI ships at two-class specificity such as
-					 * `.MuiSlider-thumb.Mui-focusVisible`.
-					 */
-					"html :focus-visible, html .Mui-focusVisible": {
-						outline: `2px solid ${palette.accent}`,
-						outlineOffset: "2px",
-						boxShadow: "none !important",
-					},
-
-					/**
-					 * The ring's shape, at zero specificity so it only fills a gap.
-					 *
-					 * `border-radius: inherit` belongs on an element that has no radius
-					 * of its own and sits inside something rounded — a bare focusable
-					 * row in a rounded card. Applied at any real specificity it does
-					 * the opposite of its intent: a focused Chip would inherit its
-					 * parent's radius and stop being a pill for exactly as long as it
-					 * is focused. `:where()` makes it lose to any authored radius,
-					 * which is precisely the wanted behaviour. index.css carries the
-					 * identical rule for the Tailwind half.
-					 */
-					":where(:focus-visible)": {
-						borderRadius: "inherit",
-					},
-				},
-			},
+			/*
+			 * MuiCssBaseline deliberately carries NO focus styling.
+			 *
+			 * It used to hold a copy of the ring and of the `border-radius: inherit`
+			 * shape rule. Both are authored in `styles/index.css` now, and the copy
+			 * here was not redundant-but-harmless - it was actively wrong in the one
+			 * place it applied. `<CssBaseline/>` renders only in Storybook, and the
+			 * two rules had identical selectors AND identical specificity (0,1,1),
+			 * both unlayered, so the winner was decided purely by injection order.
+			 * Emotion appends, and it injects at React render - after the build-time
+			 * stylesheet - so this one won. It set `outline` as a SHORTHAND, which
+			 * forces `outline-style: solid` and so never reads the
+			 * `--tw-outline-style` token the real rule depends on. Every field that
+			 * legitimately carries `outline-none` therefore drew a ring inside its
+			 * wrapper's ring, in Storybook only - the verification surface
+			 * disagreeing with the product for the third time in this migration.
+			 *
+			 * Matching the longhands would have left the tie in place for the next
+			 * person to trip over. Deleting it means there is nothing left to
+			 * diverge from.
+			 */
 
 			MuiPaper: {
 				styleOverrides: {

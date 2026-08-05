@@ -87,10 +87,17 @@ const editorSpec = {
 	 * CodeMirror prefixes it with the generated theme class, so the app's
 	 * unlayered `html :focus-visible` at (0,1,1) loses to it.
 	 *
-	 * Styling `&.cm-focused` puts the ring on the editor root at
-	 * `.cm-editor.<generated>.cm-focused`, which beats CodeMirror's own
-	 * two-class default and matches how every other composite control in this
-	 * app works: the frame draws the ring, the field inside stays quiet.
+	 * Styling `&.cm-focused` puts the ring on the editor root - but NOT, as an
+	 * earlier version of this comment claimed, at a specificity that beats
+	 * CodeMirror's own rule. `buildTheme` compiles `&.cm-focused` to
+	 * `.<generated>.cm-focused`: two classes, no `.cm-editor`, which exactly
+	 * TIES CodeMirror's own `.<base>.cm-focused` at (0,2,0). It wins on source
+	 * order alone - `EditorView` mounts `[...styleModules, baseTheme].reverse()`
+	 * so the base theme goes in first, and StyleModule documents later mounts
+	 * as taking precedence. That is worth knowing because it is fragile:
+	 * wrapping this theme in `Prec.lowest` would flip the order back and
+	 * silently restore the `1px dotted #212121` default, which measures 1.02:1
+	 * on dracula.
 	 *
 	 * The offset is NEGATIVE, and that is the whole point of this rule working.
 	 * The editor sits flush inside a `relative h-full grow overflow-auto`
