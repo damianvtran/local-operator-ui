@@ -173,7 +173,7 @@ const highlightStyle = HighlightStyle.define([
 		color: colors.base,
 	},
 	{
-		tag: [t.function(t.variableName), t.functionName, t.labelName],
+		tag: [t.function(t.variableName), t.labelName],
 		color: colors.functionName,
 	},
 	{
