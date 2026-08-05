@@ -85,7 +85,13 @@ const createScheduleDisplayString = (schedule: ScheduleResponse): string => {
 	   less often. "Every hour at 12:19 PM" says the job runs at 12:19 PM, and
 	   it does not - it runs at 19 minutes past every hour, and the row above it
 	   reading "Every day at 8:19 PM" teaches the reader to take the first one
-	   literally. Sub-day recurrences get the offset they actually have. */
+	   literally.
+
+	   Hourly jobs get the offset they actually have. Minute-interval jobs get
+	   nothing: an offset within a 15-minute cycle is real but unsayable in a
+	   phrase this size - "every 15 minutes at 7 past" invites the reader to
+	   work out :07, :22, :37, :52 - and "Every 15 minutes" is already the whole
+	   truth a reader of this row needs. */
 	const recursWithinADay =
 		!schedule.one_time && SUB_DAY_UNITS[schedule.unit] === true;
 
@@ -93,7 +99,10 @@ const createScheduleDisplayString = (schedule: ScheduleResponse): string => {
 		if (recursWithinADay) {
 			const past = startTime.getMinutes();
 			if (schedule.unit === "hours") {
-				displayString += past === 0 ? " on the hour" : ` at ${past} past`;
+				displayString +=
+					past === 0
+						? " on the hour"
+						: ` at ${past} minute${past === 1 ? "" : "s"} past`;
 			}
 		} else {
 			displayString += ` at ${withDate(startTime)}`;
