@@ -46,6 +46,11 @@ export const CompactPagination: FC<CompactPaginationProps> = ({
 			onChange(page + 1);
 		}
 	};
+	/* One page is not a pagination state - the chrome renders "Page 1 of 1"
+	   between two dead arrows, which is a control that can only tell the reader
+	   it has nothing to do. The list is the whole content in that case, so the
+	   bar takes its 52px back. */
+	if (count <= 1) return null;
 
 	return (
 		<div className="sticky bottom-0 left-0 right-0 z-10 flex min-h-13 items-center justify-between border-t border-hairline bg-surface px-4 py-2">

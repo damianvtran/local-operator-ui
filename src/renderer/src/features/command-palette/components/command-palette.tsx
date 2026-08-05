@@ -675,17 +675,27 @@ export const CommandPalette: FC = () => {
 					 * The key legend. Every keyboard-first palette worth copying puts
 					 * one here — it is how a mouse user finds out the surface is meant
 					 * to be driven from the keyboard, and it costs one 32px bar.
+					 *
+					 * Move and run are gated on there being something to move through
+					 * and something to run: on the empty state they are instructions
+					 * for keys that do nothing, sitting directly under a line that
+					 * just said nothing matched. Escape always works, so the bar keeps
+					 * its height and the one true affordance.
 					 */}
 					<div className="flex shrink-0 items-center gap-4 border-hairline border-t px-4 py-2 text-ink-dim text-meta">
-						<span className="flex items-center gap-1.5">
-							<Key>↑</Key>
-							<Key>↓</Key>
-							to move
-						</span>
-						<span className="flex items-center gap-1.5">
-							<Key>↵</Key>
-							to run
-						</span>
+						{hasResults && (
+							<>
+								<span className="flex items-center gap-1.5">
+									<Key>↑</Key>
+									<Key>↓</Key>
+									to move
+								</span>
+								<span className="flex items-center gap-1.5">
+									<Key>↵</Key>
+									to run
+								</span>
+							</>
+						)}
 						<span className="flex items-center gap-1.5">
 							<Key>esc</Key>
 							to close

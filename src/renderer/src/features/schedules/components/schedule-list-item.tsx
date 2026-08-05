@@ -63,11 +63,22 @@ const createScheduleDisplayString = (schedule: ScheduleResponse): string => {
 		displayString = `Every ${schedule.interval} ${schedule.unit}`;
 	}
 
-	if (startTime) {
+	/* A one-time job with both ends is a window, not a start with a trailing
+	   bound: "Once at 1:05 AM on Thursday to 2:05 AM" reads as two events, and
+	   the reader has to work out that the second is the same one ending. The
+	   repeating case keeps "at ... to ...", because there the start really is a
+	   recurring instant and the end really is when the recurrence stops. */
+	const oneTimeWindow = Boolean(schedule.one_time && startTime && endTime);
+
+	if (startTime && !oneTimeWindow) {
 		displayString += ` at ${withDate(startTime)}`;
 	}
 
-	if (endTime) {
+	if (oneTimeWindow && startTime && endTime) {
+		/* The end carries the date for both, so the day is named once whether or
+		   not the window crosses midnight. */
+		displayString += ` between ${formatTime(startTime)} and ${withDate(endTime)}`;
+	} else if (endTime) {
 		if (startTime) {
 			/* The start already named the day, so an end on the same day repeats
 			   it for nothing. */

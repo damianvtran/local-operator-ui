@@ -50,7 +50,7 @@ export const sage: ThemeDefinition = {
 		// The celadon, at the faintest tint that still lets the accent clear 4.5:1
 		// on it. This is where Sage's signature colour still shows.
 		accentWash: "#E6E9D8",
-		onAccent: "#FFFFFF",
+		onAccent: "#F4F6F4",
 
 		success: "#477229",
 		successWash: "#E9EBD3",

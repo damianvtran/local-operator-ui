@@ -122,7 +122,7 @@ export const SchedulesPage: FC = () => {
 			<PageHeader
 				title="Schedules"
 				icon={CalendarDays}
-				subtitle="Work your agents do on a repeating schedule."
+				subtitle="Work your agents run on a schedule, repeating or once."
 			>
 				{/* Opens ScheduleFormDialog for a new schedule */}
 				<Button

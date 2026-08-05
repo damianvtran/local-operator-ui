@@ -184,7 +184,7 @@ export const localOperatorLight: ThemeDefinition = {
 		accentHover: "#116036",
 		accentActive: "#0c4b2a",
 		accentWash: "#e7f1e8",
-		onAccent: "#ffffff",
+		onAccent: "#F6FAF8",
 
 		success: "#1e7b4e",
 		successWash: "#e6f1ea",
