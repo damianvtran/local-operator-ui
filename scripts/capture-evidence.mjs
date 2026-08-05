@@ -135,11 +135,36 @@ class Cdp {
 	}
 }
 
+/*
+ * Teardown has to survive a throw.
+ *
+ * Chrome used to be killed only on the success path, so any failure exited
+ * with the browser still running and its profile still on disk. That was
+ * survivable while the script had almost no failure modes; adding the loud
+ * gates - unknown story id, theme mismatch, story did not render - made the
+ * leak reachable, and one aborted run left eighteen processes and a profile
+ * behind on a machine already under memory pressure. Making a script fail
+ * loudly obliges you to make it fail cleanly.
+ */
+let chrome = null;
+let dataDir = null;
+
+const teardown = () => {
+	if (chrome) {
+		chrome.kill("SIGKILL");
+		chrome = null;
+	}
+	if (dataDir) {
+		rmSync(dataDir, { recursive: true, force: true });
+		dataDir = null;
+	}
+};
+
 const main = async () => {
-	const dataDir = join(tmpdir(), `lo-evidence-${process.pid}`);
+	dataDir = join(tmpdir(), `lo-evidence-${process.pid}`);
 	mkdirSync(dataDir, { recursive: true });
 
-	const chrome = spawn(CHROME, [
+	chrome = spawn(CHROME, [
 		"--headless=new",
 		"--no-sandbox",
 		"--disable-gpu",
@@ -378,12 +403,22 @@ const main = async () => {
 		}
 	}
 
-	chrome.kill("SIGKILL");
-	rmSync(dataDir, { recursive: true, force: true });
 	console.log(`Captured ${captured} frames into ${OUT}`);
 };
 
-main().catch((err) => {
+/* Also covers Ctrl-C and a kill, which a try/finally alone does not. */
+for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"]) {
+	process.on(signal, () => {
+		teardown();
+		process.exit(130);
+	});
+}
+
+try {
+	await main();
+} catch (err) {
 	console.error(err);
-	process.exit(1);
-});
+	process.exitCode = 1;
+} finally {
+	teardown();
+}
