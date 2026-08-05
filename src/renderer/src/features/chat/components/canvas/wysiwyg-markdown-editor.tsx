@@ -22,16 +22,10 @@ import { useCanvasStore } from "@shared/store/canvas-store";
 import { useUndoManagerStore } from "@shared/store/undo-manager-store";
 import { showSuccessToast } from "@shared/utils/toast-manager";
 import {
-	AlignCenter,
-	AlignLeft,
-	AlignRight,
 	Bold,
-	Check,
 	Code,
 	Ellipsis,
 	Image,
-	IndentDecrease,
-	IndentIncrease,
 	Italic,
 	Link,
 	List,
@@ -41,7 +35,6 @@ import {
 	SquareCheckBig,
 	Strikethrough,
 	Table,
-	Underline,
 	Undo,
 } from "lucide-react";
 import { type FC, memo } from "react";
@@ -346,11 +339,17 @@ const ACTIVE_TOGGLE_CLASS =
  * The two toggle groups. Both render the same button with the same pressed
  * treatment, so they are data rather than near-identical JSX blocks.
  *
- * `TEXT_FORMATS` is split into the pair that stays on the bar and the pair
- * that moves into the overflow menu. Bold and italic are the two markdown
- * carries natively and the two everyone reaches for; underline has no
- * markdown at all and strikethrough is an extension, so neither earns a
- * permanent 28px of a panel that is 440px wide at its narrowest.
+ * `TEXT_FORMATS` is split into the pair that stays on the bar and the one that
+ * moves into the overflow menu. Bold and italic are the two markdown carries
+ * natively and the two everyone reaches for; strikethrough is a GFM extension
+ * that round-trips correctly but is rare enough not to earn a permanent 28px
+ * of a panel 440px wide at its narrowest.
+ *
+ * Underline is gone rather than demoted. It has no markdown, and the toolbar
+ * did not merely fail to save it: `execCommand` emits `<u>`, `htmlToMarkdown`
+ * writes `*text*`, and reopening the file renders `<em>`. A control that
+ * silently turns a user's underline into italics is worse than no control,
+ * because the document that comes back is not the one they wrote.
  */
 const PRIMARY_TEXT_FORMATS = [
 	{ value: "bold", label: "Bold (Ctrl+B)", Icon: Bold },
@@ -358,22 +357,20 @@ const PRIMARY_TEXT_FORMATS = [
 ] as const;
 
 const OVERFLOW_TEXT_FORMATS = [
-	{ value: "underline", label: "Underline (Ctrl+U)", Icon: Underline },
 	{ value: "strikethrough", label: "Strikethrough", Icon: Strikethrough },
 ] as const;
 
-/**
- * Alignment lives in the overflow menu because it does not survive a save:
- * `wysiwyg-utils` has no `text-align` handling in either direction, so an
- * aligned paragraph round-trips through markdown as a plain one. Three
- * permanent buttons for a setting the file cannot hold was the toolbar's most
- * expensive piece of furniture.
+/*
+ * Alignment is not offered, and the machinery for it is gone with the menu.
+ *
+ * It used to live in the overflow menu on the argument that a setting the file
+ * cannot hold does not deserve permanent toolbar space - which conceded the
+ * whole point and then shipped it anyway. `wysiwyg-utils` has no `text-align`
+ * handling in either direction, so an aligned paragraph round-trips as a plain
+ * one, and the menu drew an accent checkmark against the current alignment as
+ * though it were persisted state. Align left appeared to work only because it
+ * is the default.
  */
-const ALIGNMENTS = [
-	{ value: "left", label: "Align left", Icon: AlignLeft },
-	{ value: "center", label: "Align center", Icon: AlignCenter },
-	{ value: "right", label: "Align right", Icon: AlignRight },
-] as const;
 
 type TextType = "paragraph" | "h1" | "h2" | "h3" | "h4" | "h5" | "h6";
 
@@ -399,7 +396,6 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 	const [hasUserChanges, setHasUserChanges] = useState(false);
 	const [currentTextType, setCurrentTextType] = useState<TextType>("paragraph");
 	const [selectedFormats, setSelectedFormats] = useState<string[]>([]);
-	const [currentAlignment, setCurrentAlignment] = useState("left");
 	const [isLinkDialogOpen, setIsLinkDialogOpen] = useState(false);
 	const [linkDialogData, setLinkDialogData] = useState<LinkDialogData>({
 		url: "",
@@ -527,14 +523,6 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 			formats.push("strikethrough");
 
 		setSelectedFormats(formats);
-
-		if (window.document.queryCommandState("justifyCenter")) {
-			setCurrentAlignment("center");
-		} else if (window.document.queryCommandState("justifyRight")) {
-			setCurrentAlignment("right");
-		} else {
-			setCurrentAlignment("left");
-		}
 	}, []);
 
 	const handleContentChange = useCallback(() => {
@@ -1028,21 +1016,6 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 				case "strikethrough":
 					executeCommand("strikeThrough");
 					break;
-			}
-		},
-		[executeCommand],
-	);
-
-	const handleAlignmentChange = useCallback(
-		(newAlignment: string | null) => {
-			if (newAlignment) {
-				const commandMap: { [key: string]: string } = {
-					left: "justifyLeft",
-					center: "justifyCenter",
-					right: "justifyRight",
-				};
-				executeCommand(commandMap[newAlignment]);
-				setCurrentAlignment(newAlignment);
 			}
 		},
 		[executeCommand],
@@ -1801,14 +1774,6 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 								<Code aria-hidden="true" />
 								Code block
 							</DropdownMenuItem>
-							<DropdownMenuItem onSelect={() => executeCommand("indent")}>
-								<IndentIncrease aria-hidden="true" />
-								Indent
-							</DropdownMenuItem>
-							<DropdownMenuItem onSelect={() => executeCommand("outdent")}>
-								<IndentDecrease aria-hidden="true" />
-								Outdent
-							</DropdownMenuItem>
 							<DropdownMenuSeparator />
 							<DropdownMenuItem onSelect={insertImage}>
 								<Image aria-hidden="true" />
@@ -1827,22 +1792,6 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 								<Table aria-hidden="true" />
 								Insert table
 							</DropdownMenuItem>
-							<DropdownMenuSeparator />
-							{ALIGNMENTS.map(({ value, label, Icon }) => (
-								<DropdownMenuItem
-									key={value}
-									onSelect={() => handleAlignmentChange(value)}
-								>
-									<Icon aria-hidden="true" />
-									{label}
-									{currentAlignment === value && (
-										<Check
-											aria-hidden="true"
-											className={cn("ml-auto text-accent")}
-										/>
-									)}
-								</DropdownMenuItem>
-							))}
 						</DropdownMenuContent>
 					</DropdownMenu>
 				</div>

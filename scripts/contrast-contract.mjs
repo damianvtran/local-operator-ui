@@ -305,12 +305,15 @@ if (palettes.length === 0) {
 /**
  * Semantics a reader has to tell apart, and how far apart they must be.
  *
- * `accent` is deliberately absent. In the two brand palettes `accent` and
- * `success` are both the brand green — ΔE00 2.2 and 5.1 — because the brand
- * has one hue and "it worked" is the state it is happiest to own. That is a
- * decision, not a defect: nothing in the product asks a user to distinguish
- * an accent from a success, whereas `success` against `info` is a distinction
- * a callout exists to make. A gate that fails by design teaches people to
+ * `accent` is deliberately absent, and in four of the twelve palettes it would
+ * fail: localOperatorLight 2.19, localOperatorDark 5.07, sage 8.35, and monokai
+ * at 0.00 — where `accent` and `success` are the same hex. In the brand pair
+ * that is the point, because the brand has one hue and "it worked" is the state
+ * it is happiest to own; in monokai and sage it follows from palettes built
+ * around a single signature green. Either way it is a decision rather than a
+ * defect: nothing in the product asks a user to distinguish an accent from a
+ * success, whereas `success` against `info` is a distinction a callout exists
+ * to make. A gate that fails by design teaches people to
  * silence gates, so accent is out of the family rather than pinned as an
  * exception in every palette.
  *

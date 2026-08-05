@@ -98,6 +98,7 @@ const STORIES = [
 	["schedules-page--list", 1280, 900],
 	["schedules-page--picker-open", 1280, 900],
 	["schedules-page--row-actions-revealed", 1280, 900],
+	["schedules-page--row-action-label", 1280, 900],
 	["command-palette-commandpalette--default", 1280, 800],
 	["command-palette-commandpalette--no-results", 1280, 800],
 

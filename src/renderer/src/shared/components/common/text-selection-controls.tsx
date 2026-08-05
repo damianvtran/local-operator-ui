@@ -8,7 +8,7 @@ import {
 	Copy,
 	ExternalLink,
 	MessageSquareReply,
-	ReplyIcon,
+	Reply,
 	Sparkles,
 	Square,
 	Volume2,
@@ -401,7 +401,7 @@ export const TextSelectionControls: FC<TextSelectionControlsProps> = ({
 						aria-label="Refer to this from file"
 						onClick={handleRefer}
 					>
-						<ReplyIcon aria-hidden="true" />
+						<Reply aria-hidden="true" />
 					</Button>
 				</Tooltip>
 			)}

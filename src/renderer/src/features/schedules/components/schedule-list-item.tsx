@@ -65,6 +65,15 @@ const createScheduleDisplayString = (schedule: ScheduleResponse): string => {
 		return `${formatTime(date)} on ${dated}`;
 	};
 
+	/* The end of a recurrence is the exception, and it is not an occurrence.
+	   "Every day at 8:16 PM to 11:30 PM" is what a schedule running for four
+	   days rendered as - character-identical to one that stops the same night,
+	   because the rule above dropped the date that was the entire difference
+	   between them. When a recurrence stops IS a fact about the schedule, so
+	   it always carries its day. */
+	const alwaysDated = (date: Date): string =>
+		`${formatTime(date)} on ${formatDate(date, date.getFullYear() !== currentYear)}`;
+
 	let displayString: string;
 	if (schedule.one_time) {
 		displayString = "Once";
@@ -127,21 +136,19 @@ const createScheduleDisplayString = (schedule: ScheduleResponse): string => {
 			? ` between ${formatTime(startTime)} and ${withDate(endTime)}`
 			: ` between ${withDate(startTime)} and ${withDate(endTime)}`;
 	} else if (endTime) {
-		if (recursWithinADay) {
-			/* The start clause said "at 16 minutes past", so " to 11:30 PM" would
-			   read "past to" and mean nothing. Here the end is not the far side
-			   of a window - it is when the repeating stops. */
-			displayString += `, ending at ${withDate(endTime)}`;
+		if (!schedule.one_time) {
+			/* One rule for every recurrence, whatever its unit: the end is when
+			   the repeating stops, and it names its day. " to 11:30 PM" read as
+			   the far side of a nightly window, and after the sub-day branch
+			   landed it could also read "at 16 minutes past to 11:30 PM". */
+			displayString += `, ending at ${alwaysDated(endTime)}`;
 		} else if (startTime) {
 			/* The start already named the day, so an end on the same day repeats
 			   it for nothing. */
 			const sameDay = startTime.toDateString() === endTime.toDateString();
 			displayString += ` to ${sameDay ? formatTime(endTime) : withDate(endTime)}`;
 		} else {
-			/* "Once ending at" would not parse as a sentence; "Every hour ending
-			   at" does. */
-			const joint = schedule.one_time ? ", ending at" : " ending at";
-			displayString += `${joint} ${withDate(endTime)}`;
+			displayString += `, ending at ${withDate(endTime)}`;
 		}
 	}
 

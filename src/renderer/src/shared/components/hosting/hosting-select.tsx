@@ -188,13 +188,29 @@ export const HostingSelect: FC<HostingSelectProps> = ({
 		return options;
 	}, [availableHostingProviders, value, allowCustom, allowDefault]);
 
-	// Helper text to show when no credentials are available
+	/*
+	 * "No hosting providers available" under a select that is displaying
+	 * `openrouter` contradicts the row above it. The list being empty means
+	 * no provider has credentials yet, which is worth saying - but only when
+	 * the control is genuinely showing nothing. A value that is already set
+	 * came from somewhere and the reader can see it, so the line would be
+	 * telling them their own setting does not exist.
+	 */
 	const helperText = useMemo(() => {
-		if (filterByCredentials && availableHostingProviders.length === 0) {
+		if (
+			filterByCredentials &&
+			availableHostingProviders.length === 0 &&
+			!value
+		) {
 			return emptyHelperText;
 		}
 		return undefined;
-	}, [availableHostingProviders.length, filterByCredentials, emptyHelperText]);
+	}, [
+		availableHostingProviders.length,
+		filterByCredentials,
+		emptyHelperText,
+		value,
+	]);
 
 	// Find the current selected option
 	const selectedOption = useMemo(() => {
