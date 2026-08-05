@@ -77,6 +77,24 @@ const SCHEDULES = [
 		created_at: hoursFromNow(-10),
 		updated_at: hoursFromNow(-10),
 	},
+	{
+		/* A one-time window that crosses midnight: the sentence has to name both
+		   days, because "between 11 PM and 1 AM on Thursday" is a day out on the
+		   start. */
+		id: "5e5f6a70-1b2c-4d3e-8f90-a1b2c3d4e5f6",
+		agent_id: AGENTS[0].id,
+		agent_name: "Overnight backup check",
+		prompt:
+			"After the nightly backup finishes, check it restored cleanly and tell me only if it did not.",
+		interval: 1,
+		unit: "days",
+		is_active: true,
+		one_time: true,
+		start_time_utc: hoursFromNow(20),
+		end_time_utc: hoursFromNow(30),
+		created_at: hoursFromNow(-10),
+		updated_at: hoursFromNow(-10),
+	},
 ];
 
 /** Lifted to module scope: a regex literal inside `fetch` recompiles per call. */

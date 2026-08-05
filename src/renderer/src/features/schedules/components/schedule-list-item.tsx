@@ -75,9 +75,13 @@ const createScheduleDisplayString = (schedule: ScheduleResponse): string => {
 	}
 
 	if (oneTimeWindow && startTime && endTime) {
-		/* The end carries the date for both, so the day is named once whether or
-		   not the window crosses midnight. */
-		displayString += ` between ${formatTime(startTime)} and ${withDate(endTime)}`;
+		/* Within one day the end carries the date for both, so the day is named
+		   once. Across midnight it cannot: "between 11:00 PM and 1:00 AM on
+		   Thursday" puts the start on Thursday too, which is a day out. */
+		const sameDay = startTime.toDateString() === endTime.toDateString();
+		displayString += sameDay
+			? ` between ${formatTime(startTime)} and ${withDate(endTime)}`
+			: ` between ${withDate(startTime)} and ${withDate(endTime)}`;
 	} else if (endTime) {
 		if (startTime) {
 			/* The start already named the day, so an end on the same day repeats
