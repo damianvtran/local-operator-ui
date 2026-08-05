@@ -168,6 +168,16 @@ type WysiwygMarkdownEditorProps = {
 	document: CanvasDocument;
 	conversationId?: string;
 	agentId?: string;
+	/**
+	 * Render the block-format menu open.
+	 *
+	 * For stories only, and it earns its place: `:hover` and a real click
+	 * cannot be forced from markup, so every label inside this menu existed in
+	 * no captured frame - which is how "IndentIncrease" and "IndentDecrease"
+	 * reached the format list and survived a design round. The date-time
+	 * picker carries the same affordance for the same reason.
+	 */
+	initialFormatMenuOpen?: boolean;
 };
 
 /**
@@ -383,6 +393,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 	document,
 	conversationId,
 	agentId,
+	initialFormatMenuOpen = false,
 }) => {
 	const [content, setContent] = useState(document.content);
 	const [hasUserChanges, setHasUserChanges] = useState(false);
@@ -1743,7 +1754,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 					</Tooltip>
 
 					{/* Everything else, grouped the way the menu reads */}
-					<DropdownMenu>
+					<DropdownMenu defaultOpen={initialFormatMenuOpen}>
 						<Tooltip content="More formatting">
 							<DropdownMenuTrigger asChild>
 								<Button

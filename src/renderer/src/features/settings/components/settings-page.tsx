@@ -667,6 +667,9 @@ export const SettingsPage: FC = () => {
 										filterByCredentials={true}
 										allowCustom={true}
 										allowDefault={false}
+										/* This IS Settings, so the default copy would send the
+										   reader to the page they are already on. */
+										emptyHelperText="No hosting providers available. Add one in API credentials, in the list on the left."
 									/>
 									<ModelSelect
 										value={config.values.model_name}

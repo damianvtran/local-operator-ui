@@ -203,3 +203,21 @@ export const PickerOpen: Story = {
 		</div>
 	),
 };
+
+/**
+ * The row's actions, revealed.
+ *
+ * `:hover` cannot be forced from markup, so the edit and delete buttons - and
+ * the tooltips and aria-labels they carry - existed in no captured frame.
+ * That is the gap four corrupted user-facing strings passed through in round
+ * 8, one of them the entire accessible name of an icon-only button. This
+ * story writes the revealed state statically, the way the primitives sheet
+ * fakes focus and pressed.
+ */
+export const RowActionsRevealed: Story = {
+	render: () => (
+		<div className="[&_.pointer-events-none.opacity-0]:pointer-events-auto [&_.pointer-events-none.opacity-0]:opacity-100">
+			<SchedulesPage />
+		</div>
+	),
+};

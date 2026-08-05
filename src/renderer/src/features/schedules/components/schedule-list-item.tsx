@@ -36,6 +36,17 @@ const formatDate = (date: Date, includeYear: boolean): string => {
  * nor an end time — that is, never in the case that reads wrong — so a job
  * that runs once announced itself as running every day.
  */
+/**
+ * The recurrence units that repeat more than once a day.
+ *
+ * A static table rather than a `Set`: the membership is fixed at authoring
+ * time, and a module-scope literal costs nothing per render.
+ */
+const SUB_DAY_UNITS: Record<string, true> = {
+	minutes: true,
+	hours: true,
+};
+
 const createScheduleDisplayString = (schedule: ScheduleResponse): string => {
 	const currentYear = new Date().getFullYear();
 	const startTime = schedule.start_time_utc
@@ -70,8 +81,23 @@ const createScheduleDisplayString = (schedule: ScheduleResponse): string => {
 	   recurring instant and the end really is when the recurrence stops. */
 	const oneTimeWindow = Boolean(schedule.one_time && startTime && endTime);
 
+	/* A wall-clock time is only true of a recurrence that happens once a day or
+	   less often. "Every hour at 12:19 PM" says the job runs at 12:19 PM, and
+	   it does not - it runs at 19 minutes past every hour, and the row above it
+	   reading "Every day at 8:19 PM" teaches the reader to take the first one
+	   literally. Sub-day recurrences get the offset they actually have. */
+	const recursWithinADay =
+		!schedule.one_time && SUB_DAY_UNITS[schedule.unit] === true;
+
 	if (startTime && !oneTimeWindow) {
-		displayString += ` at ${withDate(startTime)}`;
+		if (recursWithinADay) {
+			const past = startTime.getMinutes();
+			if (schedule.unit === "hours") {
+				displayString += past === 0 ? " on the hour" : ` at ${past} past`;
+			}
+		} else {
+			displayString += ` at ${withDate(startTime)}`;
+		}
 	}
 
 	if (oneTimeWindow && startTime && endTime) {
