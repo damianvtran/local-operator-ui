@@ -58,7 +58,7 @@ export const localOperatorDark: ThemeDefinition = {
 		inkDim: "#918b7d",
 		inkDisabled: "#5f5a4e",
 
-		hairline: "#2b2619",
+		hairline: "#2e291c",
 		borderControl: "#837c6d",
 
 		accent: "#38c96a",

@@ -216,8 +216,8 @@ const BARE_DECIMAL = /^[+-]?(\d+(\.\d+)?|\.\d+)$/;
  * `555 123 4567`, `+44 20 7946 0958`, `1234 5678 9012 3456`, `0800 555 111`.
  * Stripping whitespace as decoration turns each into a bare decimal, which
  * right-aligns a phone-number column, sets it in machine voice and sorts it
- * numerically - and a 16-digit card number is past `MAX_SAFE_INTEGER`, so
- * that order is not even stable. The accounting trailing space (`1,234.50 `)
+ * numerically, none of which is true of an identifier.
+ * The accounting trailing space (`1,234.50 `)
  * and a spaced currency symbol (`$ 1,234`) put the space at an edge or beside
  * a symbol, never between two digits, so both survive this guard.
  *
@@ -228,8 +228,12 @@ const BARE_DECIMAL = /^[+-]?(\d+(\.\d+)?|\.\d+)$/;
  *
  * The reason to take that trade is ambiguity, and only ambiguity: `1 234.50`
  * and `555 123 4567` are the same shape, and nothing in a single cell tells
- * them apart. Getting a phone column wrong is the worse error of the two,
- * because it sorts as a number and 16 digits are past `MAX_SAFE_INTEGER`.
+ * them apart. Getting a phone column wrong is the worse error of the two:
+ * an identifier that right-aligns, sets in machine voice and sorts by
+ * magnitude is wrong in three ways at once, where a grouped amount that
+ * left-aligns is wrong in one. Precision is not the argument - every card
+ * number in circulation parses exactly, because Visa, Mastercard, Discover
+ * and Amex all sit below `MAX_SAFE_INTEGER`.
  *
  * Two things this is NOT justified by, though both are true. That
  * `coerceEditedCell` would keep the cell as text proves nothing: it keeps

@@ -10,7 +10,7 @@ import { useAgentSelectionStore } from "@shared/store/agent-selection-store";
 import {
 	Eraser,
 	FileOutput,
-	MessageCircle,
+	MessageSquare,
 	MoreVertical,
 	Settings,
 	Trash2,
@@ -178,7 +178,7 @@ export const AgentOptionsMenu: FC<AgentOptionsMenuProps> = ({
 					{/* Only on the agents page: elsewhere you are already in the chat. */}
 					{isAgentsPage && onChatWithAgent && (
 						<DropdownMenuItem onSelect={onChatWithAgent}>
-							<MessageCircle aria-hidden="true" />
+							<MessageSquare aria-hidden="true" />
 							<span>Chat with agent</span>
 						</DropdownMenuItem>
 					)}

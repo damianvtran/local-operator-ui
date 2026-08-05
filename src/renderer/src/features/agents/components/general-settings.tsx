@@ -111,8 +111,15 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 			 *
 			 * `Bot` used to be documented as meaning "the model", which nine of
 			 * its twelve render sites contradicted. The model now carries `Cpu`
-			 * and agent instructions carry `ScrollText`, so the glyph names one
+			 * and agent instructions carry `NotebookPen`, so the glyph names one
 			 * kind of thing.
+			 *
+			 * Instructions went through two wrong glyphs first, and the reason
+			 * both were wrong is the check worth repeating: `ScrollText` was
+			 * already the PDF file type (`canvas-file-viewer.tsx`), and
+			 * `MessageSquareText` is `MessageSquare` - the Chat rail item - with
+			 * two strokes added. Before picking an icon, grep for it AND look at
+			 * what it is a near-homograph of.
 			 */}
 			<EditableField
 				value={selectedAgent.name}
