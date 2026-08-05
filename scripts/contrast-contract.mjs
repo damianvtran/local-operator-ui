@@ -450,11 +450,20 @@ const SEPARATION_FLOOR = 15;
  * distance vanishes - localOperatorDark's separator at 2.10 came out
  * byte-identical to the panel around it in the captured frame. 4.0 is the
  * point where every palette's rule reads as a rule while every hairline stays
- * under 1.9:1 against its ground, which is what keeps it from becoming a
- * border.
+ * between 1.04:1 and 1.92:1 against its grounds, which is what keeps it from
+ * becoming a border - and that ceiling is asserted, not just described.
  */
 const FIELD_SEPARATION_FLOOR = 2.0;
 const LINE_SEPARATION_FLOOR = 4.0;
+
+/*
+ * And the other end. A hairline that clears the line floor by enough stops
+ * being a hairline: `borderControl` is the role for an edge that asserts
+ * itself, and this one is for an edge that merely divides. 2.0:1 is where the
+ * twelve sit today - 1.04:1 at the quietest, tokyoNight's 1.92:1 against
+ * `sunken` at the loudest - so it fences the range without moving anything.
+ */
+const HAIRLINE_RATIO_CEILING = 2.0;
 
 for (const { id, palette: p } of palettes) {
 	/* Completeness first. A missing role is a worse defect than a low ratio,
@@ -616,6 +625,13 @@ for (const { id, palette: p } of palettes) {
 		["accent", "accentHover"],
 		["accentHover", "accentActive"],
 		["accent", "accentActive"],
+		/* The secondary button's ramp is the ground roles - `surface` at rest,
+		   `elevated` on hover, `sunken` when pressed - and its rest-to-pressed
+		   pair is the one a keyboard user holding Space actually sees. The two
+		   adjacent steps were already asserted above as grounds; the end-to-end
+		   distance was not, which is the same gap `accent`/`accentActive`
+		   closed for the primary. */
+		["surface", "sunken"],
 	]) {
 		if (!isHex(p[a]) || !isHex(p[b])) continue;
 		assertions++;
@@ -627,6 +643,15 @@ for (const { id, palette: p } of palettes) {
 		}
 	}
 
+	/* Both ends of the hairline's range, because only one of them was gated.
+	 *
+	 * The floor doubled to 4.0 on the argument that a rule needs more than a
+	 * field, and the thing that stops that argument running away - "and it
+	 * still has to stay a hairline, not become a border" - was written in prose
+	 * and enforced nowhere. A `#6e6e73` obsidian hairline passes at 4.06:1
+	 * against canvas, sits ΔE00 2.70 from `borderControl`, and clears every
+	 * other assertion in this file. So the ceiling is a rule now too.
+	 */
 	for (const ground of GROUNDS) {
 		if (!isHex(p.hairline) || !isHex(p[ground])) continue;
 		assertions++;
@@ -634,6 +659,13 @@ for (const { id, palette: p } of palettes) {
 		if (got < LINE_SEPARATION_FLOOR) {
 			fail(
 				`${id}: \`hairline\` on \`${ground}\` is ΔE00 ${r2(got)} (need ${LINE_SEPARATION_FLOOR}) — a 1px line has no area to integrate over, so a step that reads between two fields disappears in a rule`,
+			);
+		}
+		assertions++;
+		const shout = ratio(p.hairline, p[ground]);
+		if (shout > HAIRLINE_RATIO_CEILING) {
+			fail(
+				`${id}: \`hairline\` on \`${ground}\` is ${r2(shout)}:1 (max ${HAIRLINE_RATIO_CEILING}) — past this it is drawing a border, and the system already has one of those`,
 			);
 		}
 	}
