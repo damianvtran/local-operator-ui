@@ -230,12 +230,93 @@ const editorProseClasses = cn(
  * classes are named here rather than set as inline styles — an inline
  * `background-color` would have to be a literal, which is how the old version
  * ended up with a red and a green that no theme could reach.
+ *
+ * Each half is labelled, not merely tinted. The two washes are quiet by
+ * design, and simulated at deuteranopia severity 1.0 they meet at ΔE00 2.07
+ * in the light palette and 2.35 in the dark — the same block printed twice,
+ * on the surface where a person accepts or discards someone else's edit to
+ * their own file. The label carries the distinction with no colour in it at
+ * all, and it uses the wording `code-editor-diff.ts` already speaks rather
+ * than a second vocabulary for the same idea.
  */
 const DIFF_CONTAINER_CLASS = "my-3 overflow-hidden rounded-sm";
-const DIFF_REMOVED_CLASS =
-	"border-danger-border border-l-2 bg-danger-wash px-3 py-2";
-const DIFF_ADDED_CLASS =
-	"border-success-border border-l-2 bg-success-wash px-3 py-2";
+const DIFF_SIDE_CLASS = "flex gap-2 border-l-2 px-3 py-2";
+const DIFF_REMOVED_CLASS = cn(
+	DIFF_SIDE_CLASS,
+	"border-danger-border bg-danger-wash",
+);
+const DIFF_ADDED_CLASS = cn(
+	DIFF_SIDE_CLASS,
+	"border-success-border bg-success-wash",
+);
+/*
+ * A fixed gutter rather than a label-width one: reading the two halves against
+ * each other is the whole job, and letting the column size itself would start
+ * the old text and the new text at different left edges — "Remove" is wider
+ * than "Add". `leading-relaxed` matches the prose beside it so the label sits
+ * on the first line rather than above it.
+ */
+const DIFF_LABEL_CLASS =
+	"w-16 shrink-0 select-none font-semibold text-meta leading-relaxed";
+
+/**
+ * One half of the review block: which side it is, then the markdown for it
+ * rendered as prose.
+ *
+ * The label is real text, not an `aria-label` on a coloured box, so the same
+ * words reach a screen reader and a sighted reader who cannot tell the two
+ * washes apart. An empty side is skipped — a pure insertion has nothing to
+ * remove, and an empty "- Remove" row would claim otherwise.
+ */
+const appendDiffSide = (
+	container: HTMLElement,
+	side: "remove" | "add",
+	markdown: string,
+) => {
+	if (!markdown.trim()) return;
+	const isRemove = side === "remove";
+
+	const half = window.document.createElement("div");
+	half.className = isRemove ? DIFF_REMOVED_CLASS : DIFF_ADDED_CLASS;
+
+	const label = window.document.createElement("span");
+	label.className = cn(
+		DIFF_LABEL_CLASS,
+		isRemove ? "text-danger" : "text-success",
+	);
+	label.textContent = isRemove ? "- Remove" : "+ Add";
+	half.appendChild(label);
+
+	const content = window.document.createElement("div");
+	content.className = "min-w-0 flex-1";
+	content.innerHTML = markdownToHtml(markdown);
+	half.appendChild(content);
+
+	container.appendChild(half);
+};
+
+/**
+ * The whole review block for one proposed change.
+ *
+ * Named as a single group: the two halves are one proposal, and the floating
+ * review toolbar already says which change of how many this is, so the block
+ * needs a name rather than a visible heading repeating it.
+ *
+ * Exported for the `DiffReview` story, which used to re-draw this markup by
+ * hand. A copy is only accurate until one of the two is edited, and the
+ * evidence frames the design review is judged from come from that story.
+ */
+export const buildDiffContainer = (diff: EditDiff) => {
+	const container = window.document.createElement("div");
+	container.setAttribute("data-diff-container", "true");
+	container.contentEditable = "false";
+	container.className = DIFF_CONTAINER_CLASS;
+	container.setAttribute("role", "group");
+	container.setAttribute("aria-label", "Proposed change");
+	appendDiffSide(container, "remove", diff.find);
+	appendDiffSide(container, "add", diff.replace);
+	return container;
+};
 
 /**
  * Find-match highlighting for browsers without `CSS.highlights`. Same two roles
@@ -1442,20 +1523,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 					diff,
 				});
 				// Fallback: insert at the end of the editor
-				const diffContainer = window.document.createElement("div");
-				diffContainer.setAttribute("data-diff-container", "true");
-				diffContainer.contentEditable = "false";
-				diffContainer.className = DIFF_CONTAINER_CLASS;
-
-				const oldDiv = window.document.createElement("div");
-				oldDiv.innerHTML = markdownToHtml(diff.find);
-				oldDiv.className = DIFF_REMOVED_CLASS;
-				diffContainer.appendChild(oldDiv);
-
-				const newDiv = window.document.createElement("div");
-				newDiv.innerHTML = markdownToHtml(diff.replace);
-				newDiv.className = DIFF_ADDED_CLASS;
-				diffContainer.appendChild(newDiv);
+				const diffContainer = buildDiffContainer(diff);
 
 				editorRef.current.appendChild(diffContainer);
 				diffContainer.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -1466,20 +1534,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 			rangeObj.setStartBefore(elementsInRange[0]);
 			rangeObj.setEndAfter(elementsInRange[elementsInRange.length - 1]);
 
-			const diffContainer = window.document.createElement("div");
-			diffContainer.setAttribute("data-diff-container", "true");
-			diffContainer.contentEditable = "false";
-			diffContainer.className = DIFF_CONTAINER_CLASS;
-
-			const oldDiv = window.document.createElement("div");
-			oldDiv.innerHTML = markdownToHtml(diff.find);
-			oldDiv.className = DIFF_REMOVED_CLASS;
-			diffContainer.appendChild(oldDiv);
-
-			const newDiv = window.document.createElement("div");
-			newDiv.innerHTML = markdownToHtml(diff.replace);
-			newDiv.className = DIFF_ADDED_CLASS;
-			diffContainer.appendChild(newDiv);
+			const diffContainer = buildDiffContainer(diff);
 
 			rangeObj.deleteContents();
 			rangeObj.insertNode(diffContainer);

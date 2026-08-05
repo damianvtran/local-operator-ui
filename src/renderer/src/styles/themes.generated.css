@@ -239,7 +239,7 @@
 	--lo-canvas: #09090B;
 	--lo-surface: #18181B;
 	--lo-elevated: #27272A;
-	--lo-sunken: #000000;
+	--lo-sunken: #030307;
 	--lo-ink: #FAFAFA;
 	--lo-ink-muted: #A1A1AA;
 	--lo-ink-dim: #8F8F97;
@@ -247,8 +247,8 @@
 	--lo-hairline: #2F2F31;
 	--lo-border-control: #72727B;
 	--lo-accent: #FAFAFA;
-	--lo-accent-hover: #FFFFFF;
-	--lo-accent-active: #E4E4E7;
+	--lo-accent-hover: #E4E4E7;
+	--lo-accent-active: #D4D4D8;
 	--lo-accent-wash: #262628;
 	--lo-on-accent: #09090B;
 	--lo-success: #86BFA1;
@@ -263,8 +263,8 @@
 	--lo-info: #FAFAFA;
 	--lo-info-wash: #262628;
 	--lo-info-border: #8E8E8E;
-	--lo-overlay-shadow: 0 12px 32px -12px rgb(0 0 0 / 0.8);
-	--lo-scrim: rgb(0 0 0 / 0.65);
+	--lo-overlay-shadow: 0 12px 32px -12px rgb(3 3 7 / 0.8);
+	--lo-scrim: rgb(3 3 7 / 0.65);
 }
 [data-theme="radient"] {
 	color-scheme: dark;
@@ -272,7 +272,7 @@
 	--lo-surface: #1A1F2F;
 	--lo-elevated: #282D47;
 	--lo-sunken: #0A0D12;
-	--lo-ink: #FFFFFF;
+	--lo-ink: #F2F7FC;
 	--lo-ink-muted: #C2D2E0;
 	--lo-ink-dim: #8FA8BC;
 	--lo-ink-disabled: #64748B;

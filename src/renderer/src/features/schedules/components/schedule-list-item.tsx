@@ -27,54 +27,58 @@ const formatDate = (date: Date, includeYear: boolean): string => {
 	return date.toLocaleDateString(navigator.language, options);
 };
 
+/**
+ * The line a person reads to know when a schedule runs.
+ *
+ * Cadence and times are built separately because a one-time schedule has no
+ * cadence at all. The previous shape put "Every <unit>" in front
+ * unconditionally and cancelled it only when the schedule had neither a start
+ * nor an end time — that is, never in the case that reads wrong — so a job
+ * that runs once announced itself as running every day.
+ */
 const createScheduleDisplayString = (schedule: ScheduleResponse): string => {
-	let intervalString: string;
-	if (schedule.interval === 1) {
-		intervalString = `Every ${schedule.unit.slice(0, -1)}`; // Remove 's'
+	const currentYear = new Date().getFullYear();
+	const startTime = schedule.start_time_utc
+		? new Date(schedule.start_time_utc)
+		: null;
+	const endTime = schedule.end_time_utc
+		? new Date(schedule.end_time_utc)
+		: null;
+
+	/* A one-time run dates itself every time it prints: "at 11:40 PM" alone
+	   leaves the reader asking which day. A recurring one never does — the
+	   date of one occurrence is not a fact about the schedule. */
+	const withDate = (date: Date): string => {
+		if (!schedule.one_time) return formatTime(date);
+		const dated = formatDate(date, date.getFullYear() !== currentYear);
+		return `${formatTime(date)} on ${dated}`;
+	};
+
+	let displayString: string;
+	if (schedule.one_time) {
+		displayString = "Once";
+	} else if (schedule.interval === 1) {
+		displayString = `Every ${schedule.unit.slice(0, -1)}`; // Remove 's'
 	} else {
-		intervalString = `Every ${schedule.interval} ${schedule.unit}`;
-	}
-	let displayString = intervalString;
-
-	const now = new Date();
-	const currentYear = now.getFullYear();
-
-	if (schedule.start_time_utc) {
-		const startTime = new Date(schedule.start_time_utc);
-		displayString += ` at ${formatTime(startTime)}`;
-		if (schedule.one_time) {
-			const startYear = startTime.getFullYear();
-			displayString += ` on ${formatDate(startTime, startYear !== currentYear)}`;
-		}
+		displayString = `Every ${schedule.interval} ${schedule.unit}`;
 	}
 
-	if (schedule.end_time_utc) {
-		const endTime = new Date(schedule.end_time_utc);
-		if (schedule.start_time_utc) {
-			// If there's a start time, "to" indicates the end of a range for that start instance
-			displayString += ` to ${formatTime(endTime)}`;
-			if (schedule.one_time) {
-				// Only add date part if it's different from start_time's date or if start_time wasn't one_time formatted
-				const startTime = schedule.start_time_utc
-					? new Date(schedule.start_time_utc)
-					: null;
-				if (!startTime || startTime.toDateString() !== endTime.toDateString()) {
-					const endYear = endTime.getFullYear();
-					displayString += ` on ${formatDate(endTime, endYear !== currentYear)}`;
-				}
-			}
+	if (startTime) {
+		displayString += ` at ${withDate(startTime)}`;
+	}
+
+	if (endTime) {
+		if (startTime) {
+			/* The start already named the day, so an end on the same day repeats
+			   it for nothing. */
+			const sameDay = startTime.toDateString() === endTime.toDateString();
+			displayString += ` to ${sameDay ? formatTime(endTime) : withDate(endTime)}`;
 		} else {
-			// If no start time, "ends @ ..."
-			displayString += ` ending at ${formatTime(endTime)}`;
-			if (schedule.one_time) {
-				const endYear = endTime.getFullYear();
-				displayString += ` on ${formatDate(endTime, endYear !== currentYear)}`;
-			}
+			/* "Once ending at" would not parse as a sentence; "Every hour ending
+			   at" does. */
+			const joint = schedule.one_time ? ", ending at" : " ending at";
+			displayString += `${joint} ${withDate(endTime)}`;
 		}
-	}
-
-	if (schedule.one_time && !schedule.start_time_utc && !schedule.end_time_utc) {
-		displayString += ", once";
 	}
 
 	return displayString;

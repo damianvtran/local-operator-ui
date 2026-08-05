@@ -30,14 +30,14 @@ const errorSuggestions: Record<string, React.ReactNode> = {
 		<p>
 			You haven't selected an AI provider yet. Go to the {settingsLink()} to
 			configure it for all your agents. If you don't have an AI provider, you
-			can sign in to Radient to get access for free to start!
+			can sign in to Radient to get access for free to start.
 		</p>
 	),
 	"Model name is not configured": (
 		<p>
 			You haven't selected an AI model yet. Go to the {settingsLink()} to select
 			a model for all your agents. If you don't have an AI provider, you can
-			sign in to Radient to get access for free to start!
+			sign in to Radient to get access for free to start.
 		</p>
 	),
 	"Rate limit": (

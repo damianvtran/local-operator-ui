@@ -19,13 +19,14 @@
  */
 
 import type { Meta, StoryObj } from "@storybook/react";
-import { type ReactNode, useMemo } from "react";
+import { type FC, type ReactNode, useMemo } from "react";
 import "../../../../styles/index.css";
 import type { EditDiff } from "@shared/api/local-operator/types";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import type { CanvasDocument } from "../../types/canvas";
 import { Canvas } from "./index";
 import { InlineEdit } from "./inline-edit";
+import { buildDiffContainer } from "./wysiwyg-markdown-editor";
 
 /**
  * The chat column beside the panel, which is the only reason the canvas has a
@@ -395,6 +396,24 @@ const DIFFS: EditDiff[] = [
 ];
 
 /**
+ * The review block exactly as the editor builds it, rather than a copy of it
+ * drawn by hand. This story is where the diff-review evidence frames come
+ * from, so a copy here is a picture of markup that may no longer exist.
+ *
+ * The paragraph rules are restated because the real block sits inside the
+ * editable surface, which gets them from `editorProseClasses`; this story
+ * mounts the block on its own.
+ */
+const DiffBlock: FC<{ diff: EditDiff }> = ({ diff }) => (
+	<div
+		className="[&_p]:my-2 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0"
+		ref={(el) => {
+			if (el && !el.firstChild) el.appendChild(buildDiffContainer(diff));
+		}}
+	/>
+);
+
+/**
  * The approval interaction, mid-review. This is the only place in the app
  * where the user accepts or rejects agent output change by change.
  */
@@ -404,15 +423,7 @@ export const DiffReview: Story = {
 			<div className="relative flex-1 bg-surface p-10">
 				<div className="max-w-160 text-body text-ink">
 					<h1 className="mb-3 font-semibold text-title">Q1 invoice review</h1>
-					<div className="my-3 overflow-hidden rounded-sm">
-						<div className="border-danger-border border-l-2 bg-danger-wash px-3 py-2">
-							Three customers are still outstanding at the end of March.
-						</div>
-						<div className="border-success-border border-l-2 bg-success-wash px-3 py-2">
-							Three customers were still outstanding at the end of March, for
-							$6,290 in total.
-						</div>
-					</div>
+					<DiffBlock diff={DIFFS[1]} />
 					<p className="my-2">
 						The totals below come from the March export, filtered to rows where
 						the paid column is empty.

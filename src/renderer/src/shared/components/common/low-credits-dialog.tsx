@@ -94,7 +94,7 @@ export const LowCreditsDialog: FC<LowCreditsDialogProps> = ({
 							formatCurrency(prices?.default_registration_credits)
 						)}
 					</span>{" "}
-					in bonus credits with your first purchase!
+					in bonus credits with your first purchase.
 					{pricesError && (
 						<span className="mt-1 block text-meta text-danger">
 							Could not load bonus credit information.

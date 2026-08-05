@@ -65,9 +65,9 @@ const SPREADSHEET_THEME = themeQuartz.withPart(iconSetQuartz).withParams({
 	browserColorScheme: "inherit",
 
 	// Type: chrome in the app's sans, and cell data in whichever voice its
-	// column speaks. Monospace is the machine voice, so the default here is
-	// prose and the quantity columns override the face themselves; a sheet
-	// whose customer names are set in a terminal font reads as a log file.
+	// column speaks. Most of a sheet is machine output - figures, dates, ids,
+	// codes, statuses - so monospace stays the default here and the columns
+	// that genuinely read as prose opt out of it, per column, below.
 	//
 	// The header was `text-body` (14px) over `text-mono-sm` (12px) data — the
 	// column label set larger than the number under it, which reads as though
@@ -75,11 +75,11 @@ const SPREADSHEET_THEME = themeQuartz.withPart(iconSetQuartz).withParams({
 	// drops to the caption step and carries its weight in the font instead.
 	fontFamily: "var(--font-sans)",
 	headerFontFamily: "var(--font-sans)",
-	cellFontFamily: "var(--font-sans)",
+	cellFontFamily: "var(--font-mono)",
 	fontSize: "var(--text-meta)",
 	headerFontSize: "var(--text-meta)",
 	headerFontWeight: "600",
-	dataFontSize: "var(--text-meta)",
+	dataFontSize: "var(--text-mono-sm)",
 
 	// Sort, filter and menu icons.
 	iconColor: "var(--color-ink-muted)",
@@ -245,18 +245,112 @@ const compareQuantities: NonNullable<ColDef["comparator"]> = (
 };
 
 /*
- * The machine voice, restored to the columns that speak it.
+ * Dates as a sheet renders them, in the two shapes that survive display.
  *
- * Figures need their digits to line up by place value, which a proportional
- * face will not do, so a quantity column keeps mono and its own type step -
- * the same 12px the grid sets for everything else, named for the ramp it is
- * actually on. It is an inline style rather than a class because the theme
- * sets the face on `.ag-row`; the cell's own style is what reliably wins, and
- * the editor input inherits it, so a number stays mono while being typed.
+ * A numeric date is unmistakable - two or three groups of digits joined by
+ * `-`, `/` or `.`, optionally followed by a clock. A written date is only a
+ * date if a month name appears next to a number, so `May 2026` is one and
+ * `payment due in May` is not.
  */
-const QUANTITY_CELL_STYLE: CellStyle = {
-	fontFamily: "var(--font-mono)",
-	fontSize: "var(--text-mono-sm)",
+const NUMERIC_DATE =
+	/^\d{1,4}[-/.]\d{1,2}(?:[-/.]\d{1,4})?(?:[ T]\d{1,2}:\d{2}(?::\d{2})?)?$/;
+const MONTH_WORD =
+	/\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\b/i;
+const HAS_DIGIT = /\d/;
+
+const readsAsDate = (text: string): boolean =>
+	NUMERIC_DATE.test(text) || (MONTH_WORD.test(text) && HAS_DIGIT.test(text));
+
+/*
+ * Punctuation that only machine output uses: paths, urls, snake_case keys,
+ * clock times, field references, template braces. A name or a sentence can
+ * carry a comma, a period, an apostrophe or a hyphen, and none of those are
+ * here.
+ */
+const MACHINE_PUNCTUATION = /[\\/_|:=#@<>{}[\]]/;
+const HAS_LETTER = /\p{L}/u;
+const HAS_SPACE = /\s/;
+/*
+ * Tested rather than `\p{Lu}` so that uncased scripts count as capitalised:
+ * `北京` is a proper noun and should read as one.
+ */
+const STARTS_LOWERCASE = /^\p{Ll}/u;
+
+/**
+ * Whether a cell reads as human prose rather than machine output.
+ *
+ * Monospace marks the machine voice, and in a spreadsheet almost everything
+ * is machine voice - figures, dates, ids, reference codes, statuses - so this
+ * is the exception rather than the rule, and it is deliberately reluctant.
+ *
+ * A value qualifies when it holds letters, carries no machine punctuation and
+ * is neither a quantity nor a date, AND it either contains a space or is a
+ * capitalised single word with no digits in it. That second clause is what
+ * separates `Northwind` and `Contoso` - names, of which a customer column is
+ * mostly made - from `unpaid` and `n/a`, which are statuses a machine wrote.
+ */
+const readsAsProse = (value: unknown): boolean => {
+	if (typeof value !== "string") return false;
+	const text = value.trim();
+	if (text === "" || !HAS_LETTER.test(text)) return false;
+	if (MACHINE_PUNCTUATION.test(text)) return false;
+	if (readsAsQuantity(text) || readsAsDate(text)) return false;
+	return (
+		HAS_SPACE.test(text) ||
+		(!HAS_DIGIT.test(text) && !STARTS_LOWERCASE.test(text))
+	);
+};
+
+/*
+ * How many rows a column is judged from.
+ *
+ * The first row is not a column: one blank or atypical cell should not decide
+ * the face and the alignment of everything under it. Reading every row would
+ * rescan the whole sheet on each cell edit, so the judgement is taken from
+ * the top and left there - far more than enough for a majority to be stable,
+ * and bounded whatever the sheet's size.
+ */
+const COLUMN_SAMPLE_ROWS = 50;
+
+/**
+ * What a column is made of, read off a sample rather than off one cell.
+ *
+ * Blanks are skipped rather than counted against either reading, so a sparse
+ * column is judged on the values it does have. A column that is neither -
+ * invoice ids, statuses, anything mixed - falls through to the grid's
+ * defaults: monospace and left-aligned.
+ */
+const readColumn = (
+	rows: Record<string, unknown>[],
+	key: string,
+): { isQuantity: boolean; isProse: boolean } => {
+	let quantities = 0;
+	let prose = 0;
+	let seen = 0;
+	const depth = Math.min(rows.length, COLUMN_SAMPLE_ROWS);
+	for (let i = 0; i < depth; i++) {
+		const value = rows[i][key];
+		if (value === null || value === undefined || String(value).trim() === "") {
+			continue;
+		}
+		seen++;
+		if (readsAsQuantity(value)) quantities++;
+		else if (readsAsProse(value)) prose++;
+	}
+	return { isQuantity: quantities * 2 > seen, isProse: prose * 2 > seen };
+};
+
+/*
+ * The human voice, granted to the columns that speak it.
+ *
+ * It is an inline style rather than a class because the theme sets the face
+ * on `.ag-row`; the cell's own style is what reliably wins without a new
+ * stylesheet rule, and the editor input inherits it, so a name stays in the
+ * sans face while it is being typed.
+ */
+const PROSE_CELL_STYLE: CellStyle = {
+	fontFamily: "var(--font-sans)",
+	fontSize: "var(--text-meta)",
 };
 
 /*
@@ -682,23 +776,28 @@ const SpreadsheetPreviewComponent: FC<SpreadsheetPreviewProps> = ({
 		) {
 			return [];
 		}
-		const firstRow = sheetsData[activeSheetName][0];
-		return Object.keys(firstRow).map((key) => {
-			// One reading of the column decides three things, because they are
-			// the same judgement: numbers right-align so their digits line up by
-			// place value, they keep the machine voice the rest of the sheet
-			// gives up, and they sort by size instead of alphabetically. The
-			// header follows the cells, or the label floats away from its column.
-			const isNumeric = readsAsQuantity(firstRow[key]);
+		const rows = sheetsData[activeSheetName];
+		return Object.keys(rows[0]).map((key) => {
+			// Two readings of the same column, each carrying its own rule.
+			//
+			// Quantities right-align so their digits line up by place value, and
+			// they sort by size rather than alphabetically; the header follows
+			// the cells, or the label floats away from its column.
+			//
+			// The face is the branding rule instead: monospace is the machine
+			// voice, and a customer name is not machine output. Prose is the
+			// narrow exception because nearly everything else in a sheet - ids,
+			// dates, codes, statuses, figures - genuinely is machine output.
+			const { isQuantity, isProse } = readColumn(rows, key);
 			return {
 				field: key,
 				headerName: key,
 				editable: true,
 				sortable: true,
 				filter: true,
-				type: isNumeric ? "numericColumn" : undefined,
-				comparator: isNumeric ? compareQuantities : undefined,
-				cellStyle: isNumeric ? QUANTITY_CELL_STYLE : undefined,
+				type: isQuantity ? "numericColumn" : undefined,
+				comparator: isQuantity ? compareQuantities : undefined,
+				cellStyle: isProse ? PROSE_CELL_STYLE : undefined,
 			};
 		});
 	}, [activeSheetName, sheetsData]);
