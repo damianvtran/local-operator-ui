@@ -27,8 +27,10 @@ import { useCanvasStore } from "@shared/store/canvas-store";
 import type { CanvasDocument } from "../../types/canvas";
 import { Canvas } from "./index";
 import { InlineEdit } from "./inline-edit";
-import { WysiwygMarkdownEditor } from "./wysiwyg-markdown-editor";
-import { buildDiffContainer } from "./wysiwyg-markdown-editor";
+import {
+	WysiwygMarkdownEditor,
+	buildDiffContainer,
+} from "./wysiwyg-markdown-editor";
 
 /**
  * The chat column beside the panel, which is the only reason the canvas has a
