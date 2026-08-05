@@ -1,6 +1,7 @@
 import type { Agent } from "@shared/api/radient/types";
 import { Button, Skeleton, Tooltip } from "@shared/components/ui";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
+import { cn } from "@shared/lib/utils";
 import { formatDistanceToNowStrict } from "date-fns";
 import { Download, Heart, Star } from "lucide-react";
 import type React from "react";
@@ -21,15 +22,6 @@ type AgentCardProps = {
 	isFavouriteActionLoading?: boolean;
 	showActions?: boolean;
 };
-
-/*
- * The two semantic hues the heart and star carry when active. They were
- * hardcoded in the MUI version too (`#e53935`, `#ffb300`) and have no role
- * in the palette contract — there is no "liked" role to spend a semantic
- * triple on — so they stay as named values at their two call sites.
- */
-const LIKE_ACTIVE_COLOR = "#e53935";
-const FAVOURITE_ACTIVE_COLOR = "#ffb300";
 
 /**
  * Renders a card displaying information about a public agent.
@@ -146,9 +138,27 @@ export const AgentCard: React.FC<AgentCardProps> = ({
 			 * pill it used to wear was clipped at "1840 Downl…" in a four-column
 			 * grid. Like and favourite are reactions, not the job, and they read
 			 * as two quiet counters.
+			 *
+			 * Active, those two borrow the `danger` and `warning` hues. Neither is
+			 * a warning about anything — the palette has no "liked" role to spend,
+			 * and those families are where the red and the amber a person expects
+			 * behind a heart and a star actually live. What they replace is the
+			 * MUI-era `#e53935` and `#ffb300`, which ignored all twelve palettes
+			 * and put the favourited star at 1.62:1 on `iceberg`, under half the
+			 * 3:1 floor a meaningful graphic owes its ground.
+			 * `agent-details-page` renders the same pair the same way.
+			 *
+			 * The counter group carries `min-w-0` and the row wraps, because a
+			 * flex item defaults to `min-width: auto` and so refuses to shrink
+			 * below its min-content width. Three counters that will not yield
+			 * pushed the action past the card's `overflow-hidden` edge, and
+			 * `shrink-0` on the action cannot rescue what is already outside the
+			 * box. `min-w-0` lets the group give way; `flex-wrap` makes the
+			 * action drop to a second line rather than off the card, whatever
+			 * the counts turn out to be.
 			 */}
-			<div className="flex items-center justify-between gap-2 border-t border-hairline px-3 py-2">
-				<div className="flex items-center gap-0.5">
+			<div className="flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-hairline px-3 py-2">
+				<div className="flex min-w-0 items-center gap-0.5">
 					<Tooltip content={likeTooltip}>
 						<span>
 							<Button
@@ -159,10 +169,10 @@ export const AgentCard: React.FC<AgentCardProps> = ({
 								}
 								disabled={isLikeActionLoading || !isAuthenticated}
 								aria-label={isLiked ? "Unlike agent" : "Like agent"}
+								className={cn(isLiked && "text-danger")}
 							>
 								<Heart
-									fill={isLiked ? LIKE_ACTIVE_COLOR : "none"}
-									color={isLiked ? LIKE_ACTIVE_COLOR : undefined}
+									fill={isLiked ? "currentColor" : "none"}
 									data-testid="agent-like-heart"
 								/>
 								<span className="inline-flex h-4 min-w-4 items-center font-mono text-mono-sm text-ink-muted">
@@ -189,10 +199,10 @@ export const AgentCard: React.FC<AgentCardProps> = ({
 								aria-label={
 									isFavourited ? "Unfavourite agent" : "Favourite agent"
 								}
+								className={cn(isFavourited && "text-warning")}
 							>
 								<Star
-									fill={isFavourited ? FAVOURITE_ACTIVE_COLOR : "none"}
-									color={isFavourited ? FAVOURITE_ACTIVE_COLOR : undefined}
+									fill={isFavourited ? "currentColor" : "none"}
 									data-testid="agent-favourite-star"
 								/>
 								<span className="inline-flex h-4 min-w-4 items-center font-mono text-mono-sm text-ink-muted">
@@ -218,7 +228,10 @@ export const AgentCard: React.FC<AgentCardProps> = ({
 						</span>
 					</Tooltip>
 				</div>
-				<div className="flex shrink-0 items-center">
+				{/* `ml-auto` rather than `justify-between`: it holds the action at the
+				    right edge on the wrapped line too, where a lone flex item would
+				    otherwise sit at the start. */}
+				<div className="ml-auto flex shrink-0 items-center">
 					<Button
 						variant="secondary"
 						size="sm"

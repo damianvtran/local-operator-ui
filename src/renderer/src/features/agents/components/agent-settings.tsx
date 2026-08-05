@@ -1,6 +1,6 @@
 import type { AgentDetails } from "@shared/api/local-operator/types";
 import { useUpdateAgent } from "@shared/hooks/use-update-agent";
-import { ArrowLeft, Bot } from "lucide-react";
+import { Bot } from "lucide-react";
 import { useState } from "react";
 import type { FC } from "react";
 import { ChatSettings } from "./chat-settings";
@@ -103,17 +103,15 @@ export const AgentSettings: FC<AgentSettingsProps> = ({
 				</div>
 			) : (
 				<div className="flex h-full flex-col items-center justify-center gap-2 p-8 text-center">
-					{/* The glyph is scenery, so it stays ink; the accent is spent once,
-					    on the one thing here that tells you what to do next. */}
+					{/* Scenery, so it stays ink. No accent anywhere in this state: the
+					    only thing that could earn it is a control, and there is none
+					    here — the list this points at is already on screen. */}
 					<Bot size={48} className="text-ink-dim" aria-hidden="true" />
 					<h2 className="text-heading text-ink">No agent selected</h2>
 					<p className="max-w-md text-body-sm text-ink-muted">
-						Select an agent from the list to view its configuration and details
+						Select an agent from the list on the left to view its configuration
+						and details.
 					</p>
-					<div className="mt-2 flex items-center gap-2 text-accent">
-						<ArrowLeft size={16} aria-hidden="true" />
-						<span className="text-body-sm">Select an agent</span>
-					</div>
 				</div>
 			)}
 		</div>

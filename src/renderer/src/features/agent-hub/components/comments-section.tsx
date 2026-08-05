@@ -191,7 +191,7 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
 				<ul className="flex flex-col gap-6">
 					{comments.length === 0 ? (
 						<li className="text-body-sm text-ink-muted">
-							No comments yet. Be the first to comment!
+							No comments yet. Yours would be the first.
 						</li>
 					) : (
 						comments.map((comment) =>

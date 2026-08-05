@@ -33,12 +33,15 @@ import { useDelistAgentMutation } from "./hooks/use-delist-agent-mutation";
 import { useDownloadAgentMutation } from "./hooks/use-download-agent-mutation";
 
 /*
- * The semantic hues the heart and star carry when active. They were hardcoded
- * in the MUI version too (`#e53935`, `#ffb300`) and have no role in the
- * palette contract, so they stay as named values at their two call sites.
+ * Like and favourite carry the `danger` and `warning` hues when active.
+ * Neither is a warning about anything — the palette has no
+ * "liked" role to spend, and those two families are where the red and the
+ * amber a person expects behind a heart and a star live. They replace the
+ * MUI-era `#e53935` and `#ffb300`, which ignored all twelve palettes and put
+ * the favourited star at 1.62:1 on `iceberg`, under half the 3:1 floor a
+ * meaningful graphic owes its ground. `agent-card` renders the same pair the
+ * same way.
  */
-const LIKE_ACTIVE_COLOR = "#e53935";
-const FAVOURITE_ACTIVE_COLOR = "#ffb300";
 
 const CountDisplay: React.FC<{ children: React.ReactNode }> = ({
 	children,
@@ -180,11 +183,7 @@ export const AgentDetailsPage: React.FC = () => {
 								aria-label={isLiked ? "Unlike agent" : "Like agent"}
 								className={cn(isLiked && "text-danger")}
 							>
-								<Heart
-									size={18}
-									fill={isLiked ? "currentColor" : "none"}
-									style={isLiked ? { color: LIKE_ACTIVE_COLOR } : undefined}
-								/>
+								<Heart size={18} fill={isLiked ? "currentColor" : "none"} />
 								<CountDisplay>
 									{isLoadingLikes ? (
 										<Skeleton className="h-3.5 w-5" />
@@ -210,13 +209,7 @@ export const AgentDetailsPage: React.FC = () => {
 								}
 								className={cn(isFavourited && "text-warning")}
 							>
-								<Star
-									size={18}
-									fill={isFavourited ? "currentColor" : "none"}
-									style={
-										isFavourited ? { color: FAVOURITE_ACTIVE_COLOR } : undefined
-									}
-								/>
+								<Star size={18} fill={isFavourited ? "currentColor" : "none"} />
 								<CountDisplay>
 									{isLoadingFavourites ? (
 										<Skeleton className="h-3.5 w-5" />

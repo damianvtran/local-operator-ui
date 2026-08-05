@@ -73,7 +73,16 @@ export const AgentHubPage: React.FC = () => {
 						</div>
 					)}
 					{!isLoading && !error && (
-						<div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+						/*
+						 * The column count comes from the room the grid actually has,
+						 * not from the window. Viewport breakpoints asked for four
+						 * columns at 1280 after the sidebar had already taken 264px
+						 * of that 1280, which left 224px cards — narrower than the
+						 * card footer needs, so the Get button was clipped off every
+						 * one of them. 17.5rem is the width at which a card footer
+						 * holds three counters and a labelled action on one line.
+						 */
+						<div className="grid grid-cols-[repeat(auto-fill,minmax(17.5rem,1fr))] gap-6">
 							{agents.length === 0 ? (
 								<p className="col-span-full text-center text-body text-ink">
 									No public agents found.
