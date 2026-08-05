@@ -21,20 +21,43 @@ import { tags as t } from "@lezer/highlight";
  * swap on its own, the extensions below are built once at import, and nothing
  * here has to be re-run — or even observed — by React.
  */
+/*
+ * Syntax roles, and why these.
+ *
+ * `accent` must not appear in syntax highlighting at all. It is deliberately
+ * excluded from the contract's semantic-separation gate, and it measures dE00
+ * 0.00 against `success` on monokai, against `info` on dune, and against
+ * `ink` on obsidian - so the previous mapping, which put keywords on accent
+ * and strings on success, rendered two token classes in literally the same
+ * colour on five palettes.
+ *
+ * The four gated semantics carry keyword, string, number and function;
+ * `inkDim` carries comment; `ink` carries names. Chosen by exhaustive search
+ * over the 24 permutations of the four semantics across the four slots,
+ * maximising the worst pairwise dE00 across all twelve palettes: keyword =
+ * success, string = warning, number = danger, function = info, worst case
+ * 8.87 (radient, function vs comment). The same mapping was recommended
+ * independently with a worst case of 8.88; both numbers are measurements.
+ *
+ * Two deliberate limits, recorded so they are not mistaken for oversights.
+ * obsidian's `info` IS its `ink`, so function and variable names cannot be
+ * separated by hue there; `functionName` takes a heavier weight instead. And
+ * `inkDisabled` was measured and rejected for comments - it is the authentic
+ * upstream comment colour, but it fails 4.5:1 on the editor ground in all
+ * twelve palettes, down to 1.91:1 on iceberg.
+ */
 const colors = {
-	/* `sunken` rather than `surface`: the role contract names code grounds as
-	   the recessed step, and a recessed editor reads as a well in the panel
-	   rather than as another card stacked on it. */
 	background: "var(--color-sunken)",
 	foreground: "var(--color-ink)",
 	selection: "var(--color-accent-wash)",
 	comment: "var(--color-ink-dim)",
-	keyword: "var(--color-accent)",
+	keyword: "var(--color-success)",
 	operator: "var(--color-ink-muted)",
-	string: "var(--color-success)",
-	number: "var(--color-warning)",
-	regexp: "var(--color-danger)",
+	string: "var(--color-warning)",
+	number: "var(--color-danger)",
+	regexp: "var(--color-info)",
 	className: "var(--color-info)",
+	functionName: "var(--color-info)",
 	variableName: "var(--color-ink)",
 	base: "var(--color-ink)",
 } as const;

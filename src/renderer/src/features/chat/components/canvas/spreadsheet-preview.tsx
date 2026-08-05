@@ -169,11 +169,14 @@ const SPREADSHEET_THEME = themeQuartz.withPart(iconSetQuartz).withParams({
  * past the format, because `$2,310.50` and `12.5%` are quantities and belong
  * in a column whose digits line up.
  */
-const QUANTITY_TEXT = /^[+-]?[$€£¥]?\s?\d[\d,]*(\.\d+)?\s?%?$/;
-
+/*
+ * One grammar, one reader. The gate that decides whether a column is a
+ * quantity runs the same parser the comparator uses, so a column of
+ * bracketed accounting negatives - `(1,234.50)` - cannot sort by size in one
+ * place and be declared prose in the other.
+ */
 const readsAsQuantity = (value: unknown): boolean =>
-	typeof value === "number" ||
-	(typeof value === "string" && QUANTITY_TEXT.test(value.trim()));
+	typeof value === "number" || quantityValue(value) !== null;
 
 /*
  * The marks a rendered quantity carries that say nothing about its size: a
@@ -430,7 +433,14 @@ const harvestColumnFormats = (
 		const key = repeat === 0 ? name : `${name}_${repeat}`;
 		for (let row = range.s.r + 1; row <= range.e.r; row++) {
 			const cell = worksheet[XLSX.utils.encode_cell({ r: row, c: col })];
-			if (cell?.z) {
+			/*
+			 * `General` is the absence of a format, not a format. With `cellNF`
+			 * every present cell carries a `z`, so without this guard the loop
+			 * would stop at a `TBD` or `n/a` placeholder sitting above the real
+			 * currency cells, and saving would then stamp `General` onto the
+			 * whole column - losing exactly the formats this exists to keep.
+			 */
+			if (cell?.z && cell.z !== "General") {
 				formats[key] = String(cell.z);
 				break;
 			}
@@ -685,8 +695,23 @@ const SpreadsheetPreviewComponent: FC<SpreadsheetPreviewProps> = ({
 				setFiles(conversationId, updatedFiles);
 			}
 
-			// Update the original data reference and reset change flags
-			originalDataRef.current = JSON.parse(JSON.stringify(debouncedSheetsData));
+			/*
+			 * Re-parse the saved content rather than hand-refreshing the refs.
+			 *
+			 * Refreshing `originalDataRef` alone left `originalRawRef` and the
+			 * format map holding the PREVIOUS parse. A second save with no
+			 * re-parse in between then compared every cell the first save
+			 * edited against its old display value, found them "untouched", and
+			 * wrote the stale typed value back - edit one silently reverted.
+			 * In the shipped chat surface the store round-trip re-triggers
+			 * `parseFile` and masked it; on any surface where the store does not
+			 * bounce, it was live.
+			 *
+			 * Parsing our own output is also the honest definition of "saved":
+			 * whatever the file now contains is the truth the next edit works
+			 * from, including anything the write normalised.
+			 */
+			parseFile(newContent, document.path);
 			setHasUserChanges(false);
 
 			showSuccessToast("Spreadsheet saved");
@@ -707,6 +732,7 @@ const SpreadsheetPreviewComponent: FC<SpreadsheetPreviewProps> = ({
 		setFiles,
 		hasUserChanges,
 		isSaving,
+		parseFile,
 	]);
 
 	useEffect(() => {
@@ -810,7 +836,21 @@ const SpreadsheetPreviewComponent: FC<SpreadsheetPreviewProps> = ({
 				editable: true,
 				sortable: true,
 				filter: true,
-				type: isQuantity ? "numericColumn" : undefined,
+				/*
+				 * Alignment and sorting are applied as classes and a comparator,
+				 * deliberately NOT via ag-grid's `numericColumn` type. The type is
+				 * `{ headerClass: "ag-right-aligned-header", cellClass:
+				 * "ag-right-aligned-cell" }` and nothing else, and
+				 * `ag-right-aligned-header` right-aligns by setting
+				 * `flex-direction: row-reverse` on the header label - which parks
+				 * the filter icon at the far LEFT of the header cell, beside the
+				 * NEIGHBOURING column's label. Right-aligned data with a
+				 * left-parked icon reads as belonging to the previous column.
+				 * `lo-quantity-header` right-aligns the label without reversing
+				 * it, so the icon stays with its own label.
+				 */
+				cellClass: isQuantity ? "ag-right-aligned-cell" : undefined,
+				headerClass: isQuantity ? "lo-quantity-header" : undefined,
 				comparator: isQuantity ? compareQuantities : undefined,
 				cellStyle: isProse ? PROSE_CELL_STYLE : undefined,
 			};
