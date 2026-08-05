@@ -74,14 +74,24 @@ export type MessageInputHandle = {
 const COMPOSER_BOX = cn(
 	"mx-auto flex w-full flex-col border border-control bg-surface",
 	"box-border transition-colors duration-fast ease-out-quart",
-	// `outline-solid` is required, not decorative. Tailwind v4's `outline-none`
-	// sets `--tw-outline-style: none`, and that token survives into the
-	// `has-[:focus-visible]` state — so with it on this wrapper the width from
-	// `outline-2` applied and no outline ever painted, leaving the app's primary
-	// input with no keyboard focus indicator. The wrapper is not focusable, so
-	// there was no default outline here to suppress in the first place.
-	"has-[:focus-visible]:outline-solid has-[:focus-visible]:outline-2",
-	"has-[:focus-visible]:outline-accent",
+	// Scoped to `textarea`, not a bare `has-[:focus-visible]`.
+	//
+	// This box also contains the attach, model and send controls. Unscoped, it
+	// ringed itself whenever any of those took focus, while the button drew its
+	// own ring at the same time - a ring inside a ring, pointing at the box
+	// when the user is on a button. The wrapper draws the ring for the FIELD it
+	// frames; every other control in here is responsible for its own.
+	//
+	// `outline-solid` is required, not decorative: the textarea carries
+	// `outline-none`, which pins `--tw-outline-style: none`, and that token
+	// survives into this state - so the width from `outline-2` applied and no
+	// outline ever painted, leaving the app's primary input with no keyboard
+	// focus indicator.
+	//
+	// `outline-offset-2` matches the other three field wrappers; this one sat
+	// at 0 and was the odd one out.
+	"has-[textarea:focus-visible]:outline-solid has-[textarea:focus-visible]:outline-2",
+	"has-[textarea:focus-visible]:outline-accent has-[textarea:focus-visible]:outline-offset-2",
 );
 
 /**
@@ -292,7 +302,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					);
 				}
 			} else {
-				console.error("getUserMedia not supported on your browser!");
+				console.error("This browser cannot record audio");
 				showErrorToast("Audio recording is not supported on your browser.");
 			}
 		}, [canEnableRecordingFeature]);

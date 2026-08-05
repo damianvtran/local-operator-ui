@@ -121,8 +121,18 @@ faintest tint, for the ground of a callout) and `-border`.
 
 All three parts are authored per theme rather than derived, because deriving
 them is what lets MUI's `augmentColor` invent an Alert's appearance — twelve
-times, differently. `info` is the accent's own triple in the brand palettes: a
-fourth semantic hue is a hue nobody can name.
+times, differently.
+
+Four semantics means four **separable** hues. `info` used to be the accent's
+own triple in the two brand palettes, on the theory that a fourth semantic hue
+is a hue nobody can name. A hue nobody can *distinguish* is the real defect,
+and that is what it produced: `success` and `info` sat ΔE00 2.2 apart in the
+light brand palette and 5.1 in the dark, whose washes were byte-identical. A
+user asked to tell "it worked" from "here is a fact" by colour cannot do it
+when the two colours are the same colour. The accent budget above governs how
+often the accent is *spent*; it never meant a semantic could not exist. The
+brand palettes now separate `success` from `info` by ΔE00 38.9 and 41.0, and
+the weakest pair anywhere in the system is sage at 8.4.
 
 ---
 
@@ -137,11 +147,22 @@ fourth semantic hue is a hue nobody can name.
 | `accent` and each semantic colour as text on canvas and surface | 4.5:1 |
 | `on-accent` on the accent fill | 4.5:1 |
 | `border-control` on each of the four grounds | 3:1 |
-| Any two grounds, mutually | 1.03:1 (distinguishable) |
+| Any two grounds, mutually | 1.03:1 |
 | Component triples: ink on its own fill | 4.5:1 |
 | Component triples: edge (fill **or** border) against the ground behind | 3:1 |
 
 `ink-disabled` is the only exemption.
+
+That grounds row is a floor, not a promise that anyone can see the step. 1.03:1
+is a luminance ratio, and two grounds can clear it and still read as one
+surface — the light brand palette cleared it while rendering a plain card on
+canvas invisibly. The perceptual test is ΔE00, and the threshold observed in
+the captured theme frames is about **2**: sage renders that card at 1.9 and
+iceberg at 2.1, where the brand palette at 1.5 did not. Aim for 2 or better on
+adjacent steps. The cheap way to buy it is § 2's warm ramp rather than more
+lightness: ΔE00 has a chroma axis and a contrast ratio does not, so separating
+two grounds by warmth at a fixed `L*` costs no assertion in this table, while
+separating them by lightness costs every ink measured against them.
 
 **Component triples are the assertion that matters most.** A pair checker passes
 a control whose fill is 1.06:1 and whose border is 1.20:1 — each token is
@@ -249,27 +270,43 @@ sites while the other ~290 icon renders in the app sat on the default and
 looked fine.
 
 Lucide draws on a 24px grid and scales the stroke with the box, so one value
-is one pen at different zooms. At the sizes below, a 2 renders as 1.17px,
-1.33px, 1.67px and 2px — the range where an icon still outweighs the 1px
-`hairline` beside it and roughly matches the stems of the 500-weight label it
-weighs against. A 1.5 at 16px renders at exactly 1px, which is what the chat
-header's canvas toggle was doing: an icon with the visual weight of a divider.
+is one pen at different zooms. At the sizes below a 2 renders as 1px, 1.17px,
+1.33px, 1.67px and 2px — from 14 up, that is the range where an icon still
+outweighs the 1px `hairline` beside it and roughly matches the stems of the
+500-weight label it weighs against. A 1.5 at 16px renders at exactly 1px,
+which is what the chat header's canvas toggle was doing: an icon with the
+visual weight of a divider.
 
-**Sizes: 14 / 16 / 20 / 24.** These are not free choices. They are the icon
-slots `Button` already defines, and an icon inside a control has to agree with
-the control.
+**Sizes: 12 / 14 / 16 / 20 / 24.** These are not free choices. 14, 16 and 20
+are the icon slots `Button` already defines, and an icon inside a control has
+to agree with the control.
 
 | Size | Where |
 |---|---|
-| 14 | `Button` `sm` and `icon-sm`; inline with `body-sm` or `meta` |
+| 12 | inline with `meta`, and inside anything smaller than a 28px control — `badge`, the canvas tab's close button, the variables viewer's dense rows |
+| 14 | `Button` `sm` and `icon-sm`; inline with `body-sm` |
 | 16 | the default — `Button` `md`, `lg` and `icon`; list rows, nav items |
 | 20 | `Button` `icon-lg`; a standalone glyph labelling a settings row |
 | 24 | a page header, beside the `display` step |
 
-Above 24 is illustration rather than iconography — the onboarding and
-installer moments — and it does not belong in a toolbar or a row. Sizes off
-this ramp still exist in the tree (18, 19, 22, 26) and are drift, not
-exceptions.
+**12 is where the one-pen rule bottoms out**, and it is on the ramp because
+16 sites need it, not because it is comfortable. A stroke of 2 renders at
+exactly 1px there — the weight the paragraph above calls a divider. It holds
+only because weight is stroke times contrast: a `hairline` is the faintest
+border in the system and a 12px glyph is `ink-dim` or darker. There is no
+margin left below it. So the answer under 12 is to stop shrinking, not to
+thicken — `inline-edit` puts 10px glyphs inside keyboard shortcut caps and is
+the one site in the tree that goes lower. A named exception, not a step.
+
+Above 24 is illustration rather than iconography: 28 in the onboarding
+congratulations, 32 in the installer carousel and the two file dropzones, 48
+in the error boundary and the agents empty state. It does not belong in a
+toolbar or a row.
+
+Sizes off this ramp still exist and are drift, not exceptions — 18 at eleven
+sites, 19 at three, 22 at two, 26 at one. Every one of them is set through
+lucide's numeric `size={n}` prop rather than a `size-*` class, which is why a
+`size-*` sweep reports the tree as clean when it is not.
 
 **When a glyph reads thin, change its size, not its stroke.** The checkbox is
 the worked example: a 12px tick needed `strokeWidth={3}` to hold its weight,

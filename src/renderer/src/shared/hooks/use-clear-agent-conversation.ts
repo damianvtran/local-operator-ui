@@ -43,7 +43,7 @@ export const useClearAgentConversation = () => {
 			clearMessageHistory(variables.agentId);
 
 			// Show success toast
-			showSuccessToast("Conversation cleared successfully");
+			showSuccessToast("Conversation cleared");
 		},
 		onError: (error) => {
 			console.error("Error clearing agent conversation:", error);

@@ -66,8 +66,6 @@ export const SecurityNotice = ({
 			{details ? (
 				<Disclosure
 					summary={<span className="text-meta">Show the reviewed code</span>}
-					triggerClassName="min-h-6 py-0.5"
-					contentClassName="ml-5 mt-1 flex flex-col gap-2 pb-1"
 				>
 					{details}
 				</Disclosure>

@@ -23,7 +23,10 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
-export const PALETTE_DIR = join(ROOT, "src/renderer/src/shared/themes/palettes");
+export const PALETTE_DIR = join(
+	ROOT,
+	"src/renderer/src/shared/themes/palettes",
+);
 
 /**
  * Remove comments before harvesting.
@@ -91,7 +94,9 @@ const stripComments = (src) => {
  */
 export const loadPalettes = () => {
 	const out = [];
-	for (const file of readdirSync(PALETTE_DIR).filter((f) => f.endsWith(".ts"))) {
+	for (const file of readdirSync(PALETTE_DIR).filter((f) =>
+		f.endsWith(".ts"),
+	)) {
 		const src = stripComments(readFileSync(join(PALETTE_DIR, file), "utf8"));
 		// Each exported ThemeDefinition opens with `id: "..."` and carries one
 		// `palette: { ... }` block. Split on the id so multi-theme files (the

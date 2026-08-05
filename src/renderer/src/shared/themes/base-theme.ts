@@ -508,11 +508,22 @@ export const createBaseTheme = (palette: ThemePalette): Theme => {
 					/**
 					 * The focus ring, MUI's half. One ring, defined once.
 					 *
-					 * `outline` rather than `box-shadow`, because an outline is not
-					 * clipped by an ancestor's `overflow: hidden`. This app is almost
-					 * entirely scroll containers, so a box-shadow ring on a focused
-					 * row inside one simply does not render — a failure that is
-					 * invisible to the author and total for the keyboard user.
+					 * NOTE: the authoritative copy is the unlayered rule at the bottom
+					 * of `styles/index.css`. This one only reaches surfaces that
+					 * render a `<CssBaseline/>`, which the app does not - Storybook
+					 * did, which is how the app shipped without a ring while every
+					 * story had one. It is kept so those surfaces stay consistent,
+					 * not because anything depends on it.
+					 *
+					 * `outline` rather than `box-shadow`, but NOT because outlines
+					 * escape clipping - they do not. An outline is ink overflow and
+					 * an ancestor's `overflow: hidden` clips it just as it clips an
+					 * outset shadow. This comment previously asserted the opposite;
+					 * the conclusion was right and the reason was wrong, which is the
+					 * more dangerous combination because the reason is what gets
+					 * reused. Outline is correct here because it follows the
+					 * element's own `border-radius` without being told, stays out of
+					 * layout, and is what `:focus-visible` tooling expects.
 					 *
 					 * `:focus-visible` only: a mouse user clicking a button should not
 					 * get a ring, a keyboard user tabbing to it must.

@@ -102,8 +102,8 @@ const PickerTextField = forwardRef<HTMLDivElement, PickerTextFieldProps>(
 				// `outline-solid` is required: `outline-none` on the input pins
 				// `--tw-outline-style: none`, which the width utility alone cannot
 				// undo.
-				"has-[:focus-visible]:outline-solid has-[:focus-visible]:outline-2",
-				"has-[:focus-visible]:outline-accent has-[:focus-visible]:outline-offset-2",
+				"has-[input:focus-visible]:outline-solid has-[input:focus-visible]:outline-2",
+				"has-[input:focus-visible]:outline-accent has-[input:focus-visible]:outline-offset-2",
 				error && "border-danger",
 				disabled && "border-hairline bg-sunken",
 				className,

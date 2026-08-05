@@ -28,8 +28,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const OUT = join(ROOT, "docs", "evidence");
 const ORIGIN = process.argv[2] ?? "http://localhost:6017";
 
-const CHROME =
-	"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
+const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 
 const THEMES = [
 	"localOperatorDark",
@@ -48,7 +47,23 @@ const THEMES = [
 
 /**
  * The stories that constitute the evidence set: story id plus the viewport it
- * is captured at. Chat surfaces are wide; the primitives sheet is tall.
+ * is captured at.
+ *
+ * This list is the review surface. A story missing from it is a surface nobody
+ * looks at, and round 2 caught exactly that: the set had shrunk to eight
+ * stories drawn from four of fifteen story files, so the shell, the canvas,
+ * agent-hub, schedules and the composer had no visual evidence at all and two
+ * findings about them could not be judged. When you add a story file, add it
+ * here.
+ *
+ * Viewports are the real shipped sizes, not whatever fits. The installer was
+ * captured at 900x700 while its own story declares 1380x800 and the shipped
+ * window is 1380x800, so the committed frame was a responsive fallback with
+ * the brand mark clipped in half - evidence of a layout the user never sees.
+ *
+ * The shell is swept at four widths because two 220px rails at 800px consumed
+ * 28.5% of the window before any content, and a single wide capture hides
+ * exactly that class of defect.
  */
 const STORIES = [
 	["chat-trace--conversation", 1280, 900],
@@ -57,8 +72,37 @@ const STORIES = [
 	["chat-trace--trace-states", 1280, 900],
 	["chat-trace--security-notice-states", 1280, 900],
 	["design-system-primitives--all-primitives", 1280, 1600],
+
+	/* App shell, swept for the rail-width finding. */
+	["shell-app-shell--agents", 1280, 800],
+	["shell-app-shell--agents", 1000, 800],
+	["shell-app-shell--agents", 900, 800],
+	["shell-app-shell--agents", 800, 800],
+	["shell-app-shell--settings", 1280, 800],
+	["shell-app-shell--agents-empty", 1280, 800],
+	["shell-app-shell--rail-collapsed", 1280, 800],
+
+	/* Canvas: the second-largest surface, and the one with the data grids. */
+	["march-invoice-reviewmd--markdown-document", 1280, 900],
+	["march-invoice-reviewmd--spreadsheet", 1280, 900],
+	["march-invoice-reviewmd--code", 1280, 900],
+	["march-invoice-reviewmd--files", 1280, 900],
+	["march-invoice-reviewmd--variables", 1280, 900],
+	["march-invoice-reviewmd--diff-review", 1280, 900],
+	["march-invoice-reviewmd--edit-prompt", 1280, 900],
+
+	["agent-hub-page--grid", 1280, 900],
+	["schedules-page--list", 1280, 900],
+	["command-palette-commandpalette--default", 1280, 800],
+	["command-palette-commandpalette--no-results", 1280, 800],
+
+	["onboarding-onboardingmodal--default", 1280, 900],
+	["onboarding-onboardingmodal--radient-sign-in", 1280, 900],
+	["onboarding-onboardingmodal--create-agent", 1280, 900],
 	["onboarding-onboardingmodal--congratulations", 1280, 900],
-	["installer-installercontent--default", 900, 700],
+
+	/* 1380x800 is what the story declares and what the app window ships. */
+	["installer-installercontent--default", 1380, 800],
 ];
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -239,7 +283,17 @@ const main = async () => {
 				quality: 88,
 				captureBeyondViewport: true,
 			});
-			const dir = join(OUT, story.split("--")[0], story.split("--")[1]);
+			/*
+			 * A story captured at several widths writes one directory per width,
+			 * so a sweep does not overwrite itself. Single-width stories keep the
+			 * plain path, which keeps every existing frame reference valid.
+			 */
+			const widths = STORIES.filter(([s]) => s === story);
+			const leaf =
+				widths.length > 1
+					? `${story.split("--")[1]}@${width}`
+					: story.split("--")[1];
+			const dir = join(OUT, story.split("--")[0], leaf);
 			mkdirSync(dir, { recursive: true });
 			writeFileSync(join(dir, `${theme}.webp`), Buffer.from(data, "base64"));
 			captured++;

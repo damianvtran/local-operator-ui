@@ -56,9 +56,9 @@
  */
 
 import { readFileSync } from "node:fs";
-import { loadPalettes } from "./palette-source.mjs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { loadPalettes } from "./palette-source.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const PALETTE_DIR = join(ROOT, "src/renderer/src/shared/themes/palettes");
@@ -96,6 +96,84 @@ const ratio = (a, b) => {
 	return (x + 0.05) / (y + 0.05);
 };
 
+/*
+ * Perceptual difference, CIEDE2000.
+ *
+ * Every other measurement in this file is a contrast ratio, which is a
+ * function of luminance alone. Two colours can therefore be equally legible
+ * on the same ground, pass every assertion here, and still be the same colour
+ * to a reader — which is exactly how `success` and `info` shipped ΔE00 2.2
+ * apart in one brand palette and with byte-identical washes in the other.
+ * Legibility and distinguishability are different properties and need
+ * different maths.
+ */
+const toLab = (hex) => {
+	const [r, g, b] = [1, 3, 5].map((i) => {
+		const v = Number.parseInt(hex.slice(i, i + 2), 16) / 255;
+		return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+	});
+	const X = (r * 0.4124564 + g * 0.3575761 + b * 0.1804375) / 0.95047;
+	const Y = r * 0.2126729 + g * 0.7151522 + b * 0.072175;
+	const Z = (r * 0.0193339 + g * 0.119192 + b * 0.9503041) / 1.08883;
+	const f = (t) => (t > 216 / 24389 ? Math.cbrt(t) : (841 / 108) * t + 4 / 29);
+	const [fx, fy, fz] = [f(X), f(Y), f(Z)];
+	return [116 * fy - 16, 500 * (fx - fy), 200 * (fy - fz)];
+};
+
+/** CIEDE2000 difference between two hex colours. */
+const deltaE = (h1, h2) => {
+	const [L1, a1, b1] = toLab(h1);
+	const [L2, a2, b2] = toLab(h2);
+	const RAD = Math.PI / 180;
+	const DEG = 180 / Math.PI;
+	const Cb = (Math.hypot(a1, b1) + Math.hypot(a2, b2)) / 2;
+	const G = 0.5 * (1 - Math.sqrt(Cb ** 7 / (Cb ** 7 + 25 ** 7)));
+	const [ap1, ap2] = [(1 + G) * a1, (1 + G) * a2];
+	const [Cp1, Cp2] = [Math.hypot(ap1, b1), Math.hypot(ap2, b2)];
+	const hp = (b, ap) => {
+		if (b === 0 && ap === 0) return 0;
+		const h = Math.atan2(b, ap) * DEG;
+		return h < 0 ? h + 360 : h;
+	};
+	const [hp1, hp2] = [hp(b1, ap1), hp(b2, ap2)];
+	const dL = L2 - L1;
+	const dC = Cp2 - Cp1;
+	let dhp = 0;
+	if (Cp1 * Cp2 !== 0) {
+		dhp = hp2 - hp1;
+		if (dhp > 180) dhp -= 360;
+		else if (dhp < -180) dhp += 360;
+	}
+	const dH = 2 * Math.sqrt(Cp1 * Cp2) * Math.sin((dhp * RAD) / 2);
+	const Lb = (L1 + L2) / 2;
+	const Cpb = (Cp1 + Cp2) / 2;
+	let hpb;
+	if (Cp1 * Cp2 === 0) hpb = hp1 + hp2;
+	else {
+		hpb = Math.abs(hp1 - hp2) > 180 ? (hp1 + hp2 + 360) / 2 : (hp1 + hp2) / 2;
+		if (hpb >= 360) hpb -= 360;
+	}
+	const T =
+		1 -
+		0.17 * Math.cos((hpb - 30) * RAD) +
+		0.24 * Math.cos(2 * hpb * RAD) +
+		0.32 * Math.cos((3 * hpb + 6) * RAD) -
+		0.2 * Math.cos((4 * hpb - 63) * RAD);
+	const Sl = 1 + (0.015 * (Lb - 50) ** 2) / Math.sqrt(20 + (Lb - 50) ** 2);
+	const Sc = 1 + 0.045 * Cpb;
+	const Sh = 1 + 0.015 * Cpb * T;
+	const Rt =
+		-Math.sin(2 * 30 * Math.exp(-(((hpb - 275) / 25) ** 2)) * RAD) *
+		2 *
+		Math.sqrt(Cpb ** 7 / (Cpb ** 7 + 25 ** 7));
+	return Math.sqrt(
+		(dL / Sl) ** 2 +
+			(dC / Sc) ** 2 +
+			(dH / Sh) ** 2 +
+			Rt * (dC / Sc) * (dH / Sh),
+	);
+};
+
 const r2 = (n) => Math.round(n * 100) / 100;
 
 /* A palette value that is not a flat hex — an `rgb()` scrim, a shadow — cannot
@@ -106,7 +184,6 @@ const isHex = (v) => typeof v === "string" && /^#[0-9a-fA-F]{3,8}$/.test(v);
 
 /* Palette loading lives in palette-source.mjs so this gate and the CSS
    generator cannot read the same files differently. */
-
 
 /* ---- 4. what the system permits ---------------------------------------- */
 
@@ -224,7 +301,10 @@ const fail = (msg) => {
 const findException = (theme, fg, bg, got) =>
 	EXCEPTIONS.find(
 		(e) =>
-			e.theme === theme && e.fg === fg && e.bg === bg && Math.abs(e.got - got) < 0.01,
+			e.theme === theme &&
+			e.fg === fg &&
+			e.bg === bg &&
+			Math.abs(e.got - got) < 0.01,
 	);
 
 /*
@@ -246,7 +326,9 @@ const assertPair = (theme, p, fg, bg, floor, label) => {
 	if (raw >= floor) return;
 	const got = r2(raw);
 	if (findException(theme, fg, bg, got)) return;
-	fail(`${theme}: ${label} — ${fg} ${a} on ${bg} ${b} = ${got}:1, need ${floor}:1`);
+	fail(
+		`${theme}: ${label} — ${fg} ${a} on ${bg} ${b} = ${got}:1, need ${floor}:1`,
+	);
 };
 
 const REQUIRED_ROLES = [
@@ -285,6 +367,35 @@ if (palettes.length === 0) {
 	console.error(`No palettes found in ${PALETTE_DIR}`);
 	process.exit(1);
 }
+
+/**
+ * Semantics a reader has to tell apart, and how far apart they must be.
+ *
+ * `accent` is deliberately absent. In the two brand palettes `accent` and
+ * `success` are both the brand green — ΔE00 2.2 and 5.1 — because the brand
+ * has one hue and "it worked" is the state it is happiest to own. That is a
+ * decision, not a defect: nothing in the product asks a user to distinguish
+ * an accent from a success, whereas `success` against `info` is a distinction
+ * a callout exists to make. A gate that fails by design teaches people to
+ * silence gates, so accent is out of the family rather than pinned as an
+ * exception in every palette.
+ *
+ * The floor is 15 and it is a judgement about *recall*, not comparison. A
+ * ΔE00 around 2.3 is where a difference becomes visible with both colours
+ * side by side; nobody reads callouts that way. A user meets one callout,
+ * alone, and has to categorise it against a memory of what green meant last
+ * week — and that needs a difference of category, not of shade. 15 is roughly
+ * six times the side-by-side threshold, which is the region where two colours
+ * reliably take different names.
+ *
+ * It is not calibrated to the tree. The closest legitimate pair in the twelve
+ * is dune's `danger`/`info` at 18.4 (a red-orange beside an orange), which
+ * clears 15 by 23 percent; the three pairs that ever failed this — the two
+ * brand palettes at 2.2 and 5.1, and sage at 8.4, each of which had defined
+ * `info` as its accent's triple — failed it by three to seven times over.
+ */
+const SEPARABLE = ["success", "warning", "danger", "info"];
+const SEPARATION_FLOOR = 15;
 
 for (const { id, palette: p } of palettes) {
 	/* Completeness first. A missing role is a worse defect than a low ratio,
@@ -363,6 +474,21 @@ for (const { id, palette: p } of palettes) {
 			if (Math.max(fillEdge, borderEdge) < FLOOR.nonText) {
 				fail(
 					`${id}: ${c.name} on ${g} has no perceivable edge — fill ${fillEdge}:1, border ${borderEdge}:1, need one at ${FLOOR.nonText}:1`,
+				);
+			}
+		}
+	}
+
+	/* Semantics must be distinguishable from each other, not merely legible. */
+	for (let i = 0; i < SEPARABLE.length; i++) {
+		for (let j = i + 1; j < SEPARABLE.length; j++) {
+			const [a, b] = [SEPARABLE[i], SEPARABLE[j]];
+			if (!isHex(p[a]) || !isHex(p[b])) continue;
+			assertions++;
+			const got = deltaE(p[a], p[b]);
+			if (got < SEPARATION_FLOOR) {
+				fail(
+					`${id}: \`${a}\` ${p[a]} and \`${b}\` ${p[b]} are too close to tell apart (ΔE00 ${r2(got)}, need ${SEPARATION_FLOOR}) — a semantic a reader cannot distinguish from another semantic is not a semantic`,
 				);
 			}
 		}

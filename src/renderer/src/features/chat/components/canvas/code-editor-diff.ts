@@ -8,7 +8,7 @@ import {
 } from "@codemirror/view";
 import type { EditDiff } from "@shared/api/local-operator/types";
 
-const MONO_FAMILY = "'Geist Mono', 'Roboto Mono', monospace";
+const MONO_FAMILY = "var(--font-mono)";
 
 const GLOBAL_WHITE_SPACE_REGEX = /\s+/g;
 const SINGLE_WHITE_SPACE_REGEX = /\s/;

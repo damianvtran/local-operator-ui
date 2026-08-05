@@ -39,7 +39,18 @@ const colors = {
 	base: "var(--color-ink)",
 } as const;
 
-const fontFamily = "'Geist Mono', 'Roboto Mono', monospace";
+/*
+ * The app's mono stack, read from the token rather than restated.
+ *
+ * This used to hardcode "'Geist Mono', 'Roboto Mono', monospace", which is a
+ * second source of truth for the one decision that makes machine voice read as
+ * machine voice. It had already drifted from `--font-mono` in index.css, so
+ * the editor and the surrounding trace could resolve different faces - and the
+ * whole reason `--font-mono` was corrected was that mono was splitting across
+ * two faces. A CSS variable works here because CodeMirror emits real
+ * stylesheets, not canvas text.
+ */
+const fontFamily = "var(--font-mono)";
 
 /**
  * The editor chrome. Shared by both variants below, so the light and dark
@@ -63,6 +74,27 @@ const editorSpec = {
 	},
 	".cm-content *": {
 		fontFamily: `${fontFamily} !important`,
+	},
+	/*
+	 * The editor's focus ring, drawn on the root rather than the content.
+	 *
+	 * CodeMirror's own base theme sets `.cm-content { outline: none }` and
+	 * `.cm-editor.cm-focused { outline: 1px dotted #212121 }`. Both ship from
+	 * node_modules, so the app's contrast gate cannot see either of them, and
+	 * that hardcoded near-black measures 1.02:1 on dracula and 1.03:1 on
+	 * monokai - on nine of the twelve palettes it is under 1.30:1, which is to
+	 * say invisible. The content rule also lands at two-class specificity once
+	 * CodeMirror prefixes it with the generated theme class, so the app's
+	 * unlayered `html :focus-visible` at (0,1,1) loses to it.
+	 *
+	 * Styling `&.cm-focused` puts the ring on the editor root at
+	 * `.cm-editor.<generated>.cm-focused`, which beats CodeMirror's own
+	 * two-class default and matches how every other composite control in this
+	 * app works: the frame draws the ring, the field inside stays quiet.
+	 */
+	"&.cm-focused": {
+		outline: "2px solid var(--color-accent)",
+		outlineOffset: "2px",
 	},
 	"&.cm-focused .cm-cursor": {
 		borderLeftColor: "var(--color-accent)",

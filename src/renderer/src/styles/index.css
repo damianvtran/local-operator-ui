@@ -246,10 +246,18 @@
  *    is (0,1,0); a bare `:focus-visible` ties and loses on order. `html
  *    :focus-visible` is (0,1,1) and wins.
  *
- * `outline` rather than `box-shadow`, because an outline is painted outside the
- * element and is not clipped by an ancestor's `overflow: hidden` — this app is
- * mostly scroll containers. `box-shadow: none` is forced because MUI ships
- * shadow rings at two-class specificity (`.MuiSlider-thumb.Mui-focusVisible`).
+ * `outline` rather than `box-shadow`, but NOT because outlines escape clipping
+ * - they do not. An outline is ink overflow and an ancestor's `overflow:
+ * hidden` clips it exactly as it clips an outset shadow. An earlier version of
+ * this comment claimed otherwise, and a wrong reason is worse than no reason
+ * because it is the one someone cites next time.
+ *
+ * The real reasons: a modern outline follows the element's own `border-radius`
+ * automatically, so the ring is correctly shaped without being told; it does
+ * not participate in layout or compositing the way a shadow does; and it is
+ * the property `:focus-visible` UA styles and assistive tooling already
+ * expect. `box-shadow: none` is forced because MUI ships shadow rings at
+ * two-class specificity (`.MuiSlider-thumb.Mui-focusVisible`).
  *
  * 4. The style comes from Tailwind's own `--tw-outline-style` token rather than
  *    being hardcoded to `solid`. Because this rule is unlayered it outranks the

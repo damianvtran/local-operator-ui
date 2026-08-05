@@ -39,4 +39,5 @@ const row = [
 
 console.log(row);
 console.log("top 10 JS chunks:");
-for (const f of js.slice(0, 10)) console.log(`  ${kb(f.size).padStart(12)}  ${f.name}`);
+for (const f of js.slice(0, 10))
+	console.log(`  ${kb(f.size).padStart(12)}  ${f.name}`);

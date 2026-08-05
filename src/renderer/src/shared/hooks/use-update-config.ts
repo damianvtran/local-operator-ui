@@ -66,7 +66,7 @@ export const useUpdateConfig = () => {
 				type: "all", // Refetch all related queries at once
 			});
 
-			showSuccessToast("Configuration updated successfully");
+			showSuccessToast("Configuration updated");
 		},
 		onError: (error) => {
 			console.error("Error updating configuration:", error);

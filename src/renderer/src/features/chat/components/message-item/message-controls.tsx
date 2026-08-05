@@ -126,7 +126,7 @@ export const MessageControls: FC<MessageControlsProps> = ({
 			{timestamp && <MessageTimestamp timestamp={timestamp} className="px-1" />}
 			{showCopyButton && (
 				<div className="flex items-center">
-					<Tooltip content={copied ? "Copied!" : "Copy message"} side="top">
+					<Tooltip content={copied ? "Copied" : "Copy message"} side="top">
 						<Button
 							variant="ghost"
 							size="icon-sm"

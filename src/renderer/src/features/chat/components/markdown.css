@@ -39,13 +39,38 @@
 	margin-bottom: 0;
 }
 
+/*
+ * Inline code carries no fill, no padding and no radius - the monospace face
+ * is the whole signal.
+ *
+ * This app spends monospace on machine voice as a system decision (§ 4) and
+ * renders every path, count, flag and timestamp in it, so a box around the
+ * same fragment is a second signal for something the face already says. The
+ * fill also cost more than it looked: 4px of chip padding sat between the last
+ * glyph and any following punctuation - a word space here is about 4px, so a
+ * sentence ending in code put its full stop a space and a half away, and that
+ * reads as a typo rather than as a style.
+ *
+ * Measured before removing it: `sunken` against `canvas` is 1.135:1 at best
+ * (sage) and 1.049:1 at worst (neon), with five dark palettes at or below
+ * 1.06. Where the fill is visible the eye attributes the padding to the box
+ * and it reads acceptably; where it is not - which is most of the dark themes
+ * - all that remained was the gap. Tuning the padding would have improved it
+ * where it was not broken and left the void everywhere else.
+ *
+ * GitHub and Slack keep the fill because their inline code is set in the SAME
+ * family as the surrounding prose, so the box is the only signal that a
+ * fragment is literal. That is not this app.
+ *
+ * The accepted cost: multi-word inline code loses its extent delimiter. Here
+ * inline code is overwhelmingly single tokens, so the trade is worth it.
+ *
+ * `pre` keeps its ground and border - a code block has left the flow.
+ */
 .lo-markdown code {
 	font-family: var(--font-mono);
-	font-size: 0.875em;
-	background-color: var(--lo-sunken);
+	font-size: var(--text-mono);
 	color: var(--lo-ink);
-	padding: 0.125rem 0.25rem;
-	border-radius: var(--radius-xs);
 	white-space: pre-wrap;
 	word-break: break-word;
 }
@@ -59,11 +84,17 @@
 	max-width: 100%;
 	overflow-x: auto;
 	font-family: var(--font-mono);
-	font-size: 0.875em;
+	font-size: var(--text-mono);
 }
 
 /* The <pre> already carries the ground and the boundary; a second one on the
-   nested <code> paints a box inside a box. */
+   nested <code> paints a box inside a box.
+
+   Both font sizes used to be `0.875em`, and they multiplied: react-markdown
+   emits `<pre><code>` for a fenced block, so the most-read machine text in
+   the product rendered at 0.875 x 0.875 x 14 = 10.72px, and 9.95px in the
+   13px small view. Naming the same ramp step on both makes the nesting
+   inert. */
 .lo-markdown pre code {
 	background-color: transparent;
 	padding: 0;
@@ -72,37 +103,86 @@
 	word-break: break-word;
 }
 
+/*
+ * Headings are the app's type steps, not a scale of their own.
+ *
+ * These were `em` multiples - 1.4 / 1.22 / 1.08 / 1 - computing to 19.6 /
+ * 17.08 / 15.12 / 14 against the 14px body and 18.2 / 15.86 / 14.04 / 13
+ * against the 13px one. Not one of those seven numbers is on § 4's ramp, and
+ * 17.08px exists nowhere else in the product. The rendered answer is the
+ * most-read text in the app and it was the one surface running a second,
+ * undocumented type system.
+ *
+ * The `em` was not buying nesting safety, which is the reason it looks
+ * load-bearing. Nothing between `.lo-markdown` and a heading changes
+ * `font-size` - not `li`, `ul`, `blockquote`, `td` - so a heading inside a
+ * list item computed to exactly the same size as one at the top level
+ * (measured: 15.12px both ways). What the multiplier actually tracked was the
+ * block's own base, which callers set to `--text-body` or `--text-body-sm`,
+ * and a heading does not need to shrink because the paragraph under it did.
+ *
+ * The ramp has two steps above body and prose has six heading levels, so h3
+ * down to h6 share the body step and separate by space and weight. That is
+ * honest rather than lossy: h3 and h4 already differed by 1.12px, which no
+ * reader can see. h5 and h6 were not styled here at all, so Tailwind's
+ * preflight reset left them identical to a paragraph - an agent writing
+ * `##### Note` got no structure whatsoever.
+ */
 .lo-markdown h1,
 .lo-markdown h2,
 .lo-markdown h3,
-.lo-markdown h4 {
+.lo-markdown h4,
+.lo-markdown h5,
+.lo-markdown h6 {
 	font-weight: 600;
 	color: var(--lo-ink);
 }
 
 .lo-markdown h1 {
-	font-size: 1.4em;
-	margin: 1.25rem 0 0.5rem;
-	padding-bottom: 0.375rem;
+	font-size: var(--text-title);
+	line-height: var(--text-title--line-height);
+	letter-spacing: var(--text-title--letter-spacing);
+	margin: 1.5rem 0 0.5rem;
+	padding-bottom: 0.25rem;
 	border-bottom: 1px solid var(--lo-hairline);
 }
 
 .lo-markdown h2 {
-	font-size: 1.22em;
-	margin: 1.125rem 0 0.5rem;
+	font-size: var(--text-heading);
+	line-height: var(--text-heading--line-height);
+	letter-spacing: var(--text-heading--letter-spacing);
+	margin: 1rem 0 0.5rem;
 }
 
 .lo-markdown h3 {
-	font-size: 1.08em;
-	margin: 1rem 0 0.375rem;
+	font-size: var(--text-body);
+	line-height: var(--text-body--line-height);
+	margin: 0.75rem 0 0.25rem;
 }
 
-.lo-markdown h4 {
-	font-size: 1em;
-	margin: 0.875rem 0 0.375rem;
+.lo-markdown h4,
+.lo-markdown h5,
+.lo-markdown h6 {
+	font-size: var(--text-body);
+	line-height: var(--text-body--line-height);
+	margin: 0.5rem 0 0.25rem;
 }
 
-.lo-markdown > :is(h1, h2, h3, h4):first-child {
+/* Inline code is one ramp step below whatever it sits in, and that is the one
+   thing the `em` scale was genuinely buying: a heading like "## Fixing
+   useEffect" with the identifier in code must not drop to body-size mono
+   inside a 20px heading. Naming the step preserves that and keeps it
+   checkable - a multiplier cannot be grepped against § 4. h3 through h6 are
+   already at the body step, so the base rule serves them. */
+.lo-markdown h1 code {
+	font-size: var(--text-heading);
+}
+
+.lo-markdown h2 code {
+	font-size: var(--text-body);
+}
+
+.lo-markdown > :is(h1, h2, h3, h4, h5, h6):first-child {
 	margin-top: 0;
 }
 
@@ -169,7 +249,7 @@
 .lo-markdown th,
 .lo-markdown td {
 	border: 1px solid var(--lo-hairline);
-	padding: 0.375rem 0.625rem;
+	padding: 0.5rem 0.75rem;
 	text-align: left;
 }
 
@@ -253,20 +333,11 @@
 }
 
 /*
- * Markdown inside a tinted callout.
+ * Inline code inside a tinted callout needs no special case any more.
  *
- * Inline code normally takes the `sunken` ground, which is right on canvas and
- * wrong on an accent wash: a neutral fill on a tinted ground reads as a hole
- * punched through the callout, and it is the "grey on a coloured background"
- * pairing the contrast contract cannot measure. The monospace face is already
- * what marks machine voice (§ 4), so dropping the fill loses nothing.
- *
- * This has to live in the stylesheet rather than as a Tailwind arbitrary
- * variant: `.lo-markdown code` is unlayered CSS and unlayered rules beat
- * anything in `@layer utilities` regardless of specificity.
+ * This block used to strip the fill that `.lo-markdown code` applied, because
+ * a neutral fill on a tinted ground reads as a hole punched through the
+ * callout. That argument turned out to be about the FILL, not about the
+ * callout - it holds identically on canvas - so the fill is gone everywhere
+ * and this override has nothing left to undo.
  */
-.lo-on-wash .lo-markdown code {
-	background-color: transparent;
-	padding-inline: 0;
-	color: inherit;
-}

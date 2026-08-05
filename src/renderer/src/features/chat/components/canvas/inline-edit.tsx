@@ -241,7 +241,7 @@ export const InlineEdit: FC<InlineEditProps> = ({
 				);
 			}
 		} else {
-			console.error("getUserMedia not supported on your browser!");
+			console.error("This browser cannot record audio");
 			showErrorToast("Audio recording is not supported on your browser.");
 		}
 	}, [canEnableRecordingFeature]);

@@ -11,11 +11,19 @@
  * Covers all three reasoning carriers: the `thinking` field, and `plan` /
  * `reflection` turns. The label is call-site chosen so a reflection turn can
  * read "Reasoning" while a thinking field on an answer reads "Thinking".
+ *
+ * The row sits on the trace column's rail like every other row: chevron,
+ * then the identity slot, then the label. The identity slot is empty because
+ * reasoning is not an action and there is nothing to name — the label's 12px
+ * sans against the monospace action labels already says the row is a
+ * different kind of thing. `trace-rail.tsx` has the reasoning for reserving
+ * the box anyway.
  */
 
 import { Disclosure } from "@shared/components/ui/disclosure";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { MarkdownRenderer } from "../markdown-renderer";
+import { TraceGlyph } from "./trace-rail";
 
 export type AgentReasoningProps = {
 	/** Trigger label shown when the preference allows reasoning. */
@@ -38,9 +46,17 @@ export const AgentReasoning = ({
 
 	return (
 		<Disclosure
-			summary={<span className="text-ink-dim text-meta">{label}</span>}
-			triggerClassName="min-h-6 py-0.5"
-			contentClassName="ml-5 mt-1 border-hairline border-l-2 pl-3 pb-1"
+			summary={
+				<span className="flex min-w-0 items-center gap-2">
+					<TraceGlyph />
+					{/* Same two-span shape as a trace row: the outer span inherits the
+					 * 14px body strut so this row is the same height as the action
+					 * rows beside it, the inner one carries the type step. */}
+					<span className="truncate">
+						<span className="text-ink-dim text-meta">{label}</span>
+					</span>
+				</span>
+			}
 		>
 			<MarkdownRenderer content={content} />
 		</Disclosure>
