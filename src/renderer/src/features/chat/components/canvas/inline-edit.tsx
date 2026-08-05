@@ -605,7 +605,11 @@ export const InlineEdit: FC<InlineEditProps> = ({
 							</Tooltip>
 						</div>
 						<div className={cn("flex items-center gap-2")}>
-							<Button variant="danger" size="sm" onClick={onRejectDiff}>
+							{/* Neutral, not danger: rejecting a suggestion keeps the user's own
+							    text, so nothing is destroyed and nothing is irreversible. Red
+							    here would be the loudest thing on the surface for the safer of
+							    the two choices. */}
+							<Button variant="secondary" size="sm" onClick={onRejectDiff}>
 								<X aria-hidden="true" />
 								Reject
 							</Button>

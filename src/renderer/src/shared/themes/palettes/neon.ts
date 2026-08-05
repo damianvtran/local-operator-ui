@@ -39,7 +39,7 @@ export const neon: ThemeDefinition = {
 		// The cyan at a faint tint. The theme's own hover fills used the same cyan
 		// at 10 to 15 percent, so this is the value it was already reaching for.
 		accentWash: "#072734",
-		onAccent: "#000000",
+		onAccent: "#000E0F",
 
 		// Neon has no green. This one is placed about 37 degrees off the cyan
 		// accent, which is far enough that a success state does not read as a

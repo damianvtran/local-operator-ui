@@ -49,7 +49,7 @@ export const iceberg: ThemeDefinition = {
 		accentHover: "#1E3A7D",
 		accentActive: "#162E63",
 		accentWash: "#D5DAE4",
-		onAccent: "#FFFFFF",
+		onAccent: "#F2F5F9",
 
 		// Upstream green 668E3D, darkened to clear 4.5:1 on the light grounds.
 		success: "#4C692D",
