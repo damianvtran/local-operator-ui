@@ -175,6 +175,9 @@
 	 * `:focus-visible` only: a mouse user clicking a button should not get a
 	 * ring, a keyboard user tabbing to it must.
 	 */
+	:where(:focus-visible) {
+		border-radius: inherit;
+	}
 
 	/*
 	 * Disabled changes colour, never opacity.
