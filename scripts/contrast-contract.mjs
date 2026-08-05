@@ -481,7 +481,7 @@ const HAIRLINE_RATIO_CEILING = 2.0;
  *
  * 1.15:1 is where the other eleven already sat (1.165 at the tightest), so
  * this fenced the axis while moving only the pair that failed it: radient's
- * hairline #313544 -> #343847, which takes it to 1.158:1 and ΔL* 3.89.
+ * hairline #313544 -> #343847, which takes it to 1.158:1 and ΔL* 4.56.
  */
 const HAIRLINE_RATIO_FLOOR = 1.15;
 
@@ -681,18 +681,17 @@ for (const { id, palette: p } of palettes) {
 				`${id}: \`hairline\` on \`${ground}\` is ΔE00 ${r2(got)} (need ${LINE_SEPARATION_FLOOR}) — a 1px line has no area to integrate over, so a step that reads between two fields disappears in a rule`,
 			);
 		}
-		assertions++;
 		const luminance = ratio(p.hairline, p[ground]);
+		assertions++;
 		if (luminance < HAIRLINE_RATIO_FLOOR) {
 			fail(
 				`${id}: \`hairline\` on \`${ground}\` is ${r2(luminance)}:1 (need ${HAIRLINE_RATIO_FLOOR}) — its ΔE00 is carried in chroma, which a 1px line does not survive`,
 			);
 		}
 		assertions++;
-		const shout = ratio(p.hairline, p[ground]);
-		if (shout > HAIRLINE_RATIO_CEILING) {
+		if (luminance > HAIRLINE_RATIO_CEILING) {
 			fail(
-				`${id}: \`hairline\` on \`${ground}\` is ${r2(shout)}:1 (max ${HAIRLINE_RATIO_CEILING}) — past this it is drawing a border, and the system already has one of those`,
+				`${id}: \`hairline\` on \`${ground}\` is ${r2(luminance)}:1 (max ${HAIRLINE_RATIO_CEILING}) — past this it is drawing a border, and the system already has one of those`,
 			);
 		}
 	}

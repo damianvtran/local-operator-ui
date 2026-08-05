@@ -20,7 +20,10 @@ import { ModelSelect } from "@shared/components/hosting/model-select";
 import { Tooltip } from "@shared/components/ui";
 import { useConfig } from "@shared/hooks/use-config";
 import type { useUpdateAgent } from "@shared/hooks/use-update-agent";
-import { formatMessageDateTime } from "@shared/utils/date-utils";
+import {
+	formatMessageDateTime,
+	getFullDateTime,
+} from "@shared/utils/date-utils";
 import { showErrorToast } from "@shared/utils/toast-manager";
 import { Calendar, Cpu, GitBranch, IdCard, Info } from "lucide-react";
 import type { FC } from "react";
@@ -406,8 +409,18 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 						/* The app's own date voice, not the platform's. `toLocaleString`
 						   printed "10/2/2025, 10:40:00 AM" - nothing about when an agent
 						   was created is a fact to the second, and this is the screen a
-						   user spends the most time on. */
-						value={formatMessageDateTime(selectedAgent.created_date)}
+						   user spends the most time on.
+						
+						   The exact value survives in a tooltip, which is the pairing
+						   both other call sites of this formatter already use: it
+						   abbreviates to a bare time for today and a bare weekday for
+						   this week, so without the tooltip "Created 10:40 AM" would
+						   name no day at all. */
+						value={
+							<Tooltip content={getFullDateTime(selectedAgent.created_date)}>
+								<span>{formatMessageDateTime(selectedAgent.created_date)}</span>
+							</Tooltip>
+						}
 					/>
 					<InfoItem
 						label={

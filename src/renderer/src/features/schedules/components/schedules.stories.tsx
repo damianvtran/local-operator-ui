@@ -99,6 +99,24 @@ const SCHEDULES = [
 		updated_at: hoursFromNow(-10),
 	},
 	{
+		/* A recurring schedule with BOTH ends - the shape no fixture covered, and
+		   the one where the sub-day offset clause and the end clause meet. It
+		   rendered "at 16 minutes past to 11:30 PM" until round 9. */
+		id: "6f708192-2c3d-4e5f-9a0b-c1d2e3f4a5b6",
+		agent_id: AGENTS[1].id,
+		agent_name: "Market open watch",
+		prompt:
+			"Check the pre-market movers and tell me only about the ones on my watchlist.",
+		interval: 1,
+		unit: "hours",
+		is_active: true,
+		one_time: false,
+		start_time_utc: atLocalHour(0, 9, 16),
+		end_time_utc: atLocalHour(0, 16, 30),
+		created_at: hoursFromNow(-40),
+		updated_at: hoursFromNow(-40),
+	},
+	{
 		/* A one-time window that crosses midnight: the sentence has to name both
 		   days, because "between 11 PM and 1 AM on Thursday" is a day out on the
 		   start. */

@@ -92,8 +92,17 @@ const createScheduleDisplayString = (schedule: ScheduleResponse): string => {
 	   phrase this size - "every 15 minutes at 7 past" invites the reader to
 	   work out :07, :22, :37, :52 - and "Every 15 minutes" is already the whole
 	   truth a reader of this row needs. */
+	/* The CYCLE has to be under a day, not just the unit: "every 48 hours" is a
+	   two-day recurrence written in hours, and dropping its wall-clock time
+	   would lose the only thing that says which part of which day it runs. The
+	   interval field has a min of 1 and no max, so this is reachable input and
+	   not a hypothetical. */
+	const cycleMinutes =
+		schedule.interval * (schedule.unit === "minutes" ? 1 : 60);
 	const recursWithinADay =
-		!schedule.one_time && SUB_DAY_UNITS[schedule.unit] === true;
+		!schedule.one_time &&
+		SUB_DAY_UNITS[schedule.unit] === true &&
+		cycleMinutes < 24 * 60;
 
 	if (startTime && !oneTimeWindow) {
 		if (recursWithinADay) {
@@ -118,7 +127,12 @@ const createScheduleDisplayString = (schedule: ScheduleResponse): string => {
 			? ` between ${formatTime(startTime)} and ${withDate(endTime)}`
 			: ` between ${withDate(startTime)} and ${withDate(endTime)}`;
 	} else if (endTime) {
-		if (startTime) {
+		if (recursWithinADay) {
+			/* The start clause said "at 16 minutes past", so " to 11:30 PM" would
+			   read "past to" and mean nothing. Here the end is not the far side
+			   of a window - it is when the repeating stops. */
+			displayString += `, ending at ${withDate(endTime)}`;
+		} else if (startTime) {
 			/* The start already named the day, so an end on the same day repeats
 			   it for nothing. */
 			const sameDay = startTime.toDateString() === endTime.toDateString();
