@@ -116,6 +116,17 @@ export type TooltipProps = {
 	disabled?: boolean;
 	/** Applied to the tooltip panel, not to the trigger. */
 	className?: string;
+	/**
+	 * Render the tooltip already open.
+	 *
+	 * For stories. A tooltip is pointer state, and pointer state cannot be
+	 * forced from markup, so the 65 distinct strings this component carries
+	 * across 115 call sites appeared in none of the captured frames - which is
+	 * how "SquarePen schedule" reached a tooltip AND an icon-only button's
+	 * accessible name and survived a design round. The date-time picker and the
+	 * markdown format menu carry the same affordance for the same reason.
+	 */
+	defaultOpen?: boolean;
 };
 
 export const Tooltip = ({
@@ -127,6 +138,7 @@ export const Tooltip = ({
 	delayDuration,
 	disabled = false,
 	className,
+	defaultOpen,
 }: TooltipProps) => {
 	const hasProvider = useContext(TooltipProviderPresence);
 
@@ -135,7 +147,7 @@ export const Tooltip = ({
 	}
 
 	const tooltip = (
-		<TooltipRoot delayDuration={delayDuration}>
+		<TooltipRoot delayDuration={delayDuration} defaultOpen={defaultOpen}>
 			<TooltipTrigger asChild>{children}</TooltipTrigger>
 			<TooltipPortal>
 				<TooltipContent

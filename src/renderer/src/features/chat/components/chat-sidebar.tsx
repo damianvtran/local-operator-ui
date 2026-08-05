@@ -27,10 +27,7 @@ import { useDebouncedValue } from "@shared/hooks/use-debounced-value";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import { cn } from "@shared/lib/utils";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
-import {
-	formatMessageDateTime,
-	getFullDateTime,
-} from "@shared/utils/date-utils";
+import { formatMessageDateTime } from "@shared/utils/date-utils";
 import { Bot, MessageCircleOff } from "lucide-react";
 import type { ChangeEvent, FC } from "react";
 import { memo, useCallback, useMemo, useState } from "react";
@@ -64,7 +61,6 @@ type ChatSidebarItemProps = {
 	onClearAgentConversation: (agentId: string) => void;
 	onAgentDeleted: (deletedAgentId: string) => void;
 	onUploadAgentToHub: (agent: AgentDetails) => void;
-	getFullDateTime: (date: string) => string;
 	formatMessageDateTime: (date: string) => string;
 	truncateMessage: (message?: string, maxLength?: number) => string;
 	index: number;
@@ -79,7 +75,6 @@ const ChatSidebarItem: FC<ChatSidebarItemProps> = ({
 	onClearAgentConversation,
 	onAgentDeleted,
 	onUploadAgentToHub,
-	getFullDateTime,
 	formatMessageDateTime,
 	truncateMessage,
 	index,
@@ -114,10 +109,12 @@ const ChatSidebarItem: FC<ChatSidebarItemProps> = ({
 							</span>
 						</Tooltip>
 						{agent.last_message_datetime && (
-							<span
-								className="pointer-events-none ml-2 flex shrink-0 items-center text-meta text-ink-dim"
-								title={getFullDateTime(agent.last_message_datetime)}
-							>
+							/* No `title`: this span is `pointer-events-none`, so it is never
+							   the hit target and a native tooltip has nothing to trigger on.
+							   The attribute sat here looking like the exact timestamp was
+							   recoverable when it never was. The row already opens a real
+							   tooltip on the agent name beside it. */
+							<span className="pointer-events-none ml-2 flex shrink-0 items-center text-meta text-ink-dim">
 								{formatMessageDateTime(agent.last_message_datetime)}
 							</span>
 						)}
@@ -197,7 +194,6 @@ const areChatSidebarItemsEqual = (
 		prev.onClearAgentConversation === next.onClearAgentConversation &&
 		prev.onAgentDeleted === next.onAgentDeleted &&
 		prev.onUploadAgentToHub === next.onUploadAgentToHub &&
-		prev.getFullDateTime === next.getFullDateTime &&
 		prev.formatMessageDateTime === next.formatMessageDateTime &&
 		prev.truncateMessage === next.truncateMessage
 	);
@@ -506,7 +502,6 @@ const ChatSidebarComponent: FC<ChatSidebarProps> = ({
 								onClearAgentConversation={handleClearAgentConversation}
 								onAgentDeleted={handleAgentDeleted}
 								onUploadAgentToHub={handleUploadAgentToHub}
-								getFullDateTime={getFullDateTime}
 								formatMessageDateTime={formatMessageDateTime}
 								truncateMessage={truncateMessage}
 								index={index}

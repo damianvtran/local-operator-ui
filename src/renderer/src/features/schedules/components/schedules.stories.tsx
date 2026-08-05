@@ -9,6 +9,8 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import "../../../styles/index.css";
 import { DateTimePicker } from "@shared/components/common/date-time-picker";
+import { Button, Tooltip } from "@shared/components/ui";
+import { SquarePen } from "lucide-react";
 import { SchedulesPage } from "./schedules-page";
 
 const AGENTS = [
@@ -236,6 +238,29 @@ export const RowActionsRevealed: Story = {
 	render: () => (
 		<div className="[&_.pointer-events-none.opacity-0]:pointer-events-auto [&_.pointer-events-none.opacity-0]:opacity-100">
 			<SchedulesPage />
+		</div>
+	),
+};
+
+/**
+ * A row action's label.
+ *
+ * Revealing the buttons was half the job: their labels live in a tooltip and
+ * an aria-label, and neither is pixels until something opens the tooltip. This
+ * is the frame in which "Edit schedule" is legible — the string that shipped
+ * as "SquarePen schedule" through a whole design round because no frame in the
+ * set had ever contained it.
+ */
+export const RowActionLabel: Story = {
+	render: () => (
+		<div className="flex h-screen items-start justify-center bg-canvas p-16">
+			<div className="flex items-center gap-1 rounded-md border border-hairline bg-surface p-2">
+				<Tooltip content="Edit schedule" defaultOpen side="bottom">
+					<Button variant="ghost" size="icon-sm" aria-label="Edit schedule">
+						<SquarePen />
+					</Button>
+				</Tooltip>
+			</div>
 		</div>
 	),
 };
