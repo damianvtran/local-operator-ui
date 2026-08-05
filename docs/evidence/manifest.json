@@ -1,7 +1,9 @@
 {
-  "head": "e7ac975493e929683ed915de492a23bd75bc0c7e",
+  "head": "753c199d4202b244eb1025d2cbaed0ec287d7a7b",
+  "srcTree": "f0ed2de376bae370cf4d0ea7ca64c758a3a62d24",
+  "scriptsTree": "740084c741cc96c9d21b7da0a6734589a05ac7c3",
   "dirtyWorkingTree": false,
-  "capturedAt": "2026-08-05T12:40:31.937Z",
+  "capturedAt": "2026-08-05T15:21:56.531Z",
   "frames": 372,
   "surfaces": 31,
   "themes": 12
