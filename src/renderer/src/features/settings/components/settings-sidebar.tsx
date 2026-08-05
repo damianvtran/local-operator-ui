@@ -142,6 +142,11 @@ export const SettingsSidebar: FC<SettingsSidebarProps> = ({
 				type="button"
 				onClick={() => onSelectSection(section.id)}
 				aria-current={isActive ? "page" : undefined}
+				/* Unlabelled the row is an icon and nothing else, and a tooltip
+				   cannot stand in for a name: Radix's `Trigger` contributes
+				   `aria-describedby`, and only while the tooltip is open, which is a
+				   description of a control that still has no name. */
+				aria-label={labelled ? undefined : section.label}
 				data-tour-tag={TOUR_TAGS[section.id]}
 				className={cn(
 					"flex h-8 w-full items-center rounded-sm text-left text-body-sm",
@@ -152,11 +157,8 @@ export const SettingsSidebar: FC<SettingsSidebarProps> = ({
 						: "text-ink-muted hover:bg-elevated hover:text-ink",
 				)}
 			>
-				{/* Labelled, the text beside it already names the destination, so the
-				    mark is decorative and must not be announced a second time.
-				    Unlabelled, the tooltip carries the name instead — still not this
-				    span, which would read the label out twice to a screen reader
-				    that follows the tooltip's `aria-describedby`. */}
+				{/* Decorative in both layouts: labelled, the text beside it names the
+				    destination; unlabelled, the button's own `aria-label` does. */}
 				<span
 					aria-hidden="true"
 					className={cn(
@@ -181,9 +183,9 @@ export const SettingsSidebar: FC<SettingsSidebarProps> = ({
 			</button>
 		);
 
-		/* Unlabelled, the icon is the only thing on the row, so the tooltip is
-		   the only name it has — including for a keyboard, which is why it wraps
-		   the button rather than sitting beside it. */
+		/* Unlabelled, the tooltip is the only *visible* name the row has, and it
+		   wraps the button so a keyboard reaches it on focus rather than only a
+		   pointer on hover. The accessible name is the button's `aria-label`. */
 		return labelled ? (
 			<li key={section.id}>{button}</li>
 		) : (

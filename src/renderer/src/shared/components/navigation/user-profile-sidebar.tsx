@@ -87,6 +87,12 @@ export const UserProfileSidebar: FC<UserProfileSidebarProps> = React.memo(
 			<button
 				type="button"
 				onClick={useAuth ? undefined : () => navigate("/settings")}
+				/* Collapsed the row is an avatar, and its initials — or the fallback
+				   mark, when there is no name to initialise — are not a name for
+				   what the control does. The tooltip only contributes
+				   `aria-describedby`, and only while open. Expanded, the name and
+				   email in the row are the name. */
+				aria-label={expanded ? undefined : "Account settings"}
 				className={cn(
 					"flex w-full items-center gap-2 rounded-sm transition-colors duration-fast ease-out-quart hover:bg-elevated",
 					/*
@@ -129,7 +135,8 @@ export const UserProfileSidebar: FC<UserProfileSidebarProps> = React.memo(
 			</button>
 		);
 
-		/* Collapsed, the avatar is the whole row and nothing on screen names it. */
+		/* Collapsed, the tooltip is the only name on screen; the accessible name
+		   is the button's own `aria-label`. */
 		const labelled = expanded ? (
 			row
 		) : (

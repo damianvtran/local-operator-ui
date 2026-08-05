@@ -103,7 +103,7 @@ export const SchedulesPage: FC = () => {
 				scheduleData: { is_active: !schedule.is_active },
 			});
 			showSuccessToast(
-				`Schedule ${schedule.is_active ? "deactivated" : "activated"} successfully!`,
+				`Schedule ${schedule.is_active ? "deactivated" : "activated"}.`,
 			);
 			refetchSchedules();
 		} catch (err) {
