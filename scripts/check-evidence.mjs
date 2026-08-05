@@ -38,6 +38,25 @@ const EVIDENCE = join(ROOT, "docs", "evidence");
  */
 const GROUND_FLOOR = 25;
 
+/**
+ * How much of a frame one colour may cover before it stops being a picture.
+ *
+ * The ground check above cannot see an empty frame whose emptiness is the
+ * right colour, and that is not hypothetical: a frame of pure `canvas` with
+ * nothing rendered in it passed the ΔE00 test at distance 0. In the three
+ * light palettes it is worse, because `#ffffff` sits ΔE00 1.13-2.49 from their
+ * `elevated` - so Storybook's white spinner would read as a picture of the app
+ * in 102 of the 408 frames, and the incident that started this was caught only
+ * because the default theme happens to be dark.
+ *
+ * 98.5% is measured, not chosen. Across the 408 frames the most uniform
+ * legitimate ones are the security-notice states at 96.39-96.99% - a short
+ * callout on a tall ground - and the median frame is 56%. The empty frame was
+ * 99.99% and a white spinner page is 99.96%. The floor sits in the 3-point gap
+ * between the two populations, nearer the legitimate side.
+ */
+const UNIFORMITY_CEILING = 0.985;
+
 const GROUNDS = ["canvas", "surface", "elevated", "sunken"];
 
 /** Every `.webp` under the evidence root, with the theme its filename names. */
@@ -85,13 +104,15 @@ const modalColour = (file) => {
 		);
 	}
 	let best = null;
+	let total = 0;
 	for (const line of out.split("\n")) {
 		const m = line.match(/^\s*(\d+):.*(#[0-9A-F]{6})/);
 		if (!m) continue;
 		const count = Number(m[1]);
+		total += count;
 		if (!best || count > best.count) best = { count, hex: m[2] };
 	}
-	return best;
+	return best ? { ...best, coverage: best.count / total } : null;
 };
 
 /**
@@ -109,6 +130,11 @@ export const assertFramePaints = (file, theme) => {
 	if (got > GROUND_FLOOR) {
 		throw new Error(
 			`${file}: dominant colour ${mode.hex} is ΔE00 ${r2(got)} from the nearest \`${theme}\` ground (max ${GROUND_FLOOR}) — the story did not paint`,
+		);
+	}
+	if (mode.coverage > UNIFORMITY_CEILING) {
+		throw new Error(
+			`${file}: ${(mode.coverage * 100).toFixed(2)}% of the frame is one colour (max ${UNIFORMITY_CEILING * 100}%) — the story painted its ground and nothing else`,
 		);
 	}
 };
@@ -155,6 +181,11 @@ const main = () => {
 		if (got > GROUND_FLOOR) {
 			failures.push(
 				`${relative(ROOT, file)}: dominant colour ${mode.hex} is ΔE00 ${r2(got)} from the nearest \`${theme}\` ground (max ${GROUND_FLOOR}) — this frame is not a picture of the app`,
+			);
+		}
+		if (mode.coverage > UNIFORMITY_CEILING) {
+			failures.push(
+				`${relative(ROOT, file)}: ${(mode.coverage * 100).toFixed(2)}% of the frame is one colour (max ${UNIFORMITY_CEILING * 100}%) — this frame is a ground with nothing on it`,
 			);
 		}
 	}

@@ -436,12 +436,32 @@ const main = async () => {
 						   unaffected, so this costs nothing for the other 33
 						   surfaces. */
 						if (document.documentElement.dataset.capturePending) return false;
-						/* Counted from the body, not from #storybook-root: the
-						   command palette, dialogs and sheets render through a
-						   portal appended to the body and leave the root empty,
-						   so a root-only count waits forever on exactly the
-						   surfaces most worth photographing. */
-						return document.body.querySelectorAll("*").length >= 8;
+						/* Count the STORY's elements, wherever they live.
+						   A plain body count passes on Storybook's own chrome,
+						   which is how a frame of pure ground - the right colour
+						   and nothing in it - got taken and then passed the paint
+						   guard, since emptiness in the correct colour is still
+						   the correct colour. A root-only count has the opposite
+						   failure: the command palette, dialogs and sheets render
+						   through a portal appended to the body and leave the
+						   root empty, so it waits forever on exactly the surfaces
+						   most worth photographing. Counting the root plus every
+						   body child that is not Storybook's own furniture covers
+						   both. */
+						const root = document.getElementById("storybook-root");
+						const CHROME = [
+							"sb-preparing-story",
+							"sb-preparing-docs",
+							"sb-nopreview",
+							"sb-errordisplay",
+						];
+						let n = root ? root.querySelectorAll("*").length : 0;
+						for (const child of document.body.children) {
+							if (child === root) continue;
+							if (CHROME.some((c) => child.classList.contains(c))) continue;
+							n += child.querySelectorAll("*").length + 1;
+						}
+						return n >= 8;
 					})()`,
 				});
 				prepared = result.value === true;
