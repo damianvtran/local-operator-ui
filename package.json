@@ -62,6 +62,7 @@
 		"check-types:renderer": "tsc --noEmit -p tsconfig.app.json",
 		"check-types": "pnpm run check-types:main && pnpm run check-types:renderer",
 		"check-themes": "node scripts/generate-theme-css.mjs --check && node scripts/contrast-contract.mjs",
+		"check-evidence": "node scripts/check-evidence.mjs",
 		"gen-themes": "node scripts/generate-theme-css.mjs",
 		"bundle-size": "node scripts/bundle-size.mjs",
 		"startup-closure": "node scripts/startup-closure.mjs",

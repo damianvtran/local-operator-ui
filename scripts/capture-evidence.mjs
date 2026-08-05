@@ -23,6 +23,7 @@ import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { assertFramePaints } from "./check-evidence.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const OUT = join(ROOT, "docs", "evidence");
@@ -413,7 +414,19 @@ const main = async () => {
 					: story.split("--")[1];
 			const dir = join(OUT, story.split("--")[0], leaf);
 			mkdirSync(dir, { recursive: true });
-			writeFileSync(join(dir, `${theme}.webp`), Buffer.from(data, "base64"));
+			const framePath = join(dir, `${theme}.webp`);
+			writeFileSync(framePath, Buffer.from(data, "base64"));
+			/*
+			 * And check it is a picture of the app before moving on.
+			 *
+			 * The three guards above ask whether the DOM has nodes, whether
+			 * Storybook rendered an error page, and whether the document carries
+			 * the right theme. A story that mounts and then sits on its own
+			 * loading spinner answers yes to all three - which is how a frame of
+			 * a white page with a spinner on it shipped in a set of 396. Failing
+			 * here rather than at review time costs one screenshot.
+			 */
+			assertFramePaints(framePath, theme);
 			captured++;
 		}
 	}

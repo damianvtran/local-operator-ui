@@ -1,0 +1,167 @@
+#!/usr/bin/env node
+/**
+ * Assert that every committed frame is a picture of the app.
+ *
+ * Why this exists: `chat-trace/conversation/localOperatorDark.webp` shipped as
+ * a loading spinner on a white page - 2,762 bytes against its siblings' 57KB,
+ * 99.96% pure white - and three guards inside the capture passed it. Those
+ * guards ask whether the DOM has nodes, whether Storybook rendered an error,
+ * and whether the document carries the right theme. A story that mounts and
+ * then sits on its own spinner answers yes to all three, so the set reported
+ * 396 frames and one of them was of nothing.
+ *
+ * The check is a fact about a themed screenshot: whatever else is on it, the
+ * colour covering the most pixels is one of that theme's four grounds. On a
+ * real frame that is nearly exact - median ΔE00 0.62 across the set - and the
+ * loosest legitimate case is a scrim over a modal at 18.10, because a scrim
+ * dims the ground under it. 25 sits well clear of that and the failing frame
+ * measures 79.41, so the two populations do not overlap.
+ *
+ * It runs over the COMMITTED set rather than only during capture, which is
+ * the difference between a set that was checked once and a set that can be
+ * falsified now. `pnpm check-evidence`.
+ */
+
+import { execFileSync } from "node:child_process";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { dirname, join, relative } from "node:path";
+import { fileURLToPath } from "node:url";
+import { deltaE, r2 } from "./color.mjs";
+import { loadPalettes } from "./palette-source.mjs";
+
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
+const EVIDENCE = join(ROOT, "docs", "evidence");
+
+/**
+ * How far a frame's dominant colour may sit from the nearest ground of its own
+ * theme. See the header for where the number comes from.
+ */
+const GROUND_FLOOR = 25;
+
+const GROUNDS = ["canvas", "surface", "elevated", "sunken"];
+
+/** Every `.webp` under the evidence root, with the theme its filename names. */
+const frames = (dir) => {
+	const out = [];
+	for (const entry of readdirSync(dir)) {
+		const path = join(dir, entry);
+		if (statSync(path).isDirectory()) out.push(...frames(path));
+		else if (entry.endsWith(".webp")) out.push(path);
+	}
+	return out;
+};
+
+/**
+ * The colour covering the most pixels.
+ *
+ * ImageMagick's histogram is already sorted by count, so the first row after
+ * the header is the mode. Reading it out of `magick` rather than decoding webp
+ * here keeps this script to one job.
+ */
+const modalColour = (file) => {
+	const out = execFileSync(
+		"magick",
+		[file, "-format", "%c", "-depth", "8", "histogram:info:-"],
+		{ maxBuffer: 64 * 1024 * 1024 },
+	).toString();
+	let best = null;
+	for (const line of out.split("\n")) {
+		const m = line.match(/^\s*(\d+):.*(#[0-9A-F]{6})/);
+		if (!m) continue;
+		const count = Number(m[1]);
+		if (!best || count > best.count) best = { count, hex: m[2] };
+	}
+	return best;
+};
+
+/**
+ * The same test, for one frame, so the capture can fail at the source.
+ *
+ * Throwing here costs one screenshot; discovering it in review costs a round
+ * and leaves a set that reported a count it could not honour.
+ */
+export const assertFramePaints = (file, theme) => {
+	const palette = PALETTES.get(theme);
+	if (!palette) throw new Error(`${file}: no palette named \`${theme}\``);
+	const mode = modalColour(file);
+	if (!mode) throw new Error(`${file}: no pixels`);
+	const got = groundDistance(mode.hex, palette);
+	if (got > GROUND_FLOOR) {
+		throw new Error(
+			`${file}: dominant colour ${mode.hex} is ΔE00 ${r2(got)} from the nearest \`${theme}\` ground (max ${GROUND_FLOOR}) — the story did not paint`,
+		);
+	}
+};
+
+/** Nearest of the four grounds, in ΔE00. */
+function groundDistance(hex, palette) {
+	return Math.min(
+		...GROUNDS.filter((g) => /^#[0-9a-fA-F]{6}$/.test(palette[g] ?? "")).map(
+			(g) => deltaE(hex.toUpperCase(), palette[g].toUpperCase()),
+		),
+	);
+}
+
+const PALETTES = new Map(loadPalettes().map((p) => [p.id, p.palette]));
+
+/* Sweeping the whole set is what `pnpm check-evidence` does; importing this
+   module for `assertFramePaints` must not trigger it. */
+/* Sweeping the whole set is what `pnpm check-evidence` does; importing this
+   module for `assertFramePaints` must not trigger it. */
+const main = () => {
+	if (!existsSync(EVIDENCE)) {
+		console.error(`No evidence at ${EVIDENCE}`);
+		process.exit(1);
+	}
+
+	const files = frames(EVIDENCE);
+	const failures = [];
+	let checked = 0;
+	let worst = { got: -1, file: "" };
+
+	for (const file of files) {
+		const theme = file.split("/").pop().replace(".webp", "");
+		const palette = PALETTES.get(theme);
+		if (!palette) {
+			failures.push(`${relative(ROOT, file)}: no palette named \`${theme}\``);
+			continue;
+		}
+		const mode = modalColour(file);
+		if (!mode) {
+			failures.push(`${relative(ROOT, file)}: no pixels`);
+			continue;
+		}
+		const got = groundDistance(mode.hex, palette);
+		checked++;
+		if (got > worst.got) worst = { got, file: relative(ROOT, file) };
+		if (got > GROUND_FLOOR) {
+			failures.push(
+				`${relative(ROOT, file)}: dominant colour ${mode.hex} is ΔE00 ${r2(got)} from the nearest \`${theme}\` ground (max ${GROUND_FLOOR}) — this frame is not a picture of the app`,
+			);
+		}
+	}
+
+	const manifestPath = join(EVIDENCE, "manifest.json");
+	if (existsSync(manifestPath)) {
+		const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+		if (manifest.frames !== files.length) {
+			failures.push(
+				`manifest.json claims ${manifest.frames} frames; ${files.length} are on disk`,
+			);
+		}
+	}
+
+	for (const line of failures) console.log(`FAIL  ${line}`);
+	if (failures.length > 0) {
+		console.log(
+			`\nEvidence check FAILED: ${failures.length} of ${files.length} frames.`,
+		);
+		process.exit(1);
+	}
+	console.log(
+		`Evidence holds: ${checked} frames are pictures of their own theme (worst ΔE00 ${r2(worst.got)}, ${worst.file}).`,
+	);
+};
+
+if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1])
+	main();
