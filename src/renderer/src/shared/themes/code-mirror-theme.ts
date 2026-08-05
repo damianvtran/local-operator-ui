@@ -91,10 +91,24 @@ const editorSpec = {
 	 * `.cm-editor.<generated>.cm-focused`, which beats CodeMirror's own
 	 * two-class default and matches how every other composite control in this
 	 * app works: the frame draws the ring, the field inside stays quiet.
+	 *
+	 * The offset is NEGATIVE, and that is the whole point of this rule working.
+	 * The editor sits flush inside a `relative h-full grow overflow-auto`
+	 * container in `code-editor.tsx`, and an outline is ink overflow: a scroll
+	 * container clips it at the padding box exactly as it clips an outset
+	 * shadow. At `+2px` the ring's outer edge lands 4px outside the clip box
+	 * and is cut on the left, top and right - leaving only a bottom sliver on a
+	 * short document, which reads as a stray border rather than as focus.
+	 * Drawing it inset puts the whole ring inside the clip.
+	 *
+	 * This is the second time that clipping rule has caught this codebase; the
+	 * first was a comment in `styles/index.css` asserting the opposite, which
+	 * was corrected one commit before this ring was written. Believing the
+	 * wrong version for an hour is what produced the +2px.
 	 */
 	"&.cm-focused": {
 		outline: "2px solid var(--color-accent)",
-		outlineOffset: "2px",
+		outlineOffset: "-2px",
 	},
 	"&.cm-focused .cm-cursor": {
 		borderLeftColor: "var(--color-accent)",
