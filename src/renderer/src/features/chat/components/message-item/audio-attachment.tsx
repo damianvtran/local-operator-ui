@@ -1,8 +1,8 @@
 import { Spinner } from "@shared/components/common/spinner";
 import { cn } from "@shared/lib/utils";
 import {
-	PauseCircle,
-	PlayCircle,
+	CirclePause,
+	CirclePlay,
 	Volume1,
 	Volume2,
 	VolumeX,
@@ -181,9 +181,9 @@ export const AudioAttachment: FC<AudioAttachmentProps> = memo(({ content }) => {
 				{isLoading ? (
 					<Spinner size="sm" />
 				) : isPlaying ? (
-					<PauseCircle size={20} />
+					<CirclePause size={20} />
 				) : (
-					<PlayCircle size={20} />
+					<CirclePlay size={20} />
 				)}
 			</button>
 			<span className="min-w-10 text-center text-meta text-ink-muted">

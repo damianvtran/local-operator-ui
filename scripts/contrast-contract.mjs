@@ -441,6 +441,21 @@ const SYNTAX_HUE_ROLES = ["success", "warning", "danger", "info", "ink"];
 const SYNTAX_COMMENT_FLOOR = 8;
 const SEPARATION_FLOOR = 15;
 
+/*
+ * Two perceptual floors, because a field and a line are not the same problem.
+ *
+ * 2.0 was measured on adjacent ground FIELDS: sage's canvas/surface at 1.9
+ * renders a visible card boundary and localOperatorLight's at 1.5 did not.
+ * A 1px rule has almost no area for the eye to integrate over, so the same
+ * distance vanishes - localOperatorDark's separator at 2.10 came out
+ * byte-identical to the panel around it in the captured frame. 4.0 is the
+ * point where every palette's rule reads as a rule while every hairline stays
+ * under 1.9:1 against its ground, which is what keeps it from becoming a
+ * border.
+ */
+const FIELD_SEPARATION_FLOOR = 2.0;
+const LINE_SEPARATION_FLOOR = 4.0;
+
 for (const { id, palette: p } of palettes) {
 	/* Completeness first. A missing role is a worse defect than a low ratio,
 	   because it silently falls through to MUI's stock palette — which is how
@@ -573,30 +588,52 @@ for (const { id, palette: p } of palettes) {
 	   `border-danger-border` on `bg-danger-wash` - because it is reporting a
 	   failure; the hairline is the neutral form of the same idea.
 
-	   That edge is asserted here, against both grounds it separates. It is NOT
-	   in `STRUCTURAL`, and an earlier version of this comment claimed it was:
-	   `STRUCTURAL` holds `borderControl` and asserts a 3:1 ratio, which a
-	   hairline is designed never to reach - all 48 hairline/ground pairs sit
-	   between 1.04:1 and 1.92:1, because a separator that shouted would be a
-	   border. Perceptibility is the right question for it, and that is what
-	   ΔE00 asks: worst case localOperatorLight, 4.35 against canvas and 3.28
-	   against sunken, both well over the 2.0 floor and both far more than the
-	   1.23 step the edge stands in for. */
+	   That edge is asserted here, against all four grounds it is drawn on. It
+	   is NOT in `STRUCTURAL`, and an earlier version of this comment claimed it
+	   was: `STRUCTURAL` holds `borderControl` and asserts a 3:1 ratio, which a
+	   hairline is designed never to reach - a separator that shouted would be a
+	   border. Perceptibility is the right question for it, and ΔE00 is what
+	   asks it.
+
+	   But NOT at the same floor. 2.0 was calibrated on adjacent ground FIELDS -
+	   two large planes meeting - and a 1px line is not a field. The frames
+	   proved the difference: at 2.10, localOperatorDark's dropdown separator
+	   rendered byte-identical to the panel around it, while the same 2.0 floor
+	   is plainly enough for a card sitting on a canvas. A line has almost no
+	   area to integrate over, so it needs roughly twice the separation to
+	   register at all. Hence two floors, and the line floor is the one that
+	   moved five palettes. */
+	/* The accent's three states are a ramp the user reads as one control
+	   changing, so each step has to be visible for the same reason the ground
+	   steps do. Nothing asserted them until now, which is how round 5's
+	   pressed-fill repair could cut dracula's rest-to-pressed distance from
+	   10.43 to 5.72 without a single gate noticing. These are fields - a whole
+	   button fill - so they take the field floor. */
 	for (const [a, b] of [
 		["canvas", "surface"],
 		["surface", "elevated"],
 		["elevated", "sunken"],
-		["hairline", "canvas"],
-		["hairline", "surface"],
-		["hairline", "elevated"],
-		["hairline", "sunken"],
+		["accent", "accentHover"],
+		["accentHover", "accentActive"],
+		["accent", "accentActive"],
 	]) {
 		if (!isHex(p[a]) || !isHex(p[b])) continue;
 		assertions++;
 		const got = deltaE(p[a], p[b]);
-		if (got < 2.0) {
+		if (got < FIELD_SEPARATION_FLOOR) {
 			fail(
-				`${id}: adjacent \`${a}\` and \`${b}\` are ΔE00 ${r2(got)} apart (need 2.0) — a separation the eye cannot see is not a separation`,
+				`${id}: adjacent \`${a}\` and \`${b}\` are ΔE00 ${r2(got)} apart (need ${FIELD_SEPARATION_FLOOR}) — a step the eye cannot see is not a step`,
+			);
+		}
+	}
+
+	for (const ground of GROUNDS) {
+		if (!isHex(p.hairline) || !isHex(p[ground])) continue;
+		assertions++;
+		const got = deltaE(p.hairline, p[ground]);
+		if (got < LINE_SEPARATION_FLOOR) {
+			fail(
+				`${id}: \`hairline\` on \`${ground}\` is ΔE00 ${r2(got)} (need ${LINE_SEPARATION_FLOOR}) — a 1px line has no area to integrate over, so a step that reads between two fields disappears in a rule`,
 			);
 		}
 	}

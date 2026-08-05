@@ -1,12 +1,12 @@
 import { cn } from "@shared/lib/utils";
 import {
-	BarChart2,
 	Briefcase,
+	ChartNoAxesColumn,
 	ClipboardList,
-	Code2,
+	CodeXml,
+	Earth,
 	FileQuestion,
 	FlaskConical,
-	Globe2,
 	GraduationCap,
 	HeartPulse,
 	Megaphone,
@@ -43,7 +43,7 @@ export const CATEGORY_ICON_MAP: Record<
 		label: "Legal",
 	},
 	software: {
-		icon: <Code2 size={14} aria-hidden="true" />,
+		icon: <CodeXml size={14} aria-hidden="true" />,
 		label: "Software",
 	},
 	security: {
@@ -75,7 +75,7 @@ export const CATEGORY_ICON_MAP: Record<
 		label: "Research",
 	},
 	analysis: {
-		icon: <BarChart2 size={14} aria-hidden="true" />,
+		icon: <ChartNoAxesColumn size={14} aria-hidden="true" />,
 		label: "Analysis",
 	},
 	management: {
@@ -83,7 +83,7 @@ export const CATEGORY_ICON_MAP: Record<
 		label: "Management",
 	},
 	social_media: {
-		icon: <Globe2 size={14} aria-hidden="true" />,
+		icon: <Earth size={14} aria-hidden="true" />,
 		label: "Social media",
 	},
 	other: {

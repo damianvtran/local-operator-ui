@@ -14,7 +14,7 @@ import {
 	ChevronDown,
 	ChevronRight,
 	Copy,
-	Edit2,
+	Pen,
 	Plus,
 	Trash2,
 } from "lucide-react";
@@ -218,7 +218,7 @@ const VariableRow: FC<VariableDisplayProps> = memo(
 									onClick={handleEdit}
 									aria-label="Edit variable"
 								>
-									<Edit2 />
+									<Pen />
 								</Button>
 							</Tooltip>
 						) : (
@@ -237,7 +237,7 @@ const VariableRow: FC<VariableDisplayProps> = memo(
 										"cursor-default text-ink-disabled hover:bg-transparent hover:text-ink-disabled",
 									)}
 								>
-									<Edit2 />
+									<Pen />
 								</Button>
 							</Tooltip>
 						)}

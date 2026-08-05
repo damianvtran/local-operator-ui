@@ -1123,7 +1123,7 @@ export const AllPrimitives: Story = {
 				</Section>
 				<Section
 					title="Button"
-					note="6 variants x 4 sizes, plus icon sizes, disabled and focus."
+					note="6 variants across three text sizes and an icon composition, plus icon-only sizes, and every state: disabled, focus, hover and pressed."
 				>
 					<Buttons />
 				</Section>

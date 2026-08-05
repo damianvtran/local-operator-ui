@@ -4,7 +4,7 @@ import { Button, Skeleton, Switch, Tooltip } from "@shared/components/ui";
 import { apiConfig } from "@shared/config";
 import { cn } from "@shared/lib/utils";
 import { useQuery } from "@tanstack/react-query";
-import { Edit, Trash2 } from "lucide-react";
+import { SquarePen, Trash2 } from "lucide-react";
 import type { FC } from "react";
 import { useId } from "react";
 
@@ -204,7 +204,7 @@ export const ScheduleListItem: FC<ScheduleListItemProps> = ({
 			<div className={cn("flex shrink-0 items-center gap-1")}>
 				{/*
 				 * The switch is always drawn — it carries the schedule's state, so
-				 * hiding it until hover would hide the state. Edit and delete are
+				 * hiding it until hover would hide the state. SquarePen and delete are
 				 * actions, and they reveal like every other row action in the app.
 				 */}
 				<Tooltip
@@ -229,14 +229,14 @@ export const ScheduleListItem: FC<ScheduleListItemProps> = ({
 						"group-focus-within:pointer-events-auto group-focus-within:opacity-100",
 					)}
 				>
-					<Tooltip content="Edit schedule">
+					<Tooltip content="SquarePen schedule">
 						<Button
 							variant="ghost"
 							size="icon-sm"
 							onClick={() => onEdit(schedule)}
-							aria-label="Edit schedule"
+							aria-label="SquarePen schedule"
 						>
-							<Edit />
+							<SquarePen />
 						</Button>
 					</Tooltip>
 					<Tooltip content="Delete schedule">

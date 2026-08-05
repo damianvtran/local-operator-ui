@@ -27,18 +27,18 @@ import {
 	AlignRight,
 	Bold,
 	Check,
-	CheckSquare,
 	Code,
+	Ellipsis,
 	Image,
-	Indent,
+	IndentDecrease,
+	IndentIncrease,
 	Italic,
 	Link,
 	List,
 	ListOrdered,
-	MoreHorizontal,
-	Outdent,
 	Quote,
 	Redo,
+	SquareCheckBig,
 	Strikethrough,
 	Table,
 	Underline,
@@ -1725,7 +1725,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 							aria-label="Checklist"
 							onClick={() => toggleList("task")}
 						>
-							<CheckSquare />
+							<SquareCheckBig />
 						</Button>
 					</Tooltip>
 				</div>
@@ -1752,7 +1752,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 									size="icon-sm"
 									aria-label="More formatting"
 								>
-									<MoreHorizontal />
+									<Ellipsis />
 								</Button>
 							</DropdownMenuTrigger>
 						</Tooltip>
@@ -1776,7 +1776,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 								Numbered list
 							</DropdownMenuItem>
 							<DropdownMenuItem onSelect={() => toggleList("task")}>
-								<CheckSquare aria-hidden="true" />
+								<SquareCheckBig aria-hidden="true" />
 								Checklist
 							</DropdownMenuItem>
 							<DropdownMenuSeparator />
@@ -1791,12 +1791,12 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 								Code block
 							</DropdownMenuItem>
 							<DropdownMenuItem onSelect={() => executeCommand("indent")}>
-								<Indent aria-hidden="true" />
-								Indent
+								<IndentIncrease aria-hidden="true" />
+								IndentIncrease
 							</DropdownMenuItem>
 							<DropdownMenuItem onSelect={() => executeCommand("outdent")}>
-								<Outdent aria-hidden="true" />
-								Outdent
+								<IndentDecrease aria-hidden="true" />
+								IndentDecrease
 							</DropdownMenuItem>
 							<DropdownMenuSeparator />
 							<DropdownMenuItem onSelect={insertImage}>

@@ -88,8 +88,13 @@ const SCHEDULES = [
 		unit: "days",
 		is_active: true,
 		one_time: true,
-		start_time_utc: hoursFromNow(26),
-		end_time_utc: hoursFromNow(27),
+		/* 10:15 AM to 11:15 AM tomorrow: the same-day counterpart to the
+		   overnight row below, and pinned for the same reason - as
+		   `hoursFromNow(26)/(27)` this flipped to a cross-midnight window in a
+		   late-evening capture, and it is the only frame the same-day branch
+		   has. */
+		start_time_utc: atLocalHour(1, 10, 15),
+		end_time_utc: atLocalHour(1, 11, 15),
 		created_at: hoursFromNow(-10),
 		updated_at: hoursFromNow(-10),
 	},

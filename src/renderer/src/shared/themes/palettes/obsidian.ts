@@ -37,7 +37,7 @@ export const obsidian: ThemeDefinition = {
 		inkDim: "#8F8F97",
 		inkDisabled: "#52525B",
 
-		hairline: "#2F2F31",
+		hairline: "#343436",
 		// Zinc 500 measures 2.86:1 on zinc 800, a hair under the structural floor,
 		// so it is lifted by one level. The old theme bounded inputs with zinc 50 at
 		// 20 percent alpha, about 1.8:1.

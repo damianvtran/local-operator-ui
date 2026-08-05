@@ -20,6 +20,7 @@ import { useUserStore } from "@shared/store/user-store";
 import { format, formatRFC3339, parseISO, subDays } from "date-fns";
 import {
 	ChartLine,
+	CirclePlay,
 	CirclePlus,
 	Contrast,
 	CreditCard,
@@ -30,7 +31,6 @@ import {
 	Key,
 	List,
 	MessagesSquare,
-	PlayCircle,
 	Settings,
 	SlidersHorizontal,
 	User,
@@ -646,7 +646,7 @@ export const SettingsPage: FC = () => {
 										startOnboardingTour({ forceModalCompleted: true });
 									}}
 								>
-									<PlayCircle />
+									<CirclePlay />
 									Take the tour
 								</Button>
 							</SettingsSection>

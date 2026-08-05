@@ -27,9 +27,9 @@ import { useAgentSelectionStore } from "@shared/store/agent-selection-store";
 import {
 	Bot,
 	CloudUpload,
+	Ellipsis,
 	FileUp,
 	MessageSquare,
-	MoreHorizontal,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { FC } from "react";
@@ -206,7 +206,7 @@ export const AgentsPage: FC<AgentsPageProps> = () => {
 												aria-label="More agent actions"
 												className="@min-[400px]:hidden"
 											>
-												<MoreHorizontal aria-hidden="true" />
+												<Ellipsis aria-hidden="true" />
 											</Button>
 										</DropdownMenuTrigger>
 										<DropdownMenuContent align="end" className="min-w-45">

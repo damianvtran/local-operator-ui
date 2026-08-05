@@ -8,13 +8,13 @@ import {
 import { useDeleteAgent } from "@shared/hooks/use-agent-mutations";
 import { useAgentSelectionStore } from "@shared/store/agent-selection-store";
 import {
+	CloudUpload,
+	EllipsisVertical,
 	Eraser,
 	FileOutput,
 	MessageSquare,
-	MoreVertical,
 	Settings,
 	Trash2,
-	UploadCloud,
 } from "lucide-react";
 import type { CSSProperties, FC } from "react";
 import { useRef, useState } from "react";
@@ -148,7 +148,7 @@ export const AgentOptionsMenu: FC<AgentOptionsMenuProps> = ({
 						}}
 						style={buttonSx as CSSProperties}
 					>
-						<MoreVertical aria-hidden="true" />
+						<EllipsisVertical aria-hidden="true" />
 					</Button>
 				</DropdownMenuTrigger>
 
@@ -206,7 +206,7 @@ export const AgentOptionsMenu: FC<AgentOptionsMenuProps> = ({
 							data-tour-tag="upload-to-hub-menu-item"
 							onSelect={onUploadAgentToHub}
 						>
-							<UploadCloud aria-hidden="true" />
+							<CloudUpload aria-hidden="true" />
 							<span>Upload to hub</span>
 						</DropdownMenuItem>
 					)}

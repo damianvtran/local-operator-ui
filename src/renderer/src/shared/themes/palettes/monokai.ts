@@ -31,7 +31,7 @@ export const monokai: ThemeDefinition = {
 		inkDim: "#ACA998",
 		inkDisabled: "#75715E",
 
-		hairline: "#41423B",
+		hairline: "#464740",
 		// The comment colour lightened further, so a structural boundary is legally
 		// distinct from the decorative hairline above it.
 		borderControl: "#8E8A73",

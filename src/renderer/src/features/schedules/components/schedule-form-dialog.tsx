@@ -30,7 +30,7 @@ import {
 import { useAgents } from "@shared/hooks/use-agents";
 import { cn } from "@shared/lib/utils";
 import { showErrorToast } from "@shared/utils/toast-manager";
-import { ChevronDown, Info, Save, XSquare } from "lucide-react";
+import { ChevronDown, Info, Save, SquareX } from "lucide-react";
 import type { FC, KeyboardEvent } from "react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 
@@ -438,7 +438,7 @@ export const ScheduleFormDialog: FC<ScheduleFormDialogProps> = ({
 			<SecondaryButton
 				onClick={onClose}
 				disabled={isSubmitting}
-				startIcon={<XSquare size={18} />}
+				startIcon={<SquareX size={18} />}
 				data-tour-tag="create-schedule-dialog-cancel-button"
 			>
 				Cancel
