@@ -715,6 +715,10 @@ export const InlineEdit: FC<InlineEditProps> = ({
 							}}
 						/>
 					)}
+					{/* Attach and dictate are the same two affordances the chat
+					    composer carries, so they read the same: neutral until you
+					    reach for them, with the accent left for the primary action.
+					    See the note at `message-input.tsx`'s action row. */}
 					<div className={cn("flex items-center justify-between gap-2")}>
 						<div className={cn("flex items-center gap-2")}>
 							<Tooltip content="Add attachments">
@@ -723,9 +727,7 @@ export const InlineEdit: FC<InlineEditProps> = ({
 										variant="ghost"
 										size="icon-sm"
 										aria-label="Add attachments"
-										className={cn(
-											"text-accent hover:bg-accent-wash hover:text-accent",
-										)}
+										className="text-ink-dim hover:bg-elevated hover:text-ink"
 										onClick={handleAttachFile}
 										disabled={
 											isLoading ||
@@ -754,9 +756,7 @@ export const InlineEdit: FC<InlineEditProps> = ({
 											variant="ghost"
 											size="icon-sm"
 											aria-label="Start recording"
-											className={cn(
-												"text-accent hover:bg-accent-wash hover:text-accent",
-											)}
+											className="text-ink-dim hover:bg-elevated hover:text-ink"
 											onClick={handleStartRecording}
 											disabled={isLoading || !canEnableRecordingFeature}
 										>

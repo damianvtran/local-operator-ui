@@ -21,7 +21,7 @@ import { Tooltip } from "@shared/components/ui";
 import { useConfig } from "@shared/hooks/use-config";
 import type { useUpdateAgent } from "@shared/hooks/use-update-agent";
 import { showErrorToast } from "@shared/utils/toast-manager";
-import { Bot, Calendar, GitBranch, IdCard, Info, Tag } from "lucide-react";
+import { Bot, Calendar, GitBranch, IdCard, Info } from "lucide-react";
 import type { FC } from "react";
 import { useEffect, useState } from "react";
 
@@ -101,11 +101,18 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 		 * components no longer carry a bottom margin of their own.
 		 */
 		<div className="flex flex-col gap-4">
+			{/*
+			 * No glyph. A glyph on this surface names a kind of thing, and no two
+			 * labels may name the same kind — `Bot` means "the model" everywhere
+			 * in the app (`model-select.tsx`, the Model settings section), so it
+			 * cannot also mean "the agent's name". The field is full width, alone
+			 * on its row, and inside the agent's own settings pane; the word
+			 * "Agent name" is not ambiguous without a picture of a robot.
+			 */}
 			<EditableField
 				value={selectedAgent.name}
 				label="Agent name"
 				placeholder="Enter agent name..."
-				icon={<Bot size={16} />}
 				isSaving={savingField === "name"}
 				onSave={async (value) => {
 					if (!value.trim()) {
@@ -262,12 +269,19 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 				Agent information
 			</h2>
 
+			{/*
+			 * None of the three fields in this stack carries a glyph. They are
+			 * full-width controls in one column, so a glyph on some and not others
+			 * indents half the labels and not the rest; and the three that were
+			 * here restated their own labels — a tag beside "Tags", an info beside
+			 * "Categories", a second tag beside "Description". The `Info` on the
+			 * heading above names the group; the words name the fields.
+			 */}
 			<div className="flex flex-col gap-4">
 				<EditableField
 					value={selectedAgent.description || ""}
 					label="Description"
 					placeholder="Enter agent description..."
-					icon={<Tag size={16} />}
 					multiline
 					rows={3}
 					isSaving={savingField === "description"}
@@ -294,11 +308,9 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 					}}
 				/>
 
-				{/* Tags input */}
 				<TagsInputChips
 					value={selectedAgent.tags || []}
 					label="Tags"
-					icon={<Tag size={16} />}
 					placeholder="Add tag..."
 					disabled={tagsSaving}
 					onChange={async (tags) => {
@@ -327,11 +339,9 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 					}}
 				/>
 
-				{/* Categories input */}
 				<CategoriesInputChips
 					value={selectedAgent.categories || []}
 					label="Categories"
-					icon={<Info size={16} />}
 					placeholder="Add category..."
 					disabled={categoriesSaving}
 					onChange={async (categories) => {

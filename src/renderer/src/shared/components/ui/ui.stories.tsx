@@ -195,6 +195,27 @@ const BUTTON_VARIANTS = [
 	"link",
 ] as const;
 
+/*
+ * The pressed column, faked the same way the focus column is.
+ *
+ * `:active` cannot be forced from markup, and the pressed state is exactly
+ * what a review round needs to see after D11 gave every variant one. These
+ * are the declarations `button.tsx` applies under `active:`, written as plain
+ * utilities so the sheet shows the real pixels. If a variant's pressed step
+ * changes there, change it here too - the sheet is the picture, not the
+ * source.
+ */
+const PRESSED_BY_VARIANT: Record<(typeof BUTTON_VARIANTS)[number], string> = {
+	primary: "bg-accent-active",
+	secondary: "bg-sunken",
+	outline:
+		"border-accent bg-[color-mix(in_oklab,var(--color-accent-wash)_80%,var(--color-accent))]",
+	ghost: "bg-accent-wash text-accent",
+	danger:
+		"border-danger text-ink bg-[color-mix(in_oklab,var(--color-danger-wash)_80%,var(--color-danger))]",
+	link: "underline decoration-2",
+};
+
 const Buttons = () => (
 	<div className="flex flex-col gap-4">
 		{BUTTON_VARIANTS.map((variant) => (
@@ -221,6 +242,13 @@ const Buttons = () => (
 					className="outline-2 outline-accent outline-offset-2"
 				>
 					Focused
+				</Button>
+				<Button
+					variant={variant}
+					size="md"
+					className={PRESSED_BY_VARIANT[variant]}
+				>
+					Pressed
 				</Button>
 			</Row>
 		))}

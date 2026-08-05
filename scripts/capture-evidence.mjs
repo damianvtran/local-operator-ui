@@ -86,6 +86,7 @@ const STORIES = [
 	["canvas-workspace--markdown-document", 1280, 900],
 	["canvas-workspace--spreadsheet", 1280, 900],
 	["canvas-workspace--code", 1280, 900],
+	["canvas-workspace--code-focused", 1280, 900],
 	["canvas-workspace--files", 1280, 900],
 	["canvas-workspace--variables", 1280, 900],
 	["canvas-workspace--diff-review", 1280, 900],
@@ -93,6 +94,7 @@ const STORIES = [
 
 	["agent-hub-page--grid", 1280, 900],
 	["schedules-page--list", 1280, 900],
+	["schedules-page--picker-open", 1280, 900],
 	["command-palette-commandpalette--default", 1280, 800],
 	["command-palette-commandpalette--no-results", 1280, 800],
 

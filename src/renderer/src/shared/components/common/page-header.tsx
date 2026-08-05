@@ -44,6 +44,22 @@ type PageHeaderProps = {
  * column. A component does not own its outer margin; the container owns the
  * gap, and all four containers now set `gap-8` explicitly, which is the same
  * 32px said once in a place you can see it.
+ *
+ * ## Why it wraps, and why it is a container
+ *
+ * The row used to be `justify-between` with no `flex-wrap`. A flex line does
+ * not overflow politely: once the title block and the action group could not
+ * both fit, the actions were squeezed past their labels and then past the
+ * page's `overflow-hidden` edge, so at 800px "Export" read as "Exp" and two
+ * buttons were not merely off-screen but unreachable. `flex-wrap` makes the
+ * action group drop to its own full-width line instead, and `min-w-0` on the
+ * title block lets a long title give way before that happens.
+ *
+ * `@container` is here so pages can collapse their own actions against the
+ * width the header actually has rather than against the viewport. The two
+ * things between this header and the window edge — the app rail and a list
+ * pane — are both independently collapsible, so the viewport does not know
+ * how much room is left. `agents-page.tsx` is the one caller that needs it.
  */
 export const PageHeader: FC<PageHeaderProps> = ({
 	title,
@@ -51,8 +67,8 @@ export const PageHeader: FC<PageHeaderProps> = ({
 	subtitle,
 	children,
 }) => (
-	<div className="flex items-start justify-between gap-4">
-		<div className="flex items-start gap-4">
+	<div className="@container flex flex-wrap items-start justify-between gap-4">
+		<div className="flex min-w-0 items-start gap-4">
 			<Icon
 				size={24}
 				aria-hidden="true"

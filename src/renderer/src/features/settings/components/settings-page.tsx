@@ -1,8 +1,8 @@
-import radientIcon from "@assets/radient-icon-1024x1024.png";
 import { useOnboardingTour } from "@features/onboarding/hooks/use-onboarding-tour";
 import type { ConfigUpdate } from "@shared/api/local-operator/types";
 import { EditableField } from "@shared/components/common/editable-field";
 import { PageHeader } from "@shared/components/common/page-header";
+import { RadientMark } from "@shared/components/common/radient-mark";
 import { SliderSetting } from "@shared/components/common/slider-setting";
 import { Spinner } from "@shared/components/common/spinner";
 import { HostingSelect } from "@shared/components/hosting/hosting-select";
@@ -19,7 +19,6 @@ import { cn } from "@shared/lib/utils";
 import { useUserStore } from "@shared/store/user-store";
 import { format, formatRFC3339, parseISO, subDays } from "date-fns";
 import {
-	Bot,
 	ChartLine,
 	CirclePlus,
 	Contrast,
@@ -30,9 +29,10 @@ import {
 	Info,
 	Key,
 	List,
-	Mail,
+	MessagesSquare,
 	PlayCircle,
 	Settings,
+	SlidersHorizontal,
 	User,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -284,11 +284,7 @@ const UsageInfo: FC = () => {
 const RadientSectionTitle: FC = () => (
 	<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 		<h2 className="flex items-center gap-2 text-heading text-ink">
-			<img
-				src={radientIcon}
-				alt=""
-				className="size-4 shrink-0 object-contain"
-			/>
+			<RadientMark size={16} className="shrink-0 text-ink-dim" />
 			Radient account
 		</h2>
 		<Button
@@ -597,12 +593,20 @@ export const SettingsPage: FC = () => {
 								icon={User}
 								description={`Your user profile information displayed in the application. This information is not provided to the agents. ${isAuthenticated ? "These details are provided through your Radient account." : ""}`}
 							>
+								{/*
+								 * Neither field carries a glyph. The section heading is
+								 * already a person, and a second person glyph 60px under it
+								 * on "Display name" was the same picture twice for two
+								 * different things. `Mail` goes with it rather than being
+								 * kept alone: one indented label beside one flush label is a
+								 * ragged column, and "Display name" and "Email address" are
+								 * not words that need a picture to be told apart.
+								 */}
 								<div className="flex flex-col gap-4">
 									<EditableField
 										value={userStore.profile.name}
 										label="Display name"
 										placeholder="Enter your name..."
-										icon={<User size={16} />}
 										isSaving={savingField === "user_name"}
 										onSave={async (value) => {
 											setSavingField("user_name");
@@ -618,7 +622,6 @@ export const SettingsPage: FC = () => {
 										value={userStore.profile.email}
 										label="Email address"
 										placeholder="Enter your email..."
-										icon={<Mail size={16} />}
 										isSaving={savingField === "user_email"}
 										onSave={async (value) => {
 											setSavingField("user_email");
@@ -648,9 +651,12 @@ export const SettingsPage: FC = () => {
 								</Button>
 							</SettingsSection>
 
+							{/* `SlidersHorizontal`, not `Bot`: this section sets defaults for
+							    two things, and `Bot` is already the Model select's own glyph
+							    a few rows below it. One picture, one meaning. */}
 							<SettingsSection
 								title="Model settings"
-								icon={Bot}
+								icon={SlidersHorizontal}
 								description="Configure the default AI model and hosting providers used for generating responses. This will be used for all agents that don't have a specific model or hosting provider configured. You can override these settings for individual agents in the agent settings."
 							>
 								<div className="flex flex-col gap-4">
@@ -697,7 +703,11 @@ export const SettingsPage: FC = () => {
 										max={500}
 										step={10}
 										unit="msgs"
-										icon={History}
+										// `MessagesSquare`, not `History`: the section heading is
+										// the history, this slider is a count of messages. Its two
+										// siblings keep `List` and `Database`, so the label column
+										// stays even.
+										icon={MessagesSquare}
 										isSaving={savingField === "conversation_length"}
 										onChange={(value) =>
 											handleUpdateField("conversation_length", value)
