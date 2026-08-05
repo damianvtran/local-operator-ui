@@ -434,30 +434,44 @@ const SpreadsheetPreviewComponent: FC<SpreadsheetPreviewProps> = ({
 
 	const onCellValueChanged = useCallback(
 		(event: CellValueChangedEvent) => {
-			const { colDef, newValue, node } = event;
+			const { colDef, newValue, data } = event;
 			const sheetData = sheetsData[activeSheetName];
-			const rowIndex = node.rowIndex;
-			if (sheetData && rowIndex !== null && colDef.field) {
-				const updatedRow = {
-					...sheetData[rowIndex],
-					[colDef.field]: newValue,
-				};
-				const updatedSheetData = [...sheetData];
-				updatedSheetData[rowIndex] = updatedRow;
-				const newSheetsData = {
-					...sheetsData,
-					[activeSheetName]: updatedSheetData,
-				};
-				setSheetsData(newSheetsData);
+			if (!sheetData || !colDef.field) return;
 
-				// Mark that user has made changes and this is no longer initial load
-				isInitialLoadRef.current = false;
-				setHasUserChanges(true);
+			/*
+			 * Locate the row by IDENTITY, not by `node.rowIndex`.
+			 *
+			 * `rowIndex` is ag-grid's DISPLAYED position, and both `sortable`
+			 * and `filter` are enabled on every column. Sort by any header, edit
+			 * a cell, and the displayed index no longer matches the array index -
+			 * so the edit was written into whichever row happened to occupy that
+			 * slot in the unsorted data. Silent, and it corrupts a row the user
+			 * was not even looking at.
+			 *
+			 * `event.data` is the same object reference this array holds, so
+			 * `indexOf` finds the real position regardless of sort or filter.
+			 */
+			const rowIndex = sheetData.indexOf(data);
+			if (rowIndex === -1) return;
 
-				// Update canvas store immediately for real-time sync (but don't save to disk yet)
-				if (conversationId) {
-					setSpreadsheetData(conversationId, document.id, newSheetsData);
-				}
+			const updatedSheetData = [...sheetData];
+			updatedSheetData[rowIndex] = {
+				...sheetData[rowIndex],
+				[colDef.field]: newValue,
+			};
+			const newSheetsData = {
+				...sheetsData,
+				[activeSheetName]: updatedSheetData,
+			};
+			setSheetsData(newSheetsData);
+
+			// Mark that user has made changes and this is no longer initial load
+			isInitialLoadRef.current = false;
+			setHasUserChanges(true);
+
+			// Update canvas store immediately for real-time sync (but don't save to disk yet)
+			if (conversationId) {
+				setSpreadsheetData(conversationId, document.id, newSheetsData);
 			}
 		},
 		[
