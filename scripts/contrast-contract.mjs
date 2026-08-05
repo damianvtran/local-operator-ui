@@ -395,6 +395,30 @@ if (palettes.length === 0) {
  * `info` as its accent's triple — failed it by three to seven times over.
  */
 const SEPARABLE = ["success", "warning", "danger", "info"];
+
+/*
+ * Syntax highlighting, the pairs the editor distinguishes by HUE.
+ *
+ * The code editor maps keyword/string/number to three of the four gated
+ * semantics, function names to `info`, comments to `inkDim` and names to
+ * `ink`. The semantics-vs-semantics floor above therefore already covers
+ * keyword vs string vs number vs function. What it cannot see is the editor's
+ * other adjacency: every token sits next to comments and names.
+ *
+ * Two exclusions, both deliberate and both carried by weight rather than
+ * hue, so a hue gate would assert something the design does not promise:
+ * `accent` never appears in syntax at all (it measures dE00 0.00 against
+ * success on monokai, info on dune and ink on obsidian), and obsidian's
+ * `info` IS its `ink`, so function and class names separate from variable
+ * names by a heavier weight, not a different colour.
+ *
+ * The floor is 8: the previous mapping's worst case was 0.00, this one's is
+ * 8.87 (radient, info vs inkDim), and 8 is the point where a token and the
+ * comment beside it reliably take different names rather than scraping the
+ * side-by-side threshold.
+ */
+const SYNTAX_HUE_ROLES = ["success", "warning", "danger", "info"];
+const SYNTAX_COMMENT_FLOOR = 8;
 const SEPARATION_FLOOR = 15;
 
 for (const { id, palette: p } of palettes) {
@@ -491,6 +515,40 @@ for (const { id, palette: p } of palettes) {
 					`${id}: \`${a}\` ${p[a]} and \`${b}\` ${p[b]} are too close to tell apart (ΔE00 ${r2(got)}, need ${SEPARATION_FLOOR}) — a semantic a reader cannot distinguish from another semantic is not a semantic`,
 				);
 			}
+		}
+	}
+
+	/* Syntax tokens must stand apart from the comments and names they sit
+	   beside. See SYNTAX_HUE_ROLES for what is excluded and why. */
+	for (const role of SYNTAX_HUE_ROLES) {
+		if (!isHex(p[role]) || !isHex(p.inkDim)) continue;
+		assertions++;
+		const got = deltaE(p[role], p.inkDim);
+		if (got < SYNTAX_COMMENT_FLOOR) {
+			fail(
+				`${id}: syntax \`${role}\` ${p[role]} sits at ΔE00 ${r2(got)} from comment \`${p.inkDim}\` (need ${SYNTAX_COMMENT_FLOOR}) — a token the eye cannot separate from the comment beside it is not highlighted`,
+			);
+		}
+	}
+
+	/* Adjacent grounds must be a perceptible step, not merely a passing ratio.
+	   D21 established that 1.03:1 is a gate floor, not a human threshold -
+	   sage's canvas/surface at 1.9 dE00 renders a visible card boundary and
+	   localOperatorLight at 1.5 did not. `canvas`/`sunken` is deliberately not
+	   asserted: they are never adjacent on screen, so a user never compares
+	   them directly. */
+	for (const [a, b] of [
+		["canvas", "surface"],
+		["surface", "elevated"],
+		["elevated", "sunken"],
+	]) {
+		if (!isHex(p[a]) || !isHex(p[b])) continue;
+		assertions++;
+		const got = deltaE(p[a], p[b]);
+		if (got < 2.0) {
+			fail(
+				`${id}: adjacent grounds \`${a}\` and \`${b}\` are ΔE00 ${r2(got)} apart (need 2.0) — a step the eye cannot see is not a step`,
+			);
 		}
 	}
 }
