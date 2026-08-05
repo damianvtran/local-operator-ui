@@ -83,13 +83,13 @@ const STORIES = [
 	["shell-app-shell--rail-collapsed", 1280, 800],
 
 	/* Canvas: the second-largest surface, and the one with the data grids. */
-	["march-invoice-reviewmd--markdown-document", 1280, 900],
-	["march-invoice-reviewmd--spreadsheet", 1280, 900],
-	["march-invoice-reviewmd--code", 1280, 900],
-	["march-invoice-reviewmd--files", 1280, 900],
-	["march-invoice-reviewmd--variables", 1280, 900],
-	["march-invoice-reviewmd--diff-review", 1280, 900],
-	["march-invoice-reviewmd--edit-prompt", 1280, 900],
+	["canvas-workspace--markdown-document", 1280, 900],
+	["canvas-workspace--spreadsheet", 1280, 900],
+	["canvas-workspace--code", 1280, 900],
+	["canvas-workspace--files", 1280, 900],
+	["canvas-workspace--variables", 1280, 900],
+	["canvas-workspace--diff-review", 1280, 900],
+	["canvas-workspace--edit-prompt", 1280, 900],
 
 	["agent-hub-page--grid", 1280, 900],
 	["schedules-page--list", 1280, 900],
@@ -184,8 +184,33 @@ const main = async () => {
 	await cdp.send("Page.enable");
 	await cdp.send("Network.enable");
 
+	/*
+	 * Every id in STORIES must exist before a single frame is taken.
+	 *
+	 * Storybook answers an unknown id with a rendered "not found" view rather
+	 * than an error, and that view leaves the previous document's theme on the
+	 * element - so a typo in an id surfaced as a confusing theme-mismatch
+	 * failure on the FOLLOWING theme, pointing at the story system instead of
+	 * at the id. Three ids in this list were wrong (they had been derived from
+	 * a fixture filename rather than the story's own title) and this is what
+	 * that cost. Checking the manifest first names the bad id directly.
+	 */
+	const index = await fetch(`${ORIGIN}/index.json`).then((r) => r.json());
+	const known = new Set(Object.keys(index.entries ?? {}));
+	const unknown = [...new Set(STORIES.map(([id]) => id))].filter(
+		(id) => !known.has(id),
+	);
+	if (unknown.length > 0) {
+		throw new Error(
+			`unknown story id(s): ${unknown.join(", ")}. ` +
+				`Check ${ORIGIN}/index.json for the real ids.`,
+		);
+	}
 	rmSync(OUT, { recursive: true, force: true });
 
+	/* zustand persist key for the UI preferences store. */
+	const PREFS_KEY = "ui-preferences-storage";
+	let seedScript = null;
 	let captured = 0;
 	for (const [story, width, height] of STORIES) {
 		for (const theme of THEMES) {
@@ -221,6 +246,36 @@ const main = async () => {
 			 */
 			await cdp.send("Page.navigate", { url: "about:blank" });
 			await sleep(150);
+
+			/*
+			 * Seed the persisted preferences store before any app script runs.
+			 *
+			 * The theme arg drives the preview frame, but `useUiPreferencesStore`
+			 * is a zustand store persisted to localStorage, and localStorage
+			 * outlives the document. Components that read the theme from the
+			 * store rather than from `data-theme` therefore rehydrated to
+			 * whatever the previous frame left behind - the canvas surface stayed
+			 * on the first theme captured while the attribute said otherwise, so
+			 * every canvas frame after the first would have been named for a
+			 * theme it was not showing.
+			 *
+			 * This runs on every new document, before app code, so the store's
+			 * rehydration and the arg agree from the first paint instead of
+			 * racing. It is re-registered per frame because the payload carries
+			 * the theme.
+			 */
+			if (seedScript) {
+				await cdp.send("Page.removeScriptToEvaluateOnNewDocument", {
+					identifier: seedScript,
+				});
+			}
+			({ identifier: seedScript } = await cdp.send(
+				"Page.addScriptToEvaluateOnNewDocument",
+				{
+					source: `try { localStorage.setItem(${JSON.stringify(PREFS_KEY)}, JSON.stringify({ state: { themeName: ${JSON.stringify(theme)} }, version: 0 })); } catch {}`,
+				},
+			));
+
 			await cdp.send("Page.navigate", {
 				url: `${ORIGIN}/iframe.html?id=${story}&viewMode=story&args=theme:${theme}`,
 			});
@@ -228,14 +283,27 @@ const main = async () => {
 
 			/* Assert the frame really is the theme this file is about to be
 			   named after, rather than trusting the navigation. A mis-named
-			   evidence file is worse than a missing one. */
-			const { result: applied } = await cdp.send("Runtime.evaluate", {
-				returnByValue: true,
-				expression: "document.documentElement.dataset.theme || ''",
-			});
-			if (applied.value !== theme) {
+			   evidence file is worse than a missing one.
+
+			   Polled rather than read once: the theme is applied by a decorator
+			   effect, and a heavy story - the canvas mounts ag-grid and
+			   CodeMirror - can still be mounting when a single read lands. A
+			   fixed sleep long enough for the slowest story would be paid by
+			   all 372 frames, so wait for the condition instead of for a
+			   duration. The throw still fires if it never becomes true. */
+			let applied = "";
+			for (let attempt = 0; attempt < 40; attempt++) {
+				const { result } = await cdp.send("Runtime.evaluate", {
+					returnByValue: true,
+					expression: "document.documentElement.dataset.theme || ''",
+				});
+				applied = result.value;
+				if (applied === theme) break;
+				await sleep(250);
+			}
+			if (applied !== theme) {
 				throw new Error(
-					`${story} @ ${theme}: document carries theme "${applied.value}"`,
+					`${story} @ ${theme}: document carries theme "${applied}" after 10s`,
 				);
 			}
 
@@ -259,17 +327,27 @@ const main = async () => {
 				})()`,
 			});
 			await sleep(120);
-
 			/* Assert the capture is of a rendered story, not Storybook's own
 			   error page. A screenshot of "Configuration validation failed" is
 			   indistinguishable from a real frame in a directory listing, and a
-			   whole evidence set was once captured that way. */
+			   whole evidence set was once captured that way.
+
+			   Emptiness is measured in ELEMENTS, not characters. A text-length
+			   threshold rejected the inline-edit story, which is legitimately
+			   almost wordless - a textarea whose prompt lives in a placeholder,
+			   and icon buttons. Placeholders are not innerText. An unrendered
+			   story has no elements; an error page has plenty of text, which is
+			   what the pattern test above is for. */
 			const { result: sane } = await cdp.send("Runtime.evaluate", {
 				returnByValue: true,
 				expression: `(() => {
 					const t = document.body.innerText || "";
 					if (/Configuration validation failed|no stories|Story not found/i.test(t)) return "storybook-error";
-					if (t.trim().length < 20) return "empty";
+					/* Count from body, not from #storybook-root: dialogs, sheets
+					   and the command palette render through a portal appended to
+					   body, so a root-only count reports a fully rendered modal as
+					   empty. */
+					if (document.body.querySelectorAll("*").length < 8) return "empty";
 					return "ok";
 				})()`,
 			});
