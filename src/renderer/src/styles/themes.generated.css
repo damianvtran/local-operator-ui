@@ -78,7 +78,7 @@
 	color-scheme: light;
 	--lo-canvas: #E8E9EC;
 	--lo-surface: #F2F3F6;
-	--lo-elevated: #FAFAFC;
+	--lo-elevated: #FDFDFF;
 	--lo-sunken: #E1E2E7;
 	--lo-ink: #33374C;
 	--lo-ink-muted: #4A4E64;
@@ -173,7 +173,7 @@
 [data-theme="monokai"] {
 	color-scheme: dark;
 	--lo-canvas: #272822;
-	--lo-surface: #2D2E27;
+	--lo-surface: #2E2F28;
 	--lo-elevated: #3E3D32;
 	--lo-sunken: #1E1F1A;
 	--lo-ink: #F8F8F2;
@@ -300,7 +300,7 @@
 }
 [data-theme="sage"] {
 	color-scheme: light;
-	--lo-canvas: #F5F0E2;
+	--lo-canvas: #F3EEE0;
 	--lo-surface: #FBF7EC;
 	--lo-elevated: #FFFEF9;
 	--lo-sunken: #E9E2D0;

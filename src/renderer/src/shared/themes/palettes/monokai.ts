@@ -16,7 +16,11 @@ export const monokai: ThemeDefinition = {
 		mode: "dark",
 
 		canvas: "#272822",
-		surface: "#2D2E27",
+		// Canvas and elevated are upstream's background and line highlight; surface
+		// is the derived step between them, so it is the one that moves. 2D2E27 sat
+		// ΔE00 1.95 from canvas — a card edge that is not there. One unit up the
+		// same olive ramp reads 2.26, and still leaves 5.05 up to elevated.
+		surface: "#2E2F28",
 		elevated: "#3E3D32",
 		sunken: "#1E1F1A",
 

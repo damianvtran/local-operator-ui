@@ -20,7 +20,12 @@ export const iceberg: ThemeDefinition = {
 		// Upstream has one background and the old file invented F3F4F7 for paper.
 		// Two more grounds are derived on the same cool ramp.
 		surface: "#F2F3F6",
-		elevated: "#FAFAFC",
+		// Canvas is upstream's own background, so the canvas/surface step is fixed
+		// at ΔE00 2.11 and surface cannot come down without collapsing it. The only
+		// room for a visible surface/elevated step is therefore above surface:
+		// FAFAFC read 1.58 apart from it, FDFDFF reads 2.15 on the same +2 blue
+		// tint. That is the whole headroom a light ramp has under white.
+		elevated: "#FDFDFF",
 		// A light ramp has very little room below its page ground: canvas is already
 		// a mid-light grey, and every step down costs tertiary-ink headroom. This
 		// sits 1.07:1 under canvas, which is what caps inkDim below.
