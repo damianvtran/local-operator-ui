@@ -27,6 +27,7 @@ import { useCanvasStore } from "@shared/store/canvas-store";
 import type { CanvasDocument } from "../../types/canvas";
 import { Canvas } from "./index";
 import { InlineEdit } from "./inline-edit";
+import { WysiwygMarkdownEditor } from "./wysiwyg-markdown-editor";
 import { buildDiffContainer } from "./wysiwyg-markdown-editor";
 
 /**
@@ -373,6 +374,22 @@ type Story = StoryObj;
 /** Markdown editor: the toolbar, the tab strip under load, and prose. */
 export const MarkdownDocument: Story = {
 	render: () => <CanvasFrame view="documents" activeId={DOCUMENTS[0].id} />,
+};
+
+/**
+ * The block-format menu, open.
+ *
+ * Every label in this menu lived outside the frame set until now, which is
+ * how two of them came to read "IndentIncrease" and "IndentDecrease" and
+ * survived a design round. A menu that only exists while a pointer is down
+ * is a menu no screenshot has ever seen.
+ */
+export const MarkdownFormatMenu: Story = {
+	render: () => (
+		<div className="h-screen bg-canvas p-6">
+			<WysiwygMarkdownEditor document={DOCUMENTS[0]} initialFormatMenuOpen />
+		</div>
+	),
 };
 
 /** The same panel at its minimum width, where the toolbar is under pressure. */

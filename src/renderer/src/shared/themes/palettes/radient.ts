@@ -38,7 +38,7 @@ export const radient: ThemeDefinition = {
 		inkDim: "#8FA8BC",
 		inkDisabled: "#64748B",
 
-		hairline: "#313544",
+		hairline: "#343847",
 		// Derived. The old theme bounded inputs with white at 20 percent alpha,
 		// which measured about 1.5:1 on the page ground.
 		borderControl: "#7A8CA3",

@@ -20,6 +20,7 @@ import { ModelSelect } from "@shared/components/hosting/model-select";
 import { Tooltip } from "@shared/components/ui";
 import { useConfig } from "@shared/hooks/use-config";
 import type { useUpdateAgent } from "@shared/hooks/use-update-agent";
+import { formatMessageDateTime } from "@shared/utils/date-utils";
 import { showErrorToast } from "@shared/utils/toast-manager";
 import { Calendar, Cpu, GitBranch, IdCard, Info } from "lucide-react";
 import type { FC } from "react";
@@ -402,7 +403,11 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 								Created
 							</>
 						}
-						value={new Date(selectedAgent.created_date).toLocaleString()}
+						/* The app's own date voice, not the platform's. `toLocaleString`
+						   printed "10/2/2025, 10:40:00 AM" - nothing about when an agent
+						   was created is a fact to the second, and this is the screen a
+						   user spends the most time on. */
+						value={formatMessageDateTime(selectedAgent.created_date)}
 					/>
 					<InfoItem
 						label={

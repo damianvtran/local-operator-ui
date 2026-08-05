@@ -450,7 +450,7 @@ const SEPARATION_FLOOR = 15;
  * distance vanishes - localOperatorDark's separator at 2.10 came out
  * byte-identical to the panel around it in the captured frame. 4.0 is the
  * point where every palette's rule reads as a rule while every hairline stays
- * between 1.04:1 and 1.92:1 against its grounds, which is what keeps it from
+ * between 1.16:1 and 1.92:1 against its grounds, which is what keeps it from
  * becoming a border - and that ceiling is asserted, not just described.
  */
 const FIELD_SEPARATION_FLOOR = 2.0;
@@ -460,10 +460,30 @@ const LINE_SEPARATION_FLOOR = 4.0;
  * And the other end. A hairline that clears the line floor by enough stops
  * being a hairline: `borderControl` is the role for an edge that asserts
  * itself, and this one is for an edge that merely divides. 2.0:1 is where the
- * twelve sit today - 1.04:1 at the quietest, tokyoNight's 1.92:1 against
- * `sunken` at the loudest - so it fences the range without moving anything.
+ * twelve sit today - radient's 1.16:1 against `elevated` at the quietest,
+ * tokyoNight's 1.92:1 against `sunken` at the loudest - so it fences the range
+ * without moving anything.
  */
 const HAIRLINE_RATIO_CEILING = 2.0;
+
+/*
+ * And a floor on the same axis as the ceiling, because ΔE00 alone can be paid
+ * in chroma and a 1px line cannot spend it.
+ *
+ * ΔE00 credits lightness, chroma and hue together, which is right for two
+ * large fields: a blue plane beside a grey one of equal luminance is plainly
+ * two planes. A rule one pixel wide is a different instrument - the display
+ * resamples it, subpixel rendering and any compression in between attenuate
+ * chroma far harder than lightness, and what survives is the luminance step.
+ * radient's hairline cleared the ΔE00 floor at 5.60 with 40% to spare while
+ * being 1.107:1 against `elevated`, and rendered at less than half the
+ * strength of every other palette's.
+ *
+ * 1.15:1 is where the other eleven already sat (1.165 at the tightest), so
+ * this fenced the axis while moving only the pair that failed it: radient's
+ * hairline #313544 -> #343847, which takes it to 1.158:1 and ΔL* 3.89.
+ */
+const HAIRLINE_RATIO_FLOOR = 1.15;
 
 for (const { id, palette: p } of palettes) {
 	/* Completeness first. A missing role is a worse defect than a low ratio,
@@ -659,6 +679,13 @@ for (const { id, palette: p } of palettes) {
 		if (got < LINE_SEPARATION_FLOOR) {
 			fail(
 				`${id}: \`hairline\` on \`${ground}\` is ΔE00 ${r2(got)} (need ${LINE_SEPARATION_FLOOR}) — a 1px line has no area to integrate over, so a step that reads between two fields disappears in a rule`,
+			);
+		}
+		assertions++;
+		const luminance = ratio(p.hairline, p[ground]);
+		if (luminance < HAIRLINE_RATIO_FLOOR) {
+			fail(
+				`${id}: \`hairline\` on \`${ground}\` is ${r2(luminance)}:1 (need ${HAIRLINE_RATIO_FLOOR}) — its ΔE00 is carried in chroma, which a 1px line does not survive`,
 			);
 		}
 		assertions++;

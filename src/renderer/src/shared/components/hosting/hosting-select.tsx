@@ -46,6 +46,15 @@ type HostingSelectProps = {
 	 * Default: true (only show available providers)
 	 */
 	filterByCredentials?: boolean;
+	/**
+	 * What to say when credentials filtering leaves nothing to choose.
+	 *
+	 * The default sends the reader to Settings, which is right from the chat
+	 * and the agent form and wrong on the Settings page itself - where the
+	 * credentials section is three rows down the same nav. A caller that IS the
+	 * destination names the section instead.
+	 */
+	emptyHelperText?: string;
 
 	/**
 	 * Whether to allow custom hosting provider entries
@@ -71,6 +80,7 @@ export const HostingSelect: FC<HostingSelectProps> = ({
 	onSave,
 	isSaving = false,
 	filterByCredentials = true,
+	emptyHelperText = "No hosting providers available. Add credentials in Settings.",
 	allowCustom = true,
 	allowDefault = true,
 }) => {
@@ -181,10 +191,10 @@ export const HostingSelect: FC<HostingSelectProps> = ({
 	// Helper text to show when no credentials are available
 	const helperText = useMemo(() => {
 		if (filterByCredentials && availableHostingProviders.length === 0) {
-			return "No hosting providers available. Add credentials in Settings.";
+			return emptyHelperText;
 		}
 		return undefined;
-	}, [availableHostingProviders.length, filterByCredentials]);
+	}, [availableHostingProviders.length, filterByCredentials, emptyHelperText]);
 
 	// Find the current selected option
 	const selectedOption = useMemo(() => {

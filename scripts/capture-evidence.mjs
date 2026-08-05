@@ -84,6 +84,7 @@ const STORIES = [
 
 	/* Canvas: the second-largest surface, and the one with the data grids. */
 	["canvas-workspace--markdown-document", 1280, 900],
+	["canvas-workspace--markdown-format-menu", 1280, 900],
 	["canvas-workspace--spreadsheet", 1280, 900],
 	["canvas-workspace--code", 1280, 900],
 	["canvas-workspace--code-focused", 1280, 900],
@@ -95,6 +96,7 @@ const STORIES = [
 	["agent-hub-page--grid", 1280, 900],
 	["schedules-page--list", 1280, 900],
 	["schedules-page--picker-open", 1280, 900],
+	["schedules-page--row-actions-revealed", 1280, 900],
 	["command-palette-commandpalette--default", 1280, 800],
 	["command-palette-commandpalette--no-results", 1280, 800],
 
