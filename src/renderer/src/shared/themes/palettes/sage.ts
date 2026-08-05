@@ -21,7 +21,10 @@ export const sage: ThemeDefinition = {
 		// two grounds above surface. The whole floral-white ramp is re-seated one
 		// step lower, which buys four distinguishable grounds and keeps the paper
 		// warm rather than grey.
-		canvas: "#F5F0E2",
+		// Elevated is already within a hair of white, so the canvas/surface step has
+		// to be bought from below: F5F0E2 sat ΔE00 1.91 from surface, and two units
+		// down the same warm ramp reads 2.24 while keeping 3.04 down to sunken.
+		canvas: "#F3EEE0",
 		surface: "#FBF7EC",
 		elevated: "#FFFEF9",
 		sunken: "#E9E2D0",
