@@ -398,10 +398,96 @@ const main = async () => {
 					`${story} @ ${theme}: story did not render (${sane.value})`,
 				);
 			}
+			/*
+			 * And wait for the ground to actually be painted.
+			 *
+			 * The checks above pass on Storybook's own "preparing story" screen:
+			 * the theme decorator sets `data-theme` on the document before the
+			 * story mounts, and a spinner on a white page has well over eight
+			 * elements. That is how a frame of nothing shipped in a set of 396,
+			 * and it is intermittent - the same story passes on the next run -
+			 * so the fix has to be a wait rather than a retry.
+			 *
+			 * The condition is the one `check-evidence.mjs` asserts afterwards:
+			 * the page's own background is a colour from this theme. Polling it
+			 * here turns a flake into 200ms.
+			 */
+			/*
+			 * Wait for Storybook to finish preparing the story.
+			 *
+			 * Its spinner renders on a white page INSIDE an already-themed
+			 * document, because the theme decorator sets the ground before the
+			 * story mounts. Every other check here - theme attribute, element
+			 * count, body background - therefore passes while the visible page
+			 * is a spinner, which is how a frame of nothing shipped twice in a
+			 * set of 396. It is intermittent, so a retry would only hide it.
+			 *
+			 * Measured by height, not presence: Storybook leaves all four
+			 * wrappers in the DOM permanently and toggles display, so a
+			 * presence test never clears and every story times out.
+			 *
+			 * This waits only for the loader to go. Whether what replaced it is
+			 * a picture of the app is a separate question, and `check-evidence`
+			 * answers it against the written file - which is also the version
+			 * that tolerates a legitimate scrim over a modal, something no
+			 * equality test on a ground colour can do.
+			 */
+			let prepared = false;
+			for (let i = 0; i < 300 && !prepared; i++) {
+				const { result } = await cdp.send("Runtime.evaluate", {
+					returnByValue: true,
+					expression: `(() => {
+						const loading = [
+							...document.querySelectorAll(
+								".sb-preparing-story, .sb-preparing-docs, .sb-nopreview, .sb-loader",
+							),
+						].some((el) => el.getBoundingClientRect().height > 0);
+						if (loading) return false;
+						/* Counted from the body, not from #storybook-root: the
+						   command palette, dialogs and sheets render through a
+						   portal appended to the body and leave the root empty,
+						   so a root-only count waits forever on exactly the
+						   surfaces most worth photographing. */
+						return document.body.querySelectorAll("*").length >= 8;
+					})()`,
+				});
+				prepared = result.value === true;
+				if (!prepared) await sleep(200);
+			}
+			if (!prepared) {
+				throw new Error(
+					`${story} @ ${theme}: Storybook never finished preparing the story (60s)`,
+				);
+			}
+			/*
+			 * Resize to the content, then capture the viewport.
+			 *
+			 * `captureBeyondViewport` asks the compositor for a region it is not
+			 * currently painting, and on a long page it intermittently returned
+			 * unpainted white - which is what put a blank frame in the set twice
+			 * on this head, once for a surface whose body background had already
+			 * been confirmed correct. Making the viewport the size of the
+			 * content means the capture only ever asks for pixels the renderer
+			 * is actually drawing.
+			 */
+			const { result: full } = await cdp.send("Runtime.evaluate", {
+				returnByValue: true,
+				expression: `Math.max(document.documentElement.scrollHeight, ${height})`,
+			});
+			await cdp.send("Emulation.setDeviceMetricsOverride", {
+				width,
+				height: Math.min(full.value, 16384),
+				deviceScaleFactor: 1,
+				mobile: false,
+			});
+			/* Two frames: one for the resize to lay out, one for it to paint. */
+			await cdp.send("Runtime.evaluate", {
+				awaitPromise: true,
+				expression: `new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))`,
+			});
 			const { data } = await cdp.send("Page.captureScreenshot", {
 				format: "webp",
 				quality: 88,
-				captureBeyondViewport: true,
 			});
 			/*
 			 * A story captured at several widths writes one directory per width,

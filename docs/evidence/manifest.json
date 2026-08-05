@@ -1,10 +1,10 @@
 {
-  "head": "1a38fc363f3603117be879a9bc65a3c06f83b9ef",
-  "srcTree": "c8a57666bf5cff93fa9f63c88c7e5727dc892086",
-  "scriptsTree": "5ba4d603b7083ec3028a78e6f20a81ae185e2446",
-  "dirtyWorkingTree": false,
-  "capturedAt": "2026-08-05T17:39:57.782Z",
-  "frames": 396,
-  "surfaces": 33,
+  "head": "ee13635263d2b08e530920e4259b6a800b6d2227",
+  "srcTree": "1c43f0f567badeee0e111391b67e83f04cdfc373",
+  "scriptsTree": "1e5f25139fa4aa2fe2e38a675a2ff11bc62b2a41",
+  "dirtyWorkingTree": true,
+  "capturedAt": "2026-08-05T19:34:56.425Z",
+  "frames": 408,
+  "surfaces": 34,
   "themes": 12
 }
