@@ -587,6 +587,8 @@ for (const { id, palette: p } of palettes) {
 		["surface", "elevated"],
 		["elevated", "sunken"],
 		["hairline", "canvas"],
+		["hairline", "surface"],
+		["hairline", "elevated"],
 		["hairline", "sunken"],
 	]) {
 		if (!isHex(p[a]) || !isHex(p[b])) continue;
