@@ -32,7 +32,7 @@ export const useDownloadAgentMutation = () => {
 		},
 		onSuccess: (data, variables) => {
 			const agentName = data.result?.name ?? variables.agentName ?? "Agent";
-			showSuccessToast(`Agent "${agentName}" downloaded successfully!`);
+			showSuccessToast(`Agent "${agentName}" downloaded.`);
 			// Invalidate local agents list to reflect the newly downloaded agent
 			queryClient.invalidateQueries({ queryKey: ["agents"] });
 			// Optionally invalidate agent download counts if needed elsewhere

@@ -23,7 +23,13 @@ export const radient: ThemeDefinition = {
 		elevated: "#282D47",
 		sunken: "#0A0D12",
 
-		ink: "#FFFFFF",
+		// Pure white was the one value in this file that belonged to no ramp: at
+		// C0 it reads as a hole punched in the navy rather than as the top of the
+		// theme's own ink ladder. This continues that ladder — the chroma of the
+		// three weights below it falls 14.5, 13.8, 9.1 as lightness rises, so the
+		// primary ink lands at C3 on the same blue hue, and still measures 17:1
+		// on canvas against white's 18.3:1.
+		ink: "#F2F7FC",
 		// The old secondary text was the light blue BDF0FD. Accent-weight colour on
 		// every piece of secondary text is what the one-accent rule exists to stop,
 		// so secondary text is now a cool blue-grey on the same ramp. BDF0FD is not

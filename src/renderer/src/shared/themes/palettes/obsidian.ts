@@ -22,10 +22,13 @@ export const obsidian: ThemeDefinition = {
 		canvas: "#09090B",
 		surface: "#18181B",
 		elevated: "#27272A",
-		// The old file already used a near-black 060609 for its message view. True
-		// black gives the recessed ground a little more separation from zinc 950,
-		// which at this darkness is otherwise about 1.03:1.
-		sunken: "#000000",
+		// The old file already used a near-black 060609 for its message view, which
+		// measures 1.02:1 against zinc 950 — too close to read as a separate
+		// ground. This is two levels lower on the same blue-leaning zinc lean
+		// (h290, the hue every other neutral here carries) at 1.03:1. True black
+		// would clear the separation floor more easily and was what this held, but
+		// a C0 value is the absence of the ramp rather than its bottom rung.
+		sunken: "#030307",
 
 		ink: "#FAFAFA",
 		inkMuted: "#A1A1AA",
@@ -43,8 +46,14 @@ export const obsidian: ThemeDefinition = {
 		// In a monochrome theme the accent is the off-white, which is why a primary
 		// button here is white with near-black ink.
 		accent: "#FAFAFA",
-		accentHover: "#FFFFFF",
-		accentActive: "#E4E4E7",
+		// Zinc 50 is already the top of the ramp, so the interaction ladder can
+		// only run downwards — the same direction shadcn's own zinc dark theme
+		// takes with `primary/90`, and the same direction the light palettes take.
+		// The previous pure white differed from the accent by ΔE00 1.0, a hover
+		// state nobody could see; zinc 200 is 4.85 and zinc 300 a further 3.65.
+		// Both still clear 15:1 for `accentHover` used as a link ink.
+		accentHover: "#E4E4E7",
+		accentActive: "#D4D4D8",
 		accentWash: "#262628",
 		onAccent: "#09090B",
 
@@ -69,7 +78,9 @@ export const obsidian: ThemeDefinition = {
 		infoWash: "#262628",
 		infoBorder: "#8E8E8E",
 
-		overlayShadow: "0 12px 32px -12px rgb(0 0 0 / 0.8)",
-		scrim: "rgb(0 0 0 / 0.65)",
+		// Tinted to the ramp for the same reason the grounds are: a pure black
+		// scrim over a blue-leaning near-black shifts the whole view neutral.
+		overlayShadow: "0 12px 32px -12px rgb(3 3 7 / 0.8)",
+		scrim: "rgb(3 3 7 / 0.65)",
 	},
 };

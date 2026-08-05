@@ -302,8 +302,10 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					);
 				}
 			} else {
-				console.error("This browser cannot record audio");
-				showErrorToast("Audio recording is not supported on your browser.");
+				console.error("This runtime exposes no MediaRecorder");
+				/* Not "your browser": this is a desktop app, and the person reading
+				   this did not choose a browser and cannot change it. */
+				showErrorToast("Dictation is not available on this device.");
 			}
 		}, [canEnableRecordingFeature]);
 

@@ -12,7 +12,11 @@ import { useDebouncedValue } from "@shared/hooks/use-debounced-value";
 import { cn } from "@shared/lib/utils";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
-import type { CellValueChangedEvent, ColDef } from "ag-grid-community";
+import type {
+	CellStyle,
+	CellValueChangedEvent,
+	ColDef,
+} from "ag-grid-community";
 import { iconSetQuartz } from "ag-grid-community";
 import type { CanvasDocument } from "../../types/canvas";
 import { getFileTypeFromPath } from "../../utils/file-types";
@@ -60,7 +64,10 @@ const SPREADSHEET_THEME = themeQuartz.withPart(iconSetQuartz).withParams({
 	// Native scrollbars and form controls inside the grid follow the palette.
 	browserColorScheme: "inherit",
 
-	// Type: chrome in the app's sans, cell data in the machine voice.
+	// Type: chrome in the app's sans, and cell data in whichever voice its
+	// column speaks. Monospace is the machine voice, so the default here is
+	// prose and the quantity columns override the face themselves; a sheet
+	// whose customer names are set in a terminal font reads as a log file.
 	//
 	// The header was `text-body` (14px) over `text-mono-sm` (12px) data — the
 	// column label set larger than the number under it, which reads as though
@@ -68,11 +75,11 @@ const SPREADSHEET_THEME = themeQuartz.withPart(iconSetQuartz).withParams({
 	// drops to the caption step and carries its weight in the font instead.
 	fontFamily: "var(--font-sans)",
 	headerFontFamily: "var(--font-sans)",
-	cellFontFamily: "var(--font-mono)",
+	cellFontFamily: "var(--font-sans)",
 	fontSize: "var(--text-meta)",
 	headerFontSize: "var(--text-meta)",
 	headerFontWeight: "600",
-	dataFontSize: "var(--text-mono-sm)",
+	dataFontSize: "var(--text-meta)",
 
 	// Sort, filter and menu icons.
 	iconColor: "var(--color-ink-muted)",
@@ -169,6 +176,90 @@ const readsAsQuantity = (value: unknown): boolean =>
 	(typeof value === "string" && QUANTITY_TEXT.test(value.trim()));
 
 /*
+ * The marks a rendered quantity carries that say nothing about its size: a
+ * currency symbol, thousands separators, a percent sign, and the space an
+ * accounting format emits where the closing paren would be (`1,234.50 `).
+ */
+const QUANTITY_DECORATION = /[\s,$€£¥%]/g;
+
+/*
+ * An accounting format writes a negative in brackets - xlsx renders -1234.5
+ * under `#,##0.00_);(#,##0.00)` as `(1,234.50)`, with no minus anywhere - so
+ * the sign has to be read off the brackets or every loss sorts as a gain.
+ */
+const BRACKETED_NEGATIVE = /^\((.+)\)$/;
+
+/** What may remain once the decoration is gone. Deliberately not `Number()`'s
+ * grammar: hex, exponents and `Infinity` are not things a cell displays. */
+const BARE_DECIMAL = /^[+-]?(\d+(\.\d+)?|\.\d+)$/;
+
+/**
+ * The size of a quantity as it was rendered, or null where the cell holds no
+ * quantity at all.
+ *
+ * Percentages rank on their face digits rather than being divided by 100:
+ * every cell in a column carries the same unit, so `12.5%` against `9%` is
+ * already the right order and converting would only lose precision.
+ */
+const quantityValue = (value: unknown): number | null => {
+	if (typeof value === "number") return Number.isFinite(value) ? value : null;
+	if (typeof value !== "string") return null;
+	const bare = value.replace(QUANTITY_DECORATION, "");
+	const bracketed = BRACKETED_NEGATIVE.exec(bare);
+	const digits = bracketed ? `-${bracketed[1]}` : bare;
+	return BARE_DECIMAL.test(digits) ? Number(digits) : null;
+};
+
+/*
+ * Order a quantity column by size rather than by spelling.
+ *
+ * ag-grid's `numericColumn` type is `{ headerClass, cellClass }` and nothing
+ * else - it aligns, it does not sort - and the grid holds display text, so
+ * without this the default comparator's `a > b` runs on strings and `275.00`
+ * lands between `2310.50` and `3105.00`. Someone looking for the smallest
+ * invoice is shown the wrong row, which is worse than an unsorted column
+ * because it looks answered.
+ *
+ * A cell with no quantity in it - blank, `n/a`, a note someone typed in the
+ * total column - is the absence of a figure rather than a small one, so it
+ * sits below the figures in BOTH directions, as blanks do in Excel and
+ * Sheets. The grid negates a comparator's result when the sort is descending,
+ * so that rank is pre-negated here to survive the flip; ordering within the
+ * non-quantity group is left to flip along with everything else.
+ */
+const compareQuantities: NonNullable<ColDef["comparator"]> = (
+	valueA,
+	valueB,
+	_nodeA,
+	_nodeB,
+	isDescending,
+) => {
+	const sizeA = quantityValue(valueA);
+	const sizeB = quantityValue(valueB);
+	if (sizeA !== null && sizeB !== null) return sizeA - sizeB;
+	if (sizeA !== null) return isDescending ? 1 : -1;
+	if (sizeB !== null) return isDescending ? -1 : 1;
+	const textA = String(valueA ?? "");
+	const textB = String(valueB ?? "");
+	return textA > textB ? 1 : textA < textB ? -1 : 0;
+};
+
+/*
+ * The machine voice, restored to the columns that speak it.
+ *
+ * Figures need their digits to line up by place value, which a proportional
+ * face will not do, so a quantity column keeps mono and its own type step -
+ * the same 12px the grid sets for everything else, named for the ramp it is
+ * actually on. It is an inline style rather than a class because the theme
+ * sets the face on `.ag-row`; the cell's own style is what reliably wins, and
+ * the editor input inherits it, so a number stays mono while being typed.
+ */
+const QUANTITY_CELL_STYLE: CellStyle = {
+	fontFamily: "var(--font-mono)",
+	fontSize: "var(--text-mono-sm)",
+};
+
+/*
  * A plain decimal, and nothing cleverer.
  *
  * `Number()` accepts far more than a spreadsheet cell should: it reads `0x1A`
@@ -208,6 +299,65 @@ const coerceEditedCell = (value: unknown): unknown => {
 	return Number.isFinite(asNumber) ? asNumber : value;
 };
 
+/*
+ * Read each column's number format off the source worksheet.
+ *
+ * Keyed by header text rather than by column letter, because saving rebuilds
+ * the sheet from row objects and a column can end up in a different position.
+ * The format is taken from the first data row that actually declares one: a
+ * spreadsheet applies a format per column in practice, and a blank first cell
+ * should not lose the format for the whole column.
+ */
+const harvestColumnFormats = (
+	worksheet: XLSX.WorkSheet,
+): Record<string, string> => {
+	const formats: Record<string, string> = {};
+	const ref = worksheet["!ref"];
+	if (!ref) return formats;
+	const range = XLSX.utils.decode_range(ref);
+	for (let col = range.s.c; col <= range.e.c; col++) {
+		const header = worksheet[XLSX.utils.encode_cell({ r: range.s.r, c: col })];
+		const name = header?.v;
+		if (typeof name !== "string") continue;
+		for (let row = range.s.r + 1; row <= range.e.r; row++) {
+			const cell = worksheet[XLSX.utils.encode_cell({ r: row, c: col })];
+			if (cell?.z) {
+				formats[name] = String(cell.z);
+				break;
+			}
+		}
+	}
+	return formats;
+};
+
+/*
+ * Put those formats back on a rebuilt worksheet.
+ *
+ * Only cells that carry a value get one, and only for columns that had a
+ * format to begin with - a column the user added keeps xlsx's default, which
+ * is the honest outcome, since we have nothing to restore for it.
+ */
+const applyColumnFormats = (
+	worksheet: XLSX.WorkSheet,
+	formats: Record<string, string> | undefined,
+): void => {
+	if (!formats) return;
+	const ref = worksheet["!ref"];
+	if (!ref) return;
+	const range = XLSX.utils.decode_range(ref);
+	for (let col = range.s.c; col <= range.e.c; col++) {
+		const header = worksheet[XLSX.utils.encode_cell({ r: range.s.r, c: col })];
+		const name = header?.v;
+		if (typeof name !== "string") continue;
+		const z = formats[name];
+		if (!z) continue;
+		for (let row = range.s.r + 1; row <= range.e.r; row++) {
+			const cell = worksheet[XLSX.utils.encode_cell({ r: row, c: col })];
+			if (cell && cell.v !== undefined) cell.z = z;
+		}
+	}
+};
+
 const SpreadsheetPreviewComponent: FC<SpreadsheetPreviewProps> = ({
 	document,
 	conversationId,
@@ -226,6 +376,18 @@ const SpreadsheetPreviewComponent: FC<SpreadsheetPreviewProps> = ({
 	 * through the grid cannot downgrade a number or a date to text.
 	 */
 	const originalRawRef = useRef<Record<string, Record<string, unknown>[]>>({});
+	/*
+	 * The author's number format per column, kept so saving can put it back.
+	 *
+	 * `json_to_sheet` writes values and nothing else, and `book_new()` discards
+	 * the source workbook, so a rebuilt sheet has no `z` on any cell. Before the
+	 * typed-value fix that was invisible, because every cell was being written
+	 * as text anyway; making the values numeric again is what exposed it. The
+	 * visible symptom is sharp: edit one unrelated text cell, and three seconds
+	 * later the save round-trips through the store and the date column re-reads
+	 * as five-digit serials.
+	 */
+	const originalFormatsRef = useRef<Record<string, Record<string, string>>>({});
 	const isInitialLoadRef = useRef(true);
 
 	const { setFiles, setSpreadsheetData } = useCanvasStore();
@@ -263,13 +425,19 @@ const SpreadsheetPreviewComponent: FC<SpreadsheetPreviewProps> = ({
 				 */
 				workbook = XLSX.read(csvText, { type: "string", raw: true });
 			} else {
-				// For XLSX files, the content is base64-encoded binary data
-				// Pass it directly to XLSX.read with type "base64"
-				workbook = XLSX.read(fileContent, { type: "base64" });
+				/*
+				 * `cellNF: true` is what makes the author's number formats
+				 * readable at all. Without it xlsx parses the format but does not
+				 * expose `z` on the cell, so there is nothing to harvest and
+				 * nothing to put back on save - the formats are lost before the
+				 * save path ever sees them.
+				 */
+				workbook = XLSX.read(fileContent, { type: "base64", cellNF: true });
 			}
 
 			const newSheetsData: Record<string, Record<string, unknown>[]> = {};
 			const newRawData: Record<string, Record<string, unknown>[]> = {};
+			const newFormats: Record<string, Record<string, string>> = {};
 			for (const sheetName of workbook.SheetNames) {
 				const worksheet = workbook.Sheets[sheetName];
 				/*
@@ -301,11 +469,13 @@ const SpreadsheetPreviewComponent: FC<SpreadsheetPreviewProps> = ({
 				newRawData[sheetName] = XLSX.utils.sheet_to_json(worksheet, {
 					raw: true,
 				}) as Record<string, unknown>[];
+				newFormats[sheetName] = harvestColumnFormats(worksheet);
 			}
 			setSheetsData(newSheetsData);
 			// Deep clone the original data to prevent reference issues
 			originalDataRef.current = JSON.parse(JSON.stringify(newSheetsData));
 			originalRawRef.current = newRawData;
+			originalFormatsRef.current = newFormats;
 			setHasUserChanges(false);
 			isInitialLoadRef.current = true;
 			if (workbook.SheetNames.length > 0) {
@@ -376,6 +546,7 @@ const SpreadsheetPreviewComponent: FC<SpreadsheetPreviewProps> = ({
 				return out;
 			});
 			const worksheet = XLSX.utils.json_to_sheet(rows);
+			applyColumnFormats(worksheet, originalFormatsRef.current[sheetName]);
 			XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
 		}
 
@@ -513,10 +684,11 @@ const SpreadsheetPreviewComponent: FC<SpreadsheetPreviewProps> = ({
 		}
 		const firstRow = sheetsData[activeSheetName][0];
 		return Object.keys(firstRow).map((key) => {
-			// Numbers right-align so their digits line up by place value; that is
-			// the whole reason a spreadsheet is readable at a glance, and it was
-			// the difference between this grid and a considered one. The header
-			// follows the cells, or the label floats away from its column.
+			// One reading of the column decides three things, because they are
+			// the same judgement: numbers right-align so their digits line up by
+			// place value, they keep the machine voice the rest of the sheet
+			// gives up, and they sort by size instead of alphabetically. The
+			// header follows the cells, or the label floats away from its column.
 			const isNumeric = readsAsQuantity(firstRow[key]);
 			return {
 				field: key,
@@ -525,6 +697,8 @@ const SpreadsheetPreviewComponent: FC<SpreadsheetPreviewProps> = ({
 				sortable: true,
 				filter: true,
 				type: isNumeric ? "numericColumn" : undefined,
+				comparator: isNumeric ? compareQuantities : undefined,
+				cellStyle: isNumeric ? QUANTITY_CELL_STYLE : undefined,
 			};
 		});
 	}, [activeSheetName, sheetsData]);

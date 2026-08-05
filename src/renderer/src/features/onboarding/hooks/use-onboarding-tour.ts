@@ -17,7 +17,7 @@ const tourSteps: StepOptions[] = [
 	{
 		id: "welcome",
 		title: "Welcome to Local Operator",
-		text: `Local Operator is an AI agents platform that allows you to create a team of proactive AI agents that support you and help to reduce your daily workload.<br/><img src="${tourChatFullViewImage}" alt="Chat full view" style="width: 100%; height: 350px; object-fit: contain; border-radius: 8px;"/><br />These agents are different from simple chatbots because they can actually do things for you on your computer like create files, run code and analytics, edit images, videos, and PDFs, organize your system, and much more.<br/><br/>In this walkthrough we'll cover:<ul><li>Creating agents</li><li>Making agents do things</li><li>The canvas workspace</li><li>Customizing agents</li><li>Agent hub for sharing and collaborating</li><li>Schedules for proactive agents</li><li>Settings for customization</li></ul>Let's explore how it works!`,
+		text: `Local Operator is an AI agents platform that allows you to create a team of proactive AI agents that support you and help to reduce your daily workload.<br/><img src="${tourChatFullViewImage}" alt="Chat full view" style="width: 100%; height: 350px; object-fit: contain; border-radius: 8px;"/><br />These agents are different from simple chatbots because they can actually do things for you on your computer like create files, run code and analytics, edit images, videos, and PDFs, organize your system, and much more.<br/><br/>In this walkthrough we'll cover:<ul><li>Creating agents</li><li>Making agents do things</li><li>The canvas workspace</li><li>Customizing agents</li><li>Agent hub for sharing and collaborating</li><li>Schedules for proactive agents</li><li>Settings for customization</li></ul>Let's explore how it works.`,
 		buttons: [
 			{
 				text: "Next",
@@ -32,7 +32,7 @@ const tourSteps: StepOptions[] = [
 		id: "agent-list",
 		attachTo: { element: '[data-tour-tag="agent-list-panel"]', on: "right" },
 		title: "Your agents",
-		text: "On the left, you'll see a list of your available AI agents. You can select an agent to start a conversation or manage its settings.  Think of this as your messenger contacts list, but for AI agents!  There are no limits to how many agents you can have, so create as many as you need to handle all your daily tasks.<br/><br/>Use the create agents button at the top of the toolbar to create a new agent at any time.  You can also import agents from the Agent hub, which we will cover later in this tour.",
+		text: "On the left, you'll see a list of your available AI agents. You can select an agent to start a conversation or manage its settings.  Think of this as your messenger contacts list, but for AI agents.  There are no limits to how many agents you can have, so create as many as you need to handle all your daily tasks.<br/><br/>Use the create agents button at the top of the toolbar to create a new agent at any time.  You can also import agents from the Agent hub, which we will cover later in this tour.",
 		buttons: [
 			{
 				text: "Back",
@@ -92,7 +92,7 @@ const tourSteps: StepOptions[] = [
 			on: "top",
 		},
 		title: "Ask your agent anything",
-		text: `Type your request here. Agents can answer questions, perform tasks, search the web, and much more. When you create a new agent, you\'ll see suggested prompts for ideas!<br /><br />Some powerful requests that you can try:<br /><br /><ul><li>"Create a spreadsheet in my Documents folder with all the major cities in Canada."</li><li>"Search the web for the latest news on AI and make a thorough report."</li><li>Select an attachment and then "translate this document to French."</li></ul><br /><img src="${tourChatInputImage}" alt="Chat input" style="width: 100%; height: 200px; object-fit: contain; border-radius: 8px;"/><br />You can also attach files to your message by clicking the paperclip button, which we will cover in the next step.`,
+		text: `Type your request here. Agents can answer questions, perform tasks, search the web, and much more. When you create a new agent, you\'ll see suggested prompts for ideas.<br /><br />Some powerful requests that you can try:<br /><br /><ul><li>"Create a spreadsheet in my Documents folder with all the major cities in Canada."</li><li>"Search the web for the latest news on AI and make a thorough report."</li><li>Select an attachment and then "translate this document to French."</li></ul><br /><img src="${tourChatInputImage}" alt="Chat input" style="width: 100%; height: 200px; object-fit: contain; border-radius: 8px;"/><br />You can also attach files to your message by clicking the paperclip button, which we will cover in the next step.`,
 		buttons: [
 			{
 				text: "Back",
@@ -117,7 +117,7 @@ const tourSteps: StepOptions[] = [
 			on: "top",
 		},
 		title: "Attach files to your message",
-		text: `You can attach any files, images, or documents to your message by clicking this paperclip button, there are no limitations on the file types. Your agent can process, analyze, or translate these attachments as part of your request.<br /><br />Try attaching a PDF, image, or text file and then ask your agent to summarize, translate, or extract information from it!<br /><img src="${tourChatAttachmentsImage}" alt="Chat attachments" style="width: 100%; height: 200px; object-fit: contain; border-radius: 8px;"/><br />Images like PNGs, JPGs, and PDFs are natively streamed into the model context window, so they can understand them directly without needing to run any code.  Other files like Excel, Word, and CSV files are included as file paths on your device to direct the model's attention to work with them using code.  You can attach massive files like million line CSVs and have the agent work with them using code.<br /><br />You can also paste images into the chat input, and attach multiple files at once to achieve more complex tasks.  Try taking a screenshot of a website and then asking your agent to try to code it!`,
+		text: `You can attach any files, images, or documents to your message by clicking this paperclip button, there are no limitations on the file types. Your agent can process, analyze, or translate these attachments as part of your request.<br /><br />Try attaching a PDF, image, or text file and then ask your agent to summarize, translate, or extract information from it.<br /><img src="${tourChatAttachmentsImage}" alt="Chat attachments" style="width: 100%; height: 200px; object-fit: contain; border-radius: 8px;"/><br />Images like PNGs, JPGs, and PDFs are natively streamed into the model context window, so they can understand them directly without needing to run any code.  Other files like Excel, Word, and CSV files are included as file paths on your device to direct the model's attention to work with them using code.  You can attach massive files like million line CSVs and have the agent work with them using code.<br /><br />You can also paste images into the chat input, and attach multiple files at once to achieve more complex tasks.  Try taking a screenshot of a website and then asking your agent to try to code it.`,
 		buttons: [
 			{
 				text: "Back",
@@ -139,7 +139,7 @@ const tourSteps: StepOptions[] = [
 		id: "agent-capabilities",
 		attachTo: { element: '[data-tour-tag="chat-header"]', on: "top" },
 		title: "More than just chat",
-		text: `Local Operator agents are different from simple chatbots. They can perform actions on your computer, like creating files, running code, or browsing the web, based on your instructions. You'll see them use "tools" like reading, writing, and executing code to get things done!  Agents have memory of the conversation, previous steps, learnings, and even store the execution variables of previous steps in code to be able to use them later in the conversation.<br /><img src="${tourAgenticSequenceImage}" alt="Agentic sequence" style="width: 100%; height: 350px; object-fit: contain; border-radius: 8px;"/><br />Local Operator agents are extremely flexible, so they can bounce back and forth with you for simple chatting, and know when they need to embark on a work journey to get things done in multiple steps with tool use!`,
+		text: `Local Operator agents are different from simple chatbots. They can perform actions on your computer, like creating files, running code, or browsing the web, based on your instructions. You'll see them use "tools" like reading, writing, and executing code to get things done.  Agents have memory of the conversation, previous steps, learnings, and even store the execution variables of previous steps in code to be able to use them later in the conversation.<br /><img src="${tourAgenticSequenceImage}" alt="Agentic sequence" style="width: 100%; height: 350px; object-fit: contain; border-radius: 8px;"/><br />Local Operator agents are extremely flexible, so they can bounce back and forth with you for simple chatting, and know when they need to embark on a work journey to get things done in multiple steps with tool use.`,
 		buttons: [
 			{
 				text: "Back",
@@ -281,7 +281,7 @@ const tourSteps: StepOptions[] = [
 		},
 		title: "Documents view",
 		text: `The Documents view shows all your open notes, blog articles, code, and visualizations as tabs. You can switch between documents to edit them and see dynamic visualizations in HTML created by your agents. Use this view to work with your notes, reports, and agent-generated content.<br /><br />This is where you can get more precise around your agents' work.<br/><img src="${tourInlineEditCanvasImage}" alt="Inline edit canvas" style="width: 100%; height: 200px; object-fit: contain; border-radius: 8px;"/><br />In your documents, highlight any text that you want your agent to improve and press Cmd/Ctrl+K to bring up the inline AI editor.  
-    <br /><img src="${tourCanvasCodeInlineEditImage}" alt="Canvas code inline edit" style="width: 100%; height: 200px; object-fit: cover; object-position: top; border-radius: 8px;"/><br />You can be as precise as you want and the agent will edit the document for you in place, using its memories and context so you don't have to re-explain things!`,
+    <br /><img src="${tourCanvasCodeInlineEditImage}" alt="Canvas code inline edit" style="width: 100%; height: 200px; object-fit: cover; object-position: top; border-radius: 8px;"/><br />You can be as precise as you want and the agent will edit the document for you in place, using its memories and context so you don't have to re-explain things.`,
 		buttons: [
 			{
 				text: "Back",
@@ -475,7 +475,7 @@ const tourSteps: StepOptions[] = [
 			on: "left",
 		},
 		title: "Agent configuration",
-		text: "This is where you can customize and configure your agent. You can change its name, description, the AI model it uses, its temperature for creativity, and other chat settings.<br /><br />The agents will already have default settings that work well for most use cases, but if you want to roll up your sleeves and customize, you can do so here!",
+		text: "This is where you can customize and configure your agent. You can change its name, description, the AI model it uses, its temperature for creativity, and other chat settings.<br /><br />The agents will already have default settings that work well for most use cases, but if you want to roll up your sleeves and customize, you can do so here.",
 		buttons: [
 			{
 				text: "Back",
@@ -684,7 +684,7 @@ const tourSteps: StepOptions[] = [
 		attachTo: { element: '[data-tour-tag="create-agent-dialog"]', on: "right" },
 		title: "Naming and describing your agent",
 		text: `Give your agent a clear, descriptive name that reflects its purpose (e.g., "File Organizer" or "Web Researcher"). 
-A good description helps you and others understand what the agent does and any special instructions. The descriptions are also used by other agents to help them understand how to tag each other in for certain tasks.<br /><br />If you want this agent to be part of the agent-to-agent communication network, it will need to have a description that captures its purpose and capabilities.  Be concise and specific!`,
+A good description helps you and others understand what the agent does and any special instructions. The descriptions are also used by other agents to help them understand how to tag each other in for certain tasks.<br /><br />If you want this agent to be part of the agent-to-agent communication network, it will need to have a description that captures its purpose and capabilities.  Be concise and specific.`,
 		buttons: [
 			{
 				text: "Back",
@@ -876,7 +876,7 @@ A good description helps you and others understand what the agent does and any s
 		// Targets the UploadAgentDialog modal, which should be open after clicking "Upload to Hub"
 		attachTo: { element: '[data-tour-tag="upload-agent-dialog"]', on: "right" },
 		title: "Upload agent to hub",
-		text: "This dialog allows you to share your agent with the community. You need to have a Radient account to upload an agent, which is free to create and doesn't cost anything per upload.  You can review the agent details and confirm the upload. Make sure your agent meets the required criteria before submitting.  Also be aware that any conversation history and learnings for this agent will be part of its training and will be visible to the public.  So don't share agents publicly that know sensitive information!",
+		text: "This dialog allows you to share your agent with the community. You need to have a Radient account to upload an agent, which is free to create and doesn't cost anything per upload.  You can review the agent details and confirm the upload. Make sure your agent meets the required criteria before submitting.  Also be aware that any conversation history and learnings for this agent will be part of its training and will be visible to the public.  So don't share agents publicly that know sensitive information.",
 		buttons: [
 			{
 				text: "Back",
@@ -1138,7 +1138,7 @@ A good description helps you and others understand what the agent does and any s
 			on: "right",
 		},
 		title: "Customize appearance",
-		text: "Choose from various themes to change the look and feel of Local Operator. Find one that suits your style!",
+		text: "Choose from various themes to change the look and feel of Local Operator. Find one that suits your style.",
 		buttons: [
 			{
 				text: "Back",
@@ -1163,7 +1163,7 @@ A good description helps you and others understand what the agent does and any s
 			on: "right",
 		},
 		title: "Radient account",
-		text: "Connect your Radient account to access your Radient Pass details, credits, and unlock unified access to models and tools.  Radient is the best way to use Local Operator since it powers the AI models, web search, image generation, and much more with a single integration.  You get free credits when you sign up to try it out and bonus credits when you top up!<br /><br />When you sign in for the first time, it will automatically create a Radient Pass for you and save it securely to your computer.  This will power your Local Operator agents with Radient Automatic, which mixes and matches AI models to get you the best balance of speed, accuracy, and cost in every step of your agents' workflows.",
+		text: "Connect your Radient account to access your Radient Pass details, credits, and unlock unified access to models and tools.  Radient is the best way to use Local Operator since it powers the AI models, web search, image generation, and much more with a single integration.  You get free credits when you sign up to try it out and bonus credits when you top up.<br /><br />When you sign in for the first time, it will automatically create a Radient Pass for you and save it securely to your computer.  This will power your Local Operator agents with Radient Automatic, which mixes and matches AI models to get you the best balance of speed, accuracy, and cost in every step of your agents' workflows.",
 		buttons: [
 			{
 				text: "Back",
@@ -1259,7 +1259,7 @@ A good description helps you and others understand what the agent does and any s
 	{
 		id: "tour-complete",
 		title: "Tour complete",
-		text: "You've now seen the main features of Local Operator. Feel free to explore further and discover all the ways your AI agents can assist you. Happy automating!",
+		text: "You've now seen the main features of Local Operator. Feel free to explore further and discover all the ways your AI agents can assist you. Happy automating.",
 		buttons: [
 			{
 				text: "Finish",

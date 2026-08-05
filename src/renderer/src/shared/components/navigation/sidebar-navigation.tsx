@@ -146,6 +146,10 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 				onClick={() => navigate(item.path)}
 				data-tour-tag={item.tourTag}
 				aria-current={item.isActive ? "page" : undefined}
+				/* Collapsed there is no text in the row, and the tooltip cannot
+				   supply the name: Radix's `Trigger` adds `aria-describedby`, and
+				   only while open. */
+				aria-label={expanded ? undefined : item.label}
 				className={cn(
 					"flex h-8 w-full items-center rounded-sm text-body-sm transition-colors duration-fast ease-out-quart",
 					expanded ? "justify-start gap-2 px-3" : "justify-center",
@@ -169,7 +173,8 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 			</button>
 		);
 
-		/* Collapsed, the icon is unlabelled, so the tooltip is the only name. */
+		/* Collapsed, the tooltip is the only name the row shows on screen; the
+		   accessible name is the button's own `aria-label`. */
 		return expanded ? (
 			<li key={item.path}>{button}</li>
 		) : (
