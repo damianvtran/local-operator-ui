@@ -409,14 +409,29 @@ const harvestColumnFormats = (
 	const ref = worksheet["!ref"];
 	if (!ref) return formats;
 	const range = XLSX.utils.decode_range(ref);
+	/*
+	 * Disambiguate repeated headers exactly the way `sheet_to_json` does.
+	 *
+	 * A sheet may legitimately carry two columns called `Amount`. `sheet_to_json`
+	 * turns them into the keys `Amount` and `Amount_1`, and the rebuilt sheet
+	 * takes its headers from those keys - so keying this map on the raw header
+	 * text made both columns collide and the LAST one win. A currency column
+	 * followed by a percentage column came back as a percentage. Matching the
+	 * `_N` convention keeps this map in the same namespace as the row objects
+	 * and as the sheet that gets written.
+	 */
+	const seen = new Map<string, number>();
 	for (let col = range.s.c; col <= range.e.c; col++) {
 		const header = worksheet[XLSX.utils.encode_cell({ r: range.s.r, c: col })];
 		const name = header?.v;
 		if (typeof name !== "string") continue;
+		const repeat = seen.get(name) ?? 0;
+		seen.set(name, repeat + 1);
+		const key = repeat === 0 ? name : `${name}_${repeat}`;
 		for (let row = range.s.r + 1; row <= range.e.r; row++) {
 			const cell = worksheet[XLSX.utils.encode_cell({ r: row, c: col })];
 			if (cell?.z) {
-				formats[name] = String(cell.z);
+				formats[key] = String(cell.z);
 				break;
 			}
 		}

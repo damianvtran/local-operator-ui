@@ -47,14 +47,14 @@ const ERROR_GROUPS = {
  * to fetch conversation messages" is a sentence someone wrote on purpose and
  * says strictly more than the replacement would.
  */
-const RAW_TRANSPORT_ERRORS = new Set([
-	"Failed to fetch",
-	"TypeError: Failed to fetch",
-	"Load failed",
-	"NetworkError when attempting to fetch resource.",
-	"ERR_CONNECTION_REFUSED",
-	"net::ERR_CONNECTION_REFUSED",
-]);
+const RAW_TRANSPORT_ERRORS: Record<string, true> = {
+	"Failed to fetch": true,
+	"TypeError: Failed to fetch": true,
+	"Load failed": true,
+	"NetworkError when attempting to fetch resource.": true,
+	ERR_CONNECTION_REFUSED: true,
+	"net::ERR_CONNECTION_REFUSED": true,
+};
 
 const CONNECTION_FAILURE_COPY =
 	"Could not reach the server. Check that it is running, then try again.";
@@ -91,11 +91,14 @@ export const showErrorToast = (
 
 	/* Dedup still keys off what the caller passed, so two different raw
 	   transport strings collapse the same way they did before. Only what the
-	   person reads changes. A Set rather than an object literal because a
-	   message of "toString" would find `Object.prototype` on a plain object and
-	   be rewritten; `Object.hasOwn` also solves that but needs an ES2022 lib
-	   this tsconfig does not target. */
-	const text = RAW_TRANSPORT_ERRORS.has(message.trim())
+	   person reads changes. `hasOwnProperty.call` rather than a truthiness
+	   check, because a message of "toString" would otherwise find
+	   `Object.prototype` and be rewritten; `Object.hasOwn` reads better but
+	   needs an ES2022 lib this tsconfig does not target. */
+	const text = Object.prototype.hasOwnProperty.call(
+		RAW_TRANSPORT_ERRORS,
+		message.trim(),
+	)
 		? CONNECTION_FAILURE_COPY
 		: message;
 
