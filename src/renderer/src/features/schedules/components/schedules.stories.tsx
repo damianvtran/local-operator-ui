@@ -7,10 +7,9 @@
  */
 
 import type { Meta, StoryObj } from "@storybook/react";
+import { useEffect } from "react";
 import "../../../styles/index.css";
 import { DateTimePicker } from "@shared/components/common/date-time-picker";
-import { Button, Tooltip } from "@shared/components/ui";
-import { SquarePen } from "lucide-react";
 import { SchedulesPage } from "./schedules-page";
 
 const AGENTS = [
@@ -251,16 +250,63 @@ export const RowActionsRevealed: Story = {
  * as "SquarePen schedule" through a whole design round because no frame in the
  * set had ever contained it.
  */
+/**
+ * A row action's tooltip, open, on the real page.
+ *
+ * Two things make this frame worth taking, and a synthetic button on an empty
+ * ground gave neither. The label is one of 65 tooltip strings that had never
+ * appeared in any frame - which is how a rename put "SquarePen schedule" on
+ * an icon-only button's accessible name and survived a review. And a tooltip
+ * is a positioned surface: whether it collides with the delete button beside
+ * it, covers the row below, or sits clear of the hairline are only answerable
+ * against the row it actually opens on.
+ *
+ * `side` is deliberately unset. Every real call site takes the default, so
+ * pinning it here would photograph a placement the app never renders.
+ */
+const OpenFirstRowTooltip = () => {
+	/*
+	 * Opened by focusing the button, not by forcing state: Radix opens a
+	 * tooltip on focus, so this is the same path a keyboard user takes and the
+	 * frame shows what they see. Retried because the rows arrive from a stubbed
+	 * query and the button does not exist on the first tick.
+	 */
+	useEffect(() => {
+		/* Held open for the capture: the rows arrive from a stubbed query, so
+		   the button does not exist on the first tick and a screenshot taken
+		   when the story "finished rendering" would catch the page before the
+		   tooltip. `data-capture-pending` is the capture's opt-in wait. */
+		document.documentElement.dataset.capturePending = "1";
+		let tries = 0;
+		const id = setInterval(() => {
+			const button = document.querySelector<HTMLElement>(
+				'button[aria-label="Edit schedule"]',
+			);
+			if (button) {
+				button.focus();
+				clearInterval(id);
+				/* One more beat for Radix to mount the tooltip it opens on focus. */
+				setTimeout(() => {
+					document.documentElement.removeAttribute("data-capture-pending");
+				}, 300);
+			} else if (++tries > 100) {
+				clearInterval(id);
+				document.documentElement.removeAttribute("data-capture-pending");
+			}
+		}, 50);
+		return () => {
+			clearInterval(id);
+			document.documentElement.removeAttribute("data-capture-pending");
+		};
+	}, []);
+	return null;
+};
+
 export const RowActionLabel: Story = {
 	render: () => (
-		<div className="flex h-screen items-start justify-center bg-canvas p-16">
-			<div className="flex items-center gap-1 rounded-md border border-hairline bg-surface p-2">
-				<Tooltip content="Edit schedule" defaultOpen side="bottom">
-					<Button variant="ghost" size="icon-sm" aria-label="Edit schedule">
-						<SquarePen />
-					</Button>
-				</Tooltip>
-			</div>
+		<div className="[&_.pointer-events-none.opacity-0]:pointer-events-auto [&_.pointer-events-none.opacity-0]:opacity-100">
+			<SchedulesPage />
+			<OpenFirstRowTooltip />
 		</div>
 	),
 };

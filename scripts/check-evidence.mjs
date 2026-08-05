@@ -126,8 +126,6 @@ const PALETTES = new Map(loadPalettes().map((p) => [p.id, p.palette]));
 
 /* Sweeping the whole set is what `pnpm check-evidence` does; importing this
    module for `assertFramePaints` must not trigger it. */
-/* Sweeping the whole set is what `pnpm check-evidence` does; importing this
-   module for `assertFramePaints` must not trigger it. */
 const main = () => {
 	if (!existsSync(EVIDENCE)) {
 		console.error(`No evidence at ${EVIDENCE}`);

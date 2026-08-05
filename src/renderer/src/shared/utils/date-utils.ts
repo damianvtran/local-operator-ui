@@ -91,7 +91,15 @@ export const formatCalendarDate = (dateTimeString?: string | Date): string => {
 				? dateTimeString
 				: new Date(dateTimeString);
 		if (Number.isNaN(date.getTime())) return "";
-		return format(date, "d MMMM yyyy");
+		/* The platform's formatter, not date-fns': `format(date, "d MMMM yyyy")`
+		   is hardcoded English and day-first, so a US user reading a date the
+		   app itself renders as "August 5" elsewhere saw "5 August 2026" here.
+		   Every other date in the product goes through `navigator.language`. */
+		return date.toLocaleDateString(navigator.language, {
+			year: "numeric",
+			month: "long",
+			day: "numeric",
+		});
 	} catch (error) {
 		console.error("Error formatting calendar date:", error);
 		return "";

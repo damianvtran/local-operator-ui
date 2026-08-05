@@ -399,20 +399,6 @@ const main = async () => {
 				);
 			}
 			/*
-			 * And wait for the ground to actually be painted.
-			 *
-			 * The checks above pass on Storybook's own "preparing story" screen:
-			 * the theme decorator sets `data-theme` on the document before the
-			 * story mounts, and a spinner on a white page has well over eight
-			 * elements. That is how a frame of nothing shipped in a set of 396,
-			 * and it is intermittent - the same story passes on the next run -
-			 * so the fix has to be a wait rather than a retry.
-			 *
-			 * The condition is the one `check-evidence.mjs` asserts afterwards:
-			 * the page's own background is a colour from this theme. Polling it
-			 * here turns a flake into 200ms.
-			 */
-			/*
 			 * Wait for Storybook to finish preparing the story.
 			 *
 			 * Its spinner renders on a white page INSIDE an already-themed
@@ -443,6 +429,13 @@ const main = async () => {
 							),
 						].some((el) => el.getBoundingClientRect().height > 0);
 						if (loading) return false;
+						/* A story that needs a moment after mount - data from a
+						   stubbed query, then an interaction on the element it
+						   produced - sets this on mount and clears it when the
+						   frame is worth taking. Stories that never set it are
+						   unaffected, so this costs nothing for the other 33
+						   surfaces. */
+						if (document.documentElement.dataset.capturePending) return false;
 						/* Counted from the body, not from #storybook-root: the
 						   command palette, dialogs and sheets render through a
 						   portal appended to the body and leave the root empty,
