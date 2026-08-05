@@ -59,11 +59,31 @@ const frames = (dir) => {
  * here keeps this script to one job.
  */
 const modalColour = (file) => {
-	const out = execFileSync(
-		"magick",
-		[file, "-format", "%c", "-depth", "8", "histogram:info:-"],
-		{ maxBuffer: 64 * 1024 * 1024 },
-	).toString();
+	/*
+	 * A failed read must not be reported as a verdict about the picture.
+	 *
+	 * Under load - a capture still holding the machine - `magick` returns
+	 * successfully with empty output, and an earlier version of this reader
+	 * turned that into "no pixels" against 87 frames that were all fine and
+	 * passed on a quiet machine moments later. A tool that cannot read a file
+	 * has to say so in those words, because the alternative is a paint failure
+	 * nobody can reproduce.
+	 */
+	let out;
+	try {
+		out = execFileSync(
+			"magick",
+			[file, "-format", "%c", "-depth", "8", "histogram:info:-"],
+			{ maxBuffer: 256 * 1024 * 1024, stdio: ["ignore", "pipe", "pipe"] },
+		).toString();
+	} catch (err) {
+		throw new Error(`${file}: could not read the image - ${err.message}`);
+	}
+	if (out.trim() === "") {
+		throw new Error(
+			`${file}: \`magick\` produced an empty histogram, which means the read failed rather than the frame being blank`,
+		);
+	}
 	let best = null;
 	for (const line of out.split("\n")) {
 		const m = line.match(/^\s*(\d+):.*(#[0-9A-F]{6})/);
