@@ -1,8 +1,12 @@
 /**
  * Page stepper for the sidebars.
  *
- * Sticky, and always rendered even at one page, so paging does not shift the
- * list under the pointer.
+ * Sticky, so paging does not shift the list under the pointer - and absent
+ * entirely at one page, because "Page 1 of 1" between two dead arrows is a
+ * control that can only report it has nothing to do. It used to render there
+ * too, on the argument that a bar appearing at page two would move the list;
+ * that trade buys stability for the case with two pages by charging every
+ * single-page list 52px of permanent chrome.
  *
  * A `hairline` top edge and no shadow: the bar has not left the flow, it is
  * pinned inside it, and the rule is what says "the list continues above this".

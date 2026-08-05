@@ -7,7 +7,7 @@
 
 import { Tooltip } from "@shared/components/ui";
 import { useModels } from "@shared/hooks";
-import { Bot, Star } from "lucide-react";
+import { Cpu, Star } from "lucide-react";
 import type { FC } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
@@ -374,7 +374,7 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 	return (
 		<SearchableSelect
 			label="Model"
-			icon={<Bot size={16} aria-hidden="true" />}
+			icon={<Cpu size={16} aria-hidden="true" />}
 			labelTooltip="Select the AI model that you want to use.  Each model has different capabilities and costs.  Recommended: Automatic"
 			placeholder="Select a model..."
 			options={modelOptions}

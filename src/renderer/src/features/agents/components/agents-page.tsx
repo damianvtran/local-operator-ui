@@ -191,6 +191,16 @@ export const AgentsPage: FC<AgentsPageProps> = () => {
 									<DropdownMenu>
 										<DropdownMenuTrigger asChild>
 											<Button
+												/*
+												 * Carries the tour tag as well as the wide button
+												 * does: exactly one of the two is rendered at any
+												 * width, and the tour resolves whichever the user
+												 * can actually see. Anchoring only the wide one
+												 * left the spotlight attached to a `display:none`
+												 * element for the whole 800-950px band the
+												 * window's own minWidth floors the app to.
+												 */
+												data-tour-tag="upload-to-hub-header-button"
 												variant="secondary"
 												size="icon"
 												aria-label="More agent actions"

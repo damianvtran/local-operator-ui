@@ -651,9 +651,9 @@ export const SettingsPage: FC = () => {
 								</Button>
 							</SettingsSection>
 
-							{/* `SlidersHorizontal`, not `Bot`: this section sets defaults for
-							    two things, and `Bot` is already the Model select's own glyph
-							    a few rows below it. One picture, one meaning. */}
+							{/* `SlidersHorizontal`, not `Cpu`: this section sets defaults for
+							    two things, and `Cpu` is the Model select's own glyph a few
+							    rows below it. One picture, one meaning. */}
 							<SettingsSection
 								title="Model settings"
 								icon={SlidersHorizontal}

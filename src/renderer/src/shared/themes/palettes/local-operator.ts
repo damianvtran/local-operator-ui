@@ -180,13 +180,13 @@ export const localOperatorLight: ThemeDefinition = {
 		// boundary of every input in the app.
 		borderControl: "#857f70",
 
-		accent: "#177b45",
+		accent: "#147842",
 		accentHover: "#116036",
 		accentActive: "#0c4b2a",
 		accentWash: "#e7f1e8",
 		onAccent: "#F6FAF8",
 
-		success: "#1e7b4e",
+		success: "#1A774A",
 		successWash: "#e6f1ea",
 		successBorder: "#3e6b4e",
 		warning: "#8a5800",

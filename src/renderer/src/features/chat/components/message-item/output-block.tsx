@@ -22,7 +22,7 @@ export const OutputBlock: FC<OutputBlockProps> = ({ output }) => {
 	return (
 		<div className="mb-4 w-full">
 			<span className="mb-1 block text-ink-dim text-meta">Output</span>
-			<pre className="flex max-h-[300px] w-full flex-col-reverse overflow-auto rounded-sm bg-sunken p-3 font-mono text-ink text-mono-sm">
+			<pre className="flex max-h-[300px] w-full flex-col-reverse overflow-auto rounded-sm border border-hairline bg-sunken p-3 font-mono text-ink text-mono-sm">
 				{output}
 			</pre>
 		</div>

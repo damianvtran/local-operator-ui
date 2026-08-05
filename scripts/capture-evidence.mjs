@@ -248,6 +248,17 @@ const main = async () => {
 				mobile: false,
 			});
 			/*
+			 * A headless page is never the focused window, so `:focus` styling
+			 * paints and `:focus-visible` does not, and anything a story focuses
+			 * programmatically renders as if nothing were focused at all. The
+			 * `code-focused` frames were byte-identical to `code` for exactly
+			 * this reason. Focus emulation makes the page believe it has the
+			 * window, which is what a user's screen actually looks like.
+			 */
+			await cdp.send("Emulation.setFocusEmulationEnabled", {
+				enabled: true,
+			});
+			/*
 			 * The theme is driven ONLY by the story arg.
 			 *
 			 * `.storybook/preview.tsx` wraps every story in one frame that reads

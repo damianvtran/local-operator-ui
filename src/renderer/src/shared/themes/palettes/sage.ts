@@ -52,7 +52,7 @@ export const sage: ThemeDefinition = {
 		accentWash: "#E6E9D8",
 		onAccent: "#F4F6F4",
 
-		success: "#477229",
+		success: "#446F26",
 		successWash: "#E9EBD3",
 		successBorder: "#669438",
 
@@ -81,7 +81,7 @@ export const sage: ThemeDefinition = {
 		// accent (27) and the fuller success/warning/danger (45-53), so it
 		// reads as a member of this palette rather than a swatch borrowed from
 		// a cooler one. Now ΔE00 46.9 from `success` and 36.8 from `accent`.
-		info: "#3C67A1",
+		info: "#3A659F",
 		// The wash and the border are seated by loudness, not by eye. Sage's
 		// other four washes sit ΔE00 3.98-5.70 from `canvas` — the tightest
 		// family in the twelve palettes, because each is a warm tint of a warm

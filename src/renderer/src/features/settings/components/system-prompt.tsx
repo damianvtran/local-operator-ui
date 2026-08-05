@@ -3,7 +3,7 @@ import { Spinner } from "@shared/components/common/spinner";
 import { Alert, Button, Label, Textarea } from "@shared/components/ui";
 import { useSystemPrompt } from "@shared/hooks/use-system-prompt";
 import { useUpdateSystemPrompt } from "@shared/hooks/use-update-system-prompt";
-import { Bot, Save } from "lucide-react";
+import { Save, ScrollText } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { ChangeEvent, FC } from "react";
 import { SettingsSection } from "./settings-section";
@@ -115,7 +115,7 @@ export const SystemPrompt: FC = () => {
 	return (
 		<SettingsSection
 			title="System prompt"
-			icon={Bot}
+			icon={ScrollText}
 			description="Every Local Operator agent receives this prompt in addition to its own instructions, so it is the place for baseline expectations and for details you want every agent to know about you, such as your name, location, or preferences. It is sent to your selected hosting provider."
 		>
 			{isLoading ? (
