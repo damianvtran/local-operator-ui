@@ -428,8 +428,19 @@ const main = async () => {
 	const head = execFileSync("git", ["rev-parse", "HEAD"], { cwd: ROOT })
 		.toString()
 		.trim();
+	/*
+	 * Source dirtiness, which means `docs/evidence` is excluded: the capture
+	 * has just rewritten every frame in it, so including it would report
+	 * `true` on every run and the field would carry no information at all -
+	 * the same uselessness it exists to prevent. What matters to a reader is
+	 * whether the CODE behind these frames was committed.
+	 */
 	const dirty =
-		execFileSync("git", ["status", "--porcelain"], { cwd: ROOT })
+		execFileSync(
+			"git",
+			["status", "--porcelain", "--", ".", ":(exclude)docs/evidence"],
+			{ cwd: ROOT },
+		)
 			.toString()
 			.trim().length > 0;
 	writeFileSync(
