@@ -18,7 +18,7 @@
  * the same tool the next reviewer will run.
  */
 
-import { spawn } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -416,7 +416,39 @@ const main = async () => {
 		}
 	}
 
-	console.log(`Captured ${captured} frames into ${OUT}`);
+	/*
+	 * A manifest, so the set can be falsified.
+	 *
+	 * Twice in review a claim was made about a frame while the committed set
+	 * was two commits behind, and there was no way to tell from the directory
+	 * which head it came from - the frames looked authoritative and were stale.
+	 * Recording the commit turns "the evidence is current" from an assertion
+	 * into something a reader can check with one `git log`.
+	 */
+	const head = execFileSync("git", ["rev-parse", "HEAD"], { cwd: ROOT })
+		.toString()
+		.trim();
+	const dirty =
+		execFileSync("git", ["status", "--porcelain"], { cwd: ROOT })
+			.toString()
+			.trim().length > 0;
+	writeFileSync(
+		join(OUT, "manifest.json"),
+		`${JSON.stringify(
+			{
+				head,
+				dirtyWorkingTree: dirty,
+				capturedAt: new Date().toISOString(),
+				frames: captured,
+				surfaces: STORIES.length,
+				themes: THEMES.length,
+			},
+			null,
+			2,
+		)}\n`,
+	);
+
+	console.log(`Captured ${captured} frames into ${OUT} at ${head.slice(0, 9)}`);
 };
 
 /* Also covers Ctrl-C and a kill, which a try/finally alone does not. */

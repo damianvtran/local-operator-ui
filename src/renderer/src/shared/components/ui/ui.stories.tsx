@@ -205,6 +205,22 @@ const BUTTON_VARIANTS = [
  * changes there, change it here too - the sheet is the picture, not the
  * source.
  */
+/*
+ * The hover column, faked the same way the focus and pressed columns are.
+ * `:hover` cannot be forced from markup either, and without it `accent-hover`
+ * appeared as a fill in zero frames across all twelve palettes while rest and
+ * pressed appeared in every one - so the middle state of the most-used
+ * control in the app was the one state no reviewer could see.
+ */
+const HOVER_BY_VARIANT: Record<(typeof BUTTON_VARIANTS)[number], string> = {
+	primary: "bg-accent-hover",
+	secondary: "bg-elevated",
+	outline: "bg-accent-wash",
+	ghost: "bg-accent-wash text-ink",
+	danger: "bg-danger-wash",
+	link: "text-accent-hover underline",
+};
+
 const PRESSED_BY_VARIANT: Record<(typeof BUTTON_VARIANTS)[number], string> = {
 	primary: "bg-accent-active",
 	secondary: "bg-sunken",
@@ -242,6 +258,13 @@ const Buttons = () => (
 					className="outline-2 outline-accent outline-offset-2"
 				>
 					Focused
+				</Button>
+				<Button
+					variant={variant}
+					size="md"
+					className={HOVER_BY_VARIANT[variant]}
+				>
+					Hover
 				</Button>
 				<Button
 					variant={variant}

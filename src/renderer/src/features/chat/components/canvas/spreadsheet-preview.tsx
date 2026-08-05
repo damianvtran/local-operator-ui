@@ -174,9 +174,24 @@ const SPREADSHEET_THEME = themeQuartz.withPart(iconSetQuartz).withParams({
  * quantity runs the same parser the comparator uses, so a column of
  * bracketed accounting negatives - `(1,234.50)` - cannot sort by size in one
  * place and be declared prose in the other.
+ *
+ * The space guard lives HERE and not in `quantityValue`, and the difference
+ * is a real defect rather than a preference. Ambiguity between an amount and
+ * a phone number is a question about a column, and it is answered once, by
+ * the majority `readColumn` already takes. Asking it again per cell inside
+ * the comparator meant that in a column ALREADY judged numeric, every value
+ * big enough to carry a grouping space valued as null - and the null rank is
+ * pre-negated to sink in both directions, so sorting descending offered
+ * `815.50` as the largest figure in a column containing `12 400.00`. The
+ * classifier may refuse a shape; the comparator, once the column is a
+ * quantity column, must rank everything in it.
  */
-const readsAsQuantity = (value: unknown): boolean =>
-	typeof value === "number" || quantityValue(value) !== null;
+const readsAsQuantity = (value: unknown): boolean => {
+	if (typeof value === "number") return true;
+	if (typeof value === "string" && INTERNAL_DIGIT_SPACE.test(value))
+		return false;
+	return quantityValue(value) !== null;
+};
 
 /*
  * The marks a rendered quantity carries that say nothing about its size: a
@@ -240,7 +255,6 @@ const INTERNAL_DIGIT_SPACE = /\d\s+\d/;
 const quantityValue = (value: unknown): number | null => {
 	if (typeof value === "number") return Number.isFinite(value) ? value : null;
 	if (typeof value !== "string") return null;
-	if (INTERNAL_DIGIT_SPACE.test(value)) return null;
 	const bare = value.replace(QUANTITY_DECORATION, "");
 	const bracketed = BRACKETED_NEGATIVE.exec(bare);
 	const digits = bracketed ? `-${bracketed[1]}` : bare;

@@ -28,7 +28,7 @@ import {
 	Bot,
 	CloudUpload,
 	FileUp,
-	MessageCircle,
+	MessageSquare,
 	MoreHorizontal,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -273,7 +273,7 @@ export const AgentsPage: FC<AgentsPageProps> = () => {
 											variant="primary"
 											onClick={() => navigate(`/chat/${selectedAgent.id}`)}
 										>
-											<MessageCircle aria-hidden="true" />
+											<MessageSquare aria-hidden="true" />
 											Chat
 										</Button>
 									</Tooltip>

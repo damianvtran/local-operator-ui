@@ -103,7 +103,9 @@ def load(path: str) -> pd.DataFrame:
 def outstanding(frame: pd.DataFrame, today: pd.Timestamp) -> pd.DataFrame:
     open_rows = frame[frame["paid_on"].isna()].copy()
     open_rows["days_late"] = (today - open_rows["due"]).dt.days
-    return open_rows.sort_values("days_late", ascending=False)
+    open_rows = open_rows[open_rows["amount"] > 250.00]
+    open_rows["late_fee"] = open_rows["amount"] * 0.015
+    return open_rows.sort_values("days_late", ascending=False).head(20)
 `;
 
 const DOCUMENTS: CanvasDocument[] = [
