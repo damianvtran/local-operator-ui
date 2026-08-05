@@ -104,7 +104,7 @@ export const useUpdateAgentSystemPrompt = (agentId: string) => {
 				queryKey: agentSystemPromptQueryKey(agentId),
 			});
 
-			showSuccessToast("Agent system prompt updated successfully");
+			showSuccessToast("Agent system prompt updated");
 		},
 		onError: (error) => {
 			console.error("Error updating agent system prompt:", error);

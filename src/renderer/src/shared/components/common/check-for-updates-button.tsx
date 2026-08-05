@@ -67,14 +67,14 @@ export const CheckForUpdatesButton = () => {
 		const removeUpdateNotAvailableListener =
 			window.api.updater.onUpdateNotAvailable(() => {
 				if (!manualCheckRef.current) return;
-				setSnackbarMessage("No updates available. You are up to date!");
+				setSnackbarMessage("You are up to date");
 				setSnackbarSeverity("success");
 				setSnackbarOpen(true);
 			});
 		const removeBackendUpdateNotAvailableListener =
 			window.api.updater.onBackendUpdateNotAvailable(() => {
 				if (!manualCheckRef.current) return;
-				setSnackbarMessage("No server updates available. You are up to date!");
+				setSnackbarMessage("The server is up to date");
 				setSnackbarSeverity("success");
 				setSnackbarOpen(true);
 			});

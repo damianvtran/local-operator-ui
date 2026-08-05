@@ -44,7 +44,7 @@ const selectTriggerVariants = cva(
 	{
 		variants: {
 			selectSize: {
-				sm: "h-7 px-2 text-meta focus-visible:outline-offset-1",
+				sm: "h-7 px-2 text-meta focus-visible:outline-offset-1!",
 				md: "h-8 px-3 text-body-sm",
 				lg: "h-9 px-3 text-body",
 			},

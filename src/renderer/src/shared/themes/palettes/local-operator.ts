@@ -4,12 +4,29 @@ import type { ThemeDefinition } from "../palette-contract";
  * The two brand palettes, and the reference implementation of the role
  * contract.
  *
- * These carry the values from the Local Operator design kit verbatim — the
- * same warm ramp, accent and semantic triples the marketing site ships, so a
- * user moving from local-operator.com into the app lands on the same surface.
+ * These carry the Local Operator design kit's own values — the same warm
+ * ramp, accent and semantic triples the marketing site ships, so a user
+ * moving from local-operator.com into the app lands on the same surface.
  * Every other palette in this directory is a community or third-party identity
  * and only has to *satisfy* the contract; these two *are* the brand, so when
  * the two disagree, these win.
+ *
+ * ## Where these deviate from the kit, and why that is allowed
+ *
+ * `docs/branding.md` settles the precedence: on the *brand* the kit wins, on
+ * *how a desktop app should behave* this repo wins, "because a tool read for
+ * hours at arm's length is not a page read once". Exactly two things invoke
+ * that second clause. No hue the kit owns has been retuned to buy contrast
+ * headroom — a brand colour changes in the kit and is followed here, never
+ * the other way round.
+ *
+ * 1. **The light ground ramp** is wider than the site's. A page renders one
+ *    surface; this app stacks four, and the kit's near-white ladder made a
+ *    panel on canvas and a popover on that panel the same pixel to the eye.
+ *    See the ramp comment in `localOperatorLight`.
+ * 2. **`info` is not a kit role at all.** The site has no fourth semantic, so
+ *    there is nothing here to be faithful to; see the `info` comment in
+ *    `localOperatorDark`.
  *
  * ## The warm neutral rule
  *
@@ -59,23 +76,48 @@ export const localOperatorDark: ThemeDefinition = {
 		danger: "#ef8078",
 		dangerWash: "#2e1b18",
 		dangerBorder: "#9e5a51",
-		// The kit has no `info` role: on the site, "informational" is carried by
-		// the accent, because a fourth semantic hue is a hue nobody can name.
-		// The app needs one anyway — `palette.info` is read by application code
-		// and by MUI's own Alert — so it is defined here as the accent's own
-		// triple rather than as a new blue. That keeps "one accent, spent about
-		// three times per screen" true, and it is why an info Alert in this app
-		// is green rather than the blue MUI would otherwise have supplied.
-		info: "#38c96a",
-		infoWash: "#16281d",
-		infoBorder: "#4a8160",
+		/*
+		 * The kit has no `info` role: on the site, "informational" is carried by
+		 * the accent, because a fourth semantic hue is a hue nobody can name.
+		 * The app needs one anyway — `palette.info` is read by application code
+		 * and by MUI's own Alert — and it used to be defined as the accent's
+		 * own triple, to keep "one accent, spent about three times per screen"
+		 * true.
+		 *
+		 * That was the wrong thing to economise on. It made `success` and
+		 * `info` the same signal: ΔE00 5.1 apart in this palette, 2.2 in the
+		 * light one, with washes that were byte-identical. A user cannot be
+		 * asked to tell "it worked" from "here is a fact" by colour when the
+		 * two colours are the same colour, and the accent budget is about how
+		 * often accent is *spent*, not about refusing to name a fourth state.
+		 * Every other palette in this directory separates them by 26 to 47.
+		 *
+		 * So `info` is a blue, which is the reading users already expect, and
+		 * it is a warm one: L*72 C*36 at Lab hue 272, which leans to the red
+		 * side of blue rather than the cyan side. A cyan would have sat next
+		 * to the brand green in hue and read as a fifth tint of it; a cold
+		 * azure on a warm near-black reads as pasted in. The wash keeps the
+		 * canvas's own red floor (R 25 against canvas R 22, the same trick
+		 * `successWash` uses) so it tints the ground rather than replacing it.
+		 *
+		 * Measured: 8.60:1 on canvas, 8.03:1 on surface, 7.34:1 on its own
+		 * wash; ΔE00 41.0 from `success`, 46.1 from `accent`.
+		 */
+		info: "#86b3f2",
+		infoWash: "#192332",
+		infoBorder: "#5475a2",
 
 		overlayShadow: "0 12px 32px -12px rgb(0 0 0 / 0.6)",
 		scrim: "rgb(0 0 0 / 0.6)",
 	},
 };
 
-/** Verified 2026-08-04 against docs/design-kit/tokens.json in the site repo. */
+/*
+ * Kit-verified 2026-08-04 against docs/design-kit/tokens.json in the site
+ * repo, except the four grounds and the `hairline` that separates them, which
+ * this app widens for the reason recorded below, and `info`, which the kit
+ * does not define.
+ */
 export const localOperatorLight: ThemeDefinition = {
 	id: "localOperatorLight",
 	name: "Local Operator Light",
@@ -85,33 +127,57 @@ export const localOperatorLight: ThemeDefinition = {
 
 		/*
 		 * The four grounds are a lightness ladder, and on a light theme the top
-		 * of it is cramped: `elevated` is already a shade off white, so there is
-		 * almost no headroom above `surface`. `surface` was #fcfbf7, which left
-		 * only 1.0267:1 against `elevated` - below the 1.03 separation floor,
-		 * and passing only because the gate rounded before comparing. Popovers
-		 * and dropdowns were relying on their shadow alone to be a different
-		 * surface.
+		 * of it is cramped: `elevated` is already a shade off white, so there
+		 * is almost no headroom above `surface`. The gate's floor here is a
+		 * 1.03 luminance ratio, and clearing it is not the same test as being
+		 * able to see the step. This ramp cleared the gate and failed the eye:
+		 * `canvas`/`surface` measured ΔE00 1.53 and `surface`/`elevated` 1.14,
+		 * and in the captured theme frames a plain card on canvas simply did
+		 * not read as a separate surface. The observed threshold, from the same
+		 * frames, is around ΔE00 2: sage renders at 1.9 and iceberg at 2.1.
 		 *
-		 * #faf9f5 spends the room evenly instead of scraping the floor on one
-		 * side: 1.0420 against `canvas` below and 1.0446 against `elevated`
-		 * above. Change one of these four and re-run `pnpm check-themes`; they
-		 * are a ladder and only make sense relative to each other.
+		 * Lightness alone cannot buy that. Every ink in the palette is measured
+		 * against `canvas`, so each step down costs contrast, and `elevated` is
+		 * pinned near white with nothing above it. The lever that is free is
+		 * chroma: ΔE00 has a chroma axis and a contrast ratio does not, so at a
+		 * fixed L* the ramp can separate itself by warmth at zero cost to any
+		 * assertion. So the ladder now runs warmer as it runs deeper — b* 1.55,
+		 * 3.59, 5.42, 7.52 from `elevated` down to `sunken` — which is how a
+		 * stack of real paper behaves, and it is the same move that makes
+		 * sage's near-white ramp legible where this one was not.
+		 *
+		 * Adjacent steps now measure ΔE00 2.25 / 2.31 / 2.25 (ratios 1.0536,
+		 * 1.0688, 1.0657), so the gate's floor is cleared with room rather than
+		 * scraped: `surface` used to be #fcfbf7 at 1.0267 against `elevated`,
+		 * under the floor and passing only because the gate rounded before it
+		 * compared. The cost is 0.15 of contrast on the semantics measured
+		 * against `canvas` — `success` goes 4.78:1 to 4.62:1 — which is spent,
+		 * not free, and is why no further depth is taken here.
+		 *
+		 * Change one of these four and re-run `pnpm check-themes`; they are a
+		 * ladder and only make sense relative to each other.
 		 */
-		canvas: "#f7f4ee",
-		surface: "#faf9f5",
+		canvas: "#f5f0e6",
+		surface: "#faf8f1",
 		elevated: "#fffefb",
-		sunken: "#efece3",
+		sunken: "#efe9db",
 
 		ink: "#211e18",
 		inkMuted: "#565147",
 		inkDim: "#6c675c",
 		inkDisabled: "#9a9488",
 
-		hairline: "#e5e0d5",
-		// #857f70 against #fffefb is 3.06:1 — it clears the 3:1 structural floor
-		// on the lightest ground in the ramp, which is the binding case. The
-		// previous light theme used `rgba(0,0,0,0.1)` here, which measured
-		// 1.25:1 and was the sole boundary of every input in the app.
+		// Deepened from #e5e0d5 alongside the ramp above. A hairline is the one
+		// role that has to move when its grounds do: left where it was, it fell
+		// to ΔE00 3.50 against the new `canvas` and 2.31 against `sunken`,
+		// undoing on the dividers exactly what the ramp bought on the panels.
+		hairline: "#e1dcd2",
+		// #857f70 measures 3.29:1 on `sunken` and 3.95:1 on `elevated`. The
+		// binding ground is the darkest one, not the lightest — a mid grey has
+		// its easiest time against white — so `sunken` is the case that has to
+		// clear the 3:1 structural floor, and it does. The previous light theme
+		// used `rgba(0,0,0,0.1)` here, which measured 1.25:1 and was the sole
+		// boundary of every input in the app.
 		borderControl: "#857f70",
 
 		accent: "#177b45",
@@ -129,9 +195,16 @@ export const localOperatorLight: ThemeDefinition = {
 		danger: "#b23a31",
 		dangerWash: "#f7e7e4",
 		dangerBorder: "#96544c",
-		info: "#177b45",
-		infoWash: "#e7f1e8",
-		infoBorder: "#47795b",
+		// A blue, for the reasons written out at `info` in `localOperatorDark`;
+		// same Lab hue 272, at L*43 C*40 to sit in this palette's ink family.
+		// Measured: 5.11:1 on `canvas`, 5.46:1 on `surface`, 4.94:1 on its own
+		// wash, with the border at 5.03:1 against `canvas`. ΔE00 38.9 from
+		// `success` and 41.4 from `accent`, against 2.2 and 0.0 before. The
+		// wash holds R 231 where `successWash` holds 230, so it is a blue tint
+		// of the warm ground rather than a cool patch laid over it.
+		info: "#2368a8",
+		infoWash: "#e7edf8",
+		infoBorder: "#486893",
 
 		overlayShadow: "0 12px 32px -12px rgb(20 17 12 / 0.25)",
 		scrim: "rgb(20 17 12 / 0.35)",

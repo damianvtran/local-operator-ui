@@ -1,7 +1,7 @@
-import type { Plugin } from "vite";
-import dotenv from "dotenv";
-import { resolve, normalize } from "node:path";
 import { existsSync } from "node:fs";
+import { normalize, resolve } from "node:path";
+import dotenv from "dotenv";
+import type { Plugin } from "vite";
 /**
  * Loads environment variables from .env file at the project root if it exists.
  */
@@ -28,11 +28,13 @@ export function replaceBackendConfigPlugin(): Plugin {
 		throw new Error("VITE_MICROSOFT_TENANT_ID is not set");
 	}
 
-	const targetFile = normalize(resolve(process.cwd(), "src/main/backend/config.ts"));
+	const targetFile = normalize(
+		resolve(process.cwd(), "src/main/backend/config.ts"),
+	);
 
-  if(!existsSync(targetFile)) {
-    throw new Error(`Target backend config file not found at: ${targetFile}`);
-  }
+	if (!existsSync(targetFile)) {
+		throw new Error(`Target backend config file not found at: ${targetFile}`);
+	}
 
 	const replacements: Record<string, string> = {
 		REPL_VITE_GOOGLE_CLIENT_ID: process.env.VITE_GOOGLE_CLIENT_ID,

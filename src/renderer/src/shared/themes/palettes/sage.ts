@@ -65,11 +65,22 @@ export const sage: ThemeDefinition = {
 		dangerWash: "#EDDED0",
 		dangerBorder: "#BF7462",
 
-		// No informational hue in the theme, and a blue would be the only cool
-		// colour in it. Info is the accent triple.
-		info: "#476E49",
-		infoWash: "#E6E9D8",
-		infoBorder: "#758F6D",
+		// This theme has no informational hue of its own, and a blue is the only
+		// cool colour in it — which is why `info` used to be the accent triple.
+		// That made it the accent green exactly, ΔE00 0 from `accent` and 8.4
+		// from `success`: the same defect this file already fixed one row up,
+		// where `warning` rotated to ochre because a yellow-green 24 degrees
+		// from the success green could not be told apart at callout size. A
+		// semantic that cannot be told from another semantic is not a semantic.
+		//
+		// So it is a blue, and the warmest one available: Lab hue 276 leans to
+		// the red side rather than toward cyan, and C*36 sits between the muted
+		// accent (27) and the fuller success/warning/danger (45-53), so it
+		// reads as a member of this palette rather than a swatch borrowed from
+		// a cooler one. Now ΔE00 46.9 from `success` and 36.8 from `accent`.
+		info: "#3C67A1",
+		infoWash: "#E1E7F6",
+		infoBorder: "#6C82AA",
 
 		overlayShadow: "0 12px 32px -12px rgb(34 44 31 / 0.22)",
 		scrim: "rgb(34 44 31 / 0.35)",

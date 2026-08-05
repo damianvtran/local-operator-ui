@@ -36,11 +36,33 @@ import { type ButtonHTMLAttributes, forwardRef } from "react";
  *   `surface -> elevated`, active drops to `sunken`. Grounds used as grounds.
  *   The two ends stay clear of each other in every palette (elevated/sunken
  *   measures 1.17:1 at worst), so hover and pressed are never the same pixel.
- * - `outline` and `danger` have no fill of their own to move, so the edge
- *   deepens instead: the muted `-border` role steps to the full role colour
- *   while the wash stays put. `accent` and `danger` are both floored as text
- *   at 4.5:1, so as a 3:1 structural edge they are far clear (5.04:1 and
- *   4.72:1 at worst).
+ * - `outline` and `danger` have no fill at rest, so hover paints the authored
+ *   wash and press deepens that same wash 20% toward its own role colour.
+ *   Both used to press by stepping the 1px `-border` role to the full role
+ *   and leaving the wash exactly where hover put it, which in the worst
+ *   palette moved 1.036:1 across a hairline — a destructive action
+ *   confirming itself with nothing a user could see. Deepening the fill
+ *   moves the whole face instead: 1.26:1 and dE00 7.2 at worst across the
+ *   twelve palettes, and dE00 5.2 at worst on the keyboard path, where press
+ *   arrives without hover having run. The border still steps to the full
+ *   role, now as reinforcement rather than as the entire signal — and
+ *   `accent` and `danger` are both floored as text at 4.5:1, so as a 3:1
+ *   structural edge they are clear by construction.
+ *
+ *   The deepened wash is composed in CSS from two roles that already exist
+ *   rather than added to the palette. Branding § 2 authors one wash per hue
+ *   and refuses to derive the semantic triple per theme; a fixed state
+ *   composite of two authored roles is not a thirteenth token to keep in
+ *   sync across twelve files, and it follows a theme swap because it
+ *   resolves from the variables.
+ *
+ *   `danger` also takes `ink` for its pressed label. Every palette authors
+ *   `danger` on `danger-wash` barely over the 4.5:1 floor — 4.62:1 at worst
+ *   — so any deepening of that wash drops the red label under it, to 3.40:1
+ *   at this mix. `ink` is the role authored to sit on a ground, the deepened
+ *   wash is still a ground, and it measures 6.25:1 at worst across both
+ *   variants and all twelve palettes. `outline` already labels with `ink`,
+ *   so both variants land on one rule.
  * - `ghost` has neither fill nor edge at rest, so its ink carries the press:
  *   `ink-muted -> ink` on hover, `accent` on press. Branding § 2 spends the
  *   accent on "primary action, active state, focus ring", and this is that
@@ -74,6 +96,14 @@ import { type ButtonHTMLAttributes, forwardRef } from "react";
  * toolbar of icon-sm buttons that ring lands on top of both neighbours, so
  * the focused control reads as three controls. Nothing else about the ring
  * changes, which keeps the accent colour and the 2px weight single-sourced.
+ *
+ * The `!` on those offsets is load-bearing, not defensive. The ring in
+ * `styles/index.css` is authored UNLAYERED so it can beat Emotion's
+ * unlayered MUI resets, and unlayered beats every layer - including
+ * `@layer utilities`, where this class lives. Without `!` the utility is
+ * silently inert and the dense sizes take the 2px offset, which is the exact
+ * collision described above. This regressed once already when the ring moved
+ * out of `@layer base`.
  *
  * ## The size ramp: 28 / 32 / 36
  *
@@ -109,12 +139,12 @@ const buttonVariants = cva(
 	{
 		variants: {
 			size: {
-				sm: "h-7 gap-1 rounded-sm px-2 text-meta [&_svg]:size-3.5 focus-visible:outline-offset-1",
+				sm: "h-7 gap-1 rounded-sm px-2 text-meta [&_svg]:size-3.5 focus-visible:outline-offset-1!",
 				md: "h-8 gap-1.5 rounded-sm px-3 text-body-sm [&_svg]:size-4",
 				lg: "h-9 gap-2 rounded-sm px-4 text-body [&_svg]:size-4",
 				icon: "size-8 rounded-sm [&_svg]:size-4",
 				"icon-sm":
-					"size-7 rounded-sm [&_svg]:size-3.5 focus-visible:outline-offset-1",
+					"size-7 rounded-sm [&_svg]:size-3.5 focus-visible:outline-offset-1!",
 				"icon-lg": "size-9 rounded-sm [&_svg]:size-5",
 			},
 			variant: {
@@ -130,7 +160,8 @@ const buttonVariants = cva(
 				],
 				outline: [
 					"border border-control text-ink",
-					"hover:bg-accent-wash active:border-accent active:bg-accent-wash",
+					"hover:bg-accent-wash",
+					"active:border-accent active:bg-[color-mix(in_oklab,var(--color-accent-wash)_80%,var(--color-accent))]",
 					"disabled:border-hairline disabled:bg-transparent disabled:text-ink-disabled",
 				],
 				ghost: [
@@ -141,7 +172,8 @@ const buttonVariants = cva(
 				],
 				danger: [
 					"border border-danger-border text-danger",
-					"hover:bg-danger-wash active:border-danger active:bg-danger-wash",
+					"hover:bg-danger-wash",
+					"active:border-danger active:text-ink active:bg-[color-mix(in_oklab,var(--color-danger-wash)_80%,var(--color-danger))]",
 					"disabled:border-hairline disabled:bg-transparent disabled:text-ink-disabled",
 				],
 				link: [

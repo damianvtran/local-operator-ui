@@ -14,9 +14,34 @@ import { type HTMLAttributes, type ReactNode, forwardRef } from "react";
  *
  * Each variant is one of the four triples the contrast contract verifies:
  * `XWash` fill, `XBorder` edge, `X` ink, checked against `canvas` and
- * `surface`. The body text is the semantic colour too, not `ink` — `ink` on a
- * semantic wash is the one pairing the contract does not measure, and a
- * callout reads better as a single-colour block anyway.
+ * `surface`.
+ *
+ * ## The mark carries identity, the body carries the message
+ *
+ * The body is `ink`, not the semantic colour. The semantic colour on its own
+ * wash does pass the contract, but the contract measures it as a *badge*
+ * colour — a short label, at 12px, on its own tint. An Alert body is a
+ * sentence or two of prose, rendered at 18 call sites across 15 components,
+ * two of which (`FloatingAlert`, the connectivity banner) are themselves
+ * shared. Measured on `bg-*-wash` across all twelve palettes, the semantic
+ * inks floor at 4.54:1 (`success`, localOperatorLight) while `ink` on the
+ * same washes floors at 8.15:1 (`info`, tokyoNight) — per semantic, 8.33 vs
+ * 4.54 for success, 8.39 vs 4.65 for warning, 8.62 vs 4.62 for danger, and
+ * 8.15 vs 4.64 for info. Rendering the message in the semantic colour made
+ * the sentence the user is meant to read the faintest text in the box, and it
+ * did so at every call site at once. "A callout reads better as a
+ * single-colour block" was the justification for that, and it is not worth
+ * halving the legibility of the only part of a callout that says anything.
+ *
+ * Identity comes instead from the icon, the border and the title, which is
+ * what the semantic colour is good at. Those keep it via `data-alert-mark`,
+ * and they keep their own floor: the title is exactly the badge-sized use the
+ * contract measures, so it clears 4.5:1 on its wash in all twelve palettes.
+ * `neutral` follows the same rule with no hue to spend — `ink` mark over an
+ * `ink-muted` body, which floors at 6.33:1 on `sunken`.
+ *
+ * The same reasoning, and the same measurement, is written out at
+ * `features/chat/components/trace/agent-question.tsx`.
  *
  * Icons are supplied by variant rather than by the caller, so a warning always
  * looks like a warning. Pass `icon={null}` for a text-only callout.
@@ -26,11 +51,15 @@ const alertVariants = cva(
 	{
 		variants: {
 			variant: {
-				neutral: "border-hairline bg-sunken text-ink-muted",
-				success: "border-success-border bg-success-wash text-success",
-				warning: "border-warning-border bg-warning-wash text-warning",
-				danger: "border-danger-border bg-danger-wash text-danger",
-				info: "border-info-border bg-info-wash text-info",
+				neutral:
+					"border-hairline bg-sunken text-ink-muted [&_[data-alert-mark]]:text-ink",
+				success:
+					"border-success-border bg-success-wash text-ink [&_[data-alert-mark]]:text-success",
+				warning:
+					"border-warning-border bg-warning-wash text-ink [&_[data-alert-mark]]:text-warning",
+				danger:
+					"border-danger-border bg-danger-wash text-ink [&_[data-alert-mark]]:text-danger",
+				info: "border-info-border bg-info-wash text-ink [&_[data-alert-mark]]:text-info",
 			},
 		},
 		defaultVariants: { variant: "info" },
@@ -78,7 +107,12 @@ export const Alert = forwardRef<HTMLDivElement, AlertProps>(
 				{...props}
 			>
 				{glyph ? (
-					<span className="mt-px flex shrink-0 [&_svg]:size-4">{glyph}</span>
+					<span
+						data-alert-mark=""
+						className="mt-px flex shrink-0 [&_svg]:size-4"
+					>
+						{glyph}
+					</span>
 				) : null}
 				<div className="flex min-w-0 flex-col gap-1">{children}</div>
 			</div>
@@ -93,6 +127,9 @@ export const AlertTitle = forwardRef<
 >(({ className, ...props }, ref) => (
 	<p
 		ref={ref}
+		// The variant paints the mark slots rather than the title painting
+		// itself, so a title cannot drift out of step with the icon beside it.
+		data-alert-mark=""
 		className={cn("font-medium text-body-sm", className)}
 		{...props}
 	/>

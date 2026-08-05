@@ -153,7 +153,7 @@ const CanvasTabsComponent: FC<CanvasTabsProps> = ({
 				aria-orientation="horizontal"
 				className={cn(
 					"flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto bg-sunken px-1 py-1",
-					// Native scrollbars steal 15px from a 34px strip and appear only
+					// Native scrollbars steal 15px from a 32px strip and appear only
 					// on some platforms, so the strip is scrolled without one and the
 					// mask is what says the row continues.
 					"[-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
@@ -167,8 +167,12 @@ const CanvasTabsComponent: FC<CanvasTabsProps> = ({
 						<div
 							key={doc.id}
 							role="presentation"
+							// 24px inside the strip's `p-1` is the segmented-control
+							// geometry `TabsList`/`TabsTrigger` already ship: same 32px
+							// track, same 24px tab. A half-step taller here would be a
+							// second tab height for no reason a user could name.
 							className={cn(
-								"group flex h-6.5 shrink-0 items-center rounded-sm pr-0.5",
+								"group flex h-6 shrink-0 items-center rounded-sm pr-0.5",
 								"transition-colors duration-fast ease-out-quart",
 								isSelected ? "bg-surface" : "hover:bg-elevated",
 							)}
@@ -248,7 +252,11 @@ const CanvasTabsComponent: FC<CanvasTabsProps> = ({
 								variant="ghost"
 								size="icon-sm"
 								aria-label="All open files"
-								className={cn("my-1 mr-1 shrink-0 self-center")}
+								// No vertical margin: `icon-sm` is 28px, which already
+								// centres inside the 32px strip. Margins here would push
+								// the row past the tab track and make the strip's height
+								// depend on how many documents are open.
+								className={cn("mr-1 shrink-0 self-center")}
 							>
 								<ChevronDown aria-hidden="true" />
 							</Button>

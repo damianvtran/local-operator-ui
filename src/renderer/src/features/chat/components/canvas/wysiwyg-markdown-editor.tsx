@@ -381,7 +381,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 		}
 
 		window.api.saveFile(document.path, content);
-		showSuccessToast("File saved successfully");
+		showSuccessToast("File saved");
 		originalContentRef.current = content;
 		setHasUserChanges(false);
 
@@ -777,7 +777,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 			document.path
 		) {
 			window.api.saveFile(document.path, debouncedContent);
-			showSuccessToast("File saved successfully");
+			showSuccessToast("File saved");
 			originalContentRef.current = debouncedContent;
 
 			if (conversationId && canvasState) {
@@ -1364,7 +1364,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 		// Force save the changes immediately since they came from inline edit
 		if (document.path && finalContent !== originalContentRef.current) {
 			window.api.saveFile(document.path, finalContent);
-			showSuccessToast("File saved successfully");
+			showSuccessToast("File saved");
 			originalContentRef.current = finalContent;
 			setHasUserChanges(false);
 

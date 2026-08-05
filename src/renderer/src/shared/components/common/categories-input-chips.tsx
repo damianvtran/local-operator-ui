@@ -173,8 +173,8 @@ export const CategoriesInputChips: FC<CategoriesInputChipsProps> = ({
 					// See tags-input-chips: the inner field suppresses its own outline,
 					// so this wrapper owns the ring. `outline-solid` is required
 					// because `outline-none` on the input pins the style token to none.
-					"has-[:focus-visible]:outline-solid has-[:focus-visible]:outline-2",
-					"has-[:focus-visible]:outline-accent has-[:focus-visible]:outline-offset-2",
+					"has-[input:focus-visible]:outline-solid has-[input:focus-visible]:outline-2",
+					"has-[input:focus-visible]:outline-accent has-[input:focus-visible]:outline-offset-2",
 					disabled && "border-hairline bg-sunken",
 				)}
 			>

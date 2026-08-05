@@ -59,14 +59,14 @@ export const SchedulesPage: FC = () => {
 					scheduleId: editingSchedule.id,
 					scheduleData: data as ScheduleUpdateRequest,
 				});
-				showSuccessToast("Schedule updated successfully!");
+				showSuccessToast("Schedule updated");
 			} else {
 				// Creating a new schedule
 				await createScheduleMutation.mutateAsync({
 					agentId: agentId, // Use the agentId selected in the form
 					scheduleData: data as ScheduleCreateRequest,
 				});
-				showSuccessToast("Schedule created successfully!");
+				showSuccessToast("Schedule created");
 			}
 			refetchSchedules();
 		} catch (err) {
@@ -86,7 +86,7 @@ export const SchedulesPage: FC = () => {
 				scheduleId,
 				agentId: scheduleToDelete?.agent_id,
 			});
-			showSuccessToast("Schedule removed successfully!");
+			showSuccessToast("Schedule removed");
 			refetchSchedules();
 		} catch (err) {
 			console.error("Failed to delete schedule:", err);

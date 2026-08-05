@@ -5,10 +5,10 @@
  * before code signing, but the hashes change after signing.
  */
 
-import * as path from "node:path";
-import * as fs from "node:fs/promises";
-import * as fsSync from "node:fs";
 import * as crypto from "node:crypto";
+import * as fsSync from "node:fs";
+import * as fs from "node:fs/promises";
+import * as path from "node:path";
 import * as yaml from "yaml";
 
 /**

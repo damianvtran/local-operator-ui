@@ -29,9 +29,9 @@
  */
 
 import { readFileSync, writeFileSync } from "node:fs";
-import { loadPalettes } from "./palette-source.mjs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { loadPalettes } from "./palette-source.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const PALETTE_DIR = join(ROOT, "src/renderer/src/shared/themes/palettes");
@@ -40,7 +40,6 @@ const THEME_CSS = join(ROOT, "src/renderer/src/styles/index.css");
 
 /** camelCase role -> kebab-case custom property suffix. */
 const kebab = (s) => s.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`);
-
 
 const palettes = loadPalettes();
 if (palettes.length === 0) {
@@ -72,24 +71,71 @@ const block = ({ id, palette }) => {
  * ACTIVE theme.
  *
  * Measured before this existed, with root dark and a light-scoped subtree:
- * `--lo-canvas` was #f7f4ee (correct) while `--color-canvas` was #16130e and
- * `bg-canvas` painted rgb(22,19,14). The twelve previews in the theme picker
- * were all showing the active theme.
+ * `--lo-canvas` was #f7f4ee (the light canvas AT THE TIME - that value has
+ * since moved, and the number is kept as the historical reading rather than
+ * refreshed, because a measurement is of a moment) while `--color-canvas` was
+ * #16130e and `bg-canvas` painted rgb(22,19,14). The twelve previews in the
+ * theme picker were all showing the active theme.
  *
  * The pairs are parsed out of index.css rather than restated here, so adding a
  * role to `@theme` cannot silently leave scoped previews stale.
  */
+/**
+ * Strip CSS comments, preserving string literals.
+ *
+ * Order matters and cost a reviewer a reproduction to find: this MUST run
+ * before the brace matcher, not after. Matching braces on un-stripped source
+ * means a single unbalanced `}` inside a comment ends the block early, the
+ * harvest returns the roles above it and silently drops the rest, and the gate
+ * stays green because a short harvest is indistinguishable from a short block.
+ * Reproduced at 29 -> 9, 29 -> 11 and 29 -> 15 roles.
+ */
+const stripCssComments = (src) => {
+	let out = "";
+	let i = 0;
+	while (i < src.length) {
+		if (src[i] === '"' || src[i] === "'") {
+			const q = src[i];
+			out += src[i++];
+			while (i < src.length) {
+				out += src[i];
+				if (src[i] === "\\" && i + 1 < src.length) {
+					out += src[++i];
+					i++;
+					continue;
+				}
+				if (src[i] === q) {
+					i++;
+					break;
+				}
+				i++;
+			}
+			continue;
+		}
+		if (src[i] === "/" && src[i + 1] === "*") {
+			i += 2;
+			while (i < src.length && !(src[i] === "*" && src[i + 1] === "/")) i++;
+			i += 2;
+			continue;
+		}
+		out += src[i++];
+	}
+	return out;
+};
+
 const scopedRoleBlock = () => {
-	const css = readFileSync(THEME_CSS, "utf8");
+	/* Comments first, then braces - see stripCssComments. */
+	const css = stripCssComments(readFileSync(THEME_CSS, "utf8"));
+
 	const open = css.indexOf("@theme {");
 	if (open === -1) throw new Error("no @theme block in styles/index.css");
+	if (css.indexOf("@theme", open + 6) !== -1) {
+		/* Two @theme blocks would mean half the roles live outside the one this
+		   function harvests, which is the same silent-truncation failure wearing
+		   a different hat. */
+		throw new Error("more than one @theme block in styles/index.css");
+	}
 
-	/* Find the block's real end by matching braces, not by the first "\n}".
-	   A nested rule or an added media query inside @theme would truncate a
-	   naive search and silently drop every declaration after it — the failure
-	   mode being a scoped theme that is correct for the first N roles and
-	   stale for the rest, which is far harder to spot than all of them being
-	   wrong. */
 	let depth = 0;
 	let close = -1;
 	for (let i = css.indexOf("{", open); i < css.length; i++) {
@@ -104,18 +150,44 @@ const scopedRoleBlock = () => {
 	}
 	if (close === -1) throw new Error("unterminated @theme block");
 
-	/* Strip comments before harvesting, so a pair mentioned in prose is not
-	   emitted as a declaration. */
-	const block = css.slice(open, close).replace(/\/\*[\s\S]*?\*\//g, "");
+	const block = css.slice(open, close);
 
-	/* Match ANY custom property whose value is a single --lo-* reference, not
-	   just --color-*. `--shadow-overlay: var(--lo-overlay-shadow)` is exactly
-	   such a pair and was being dropped, so a scoped subtree kept the root
-	   theme's shadow. */
+	/* Any custom property whose value is a single --lo-* reference, not just
+	   --color-*. `--shadow-overlay: var(--lo-overlay-shadow)` is exactly such a
+	   pair and was being dropped, so scoped subtrees kept the root's shadow. */
 	const pairs = [...block.matchAll(/(--[\w-]+):\s*var\((--lo-[\w-]+)\)\s*;/g)];
-	if (pairs.length === 0) throw new Error("no --* -> --lo-* pairs found");
 
-	const lines = pairs.map(([, name, src]) => `\t${name}: var(${src});`).join("\n");
+	/* Completeness against the PALETTES, not against index.css.
+	   
+	   Checking "every role index.css mentions was harvested" sounds right and
+	   catches nothing that matters: the dangerous case is a role added to the
+	   palettes with no `@theme` pair at all, and such a role is never mentioned
+	   in index.css either, so it passes a self-referential check trivially.
+	   Comparing against the palette role set is what makes it loud - that role
+	   would otherwise reach `:root` and silently never reach a scoped subtree,
+	   which is the round-1 `--shadow-overlay` defect exactly. A short harvest
+	   from a truncated block fails here too, since the missing pairs are missing
+	   from both sides. */
+	const harvested = new Set(pairs.map(([, , src]) => src));
+	const paletteRoles = new Set(
+		loadPalettes().flatMap(({ palette }) =>
+			Object.keys(palette)
+				.filter((role) => role !== "mode")
+				.map((role) => `--lo-${kebab(role)}`),
+		),
+	);
+	const missing = [...paletteRoles].filter((r) => !harvested.has(r));
+	if (missing.length > 0) {
+		throw new Error(
+			`@theme is missing ${missing.length} role pair(s): ${missing.join(", ")}. ` +
+				`Every palette role needs a \`--x: var(--lo-x);\` line inside @theme, ` +
+				`or it reaches :root and never reaches a [data-theme] subtree.`,
+		);
+	}
+
+	const lines = pairs
+		.map(([, name, src]) => `\t${name}: var(${src});`)
+		.join("\n");
 	return [
 		"/* Scoped theme subtrees: see scripts/generate-theme-css.mjs for why this",
 		"   re-declaration is required rather than redundant. */",
@@ -147,7 +219,9 @@ if (process.argv.includes("--check")) {
 	try {
 		current = readFileSync(OUT, "utf8");
 	} catch {
-		console.error(`${OUT} does not exist. Run: node scripts/generate-theme-css.mjs`);
+		console.error(
+			`${OUT} does not exist. Run: node scripts/generate-theme-css.mjs`,
+		);
 		process.exit(1);
 	}
 	if (current !== body) {
@@ -156,7 +230,9 @@ if (process.argv.includes("--check")) {
 		);
 		process.exit(1);
 	}
-	console.log(`themes.generated.css is up to date (${palettes.length} themes).`);
+	console.log(
+		`themes.generated.css is up to date (${palettes.length} themes).`,
+	);
 } else {
 	writeFileSync(OUT, body);
 	console.log(

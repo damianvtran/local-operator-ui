@@ -40,7 +40,7 @@ const inputVariants = cva(
 			// Named `inputSize` and not `size`: `size` is a real numeric HTML
 			// attribute on `input`, and shadowing it would silently drop it.
 			inputSize: {
-				sm: "h-7 px-2 text-meta focus-visible:outline-offset-1",
+				sm: "h-7 px-2 text-meta focus-visible:outline-offset-1!",
 				md: "h-8 px-3 text-body-sm",
 				lg: "h-9 px-3 text-body",
 			},

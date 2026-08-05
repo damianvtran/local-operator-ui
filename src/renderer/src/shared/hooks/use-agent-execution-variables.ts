@@ -56,7 +56,7 @@ export const useCreateAgentExecutionVariable = () => {
 			queryClient.invalidateQueries({
 				queryKey: ["agentExecutionVariables", variables.agentId],
 			});
-			showSuccessToast("Variable created successfully.");
+			showSuccessToast("Variable created");
 		},
 		onError: (error) => {
 			showErrorToast(`Failed to create variable: ${error.message}`);
@@ -94,7 +94,7 @@ export const useUpdateAgentExecutionVariable = () => {
 			queryClient.invalidateQueries({
 				queryKey: ["agentExecutionVariables", variables.agentId],
 			});
-			showSuccessToast("Variable updated successfully.");
+			showSuccessToast("Variable updated");
 		},
 		onError: (error) => {
 			showErrorToast(`Failed to update variable: ${error.message}`);
@@ -124,7 +124,7 @@ export const useDeleteAgentExecutionVariable = () => {
 			queryClient.invalidateQueries({
 				queryKey: ["agentExecutionVariables", variables.agentId],
 			});
-			showSuccessToast("Variable deleted successfully.");
+			showSuccessToast("Variable deleted");
 		},
 		onError: (error) => {
 			showErrorToast(`Failed to delete variable: ${error.message}`);

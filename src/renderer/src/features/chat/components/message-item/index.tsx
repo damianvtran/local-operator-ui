@@ -537,9 +537,8 @@ export const MessageItem: FC<MessageItemProps> = memo(
 						)}
 					{!isUser && hasTechnicalBlocks && (
 						<Disclosure
+							className="mt-2"
 							summary={<span className="text-meta">Technical details</span>}
-							triggerClassName="mt-2 min-h-6 py-0.5"
-							contentClassName="ml-5 mt-1 flex flex-col gap-2 pb-1"
 						>
 							{technicalBlocks}
 						</Disclosure>

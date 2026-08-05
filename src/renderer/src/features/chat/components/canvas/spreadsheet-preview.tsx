@@ -168,6 +168,25 @@ const readsAsQuantity = (value: unknown): boolean =>
 	typeof value === "number" ||
 	(typeof value === "string" && QUANTITY_TEXT.test(value.trim()));
 
+/*
+ * Turn a cell the user just edited back into a typed value.
+ *
+ * Only a value that is wholly and unambiguously numeric becomes a number.
+ * Anything carrying a currency symbol, a thousands separator or a percent sign
+ * is left as text on purpose: re-typing `$2,310.50` as 2310.5 would silently
+ * discard the formatting the user is looking at, which is the same class of
+ * loss this whole path exists to prevent. Cells the user never touched do not
+ * come through here at all - they are written from the typed copy read off the
+ * original sheet.
+ */
+const coerceEditedCell = (value: unknown): unknown => {
+	if (typeof value !== "string") return value;
+	const trimmed = value.trim();
+	if (trimmed === "") return value;
+	const asNumber = Number(trimmed);
+	return Number.isFinite(asNumber) ? asNumber : value;
+};
+
 const SpreadsheetPreviewComponent: FC<SpreadsheetPreviewProps> = ({
 	document,
 	conversationId,
@@ -180,6 +199,12 @@ const SpreadsheetPreviewComponent: FC<SpreadsheetPreviewProps> = ({
 	const [hasUserChanges, setHasUserChanges] = useState(false);
 	const [isSaving, setIsSaving] = useState(false);
 	const originalDataRef = useRef<Record<string, Record<string, unknown>[]>>({});
+	/*
+	 * The typed values behind the displayed strings, keyed the same way. Saving
+	 * reads from here for every cell the user did not edit, so a round-trip
+	 * through the grid cannot downgrade a number or a date to text.
+	 */
+	const originalRawRef = useRef<Record<string, Record<string, unknown>[]>>({});
 	const isInitialLoadRef = useRef(true);
 
 	const { setFiles, setSpreadsheetData } = useCanvasStore();
@@ -223,25 +248,43 @@ const SpreadsheetPreviewComponent: FC<SpreadsheetPreviewProps> = ({
 			}
 
 			const newSheetsData: Record<string, Record<string, unknown>[]> = {};
+			const newRawData: Record<string, Record<string, unknown>[]> = {};
 			for (const sheetName of workbook.SheetNames) {
 				const worksheet = workbook.Sheets[sheetName];
 				/*
-				 * `raw: false` reads each cell's rendered text rather than its
-				 * underlying value, which is what keeps trailing zeros and
-				 * currency symbols: an invoice total of `2310.50` arrives as
-				 * `2310.50`, not `2310.5`. For an xlsx that rendering uses the
-				 * number format the sheet's author chose, so dates and money
-				 * display the way they do in Excel; for a CSV the cells are
-				 * already text, so it is a no-op.
+				 * Two reads of the same sheet, deliberately.
+				 *
+				 * `raw: false` gives each cell's RENDERED text, which is what the
+				 * grid shows: an invoice total keeps its trailing zero and its
+				 * currency symbol, and an xlsx date renders through the number
+				 * format its author chose instead of as a serial. That is the
+				 * whole point of displaying it this way.
+				 *
+				 * `raw: true` gives the underlying TYPED value, and it is kept
+				 * because saving needs it. `json_to_sheet` types whatever it is
+				 * handed, so writing the display strings back produced an xlsx
+				 * where every number and date was stored as text - Excel flags
+				 * them, number formats are gone, and any formula referencing them
+				 * breaks. The display string is lossy on purpose; it must never be
+				 * the thing that gets persisted.
+				 *
+				 * On save, a cell the user did not touch is written from this
+				 * typed copy; only a cell they actually edited is re-derived from
+				 * what they typed. CSV is unaffected either way - it is read with
+				 * `raw: true` above, so both copies agree.
 				 */
 				const jsonSheet = XLSX.utils.sheet_to_json(worksheet, {
 					raw: false,
 				}) as Record<string, unknown>[];
 				newSheetsData[sheetName] = jsonSheet;
+				newRawData[sheetName] = XLSX.utils.sheet_to_json(worksheet, {
+					raw: true,
+				}) as Record<string, unknown>[];
 			}
 			setSheetsData(newSheetsData);
 			// Deep clone the original data to prevent reference issues
 			originalDataRef.current = JSON.parse(JSON.stringify(newSheetsData));
+			originalRawRef.current = newRawData;
 			setHasUserChanges(false);
 			isInitialLoadRef.current = true;
 			if (workbook.SheetNames.length > 0) {
@@ -282,7 +325,36 @@ const SpreadsheetPreviewComponent: FC<SpreadsheetPreviewProps> = ({
 
 		const workbook = XLSX.utils.book_new();
 		for (const [sheetName, sheetData] of Object.entries(debouncedSheetsData)) {
-			const worksheet = XLSX.utils.json_to_sheet(sheetData);
+			/*
+			 * Rebuild each row from the TYPED copy, overlaying only what changed.
+			 *
+			 * `sheetData` holds display strings (see the two-read comment above),
+			 * and `json_to_sheet` types whatever it is given - so handing it these
+			 * directly stored every number and date in the file as text. A cell
+			 * the user never touched is therefore written from `originalRawRef`,
+			 * byte-for-byte what was read; only a cell they actually edited is
+			 * re-derived, and then a value that is wholly numeric becomes a
+			 * number so it stays arithmetic rather than becoming text on its
+			 * first edit.
+			 */
+			const originalDisplay = originalDataRef.current[sheetName] ?? [];
+			const originalTyped = originalRawRef.current[sheetName] ?? [];
+			const rows = sheetData.map((row, i) => {
+				const wasDisplay = originalDisplay[i];
+				const wasTyped = originalTyped[i];
+				const out: Record<string, unknown> = {};
+				for (const [key, value] of Object.entries(row)) {
+					const untouched =
+						wasDisplay !== undefined && wasDisplay[key] === value;
+					if (untouched && wasTyped !== undefined && key in wasTyped) {
+						out[key] = wasTyped[key];
+						continue;
+					}
+					out[key] = coerceEditedCell(value);
+				}
+				return out;
+			});
+			const worksheet = XLSX.utils.json_to_sheet(rows);
 			XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
 		}
 
@@ -316,7 +388,7 @@ const SpreadsheetPreviewComponent: FC<SpreadsheetPreviewProps> = ({
 			originalDataRef.current = JSON.parse(JSON.stringify(debouncedSheetsData));
 			setHasUserChanges(false);
 
-			showSuccessToast("Spreadsheet saved successfully");
+			showSuccessToast("Spreadsheet saved");
 		} catch (error) {
 			console.error("Failed to save file:", error);
 			showErrorToast(

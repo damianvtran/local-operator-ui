@@ -3,11 +3,17 @@
  * docs/branding.md § 7: the action named in the user's terms and the object
  * in monospace — "Read invoices/march.csv", not "Executing Code".
  *
- * The object slot has a fixed priority: the record's file path, then a count
- * of its attached files, then the first clause of the agent's own narration
- * of the step. The narration is deliberately last: it is the agent's voice,
- * and when a concrete object exists the verb plus object already says
- * everything the user needs at a glance.
+ * The label has two slots, and they are separate because § 4 draws the line
+ * between them. `object` is machine voice — a path or a file count — and sets
+ * in monospace beside the verb. `narration` is the agent's own English
+ * description of the step and is prose, so it never sets in monospace and it
+ * never shares the object slot: a clause forced into a noun's position is how
+ * the row came to read "Ran code Summing the unpaid invoices by customer".
+ *
+ * The two are mutually exclusive and the order is deliberate: the record's
+ * file path, then a count of its attached files, then the narration. The
+ * narration is last because when a concrete object exists the verb plus the
+ * object already says everything the user needs at a glance.
  */
 
 import type { ActionType } from "@shared/api/local-operator/types";
@@ -28,8 +34,13 @@ export type TraceLabel = {
 	verb: string;
 	/** Present-tense verb while the action is running: "Reading", "Running code". */
 	runningVerb: string;
-	/** The object of the verb: a path, a file count, or a short narration. */
+	/** Machine voice: the path the action touched, or a count of files. */
 	object?: string;
+	/**
+	 * The agent's own one-clause description of the step, in English. Set only
+	 * when there is no `object` to name.
+	 */
+	narration?: string;
 	/** Lucide glyph at 14px. An icon tile is forbidden (§ 7). */
 	icon: LucideIcon;
 };
@@ -110,15 +121,16 @@ export const getTraceLabel = (
 			object = `${concrete.length} files`;
 		}
 	}
-	if (!object && narration) {
-		const short = shortenNarration(narration);
-		if (short) object = short;
-	}
+	// Prose, so it lands in its own slot rather than the monospace one, and
+	// only when the verb has no concrete object to take.
+	const shortNarration =
+		!object && narration ? shortenNarration(narration) : "";
 
 	return {
 		verb: meta.verb,
 		runningVerb: meta.runningVerb,
 		object,
+		narration: shortNarration || undefined,
 		icon: meta.icon,
 	};
 };

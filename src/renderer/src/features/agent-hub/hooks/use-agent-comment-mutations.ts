@@ -39,7 +39,7 @@ export const useCreateAgentCommentMutation = () => {
 			queryClient.invalidateQueries({
 				queryKey: agentCommentsKeys.list(variables.agentId),
 			});
-			showSuccessToast("Comment posted successfully!");
+			showSuccessToast("Comment posted");
 		},
 		onError: (error) => {
 			showErrorToast(`Failed to post comment: ${error.message}`);
@@ -75,7 +75,7 @@ export const useUpdateAgentCommentMutation = () => {
 			queryClient.invalidateQueries({
 				queryKey: agentCommentsKeys.list(variables.agentId),
 			});
-			showSuccessToast("Comment updated successfully!");
+			showSuccessToast("Comment updated");
 		},
 		onError: (error) => {
 			showErrorToast(`Failed to update comment: ${error.message}`);
@@ -106,7 +106,7 @@ export const useDeleteAgentCommentMutation = () => {
 			queryClient.invalidateQueries({
 				queryKey: agentCommentsKeys.list(variables.agentId),
 			});
-			showSuccessToast("Comment deleted successfully!");
+			showSuccessToast("Comment deleted");
 		},
 		onError: (error) => {
 			showErrorToast(`Failed to delete comment: ${error.message}`);

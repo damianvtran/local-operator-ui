@@ -8,7 +8,7 @@
  *
  * Usage: node scripts/startup-closure.mjs [out/renderer] [entry.html]
  */
-import { readFileSync, statSync, existsSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 
 const root = process.argv[2] ?? "out/renderer";
@@ -46,5 +46,7 @@ console.log(
 	`${entryHtml}: startup JS ${(total / 1000).toFixed(1)} kB across ${files.length} chunk(s)`,
 );
 for (const x of files.slice(0, 8)) {
-	console.log(`  ${(x.size / 1000).toFixed(1).padStart(10)} kB  ${x.f.split("/").pop()}`);
+	console.log(
+		`  ${(x.size / 1000).toFixed(1).padStart(10)} kB  ${x.f.split("/").pop()}`,
+	);
 }

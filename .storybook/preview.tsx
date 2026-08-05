@@ -1,3 +1,14 @@
+/*
+ * The app's real faces. Both renderer entries import this, and until Storybook
+ * did too every captured frame rendered `font-mono` as the platform fallback
+ * rather than Geist Mono - so the evidence set could not show a typography
+ * change, and reviewing type from a screenshot was measuring the reviewer's OS.
+ * A verification surface that differs from the product will certify a defect
+ * eventually; this is the second time that has bitten this repo, after the
+ * <CssBaseline/> focus-ring split.
+ */
+// @ts-ignore Path aliases don't work for Storybook root
+import "@renderer/assets/fonts/fonts.css";
 import { CssBaseline } from "@mui/material";
 import { ThemeProvider as MuiThemeProvider } from "@mui/material/styles";
 // @ts-ignore Path aliases don't work for Storybook root
