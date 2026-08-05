@@ -17,7 +17,8 @@ import { cn } from "@shared/lib/utils";
 import { useAgentSelectionStore } from "@shared/store/agent-selection-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import {
-	Calendar,
+	Bot,
+	CalendarDays,
 	FileText,
 	Search as LucideSearch,
 	MessageSquare,
@@ -27,7 +28,6 @@ import {
 	Settings,
 	Store,
 	Trash2,
-	Users,
 	X,
 } from "lucide-react";
 import { type FC, Fragment } from "react";
@@ -81,7 +81,7 @@ const PAGE_DEFINITIONS: Omit<CommandPaletteItem, "id" | "type">[] = [
 		name: "My agents",
 		path: "/agents",
 		category: "Navigation",
-		icon: <Users size={16} />,
+		icon: <Bot size={16} />,
 	},
 	{
 		name: "Agent hub",
@@ -93,7 +93,7 @@ const PAGE_DEFINITIONS: Omit<CommandPaletteItem, "id" | "type">[] = [
 		name: "Schedules",
 		path: "/schedules",
 		category: "Navigation",
-		icon: <Calendar size={16} />,
+		icon: <CalendarDays size={16} />,
 	},
 	{
 		name: "Settings",

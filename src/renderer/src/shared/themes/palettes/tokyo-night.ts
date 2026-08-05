@@ -38,7 +38,7 @@ export const tokyoNight: ThemeDefinition = {
 
 		accent: "#7AA2F7",
 		accentHover: "#9EBCFF",
-		accentActive: "#5D7CD9",
+		accentActive: "#6D8FDA",
 		accentWash: "#262B3F",
 		onAccent: "#1A1B26",
 

@@ -21,7 +21,7 @@ import { Tooltip } from "@shared/components/ui";
 import { useConfig } from "@shared/hooks/use-config";
 import type { useUpdateAgent } from "@shared/hooks/use-update-agent";
 import { showErrorToast } from "@shared/utils/toast-manager";
-import { Bot, Calendar, GitBranch, IdCard, Info } from "lucide-react";
+import { Calendar, Cpu, GitBranch, IdCard, Info } from "lucide-react";
 import type { FC } from "react";
 import { useEffect, useState } from "react";
 
@@ -103,11 +103,16 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 		<div className="flex flex-col gap-4">
 			{/*
 			 * No glyph. A glyph on this surface names a kind of thing, and no two
-			 * labels may name the same kind — `Bot` means "the model" everywhere
-			 * in the app (`model-select.tsx`, the Model settings section), so it
-			 * cannot also mean "the agent's name". The field is full width, alone
-			 * on its row, and inside the agent's own settings pane; the word
-			 * "Agent name" is not ambiguous without a picture of a robot.
+			 * labels may name the same kind — `Bot` means "an agent" everywhere
+			 * in the app, so it cannot also mean "the agent's name" here. The
+			 * field is full width, alone on its row, and inside the agent's own
+			 * settings pane; the word "Agent name" is not ambiguous without a
+			 * picture of a robot.
+			 *
+			 * `Bot` used to be documented as meaning "the model", which nine of
+			 * its twelve render sites contradicted. The model now carries `Cpu`
+			 * and agent instructions carry `ScrollText`, so the glyph names one
+			 * kind of thing.
 			 */}
 			<EditableField
 				value={selectedAgent.name}
@@ -242,7 +247,7 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 						<div className="relative">
 							<Tooltip content="Select a hosting provider first, and then select the AI model that you want to use.  Each model has different capabilities and costs.  Recommended: Automatic">
 								<div className="mb-1.5 flex w-fit items-center gap-2 text-body-sm text-ink-muted">
-									<Bot size={16} aria-hidden="true" />
+									<Cpu size={16} aria-hidden="true" />
 									Model
 								</div>
 							</Tooltip>

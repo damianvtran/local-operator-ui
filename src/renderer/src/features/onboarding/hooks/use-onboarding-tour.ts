@@ -13,6 +13,22 @@ import { useNavigate } from "react-router-dom";
 import { ShepherdJourneyContext } from "react-shepherd";
 import type { StepOptions, Tour } from "shepherd.js";
 
+/**
+ * The element carrying a tour tag that the user can actually see.
+ *
+ * Two controls can carry the same tag when a surface collapses responsively -
+ * the agents header renders either its three buttons or a single overflow
+ * trigger, never both - so a plain `querySelector` can return the hidden one
+ * and leave the spotlight attached to a `display:none` element. `offsetParent`
+ * is null for exactly that case, which is what the collapse uses.
+ */
+const visibleTourTarget = (tag: string): HTMLElement | null => {
+	const carriers = Array.from(
+		document.querySelectorAll<HTMLElement>(`[data-tour-tag="${tag}"]`),
+	);
+	return carriers.find((el) => el.offsetParent !== null) ?? carriers[0] ?? null;
+};
+
 const tourSteps: StepOptions[] = [
 	{
 		id: "welcome",
@@ -833,7 +849,7 @@ A good description helps you and others understand what the agent does and any s
 		id: "upload-agent-hub",
 		// Targets the "Upload to Hub" menu item, assuming the parent menu is open
 		attachTo: {
-			element: 'button[data-tour-tag="upload-to-hub-header-button"]',
+			element: () => visibleTourTarget("upload-to-hub-header-button"),
 			on: "bottom",
 		},
 		title: "Share your agents",
@@ -858,12 +874,7 @@ A good description helps you and others understand what the agent does and any s
 				text: "Next",
 				classes: "shepherd-button-primary",
 				action: function () {
-					const button = document.querySelector(
-						'button[data-tour-tag="upload-to-hub-header-button"]',
-					);
-					if (button) {
-						(button as HTMLButtonElement).click();
-					}
+					visibleTourTarget("upload-to-hub-header-button")?.click();
 					setTimeout(() => {
 						this.next();
 					}, 500);
@@ -929,12 +940,7 @@ A good description helps you and others understand what the agent does and any s
 						(button as HTMLButtonElement).click();
 					}
 					setTimeout(() => {
-						const uploadAgentsButton = document.querySelector(
-							'[data-tour-tag="upload-to-hub-header-button"]',
-						);
-						if (uploadAgentsButton) {
-							(uploadAgentsButton as HTMLButtonElement).click();
-						}
+						visibleTourTarget("upload-to-hub-header-button")?.click();
 					}, 500);
 					setTimeout(() => {
 						this.back();

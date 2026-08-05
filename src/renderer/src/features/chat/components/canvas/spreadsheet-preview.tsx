@@ -196,6 +196,18 @@ const BRACKETED_NEGATIVE = /^\((.+)\)$/;
  * grammar: hex, exponents and `Infinity` are not things a cell displays. */
 const BARE_DECIMAL = /^[+-]?(\d+(\.\d+)?|\.\d+)$/;
 
+/*
+ * Digits with a space BETWEEN them are a grouped identifier, not a quantity:
+ * `555 123 4567`, `+44 20 7946 0958`, `1234 5678 9012 3456`, `0800 555 111`.
+ * Stripping whitespace as decoration turns each into a bare decimal, which
+ * right-aligns a phone-number column, sets it in machine voice and sorts it
+ * numerically - and a 16-digit card number is past `MAX_SAFE_INTEGER`, so
+ * that order is not even stable. The accounting trailing space (`1,234.50 `)
+ * and a spaced currency symbol (`$ 1,234`) put the space at an edge or beside
+ * a symbol, never between two digits, so both survive this guard.
+ */
+const INTERNAL_DIGIT_SPACE = /\d\s+\d/;
+
 /**
  * The size of a quantity as it was rendered, or null where the cell holds no
  * quantity at all.
@@ -207,6 +219,7 @@ const BARE_DECIMAL = /^[+-]?(\d+(\.\d+)?|\.\d+)$/;
 const quantityValue = (value: unknown): number | null => {
 	if (typeof value === "number") return Number.isFinite(value) ? value : null;
 	if (typeof value !== "string") return null;
+	if (INTERNAL_DIGIT_SPACE.test(value)) return null;
 	const bare = value.replace(QUANTITY_DECORATION, "");
 	const bracketed = BRACKETED_NEGATIVE.exec(bare);
 	const digits = bracketed ? `-${bracketed[1]}` : bare;
@@ -419,18 +432,24 @@ const harvestColumnFormats = (
 	 * turns them into the keys `Amount` and `Amount_1`, and the rebuilt sheet
 	 * takes its headers from those keys - so keying this map on the raw header
 	 * text made both columns collide and the LAST one win. A currency column
-	 * followed by a percentage column came back as a percentage. Matching the
-	 * `_N` convention keeps this map in the same namespace as the row objects
-	 * and as the sheet that gets written.
+	 * followed by a percentage column came back as a percentage.
+	 *
+	 * Counting repeats per name is not enough, because a real header can
+	 * collide with a generated suffix: `[Amount, Amount_1, Amount]` counts to
+	 * `Amount / Amount_1 / Amount_1`, and the third column silently overwrites
+	 * the second. `sheet_to_json` resolves against every key already taken, so
+	 * this does the same - and the app manufactures that shape itself, because
+	 * saving a two-`Amount` sheet writes the headers back as `Amount` and
+	 * `Amount_1`.
 	 */
-	const seen = new Map<string, number>();
+	const taken = new Set<string>();
 	for (let col = range.s.c; col <= range.e.c; col++) {
 		const header = worksheet[XLSX.utils.encode_cell({ r: range.s.r, c: col })];
 		const name = header?.v;
 		if (typeof name !== "string") continue;
-		const repeat = seen.get(name) ?? 0;
-		seen.set(name, repeat + 1);
-		const key = repeat === 0 ? name : `${name}_${repeat}`;
+		let key = name;
+		for (let n = 1; taken.has(key); n++) key = `${name}_${n}`;
+		taken.add(key);
 		for (let row = range.s.r + 1; row <= range.e.r; row++) {
 			const cell = worksheet[XLSX.utils.encode_cell({ r: row, c: col })];
 			/*

@@ -173,19 +173,34 @@ const highlightStyle = HighlightStyle.define([
 		color: colors.base,
 	},
 	{
+		/*
+		 * A heavier weight, not just a hue: on obsidian `info` IS `ink`, so a
+		 * function name and a variable name are the same hex there and only the
+		 * weight separates them. The syntax gate excludes that pair on exactly
+		 * this basis, so the weight is what makes the exclusion honest. 600
+		 * rather than 500, because `className` already holds 500 and would
+		 * otherwise collide with it in the same palette.
+		 */
 		tag: [t.function(t.variableName), t.labelName],
 		color: colors.functionName,
+		fontWeight: "600",
 	},
 	{
 		tag: [t.color, t.constant(t.name), t.standard(t.name)],
 		color: colors.foreground,
 	},
 	{ tag: [t.definition(t.name), t.separator], color: colors.foreground },
+	/*
+	 * Numeric literals carry `danger`, which is the mapping the permutation
+	 * search chose and the contract asserts. It sat in the `className` group
+	 * for one commit, which left `colors.number` referenced nowhere and the
+	 * gate measuring a pair that never rendered.
+	 */
+	{ tag: t.number, color: colors.number },
 	{
 		tag: [
 			t.typeName,
 			t.className,
-			t.number,
 			t.changed,
 			t.annotation,
 			t.modifier,

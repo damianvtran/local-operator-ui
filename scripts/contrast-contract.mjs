@@ -219,6 +219,19 @@ const CONTROLS = [
 		ink: "onAccent",
 	},
 	{
+		/*
+		 * The pressed fill is a ground the label sits on for as long as the
+		 * pointer is down, and `button.tsx` paints `text-on-accent` on it via
+		 * `active:bg-accent-active`. Rest and hover were measured and this was
+		 * not, so the one state where the fill is darkest went unchecked.
+		 */
+		name: "primary button (pressed)",
+		on: GROUNDS,
+		fill: "accentActive",
+		border: "accentActive",
+		ink: "onAccent",
+	},
+	{
 		name: "outline control",
 		on: GROUNDS,
 		fill: null,
@@ -417,7 +430,14 @@ const SEPARABLE = ["success", "warning", "danger", "info"];
  * comment beside it reliably take different names rather than scraping the
  * side-by-side threshold.
  */
-const SYNTAX_HUE_ROLES = ["success", "warning", "danger", "info"];
+/*
+ * `ink` is in this list because the editor paints identifiers in it - names,
+ * properties, the base text - directly beside comments in `inkDim`. It is the
+ * most common adjacency in any file and it was the one pair the gate did not
+ * measure while it did measure `danger` vs `inkDim` from a mapping that had
+ * drifted out of the theme.
+ */
+const SYNTAX_HUE_ROLES = ["success", "warning", "danger", "info", "ink"];
 const SYNTAX_COMMENT_FLOOR = 8;
 const SEPARATION_FLOOR = 15;
 
@@ -463,9 +483,15 @@ for (const { id, palette: p } of palettes) {
 		}
 	}
 
-	/* Semantic and accent colours used as text. */
+	/* Semantic and accent colours used as text.
+	 *
+	 * `sunken` is in this list because it is the editor's own ground: every
+	 * syntax colour is painted on it, and the code-mirror theme rejected
+	 * `inkDisabled` for comments on exactly the grounds that it failed 4.5:1
+	 * there. Asserting only canvas and surface left the one ground where the
+	 * argument was made unmeasured. */
 	for (const role of AS_TEXT) {
-		for (const g of ["canvas", "surface"]) {
+		for (const g of ["canvas", "surface", "sunken"]) {
 			assertPair(id, p, role, g, FLOOR.text, "colour as text");
 		}
 	}
@@ -534,9 +560,18 @@ for (const { id, palette: p } of palettes) {
 	/* Adjacent grounds must be a perceptible step, not merely a passing ratio.
 	   D21 established that 1.03:1 is a gate floor, not a human threshold -
 	   sage's canvas/surface at 1.9 dE00 renders a visible card boundary and
-	   localOperatorLight at 1.5 did not. `canvas`/`sunken` is deliberately not
-	   asserted: they are never adjacent on screen, so a user never compares
-	   them directly. */
+	   localOperatorLight at 1.5 did not.
+
+	   `canvas`/`sunken` is not in this list, and the reason it used to give -
+	   "they are never adjacent on screen" - was false: `output-block.tsx` and
+	   `log-block.tsx` render `bg-sunken` inside a trace that sits on `canvas`.
+	   The real reason is that the pair cannot be separated by luminance in the
+	   near-black palettes at all: obsidian's canvas is #09090B and its sunken
+	   #030307, ΔE00 1.23, and there is no darker value left to move to that is
+	   not black. So those two blocks now carry `border-hairline`, the same
+	   treatment their sibling `error-block.tsx` always had, and the hairline is
+	   asserted against every ground by the STRUCTURAL loop above. The
+	   separation is real and gated; it is an edge rather than a step. */
 	for (const [a, b] of [
 		["canvas", "surface"],
 		["surface", "elevated"],

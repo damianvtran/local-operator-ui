@@ -43,7 +43,7 @@ export const dracula: ThemeDefinition = {
 
 		accent: "#BD93F9",
 		accentHover: "#D1AEFF",
-		accentActive: "#9C71E0",
+		accentActive: "#A884DE",
 		accentWash: "#3A374D",
 		onAccent: "#282A36",
 

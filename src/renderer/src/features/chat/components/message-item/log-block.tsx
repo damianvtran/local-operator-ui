@@ -21,7 +21,7 @@ export const LogBlock: FC<LogBlockProps> = ({ log }) => {
 	return (
 		<div className="mb-4 w-full">
 			<span className="mb-1 block text-ink-dim text-meta">Logs</span>
-			<pre className="flex max-h-[200px] w-full flex-col-reverse overflow-auto whitespace-pre-wrap rounded-sm bg-sunken p-3 font-mono text-ink-muted text-mono-sm">
+			<pre className="flex max-h-[200px] w-full flex-col-reverse overflow-auto whitespace-pre-wrap rounded-sm border border-hairline bg-sunken p-3 font-mono text-ink-muted text-mono-sm">
 				{log}
 			</pre>
 		</div>

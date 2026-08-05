@@ -19,6 +19,7 @@
  */
 
 import type { Meta, StoryObj } from "@storybook/react";
+import { Paperclip } from "lucide-react";
 import { type FC, type ReactNode, useEffect, useMemo } from "react";
 import "../../../../styles/index.css";
 import type { EditDiff } from "@shared/api/local-operator/types";
@@ -295,7 +296,13 @@ const ChatColumnMock = () => (
 				Ask a follow-up about the write-up
 			</p>
 			<div className="flex items-center justify-between">
-				<span className="text-meta text-ink-dim">Paperclip · Model</span>
+				{/* The glyph, not its name: the product renders a 16px paperclip
+				    here, and printing the word put a piece of source vocabulary
+				    into 72 committed frames. */}
+				<span className="flex items-center gap-1.5 text-meta text-ink-dim">
+					<Paperclip size={16} aria-hidden="true" />
+					Model
+				</span>
 				<span className="rounded-sm bg-accent px-3 py-1 text-meta text-on-accent">
 					Send
 				</span>
