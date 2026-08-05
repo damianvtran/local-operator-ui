@@ -285,7 +285,7 @@ const CONTROLS = [
 /** Roles that must clear the structural 3:1 floor on all four grounds. */
 const STRUCTURAL = ["borderControl"];
 
-/** Roles that must clear the text floor as text on canvas and surface. */
+/** Roles that must clear the text floor as text on canvas, surface and sunken. */
 const AS_TEXT = ["accent", "success", "warning", "danger", "info"];
 
 /**
@@ -568,8 +568,10 @@ for (const { id, palette: p } of palettes) {
 	   The real reason is that the pair cannot be separated by luminance in the
 	   near-black palettes at all: obsidian's canvas is #09090B and its sunken
 	   #030307, ΔE00 1.23, and there is no darker value left to move to that is
-	   not black. So those two blocks now carry `border-hairline`, the same
-	   treatment their sibling `error-block.tsx` always had.
+	   not black. So those two blocks now carry `border-hairline`. Their sibling
+	   `error-block.tsx` has always been bounded too, though by a louder edge -
+	   `border-danger-border` on `bg-danger-wash` - because it is reporting a
+	   failure; the hairline is the neutral form of the same idea.
 
 	   That edge is asserted here, against both grounds it separates. It is NOT
 	   in `STRUCTURAL`, and an earlier version of this comment claimed it was:

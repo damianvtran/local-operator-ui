@@ -21,6 +21,22 @@ const AGENTS = [
 const hoursFromNow = (hours: number) =>
 	new Date(Date.now() + hours * 3600_000).toISOString();
 
+/**
+ * A local wall-clock time on a chosen day, as UTC.
+ *
+ * `hoursFromNow` cannot express "crosses midnight": whether it does depends on
+ * what time the capture runs, so the overnight fixture below read as a
+ * same-day window in every frame committed so far. This pins the hour instead
+ * and lets the date float, so the row demonstrates the case it is named for
+ * whenever anyone looks at it.
+ */
+const atLocalHour = (dayOffset: number, hour: number, minute = 0) => {
+	const d = new Date();
+	d.setDate(d.getDate() + dayOffset);
+	d.setHours(hour, minute, 0, 0);
+	return d.toISOString();
+};
+
 const SCHEDULES = [
 	{
 		id: "9b2f4c11-63ea-4c7f-9d18-4f60a2c7d001",
@@ -90,8 +106,10 @@ const SCHEDULES = [
 		unit: "days",
 		is_active: true,
 		one_time: true,
-		start_time_utc: hoursFromNow(20),
-		end_time_utc: hoursFromNow(30),
+		/* 11:20 PM tonight to 6:40 AM tomorrow: a window that always crosses
+		   midnight, whatever hour the capture runs at. */
+		start_time_utc: atLocalHour(0, 23, 20),
+		end_time_utc: atLocalHour(1, 6, 40),
 		created_at: hoursFromNow(-10),
 		updated_at: hoursFromNow(-10),
 	},
