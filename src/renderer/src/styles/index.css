@@ -226,6 +226,24 @@
 }
 
 /*
+ * Quantity column headers, right-aligned without reversing.
+ *
+ * ag-grid's own `ag-right-aligned-header` right-aligns by setting
+ * `flex-direction: row-reverse` on the header label, which parks the sort and
+ * filter icons at the far LEFT of the header cell - beside the neighbouring
+ * column's label, where they read as belonging to it. Right-aligning with
+ * `justify-content: flex-end` keeps the children in their normal order, so
+ * the icons sit with their own label and the whole group moves right.
+ *
+ * Unlayered for the same reason as the focus ring: ag-grid's stylesheet is
+ * unlayered, and a layered rule loses to it regardless of specificity.
+ */
+.lo-quantity-header .ag-header-cell-label {
+	flex-direction: row;
+	justify-content: flex-end;
+}
+
+/*
  * The focus ring, authoritative and deliberately UNLAYERED.
  *
  * Three constraints stack here, and getting any one wrong silently removes the
