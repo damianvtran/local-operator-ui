@@ -206,14 +206,26 @@ const BARE_DECIMAL = /^[+-]?(\d+(\.\d+)?|\.\d+)$/;
  * and a spaced currency symbol (`$ 1,234`) put the space at an edge or beside
  * a symbol, never between two digits, so both survive this guard.
  *
- * This also rejects a space-grouped thousands format - `1 234,50`, which is
- * how much of Europe writes it, and which `raw: false` really does hand us as
- * display text. That is deliberate, not an oversight. `coerceEditedCell` reads
- * plain decimal and nothing else, so a cell like that is already text the
- * moment anyone edits it; accepting it here would give the gate a grammar the
- * editor does not share, which is the two-readers defect this file has now
- * fixed twice. Locale-aware numbers are a product decision about the whole
- * spreadsheet, not a regex in the alignment gate.
+ * The cost is a space-grouped thousands format. `# ##0.00` is a real, SheetJS-
+ * supported format and `raw: false` hands us `1 234.50` as display text, so a
+ * sheet written that way loses right-alignment, machine voice and size
+ * ordering in its amount column.
+ *
+ * The reason to take that trade is ambiguity, and only ambiguity: `1 234.50`
+ * and `555 123 4567` are the same shape, and nothing in a single cell tells
+ * them apart. Getting a phone column wrong is the worse error of the two,
+ * because it sorts as a number and 16 digits are past `MAX_SAFE_INTEGER`.
+ *
+ * Two things this is NOT justified by, though both are true. That
+ * `coerceEditedCell` would keep the cell as text proves nothing: it keeps
+ * `$2,310.50`, `12.5%` and `(1,234.50)` as text too, and all three are
+ * quantities here. And the guard is not free in a way the column hides -
+ * `readColumn` takes a majority over 50 rows, so a `# ##0.00` column of
+ * amounts under 1,000 still reads as a quantity (` 999.00` has a leading
+ * space, not an internal one) and flips to prose once the figures grow past
+ * the grouping. Alignment therefore depends on magnitude, not on the column.
+ * Fixing that properly means knowing the sheet's locale, which is a product
+ * decision about the whole spreadsheet rather than a regex in this gate.
  */
 const INTERNAL_DIGIT_SPACE = /\d\s+\d/;
 
