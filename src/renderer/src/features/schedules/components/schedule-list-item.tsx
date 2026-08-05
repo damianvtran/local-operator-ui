@@ -204,7 +204,7 @@ export const ScheduleListItem: FC<ScheduleListItemProps> = ({
 			<div className={cn("flex shrink-0 items-center gap-1")}>
 				{/*
 				 * The switch is always drawn — it carries the schedule's state, so
-				 * hiding it until hover would hide the state. SquarePen and delete are
+				 * hiding it until hover would hide the state. Edit and delete are
 				 * actions, and they reveal like every other row action in the app.
 				 */}
 				<Tooltip
@@ -229,12 +229,12 @@ export const ScheduleListItem: FC<ScheduleListItemProps> = ({
 						"group-focus-within:pointer-events-auto group-focus-within:opacity-100",
 					)}
 				>
-					<Tooltip content="SquarePen schedule">
+					<Tooltip content="Edit schedule">
 						<Button
 							variant="ghost"
 							size="icon-sm"
 							onClick={() => onEdit(schedule)}
-							aria-label="SquarePen schedule"
+							aria-label="Edit schedule"
 						>
 							<SquarePen />
 						</Button>

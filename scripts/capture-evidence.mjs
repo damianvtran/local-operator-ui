@@ -452,6 +452,11 @@ const main = async () => {
 	 * is the identity of the source that produced these pixels: if it matches
 	 * the head under review, the frames are current no matter how many commits
 	 * separate them.
+	 *
+	 * With one precondition, which is the field on the next line. `HEAD:src` is
+	 * the COMMITTED tree, so if the capture ran over dirty or staged source it
+	 * names something these frames did not come from. Read `dirtyWorkingTree`
+	 * first; a tree hash from a dirty run is a hash of the wrong thing.
 	 */
 	const treeHash = (path) =>
 		execFileSync("git", ["rev-parse", `HEAD:${path}`], { cwd: ROOT })

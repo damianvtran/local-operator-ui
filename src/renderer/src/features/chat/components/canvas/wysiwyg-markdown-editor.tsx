@@ -1792,11 +1792,11 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 							</DropdownMenuItem>
 							<DropdownMenuItem onSelect={() => executeCommand("indent")}>
 								<IndentIncrease aria-hidden="true" />
-								IndentIncrease
+								Indent
 							</DropdownMenuItem>
 							<DropdownMenuItem onSelect={() => executeCommand("outdent")}>
 								<IndentDecrease aria-hidden="true" />
-								IndentDecrease
+								Outdent
 							</DropdownMenuItem>
 							<DropdownMenuSeparator />
 							<DropdownMenuItem onSelect={insertImage}>
