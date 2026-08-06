@@ -36,7 +36,7 @@ const EVIDENCE = join(ROOT, "docs", "evidence");
  * How far a frame's dominant colour may sit from the nearest ground of its own
  * theme. See the header for where the number comes from.
  */
-const GROUND_FLOOR = 25;
+const GROUND_CEILING = 25;
 
 /**
  * How much of a frame one colour may cover before it stops being a picture.
@@ -49,13 +49,29 @@ const GROUND_FLOOR = 25;
  * in 102 of the 408 frames, and the incident that started this was caught only
  * because the default theme happens to be dark.
  *
- * 98.5% is measured, not chosen. Across the 408 frames the most uniform
+ * 98.5% is measured, not chosen. It is a ceiling: one colour may cover up
+ * to this much and no more. Across the 408 frames the most uniform
  * legitimate ones are the security-notice states at 96.39-96.99% - a short
  * callout on a tall ground - and the median frame is 56%. The empty frame was
  * 99.99% and a white spinner page is 99.96%. The floor sits in the 3-point gap
- * between the two populations, nearer the legitimate side.
+ * between the two populations. Exactly: the highest legitimate frame is
+ * 96.99% and the lowest failure is 99.96%, so the ceiling sits 1.51 above
+ * the legitimate maximum and 1.46 below the first real failure - close to
+ * the middle, with the wider margin on the side that must not fail.
  */
 const UNIFORMITY_CEILING = 0.985;
+
+/**
+ * A coverage fraction as a percentage that never rounds a failure into looking
+ * like a pass: two decimals normally, more when the value is close enough to
+ * the ceiling that two would print the ceiling back.
+ */
+const pct = (fraction) => {
+	const value = fraction * 100;
+	const limit = UNIFORMITY_CEILING * 100;
+	const places = Math.abs(value - limit) < 0.005 ? 4 : 2;
+	return `${value.toFixed(places)}%`;
+};
 
 const GROUNDS = ["canvas", "surface", "elevated", "sunken"];
 
@@ -127,14 +143,14 @@ export const assertFramePaints = (file, theme) => {
 	const mode = modalColour(file);
 	if (!mode) throw new Error(`${file}: no pixels`);
 	const got = groundDistance(mode.hex, palette);
-	if (got > GROUND_FLOOR) {
+	if (got > GROUND_CEILING) {
 		throw new Error(
-			`${file}: dominant colour ${mode.hex} is ΔE00 ${r2(got)} from the nearest \`${theme}\` ground (max ${GROUND_FLOOR}) — the story did not paint`,
+			`${file}: dominant colour ${mode.hex} is ΔE00 ${r2(got)} from the nearest \`${theme}\` ground (max ${GROUND_CEILING}) — the story did not paint`,
 		);
 	}
 	if (mode.coverage > UNIFORMITY_CEILING) {
 		throw new Error(
-			`${file}: ${(mode.coverage * 100).toFixed(2)}% of the frame is one colour (max ${UNIFORMITY_CEILING * 100}%) — the story painted its ground and nothing else`,
+			`${file}: ${pct(mode.coverage)} of the frame is one colour (max ${UNIFORMITY_CEILING * 100}%) — the story painted its ground and nothing else`,
 		);
 	}
 };
@@ -178,14 +194,14 @@ const main = () => {
 		const got = groundDistance(mode.hex, palette);
 		checked++;
 		if (got > worst.got) worst = { got, file: relative(ROOT, file) };
-		if (got > GROUND_FLOOR) {
+		if (got > GROUND_CEILING) {
 			failures.push(
-				`${relative(ROOT, file)}: dominant colour ${mode.hex} is ΔE00 ${r2(got)} from the nearest \`${theme}\` ground (max ${GROUND_FLOOR}) — this frame is not a picture of the app`,
+				`${relative(ROOT, file)}: dominant colour ${mode.hex} is ΔE00 ${r2(got)} from the nearest \`${theme}\` ground (max ${GROUND_CEILING}) — this frame is not a picture of the app`,
 			);
 		}
 		if (mode.coverage > UNIFORMITY_CEILING) {
 			failures.push(
-				`${relative(ROOT, file)}: ${(mode.coverage * 100).toFixed(2)}% of the frame is one colour (max ${UNIFORMITY_CEILING * 100}%) — this frame is a ground with nothing on it`,
+				`${relative(ROOT, file)}: ${pct(mode.coverage)} of the frame is one colour (max ${UNIFORMITY_CEILING * 100}%) — this frame is a ground with nothing on it`,
 			);
 		}
 	}

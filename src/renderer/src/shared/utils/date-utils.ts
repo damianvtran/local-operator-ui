@@ -105,3 +105,38 @@ export const formatCalendarDate = (dateTimeString?: string | Date): string => {
 		return "";
 	}
 };
+
+/**
+ * The same voice as `formatCalendarDate`, for metadata that is a moment.
+ *
+ * "Last modified" sits directly beside "Created" in the same grid, and giving
+ * one a calendar date while the other kept `toLocaleString()` put "August 5,
+ * 2026" next to "8/5/2026, 10:40:00 AM" - two shapes for two fields a reader
+ * compares at a glance, and the second is the machine voice with seconds that
+ * the calendar formatter exists to replace. A modification is a moment rather
+ * than a day, so this keeps the time and drops the seconds, which are never
+ * what anyone is reading a "last modified" field for.
+ */
+export const formatCalendarDateTime = (
+	dateTimeString?: string | Date,
+): string => {
+	if (!dateTimeString) return "";
+
+	try {
+		const date =
+			dateTimeString instanceof Date
+				? dateTimeString
+				: new Date(dateTimeString);
+		if (Number.isNaN(date.getTime())) return "";
+		return date.toLocaleString(navigator.language, {
+			year: "numeric",
+			month: "long",
+			day: "numeric",
+			hour: "numeric",
+			minute: "2-digit",
+		});
+	} catch (error) {
+		console.error("Error formatting calendar date-time:", error);
+		return "";
+	}
+};

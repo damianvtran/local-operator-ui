@@ -448,16 +448,23 @@ const main = async () => {
 						   most worth photographing. Counting the root plus every
 						   body child that is not Storybook's own furniture covers
 						   both. */
-						const root = document.getElementById("storybook-root");
+						const root =
+							document.getElementById("storybook-root") ??
+							document.getElementById("storybook-docs");
 						const CHROME = [
 							"sb-preparing-story",
 							"sb-preparing-docs",
 							"sb-nopreview",
 							"sb-errordisplay",
 						];
+						/* Scripts and styles are body children too. Counting them
+						   made the threshold three cheaper than it reads, which is
+						   the kind of margin that erodes without anyone noticing. */
+						const INERT = ["SCRIPT", "STYLE", "LINK", "TEMPLATE", "NOSCRIPT"];
 						let n = root ? root.querySelectorAll("*").length : 0;
 						for (const child of document.body.children) {
 							if (child === root) continue;
+							if (INERT.includes(child.tagName)) continue;
 							if (CHROME.some((c) => child.classList.contains(c))) continue;
 							n += child.querySelectorAll("*").length + 1;
 						}
