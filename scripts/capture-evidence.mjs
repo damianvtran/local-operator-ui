@@ -19,7 +19,13 @@
  */
 
 import { execFileSync, spawn } from "node:child_process";
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+	mkdirSync,
+	readFileSync,
+	readdirSync,
+	rmSync,
+	writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -190,6 +196,35 @@ const teardown = () => {
 };
 
 /**
+ * Remove Chrome profiles left by runs that never reached `teardown`.
+ *
+ * `teardown` covers a clean exit and the signals we trap, but not SIGKILL -
+ * and this script is routinely run under `timeout`, which sends exactly that.
+ * Each abandoned profile is about 180MB in the system temp directory, nothing
+ * ever collects them, and a capture is slow enough that the runs mount up:
+ * four of them had quietly taken 542MB by the time a machine ran out of disk
+ * mid-capture and killed the process, leaving a fifth.
+ *
+ * Own directories are skipped by pid, so concurrent runs do not delete each
+ * other's profile out from under them.
+ */
+const sweepStaleProfiles = () => {
+	const mine = `lo-evidence-${process.pid}`;
+	for (const name of readdirSync(tmpdir())) {
+		if (!name.startsWith("lo-evidence-") || name === mine) continue;
+		const pid = Number(name.slice("lo-evidence-".length));
+		try {
+			// Signal 0 tests for the process without touching it.
+			process.kill(pid, 0);
+			continue; // still running, so the profile is in use
+		} catch {
+			// no such process, so the profile is abandoned
+		}
+		rmSync(join(tmpdir(), name), { recursive: true, force: true });
+	}
+};
+
+/**
  * Refuse to capture while a Local Operator backend is listening.
  *
  * Several surfaces call the backend on load and photograph whatever comes
@@ -234,6 +269,7 @@ const assertBackendDown = async () => {
 };
 
 const main = async () => {
+	sweepStaleProfiles();
 	await assertBackendDown();
 
 	dataDir = join(tmpdir(), `lo-evidence-${process.pid}`);
