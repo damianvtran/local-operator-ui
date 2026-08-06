@@ -429,14 +429,27 @@ const OpenedReasoning = () => {
 	 *
 	 * Waiting for the preference to arrive makes the story independent of
 	 * effect ordering and of whatever the last story left behind.
+	 *
+	 * `data-capture-pending` then holds the shutter until the panels are
+	 * actually open. Ordering inside the story being right is not the same as
+	 * the screenshot being taken afterwards: the rig's readiness poll asks
+	 * whether the story rendered, and a conversation with every panel shut
+	 * answers yes. Without the handshake this frame is correct only by the
+	 * margin between a stub resolving in a microtask and the rig's fixed
+	 * sleep, which is not a guarantee - and a frame of the wrong state is
+	 * indistinguishable from a frame of the right one in a directory listing.
 	 */
 	useEffect(() => {
-		if (!showAgentReasoning) return;
+		if (!showAgentReasoning) {
+			document.documentElement.dataset.capturePending = "1";
+			return;
+		}
 		for (const button of document.querySelectorAll<HTMLButtonElement>(
 			'button[aria-expanded="false"]',
 		)) {
 			button.click();
 		}
+		document.documentElement.removeAttribute("data-capture-pending");
 	}, [showAgentReasoning]);
 
 	return <ConversationList />;

@@ -10,6 +10,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { useEffect } from "react";
 import "../../../styles/index.css";
 import { DateTimePicker } from "@shared/components/common/date-time-picker";
+import { apiConfig } from "@shared/config/api-config";
 import { SchedulesPage } from "./schedules-page";
 
 const AGENTS = [
@@ -149,6 +150,13 @@ const json = (body: unknown) =>
 		headers: { "Content-Type": "application/json" },
 	});
 
+/*
+ * The origin the page actually calls, read from the same config the app reads
+ * rather than written out here - the copy in `shell.stories.tsx` had drifted
+ * from the schema default exactly that way.
+ */
+const BACKEND_ORIGIN = new URL(apiConfig.baseUrl).origin;
+
 const installFetchStub = () => {
 	const original = window.fetch;
 	window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -181,6 +189,20 @@ const installFetchStub = () => {
 					per_page: 50,
 				},
 			});
+		}
+		/*
+		 * Unrouted backend paths fail here rather than reaching the network,
+		 * for the reason set out in `shell.stories.tsx`: falling through is
+		 * invisible while the port is dead and photographs a real server's
+		 * replies the moment it is not. This surface was measured leaking four
+		 * requests - `/health` and `/v1/config` - against a live backend.
+		 *
+		 * It rejects rather than returning `Response.error()`, because that
+		 * resolves with status 0 and renders as a third state belonging to
+		 * neither a live server nor an absent one.
+		 */
+		if (url.startsWith(BACKEND_ORIGIN)) {
+			throw new TypeError("Load failed");
 		}
 		return original(input, init);
 	}) as typeof window.fetch;
