@@ -368,16 +368,19 @@ const SettingsAtAppearance: FC = () => {
 	 * supplement. An observer fires on insertion instead, which is an event
 	 * rather than a guess about how long a stub takes.
 	 *
-	 * Anchored to the section's end rather than its centre. The theme grid
-	 * makes Appearance about 4,400px tall, so centring it put the heading far
-	 * above the viewport and the toggle - the control this frame exists for -
-	 * about 2,600px below it.
+	 * Anchored on the switch rather than on the section. The theme grid makes
+	 * Appearance about 4,400px tall, so centring the section put the heading
+	 * 1,858px above the viewport and the toggle 2,613px below it, and its end
+	 * put the row hard against the bottom edge with its description clipped.
+	 * Centring the control leaves the grid above it and the section boundary
+	 * below, which is the row in its context rather than the row in a corner.
 	 */
 	useLayoutEffect(() => {
 		const scroll = () => {
 			const section = document.querySelector(APPEARANCE);
-			if (!section) return false;
-			section.scrollIntoView({ block: "end" });
+			const control = section?.querySelector('button[role="switch"]');
+			if (!control) return false;
+			control.scrollIntoView({ block: "center" });
 			return true;
 		};
 		if (scroll()) return;
