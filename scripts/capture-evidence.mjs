@@ -208,8 +208,23 @@ const assertBackendDown = async () => {
 	const url = `${BACKEND_ORIGIN}/health`;
 	try {
 		await fetch(url, { signal: AbortSignal.timeout(1500) });
-	} catch {
-		return; // nothing listening, which is the state we need
+	} catch (error) {
+		/*
+		 * Refused is the state we need, and it is unambiguous: nothing is
+		 * listening, so the connection fails immediately.
+		 *
+		 * A timeout is not the same answer. It means either a server too busy
+		 * to reply inside the window or a dropped packet, and this cannot tell
+		 * which - so treating it as "absent" would let the one case the guard
+		 * exists to catch walk straight through it. Refuse instead, and let
+		 * whoever hit it say which it was.
+		 */
+		if (error?.name === "TimeoutError" || error?.name === "AbortError") {
+			throw new Error(
+				`Timed out checking for a backend on ${BACKEND_ORIGIN}. A slow server and an absent one look the same from here, and a capture taken against a live one silently rewrites frames. Confirm the port is free and re-run.`,
+			);
+		}
+		return;
 	}
 	throw new Error(
 		`A Local Operator backend is answering on ${BACKEND_ORIGIN}. Captured frames would show its replies instead of the offline state every committed frame depicts. Stop it and re-run.`,
