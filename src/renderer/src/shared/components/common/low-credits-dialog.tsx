@@ -76,8 +76,12 @@ export const LowCreditsDialog: FC<LowCreditsDialogProps> = ({
 			 * Emphasis everywhere is emphasis nowhere, and here it was competing
 			 * with the only control that does anything.
 			 */}
+			{/* No second logo. The same asset renders at `size-7` in the title
+			    40px above, so the hexagon appeared twice in one 574px panel
+			    under two different alt texts - one graphic announced to a screen
+			    reader as two. Its 120px also pushed the closing line under the
+			    footer at 800x600, which is exactly this app's minimum window. */}
 			<div className="flex flex-col items-center gap-4 py-2 text-center">
-				<img src={RadientIcon} alt="Radient logo" className="size-30" />
 				<p className="text-body-sm text-ink-muted">
 					Unlock the full power of Local Operator with{" "}
 					<span className="font-bold text-accent">Radient Pass</span>.

@@ -137,13 +137,20 @@ export const InlineEdit: FC<InlineEditProps> = ({
 	// Handle escape key to close inline edit
 	useEffect(() => {
 		const handleKeyDown = (event: KeyboardEvent) => {
-			/* A dialog on top of this one has first claim on Escape. Radix's
-			   dismissable layer calls `preventDefault` but not
+			/* Whatever is layered on top of this has first claim on Escape.
+			   Radix's dismissable layer calls `preventDefault` but not
 			   `stopPropagation` - MUI's Modal used to do both - so the same
 			   keystroke that closes a dialog opened over the canvas also
 			   arrives here, and with a review pending it ran `onRejectAll` and
 			   discarded the agent's diffs on the way out. Two keystrokes from
-			   an ordinary state: Cmd+N over an open inline edit, then Escape. */
+			   an ordinary state: Cmd+N over an open inline edit, then Escape.
+
+			   This yields to ANY dismissable layer, not only dialogs - a Radix
+			   tooltip is one, so a mouse resting on one of this popover's own
+			   buttons costs an extra Escape press. That is the correct trade
+			   and it is how every other Radix surface in the app behaves:
+			   dismissal is layered, and here it also makes a destructive
+			   reject-all harder to fire by accident. */
 			if (event.defaultPrevented) return;
 			if (event.key === "Escape") {
 				event.preventDefault();

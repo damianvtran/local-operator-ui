@@ -365,7 +365,25 @@ export const UpdateNotification = ({
 						// A div rather than a paragraph: GitHub's release notes arrive as
 						// HTML and routinely contain block elements, which a <p> cannot
 						// legally hold.
-						<div className="mt-2 text-body text-ink-muted">
+						//
+						// The prose utilities are not decoration. Preflight resets
+						// h1-h6 to inherited size and weight and strips list markers,
+						// indent and margins, and this is the one place in the app
+						// that injects third-party HTML - so without them a release
+						// note, which is headings and bullets essentially always,
+						// renders as a wall of identical lines. The markdown editor
+						// carries the same set for the same reason.
+						<div
+							className={cn(
+								"mt-2 text-body text-ink-muted",
+								"[&_:is(h1,h2,h3,h4,h5,h6)]:mt-3 [&_:is(h1,h2,h3,h4,h5,h6)]:mb-1 [&_:is(h1,h2,h3,h4,h5,h6)]:font-semibold [&_:is(h1,h2,h3,h4,h5,h6)]:text-ink",
+								"[&_h1]:text-heading [&_h2]:text-heading [&_h3]:text-body [&_h4]:text-body [&_h5]:text-body-sm [&_h6]:text-body-sm",
+								"[&_p]:my-1.5 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0",
+								"[&_:is(ul,ol)]:my-1.5 [&_:is(ul,ol)]:pl-5 [&_ul_li]:list-disc [&_ol_li]:list-decimal [&_li]:my-0.5",
+								"[&_a]:text-accent [&_a]:underline-offset-4 hover:[&_a]:underline",
+								"[&_code]:rounded-xs [&_code]:bg-sunken [&_code]:px-1 [&_code]:font-mono [&_code]:text-mono-sm",
+							)}
+						>
 							Release notes:{" "}
 							{typeof updateInfo.releaseNotes === "string" ? (
 								<>
@@ -409,14 +427,10 @@ export const UpdateNotification = ({
 					<UpdateActions>
 						{!downloading && (
 							<>
-								<Button
-									variant="primary"
-									size="sm"
-									onClick={downloadUpdate}
-									disabled={downloading}
-								>
-									Download update
-								</Button>
+								{/* Dismiss first, commit last - the order every other
+								    footer in the release uses, and the one a user's
+								    hand learns. This component put the committing
+								    button first in all three of its footers. */}
 								<Button
 									variant="outline"
 									size="sm"
@@ -424,6 +438,14 @@ export const UpdateNotification = ({
 									disabled={downloading}
 								>
 									Update later
+								</Button>
+								<Button
+									variant="primary"
+									size="sm"
+									onClick={downloadUpdate}
+									disabled={downloading}
+								>
+									Download update
 								</Button>
 							</>
 						)}
@@ -459,11 +481,11 @@ export const UpdateNotification = ({
 					</p>
 
 					<UpdateActions>
-						<Button variant="primary" size="sm" onClick={installUpdate}>
-							Install now
-						</Button>
 						<Button variant="outline" size="sm" onClick={handleDeferUpdate}>
 							Update later
+						</Button>
+						<Button variant="primary" size="sm" onClick={installUpdate}>
+							Install now
 						</Button>
 					</UpdateActions>
 				</UpdateContainer>
@@ -500,20 +522,20 @@ export const UpdateNotification = ({
 					{backendUpdateInfo.canManageUpdate ? (
 						<UpdateActions>
 							<Button
-								variant="primary"
-								size="sm"
-								onClick={updateBackend}
-								disabled={checking}
-							>
-								{checking ? "Updating..." : "Update server"}
-							</Button>
-							<Button
 								variant="outline"
 								size="sm"
 								onClick={handleDeferBackendUpdate}
 								disabled={checking}
 							>
 								Update later
+							</Button>
+							<Button
+								variant="primary"
+								size="sm"
+								onClick={updateBackend}
+								disabled={checking}
+							>
+								{checking ? "Updating..." : "Update server"}
 							</Button>
 						</UpdateActions>
 					) : (

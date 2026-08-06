@@ -1,5 +1,6 @@
 import { cn } from "@shared/lib/utils";
 import {
+	BookOpen,
 	Briefcase,
 	ChartNoAxesColumn,
 	ClipboardList,
@@ -31,7 +32,10 @@ export const CATEGORY_ICON_MAP: Record<
 		label: "Investment",
 	},
 	accounting: {
-		icon: <Briefcase size={14} aria-hidden="true" />,
+		/* Not `Briefcase`: `investment` uses it and the two sit next to each
+		   other in the rail, so a 16-item filter opened with two adjacent rows
+		   drawing the same silhouette. A ledger is what this category is. */
+		icon: <BookOpen size={14} aria-hidden="true" />,
 		label: "Accounting",
 	},
 	healthcare: {

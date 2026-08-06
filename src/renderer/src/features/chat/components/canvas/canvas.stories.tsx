@@ -296,7 +296,7 @@ const ChatColumnMock = () => (
 		 * affordances - without importing the live component, which drags in
 		 * the backend client the stories deliberately stub.
 		 */}
-		<div className="mt-auto flex flex-col gap-2 rounded-lg border border-control bg-surface p-3">
+		<div className="mt-auto flex flex-col gap-3 rounded-frame border border-control bg-surface p-4">
 			<p className="text-body-sm text-ink-dim">
 				Ask a follow-up about the write-up
 			</p>
@@ -315,11 +315,18 @@ const ChatColumnMock = () => (
 					<span className="truncate">~/work/reports</span>
 				</span>
 				<span className="flex items-center gap-1">
-					<span className="flex size-7 items-center justify-center rounded-md text-ink-dim">
+					{/* `size-8 rounded-sm`, the product's `size="icon"` button, and
+					    the send control drawn disabled: the depicted column is
+					    560px, above the 550px dense-branch switch, and the input
+					    is a placeholder - which is exactly when the real send
+					    button is disabled and spends no accent at all. Drawn as
+					    an accent square here it advertised a state the product
+					    does not render. */}
+					<span className="flex size-8 items-center justify-center rounded-sm text-ink-dim">
 						<Mic size={16} aria-hidden="true" />
 					</span>
-					<span className="flex size-7 items-center justify-center rounded-md bg-accent text-on-accent">
-						<Send size={14} aria-hidden="true" />
+					<span className="flex size-8 items-center justify-center rounded-sm bg-accent/50 text-on-accent opacity-50">
+						<Send size={16} aria-hidden="true" />
 					</span>
 				</span>
 			</div>
