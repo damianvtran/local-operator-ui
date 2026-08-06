@@ -431,14 +431,10 @@ export const UpdateAvailable: Story = {
 							</div>
 						)}
 						<UpdateActions>
-							<Button
-								variant="primary"
-								size="sm"
-								onClick={() => {}}
-								disabled={false}
-							>
-								Download update
-							</Button>
+							{/* Dismiss first, commit last - the component's order. This
+							    story hand-rolls the footer, so it has to be kept in
+							    step by hand; drawn the other way it photographed a
+							    layout the app no longer renders. */}
 							<Button
 								variant="outline"
 								size="sm"
@@ -446,6 +442,14 @@ export const UpdateAvailable: Story = {
 								disabled={false}
 							>
 								Update later
+							</Button>
+							<Button
+								variant="primary"
+								size="sm"
+								onClick={() => {}}
+								disabled={false}
+							>
+								Download update
 							</Button>
 						</UpdateActions>
 					</UpdateContainer>
