@@ -63,7 +63,7 @@ export const ScrollToBottomButton: FC<ScrollToBottomButtonProps> = ({
 				onClick={handleClick}
 				tabIndex={visible ? 0 : -1}
 			>
-				<ArrowDown size={14} aria-hidden="true" />
+				<ArrowDown aria-hidden="true" />
 			</Button>
 		</div>
 	);

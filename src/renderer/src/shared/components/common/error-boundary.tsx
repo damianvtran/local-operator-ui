@@ -51,7 +51,7 @@ const ErrorFallback = ({ error, resetErrorBoundary }: FallbackProps) => (
 		</div>
 
 		<Button variant="primary" onClick={resetErrorBoundary}>
-			<RotateCw size={16} aria-hidden="true" />
+			<RotateCw aria-hidden="true" />
 			Try again
 		</Button>
 

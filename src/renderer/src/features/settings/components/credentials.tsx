@@ -149,7 +149,7 @@ export const Credentials: FC = () => {
 						size="sm"
 						onClick={() => handleAddCredential(null)}
 					>
-						<Plus size={14} />
+						<Plus />
 						Add custom credential
 					</Button>
 				</div>

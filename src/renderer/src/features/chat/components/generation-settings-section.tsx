@@ -91,7 +91,7 @@ export const GenerationSettingsSection: FC<GenerationSettingsSectionProps> = ({
 							className="ml-1 text-accent"
 							aria-label="More info"
 						>
-							<Info size={12} aria-hidden="true" />
+							<Info aria-hidden="true" />
 						</Button>
 					</Tooltip>
 				</h3>

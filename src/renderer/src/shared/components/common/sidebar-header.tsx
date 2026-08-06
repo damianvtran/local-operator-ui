@@ -70,7 +70,7 @@ export const SidebarHeader: FC<SidebarHeaderProps> = ({
 							onClick={onImportAgentClick}
 							aria-label="Import agent"
 						>
-							<Import size={18} aria-hidden="true" />
+							<Import aria-hidden="true" />
 						</Button>
 					</Tooltip>
 				)}
@@ -84,7 +84,7 @@ export const SidebarHeader: FC<SidebarHeaderProps> = ({
 						aria-label="New agent"
 						data-tour-tag="create-new-agent-button"
 					>
-						<Plus size={18} aria-hidden="true" />
+						<Plus aria-hidden="true" />
 					</Button>
 				</Tooltip>
 			</div>
