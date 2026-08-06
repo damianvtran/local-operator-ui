@@ -124,6 +124,7 @@ const ok = (result: unknown) =>
 	});
 
 const AGENT_BY_ID = /^\/v1\/agents\/([^/]+)$/;
+const AGENT_SYSTEM_PROMPT = /^\/v1\/agents\/([^/]+)\/system-prompt$/;
 
 /**
  * The origin the subject actually calls, read from the same config the app
@@ -156,6 +157,22 @@ const route = (path: string): Response | null => {
 	if (path === "/v1/models") return ok({ models: [] });
 	if (path === "/v1/agents") {
 		return ok({ total: AGENTS.length, page: 1, per_page: 50, agents: AGENTS });
+	}
+	/*
+	 * The selected agent's own prompt, which `AgentsPage` fetches as soon as a
+	 * row is selected. It went unrouted, and while the stub still fell through
+	 * to a dead port that failure was invisible; once the stub started owning
+	 * the origin it became a rejected request and a toast, so forty-eight
+	 * frames showed a populated agent list and form above "Could not reach the
+	 * server" - a screen the product cannot produce. `agents-empty` selects no
+	 * agent, makes no such call and carries no toast, which is what pinned it.
+	 */
+	const promptMatch = AGENT_SYSTEM_PROMPT.exec(path);
+	if (promptMatch) {
+		const found = AGENTS.find((a) => a.id === promptMatch[1]);
+		return found
+			? ok({ system_prompt: "Answer in plain language and show your work." })
+			: null;
 	}
 	const agentMatch = AGENT_BY_ID.exec(path);
 	if (agentMatch) {
@@ -320,6 +337,37 @@ export const Settings: Story = {
 	render: () => (
 		<ShellFrame>
 			<SettingsPage />
+		</ShellFrame>
+	),
+};
+
+/**
+ * Appearance, scrolled into view.
+ *
+ * `Settings` above is a 1280x800 clip of the top of a page about 3,600px
+ * tall, so it stops inside Model settings. The reasoning toggle sits at
+ * roughly y=3094 and the theme grid just above it, which meant the only
+ * control for a user-visible preference - and the theme picker, the largest
+ * piece of visual design on the page - were both absent from the record
+ * while appearing to be covered by a captured surface.
+ *
+ * Scrolled rather than given a taller viewport: an 800px window is what the
+ * app's own minimum produces, and a 3,600px frame would photograph a page no
+ * screen ever shows.
+ */
+const SettingsAtAppearance: FC = () => {
+	useLayoutEffect(() => {
+		document
+			.querySelector('[data-tour-tag="settings-appearance-section"]')
+			?.scrollIntoView({ block: "center" });
+	});
+	return <SettingsPage />;
+};
+
+export const SettingsAppearance: Story = {
+	render: () => (
+		<ShellFrame>
+			<SettingsAtAppearance />
 		</ShellFrame>
 	),
 };

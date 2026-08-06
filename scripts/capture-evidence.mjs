@@ -98,6 +98,7 @@ const STORIES = [
 	["shell-app-shell--agents", 1000, 800],
 	["shell-app-shell--agents", 900, 800],
 	["shell-app-shell--agents", 800, 800],
+	["shell-app-shell--settings-appearance", 1280, 800],
 	["shell-app-shell--settings", 1280, 800],
 	["shell-app-shell--agents-empty", 1280, 800],
 	["shell-app-shell--rail-collapsed", 1280, 800],
@@ -428,10 +429,23 @@ const main = async () => {
 			 * its own `opacity: 1`. If this ever leaves something invisible, the
 			 * animation was violating that rule and the evidence should show it.
 			 */
+			/*
+			 * `caret-color: transparent` rides along for a different reason. The
+			 * caret is not an animation, so `animation: none` never touched it:
+			 * it is a blink the engine owns, on a phase this rig cannot observe
+			 * or wait out, in any input that holds focus. So a frame recorded
+			 * whichever half of the cycle the screenshot happened to land in,
+			 * and two of the twelve edit-prompt frames carried a caret while
+			 * ten did not - identical source, different pictures, churning on
+			 * every recapture and burning a review round to identify.
+			 *
+			 * Hiding it costs nothing: the caret says the input has focus, and
+			 * the focus ring already says that in a frame nobody is typing in.
+			 */
 			await cdp.send("Runtime.evaluate", {
 				expression: `(() => {
 					const s = document.createElement("style");
-					s.textContent = "*,*::before,*::after{animation:none !important;transition:none !important}";
+					s.textContent = "*,*::before,*::after{animation:none !important;transition:none !important}*{caret-color:transparent !important}";
 					document.head.appendChild(s);
 				})()`,
 			});

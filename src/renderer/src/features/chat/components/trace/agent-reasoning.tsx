@@ -58,7 +58,28 @@ export const AgentReasoning = ({
 				</span>
 			}
 		>
-			<MarkdownRenderer content={content} />
+			{/*
+			 * Open, this has to stay quieter than the answer it sits under.
+			 * Unwrapped, `MarkdownRenderer` renders at the answer's own register
+			 * - 14px at full-strength ink, the same paint as the reply and the
+			 * user's message, separated from them by nothing but the rail's
+			 * 20px indent. That reads as a third voice of equal standing rather
+			 * than as the agent's private thinking, which is the exact failure
+			 * the docblock above names, and closed-by-default hid it rather
+			 * than fixing it.
+			 *
+			 * `text-body-sm` on muted ink is what every other expanded row on
+			 * this rail uses; the fifth tier of the hierarchy should not be the
+			 * loudest thing a click can reveal.
+			 */}
+			<MarkdownRenderer
+				content={content}
+				className="[--md-ink:var(--lo-ink-muted)]"
+				styleProps={{
+					fontSize: "var(--text-body-sm)",
+					lineHeight: "var(--text-body-sm--line-height)",
+				}}
+			/>
 		</Disclosure>
 	);
 };
