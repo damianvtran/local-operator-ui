@@ -808,32 +808,34 @@ export const SettingsPage: FC = () => {
 							sectionRef={sectionRefs.appearance}
 							dataTourTag="settings-appearance-section"
 						>
-							<ThemeSelector />
-							{/*
-							 * The reasoning preference's only control.
-							 *
-							 * The preference, the grouping rule that honours it and the
-							 * panel that renders it all shipped in this refactor without
-							 * anything that could turn it on, so a complete feature was
-							 * unreachable and its default was the whole of its
-							 * behaviour. Appearance rather than a chat menu, because it
-							 * changes what every conversation shows rather than acting
-							 * on the one in front of you.
-							 *
-							 * `ToggleSetting` rather than a hand-rolled row. This was
-							 * a `Label htmlFor` over a `Switch id` first, which cannot
-							 * work: the switch renders as a `button`, `htmlFor` only
-							 * associates with labelable elements, and the helper
-							 * sentence was announced to nobody. That component solves
-							 * exactly this and had no callers, which is the only reason
-							 * the row got written twice.
-							 */}
-							<ToggleSetting
-								value={showAgentReasoning}
-								label="Show agent reasoning"
-								description="Adds the agent's Reasoning and Thinking rows to conversations. They stay closed until you open one."
-								onChange={async (next) => setShowAgentReasoning(next)}
-							/>
+							<div className="flex flex-col gap-4">
+								<ThemeSelector />
+								{/*
+								 * The reasoning preference's only control.
+								 *
+								 * The preference, the grouping rule that honours it and the
+								 * panel that renders it all shipped in this refactor without
+								 * anything that could turn it on, so a complete feature was
+								 * unreachable and its default was the whole of its
+								 * behaviour. Appearance rather than a chat menu, because it
+								 * changes what every conversation shows rather than acting
+								 * on the one in front of you.
+								 *
+								 * `ToggleSetting` rather than a hand-rolled row. This was
+								 * a `Label htmlFor` over a `Switch id` first, which cannot
+								 * work: the switch renders as a `button`, `htmlFor` only
+								 * associates with labelable elements, and the helper
+								 * sentence was announced to nobody. That component solves
+								 * exactly this and had no callers, which is the only reason
+								 * the row got written twice.
+								 */}
+								<ToggleSetting
+									value={showAgentReasoning}
+									label="Show agent reasoning"
+									description="Adds the agent's Reasoning and Thinking rows to conversations. They stay closed until you open one."
+									onChange={async (next) => setShowAgentReasoning(next)}
+								/>
+							</div>
 						</SettingsSection>
 
 						<SettingsSection
