@@ -7,7 +7,7 @@ import { SliderSetting } from "@shared/components/common/slider-setting";
 import { Spinner } from "@shared/components/common/spinner";
 import { HostingSelect } from "@shared/components/hosting/hosting-select";
 import { ModelSelect } from "@shared/components/hosting/model-select";
-import { Alert, Button, Skeleton } from "@shared/components/ui";
+import { Alert, Button, Label, Skeleton, Switch } from "@shared/components/ui";
 import { useConfig } from "@shared/hooks/use-config";
 import { useCredentials } from "@shared/hooks/use-credentials";
 import { useCreditBalance } from "@shared/hooks/use-credit-balance";
@@ -16,6 +16,7 @@ import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import { useUpdateConfig } from "@shared/hooks/use-update-config";
 import { useUsageRollup } from "@shared/hooks/use-usage-rollup";
 import { cn } from "@shared/lib/utils";
+import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { useUserStore } from "@shared/store/user-store";
 import {
 	formatCalendarDate,
@@ -310,6 +311,12 @@ const RadientSectionTitle: FC = () => (
 );
 
 export const SettingsPage: FC = () => {
+	const showAgentReasoning = useUiPreferencesStore(
+		(state) => state.showAgentReasoning,
+	);
+	const setShowAgentReasoning = useUiPreferencesStore(
+		(state) => state.setShowAgentReasoning,
+	);
 	const {
 		data: config,
 		isLoading: isConfigLoading,
@@ -801,6 +808,33 @@ export const SettingsPage: FC = () => {
 							dataTourTag="settings-appearance-section"
 						>
 							<ThemeSelector />
+							{/*
+							 * The reasoning preference's only control.
+							 *
+							 * The preference, the grouping rule that honours it and the
+							 * disclosure that renders it all shipped in this refactor
+							 * without anything that could turn it on, so a complete
+							 * feature was unreachable and its default was the whole of
+							 * its behaviour. Appearance rather than a chat menu,
+							 * because it changes what every conversation shows rather
+							 * than acting on the one in front of you.
+							 */}
+							<div className="flex items-start justify-between gap-6 border-hairline border-t pt-6">
+								<div className="flex flex-col gap-1">
+									<Label htmlFor="show-agent-reasoning">
+										Show agent reasoning
+									</Label>
+									<p className="text-ink-dim text-meta">
+										Include the agent's planning and reflection turns in the
+										conversation, behind a closed disclosure.
+									</p>
+								</div>
+								<Switch
+									id="show-agent-reasoning"
+									checked={showAgentReasoning}
+									onCheckedChange={setShowAgentReasoning}
+								/>
+							</div>
 						</SettingsSection>
 
 						<SettingsSection

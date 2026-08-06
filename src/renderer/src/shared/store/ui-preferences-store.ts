@@ -88,7 +88,15 @@ type UiPreferencesState = {
 	showAgentReasoning: boolean;
 
 	/**
-	 * Set whether agent reasoning is shown
+	 * Set whether agent reasoning is shown.
+	 *
+	 * Written only by the Appearance switch in `settings-page.tsx`. That is the
+	 * preference's sole control, and for a while it did not exist: the flag, the
+	 * grouping rule that honours it and the disclosure that renders it all
+	 * shipped with nothing able to turn them on, so `AgentReasoning` returned
+	 * null unconditionally and the whole feature was dead in the product while
+	 * looking alive in the source. Keep a control reachable, or delete the rest.
+	 *
 	 * @param show - Whether reasoning turns should be visible
 	 */
 	setShowAgentReasoning: (show: boolean) => void;
