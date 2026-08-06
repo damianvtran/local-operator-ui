@@ -374,13 +374,24 @@ const SettingsAtAppearance: FC = () => {
 	 * put the row hard against the bottom edge with its description clipped.
 	 * Centring the control leaves the grid above it and the section boundary
 	 * below, which is the row in its context rather than the row in a corner.
+	 *
+	 * `data-capture-pending` holds the shutter until that has happened. The
+	 * rig's readiness poll gates on the loader being gone and an element count
+	 * being met, and this page's skeletons satisfy both before the config
+	 * query resolves - so "ready" can arrive while the Appearance section does
+	 * not yet exist and the observer has not fired. The frame would be the top
+	 * of the page, which is what the first two attempts at this story
+	 * produced, and which is indistinguishable from a correct frame unless
+	 * someone opens it.
 	 */
 	useLayoutEffect(() => {
+		document.documentElement.dataset.capturePending = "1";
 		const scroll = () => {
 			const section = document.querySelector(APPEARANCE);
 			const control = section?.querySelector('button[role="switch"]');
 			if (!control) return false;
 			control.scrollIntoView({ block: "center" });
+			document.documentElement.removeAttribute("data-capture-pending");
 			return true;
 		};
 		if (scroll()) return;
@@ -388,7 +399,10 @@ const SettingsAtAppearance: FC = () => {
 			if (scroll()) observer.disconnect();
 		});
 		observer.observe(document.body, { childList: true, subtree: true });
-		return () => observer.disconnect();
+		return () => {
+			observer.disconnect();
+			document.documentElement.removeAttribute("data-capture-pending");
+		};
 	}, []);
 	return <SettingsPage />;
 };
