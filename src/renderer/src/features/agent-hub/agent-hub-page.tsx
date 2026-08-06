@@ -1,72 +1,13 @@
-import { Box, CircularProgress, Grid, Typography } from "@mui/material";
-import { styled } from "@mui/material/styles";
 import type { Agent } from "@shared/api/radient/types";
 import { CompactPagination } from "@shared/components/common/compact-pagination";
 import { PageHeader } from "@shared/components/common/page-header";
+import { Spinner } from "@shared/components/common/spinner";
 import { Store } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
 import { AgentCardContainer } from "./components/agent-card-container";
 import { AgentCategoriesSidebar } from "./components/agent-categories-sidebar";
 import { usePublicAgentsQuery } from "./hooks/use-public-agents-query";
-
-/**
- * Main container for the Agent Hub page.
- */
-const StyledAgentHubContainer = styled(Box)(({ theme }) => ({
-	padding: theme.spacing(3),
-	display: "flex",
-	flexDirection: "column",
-	height: "100%",
-	minHeight: 0,
-}));
-
-/**
- * Row layout for sidebar and main content.
- */
-const MainContentRow = styled(Box)(({ theme }) => ({
-	display: "flex",
-	flexDirection: "row",
-	flexGrow: 1,
-	minHeight: 0,
-	marginTop: theme.spacing(2),
-	overflow: "hidden",
-}));
-
-/**
- * Sidebar container for categories.
- */
-const SidebarContainer = styled(Box)(({ theme }) => ({
-	flex: "0 0 240px",
-	maxWidth: 240,
-	minWidth: 200,
-	marginRight: theme.spacing(3),
-	[theme.breakpoints.down("sm")]: {
-		display: "none",
-	},
-}));
-
-/**
- * Scrollable content area for agent cards and pagination.
- * Styled to match the chat messages view scrollbar.
- */
-const ScrollableContent = styled(Box)(() => ({
-	display: "flex",
-	flexDirection: "column",
-	flex: 1,
-	minWidth: 0,
-	maxHeight: "100%",
-	height: "100%",
-	overflow: "hidden",
-}));
-
-const ScrollContainer = styled(Box)(({ theme }) => ({
-	flex: 1,
-	minHeight: 0,
-	overflowY: "auto",
-	overflowX: "hidden",
-	padding: theme.spacing(0, 0),
-}));
 
 /**
  * Renders the Agent Hub page, displaying a marketplace of public agents.
@@ -99,82 +40,71 @@ export const AgentHubPage: React.FC = () => {
 	};
 
 	return (
-		<StyledAgentHubContainer>
+		/* `gap-8`: `PageHeader` no longer ships its own bottom margin. */
+		<div className="flex h-full flex-col gap-8 p-6">
 			<PageHeader
-				title="Agent Hub"
+				title="Agent hub"
 				subtitle="Discover and download community agents on Radient"
 				icon={Store}
 			/>
-			<MainContentRow>
-				<SidebarContainer data-tour-tag="agent-hub-sidebar-container">
+			<div className="flex min-h-0 flex-1 flex-row overflow-hidden">
+				{/* The category rail is hidden below the first grid breakpoint,
+				    where the cards are already full-width. */}
+				<div
+					className="mr-6 hidden w-60 shrink-0 md:block"
+					data-tour-tag="agent-hub-sidebar-container"
+				>
 					<AgentCategoriesSidebar
 						selectedCategory={selectedCategory}
 						onSelectCategory={handleSelectCategory}
 					/>
-				</SidebarContainer>
-				<ScrollableContent>
-					<ScrollContainer>
-						{isLoading && (
-							<Box
-								display="flex"
-								justifyContent="center"
-								alignItems="center"
-								flexGrow={1}
-								minHeight={200}
-							>
-								<CircularProgress />
-							</Box>
-						)}
-						{error && (
-							<Box
-								display="flex"
-								justifyContent="center"
-								alignItems="center"
-								flexGrow={1}
-								minHeight={200}
-							>
-								<Typography color="error">
-									Failed to load agents: {error.message}
-								</Typography>
-							</Box>
-						)}
-						{!isLoading && !error && (
-							<Grid container rowSpacing={3} columnSpacing={3}>
-								{agents.length === 0 ? (
-									<Grid item xs={12}>
-										<Typography variant="body1" align="center">
-											No public agents found.
-										</Typography>
-									</Grid>
-								) : (
-									agents.map((agent) => (
-										<Grid
-											item
-											key={agent.id}
-											xs={12}
-											sm={12}
-											md={6}
-											lg={4}
-											xl={3}
-										>
-											<AgentCardContainer agent={agent} />
-										</Grid>
-									))
-								)}
-							</Grid>
-						)}
-						{pagination && pagination.totalPages > 1 && (
-							<Box display="flex" justifyContent="center" mt={3}>
-								<CompactPagination
-									count={pagination.totalPages}
-									page={pagination.page}
-									onChange={handlePageChange}
-								/>
-							</Box>
-						)}
-					</ScrollContainer>
-				</ScrollableContent>
-			</MainContentRow>
-		</StyledAgentHubContainer>
+				</div>
+				<div className="flex min-w-0 flex-1 flex-col overflow-y-auto">
+					{isLoading && (
+						<div className="flex min-h-50 flex-1 items-center justify-center">
+							<Spinner label="Loading agents" />
+						</div>
+					)}
+					{error && (
+						<div className="flex min-h-50 flex-1 items-center justify-center">
+							<p className="text-body-sm text-danger">
+								Failed to load agents: {error.message}
+							</p>
+						</div>
+					)}
+					{!isLoading && !error && (
+						/*
+						 * The column count comes from the room the grid actually has,
+						 * not from the window. Viewport breakpoints asked for four
+						 * columns at 1280 after the sidebar had already taken 264px
+						 * of that 1280, which left 224px cards — narrower than the
+						 * card footer needs, so the Get button was clipped off every
+						 * one of them. 17.5rem is the width at which a card footer
+						 * holds three counters and a labelled action on one line.
+						 */
+						<div className="grid grid-cols-[repeat(auto-fill,minmax(17.5rem,1fr))] gap-6">
+							{agents.length === 0 ? (
+								<p className="col-span-full text-center text-body text-ink">
+									No public agents found.
+								</p>
+							) : (
+								agents.map((agent) => (
+									<AgentCardContainer key={agent.id} agent={agent} />
+								))
+							)}
+						</div>
+					)}
+					{pagination && pagination.totalPages > 1 && (
+						<div className="mt-6 flex justify-center">
+							<CompactPagination
+								count={pagination.totalPages}
+								page={pagination.page}
+								onChange={handlePageChange}
+							/>
+						</div>
+					)}
+				</div>
+			</div>
+		</div>
 	);
 };

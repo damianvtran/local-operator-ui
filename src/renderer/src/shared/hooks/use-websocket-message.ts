@@ -10,12 +10,59 @@ import {
 	WebsocketConnectionType,
 } from "../api/local-operator/websocket-api";
 
-const autoConnectLocks = new Set<string>();
-
 type CallbackRefs = {
 	onUpdate?: (update: UpdateMessage) => void;
 	onStatusChange?: (status: WebSocketConnectionStatus) => void;
 	onError?: (error: Error) => void;
+};
+
+/**
+ * Fields whose value decides what is on screen.
+ *
+ * `timestamp` is deliberately absent. The backend restamps every frame, so
+ * including it would make the equality gate below always report a change and
+ * the gate would be decorative — which is what it was before it existed: a
+ * frame carrying no new text still re-rendered the message.
+ */
+const RENDERED_FIELDS = [
+	"id",
+	"message",
+	"code",
+	"stdout",
+	"stderr",
+	"logging",
+	"content",
+	"replacements",
+	"thinking",
+	"learnings",
+	"formatted_print",
+	"file_path",
+	"agent",
+	"action",
+	"execution_type",
+	"task_classification",
+	"role",
+	"status",
+	"is_complete",
+	"is_streamable",
+] as const satisfies readonly (keyof AgentExecutionRecord)[];
+
+const hasRenderedChange = (
+	previous: AgentExecutionRecord | null,
+	next: AgentExecutionRecord,
+): boolean => {
+	if (!previous) return true;
+
+	for (const field of RENDERED_FIELDS) {
+		if (previous[field] !== next[field]) return true;
+	}
+
+	const previousFiles = previous.files;
+	const nextFiles = next.files;
+	if (previousFiles === nextFiles) return false;
+	if (!previousFiles || !nextFiles) return true;
+	if (previousFiles.length !== nextFiles.length) return true;
+	return previousFiles.some((file, index) => file !== nextFiles[index]);
 };
 
 /**
@@ -26,8 +73,6 @@ export type UseWebSocketMessageOptions = {
 	baseUrl: string;
 	/** Message ID to subscribe to */
 	messageId: string;
-	/** Whether to automatically connect to the WebSocket */
-	autoConnect?: boolean;
 	/** Whether to automatically reconnect on connection loss */
 	autoReconnect?: boolean;
 	/** Reconnect interval in milliseconds */
@@ -36,7 +81,7 @@ export type UseWebSocketMessageOptions = {
 	maxReconnectAttempts?: number;
 	/** Ping interval in milliseconds to keep connection alive */
 	pingInterval?: number;
-	/** Callback when a message update is received */
+	/** Callback when a coalesced message update is applied */
 	onUpdate?: (update: UpdateMessage) => void;
 	/** Callback when the connection status changes */
 	onStatusChange?: (status: WebSocketConnectionStatus) => void;
@@ -67,7 +112,28 @@ export type UseWebSocketMessageResult = {
 };
 
 /**
- * Hook for managing WebSocket connections to stream message updates
+ * Hook for managing WebSocket connections to stream message updates.
+ *
+ * ## Frame coalescing
+ *
+ * Every socket frame carries the entire execution record rather than a delta,
+ * and frames arrive far faster than the screen refreshes — a 25KB answer at 20
+ * chars per chunk is roughly 1,250 of them. Applying each one as state drove a
+ * React render per frame for a screen that can only show sixty.
+ *
+ * So frames merge into a pending record and are applied on the next animation
+ * frame: at most one render per frame, whatever the arrival rate. Because the
+ * payload is cumulative rather than incremental, dropping intermediate frames
+ * loses nothing — the newest one already contains everything the ones before it
+ * carried.
+ *
+ * Two deliberate exceptions to the rAF path:
+ *
+ * - A completing frame is applied synchronously. rAF does not run in a hidden
+ *   window, and a completion parked behind it would leave the message spinning
+ *   until the user came back.
+ * - `is_complete` and `is_streamable` are set immediately, because the
+ *   connection lifecycle reads them and must not lag a frame behind.
  *
  * @param options - Options for the WebSocket connection
  * @returns The current message data and connection status
@@ -78,7 +144,6 @@ export const useWebSocketMessage = (
 	const {
 		baseUrl,
 		messageId,
-		autoConnect = true,
 		autoReconnect = true,
 		reconnectInterval = 2000,
 		maxReconnectAttempts = 5,
@@ -97,6 +162,9 @@ export const useWebSocketMessage = (
 	const [isLoading, setIsLoading] = useState(false);
 
 	const clientRef = useRef<WebSocketClient | null>(null);
+	const pendingRef = useRef<AgentExecutionRecord | null>(null);
+	const appliedRef = useRef<AgentExecutionRecord | null>(null);
+	const frameRef = useRef<number | null>(null);
 	const callbackRefs = useRef<CallbackRefs>({
 		onUpdate,
 		onStatusChange,
@@ -111,7 +179,33 @@ export const useWebSocketMessage = (
 		};
 	}, [onUpdate, onStatusChange, onError]);
 
+	const applyPending = useCallback(() => {
+		frameRef.current = null;
+		const pending = pendingRef.current;
+		if (!pending) return;
+		pendingRef.current = null;
+
+		// The gate that makes coalescing worth having: a frame that repeats what
+		// is already on screen — a keepalive, a restamped no-op — costs nothing.
+		if (
+			!pending.is_complete &&
+			!hasRenderedChange(appliedRef.current, pending)
+		) {
+			return;
+		}
+
+		appliedRef.current = pending;
+		setMessage(pending);
+		callbackRefs.current.onUpdate?.(pending as unknown as UpdateMessage);
+	}, []);
+
 	const detachClient = useCallback(() => {
+		if (frameRef.current !== null) {
+			cancelAnimationFrame(frameRef.current);
+			frameRef.current = null;
+		}
+		pendingRef.current = null;
+
 		if (!clientRef.current) {
 			return;
 		}
@@ -148,16 +242,10 @@ export const useWebSocketMessage = (
 		client.on(`update:${messageId}`, (update: unknown) => {
 			const typedUpdate = update as UpdateMessage;
 
-			setMessage((previous) => {
-				if (!previous) {
-					return typedUpdate as unknown as AgentExecutionRecord;
-				}
-
-				return {
-					...previous,
-					...typedUpdate,
-				} as AgentExecutionRecord;
-			});
+			pendingRef.current = {
+				...(pendingRef.current ?? appliedRef.current),
+				...typedUpdate,
+			} as AgentExecutionRecord;
 
 			if (typeof typedUpdate.is_complete === "boolean") {
 				setIsComplete(typedUpdate.is_complete);
@@ -167,7 +255,17 @@ export const useWebSocketMessage = (
 				setIsStreamable(typedUpdate.is_streamable);
 			}
 
-			callbackRefs.current.onUpdate?.(typedUpdate);
+			if (typedUpdate.is_complete) {
+				if (frameRef.current !== null) {
+					cancelAnimationFrame(frameRef.current);
+				}
+				applyPending();
+				return;
+			}
+
+			if (frameRef.current === null) {
+				frameRef.current = requestAnimationFrame(applyPending);
+			}
 		});
 
 		client.on("error", (wsError: unknown) => {
@@ -193,6 +291,7 @@ export const useWebSocketMessage = (
 		reconnectInterval,
 		maxReconnectAttempts,
 		pingInterval,
+		applyPending,
 	]);
 
 	const connect = useCallback(async () => {
@@ -235,31 +334,13 @@ export const useWebSocketMessage = (
 		setIsLoading(false);
 	}, [detachClient]);
 
-	useEffect(() => {
-		if (!autoConnect || !messageId || !baseUrl) {
-			return;
-		}
-
-		if (autoConnectLocks.has(messageId)) {
-			return;
-		}
-
-		autoConnectLocks.add(messageId);
-		void connect()
-			.catch((connectError) => {
-				console.warn(
-					`Error auto-connecting WebSocket for ${messageId}:`,
-					connectError,
-				);
-			})
-			.finally(() => {
-				autoConnectLocks.delete(messageId);
-			});
-	}, [autoConnect, messageId, baseUrl, connect]);
-
+	// `messageId` is in the dependency list even though nothing in the body
+	// reads it: the client is built for one message id, so a hook instance
+	// pointed at a different message must drop the old socket rather than keep
+	// listening on it.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: messageId change must tear down the old socket
 	useEffect(() => {
 		return () => {
-			autoConnectLocks.delete(messageId);
 			disconnect();
 		};
 	}, [messageId, disconnect]);

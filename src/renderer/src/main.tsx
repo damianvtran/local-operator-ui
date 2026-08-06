@@ -1,4 +1,3 @@
-import CssBaseline from "@mui/material/CssBaseline";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { PostHogProvider } from "posthog-js/react";
@@ -7,6 +6,7 @@ import ReactDOM from "react-dom/client";
 import { HashRouter } from "react-router-dom";
 import { ThemedToastContainer } from "./shared/components/common";
 import "@assets/fonts/fonts.css";
+import "@renderer/styles/index.css";
 import { config } from "@shared/config";
 import type { PostHogConfig } from "posthog-js";
 import App from "./app";
@@ -38,7 +38,6 @@ document.addEventListener("DOMContentLoaded", () => {
 					<FeatureFlagProvider>
 						<AuthProviders>
 							<ThemeProvider>
-								<CssBaseline />
 								<GlobalScrollbarStyles />
 								<ErrorBoundary>
 									<HashRouter>

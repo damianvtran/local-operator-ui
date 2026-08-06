@@ -1,12 +1,11 @@
-import { Box, alpha } from "@mui/material";
-import { styled } from "@mui/material/styles";
 import { FileActionsMenu } from "@shared/components/common/file-actions-menu";
+import { cn } from "@shared/lib/utils";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { type FC, memo, useCallback, useState } from "react";
 import { getFileTypeFromPath } from "../../utils/file-types";
 import { isCanvasSupported } from "../../utils/is-canvas-supported";
-import { InvalidAttachment } from "./invalid-attachment";
+import { AttachmentFrame, BrokenAttachment } from "./attachment-frame";
 
 /**
  * Props for the ImageAttachment component (base)
@@ -22,43 +21,6 @@ export type ImageAttachmentProps = BaseImageAttachmentProps & {
 };
 
 /**
- * Styled component for image attachments
- * Includes hover effects and styling
- */
-const AttachmentImage = styled("img")(({ theme }) => ({
-	maxWidth: "100%",
-	maxHeight: 200,
-	borderRadius: 8,
-	marginBottom: 8,
-	boxShadow: `0 2px 8px ${alpha(theme.palette.common.black, theme.palette.mode === "dark" ? 0.15 : 0.1)}`,
-	cursor: "pointer",
-	transition: "transform 0.2s ease, box-shadow 0.2s ease",
-	"&:hover": {
-		transform: "scale(1.02)",
-		boxShadow: `0 4px 12px ${alpha(theme.palette.common.black, theme.palette.mode === "dark" ? 0.25 : 0.15)}`,
-	},
-}));
-
-const FileActionsContainer = styled(Box)({
-	position: "absolute",
-	top: 4,
-	right: 4,
-	zIndex: 2,
-	opacity: 0,
-	visibility: "hidden",
-	transition: "opacity 0.2s ease, visibility 0.2s ease",
-});
-
-const AttachmentImageContainer = styled(Box)({
-	position: "relative",
-	display: "inline-block",
-	"&:hover .file-actions-menu": {
-		opacity: 1,
-		visibility: "visible",
-	},
-});
-
-/**
  * Extracts the filename from a path
  * @param path - The file path or URL
  * @returns The extracted filename
@@ -71,12 +33,17 @@ const getFileName = (path: string): string => {
 };
 
 /**
- * Component for displaying image attachments
- * Handles image loading errors and displays an InvalidAttachment component if the image fails to load
+ * An image sent or produced in the conversation.
+ *
+ * Every state it can be in — decoding, decoded, unreadable — is drawn by
+ * `attachment-frame`, so the box never collapses, never reflows the message
+ * when the picture lands, and never falls through to the browser's own broken
+ * image glyph.
  */
 export const ImageAttachment: FC<ImageAttachmentProps> = memo(
 	({ file, src, onClick, conversationId }) => {
 		const [hasError, setHasError] = useState(false);
+		const [isLoaded, setIsLoaded] = useState(false);
 		const setCanvasOpen = useUiPreferencesStore((s) => s.setCanvasOpen);
 		const { setViewMode } = useCanvasStore();
 
@@ -204,24 +171,40 @@ export const ImageAttachment: FC<ImageAttachmentProps> = memo(
 			: file;
 
 		if (hasError) {
-			return <InvalidAttachment file={file} />;
+			return <BrokenAttachment name={getFileName(file)} />;
 		}
 
 		return (
-			<AttachmentImageContainer>
-				<AttachmentImage
-					src={src}
-					alt={getFileName(file)}
+			<div className="group relative inline-block">
+				<button
+					type="button"
+					className="block max-w-full cursor-pointer"
 					onClick={handleClick}
-					onError={handleError}
 					title={`Click to open ${getFileName(file)}`}
-				/>
+				>
+					<AttachmentFrame>
+						<img
+							className={cn(
+								"max-h-[240px] max-w-full object-contain",
+								// The picture is invisible, not absent, until it decodes:
+								// the frame has already reserved the box, so nothing moves
+								// when it appears.
+								isLoaded ? "opacity-100" : "opacity-0",
+							)}
+							src={src}
+							alt={getFileName(file)}
+							onLoad={() => setIsLoaded(true)}
+							onError={handleError}
+						/>
+					</AttachmentFrame>
+				</button>
 				{isLocalFile && (
-					<FileActionsContainer
-						className="file-actions-menu"
+					<div
+						className="file-actions-menu invisible absolute top-1 right-1 z-[2] opacity-0 transition-[opacity,visibility] duration-fast ease-out-quart group-hover:visible group-hover:opacity-100"
 						onClick={(e) => {
 							e.stopPropagation();
 						}}
+						onKeyDown={(e) => e.stopPropagation()}
 					>
 						<FileActionsMenu
 							filePath={normalizedPath}
@@ -229,9 +212,9 @@ export const ImageAttachment: FC<ImageAttachmentProps> = memo(
 							aria-label="File actions"
 							onShowInCanvas={handleShowInCanvas}
 						/>
-					</FileActionsContainer>
+					</div>
 				)}
-			</AttachmentImageContainer>
+			</div>
 		);
 	},
 );

@@ -5,23 +5,10 @@
  * to set up their Radient Pass account.
  */
 
-import {
-	Box,
-	CircularProgress,
-	Typography,
-	styled,
-	useTheme,
-} from "@mui/material";
 import { RadientAuthButtons } from "@shared/components/auth";
+import { Spinner } from "@shared/components/common/spinner";
 import { useRadientPricesQuery } from "@shared/hooks/use-radient-prices-query";
-import { radientTheme } from "@shared/themes";
-import { Lightbulb } from "lucide-react";
 import type { FC } from "react";
-import {
-	InlineIcon,
-	SectionContainer,
-	SectionDescription,
-} from "../onboarding-styled";
 
 /**
  * Props for the RadientSignInStep component
@@ -33,12 +20,6 @@ type RadientSignInStepProps = {
 	onSignInSuccess?: () => void;
 };
 
-// Styled span for Radient bold text
-const RadientBoldTextSpan = styled("span")(() => ({
-	fontWeight: "bold",
-	color: radientTheme.palette.primary.main,
-}));
-
 /**
  * Radient Sign In Step Component
  *
@@ -48,107 +29,95 @@ const RadientBoldTextSpan = styled("span")(() => ({
 export const RadientSignInStep: FC<RadientSignInStepProps> = ({
 	onSignInSuccess,
 }) => {
-	const theme = useTheme();
 	const { prices, isLoading, error } = useRadientPricesQuery();
 
-	// Format currency helper (simple USD formatting)
-	const formatCurrency = (amount: number | undefined) => {
-		if (typeof amount !== "number") return "$..."; // Fallback for loading/error
-		return `$${amount.toFixed(2)} USD`; // Basic USD formatting
-	};
+	/* The API returns dollars, and an em dash rather than "$..." when it
+	   returns nothing: a placeholder shaped like a price reads as a price. */
+	const newCredits =
+		typeof prices?.default_new_credits === "number"
+			? `$${prices.default_new_credits.toFixed(2)} USD`
+			: "—";
+	const registrationCredits =
+		typeof prices?.default_registration_credits === "number"
+			? `$${prices.default_registration_credits.toFixed(2)} USD`
+			: "—";
 
-	// Use SectionContainer for the main wrapper with animation
 	return (
-		<SectionContainer>
-			{/* Use SectionDescription for main text, adjust font size if needed */}
-			<SectionDescription sx={{ mb: 3 }}>
-				Access <RadientBoldTextSpan>hundreds of models</RadientBoldTextSpan>{" "}
-				updated in real time,{" "}
-				<RadientBoldTextSpan>
-					cost-saving and performance enhancements
-				</RadientBoldTextSpan>{" "}
-				with Radient Automatic, web search, image generation, site crawling, and
-				more all in Local Operator.
-				<br />
-				<br />
-				It is often <RadientBoldTextSpan>cheaper</RadientBoldTextSpan> to use
-				Radient Pass Credits compared to using an API key from any single
-				provider due to automatic cost reduction when Radient Automatic picks
-				the best model for your agents.
-				<br />
-				<br />
-				You can also use your Radient Pass with other agentic tools such as{" "}
-				<RadientBoldTextSpan>Cline, Cursor, and more</RadientBoldTextSpan>. Sign
-				in with your preferred method to get started with Radient Pass in a
-				couple clicks.
-			</SectionDescription>
+		/*
+		 * DELIBERATE THEME EXCEPTION — do not "fix" this to the active theme.
+		 *
+		 * This panel brands a third-party account, not the app, so it paints in
+		 * Radient's own palette whichever theme the user has picked. The mechanism
+		 * is `data-theme`: `themes.generated.css` emits one `[data-theme="<id>"]`
+		 * block per palette, and those blocks are plain attribute selectors, so
+		 * setting the attribute here re-points every `--lo-*` variable for this
+		 * subtree only. Ordinary role utilities inside then resolve to Radient
+		 * navy and Radient blue with no hex in sight.
+		 *
+		 * Taking the whole palette rather than only the blue is what keeps it
+		 * readable: Radient blue is a soft #91B7E9 that measures around 2:1 on a
+		 * light theme's white ground, and the previous version of this step put it
+		 * there as body text. On its own navy ground it is a colour the contrast
+		 * contract has already checked.
+		 */
+		<div
+			data-theme="radient"
+			className="flex flex-col gap-5 rounded-lg bg-surface p-5 text-ink"
+		>
+			{/*
+			 * Two sentences, not four. This is the screen where a new user decides
+			 * whether to hand over an account, and the previous version answered
+			 * questions nobody had asked yet — real-time model updates, site
+			 * crawling, which other tools the pass works in. What matters here is
+			 * what it does, what it costs, and how to start.
+			 */}
+			<p className="text-body text-ink-muted">
+				One pass for{" "}
+				<span className="font-medium text-accent">hundreds of models</span>,
+				plus web search, image generation and site crawling. A model is picked
+				per step, so simple work does not pay for the largest one.
+			</p>
 
-			{/* Use SectionDescription for the credit info */}
-			<SectionDescription sx={{ mb: 3 }}>
-				Start with{" "}
-				<Typography
-					component="span"
-					fontWeight="medium" // Use medium weight for emphasis
-					color={radientTheme.palette.primary.main}
-					sx={{ fontSize: "inherit" }}
-				>
-					{/* Display loading indicator or fetched value */}
+			<p className="text-body text-ink-muted">
+				You start with{" "}
+				<span className="font-medium text-accent">
 					{isLoading ? (
-						<CircularProgress size={16} sx={{ mr: 0.5 }} />
+						<Spinner size="xs" className="align-middle" />
 					) : (
-						formatCurrency(prices?.default_new_credits)
+						newCredits
 					)}
-				</Typography>{" "}
+				</span>{" "}
 				of free credit, and unlock{" "}
-				<Typography
-					component="span"
-					fontWeight="medium"
-					color={radientTheme.palette.primary.main}
-					sx={{ fontSize: "inherit" }}
-				>
-					{/* Display loading indicator or fetched value */}
+				<span className="font-medium text-accent">
 					{isLoading ? (
-						<CircularProgress size={16} sx={{ mr: 0.5 }} />
+						<Spinner size="xs" className="align-middle" />
 					) : (
-						formatCurrency(prices?.default_registration_credits)
+						registrationCredits
 					)}
-				</Typography>{" "}
+				</span>{" "}
 				more with your first payment.
-				{/* Optionally display an error message */}
-				{error && (
-					<Typography color="error" variant="caption" display="block" mt={1}>
-						Could not load credit information.
-					</Typography>
-				)}
-			</SectionDescription>
+			</p>
 
-			{/* Container for the auth buttons, centered */}
-			<Box
-				sx={{
-					display: "flex",
-					flexDirection: "column",
-					alignItems: "center",
-					py: theme.spacing(2), // Consistent vertical padding
-					mb: 3, // Add margin below buttons
-				}}
-			>
-				{/* RadientAuthButtons should handle its internal styling */}
-				{/* Pass the onSignInSuccess prop directly to RadientAuthButtons */}
+			{error && (
+				<p className="text-danger text-meta">
+					Credit amounts could not be loaded. Signing in still works.
+				</p>
+			)}
+
+			<div className="flex flex-col items-center gap-4">
+				{/* RadientAuthButtons owns its own layout and provider marks */}
 				<RadientAuthButtons
-					titleText="" // Keep title/desc empty if not needed here
+					titleText=""
 					descriptionText=""
-					onSignInSuccess={onSignInSuccess} // Pass down the prop from parent
+					onSignInSuccess={onSignInSuccess}
 				/>
-			</Box>
-
-			{/* Use SectionDescription for the final note, centered */}
-			<SectionDescription sx={{ textAlign: "center" }}>
-				<InlineIcon>
-					<Lightbulb size={16} />
-				</InlineIcon>
-				Your account is used for authentication and managing your Radient Pass
-				subscription.
-			</SectionDescription>
-		</SectionContainer>
+				{/* Centred with the buttons it qualifies, not with the paragraphs
+				    above: it explains what signing in does, so it belongs to the
+				    control group. */}
+				<p className="text-center text-ink-dim text-meta">
+					Your account signs you in and manages your subscription.
+				</p>
+			</div>
+		</div>
 	);
 };

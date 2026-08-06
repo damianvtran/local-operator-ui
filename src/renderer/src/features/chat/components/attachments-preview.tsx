@@ -1,16 +1,8 @@
-import { faTimes } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
-	Box,
-	IconButton,
-	Paper,
-	Tooltip,
-	Typography,
-	alpha,
-	styled,
-} from "@mui/material";
 import { createLocalOperatorClient } from "@shared/api/local-operator";
+import { Button, Tooltip } from "@shared/components/ui";
 import { apiConfig } from "@shared/config";
+import { cn } from "@shared/lib/utils";
+import { File, X } from "lucide-react";
 import type { FC } from "react";
 import { useCallback, useMemo } from "react";
 
@@ -34,143 +26,27 @@ const RESOURCE_NAME_REGEX = /name=([^;,]+)/;
 const MIME_TYPE_REGEX = /^data:([^;,]+)/;
 
 /**
- * Container for the attachments preview
+ * The 100px thumbnail tile. One sunken ground and a radius, no border: the
+ * ground step already separates it from the composer, so a hairline would only
+ * add a line that carries nothing.
  */
-const AttachmentsContainer = styled(Box)(({ theme }) => ({
-	display: "flex",
-	flexWrap: "wrap",
-	gap: theme.spacing(1.5),
-	padding: theme.spacing(1),
-}));
+const TILE = cn(
+	"relative flex size-25 flex-col items-center justify-center",
+	"overflow-hidden rounded-md bg-sunken",
+);
 
 /**
- * Styled component for each attachment preview
+ * The dwell preview that appears above the tile after a deliberate hover. A
+ * true floating overlay, so this is one of the few places `shadow-overlay`
+ * belongs. It fades in place — no translate, because hover never moves
+ * anything.
  */
-const AttachmentItem = styled(Paper)(({ theme }) => ({
-	position: "relative",
-	borderRadius: theme.shape.borderRadius,
-	overflow: "hidden",
-	width: 100,
-	height: 100,
-	display: "flex",
-	flexDirection: "column",
-	alignItems: "center",
-	justifyContent: "center",
-	border: `1px solid ${alpha(theme.palette.divider, 0.2)}`,
-	backgroundColor: alpha(theme.palette.background.paper, 0.6),
-	transition: "all 0.2s ease-in-out",
-	"&:hover": {
-		transform: "translateY(-2px)",
-		boxShadow: theme.shadows[3],
-	},
-}));
-
-/**
- * Styled component for the attachment image preview
- */
-const AttachmentImage = styled("img")({
-	width: "100%",
-	height: "100%",
-	objectFit: "cover",
-});
-
-/**
- * Styled component for the attachment video preview
- */
-const AttachmentVideo = styled("video")({
-	width: "100%",
-	height: "100%",
-	objectFit: "cover",
-});
-
-/**
- * Styled component for the attachment filename
- */
-const AttachmentName = styled(Typography)(({ theme }) => ({
-	position: "absolute",
-	bottom: 0,
-	left: 0,
-	right: 0,
-	padding: theme.spacing(0.5),
-	backgroundColor: alpha(theme.palette.background.paper, 0.8),
-	fontSize: "0.7rem",
-	textAlign: "center",
-	whiteSpace: "nowrap",
-	overflow: "hidden",
-	textOverflow: "ellipsis",
-}));
-
-/**
- * Styled component for the remove button
- */
-const RemoveButton = styled(IconButton)(({ theme }) => ({
-	position: "absolute",
-	top: 2,
-	right: -4,
-	width: 24,
-	height: 24,
-	padding: 4,
-	backgroundColor: alpha(theme.palette.background.paper, 0.8),
-	color: theme.palette.error.main,
-	"&:hover": {
-		backgroundColor: alpha(theme.palette.background.paper, 0.9),
-	},
-}));
-
-/**
- * Styled component for the large preview on hover
- */
-const LargePreview = styled(Box)(({ theme }) => ({
-	position: "absolute",
-	top: -320,
-	width: 300,
-	height: 300,
-	backgroundColor: theme.palette.background.paper,
-	borderRadius: theme.shape.borderRadius,
-	boxShadow: theme.shadows[10],
-	padding: theme.spacing(1),
-	zIndex: 1000,
-	opacity: 0,
-	visibility: "hidden",
-	transform: "translateY(20px)",
-	transition:
-		"opacity 0.3s ease-in-out, transform 0.3s ease-in-out, visibility 0s linear 1.5s",
-	"& img, & video": {
-		width: "100%",
-		height: "100%",
-		objectFit: "contain",
-	},
-}));
-
-/**
- * Styled component for the attachment wrapper (includes hover effect)
- */
-const AttachmentWrapper = styled(Box)({
-	position: "relative",
-	"&:hover .large-preview": {
-		opacity: 1,
-		visibility: "visible",
-		transform: "translateY(0)",
-		transitionDelay: "1.5s",
-	},
-});
-
-/**
- * Styled component for non-image attachments
- */
-const FileIcon = styled(Box)(({ theme }) => ({
-	width: "100%",
-	height: "100%",
-	display: "flex",
-	alignItems: "center",
-	justifyContent: "center",
-	backgroundColor: alpha(theme.palette.primary.main, 0.1),
-	color: theme.palette.primary.main,
-	fontSize: "0.8rem",
-	fontWeight: 500,
-	padding: theme.spacing(1),
-	textAlign: "center",
-}));
+const LARGE_PREVIEW = cn(
+	"invisible absolute -top-80 left-0 z-50 size-75 p-2",
+	"rounded-lg bg-elevated shadow-overlay",
+	"opacity-0 transition-[opacity,visibility] duration-base ease-out-quart",
+	"group-hover:visible group-hover:opacity-100 group-hover:delay-[1500ms]",
+);
 
 /**
  * Component to display a preview of attachments
@@ -242,7 +118,7 @@ export const AttachmentsPreview: FC<AttachmentsPreviewProps> = ({
 			if (nameMatch?.[1]) {
 				try {
 					return decodeURIComponent(nameMatch[1]);
-				} catch (_) {
+				} catch {
 					// Fallback if decoding fails, continue to MIME type extraction
 				}
 			}
@@ -250,7 +126,7 @@ export const AttachmentsPreview: FC<AttachmentsPreviewProps> = ({
 			if (mimeTypeMatch?.[1]) {
 				return `Pasted ${mimeTypeMatch[1]}`;
 			}
-			return "Pasted File"; // Generic fallback for non-image data URIs
+			return "Pasted file"; // Generic fallback for non-image data URIs
 		}
 		// Handle both local paths and URLs for actual files
 		const parts = path.split(PATH_SEPARATOR_REGEX);
@@ -311,60 +187,100 @@ export const AttachmentsPreview: FC<AttachmentsPreviewProps> = ({
 	}
 
 	return (
-		<AttachmentsContainer>
-			{attachments.map((attachment, index) => (
-				<AttachmentWrapper key={`${index}-${attachment}`}>
-					<AttachmentItem elevation={1}>
-						{isImage(attachment) ? (
-							<AttachmentImage
-								src={getAttachmentUrl(attachment)}
-								alt={getFileName(attachment)}
-							/>
-						) : isVideo(attachment) ? (
-							<AttachmentVideo
-								src={getAttachmentUrl(attachment)}
-								preload="metadata"
-								muted
-							/>
-						) : (
-							<FileIcon>{getFileName(attachment)}</FileIcon>
+		<div className={cn("flex flex-wrap gap-3 py-2")}>
+			{attachments.map((attachment, index) => {
+				const fileName = getFileName(attachment);
+				const url = getAttachmentUrl(attachment);
+				const image = isImage(attachment);
+				const video = isVideo(attachment);
+
+				return (
+					<div className={cn("group relative")} key={`${index}-${attachment}`}>
+						<div className={TILE}>
+							{image ? (
+								<img
+									src={url}
+									alt={fileName}
+									className={cn("size-full object-cover")}
+								/>
+							) : video ? (
+								<video
+									src={url}
+									preload="metadata"
+									muted
+									className={cn("size-full object-cover")}
+								/>
+							) : (
+								// A non-media file has nothing to show but its name, so the
+								// name is the tile body and the caption strip is skipped
+								// rather than printing it twice.
+								<div
+									className={cn(
+										"flex size-full flex-col items-center justify-center gap-1.5",
+										"bg-accent-wash p-2 text-center text-accent",
+									)}
+								>
+									<File size={18} aria-hidden="true" />
+									<span
+										className={cn(
+											"line-clamp-2 break-all font-medium text-meta",
+										)}
+									>
+										{fileName}
+									</span>
+								</div>
+							)}
+							{/* Pasted images have no name, so the strip would be an empty bar. */}
+							{(image || video) && fileName && (
+								<span
+									className={cn(
+										"absolute inset-x-0 bottom-0 truncate",
+										"bg-surface/85 px-1.5 py-0.5",
+										"text-center text-ink text-meta",
+									)}
+								>
+									{fileName}
+								</span>
+							)}
+							<Tooltip content="Remove attachment" disabled={disabled}>
+								<Button
+									variant="ghost"
+									size="icon-sm"
+									className={cn(
+										"absolute top-1 right-1 bg-surface/85 text-danger",
+										"hover:bg-danger-wash hover:text-danger",
+										"disabled:bg-sunken disabled:text-ink-disabled",
+									)}
+									onClick={handleRemove(index)}
+									disabled={disabled}
+									aria-label="Remove attachment"
+								>
+									<X aria-hidden="true" />
+								</Button>
+							</Tooltip>
+						</div>
+						{(image || video) && (
+							<div className={LARGE_PREVIEW}>
+								{image ? (
+									<img
+										src={url}
+										alt={fileName}
+										className={cn("size-full object-contain")}
+									/>
+								) : (
+									<video
+										src={url}
+										controls
+										preload="metadata"
+										muted
+										className={cn("size-full object-contain")}
+									/>
+								)}
+							</div>
 						)}
-						{/* Only show name if it's not a pasted image (getFileName returns "" for them) */}
-						{getFileName(attachment) && (
-							<AttachmentName variant="caption" noWrap>
-								{getFileName(attachment)}
-							</AttachmentName>
-						)}
-						<Tooltip title="Remove attachment">
-							<RemoveButton
-								size="small"
-								onClick={handleRemove(index)}
-								disabled={disabled}
-							>
-								<FontAwesomeIcon icon={faTimes} size="xs" />
-							</RemoveButton>
-						</Tooltip>
-					</AttachmentItem>
-					{isImage(attachment) && (
-						<LargePreview className="large-preview">
-							<img
-								src={getAttachmentUrl(attachment)}
-								alt={getFileName(attachment)}
-							/>
-						</LargePreview>
-					)}
-					{isVideo(attachment) && (
-						<LargePreview className="large-preview">
-							<video
-								src={getAttachmentUrl(attachment)}
-								controls
-								preload="metadata"
-								muted
-							/>
-						</LargePreview>
-					)}
-				</AttachmentWrapper>
-			))}
-		</AttachmentsContainer>
+					</div>
+				);
+			})}
+		</div>
 	);
 };

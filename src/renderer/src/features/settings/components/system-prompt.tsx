@@ -1,95 +1,23 @@
-import { faRobot, faSave } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
-	Alert,
-	Box,
-	Button,
-	CircularProgress,
-	TextField,
-	Typography,
-	styled,
-	useTheme, // Import useTheme
-} from "@mui/material";
 import type { SystemPromptUpdate } from "@shared/api/local-operator/types";
+import { Spinner } from "@shared/components/common/spinner";
+import { Alert, Button, Label, Textarea } from "@shared/components/ui";
 import { useSystemPrompt } from "@shared/hooks/use-system-prompt";
 import { useUpdateSystemPrompt } from "@shared/hooks/use-update-system-prompt";
+import { formatCalendarDateTime } from "@shared/utils/date-utils";
+import { NotebookPen, Save } from "lucide-react";
 import { useEffect, useState } from "react";
-import type { FC } from "react";
-import { SettingsSectionCard } from "./settings-section-card"; // Import the reusable card
-
-// Shadcn-inspired TextField styling
-const StyledTextField = styled(TextField)(({ theme }) => ({
-	width: "100%",
-	"& .MuiInputBase-root": {
-		// Base styles for the input area
-		borderRadius: theme.shape.borderRadius * 0.75, // Slightly less rounded
-		backgroundColor: theme.palette.background.paper, // Match card background
-		minHeight: 200, // Adjust min height as needed
-		display: "flex", // Ensure flex properties work
-		flexDirection: "column", // Stack elements vertically
-		alignItems: "stretch", // Stretch items to fill width
-	},
-	"& .MuiOutlinedInput-root": {
-		// Specific styles for outlined variant
-		padding: 0, // Remove default padding
-		"& .MuiOutlinedInput-notchedOutline": {
-			borderColor: theme.palette.divider, // Use divider color for border
-		},
-		"&:hover .MuiOutlinedInput-notchedOutline": {
-			borderColor: theme.palette.text.secondary, // Slightly darker border on hover
-		},
-		"&.Mui-focused .MuiOutlinedInput-notchedOutline": {
-			borderColor: theme.palette.primary.main, // Primary color border when focused
-			borderWidth: "1px", // Ensure border width stays consistent
-		},
-	},
-	"& .MuiInputBase-inputMultiline": {
-		// Styles for the actual multiline input element
-		padding: theme.spacing(1.5, 2), // Add internal padding
-		flexGrow: 1, // Allow input to grow
-		height: "auto", // Let height be determined by content and rows
-		overflow: "auto", // Enable scrolling
-		fontSize: "0.875rem", // Consistent font size
-		lineHeight: 1.5,
-		whiteSpace: "pre-wrap", // Ensure text wraps within the input
-		wordBreak: "break-word", // Break long words to prevent overflow
-	},
-	"& .MuiInputLabel-root": {
-		// Style label if needed
-		fontSize: "0.875rem",
-		"&.Mui-focused": {
-			color: theme.palette.primary.main,
-		},
-	},
-}));
-
-// Container for action buttons
-const ButtonContainer = styled(Box)(({ theme }) => ({
-	display: "flex",
-	gap: theme.spacing(1.5), // Consistent spacing (12px)
-	marginTop: theme.spacing(2), // Space above buttons (16px)
-}));
-
-// Styling for the last modified text
-const LastModifiedText = styled(Typography)(({ theme }) => ({
-	marginTop: theme.spacing(2), // Space above text (16px)
-	display: "block",
-	fontSize: "0.75rem", // Smaller font size (12px)
-}));
-
-// Loading container centered within the card
-const LoadingContainer = styled(Box)({
-	display: "flex",
-	justifyContent: "center",
-	alignItems: "center",
-	minHeight: 200, // Match TextField min height
-});
+import type { ChangeEvent, FC } from "react";
+import { SettingsSection } from "./settings-section";
 
 /**
- * Displays and allows editing of the system prompt using shadcn-inspired styling.
+ * The prompt prepended to every agent in the environment.
+ *
+ * The editor is deliberately uncontrolled by the server between saves: local
+ * state is the draft, and `isEdited` compares it against the fetched content
+ * rather than tracking keystrokes, so retyping the original value correctly
+ * disarms save and reset.
  */
 export const SystemPrompt: FC = () => {
-	const theme = useTheme(); // Get theme for button styling
 	const {
 		data: systemPromptData,
 		isLoading,
@@ -100,21 +28,21 @@ export const SystemPrompt: FC = () => {
 	const [systemPrompt, setSystemPrompt] = useState("");
 	const [isEdited, setIsEdited] = useState(false);
 
-	// Initialize the system prompt when data is loaded or reset
+	// Adopts the fetched prompt as the draft. Also clears `isEdited`, so a
+	// refetch that lands while the field is open does not leave save armed
+	// against content the user can no longer see.
 	useEffect(() => {
 		setSystemPrompt(systemPromptData?.content ?? "");
-		setIsEdited(false); // Reset edited state when data changes
+		setIsEdited(false);
 	}, [systemPromptData]);
 
-	// Handle input change
-	const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+	const handleInputChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
 		const newValue = e.target.value;
 		setSystemPrompt(newValue);
-		// Check if edited compared to original data or empty string if no data
+		// Compared against the fetched content, so an undo by hand disarms save.
 		setIsEdited(newValue !== (systemPromptData?.content ?? ""));
 	};
 
-	// Handle save
 	const handleSave = async () => {
 		if (!isEdited || updateSystemPromptMutation.isPending) return;
 
@@ -123,15 +51,15 @@ export const SystemPrompt: FC = () => {
 				content: systemPrompt,
 			};
 			await updateSystemPromptMutation.mutateAsync(update);
-			await refetch(); // Refetch after successful save
-			setIsEdited(false); // Reset edited state
+			await refetch();
+			setIsEdited(false);
 		} catch (err) {
+			// A failed save leaves the draft dirty and only logs, so the user's
+			// text is never lost — but nothing on screen says it failed yet.
 			console.error("Error updating system prompt:", err);
-			// Consider adding user feedback (e.g., toast notification)
 		}
 	};
 
-	// Handle reset to original value
 	const handleReset = () => {
 		setSystemPrompt(systemPromptData?.content ?? "");
 		setIsEdited(false);
@@ -139,102 +67,72 @@ export const SystemPrompt: FC = () => {
 
 	const isSaving = updateSystemPromptMutation.isPending;
 
-	// Common content rendering logic
 	const renderContent = () => (
-		<>
-			<StyledTextField
-				label="System Prompt"
-				name="systemPrompt"
-				value={systemPrompt}
-				onChange={handleInputChange}
-				variant="outlined"
-				multiline
-				minRows={8} // Use minRows for flexibility
-				fullWidth
-				placeholder="Enter instructions for how all agents should behave and respond to your requests..."
-				InputLabelProps={{ shrink: true }} // Keep label floated
-			/>
+		<div className="flex flex-col gap-4">
+			<div className="flex flex-col gap-2">
+				<Label htmlFor="app-system-prompt">Instructions</Label>
+				<Textarea
+					id="app-system-prompt"
+					name="systemPrompt"
+					value={systemPrompt}
+					onChange={handleInputChange}
+					placeholder="Enter instructions for how all agents should behave and respond to your requests..."
+					className="min-h-50"
+				/>
+			</div>
 
-			<ButtonContainer>
+			<div className="flex gap-3">
 				<Button
-					variant="contained" // Primary action button
-					color="primary"
-					size="small"
-					startIcon={
-						isSaving ? (
-							<CircularProgress size={16} color="inherit" />
-						) : (
-							<FontAwesomeIcon icon={faSave} size="sm" />
-						)
-					}
+					variant="primary"
 					onClick={handleSave}
 					disabled={!isEdited || isSaving}
-					sx={{
-						// Shadcn primary button style
-						textTransform: "none",
-						fontSize: "0.8125rem", // ~13px
-						padding: theme.spacing(0.75, 2),
-						borderRadius: theme.shape.borderRadius * 0.75,
-						boxShadow: "none",
-						"&:hover": {
-							boxShadow: "none",
-							opacity: 0.9,
-						},
-					}}
 				>
-					{isSaving ? "Saving..." : "Save Changes"}
+					{/*
+					 * The spinner carries no label here: the button's own text
+					 * already says "Saving...", and a labelled spinner would
+					 * announce the same fact a second time.
+					 */}
+					{isSaving ? <Spinner size="sm" /> : <Save />}
+					{isSaving ? "Saving..." : "Save changes"}
 				</Button>
 
-				<Button
-					variant="outlined" // Secondary action button
-					size="small"
-					onClick={handleReset}
-					disabled={!isEdited || isSaving}
-					sx={{
-						// Shadcn secondary/outline button style
-						borderColor: theme.palette.divider,
-						color: theme.palette.text.secondary,
-						textTransform: "none",
-						fontSize: "0.8125rem", // ~13px
-						padding: theme.spacing(0.75, 2),
-						borderRadius: theme.shape.borderRadius * 0.75,
-						"&:hover": {
-							backgroundColor: theme.palette.action.hover,
-							borderColor: theme.palette.divider,
-						},
-					}}
-				>
+				<Button onClick={handleReset} disabled={!isEdited || isSaving}>
 					Cancel
 				</Button>
-			</ButtonContainer>
+			</div>
 
 			{systemPromptData?.last_modified && (
-				<LastModifiedText variant="caption" color="text.secondary">
+				<p className="text-ink-dim text-meta">
 					Last modified:{" "}
-					{new Date(systemPromptData.last_modified).toLocaleString()}
-				</LastModifiedText>
+					{/* A timestamp is machine voice, so the value is monospace. */}
+					<span className="font-mono text-mono-sm">
+						{formatCalendarDateTime(systemPromptData.last_modified)}
+					</span>
+				</p>
 			)}
-		</>
+		</div>
 	);
 
 	return (
-		<SettingsSectionCard
-			title="System Prompt"
-			icon={faRobot}
-			description="This system prompt is given to all Local Operator agents. It is useful to define baseline expectations for the behavior of every agent in your environment. These instructions are provided in addition to any specific instructions defined for each agent.  You can elect to provide more specific information about yourself such as your location, name, age, preferences, and any other details that all agents should know about you.  Keep in mind that information in here is shared with your selected hosting provider."
+		<SettingsSection
+			title="System prompt"
+			icon={NotebookPen}
+			description="Every Local Operator agent receives this prompt in addition to its own instructions, so it is the place for baseline expectations and for details you want every agent to know about you, such as your name, location, or preferences. It is sent to your selected hosting provider."
 		>
 			{isLoading ? (
-				<LoadingContainer>
-					<CircularProgress />
-				</LoadingContainer>
+				// Reserves the editor's height so the section does not jump once
+				// the prompt arrives.
+				<div className="flex min-h-50 items-center justify-center">
+					<Spinner size="lg" label="Loading system prompt" />
+				</div>
 			) : error ? (
-				<Alert severity="error" sx={{ width: "100%" }}>
+				<Alert variant="danger">
 					Failed to load system prompt:{" "}
 					{error instanceof Error ? error.message : "Unknown error"}
 				</Alert>
 			) : (
-				renderContent() // Render the main content (TextField, Buttons, etc.)
+				renderContent()
 			)}
-		</SettingsSectionCard>
+		</SettingsSection>
 	);
 };

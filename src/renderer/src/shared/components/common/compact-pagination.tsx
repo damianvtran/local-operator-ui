@@ -1,73 +1,21 @@
 /**
- * Compact Pagination Component
+ * Page stepper for the sidebars.
  *
- * A sleek, minimal pagination component for sidebars
+ * Sticky, so paging does not shift the list under the pointer - and absent
+ * entirely at one page, because "Page 1 of 1" between two dead arrows is a
+ * control that can only report it has nothing to do. It used to render there
+ * too, on the argument that a bar appearing at page two would move the list;
+ * that trade buys stability for the case with two pages by charging every
+ * single-page list 52px of permanent chrome.
+ *
+ * A `hairline` top edge and no shadow: the bar has not left the flow, it is
+ * pinned inside it, and the rule is what says "the list continues above this".
+ * The old `0 -2px 8px rgba(0,0,0,.15)` was doing the same job twice.
  */
 
-import {
-	faChevronLeft,
-	faChevronRight,
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Box, IconButton, Typography } from "@mui/material";
-import { styled } from "@mui/material/styles";
+import { Button } from "@shared/components/ui";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { FC } from "react";
-
-const PaginationContainer = styled(Box)(({ theme }) => ({
-	display: "flex",
-	justifyContent: "space-between",
-	alignItems: "center",
-	padding: theme.spacing(1, 2),
-	borderTop: `1px solid ${theme.palette.sidebar.border}`,
-	backgroundColor: theme.palette.sidebar.secondaryBackground,
-	position: "sticky",
-	bottom: 0,
-	left: 0,
-	right: 0,
-	zIndex: 10,
-	minHeight: 52, // Ensure consistent height
-	boxShadow:
-		theme.palette.mode === "dark"
-			? "0 -2px 8px rgba(0, 0, 0, 0.15)"
-			: "0 -2px 8px rgba(0, 0, 0, 0.05)", // Subtle shadow for visual separation
-}));
-
-const PageInfo = styled(Typography)(({ theme }) => ({
-	fontSize: "0.75rem",
-	color:
-		theme.palette.mode === "dark"
-			? "rgba(255, 255, 255, 0.6)"
-			: "rgba(0, 0, 0, 0.6)",
-	userSelect: "none",
-	fontWeight: 500,
-}));
-
-const NavButton = styled(IconButton)(({ theme }) => ({
-	width: 28,
-	height: 28,
-	color: theme.palette.text.secondary,
-	backgroundColor:
-		theme.palette.mode === "dark"
-			? "rgba(255, 255, 255, 0.05)"
-			: "rgba(0, 0, 0, 0.05)",
-	"&:hover": {
-		backgroundColor:
-			theme.palette.mode === "dark"
-				? "rgba(255, 255, 255, 0.1)"
-				: "rgba(0, 0, 0, 0.1)",
-		color: theme.palette.primary.main,
-	},
-	"&.Mui-disabled": {
-		color:
-			theme.palette.mode === "dark"
-				? "rgba(255, 255, 255, 0.2)"
-				: "rgba(0, 0, 0, 0.2)",
-		backgroundColor:
-			theme.palette.mode === "dark"
-				? "rgba(255, 255, 255, 0.03)"
-				: "rgba(0, 0, 0, 0.03)",
-	},
-}));
 
 /**
  * Props for the CompactPagination component
@@ -102,33 +50,37 @@ export const CompactPagination: FC<CompactPaginationProps> = ({
 			onChange(page + 1);
 		}
 	};
-
-	// Always render the pagination component, even if there's only one page
-	// This ensures consistent UI and prevents layout shifts
+	/* One page is not a pagination state - the chrome renders "Page 1 of 1"
+	   between two dead arrows, which is a control that can only tell the reader
+	   it has nothing to do. The list is the whole content in that case, so the
+	   bar takes its 52px back. */
+	if (count <= 1) return null;
 
 	return (
-		<PaginationContainer>
-			<NavButton
-				size="small"
+		<div className="sticky bottom-0 left-0 right-0 z-10 flex min-h-13 items-center justify-between border-t border-hairline bg-surface px-4 py-2">
+			<Button
+				variant="ghost"
+				size="icon-sm"
 				onClick={handlePrevious}
 				disabled={page <= 1}
 				aria-label="Previous page"
 			>
-				<FontAwesomeIcon icon={faChevronLeft} size="xs" />
-			</NavButton>
+				<ChevronLeft />
+			</Button>
 
-			<PageInfo>
+			<span className="select-none text-meta text-ink-dim">
 				Page {page} of {count}
-			</PageInfo>
+			</span>
 
-			<NavButton
-				size="small"
+			<Button
+				variant="ghost"
+				size="icon-sm"
 				onClick={handleNext}
 				disabled={page >= count}
 				aria-label="Next page"
 			>
-				<FontAwesomeIcon icon={faChevronRight} size="xs" />
-			</NavButton>
-		</PaginationContainer>
+				<ChevronRight />
+			</Button>
+		</div>
 	);
 };

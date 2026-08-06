@@ -1,27 +1,24 @@
 /**
  * Chat Options Sidebar Component
  *
- * An expandable sidebar that displays and allows editing of chat settings
- * for the currently selected agent.
+ * Displays the chat options and settings for the current agent.
  */
 
-import { faTimes, faTrash } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Box, Button, Drawer, Typography, alpha, styled } from "@mui/material";
 import type { AgentDetails } from "@shared/api/local-operator/types";
 import { ConfirmationModal } from "@shared/components/common/confirmation-modal";
+import {
+	Button,
+	Sheet,
+	SheetContent,
+	SheetDescription,
+	SheetTitle,
+} from "@shared/components/ui";
 import { useAgent } from "@shared/hooks/use-agents";
 import { useClearAgentConversation } from "@shared/hooks/use-clear-agent-conversation";
 import { useUpdateAgent } from "@shared/hooks/use-update-agent";
+import { Trash2, X } from "lucide-react";
 import type { FC } from "react";
 import { useEffect, useState } from "react";
-import {
-	CloseButton,
-	HeaderTitle,
-	SidebarContainer,
-	SidebarContent,
-	SidebarHeader,
-} from "./chat-options-sidebar-styled";
 import { GenerationSettingsSection } from "./generation-settings-section";
 import { ModelHostingSection } from "./model-hosting-section";
 
@@ -43,24 +40,6 @@ type ChatOptionsSidebarProps = {
 };
 
 /**
- * Styled component for the clear conversation button
- */
-const ClearConversationButton = styled(Button)(({ theme }) => ({
-	backgroundColor: theme.palette.error.main,
-	color: theme.palette.error.contrastText,
-	marginTop: theme.spacing(3),
-	marginBottom: theme.spacing(2),
-	borderRadius: theme.shape.borderRadius,
-	textTransform: "none",
-	fontWeight: 500,
-	"&:hover": {
-		backgroundColor: theme.palette.error.dark,
-		boxShadow: `0 4px 12px ${alpha(theme.palette.error.main, 0.4)}`,
-	},
-	transition: "all 0.2s ease-in-out",
-}));
-
-/**
  * Clear Conversation Section Component
  *
  * Displays a button to clear the conversation history and a confirmation dialog
@@ -77,26 +56,27 @@ const ClearConversationSection: FC<{
 	};
 
 	return (
-		<Box>
-			<ClearConversationButton
-				fullWidth
-				startIcon={<FontAwesomeIcon icon={faTrash} />}
+		<div>
+			<Button
+				variant="danger"
+				className="mb-4 mt-6 w-full"
 				onClick={() => setIsConfirmationOpen(true)}
 			>
-				Clear Conversation
-			</ClearConversationButton>
+				<Trash2 aria-hidden="true" />
+				Clear conversation
+			</Button>
 
 			<ConfirmationModal
 				open={isConfirmationOpen}
-				title="Clear Conversation"
-				message="Are you sure you want to clear this conversation? This action cannot be undone and all messages will be permanently deleted."
+				title="Clear this conversation?"
+				message="Every message in it is deleted from this computer, and there is no undo. The agent itself is not affected."
 				confirmText="Clear"
 				cancelText="Cancel"
 				isDangerous
 				onConfirm={handleClearConversation}
 				onCancel={() => setIsConfirmationOpen(false)}
 			/>
-		</Box>
+		</div>
 	);
 };
 
@@ -136,33 +116,32 @@ export const ChatOptionsSidebar: FC<ChatOptionsSidebarProps> = ({
 	}
 
 	return (
-		<Drawer
-			anchor="right"
-			open={open}
-			onClose={onClose}
-			PaperProps={{
-				sx: {
-					width: 380,
-					border: "none",
-				},
-			}}
-		>
-			<SidebarContainer>
-				<SidebarHeader>
-					<HeaderTitle>
-						<Typography variant="h6" fontWeight={600}>
-							Chat Options
-						</Typography>
-						<Typography variant="body2" color="text.secondary">
+		<Sheet open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
+			<SheetContent
+				side="right"
+				showClose={false}
+				className="w-[380px] max-w-[380px] gap-0 bg-surface p-0"
+			>
+				<div className="flex items-center justify-between border-hairline border-b px-6 py-4">
+					<div className="flex flex-col gap-0.5">
+						<SheetTitle className="font-semibold text-heading text-ink">
+							Chat options
+						</SheetTitle>
+						<SheetDescription className="text-body-sm text-ink-muted">
 							Customize settings for this agent
-						</Typography>
-					</HeaderTitle>
-					<CloseButton onClick={onClose} size="large">
-						<FontAwesomeIcon icon={faTimes} size="xs" />
-					</CloseButton>
-				</SidebarHeader>
+						</SheetDescription>
+					</div>
+					<Button
+						variant="ghost"
+						size="icon"
+						onClick={onClose}
+						aria-label="Close"
+					>
+						<X aria-hidden="true" />
+					</Button>
+				</div>
 
-				<SidebarContent>
+				<div className="grow overflow-y-auto px-6 py-4">
 					{/* Model and Hosting Section */}
 					<ModelHostingSection
 						agent={localAgent}
@@ -185,8 +164,8 @@ export const ChatOptionsSidebar: FC<ChatOptionsSidebarProps> = ({
 
 					{/* Clear Conversation Section */}
 					{agentId && <ClearConversationSection agentId={agentId} />}
-				</SidebarContent>
-			</SidebarContainer>
-		</Drawer>
+				</div>
+			</SheetContent>
+		</Sheet>
 	);
 };

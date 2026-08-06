@@ -1,55 +1,10 @@
-import {
-	Box,
-	CircularProgress,
-	Link,
-	Typography,
-	alpha,
-	styled,
-	useTheme,
-} from "@mui/material";
 import RadientIcon from "@renderer/assets/radient-icon-1024x1024.png";
+import { Spinner } from "@shared/components/common/spinner";
 import { useRadientPricesQuery } from "@shared/hooks/use-radient-prices-query";
 import { useLowCreditsStore } from "@shared/store/low-credits-store";
 import { ExternalLink } from "lucide-react";
 import type { FC } from "react";
 import { BaseDialog, PrimaryButton, SecondaryButton } from "./base-dialog";
-
-const IconImage = styled("img")({
-	width: 80,
-	height: 80,
-	marginBottom: "16px",
-});
-
-const DialogContentWrapper = styled(Box)(({ theme }) => ({
-	display: "flex",
-	flexDirection: "column",
-	alignItems: "center",
-	textAlign: "center",
-	padding: theme.spacing(2, 0), // Add some vertical padding
-}));
-
-const MarketingText = styled(Typography)(({ theme }) => ({
-	marginBottom: theme.spacing(2),
-	color: theme.palette.text.secondary,
-	fontSize: "0.9rem",
-	maxWidth: "90%", // Ensure text doesn't get too wide
-}));
-
-const HighlightText = styled("span")(({ theme }) => ({
-	color: theme.palette.primary.main,
-	fontWeight: "bold",
-}));
-
-const CTAButton = styled(PrimaryButton)(({ theme }) => ({
-	marginBottom: theme.spacing(1.5),
-	minWidth: 220, // Make button wider
-	boxShadow: `0 6px 16px ${alpha(theme.palette.primary.main, 0.3)}`, // Add more prominent shadow
-}));
-
-const SettingsLinkText = styled(Typography)(({ theme }) => ({
-	fontSize: "0.8rem",
-	color: theme.palette.text.disabled,
-}));
 
 export type LowCreditsDialogProps = {
 	open: boolean;
@@ -63,7 +18,6 @@ export const LowCreditsDialog: FC<LowCreditsDialogProps> = ({
 	onGoToConsole,
 }) => {
 	const { setHasBeenNotified } = useLowCreditsStore();
-	const theme = useTheme();
 	const {
 		prices,
 		isLoading: isLoadingPrices,
@@ -90,106 +44,79 @@ export const LowCreditsDialog: FC<LowCreditsDialogProps> = ({
 			open={open}
 			onClose={handleClose}
 			title={
-				<Box display="flex" alignItems="center" gap={1.5}>
-					<img
-						src={RadientIcon}
-						alt="Radient Icon"
-						style={{ width: 28, height: 28 }}
-					/>
-					<Typography variant="h6" fontWeight={600}>
-						Running Low on Radient Credits?
-					</Typography>
-				</Box>
+				<>
+					<img src={RadientIcon} alt="Radient icon" className="size-7" />
+					Running low on Radient credits?
+				</>
 			}
 			maxWidth="sm"
 			fullWidth={false}
 			actions={
 				<>
-					<SecondaryButton onClick={handleClose}>Maybe Later</SecondaryButton>
-					<CTAButton
+					<SecondaryButton onClick={handleClose}>Maybe later</SecondaryButton>
+					<PrimaryButton
 						onClick={handleGoToConsole}
 						startIcon={<ExternalLink size={18} />}
-						sx={{
-							marginBottom: 0,
-						}}
+						className="min-w-55"
 					>
-						Get More Credits
-					</CTAButton>
+						Get more credits
+					</PrimaryButton>
 				</>
 			}
 		>
-			<DialogContentWrapper>
-				<IconImage
-					src={RadientIcon}
-					alt="Radient Logo"
-					sx={{
-						width: 120,
-						height: 120,
-					}}
-				/>
-				<MarketingText variant="body1" sx={{ mb: 1 }}>
+			{/*
+			 * One accent-filled call to action, in the footer.
+			 *
+			 * There were two to the same URL about 100px apart, and the in-body
+			 * one neither closed the dialog nor recorded that the user had been
+			 * told - so taking it sent them to the browser and left the nag
+			 * armed to fire again. The body also spent bold accent on five
+			 * phrases, which with the two buttons and the logo put eight accent
+			 * marks on one screen against the three the branding doc allows.
+			 * Emphasis everywhere is emphasis nowhere, and here it was competing
+			 * with the only control that does anything.
+			 */}
+			{/* No second logo. The same asset renders at `size-7` in the title
+			    40px above, so the hexagon appeared twice in one 574px panel
+			    under two different alt texts - one graphic announced to a screen
+			    reader as two. Its 120px also pushed the closing line under the
+			    footer at 800x600, which is exactly this app's minimum window. */}
+			<div className="flex flex-col items-center gap-4 py-2 text-center">
+				<p className="text-body-sm text-ink-muted">
 					Unlock the full power of Local Operator with{" "}
-					<HighlightText>Radient Pass</HighlightText>!
-				</MarketingText>
-				<MarketingText variant="body2">
-					Using Local Operator with{" "}
-					<HighlightText>Radient Automatic</HighlightText> is often{" "}
-					<HighlightText>cheaper</HighlightText> than bringing your own key.
-					Radient's smart model routing picks the most cost-effective and
-					powerful model for each step of your agentic workflows.
-				</MarketingText>
-				<MarketingText variant="body2" sx={{ mt: 1 }}>
-					It's <HighlightText>pay-as-you-go</HighlightText> with no commitments.
-					Load up what you need, starting small for maximum flexibility.
-				</MarketingText>
+					<span className="font-bold text-accent">Radient Pass</span>.
+				</p>
+				<p className="text-body-sm text-ink-muted">
+					Radient Automatic is often cheaper than bringing your own key: its
+					smart model routing picks the most cost-effective model for each step
+					of your agentic workflows.
+				</p>
+				<p className="text-body-sm text-ink-muted">
+					It's pay-as-you-go with no commitments. Load up what you need,
+					starting small for maximum flexibility.
+				</p>
 
-				<MarketingText variant="body2" sx={{ mt: 2, mb: 2 }}>
+				<p className="text-body-sm text-ink-muted">
 					Plus, get{" "}
-					<Typography
-						component="span"
-						fontWeight="medium"
-						color={theme.palette.primary.main}
-						sx={{ fontSize: "inherit" }}
-					>
+					<span className="font-medium text-ink">
 						{isLoadingPrices ? (
-							<CircularProgress
-								size={14}
-								sx={{ mr: 0.5, verticalAlign: "middle" }}
-							/>
+							<Spinner size="sm" className="mr-0.5 align-middle" />
 						) : (
 							formatCurrency(prices?.default_registration_credits)
 						)}
-					</Typography>{" "}
-					in bonus credits with your first purchase!
+					</span>{" "}
+					in bonus credits with your first purchase.
 					{pricesError && (
-						<Typography
-							color="error"
-							variant="caption"
-							display="block"
-							mt={0.5}
-						>
+						<span className="mt-1 block text-meta text-danger">
 							Could not load bonus credit information.
-						</Typography>
+						</span>
 					)}
-				</MarketingText>
+				</p>
 
-				<Box mt={3} mb={1}>
-					<Link
-						href="https://console.radienthq.com"
-						target="_blank"
-						rel="noopener noreferrer"
-						sx={{ textDecoration: "none" }}
-					>
-						<CTAButton startIcon={<ExternalLink size={18} />}>
-							Visit Radient Console
-						</CTAButton>
-					</Link>
-				</Box>
-				<SettingsLinkText>
-					You can also access the Radient Console from the{" "}
-					<HighlightText>Settings</HighlightText> page anytime.
-				</SettingsLinkText>
-			</DialogContentWrapper>
+				<p className="text-meta text-ink-dim">
+					You can also reach the Radient Console from Settings at any time.
+				</p>
+			</div>
 		</BaseDialog>
 	);
 };

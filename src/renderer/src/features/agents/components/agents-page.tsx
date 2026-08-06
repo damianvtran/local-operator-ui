@@ -1,15 +1,21 @@
 /**
  * Agents Page Component
  *
- * Main page for displaying and managing agents with enhanced UI/UX
- * Uses React Router for navigation and state management
- * Layout follows the pattern of other pages with a sidebar and content area
+ * Main page for displaying and managing agents.
+ * Uses React Router for navigation and state management.
+ * A fixed-width agent list sits beside the settings for the selected agent.
  */
 
-import { Box, Button, Tooltip } from "@mui/material";
-import { styled, useTheme } from "@mui/material/styles";
 import type { AgentDetails } from "@shared/api/local-operator/types";
 import { PageHeader } from "@shared/components/common/page-header";
+import {
+	Button,
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+	Tooltip,
+} from "@shared/components/ui";
 import {
 	useExportAgent,
 	useUploadAgentToRadientMutation,
@@ -18,7 +24,13 @@ import { useAgent } from "@shared/hooks/use-agents";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import { useAgentRouteParam } from "@shared/hooks/use-route-params";
 import { useAgentSelectionStore } from "@shared/store/agent-selection-store";
-import { Bot, CloudUpload, FileUp, MessageCircle } from "lucide-react";
+import {
+	Bot,
+	CloudUpload,
+	Ellipsis,
+	FileUp,
+	MessageSquare,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import type { FC } from "react";
 import { useNavigate } from "react-router-dom";
@@ -32,54 +44,14 @@ import { UploadAgentDialog } from "./upload-agent-dialog";
  */
 type AgentsPageProps = Record<string, never>;
 
-const Container = styled(Box)({
-	display: "flex",
-	height: "100%",
-	width: "100%",
-	overflow: "hidden",
-});
-
-const SidebarContainer = styled(Box)({
-	flexShrink: 0,
-	width: 280,
-	height: "100%",
-});
-
-const ContentContainer = styled(Box)({
-	flexGrow: 1,
-	height: "100%",
-	overflow: "hidden",
-});
-
-const ContentInnerContainer = styled(Box)(({ theme }) => ({
-	height: "100%",
-	display: "flex",
-	flexDirection: "column",
-	padding: theme.spacing(4),
-	gap: theme.spacing(2),
-	[theme.breakpoints.down("sm")]: {
-		padding: theme.spacing(2),
-	},
-	[theme.breakpoints.between("sm", "md")]: {
-		padding: theme.spacing(3),
-	},
-}));
-
-const AgentDetailsContainer = styled(Box)({
-	flexGrow: 1,
-	overflow: "hidden",
-	transition: "opacity 0.15s ease-in-out",
-});
-
 /**
  * Agents Page Component
  *
- * Main page for displaying and managing agents with enhanced UI/UX
- * Uses React Router for navigation and state management
- * Layout follows the pattern of other pages with a sidebar and content area
+ * Main page for displaying and managing agents.
+ * Uses React Router for navigation and state management.
+ * Layout follows the pattern of other pages with a sidebar and content area.
  */
 export const AgentsPage: FC<AgentsPageProps> = () => {
-	const theme = useTheme(); // Get theme for button styles
 	const { agentId, navigateToAgent } = useAgentRouteParam();
 	const navigate = useNavigate();
 	const { isAuthenticated } = useRadientAuth(); // Get auth status
@@ -174,111 +146,151 @@ export const AgentsPage: FC<AgentsPageProps> = () => {
 		navigateToAgent(agent.id, "agents");
 	};
 
-	const buttonSx = {
-		textTransform: "none",
-		fontSize: "0.8125rem",
-		padding: theme.spacing(0.5, 1.5),
-		borderRadius: theme.shape.borderRadius * 0.75,
-	};
-
-	const secondaryButtonSx = {
-		...buttonSx,
-		borderColor: theme.palette.divider,
-		color: theme.palette.text.secondary,
-		"&:hover": {
-			backgroundColor: theme.palette.action.hover,
-			borderColor: theme.palette.divider,
-		},
-	};
-
-	const primaryButtonSx = {
-		...buttonSx,
-		"&:hover": {
-			backgroundColor: theme.palette.action.hover,
-			borderColor: theme.palette.divider,
-		},
-	};
-
 	return (
-		<Container>
-			{/* Agents Sidebar - fixed width */}
-			<SidebarContainer>
+		<div className="flex h-full w-full overflow-hidden">
+			{/* The sidebar itself is width:100% — the 280px lives here, and the
+			    pane must not shrink when the agent list has a long name in it. */}
+			<div className="h-full w-70 shrink-0">
 				<AgentsSidebar
 					selectedAgentId={selectedAgent?.id}
 					onSelectAgent={handleSelectAgent}
 				/>
-			</SidebarContainer>
+			</div>
 
-			{/* Content Area */}
-			<ContentContainer>
-				<ContentInnerContainer>
-					{/* Page Header with Action Buttons as Children */}
-					<PageHeader
-						title="Agent Management"
-						icon={Bot}
-						subtitle="View, configure and manage your AI agents from a central dashboard"
-					>
-						{/* Action buttons passed as children */}
-						{selectedAgent && (
-							<Box sx={{ display: "flex", gap: 1 }}>
-								<Tooltip title="Export Agent">
+			{/* `grow` rather than `flex-1`: the content pane keeps an auto basis so
+			    it fills the space the sidebar leaves, and `overflow-hidden` is what
+			    keeps its scrolling inside the pane instead of the window. */}
+			<div className="h-full grow overflow-hidden">
+				{/* `gap-8`: `PageHeader` no longer ships its own bottom margin. The
+				    header sits in the same measured column as the settings below it,
+				    so the page title and the fields it heads share one left edge. */}
+				<div className="flex h-full flex-col gap-8 p-4 sm:p-6 lg:p-8">
+					<div className="mx-auto w-full max-w-4xl">
+						<PageHeader
+							title="Agent management"
+							icon={Bot}
+							subtitle="View, configure and manage your agents"
+						>
+							{selectedAgent && (
+								<div className="flex items-center gap-2">
+									{/*
+									 * The two secondary actions collapse into a menu once the
+									 * header has less than 400px to work with. `PageHeader`
+									 * already wraps them onto a line of their own, and the
+									 * three buttons need about 360px side by side, so 400 is
+									 * the width below which wrapping stops being enough and
+									 * they would be clipped by the page's `overflow-hidden`.
+									 * The threshold is on the header's own width because the
+									 * app rail and the agent list between it and the window
+									 * edge both collapse independently of the viewport.
+									 *
+									 * These same two actions are already in the menu on every
+									 * row of the agent list, so folding them here repeats an
+									 * affordance the user has met rather than inventing one.
+									 */}
+									<DropdownMenu>
+										<DropdownMenuTrigger asChild>
+											<Button
+												/*
+												 * Carries the tour tag as well as the wide button
+												 * does: exactly one of the two is rendered at any
+												 * width, and the tour resolves whichever the user
+												 * can actually see. Anchoring only the wide one
+												 * left the spotlight attached to a `display:none`
+												 * element for the whole 800-950px band the
+												 * window's own minWidth floors the app to.
+												 */
+												data-tour-tag="upload-to-hub-header-button"
+												variant="secondary"
+												size="icon"
+												aria-label="More agent actions"
+												className="@min-[400px]:hidden"
+											>
+												<Ellipsis aria-hidden="true" />
+											</Button>
+										</DropdownMenuTrigger>
+										<DropdownMenuContent align="end" className="min-w-45">
+											<DropdownMenuItem
+												disabled={exportAgentMutation.isPending}
+												onSelect={handleExportAgent}
+											>
+												<FileUp aria-hidden="true" />
+												<span>Export</span>
+											</DropdownMenuItem>
+											<DropdownMenuItem
+												disabled={uploadAgentMutation.isPending}
+												onSelect={handleOpenUploadDialog}
+											>
+												<CloudUpload aria-hidden="true" />
+												<span>
+													{uploadAgentMutation.isPending
+														? "Uploading..."
+														: "Upload to hub"}
+												</span>
+											</DropdownMenuItem>
+										</DropdownMenuContent>
+									</DropdownMenu>
+
 									<Button
-										variant="outlined"
-										size="small"
-										startIcon={<FileUp size={16} strokeWidth={2} />}
+										variant="secondary"
 										onClick={handleExportAgent}
 										disabled={exportAgentMutation.isPending}
-										sx={secondaryButtonSx}
+										className="hidden @min-[400px]:inline-flex"
 									>
+										<FileUp aria-hidden="true" />
 										Export
 									</Button>
-								</Tooltip>
 
-								{/* Upload to Agent Hub Button */}
-								<Tooltip title="Upload Agent to Hub">
 									<Button
 										data-tour-tag="upload-to-hub-header-button"
-										variant="outlined"
-										size="small"
-										startIcon={<CloudUpload size={16} strokeWidth={2} />}
+										/*
+										 * A second, action-specific tag. The tour tag now sits
+										 * on two controls so the spotlight can find whichever
+										 * is visible, but they do different things: this one
+										 * opens the upload dialog, the overflow trigger opens
+										 * a menu. `click()` does not need visibility, so the
+										 * tour presses THIS one for the action and anchors to
+										 * the visible one for the highlight.
+										 */
+										data-tour-action="open-upload-dialog"
+										variant="secondary"
 										onClick={handleOpenUploadDialog}
 										disabled={uploadAgentMutation.isPending}
-										sx={secondaryButtonSx}
+										className="hidden @min-[400px]:inline-flex"
 									>
+										<CloudUpload aria-hidden="true" />
 										{uploadAgentMutation.isPending
 											? "Uploading..."
-											: "Upload to Hub"}
+											: "Upload to hub"}
 									</Button>
-								</Tooltip>
 
-								<Tooltip
-									title={`Chat with ${selectedAgent?.name || "this Agent"}`}
-								>
-									<Button
-										variant="outlined"
-										color="primary"
-										size="small"
-										startIcon={<MessageCircle size={16} strokeWidth={2} />}
-										onClick={() => navigate(`/chat/${selectedAgent.id}`)}
-										sx={primaryButtonSx}
+									{/* The only tooltip here: it names the agent, which the
+								    button label cannot. */}
+									<Tooltip
+										content={`Chat with ${selectedAgent.name || "this agent"}`}
 									>
-										Chat
-									</Button>
-								</Tooltip>
-							</Box>
-						)}
-					</PageHeader>
+										<Button
+											variant="primary"
+											onClick={() => navigate(`/chat/${selectedAgent.id}`)}
+										>
+											<MessageSquare aria-hidden="true" />
+											Chat
+										</Button>
+									</Tooltip>
+								</div>
+							)}
+						</PageHeader>
+					</div>
 
-					{/* Agent Details Section */}
-					<AgentDetailsContainer sx={{ opacity: selectedAgent ? 1 : 0.7 }}>
+					<div className="min-h-0 grow overflow-hidden">
 						<AgentSettings
 							selectedAgent={selectedAgent ?? null}
 							refetchAgent={refetchAgent}
 							initialSelectedAgentId={agentId}
 						/>
-					</AgentDetailsContainer>
-				</ContentInnerContainer>
-			</ContentContainer>
+					</div>
+				</div>
+			</div>
 
 			{/* Render the Upload Confirmation Dialog */}
 			{selectedAgent && (
@@ -291,6 +303,6 @@ export const AgentsPage: FC<AgentsPageProps> = () => {
 					validationIssues={uploadValidationIssues}
 				/>
 			)}
-		</Container>
+		</div>
 	);
 };

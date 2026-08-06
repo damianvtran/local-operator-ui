@@ -1,34 +1,26 @@
 /**
- * Agents Sidebar Component
+ * Agents sidebar.
  *
- * Displays a list of agents with search, create, and delete functionality
+ * Search, a paginated agent list, a per-row options menu, and the import and
+ * upload-to-hub dialogs.
  */
 
-import { faClock } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
-	Alert,
-	Avatar,
-	Box,
-	Button,
-	CircularProgress,
-	List,
-	ListItem,
-	ListItemAvatar,
-	ListItemButton,
-	ListItemText,
-	Paper,
-	Tooltip,
-	Typography,
-	alpha,
-} from "@mui/material";
-import { styled } from "@mui/material/styles";
 import { createLocalOperatorClient } from "@shared/api/local-operator";
 import type { AgentDetails } from "@shared/api/local-operator/types";
 import { AgentOptionsMenu } from "@shared/components/common/agent-options-menu";
 import { CompactPagination } from "@shared/components/common/compact-pagination";
 import { ImportAgentDialog } from "@shared/components/common/import-agent-dialog";
 import { SidebarHeader } from "@shared/components/common/sidebar-header";
+import { Spinner } from "@shared/components/common/spinner";
+import {
+	Alert,
+	AlertDescription,
+	Avatar,
+	AvatarFallback,
+	Button,
+	Tooltip,
+	TooltipProvider,
+} from "@shared/components/ui";
 import { apiConfig } from "@shared/config";
 import {
 	useAgent,
@@ -38,137 +30,23 @@ import {
 } from "@shared/hooks";
 import { useDebouncedValue } from "@shared/hooks/use-debounced-value";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
+import { cn } from "@shared/lib/utils";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { Bot } from "lucide-react";
-import type { ChangeEvent, FC } from "react";
+import type { FC } from "react";
 import { memo, useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { UploadAgentDialog } from "./upload-agent-dialog";
 
-const SidebarContainer = styled(Paper)(({ theme }) => ({
-	width: "100%",
-	height: "100%",
-	borderRight: `1px solid ${theme.palette.sidebar.border}`,
-	backgroundColor: theme.palette.sidebar.secondaryBackground,
-	display: "flex",
-	flexDirection: "column",
-	overflow: "hidden",
-}));
-
-const LoadingContainer = styled(Box)({
-	display: "flex",
-	justifyContent: "center",
-	alignItems: "center",
-	flexGrow: 1,
-});
-
-const ErrorAlert = styled(Alert)({
-	marginBottom: 16,
-	borderRadius: 16,
-	boxShadow: "0 2px 10px rgba(0,0,0,0.08)",
-});
-
-const EmptyStateContainer = styled(Box)({
-	padding: 24,
-	textAlign: "center",
-});
-
-const AgentsList = styled(List)(() => ({
-	overflowY: "auto",
-	flexGrow: 1,
-	padding: "8px 0px",
-}));
-
-const AgentListItemButton = styled(ListItemButton)(({ theme }) => ({
-	margin: "0 8px 8px",
-	borderRadius: 8,
-	paddingRight: 8,
-	paddingTop: 4,
-	paddingBottom: 4,
-	paddingLeft: 8,
-	position: "relative",
-	"&.Mui-selected": {
-		backgroundColor: alpha(theme.palette.sidebar.itemActive, 0.1),
-		color: theme.palette.sidebar.itemActiveText,
-		"&:hover": {
-			backgroundColor: alpha(theme.palette.sidebar.itemActiveHover, 0.15),
-		},
-	},
-	"&:hover": {
-		backgroundColor: alpha(theme.palette.sidebar.itemHover, 0.1),
-	},
-}));
-
-const AgentAvatar = styled(Avatar, {
-	shouldForwardProp: (prop) => prop !== "selected",
-})<{ selected?: boolean }>(({ theme, selected }) => ({
-	backgroundColor: selected
-		? theme.palette.sidebar.itemActive
-		: theme.palette.icon.background,
-	color: selected
-		? theme.palette.sidebar.itemActiveText
-		: theme.palette.icon.text,
-	boxShadow: `0 2px 4px ${alpha(theme.palette.common.black, 0.15)}`,
-	width: 36,
-	height: 36,
-}));
-
-// Agent name styling (similar to chat sidebar)
-const AgentName = styled(Typography)(() => ({
-	fontWeight: 600,
-	fontSize: "0.9rem",
-	whiteSpace: "nowrap",
-	overflow: "hidden",
-	textOverflow: "ellipsis",
-	flex: 1,
-}));
-
-// Description text styling (similar to message preview)
-const DescriptionText = styled("div")(({ theme }) => ({
-	fontSize: "0.8rem",
-	color:
-		theme.palette.mode === "dark"
-			? "rgba(255, 255, 255, 0.7)"
-			: "rgba(0, 0, 0, 0.6)",
-	whiteSpace: "nowrap",
-	overflow: "hidden",
-	textOverflow: "ellipsis",
-	width: "100%",
-	minHeight: "18px",
-}));
-
-// Creation date text styling (similar to timestamp)
-const CreationDateText = styled("div")(({ theme }) => ({
-	display: "flex",
-	alignItems: "center",
-	fontSize: "0.7rem",
-	color:
-		theme.palette.mode === "dark"
-			? "rgba(255, 255, 255, 0.5)"
-			: "rgba(0, 0, 0, 0.5)",
-	marginTop: 2,
-	gap: 4,
-}));
-
-// Options button container: absolutely positioned, does not take up space, fades in on hover
-const OptionsButtonContainer = styled(Box)({
-	position: "absolute",
-	top: 0,
-	right: 0,
-	height: "100%",
-	display: "flex",
-	alignItems: "center",
-	opacity: 0,
-	transition: "opacity 0.2s",
-	pointerEvents: "none",
-	".MuiListItemButton-root:hover &": {
-		opacity: 1,
-		pointerEvents: "auto",
-	},
-	"& > *": {
-		pointerEvents: "auto",
-	},
-});
+/**
+ * The rows truncate, so a tooltip is the only way to read a long name or
+ * description — but at the pointer's resting speed they would flash constantly
+ * while scanning forty rows. The MUI version bought the quiet with `enterDelay`
+ * plus an equal `enterNextDelay`; the equivalent here is one provider for the
+ * whole list with a zero skip window, so sweeping from row to row waits the
+ * full delay again instead of re-showing instantly.
+ */
+const ROW_TOOLTIP_DELAY_MS = 1200;
 
 /**
  * Props for the AgentsSidebar component
@@ -184,113 +62,123 @@ type AgentsSidebarItemProps = {
 	agent: AgentDetails;
 	isSelected: boolean;
 	onSelectAgent: (agent: AgentDetails) => void;
-	formatDate: (dateString: string) => string;
 	onChatWithAgent: (agentId: string) => void;
 	onExportAgent: (agentId: string) => void;
 	onAgentDeleted: (deletedAgentId: string) => void;
 	onUploadAgentToHub: (agent: AgentDetails) => void;
 };
 
+/**
+ * One agent row.
+ *
+ * ## Why the row has no border
+ *
+ * Forty rows with an edge each is forty boxes of chrome around a single list.
+ * The rows are separated by the gap and, when pointed at or selected, by a
+ * ground step — hover takes `elevated`, selection takes the accent wash. That
+ * wash is the row's *only* accent spend: the avatar and the name stay neutral,
+ * because tinting three things to say one thing spends the screen's accent
+ * budget on a state the ground already carries.
+ *
+ * ## Two lines, not three
+ *
+ * The row used to carry a third line — a clock glyph and the creation date, on
+ * every agent. That is 20px and a second icon per row, repeated down the whole
+ * list, for a fact nobody scans a list by; it made a 72px row out of a 52px
+ * one and cut the number of agents visible at once by a third. The date is
+ * still one click away, in the agent's own information grid, which is where a
+ * detail you look up rather than scan belongs.
+ *
+ * Name at 13px medium over description at 12px dim: two steps apart, so the
+ * name leads without needing semibold. A list row is a dense surface, and
+ * `text-body-sm` is the step the branding scale names for one.
+ *
+ * ## Why the options menu is a sibling of the row button
+ *
+ * It used to be nested inside the `ListItemButton`, which is a button inside a
+ * button — invalid, and the menu's clicks had to be stopped from selecting the
+ * row. As a sibling positioned over the row's right edge it is a real,
+ * independently focusable control. It stays hidden until the row is hovered or
+ * something inside it takes focus, so keyboard users can reach it by tabbing
+ * (`pointer-events` gates the mouse, never the tab order).
+ */
 const AgentsSidebarItem: FC<AgentsSidebarItemProps> = ({
 	agent,
 	isSelected,
 	onSelectAgent,
-	formatDate,
 	onChatWithAgent,
 	onExportAgent,
 	onAgentDeleted,
 	onUploadAgentToHub,
 }) => {
+	const description = agent.description || "No description";
+
 	return (
-		<ListItem key={agent.id} disablePadding>
-			<AgentListItemButton
-				selected={isSelected}
+		<li className="group relative">
+			<button
+				type="button"
 				onClick={() => onSelectAgent(agent)}
+				// The selected row is styled *and* announced: colour alone leaves a
+				// screen reader with no way to tell which agent is open.
+				aria-current={isSelected ? "true" : undefined}
+				// Matched by `use-onboarding-tour.ts` on the bare attribute. The value
+				// is fixed; changing it breaks the tour silently.
 				data-tour-tag="agent-list-item-button"
+				className={cn(
+					"flex w-full items-center gap-2 rounded-sm py-1.5 pr-9 pl-2 text-left",
+					"transition-colors duration-fast ease-out-quart",
+					isSelected ? "bg-accent-wash" : "hover:bg-elevated",
+				)}
 			>
-				<ListItemAvatar sx={{ minWidth: 48, width: 48 }}>
-					<AgentAvatar selected={isSelected}>
-						<Bot size={18} strokeWidth={2} aria-label="Agent" />
-					</AgentAvatar>
-				</ListItemAvatar>
-				<ListItemText disableTypography>
-					<Box
-						sx={{
-							display: "flex",
-							alignItems: "center",
-							width: "100%",
-							overflow: "hidden",
-							gap: 1,
-							position: "relative",
-						}}
-					>
-						<Box sx={{ flex: 1, minWidth: 0 }}>
-							<Tooltip
-								enterDelay={1200}
-								enterNextDelay={1200}
-								title={agent.name}
-								arrow
-								placement="top-start"
-							>
-								<AgentName>{agent.name}</AgentName>
-							</Tooltip>
-							<Tooltip
-								title={agent.description || "No description"}
-								arrow
-								placement="bottom-start"
-								enterDelay={1200}
-								enterNextDelay={1200}
-							>
-								<DescriptionText>
-									{agent.description || "No description"}
-								</DescriptionText>
-							</Tooltip>
-							<Tooltip
-								title={`Created: ${formatDate(agent.created_date)}`}
-								arrow
-								placement="bottom-start"
-								enterDelay={1200}
-								enterNextDelay={1200}
-							>
-								<CreationDateText>
-									<FontAwesomeIcon icon={faClock} size="xs" />
-									<span>{formatDate(agent.created_date)}</span>
-								</CreationDateText>
-							</Tooltip>
-						</Box>
-						<OptionsButtonContainer>
-							<Tooltip
-								enterDelay={1200}
-								enterNextDelay={1200}
-								title="Agent Options"
-								arrow
-								placement="top"
-							>
-								<span>
-									<AgentOptionsMenu
-										agentId={agent.id}
-										agentName={agent.name}
-										isAgentsPage={true}
-										onAgentDeleted={() => onAgentDeleted(agent.id)}
-										onChatWithAgent={() => onChatWithAgent(agent.id)}
-										onExportAgent={() => onExportAgent(agent.id)}
-										onUploadAgentToHub={() => onUploadAgentToHub(agent)}
-										buttonSx={{
-											width: 24,
-											height: 24,
-											borderRadius: "4px",
-											display: "flex",
-											justifyContent: "center",
-											alignItems: "center",
-										}}
-									/>
-								</span>
-							</Tooltip>
-						</OptionsButtonContainer>
-					</Box>
-				</ListItemText>
-			</AgentListItemButton>
-		</ListItem>
+				<Avatar className="size-8 shrink-0">
+					<AvatarFallback>
+						<Bot size={16} aria-hidden={true} />
+					</AvatarFallback>
+				</Avatar>
+				<span className="min-w-0 flex-1">
+					<Tooltip content={agent.name} side="top" align="start">
+						<span className="block truncate font-medium text-body-sm text-ink">
+							{agent.name}
+						</span>
+					</Tooltip>
+					<Tooltip content={description} side="bottom" align="start">
+						<span className="block truncate text-meta text-ink-dim">
+							{description}
+						</span>
+					</Tooltip>
+				</span>
+			</button>
+			<div
+				className={cn(
+					"pointer-events-none absolute top-0 right-1 flex h-full items-center",
+					"opacity-0 transition-opacity duration-fast ease-out-quart",
+					"group-hover:pointer-events-auto group-hover:opacity-100",
+					"group-focus-within:pointer-events-auto group-focus-within:opacity-100",
+				)}
+			>
+				<Tooltip content="Agent options">
+					<span>
+						<AgentOptionsMenu
+							agentId={agent.id}
+							agentName={agent.name}
+							isAgentsPage={true}
+							onAgentDeleted={() => onAgentDeleted(agent.id)}
+							onChatWithAgent={() => onChatWithAgent(agent.id)}
+							onExportAgent={() => onExportAgent(agent.id)}
+							onUploadAgentToHub={() => onUploadAgentToHub(agent)}
+							buttonSx={{
+								width: 24,
+								height: 24,
+								borderRadius: "6px",
+								display: "flex",
+								justifyContent: "center",
+								alignItems: "center",
+							}}
+						/>
+					</span>
+				</Tooltip>
+			</div>
+		</li>
 	);
 };
 
@@ -303,9 +191,7 @@ const areAgentsSidebarItemsEqual = (
 		prev.agent.id === next.agent.id &&
 		prev.agent.name === next.agent.name &&
 		prev.agent.description === next.agent.description &&
-		prev.agent.created_date === next.agent.created_date &&
 		prev.onSelectAgent === next.onSelectAgent &&
-		prev.formatDate === next.formatDate &&
 		prev.onChatWithAgent === next.onChatWithAgent &&
 		prev.onExportAgent === next.onExportAgent &&
 		prev.onAgentDeleted === next.onAgentDeleted &&
@@ -317,19 +203,6 @@ const MemoizedAgentsSidebarItem = memo(
 	AgentsSidebarItem,
 	areAgentsSidebarItemsEqual,
 );
-
-/**
- * Formats a date string into a more readable format
- */
-const formatDate = (dateString: string): string => {
-	if (!dateString) return "Unknown date";
-	const date = new Date(dateString);
-	return date.toLocaleDateString(undefined, {
-		year: "numeric",
-		month: "short",
-		day: "numeric",
-	});
-};
 
 /**
  * Agents Sidebar Component
@@ -415,7 +288,7 @@ const AgentsSidebarComponent: FC<AgentsSidebarProps> = ({
 	}, [agents, selectedAgentDetails]);
 
 	const handlePageChange = useCallback(
-		(_event: ChangeEvent<unknown>, value: number) => {
+		(value: number) => {
 			setPage(value);
 		},
 		[setPage],
@@ -555,7 +428,7 @@ const AgentsSidebarComponent: FC<AgentsSidebarProps> = ({
 	);
 
 	return (
-		<SidebarContainer elevation={0}>
+		<div className="flex h-full w-full flex-col overflow-hidden border-hairline border-r bg-surface">
 			<SidebarHeader
 				title="Agents"
 				searchQuery={searchQuery}
@@ -566,50 +439,63 @@ const AgentsSidebarComponent: FC<AgentsSidebarProps> = ({
 			/>
 
 			{isLoading ? (
-				<LoadingContainer>
-					<CircularProgress size={40} thickness={4} />
-				</LoadingContainer>
+				<div className="flex flex-1 items-center justify-center">
+					{/* Nothing beside it says what is loading, so the spinner names itself. */}
+					<Spinner size="lg" label="Loading agents" />
+				</div>
 			) : isError ? (
-				<ErrorAlert
-					severity="error"
-					action={
-						<Button
-							color="inherit"
-							size="small"
-							onClick={() => refetch()}
-							sx={{ fontWeight: 500 }}
-						>
-							Retry
-						</Button>
-					}
+				<Alert
+					variant="danger"
+					// Appears in response to a failed fetch rather than sitting on the
+					// panel from the start, so it announces itself.
+					role="alert"
+					// `w-auto` overrides the primitive's `w-full`, which would
+					// overflow the column by the margin's 32px.
+					className="m-4 w-auto"
 				>
-					Failed to load agents. Please try again.
-				</ErrorAlert>
+					<AlertDescription>
+						Failed to load agents. Please try again.
+					</AlertDescription>
+					<Button
+						variant="ghost"
+						size="sm"
+						className="self-start"
+						onClick={() => refetch()}
+					>
+						Retry
+					</Button>
+				</Alert>
 			) : combinedAgents.length === 0 && !isLoading ? ( // Check combinedAgents and isLoading
-				<EmptyStateContainer>
-					<Typography variant="body2" color="text.secondary">
-						{searchQuery ? "No agents match your search" : "No agents found"}
-					</Typography>
-				</EmptyStateContainer>
+				<p className="p-6 text-center text-body-sm text-ink-muted">
+					{searchQuery ? "No agents match your search" : "No agents found"}
+				</p>
 			) : (
-				<AgentsList>
-					{combinedAgents.map((agent) => (
-						<MemoizedAgentsSidebarItem
-							key={agent.id}
-							agent={agent}
-							isSelected={
-								selectedAgentId === agent.id ||
-								selectedAgentDetails?.id === agent.id
-							}
-							onSelectAgent={handleSelectAgent}
-							formatDate={formatDate}
-							onChatWithAgent={handleChatWithAgent}
-							onExportAgent={handleExportAgent}
-							onAgentDeleted={handleAgentDeletedFromItem}
-							onUploadAgentToHub={handleUploadAgentToHubFromItem}
-						/>
-					))}
-				</AgentsList>
+				<TooltipProvider
+					delayDuration={ROW_TOOLTIP_DELAY_MS}
+					skipDelayDuration={0}
+				>
+					{/*
+					 * `min-h-0` so the list scrolls inside the flex column instead of
+					 * pushing the pagination out of the panel.
+					 */}
+					<ul className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto p-2">
+						{combinedAgents.map((agent) => (
+							<MemoizedAgentsSidebarItem
+								key={agent.id}
+								agent={agent}
+								isSelected={
+									selectedAgentId === agent.id ||
+									selectedAgentDetails?.id === agent.id
+								}
+								onSelectAgent={handleSelectAgent}
+								onChatWithAgent={handleChatWithAgent}
+								onExportAgent={handleExportAgent}
+								onAgentDeleted={handleAgentDeletedFromItem}
+								onUploadAgentToHub={handleUploadAgentToHubFromItem}
+							/>
+						))}
+					</ul>
+				</TooltipProvider>
 			)}
 
 			<ImportAgentDialog
@@ -622,9 +508,7 @@ const AgentsSidebarComponent: FC<AgentsSidebarProps> = ({
 				<CompactPagination
 					page={page}
 					count={Math.max(1, Math.ceil(totalAgents / perPage))}
-					onChange={(newPage) =>
-						handlePageChange({} as ChangeEvent<unknown>, newPage)
-					}
+					onChange={handlePageChange}
 				/>
 			)}
 
@@ -636,7 +520,7 @@ const AgentsSidebarComponent: FC<AgentsSidebarProps> = ({
 				onConfirmUpload={handleConfirmUpload}
 				validationIssues={uploadValidationIssues}
 			/>
-		</SidebarContainer>
+		</div>
 	);
 };
 

@@ -36,6 +36,29 @@ const ERROR_GROUPS = {
 	// Add other error groups as needed
 };
 
+/*
+ * The verbatim strings a failed `fetch` throws, engine by engine. They reach a
+ * toast unchanged wherever a caller hands `error.message` straight to
+ * `showErrorToast`, and not one of them is addressed to a person: Chromium
+ * says "Failed to fetch" for a refused connection, a DNS miss and a blocked
+ * request alike, so the string names neither what broke nor what to do.
+ *
+ * Matched whole rather than by substring, unlike the grouping above. "Failed
+ * to fetch conversation messages" is a sentence someone wrote on purpose and
+ * says strictly more than the replacement would.
+ */
+const RAW_TRANSPORT_ERRORS: Record<string, true> = {
+	"Failed to fetch": true,
+	"TypeError: Failed to fetch": true,
+	"Load failed": true,
+	"NetworkError when attempting to fetch resource.": true,
+	ERR_CONNECTION_REFUSED: true,
+	"net::ERR_CONNECTION_REFUSED": true,
+};
+
+const CONNECTION_FAILURE_COPY =
+	"Could not reach the server. Check that it is running, then try again.";
+
 /**
  * Get the error group for a message
  *
@@ -66,6 +89,19 @@ export const showErrorToast = (
 	const errorGroup = getErrorGroup(message);
 	const key = errorGroup || message;
 
+	/* Dedup still keys off what the caller passed, so two different raw
+	   transport strings collapse the same way they did before. Only what the
+	   person reads changes. `hasOwnProperty.call` rather than a truthiness
+	   check, because a message of "toString" would otherwise find
+	   `Object.prototype` and be rewritten; `Object.hasOwn` reads better but
+	   needs an ES2022 lib this tsconfig does not target. */
+	const text = Object.prototype.hasOwnProperty.call(
+		RAW_TRANSPORT_ERRORS,
+		message.trim(),
+	)
+		? CONNECTION_FAILURE_COPY
+		: message;
+
 	const lastShown = lastErrorShownTime.get(key);
 	if (lastShown && now - lastShown < DEFAULT_ERROR_COOLDOWN) {
 		return null;
@@ -83,7 +119,7 @@ export const showErrorToast = (
 		return activeToasts.get(key) as string | number;
 	}
 
-	const id = toast.error(message, {
+	const id = toast.error(text, {
 		...options,
 		onDismiss: (toastItem) => {
 			activeToasts.delete(key);

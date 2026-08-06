@@ -1,22 +1,4 @@
 import { UploadAgentDialog } from "@features/agents/components/upload-agent-dialog";
-import { faCommentSlash } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
-	Alert,
-	Avatar,
-	Box,
-	Button,
-	CircularProgress,
-	List,
-	ListItem,
-	ListItemAvatar,
-	ListItemButton,
-	Paper,
-	Tooltip,
-	Typography,
-	alpha,
-} from "@mui/material";
-import { styled } from "@mui/material/styles";
 import type { AgentDetails } from "@shared/api/local-operator/types";
 import {
 	AgentOptionsMenu,
@@ -24,6 +6,16 @@ import {
 	ImportAgentDialog,
 	SidebarHeader,
 } from "@shared/components/common";
+import { Spinner } from "@shared/components/common/spinner";
+import {
+	Alert,
+	AlertDescription,
+	Avatar,
+	AvatarFallback,
+	Button,
+	Tooltip,
+	TooltipProvider,
+} from "@shared/components/ui";
 import {
 	useAgent,
 	useAgents,
@@ -33,186 +25,20 @@ import {
 } from "@shared/hooks";
 import { useDebouncedValue } from "@shared/hooks/use-debounced-value";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
+import { cn } from "@shared/lib/utils";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
-import {
-	formatMessageDateTime,
-	getFullDateTime,
-} from "@shared/utils/date-utils";
-import { Bot } from "lucide-react";
+import { formatMessageDateTime } from "@shared/utils/date-utils";
+import { Bot, MessageCircleOff } from "lucide-react";
 import type { ChangeEvent, FC } from "react";
 import { memo, useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-const SidebarContainer = styled(Paper)(({ theme }) => ({
-	width: "100%",
-	height: "100%",
-	borderRight: `1px solid ${theme.palette.sidebar.border}`,
-	backgroundColor: theme.palette.sidebar.secondaryBackground,
-	display: "flex",
-	flexDirection: "column",
-	overflow: "hidden",
-}));
-
-const LoadingContainer = styled(Box)({
-	display: "flex",
-	justifyContent: "center",
-	alignItems: "center",
-	flexGrow: 1,
-});
-
-const ErrorAlert = styled(Alert)({
-	marginBottom: 16,
-	borderRadius: 16,
-	boxShadow: "0 2px 10px rgba(0,0,0,0.08)",
-});
-
-const EmptyStateContainer = styled(Box)({
-	padding: 24,
-	textAlign: "center",
-});
-
-const AgentsList = styled(List)(() => ({
-	overflow: "auto",
-	flexGrow: 1,
-	padding: "8px 0px",
-}));
-
-const AgentListItemButton = styled(ListItemButton)(({ theme }) => ({
-	margin: "0 8px 8px",
-	borderRadius: 8,
-	paddingRight: 8,
-	paddingTop: 4,
-	paddingBottom: 4,
-	paddingLeft: 8,
-	position: "relative",
-	"&.Mui-selected": {
-		backgroundColor: alpha(theme.palette.sidebar.itemActive, 0.1),
-		color: theme.palette.sidebar.itemActiveText,
-		"&:hover": {
-			backgroundColor: alpha(theme.palette.sidebar.itemActiveHover, 0.15),
-		},
-	},
-	"&:hover": {
-		backgroundColor: alpha(theme.palette.sidebar.itemHover, 0.1),
-	},
-}));
-
-const AgentAvatar = styled(Avatar, {
-	shouldForwardProp: (prop) => prop !== "selected",
-})<{ selected?: boolean }>(({ theme, selected }) => ({
-	backgroundColor: selected
-		? theme.palette.sidebar.itemActive
-		: theme.palette.icon.background,
-	color: selected
-		? theme.palette.sidebar.itemActiveText
-		: theme.palette.icon.text,
-	boxShadow: `0 2px 4px ${alpha(theme.palette.common.black, 0.15)}`,
-	width: 36,
-	height: 36,
-}));
-
-// Message bubble styling
-const MessageBubble = styled("div")({
-	display: "flex",
-	flexDirection: "column",
-	width: "100%",
-	overflow: "hidden",
-	position: "relative",
-	isolation: "isolate",
-});
-
-// Agent name container with timestamp and absolutely positioned options button
-const AgentNameContainer = styled(Box)({
-	display: "flex",
-	alignItems: "center",
-	width: "100%",
-	position: "relative",
-	overflow: "hidden",
-	gap: 8,
-});
-
-// Agent name styling
-const AgentName = styled(Typography)(() => ({
-	fontWeight: 600,
-	fontSize: "0.9rem",
-	whiteSpace: "nowrap",
-	overflow: "hidden",
-	textOverflow: "ellipsis",
-	marginBottom: 2,
-	flex: 1,
-}));
-
-// Message preview with truncation
-const MessagePreview = styled("div")(({ theme }) => ({
-	fontSize: "0.8rem",
-	color:
-		theme.palette.mode === "dark"
-			? "rgba(255, 255, 255, 0.7)"
-			: "rgba(0, 0, 0, 0.6)",
-	whiteSpace: "nowrap",
-	overflow: "hidden",
-	textOverflow: "ellipsis",
-	width: "100%",
-	minHeight: "18px",
-}));
-
-// Time stamp styling
-const TimeStampContainer = styled("div")(({ theme }) => ({
-	display: "flex",
-	alignItems: "center",
-	color:
-		theme.palette.mode === "dark"
-			? "rgba(255, 255, 255, 0.5)"
-			: "rgba(0, 0, 0, 0.5)",
-	fontSize: "0.7rem",
-	marginLeft: 8,
-	flexShrink: 0,
-	transition: "transform 0.2s ease",
-	".MuiListItemButton-root:hover &": {
-		transform: "translateX(-24px)",
-	},
-	// Ensure the timestamp doesn't get affected by menu clicks
-	pointerEvents: "none",
-}));
-
-const TimeStampText = styled("span")({
-	cursor: "help",
-});
-
-// Options button container: absolutely positioned, does not take up space, fades in on hover
-const OptionsButtonContainer = styled(Box)({
-	position: "absolute",
-	top: 0,
-	right: 0,
-	height: "100%",
-	display: "flex",
-	alignItems: "center",
-	opacity: 0,
-	transition: "opacity 0.2s",
-	pointerEvents: "none",
-	".MuiListItemButton-root:hover &": {
-		opacity: 1,
-		pointerEvents: "auto",
-	},
-	"& > *": {
-		pointerEvents: "auto",
-	},
-});
-
-// No messages styling
-const NoMessagesContainer = styled("div")(({ theme }) => ({
-	display: "flex",
-	alignItems: "center",
-	color:
-		theme.palette.mode === "dark"
-			? "rgba(255, 255, 255, 0.5)"
-			: "rgba(0, 0, 0, 0.5)",
-	fontSize: "0.8rem",
-	fontStyle: "italic",
-	whiteSpace: "nowrap",
-	overflow: "hidden",
-	textOverflow: "ellipsis",
-}));
+/**
+ * The rows truncate, so a tooltip is the only way to read a long name or
+ * message preview. The delay keeps them quiet while the pointer merely
+ * crosses the list.
+ */
+const ROW_TOOLTIP_DELAY_MS = 1200;
 
 /**
  * Props for the ChatSidebar component
@@ -235,7 +61,6 @@ type ChatSidebarItemProps = {
 	onClearAgentConversation: (agentId: string) => void;
 	onAgentDeleted: (deletedAgentId: string) => void;
 	onUploadAgentToHub: (agent: AgentDetails) => void;
-	getFullDateTime: (date: string) => string;
 	formatMessageDateTime: (date: string) => string;
 	truncateMessage: (message?: string, maxLength?: number) => string;
 	index: number;
@@ -250,109 +75,105 @@ const ChatSidebarItem: FC<ChatSidebarItemProps> = ({
 	onClearAgentConversation,
 	onAgentDeleted,
 	onUploadAgentToHub,
-	getFullDateTime,
 	formatMessageDateTime,
 	truncateMessage,
 	index,
 }) => {
 	return (
-		<ListItem
-			key={agent.id}
-			disablePadding
-			data-tour-tag={`agent-list-item-button-${index}`}
-		>
-			<AgentListItemButton
-				selected={isSelected}
+		<li className="group relative">
+			<button
+				type="button"
 				onClick={() => onSelectConversation(agent.id)}
+				// Matched by `use-onboarding-tour.ts`, which also clicks it — the tag
+				// must stay on the button, and the value is fixed.
+				data-tour-tag={`agent-list-item-button-${index}`}
+				// The selected row is styled *and* announced: colour alone leaves a
+				// screen reader with no way to tell which conversation is open.
+				aria-current={isSelected ? "true" : undefined}
+				className={cn(
+					"flex w-full items-center gap-3 rounded-md px-2 py-1 pr-9 text-left",
+					"transition-colors duration-fast ease-out-quart",
+					isSelected ? "bg-accent-wash" : "hover:bg-elevated",
+				)}
 			>
-				<ListItemAvatar sx={{ minWidth: 48, width: 48 }}>
-					<AgentAvatar selected={isSelected}>
-						<Bot size={18} strokeWidth={2} aria-label="Agent" />
-					</AgentAvatar>
-				</ListItemAvatar>
-				<MessageBubble>
-					<AgentNameContainer>
-						<Tooltip
-							enterDelay={1200}
-							enterNextDelay={1200}
-							title={agent.name}
-							arrow
-							placement="top-start"
-						>
-							<AgentName>{agent.name}</AgentName>
+				<Avatar className="size-9 shrink-0">
+					<AvatarFallback>
+						<Bot size={18} aria-hidden={true} />
+					</AvatarFallback>
+				</Avatar>
+				<span className="relative isolate min-w-0 flex-1 overflow-hidden">
+					<span className="relative flex w-full items-center gap-2 overflow-hidden">
+						<Tooltip content={agent.name} side="top" align="start">
+							<span className="mb-0.5 min-w-0 flex-1 truncate font-semibold text-body-sm text-ink">
+								{agent.name}
+							</span>
 						</Tooltip>
 						{agent.last_message_datetime && (
-							<TimeStampContainer>
-								<TimeStampText
-									title={getFullDateTime(agent.last_message_datetime)}
-								>
-									{formatMessageDateTime(agent.last_message_datetime)}
-								</TimeStampText>
-							</TimeStampContainer>
+							/* No `title`: this span is `pointer-events-none`, so it is never
+							   the hit target and a native tooltip has nothing to trigger on.
+							   The attribute sat here looking like the exact timestamp was
+							   recoverable when it never was. The row already opens a real
+							   tooltip on the agent name beside it. */
+							<span className="pointer-events-none ml-2 flex shrink-0 items-center text-meta text-ink-dim">
+								{formatMessageDateTime(agent.last_message_datetime)}
+							</span>
 						)}
-						<OptionsButtonContainer>
-							<Tooltip
-								enterDelay={1200}
-								enterNextDelay={1200}
-								title="Agent Options"
-								arrow
-								placement="top"
-							>
-								<span>
-									<AgentOptionsMenu
-										agentId={agent.id}
-										agentName={agent.name}
-										isAgentsPage={false}
-										onViewAgentSettings={
-											onNavigateToAgentSettings
-												? () => onNavigateToAgentSettings(agent.id)
-												: undefined
-										}
-										onExportAgent={() => onExportAgent(agent.id)}
-										onClearConversation={() =>
-											onClearAgentConversation(agent.id)
-										}
-										onAgentDeleted={onAgentDeleted}
-										onUploadAgentToHub={() => onUploadAgentToHub(agent)}
-										buttonSx={{
-											width: 24,
-											height: 24,
-											borderRadius: "4px",
-											display: "flex",
-											justifyContent: "center",
-											alignItems: "center",
-										}}
-									/>
-								</span>
-							</Tooltip>
-						</OptionsButtonContainer>
-					</AgentNameContainer>
+					</span>
 
 					{agent.last_message ? (
 						<Tooltip
-							title={truncateMessage(agent.last_message, 500)}
-							arrow
-							placement="bottom-start"
-							enterDelay={1200}
-							enterNextDelay={1200}
+							content={truncateMessage(agent.last_message, 500)}
+							side="bottom"
+							align="start"
 						>
-							<MessagePreview>
+							<span className="block min-h-[18px] w-full truncate text-meta text-ink-muted">
 								{truncateMessage(agent.last_message, 40)}
-							</MessagePreview>
+							</span>
 						</Tooltip>
 					) : (
-						<NoMessagesContainer>
-							<FontAwesomeIcon
-								icon={faCommentSlash}
-								size="xs"
-								style={{ marginRight: "4px" }}
-							/>
+						<span className="flex min-h-[18px] items-center gap-1 truncate text-meta italic text-ink-dim">
+							<MessageCircleOff size={12} aria-hidden={true} />
 							<span>No messages yet</span>
-						</NoMessagesContainer>
+						</span>
 					)}
-				</MessageBubble>
-			</AgentListItemButton>
-		</ListItem>
+				</span>
+			</button>
+			<div
+				className={cn(
+					"pointer-events-none absolute top-0 right-1 flex h-full items-center",
+					"opacity-0 transition-opacity duration-fast ease-out-quart",
+					"group-hover:pointer-events-auto group-hover:opacity-100",
+					"group-focus-within:pointer-events-auto group-focus-within:opacity-100",
+				)}
+			>
+				<Tooltip content="Agent options">
+					<span>
+						<AgentOptionsMenu
+							agentId={agent.id}
+							agentName={agent.name}
+							isAgentsPage={false}
+							onViewAgentSettings={
+								onNavigateToAgentSettings
+									? () => onNavigateToAgentSettings(agent.id)
+									: undefined
+							}
+							onExportAgent={() => onExportAgent(agent.id)}
+							onClearConversation={() => onClearAgentConversation(agent.id)}
+							onAgentDeleted={onAgentDeleted}
+							onUploadAgentToHub={() => onUploadAgentToHub(agent)}
+							buttonSx={{
+								width: 24,
+								height: 24,
+								borderRadius: "6px",
+								display: "flex",
+								justifyContent: "center",
+								alignItems: "center",
+							}}
+						/>
+					</span>
+				</Tooltip>
+			</div>
+		</li>
 	);
 };
 
@@ -373,7 +194,6 @@ const areChatSidebarItemsEqual = (
 		prev.onClearAgentConversation === next.onClearAgentConversation &&
 		prev.onAgentDeleted === next.onAgentDeleted &&
 		prev.onUploadAgentToHub === next.onUploadAgentToHub &&
-		prev.getFullDateTime === next.getFullDateTime &&
 		prev.formatMessageDateTime === next.formatMessageDateTime &&
 		prev.truncateMessage === next.truncateMessage
 	);
@@ -614,7 +434,10 @@ const ChatSidebarComponent: FC<ChatSidebarProps> = ({
 	}, []);
 
 	return (
-		<SidebarContainer elevation={0} data-tour-tag="agent-list-panel">
+		<div
+			className="flex h-full w-full flex-col overflow-hidden border-hairline border-r bg-surface"
+			data-tour-tag="agent-list-panel"
+		>
 			<SidebarHeader
 				title="Agents"
 				searchQuery={searchQuery}
@@ -625,54 +448,67 @@ const ChatSidebarComponent: FC<ChatSidebarProps> = ({
 			/>
 
 			{isLoading ? (
-				<LoadingContainer>
-					<CircularProgress size={40} thickness={4} />
-				</LoadingContainer>
+				<div className="flex flex-1 items-center justify-center">
+					{/* Nothing beside it says what is loading, so the spinner names itself. */}
+					<Spinner size="lg" label="Loading agents" />
+				</div>
 			) : isError ? (
-				<ErrorAlert
-					severity="error"
-					action={
-						<Button
-							color="inherit"
-							size="small"
-							onClick={() => refetch()}
-							sx={{ fontWeight: 500 }}
-						>
-							Retry
-						</Button>
-					}
+				<Alert
+					variant="danger"
+					// Appears in response to a failed fetch rather than sitting on the
+					// panel from the start, so it announces itself.
+					role="alert"
+					// `w-auto` overrides the primitive's `w-full`, which would
+					// overflow the column by the margin's 32px.
+					className="m-4 w-auto"
 				>
-					Failed to load agents. Please try again.
-				</ErrorAlert>
+					<AlertDescription>
+						Failed to load agents. Please try again.
+					</AlertDescription>
+					<Button
+						variant="ghost"
+						size="sm"
+						className="self-start"
+						onClick={() => refetch()}
+					>
+						Retry
+					</Button>
+				</Alert>
 			) : combinedAgents.length === 0 && !isLoading ? ( // Check combinedAgents and isLoading
-				<EmptyStateContainer>
-					<Typography variant="body2" color="text.secondary">
-						{searchQuery ? "No agents match your search" : "No agents found"}
-					</Typography>
-				</EmptyStateContainer>
+				<p className="p-6 text-center text-body-sm text-ink-muted">
+					{searchQuery ? "No agents match your search" : "No agents found"}
+				</p>
 			) : (
-				<AgentsList>
-					{combinedAgents.map((agent, index) => (
-						<MemoizedChatSidebarItem
-							key={agent.id}
-							agent={agent}
-							isSelected={
-								selectedConversation === agent.id ||
-								selectedAgentDetails?.id === agent.id
-							}
-							onSelectConversation={handleSelectConversation}
-							onNavigateToAgentSettings={onNavigateToAgentSettings}
-							onExportAgent={handleExportAgent}
-							onClearAgentConversation={handleClearAgentConversation}
-							onAgentDeleted={handleAgentDeleted}
-							onUploadAgentToHub={handleUploadAgentToHub}
-							getFullDateTime={getFullDateTime}
-							formatMessageDateTime={formatMessageDateTime}
-							truncateMessage={truncateMessage}
-							index={index}
-						/>
-					))}
-				</AgentsList>
+				<TooltipProvider
+					delayDuration={ROW_TOOLTIP_DELAY_MS}
+					skipDelayDuration={0}
+				>
+					{/*
+					 * `min-h-0` so the list scrolls inside the flex column instead of
+					 * pushing the pagination out of the panel.
+					 */}
+					<ul className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto py-2">
+						{combinedAgents.map((agent, index) => (
+							<MemoizedChatSidebarItem
+								key={agent.id}
+								agent={agent}
+								isSelected={
+									selectedConversation === agent.id ||
+									selectedAgentDetails?.id === agent.id
+								}
+								onSelectConversation={handleSelectConversation}
+								onNavigateToAgentSettings={onNavigateToAgentSettings}
+								onExportAgent={handleExportAgent}
+								onClearAgentConversation={handleClearAgentConversation}
+								onAgentDeleted={handleAgentDeleted}
+								onUploadAgentToHub={handleUploadAgentToHub}
+								formatMessageDateTime={formatMessageDateTime}
+								truncateMessage={truncateMessage}
+								index={index}
+							/>
+						))}
+					</ul>
+				</TooltipProvider>
 			)}
 
 			<ImportAgentDialog
@@ -699,7 +535,7 @@ const ChatSidebarComponent: FC<ChatSidebarProps> = ({
 				onConfirmUpload={handleConfirmUpload}
 				validationIssues={uploadValidationIssues}
 			/>
-		</SidebarContainer>
+		</div>
 	);
 };
 

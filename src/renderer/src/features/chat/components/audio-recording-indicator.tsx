@@ -1,5 +1,3 @@
-import { Box, Typography, alpha } from "@mui/material";
-import { keyframes, styled, useTheme } from "@mui/material/styles";
 import { useEffect, useRef } from "react";
 
 /**
@@ -14,56 +12,47 @@ const MIN_BAR_HEIGHT = 2; // Minimum height of a bar in pixels
 const MAX_BAR_HEIGHT = 24; // Maximum height of a bar in pixels
 const FRAMES_TO_SKIP = 4; // Throttle visual updates
 
-const createPulseAnimation = (primaryColor: string) => keyframes`
-  0% {
-    transform: scale(0.95);
-    box-shadow: 0 0 0 0 ${alpha(primaryColor, 0.7)};
-  }
-  70% {
+/*
+ * The recording pulse, kept in-component: `styles/**` is shared infrastructure
+ * and this animation is composer chrome.
+ *
+ * It is an expanding ring, not a `box-shadow`. The system has exactly one
+ * shadow and it belongs to objects that leave the flow — menu, dialog, drawer,
+ * popover, tooltip, select (docs/branding.md § 2). A status dot sitting in the
+ * composer is not one of those, and a shadow keyframe here is also the one
+ * shape of ring that an ancestor's `overflow: hidden` can clip away.
+ *
+ * Two things about the split into a static dot and an animated ring are
+ * load-bearing:
+ *
+ * - The dot is the state; the ring is only emphasis. Under
+ *   `prefers-reduced-motion` the global rule in `styles/index.css` caps every
+ *   animation at 0.01ms with a single iteration, so this one finishes at once
+ *   and — `animation-fill-mode` being `none` — the animated element reverts to
+ *   its unanimated style. The ring's unanimated style is `opacity: 0`, so it
+ *   is simply absent rather than frozen half-drawn. Pulsing the dot's own
+ *   opacity instead would have put the state itself on the animated element,
+ *   and whatever resting opacity that dot declared is then what a
+ *   reduced-motion user is left looking at. Here they get a solid accent dot
+ *   beside the word "Recording", which is the whole message.
+ * - The ring takes `border-accent`, so no theme has its colour guessed.
+ *
+ * The 1.6s period is deliberately outside the 80/120/180/240ms ramp. That ramp
+ * governs entrances and state changes, where the duration is time the user is
+ * made to wait; a continuous "still recording" signal is a heartbeat, and at
+ * 240ms it would strobe. `Spinner`'s rotation is the same exception.
+ */
+const PULSE_KEYFRAMES = `
+@keyframes recording-ping {
+  from {
     transform: scale(1);
-    box-shadow: 0 0 0 10px ${alpha(primaryColor, 0)};
+    opacity: 0.6;
   }
-  100% {
-    transform: scale(0.95);
-    box-shadow: 0 0 0 0 ${alpha(primaryColor, 0)};
+  to {
+    transform: scale(2.4);
+    opacity: 0;
   }
-`;
-
-const RecordingIndicatorContainer = styled(Box)(({ theme }) => ({
-	flex: 1,
-	display: "flex",
-	alignItems: "center",
-	justifyContent: "center",
-	minHeight: "50px",
-	padding: theme.spacing(1, 2),
-	borderRadius: theme.shape.borderRadius * 2,
-	backgroundColor: alpha(theme.palette.primary.main, 0.08),
-	border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`,
-	color: theme.palette.primary.main,
-	gap: theme.spacing(2),
-}));
-
-const RecordingText = styled(Typography)(({ theme }) => ({
-	fontSize: "0.9rem",
-	fontWeight: 500,
-	color: theme.palette.primary.main,
-}));
-
-const RecordingDot = styled(Box)(({ theme }) => ({
-	width: 8,
-	height: 8,
-	backgroundColor: theme.palette.primary.main,
-	borderRadius: "50%",
-	animation: `${createPulseAnimation(theme.palette.primary.main)} 1.5s infinite ease-in-out`,
-	flexShrink: 0,
-}));
-
-const WaveformCanvas = styled("canvas")(() => ({
-	display: "block",
-	width: "100%",
-	height: `${MAX_BAR_HEIGHT}px`,
-	flex: 1,
-}));
+}`;
 
 /**
  * AudioRecordingIndicator component
@@ -72,7 +61,6 @@ const WaveformCanvas = styled("canvas")(() => ({
 export const AudioRecordingIndicator = ({
 	isRecording,
 }: AudioRecordingIndicatorProps): JSX.Element | null => {
-	const theme = useTheme();
 	const canvasRef = useRef<HTMLCanvasElement | null>(null);
 	const animationFrameRef = useRef<number>();
 	const mediaStreamRef = useRef<MediaStream | null>(null);
@@ -94,6 +82,13 @@ export const AudioRecordingIndicator = ({
 		if (!ctx) {
 			return;
 		}
+
+		// A canvas 2D context cannot resolve `var()`, so the accent has to be read
+		// back as a computed value. Reading `color` rather than the custom property
+		// is what removes the need for a literal fallback: the element carries
+		// `text-accent`, and `color` always computes to a real colour, whereas a
+		// custom property read returns "" before the theme is applied.
+		const accent = getComputedStyle(canvas).color;
 
 		// Resize canvas to match its container
 		const resizeCanvas = () => {
@@ -129,8 +124,8 @@ export const AudioRecordingIndicator = ({
 				// Use different color for bars with zero/minimal data
 				const isMinimalData = h <= MIN_BAR_HEIGHT;
 				ctx.fillStyle = isMinimalData
-					? alpha(theme.palette.primary.main, 0.3)
-					: theme.palette.primary.main;
+					? `color-mix(in srgb, ${accent} 30%, transparent)`
+					: accent;
 
 				// Draw rounded rectangle (pill shape)
 				ctx.beginPath();
@@ -228,18 +223,22 @@ export const AudioRecordingIndicator = ({
 				audioContextRef.current = null;
 			}
 		};
-	}, [isRecording, theme.palette.primary.main]);
+	}, [isRecording]);
 
 	if (!isRecording) {
 		return null;
 	}
 
 	return (
-		<RecordingIndicatorContainer>
-			<RecordingDot />
-			<RecordingText variant="body2">Recording</RecordingText>
-			<WaveformCanvas ref={canvasRef} />
-		</RecordingIndicatorContainer>
+		<div className="flex flex-1 items-center justify-center gap-4 rounded-md border border-accent/20 bg-accent-wash px-4 py-2 text-accent [min-height:50px]">
+			<style>{PULSE_KEYFRAMES}</style>
+			<span className="relative block size-2 shrink-0" aria-hidden="true">
+				<span className="absolute inset-0 rounded-full border border-accent opacity-0 animate-[recording-ping_1.6s_ease-out_infinite]" />
+				<span className="block size-2 rounded-full bg-accent" />
+			</span>
+			<span className="font-medium text-body-sm text-accent">Recording</span>
+			<canvas ref={canvasRef} className="block h-6 flex-1 text-accent" />
+		</div>
 	);
 };
 

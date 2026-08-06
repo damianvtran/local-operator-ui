@@ -1,44 +1,43 @@
-import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
-import {
-	faArchive,
-	faBook,
-	faBox,
-	faBoxOpen,
-	faClock,
-	faDatabase,
-	faDesktop,
-	faDownload,
-	faFileAlt,
-	faFolder,
-	faFolderOpen,
-	faFolderTree,
-	faHdd,
-	faHome,
-	faImage,
-	faLaptop,
-	faMusic,
-	faNetworkWired,
-	faServer,
-	faUsers,
-	faVideo,
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
-	Box,
-	Chip,
-	ClickAwayListener,
-	Divider,
-	Menu,
-	MenuItem,
-	TextField,
-	Tooltip,
-	Typography,
-	alpha,
-	styled,
-} from "@mui/material";
 import type { AgentUpdate } from "@shared/api/local-operator/types";
+import {
+	Button,
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuLabel,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+	Input,
+	Tooltip,
+} from "@shared/components/ui";
 import { useUpdateAgent } from "@shared/hooks/use-update-agent";
+import { cn } from "@shared/lib/utils";
 import { useRecentDirectoriesStore } from "@shared/store/recent-directories-store";
+import type { LucideIcon } from "lucide-react";
+import {
+	Archive,
+	Book,
+	Clock,
+	Database,
+	Download,
+	FileText,
+	Folder,
+	FolderOpen,
+	FolderTree,
+	HardDrive,
+	House,
+	Image as ImageIcon,
+	Laptop,
+	Monitor,
+	Music,
+	Network,
+	Package,
+	PackageOpen,
+	Pencil,
+	Server,
+	Users,
+	Video,
+} from "lucide-react";
 import {
 	type FC,
 	useCallback,
@@ -61,150 +60,97 @@ type DirectoryIndicatorProps = {
 type DirectoryInfo = {
 	name: string;
 	path: string;
-	icon: IconDefinition;
+	icon: LucideIcon;
 };
 
 /**
- * Maps directory names to appropriate FontAwesome icons
+ * A path is machine voice, so it is monospace wherever it appears: in the chip,
+ * in the edit field, and next to a directory name in the menu. The ink role is
+ * left to each site — subdued for a label, full for the field being typed in.
  */
-const getDirectoryIcon = (name: string, path: string): IconDefinition => {
+const PATH_TYPE = "font-mono text-mono-sm";
+
+/**
+ * Roughly the number of 12px monospace characters that fit on a recent-path
+ * row of the 320px menu. Past it the row ellipsises, so that is where the
+ * row earns a tooltip carrying the full path.
+ */
+const RECENT_PATH_TRUNCATES_AT = 42;
+
+/**
+ * Maps directory names to appropriate icons
+ */
+const getDirectoryIcon = (name: string, path: string): LucideIcon => {
 	const lowerName = name.toLowerCase();
 	const lowerPath = path.toLowerCase();
 
-	if (name === "Home" || path === "~") return faHome;
-	if (lowerName.includes("download")) return faDownload;
-	if (lowerName.includes("document")) return faFileAlt;
-	if (lowerName.includes("desktop")) return faDesktop;
-	if (lowerName.includes("picture")) return faImage;
-	if (lowerName.includes("music")) return faMusic;
-	if (lowerName.includes("video")) return faVideo;
-	if (lowerName.includes("program")) return faLaptop;
-	if (lowerName.includes("user")) return faUsers;
-	if (lowerPath.includes("programdata")) return faDatabase;
-	if (lowerName.includes("application")) return faBoxOpen;
-	if (lowerName.includes("library")) return faBook;
-	if (lowerName.includes("volume")) return faHdd;
-	if (lowerName.includes("etc")) return faServer;
-	if (lowerName.includes("usr")) return faUsers;
-	if (lowerName.includes("var")) return faDatabase;
-	if (lowerName.includes("opt")) return faBox;
-	if (lowerName.includes("mnt")) return faHdd;
-	if (lowerName.includes("media")) return faArchive;
-	if (lowerName.includes("srv")) return faNetworkWired;
+	if (name === "Home" || path === "~") return House;
+	if (lowerName.includes("download")) return Download;
+	if (lowerName.includes("document")) return FileText;
+	if (lowerName.includes("desktop")) return Monitor;
+	if (lowerName.includes("picture")) return ImageIcon;
+	if (lowerName.includes("music")) return Music;
+	if (lowerName.includes("video")) return Video;
+	if (lowerName.includes("program")) return Laptop;
+	if (lowerName.includes("user")) return Users;
+	if (lowerPath.includes("programdata")) return Database;
+	if (lowerName.includes("application")) return PackageOpen;
+	if (lowerName.includes("library")) return Book;
+	if (lowerName.includes("volume")) return HardDrive;
+	if (lowerName.includes("etc")) return Server;
+	if (lowerName.includes("usr")) return Users;
+	if (lowerName.includes("var")) return Database;
+	if (lowerName.includes("opt")) return Package;
+	if (lowerName.includes("mnt")) return HardDrive;
+	if (lowerName.includes("media")) return Archive;
+	if (lowerName.includes("srv")) return Network;
 
-	return faFolder;
+	return Folder;
 };
 
 /**
  * Default directories to offer as quick selections based on OS
  */
 const DEFAULT_DIRECTORIES: DirectoryInfo[] = [
-	{ name: "Home", path: "~", icon: faHome },
-	{ name: "Downloads", path: "~/Downloads", icon: faDownload },
-	{ name: "Documents", path: "~/Documents", icon: faFileAlt },
-	{ name: "Desktop", path: "~/Desktop", icon: faDesktop },
-	{ name: "Pictures", path: "~/Pictures", icon: faImage },
-	{ name: "Music", path: "~/Music", icon: faMusic },
-	{ name: "Videos", path: "~/Videos", icon: faVideo },
+	{ name: "Home", path: "~", icon: House },
+	{ name: "Downloads", path: "~/Downloads", icon: Download },
+	{ name: "Documents", path: "~/Documents", icon: FileText },
+	{ name: "Desktop", path: "~/Desktop", icon: Monitor },
+	{ name: "Pictures", path: "~/Pictures", icon: ImageIcon },
+	{ name: "Music", path: "~/Music", icon: Music },
+	{ name: "Videos", path: "~/Videos", icon: Video },
 	...(navigator.userAgent.indexOf("Win") !== -1
 		? [
-				{ name: "Program Files", path: "C:\\Program Files", icon: faLaptop },
+				{ name: "Program Files", path: "C:\\Program Files", icon: Laptop },
 				{
 					name: "Program Files (x86)",
 					path: "C:\\Program Files (x86)",
-					icon: faLaptop,
+					icon: Laptop,
 				},
-				{ name: "Users", path: "C:\\Users", icon: faUsers },
-				{ name: "ProgramData", path: "C:\\ProgramData", icon: faDatabase },
+				{ name: "Users", path: "C:\\Users", icon: Users },
+				{ name: "ProgramData", path: "C:\\ProgramData", icon: Database },
 			]
 		: navigator.userAgent.indexOf("Mac") !== -1
 			? [
-					{ name: "Applications", path: "/Applications", icon: faBoxOpen },
-					{ name: "Library", path: "~/Library", icon: faBook },
-					{ name: "Users", path: "/Users", icon: faUsers },
-					{ name: "Volumes", path: "/Volumes", icon: faHdd },
+					{ name: "Applications", path: "/Applications", icon: PackageOpen },
+					{ name: "Library", path: "~/Library", icon: Book },
+					{ name: "Users", path: "/Users", icon: Users },
+					{ name: "Volumes", path: "/Volumes", icon: HardDrive },
 				]
 			: [
-					{ name: "etc", path: "/etc", icon: faServer },
-					{ name: "usr", path: "/usr", icon: faUsers },
-					{ name: "var", path: "/var", icon: faDatabase },
-					{ name: "opt", path: "/opt", icon: faBox },
-					{ name: "mnt", path: "/mnt", icon: faHdd },
-					{ name: "media", path: "/media", icon: faArchive },
-					{ name: "srv", path: "/srv", icon: faNetworkWired },
+					{ name: "etc", path: "/etc", icon: Server },
+					{ name: "usr", path: "/usr", icon: Users },
+					{ name: "var", path: "/var", icon: Database },
+					{ name: "opt", path: "/opt", icon: Package },
+					{ name: "mnt", path: "/mnt", icon: HardDrive },
+					{ name: "media", path: "/media", icon: Archive },
+					{ name: "srv", path: "/srv", icon: Network },
 				]
 	).map((dir) => ({
 		...dir,
 		icon: getDirectoryIcon(dir.name, dir.path),
 	})),
 ];
-
-const DirectoryChip = styled(Chip)(({ theme }) => ({
-	backgroundColor: alpha(theme.palette.primary.main, 0.06),
-	color: theme.palette.text.secondary,
-	borderRadius: "8px",
-	padding: "0 12px",
-	height: "32px",
-	maxWidth: "260px",
-	transition: "all 0.15s ease",
-	"& .MuiChip-label": {
-		padding: "0 6px",
-		overflow: "hidden",
-		textOverflow: "ellipsis",
-		whiteSpace: "nowrap",
-		fontSize: "0.85rem",
-		letterSpacing: "0.01em",
-	},
-	"& .MuiChip-deleteIcon": {
-		fontSize: "0.85rem",
-		margin: "0 3px 0 0",
-		color: alpha(theme.palette.text.primary, 0.4),
-	},
-	"& .MuiChip-icon": {
-		fontSize: "0.85rem",
-		margin: "0 3px 0 3px",
-		color: alpha(theme.palette.text.primary, 0.6),
-	},
-	"&:hover": {
-		backgroundColor: alpha(theme.palette.primary.main, 0.1),
-		color: theme.palette.text.primary,
-		transform: "translateY(-1px)",
-	},
-}));
-
-const DirectoryTextField = styled(TextField)(({ theme }) => ({
-	"& .MuiInputBase-root": {
-		backgroundColor: alpha(theme.palette.background.default, 0.06),
-		borderRadius: "8px",
-		padding: "0 12px",
-		height: "32px",
-		maxWidth: "260px",
-		color: theme.palette.text.primary,
-		border: `1px solid ${alpha(theme.palette.common.white, 0.2)}`,
-	},
-	"& .MuiOutlinedInput-notchedOutline": {
-		border: "none",
-	},
-	"& .MuiInputBase-input": {
-		padding: "0 6px",
-		fontSize: "0.85rem",
-		letterSpacing: "0.01em",
-		"&::placeholder": {
-			fontSize: "0.85rem",
-			opacity: 0.7,
-		},
-	},
-}));
-
-const MenuItemIcon = styled(Box)({
-	width: "20px",
-	height: "20px",
-	display: "flex",
-	alignItems: "center",
-	justifyContent: "center",
-	marginRight: "8px",
-	opacity: 0.7,
-});
 
 /**
  * DirectoryIndicator Component
@@ -217,7 +163,7 @@ export const DirectoryIndicator: FC<DirectoryIndicatorProps> = ({
 }) => {
 	const [isEditing, setIsEditing] = useState(false);
 	const [directory, setDirectory] = useState(currentWorkingDirectory || "");
-	const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
+	const [isMenuOpen, setIsMenuOpen] = useState(false);
 	const [homeDirectory, setHomeDirectory] = useState<string | null>(null); // State for home directory
 	const inputRef = useRef<HTMLInputElement>(null);
 	const updateAgent = useUpdateAgent();
@@ -239,12 +185,8 @@ export const DirectoryIndicator: FC<DirectoryIndicatorProps> = ({
 		setDirectory(currentWorkingDirectory || "");
 	}, [currentWorkingDirectory]);
 
-	const handleOpenMenu = useCallback((event: React.MouseEvent<HTMLElement>) => {
-		setMenuAnchorEl(event.currentTarget);
-	}, []);
-
 	const handleCloseMenu = useCallback(() => {
-		setMenuAnchorEl(null);
+		setIsMenuOpen(false);
 	}, []);
 
 	const { recentDirectories, addRecentDirectory } = useRecentDirectoriesStore();
@@ -280,9 +222,11 @@ export const DirectoryIndicator: FC<DirectoryIndicatorProps> = ({
 			event.stopPropagation();
 		}
 
-		setMenuAnchorEl(null);
+		setIsMenuOpen(false);
 
 		setIsEditing(true);
+		// Deferred a task so the menu's own focus restoration, which runs while
+		// the trigger is unmounting, cannot steal the caret back.
 		setTimeout(() => {
 			if (inputRef.current) {
 				inputRef.current.focus();
@@ -373,203 +317,131 @@ export const DirectoryIndicator: FC<DirectoryIndicatorProps> = ({
 
 	if (!currentWorkingDirectory && !isEditing) {
 		return (
-			<Box sx={{ display: "flex", alignItems: "center", ml: 1 }}>
-				<Tooltip title="Click to set working directory" arrow placement="right">
-					<DirectoryChip
-						icon={<FontAwesomeIcon icon={faFolder} size="sm" />}
-						label="No working directory set"
-						onClick={handleStartEdit}
-						clickable
-					/>
+			<div className={cn("ml-2 flex items-center")}>
+				<Tooltip content="Click to set working directory" side="right">
+					<Button variant="ghost" onClick={handleStartEdit}>
+						<Folder aria-hidden="true" />
+						No working directory set
+					</Button>
 				</Tooltip>
-			</Box>
+			</div>
 		);
 	}
 
 	return (
-		<Box sx={{ display: "flex", alignItems: "center", ml: 1 }}>
+		<div className={cn("ml-2 flex items-center")}>
 			{isEditing ? (
-				<ClickAwayListener onClickAway={handleFinishEdit}>
-					<DirectoryTextField
-						inputRef={inputRef}
-						value={directory}
-						onChange={(e) => setDirectory(e.target.value)}
-						onKeyDown={handleKeyPress}
-						size="small"
-						fullWidth
-						placeholder="Enter directory path"
-						sx={{ minWidth: "250px" }}
-					/>
-				</ClickAwayListener>
+				<Input
+					ref={inputRef}
+					value={directory}
+					onChange={(e) => setDirectory(e.target.value)}
+					onKeyDown={handleKeyPress}
+					onBlur={handleFinishEdit}
+					placeholder="Enter directory path"
+					aria-label="Working directory path"
+					className={cn("w-64", PATH_TYPE)}
+				/>
 			) : (
-				<>
-					<Tooltip
-						title="Click to change working directory"
-						arrow
-						placement="right"
-					>
-						<DirectoryChip
-							icon={
-								<FontAwesomeIcon
-									icon={faFolderOpen}
-									size="sm"
-									onClick={handleBrowseForDirectory}
-								/>
-							}
-							label={formatDirectory(currentWorkingDirectory || "")}
-							onClick={handleOpenMenu}
-							clickable
-						/>
+				<DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
+					<Tooltip content="Click to change working directory" side="right">
+						<DropdownMenuTrigger asChild>
+							<Button
+								variant="ghost"
+								className={cn("max-w-65 justify-start", PATH_TYPE)}
+							>
+								<FolderOpen aria-hidden="true" />
+								<span className={cn("min-w-0 truncate")}>
+									{formatDirectory(currentWorkingDirectory || "")}
+								</span>
+							</Button>
+						</DropdownMenuTrigger>
 					</Tooltip>
 
-					{/* Removed hidden file input */}
+					<DropdownMenuContent align="start" className={cn("w-80")}>
+						<DropdownMenuLabel>Custom directory</DropdownMenuLabel>
 
-					<Menu
-						anchorEl={menuAnchorEl}
-						open={Boolean(menuAnchorEl)}
-						onClose={handleCloseMenu}
-						anchorOrigin={{
-							vertical: "bottom",
-							horizontal: "left",
-						}}
-						transformOrigin={{
-							vertical: "top",
-							horizontal: "left",
-						}}
-						PaperProps={{
-							sx: {
-								mt: 0.5,
-								backgroundColor: (theme) =>
-									alpha(theme.palette.background.default, 0.95),
-								boxShadow: "0 4px 20px rgba(0,0,0,0.4)",
-								backgroundImage: "none",
-								borderRadius: "8px",
-								border: "1px solid rgba(255,255,255,0.1)",
-								"& .MuiMenuItem-root": {
-									borderRadius: "4px",
-									margin: "2px 4px",
-									"&:hover": {
-										backgroundColor: (theme) =>
-											alpha(theme.palette.primary.main, 0.15),
-									},
-								},
-								"& .MuiDivider-root": {
-									margin: "4px 0",
-									borderColor: "rgba(255,255,255,0.1)",
-								},
-							},
-						}}
-					>
-						{/* Custom directory option */}
-						<Typography
-							variant="caption"
-							color="text.secondary"
-							sx={{ px: 2, py: 0.5, display: "block" }}
-						>
-							Custom Directory
-						</Typography>
-
-						<MenuItem
+						<DropdownMenuItem
 							onClick={(e) => {
 								e.stopPropagation();
 								handleStartEdit();
-								handleCloseMenu();
 							}}
-							dense
 						>
-							<Typography variant="body2">Enter custom path...</Typography>
-						</MenuItem>
+							<Pencil aria-hidden="true" />
+							Enter custom path...
+						</DropdownMenuItem>
 
-						<MenuItem onClick={handleBrowseForDirectory} dense>
-							<MenuItemIcon>
-								<FontAwesomeIcon icon={faFolderTree} size="sm" />
-							</MenuItemIcon>
-							<Typography variant="body2">Browse for directory...</Typography>
-						</MenuItem>
+						<DropdownMenuItem onClick={handleBrowseForDirectory}>
+							<FolderTree aria-hidden="true" />
+							Browse for directory...
+						</DropdownMenuItem>
 
 						{/* Recent directories section - always show the section */}
-						<Divider sx={{ my: 1 }} />
+						<DropdownMenuSeparator />
 
-						<Typography
-							variant="caption"
-							color="text.secondary"
-							sx={{ px: 2, py: 0.5, display: "block" }}
-						>
-							Recent Directories
-						</Typography>
+						<DropdownMenuLabel>Recent directories</DropdownMenuLabel>
 
 						{filteredRecentDirectories.length > 0 ? (
-							filteredRecentDirectories.map((path) => (
-								<MenuItem
-									key={`recent-${path}`}
-									onClick={() => handleSelectDirectory(path)}
-									dense
-								>
-									<MenuItemIcon>
-										<FontAwesomeIcon icon={faClock} size="sm" />
-									</MenuItemIcon>
-									{formatDirectory(path).length > 42 ? (
+							filteredRecentDirectories.map((path) => {
+								const formatted = formatDirectory(path);
+								return (
+									<DropdownMenuItem
+										key={`recent-${path}`}
+										onClick={() => handleSelectDirectory(path)}
+									>
+										<Clock aria-hidden="true" />
 										<Tooltip
-											title={formatDirectory(path)}
-											arrow
-											placement="right"
+											content={formatted}
+											side="right"
+											disabled={formatted.length <= RECENT_PATH_TRUNCATES_AT}
 										>
-											<Typography variant="body2">
-												{`...${formatDirectory(path).substring(formatDirectory(path).length - 42)}`}
-											</Typography>
+											<span
+												className={cn(
+													"min-w-0 truncate",
+													PATH_TYPE,
+													"text-ink-muted",
+												)}
+											>
+												{formatted}
+											</span>
 										</Tooltip>
-									) : (
-										<Typography variant="body2">
-											{formatDirectory(path)}
-										</Typography>
-									)}
-								</MenuItem>
-							))
+									</DropdownMenuItem>
+								);
+							})
 						) : (
-							<MenuItem disabled dense>
-								<Typography
-									variant="body2"
-									color="text.secondary"
-									sx={{ fontStyle: "italic" }}
-								>
-									No recent directories
-								</Typography>
-							</MenuItem>
+							<DropdownMenuItem disabled>
+								No recent directories
+							</DropdownMenuItem>
 						)}
 
 						{/* Default directories section */}
-						<Divider sx={{ my: 1 }} />
+						<DropdownMenuSeparator />
 
-						<Typography
-							variant="caption"
-							color="text.secondary"
-							sx={{ px: 2, py: 0.5, display: "block" }}
-						>
-							Default Directories
-						</Typography>
+						<DropdownMenuLabel>Default directories</DropdownMenuLabel>
 
-						{DEFAULT_DIRECTORIES.map((dir) => (
-							<MenuItem
-								key={dir.path}
-								onClick={() => handleSelectDirectory(dir.path)}
-								dense
-							>
-								<MenuItemIcon>
-									<FontAwesomeIcon icon={dir.icon} size="sm" />
-								</MenuItemIcon>
-								<Typography variant="body2">{dir.name}</Typography>
-								<Typography
-									variant="caption"
-									color="text.secondary"
-									sx={{ ml: 1 }}
+						{DEFAULT_DIRECTORIES.map((dir) => {
+							const DirIcon = dir.icon;
+							return (
+								<DropdownMenuItem
+									key={dir.path}
+									onClick={() => handleSelectDirectory(dir.path)}
 								>
-									{formatDirectory(dir.path)}
-								</Typography>
-							</MenuItem>
-						))}
-					</Menu>
-				</>
+									<DirIcon aria-hidden="true" />
+									{dir.name}
+									<span
+										className={cn(
+											"ml-auto min-w-0 truncate",
+											PATH_TYPE,
+											"text-ink-dim",
+										)}
+									>
+										{formatDirectory(dir.path)}
+									</span>
+								</DropdownMenuItem>
+							);
+						})}
+					</DropdownMenuContent>
+				</DropdownMenu>
 			)}
-		</Box>
+		</div>
 	);
 };

@@ -1,44 +1,32 @@
 /**
  * Add Agent Step Component
  *
- * Sixth step in the onboarding process that allows the user to add recommended AI agents
- * from a curated list.
+ * Sixth step in the onboarding process that allows the user to add recommended
+ * AI agents from a curated list.
  */
 
 import { AgentCard } from "@features/agent-hub/components/agent-card";
 import { useDownloadAgentMutation } from "@features/agent-hub/hooks/use-download-agent-mutation";
 import { usePublicAgentsQuery } from "@features/agent-hub/hooks/use-public-agents-query";
-import { faDownload } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
-	Box,
-	Button,
-	Chip,
-	CircularProgress,
-	Grid,
-	Typography,
-	styled,
-} from "@mui/material";
 import type { Agent } from "@shared/api/radient/types";
+import { Spinner } from "@shared/components/common/spinner";
+import { Badge, Button } from "@shared/components/ui";
 import { useAgents } from "@shared/hooks/use-agents";
-import { Bot, CheckCircle } from "lucide-react";
+import { cn } from "@shared/lib/utils";
+import { CircleCheck, Download } from "lucide-react";
 import type { FC } from "react";
 import { useEffect, useState } from "react";
-import {
-	InlineIcon,
-	SectionContainer,
-	SectionDescription,
-	SectionTitle,
-} from "../onboarding-styled";
 
-const RECOMMENDED_AGENT_COUNT = 8;
-
-const StyledGridContainer = styled(Grid)(({ theme }) => ({
-	overflowY: "auto",
-	padding: theme.spacing(2, 0),
-	flexGrow: 1,
-	width: "100%",
-}));
+/*
+ * Four, not eight.
+ *
+ * This is the last decision of first run and it was the only screen in the
+ * flow that scrolled: eight cards in a 560px dialog is a marketplace, and the
+ * step's own copy already points at the Agent Hub for the rest. Four fits
+ * without scrolling, which is what makes "pick one and continue" read as the
+ * small ask it is.
+ */
+const RECOMMENDED_AGENT_COUNT = 4;
 
 type CreateAgentStepProps = {
 	/** Callback to inform the parent modal about the step's validity */
@@ -103,8 +91,6 @@ export const CreateAgentStep: FC<CreateAgentStepProps> = ({
 		downloadAgentMutation.variables?.agentId, // Depend on the specific agentId from variables
 	]);
 
-	// Removed handleAddAgent as AgentCard handles its own download click
-
 	const handleAddRecommended = async () => {
 		if (isAddingAll || downloadAgentMutation.isPending) return;
 		setIsAddingAll(true);
@@ -113,8 +99,8 @@ export const CreateAgentStep: FC<CreateAgentStepProps> = ({
 			(agent) => !addedAgentIds.has(agent.id),
 		);
 
-		// Use Promise.all for potentially faster downloads, but process sequentially if API limits are a concern
-		// For simplicity, sequential download is shown here.
+		// Downloads run one at a time: the backend writes each agent to disk, and a
+		// parallel burst here produced interleaved writes rather than faster setup.
 		try {
 			for (const agent of agentsToAdd) {
 				// Check again inside the loop in case it was added individually
@@ -132,7 +118,7 @@ export const CreateAgentStep: FC<CreateAgentStepProps> = ({
 						setAddedAgentIds((prev) => new Set(prev).add(agent.id));
 					} catch (agentErr) {
 						console.error(`Failed to download agent ${agent.name}:`, agentErr);
-						// Optionally break or continue on individual agent failure
+						// One failed agent does not stop the rest
 					}
 				}
 			}
@@ -144,8 +130,6 @@ export const CreateAgentStep: FC<CreateAgentStepProps> = ({
 		}
 	};
 
-	// Removed unused handleProceed function
-
 	const hasAddedAgents = addedAgentIds.size > 0;
 
 	// Effect to notify parent about validity change
@@ -153,142 +137,101 @@ export const CreateAgentStep: FC<CreateAgentStepProps> = ({
 		onValidityChange(hasAddedAgents);
 	}, [hasAddedAgents, onValidityChange]);
 
+	const allAdded =
+		recommendedAgents.length > 0 &&
+		recommendedAgents.every((agent) => addedAgentIds.has(agent.id));
+
 	return (
-		<SectionContainer sx={{ display: "flex", flexDirection: "column" }}>
-			<SectionTitle>
-				<InlineIcon sx={{ mb: 0 }}>
-					<Bot size={18} />
-				</InlineIcon>
-				Add Your First AI Assistants
-			</SectionTitle>
-			<SectionDescription>
-				Select from our recommended agents to get started quickly, or click the
-				quick start button to have us set up a team for you from the most
-				popular agents. You can always add more later from the Agent Hub.
-			</SectionDescription>
-
-			{/* Add Recommended Button */}
-			<Box sx={{ my: 2, display: "flex", justifyContent: "center" }}>
+		<div className="flex flex-col gap-5">
+			{/* Description and the bulk action on one row: the button is an
+			    alternative to reading the list, so it belongs beside the sentence
+			    that offers it rather than centred on a line of its own. */}
+			<div className="flex flex-wrap items-start justify-between gap-3">
+				<p className="min-w-60 flex-1 text-body text-ink-muted">
+					Pick an agent to start with, or add the popular ones as a set. More
+					are in the Agent hub whenever you want them.
+				</p>
 				<Button
-					variant="outlined"
+					variant="secondary"
 					onClick={handleAddRecommended}
-					disabled={
-						isLoadingAgents ||
-						isAddingAll ||
-						recommendedAgents.every((agent) => addedAgentIds.has(agent.id))
-					}
-					startIcon={
-						isAddingAll ? (
-							<CircularProgress size={20} color="inherit" />
-						) : (
-							<FontAwesomeIcon icon={faDownload} />
-						)
-					}
+					disabled={isLoadingAgents || isAddingAll || allAdded}
 				>
-					{isAddingAll ? "Adding..." : "Setup My Team For Me"}
+					{isAddingAll ? (
+						<Spinner size="sm" />
+					) : (
+						<Download aria-hidden="true" />
+					)}
+					{isAddingAll ? "Adding" : allAdded ? "All added" : "Add all four"}
 				</Button>
-			</Box>
+			</div>
 
-			{/* Agent Grid */}
-			<Box sx={{ flexGrow: 1, minHeight: 0, width: "100%" }}>
-				{isLoadingAgents && (
-					<Box
-						display="flex"
-						justifyContent="center"
-						alignItems="center"
-						flexGrow={1}
-						sx={{ height: "300px" }} // Ensure loading takes space
-					>
-						<CircularProgress />
-					</Box>
-				)}
-				{agentsError && (
-					<Box
-						display="flex"
-						justifyContent="center"
-						alignItems="center"
-						flexGrow={1}
-						sx={{ height: "300px" }} // Ensure error takes space
-					>
-						<Typography color="error">
-							Failed to load recommended agents: {agentsError.message}
-						</Typography>
-					</Box>
-				)}
-				{!isLoadingAgents && !agentsError && (
-					<StyledGridContainer container spacing={2}>
-						{recommendedAgents.length === 0 ? (
-							<Grid item xs={12}>
-								<Typography variant="body1" align="center">
-									No recommended agents found. You can proceed or add agents
-									later.
-								</Typography>
-							</Grid>
-						) : (
-							recommendedAgents.map((agent) => (
-								<Grid item key={agent.id} xs={12} sm={6} md={6} lg={6}>
-									{/* Wrap AgentCard to show added state */}
-									<Box
-										sx={{
-											position: "relative",
-											opacity: addedAgentIds.has(agent.id) ? 0.6 : 1,
-											pointerEvents: addedAgentIds.has(agent.id)
-												? "none"
-												: "auto",
-											transition: "opacity 0.3s ease",
-										}}
-									>
-										<AgentCard
-											agent={agent}
-											isLiked={false}
-											isFavourited={false}
-											onLikeToggle={() => {}}
-											onFavouriteToggle={() => {}}
-											showActions={false}
-										/>
-										{/* Show loading spinner on the specific card being added */}
-										{downloadAgentMutation.isPending &&
-											downloadAgentMutation.variables?.agentId === agent.id && (
-												<CircularProgress
-													size={24}
-													sx={{
-														position: "absolute",
-														top: "50%",
-														left: "50%",
-														marginTop: "-12px",
-														marginLeft: "-12px",
-														zIndex: 2,
-													}}
-												/>
-											)}
-										{/* Show checkmark overlay if added */}
-										{addedAgentIds.has(agent.id) && (
-											<Chip
-												icon={<CheckCircle size={16} />}
-												label="Added"
-												size="small"
-												color="success"
-												sx={{
-													position: "absolute",
-													top: 12,
-													right: 12,
-													zIndex: 2,
-													backgroundColor: (theme) =>
-														theme.palette.success.main,
-													color: (theme) => theme.palette.success.contrastText,
-													".MuiChip-icon": {
-														color: "inherit",
-													},
-												}}
-											/>
-										)}
-									</Box>
-								</Grid>
-							))
-						)}
-					</StyledGridContainer>
-				)}
-			</Box>
-		</SectionContainer>
+			{isLoadingAgents && (
+				<div className="flex h-60 items-center justify-center">
+					<Spinner size="lg" label="Loading recommended agents" />
+				</div>
+			)}
+
+			{agentsError && (
+				<div className="flex h-60 flex-col items-center justify-center gap-1 text-center">
+					<p className="text-body-sm text-ink">
+						The recommended agents could not be loaded.
+					</p>
+					<p className="text-ink-dim text-meta">
+						Continue without one and add agents later from the Agent hub.
+					</p>
+				</div>
+			)}
+
+			{!isLoadingAgents && !agentsError && (
+				<div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+					{recommendedAgents.length === 0 ? (
+						<p className="text-center text-body-sm text-ink-muted sm:col-span-2">
+							No recommended agents right now. Continue, and add agents later
+							from the Agent hub.
+						</p>
+					) : (
+						recommendedAgents.map((agent) => {
+							const isAdded = addedAgentIds.has(agent.id);
+							const isDownloading =
+								downloadAgentMutation.isPending &&
+								downloadAgentMutation.variables?.agentId === agent.id;
+
+							return (
+								<div
+									key={agent.id}
+									className={cn(
+										"relative transition-colors duration-base ease-out-quart",
+										/* An added agent is done, not faded out: it keeps full
+										   contrast and says so with the badge. Dimming it with
+										   opacity would drag the card's ground with it. */
+										isAdded && "pointer-events-none",
+									)}
+								>
+									<AgentCard
+										agent={agent}
+										isLiked={false}
+										isFavourited={false}
+										onLikeToggle={() => {}}
+										onFavouriteToggle={() => {}}
+										showActions={false}
+									/>
+									{isDownloading && (
+										<div className="absolute inset-0 flex items-center justify-center">
+											<Spinner size="md" label={`Adding ${agent.name}`} />
+										</div>
+									)}
+									{isAdded && (
+										<Badge variant="success" className="absolute top-3 right-3">
+											<CircleCheck aria-hidden="true" />
+											Added
+										</Badge>
+									)}
+								</div>
+							);
+						})
+					)}
+				</div>
+			)}
+		</div>
 	);
 };

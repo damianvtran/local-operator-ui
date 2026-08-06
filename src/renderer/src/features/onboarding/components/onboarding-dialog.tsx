@@ -1,21 +1,19 @@
 /**
  * OnboardingDialog Component
  *
- * A modern, optimized full-screen dialog specifically designed for the onboarding flow.
- * Provides a polished, immersive experience distinct from generic dialogs.
- * Theme-aware, responsive, and streamlined for multi-step onboarding.
+ * The frame every onboarding step renders inside: a title, an optional step
+ * indicator row, the step itself, and the actions.
+ *
+ * It is deliberately plain. This is the first screen a new user sees, so the
+ * only things drawing attention are the words and the primary action — the
+ * panel is one ground step above the scrim with the system's single overlay
+ * shadow, and the two hairlines that remain are the ones separating the fixed
+ * header and footer from content that scrolls under them.
  */
 
-import {
-	Box,
-	Dialog,
-	DialogActions,
-	DialogTitle,
-	alpha,
-	styled,
-	useTheme,
-} from "@mui/material";
-import type { ReactNode } from "react";
+import { Dialog, DialogContent, DialogTitle } from "@shared/components/ui";
+import { cn } from "@shared/lib/utils";
+import { type ReactNode, useRef } from "react";
 
 /**
  * Props for the OnboardingDialog component
@@ -30,7 +28,8 @@ export type OnboardingDialogProps = {
 	 */
 	title?: ReactNode;
 	/**
-	 * Optional step indicators (e.g., dots)
+	 * Progress for the current flow, rendered on the title's row at its right
+	 * edge. Omitted on the steps that come before the numbered flow.
 	 */
 	stepIndicators?: ReactNode;
 	/**
@@ -42,91 +41,10 @@ export type OnboardingDialogProps = {
 	 */
 	actions?: ReactNode;
 	/**
-	 * Optional additional props to pass to MUI Dialog
+	 * Extra classes for the dialog panel
 	 */
-	dialogProps?: Record<string, unknown>;
+	className?: string;
 };
-
-/**
- * Styled root dialog container.
- * Uses a standard backdrop and centers the content container.
- */
-const StyledDialog = styled(Dialog)(({ theme }) => ({
-	"& .MuiBackdrop-root": {
-		background:
-			"linear-gradient(135deg, rgba(40,40,40,1), rgba(15,15,15,0.95), rgba(5,5,5,1), rgba(56,201,106,0.15))",
-		opacity: 1.0,
-	},
-	"& .MuiDialog-container": {
-		display: "flex",
-		alignItems: "center",
-		justifyContent: "center",
-		padding: theme.spacing(2),
-	},
-	"& .MuiPaper-root": {
-		backgroundColor: "transparent",
-		boxShadow: "none",
-		overflow: "visible",
-		margin: 0,
-		maxWidth: "none",
-		maxHeight: "none",
-		width: "auto",
-		height: "auto",
-	},
-}));
-
-/**
- * The main content area styled like a shadcn card/dialog.
- * Constrains width/height, adds background, border-radius, padding, etc.
- */
-const ContentContainer = styled(Box)(({ theme }) => ({
-	width: "100%",
-	height: "100%",
-	maxWidth: "650px",
-	maxHeight: "calc(100vh - 64px)",
-	boxSizing: "border-box",
-	display: "flex",
-	flexDirection: "column",
-	backgroundColor: theme.palette.background.paper,
-	borderRadius: theme.shape.borderRadius * 1.5,
-	border: `1px solid ${theme.palette.divider}`,
-	boxShadow: theme.shadows[4],
-	overflow: "hidden",
-	padding: 0,
-	[theme.breakpoints.down("sm")]: {
-		maxWidth: "95vw",
-		maxHeight: "90vh",
-	},
-}));
-
-/**
- * Styled title area - consistent with shadcn headers.
- */
-const StyledDialogTitle = styled(DialogTitle)(({ theme }) => ({
-	margin: 0,
-	padding: theme.spacing(2, 3),
-	color: theme.palette.text.primary,
-	fontSize: "1.25rem",
-	fontWeight: 600,
-	borderBottom: `1px solid ${theme.palette.divider}`,
-	marginBottom: theme.spacing(1),
-	flexShrink: 0,
-}));
-
-/**
- * Styled actions area with padding and border.
- */
-const StyledDialogActions = styled(DialogActions)(({ theme }) => ({
-	padding: theme.spacing(2, 3),
-	borderTop: `1px solid ${theme.palette.divider}`,
-	backgroundColor: alpha(theme.palette.background.default, 0.5),
-	display: "flex",
-	justifyContent: "space-between",
-	alignItems: "center",
-	width: "100%",
-	boxSizing: "border-box",
-	flexShrink: 0,
-}));
 
 /**
  * OnboardingDialog component
@@ -140,33 +58,93 @@ export const OnboardingDialog = ({
 	stepIndicators,
 	children,
 	actions,
-	dialogProps = {},
+	className,
 }: OnboardingDialogProps): ReactNode => {
-	const theme = useTheme();
+	const contentRef = useRef<HTMLDivElement>(null);
 
 	return (
-		<StyledDialog
-			open={open}
-			onClose={() => {}}
-			disableEscapeKeyDown
-			{...dialogProps}
-		>
-			<ContentContainer>
-				{title && <StyledDialogTitle>{title}</StyledDialogTitle>}
-				{stepIndicators && (
-					<Box sx={{ px: 3, pt: 1, pb: 0, mb: 0 }}>{stepIndicators}</Box>
+		/*
+		 * Not dismissable, and it takes three separate refusals to say so:
+		 * `onOpenChange` ignores every close request, and escape and
+		 * outside-pointer are cancelled so Radix does not animate a close that
+		 * will not happen. Setup has to finish or be skipped step by step —
+		 * there is no partial state the app can start in.
+		 */
+		<Dialog open={open}>
+			<DialogContent
+				showClose={false}
+				onEscapeKeyDown={(event) => event.preventDefault()}
+				onPointerDownOutside={(event) => event.preventDefault()}
+				onInteractOutside={(event) => event.preventDefault()}
+				/*
+				 * Focus starts on the step itself, not on whatever happens to be the
+				 * first focusable thing in it. Radix's default reached the step
+				 * indicator dots, which opened one of their tooltips the instant the
+				 * dialog appeared. The step body is focusable only programmatically,
+				 * so this also gives the arrow keys something to scroll.
+				 */
+				onOpenAutoFocus={(event) => {
+					event.preventDefault();
+					contentRef.current?.focus();
+				}}
+				className={cn(
+					/*
+					 * 560px, down from 660. The choice step was the only one that
+					 * wanted the width; every other step is a two-field form, and a
+					 * 612px-wide box for "Your name" is a web signup page rather than
+					 * a desktop setup dialog. Raycast, Cron and Things all run first
+					 * run at roughly this measure — wide enough for a sentence of
+					 * explanation, narrow enough that one decision fills the frame.
+					 */
+					"max-h-[calc(100vh-4rem)] max-w-140 gap-0 overflow-hidden p-0",
+					className,
 				)}
-				<Box
-					sx={{
-						padding: theme.spacing(2, 3, 1),
-						flexGrow: 1,
-						overflowY: "auto",
-					}}
+			>
+				{/*
+				 * Title and progress share one row. They were two stacked bands, so
+				 * the eye crossed a title, a rule, a row of dots and then finally
+				 * the step — three horizontal divisions before any content. The
+				 * progress belongs beside the title because it qualifies it.
+				 */}
+				{(title || stepIndicators) && (
+					<div className="flex shrink-0 items-center justify-between gap-4 border-hairline border-b px-6 py-4">
+						{title ? (
+							<DialogTitle className="text-title">{title}</DialogTitle>
+						) : (
+							<DialogTitle className="sr-only">Setup</DialogTitle>
+						)}
+						{stepIndicators}
+					</div>
+				)}
+
+				{/*
+				 * `outline-none!` because this element is focused programmatically on
+				 * open, and Chrome counts a scripted `.focus()` as focus-visible when
+				 * the last input was not a pointer — so the app's accent ring was
+				 * drawn around the whole scrolling body of the dialog, appearing as a
+				 * 2px green line directly under the title on the first frame a new
+				 * user ever sees. It is a scroll container, not a control; the ring
+				 * marks nothing actionable.
+				 *
+				 * The `!` is required rather than tidy: the ring is re-asserted by an
+				 * unlayered `html :focus-visible` rule injected by the MUI baseline,
+				 * which outranks every Tailwind utility regardless of specificity.
+				 * See docs/branding.md § 8, "MUI wins specificity fights".
+				 */}
+				<div
+					ref={contentRef}
+					tabIndex={-1}
+					className="min-h-0 flex-1 overflow-y-auto px-6 py-6 outline-none!"
 				>
 					{children}
-				</Box>
-				{actions && <StyledDialogActions>{actions}</StyledDialogActions>}
-			</ContentContainer>
-		</StyledDialog>
+				</div>
+
+				{actions && (
+					<div className="shrink-0 border-hairline border-t px-6 py-4">
+						{actions}
+					</div>
+				)}
+			</DialogContent>
+		</Dialog>
 	);
 };

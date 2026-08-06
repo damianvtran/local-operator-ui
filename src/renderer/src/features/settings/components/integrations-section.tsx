@@ -1,28 +1,19 @@
-import { faPuzzlePiece } from "@fortawesome/free-solid-svg-icons";
-import {
-	Box,
-	Button,
-	CircularProgress,
-	Paper,
-	Stack,
-	Tooltip,
-	Typography,
-	alpha,
-	useTheme,
-} from "@mui/material";
+import { Spinner } from "@shared/components/common/spinner";
+import { Badge, Button, Card, Tooltip } from "@shared/components/ui";
 import { useOidcAuth } from "@shared/hooks/use-oidc-auth";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import {
 	CalendarDays,
-	CheckCircle2,
+	CircleCheck,
 	HardDrive,
 	Link as LinkIcon,
+	type LucideIcon,
 	Mail,
+	Puzzle,
 } from "lucide-react";
 import type { FC } from "react";
-import { SettingsSectionCard } from "./settings-section-card";
+import { SettingsSection } from "./settings-section";
 
-// Define the scopes for each Google service
 const GMAIL_SCOPES = [
 	"https://www.googleapis.com/auth/gmail.readonly",
 	"https://www.googleapis.com/auth/gmail.compose",
@@ -36,122 +27,95 @@ const DRIVE_SCOPES = [
 	"https://www.googleapis.com/auth/drive",
 ];
 
-type IntegrationButtonProps = {
+type IntegrationRowProps = {
 	serviceName: string;
-	icon: JSX.Element;
+	icon: LucideIcon;
 	scopes: string[];
 	grantedScopes: string[] | undefined;
 	onConnect: (scopes: string[]) => void;
 	isLoading: boolean;
-	isAuthenticated: boolean; // Added isAuthenticated prop
+	/** Radient session is signed in *and* the provider is Google. */
+	isAuthenticated: boolean;
 };
 
-const IntegrationButton: FC<IntegrationButtonProps> = ({
+/**
+ * One Google service and its connection state.
+ *
+ * Connected is a fact, not an affordance, so it renders as a success badge
+ * rather than as a filled green button that cannot be pressed. The previous
+ * version tinted the whole row too, which spent a semantic colour on the
+ * background of something the badge already says.
+ */
+const IntegrationRow: FC<IntegrationRowProps> = ({
 	serviceName,
-	icon,
+	icon: Icon,
 	scopes,
 	grantedScopes,
 	onConnect,
 	isLoading,
-	isAuthenticated, // Destructure isAuthenticated
+	isAuthenticated,
 }) => {
-	const theme = useTheme();
 	const isConnected =
 		grantedScopes && scopes.every((scope) => grantedScopes.includes(scope));
 
 	const handleConnect = () => {
 		if (!isConnected && isAuthenticated) {
-			// Check isAuthenticated before connecting
 			onConnect(scopes);
 		}
 	};
 
-	const connectButton = (
-		<Button
-			variant={isConnected ? "contained" : "outlined"}
-			color={isConnected ? "success" : "primary"}
-			size="small"
-			onClick={handleConnect}
-			disabled={isLoading || isConnected || !isAuthenticated} // Disable if not authenticated
-			startIcon={
-				isLoading ? (
-					<CircularProgress size={16} color="inherit" />
-				) : isConnected ? (
-					<CheckCircle2 size={16} />
-				) : (
-					<LinkIcon size={16} />
-				)
-			}
-			sx={{
-				minWidth: 110,
-				textTransform: "none",
-				fontSize: "0.8125rem",
-				borderRadius: theme.shape.borderRadius * 0.75,
-				padding: theme.spacing(0.75, 1.5),
-				...(isConnected && {
-					backgroundColor: theme.palette.success.main,
-					color: theme.palette.success.contrastText,
-					"&:hover": {
-						backgroundColor: theme.palette.success.dark,
-					},
-				}),
-				...(!isConnected && {
-					borderColor: theme.palette.divider,
-					color: theme.palette.text.primary,
-					"&:hover": {
-						backgroundColor: alpha(theme.palette.primary.main, 0.05),
-						borderColor: theme.palette.primary.light,
-					},
-				}),
-			}}
-		>
-			{isLoading ? "Connecting..." : isConnected ? "Connected" : "Connect"}
-		</Button>
-	);
-
 	return (
-		<Paper
-			variant="outlined"
-			sx={{
-				p: theme.spacing(1.5, 2),
-				display: "flex",
-				alignItems: "center",
-				justifyContent: "space-between",
-				mb: theme.spacing(1.5),
-				borderRadius: theme.shape.borderRadius * 0.75,
-				backgroundColor: isConnected
-					? alpha(theme.palette.success.main, 0.08)
-					: theme.palette.background.paper,
-				borderColor: isConnected
-					? alpha(theme.palette.success.main, 0.4)
-					: theme.palette.divider,
-				transition:
-					"border-color 0.2s ease-in-out, background-color 0.2s ease-in-out",
-				"&:hover": {
-					borderColor: isConnected
-						? alpha(theme.palette.success.main, 0.6)
-						: theme.palette.text.disabled,
-				},
-			}}
-		>
-			<Stack direction="row" alignItems="center" spacing={1.5}>
-				{icon}
-				<Typography variant="subtitle1" fontWeight="500" fontSize="0.9375rem">
+		<li className="flex items-center justify-between gap-4 px-4 py-3">
+			<div className="flex min-w-0 items-center gap-3">
+				<Icon
+					size={20}
+					className="shrink-0 text-ink-muted"
+					aria-hidden="true"
+				/>
+				<span className="truncate font-medium text-body text-ink">
 					{serviceName}
-				</Typography>
-			</Stack>
-			{!isAuthenticated && !isConnected ? (
-				// @ts-ignore
-				<Tooltip title="Login to Radient with a Google account to connect integrations">
-					<span>
-						{/* Span is needed for Tooltip when button is disabled */}
-						{connectButton}
-					</span>
-				</Tooltip>
-			) : (
-				connectButton
-			)}
-		</Paper>
+				</span>
+			</div>
+			{/*
+			 * Fixed height so the row does not resize when a connect finishes and
+			 * the badge takes the button's place.
+			 */}
+			<div className="flex h-7 shrink-0 items-center justify-end">
+				{isConnected ? (
+					<Badge variant="success">
+						<CircleCheck aria-hidden="true" />
+						Connected
+					</Badge>
+				) : (
+					<Tooltip
+						content="Log in to Radient with a Google account to connect integrations"
+						disabled={isAuthenticated}
+					>
+						{/*
+						 * A disabled button emits no pointer events, so the tooltip
+						 * needs a wrapper that still receives them.
+						 *
+						 * `isConnected` is redundant in the button's disabled condition
+						 * on this branch, but the guard stays: it is the same condition
+						 * the click handler checks, and it must never be possible to
+						 * request a scope that has already been granted.
+						 */}
+						<span className="inline-flex">
+							<Button
+								variant="outline"
+								size="sm"
+								className="min-w-28"
+								onClick={handleConnect}
+								disabled={isLoading || isConnected || !isAuthenticated}
+							>
+								{isLoading ? <Spinner size="xs" /> : <LinkIcon />}
+								{isLoading ? "Connecting..." : "Connect"}
+							</Button>
+						</span>
+					</Tooltip>
+				)}
+			</div>
+		</li>
 	);
 };
 
@@ -161,64 +125,61 @@ export const GoogleIntegrationsSection: FC = () => {
 		requestAdditionalGoogleScopes,
 		loading: oidcLoading,
 	} = useOidcAuth();
-	const { isAuthenticated: isRadientAuthenticated } = useRadientAuth(); // Get Radient auth status
-	const theme = useTheme();
+	const { isAuthenticated: isRadientAuthenticated } = useRadientAuth();
 
 	const handleConnectService = async (scopesToRequest: string[]) => {
 		if (isRadientAuthenticated) {
-			// Ensure Radient authenticated before requesting Google scopes
 			await requestAdditionalGoogleScopes(scopesToRequest);
 		}
-		// The useOidcAuth hook will handle status updates and re-renders
 	};
 
-	const iconProps = {
-		size: 20,
-		strokeWidth: 1.75,
-	};
+	// Google scopes are granted through the Radient session, so a non-Google
+	// provider cannot connect any of these even while signed in.
+	const canConnect = isRadientAuthenticated && oidcStatus.provider === "google";
 
 	return (
-		<SettingsSectionCard
-			title="Integrations"
-			icon={faPuzzlePiece} // Use FontAwesome Puzzle icon
+		<SettingsSection
+			title="Google integrations"
+			icon={Puzzle}
 			description="Connect your Google services like Gmail, Calendar, and Drive to enhance Local Operator's capabilities."
 			dataTourTag="settings-integrations-section"
 		>
-			<Box mt={theme.spacing(2)}>
-				<IntegrationButton
-					serviceName="Gmail"
-					icon={<Mail {...iconProps} />}
-					scopes={GMAIL_SCOPES}
-					grantedScopes={oidcStatus.grantedScopes}
-					onConnect={handleConnectService}
-					isLoading={oidcLoading}
-					isAuthenticated={
-						isRadientAuthenticated && oidcStatus.provider === "google"
-					} // Pass Radient auth status
-				/>
-				<IntegrationButton
-					serviceName="Calendar"
-					icon={<CalendarDays {...iconProps} />}
-					scopes={CALENDAR_SCOPES}
-					grantedScopes={oidcStatus.grantedScopes}
-					onConnect={handleConnectService}
-					isLoading={oidcLoading}
-					isAuthenticated={
-						isRadientAuthenticated && oidcStatus.provider === "google"
-					} // Pass Radient auth status
-				/>
-				<IntegrationButton
-					serviceName="Drive"
-					icon={<HardDrive {...iconProps} />}
-					scopes={DRIVE_SCOPES}
-					grantedScopes={oidcStatus.grantedScopes}
-					onConnect={handleConnectService}
-					isLoading={oidcLoading}
-					isAuthenticated={
-						isRadientAuthenticated && oidcStatus.provider === "google"
-					} // Pass Radient auth status
-				/>
-			</Box>
-		</SettingsSectionCard>
+			{/*
+			 * The section itself is borderless, so this card is the only edge in
+			 * view and the hairlines are list separators rather than a second box
+			 * drawn around each row.
+			 */}
+			<Card variant="surface" padding="none">
+				<ul className="divide-y divide-hairline">
+					<IntegrationRow
+						serviceName="Gmail"
+						icon={Mail}
+						scopes={GMAIL_SCOPES}
+						grantedScopes={oidcStatus.grantedScopes}
+						onConnect={handleConnectService}
+						isLoading={oidcLoading}
+						isAuthenticated={canConnect}
+					/>
+					<IntegrationRow
+						serviceName="Calendar"
+						icon={CalendarDays}
+						scopes={CALENDAR_SCOPES}
+						grantedScopes={oidcStatus.grantedScopes}
+						onConnect={handleConnectService}
+						isLoading={oidcLoading}
+						isAuthenticated={canConnect}
+					/>
+					<IntegrationRow
+						serviceName="Drive"
+						icon={HardDrive}
+						scopes={DRIVE_SCOPES}
+						grantedScopes={oidcStatus.grantedScopes}
+						onConnect={handleConnectService}
+						isLoading={oidcLoading}
+						isAuthenticated={canConnect}
+					/>
+				</ul>
+			</Card>
+		</SettingsSection>
 	);
 };

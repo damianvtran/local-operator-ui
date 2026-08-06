@@ -1,7 +1,4 @@
-import { faExclamationCircle } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Box, Typography, alpha } from "@mui/material";
-import { styled } from "@mui/material/styles";
+import { CircleAlert } from "lucide-react";
 import type { FC } from "react";
 /**
  * Props for the InvalidAttachment component
@@ -9,42 +6,6 @@ import type { FC } from "react";
 export type InvalidAttachmentProps = {
 	file: string;
 };
-
-/**
- * Styled component for invalid file attachments
- * Displays an exclamation icon and error message in a container
- */
-const InvalidAttachmentContainer = styled(Box)(({ theme }) => ({
-	display: "flex",
-	alignItems: "center",
-	padding: "8px 12px",
-	marginTop: 8,
-	backgroundColor: alpha(
-		theme.palette.mode === "dark"
-			? theme.palette.warning.dark
-			: theme.palette.warning.light,
-		theme.palette.mode === "dark" ? 0.05 : 0.05,
-	),
-	borderRadius: 8,
-	boxShadow: `0 1px 4px ${alpha(theme.palette.common.black, theme.palette.mode === "dark" ? 0.1 : 0.05)}`,
-	width: "fit-content",
-	maxWidth: "100%",
-}));
-
-const ErrorIcon = styled(Box)(({ theme }) => ({
-	marginRight: 8,
-	color: theme.palette.warning.main,
-	display: "flex",
-	alignItems: "center",
-}));
-
-const ErrorText = styled(Typography)({
-	fontSize: "0.85rem",
-	overflow: "hidden",
-	textOverflow: "ellipsis",
-	whiteSpace: "nowrap",
-	maxWidth: "100%",
-});
 
 /**
  * Extracts the filename from a path
@@ -63,16 +24,17 @@ const getFileName = (path: string): string => {
  */
 export const InvalidAttachment: FC<InvalidAttachmentProps> = ({ file }) => {
 	return (
-		<InvalidAttachmentContainer
+		<div
+			className="mt-2 flex w-fit max-w-full items-center rounded-sm border border-warning-border bg-warning-wash px-3 py-2 text-warning"
 			title={`File not viewable: ${getFileName(file)}`}
 		>
-			<ErrorIcon>
-				<FontAwesomeIcon icon={faExclamationCircle} size="sm" />
-			</ErrorIcon>
-			<ErrorText variant="body2">
+			<span className="mr-2 flex shrink-0 items-center">
+				<CircleAlert size={14} />
+			</span>
+			<span className="max-w-full truncate text-body-sm">
 				{getFileName(file)} is not viewable (file may be incomplete, deleted, or
 				moved)
-			</ErrorText>
-		</InvalidAttachmentContainer>
+			</span>
+		</div>
 	);
 };

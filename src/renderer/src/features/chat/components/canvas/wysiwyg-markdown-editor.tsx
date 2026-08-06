@@ -2,45 +2,39 @@ import {
 	htmlToMarkdown,
 	markdownToHtml,
 } from "@features/chat/components/canvas/wysiwyg-utils";
-import {
-	Box,
-	Divider,
-	IconButton,
-	Paper,
-	ToggleButton,
-	ToggleButtonGroup,
-	Toolbar,
-	Tooltip,
-} from "@mui/material";
-import { alpha, styled } from "@mui/material/styles";
 import type { EditDiff } from "@shared/api/local-operator/types";
 import { FindReplaceWidget } from "@shared/components/common/find-replace-widget";
 import { TextSelectionControls } from "@shared/components/common/text-selection-controls";
+import {
+	Button,
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+	Tooltip,
+} from "@shared/components/ui";
 import { useDebounce } from "@shared/hooks/use-debounce";
 import { useDebouncedValue } from "@shared/hooks/use-debounced-value";
 import type { UndoManager } from "@shared/lib/undo-manager";
+import { cn } from "@shared/lib/utils";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import { useUndoManagerStore } from "@shared/store/undo-manager-store";
 import { showSuccessToast } from "@shared/utils/toast-manager";
 import {
-	AlignCenter,
-	AlignLeft,
-	AlignRight,
 	Bold,
-	CheckSquare,
 	Code,
+	Ellipsis,
 	Image,
-	Indent,
 	Italic,
 	Link,
 	List,
 	ListOrdered,
-	Outdent,
 	Quote,
 	Redo,
+	SquareCheckBig,
 	Strikethrough,
 	Table,
-	Underline,
 	Undo,
 } from "lucide-react";
 import { type FC, memo } from "react";
@@ -167,171 +161,216 @@ type WysiwygMarkdownEditorProps = {
 	document: CanvasDocument;
 	conversationId?: string;
 	agentId?: string;
+	/**
+	 * Render the block-format menu open.
+	 *
+	 * For stories only, and it earns its place: `:hover` and a real click
+	 * cannot be forced from markup, so every label inside this menu existed in
+	 * no captured frame - which is how "IndentIncrease" and "IndentDecrease"
+	 * reached the format list and survived a design round. The date-time
+	 * picker carries the same affordance for the same reason.
+	 */
+	initialFormatMenuOpen?: boolean;
 };
 
-const SelectionHighlight = styled("span")(({ theme }) => ({
-	backgroundColor: theme.palette.action.hover,
-	borderRadius: "2px",
-}));
+/**
+ * Prose rules for the contentEditable subtree.
+ *
+ * These have to reach elements the component never renders: the editable
+ * markup is produced by `markdownToHtml` and written straight into the DOM, so
+ * there is no React node to hang a class on. Every rule here is a single
+ * descendant selector, which is exactly what an arbitrary variant expresses —
+ * so they live on the scroll container as `[&_blockquote]:…` rather than in a
+ * second stylesheet that would have to be kept in sync by hand. Values follow
+ * `markdown.css`, so the editor and the rendered preview read the same.
+ */
+const editorProseClasses = cn(
+	// The editable surface itself.
+	//
+	// `outline-none` here is a deliberate exception to the rule that a
+	// focusable element must show a ring or have a wrapper draw one. This
+	// surface fills its entire pane, so a ring would trace the pane border and
+	// say nothing about where typing goes; the caret is the focus indicator, as
+	// it is in every text editor. The exception holds only because this is a
+	// full-pane editing surface - it does not extend to the fields around it.
+	"[&_[contenteditable]]:min-h-50 [&_[contenteditable]]:text-body [&_[contenteditable]]:leading-relaxed [&_[contenteditable]]:text-ink [&_[contenteditable]]:outline-none",
+	// Find/replace, painted through the CSS Custom Highlight API. Highlight
+	// pseudo-elements inherit down the tree, so declaring them on the container
+	// covers every match inside it.
+	"[&::highlight(find-highlight)]:bg-accent-wash [&::highlight(find-highlight)]:text-ink",
+	"[&::highlight(current-find-highlight)]:bg-accent [&::highlight(current-find-highlight)]:text-on-accent",
+	// Headings.
+	"[&_:is(h1,h2,h3,h4,h5,h6)]:mt-4 [&_:is(h1,h2,h3,h4,h5,h6)]:mb-2 [&_:is(h1,h2,h3,h4,h5,h6)]:font-semibold [&_:is(h1,h2,h3,h4,h5,h6):first-child]:mt-0",
+	"[&_h1]:text-title [&_h2]:text-heading [&_h3]:text-heading [&_h4]:text-body [&_h5]:text-body [&_h6]:text-body-sm",
+	// Paragraphs.
+	"[&_p]:my-2 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0",
+	// Lists. A task list drops its marker because the checkbox is the marker.
+	"[&_:is(ul,ol)]:my-2 [&_:is(ul,ol)]:pl-6 [&_ul_li]:list-disc [&_ol_li]:list-decimal [&_li]:my-1 [&_li.task-list-item]:list-none",
+	// Quotes: a left rule and a ground step, no card.
+	"[&_blockquote]:my-3 [&_blockquote]:rounded-r-xs [&_blockquote]:border-hairline [&_blockquote]:border-l-2 [&_blockquote]:bg-sunken [&_blockquote]:px-3 [&_blockquote]:py-2 [&_blockquote]:text-ink-muted",
+	// Code. The `pre` already carries the ground; a nested `code` keeping its
+	// own would paint a box inside a box.
+	"[&_code]:rounded-xs [&_code]:bg-sunken [&_code]:bg-none [&_code]:p-0.5 [&_code]:font-mono [&_code]:text-mono-sm",
+	"[&_pre]:my-3 [&_pre]:overflow-auto [&_pre]:rounded-sm [&_pre]:bg-sunken [&_pre]:bg-none [&_pre]:p-3",
+	"[&_pre_code]:bg-transparent [&_pre_code]:p-0",
+	// Tables. Horizontal rules only: a full grid of cell borders turns a
+	// three-row table in a document into a spreadsheet embedded in prose, which
+	// is the wrong reading. The header earns a rule and semibold weight rather
+	// than a fill, so the table has no boxes at all.
+	"[&_table]:my-3 [&_table]:w-full [&_table]:border-collapse",
+	"[&_:is(th,td)]:border-hairline [&_:is(th,td)]:border-b [&_:is(th,td)]:py-1.5 [&_:is(th,td)]:pr-4 [&_:is(th,td)]:text-left [&_:is(th,td):last-child]:pr-0",
+	"[&_th]:font-semibold [&_th]:text-ink-muted",
+	"[&_tbody_tr:last-child_td]:border-b-0",
+	// Links and images.
+	"[&_a]:text-accent [&_a]:underline [&_a:hover]:text-accent-hover",
+	"[&_img]:my-2 [&_img]:h-auto [&_img]:max-w-full [&_img]:rounded-xs",
+);
 
-const EditorContainer = styled(Paper)(({ theme }) => ({
-	position: "relative",
-	display: "flex",
-	flexDirection: "column",
-	height: "100%",
-	width: "100%",
-	overflow: "hidden",
-	backgroundColor: theme.palette.background.paper,
-	borderRadius: "0px",
-	border: "none",
-}));
+/**
+ * The inline diff block shown while a suggested edit is under review.
+ *
+ * Built imperatively (it is injected into the contentEditable subtree), so the
+ * classes are named here rather than set as inline styles — an inline
+ * `background-color` would have to be a literal, which is how the old version
+ * ended up with a red and a green that no theme could reach.
+ *
+ * Each half is labelled, not merely tinted. The two washes are quiet by
+ * design, and simulated at deuteranopia severity 1.0 they meet at ΔE00 2.07
+ * in the light palette and 2.35 in the dark — the same block printed twice,
+ * on the surface where a person accepts or discards someone else's edit to
+ * their own file. The label carries the distinction with no colour in it at
+ * all, and it uses the wording `code-editor-diff.ts` already speaks rather
+ * than a second vocabulary for the same idea.
+ */
+const DIFF_CONTAINER_CLASS = "my-3 overflow-hidden rounded-sm";
+const DIFF_SIDE_CLASS = "flex gap-2 border-l-2 px-3 py-2";
+const DIFF_REMOVED_CLASS = cn(
+	DIFF_SIDE_CLASS,
+	"border-danger-border bg-danger-wash",
+);
+const DIFF_ADDED_CLASS = cn(
+	DIFF_SIDE_CLASS,
+	"border-success-border bg-success-wash",
+);
+/*
+ * A fixed gutter rather than a label-width one: reading the two halves against
+ * each other is the whole job, and letting the column size itself would start
+ * the old text and the new text at different left edges — "Remove" is wider
+ * than "Add". `leading-relaxed` matches the prose beside it so the label sits
+ * on the first line rather than above it.
+ */
+const DIFF_LABEL_CLASS =
+	"w-16 shrink-0 select-none font-semibold text-meta leading-relaxed";
 
-const EditorToolbar = styled(Toolbar)(({ theme }) => ({
-	minHeight: "48px !important",
-	padding: "4px 8px",
-	borderBottom: `1px solid ${theme.palette.divider}`,
-	backgroundColor: theme.palette.background.default,
-	gap: "2px",
-	flexWrap: "wrap",
-}));
+/**
+ * One half of the review block: which side it is, then the markdown for it
+ * rendered as prose.
+ *
+ * The label is real text, not an `aria-label` on a coloured box, so the same
+ * words reach a screen reader and a sighted reader who cannot tell the two
+ * washes apart. An empty side is skipped — a pure insertion has nothing to
+ * remove, and an empty "- Remove" row would claim otherwise.
+ */
+const appendDiffSide = (
+	container: HTMLElement,
+	side: "remove" | "add",
+	markdown: string,
+) => {
+	if (!markdown.trim()) return;
+	const isRemove = side === "remove";
 
-const EditorContent = styled(Box)(({ theme }) => ({
-	flex: 1,
-	padding: "32px",
-	overflowY: "auto",
-	backgroundColor: theme.palette.background.paper,
-	"& [contenteditable]": {
-		outline: "none",
-		minHeight: "200px",
-		lineHeight: 1.6,
-		fontSize: "1rem",
-		color: theme.palette.text.primary,
-		fontFamily: theme.typography.fontFamily,
-	},
-	"&::highlight(find-highlight)": {
-		backgroundColor: "yellow",
-		color: "black",
-	},
-	"&::highlight(current-find-highlight)": {
-		backgroundColor: "orange",
-		color: "black",
-	},
-	"& h1, & h2, & h3, & h4, & h5, & h6": {
-		margin: "16px 0 8px 0",
-		fontWeight: 600,
-		"&:first-child": {
-			marginTop: 0,
-		},
-	},
-	"& h1": {
-		fontSize: "1.5rem",
-		borderBottom: `1px solid ${theme.palette.divider}`,
-		paddingBottom: "8px",
-	},
-	"& h2": {
-		fontSize: "1.3rem",
-	},
-	"& h3": {
-		fontSize: "1.1rem",
-	},
-	"& p": {
-		margin: "8px 0",
-		"&:first-child": {
-			marginTop: 0,
-		},
-		"&:last-child": {
-			marginBottom: 0,
-		},
-	},
-	"& ul, & ol": {
-		paddingLeft: "24px",
-		margin: "8px 0",
-	},
-	"& ul li": {
-		listStyleType: "disc",
-	},
-	"& ol li": {
-		listStyleType: "decimal",
-	},
-	"& li": {
-		margin: "4px 0",
-		"&.task-list-item": {
-			listStyleType: "none",
-		},
-	},
-	"& blockquote": {
-		borderLeft: `4px solid ${theme.palette.primary.main}`,
-		paddingLeft: "16px",
-		margin: "16px 0",
-		fontStyle: "italic",
-		backgroundColor: theme.palette.action.hover,
-		borderRadius: "0 4px 4px 0",
-		padding: "8px 16px",
-	},
-	"& code": {
-		backgroundImage: "none",
-		padding: "2px 2px",
-		borderRadius: "4px",
-		fontFamily: '"Geist Mono", "Roboto Mono", monospace',
-		letterSpacing: "0.05em",
-		fontSize: "0.8em",
-	},
-	"& pre": {
-		backgroundColor: alpha(theme.palette.action.hover, 0.02),
-		backgroundImage: "none",
-		padding: "12px",
-		borderRadius: "8px",
-		overflow: "auto",
-		border: `1px solid ${theme.palette.divider}`,
-		margin: "12px 0",
-		"& code": {
-			backgroundColor: "transparent",
-			padding: 0,
-		},
-	},
-	"& table": {
-		borderCollapse: "collapse",
-		width: "100%",
-		margin: "16px 0",
-		border: `1px solid ${theme.palette.divider}`,
-	},
-	"& th, & td": {
-		border: `1px solid ${theme.palette.divider}`,
-		padding: "8px 12px",
-		textAlign: "left",
-	},
-	"& th": {
-		backgroundColor: theme.palette.action.hover,
-		fontWeight: 600,
-	},
-	"& a": {
-		color: theme.palette.primary.main,
-		textDecoration: "underline",
-		"&:hover": {
-			color: theme.palette.primary.dark,
-		},
-	},
-	"& img": {
-		maxWidth: "100%",
-		height: "auto",
-		borderRadius: "4px",
-		margin: "8px 0",
-	},
-}));
+	const half = window.document.createElement("div");
+	half.className = isRemove ? DIFF_REMOVED_CLASS : DIFF_ADDED_CLASS;
 
-const ToolbarButton = styled(IconButton)(({ theme }) => ({
-	width: "30px",
-	height: "30px",
-	padding: "2px",
-	"&:hover": {
-		backgroundColor: theme.palette.action.hover,
-	},
-}));
+	const label = window.document.createElement("span");
+	label.className = cn(
+		DIFF_LABEL_CLASS,
+		isRemove ? "text-danger" : "text-success",
+	);
+	label.textContent = isRemove ? "- Remove" : "+ Add";
+	half.appendChild(label);
 
-const ToolbarDivider = styled(Divider)({
-	height: "24px",
-	margin: "0 4px",
-});
+	const content = window.document.createElement("div");
+	content.className = "min-w-0 flex-1";
+	content.innerHTML = markdownToHtml(markdown);
+	half.appendChild(content);
+
+	container.appendChild(half);
+};
+
+/**
+ * The whole review block for one proposed change.
+ *
+ * Named as a single group: the two halves are one proposal, and the floating
+ * review toolbar already says which change of how many this is, so the block
+ * needs a name rather than a visible heading repeating it.
+ *
+ * Exported for the `DiffReview` story, which used to re-draw this markup by
+ * hand. A copy is only accurate until one of the two is edited, and the
+ * evidence frames the design review is judged from come from that story.
+ */
+export const buildDiffContainer = (diff: EditDiff) => {
+	const container = window.document.createElement("div");
+	container.setAttribute("data-diff-container", "true");
+	container.contentEditable = "false";
+	container.className = DIFF_CONTAINER_CLASS;
+	container.setAttribute("role", "group");
+	container.setAttribute("aria-label", "Proposed change");
+	appendDiffSide(container, "remove", diff.find);
+	appendDiffSide(container, "add", diff.replace);
+	return container;
+};
+
+/**
+ * Find-match highlighting for browsers without `CSS.highlights`. Same two roles
+ * the highlight pseudo-elements above use, so the fallback is indistinguishable.
+ */
+const FIND_MATCH_CLASS = "bg-accent-wash text-ink";
+const FIND_CURRENT_MATCH_CLASS = "bg-accent text-on-accent";
+
+/**
+ * A formatting toggle that is on. A colour step, not a raised slab — and it
+ * holds that colour on hover so the state does not read as a hover artefact.
+ */
+const ACTIVE_TOGGLE_CLASS =
+	"bg-accent-wash text-accent hover:bg-accent-wash hover:text-accent";
+
+/**
+ * The two toggle groups. Both render the same button with the same pressed
+ * treatment, so they are data rather than near-identical JSX blocks.
+ *
+ * `TEXT_FORMATS` is split into the pair that stays on the bar and the one that
+ * moves into the overflow menu. Bold and italic are the two markdown carries
+ * natively and the two everyone reaches for; strikethrough is a GFM extension
+ * that round-trips correctly but is rare enough not to earn a permanent 28px
+ * of a panel 440px wide at its narrowest.
+ *
+ * Underline is gone rather than demoted. It has no markdown, and the toolbar
+ * did not merely fail to save it: `execCommand` emits `<u>`, `htmlToMarkdown`
+ * writes `*text*`, and reopening the file renders `<em>`. A control that
+ * silently turns a user's underline into italics is worse than no control,
+ * because the document that comes back is not the one they wrote.
+ */
+const PRIMARY_TEXT_FORMATS = [
+	{ value: "bold", label: "Bold (Ctrl+B)", Icon: Bold },
+	{ value: "italic", label: "Italic (Ctrl+I)", Icon: Italic },
+] as const;
+
+const OVERFLOW_TEXT_FORMATS = [
+	{ value: "strikethrough", label: "Strikethrough", Icon: Strikethrough },
+] as const;
+
+/*
+ * Alignment is not offered, and the machinery for it is gone with the menu.
+ *
+ * It used to live in the overflow menu on the argument that a setting the file
+ * cannot hold does not deserve permanent toolbar space - which conceded the
+ * whole point and then shipped it anyway. `wysiwyg-utils` has no `text-align`
+ * handling in either direction, so an aligned paragraph round-trips as a plain
+ * one, and the menu drew an accent checkmark against the current alignment as
+ * though it were persisted state. Align left appeared to work only because it
+ * is the default.
+ */
 
 type TextType = "paragraph" | "h1" | "h2" | "h3" | "h4" | "h5" | "h6";
 
@@ -351,12 +390,12 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 	document,
 	conversationId,
 	agentId,
+	initialFormatMenuOpen = false,
 }) => {
 	const [content, setContent] = useState(document.content);
 	const [hasUserChanges, setHasUserChanges] = useState(false);
 	const [currentTextType, setCurrentTextType] = useState<TextType>("paragraph");
 	const [selectedFormats, setSelectedFormats] = useState<string[]>([]);
-	const [currentAlignment, setCurrentAlignment] = useState("left");
 	const [isLinkDialogOpen, setIsLinkDialogOpen] = useState(false);
 	const [linkDialogData, setLinkDialogData] = useState<LinkDialogData>({
 		url: "",
@@ -364,6 +403,9 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 	});
 	const [isImageDialogOpen, setIsImageDialogOpen] = useState(false);
 	const [tableAnchorEl, setTableAnchorEl] = useState<HTMLElement | null>(null);
+	// The overflow menu's trigger doubles as the anchor for the table-size grid
+	// launched from inside that menu.
+	const overflowTriggerRef = useRef<HTMLButtonElement>(null);
 	const [showFindReplace, setShowFindReplace] = useState(false);
 	const [findReplaceMode, setFindReplaceMode] = useState<"find" | "replace">(
 		"find",
@@ -427,7 +469,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 		}
 
 		window.api.saveFile(document.path, content);
-		showSuccessToast("File saved successfully");
+		showSuccessToast("File saved");
 		originalContentRef.current = content;
 		setHasUserChanges(false);
 
@@ -475,20 +517,10 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 
 		if (window.document.queryCommandState("bold")) formats.push("bold");
 		if (window.document.queryCommandState("italic")) formats.push("italic");
-		if (window.document.queryCommandState("underline"))
-			formats.push("underline");
 		if (window.document.queryCommandState("strikeThrough"))
 			formats.push("strikethrough");
 
 		setSelectedFormats(formats);
-
-		if (window.document.queryCommandState("justifyCenter")) {
-			setCurrentAlignment("center");
-		} else if (window.document.queryCommandState("justifyRight")) {
-			setCurrentAlignment("right");
-		} else {
-			setCurrentAlignment("left");
-		}
 	}, []);
 
 	const handleContentChange = useCallback(() => {
@@ -612,9 +644,9 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 						const highlightSpan = window.document.createElement("span");
 						highlightSpan.dataset.highlight = "true";
 						const isCurrent = i === newIndex;
-						highlightSpan.style.backgroundColor = isCurrent
-							? "orange"
-							: "yellow";
+						highlightSpan.className = isCurrent
+							? FIND_CURRENT_MATCH_CLASS
+							: FIND_MATCH_CLASS;
 						range.surroundContents(highlightSpan);
 					}
 				}
@@ -668,8 +700,8 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 				if (highlights) {
 					highlights.forEach((h, i) => {
 						const highlight = h as HTMLElement;
-						highlight.style.backgroundColor =
-							i === newIndex ? "orange" : "yellow";
+						highlight.className =
+							i === newIndex ? FIND_CURRENT_MATCH_CLASS : FIND_MATCH_CLASS;
 					});
 				}
 			}
@@ -823,7 +855,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 			document.path
 		) {
 			window.api.saveFile(document.path, debouncedContent);
-			showSuccessToast("File saved successfully");
+			showSuccessToast("File saved");
 			originalContentRef.current = debouncedContent;
 
 			if (conversationId && canvasState) {
@@ -976,27 +1008,9 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 				case "italic":
 					executeCommand("italic");
 					break;
-				case "underline":
-					executeCommand("underline");
-					break;
 				case "strikethrough":
 					executeCommand("strikeThrough");
 					break;
-			}
-		},
-		[executeCommand],
-	);
-
-	const handleAlignmentChange = useCallback(
-		(_: React.MouseEvent<HTMLElement>, newAlignment: string | null) => {
-			if (newAlignment) {
-				const commandMap: { [key: string]: string } = {
-					left: "justifyLeft",
-					center: "justifyCenter",
-					right: "justifyRight",
-				};
-				executeCommand(commandMap[newAlignment]);
-				setCurrentAlignment(newAlignment);
 			}
 		},
 		[executeCommand],
@@ -1075,13 +1089,15 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 		[executeCommand, handleContentChange],
 	);
 
-	// Insert table
-	const insertTable = useCallback((event: React.MouseEvent<HTMLElement>) => {
+	// Insert table. Takes the anchor rather than an event because the control
+	// that opens it is sometimes a menu item that unmounts as the menu closes,
+	// and a popover anchored to a removed node has nothing to position against.
+	const insertTable = useCallback((anchor: HTMLElement) => {
 		const selection = window.getSelection();
 		if (selection?.rangeCount) {
 			selectionRef.current = selection.getRangeAt(0).cloneRange();
 		}
-		setTableAnchorEl(event.currentTarget);
+		setTableAnchorEl(anchor);
 	}, []);
 
 	const handleInsertTable = useCallback(
@@ -1187,12 +1203,69 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 	const handleKeyDown = useCallback(
 		(event: React.KeyboardEvent) => {
 			if (event.key === "Tab") {
-				event.preventDefault();
-				if (event.shiftKey) {
-					executeCommand("outdent");
-				} else {
-					executeCommand("indent");
+				/*
+				 * Tab nests a list item, and does nothing anywhere else.
+				 *
+				 * `execCommand("indent")` on a paragraph emits a styled
+				 * `<blockquote>`, which saves as `> text` - byte-identical to
+				 * what Quote writes. A user pressing Tab, usually by accident,
+				 * got a blockquote they did not ask for and could not tell apart
+				 * from one they did. Inside a list the same command nests the
+				 * item and round-trips through markdown correctly, which is the
+				 * only reason this key still does anything.
+				 *
+				 * Outside a list this returns without `preventDefault`, so Tab
+				 * moves focus out of the editor. That is deliberate and is the
+				 * accessible behaviour - a contenteditable that swallows Tab is
+				 * a keyboard trap (WCAG 2.1.2) and there was previously no way
+				 * to leave this editor with the keyboard alone.
+				 *
+				 * BOTH ends of the range are tested, not the anchor. A drag from
+				 * inside a list item into the paragraph after it is an ordinary
+				 * selection, and testing one end let `indent` blockquote that
+				 * paragraph - the exact defect this gate exists to prevent,
+				 * reachable by a different route. `commonAncestorContainer` is
+				 * the tempting one-liner and it is wrong: for a selection across
+				 * two items it is the `<ul>`, which has no `li` ancestor, so
+				 * indenting several items at once would stop working.
+				 *
+				 * The containers are tested directly, with no resolution of an
+				 * element boundary to the child it sits at. That resolver was
+				 * written and then removed: a range whose end is the `<ul>` at
+				 * an offset defeats this test, but it is not reachable. Driving
+				 * real input through Electron's own Chromium across seventeen
+				 * gestures - triple-click on an item and on one wrapping a
+				 * nested list, Shift+Down runs, Cmd+Shift+End, select-all in
+				 * list-only and mixed documents, and drags in both directions
+				 * across every boundary - produced an end container that was
+				 * always either a text node inside an `<li>` or the `<li>` at
+				 * offset 0, both of which this test accepts. The app builds no
+				 * element-container ranges of its own. If one ever appears the
+				 * gate closes and Tab moves focus, which is the safe direction
+				 * to fail; the resolver's own failure mode was a blockquote in
+				 * the user's file.
+				 */
+				const selection = window.getSelection();
+				const range =
+					selection && selection.rangeCount > 0
+						? selection.getRangeAt(0)
+						: null;
+				const listItemFor = (node: Node | null): Element | null => {
+					const element =
+						node?.nodeType === Node.ELEMENT_NODE
+							? (node as Element)
+							: (node?.parentElement ?? null);
+					return element?.closest("li") ?? null;
+				};
+				if (
+					!range ||
+					!listItemFor(range.startContainer) ||
+					!listItemFor(range.endContainer)
+				) {
+					return;
 				}
+				event.preventDefault();
+				executeCommand(event.shiftKey ? "outdent" : "indent");
 				return;
 			}
 
@@ -1216,10 +1289,10 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 						event.preventDefault();
 						handleFormatToggle("italic");
 						break;
-					case "u":
-						event.preventDefault();
-						handleFormatToggle("underline");
-						break;
+					/* No `case "u"`: `execCommand("underline")` emits `<u>`, which
+					   the save path turns into `*text*` and reopens as italic. A
+					   shortcut that silently rewrites the user's formatting as a
+					   different one is worse than no shortcut. */
 					case "s":
 						event.preventDefault();
 						handleManualSave();
@@ -1408,7 +1481,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 		// Force save the changes immediately since they came from inline edit
 		if (document.path && finalContent !== originalContentRef.current) {
 			window.api.saveFile(document.path, finalContent);
-			showSuccessToast("File saved successfully");
+			showSuccessToast("File saved");
 			originalContentRef.current = finalContent;
 			setHasUserChanges(false);
 
@@ -1486,23 +1559,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 					diff,
 				});
 				// Fallback: insert at the end of the editor
-				const diffContainer = window.document.createElement("div");
-				diffContainer.setAttribute("data-diff-container", "true");
-				diffContainer.contentEditable = "false";
-				diffContainer.style.border = "2px solid #ccc";
-				diffContainer.style.margin = "10px 0";
-				diffContainer.style.padding = "10px";
-
-				const oldDiv = window.document.createElement("div");
-				oldDiv.innerHTML = markdownToHtml(diff.find);
-				oldDiv.style.backgroundColor = "rgba(255, 0, 0, 0.1)";
-				oldDiv.style.marginBottom = "5px";
-				diffContainer.appendChild(oldDiv);
-
-				const newDiv = window.document.createElement("div");
-				newDiv.innerHTML = markdownToHtml(diff.replace);
-				newDiv.style.backgroundColor = "rgba(0, 255, 0, 0.1)";
-				diffContainer.appendChild(newDiv);
+				const diffContainer = buildDiffContainer(diff);
 
 				editorRef.current.appendChild(diffContainer);
 				diffContainer.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -1513,19 +1570,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 			rangeObj.setStartBefore(elementsInRange[0]);
 			rangeObj.setEndAfter(elementsInRange[elementsInRange.length - 1]);
 
-			const diffContainer = window.document.createElement("div");
-			diffContainer.setAttribute("data-diff-container", "true");
-			diffContainer.contentEditable = "false";
-
-			const oldDiv = window.document.createElement("div");
-			oldDiv.innerHTML = markdownToHtml(diff.find);
-			oldDiv.style.backgroundColor = "rgba(255, 0, 0, 0.1)";
-			diffContainer.appendChild(oldDiv);
-
-			const newDiv = window.document.createElement("div");
-			newDiv.innerHTML = markdownToHtml(diff.replace);
-			newDiv.style.backgroundColor = "rgba(0, 255, 0, 0.1)";
-			diffContainer.appendChild(newDiv);
+			const diffContainer = buildDiffContainer(diff);
 
 			rangeObj.deleteContents();
 			rangeObj.insertNode(diffContainer);
@@ -1605,192 +1650,292 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 	};
 
 	return (
-		<EditorContainer elevation={1}>
-			<EditorToolbar>
-				{/* Text Type Selector */}
+		<div
+			className={cn(
+				// A query container, so the toolbar can respond to how wide the
+				// canvas panel has been dragged rather than to the window. A
+				// viewport breakpoint is the wrong instrument inside a resizable
+				// dock: it reports 1440px while the panel is 400px.
+				"@container relative flex h-full w-full flex-col overflow-hidden bg-surface",
+			)}
+		>
+			{/*
+			 * The toolbar.
+			 *
+			 * It used to be nineteen controls in six groups behind five dividers,
+			 * on `flex-wrap`, which meant it silently became two rows at 720px and
+			 * was two rows at every width the panel actually opens at. A toolbar
+			 * that reflows is the "2010 word processor" tell, and the fix is not a
+			 * smaller gap — it is deciding which controls are worth permanent
+			 * space.
+			 *
+			 * Eight are: block type, bold, italic, the three list kinds, link, and
+			 * the overflow. Undo and redo pin to the right, because they act on
+			 * the document rather than on the selection and every drawing app from
+			 * Figma to Sketch reads left-to-right as tools-then-history.
+			 *
+			 * The overflow holds eight: strikethrough, the three list kinds,
+			 * quote, code block, image and table. The lists appear in both
+			 * places deliberately - they are frequent enough to earn a permanent
+			 * button and structural enough that someone hunting for "make this a
+			 * list" opens the menu first. Everything else there is one click
+			 * away, which is what Craft, Dropbox Paper and Linear's editor all
+			 * do rather than showing every command at once.
+			 *
+			 * Underline and the three alignments are in neither place and on no
+			 * shortcut: neither survives a markdown round trip, so the editor no
+			 * longer offers a control whose effect the next save discards.
+			 * Indent and outdent are off the toolbar for the same reason as a
+			 * paragraph, but they keep Tab and Shift+Tab inside a list, where
+			 * the command nests an item and the round trip is clean.
+			 *
+			 * `flex-nowrap`: at the panel's 400px minimum the bar must clip or
+			 * stack, and it does neither, because the list group steps out at
+			 * 520px and everything left fits inside 400.
+			 */}
+			<div
+				className={cn(
+					// Groups are 8px apart and members 4px apart — both tier-one
+					// values from the 4px ramp, so the rhythm alone carries the
+					// grouping and the five vertical rules that used to are gone.
+					"flex h-10 shrink-0 flex-nowrap items-center gap-2",
+					// `surface`, the document's own ground: the toolbar acts on what
+					// is below it, so it belongs to the document rather than to the
+					// panel chrome above. The hairline is what stops it reading as
+					// content.
+					"border-hairline border-b bg-surface px-2",
+				)}
+			>
 				<TextStyleDropdown
 					currentTextType={currentTextType}
 					onTextTypeChange={handleTextTypeChange}
 				/>
 
-				<ToolbarDivider orientation="vertical" />
+				{/* Character formatting */}
+				<div className={cn("flex shrink-0 items-center gap-1")}>
+					{PRIMARY_TEXT_FORMATS.map(({ value, label, Icon }) => {
+						const isActive = selectedFormats.includes(value);
+						return (
+							<Tooltip key={value} content={label}>
+								<Button
+									variant="ghost"
+									size="icon-sm"
+									aria-label={label}
+									aria-pressed={isActive}
+									onClick={() => handleFormatToggle(value)}
+									className={cn(isActive && ACTIVE_TOGGLE_CLASS)}
+								>
+									<Icon />
+								</Button>
+							</Tooltip>
+						);
+					})}
+				</div>
 
-				{/* Text Formatting */}
-				<ToggleButtonGroup
-					value={selectedFormats}
-					onChange={(_, formats) => setSelectedFormats(formats)}
-					size="small"
+				{/*
+				 * Lists. Hidden below a 520px *panel* — a container query, not a
+				 * viewport one, because the canvas is a resizable dock and its
+				 * width has nothing to do with the size of the window. They stay
+				 * reachable in the overflow menu at every width, which is why the
+				 * menu lists them too.
+				 */}
+				<div
+					className={cn(
+						"flex shrink-0 items-center gap-1",
+						"@max-[520px]:hidden",
+					)}
 				>
-					<ToggleButton
-						value="bold"
-						onClick={() => handleFormatToggle("bold")}
-						size="small"
-					>
-						<Tooltip title="Bold (Ctrl+B)">
-							<Bold size={14} />
-						</Tooltip>
-					</ToggleButton>
-					<ToggleButton
-						value="italic"
-						onClick={() => handleFormatToggle("italic")}
-						size="small"
-					>
-						<Tooltip title="Italic (Ctrl+I)">
-							<Italic size={14} />
-						</Tooltip>
-					</ToggleButton>
-					<ToggleButton
-						value="underline"
-						onClick={() => handleFormatToggle("underline")}
-						size="small"
-					>
-						<Tooltip title="Underline (Ctrl+U)">
-							<Underline size={14} />
-						</Tooltip>
-					</ToggleButton>
-					<ToggleButton
-						value="strikethrough"
-						onClick={() => handleFormatToggle("strikethrough")}
-						size="small"
-					>
-						<Tooltip title="Strikethrough">
-							<Strikethrough size={14} />
-						</Tooltip>
-					</ToggleButton>
-				</ToggleButtonGroup>
+					<Tooltip content="Bullet list">
+						<Button
+							variant="ghost"
+							size="icon-sm"
+							aria-label="Bullet list"
+							onClick={() => toggleList("unordered")}
+						>
+							<List />
+						</Button>
+					</Tooltip>
+					<Tooltip content="Numbered list">
+						<Button
+							variant="ghost"
+							size="icon-sm"
+							aria-label="Numbered list"
+							onClick={() => toggleList("ordered")}
+						>
+							<ListOrdered />
+						</Button>
+					</Tooltip>
+					<Tooltip content="Checklist">
+						<Button
+							variant="ghost"
+							size="icon-sm"
+							aria-label="Checklist"
+							onClick={() => toggleList("task")}
+						>
+							<SquareCheckBig />
+						</Button>
+					</Tooltip>
+				</div>
 
-				<ToolbarDivider orientation="vertical" />
+				<div className={cn("flex shrink-0 items-center gap-1")}>
+					<Tooltip content="Insert link">
+						<Button
+							variant="ghost"
+							size="icon-sm"
+							aria-label="Insert link"
+							onClick={insertLink}
+						>
+							<Link />
+						</Button>
+					</Tooltip>
 
-				{/* Lists and Quotes */}
-				<Tooltip title="Bullet List">
-					<ToolbarButton onClick={() => toggleList("unordered")}>
-						<List size={14} />
-					</ToolbarButton>
-				</Tooltip>
-				<Tooltip title="Numbered List">
-					<ToolbarButton onClick={() => toggleList("ordered")}>
-						<ListOrdered size={14} />
-					</ToolbarButton>
-				</Tooltip>
-				<Tooltip title="Checkbox List">
-					<ToolbarButton onClick={() => toggleList("task")}>
-						<CheckSquare size={14} />
-					</ToolbarButton>
-				</Tooltip>
-				<Tooltip title="Indent">
-					<ToolbarButton onClick={() => executeCommand("indent")}>
-						<Indent size={14} />
-					</ToolbarButton>
-				</Tooltip>
-				<Tooltip title="Outdent">
-					<ToolbarButton onClick={() => executeCommand("outdent")}>
-						<Outdent size={14} />
-					</ToolbarButton>
-				</Tooltip>
-				<Tooltip title="Quote">
-					<ToolbarButton onClick={() => toggleBlockFormat("blockquote")}>
-						<Quote size={14} />
-					</ToolbarButton>
-				</Tooltip>
-				<Tooltip title="Code Block">
-					<ToolbarButton onClick={() => toggleBlockFormat("pre")}>
-						<Code size={14} />
-					</ToolbarButton>
-				</Tooltip>
+					{/* Everything else, grouped the way the menu reads */}
+					<DropdownMenu defaultOpen={initialFormatMenuOpen}>
+						<Tooltip content="More formatting">
+							<DropdownMenuTrigger asChild>
+								<Button
+									ref={overflowTriggerRef}
+									variant="ghost"
+									size="icon-sm"
+									aria-label="More formatting"
+								>
+									<Ellipsis />
+								</Button>
+							</DropdownMenuTrigger>
+						</Tooltip>
+						{/* w-44 (176px), not w-52: the old width was sized for
+						    "Underline (Ctrl+U)" and "Align center", and both are
+						    gone. The widest surviving label is "Numbered list" at
+						    106px, which with the icon column and padding needs
+						    176px and left 42% of a 208px menu empty. */}
+						<DropdownMenuContent align="start" className={cn("w-44")}>
+							{OVERFLOW_TEXT_FORMATS.map(({ value, label, Icon }) => (
+								<DropdownMenuItem
+									key={value}
+									onSelect={() => handleFormatToggle(value)}
+								>
+									<Icon aria-hidden="true" />
+									{label}
+								</DropdownMenuItem>
+							))}
+							<DropdownMenuSeparator />
+							<DropdownMenuItem onSelect={() => toggleList("unordered")}>
+								<List aria-hidden="true" />
+								Bullet list
+							</DropdownMenuItem>
+							<DropdownMenuItem onSelect={() => toggleList("ordered")}>
+								<ListOrdered aria-hidden="true" />
+								Numbered list
+							</DropdownMenuItem>
+							<DropdownMenuItem onSelect={() => toggleList("task")}>
+								<SquareCheckBig aria-hidden="true" />
+								Checklist
+							</DropdownMenuItem>
+							<DropdownMenuSeparator />
+							<DropdownMenuItem
+								onSelect={() => toggleBlockFormat("blockquote")}
+							>
+								<Quote aria-hidden="true" />
+								Quote
+							</DropdownMenuItem>
+							<DropdownMenuItem onSelect={() => toggleBlockFormat("pre")}>
+								<Code aria-hidden="true" />
+								Code block
+							</DropdownMenuItem>
+							<DropdownMenuSeparator />
+							<DropdownMenuItem onSelect={insertImage}>
+								<Image aria-hidden="true" />
+								Insert image
+							</DropdownMenuItem>
+							<DropdownMenuItem
+								onSelect={() => {
+									// The menu item is gone by the time the popover mounts,
+									// so the table grid hangs off the trigger that opened
+									// the menu.
+									if (overflowTriggerRef.current) {
+										insertTable(overflowTriggerRef.current);
+									}
+								}}
+							>
+								<Table aria-hidden="true" />
+								Insert table
+							</DropdownMenuItem>
+						</DropdownMenuContent>
+					</DropdownMenu>
+				</div>
 
-				<ToolbarDivider orientation="vertical" />
+				{/* History: document-scoped, so it sits opposite the selection tools */}
+				<div className={cn("ml-auto flex shrink-0 items-center gap-1")}>
+					<Tooltip content="Undo (Ctrl+Z)">
+						<Button
+							variant="ghost"
+							size="icon-sm"
+							aria-label="Undo"
+							onClick={() => {
+								if (undoManagerRef.current?.canUndo()) {
+									undoManagerRef.current.undo();
+									// Update content state after undo
+									if (editorRef.current) {
+										const htmlContent = editorRef.current.innerHTML;
+										const markdownContent = htmlToMarkdown(htmlContent);
+										setContent(markdownContent);
+										setHasUserChanges(true);
+									}
+									setCanUndo(undoManagerRef.current.canUndo());
+									setCanRedo(undoManagerRef.current.canRedo());
+								}
+							}}
+							disabled={!canUndo}
+						>
+							<Undo />
+						</Button>
+					</Tooltip>
+					<Tooltip content="Redo (Ctrl+Shift+Z)">
+						<Button
+							variant="ghost"
+							size="icon-sm"
+							aria-label="Redo"
+							onClick={() => {
+								if (undoManagerRef.current?.canRedo()) {
+									undoManagerRef.current.redo();
+									// Update content state after redo
+									if (editorRef.current) {
+										const htmlContent = editorRef.current.innerHTML;
+										const markdownContent = htmlToMarkdown(htmlContent);
+										setContent(markdownContent);
+										setHasUserChanges(true);
+									}
+									setCanUndo(undoManagerRef.current.canUndo());
+									setCanRedo(undoManagerRef.current.canRedo());
+								}
+							}}
+							disabled={!canRedo}
+						>
+							<Redo />
+						</Button>
+					</Tooltip>
+				</div>
+			</div>
 
-				<ToggleButtonGroup
-					value={currentAlignment}
-					exclusive
-					onChange={handleAlignmentChange}
-					size="small"
+			<div
+				ref={editorContentRef}
+				className={cn(
+					// 24px at the panel's narrowest, 32px once there is room. The old
+					// flat 32px took 64px of a 400px panel.
+					"flex-1 overflow-y-auto bg-surface px-6 py-6 @min-[560px]:px-8 @min-[560px]:py-8",
+					editorProseClasses,
+				)}
+			>
+				{/*
+				 * A measure, not a full-bleed column. Dragged wide the panel is
+				 * 1200px, and 14px body text set across 1136px is about 140
+				 * characters a line — unreadable in the way a document nobody
+				 * measured always is. 640px lands at roughly 80.
+				 */}
+				<div
+					className={cn("relative mx-auto w-full max-w-160")}
+					ref={relativeContainerRef}
 				>
-					<ToggleButton value="left" size="small">
-						<Tooltip title="Align Left">
-							<AlignLeft size={14} />
-						</Tooltip>
-					</ToggleButton>
-					<ToggleButton value="center" size="small">
-						<Tooltip title="Align Center">
-							<AlignCenter size={14} />
-						</Tooltip>
-					</ToggleButton>
-					<ToggleButton value="right" size="small">
-						<Tooltip title="Align Right">
-							<AlignRight size={14} />
-						</Tooltip>
-					</ToggleButton>
-				</ToggleButtonGroup>
-
-				<ToolbarDivider orientation="vertical" />
-
-				{/* Insert Elements */}
-				<Tooltip title="Insert Link">
-					<ToolbarButton onClick={insertLink}>
-						<Link size={14} />
-					</ToolbarButton>
-				</Tooltip>
-				<Tooltip title="Insert Image">
-					<ToolbarButton onClick={insertImage}>
-						<Image size={14} />
-					</ToolbarButton>
-				</Tooltip>
-				<Tooltip title="Insert Table">
-					<ToolbarButton onClick={insertTable}>
-						<Table size={14} />
-					</ToolbarButton>
-				</Tooltip>
-
-				<ToolbarDivider orientation="vertical" />
-
-				{/* Undo/Redo */}
-				<Tooltip title="Undo (Ctrl+Z)">
-					<ToolbarButton
-						onClick={() => {
-							if (undoManagerRef.current?.canUndo()) {
-								undoManagerRef.current.undo();
-								// Update content state after undo
-								if (editorRef.current) {
-									const htmlContent = editorRef.current.innerHTML;
-									const markdownContent = htmlToMarkdown(htmlContent);
-									setContent(markdownContent);
-									setHasUserChanges(true);
-								}
-								setCanUndo(undoManagerRef.current.canUndo());
-								setCanRedo(undoManagerRef.current.canRedo());
-							}
-						}}
-						disabled={!canUndo}
-					>
-						<Undo size={14} />
-					</ToolbarButton>
-				</Tooltip>
-				<Tooltip title="Redo (Ctrl+Shift+Z)">
-					<ToolbarButton
-						onClick={() => {
-							if (undoManagerRef.current?.canRedo()) {
-								undoManagerRef.current.redo();
-								// Update content state after redo
-								if (editorRef.current) {
-									const htmlContent = editorRef.current.innerHTML;
-									const markdownContent = htmlToMarkdown(htmlContent);
-									setContent(markdownContent);
-									setHasUserChanges(true);
-								}
-								setCanUndo(undoManagerRef.current.canUndo());
-								setCanRedo(undoManagerRef.current.canRedo());
-							}
-						}}
-						disabled={!canRedo}
-					>
-						<Redo size={14} />
-					</ToolbarButton>
-				</Tooltip>
-			</EditorToolbar>
-
-			<EditorContent ref={editorContentRef}>
-				<Box sx={{ position: "relative" }} ref={relativeContainerRef}>
 					<div
 						ref={editorRef}
 						contentEditable={!reviewState}
@@ -1806,9 +1951,12 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 						}}
 					/>
 					{inlineEdit?.range && !reviewState && (
-						<SelectionHighlight
+						<span
+							aria-hidden
+							className={cn(
+								"pointer-events-none absolute rounded-xs bg-accent-wash",
+							)}
 							style={{
-								position: "absolute",
 								left:
 									inlineEdit.range.getBoundingClientRect().left -
 									(relativeContainerRef.current?.getBoundingClientRect().left ??
@@ -1897,8 +2045,8 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 							}}
 						/>
 					)}
-				</Box>
-			</EditorContent>
+				</div>
+			</div>
 			<FindReplaceWidget
 				show={showFindReplace}
 				initialMode={findReplaceMode}
@@ -1913,7 +2061,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 				onReplaceAll={handleReplaceAll}
 				matchCount={matchRanges.length}
 				currentMatch={currentMatchIndex + 1}
-				containerSx={{ top: "56px", right: "16px" }}
+				containerClassName="top-14 right-4"
 				findValue={searchQuery}
 				onFindValueChange={setSearchQuery}
 			/>
@@ -1933,7 +2081,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 				onClose={() => setTableAnchorEl(null)}
 				onInsert={handleInsertTable}
 			/>
-		</EditorContainer>
+		</div>
 	);
 };
 

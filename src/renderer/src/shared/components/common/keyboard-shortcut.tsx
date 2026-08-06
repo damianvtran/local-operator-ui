@@ -1,33 +1,23 @@
-import { Box, Typography, styled, useTheme } from "@mui/material";
+/**
+ * A rendered keyboard shortcut, as key caps.
+ *
+ * `kbd` rather than styled spans: the element already means "key the user
+ * presses", so the caps read correctly to a screen reader without any ARIA.
+ *
+ * Machine voice, so `text-mono-sm`. No border — `sunken` is recessed below
+ * every other ground, and a cap that is already a different ground than the
+ * thing behind it does not also need an edge drawn round it.
+ */
+
+import { cn } from "@shared/lib/utils";
 import { Command, CornerDownLeft } from "lucide-react";
+import { Fragment } from "react";
 import type { ElementType, FC } from "react";
 
 type KeyboardShortcutProps = {
 	shortcut: string;
 	size?: number;
 };
-
-const Key = styled(Box)(({ theme }) => ({
-	display: "inline-flex",
-	alignItems: "center",
-	justifyContent: "center",
-	padding: theme.spacing(0.25, 0.75),
-	border: `1px solid ${theme.palette.divider}`,
-	borderRadius: theme.shape.borderRadius,
-	backgroundColor: theme.palette.background.default,
-	color: theme.palette.text.secondary,
-	fontSize: "0.75rem",
-	fontWeight: 500,
-	lineHeight: "1.2",
-	minWidth: "20px",
-	textAlign: "center",
-}));
-
-const ShortcutContainer = styled(Box)({
-	display: "inline-flex",
-	alignItems: "center",
-	gap: "4px",
-});
 
 const keyIconMap: Record<string, ElementType> = {
 	"⌘": Command,
@@ -37,53 +27,40 @@ const keyIconMap: Record<string, ElementType> = {
 	"↵": CornerDownLeft,
 };
 
+const CAP =
+	"inline-flex min-w-5 items-center justify-center rounded-xs bg-sunken font-mono text-mono-sm text-ink-muted";
+
 export const KeyboardShortcut: FC<KeyboardShortcutProps> = ({
 	shortcut,
 	size = 10,
 }) => {
-	const theme = useTheme();
 	const keys = shortcut.split("+").map((key) => key.trim());
 
 	return (
-		<ShortcutContainer>
+		<span className="inline-flex items-center gap-1">
 			{keys.map((key, index) => {
 				const Icon = keyIconMap[key.toLowerCase()];
 				return (
-					<>
+					// biome-ignore lint/suspicious/noArrayIndexKey: the same key legitimately repeats in one shortcut ("Meta+Meta" exists in bindings), so position is part of the identity; the shortcut string is a stable prop, never reordered in place.
+					<Fragment key={`${key}-${index}`}>
 						{index > 0 && (
-							<Typography
-								variant="caption"
-								sx={{
-									fontSize: "0.5rem",
-									color: theme.palette.text.secondary,
-								}}
-							>
+							<span aria-hidden="true" className="text-mono-sm text-ink-dim">
 								+
-							</Typography>
+							</span>
 						)}
-						{Icon ? (
-							// biome-ignore lint/suspicious/noArrayIndexKey: Using index as key is fine here
-							<Key key={`${key}-${index}`} sx={{ p: "2px" }}>
-								<Icon size={size} />
-							</Key>
-						) : (
-							// biome-ignore lint/suspicious/noArrayIndexKey: Using index as key is fine here
-							<Key key={`${key}-${index}`}>
-								<Typography
-									variant="caption"
-									sx={{
-										fontSize: "0.6rem",
-										lineHeight: 1,
-										color: theme.palette.text.secondary,
-									}}
-								>
-									{key}
-								</Typography>
-							</Key>
-						)}
-					</>
+						<kbd className={cn(CAP, Icon ? "p-0.5" : "px-1.5 py-0.5")}>
+							{Icon ? (
+								<>
+									<Icon size={size} aria-hidden="true" />
+									<span className="sr-only">{key}</span>
+								</>
+							) : (
+								key
+							)}
+						</kbd>
+					</Fragment>
 				);
 			})}
-		</ShortcutContainer>
+		</span>
 	);
 };

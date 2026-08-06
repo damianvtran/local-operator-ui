@@ -1,25 +1,23 @@
 import {
-	IconButton,
-	ListItemIcon,
-	Menu,
-	MenuItem,
-	Typography,
-	alpha,
-	styled,
-} from "@mui/material";
+	Button,
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@shared/components/ui";
 import { useDeleteAgent } from "@shared/hooks/use-agent-mutations";
 import { useAgentSelectionStore } from "@shared/store/agent-selection-store";
 import {
+	CloudUpload,
+	EllipsisVertical,
 	Eraser,
 	FileOutput,
-	MessageCircle,
-	MoreVertical,
+	MessageSquare,
 	Settings,
 	Trash2,
-	UploadCloud,
 } from "lucide-react";
-import type { FC, MouseEvent } from "react";
-import { useState } from "react";
+import type { CSSProperties, FC } from "react";
+import { useRef, useState } from "react";
 import { ConfirmationModal } from "./confirmation-modal";
 
 type AgentOptionsMenuProps = {
@@ -37,7 +35,9 @@ type AgentOptionsMenuProps = {
 	 */
 	onAgentDeleted?: (agentId: string) => void;
 	/**
-	 * Optional styles for the menu button
+	 * Optional styles for the menu button. Plain CSS declarations only: these
+	 * land on the button's `style` attribute, so nested selectors, responsive
+	 * arrays and theme callbacks are not available.
 	 */
 	buttonSx?: Record<string, unknown>;
 	/**
@@ -71,120 +71,6 @@ type AgentOptionsMenuProps = {
 };
 
 /**
- * Styled icon button for the options menu, using shadcn spacing and rounded.
- */
-/**
- * Styled icon button for the options menu, using shadcn spacing and rounded.
- * The button has a fixed size to prevent layout shift, and the icon is larger for prominence.
- */
-const OptionsIconButton = styled(IconButton)(({ theme }) => ({
-	borderRadius: "0.375rem", // rounded-md
-	padding: 0,
-	left: 8,
-	display: "flex",
-	alignItems: "center",
-	justifyContent: "center",
-	transition: "background-color 0.2s",
-	background: "transparent",
-	"&:hover": {
-		backgroundColor:
-			theme.palette.mode === "dark"
-				? alpha(theme.palette.common.white, 0.08)
-				: alpha(theme.palette.common.black, 0.08),
-	},
-}));
-
-/**
- * Styled menu using shadcn style tokens.
- */
-const OptionsMenu = styled(Menu)(({ theme }) => ({
-	"& .MuiPaper-root": {
-		minWidth: 180, // shadcn menus are wider
-		boxShadow:
-			theme.palette.mode === "dark"
-				? "0px 8px 32px 0px rgba(0,0,0,0.45)"
-				: "0px 8px 32px 0px rgba(0,0,0,0.15)",
-		borderRadius: "0.75rem", // rounded-xl
-		padding: "0.25rem", // p-1
-		background: theme.palette.background.paper,
-	},
-}));
-
-/**
- * Styled menu item for normal actions, using shadcn spacing and font.
- */
-const StyledMenuItem = styled(MenuItem)(({ theme }) => ({
-	borderRadius: "0.375rem", // rounded-md
-	padding: "0.5rem 0.75rem", // py-2 px-3
-	fontSize: "0.875rem", // text-sm
-	fontWeight: 500,
-	gap: "0.75rem", // gap-3
-	minHeight: "2.25rem", // h-9
-	"&:hover": {
-		backgroundColor:
-			theme.palette.mode === "dark"
-				? alpha(theme.palette.primary.main, 0.1)
-				: alpha(theme.palette.primary.main, 0.08),
-	},
-}));
-
-/**
- * Styled menu item for warning actions.
- */
-const WarningMenuItem = styled(MenuItem)(({ theme }) => ({
-	borderRadius: "0.375rem",
-	padding: "0.5rem 0.75rem",
-	fontSize: "0.875rem",
-	fontWeight: 500,
-	gap: "0.75rem",
-	minHeight: "2.25rem",
-	color: theme.palette.warning.main,
-	"&:hover": {
-		backgroundColor: alpha(theme.palette.warning.main, 0.08),
-	},
-}));
-
-/**
- * Styled menu item for delete actions.
- */
-const DeleteMenuItem = styled(MenuItem)(({ theme }) => ({
-	borderRadius: "0.375rem",
-	padding: "0.5rem 0.75rem",
-	fontSize: "0.875rem",
-	fontWeight: 500,
-	gap: "0.75rem",
-	minHeight: "2.25rem",
-	color: theme.palette.error.main,
-	"&:hover": {
-		backgroundColor: alpha(theme.palette.error.main, 0.08),
-	},
-}));
-
-/**
- * Styled icon for menu items, using shadcn size and color.
- */
-const MenuItemIcon = styled(ListItemIcon)<{ color?: "error" | "warning" }>(
-	({ theme, color }) => ({
-		color:
-			color === "error"
-				? theme.palette.error.main
-				: color === "warning"
-					? theme.palette.warning.main
-					: theme.palette.text.primary,
-		minWidth: 0,
-		marginRight: "0.75rem", // gap-3
-		display: "flex",
-		alignItems: "center",
-		justifyContent: "center",
-		"& svg": {
-			width: "1.125rem", // w-4.5
-			height: "1.125rem",
-			strokeWidth: 1.8,
-		},
-	}),
-);
-
-/**
  * Agent Options Menu Component
  *
  * Provides a menu with options for an agent, including chat, deletion and settings navigation
@@ -201,218 +87,189 @@ export const AgentOptionsMenu: FC<AgentOptionsMenuProps> = ({
 	onClearConversation,
 	onUploadAgentToHub,
 }) => {
-	const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
+	const [isMenuOpen, setIsMenuOpen] = useState(false);
 	const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 	const [isClearModalOpen, setIsClearModalOpen] = useState(false);
 
-	// Whether the menu is open
-	const isMenuOpen = Boolean(menuAnchorEl);
+	// Selecting a row closes the menu, and Radix then restores focus to the
+	// trigger. When the row opened a confirmation modal that restore lands
+	// behind the modal, so suppress it for exactly that case.
+	const opensModalRef = useRef(false);
 
-	// Delete agent mutation
 	const deleteAgentMutation = useDeleteAgent();
 
-	// Handler for opening the menu
-	const handleOpenMenu = (e: MouseEvent<HTMLButtonElement>) => {
-		e.stopPropagation(); // Prevent triggering parent click events
-		setMenuAnchorEl(e.currentTarget);
-	};
-
-	// Handler for closing the menu
-	const handleCloseMenu = () => {
-		setMenuAnchorEl(null);
-	};
-
-	// Handler for opening the delete confirmation modal
-	const handleOpenDeleteConfirmation = () => {
-		setIsDeleteModalOpen(true);
-		handleCloseMenu();
-	};
-
-	// Handler for closing the delete confirmation modal
-	const handleCloseDeleteConfirmation = () => {
-		setIsDeleteModalOpen(false);
-	};
-
-	// Handler for opening the clear conversation confirmation modal
-	const handleOpenClearConfirmation = () => {
-		setIsClearModalOpen(true);
-		handleCloseMenu();
-	};
-
-	// Handler for closing the clear conversation confirmation modal
-	const handleCloseClearConfirmation = () => {
-		setIsClearModalOpen(false);
-	};
-
-	// Get the clearAgentFromAllPages function from the agent selection store
 	const { clearAgentFromAllPages } = useAgentSelectionStore();
 
-	// Handler for confirming agent deletion
 	const handleConfirmDelete = async () => {
 		try {
 			await deleteAgentMutation.mutateAsync(agentId);
 
-			// Clear the agent from all selection stores
 			clearAgentFromAllPages(agentId);
 
-			// Call the onAgentDeleted callback if provided
-			if (onAgentDeleted) {
-				onAgentDeleted(agentId);
-			}
+			onAgentDeleted?.(agentId);
 		} catch (error) {
-			// Error is handled in the mutation
+			// Surfaced to the user by the mutation's own error handling.
 			console.error("Failed to delete agent:", error);
 		} finally {
-			// Close the confirmation modal
-			handleCloseDeleteConfirmation();
+			setIsDeleteModalOpen(false);
 		}
 	};
 
 	return (
 		<>
-			<OptionsIconButton
-				aria-label="agent options"
-				data-tour-tag="agent-options-button"
-				onClick={handleOpenMenu}
-				sx={buttonSx}
-			>
-				<MoreVertical
-					aria-label="More options"
-					style={{ width: "1rem", height: "1rem" }}
-				/>
-			</OptionsIconButton>
-
-			<OptionsMenu
-				anchorEl={menuAnchorEl}
+			{/*
+			 * Not modal. A modal Radix menu puts `pointer-events: none` on the
+			 * body, and the onboarding tour's popup is a body-level sibling of the
+			 * app root — its buttons would stop responding the moment this menu
+			 * opened.
+			 */}
+			<DropdownMenu
 				open={isMenuOpen}
-				onClose={handleCloseMenu}
-				onClick={(e) => e.stopPropagation()} // Prevent triggering parent click events
-				anchorOrigin={{
-					vertical: "top",
-					horizontal: "right",
-				}}
-				transformOrigin={{
-					vertical: "top",
-					horizontal: "right",
-				}}
+				onOpenChange={setIsMenuOpen}
+				modal={false}
 			>
-				{/* Chat with Agent option - only shown when on the agents page */}
-				{isAgentsPage && onChatWithAgent && (
-					<StyledMenuItem
-						onClick={() => {
-							onChatWithAgent();
-							handleCloseMenu();
+				<DropdownMenuTrigger asChild>
+					<Button
+						variant="ghost"
+						size="icon-sm"
+						aria-label="agent options"
+						data-tour-tag="agent-options-button"
+						onClick={(e) => {
+							// The trigger sits inside a clickable agent row; without this
+							// the row navigates behind the menu that just opened.
+							e.stopPropagation();
+							// Radix opens on pointerdown, so a real click is already
+							// handled by the time this runs. `detail === 0` means no
+							// pointer was involved — which is how the onboarding tour
+							// opens this menu, via `element.click()`.
+							if (e.detail === 0) {
+								setIsMenuOpen((open) => !open);
+							}
+						}}
+						style={buttonSx as CSSProperties}
+					>
+						<EllipsisVertical aria-hidden="true" />
+					</Button>
+				</DropdownMenuTrigger>
+
+				<DropdownMenuContent
+					align="end"
+					className="min-w-45"
+					onClick={(e) => e.stopPropagation()}
+					onInteractOutside={(e) => {
+						// The tour attaches a step to a row of this menu, so pressing the
+						// tour's own "Next" must not dismiss the menu out from under the
+						// click it is about to make.
+						const target = e.detail.originalEvent.target;
+						if (
+							target instanceof Element &&
+							target.closest(".shepherd-element")
+						) {
+							e.preventDefault();
+						}
+					}}
+					onCloseAutoFocus={(e) => {
+						if (opensModalRef.current) {
+							opensModalRef.current = false;
+							e.preventDefault();
+						}
+					}}
+				>
+					{/* Only on the agents page: elsewhere you are already in the chat. */}
+					{isAgentsPage && onChatWithAgent && (
+						<DropdownMenuItem onSelect={onChatWithAgent}>
+							<MessageSquare aria-hidden="true" />
+							<span>Chat with agent</span>
+						</DropdownMenuItem>
+					)}
+
+					{/* Inverse of the above: the agents page is where settings already live. */}
+					{!isAgentsPage && onViewAgentSettings && (
+						<DropdownMenuItem
+							data-tour-tag="view-agent-settings-menu-item"
+							onSelect={onViewAgentSettings}
+						>
+							<Settings aria-hidden="true" />
+							<span>View agent settings</span>
+						</DropdownMenuItem>
+					)}
+
+					{onExportAgent && (
+						<DropdownMenuItem onSelect={onExportAgent}>
+							<FileOutput aria-hidden="true" />
+							<span>Export agent</span>
+						</DropdownMenuItem>
+					)}
+
+					{onUploadAgentToHub && (
+						<DropdownMenuItem
+							data-tour-tag="upload-to-hub-menu-item"
+							onSelect={onUploadAgentToHub}
+						>
+							<CloudUpload aria-hidden="true" />
+							<span>Upload to hub</span>
+						</DropdownMenuItem>
+					)}
+
+					{onClearConversation && (
+						<DropdownMenuItem
+							className="text-warning data-[highlighted]:bg-warning-wash"
+							onSelect={() => {
+								opensModalRef.current = true;
+								setIsClearModalOpen(true);
+							}}
+						>
+							<Eraser aria-hidden="true" />
+							<span>Clear conversation</span>
+						</DropdownMenuItem>
+					)}
+
+					<DropdownMenuItem
+						destructive
+						onSelect={() => {
+							opensModalRef.current = true;
+							setIsDeleteModalOpen(true);
 						}}
 					>
-						<MenuItemIcon>
-							<MessageCircle aria-label="Chat with Agent" />
-						</MenuItemIcon>
-						<span>Chat with Agent</span>
-					</StyledMenuItem>
-				)}
+						<Trash2 aria-hidden="true" />
+						<span>Delete agent</span>
+					</DropdownMenuItem>
+				</DropdownMenuContent>
+			</DropdownMenu>
 
-				{/* View Agent Settings option - only shown when not on the agents page */}
-				{!isAgentsPage && onViewAgentSettings && (
-					<StyledMenuItem
-						data-tour-tag="view-agent-settings-menu-item"
-						onClick={() => {
-							onViewAgentSettings();
-							handleCloseMenu();
-						}}
-					>
-						<MenuItemIcon>
-							<Settings aria-label="View Agent Settings" />
-						</MenuItemIcon>
-						<span>View Agent Settings</span>
-					</StyledMenuItem>
-				)}
-
-				{/* Export Agent option */}
-				{onExportAgent && (
-					<StyledMenuItem
-						onClick={() => {
-							onExportAgent();
-							handleCloseMenu();
-						}}
-					>
-						<MenuItemIcon>
-							<FileOutput aria-label="Export Agent" />
-						</MenuItemIcon>
-						<span>Export Agent</span>
-					</StyledMenuItem>
-				)}
-
-				{/* Upload to Hub option */}
-				{onUploadAgentToHub && (
-					<StyledMenuItem
-						data-tour-tag="upload-to-hub-menu-item"
-						onClick={() => {
-							onUploadAgentToHub();
-							handleCloseMenu();
-						}}
-					>
-						<MenuItemIcon>
-							<UploadCloud aria-label="Upload to Hub" />
-						</MenuItemIcon>
-						<span>Upload to Hub</span>
-					</StyledMenuItem>
-				)}
-
-				{/* Clear Conversation option */}
-				{onClearConversation && (
-					<WarningMenuItem onClick={handleOpenClearConfirmation}>
-						<MenuItemIcon color="warning">
-							<Eraser aria-label="Clear Conversation" />
-						</MenuItemIcon>
-						<span>Clear Conversation</span>
-					</WarningMenuItem>
-				)}
-
-				<DeleteMenuItem onClick={handleOpenDeleteConfirmation}>
-					<MenuItemIcon color="error">
-						<Trash2 aria-label="Delete Agent" />
-					</MenuItemIcon>
-					<span>Delete Agent</span>
-				</DeleteMenuItem>
-			</OptionsMenu>
-
-			{/* Delete Confirmation Modal */}
 			<ConfirmationModal
 				open={isDeleteModalOpen}
-				title="Delete Agent"
+				title="Delete agent"
 				message={
 					<>
-						<Typography variant="body1" gutterBottom>
+						<p className="text-body text-ink">
 							Are you sure you want to delete the agent "{agentName}"?
-						</Typography>
-						<Typography variant="body2" color="text.secondary">
+						</p>
+						<p className="mt-2 text-body-sm text-ink-muted">
 							This action cannot be undone. All conversations with this agent
 							will be permanently deleted.
-						</Typography>
+						</p>
 					</>
 				}
 				confirmText="Delete"
 				cancelText="Cancel"
 				isDangerous
 				onConfirm={handleConfirmDelete}
-				onCancel={handleCloseDeleteConfirmation}
+				onCancel={() => setIsDeleteModalOpen(false)}
 			/>
 
-			{/* Clear Conversation Confirmation Modal */}
 			<ConfirmationModal
 				open={isClearModalOpen}
-				title="Clear Conversation"
-				message="Are you sure you want to clear this conversation? This action cannot be undone and all messages will be permanently deleted."
+				title="Clear this conversation?"
+				message="Every message in it is deleted from this computer, and there is no undo. The agent itself is not affected."
 				confirmText="Clear"
 				cancelText="Cancel"
 				isDangerous
 				onConfirm={() => {
-					if (onClearConversation) {
-						onClearConversation();
-					}
-					handleCloseClearConfirmation();
+					onClearConversation?.();
+					setIsClearModalOpen(false);
 				}}
-				onCancel={handleCloseClearConfirmation}
+				onCancel={() => setIsClearModalOpen(false)}
 			/>
 		</>
 	);

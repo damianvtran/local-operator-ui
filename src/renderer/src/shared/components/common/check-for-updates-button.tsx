@@ -1,4 +1,6 @@
-import { Alert, Box, Button, Snackbar, Typography } from "@mui/material";
+import { FloatingAlert } from "@shared/components/common/floating-alert";
+import { Spinner } from "@shared/components/common/spinner";
+import { Button } from "@shared/components/ui";
 import {
 	UpdateType,
 	useDeferredUpdatesStore,
@@ -17,7 +19,7 @@ export const CheckForUpdatesButton = () => {
 	const [snackbarOpen, setSnackbarOpen] = useState(false);
 	const [snackbarMessage, setSnackbarMessage] = useState<string | null>(null);
 	const [snackbarSeverity, setSnackbarSeverity] = useState<
-		"success" | "info" | "warning" | "error"
+		"success" | "info" | "warning" | "danger"
 	>("info");
 	const [manualUpdateInfo, setManualUpdateInfo] = useState<{
 		message: string;
@@ -55,7 +57,7 @@ export const CheckForUpdatesButton = () => {
 					setSnackbarOpen(true);
 				} else if (!isSuppressed) {
 					setSnackbarMessage(message);
-					setSnackbarSeverity("error");
+					setSnackbarSeverity("danger");
 					setSnackbarOpen(true);
 				}
 			},
@@ -65,14 +67,14 @@ export const CheckForUpdatesButton = () => {
 		const removeUpdateNotAvailableListener =
 			window.api.updater.onUpdateNotAvailable(() => {
 				if (!manualCheckRef.current) return;
-				setSnackbarMessage("No updates available. You are up to date!");
+				setSnackbarMessage("You are up to date");
 				setSnackbarSeverity("success");
 				setSnackbarOpen(true);
 			});
 		const removeBackendUpdateNotAvailableListener =
 			window.api.updater.onBackendUpdateNotAvailable(() => {
 				if (!manualCheckRef.current) return;
-				setSnackbarMessage("No server updates available. You are up to date!");
+				setSnackbarMessage("The server is up to date");
 				setSnackbarSeverity("success");
 				setSnackbarOpen(true);
 			});
@@ -121,7 +123,7 @@ export const CheckForUpdatesButton = () => {
 					error instanceof Error ? error.message : String(error)
 				}`,
 			);
-			setSnackbarSeverity("error");
+			setSnackbarSeverity("danger");
 			setSnackbarOpen(true);
 		} finally {
 			setChecking(false);
@@ -140,63 +142,37 @@ export const CheckForUpdatesButton = () => {
 
 	return (
 		<>
-			<Button
-				variant="outlined"
-				onClick={checkForUpdates}
-				disabled={checking}
-				startIcon={
-					checking ? <Box sx={{ width: 16, height: 16 }} /> : undefined
-				}
-			>
-				{checking ? "Checking..." : "Check for Updates"}
+			<Button variant="outline" onClick={checkForUpdates} disabled={checking}>
+				{/* Unlabelled: the button's own caption already says what is busy. */}
+				{checking ? <Spinner size="sm" /> : null}
+				{checking ? "Checking..." : "Check for updates"}
 			</Button>
 
-			{/* Snackbar for manual update instructions */}
+			{/* Manual update instructions */}
 			{manualUpdateInfo && (
-				<Snackbar
+				<FloatingAlert
 					open={snackbarOpen}
 					autoHideDuration={10000}
 					onClose={handleSnackbarClose}
-					anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+					variant="warning"
 				>
-					<Alert
-						onClose={handleSnackbarClose}
-						severity="warning"
-						sx={{ width: "100%" }}
-					>
-						<Typography variant="body2">{manualUpdateInfo.message}</Typography>
-						<Typography
-							variant="body2"
-							sx={{
-								mt: 1,
-								p: 1,
-								backgroundColor: "background.default",
-								borderRadius: 1,
-								fontFamily: "monospace",
-							}}
-						>
-							{manualUpdateInfo.command}
-						</Typography>
-					</Alert>
-				</Snackbar>
+					<p className="text-body-sm">{manualUpdateInfo.message}</p>
+					<code className="mt-2 block rounded-sm bg-sunken p-2 text-mono-sm text-ink">
+						{manualUpdateInfo.command}
+					</code>
+				</FloatingAlert>
 			)}
 
-			{/* Snackbar for general info, success, or error messages */}
+			{/* General info, success, or error messages */}
 			{snackbarMessage && (
-				<Snackbar
+				<FloatingAlert
 					open={snackbarOpen}
 					autoHideDuration={6000}
 					onClose={handleSnackbarClose}
-					anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+					variant={snackbarSeverity}
 				>
-					<Alert
-						onClose={handleSnackbarClose}
-						severity={snackbarSeverity}
-						sx={{ width: "100%" }}
-					>
-						{snackbarMessage}
-					</Alert>
-				</Snackbar>
+					{snackbarMessage}
+				</FloatingAlert>
 			)}
 		</>
 	);

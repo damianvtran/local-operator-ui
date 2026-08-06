@@ -1,17 +1,14 @@
-import { faPlus } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import type { CredentialUpdate } from "@shared/api/local-operator/types";
+import { Spinner } from "@shared/components/common/spinner";
 import {
 	Alert,
-	Box,
+	AlertDescription,
+	AlertTitle,
 	Button,
-	CircularProgress,
-	Grid,
-	useTheme,
-} from "@mui/material";
-import { styled } from "@mui/material/styles";
-import type { CredentialUpdate } from "@shared/api/local-operator/types";
+} from "@shared/components/ui";
 import { useCredentials } from "@shared/hooks/use-credentials";
 import { useUpdateCredential } from "@shared/hooks/use-update-credential";
+import { Plus } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { FC } from "react";
 import { CredentialCard } from "./credential-card";
@@ -19,19 +16,15 @@ import { CredentialDialog } from "./credential-dialog";
 import { CREDENTIAL_MANIFEST } from "./credential-manifest";
 import { CredentialsSection } from "./credentials-section";
 
-const LoadingContainer = styled(Box)({
-	display: "flex",
-	justifyContent: "center",
-	alignItems: "center",
-	minHeight: 150,
-});
-
 /**
- * Credentials component - Displays and manages API credentials using shadcn-inspired styling.
- * This component renders the *content* for the API Credentials section.
+ * Contents of the API credentials settings section: what is configured, what is
+ * available to configure, and the dialogs for both.
+ *
+ * The heading and the tour tag belong to the `SettingsSection` this renders
+ * inside, so nothing here draws a section of its own — the two group panels are
+ * the only boundaries on this part of the page.
  */
 export const Credentials: FC = () => {
-	const theme = useTheme();
 	const { data: credentialsData, isLoading, error, refetch } = useCredentials();
 	const updateCredentialMutation = useUpdateCredential();
 	const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -95,85 +88,72 @@ export const Credentials: FC = () => {
 	const renderContent = () => {
 		if (isLoading) {
 			return (
-				<LoadingContainer>
-					<CircularProgress />
-				</LoadingContainer>
+				<div className="flex min-h-40 items-center justify-center">
+					{/* Standalone spinner, so it carries the label that names the wait. */}
+					<Spinner size="lg" label="Loading credentials" />
+				</div>
 			);
 		}
 
 		if (error || !credentialsData) {
 			return (
-				<Alert severity="error" sx={{ width: "100%" }}>
-					Failed to load credentials:{" "}
-					{error instanceof Error ? error.message : "Unknown error"}
+				<Alert variant="danger" role="alert">
+					<AlertTitle>Could not load credentials</AlertTitle>
+					<AlertDescription>
+						{error instanceof Error
+							? error.message
+							: "The server did not say why. Check that Local Operator is running, then reopen this page."}
+					</AlertDescription>
 				</Alert>
 			);
 		}
 
 		return (
 			<>
-				{/* Configured Credentials Section */}
 				<CredentialsSection
-					title="Configured Credentials"
+					title="Configured credentials"
 					description="These API credentials are currently configured and available for use."
 					isEmpty={existingKeys.length === 0}
 					emptyStateType="noCredentials"
-					isFirstSection={true}
 				>
 					{existingKeys.map((key) => (
-						<Grid item xs={12} sm={6} md={4} key={key}>
-							<CredentialCard
-								credentialKey={key}
-								isConfigured={true}
-								onEdit={handleEditCredential}
-								onClear={handleClearCredential}
-							/>
-						</Grid>
+						<CredentialCard
+							key={key}
+							credentialKey={key}
+							isConfigured={true}
+							onEdit={handleEditCredential}
+							onClear={handleClearCredential}
+						/>
 					))}
 				</CredentialsSection>
 
-				{/* Available Credentials Section */}
 				<CredentialsSection
-					title="Available Credentials"
+					title="Available credentials"
 					description="These are common API credentials you can configure to enhance functionality."
 					isEmpty={availableCredentials.length === 0}
 					emptyStateType="allConfigured"
 				>
 					{availableCredentials.map((cred) => (
-						<Grid item xs={12} sm={6} md={4} key={cred.key}>
-							<CredentialCard
-								credentialKey={cred.key}
-								isConfigured={false}
-								onAdd={() => handleAddCredential(cred.key)}
-							/>
-						</Grid>
+						<CredentialCard
+							key={cred.key}
+							credentialKey={cred.key}
+							isConfigured={false}
+							onAdd={() => handleAddCredential(cred.key)}
+						/>
 					))}
 				</CredentialsSection>
 
-				{/* Add Custom Credential Button */}
-				<Box display="flex" justifyContent="center" mt={4}>
+				<div className="flex justify-center">
 					<Button
-						variant="outlined"
-						color="primary"
-						startIcon={<FontAwesomeIcon icon={faPlus} size="sm" />}
+						variant="secondary"
+						size="sm"
 						onClick={() => handleAddCredential(null)}
-						sx={{
-							textTransform: "none",
-							fontSize: "0.8125rem",
-							padding: theme.spacing(0.75, 2),
-							borderRadius: theme.shape.borderRadius * 0.75,
-							boxShadow: "none",
-							"&:hover": {
-								boxShadow: "none",
-								opacity: 0.9,
-							},
-						}}
 					>
-						Add Custom Credential
+						<Plus />
+						Add custom credential
 					</Button>
-				</Box>
+				</div>
 
-				{/* Edit Credential Dialog */}
 				{editDialogOpen && (
 					<CredentialDialog
 						open={editDialogOpen}
@@ -186,7 +166,6 @@ export const Credentials: FC = () => {
 					/>
 				)}
 
-				{/* Add Credential Dialog */}
 				{addDialogOpen && (
 					<CredentialDialog
 						open={addDialogOpen}
@@ -202,5 +181,5 @@ export const Credentials: FC = () => {
 		);
 	};
 
-	return <Box>{renderContent()}</Box>;
+	return <div className="flex flex-col gap-6">{renderContent()}</div>;
 };

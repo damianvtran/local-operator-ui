@@ -1,24 +1,16 @@
 /**
- * TagsInputChips Component
+ * Free-form tag input rendered as dismissible chips.
  *
- * Free-form input for tags as deletable chips.
- * - ENTER to add tag (normalized to lowercase)
- * - Deletable chips
- * - Theme-aware, shadcn/MUI style, consistent with EditableField
+ * Enter adds the trimmed, lowercased tag; Backspace on an empty input removes
+ * the last one. Tags are lowercased on the way in because they are matched
+ * case-sensitively downstream, and "Research" and "research" arriving as two
+ * tags is the defect that normalisation prevents.
  */
 
-import { faPlus, faTimes } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
-	Box,
-	Chip,
-	IconButton,
-	InputBase,
-	Typography,
-	styled,
-	useTheme,
-} from "@mui/material";
-import { useRef, useState } from "react";
+import { Badge, Button, Label } from "@shared/components/ui";
+import { cn } from "@shared/lib/utils";
+import { Plus, X } from "lucide-react";
+import { useId, useRef, useState } from "react";
 import type { ChangeEvent, FC, KeyboardEvent } from "react";
 
 type TagsInputChipsProps = {
@@ -36,68 +28,6 @@ type TagsInputChipsProps = {
 	icon?: React.ReactNode;
 };
 
-const FieldContainer = styled(Box)({
-	marginBottom: 16,
-});
-
-const FieldLabel = styled("label")(({ theme }) => ({
-	display: "flex",
-	alignItems: "center",
-	marginBottom: 6,
-	color: theme.palette.text.secondary,
-	fontWeight: 500,
-	fontSize: "0.875rem",
-	fontFamily: theme.typography.fontFamily,
-	lineHeight: theme.typography.body2.lineHeight,
-}));
-
-const LabelIcon = styled(Box)({
-	marginRight: 8,
-	opacity: 0.9,
-	display: "flex",
-	alignItems: "center",
-});
-
-const ChipsContainer = styled(Box)(({ theme }) => ({
-	display: "flex",
-	flexWrap: "wrap",
-	gap: theme.spacing(1),
-	padding: theme.spacing(1),
-	background: theme.palette.background.paper,
-	border: `1px solid ${theme.palette.divider}`,
-	borderRadius: 6,
-	minHeight: 44,
-	alignItems: "center",
-}));
-
-const StyledInput = styled(InputBase)(({ theme }) => ({
-	minWidth: 80,
-	flex: 1,
-	fontSize: "0.875rem",
-	padding: theme.spacing(0.5, 1),
-	background: "transparent",
-	color: theme.palette.text.primary,
-	"& input": {
-		padding: 0,
-	},
-}));
-
-const StyledChip = styled(Chip)(({ theme }) => ({
-	fontSize: "0.8125rem",
-	borderRadius: 4,
-	background:
-		theme.palette.mode === "dark"
-			? theme.palette.action.selected
-			: theme.palette.action.hover,
-	color: theme.palette.text.primary,
-	"& .MuiChip-deleteIcon": {
-		color: theme.palette.text.secondary,
-		"&:hover": {
-			color: theme.palette.error.main,
-		},
-	},
-}));
-
 export const TagsInputChips: FC<TagsInputChipsProps> = ({
 	value,
 	label,
@@ -108,20 +38,24 @@ export const TagsInputChips: FC<TagsInputChipsProps> = ({
 }) => {
 	const [input, setInput] = useState("");
 	const inputRef = useRef<HTMLInputElement>(null);
-	const theme = useTheme();
+	const inputId = useId();
 
 	const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
 		setInput(e.target.value);
 	};
 
+	const commitInput = () => {
+		const newTag = input.trim().toLowerCase();
+		if (newTag && !value.includes(newTag)) {
+			onChange([...value, newTag]);
+		}
+		setInput("");
+	};
+
 	const handleInputKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
 		if (e.key === "Enter" && input.trim()) {
 			e.preventDefault();
-			const newTag = input.trim().toLowerCase();
-			if (newTag && !value.includes(newTag)) {
-				onChange([...value, newTag]);
-			}
-			setInput("");
+			commitInput();
 		} else if (e.key === "Backspace" && !input && value.length > 0) {
 			// Remove last tag if input is empty and backspace is pressed
 			onChange(value.slice(0, -1));
@@ -133,84 +67,82 @@ export const TagsInputChips: FC<TagsInputChipsProps> = ({
 	};
 
 	return (
-		<FieldContainer>
-			<FieldLabel>
-				{icon && <LabelIcon>{icon}</LabelIcon>}
+		/* No outer margin: the container owns the gap between fields. */
+		<div>
+			<Label
+				htmlFor={inputId}
+				className="mb-1.5 flex items-center gap-2 text-ink-muted"
+			>
+				{icon}
 				{label}
-			</FieldLabel>
-			<ChipsContainer>
+			</Label>
+			<div
+				className={cn(
+					"flex min-h-11 flex-wrap items-center gap-2 rounded-sm border border-control bg-surface p-2",
+					// The field inside suppresses its own outline so there is never a
+					// ring inside a ring; that makes drawing one here mandatory, not
+					// optional. `outline-solid` is required because Tailwind v4's
+					// `outline-none` on the input pins `--tw-outline-style: none`.
+					"has-[input:focus-visible]:outline-solid has-[input:focus-visible]:outline-2",
+					"has-[input:focus-visible]:outline-accent has-[input:focus-visible]:outline-offset-2",
+					disabled && "border-hairline bg-sunken",
+				)}
+			>
 				{value.map((tag) => (
-					<StyledChip
-						key={tag}
-						label={tag}
-						onDelete={disabled ? undefined : () => handleDelete(tag)}
-						disabled={disabled}
-						deleteIcon={
-							<IconButton
-								size="small"
-								aria-label={`Remove tag ${tag}`}
-								tabIndex={-1}
-								disabled={disabled}
-								sx={{
-									padding: 0.5,
-									color: theme.palette.text.secondary,
-									"&:hover": { color: theme.palette.error.main },
-								}}
-							>
-								<FontAwesomeIcon icon={faTimes} size="xs" />
-							</IconButton>
-						}
-						sx={{ marginRight: 0.5 }}
-					/>
+					<Badge key={tag} className="gap-1 pr-1 text-ink">
+						{tag}
+						<button
+							type="button"
+							aria-label={`Remove tag ${tag}`}
+							disabled={disabled}
+							onClick={() => handleDelete(tag)}
+							className={cn(
+								"rounded-xs text-ink-dim",
+								"transition-colors duration-fast ease-out-quart",
+								"hover:text-danger disabled:text-ink-disabled",
+							)}
+						>
+							<X />
+						</button>
+					</Badge>
 				))}
-				<StyledInput
-					inputRef={inputRef}
+				<input
+					id={inputId}
+					ref={inputRef}
+					type="text"
 					value={input}
 					onChange={handleInputChange}
 					onKeyDown={handleInputKeyDown}
 					placeholder={placeholder}
 					disabled={disabled}
-					inputProps={{
-						"aria-label": label,
-						style: { fontSize: "0.875rem" },
-					}}
-					sx={{ minWidth: 80, flex: 1 }}
+					aria-label={label}
+					className={cn(
+						"min-w-20 flex-1 bg-transparent px-1 py-0.5 outline-none",
+						"text-body-sm text-ink placeholder:text-ink-dim",
+						"disabled:text-ink-disabled disabled:placeholder:text-ink-disabled",
+					)}
 				/>
 				{input.trim() && (
-					<IconButton
-						size="small"
+					<Button
+						variant="ghost"
+						size="icon-sm"
 						aria-label="Add tag"
+						disabled={disabled}
 						onClick={() => {
-							const newTag = input.trim().toLowerCase();
-							if (newTag && !value.includes(newTag)) {
-								onChange([...value, newTag]);
-							}
-							setInput("");
+							commitInput();
 							inputRef.current?.focus();
 						}}
-						disabled={disabled}
-						sx={{
-							marginLeft: 0.5,
-							color: theme.palette.primary.main,
-							"&:hover": { color: theme.palette.primary.dark },
-						}}
+						className="text-accent hover:text-accent"
 					>
-						<FontAwesomeIcon icon={faPlus} size="xs" />
-					</IconButton>
+						<Plus />
+					</Button>
 				)}
-			</ChipsContainer>
+			</div>
 			{value.length === 0 && !input && (
-				<Typography
-					variant="caption"
-					sx={{
-						color: theme.palette.text.disabled,
-						marginLeft: 1,
-						marginTop: 0.5,
-					}}
-				>
+				<span className="mt-1 ml-1 block text-ink-dim text-meta">
 					No tags added
-				</Typography>
+				</span>
 			)}
-		</FieldContainer>
+		</div>
 	);
 };

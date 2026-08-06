@@ -38,7 +38,7 @@ export const useDelistAgentMutation = () => {
 			return deleteAgent(apiConfig.radientBaseUrl, agentId, sessionToken); // Use sessionToken
 		},
 		onSuccess: (_, variables) => {
-			showSuccessToast("Agent successfully delisted."); // Use toast.success
+			showSuccessToast("Agent delisted"); // Use toast.success
 
 			// Invalidate queries related to the specific agent and the list of public agents
 			queryClient.invalidateQueries({

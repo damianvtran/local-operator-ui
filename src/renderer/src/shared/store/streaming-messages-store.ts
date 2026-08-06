@@ -53,36 +53,9 @@ type StreamingMessagesState = {
 	) => void;
 
 	/**
-	 * Remove a streaming message from the store
-	 * @param messageId - The ID of the message
-	 */
-	removeStreamingMessage: (messageId: string) => void;
-
-	/**
 	 * Prune stale or excessive streaming messages
 	 */
 	pruneStreamingMessages: () => void;
-
-	/**
-	 * Get a streaming message
-	 * @param messageId - The ID of the message
-	 * @returns The streaming message state or null if it doesn't exist
-	 */
-	getStreamingMessage: (messageId: string) => StreamingMessageState | null;
-
-	/**
-	 * Check if a message is streaming
-	 * @param messageId - The ID of the message
-	 * @returns Whether the message is streaming
-	 */
-	isMessageStreaming: (messageId: string) => boolean;
-
-	/**
-	 * Check if a message streaming is complete
-	 * @param messageId - The ID of the message
-	 * @returns Whether the message streaming is complete
-	 */
-	isMessageStreamingComplete: (messageId: string) => boolean;
 };
 
 const hasMeaningfulStreamingChange = (
@@ -132,7 +105,7 @@ const pruneMessages = (
  * Streaming messages store implementation using Zustand
  */
 export const useStreamingMessagesStore = create<StreamingMessagesState>(
-	(set, get) => ({
+	(set) => ({
 		streamingMessages: {},
 
 		updateStreamingMessage: (messageId, content) => {
@@ -192,20 +165,6 @@ export const useStreamingMessagesStore = create<StreamingMessagesState>(
 			});
 		},
 
-		removeStreamingMessage: (messageId) => {
-			set((state) => {
-				if (!state.streamingMessages[messageId]) {
-					return state;
-				}
-
-				const remainingMessages = { ...state.streamingMessages };
-				delete remainingMessages[messageId];
-				return {
-					streamingMessages: remainingMessages,
-				};
-			});
-		},
-
 		pruneStreamingMessages: () => {
 			set((state) => {
 				const now = Date.now();
@@ -221,20 +180,6 @@ export const useStreamingMessagesStore = create<StreamingMessagesState>(
 					streamingMessages: prunedMessages,
 				};
 			});
-		},
-
-		getStreamingMessage: (messageId) => {
-			return get().streamingMessages[messageId] || null;
-		},
-
-		isMessageStreaming: (messageId) => {
-			const message = get().streamingMessages[messageId];
-			return !!message && !message.isComplete;
-		},
-
-		isMessageStreamingComplete: (messageId) => {
-			const message = get().streamingMessages[messageId];
-			return !!message && message.isComplete;
 		},
 	}),
 );

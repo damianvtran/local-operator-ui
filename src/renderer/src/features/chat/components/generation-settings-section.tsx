@@ -4,28 +4,18 @@
  * Displays and manages generation settings for the agent
  */
 
-import {
-	faGear,
-	faInfoCircle,
-	faSliders,
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Box, Tooltip, Typography } from "@mui/material";
 import type {
 	AgentDetails,
 	AgentUpdate,
 } from "@shared/api/local-operator/types";
 import { EditableField } from "@shared/components/common/editable-field";
 import { SliderSetting } from "@shared/components/common/slider-setting";
+import { Button, Tooltip } from "@shared/components/ui";
 import { showErrorToast } from "@shared/utils/toast-manager";
 import type { UseMutationResult } from "@tanstack/react-query";
+import { Info, Settings, SlidersHorizontal } from "lucide-react";
 import type { FC } from "react";
 import { updateAgentSetting } from "../utils/chat-options-utils";
-import {
-	InfoButton,
-	SectionTitle,
-	TitleIcon,
-} from "./chat-options-sidebar-styled";
 import { UnsetSliderSetting } from "./unset-slider-setting";
 import { UnsetTextSetting } from "./unset-text-setting";
 
@@ -80,29 +70,38 @@ export const GenerationSettingsSection: FC<GenerationSettingsSectionProps> = ({
 	updateAgentMutation,
 }) => {
 	return (
-		<>
-			<SectionTitle variant="subtitle1">
-				<TitleIcon icon={faSliders} />
-				Generation Settings
-				{/* @ts-ignore - Tooltip has issues with TypeScript but works fine */}
-				<Tooltip
-					title="Settings that control how the agent generates responses"
-					arrow
-					placement="top"
-				>
-					<InfoButton size="small">
-						<FontAwesomeIcon icon={faInfoCircle} size="xs" />
-					</InfoButton>
-				</Tooltip>
-			</SectionTitle>
+		/*
+		 * `gap-4` on the container, not margins on the rows: `SliderSetting`,
+		 * `EditableField` and `UnsetSliderSetting` no longer ship an outer margin
+		 * of their own, because a component that does cannot be composed — it
+		 * stacks with whatever gap its parent sets.
+		 */
+		<div className="flex flex-col gap-4 pt-6">
+			<div>
+				<h3 className="flex items-center font-semibold text-heading text-ink">
+					<span className="mr-2 flex items-center rounded-sm bg-accent-wash p-1 text-accent">
+						<SlidersHorizontal size={16} aria-hidden="true" />
+					</span>
+					Generation settings
+					<Tooltip content="Settings that control how the agent generates responses">
+						<Button
+							variant="ghost"
+							size="icon-sm"
+							type="button"
+							className="ml-1 text-accent"
+							aria-label="More info"
+						>
+							<Info aria-hidden="true" />
+						</Button>
+					</Tooltip>
+				</h3>
 
-			<Box sx={{ mb: 2 }}>
-				<Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+				<p className="mt-1 text-body-sm text-ink-muted">
 					You can set custom values for these settings by updating the options
 					below. If not set, default values will be used that are optimized
 					based on user testing.
-				</Typography>
-			</Box>
+				</p>
+			</div>
 
 			{/* Temperature Setting */}
 			{agent.temperature === null ? (
@@ -230,7 +229,7 @@ export const GenerationSettingsSection: FC<GenerationSettingsSectionProps> = ({
 			{/* Max Tokens Setting */}
 			{agent.max_tokens === null ? (
 				<UnsetSliderSetting
-					label="Max Tokens"
+					label="Max tokens"
 					description="Maximum tokens to generate in response."
 					defaultValue={4096}
 					onSetValue={async (value) => {
@@ -248,7 +247,7 @@ export const GenerationSettingsSection: FC<GenerationSettingsSectionProps> = ({
 			) : (
 				<SliderSetting
 					value={agent.max_tokens ?? 4096}
-					label="Max Tokens"
+					label="Max tokens"
 					description="Maximum tokens to generate in response."
 					min={1}
 					max={8192}
@@ -271,13 +270,11 @@ export const GenerationSettingsSection: FC<GenerationSettingsSectionProps> = ({
 			{/* Stop Sequences Setting */}
 			{agent.stop === null ? (
 				<UnsetTextSetting
-					label="Stop Sequences"
+					label="Stop sequences"
 					description="Sequences that will cause the model to stop generating text."
 					defaultValue={[]}
 					defaultDisplayText="empty"
-					icon={
-						<FontAwesomeIcon icon={faGear} style={{ marginRight: "10px" }} />
-					}
+					icon={<Settings size={16} className="mr-2.5" aria-hidden="true" />}
 					onSetValue={async () => {
 						await updateAgentSetting(
 							"stop",
@@ -293,9 +290,9 @@ export const GenerationSettingsSection: FC<GenerationSettingsSectionProps> = ({
 			) : (
 				<EditableField
 					value={agent.stop?.join("\n") || ""}
-					label="Stop Sequences"
+					label="Stop sequences"
 					placeholder="Enter stop sequences (one per line)..."
-					icon={<FontAwesomeIcon icon={faGear} />}
+					icon={<Settings size={16} />}
 					multiline
 					rows={3}
 					isSaving={savingField === "stop"}
@@ -322,7 +319,7 @@ export const GenerationSettingsSection: FC<GenerationSettingsSectionProps> = ({
 			{/* Frequency Penalty Setting */}
 			{agent.frequency_penalty === null ? (
 				<UnsetSliderSetting
-					label="Frequency Penalty"
+					label="Frequency penalty"
 					description="Reduces repetition by lowering likelihood of repeated tokens (-2.0 to 2.0)."
 					defaultValue={0}
 					onSetValue={async (value) => {
@@ -340,7 +337,7 @@ export const GenerationSettingsSection: FC<GenerationSettingsSectionProps> = ({
 			) : (
 				<SliderSetting
 					value={agent.frequency_penalty ?? 0}
-					label="Frequency Penalty"
+					label="Frequency penalty"
 					description="Reduces repetition by lowering likelihood of repeated tokens (-2.0 to 2.0)."
 					min={-2}
 					max={2}
@@ -363,7 +360,7 @@ export const GenerationSettingsSection: FC<GenerationSettingsSectionProps> = ({
 			{/* Presence Penalty Setting */}
 			{agent.presence_penalty === null ? (
 				<UnsetSliderSetting
-					label="Presence Penalty"
+					label="Presence penalty"
 					description="Increases diversity by lowering likelihood of prompt tokens (-2.0 to 2.0)."
 					defaultValue={0}
 					onSetValue={async (value) => {
@@ -381,7 +378,7 @@ export const GenerationSettingsSection: FC<GenerationSettingsSectionProps> = ({
 			) : (
 				<SliderSetting
 					value={agent.presence_penalty ?? 0}
-					label="Presence Penalty"
+					label="Presence penalty"
 					description="Increases diversity by lowering likelihood of prompt tokens (-2.0 to 2.0)."
 					min={-2}
 					max={2}
@@ -408,9 +405,7 @@ export const GenerationSettingsSection: FC<GenerationSettingsSectionProps> = ({
 					description="Random number seed for deterministic generation."
 					defaultValue={42}
 					defaultDisplayText="42"
-					icon={
-						<FontAwesomeIcon icon={faGear} style={{ marginRight: "10px" }} />
-					}
+					icon={<Settings size={16} className="mr-2.5" aria-hidden="true" />}
 					onSetValue={async () => {
 						await updateAgentSetting(
 							"seed",
@@ -428,7 +423,7 @@ export const GenerationSettingsSection: FC<GenerationSettingsSectionProps> = ({
 					value={agent.seed?.toString() || ""}
 					label="Seed"
 					placeholder="Random number seed for deterministic generation"
-					icon={<FontAwesomeIcon icon={faGear} />}
+					icon={<Settings size={16} />}
 					isSaving={savingField === "seed"}
 					onSave={async (value) => {
 						const seedValue = value.trim()
@@ -453,6 +448,6 @@ export const GenerationSettingsSection: FC<GenerationSettingsSectionProps> = ({
 					}}
 				/>
 			)}
-		</>
+		</div>
 	);
 };

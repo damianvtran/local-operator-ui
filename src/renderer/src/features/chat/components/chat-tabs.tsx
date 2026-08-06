@@ -1,81 +1,88 @@
-import { faCode, faCommentDots } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Tab, Tabs, alpha, styled } from "@mui/material";
+import { Tabs, TabsList, TabsTrigger } from "@shared/components/ui";
+import { cn } from "@shared/lib/utils";
+import { Code, MessageCircleMore } from "lucide-react";
 import type { FC } from "react";
+
+export type ChatTabValue = "chat" | "raw";
 
 /**
  * Props for the ChatTabs component
  */
 type ChatTabsProps = {
-	activeTab: "chat" | "raw";
-	onChange: (newTab: "chat" | "raw") => void;
+	activeTab: ChatTabValue;
+	onChange: (newTab: ChatTabValue) => void;
 };
 
-const StyledTabs = styled(Tabs)(({ theme }) => ({
-	borderBottom: `1px solid ${alpha(theme.palette.divider, 0.05)}`,
-	minHeight: "42px",
-	"& .MuiTabs-indicator": {
-		height: 2,
-		borderRadius: "2px 2px 0 0",
-	},
-}));
+/**
+ * The two halves of each tab relationship, shared with whoever renders the
+ * views.
+ *
+ * The strip and the views it switches between live in different components
+ * (`chat-content.tsx` renders the views as siblings of this strip, and in
+ * production renders the chat view with no strip at all), so the ids cannot
+ * come from a `Tabs` root the way `TabsContent` would supply them. They are
+ * constants instead, and `chat-content.tsx` is the only thing that may consume
+ * them: a panel id that nothing renders is the exact defect this replaces.
+ */
+export const CHAT_TAB_IDS: Record<ChatTabValue, string> = {
+	chat: "chat-view-tab",
+	raw: "chat-raw-tab",
+};
 
-const StyledTab = styled(Tab, {
-	shouldForwardProp: (prop) => prop !== "isActive",
-})<{ isActive?: boolean }>(({ theme, isActive }) => ({
-	minHeight: "42px",
-	padding: "4px 0",
-	textTransform: "none",
-	fontSize: "0.85rem",
-	fontWeight: 500,
-	transition: "all 0.2s ease",
-	opacity: isActive ? 1 : 0.7,
-	"&:hover": {
-		opacity: 1,
-		backgroundColor: alpha(
-			theme.palette.mode === "dark"
-				? theme.palette.common.white
-				: theme.palette.common.black,
-			0.05,
-		),
-	},
-	"& .MuiTab-iconWrapper": {
-		marginRight: 6,
-		fontSize: "0.9rem",
-	},
-}));
+export const CHAT_TAB_PANEL_IDS: Record<ChatTabValue, string> = {
+	chat: "chat-view-panel",
+	raw: "chat-raw-panel",
+};
 
 /**
  * ChatTabs Component
  *
- * Displays tabs for switching between chat and raw views
+ * Displays tabs for switching between chat and raw views.
+ *
+ * This is a real tablist — two mutually exclusive views of the same
+ * conversation — so it keeps the Tabs primitive rather than becoming a row of
+ * buttons: `role="tab"`, `aria-selected` and arrow-key navigation come with
+ * it. Selection is the segmented control's `surface` step; the full-width
+ * underlined bar and its indicator are gone.
+ *
+ * Both halves of the ARIA relationship are supplied by hand. Radix's
+ * `TabsTrigger` emits `aria-controls` pointing at the `TabsContent` it expects
+ * to find in the same root, and there is none here, so left alone every tab
+ * announced a region that was never in the document. The ids below are
+ * overrides (Radix spreads caller props after its own), and only the selected
+ * tab carries `aria-controls`, because `chat-content.tsx` mounts one view at a
+ * time — a reference to the unmounted one would be the same dangling
+ * relationship in a new place.
  */
 export const ChatTabs: FC<ChatTabsProps> = ({ activeTab, onChange }) => {
 	return (
-		<StyledTabs
+		<Tabs
 			value={activeTab}
-			onChange={(_, newValue) => onChange(newValue)}
-			variant="fullWidth"
-			TabIndicatorProps={{
-				style: {
-					transition: "all 0.3s ease",
-				},
-			}}
+			onValueChange={(value) => onChange(value as ChatTabValue)}
+			className={cn("px-4 py-2")}
 		>
-			<StyledTab
-				icon={<FontAwesomeIcon icon={faCommentDots} />}
-				iconPosition="start"
-				label="Chat"
-				value="chat"
-				isActive={activeTab === "chat"}
-			/>
-			<StyledTab
-				icon={<FontAwesomeIcon icon={faCode} />}
-				iconPosition="start"
-				label="Raw"
-				value="raw"
-				isActive={activeTab === "raw"}
-			/>
-		</StyledTabs>
+			<TabsList>
+				<TabsTrigger
+					value="chat"
+					id={CHAT_TAB_IDS.chat}
+					aria-controls={
+						activeTab === "chat" ? CHAT_TAB_PANEL_IDS.chat : undefined
+					}
+				>
+					<MessageCircleMore aria-hidden={true} />
+					Chat
+				</TabsTrigger>
+				<TabsTrigger
+					value="raw"
+					id={CHAT_TAB_IDS.raw}
+					aria-controls={
+						activeTab === "raw" ? CHAT_TAB_PANEL_IDS.raw : undefined
+					}
+				>
+					<Code aria-hidden={true} />
+					Raw
+				</TabsTrigger>
+			</TabsList>
+		</Tabs>
 	);
 };

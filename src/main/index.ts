@@ -191,6 +191,13 @@ function createWindow(): BrowserWindow {
 	const mainWindow = new BrowserWindow({
 		width: 1380,
 		height: 900,
+		// The layout is verified down to 800x600 and not below: the app rail,
+		// the per-route list pane and the canvas all have their own minimums,
+		// and past this point they start taking room from each other rather
+		// than from the window. The auth popup below sets its own floor the
+		// same way.
+		minWidth: 800,
+		minHeight: 600,
 		show: false,
 		autoHideMenuBar: true,
 		title: "Local Operator",

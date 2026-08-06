@@ -1,5 +1,3 @@
-import { Box, alpha } from "@mui/material";
-import { styled } from "@mui/material/styles";
 import { FileActionsMenu } from "@shared/components/common/file-actions-menu";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
@@ -21,43 +19,6 @@ type BaseVideoAttachmentProps = {
 export type VideoAttachmentProps = BaseVideoAttachmentProps & {
 	conversationId: string;
 };
-
-/**
- * Styled component for video attachments
- * Includes hover effects and styling
- */
-const AttachmentVideo = styled("video")(({ theme }) => ({
-	maxWidth: "100%",
-	maxHeight: 300,
-	borderRadius: 8,
-	marginBottom: 8,
-	boxShadow: `0 2px 8px ${alpha(theme.palette.common.black, theme.palette.mode === "dark" ? 0.15 : 0.1)}`,
-	cursor: "pointer",
-	transition: "transform 0.2s ease, box-shadow 0.2s ease",
-	"&:hover": {
-		transform: "scale(1.02)",
-		boxShadow: `0 4px 12px ${alpha(theme.palette.common.black, theme.palette.mode === "dark" ? 0.25 : 0.15)}`,
-	},
-}));
-
-const FileActionsContainer = styled(Box)({
-	position: "absolute",
-	top: 4,
-	right: 4,
-	zIndex: 2,
-	opacity: 0,
-	visibility: "hidden",
-	transition: "opacity 0.2s ease, visibility 0.2s ease",
-});
-
-const AttachmentVideoContainer = styled(Box)({
-	position: "relative",
-	display: "inline-block",
-	"&:hover .file-actions-menu": {
-		opacity: 1,
-		visibility: "visible",
-	},
-});
 
 /**
  * Component for displaying video attachments
@@ -197,21 +158,34 @@ export const VideoAttachment: FC<VideoAttachmentProps> = memo(
 		}
 
 		return (
-			<AttachmentVideoContainer>
-				<AttachmentVideo
+			<div className="group relative inline-block">
+				{/* Local recordings have no caption track to offer; an empty track
+				 * would be a fabricated affordance, so this is a documented
+				 * exception rather than a fake source. */}
+				{/* biome-ignore lint/a11y/useMediaCaption: no caption source exists for locally recorded files */}
+				<video
+					className="mb-2 max-h-[300px] max-w-full cursor-pointer rounded-sm"
 					src={src}
 					controls
 					preload="metadata"
+					tabIndex={0}
 					onClick={handleClick}
+					onKeyDown={(e) => {
+						if (e.key === "Enter" || e.key === " ") {
+							e.preventDefault();
+							handleClick();
+						}
+					}}
 					onError={handleError}
 					title={`Click to open ${getFileName(file)}`}
 				/>
 				{isLocalFile && (
-					<FileActionsContainer
-						className="file-actions-menu"
+					<div
+						className="file-actions-menu invisible absolute right-1 top-1 z-[2] opacity-0 transition-[opacity,visibility] duration-fast ease-out-quart group-hover:visible group-hover:opacity-100"
 						onClick={(e) => {
 							e.stopPropagation();
 						}}
+						onKeyDown={(e) => e.stopPropagation()}
 					>
 						<FileActionsMenu
 							filePath={normalizedPath}
@@ -219,9 +193,9 @@ export const VideoAttachment: FC<VideoAttachmentProps> = memo(
 							aria-label="File actions"
 							onShowInCanvas={handleShowInCanvas}
 						/>
-					</FileActionsContainer>
+					</div>
 				)}
-			</AttachmentVideoContainer>
+			</div>
 		);
 	},
 );

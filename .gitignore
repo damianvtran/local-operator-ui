@@ -1,5 +1,8 @@
 # Dependencies
 node_modules/
+# pnpm's local content-addressable store. This repo sets store-dir in .npmrc,
+# so it materialises inside the working tree and is ~52k files of cache.
+.pnpm-store/
 
 # Build outputs
 dist/

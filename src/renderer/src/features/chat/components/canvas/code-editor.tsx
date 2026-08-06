@@ -5,9 +5,11 @@ import {
 	ViewPlugin,
 	keymap,
 } from "@codemirror/view";
-import { Box, alpha, styled, useTheme } from "@mui/material";
 import type { EditDiff } from "@shared/api/local-operator/types";
 import { TextSelectionControls } from "@shared/components/common/text-selection-controls";
+import { cn } from "@shared/lib/utils";
+import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
+import { getTheme } from "@shared/themes";
 import { getSearchTheme } from "@shared/themes/search-theme";
 import { loadLanguageExtensions } from "@shared/utils/load-language-extensions";
 import CodeMirror, {
@@ -40,15 +42,6 @@ type CodeEditorProps = {
 	conversationId?: string;
 	agentId?: string;
 };
-
-const CodeEditorContainer = styled(Box)(({ theme }) => ({
-	flexGrow: 1,
-	position: "relative",
-	overflow: "auto",
-	height: "100%",
-	fontSize: theme.typography.pxToRem(13),
-	fontFamily: "'Geist Mono', 'Roboto Mono', monospace",
-}));
 
 /**
  * Content component for the markdown canvas
@@ -90,12 +83,19 @@ const CodeEditorComponent: FC<CodeEditorProps> = ({
 	);
 	const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-	const theme = useTheme();
-	const searchTheme = useMemo(() => getSearchTheme(theme), [theme]);
-	const codeEditorTheme = useMemo(() => getCodeMirrorTheme(theme), [theme]);
+	/* The theme registry is the app's own source of truth for a palette's mode
+	   — `applyThemeToDocument` reads the same field to publish the document
+	   `dark` class — so resolving it here avoids a second name-to-mode table.
+	   Both theme getters are lookups over pre-built extensions, so neither
+	   needs a memo. */
+	const isDark = useUiPreferencesStore(
+		(state) => getTheme(state.themeName).theme.palette.mode === "dark",
+	);
+	const searchTheme = getSearchTheme(isDark);
+	const codeEditorTheme = getCodeMirrorTheme(isDark);
 	const diffExtension = useMemo(
-		() => diffHighlight(theme, reviewState),
-		[theme, reviewState],
+		() => diffHighlight(reviewState),
+		[reviewState],
 	);
 
 	useEffect(() => {
@@ -186,16 +186,13 @@ const CodeEditorComponent: FC<CodeEditorProps> = ({
 					}
 					const { from, to } = inlineEdit;
 					const highlightMark = Decoration.mark({
-						style: `background-color: ${alpha(
-							theme.palette.primary.main,
-							0.9,
-						)}`,
+						style: "background-color: var(--color-accent-wash)",
 					});
 					this.decorations = Decoration.set([highlightMark.range(from, to)]);
 				}
 			},
 		);
-	}, [inlineEdit, theme.palette.primary.main, reviewState]);
+	}, [inlineEdit, reviewState]);
 
 	const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
 		if ((event.metaKey || event.ctrlKey) && event.key === "k") {
@@ -326,7 +323,11 @@ const CodeEditorComponent: FC<CodeEditorProps> = ({
 	);
 
 	return (
-		<CodeEditorContainer onKeyDown={handleKeyDown} ref={scrollContainerRef}>
+		<div
+			className={cn("relative h-full grow overflow-auto text-mono")}
+			onKeyDown={handleKeyDown}
+			ref={scrollContainerRef}
+		>
 			<CodeMirror
 				value={content}
 				height="100%"
@@ -436,7 +437,7 @@ const CodeEditorComponent: FC<CodeEditorProps> = ({
 					}}
 				/>
 			)}
-		</CodeEditorContainer>
+		</div>
 	);
 };
 

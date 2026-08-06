@@ -66,7 +66,7 @@ export const useUpdateSystemPrompt = () => {
 				type: "all", // Refetch all related queries at once
 			});
 
-			showSuccessToast("System prompt updated successfully");
+			showSuccessToast("System prompt updated");
 		},
 		onError: (error) => {
 			console.error("Error updating system prompt:", error);

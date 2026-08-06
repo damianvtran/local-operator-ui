@@ -1,137 +1,38 @@
 import { CREDENTIAL_MANIFEST } from "@features/settings/components/credential-manifest";
-import { faKey } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
-	Box,
-	Button,
-	CircularProgress,
-	FormControl,
-	Link,
-	MenuItem,
-	OutlinedInput,
-	Select,
-	TextField,
-	Typography,
-	alpha,
-	styled,
-	useTheme,
-} from "@mui/material";
-import type { Theme } from "@mui/material/styles";
 import type { CredentialUpdate } from "@shared/api/local-operator/types";
 import { BaseDialog } from "@shared/components/common/base-dialog";
+import { Spinner } from "@shared/components/common/spinner";
+import {
+	Button,
+	Input,
+	Label,
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@shared/components/ui";
 import { useEffect, useState } from "react";
 import type { FC } from "react";
+import { InfoItem } from "./settings-section";
 
 /**
- * Styled OutlinedInput for Select to achieve shadcn/modern look
+ * Sentinel for the "custom credential" row. It is not a credential key, so it
+ * can never collide with one from the manifest or from `existingKeys`.
  */
-const StyledOutlinedInput = styled(OutlinedInput)(({ theme }) => ({
-	borderRadius: theme.shape.borderRadius * 0.75,
-	backgroundColor: theme.palette.background.paper,
-	border: `1px solid ${theme.palette.divider}`,
-	minHeight: "40px",
-	height: "40px",
-	fontSize: "0.875rem",
-	paddingRight: 0,
-	"& .MuiOutlinedInput-notchedOutline": {
-		border: "none",
-	},
-	"& .MuiSelect-select": {
-		display: "flex",
-		alignItems: "center",
-		gap: theme.spacing(1),
-		fontSize: "0.875rem",
-		padding: theme.spacing(1, 1.5),
-		height: "calc(40px - 16px)",
-		boxSizing: "border-box",
-	},
-	"& .MuiInputBase-input": {
-		padding: theme.spacing(1, 1.5),
-		fontSize: "0.875rem",
-		height: "calc(40px - 16px)",
-		boxSizing: "border-box",
-	},
-	"& .MuiInputBase-input::placeholder": {
-		color: theme.palette.text.disabled,
-		opacity: 1,
-	},
-	"&:hover": {
-		borderColor: theme.palette.text.secondary,
-	},
-	"&.Mui-focused": {
-		borderColor: theme.palette.primary.main,
-		boxShadow: `0 0 0 2px ${theme.palette.primary.main}33`,
-	},
-}));
+const CUSTOM_KEY_OPTION = "_custom_";
 
-/**
- * Shadcn-inspired menu props for Select dropdown
+/*
+ * Ids are named once and shared by the label, the control, and its help text.
+ * A typo in an inline `htmlFor` string breaks the association silently — the
+ * field still looks labelled, and only a screen reader finds out otherwise.
  */
-const menuPropsSx = (theme: Theme) => ({
-	PaperProps: {
-		sx: {
-			borderRadius: theme.shape.borderRadius * 0.75,
-			boxShadow: theme.shadows[2],
-			mt: 0.5,
-			"& .MuiMenuItem-root": {
-				fontSize: "0.875rem",
-				minHeight: "40px",
-				px: 2,
-			},
-		},
-	},
-});
-
-/**
- * TextField input styles for custom key and credential value fields
- */
-const textFieldInputSx = (theme: Theme) => ({
-	"& .MuiOutlinedInput-root": {
-		borderRadius: theme.shape.borderRadius * 0.75,
-		backgroundColor: theme.palette.background.paper,
-		border: `1px solid ${theme.palette.divider}`,
-		minHeight: "40px",
-		height: "40px",
-		transition: "border-color 0.2s ease, box-shadow 0.2s ease",
-		"&:hover": {
-			borderColor: theme.palette.text.secondary,
-		},
-		"&.Mui-focused": {
-			borderColor: theme.palette.primary.main,
-			boxShadow: `0 0 0 2px ${theme.palette.primary.main}33`,
-		},
-		"& .MuiOutlinedInput-notchedOutline": {
-			border: "none",
-		},
-	},
-	"& .MuiInputBase-input": {
-		padding: theme.spacing(1, 1.5),
-		fontSize: "0.875rem",
-		height: "calc(40px - 16px)",
-		boxSizing: "border-box",
-	},
-	"& .MuiInputBase-input::placeholder": {
-		color: theme.palette.text.disabled,
-		opacity: 1,
-	},
-	"& .MuiFormHelperText-root": {
-		fontSize: "0.75rem",
-		mt: 0.5,
-		ml: 0.5,
-	},
-});
-
-/**
- * Description box styling
- */
-const DescriptionBoxSx = (theme: Theme) => ({
-	marginTop: theme.spacing(1),
-	marginBottom: theme.spacing(2),
-	padding: theme.spacing(1.5),
-	backgroundColor: alpha(theme.palette.background.default, 0.5),
-	border: `1px solid ${theme.palette.divider}`,
-	borderRadius: theme.shape.borderRadius * 0.75,
-});
+const CUSTOM_KEY_INPUT_ID = "credential-custom-key";
+const CUSTOM_KEY_ERROR_ID = "credential-custom-key-error";
+const TYPE_SELECT_ID = "credential-type";
+const TYPE_HELP_ID = "credential-type-help";
+const VALUE_INPUT_ID = "credential-value";
+const VALUE_HELP_ID = "credential-value-help";
 
 /**
  * Dialog for adding or editing a credential
@@ -140,14 +41,25 @@ export type CredentialDialogProps = {
 	open: boolean;
 	onClose: () => void;
 	onSave: (update: CredentialUpdate) => void;
-	initialKey?: string; // Key being edited, or pre-selected key for adding
+	/** Key being edited, or a pre-selected key when adding */
+	initialKey?: string;
 	existingKeys: string[];
 	isSaving: boolean;
-	isEditMode: boolean; // Differentiates between Add and Edit modes
+	/** Differentiates between add and edit modes */
+	isEditMode: boolean;
 };
 
 /**
- * Dialog component for adding or editing credentials with shadcn-inspired styling.
+ * Add or edit a single credential.
+ *
+ * Every control is bound to a `Label` by id. A dialog form is the one place a
+ * missing label is unrecoverable: there is no surrounding page text for a
+ * screen reader to fall back on, and the value field is a password input whose
+ * contents cannot be read back.
+ *
+ * Invalid state is carried by `aria-invalid` alone — the `Input` primitive
+ * paints its border from that attribute, so the red edge and the announced
+ * error can never disagree.
  */
 export const CredentialDialog: FC<CredentialDialogProps> = ({
 	open,
@@ -156,9 +68,8 @@ export const CredentialDialog: FC<CredentialDialogProps> = ({
 	initialKey = "",
 	existingKeys,
 	isSaving,
-	isEditMode, // Use the new prop
+	isEditMode,
 }) => {
-	const theme = useTheme(); // Get theme for button styling
 	const [key, setKey] = useState(initialKey); // For Select dropdown
 	const [value, setValue] = useState(""); // Credential value (password)
 	const [customKey, setCustomKey] = useState(""); // For custom key input
@@ -204,11 +115,13 @@ export const CredentialDialog: FC<CredentialDialogProps> = ({
 	const isExistingKey = (k: string) =>
 		existingKeys.includes(k) && k !== initialKey;
 
+	const isCustomKeyTaken = isExistingKey(customKey);
+
 	// Validation logic
 	const isKeyValid = isEditMode
 		? true // Key is fixed in edit mode
 		: useCustomKey
-			? customKey.trim() !== "" && !isExistingKey(customKey) // Custom key must be non-empty and not exist
+			? customKey.trim() !== "" && !isCustomKeyTaken // Custom key must be non-empty and not exist
 			: key !== "" && !isExistingKey(key); // Selected key must be non-empty and not exist
 
 	const isValueValid = value.trim() !== "";
@@ -218,70 +131,24 @@ export const CredentialDialog: FC<CredentialDialogProps> = ({
 	const selectedCredentialManifest = CREDENTIAL_MANIFEST.find(
 		(cred) => cred.key === key,
 	);
+	const showCredentialHelp =
+		Boolean(selectedCredentialManifest) && !useCustomKey;
 
-	const dialogTitle = isEditMode ? "Update Credential" : "Add New Credential";
+	const dialogTitle = isEditMode ? "Update credential" : "Add new credential";
 
-	// Styled label and icon (matches EditableField/GeneralSettings)
-	const FieldLabel = styled("div")(({ theme }) => ({
-		fontFamily: theme.typography.fontFamily,
-		fontSize: "0.875rem",
-		fontWeight: 500,
-		color: theme.palette.text.secondary,
-		marginBottom: 6,
-		display: "flex",
-		alignItems: "center",
-	}));
-
-	const LabelIcon = styled(Box)({
-		marginRight: 8,
-		opacity: 0.9,
-		display: "flex",
-		alignItems: "center",
-	});
-
-	// Shadcn-inspired Dialog Actions
 	const dialogActions = (
 		<>
-			<Button
-				onClick={onClose}
-				variant="outlined" // Secondary action
-				size="small"
-				sx={{
-					borderColor: theme.palette.divider,
-					color: theme.palette.text.secondary,
-					textTransform: "none",
-					fontSize: "0.8125rem",
-					padding: theme.spacing(0.75, 2),
-					borderRadius: theme.shape.borderRadius * 0.75,
-					"&:hover": {
-						backgroundColor: theme.palette.action.hover,
-						borderColor: theme.palette.divider,
-					},
-				}}
-			>
+			<Button variant="secondary" onClick={onClose}>
 				Cancel
 			</Button>
-			<Button
-				onClick={handleSave}
-				variant="contained" // Primary action
-				color="primary"
-				size="small"
-				disabled={!canSave}
-				startIcon={
-					isSaving ? <CircularProgress size={16} color="inherit" /> : null
-				}
-				sx={{
-					textTransform: "none",
-					fontSize: "0.8125rem",
-					padding: theme.spacing(0.75, 2),
-					borderRadius: theme.shape.borderRadius * 0.75,
-					boxShadow: "none",
-					"&:hover": {
-						boxShadow: "none",
-						opacity: 0.9,
-					},
-				}}
-			>
+			<Button variant="primary" onClick={handleSave} disabled={!canSave}>
+				{/*
+				 * The spinner's accent quadrant would be accent-on-accent inside a
+				 * filled primary button, so the moving edge is re-pointed at the
+				 * ink role that fill already guarantees contrast for. No `label`:
+				 * the button's own text says what is happening.
+				 */}
+				{isSaving && <Spinner size="sm" className="border-t-on-accent" />}
 				{isSaving ? "Saving..." : "Save"}
 			</Button>
 		</>
@@ -296,35 +163,26 @@ export const CredentialDialog: FC<CredentialDialogProps> = ({
 			maxWidth="sm"
 			fullWidth
 		>
-			<Box sx={{ pt: 2 }}>
-				{/* Key Selection/Display */}
+			<div className="flex flex-col gap-4">
 				{isEditMode ? (
-					<Box mb={2.5}>
-						<Typography
-							variant="overline"
-							color="text.secondary"
-							sx={{ fontSize: "0.75rem", letterSpacing: 1, fontWeight: 500 }}
-						>
-							Credential Key
-						</Typography>
-						<Typography fontWeight={500} sx={{ fontSize: "0.95rem" }}>
-							{initialKey}
-						</Typography>
-					</Box>
+					/*
+					 * Read-only in edit mode, so it is a label/value pair rather than a
+					 * field. The quieter `InfoItem` label is the signal: a form label
+					 * here would promise an editable key. The key itself is an
+					 * identifier, hence machine voice.
+					 */
+					<InfoItem
+						label="Credential key"
+						value={<span className="text-mono-sm">{initialKey}</span>}
+					/>
 				) : (
 					<>
-						<FormControl fullWidth sx={{ mb: 2.5 }}>
-							<FieldLabel>
-								<LabelIcon>
-									<FontAwesomeIcon icon={faKey} size="sm" />
-								</LabelIcon>
-								Credential Type
-							</FieldLabel>
+						<div className="flex flex-col gap-2">
+							<Label htmlFor={TYPE_SELECT_ID}>Credential type</Label>
 							<Select
-								value={useCustomKey ? "_custom_" : key}
-								onChange={(e) => {
-									const selectedValue = e.target.value as string;
-									if (selectedValue === "_custom_") {
+								value={useCustomKey ? CUSTOM_KEY_OPTION : key}
+								onValueChange={(selectedValue) => {
+									if (selectedValue === CUSTOM_KEY_OPTION) {
 										setUseCustomKey(true);
 										setKey("");
 									} else {
@@ -333,98 +191,124 @@ export const CredentialDialog: FC<CredentialDialogProps> = ({
 										setCustomKey("");
 									}
 								}}
-								displayEmpty={!key && !useCustomKey}
-								MenuProps={menuPropsSx(theme)}
-								input={
-									<StyledOutlinedInput notched={false} label={undefined} />
-								}
 							>
-								<MenuItem value="" disabled>
-									<em>Select a credential type...</em>
-								</MenuItem>
-								{CREDENTIAL_MANIFEST.filter((cred) => !cred.internal).map(
-									(cred) => (
-										<MenuItem
-											key={cred.key}
-											value={cred.key}
-											disabled={isExistingKey(cred.key)}
-										>
-											{cred.name} {isExistingKey(cred.key) && "(Configured)"}
-										</MenuItem>
-									),
-								)}
-								<MenuItem value="_custom_">Custom Credential</MenuItem>
+								<SelectTrigger
+									id={TYPE_SELECT_ID}
+									aria-describedby={
+										showCredentialHelp ? TYPE_HELP_ID : undefined
+									}
+								>
+									{/*
+									 * An empty `value` shows this placeholder; the dropdown no
+									 * longer carries a disabled empty row, which was never a
+									 * choice a user could make.
+									 */}
+									<SelectValue placeholder="Select a credential type" />
+								</SelectTrigger>
+								<SelectContent>
+									{CREDENTIAL_MANIFEST.filter((cred) => !cred.internal).map(
+										(cred) => (
+											<SelectItem
+												key={cred.key}
+												value={cred.key}
+												disabled={isExistingKey(cred.key)}
+											>
+												{cred.name}
+												{isExistingKey(cred.key) && " (configured)"}
+											</SelectItem>
+										),
+									)}
+									<SelectItem value={CUSTOM_KEY_OPTION}>
+										Custom credential
+									</SelectItem>
+								</SelectContent>
 							</Select>
-						</FormControl>
+
+							{/*
+							 * The manifest blurb and its sign-up link used to sit in a
+							 * filled, bordered well inside an already bordered dialog.
+							 * It is help text for the select above it, so it reads as help
+							 * text and the gap does the separating.
+							 */}
+							{showCredentialHelp && selectedCredentialManifest && (
+								<div
+									id={TYPE_HELP_ID}
+									className="flex flex-col items-start gap-1"
+								>
+									<p className="text-meta text-ink-dim">
+										{selectedCredentialManifest.description}
+									</p>
+									{selectedCredentialManifest.url && (
+										<a
+											href={selectedCredentialManifest.url}
+											target="_blank"
+											rel="noopener noreferrer"
+											className="text-accent text-meta underline-offset-4 hover:text-accent-hover hover:underline"
+										>
+											Get your {selectedCredentialManifest.name} key
+										</a>
+									)}
+								</div>
+							)}
+						</div>
 
 						{useCustomKey && (
-							<TextField
-								label="Custom Credential Key"
-								fullWidth
-								value={customKey}
-								onChange={(e) => setCustomKey(e.target.value)}
-								error={isExistingKey(customKey)}
-								helperText={
-									isExistingKey(customKey)
-										? "This credential already exists"
-										: ""
-								}
-								required
-								autoFocus
-								sx={textFieldInputSx(theme)}
-							/>
-						)}
-
-						{selectedCredentialManifest && !useCustomKey && (
-							<Box sx={DescriptionBoxSx(theme)}>
-								<Typography variant="body2" color="text.secondary" gutterBottom>
-									{selectedCredentialManifest.description}
-								</Typography>
-								{selectedCredentialManifest.url && (
-									<Link
-										href={selectedCredentialManifest.url}
-										target="_blank"
-										rel="noopener noreferrer"
-										variant="body2"
-										sx={{ display: "inline-flex", alignItems: "center" }}
-									>
-										Get your {selectedCredentialManifest.name} key
-									</Link>
+							<div className="flex flex-col gap-2">
+								<Label htmlFor={CUSTOM_KEY_INPUT_ID}>
+									Custom credential key
+								</Label>
+								<Input
+									id={CUSTOM_KEY_INPUT_ID}
+									value={customKey}
+									onChange={(e) => setCustomKey(e.target.value)}
+									aria-invalid={isCustomKeyTaken || undefined}
+									aria-describedby={
+										isCustomKeyTaken ? CUSTOM_KEY_ERROR_ID : undefined
+									}
+									required
+									// Focused because it only appears in response to choosing
+									// "Custom credential", and it is then the next thing to fill.
+									autoFocus
+								/>
+								{isCustomKeyTaken && (
+									<p id={CUSTOM_KEY_ERROR_ID} className="text-danger text-meta">
+										This credential already exists
+									</p>
 								)}
-							</Box>
+							</div>
 						)}
 					</>
 				)}
 
-				{/* Credential Value Label and Input */}
-				<FieldLabel>
-					<LabelIcon>
-						<FontAwesomeIcon icon={faKey} size="sm" />
-					</LabelIcon>
-					Credential Value
-				</FieldLabel>
-				<TextField
-					fullWidth
-					type="password"
-					value={value}
-					onChange={(e) => setValue(e.target.value)}
-					onKeyDown={(e) => {
-						if (e.key === "Enter" && canSave) {
-							handleSave();
-						}
-					}}
-					required
-					autoFocus={isEditMode}
-					placeholder="Enter the credential value or API key."
-					helperText={
-						isEditMode
-							? `Enter the new value for ${initialKey}`
-							: "Enter the credential value or API key."
-					}
-					sx={textFieldInputSx(theme)}
-					InputLabelProps={{ shrink: false }}
-				/>
-			</Box>
+				<div className="flex flex-col gap-2">
+					<Label htmlFor={VALUE_INPUT_ID}>Credential value</Label>
+					<Input
+						id={VALUE_INPUT_ID}
+						type="password"
+						value={value}
+						onChange={(e) => setValue(e.target.value)}
+						onKeyDown={(e) => {
+							if (e.key === "Enter" && canSave) {
+								handleSave();
+							}
+						}}
+						aria-describedby={isEditMode ? VALUE_HELP_ID : undefined}
+						required
+						autoFocus={isEditMode}
+						placeholder="Enter the credential value or API key"
+					/>
+					{/*
+					 * Only in edit mode, where it names which credential is being
+					 * replaced. In add mode the help text repeated the placeholder
+					 * word for word.
+					 */}
+					{isEditMode && (
+						<p id={VALUE_HELP_ID} className="text-ink-dim text-meta">
+							Enter the new value for {initialKey}
+						</p>
+					)}
+				</div>
+			</div>
 		</BaseDialog>
 	);
 };

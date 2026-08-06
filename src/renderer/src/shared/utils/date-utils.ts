@@ -51,12 +51,17 @@ export const formatMessageDateTime = (
 };
 
 /**
- * Gets the full formatted date and time for tooltips
+ * A calendar date, for metadata that is a fact rather than a recent event.
  *
- * @param dateTimeString The date/time string to format
- * @returns Full formatted date and time string
+ * `formatMessageDateTime` is tuned for a conversation, where "10:40 AM" and
+ * "Yesterday" are what a reader wants and the exact date is noise. A field
+ * like an agent's creation date sits beside its ID and its version and is read
+ * once, so the same formatter gave it three shapes - a bare clock time for
+ * minutes ago, a bare weekday inside a week, ISO after that - and the first of
+ * those named no day at all. One shape, no seconds, no tooltip needed to
+ * recover what the label already said.
  */
-export const getFullDateTime = (dateTimeString?: string | Date): string => {
+export const formatCalendarDate = (dateTimeString?: string | Date): string => {
 	if (!dateTimeString) return "";
 
 	try {
@@ -64,9 +69,53 @@ export const getFullDateTime = (dateTimeString?: string | Date): string => {
 			dateTimeString instanceof Date
 				? dateTimeString
 				: new Date(dateTimeString);
-		return date.toLocaleString();
+		if (Number.isNaN(date.getTime())) return "";
+		/* The platform's formatter, not date-fns': `format(date, "d MMMM yyyy")`
+		   is hardcoded English and day-first, so a US user reading a date the
+		   app itself renders as "August 5" elsewhere saw "5 August 2026" here.
+		   Every other date in the product goes through `navigator.language`. */
+		return date.toLocaleDateString(navigator.language, {
+			year: "numeric",
+			month: "long",
+			day: "numeric",
+		});
 	} catch (error) {
-		console.error("Error getting full date time:", error);
+		console.error("Error formatting calendar date:", error);
+		return "";
+	}
+};
+
+/**
+ * The same voice as `formatCalendarDate`, for metadata that is a moment.
+ *
+ * "Last modified" sits directly beside "Created" in the same grid, and giving
+ * one a calendar date while the other kept `toLocaleString()` put "August 5,
+ * 2026" next to "8/5/2026, 10:40:00 AM" - two shapes for two fields a reader
+ * compares at a glance, and the second is the machine voice with seconds that
+ * the calendar formatter exists to replace. A modification is a moment rather
+ * than a day, so this keeps the time and drops the seconds, which are never
+ * what anyone is reading a "last modified" field for.
+ */
+export const formatCalendarDateTime = (
+	dateTimeString?: string | Date,
+): string => {
+	if (!dateTimeString) return "";
+
+	try {
+		const date =
+			dateTimeString instanceof Date
+				? dateTimeString
+				: new Date(dateTimeString);
+		if (Number.isNaN(date.getTime())) return "";
+		return date.toLocaleString(navigator.language, {
+			year: "numeric",
+			month: "long",
+			day: "numeric",
+			hour: "numeric",
+			minute: "2-digit",
+		});
+	} catch (error) {
+		console.error("Error formatting calendar date-time:", error);
 		return "";
 	}
 };

@@ -185,7 +185,7 @@ export const useMessageInput = ({
 
 	// Keyboard navigation
 	const handleKeyDown = useCallback(
-		(e: KeyboardEvent<HTMLDivElement>) => {
+		(e: KeyboardEvent<HTMLTextAreaElement>) => {
 			if (!conversationId) return;
 			if (e.key === "Enter" && !e.shiftKey) {
 				e.preventDefault();
