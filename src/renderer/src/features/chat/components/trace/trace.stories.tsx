@@ -411,13 +411,34 @@ export const ConversationWithReasoning: Story = {
  * on came to have no control in the first place.
  */
 const OpenedReasoning = () => {
+	const showAgentReasoning = useUiPreferencesStore(
+		(state) => state.showAgentReasoning,
+	);
+
+	/*
+	 * Keyed on the preference, not on mount.
+	 *
+	 * The decorator that turns reasoning on is the outer component, and React
+	 * runs the inner effect first - so a click loop on mount runs while the
+	 * reasoning rows still do not exist, opens the trace rows around them, and
+	 * leaves the three it was written for closed. It looked correct in a
+	 * browser only because a previous story had left the persisted preference
+	 * on, so the rows were there on first render; against the capture rig,
+	 * which replaces that blob per document, the frame came back with every
+	 * reasoning row shut.
+	 *
+	 * Waiting for the preference to arrive makes the story independent of
+	 * effect ordering and of whatever the last story left behind.
+	 */
 	useEffect(() => {
+		if (!showAgentReasoning) return;
 		for (const button of document.querySelectorAll<HTMLButtonElement>(
 			'button[aria-expanded="false"]',
 		)) {
 			button.click();
 		}
-	}, []);
+	}, [showAgentReasoning]);
+
 	return <ConversationList />;
 };
 
