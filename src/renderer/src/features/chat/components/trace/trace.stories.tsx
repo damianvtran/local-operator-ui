@@ -335,13 +335,27 @@ const ConversationList = () => {
 	);
 };
 
-const withReasoningOn = (Story: () => ReactNode) => {
+/**
+ * Each story states the preference it is a picture of, rather than one of
+ * them setting it and the other inheriting whatever was left behind.
+ *
+ * `showAgentReasoning` is persisted. `withReasoningOn` only restored it on
+ * unmount, and navigating between stories tears the page down without
+ * running that cleanup - so after visiting the reasoning story, the one
+ * whose docblock reads "reasoning hidden, the default state" rehydrated to
+ * true and rendered three reasoning rows. The committed frames were right
+ * only because the capture rig replaces the whole persisted blob per
+ * document; a person clicking between the two saw the wrong thing.
+ */
+const withReasoning = (show: boolean) => (Story: () => ReactNode) => {
 	useEffect(() => {
-		useUiPreferencesStore.setState({ showAgentReasoning: true });
-		return () => useUiPreferencesStore.setState({ showAgentReasoning: false });
-	}, []);
+		useUiPreferencesStore.setState({ showAgentReasoning: show });
+	}, [show]);
 	return <Story />;
 };
+
+const withReasoningOn = withReasoning(true);
+const withReasoningOff = withReasoning(false);
 
 /* ------------------------------------------------------------------ */
 /* Meta                                                                */
@@ -367,6 +381,7 @@ export const Conversation: Story = {
 			<ConversationList />
 		</Sheet>
 	),
+	decorators: [withReasoningOff],
 };
 
 /** The same conversation with the reasoning preference switched on. */

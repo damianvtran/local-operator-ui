@@ -5,9 +5,10 @@ import { PageHeader } from "@shared/components/common/page-header";
 import { RadientMark } from "@shared/components/common/radient-mark";
 import { SliderSetting } from "@shared/components/common/slider-setting";
 import { Spinner } from "@shared/components/common/spinner";
+import { ToggleSetting } from "@shared/components/common/toggle-setting";
 import { HostingSelect } from "@shared/components/hosting/hosting-select";
 import { ModelSelect } from "@shared/components/hosting/model-select";
-import { Alert, Button, Label, Skeleton, Switch } from "@shared/components/ui";
+import { Alert, Button, Skeleton } from "@shared/components/ui";
 import { useConfig } from "@shared/hooks/use-config";
 import { useCredentials } from "@shared/hooks/use-credentials";
 import { useCreditBalance } from "@shared/hooks/use-credit-balance";
@@ -812,29 +813,27 @@ export const SettingsPage: FC = () => {
 							 * The reasoning preference's only control.
 							 *
 							 * The preference, the grouping rule that honours it and the
-							 * disclosure that renders it all shipped in this refactor
-							 * without anything that could turn it on, so a complete
-							 * feature was unreachable and its default was the whole of
-							 * its behaviour. Appearance rather than a chat menu,
-							 * because it changes what every conversation shows rather
-							 * than acting on the one in front of you.
+							 * panel that renders it all shipped in this refactor without
+							 * anything that could turn it on, so a complete feature was
+							 * unreachable and its default was the whole of its
+							 * behaviour. Appearance rather than a chat menu, because it
+							 * changes what every conversation shows rather than acting
+							 * on the one in front of you.
+							 *
+							 * `ToggleSetting` rather than a hand-rolled row. This was
+							 * a `Label htmlFor` over a `Switch id` first, which cannot
+							 * work: the switch renders as a `button`, `htmlFor` only
+							 * associates with labelable elements, and the helper
+							 * sentence was announced to nobody. That component solves
+							 * exactly this and had no callers, which is the only reason
+							 * the row got written twice.
 							 */}
-							<div className="flex items-start justify-between gap-6 border-hairline border-t pt-6">
-								<div className="flex flex-col gap-1">
-									<Label htmlFor="show-agent-reasoning">
-										Show agent reasoning
-									</Label>
-									<p className="text-ink-dim text-meta">
-										Include the agent's planning and reflection turns in the
-										conversation, behind a closed disclosure.
-									</p>
-								</div>
-								<Switch
-									id="show-agent-reasoning"
-									checked={showAgentReasoning}
-									onCheckedChange={setShowAgentReasoning}
-								/>
-							</div>
+							<ToggleSetting
+								value={showAgentReasoning}
+								label="Show agent reasoning"
+								description="Adds the agent's Reasoning and Thinking rows to conversations. They stay closed until you open one."
+								onChange={async (next) => setShowAgentReasoning(next)}
+							/>
 						</SettingsSection>
 
 						<SettingsSection

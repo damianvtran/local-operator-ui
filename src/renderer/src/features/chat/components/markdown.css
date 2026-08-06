@@ -22,7 +22,12 @@
 .lo-markdown {
 	font-size: var(--md-font-size, var(--text-body));
 	line-height: var(--md-line-height, 1.6);
-	color: var(--lo-ink);
+	/* Overridable like the two above it. Prose is the answer's register by
+	   default, but markdown also renders in places that must not compete with
+	   an answer - the reasoning panel most of all, where full-strength ink at
+	   body size made the agent's private thinking look exactly like its reply
+	   to you. Setting `--md-ink` steps it down without a second stylesheet. */
+	color: var(--md-ink, var(--lo-ink));
 	word-break: break-word;
 	overflow-wrap: break-word;
 }
