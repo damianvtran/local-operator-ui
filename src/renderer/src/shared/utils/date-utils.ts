@@ -51,27 +51,6 @@ export const formatMessageDateTime = (
 };
 
 /**
- * Gets the full formatted date and time for tooltips
- *
- * @param dateTimeString The date/time string to format
- * @returns Full formatted date and time string
- */
-export const getFullDateTime = (dateTimeString?: string | Date): string => {
-	if (!dateTimeString) return "";
-
-	try {
-		const date =
-			dateTimeString instanceof Date
-				? dateTimeString
-				: new Date(dateTimeString);
-		return date.toLocaleString();
-	} catch (error) {
-		console.error("Error getting full date time:", error);
-		return "";
-	}
-};
-
-/**
  * A calendar date, for metadata that is a fact rather than a recent event.
  *
  * `formatMessageDateTime` is tuned for a conversation, where "10:40 AM" and

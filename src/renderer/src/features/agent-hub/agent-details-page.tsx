@@ -14,6 +14,7 @@ import {
 } from "@shared/components/ui";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import { cn } from "@shared/lib/utils";
+import { formatCalendarDate } from "@shared/utils/date-utils";
 import { formatDistanceToNowStrict } from "date-fns";
 import { ArrowLeft, Bot, Download, Heart, Star, Trash2 } from "lucide-react";
 import type React from "react";
@@ -269,11 +270,11 @@ export const AgentDetailsPage: React.FC = () => {
 				</p>
 				<p>
 					Created: {formatDistanceToNowStrict(new Date(agent.created_at))} ago (
-					{new Date(agent.created_at).toLocaleDateString()})
+					{formatCalendarDate(agent.created_at)})
 				</p>
 				<p>
-					Updated: {formatDistanceToNowStrict(new Date(agent.updated_at))} ago (
-					{new Date(agent.updated_at).toLocaleDateString()})
+					Last modified: {formatDistanceToNowStrict(new Date(agent.updated_at))}{" "}
+					ago ({formatCalendarDate(agent.updated_at)})
 				</p>
 			</div>
 

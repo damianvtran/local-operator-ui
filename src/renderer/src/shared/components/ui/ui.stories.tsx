@@ -764,7 +764,12 @@ const AnchoredOverlays = () => {
 	const [radio, setRadio] = useState("newest");
 
 	return (
-		<div className="flex flex-wrap items-start gap-24 pb-64">
+		/* pb-96 (384px), not pb-64: the held-open dropdown panel is ~362px, and
+		   reserving less than that makes Radix flip it above its own trigger,
+		   where it covered its caption and two neighbouring groups in all
+		   twelve frames of this sheet. The reserve has to clear the tallest
+		   open panel, not the tallest trigger. */
+		<div className="flex flex-wrap items-start gap-24 pb-96">
 			<div className="flex flex-col items-start gap-2">
 				<span className="text-ink-dim text-meta">Tooltip, open</span>
 				<TooltipProvider>

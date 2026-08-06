@@ -1,7 +1,6 @@
 import { DialogDescription } from "@shared/components/ui";
 import { TriangleAlert } from "lucide-react";
 import type { FC, ReactNode } from "react";
-import { useEffect } from "react";
 import {
 	BaseDialog,
 	DangerButton,
@@ -60,28 +59,21 @@ export const ConfirmationModal: FC<ConfirmationModalProps> = ({
 	onCancel,
 }) => {
 	/*
-	 * Enter confirms from anywhere in the dialog, which is the whole point of a
-	 * confirmation step being one keystroke. Escape is deliberately not handled
-	 * here: the dialog primitive already cancels on Escape, and a second
-	 * listener would call `onCancel` twice per press.
+	 * No Enter handler here, deliberately.
+	 *
+	 * There used to be a document-level one that called `onConfirm` on any
+	 * Enter, on the theory that a confirmation should be one keystroke. With
+	 * `autoFocus` gone from the confirm buttons, Radix focuses the first
+	 * tabbable - which is Cancel - so pressing Enter on a visibly focused
+	 * "Cancel" ran the destructive action instead, and ran it FIRST: keydown
+	 * reaches document before the browser dispatches the button's activation
+	 * click, so both fired and the delete won. Every one of the six dialogs
+	 * that use this component is destructive.
+	 *
+	 * Enter now does what it does everywhere else - activates the focused
+	 * button. Cancel is focused, so Enter cancels; Tab then Enter confirms.
+	 * Escape is left to the dialog primitive, which already cancels on it.
 	 */
-	useEffect(() => {
-		if (!open) {
-			return;
-		}
-
-		const handleKeyDown = (event: KeyboardEvent): void => {
-			if (event.key === "Enter") {
-				onConfirm();
-			}
-		};
-
-		document.addEventListener("keydown", handleKeyDown);
-
-		return () => {
-			document.removeEventListener("keydown", handleKeyDown);
-		};
-	}, [open, onConfirm]);
 
 	const dialogTitle = isDangerous ? (
 		<>

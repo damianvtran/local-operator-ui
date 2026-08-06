@@ -28,15 +28,6 @@ const formatDate = (date: Date, includeYear: boolean): string => {
 };
 
 /**
- * The line a person reads to know when a schedule runs.
- *
- * Cadence and times are built separately because a one-time schedule has no
- * cadence at all. The previous shape put "Every <unit>" in front
- * unconditionally and cancelled it only when the schedule had neither a start
- * nor an end time — that is, never in the case that reads wrong — so a job
- * that runs once announced itself as running every day.
- */
-/**
  * The recurrence units that repeat more than once a day.
  *
  * A static table rather than a `Set`: the membership is fixed at authoring
@@ -47,6 +38,15 @@ const SUB_DAY_UNITS: Record<string, true> = {
 	hours: true,
 };
 
+/**
+ * The line a person reads to know when a schedule runs.
+ *
+ * Cadence and times are built separately because a one-time schedule has no
+ * cadence at all. The previous shape put "Every <unit>" in front
+ * unconditionally and cancelled it only when the schedule had neither a start
+ * nor an end time — that is, never in the case that reads wrong — so a job
+ * that runs once announced itself as running every day.
+ */
 const createScheduleDisplayString = (schedule: ScheduleResponse): string => {
 	const currentYear = new Date().getFullYear();
 	const startTime = schedule.start_time_utc

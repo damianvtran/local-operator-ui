@@ -87,6 +87,13 @@ export const CategoriesInputChips: FC<CategoriesInputChipsProps> = ({
 		}
 		setInputValue("");
 		setIsOpen(false);
+		/* Taking an option removes it from `availableOptions`, so an index that
+		   was valid a moment ago can now point past the end. Every other path
+		   that changes the list resets this; without it, reopening by clicking
+		   the input (which only sets `isOpen`) leaves no row highlighted, an
+		   `aria-activedescendant` pointing at nothing, and a first Enter that
+		   selects nothing. */
+		setActiveIndex(0);
 		inputRef.current?.focus();
 	};
 

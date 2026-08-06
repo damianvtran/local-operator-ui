@@ -301,12 +301,15 @@ const ChatColumnMock = () => (
 				Ask a follow-up about the write-up
 			</p>
 			<div className="flex items-center justify-between">
-				{/* The glyph, not its name: the product renders a 16px paperclip
-				    here, and printing the word put a piece of source vocabulary
-				    into 72 committed frames. */}
-				<span className="flex items-center gap-1.5 text-meta text-ink-dim">
+				{/* Mirrors the real composer's left cluster: a paperclip icon
+				    button named "Attach file" and the directory indicator beside
+				    it. This once printed the word "Model" under a comment saying
+				    to draw the glyph and not its name - a piece of source
+				    vocabulary that appears nowhere in the composer, in 72
+				    committed frames. */}
+				<span className="flex items-center gap-2 text-meta text-ink-dim">
 					<Paperclip size={16} aria-hidden="true" />
-					Model
+					<span className="truncate">~/work/reports</span>
 				</span>
 				<span className="rounded-sm bg-accent px-3 py-1 text-meta text-on-accent">
 					Send
@@ -523,12 +526,31 @@ export const DiffReview: Story = {
 	),
 };
 
-/** The prompt state of the same popover, before any changes exist. */
+/**
+ * The prompt state of the same popover, before any changes exist.
+ *
+ * Over real document text, like `DiffReview` above. A floating panel's only
+ * interesting questions are what it covers and whether its edge reads against
+ * what is behind it, and on bare ground it answers neither - which made this
+ * the second-sparsest surface in the set at 6.18% non-ground pixels.
+ */
 export const EditPrompt: Story = {
 	render: () => (
 		<SplitFrame>
 			<div className="relative flex-1 bg-surface p-10">
-				<div className="relative h-64">
+				<div className="max-w-160 text-body text-ink">
+					<h1 className="mb-3 font-semibold text-title">Q1 invoice review</h1>
+					<p className="my-2">
+						Three customers are still outstanding at the end of March. The
+						totals below come from the March export, filtered to rows where the
+						paid column is empty.
+					</p>
+					<p className="my-2">
+						Northwind has been late on the last three invoices. Worth a call
+						rather than another reminder email.
+					</p>
+				</div>
+				<div className="relative mt-10 h-64">
 					<InlineEdit
 						selection="Three customers are still outstanding at the end of March."
 						position={{ top: 0, left: 40 }}

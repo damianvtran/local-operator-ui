@@ -460,7 +460,17 @@ export const QuestionCallout: Story = {
 		<Sheet>
 			<div className="mx-auto flex w-full max-w-[700px] flex-col gap-6">
 				<AgentQuestion content={askQuestion.message} />
-				<AgentQuestion content="No content — renders nothing, so this slot stays empty." />
+				{/*
+				 * Empty content, so this renders nothing at all - which is the
+				 * whole assertion. Passing a sentence that DESCRIBES emptiness
+				 * painted a full callout claiming it was not there, and the one
+				 * state this pair exists to prove appeared in no frame. The
+				 * caption is the label; the absence above it is the evidence.
+				 */}
+				<AgentQuestion content="" />
+				<p className="text-center text-ink-dim text-meta">
+					Empty content renders nothing — there is no second callout.
+				</p>
 			</div>
 		</Sheet>
 	),
