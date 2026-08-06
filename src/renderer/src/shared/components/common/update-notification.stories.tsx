@@ -575,8 +575,12 @@ export const Downloaded: Story = {
 							Update ready to install
 						</h2>
 						<p className="mb-2 text-body text-ink-muted">
-							Version {info.version} has been downloaded and is ready to
-							install.
+							{/* The component's sentence. "ready to install" repeated the
+							    heading directly above and dropped the version the user
+							    is on, which is the one comparison the heading cannot
+							    make. */}
+							Version {info.version} has been downloaded. You are currently
+							using version 1.0.0.
 						</p>
 						<p className="mt-2 text-body-sm text-ink-muted">
 							The application will restart to apply the update.

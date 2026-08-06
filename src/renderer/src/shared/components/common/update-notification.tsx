@@ -491,9 +491,14 @@ export const UpdateNotification = ({
 					<h2 className="mb-3 text-heading text-ink">
 						Update ready to install
 					</h2>
+					{/* "has been downloaded", not "is available": this is the state
+					    AFTER the download, and reusing the available state's
+					    sentence told the user nothing had happened. The version
+					    they are on stays, because that is the comparison the
+					    heading does not make. */}
 					<p className="mb-2 text-body text-ink-muted">
-						Version {updateInfo.version} is available. You are currently using
-						version {appVersion}.
+						Version {updateInfo.version} has been downloaded. You are currently
+						using version {appVersion}.
 					</p>
 					<p className="mt-2 text-body-sm text-ink-muted">
 						The application will restart to apply the update.
