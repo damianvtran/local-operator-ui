@@ -1,6 +1,6 @@
 import {
 	BaseDialog,
-	DangerButton,
+	PrimaryButton,
 	SecondaryButton,
 } from "@shared/components/common/base-dialog";
 import { Spinner } from "@shared/components/common/spinner";
@@ -286,30 +286,43 @@ export const AgentDetailsPage: React.FC = () => {
 
 			<CommentsSection agentId={agent.id} />
 
+			{/*
+			 * Not `ConfirmationModal`, because the confirm button here carries a
+			 * pending state the shared component has no prop for - but the same
+			 * shape as it, since a user meets both and should not have to work
+			 * out whether they are looking at the same kind of question.
+			 * `maxWidth="xs"` and `text-body` are that component's values.
+			 *
+			 * No alarm treatment: no `TriangleAlert`, and the confirm is a
+			 * primary rather than a danger button. The other six confirmations
+			 * guard something irreversible; this one is undone by uploading
+			 * again, which the copy now says. Painting it red as well would
+			 * tell the user two different things about how bad it is.
+			 */}
 			<BaseDialog
 				open={isDelistDialogOpen}
 				onClose={() => setIsDelistDialogOpen(false)}
 				title="Delist this agent?"
+				maxWidth="xs"
 				actions={
 					<>
 						<SecondaryButton onClick={() => setIsDelistDialogOpen(false)}>
 							Cancel
 						</SecondaryButton>
-						<DangerButton
+						<PrimaryButton
 							onClick={() => {
 								if (!agentId || !isOwner || delistMutation.isPending) return;
 								delistMutation.mutate({ agentId });
 								setIsDelistDialogOpen(false);
 							}}
 							disabled={delistMutation.isPending}
-							id="delist-confirm-button"
 						>
 							{delistMutation.isPending ? (
 								<Spinner size="sm" label="Delisting agent" />
 							) : (
 								"Delist"
 							)}
-						</DangerButton>
+						</PrimaryButton>
 					</>
 				}
 				dialogProps={{
@@ -326,16 +339,16 @@ export const AgentDetailsPage: React.FC = () => {
 					 */
 				}}
 			>
-				<p
+				<div
 					id="delist-dialog-description"
-					className="text-body-sm text-ink-muted"
+					className="text-body text-ink-muted"
 				>
 					{/* Not "cannot be undone" followed by "you can re-upload it
 					    later" - a reader cannot tell from that how bad this is,
 					    and telling them exactly that is the dialog's whole job. */}
 					This takes "{agent.name}" off the hub straight away, and nobody will
 					be able to download it. You can upload it again later.
-				</p>
+				</div>
 			</BaseDialog>
 		</div>
 	);

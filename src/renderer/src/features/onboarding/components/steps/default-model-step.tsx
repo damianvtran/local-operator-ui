@@ -203,6 +203,7 @@ export const DefaultModelStep: FC = () => {
 						<Label htmlFor={PROVIDER_SELECT_ID}>Model provider</Label>
 						<Select
 							value={selectedProvider}
+							disabled={availableProviders.length === 0}
 							onValueChange={(value) => {
 								setSelectedProvider(value);
 								setSelectedModel(""); // Reset model when provider changes
@@ -214,11 +215,12 @@ export const DefaultModelStep: FC = () => {
 								selectSize="lg"
 								aria-describedby={PROVIDER_HELP_ID}
 							>
-								{/* Same zero-option state the model select below has.
-								    Reachable: pressing Next twice without adding a key
-								    lands here with nothing to choose, and an empty
-								    "Select a provider" gives the user no way to tell
-								    an empty list from a slow one. */}
+								{/* The zero-option state the model select below has:
+								    a placeholder that names the reason, and `disabled`
+								    so the trigger cannot open onto an empty listbox.
+								    Reachable by pressing Next twice without adding a
+								    key, and an empty "Select a provider" gives no way
+								    to tell an empty list from a slow one. */}
 								<SelectValue
 									placeholder={
 										availableProviders.length === 0
@@ -235,8 +237,14 @@ export const DefaultModelStep: FC = () => {
 								))}
 							</SelectContent>
 						</Select>
+						{/* Follows the select. Describing "providers you have added
+						    credentials for" under a control saying there are none
+						    left the step promising a choice, denying one, and
+						    captioning the list that is not there. */}
 						<p id={PROVIDER_HELP_ID} className="text-ink-dim text-meta">
-							Providers you have added credentials for
+							{availableProviders.length === 0
+								? "Add a model key on the previous step to choose a provider here."
+								: "Providers you have added credentials for"}
 						</p>
 					</div>
 

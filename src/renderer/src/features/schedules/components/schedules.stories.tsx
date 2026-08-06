@@ -19,24 +19,25 @@ const AGENTS = [
 	{ id: "d7e2a913-0c48-4b6f-81a5-96c3f1e84444", name: "Competitor news" },
 ];
 
-const hoursFromNow = (hours: number) =>
-	new Date(Date.now() + hours * 3600_000).toISOString();
-
 /**
- * A local wall-clock time on a chosen day, as UTC.
+ * A fixed local wall-clock time on a fixed day, as UTC.
  *
- * `hoursFromNow` cannot express "crosses midnight": whether it does depends on
- * what time the capture runs, so the overnight fixture below read as a
- * same-day window in every frame committed so far. This pins the hour instead
- * and lets the date float, so the row demonstrates the case it is named for
- * whenever anyone looks at it.
+ * Every timestamp in this fixture is pinned to one week in March 2026, and
+ * that is the whole point. Two rows used to take `hoursFromNow`, so their
+ * rendered minute-past and their date moved with the capture clock: 39 of the
+ * 41 schedules frames changed on a recapture where no schedules code had
+ * changed at all, and a recapture diff that churns cannot be read as "here is
+ * what moved". A commit of mine claimed one surface had moved when the diff
+ * carried thirteen.
+ *
+ * Pinned dates also make the awkward cases stable rather than accidental: the
+ * overnight row below genuinely crosses midnight in every frame instead of
+ * whenever the capture happens to run late. The set re-renders once at a year
+ * boundary, when the recurrence sentences start naming the year - that is a
+ * known, once-a-year churn rather than a daily one.
  */
-const atLocalHour = (dayOffset: number, hour: number, minute = 0) => {
-	const d = new Date();
-	d.setDate(d.getDate() + dayOffset);
-	d.setHours(hour, minute, 0, 0);
-	return d.toISOString();
-};
+const at = (day: number, hour: number, minute = 0) =>
+	new Date(2026, 2, day, hour, minute, 0, 0).toISOString();
 
 const SCHEDULES = [
 	{
@@ -48,10 +49,10 @@ const SCHEDULES = [
 		unit: "hours",
 		is_active: true,
 		one_time: false,
-		start_time_utc: hoursFromNow(1),
+		start_time_utc: at(15, 20, 16),
 		end_time_utc: null,
-		created_at: hoursFromNow(-72),
-		updated_at: hoursFromNow(-2),
+		created_at: at(12, 9, 0),
+		updated_at: at(15, 8, 30),
 	},
 	{
 		id: "1a7c8e33-2b41-4de9-8a05-73c9f4b1d002",
@@ -62,10 +63,10 @@ const SCHEDULES = [
 		unit: "days",
 		is_active: true,
 		one_time: false,
-		start_time_utc: hoursFromNow(9),
+		start_time_utc: at(16, 3, 59),
 		end_time_utc: null,
-		created_at: hoursFromNow(-400),
-		updated_at: hoursFromNow(-30),
+		created_at: at(1, 14, 0),
+		updated_at: at(14, 7, 15),
 	},
 	{
 		id: "5d3b9f07-84c2-41a6-b7e3-08d5c2f6e003",
@@ -77,8 +78,8 @@ const SCHEDULES = [
 		one_time: false,
 		start_time_utc: null,
 		end_time_utc: null,
-		created_at: hoursFromNow(-900),
-		updated_at: hoursFromNow(-120),
+		created_at: at(2, 11, 0),
+		updated_at: at(10, 16, 45),
 	},
 	{
 		id: "c8e1a462-fd39-4b52-9c74-6a2b8e0f5004",
@@ -91,13 +92,13 @@ const SCHEDULES = [
 		one_time: true,
 		/* 10:15 AM to 11:15 AM tomorrow: the same-day counterpart to the
 		   overnight row below, and pinned for the same reason - as
-		   `hoursFromNow(26)/(27)` this flipped to a cross-midnight window in a
+		   a clock-relative offset this flipped to a cross-midnight window in a
 		   late-evening capture, and it is the only frame the same-day branch
 		   has. */
-		start_time_utc: atLocalHour(1, 10, 15),
-		end_time_utc: atLocalHour(1, 11, 15),
-		created_at: hoursFromNow(-10),
-		updated_at: hoursFromNow(-10),
+		start_time_utc: at(16, 10, 15),
+		end_time_utc: at(16, 11, 15),
+		created_at: at(15, 6, 0),
+		updated_at: at(15, 6, 0),
 	},
 	{
 		/* A recurring schedule with BOTH ends - the shape no fixture covered, and
@@ -112,10 +113,10 @@ const SCHEDULES = [
 		unit: "hours",
 		is_active: true,
 		one_time: false,
-		start_time_utc: atLocalHour(0, 9, 16),
-		end_time_utc: atLocalHour(0, 16, 30),
-		created_at: hoursFromNow(-40),
-		updated_at: hoursFromNow(-40),
+		start_time_utc: at(15, 9, 16),
+		end_time_utc: at(15, 16, 30),
+		created_at: at(13, 18, 0),
+		updated_at: at(13, 18, 0),
 	},
 	{
 		/* A one-time window that crosses midnight: the sentence has to name both
@@ -132,10 +133,10 @@ const SCHEDULES = [
 		one_time: true,
 		/* 11:20 PM tonight to 6:40 AM tomorrow: a window that always crosses
 		   midnight, whatever hour the capture runs at. */
-		start_time_utc: atLocalHour(0, 23, 20),
-		end_time_utc: atLocalHour(1, 6, 40),
-		created_at: hoursFromNow(-10),
-		updated_at: hoursFromNow(-10),
+		start_time_utc: at(15, 23, 20),
+		end_time_utc: at(16, 6, 40),
+		created_at: at(15, 6, 0),
+		updated_at: at(15, 6, 0),
 	},
 ];
 

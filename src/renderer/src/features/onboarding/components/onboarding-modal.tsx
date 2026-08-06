@@ -42,7 +42,9 @@ import { UserProfileStep } from "./steps/user-profile-step";
 const stepTitles: Partial<Record<OnboardingStep, string>> = {
 	[OnboardingStep.RADIENT_CHOICE]: "Choose your setup",
 	[OnboardingStep.RADIENT_SIGNIN]: "Sign in to Radient Pass",
-	[OnboardingStep.USER_PROFILE]: "Your name",
+	// Verb-led, like the other seven, and not a repeat of the first field's own
+	// label 60px below it — the step asks for a name and an optional email.
+	[OnboardingStep.USER_PROFILE]: "Introduce yourself",
 	[OnboardingStep.MODEL_CREDENTIAL]: "Add a model key",
 	[OnboardingStep.SEARCH_API]: "Turn on web search",
 	[OnboardingStep.DEFAULT_MODEL]: "Pick a default model",

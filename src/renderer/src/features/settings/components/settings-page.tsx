@@ -537,12 +537,19 @@ export const SettingsPage: FC = () => {
 		);
 	}
 
-	/* No `max-md:` set on the container or the rail below. The window's own
-	   minWidth is 800 and `md` is 768, so the stacked-rail variant could never
-	   render - five utilities describing a layout nobody has ever seen, and
-	   therefore nobody has tested. Re-pointing them above the floor would ship
-	   that untested rendering; if the stacked rail is wanted it is its own
-	   change, with its own frame. */
+	/* No `max-md:` set on the container or the rail below.
+	
+	   Not because the width is unreachable - the window's minWidth of 800 is in
+	   device pixels and page zoom divides the CSS viewport, so one Zoom In press
+	   at the floor lands at 727px, inside the range those five utilities
+	   described. The reason is that the page renders correctly there without
+	   them: measured at exactly 727px, the icon rail stays a 48px column beside
+	   a 459px content column, all six nav items present, no horizontal
+	   overflow. A second layout that only a zoomed-in user ever sees is a
+	   second layout nobody tests; if the stacked rail is wanted it is its own
+	   change, with its own frame. Deleting these also leaves the renderer with
+	   no `max-*` breakpoint utilities at all, which is how the rest of the app
+	   is written. */
 	return (
 		<div className="flex h-full w-full overflow-hidden bg-canvas">
 			{/*
