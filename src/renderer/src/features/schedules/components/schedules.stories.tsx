@@ -242,42 +242,32 @@ export const RowActionsRevealed: Story = {
 };
 
 /**
- * A row action's label.
+ * Opens the first row's edit tooltip, and holds the capture until it is up.
  *
- * Revealing the buttons was half the job: their labels live in a tooltip and
- * an aria-label, and neither is pixels until something opens the tooltip. This
- * is the frame in which "Edit schedule" is legible — the string that shipped
- * as "SquarePen schedule" through a whole design round because no frame in the
- * set had ever contained it.
- */
-/**
- * A row action's tooltip, open, on the real page.
+ * The label is one of 65 tooltip strings that had never appeared in any
+ * frame - which is how a rename put "SquarePen schedule" on both a tooltip
+ * and an icon-only button's accessible name and survived a design round. A
+ * tooltip is also a positioned surface, so whether it collides with the
+ * delete button beside it, covers the row below, or clears the hairline are
+ * only answerable against the row it actually opens on.
  *
- * Two things make this frame worth taking, and a synthetic button on an empty
- * ground gave neither. The label is one of 65 tooltip strings that had never
- * appeared in any frame - which is how a rename put "SquarePen schedule" on
- * an icon-only button's accessible name and survived a review. And a tooltip
- * is a positioned surface: whether it collides with the delete button beside
- * it, covers the row below, or sits clear of the hairline are only answerable
- * against the row it actually opens on.
- *
- * `side` is deliberately unset. Every real call site takes the default, so
- * pinning it here would photograph a placement the app never renders.
+ * Opened by focusing the button rather than by forcing state: Radix opens on
+ * focus, so this is the path a keyboard user takes and the frame shows what
+ * they see. `side` stays unset for the same reason - every call site takes
+ * the default, so pinning it would photograph a placement the app never
+ * renders.
  */
 const OpenFirstRowTooltip = () => {
-	/*
-	 * Opened by focusing the button, not by forcing state: Radix opens a
-	 * tooltip on focus, so this is the same path a keyboard user takes and the
-	 * frame shows what they see. Retried because the rows arrive from a stubbed
-	 * query and the button does not exist on the first tick.
-	 */
 	useEffect(() => {
-		/* Held open for the capture: the rows arrive from a stubbed query, so
-		   the button does not exist on the first tick and a screenshot taken
-		   when the story "finished rendering" would catch the page before the
-		   tooltip. `data-capture-pending` is the capture's opt-in wait. */
+		/* The rows arrive from a stubbed query, so the button does not exist on
+		   the first tick and a screenshot taken when the story "finished
+		   rendering" would catch the page before the tooltip.
+		   `data-capture-pending` is the capture's opt-in wait. */
 		document.documentElement.dataset.capturePending = "1";
+		const clear = () =>
+			document.documentElement.removeAttribute("data-capture-pending");
 		let tries = 0;
+		let settle: number | undefined;
 		const id = setInterval(() => {
 			const button = document.querySelector<HTMLElement>(
 				'button[aria-label="Edit schedule"]',
@@ -286,17 +276,22 @@ const OpenFirstRowTooltip = () => {
 				button.focus();
 				clearInterval(id);
 				/* One more beat for Radix to mount the tooltip it opens on focus. */
-				setTimeout(() => {
-					document.documentElement.removeAttribute("data-capture-pending");
-				}, 300);
+				settle = window.setTimeout(clear, 300);
 			} else if (++tries > 100) {
+				/* Deliberately does NOT clear the flag. The probe looks for the
+				   exact accessible name this story exists to prove is present,
+				   so the one regression it guards against is also the thing that
+				   makes the probe fail. Clearing here would let a tooltip-less
+				   frame be written and pass every guard, since none of them can
+				   see a missing tooltip. Leaving it set makes the capture time
+				   out and name this story instead. */
 				clearInterval(id);
-				document.documentElement.removeAttribute("data-capture-pending");
 			}
 		}, 50);
 		return () => {
 			clearInterval(id);
-			document.documentElement.removeAttribute("data-capture-pending");
+			clearTimeout(settle);
+			clear();
 		};
 	}, []);
 	return null;

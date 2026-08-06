@@ -1219,13 +1219,35 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 				 * accessible behaviour - a contenteditable that swallows Tab is
 				 * a keyboard trap (WCAG 2.1.2) and there was previously no way
 				 * to leave this editor with the keyboard alone.
+				 *
+				 * BOTH ends of the range are tested, not the anchor. A drag from
+				 * inside a list item into the paragraph after it is an ordinary
+				 * selection, and testing one end let `indent` blockquote that
+				 * paragraph - the exact defect this gate exists to prevent,
+				 * reachable by a different route. `commonAncestorContainer` is
+				 * the tempting one-liner and it is wrong: for a selection across
+				 * two items it is the `<ul>`, which has no `li` ancestor, so
+				 * indenting several items at once would stop working.
 				 */
-				const anchor = window.getSelection()?.anchorNode;
-				const element =
-					anchor?.nodeType === Node.ELEMENT_NODE
-						? (anchor as Element)
-						: anchor?.parentElement;
-				if (!element?.closest("li")) return;
+				const selection = window.getSelection();
+				const range =
+					selection && selection.rangeCount > 0
+						? selection.getRangeAt(0)
+						: null;
+				const listItemFor = (node: Node | null): Element | null => {
+					const element =
+						node?.nodeType === Node.ELEMENT_NODE
+							? (node as Element)
+							: (node?.parentElement ?? null);
+					return element?.closest("li") ?? null;
+				};
+				if (
+					!range ||
+					!listItemFor(range.startContainer) ||
+					!listItemFor(range.endContainer)
+				) {
+					return;
+				}
 				event.preventDefault();
 				executeCommand(event.shiftKey ? "outdent" : "indent");
 				return;
@@ -1644,10 +1666,12 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 			 * away, which is what Craft, Dropbox Paper and Linear's editor all
 			 * do rather than showing every command at once.
 			 *
-			 * Underline, indent, outdent and the three alignments are in neither
-			 * place, and not on a keyboard shortcut either: none of them
-			 * survives a markdown round trip, so the editor no longer offers a
-			 * control whose effect the next save discards.
+			 * Underline and the three alignments are in neither place and on no
+			 * shortcut: neither survives a markdown round trip, so the editor no
+			 * longer offers a control whose effect the next save discards.
+			 * Indent and outdent are off the toolbar for the same reason as a
+			 * paragraph, but they keep Tab and Shift+Tab inside a list, where
+			 * the command nests an item and the round trip is clean.
 			 *
 			 * `flex-nowrap`: at the panel's 400px minimum the bar must clip or
 			 * stack, and it does neither, because the list group steps out at

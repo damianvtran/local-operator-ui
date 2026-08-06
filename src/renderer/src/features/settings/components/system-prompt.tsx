@@ -3,6 +3,7 @@ import { Spinner } from "@shared/components/common/spinner";
 import { Alert, Button, Label, Textarea } from "@shared/components/ui";
 import { useSystemPrompt } from "@shared/hooks/use-system-prompt";
 import { useUpdateSystemPrompt } from "@shared/hooks/use-update-system-prompt";
+import { formatCalendarDateTime } from "@shared/utils/date-utils";
 import { NotebookPen, Save } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { ChangeEvent, FC } from "react";
@@ -105,7 +106,7 @@ export const SystemPrompt: FC = () => {
 					Last modified:{" "}
 					{/* A timestamp is machine voice, so the value is monospace. */}
 					<span className="font-mono text-mono-sm">
-						{new Date(systemPromptData.last_modified).toLocaleString()}
+						{formatCalendarDateTime(systemPromptData.last_modified)}
 					</span>
 				</p>
 			)}
