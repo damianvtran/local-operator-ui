@@ -311,7 +311,7 @@ const ChatColumnMock = () => (
 			    it is the geometry people check it against. */}
 			<div className="flex items-center justify-between">
 				<span className="flex items-center gap-2 text-meta text-ink-dim">
-					<Paperclip size={18} aria-hidden="true" />
+					<Paperclip size={16} aria-hidden="true" />
 					<span className="truncate">~/work/reports</span>
 				</span>
 				<span className="flex items-center gap-1">
@@ -321,17 +321,23 @@ const ChatColumnMock = () => (
 					    is a placeholder - which is exactly when the real send
 					    button is disabled and spends no accent at all - it draws
 					    `bg-sunken text-ink-disabled`, a neutral chip, which is
-					    what this copies. A half-strength accent square would
-					    still be advertising a state the product never renders.
+					    what this copies.
 
-					    Glyphs are the product's sizes at this width too:
-					    `iconSize` is 18 above the 550px dense-branch switch, and
-					    send is `Math.round(iconSize * 0.8)` = 14. */}
+					    Every glyph is 16, which is what the product RENDERS
+					    rather than what its source asks for: composer icons sit
+					    inside `<Button size="icon">`, and `button.tsx` puts
+					    `[&_svg]:size-4` on that variant, which overrides the
+					    SVG's own width and height. So the `size={iconSize}` and
+					    `Math.round(iconSize * 0.8)` in `message-input.tsx` never
+					    reach the screen, and copying those numbers here - as an
+					    earlier version of this comment did, from the source -
+					    drew a composer the app does not draw. Bare spans have no
+					    such rule, so the attribute is the rendered size. */}
 					<span className="flex size-8 items-center justify-center rounded-sm text-ink-dim">
-						<Mic size={18} aria-hidden="true" />
+						<Mic size={16} aria-hidden="true" />
 					</span>
 					<span className="flex size-8 items-center justify-center rounded-sm bg-sunken text-ink-disabled">
-						<Send size={14} aria-hidden="true" />
+						<Send size={16} aria-hidden="true" />
 					</span>
 				</span>
 			</div>
