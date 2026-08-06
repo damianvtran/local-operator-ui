@@ -9,6 +9,33 @@ import { useLayoutEffect } from "react";
 import "../../../styles/index.css";
 import { OnboardingModal } from "./onboarding-modal";
 
+/*
+ * The sign-in step's credit amounts come from a real fetch to the live Radient
+ * API, so twelve committed frames were racing the network: between two
+ * captures of identical source, `radient-sign-in/localOperatorDark` flipped
+ * from resolved values to two inline spinners mid-sentence. The numbers are
+ * also third-party content that can change without a commit here.
+ *
+ * Stubbed at the boundary, the way the schedules story does it, so the frames
+ * show one known set of values every time.
+ */
+const PRICES = {
+	default_new_credits: 5,
+	default_registration_credits: 10,
+};
+
+const originalFetch = window.fetch;
+window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+	const url = typeof input === "string" ? input : input.toString();
+	if (url.includes("/v1/prices")) {
+		return new Response(
+			JSON.stringify({ status: 200, message: "ok", result: PRICES }),
+			{ status: 200, headers: { "Content-Type": "application/json" } },
+		);
+	}
+	return originalFetch(input, init);
+}) as typeof window.fetch;
+
 /**
  * The first-run flow, one story per step.
  *
