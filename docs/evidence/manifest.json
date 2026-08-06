@@ -1,9 +1,9 @@
 {
-  "head": "ee13635263d2b08e530920e4259b6a800b6d2227",
-  "srcTree": "1c43f0f567badeee0e111391b67e83f04cdfc373",
-  "scriptsTree": "1e5f25139fa4aa2fe2e38a675a2ff11bc62b2a41",
-  "dirtyWorkingTree": true,
-  "capturedAt": "2026-08-05T19:34:56.425Z",
+  "head": "dc709aa8f8f86f8a74018b6fb18e844e315c3eb4",
+  "srcTree": "627743a9e1f31d866820c1636e2972edb61597fd",
+  "scriptsTree": "b827c6e6ed883ec913480082f9220cd46ee6723b",
+  "dirtyWorkingTree": false,
+  "capturedAt": "2026-08-06T00:11:51.183Z",
   "frames": 408,
   "surfaces": 34,
   "themes": 12
