@@ -1234,6 +1234,28 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 					selection && selection.rangeCount > 0
 						? selection.getRangeAt(0)
 						: null;
+				/* A boundary in an ELEMENT container addresses a position between
+				   that element's children, not the element itself. Selecting
+				   across list items can leave the end boundary on the `<ul>` at
+				   an offset - a triple-click does exactly this - and testing the
+				   `<ul>` finds no `li`, so a legitimate multi-item indent would
+				   stop working.
+
+				   Blank children are stepped over on the way back. Serialised
+				   HTML puts a whitespace text node between `</li>` and `</ul>`,
+				   so the last child of a list is usually not a list item, and
+				   resolving to it reintroduces the same failure one node along. */
+				const boundaryNode = (container: Node, offset: number): Node => {
+					if (container.nodeType !== Node.ELEMENT_NODE) return container;
+					const children = container.childNodes;
+					if (children.length === 0) return container;
+					const isBlank = (node: Node) =>
+						node.nodeType === Node.TEXT_NODE &&
+						(node.textContent ?? "").trim() === "";
+					let index = Math.min(offset, children.length - 1);
+					while (index > 0 && isBlank(children[index])) index--;
+					return children[index] ?? container;
+				};
 				const listItemFor = (node: Node | null): Element | null => {
 					const element =
 						node?.nodeType === Node.ELEMENT_NODE
@@ -1243,8 +1265,8 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 				};
 				if (
 					!range ||
-					!listItemFor(range.startContainer) ||
-					!listItemFor(range.endContainer)
+					!listItemFor(boundaryNode(range.startContainer, range.startOffset)) ||
+					!listItemFor(boundaryNode(range.endContainer, range.endOffset))
 				) {
 					return;
 				}
