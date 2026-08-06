@@ -46,17 +46,20 @@ const GROUND_CEILING = 25;
  * nothing rendered in it passed the ΔE00 test at distance 0. In the three
  * light palettes it is worse, because `#ffffff` sits ΔE00 1.13-2.49 from their
  * `elevated` - so Storybook's white spinner would read as a picture of the app
- * in 102 of the 408 frames, and the incident that started this was caught only
- * because the default theme happens to be dark.
+ * in the 105 light-palette frames, and the incident that started this was
+ * caught only because the default theme happens to be dark.
  *
  * 98.5% is measured, not chosen. It is a ceiling: one colour may cover up to
- * this much and no more. Across the 408 frames the most uniform legitimate
- * ones are the security-notice states at 96.39-96.99% - a short callout on a
- * tall ground - and the median frame is 56%. The empty frame was 99.99% and a
- * white spinner page is 99.96%. So the ceiling sits 1.51 above the highest
+ * this much and no more. Across the 420 frames the most uniform legitimate
+ * ones are the security-notice states at 96.31-96.99% - a short callout on a
+ * tall ground - and the median frame is 57.8%. The empty frame was 99.99% and
+ * a white spinner page is 99.96%. So the ceiling sits 1.51 above the highest
  * legitimate frame and 1.46 below the lowest real failure: close to the middle
  * of the gap between the two populations, with the wider margin on the side
  * that must not fail.
+ *
+ * Re-measure these when the set changes size; the two load-bearing numbers are
+ * the legitimate maximum and the margin above it.
  */
 const UNIFORMITY_CEILING = 0.985;
 

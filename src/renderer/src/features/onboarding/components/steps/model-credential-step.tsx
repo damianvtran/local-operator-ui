@@ -186,7 +186,12 @@ export const ModelCredentialStep: FC = () => {
 								rel="noopener noreferrer"
 								className="inline-flex items-center gap-1 text-accent text-meta underline-offset-4 hover:text-accent-hover hover:underline"
 							>
-								Get a {selectedCredentialInfo.name} key
+								{/* "Get your {name}", not "Get a {name} key": the names
+								    already end in "API key" for every provider in the
+								    catalogue, so the template rendered "Get a OpenAI
+								    API key key" - with the wrong article for half of
+								    them - on the first screen a new user reaches. */}
+								Get your {selectedCredentialInfo.name}
 								<ExternalLink size={12} aria-hidden="true" />
 							</a>
 						</div>

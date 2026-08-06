@@ -537,8 +537,14 @@ export const SettingsPage: FC = () => {
 		);
 	}
 
+	/* No `max-md:` set on the container or the rail below. The window's own
+	   minWidth is 800 and `md` is 768, so the stacked-rail variant could never
+	   render - five utilities describing a layout nobody has ever seen, and
+	   therefore nobody has tested. Re-pointing them above the floor would ship
+	   that untested rendering; if the stacked rail is wanted it is its own
+	   change, with its own frame. */
 	return (
-		<div className="flex h-full w-full overflow-hidden bg-canvas max-md:flex-col">
+		<div className="flex h-full w-full overflow-hidden bg-canvas">
 			{/*
 			 * The rail's edge lives here rather than on the nav, because only the
 			 * container knows which way the layout is running: the same hairline has
@@ -556,7 +562,7 @@ export const SettingsPage: FC = () => {
 			 * to render whole, so anything between 48 and 220 buys a few pixels of
 			 * content in exchange for an ellipsis on a destination's name.
 			 */}
-			<div className="w-12 shrink-0 overflow-y-auto border-r border-hairline min-[1040px]:w-55 max-md:max-h-[40vh] max-md:w-full max-md:border-r-0 max-md:border-b">
+			<div className="w-12 shrink-0 overflow-y-auto border-r border-hairline min-[1040px]:w-55">
 				<SettingsSidebar
 					activeSection={activeSection}
 					onSelectSection={handleSelectSection}
@@ -587,9 +593,6 @@ export const SettingsPage: FC = () => {
 				 */}
 				<div className="mx-auto flex w-full max-w-4xl flex-col gap-8 pb-8">
 					<PageHeader title="Settings" icon={Settings} />
-
-					{/* Section tier: 32px between groupings, and no boundary between
-					    them. */}
 					<div className="flex flex-col gap-8">
 						<div ref={sectionRefs.general} className="flex flex-col gap-8">
 							<SettingsSection

@@ -6,10 +6,15 @@ import { InstallerContent } from "./installer-content";
  * The installer window: the product on the left, the install on the right.
  *
  * It renders inside its own html entry, so the story reproduces that entry's
- * wrapper rather than the app shell. The theme control matters more here than
- * anywhere else: the installer is the first Local Operator window a person
- * ever sees and it inherits whichever palette is stored — including the light
- * ones, where the old white-only logo asset was invisible.
+ * wrapper rather than the app shell.
+ *
+ * The window itself only ever renders one palette: `installer.tsx` calls
+ * `applyThemeToDocument(DEFAULT_THEME)` and nothing there reads a stored
+ * preference, so eleven of the twelve frames below show a theme this window
+ * cannot produce. They are kept because the panel's own contrast should hold
+ * on any ground it is ever pointed at, but the one that matches the product
+ * is `localOperatorDark` - which is also why the main process paints
+ * `#16130e` behind it.
  */
 const meta: Meta = {
 	title: "Installer/InstallerContent",

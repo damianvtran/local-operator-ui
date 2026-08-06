@@ -261,7 +261,7 @@ export const AgentOptionsMenu: FC<AgentOptionsMenuProps> = ({
 			<ConfirmationModal
 				open={isClearModalOpen}
 				title="Clear conversation"
-				message="Are you sure you want to clear this conversation? This action cannot be undone and all messages will be permanently deleted."
+				message="This permanently deletes every message in this conversation. It cannot be undone."
 				confirmText="Clear"
 				cancelText="Cancel"
 				isDangerous

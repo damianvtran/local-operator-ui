@@ -1,6 +1,5 @@
 import RadientIcon from "@renderer/assets/radient-icon-1024x1024.png";
 import { Spinner } from "@shared/components/common/spinner";
-import { Button } from "@shared/components/ui";
 import { useRadientPricesQuery } from "@shared/hooks/use-radient-prices-query";
 import { useLowCreditsStore } from "@shared/store/low-credits-store";
 import { ExternalLink } from "lucide-react";
@@ -65,29 +64,37 @@ export const LowCreditsDialog: FC<LowCreditsDialogProps> = ({
 				</>
 			}
 		>
+			{/*
+			 * One accent-filled call to action, in the footer.
+			 *
+			 * There were two to the same URL about 100px apart, and the in-body
+			 * one neither closed the dialog nor recorded that the user had been
+			 * told - so taking it sent them to the browser and left the nag
+			 * armed to fire again. The body also spent bold accent on five
+			 * phrases, which with the two buttons and the logo put eight accent
+			 * marks on one screen against the three the branding doc allows.
+			 * Emphasis everywhere is emphasis nowhere, and here it was competing
+			 * with the only control that does anything.
+			 */}
 			<div className="flex flex-col items-center gap-4 py-2 text-center">
 				<img src={RadientIcon} alt="Radient logo" className="size-30" />
 				<p className="text-body-sm text-ink-muted">
 					Unlock the full power of Local Operator with{" "}
-					<span className="font-bold text-accent">Radient Pass</span>!
+					<span className="font-bold text-accent">Radient Pass</span>.
 				</p>
 				<p className="text-body-sm text-ink-muted">
-					Using Local Operator with{" "}
-					<span className="font-bold text-accent">Radient Automatic</span> is
-					often <span className="font-bold text-accent">cheaper</span> than
-					bringing your own key. Radient's smart model routing picks the most
-					cost-effective and powerful model for each step of your agentic
-					workflows.
+					Radient Automatic is often cheaper than bringing your own key: its
+					smart model routing picks the most cost-effective model for each step
+					of your agentic workflows.
 				</p>
 				<p className="text-body-sm text-ink-muted">
-					It's <span className="font-bold text-accent">pay-as-you-go</span> with
-					no commitments. Load up what you need, starting small for maximum
-					flexibility.
+					It's pay-as-you-go with no commitments. Load up what you need,
+					starting small for maximum flexibility.
 				</p>
 
 				<p className="text-body-sm text-ink-muted">
 					Plus, get{" "}
-					<span className="font-medium text-accent">
+					<span className="font-medium text-ink">
 						{isLoadingPrices ? (
 							<Spinner size="sm" className="mr-0.5 align-middle" />
 						) : (
@@ -102,21 +109,8 @@ export const LowCreditsDialog: FC<LowCreditsDialogProps> = ({
 					)}
 				</p>
 
-				<div className="mt-3 mb-1">
-					<Button asChild variant="primary" size="lg" className="min-w-55">
-						<a
-							href="https://console.radienthq.com"
-							target="_blank"
-							rel="noopener noreferrer"
-						>
-							<ExternalLink aria-hidden="true" />
-							Visit Radient Console
-						</a>
-					</Button>
-				</div>
 				<p className="text-meta text-ink-dim">
-					You can also access the Radient Console from the{" "}
-					<span className="font-bold text-accent">Settings</span> page anytime.
+					You can also reach the Radient Console from Settings at any time.
 				</p>
 			</div>
 		</BaseDialog>
