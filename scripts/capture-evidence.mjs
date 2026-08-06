@@ -536,7 +536,13 @@ const main = async () => {
 			 * that tolerates a legitimate scrim over a modal, something no
 			 * equality test on a ground colour can do.
 			 */
-			const prepared = false;
+			// `let`, and biome must not be allowed to talk you out of it: line
+			// 620 reassigns this. A formatter once rewrote it to `const` while
+			// the file was briefly unparseable - a stray backtick had ended the
+			// template literal below, so the browser-side code was being read
+			// as real source - and the result was committed and would have
+			// thrown on the first story.
+			let prepared = false;
 			for (let i = 0; i < 300 && !prepared; i++) {
 				const { result } = await cdp.send("Runtime.evaluate", {
 					returnByValue: true,
@@ -566,9 +572,11 @@ const main = async () => {
 						   because a recapture usually repairs it, which is what
 						   makes it look like encoder noise in a diff.
 
-						   `document.fonts.status` is synchronous, so this poll
-						   can read it without becoming async; `fonts.ready`
-						   resolving is what flips it. */
+						   document.fonts.status is synchronous, so this poll can
+						   read it without becoming async; fonts.ready resolving
+						   is what flips it. No backticks in this comment: the
+						   whole block is a template literal handed to
+						   Runtime.evaluate, and one would end it here. */
 						if (document.fonts.status !== "loaded") return false;
 						/* Count the STORY's elements, wherever they live.
 						   A plain body count passes on Storybook's own chrome,
