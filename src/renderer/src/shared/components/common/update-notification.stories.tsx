@@ -1,4 +1,5 @@
 import { Button, Progress } from "@shared/components/ui";
+import { cn } from "@shared/lib/utils";
 import type { Meta, StoryObj } from "@storybook/react";
 import type { ProgressInfo, UpdateInfo } from "electron-updater";
 import parse from "html-react-parser";
@@ -6,6 +7,7 @@ import { useEffect, useState } from "react";
 import { FloatingAlert } from "./floating-alert";
 import {
 	ProgressContainer,
+	RELEASE_NOTES_PROSE,
 	UpdateActions,
 	UpdateContainer,
 	UpdateNotification,
@@ -412,7 +414,16 @@ export const UpdateAvailable: Story = {
 							version {process.env.npm_package_version || "1.0.0"}.
 						</p>
 						{info.releaseNotes && (
-							<div className="mt-2 text-body text-ink-muted">
+							/* The same prose set the component uses, imported rather
+							   than retyped: this story draws its own copy of the panel,
+							   and the release-notes formatting defect it exists to show
+							   was invisible precisely because the copy had drifted. */
+							<div
+								className={cn(
+									"mt-2 text-body text-ink-muted",
+									RELEASE_NOTES_PROSE,
+								)}
+							>
 								Release notes:{" "}
 								{typeof info.releaseNotes === "string"
 									? parse(info.releaseNotes)

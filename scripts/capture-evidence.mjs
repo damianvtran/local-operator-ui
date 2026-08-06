@@ -100,6 +100,7 @@ const STORIES = [
 	["schedules-page--row-actions-revealed", 1280, 900],
 	["schedules-page--row-action-label", 1280, 900],
 	["common-confirmationmodal--dangerous", 1280, 900],
+	["common-updatenotification--update-available", 1280, 900],
 	["command-palette-commandpalette--default", 1280, 800],
 	["command-palette-commandpalette--no-results", 1280, 800],
 
