@@ -1,14 +1,11 @@
-import { faExclamationTriangle } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { DialogContentText, Typography, styled } from "@mui/material";
+import { DialogDescription } from "@shared/components/ui";
+import { TriangleAlert } from "lucide-react";
 import type { FC, ReactNode } from "react";
-import { useEffect } from "react";
 import {
 	BaseDialog,
 	DangerButton,
 	PrimaryButton,
 	SecondaryButton,
-	TitleContainer,
 } from "./base-dialog";
 
 type ConfirmationModalProps = {
@@ -46,11 +43,6 @@ type ConfirmationModalProps = {
 	onCancel: () => void;
 };
 
-const WarningIcon = styled(FontAwesomeIcon)(({ theme }) => ({
-	color: theme.palette.error.main,
-	fontSize: "1.2rem",
-}));
-
 /**
  * A reusable confirmation modal component
  *
@@ -66,49 +58,39 @@ export const ConfirmationModal: FC<ConfirmationModalProps> = ({
 	onConfirm,
 	onCancel,
 }) => {
-	useEffect(() => {
-		const handleKeyDown = (event: KeyboardEvent): void => {
-			if (!open) {
-				return;
-			}
-			if (event.key === "Enter") {
-				onConfirm();
-			} else if (event.key === "Escape") {
-				onCancel();
-			}
-		};
-
-		document.addEventListener("keydown", handleKeyDown);
-
-		return () => {
-			document.removeEventListener("keydown", handleKeyDown);
-		};
-	}, [open, onConfirm, onCancel]);
+	/*
+	 * No Enter handler here, deliberately.
+	 *
+	 * There used to be a document-level one that called `onConfirm` on any
+	 * Enter, on the theory that a confirmation should be one keystroke. With
+	 * `autoFocus` gone from the confirm buttons, Radix focuses the first
+	 * tabbable - which is Cancel - so pressing Enter on a visibly focused
+	 * "Cancel" ran the destructive action instead, and ran it FIRST: keydown
+	 * reaches document before the browser dispatches the button's activation
+	 * click, so both fired and the delete won. Every one of the six dialogs
+	 * that use this component is destructive.
+	 *
+	 * Enter now does what it does everywhere else - activates the focused
+	 * button. Cancel is focused, so Enter cancels; Tab then Enter confirms.
+	 * Escape is left to the dialog primitive, which already cancels on it.
+	 */
 
 	const dialogTitle = isDangerous ? (
-		<TitleContainer>
-			<WarningIcon icon={faExclamationTriangle} />
-			<Typography variant="h6" component="span" color="error">
-				{title}
-			</Typography>
-		</TitleContainer>
+		<>
+			<TriangleAlert size={19} className="text-danger" aria-hidden="true" />
+			<span className="text-danger">{title}</span>
+		</>
 	) : (
 		title
 	);
 
 	const dialogActions = (
 		<>
-			<SecondaryButton onClick={onCancel} variant="outlined">
-				{cancelText}
-			</SecondaryButton>
+			<SecondaryButton onClick={onCancel}>{cancelText}</SecondaryButton>
 			{isDangerous ? (
-				<DangerButton onClick={onConfirm} autoFocus>
-					{confirmText}
-				</DangerButton>
+				<DangerButton onClick={onConfirm}>{confirmText}</DangerButton>
 			) : (
-				<PrimaryButton onClick={onConfirm} autoFocus>
-					{confirmText}
-				</PrimaryButton>
+				<PrimaryButton onClick={onConfirm}>{confirmText}</PrimaryButton>
 			)}
 		</>
 	);
@@ -120,14 +102,15 @@ export const ConfirmationModal: FC<ConfirmationModalProps> = ({
 			title={dialogTitle}
 			actions={dialogActions}
 			maxWidth="xs"
-			dialogProps={{
-				"aria-labelledby": "confirmation-dialog-title",
-				"aria-describedby": "confirmation-dialog-description",
-			}}
 		>
-			<DialogContentText id="confirmation-dialog-description">
-				{message}
-			</DialogContentText>
+			{/*
+			 * `asChild` so the description is a `div`: callers pass paragraphs as
+			 * `message`, and a `p` inside a `p` is invalid and gets unnested by the
+			 * parser.
+			 */}
+			<DialogDescription asChild>
+				<div className="text-body text-ink-muted">{message}</div>
+			</DialogDescription>
 		</BaseDialog>
 	);
 };

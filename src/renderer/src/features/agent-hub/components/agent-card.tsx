@@ -1,22 +1,11 @@
-import {
-	Avatar,
-	Box,
-	ButtonBase,
-	Card,
-	CardActions,
-	CardContent,
-	Chip,
-	IconButton,
-	Skeleton,
-	Tooltip,
-	Typography,
-} from "@mui/material";
-import { styled } from "@mui/material/styles";
 import type { Agent } from "@shared/api/radient/types";
+import { Button, Skeleton, Tooltip } from "@shared/components/ui";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
+import { cn } from "@shared/lib/utils";
 import { formatDistanceToNowStrict } from "date-fns";
-import { Bot, Download, Heart, Info, Star } from "lucide-react";
+import { Download, Heart, Star } from "lucide-react";
 import type React from "react";
+import { useCallback, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAgentDownloadCountQuery } from "../hooks/use-agent-download-count-query";
 import { useAgentFavouriteCountQuery } from "../hooks/use-agent-favourite-count-query";
@@ -30,148 +19,21 @@ type AgentCardProps = {
 	isFavourited: boolean;
 	onLikeToggle: (agentId: string) => void;
 	onFavouriteToggle: (agentId: string) => void;
-	isLikeActionLoading?: boolean; // Optional: Loading state for like button
-	isFavouriteActionLoading?: boolean; // Optional: Loading state for favourite button
-	showActions?: boolean; // Optional: Whether to show like/favourite buttons
+	isLikeActionLoading?: boolean;
+	isFavouriteActionLoading?: boolean;
+	showActions?: boolean;
 };
 
-const CountDisplay = styled("span")(({ theme }) => ({
-	fontSize: "0.8rem",
-	marginLeft: theme.spacing(0.75),
-	color: theme.palette.text.secondary,
-	display: "inline-flex",
-	alignItems: "center",
-	minWidth: "20px",
-	height: "1em",
-}));
-
-const StyledCard = styled(Card)(({ theme }) => ({
-	display: "flex",
-	flexDirection: "column",
-	height: 410,
-	maxHeight: 410,
-	border: `1px solid ${theme.palette.divider}`,
-	backgroundImage: "none",
-	backgroundColor: theme.palette.background.default,
-	borderRadius: theme.shape.borderRadius * 2,
-	transition: "box-shadow 0.3s, border-color 0.3s",
-	"&:hover": {
-		boxShadow: theme.shadows[4],
-		borderColor: theme.palette.primary.main,
-		cursor: "pointer",
-	},
-	overflow: "hidden",
-}));
-
-const StyledCardContent = styled(CardContent)({
-	display: "flex",
-	flexDirection: "column",
-	flexGrow: 1,
-	minHeight: 0,
-	paddingBottom: 0,
-});
-
-const AgentName = styled(Typography)(({ theme }) => ({
-	fontWeight: 500,
-	marginBottom: theme.spacing(1),
-	overflow: "hidden",
-	textOverflow: "ellipsis",
-	whiteSpace: "nowrap",
-}));
-
-// New AgentDescription style: no minHeight, no line clamp, just ellipsis for single line
-const AgentDescription = styled(Typography)(({ theme }) => ({
-	color: theme.palette.text.secondary,
-	marginBottom: theme.spacing(2),
-	fontSize: "0.875rem",
-}));
-
-const MetaInfoContainer = styled(Box)(({ theme }) => ({
-	display: "flex",
-	flexDirection: "column",
-	gap: theme.spacing(0.5),
-	marginBottom: theme.spacing(2),
-}));
-
-const MetaInfoItem = styled(Typography)(({ theme }) => ({
-	fontSize: "0.75rem",
-	color: theme.palette.text.secondary,
-	display: "flex",
-	alignItems: "center",
-	gap: theme.spacing(0.5),
-}));
-
-const StyledCardActions = styled(CardActions)(({ theme }) => ({
-	justifyContent: "space-between",
-	padding: theme.spacing(1, 2),
-	borderTop: `1px solid ${theme.palette.divider}`,
-}));
-
-const ActionButtonGroup = styled(Box)({
-	display: "flex",
-	alignItems: "center",
-});
-
-const DownloadChip = styled(Chip)(({ theme }) => ({
-	marginLeft: theme.spacing(1),
-	fontSize: "0.75rem",
-	height: "24px",
-}));
-
 /**
- * Allowed palette color keys for LikeFavouriteButton.
- */
-type LikeFavouriteButtonColor =
-	| "primary"
-	| "secondary"
-	| "error"
-	| "warning"
-	| "info"
-	| "success";
-
-/**
- * Like/Favourite button styled for palette safety.
- */
-const LikeFavouriteButton = styled(ButtonBase, {
-	shouldForwardProp: (prop) => prop !== "color",
-})<{ color?: LikeFavouriteButtonColor }>(({ theme, color }) => ({
-	display: "inline-flex",
-	alignItems: "center",
-	justifyContent: "center",
-	borderRadius: 8,
-	padding: theme.spacing(0.5, 1),
-	color: color ? theme.palette[color].main : theme.palette.text.primary,
-	background: "transparent",
-	transition: "background 0.2s, color 0.2s",
-	width: "fit-content",
-	"&:hover": {
-		background: theme.palette.action.hover,
-		textDecoration: "none",
-	},
-	"&:disabled": {
-		opacity: 0.5,
-		pointerEvents: "none",
-	},
-}));
-
-// Helper function to truncate text with ellipsis if over 140 chars
-function truncateWithEllipsis(text: string, maxLength = 140): string {
-	if (!text) return "";
-	if (text.length <= maxLength) return text;
-	return `${text.slice(0, maxLength - 1)}…`;
-}
-
-/**
- * Renders a card displaying information about a public agent, with avatar and details icon.
+ * Renders a card displaying information about a public agent.
  *
- * @param agent - The agent data to display.
- * @param isLiked - Whether the agent is liked by the user.
- * @param isFavourited - Whether the agent is favourited by the user.
- * @param onLikeToggle - Callback for toggling like state.
- * @param onFavouriteToggle - Callback for toggling favourite state.
- * @param isLikeActionLoading - Loading state for like button.
- * @param isFavouriteActionLoading - Loading state for favourite button.
- * @param showActions - Whether to show like/favourite buttons.
+ * One boundary per card: a `bg-surface` panel with a hairline edge, rounded
+ * `lg`. Hover is a colour step on the border only — nothing lifts.
+ *
+ * Structure note: the info half is one native `<button>` (the card is the
+ * "open details" affordance), and like/favourite/download live in their own
+ * bar beside it. A card-wide click target with nested buttons would need
+ * `stopPropagation` hacks and focus traps; two adjacent targets need neither.
  */
 export const AgentCard: React.FC<AgentCardProps> = ({
 	agent,
@@ -200,32 +62,35 @@ export const AgentCard: React.FC<AgentCardProps> = ({
 			agentId: agent.id,
 		});
 
-	const handleCardClick = () => {
-		navigate(`/agent-hub/${agent.id}`);
-	};
-
-	const handleActionClick = (
-		event: React.MouseEvent<HTMLButtonElement>,
-		action: (agentId: string) => void,
-	) => {
-		event.stopPropagation();
-		action(agent.id);
-	};
-
-	const handleDownloadClick = (event: React.MouseEvent<HTMLButtonElement>) => {
-		event.stopPropagation();
-		if (!downloadMutation.isPending) {
-			downloadMutation.mutate({ agentId: agent.id, agentName: agent.name });
-		}
-	};
-
-	const handleDetailsClick = (event: React.MouseEvent<HTMLButtonElement>) => {
-		event.stopPropagation();
-		navigate(`/agent-hub/${agent.id}`);
-	};
-
 	const description = agent.description ?? "";
-	const truncatedDescription = truncateWithEllipsis(description, 140);
+
+	/*
+	 * Whether the three-line clamp is actually cutting anything. This used to
+	 * be `description.length > 140`, which is a different question: how many
+	 * lines a description takes depends on the column width, so a 100-character
+	 * description in a narrow card clamped with no tooltip to read it in, and a
+	 * 150-character one in a wide card offered a tooltip repeating what was
+	 * already on screen. `scrollHeight` against `clientHeight` asks the clamp
+	 * itself, re-asked whenever the card is resized.
+	 */
+	const [isClipped, setIsClipped] = useState(false);
+	const clampObserver = useRef<ResizeObserver | null>(null);
+
+	// A ref callback rather than an effect: toggling the tooltip on remounts
+	// the element it wraps, and the observer has to follow the live node or it
+	// keeps measuring a detached one — which reads 0 and flaps the flag back.
+	const measureClamp = useCallback((node: HTMLSpanElement | null) => {
+		clampObserver.current?.disconnect();
+		clampObserver.current = null;
+		if (!node) return;
+		// 1px: the two heights are rounded independently.
+		const measure = () =>
+			setIsClipped(node.scrollHeight - node.clientHeight > 1);
+		measure();
+		const observer = new ResizeObserver(measure);
+		observer.observe(node);
+		clampObserver.current = observer;
+	}, []);
 
 	const likeTooltip = isAuthenticated
 		? isLiked
@@ -237,209 +102,183 @@ export const AgentCard: React.FC<AgentCardProps> = ({
 			? "Unfavourite agent"
 			: "Favourite agent"
 		: "Log in to Radient to favourite agents";
-	const downloadTooltip = "Download agent to your computer";
 
 	return (
-		<StyledCard onClick={handleCardClick}>
-			<Box
-				sx={{
-					display: "flex",
-					alignItems: "flex-start",
-					justifyContent: "space-between",
-					px: 2,
-					pt: 2,
-					pb: 0,
-				}}
+		<div className="flex h-full flex-col overflow-hidden rounded-lg border border-hairline bg-surface transition-colors duration-fast ease-out-quart hover:border-control">
+			<button
+				type="button"
+				onClick={() => navigate(`/agent-hub/${agent.id}`)}
+				className="flex min-h-0 flex-1 cursor-pointer flex-col gap-2 p-4 text-left"
+				aria-label={`View details for ${agent.name}`}
 			>
-				<Avatar
-					sx={{
-						bgcolor: (theme) => theme.palette.icon.background,
-						color: (theme) => theme.palette.icon.text,
-						width: 44,
-						height: 44,
-						boxShadow: 2,
-						border: (theme) => `2px solid ${theme.palette.primary.main}`,
-					}}
-					variant="circular"
-				>
-					<Bot size={24} />
-				</Avatar>
-				{/* @ts-ignore - Tooltip title prop type issue */}
-				<Tooltip title="See details">
-					<IconButton
-						size="small"
-						onClick={handleDetailsClick}
-						sx={{
-							color: (theme) => theme.palette.icon.text,
-							borderRadius: 2,
-							ml: 1,
-						}}
-						aria-label="See details"
+				<h3 className="truncate font-medium text-heading text-ink">
+					{agent.name}
+				</h3>
+				{/*
+				 * A fixed three-line description. Clamping rather than truncating
+				 * at a character count keeps every card's footer on the same
+				 * baseline, which is the difference between a grid and eight
+				 * boxes of different heights. The text is no longer pre-cut at 139
+				 * characters either — the clamp already ends the line with an
+				 * ellipsis, and cutting first meant a card wide enough to show the
+				 * whole description still showed a truncated one.
+				 *
+				 * `Tooltip` renders its child bare when `content` is empty, so
+				 * there is one element here and it only gains a tooltip once the
+				 * clamp is measurably cutting text.
+				 */}
+				<Tooltip content={isClipped ? description : ""}>
+					<span
+						ref={measureClamp}
+						className="line-clamp-3 min-h-0 text-body-sm text-ink-muted"
 					>
-						<Info size={18} />
-					</IconButton>
+						{description}
+					</span>
 				</Tooltip>
-			</Box>
-			<StyledCardContent>
-				<AgentName variant="h6">{agent.name}</AgentName>
-				<Box
-					sx={{
-						flexGrow: 1,
-						minHeight: 0,
-						display: "flex",
-						flexDirection: "column",
-					}}
-				>
-					{description.length > 140 ? (
-						<Tooltip title={description} arrow>
-							<span>
-								<AgentDescription
-									variant="body2"
-									sx={{ flexGrow: 1, minHeight: 0 }}
-								>
-									{truncatedDescription}
-								</AgentDescription>
-							</span>
-						</Tooltip>
-					) : (
-						<AgentDescription
-							variant="body2"
-							sx={{ flexGrow: 1, minHeight: 0 }}
-						>
-							{truncatedDescription}
-						</AgentDescription>
-					)}
-				</Box>
-				<Box>
+
+				<div className="mt-auto flex flex-col gap-2 pt-2">
 					<AgentTagsAndCategories
 						tags={agent.tags}
 						categories={agent.categories}
 					/>
-					<MetaInfoContainer>
-						<MetaInfoItem>
-							Creator: {agent.account_metadata?.name ?? "Unknown"} (
-							{agent.account_metadata?.email ?? "No email"})
-						</MetaInfoItem>
-						<MetaInfoItem>
-							Created: {formatDistanceToNowStrict(new Date(agent.created_at))}{" "}
-							ago
-						</MetaInfoItem>
-						<MetaInfoItem>
-							Updated: {formatDistanceToNowStrict(new Date(agent.updated_at))}{" "}
-							ago
-						</MetaInfoItem>
-					</MetaInfoContainer>
-				</Box>
-			</StyledCardContent>
-			<StyledCardActions>
-				<ActionButtonGroup>
-					{/* @ts-ignore - Tooltip title prop type issue */}
-					<Tooltip title={likeTooltip}>
+					{/*
+					 * One line of provenance instead of three labelled ones. Nobody
+					 * browsing a marketplace needs the author's email address or the
+					 * date the agent was first published; they need to know who made
+					 * it and whether it is still being looked after.
+					 */}
+					<p className="truncate text-ink-dim text-meta">
+						{agent.account_metadata?.name ?? "Unknown author"}
+						<span aria-hidden="true" className="mx-1.5">
+							·
+						</span>
+						updated {formatDistanceToNowStrict(new Date(agent.updated_at))} ago
+					</p>
+				</div>
+			</button>
+
+			{/*
+			 * The footer.
+			 *
+			 * Download is the reason the card exists, so it is the only labelled
+			 * control and the count sits next to it as plain text — the bordered
+			 * pill it used to wear was clipped at "1840 Downl…" in a four-column
+			 * grid. Like and favourite are reactions, not the job, and they read
+			 * as two quiet counters.
+			 *
+			 * Active, those two borrow the `danger` and `warning` hues. Neither is
+			 * a warning about anything — the palette has no "liked" role to spend,
+			 * and those families are where the red and the amber a person expects
+			 * behind a heart and a star actually live. What they replace is the
+			 * MUI-era `#e53935` and `#ffb300`, which ignored all twelve palettes
+			 * and put the favourited star at 1.62:1 on `iceberg`, under half the
+			 * 3:1 floor a meaningful graphic owes its ground.
+			 * `agent-details-page` renders the same pair the same way.
+			 *
+			 * The counter group carries `min-w-0` and the row wraps, because a
+			 * flex item defaults to `min-width: auto` and so refuses to shrink
+			 * below its min-content width. Three counters that will not yield
+			 * pushed the action past the card's `overflow-hidden` edge, and
+			 * `shrink-0` on the action cannot rescue what is already outside the
+			 * box. `min-w-0` lets the group give way; `flex-wrap` makes the
+			 * action drop to a second line rather than off the card, whatever
+			 * the counts turn out to be.
+			 */}
+			<div className="flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-hairline px-3 py-2">
+				<div className="flex min-w-0 items-center gap-0.5">
+					<Tooltip content={likeTooltip}>
 						<span>
-							<LikeFavouriteButton
+							<Button
+								variant="ghost"
+								size="sm"
 								onClick={
-									isAuthenticated
-										? (e) => handleActionClick(e, onLikeToggle)
-										: undefined
+									isAuthenticated ? () => onLikeToggle(agent.id) : undefined
 								}
 								disabled={isLikeActionLoading || !isAuthenticated}
-								color={isLiked ? "error" : undefined}
 								aria-label={isLiked ? "Unlike agent" : "Like agent"}
-								focusRipple
-								tabIndex={0}
-								type="button"
+								className={cn(isLiked && "text-danger")}
 							>
 								<Heart
-									size={18}
-									strokeWidth={2}
-									fill={isLiked ? "#e53935" : "none"}
-									color={isLiked ? "#e53935" : undefined}
-									style={{ verticalAlign: "middle" }}
+									fill={isLiked ? "currentColor" : "none"}
 									data-testid="agent-like-heart"
 								/>
-								<CountDisplay>
+								<span className="inline-flex h-4 min-w-4 items-center font-mono text-mono-sm text-ink-muted">
 									{isLoadingLikes ? (
-										<Skeleton variant="text" width={20} />
+										<Skeleton className="h-3 w-4" />
 									) : (
 										(likeCount ?? 0)
 									)}
-								</CountDisplay>
-							</LikeFavouriteButton>
+								</span>
+							</Button>
 						</span>
 					</Tooltip>
-					{/* @ts-ignore - Tooltip title prop type issue */}
-					<Tooltip title={favouriteTooltip}>
+					<Tooltip content={favouriteTooltip}>
 						<span>
-							<LikeFavouriteButton
+							<Button
+								variant="ghost"
+								size="sm"
 								onClick={
 									isAuthenticated
-										? (e) => handleActionClick(e, onFavouriteToggle)
+										? () => onFavouriteToggle(agent.id)
 										: undefined
 								}
 								disabled={isFavouriteActionLoading || !isAuthenticated}
-								color={isFavourited ? "warning" : undefined}
 								aria-label={
 									isFavourited ? "Unfavourite agent" : "Favourite agent"
 								}
-								focusRipple
-								tabIndex={0}
-								type="button"
+								className={cn(isFavourited && "text-warning")}
 							>
 								<Star
-									size={18}
-									strokeWidth={2}
-									fill={isFavourited ? "#ffb300" : "none"}
-									color={isFavourited ? "#ffb300" : undefined}
-									style={{ verticalAlign: "middle" }}
+									fill={isFavourited ? "currentColor" : "none"}
 									data-testid="agent-favourite-star"
 								/>
-								<CountDisplay>
+								<span className="inline-flex h-4 min-w-4 items-center font-mono text-mono-sm text-ink-muted">
 									{isLoadingFavourites ? (
-										<Skeleton variant="text" width={20} />
+										<Skeleton className="h-3 w-4" />
 									) : (
 										(favouriteCount ?? 0)
 									)}
-								</CountDisplay>
-							</LikeFavouriteButton>
+								</span>
+							</Button>
 						</span>
 					</Tooltip>
-				</ActionButtonGroup>
-				<ActionButtonGroup>
-					{/* @ts-ignore - Tooltip title prop type issue */}
-					<Tooltip title={downloadTooltip}>
-						<span>
-							<IconButton
-								size="small"
-								onClick={handleDownloadClick}
-								disabled={downloadMutation.isPending}
-								aria-label="Download agent"
-								data-tour-tag="agent-hub-download-button"
-							>
-								<Download
-									size={18}
-									strokeWidth={2}
-									style={{ verticalAlign: "middle" }}
-									data-testid="agent-download"
-								/>
-							</IconButton>
+					<Tooltip content="Downloads">
+						<span className="ml-1 inline-flex items-center gap-1 pr-1 text-ink-dim">
+							<Download aria-hidden="true" className="size-3.5" />
+							<span className="inline-flex h-4 min-w-4 items-center font-mono text-mono-sm">
+								{isLoadingDownloads || downloadMutation.isPending ? (
+									<Skeleton className="h-3 w-6" />
+								) : (
+									(downloadCount ?? 0).toLocaleString()
+								)}
+							</span>
 						</span>
 					</Tooltip>
-					{isLoadingDownloads || downloadMutation.isPending ? (
-						<Skeleton
-							variant="rounded"
-							width={100}
-							height={24}
-							sx={{ ml: 1 }}
-						/>
-					) : (
-						<DownloadChip
-							label={`${downloadCount ?? 0} Download${downloadCount !== 1 ? "s" : ""}`}
-							size="small"
-							variant="outlined"
-						/>
-					)}
-				</ActionButtonGroup>
-			</StyledCardActions>
-		</StyledCard>
+				</div>
+				{/* `ml-auto` rather than `justify-between`: it holds the action at the
+				    right edge on the wrapped line too, where a lone flex item would
+				    otherwise sit at the start. */}
+				<div className="ml-auto flex shrink-0 items-center">
+					<Button
+						variant="secondary"
+						size="sm"
+						onClick={() => {
+							if (!downloadMutation.isPending) {
+								downloadMutation.mutate({
+									agentId: agent.id,
+									agentName: agent.name,
+								});
+							}
+						}}
+						disabled={downloadMutation.isPending}
+						aria-label={`Download ${agent.name}`}
+						data-tour-tag="agent-hub-download-button"
+					>
+						<Download data-testid="agent-download" />
+						Get
+					</Button>
+				</div>
+			</div>
+		</div>
 	);
 };

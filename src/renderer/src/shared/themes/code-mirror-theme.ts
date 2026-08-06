@@ -2,117 +2,273 @@ import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import type { Extension } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { tags as t } from "@lezer/highlight";
-import type { Theme } from "@mui/material";
 
-export const getCodeMirrorTheme = (theme: Theme): Extension => {
-	const colors = {
-		background: theme.palette.background.paper,
-		foreground: theme.palette.text.primary,
-		selection: theme.palette.action.selected,
-		comment: theme.palette.text.secondary,
-		keyword: theme.palette.secondary.main,
-		operator: theme.palette.text.secondary,
-		string: theme.palette.primary.main,
-		number: "#ae81ff", // Monokai purple
-		regexp: "#e6db74", // Monokai yellow
-		className: "#a6e22e", // Monokai green
-		variableName: theme.palette.text.primary,
-		base: theme.palette.text.primary,
-	};
+/**
+ * The editor's syntax colours, taken from the theme's roles.
+ *
+ * Every hue here is an authored, contrast-checked role rather than a literal.
+ * This used to hardcode three Monokai values — a purple, a yellow and a green
+ * — so every theme's editor was partly Monokai, and on the two light themes
+ * those three landed at roughly 2:1 on the editor ground.
+ *
+ * Five hues is the whole budget: the semantic four plus the accent. Anything
+ * finer would need colours no palette authors, and inventing them per theme is
+ * what this port removed.
+ *
+ * The roles arrive as `var(--color-*)` rather than as resolved values, because
+ * `EditorView.theme` and `HighlightStyle.define` both compile to real CSS and
+ * the browser resolves the variables at paint. So the editor follows a theme
+ * swap on its own, the extensions below are built once at import, and nothing
+ * here has to be re-run — or even observed — by React.
+ */
+/*
+ * Syntax roles, and why these.
+ *
+ * `accent` must not appear in syntax highlighting at all. It is deliberately
+ * excluded from the contract's semantic-separation gate, and it measures dE00
+ * 0.00 against `success` on monokai, against `info` on dune, and against
+ * `ink` on obsidian - so the previous mapping, which put keywords on accent
+ * and strings on success, rendered two token classes in literally the same
+ * colour on five palettes.
+ *
+ * The four gated semantics carry keyword, string, number and function;
+ * `inkDim` carries comment; `ink` carries names. Chosen by exhaustive search
+ * over the 24 permutations of the four semantics across the four slots,
+ * maximising the worst pairwise dE00 across all twelve palettes: keyword =
+ * success, string = warning, number = danger, function = info, worst case
+ * 8.87 (radient, function vs comment). The same mapping was recommended
+ * independently with a worst case of 8.88; both numbers are measurements.
+ *
+ * Two deliberate limits, recorded so they are not mistaken for oversights.
+ * obsidian's `info` IS its `ink`, so function and variable names cannot be
+ * separated by hue there; `functionName` takes a heavier weight instead. And
+ * `inkDisabled` was measured and rejected for comments - it is the authentic
+ * upstream comment colour, but it fails 4.5:1 on the editor ground in all
+ * twelve palettes, down to 1.91:1 on iceberg.
+ */
+const colors = {
+	background: "var(--color-sunken)",
+	foreground: "var(--color-ink)",
+	selection: "var(--color-accent-wash)",
+	comment: "var(--color-ink-dim)",
+	keyword: "var(--color-success)",
+	operator: "var(--color-ink-muted)",
+	string: "var(--color-warning)",
+	number: "var(--color-danger)",
+	regexp: "var(--color-info)",
+	/*
+	 * Class and type names deliberately do NOT ride `info`. In four palettes
+	 * `info` is `accent`'s twin, and in obsidian it is `ink` itself, so a
+	 * className on `info` collapses into the variable names beside it. `ink`
+	 * at a heavier weight is the treatment: the same hue the names carry, one
+	 * step of emphasis, readable in every palette.
+	 */
+	className: "var(--color-ink)",
+	functionName: "var(--color-info)",
+	variableName: "var(--color-ink)",
+	base: "var(--color-ink)",
+} as const;
 
-	const fontFamily = "'Geist Mono', 'Roboto Mono', monospace";
+/*
+ * The app's mono stack, read from the token rather than restated.
+ *
+ * This used to hardcode "'Geist Mono', 'Roboto Mono', monospace", which is a
+ * second source of truth for the one decision that makes machine voice read as
+ * machine voice. It had already drifted from `--font-mono` in index.css, so
+ * the editor and the surrounding trace could resolve different faces - and the
+ * whole reason `--font-mono` was corrected was that mono was splitting across
+ * two faces. A CSS variable works here because CodeMirror emits real
+ * stylesheets, not canvas text.
+ */
+const fontFamily = "var(--font-mono)";
 
-	const editorTheme = EditorView.theme(
-		{
-			"&": {
-				color: colors.foreground,
-				backgroundColor: colors.background,
-				fontFamily: fontFamily,
-				fontSize: theme.typography.pxToRem(11),
-				letterSpacing: "0.05em",
-			},
-			".cm-content": {
-				caretColor: theme.palette.primary.main,
-				fontFamily: fontFamily,
-			},
-			".cm-content *": {
-				fontFamily: `${fontFamily} !important`,
-			},
-			"&.cm-focused .cm-cursor": {
-				borderLeftColor: theme.palette.primary.main,
-			},
-			"&.cm-focused .cm-selectionBackground, ::selection": {
-				backgroundColor: colors.selection,
-			},
-			".cm-gutters": {
-				backgroundColor: colors.background,
-				color: theme.palette.text.disabled,
-				border: "none",
-				fontFamily: fontFamily,
-			},
-			".cm-line": {
-				fontFamily: fontFamily,
-			},
-		},
-		{ dark: theme.palette.mode === "dark" },
-	);
-
-	const highlightStyle = HighlightStyle.define([
-		{ tag: t.keyword, color: colors.keyword },
-		{
-			tag: [t.name, t.deleted, t.character, t.propertyName, t.macroName],
-			color: colors.base,
-		},
-		{
-			tag: [t.function(t.variableName), t.labelName],
-			color: colors.foreground,
-		},
-		{
-			tag: [t.color, t.constant(t.name), t.standard(t.name)],
-			color: colors.foreground,
-		},
-		{ tag: [t.definition(t.name), t.separator], color: colors.foreground },
-		{
-			tag: [
-				t.typeName,
-				t.className,
-				t.number,
-				t.changed,
-				t.annotation,
-				t.modifier,
-				t.self,
-				t.namespace,
-			],
-			color: colors.className,
-		},
-		{
-			tag: [
-				t.operator,
-				t.operatorKeyword,
-				t.url,
-				t.escape,
-				t.regexp,
-				t.link,
-				t.special(t.string),
-			],
-			color: colors.regexp,
-		},
-		{ tag: [t.meta, t.comment], color: colors.comment },
-		{ tag: t.strong, fontWeight: "bold" },
-		{ tag: t.emphasis, fontStyle: "italic" },
-		{ tag: t.strikethrough, textDecoration: "line-through" },
-		{ tag: t.link, color: colors.comment, textDecoration: "underline" },
-		{ tag: t.heading, fontWeight: "bold", color: colors.foreground },
-		{
-			tag: [t.atom, t.bool, t.special(t.variableName)],
-			color: colors.foreground,
-		},
-		{
-			tag: [t.processingInstruction, t.string, t.inserted],
-			color: colors.string,
-		},
-		{ tag: t.invalid, color: theme.palette.error.main },
-	]);
-
-	return [editorTheme, syntaxHighlighting(highlightStyle)];
+/**
+ * The editor chrome. Shared by both variants below, so the light and dark
+ * builds differ only in the flag CodeMirror keys its own base theme off.
+ *
+ * `0.6875rem` is the 11px this used to compute through `pxToRem`; the app root
+ * is 16px, and the editor sits one step below the 13px/12px mono ramp on
+ * purpose — a file view is scanned in bulk, not read a line at a time.
+ */
+const editorSpec = {
+	"&": {
+		color: colors.foreground,
+		backgroundColor: colors.background,
+		fontFamily: fontFamily,
+		fontSize: "0.6875rem",
+		letterSpacing: "0.05em",
+	},
+	".cm-content": {
+		caretColor: "var(--color-accent)",
+		fontFamily: fontFamily,
+	},
+	".cm-content *": {
+		fontFamily: `${fontFamily} !important`,
+	},
+	/*
+	 * The editor's focus ring, drawn on the root rather than the content.
+	 *
+	 * CodeMirror's own base theme sets `.cm-content { outline: none }` and
+	 * `.cm-editor.cm-focused { outline: 1px dotted #212121 }`. Both ship from
+	 * node_modules, so the app's contrast gate cannot see either of them, and
+	 * that hardcoded near-black measures 1.02:1 on dracula and 1.03:1 on
+	 * monokai - on nine of the twelve palettes it is under 1.30:1, which is to
+	 * say invisible. The content rule also lands at two-class specificity once
+	 * CodeMirror prefixes it with the generated theme class, so the app's
+	 * unlayered `html :focus-visible` at (0,1,1) loses to it.
+	 *
+	 * Styling `&.cm-focused` puts the ring on the editor root - but NOT, as an
+	 * earlier version of this comment claimed, at a specificity that beats
+	 * CodeMirror's own rule. `buildTheme` compiles `&.cm-focused` to
+	 * `.<generated>.cm-focused`: two classes, no `.cm-editor`, which exactly
+	 * TIES CodeMirror's own `.<base>.cm-focused` at (0,2,0). It wins on source
+	 * order alone - `EditorView` mounts `[...styleModules, baseTheme].reverse()`
+	 * so the base theme goes in first, and StyleModule documents later mounts
+	 * as taking precedence. That is worth knowing because it is fragile:
+	 * wrapping this theme in `Prec.lowest` would flip the order back and
+	 * silently restore the `1px dotted #212121` default, which measures 1.02:1
+	 * on dracula.
+	 *
+	 * The offset is NEGATIVE, and that is the whole point of this rule working.
+	 * The editor sits flush inside a `relative h-full grow overflow-auto`
+	 * container in `code-editor.tsx`, and an outline is ink overflow: a scroll
+	 * container clips it at the padding box exactly as it clips an outset
+	 * shadow. At `+2px` the ring's outer edge lands 4px outside the clip box
+	 * and is cut on the left, top and right - leaving only a bottom sliver on a
+	 * short document, which reads as a stray border rather than as focus.
+	 * Drawing it inset puts the whole ring inside the clip.
+	 *
+	 * This is the second time that clipping rule has caught this codebase; the
+	 * first was a comment in `styles/index.css` asserting the opposite, which
+	 * was corrected one commit before this ring was written. Believing the
+	 * wrong version for an hour is what produced the +2px.
+	 */
+	"&.cm-focused": {
+		outline: "2px solid var(--color-accent)",
+		outlineOffset: "-2px",
+	},
+	"&.cm-focused .cm-cursor": {
+		borderLeftColor: "var(--color-accent)",
+	},
+	"&.cm-focused .cm-selectionBackground, ::selection": {
+		backgroundColor: colors.selection,
+	},
+	".cm-gutters": {
+		backgroundColor: colors.background,
+		/* `inkDim`, not `inkDisabled`: line numbers are read, and
+		   `inkDisabled` is the one role exempt from the contrast floors. */
+		color: "var(--color-ink-dim)",
+		border: "none",
+		fontFamily: fontFamily,
+	},
+	".cm-line": {
+		fontFamily: fontFamily,
+	},
 };
+
+const highlightStyle = HighlightStyle.define([
+	{ tag: t.keyword, color: colors.keyword },
+	{
+		tag: [t.name, t.deleted, t.character, t.propertyName, t.macroName],
+		color: colors.base,
+	},
+	{
+		/*
+		 * A heavier weight, not just a hue: on obsidian `info` IS `ink`, so a
+		 * function name and a variable name are the same hex there and only the
+		 * weight separates them. The syntax gate excludes that pair on exactly
+		 * this basis, so the weight is what makes the exclusion honest. 600
+		 * rather than 500, because `className` already holds 500 and would
+		 * otherwise collide with it in the same palette.
+		 */
+		tag: [t.function(t.variableName), t.labelName],
+		color: colors.functionName,
+		fontWeight: "600",
+	},
+	{
+		tag: [t.color, t.constant(t.name), t.standard(t.name)],
+		color: colors.foreground,
+	},
+	{ tag: [t.definition(t.name), t.separator], color: colors.foreground },
+	/*
+	 * Numeric literals carry `danger`, which is the mapping the permutation
+	 * search chose and the contract asserts. It sat in the `className` group
+	 * for one commit, which left `colors.number` referenced nowhere and the
+	 * gate measuring a pair that never rendered.
+	 */
+	{ tag: t.number, color: colors.number },
+	{
+		tag: [
+			t.typeName,
+			t.className,
+			t.changed,
+			t.annotation,
+			t.modifier,
+			t.self,
+			t.namespace,
+		],
+		color: colors.className,
+		fontWeight: "500",
+	},
+	{
+		tag: [
+			t.operator,
+			t.operatorKeyword,
+			t.url,
+			t.escape,
+			t.regexp,
+			t.link,
+			t.special(t.string),
+		],
+		color: colors.regexp,
+	},
+	{ tag: [t.meta, t.comment], color: colors.comment },
+	{ tag: t.strong, fontWeight: "bold" },
+	{ tag: t.emphasis, fontStyle: "italic" },
+	{ tag: t.strikethrough, textDecoration: "line-through" },
+	{ tag: t.link, color: colors.comment, textDecoration: "underline" },
+	{ tag: t.heading, fontWeight: "bold", color: colors.foreground },
+	{
+		tag: [t.atom, t.bool, t.special(t.variableName)],
+		color: colors.foreground,
+	},
+	{
+		tag: [t.processingInstruction, t.string, t.inserted],
+		color: colors.string,
+	},
+	{ tag: t.invalid, color: colors.regexp },
+]);
+
+/*
+ * Two finished extensions rather than one built per call.
+ *
+ * The `dark` flag is not cosmetic and could not be dropped: it feeds
+ * `EditorView.darkTheme`, which is what selects CodeMirror's *own* built-in
+ * light/dark values for `.cm-activeLine`, `.cm-specialChar`, the unfocused
+ * `.cm-selectionBackground`, `.cm-tooltip` (the completion popup) and
+ * `.cm-searchMatch` — all of them live here, since `basicSetup` is on. It is
+ * also the one input that cannot be a CSS variable, because it picks a class
+ * rather than a value. Since it is a boolean there are exactly two possible
+ * builds, so both are made once and handed out by lookup: callers get a stable
+ * extension identity and no `useMemo`.
+ */
+const variants: Record<"light" | "dark", Extension> = {
+	light: [
+		EditorView.theme(editorSpec, { dark: false }),
+		syntaxHighlighting(highlightStyle),
+	],
+	dark: [
+		EditorView.theme(editorSpec, { dark: true }),
+		syntaxHighlighting(highlightStyle),
+	],
+};
+
+/**
+ * The editor theme for the active palette.
+ *
+ * @param isDark Whether the active palette is a dark one. Resolve it from the
+ *   theme registry (`getTheme(themeName).theme.palette.mode`), which is the
+ *   same field `applyThemeToDocument` publishes as the document `dark` class.
+ */
+export const getCodeMirrorTheme = (isDark: boolean): Extension =>
+	isDark ? variants.dark : variants.light;

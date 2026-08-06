@@ -4,14 +4,8 @@
  * Displays a "Not set" state with a button to set the value for text-based settings
  */
 
-import { Box, Button, Typography } from "@mui/material";
+import { Button } from "@shared/components/ui";
 import type { FC } from "react";
-import {
-	DescriptionText,
-	LabelText,
-	LabelWrapper,
-	UnsetContainer,
-} from "./chat-options-sidebar-styled";
 
 type UnsetTextSettingProps = {
 	/**
@@ -58,36 +52,26 @@ export const UnsetTextSetting: FC<UnsetTextSettingProps> = ({
 	icon,
 }) => {
 	return (
-		<UnsetContainer elevation={0}>
-			<LabelWrapper>
-				<LabelText variant="subtitle2">
-					{icon && icon}
+		<div className="mb-4 flex flex-col rounded-md border border-control bg-surface p-4">
+			<div className="mb-2">
+				<span className="mb-1 flex items-center font-medium text-body-sm text-ink">
+					{icon}
 					{label}
-				</LabelText>
-				<DescriptionText variant="body2" color="text.secondary">
-					{description}
-				</DescriptionText>
-			</LabelWrapper>
-			<Box
-				sx={{
-					display: "flex",
-					alignItems: "center",
-					justifyContent: "space-between",
-				}}
-			>
-				<Typography variant="body2" color="text.secondary" fontStyle="italic">
-					Not set yet
-				</Typography>
+				</span>
+				<span className="mb-3 text-body-sm text-ink-muted">{description}</span>
+			</div>
+			<div className="flex items-center justify-between">
+				<span className="text-meta text-ink-dim">Not set yet</span>
 				<Button
-					variant="outlined"
-					size="small"
+					variant="outline"
+					size="sm"
 					onClick={async () => {
 						await onSetValue();
 					}}
 				>
 					Set to default ({defaultDisplayText})
 				</Button>
-			</Box>
-		</UnsetContainer>
+			</div>
+		</div>
 	);
 };

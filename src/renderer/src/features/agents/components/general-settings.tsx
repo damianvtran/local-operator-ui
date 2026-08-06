@@ -5,16 +5,9 @@
  */
 
 import {
-	faCalendarAlt,
-	faCodeBranch,
-	faIdCard,
-	faInfoCircle,
-	faRobot,
-	faTag,
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Box, Divider, Grid, Tooltip, Typography, alpha } from "@mui/material";
-import { styled } from "@mui/material/styles";
+	InfoGrid,
+	InfoItem,
+} from "@features/settings/components/settings-section";
 import type {
 	AgentDetails,
 	AgentUpdate,
@@ -24,9 +17,12 @@ import { EditableField } from "@shared/components/common/editable-field";
 import { TagsInputChips } from "@shared/components/common/tags-input-chips";
 import { HostingSelect } from "@shared/components/hosting/hosting-select";
 import { ModelSelect } from "@shared/components/hosting/model-select";
+import { Tooltip } from "@shared/components/ui";
 import { useConfig } from "@shared/hooks/use-config";
 import type { useUpdateAgent } from "@shared/hooks/use-update-agent";
+import { formatCalendarDate } from "@shared/utils/date-utils";
 import { showErrorToast } from "@shared/utils/toast-manager";
+import { Calendar, Cpu, GitBranch, IdCard, Info } from "lucide-react";
 import type { FC } from "react";
 import { useEffect, useState } from "react";
 
@@ -61,118 +57,6 @@ type GeneralSettingsProps = {
 	 */
 	initialSelectedAgentId?: string;
 };
-
-const FieldContainer = styled(Box)({
-	position: "relative",
-	marginBottom: 16,
-});
-
-// Update FieldLabel to be a styled 'div' to prevent nesting issues
-// Apply typography styles manually
-const FieldLabel = styled("div")(({ theme }) => ({
-	fontFamily: theme.typography.fontFamily,
-	fontSize: "0.875rem", // Small text size
-	fontWeight: 500, // Slightly less bold
-	color: theme.palette.text.secondary,
-	marginBottom: 6, // Reduced margin
-	display: "flex",
-	alignItems: "center",
-}));
-
-// Update LabelIcon to match editable-field.tsx styles
-const LabelIcon = styled(Box)({
-	marginRight: 8, // Reduced margin
-	opacity: 0.9,
-	display: "flex",
-	alignItems: "center",
-});
-
-const HeaderContainer = styled(Box)(({ theme }) => ({
-	display: "flex",
-	alignItems: "center",
-	justifyContent: "space-between",
-	marginBottom: theme.spacing(2),
-	gap: theme.spacing(2),
-}));
-
-const SectionTitle = styled(Typography)(({ theme }) => ({
-	fontWeight: 600,
-	marginBottom: theme.spacing(2),
-	display: "flex",
-	alignItems: "center",
-	color: theme.palette.text.primary,
-}));
-
-const TitleIcon = styled(FontAwesomeIcon)(({ theme }) => ({
-	marginRight: 10,
-	color: theme.palette.primary.main,
-	padding: theme.spacing(0.5),
-	borderRadius: 999,
-	backgroundColor: alpha(theme.palette.primary.main, 0.1),
-}));
-
-// Restyle InfoCard to be just the value display box, matching input height/padding
-const InfoCard = styled(Box)(({ theme }) => ({
-	display: "flex",
-	alignItems: "center",
-	height: "36px",
-	padding: theme.spacing(0.5, 1.5),
-	borderRadius: 4,
-	backgroundColor: theme.palette.background.paper,
-	border: `1px solid ${theme.palette.divider}`,
-	boxSizing: "border-box",
-	width: "100%",
-	overflow: "hidden",
-}));
-
-// Adjust ValueText styles slightly if needed
-const ValueText = styled(Typography)(({ theme }) => ({
-	fontWeight: 400,
-	fontSize: "0.875rem",
-	color: theme.palette.text.primary,
-	whiteSpace: "nowrap",
-	overflow: "hidden",
-	textOverflow: "ellipsis",
-}));
-
-const MonospaceValueText = styled(ValueText)(({ theme }) => ({
-	fontFamily: "monospace",
-	color:
-		theme.palette.mode === "light"
-			? theme.palette.grey[900]
-			: theme.palette.text.primary,
-}));
-
-const ModelPlaceholderContainer = styled("div")(({ theme }) => ({
-	padding: "4px 12px",
-	borderRadius: 6,
-	backgroundColor: theme.palette.background.paper,
-	border: `1px solid ${theme.palette.divider}`,
-	position: "relative",
-	minHeight: "36px",
-	height: "36px",
-	display: "flex",
-	alignItems: "center",
-	boxSizing: "border-box",
-	width: "100%",
-	textAlign: "left",
-	justifyContent: "flex-start",
-	color: theme.palette.text.primary,
-	fontWeight: "normal",
-	fontFamily: "inherit",
-}));
-
-const ModelPlaceholderText = styled("div")(({ theme }) => ({
-	color: theme.palette.text.disabled,
-	fontStyle: "normal",
-	fontSize: "0.875rem",
-	lineHeight: 1.5,
-	paddingRight: 30,
-	overflow: "hidden",
-	textOverflow: "ellipsis",
-	whiteSpace: "nowrap",
-	flexGrow: 1,
-}));
 
 /**
  * General Settings Component
@@ -211,26 +95,96 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 	const [categoriesSaving, setCategoriesSaving] = useState(false);
 
 	return (
-		<>
-			<HeaderContainer>
-				<Box sx={{ width: "100%" }}>
-					<EditableField
-						value={selectedAgent.name}
-						label="Agent Name"
-						placeholder="Enter agent name..."
-						icon={<FontAwesomeIcon icon={faRobot} />}
-						isSaving={savingField === "name"}
+		/*
+		 * No outer margin: the settings shell owns the gap between panes, so a
+		 * margin here would stack with it on this one pane only. Inside, the same
+		 * rule applies one level down — `gap-4` between fields, because the field
+		 * components no longer carry a bottom margin of their own.
+		 */
+		<div className="flex flex-col gap-4">
+			{/*
+			 * No glyph. A glyph on this surface names a kind of thing, and no two
+			 * labels may name the same kind — `Bot` means "an agent" everywhere
+			 * in the app, so it cannot also mean "the agent's name" here. The
+			 * field is full width, alone on its row, and inside the agent's own
+			 * settings pane; the word "Agent name" is not ambiguous without a
+			 * picture of a robot.
+			 *
+			 * `Bot` used to be documented as meaning "the model", which nine of
+			 * its twelve render sites contradicted. The model now carries `Cpu`
+			 * and agent instructions carry `NotebookPen`, so the glyph names one
+			 * kind of thing.
+			 *
+			 * Instructions went through two wrong glyphs first, and the reason
+			 * both were wrong is the check worth repeating: `ScrollText` was
+			 * already the PDF file type (`canvas-file-viewer.tsx`), and
+			 * `MessageSquareText` is `MessageSquare` - the Chat rail item - with
+			 * two strokes added. Before picking an icon, grep for it AND look at
+			 * what it is a near-homograph of.
+			 */}
+			<EditableField
+				value={selectedAgent.name}
+				label="Agent name"
+				placeholder="Enter agent name..."
+				isSaving={savingField === "name"}
+				onSave={async (value) => {
+					if (!value.trim()) {
+						showErrorToast("Agent name cannot be empty");
+						return;
+					}
+					setSavingField("name");
+
+					try {
+						const update: AgentUpdate = { name: value };
+
+						await updateAgentMutation.mutateAsync({
+							agentId: selectedAgent.id,
+							update,
+						});
+
+						// Only refetch if needed (when viewing the current agent)
+						if (selectedAgent.id === initialSelectedAgentId && refetchAgent) {
+							await refetchAgent();
+						}
+					} catch {
+						// Error is already handled in the mutation
+					} finally {
+						setSavingField(null);
+					}
+				}}
+			/>
+
+			{/* Side by side from `lg` (1024px), not `md` (768px). The window's own
+			    minWidth is 800, so the `md` fallback sat below the floor and could
+			    never fire: the row was always two columns, and at 800 that is
+			    narrow enough for "Hosting provider" to wrap - dropping its select
+			    19px below the Model select beside it - and for the model to
+			    truncate to "anthropic/cl", cutting the half that identifies it. */}
+			<div className="grid gap-4 lg:grid-cols-2">
+				{/* The tour matches this tag by value; it must survive verbatim. */}
+				<div data-tour-tag="agent-settings-hosting-select">
+					<HostingSelect
+						// Key ensures component re-initializes if agent or its effective hosting changes.
+						// Using selectedAgent.id ensures that if the agent changes, the select resets.
+						// Fallback to a string for config?.values.hosting to ensure key is always a string.
+						key={`hosting-select-${selectedAgent.id}-${selectedAgent.hosting || (config?.values.hosting ?? "default")}`}
+						value={selectedAgent.hosting || (config?.values.hosting ?? "")}
+						isSaving={savingField === "hosting"}
 						onSave={async (value) => {
-							if (!value.trim()) {
-								showErrorToast("Agent name cannot be empty");
-								return;
-							}
-							setSavingField("name");
+							setSavingField("hosting");
+
+							// Update the local state immediately to prevent flickering
+							// This ensures the ModelSelect component gets the new hosting value right away
+							setCurrentHosting(value);
 
 							try {
-								const update: AgentUpdate = { name: value };
+								// Update both hosting and reset model to ensure compatibility
+								const update: AgentUpdate = {
+									hosting: value,
+									// Clear model when hosting changes to avoid incompatible models
+									model: "",
+								};
 
-								// Perform the API update
 								await updateAgentMutation.mutateAsync({
 									agentId: selectedAgent.id,
 									update,
@@ -243,47 +197,39 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 								) {
 									await refetchAgent();
 								}
-							} catch (_error) {
+							} catch {
 								// Error is already handled in the mutation
+								// Revert the local state if there's an error
+								setCurrentHosting(selectedAgent.hosting || "");
 							} finally {
 								setSavingField(null);
 							}
 						}}
+						filterByCredentials={true}
+						allowDefault={true}
 					/>
-				</Box>
-
-				<Grid container spacing={2} alignItems="center">
-					{" "}
-					{/* Vertically align grid items */}
-					<Grid
-						item
-						xs={12}
-						md={6}
-						data-tour-tag="agent-settings-hosting-select"
-					>
-						<HostingSelect
-							// Key ensures component re-initializes if agent or its effective hosting changes.
-							// Using selectedAgent.id ensures that if the agent changes, the select resets.
-							// Fallback to a string for config?.values.hosting to ensure key is always a string.
-							key={`hosting-select-${selectedAgent.id}-${selectedAgent.hosting || (config?.values.hosting ?? "default")}`}
-							value={selectedAgent.hosting || (config?.values.hosting ?? "")}
-							isSaving={savingField === "hosting"}
+				</div>
+				{/* The tour matches this tag by value; it must survive verbatim. */}
+				<div data-tour-tag="agent-settings-model-select">
+					{/* Only render ModelSelect if we have a hosting provider selected (currentHosting) */}
+					{currentHosting ? (
+						<ModelSelect
+							// Key ensures component re-initializes if agent, current hosting, or its effective model changes.
+							key={`model-select-${selectedAgent.id}-${currentHosting}-${selectedAgent.model || (!selectedAgent.hosting && config?.values.model_name ? config.values.model_name : "default")}`}
+							value={
+								selectedAgent.hosting
+									? selectedAgent.model || ""
+									: selectedAgent.model || (config?.values.model_name ?? "")
+							}
+							hostingId={currentHosting} // This drives which models are available
+							isSaving={savingField === "model"}
+							allowDefault={true}
 							onSave={async (value) => {
-								setSavingField("hosting");
-
-								// Update the local state immediately to prevent flickering
-								// This ensures the ModelSelect component gets the new hosting value right away
-								setCurrentHosting(value);
+								setSavingField("model");
 
 								try {
-									// Update both hosting and reset model to ensure compatibility
-									const update: AgentUpdate = {
-										hosting: value,
-										// Clear model when hosting changes to avoid incompatible models
-										model: "",
-									};
+									const update: AgentUpdate = { model: value };
 
-									// Perform the API update
 									await updateAgentMutation.mutateAsync({
 										agentId: selectedAgent.id,
 										update,
@@ -296,92 +242,64 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 									) {
 										await refetchAgent();
 									}
-								} catch (_error) {
+								} catch {
 									// Error is already handled in the mutation
-									// Revert the local state if there's an error
-									setCurrentHosting(selectedAgent.hosting || "");
 								} finally {
 									setSavingField(null);
 								}
 							}}
-							filterByCredentials={true}
-							allowDefault={true}
 						/>
-					</Grid>
-					<Grid item xs={12} md={6} data-tour-tag="agent-settings-model-select">
-						{/* Only render ModelSelect if we have a hosting provider selected (currentHosting) */}
-						{currentHosting ? (
-							<ModelSelect
-								// Key ensures component re-initializes if agent, current hosting, or its effective model changes.
-								key={`model-select-${selectedAgent.id}-${currentHosting}-${selectedAgent.model || (!selectedAgent.hosting && config?.values.model_name ? config.values.model_name : "default")}`}
-								value={
-									selectedAgent.hosting
-										? selectedAgent.model || ""
-										: selectedAgent.model || (config?.values.model_name ?? "")
-								}
-								hostingId={currentHosting} // This drives which models are available
-								isSaving={savingField === "model"}
-								allowDefault={true}
-								onSave={async (value) => {
-									setSavingField("model");
+					) : (
+						/*
+						 * Stand-in for ModelSelect while no hosting provider is chosen.
+						 * It mirrors SearchableSelect's chrome — label row with tooltip,
+						 * then an input-sized box — so the swap to the real select does
+						 * not move the layout. It is intentionally not interactive: there
+						 * is nothing to choose until hosting is set.
+						 */
+						<div className="relative">
+							<Tooltip content="Select a hosting provider first, and then select the AI model that you want to use.  Each model has different capabilities and costs.  Recommended: Automatic">
+								<div className="mb-1.5 flex w-fit items-center gap-2 text-body-sm text-ink-muted">
+									<Cpu size={16} aria-hidden="true" />
+									Model
+								</div>
+							</Tooltip>
+							{/* `rounded-sm` because the real control it stands in for is an
+							    `Input`, and a placeholder with different corners tells you
+							    the layout moved when it did not. */}
+							<div className="flex h-8 w-full items-center rounded-sm border border-control bg-surface px-3">
+								<span className="truncate text-body-sm text-ink-disabled">
+									Select a hosting provider first...
+								</span>
+							</div>
+						</div>
+					)}
+				</div>
+			</div>
 
-									try {
-										const update: AgentUpdate = { model: value };
+			{/*
+			 * A second grouping inside the pane, so it takes the between-components
+			 * tier above it rather than another gap-4: `mt-4` on top of the
+			 * container's `gap-4` makes 32px, the section tier.
+			 */}
+			<h2 className="mt-4 flex items-center gap-2 text-heading text-ink">
+				<Info size={16} className="shrink-0 text-ink-dim" />
+				Agent information
+			</h2>
 
-										// Perform the API update
-										await updateAgentMutation.mutateAsync({
-											agentId: selectedAgent.id,
-											update,
-										});
-
-										// Only refetch if needed (when viewing the current agent)
-										if (
-											selectedAgent.id === initialSelectedAgentId &&
-											refetchAgent
-										) {
-											await refetchAgent();
-										}
-									} catch (_error) {
-										// Error is already handled in the mutation
-									} finally {
-										setSavingField(null);
-									}
-								}}
-							/>
-						) : (
-							<FieldContainer>
-								<Tooltip title="Select a hosting provider first, and then select the AI model that you want to use.  Each model has different capabilities and costs.  Recommended: Automatic">
-									<FieldLabel>
-										<LabelIcon>
-											<FontAwesomeIcon icon={faRobot} />
-										</LabelIcon>
-										Model
-									</FieldLabel>
-								</Tooltip>
-								<ModelPlaceholderContainer>
-									<ModelPlaceholderText>
-										Select a hosting provider first...
-									</ModelPlaceholderText>
-								</ModelPlaceholderContainer>
-							</FieldContainer>
-						)}
-					</Grid>
-				</Grid>
-			</HeaderContainer>
-
-			<Divider sx={{ mb: 3 }} />
-
-			<Box sx={{ mb: 3 }}>
-				<SectionTitle variant="subtitle1">
-					<TitleIcon icon={faInfoCircle} />
-					Agent Information
-				</SectionTitle>
-
+			{/*
+			 * None of the three fields in this stack carries a glyph. They are
+			 * full-width controls in one column, so a glyph on some and not others
+			 * indents half the labels and not the rest; and the three that were
+			 * here restated their own labels — a tag beside "Tags", an info beside
+			 * "Categories", a second tag beside "Description". The `Info` on the
+			 * heading above names the group; the words name the fields.
+			 */}
+			<div className="flex flex-col gap-4">
 				<EditableField
 					value={selectedAgent.description || ""}
 					label="Description"
 					placeholder="Enter agent description..."
-					icon={<FontAwesomeIcon icon={faTag} />}
 					multiline
 					rows={3}
 					isSaving={savingField === "description"}
@@ -391,7 +309,6 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 						try {
 							const update: AgentUpdate = { description: value };
 
-							// Perform the API update
 							await updateAgentMutation.mutateAsync({
 								agentId: selectedAgent.id,
 								update,
@@ -401,7 +318,7 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 							if (selectedAgent.id === initialSelectedAgentId && refetchAgent) {
 								await refetchAgent();
 							}
-						} catch (_error) {
+						} catch {
 							// Error is already handled in the mutation
 						} finally {
 							setSavingField(null);
@@ -409,11 +326,9 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 					}}
 				/>
 
-				{/* Tags input */}
 				<TagsInputChips
 					value={selectedAgent.tags || []}
 					label="Tags"
-					icon={<FontAwesomeIcon icon={faTag} />}
 					placeholder="Add tag..."
 					disabled={tagsSaving}
 					onChange={async (tags) => {
@@ -434,7 +349,7 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 							if (selectedAgent.id === initialSelectedAgentId && refetchAgent) {
 								await refetchAgent();
 							}
-						} catch (_error) {
+						} catch {
 							// Error handled in mutation
 						} finally {
 							setTagsSaving(false);
@@ -442,11 +357,9 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 					}}
 				/>
 
-				{/* Categories input */}
 				<CategoriesInputChips
 					value={selectedAgent.categories || []}
 					label="Categories"
-					icon={<FontAwesomeIcon icon={faInfoCircle} />}
 					placeholder="Add category..."
 					disabled={categoriesSaving}
 					onChange={async (categories) => {
@@ -467,7 +380,7 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 							if (selectedAgent.id === initialSelectedAgentId && refetchAgent) {
 								await refetchAgent();
 							}
-						} catch (_error) {
+						} catch {
 							// Error handled in mutation
 						} finally {
 							setCategoriesSaving(false);
@@ -475,54 +388,45 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 					}}
 				/>
 
-				<Grid container spacing={3}>
-					{/* Agent ID */}
-					<Grid item xs={12} sm={6}>
-						{/* Use updated FieldLabel and LabelIcon */}
-						<FieldLabel>
-							<LabelIcon>
-								<FontAwesomeIcon icon={faIdCard} size="xs" />
-							</LabelIcon>
-							ID
-						</FieldLabel>
-						<InfoCard title={selectedAgent.id}>
-							<MonospaceValueText>{selectedAgent.id}</MonospaceValueText>
-						</InfoCard>
-					</Grid>
-
-					{/* Created Date */}
-					<Grid item xs={12} sm={6}>
-						{/* Use updated FieldLabel and LabelIcon */}
-						<FieldLabel>
-							<LabelIcon>
-								<FontAwesomeIcon icon={faCalendarAlt} size="xs" />
-							</LabelIcon>
-							Created
-						</FieldLabel>
-						<InfoCard
-							title={new Date(selectedAgent.created_date).toLocaleString()}
-						>
-							<ValueText>
-								{new Date(selectedAgent.created_date).toLocaleString()}
-							</ValueText>
-						</InfoCard>
-					</Grid>
-
-					{/* Agent Version */}
-					<Grid item xs={12} sm={6}>
-						{/* Use updated FieldLabel and LabelIcon */}
-						<FieldLabel>
-							<LabelIcon>
-								<FontAwesomeIcon icon={faCodeBranch} size="xs" />
-							</LabelIcon>
-							Version
-						</FieldLabel>
-						<InfoCard title={selectedAgent.version}>
-							<ValueText>{selectedAgent.version}</ValueText>
-						</InfoCard>
-					</Grid>
-				</Grid>
-			</Box>
-		</>
+				<InfoGrid>
+					<InfoItem
+						label={
+							<>
+								<IdCard size={12} aria-hidden="true" />
+								ID
+							</>
+						}
+						// Machine voice: the id is an identifier, not prose.
+						value={
+							<span className="font-mono text-mono-sm">{selectedAgent.id}</span>
+						}
+					/>
+					<InfoItem
+						label={
+							<>
+								<Calendar size={12} aria-hidden="true" />
+								Created
+							</>
+						}
+						/* A calendar date, not a message timestamp. `toLocaleString`
+						   printed "10/2/2025, 10:40:00 AM" and the message formatter that
+						   replaced it printed three different shapes - "10:40 AM" for an
+						   agent made minutes ago, which names no day at all. This field is
+						   read once, beside an ID and a version, so it gets one shape and
+						   needs no tooltip to recover the day. */
+						value={formatCalendarDate(selectedAgent.created_date)}
+					/>
+					<InfoItem
+						label={
+							<>
+								<GitBranch size={12} aria-hidden="true" />
+								Version
+							</>
+						}
+						value={selectedAgent.version}
+					/>
+				</InfoGrid>
+			</div>
+		</div>
 	);
 };

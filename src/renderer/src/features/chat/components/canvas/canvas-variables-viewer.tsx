@@ -1,111 +1,44 @@
-import {
-	Box,
-	Button,
-	CircularProgress,
-	Collapse,
-	IconButton,
-	Tooltip,
-	Typography,
-	alpha,
-} from "@mui/material";
-// Dialog import is not needed as ConfirmationModal handles its own dialog.
-import { styled, useTheme } from "@mui/material/styles";
 import type { ExecutionVariable } from "@shared/api/local-operator/types";
 import { ConfirmationModal } from "@shared/components/common/confirmation-modal";
+import { Spinner } from "@shared/components/common/spinner";
+import { Button, Tooltip } from "@shared/components/ui";
 import {
 	useAgentExecutionVariables,
 	useCreateAgentExecutionVariable,
 	useDeleteAgentExecutionVariable,
 	useUpdateAgentExecutionVariable,
 } from "@shared/hooks/use-agent-execution-variables";
+import { cn } from "@shared/lib/utils";
 import { showErrorToast } from "@shared/utils/toast-manager";
-import { Copy, Edit2, Minus, Plus, PlusCircle, Trash2 } from "lucide-react";
-import type { FC } from "react";
-import { memo, useCallback, useEffect, useMemo, useState } from "react";
+import {
+	ChevronDown,
+	ChevronRight,
+	Copy,
+	Pen,
+	Plus,
+	Trash2,
+} from "lucide-react";
+import type { FC, ReactNode } from "react";
+import { memo, useCallback, useEffect, useId, useMemo, useState } from "react";
 import { VariableFormDialog } from "./variable-form-dialog";
 
 type CanvasVariablesViewerProps = {
 	conversationId: string;
 };
 
-const VariableListContainer = styled(Box)(({ theme }) => ({
-	border: `1px solid ${theme.palette.divider}`,
-	borderRadius: theme.shape.borderRadius,
-	backgroundColor:
-		theme.palette.mode === "dark"
-			? alpha(theme.palette.background.paper, 0.3)
-			: alpha(theme.palette.grey[50], 0.7),
-	overflow: "auto",
-	maxHeight: "100%",
-	flex: 1,
-}));
-
-const VariableItem = styled(Box)(({ theme }) => ({
-	display: "flex",
-	alignItems: "center",
-	padding: theme.spacing(0.75, 1),
-	borderBottom: `1px solid ${theme.palette.divider}`,
-	"&:last-child": {
-		borderBottom: "none",
-	},
-	fontSize: "0.8rem",
-}));
-
-const VariableName = styled(Typography)(({ theme }) => ({
-	marginLeft: theme.spacing(0.5),
-	fontWeight: 500,
-	color: theme.palette.text.primary,
-	marginRight: theme.spacing(1),
-	fontFamily: "monospace", // PyCharm uses monospace for variables
-	fontSize: "0.8rem",
-}));
-
-const VariableType = styled(Typography)(({ theme }) => ({
-	color: theme.palette.text.secondary,
-	fontStyle: "italic",
-	marginRight: theme.spacing(1),
-	fontFamily: "monospace",
-	fontSize: "0.8rem",
-}));
-
-const VariableValue = styled(Typography)(({ theme }) => ({
-	color: theme.palette.text.secondary,
-	flexGrow: 1,
-	whiteSpace: "nowrap",
-	overflow: "hidden",
-	textOverflow: "ellipsis",
-	fontFamily: "monospace",
-	maxWidth: "100%",
-	fontSize: "0.8rem",
-}));
-
-const VariableActions = styled(Box)(({ theme }) => ({
-	display: "flex",
-	alignItems: "center",
-	marginLeft: theme.spacing(1),
-}));
-
-const CenteredBox = styled(Box)(({ theme }) => ({
-	display: "flex",
-	flexDirection: "column",
-	alignItems: "center",
-	justifyContent: "center",
-	height: "100%",
-	padding: theme.spacing(2),
-	textAlign: "center",
-}));
-
-const ExpandButton = styled(IconButton)(({ theme }) => ({
-	width: 20,
-	height: 20,
-	marginRight: theme.spacing(0.5),
-	border: `1px solid ${theme.palette.divider}`,
-	borderRadius: 2,
-	padding: 0,
-	"&:hover": {
-		backgroundColor: alpha(theme.palette.action.hover, 0.08),
-	},
-}));
+/**
+ * The three terminal states (loading, failed, empty) share one centred block.
+ * Local to this panel rather than a shared primitive: nothing else needs it.
+ */
+const CenteredState: FC<{ children: ReactNode }> = ({ children }) => (
+	<div
+		className={cn(
+			"flex h-full flex-col items-center justify-center gap-2 p-6 text-center",
+		)}
+	>
+		{children}
+	</div>
+);
 
 // Utility function to truncate text
 const truncateText = (text: string, maxLength: number): string => {
@@ -114,7 +47,14 @@ const truncateText = (text: string, maxLength: number): string => {
 };
 
 // Define editable variable types
-const EDITABLE_TYPES = new Set(["str", "int", "float", "list", "dict", "bool"]);
+const EDITABLE_TYPES: Record<string, true> = {
+	str: true,
+	int: true,
+	float: true,
+	list: true,
+	dict: true,
+	bool: true,
+};
 
 // Individual variable display component
 type VariableDisplayProps = {
@@ -125,13 +65,13 @@ type VariableDisplayProps = {
 
 const VariableRow: FC<VariableDisplayProps> = memo(
 	({ variable, onEdit, onDelete }) => {
-		const theme = useTheme();
 		const [expanded, setExpanded] = useState(false);
 		const [copied, setCopied] = useState(false);
+		const contentId = useId();
 
 		// Check if variable type is editable
 		const isEditable = useMemo(
-			() => EDITABLE_TYPES.has(variable.type),
+			() => EDITABLE_TYPES[variable.type] === true,
 			[variable.type],
 		);
 
@@ -146,35 +86,10 @@ const VariableRow: FC<VariableDisplayProps> = memo(
 			[stringValue],
 		);
 
-		// Memoize variable type display
-		const typeDisplay = useMemo(() => `{${variable.type}}`, [variable.type]);
-
-		// Memoize dynamic styles
-		const itemStyles = useMemo(
-			() => ({
-				cursor: "pointer",
-				"&:hover": {
-					backgroundColor: alpha(theme.palette.action.hover, 0.08),
-				},
-			}),
-			[theme.palette.action.hover],
-		);
-
-		const expandedContentStyles = useMemo(
-			() => ({
-				pl: 4,
-				py: 1,
-				backgroundColor: alpha(theme.palette.background.default, 0.05),
-				borderBottom: `1px solid ${theme.palette.divider}`,
-				fontFamily: "monospace",
-				fontSize: "0.8rem",
-				whiteSpace: "pre-wrap",
-				wordBreak: "break-word",
-				maxHeight: "300px",
-				overflow: "auto",
-			}),
-			[theme.palette.background.default, theme.palette.divider],
-		);
+		// The braces were Python `repr` punctuation leaking into the UI. The type
+		// is already set apart by its dim ink and its position between the name
+		// and the value.
+		const typeDisplay = variable.type;
 
 		// Memoize callbacks
 		const handleToggleExpand = useCallback(() => {
@@ -212,75 +127,148 @@ const VariableRow: FC<VariableDisplayProps> = memo(
 		);
 
 		return (
-			<>
-				<VariableItem sx={itemStyles} onClick={handleToggleExpand}>
-					<ExpandButton size="small">
-						{expanded ? <Minus size={12} /> : <Plus size={12} />}
-					</ExpandButton>
-					<VariableName variant="body2">{variable.key}</VariableName>
-					<VariableType variant="caption">{typeDisplay}</VariableType>
-					<Tooltip title={tooltipValue} placement="top-start" arrow>
-						<VariableValue variant="body2">{truncatedValue}</VariableValue>
-					</Tooltip>
-					<VariableActions>
-						<Tooltip title={copied ? "Copied!" : "Copy Value"}>
-							<IconButton
+			<div className={cn("group border-hairline border-b last:border-b-0")}>
+				<div
+					className={cn(
+						"flex min-h-8 items-center gap-1 pr-1",
+						"transition-colors duration-fast ease-out-quart hover:bg-elevated",
+					)}
+				>
+					{/*
+					 * The disclosure trigger spans the whole reading half of the row
+					 * so the click target matches what the eye reads, and the actions
+					 * sit outside it — a button inside a button is invalid HTML.
+					 */}
+					<button
+						type="button"
+						onClick={handleToggleExpand}
+						aria-expanded={expanded}
+						aria-controls={contentId}
+						className={cn(
+							"flex min-w-0 flex-1 cursor-pointer select-none items-center gap-2 px-2 py-1 text-left font-mono text-mono-sm",
+						)}
+					>
+						{/*
+						 * A chevron, not a plus: a `+`/`-` pair here was a second
+						 * expand/collapse language in a panel that already had one, and
+						 * `+` also reads as "add" beside a create control that means
+						 * exactly that.
+						 *
+						 * The chevron SWAPS rather than rotates, matching
+						 * `@shared/components/ui/disclosure`. This row cannot use that
+						 * component directly — the trigger is only the reading half of
+						 * the row, with sibling action buttons outside it, and nesting a
+						 * button inside a button is invalid HTML — so it reimplements the
+						 * trigger and must not also reinvent the signal. Rotation was
+						 * additionally a motion-rule violation: transitions are for
+						 * entrances, and a toggle is not one.
+						 */}
+						{expanded ? (
+							<ChevronDown
+								aria-hidden="true"
+								className="size-3 shrink-0 text-ink-dim"
+							/>
+						) : (
+							<ChevronRight
+								aria-hidden="true"
+								className="size-3 shrink-0 text-ink-dim"
+							/>
+						)}
+						<span className={cn("shrink-0 font-medium text-ink")}>
+							{variable.key}
+						</span>
+						<span className={cn("shrink-0 text-ink-dim")}>{typeDisplay}</span>
+						<Tooltip content={tooltipValue} align="start">
+							<span className={cn("min-w-0 flex-1 truncate text-ink-muted")}>
+								{truncatedValue}
+							</span>
+						</Tooltip>
+					</button>
+					{/*
+					 * Row actions appear on hover or keyboard focus. Twenty-one
+					 * permanently drawn icons down a seven-row list — seven of them
+					 * red — read as a warning rather than as a set of controls, and
+					 * they competed with the values, which are what the panel is for.
+					 * Linear and Notion both reveal row actions this way. Focus goes
+					 * through `group-focus-within`, so they stay keyboard-reachable.
+					 */}
+					<div
+						className={cn(
+							"flex shrink-0 items-center gap-0.5",
+							"pointer-events-none opacity-0",
+							"group-hover:pointer-events-auto group-hover:opacity-100",
+							"group-focus-within:pointer-events-auto group-focus-within:opacity-100",
+						)}
+					>
+						<Tooltip content={copied ? "Copied" : "Copy value"}>
+							<Button
+								variant="ghost"
+								size="icon-sm"
 								onClick={handleCopy}
-								size="small"
-								sx={{ mr: 0.25, padding: theme.spacing(0.5) }}
+								aria-label="Copy value"
 							>
-								<Copy size={14} />
-							</IconButton>
+								<Copy />
+							</Button>
 						</Tooltip>
 						{isEditable ? (
-							<Tooltip title="Edit Variable">
-								<IconButton
+							<Tooltip content="Edit variable">
+								<Button
+									variant="ghost"
+									size="icon-sm"
 									onClick={handleEdit}
-									size="small"
-									sx={{ mr: 0.25, padding: theme.spacing(0.5) }}
+									aria-label="Edit variable"
 								>
-									<Edit2 size={14} />
-								</IconButton>
+									<Pen />
+								</Button>
 							</Tooltip>
 						) : (
-							<Tooltip title="This variable can't be edited because its type is not yet supported for editing.">
-								<IconButton
-									size="small"
-									sx={{
-										mr: 0.25,
-										padding: theme.spacing(0.5),
-										opacity: 0.4,
-										cursor: "not-allowed",
-									}}
+							/*
+							 * `aria-disabled` rather than `disabled`: a disabled button
+							 * swallows pointer events, and the tooltip is the only place
+							 * the reason is stated.
+							 */
+							<Tooltip content="This variable can't be edited because its type is not yet supported for editing.">
+								<Button
+									variant="ghost"
+									size="icon-sm"
+									aria-disabled="true"
+									aria-label="Edit variable"
+									className={cn(
+										"cursor-default text-ink-disabled hover:bg-transparent hover:text-ink-disabled",
+									)}
 								>
-									<Edit2 size={14} />
-								</IconButton>
+									<Pen />
+								</Button>
 							</Tooltip>
 						)}
-						<Tooltip title="Delete Variable">
-							<IconButton
+						{/*
+						 * Neutral at rest, danger on hover. A red glyph on every row
+						 * spends the danger role on a state where nothing is wrong.
+						 */}
+						<Tooltip content="Delete variable">
+							<Button
+								variant="ghost"
+								size="icon-sm"
 								onClick={handleDelete}
-								size="small"
-								color="error"
-								sx={{ padding: theme.spacing(0.5) }}
+								aria-label="Delete variable"
+								className={cn("hover:bg-danger-wash hover:text-danger")}
 							>
-								<Trash2 size={14} />
-							</IconButton>
+								<Trash2 />
+							</Button>
 						</Tooltip>
-					</VariableActions>
-				</VariableItem>
-				<Collapse in={expanded} timeout="auto" unmountOnExit>
-					<Box sx={expandedContentStyles}>
-						<Typography
-							variant="caption"
-							color="text.secondary"
-							sx={{ fontFamily: "monospace", fontSize: "0.8rem" }}
-						>
-							{stringValue}
-						</Typography>
-					</Box>
-				</Collapse>
-			</>
+					</div>
+				</div>
+				{expanded ? (
+					<div
+						id={contentId}
+						className={cn(
+							"max-h-75 overflow-auto whitespace-pre-wrap break-words bg-sunken px-7 py-2 font-mono text-ink-muted text-mono-sm",
+						)}
+					>
+						{stringValue}
+					</div>
+				) : null}
+			</div>
 		);
 	},
 );
@@ -290,7 +278,6 @@ VariableRow.displayName = "VariableRow";
 export const CanvasVariablesViewer: FC<CanvasVariablesViewerProps> = memo(
 	({ conversationId }) => {
 		const agentId = conversationId;
-		const theme = useTheme();
 
 		const [isFormOpen, setIsFormOpen] = useState(false);
 		const [editingVariable, setEditingVariable] =
@@ -404,78 +391,6 @@ export const CanvasVariablesViewer: FC<CanvasVariablesViewerProps> = memo(
 			}
 		}, [agentId, variableToDeleteKey, deleteVariableMutation]);
 
-		// Memoize static styles
-		const containerStyles = useMemo(
-			() => ({
-				p: 3,
-				height: "100%",
-				display: "flex",
-				flexDirection: "column",
-				minHeight: 0, // Important for flex children to shrink
-			}),
-			[],
-		);
-
-		const headerStyles = useMemo(
-			() => ({
-				display: "flex",
-				flexDirection: "column",
-				mb: 1,
-				px: 0.5,
-				flexShrink: 0, // Prevent header from shrinking
-			}),
-			[],
-		);
-
-		const titleRowStyles = useMemo(
-			() => ({
-				display: "flex",
-				justifyContent: "space-between",
-				alignItems: "center",
-				mb: 0.5,
-			}),
-			[],
-		);
-
-		const titleStyles = useMemo(
-			() => ({
-				fontSize: "0.875rem",
-			}),
-			[],
-		);
-
-		const subtitleStyles = useMemo(
-			() => ({
-				fontSize: "0.75rem",
-				color: "text.secondary",
-				fontStyle: "italic",
-			}),
-			[],
-		);
-
-		const createButtonStyles = useMemo(
-			() => ({
-				textTransform: "none",
-				fontSize: "0.8125rem",
-				padding: theme.spacing(0.5, 1.5),
-			}),
-			[theme],
-		);
-
-		const loadingTextStyles = useMemo(
-			() => ({
-				mt: 1.5,
-			}),
-			[],
-		);
-
-		const emptyStateTextStyles = useMemo(
-			() => ({
-				mb: 1.5,
-			}),
-			[],
-		);
-
 		useEffect(() => {
 			if (isError && error) {
 				showErrorToast(
@@ -486,82 +401,73 @@ export const CanvasVariablesViewer: FC<CanvasVariablesViewerProps> = memo(
 
 		if (isLoading) {
 			return (
-				<CenteredBox>
-					<CircularProgress size={24} />
-					<Typography
-						variant="body2"
-						sx={loadingTextStyles}
-						color="text.secondary"
-					>
-						Loading variables...
-					</Typography>
-				</CenteredBox>
+				<CenteredState>
+					<Spinner size="sm" />
+					<p className={cn("text-body-sm text-ink-muted")}>Loading variables</p>
+				</CenteredState>
 			);
 		}
 
 		if (isError) {
 			return (
-				<CenteredBox>
-					<Typography variant="subtitle1" color="text.secondary" gutterBottom>
-						Could not load variables.
-					</Typography>
-					<Typography variant="caption" color="text.secondary">
-						Please check notifications or try again.
-					</Typography>
-				</CenteredBox>
+				<CenteredState>
+					<p className={cn("text-heading text-ink")}>
+						Could not load variables
+					</p>
+					<p className={cn("max-w-80 text-body-sm text-ink-muted")}>
+						The agent's code memory could not be read. Check that Local Operator
+						is running, then try again.
+					</p>
+				</CenteredState>
 			);
 		}
 
 		if (variables.length === 0) {
 			return (
-				<CenteredBox>
-					<Typography variant="subtitle1" gutterBottom color="text.primary">
-						No Execution Variables
-					</Typography>
-					<Typography
-						variant="body2"
-						color="text.secondary"
-						sx={emptyStateTextStyles}
-					>
-						This agent currently has no execution variables set. When your agent
-						does work for you, it will store things that it runs with code in
-						its memory, and those elements will show up here.
-					</Typography>
-					<Button
-						variant="outlined"
-						size="small"
-						startIcon={<PlusCircle size={16} />}
-						onClick={handleOpenCreateForm}
-						sx={createButtonStyles}
-					>
-						Create Variable
+				<CenteredState>
+					<p className={cn("text-heading text-ink")}>Nothing stored yet</p>
+					<p className={cn("max-w-80 text-body-sm text-ink-muted")}>
+						When the agent runs code for you, the values it keeps around between
+						steps show up here. You can add one yourself too.
+					</p>
+					<Button variant="secondary" size="sm" onClick={handleOpenCreateForm}>
+						<Plus aria-hidden="true" />
+						New variable
 					</Button>
-				</CenteredBox>
+				</CenteredState>
 			);
 		}
 
 		return (
-			<Box sx={containerStyles}>
-				<Box sx={headerStyles}>
-					<Typography variant="body1" fontWeight={500} sx={titleStyles}>
-						Agent Execution Variables
-					</Typography>
-					<Box sx={titleRowStyles}>
-						<Typography
-							variant="body2"
-							color="text.secondary"
-							sx={subtitleStyles}
-						>
-							This is code memory that the agent uses to store information.
-						</Typography>
-						<Tooltip title="Create New Variable">
-							<IconButton onClick={handleOpenCreateForm} size="small">
-								<PlusCircle size={18} />
-							</IconButton>
-						</Tooltip>
-					</Box>
-				</Box>
-				<VariableListContainer>
+			<div className={cn("flex h-full min-h-0 flex-col")}>
+				{/*
+				 * A one-line header, not a page masthead. The view switcher in the
+				 * panel chrome already says which view this is, so a 16px title and
+				 * a sentence of description restated it and spent 60px doing so.
+				 * What is worth saying here is how many there are.
+				 */}
+				<div
+					className={cn(
+						"flex h-10 shrink-0 items-center justify-between gap-3 border-hairline border-b px-3",
+					)}
+				>
+					<p className={cn("min-w-0 truncate text-body-sm text-ink-muted")}>
+						<span className={cn("font-medium text-ink")}>Code memory</span>
+						<span className={cn("mx-1.5 text-ink-dim")}>·</span>
+						{variables.length}{" "}
+						{variables.length === 1 ? "variable" : "variables"}
+					</p>
+					<Button variant="ghost" size="sm" onClick={handleOpenCreateForm}>
+						<Plus aria-hidden="true" />
+						New
+					</Button>
+				</div>
+				{/*
+				 * Full-bleed rows. The list used to sit in a `rounded-md bg-surface`
+				 * box inset 24px inside a panel that is already `surface` — an
+				 * invisible container costing 48px of the width the values need.
+				 */}
+				<div className={cn("min-h-0 flex-1 overflow-auto")}>
 					{variables.map((variable) => (
 						<VariableRow
 							key={variable.key}
@@ -570,7 +476,7 @@ export const CanvasVariablesViewer: FC<CanvasVariablesViewerProps> = memo(
 							onDelete={handleDeleteVariable}
 						/>
 					))}
-				</VariableListContainer>
+				</div>
 				{agentId && ( // Ensure agentId is present before rendering dialog
 					<VariableFormDialog
 						open={isFormOpen}
@@ -582,13 +488,15 @@ export const CanvasVariablesViewer: FC<CanvasVariablesViewerProps> = memo(
 				{variableToDeleteKey && ( // Render modal only if there's a key to delete
 					<ConfirmationModal
 						open={isDeleteConfirmOpen}
-						title="Delete Variable"
+						title="Delete variable"
 						message={
-							<Typography>
+							<>
 								Are you sure you want to delete the variable{" "}
-								<strong>"{variableToDeleteKey}"</strong>? This action cannot be
-								undone.
-							</Typography>
+								<strong className={cn("font-mono text-ink")}>
+									{variableToDeleteKey}
+								</strong>
+								? This action cannot be undone.
+							</>
 						}
 						confirmText="Delete"
 						cancelText="Cancel"
@@ -600,7 +508,7 @@ export const CanvasVariablesViewer: FC<CanvasVariablesViewerProps> = memo(
 						}}
 					/>
 				)}
-			</Box>
+			</div>
 		);
 	},
 );

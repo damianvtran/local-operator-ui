@@ -1,66 +1,9 @@
-import {
-	Box,
-	IconButton,
-	InputBase,
-	Paper,
-	Tooltip,
-	Typography,
-} from "@mui/material";
-import type { SxProps, Theme } from "@mui/material";
-import { styled } from "@mui/material/styles";
+import { Button, Input, Separator, Tooltip } from "@shared/components/ui";
 import { useDebouncedValue } from "@shared/hooks/use-debounced-value";
+import { cn } from "@shared/lib/utils";
 import { ChevronLeft, ChevronRight, Replace, X } from "lucide-react";
 import type { FC } from "react";
 import { useEffect, useRef, useState } from "react";
-
-const WidgetContainer = styled(Paper)(({ theme }) => ({
-	position: "absolute",
-	top: "4px",
-	right: "4px",
-	zIndex: 10,
-	padding: "4px",
-	display: "flex",
-	alignItems: "center",
-	borderRadius: theme.shape.borderRadius * 1.5,
-	backgroundColor: theme.palette.background.default,
-	boxShadow: theme.shadows[3],
-	border: `1px solid ${theme.palette.divider}`,
-}));
-
-const StyledInputBase = styled(InputBase)(({ theme }) => ({
-	fontSize: "0.8rem",
-	padding: "2px 8px",
-	width: "180px",
-	backgroundColor: theme.palette.background.paper,
-	borderRadius: theme.shape.borderRadius,
-	border: `1px solid ${theme.palette.divider}`,
-	"&.Mui-focused": {
-		borderColor: theme.palette.primary.main,
-	},
-}));
-
-const ActionButton = styled(IconButton)(({ theme }) => ({
-	width: "24px",
-	height: "24px",
-	padding: "2px",
-	"&:hover": {
-		backgroundColor: theme.palette.action.hover,
-	},
-}));
-
-const MatchCount = styled(Typography)(({ theme }) => ({
-	fontSize: "0.75rem",
-	color: theme.palette.text.secondary,
-	padding: "0 8px",
-	userSelect: "none",
-}));
-
-const Divider = styled("div")(({ theme }) => ({
-	width: "1px",
-	height: "20px",
-	backgroundColor: theme.palette.divider,
-	margin: "0 4px",
-}));
 
 type FindReplaceWidgetProps = {
 	onFind: (query: string) => void;
@@ -72,11 +15,35 @@ type FindReplaceWidgetProps = {
 	initialMode?: "find" | "replace";
 	matchCount: number;
 	currentMatch: number;
-	containerSx?: SxProps<Theme>;
+	/**
+	 * Positioning overrides for the widget container. The one caller uses this
+	 * to move the widget down from the editor's own toolbar, which is layout
+	 * the caller knows about and the widget does not.
+	 *
+	 * Renamed from `containerSx` because the value is classes now, not an MUI
+	 * `SxProps`. That is the only public prop in this file that changed, and it
+	 * is changed because its type could not survive de-MUI-ification.
+	 */
+	containerClassName?: string;
 	findValue: string;
 	onFindValueChange: (value: string) => void;
 };
 
+/**
+ * The find/replace control that floats over a text editor.
+ *
+ * It leaves the flow — it is `absolute`, over the document — so it takes the
+ * one shadow in the system. The old version was `theme.palette.background.default`
+ * (canvas) with a 1px `divider` border; on `elevated` the border loses no
+ * information, so it is gone and the widget reads as the thing on top rather
+ * than as a card drawn with an outline.
+ *
+ * The match count is machine voice: `"3 of 12"` is a counter, not prose, so it
+ * is `text-mono-sm`, which is what lets it sit inside the widget without a
+ * second background behind it. The previous hairline dividers between the count
+ * and the buttons carried no information either — the count and the buttons
+ * are already different roles — and are removed.
+ */
 export const FindReplaceWidget: FC<FindReplaceWidgetProps> = ({
 	onFind,
 	onNavigate,
@@ -87,7 +54,7 @@ export const FindReplaceWidget: FC<FindReplaceWidgetProps> = ({
 	initialMode = "find",
 	matchCount,
 	currentMatch,
-	containerSx,
+	containerClassName,
 	findValue,
 	onFindValueChange,
 }) => {
@@ -147,66 +114,108 @@ export const FindReplaceWidget: FC<FindReplaceWidgetProps> = ({
 	}
 
 	return (
-		<WidgetContainer sx={containerSx}>
-			<Tooltip title={mode === "find" ? "Switch to Replace" : "Switch to Find"}>
-				<ActionButton
+		<div
+			className={cn(
+				"absolute top-1 right-1 z-10 flex items-center gap-1 rounded-md bg-elevated p-1 shadow-overlay",
+				containerClassName,
+			)}
+		>
+			<Tooltip
+				content={mode === "find" ? "Switch to replace" : "Switch to find"}
+			>
+				<Button
+					variant="ghost"
+					size="icon-sm"
 					onClick={() => setMode(mode === "find" ? "replace" : "find")}
+					aria-label={mode === "find" ? "Switch to replace" : "Switch to find"}
 				>
-					<ChevronLeft size={16} />
-				</ActionButton>
+					<ChevronLeft aria-hidden="true" />
+				</Button>
 			</Tooltip>
-			<Box display="flex" flexDirection="column" gap="4px">
-				<StyledInputBase
-					inputRef={findInputRef}
+
+			<div className="flex flex-col gap-1">
+				<Input
+					inputSize="sm"
+					ref={findInputRef}
 					placeholder="Find"
 					value={findValue}
 					onChange={(e) => onFindValueChange(e.target.value)}
 					onKeyDown={handleFindKeyDown}
+					className="w-44"
 				/>
 				{mode === "replace" && (
-					<StyledInputBase
-						inputRef={replaceInputRef}
+					<Input
+						inputSize="sm"
+						ref={replaceInputRef}
 						placeholder="Replace"
 						value={replaceValue}
 						onChange={(e) => setReplaceValue(e.target.value)}
 						onKeyDown={handleReplaceKeyDown}
+						className="w-44"
 					/>
 				)}
-			</Box>
-			<Divider />
-			<MatchCount>
+			</div>
+
+			<span className="min-w-14 px-2 text-center text-ink-dim text-mono-sm select-none">
 				{matchCount > 0 ? `${currentMatch} of ${matchCount}` : "No results"}
-			</MatchCount>
-			<ActionButton onClick={() => onNavigate("prev")}>
-				<ChevronLeft size={16} />
-			</ActionButton>
-			<ActionButton onClick={() => onNavigate("next")}>
-				<ChevronRight size={16} />
-			</ActionButton>
+			</span>
+
+			<Button
+				variant="ghost"
+				size="icon-sm"
+				onClick={() => onNavigate("prev")}
+				aria-label="Previous match"
+			>
+				<ChevronLeft aria-hidden="true" />
+			</Button>
+			<Button
+				variant="ghost"
+				size="icon-sm"
+				onClick={() => onNavigate("next")}
+				aria-label="Next match"
+			>
+				<ChevronRight aria-hidden="true" />
+			</Button>
+
 			{mode === "replace" && (
 				<>
-					<Divider />
-					<Tooltip title="Replace (Enter)">
-						<ActionButton
+					<Separator orientation="vertical" className="h-5" />
+					<Tooltip content="Replace (Enter)">
+						<Button
+							variant="ghost"
+							size="icon-sm"
 							onClick={async () => {
 								await onReplace(replaceValue);
 								replaceInputRef.current?.focus({ preventScroll: true });
 							}}
+							aria-label="Replace"
 						>
-							<Replace size={16} />
-						</ActionButton>
+							<Replace aria-hidden="true" />
+						</Button>
 					</Tooltip>
-					<Tooltip title="Replace All (Cmd/Ctrl+Enter)">
-						<ActionButton onClick={() => onReplaceAll(findValue, replaceValue)}>
-							<Box sx={{ fontSize: "0.7rem", fontWeight: "bold" }}>All</Box>
-						</ActionButton>
+					<Tooltip content="Replace all (Cmd/Ctrl+Enter)">
+						<Button
+							variant="ghost"
+							size="icon-sm"
+							onClick={() => onReplaceAll(findValue, replaceValue)}
+							aria-label="Replace all"
+							className="text-body-sm"
+						>
+							All
+						</Button>
 					</Tooltip>
 				</>
 			)}
-			<Divider />
-			<ActionButton onClick={onClose}>
-				<X size={16} />
-			</ActionButton>
-		</WidgetContainer>
+
+			<Separator orientation="vertical" className="h-5" />
+			<Button
+				variant="ghost"
+				size="icon-sm"
+				onClick={onClose}
+				aria-label="Close"
+			>
+				<X aria-hidden="true" />
+			</Button>
+		</div>
 	);
 };

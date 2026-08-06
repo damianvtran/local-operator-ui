@@ -42,7 +42,7 @@ export const useCreateAgent = () => {
 		onSuccess: () => {
 			// Invalidate agents query to refetch the list
 			queryClient.invalidateQueries({ queryKey: agentsQueryKey });
-			showSuccessToast("Agent created successfully");
+			showSuccessToast("Agent created");
 		},
 		onError: (error) => {
 			console.error("Error creating agent:", error);
@@ -133,7 +133,7 @@ export const useDeleteAgent = () => {
 			});
 			// Invalidate agents query to refetch the list
 			queryClient.invalidateQueries({ queryKey: agentsQueryKey });
-			showSuccessToast("Agent deleted successfully");
+			showSuccessToast("Agent deleted");
 		},
 		onError: (error) => {
 			console.error("Error deleting agent:", error);
@@ -173,7 +173,7 @@ export const useImportAgent = () => {
 		onSuccess: (data) => {
 			// Invalidate agents query to refetch the list
 			queryClient.invalidateQueries({ queryKey: agentsQueryKey });
-			showSuccessToast("Agent imported successfully");
+			showSuccessToast("Agent imported");
 			return data;
 		},
 		onError: (error) => {
@@ -205,7 +205,7 @@ export const useExportAgent = () => {
 			}
 		},
 		onSuccess: () => {
-			showSuccessToast("Agent exported successfully");
+			showSuccessToast("Agent exported");
 		},
 		onError: (error) => {
 			console.error("Error exporting agent:", error);

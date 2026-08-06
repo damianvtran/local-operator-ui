@@ -1,4 +1,3 @@
-import { Box, styled } from "@mui/material";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import type { FC, ReactNode } from "react";
 import { ResizableDivider } from "./resizable-divider";
@@ -11,30 +10,15 @@ type ChatLayoutProps = {
 	content: ReactNode;
 };
 
-const Container = styled(Box)({
-	display: "flex",
-	height: "100%",
-	width: "100%",
-	overflow: "hidden",
-});
-
-const SidebarContainer = styled(Box)({
-	flexShrink: 0,
-	width: 280,
-	height: "100%",
-});
-
-const ContentContainer = styled(Box)({
-	flexGrow: 1,
-	height: "100%",
-	overflow: "hidden",
-});
-
 /**
- * ChatLayout Component
+ * Sidebar and main content for the chat routes, at the user's persisted
+ * sidebar width.
  *
- * Provides a consistent layout for chat-related pages with a sidebar and main content area.
- * Uses the persisted sidebar width from the UI preferences store.
+ * The width stays an inline `style` rather than becoming a class: it is a
+ * continuously dragged pixel value from the preferences store, and a Tailwind
+ * class cannot express a value that does not exist until the user lets go of
+ * the divider. The old `styled` wrapper's `width: 280` was dead for the same
+ * reason — the inline style always overrode it.
  */
 export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 	const sidebarWidth = useUiPreferencesStore((s) => s.chatSidebarWidth);
@@ -44,10 +28,10 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 	);
 
 	return (
-		<Container>
-			<SidebarContainer style={{ width: sidebarWidth }}>
+		<div className="flex h-full w-full overflow-hidden">
+			<div className="h-full shrink-0" style={{ width: sidebarWidth }}>
 				{sidebar}
-			</SidebarContainer>
+			</div>
 			<ResizableDivider
 				sidebarWidth={sidebarWidth}
 				onSidebarWidthChange={setSidebarWidth}
@@ -55,7 +39,7 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 				maxWidth={600}
 				onDoubleClick={restoreDefaultSidebarWidth}
 			/>
-			<ContentContainer>{content}</ContentContainer>
-		</Container>
+			<div className="h-full grow overflow-hidden">{content}</div>
+		</div>
 	);
 };

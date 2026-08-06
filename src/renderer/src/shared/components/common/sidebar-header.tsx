@@ -1,104 +1,6 @@
-/**
- * Sidebar Header Component
- *
- * A reusable component for sidebar headers with search functionality
- */
-
-import {
-	Box,
-	IconButton,
-	InputAdornment,
-	TextField,
-	Tooltip,
-	Typography,
-	alpha,
-} from "@mui/material";
-import { styled } from "@mui/material/styles";
-import { Import, Search as LucideSearch, Plus } from "lucide-react";
+import { Button, Input, Tooltip } from "@shared/components/ui";
+import { Import, Plus, Search } from "lucide-react";
 import type { FC } from "react";
-
-const SidebarHeaderContainer = styled(Box)(({ theme }) => ({
-	padding: theme.spacing(2),
-	borderBottom: `1px solid ${theme.palette.sidebar.border}`,
-}));
-
-const HeaderRow = styled(Box)({
-	display: "flex",
-	justifyContent: "space-between",
-	alignItems: "center",
-	marginBottom: 12,
-});
-
-const ActionsContainer = styled(Box)({
-	display: "flex",
-	gap: 4,
-});
-
-const SidebarTitle = styled(Typography)({
-	fontWeight: 600,
-	fontSize: "1rem",
-});
-
-const ActionButton = styled(IconButton)(({ theme }) => ({
-	borderRadius: theme.shape.borderRadius * 2,
-	padding: 8,
-	backgroundColor:
-		theme.palette.mode === "light"
-			? alpha(theme.palette.primary.dark, 0.15)
-			: alpha(theme.palette.primary.main, 0.1),
-	color:
-		theme.palette.mode === "light"
-			? theme.palette.primary.dark
-			: theme.palette.primary.main,
-	border:
-		theme.palette.mode === "light"
-			? `1px solid ${alpha(theme.palette.primary.dark, 0.5)}`
-			: "none",
-	transition: "all 0.2s ease-in-out",
-	"&:hover": {
-		backgroundColor:
-			theme.palette.mode === "light"
-				? alpha(theme.palette.primary.dark, 0.25)
-				: alpha(theme.palette.primary.main, 0.2),
-		transform: "translateY(-2px)",
-		boxShadow:
-			theme.palette.mode === "light"
-				? `0 4px 8px ${alpha(theme.palette.primary.dark, 0.3)}`
-				: `0 4px 8px ${alpha(theme.palette.primary.main, 0.25)}`,
-	},
-	"&:active": {
-		transform: "translateY(0)",
-		boxShadow:
-			theme.palette.mode === "light"
-				? `0 2px 4px ${alpha(theme.palette.primary.dark, 0.25)}`
-				: `0 2px 4px ${alpha(theme.palette.primary.main, 0.2)}`,
-	},
-}));
-
-const SearchField = styled(TextField)(({ theme }) => ({
-	"& .MuiOutlinedInput-root": {
-		height: 36,
-		borderRadius: theme.shape.borderRadius * 1.5,
-		backgroundColor: alpha(theme.palette.background.paper, 0.6),
-		border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-		transition: "all 0.2s ease-in-out",
-		"&.Mui-focused": {
-			backgroundColor: alpha(theme.palette.background.paper, 0.8),
-			boxShadow: `0 0 0 3px ${alpha(theme.palette.primary.main, 0.15)}`,
-		},
-		"&:hover": {
-			backgroundColor: alpha(theme.palette.background.paper, 0.7),
-		},
-		padding: "8px 12px",
-		fontSize: "0.875rem",
-	},
-	"& .MuiInputBase-input": {
-		fontSize: "0.875rem",
-	},
-	"& .MuiInputAdornment-root": {
-		color: alpha(theme.palette.text.primary, 0.6),
-	},
-}));
 
 /**
  * Props for the SidebarHeader component
@@ -123,9 +25,28 @@ type SidebarHeaderProps = {
 };
 
 /**
- * Sidebar Header Component
+ * The title, actions and search field at the top of a list sidebar.
  *
- * A reusable component for sidebar headers with search functionality
+ * ## What the action buttons lost
+ *
+ * They were the most decorated controls in the app: a mode-switched
+ * `alpha(primary, 0.1|0.15)` fill, a light-mode-only 1px accent border, a
+ * `translateY(-2px)` hover with an accent-tinted `0 4px 8px` shadow, and a
+ * matching `translateY(0)` plus smaller shadow on `:active`. Every one of those
+ * is disallowed: nothing lifts on hover, elevation is a ground step rather than
+ * a shadow, and a control must not paint itself differently per mode when the
+ * roles already resolve per theme.
+ *
+ * `Plus` is the primary action here, so it takes the one accent fill on this
+ * surface and `Import` stays `ghost`. That is the hierarchy the two matching
+ * accent-tinted buttons could not express.
+ *
+ * ## What the search field lost
+ *
+ * A `0 0 0 3px` accent `box-shadow` on focus. Focus is an `outline`, defined
+ * once globally — a box-shadow ring is clipped by the nearest
+ * `overflow: hidden`, and a sidebar is a scroll container, so the ring
+ * disappeared in exactly the place a keyboard user needed it.
  */
 export const SidebarHeader: FC<SidebarHeaderProps> = ({
 	title,
@@ -136,50 +57,54 @@ export const SidebarHeader: FC<SidebarHeaderProps> = ({
 	newAgentTooltip = "Create a new agent",
 	onImportAgentClick,
 	importAgentTooltip = "Import an agent from a ZIP file",
-}) => {
-	return (
-		<SidebarHeaderContainer>
-			<HeaderRow>
-				<SidebarTitle variant="subtitle1">{title}</SidebarTitle>
-				<ActionsContainer>
-					{onImportAgentClick && (
-						<Tooltip title={importAgentTooltip} arrow placement="top">
-							<ActionButton
-								onClick={onImportAgentClick}
-								size="small"
-								aria-label="Import agent"
-							>
-								<Import size={18} strokeWidth={2} />
-							</ActionButton>
-						</Tooltip>
-					)}
-					<Tooltip title={newAgentTooltip} arrow placement="top">
-						<ActionButton
-							onClick={onNewAgentClick}
-							size="small"
-							aria-label="New agent"
-							data-tour-tag="create-new-agent-button"
+}) => (
+	<div className="p-4">
+		<div className="mb-3 flex items-center justify-between gap-2">
+			<h2 className="truncate text-heading text-ink">{title}</h2>
+			<div className="flex shrink-0 gap-1">
+				{onImportAgentClick && (
+					<Tooltip content={importAgentTooltip}>
+						<Button
+							variant="ghost"
+							size="icon"
+							onClick={onImportAgentClick}
+							aria-label="Import agent"
 						>
-							<Plus size={18} strokeWidth={2} />
-						</ActionButton>
+							<Import aria-hidden="true" />
+						</Button>
 					</Tooltip>
-				</ActionsContainer>
-			</HeaderRow>
+				)}
+				<Tooltip content={newAgentTooltip}>
+					{/* The tour clicks `button[data-tour-tag="create-new-agent-button"]`,
+					    so this tag must stay on the button element itself. */}
+					<Button
+						variant="primary"
+						size="icon"
+						onClick={onNewAgentClick}
+						aria-label="New agent"
+						data-tour-tag="create-new-agent-button"
+					>
+						<Plus aria-hidden="true" />
+					</Button>
+				</Tooltip>
+			</div>
+		</div>
 
-			<SearchField
-				fullWidth
-				size="small"
+		<div className="relative">
+			<Search
+				size={16}
+				aria-hidden="true"
+				className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-dim"
+			/>
+			<Input
+				type="search"
+				inputSize="lg"
 				placeholder={searchPlaceholder}
 				value={searchQuery}
 				onChange={(e) => onSearchChange(e.target.value)}
-				InputProps={{
-					startAdornment: (
-						<InputAdornment position="start">
-							<LucideSearch size={16} strokeWidth={2} />
-						</InputAdornment>
-					),
-				}}
+				aria-label={searchPlaceholder}
+				className="pl-9"
 			/>
-		</SidebarHeaderContainer>
-	);
-};
+		</div>
+	</div>
+);

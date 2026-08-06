@@ -1,4 +1,4 @@
-import { Box } from "@mui/material";
+import { cn } from "@shared/lib/utils";
 import {
 	Code,
 	Handshake,
@@ -10,14 +10,6 @@ import {
 } from "lucide-react";
 import type React from "react";
 import { useEffect, useState } from "react";
-import {
-	FeatureContent,
-	FeatureDescription,
-	FeatureIconContainer,
-	FeatureTitle,
-	ProgressDot,
-	ProgressDots,
-} from "./installer-styled";
 
 /**
  * Feature data for the carousel
@@ -28,113 +20,127 @@ type Feature = {
 	description: string;
 };
 
+/*
+ * Six panes, each one event the reader could actually witness.
+ *
+ * The previous set was written in the vocabulary of the thing rather than the
+ * vocabulary of the person waiting for it — "agentic problem solving",
+ * "universal problem solvers", "agent-to-agent communication" — and two of
+ * the six were the same claim under different jargon. Someone reading this is
+ * three minutes into their first contact with the product and has not agreed
+ * to learn a vocabulary yet.
+ */
 export const features: Feature[] = [
 	{
 		icon: Target,
-		title: "Plans & Executes",
+		title: "Breaks work into steps",
 		description:
-			"Breaks down complex goals into manageable steps and executes them with precision.",
-	},
-	{
-		icon: ShieldCheck,
-		title: "Prioritizes Security",
-		description:
-			"Built-in safety checks by independent AI review and user confirmations keep your system protected.",
-	},
-	{
-		icon: Wrench,
-		title: "Agentic Problem Solving",
-		description:
-			"Agents can intelligently handle errors and roadblocks by adapting approaches and finding alternative solutions.",
+			"Give it a goal in a sentence. It works out the steps and does them in order.",
 	},
 	{
 		icon: Code,
-		title: "Universal Problem Solvers",
+		title: "Writes and runs code",
 		description:
-			"Local Operator agents use code as a universal tool to make their own integrations on the fly and creatively solve problems.",
-	},
-	{
-		icon: Handshake,
-		title: "Agent-to-Agent Communication",
-		description:
-			"Agents can delegate tasks and communicate with each other to solve more complex problems.",
+			"Code is how it reads a spreadsheet, calls an API or renames a folder — written for the job in front of it.",
 	},
 	{
 		icon: HardDrive,
-		title: "On-Device Work",
+		title: "Works on your files",
 		description:
-			"Agents can work on your device, reducing the back and forth between your files and the cloud, and improving privacy.",
+			"Your documents stay on this computer. No uploading a folder to get an answer about it.",
+	},
+	{
+		icon: ShieldCheck,
+		title: "Checks before it acts",
+		description:
+			"A second model reviews anything risky, and you confirm the rest.",
+	},
+	{
+		icon: Wrench,
+		title: "Recovers from errors",
+		description:
+			"When something fails it reads the error and tries another way, rather than stopping and asking you.",
+	},
+	{
+		icon: Handshake,
+		title: "Agents hand work to each other",
+		description:
+			"A researcher can pass what it found to a writer, without you carrying it across.",
 	},
 ];
+
+const ROTATION_MS = 5000;
 
 /**
  * FeatureCarousel component
  *
- * Displays a carousel of features that automatically rotates
+ * Rotates through the product's capabilities while the install runs.
+ *
+ * All six panes are stacked and cross-faded rather than mounted one at a time,
+ * so the block never changes height as the copy length changes. The inactive
+ * ones are hidden from assistive technology and from the pointer, which is the
+ * part a plain `opacity: 0` gets wrong.
  */
 export const FeatureCarousel: React.FC = () => {
 	const [activeFeature, setActiveFeature] = useState(0);
 
-	// Auto-rotate features every 5 seconds
 	useEffect(() => {
 		const interval = setInterval(() => {
 			setActiveFeature((prev) => (prev + 1) % features.length);
-		}, 5000);
+		}, ROTATION_MS);
 
 		return () => clearInterval(interval);
 	}, []);
 
 	return (
-		<Box
-			sx={{
-				position: "relative",
-				height: "300px",
-				width: "100%",
-				display: "flex",
-				flexDirection: "column",
-				justifyContent: "center",
-				alignItems: "center",
-			}}
-		>
-			<Box
-				sx={{
-					position: "relative",
-					height: "240px",
-					width: "100%",
-					display: "flex",
-					justifyContent: "center",
-					alignItems: "center",
-					mb: 4,
-				}}
-			>
-				{features.map((feature, index) => (
-					<FeatureContent
-						key={feature.title}
-						isActive={index === activeFeature}
-						sx={{
-							opacity: index === activeFeature ? 1 : 0,
-							pointerEvents: index === activeFeature ? "auto" : "none",
-						}}
-					>
-						<FeatureIconContainer>
-							<feature.icon size={32} strokeWidth={1} />
-						</FeatureIconContainer>
-						<FeatureTitle variant="h4">{feature.title}</FeatureTitle>
-						<FeatureDescription>{feature.description}</FeatureDescription>
-					</FeatureContent>
-				))}
-			</Box>
+		<div className="flex w-full flex-col items-center">
+			{/* Reserved for the tallest pane and no more. At 240px the block held
+			    about 90px of nothing under every one of the six, which read as the
+			    installer having lost its place rather than as breathing room. */}
+			<div className="relative flex h-44 w-full items-center justify-center">
+				{features.map((feature, index) => {
+					const isActive = index === activeFeature;
+					return (
+						<div
+							key={feature.title}
+							aria-hidden={!isActive}
+							className={cn(
+								"absolute flex max-w-120 flex-col items-center text-center",
+								"transition-opacity duration-slow ease-out-quart",
+								isActive ? "opacity-100" : "pointer-events-none opacity-0",
+							)}
+						>
+							<feature.icon
+								size={32}
+								className="mb-5 text-accent"
+								aria-hidden="true"
+							/>
+							<h2 className="mb-2 text-heading text-ink">{feature.title}</h2>
+							<p className="max-w-100 text-body text-ink-muted">
+								{feature.description}
+							</p>
+						</div>
+					);
+				})}
+			</div>
 
-			<ProgressDots>
+			<div className="mt-6 flex justify-center gap-2">
 				{features.map((feature, index) => (
-					<ProgressDot
+					<button
 						key={`dot-${feature.title}`}
-						active={index === activeFeature}
+						type="button"
+						aria-label={feature.title}
+						aria-current={index === activeFeature}
 						onClick={() => setActiveFeature(index)}
-						sx={{ cursor: "pointer" }}
+						className={cn(
+							"size-2 rounded-full transition-colors duration-base ease-out-quart",
+							/* `control` rather than `hairline`: hairline is a line weight and
+							   an 8px disc filled with it does not read against `surface`. */
+							index === activeFeature ? "bg-accent" : "bg-control",
+						)}
 					/>
 				))}
-			</ProgressDots>
-		</Box>
+			</div>
+		</div>
 	);
 };

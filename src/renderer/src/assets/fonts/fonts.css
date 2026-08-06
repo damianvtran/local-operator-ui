@@ -14,20 +14,14 @@
 	src: url("./RobotoMono-Bold.ttf") format("truetype");
 }
 
-@font-face {
-	font-family: "Geist Mono";
-	src: url("./GeistMonoNerdFontMono-Thin.otf") format("opentype");
-	font-weight: 100;
-	font-style: normal;
-}
-
-@font-face {
-	font-family: "Geist Mono";
-	src: url("./GeistMonoNerdFontMono-Light.otf") format("opentype");
-	font-weight: 300;
-	font-style: normal;
-}
-
+/*
+ * Geist Mono ships as a Nerd Font patch, so each weight is a 2.1 MB OTF. Only
+ * the two weights the app actually asks for are declared: code surfaces render
+ * at the default 400, and CodeMirror's syntax theme plus the diff labels ask for
+ * bold. The Thin/Light/Medium/Black/UltraBlack faces were declared but never
+ * requested by any selector, so they only inflated the installer. Adding a
+ * weight here means re-adding the matching OTF under this directory.
+ */
 @font-face {
 	font-family: "Geist Mono";
 	src: url("./GeistMonoNerdFontMono-Regular.otf") format("opentype");
@@ -37,28 +31,7 @@
 
 @font-face {
 	font-family: "Geist Mono";
-	src: url("./GeistMonoNerdFontMono-Medium.otf") format("opentype");
-	font-weight: 500;
-	font-style: normal;
-}
-
-@font-face {
-	font-family: "Geist Mono";
 	src: url("./GeistMonoNerdFontMono-Bold.otf") format("opentype");
 	font-weight: 700;
-	font-style: normal;
-}
-
-@font-face {
-	font-family: "Geist Mono";
-	src: url("./GeistMonoNerdFontMono-Black.otf") format("opentype");
-	font-weight: 900;
-	font-style: normal;
-}
-
-@font-face {
-	font-family: "Geist Mono";
-	src: url("./GeistMonoNerdFontMono-UltraBlack.otf") format("opentype");
-	font-weight: 950;
 	font-style: normal;
 }

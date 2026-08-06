@@ -29,7 +29,7 @@ export const createFile = async (
 
 		const fileWasCreated = await window.api.fileExists(filePath);
 		if (fileWasCreated) {
-			showSuccessToast(`File "${name}.${type}" created successfully!`);
+			showSuccessToast(`File "${name}.${type}" created.`);
 		} else {
 			throw new Error("File creation failed.");
 		}

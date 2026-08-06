@@ -1,27 +1,25 @@
 /**
- * CategoriesInputChips Component
+ * Category picker rendered as dismissible chips.
  *
- * Dropdown input for categories as deletable chips.
- * - Only allows selection from allowed categories
- * - Deletable chips
- * - Theme-aware, shadcn/MUI style, consistent with EditableField and TagsInputChips
+ * Unlike the tag input, values can only come from the allow-list, so the input
+ * is a combobox over the remaining categories rather than free text: typing
+ * narrows the list, Enter or a click takes the active row, Escape closes it.
+ * Keyboard behaviour is the contract, so the active row is tracked in state
+ * and published with `aria-activedescendant` instead of moving DOM focus.
  */
 
-import { faTimes } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
-	Autocomplete,
-	Box,
-	Chip,
-	IconButton,
-	TextField,
-	Typography,
-	styled,
-	useTheme,
-} from "@mui/material";
 import { ALLOWED_AGENT_CATEGORIES } from "@shared/api/local-operator/types";
-import { useState } from "react";
-import type { FC } from "react";
+import {
+	Badge,
+	Label,
+	Popover,
+	PopoverAnchor,
+	PopoverContent,
+} from "@shared/components/ui";
+import { cn } from "@shared/lib/utils";
+import { X } from "lucide-react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
+import type { ChangeEvent, FC, KeyboardEvent } from "react";
 
 /**
  * Map snake_case category to Normal Capital Case for display.
@@ -51,56 +49,6 @@ type CategoriesInputChipsProps = {
 	icon?: React.ReactNode;
 };
 
-const FieldContainer = styled(Box)({
-	marginBottom: 16,
-});
-
-const FieldLabel = styled("label")(({ theme }) => ({
-	display: "flex",
-	alignItems: "center",
-	marginBottom: 6,
-	color: theme.palette.text.secondary,
-	fontWeight: 500,
-	fontSize: "0.875rem",
-	fontFamily: theme.typography.fontFamily,
-	lineHeight: theme.typography.body2.lineHeight,
-}));
-
-const LabelIcon = styled(Box)({
-	marginRight: 8,
-	opacity: 0.9,
-	display: "flex",
-	alignItems: "center",
-});
-
-const ChipsContainer = styled(Box)(({ theme }) => ({
-	display: "flex",
-	flexWrap: "wrap",
-	gap: theme.spacing(1),
-	padding: theme.spacing(1),
-	background: theme.palette.background.paper,
-	border: `1px solid ${theme.palette.divider}`,
-	borderRadius: 6,
-	minHeight: 44,
-	alignItems: "center",
-}));
-
-const StyledChip = styled(Chip)(({ theme }) => ({
-	fontSize: "0.8125rem",
-	borderRadius: 4,
-	background:
-		theme.palette.mode === "dark"
-			? theme.palette.action.selected
-			: theme.palette.action.hover,
-	color: theme.palette.text.primary,
-	"& .MuiChip-deleteIcon": {
-		color: theme.palette.text.secondary,
-		"&:hover": {
-			color: theme.palette.error.main,
-		},
-	},
-}));
-
 export const CategoriesInputChips: FC<CategoriesInputChipsProps> = ({
 	value,
 	label,
@@ -109,165 +57,240 @@ export const CategoriesInputChips: FC<CategoriesInputChipsProps> = ({
 	disabled = false,
 	icon,
 }) => {
-	const theme = useTheme();
 	const [inputValue, setInputValue] = useState("");
+	const [isOpen, setIsOpen] = useState(false);
+	const [activeIndex, setActiveIndex] = useState(0);
 
-	const availableOptions = ALLOWED_AGENT_CATEGORIES.filter(
-		(opt) => !value.includes(opt),
-	);
+	const inputRef = useRef<HTMLInputElement>(null);
+	const optionRefs = useRef<(HTMLDivElement | null)[]>([]);
+	const inputId = useId();
+	const listboxId = useId();
 
-	const handleDelete = (cat: string) => {
-		onChange(value.filter((c) => c !== cat));
+	const availableOptions = useMemo(() => {
+		const query = inputValue.trim().toLowerCase();
+		return ALLOWED_AGENT_CATEGORIES.filter(
+			(opt) =>
+				!value.includes(opt) &&
+				(!query || CATEGORY_LABELS[opt].toLowerCase().includes(query)),
+		);
+	}, [value, inputValue]);
+
+	// Keep the active row inside the scroll viewport.
+	useEffect(() => {
+		if (!isOpen) return;
+		optionRefs.current[activeIndex]?.scrollIntoView({ block: "nearest" });
+	}, [activeIndex, isOpen]);
+
+	const selectOption = (category: string) => {
+		if (!value.includes(category)) {
+			onChange([...value, category]);
+		}
+		setInputValue("");
+		setIsOpen(false);
+		/* Taking an option removes it from `availableOptions`, so an index that
+		   was valid a moment ago can now point past the end. Every other path
+		   that changes the list resets this; without it, reopening by clicking
+		   the input (which only sets `isOpen`) leaves no row highlighted, an
+		   `aria-activedescendant` pointing at nothing, and a first Enter that
+		   selects nothing. */
+		setActiveIndex(0);
+		inputRef.current?.focus();
 	};
 
+	const handleInputChange = (event: ChangeEvent<HTMLInputElement>) => {
+		setInputValue(event.target.value);
+		setActiveIndex(0);
+		setIsOpen(true);
+	};
+
+	const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+		/* An open popover with nothing in it is reachable - typing opens it
+		   unconditionally - and `% 0` is NaN, which no further arrow press can
+		   undo because NaN % n is also NaN. Every row then reads unselected
+		   with no way back. The three sibling comboboxes in this repo each
+		   guard this; the command palette's comment describes exactly this
+		   failure. */
+		const optionCount = availableOptions.length;
+
+		switch (event.key) {
+			case "ArrowDown":
+				event.preventDefault();
+				if (optionCount === 0) break;
+				if (!isOpen) {
+					setActiveIndex(0);
+					setIsOpen(true);
+				} else {
+					setActiveIndex((activeIndex + 1) % optionCount);
+				}
+				break;
+			case "ArrowUp":
+				event.preventDefault();
+				if (optionCount === 0) break;
+				if (!isOpen) {
+					setActiveIndex(optionCount - 1);
+					setIsOpen(true);
+				} else {
+					setActiveIndex((activeIndex - 1 + optionCount) % optionCount);
+				}
+				break;
+			case "Enter":
+				if (isOpen && availableOptions[activeIndex]) {
+					event.preventDefault();
+					selectOption(availableOptions[activeIndex]);
+				}
+				break;
+			case "Escape":
+				if (isOpen) {
+					event.preventDefault();
+					setIsOpen(false);
+				}
+				break;
+			case "Home":
+				if (isOpen) {
+					event.preventDefault();
+					setActiveIndex(0);
+				}
+				break;
+			case "End":
+				if (isOpen) {
+					event.preventDefault();
+					setActiveIndex(availableOptions.length - 1);
+				}
+				break;
+			default:
+				break;
+		}
+	};
+
+	const handleDelete = (cat: string) => {
+		/* Removing a chip puts its option back into `availableOptions`, which
+		   shifts every index after it. Resetting keeps the highlighted row and
+		   `aria-activedescendant` pointing at the row a user would expect
+		   rather than at whatever slid into that position. */
+		onChange(value.filter((c) => c !== cat));
+		setActiveIndex(0);
+	};
+
+	const activeOptionId =
+		isOpen && availableOptions[activeIndex]
+			? `${listboxId}-option-${activeIndex}`
+			: undefined;
+
 	return (
-		<FieldContainer>
-			<FieldLabel>
-				{icon && <LabelIcon>{icon}</LabelIcon>}
+		/* No outer margin: the container owns the gap between fields. */
+		<div>
+			<Label
+				htmlFor={inputId}
+				className="mb-1.5 flex items-center gap-2 text-ink-muted"
+			>
+				{icon}
 				{label}
-			</FieldLabel>
-			<ChipsContainer>
+			</Label>
+			<div
+				className={cn(
+					"flex min-h-11 flex-wrap items-center gap-2 rounded-sm border border-control bg-surface p-2",
+					// See tags-input-chips: the inner field suppresses its own outline,
+					// so this wrapper owns the ring. `outline-solid` is required
+					// because `outline-none` on the input pins the style token to none.
+					"has-[input:focus-visible]:outline-solid has-[input:focus-visible]:outline-2",
+					"has-[input:focus-visible]:outline-accent has-[input:focus-visible]:outline-offset-2",
+					disabled && "border-hairline bg-sunken",
+				)}
+			>
 				{value.map((cat) => (
-					<StyledChip
-						key={cat}
-						label={CATEGORY_LABELS[cat] || cat}
-						onDelete={disabled ? undefined : () => handleDelete(cat)}
-						disabled={disabled}
-						deleteIcon={
-							<IconButton
-								size="small"
-								aria-label={`Remove category ${cat}`}
-								tabIndex={-1}
-								disabled={disabled}
-								sx={{
-									padding: 0.5,
-									color: theme.palette.text.secondary,
-									"&:hover": { color: theme.palette.error.main },
-								}}
-							>
-								<FontAwesomeIcon icon={faTimes} size="xs" />
-							</IconButton>
-						}
-						sx={{ marginRight: 0.5 }}
-					/>
-				))}
-				<Autocomplete
-					disabled={disabled}
-					options={availableOptions}
-					value={null}
-					inputValue={inputValue}
-					onInputChange={(_, newInput, reason) => {
-						// Only update inputValue if not reset by blur
-						if (reason !== "reset") setInputValue(newInput);
-					}}
-					onChange={(_, newValue, reason) => {
-						// Only add if user selects from list (not on blur)
-						if (
-							newValue &&
-							!value.includes(newValue) &&
-							(reason === "selectOption" || reason === "createOption")
-						) {
-							onChange([...value, newValue]);
-						}
-						setInputValue("");
-					}}
-					selectOnFocus
-					clearOnBlur
-					handleHomeEndKeys
-					autoHighlight
-					autoSelect={false}
-					freeSolo={false}
-					renderInput={(params) => (
-						<TextField
-							{...params}
-							variant="standard"
-							placeholder={placeholder}
-							InputProps={{
-								...params.InputProps,
-								disableUnderline: true,
-								style: {
-									fontSize: "0.875rem",
-									background: "transparent",
-									color: theme.palette.text.primary,
-									padding: 0,
-									minWidth: 80,
-								},
-							}}
-							inputProps={{
-								...params.inputProps,
-								style: { fontSize: "0.875rem" },
-								"aria-label": label,
-							}}
-						/>
-					)}
-					renderOption={(props, option, { selected }) => (
-						<li
-							{...props}
-							className="category-autocomplete-option"
-							style={{
-								display: "flex",
-								alignItems: "center",
-								padding: "6px 14px",
-								fontSize: "0.875rem",
-								fontFamily: theme.typography.fontFamily,
-								color: theme.palette.text.primary,
-								background: selected
-									? theme.palette.action.selected
-									: theme.palette.background.paper,
-								borderRadius: 6,
-								margin: "2px 0",
-								cursor: "pointer",
-								transition: "background 0.15s",
-								fontWeight: 500,
-							}}
+					<Badge key={cat} className="gap-1 pr-1 text-ink">
+						{CATEGORY_LABELS[cat] || cat}
+						<button
+							type="button"
+							aria-label={`Remove category ${CATEGORY_LABELS[cat] || cat}`}
+							disabled={disabled}
+							onClick={() => handleDelete(cat)}
+							className={cn(
+								"rounded-xs text-ink-dim",
+								"transition-colors duration-fast ease-out-quart",
+								"hover:text-danger disabled:text-ink-disabled",
+							)}
 						>
-							{CATEGORY_LABELS[option] || option}
-						</li>
-					)}
-					PaperComponent={(props) => (
-						// Override dropdown background to match list items
-						<Box
-							{...props}
-							sx={{
-								background: theme.palette.background.paper,
-								boxShadow: theme.shadows[3],
-								marginTop: 1,
-								overflow: "hidden",
+							<X />
+						</button>
+					</Badge>
+				))}
+				<Popover open={isOpen} onOpenChange={setIsOpen}>
+					<PopoverAnchor asChild>
+						<input
+							id={inputId}
+							ref={inputRef}
+							type="text"
+							role="combobox"
+							aria-expanded={isOpen}
+							aria-controls={listboxId}
+							aria-autocomplete="list"
+							aria-activedescendant={activeOptionId}
+							autoComplete="off"
+							value={inputValue}
+							placeholder={placeholder}
+							disabled={disabled}
+							aria-label={label}
+							onChange={handleInputChange}
+							onKeyDown={handleKeyDown}
+							onClick={() => {
+								if (availableOptions.length > 0) setIsOpen(true);
 							}}
+							className={cn(
+								"min-w-20 flex-1 bg-transparent px-1 py-0.5 outline-none",
+								"text-body-sm text-ink placeholder:text-ink-dim",
+								"disabled:text-ink-disabled disabled:placeholder:text-ink-disabled",
+							)}
 						/>
-					)}
-					sx={{
-						minWidth: 80,
-						flex: 1,
-						"& .MuiInputBase-root": { padding: 0 },
-					}}
-				/>
-				{/* Inline style for hover effect and custom scrollbar */}
-				<style>
-					{`
-					.category-autocomplete-option:hover,
-					.category-autocomplete-option[aria-selected="true"]:hover {
-						background: ${theme.palette.action.hover} !important;
-					}
-					.MuiAutocomplete-popper .MuiPaper-root {
-						scrollbar-width: thin;
-						scrollbar-color: ${theme.palette.action.selected} ${theme.palette.background.paper};
-					}
-					`}
-				</style>
-			</ChipsContainer>
+					</PopoverAnchor>
+					<PopoverContent
+						align="start"
+						sideOffset={4}
+						// Focus stays in the input; the active row is announced through
+						// `aria-activedescendant`.
+						onOpenAutoFocus={(event) => event.preventDefault()}
+						className="max-h-60 w-(--radix-popover-trigger-width) overflow-y-auto p-1"
+					>
+						{/* biome-ignore lint/a11y/useFocusableInteractive: the input keeps focus; the listbox is reached through aria-activedescendant, so it must not be in the tab order. */}
+						{/* biome-ignore lint/a11y/useSemanticElements: a select-like combobox popup cannot be a native <select>. */}
+						<div id={listboxId} role="listbox" aria-label={label}>
+							{availableOptions.map((option, index) => (
+								/* biome-ignore lint/a11y/useFocusableInteractive: focus stays in the combobox input; the active option is announced through aria-activedescendant. */
+								/* biome-ignore lint/a11y/useKeyWithClickEvents: Arrow keys, Enter and Escape are handled on the combobox input, not on the option. */
+								/* biome-ignore lint/a11y/useSemanticElements: a combobox option cannot be a native <option>. */
+								<div
+									key={option}
+									id={`${listboxId}-option-${index}`}
+									ref={(node) => {
+										optionRefs.current[index] = node;
+									}}
+									// biome-ignore lint/a11y/useSemanticElements: a combobox option cannot be a native <option>.
+									role="option"
+									aria-selected={index === activeIndex}
+									onMouseDown={(event) => {
+										// The input must not lose focus to the list.
+										event.preventDefault();
+									}}
+									onMouseEnter={() => setActiveIndex(index)}
+									onClick={() => selectOption(option)}
+									className={cn(
+										"cursor-pointer rounded-sm px-3 py-1.5 font-medium text-body-sm",
+										index === activeIndex ? "bg-accent-wash" : undefined,
+										"text-ink",
+									)}
+								>
+									{CATEGORY_LABELS[option] || option}
+								</div>
+							))}
+						</div>
+					</PopoverContent>
+				</Popover>
+			</div>
 			{value.length === 0 && (
-				<Typography
-					variant="caption"
-					sx={{
-						color: theme.palette.text.disabled,
-						marginLeft: 1,
-						marginTop: 0.5,
-					}}
-				>
+				<span className="mt-1 ml-1 block text-ink-dim text-meta">
 					No categories selected
-				</Typography>
+				</span>
 			)}
-		</FieldContainer>
+		</div>
 	);
 };

@@ -1,30 +1,18 @@
 import type { SettingsSection } from "@features/settings/components/settings-sidebar";
-import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import type { FC, ReactElement } from "react";
+import type { ReactElement } from "react";
 
-export const getIconElement = (section: SettingsSection): ReactElement => {
-	if (section.isImage && typeof section.icon === "string") {
-		return (
-			<img
-				src={section.icon}
-				alt={section.label}
-				style={{ width: 20, height: 20, objectFit: "contain" }}
-			/>
-		);
-	}
-	if (section.isFontAwesome) {
-		return (
-			<FontAwesomeIcon
-				icon={section.icon as IconDefinition}
-				size="lg"
-				style={{ width: 16, height: 16 }}
-			/>
-		);
-	}
-	const IconComponent = section.icon as FC<{
-		size?: number;
-		strokeWidth?: number;
-	}>;
-	return <IconComponent size={16} />;
-};
+/**
+ * The glyph for a settings section row.
+ *
+ * Every section now hands over a component that draws in `currentColor`, so
+ * there is one branch and one size. The Radient row used to arrive as a PNG
+ * and had to be drawn at 20px against the others' 16 to look the same weight —
+ * a full-colour cube shrunk into a row of outlines, which read as a blob and
+ * needed the size fudge to be seen at all. It has an outline drawing of its
+ * own now, on the same grid as the rest.
+ *
+ * Decorative here: the row's label is right beside it.
+ */
+export const getIconElement = (section: SettingsSection): ReactElement => (
+	<section.icon size={16} />
+);

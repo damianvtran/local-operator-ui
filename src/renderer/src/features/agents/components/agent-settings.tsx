@@ -1,13 +1,3 @@
-/**
- * Agent Settings Component
- *
- * Component for displaying and editing agent settings
- */
-
-import { faArrowLeft } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Box, Paper, Typography, alpha, useTheme } from "@mui/material";
-import { styled } from "@mui/material/styles";
 import type { AgentDetails } from "@shared/api/local-operator/types";
 import { useUpdateAgent } from "@shared/hooks/use-update-agent";
 import { Bot } from "lucide-react";
@@ -35,134 +25,95 @@ type AgentSettingsProps = {
 	initialSelectedAgentId?: string;
 };
 
-const DetailsPaper = styled(Paper)(({ theme }) => ({
-	padding: theme.spacing(3),
-	height: "100%",
-	borderRadius: 6,
-	backgroundImage: "none",
-	backgroundColor: theme.palette.background.paper,
-	border: `1px solid ${theme.palette.divider}`,
-	display: "flex",
-	flexDirection: "column",
-	transition: "all 0.25s ease",
-	boxShadow:
-		theme.palette.mode === "dark"
-			? "0 4px 20px rgba(0,0,0,0.15)"
-			: "0 4px 20px rgba(0,0,0,0.06)",
-	"&:hover": {
-		boxShadow:
-			theme.palette.mode === "dark"
-				? "0 8px 30px rgba(0,0,0,0.2)"
-				: "0 8px 30px rgba(0,0,0,0.08)",
-	},
-	overflow: "hidden",
-}));
-
-const ScrollableContent = styled(Box)(() => ({
-	display: "flex",
-	flexDirection: "column",
-	height: "100%",
-	overflow: "auto",
-}));
-
-const EmptyStateContainer = styled(Box)(({ theme }) => ({
-	display: "flex",
-	flexDirection: "column",
-	alignItems: "center",
-	justifyContent: "center",
-	flexGrow: 1,
-	padding: theme.spacing(4),
-	background: `linear-gradient(180deg, ${alpha(theme.palette.background.default, 0)} 0%, ${alpha(theme.palette.background.paper, 0.05)} 100%)`,
-	borderRadius: 16,
-}));
-
-const DirectionIndicator = styled(Box)(({ theme }) => ({
-	display: "flex",
-	alignItems: "center",
-	color: theme.palette.primary.main,
-	opacity: 0.7,
-}));
-
 /**
- * Agent Settings Component
+ * The agent details pane.
  *
- * Component for displaying and editing agent settings
+ * ## Why it draws nothing
+ *
+ * It was a bordered `surface` card with 24px of padding, sitting inside a page
+ * that already insets its content by 32px — a 56px double gutter, and a
+ * boundary drawn around the whole right-hand pane when the pane is already
+ * bounded by the window on one side and the agent list on the other. It also
+ * meant the four settings panes rendered inside a box while the settings page's
+ * identical panes render on the page, so the same content had two different
+ * anatomies depending on the route.
+ *
+ * Now it is content on `canvas`, in a measured column, exactly like Settings.
+ * The 32px gap between panes is what separates one from the next.
+ *
+ * Two structural details worth keeping:
+ *
+ * - It must stay a `div`. The onboarding tour matches
+ *   `div[data-tour-tag="agent-settings-details-paper"]` with the element name
+ *   in the selector, so replacing it with a `section` breaks the tour silently.
+ * - The scroll lives on the inner element, so the column's measure and centring
+ *   stay put instead of scrolling with the content.
  */
 export const AgentSettings: FC<AgentSettingsProps> = ({
 	selectedAgent,
 	refetchAgent,
 	initialSelectedAgentId,
 }) => {
-	const theme = useTheme();
 	const [savingField, setSavingField] = useState<string | null>(null);
 	const updateAgentMutation = useUpdateAgent();
 
 	return (
-		<DetailsPaper data-tour-tag="agent-settings-details-paper">
+		<div
+			data-tour-tag="agent-settings-details-paper"
+			className="h-full overflow-hidden"
+		>
 			{selectedAgent ? (
-				<ScrollableContent>
-					<GeneralSettings
-						selectedAgent={selectedAgent}
-						savingField={savingField}
-						setSavingField={setSavingField}
-						updateAgentMutation={updateAgentMutation}
-						refetchAgent={refetchAgent}
-						initialSelectedAgentId={initialSelectedAgentId}
-					/>
-
-					<SystemPromptSettings
-						selectedAgent={selectedAgent}
-						savingField={savingField}
-						setSavingField={setSavingField}
-						refetchAgent={refetchAgent}
-						initialSelectedAgentId={initialSelectedAgentId}
-					/>
-
-					<SecuritySettings
-						selectedAgent={selectedAgent}
-						savingField={savingField}
-						setSavingField={setSavingField}
-						updateAgentMutation={updateAgentMutation}
-						refetchAgent={refetchAgent}
-						initialSelectedAgentId={initialSelectedAgentId}
-					/>
-
-					<ChatSettings
-						selectedAgent={selectedAgent}
-						savingField={savingField}
-						setSavingField={setSavingField}
-						updateAgentMutation={updateAgentMutation}
-						refetchAgent={refetchAgent}
-						initialSelectedAgentId={initialSelectedAgentId}
-					/>
-				</ScrollableContent>
-			) : (
-				<EmptyStateContainer>
-					<Bot
-						size={54}
-						color={theme.palette.primary.main}
-						style={{ marginBottom: 8 }}
-					/>
-					<Typography variant="h6" sx={{ mb: 1, fontWeight: 500 }}>
-						No Agent Selected
-					</Typography>
-					<Typography
-						variant="body2"
-						color="text.secondary"
-						align="center"
-						sx={{ mb: 2, maxWidth: 500 }}
-					>
-						Select an agent from the list to view its configuration and details
-					</Typography>
-					<DirectionIndicator>
-						<FontAwesomeIcon
-							icon={faArrowLeft}
-							style={{ marginRight: "0.5rem" }}
+				<div className="h-full overflow-y-auto">
+					<div className="mx-auto flex w-full max-w-4xl flex-col gap-8 pb-8">
+						<GeneralSettings
+							selectedAgent={selectedAgent}
+							savingField={savingField}
+							setSavingField={setSavingField}
+							updateAgentMutation={updateAgentMutation}
+							refetchAgent={refetchAgent}
+							initialSelectedAgentId={initialSelectedAgentId}
 						/>
-						<Typography variant="body2">Select an Agent</Typography>
-					</DirectionIndicator>
-				</EmptyStateContainer>
+
+						<SystemPromptSettings
+							selectedAgent={selectedAgent}
+							savingField={savingField}
+							setSavingField={setSavingField}
+							refetchAgent={refetchAgent}
+							initialSelectedAgentId={initialSelectedAgentId}
+						/>
+
+						<SecuritySettings
+							selectedAgent={selectedAgent}
+							savingField={savingField}
+							setSavingField={setSavingField}
+							updateAgentMutation={updateAgentMutation}
+							refetchAgent={refetchAgent}
+							initialSelectedAgentId={initialSelectedAgentId}
+						/>
+
+						<ChatSettings
+							selectedAgent={selectedAgent}
+							savingField={savingField}
+							setSavingField={setSavingField}
+							updateAgentMutation={updateAgentMutation}
+							refetchAgent={refetchAgent}
+							initialSelectedAgentId={initialSelectedAgentId}
+						/>
+					</div>
+				</div>
+			) : (
+				<div className="flex h-full flex-col items-center justify-center gap-2 p-8 text-center">
+					{/* Scenery, so it stays ink. No accent anywhere in this state: the
+					    only thing that could earn it is a control, and there is none
+					    here — the list this points at is already on screen. */}
+					<Bot size={48} className="text-ink-dim" aria-hidden="true" />
+					<h2 className="text-heading text-ink">No agent selected</h2>
+					<p className="max-w-md text-body-sm text-ink-muted">
+						Select an agent from the list on the left to view its configuration
+						and details.
+					</p>
+				</div>
 			)}
-		</DetailsPaper>
+		</div>
 	);
 };

@@ -1,12 +1,5 @@
-import {
-	Avatar,
-	Box,
-	IconButton,
-	Tooltip,
-	Typography,
-	alpha,
-} from "@mui/material";
-import { styled } from "@mui/material/styles";
+import { Avatar, AvatarFallback, Button, Tooltip } from "@shared/components/ui";
+import { cn } from "@shared/lib/utils";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { Bot, FileText } from "lucide-react";
 import type { FC } from "react";
@@ -23,26 +16,6 @@ type ChatHeaderProps = {
 	onOpenOptions?: () => void;
 };
 
-const OptionsButton = styled(IconButton)(({ theme }) => ({
-	marginLeft: "auto",
-	color: theme.palette.text.secondary,
-	width: "48px",
-	height: "48px",
-	cursor: "pointer",
-	transition: "all 0.2s ease",
-	"&:hover": {
-		backgroundColor: alpha(theme.palette.primary.main, 0.08),
-		color: theme.palette.primary.main,
-		transform: "translateY(-1px)",
-	},
-}));
-
-const DescriptionBox = styled(Box)({
-	display: "flex",
-	flexDirection: "column",
-	width: "90%",
-});
-
 export const ChatHeader: FC<ChatHeaderProps> = ({
 	agentName = "Local Operator",
 	description = "Your on-device AI assistant",
@@ -55,67 +28,41 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 	const shortcut = isMac ? "⌘+Shift+C" : "Ctrl+Shift+C";
 
 	return (
-		<Box
-			sx={(theme) => ({
-				p: 2,
-				borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-				display: "flex",
-				alignItems: "center",
-				height: "84px",
-			})}
+		<div
+			className={cn(
+				"flex h-21 items-center gap-3 border-hairline border-b px-4",
+			)}
 			data-tour-tag="chat-header"
 		>
-			<Avatar
-				sx={(theme) => ({
-					bgcolor: theme.palette.icon.background,
-					color: theme.palette.icon.text,
-					mr: 2,
-				})}
-			>
-				<Bot size={24} />
+			<Avatar className={cn("size-10")}>
+				<AvatarFallback>
+					<Bot size={22} aria-hidden={true} />
+				</AvatarFallback>
 			</Avatar>
-			<DescriptionBox>
-				<Typography
-					variant="h6"
-					sx={{
-						fontWeight: 400,
-						lineHeight: 1.5,
-						fontSize: "1.4rem",
-						mb: 0,
-					}}
-				>
-					{agentName}
-				</Typography>
-				<Typography
-					variant="caption"
-					color="text.secondary"
-					sx={{
-						lineHeight: 1.5,
-						mt: 0,
-						fontSize: "0.875rem",
-						whiteSpace: "nowrap",
-						overflow: "hidden",
-						textOverflow: "ellipsis",
-						width: "100%", // Truncate as a percentage of parent container
-						display: "block",
-					}}
+			<div className={cn("flex min-w-0 flex-col")}>
+				<h2 className={cn("truncate text-ink text-title")}>{agentName}</h2>
+				<span
+					className={cn("truncate text-ink-muted text-body-sm")}
 					title={description}
 				>
 					{description}
-				</Typography>
-			</DescriptionBox>
+				</span>
+			</div>
 
 			{onOpenOptions && !isCanvasOpen && (
-				<Tooltip title={`Open Canvas (${shortcut})`} arrow placement="top">
-					<OptionsButton
+				<Tooltip content={`Open canvas (${shortcut})`} side="top">
+					<Button
+						variant="ghost"
+						size="icon-lg"
+						className={cn("ml-auto")}
 						onClick={() => setCanvasOpen(true)}
-						size="medium"
+						aria-label={`Open canvas (${shortcut})`}
 						data-tour-tag="open-canvas-button"
 					>
-						<FileText size={24} strokeWidth={1.5} />
-					</OptionsButton>
+						<FileText aria-hidden={true} />
+					</Button>
 				</Tooltip>
 			)}
-		</Box>
+		</div>
 	);
 };

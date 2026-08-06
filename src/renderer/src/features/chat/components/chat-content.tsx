@@ -1,15 +1,16 @@
-import { Box, Paper, styled } from "@mui/material";
 import type {
 	AgentDetails,
 	AgentExecutionRecord,
 	JobStatus,
 } from "@shared/api/local-operator/types";
 import { ResizableDivider } from "@shared/components/common/resizable-divider";
+import { TabPanel } from "@shared/components/ui";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { isDevelopmentMode } from "@shared/utils/env-utils";
 import React, {
 	type FC,
+	type ReactNode,
 	useCallback,
 	useEffect,
 	useRef,
@@ -19,7 +20,12 @@ import type { Message } from "../types/message";
 import { Canvas } from "./canvas";
 import { ChatHeader } from "./chat-header";
 import { ChatOptionsSidebar } from "./chat-options-sidebar";
-import { ChatTabs } from "./chat-tabs";
+import {
+	CHAT_TAB_IDS,
+	CHAT_TAB_PANEL_IDS,
+	type ChatTabValue,
+	ChatTabs,
+} from "./chat-tabs";
 import { MessageInput, type MessageInputHandle } from "./message-input";
 import { MessagesView } from "./messages-view";
 import { RawInfoView } from "./raw-info-view";
@@ -82,24 +88,6 @@ type ChatContentProps = {
 	refetch?: () => void;
 	messageInputRef?: React.Ref<MessageInputHandle>;
 };
-
-const ChatContainer = styled(Paper)(({ theme }) => ({
-	display: "flex",
-	flex: 1,
-	flexDirection: "column",
-	height: "100%",
-	flexGrow: 1,
-	borderRadius: 0,
-	backgroundColor: theme.palette.background.paper,
-}));
-
-const FlexRow = styled(Box)({
-	display: "flex",
-	flexDirection: "row",
-	width: "100%",
-	height: "100%",
-	position: "relative",
-});
 
 /**
  * ChatContent Component
@@ -185,9 +173,6 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		const selectedTabId = (canvasState ?? defaultCanvasState).selectedTabId;
 		const files = (canvasState ?? defaultCanvasState).files;
 
-		// On conversation change, ensure canvas state is initialized/restored
-		// (No longer needed: Zustand store now always provides a default state for any conversationId)
-
 		// No effect needed: always use the value from the store, or fallback to default if 0
 		const effectiveCanvasPanelWidth =
 			canvasPanelWidth === 0 ? 450 : canvasPanelWidth;
@@ -226,17 +211,28 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 			],
 		);
 
+		// The tab strip is a development-only affordance, so the views only carry
+		// tab semantics when it is on screen: in production there is no tablist,
+		// and a `tabpanel` labelled by a tab that was never rendered is worse for
+		// a screen reader than a plain region. Only the selected view is mounted,
+		// which is why the strip puts `aria-controls` on the selected tab alone.
+		const showTabs = isDevelopmentMode();
+		const asTabPanel = (tab: ChatTabValue, view: ReactNode): ReactNode =>
+			showTabs ? (
+				<TabPanel id={CHAT_TAB_PANEL_IDS[tab]} labelledBy={CHAT_TAB_IDS[tab]}>
+					{view}
+				</TabPanel>
+			) : (
+				view
+			);
+
 		return (
-			<FlexRow>
-				<Box
-					sx={{
-						flex: 1,
-						minWidth: 220,
-						height: "100%",
-						position: "relative",
-					}}
-				>
-					<ChatContainer elevation={0} ref={chatContainerRef}>
+			<div className="relative flex h-full w-full flex-row">
+				<div className="relative h-full min-w-[220px] flex-1">
+					<div
+						ref={chatContainerRef}
+						className="flex h-full grow flex-col rounded-none bg-surface"
+					>
 						{/* Chat header */}
 						<ChatHeader
 							agentName={agentName}
@@ -250,31 +246,35 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							agentId={agentId}
 						/>
 						{/* Tabs for chat and raw - only shown in development mode */}
-						{isDevelopmentMode() && (
+						{showTabs && (
 							<ChatTabs activeTab={activeTab} onChange={onTabChange} />
 						)}
 						{/* In production, always show chat view. In development, respect the active tab */}
-						{!isDevelopmentMode() || activeTab === "chat" ? (
-							/* Messages container */
-							<MessagesView
-								messages={messages}
-								isLoading={isLoading}
-								isLoadingMessages={isLoadingMessages}
-								isFetchingMore={isFetchingMore}
-								jobStatus={jobStatus}
-								agentName={agentName}
-								currentExecution={currentExecution}
-								messagesContainerRef={messagesContainerRef}
-								messagesEndRef={messagesEndRef}
-								scrollToBottom={scrollToBottom}
-								refetch={refetch}
-								conversationId={agentId}
-								isSmallView={isSmallView}
-							/>
-						) : (
-							/* Raw information tab - only accessible in development mode */
-							<RawInfoView content={rawInfoContent} />
-						)}
+						{!showTabs || activeTab === "chat"
+							? asTabPanel(
+									"chat",
+									/* Messages container */
+									<MessagesView
+										messages={messages}
+										isLoading={isLoading}
+										isLoadingMessages={isLoadingMessages}
+										isFetchingMore={isFetchingMore}
+										jobStatus={jobStatus}
+										agentName={agentName}
+										currentExecution={currentExecution}
+										messagesContainerRef={messagesContainerRef}
+										messagesEndRef={messagesEndRef}
+										scrollToBottom={scrollToBottom}
+										refetch={refetch}
+										conversationId={agentId}
+										isSmallView={isSmallView}
+									/>,
+								)
+							: asTabPanel(
+									"raw",
+									/* Raw information tab - only accessible in development mode */
+									<RawInfoView content={rawInfoContent} />,
+								)}
 						{/* Message input */}
 						{!(isLoadingMessages && messages.length === 0) && (
 							<MessageInput
@@ -292,8 +292,8 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								isSmallView={isSmallView}
 							/>
 						)}
-					</ChatContainer>
-				</Box>
+					</div>
+				</div>
 
 				{isCanvasOpen && (
 					<>
@@ -305,17 +305,13 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							side="left"
 							onDoubleClick={restoreDefaultCanvasPanelWidth}
 						/>
-						<Box
+						<div
 							ref={canvasContainerRef}
-							sx={(theme) => ({
+							style={{
 								minWidth: effectiveCanvasPanelWidth,
 								width: effectiveCanvasPanelWidth,
-								overflow: "hidden",
-								height: "100%",
-								transition: "width 0.2s cubic-bezier(0.4,0,0.2,1)",
-								position: "relative",
-								borderLeft: `1px solid ${theme.palette.divider}`,
-							})}
+							}}
+							className="relative h-full overflow-hidden border-l border-hairline transition-[width] duration-base ease-out-quart"
 						>
 							<Canvas
 								activeDocumentId={selectedTabId}
@@ -326,10 +322,10 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								onClose={handleCloseCanvas}
 								onCloseDocument={handleCloseDocument}
 							/>
-						</Box>
+						</div>
 					</>
 				)}
-			</FlexRow>
+			</div>
 		);
 	},
 );

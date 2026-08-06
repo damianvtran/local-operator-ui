@@ -10,7 +10,6 @@ import {
 	createLocalOperatorClient,
 } from "@shared/api/local-operator";
 import { apiConfig } from "@shared/config";
-import { showErrorToast } from "@shared/utils/toast-manager";
 import { useQuery } from "@tanstack/react-query";
 
 /**
@@ -29,25 +28,21 @@ export const useConfig = () => {
 		enabled: true,
 		queryKey: configQueryKey,
 		queryFn: async (): Promise<ConfigResponse | null> => {
-			try {
-				// Use the properly typed client
-				const client = createLocalOperatorClient(apiConfig.baseUrl);
-				const response = await client.config.getConfig();
+			// No toast on failure, for the same reason as `use-credentials`: this
+			// is the probe the connectivity gate itself runs, so it fires on mount
+			// from every surface at once and its failure is a standing condition,
+			// not an event. Raising a toast per caller quoting the raw exception
+			// ("Failed to fetch") put a browser string on top of the conversation
+			// while the persistent connectivity banner was already saying the true
+			// thing once. The error still propagates to callers.
+			const client = createLocalOperatorClient(apiConfig.baseUrl);
+			const response = await client.config.getConfig();
 
-				if (response.status >= 400) {
-					throw new Error(response.message || "Failed to fetch configuration");
-				}
-
-				return response.result as ConfigResponse;
-			} catch (error) {
-				const errorMessage =
-					error instanceof Error
-						? error.message
-						: "An unknown error occurred while fetching configuration";
-
-				showErrorToast(errorMessage);
-				throw error;
+			if (response.status >= 400) {
+				throw new Error(response.message || "Failed to fetch configuration");
 			}
+
+			return response.result as ConfigResponse;
 		},
 		// Prevent automatic refetches on window focus
 		refetchOnWindowFocus: false,

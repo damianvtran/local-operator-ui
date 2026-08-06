@@ -7,19 +7,13 @@ import { getFileName } from "@features/chat/utils/get-file-name";
 import { isCanvasSupported } from "@features/chat/utils/is-canvas-supported";
 import { isSpreadsheetFile } from "@features/chat/utils/is-spreadsheet-file";
 import {
-	Box,
-	Card,
-	CardActionArea,
-	CardContent,
-	Grid,
-	Tooltip,
-	Typography,
-	alpha,
-} from "@mui/material";
-import { styled } from "@mui/material/styles";
-import { createLocalOperatorClient } from "@shared/api/local-operator";
+	type LocalOperatorClient,
+	createLocalOperatorClient,
+} from "@shared/api/local-operator";
 import { FileActionsMenu } from "@shared/components/common/file-actions-menu";
+import { Card, Tooltip } from "@shared/components/ui";
 import { apiConfig } from "@shared/config";
+import { cn } from "@shared/lib/utils";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import {
 	Archive,
@@ -44,48 +38,14 @@ type CanvasFileViewerProps = {
 
 const defaultFiles: CanvasDocument[] = [];
 
-const StyledCard = styled(Card)(({ theme }) => ({
-	display: "flex",
-	flexDirection: "column",
-	height: "100%",
-	backgroundColor: alpha(theme.palette.background.paper, 0.8),
-	backgroundImage: "none",
-	transition: "box-shadow 0.2s ease-in-out",
-	"&:hover": {
-		boxShadow: theme.shadows[6],
-	},
-	borderRadius: 8,
-}));
-
-const StyledImage = styled("img")({
-	height: 140,
-	width: "100%",
-	objectFit: "contain",
-	backgroundColor: alpha("#000", 0.1),
-});
-
-const StyledVideo = styled("video")({
-	height: 140,
-	width: "100%",
-	objectFit: "contain",
-	backgroundColor: alpha("#000", 0.1),
-});
-
-const IconBox = styled(Box)({
-	height: 140,
-	display: "flex",
-	alignItems: "center",
-	justifyContent: "center",
-});
-
-const FileNameTypography = styled(Typography)(({ theme }) => ({
-	fontWeight: 400,
-	whiteSpace: "nowrap",
-	overflow: "hidden",
-	textOverflow: "ellipsis",
-	fontSize: "0.7rem",
-	padding: theme.spacing(0, 0),
-}));
+/**
+ * Thumbnail band height, shared by the image, video and icon tiles.
+ *
+ * Was 140px, which in a three-column 720px panel made each tile taller than it
+ * was wide and pushed the file name — the only thing anyone reads here — below
+ * the fold of the first row. 96px is enough to recognise an image by.
+ */
+const THUMBNAIL = "h-24 w-full";
 
 /**
  * Checks if a file is an image based on its extension
@@ -138,7 +98,7 @@ const isVideo = (path: string): boolean => {
  * Gets the appropriate URL for an attachment using the static API
  */
 const getAttachmentUrl = (
-	client: ReturnType<typeof createLocalOperatorClient>,
+	client: LocalOperatorClient,
 	path: string,
 ): string => {
 	// If it's a web URL, return it as is
@@ -381,30 +341,33 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 
 	if (files.length === 0) {
 		return (
-			<Box
-				sx={{
-					display: "flex",
-					flexDirection: "column",
-					alignItems: "center",
-					justifyContent: "center",
-					height: "100%",
-					p: 3,
-					textAlign: "center",
-				}}
+			<div
+				className={cn(
+					"flex h-full flex-col items-center justify-center gap-2 p-6 text-center",
+				)}
 			>
-				<Typography variant="h6" gutterBottom>
-					No Files in Conversation
-				</Typography>
-				<Typography variant="body2" color="text.secondary">
-					Files attached to messages will appear here.
-				</Typography>
-			</Box>
+				<h2 className={cn("text-heading text-ink")}>No files yet</h2>
+				<p className={cn("max-w-80 text-body-sm text-ink-muted")}>
+					Files you attach to a message, and files the agent works on, appear
+					here ready to open.
+				</p>
+			</div>
 		);
 	}
 
 	return (
-		<Box sx={{ p: 3, height: "100%", overflowY: "auto" }}>
-			<Grid container spacing={2}>
+		<div className={cn("h-full overflow-y-auto p-6")}>
+			{/*
+			 * `auto-fill` rather than `sm:grid-cols-3`. A viewport breakpoint is
+			 * meaningless inside a resizable dock: `sm:` was true at a 1440px
+			 * window while the panel itself was 400px wide, so the grid drew three
+			 * 120px columns. Tracks sized against the panel cannot lie.
+			 */}
+			<div
+				className={cn(
+					"grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-3",
+				)}
+			>
 				{memoizedFiles.map((fileDoc) => {
 					const IconComponent = getIconForFileType(fileDoc.type);
 					const isLocalFile =
@@ -414,63 +377,86 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 						? fileDoc.path.substring(7)
 						: fileDoc.path;
 					return (
-						<Grid item xs={6} sm={4} md={4} key={fileDoc.id}>
-							<StyledCard sx={{ position: "relative" }}>
-								{isLocalFile && (
-									<Box
-										sx={{
-											position: "absolute",
-											top: 4,
-											right: 4,
-											zIndex: 2,
-										}}
-									>
-										<FileActionsMenu
-											filePath={normalizedPath}
-											tooltip="File actions"
-											aria-label="File actions"
-											onShowInCanvas={() => handleFileClick(fileDoc)}
-										/>
-									</Box>
-								)}
-								<CardActionArea
+						<Card
+							key={fileDoc.id}
+							variant="surface"
+							padding="none"
+							className={cn(
+								"group relative overflow-hidden",
+								"transition-colors duration-fast ease-out-quart hover:border-control",
+							)}
+						>
+							{isLocalFile && (
+								<div
+									className={cn(
+										"absolute top-1 right-1 z-10",
+										// Revealed on hover or keyboard focus, like every
+										// other row/tile action in the app. Nine permanent
+										// "…" glyphs over nine thumbnails was chrome
+										// competing with the content it sat on.
+										"pointer-events-none opacity-0",
+										"group-hover:pointer-events-auto group-hover:opacity-100",
+										"group-focus-within:pointer-events-auto group-focus-within:opacity-100",
+									)}
+								>
+									<FileActionsMenu
+										filePath={normalizedPath}
+										tooltip="File actions"
+										aria-label="File actions"
+										onShowInCanvas={() => handleFileClick(fileDoc)}
+									/>
+								</div>
+							)}
+							<Tooltip content={fileDoc.title}>
+								<button
+									type="button"
 									onClick={() => handleFileClick(fileDoc)}
-									sx={{ display: "flex", flexDirection: "column", flexGrow: 1 }}
+									className={cn(
+										"flex w-full flex-1 flex-col text-left",
+										"transition-colors duration-fast ease-out-quart",
+										"hover:bg-elevated",
+									)}
 								>
 									{fileDoc.type === "image" ? (
-										<StyledImage
+										<img
 											src={getUrl(fileDoc.path)}
 											alt={fileDoc.title}
-											title={fileDoc.title}
+											className={cn(THUMBNAIL, "bg-sunken object-contain")}
 										/>
 									) : fileDoc.type === "video" ? (
-										<StyledVideo
+										// biome-ignore lint/a11y/useMediaCaption: a user's own attached video has no caption track to offer.
+										<video
 											src={getUrl(fileDoc.path)}
-											title={fileDoc.title}
 											controls={true}
 											preload="metadata"
+											className={cn(THUMBNAIL, "bg-sunken object-contain")}
 										/>
 									) : (
-										<IconBox>
-											<IconComponent size={48} strokeWidth={1} />
-										</IconBox>
+										<span
+											className={cn(
+												THUMBNAIL,
+												"flex items-center justify-center text-ink-muted",
+											)}
+										>
+											<IconComponent size={26} />
+										</span>
 									)}
-									<CardContent
-										sx={{ width: "100%", pt: 1, pb: "8px !important" }}
+									{/* The file name is the content of the tile, so it is
+									    `ink` at the body step, not a caption. */}
+									<span
+										className={cn(
+											"block w-full truncate border-hairline border-t px-2.5 py-2 text-body-sm text-ink",
+										)}
 									>
-										<Tooltip title={fileDoc.title} placement="bottom" arrow>
-											<FileNameTypography variant="caption">
-												{getFileName(fileDoc.title)}
-											</FileNameTypography>
-										</Tooltip>
-									</CardContent>
-								</CardActionArea>
-							</StyledCard>
-						</Grid>
+										{getFileName(fileDoc.title)}
+									</span>
+								</button>
+							</Tooltip>
+						</Card>
 					);
 				})}
-			</Grid>
-		</Box>
+			</div>
+		</div>
 	);
 };
 

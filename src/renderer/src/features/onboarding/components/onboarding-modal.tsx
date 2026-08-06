@@ -5,10 +5,11 @@
  * Manages the flow between different onboarding steps.
  */
 
-import { Box, Tooltip, useTheme } from "@mui/material";
 import { getUserInfo } from "@shared/api/radient/auth-api";
+import { Button, Tooltip } from "@shared/components/ui";
 import { apiConfig } from "@shared/config";
 import { radientUserKeys } from "@shared/hooks/use-radient-user-query";
+import { cn } from "@shared/lib/utils";
 import {
 	OnboardingStep,
 	useOnboardingStore,
@@ -16,22 +17,11 @@ import {
 import { useUserStore } from "@shared/store/user-store";
 import { clearSession, getSession } from "@shared/utils/session-store";
 import { useQueryClient } from "@tanstack/react-query";
-import { CircleCheck, PartyPopper, Rocket } from "lucide-react";
+import { CircleCheck } from "lucide-react";
 import type { FC } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { OnboardingDialog } from "./onboarding-dialog";
-import {
-	CongratulationsContainer,
-	CongratulationsIcon,
-	CongratulationsMessage,
-	CongratulationsTitle,
-	PrimaryButton,
-	SecondaryButton,
-	SkipButton,
-	StepDot,
-	StepIndicatorContainer,
-} from "./onboarding-styled";
 import { CreateAgentStep } from "./steps/create-agent-step";
 import { DefaultModelStep } from "./steps/default-model-step";
 import { ModelCredentialStep } from "./steps/model-credential-step";
@@ -40,17 +30,26 @@ import { RadientSignInStep } from "./steps/radient-signin-step";
 import { SearchApiStep } from "./steps/search-api-step";
 import { UserProfileStep } from "./steps/user-profile-step";
 
-// Define step titles outside the component for stability
-// Use Partial<> as not all steps might have explicit titles defined here anymore
+/*
+ * One title per step, each a plain verb phrase naming the single thing that
+ * step asks for. "Add model provider credentials" and "Enable web search"
+ * were the two that named the machinery instead of the outcome; the audience
+ * here has used a chat assistant and has not used a build tool.
+ *
+ * These double as the accessible names of the progress segments, so they have
+ * to survive being read on their own, out of order.
+ */
 const stepTitles: Partial<Record<OnboardingStep, string>> = {
-	[OnboardingStep.RADIENT_CHOICE]: "Choose Your Setup Option",
-	[OnboardingStep.RADIENT_SIGNIN]: "Set Up With Radient Pass",
-	[OnboardingStep.USER_PROFILE]: "Set Up Your Profile",
-	[OnboardingStep.MODEL_CREDENTIAL]: "Add Model Provider Credentials",
-	[OnboardingStep.SEARCH_API]: "Enable Web Search (Recommended)",
-	[OnboardingStep.DEFAULT_MODEL]: "Choose Your Default Model",
-	[OnboardingStep.CREATE_AGENT]: "Create Your First Agent",
-	[OnboardingStep.CONGRATULATIONS]: "Setup Complete",
+	[OnboardingStep.RADIENT_CHOICE]: "Choose your setup",
+	[OnboardingStep.RADIENT_SIGNIN]: "Sign in to Radient Pass",
+	// Verb-led, like the other seven, and not a repeat of the first field's own
+	// label 60px below it — the step asks for a name and an optional email.
+	[OnboardingStep.USER_PROFILE]: "Introduce yourself",
+	[OnboardingStep.MODEL_CREDENTIAL]: "Add a model key",
+	[OnboardingStep.SEARCH_API]: "Turn on web search",
+	[OnboardingStep.DEFAULT_MODEL]: "Pick a default model",
+	[OnboardingStep.CREATE_AGENT]: "Create your first agent",
+	[OnboardingStep.CONGRATULATIONS]: "You're all set",
 };
 
 /**
@@ -69,7 +68,6 @@ type OnboardingModalProps = {
  * Manages the first-time setup experience with multiple steps
  */
 export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
-	const theme = useTheme(); // Get theme for spacing
 	const { currentStep, setCurrentStep, completeModalOnboarding } =
 		useOnboardingStore();
 	const navigate = useNavigate();
@@ -195,7 +193,6 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 	 * AND navigates to the next step.
 	 */
 	const handleRadientSignInSuccess = useCallback(() => {
-		console.log("handleRadientSignInSuccess");
 		setIsUsingRadientPass(true);
 		setCurrentStep(OnboardingStep.CREATE_AGENT);
 	}, [setCurrentStep]);
@@ -228,16 +225,7 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 		// Handle undefined currentStep during hydration
 		if (!currentStep) return "Loading...";
 
-		// Use specific titles, fallback to the tooltip title
-		switch (currentStep) {
-			case OnboardingStep.RADIENT_CHOICE:
-				return "Choose Your Setup Option"; // More specific title
-			case OnboardingStep.CONGRATULATIONS:
-				return "Setup Complete";
-			default:
-				// Use the title defined for tooltips if not overridden
-				return stepTitles[currentStep] || "First-Time Setup";
-		}
+		return stepTitles[currentStep] || "First-time setup";
 	}, [currentStep]); // Remove stepTitles from dependency array
 
 	/**
@@ -278,43 +266,24 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 				// Pass the validity callback
 				return <CreateAgentStep onValidityChange={setIsCreateAgentStepValid} />;
 			case OnboardingStep.CONGRATULATIONS:
+				/*
+				 * The one accent moment in the flow, spent here. Setup ending is the
+				 * only thing in onboarding worth a colour, and it gets a single mark
+				 * rather than the three stacked celebration glyphs this used to have.
+				 *
+				 * No heading of its own: the dialog's own title already reads "You're
+				 * all set", and this step used to repeat it two rows below itself.
+				 * Left-aligned like every other step, so the last screen of the flow
+				 * does not change alignment on the way out.
+				 */
 				return (
-					<CongratulationsContainer>
-						<CongratulationsIcon>
-							<CircleCheck size={48} />
-						</CongratulationsIcon>
-						<CongratulationsTitle>
-							<Box
-								component="span"
-								sx={{
-									display: "inline-flex",
-									alignItems: "center",
-									mr: 1,
-									verticalAlign: "middle",
-								}}
-							>
-								<PartyPopper size={24} />
-							</Box>
-							You're all set!
-							<Box
-								component="span"
-								sx={{
-									display: "inline-flex",
-									alignItems: "center",
-									ml: 1,
-									verticalAlign: "middle",
-								}}
-							>
-								<Rocket size={24} />
-							</Box>
-						</CongratulationsTitle>
-						<CongratulationsMessage>
-							Amazing! Your Local Operator is now configured and ready to use.
-							You can start chatting with your new AI assistant right away or
-							explore more exciting features in the settings. Get ready for an
-							incredible AI experience!
-						</CongratulationsMessage>
-					</CongratulationsContainer>
+					<div className="flex flex-col gap-4">
+						<CircleCheck size={28} className="text-accent" aria-hidden="true" />
+						<p className="text-body text-ink-muted">
+							Local Operator is ready. Start a conversation with your new agent,
+							or change anything you picked here later in Settings.
+						</p>
+					</div>
 				);
 			default:
 				return null; // Should not happen
@@ -448,106 +417,149 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 	 * Get the text for the 'Next'/'Finish' button
 	 */
 	const nextButtonText =
-		currentStep === OnboardingStep.CONGRATULATIONS ? "Get Started" : "Next →";
+		currentStep === OnboardingStep.CONGRATULATIONS ? "Get started" : "Next";
 
 	// Determine if the Next button should be disabled
 	const isNextDisabled =
 		// Disable on Create Agent step if it's not valid (no agents added)
 		currentStep === OnboardingStep.CREATE_AGENT && !isCreateAgentStepValid;
 
-	// Render dialog actions (Back, Skip, Next buttons)
-	// Render dialog actions (Back, Skip, Next buttons) - Adjusted layout
-	const dialogActions = (
-		<Box
-			sx={{
-				display: "flex",
-				justifyContent: "space-between", // Space out Back and Next/Skip
-				width: "100%",
-				alignItems: "center",
-				gap: theme.spacing(1.5), // Consistent gap
-			}}
-		>
-			{/* Back Button Area - Use flex-start alignment */}
-			<Box sx={{ display: "flex", justifyContent: "flex-start" }}>
-				{canGoBack ? (
-					<SecondaryButton onClick={handleBack}>Back</SecondaryButton>
-				) : (
-					<Box sx={{ minWidth: 100 }} /> // Placeholder to maintain alignment
-				)}
-			</Box>
+	/* The choice and sign-in steps advance by being answered, not by Next. */
+	const showNext =
+		currentStep !== OnboardingStep.RADIENT_CHOICE &&
+		currentStep !== OnboardingStep.RADIENT_SIGNIN;
 
-			{/* Skip/Next Button Area - Use flex-end alignment */}
-			<Box
-				sx={{
-					display: "flex",
-					justifyContent: "flex-end",
-					gap: theme.spacing(1.5), // Consistent gap
-					alignItems: "center",
-				}}
-			>
-				{canSkip && <SkipButton onClick={handleSkip}>Skip</SkipButton>}
-				{/* Hide Next button on choice/signin steps */}
-				{currentStep !== OnboardingStep.RADIENT_CHOICE &&
-					currentStep !== OnboardingStep.RADIENT_SIGNIN && (
-						<PrimaryButton onClick={handleNext} disabled={isNextDisabled}>
-							{nextButtonText}
-						</PrimaryButton>
+	/*
+	 * Back on the left, forward on the right, and the row keeps its height when
+	 * there is no Back — `justify-between` with an empty first slot rather than
+	 * a spacer element of a guessed width.
+	 *
+	 * `null` when the step has no buttons at all, so the dialog does not draw a
+	 * bordered footer band around nothing.
+	 */
+	const dialogActions =
+		canGoBack || canSkip || showNext ? (
+			<div className="flex w-full items-center justify-between gap-3">
+				<div>
+					{canGoBack && (
+						<Button variant="secondary" size="lg" onClick={handleBack}>
+							Back
+						</Button>
 					)}
-			</Box>
-		</Box>
-	);
+				</div>
 
-	// Generate the actual dot elements or null
-	const stepIndicatorDotElements = useMemo(() => {
-		// If currentStep is not yet defined, or if there are no steps in the current flow
+				<div className="flex items-center gap-3">
+					{canSkip && (
+						<Button variant="ghost" size="lg" onClick={handleSkip}>
+							Skip
+						</Button>
+					)}
+					{showNext && (
+						<Button
+							variant="primary"
+							size="lg"
+							onClick={handleNext}
+							disabled={isNextDisabled}
+						>
+							{nextButtonText}
+						</Button>
+					)}
+				</div>
+			</div>
+		) : null;
+
+	/*
+	 * Progress, as a count and a track.
+	 *
+	 * It was six 8px dots and nothing else. A dot carries position but not
+	 * length or name — you could not tell how much was left without counting,
+	 * and the step's name existed only inside a tooltip, so the one piece of
+	 * information a first-run user actually wants was behind a hover. Cron and
+	 * Things both write the count out; the track is what makes the remaining
+	 * distance readable at a glance.
+	 *
+	 * Segments stay individually clickable back to visited steps, which is the
+	 * behaviour the dots had. `rounded-xs` on a 4px bar rather than a pill:
+	 * `rounded-full` is reserved, and `progress.tsx` already sets the
+	 * precedent for a bar this size.
+	 */
+	const finalStepIndicatorsProp = useMemo(() => {
 		if (!currentStep || steps.length === 0) {
 			return null;
 		}
 
-		return steps.map((step) => {
-			const isActive = currentStep === step;
-			const isVisited = visitedSteps.has(step);
-			// Allow navigation only to visited steps that are not the current one
-			const canNavigate = isVisited && step !== currentStep;
+		const activeIndex = steps.indexOf(currentStep);
 
-			// Special case: Don't allow navigating back to CHOICE/SIGNIN via dots
-			const isNonNavigableRadientStep =
-				step === OnboardingStep.RADIENT_CHOICE ||
-				step === OnboardingStep.RADIENT_SIGNIN;
-
-			return (
-				// @ts-ignore - Ignore potential TS issue with Tooltip wrapping custom component
-				<Tooltip key={step} title={stepTitles[step]} arrow>
-					{/* Wrap StepDot directly if it forwards refs, otherwise use a Box */}
-					{/* The updated StepDot handles cursor styling internally */}
-					<StepDot
-						active={isActive}
-						visited={isVisited}
-						onClick={() => {
-							// Navigation logic remains the same
-							if (canNavigate && !isNonNavigableRadientStep) {
-								setCurrentStep(step);
-							}
-						}}
-					/>
-				</Tooltip>
-			);
-		});
-	}, [currentStep, steps, visitedSteps, setCurrentStep]); // stepTitles is stable
-
-	// Prepare the final stepIndicators prop for OnboardingDialog
-	const finalStepIndicatorsProp = useMemo(() => {
-		// If there are no dot elements to render, pass null to OnboardingDialog
-		if (!stepIndicatorDotElements) {
-			return null;
-		}
-		// Otherwise, wrap the dots in the StepIndicatorContainer
 		return (
-			<StepIndicatorContainer>
-				{stepIndicatorDotElements}
-			</StepIndicatorContainer>
+			<div className="flex shrink-0 items-center gap-3">
+				<span className="whitespace-nowrap text-ink-dim text-meta">
+					{activeIndex >= 0
+						? `Step ${activeIndex + 1} of ${steps.length}`
+						: `${steps.length} steps`}
+				</span>
+				{/* `list`, not a bare row of buttons: it has a length, and a screen
+				    reader saying "5 items" is the same fact the count above shows. */}
+				<ol className="flex items-center gap-1">
+					{steps.map((step, index) => {
+						const isActive = currentStep === step;
+						const isVisited = visitedSteps.has(step);
+
+						// Never navigable via the track: these two precede the numbered
+						// flow and going back to them would unpick the chosen path.
+						const isNonNavigableRadientStep =
+							step === OnboardingStep.RADIENT_CHOICE ||
+							step === OnboardingStep.RADIENT_SIGNIN;
+
+						const canNavigate =
+							isVisited && !isActive && !isNonNavigableRadientStep;
+
+						// Filled up to and including the current step, so the track
+						// reads as distance covered rather than as six lit dots.
+						const isCovered = index <= activeIndex;
+
+						return (
+							<li key={step} className="flex">
+								<Tooltip content={stepTitles[step]}>
+									{/*
+									 * A real button, so the track is tabbable and each step's
+									 * name is announced. `aria-disabled` rather than
+									 * `disabled`: a disabled button swallows pointer events,
+									 * and the tooltip is the only place the name is written.
+									 */}
+									<button
+										type="button"
+										aria-label={stepTitles[step]}
+										aria-current={isActive ? "step" : undefined}
+										aria-disabled={!canNavigate}
+										onClick={() => {
+											if (canNavigate) {
+												setCurrentStep(step);
+											}
+										}}
+										/* The bar is 4px; the button around it is 16px, so the
+										   thing you can hit and the thing you can see are not
+										   the same size. A 4px-tall click target is a target
+										   only in the sense that it can be missed. */
+										className="flex h-4 w-4 items-center"
+									>
+										<span
+											className={cn(
+												"h-1 w-full rounded-xs transition-colors duration-base ease-out-quart",
+												/* `control`, not `hairline`: hairline is a line
+												   weight and a 4px bar filled with it vanishes
+												   against `elevated`. */
+												isCovered ? "bg-accent" : "bg-control",
+											)}
+										/>
+									</button>
+								</Tooltip>
+							</li>
+						);
+					})}
+				</ol>
+			</div>
 		);
-	}, [stepIndicatorDotElements]);
+	}, [currentStep, steps, visitedSteps, setCurrentStep]); // stepTitles is stable
 
 	return (
 		<OnboardingDialog
@@ -555,9 +567,6 @@ export const OnboardingModal: FC<OnboardingModalProps> = ({ open }) => {
 			title={dialogTitle}
 			stepIndicators={finalStepIndicatorsProp} // Use the new variable
 			actions={dialogActions}
-			dialogProps={{
-				disableEscapeKeyDown: true, // Prevent closing with Escape key
-			}}
 		>
 			{/* Render the actual step content - Loading indicator removed */}
 			{stepContent}

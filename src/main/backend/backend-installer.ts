@@ -259,7 +259,15 @@ export class BackendInstaller {
 				maximizable: false,
 				fullscreenable: false,
 				title: "Setting Up Local Operator",
-				backgroundColor: "#0A0A0A", // Match app's background color
+				/* The default dark theme's `canvas`. This is the colour Electron
+				   paints before the renderer's first frame, so a mismatch is a
+				   visible flash on the very first screen a new user sees. It was
+				   #0A0A0A to match a palette this refactor replaced; the warm
+				   near-black below is what `localOperatorDark` actually renders.
+				   Hardcoded because the main process paints this window before
+				   any theme module is loaded - if the palette moves again, this
+				   moves with it. */
+				backgroundColor: "#16130e",
 				webPreferences: {
 					preload: join(__dirname, "../preload/index.js"),
 					sandbox: false,

@@ -1,0 +1,316 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "./themes.generated.css";
+
+/*
+ * The single token source for everything already ported to Tailwind.
+ *
+ * Colour comes in as `var(--lo-*)`, defined per theme in themes.generated.css
+ * and generated from the ThemePalette objects. Everything else — type, space,
+ * radii, motion — is palette-independent and lives here as literal values,
+ * once, instead of being repeated in twelve theme files as it was before.
+ *
+ * @see docs/branding.md for the reasoning behind each ramp.
+ */
+
+@theme {
+	/* ---- colour: role names, not hues -------------------------------------
+	 * Utilities read `bg-surface`, `text-ink-muted`, `border-control`. A
+	 * component never names a colour, so a theme swap is a variable swap and
+	 * nothing in a component has to know it happened.
+	 */
+	--color-canvas: var(--lo-canvas);
+	--color-surface: var(--lo-surface);
+	--color-elevated: var(--lo-elevated);
+	--color-sunken: var(--lo-sunken);
+
+	--color-ink: var(--lo-ink);
+	--color-ink-muted: var(--lo-ink-muted);
+	--color-ink-dim: var(--lo-ink-dim);
+	--color-ink-disabled: var(--lo-ink-disabled);
+
+	--color-hairline: var(--lo-hairline);
+	--color-control: var(--lo-border-control);
+
+	--color-accent: var(--lo-accent);
+	--color-accent-hover: var(--lo-accent-hover);
+	--color-accent-active: var(--lo-accent-active);
+	--color-accent-wash: var(--lo-accent-wash);
+	--color-on-accent: var(--lo-on-accent);
+
+	--color-success: var(--lo-success);
+	--color-success-wash: var(--lo-success-wash);
+	--color-success-border: var(--lo-success-border);
+	--color-warning: var(--lo-warning);
+	--color-warning-wash: var(--lo-warning-wash);
+	--color-warning-border: var(--lo-warning-border);
+	--color-danger: var(--lo-danger);
+	--color-danger-wash: var(--lo-danger-wash);
+	--color-danger-border: var(--lo-danger-border);
+	--color-info: var(--lo-info);
+	--color-info-wash: var(--lo-info-wash);
+	--color-info-border: var(--lo-info-border);
+
+	/* ---- type ------------------------------------------------------------
+	 * A desktop app is not a marketing page: it is read at arm's length for
+	 * hours, and it has no hero. So this is the site's scale with the display
+	 * steps removed and the body steps kept — the app's largest routine text
+	 * is a page title, not a headline.
+	 *
+	 * Sizes are rem against a 16px root. Line-heights are unitless.
+	 */
+	--text-display: 1.75rem;
+	--text-display--line-height: 1.2;
+	--text-display--letter-spacing: -0.02em;
+	--text-display--font-weight: 600;
+
+	--text-title: 1.25rem;
+	--text-title--line-height: 1.3;
+	--text-title--letter-spacing: -0.012em;
+	--text-title--font-weight: 600;
+
+	--text-heading: 1rem;
+	--text-heading--line-height: 1.4;
+	--text-heading--letter-spacing: -0.006em;
+	--text-heading--font-weight: 600;
+
+	--text-body: 0.875rem;
+	--text-body--line-height: 1.55;
+
+	--text-body-sm: 0.8125rem;
+	--text-body-sm--line-height: 1.5;
+
+	--text-meta: 0.75rem;
+	--text-meta--line-height: 1.45;
+
+	/* Machine voice: paths, code, counts, timestamps, trace labels. The one
+	   place monospace is permitted, and the reason it reads as machine output
+	   without needing a box drawn around it. */
+	--text-mono: 0.8125rem;
+	--text-mono--line-height: 1.5;
+	--text-mono-sm: 0.75rem;
+	--text-mono-sm--line-height: 1.45;
+
+	/*
+	 * Only name faces this app actually ships or the OS actually has.
+	 *
+	 * CSP is `font-src 'self' data:`, so a remote face cannot load — naming one
+	 * is not a graceful degradation, it is a silent substitution. The previous
+	 * stack asked for "Inter" and "JetBrains Mono"; neither is bundled, so sans
+	 * silently rendered as the OS UI font and mono fell through to whatever the
+	 * platform had. That last one is the damaging half: CodeMirror pins "Geist
+	 * Mono", so machine voice rendered in two unrelated faces on the same
+	 * screen, and on Windows the non-CodeMirror half landed on Courier New.
+	 *
+	 * Sans is deliberately the OS UI font. This is a desktop app, that is what
+	 * it has always actually rendered, and bundling a webfont to change it
+	 * would add weight to restate a decision the platform already makes well.
+	 */
+	--font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+	--font-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+	/* ---- space -----------------------------------------------------------
+	 * 4px base. Tailwind's default ramp already is this; it is restated so the
+	 * branding doc has something to point at, and so the three-tier grouping
+	 * rule (4/8 within a component, 12/16/24 between components, 32/48/64
+	 * between sections) has named steps.
+	 */
+	--spacing: 0.25rem;
+
+	/* ---- radii -----------------------------------------------------------
+	 * Five steps. Anything not on this list is a mistake, and `rounded-full`
+	 * is allowed on exactly three things: avatars, status dots, and the
+	 * trace pill.
+	 */
+	--radius-xs: 2px;
+	--radius-sm: 6px;
+	--radius-md: 10px;
+	--radius-lg: 14px;
+	--radius-frame: 16px;
+
+	/* ---- motion ----------------------------------------------------------
+	 * Durations are short because this is a tool. The longest thing a user
+	 * waits on is 240ms, and only for something entering the screen.
+	 *
+	 * Declared in BOTH namespaces on purpose. Tailwind v4 generates the
+	 * `duration-*` utilities from `--transition-duration-*`; `--duration-*`
+	 * alone compiles to nothing, silently — `.duration-fast` simply never
+	 * appears in the output and the element animates at Tailwind's stock
+	 * 150ms. The plain `--duration-*` names are kept because hand-written CSS
+	 * and Emotion styles in the not-yet-ported half of the app read them as
+	 * raw `var()`s.
+	 */
+	--transition-duration-instant: 80ms;
+	--transition-duration-fast: 120ms;
+	--transition-duration-base: 180ms;
+	--transition-duration-slow: 240ms;
+
+	--duration-instant: 80ms;
+	--duration-fast: 120ms;
+	--duration-base: 180ms;
+	--duration-slow: 240ms;
+
+	--ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+	--ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+	--ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+
+	/* The modal/drawer scrim. Mapped as a colour so overlays can reach it as
+	   `bg-scrim` instead of hardcoding a black alpha that ignores the theme. */
+	--color-scrim: var(--lo-scrim);
+
+	/* ---- elevation -------------------------------------------------------
+	 * One shadow. Elevation between in-flow surfaces is a lightness step; the
+	 * shadow is only for objects that leave the flow.
+	 */
+	--shadow-overlay: var(--lo-overlay-shadow);
+}
+
+@layer base {
+	/*
+	 * The zero-specificity half of the focus ring: shape only.
+	 *
+	 * The ring itself is authored UNLAYERED at the bottom of this file — see the
+	 * comment there for why it cannot live in this layer.
+	 *
+	 * `:focus-visible` only: a mouse user clicking a button should not get a
+	 * ring, a keyboard user tabbing to it must.
+	 */
+	:where(:focus-visible) {
+		border-radius: inherit;
+	}
+
+	/*
+	 * Disabled changes colour, never opacity.
+	 *
+	 * An opacity-faded control fades its own background too, so the same
+	 * disabled button lands on a different colour over `surface` than over
+	 * `sunken`, and neither was designed. MUI applies `disabledOpacity` in
+	 * eight components; those are neutralised in the base theme factory.
+	 */
+	:where(:disabled, [aria-disabled="true"]) {
+		opacity: 1;
+		cursor: not-allowed;
+	}
+
+	body {
+		background-color: var(--color-canvas);
+		color: var(--color-ink);
+		font-family: var(--font-sans);
+		font-size: var(--text-body);
+		line-height: 1.55;
+		-webkit-font-smoothing: antialiased;
+		text-rendering: optimizeLegibility;
+	}
+
+	/*
+	 * Reduced motion is a contract, not a courtesy.
+	 *
+	 * Everything animated in this app is decorative — an entrance, a hover
+	 * lift, the streaming text fade. None of it carries information, so all of
+	 * it can be reduced to near-zero without losing meaning. The one thing
+	 * that must NOT be disabled is a state change the user needs to perceive,
+	 * which is why this caps duration rather than setting `animation: none` —
+	 * a cancelled animation can leave an element at its `from` keyframe, and
+	 * that is how content ends up permanently invisible.
+	 */
+	@media (prefers-reduced-motion: reduce) {
+		*,
+		*::before,
+		*::after {
+			animation-duration: 0.01ms !important;
+			animation-iteration-count: 1 !important;
+			transition-duration: 0.01ms !important;
+			scroll-behavior: auto !important;
+		}
+	}
+}
+
+/*
+ * Quantity column headers, right-aligned without reversing.
+ *
+ * ag-grid's own `ag-right-aligned-header` right-aligns by setting
+ * `flex-direction: row-reverse` on the header label, which parks the sort and
+ * filter icons at the far LEFT of the header cell - beside the neighbouring
+ * column's label, where they read as belonging to it. Right-aligning with
+ * `justify-content: flex-end` keeps the children in their normal order, so
+ * the icons sit with their own label and the whole group moves right.
+ *
+ * Unlayered for the same reason as the focus ring: ag-grid's stylesheet is
+ * unlayered, and a layered rule loses to it regardless of specificity.
+ */
+.lo-quantity-header .ag-header-cell-label {
+	flex-direction: row;
+	justify-content: flex-end;
+}
+
+/*
+ * The focus ring, authoritative and deliberately UNLAYERED.
+ *
+ * Three constraints stack here, and getting any one wrong silently removes the
+ * keyboard focus indicator from part of the app.
+ *
+ * 1. It cannot live in `@layer base`. An unlayered declaration beats a layered
+ *    one regardless of specificity, and MUI/Emotion injects unlayered. While
+ *    any MUI survives — the date-picker, plus anything a future dependency
+ *    brings — a layered rule loses to `.MuiButtonBase-root { outline: 0 }`
+ *    even at higher specificity.
+ *
+ * 2. It cannot rely on MUI's own CssBaseline override. The base theme authors
+ *    an equivalent rule under `MuiCssBaseline`, but those styles only inject
+ *    when `<CssBaseline/>` is actually rendered — and the app stopped
+ *    rendering it once Tailwind's preflight replaced it. Storybook still
+ *    renders one, which is worse than neither: the ring was present in every
+ *    story and absent in the shipped app, so the verification surface
+ *    disagreed with the product. This rule is what makes them agree.
+ *
+ * 3. The `html` prefix is load-bearing. `.MuiButtonBase-root { outline: 0 }`
+ *    is (0,1,0); a bare `:focus-visible` ties and loses on order. `html
+ *    :focus-visible` is (0,1,1) and wins.
+ *
+ * `outline` rather than `box-shadow`, but NOT because outlines escape clipping
+ * - they do not. An outline is ink overflow and an ancestor's `overflow:
+ * hidden` clips it exactly as it clips an outset shadow. An earlier version of
+ * this comment claimed otherwise, and a wrong reason is worse than no reason
+ * because it is the one someone cites next time.
+ *
+ * The real reasons: a modern outline follows the element's own `border-radius`
+ * automatically, so the ring is correctly shaped without being told; it does
+ * not participate in layout or compositing the way a shadow does; and it is
+ * the property `:focus-visible` UA styles and assistive tooling already
+ * expect. `box-shadow: none` is forced because MUI ships shadow rings at
+ * two-class specificity (`.MuiSlider-thumb.Mui-focusVisible`).
+ *
+ * 4. The style comes from Tailwind's own `--tw-outline-style` token rather than
+ *    being hardcoded to `solid`. Because this rule is unlayered it outranks the
+ *    `outline-none` utility, and hardcoding the style would make it override
+ *    every deliberate suppression — putting a ring on the composer's textarea
+ *    *inside* the ring its wrapper already draws. Reading the token means
+ *    `outline-none` keeps meaning what it says, and everything that has not
+ *    asked for silence still gets a ring. The `solid` fallback covers elements
+ *    with no Tailwind outline utility at all, such as the MUI date-picker.
+ */
+html :focus-visible,
+html .Mui-focusVisible {
+	outline-width: 2px;
+	outline-style: var(--tw-outline-style, solid);
+	outline-color: var(--color-accent);
+	outline-offset: 2px;
+	box-shadow: none !important;
+}
+
+/*
+ * `outline-none` is deliberately NOT reversed here.
+ *
+ * The tempting fix for Tailwind v4's `outline-none` (which pins
+ * `--tw-outline-style: none` and so cancels the ring above) is a blanket
+ * restore under `:focus-visible`. That is wrong twice over. It double-rings
+ * every composite control that legitimately suppresses the inner field's
+ * outline because the wrapper draws one — you get a ring inside a ring — and
+ * it hides the real defect, which is a focusable element with no indicator at
+ * all, behind a global that makes the symptom disappear.
+ *
+ * The rule instead: an element may carry `outline-none` only if a wrapper
+ * draws the ring for it with `has-[:focus-visible]:outline-solid`, or focus is
+ * moved there programmatically and a ring would be noise. Both cases are a
+ * component-level decision that has to be visible in the component.
+ */

@@ -1,23 +1,13 @@
-import {
-	Alert,
-	Button,
-	CssBaseline,
-	LinearProgress,
-	Snackbar,
-	Typography,
-} from "@mui/material";
-import {
-	ThemeProvider as MuiThemeProvider,
-	useTheme,
-} from "@mui/material/styles";
-import { DEFAULT_THEME, themes } from "@shared/themes";
+import { Button, Progress } from "@shared/components/ui";
+import { cn } from "@shared/lib/utils";
 import type { Meta, StoryObj } from "@storybook/react";
 import type { ProgressInfo, UpdateInfo } from "electron-updater";
 import parse from "html-react-parser";
 import { useEffect, useState } from "react";
-import { ThemeProvider as StyledThemeProvider } from "styled-components";
+import { FloatingAlert } from "./floating-alert";
 import {
 	ProgressContainer,
+	RELEASE_NOTES_PROSE,
 	UpdateActions,
 	UpdateContainer,
 	UpdateNotification,
@@ -281,17 +271,10 @@ const meta = {
 				context.parameters.triggerUpdateProgress,
 			]);
 
-			const theme = themes[DEFAULT_THEME];
-
 			return (
-				<MuiThemeProvider theme={theme}>
-					<StyledThemeProvider theme={theme}>
-						<CssBaseline />
-						<div style={{ width: "600px", padding: "20px" }}>
-							<Story />
-						</div>
-					</StyledThemeProvider>
-				</MuiThemeProvider>
+				<div className="w-150 p-5">
+					<Story />
+				</div>
 			);
 		},
 	],
@@ -314,18 +297,12 @@ export const Default: Story = {
 		const DefaultComponent = () => {
 			// Override the component to show something in default state
 			return (
-				<div
-					style={{
-						border: "1px dashed #ccc",
-						padding: "16px",
-						borderRadius: "8px",
-					}}
-				>
-					<Typography variant="h6">Default State</Typography>
-					<Typography variant="body1">
+				<div className="rounded-lg border border-hairline border-dashed p-4">
+					<h2 className="text-heading text-ink">Default state</h2>
+					<p className="text-body text-ink-muted">
 						This is the default state of the UpdateNotification component.
 						Normally it doesn't render anything when no updates are available.
-					</Typography>
+					</p>
 				</div>
 			);
 		};
@@ -357,7 +334,7 @@ export const Checking: Story = {
 					// Set checking state directly
 					setIsChecking(true);
 					// Return a promise that never resolves to keep checking state true
-					return new Promise(() => {});
+					return new Promise<never>(() => {});
 				};
 
 				// Call checkForUpdates immediately
@@ -374,14 +351,12 @@ export const Checking: Story = {
 			if (isChecking) {
 				return (
 					<UpdateContainer>
-						<Typography className="update-title">
-							Checking for Updates
-						</Typography>
-						<Typography className="update-description">
+						<h2 className="mb-3 text-heading text-ink">Checking for updates</h2>
+						<p className="mb-2 text-body text-ink-muted">
 							Please wait while we check for available updates...
-						</Typography>
+						</p>
 						<ProgressContainer>
-							<LinearProgress />
+							<Progress />
 						</ProgressContainer>
 					</UpdateContainer>
 				);
@@ -408,8 +383,6 @@ export const UpdateAvailable: Story = {
 	render: () => {
 		// Create a component that directly renders the update available state
 		const UpdateAvailableComponent = () => {
-			const theme = useTheme();
-
 			// Use state to force the component to render with update available
 			const [available, setAvailable] = useState(true);
 			const [info, setInfo] = useState({
@@ -431,59 +404,52 @@ export const UpdateAvailable: Story = {
 				window.triggerUpdateAvailable = true;
 			}, []);
 
-			// Button styling to match agent header buttons
-			const buttonSx = {
-				textTransform: "none",
-				fontSize: "0.8125rem",
-				padding: theme.spacing(0.5, 1.5),
-				borderRadius: theme.shape.borderRadius * 0.75,
-			};
-
-			const secondaryButtonSx = {
-				...buttonSx,
-				borderColor: theme.palette.divider,
-				color: theme.palette.text.secondary,
-				"&:hover": {
-					backgroundColor: theme.palette.action.hover,
-					borderColor: theme.palette.divider,
-				},
-			};
-
 			// If update is available, render the UI directly
 			if (available && info) {
 				return (
 					<UpdateContainer>
-						<Typography className="update-title">Update Available</Typography>
-						<Typography className="update-description">
+						<h2 className="mb-3 text-heading text-ink">Update available</h2>
+						<p className="mb-2 text-body text-ink-muted">
 							Version {info.version} is available. You are currently using
 							version {process.env.npm_package_version || "1.0.0"}.
-						</Typography>
+						</p>
 						{info.releaseNotes && (
-							<Typography className="update-notes" sx={{ mt: 1 }}>
-								Release Notes:{" "}
+							/* The same prose set the component uses, imported rather
+							   than retyped: this story draws its own copy of the panel,
+							   and the release-notes formatting defect it exists to show
+							   was invisible precisely because the copy had drifted. */
+							<div
+								className={cn(
+									"mt-2 text-body text-ink-muted",
+									RELEASE_NOTES_PROSE,
+								)}
+							>
+								Release notes:{" "}
 								{typeof info.releaseNotes === "string"
 									? parse(info.releaseNotes)
 									: "See release notes on GitHub"}
-							</Typography>
+							</div>
 						)}
 						<UpdateActions>
+							{/* Dismiss first, commit last - the component's order. This
+							    story hand-rolls the footer, so it has to be kept in
+							    step by hand; drawn the other way it photographed a
+							    layout the app no longer renders. */}
 							<Button
-								variant="contained"
-								size="small"
+								variant="outline"
+								size="sm"
 								onClick={() => {}}
 								disabled={false}
-								sx={buttonSx}
 							>
-								Download Update
+								Update later
 							</Button>
 							<Button
-								variant="outlined"
-								size="small"
+								variant="primary"
+								size="sm"
 								onClick={() => {}}
 								disabled={false}
-								sx={secondaryButtonSx}
 							>
-								Update Later
+								Download update
 							</Button>
 						</UpdateActions>
 					</UpdateContainer>
@@ -539,36 +505,29 @@ export const Downloading: Story = {
 			if (available && downloading && info) {
 				return (
 					<UpdateContainer>
-						<Typography className="update-title">Update Available</Typography>
-						<Typography className="update-description">
+						<h2 className="mb-3 text-heading text-ink">Update available</h2>
+						<p className="mb-2 text-body text-ink-muted">
 							Version {info.version} is available. You are currently using
 							version {process.env.npm_package_version || "1.0.0"}.
-						</Typography>
+						</p>
 						{info.releaseNotes && (
-							<Typography className="update-notes" sx={{ mt: 1 }}>
-								Release Notes:{" "}
+							<div className="mt-2 text-body text-ink-muted">
+								Release notes:{" "}
 								{typeof info.releaseNotes === "string"
 									? info.releaseNotes
 									: "See release notes on GitHub"}
-							</Typography>
+							</div>
 						)}
 
 						<ProgressContainer>
-							<Typography variant="body2" sx={{ fontSize: "0.8125rem" }}>
+							<p className="text-body-sm text-ink-muted">
 								Downloading: {Math.round(progress.percent)}%
-							</Typography>
-							<LinearProgress
-								variant="determinate"
-								value={progress.percent}
-								sx={{ mt: 1 }}
-							/>
-							<Typography
-								variant="caption"
-								sx={{ mt: 0.5, display: "block", fontSize: "0.75rem" }}
-							>
+							</p>
+							<Progress value={progress.percent} className="mt-2" />
+							<p className="mt-1 text-mono-sm text-ink-dim">
 								{Math.round(progress.transferred / 1024)} KB of{" "}
 								{Math.round(progress.total / 1024)} KB
-							</Typography>
+							</p>
 						</ProgressContainer>
 					</UpdateContainer>
 				);
@@ -595,8 +554,6 @@ export const Downloaded: Story = {
 	render: () => {
 		// Create a component that directly renders the downloaded state
 		const DownloadedComponent = () => {
-			const theme = useTheme();
-
 			// Use state to force the component to render with downloaded state
 			const [downloaded, setDownloaded] = useState(true);
 			const [info, setInfo] = useState(mockUpdateInfo);
@@ -610,55 +567,33 @@ export const Downloaded: Story = {
 				window.triggerUpdateDownloaded = true;
 			}, []);
 
-			// Button styling to match agent header buttons
-			const buttonSx = {
-				textTransform: "none",
-				fontSize: "0.8125rem",
-				padding: theme.spacing(0.5, 1.5),
-				borderRadius: theme.shape.borderRadius * 0.75,
-			};
-
-			const secondaryButtonSx = {
-				...buttonSx,
-				borderColor: theme.palette.divider,
-				color: theme.palette.text.secondary,
-				"&:hover": {
-					backgroundColor: theme.palette.action.hover,
-					borderColor: theme.palette.divider,
-				},
-			};
-
 			// If update is downloaded, render the UI directly
 			if (downloaded && info) {
 				return (
 					<UpdateContainer>
-						<Typography className="update-title">
-							Update Ready to Install
-						</Typography>
-						<Typography className="update-description">
-							Version {info.version} has been downloaded and is ready to
-							install.
-						</Typography>
-						<Typography className="update-notes" sx={{ mt: 1 }}>
+						<h2 className="mb-3 text-heading text-ink">
+							Update ready to install
+						</h2>
+						<p className="mb-2 text-body text-ink-muted">
+							{/* The component's sentence. "ready to install" repeated the
+							    heading directly above and dropped the version the user
+							    is on, which is the one comparison the heading cannot
+							    make. */}
+							Version {info.version} has been downloaded. You are currently
+							using version 1.0.0.
+						</p>
+						<p className="mt-2 text-body-sm text-ink-muted">
 							The application will restart to apply the update.
-						</Typography>
+						</p>
 
 						<UpdateActions>
-							<Button
-								variant="contained"
-								size="small"
-								onClick={() => {}}
-								sx={buttonSx}
-							>
-								Install Now
+							{/* Dismiss first, commit last - the component's order,
+							    same as the UpdateAvailable story above. */}
+							<Button variant="outline" size="sm" onClick={() => {}}>
+								Update later
 							</Button>
-							<Button
-								variant="outlined"
-								size="small"
-								onClick={() => {}}
-								sx={secondaryButtonSx}
-							>
-								Update Later
+							<Button variant="primary" size="sm" onClick={() => {}}>
+								Install now
 							</Button>
 						</UpdateActions>
 					</UpdateContainer>
@@ -704,16 +639,14 @@ export const ErrorState: Story = {
 			// If there's an error, render the UI directly
 			if (error) {
 				return (
-					<Snackbar
+					<FloatingAlert
 						open={open}
 						autoHideDuration={6000}
 						onClose={() => setOpen(false)}
-						anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+						variant="danger"
 					>
-						<Alert onClose={() => setOpen(false)} severity="error">
-							{error}
-						</Alert>
-					</Snackbar>
+						{error}
+					</FloatingAlert>
 				);
 			}
 

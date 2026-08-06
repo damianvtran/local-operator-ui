@@ -1,61 +1,42 @@
 /**
  * Search API Step Component
  *
- * Fourth step in the onboarding process that allows the user to optionally add a search API key
- * with an exciting and engaging interface.
+ * Fourth step in the onboarding process, and an optional one: a search key lets
+ * agents read the live web instead of only what the model remembers.
  */
 
 import {
 	CREDENTIAL_MANIFEST,
 	CredentialType,
 } from "@features/settings/components/credential-manifest";
-import {
-	faCheck,
-	faExternalLinkAlt,
-	faGlobe,
-	faKey,
-	faSearch,
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { Spinner } from "@shared/components/common/spinner";
 import {
 	Alert,
-	Box,
-	CircularProgress,
-	FormControl,
-	FormHelperText,
-	InputAdornment,
-	Link,
-	MenuItem,
+	Input,
+	Label,
 	Select,
-	type SelectChangeEvent,
-	TextField,
-	Typography,
-	alpha,
-	useTheme,
-} from "@mui/material";
-import { OrbitSpark } from "@shared/components/icons";
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@shared/components/ui";
 import { useCredentials } from "@shared/hooks/use-credentials";
 import { useUpdateCredential } from "@shared/hooks/use-update-credential";
-import { Globe, Lightbulb, Link2, PartyPopper, Search } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import type { FC } from "react";
 import { useEffect, useRef, useState } from "react";
-import {
-	FieldLabel,
-	FormContainer,
-	InlineIcon,
-	LabelIcon,
-	SectionContainer,
-	SectionDescription,
-	menuPropsSx,
-} from "../onboarding-styled";
 
 const RECOMMENDED_CREDENTIAL = "TAVILY_API_KEY";
+
+const PROVIDER_SELECT_ID = "onboarding-search-provider";
+const PROVIDER_HELP_ID = "onboarding-search-provider-help";
+const KEY_INPUT_ID = "onboarding-search-key";
+const KEY_HELP_ID = "onboarding-search-key-help";
 
 /**
  * Search API step in the onboarding process
  */
 export const SearchApiStep: FC = () => {
-	const theme = useTheme(); // Get theme context
 	// Get the list of search API credentials and sort Tavily first
 	const searchApiCredentials = CREDENTIAL_MANIFEST.filter(
 		(cred) => cred.type === CredentialType.Search,
@@ -70,35 +51,15 @@ export const SearchApiStep: FC = () => {
 		searchApiCredentials[0]?.key || "",
 	);
 	const [credentialValue, setCredentialValue] = useState("");
-	const [error, setError] = useState("");
 	const [isSaving, setIsSaving] = useState(false);
 	const [saveSuccess, setSaveSuccess] = useState(false);
 
 	// Reference to store the timeout ID for clearing
-	const successTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+	const successTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
 	// Get existing credentials and update mutation
 	const { data: credentialsData } = useCredentials();
 	const updateCredentialMutation = useUpdateCredential();
-
-	// Handle credential selection change
-	const handleCredentialChange = (event: SelectChangeEvent) => {
-		setSelectedCredential(event.target.value);
-		setCredentialValue("");
-		setError("");
-		setSaveSuccess(false);
-	};
-
-	// Handle credential value change
-	const handleCredentialValueChange = (
-		event: React.ChangeEvent<HTMLInputElement>,
-	) => {
-		setCredentialValue(event.target.value);
-		if (event.target.value.trim()) {
-			setError("");
-		}
-		setSaveSuccess(false);
-	};
 
 	// Save the credential when the input field loses focus (blur event)
 	const handleSaveCredential = async () => {
@@ -117,10 +78,8 @@ export const SearchApiStep: FC = () => {
 				});
 				setSaveSuccess(true);
 
-				// Clear any existing timeout
-				if (successTimeoutRef.current) {
-					clearTimeout(successTimeoutRef.current);
-				}
+				// Replace any pending hide, so the message lives 3s from this save
+				clearTimeout(successTimeoutRef.current);
 
 				// Set a timeout to hide the success message after 3 seconds
 				successTimeoutRef.current = setTimeout(() => {
@@ -137,11 +96,7 @@ export const SearchApiStep: FC = () => {
 
 	// Clean up the timeout when the component unmounts
 	useEffect(() => {
-		return () => {
-			if (successTimeoutRef.current) {
-				clearTimeout(successTimeoutRef.current);
-			}
-		};
+		return () => clearTimeout(successTimeoutRef.current);
 	}, []);
 
 	// Get the selected credential info
@@ -149,261 +104,104 @@ export const SearchApiStep: FC = () => {
 		(cred) => cred.key === selectedCredential,
 	);
 
-	// Define shadcn-like input styles using sx prop
-	const inputSx = {
-		"& .MuiOutlinedInput-root": {
-			borderRadius: theme.shape.borderRadius * 0.75,
-			backgroundColor: theme.palette.background.paper,
-			border: `1px solid ${theme.palette.divider}`,
-			minHeight: "40px",
-			height: "40px",
-			transition: "border-color 0.2s ease, box-shadow 0.2s ease",
-			"&:hover": {
-				borderColor: theme.palette.text.secondary,
-			},
-			"&.Mui-focused": {
-				borderColor: theme.palette.primary.main,
-				boxShadow: `0 0 0 2px ${theme.palette.primary.main}33`,
-			},
-			"& .MuiOutlinedInput-notchedOutline": {
-				border: "none",
-			},
-			"& .MuiInputBase-input": {
-				padding: theme.spacing(1, 1.5),
-				fontSize: "0.875rem",
-				height: "calc(40px - 16px)",
-				boxSizing: "border-box",
-			},
-			"& .MuiInputBase-input::placeholder": {
-				color: theme.palette.text.disabled,
-				opacity: 1,
-			},
-			"& .MuiSelect-select": {
-				display: "flex",
-				alignItems: "center",
-				gap: theme.spacing(1),
-			},
-			"& .MuiInputAdornment-root": {
-				color: theme.palette.text.secondary,
-				marginRight: theme.spacing(0.5),
-			},
-		},
-		"& .MuiFormHelperText-root": {
-			fontSize: "0.75rem",
-			mt: 0.5,
-			ml: 0.5,
-		},
-	};
-
-	// Style for info boxes
-	const infoBoxSx = {
-		p: 1.5,
-		borderRadius: theme.shape.borderRadius * 0.75,
-		border: `1px solid ${theme.palette.divider}`,
-		backgroundColor: alpha(theme.palette.background.default, 0.5),
-	};
-
-	// Style for the success alert
-	const successAlertSx = {
-		mb: 2,
-		borderRadius: theme.shape.borderRadius * 0.75,
-		border: `1px solid ${theme.palette.success.main}`,
-		backgroundColor: alpha(theme.palette.success.main, 0.1),
-		color: theme.palette.success.dark,
-		"& .MuiAlert-icon": {
-			color: theme.palette.success.main,
-		},
-	};
-
-	// Style for the final optional note box
-	const optionalNoteSx = {
-		mt: 2,
-		p: 1.5,
-		borderRadius: theme.shape.borderRadius * 0.75,
-		backgroundColor: alpha(theme.palette.info.main, 0.08),
-		border: `1px solid ${alpha(theme.palette.info.main, 0.2)}`,
-		display: "flex",
-		alignItems: "center",
-		gap: theme.spacing(1),
-	};
-
 	return (
-		<SectionContainer>
-			<SectionDescription>
-				<InlineIcon>
-					<Globe size={16} />
-				</InlineIcon>
-				Supercharge your AI agents with web search for real-time information.
-				This optional step gives your AI access to the latest data online.
-			</SectionDescription>
+		<div className="flex flex-col gap-6">
+			<p className="text-body text-ink-muted">
+				With a search key, agents can look things up while they work — today's
+				prices, this week's news — instead of relying on what the model already
+				knows. Skip it and add one later if you prefer.
+			</p>
 
-			<FormContainer>
-				{/* Web-enabled AI Info Box */}
-				<Box
-					sx={{
-						...infoBoxSx,
-						mb: 2,
-						display: "flex",
-						alignItems: "center",
-						gap: 1.5,
-					}}
-				>
-					<FontAwesomeIcon
-						icon={faGlobe}
-						size="lg" // Use FontAwesome size prop
-						color={theme.palette.primary.main} // Use theme color
-					/>
-					<Typography variant="body2">
-						<Typography component="span" fontWeight="medium">
-							Web-enabled AI is more powerful!
-						</Typography>{" "}
-						Agents can find current info, research topics, and provide
-						up-to-date answers.
-					</Typography>
-				</Box>
-
-				{/* Provider Selection */}
-				<Box>
-					{" "}
-					<FieldLabel>
-						<LabelIcon>
-							<Search size={14} />
-						</LabelIcon>
-						Search API Provider
-					</FieldLabel>
-					<FormControl fullWidth variant="outlined" sx={inputSx}>
-						<Select
-							id="search-api-select"
-							value={selectedCredential}
-							onChange={handleCredentialChange}
-							MenuProps={menuPropsSx(theme)}
-						>
-							{searchApiCredentials.map((cred) => (
-								<MenuItem key={cred.key} value={cred.key}>
-									{cred.key === RECOMMENDED_CREDENTIAL
-										? `${cred.name} (Recommended)`
-										: cred.name}
-								</MenuItem>
-							))}
-						</Select>
-						<FormHelperText
-							sx={{ display: "flex", alignItems: "center", gap: 0.5 }}
-						>
-							<FontAwesomeIcon icon={faSearch} size="xs" />
-							Choose your preferred search provider (Tavily recommended)
-						</FormHelperText>
-					</FormControl>
-				</Box>
-
-				{/* Provider Info Box */}
-				{selectedCredentialInfo && (
-					<Box sx={{ ...infoBoxSx, mt: 1.5 }}>
-						<Typography
-							variant="body2"
-							sx={{ mb: 1, display: "flex", alignItems: "center", gap: 0.5 }}
-						>
-							<InlineIcon sx={{ mb: 0 }}>
-								<Lightbulb size={14} />
-							</InlineIcon>{" "}
-							{selectedCredentialInfo.description}
-						</Typography>
-						<Link
-							href={selectedCredentialInfo.url}
-							target="_blank"
-							rel="noopener noreferrer"
-							variant="body2"
-							sx={{
-								display: "inline-flex",
-								alignItems: "center",
-								gap: 0.5,
-								fontWeight: 500,
-								color: "primary.main",
-								"&:hover": {
-									textDecoration: "underline",
-									color: "primary.dark",
-								},
-							}}
-						>
-							<InlineIcon sx={{ mb: 0 }}>
-								<Link2 size={14} />
-							</InlineIcon>
-							Get {selectedCredentialInfo.name}{" "}
-							<FontAwesomeIcon icon={faExternalLinkAlt} size="xs" />
-						</Link>
-					</Box>
-				)}
-
-				{/* Success Alert */}
-				{saveSuccess && (
-					<Alert
-						severity="success"
-						icon={<FontAwesomeIcon icon={faCheck} />}
-						sx={successAlertSx}
+			<div className="flex flex-col gap-5">
+				<div className="flex flex-col gap-2">
+					<Label htmlFor={PROVIDER_SELECT_ID}>Search provider</Label>
+					<Select
+						value={selectedCredential}
+						onValueChange={(value) => {
+							setSelectedCredential(value);
+							setCredentialValue("");
+							setSaveSuccess(false);
+						}}
 					>
-						<Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-							<InlineIcon sx={{ mb: 0 }}>
-								<PartyPopper size={14} />
-							</InlineIcon>
-							Search API credential saved!
-						</Box>
-					</Alert>
-				)}
-
-				{/* API Key Input */}
-				<Box>
-					{" "}
-					{/* Wrap Label and Input */}
-					<FieldLabel>
-						<LabelIcon>
-							<FontAwesomeIcon icon={faKey} size="sm" />
-						</LabelIcon>
-						API Key (Optional)
-					</FieldLabel>
-					<TextField
-						// Remove label prop
-						variant="outlined"
-						fullWidth
-						value={credentialValue}
-						onChange={handleCredentialValueChange}
-						error={!!error}
-						helperText={error || "Enter the API key for the selected provider"}
-						placeholder="Enter your API key here"
-						type="password"
-						onBlur={handleSaveCredential}
-						onKeyDown={(e) => {
-							if (
-								e.key === "Enter" &&
-								selectedCredential &&
-								credentialValue.trim() &&
-								!error &&
-								!isSaving
-							) {
-								handleSaveCredential();
+						<SelectTrigger
+							id={PROVIDER_SELECT_ID}
+							selectSize="lg"
+							aria-describedby={
+								selectedCredentialInfo ? PROVIDER_HELP_ID : undefined
 							}
-						}}
-						InputProps={{
-							endAdornment: isSaving ? (
-								<InputAdornment position="end">
-									<CircularProgress size={20} />
-								</InputAdornment>
-							) : null,
-						}}
-						disabled={isSaving}
-						sx={inputSx}
-					/>
-				</Box>
+						>
+							<SelectValue placeholder="Select a provider" />
+						</SelectTrigger>
+						<SelectContent>
+							{searchApiCredentials.map((cred) => (
+								<SelectItem key={cred.key} value={cred.key}>
+									{cred.key === RECOMMENDED_CREDENTIAL
+										? `${cred.name} (recommended)`
+										: cred.name}
+								</SelectItem>
+							))}
+						</SelectContent>
+					</Select>
 
-				{/* Optional Step Note */}
-				<Box sx={optionalNoteSx}>
-					<InlineIcon sx={{ mb: 0 }}>
-						<OrbitSpark size={14} />
-					</InlineIcon>
-					<Typography variant="body2" color="text.secondary">
-						This step is optional! You can skip it and add search capabilities
-						later in Settings.
-					</Typography>
-				</Box>
-			</FormContainer>
-		</SectionContainer>
+					{selectedCredentialInfo && (
+						<div
+							id={PROVIDER_HELP_ID}
+							className="flex flex-col items-start gap-1"
+						>
+							<p className="text-ink-dim text-meta">
+								{selectedCredentialInfo.description}
+							</p>
+							<a
+								href={selectedCredentialInfo.url}
+								target="_blank"
+								rel="noopener noreferrer"
+								className="inline-flex items-center gap-1 text-accent text-meta underline-offset-4 hover:text-accent-hover hover:underline"
+							>
+								{/* "Get your {name}": the catalogue names already end in
+								    "API key", so this rendered "Get a Tavily API key key". */}
+								Get your {selectedCredentialInfo.name}
+								<ExternalLink size={12} aria-hidden="true" />
+							</a>
+						</div>
+					)}
+				</div>
+
+				<div className="flex flex-col gap-2">
+					<Label htmlFor={KEY_INPUT_ID}>API key (optional)</Label>
+					<div className="flex items-center gap-2">
+						<Input
+							id={KEY_INPUT_ID}
+							inputSize="lg"
+							type="password"
+							value={credentialValue}
+							onChange={(event) => {
+								setCredentialValue(event.target.value);
+								setSaveSuccess(false);
+							}}
+							onBlur={handleSaveCredential}
+							onKeyDown={(e) => {
+								if (
+									e.key === "Enter" &&
+									selectedCredential &&
+									credentialValue.trim() &&
+									!isSaving
+								) {
+									handleSaveCredential();
+								}
+							}}
+							placeholder="Paste your API key"
+							disabled={isSaving}
+							aria-describedby={KEY_HELP_ID}
+						/>
+						{isSaving && <Spinner size="sm" label="Saving credential" />}
+					</div>
+					<p id={KEY_HELP_ID} className="text-ink-dim text-meta">
+						Saved on your device as soon as you leave the field
+					</p>
+				</div>
+
+				{saveSuccess && <Alert variant="success">Search key saved</Alert>}
+			</div>
+		</div>
 	);
 };

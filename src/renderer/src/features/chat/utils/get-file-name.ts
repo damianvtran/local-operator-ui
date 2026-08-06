@@ -14,10 +14,10 @@ export const getFileName = (path: string): string => {
 			try {
 				return decodeURIComponent(nameMatch[1]);
 			} catch (_) {
-				return "Pasted Image";
+				return "Pasted image";
 			}
 		}
-		return "Pasted Image";
+		return "Pasted image";
 	}
 	if (path.startsWith("data:")) {
 		// Generic data URI
@@ -26,7 +26,7 @@ export const getFileName = (path: string): string => {
 			try {
 				return decodeURIComponent(nameMatch[1]);
 			} catch (_) {
-				return "Pasted File";
+				return "Pasted file";
 			}
 		}
 		// Try to infer from mime type if no name is present
@@ -34,10 +34,10 @@ export const getFileName = (path: string): string => {
 		if (mimeTypeMatch?.[1]) {
 			const simpleType = mimeTypeMatch[1].split("/")[0];
 			if (simpleType) {
-				return `Pasted ${simpleType.charAt(0).toUpperCase() + simpleType.slice(1)} File`;
+				return `Pasted ${simpleType} file`;
 			}
 		}
-		return "Pasted File";
+		return "Pasted file";
 	}
 	// Handle both local paths and URLs
 	const parts = path.split(PATH_SEPARATOR_REGEX);

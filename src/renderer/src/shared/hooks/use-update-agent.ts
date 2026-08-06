@@ -71,7 +71,7 @@ export const useUpdateAgent = () => {
 				type: "all", // Refetch all related queries at once
 			});
 
-			showSuccessToast("Agent updated successfully");
+			showSuccessToast("Agent updated");
 		},
 		onError: (error) => {
 			console.error("Error updating agent:", error);

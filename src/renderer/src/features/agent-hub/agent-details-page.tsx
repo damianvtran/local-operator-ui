@@ -1,23 +1,20 @@
 import {
+	BaseDialog,
+	PrimaryButton,
+	SecondaryButton,
+} from "@shared/components/common/base-dialog";
+import { Spinner } from "@shared/components/common/spinner";
+import {
 	Avatar,
-	Box,
+	AvatarFallback,
 	Button,
-	ButtonBase,
-	CircularProgress,
-	Dialog,
-	DialogActions,
-	DialogContent,
-	DialogContentText,
-	DialogTitle,
-	Divider,
-	IconButton,
-	Paper,
+	Separator,
 	Skeleton,
 	Tooltip,
-	Typography,
-} from "@mui/material";
-import { styled } from "@mui/material/styles";
+} from "@shared/components/ui";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
+import { cn } from "@shared/lib/utils";
+import { formatCalendarDate } from "@shared/utils/date-utils";
 import { formatDistanceToNowStrict } from "date-fns";
 import { ArrowLeft, Bot, Download, Heart, Star, Trash2 } from "lucide-react";
 import type React from "react";
@@ -36,116 +33,24 @@ import { useAgentLikeQuery } from "./hooks/use-agent-like-query";
 import { useDelistAgentMutation } from "./hooks/use-delist-agent-mutation";
 import { useDownloadAgentMutation } from "./hooks/use-download-agent-mutation";
 
-// Filled icon replacements using Lucide's two-tone approach
-const HeartFilled = (props: React.ComponentProps<typeof Heart>) => (
-	<Heart {...props} fill="currentColor" style={{ color: "#e53935" }} />
-);
-const StarFilled = (props: React.ComponentProps<typeof Star>) => (
-	<Star {...props} fill="currentColor" style={{ color: "#ffb300" }} />
-);
-
-const DetailsContainer = styled(Paper)(({ theme }) => ({
-	padding: theme.spacing(4),
-	margin: theme.spacing(3),
-	backgroundImage: "none",
-	backgroundColor: theme.palette.background.default,
-	flexGrow: 1,
-	display: "flex",
-	flexDirection: "column",
-}));
-
-const HeaderBox = styled(Box)(({ theme }) => ({
-	display: "flex",
-	justifyContent: "space-between",
-	alignItems: "center",
-	marginBottom: theme.spacing(3),
-}));
-
-const TitleBox = styled(Box)({
-	display: "flex",
-	alignItems: "center",
-	gap: 16,
-});
-
-const BackButton = styled(IconButton)(({ theme }) => ({
-	marginRight: theme.spacing(2),
-}));
-
-// Match PageHeader title style
-const AgentName = styled(Typography)(({ theme }) => ({
-	fontSize: "2rem", // Match PageHeader TitleText
-	fontWeight: 500, // Match PageHeader TitleText
-	lineHeight: 1.3, // Match PageHeader TitleText
-	marginRight: theme.spacing(2), // Space between name and actions
-}));
-
-const ActionButtonGroup = styled(Box)({
-	display: "flex",
-	alignItems: "center",
-	gap: 1,
-});
-
-const MetaInfoContainer = styled(Box)(({ theme }) => ({
-	display: "flex",
-	flexDirection: "column",
-	gap: theme.spacing(1),
-	marginTop: theme.spacing(2),
-	marginBottom: theme.spacing(3),
-	color: theme.palette.text.secondary,
-	fontSize: "0.875rem",
-}));
-
-const DescriptionBox = styled(Box)(({ theme }) => ({
-	marginTop: theme.spacing(2),
-	marginBottom: theme.spacing(4),
-	lineHeight: 1.6,
-}));
-
-/**
- * Allowed palette color keys for LikeFavouriteButton.
+/*
+ * Like and favourite carry the `danger` and `warning` hues when active.
+ * Neither is a warning about anything — the palette has no
+ * "liked" role to spend, and those two families are where the red and the
+ * amber a person expects behind a heart and a star live. They replace the
+ * MUI-era `#e53935` and `#ffb300`, which ignored all twelve palettes and put
+ * the favourited star at 1.62:1 on `iceberg`, under half the 3:1 floor a
+ * meaningful graphic owes its ground. `agent-card` renders the same pair the
+ * same way.
  */
-type LikeFavouriteButtonColor =
-	| "primary"
-	| "secondary"
-	| "error"
-	| "warning"
-	| "info"
-	| "success";
 
-/**
- * Like/Favourite button styled for palette safety.
- */
-const LikeFavouriteButton = styled(ButtonBase, {
-	shouldForwardProp: (prop) => prop !== "color",
-})<{ color?: LikeFavouriteButtonColor }>(({ theme, color }) => ({
-	display: "inline-flex",
-	alignItems: "center",
-	justifyContent: "center",
-	borderRadius: 8,
-	padding: theme.spacing(0.5, 1),
-	color: color ? theme.palette[color].main : theme.palette.text.primary,
-	background: "transparent",
-	transition: "background 0.2s, color 0.2s",
-	"&:hover": {
-		background: theme.palette.action.hover,
-		textDecoration: "none",
-	},
-	"&:disabled": {
-		opacity: 0.5,
-		pointerEvents: "none",
-	},
-}));
-
-// Copied from AgentCard
-const CountDisplay = styled("span")(({ theme }) => ({
-	fontSize: "0.8rem",
-	marginLeft: theme.spacing(0.75),
-	color: theme.palette.text.secondary,
-	display: "inline-flex",
-	alignItems: "center",
-	minWidth: "20px",
-	height: "1em",
-}));
+const CountDisplay: React.FC<{ children: React.ReactNode }> = ({
+	children,
+}) => (
+	<span className="inline-flex h-4 min-w-5 items-center text-meta text-ink-muted">
+		{children}
+	</span>
+);
 
 /**
  * Renders the detailed view for a specific public agent.
@@ -163,12 +68,10 @@ export const AgentDetailsPage: React.FC = () => {
 		agentId: agentId ?? "",
 		enabled: !!agentId,
 	});
-	// Destructure isLiked directly from the hook result
 	const { isLiked } = useAgentLikeQuery({
 		agentId: agentId ?? "",
 		enabled: !!agentId && isAuthenticated,
 	});
-	// Destructure isFavourited directly from the hook result
 	const { isFavourited } = useAgentFavouriteQuery({
 		agentId: agentId ?? "",
 		enabled: !!agentId && isAuthenticated,
@@ -202,22 +105,6 @@ export const AgentDetailsPage: React.FC = () => {
 	const isOwner =
 		!!user && !!agent && user.radientUser?.account?.id === agent.account_id;
 
-	// --- Delist Dialog Handlers ---
-	const handleOpenDelistDialog = () => {
-		setIsDelistDialogOpen(true);
-	};
-
-	const handleCloseDelistDialog = () => {
-		setIsDelistDialogOpen(false);
-	};
-
-	const handleConfirmDelist = () => {
-		if (!agentId || !isOwner || delistMutation.isPending) return;
-		delistMutation.mutate({ agentId });
-		handleCloseDelistDialog();
-	};
-	// --- End Delist Dialog Handlers ---
-
 	const handleLikeToggle = () => {
 		if (!agentId || !isAuthenticated || likeMutation.isPending) return;
 		likeMutation.mutate({ agentId, isCurrentlyLiked: isLiked });
@@ -237,233 +124,232 @@ export const AgentDetailsPage: React.FC = () => {
 		navigate("/agent-hub");
 	};
 
-	// Lucide icon selection for like/favourite
-	// Use slightly larger size for like/favourite icons
-	const likeIcon = isLiked ? (
-		<HeartFilled size={18} strokeWidth={2.2} />
-	) : (
-		<Heart size={18} strokeWidth={2.2} />
-	);
-	const favouriteIcon = isFavourited ? (
-		<StarFilled size={18} strokeWidth={2.2} />
-	) : (
-		<Star size={18} strokeWidth={2.2} />
-	);
-
-	const AuthTooltipWrapper: React.FC<{ children: React.ReactElement }> = ({
-		children,
-	}) =>
-		isAuthenticated ? (
-			children
-		) : (
-			<Tooltip title="Sign in to Radient to use this feature">
-				<span>{children}</span>
-			</Tooltip>
-		);
-
 	if (isLoading) {
 		return (
-			<Box
-				display="flex"
-				justifyContent="center"
-				alignItems="center"
-				height="100%"
-			>
-				<CircularProgress />
-			</Box>
+			<div className="flex h-full items-center justify-center">
+				<Spinner label="Loading agent details" />
+			</div>
 		);
 	}
 
 	if (error) {
 		return (
-			<Box
-				display="flex"
-				justifyContent="center"
-				alignItems="center"
-				height="100%"
-			>
-				{/* @ts-ignore TODO: Improve error typing */}
-				<Typography color="error">
+			<div className="flex h-full items-center justify-center">
+				<p className="text-body-sm text-danger">
 					Failed to load agent details: {error.message}
-				</Typography>
-			</Box>
+				</p>
+			</div>
 		);
 	}
 
 	if (!agent) {
 		return (
-			<Box
-				display="flex"
-				justifyContent="center"
-				alignItems="center"
-				height="100%"
-			>
-				<Typography>Agent not found.</Typography>
-			</Box>
+			<div className="flex h-full items-center justify-center">
+				<p className="text-body text-ink">Agent not found.</p>
+			</div>
 		);
 	}
 
 	return (
-		<DetailsContainer elevation={1}>
-			<HeaderBox>
-				<TitleBox>
-					<BackButton onClick={handleBack} aria-label="Back to Agent Hub">
-						<ArrowLeft size={20} />
-					</BackButton>
-					<Avatar
-						sx={{
-							bgcolor: (theme) => theme.palette.icon.background,
-							color: (theme) => theme.palette.icon.text,
-							width: 44,
-							height: 44,
-							boxShadow: 2,
-							border: (theme) => `2px solid ${theme.palette.primary.main}`,
-							mr: 2,
-						}}
-						variant="circular"
+		<div className="m-6 flex flex-1 flex-col rounded-lg border border-hairline bg-surface p-8">
+			<div className="mb-6 flex items-center justify-between gap-4">
+				<div className="flex min-w-0 items-center gap-4">
+					<Button
+						variant="ghost"
+						size="icon"
+						onClick={handleBack}
+						aria-label="Back to Agent hub"
 					>
-						<Bot size={28} />
+						<ArrowLeft />
+					</Button>
+					<Avatar className="size-11 shrink-0">
+						<AvatarFallback>
+							<Bot size={22} aria-hidden="true" />
+						</AvatarFallback>
 					</Avatar>
-					<AgentName>{agent.name}</AgentName>
-				</TitleBox>
-				<ActionButtonGroup>
-					<AuthTooltipWrapper>
-						<LikeFavouriteButton
-							onClick={handleLikeToggle}
-							disabled={!isAuthenticated || likeMutation.isPending}
-							color={isLiked ? "error" : undefined}
-							aria-label={isLiked ? "Unlike agent" : "Like agent"}
-							focusRipple
-							tabIndex={0}
-							type="button"
-						>
-							{likeIcon}
-							<CountDisplay>
-								{isLoadingLikes ? (
-									<Skeleton variant="text" width={20} />
-								) : (
-									(likeCount ?? 0)
-								)}
-							</CountDisplay>
-						</LikeFavouriteButton>
-					</AuthTooltipWrapper>
-					<AuthTooltipWrapper>
-						<LikeFavouriteButton
-							onClick={handleFavouriteToggle}
-							disabled={!isAuthenticated || favouriteMutation.isPending}
-							color={isFavourited ? "warning" : undefined}
-							aria-label={
-								isFavourited ? "Unfavourite agent" : "Favourite agent"
-							}
-							focusRipple
-							tabIndex={0}
-							type="button"
-						>
-							{favouriteIcon}
-							<CountDisplay>
-								{isLoadingFavourites ? (
-									<Skeleton variant="text" width={20} />
-								) : (
-									(favouriteCount ?? 0)
-								)}
-							</CountDisplay>
-						</LikeFavouriteButton>
-					</AuthTooltipWrapper>
-					<Tooltip title="Download agent to your computer">
+					{/* Matches the PageHeader title step used on other routes */}
+					<h1 className="truncate text-display text-ink">{agent.name}</h1>
+				</div>
+				<div className="flex shrink-0 items-center gap-1">
+					<Tooltip
+						content="Sign in to Radient to use this feature"
+						disabled={isAuthenticated}
+					>
 						<span>
-							<IconButton
-								size="medium"
+							<Button
+								variant="ghost"
+								size="sm"
+								onClick={handleLikeToggle}
+								disabled={!isAuthenticated || likeMutation.isPending}
+								aria-label={isLiked ? "Unlike agent" : "Like agent"}
+								className={cn(isLiked && "text-danger")}
+							>
+								<Heart fill={isLiked ? "currentColor" : "none"} />
+								<CountDisplay>
+									{isLoadingLikes ? (
+										<Skeleton className="h-3.5 w-5" />
+									) : (
+										(likeCount ?? 0)
+									)}
+								</CountDisplay>
+							</Button>
+						</span>
+					</Tooltip>
+					<Tooltip
+						content="Sign in to Radient to use this feature"
+						disabled={isAuthenticated}
+					>
+						<span>
+							<Button
+								variant="ghost"
+								size="sm"
+								onClick={handleFavouriteToggle}
+								disabled={!isAuthenticated || favouriteMutation.isPending}
+								aria-label={
+									isFavourited ? "Unfavourite agent" : "Favourite agent"
+								}
+								className={cn(isFavourited && "text-warning")}
+							>
+								<Star fill={isFavourited ? "currentColor" : "none"} />
+								<CountDisplay>
+									{isLoadingFavourites ? (
+										<Skeleton className="h-3.5 w-5" />
+									) : (
+										(favouriteCount ?? 0)
+									)}
+								</CountDisplay>
+							</Button>
+						</span>
+					</Tooltip>
+					<Tooltip content="Download agent to your computer">
+						<span>
+							<Button
+								variant="ghost"
+								size="icon"
 								onClick={handleDownload}
 								disabled={downloadMutation.isPending}
-								sx={{ borderRadius: 4, ml: 1 }}
 								aria-label="Download agent"
+								className="ml-1"
 							>
-								<Download size={20} />
+								<Download />
 								<CountDisplay>
 									{isLoadingDownloads || downloadMutation.isPending ? (
-										<Skeleton variant="text" width={20} />
+										<Skeleton className="h-3.5 w-5" />
 									) : (
 										(downloadCount ?? 0)
 									)}
 								</CountDisplay>
-							</IconButton>
+							</Button>
 						</span>
 					</Tooltip>
 
 					{isOwner && (
-						<Tooltip title="Permanently delist this agent from Agent Hub">
-							<IconButton
-								size="medium"
-								onClick={handleOpenDelistDialog}
-								disabled={delistMutation.isPending}
-								sx={{ borderRadius: 4, ml: 1, color: "error.main" }} // Style as destructive action
-								aria-label="Delist agent"
-							>
-								<Trash2 size={20} />
-							</IconButton>
+						<Tooltip content="Permanently delist this agent from Agent hub">
+							<span>
+								<Button
+									variant="ghost"
+									size="icon"
+									onClick={() => setIsDelistDialogOpen(true)}
+									disabled={delistMutation.isPending}
+									aria-label="Delist agent"
+									className="ml-1 text-danger hover:bg-danger-wash hover:text-danger"
+								>
+									<Trash2 />
+								</Button>
+							</span>
 						</Tooltip>
 					)}
-				</ActionButtonGroup>
-			</HeaderBox>
+				</div>
+			</div>
 
 			<AgentTagsAndCategories tags={agent.tags} categories={agent.categories} />
-			<MetaInfoContainer>
-				<Typography variant="body2" sx={{ fontSize: "0.875rem" }}>
+			<div className="mt-4 mb-6 flex flex-col gap-2 text-body-sm text-ink-muted">
+				<p>
 					Created by: {agent.account_metadata?.name ?? "Unknown"} (
 					{agent.account_metadata?.email ?? "No email"})
-				</Typography>
-				<Typography variant="body2" sx={{ fontSize: "0.875rem" }}>
+				</p>
+				<p>
 					Created: {formatDistanceToNowStrict(new Date(agent.created_at))} ago (
-					{new Date(agent.created_at).toLocaleDateString()})
-				</Typography>
-				<Typography variant="body2" sx={{ fontSize: "0.875rem" }}>
-					Updated: {formatDistanceToNowStrict(new Date(agent.updated_at))} ago (
-					{new Date(agent.updated_at).toLocaleDateString()})
-				</Typography>
-			</MetaInfoContainer>
+					{formatCalendarDate(agent.created_at)})
+				</p>
+				<p>
+					Last modified: {formatDistanceToNowStrict(new Date(agent.updated_at))}{" "}
+					ago ({formatCalendarDate(agent.updated_at)})
+				</p>
+			</div>
 
-			<DescriptionBox>
-				<Typography variant="body1" sx={{ fontSize: "0.875rem" }}>
-					{agent.description || "No description provided."}
-				</Typography>
-			</DescriptionBox>
+			<div className="mt-2 mb-8 leading-relaxed text-body text-ink">
+				{agent.description || "No description provided."}
+			</div>
 
-			<Divider sx={{ my: 3 }} />
+			<Separator className="my-6" />
 
 			<CommentsSection agentId={agent.id} />
 
-			<Dialog
+			{/*
+			 * Not `ConfirmationModal`, because the confirm button here carries a
+			 * pending state the shared component has no prop for - but the same
+			 * shape as it, since a user meets both and should not have to work
+			 * out whether they are looking at the same kind of question.
+			 * `maxWidth="xs"` and `text-body` are that component's values.
+			 *
+			 * No alarm treatment: no `TriangleAlert`, and the confirm is a
+			 * primary rather than a danger button. The other six confirmations
+			 * guard something irreversible; this one is undone by uploading
+			 * again, which the copy now says. Painting it red as well would
+			 * tell the user two different things about how bad it is.
+			 */}
+			<BaseDialog
 				open={isDelistDialogOpen}
-				onClose={handleCloseDelistDialog}
-				aria-labelledby="delist-dialog-title"
-				aria-describedby="delist-dialog-description"
+				onClose={() => setIsDelistDialogOpen(false)}
+				title="Delist this agent?"
+				maxWidth="xs"
+				actions={
+					<>
+						<SecondaryButton onClick={() => setIsDelistDialogOpen(false)}>
+							Cancel
+						</SecondaryButton>
+						<PrimaryButton
+							onClick={() => {
+								if (!agentId || !isOwner || delistMutation.isPending) return;
+								delistMutation.mutate({ agentId });
+								setIsDelistDialogOpen(false);
+							}}
+							disabled={delistMutation.isPending}
+						>
+							{delistMutation.isPending ? (
+								<Spinner size="sm" label="Delisting agent" />
+							) : (
+								"Delist"
+							)}
+						</PrimaryButton>
+					</>
+				}
+				dialogProps={{
+					"aria-describedby": "delist-dialog-description",
+					/*
+					 * No `onOpenAutoFocus` override. It used to steer initial focus
+					 * onto the destructive button, on the belief that Radix would
+					 * otherwise land on the close X - measured against this
+					 * dialog's own DOM, Radix's tabbable order is [Cancel, Delist,
+					 * close], so the default is Cancel. The override existed only
+					 * to move Enter onto the dangerous control, which is the exact
+					 * hazard removed from the other six confirmation dialogs in
+					 * this release.
+					 */
+				}}
 			>
-				<DialogTitle id="delist-dialog-title">Confirm Delist Agent</DialogTitle>
-				<DialogContent>
-					<DialogContentText id="delist-dialog-description">
-						Are you sure you want to permanently delist "{agent.name}"? This
-						action cannot be undone. Nobody will be able to download this agent
-						anymore. You can re-upload it later if you choose.
-					</DialogContentText>
-				</DialogContent>
-				<DialogActions>
-					<Button onClick={handleCloseDelistDialog} color="inherit">
-						Cancel
-					</Button>
-					<Button
-						onClick={handleConfirmDelist}
-						color="error"
-						disabled={delistMutation.isPending}
-						autoFocus
-					>
-						{delistMutation.isPending ? (
-							<CircularProgress size={24} />
-						) : (
-							"Delist"
-						)}
-					</Button>
-				</DialogActions>
-			</Dialog>
-		</DetailsContainer>
+				<div
+					id="delist-dialog-description"
+					className="text-body text-ink-muted"
+				>
+					{/* Not "cannot be undone" followed by "you can re-upload it
+					    later" - a reader cannot tell from that how bad this is,
+					    and telling them exactly that is the dialog's whole job. */}
+					This takes "{agent.name}" off the hub straight away, and nobody will
+					be able to download it. You can upload it again later.
+				</div>
+			</BaseDialog>
+		</div>
 	);
 };

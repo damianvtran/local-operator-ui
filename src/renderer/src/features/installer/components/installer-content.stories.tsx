@@ -1,17 +1,23 @@
-import { CssBaseline } from "@mui/material";
-import { ThemeProvider } from "@mui/material/styles";
-import { DEFAULT_THEME, themes } from "@shared/themes";
 import type { Meta, StoryObj } from "@storybook/react";
+import "../../../styles/index.css";
 import { InstallerContent } from "./installer-content";
-import { AppContainer } from "./installer-styled";
 
 /**
- * The InstallerContent component displays a modern, full-screen installation experience
- * with a feature carousel and progress UI. It's used during the one-time setup process.
+ * The installer window: the product on the left, the install on the right.
+ *
+ * It renders inside its own html entry, so the story reproduces that entry's
+ * wrapper rather than the app shell.
+ *
+ * The window itself only ever renders one palette: `installer.tsx` calls
+ * `applyThemeToDocument(DEFAULT_THEME)` and nothing there reads a stored
+ * preference, so eleven of the twelve frames below show a theme this window
+ * cannot produce. They are kept because the panel's own contrast should hold
+ * on any ground it is ever pointed at, but the one that matches the product
+ * is `localOperatorDark` - which is also why the main process paints
+ * `#16130e` behind it.
  */
-const meta = {
+const meta: Meta = {
 	title: "Installer/InstallerContent",
-	component: InstallerContent,
 	parameters: {
 		layout: "fullscreen",
 		viewport: {
@@ -19,31 +25,22 @@ const meta = {
 			viewports: {
 				custom: {
 					name: "Installer Window",
-					styles: {
-						width: "1380px",
-						height: "800px",
-					},
+					styles: { width: "1380px", height: "800px" },
 				},
 			},
 		},
 	},
-	decorators: [
-		(Story) => (
-			<ThemeProvider theme={themes[DEFAULT_THEME]}>
-				<CssBaseline />
-				<AppContainer>
-					<Story />
-				</AppContainer>
-			</ThemeProvider>
-		),
-	],
-	tags: ["autodocs"],
-} satisfies Meta<typeof InstallerContent>;
+	/* The installer entry is its own window, so the story reproduces the
+	   full-bleed row that entry renders rather than sitting in page flow. */
+	render: () => (
+		<div className="flex h-screen w-screen overflow-hidden font-sans">
+			<InstallerContent />
+		</div>
+	),
+};
 
 export default meta;
-type Story = StoryObj<typeof meta>;
+type Story = StoryObj;
 
-/**
- * Default state of the installer content showing the feature carousel and progress UI
- */
+/** The installer as it appears while dependencies are being fetched. */
 export const Default: Story = {};

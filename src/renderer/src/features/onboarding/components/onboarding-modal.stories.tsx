@@ -3,129 +3,126 @@ import {
 	useOnboardingStore,
 } from "@shared/store/onboarding-store";
 import type { Meta, StoryObj } from "@storybook/react";
-import React from "react"; // Add React import
+import { useLayoutEffect } from "react";
+/* Also imported by the Storybook preview; kept here so the file is honest
+   about what it needs to render, and so it renders if run in isolation. */
+import "../../../styles/index.css";
 import { OnboardingModal } from "./onboarding-modal";
 
-/**
- * Storybook stories for the OnboardingModal component.
+/*
+ * The sign-in step's credit amounts come from a real fetch to the live Radient
+ * API, so twelve committed frames were racing the network: between two
+ * captures of identical source, `radient-sign-in/localOperatorDark` flipped
+ * from resolved values to two inline spinners mid-sentence. The numbers are
+ * also third-party content that can change without a commit here.
  *
- * This showcases the full onboarding flow with mocked Zustand store state.
- * The onboarding steps are displayed inside a fullscreen modal with theme-aware styling.
+ * Stubbed at the boundary, the way the schedules story does it, so the frames
+ * show one known set of values every time.
  */
-const meta: Meta<typeof OnboardingModal> = {
+const PRICES = {
+	default_new_credits: 5,
+	default_registration_credits: 10,
+};
+
+const originalFetch = window.fetch;
+window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+	const url = typeof input === "string" ? input : input.toString();
+	if (url.includes("/v1/prices")) {
+		return new Response(
+			JSON.stringify({ status: 200, message: "ok", result: PRICES }),
+			{ status: 200, headers: { "Content-Type": "application/json" } },
+		);
+	}
+	return originalFetch(input, init);
+}) as typeof window.fetch;
+
+/**
+ * The first-run flow, one story per step.
+ *
+ * ## Why every step has its own story
+ *
+ * The flow is eight screens and only three of them used to be reachable here,
+ * so the four form steps — where the control heights, the label rhythm and the
+ * help-text register actually live — were reviewed by clicking through the
+ * running app or not at all. Pacing is a property of the sequence, and you
+ * cannot judge a sequence you can only enter at one end.
+ *
+ * ## Why `data-theme` goes on `documentElement`
+ *
+ * The dialog portals to `document.body`, outside any wrapper a story could
+ * render. With the theme only on a wrapper every `--lo-*` read inside the
+ * portal resolves to nothing and the panel comes out unstyled — while the page
+ * behind it looks correct, which makes it slow to diagnose. The preview frame
+ * in `.storybook/preview.tsx` puts it on the root for every story.
+ *
+ * ## What is not real here
+ *
+ * There is no backend, so the steps that read credentials, models or public
+ * agents render their loading or empty branch. That is the honest thing to
+ * screenshot: those branches are states a real user hits too.
+ */
+type StoryArgs = {
+	step: OnboardingStep;
+};
+
+const OnboardingFrame = ({ step }: StoryArgs) => {
+	useLayoutEffect(() => {
+		const state = useOnboardingStore.getState();
+		state.resetOnboarding();
+		state.setCurrentStep(step);
+		// Cleared so the modal's session-restore effect does not jump the flow
+		// to Create agent on every re-render of a story.
+		window.sessionStorage.removeItem("mock-radient-session");
+	}, [step]);
+
+	return <OnboardingModal open={true} />;
+};
+
+const meta: Meta<StoryArgs> = {
 	title: "Onboarding/OnboardingModal",
-	component: OnboardingModal,
-	parameters: {
-		layout: "fullscreen",
-		viewport: {
-			defaultViewport: "custom",
-			viewports: {
-				custom: {
-					name: "Onboarding Window",
-				},
-			},
-		},
+	parameters: { layout: "fullscreen" },
+	argTypes: {
+		step: { control: "select", options: Object.values(OnboardingStep) },
 	},
-	decorators: [
-		(Story) => {
-			const state = useOnboardingStore.getState();
-			state.resetOnboarding();
-			// Default start step is now RADIENT_CHOICE
-			state.setCurrentStep(OnboardingStep.RADIENT_CHOICE);
-
-			// Clear the session to allow re-running the story
-			window.sessionStorage.removeItem("mock-radient-session");
-
-			return <Story />;
-		},
-	],
-	tags: ["autodocs"],
+	args: { step: OnboardingStep.RADIENT_CHOICE },
+	render: ({ step }) => <OnboardingFrame step={step} />,
 };
 
 export default meta;
+type Story = StoryObj<StoryArgs>;
 
-type Story = StoryObj<typeof meta>;
+/** The first screen: two options, one recommended, nothing else. */
+export const Default: Story = {};
 
-/**
- * Default onboarding flow starting at the welcome step.
- */
-export const Default: Story = {
-	args: {
-		open: true,
-	},
-};
-
-/**
- * Onboarding flow showcasing the congratulations step.
- */
-export const Congratulations: Story = {
-	args: {
-		open: true,
-	},
-	render: () => {
-		const state = useOnboardingStore.getState();
-		state.resetOnboarding();
-		state.setCurrentStep(OnboardingStep.CONGRATULATIONS);
-
-		return <OnboardingModal open={true} />;
-	},
-};
-
-/**
- * Onboarding flow showcasing the Radient sign-in step.
- */
+/** What Radient Pass is, and the two ways in. */
 export const RadientSignIn: Story = {
-	args: {
-		open: true,
-	},
-	render: () => {
-		const state = useOnboardingStore.getState();
-		state.resetOnboarding();
-		state.setCurrentStep(OnboardingStep.RADIENT_SIGNIN);
-
-		return <OnboardingModal open={true} />;
-	},
+	args: { step: OnboardingStep.RADIENT_SIGNIN },
 };
 
-/**
- * Onboarding flow when Radient Pass (Provider Auth) is disabled.
- * The modal should automatically start at the User Profile step.
- */
-export const RadientPassDisabled: Story = {
-	args: {
-		open: true,
-	},
-	render: () => {
-		// Temporarily override the mock for this story
-		// biome-ignore lint/suspicious/noExplicitAny: Mocking window API
-		const originalCheck = (window as any).api.ipcRenderer
-			.checkProviderAuthEnabled;
-		// biome-ignore lint/suspicious/noExplicitAny: Mocking window API
-		(window as any).api.ipcRenderer.checkProviderAuthEnabled = async () => {
-			console.log(
-				"[Storybook Mock Override] checkProviderAuthEnabled returning false",
-			);
-			return false;
-		};
+/** First step of the do-it-yourself path. Two fields, one optional. */
+export const UserProfile: Story = {
+	args: { step: OnboardingStep.USER_PROFILE },
+};
 
-		// Reset state - start at RADIENT_CHOICE, the component should redirect
-		const state = useOnboardingStore.getState();
-		state.resetOnboarding();
-		state.setCurrentStep(OnboardingStep.RADIENT_CHOICE);
+/** A select and a password field at the large control size. */
+export const ModelCredential: Story = {
+	args: { step: OnboardingStep.MODEL_CREDENTIAL },
+};
 
-		// Restore the original mock when the component unmounts
-		// biome-ignore lint/correctness/useExhaustiveDependencies: Effect runs once on mount/unmount
-		React.useEffect(() => {
-			return () => {
-				// biome-ignore lint/suspicious/noExplicitAny: Mocking window API
-				(window as any).api.ipcRenderer.checkProviderAuthEnabled =
-					originalCheck;
-				console.log(
-					"[Storybook Mock Override] Restored checkProviderAuthEnabled",
-				);
-			};
-		}, []); // Empty dependency array ensures this runs only on mount and unmount
+/** The one skippable step in the flow. */
+export const SearchApi: Story = { args: { step: OnboardingStep.SEARCH_API } };
 
-		return <OnboardingModal open={true} />;
-	},
+/** Two dependent selects; renders its loading branch without a backend. */
+export const DefaultModel: Story = {
+	args: { step: OnboardingStep.DEFAULT_MODEL },
+};
+
+/** The last decision. Without a backend this shows the load-failure branch. */
+export const CreateAgent: Story = {
+	args: { step: OnboardingStep.CREATE_AGENT },
+};
+
+/** The end of the flow, and the one place the accent is spent on celebration. */
+export const Congratulations: Story = {
+	args: { step: OnboardingStep.CONGRATULATIONS },
 };

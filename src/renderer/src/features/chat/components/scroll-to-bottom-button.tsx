@@ -1,8 +1,9 @@
-import { faArrowDown } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Box, Fade, IconButton, styled } from "@mui/material";
+import { Button } from "@shared/components/ui";
+import { cn } from "@shared/lib/utils";
+import { ArrowDown } from "lucide-react";
 import { useCallback } from "react";
 import type { FC } from "react";
+
 /**
  * Props for the ScrollToBottomButton component
  */
@@ -25,55 +26,12 @@ type ScrollToBottomButtonProps = {
 	bottomDistance?: number;
 };
 
-const ButtonContainer = styled(Box)(
-	({ bottomDistance }: { bottomDistance: number }) => ({
-		position: "absolute",
-		bottom: bottomDistance,
-		zIndex: 1000,
-		display: "flex",
-		justifyContent: "center",
-		alignItems: "center",
-		pointerEvents: "none", // Prevent container from blocking clicks
-	}),
-);
-
-const StyledButton = styled(IconButton)(({ theme }) => ({
-	backgroundColor: theme.palette.background.paper,
-	color: theme.palette.text.secondary,
-	width: 36,
-	height: 36,
-	borderRadius: "100%",
-	pointerEvents: "auto",
-	boxShadow: "0 2px 12px rgba(0, 0, 0, 0.15)",
-	border: "1px solid rgba(255, 255, 255, 0.1)",
-	transform: "translateY(0)",
-	transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
-	"&:hover": {
-		backgroundColor: theme.palette.background.paper,
-		transform: "translateY(-2px)",
-		boxShadow: "0 4px 16px rgba(0, 0, 0, 0.2)",
-		color: theme.palette.primary.main,
-		"& svg": {
-			transform: "translateY(1px)",
-		},
-	},
-	"&:active": {
-		transform: "translateY(0)",
-		boxShadow: "0 2px 8px rgba(0, 0, 0, 0.15)",
-	},
-	"& svg": {
-		fontSize: "1rem",
-		transition: "transform 0.2s ease",
-	},
-}));
-
 /**
  * ScrollToBottomButton Component
  *
- * A modern, minimalist button that appears when the user scrolls up in chat.
- * Features smooth animations and glass-morphism styling.
+ * A minimal floating button that appears when the user scrolls up in chat.
  *
- * The button is now positioned absolutely within its container, allowing it to
+ * The button is positioned absolutely within its container, allowing it to
  * move with the container rather than being fixed on the screen.
  */
 export const ScrollToBottomButton: FC<ScrollToBottomButtonProps> = ({
@@ -87,16 +45,26 @@ export const ScrollToBottomButton: FC<ScrollToBottomButtonProps> = ({
 	}, [onClick]);
 
 	return (
-		<Fade in={visible} timeout={200}>
-			<ButtonContainer className={className} bottomDistance={bottomDistance}>
-				<StyledButton
-					aria-label="Scroll to bottom"
-					onClick={handleClick}
-					size="small"
-				>
-					<FontAwesomeIcon icon={faArrowDown} style={{ fontSize: 14 }} />
-				</StyledButton>
-			</ButtonContainer>
-		</Fade>
+		<div
+			className={cn(
+				"pointer-events-none absolute inset-x-0 z-40 flex items-center justify-center",
+				"transition-opacity duration-base ease-out-quart",
+				visible ? "opacity-100" : "opacity-0",
+				className,
+			)}
+			style={{ bottom: bottomDistance }}
+			aria-hidden={!visible}
+		>
+			<Button
+				variant="secondary"
+				size="icon"
+				className="pointer-events-auto rounded-full shadow-overlay"
+				aria-label="Scroll to bottom"
+				onClick={handleClick}
+				tabIndex={visible ? 0 : -1}
+			>
+				<ArrowDown aria-hidden="true" />
+			</Button>
+		</div>
 	);
 };

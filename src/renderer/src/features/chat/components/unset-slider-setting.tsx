@@ -4,34 +4,8 @@
  * Displays a "Not set" state with a button to set the value
  */
 
-import { Box, Button, Typography, alpha, styled } from "@mui/material";
+import { Button } from "@shared/components/ui";
 import type { FC } from "react";
-import {
-	DescriptionText,
-	LabelText,
-	LabelWrapper,
-	UnsetContainer,
-} from "./chat-options-sidebar-styled";
-
-// Styled button similar to shadcn secondary/ghost
-const StyledButton = styled(Button)(({ theme }) => ({
-	color: theme.palette.text.secondary,
-	backgroundColor: "transparent",
-	border: `1px solid ${theme.palette.divider}`,
-	padding: theme.spacing(0.5, 1.5),
-	fontSize: "0.8rem",
-	textTransform: "none", // Keep text case as is
-	boxShadow: "none",
-	"&:hover": {
-		backgroundColor: alpha(theme.palette.action.hover, 0.04),
-		borderColor: theme.palette.grey[500],
-		boxShadow: "none",
-	},
-	"&:active": {
-		boxShadow: "none",
-		backgroundColor: alpha(theme.palette.action.selected, 0.08),
-	},
-}));
 
 type UnsetSliderSettingProps = {
 	/**
@@ -73,36 +47,27 @@ export const UnsetSliderSetting: FC<UnsetSliderSettingProps> = ({
 	icon,
 }) => {
 	return (
-		<UnsetContainer elevation={0}>
-			<LabelWrapper>
-				<LabelText variant="subtitle2">
-					{icon && icon}
+		/* No outer margin: the container owns the gap between rows. */
+		<div className="flex flex-col rounded-md border border-control bg-surface p-4">
+			<div className="mb-2">
+				<span className="mb-1 flex items-center font-medium text-body-sm text-ink">
+					{icon}
 					{label}
-				</LabelText>
-				<DescriptionText variant="body2" color="text.secondary">
-					{description}
-				</DescriptionText>
-			</LabelWrapper>
-			<Box
-				sx={{
-					display: "flex",
-					alignItems: "center",
-					justifyContent: "space-between",
-				}}
-			>
-				{/* Adjusted Typography for "Not set yet" */}
-				<Typography variant="caption" color="text.disabled">
-					Not set yet
-				</Typography>
-				{/* Use the StyledButton */}
-				<StyledButton
+				</span>
+				<span className="mb-3 text-body-sm text-ink-muted">{description}</span>
+			</div>
+			<div className="flex items-center justify-between">
+				<span className="text-meta text-ink-dim">Not set yet</span>
+				<Button
+					variant="outline"
+					size="sm"
 					onClick={async () => {
 						await onSetValue(defaultValue);
 					}}
 				>
 					Set to default ({defaultValue})
-				</StyledButton>
-			</Box>
-		</UnsetContainer>
+				</Button>
+			</div>
+		</div>
 	);
 };

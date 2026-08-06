@@ -1,15 +1,31 @@
-import { Box, Button, Typography, alpha, useTheme } from "@mui/material";
+import { Spinner } from "@shared/components/common/spinner";
+import { Button } from "@shared/components/ui";
 import type React from "react";
-import { Spinner, SpinnerContainer } from "./installer-styled";
 
 /**
  * InstallationProgress component
  *
- * Displays the installation progress UI with a spinner, progress bar, and cancel button
+ * The right half of the installer: what is happening, how long it takes, and
+ * the one way out. There is no progress bar because the backend reports no
+ * progress — a bar that cannot move is a lie, so the spinner carries the
+ * "still working" signal and the copy carries the expectation.
+ *
+ * ## Rhythm
+ *
+ * Three groups, not five evenly spaced paragraphs. What is happening and why
+ * sit together at 8px; the live status is its own block; the way out is 32px
+ * away from everything, because a destructive-adjacent control that shares
+ * spacing with body copy is a control you can hit by accident. Even 24px gaps
+ * between all five was the thing that made this screen read as a list.
+ *
+ * ## Heading level
+ *
+ * `text-title`, not `text-display`. The left half's "Local Operator" is the
+ * page's one display-sized line; two 28px headings side by side in a split
+ * window read as two competing screens rather than as a product and its
+ * status.
  */
 export const InstallationProgress: React.FC = () => {
-	const theme = useTheme();
-
 	/**
 	 * Handle cancel button click
 	 * Sends a message to the main process to cancel the installation
@@ -20,77 +36,33 @@ export const InstallationProgress: React.FC = () => {
 	};
 
 	return (
-		<Box
-			sx={{
-				display: "flex",
-				flexDirection: "column",
-				gap: 4,
-				width: "100%",
-				maxWidth: "520px",
-			}}
-		>
-			<Box sx={{ textAlign: "center" }}>
-				<Typography variant="gradientTitle">
-					Setting Up Your Environment
-				</Typography>
-			</Box>
+		<div className="flex w-full max-w-110 flex-col items-center text-center">
+			<h2 className="text-title text-ink">Setting up your environment</h2>
+			<p className="mt-2 text-body text-ink-muted">
+				A one-time install of Python and the AI dependencies your assistants
+				need, all kept on this computer.
+			</p>
 
-			<Box sx={{ width: "100%" }}>
-				<Typography
-					variant="body1"
-					color="text.secondary"
-					sx={{ textAlign: "center", mb: 3, fontSize: "1rem" }}
-				>
-					We're preparing the magic behind the scenes! This one-time setup
-					ensures you'll have the best experience with Local Operator.
-				</Typography>
-				{/* LinearProgress removed as per feedback */}
-			</Box>
+			{/* The one live region on this screen: the label is what a screen reader
+			    gets in place of a spinning ring. */}
+			<div className="mt-8 flex flex-col items-center gap-3">
+				<Spinner size="lg" label="Installing dependencies" />
+				<p className="text-body-sm text-ink-muted">
+					This takes a few minutes. You can minimize this window and keep
+					working — you will get a notification when it is done.
+				</p>
+			</div>
 
-			<SpinnerContainer sx={{ my: 2 }}>
-				{" "}
-				{/* Added some margin for better spacing */}
-				<Spinner />
-			</SpinnerContainer>
-
-			<Typography
-				variant="body1"
-				sx={{ textAlign: "center", color: "text.secondary", fontSize: "1rem" }}
-			>
-				Installing Python and other AI dependencies for Local Operator
-				assistants on your device...
-			</Typography>
-			<Typography
-				variant="body1"
-				sx={{
-					textAlign: "center",
-					color: "text.secondary",
-					fontSize: "0.875rem",
-				}}
-			>
-				This will take a few minutes. You can minimize this window and continue
-				using your computer in the meantime, you will get a notification when
-				it's done.
-			</Typography>
-
-			<Button
-				variant="outlined"
-				color="error"
-				onClick={handleCancel}
-				sx={{
-					alignSelf: "center",
-					px: 3,
-					py: 1,
-					borderRadius: theme.shape.borderRadius,
-					borderColor: theme.palette.error.main,
-					"&:hover": {
-						backgroundColor: alpha(theme.palette.error.main, 0.08),
-						borderColor: theme.palette.error.dark,
-					},
-				}}
-			>
-				Cancel Setup
+			{/*
+			 * `secondary`, not `danger`. Cancelling an install is reversible — the
+			 * installer runs again — and the danger role is for actions that
+			 * destroy something. Painting the only control on a first-run screen
+			 * red makes stopping look like the obvious move on the one screen
+			 * where the obvious move is to wait.
+			 */}
+			<Button variant="secondary" className="mt-8" onClick={handleCancel}>
+				Cancel setup
 			</Button>
-		</Box>
+		</div>
 	);
 };

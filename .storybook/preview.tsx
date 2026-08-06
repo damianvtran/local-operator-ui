@@ -1,20 +1,42 @@
-import React from "react";
-import type { Preview } from "@storybook/react";
-import { ThemeProvider } from "@mui/material/styles";
-import { CssBaseline } from "@mui/material";
+/*
+ * The app's real faces. Both renderer entries import this, and until Storybook
+ * did too every captured frame rendered `font-mono` as the platform fallback
+ * rather than Geist Mono - so the evidence set could not show a typography
+ * change, and reviewing type from a screenshot was measuring the reviewer's OS.
+ * A verification surface that differs from the product will certify a defect
+ * eventually; this is the second time that has bitten this repo, after the
+ * <CssBaseline/> focus-ring split.
+ */
 // @ts-ignore Path aliases don't work for Storybook root
-import { getTheme, DEFAULT_THEME } from "@renderer/shared/themes";
+import "@renderer/assets/fonts/fonts.css";
+import { CssBaseline } from "@mui/material";
+import { ThemeProvider as MuiThemeProvider } from "@mui/material/styles";
+// @ts-ignore Path aliases don't work for Storybook root
+import { config } from "@renderer/shared/config";
 // @ts-ignore Path aliases don't work for Storybook root
 import { AuthProviders } from "@renderer/shared/providers/auth";
 // @ts-ignore Path aliases don't work for Storybook root
 import { FeatureFlagProvider } from "@renderer/shared/providers/feature-flags";
 // @ts-ignore Path aliases don't work for Storybook root
-import { config } from "@renderer/shared/config";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { MemoryRouter } from "react-router-dom";
-import { PostHogProvider } from "posthog-js/react";
+import { useUiPreferencesStore } from "@renderer/shared/store/ui-preferences-store";
+// @ts-ignore Path aliases don't work for Storybook root
+import "@renderer/styles/index.css";
+import {
+	DEFAULT_THEME,
+	applyThemeToDocument,
+	getTheme,
+	themes,
+	// @ts-ignore Path aliases don't work for Storybook root
+} from "@renderer/shared/themes";
+// @ts-ignore Path aliases don't work for Storybook root
+import type { ThemeName } from "@renderer/shared/themes";
 // @ts-ignore Path aliases don't work for Storybook root
 import { ThemedToastContainer } from "@shared/components/common/themed-toast-container";
+import type { Preview } from "@storybook/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { PostHogProvider } from "posthog-js/react";
+import React, { type ReactNode, useLayoutEffect } from "react";
+import { MemoryRouter } from "react-router-dom";
 
 // Mock the Electron preload API for Storybook
 if (typeof window !== "undefined") {
@@ -98,8 +120,64 @@ if (typeof window !== "undefined") {
 	};
 }
 
-const defaultThemeOption = getTheme(DEFAULT_THEME);
-const defaultMuiTheme = defaultThemeOption.theme;
+/**
+ * Every theme the app ships, in registry order.
+ *
+ * Read off the registry rather than written out, because a hand-kept list here
+ * is a list that goes stale the day a thirteenth palette lands and then quietly
+ * makes that palette unreviewable.
+ */
+const THEME_IDS = Object.keys(themes) as ThemeName[];
+
+/**
+ * The theme frame, applied to every story.
+ *
+ * This lives here rather than in each story file because the failure mode of
+ * the per-story version was silent: a story without a copy rendered the default
+ * palette whatever theme was asked for, and `scripts/capture-evidence.mjs`
+ * would still write twelve files named for twelve themes with identical pixels
+ * in them. Evidence that asserts something false is worse than no evidence, and
+ * the only way to make it impossible is to leave the story no way to opt out.
+ *
+ * All three halves of the bridge move together, from the one `theme` arg:
+ *
+ *  - MUI bakes palette values into Emotion classes as literal hexes when
+ *    `createBaseTheme` runs, so it needs the theme OBJECT through context;
+ *  - Tailwind role utilities resolve `--lo-*` live off `data-theme`, so the
+ *    document element needs the attribute and the matching `dark` class;
+ *  - components that read the palette from the preferences store rather than
+ *    from context (the shell, the theme selector) need the store set.
+ *
+ * Moving only one of the three is what produced dark ink on light paper in
+ * earlier evidence runs and read as a contrast defect in the product.
+ */
+const ThemeFrame = ({
+	theme,
+	children,
+}: {
+	theme: ThemeName;
+	children: ReactNode;
+}) => {
+	/*
+	 * `useLayoutEffect` so the attribute lands in the same commit as the MUI
+	 * theme below; a `useEffect` shows one painted frame of the previous
+	 * palette's variables under the new MUI theme on every switch, which a
+	 * screenshot run is fast enough to catch.
+	 */
+	useLayoutEffect(() => {
+		useUiPreferencesStore.setState({ themeName: theme });
+		applyThemeToDocument(theme);
+	}, [theme]);
+
+	/* No teardown restoring the previous theme: every story mounts through this
+	   frame and sets its own, so a restore would only ever paint a palette
+	   nothing asked for between two stories. */
+	return (
+		<div className="min-h-screen bg-canvas font-sans text-body text-ink">
+			{children}
+		</div>
+	);
+};
 
 const preview: Preview = {
 	parameters: {
@@ -109,19 +187,24 @@ const preview: Preview = {
 				date: /Date$/i,
 			},
 		},
-		backgrounds: {
-			default: "dark",
-			values: [
-				{
-					name: "dark",
-					value: defaultMuiTheme.palette.background.default,
-				},
-			],
-		},
+		/* The backgrounds addon paints one fixed colour behind the story, which
+		   under a light theme is a dark slab the product never shows. The frame
+		   below paints `bg-canvas` instead, so the ground follows the theme. */
+		backgrounds: { disable: true },
 	},
+	/* Declared at preview level so EVERY story has the arg, which is both what
+	   puts the control in the panel and what lets the capture script drive a
+	   theme through `?args=theme:<id>`. Storybook drops a URL arg a story has
+	   not declared, which is how six story files came to ignore it. */
+	argTypes: {
+		theme: { control: { type: "select" }, options: THEME_IDS },
+	},
+	args: { theme: DEFAULT_THEME },
 	decorators: [
-		(Story) => {
+		(Story, context) => {
 			const queryClient = new QueryClient();
+			const theme = (context.args.theme as ThemeName) ?? DEFAULT_THEME;
+			const muiTheme = getTheme(theme).theme;
 
 			return (
 				<QueryClientProvider client={queryClient}>
@@ -140,11 +223,13 @@ const preview: Preview = {
 									microsoftClientId={config.VITE_MICROSOFT_CLIENT_ID}
 									microsoftTenantId={config.VITE_MICROSOFT_TENANT_ID}
 								>
-									<ThemeProvider theme={defaultMuiTheme}>
+									<MuiThemeProvider theme={muiTheme}>
 										<CssBaseline />
-										<Story />
+										<ThemeFrame theme={theme}>
+											<Story />
+										</ThemeFrame>
 										<ThemedToastContainer />
-									</ThemeProvider>
+									</MuiThemeProvider>
 								</AuthProviders>
 							</FeatureFlagProvider>
 						</PostHogProvider>

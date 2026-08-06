@@ -1,11 +1,5 @@
-import {
-	Box,
-	IconButton,
-	Tooltip,
-	Typography,
-	alpha,
-	styled,
-} from "@mui/material";
+import { Button, TabPanel, Tooltip } from "@shared/components/ui";
+import { cn } from "@shared/lib/utils";
 import type { CanvasViewMode } from "@shared/store/canvas-store";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import { useUndoManagerStore } from "@shared/store/undo-manager-store";
@@ -15,16 +9,20 @@ import {
 	FileUp,
 	FolderOpen,
 	ListTree,
-	X,
+	PanelRightClose,
 } from "lucide-react";
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
-import type { FC } from "react";
+import type { FC, ReactNode } from "react";
 import type { CanvasDocument } from "../../types/canvas";
 import { createFile } from "../../utils/file-creation";
 import { getFileTypeFromPath } from "../../utils/file-types";
 import { CanvasContent } from "./canvas-content";
 import { CanvasFileViewer } from "./canvas-file-viewer";
-import { CanvasTabs } from "./canvas-tabs";
+import {
+	CANVAS_DOCUMENT_PANEL_ID,
+	CANVAS_SELECTED_TAB_ID,
+	CanvasTabs,
+} from "./canvas-tabs";
 import { CanvasVariablesViewer } from "./canvas-variables-viewer";
 import { CreateFileDialog } from "./create-file-dialog";
 
@@ -63,67 +61,133 @@ type CanvasProps = {
 };
 
 /**
- * Styled container for the markdown canvas
- */
-const CanvasContainer = styled(Box)(({ theme }) => ({
-	height: "100%",
-	display: "flex",
-	flexDirection: "column",
-	backgroundColor: theme.palette.background.paper,
-	boxShadow:
-		theme.palette.mode === "light"
-			? `-4px 0 20px ${alpha(theme.palette.common.black, 0.15)}`
-			: `-4px 0 20px ${alpha(theme.palette.common.black, 0.2)}`,
-	border:
-		theme.palette.mode === "light"
-			? `1px solid ${alpha(theme.palette.grey[300], 0.5)}`
-			: "none",
-}));
-
-/**
- * Styled header for the markdown canvas
- */
-const CanvasHeader = styled(Box)(({ theme }) => ({
-	display: "flex",
-	alignItems: "center",
-	justifyContent: "space-between",
-	padding: theme.spacing(2, 3),
-	height: "84px",
-	borderBottom: `1px solid ${alpha(
-		theme.palette.divider,
-		theme.palette.mode === "light" ? 0.2 : 0.1,
-	)}`,
-	backgroundColor:
-		theme.palette.mode === "light"
-			? alpha(theme.palette.grey[100], 0.5)
-			: "transparent",
-}));
-
-/**
- * Styled title container for the markdown canvas
- */
-const HeaderTitle = styled(Box)({
-	display: "flex",
-	flexDirection: "column",
-});
-
-/**
- * Styled close button for the markdown canvas
- */
-const CloseButton = styled(IconButton)(({ theme }) => ({
-	color: theme.palette.text.secondary,
-	width: 36,
-	height: 36,
-	"&:hover": {
-		backgroundColor: alpha(theme.palette.primary.main, 0.08),
-	},
-}));
-
-/**
- * Markdown Canvas Component
+ * The three canvas views, as a segmented control.
  *
- * A sidebar component that displays markdown documents in tabs
- * Replaces the agent options sidebar with a markdown canvas
+ * Previously three independent ghost buttons sitting in the same row as two
+ * unrelated actions and the close control — six identical 32px icon squares in
+ * which nothing said that exactly one of the middle three was always on. A
+ * segmented control on a `sunken` track says "pick one of these" before a
+ * single label is read; it is the idiom the app already uses for the sheet
+ * switcher and for `Tabs`, so this is not a new pattern, only a correctly
+ * applied one.
+ *
+ * Hand-rolled against the `Tabs` visual contract rather than built on the
+ * primitive because the views are not panels in one accessible tab set: the
+ * variables view is a different data source, not a panel of this widget.
+ * `role="radiogroup"` is what "one of three, always one" actually means.
+ */
+const VIEWS: {
+	value: CanvasViewMode;
+	label: string;
+	tourTag: string;
+	Icon: typeof FileText;
+}[] = [
+	{
+		value: "documents",
+		label: "Documents",
+		tourTag: "canvas-documents-view-button",
+		Icon: FileText,
+	},
+	{
+		value: "files",
+		label: "Files",
+		tourTag: "canvas-files-view-button",
+		Icon: FolderOpen,
+	},
+	{
+		value: "variables",
+		label: "Variables",
+		tourTag: "canvas-variables-view-button",
+		Icon: ListTree,
+	},
+];
+
+const ViewSwitcher: FC<{
+	current: CanvasViewMode;
+	onChange: (view: CanvasViewMode) => void;
+}> = ({ current, onChange }) => (
+	// A `fieldset` rather than a div with `role="group"`: the element already
+	// means "these controls belong together", and it is the only way the group
+	// gets an accessible name without inventing ARIA for it. Its UA border and
+	// margin are reset by the utilities below.
+	//
+	// No track behind it. Selection is the same `sunken`-strip-with-a-`surface`
+	// -chip step the tab row six pixels below already uses, so a second recessed
+	// well would be a box drawn around a pattern the panel has already taught.
+	<fieldset
+		className={cn("inline-flex h-7 shrink-0 items-center gap-0.5 border-0 p-0")}
+	>
+		<legend className={cn("sr-only")}>Canvas view</legend>
+		{VIEWS.map(({ value, label, tourTag, Icon }) => {
+			const isActive = current === value;
+			return (
+				<Tooltip key={value} content={`${label} view`}>
+					<button
+						type="button"
+						aria-pressed={isActive}
+						aria-label={`${label} view`}
+						data-tour-tag={tourTag}
+						onClick={() => onChange(value)}
+						className={cn(
+							"inline-flex h-6 items-center justify-center rounded-sm px-2",
+							"transition-colors duration-fast ease-out-quart",
+							"[&_svg]:size-3.5",
+							isActive
+								? "bg-surface text-ink"
+								: "text-ink-muted hover:text-ink",
+						)}
+					>
+						<Icon aria-hidden="true" />
+					</button>
+				</Tooltip>
+			);
+		})}
+	</fieldset>
+);
+
+/**
+ * Empty state panel for the canvas.
+ *
+ * An empty state that only reports emptiness is a dead end, so this one takes
+ * the actions that would resolve it. The copy names what the user does next
+ * rather than what is absent.
+ */
+const EmptyState: FC<{
+	title: string;
+	description: string;
+	children?: ReactNode;
+}> = ({ title, description, children }) => (
+	<div
+		className={cn(
+			"flex h-full flex-col items-center justify-center gap-2 bg-canvas p-6 text-center",
+		)}
+	>
+		<h3 className={cn("text-heading text-ink")}>{title}</h3>
+		<p className={cn("max-w-72 text-body-sm text-ink-muted")}>{description}</p>
+		{children ? (
+			<div className={cn("mt-2 flex items-center gap-2")}>{children}</div>
+		) : null}
+	</div>
+);
+
+/**
+ * The canvas panel.
+ *
+ * A dock beside the conversation holding the files the agent is working on.
+ *
+ * The shell is one surface with ground steps, not a stack of bordered panels:
+ * the chrome bar sits on `surface`, the tab strip and empty states sit on
+ * `sunken`/`canvas`, and regions separate by that lightness step alone.
+ *
+ * ## Why there is no visible panel title
+ *
+ * The header used to be 84px of "Canvas / Your visual workspace" — a panel
+ * announcing its own name and then describing itself, above a tab strip that
+ * already says what is open. Zed's docks, Notion's side peek and Linear's
+ * issue panel all label themselves to the accessibility tree and nowhere
+ * else, because the user opened the thing on purpose and every pixel of a
+ * side panel is contested. The name now lives on `aria-label`, and the 44px
+ * it cost goes to the document.
  */
 const CanvasComponent: FC<CanvasProps> = ({
 	activeDocumentId: externalActiveDocumentId,
@@ -206,7 +270,7 @@ const CanvasComponent: FC<CanvasProps> = ({
 				addMentionedFile(conversationId, newFile);
 			}
 			setCreateFileDialogOpen(false);
-		} catch (_) {
+		} catch {
 			// Error is already handled by the toast manager
 		} finally {
 			setIsCreatingFile(false);
@@ -291,157 +355,70 @@ const CanvasComponent: FC<CanvasProps> = ({
 	);
 
 	return (
-		<CanvasContainer data-tour-tag="canvas-container">
-			<CanvasHeader>
-				<HeaderTitle>
-					<Typography variant="h6" fontWeight={600}>
-						Canvas
-					</Typography>
-					<Typography variant="caption" color="text.secondary">
-						Your visual workspace
-					</Typography>
-				</HeaderTitle>
-				<Box sx={{ display: "flex", alignItems: "center", gap: 0 }}>
-					<Tooltip
-						title={`Create New File (${modifierKey} + N)`}
-						arrow
-						placement="top"
-					>
-						{/* @ts-ignore MUI Tooltip a11y issue */}
-						<IconButton
+		<section
+			aria-label="Canvas"
+			data-tour-tag="canvas-container"
+			className={cn("flex h-full flex-col bg-surface")}
+		>
+			{/*
+			 * One 40px chrome bar: what you are looking at on the left, what you
+			 * can do about it on the right, and the dismiss last. The two file
+			 * actions keep `icon-sm` so the whole bar reads as chrome rather than
+			 * as content — the same weight relationship Zed and VS Code use
+			 * between a dock's title bar and the editor under it.
+			 *
+			 * `sunken`, the same ground as the tab strip below it, so the two read
+			 * as one recessed chrome block rather than two stacked bars. The
+			 * document is the only thing on `surface`, and the selected tab takes
+			 * `surface` to say it belongs to the document rather than to the
+			 * chrome — the tab metaphor doing the job it was invented for.
+			 */}
+			<div
+				className={cn(
+					"flex h-10 shrink-0 items-center justify-between gap-2 bg-sunken px-2",
+				)}
+			>
+				<ViewSwitcher current={currentView} onChange={setCurrentView} />
+				<div className={cn("flex shrink-0 items-center gap-0.5")}>
+					<Tooltip content={`New file (${modifierKey} + N)`}>
+						<Button
+							variant="ghost"
+							size="icon-sm"
+							aria-label={`New file (${modifierKey} + N)`}
 							onClick={() => setCreateFileDialogOpen(true)}
-							size="large"
 							data-tour-tag="canvas-create-file-button"
-							sx={(theme) => ({
-								color: theme.palette.text.secondary,
-								"&:hover": {
-									backgroundColor: alpha(theme.palette.primary.main, 0.12),
-								},
-								width: 36,
-								height: 36,
-								padding: 0,
-							})}
 						>
-							<FilePlus size={16} />
-						</IconButton>
+							<FilePlus aria-hidden="true" />
+						</Button>
 					</Tooltip>
-					<Tooltip
-						title={`Open File (${modifierKey} + O)`}
-						arrow
-						placement="top"
-					>
-						{/* @ts-ignore MUI Tooltip a11y issue */}
-						<IconButton
+					<Tooltip content={`Open file (${modifierKey} + O)`}>
+						<Button
+							variant="ghost"
+							size="icon-sm"
+							aria-label={`Open file (${modifierKey} + O)`}
 							onClick={handleOpenFile}
-							size="large"
-							sx={(theme) => ({
-								color: theme.palette.text.secondary,
-								"&:hover": {
-									backgroundColor: alpha(theme.palette.primary.main, 0.12),
-								},
-								width: 36,
-								height: 36,
-								padding: 0,
-							})}
 						>
-							<FileUp size={16} />
-						</IconButton>
+							<FileUp aria-hidden="true" />
+						</Button>
 					</Tooltip>
-					<Tooltip title="Documents View" arrow placement="top">
-						{/* @ts-ignore MUI Tooltip a11y issue */}
-						<IconButton
-							onClick={() => setCurrentView("documents")}
-							size="large"
-							data-tour-tag="canvas-documents-view-button"
-							sx={(theme) => ({
-								color:
-									currentView === "documents"
-										? theme.palette.primary.main
-										: theme.palette.text.secondary,
-								backgroundColor:
-									currentView === "documents"
-										? alpha(theme.palette.primary.main, 0.08)
-										: "transparent",
-								"&:hover": {
-									backgroundColor: alpha(theme.palette.primary.main, 0.12),
-								},
-								width: 36,
-								height: 36,
-								padding: 0,
-							})}
-						>
-							<FileText size={16} />
-						</IconButton>
-					</Tooltip>
-					<Tooltip title="Files View" arrow placement="top">
-						{/* @ts-ignore MUI Tooltip a11y issue */}
-						<IconButton
-							onClick={() => setCurrentView("files")}
-							size="large"
-							data-tour-tag="canvas-files-view-button"
-							sx={(theme) => ({
-								color:
-									currentView === "files"
-										? theme.palette.primary.main
-										: theme.palette.text.secondary,
-								backgroundColor:
-									currentView === "files"
-										? alpha(theme.palette.primary.main, 0.08)
-										: "transparent",
-								"&:hover": {
-									backgroundColor: alpha(theme.palette.primary.main, 0.12),
-								},
-								width: 36,
-								height: 36,
-								padding: 0,
-							})}
-						>
-							<FolderOpen size={16} />
-						</IconButton>
-					</Tooltip>
-					<Tooltip title="Variables View" arrow placement="top">
-						{/* @ts-ignore MUI Tooltip a11y issue */}
-						<IconButton
-							onClick={() => setCurrentView("variables")}
-							size="large"
-							data-tour-tag="canvas-variables-view-button"
-							sx={(theme) => ({
-								color:
-									currentView === "variables"
-										? theme.palette.primary.main
-										: theme.palette.text.secondary,
-								backgroundColor:
-									currentView === "variables"
-										? alpha(theme.palette.primary.main, 0.08)
-										: "transparent",
-								"&:hover": {
-									backgroundColor: alpha(theme.palette.primary.main, 0.12),
-								},
-								width: 36,
-								height: 36,
-								padding: 0,
-							})}
-						>
-							<ListTree size={16} />
-						</IconButton>
-					</Tooltip>
-					<Tooltip
-						title="Close Canvas"
-						arrow
-						placement="top"
-						sx={{ padding: 0 }}
-					>
-						{/* @ts-ignore MUI Tooltip a11y issue */}
-						<CloseButton
+					{/*
+					 * A panel-collapse glyph, not a generic ✕. The ✕ read as
+					 * "close the document" beside a strip of tabs that each carry
+					 * their own ✕; this one says which way the panel goes.
+					 */}
+					<Tooltip content="Close canvas">
+						<Button
+							variant="ghost"
+							size="icon-sm"
+							aria-label="Close canvas"
 							onClick={onClose}
-							size="large"
 							data-tour-tag="close-canvas-button"
 						>
-							<X size={16} />
-						</CloseButton>
+							<PanelRightClose aria-hidden="true" />
+						</Button>
 					</Tooltip>
-				</Box>
-			</CanvasHeader>
+				</div>
+			</div>
 
 			{currentView === "documents" && (
 				<>
@@ -453,35 +430,44 @@ const CanvasComponent: FC<CanvasProps> = ({
 						onCloseDocument={handleCloseDocument}
 					/>
 
-					{/* Document content area */}
+					{/*
+					 * Document content area, and the panel half of the tab strip
+					 * above it. It is only wrapped when a document is actually
+					 * mounted, which is the same condition under which the strip
+					 * puts `aria-controls` on the selected tab.
+					 */}
 					{activeDocument && (
-						<CanvasContent
-							document={activeDocument}
-							conversationId={conversationId}
-							agentId={agentId}
-						/>
+						<TabPanel
+							id={CANVAS_DOCUMENT_PANEL_ID}
+							labelledBy={CANVAS_SELECTED_TAB_ID}
+						>
+							<CanvasContent
+								document={activeDocument}
+								conversationId={conversationId}
+								agentId={agentId}
+							/>
+						</TabPanel>
 					)}
 
 					{/* Empty state when no documents are open */}
 					{!activeDocument && documents.length === 0 && (
-						<Box
-							sx={{
-								display: "flex",
-								flexDirection: "column",
-								alignItems: "center",
-								justifyContent: "center",
-								height: "100%",
-								p: 3,
-								textAlign: "center",
-							}}
+						<EmptyState
+							title="Nothing open yet"
+							description="Open a file to read or edit it here. Files the agent mentions in the conversation open here too."
 						>
-							<Typography variant="h6" gutterBottom>
-								No Documents Open
-							</Typography>
-							<Typography variant="body2" color="text.secondary">
-								Click on a file in chat or use the files view to open a file.
-							</Typography>
-						</Box>
+							<Button
+								variant="secondary"
+								size="sm"
+								onClick={() => setCreateFileDialogOpen(true)}
+							>
+								<FilePlus aria-hidden="true" />
+								New file
+							</Button>
+							<Button variant="secondary" size="sm" onClick={handleOpenFile}>
+								<FileUp aria-hidden="true" />
+								Open file
+							</Button>
+						</EmptyState>
 					)}
 				</>
 			)}
@@ -498,24 +484,10 @@ const CanvasComponent: FC<CanvasProps> = ({
 			{/* Placeholder if no conversation context for files or variables view */}
 			{(currentView === "files" || currentView === "variables") &&
 				!conversationId && (
-					<Box
-						sx={{
-							display: "flex",
-							flexDirection: "column",
-							alignItems: "center",
-							justifyContent: "center",
-							height: "100%",
-							p: 3,
-							textAlign: "center",
-						}}
-					>
-						<Typography variant="h6" gutterBottom>
-							File Viewer
-						</Typography>
-						<Typography variant="body2" color="text.secondary">
-							No active conversation context to display files.
-						</Typography>
-					</Box>
+					<EmptyState
+						title="No conversation open"
+						description="Start a conversation with an agent to see the files and variables it is working with."
+					/>
 				)}
 			{agentId && (
 				<CreateFileDialog
@@ -526,7 +498,7 @@ const CanvasComponent: FC<CanvasProps> = ({
 					agentId={agentId}
 				/>
 			)}
-		</CanvasContainer>
+		</section>
 	);
 };
 

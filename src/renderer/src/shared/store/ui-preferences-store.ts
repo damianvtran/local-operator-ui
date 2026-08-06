@@ -77,6 +77,31 @@ type UiPreferencesState = {
 	isSidebarCollapsed: boolean;
 
 	/**
+	 * Whether agent reasoning (thinking, plan and reflection turns) is shown.
+	 *
+	 * Default false per docs/branding.md § 7: reasoning is the agent talking to
+	 * itself, and rendering it at prose weight is what makes the app read as a
+	 * developer tool. When false, reasoning turns are hidden entirely — a
+	 * collapsed "Reasoning" disclosure would still be chrome on every turn,
+	 * which is the weight this preference exists to remove.
+	 */
+	showAgentReasoning: boolean;
+
+	/**
+	 * Set whether agent reasoning is shown.
+	 *
+	 * Written only by the Appearance switch in `settings-page.tsx`. That is the
+	 * preference's sole control, and for a while it did not exist: the flag, the
+	 * grouping rule that honours it and the disclosure that renders it all
+	 * shipped with nothing able to turn them on, so `AgentReasoning` returned
+	 * null unconditionally and the whole feature was dead in the product while
+	 * looking alive in the source. Keep a control reachable, or delete the rest.
+	 *
+	 * @param show - Whether reasoning turns should be visible
+	 */
+	setShowAgentReasoning: (show: boolean) => void;
+
+	/**
 	 * The currently selected theme
 	 */
 	themeName: ThemeName;
@@ -148,6 +173,7 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			isCommandPaletteOpen: false,
 			commandPaletteQuery: "",
 			isSidebarCollapsed: false,
+			showAgentReasoning: false,
 			themeName: DEFAULT_THEME,
 			canvasWidth: DEFAULT_CANVAS_WIDTH,
 			chatSidebarWidth: DEFAULT_CHAT_SIDEBAR_WIDTH,
@@ -192,6 +218,12 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			setSidebarCollapsed: (collapsed: boolean) => {
 				set({
 					isSidebarCollapsed: collapsed,
+				});
+			},
+
+			setShowAgentReasoning: (show: boolean) => {
+				set({
+					showAgentReasoning: show,
 				});
 			},
 

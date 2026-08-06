@@ -1,6 +1,5 @@
-import { faArrowRight, faRobot } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Box, Paper, Typography, styled } from "@mui/material";
+import { cn } from "@shared/lib/utils";
+import { ArrowLeft } from "lucide-react";
 import type { FC } from "react";
 
 /**
@@ -12,34 +11,20 @@ type PlaceholderViewProps = {
 	directionText?: string;
 };
 
-const PlaceholderContainer = styled(Paper)({
-	display: "flex",
-	flexDirection: "column",
-	height: "100%",
-	flexGrow: 1,
-	borderRadius: 0,
-	justifyContent: "center",
-	alignItems: "center",
-	padding: 24,
-});
-
-const PlaceholderIcon = styled(FontAwesomeIcon)({
-	fontSize: "3rem",
-	marginBottom: "1rem",
-	opacity: 0.5,
-});
-
-const DirectionIndicator = styled(Box)(({ theme }) => ({
-	display: "flex",
-	alignItems: "center",
-	color: theme.palette.primary.main,
-	opacity: 0.7,
-}));
-
 /**
- * PlaceholderView Component
+ * The pane before a conversation exists.
  *
- * Displays a placeholder when no content is available
+ * Three deliberate subtractions from what was here:
+ *
+ * - **The 48px robot is gone.** A large glyph floating above a heading is the
+ *   most recognisable template in AI-product design and it told the reader
+ *   nothing they could not read in the next line. Type hierarchy carries an
+ *   empty state on its own — this is Things', Linear's and Cron's treatment.
+ * - **The ground is `canvas`,** the same ground the conversation uses, so
+ *   selecting an agent does not repaint the pane a different colour.
+ * - **The hint is not accent.** § 2 spends the accent about three times per
+ *   screen on things you act on; a sentence pointing at the sidebar is not one
+ *   of them, and dimming it is what lets the title read first.
  */
 export const PlaceholderView: FC<PlaceholderViewProps> = ({
 	title,
@@ -47,28 +32,27 @@ export const PlaceholderView: FC<PlaceholderViewProps> = ({
 	directionText,
 }) => {
 	return (
-		<PlaceholderContainer elevation={0}>
-			<PlaceholderIcon icon={faRobot} />
-			<Typography variant="h6" sx={{ mb: 1, fontWeight: 500 }}>
-				{title}
-			</Typography>
-			<Typography
-				variant="body2"
-				color="text.secondary"
-				align="center"
-				sx={{ mb: 2, maxWidth: 500 }}
-			>
-				{description}
-			</Typography>
-			{directionText && (
-				<DirectionIndicator>
-					<FontAwesomeIcon
-						icon={faArrowRight}
-						style={{ transform: "rotate(180deg)", marginRight: "0.5rem" }}
-					/>
-					<Typography variant="body2">{directionText}</Typography>
-				</DirectionIndicator>
+		<div
+			className={cn(
+				"flex h-full grow flex-col items-center justify-center bg-canvas p-6",
 			)}
-		</PlaceholderContainer>
+		>
+			<div className={cn("flex max-w-[420px] flex-col items-center gap-2")}>
+				<h2 className={cn("text-ink text-title")}>{title}</h2>
+				<p className={cn("text-center text-body text-ink-muted")}>
+					{description}
+				</p>
+				{directionText && (
+					<p
+						className={cn(
+							"mt-4 flex items-center gap-2 text-ink-dim text-body-sm",
+						)}
+					>
+						<ArrowLeft size={14} aria-hidden={true} />
+						{directionText}
+					</p>
+				)}
+			</div>
+		</div>
 	);
 };

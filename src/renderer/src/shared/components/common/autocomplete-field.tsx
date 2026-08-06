@@ -1,24 +1,33 @@
 /**
- * Autocomplete Field Component
+ * Text input with a suggestion list, and an explicit save step.
  *
- * A reusable component that provides text input with autocomplete dropdown functionality.
- * Users can select from suggestions or enter their own custom value.
+ * The combobox is built here rather than in the primitive layer: it is the only
+ * one in the app, and a listbox that has to interleave group headers with
+ * option descriptions is not the same component as a select. Keyboard
+ * behaviour is the contract — arrows move the active option, Enter takes it,
+ * Escape closes — so the active option is tracked in state and published with
+ * `aria-activedescendant` instead of moving DOM focus, which would take focus
+ * out of the input the user is still typing in.
  */
-
-import { faCheck, faTimes } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { Spinner } from "@shared/components/common/spinner";
 import {
-	Autocomplete,
-	Box,
-	CircularProgress,
-	IconButton,
-	TextField,
-	Typography,
-	alpha,
-	styled,
-} from "@mui/material";
-import { useEffect, useState } from "react";
-import type { ReactNode, SyntheticEvent } from "react";
+	Button,
+	Label,
+	Popover,
+	PopoverAnchor,
+	PopoverContent,
+} from "@shared/components/ui";
+import { cn } from "@shared/lib/utils";
+import { Check, X } from "lucide-react";
+import {
+	useCallback,
+	useEffect,
+	useId,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
+import type { ChangeEvent, KeyboardEvent, ReactNode } from "react";
 
 /**
  * Option type for autocomplete suggestions
@@ -99,72 +108,6 @@ type AutocompleteFieldProps = {
 	allowFreeText?: boolean;
 };
 
-const FieldContainer = styled(Box)({
-	marginBottom: 24,
-	position: "relative",
-});
-
-const FieldLabel = styled(Typography)(({ theme }) => ({
-	marginBottom: 8,
-	display: "flex",
-	alignItems: "center",
-	color: theme.palette.text.secondary,
-	fontWeight: 600,
-}));
-
-const LabelIcon = styled(Box)({
-	marginRight: 12,
-	opacity: 0.8,
-});
-
-const StyledAutocomplete = styled(Autocomplete)(({ theme }) => ({
-	"& .MuiOutlinedInput-root": {
-		borderRadius: 8,
-		backgroundColor: alpha(theme.palette.background.default, 0.7),
-	},
-	"& .MuiAutocomplete-endAdornment": {
-		right: 80, // Further increased space for action buttons
-	},
-}));
-
-const ActionButtonsContainer = styled(Box)({
-	position: "absolute",
-	top: 8,
-	right: 8,
-	display: "flex",
-	gap: 8, // Increased gap between buttons
-	zIndex: 10,
-});
-
-const ActionIconButton = styled(IconButton)({
-	padding: 4,
-	width: 24, // Fixed width for consistent spacing
-	height: 24, // Fixed height for consistent spacing
-});
-
-const SaveButton = styled(ActionIconButton)(({ theme }) => ({
-	color: theme.palette.success.main,
-}));
-
-const CancelButton = styled(ActionIconButton)(({ theme }) => ({
-	color: theme.palette.error.main,
-}));
-
-const OptionContainer = styled(Box)({
-	display: "flex",
-	flexDirection: "column",
-	width: "100%",
-});
-
-const OptionLabel = styled(Typography)({
-	fontWeight: 500,
-});
-
-const OptionDescription = styled(Typography)(({ theme }) => ({
-	fontSize: "0.75rem",
-	color: theme.palette.text.secondary,
-}));
-
 /**
  * Autocomplete Field Component
  *
@@ -181,12 +124,21 @@ export const AutocompleteField = ({
 	isSaving = false,
 	helperText,
 	groupBy,
+	filterOptions,
 	allowFreeText = true,
 }: AutocompleteFieldProps) => {
 	const [inputValue, setInputValue] = useState(value);
 	const [editValue, setEditValue] = useState(value);
 	const [originalValue, setOriginalValue] = useState(value);
 	const [isEditing, setIsEditing] = useState(false);
+	const [isOpen, setIsOpen] = useState(false);
+	const [activeIndex, setActiveIndex] = useState(0);
+
+	const inputRef = useRef<HTMLInputElement>(null);
+	const optionRefs = useRef<(HTMLDivElement | null)[]>([]);
+	const inputId = useId();
+	const listboxId = useId();
+	const helperId = useId();
 
 	// Update the edit value when the value prop changes
 	// biome-ignore lint/correctness/useExhaustiveDependencies: options.length is intentionally included to reset state when options change
@@ -196,45 +148,140 @@ export const AutocompleteField = ({
 		setOriginalValue(value);
 	}, [value, options.length]);
 
+	const visibleOptions = useMemo(() => {
+		if (filterOptions) return filterOptions(options, inputValue);
+		const query = inputValue.trim().toLowerCase();
+		if (!query) return options;
+		// Substring match on the label, which is what MUI's default filter did.
+		return options.filter((option) =>
+			option.label.toLowerCase().includes(query),
+		);
+	}, [options, inputValue, filterOptions]);
+
 	/**
-	 * Handles changes in the autocomplete selection
+	 * Consecutive runs rather than a sort: the caller controls option order, and
+	 * re-sorting by group would silently reorder a deliberately ranked list.
 	 */
-	const handleChange = async (
-		_event: SyntheticEvent<Element, Event>,
-		newValue: unknown,
-	) => {
-		let newEditValue = "";
-
-		// Determine the new value based on the type
-		if (typeof newValue === "string") {
-			newEditValue = newValue;
-			// String values are considered free text input
-			setIsEditing(true);
-		} else if (newValue && typeof newValue === "object" && "id" in newValue) {
-			newEditValue = (newValue as AutocompleteOption).id;
-			// If selected from dropdown, save immediately
-			try {
-				await onSave(newEditValue);
-				setOriginalValue(newEditValue);
-				setIsEditing(false);
-			} catch (error) {
-				console.error("Error saving value:", error);
-				setIsEditing(true);
-			}
-		} else {
-			newEditValue = "";
-			setIsEditing(true);
+	const groups = useMemo(() => {
+		if (!groupBy)
+			return [{ group: null as string | null, options: visibleOptions }];
+		const runs: { group: string | null; options: AutocompleteOption[] }[] = [];
+		for (const option of visibleOptions) {
+			const group = groupBy(option);
+			const last = runs.length > 0 ? runs[runs.length - 1] : undefined;
+			if (last && last.group === group) last.options.push(option);
+			else runs.push({ group, options: [option] });
 		}
+		return runs;
+	}, [visibleOptions, groupBy]);
 
-		setEditValue(newEditValue);
+	// Flattened in the same order the listbox renders, so the active index and
+	// the rendered rows cannot drift apart.
+	const flatOptions = useMemo(
+		() => groups.flatMap((run) => run.options),
+		[groups],
+	);
+
+	// Keep the active option inside the scroll viewport. `nearest` rather than
+	// `center` so a mouse-driven hover does not yank the list around.
+	useEffect(() => {
+		if (!isOpen) return;
+		optionRefs.current[activeIndex]?.scrollIntoView({ block: "nearest" });
+	}, [activeIndex, isOpen]);
+
+	const openList = useCallback(() => {
+		if (flatOptions.length === 0) return;
+		setIsOpen(true);
+	}, [flatOptions.length]);
+
+	/**
+	 * Moves the active option, skipping disabled ones and wrapping at both ends.
+	 */
+	const moveActive = useCallback(
+		(delta: number) => {
+			const count = flatOptions.length;
+			if (count === 0) return;
+			let next = activeIndex;
+			for (let step = 0; step < count; step += 1) {
+				next = (next + delta + count) % count;
+				if (!flatOptions[next]?.disabled) {
+					setActiveIndex(next);
+					return;
+				}
+			}
+		},
+		[activeIndex, flatOptions],
+	);
+
+	const selectOption = (option: AutocompleteOption) => {
+		if (option.disabled) return;
+		setEditValue(option.id);
+		setInputValue(option.label);
+		setIsEditing(true);
+		setIsOpen(false);
+		inputRef.current?.focus();
 	};
 
-	/**
-	 * Handles changes in the input field
-	 */
-	const handleInputChange = (_event: SyntheticEvent, newInputValue: string) => {
-		setInputValue(newInputValue);
+	const handleInputChange = (event: ChangeEvent<HTMLInputElement>) => {
+		const next = event.target.value;
+		setInputValue(next);
+		// Free text is the value itself; otherwise the value only changes when an
+		// option is taken, so typing just narrows the list.
+		if (allowFreeText) setEditValue(next);
 		setIsEditing(true);
+		setActiveIndex(0);
+		setIsOpen(true);
+	};
+
+	const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+		switch (event.key) {
+			case "ArrowDown":
+				event.preventDefault();
+				if (!isOpen) {
+					setActiveIndex(0);
+					openList();
+				} else {
+					moveActive(1);
+				}
+				break;
+			case "ArrowUp":
+				event.preventDefault();
+				if (!isOpen) {
+					setActiveIndex(flatOptions.length - 1);
+					openList();
+				} else {
+					moveActive(-1);
+				}
+				break;
+			case "Enter": {
+				const active = isOpen ? flatOptions[activeIndex] : undefined;
+				if (active) {
+					event.preventDefault();
+					selectOption(active);
+				}
+				break;
+			}
+			case "Escape":
+				if (isOpen) {
+					event.preventDefault();
+					setIsOpen(false);
+				}
+				break;
+			case "Home":
+				if (isOpen) {
+					event.preventDefault();
+					setActiveIndex(0);
+				}
+				break;
+			case "End":
+				if (isOpen) {
+					event.preventDefault();
+					setActiveIndex(flatOptions.length - 1);
+				}
+				break;
+			default:
+				break;
+		}
 	};
 
 	/**
@@ -244,6 +291,7 @@ export const AutocompleteField = ({
 		setEditValue(originalValue);
 		setInputValue(originalValue);
 		setIsEditing(false);
+		setIsOpen(false);
 	};
 
 	/**
@@ -254,7 +302,7 @@ export const AutocompleteField = ({
 			await onSave(editValue);
 			setOriginalValue(editValue);
 			setIsEditing(false);
-		} catch (_error) {
+		} catch {
 			// If save fails, revert to original value
 			setEditValue(originalValue);
 			setInputValue(originalValue);
@@ -262,116 +310,158 @@ export const AutocompleteField = ({
 	};
 
 	const hasChanged = editValue !== originalValue;
+	const showActions = hasChanged && isEditing && !isSaving;
+	const activeOptionId =
+		isOpen && flatOptions[activeIndex]
+			? `${listboxId}-option-${activeIndex}`
+			: undefined;
 
-	/**
-	 * Custom option rendering to show description if available
-	 */
-	const renderOption = (
-		props: React.HTMLAttributes<HTMLLIElement>,
-		option: AutocompleteOption,
-	) => (
-		<li {...props}>
-			<OptionContainer>
-				<OptionLabel>{option.label}</OptionLabel>
-				{option.description && (
-					<OptionDescription>{option.description}</OptionDescription>
-				)}
-			</OptionContainer>
-		</li>
-	);
+	let renderIndex = -1;
 
 	return (
-		<FieldContainer>
-			<FieldLabel variant="subtitle2">
-				{icon && <LabelIcon>{icon}</LabelIcon>}
+		/* No outer margin: the container owns the gap between fields. */
+		<div>
+			<Label
+				htmlFor={inputId}
+				className="mb-1.5 flex items-center gap-2 text-ink-muted"
+			>
+				{icon}
 				{label}
-			</FieldLabel>
+			</Label>
 
-			<Box sx={{ position: "relative" }}>
-				<StyledAutocomplete
-					value={editValue}
-					inputValue={inputValue}
-					onChange={handleChange}
-					onInputChange={handleInputChange}
-					options={options.map((option) => option.id)}
-					// Force re-render when options change
-					key={`autocomplete-${options.length}-${editValue}`}
-					getOptionLabel={(optionId: unknown): string => {
-						if (typeof optionId === "string") {
-							const option = options.find((opt) => opt.id === optionId);
-							return option ? option.label : optionId;
-						}
-						return String(optionId);
-					}}
-					renderOption={(props, optionId: unknown) => {
-						if (typeof optionId === "string") {
-							const option = options.find((opt) => opt.id === optionId);
-							return option ? renderOption(props, option) : null;
-						}
-						return null;
-					}}
-					groupBy={
-						groupBy
-							? (optionId: unknown): string => {
-									if (typeof optionId === "string") {
-										const option = options.find((opt) => opt.id === optionId);
-										return option && groupBy ? groupBy(option) : "";
-									}
-									return "";
-								}
-							: undefined
-					}
-					freeSolo={allowFreeText}
-					renderInput={(params) => (
-						<TextField
-							{...params}
+			<Popover open={isOpen} onOpenChange={setIsOpen}>
+				<PopoverAnchor asChild>
+					<div className="relative">
+						<input
+							id={inputId}
+							ref={inputRef}
+							type="text"
+							role="combobox"
+							aria-expanded={isOpen}
+							aria-controls={listboxId}
+							aria-autocomplete="list"
+							aria-activedescendant={activeOptionId}
+							aria-describedby={helperText ? helperId : undefined}
+							autoComplete="off"
+							value={inputValue}
 							placeholder={placeholder}
-							variant="outlined"
-							size="small"
-							helperText={helperText}
-							FormHelperTextProps={{
-								sx: {
-									fontSize: "0.7rem",
-									mt: 0.5,
-									opacity: 0.8,
-									fontStyle: "italic",
-								},
-							}}
-							fullWidth
-						/>
-					)}
-				/>
-
-				<ActionButtonsContainer>
-					{isSaving ? (
-						<CircularProgress size={20} />
-					) : (
-						<>
-							{/* Only show save/cancel buttons when editing and the value has changed */}
-							{hasChanged && isEditing && (
-								<>
-									<SaveButton
-										size="small"
-										onClick={handleSave}
-										title="Save changes"
-										sx={{ marginRight: 1 }} // Add extra margin between buttons
-									>
-										<FontAwesomeIcon icon={faCheck} size="xs" />
-									</SaveButton>
-									<CancelButton
-										size="small"
-										onClick={handleCancel}
-										title="Cancel"
-										sx={{ marginRight: 1 }} // Add extra margin between buttons
-									>
-										<FontAwesomeIcon icon={faTimes} size="xs" />
-									</CancelButton>
-								</>
+							onChange={handleInputChange}
+							onKeyDown={handleKeyDown}
+							onClick={openList}
+							className={cn(
+								"h-8 w-full rounded-md border border-control bg-surface px-3",
+								"text-body-sm text-ink placeholder:text-ink-dim",
+								"transition-colors duration-fast ease-out-quart",
+								showActions ? "pr-18" : isSaving ? "pr-10" : "pr-3",
 							)}
-						</>
-					)}
-				</ActionButtonsContainer>
-			</Box>
-		</FieldContainer>
+						/>
+
+						<div className="absolute top-1/2 right-1.5 z-10 flex -translate-y-1/2 items-center gap-1">
+							{isSaving ? (
+								<Spinner size="sm" label={`Saving ${label}`} />
+							) : (
+								showActions && (
+									<>
+										<Button
+											variant="ghost"
+											size="icon-sm"
+											onClick={handleSave}
+											title="Save changes"
+											aria-label={`Save ${label}`}
+											className="text-success hover:bg-success-wash hover:text-success"
+										>
+											<Check />
+										</Button>
+										<Button
+											variant="ghost"
+											size="icon-sm"
+											onClick={handleCancel}
+											title="Cancel"
+											aria-label={`Cancel editing ${label}`}
+											className="text-danger hover:bg-danger-wash hover:text-danger"
+										>
+											<X />
+										</Button>
+									</>
+								)
+							)}
+						</div>
+					</div>
+				</PopoverAnchor>
+
+				<PopoverContent
+					align="start"
+					sideOffset={4}
+					// Focus stays in the input: the active option is announced through
+					// `aria-activedescendant`, and moving focus here would end typing.
+					onOpenAutoFocus={(event) => event.preventDefault()}
+					className="max-h-60 w-(--radix-popover-trigger-width) overflow-y-auto p-1"
+				>
+					{/* biome-ignore lint/a11y/useFocusableInteractive: the input keeps focus; the listbox is reached through aria-activedescendant, so it must not be in the tab order. */}
+					{/* biome-ignore lint/a11y/useSemanticElements: a type-to-filter combobox cannot be a native <select>. */}
+					<div id={listboxId} role="listbox" aria-label={label}>
+						{groups.map((run) => (
+							<div
+								key={run.group ?? "__ungrouped"}
+								// biome-ignore lint/a11y/useSemanticElements: an option group with a heading, not a form fieldset.
+								role="group"
+								aria-label={run.group ?? undefined}
+							>
+								{run.group && (
+									<div className="px-2 py-1 font-medium text-ink-dim text-meta">
+										{run.group}
+									</div>
+								)}
+								{run.options.map((option) => {
+									renderIndex += 1;
+									const index = renderIndex;
+									return (
+										/* biome-ignore lint/a11y/useFocusableInteractive: focus stays in the combobox input; the active option is announced through aria-activedescendant. */
+										/* biome-ignore lint/a11y/useKeyWithClickEvents: Arrow keys, Enter and Escape are handled on the combobox input, not on the option. */
+										<div
+											key={option.id}
+											id={`${listboxId}-option-${index}`}
+											ref={(node) => {
+												optionRefs.current[index] = node;
+											}}
+											// biome-ignore lint/a11y/useSemanticElements: a type-to-filter combobox option cannot be a native <option>.
+											role="option"
+											aria-selected={option.id === editValue}
+											aria-disabled={option.disabled || undefined}
+											onMouseDown={(event) => {
+												// The input must not lose focus to the list.
+												event.preventDefault();
+											}}
+											onMouseEnter={() => setActiveIndex(index)}
+											onClick={() => selectOption(option)}
+											className={cn(
+												"cursor-pointer rounded-sm px-2 py-1.5 text-body-sm",
+												index === activeIndex
+													? "bg-accent-wash text-ink"
+													: "text-ink",
+												option.disabled && "cursor-default text-ink-disabled",
+											)}
+										>
+											<div className="font-medium">{option.label}</div>
+											{option.description && (
+												<div className="text-ink-muted text-meta">
+													{option.description}
+												</div>
+											)}
+										</div>
+									);
+								})}
+							</div>
+						))}
+					</div>
+				</PopoverContent>
+			</Popover>
+
+			{helperText && (
+				<p id={helperId} className="mt-1 text-ink-dim text-meta">
+					{helperText}
+				</p>
+			)}
+		</div>
 	);
 };
