@@ -355,12 +355,38 @@ export const Settings: Story = {
  * app's own minimum produces, and a 3,600px frame would photograph a page no
  * screen ever shows.
  */
+const APPEARANCE = '[data-tour-tag="settings-appearance-section"]';
+
 const SettingsAtAppearance: FC = () => {
+	/*
+	 * Scrolled when the section arrives, not when this mounts.
+	 *
+	 * The page renders its sections behind a config query, so on mount there
+	 * is nothing to scroll to: the first version of this scrolled immediately,
+	 * found no element, and captured the top of the page - twelve frames that
+	 * looked exactly like the `Settings` surface they were added to
+	 * supplement. An observer fires on insertion instead, which is an event
+	 * rather than a guess about how long a stub takes.
+	 *
+	 * Anchored to the section's end rather than its centre. The theme grid
+	 * makes Appearance about 4,400px tall, so centring it put the heading far
+	 * above the viewport and the toggle - the control this frame exists for -
+	 * about 2,600px below it.
+	 */
 	useLayoutEffect(() => {
-		document
-			.querySelector('[data-tour-tag="settings-appearance-section"]')
-			?.scrollIntoView({ block: "center" });
-	});
+		const scroll = () => {
+			const section = document.querySelector(APPEARANCE);
+			if (!section) return false;
+			section.scrollIntoView({ block: "end" });
+			return true;
+		};
+		if (scroll()) return;
+		const observer = new MutationObserver(() => {
+			if (scroll()) observer.disconnect();
+		});
+		observer.observe(document.body, { childList: true, subtree: true });
+		return () => observer.disconnect();
+	}, []);
 	return <SettingsPage />;
 };
 
