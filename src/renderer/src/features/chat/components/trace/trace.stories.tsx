@@ -395,6 +395,42 @@ export const ConversationWithReasoning: Story = {
 };
 
 /**
+ * The reasoning panel open, which is the state the register actually matters
+ * in.
+ *
+ * `ConversationWithReasoning` above photographs the rows closed, because
+ * closed is what the preference produces on load — so for as long as that was
+ * the only frame, the record showed a quiet one-line row and said nothing
+ * about what a click reveals. It revealed the agent's private thinking set at
+ * the answer's own size and ink, which is the thing the component's docblock
+ * exists to prevent, and no frame could have caught it.
+ *
+ * Opened by clicking rather than by a `defaultOpen` prop on `AgentReasoning`:
+ * the primitive has one, but the component does not, and adding production
+ * API that only a story calls is how the preference this whole feature hangs
+ * on came to have no control in the first place.
+ */
+const OpenedReasoning = () => {
+	useEffect(() => {
+		for (const button of document.querySelectorAll<HTMLButtonElement>(
+			'button[aria-expanded="false"]',
+		)) {
+			button.click();
+		}
+	}, []);
+	return <ConversationList />;
+};
+
+export const ConversationReasoningOpen: Story = {
+	render: () => (
+		<Sheet>
+			<OpenedReasoning />
+		</Sheet>
+	),
+	decorators: [withReasoningOn],
+};
+
+/**
  * Trace lines in isolation: collapsed, open, running, failed, static, and
  * grouped. Same component, same label derivation — only state differs.
  */

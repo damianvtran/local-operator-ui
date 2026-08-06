@@ -88,6 +88,7 @@ const THEMES = [
 const STORIES = [
 	["chat-trace--conversation", 1280, 900],
 	["chat-trace--conversation-with-reasoning", 1280, 900],
+	["chat-trace--conversation-reasoning-open", 1280, 900],
 	["chat-trace--question-callout", 1280, 900],
 	["chat-trace--trace-states", 1280, 900],
 	["chat-trace--security-notice-states", 1280, 900],
