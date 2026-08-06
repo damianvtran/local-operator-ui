@@ -583,11 +583,13 @@ export const Downloaded: Story = {
 						</p>
 
 						<UpdateActions>
-							<Button variant="primary" size="sm" onClick={() => {}}>
-								Install now
-							</Button>
+							{/* Dismiss first, commit last - the component's order,
+							    same as the UpdateAvailable story above. */}
 							<Button variant="outline" size="sm" onClick={() => {}}>
 								Update later
+							</Button>
+							<Button variant="primary" size="sm" onClick={() => {}}>
+								Install now
 							</Button>
 						</UpdateActions>
 					</UpdateContainer>

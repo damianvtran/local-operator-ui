@@ -253,6 +253,14 @@ export const DateTimePicker: FC<DateTimePickerProps> = ({
 							onChange={handleDateChange}
 							disabled={disabled}
 							open={initialOpen ? dateOpen : undefined}
+							/* `initialOpen` exists only so a story can photograph the
+							   calendar, and MUI draws today's ring from the wall
+							   clock rather than from `value` - so a captured frame
+							   outlined whichever day the capture ran on, moving one
+							   cell per day and vanishing whenever the capture month
+							   differed from the value's. Suppressed in that mode
+							   only: in the app the ring is genuinely useful. */
+							disableHighlightToday={initialOpen}
 							onOpen={() => setDateOpen(true)}
 							onClose={() => setDateOpen(false)}
 							enableAccessibleFieldDOMStructure={false}
