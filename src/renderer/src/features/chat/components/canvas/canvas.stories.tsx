@@ -311,7 +311,7 @@ const ChatColumnMock = () => (
 			    it is the geometry people check it against. */}
 			<div className="flex items-center justify-between">
 				<span className="flex items-center gap-2 text-meta text-ink-dim">
-					<Paperclip size={16} aria-hidden="true" />
+					<Paperclip size={18} aria-hidden="true" />
 					<span className="truncate">~/work/reports</span>
 				</span>
 				<span className="flex items-center gap-1">
@@ -322,12 +322,16 @@ const ChatColumnMock = () => (
 					    button is disabled and spends no accent at all - it draws
 					    `bg-sunken text-ink-disabled`, a neutral chip, which is
 					    what this copies. A half-strength accent square would
-					    still be advertising a state the product never renders. */}
+					    still be advertising a state the product never renders.
+
+					    Glyphs are the product's sizes at this width too:
+					    `iconSize` is 18 above the 550px dense-branch switch, and
+					    send is `Math.round(iconSize * 0.8)` = 14. */}
 					<span className="flex size-8 items-center justify-center rounded-sm text-ink-dim">
-						<Mic size={16} aria-hidden="true" />
+						<Mic size={18} aria-hidden="true" />
 					</span>
 					<span className="flex size-8 items-center justify-center rounded-sm bg-sunken text-ink-disabled">
-						<Send size={16} aria-hidden="true" />
+						<Send size={14} aria-hidden="true" />
 					</span>
 				</span>
 			</div>
