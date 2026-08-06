@@ -536,7 +536,7 @@ const main = async () => {
 			 * that tolerates a legitimate scrim over a modal, something no
 			 * equality test on a ground colour can do.
 			 */
-			let prepared = false;
+			const prepared = false;
 			for (let i = 0; i < 300 && !prepared; i++) {
 				const { result } = await cdp.send("Runtime.evaluate", {
 					returnByValue: true,
@@ -554,6 +554,22 @@ const main = async () => {
 						   unaffected, so this costs nothing for the other 33
 						   surfaces. */
 						if (document.documentElement.dataset.capturePending) return false;
+						/* Webfonts must have resolved before the shutter.
+
+						   Chrome paints a fallback box for a glyph whose face is
+						   still loading, and against a dark ground that reads as
+						   a solid filled blob exactly the size of the character
+						   it replaced - a download count of "193" photographed
+						   as an ellipse, a star count of "0" as a filled dot.
+						   It is intermittent, it corrupts one glyph rather than
+						   a frame, and it survived several rounds as a mystery
+						   because a recapture usually repairs it, which is what
+						   makes it look like encoder noise in a diff.
+
+						   `document.fonts.status` is synchronous, so this poll
+						   can read it without becoming async; `fonts.ready`
+						   resolving is what flips it. */
+						if (document.fonts.status !== "loaded") return false;
 						/* Count the STORY's elements, wherever they live.
 						   A plain body count passes on Storybook's own chrome,
 						   which is how a frame of pure ground - the right colour
