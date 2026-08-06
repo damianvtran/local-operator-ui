@@ -39,8 +39,8 @@ export const InstallationProgress: React.FC = () => {
 		<div className="flex w-full max-w-110 flex-col items-center text-center">
 			<h2 className="text-title text-ink">Setting up your environment</h2>
 			<p className="mt-2 text-body text-ink-muted">
-				A one-time install of Python and the AI dependencies your assistants run
-				on, on this computer.
+				A one-time install of Python and the AI dependencies your assistants
+				need, all kept on this computer.
 			</p>
 
 			{/* The one live region on this screen: the label is what a screen reader

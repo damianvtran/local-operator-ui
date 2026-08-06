@@ -13,8 +13,8 @@
 import { Tooltip } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
 import {
+	formatCalendarDateTime,
 	formatMessageDateTime,
-	getFullDateTime,
 } from "@shared/utils/date-utils";
 import type { FC } from "react";
 
@@ -28,7 +28,7 @@ export const MessageTimestamp: FC<MessageTimestampProps> = ({
 	className,
 }) => (
 	<Tooltip
-		content={getFullDateTime(timestamp)}
+		content={formatCalendarDateTime(timestamp)}
 		side="bottom"
 		delayDuration={1200}
 	>

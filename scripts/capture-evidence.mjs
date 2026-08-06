@@ -99,6 +99,7 @@ const STORIES = [
 	["schedules-page--picker-open", 1280, 900],
 	["schedules-page--row-actions-revealed", 1280, 900],
 	["schedules-page--row-action-label", 1280, 900],
+	["common-confirmationmodal--dangerous", 1280, 900],
 	["command-palette-commandpalette--default", 1280, 800],
 	["command-palette-commandpalette--no-results", 1280, 800],
 
@@ -448,22 +449,26 @@ const main = async () => {
 						   most worth photographing. Counting the root plus every
 						   body child that is not Storybook's own furniture covers
 						   both. */
-						const root =
-							document.getElementById("storybook-root") ??
-							document.getElementById("storybook-docs");
+						const root = document.getElementById("storybook-root");
+						const docsRoot = document.getElementById("storybook-docs");
 						const CHROME = [
 							"sb-preparing-story",
 							"sb-preparing-docs",
 							"sb-nopreview",
 							"sb-errordisplay",
 						];
-						/* Scripts and styles are body children too. Counting them
-						   made the threshold three cheaper than it reads, which is
-						   the kind of margin that erodes without anyone noticing. */
+						/* Scripts and styles are body children too, and
+						   the docs root is a permanent empty sibling of the story
+						   root rather than an alternative to it - counting either
+						   made the threshold cheaper than it reads, which is the
+						   kind of margin that erodes without anyone noticing. The
+						   baseline here is zero, so the check below means eight
+						   elements the story itself rendered. */
 						const INERT = ["SCRIPT", "STYLE", "LINK", "TEMPLATE", "NOSCRIPT"];
 						let n = root ? root.querySelectorAll("*").length : 0;
+						if (docsRoot) n += docsRoot.querySelectorAll("*").length;
 						for (const child of document.body.children) {
-							if (child === root) continue;
+							if (child === root || child === docsRoot) continue;
 							if (INERT.includes(child.tagName)) continue;
 							if (CHROME.some((c) => child.classList.contains(c))) continue;
 							n += child.querySelectorAll("*").length + 1;

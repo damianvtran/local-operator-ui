@@ -49,28 +49,37 @@ const GROUND_CEILING = 25;
  * in 102 of the 408 frames, and the incident that started this was caught only
  * because the default theme happens to be dark.
  *
- * 98.5% is measured, not chosen. It is a ceiling: one colour may cover up
- * to this much and no more. Across the 408 frames the most uniform
- * legitimate ones are the security-notice states at 96.39-96.99% - a short
- * callout on a tall ground - and the median frame is 56%. The empty frame was
- * 99.99% and a white spinner page is 99.96%. The floor sits in the 3-point gap
- * between the two populations. Exactly: the highest legitimate frame is
- * 96.99% and the lowest failure is 99.96%, so the ceiling sits 1.51 above
- * the legitimate maximum and 1.46 below the first real failure - close to
- * the middle, with the wider margin on the side that must not fail.
+ * 98.5% is measured, not chosen. It is a ceiling: one colour may cover up to
+ * this much and no more. Across the 408 frames the most uniform legitimate
+ * ones are the security-notice states at 96.39-96.99% - a short callout on a
+ * tall ground - and the median frame is 56%. The empty frame was 99.99% and a
+ * white spinner page is 99.96%. So the ceiling sits 1.51 above the highest
+ * legitimate frame and 1.46 below the lowest real failure: close to the middle
+ * of the gap between the two populations, with the wider margin on the side
+ * that must not fail.
  */
 const UNIFORMITY_CEILING = 0.985;
 
 /**
- * A coverage fraction as a percentage that never rounds a failure into looking
- * like a pass: two decimals normally, more when the value is close enough to
- * the ceiling that two would print the ceiling back.
+ * A failing coverage and the ceiling it broke, rendered so the first is
+ * visibly larger than the second.
+ *
+ * Two decimals is right for almost every frame, but the smallest genuinely
+ * failing pixel counts at the sizes in this set land within a rounding step of
+ * the limit - 1649127/1674240 is 0.985000358, over the ceiling, and prints as
+ * "98.50%" against a limit that also prints as "98.50%". A check whose message
+ * reads like a passing measurement is worse than one with no message. Widening
+ * both sides together until they differ keeps the common case short and makes
+ * the boundary case legible.
  */
-const pct = (fraction) => {
+const overCeiling = (fraction) => {
 	const value = fraction * 100;
 	const limit = UNIFORMITY_CEILING * 100;
-	const places = Math.abs(value - limit) < 0.005 ? 4 : 2;
-	return `${value.toFixed(places)}%`;
+	let places = 2;
+	while (places < 10 && value.toFixed(places) === limit.toFixed(places)) {
+		places++;
+	}
+	return { got: `${value.toFixed(places)}%`, max: `${limit.toFixed(places)}%` };
 };
 
 const GROUNDS = ["canvas", "surface", "elevated", "sunken"];
@@ -149,8 +158,9 @@ export const assertFramePaints = (file, theme) => {
 		);
 	}
 	if (mode.coverage > UNIFORMITY_CEILING) {
+		const over = overCeiling(mode.coverage);
 		throw new Error(
-			`${file}: ${pct(mode.coverage)} of the frame is one colour (max ${UNIFORMITY_CEILING * 100}%) — the story painted its ground and nothing else`,
+			`${file}: ${over.got} of the frame is one colour (max ${over.max}) — the story painted its ground and nothing else`,
 		);
 	}
 };
@@ -200,8 +210,9 @@ const main = () => {
 			);
 		}
 		if (mode.coverage > UNIFORMITY_CEILING) {
+			const over = overCeiling(mode.coverage);
 			failures.push(
-				`${relative(ROOT, file)}: ${pct(mode.coverage)} of the frame is one colour (max ${UNIFORMITY_CEILING * 100}%) — this frame is a ground with nothing on it`,
+				`${relative(ROOT, file)}: ${over.got} of the frame is one colour (max ${over.max}) — this frame is a ground with nothing on it`,
 			);
 		}
 	}

@@ -299,12 +299,20 @@ export const ModelSelect: FC<ModelSelectProps> = ({
 		) {
 			return "No models available for selected provider.";
 		}
-		if (availableModels.length === 0 && hostingId) {
+		/* Same guard as the branch above: a saved model with a failed fetch is
+		   an ordinary state - the config still names it and the select still
+		   displays it - and telling the user "No models available" directly
+		   under the model they are looking at contradicts the field itself.
+		   The empty list is worth saying only when nothing is selected. */
+		if (
+			availableModels.length === 0 &&
+			hostingId &&
+			!modelOptions.some((opt) => opt.id === value && value !== "")
+		) {
 			const provider = getHostingProviderById(hostingId);
-			if (provider) {
-				return `No models for ${provider.name}`;
-			}
-			return "No models available";
+			return provider
+				? `No models for ${provider.name}`
+				: "No models available";
 		}
 		return undefined;
 	}, [availableModels.length, hostingId, allowDefault, modelOptions, value]);

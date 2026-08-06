@@ -154,8 +154,13 @@ export const GeneralSettings: FC<GeneralSettingsProps> = ({
 				}}
 			/>
 
-			{/* Hosting and model sit side by side from `md` up. */}
-			<div className="grid gap-4 md:grid-cols-2">
+			{/* Side by side from `lg` (1024px), not `md` (768px). The window's own
+			    minWidth is 800, so the `md` fallback sat below the floor and could
+			    never fire: the row was always two columns, and at 800 that is
+			    narrow enough for "Hosting provider" to wrap - dropping its select
+			    19px below the Model select beside it - and for the model to
+			    truncate to "anthropic/cl", cutting the half that identifies it. */}
+			<div className="grid gap-4 lg:grid-cols-2">
 				{/* The tour matches this tag by value; it must survive verbatim. */}
 				<div data-tour-tag="agent-settings-hosting-select">
 					<HostingSelect
