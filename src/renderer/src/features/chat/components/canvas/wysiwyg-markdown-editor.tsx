@@ -1213,6 +1213,12 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 				 * from one they did. Inside a list the same command nests the
 				 * item and round-trips through markdown correctly, which is the
 				 * only reason this key still does anything.
+				 *
+				 * Outside a list this returns without `preventDefault`, so Tab
+				 * moves focus out of the editor. That is deliberate and is the
+				 * accessible behaviour - a contenteditable that swallows Tab is
+				 * a keyboard trap (WCAG 2.1.2) and there was previously no way
+				 * to leave this editor with the keyboard alone.
 				 */
 				const anchor = window.getSelection()?.anchorNode;
 				const element =
