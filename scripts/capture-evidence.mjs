@@ -19,7 +19,7 @@
  */
 
 import { execFileSync, spawn } from "node:child_process";
-import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -28,6 +28,25 @@ import { assertFramePaints } from "./check-evidence.mjs";
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const OUT = join(ROOT, "docs", "evidence");
 const ORIGIN = process.argv[2] ?? "http://localhost:6017";
+
+const API_URL_LINE = /^VITE_LOCAL_OPERATOR_API_URL=(.+)$/m;
+
+/*
+ * The backend the app talks to, resolved the way the renderer resolves it:
+ * `.env` if present, otherwise the schema's own default. Written out here it
+ * would be a second copy free to drift from the first, which is the bug this
+ * is here to catch.
+ */
+const BACKEND_ORIGIN = (() => {
+	let configured;
+	try {
+		const env = readFileSync(join(ROOT, ".env"), "utf8");
+		configured = env.match(API_URL_LINE)?.[1].trim();
+	} catch {
+		// no .env, which is the schema-default case
+	}
+	return new URL(configured || "http://localhost:1111").origin;
+})();
 
 const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 
@@ -168,7 +187,38 @@ const teardown = () => {
 	}
 };
 
+/**
+ * Refuse to capture while a Local Operator backend is listening.
+ *
+ * Several surfaces call the backend on load and photograph whatever comes
+ * back. With nothing on the port they render the offline state, which is what
+ * every committed frame shows and what a reader of this evidence set is
+ * entitled to assume they are looking at. With a real server up they render
+ * that server's replies instead, and the difference is silent: the capture
+ * succeeds, the manifest is honest about the commit, and sixty frames quietly
+ * become pictures of one machine's backend. That happened once, on the
+ * `shell-app-shell/agents` surface across all twelve themes and three
+ * viewports, and the only reason it was caught is that someone measured the
+ * diff instead of assuming encoder noise.
+ *
+ * A capture is supposed to be a function of the tree. Fail loudly here rather
+ * than let the environment leak into the record.
+ */
+const assertBackendDown = async () => {
+	const url = `${BACKEND_ORIGIN}/health`;
+	try {
+		await fetch(url, { signal: AbortSignal.timeout(1500) });
+	} catch {
+		return; // nothing listening, which is the state we need
+	}
+	throw new Error(
+		`A Local Operator backend is answering on ${BACKEND_ORIGIN}. Captured frames would show its replies instead of the offline state every committed frame depicts. Stop it and re-run.`,
+	);
+};
+
 const main = async () => {
+	await assertBackendDown();
+
 	dataDir = join(tmpdir(), `lo-evidence-${process.pid}`);
 	mkdirSync(dataDir, { recursive: true });
 

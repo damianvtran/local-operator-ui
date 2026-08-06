@@ -2,6 +2,7 @@ import "../../../styles/index.css";
 import { AgentsPage } from "@features/agents/components/agents-page";
 import { SettingsPage } from "@features/settings/components/settings-page";
 import { SidebarNavigation } from "@shared/components/navigation/sidebar-navigation";
+import { apiConfig } from "@shared/config/api-config";
 import { cn } from "@shared/lib/utils";
 import { useAgentSelectionStore } from "@shared/store/agent-selection-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
@@ -124,6 +125,15 @@ const ok = (result: unknown) =>
 
 const AGENT_BY_ID = /^\/v1\/agents\/([^/]+)$/;
 
+/**
+ * The origin the subject actually calls, read from the same config the app
+ * reads rather than written out here. The two had drifted apart once already:
+ * this matcher said `127.0.0.1` while the schema's default says `localhost`,
+ * so with no `.env` present every fixture missed and the whole surface fell
+ * through to the network.
+ */
+const BACKEND_ORIGIN = new URL(apiConfig.baseUrl).origin;
+
 const route = (path: string): Response | null => {
 	if (path === "/health") {
 		return new Response(JSON.stringify({ status: 200, message: "ok" }), {
@@ -230,9 +240,31 @@ const useFixtureFetch = () => {
 					: input instanceof URL
 						? input.toString()
 						: input.url;
-			if (url.startsWith("http://127.0.0.1:1111")) {
+			if (url.startsWith(BACKEND_ORIGIN)) {
 				const response = route(new URL(url).pathname);
+				/*
+				 * Unrouted backend paths fail here rather than reaching the
+				 * network. Falling through looks harmless while nothing is
+				 * listening on the port - the request is refused and the screen
+				 * shows the offline state these frames are supposed to depict.
+				 * Run the real server on that port, though, and the same code
+				 * photographs its replies: a capture taken with a backend up
+				 * rewrote all sixty of this surface's frames, swapping "Could
+				 * not reach the server" for a 404 from one developer's machine,
+				 * and nothing in the run said a word about it.
+				 *
+				 * It has to reject, not resolve. `Response.error()` arrives as a
+				 * Response whose status is 0, and the app renders that as "request
+				 * failed: 0" - a third state, matching neither a live server nor a
+				 * dead one. A refused connection rejects with a TypeError, so that
+				 * is what an absent backend has to look like here.
+				 *
+				 * A story is a picture of the tree, so its fixtures own every
+				 * path its subject calls - including the ones nobody wrote a
+				 * fixture for.
+				 */
 				if (response) return response;
+				throw new TypeError("Load failed");
 			}
 			return original(input, init);
 		};
