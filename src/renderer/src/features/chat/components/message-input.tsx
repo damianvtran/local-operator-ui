@@ -494,7 +494,15 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			}
 		};
 
-		const iconSize = isSmallView ? 16 : 18;
+		/*
+		 * No `iconSize` here. Every glyph below sits inside a `Button`, and the
+		 * button variants carry `[&_svg]:size-4` / `size-3.5`, which override an
+		 * SVG's own width and height - so a `size` prop on these icons states an
+		 * intent it cannot deliver and reads as the rendered value to anyone who
+		 * greps for it. It cost two rounds of review on a Storybook stand-in that
+		 * copied these numbers faithfully and drew a composer the app does not
+		 * draw. The variant owns the size; the call sites no longer claim to.
+		 */
 
 		const inputContent = (
 			<form onSubmit={handleSubmit} className="w-full">
@@ -570,7 +578,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 										data-tour-tag="chat-input-attach-file-button"
 										disabled={isInputDisabled || isRecording || isTranscribing}
 									>
-										<Paperclip size={iconSize} aria-hidden="true" />
+										<Paperclip aria-hidden="true" />
 									</Button>
 								</span>
 							</Tooltip>
@@ -603,7 +611,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 												aria-label="Start recording"
 												disabled={isLoading || !canEnableRecordingFeature}
 											>
-												<Mic size={iconSize} aria-hidden="true" />
+												<Mic aria-hidden="true" />
 											</Button>
 										</span>
 									</Tooltip>
@@ -620,7 +628,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 												aria-label="Confirm recording"
 												disabled={isLoading}
 											>
-												<Check size={iconSize} aria-hidden="true" />
+												<Check aria-hidden="true" />
 											</Button>
 										</span>
 									</Tooltip>
@@ -634,7 +642,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 												aria-label="Cancel recording"
 												disabled={isLoading}
 											>
-												<X size={iconSize} aria-hidden="true" />
+												<X aria-hidden="true" />
 											</Button>
 										</span>
 									</Tooltip>
@@ -650,7 +658,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 											onClick={() => onCancelJob?.(currentJobId)}
 											aria-label="Stop agent"
 										>
-											<Square size={iconSize} aria-hidden="true" />
+											<Square aria-hidden="true" />
 										</Button>
 									</span>
 								</Tooltip>
@@ -669,10 +677,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 												}
 												aria-label="Send message"
 											>
-												<Send
-													size={Math.round(iconSize * 0.8)}
-													aria-hidden="true"
-												/>
+												<Send aria-hidden="true" />
 											</Button>
 										</span>
 									</Tooltip>
