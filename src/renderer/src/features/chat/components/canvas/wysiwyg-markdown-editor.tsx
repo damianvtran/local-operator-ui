@@ -1228,34 +1228,28 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 				 * the tempting one-liner and it is wrong: for a selection across
 				 * two items it is the `<ul>`, which has no `li` ancestor, so
 				 * indenting several items at once would stop working.
+				 *
+				 * The containers are tested directly, with no resolution of an
+				 * element boundary to the child it sits at. That resolver was
+				 * written and then removed: a range whose end is the `<ul>` at
+				 * an offset defeats this test, but it is not reachable. Driving
+				 * real input through Electron's own Chromium across seventeen
+				 * gestures - triple-click on an item and on one wrapping a
+				 * nested list, Shift+Down runs, Cmd+Shift+End, select-all in
+				 * list-only and mixed documents, and drags in both directions
+				 * across every boundary - produced an end container that was
+				 * always either a text node inside an `<li>` or the `<li>` at
+				 * offset 0, both of which this test accepts. The app builds no
+				 * element-container ranges of its own. If one ever appears the
+				 * gate closes and Tab moves focus, which is the safe direction
+				 * to fail; the resolver's own failure mode was a blockquote in
+				 * the user's file.
 				 */
 				const selection = window.getSelection();
 				const range =
 					selection && selection.rangeCount > 0
 						? selection.getRangeAt(0)
 						: null;
-				/* A boundary in an ELEMENT container addresses a position between
-				   that element's children, not the element itself. Selecting
-				   across list items can leave the end boundary on the `<ul>` at
-				   an offset - a triple-click does exactly this - and testing the
-				   `<ul>` finds no `li`, so a legitimate multi-item indent would
-				   stop working.
-
-				   Blank children are stepped over on the way back. Serialised
-				   HTML puts a whitespace text node between `</li>` and `</ul>`,
-				   so the last child of a list is usually not a list item, and
-				   resolving to it reintroduces the same failure one node along. */
-				const boundaryNode = (container: Node, offset: number): Node => {
-					if (container.nodeType !== Node.ELEMENT_NODE) return container;
-					const children = container.childNodes;
-					if (children.length === 0) return container;
-					const isBlank = (node: Node) =>
-						node.nodeType === Node.TEXT_NODE &&
-						(node.textContent ?? "").trim() === "";
-					let index = Math.min(offset, children.length - 1);
-					while (index > 0 && isBlank(children[index])) index--;
-					return children[index] ?? container;
-				};
 				const listItemFor = (node: Node | null): Element | null => {
 					const element =
 						node?.nodeType === Node.ELEMENT_NODE
@@ -1265,8 +1259,8 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 				};
 				if (
 					!range ||
-					!listItemFor(boundaryNode(range.startContainer, range.startOffset)) ||
-					!listItemFor(boundaryNode(range.endContainer, range.endOffset))
+					!listItemFor(range.startContainer) ||
+					!listItemFor(range.endContainer)
 				) {
 					return;
 				}
