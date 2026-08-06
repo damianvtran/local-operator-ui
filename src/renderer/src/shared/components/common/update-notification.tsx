@@ -66,7 +66,10 @@ export const RELEASE_NOTES_PROSE = [
 	"[&_h1]:text-heading [&_h2]:text-heading [&_h3]:text-body [&_h4]:text-body [&_h5]:text-body-sm [&_h6]:text-body-sm",
 	"[&_p]:my-1.5 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0",
 	"[&_:is(ul,ol)]:my-1.5 [&_:is(ul,ol)]:pl-5 [&_ul_li]:list-disc [&_ol_li]:list-decimal [&_li]:my-0.5",
-	"[&_a]:text-accent [&_a]:underline-offset-4 hover:[&_a]:underline",
+	/* No link rule here: `UpdateContainer` above already carries
+	   `[&_a]:hover:underline`, and the copy that lived here was written
+	   `hover:[&_a]:underline` - which compiles to `.cls:hover a`, so hovering
+	   anywhere in the body underlined every link in the panel at once. */
 	"[&_code]:rounded-xs [&_code]:bg-sunken [&_code]:px-1 [&_code]:font-mono [&_code]:text-mono-sm",
 ].join(" ");
 

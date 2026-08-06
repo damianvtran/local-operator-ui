@@ -319,13 +319,14 @@ const ChatColumnMock = () => (
 					    the send control drawn disabled: the depicted column is
 					    560px, above the 550px dense-branch switch, and the input
 					    is a placeholder - which is exactly when the real send
-					    button is disabled and spends no accent at all. Drawn as
-					    an accent square here it advertised a state the product
-					    does not render. */}
+					    button is disabled and spends no accent at all - it draws
+					    `bg-sunken text-ink-disabled`, a neutral chip, which is
+					    what this copies. A half-strength accent square would
+					    still be advertising a state the product never renders. */}
 					<span className="flex size-8 items-center justify-center rounded-sm text-ink-dim">
 						<Mic size={16} aria-hidden="true" />
 					</span>
-					<span className="flex size-8 items-center justify-center rounded-sm bg-accent/50 text-on-accent opacity-50">
+					<span className="flex size-8 items-center justify-center rounded-sm bg-sunken text-ink-disabled">
 						<Send size={16} aria-hidden="true" />
 					</span>
 				</span>

@@ -538,7 +538,7 @@ export const SettingsPage: FC = () => {
 	}
 
 	/* No `max-md:` set on the container or the rail below.
-	
+
 	   Not because the width is unreachable - the window's minWidth of 800 is in
 	   device pixels and page zoom divides the CSS viewport, so one Zoom In press
 	   at the floor lands at 727px, inside the range those five utilities
