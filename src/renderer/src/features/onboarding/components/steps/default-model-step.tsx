@@ -214,7 +214,18 @@ export const DefaultModelStep: FC = () => {
 								selectSize="lg"
 								aria-describedby={PROVIDER_HELP_ID}
 							>
-								<SelectValue placeholder="Select a provider" />
+								{/* Same zero-option state the model select below has.
+								    Reachable: pressing Next twice without adding a key
+								    lands here with nothing to choose, and an empty
+								    "Select a provider" gives the user no way to tell
+								    an empty list from a slow one. */}
+								<SelectValue
+									placeholder={
+										availableProviders.length === 0
+											? "No providers with credentials yet"
+											: "Select a provider"
+									}
+								/>
 							</SelectTrigger>
 							<SelectContent>
 								{availableProviders.map((provider) => (

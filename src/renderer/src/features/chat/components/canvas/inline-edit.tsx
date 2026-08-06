@@ -137,6 +137,14 @@ export const InlineEdit: FC<InlineEditProps> = ({
 	// Handle escape key to close inline edit
 	useEffect(() => {
 		const handleKeyDown = (event: KeyboardEvent) => {
+			/* A dialog on top of this one has first claim on Escape. Radix's
+			   dismissable layer calls `preventDefault` but not
+			   `stopPropagation` - MUI's Modal used to do both - so the same
+			   keystroke that closes a dialog opened over the canvas also
+			   arrives here, and with a review pending it ran `onRejectAll` and
+			   discarded the agent's diffs on the way out. Two keystrokes from
+			   an ordinary state: Cmd+N over an open inline edit, then Escape. */
+			if (event.defaultPrevented) return;
 			if (event.key === "Escape") {
 				event.preventDefault();
 				if (isLoading) {

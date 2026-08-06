@@ -157,7 +157,9 @@ export const SearchApiStep: FC = () => {
 								rel="noopener noreferrer"
 								className="inline-flex items-center gap-1 text-accent text-meta underline-offset-4 hover:text-accent-hover hover:underline"
 							>
-								Get a {selectedCredentialInfo.name} key
+								{/* "Get your {name}": the catalogue names already end in
+								    "API key", so this rendered "Get a Tavily API key key". */}
+								Get your {selectedCredentialInfo.name}
 								<ExternalLink size={12} aria-hidden="true" />
 							</a>
 						</div>

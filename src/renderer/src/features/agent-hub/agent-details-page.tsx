@@ -315,22 +315,26 @@ export const AgentDetailsPage: React.FC = () => {
 				dialogProps={{
 					"aria-describedby": "delist-dialog-description",
 					/*
-					 * MUI auto-focused the destructive button; Radix would otherwise
-					 * land on the close X. Steer the initial focus explicitly.
+					 * No `onOpenAutoFocus` override. It used to steer initial focus
+					 * onto the destructive button, on the belief that Radix would
+					 * otherwise land on the close X - measured against this
+					 * dialog's own DOM, Radix's tabbable order is [Cancel, Delist,
+					 * close], so the default is Cancel. The override existed only
+					 * to move Enter onto the dangerous control, which is the exact
+					 * hazard removed from the other six confirmation dialogs in
+					 * this release.
 					 */
-					onOpenAutoFocus: (event: Event) => {
-						event.preventDefault();
-						document.getElementById("delist-confirm-button")?.focus();
-					},
 				}}
 			>
 				<p
 					id="delist-dialog-description"
 					className="text-body-sm text-ink-muted"
 				>
-					Are you sure you want to permanently delist "{agent.name}"? This
-					action cannot be undone. Nobody will be able to download this agent
-					anymore. You can re-upload it later if you choose.
+					{/* Not "cannot be undone" followed by "you can re-upload it
+					    later" - a reader cannot tell from that how bad this is,
+					    and telling them exactly that is the dialog's whole job. */}
+					This takes "{agent.name}" off the hub straight away, and nobody will
+					be able to download it. You can upload it again later.
 				</p>
 			</BaseDialog>
 		</div>

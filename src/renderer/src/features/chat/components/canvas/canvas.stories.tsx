@@ -19,7 +19,7 @@
  */
 
 import type { Meta, StoryObj } from "@storybook/react";
-import { Paperclip } from "lucide-react";
+import { Mic, Paperclip, Send } from "lucide-react";
 import { type FC, type ReactNode, useEffect, useMemo } from "react";
 import "../../../../styles/index.css";
 import type { EditDiff } from "@shared/api/local-operator/types";
@@ -300,19 +300,27 @@ const ChatColumnMock = () => (
 			<p className="text-body-sm text-ink-dim">
 				Ask a follow-up about the write-up
 			</p>
+			{/* Mirrors both clusters of the real composer: a paperclip and the
+			    directory indicator on the left, a microphone and an icon-only
+			    send button on the right. It printed the word "Model" under the
+			    paperclip once - source vocabulary that appears nowhere in the
+			    composer - and after that was fixed it still drew an accent pill
+			    reading "Send" where the product has a ghost mic and a square
+			    icon button, in 72 frames. A stand-in that gets the geometry
+			    right and the controls wrong is worse than no stand-in, because
+			    it is the geometry people check it against. */}
 			<div className="flex items-center justify-between">
-				{/* Mirrors the real composer's left cluster: a paperclip icon
-				    button named "Attach file" and the directory indicator beside
-				    it. This once printed the word "Model" under a comment saying
-				    to draw the glyph and not its name - a piece of source
-				    vocabulary that appears nowhere in the composer, in 72
-				    committed frames. */}
 				<span className="flex items-center gap-2 text-meta text-ink-dim">
 					<Paperclip size={16} aria-hidden="true" />
 					<span className="truncate">~/work/reports</span>
 				</span>
-				<span className="rounded-sm bg-accent px-3 py-1 text-meta text-on-accent">
-					Send
+				<span className="flex items-center gap-1">
+					<span className="flex size-7 items-center justify-center rounded-md text-ink-dim">
+						<Mic size={16} aria-hidden="true" />
+					</span>
+					<span className="flex size-7 items-center justify-center rounded-md bg-accent text-on-accent">
+						<Send size={14} aria-hidden="true" />
+					</span>
 				</span>
 			</div>
 		</div>
@@ -529,10 +537,12 @@ export const DiffReview: Story = {
 /**
  * The prompt state of the same popover, before any changes exist.
  *
- * Over real document text, like `DiffReview` above. A floating panel's only
- * interesting questions are what it covers and whether its edge reads against
- * what is behind it, and on bare ground it answers neither - which made this
- * the second-sparsest surface in the set at 6.18% non-ground pixels.
+ * Under real document text, like `DiffReview` above. A floating panel's edge
+ * has to read against something, and on bare ground it read against nothing -
+ * which made this the second-sparsest surface in the set. It sits below the
+ * prose rather than over it, which is where the diff popover sits too; forcing
+ * an overlap here would make the two siblings inconsistent to satisfy a
+ * sentence. 9.63% non-ground pixels now, up from 6.18%.
  */
 export const EditPrompt: Story = {
 	render: () => (

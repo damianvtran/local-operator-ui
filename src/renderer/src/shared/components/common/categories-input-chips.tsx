@@ -104,26 +104,33 @@ export const CategoriesInputChips: FC<CategoriesInputChipsProps> = ({
 	};
 
 	const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+		/* An open popover with nothing in it is reachable - typing opens it
+		   unconditionally - and `% 0` is NaN, which no further arrow press can
+		   undo because NaN % n is also NaN. Every row then reads unselected
+		   with no way back. The three sibling comboboxes in this repo each
+		   guard this; the command palette's comment describes exactly this
+		   failure. */
+		const optionCount = availableOptions.length;
+
 		switch (event.key) {
 			case "ArrowDown":
 				event.preventDefault();
+				if (optionCount === 0) break;
 				if (!isOpen) {
 					setActiveIndex(0);
-					if (availableOptions.length > 0) setIsOpen(true);
+					setIsOpen(true);
 				} else {
-					setActiveIndex((activeIndex + 1) % availableOptions.length);
+					setActiveIndex((activeIndex + 1) % optionCount);
 				}
 				break;
 			case "ArrowUp":
 				event.preventDefault();
+				if (optionCount === 0) break;
 				if (!isOpen) {
-					setActiveIndex(availableOptions.length - 1);
-					if (availableOptions.length > 0) setIsOpen(true);
+					setActiveIndex(optionCount - 1);
+					setIsOpen(true);
 				} else {
-					setActiveIndex(
-						(activeIndex - 1 + availableOptions.length) %
-							availableOptions.length,
-					);
+					setActiveIndex((activeIndex - 1 + optionCount) % optionCount);
 				}
 				break;
 			case "Enter":
@@ -156,7 +163,12 @@ export const CategoriesInputChips: FC<CategoriesInputChipsProps> = ({
 	};
 
 	const handleDelete = (cat: string) => {
+		/* Removing a chip puts its option back into `availableOptions`, which
+		   shifts every index after it. Resetting keeps the highlighted row and
+		   `aria-activedescendant` pointing at the row a user would expect
+		   rather than at whatever slid into that position. */
 		onChange(value.filter((c) => c !== cat));
+		setActiveIndex(0);
 	};
 
 	const activeOptionId =

@@ -461,9 +461,15 @@ const main = async () => {
 						   the docs root is a permanent empty sibling of the story
 						   root rather than an alternative to it - counting either
 						   made the threshold cheaper than it reads, which is the
-						   kind of margin that erodes without anyone noticing. The
-						   baseline here is zero, so the check below means eight
-						   elements the story itself rendered. */
+						   kind of margin that erodes without anyone noticing.
+
+						   The body sweep's baseline is zero, but the story root's
+						   is not: the preview decorator always renders a theme
+						   wrapper and a toast container, so two elements are
+						   present before a story draws anything. The threshold
+						   below is set against that, and it is the number to
+						   change if the decorator gains furniture. */
+						const DECORATOR_ELEMENTS = 2;
 						const INERT = ["SCRIPT", "STYLE", "LINK", "TEMPLATE", "NOSCRIPT"];
 						let n = root ? root.querySelectorAll("*").length : 0;
 						if (docsRoot) n += docsRoot.querySelectorAll("*").length;
@@ -473,7 +479,7 @@ const main = async () => {
 							if (CHROME.some((c) => child.classList.contains(c))) continue;
 							n += child.querySelectorAll("*").length + 1;
 						}
-						return n >= 8;
+						return n - DECORATOR_ELEMENTS >= 8;
 					})()`,
 				});
 				prepared = result.value === true;
