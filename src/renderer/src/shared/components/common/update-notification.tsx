@@ -49,6 +49,27 @@ export const UpdateContainer = ({
 	/>
 );
 
+/**
+ * Prose semantics for the one place in the app that injects third-party HTML.
+ *
+ * Preflight resets `h1-h6` to inherited size and weight and strips list
+ * markers, indent and margins, so a GitHub release note - headings and bullet
+ * lists essentially always - rendered as a wall of identical lines. The
+ * markdown editor carries the same set for the same reason.
+ *
+ * Exported because the Storybook story draws its own copy of this panel, and
+ * a fixture that has drifted from the component is how a defect stays
+ * invisible in a set of 420 pictures.
+ */
+export const RELEASE_NOTES_PROSE = [
+	"[&_:is(h1,h2,h3,h4,h5,h6)]:mt-3 [&_:is(h1,h2,h3,h4,h5,h6)]:mb-1 [&_:is(h1,h2,h3,h4,h5,h6)]:font-semibold [&_:is(h1,h2,h3,h4,h5,h6)]:text-ink",
+	"[&_h1]:text-heading [&_h2]:text-heading [&_h3]:text-body [&_h4]:text-body [&_h5]:text-body-sm [&_h6]:text-body-sm",
+	"[&_p]:my-1.5 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0",
+	"[&_:is(ul,ol)]:my-1.5 [&_:is(ul,ol)]:pl-5 [&_ul_li]:list-disc [&_ol_li]:list-decimal [&_li]:my-0.5",
+	"[&_a]:text-accent [&_a]:underline-offset-4 hover:[&_a]:underline",
+	"[&_code]:rounded-xs [&_code]:bg-sunken [&_code]:px-1 [&_code]:font-mono [&_code]:text-mono-sm",
+].join(" ");
+
 export const UpdateActions = ({
 	className,
 	...props
@@ -376,12 +397,7 @@ export const UpdateNotification = ({
 						<div
 							className={cn(
 								"mt-2 text-body text-ink-muted",
-								"[&_:is(h1,h2,h3,h4,h5,h6)]:mt-3 [&_:is(h1,h2,h3,h4,h5,h6)]:mb-1 [&_:is(h1,h2,h3,h4,h5,h6)]:font-semibold [&_:is(h1,h2,h3,h4,h5,h6)]:text-ink",
-								"[&_h1]:text-heading [&_h2]:text-heading [&_h3]:text-body [&_h4]:text-body [&_h5]:text-body-sm [&_h6]:text-body-sm",
-								"[&_p]:my-1.5 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0",
-								"[&_:is(ul,ol)]:my-1.5 [&_:is(ul,ol)]:pl-5 [&_ul_li]:list-disc [&_ol_li]:list-decimal [&_li]:my-0.5",
-								"[&_a]:text-accent [&_a]:underline-offset-4 hover:[&_a]:underline",
-								"[&_code]:rounded-xs [&_code]:bg-sunken [&_code]:px-1 [&_code]:font-mono [&_code]:text-mono-sm",
+								RELEASE_NOTES_PROSE,
 							)}
 						>
 							Release notes:{" "}
