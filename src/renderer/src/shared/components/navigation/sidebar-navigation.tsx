@@ -221,9 +221,9 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 					aria-expanded={expanded}
 				>
 					{expanded ? (
-						<ChevronLeft size={16} aria-hidden="true" />
+						<ChevronLeft aria-hidden="true" />
 					) : (
-						<ChevronRight size={16} aria-hidden="true" />
+						<ChevronRight aria-hidden="true" />
 					)}
 				</Button>
 			</Tooltip>

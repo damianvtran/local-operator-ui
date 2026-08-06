@@ -219,7 +219,7 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
 												size="sm"
 												onClick={handleCancelEdit}
 											>
-												<X size={16} />
+												<X />
 												Cancel
 											</Button>
 											<Button
@@ -233,7 +233,7 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
 												{updateCommentMutation.isPending ? (
 													<Spinner size="xs" label="Saving comment" />
 												) : (
-													<Save size={16} />
+													<Save />
 												)}
 												Save
 											</Button>

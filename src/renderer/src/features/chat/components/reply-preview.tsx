@@ -43,7 +43,7 @@ export const ReplyPreview: FC<ReplyPreviewProps> = ({
 						onClick={() => onRemoveReply(reply.id)}
 						aria-label="Remove reply"
 					>
-						<X size={14} aria-hidden="true" />
+						<X aria-hidden="true" />
 					</Button>
 				)}
 			</div>

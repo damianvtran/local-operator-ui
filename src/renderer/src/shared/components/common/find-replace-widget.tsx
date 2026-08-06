@@ -129,7 +129,7 @@ export const FindReplaceWidget: FC<FindReplaceWidgetProps> = ({
 					onClick={() => setMode(mode === "find" ? "replace" : "find")}
 					aria-label={mode === "find" ? "Switch to replace" : "Switch to find"}
 				>
-					<ChevronLeft size={16} aria-hidden="true" />
+					<ChevronLeft aria-hidden="true" />
 				</Button>
 			</Tooltip>
 
@@ -166,7 +166,7 @@ export const FindReplaceWidget: FC<FindReplaceWidgetProps> = ({
 				onClick={() => onNavigate("prev")}
 				aria-label="Previous match"
 			>
-				<ChevronLeft size={16} aria-hidden="true" />
+				<ChevronLeft aria-hidden="true" />
 			</Button>
 			<Button
 				variant="ghost"
@@ -174,7 +174,7 @@ export const FindReplaceWidget: FC<FindReplaceWidgetProps> = ({
 				onClick={() => onNavigate("next")}
 				aria-label="Next match"
 			>
-				<ChevronRight size={16} aria-hidden="true" />
+				<ChevronRight aria-hidden="true" />
 			</Button>
 
 			{mode === "replace" && (
@@ -190,7 +190,7 @@ export const FindReplaceWidget: FC<FindReplaceWidgetProps> = ({
 							}}
 							aria-label="Replace"
 						>
-							<Replace size={16} aria-hidden="true" />
+							<Replace aria-hidden="true" />
 						</Button>
 					</Tooltip>
 					<Tooltip content="Replace all (Cmd/Ctrl+Enter)">
@@ -214,7 +214,7 @@ export const FindReplaceWidget: FC<FindReplaceWidgetProps> = ({
 				onClick={onClose}
 				aria-label="Close"
 			>
-				<X size={16} aria-hidden="true" />
+				<X aria-hidden="true" />
 			</Button>
 		</div>
 	);

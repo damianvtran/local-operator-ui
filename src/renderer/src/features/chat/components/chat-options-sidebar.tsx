@@ -62,7 +62,7 @@ const ClearConversationSection: FC<{
 				className="mb-4 mt-6 w-full"
 				onClick={() => setIsConfirmationOpen(true)}
 			>
-				<Trash2 size={16} aria-hidden="true" />
+				<Trash2 aria-hidden="true" />
 				Clear conversation
 			</Button>
 
@@ -137,7 +137,7 @@ export const ChatOptionsSidebar: FC<ChatOptionsSidebarProps> = ({
 						onClick={onClose}
 						aria-label="Close"
 					>
-						<X size={14} aria-hidden="true" />
+						<X aria-hidden="true" />
 					</Button>
 				</div>
 

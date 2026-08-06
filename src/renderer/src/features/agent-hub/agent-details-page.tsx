@@ -184,7 +184,7 @@ export const AgentDetailsPage: React.FC = () => {
 								aria-label={isLiked ? "Unlike agent" : "Like agent"}
 								className={cn(isLiked && "text-danger")}
 							>
-								<Heart size={18} fill={isLiked ? "currentColor" : "none"} />
+								<Heart fill={isLiked ? "currentColor" : "none"} />
 								<CountDisplay>
 									{isLoadingLikes ? (
 										<Skeleton className="h-3.5 w-5" />
@@ -210,7 +210,7 @@ export const AgentDetailsPage: React.FC = () => {
 								}
 								className={cn(isFavourited && "text-warning")}
 							>
-								<Star size={18} fill={isFavourited ? "currentColor" : "none"} />
+								<Star fill={isFavourited ? "currentColor" : "none"} />
 								<CountDisplay>
 									{isLoadingFavourites ? (
 										<Skeleton className="h-3.5 w-5" />
