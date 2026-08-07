@@ -171,6 +171,8 @@ export class StreamingClient extends EventEmitter {
 	private disposed = false;
 	/** True once any frame arrived, so a later error is a blip, not a verdict. */
 	private delivered = false;
+	/** True while a connect is in flight, so overlapping calls no-op (C-02). */
+	private connecting = false;
 
 	constructor(
 		baseUrl: string,
@@ -193,20 +195,30 @@ export class StreamingClient extends EventEmitter {
 	}
 
 	public async connect(): Promise<void> {
-		if (this.disposed || this.active) return;
+		// `connecting` closes the window in which two callers (React StrictMode
+		// double-mount, an unmount racing a mount) both pass the guard and start
+		// duplicate transports; the re-check after the probe await stops a dispose
+		// that lands mid-probe from opening a connection nobody tears down (C-02).
+		if (this.disposed || this.active || this.connecting) return;
+		this.connecting = true;
+		try {
+			const forced = this.options.force;
+			let useSse = forced === "sse";
+			if (!forced) {
+				const state = await probeStreamingCapabilities(this.baseUrl);
+				if (this.disposed) return;
+				useSse = state.capabilities !== null && !state.sseProvenBroken;
+			}
+			if (this.disposed) return;
 
-		const forced = this.options.force;
-		let useSse = forced === "sse";
-		if (!forced) {
-			const state = await probeStreamingCapabilities(this.baseUrl);
-			useSse = state.capabilities !== null && !state.sseProvenBroken;
+			if (useSse) {
+				await this.startSse();
+				return;
+			}
+			await this.startWebSocket();
+		} finally {
+			this.connecting = false;
 		}
-
-		if (useSse) {
-			await this.startSse();
-			return;
-		}
-		await this.startWebSocket();
 	}
 
 	private async startSse(): Promise<void> {
@@ -315,7 +327,15 @@ export class StreamingClient extends EventEmitter {
 			this.active = null;
 		}
 		this.kind = null;
-		await this.startWebSocket();
+		try {
+			await this.startWebSocket();
+		} catch (error) {
+			// The WS client has already emitted its own `error`/`status` through
+			// `bind`; swallowing the rejection here is what keeps `void
+			// this.fallback(...)` from becoming an unhandled promise rejection
+			// with the backend down at downgrade time (review C-05).
+			console.error("[streaming] websocket fallback failed:", error);
+		}
 	}
 
 	public disconnect(): void {

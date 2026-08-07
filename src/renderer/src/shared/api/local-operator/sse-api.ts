@@ -65,6 +65,7 @@ export const SseEventName = {
 	AgentEnd: "agent.end",
 	Notice: "notice",
 	JobStatus: "job.status",
+	Keepalive: "keepalive",
 } as const;
 
 /** Body of `stream.open`: what you attached to, and the state as of attach. */
@@ -113,12 +114,21 @@ export type SseClientOptions = {
 	 * socket client could not detect at all.
 	 */
 	stallTimeout?: number;
+	/**
+	 * Milliseconds to wait for the first open before treating the connection as
+	 * black-holed (a proxy buffering the whole response, including headers - the
+	 * exact failure the fallback exists for). The socket client has
+	 * `connectionTimeout` for this; SSE needs the equivalent or `connect()` can
+	 * hang with the stall timer never armed (review C-03).
+	 */
+	openTimeout?: number;
 };
 
 const DEFAULT_OPTIONS: Required<SseClientOptions> = {
 	autoReconnect: true,
 	maxReconnectAttempts: 5,
 	stallTimeout: 45000,
+	openTimeout: 8000,
 };
 
 /** Channel kinds. Prefer `job` for new work; see the note on `messageId`. */
@@ -145,6 +155,9 @@ export class SseClient extends EventEmitter {
 	private lastSeq: number | null = null;
 	private stallTimerId: number | null = null;
 	private closedByServer = false;
+	/** Set once the socket has opened; the open-timeout only fires before this. */
+	private opened = false;
+	private openTimerId: number | null = null;
 
 	/**
 	 * @param baseUrl - Base URL of the Local Operator API.
@@ -225,9 +238,17 @@ export class SseClient extends EventEmitter {
 		}
 	}
 
+	private clearOpenTimer(): void {
+		if (this.openTimerId !== null) {
+			window.clearTimeout(this.openTimerId);
+			this.openTimerId = null;
+		}
+	}
+
 	public async connect(): Promise<void> {
 		if (this.source) return;
 		this.closedByServer = false;
+		this.opened = false;
 		this.setStatus("connecting");
 
 		return new Promise<void>((resolve) => {
@@ -242,7 +263,24 @@ export class SseClient extends EventEmitter {
 			const source = new EventSource(this.url());
 			this.source = source;
 
+			// A proxy can hold the entire response (headers included), in which
+			// case neither onopen nor onerror fires and the stall timer is never
+			// armed. Bound the first open so that case degrades to the fallback
+			// instead of hanging in `connecting` (review C-03).
+			this.openTimerId = window.setTimeout(() => {
+				if (this.opened) return;
+				this.teardown();
+				this.setStatus("error");
+				this.emit(
+					"error",
+					new Error(`SSE open timed out after ${this.options.openTimeout}ms`),
+				);
+				settle();
+			}, this.options.openTimeout);
+
 			source.onopen = () => {
+				this.opened = true;
+				this.clearOpenTimer();
 				this.failedOpens = 0;
 				this.setStatus("connected");
 				this.armStallTimer();
@@ -368,6 +406,13 @@ export class SseClient extends EventEmitter {
 					this.emit(name, this.parse(event));
 				});
 			}
+
+			// The liveness tick. It is a real event (not a comment) precisely so
+			// this handler fires and re-arms the stall detector; a healthy quiet
+			// turn must not read as a dead connection (review C-01).
+			source.addEventListener(SseEventName.Keepalive, () => {
+				this.armStallTimer();
+			});
 		});
 	}
 
@@ -401,14 +446,16 @@ export class SseClient extends EventEmitter {
 		try {
 			return JSON.parse(data) as T;
 		} catch {
-			// A malformed frame must not kill the stream; the next one may be fine.
-			this.emit("error", new Error("SSE frame was not valid JSON"));
+			// Parity with the socket path, which only logs a bad frame: a parse
+			// quirk must not flip the consumer into a visible error state (C-06).
+			console.error("[sse] frame was not valid JSON");
 			return null;
 		}
 	}
 
 	private teardown(): void {
 		this.clearStallTimer();
+		this.clearOpenTimer();
 		if (this.source) {
 			this.source.close();
 			this.source = null;
