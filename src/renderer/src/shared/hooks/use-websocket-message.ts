@@ -239,6 +239,11 @@ export const useWebSocketMessage = (
 		client.on("status", (newStatus: unknown) => {
 			const typedStatus = newStatus as WebSocketConnectionStatus;
 			setStatus(typedStatus);
+			// A transport that (re)connects — including a silent SSE→WebSocket
+			// downgrade — must not leave a stale error banner over a working
+			// stream; the hook only otherwise clears `error` on a manual connect
+			// (review C-04).
+			if (typedStatus === "connected") setError(null);
 			callbackRefs.current.onStatusChange?.(typedStatus);
 		});
 
