@@ -50,3 +50,4 @@ resources/python
 resources/python_aarch64
 
 *storybook.log
+node_modules

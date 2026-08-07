@@ -1,13 +1,18 @@
 /**
- * Hook for managing WebSocket connections to stream message updates
+ * Hook for streaming message updates.
+ *
+ * The transport is chosen at connect time by `StreamingClient`: SSE where the
+ * backend offers it, the WebSocket otherwise. Both present the same emitter
+ * surface, so everything below this line — the rAF coalescing, the equality
+ * gate, the completion handling — is identical on either, and the name is kept
+ * so no call site changes.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
+import { StreamingClient } from "../api/local-operator/streaming-transport";
 import type { AgentExecutionRecord } from "../api/local-operator/types";
-import {
-	type UpdateMessage,
-	WebSocketClient,
-	type WebSocketConnectionStatus,
-	WebsocketConnectionType,
+import type {
+	UpdateMessage,
+	WebSocketConnectionStatus,
 } from "../api/local-operator/websocket-api";
 
 type CallbackRefs = {
@@ -161,7 +166,7 @@ export const useWebSocketMessage = (
 	const [error, setError] = useState<Error | null>(null);
 	const [isLoading, setIsLoading] = useState(false);
 
-	const clientRef = useRef<WebSocketClient | null>(null);
+	const clientRef = useRef<StreamingClient | null>(null);
 	const pendingRef = useRef<AgentExecutionRecord | null>(null);
 	const appliedRef = useRef<AgentExecutionRecord | null>(null);
 	const frameRef = useRef<number | null>(null);
@@ -220,22 +225,25 @@ export const useWebSocketMessage = (
 			return clientRef.current;
 		}
 
-		const client = new WebSocketClient(
-			baseUrl,
-			messageId,
-			{
+		const client = new StreamingClient(baseUrl, messageId, {
+			websocket: {
 				autoReconnect,
 				reconnectInterval,
 				maxReconnectAttempts,
 				pingInterval,
 				messageDelay: 250,
 			},
-			WebsocketConnectionType.MESSAGE,
-		);
+			sse: { autoReconnect, maxReconnectAttempts },
+		});
 
 		client.on("status", (newStatus: unknown) => {
 			const typedStatus = newStatus as WebSocketConnectionStatus;
 			setStatus(typedStatus);
+			// A transport that (re)connects — including a silent SSE→WebSocket
+			// downgrade — must not leave a stale error banner over a working
+			// stream; the hook only otherwise clears `error` on a manual connect
+			// (review C-04).
+			if (typedStatus === "connected") setError(null);
 			callbackRefs.current.onStatusChange?.(typedStatus);
 		});
 

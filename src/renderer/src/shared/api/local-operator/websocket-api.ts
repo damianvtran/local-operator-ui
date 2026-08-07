@@ -21,8 +21,11 @@ export enum WebsocketConnectionType {
 	HEALTH = "health",
 }
 
-// Using a browser-compatible EventEmitter implementation
-class EventEmitter {
+// Using a browser-compatible EventEmitter implementation.
+// Exported because the SSE transport (`sse-api.ts`) presents the same
+// emitter surface, which is what lets a consumer hold either transport
+// behind one reference and stay unaware of which is in use.
+export class EventEmitter {
 	private events: Record<string, Array<(...args: unknown[]) => void>> = {};
 
 	public on(event: string, listener: (...args: unknown[]) => void): this {
