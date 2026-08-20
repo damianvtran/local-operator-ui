@@ -49,6 +49,15 @@ const envSchema = z.object({
 		.default("info"),
 
 	// Analytics
+	//
+	// NOTE: the default below is PostHog's PUBLIC project API key (the `phc_`
+	// kind), not a server secret. It is publishable by design — every PostHog
+	// customer embeds one in shipped client code — and only identifies this
+	// build to our PostHog project for analytics/feature flags. It grants no
+	// read access to project data, so secret scanners flagging it in the
+	// published npm bundle (out/main/index.jsc inlines this default) are
+	// false positives. Never put a `phx_` personal API key here; those ARE
+	// secrets and must never ship.
 	VITE_PUBLIC_POSTHOG_KEY: z
 		.string()
 		.optional()
