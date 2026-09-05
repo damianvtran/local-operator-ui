@@ -1,16 +1,23 @@
 import { createLocalOperatorClient } from "@shared/api/local-operator";
+import {
+	desktopFeatureEnabled,
+	useDesktopCapabilities,
+} from "@shared/api/local-operator/desktop-hooks";
 import { JobsApi } from "@shared/api/local-operator/jobs-api";
 import type { JobStatus } from "@shared/api/local-operator/types";
 import { ChatLayout } from "@shared/components/common/chat-layout";
 import { apiConfig } from "@shared/config";
 import { useAgent } from "@shared/hooks/use-agents";
+import { useCanonicalSessionStream } from "@shared/hooks/use-canonical-session";
 import { useConfig } from "@shared/hooks/use-config";
 import { useConversationMessages } from "@shared/hooks/use-conversation-messages";
+import { useDesktopWatchLease } from "@shared/hooks/use-desktop-watch-lease";
 import { useJobPolling } from "@shared/hooks/use-job-polling";
 import { useAgentRouteParam } from "@shared/hooks/use-route-params";
 import { useScrollToBottom } from "@shared/hooks/use-scroll-to-bottom";
 import { terminateStreamingMessages } from "@shared/hooks/use-streaming-message";
 import { useAgentSelectionStore } from "@shared/store/agent-selection-store";
+import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { useChatStore } from "@shared/store/chat-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { isDevelopmentMode } from "@shared/utils/env-utils";
@@ -86,6 +93,27 @@ export const ChatPage: FC<ChatProps> = () => {
 	const conversationId = effectiveAgentId || undefined;
 	const selectedConversation = effectiveAgentId || undefined;
 
+	// Canonical session identity. The agent id is a profile reference; the
+	// conversation the backend runs is a canonical 12-hex session id. Each
+	// agent maps to one canonical session that is created once and reopened
+	// on every later visit, so identity survives restarts and the watcher.
+	const capabilities = useDesktopCapabilities();
+	const canonicalEnabled =
+		desktopFeatureEnabled(capabilities.data, "commands") &&
+		desktopFeatureEnabled(capabilities.data, "lifecycle");
+	const sessionByAgent = useCanonicalSessionsStore(
+		(state) => state.sessionByAgent,
+	);
+	const createSession = useCanonicalSessionsStore(
+		(state) => state.createSession,
+	);
+	const setActiveSession = useCanonicalSessionsStore(
+		(state) => state.setActiveSession,
+	);
+	const canonicalSessionId = conversationId
+		? sessionByAgent[conversationId]
+		: undefined;
+
 	// In production mode, always use "chat" tab
 	const [activeTab, setActiveTab] = useState<"chat" | "raw">("chat");
 
@@ -108,6 +136,43 @@ export const ChatPage: FC<ChatProps> = () => {
 
 	// Fetch agent details for the current conversation
 	const { data: agentData } = useAgent(conversationId);
+
+	// Bind the agent to a canonical session once its working directory is
+	// known. Creation is idempotent per agent through the store's mapping;
+	// re-mounting reopens the same identity rather than minting another.
+	const creatingSessionRef = useRef<string | null>(null);
+	useEffect(() => {
+		if (!canonicalEnabled || !conversationId || !agentData) return;
+		if (canonicalSessionId) {
+			setActiveSession(canonicalSessionId);
+			return;
+		}
+		if (creatingSessionRef.current === conversationId) return;
+		creatingSessionRef.current = conversationId;
+		const cwd = agentData.current_working_directory || "~";
+		void createSession(cwd, conversationId).finally(() => {
+			if (creatingSessionRef.current === conversationId) {
+				creatingSessionRef.current = null;
+			}
+		});
+	}, [
+		canonicalEnabled,
+		conversationId,
+		agentData,
+		canonicalSessionId,
+		createSession,
+		setActiveSession,
+	]);
+
+	// Canonical stream over the authenticated relay, plus the watch lease it
+	// keys off. A terminal canonical event is what resolves the legacy
+	// "Waiting to start" latch: the job poller can miss a fast failure, but
+	// the canonical stream always reports the turn boundary.
+	const canonical = useCanonicalSessionStream(
+		canonicalSessionId,
+		canonicalEnabled && Boolean(canonicalSessionId),
+	);
+	useDesktopWatchLease(canonicalSessionId, canonical.subscriptionId);
 
 	// Only fetch messages if we have a valid conversation ID
 	const {
@@ -137,6 +202,24 @@ export const ChatPage: FC<ChatProps> = () => {
 		addMessage,
 	});
 
+	// Resolve the busy latch from the canonical stream. Each terminal event
+	// is consumed once (tracked by generation) so an old terminal does not
+	// clear a later turn's loading state.
+	const lastTerminalRef = useRef<string | null>(null);
+	useEffect(() => {
+		const marker = canonical.terminal
+			? `${canonical.receipt?.epoch ?? ""}:${canonical.receipt?.seq ?? 0}:${canonical.terminal}`
+			: null;
+		if (!marker || marker === lastTerminalRef.current) return;
+		lastTerminalRef.current = marker;
+		if (
+			canonical.terminal === "agent_end" ||
+			canonical.terminal === "turn_end"
+		) {
+			setIsLoading(false);
+		}
+	}, [canonical.terminal, canonical.receipt, setIsLoading]);
+
 	// Use custom hook to track scroll position and show/hide scroll button
 	// Pass the messagesContainerRef to the hook to ensure it tracks the correct container
 	const { isFarFromBottom, scrollToBottom } = useScrollToBottom(
@@ -147,6 +230,27 @@ export const ChatPage: FC<ChatProps> = () => {
 
 	// Create a ref for the messages end element (for backwards compatibility)
 	const messagesEndRef = useRef<HTMLDivElement>(null);
+
+	// "New activity" instead of autoscroll: when messages grow while the
+	// reader is scrolled up, flag it and let them choose to jump. Cleared
+	// the moment they are back near the bottom.
+	const [hasNewActivity, setHasNewActivity] = useState(false);
+	const seenMessageCountRef = useRef(messages.length);
+	useEffect(() => {
+		if (messages.length > seenMessageCountRef.current && isFarFromBottom) {
+			setHasNewActivity(true);
+		}
+		seenMessageCountRef.current = messages.length;
+	}, [messages.length, isFarFromBottom]);
+	useEffect(() => {
+		if (!isFarFromBottom) setHasNewActivity(false);
+	}, [isFarFromBottom]);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: reset on conversation change only
+	useEffect(() => {
+		// A new conversation starts with nothing unread.
+		setHasNewActivity(false);
+		seenMessageCountRef.current = 0;
+	}, [conversationId]);
 
 	// Update the last selected agent ID when the agent ID changes
 	// Force scroll to bottom only when switching to a new conversation
@@ -501,6 +605,7 @@ Store messages: ${JSON.stringify(getMessages(conversationId || ""), null, 2)}`;
 				isLoadingMessages={isLoadingMessages}
 				isFetchingMore={isFetchingMore}
 				isFarFromBottom={isFarFromBottom}
+				hasNewActivity={hasNewActivity}
 				jobStatus={jobStatus as JobStatus | null}
 				currentExecution={currentExecution}
 				messagesContainerRef={messagesContainerRef}

@@ -16,6 +16,21 @@ const api = {
 			ipcRenderer.invoke("desktop-open-authorization", operationId, reopen),
 		media: (request: DesktopMediaRequest, bytes: Uint8Array | null) =>
 			ipcRenderer.invoke("desktop-media", request, bytes),
+		watchHeartbeat: (args: {
+			sessionId: string;
+			subscriptionId: string;
+			visible: boolean;
+			focused: boolean;
+		}) => ipcRenderer.invoke("desktop-watch-heartbeat", args),
+		onOpenConversation: (callback: (sessionId: string) => void) => {
+			const handler = (_event: unknown, payload: { sessionId?: unknown }) => {
+				if (typeof payload?.sessionId === "string") callback(payload.sessionId);
+			};
+			ipcRenderer.on("desktop-open-conversation", handler);
+			return () => {
+				ipcRenderer.removeListener("desktop-open-conversation", handler);
+			};
+		},
 		stream: {
 			subscribe: (
 				args: { sessionId: string; epoch?: string; afterSeq?: number },

@@ -37,11 +37,18 @@ export type DesktopStreamHandle = {
 
 export class DesktopStreamRelay {
 	private readonly streams = new Map<string, AbortController>();
+	/** Frame observer for main-owned side effects (notifications). It sees
+	 * every parsed frame before the renderer does, on the same subscription. */
+	private observer: ((sessionId: string, data: string) => void) | null = null;
 
 	constructor(
 		private readonly backendUrl: string,
 		private readonly token: string | null,
 	) {}
+
+	observe(observer: ((sessionId: string, data: string) => void) | null): void {
+		this.observer = observer;
+	}
 
 	/** True when this relay can authenticate; a false answer is why the UI
 	 * shows the pairing/setup state rather than a dead transcript. */
@@ -83,7 +90,13 @@ export class DesktopStreamRelay {
 			this.backendUrl,
 		);
 
-		void this.pump(streamId, url, controller.signal, emit).finally(() => {
+		void this.pump(
+			streamId,
+			args.sessionId,
+			url,
+			controller.signal,
+			emit,
+		).finally(() => {
 			this.streams.delete(streamId);
 		});
 
@@ -92,6 +105,7 @@ export class DesktopStreamRelay {
 
 	private async pump(
 		streamId: string,
+		sessionId: string,
 		url: URL,
 		signal: AbortSignal,
 		emit: (event: RelayEvent) => void,
@@ -141,11 +155,9 @@ export class DesktopStreamRelay {
 					buffer = buffer.slice(boundary + 2);
 					for (const line of record.split("\n")) {
 						if (line.startsWith("data:")) {
-							emit({
-								streamId,
-								kind: "data",
-								data: line.slice(5).replace(/^ /, ""),
-							});
+							const data = line.slice(5).replace(/^ /, "");
+							this.observer?.(sessionId, data);
+							emit({ streamId, kind: "data", data });
 						}
 						// Comments (heartbeats) and id:/event:/retry: lines are
 						// transport metadata; the backend's heartbeat records arrive as

@@ -75,6 +75,7 @@ type ChatContentProps = {
 	isLoadingMessages: boolean;
 	isFetchingMore: boolean;
 	isFarFromBottom: boolean;
+	hasNewActivity?: boolean;
 	jobStatus?: JobStatus | null;
 	currentExecution?: AgentExecutionRecord | null;
 	messagesContainerRef: React.RefObject<HTMLDivElement>;
@@ -116,6 +117,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		isLoadingMessages,
 		isFetchingMore,
 		isFarFromBottom,
+		hasNewActivity = false,
 		jobStatus,
 		currentExecution,
 		messagesContainerRef,
@@ -287,6 +289,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								currentJobId={currentJobId}
 								onCancelJob={onCancelJob}
 								isFarFromBottom={isFarFromBottom}
+								hasNewActivity={hasNewActivity}
 								scrollToBottom={scrollToBottom}
 								agentData={agentData}
 								isSmallView={isSmallView}
