@@ -1,6 +1,7 @@
 /**
  * Local Operator API - Configuration Endpoints
  */
+import { desktopControlResponse } from "./desktop-api";
 import type {
 	CRUDResponse,
 	ConfigResponse,
@@ -20,13 +21,8 @@ export const ConfigApi = {
 	 * @param baseUrl - The base URL of the Local Operator API
 	 * @returns Promise resolving to the configuration response
 	 */
-	async getConfig(baseUrl: string): Promise<CRUDResponse<ConfigResponse>> {
-		const response = await fetch(`${baseUrl}/v1/config`, {
-			method: "GET",
-			headers: {
-				Accept: "application/json",
-			},
-		});
+	async getConfig(_baseUrl: string): Promise<CRUDResponse<ConfigResponse>> {
+		const response = await desktopControlResponse({ op: "config.get" });
 
 		if (!response.ok) {
 			throw new Error(
@@ -46,16 +42,12 @@ export const ConfigApi = {
 	 * @returns Promise resolving to the updated configuration response
 	 */
 	async updateConfig(
-		baseUrl: string,
+		_baseUrl: string,
 		configUpdate: ConfigUpdate,
 	): Promise<CRUDResponse<ConfigResponse>> {
-		const response = await fetch(`${baseUrl}/v1/config`, {
-			method: "PATCH",
-			headers: {
-				"Content-Type": "application/json",
-				Accept: "application/json",
-			},
-			body: JSON.stringify(configUpdate),
+		const response = await desktopControlResponse({
+			op: "config.update",
+			value: configUpdate,
 		});
 
 		if (!response.ok) {
@@ -75,14 +67,9 @@ export const ConfigApi = {
 	 * @returns Promise resolving to the system prompt response or null if no prompt exists
 	 */
 	async getSystemPrompt(
-		baseUrl: string,
+		_baseUrl: string,
 	): Promise<CRUDResponse<SystemPromptResponse> | null> {
-		const response = await fetch(`${baseUrl}/v1/config/system-prompt`, {
-			method: "GET",
-			headers: {
-				Accept: "application/json",
-			},
-		});
+		const response = await desktopControlResponse({ op: "instructions.get" });
 
 		// Handle 204 No Content response (system prompt doesn't exist)
 		if (response.status === 204) {
@@ -107,16 +94,12 @@ export const ConfigApi = {
 	 * @returns Promise resolving to the updated system prompt response
 	 */
 	async updateSystemPrompt(
-		baseUrl: string,
+		_baseUrl: string,
 		systemPromptUpdate: SystemPromptUpdate,
 	): Promise<CRUDResponse<SystemPromptResponse>> {
-		const response = await fetch(`${baseUrl}/v1/config/system-prompt`, {
-			method: "PATCH",
-			headers: {
-				"Content-Type": "application/json",
-				Accept: "application/json",
-			},
-			body: JSON.stringify(systemPromptUpdate),
+		const response = await desktopControlResponse({
+			op: "instructions.update",
+			content: systemPromptUpdate.content,
 		});
 
 		if (!response.ok) {

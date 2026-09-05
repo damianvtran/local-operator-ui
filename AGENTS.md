@@ -82,8 +82,11 @@ ground where it does not.
 - Bundle size: `pnpm bundle-size`, `pnpm startup-closure`
 - Component gallery: `pnpm storybook`
 
-There is **no test runner** in this repository. Verification is typecheck,
-lint, the theme gates, a real build, and visual evidence from Storybook.
+`pnpm test:desktop` runs focused desktop transport/security contract checks with
+Node's built-in runner. It bundles the actual TypeScript modules in memory and
+uses real loopback HTTP; its Electron IPC fixture is not native-app or visual
+proof. Broader verification remains typecheck, lint, the theme gates, a real
+build, and rendered evidence from the live app or Storybook as appropriate.
 
 ## Release Bump Runbook (Major/Minor/Patch)
 
