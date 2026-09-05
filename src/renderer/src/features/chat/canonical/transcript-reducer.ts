@@ -482,16 +482,19 @@ export function applyEvent(
 			// producer does send an accumulated body, `body + delta` is the
 			// authoritative text and anything not longer than what is painted is
 			// an older replay that must not regress the newer paint.
+			// No content-based dedupe: "the the" is legitimate text and a
+			// repeated single token is the common case in a token stream. The
+			// ordering guarantees make it unnecessary: replay before the snapshot
+			// folds into scratch state the durable page overrides, and the live
+			// seed is applied once, at the snapshot, before any post-snapshot
+			// event, so the same delta cannot reach a painted record twice.
 			const body = messageText(message);
 			let next: string;
 			if (body) {
 				next = body + delta;
 				if (next.length <= current.text.length) return state;
 			} else {
-				// The snapshot seed re-sends the last update after replay already
-				// appended it; a delta that is already the painted tail is a
-				// duplicate, not new text.
-				if (!delta || current.text.endsWith(delta)) return state;
+				if (!delta) return state;
 				next = current.text + delta;
 			}
 			return upsert(state, { ...current, text: next });
