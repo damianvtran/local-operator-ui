@@ -60,6 +60,7 @@ class DiffWidget extends WidgetType {
 
 	toDOM() {
 		const container = document.createElement("div");
+		container.dataset.editDiff = "true";
 		container.style.display = "inline-block";
 		container.style.minWidth = "200px";
 		container.style.margin = "4px 0";
@@ -267,8 +268,17 @@ export const diffHighlight = (
 				startIndex = Math.max(0, Math.min(startIndex, docString.length));
 				endIndex = Math.max(startIndex, Math.min(endIndex, docString.length));
 
-				// Check if the diff contains line breaks
-				if (
+				// Insertions have no document range to mark or replace. CodeMirror
+				// rejects empty mark/replace ranges, which otherwise hides the
+				// proposal for a new empty file before the user can review it.
+				if (startIndex === endIndex) {
+					builder.push(
+						Decoration.widget({
+							widget: new DiffWidget(currentDiff.find, currentDiff.replace),
+							side: 1,
+						}).range(startIndex),
+					);
+				} else if (
 					currentDiff.find.includes("\n") ||
 					currentDiff.replace.includes("\n")
 				) {
