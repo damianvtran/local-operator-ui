@@ -1,7 +1,11 @@
 /**
  * Local Operator API - Agents Endpoints
  */
-import { desktopMedia, mediaError } from "./desktop-api";
+import {
+	desktopControlResponse,
+	desktopMedia,
+	mediaError,
+} from "./desktop-api";
 import type {
 	AgentCreate,
 	AgentDetails,
@@ -30,35 +34,22 @@ export const AgentsApi = {
 	 * @returns Promise resolving to the agents list response
 	 */
 	async listAgents(
-		baseUrl: string,
+		_baseUrl: string,
 		page = 1,
 		perPage = 10,
 		name?: string,
 		sort?: string,
 		direction?: string,
 	): Promise<CRUDResponse<AgentListResult>> {
-		const url = new URL(`${baseUrl}/v1/agents`);
-		url.searchParams.append("page", page.toString());
-		url.searchParams.append("per_page", perPage.toString());
-
-		// Add name parameter if provided
-		if (name) {
-			url.searchParams.append("name", name);
-		}
-
-		// Add sort and direction parameters if provided
-		if (sort) {
-			url.searchParams.append("sort", sort);
-		}
-		if (direction) {
-			url.searchParams.append("direction", direction);
-		}
-
-		const response = await fetch(url.toString(), {
-			method: "GET",
-			headers: {
-				Accept: "application/json",
-			},
+		// Agent inventory carries names and working-directory paths, so it is gated
+		// in managed mode alongside the control plane and reached by operation.
+		const response = await desktopControlResponse({
+			op: "legacy.agents.list",
+			page,
+			perPage,
+			...(name ? { name } : {}),
+			...(sort ? { sort } : {}),
+			...(direction === "asc" || direction === "desc" ? { direction } : {}),
 		});
 
 		if (!response.ok) {
@@ -109,14 +100,12 @@ export const AgentsApi = {
 	 * @returns Promise resolving to the agent details response
 	 */
 	async getAgent(
-		baseUrl: string,
+		_baseUrl: string,
 		agentId: string,
 	): Promise<CRUDResponse<AgentDetails>> {
-		const response = await fetch(`${baseUrl}/v1/agents/${agentId}`, {
-			method: "GET",
-			headers: {
-				Accept: "application/json",
-			},
+		const response = await desktopControlResponse({
+			op: "legacy.agent.get",
+			agentId,
 		});
 
 		if (!response.ok) {
@@ -197,20 +186,16 @@ export const AgentsApi = {
 	 * @throws Error if the request fails
 	 */
 	async getAgentExecutionHistory(
-		baseUrl: string,
+		_baseUrl: string,
 		agentId: string,
 		page = 1,
 		perPage = 10,
 	): Promise<CRUDResponse<AgentExecutionHistoryResult>> {
-		const url = new URL(`${baseUrl}/v1/agents/${agentId}/history`);
-		url.searchParams.append("page", page.toString());
-		url.searchParams.append("per_page", perPage.toString());
-
-		const response = await fetch(url.toString(), {
-			method: "GET",
-			headers: {
-				Accept: "application/json",
-			},
+		const response = await desktopControlResponse({
+			op: "legacy.agent.history",
+			agentId,
+			page,
+			perPage,
 		});
 
 		if (!response.ok) {
@@ -382,14 +367,14 @@ export const AgentsApi = {
 	 * @throws Error if the request fails
 	 */
 	async uploadAgentToRadient(
-		baseUrl: string,
+		_baseUrl: string,
 		agentId: string,
 	): Promise<CRUDResponse<{ agent_id: string }>> {
-		const response = await fetch(`${baseUrl}/v1/agents/${agentId}/upload`, {
-			method: "POST",
-			headers: {
-				Accept: "application/json",
-			},
+		// Marketplace upload is a gated legacy control; a bare fetch 401s in the
+		// managed posture this app creates.
+		const response = await desktopControlResponse({
+			op: "legacy.agent.upload",
+			agentId,
 		});
 
 		if (!response.ok) {

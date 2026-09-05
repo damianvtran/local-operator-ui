@@ -1,6 +1,7 @@
 /**
  * Local Operator API - Jobs Endpoints
  */
+import { desktopControlResponse } from "./desktop-api";
 import type {
 	CRUDResponse,
 	JobCleanupResult,
@@ -22,14 +23,13 @@ export const JobsApi = {
 	 * @returns Promise resolving to the job details
 	 */
 	async getJobStatus(
-		baseUrl: string,
+		_baseUrl: string,
 		jobId: string,
 	): Promise<CRUDResponse<JobDetails>> {
-		const response = await fetch(`${baseUrl}/v1/jobs/${jobId}`, {
-			method: "GET",
-			headers: {
-				Accept: "application/json",
-			},
+		// Job history is gated in managed mode; route it by operation.
+		const response = await desktopControlResponse({
+			op: "legacy.job.get",
+			jobId,
 		});
 
 		if (!response.ok) {
@@ -76,25 +76,14 @@ export const JobsApi = {
 	 * @returns Promise resolving to the jobs list response
 	 */
 	async listJobs(
-		baseUrl: string,
+		_baseUrl: string,
 		agentId?: string,
 		status?: JobStatus,
 	): Promise<CRUDResponse<JobListResult>> {
-		const url = new URL(`${baseUrl}/v1/jobs`);
-
-		if (agentId) {
-			url.searchParams.append("agent_id", agentId);
-		}
-
-		if (status) {
-			url.searchParams.append("status", status);
-		}
-
-		const response = await fetch(url.toString(), {
-			method: "GET",
-			headers: {
-				Accept: "application/json",
-			},
+		const response = await desktopControlResponse({
+			op: "legacy.jobs.list",
+			...(agentId ? { agentId } : {}),
+			...(status ? { status } : {}),
 		});
 
 		if (!response.ok) {

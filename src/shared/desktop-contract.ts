@@ -102,8 +102,55 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 			canNotify: z.boolean(),
 		})
 		.strict(),
-	z.object({ op: z.literal("legacy.models") }).strict(),
+	// The legacy surface, reached through the same authenticated vocabulary as
+	// everything else. These routes are gated in managed mode (agent inventory,
+	// cwd paths, job history and conversation content are the same tenant's data
+	// as the control plane), so a bare renderer fetch would 401 against exactly
+	// the backend this app starts.
+	z
+		.object({
+			op: z.literal("legacy.models"),
+			provider: z.string().max(128).optional(),
+			// Mirrors ModelSortKey / ModelSortDirection in models-api.ts. Enumerated
+			// rather than free text so the renderer cannot smuggle a query fragment.
+			sort: z.enum(["id", "name", "provider", "recommended"]).optional(),
+			direction: z.enum(["ascending", "descending"]).optional(),
+		})
+		.strict(),
+	z.object({ op: z.literal("legacy.models.providers") }).strict(),
+	// Reachability is checked only when the user asks for it: a probe is a real
+	// network round trip, and nothing behind first paint may make one.
+	z
+		.object({ op: z.literal("auth.probe"), provider: id })
+		.strict(),
 	z.object({ op: z.literal("legacy.agent.upload"), agentId: id }).strict(),
+	z
+		.object({
+			op: z.literal("legacy.agents.list"),
+			page: z.number().int().min(1).optional(),
+			perPage: z.number().int().min(1).max(500).optional(),
+			name: z.string().max(256).optional(),
+			sort: z.string().max(64).optional(),
+			direction: z.enum(["asc", "desc"]).optional(),
+		})
+		.strict(),
+	z.object({ op: z.literal("legacy.agent.get"), agentId: id }).strict(),
+	z
+		.object({
+			op: z.literal("legacy.agent.history"),
+			agentId: id,
+			page: z.number().int().min(1).optional(),
+			perPage: z.number().int().min(1).max(500).optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("legacy.jobs.list"),
+			agentId: id.optional(),
+			status: z.string().max(64).optional(),
+		})
+		.strict(),
+	z.object({ op: z.literal("legacy.job.get"), jobId: id }).strict(),
 	z.object({ op: z.literal("commands.list") }).strict(),
 	z
 		.object({
@@ -408,7 +455,14 @@ export type DesktopCapabilities = {
 };
 
 export type ProviderMethod = {
+	/** The provider a flow acts on; `auth.start` and `auth.key` take this. */
 	id: string;
+	/**
+	 * Stable identity of the METHOD within its provider's chooser. Distinct
+	 * from `id` because one provider can offer several ways to sign in that all
+	 * act on the same provider, and keying the chooser on `id` collided.
+	 */
+	method_id: string;
 	label: string;
 	kind: "api_key" | "browser" | "device";
 	requires_secret_input: boolean;
@@ -421,7 +475,12 @@ export type DesktopProvider = {
 	search_aliases: string[];
 	auth_methods: ProviderMethod[];
 	local: boolean;
+	/** Usable without further setup: has a credential, or needs none. */
 	configured: boolean;
+	/** Needs no credential at all (a local server). NOT "reachable". */
+	credential_optional: boolean;
+	/** A credential is actually present, in the store or the environment. */
+	has_credential: boolean;
 	stored_credentials: number;
 	base_url: string | null;
 };
@@ -555,10 +614,61 @@ export function desktopEndpoint(request: DesktopRequest): {
 					can_notify: request.canNotify,
 				},
 			};
-		case "legacy.models":
-			return { path: "/v1/models", method: "GET" };
+		case "legacy.models": {
+			// The query the renderer's own listModels() built. Dropping it would
+			// silently widen every provider-filtered model list to the whole
+			// catalogue, which reads as a UI bug rather than a transport one.
+			const query = new URLSearchParams();
+			if (request.provider) query.set("provider", request.provider);
+			if (request.sort) query.set("sort", request.sort);
+			if (request.direction) query.set("direction", request.direction);
+			return {
+				path: query.size > 0 ? `/v1/models?${query}` : "/v1/models",
+				method: "GET",
+			};
+		}
+		case "legacy.models.providers":
+			return { path: "/v1/models/providers", method: "GET" };
+		case "auth.probe":
+			return {
+				path: `/v1/auth/providers/${request.provider}/probe`,
+				method: "POST",
+			};
 		case "legacy.agent.upload":
 			return { path: `/v1/agents/${request.agentId}/upload`, method: "POST" };
+		case "legacy.agents.list": {
+			const query = new URLSearchParams({
+				page: String(request.page ?? 1),
+				per_page: String(request.perPage ?? 10),
+			});
+			if (request.name) query.set("name", request.name);
+			if (request.sort) query.set("sort", request.sort);
+			if (request.direction) query.set("direction", request.direction);
+			return { path: `/v1/agents?${query}`, method: "GET" };
+		}
+		case "legacy.agent.get":
+			return { path: `/v1/agents/${request.agentId}`, method: "GET" };
+		case "legacy.agent.history": {
+			const query = new URLSearchParams({
+				page: String(request.page ?? 1),
+				per_page: String(request.perPage ?? 10),
+			});
+			return {
+				path: `/v1/agents/${request.agentId}/history?${query}`,
+				method: "GET",
+			};
+		}
+		case "legacy.jobs.list": {
+			const query = new URLSearchParams();
+			if (request.agentId) query.set("agent_id", request.agentId);
+			if (request.status) query.set("status", request.status);
+			return {
+				path: query.size > 0 ? `/v1/jobs?${query}` : "/v1/jobs",
+				method: "GET",
+			};
+		}
+		case "legacy.job.get":
+			return { path: `/v1/jobs/${request.jobId}`, method: "GET" };
 		case "commands.list":
 			return { path: "/v1/desktop/commands", method: "GET" };
 		case "commands.entities":
