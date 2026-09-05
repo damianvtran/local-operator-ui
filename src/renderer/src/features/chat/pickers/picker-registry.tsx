@@ -94,7 +94,7 @@ export const DESTINATIONS: Record<string, DestinationEntry> = {
 	},
 	"settings.search": {
 		kind: "navigate",
-		route: () => "/settings?filter=web-search",
+		route: () => "/settings?section=backend&filter=web-search",
 	},
 	providers: { kind: "navigate", route: () => "/settings?section=providers" },
 	accounts: { kind: "navigate", route: () => "/settings?section=credentials" },
