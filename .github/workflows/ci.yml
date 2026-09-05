@@ -60,6 +60,11 @@ jobs:
       - name: Check CodeMirror insertion previews
         run: pnpm check-edit-diffs
 
+      - name: Check immutable release recovery contracts
+        run: |
+          node scripts/test-validate-release.mjs
+          node --test scripts/test-release-safety.mjs scripts/test-publish-workflow.mjs
+
   audit:
     name: Security Audit
     runs-on: ubuntu-latest
