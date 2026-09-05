@@ -11,6 +11,16 @@ const settingKey = z
 	.max(256)
 	.regex(/^[a-zA-Z0-9_][a-zA-Z0-9_.-]*$/);
 const secret = z.string().min(1).max(32768);
+const sessionId = z.string().regex(/^[a-f0-9]{12}$/);
+const requestId = z
+	.string()
+	.regex(/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/);
+const sessionImage = z
+	.object({
+		data_b64: z.string().min(1).max(1_000_000),
+		mime_type: z.enum(["image/png", "image/jpeg", "image/gif", "image/webp"]),
+	})
+	.strict();
 const chains = z.record(z.array(z.string().max(1024)).max(100));
 const configUpdate = z
 	.object({
@@ -27,6 +37,71 @@ const configUpdate = z
 // The renderer selects an operation; it never supplies a URL, method or headers.
 export const desktopRequestSchema = z.discriminatedUnion("op", [
 	z.object({ op: z.literal("capabilities") }).strict(),
+	z
+		.object({
+			op: z.literal("sessions.list"),
+			limit: z.number().int().min(1).max(500).optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("sessions.create"),
+			requestId,
+			cwd: z.string().min(1).max(4096),
+		})
+		.strict(),
+	z.object({ op: z.literal("sessions.get"), sessionId }).strict(),
+	z
+		.object({
+			op: z.literal("sessions.history"),
+			sessionId,
+			beforeId: id.optional(),
+			limit: z.number().int().min(1).max(500).optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("sessions.message"),
+			sessionId,
+			requestId,
+			text: z.string().max(200000),
+			images: z.array(sessionImage).max(8).optional(),
+			mode: z.enum(["prompt", "steer"]).optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("sessions.command"),
+			sessionId,
+			requestId,
+			command: z
+				.string()
+				.regex(/^\/?[A-Za-z]+$/)
+				.max(64),
+			args: z.string().max(200000).optional(),
+			images: z.array(sessionImage).max(8).optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("sessions.answer"),
+			sessionId,
+			epoch: id,
+			requestId: id,
+			value: z.string().max(32768).optional(),
+			approved: z.boolean().optional(),
+			questionIndex: z.number().int().min(0).optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("sessions.watch"),
+			sessionId,
+			subscriptionId: z.string().regex(/^[a-f0-9]{32}$/),
+			visible: z.boolean(),
+			canNotify: z.boolean(),
+		})
+		.strict(),
 	z.object({ op: z.literal("providers.list") }).strict(),
 	z.object({ op: z.literal("accounts.list") }).strict(),
 	z.object({ op: z.literal("auth.start"), provider: id }).strict(),
@@ -160,6 +235,76 @@ export function desktopEndpoint(request: DesktopRequest): {
 	switch (request.op) {
 		case "capabilities":
 			return { path: "/v1/capabilities", method: "GET" };
+		case "sessions.list":
+			return {
+				path: `/v1/desktop/sessions?limit=${request.limit ?? 100}`,
+				method: "GET",
+			};
+		case "sessions.create":
+			return {
+				path: "/v1/desktop/sessions",
+				method: "POST",
+				body: { request_id: request.requestId, cwd: request.cwd },
+			};
+		case "sessions.get":
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}`,
+				method: "GET",
+			};
+		case "sessions.history": {
+			const query = new URLSearchParams({
+				limit: String(request.limit ?? 100),
+			});
+			if (request.beforeId) query.set("before_id", request.beforeId);
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/history?${query}`,
+				method: "GET",
+			};
+		}
+		case "sessions.message":
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/messages`,
+				method: "POST",
+				body: {
+					request_id: request.requestId,
+					text: request.text,
+					images: request.images ?? [],
+					mode: request.mode ?? "prompt",
+				},
+			};
+		case "sessions.command":
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/commands`,
+				method: "POST",
+				body: {
+					request_id: request.requestId,
+					command: request.command,
+					args: request.args ?? "",
+					images: request.images ?? [],
+				},
+			};
+		case "sessions.answer":
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/answers`,
+				method: "POST",
+				body: {
+					epoch: request.epoch,
+					request_id: request.requestId,
+					value: request.value,
+					approved: request.approved,
+					question_index: request.questionIndex,
+				},
+			};
+		case "sessions.watch":
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/watch`,
+				method: "POST",
+				body: {
+					subscription_id: request.subscriptionId,
+					visible: request.visible,
+					can_notify: request.canNotify,
+				},
+			};
 		case "providers.list":
 			return { path: "/v1/auth/providers", method: "GET" };
 		case "accounts.list":

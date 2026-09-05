@@ -53,3 +53,65 @@ invalid operations. An Electron fixture checks frame ownership and one-time
 backend-authorized URL opening. This fixture is deliberately **not** evidence
 that the packaged Electron app booted, painted, or delivered a notification;
 those paths require separate native-app validation.
+
+## Canonical session checkpoint
+
+The request allowlist now includes `sessions.list/create/get/history/message/
+command/answer/watch`, mapped only to `/v1/desktop/sessions` and its fixed child
+paths. These are canonical12-hex session IDs, not legacy agent UUIDs. Request IDs
+for creation/messages/commands are lowercase UUID strings. For `sessions.answer`,
+requestId is the pending gate's opaque ID and epoch is the **owner frontend**
+epoch. questionIndex is required for ask text; approved is a strict boolean.
+Closed Zod validation still runs in main before any HTTP request.
+
+`src/shared/desktop-session-contract.ts` defines the response and stream types.
+Large roster/accounting/model additions retain unknown fields so a newer owner
+is not silently truncated by an older renderer. This file is a contract, **not a
+renderer reducer or a runtime response validator**.
+
+The backend checkpoint supports stable create/reopen, canonical owner admissions,
+owner-only command results, history, ask/approval answers and authenticated SSE
+watch leases. It does not yet advertise the broad `sessions` or35-command feature
+capability. The owner-command endpoint is NOT the complete command palette: only
+rename/model/effort/fast/context/goal/compact/approvals/team/agent are accepted.
+Bare forms may return owner picker metadata; there is no native picker UI yet.
+Team/agent attachment results carry an already-admitted consumed request under
+`result.admission`; never send that text/images again from the composer.
+
+### Required next integration
+
+- Implement main-process authenticated fetch streaming and scoped preload IPC
+  subscription/unsubscription. Native EventSource cannot carry the bearer. There
+  is **no** stream relay in this checkpoint; do not fall back to token URLs or an
+  unauthenticated renderer request. Browser-only Vite streaming needs the same
+  server-side boundary, not the JSON-only `/__desktop` request route.
+- Subscribe at `.../{id}/events?epoch=<receipt-epoch>&after_seq=<receipt-seq>`.
+  `open` reports a stream subscription ID and gap flag. Replay comes BEFORE the
+  authoritative snapshot, followed by live `frontend.update` and `event` frames.
+  Never advance the semantic receipt cursor from `open.seq` before processing
+  replay: a newer snapshot does not acknowledge steering/terminal receipts.
+- Apply canonical owner epoch/sequence independently of HTTP receipt epoch/seq.
+  Gap/restarted/detached streams get a new authoritative snapshot and history page.
+  A missing history cursor requires the history endpoint to reconcile. Rendering
+  must merge stable message/entry identities, not append snapshot and replay as
+  unrelated rows. Load older pages with beforeId; snapshots contain only100rows.
+- Renew `sessions.watch` for the **active SSE subscriptionId** within45seconds.
+  visible means a person can currently answer in this session; canNotify means
+  native delivery is genuinely possible. Until native notifications are wired,
+  send canNotify=false. Closing a window detaches, never stops the runtime.
+- Implement main-owned gate/turn notification dedupe and exact-session click
+  navigation, plus explicit stop/abort, loop, aside/fork, full native command
+  arguments, MCP/catalog controls and canonical attachment/trajectory retrieval.
+  None is supplied by a typed endpoint mapper alone.
+- The existing JSON main/dev proxy budget remains262,144bytes, less than the
+  backend's900,000byte control-frame budget. Larger image submission needs a
+  coordinated transport-budget/attachment slice, not a schema-only size promise.
+
+A200 message response is admission, NOT model success or completion. Replay of a
+completed HTTP receipt returns replayed=true across backend restarts. Changed
+input under a reused request UUID is409. A control interrupted after its durable
+reservation but before result commit returns409 indeterminate and requires state
+reconciliation; only natural owner-idempotent admissions can retry that state.
+Do not display an indeterminate command as successful or automatically mint a new
+UUID to retry it. Backend API details and actual assembled HTTP/runtime evidence
+are documented in its `docs/DESKTOP_API.md` and desktop e2e tests.

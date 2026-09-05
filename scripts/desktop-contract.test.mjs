@@ -85,6 +85,103 @@ test("arbitrary URL, injected headers, path traversal and wrong body types never
 	assert.equal(seen.length, count);
 });
 
+test("canonical session operations preserve identity, arguments and main-owned authorization", async () => {
+	const sessionId = "123456abcdef";
+	const requestId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+	for (const [operation, suffix, method, expected] of [
+		[
+			{ op: "sessions.create", requestId, cwd: "/tmp/example" },
+			"",
+			"POST",
+			{ request_id: requestId, cwd: "/tmp/example" },
+		],
+		[{ op: "sessions.get", sessionId }, `/${sessionId}`, "GET", undefined],
+		[
+			{
+				op: "sessions.message",
+				sessionId,
+				requestId,
+				text: "hello",
+				mode: "steer",
+			},
+			`/${sessionId}/messages`,
+			"POST",
+			{ request_id: requestId, text: "hello", images: [], mode: "steer" },
+		],
+		[
+			{
+				op: "sessions.command",
+				sessionId,
+				requestId,
+				command: "goal",
+				args: "Keep one identity",
+			},
+			`/${sessionId}/commands`,
+			"POST",
+			{
+				request_id: requestId,
+				command: "goal",
+				args: "Keep one identity",
+				images: [],
+			},
+		],
+		[
+			{
+				op: "sessions.answer",
+				sessionId,
+				requestId: "gate-id",
+				epoch: "owner-epoch",
+				approved: false,
+			},
+			`/${sessionId}/answers`,
+			"POST",
+			{ request_id: "gate-id", epoch: "owner-epoch", approved: false },
+		],
+		[
+			{
+				op: "sessions.watch",
+				sessionId,
+				subscriptionId: "a".repeat(32),
+				visible: false,
+				canNotify: true,
+			},
+			`/${sessionId}/watch`,
+			"POST",
+			{ subscription_id: "a".repeat(32), visible: false, can_notify: true },
+		],
+	]) {
+		assert.equal((await requestDesktop(operation, url, token)).status, 200);
+		const actual = seen.at(-1);
+		assert.equal(actual.path, `/v1/desktop/sessions${suffix}`);
+		assert.equal(actual.method, method);
+		assert.equal(actual.authorization, `Bearer ${token}`);
+		assert.deepEqual(
+			actual.body ? JSON.parse(actual.body) : undefined,
+			expected,
+		);
+	}
+	const count = seen.length;
+	for (const input of [
+		{ op: "sessions.get", sessionId: "../config" },
+		{
+			op: "sessions.message",
+			sessionId,
+			requestId: "not-a-uuid",
+			text: "hello",
+		},
+		{ op: "sessions.command", sessionId, requestId, command: "goal extra" },
+		{
+			op: "sessions.watch",
+			sessionId,
+			subscriptionId: "a".repeat(32),
+			visible: "true",
+			canNotify: true,
+		},
+	])
+		assert.equal((await requestDesktop(input, url, token)).status, 422);
+	assert.equal(seen.length, count);
+});
+
 test("redirect cannot forward the main capability", async () => {
 	const response = await requestDesktop({ op: "settings.edit", key: "redirect", value: true }, url, token);
 	assert.equal(response.status, 503);
