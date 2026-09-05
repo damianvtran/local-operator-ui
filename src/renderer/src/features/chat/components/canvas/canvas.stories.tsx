@@ -532,6 +532,7 @@ export const DiffReview: Story = {
 						selection=""
 						position={{ top: 0, left: 40 }}
 						filePath="/Users/dana/work/reports/march-invoice-review.md"
+						fileContent="Three customers are still outstanding at the end of March."
 						onClose={() => {}}
 						onApplyChanges={() => {}}
 						agentId="story-agent"
@@ -583,6 +584,7 @@ export const EditPrompt: Story = {
 						selection="Three customers are still outstanding at the end of March."
 						position={{ top: 0, left: 40 }}
 						filePath="/Users/dana/work/reports/march-invoice-review.md"
+						fileContent="Three customers are still outstanding at the end of March."
 						onClose={() => {}}
 						onApplyChanges={() => {}}
 						agentId="story-agent"

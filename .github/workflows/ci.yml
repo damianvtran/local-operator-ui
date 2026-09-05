@@ -57,6 +57,9 @@ jobs:
       - name: Check TypeScript types
         run: pnpm check-types
 
+      - name: Check CodeMirror insertion previews
+        run: pnpm check-edit-diffs
+
   audit:
     name: Security Audit
     runs-on: ubuntu-latest
