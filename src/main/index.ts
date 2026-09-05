@@ -23,8 +23,6 @@ import {
 import { backendConfig } from "./backend/config";
 import { LogFileType, logger } from "./backend/logger";
 import { registerDesktopIPC } from "./desktop-ipc";
-import { OAuthService } from "./oauth-service";
-import { Store, type StoreData } from "./store";
 import { UpdateService } from "./update-service";
 
 const BASE64_FILE_EXTENSIONS = ["csv", "tsv", "xls", "xlsx", "ods"];
@@ -312,63 +310,9 @@ function createWindow(): BrowserWindow {
 const backendService = new BackendServiceManager();
 const backendInstaller = new BackendInstaller();
 
-// Initialize session store (used by OAuthService and session handlers)
-// Wrap initialization in try-catch to handle potential cache corruption
-let sessionStore: Store<StoreData>;
-try {
-	sessionStore = new Store<StoreData>({
-		name: "session",
-		defaults: {
-			// Radient token fields
-			radient_access_token: undefined,
-			radient_refresh_token: undefined,
-			radient_token_expiry: undefined,
-
-			// OAuth fields
-			oauth_provider: undefined,
-			oauth_access_token: undefined,
-			oauth_id_token: undefined,
-			oauth_expiry: undefined,
-		},
-	});
-	logger.info("Session store initialized successfully.", LogFileType.BACKEND);
-} catch (error) {
-	logger.error(
-		"Initial session store initialization failed.",
-		LogFileType.BACKEND,
-		error,
-	);
-	// The Store constructor now handles recovery from JSON parsing errors.
-	// If an error reaches this point, it's likely unrecoverable or a different type.
-	dialog.showErrorBox(
-		"Application Error",
-		`Failed to initialize application settings. Please restart the application. Error: ${error instanceof Error ? error.message : "Unknown error"}`,
-	);
-	app.quit();
-	// Re-throw the error to prevent further execution
-	throw error;
-}
-
-// Critical check: Ensure sessionStore is initialized before proceeding.
-// The logic above should either succeed, quit, or throw, making this mostly a safeguard.
-if (!sessionStore) {
-	// Use error instead of fatal
-	logger.error(
-		"Session store could not be initialized. Quitting.",
-		LogFileType.BACKEND,
-	);
-	dialog.showErrorBox(
-		"Fatal Error",
-		"Application could not initialize critical settings. Quitting.",
-	);
-	app.quit();
-	// Throw to prevent any further execution in this unlikely scenario
-	throw new Error("Session store initialization failed critically.");
-}
-
-// Initialize OAuth service (now guaranteed to have a valid sessionStore)
-// Moved declaration outside the try-catch block to avoid redeclaration issues
-const oauthService = new OAuthService(sessionStore);
+// Radient tokens and OAuth state used to live in an electron-store session
+// file here. The backend AuthStore owns provider credentials now and the
+// desktop bearer is process-scoped, so main keeps no credential store.
 
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
@@ -412,29 +356,11 @@ if (!gotTheLock) {
 			if (mainWindow.isMinimized()) mainWindow.restore();
 			mainWindow.focus();
 
-			// Handle protocol URL if passed via command line (Windows/Linux)
-			const url = commandLine.find((arg) => arg.startsWith("radient://"));
-			if (url) {
-				logger.info(
-					`Received URL via second-instance: ${url}`,
-					LogFileType.OAUTH,
-				);
-				oauthService.completeAuthorizationRequest(url);
-			}
+			// Backend-owned OAuth completes on the backend's loopback callback;
+			// the legacy radient:// deep link is no longer consumed here.
+			void commandLine;
 		}
 	});
-}
-
-// --- Protocol Handling ---
-// Register the custom protocol
-if (process.defaultApp) {
-	if (process.argv.length >= 2) {
-		app.setAsDefaultProtocolClient("radient", process.execPath, [
-			join(process.cwd(), process.argv[1]),
-		]);
-	}
-} else {
-	app.setAsDefaultProtocolClient("radient");
 }
 
 app
@@ -442,31 +368,6 @@ app
 	.then(async () => {
 		// Set app user model id for windows
 		electronApp.setAppUserModelId("com.local-operator");
-
-		// Handle 'open-url' event (macOS)
-		app.on("open-url", (event, url) => {
-			event.preventDefault(); // Prevent default handling
-			if (url.startsWith("radient://")) {
-				logger.info(
-					`Received URL via open-url (macOS): ${url}`,
-					LogFileType.OAUTH,
-				);
-				if (mainWindow) {
-					// Bring window to front
-					if (mainWindow.isMinimized()) mainWindow.restore();
-					mainWindow.focus();
-					oauthService.completeAuthorizationRequest(url);
-				} else {
-					// Handle case where app was launched via URL before window was ready
-					// Store the URL and process it once the window is created?
-					// For now, log a warning. This might need refinement.
-					logger.warn(
-						"Received open-url event before mainWindow was ready.",
-						LogFileType.OAUTH,
-					);
-				}
-			}
-		});
 
 		// Default open or close DevTools by F12 in development
 		// and ignore CommandOrControl + R in production.
@@ -623,40 +524,6 @@ app
 			return undefined;
 		});
 
-		// --- Session storage handlers (using the already initialized sessionStore) ---
-		ipcMain.handle("get-session", () => {
-			const accessToken = sessionStore.get("radient_access_token");
-			const refreshToken = sessionStore.get("radient_refresh_token");
-			const expiry = sessionStore.get("radient_token_expiry");
-			return { accessToken, refreshToken, expiry };
-		});
-
-		ipcMain.handle(
-			"store-session",
-			(_event, accessToken: string, expiry: number, refreshToken?: string) => {
-				sessionStore.set("radient_access_token", accessToken);
-				sessionStore.set("radient_token_expiry", expiry);
-
-				// Only set refresh token if provided
-				if (refreshToken) {
-					sessionStore.set("radient_refresh_token", refreshToken);
-				}
-
-				return true;
-			},
-		);
-
-		ipcMain.handle("clear-session", () => {
-			sessionStore.delete("radient_access_token");
-			sessionStore.delete("radient_refresh_token");
-			sessionStore.delete("radient_token_expiry");
-			sessionStore.delete("oauth_access_token");
-			sessionStore.delete("oauth_id_token");
-			sessionStore.delete("oauth_expiry");
-			sessionStore.delete("oauth_provider");
-			return true;
-		});
-
 		// Add IPC handlers for system information
 		ipcMain.handle("get-app-version", () => {
 			return app.getVersion();
@@ -676,122 +543,6 @@ app
 				chromeVersion: process.versions.chrome,
 			};
 		});
-
-		// --- Check Provider Auth IPC Handler ---
-		ipcMain.handle("ipc-check-provider-auth", () => {
-			// Check if any provider credentials are set beyond the default placeholders
-			const googleConfigured =
-				backendConfig.VITE_GOOGLE_CLIENT_ID &&
-				backendConfig.VITE_GOOGLE_CLIENT_ID !== "REPL_VITE_GOOGLE_CLIENT_ID" &&
-				backendConfig.VITE_GOOGLE_CLIENT_SECRET &&
-				backendConfig.VITE_GOOGLE_CLIENT_SECRET !==
-					"REPL_VITE_GOOGLE_CLIENT_SECRET";
-
-			const microsoftConfigured =
-				backendConfig.VITE_MICROSOFT_CLIENT_ID &&
-				backendConfig.VITE_MICROSOFT_CLIENT_ID !==
-					"REPL_VITE_MICROSOFT_CLIENT_ID" &&
-				backendConfig.VITE_MICROSOFT_TENANT_ID &&
-				backendConfig.VITE_MICROSOFT_TENANT_ID !==
-					"REPL_VITE_MICROSOFT_TENANT_ID";
-
-			// Return true if either Google or Microsoft credentials are configured
-			return googleConfigured || microsoftConfigured;
-		});
-
-		// --- OAuth IPC Handlers ---
-		ipcMain.handle(
-			"oauth-login",
-			async (_event, provider: "google" | "microsoft") => {
-				logger.info(
-					`IPC: Received oauth-login request for ${provider}`,
-					LogFileType.OAUTH,
-				);
-				try {
-					// Input validation (simple check for known providers)
-					if (provider !== "google" && provider !== "microsoft") {
-						throw new Error(`Invalid OAuth provider: ${provider}`);
-					}
-					await oauthService.initiateLogin(provider);
-					return { success: true };
-				} catch (error) {
-					const errorMsg =
-						error instanceof Error
-							? error.message
-							: "Unknown error during login initiation";
-					logger.error(
-						`IPC: Error during oauth-login for ${provider}: ${errorMsg}`,
-						LogFileType.OAUTH,
-						error,
-					);
-					return { success: false, error: errorMsg };
-				}
-			},
-		);
-
-		ipcMain.handle("oauth-logout", async () => {
-			logger.info("IPC: Received oauth-logout request", LogFileType.OAUTH);
-			try {
-				await oauthService.logout();
-				return { success: true };
-			} catch (error) {
-				const errorMsg =
-					error instanceof Error
-						? error.message
-						: "Unknown error during logout";
-				logger.error(
-					`IPC: Error during oauth-logout: ${errorMsg}`,
-					LogFileType.OAUTH,
-					error,
-				);
-				return { success: false, error: errorMsg };
-			}
-		});
-
-		ipcMain.handle("oauth-get-status", async () => {
-			logger.info("IPC: Received oauth-get-status request", LogFileType.OAUTH);
-			try {
-				const status = await oauthService.getStatus();
-				return { success: true, status };
-			} catch (error) {
-				const errorMsg =
-					error instanceof Error
-						? error.message
-						: "Unknown error getting status";
-				logger.error(
-					`IPC: Error during oauth-get-status: ${errorMsg}`,
-					LogFileType.OAUTH,
-					error,
-				);
-				return { success: false, error: errorMsg };
-			}
-		});
-
-		ipcMain.handle(
-			"oauth-request-additional-scopes",
-			async (_event, scopes: string[]) => {
-				logger.info(
-					"IPC: Received oauth-request-additional-scopes request",
-					LogFileType.OAUTH,
-					{ scopes },
-				);
-				try {
-					await oauthService.requestAdditionalGoogleScopes(scopes);
-					return { success: true };
-				} catch (error) {
-					const errorMsg =
-						error instanceof Error
-							? error.message
-							: "Unknown error requesting additional Google scopes";
-					logger.error(
-						`IPC: Error during oauth-request-additional-scopes: ${errorMsg}`,
-						LogFileType.OAUTH,
-						error,
-					);
-					return { success: false, error: errorMsg };
-				}
-			},
-		);
 
 		// Check if backend manager is disabled via environment variable
 		const isBackendManagerDisabled =
@@ -889,9 +640,6 @@ app
 
 		function setupMainWindowWithUpdateService() {
 			mainWindow = createWindow();
-
-			// Pass window reference to OAuthService
-			oauthService.setMainWindow(mainWindow);
 
 			// Add before-input-event listener for zoom control
 			if (mainWindow) {

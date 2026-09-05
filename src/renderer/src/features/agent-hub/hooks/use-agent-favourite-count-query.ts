@@ -1,6 +1,5 @@
 import { getAgentFavouriteCount } from "@shared/api/radient/agents-api";
 import type { CountResponse } from "@shared/api/radient/types";
-import { apiConfig } from "@shared/config";
 import type { UseQueryResult } from "@tanstack/react-query";
 import { useQuery } from "@tanstack/react-query";
 
@@ -39,10 +38,7 @@ export const useAgentFavouriteCountQuery = ({
 				throw new Error("Agent ID is required to fetch favourite count.");
 			}
 			// No longer requires authentication
-			const response = await getAgentFavouriteCount(
-				apiConfig.radientBaseUrl,
-				agentId,
-			);
+			const response = await getAgentFavouriteCount(agentId);
 			return response.result;
 		},
 		// Select the actual count from the response result

@@ -17,6 +17,7 @@ import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import { useUpdateConfig } from "@shared/hooks/use-update-config";
 import { useUsageRollup } from "@shared/hooks/use-usage-rollup";
 import { cn } from "@shared/lib/utils";
+import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { useUserStore } from "@shared/store/user-store";
 import {
@@ -56,7 +57,7 @@ import {
 import { AppUpdatesSection } from "./app-updates-section";
 import { BackendSettingsSection } from "./backend-settings-section";
 import { Credentials } from "./credentials";
-import { GoogleIntegrationsSection } from "./integrations-section";
+import { McpManagementSection } from "./mcp-management-section";
 import { RadientAccountSection } from "./radient-account-section";
 import { InfoGrid, InfoItem, SettingsSection } from "./settings-section";
 import { DEFAULT_SETTINGS_SECTIONS, SettingsSidebar } from "./settings-sidebar";
@@ -329,6 +330,9 @@ export const SettingsPage: FC = () => {
 	const [savingField, setSavingField] = useState<string | null>(null);
 	const userStore = useUserStore();
 	const { isAuthenticated, isLoading: isAuthLoading } = useRadientAuth();
+	const activeSessionId = useCanonicalSessionsStore(
+		(state) => state.activeSessionId,
+	);
 	const [activeSection, setActiveSection] = useState<string>("general");
 	const [isScrolling, setIsScrolling] = useState(false);
 	const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -899,11 +903,12 @@ export const SettingsPage: FC = () => {
 						</SettingsSection>
 
 						{/*
-						 * Rendered unconditionally: the section handles its own auth state
-						 * for the connect buttons.
+						 * MCP management replaced the Google OIDC cards: the section
+						 * negotiates the `mcp` capability itself and reads the active
+						 * canonical session, so it renders unconditionally here.
 						 */}
 						<div ref={sectionRefs.integrations}>
-							<GoogleIntegrationsSection />
+							<McpManagementSection sessionId={activeSessionId ?? undefined} />
 						</div>
 
 						<SettingsSection

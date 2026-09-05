@@ -32,7 +32,7 @@ type CommentsSectionProps = {
 export const CommentsSection: React.FC<CommentsSectionProps> = ({
 	agentId,
 }) => {
-	const { isAuthenticated, user, sessionToken } = useRadientAuth();
+	const { isAuthenticated, user } = useRadientAuth();
 	const [newComment, setNewComment] = useState("");
 	// State for inline editing
 	const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
@@ -52,8 +52,7 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
 
 	const handleCommentSubmit = async (event: React.FormEvent) => {
 		event.preventDefault();
-		if (!newComment.trim() || !isAuthenticated || !agentId || !sessionToken)
-			return;
+		if (!newComment.trim() || !isAuthenticated || !agentId) return;
 
 		try {
 			await createCommentMutation.mutateAsync({
@@ -79,13 +78,7 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
 	};
 
 	const handleSaveEdit = async () => {
-		if (
-			!editingCommentId ||
-			!editText.trim() ||
-			!isAuthenticated ||
-			!agentId ||
-			!sessionToken
-		)
+		if (!editingCommentId || !editText.trim() || !isAuthenticated || !agentId)
 			return;
 
 		try {
@@ -101,7 +94,7 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
 	};
 
 	const handleDeleteComment = async (commentId: string) => {
-		if (!isAuthenticated || !agentId || !sessionToken) return;
+		if (!isAuthenticated || !agentId) return;
 
 		if (window.confirm("Are you sure you want to delete this comment?")) {
 			try {

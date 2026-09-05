@@ -1,6 +1,5 @@
 import { getAgentLikeCount } from "@shared/api/radient/agents-api";
 import type { CountResponse } from "@shared/api/radient/types";
-import { apiConfig } from "@shared/config";
 import type { UseQueryResult } from "@tanstack/react-query";
 import { useQuery } from "@tanstack/react-query";
 
@@ -38,10 +37,7 @@ export const useAgentLikeCountQuery = ({
 				throw new Error("Agent ID is required to fetch like count.");
 			}
 			// No longer requires authentication
-			const response = await getAgentLikeCount(
-				apiConfig.radientBaseUrl,
-				agentId,
-			);
+			const response = await getAgentLikeCount(agentId);
 			return response.result;
 		},
 		// Select the actual count from the response result

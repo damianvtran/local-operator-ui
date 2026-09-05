@@ -37,7 +37,6 @@ export { useInitializeModels } from "./use-initialize-models";
 export { useJobPolling } from "./use-job-polling";
 export { useMessageInput } from "./use-message-input";
 export { useModels } from "./use-models";
-export { useOidcAuth } from "./use-oidc-auth";
 export { usePaginationParams } from "./use-pagination-params";
 export type { AuthStatus } from "./use-radient-auth";
 export { useRadientAuth } from "./use-radient-auth";

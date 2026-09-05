@@ -1,9 +1,18 @@
 /**
  * Radient Agents API
  *
- * API client for agent-related endpoints
+ * Agent catalogue, likes, favourites and comments, all routed through the
+ * backend's closed Radient proxy. The renderer never sends a Radient bearer:
+ * the backend resolves the stored credential per call, and operations that
+ * mutate carry a stable request id so a retry after HTTP loss cannot create
+ * a second like, comment or deletion. Deletions additionally require the
+ * `confirmed` flag the proxy enforces.
+ *
+ * Return shapes are the upstream `{msg, result}` envelopes the hooks already
+ * consume; only the transport moved.
  */
 
+import { radientProxyEnvelope } from "./proxy";
 import type {
 	APIResponse,
 	Agent,
@@ -20,30 +29,14 @@ import type {
 	UpdateAgentRequest,
 } from "./types";
 
-/**
- * Joins base URL and path ensuring exactly one slash between them.
- *
- * @param baseUrl - The base URL
- * @param path - The endpoint path
- * @returns The joined URL
- */
-function joinUrl(baseUrl: string, path: string): string {
-	const normalizedBaseUrl = baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`;
-	const normalizedPath = path.startsWith("/") ? path.slice(1) : path;
-	return normalizedBaseUrl + normalizedPath;
+function requestId(): string {
+	return crypto.randomUUID();
 }
 
 /**
  * List agents (paginated, with optional filters).
- *
- * @param baseUrl - The base URL of the Radient API
- * @param page - Page number (default 1)
- * @param perPage - Records per page (default 20, max 100)
- * @param params - Optional filter params (e.g. categories, tags, etc.)
- * @returns Paginated list of agents
  */
 export async function listAgents(
-	baseUrl: string,
 	page = 1,
 	perPage = 20,
 	params?: {
@@ -57,633 +50,197 @@ export async function listAgents(
 		order?: string;
 	},
 ): Promise<RadientApiResponse<PaginatedAgentList>> {
-	const searchParams = new URLSearchParams();
-	searchParams.set("page", String(page));
-	searchParams.set("per_page", String(perPage));
+	const query: Record<string, string | number> = { page, per_page: perPage };
 	if (params) {
-		if (params.categories) searchParams.set("categories", params.categories);
-		if (params.tags) searchParams.set("tags", params.tags);
-		if (params.account_id) searchParams.set("account_id", params.account_id);
-		if (params.tenant_id) searchParams.set("tenant_id", params.tenant_id);
-		if (params.name) searchParams.set("name", params.name);
-		if (params.description) searchParams.set("description", params.description);
-		if (params.sort) searchParams.set("sort", params.sort);
-		if (params.order) searchParams.set("order", params.order);
+		for (const [key, value] of Object.entries(params)) {
+			if (value) query[key] = value;
+		}
 	}
-	const url = joinUrl(baseUrl, `/v1/agents?${searchParams.toString()}`);
-
-	const response = await fetch(url, {
-		method: "GET",
-		credentials: "same-origin",
+	return radientProxyEnvelope<PaginatedAgentList>({
+		operation: "agents.list",
+		query,
 	});
-
-	if (!response.ok) {
-		const text = await response.text();
-		throw new Error(text || `HTTP ${response.status}`);
-	}
-
-	return response.json();
 }
 
-/**
- * Get agent details by ID.
- *
- * @param baseUrl - The base URL of the Radient API
- * @param agentId - The agent ID
- * @returns Agent details
- */
 export async function getAgent(
-	baseUrl: string,
 	agentId: string,
 ): Promise<RadientApiResponse<Agent>> {
-	const url = joinUrl(baseUrl, `/v1/agents/${encodeURIComponent(agentId)}`);
-
-	const response = await fetch(url, {
-		method: "GET",
-		credentials: "same-origin",
-	});
-
-	if (!response.ok) {
-		const text = await response.text();
-		throw new Error(text || `HTTP ${response.status}`);
-	}
-
-	return response.json();
+	return radientProxyEnvelope<Agent>({ operation: "agents.get", agentId });
 }
 
-/**
- * Create a new agent.
- *
- * @param baseUrl - The base URL of the Radient API
- * @param accessToken - The access token (JWT or API key)
- * @param data - Agent creation data
- * @returns The created agent
- */
 export async function createAgent(
-	baseUrl: string,
-	accessToken: string,
 	data: CreateAgentRequest,
 ): Promise<RadientApiResponse<Agent>> {
-	const url = joinUrl(baseUrl, "/v1/agents");
-
-	const response = await fetch(url, {
-		method: "POST",
-		headers: {
-			Authorization: `Bearer ${accessToken}`,
-			"Content-Type": "application/json",
-		},
-		body: JSON.stringify(data),
-		credentials: "same-origin",
+	return radientProxyEnvelope<Agent>({
+		operation: "agents.create",
+		payload: data as unknown as Record<string, unknown>,
+		requestId: requestId(),
 	});
-
-	if (!response.ok) {
-		const text = await response.text();
-		throw new Error(text || `HTTP ${response.status}`);
-	}
-
-	return response.json();
 }
 
-/**
- * Update an agent by ID.
- *
- * @param baseUrl - The base URL of the Radient API
- * @param agentId - The agent ID
- * @param accessToken - The access token (JWT or API key)
- * @param data - Partial agent update data
- * @returns The updated agent
- */
 export async function updateAgent(
-	baseUrl: string,
 	agentId: string,
-	accessToken: string,
 	data: UpdateAgentRequest,
 ): Promise<RadientApiResponse<Agent>> {
-	const url = joinUrl(baseUrl, `/v1/agents/${encodeURIComponent(agentId)}`);
-
-	const response = await fetch(url, {
-		method: "PATCH",
-		headers: {
-			Authorization: `Bearer ${accessToken}`,
-			"Content-Type": "application/json",
-		},
-		body: JSON.stringify(data),
-		credentials: "same-origin",
+	return radientProxyEnvelope<Agent>({
+		operation: "agents.update",
+		agentId,
+		payload: data as unknown as Record<string, unknown>,
+		requestId: requestId(),
 	});
-
-	if (!response.ok) {
-		const text = await response.text();
-		throw new Error(text || `HTTP ${response.status}`);
-	}
-
-	return response.json();
 }
 
-/**
- * Delete an agent by ID.
- *
- * @param baseUrl - The base URL of the Radient API
- * @param agentId - The agent ID
- * @param accessToken - The access token (JWT or API key)
- * @returns Success response
- */
 export async function deleteAgent(
-	baseUrl: string,
 	agentId: string,
-	accessToken: string,
-): Promise<APIResponse> {
-	const url = joinUrl(baseUrl, `/v1/agents/${encodeURIComponent(agentId)}`);
-
-	const response = await fetch(url, {
-		method: "DELETE",
-		headers: {
-			Authorization: `Bearer ${accessToken}`,
-		},
-		credentials: "same-origin",
+): Promise<RadientApiResponse<APIResponse>> {
+	return radientProxyEnvelope<APIResponse>({
+		operation: "agents.delete",
+		agentId,
+		requestId: requestId(),
+		confirmed: true,
 	});
-
-	if (!response.ok && response.status !== 204) {
-		const text = await response.text();
-		throw new Error(text || `HTTP ${response.status}`);
-	}
-
-	return response.status === 204
-		? { msg: "Deleted", result: undefined }
-		: response.json();
 }
 
-/**
- * Like an agent.
- *
- * @param baseUrl - The base URL of the Radient API
- * @param agentId - The agent ID
- * @param accessToken - The access token (JWT)
- * @returns Success response
- */
 export async function likeAgent(
-	baseUrl: string,
 	agentId: string,
-	accessToken: string,
-): Promise<APIResponse> {
-	const url = joinUrl(
-		baseUrl,
-		`/v1/agents/${encodeURIComponent(agentId)}/like`,
-	);
-
-	const response = await fetch(url, {
-		method: "POST",
-		headers: {
-			Authorization: `Bearer ${accessToken}`,
-		},
-		credentials: "same-origin",
+): Promise<RadientApiResponse<APIResponse>> {
+	return radientProxyEnvelope<APIResponse>({
+		operation: "agents.like",
+		agentId,
+		requestId: requestId(),
 	});
-
-	if (!response.ok && response.status !== 201 && response.status !== 200) {
-		const text = await response.text();
-		throw new Error(text || `HTTP ${response.status}`);
-	}
-
-	return response.json();
 }
 
-/**
- * Unlike an agent.
- *
- * @param baseUrl - The base URL of the Radient API
- * @param agentId - The agent ID
- * @param accessToken - The access token (JWT)
- * @returns Success response
- */
 export async function unlikeAgent(
-	baseUrl: string,
 	agentId: string,
-	accessToken: string,
-): Promise<APIResponse> {
-	const url = joinUrl(
-		baseUrl,
-		`/v1/agents/${encodeURIComponent(agentId)}/like`,
-	);
-
-	const response = await fetch(url, {
-		method: "DELETE",
-		headers: {
-			Authorization: `Bearer ${accessToken}`,
-		},
-		credentials: "same-origin",
+): Promise<RadientApiResponse<APIResponse>> {
+	return radientProxyEnvelope<APIResponse>({
+		operation: "agents.unlike",
+		agentId,
+		requestId: requestId(),
+		confirmed: true,
 	});
-
-	if (!response.ok && response.status !== 204) {
-		const text = await response.text();
-		throw new Error(text || `HTTP ${response.status}`);
-	}
-
-	return response.status === 204
-		? { msg: "Unliked", result: undefined }
-		: response.json();
 }
 
-/**
- * Get like count for an agent.
- *
- * @param baseUrl - The base URL of the Radient API
- * @param agentId - The agent ID
- * @returns Like count
- */
 export async function getAgentLikeCount(
-	baseUrl: string,
 	agentId: string,
 ): Promise<RadientApiResponse<CountResponse>> {
-	const url = joinUrl(
-		baseUrl,
-		`/v1/agents/${encodeURIComponent(agentId)}/like/count`,
-	);
-
-	const response = await fetch(url, {
-		method: "GET",
-		credentials: "same-origin",
+	return radientProxyEnvelope<CountResponse>({
+		operation: "agents.like_count",
+		agentId,
 	});
-
-	if (!response.ok) {
-		const text = await response.text();
-		throw new Error(text || `HTTP ${response.status}`);
-	}
-
-	return response.json();
 }
 
-/**
- * Favourite an agent.
- *
- * @param baseUrl - The base URL of the Radient API
- * @param agentId - The agent ID
- * @param accessToken - The access token (JWT)
- * @returns Success response
- */
 export async function favouriteAgent(
-	baseUrl: string,
 	agentId: string,
-	accessToken: string,
-): Promise<APIResponse> {
-	const url = joinUrl(
-		baseUrl,
-		`/v1/agents/${encodeURIComponent(agentId)}/favourite`,
-	);
-
-	const response = await fetch(url, {
-		method: "POST",
-		headers: {
-			Authorization: `Bearer ${accessToken}`,
-		},
-		credentials: "same-origin",
+): Promise<RadientApiResponse<APIResponse>> {
+	return radientProxyEnvelope<APIResponse>({
+		operation: "agents.favourite",
+		agentId,
+		requestId: requestId(),
 	});
-
-	if (!response.ok && response.status !== 201 && response.status !== 200) {
-		const text = await response.text();
-		throw new Error(text || `HTTP ${response.status}`);
-	}
-
-	return response.json();
 }
 
-/**
- * Unfavourite an agent.
- *
- * @param baseUrl - The base URL of the Radient API
- * @param agentId - The agent ID
- * @param accessToken - The access token (JWT)
- * @returns Success response
- */
 export async function unfavouriteAgent(
-	baseUrl: string,
 	agentId: string,
-	accessToken: string,
-): Promise<APIResponse> {
-	const url = joinUrl(
-		baseUrl,
-		`/v1/agents/${encodeURIComponent(agentId)}/favourite`,
-	);
-
-	const response = await fetch(url, {
-		method: "DELETE",
-		headers: {
-			Authorization: `Bearer ${accessToken}`,
-		},
-		credentials: "same-origin",
+): Promise<RadientApiResponse<APIResponse>> {
+	return radientProxyEnvelope<APIResponse>({
+		operation: "agents.unfavourite",
+		agentId,
+		requestId: requestId(),
+		confirmed: true,
 	});
-
-	if (!response.ok && response.status !== 204) {
-		const text = await response.text();
-		throw new Error(text || `HTTP ${response.status}`);
-	}
-
-	return response.status === 204
-		? { msg: "Unfavourited", result: undefined }
-		: response.json();
 }
 
-/**
- * Get favourite count for an agent.
- *
- * @param baseUrl - The base URL of the Radient API
- * @param agentId - The agent ID
- * @returns Favourite count
- */
 export async function getAgentFavouriteCount(
-	baseUrl: string,
 	agentId: string,
 ): Promise<RadientApiResponse<CountResponse>> {
-	const url = joinUrl(
-		baseUrl,
-		`/v1/agents/${encodeURIComponent(agentId)}/favourite/count`,
-	);
-
-	const response = await fetch(url, {
-		method: "GET",
-		credentials: "same-origin",
+	return radientProxyEnvelope<CountResponse>({
+		operation: "agents.favourite_count",
+		agentId,
 	});
-
-	if (!response.ok) {
-		const text = await response.text();
-		throw new Error(text || `HTTP ${response.status}`);
-	}
-
-	return response.json();
 }
 
-/**
- * Get download count for an agent.
- *
- * @param baseUrl - The base URL of the Radient API
- * @param agentId - The agent ID
- * @returns Download count
- */
 export async function getAgentDownloadCount(
-	baseUrl: string,
 	agentId: string,
 ): Promise<RadientApiResponse<CountResponse>> {
-	const url = joinUrl(
-		baseUrl,
-		`/v1/agents/${encodeURIComponent(agentId)}/download/count`,
-	);
-
-	const response = await fetch(url, {
-		method: "GET",
-		credentials: "same-origin",
+	return radientProxyEnvelope<CountResponse>({
+		operation: "agents.download_count",
+		agentId,
 	});
-
-	if (!response.ok) {
-		const text = await response.text();
-		throw new Error(text || `HTTP ${response.status}`);
-	}
-
-	return response.json();
 }
 
-/**
- * Create a comment on an agent.
- *
- * @param baseUrl - The base URL of the Radient API
- * @param agentId - The agent ID
- * @param accessToken - The access token (JWT)
- * @param data - Comment creation data
- * @returns The created comment
- */
 export async function createAgentComment(
-	baseUrl: string,
 	agentId: string,
-	accessToken: string,
 	data: CreateAgentCommentRequest,
 ): Promise<RadientApiResponse<AgentComment>> {
-	const url = joinUrl(
-		baseUrl,
-		`/v1/agents/${encodeURIComponent(agentId)}/comments`,
-	);
-
-	const response = await fetch(url, {
-		method: "POST",
-		headers: {
-			Authorization: `Bearer ${accessToken}`,
-			"Content-Type": "application/json",
-		},
-		body: JSON.stringify(data),
-		credentials: "same-origin",
+	return radientProxyEnvelope<AgentComment>({
+		operation: "comments.create",
+		agentId,
+		payload: data as unknown as Record<string, unknown>,
+		requestId: requestId(),
 	});
-
-	if (!response.ok && response.status !== 201) {
-		const text = await response.text();
-		throw new Error(text || `HTTP ${response.status}`);
-	}
-
-	return response.json();
 }
 
-/**
- * List comments on an agent with pagination.
- *
- * @param baseUrl - The base URL of the Radient API
- * @param agentId - The agent ID
- * @param accessToken - The access token (JWT, optional for read)
- * @param page - The page number (optional, defaults to 1)
- * @param perPage - The number of comments per page (optional, defaults to 20)
- * @returns Paginated list of comments
- * @throws Error if the API request fails
- */
 export async function listAgentComments(
-	baseUrl: string,
 	agentId: string,
 	page = 1,
 	perPage = 20,
 ): Promise<RadientApiResponse<PaginatedResponse<AgentComment>>> {
-	const url = new URL(
-		joinUrl(baseUrl, `/v1/agents/${encodeURIComponent(agentId)}/comments`),
-	);
-
-	url.searchParams.set("page", String(page));
-	url.searchParams.set("per_page", String(perPage));
-
-	const headers: Record<string, string> = {};
-
-	let response: Response;
-	try {
-		response = await fetch(url.toString(), {
-			method: "GET",
-			headers,
-			credentials: "same-origin",
-		});
-	} catch (err) {
-		throw new Error(`Network error: ${(err as Error).message}`);
-	}
-
-	if (!response.ok) {
-		const text = await response.text();
-		throw new Error(text || `HTTP ${response.status}`);
-	}
-
-	return response.json();
+	return radientProxyEnvelope<PaginatedResponse<AgentComment>>({
+		operation: "comments.list",
+		agentId,
+		query: { page, per_page: perPage },
+	});
 }
 
-/**
- * Update a comment on an agent.
- *
- * @param baseUrl - The base URL of the Radient API
- * @param agentId - The agent ID
- * @param commentId - The comment ID
- * @param accessToken - The access token (JWT)
- * @param data - Comment update data
- * @returns The updated comment
- */
 export async function updateAgentComment(
-	baseUrl: string,
 	agentId: string,
 	commentId: string,
-	accessToken: string,
 	data: UpdateAgentCommentRequest,
 ): Promise<RadientApiResponse<AgentComment>> {
-	const url = joinUrl(
-		baseUrl,
-		`/v1/agents/${encodeURIComponent(agentId)}/comments/${encodeURIComponent(commentId)}`,
-	);
-
-	const response = await fetch(url, {
-		method: "PATCH",
-		headers: {
-			Authorization: `Bearer ${accessToken}`,
-			"Content-Type": "application/json",
-		},
-		body: JSON.stringify(data),
-		credentials: "same-origin",
+	return radientProxyEnvelope<AgentComment>({
+		operation: "comments.update",
+		agentId,
+		commentId,
+		payload: data as unknown as Record<string, unknown>,
+		requestId: requestId(),
 	});
-
-	if (!response.ok) {
-		const text = await response.text();
-		throw new Error(text || `HTTP ${response.status}`);
-	}
-
-	return response.json();
 }
 
-/**
- * Delete a comment on an agent.
- *
- * @param baseUrl - The base URL of the Radient API
- * @param agentId - The agent ID
- * @param commentId - The comment ID
- * @param accessToken - The access token (JWT)
- * @returns Success response
- */
 export async function deleteAgentComment(
-	baseUrl: string,
 	agentId: string,
 	commentId: string,
-	accessToken: string,
-): Promise<APIResponse> {
-	const url = joinUrl(
-		baseUrl,
-		`/v1/agents/${encodeURIComponent(agentId)}/comments/${encodeURIComponent(commentId)}`,
-	);
-
-	const response = await fetch(url, {
-		method: "DELETE",
-		headers: {
-			Authorization: `Bearer ${accessToken}`,
-		},
-		credentials: "same-origin",
+): Promise<RadientApiResponse<APIResponse>> {
+	return radientProxyEnvelope<APIResponse>({
+		operation: "comments.delete",
+		agentId,
+		commentId,
+		requestId: requestId(),
+		confirmed: true,
 	});
-
-	if (!response.ok && response.status !== 204) {
-		const text = await response.text();
-		throw new Error(text || `HTTP ${response.status}`);
-	}
-
-	return response.status === 204
-		? { msg: "Deleted", result: undefined }
-		: response.json();
 }
 
-/**
- * Get like details for the current user on an agent.
- *
- * @param baseUrl - The base URL of the Radient API
- * @param agentId - The agent ID
- * @param accessToken - The access token (JWT)
- * @returns Like details or empty object if not liked
- */
 export async function getAgentLike(
-	baseUrl: string,
 	agentId: string,
-	accessToken: string,
 ): Promise<RadientApiResponse<AgentLike | Record<string, never>>> {
-	const url = joinUrl(
-		baseUrl,
-		`/v1/agents/${encodeURIComponent(agentId)}/like`,
-	);
-	const response = await fetch(url, {
-		method: "GET",
-		headers: {
-			Authorization: `Bearer ${accessToken}`,
-		},
-		credentials: "same-origin",
+	return radientProxyEnvelope<AgentLike | Record<string, never>>({
+		operation: "agents.liked",
+		agentId,
 	});
-
-	// Handle 404 specifically as "not liked"
-	if (!response.ok) {
-		if (response.status === 404) {
-			// Return the structure expected by useAgentLikeQuery for a non-existent like
-			return { msg: "Like not found", result: {} };
-		}
-		// Throw for other errors
-		const text = await response.text();
-		throw new Error(text || `HTTP ${response.status}`);
-	}
-
-	// If response is OK (2xx), parse and return the JSON
-	return response.json();
 }
 
-/**
- * Get favourite details for the current user on an agent.
- *
- * @param baseUrl - The base URL of the Radient API
- * @param agentId - The agent ID
- * @param accessToken - The access token (JWT)
- * @returns Favourite details or empty object if not favourited
- */
 export async function getAgentFavourite(
-	baseUrl: string,
 	agentId: string,
-	accessToken: string,
 ): Promise<RadientApiResponse<AgentFavourite | Record<string, never>>> {
-	const url = joinUrl(
-		baseUrl,
-		`/v1/agents/${encodeURIComponent(agentId)}/favourite`,
-	);
-	const response = await fetch(url, {
-		method: "GET",
-		headers: {
-			Authorization: `Bearer ${accessToken}`,
-		},
-		credentials: "same-origin",
+	return radientProxyEnvelope<AgentFavourite | Record<string, never>>({
+		operation: "agents.favourited",
+		agentId,
 	});
-	if (!response.ok) {
-		const text = await response.text();
-		throw new Error(text || `HTTP ${response.status}`);
-	}
-	return response.json();
 }
 
-/**
- * List agents liked/favourited by account.
- *
- * @param baseUrl - The base URL of the Radient API
- * @param accountId - The account ID
- * @param accessToken - The access token (JWT)
- * @param options - Filter options: liked, favourited, page, perPage
- * @returns Paginated list of agents
- */
 export async function listAccountAgents(
-	baseUrl: string,
 	accountId: string,
-	accessToken: string,
 	options?: {
 		liked?: boolean;
 		favourited?: boolean;
@@ -691,28 +248,15 @@ export async function listAccountAgents(
 		perPage?: number;
 	},
 ): Promise<RadientApiResponse<PaginatedAgentList>> {
-	const params = new URLSearchParams();
-	if (options?.liked !== undefined)
-		params.append("liked", String(options.liked));
-	if (options?.favourited !== undefined)
-		params.append("favourited", String(options.favourited));
-	if (options?.page !== undefined) params.append("page", String(options.page));
-	if (options?.perPage !== undefined)
-		params.append("per_page", String(options.perPage));
-	const url = joinUrl(
-		baseUrl,
-		`/v1/accounts/${encodeURIComponent(accountId)}/agents${params.toString() ? `?${params.toString()}` : ""}`,
-	);
-	const response = await fetch(url, {
-		method: "GET",
-		headers: {
-			Authorization: `Bearer ${accessToken}`,
-		},
-		credentials: "same-origin",
+	const query: Record<string, string | number> = {};
+	if (options?.page !== undefined) query.page = options.page;
+	if (options?.perPage !== undefined) query.per_page = options.perPage;
+	// `liked`/`favourited` are not in the proxy's account.agents allow-list;
+	// the proxy rejects unknown query fields rather than silently dropping
+	// them, so they are not forwarded here.
+	return radientProxyEnvelope<PaginatedAgentList>({
+		operation: "account.agents",
+		accountId,
+		query,
 	});
-	if (!response.ok) {
-		const text = await response.text();
-		throw new Error(text || `HTTP ${response.status}`);
-	}
-	return response.json();
 }

@@ -19,6 +19,7 @@ export const desktopKeys = {
 	capabilities: ["desktop", "capabilities"] as const,
 	providers: ["desktop", "auth", "providers"] as const,
 	commands: ["desktop", "commands"] as const,
+	accounts: ["desktop", "auth", "accounts"] as const,
 };
 
 /**

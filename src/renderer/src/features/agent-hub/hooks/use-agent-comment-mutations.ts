@@ -7,7 +7,6 @@ import type {
 	CreateAgentCommentRequest,
 	UpdateAgentCommentRequest,
 } from "@shared/api/radient/types";
-import { apiConfig } from "@shared/config";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -18,7 +17,7 @@ import { agentCommentsKeys } from "./use-agent-comments-query"; // Import query 
  */
 export const useCreateAgentCommentMutation = () => {
 	const queryClient = useQueryClient();
-	const { sessionToken } = useRadientAuth();
+	const { isAuthenticated } = useRadientAuth();
 
 	return useMutation({
 		mutationFn: async (variables: {
@@ -26,13 +25,8 @@ export const useCreateAgentCommentMutation = () => {
 			data: CreateAgentCommentRequest;
 		}) => {
 			const { agentId, data } = variables;
-			if (!sessionToken) throw new Error("Authentication required.");
-			return createAgentComment(
-				apiConfig.radientBaseUrl,
-				agentId,
-				sessionToken,
-				data,
-			);
+			if (!isAuthenticated) throw new Error("Authentication required.");
+			return createAgentComment(agentId, data);
 		},
 		onSuccess: (_, variables) => {
 			// Invalidate the comments list query for the specific agent to refetch
@@ -52,7 +46,7 @@ export const useCreateAgentCommentMutation = () => {
  */
 export const useUpdateAgentCommentMutation = () => {
 	const queryClient = useQueryClient();
-	const { sessionToken } = useRadientAuth();
+	const { isAuthenticated } = useRadientAuth();
 
 	return useMutation({
 		mutationFn: async (variables: {
@@ -61,14 +55,8 @@ export const useUpdateAgentCommentMutation = () => {
 			data: UpdateAgentCommentRequest;
 		}) => {
 			const { agentId, commentId, data } = variables;
-			if (!sessionToken) throw new Error("Authentication required.");
-			return updateAgentComment(
-				apiConfig.radientBaseUrl,
-				agentId,
-				commentId,
-				sessionToken,
-				data,
-			);
+			if (!isAuthenticated) throw new Error("Authentication required.");
+			return updateAgentComment(agentId, commentId, data);
 		},
 		onSuccess: (_, variables) => {
 			// Invalidate the comments list query for the specific agent to refetch
@@ -88,18 +76,13 @@ export const useUpdateAgentCommentMutation = () => {
  */
 export const useDeleteAgentCommentMutation = () => {
 	const queryClient = useQueryClient();
-	const { sessionToken } = useRadientAuth();
+	const { isAuthenticated } = useRadientAuth();
 
 	return useMutation({
 		mutationFn: async (variables: { agentId: string; commentId: string }) => {
 			const { agentId, commentId } = variables;
-			if (!sessionToken) throw new Error("Authentication required.");
-			return deleteAgentComment(
-				apiConfig.radientBaseUrl,
-				agentId,
-				commentId,
-				sessionToken,
-			);
+			if (!isAuthenticated) throw new Error("Authentication required.");
+			return deleteAgentComment(agentId, commentId);
 		},
 		onSuccess: (_, variables) => {
 			// Invalidate the comments list query for the specific agent to refetch
