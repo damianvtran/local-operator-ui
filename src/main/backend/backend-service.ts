@@ -20,11 +20,14 @@ export enum LocalOperatorStartupMode {
 }
 
 import { type ChildProcess, exec, spawn } from "node:child_process";
+import { randomBytes } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import { app, dialog as electronDialog } from "electron";
+import type { DesktopResponse } from "../../shared/desktop-contract";
+import { requestDesktop } from "../desktop-transport";
 import { backendConfig } from "./config";
 import { LogFileType, logger } from "./logger";
 
@@ -52,6 +55,14 @@ export class BackendServiceManager {
 	private exitPromise: Promise<void> | null = null;
 	private exitResolve: (() => void) | null = null;
 	private shellEnv: Record<string, string | undefined> = {};
+	// External/dev backends may be explicitly paired through main's environment.
+	// Managed starts always rotate this; it is never exposed by preload or logs.
+	private desktopToken: string | null =
+		process.env.LOCAL_OPERATOR_DESKTOP_TOKEN || null;
+
+	requestDesktop(input: unknown): Promise<DesktopResponse> {
+		return requestDesktop(input, this.backendUrl, this.desktopToken);
+	}
 	private isAppClosing = false; // Flag to track when the app is being closed
 	private isAutoUpdating = false; // Flag to track when an autoupdate is in progress
 	private shutdownTimeoutMs = {
@@ -527,6 +538,7 @@ export class BackendServiceManager {
 		}
 
 		// No external backend, start our own
+		this.desktopToken = randomBytes(32).toString("hex");
 		try {
 			// Check if local-operator command exists globally
 			if (await this.checkLocalOperatorExists()) {
@@ -554,7 +566,10 @@ export class BackendServiceManager {
 				this.process = spawn(cmd, args, {
 					detached: false, // Ensure process is not detached from parent
 					stdio: "pipe",
-					env: this.shellEnv, // Use shell environment variables
+					env: {
+						...this.shellEnv,
+						LOCAL_OPERATOR_DESKTOP_TOKEN: this.desktopToken,
+					},
 					// On Windows, we need to create a new process group to ensure proper termination
 					...(process.platform === "win32" ? { windowsHide: true } : {}),
 				});
@@ -629,7 +644,10 @@ export class BackendServiceManager {
 				this.process = spawn(cmd, args, {
 					detached: false, // Ensure process is not detached from parent
 					stdio: "pipe",
-					env: this.shellEnv, // Use shell environment variables
+					env: {
+						...this.shellEnv,
+						LOCAL_OPERATOR_DESKTOP_TOKEN: this.desktopToken,
+					},
 					// On Windows, we need to create a new process group to ensure proper termination
 					...(process.platform === "win32" ? { windowsHide: true } : {}),
 				});

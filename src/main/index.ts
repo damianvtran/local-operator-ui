@@ -1,6 +1,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 import { electronApp, is, optimizer } from "@electron-toolkit/utils";
 import {
 	BrowserWindow,
@@ -21,6 +22,7 @@ import {
 } from "./backend";
 import { backendConfig } from "./backend/config";
 import { LogFileType, logger } from "./backend/logger";
+import { registerDesktopIPC } from "./desktop-ipc";
 import { OAuthService } from "./oauth-service";
 import { Store, type StoreData } from "./store";
 import { UpdateService } from "./update-service";
@@ -472,6 +474,13 @@ app
 		app.on("browser-window-created", (_, window) => {
 			optimizer.watchWindowShortcuts(window);
 		});
+
+		registerDesktopIPC(
+			() => mainWindow,
+			process.env.ELECTRON_RENDERER_URL ||
+				pathToFileURL(join(__dirname, "../renderer/index.html")).href,
+			(input) => backendService.requestDesktop(input),
+		);
 
 		// Add IPC handlers for opening files and URLs
 		ipcMain.handle("open-file", async (_, filePath) => {

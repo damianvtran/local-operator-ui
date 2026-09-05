@@ -2,9 +2,16 @@ import { electronAPI } from "@electron-toolkit/preload";
 import { contextBridge, ipcRenderer } from "electron";
 import type { ProgressInfo, UpdateInfo } from "electron-updater";
 import type { BackendUpdateInfo } from "../main/update-service";
+import type { DesktopRequest } from "../shared/desktop-contract";
 
 // Custom APIs for renderer
 const api = {
+	desktop: {
+		request: (request: DesktopRequest) =>
+			ipcRenderer.invoke("desktop-request", request),
+		openAuthorization: (operationId: string, reopen = false) =>
+			ipcRenderer.invoke("desktop-open-authorization", operationId, reopen),
+	},
 	// Add methods to open files and URLs
 	openFile: (filePath: string) => ipcRenderer.invoke("open-file", filePath),
 	readFile: (filePath: string, encoding?: BufferEncoding) =>

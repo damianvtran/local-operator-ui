@@ -1,5 +1,6 @@
 import type { ElectronAPI } from "@electron-toolkit/preload";
 import type { ProgressInfo, UpdateInfo } from "electron-updater";
+import type { DesktopAPI } from "../shared/desktop-contract";
 
 // Matching same type in `src/main/index.ts`
 type ReadFileResponse =
@@ -10,6 +11,7 @@ declare global {
 	interface Window {
 		electron: ElectronAPI;
 		api: {
+			desktop: DesktopAPI;
 			openFile: (filePath: string) => Promise<void>;
 			readFile: (
 				filePath: string,
