@@ -15,7 +15,7 @@ import { useAgents } from "@shared/hooks/use-agents";
 import { cn } from "@shared/lib/utils";
 import { CircleCheck, Download } from "lucide-react";
 import type { FC } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 /*
  * Four, not eight.
@@ -58,7 +58,10 @@ export const CreateAgentStep: FC<CreateAgentStepProps> = ({
 		order: "desc",
 	});
 
-	const recommendedAgents: Agent[] = agentsData?.records ?? [];
+	const recommendedAgents: Agent[] = useMemo(
+		() => agentsData?.records ?? [],
+		[agentsData],
+	);
 
 	// Update addedAgentIds based on localAgentsData changes
 	useEffect(() => {

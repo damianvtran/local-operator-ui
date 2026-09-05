@@ -5,10 +5,8 @@
  */
 
 export { OnboardingModal } from "./components/onboarding-modal";
-export { RadientChoiceStep } from "./components/steps/radient-choice-step";
-export { RadientSignInStep } from "./components/steps/radient-signin-step";
+export { ConnectProviderStep } from "./components/steps/connect-provider-step";
 export { UserProfileStep } from "./components/steps/user-profile-step";
-export { ModelCredentialStep } from "./components/steps/model-credential-step";
 export { SearchApiStep } from "./components/steps/search-api-step";
 export { DefaultModelStep } from "./components/steps/default-model-step";
 export { CreateAgentStep } from "./components/steps/create-agent-step";
