@@ -855,6 +855,9 @@ export type EditDiff = {
  * Request body for agent edit endpoint.
  */
 export type AgentEditFileRequest = {
+	/** Live editor buffer, including an empty document. When supplied, file_path
+	 * is display identity only; omission requests a server workspace read. */
+	file_content?: string;
 	/** The hosting service to use for the edit. */
 	hosting: string;
 	/** The model to use for the edit. */

@@ -77,6 +77,13 @@ const CodeEditorComponent: FC<CodeEditorProps> = ({
 		approvedDiffs: EditDiff[];
 		originalContent: string;
 	} | null>(null);
+	const [insertionPosition, setInsertionPosition] = useState<{
+		diff: EditDiff;
+		top: number;
+	} | null>(null);
+	const activeDiff = reviewState?.diffs[reviewState.currentIndex];
+	const insertionPositionReady =
+		activeDiff?.find !== "" || insertionPosition?.diff === activeDiff;
 	const editorRef = useRef<ReactCodeMirrorRef>(null);
 	const [editorContainer, setEditorContainer] = useState<HTMLElement | null>(
 		null,
@@ -97,6 +104,48 @@ const CodeEditorComponent: FC<CodeEditorProps> = ({
 		() => diffHighlight(reviewState),
 		[reviewState],
 	);
+
+	useEffect(() => {
+		const view = editorRef.current?.view;
+		const container = scrollContainerRef.current;
+		if (!view || !container || !activeDiff || activeDiff.find !== "") return;
+		let active = true;
+		// The prompt's cursor anchor overlaps an insertion at that same cursor.
+		// Measure the painted proposal (including wraps and font metrics) rather
+		// than guessing its height from the replacement string. Until measured,
+		// render the proposal alone so the first frame cannot hide it either.
+		const measure = () =>
+			view.requestMeasure({
+				read: () => {
+					const widget =
+						view.dom.querySelector<HTMLElement>("[data-edit-diff]");
+					return widget
+						? widget.getBoundingClientRect().bottom -
+								container.getBoundingClientRect().top +
+								container.scrollTop +
+								8
+						: null;
+				},
+				write: (top) => {
+					if (!active || top === null) return;
+					setInsertionPosition((previous) =>
+						previous?.diff === activeDiff && previous.top === top
+							? previous
+							: { diff: activeDiff, top },
+					);
+				},
+			});
+		const observer = new ResizeObserver(measure);
+		observer.observe(view.contentDOM);
+		observer.observe(container);
+		view.scrollDOM.addEventListener("scroll", measure);
+		measure();
+		return () => {
+			active = false;
+			observer.disconnect();
+			view.scrollDOM.removeEventListener("scroll", measure);
+		};
+	}, [activeDiff]);
 
 	useEffect(() => {
 		if (editorRef.current) {
@@ -185,6 +234,12 @@ const CodeEditorComponent: FC<CodeEditorProps> = ({
 						return;
 					}
 					const { from, to } = inlineEdit;
+					// A cursor-only selection has no text to mark. In particular,
+					// an empty live buffer must still open the edit popover.
+					if (from === to) {
+						this.decorations = Decoration.none;
+						return;
+					}
 					const highlightMark = Decoration.mark({
 						style: "background-color: var(--color-accent-wash)",
 					});
@@ -357,10 +412,15 @@ const CodeEditorComponent: FC<CodeEditorProps> = ({
 				agentId={agentId ?? undefined}
 				filePath={document.path}
 			/>
-			{inlineEdit && document.path && (
+			{inlineEdit && document.path && insertionPositionReady && (
 				<InlineEdit
+					fileContent={content}
 					selection={inlineEdit.selection}
-					position={inlineEdit.position}
+					position={
+						activeDiff?.find === "" && insertionPosition?.diff === activeDiff
+							? { ...inlineEdit.position, top: insertionPosition.top }
+							: inlineEdit.position
+					}
 					filePath={document.path}
 					onClose={() => {
 						setInlineEdit(null);

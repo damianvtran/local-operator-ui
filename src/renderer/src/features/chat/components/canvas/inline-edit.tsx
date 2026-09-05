@@ -45,6 +45,7 @@ type InlineEditProps = {
 	selection: string;
 	position: { top: number; left: number };
 	filePath: string;
+	fileContent: string;
 	onClose: () => void;
 	onApplyChanges: (editDiffs: EditDiff[]) => void;
 	agentId?: string;
@@ -101,6 +102,7 @@ export const InlineEdit: FC<InlineEditProps> = ({
 	selection,
 	position,
 	filePath,
+	fileContent,
 	onClose,
 	onApplyChanges,
 	agentId,
@@ -449,6 +451,9 @@ export const InlineEdit: FC<InlineEditProps> = ({
 				hosting: config?.values.hosting || "default",
 				model: config?.values.model_name || "default",
 				file_path: filePath,
+				// The open buffer can be unsaved or outside the agent workspace.
+				// Send it explicitly so the server never needs host-file access.
+				file_content: fileContent,
 				edit_prompt: prompt,
 				selection,
 				attachments,
@@ -477,6 +482,7 @@ export const InlineEdit: FC<InlineEditProps> = ({
 	}, [
 		config,
 		filePath,
+		fileContent,
 		prompt,
 		selection,
 		attachments,

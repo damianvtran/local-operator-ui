@@ -424,6 +424,13 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 		approvedDiffs: EditDiff[];
 		originalContent: string;
 	} | null>(null);
+	const [insertionPosition, setInsertionPosition] = useState<{
+		diff: EditDiff;
+		top: number;
+	} | null>(null);
+	const activeDiff = reviewState?.diffs[reviewState.currentIndex];
+	const insertionPositionReady =
+		activeDiff?.find !== "" || insertionPosition?.diff === activeDiff;
 	const selectionRef = useRef<Range | null>(null);
 	const editorContentRef = useRef<HTMLDivElement>(null);
 	const relativeContainerRef = useRef<HTMLDivElement>(null);
@@ -1589,8 +1596,43 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 		}
 		editorRef.current.innerHTML = markdownToHtml(contentToRender);
 
-		// Delay to ensure DOM updates before highlighting
-		setTimeout(() => showDiffInline(diffs[currentIndex], contentToRender), 0);
+		let active = true;
+		let observer: ResizeObserver | undefined;
+		// Keep the delayed DOM highlight, but cancel stale work when review
+		// advances or closes. An insertion's controls must follow its actual
+		// painted proposal, not the cursor anchor that would cover all its text.
+		const timer = setTimeout(() => {
+			const diff = diffs[currentIndex];
+			showDiffInline(diff, contentToRender);
+			if (diff.find !== "") return;
+			const container = relativeContainerRef.current;
+			const widget = editorRef.current?.querySelector<HTMLElement>(
+				"[data-diff-container]",
+			);
+			if (!container || !widget) return;
+			const measure = () => {
+				if (!active || !widget.isConnected) return;
+				const top =
+					widget.getBoundingClientRect().bottom -
+					container.getBoundingClientRect().top +
+					container.scrollTop +
+					8;
+				setInsertionPosition((previous) =>
+					previous?.diff === diff && previous.top === top
+						? previous
+						: { diff, top },
+				);
+			};
+			measure();
+			observer = new ResizeObserver(measure);
+			observer.observe(widget);
+			observer.observe(container);
+		}, 0);
+		return () => {
+			active = false;
+			clearTimeout(timer);
+			observer?.disconnect();
+		};
 	}, [reviewState, showDiffInline]);
 
 	const handleApplyChanges = (diffs: EditDiff[]) => {
@@ -1982,10 +2024,16 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 						filePath={document.path}
 						conversationId={conversationId}
 					/>
-					{inlineEdit && document.path && (
+					{inlineEdit && document.path && insertionPositionReady && (
 						<InlineEdit
+							fileContent={content}
 							selection={inlineEdit.selection}
-							position={inlineEdit.position}
+							position={
+								activeDiff?.find === "" &&
+								insertionPosition?.diff === activeDiff
+									? { ...inlineEdit.position, top: insertionPosition.top }
+									: inlineEdit.position
+							}
 							filePath={document.path}
 							onClose={() => {
 								setInlineEdit(null);
