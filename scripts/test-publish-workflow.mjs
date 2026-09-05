@@ -144,7 +144,7 @@ const args = process.argv.slice(2);
 const command = args[0];
 const flag = command === 'set-key-partition-list' ? '-k' : '-p';
 const password = ['create-keychain', 'unlock-keychain', 'set-key-partition-list'].includes(command) ? args[args.indexOf(flag) + 1] : undefined;
-appendFileSync(process.env.CALLS_FILE, JSON.stringify({ command, keychain: args.at(-1), passwordShape: password ? /^[a-f0-9]{64}$/.test(password) : null, digest: password ? createHash('sha256').update(password).digest('hex') : null }) + '\\n');
+appendFileSync(process.env.CALLS_FILE, JSON.stringify({ command, keychain: args.at(-1), flags: args.slice(1, -1).filter((a) => a.startsWith('-')), passwordShape: password ? /^[a-f0-9]{64}$/.test(password) : null, digest: password ? createHash('sha256').update(password).digest('hex') : null }) + '\\n');
 console.log('SECURITY_CALLED');
 `, { mode: 0o755 });
     const result = shell(step("build-macos", "Setup code signing").run, {
@@ -160,19 +160,27 @@ console.log('SECURITY_CALLED');
     const password = lines[0].slice("::add-mask::".length);
     const digest = createHash("sha256").update(password).digest("hex");
     assert.ok(!result.stderr.includes(password));
-    assert.deepEqual(lines.slice(1), Array(5).fill("SECURITY_CALLED"));
+    assert.deepEqual(lines.slice(1), Array(7).fill("SECURITY_CALLED"));
     const calls = readFileSync(join(dir, "calls"), "utf8").trim().split("\n").map((line) => JSON.parse(line));
-    assert.deepEqual(calls.map((c) => c.command), ["create-keychain", "default-keychain", "unlock-keychain", "import", "set-key-partition-list"]);
+    assert.deepEqual(calls.map((c) => c.command), ["create-keychain", "default-keychain", "unlock-keychain", "set-keychain-settings", "show-keychain-info", "import", "set-key-partition-list"]);
+    // Regression for run 33948569170: a fresh keychain auto-locks after 300s and
+    // codesign then hangs on a GUI prompt. The settings call must follow unlock,
+    // precede import/partition-list, and carry no -t timeout or -l lock flag.
+    const settings = calls.find((c) => c.command === "set-keychain-settings");
+    assert.equal(settings.keychain, join(dir, "build.keychain-db"));
+    assert.deepEqual(settings.flags, [], "set-keychain-settings must remove the timeout, not set one");
+    assert.ok(!settings.passwordShape, "keychain settings do not take the password");
     const passwordCalls = calls.filter((c) => c.digest);
     assert.equal(passwordCalls.length, 3);
     assert.ok(passwordCalls.every((c) => c.passwordShape && c.digest === digest), "create/unlock/partition must share the generated 32-byte password");
     assert.ok(calls.filter((c) => c.command !== "import").every((c) => c.keychain === join(dir, "build.keychain-db")));
+    assert.equal(calls.findIndex((c) => c.command === "set-keychain-settings") - calls.findIndex((c) => c.command === "unlock-keychain"), 1, "settings must be applied immediately after unlock");
     assert.equal(readFileSync(join(dir, "env"), "utf8"), `CSC_KEYCHAIN=${join(dir, "build.keychain-db")}\n`);
     assert.ok(!existsSync(join(dir, "certificate.p12")), "temporary certificate must be removed");
     return digest;
   }));
   assert.notEqual(digests[0], digests[1], "each job must generate a fresh password");
-  console.log("SIGNING_SHELL: 2 fresh 32-byte passwords; mask before use; create/unlock/partition equal; only keychain path persisted");
+  console.log("SIGNING_SHELL: 2 fresh 32-byte passwords; mask before use; create/unlock/partition equal; set-keychain-settings after unlock with no timeout; only keychain path persisted");
 });
 test("failed random generation stops before keychain setup", () => sandbox((dir) => {
   writeFileSync(join(dir, "openssl"), "#!/bin/sh\nexit 1\n", { mode: 0o755 });
