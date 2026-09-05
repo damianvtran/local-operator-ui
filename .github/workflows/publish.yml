@@ -5,23 +5,73 @@ on:
     types: [published]
   workflow_dispatch:
     inputs:
-      release_type:
-        description: 'Release Type'
+      release_tag:
+        description: 'Published release tag (vX.Y.Z)'
         required: true
-        default: 'draft'
-        type: choice
-        options:
-          - draft
-          - prerelease
-          - release
+        type: string
+      expected_source_sha:
+        description: 'Full 40-char commit SHA the tag must point to (required for manual dispatch)'
+        required: false
+        type: string
 
 permissions:
   contents: write
 
 jobs:
+  validate-release:
+    name: Validate release target
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      source_sha: ${{ steps.validate.outputs.source_sha }}
+      release_tag: ${{ steps.validate.outputs.release_tag }}
+      release_id: ${{ steps.validate.outputs.release_id }}
+      prerelease: ${{ steps.validate.outputs.prerelease }}
+    steps:
+      - name: Checkout workflow scripts
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: scripts/validate-release.mjs
+          sparse-checkout-cone-mode: false
+
+      - name: Validate release target
+        id: validate
+        env:
+          RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.event.release.tag_name }}
+          EXPECTED_SOURCE_SHA: ${{ github.event_name == 'workflow_dispatch' && inputs.expected_source_sha || '' }}
+          IS_MANUAL_DISPATCH: ${{ github.event_name == 'workflow_dispatch' }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node scripts/validate-release.mjs
+
+  preflight-macos:
+    name: Preflight macOS signing
+    runs-on: ubuntu-latest
+    needs: validate-release
+    if: ${{ needs.validate-release.result == 'success' }}
+    steps:
+      - name: Check required secrets
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          CSC_CONTENT: ${{ secrets.CSC_CONTENT }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          for var in APPLE_ID APPLE_ID_PASSWORD APPLE_TEAM_ID CSC_CONTENT CSC_KEY_PASSWORD KEYCHAIN_PASSWORD; do
+            if [ -z "${!var}" ]; then
+              echo "Missing required secret: $var"
+              exit 1
+            fi
+          done
+          echo "All macOS signing secrets present"
+
   npm-publish:
     name: Build and Publish to NPM
     runs-on: ubuntu-latest
+    needs: validate-release
+    if: ${{ needs.validate-release.result == 'success' && github.event_name == 'release' && github.event.release.prerelease == false }}
     permissions:
       id-token: write
       contents: read
@@ -29,6 +79,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.validate-release.outputs.source_sha }}
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
@@ -76,11 +128,14 @@ jobs:
   build-macos:
     name: Build macOS App
     runs-on: macos-latest
-    needs: npm-publish
+    needs: [validate-release, preflight-macos, npm-publish]
+    if: ${{ needs.validate-release.result == 'success' && needs.preflight-macos.result == 'success' && needs.npm-publish.result == 'success' }}
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.validate-release.outputs.source_sha }}
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
@@ -104,16 +159,16 @@ jobs:
           security unlock-keychain -p "${{ secrets.KEYCHAIN_PASSWORD }}" build.keychain
           security import certificate.p12 -k build.keychain -P "${{ secrets.CSC_KEY_PASSWORD }}" -T /usr/bin/codesign
           security set-key-partition-list -S apple-tool:,apple:,codesign:,notarize: -s -k "${{ secrets.KEYCHAIN_PASSWORD }}" build.keychain
+          rm certificate.p12
 
       - name: Setup python distributable
         run: |
           pnpm setup-python
 
       - name: Build macOS app
-        run: pnpm dist:mac
+        run: pnpm dist:mac -- -c.forceCodeSigning=true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CSC_LINK: ./certificate.p12
           CSC_KEYCHAIN: build.keychain
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
@@ -138,11 +193,14 @@ jobs:
   build-windows:
     name: Build Windows App
     runs-on: windows-latest
-    needs: npm-publish
+    needs: [validate-release, npm-publish]
+    if: ${{ needs.validate-release.result == 'success' && needs.npm-publish.result == 'success' }}
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.validate-release.outputs.source_sha }}
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
@@ -187,11 +245,14 @@ jobs:
   build-linux:
     name: Build Linux App
     runs-on: ubuntu-latest
-    needs: npm-publish
+    needs: [validate-release, npm-publish]
+    if: ${{ needs.validate-release.result == 'success' && needs.npm-publish.result == 'success' }}
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.validate-release.outputs.source_sha }}
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
@@ -230,31 +291,37 @@ jobs:
   attach-to-release:
     name: Attach Artifacts to Release
     runs-on: ubuntu-latest
-    needs: [build-macos, build-windows, build-linux]
+    needs: [validate-release, build-macos, build-windows, build-linux]
+    if: ${{ needs.validate-release.result == 'success' && needs.build-macos.result == 'success' && needs.build-windows.result == 'success' && needs.build-linux.result == 'success' }}
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
           path: artifacts
 
-      - name: Set release type from event
-        id: release_type
+      - name: Revalidate release target
+        id: revalidate
+        env:
+          RELEASE_TAG: ${{ needs.validate-release.outputs.release_tag }}
+          EXPECTED_SOURCE_SHA: ${{ needs.validate-release.outputs.source_sha }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node scripts/validate-release.mjs
+
+      - name: Check asset collisions
         run: |
-          if [ "${{ github.event_name }}" == "release" ]; then
-            if [ "${{ github.event.release.draft }}" == "true" ]; then
-              echo "type=draft" >> $GITHUB_OUTPUT
-            elif [ "${{ github.event.release.prerelease }}" == "true" ]; then
-              echo "type=prerelease" >> $GITHUB_OUTPUT
-            else
-              echo "type=release" >> $GITHUB_OUTPUT
-            fi
-          else
-            echo "type=${{ github.event.inputs.release_type }}" >> $GITHUB_OUTPUT
+          TAG="${{ needs.validate-release.outputs.release_tag }}"
+          EXISTING=$(gh api "repos/${{ github.repository }}/releases/tags/$TAG" --jq '.assets[].name')
+          NEW=$(find artifacts -type f -exec basename {} \; | sort -u)
+          COLLISIONS=$(comm -12 <(echo "$EXISTING" | sort) <(echo "$NEW" | sort))
+          if [ -n "$COLLISIONS" ]; then
+            echo "Asset filename collisions detected:"
+            echo "$COLLISIONS"
+            exit 1
           fi
+          echo "No asset collisions"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Attach artifacts to release
         uses: softprops/action-gh-release@v1
@@ -263,7 +330,8 @@ jobs:
             artifacts/macos-artifacts/*
             artifacts/windows-artifacts/*
             artifacts/linux-artifacts/*
-          draft: ${{ steps.release_type.outputs.type == 'draft' }}
-          prerelease: ${{ steps.release_type.outputs.type == 'prerelease' }}
+          tag_name: ${{ needs.validate-release.outputs.release_tag }}
+          draft: false
+          prerelease: ${{ needs.validate-release.outputs.prerelease == 'true' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
