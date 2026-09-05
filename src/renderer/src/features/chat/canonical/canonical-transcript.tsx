@@ -75,8 +75,7 @@ export type CanonicalTranscriptProps = {
 	onLoadOlder: () => void;
 	containerRef: RefObject<HTMLDivElement>;
 	isSmallView: boolean;
-	/** Session is cold (no live owner); shown once, quietly. */
-	cold: boolean;
+
 	status: "connecting" | "live" | "reconnecting" | "unavailable";
 	error: string | null;
 };
@@ -189,6 +188,17 @@ const TOOL_VERBS: Record<string, { done: string; running: string }> = {
  * The machine-voice object for a tool row: the path, URL, pattern or command
  * it touched. A tool with no such argument has no object; the verb already
  * names it ("Used echo"), so repeating the name would read as a stutter.
+ *
+ * The fallback used to return `record.toolName` for any tool in TOOL_VERBS,
+ * which produced exactly the stutter this docstring exists to prevent -- a
+ * `todo` call with no path-like argument rendered "Updated the plan `todo`",
+ * and `eval` rendered "Ran code `eval`". Verified against the real fallback
+ * before and after.
+ *
+ * A NAMED tool is precisely the case that needs no object: its verb is written
+ * for it in TOOL_VERBS and already says what happened. An unnamed tool falls
+ * back to the generic "Used <name>" verb, where the name is the only thing
+ * identifying it -- and that path never reached here anyway.
  */
 function toolObject(record: Extract<TranscriptRecord, { kind: "tool" }>) {
 	const args = record.args ?? {};
@@ -198,7 +208,7 @@ function toolObject(record: Extract<TranscriptRecord, { kind: "tool" }>) {
 			return value.length > 96 ? `${value.slice(0, 93)}...` : value;
 		}
 	}
-	return TOOL_VERBS[record.toolName] ? record.toolName : undefined;
+	return undefined;
 }
 
 const ToolRow = memo(function ToolRow({
@@ -429,7 +439,6 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	onLoadOlder,
 	containerRef,
 	isSmallView,
-	cold,
 	status,
 	error,
 }) => {
@@ -602,11 +611,13 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 					</div>
 				)}
 
-				{cold && total === 0 && status === "live" && (
-					<p className="mt-2 text-ink-dim text-meta">
-						No messages yet. The conversation starts when you send one.
-					</p>
-				)}
+				{/* No empty state here. The composer already owns it: it renders
+				    "What can I help you with today?" with the suggestion grid on
+				    the same condition, so a cold conversation used to show a line
+				    saying it was empty directly above a block inviting you to
+				    start it -- two empty states for one empty state (design D6).
+				    The composer's version wins because it offers the action; this
+				    one only described the situation. */}
 				{lastRecord && (
 					<div className="mt-1 flex justify-end">
 						<MessageTimestamp timestamp={new Date(lastRecord.ts)} />
