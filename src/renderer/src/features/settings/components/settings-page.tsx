@@ -907,9 +907,10 @@ export const SettingsPage: FC = () => {
 						 * negotiates the `mcp` capability itself and reads the active
 						 * canonical session, so it renders unconditionally here.
 						 */}
-						<div ref={sectionRefs.integrations}>
-							<McpManagementSection sessionId={activeSessionId ?? undefined} />
-						</div>
+						<McpManagementSection
+							sessionId={activeSessionId ?? undefined}
+							sectionRef={sectionRefs.integrations}
+						/>
 
 						<SettingsSection
 							title="API credentials"

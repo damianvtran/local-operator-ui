@@ -16,6 +16,7 @@
 
 import { desktopResult } from "@shared/api/local-operator/desktop-api";
 import { create } from "zustand";
+import { persist } from "zustand/middleware";
 
 export type CanonicalSessionRow = {
 	session_id: string;
@@ -82,81 +83,94 @@ function mergeRows(
 }
 
 export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
-	(set, get) => ({
-		sessions: [],
-		activeSessionId: null,
-		sessionByAgent: {},
-		loading: false,
-		error: null,
+	persist(
+		(set, get) => ({
+			sessions: [],
+			activeSessionId: null,
+			sessionByAgent: {},
+			loading: false,
+			error: null,
 
-		fetchSessions: async () => {
-			set({ loading: true, error: null });
-			try {
-				const result = await desktopResult<{
-					sessions: BackendSessionRow[];
-				}>({ op: "sessions.list" });
-				set((state) => ({
-					sessions: mergeRows(
-						state.sessions,
-						(result.sessions ?? []).map(fromBackend),
-					),
-					loading: false,
-				}));
-			} catch (error) {
+			fetchSessions: async () => {
+				set({ loading: true, error: null });
+				try {
+					const result = await desktopResult<{
+						sessions: BackendSessionRow[];
+					}>({ op: "sessions.list" });
+					set((state) => ({
+						sessions: mergeRows(
+							state.sessions,
+							(result.sessions ?? []).map(fromBackend),
+						),
+						loading: false,
+					}));
+				} catch (error) {
+					set({
+						loading: false,
+						error:
+							error instanceof Error
+								? error.message
+								: "The conversation list could not be loaded.",
+					});
+				}
+			},
+
+			createSession: async (cwd, agentId) => {
+				try {
+					const result = await desktopResult<{ session_id: string }>({
+						op: "sessions.create",
+						requestId: crypto.randomUUID(),
+						cwd,
+					});
+					const row: CanonicalSessionRow = {
+						session_id: result.session_id,
+						cwd,
+						agent_id: agentId ?? null,
+					};
+					set((state) => ({
+						sessions: mergeRows(state.sessions, [row]),
+						activeSessionId: result.session_id,
+						sessionByAgent: agentId
+							? { ...state.sessionByAgent, [agentId]: result.session_id }
+							: state.sessionByAgent,
+					}));
+					return result.session_id;
+				} catch (error) {
+					set({
+						error:
+							error instanceof Error
+								? error.message
+								: "The conversation could not be created.",
+					});
+					return null;
+				}
+			},
+
+			setActiveSession: (sessionId) => set({ activeSessionId: sessionId }),
+
+			upsertSession: (row) => {
+				const { sessions, activeSessionId } = get();
+				const existing = sessions.find(
+					(candidate) => candidate.session_id === row.session_id,
+				);
+				// A watcher update for the already-active session must not disturb
+				// selection; a new row is appended without becoming active.
 				set({
-					loading: false,
-					error:
-						error instanceof Error
-							? error.message
-							: "The conversation list could not be loaded.",
+					sessions: mergeRows(sessions, [row]),
+					activeSessionId: existing ? activeSessionId : activeSessionId,
 				});
-			}
+			},
+		}),
+		{
+			name: "canonical-sessions-storage",
+			// Only the identity mapping persists: the list and active selection
+			// are re-read from the backend on launch, but the agent -> session
+			// binding is what keeps a reopened agent on the same canonical
+			// conversation instead of minting a new one per launch.
+			partialize: (state) => ({
+				sessionByAgent: state.sessionByAgent,
+				activeSessionId: state.activeSessionId,
+			}),
 		},
-
-		createSession: async (cwd, agentId) => {
-			try {
-				const result = await desktopResult<{ session_id: string }>({
-					op: "sessions.create",
-					requestId: crypto.randomUUID(),
-					cwd,
-				});
-				const row: CanonicalSessionRow = {
-					session_id: result.session_id,
-					cwd,
-					agent_id: agentId ?? null,
-				};
-				set((state) => ({
-					sessions: mergeRows(state.sessions, [row]),
-					activeSessionId: result.session_id,
-					sessionByAgent: agentId
-						? { ...state.sessionByAgent, [agentId]: result.session_id }
-						: state.sessionByAgent,
-				}));
-				return result.session_id;
-			} catch (error) {
-				set({
-					error:
-						error instanceof Error
-							? error.message
-							: "The conversation could not be created.",
-				});
-				return null;
-			}
-		},
-
-		setActiveSession: (sessionId) => set({ activeSessionId: sessionId }),
-
-		upsertSession: (row) => {
-			const { sessions, activeSessionId } = get();
-			const existing = sessions.find(
-				(candidate) => candidate.session_id === row.session_id,
-			);
-			// A watcher update for the already-active session must not disturb
-			// selection; a new row is appended without becoming active.
-			set({
-				sessions: mergeRows(sessions, [row]),
-				activeSessionId: existing ? activeSessionId : activeSessionId,
-			});
-		},
-	}),
+	),
 );

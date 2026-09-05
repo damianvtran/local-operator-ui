@@ -24,7 +24,7 @@ import { Spinner } from "@shared/components/common/spinner";
 import { Alert, Badge, Button, Input, Label } from "@shared/components/ui";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plug, PlugZap, RotateCw, Trash2 } from "lucide-react";
-import type { FC } from "react";
+import type { FC, RefObject } from "react";
 import { useCallback, useState } from "react";
 import { SettingsSection } from "./settings-section";
 
@@ -42,8 +42,14 @@ type MCPServerRow = {
 	[key: string]: unknown;
 };
 
+/** Lifecycle routes wrap their payload as `{data, replayed}`. */
 type MCPListResult = {
-	servers: MCPServerRow[];
+	data: {
+		servers: MCPServerRow[];
+		operations?: Array<Record<string, unknown>>;
+		cold?: boolean;
+	};
+	replayed?: boolean;
 };
 
 type MCPAction =
@@ -228,9 +234,10 @@ const AddServerForm: FC<{
 	);
 };
 
-export const McpManagementSection: FC<{ sessionId?: string }> = ({
-	sessionId,
-}) => {
+export const McpManagementSection: FC<{
+	sessionId?: string;
+	sectionRef?: RefObject<HTMLDivElement>;
+}> = ({ sessionId, sectionRef }) => {
 	const capabilities = useDesktopCapabilities();
 	const enabled = desktopFeatureEnabled(capabilities.data, "mcp");
 	const queryClient = useQueryClient();
@@ -238,15 +245,19 @@ export const McpManagementSection: FC<{ sessionId?: string }> = ({
 	const [actionError, setActionError] = useState<string | null>(null);
 	const [showAdd, setShowAdd] = useState(false);
 
-	const listQuery = useQuery({
+	const listQuery = useQuery<MCPListResult["data"], Error>({
 		queryKey: mcpKeys.list(sessionId ?? ""),
 		queryFn: () => {
 			if (!sessionId) throw new Error("No conversation selected.");
-			return desktopResult<MCPListResult>({ op: "mcp.list", sessionId });
+			return desktopResult<MCPListResult>({ op: "mcp.list", sessionId }).then(
+				(result) => result.data,
+			);
 		},
 		enabled: enabled && Boolean(sessionId),
 		staleTime: 10_000,
 	});
+
+	const servers = listQuery.data?.servers ?? [];
 
 	const refresh = useCallback(() => {
 		if (sessionId) {
@@ -285,6 +296,7 @@ export const McpManagementSection: FC<{ sessionId?: string }> = ({
 			<SettingsSection
 				title="Integrations"
 				description="MCP servers connect agents to your tools and accounts."
+				sectionRef={sectionRef}
 			>
 				<Alert variant="warning">
 					Integration management needs a newer Local Operator backend. Update
@@ -299,6 +311,7 @@ export const McpManagementSection: FC<{ sessionId?: string }> = ({
 			<SettingsSection
 				title="Integrations"
 				description="MCP servers connect agents to your tools and accounts."
+				sectionRef={sectionRef}
 			>
 				<p className="text-body-sm text-ink-muted">
 					Open a conversation to manage its MCP servers.
@@ -311,6 +324,7 @@ export const McpManagementSection: FC<{ sessionId?: string }> = ({
 		<SettingsSection
 			title="Integrations"
 			description="MCP servers connect agents to your tools and accounts. A connected server is a working transport; the account behind it may still need its own sign-in."
+			sectionRef={sectionRef}
 		>
 			<div className="flex flex-col gap-4">
 				{actionError && <Alert variant="danger">{actionError}</Alert>}
@@ -333,14 +347,14 @@ export const McpManagementSection: FC<{ sessionId?: string }> = ({
 						</div>
 					</Alert>
 				)}
-				{listQuery.data && listQuery.data.servers.length === 0 && (
+				{listQuery.isSuccess && servers.length === 0 && (
 					<p className="text-body-sm text-ink-muted">
 						No MCP servers configured yet. Add one below.
 					</p>
 				)}
-				{listQuery.data && listQuery.data.servers.length > 0 && (
+				{servers.length > 0 && (
 					<ul className="flex flex-col gap-2">
-						{listQuery.data.servers.map((server) => {
+						{servers.map((server) => {
 							const connected = server.status === "connected";
 							return (
 								<li
@@ -508,6 +522,7 @@ export const McpManagementSection: FC<{ sessionId?: string }> = ({
 							variant="secondary"
 							size="sm"
 							onClick={() => setShowAdd(true)}
+							data-tour-tag="mcp-add-server"
 						>
 							Add server
 						</Button>
