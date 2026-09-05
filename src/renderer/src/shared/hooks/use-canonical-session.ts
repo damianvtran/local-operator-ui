@@ -107,6 +107,9 @@ export function useCanonicalSessionStream(
 	// Mutable side-channel for the frame pump; React state is the published,
 	// coalesced view. Frames arriving between renders collect here.
 	const pending = useRef<DesktopSessionFrame[]>([]);
+	// Set by a snapshot that needs the authoritative history tail; consumed by
+	// the effect below so the fetch runs outside the reducer.
+	const reconcileRef = useRef<number | null>(null);
 	const receiptRef = useRef<{ epoch: string; seq: number } | null>(null);
 	const reconnectRef = useRef<{ epoch?: string; afterSeq?: number }>({});
 	const generationRef = useRef(0);
@@ -194,6 +197,17 @@ export function useCanonicalSessionStream(
 							if (!snapshot.history.cursor_missing) {
 								transcript = applyHistoryPage(transcript, snapshot.history);
 							}
+							// A cold session (no live owner) snapshots with no history
+							// cursor and therefore an empty page, and a replaced cursor
+							// reports cursor_missing. Both are the contract's "reconcile
+							// through /history" case: the authoritative tail is fetched
+							// once per snapshot and merged durable-wins.
+							if (
+								snapshot.history.cursor_missing ||
+								snapshot.history.entries.length === 0
+							) {
+								reconcileRef.current = generation;
+							}
 							transcript = applyLiveSeed(
 								transcript,
 								snapshot.frontend.snapshot,
@@ -217,15 +231,25 @@ export function useCanonicalSessionStream(
 					}
 					if (frame.type === "frontend.update") {
 						const update = frame.payload;
+						if (!next.frontend) continue;
+						// An owner epoch rollover (a cold session's first owner binding,
+						// or a replaced owner) arrives as an update whose changes carry
+						// the NEW epoch and every field. Adopt it wholesale; from then on
+						// the ordinary same-epoch sequence check applies. An update for
+						// some other epoch that does not announce itself is stale.
+						const rollover =
+							update.epoch !== next.ownerEpoch &&
+							update.changes.epoch === update.epoch;
 						if (
-							next.frontend &&
-							update.epoch === next.ownerEpoch &&
-							next.frontend.sequence < update.sequence
+							rollover ||
+							(update.epoch === next.ownerEpoch &&
+								next.frontend.sequence < update.sequence)
 						) {
 							// Field deltas, not a full repaint: spread only the changed
 							// keys over the current state.
 							next = {
 								...next,
+								ownerEpoch: rollover ? update.epoch : next.ownerEpoch,
 								frontend: {
 									...next.frontend,
 									...update.changes,
@@ -245,6 +269,25 @@ export function useCanonicalSessionStream(
 							next = { ...next, transcript };
 						}
 					}
+				}
+				if (reconcileRef.current === generation) {
+					reconcileRef.current = null;
+					void desktopResult<DesktopHistoryPage>({
+						op: "sessions.history",
+						sessionId,
+						limit: 100,
+					})
+						.then((page) => {
+							if (generationRef.current !== generation) return;
+							setView((state) => ({
+								...state,
+								transcript: applyHistoryPage(state.transcript, page),
+							}));
+						})
+						.catch(() => {
+							// Painted rows stay; the stream keeps delivering. A failed
+							// reconcile is not a reason to blank the conversation.
+						});
 				}
 				performance.mark("lop:transcript:flush:end");
 				performance.measure(

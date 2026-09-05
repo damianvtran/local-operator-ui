@@ -52,6 +52,10 @@ type CanonicalSessionsState = {
 	fetchSessions: () => Promise<void>;
 	createSession: (cwd: string, agentId?: string) => Promise<string | null>;
 	setActiveSession: (sessionId: string | null) => void;
+	/** Point an agent at an existing canonical session (resume/fork/new). The
+	 * previous binding is dropped, not deleted: the old session stays in the
+	 * list and any running owner keeps working. */
+	bindSession: (agentId: string, sessionId: string) => void;
 	/** Merge one row from a watcher/stream update without duplicating or
 	 * reordering the list. */
 	upsertSession: (row: CanonicalSessionRow) => void;
@@ -147,6 +151,15 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			},
 
 			setActiveSession: (sessionId) => set({ activeSessionId: sessionId }),
+
+			bindSession: (agentId, sessionId) =>
+				set((state) => ({
+					activeSessionId: sessionId,
+					sessionByAgent: { ...state.sessionByAgent, [agentId]: sessionId },
+					sessions: mergeRows(state.sessions, [
+						{ session_id: sessionId, agent_id: agentId },
+					]),
+				})),
 
 			upsertSession: (row) => {
 				const { sessions, activeSessionId } = get();

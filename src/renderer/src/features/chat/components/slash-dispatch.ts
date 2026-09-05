@@ -7,11 +7,14 @@
  * the interception point — it returns true when it consumed the text, and the
  * caller's model path never runs.
  *
- * Owner commands go to the session command endpoint; native destinations act
- * locally (navigation, transcript clear, pickers). Interactive commands with
- * no argument resolve their backend `native_action` presentation request and
- * hand it to the picker host. An unknown command names the closest matches so
- * the user can fix the typo rather than guess.
+ * Every command is posted to the session command endpoint first: an owner
+ * command returns the owner's real SlashResult (painted as a system line), an
+ * interactive or native command returns a `native_action` presentation
+ * request. That request is resolved through `pickers/picker-registry`: a
+ * picker adapter mounts in the host, a navigate destination routes to the
+ * existing settings surface, and the two direct actions (`/clear` view-only,
+ * `/exit` detach-only) run here. An unknown command names the closest matches
+ * so the user can fix the typo rather than guess.
  */
 
 import { desktopResult } from "@shared/api/local-operator/desktop-api";
@@ -20,17 +23,27 @@ import {
 	desktopKeys,
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
-import { useChatStore } from "@shared/store/chat-store";
+import type { CanonicalSessionHandle } from "@shared/hooks/use-canonical-session";
 import { useQuery } from "@tanstack/react-query";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
+import type { NativeDesktopAction } from "../../../../../shared/desktop-control-contract";
+import type { DesktopCommandReceipt } from "../../../../../shared/desktop-session-contract";
+import type { PickerContext } from "../pickers/destination-pickers";
+import { DESTINATIONS } from "../pickers/picker-registry";
+import { isNativeAction } from "../pickers/use-picker-backend";
 import type { Message } from "../types/message";
 import type { SlashCommandMeta } from "./slash-commands";
 
 type SlashDispatchOptions = {
+	/** Canonical session the commands address. */
 	sessionId: string | undefined;
 	addMessage: (message: Message) => void;
+	/** The canonical stream handle; adapters read frontend state from it. */
+	canonical: CanonicalSessionHandle;
+	/** Bind the current agent to another canonical session (resume/fork/new). */
+	rebind: (sessionId: string) => void;
 };
 
 const SLASH_SUBMISSION = /^\/([A-Za-z]+)(?:\s([\s\S]*))?$/;
@@ -77,19 +90,11 @@ function closestCommands(
 		.map((entry) => `/${entry.name}`);
 }
 
-/** Destinations that act in the renderer without a backend command call. */
-const LOCAL_DESTINATIONS: Record<string, string> = {
-	settings: "/settings",
-	"settings.search": "/settings?filter=web-search",
-	appearance: "/settings?section=appearance",
-	providers: "/settings?section=backend",
-	accounts: "/settings?section=credentials",
-	updates: "/settings?section=updates",
-};
-
 export function useSlashDispatch({
 	sessionId,
 	addMessage,
+	canonical,
+	rebind,
 }: SlashDispatchOptions) {
 	const navigate = useNavigate();
 	const capabilities = useDesktopCapabilities();
@@ -103,9 +108,18 @@ export function useSlashDispatch({
 		enabled: commandsEnabled,
 		staleTime: 300_000,
 	});
-	const clearMessages = useChatStore((state) => state.clearConversation);
+	// The one active presentation request. A new command replaces it; Esc or
+	// Done clears it. Consumed once per command receipt, never per reconnect.
+	const [picker, setPicker] = useState<PickerContext | null>(null);
+	const closePicker = useCallback(() => setPicker(null), []);
 
-	return useCallback(
+	const note = useCallback(
+		(text: string, error = false) =>
+			addMessage(systemMessage(text, error ? "error" : undefined)),
+		[addMessage],
+	);
+
+	const dispatch = useCallback(
 		async (text: string): Promise<boolean> => {
 			const match = SLASH_SUBMISSION.exec(text.trim());
 			if (!match) return false;
@@ -119,109 +133,116 @@ export function useSlashDispatch({
 
 			if (!spec) {
 				const suggestions = closestCommands(word, commands);
-				addMessage(
-					systemMessage(
-						suggestions.length > 0
-							? `Unknown command /${word}. Did you mean ${suggestions.join(", ")}? Type / for the full list.`
-							: `Unknown command /${word}. Type / for the full list.`,
-						"error",
-					),
+				note(
+					suggestions.length > 0
+						? `Unknown command /${word}. Did you mean ${suggestions.join(", ")}? Type / for the full list.`
+						: `Unknown command /${word}. Type / for the full list.`,
+					true,
 				);
 				return true;
 			}
 
-			if (spec.arguments === "required" && !args) {
-				addMessage(
-					systemMessage(
-						`/${spec.name} needs a value. ${spec.description}`,
-						"error",
-					),
-				);
+			const entry = DESTINATIONS[spec.destination];
+
+			// Direct and navigate destinations need no owner round trip; the
+			// backend's native_action for them carries no fields either.
+			if (entry?.kind === "direct") {
+				if (entry.action === "clear") {
+					// View-only by contract: history on disk is untouched.
+					canonical.clearView();
+					return true;
+				}
+				// exit: close the window through main (detach-only; the backend
+				// keeps every session's owner running). In the browser harness
+				// there is no window to close, and the note says so honestly.
+				if (window.api?.desktop?.closeWindow) {
+					await window.api.desktop.closeWindow();
+				} else {
+					note(
+						"Close this window to quit. Conversations keep running in the background.",
+					);
+				}
 				return true;
 			}
-
-			// Local destinations act here. `/settings` is the canonical case: it
-			// must NEVER reach the model path.
-			const localRoute = LOCAL_DESTINATIONS[spec.destination];
-			if (localRoute) {
-				navigate(localRoute);
-				return true;
-			}
-
-			if (spec.destination === "transcript.clear") {
-				// View-only by contract: history on disk is untouched.
-				if (sessionId) clearMessages(sessionId);
-				return true;
-			}
-
-			if (spec.destination === "window.close") {
-				addMessage(
-					systemMessage(
-						"Close the window to quit. Detached conversations keep running.",
-					),
-				);
+			if (entry?.kind === "navigate") {
+				navigate(entry.route(args, sessionId ?? ""));
 				return true;
 			}
 
 			if (!sessionId) {
-				addMessage(
-					systemMessage(
-						`/${spec.name} needs an open conversation. Start one first.`,
-						"error",
-					),
+				note(
+					`/${spec.name} needs an open conversation. Start one first.`,
+					true,
 				);
 				return true;
 			}
 
+			// `/login <x>` and `/logout <x>` are validated by the backend against
+			// the provider registry; `/credential <x>` is refused so a secret can
+			// never land in command text. Everything else posts as typed.
 			try {
-				const receipt = await desktopResult<{
-					command: string;
-					result: {
-						kind: string;
-						text?: string;
-						style?: string;
-						destination?: string;
-						data?: Record<string, unknown>;
-					};
-				}>({
+				const receipt = await desktopResult<DesktopCommandReceipt>({
 					op: "sessions.command",
 					sessionId,
 					requestId: uuidv4(),
 					command: spec.name,
-					args,
+					args: spec.name === "credential" ? "" : args,
 				});
 				const result = receipt.result;
-				if (result.kind === "native_action") {
-					// A presentation request: the picker host renders fields and
-					// submits through data.submit. Until a destination-specific host
-					// exists, the receipt is an honest note, never a fake success.
-					const destination = result.destination ?? spec.destination;
-					addMessage(
-						systemMessage(
-							`/${spec.name} opens ${destination}. ${spec.description}`,
-						),
-					);
+				if (isNativeAction(result)) {
+					const action: NativeDesktopAction = result;
+					const target = DESTINATIONS[action.destination];
+					if (target?.kind === "navigate") {
+						navigate(target.route(action.args, sessionId));
+						return true;
+					}
+					if (!target) {
+						note(
+							`/${spec.name} points at ${action.destination}, which this build cannot present yet.`,
+							true,
+						);
+						return true;
+					}
+					setPicker({
+						action,
+						spec,
+						sessionId,
+						canonical,
+						commands,
+						onClose: closePicker,
+						note,
+						dispatch: (line) => void dispatch(line),
+						rebind,
+					});
 					return true;
 				}
 				if (result.text) {
-					addMessage(
-						systemMessage(
-							result.text,
-							result.style === "error" ? "error" : undefined,
-						),
+					note(
+						result.text,
+						result.kind === "error" || result.style === "error",
 					);
+				} else if (result.kind === "block") {
+					const data = result.data as {
+						items?: [string, string][];
+						title?: string;
+					};
+					if (Array.isArray(data.items)) {
+						note(
+							[data.title, ...data.items.map(([k, v]) => `${k}: ${v}`)]
+								.filter(Boolean)
+								.join("\n"),
+						);
+					}
 				}
 				// A team/agent attachment admits its consumed prompt once on the
 				// backend; the renderer must not resubmit result.data.request.
 				return true;
 			} catch (error) {
-				addMessage(
-					systemMessage(
-						`/${spec.name} could not run: ${
-							error instanceof Error ? error.message : "the backend refused it"
-						}`,
-						"error",
-					),
+				note(
+					`/${spec.name} could not run: ${
+						error instanceof Error ? error.message : "the backend refused it"
+					}`,
+					true,
 				);
 				return true;
 			}
@@ -230,9 +251,13 @@ export function useSlashDispatch({
 			commandsEnabled,
 			commandsQuery.data,
 			sessionId,
-			addMessage,
+			note,
 			navigate,
-			clearMessages,
+			canonical,
+			rebind,
+			closePicker,
 		],
 	);
+
+	return { dispatch, picker, closePicker };
 }

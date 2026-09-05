@@ -185,6 +185,11 @@ const TOOL_VERBS: Record<string, { done: string; running: string }> = {
 	ask: { done: "Asked", running: "Asking" },
 };
 
+/**
+ * The machine-voice object for a tool row: the path, URL, pattern or command
+ * it touched. A tool with no such argument has no object; the verb already
+ * names it ("Used echo"), so repeating the name would read as a stutter.
+ */
 function toolObject(record: Extract<TranscriptRecord, { kind: "tool" }>) {
 	const args = record.args ?? {};
 	for (const key of ["path", "file_path", "url", "pattern", "command"]) {
@@ -193,7 +198,7 @@ function toolObject(record: Extract<TranscriptRecord, { kind: "tool" }>) {
 			return value.length > 96 ? `${value.slice(0, 93)}...` : value;
 		}
 	}
-	return record.toolName;
+	return TOOL_VERBS[record.toolName] ? record.toolName : undefined;
 }
 
 const ToolRow = memo(function ToolRow({

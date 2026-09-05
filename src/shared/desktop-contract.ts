@@ -387,6 +387,9 @@ export type DesktopAPI = {
 	}) => Promise<DesktopResponse>;
 	/** Notification click -> open this conversation. Never answers a gate. */
 	onOpenConversation?: (callback: (sessionId: string) => void) => () => void;
+	/** `/exit`: close this window. Detach-only; the backend keeps sessions
+	 * running. Main applies the normal unsaved-state guard. Electron only. */
+	closeWindow?: () => Promise<void>;
 	/** Authenticated canonical session stream. Present only when the Electron
 	 * preload is live; browser development uses the server-side stream proxy. */
 	stream?: {
