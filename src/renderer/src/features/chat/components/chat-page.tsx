@@ -20,6 +20,7 @@ import { terminateStreamingMessages } from "@shared/hooks/use-streaming-message"
 import { useAgentSelectionStore } from "@shared/store/agent-selection-store";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { useChatStore } from "@shared/store/chat-store";
+import { useConversationInputStore } from "@shared/store/conversation-input-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { isDevelopmentMode } from "@shared/utils/env-utils";
 import { showErrorToast } from "@shared/utils/toast-manager";
@@ -237,6 +238,12 @@ export const ChatPage: FC<ChatProps> = () => {
 
 	// Get the addMessage function from the chat store
 	const addMessage = useChatStore((state) => state.addMessage);
+	const getCurrentInput = useConversationInputStore(
+		(state) => state.getCurrentInput,
+	);
+	const setCurrentInput = useConversationInputStore(
+		(state) => state.setCurrentInput,
+	);
 
 	// Use the job polling hook
 	const {
@@ -490,6 +497,56 @@ export const ChatPage: FC<ChatProps> = () => {
 		},
 		[conversationId, bindSession],
 	);
+	// A send that never reached the backend must hand the user's words back.
+	// The composer reads its draft from the conversation input store on every
+	// value change, so writing there restores the text in place -- no second
+	// source of draft state, and it survives the navigation the failure might
+	// prompt. Attachments are deliberately NOT re-attached: the composer holds
+	// them as `Attachment` records and only their paths reach this callback, so
+	// re-adding them here would invent metadata; the note says what happened and
+	// the files are still on disk.
+	const restoreDraft = useCallback(
+		(content: string, _attachments: string[]) => {
+			if (!conversationId) return;
+			// Only when the composer is empty: the user may already be typing the
+			// next thing, and overwriting that would repeat the very defect this
+			// fixes.
+			if (getCurrentInput(conversationId).trim()) return;
+			setCurrentInput(conversationId, content);
+		},
+		[conversationId, getCurrentInput, setCurrentInput],
+	);
+
+	// Notes land in the transcript the user is LOOKING at. In canonical mode the
+	// view is painted from `canonical.view`, so a system row written into the
+	// legacy chat store goes to a surface nobody renders -- which is how a failed
+	// send lost both the message and its error (QA Q1, and UX U5 from the picker
+	// path). Same rule as `useSlashDispatch`'s own `note`, kept identical on
+	// purpose: one way to say something to the user, not two.
+	const note = useCallback(
+		(text: string, error = false) => {
+			if (canonicalMode && canonicalSessionId) {
+				canonical.addNote(text, error ? "error" : "info");
+				return;
+			}
+			if (!conversationId) return;
+			addMessage(conversationId, {
+				id: uuidv4(),
+				role: "system",
+				message: text,
+				timestamp: new Date(),
+				status: error ? "error" : undefined,
+			});
+		},
+		[
+			addMessage,
+			canonical.addNote,
+			canonicalMode,
+			canonicalSessionId,
+			conversationId,
+		],
+	);
+
 	const { dispatch: handleSlashDispatch, picker } = useSlashDispatch({
 		sessionId: canonicalSessionId,
 		addMessage: (message) => {
@@ -528,13 +585,10 @@ export const ChatPage: FC<ChatProps> = () => {
 								trimmed,
 							);
 							if (!yes && !no) {
-								addMessage(conversationId, {
-									id: uuidv4(),
-									role: "system",
-									message: "Reply yes or no to answer the approval request.",
-									timestamp: new Date(),
-									status: "error",
-								});
+								note("Reply yes or no to answer the approval request.", true);
+								// The prompt was never sent, so it is still the user's to
+								// edit rather than something to retype from memory.
+								restoreDraft(content, attachments);
 								return;
 							}
 							await desktopResult({
@@ -569,15 +623,17 @@ export const ChatPage: FC<ChatProps> = () => {
 					});
 					requestAnimationFrame(() => scrollToBottom());
 				} catch (error) {
-					addMessage(conversationId, {
-						id: uuidv4(),
-						role: "system",
-						message: `The message was not sent: ${
+					note(
+						`The message was not sent: ${
 							error instanceof Error ? error.message : "the backend refused it"
 						}`,
-						timestamp: new Date(),
-						status: "error",
-					});
+						true,
+					);
+					// The composer clears on submit, so a failed admission used to
+					// DESTROY the typed prompt outright. Hand it back instead: the
+					// user's words are theirs, and a failure is not consent to lose
+					// them.
+					restoreDraft(content, attachments);
 				} finally {
 					setAdmitting(false);
 				}
@@ -699,6 +755,8 @@ export const ChatPage: FC<ChatProps> = () => {
 			canonicalBusy,
 			canonical.frontend?.pending_gate,
 			canonical.ownerEpoch,
+			note,
+			restoreDraft,
 		],
 	);
 

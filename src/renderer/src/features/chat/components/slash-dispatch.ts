@@ -237,8 +237,14 @@ export function useSlashDispatch({
 						return true;
 					}
 					if (!target) {
+						// Names the command and the next action, never the routing id
+						// behind it: "radient.mobile" is not something a user can act
+						// on, and "this build" describes the app to its own user
+						// (design D4, UX U8). Reaching this at all means a command was
+						// offered that cannot be presented, which is a defect in the
+						// catalogue rather than something the user did.
 						note(
-							`/${spec.name} points at ${action.destination}, which this build cannot present yet.`,
+							`/${spec.name} is not available in the desktop app yet. Run it in the terminal with local-operator.`,
 							true,
 						);
 						return true;

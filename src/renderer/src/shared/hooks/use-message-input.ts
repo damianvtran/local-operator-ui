@@ -82,6 +82,19 @@ export const useMessageInput = ({
 	const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 	const draftMessageRef = useRef<string>("");
 
+	// The draft as the STORE currently holds it. `inputValue` is local state
+	// seeded from the store on mount, so a write from outside this hook -- a
+	// failed send handing the user's prompt back -- changed the store and left
+	// the textarea empty. Subscribing makes an external restore visible.
+	const storedDraft = useConversationInputStore((s) =>
+		conversationId
+			? (s.inputByConversation[conversationId]?.currentInput ?? "")
+			: "",
+	);
+	// The last value this hook itself pushed, so a local keystroke echoing back
+	// through the store is not mistaken for an external write and re-applied.
+	const lastPushedRef = useRef<string>("");
+
 	// Store state for this conversation
 	const submittedMessages = conversationId
 		? getSubmittedMessages(conversationId)
@@ -123,11 +136,23 @@ export const useMessageInput = ({
 		setCurrentInput(conversationId, inputValue);
 	}, [conversationId, inputValue, setCurrentInput, hydrated]);
 
+	// Adopt a draft written from outside this hook. Guarded on both sides: only
+	// when the store genuinely differs from what we last pushed, and only into
+	// an EMPTY composer, so a restore can never overwrite something the user has
+	// started typing.
+	useEffect(() => {
+		if (!hydrated || !conversationId) return;
+		if (storedDraft === lastPushedRef.current) return;
+		lastPushedRef.current = storedDraft;
+		if (storedDraft && !inputValue) setInputValue(storedDraft);
+	}, [storedDraft, hydrated, conversationId, inputValue]);
+
 	// Handle input change: always reset history navigation and update draft
 	const handleChange = useCallback(
 		(value: string) => {
 			setInputValue(value);
 			if (conversationId) {
+				lastPushedRef.current = value;
 				setCurrentInput(conversationId, value);
 				resetCurrentHistoryIndex(conversationId);
 			}
@@ -141,6 +166,9 @@ export const useMessageInput = ({
 		onSubmit?.(inputValue);
 		addSubmittedMessage(conversationId, inputValue);
 		setInputValue("");
+		// Cleared BEFORE the store write so a synchronous restore inside
+		// `onSubmit` is not immediately overwritten by this submit's own clear.
+		lastPushedRef.current = "";
 		setCurrentInput(conversationId, "");
 		resetCurrentHistoryIndex(conversationId);
 		draftMessageRef.current = "";

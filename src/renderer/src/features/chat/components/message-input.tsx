@@ -67,6 +67,13 @@ type MessageInputProps = {
 	initialSuggestions?: string[];
 	agentData?: AgentDetails | null;
 	isSmallView?: boolean;
+	/**
+	 * History has not resolved yet, so "no messages" is not yet a FACT.
+	 * The empty state is a claim about the conversation; making it before the
+	 * transcript loads is how a populated chat flashed "no messages yet" and
+	 * then repainted (design D7).
+	 */
+	isHydrating?: boolean;
 };
 
 const EMPTY_REPLIES: Reply[] = [];
@@ -129,6 +136,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			initialSuggestions,
 			agentData,
 			isSmallView = false,
+			isHydrating = false,
 		},
 		ref,
 	) => {
@@ -771,7 +779,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					</div>
 				</div>
 
-				{messages.length === 0 && !isSmallView && (
+				{messages.length === 0 && !isHydrating && !isSmallView && (
 					<div className="mx-auto mt-6 w-full max-w-full sm:max-w-[90%] md:max-w-[900px]">
 						{/* Neutral chips. Twelve accent-washed pills was the accent
 						 * budget spent four times over on the one screen that has no
@@ -805,7 +813,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					isSmallView ? "px-1 pb-1 pt-0.5" : "px-4 pb-4 pt-2",
 				)}
 			>
-				{messages.length === 0 && !isSmallView ? (
+				{messages.length === 0 && !isHydrating && !isSmallView ? (
 					<div className="flex w-full flex-col items-center justify-center gap-6 p-4">
 						<h2 className="text-center text-ink text-title">
 							What can I help you with today?

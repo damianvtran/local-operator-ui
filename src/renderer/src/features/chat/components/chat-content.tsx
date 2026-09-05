@@ -286,7 +286,6 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 											onLoadOlder={canonical.view.loadOlder}
 											containerRef={messagesContainerRef}
 											isSmallView={isSmallView}
-											cold={canonical.view.cold}
 											status={canonical.view.status}
 											error={canonical.view.error}
 										/>
@@ -329,6 +328,16 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 												? messages
 												: EMPTY_MESSAGES
 										: messages
+								}
+								// A cold session's history is still being fetched while the
+								// canonical stream is "connecting", and an empty record
+								// list is indistinguishable from a settled empty
+								// conversation -- so the app asserted "no messages yet"
+								// before it knew, then repainted when history arrived
+								// (design D7's hydration note). Passing the real state
+								// lets the composer wait instead of guessing.
+								isHydrating={
+									canonical ? canonical.view.status === "connecting" : false
 								}
 								currentJobId={canonical ? null : currentJobId}
 								onCancelJob={onCancelJob}
