@@ -221,6 +221,66 @@ test("canonical session operations preserve identity, arguments and main-owned a
 	assert.equal(seen.length, count);
 });
 
+test("gated legacy reads travel the authenticated contract, not a bare fetch", async () => {
+	// These routes are gated in managed mode (agent inventory, cwd paths, job
+	// history and conversation content are the same tenant's data as the
+	// control plane), so the renderer's old bare `fetch` 401s against exactly
+	// the backend this app starts. Each must reach its real path, carry the
+	// main-owned bearer, and preserve the arguments the previous URL builder
+	// put in the query string.
+	const agentId = "fixture-agent";
+	for (const [operation, path, method] of [
+		[{ op: "legacy.agents.list", page: 2, perPage: 25 }, "/v1/agents?page=2&per_page=25", "GET"],
+		[
+			{ op: "legacy.agents.list", page: 1, perPage: 10, name: "qa", direction: "desc" },
+			"/v1/agents?page=1&per_page=10&name=qa&direction=desc",
+			"GET",
+		],
+		[{ op: "legacy.agent.get", agentId }, `/v1/agents/${agentId}`, "GET"],
+		[
+			{ op: "legacy.agent.history", agentId, page: 3, perPage: 50 },
+			`/v1/agents/${agentId}/history?page=3&per_page=50`,
+			"GET",
+		],
+		[{ op: "legacy.jobs.list" }, "/v1/jobs", "GET"],
+		[
+			{ op: "legacy.jobs.list", agentId, status: "running" },
+			`/v1/jobs?agent_id=${agentId}&status=running`,
+			"GET",
+		],
+		[{ op: "legacy.job.get", jobId: "job-1" }, "/v1/jobs/job-1", "GET"],
+		[{ op: "legacy.models.providers" }, "/v1/models/providers", "GET"],
+		// The provider/sort/direction the model list actually builds. Dropping
+		// them would silently widen every filtered list to the whole catalogue.
+		[
+			{ op: "legacy.models", provider: "openai", sort: "name", direction: "ascending" },
+			"/v1/models?provider=openai&sort=name&direction=ascending",
+			"GET",
+		],
+		[{ op: "auth.probe", provider: "ollama" }, "/v1/auth/providers/ollama/probe", "POST"],
+	]) {
+		assert.equal((await requestDesktop(operation, url, token)).status, 200);
+		const actual = seen.at(-1);
+		assert.equal(actual.path, path);
+		assert.equal(actual.method, method);
+		assert.equal(actual.authorization, `Bearer ${token}`);
+	}
+
+	// The vocabulary stays closed: no traversal, no invented sort key, no
+	// renderer-supplied URL.
+	const count = seen.length;
+	for (const input of [
+		{ op: "legacy.agent.get", agentId: "../config" },
+		{ op: "legacy.job.get", jobId: "../../etc/passwd" },
+		{ op: "legacy.models", sort: "; drop" },
+		{ op: "legacy.models", direction: "sideways" },
+		{ op: "legacy.agents.list", perPage: 10000 },
+		{ op: "auth.probe", provider: "../config" },
+	])
+		assert.equal((await requestDesktop(input, url, token)).status, 422);
+	assert.equal(seen.length, count);
+});
+
 test("control catalogues, lifecycle, MCP and Radient use closed main-owned transport", async () => {
 	const sessionId = "123456abcdef";
 	const requestId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
