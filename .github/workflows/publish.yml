@@ -69,13 +69,12 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           CSC_CONTENT: ${{ secrets.CSC_CONTENT }}
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
-          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
         run: |
           if [ "$NOTARIZE" != true ]; then
             echo 'NOTARIZE must be true'
             exit 1
           fi
-          for var in APPLE_ID APPLE_ID_PASSWORD APPLE_TEAM_ID CSC_CONTENT CSC_KEY_PASSWORD KEYCHAIN_PASSWORD; do
+          for var in APPLE_ID APPLE_ID_PASSWORD APPLE_TEAM_ID CSC_CONTENT CSC_KEY_PASSWORD; do
             if [ -z "${!var}" ]; then
               echo "Missing required secret: $var"
               exit 1
@@ -178,8 +177,11 @@ jobs:
         env:
           CSC_CONTENT: ${{ secrets.CSC_CONTENT }}
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
-          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
         run: |
+          # This runner-local keychain has no lifetime beyond the job. Generate
+          # its password here rather than requiring a persistent repository secret.
+          KEYCHAIN_PASSWORD="$(openssl rand -hex 32)"
+          echo "::add-mask::$KEYCHAIN_PASSWORD"
           CSC_KEYCHAIN="$RUNNER_TEMP/build.keychain-db"
           echo "CSC_KEYCHAIN=$CSC_KEYCHAIN" >> "$GITHUB_ENV"
           CERTIFICATE="$RUNNER_TEMP/certificate.p12"

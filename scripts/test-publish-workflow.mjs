@@ -7,7 +7,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { createRequire } from "node:module";
-import { readFileSync, writeFileSync, mkdtempSync, mkdirSync, rmSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdtempSync, mkdirSync, rmSync, existsSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
@@ -123,6 +124,64 @@ test("mac signing uses imported keychain without CSC_LINK, keeps notarization", 
   assert.match(setup, /set-key-partition-list .* -k "\$KEYCHAIN_PASSWORD" "\$CSC_KEYCHAIN"/);
   for (const job of ["build-windows", "build-linux"]) assert.ok(!JSON.stringify(jobs[job]).includes("forceCodeSigning"));
 });
+test("keychain password is generated per job, masked, and never a repository dependency", () => {
+  assert.ok(!("KEYCHAIN_PASSWORD" in preflight.env));
+  assert.doesNotMatch(preflight.run, /KEYCHAIN_PASSWORD/);
+  assert.doesNotMatch(JSON.stringify(workflow), /secrets\.KEYCHAIN_PASSWORD/);
+  assert.deepEqual(Object.keys(preflight.env).sort(), ["APPLE_ID", "APPLE_ID_PASSWORD", "APPLE_TEAM_ID", "CSC_CONTENT", "CSC_KEY_PASSWORD"]);
+  const setup = step("build-macos", "Setup code signing");
+  assert.ok(!("KEYCHAIN_PASSWORD" in setup.env));
+  assert.match(setup.run, /KEYCHAIN_PASSWORD="\$\(openssl rand -hex 32\)"/);
+});
+test("actual signing setup masks one random password and passes it consistently", () => {
+  const digests = [0, 1].map(() => sandbox((dir) => {
+    // Only security is stubbed: execute the checked-in shell, real OpenSSL
+    // generation, base64 decoding and cleanup. Persist hashes, never passwords.
+    writeFileSync(join(dir, "security"), `#!/usr/bin/env node
+const { appendFileSync } = require('node:fs');
+const { createHash } = require('node:crypto');
+const args = process.argv.slice(2);
+const command = args[0];
+const flag = command === 'set-key-partition-list' ? '-k' : '-p';
+const password = ['create-keychain', 'unlock-keychain', 'set-key-partition-list'].includes(command) ? args[args.indexOf(flag) + 1] : undefined;
+appendFileSync(process.env.CALLS_FILE, JSON.stringify({ command, keychain: args.at(-1), passwordShape: password ? /^[a-f0-9]{64}$/.test(password) : null, digest: password ? createHash('sha256').update(password).digest('hex') : null }) + '\\n');
+console.log('SECURITY_CALLED');
+`, { mode: 0o755 });
+    const result = shell(step("build-macos", "Setup code signing").run, {
+      PATH: `${dir}:${process.env.PATH}`, RUNNER_TEMP: dir,
+      GITHUB_ENV: join(dir, "env"), CALLS_FILE: join(dir, "calls"),
+      CSC_CONTENT: Buffer.from("fixture-p12").toString("base64"), CSC_KEY_PASSWORD: "fixture-p12-password",
+    }, dir);
+    // Avoid including captured stdout in assertion errors: the Actions mask
+    // command necessarily contains the value, but no test output may reveal it.
+    assert.equal(result.status, 0, "signing setup shell must succeed");
+    const lines = result.stdout.trim().split("\n");
+    assert.ok(/^::add-mask::[a-f0-9]{64}$/.test(lines[0]), "mask must precede every security invocation");
+    const password = lines[0].slice("::add-mask::".length);
+    const digest = createHash("sha256").update(password).digest("hex");
+    assert.ok(!result.stderr.includes(password));
+    assert.deepEqual(lines.slice(1), Array(5).fill("SECURITY_CALLED"));
+    const calls = readFileSync(join(dir, "calls"), "utf8").trim().split("\n").map((line) => JSON.parse(line));
+    assert.deepEqual(calls.map((c) => c.command), ["create-keychain", "default-keychain", "unlock-keychain", "import", "set-key-partition-list"]);
+    const passwordCalls = calls.filter((c) => c.digest);
+    assert.equal(passwordCalls.length, 3);
+    assert.ok(passwordCalls.every((c) => c.passwordShape && c.digest === digest), "create/unlock/partition must share the generated 32-byte password");
+    assert.ok(calls.filter((c) => c.command !== "import").every((c) => c.keychain === join(dir, "build.keychain-db")));
+    assert.equal(readFileSync(join(dir, "env"), "utf8"), `CSC_KEYCHAIN=${join(dir, "build.keychain-db")}\n`);
+    assert.ok(!existsSync(join(dir, "certificate.p12")), "temporary certificate must be removed");
+    return digest;
+  }));
+  assert.notEqual(digests[0], digests[1], "each job must generate a fresh password");
+  console.log("SIGNING_SHELL: 2 fresh 32-byte passwords; mask before use; create/unlock/partition equal; only keychain path persisted");
+});
+test("failed random generation stops before keychain setup", () => sandbox((dir) => {
+  writeFileSync(join(dir, "openssl"), "#!/bin/sh\nexit 1\n", { mode: 0o755 });
+  writeFileSync(join(dir, "security"), "#!/bin/sh\necho SECURITY_CALLED\n", { mode: 0o755 });
+  const result = shell(step("build-macos", "Setup code signing").run, { PATH: `${dir}:${process.env.PATH}`, RUNNER_TEMP: dir, GITHUB_ENV: join(dir, "env") }, dir);
+  assert.equal(result.status, 1);
+  assert.equal(result.stdout, "");
+  assert.ok(!existsSync(join(dir, "env")));
+}));
 test("actual pnpm forwarding and electron-builder parser enforce signing", async () => {
   const captures = sandbox((dir) => {
   // Preserve the real dist script. Only its expensive build and packaging
