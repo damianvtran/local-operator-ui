@@ -2,7 +2,14 @@ import { RadientMark } from "@shared/components/common/radient-mark";
 import { Tooltip } from "@shared/components/ui/tooltip";
 import { useMediaQuery } from "@shared/hooks/use-media-query";
 import { cn } from "@shared/lib/utils";
-import { Download, Key, Paintbrush, Puzzle, Settings } from "lucide-react";
+import {
+	Download,
+	Key,
+	Paintbrush,
+	Puzzle,
+	Settings,
+	SlidersHorizontal,
+} from "lucide-react";
 import type { ComponentType, FC } from "react";
 
 /**
@@ -264,6 +271,11 @@ export const DEFAULT_SETTINGS_SECTIONS: SettingsSection[] = [
 		id: "appearance",
 		label: "Appearance",
 		icon: Paintbrush,
+	},
+	{
+		id: "backend",
+		label: "Backend settings",
+		icon: SlidersHorizontal,
 	},
 	{
 		id: "credentials",

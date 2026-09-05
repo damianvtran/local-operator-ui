@@ -54,6 +54,7 @@ import {
 	YAxis,
 } from "recharts";
 import { AppUpdatesSection } from "./app-updates-section";
+import { BackendSettingsSection } from "./backend-settings-section";
 import { Credentials } from "./credentials";
 import { GoogleIntegrationsSection } from "./integrations-section";
 import { RadientAccountSection } from "./radient-account-section";
@@ -375,8 +376,21 @@ export const SettingsPage: FC = () => {
 		integrations: useRef<HTMLDivElement>(null),
 		appearance: useRef<HTMLDivElement>(null),
 		credentials: useRef<HTMLDivElement>(null),
+		backend: useRef<HTMLDivElement>(null),
 		updates: useRef<HTMLDivElement>(null),
 	}).current;
+
+	// A /settings deep link carries either ?section= for one of the sidebar
+	// sections or ?setting=<key> to reveal and focus one registry row inside
+	// the searchable backend settings section.
+	const settingFocusKey = useMemo(() => {
+		const params = new URLSearchParams(location.search);
+		return params.get("setting");
+	}, [location.search]);
+	const settingsSearchFilter = useMemo(() => {
+		const params = new URLSearchParams(location.search);
+		return params.get("filter") ?? "";
+	}, [location.search]);
 
 	// Handle section selection from sidebar
 	const handleSelectSection = useCallback(
@@ -492,12 +506,16 @@ export const SettingsPage: FC = () => {
 	useEffect(() => {
 		const queryParams = new URLSearchParams(location.search);
 		const sectionFromQuery = queryParams.get("section");
+		// A ?setting= deep link lives inside the backend settings section.
+		const targetSection = queryParams.get("setting")
+			? "backend"
+			: sectionFromQuery;
 
-		if (sectionFromQuery && sectionRefs[sectionFromQuery]) {
+		if (targetSection && sectionRefs[targetSection]) {
 			// Check if the section exists in our refs
 			// A short delay can help ensure the layout is stable before scrolling
 			const timer = setTimeout(() => {
-				handleSelectSection(sectionFromQuery);
+				handleSelectSection(targetSection);
 			}, 100); // 100ms delay, adjust if needed
 
 			return () => clearTimeout(timer); // Cleanup timer
@@ -866,6 +884,18 @@ export const SettingsPage: FC = () => {
 									</>
 								)}
 							</div>
+						</SettingsSection>
+
+						<SettingsSection
+							title="Backend settings"
+							icon={Settings}
+							description="Every setting the backend registry owns, searchable, with typed editors and scopes."
+							sectionRef={sectionRefs.backend}
+						>
+							<BackendSettingsSection
+								focusKey={settingFocusKey}
+								initialFilter={settingsSearchFilter}
+							/>
 						</SettingsSection>
 
 						{/*
