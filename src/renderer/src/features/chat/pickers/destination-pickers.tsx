@@ -1666,7 +1666,7 @@ export const LoginPicker: FC<PickerContext> = ({ onClose, action }) => {
 		);
 		if (hit) {
 			navigate(
-				`/settings?section=backend&provider=${encodeURIComponent(hit.id)}`,
+				`/settings?section=providers&provider=${encodeURIComponent(hit.id)}`,
 			);
 			onClose();
 		}
@@ -1682,7 +1682,7 @@ export const LoginPicker: FC<PickerContext> = ({ onClose, action }) => {
 			loadError={providers.isError ? errorText(providers.error) : null}
 			onPick={(value) => {
 				navigate(
-					`/settings?section=backend&provider=${encodeURIComponent(value)}`,
+					`/settings?section=providers&provider=${encodeURIComponent(value)}`,
 				);
 				onClose();
 			}}
