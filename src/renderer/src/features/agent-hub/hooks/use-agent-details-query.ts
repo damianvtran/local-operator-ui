@@ -1,6 +1,5 @@
 import { getAgent } from "@shared/api/radient/agents-api";
 import type { Agent, RadientApiResponse } from "@shared/api/radient/types";
-import { apiConfig } from "@shared/config";
 import { useQuery } from "@tanstack/react-query";
 
 // Query keys for agent details
@@ -37,7 +36,7 @@ export const useAgentDetailsQuery = ({
 				throw new Error("Agent ID is required to fetch details.");
 			}
 			// Fetch agent details using the API client function
-			const response = await getAgent(apiConfig.radientBaseUrl, agentId);
+			const response = await getAgent(agentId);
 			// The API client already handles basic error checking (non-2xx status)
 			return response;
 		},

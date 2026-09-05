@@ -3,7 +3,6 @@ import type {
 	PaginatedAgentList,
 	RadientApiResponse,
 } from "@shared/api/radient/types";
-import { apiConfig } from "@shared/config";
 import { useQuery } from "@tanstack/react-query";
 
 // Query keys for public agents
@@ -110,12 +109,7 @@ export const usePublicAgentsQuery = ({
 			params.sort = validatedSort;
 			params.order = validatedOrder;
 
-			const response = await listAgents(
-				apiConfig.radientBaseUrl,
-				page,
-				perPage,
-				params,
-			);
+			const response = await listAgents(page, perPage, params);
 			return response;
 		},
 		select: (data) => data.result,

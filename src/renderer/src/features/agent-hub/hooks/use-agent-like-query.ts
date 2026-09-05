@@ -1,6 +1,5 @@
 import { getAgentLike } from "@shared/api/radient/agents-api";
 import type { AgentLike } from "@shared/api/radient/types";
-import { apiConfig } from "@shared/config";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import { useQuery } from "@tanstack/react-query";
 
@@ -26,7 +25,7 @@ export const useAgentLikeQuery = ({
 	agentId,
 	enabled = true,
 }: UseAgentLikeQueryParams) => {
-	const { sessionToken, isAuthenticated } = useRadientAuth(); // Get auth token and status
+	const { isAuthenticated } = useRadientAuth(); // Get auth token and status
 
 	const query = useQuery<
 		AgentLike | Record<string, never>, // Type of data returned by queryFn
@@ -37,14 +36,10 @@ export const useAgentLikeQuery = ({
 			if (!agentId) {
 				throw new Error("Agent ID is required to fetch like status.");
 			}
-			if (!sessionToken) {
+			if (!isAuthenticated) {
 				throw new Error("Authentication required to fetch like status.");
 			}
-			const response = await getAgentLike(
-				apiConfig.radientBaseUrl,
-				agentId,
-				sessionToken,
-			);
+			const response = await getAgentLike(agentId);
 			return response.result;
 		},
 		enabled: !!agentId && enabled && isAuthenticated, // Use isAuthenticated status

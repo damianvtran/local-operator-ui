@@ -61,17 +61,6 @@ const api = {
 	showItemInFolder: (filePath: string) =>
 		ipcRenderer.invoke("show-item-in-folder", filePath),
 
-	// Session storage methods
-	session: {
-		getSession: () => ipcRenderer.invoke("get-session"),
-		storeSession: (
-			accessToken: string,
-			expiry: number,
-			refreshToken?: string,
-		) => ipcRenderer.invoke("store-session", accessToken, expiry, refreshToken),
-		clearSession: () => ipcRenderer.invoke("clear-session"),
-	},
-
 	// System information
 	systemInfo: {
 		getAppVersion: () => ipcRenderer.invoke("get-app-version"),
@@ -175,35 +164,6 @@ const api = {
 		},
 	},
 
-	// --- OAuth Methods ---
-	oauth: {
-		login: (provider: "google" | "microsoft") =>
-			ipcRenderer.invoke("oauth-login", provider),
-		logout: () => ipcRenderer.invoke("oauth-logout"),
-		getStatus: () => ipcRenderer.invoke("oauth-get-status"),
-		requestAdditionalGoogleScopes: (
-			scopes: string[], // Added
-		) => ipcRenderer.invoke("oauth-request-additional-scopes", scopes), // Added
-		// Listener for status updates from the main process
-		onStatusUpdate: (
-			callback: (status: {
-				loggedIn: boolean;
-				provider: "google" | "microsoft" | null;
-				accessToken?: string;
-				idToken?: string;
-				expiry?: number;
-				error?: string;
-			}) => void,
-		) => {
-			const handler = (_event, status) => callback(status);
-			ipcRenderer.on("oauth-status-update", handler);
-			// Return a cleanup function to remove the listener
-			return () => {
-				ipcRenderer.removeListener("oauth-status-update", handler);
-			};
-		},
-	},
-
 	/** Opens a native dialog to select a directory */
 	selectDirectory: (): Promise<string | undefined> =>
 		ipcRenderer.invoke("select-directory"),
@@ -249,9 +209,6 @@ const api = {
 			}
 			return undefined;
 		},
-		// Add function to check if provider auth is configured in the backend
-		checkProviderAuthEnabled: (): Promise<boolean> =>
-			ipcRenderer.invoke("ipc-check-provider-auth"),
 	},
 };
 

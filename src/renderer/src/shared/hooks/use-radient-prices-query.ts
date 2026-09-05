@@ -4,8 +4,8 @@
  * React Query hook for fetching Radient default credit prices.
  */
 
-import { createRadientClient } from "@shared/api/radient";
-import { apiConfig } from "@shared/config";
+import { radientProxy } from "@shared/api/radient/proxy";
+import type { PricesResponse } from "@shared/api/radient/types";
 import { useQuery } from "@tanstack/react-query";
 
 // Query keys for Radient prices data
@@ -21,14 +21,6 @@ export const radientPricesKeys = {
  * @returns Query result with prices data, loading state, and error state.
  */
 export const useRadientPricesQuery = () => {
-	// Create the Radient API client instance using config values
-	// Note: Client ID is not strictly needed here as the endpoint is public,
-	// but we pass it for consistency with client creation.
-	const radientClient = createRadientClient(
-		apiConfig.radientBaseUrl,
-		apiConfig.radientClientId, // Not used by fetchPrices, but required by constructor
-	);
-
 	// Query for the prices information
 	const pricesQuery = useQuery({
 		// Use the defined query key
@@ -36,9 +28,9 @@ export const useRadientPricesQuery = () => {
 		// The query function calls the fetchPrices method from the client
 		queryFn: async () => {
 			try {
-				// Call the fetchPrices method via the prices property of the client
-				const prices = await radientClient.prices.fetchPrices();
-				return prices;
+				// Prices are public upstream; the proxy still routes them so the
+				// renderer has one Radient path.
+				return await radientProxy<PricesResponse>({ operation: "prices" });
 			} catch (error) {
 				console.error("Failed to fetch Radient prices:", error);
 				// Re-throw the error to be handled by react-query
