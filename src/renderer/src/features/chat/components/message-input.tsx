@@ -57,6 +57,13 @@ type MessageInputProps = {
 	/** New messages landed while the reader was scrolled up. */
 	hasNewActivity?: boolean;
 	scrollToBottom?: () => void;
+	/**
+	 * Canonical-session stop control. Unlike the legacy job cancel, a turn in
+	 * flight does NOT disable the composer: typing during a turn steers it, and
+	 * a pending gate is answered here. So the stop button sits beside Send
+	 * rather than replacing it, and only while the owner is actually working.
+	 */
+	canonicalStop?: { active: boolean; onStop: () => void };
 	initialSuggestions?: string[];
 	agentData?: AgentDetails | null;
 	isSmallView?: boolean;
@@ -118,6 +125,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			isFarFromBottom = false,
 			hasNewActivity = false,
 			scrollToBottom = () => {},
+			canonicalStop,
 			initialSuggestions,
 			agentData,
 			isSmallView = false,
@@ -708,6 +716,21 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 										</span>
 									</Tooltip>
 								</>
+							)}
+							{canonicalStop?.active && (
+								<Tooltip content="Stop this session's current work">
+									<span>
+										<Button
+											variant="danger"
+											size={isSmallView ? "icon-sm" : "icon"}
+											type="button"
+											onClick={canonicalStop.onStop}
+											aria-label="Stop"
+										>
+											<Square aria-hidden="true" />
+										</Button>
+									</span>
+								</Tooltip>
 							)}
 							{isLoading && currentJobId ? (
 								<Tooltip content="Stop agent">

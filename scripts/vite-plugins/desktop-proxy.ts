@@ -12,12 +12,16 @@ export function desktopProxyPlugin(): Plugin {
 		apply: "serve",
 		configureServer(server) {
 			server.middlewares.use(async (req, res, next) => {
-				if (req.url === "/__desktop/stream") {
+				// The renderer's EventSource carries its session and cursor in the
+				// query string, so match the path, not the whole URL: an exact
+				// comparison fell through to Vite's SPA fallback and the stream
+				// "opened" as index.html.
+				const requestPath = (req.url ?? "").split("?")[0];
+				if (requestPath === "/__desktop/stream") {
 					// Authenticated SSE proxy for browser development. Same trust
 					// rules as the JSON route: same-origin loopback only, and the
 					// bearer stays in this Node process. The renderer's EventSource
 					// talks to this same-origin URL; it cannot reach the backend.
-					const origin = req.headers.origin;
 					const address = server.httpServer?.address();
 					const port =
 						typeof address === "object" && address
@@ -27,6 +31,21 @@ export function desktopProxyPlugin(): Plugin {
 						`http://127.0.0.1:${port}`,
 						`http://localhost:${port}`,
 					]);
+					// A same-origin EventSource GET carries no Origin header (browsers
+					// only add it to cross-origin and non-GET requests), so the
+					// boundary falls back to the Referer's origin. A cross-site
+					// request always carries Origin, and an absent Referer is refused,
+					// so the check is still fail-closed.
+					const referer = req.headers.referer;
+					let refererOrigin: string | null = null;
+					if (referer) {
+						try {
+							refererOrigin = new URL(referer).origin;
+						} catch {
+							refererOrigin = null;
+						}
+					}
+					const origin = req.headers.origin ?? refererOrigin;
 					if (req.method !== "GET" || !origin || !allowed.has(origin)) {
 						res.statusCode = 403;
 						res.setHeader("Content-Type", "application/json");

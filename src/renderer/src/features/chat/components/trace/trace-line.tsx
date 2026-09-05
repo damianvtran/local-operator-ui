@@ -54,6 +54,18 @@ export type TraceLineProps = {
 	details?: ReactNode;
 	/** Extra classes on the row. */
 	className?: string;
+	/**
+	 * Explicit label, bypassing `getTraceLabel`. The canonical transcript's
+	 * tool events already carry the verb in the user's terms and the object
+	 * (a path, a URL, a command) as separate facts, so re-deriving them from a
+	 * legacy `ActionType` would only lose information. Same row, same two
+	 * faces, same disclosure — only the source of the words differs.
+	 */
+	verbOverride?: string;
+	/** Machine-voice object for `verbOverride` rows. */
+	object?: string;
+	/** Glyph for `verbOverride` rows; defaults to the code glyph. */
+	glyph?: ReactNode;
 };
 
 const TraceRow = ({
@@ -115,17 +127,21 @@ export const TraceLine = ({
 	defaultOpen = false,
 	details,
 	className,
+	verbOverride,
+	object,
+	glyph,
 }: TraceLineProps) => {
 	const label = getTraceLabel(action, filePath, files, narration);
-	const verb = running ? label.runningVerb : label.verb;
+	const verb = verbOverride ?? (running ? label.runningVerb : label.verb);
 	const Icon = failed ? CircleAlert : label.icon;
+	const icon = failed || !verbOverride || !glyph ? <Icon /> : glyph;
 
 	const row = (
 		<TraceRow
-			icon={<Icon />}
+			icon={icon}
 			verb={verb}
-			object={label.object}
-			narration={label.narration}
+			object={verbOverride ? object : label.object}
+			narration={verbOverride ? narration : label.narration}
 			running={running}
 			failed={failed}
 		/>
