@@ -1,4 +1,5 @@
 import { createLocalOperatorClient } from "@shared/api/local-operator";
+import { desktopResult } from "@shared/api/local-operator/desktop-api";
 import {
 	desktopFeatureEnabled,
 	useDesktopCapabilities,
@@ -32,6 +33,7 @@ import React, {
 import type { FC } from "react";
 import { useNavigate } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
+import { PickerOutlet } from "../pickers/picker-registry";
 import type { Message } from "../types/message";
 import { ChatContent } from "./chat-content";
 import { ChatSidebar } from "./chat-sidebar";
@@ -39,6 +41,52 @@ import { ErrorView } from "./error-view";
 import type { MessageInputHandle } from "./message-input";
 import { PlaceholderView } from "./placeholder-view";
 import { useSlashDispatch } from "./slash-dispatch";
+
+const IMAGE_MIME_BY_EXT: Record<
+	string,
+	"image/png" | "image/jpeg" | "image/gif" | "image/webp"
+> = {
+	png: "image/png",
+	jpg: "image/jpeg",
+	jpeg: "image/jpeg",
+	gif: "image/gif",
+	webp: "image/webp",
+};
+
+/**
+ * Canonical admission carries images inline as `{data_b64, mime_type}`. The
+ * composer holds attachments as paths or data URLs; only image types the
+ * runtime accepts are encoded, anything else is left out rather than
+ * refused (the JSON transport budget is 256 KiB, see the backend contract).
+ */
+const IMAGE_DATA_URL = /^data:(image\/(png|jpeg|gif|webp));base64,(.+)$/;
+const FILE_SCHEME = /^file:\/\//;
+
+async function encodeImageAttachments(attachments: string[]) {
+	const images: {
+		data_b64: string;
+		mime_type: (typeof IMAGE_MIME_BY_EXT)[string];
+	}[] = [];
+	for (const attachment of attachments) {
+		const dataUrl = IMAGE_DATA_URL.exec(attachment);
+		if (dataUrl) {
+			images.push({
+				data_b64: dataUrl[3],
+				mime_type: dataUrl[1] as (typeof IMAGE_MIME_BY_EXT)[string],
+			});
+			continue;
+		}
+		const ext = attachment.split(".").pop()?.toLowerCase() ?? "";
+		const mime = IMAGE_MIME_BY_EXT[ext];
+		if (!mime || !window.api?.readFile) continue;
+		const read = await window.api.readFile(
+			attachment.replace(FILE_SCHEME, ""),
+			"base64",
+		);
+		if (read.success) images.push({ data_b64: read.data, mime_type: mime });
+	}
+	return images.slice(0, 8);
+}
 
 /**
  * Props for the ChatPage component
@@ -110,6 +158,7 @@ export const ChatPage: FC<ChatProps> = () => {
 	const setActiveSession = useCanonicalSessionsStore(
 		(state) => state.setActiveSession,
 	);
+	const bindSession = useCanonicalSessionsStore((state) => state.bindSession);
 	const canonicalSessionId = conversationId
 		? sessionByAgent[conversationId]
 		: undefined;
@@ -201,6 +250,24 @@ export const ChatPage: FC<ChatProps> = () => {
 		conversationId,
 		addMessage,
 	});
+
+	// Canonical transcript mode: once the agent is bound to a canonical
+	// session and the stream is live, the conversation is painted from the
+	// backend's durable history + live events and prompts are admitted through
+	// `sessions.message`. The legacy job/message path below stays only for a
+	// backend that predates the desktop contract (capabilities fail closed).
+	const canonicalMode = canonicalEnabled && Boolean(canonicalSessionId);
+	const canonicalBusy =
+		canonicalMode &&
+		(canonical.frontend?.streaming === true ||
+			canonical.transcript.records.some(
+				(record) =>
+					(record.kind === "assistant" && record.streaming) ||
+					(record.kind === "tool" && record.phase !== "done"),
+			));
+	// Admission pending: the composer disables between POST and the owner's
+	// `message_start` echo so a double Enter cannot admit twice.
+	const [admitting, setAdmitting] = useState(false);
 
 	// Resolve the busy latch from the canonical stream. Each terminal event
 	// is consumed once (tracked by generation) so an old terminal does not
@@ -416,11 +483,20 @@ export const ChatPage: FC<ChatProps> = () => {
 	// admitted as model chat. The backend rejects slash text on /messages with
 	// 422 — intercepting here is what makes `/settings` navigate instead of
 	// failing against a missing model key one API round-trip later.
-	const handleSlashDispatch = useSlashDispatch({
-		sessionId: conversationId,
+	const rebindSession = useCallback(
+		(nextSessionId: string) => {
+			if (!conversationId) return;
+			bindSession(conversationId, nextSessionId);
+		},
+		[conversationId, bindSession],
+	);
+	const { dispatch: handleSlashDispatch, picker } = useSlashDispatch({
+		sessionId: canonicalSessionId,
 		addMessage: (message) => {
 			if (conversationId) addMessage(conversationId, message);
 		},
+		canonical,
+		rebind: rebindSession,
 	});
 
 	const handleSendMessage = useCallback(
@@ -430,6 +506,83 @@ export const ChatPage: FC<ChatProps> = () => {
 			// A leading slash is a command, full stop. Dispatch consumes it and
 			// nothing below (model job creation) runs for it.
 			if (await handleSlashDispatch(content)) return;
+
+			if (canonicalMode && canonicalSessionId) {
+				// Canonical admission. 200 means the owner ADMITTED the prompt, not
+				// that the model answered: the transcript paints the user row from
+				// the owner's own `message_start` echo (keyed by this request id),
+				// so nothing optimistic is inserted here to be deduplicated later.
+				// A pending gate is answered through the answers route instead of
+				// being admitted as a new prompt the owner would queue.
+				const gate = canonical.frontend?.pending_gate ?? null;
+				const requestId = uuidv4();
+				setAdmitting(true);
+				try {
+					if (gate && canonical.ownerEpoch) {
+						const trimmed = content.trim().toLowerCase();
+						if (gate.kind === "approval") {
+							const yes = ["y", "yes", "approve", "ok", "allow"].includes(
+								trimmed,
+							);
+							const no = ["n", "no", "deny", "reject", "cancel"].includes(
+								trimmed,
+							);
+							if (!yes && !no) {
+								addMessage(conversationId, {
+									id: uuidv4(),
+									role: "system",
+									message: "Reply yes or no to answer the approval request.",
+									timestamp: new Date(),
+									status: "error",
+								});
+								return;
+							}
+							await desktopResult({
+								op: "sessions.answer",
+								sessionId: canonicalSessionId,
+								epoch: canonical.ownerEpoch,
+								requestId: gate.request_id,
+								approved: yes,
+							});
+						} else {
+							await desktopResult({
+								op: "sessions.answer",
+								sessionId: canonicalSessionId,
+								epoch: canonical.ownerEpoch,
+								requestId: gate.request_id,
+								value: content,
+								questionIndex: gate.question_index,
+							});
+						}
+						return;
+					}
+					const images = await encodeImageAttachments(attachments);
+					await desktopResult({
+						op: "sessions.message",
+						sessionId: canonicalSessionId,
+						requestId,
+						text: content,
+						images: images.length > 0 ? images : undefined,
+						// Steer rather than queue when the owner is mid-turn: that is
+						// what typing during a turn means in the terminal too.
+						mode: canonicalBusy ? "steer" : "prompt",
+					});
+					requestAnimationFrame(() => scrollToBottom());
+				} catch (error) {
+					addMessage(conversationId, {
+						id: uuidv4(),
+						role: "system",
+						message: `The message was not sent: ${
+							error instanceof Error ? error.message : "the backend refused it"
+						}`,
+						timestamp: new Date(),
+						status: "error",
+					});
+				} finally {
+					setAdmitting(false);
+				}
+				return;
+			}
 
 			// Create a new user message
 			const userMessage: Message = {
@@ -541,8 +694,50 @@ export const ChatPage: FC<ChatProps> = () => {
 			configData,
 			scrollToBottom,
 			handleSlashDispatch,
+			canonicalMode,
+			canonicalSessionId,
+			canonicalBusy,
+			canonical.frontend?.pending_gate,
+			canonical.ownerEpoch,
 		],
 	);
+
+	// `/stop`-equivalent for the composer's stop button in canonical mode: the
+	// canonical stop control ends the session's current work through the
+	// owner's own protocol (never the legacy job cancel).
+	const handleCanonicalStop = useCallback(async () => {
+		if (!canonicalSessionId || !conversationId) return;
+		try {
+			const result = await desktopResult<{
+				data: { results?: { session_id: string; status: string }[] };
+			}>({
+				op: "sessions.stop",
+				requestId: uuidv4(),
+				targets: [canonicalSessionId],
+				confirmed: true,
+			});
+			const status = result.data?.results?.[0]?.status ?? "stop_requested";
+			addMessage(conversationId, {
+				id: uuidv4(),
+				role: "system",
+				message:
+					status === "already_stopped"
+						? "Nothing was running."
+						: "Stop requested. The session ends its current work.",
+				timestamp: new Date(),
+			});
+		} catch (error) {
+			addMessage(conversationId, {
+				id: uuidv4(),
+				role: "system",
+				message: `Stop was not accepted: ${
+					error instanceof Error ? error.message : "the backend refused it"
+				}`,
+				timestamp: new Date(),
+				status: "error",
+			});
+		}
+	}, [canonicalSessionId, conversationId, addMessage]);
 
 	// Memoize the raw information content to prevent re-rendering
 	const rawInfoContent = useMemo(() => {
@@ -618,20 +813,33 @@ Store messages: ${JSON.stringify(getMessages(conversationId || ""), null, 2)}`;
 				agentData={agentData}
 				refetch={refetch}
 				messageInputRef={messageInputRef}
+				canonical={
+					canonicalMode
+						? {
+								view: canonical,
+								busy: canonicalBusy || admitting,
+								onStop: handleCanonicalStop,
+							}
+						: undefined
+				}
 			/>
 		);
 	};
 
 	return (
-		<ChatLayout
-			sidebar={
-				<ChatSidebar
-					selectedConversation={selectedConversation}
-					onSelectConversation={handleSelectConversation}
-					onNavigateToAgentSettings={handleNavigateToAgentSettings}
-				/>
-			}
-			content={renderContent()}
-		/>
+		<>
+			<ChatLayout
+				sidebar={
+					<ChatSidebar
+						selectedConversation={selectedConversation}
+						onSelectConversation={handleSelectConversation}
+						onNavigateToAgentSettings={handleNavigateToAgentSettings}
+					/>
+				}
+				content={renderContent()}
+			/>
+			{/* The one picker host for slash destinations; null when idle. */}
+			<PickerOutlet context={picker} />
+		</>
 	);
 };

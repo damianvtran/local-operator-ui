@@ -40,6 +40,15 @@ export function registerDesktopIPC(
 		authorize(event);
 		return request(input);
 	});
+	// `/exit`: the window closes through the ordinary close path, so the
+	// renderer's `beforeunload` guard and macOS keep-alive behaviour apply
+	// unchanged. Nothing here touches the backend: a closed window detaches
+	// its viewer and every session's owner keeps running.
+	ipcMain.handle("desktop-close-window", (event) => {
+		authorize(event);
+		const owner = window();
+		if (owner && !owner.isDestroyed()) owner.close();
+	});
 	// Watch-lease heartbeat. The renderer reports what it can see; main adds
 	// whether it can really deliver a notification and forwards the lease.
 	if (notifier) {

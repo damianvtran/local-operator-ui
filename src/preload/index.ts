@@ -22,6 +22,7 @@ const api = {
 			visible: boolean;
 			focused: boolean;
 		}) => ipcRenderer.invoke("desktop-watch-heartbeat", args),
+		closeWindow: () => ipcRenderer.invoke("desktop-close-window"),
 		onOpenConversation: (callback: (sessionId: string) => void) => {
 			const handler = (_event: unknown, payload: { sessionId?: unknown }) => {
 				if (typeof payload?.sessionId === "string") callback(payload.sessionId);
