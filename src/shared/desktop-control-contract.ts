@@ -55,6 +55,13 @@ export type DesktopModelCatalogue = {
 	}[];
 	source: "initial" | "live";
 	errors: Record<string, string>;
+	/**
+	 * Whether the credential store could be read at all. When false, every
+	 * row's `connected` is the listing default ("show everything rather than
+	 * claim the user owns no models"), NOT a statement about auth -- so it must
+	 * not be turned into a badge or a grouping heading.
+	 */
+	credentials_known?: boolean;
 };
 export type DesktopMcpOperation = {
 	id: string;

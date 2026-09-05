@@ -27,6 +27,74 @@ import type { FC } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { isTerminalAuthState, primaryMethod } from "./provider-labels";
 
+/**
+ * Reachability for a local provider, stated only after it has been checked.
+ *
+ * Deliberately NOT run on mount: a probe is a real network round trip, and the
+ * UX round's binding constraint is that nothing behind first paint makes one.
+ * Before the user asks, the panel says what it knows (no key needed) and what
+ * it does not (whether the server is running).
+ */
+const LocalProviderReachability: FC<{ provider: DesktopProvider }> = ({
+	provider,
+}) => {
+	const [testing, setTesting] = useState(false);
+	const [result, setResult] = useState<{
+		reachable: boolean;
+		detail: string;
+	} | null>(null);
+
+	// A different provider row reuses this component; a verdict about the
+	// previous one must not linger beside the new name.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: provider.id is the reset trigger, not a value read here
+	useEffect(() => {
+		setResult(null);
+	}, [provider.id]);
+
+	const test = useCallback(async () => {
+		setTesting(true);
+		try {
+			setResult(
+				await desktopResult<{ reachable: boolean; detail: string }>({
+					op: "auth.probe",
+					provider: provider.id,
+				}),
+			);
+		} catch (error) {
+			setResult({
+				reachable: false,
+				detail:
+					error instanceof Error
+						? error.message
+						: "The connection could not be tested.",
+			});
+		} finally {
+			setTesting(false);
+		}
+	}, [provider.id]);
+
+	return (
+		<div className="flex flex-col items-start gap-2">
+			<Badge variant={result?.reachable ? "success" : "neutral"}>
+				{result === null
+					? "Not tested yet"
+					: result.reachable
+						? "Server responded"
+						: "No server responded"}
+			</Badge>
+			{result && <p className="text-ink-muted text-meta">{result.detail}</p>}
+			<Button
+				variant="secondary"
+				size="sm"
+				onClick={() => void test()}
+				disabled={testing}
+			>
+				{testing ? "Testing" : "Test connection"}
+			</Button>
+		</div>
+	);
+};
+
 type ProviderDetailProps = {
 	provider: DesktopProvider;
 	/** Called once an auth method has stored a credential. */
@@ -119,9 +187,13 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 	const [copied, setCopied] = useState(false);
 	const stopPollRef = useRef<(() => void) | null>(null);
 
+	// Resolved by METHOD identity, not provider id: a provider can offer several
+	// methods that all act on the same provider, so matching on `id` returned the
+	// first one every time and the other panels could not be reached (D2).
 	const method: ProviderMethod | null =
-		provider.auth_methods.find((candidate) => candidate.id === methodId) ??
-		primaryMethod(provider.auth_methods);
+		provider.auth_methods.find(
+			(candidate) => candidate.method_id === methodId,
+		) ?? primaryMethod(provider.auth_methods);
 
 	useEffect(
 		() => () => {
@@ -243,11 +315,15 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 		return (
 			<div className="flex flex-col gap-3">
 				<p className="text-body-sm text-ink-muted">
-					{provider.name} runs on this computer and needs no account or key.
+					{provider.name} runs on this computer and needs no account or key. It
+					has to be running before this app can use it.
 				</p>
-				<Badge variant={provider.configured ? "success" : "neutral"}>
-					{provider.configured ? "Ready" : "Not detected"}
-				</Badge>
+				{/* Was a green "Ready" derived from `configured`, which for a local
+				    provider means only "needs no credential" -- nothing has
+				    contacted the server. Test connection is the only thing here
+				    that may claim reachability, because it is the only thing that
+				    checks. */}
+				<LocalProviderReachability provider={provider} />
 			</div>
 		);
 	}
@@ -274,11 +350,13 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 					<legend className="sr-only">Sign-in method</legend>
 					{provider.auth_methods.map((candidate) => (
 						<Button
-							key={candidate.id}
-							variant={candidate.id === method.id ? "secondary" : "ghost"}
+							key={candidate.method_id}
+							variant={
+								candidate.method_id === method.method_id ? "secondary" : "ghost"
+							}
 							size="sm"
 							onClick={() => {
-								setMethodId(candidate.id);
+								setMethodId(candidate.method_id);
 								setOperation(null);
 								setFlowError(null);
 								stopPollRef.current?.();

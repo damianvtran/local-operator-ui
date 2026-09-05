@@ -17,7 +17,7 @@ import { Search, X } from "lucide-react";
 import type { FC } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { ProviderDetail } from "./provider-detail";
-import { providerMethodLabel } from "./provider-labels";
+import { providerMethodLabel, providerReadiness } from "./provider-labels";
 
 const SEARCH_THRESHOLD = 6;
 
@@ -148,9 +148,12 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 							>
 								<span className="flex items-center justify-between gap-2">
 									<span className="text-body text-ink">{provider.name}</span>
-									{provider.configured && (
-										<Badge variant="success">Connected</Badge>
-									)}
+									{/* States the credential fact, which this census actually
+									    knows. It used to render `configured` as "Connected",
+									    asserting a reachability nothing had checked. */}
+									<Badge variant={providerReadiness(provider).tone}>
+										{providerReadiness(provider).label}
+									</Badge>
 								</span>
 								<span className="text-meta text-ink-dim">
 									{providerMethodLabel(provider.auth_methods, provider.local)}

@@ -125,17 +125,27 @@ export const ModelPicker: FC<PickerContext> = ({
 
 	const options = useMemo<PickerOption[]>(() => {
 		const rows = (catalogue.data?.models ?? []) as CatalogueRow[];
+		// `connected` is also true when the credential store could not be read,
+		// which is why every model once sat under "Connected" on a fixture with
+		// no credentials at all (D5). With that unknown, the picker still lists
+		// everything -- an empty model list would be a worse lie -- but it stops
+		// claiming an auth state it does not have.
+		const known = catalogue.data?.credentials_known !== false;
 		return rows.map((row) => ({
 			value: row.selector ?? row.value ?? `${row.provider}/${row.model_id}`,
 			label: row.label || row.model_id,
 			description: `${row.provider}${row.aggregated ? ", aggregated" : ""}${
-				row.connected ? "" : ", no credential"
+				known && !row.connected ? ", no credential" : ""
 			}`,
 			meta: row.context_window
 				? `${Math.round(row.context_window / 1000)}k`
 				: undefined,
 			current: currentSelector === (row.selector ?? row.value),
-			group: row.connected ? "Connected" : "Needs sign-in",
+			group: !known
+				? "Sign-in state unknown"
+				: row.connected
+					? "Signed in"
+					: "Needs sign-in",
 			keywords: [row.provider, row.model_id],
 		}));
 	}, [catalogue.data, currentSelector]);
@@ -2039,7 +2049,17 @@ export const HelpPalette: FC<PickerContext> = ({
 				value: command.name,
 				label: `/${command.name}${command.aliases.length ? `  (${command.aliases.map((a) => `/${a}`).join(", ")})` : ""}`,
 				description: command.description,
-				meta: `${command.arguments === "none" ? "" : command.arguments === "required" ? "<arg> " : "[arg] "}${command.destination}`,
+				// The right-hand column used to print the routing id
+				// (`transcript.clear`, `radient.mobile`) as the most prominent
+				// thing on every row. That is internal vocabulary, not something a
+				// user can act on, so the meta now says only what the command
+				// TAKES. Destinations remain searchable below.
+				meta:
+					command.arguments === "none"
+						? ""
+						: command.arguments === "required"
+							? "Needs an argument"
+							: "Takes an argument",
 				keywords: [...command.aliases, command.destination, command.execution],
 				group:
 					command.execution === "owner"
@@ -2055,7 +2075,7 @@ export const HelpPalette: FC<PickerContext> = ({
 			title="Commands"
 			description={`${commands.length} commands. Pick one to run it; commands that take an argument open their picker.`}
 			options={options}
-			searchPlaceholder="Search commands, aliases, destinations"
+			searchPlaceholder="Search commands"
 			onPick={(value) => {
 				onClose();
 				dispatch(`/${value}`);
