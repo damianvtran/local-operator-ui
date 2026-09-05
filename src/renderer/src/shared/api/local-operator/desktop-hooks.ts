@@ -32,14 +32,17 @@ export function useDesktopCapabilities() {
 		queryKey: desktopKeys.capabilities,
 		queryFn: async () => {
 			try {
-				return await desktopResult<DesktopCapabilities>({
-					op: "capabilities",
-				});
-			} catch {
-				// Unreachable/404: an old backend answers like an absent one. The
-				// caller renders the same honest "update the backend" state either
-				// way, which is exactly what fail-closed negotiation means.
-				return null;
+				return await desktopResult<DesktopCapabilities>({ op: "capabilities" });
+			} catch (error) {
+				// Collapsing every failure to `null` made the banner assert "this
+				// backend is older than the app expects" for four different
+				// situations, three of which an "Update backend" button cannot fix
+				// (UX, design and QA all hit this). Fail-closed is about what we
+				// ENABLE, not about how much we are allowed to know: the surfaces
+				// stay gated either way (`desktopFeatureEnabled` still sees no
+				// capabilities), and the reason is preserved so the banner can say
+				// what actually happened and offer the action that matches.
+				throw error instanceof Error ? error : new Error(String(error));
 			}
 		},
 		staleTime: 60_000,
