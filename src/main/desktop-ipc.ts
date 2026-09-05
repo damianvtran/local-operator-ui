@@ -5,6 +5,7 @@ import {
 	shell,
 } from "electron";
 import type { DesktopResponse } from "../shared/desktop-contract";
+import type { DesktopStreamRelay } from "./desktop-stream";
 import { trustedDesktopFrame } from "./desktop-transport";
 
 const OPERATION_ID = /^[a-zA-Z0-9_-]{1,128}$/;
@@ -13,6 +14,7 @@ export function registerDesktopIPC(
 	window: () => BrowserWindow | null,
 	expectedUrl: string,
 	request: (input: unknown) => Promise<DesktopResponse>,
+	streams?: DesktopStreamRelay,
 ): void {
 	const opened = new Map<string, string>();
 	function authorize(event: IpcMainInvokeEvent): void {
@@ -75,4 +77,46 @@ export function registerDesktopIPC(
 			}
 		},
 	);
+
+	// Authenticated session event streaming. Frames flow main -> the OWNED
+	// window's webContents only; the renderer never sees the bearer, and a
+	// stream dies with its subscription rather than leaking frames after the
+	// consumer is gone.
+	if (streams) {
+		ipcMain.handle("desktop-stream-subscribe", (event, args: unknown) => {
+			authorize(event);
+			const input = args as {
+				sessionId?: unknown;
+				epoch?: unknown;
+				afterSeq?: unknown;
+			};
+			if (
+				typeof input?.sessionId !== "string" ||
+				(input.epoch !== undefined && typeof input.epoch !== "string") ||
+				(input.afterSeq !== undefined && typeof input.afterSeq !== "number")
+			) {
+				throw new Error("Invalid stream subscription.");
+			}
+			const sender = event.sender;
+			const handle = streams.subscribe(
+				{
+					sessionId: input.sessionId,
+					epoch: input.epoch as string | undefined,
+					afterSeq: input.afterSeq as number | undefined,
+				},
+				(frame) => {
+					if (sender.isDestroyed()) {
+						streams.unsubscribe(handle.streamId);
+						return;
+					}
+					sender.send("desktop-stream-event", frame);
+				},
+			);
+			return handle;
+		});
+		ipcMain.handle("desktop-stream-unsubscribe", (event, streamId: unknown) => {
+			authorize(event);
+			if (typeof streamId === "string") streams.unsubscribe(streamId);
+		});
+	}
 }

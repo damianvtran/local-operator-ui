@@ -80,3 +80,46 @@ export async function openAuthorization(
 	}
 	window.open(url.href, "_blank", "noopener,noreferrer");
 }
+
+/**
+ * Subscribe to the authenticated canonical session stream.
+ *
+ * Two transports, one surface: Electron's main-process relay (which attaches
+ * the bearer itself) or, in browser development, the server-side
+ * `/__desktop/stream` proxy (which does the same). EventSource against the
+ * backend directly is never an option — it cannot send the bearer, and an
+ * unauthenticated fallback would be a silent security downgrade.
+ */
+export function subscribeDesktopStream(
+	args: { sessionId: string; epoch?: string; afterSeq?: number },
+	onEvent: (event: {
+		kind: "data" | "error" | "end";
+		data?: string;
+		detail?: string;
+	}) => void,
+): () => void {
+	const native = window.api?.desktop?.stream;
+	if (native) {
+		const subscription = native.subscribe(args, onEvent);
+		return () => subscription.dispose();
+	}
+	const query = new URLSearchParams({ session: args.sessionId });
+	if (args.epoch) query.set("epoch", args.epoch);
+	if (args.afterSeq !== undefined)
+		query.set("after_seq", String(args.afterSeq));
+	const source = new EventSource(`/__desktop/stream?${query}`);
+	source.onmessage = (message) => {
+		onEvent({ kind: "data", data: message.data });
+	};
+	source.onerror = () => {
+		if (source.readyState === EventSource.CLOSED) {
+			onEvent({ kind: "error", detail: "The event stream ended." });
+			source.close();
+		}
+		// CONNECTING is EventSource's own retry; leave it alone.
+	};
+	return () => {
+		source.close();
+		onEvent({ kind: "end" });
+	};
+}

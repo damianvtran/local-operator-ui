@@ -480,6 +480,7 @@ app
 			process.env.ELECTRON_RENDERER_URL ||
 				pathToFileURL(join(__dirname, "../renderer/index.html")).href,
 			(input) => backendService.requestDesktop(input),
+			backendService.getStreamRelay(),
 		);
 
 		// Add IPC handlers for opening files and URLs

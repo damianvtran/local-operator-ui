@@ -337,9 +337,29 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 
 export type DesktopRequest = z.infer<typeof desktopRequestSchema>;
 export type DesktopResponse = { status: number; body: unknown };
+export type DesktopStreamEvent = {
+	streamId: string;
+	kind: "data" | "error" | "end";
+	data?: string;
+	detail?: string;
+};
+
+export type DesktopStreamSubscription = {
+	streamId: Promise<string>;
+	dispose: () => void;
+};
+
 export type DesktopAPI = {
 	request: (request: DesktopRequest) => Promise<DesktopResponse>;
 	openAuthorization: (operationId: string, reopen?: boolean) => Promise<void>;
+	/** Authenticated canonical session stream. Present only when the Electron
+	 * preload is live; browser development uses the server-side stream proxy. */
+	stream?: {
+		subscribe: (
+			args: { sessionId: string; epoch?: string; afterSeq?: number },
+			onEvent: (event: DesktopStreamEvent) => void,
+		) => DesktopStreamSubscription;
+	};
 };
 
 export type DesktopCapabilities = {

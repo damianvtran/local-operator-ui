@@ -11,6 +11,46 @@ const api = {
 			ipcRenderer.invoke("desktop-request", request),
 		openAuthorization: (operationId: string, reopen = false) =>
 			ipcRenderer.invoke("desktop-open-authorization", operationId, reopen),
+		stream: {
+			subscribe: (
+				args: { sessionId: string; epoch?: string; afterSeq?: number },
+				onEvent: (event: {
+					streamId: string;
+					kind: "data" | "error" | "end";
+					data?: string;
+					detail?: string;
+				}) => void,
+			): { streamId: Promise<string>; dispose: () => void } => {
+				const streamIdPromise = ipcRenderer
+					.invoke("desktop-stream-subscribe", args)
+					.then((handle: { streamId: string }) => handle.streamId);
+				const handler = (
+					_event: unknown,
+					frame: {
+						streamId: string;
+						kind: "data" | "error" | "end";
+						data?: string;
+						detail?: string;
+					},
+				) => {
+					// Frames are scoped to their own subscription: a late frame from
+					// a dead stream must not land on a new one's consumer.
+					void streamIdPromise.then((streamId) => {
+						if (frame.streamId === streamId) onEvent(frame);
+					});
+				};
+				ipcRenderer.on("desktop-stream-event", handler);
+				return {
+					streamId: streamIdPromise,
+					dispose: () => {
+						ipcRenderer.removeListener("desktop-stream-event", handler);
+						void streamIdPromise.then((streamId) =>
+							ipcRenderer.invoke("desktop-stream-unsubscribe", streamId),
+						);
+					},
+				};
+			},
+		},
 	},
 	// Add methods to open files and URLs
 	openFile: (filePath: string) => ipcRenderer.invoke("open-file", filePath),
