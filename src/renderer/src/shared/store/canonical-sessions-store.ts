@@ -26,6 +26,19 @@ export type CanonicalSessionRow = {
 	[key: string]: unknown;
 };
 
+/** Backend list row: `{id, name, mtime, ...}` (extra fields allowed). */
+type BackendSessionRow = {
+	id: string;
+	name: string;
+	mtime: number;
+	[key: string]: unknown;
+};
+
+function fromBackend(row: BackendSessionRow): CanonicalSessionRow {
+	const { id, name, mtime, ...rest } = row;
+	return { ...rest, session_id: id, title: name, updated_at: mtime };
+}
+
 type CanonicalSessionsState = {
 	sessions: CanonicalSessionRow[];
 	activeSessionId: string | null;
@@ -80,10 +93,13 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			set({ loading: true, error: null });
 			try {
 				const result = await desktopResult<{
-					sessions: CanonicalSessionRow[];
+					sessions: BackendSessionRow[];
 				}>({ op: "sessions.list" });
 				set((state) => ({
-					sessions: mergeRows(state.sessions, result.sessions ?? []),
+					sessions: mergeRows(
+						state.sessions,
+						(result.sessions ?? []).map(fromBackend),
+					),
 					loading: false,
 				}));
 			} catch (error) {

@@ -6,6 +6,7 @@ import {
 } from "electron";
 import type { DesktopResponse } from "../shared/desktop-contract";
 import type { DesktopMediaResponse } from "./desktop-media";
+import type { DesktopNotifier } from "./desktop-notifier";
 import type { DesktopStreamRelay } from "./desktop-stream";
 import { trustedDesktopFrame } from "./desktop-transport";
 
@@ -15,11 +16,12 @@ export function registerDesktopIPC(
 	window: () => BrowserWindow | null,
 	expectedUrl: string,
 	request: (input: unknown) => Promise<DesktopResponse>,
-	streams?: DesktopStreamRelay,
+	streams?: () => DesktopStreamRelay,
 	media?: (
 		input: unknown,
 		bytes: Uint8Array | null,
 	) => Promise<DesktopMediaResponse>,
+	notifier?: DesktopNotifier,
 ): void {
 	const opened = new Map<string, string>();
 	function authorize(event: IpcMainInvokeEvent): void {
@@ -38,6 +40,33 @@ export function registerDesktopIPC(
 		authorize(event);
 		return request(input);
 	});
+	// Watch-lease heartbeat. The renderer reports what it can see; main adds
+	// whether it can really deliver a notification and forwards the lease.
+	if (notifier) {
+		ipcMain.handle("desktop-watch-heartbeat", (event, input: unknown) => {
+			authorize(event);
+			const args = input as {
+				sessionId?: unknown;
+				subscriptionId?: unknown;
+				visible?: unknown;
+				focused?: unknown;
+			};
+			if (
+				typeof args?.sessionId !== "string" ||
+				typeof args.subscriptionId !== "string" ||
+				typeof args.visible !== "boolean" ||
+				typeof args.focused !== "boolean"
+			) {
+				throw new Error("Invalid watch heartbeat.");
+			}
+			return notifier.heartbeat(event.sender.id, {
+				sessionId: args.sessionId,
+				subscriptionId: args.subscriptionId,
+				visible: args.visible,
+				focused: args.focused,
+			});
+		});
+	}
 	// Binary/multipart media relay. Bytes arrive as a structured-clone
 	// Uint8Array from preload; the response's bytes go back the same way.
 	if (media) {
@@ -117,7 +146,8 @@ export function registerDesktopIPC(
 				throw new Error("Invalid stream subscription.");
 			}
 			const sender = event.sender;
-			const handle = streams.subscribe(
+			const relay = streams();
+			const handle = relay.subscribe(
 				{
 					sessionId: input.sessionId,
 					epoch: input.epoch as string | undefined,
@@ -125,7 +155,7 @@ export function registerDesktopIPC(
 				},
 				(frame) => {
 					if (sender.isDestroyed()) {
-						streams.unsubscribe(handle.streamId);
+						relay.unsubscribe(handle.streamId);
 						return;
 					}
 					sender.send("desktop-stream-event", frame);
@@ -135,7 +165,7 @@ export function registerDesktopIPC(
 		});
 		ipcMain.handle("desktop-stream-unsubscribe", (event, streamId: unknown) => {
 			authorize(event);
-			if (typeof streamId === "string") streams.unsubscribe(streamId);
+			if (typeof streamId === "string") streams().unsubscribe(streamId);
 		});
 	}
 }

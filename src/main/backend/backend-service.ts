@@ -70,6 +70,10 @@ export class BackendServiceManager {
 	 * stale origin. */
 	private streamRelay: DesktopStreamRelay | null = null;
 	private streamRelayUrl = "";
+	/** Survives relay recreation so notifications never silently detach
+	 * when the backend URL rotates. */
+	private streamObserver: ((sessionId: string, data: string) => void) | null =
+		null;
 
 	getStreamRelay(): DesktopStreamRelay {
 		if (!this.streamRelay || this.streamRelayUrl !== this.backendUrl) {
@@ -78,9 +82,17 @@ export class BackendServiceManager {
 				this.backendUrl,
 				this.desktopToken,
 			);
+			this.streamRelay.observe(this.streamObserver);
 			this.streamRelayUrl = this.backendUrl;
 		}
 		return this.streamRelay;
+	}
+
+	observeStream(
+		observer: ((sessionId: string, data: string) => void) | null,
+	): void {
+		this.streamObserver = observer;
+		this.streamRelay?.observe(observer);
 	}
 
 	requestDesktop(input: unknown): Promise<DesktopResponse> {

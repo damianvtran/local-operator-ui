@@ -54,6 +54,8 @@ type MessageInputProps = {
 	currentJobId?: string | null;
 	onCancelJob?: (jobId: string) => void;
 	isFarFromBottom?: boolean;
+	/** New messages landed while the reader was scrolled up. */
+	hasNewActivity?: boolean;
 	scrollToBottom?: () => void;
 	initialSuggestions?: string[];
 	agentData?: AgentDetails | null;
@@ -114,6 +116,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			currentJobId,
 			onCancelJob,
 			isFarFromBottom = false,
+			hasNewActivity = false,
 			scrollToBottom = () => {},
 			initialSuggestions,
 			agentData,
@@ -793,6 +796,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					visible={isFarFromBottom}
 					onClick={scrollToBottom}
 					bottomDistance={isSmallView ? 120 : 160}
+					hasNewActivity={hasNewActivity}
 				/>
 			</div>
 		);

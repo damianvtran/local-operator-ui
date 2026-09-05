@@ -18,6 +18,7 @@ import { UpdateNotification } from "@shared/components/common/update-notificatio
 import { SidebarNavigation } from "@shared/components/navigation/sidebar-navigation";
 import { useCheckFirstTimeUser } from "@shared/hooks/use-check-first-time-user";
 import { useLowCreditsDialog } from "@shared/hooks/use-low-credits-dialog";
+import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 
 // The other five routes are split out so a cold start neither downloads nor
@@ -93,6 +94,22 @@ const App: FC = () => {
 			}
 		};
 	}, [toggleCommandPalette]);
+
+	// A notification click names a canonical conversation; opening it is the
+	// whole effect. Any pending gate stays pending until an explicit in-app
+	// answer, so a stray click can never approve anything.
+	const setActiveSession = useCanonicalSessionsStore(
+		(state) => state.setActiveSession,
+	);
+	useEffect(() => {
+		const unsubscribe = window.api?.desktop?.onOpenConversation?.(
+			(sessionId) => {
+				setActiveSession(sessionId);
+				navigate("/chat");
+			},
+		);
+		return () => unsubscribe?.();
+	}, [navigate, setActiveSession]);
 
 	return (
 		<OnboardingProvider>

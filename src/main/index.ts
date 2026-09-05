@@ -23,6 +23,7 @@ import {
 import { backendConfig } from "./backend/config";
 import { LogFileType, logger } from "./backend/logger";
 import { registerDesktopIPC } from "./desktop-ipc";
+import { DesktopNotifier } from "./desktop-notifier";
 import { UpdateService } from "./update-service";
 
 const BASE64_FILE_EXTENSIONS = ["csv", "tsv", "xls", "xlsx", "ods"];
@@ -376,13 +377,25 @@ app
 			optimizer.watchWindowShortcuts(window);
 		});
 
+		const desktopNotifier = new DesktopNotifier(
+			() => mainWindow,
+			(input) => backendService.requestDesktop(input),
+		);
+		backendService.observeStream((sessionId, data) => {
+			try {
+				desktopNotifier.observe(sessionId, JSON.parse(data));
+			} catch {
+				// A frame the renderer cannot parse is not a notification either.
+			}
+		});
 		registerDesktopIPC(
 			() => mainWindow,
 			process.env.ELECTRON_RENDERER_URL ||
 				pathToFileURL(join(__dirname, "../renderer/index.html")).href,
 			(input) => backendService.requestDesktop(input),
-			backendService.getStreamRelay(),
+			() => backendService.getStreamRelay(),
 			(input, bytes) => backendService.requestDesktopMedia(input, bytes),
+			desktopNotifier,
 		);
 
 		// Add IPC handlers for opening files and URLs

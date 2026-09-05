@@ -378,6 +378,15 @@ export type DesktopAPI = {
 		request: DesktopMediaRequest,
 		bytes: Uint8Array | null,
 	) => Promise<DesktopMediaResponse>;
+	/** Watch-lease heartbeat; main adds can_notify. Electron only. */
+	watchHeartbeat?: (args: {
+		sessionId: string;
+		subscriptionId: string;
+		visible: boolean;
+		focused: boolean;
+	}) => Promise<DesktopResponse>;
+	/** Notification click -> open this conversation. Never answers a gate. */
+	onOpenConversation?: (callback: (sessionId: string) => void) => () => void;
 	/** Authenticated canonical session stream. Present only when the Electron
 	 * preload is live; browser development uses the server-side stream proxy. */
 	stream?: {
