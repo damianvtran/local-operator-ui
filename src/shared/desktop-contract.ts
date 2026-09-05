@@ -102,8 +102,200 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 			canNotify: z.boolean(),
 		})
 		.strict(),
+	z.object({ op: z.literal("legacy.models") }).strict(),
+	z.object({ op: z.literal("legacy.agent.upload"), agentId: id }).strict(),
+	z.object({ op: z.literal("commands.list") }).strict(),
+	z
+		.object({
+			op: z.literal("commands.entities"),
+			sessionId,
+			command: id,
+			name: z.string().max(128).optional(),
+		})
+		.strict(),
+	z
+		.object({ op: z.literal("models.catalogue"), live: z.boolean().optional() })
+		.strict(),
+	z
+		.object({
+			op: z.literal("usage.get"),
+			provider: id.optional(),
+			live: z.boolean().optional(),
+			refresh: z.boolean().optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("analytics.get"),
+			sessionId: sessionId.optional(),
+			sinceMs: z.number().int().nonnegative().optional(),
+			untilMs: z.number().int().nonnegative().optional(),
+			days: z.number().int().min(1).max(366).optional(),
+		})
+		.strict(),
+	z
+		.object({ op: z.literal("skills.list"), sessionId, name: id.optional() })
+		.strict(),
+	z.object({ op: z.literal("sessions.failovers"), sessionId }).strict(),
+	z
+		.object({
+			op: z.literal("sessions.credential"),
+			sessionId,
+			action: z.enum(["list", "store", "forget"]),
+			key: settingKey.optional(),
+			value: secret.optional(),
+			confirmed: z.boolean().optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("sessions.fork"),
+			sessionId,
+			requestId,
+			message: z.string().max(200000).optional(),
+			boundary: z.literal("next_safe").optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("sessions.stop"),
+			requestId,
+			targets: z.array(sessionId).min(1).max(100),
+			confirmed: z.literal(true),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("sessions.aside"),
+			sessionId,
+			requestId,
+			text: z.string().min(1).max(32768),
+			asideId: requestId.optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("sessions.adopt"),
+			sessionId,
+			requestId,
+			asideId: requestId,
+			confirmed: z.literal(true),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("sessions.aside.get"),
+			sessionId,
+			asideId: requestId,
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("sessions.aside.close"),
+			sessionId,
+			asideId: requestId,
+		})
+		.strict(),
+	z.object({ op: z.literal("mcp.list"), sessionId }).strict(),
+	z
+		.object({
+			op: z.literal("mcp.control"),
+			sessionId,
+			control: z
+				.object({
+					action: z.enum([
+						"list",
+						"add",
+						"remove",
+						"reload",
+						"connect",
+						"probe",
+						"disconnect",
+						"login",
+						"logout",
+						"reauth",
+						"status",
+						"cancel",
+					]),
+					name: z
+						.string()
+						.regex(/^[A-Za-z0-9_.:-]{1,100}$/)
+						.optional(),
+					scope: z.enum(["global", "project"]).optional(),
+					command: z.string().min(1).max(4096).optional(),
+					args: z.array(z.string().max(8192)).max(128).optional(),
+					env: z
+						.record(z.string().regex(/^\$\{[A-Za-z_][A-Za-z0-9_]*\}$/))
+						.optional(),
+					url: z.string().max(4096).optional(),
+					headers: z
+						.record(z.string().regex(/^\$\{[A-Za-z_][A-Za-z0-9_]*\}$/))
+						.optional(),
+					oauth: z.boolean().optional(),
+					confirmed: z.boolean().optional(),
+					operation_id: z
+						.string()
+						.regex(/^[a-f0-9]{32}$/)
+						.optional(),
+				})
+				.strict(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("radient.request"),
+			control: z
+				.object({
+					operation: z.enum([
+						"account",
+						"prices",
+						"credits",
+						"usage",
+						"provision",
+						"application.create",
+						"agents.list",
+						"agents.get",
+						"agents.create",
+						"agents.update",
+						"agents.delete",
+						"agents.like",
+						"agents.unlike",
+						"agents.liked",
+						"agents.like_count",
+						"agents.favourite",
+						"agents.unfavourite",
+						"agents.favourited",
+						"agents.favourite_count",
+						"agents.download_count",
+						"comments.list",
+						"comments.create",
+						"comments.update",
+						"comments.delete",
+						"account.agents",
+					]),
+					request_id: requestId.optional(),
+					tenant_id: id.optional(),
+					account_id: id.optional(),
+					agent_id: id.optional(),
+					comment_id: id.optional(),
+					query: z
+						.record(z.union([z.string().max(1024), z.number().int()]))
+						.optional(),
+					payload: z.record(z.unknown()).optional(),
+					confirmed: z.boolean().optional(),
+				})
+				.strict(),
+		})
+		.strict(),
 	z.object({ op: z.literal("providers.list") }).strict(),
 	z.object({ op: z.literal("accounts.list") }).strict(),
+	z
+		.object({
+			op: z.literal("accounts.remove"),
+			accountId: z.number().int().positive(),
+			confirmed: z.literal(true),
+		})
+		.strict(),
 	z.object({ op: z.literal("auth.start"), provider: id }).strict(),
 	z.object({ op: z.literal("auth.status"), id }).strict(),
 	z
@@ -305,10 +497,128 @@ export function desktopEndpoint(request: DesktopRequest): {
 					can_notify: request.canNotify,
 				},
 			};
+		case "legacy.models":
+			return { path: "/v1/models", method: "GET" };
+		case "legacy.agent.upload":
+			return { path: `/v1/agents/${request.agentId}/upload`, method: "POST" };
+		case "commands.list":
+			return { path: "/v1/desktop/commands", method: "GET" };
+		case "commands.entities":
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/command-entities?command=${encodeURIComponent(request.command)}${request.name ? `&name=${encodeURIComponent(request.name)}` : ""}`,
+				method: "GET",
+			};
+		case "models.catalogue":
+			return {
+				path: `/v1/desktop/models?live=${request.live ?? false}`,
+				method: "GET",
+			};
+		case "usage.get": {
+			const query = new URLSearchParams({
+				live: String(request.live ?? false),
+				refresh: String(request.refresh ?? false),
+			});
+			if (request.provider) query.set("provider", request.provider);
+			return { path: `/v1/desktop/usage?${query}`, method: "GET" };
+		}
+		case "analytics.get": {
+			const query = new URLSearchParams({ days: String(request.days ?? 30) });
+			if (request.sessionId) query.set("session_id", request.sessionId);
+			if (request.sinceMs !== undefined)
+				query.set("since_ms", String(request.sinceMs));
+			if (request.untilMs !== undefined)
+				query.set("until_ms", String(request.untilMs));
+			return { path: `/v1/desktop/analytics?${query}`, method: "GET" };
+		}
+		case "skills.list":
+			return {
+				path: `/v1/desktop/skills?session_id=${request.sessionId}${request.name ? `&name=${encodeURIComponent(request.name)}` : ""}`,
+				method: "GET",
+			};
+		case "sessions.failovers":
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/failovers`,
+				method: "GET",
+			};
+		case "sessions.credential":
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/credentials`,
+				method: "POST",
+				body: {
+					action: request.action,
+					key: request.key,
+					value: request.value,
+					confirmed: request.confirmed,
+				},
+			};
+		case "sessions.fork":
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/fork`,
+				method: "POST",
+				body: {
+					request_id: request.requestId,
+					message: request.message,
+					boundary: request.boundary,
+				},
+			};
+		case "sessions.stop":
+			return {
+				path: "/v1/desktop/stop",
+				method: "POST",
+				body: {
+					request_id: request.requestId,
+					targets: request.targets,
+					confirmed: request.confirmed,
+				},
+			};
+		case "sessions.aside":
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/asides`,
+				method: "POST",
+				body: {
+					request_id: request.requestId,
+					text: request.text,
+					aside_id: request.asideId,
+				},
+			};
+		case "sessions.adopt":
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/asides/${request.asideId}/adopt`,
+				method: "POST",
+				body: { request_id: request.requestId, confirmed: request.confirmed },
+			};
+		case "sessions.aside.get":
+		case "sessions.aside.close":
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/asides/${request.asideId}`,
+				method: request.op === "sessions.aside.get" ? "GET" : "DELETE",
+			};
+		case "mcp.list":
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/mcp`,
+				method: "GET",
+			};
+		case "mcp.control":
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/mcp`,
+				method: "POST",
+				body: request.control,
+			};
+		case "radient.request":
+			return {
+				path: "/v1/desktop/radient",
+				method: "POST",
+				body: request.control,
+			};
 		case "providers.list":
 			return { path: "/v1/auth/providers", method: "GET" };
 		case "accounts.list":
 			return { path: "/v1/auth/status", method: "GET" };
+		case "accounts.remove":
+			return {
+				path: `/v1/auth/accounts/${request.accountId}`,
+				method: "DELETE",
+			};
 		case "auth.start":
 			return {
 				path: "/v1/auth/login",
