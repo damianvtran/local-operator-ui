@@ -13,7 +13,7 @@ import { useConfig } from "@shared/hooks/use-config";
 import { useCredentials } from "@shared/hooks/use-credentials";
 import { useCreditBalance } from "@shared/hooks/use-credit-balance";
 import { useModels } from "@shared/hooks/use-models";
-import { useRadientAuth } from "@shared/hooks/use-radient-auth";
+import { useRadientUserQuery } from "@shared/hooks/use-radient-user-query";
 import { useUpdateConfig } from "@shared/hooks/use-update-config";
 import { useUsageRollup } from "@shared/hooks/use-usage-rollup";
 import { cn } from "@shared/lib/utils";
@@ -329,7 +329,11 @@ export const SettingsPage: FC = () => {
 	const updateConfigMutation = useUpdateConfig();
 	const [savingField, setSavingField] = useState<string | null>(null);
 	const userStore = useUserStore();
-	const { isAuthenticated, isLoading: isAuthLoading } = useRadientAuth();
+	// Only the signed-in bit is needed here: the profile fields go read-only
+	// when the backend resolves a Radient account. The query hook is the
+	// backend-proxy source of that fact; the wrapper hook additionally syncs
+	// the user store, which this page does not need.
+	const { isAuthenticated, isLoading: isAuthLoading } = useRadientUserQuery();
 	const activeSessionId = useCanonicalSessionsStore(
 		(state) => state.activeSessionId,
 	);
