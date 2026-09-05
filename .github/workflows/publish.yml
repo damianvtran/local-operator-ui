@@ -152,6 +152,11 @@ jobs:
     runs-on: macos-latest
     needs: [validate-release, preflight-macos, npm-publish]
     if: ${{ needs.validate-release.result == 'success' && needs.preflight-macos.result == 'success' && needs.npm-publish.result == 'success' }}
+    # A hung codesign (run 33948569170 sat at "signing file=...app" for 5h50m
+    # until cancelled) must fail bounded rather than burn the 6h job default.
+    # Windows takes ~13 min and Linux ~8 min; universal mac packaging, signing
+    # and notarization realistically take 20-40 min, so 60 leaves headroom.
+    timeout-minutes: 60
 
     steps:
       - name: Checkout code
@@ -190,6 +195,14 @@ jobs:
           security create-keychain -p "$KEYCHAIN_PASSWORD" "$CSC_KEYCHAIN"
           security default-keychain -s "$CSC_KEYCHAIN"
           security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$CSC_KEYCHAIN"
+          # A fresh keychain defaults to lock-on-sleep with a 300s timeout. It
+          # relocked partway through signing the universal app and codesign
+          # blocked on a GUI unlock prompt for ~6h (run 33948569170). Without
+          # -t/-l this removes both the timeout and lock-on-sleep, mirroring
+          # electron-builder's own createKeychain. show-keychain-info prints
+          # only the resulting "no-timeout" line, never the password.
+          security set-keychain-settings "$CSC_KEYCHAIN"
+          security show-keychain-info "$CSC_KEYCHAIN"
           security import "$CERTIFICATE" -k "$CSC_KEYCHAIN" -P "$CSC_KEY_PASSWORD" -T /usr/bin/codesign
           security set-key-partition-list -S apple-tool:,apple:,codesign:,notarize: -s -k "$KEYCHAIN_PASSWORD" "$CSC_KEYCHAIN"
 
