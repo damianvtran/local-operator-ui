@@ -27,6 +27,7 @@ import { join } from "node:path";
 import { promisify } from "node:util";
 import { app, dialog as electronDialog } from "electron";
 import type { DesktopResponse } from "../../shared/desktop-contract";
+import { DesktopStreamRelay } from "../desktop-stream";
 import { requestDesktop } from "../desktop-transport";
 import { backendConfig } from "./config";
 import { LogFileType, logger } from "./logger";
@@ -59,6 +60,24 @@ export class BackendServiceManager {
 	// Managed starts always rotate this; it is never exposed by preload or logs.
 	private desktopToken: string | null =
 		process.env.LOCAL_OPERATOR_DESKTOP_TOKEN || null;
+
+	/** Authenticated SSE relay for canonical session events. Recreated when the
+	 * backend URL rotates (external-backend discovery) so streams cannot pin a
+	 * stale origin. */
+	private streamRelay: DesktopStreamRelay | null = null;
+	private streamRelayUrl = "";
+
+	getStreamRelay(): DesktopStreamRelay {
+		if (!this.streamRelay || this.streamRelayUrl !== this.backendUrl) {
+			this.streamRelay?.dispose();
+			this.streamRelay = new DesktopStreamRelay(
+				this.backendUrl,
+				this.desktopToken,
+			);
+			this.streamRelayUrl = this.backendUrl;
+		}
+		return this.streamRelay;
+	}
 
 	requestDesktop(input: unknown): Promise<DesktopResponse> {
 		return requestDesktop(input, this.backendUrl, this.desktopToken);
