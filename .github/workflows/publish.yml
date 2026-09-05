@@ -11,8 +11,16 @@ on:
         type: string
       expected_source_sha:
         description: 'Full 40-char commit SHA the tag must point to (required for manual dispatch)'
-        required: false
+        required: true
         type: string
+
+# Serialize normal publishing and manual repairs for the same release tag.
+concurrency:
+  group: publish-${{ github.event.release.tag_name || inputs.release_tag }}
+  cancel-in-progress: false
+
+env:
+  NOTARIZE: 'true'
 
 permissions:
   contents: write
@@ -32,6 +40,9 @@ jobs:
       - name: Checkout workflow scripts
         uses: actions/checkout@v4
         with:
+          # Recovery payloads predate these helpers. Use the workflow's reviewed
+          # commit for tooling, never the old app tag or a moving branch name.
+          ref: ${{ github.workflow_sha }}
           sparse-checkout: scripts/validate-release.mjs
           sparse-checkout-cone-mode: false
 
@@ -41,6 +52,7 @@ jobs:
           RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.event.release.tag_name }}
           EXPECTED_SOURCE_SHA: ${{ github.event_name == 'workflow_dispatch' && inputs.expected_source_sha || '' }}
           IS_MANUAL_DISPATCH: ${{ github.event_name == 'workflow_dispatch' }}
+          EXPECTED_RELEASE_ID: ${{ github.event_name == 'release' && github.event.release.id || '' }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: node scripts/validate-release.mjs
 
@@ -59,6 +71,10 @@ jobs:
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
           KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
         run: |
+          if [ "$NOTARIZE" != true ]; then
+            echo 'NOTARIZE must be true'
+            exit 1
+          fi
           for var in APPLE_ID APPLE_ID_PASSWORD APPLE_TEAM_ID CSC_CONTENT CSC_KEY_PASSWORD KEYCHAIN_PASSWORD; do
             if [ -z "${!var}" ]; then
               echo "Missing required secret: $var"
@@ -71,7 +87,7 @@ jobs:
     name: Build and Publish to NPM
     runs-on: ubuntu-latest
     needs: validate-release
-    if: ${{ needs.validate-release.result == 'success' && github.event_name == 'release' && github.event.release.prerelease == false }}
+    if: ${{ needs.validate-release.result == 'success' }}
     permissions:
       id-token: write
       contents: read
@@ -95,29 +111,36 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
 
       - name: Ensure npm supports trusted publishing
+        if: github.event_name == 'release'
         run: |
           npm install -g npm@^11.5.1
           npm --version
 
       - name: Install dependencies
+        if: github.event_name == 'release'
         run: pnpm install --frozen-lockfile
 
       - name: Check if version already published
         id: check_version
+        env:
+          IS_MANUAL_DISPATCH: ${{ github.event_name == 'workflow_dispatch' }}
         run: |
           PKG_NAME=$(jq -r .name package.json)
           PKG_VERSION=$(jq -r .version package.json)
           echo "Package: $PKG_NAME, Version: $PKG_VERSION"
-          if npm view "$PKG_NAME@$PKG_VERSION" > /dev/null 2>&1; then
+          if PUBLISHED_VERSION=$(npm view "$PKG_NAME@$PKG_VERSION" version 2>/dev/null) && [ "$PUBLISHED_VERSION" = "$PKG_VERSION" ]; then
             echo "Version $PKG_VERSION already published."
-            echo "published=true" >> $GITHUB_OUTPUT
+            echo "published=true" >> "$GITHUB_OUTPUT"
+          elif [ "$IS_MANUAL_DISPATCH" = true ]; then
+            echo 'Manual repair requires the matching npm version to already exist; refusing publish.'
+            exit 1
           else
             echo "Version $PKG_VERSION not published yet."
-            echo "published=false" >> $GITHUB_OUTPUT
+            echo "published=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Publish to npm
-        if: steps.check_version.outputs.published == 'false'
+        if: github.event_name == 'release' && steps.check_version.outputs.published == 'false'
         run: npm publish --provenance
         env:
           VITE_GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
@@ -152,29 +175,35 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Setup code signing
+        env:
+          CSC_CONTENT: ${{ secrets.CSC_CONTENT }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
         run: |
-          echo "${{ secrets.CSC_CONTENT }}" | base64 --decode > certificate.p12
-          security create-keychain -p "${{ secrets.KEYCHAIN_PASSWORD }}" build.keychain
-          security default-keychain -s build.keychain
-          security unlock-keychain -p "${{ secrets.KEYCHAIN_PASSWORD }}" build.keychain
-          security import certificate.p12 -k build.keychain -P "${{ secrets.CSC_KEY_PASSWORD }}" -T /usr/bin/codesign
-          security set-key-partition-list -S apple-tool:,apple:,codesign:,notarize: -s -k "${{ secrets.KEYCHAIN_PASSWORD }}" build.keychain
-          rm certificate.p12
+          CSC_KEYCHAIN="$RUNNER_TEMP/build.keychain-db"
+          echo "CSC_KEYCHAIN=$CSC_KEYCHAIN" >> "$GITHUB_ENV"
+          CERTIFICATE="$RUNNER_TEMP/certificate.p12"
+          trap 'rm -f "$CERTIFICATE"' EXIT
+          printf '%s' "$CSC_CONTENT" | base64 --decode > "$CERTIFICATE"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$CSC_KEYCHAIN"
+          security default-keychain -s "$CSC_KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$CSC_KEYCHAIN"
+          security import "$CERTIFICATE" -k "$CSC_KEYCHAIN" -P "$CSC_KEY_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign:,notarize: -s -k "$KEYCHAIN_PASSWORD" "$CSC_KEYCHAIN"
 
       - name: Setup python distributable
         run: |
           pnpm setup-python
 
       - name: Build macOS app
-        run: pnpm dist:mac -- -c.forceCodeSigning=true
+        # pnpm forwards a literal -- to electron-builder; the config must precede it.
+        run: pnpm dist:mac -c.forceCodeSigning=true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CSC_KEYCHAIN: build.keychain
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          NOTARIZE: true
           VITE_GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           VITE_GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
           VITE_MICROSOFT_CLIENT_ID: ${{ secrets.MICROSOFT_CLIENT_ID }}
@@ -188,6 +217,7 @@ jobs:
             dist/*.dmg
             dist/*.zip
             dist/latest*.yml
+          if-no-files-found: error
           retention-days: 5
 
   build-windows:
@@ -240,6 +270,7 @@ jobs:
             dist/*.exe
             dist/*.msi
             dist/latest*.yml
+          if-no-files-found: error
           retention-days: 5
 
   build-linux:
@@ -286,6 +317,7 @@ jobs:
             dist/*.AppImage
             dist/*.rpm
             dist/latest*.yml
+          if-no-files-found: error
           retention-days: 5
 
   attach-to-release:
@@ -295,43 +327,27 @@ jobs:
     if: ${{ needs.validate-release.result == 'success' && needs.build-macos.result == 'success' && needs.build-windows.result == 'success' && needs.build-linux.result == 'success' }}
 
     steps:
+      - name: Checkout workflow scripts
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.workflow_sha }}
+          path: workflow
+          sparse-checkout: |
+            scripts/validate-release.mjs
+            scripts/upload-release.mjs
+          sparse-checkout-cone-mode: false
+
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
           path: artifacts
 
-      - name: Revalidate release target
-        id: revalidate
+      # POST only to the pinned ID: release actions may create releases, update
+      # metadata, or replace assets. A repair must do none of those things.
+      - name: Revalidate and attach artifacts to existing release
         env:
           RELEASE_TAG: ${{ needs.validate-release.outputs.release_tag }}
           EXPECTED_SOURCE_SHA: ${{ needs.validate-release.outputs.source_sha }}
+          EXPECTED_RELEASE_ID: ${{ needs.validate-release.outputs.release_id }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: node scripts/validate-release.mjs
-
-      - name: Check asset collisions
-        run: |
-          TAG="${{ needs.validate-release.outputs.release_tag }}"
-          EXISTING=$(gh api "repos/${{ github.repository }}/releases/tags/$TAG" --jq '.assets[].name')
-          NEW=$(find artifacts -type f -exec basename {} \; | sort -u)
-          COLLISIONS=$(comm -12 <(echo "$EXISTING" | sort) <(echo "$NEW" | sort))
-          if [ -n "$COLLISIONS" ]; then
-            echo "Asset filename collisions detected:"
-            echo "$COLLISIONS"
-            exit 1
-          fi
-          echo "No asset collisions"
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Attach artifacts to release
-        uses: softprops/action-gh-release@v1
-        with:
-          files: |
-            artifacts/macos-artifacts/*
-            artifacts/windows-artifacts/*
-            artifacts/linux-artifacts/*
-          tag_name: ${{ needs.validate-release.outputs.release_tag }}
-          draft: false
-          prerelease: ${{ needs.validate-release.outputs.prerelease == 'true' }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node workflow/scripts/upload-release.mjs

@@ -40,7 +40,7 @@ console.log("--- Input validation ---");
 expectThrow(() => validateInputs("", SHA, true, "t"), "empty tag", "vX.Y.Z");
 expectThrow(() => validateInputs("0.14.1", SHA, true, "t"), "tag without v", "vX.Y.Z");
 expectThrow(() => validateInputs("v0.14", SHA, true, "t"), "incomplete version", "vX.Y.Z");
-expectThrow(() => validateInputs("v0.14.1-beta", SHA, true, "t"), "prerelease suffix", "vX.Y.Z");
+try { validateInputs("v0.14.1-beta.1", SHA, true, "t"); ok("prerelease suffix supported"); } catch (e) { fail("prerelease suffix", e.message); }
 expectThrow(() => validateInputs(TAG, "abc", true, "t"), "short SHA", "40-char");
 expectThrow(() => validateInputs(TAG, "", true, "t"), "empty SHA manual", "40-char");
 try { validateInputs(TAG, "", false, "t"); ok("empty SHA release event valid"); } catch (e) { fail("empty SHA release event", e.message); }
@@ -76,7 +76,7 @@ try {
 // --- Release validation ---
 console.log("--- Release validation ---");
 
-const publishedRelease = { id: 383131955, tag_name: TAG, draft: false, prerelease: false };
+const publishedRelease = { id: 383131955, tag_name: TAG, draft: false, prerelease: false, published_at: "2026-09-05T00:00:00Z" };
 const draftRelease = { id: 123, tag_name: TAG, draft: true, prerelease: false };
 const wrongTagRelease = { id: 123, tag_name: "v0.14.0", draft: false, prerelease: false };
 const validPkg = { content: Buffer.from(JSON.stringify({ name: "local-operator-ui", version: "0.14.1" })).toString("base64") };

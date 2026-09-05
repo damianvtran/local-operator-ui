@@ -3,13 +3,18 @@
  * Validate that a release targets an existing, published, immutable release.
  * Read-only: no secrets printed, no mutations, no publish.
  *
- * Env: RELEASE_TAG, EXPECTED_SOURCE_SHA (required for manual dispatch), IS_MANUAL_DISPATCH, GH_TOKEN
+ * Env: RELEASE_TAG, EXPECTED_SOURCE_SHA (required for manual dispatch),
+ * EXPECTED_RELEASE_ID (required by upload), IS_MANUAL_DISPATCH, GH_TOKEN
+ * These pins are independent of the event: upload must detect a moved tag or
+ * a deleted/recreated release even when it runs after a normal release event.
  * Output: GITHUB_OUTPUT lines source_sha, release_tag, release_id, prerelease
  */
 import { execFileSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
+import { pathToFileURL } from "node:url";
 
-const TAG_RE = /^v\d+\.\d+\.\d+$/;
+// Published prereleases use the same pipeline as stable releases.
+const TAG_RE = /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*)?(?:\+[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*)?$/;
 const SHA_RE = /^[0-9a-f]{40}$/;
 
 class ValidationError extends Error {}
@@ -30,19 +35,26 @@ function validateInputs(tag, expectedSha, isManual, token) {
 }
 
 function createApi(repo, token) {
-  return (path) => JSON.parse(
-    execFileSync("gh", ["api", `repos/${repo}${path}`, "--jq", "."], {
-      env: { ...process.env, GH_TOKEN: token },
-      encoding: "utf8",
-    }),
-  );
+  return (path) => {
+    try {
+      return JSON.parse(execFileSync("gh", ["api", `repos/${repo}${path}`], {
+        env: { ...process.env, GH_TOKEN: token },
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"],
+      }));
+    } catch {
+      // Do not echo subprocess output: it can include authentication details.
+      fail(`GitHub metadata lookup failed: ${path}`);
+    }
+  };
 }
 
 function resolveTagSha(api, tag) {
-  const ref = api(`/git/ref/tags/${tag}`);
-  if (!ref.ref || !ref.ref.endsWith(`/tags/${tag}`)) {
-    fail(`Unexpected ref format: ${ref.ref}, expected .../tags/${tag}`);
+  const ref = api(`/git/ref/tags/${encodeURIComponent(tag)}`);
+  if (ref?.ref !== `refs/tags/${tag}`) {
+    fail(`Unexpected ref format: expected refs/tags/${tag}`);
   }
+  if (!ref.object) fail("Missing tag object");
   let sha = ref.object.sha;
   if (ref.object.type === "tag") {
     const tagObj = api(`/git/tags/${sha}`);
@@ -51,19 +63,26 @@ function resolveTagSha(api, tag) {
   } else if (ref.object.type !== "commit") {
     fail(`Tag ref points to ${ref.object.type}, expected commit`);
   }
+  if (!SHA_RE.test(sha)) fail("Tag must resolve to a full 40-char commit SHA");
   return sha;
 }
 
-function validateRelease(api, tag, expectedSha, isManual) {
+function validateRelease(api, tag, expectedSha, isManual, expectedReleaseId = "") {
   const tagSha = resolveTagSha(api, tag);
   console.log(`Tag ${tag} resolves to commit ${tagSha}`);
 
-  const release = api(`/releases/tags/${tag}`);
+  const release = api(`/releases/tags/${encodeURIComponent(tag)}`);
+  if (!release) fail(`Missing release ${tag}`);
   if (release.tag_name !== tag) fail(`Release tag_name ${release.tag_name} does not match requested ${tag}`);
-  if (release.draft) fail(`Release ${tag} is a draft; refusing dispatch`);
+  if (release.draft !== false || !release.published_at) fail(`Release ${tag} is a draft or not published`);
+  if (!Number.isSafeInteger(release.id) || release.id <= 0) fail("Missing valid release ID");
+  if (expectedReleaseId && String(release.id) !== String(expectedReleaseId)) {
+    fail(`Release ID ${release.id} does not match expected release ID ${expectedReleaseId}`);
+  }
   console.log(`Release ${tag} (id ${release.id}) state: published, prerelease: ${release.prerelease}`);
 
-  if (isManual && tagSha !== expectedSha) {
+  if (isManual && !expectedSha) fail("EXPECTED_SOURCE_SHA required for manual dispatch");
+  if (expectedSha && tagSha !== expectedSha) {
     fail(`Tag SHA ${tagSha} does not match expected source SHA ${expectedSha}`);
   }
 
@@ -91,7 +110,7 @@ function emitOutputs(result) {
 }
 
 // Main execution (skip when imported for testing)
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const tag = process.env.RELEASE_TAG;
   const expectedSha = process.env.EXPECTED_SOURCE_SHA || "";
   const isManual = process.env.IS_MANUAL_DISPATCH === "true";
@@ -101,7 +120,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   try {
     validateInputs(tag, expectedSha, isManual, token);
     const api = createApi(repo, token);
-    const result = validateRelease(api, tag, expectedSha, isManual);
+    const result = validateRelease(api, tag, expectedSha, isManual, process.env.EXPECTED_RELEASE_ID);
     emitOutputs(result);
     console.log("Validation passed");
   } catch (e) {
@@ -114,4 +133,4 @@ if (import.meta.url === `file://${process.argv[1]}`) {
 }
 
 // Export for testing
-export { validateInputs, validateRelease, resolveTagSha, ValidationError };
+export { validateInputs, validateRelease, resolveTagSha, createApi, ValidationError };
