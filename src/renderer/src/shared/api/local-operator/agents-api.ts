@@ -1,6 +1,7 @@
 /**
  * Local Operator API - Agents Endpoints
  */
+import { desktopMedia, mediaError } from "./desktop-api";
 import type {
 	AgentCreate,
 	AgentDetails,
@@ -333,24 +334,18 @@ export const AgentsApi = {
 	 * @throws Error if the request fails
 	 */
 	async importAgent(
-		baseUrl: string,
+		_baseUrl: string,
 		file: File,
 	): Promise<CRUDResponse<AgentDetails>> {
-		const formData = new FormData();
-		formData.append("file", file);
-
-		const response = await fetch(`${baseUrl}/v1/agents/import`, {
-			method: "POST",
-			body: formData,
-		});
-
-		if (!response.ok) {
-			throw new Error(
-				`Import agent request failed: ${response.status} ${response.statusText}`,
-			);
-		}
-
-		return response.json() as Promise<CRUDResponse<AgentDetails>>;
+		// ZIP bytes go through the authenticated media relay; the managed
+		// backend rejects an unauthenticated multipart post on this route.
+		const bytes = new Uint8Array(await file.arrayBuffer());
+		const result = await desktopMedia(
+			{ op: "agent.import", fileName: file.name || "agent.zip" },
+			bytes,
+		);
+		if (result.kind !== "json") throw mediaError(result);
+		return result.body as CRUDResponse<AgentDetails>;
 	},
 
 	/**

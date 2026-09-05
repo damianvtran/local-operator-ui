@@ -2,7 +2,10 @@ import { electronAPI } from "@electron-toolkit/preload";
 import { contextBridge, ipcRenderer } from "electron";
 import type { ProgressInfo, UpdateInfo } from "electron-updater";
 import type { BackendUpdateInfo } from "../main/update-service";
-import type { DesktopRequest } from "../shared/desktop-contract";
+import type {
+	DesktopMediaRequest,
+	DesktopRequest,
+} from "../shared/desktop-contract";
 
 // Custom APIs for renderer
 const api = {
@@ -11,6 +14,8 @@ const api = {
 			ipcRenderer.invoke("desktop-request", request),
 		openAuthorization: (operationId: string, reopen = false) =>
 			ipcRenderer.invoke("desktop-open-authorization", operationId, reopen),
+		media: (request: DesktopMediaRequest, bytes: Uint8Array | null) =>
+			ipcRenderer.invoke("desktop-media", request, bytes),
 		stream: {
 			subscribe: (
 				args: { sessionId: string; epoch?: string; afterSeq?: number },

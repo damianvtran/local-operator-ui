@@ -5,6 +5,7 @@ import {
 	shell,
 } from "electron";
 import type { DesktopResponse } from "../shared/desktop-contract";
+import type { DesktopMediaResponse } from "./desktop-media";
 import type { DesktopStreamRelay } from "./desktop-stream";
 import { trustedDesktopFrame } from "./desktop-transport";
 
@@ -15,6 +16,10 @@ export function registerDesktopIPC(
 	expectedUrl: string,
 	request: (input: unknown) => Promise<DesktopResponse>,
 	streams?: DesktopStreamRelay,
+	media?: (
+		input: unknown,
+		bytes: Uint8Array | null,
+	) => Promise<DesktopMediaResponse>,
 ): void {
 	const opened = new Map<string, string>();
 	function authorize(event: IpcMainInvokeEvent): void {
@@ -33,6 +38,20 @@ export function registerDesktopIPC(
 		authorize(event);
 		return request(input);
 	});
+	// Binary/multipart media relay. Bytes arrive as a structured-clone
+	// Uint8Array from preload; the response's bytes go back the same way.
+	if (media) {
+		ipcMain.handle("desktop-media", (event, input: unknown, bytes: unknown) => {
+			authorize(event);
+			const payload =
+				bytes instanceof Uint8Array
+					? bytes
+					: bytes instanceof ArrayBuffer
+						? new Uint8Array(bytes)
+						: null;
+			return media(input, payload);
+		});
+	}
 	ipcMain.handle(
 		"desktop-open-authorization",
 		async (event, operationId: unknown, reopen: unknown = false) => {
