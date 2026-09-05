@@ -9,6 +9,7 @@ import { CommandPalette } from "@features/command-palette/components/command-pal
 import { OnboardingModal } from "@features/onboarding";
 import { OnboardingProvider } from "@features/onboarding/components/onboarding-provider";
 
+import { BackendCompatibilityBanner } from "@shared/components/common/backend-compatibility-banner";
 import { ConnectivityBanner } from "@shared/components/common/connectivity-banner";
 import { CreateAgentDialog } from "@shared/components/common/create-agent-dialog";
 import { LowCreditsDialog } from "@shared/components/common/low-credits-dialog";
@@ -121,6 +122,8 @@ const App: FC = () => {
 				<OnboardingModal open={isOnboardingActive} />
 
 				<ConnectivityBanner />
+
+				<BackendCompatibilityBanner />
 
 				<UpdateNotification />
 
