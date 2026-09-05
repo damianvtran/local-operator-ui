@@ -12,10 +12,8 @@ import { persist } from "zustand/middleware";
  * Onboarding steps enum
  */
 export enum OnboardingStep {
-	RADIENT_CHOICE = "radient_choice",
-	RADIENT_SIGNIN = "radient_signin",
+	CONNECT_PROVIDER = "connect_provider",
 	USER_PROFILE = "user_profile",
-	MODEL_CREDENTIAL = "model_credential",
 	SEARCH_API = "search_api",
 	DEFAULT_MODEL = "default_model",
 	CREATE_AGENT = "create_agent",
@@ -78,8 +76,8 @@ export const useOnboardingStore = create<OnboardingState>()(
 		(set, _) => ({
 			isModalComplete: false,
 			isTourComplete: false,
-			// Default to RADIENT_CHOICE; the modal will redirect if needed
-			currentStep: OnboardingStep.RADIENT_CHOICE,
+			// Default to the provider grid; the modal no longer gates on Radient.
+			currentStep: OnboardingStep.CONNECT_PROVIDER,
 			isModalActive: false,
 
 			completeModalOnboarding: () => {
@@ -111,8 +109,8 @@ export const useOnboardingStore = create<OnboardingState>()(
 				set({
 					isModalComplete: false,
 					isTourComplete: false,
-					// Reset to RADIENT_CHOICE as well
-					currentStep: OnboardingStep.RADIENT_CHOICE,
+					// Reset to the provider grid as well
+					currentStep: OnboardingStep.CONNECT_PROVIDER,
 					isModalActive: false,
 				});
 			},
