@@ -16,11 +16,29 @@
  *   consumer must re-read via the snapshot that follows rather than patching.
  *
  * Per-record coalescing happens at the frame queue: one animation frame per
- * batch of IPC deliveries, not one render per token.
+ * batch of IPC deliveries, not one render per token. The transcript itself is
+ * folded here too, through the pure reducer in
+ * `features/chat/canonical/transcript-reducer`: replayed events fold into a
+ * scratch state that the snapshot's durable page then overrides, so an older
+ * replay can never regress a newer painted record. `performance.mark` pairs
+ * (`lop:transcript:flush`) bracket every flush so streaming cost is
+ * measurable in the browser's own timeline rather than estimated.
  */
 
-import { subscribeDesktopStream } from "@shared/api/local-operator/desktop-api";
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+	EMPTY_TRANSCRIPT,
+	type TranscriptState,
+	applyEvent,
+	applyHistoryPage,
+	applyLiveSeed,
+	clearTranscript,
+	dropLiveRecords,
+} from "@features/chat/canonical/transcript-reducer";
+import {
+	desktopResult,
+	subscribeDesktopStream,
+} from "@shared/api/local-operator/desktop-api";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
 	CanonicalFrontendState,
 	DesktopHistoryPage,
@@ -47,6 +65,17 @@ export type CanonicalSessionView = {
 	terminal: string | null;
 	/** Set on an unrecoverable stream failure. */
 	error: string | null;
+	/** The painted conversation, durable and live, oldest first. */
+	transcript: TranscriptState;
+	/** Older durable rows are being fetched. */
+	loadingOlder: boolean;
+};
+
+export type CanonicalSessionHandle = CanonicalSessionView & {
+	/** Fetch the page of durable rows before the oldest painted one. */
+	loadOlder: () => Promise<void>;
+	/** View-only clear (the `/clear` contract): nothing is deleted. */
+	clearView: () => void;
 };
 
 const TERMINAL_EVENTS = new Set([
@@ -61,7 +90,7 @@ const TERMINAL_EVENTS = new Set([
 export function useCanonicalSessionStream(
 	sessionId: string | undefined,
 	enabled: boolean,
-): CanonicalSessionView {
+): CanonicalSessionHandle {
 	const [view, setView] = useState<CanonicalSessionView>({
 		status: "connecting",
 		frontend: null,
@@ -72,6 +101,8 @@ export function useCanonicalSessionStream(
 		receipt: null,
 		terminal: null,
 		error: null,
+		transcript: EMPTY_TRANSCRIPT,
+		loadingOlder: false,
 	});
 	// Mutable side-channel for the frame pump; React state is the published,
 	// coalesced view. Frames arriving between renders collect here.
@@ -92,26 +123,33 @@ export function useCanonicalSessionStream(
 			const frames = pending.current;
 			pending.current = [];
 			if (frames.length === 0) return;
+			performance.mark("lop:transcript:flush:start");
 
 			setView((current) => {
 				let next = { ...current };
 				// Replay collects until the snapshot lands; applying an old delta
 				// over newer snapshot text is exactly the bug this ordering exists
-				// to prevent.
+				// to prevent. Replayed EVENTS still fold into a scratch transcript:
+				// the snapshot's durable page is applied over it afterwards, so a
+				// row that became durable wins and an in-flight tail survives.
 				const replayQueue: DesktopSessionFrame[] = [];
 				let snapshotted = next.frontend !== null;
+				let replayTranscript: TranscriptState | null = null;
+				const now = Date.now();
 				for (const frame of frames) {
 					if (frame.type === "heartbeat") continue;
 					if (frame.type === "gap") {
 						// Receipt continuity broke: drop painted state and wait for the
 						// authoritative snapshot that follows rather than patching over
-						// an unknown interval.
+						// an unknown interval. Durable rows stay painted (they cannot
+						// be wrong); only live projections are dropped.
 						next = {
 							...next,
 							frontend: null,
 							history: null,
 							terminal: null,
 							status: "reconnecting",
+							transcript: dropLiveRecords(next.transcript),
 						};
 						snapshotted = false;
 						continue;
@@ -128,25 +166,52 @@ export function useCanonicalSessionStream(
 							subscriptionId: frame.payload.subscription_id,
 						};
 						if (frame.payload.gap) {
-							next = { ...next, frontend: null, history: null };
+							next = {
+								...next,
+								frontend: null,
+								history: null,
+								transcript: dropLiveRecords(next.transcript),
+							};
 							snapshotted = false;
 						}
 						continue;
 					}
 					if (!snapshotted) {
 						replayQueue.push(frame);
+						if (frame.type === "event") {
+							replayTranscript = applyEvent(
+								replayTranscript ?? next.transcript,
+								frame.payload,
+								now,
+							);
+						}
 						if (frame.type === "snapshot") {
+							const snapshot = frame.payload;
+							// Order matters and is the contract: replayed events, then
+							// the durable page (authoritative for every id it names),
+							// then the live seed for the turn still in flight.
+							let transcript = replayTranscript ?? next.transcript;
+							if (!snapshot.history.cursor_missing) {
+								transcript = applyHistoryPage(transcript, snapshot.history);
+							}
+							transcript = applyLiveSeed(
+								transcript,
+								snapshot.frontend.snapshot,
+								now,
+							);
 							next = {
 								...next,
 								status: "live",
-								frontend: frame.payload.frontend.snapshot,
-								history: frame.payload.history,
-								cold: frame.payload.cold,
-								ownerEpoch: frame.payload.frontend.epoch,
+								frontend: snapshot.frontend.snapshot,
+								history: snapshot.history,
+								cold: snapshot.cold,
+								ownerEpoch: snapshot.frontend.epoch,
 								error: null,
+								transcript,
 							};
 							snapshotted = true;
 							replayQueue.length = 0;
+							replayTranscript = null;
 						}
 						continue;
 					}
@@ -175,8 +240,18 @@ export function useCanonicalSessionStream(
 						if (TERMINAL_EVENTS.has(eventType)) {
 							next = { ...next, terminal: eventType };
 						}
+						const transcript = applyEvent(next.transcript, frame.payload, now);
+						if (transcript !== next.transcript) {
+							next = { ...next, transcript };
+						}
 					}
 				}
+				performance.mark("lop:transcript:flush:end");
+				performance.measure(
+					"lop:transcript:flush",
+					"lop:transcript:flush:start",
+					"lop:transcript:flush:end",
+				);
 				return next;
 			});
 		};
@@ -243,5 +318,63 @@ export function useCanonicalSessionStream(
 		};
 	}, [sessionId, enabled]);
 
-	return useMemo(() => view, [view]);
+	// A different session is a different transcript; the reconnect cursor is
+	// per-session too, so both reset together.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: reset on session change only
+	useEffect(() => {
+		reconnectRef.current = {};
+		receiptRef.current = null;
+		setView((current) => ({
+			...current,
+			frontend: null,
+			history: null,
+			terminal: null,
+			transcript: EMPTY_TRANSCRIPT,
+			status: "connecting",
+		}));
+	}, [sessionId]);
+
+	// Latest view for callbacks that must not re-create per render.
+	const viewRef = useRef(view);
+	viewRef.current = view;
+
+	const loadingOlderRef = useRef(false);
+	const loadOlder = useCallback(async () => {
+		if (!sessionId || loadingOlderRef.current) return;
+		const { transcript } = viewRef.current;
+		if (!transcript.hasMore || !transcript.oldestId) return;
+		loadingOlderRef.current = true;
+		setView((current) => ({ ...current, loadingOlder: true }));
+		try {
+			const page = await desktopResult<DesktopHistoryPage>({
+				op: "sessions.history",
+				sessionId,
+				beforeId: transcript.oldestId,
+				limit: 100,
+			});
+			setView((current) => ({
+				...current,
+				loadingOlder: false,
+				transcript: applyHistoryPage(current.transcript, page),
+			}));
+		} catch {
+			// The rows already painted are still correct; the affordance simply
+			// stays available for another try.
+			setView((current) => ({ ...current, loadingOlder: false }));
+		} finally {
+			loadingOlderRef.current = false;
+		}
+	}, [sessionId]);
+
+	const clearView = useCallback(() => {
+		setView((current) => ({
+			...current,
+			transcript: clearTranscript(current.transcript),
+		}));
+	}, []);
+
+	return useMemo(
+		() => ({ ...view, loadOlder, clearView }),
+		[view, loadOlder, clearView],
+	);
 }

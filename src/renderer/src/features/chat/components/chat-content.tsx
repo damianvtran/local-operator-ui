@@ -5,6 +5,7 @@ import type {
 } from "@shared/api/local-operator/types";
 import { ResizableDivider } from "@shared/components/common/resizable-divider";
 import { TabPanel } from "@shared/components/ui";
+import type { CanonicalSessionHandle } from "@shared/hooks/use-canonical-session";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { isDevelopmentMode } from "@shared/utils/env-utils";
@@ -16,6 +17,7 @@ import React, {
 	useRef,
 	useState,
 } from "react";
+import { CanonicalTranscript } from "../canonical/canonical-transcript";
 import type { Message } from "../types/message";
 import { Canvas } from "./canvas";
 import { ChatHeader } from "./chat-header";
@@ -88,6 +90,16 @@ type ChatContentProps = {
 	agentData?: AgentDetails | null;
 	refetch?: () => void;
 	messageInputRef?: React.Ref<MessageInputHandle>;
+	/**
+	 * Present when the conversation is a canonical backend session: the
+	 * transcript is painted from the canonical stream and the legacy
+	 * job/message list is not mounted. Absent on an old backend.
+	 */
+	canonical?: {
+		view: CanonicalSessionHandle;
+		busy: boolean;
+		onStop: () => void;
+	};
 };
 
 /**
@@ -95,6 +107,14 @@ type ChatContentProps = {
  *
  * Displays the main chat content area with tabs, messages, and input
  */
+// The composer only reads `messages.length` (to decide whether to show the
+// first-run suggestions), so the canonical path hands it a stable sentinel
+// rather than re-mapping every record into a legacy Message per token.
+const EMPTY_MESSAGES: Message[] = [];
+const CANONICAL_NONEMPTY: Message[] = [
+	{ id: "canonical", role: "system", timestamp: new Date(0) },
+];
+
 const defaultCanvasState = {
 	isOpen: false,
 	openTabs: [],
@@ -130,6 +150,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		agentData,
 		refetch,
 		messageInputRef,
+		canonical,
 	}) => {
 		const [isSmallView, setIsSmallView] = useState(false);
 		const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -256,21 +277,36 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							? asTabPanel(
 									"chat",
 									/* Messages container */
-									<MessagesView
-										messages={messages}
-										isLoading={isLoading}
-										isLoadingMessages={isLoadingMessages}
-										isFetchingMore={isFetchingMore}
-										jobStatus={jobStatus}
-										agentName={agentName}
-										currentExecution={currentExecution}
-										messagesContainerRef={messagesContainerRef}
-										messagesEndRef={messagesEndRef}
-										scrollToBottom={scrollToBottom}
-										refetch={refetch}
-										conversationId={agentId}
-										isSmallView={isSmallView}
-									/>,
+									canonical ? (
+										<CanonicalTranscript
+											transcript={canonical.view.transcript}
+											gate={canonical.view.frontend?.pending_gate ?? null}
+											waiting={canonical.busy}
+											loadingOlder={canonical.view.loadingOlder}
+											onLoadOlder={canonical.view.loadOlder}
+											containerRef={messagesContainerRef}
+											isSmallView={isSmallView}
+											cold={canonical.view.cold}
+											status={canonical.view.status}
+											error={canonical.view.error}
+										/>
+									) : (
+										<MessagesView
+											messages={messages}
+											isLoading={isLoading}
+											isLoadingMessages={isLoadingMessages}
+											isFetchingMore={isFetchingMore}
+											jobStatus={jobStatus}
+											agentName={agentName}
+											currentExecution={currentExecution}
+											messagesContainerRef={messagesContainerRef}
+											messagesEndRef={messagesEndRef}
+											scrollToBottom={scrollToBottom}
+											refetch={refetch}
+											conversationId={agentId}
+											isSmallView={isSmallView}
+										/>
+									),
 								)
 							: asTabPanel(
 									"raw",
@@ -278,16 +314,29 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 									<RawInfoView content={rawInfoContent} />,
 								)}
 						{/* Message input */}
-						{!(isLoadingMessages && messages.length === 0) && (
+						{(canonical || !(isLoadingMessages && messages.length === 0)) && (
 							<MessageInput
 								ref={messageInputRef}
 								onSendMessage={onSendMessage}
 								initialSuggestions={DEFAULT_MESSAGE_SUGGESTIONS}
-								isLoading={isLoading}
+								isLoading={canonical ? false : isLoading}
 								conversationId={agentId}
-								messages={messages}
-								currentJobId={currentJobId}
+								messages={
+									canonical
+										? canonical.view.transcript.records.length > 0
+											? CANONICAL_NONEMPTY
+											: messages.length > 0
+												? messages
+												: EMPTY_MESSAGES
+										: messages
+								}
+								currentJobId={canonical ? null : currentJobId}
 								onCancelJob={onCancelJob}
+								canonicalStop={
+									canonical
+										? { active: canonical.busy, onStop: canonical.onStop }
+										: undefined
+								}
 								isFarFromBottom={isFarFromBottom}
 								hasNewActivity={hasNewActivity}
 								scrollToBottom={scrollToBottom}
