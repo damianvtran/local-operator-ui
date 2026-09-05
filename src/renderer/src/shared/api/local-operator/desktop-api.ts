@@ -30,11 +30,29 @@ export async function desktopRequest(
 	return response.json();
 }
 
+/**
+ * A desktop control that came back non-2xx, carrying the STATUS as well as the
+ * message. Callers used to get a bare `Error`, so "the backend is old" (404),
+ * "it is not running" (503), and "this app cannot authenticate to it" (401)
+ * were indistinguishable -- and the compatibility banner asserted the first for
+ * all three, offering an "Update backend" action that fixes only one of them.
+ */
+export class DesktopControlError extends Error {
+	readonly status: number;
+
+	constructor(status: number, message: string) {
+		super(message);
+		this.name = "DesktopControlError";
+		this.status = status;
+	}
+}
+
 export async function desktopResult<T>(request: DesktopRequest): Promise<T> {
 	const response = await desktopRequest(request);
 	const envelope = response.body as { result?: T; detail?: string } | null;
 	if (response.status < 200 || response.status >= 300) {
-		throw new Error(
+		throw new DesktopControlError(
+			response.status,
 			typeof envelope?.detail === "string"
 				? envelope.detail
 				: "This backend does not support the requested desktop control. Update the backend and try again.",
