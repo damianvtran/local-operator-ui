@@ -31,6 +31,7 @@ import { ChatSidebar } from "./chat-sidebar";
 import { ErrorView } from "./error-view";
 import type { MessageInputHandle } from "./message-input";
 import { PlaceholderView } from "./placeholder-view";
+import { useSlashDispatch } from "./slash-dispatch";
 
 /**
  * Props for the ChatPage component
@@ -307,9 +308,24 @@ export const ChatPage: FC<ChatProps> = () => {
 	// Memoized function to handle sending a new message
 	const { data: configData } = useConfig();
 
+	// Slash submissions are dispatched to the desktop command control, never
+	// admitted as model chat. The backend rejects slash text on /messages with
+	// 422 — intercepting here is what makes `/settings` navigate instead of
+	// failing against a missing model key one API round-trip later.
+	const handleSlashDispatch = useSlashDispatch({
+		sessionId: conversationId,
+		addMessage: (message) => {
+			if (conversationId) addMessage(conversationId, message);
+		},
+	});
+
 	const handleSendMessage = useCallback(
 		async (content: string, attachments: string[]) => {
 			if (!conversationId) return;
+
+			// A leading slash is a command, full stop. Dispatch consumes it and
+			// nothing below (model job creation) runs for it.
+			if (await handleSlashDispatch(content)) return;
 
 			// Create a new user message
 			const userMessage: Message = {
@@ -420,6 +436,7 @@ export const ChatPage: FC<ChatProps> = () => {
 			setCurrentJobId,
 			configData,
 			scrollToBottom,
+			handleSlashDispatch,
 		],
 	);
 
