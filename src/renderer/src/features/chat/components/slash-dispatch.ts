@@ -90,6 +90,12 @@ function closestCommands(
 		.map((entry) => `/${entry.name}`);
 }
 
+const PRESENT_DIRECTLY = new Set([
+	"session.goal",
+	"session.context",
+	"session.compact",
+]);
+
 export function useSlashDispatch({
 	sessionId,
 	addMessage,
@@ -113,10 +119,17 @@ export function useSlashDispatch({
 	const [picker, setPicker] = useState<PickerContext | null>(null);
 	const closePicker = useCallback(() => setPicker(null), []);
 
+	// Receipts land in the transcript the user is looking at: the canonical
+	// one when the session is live, the legacy chat store otherwise.
 	const note = useCallback(
-		(text: string, error = false) =>
-			addMessage(systemMessage(text, error ? "error" : undefined)),
-		[addMessage],
+		(text: string, error = false) => {
+			if (sessionId && canonical.status !== "unavailable") {
+				canonical.addNote(text, error ? "error" : "info");
+				return;
+			}
+			addMessage(systemMessage(text, error ? "error" : undefined));
+		},
+		[addMessage, canonical.addNote, canonical.status, sessionId],
 	);
 
 	const dispatch = useCallback(
@@ -174,6 +187,33 @@ export function useSlashDispatch({
 					`/${spec.name} needs an open conversation. Start one first.`,
 					true,
 				);
+				return true;
+			}
+
+			// Owner commands whose bare form is a READ (goal shows the goal,
+			// context shows the breakdown, compact starts a pass) present in the
+			// host straight away: the adapter makes the same owner call and shows
+			// the same answer, with the form or the live state beside it. Going
+			// through the owner first would only paint the answer twice.
+			if (!args && PRESENT_DIRECTLY.has(spec.destination)) {
+				setPicker({
+					action: {
+						kind: "native_action",
+						destination: spec.destination,
+						session_id: sessionId,
+						args: "",
+						fields: [],
+						data: {},
+					},
+					spec,
+					sessionId,
+					canonical,
+					commands,
+					onClose: closePicker,
+					note,
+					dispatch: (line) => void dispatch(line),
+					rebind,
+				});
 				return true;
 			}
 
