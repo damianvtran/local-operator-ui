@@ -711,3 +711,22 @@ export function dropLiveRecords(state: TranscriptState): TranscriptState {
 			(record.kind === "tool" && record.phase !== "done"),
 	);
 }
+
+let localNoteCounter = 0;
+
+/** Append a renderer-local notice row (never durable, never replayed). */
+export function appendLocalNote(
+	state: TranscriptState,
+	text: string,
+	level: "info" | "warning" | "error",
+	now = Date.now(),
+): TranscriptState {
+	localNoteCounter += 1;
+	return upsert(state, {
+		kind: "notice",
+		id: `local:${now}:${localNoteCounter}`,
+		ts: now,
+		text,
+		level,
+	});
+}

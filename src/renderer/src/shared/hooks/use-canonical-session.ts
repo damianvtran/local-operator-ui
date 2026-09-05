@@ -28,6 +28,7 @@
 import {
 	EMPTY_TRANSCRIPT,
 	type TranscriptState,
+	appendLocalNote,
 	applyEvent,
 	applyHistoryPage,
 	applyLiveSeed,
@@ -76,6 +77,12 @@ export type CanonicalSessionHandle = CanonicalSessionView & {
 	loadOlder: () => Promise<void>;
 	/** View-only clear (the `/clear` contract): nothing is deleted. */
 	clearView: () => void;
+	/**
+	 * Paint a renderer-local line (a command receipt, a refusal, a hint). It
+	 * is not history and never reaches the backend; it exists so a slash
+	 * command's answer lands where the user typed it.
+	 */
+	addNote: (text: string, level?: "info" | "warning" | "error") => void;
 };
 
 const TERMINAL_EVENTS = new Set([
@@ -86,6 +93,9 @@ const TERMINAL_EVENTS = new Set([
 	"turn_end",
 	"turn_start",
 ]);
+
+/** Flush cadence when no animation frame arrives (hidden window). */
+const HIDDEN_FLUSH_MS = 250;
 
 export function useCanonicalSessionStream(
 	sessionId: string | undefined,
@@ -107,9 +117,6 @@ export function useCanonicalSessionStream(
 	// Mutable side-channel for the frame pump; React state is the published,
 	// coalesced view. Frames arriving between renders collect here.
 	const pending = useRef<DesktopSessionFrame[]>([]);
-	// Set by a snapshot that needs the authoritative history tail; consumed by
-	// the effect below so the fetch runs outside the reducer.
-	const reconcileRef = useRef<number | null>(null);
 	const receiptRef = useRef<{ epoch: string; seq: number } | null>(null);
 	const reconnectRef = useRef<{ epoch?: string; afterSeq?: number }>({});
 	const generationRef = useRef(0);
@@ -119,13 +126,30 @@ export function useCanonicalSessionStream(
 		const generation = ++generationRef.current;
 		let dispose: (() => void) | null = null;
 		let raf = 0;
+		let fallback = 0;
 
 		const flush = () => {
+			if (raf) cancelAnimationFrame(raf);
+			if (fallback) clearTimeout(fallback);
 			raf = 0;
+			fallback = 0;
 			if (generationRef.current !== generation) return;
 			const frames = pending.current;
 			pending.current = [];
 			if (frames.length === 0) return;
+			// Decided here, from the frames, not inside the React updater: an
+			// updater runs lazily (and twice under StrictMode), so a side effect
+			// keyed off it would either never fire or fire on the discarded pass.
+			// A cold session (no live owner) snapshots with no history cursor and
+			// so an empty page; a replaced cursor reports cursor_missing. Both are
+			// the contract's "reconcile through /history" case: the authoritative
+			// tail is fetched once per snapshot and merged durable-wins.
+			const needsReconcile = frames.some(
+				(frame) =>
+					frame.type === "snapshot" &&
+					(frame.payload.history.cursor_missing ||
+						frame.payload.history.entries.length === 0),
+			);
 			performance.mark("lop:transcript:flush:start");
 
 			setView((current) => {
@@ -202,12 +226,6 @@ export function useCanonicalSessionStream(
 							// reports cursor_missing. Both are the contract's "reconcile
 							// through /history" case: the authoritative tail is fetched
 							// once per snapshot and merged durable-wins.
-							if (
-								snapshot.history.cursor_missing ||
-								snapshot.history.entries.length === 0
-							) {
-								reconcileRef.current = generation;
-							}
 							transcript = applyLiveSeed(
 								transcript,
 								snapshot.frontend.snapshot,
@@ -270,25 +288,6 @@ export function useCanonicalSessionStream(
 						}
 					}
 				}
-				if (reconcileRef.current === generation) {
-					reconcileRef.current = null;
-					void desktopResult<DesktopHistoryPage>({
-						op: "sessions.history",
-						sessionId,
-						limit: 100,
-					})
-						.then((page) => {
-							if (generationRef.current !== generation) return;
-							setView((state) => ({
-								...state,
-								transcript: applyHistoryPage(state.transcript, page),
-							}));
-						})
-						.catch(() => {
-							// Painted rows stay; the stream keeps delivering. A failed
-							// reconcile is not a reason to blank the conversation.
-						});
-				}
 				performance.mark("lop:transcript:flush:end");
 				performance.measure(
 					"lop:transcript:flush",
@@ -297,6 +296,24 @@ export function useCanonicalSessionStream(
 				);
 				return next;
 			});
+			if (needsReconcile) {
+				void desktopResult<DesktopHistoryPage>({
+					op: "sessions.history",
+					sessionId,
+					limit: 100,
+				})
+					.then((page) => {
+						if (generationRef.current !== generation) return;
+						setView((state) => ({
+							...state,
+							transcript: applyHistoryPage(state.transcript, page),
+						}));
+					})
+					.catch(() => {
+						// Painted rows stay; the stream keeps delivering. A failed
+						// reconcile is not a reason to blank the conversation.
+					});
+			}
 		};
 
 		const connect = () => {
@@ -342,7 +359,12 @@ export function useCanonicalSessionStream(
 					try {
 						const frame = JSON.parse(event.data) as DesktopSessionFrame;
 						pending.current.push(frame);
+						// One flush per animation frame while the window paints. A
+						// hidden or backgrounded window stops delivering animation
+						// frames entirely, so a timer backstop keeps state (and the
+						// notification path that reads it) current at a coarser rate.
 						if (!raf) raf = requestAnimationFrame(flush);
+						if (!fallback) fallback = window.setTimeout(flush, HIDDEN_FLUSH_MS);
 					} catch {
 						// A malformed frame is skipped, never fatal: the next snapshot
 						// heals any state it would have touched.
@@ -357,6 +379,7 @@ export function useCanonicalSessionStream(
 			generationRef.current += 1;
 			dispose?.();
 			if (raf) cancelAnimationFrame(raf);
+			if (fallback) clearTimeout(fallback);
 			pending.current = [];
 		};
 	}, [sessionId, enabled]);
@@ -416,8 +439,18 @@ export function useCanonicalSessionStream(
 		}));
 	}, []);
 
+	const addNote = useCallback(
+		(text: string, level: "info" | "warning" | "error" = "info") => {
+			setView((current) => ({
+				...current,
+				transcript: appendLocalNote(current.transcript, text, level),
+			}));
+		},
+		[],
+	);
+
 	return useMemo(
-		() => ({ ...view, loadOlder, clearView }),
-		[view, loadOlder, clearView],
+		() => ({ ...view, loadOlder, clearView, addNote }),
+		[view, loadOlder, clearView, addNote],
 	);
 }
