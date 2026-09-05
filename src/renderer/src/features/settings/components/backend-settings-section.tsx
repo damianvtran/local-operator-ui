@@ -35,10 +35,17 @@ export const backendSettingsKeys = {
 
 /** Human-readable scope tags. The backend emits enum values; the words on the
  * header answer "when does this take effect", not "what enum is it". */
+/*
+ * Keyed on what the backend ACTUALLY emits (`Scope` in `settings_io.py`
+ * serializes to spaced lowercase), not on the enum's Python member names. The
+ * previous map used `new_launch` / `restart`, which matched nothing, so two of
+ * three badges fell through to the raw value and printed a bare "new sessions"
+ * beside a sentence-case "Takes effect immediately" (design D3).
+ */
 const SCOPE_LABELS: Record<string, string> = {
 	live: "Takes effect immediately",
-	new_launch: "Takes effect for new sessions",
-	restart: "Takes effect after a restart",
+	"new launch": "Takes effect the next time the app starts",
+	"new sessions": "Takes effect for new conversations",
 };
 
 type BackendSettingsSectionProps = {
@@ -68,13 +75,18 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 	const settings = query.data;
 	const filtered = useMemo(() => {
 		if (!settings) return null;
-		const needle = filter.trim().toLowerCase();
+		// Registry keys use underscores (`web_search.enabled`) while the words
+		// around them are written with hyphens, so `/search`'s own deep link
+		// ("web-search") matched 0 of 73 settings and the section rendered its
+		// empty state (UX U4). Folding both separators to one makes the two
+		// spellings the same search, for the deep link and for anyone typing.
+		const fold = (value: string) => value.toLowerCase().replace(/[-_]/g, " ");
+		const needle = fold(filter.trim());
 		if (!needle) return settings.settings;
 		return settings.settings.filter((setting) =>
-			[setting.label, setting.help, setting.key, setting.section]
-				.join(" ")
-				.toLowerCase()
-				.includes(needle),
+			fold(
+				[setting.label, setting.help, setting.key, setting.section].join(" "),
+			).includes(needle),
 		);
 	}, [settings, filter]);
 
@@ -213,9 +225,14 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 									</span>
 								)}
 							</span>
-							<Badge variant="neutral">
-								{SCOPE_LABELS[section.scope] ?? section.scope}
-							</Badge>
+							{/* An unmapped scope hides rather than printing a raw enum in
+							    the user's face: a badge is our sentence about when a
+							    change lands, and we have nothing to say about a value we
+							    do not recognise. The section still renders and still
+							    saves. */}
+							{SCOPE_LABELS[section.scope] && (
+								<Badge variant="neutral">{SCOPE_LABELS[section.scope]}</Badge>
+							)}
 						</button>
 						{!isCollapsed && (
 							<div className="flex flex-col gap-5">

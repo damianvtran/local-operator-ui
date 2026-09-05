@@ -22,10 +22,11 @@ import {
 } from "@shared/api/local-operator/desktop-hooks";
 import { Spinner } from "@shared/components/common/spinner";
 import { Alert, Badge, Button, Input, Label } from "@shared/components/ui";
+import { cn } from "@shared/lib/utils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plug, PlugZap, RotateCw, Trash2 } from "lucide-react";
 import type { FC, RefObject } from "react";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { SettingsSection } from "./settings-section";
 
 type MCPServerRow = {
@@ -237,7 +238,9 @@ const AddServerForm: FC<{
 export const McpManagementSection: FC<{
 	sessionId?: string;
 	sectionRef?: RefObject<HTMLDivElement>;
-}> = ({ sessionId, sectionRef }) => {
+	/** Server to reveal, from `/mcp <name>`'s `&mcp=` deep link. */
+	highlightServer?: string;
+}> = ({ sessionId, sectionRef, highlightServer }) => {
 	const capabilities = useDesktopCapabilities();
 	const enabled = desktopFeatureEnabled(capabilities.data, "mcp");
 	const queryClient = useQueryClient();
@@ -258,6 +261,25 @@ export const McpManagementSection: FC<{
 	});
 
 	const servers = listQuery.data?.servers ?? [];
+
+	// `/mcp <name>` emits `&mcp=<name>` and nothing read it, so the argument was
+	// silently dropped and the command landed on an undifferentiated list (UX
+	// U3). Honoured rather than removed: naming a server is the whole point of
+	// passing one.
+	const highlightRef = useRef<HTMLLIElement>(null);
+	const revealed = useRef<string | null>(null);
+	useEffect(() => {
+		if (!highlightServer || servers.length === 0) return;
+		// Once per named server: re-scrolling on every list refetch would fight
+		// the user for the scroll position.
+		if (revealed.current === highlightServer) return;
+		if (!servers.some((server) => server.name === highlightServer)) return;
+		revealed.current = highlightServer;
+		highlightRef.current?.scrollIntoView({
+			block: "center",
+			behavior: "smooth",
+		});
+	}, [highlightServer, servers]);
 
 	const refresh = useCallback(() => {
 		if (sessionId) {
@@ -356,10 +378,17 @@ export const McpManagementSection: FC<{
 					<ul className="flex flex-col gap-2">
 						{servers.map((server) => {
 							const connected = server.status === "connected";
+							const highlighted = server.name === highlightServer;
 							return (
 								<li
 									key={server.name}
-									className="flex flex-col gap-2 rounded-md border border-control bg-surface p-3"
+									ref={highlighted ? highlightRef : undefined}
+									className={cn(
+										"flex flex-col gap-2 rounded-md border border-control bg-surface p-3",
+										// A colour step, not a ring: this marks which row the
+										// command was about, it does not take focus.
+										highlighted && "border-accent bg-elevated",
+									)}
 								>
 									<div className="flex items-center justify-between gap-3">
 										<div className="flex min-w-0 items-center gap-2">
