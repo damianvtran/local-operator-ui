@@ -6,6 +6,7 @@ import {
 	Download,
 	Key,
 	Paintbrush,
+	Plug,
 	Puzzle,
 	Settings,
 	SlidersHorizontal,
@@ -80,7 +81,13 @@ const TOUR_TAGS: Record<string, string> = {
  */
 const SECTION_GROUPS: { label: string; ids: string[] }[] = [
 	{ label: "General", ids: ["general", "appearance"] },
-	{ label: "Account", ids: ["radient", "integrations", "credentials"] },
+	{
+		label: "Account",
+		ids: ["radient", "providers", "integrations", "credentials"],
+	},
+	// The backend registry section was rendered but reachable only by deep
+	// link because it sat in no group; the rail filters by group membership.
+	{ label: "Backend", ids: ["backend"] },
 	{ label: "System", ids: ["updates"] },
 ];
 
@@ -271,6 +278,11 @@ export const DEFAULT_SETTINGS_SECTIONS: SettingsSection[] = [
 		id: "appearance",
 		label: "Appearance",
 		icon: Paintbrush,
+	},
+	{
+		id: "providers",
+		label: "Providers",
+		icon: Plug,
 	},
 	{
 		id: "backend",

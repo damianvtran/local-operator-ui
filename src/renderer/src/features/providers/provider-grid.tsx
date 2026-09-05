@@ -15,7 +15,7 @@ import { Alert, Badge, Button, Input } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
 import { Search, X } from "lucide-react";
 import type { FC } from "react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ProviderDetail } from "./provider-detail";
 import { providerMethodLabel } from "./provider-labels";
 
@@ -24,11 +24,27 @@ const SEARCH_THRESHOLD = 6;
 type ProviderGridProps = {
 	/** Called once any provider reports a stored credential. */
 	onConnected?: () => void;
+	/**
+	 * Provider to open in detail on mount. `/login <provider>` and the
+	 * sign-in picker deep-link here; the grid is otherwise the same surface
+	 * onboarding shows, so a provider's methods live in exactly one place.
+	 */
+	initialProviderId?: string | null;
 };
 
-export const ProviderGrid: FC<ProviderGridProps> = ({ onConnected }) => {
+export const ProviderGrid: FC<ProviderGridProps> = ({
+	onConnected,
+	initialProviderId = null,
+}) => {
 	const providers = useDesktopProviders(true);
-	const [selectedId, setSelectedId] = useState<string | null>(null);
+	const [selectedId, setSelectedId] = useState<string | null>(
+		initialProviderId,
+	);
+	// A later deep link to a different provider re-selects; the same id is
+	// a no-op so the user's "Back to providers" is not undone by a re-render.
+	useEffect(() => {
+		if (initialProviderId) setSelectedId(initialProviderId);
+	}, [initialProviderId]);
 	const [query, setQuery] = useState("");
 
 	const rows = useMemo(() => providers.data ?? [], [providers.data]);

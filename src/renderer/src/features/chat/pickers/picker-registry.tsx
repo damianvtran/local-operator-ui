@@ -96,7 +96,7 @@ export const DESTINATIONS: Record<string, DestinationEntry> = {
 		kind: "navigate",
 		route: () => "/settings?filter=web-search",
 	},
-	providers: { kind: "navigate", route: () => "/settings?section=backend" },
+	providers: { kind: "navigate", route: () => "/settings?section=providers" },
 	accounts: { kind: "navigate", route: () => "/settings?section=credentials" },
 	updates: { kind: "navigate", route: () => "/settings?section=updates" },
 	mcp: {

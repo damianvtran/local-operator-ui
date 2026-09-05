@@ -1,4 +1,5 @@
 import { useOnboardingTour } from "@features/onboarding/hooks/use-onboarding-tour";
+import { ProviderGrid } from "@features/providers/provider-grid";
 import type { ConfigUpdate } from "@shared/api/local-operator/types";
 import { EditableField } from "@shared/components/common/editable-field";
 import { PageHeader } from "@shared/components/common/page-header";
@@ -38,6 +39,7 @@ import {
 	Key,
 	List,
 	MessagesSquare,
+	Plug,
 	Settings,
 	SlidersHorizontal,
 	User,
@@ -56,6 +58,7 @@ import {
 } from "recharts";
 import { AppUpdatesSection } from "./app-updates-section";
 import { BackendSettingsSection } from "./backend-settings-section";
+
 import { Credentials } from "./credentials";
 import { McpManagementSection } from "./mcp-management-section";
 import { RadientAccountSection } from "./radient-account-section";
@@ -384,6 +387,7 @@ export const SettingsPage: FC = () => {
 		integrations: useRef<HTMLDivElement>(null),
 		appearance: useRef<HTMLDivElement>(null),
 		credentials: useRef<HTMLDivElement>(null),
+		providers: useRef<HTMLDivElement>(null),
 		backend: useRef<HTMLDivElement>(null),
 		updates: useRef<HTMLDivElement>(null),
 	}).current;
@@ -398,6 +402,11 @@ export const SettingsPage: FC = () => {
 	const settingsSearchFilter = useMemo(() => {
 		const params = new URLSearchParams(location.search);
 		return params.get("filter") ?? "";
+	}, [location.search]);
+	// `/login <provider>` deep-links straight into that provider's methods.
+	const providerFromQuery = useMemo(() => {
+		const params = new URLSearchParams(location.search);
+		return params.get("provider");
 	}, [location.search]);
 
 	// Handle section selection from sidebar
@@ -892,6 +901,20 @@ export const SettingsPage: FC = () => {
 									</>
 								)}
 							</div>
+						</SettingsSection>
+
+						{/*
+						 * The provider grid is the same component onboarding uses: one
+						 * place for a provider's sign-in methods, states and stored
+						 * credentials. `/provider`, `/login` and `/logout` land here.
+						 */}
+						<SettingsSection
+							title="Providers"
+							icon={Plug}
+							description="Model providers, how you sign in to each, and which are connected."
+							sectionRef={sectionRefs.providers}
+						>
+							<ProviderGrid initialProviderId={providerFromQuery} />
 						</SettingsSection>
 
 						<SettingsSection
