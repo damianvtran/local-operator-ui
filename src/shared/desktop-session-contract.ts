@@ -38,6 +38,7 @@ export type CanonicalFrontendState = {
 	selected_model: CanonicalModel | null;
 	effective_model: CanonicalModel | null;
 	streaming: boolean;
+	loop?: import("./desktop-control-contract").DesktopLoopState | null;
 	generation: number;
 	pending_gate: PendingDesktopGate | null;
 	history_cursor: string | null;
@@ -124,12 +125,14 @@ export type DesktopAdmission = {
 };
 export type DesktopCommandReceipt = {
 	command: string;
-	result: {
-		kind: string;
-		text: string;
-		style: string;
-		data: Record<string, unknown>;
-		admission?: Omit<DesktopAdmission, "command_id"> | null;
-	};
+	result:
+		| import("./desktop-control-contract").NativeDesktopAction
+		| {
+				kind: string;
+				text: string;
+				style: string;
+				data: Record<string, unknown>;
+				admission?: Omit<DesktopAdmission, "command_id"> | null;
+		  };
 	replayed?: boolean;
 };

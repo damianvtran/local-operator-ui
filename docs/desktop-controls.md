@@ -69,12 +69,12 @@ Large roster/accounting/model additions retain unknown fields so a newer owner
 is not silently truncated by an older renderer. This file is a contract, **not a
 renderer reducer or a runtime response validator**.
 
-The backend checkpoint supports stable create/reopen, canonical owner admissions,
-owner-only command results, history, ask/approval answers and authenticated SSE
-watch leases. It does not yet advertise the broad `sessions` or35-command feature
-capability. The owner-command endpoint is NOT the complete command palette: only
-rename/model/effort/fast/context/goal/compact/approvals/team/agent are accepted.
-Bare forms may return owner picker metadata; there is no native picker UI yet.
+The backend supports stable create/reopen, canonical owner admissions, all shared
+35 commands/8 aliases, history, ask/approval answers and authenticated SSE watch
+leases. Backend capability versions now include commands/catalogues/lifecycle/MCP/
+Radient; they are not a claim that this renderer is complete. Bare forms return
+`native_action` with destination, fields and source/submit metadata rather than
+fake execution success. There is still no native picker UI in this transport slice.
 Team/agent attachment results carry an already-admitted consumed request under
 `result.admission`; never send that text/images again from the composer.
 
@@ -100,9 +100,10 @@ Team/agent attachment results carry an already-admitted consumed request under
   native delivery is genuinely possible. Until native notifications are wired,
   send canNotify=false. Closing a window detaches, never stops the runtime.
 - Implement main-owned gate/turn notification dedupe and exact-session click
-  navigation, plus explicit stop/abort, loop, aside/fork, full native command
-  arguments, MCP/catalog controls and canonical attachment/trajectory retrieval.
-  None is supplied by a typed endpoint mapper alone.
+  navigation, plus renderer controls for the implemented stop, loop, aside/fork,
+  full native command arguments and MCP/catalog APIs. Canonical attachment/job
+  trajectory retrieval remains a separate backend/transport slice. An endpoint
+  mapper alone supplies no rendered interaction or OS delivery.
 - The existing JSON main/dev proxy budget remains262,144bytes, less than the
   backend's900,000byte control-frame budget. Larger image submission needs a
   coordinated transport-budget/attachment slice, not a schema-only size promise.
@@ -114,4 +115,69 @@ reservation but before result commit returns409 indeterminate and requires state
 reconciliation; only natural owner-idempotent admissions can retry that state.
 Do not display an indeterminate command as successful or automatically mint a new
 UUID to retry it. Backend API details and actual assembled HTTP/runtime evidence
-are documented in its `docs/DESKTOP_API.md` and desktop e2e tests.
+are documented in its `docs/DESKTOP_API.md`, `docs/DESKTOP_CONTROLS.md` and desktop e2e tests.
+
+## Control operations and renderer handoff
+
+The allowlist additionally provides:
+
+- `commands.list/entities`, `models.catalogue`, `usage.get`, `analytics.get`,
+  `skills.list` (optional name for details), `sessions.failovers`.
+- `sessions.credential`: masked owner secret store/list/forget. Never send the
+  value to `sessions.command` or echo it into composer/history/telemetry.
+- `sessions.fork`: canonical next-safe boundary and optional message, stable UUID.
+  A returned admission means the backend already delivered the child request once.
+- `sessions.stop`: exact canonical targets and confirmed=true. Cold targets are
+  not started just to stop them; acknowledgement is not completed process exit.
+- `sessions.aside`, `sessions.aside.get/close`, `sessions.adopt`: off-record owner
+  answers, recoverable memory-only panels and confirmed durable adoption.
+- `mcp.list/control`: effective source ownership, array-valued command args, only
+  secret references in env/headers, connect/disconnect/reload, OAuth probe,
+  login/logout/reauth and operation status/cancel. Canonical grants remain owner-side.
+- `legacy.models`, `legacy.agent.upload`: protected compatibility JSON operations.
+  Legacy speech and transcription now resolve central AuthStore credentials too
+  and require bearer/Origin in managed mode. Their **binary speech responses and
+  multipart transcription requests still need the native media relay**; do not
+  call these directly from renderer code or reintroduce key/token synchronization.
+- `accounts.remove`: exact stored account with explicit confirmation, not all
+  accounts or the user's environment credentials.
+- `radient.request`: 25 closed account/billing/usage/application/agent-catalog/
+  social/comment operations. Identifiers are not URLs; the backend allowlists
+  query/payload keys. AuthStore performs the only refresh and stores provisioned
+  keys without returning them. Do not retain the old renderer/main refresh store
+  or run independent OAuth hooks alongside this path.
+
+`desktop-control-contract.ts` defines native-action, catalogue, loop and MCP DTOs.
+The shared slash registry alone defines the command list; never author another
+list in the renderer. Consume each native action once by command request identity.
+Owner results and native actions differ: displaying a form does not mean its
+mutation ran. `/clear` clears only rendered rows. Default scope is explicit through
+settings; premium fast mode requires the pricing explanation. Team chart/persona
+entities are authoritative backend data, not labels assembled from old chat agents.
+
+Loop progress lives on canonical owner state. Count loops await completed turns;
+goal loops use the shared judge. Reconnect must not start a second loop. A replaced
+owner marks a retained active checkpoint interrupted, not resumed. Cancellation
+must use the loop control, never auto-answer a gate or blindly stop another turn.
+
+### Google integration migration
+
+Replace the old Google scope-acquisition UI with real configured MCP integration
+management. Keep existing GOOGLE_ACCESS_TOKEN/GOOGLE_REFRESH_TOKEN/expiry values:
+user scripts may read them even though no builtin backend feature does. The old
+badges do not establish MCP connectivity. HTTP MCP transport OAuth is separate
+from downstream Gmail/Calendar/Drive consent, and stdio MCP can expose its own
+setup tools/resources rather than an HTTP transport login. Show unknown downstream
+authorization honestly; offer the server-supported setup/session-prompt action.
+Do not invent a Radient integration endpoint or equate Radient console login
+scopes with Google Workspace grants.
+
+### What remains unvalidated here
+
+No renderer components were changed. Stream IPC, authenticated binary/multipart
+media transport, native notifications, clipboard,
+updater transitions, default-scope forms, native/browser OAuth UX, onboarding,
+legacy reducer parity and screenshots remain frontend acceptance work. The backend
+matrix lists each of the 35 UI obligations individually. Real HTTP tests cover the
+backend and the loopback Electron fixture covers transport mapping; neither is a
+native-app/design sign-off.
