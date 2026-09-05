@@ -50,6 +50,17 @@ export function toResult(result: SlashOutcome): PickerResult {
 			text = [data.title, ...data.items.map(([k, v]) => `${k}: ${v}`)]
 				.filter(Boolean)
 				.join("\n");
+		} else if ((result.data as { type?: string }).type === "loop") {
+			// The loop block is state, not prose; the adapter's status panel
+			// renders it, so the strip only needs the one-line summary.
+			const loop = result.data as {
+				status?: string;
+				completed?: number;
+				iterations?: number | null;
+			};
+			text = `Loop ${loop.status ?? "started"}: ${loop.completed ?? 0}${
+				loop.iterations ? ` of ${loop.iterations}` : ""
+			} turns`;
 		} else {
 			text = JSON.stringify(result.data, null, 2);
 		}

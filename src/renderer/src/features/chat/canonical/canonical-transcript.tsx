@@ -321,7 +321,15 @@ type Row = {
 	gap: "turn" | "item" | "trace" | "first";
 };
 
-function buildRows(records: TranscriptRecord[]): Row[] {
+/**
+ * Row wrappers are reused across builds when the record AND its layout facts
+ * (avatar, gap) are unchanged. The reducer already hands back the same record
+ * object for untouched rows; without this pass every commit would still mint
+ * a fresh wrapper per row and defeat the memo on `TranscriptRow`, which is
+ * exactly what the render counter showed (rows x commits, not 1 per delta).
+ */
+function buildRows(records: TranscriptRecord[], previousRows: Row[]): Row[] {
+	const reusable = new Map(previousRows.map((row) => [row.record.id, row]));
 	const rows: Row[] = [];
 	let previous: TranscriptRecord | null = null;
 	for (const record of records) {
@@ -343,7 +351,15 @@ function buildRows(records: TranscriptRecord[]): Row[] {
 		if (!previous) gap = "first";
 		else if (record.kind === "user" || previous.kind === "user") gap = "turn";
 		else if (traceLike && previousTrace) gap = "trace";
-		rows.push({ record, showAvatar, gap });
+		const prior = reusable.get(record.id);
+		rows.push(
+			prior &&
+				prior.record === record &&
+				prior.showAvatar === showAvatar &&
+				prior.gap === gap
+				? prior
+				: { record, showAvatar, gap },
+		);
 		previous = record;
 	}
 	return rows;
@@ -356,6 +372,9 @@ const GAP: Record<Row["gap"], [string, string]> = {
 	trace: ["mt-1", "mt-0.5"],
 };
 
+/** Development row-render counter; read by the perf readout below. */
+const rowRenderCount = { current: 0 };
+
 const TranscriptRow = memo(function TranscriptRow({
 	row,
 	isSmallView,
@@ -363,6 +382,7 @@ const TranscriptRow = memo(function TranscriptRow({
 	row: Row;
 	isSmallView: boolean;
 }) {
+	rowRenderCount.current += 1;
 	const { record } = row;
 	let body: JSX.Element | null;
 	switch (record.kind) {
@@ -413,17 +433,19 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	status,
 	error,
 }) => {
-	const rows = useMemo(
-		() => buildRows(transcript.records),
-		[transcript.records],
-	);
+	const previousRows = useRef<Row[]>([]);
+	const rows = useMemo(() => {
+		const next = buildRows(transcript.records, previousRows.current);
+		previousRows.current = next;
+		return next;
+	}, [transcript.records]);
 	// Windowing: newest rows first. The window widens when the reader nears the
 	// top, and resets when the transcript is replaced (session switch/clear).
-	const [window, setWindow] = useState(WINDOW);
+	const [windowSize, setWindowSize] = useState(WINDOW);
 	const total = rows.length;
 	const visible = useMemo(
-		() => (total > window ? rows.slice(total - window) : rows),
-		[rows, total, window],
+		() => (total > windowSize ? rows.slice(total - windowSize) : rows),
+		[rows, total, windowSize],
 	);
 	const hidden = total - visible.length;
 
@@ -436,7 +458,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			// edge of the content is what remains.
 			const distanceFromTop = scrollHeight - clientHeight - Math.abs(scrollTop);
 			if (distanceFromTop < 320) {
-				setWindow((current) => Math.min(total, current + WINDOW_STEP));
+				setWindowSize((current) => Math.min(total, current + WINDOW_STEP));
 			}
 		};
 		container.addEventListener("scroll", onScroll, { passive: true });
@@ -446,12 +468,32 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	// Measurement hook: one mark per commit of this list. Read with
 	// performance.getEntriesByName("lop:transcript:render").
 	const commits = useRef(0);
+	const [perf, setPerf] = useState("");
 	useLayoutEffect(() => {
 		commits.current += 1;
 		performance.mark("lop:transcript:render", {
 			detail: { rows: visible.length, commit: commits.current },
 		});
 	});
+	// Development-only readout of the same numbers, exposed on the DOM so an
+	// automated browser (which cannot evaluate script) can read them: list
+	// commits, row renders, and the p50/max of the flush measure the stream
+	// hook records. Not rendered in production builds.
+	useEffect(() => {
+		if (!import.meta.env.DEV) return;
+		const timer = window.setInterval(() => {
+			const flushes = performance
+				.getEntriesByName("lop:transcript:flush")
+				.map((entry) => entry.duration)
+				.sort((a, b) => a - b);
+			const p50 = flushes[Math.floor(flushes.length / 2)] ?? 0;
+			const max = flushes.at(-1) ?? 0;
+			setPerf(
+				`commits=${commits.current} rowRenders=${rowRenderCount.current} rows=${visible.length} flushes=${flushes.length} flushP50=${p50.toFixed(2)}ms flushMax=${max.toFixed(2)}ms`,
+			);
+		}, 1000);
+		return () => window.clearInterval(timer);
+	}, [visible.length]);
 
 	const lastRecord = transcript.records[transcript.records.length - 1];
 	const lastIsLiveAssistant =
@@ -469,6 +511,11 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				"relative flex h-full w-full grow flex-col-reverse overflow-auto p-4 will-change-[scroll-position] [overflow-anchor:auto] [transform:translateZ(0)]",
 			)}
 		>
+			{perf && (
+				<span data-lo-perf className="sr-only" aria-hidden="true">
+					{perf}
+				</span>
+			)}
 			<div className="mx-auto flex w-full max-w-[900px] flex-col sm:max-w-[90%] md:max-w-[900px]">
 				{/* Older rows: durable pages, then the local window. */}
 				{(transcript.hasMore || hidden > 0) && (
