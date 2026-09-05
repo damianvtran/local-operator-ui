@@ -26,7 +26,7 @@ import {
 	useRef,
 	useState,
 } from "react";
-import type { ClipboardEvent, FormEvent } from "react";
+import type { ClipboardEvent, FormEvent, KeyboardEvent } from "react";
 import { v4 as uuidv4 } from "uuid";
 import type { Message } from "../types/message";
 import { AttachmentsPreview } from "./attachments-preview";
@@ -34,6 +34,13 @@ import { AudioRecordingIndicator } from "./audio-recording-indicator";
 import { DirectoryIndicator } from "./directory-indicator";
 import { ReplyPreview } from "./reply-preview";
 import { ScrollToBottomButton } from "./scroll-to-bottom-button";
+import {
+	type SlashCommandMeta,
+	SlashSuggestionsPopup,
+	completeSlashToken,
+	handleSlashKeyDown,
+	useSlashCommands,
+} from "./slash-commands";
 import { WaveformAnimation } from "./waveform-animation";
 
 /**
@@ -216,6 +223,36 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			scrollToBottom,
 		});
 
+		// Slash completion reads the caret position, so it lives above the
+		// textarea's own onChange rather than deriving position from the value.
+		const [caret, setCaret] = useState(0);
+		const slash = useSlashCommands(newMessage, caret);
+		const slashListId = slash.listId;
+		const handleSlashPick = useCallback(
+			(command: SlashCommandMeta) => {
+				setNewMessage(
+					completeSlashToken(
+						newMessage,
+						slash.tokenEnd,
+						command.name,
+						command.arguments,
+					),
+				);
+				slash.close();
+			},
+			[newMessage, slash, setNewMessage],
+		);
+		const handleComposerKeyDown = useCallback(
+			(event: KeyboardEvent<HTMLTextAreaElement>) => {
+				if (handleSlashKeyDown(event, slash, handleSlashPick)) {
+					event.preventDefault();
+					return;
+				}
+				handleKeyDown(event);
+			},
+			[slash, handleSlashPick, handleKeyDown],
+		);
+
 		useImperativeHandle(ref, () => ({
 			focusInput: () => {
 				textareaRef.current?.focus();
@@ -335,7 +372,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 
 		useEffect(() => {
 			if (isRecording) {
-				const handleKeyDown = (event: KeyboardEvent) => {
+				const handleKeyDown = (event: globalThis.KeyboardEvent) => {
 					if (event.key === "Enter") {
 						event.preventDefault();
 						handleConfirmRecording();
@@ -345,7 +382,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					}
 				};
 
-				const handleKeyUp = (event: KeyboardEvent) => {
+				const handleKeyUp = (event: globalThis.KeyboardEvent) => {
 					if (event.code === "Space") {
 						event.preventDefault();
 						handleConfirmRecording();
@@ -511,9 +548,16 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 						COMPOSER_BOX,
 						isSmallView ? "gap-2 rounded-md p-2" : "gap-3 rounded-frame p-4",
 						"w-full max-w-full sm:max-w-[90%] md:max-w-[900px]",
+						// The slash popup anchors above this box without shifting it.
+						"relative",
 					)}
 					data-tour-tag="chat-input-textarea"
 				>
+					<SlashSuggestionsPopup
+						state={slash}
+						onPick={handleSlashPick}
+						anchorRef={textareaRef}
+					/>
 					{replies.length > 0 && (
 						<ReplyPreview replies={replies} onRemoveReply={handleRemoveReply} />
 					)}
@@ -550,12 +594,26 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 								isInputDisabled ? "Agent is busy" : "Ask me for help"
 							}
 							value={newMessage}
-							onChange={(e) => setNewMessage(e.target.value)}
-							onKeyDown={handleKeyDown}
+							onChange={(e) => {
+								setNewMessage(e.target.value);
+								setCaret(e.target.selectionStart);
+							}}
+							onSelect={(e) =>
+								setCaret((e.target as HTMLTextAreaElement).selectionStart)
+							}
+							onKeyDown={handleComposerKeyDown}
 							onPaste={handlePaste}
 							rows={1}
 							disabled={isInputDisabled}
 							aria-label="Message"
+							role="combobox"
+							aria-expanded={slash.open}
+							aria-controls={slash.open ? slashListId : undefined}
+							aria-activedescendant={
+								slash.open && slash.matches[slash.active]
+									? `${slashListId}-${slash.matches[slash.active].name}`
+									: undefined
+							}
 						/>
 					)}
 
