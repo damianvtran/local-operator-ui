@@ -27,6 +27,10 @@ import { join } from "node:path";
 import { promisify } from "node:util";
 import { app, dialog as electronDialog } from "electron";
 import type { DesktopResponse } from "../../shared/desktop-contract";
+import {
+	type DesktopMediaResponse,
+	requestDesktopMedia,
+} from "../desktop-media";
 import { DesktopStreamRelay } from "../desktop-stream";
 import { requestDesktop } from "../desktop-transport";
 import { backendConfig } from "./config";
@@ -81,6 +85,18 @@ export class BackendServiceManager {
 
 	requestDesktop(input: unknown): Promise<DesktopResponse> {
 		return requestDesktop(input, this.backendUrl, this.desktopToken);
+	}
+
+	requestDesktopMedia(
+		input: unknown,
+		bytes: Uint8Array | null,
+	): Promise<DesktopMediaResponse> {
+		return requestDesktopMedia(
+			input,
+			bytes,
+			this.backendUrl,
+			this.desktopToken,
+		);
 	}
 	private isAppClosing = false; // Flag to track when the app is being closed
 	private isAutoUpdating = false; // Flag to track when an autoupdate is in progress

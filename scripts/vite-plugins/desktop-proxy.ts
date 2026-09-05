@@ -1,4 +1,5 @@
 import type { Plugin } from "vite";
+import { requestDesktopMedia } from "../../src/main/desktop-media";
 import { requestDesktop } from "../../src/main/desktop-transport";
 
 /** Browser-only development uses the same typed vocabulary as Electron IPC.
@@ -119,6 +120,76 @@ export function desktopProxyPlugin(): Plugin {
 								detail: "The backend stream could not be reached.",
 							}),
 						);
+					}
+					return;
+				}
+				if (req.url === "/__desktop/media") {
+					// Browser-development counterpart of main's binary/multipart
+					// relay: the renderer posts the raw bytes plus an
+					// `x-desktop-media` JSON header naming the operation; this
+					// process rebuilds the upstream request with the bearer.
+					const origin = req.headers.origin;
+					const address = server.httpServer?.address();
+					const port =
+						typeof address === "object" && address
+							? address.port
+							: server.config.server.port;
+					const allowed = new Set([
+						`http://127.0.0.1:${port}`,
+						`http://localhost:${port}`,
+					]);
+					if (req.method !== "POST" || !origin || !allowed.has(origin)) {
+						res.statusCode = 403;
+						res.setHeader("Content-Type", "application/json");
+						res.end(
+							JSON.stringify({
+								detail: "This origin cannot use desktop controls.",
+							}),
+						);
+						return;
+					}
+					const header = req.headers["x-desktop-media"];
+					let operation: unknown;
+					try {
+						operation = JSON.parse(
+							typeof header === "string" ? header : "",
+						);
+					} catch {
+						res.statusCode = 422;
+						res.setHeader("Content-Type", "application/json");
+						res.end(JSON.stringify({ detail: "Invalid media operation." }));
+						return;
+					}
+					const chunks: Buffer[] = [];
+					let total = 0;
+					for await (const chunk of req) {
+						total += (chunk as Buffer).length;
+						if (total > 16 * 1024 * 1024) {
+							res.statusCode = 413;
+							res.setHeader("Content-Type", "application/json");
+							res.end(JSON.stringify({ detail: "This file is too large." }));
+							return;
+						}
+						chunks.push(chunk as Buffer);
+					}
+					const bytes = total > 0 ? new Uint8Array(Buffer.concat(chunks)) : null;
+					const result = await requestDesktopMedia(
+						operation,
+						bytes,
+						process.env.LOCAL_OPERATOR_DESKTOP_BACKEND_URL ||
+							"http://127.0.0.1:1111",
+						process.env.LOCAL_OPERATOR_DESKTOP_TOKEN || null,
+					);
+					res.statusCode = result.status;
+					if (result.kind === "bytes") {
+						res.setHeader("Content-Type", result.mimeType);
+						res.end(Buffer.from(result.data));
+					} else if (result.kind === "json") {
+						res.setHeader("Content-Type", "application/json");
+						res.end(JSON.stringify(result.body));
+					} else {
+						res.setHeader("Content-Type", "application/json");
+						res.end(JSON.stringify({ detail: result.detail }));
 					}
 					return;
 				}

@@ -1,4 +1,6 @@
 import type {
+	DesktopMediaRequest,
+	DesktopMediaResponse,
 	DesktopRequest,
 	DesktopResponse,
 } from "../../../../../shared/desktop-contract";
@@ -122,4 +124,59 @@ export function subscribeDesktopStream(
 		source.close();
 		onEvent({ kind: "end" });
 	};
+}
+
+/**
+ * Binary/multipart relay for the legacy media routes (speech, transcription,
+ * agent ZIP import). Electron routes bytes through main's typed relay; browser
+ * development posts them to the server-side `/__desktop/media` proxy. Either
+ * way the bearer stays out of the renderer, and a missing relay is an honest
+ * error rather than an unauthenticated direct call.
+ */
+export async function desktopMedia(
+	request: DesktopMediaRequest,
+	bytes: Uint8Array | null,
+): Promise<DesktopMediaResponse> {
+	const native = window.api?.desktop?.media;
+	if (native) return native(request, bytes);
+	const response = await fetch("/__desktop/media", {
+		method: "POST",
+		headers: {
+			"x-desktop-media": JSON.stringify(request),
+			"Content-Type": "application/octet-stream",
+		},
+		body: bytes ? new Blob([bytes as BlobPart]) : undefined,
+	});
+	const type = response.headers.get("content-type") ?? "";
+	if (!response.ok) {
+		let detail = "The media request failed.";
+		if (type.includes("application/json")) {
+			try {
+				const body = (await response.json()) as { detail?: unknown };
+				if (typeof body.detail === "string") detail = body.detail;
+			} catch {
+				// Keep the generic detail.
+			}
+		}
+		return { status: response.status, kind: "error", detail };
+	}
+	if (type.includes("application/json")) {
+		return {
+			status: response.status,
+			kind: "json",
+			body: await response.json(),
+		};
+	}
+	return {
+		status: response.status,
+		kind: "bytes",
+		mimeType: type || "application/octet-stream",
+		data: new Uint8Array(await response.arrayBuffer()),
+	};
+}
+
+/** Throws a user-readable error for a non-success media result. */
+export function mediaError(result: DesktopMediaResponse): Error {
+	if (result.kind === "error") return new Error(result.detail);
+	return new Error("The media request returned an unexpected response.");
 }

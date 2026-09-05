@@ -349,9 +349,35 @@ export type DesktopStreamSubscription = {
 	dispose: () => void;
 };
 
+/**
+ * Legacy media relay vocabulary (speech, transcription, agent import). The
+ * schema and endpoint map live in main (`desktop-media.ts`); this is the
+ * renderer-facing type so preload and callers agree on the shape.
+ */
+export type DesktopMediaRequest =
+	| { op: "speech.create"; request: Record<string, unknown> }
+	| { op: "speech.agent"; agentId: string; request: Record<string, unknown> }
+	| {
+			op: "transcription.create";
+			fileName: string;
+			mimeType: string;
+			fields: Record<string, string>;
+	  }
+	| { op: "agent.import"; fileName: string };
+
+export type DesktopMediaResponse =
+	| { status: number; kind: "bytes"; mimeType: string; data: Uint8Array }
+	| { status: number; kind: "json"; body: unknown }
+	| { status: number; kind: "error"; detail: string };
+
 export type DesktopAPI = {
 	request: (request: DesktopRequest) => Promise<DesktopResponse>;
 	openAuthorization: (operationId: string, reopen?: boolean) => Promise<void>;
+	/** Binary/multipart relay; present only under the Electron preload. */
+	media?: (
+		request: DesktopMediaRequest,
+		bytes: Uint8Array | null,
+	) => Promise<DesktopMediaResponse>;
 	/** Authenticated canonical session stream. Present only when the Electron
 	 * preload is live; browser development uses the server-side stream proxy. */
 	stream?: {

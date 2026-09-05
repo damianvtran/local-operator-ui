@@ -382,6 +382,7 @@ app
 				pathToFileURL(join(__dirname, "../renderer/index.html")).href,
 			(input) => backendService.requestDesktop(input),
 			backendService.getStreamRelay(),
+			(input, bytes) => backendService.requestDesktopMedia(input, bytes),
 		);
 
 		// Add IPC handlers for opening files and URLs
