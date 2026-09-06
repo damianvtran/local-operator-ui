@@ -1,6 +1,5 @@
 import { getAgentDownloadCount } from "@shared/api/radient/agents-api";
 import type { CountResponse } from "@shared/api/radient/types";
-import { apiConfig } from "@shared/config";
 import type { UseQueryResult } from "@tanstack/react-query";
 import { useQuery } from "@tanstack/react-query";
 
@@ -38,10 +37,7 @@ export const useAgentDownloadCountQuery = ({
 				throw new Error("Agent ID is required to fetch download count.");
 			}
 			// No longer requires authentication
-			const response = await getAgentDownloadCount(
-				apiConfig.radientBaseUrl,
-				agentId,
-			);
+			const response = await getAgentDownloadCount(agentId);
 			// The queryFn should return the raw API response
 			return response.result;
 		},

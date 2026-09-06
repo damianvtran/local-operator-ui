@@ -54,6 +54,27 @@ export type TraceLineProps = {
 	details?: ReactNode;
 	/** Extra classes on the row. */
 	className?: string;
+	/**
+	 * Explicit label, bypassing `getTraceLabel`. The canonical transcript's
+	 * tool events already carry the verb in the user's terms and the object
+	 * (a path, a URL, a command) as separate facts, so re-deriving them from a
+	 * legacy `ActionType` would only lose information. Same row, same two
+	 * faces, same disclosure — only the source of the words differs.
+	 */
+	verbOverride?: string;
+	/** Machine-voice object for `verbOverride` rows. */
+	object?: string;
+	/** Glyph for `verbOverride` rows; defaults to the code glyph. */
+	glyph?: ReactNode;
+	/**
+	 * Let the label WRAP instead of truncating.
+	 *
+	 * For a row whose text is the message itself -- a notice -- rather than the
+	 * name of an action whose detail sits in the disclosure. A clipped action
+	 * label is still identifiable; a clipped sentence loses its second half,
+	 * which for the actionable cold-start reasons was the instruction (QA Q6).
+	 */
+	wrap?: boolean;
 };
 
 const TraceRow = ({
@@ -63,6 +84,7 @@ const TraceRow = ({
 	narration,
 	running,
 	failed,
+	wrap,
 }: {
 	icon: ReactNode;
 	verb: string;
@@ -70,6 +92,7 @@ const TraceRow = ({
 	narration?: string;
 	running?: boolean;
 	failed?: boolean;
+	wrap?: boolean;
 }) => (
 	<span
 		className="flex min-w-0 items-center gap-2"
@@ -83,8 +106,18 @@ const TraceRow = ({
 			{icon}
 		</TraceGlyph>
 		{/* One inline run, so the 12px monospace label and the 13px prose share
-		 * a baseline rather than each being centred in its own box. */}
-		<span className="truncate">
+		 * a baseline rather than each being centred in its own box.
+		 *
+		 * `truncate` is right for a trace of an ACTION -- a long path or command
+		 * is identified by its start and the whole value is in the disclosure.
+		 * It is wrong for a line whose text IS the message, which is what `wrap`
+		 * marks: clipping there costs the reader the end of a sentence, and for
+		 * the cold-start notices that end was the instruction (QA Q6). */}
+		<span
+			className={cn(
+				wrap ? "min-w-0 whitespace-pre-wrap break-words" : "truncate",
+			)}
+		>
 			<span
 				className={cn(
 					"font-mono text-mono-sm",
@@ -115,19 +148,25 @@ export const TraceLine = ({
 	defaultOpen = false,
 	details,
 	className,
+	verbOverride,
+	object,
+	glyph,
+	wrap,
 }: TraceLineProps) => {
 	const label = getTraceLabel(action, filePath, files, narration);
-	const verb = running ? label.runningVerb : label.verb;
+	const verb = verbOverride ?? (running ? label.runningVerb : label.verb);
 	const Icon = failed ? CircleAlert : label.icon;
+	const icon = failed || !verbOverride || !glyph ? <Icon /> : glyph;
 
 	const row = (
 		<TraceRow
-			icon={<Icon />}
+			icon={icon}
 			verb={verb}
-			object={label.object}
-			narration={label.narration}
+			object={verbOverride ? object : label.object}
+			narration={verbOverride ? narration : label.narration}
 			running={running}
 			failed={failed}
+			wrap={wrap}
 		/>
 	);
 

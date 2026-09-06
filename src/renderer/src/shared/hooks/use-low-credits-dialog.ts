@@ -1,6 +1,5 @@
-import { createRadientClient } from "@shared/api/radient";
+import { radientProxy } from "@shared/api/radient/proxy";
 import type { CreditBalanceResult } from "@shared/api/radient/types";
-import { apiConfig } from "@shared/config";
 import { useLowCreditsStore } from "@shared/store/low-credits-store";
 import { useCallback, useEffect, useState } from "react";
 import { useRadientAuth } from "./use-radient-auth";
@@ -8,40 +7,30 @@ import { useRadientAuth } from "./use-radient-auth";
 const LOW_CREDITS_THRESHOLD = 1;
 
 export const useLowCreditsDialog = () => {
-	const { isAuthenticated, user, sessionToken } = useRadientAuth();
+	const { isAuthenticated, user } = useRadientAuth();
 	const { hasBeenNotified, setHasBeenNotified } = useLowCreditsStore();
 	const [isDialogOpen, setIsDialogOpen] = useState(false);
 	const [currentCredits, setCurrentCredits] = useState<number | null>(null);
 
 	const fetchCredits = useCallback(async () => {
-		if (
-			!isAuthenticated ||
-			!user?.radientUser?.account?.tenant_id ||
-			!sessionToken
-		) {
+		if (!isAuthenticated || !user?.radientUser?.account?.tenant_id) {
 			return;
 		}
 
 		try {
-			const radientClient = createRadientClient(
-				apiConfig.radientBaseUrl, // Use apiConfig
-				apiConfig.radientClientId, // Use apiConfig
-			);
-			const response = await radientClient.billing.getCreditBalance(
-				user.radientUser.account.tenant_id,
-				sessionToken,
-			);
-
-			if (!response || typeof response.result?.balance !== "number") {
+			const creditBalance = await radientProxy<CreditBalanceResult>({
+				operation: "credits",
+				tenantId: user.radientUser.account.tenant_id,
+			});
+			if (!creditBalance || typeof creditBalance.balance !== "number") {
 				throw new Error("Invalid credit balance response format");
 			}
-			const creditBalance: CreditBalanceResult = response.result;
 			setCurrentCredits(creditBalance.balance);
 		} catch (error) {
 			console.error("Failed to fetch Radient credits:", error);
 			setCurrentCredits(null);
 		}
-	}, [isAuthenticated, user?.radientUser?.account?.tenant_id, sessionToken]);
+	}, [isAuthenticated, user?.radientUser?.account?.tenant_id]);
 
 	useEffect(() => {
 		if (isAuthenticated) {

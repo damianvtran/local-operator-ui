@@ -1,20 +1,24 @@
 /**
  * @file use-radient-user-query.ts
  * @description
- * React Query hook for fetching and managing Radient user information.
- * Provides a stable, cached, and automatically refreshing user data source.
- * Handles token refresh when access tokens expire.
+ * Radient account state through the backend proxy.
+ *
+ * The backend AuthStore owns the Radient credential and its refresh; this
+ * hook only asks the proxy who the signed-in account is. There is no renderer
+ * session, no local token, no refresh mutation: a 409 from the proxy means no
+ * Radient credential is stored, which is the signed-out state. Signing out
+ * removes the stored provider account through the auth accounts route.
  */
 
-import { createRadientClient } from "@shared/api/radient";
-import { apiConfig } from "@shared/config";
-import type { RadientUser } from "@shared/providers/auth";
-import { useUserStore } from "@shared/store/user-store";
+import { desktopResult } from "@shared/api/local-operator/desktop-api";
 import {
-	clearSession,
-	getSession,
-	updateAccessToken,
-} from "@shared/utils/session-store";
+	desktopFeatureEnabled,
+	desktopKeys,
+	useDesktopCapabilities,
+} from "@shared/api/local-operator/desktop-hooks";
+import { radientProxy } from "@shared/api/radient/proxy";
+import type { UserInfoResult } from "@shared/api/radient/types";
+import { useUserStore } from "@shared/store/user-store";
 import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -22,275 +26,107 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 export const radientUserKeys = {
 	all: ["radient-user"] as const,
 	user: () => [...radientUserKeys.all, "user"] as const,
-	session: () => [...radientUserKeys.all, "session"] as const,
-	tokens: () => [...radientUserKeys.all, "tokens"] as const,
 };
 
+type StoredAccount = {
+	id: number;
+	provider: string;
+	type: string;
+	identity_label: string;
+	source: string;
+	state: string;
+};
+
+function isSignedOut(error: unknown): boolean {
+	// The proxy answers 409 with a fixed message when no Radient credential is
+	// stored; that is the ordinary signed-out state, not a failure to surface.
+	return error instanceof Error && /sign in to radient/i.test(error.message);
+}
+
 /**
- * Hook for fetching and managing Radient user information using React Query
+ * Hook for the current Radient account, resolved by the backend.
  *
- * @returns Query result with user data, loading state, error state, and utility functions
+ * @returns Query result with user data, loading state, error state, and sign-out
  */
 export const useRadientUserQuery = () => {
 	const queryClient = useQueryClient();
-	const { setIsSigningOut } = useUserStore(); // Get Zustand actions
+	const { setIsSigningOut } = useUserStore();
+	const capabilities = useDesktopCapabilities();
+	const enabled = desktopFeatureEnabled(capabilities.data, "radient");
 
-	// Create the Radient API client
-	const radientClient = createRadientClient(
-		apiConfig.radientBaseUrl,
-		apiConfig.radientClientId,
-	);
-
-	// Mutation for refreshing the access token
-	const refreshTokenMutation = useMutation({
-		mutationFn: async (refreshToken: string) => {
-			const response = await radientClient.refreshToken(refreshToken);
-
-			// Store the new access token and refresh token (if provided)
-			await updateAccessToken(
-				response.result.access_token,
-				response.result.expires_in,
-			);
-
-			// If a new refresh token was provided, update it in the session
-			if (response.result.refresh_token) {
-				await updateAccessToken(
-					response.result.access_token,
-					response.result.expires_in,
-					response.result.refresh_token,
-				);
-			}
-
-			return response.result;
-		},
-		onSuccess: () => {
-			// Invalidate the session query to trigger a refetch with the new token
-			queryClient.invalidateQueries({
-				queryKey: radientUserKeys.session(),
-			});
-		},
-		onError: (error) => {
-			// If refresh fails, clear the session and force re-authentication
-			clearSession();
-			queryClient.invalidateQueries({
-				queryKey: radientUserKeys.all,
-			});
-
-			const errorMessage =
-				error instanceof Error ? error.message : String(error);
-			showErrorToast(`Session expired: ${errorMessage}`);
-		},
-	});
-
-	// Query for the session data
-	const sessionQuery = useQuery({
-		queryKey: radientUserKeys.session(),
+	const userQuery = useQuery<UserInfoResult | null, Error>({
+		queryKey: radientUserKeys.user(),
 		queryFn: async () => {
 			try {
-				// Get the session data (access token, refresh token, expiry)
-				const session = await getSession();
-
-				// If no session exists, return null
-				if (!session) return null;
-
-				// If the access token is expired but we have a refresh token, try to refresh
-				if (Date.now() > session.expiry && session.refreshToken) {
-					try {
-						// Wait for the refresh to complete before returning
-						const refreshResult = await refreshTokenMutation.mutateAsync(
-							session.refreshToken,
-						);
-
-						// Return a new session object with the refreshed token
-						return {
-							accessToken: refreshResult.access_token,
-							refreshToken: refreshResult.refresh_token || session.refreshToken,
-							expiry: Date.now() + refreshResult.expires_in * 1000,
-						};
-					} catch (refreshError) {
-						console.error("Token refresh failed:", refreshError);
-						// If refresh fails, clear the session and return null
-						clearSession();
-						return null;
-					}
-				}
-
-				return session;
+				return await radientProxy<UserInfoResult>({ operation: "account" });
 			} catch (error) {
-				console.error("Failed to get session:", error);
-				return null; // Return null on error
-			}
-		},
-		// Refetch on window focus to ensure we have the latest session state
-		refetchOnWindowFocus: true,
-		// Keep the session data fresh but not too long
-		staleTime: 10 * 1000, // 10 seconds
-		// Refetch more frequently
-		refetchInterval: 10 * 1000, // 10 seconds
-	});
-
-	// Query for the user information
-	const userQuery = useQuery({
-		queryKey: radientUserKeys.user(),
-		queryFn: async (): Promise<RadientUser | null> => {
-			try {
-				const session = sessionQuery.data;
-				if (!session) return null;
-
-				// Use the access token to get user info
-				const response = await radientClient.getUserInfo(session.accessToken);
-
-				// The API response is already handled by the client
-				// If we get here, the request was successful
-				return {
-					account: response.result.account,
-					identity: response.result.identity,
-				};
-			} catch (error) {
-				// If we get an authentication error, try to refresh the token if we have a refresh token
-				if (
-					error instanceof Error &&
-					(error.message.includes("401") ||
-						error.message.includes("unauthorized") ||
-						error.message.includes("invalid token"))
-				) {
-					const session = sessionQuery.data;
-
-					// If we have a refresh token, try to refresh the access token
-					if (session?.refreshToken && !refreshTokenMutation.isPending) {
-						refreshTokenMutation.mutate(session.refreshToken);
-					} else {
-						// No refresh token or refresh already in progress, clear the session
-						clearSession();
-						// Invalidate the session query to trigger a refetch
-						queryClient.invalidateQueries({
-							queryKey: radientUserKeys.session(),
-						});
-					}
-				}
-
-				const errorMessage =
-					error instanceof Error ? error.message : String(error);
-				console.error("Failed to fetch user info:", errorMessage);
+				if (isSignedOut(error)) return null;
 				throw error;
 			}
 		},
-		// Only run this query if we have a session with an access token
-		enabled: !!sessionQuery.data?.accessToken,
-		// Keep the user data fresh but not too long
-		staleTime: 10 * 1000, // 10 seconds
-		// Refetch more frequently
-		refetchInterval: 10 * 1000, // 10 seconds
-		// Don't retry on 401 errors if we don't have a refresh token
-		retry: (failureCount, error) => {
-			// If we have a refresh token, let the error handler above handle it
-			const session = sessionQuery.data;
-			const hasRefreshToken = !!session?.refreshToken;
-
-			if (
-				!hasRefreshToken &&
-				error instanceof Error &&
-				(error.message.includes("401") ||
-					error.message.includes("unauthorized") ||
-					error.message.includes("invalid token"))
-			) {
-				return false;
-			}
-			return failureCount < 3;
-		},
+		enabled,
+		staleTime: 30 * 1000,
+		refetchOnWindowFocus: true,
+		retry: (failureCount, error) => !isSignedOut(error) && failureCount < 2,
 	});
 
-	// --- Authentication State ---
-	// Indicates if a token exists locally (might still be invalid/expired on backend, or backend call pending/failed)
-	const hasLocalSession = !!sessionQuery.data && !sessionQuery.isLoading;
-	// Indicates if token is validated by backend and user info fetched successfully
 	const isAuthenticated = !!userQuery.data && !userQuery.isLoading;
-	// --- End Authentication State ---
+	// Kept for callers that distinguished "restoring" from "loading"; the
+	// backend resolves the credential synchronously so the two collapse.
+	const hasLocalSession = isAuthenticated;
 
-	// Mutation for signing out
 	const signOutMutation = useMutation({
 		onMutate: () => {
-			setIsSigningOut(true); // Set signing out flag *before* mutationFn runs
+			setIsSigningOut(true);
 		},
 		mutationFn: async () => {
-			// If we have a refresh token, try to revoke it
-			const session = sessionQuery.data;
-			if (session?.refreshToken) {
-				try {
-					await radientClient.revokeToken(
-						session.refreshToken,
-						"refresh_token",
-					);
-				} catch (error) {
-					console.error("Failed to revoke refresh token:", error);
-					// Continue with sign out even if revoke fails
-				}
+			const status = await desktopResult<{ accounts: StoredAccount[] }>({
+				op: "accounts.list",
+			});
+			const radientAccounts = status.accounts.filter(
+				(account) => account.provider === "radient",
+			);
+			for (const account of radientAccounts) {
+				await desktopResult({
+					op: "accounts.remove",
+					accountId: account.id,
+					confirmed: true,
+				});
 			}
-
-			// Clear the local session
-			await clearSession(); // Keep await as safeguard
 			return true;
 		},
-		onSuccess: async () => {
-			// Clear the local session
-			await clearSession(); // Keep await as safeguard
-
-			// Remove all radient-user queries from the cache to ensure immediate state update
+		onSuccess: () => {
 			queryClient.removeQueries({ queryKey: radientUserKeys.all });
-
-			// Reset the refresh token mutation state
-			refreshTokenMutation.reset();
-			// Show success toast
+			queryClient.invalidateQueries({ queryKey: desktopKeys.accounts });
 			showSuccessToast("Successfully signed out");
-			setIsSigningOut(false); // Clear signing out flag on success
+			setIsSigningOut(false);
 		},
 		onError: (error) => {
 			const errorMessage =
 				error instanceof Error ? error.message : String(error);
 			showErrorToast(`Failed to sign out: ${errorMessage}`);
-			setIsSigningOut(false); // Clear signing out flag on error
+			setIsSigningOut(false);
 		},
 	});
 
-	// Mutation for refreshing the user data
 	const refreshUserMutation = useMutation({
 		mutationFn: async () => {
-			// Invalidate the queries to trigger a refetch
 			queryClient.invalidateQueries({ queryKey: radientUserKeys.all });
 			return true;
 		},
 	});
 
 	return {
-		// User data
-		user: userQuery.data,
-		session: sessionQuery.data,
-
-		// Loading and error states
-		// Loading is true if session is loading, OR if session is loaded but user info is still loading
-		isLoading:
-			sessionQuery.isLoading ||
-			refreshTokenMutation.isPending ||
-			(hasLocalSession && userQuery.isLoading),
-		isRefetching:
-			sessionQuery.isRefetching ||
-			userQuery.isRefetching ||
-			refreshTokenMutation.isPending,
-		error: sessionQuery.error || userQuery.error || refreshTokenMutation.error,
-
-		// Authentication state (defined above)
+		user: userQuery.data ?? undefined,
+		isLoading: userQuery.isLoading,
+		isRefetching: userQuery.isRefetching,
+		error: userQuery.error,
 		hasLocalSession,
 		isAuthenticated,
-
-		// Actions
+		/** True when the backend cannot serve Radient at all (old backend). */
+		unavailable: capabilities.isSuccess && !enabled,
 		signOut: signOutMutation.mutate,
 		refreshUser: refreshUserMutation.mutate,
-		refreshToken: (refreshToken: string) =>
-			refreshTokenMutation.mutate(refreshToken),
-
-		// Raw query objects for advanced usage
-		sessionQuery,
 		userQuery,
-		refreshTokenMutation,
 	};
 };

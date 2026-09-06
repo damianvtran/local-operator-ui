@@ -1,6 +1,12 @@
 /**
  * Local Operator API - Schedules Endpoints
+ *
+ * Every call here goes through the authenticated desktop contract rather than a
+ * bare `fetch`. The whole `/v1/schedules` family is gated in managed mode: a
+ * schedule's prompt is executed later by the user's own agent, so the routes
+ * that write one sit behind the desktop bearer and a same-origin check.
  */
+import { desktopControlResponse } from "./desktop-api";
 import type {
 	CRUDResponse,
 	ScheduleCreateRequest,
@@ -23,19 +29,14 @@ export const SchedulesApi = {
 	 * @returns Promise resolving to the schedules list response
 	 */
 	async listAllSchedules(
-		baseUrl: string,
+		_baseUrl: string,
 		page = 1,
 		perPage = 10,
 	): Promise<CRUDResponse<ScheduleListResponse>> {
-		const url = new URL(`${baseUrl}/v1/schedules`);
-		url.searchParams.append("page", page.toString());
-		url.searchParams.append("per_page", perPage.toString());
-
-		const response = await fetch(url.toString(), {
-			method: "GET",
-			headers: {
-				Accept: "application/json",
-			},
+		const response = await desktopControlResponse({
+			op: "legacy.schedules.list",
+			page,
+			perPage,
 		});
 
 		if (!response.ok) {
@@ -57,17 +58,14 @@ export const SchedulesApi = {
 	 * @returns Promise resolving to the created schedule response
 	 */
 	async createScheduleForAgent(
-		baseUrl: string,
+		_baseUrl: string,
 		agentId: string,
 		scheduleData: ScheduleCreateRequest,
 	): Promise<CRUDResponse<ScheduleResponse>> {
-		const response = await fetch(`${baseUrl}/v1/agents/${agentId}/schedules`, {
-			method: "POST",
-			headers: {
-				"Content-Type": "application/json",
-				Accept: "application/json",
-			},
-			body: JSON.stringify(scheduleData),
+		const response = await desktopControlResponse({
+			op: "legacy.agent.schedule.create",
+			agentId,
+			schedule: scheduleData,
 		});
 
 		if (!response.ok) {
@@ -90,20 +88,16 @@ export const SchedulesApi = {
 	 * @returns Promise resolving to the schedules list response
 	 */
 	async listSchedulesForAgent(
-		baseUrl: string,
+		_baseUrl: string,
 		agentId: string,
 		page = 1,
 		perPage = 10,
 	): Promise<CRUDResponse<ScheduleListResponse>> {
-		const url = new URL(`${baseUrl}/v1/agents/${agentId}/schedules`);
-		url.searchParams.append("page", page.toString());
-		url.searchParams.append("per_page", perPage.toString());
-
-		const response = await fetch(url.toString(), {
-			method: "GET",
-			headers: {
-				Accept: "application/json",
-			},
+		const response = await desktopControlResponse({
+			op: "legacy.agent.schedules.list",
+			agentId,
+			page,
+			perPage,
 		});
 
 		if (!response.ok) {
@@ -124,14 +118,12 @@ export const SchedulesApi = {
 	 * @returns Promise resolving to the schedule details response
 	 */
 	async getScheduleById(
-		baseUrl: string,
+		_baseUrl: string,
 		scheduleId: string,
 	): Promise<CRUDResponse<ScheduleResponse>> {
-		const response = await fetch(`${baseUrl}/v1/schedules/${scheduleId}`, {
-			method: "GET",
-			headers: {
-				Accept: "application/json",
-			},
+		const response = await desktopControlResponse({
+			op: "legacy.schedule.get",
+			scheduleId,
 		});
 
 		if (!response.ok) {
@@ -153,17 +145,14 @@ export const SchedulesApi = {
 	 * @returns Promise resolving to the updated schedule response
 	 */
 	async editSchedule(
-		baseUrl: string,
+		_baseUrl: string,
 		scheduleId: string,
 		scheduleData: ScheduleUpdateRequest,
 	): Promise<CRUDResponse<ScheduleResponse>> {
-		const response = await fetch(`${baseUrl}/v1/schedules/${scheduleId}`, {
-			method: "PATCH",
-			headers: {
-				"Content-Type": "application/json",
-				Accept: "application/json",
-			},
-			body: JSON.stringify(scheduleData),
+		const response = await desktopControlResponse({
+			op: "legacy.schedule.edit",
+			scheduleId,
+			schedule: scheduleData,
 		});
 
 		if (!response.ok) {
@@ -184,14 +173,12 @@ export const SchedulesApi = {
 	 * @returns Promise resolving to the deletion response
 	 */
 	async removeSchedule(
-		baseUrl: string,
+		_baseUrl: string,
 		scheduleId: string,
 	): Promise<CRUDResponse> {
-		const response = await fetch(`${baseUrl}/v1/schedules/${scheduleId}`, {
-			method: "DELETE",
-			headers: {
-				Accept: "application/json",
-			},
+		const response = await desktopControlResponse({
+			op: "legacy.schedule.remove",
+			scheduleId,
 		});
 
 		if (!response.ok) {

@@ -1,4 +1,5 @@
 import { useOnboardingTour } from "@features/onboarding/hooks/use-onboarding-tour";
+import { ProviderGrid } from "@features/providers/provider-grid";
 import type { ConfigUpdate } from "@shared/api/local-operator/types";
 import { EditableField } from "@shared/components/common/editable-field";
 import { PageHeader } from "@shared/components/common/page-header";
@@ -13,10 +14,11 @@ import { useConfig } from "@shared/hooks/use-config";
 import { useCredentials } from "@shared/hooks/use-credentials";
 import { useCreditBalance } from "@shared/hooks/use-credit-balance";
 import { useModels } from "@shared/hooks/use-models";
-import { useRadientAuth } from "@shared/hooks/use-radient-auth";
+import { useRadientUserQuery } from "@shared/hooks/use-radient-user-query";
 import { useUpdateConfig } from "@shared/hooks/use-update-config";
 import { useUsageRollup } from "@shared/hooks/use-usage-rollup";
 import { cn } from "@shared/lib/utils";
+import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { useUserStore } from "@shared/store/user-store";
 import {
@@ -37,6 +39,7 @@ import {
 	Key,
 	List,
 	MessagesSquare,
+	Plug,
 	Settings,
 	SlidersHorizontal,
 	User,
@@ -54,8 +57,10 @@ import {
 	YAxis,
 } from "recharts";
 import { AppUpdatesSection } from "./app-updates-section";
+import { BackendSettingsSection } from "./backend-settings-section";
+
 import { Credentials } from "./credentials";
-import { GoogleIntegrationsSection } from "./integrations-section";
+import { McpManagementSection } from "./mcp-management-section";
 import { RadientAccountSection } from "./radient-account-section";
 import { InfoGrid, InfoItem, SettingsSection } from "./settings-section";
 import { DEFAULT_SETTINGS_SECTIONS, SettingsSidebar } from "./settings-sidebar";
@@ -327,7 +332,14 @@ export const SettingsPage: FC = () => {
 	const updateConfigMutation = useUpdateConfig();
 	const [savingField, setSavingField] = useState<string | null>(null);
 	const userStore = useUserStore();
-	const { isAuthenticated, isLoading: isAuthLoading } = useRadientAuth();
+	// Only the signed-in bit is needed here: the profile fields go read-only
+	// when the backend resolves a Radient account. The query hook is the
+	// backend-proxy source of that fact; the wrapper hook additionally syncs
+	// the user store, which this page does not need.
+	const { isAuthenticated, isLoading: isAuthLoading } = useRadientUserQuery();
+	const activeSessionId = useCanonicalSessionsStore(
+		(state) => state.activeSessionId,
+	);
 	const [activeSection, setActiveSection] = useState<string>("general");
 	const [isScrolling, setIsScrolling] = useState(false);
 	const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -375,8 +387,33 @@ export const SettingsPage: FC = () => {
 		integrations: useRef<HTMLDivElement>(null),
 		appearance: useRef<HTMLDivElement>(null),
 		credentials: useRef<HTMLDivElement>(null),
+		providers: useRef<HTMLDivElement>(null),
+		backend: useRef<HTMLDivElement>(null),
 		updates: useRef<HTMLDivElement>(null),
 	}).current;
+
+	// A /settings deep link carries either ?section= for one of the sidebar
+	// sections or ?setting=<key> to reveal and focus one registry row inside
+	// the searchable backend settings section.
+	const settingFocusKey = useMemo(() => {
+		const params = new URLSearchParams(location.search);
+		return params.get("setting");
+	}, [location.search]);
+	const settingsSearchFilter = useMemo(() => {
+		const params = new URLSearchParams(location.search);
+		return params.get("filter") ?? "";
+	}, [location.search]);
+	// `/mcp <name>` deep-links to one configured server. The picker has always
+	// emitted this; nothing read it until now.
+	const mcpTarget = useMemo(() => {
+		const params = new URLSearchParams(location.search);
+		return params.get("mcp") ?? undefined;
+	}, [location.search]);
+	// `/login <provider>` deep-links straight into that provider's methods.
+	const providerFromQuery = useMemo(() => {
+		const params = new URLSearchParams(location.search);
+		return params.get("provider");
+	}, [location.search]);
 
 	// Handle section selection from sidebar
 	const handleSelectSection = useCallback(
@@ -388,16 +425,56 @@ export const SettingsPage: FC = () => {
 			const contentContainer = contentContainerRef.current;
 
 			if (ref?.current && contentContainer) {
-				// Get the element's position relative to the container's scroll area
-				const elementOffsetTop = ref.current.offsetTop;
+				// Two separate defects lived in the old
+				// `contentContainer.scrollTo(ref.current.offsetTop - 80)`:
+				//
+				// 1. `offsetTop` is relative to the nearest POSITIONED ancestor,
+				//    not to the scroll container, so it reported a section's offset
+				//    inside the centred content wrapper -- a number tens of pixels
+				//    from zero for sections that sit screens down the page.
+				// 2. It assumed this container is the scroller. Which element
+				//    actually scrolls depends on how the shell is sized, and when
+				//    it is the window instead, scrolling the div is a silent no-op.
+				//
+				// Together they are why every deep link, and even a plain sidebar
+				// click, stopped on User profile (UX U3).
+				//
+				// Whichever element is actually the scroller gets scrolled.
+				//
+				// The content div carries `overflow-y-auto` and is the scroller in
+				// the packaged app, where the shell's `h-screen` gives it a bounded
+				// height. That is not guaranteed: if the height chain is not
+				// bounded the div grows to fit its content and the DOCUMENT scrolls
+				// instead, and a scroll aimed at the div is then a silent no-op.
+				//
+				// So: measure the distance once, and move whichever box can move.
+				// This also replaces the original `offsetTop` read, which was
+				// relative to the centred content wrapper rather than to the
+				// scroller and so under-reported every section's position -- the
+				// two together are why deep links stopped on User profile (UX U3).
+				const HEADER_ROOM = 80;
+				const delta =
+					ref.current.getBoundingClientRect().top -
+					contentContainer.getBoundingClientRect().top;
+				const containerScrolls =
+					contentContainer.scrollHeight > contentContainer.clientHeight;
 
-				// Scroll with offset for better positioning (accounting for header/padding)
-				const targetScrollTop = Math.max(0, elementOffsetTop - 80);
-
-				contentContainer.scrollTo({
-					top: targetScrollTop,
-					behavior: "smooth",
-				});
+				if (containerScrolls) {
+					contentContainer.scrollTo({
+						top: Math.max(0, contentContainer.scrollTop + delta - HEADER_ROOM),
+						behavior: "smooth",
+					});
+				} else {
+					window.scrollTo({
+						top: Math.max(
+							0,
+							ref.current.getBoundingClientRect().top +
+								window.scrollY -
+								HEADER_ROOM,
+						),
+						behavior: "smooth",
+					});
+				}
 
 				// No guard: clearing is a no-op on a missing handle. `?? undefined`
 				// only because the Node timer types accept `undefined` and not `null`.
@@ -492,18 +569,87 @@ export const SettingsPage: FC = () => {
 	useEffect(() => {
 		const queryParams = new URLSearchParams(location.search);
 		const sectionFromQuery = queryParams.get("section");
+		// A ?setting= deep link lives inside the backend settings section.
+		const targetSection = queryParams.get("setting")
+			? "backend"
+			: sectionFromQuery;
 
-		if (sectionFromQuery && sectionRefs[sectionFromQuery]) {
-			// Check if the section exists in our refs
-			// A short delay can help ensure the layout is stable before scrolling
-			const timer = setTimeout(() => {
-				handleSelectSection(sectionFromQuery);
-			}, 100); // 100ms delay, adjust if needed
+		const ref = targetSection ? sectionRefs[targetSection] : undefined;
+		if (!targetSection || !ref) return undefined;
 
-			return () => clearTimeout(timer); // Cleanup timer
+		// Deep links used to fire behind a fixed 100ms timer, reading
+		// `offsetTop` before this very long page had laid out. The section was
+		// still near the top of an unfinished layout, so EVERY deep link landed
+		// on User profile while the sidebar highlighted the section the user
+		// asked for (UX U3).
+		//
+		// Layout-aware instead of longer: a ResizeObserver on the scroll content
+		// fires whenever the page's height changes, so we re-scroll as sections
+		// mount and settle rather than guessing when they have. It stops at the
+		// first frame whose target offset repeats -- that is what "laid out"
+		// means here -- and a deadline bounds the case where something animates
+		// forever.
+		let settled = false;
+		let lastOffset = Number.NaN;
+		let frame = 0;
+		// A page that never stops resizing must still take the user where they
+		// asked, so the deadline scrolls rather than merely giving up.
+		const deadline = window.setTimeout(() => {
+			if (settled) return;
+			settled = true;
+			observer.disconnect();
+			handleSelectSection(targetSection);
+		}, 2000);
+
+		const attempt = () => {
+			if (settled) return;
+			const element = ref.current;
+			// Not mounted YET is the normal first frame on a lazily-loaded page,
+			// not a reason to give up: keep waiting, bounded by the deadline
+			// below. Returning without rescheduling here killed the loop before
+			// the section existed, which is the whole mechanism.
+			if (!element) {
+				frame = requestAnimationFrame(attempt);
+				return;
+			}
+			// The section's distance from the top of the document: stable once the
+			// page above it has finished laying out, and independent of which
+			// element ends up being the scroller.
+			const offset = Math.round(
+				element.getBoundingClientRect().top + window.scrollY,
+			);
+			// Scroll ONCE, when the target has stopped moving -- never on every
+			// frame. A smooth scroll re-issued each frame is cancelled and
+			// restarted before it can advance, so the view never actually
+			// travels: the fix for a race must not become a busy loop that
+			// defeats the animation it is waiting for.
+			if (offset === lastOffset && offset > 0) {
+				settled = true;
+				observer.disconnect();
+				window.clearTimeout(deadline);
+				handleSelectSection(targetSection);
+				return;
+			}
+			lastOffset = offset;
+			frame = requestAnimationFrame(attempt);
+		};
+
+		const observer = new ResizeObserver(() => {
+			if (settled) return;
+			cancelAnimationFrame(frame);
+			frame = requestAnimationFrame(attempt);
+		});
+		if (contentContainerRef.current) {
+			observer.observe(contentContainerRef.current);
 		}
+		frame = requestAnimationFrame(attempt);
 
-		return undefined;
+		return () => {
+			settled = true;
+			cancelAnimationFrame(frame);
+			observer.disconnect();
+			window.clearTimeout(deadline);
+		};
 	}, [location.search, sectionRefs, handleSelectSection]); // Rerun when URL search params change or refs are updated
 
 	// Handle updating a specific config field
@@ -869,12 +1015,41 @@ export const SettingsPage: FC = () => {
 						</SettingsSection>
 
 						{/*
-						 * Rendered unconditionally: the section handles its own auth state
-						 * for the connect buttons.
+						 * The provider grid is the same component onboarding uses: one
+						 * place for a provider's sign-in methods, states and stored
+						 * credentials. `/provider`, `/login` and `/logout` land here.
 						 */}
-						<div ref={sectionRefs.integrations}>
-							<GoogleIntegrationsSection />
-						</div>
+						<SettingsSection
+							title="Providers"
+							icon={Plug}
+							description="Model providers, how you sign in to each, and which are connected."
+							sectionRef={sectionRefs.providers}
+						>
+							<ProviderGrid initialProviderId={providerFromQuery} />
+						</SettingsSection>
+
+						<SettingsSection
+							title="Backend settings"
+							icon={Settings}
+							description="Every setting the backend registry owns, searchable, with typed editors and scopes."
+							sectionRef={sectionRefs.backend}
+						>
+							<BackendSettingsSection
+								focusKey={settingFocusKey}
+								initialFilter={settingsSearchFilter}
+							/>
+						</SettingsSection>
+
+						{/*
+						 * MCP management replaced the Google OIDC cards: the section
+						 * negotiates the `mcp` capability itself and reads the active
+						 * canonical session, so it renders unconditionally here.
+						 */}
+						<McpManagementSection
+							sessionId={activeSessionId ?? undefined}
+							sectionRef={sectionRefs.integrations}
+							highlightServer={mcpTarget}
+						/>
 
 						<SettingsSection
 							title="API credentials"

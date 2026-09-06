@@ -1,5 +1,6 @@
 import type { ElectronAPI } from "@electron-toolkit/preload";
 import type { ProgressInfo, UpdateInfo } from "electron-updater";
+import type { DesktopAPI } from "../shared/desktop-contract";
 
 // Matching same type in `src/main/index.ts`
 type ReadFileResponse =
@@ -10,6 +11,7 @@ declare global {
 	interface Window {
 		electron: ElectronAPI;
 		api: {
+			desktop: DesktopAPI;
 			openFile: (filePath: string) => Promise<void>;
 			readFile: (
 				filePath: string,
@@ -17,19 +19,6 @@ declare global {
 			) => Promise<ReadFileResponse>;
 			openExternal: (url: string) => Promise<void>;
 			showItemInFolder: (filePath: string) => Promise<void>;
-			session: {
-				getSession: () => Promise<{
-					accessToken: string | undefined;
-					refreshToken: string | undefined;
-					expiry: number | undefined;
-				}>;
-				storeSession: (
-					accessToken: string,
-					expiry: number,
-					refreshToken?: string,
-				) => Promise<void>;
-				clearSession: () => Promise<void>;
-			};
 			systemInfo: {
 				getAppVersion: () => Promise<string>;
 				getPlatformInfo: () => Promise<{
@@ -97,41 +86,6 @@ declare global {
 					channel: string,
 					func: (...args: unknown[]) => void,
 				) => (() => void) | undefined;
-				// Add function to check if provider auth is configured in the backend
-				checkProviderAuthEnabled: () => Promise<boolean>;
-			};
-			oauth: {
-				login: (
-					provider: "google" | "microsoft",
-				) => Promise<{ success: boolean; error?: string }>;
-				logout: () => Promise<{ success: boolean; error?: string }>;
-				getStatus: () => Promise<{
-					success: boolean;
-					status?: {
-						loggedIn: boolean;
-						provider: "google" | "microsoft" | null;
-						accessToken?: string; // Consider removing if not needed by renderer
-						idToken?: string;
-						refreshToken?: string; // Added for Google refresh token
-						expiry?: number;
-						error?: string;
-					};
-					error?: string;
-				}>;
-				onStatusUpdate: (
-					callback: (status: {
-						loggedIn: boolean;
-						provider: "google" | "microsoft" | null;
-						accessToken?: string;
-						idToken?: string;
-						refreshToken?: string; // Added for Google refresh token
-						expiry?: number;
-						error?: string;
-					}) => void,
-				) => () => void; // Returns a cleanup function
-				requestAdditionalGoogleScopes: (
-					scopes: string[],
-				) => Promise<{ success: boolean; error?: string }>;
 			};
 			/** Opens a native dialog to select a directory */
 			selectDirectory: () => Promise<string | undefined>;

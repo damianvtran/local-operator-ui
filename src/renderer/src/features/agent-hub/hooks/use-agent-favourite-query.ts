@@ -1,6 +1,5 @@
 import { getAgentFavourite } from "@shared/api/radient/agents-api";
 import type { AgentFavourite } from "@shared/api/radient/types";
-import { apiConfig } from "@shared/config";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import { useQuery } from "@tanstack/react-query";
 
@@ -26,7 +25,7 @@ export const useAgentFavouriteQuery = ({
 	agentId,
 	enabled = true,
 }: UseAgentFavouriteQueryParams) => {
-	const { sessionToken, isAuthenticated } = useRadientAuth(); // Get auth token and status
+	const { isAuthenticated } = useRadientAuth(); // Get auth token and status
 
 	const query = useQuery<
 		AgentFavourite | Record<string, never>, // Type of data returned by queryFn
@@ -37,16 +36,12 @@ export const useAgentFavouriteQuery = ({
 			if (!agentId) {
 				throw new Error("Agent ID is required to fetch favourite status.");
 			}
-			if (!sessionToken) {
+			if (!isAuthenticated) {
 				// This case should ideally be prevented by the 'enabled' check, but good for safety
 				throw new Error("Authentication required to fetch favourite status.");
 			}
 			// Fetch favourite status using the API client function
-			const response = await getAgentFavourite(
-				apiConfig.radientBaseUrl,
-				agentId,
-				sessionToken,
-			);
+			const response = await getAgentFavourite(agentId);
 			// API returns empty object {} if not favourited, or AgentFavourite object if favourited
 			return response.result;
 		},

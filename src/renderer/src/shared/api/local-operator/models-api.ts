@@ -5,6 +5,7 @@
  * It includes methods for listing model providers and retrieving available models.
  */
 
+import { desktopControlResponse } from "./desktop-api";
 import type { CRUDResponse } from "./types";
 
 /**
@@ -92,13 +93,15 @@ export type ModelSortDirection = "ascending" | "descending";
 /**
  * List all available model providers
  *
- * @param baseUrl - Base URL of the Local Operator API
+ * @param _baseUrl - Unused: routed by operation, not by a renderer-built URL
  * @returns Promise resolving to a list of model providers
  */
 export const listProviders = async (
-	baseUrl: string,
+	_baseUrl: string,
 ): Promise<CRUDResponse<ProviderListResponse>> => {
-	const response = await fetch(`${baseUrl}/v1/models/providers`);
+	const response = await desktopControlResponse({
+		op: "legacy.models.providers",
+	});
 
 	if (!response.ok) {
 		throw new Error(`Failed to list providers: ${response.statusText}`);
@@ -110,31 +113,25 @@ export const listProviders = async (
 /**
  * List all available models, optionally filtered by provider
  *
- * @param baseUrl - Base URL of the Local Operator API
+ * @param _baseUrl - Unused: routed by operation, not by a renderer-built URL
  * @param provider - Optional provider to filter models by
  * @returns Promise resolving to a list of models
  */
 export const listModels = async (
-	baseUrl: string,
+	_baseUrl: string,
 	provider?: string,
 	sort?: ModelSortKey,
 	direction?: ModelSortDirection,
 ): Promise<CRUDResponse<ModelListResponse>> => {
-	const url = new URL(`${baseUrl}/v1/models`);
-
-	if (provider) {
-		url.searchParams.append("provider", provider);
-	}
-
-	if (sort) {
-		url.searchParams.append("sort", sort);
-	}
-
-	if (direction) {
-		url.searchParams.append("direction", direction);
-	}
-
-	const response = await fetch(url.toString());
+	// `/v1/models` is gated in managed mode, so a bare fetch 401s against the
+	// very backend this app starts. The filter/sort arguments ride the contract
+	// op rather than a renderer-built URL.
+	const response = await desktopControlResponse({
+		op: "legacy.models",
+		...(provider ? { provider } : {}),
+		...(sort ? { sort } : {}),
+		...(direction ? { direction } : {}),
+	});
 
 	if (!response.ok) {
 		throw new Error(`Failed to list models: ${response.statusText}`);
