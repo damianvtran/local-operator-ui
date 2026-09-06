@@ -138,10 +138,42 @@ jobs:
             echo "published=false" >> "$GITHUB_OUTPUT"
           fi
 
+      # Pack and assert BEFORE publishing, and publish that exact file. The .jsc
+      # guard and the npx smoke test live in ci.yml, which triggers only on push
+      # to main/dev-*, so they gate the BRANCH and not the ARTIFACT: a
+      # workflow_dispatch repair, or a tag cut from a commit whose CI never ran
+      # or failed, reaches `npm publish` with nothing having inspected the
+      # tarball. Shipping bytecode again is the exact regression this release
+      # guards against (issue #88), so the assertion belongs on the job that
+      # actually publishes.
+      #
+      # `npm publish <tarball>` does NOT re-run prepack, so the bytes asserted
+      # here are the bytes that go to the registry. Calling bare `npm publish`
+      # after this step would rebuild and publish an artifact nothing checked.
+      - name: Pack and assert the tarball ships no V8 bytecode
+        id: pack
+        if: github.event_name == 'release' && steps.check_version.outputs.published == 'false'
+        env:
+          VITE_GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          VITE_GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          VITE_MICROSOFT_CLIENT_ID: ${{ secrets.MICROSOFT_CLIENT_ID }}
+          VITE_MICROSOFT_TENANT_ID: ${{ secrets.MICROSOFT_TENANT_ID }}
+        run: |
+          npm pack
+          TARBALL=$(ls local-operator-ui-*.tgz)
+          if tar tzf "$TARBALL" | grep -q '\.jsc$'; then
+            echo 'Tarball contains .jsc bytecode, which only loads under the exact Electron that built it.'
+            tar tzf "$TARBALL" | grep '\.jsc$'
+            exit 1
+          fi
+          echo "No .jsc files in $TARBALL."
+          echo "tarball=$TARBALL" >> "$GITHUB_OUTPUT"
+
       - name: Publish to npm
         if: github.event_name == 'release' && steps.check_version.outputs.published == 'false'
-        run: npm publish --provenance
+        run: npm publish "${TARBALL}" --provenance
         env:
+          TARBALL: ${{ steps.pack.outputs.tarball }}
           VITE_GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           VITE_GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
           VITE_MICROSOFT_CLIENT_ID: ${{ secrets.MICROSOFT_CLIENT_ID }}

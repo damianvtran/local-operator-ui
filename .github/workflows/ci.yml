@@ -98,8 +98,37 @@ jobs:
           fi
 
   npx-sanity-check:
-    name: NPX Sanity Check
-    runs-on: ubuntu-latest
+    # Packs and asserts on both runners; only macOS LAUNCHES the app.
+    #
+    # Issue #88 only reproduced on macOS ARM, because the failure depends on
+    # which Electron the consuming environment resolves and on the arch of the
+    # bytecode we shipped; the previous Linux-only check never saw it.
+    #
+    # The launch step is macOS-only because the packaged app genuinely cannot
+    # start for a non-root user on Linux after an npm install, and this check is
+    # what found it. Electron's postinstall does not chmod 4755 its
+    # chrome-sandbox helper and npm strips setuid bits by design, so the file
+    # lands root:root 0755 and Chromium aborts with
+    # "The SUID sandbox helper binary was found, but is not configured
+    # correctly". Reproduced in node:22-bookworm from a plain `npm install -g`
+    # of a fixed tarball as a non-root user, outside any npx cache, so it is a
+    # real product defect on the Linux npm channel and not an artifact of CI or
+    # of issue #88. Running as root fails differently
+    # ("Running as root without --no-sandbox is not supported").
+    #
+    # Deliberately NOT fixed here with --no-sandbox or ELECTRON_DISABLE_SANDBOX.
+    # Either would turn this leg green while leaving users just as broken, which
+    # is the same vacuous-check failure this whole job exists to undo, and
+    # shipping a browser engine with its sandbox off is a security-posture
+    # decision that does not belong in a packaging fix. Tracked as issue #91; the
+    # honest position is that this package does not currently support the Linux
+    # npm channel. Restore this leg to the launch step when #91 is fixed.
+    name: NPX Sanity Check (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
     needs:
       - lint
       - check-types
@@ -125,25 +154,30 @@ jobs:
           VITE_GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
           VITE_MICROSOFT_CLIENT_ID: ${{ secrets.MICROSOFT_CLIENT_ID }}
           VITE_MICROSOFT_TENANT_ID: ${{ secrets.MICROSOFT_TENANT_ID }}
+        # npm pack triggers the prepack script, which builds the npm-channel
+        # bundle (plain JS, no V8 bytecode). Do not add a separate pnpm build
+        # here: it would emit bytecode that prepack then overwrites, which is
+        # exactly the ambiguity that let the broken artifact ship.
         run: |
           pnpm install --frozen-lockfile
-          pnpm build
           npm pack
 
-      - name: Install and run with npx
+      # Inspects the tarball only, so it is platform-independent and stays on
+      # both legs even though only macOS launches the app.
+      - name: Assert the tarball ships no V8 bytecode
         run: |
-          npx ./local-operator-ui-*.tgz &
-          NPX_PID=$!
-
-          sleep 15
-
-          if ps -p $NPX_PID > /dev/null; then
-            echo "Application started successfully with npx"
-            kill $NPX_PID
-            wait $NPX_PID || true
-            exit 0
-          else
-            echo "Application failed to start with npx"
+          if tar tzf local-operator-ui-*.tgz | grep -q '\.jsc$'; then
+            echo 'Tarball contains .jsc bytecode, which only loads under the exact Electron that built it.'
+            tar tzf local-operator-ui-*.tgz | grep '\.jsc$'
             exit 1
           fi
+          echo 'No .jsc files in the npm tarball.'
+
+      # macOS only: see the note on this job for why the Linux launch is
+      # excluded rather than forced green with --no-sandbox.
+      - name: Install and run with npx
+        if: runner.os == 'macOS'
+        run: |
+          TARBALL=$(ls local-operator-ui-*.tgz)
+          node scripts/npx-smoke-test.mjs "$TARBALL"
 
