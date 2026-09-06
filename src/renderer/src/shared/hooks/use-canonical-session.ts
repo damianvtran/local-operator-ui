@@ -40,6 +40,7 @@ import {
 	subscribeDesktopStream,
 } from "@shared/api/local-operator/desktop-api";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { mergeCompletionAttention } from "../../../../shared/desktop-session-contract";
 import type {
 	CanonicalFrontendState,
 	DesktopHistoryPage,
@@ -146,9 +147,12 @@ export function useCanonicalSessionStream(
 			// tail is fetched once per snapshot and merged durable-wins.
 			const needsReconcile = frames.some(
 				(frame) =>
-					frame.type === "snapshot" &&
-					(frame.payload.history.cursor_missing ||
-						frame.payload.history.entries.length === 0),
+					frame.type === "attention" ||
+					(frame.type === "snapshot" &&
+						(frame.payload.frontend.snapshot.attention?.completion_token !=
+							null ||
+							frame.payload.history.cursor_missing ||
+							frame.payload.history.entries.length === 0)),
 			);
 			performance.mark("lop:transcript:flush:start");
 
@@ -234,7 +238,14 @@ export function useCanonicalSessionStream(
 							next = {
 								...next,
 								status: "live",
-								frontend: snapshot.frontend.snapshot,
+								frontend: {
+									...snapshot.frontend.snapshot,
+									attention: mergeCompletionAttention(
+										next.frontend?.attention,
+										snapshot.frontend.snapshot.attention,
+										sessionId,
+									),
+								},
 								history: snapshot.history,
 								cold: snapshot.cold,
 								ownerEpoch: snapshot.frontend.epoch,
@@ -245,6 +256,21 @@ export function useCanonicalSessionStream(
 							replayQueue.length = 0;
 							replayTranscript = null;
 						}
+						continue;
+					}
+					if (frame.type === "attention") {
+						if (next.frontend)
+							next = {
+								...next,
+								frontend: {
+									...next.frontend,
+									attention: mergeCompletionAttention(
+										next.frontend.attention,
+										frame.payload,
+										sessionId,
+									),
+								},
+							};
 						continue;
 					}
 					if (frame.type === "frontend.update") {
@@ -271,6 +297,11 @@ export function useCanonicalSessionStream(
 								frontend: {
 									...next.frontend,
 									...update.changes,
+									attention: mergeCompletionAttention(
+										next.frontend.attention,
+										update.changes.attention,
+										sessionId,
+									),
 									sequence: update.sequence,
 								},
 							};
