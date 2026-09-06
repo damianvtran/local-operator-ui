@@ -52,12 +52,13 @@
     "start": "electron-vite preview",
     "dev": "npx dotenv-cli -e .env -- bash -c 'export $(grep -v '^#' .env | xargs) && electron-vite dev'",
     "build": "electron-vite build",
+    "build:npm": "LOCAL_OPERATOR_UI_NO_BYTECODE=true electron-vite build",
     "postbuild": "chmod +x ./bin/local-operator-ui.js",
     "lint": "pnpm biome check src",
     "lint:fix": "pnpm biome check --write src",
     "format": "pnpm biome format src",
     "format:fix": "pnpm biome format --write src",
-    "prepublishOnly": "pnpm run build",
+    "prepack": "pnpm run build:npm",
     "check-types:main": "tsc --noEmit -p tsconfig.node.json",
     "check-types:renderer": "tsc --noEmit -p tsconfig.app.json",
     "check-types": "pnpm run check-types:main && pnpm run check-types:renderer",
@@ -147,6 +148,9 @@
     "zod": "^3.24.2",
     "zustand": "^5.0.3"
   },
+  "optionalDependencies": {
+    "electron": "35.5.1"
+  },
   "devDependencies": {
     "@babel/helpers": "^7.26.10",
     "@babel/runtime": "^7.26.10",
@@ -169,7 +173,6 @@
     "@vitejs/plugin-react": "^4.3.4",
     "dotenv": "^16.5.0",
     "dotenv-cli": "^8.0.0",
-    "electron": "^35.5.1",
     "electron-builder": "^26.0.12",
     "electron-vite": "^3.0.0",
     "esbuild": "^0.25.1",
@@ -199,7 +202,8 @@
       "out/**/*",
       "bin/**/*",
       "LICENSE",
-      "README.md"
+      "README.md",
+      "!node_modules/electron/**/*"
     ],
     "directories": {
       "output": "dist",

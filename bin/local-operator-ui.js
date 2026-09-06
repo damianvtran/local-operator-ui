@@ -11,8 +11,27 @@ const { spawn } = require("node:child_process");
 const path = require("node:path");
 const fs = require("node:fs");
 
-// Get the path to the electron executable
-const electronPath = require("electron");
+// Electron is an optionalDependency pinned to an exact version, not a plain
+// dependency: electron-builder refuses to package a project that lists electron
+// under "dependencies", but the npm/npx launcher below still needs a runtime at
+// require time. "optional" keeps electron-builder happy while npm/bun/pnpm still
+// install it for the CLI. The cost of "optional" is that a failed install is
+// silent, so resolve it defensively and say what to do. See issue #88.
+let electronPath;
+try {
+	electronPath = require("electron");
+} catch (err) {
+	console.error("Error: Could not resolve the Electron runtime.");
+	console.error(
+		"Electron is an optional dependency and its binary download may have been",
+	);
+	console.error(
+		"skipped or blocked. Reinstall with optional dependencies enabled, e.g.",
+	);
+	console.error("  npm install -g local-operator-ui --include=optional");
+	console.error(`Underlying error: ${err.message}`);
+	process.exit(1);
+}
 
 // Get the path to the main.js file
 const appPath = path.join(__dirname, "../out/main/index.js");

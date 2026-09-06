@@ -370,6 +370,19 @@ app
 		// Set app user model id for windows
 		electronApp.setAppUserModelId("com.local-operator");
 
+		// Smoke-test hook for the npx sanity check in CI. Reaching this point
+		// proves what the old check only assumed: the main bundle actually loaded
+		// and executed under the resolved Electron. Issue #88 shipped because the
+		// bundle died at require time with cachedDataRejected while the node
+		// wrapper stayed alive, so a liveness probe on the wrapper pid saw nothing
+		// wrong. Quit immediately: the check wants the signal, not a window, and
+		// on a headless runner there is nobody to close one.
+		if (process.env.LOCAL_OPERATOR_UI_SMOKE_TEST === "true") {
+			console.log("LOCAL_OPERATOR_UI_READY");
+			app.exit(0);
+			return;
+		}
+
 		// Default open or close DevTools by F12 in development
 		// and ignore CommandOrControl + R in production.
 		// see https://github.com/alex8088/electron-toolkit/tree/master/packages/utils

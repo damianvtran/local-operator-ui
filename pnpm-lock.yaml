@@ -267,9 +267,6 @@ importers:
       dotenv-cli:
         specifier: ^8.0.0
         version: 8.0.0
-      electron:
-        specifier: ^35.5.1
-        version: 35.5.1
       electron-builder:
         specifier: ^26.0.12
         version: 26.0.12(electron-builder-squirrel-windows@26.0.12)
@@ -306,6 +303,10 @@ importers:
       yaml:
         specifier: ^2.7.0
         version: 2.7.1
+    optionalDependencies:
+      electron:
+        specifier: 35.5.1
+        version: 35.5.1
 
 packages:
 
