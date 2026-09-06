@@ -66,6 +66,15 @@ export type TraceLineProps = {
 	object?: string;
 	/** Glyph for `verbOverride` rows; defaults to the code glyph. */
 	glyph?: ReactNode;
+	/**
+	 * Let the label WRAP instead of truncating.
+	 *
+	 * For a row whose text is the message itself -- a notice -- rather than the
+	 * name of an action whose detail sits in the disclosure. A clipped action
+	 * label is still identifiable; a clipped sentence loses its second half,
+	 * which for the actionable cold-start reasons was the instruction (QA Q6).
+	 */
+	wrap?: boolean;
 };
 
 const TraceRow = ({
@@ -75,6 +84,7 @@ const TraceRow = ({
 	narration,
 	running,
 	failed,
+	wrap,
 }: {
 	icon: ReactNode;
 	verb: string;
@@ -82,6 +92,7 @@ const TraceRow = ({
 	narration?: string;
 	running?: boolean;
 	failed?: boolean;
+	wrap?: boolean;
 }) => (
 	<span
 		className="flex min-w-0 items-center gap-2"
@@ -95,8 +106,18 @@ const TraceRow = ({
 			{icon}
 		</TraceGlyph>
 		{/* One inline run, so the 12px monospace label and the 13px prose share
-		 * a baseline rather than each being centred in its own box. */}
-		<span className="truncate">
+		 * a baseline rather than each being centred in its own box.
+		 *
+		 * `truncate` is right for a trace of an ACTION -- a long path or command
+		 * is identified by its start and the whole value is in the disclosure.
+		 * It is wrong for a line whose text IS the message, which is what `wrap`
+		 * marks: clipping there costs the reader the end of a sentence, and for
+		 * the cold-start notices that end was the instruction (QA Q6). */}
+		<span
+			className={cn(
+				wrap ? "min-w-0 whitespace-pre-wrap break-words" : "truncate",
+			)}
+		>
 			<span
 				className={cn(
 					"font-mono text-mono-sm",
@@ -130,6 +151,7 @@ export const TraceLine = ({
 	verbOverride,
 	object,
 	glyph,
+	wrap,
 }: TraceLineProps) => {
 	const label = getTraceLabel(action, filePath, files, narration);
 	const verb = verbOverride ?? (running ? label.runningVerb : label.verb);
@@ -144,6 +166,7 @@ export const TraceLine = ({
 			narration={verbOverride ? narration : label.narration}
 			running={running}
 			failed={failed}
+			wrap={wrap}
 		/>
 	);
 
