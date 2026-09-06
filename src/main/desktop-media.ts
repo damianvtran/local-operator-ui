@@ -51,6 +51,13 @@ const mediaRequestSchema = z.discriminatedUnion("op", [
 			fileName: z.string().min(1).max(255),
 		})
 		.strict(),
+	// Export is a gated GET that answers with a ZIP, so it belongs on this relay
+	// rather than the JSON transport: `desktopEndpoint`'s envelope has nowhere to
+	// put binary. It is the only read here, which is why `endpoint()` below
+	// returns a method instead of assuming POST.
+	z
+		.object({ op: z.literal("agent.export"), agentId: id })
+		.strict(),
 ]);
 
 export type DesktopMediaRequest = z.infer<typeof mediaRequestSchema>;
@@ -62,7 +69,7 @@ export type DesktopMediaResponse =
 
 function endpoint(request: DesktopMediaRequest): {
 	path: string;
-	method: "POST";
+	method: "POST" | "GET";
 } {
 	switch (request.op) {
 		case "speech.create":
@@ -73,6 +80,8 @@ function endpoint(request: DesktopMediaRequest): {
 			return { path: "/v1/transcriptions", method: "POST" };
 		case "agent.import":
 			return { path: "/v1/agents/import", method: "POST" };
+		case "agent.export":
+			return { path: `/v1/agents/${request.agentId}/export`, method: "GET" };
 	}
 }
 
@@ -99,9 +108,12 @@ export async function requestDesktopMedia(
 	}
 	const target = endpoint(request);
 
-	let body: BodyInit;
+	let body: BodyInit | undefined;
 	let contentType: string | undefined;
-	if (request.op === "speech.create" || request.op === "speech.agent") {
+	if (request.op === "agent.export") {
+		// A GET carries no body; `fetch` rejects one outright.
+		body = undefined;
+	} else if (request.op === "speech.create" || request.op === "speech.agent") {
 		body = JSON.stringify(request.request);
 		contentType = "application/json";
 	} else {

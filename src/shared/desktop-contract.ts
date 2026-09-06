@@ -22,6 +22,32 @@ const sessionImage = z
 	})
 	.strict();
 const chains = z.record(z.array(z.string().max(1024)).max(100));
+// Mirrors ScheduleUnit in the renderer's api/local-operator/types.ts and the
+// backend's ScheduleUnit enum. Enumerated rather than free text so the value
+// cannot become a path or query fragment on its way to the server.
+const scheduleUnit = z.enum(["minutes", "hours", "days"]);
+/**
+ * An execution-variable key. Looser than `id` because these are user-named
+ * Python identifiers rather than machine ids, but still no slashes, dots or
+ * spaces -- the key goes into the PATH, so a permissive value would let the
+ * renderer address a route it was never given an operation for.
+ */
+const variableKey = z
+	.string()
+	.min(1)
+	.max(128)
+	.regex(/^[a-zA-Z0-9_-]+$/);
+// The fields create and edit have in common. Both extend it with their own
+// required/nullable variants of prompt, interval and unit, which differ because
+// create supplies defaults and edit sends only what changed.
+const scheduleWrite = z
+	.object({
+		is_active: z.boolean().nullish(),
+		one_time: z.boolean().nullish(),
+		start_time_utc: z.string().max(64).nullish(),
+		end_time_utc: z.string().max(64).nullish(),
+	})
+	.strict();
 const configUpdate = z
 	.object({
 		conversation_length: z.number().int().optional(),
@@ -151,6 +177,126 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 		})
 		.strict(),
 	z.object({ op: z.literal("legacy.job.get"), jobId: id }).strict(),
+	// The schedules surface. Gated in managed mode not because a schedule is
+	// sensitive to READ but because both writes hand their `prompt` to the
+	// scheduler, which later runs it as the user's own agent -- so a bare
+	// renderer fetch would 401 against exactly the backend this app starts.
+	z
+		.object({
+			op: z.literal("legacy.schedules.list"),
+			page: z.number().int().min(1).optional(),
+			perPage: z.number().int().min(1).max(100).optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("legacy.agent.schedules.list"),
+			agentId: id,
+			page: z.number().int().min(1).optional(),
+			perPage: z.number().int().min(1).max(100).optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("legacy.agent.schedule.create"),
+			agentId: id,
+			// Passed through as the request body. Declared field-by-field rather
+			// than as a passthrough object so the renderer cannot smuggle keys the
+			// backend model would silently accept.
+			schedule: scheduleWrite.extend({
+				prompt: z.string().max(64_000),
+				interval: z.number().int().min(1),
+				unit: scheduleUnit,
+			}),
+		})
+		.strict(),
+	z.object({ op: z.literal("legacy.schedule.get"), scheduleId: id }).strict(),
+	z
+		.object({
+			op: z.literal("legacy.schedule.edit"),
+			scheduleId: id,
+			// Every field optional: the backend applies `exclude_unset`, so sending
+			// a key the user did not touch would overwrite it with a default.
+			schedule: scheduleWrite.extend({
+				prompt: z.string().max(64_000).nullish(),
+				interval: z.number().int().min(1).nullish(),
+				unit: scheduleUnit.nullish(),
+			}),
+		})
+		.strict(),
+	z
+		.object({ op: z.literal("legacy.schedule.remove"), scheduleId: id })
+		.strict(),
+	// The remaining gated legacy writes and reads the renderer still issued as
+	// bare same-origin `fetch`. `apiConfig.baseUrl` points AT THE BACKEND, not
+	// through the main-process relay, so in managed mode these went out with no
+	// bearer and 401'd -- agent creation among them, which is the app's most
+	// basic action (review round 3, Q7).
+	z
+		.object({
+			op: z.literal("legacy.agent.create"),
+			// The body is forwarded whole: the backend model owns which fields
+			// exist, and enumerating ~20 optional agent fields here would be a
+			// second schema to keep in step with it. `strict()` on the wrapper
+			// still stops any key outside `agent` from riding along.
+			agent: z.record(z.unknown()),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("legacy.agent.update"),
+			agentId: id,
+			update: z.record(z.unknown()),
+		})
+		.strict(),
+	z.object({ op: z.literal("legacy.agent.delete"), agentId: id }).strict(),
+	z
+		.object({ op: z.literal("legacy.agent.conversation.clear"), agentId: id })
+		.strict(),
+	z
+		.object({ op: z.literal("legacy.agent.systemPrompt.get"), agentId: id })
+		.strict(),
+	z
+		.object({
+			op: z.literal("legacy.agent.systemPrompt.update"),
+			agentId: id,
+			systemPrompt: z.string().max(1_000_000),
+		})
+		.strict(),
+	z.object({ op: z.literal("legacy.agent.download"), agentId: id }).strict(),
+	z
+		.object({ op: z.literal("legacy.agent.variables.list"), agentId: id })
+		.strict(),
+	z
+		.object({
+			op: z.literal("legacy.agent.variables.create"),
+			agentId: id,
+			variable: z.record(z.unknown()),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("legacy.agent.variables.get"),
+			agentId: id,
+			key: variableKey,
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("legacy.agent.variables.update"),
+			agentId: id,
+			key: variableKey,
+			variable: z.record(z.unknown()),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("legacy.agent.variables.delete"),
+			agentId: id,
+			key: variableKey,
+		})
+		.strict(),
+	z.object({ op: z.literal("legacy.job.cancel"), jobId: id }).strict(),
 	z.object({ op: z.literal("commands.list") }).strict(),
 	z
 		.object({
@@ -410,7 +556,8 @@ export type DesktopMediaRequest =
 			mimeType: string;
 			fields: Record<string, string>;
 	  }
-	| { op: "agent.import"; fileName: string };
+	| { op: "agent.import"; fileName: string }
+	| { op: "agent.export"; agentId: string };
 
 export type DesktopMediaResponse =
 	| { status: number; kind: "bytes"; mimeType: string; data: Uint8Array }
@@ -669,6 +816,96 @@ export function desktopEndpoint(request: DesktopRequest): {
 		}
 		case "legacy.job.get":
 			return { path: `/v1/jobs/${request.jobId}`, method: "GET" };
+		case "legacy.schedules.list": {
+			const query = new URLSearchParams({
+				page: String(request.page ?? 1),
+				per_page: String(request.perPage ?? 10),
+			});
+			return { path: `/v1/schedules?${query}`, method: "GET" };
+		}
+		case "legacy.agent.schedules.list": {
+			const query = new URLSearchParams({
+				page: String(request.page ?? 1),
+				per_page: String(request.perPage ?? 10),
+			});
+			return {
+				path: `/v1/agents/${request.agentId}/schedules?${query}`,
+				method: "GET",
+			};
+		}
+		case "legacy.agent.schedule.create":
+			return {
+				path: `/v1/agents/${request.agentId}/schedules`,
+				method: "POST",
+				body: request.schedule,
+			};
+		case "legacy.schedule.get":
+			return { path: `/v1/schedules/${request.scheduleId}`, method: "GET" };
+		case "legacy.schedule.edit":
+			return {
+				path: `/v1/schedules/${request.scheduleId}`,
+				method: "PATCH",
+				body: request.schedule,
+			};
+		case "legacy.schedule.remove":
+			return { path: `/v1/schedules/${request.scheduleId}`, method: "DELETE" };
+		case "legacy.agent.create":
+			return { path: "/v1/agents", method: "POST", body: request.agent };
+		case "legacy.agent.update":
+			return {
+				path: `/v1/agents/${request.agentId}`,
+				method: "PATCH",
+				body: request.update,
+			};
+		case "legacy.agent.delete":
+			return { path: `/v1/agents/${request.agentId}`, method: "DELETE" };
+		case "legacy.agent.conversation.clear":
+			return {
+				path: `/v1/agents/${request.agentId}/conversation`,
+				method: "DELETE",
+			};
+		case "legacy.agent.systemPrompt.get":
+			return {
+				path: `/v1/agents/${request.agentId}/system-prompt`,
+				method: "GET",
+			};
+		case "legacy.agent.systemPrompt.update":
+			return {
+				path: `/v1/agents/${request.agentId}/system-prompt`,
+				method: "PUT",
+				body: { system_prompt: request.systemPrompt },
+			};
+		case "legacy.agent.download":
+			return { path: `/v1/agents/${request.agentId}/download`, method: "GET" };
+		case "legacy.agent.variables.list":
+			return {
+				path: `/v1/agents/${request.agentId}/execution-variables`,
+				method: "GET",
+			};
+		case "legacy.agent.variables.create":
+			return {
+				path: `/v1/agents/${request.agentId}/execution-variables`,
+				method: "POST",
+				body: request.variable,
+			};
+		case "legacy.agent.variables.get":
+			return {
+				path: `/v1/agents/${request.agentId}/execution-variables/${request.key}`,
+				method: "GET",
+			};
+		case "legacy.agent.variables.update":
+			return {
+				path: `/v1/agents/${request.agentId}/execution-variables/${request.key}`,
+				method: "PATCH",
+				body: request.variable,
+			};
+		case "legacy.agent.variables.delete":
+			return {
+				path: `/v1/agents/${request.agentId}/execution-variables/${request.key}`,
+				method: "DELETE",
+			};
+		case "legacy.job.cancel":
+			return { path: `/v1/jobs/${request.jobId}`, method: "DELETE" };
 		case "commands.list":
 			return { path: "/v1/desktop/commands", method: "GET" };
 		case "commands.entities":
