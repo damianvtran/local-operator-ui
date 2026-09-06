@@ -170,9 +170,7 @@ export function desktopProxyPlugin(): Plugin {
 					const header = req.headers["x-desktop-media"];
 					let operation: unknown;
 					try {
-						operation = JSON.parse(
-							typeof header === "string" ? header : "",
-						);
+						operation = JSON.parse(typeof header === "string" ? header : "");
 					} catch {
 						res.statusCode = 422;
 						res.setHeader("Content-Type", "application/json");
@@ -191,7 +189,8 @@ export function desktopProxyPlugin(): Plugin {
 						}
 						chunks.push(chunk as Buffer);
 					}
-					const bytes = total > 0 ? new Uint8Array(Buffer.concat(chunks)) : null;
+					const bytes =
+						total > 0 ? new Uint8Array(Buffer.concat(chunks)) : null;
 					const result = await requestDesktopMedia(
 						operation,
 						bytes,
@@ -215,14 +214,28 @@ export function desktopProxyPlugin(): Plugin {
 				if (req.url !== "/__desktop") return next();
 				const origin = req.headers.origin;
 				const address = server.httpServer?.address();
-				const port = typeof address === "object" && address ? address.port : server.config.server.port;
-				const allowed = new Set([`http://127.0.0.1:${port}`, `http://localhost:${port}`]);
+				const port =
+					typeof address === "object" && address
+						? address.port
+						: server.config.server.port;
+				const allowed = new Set([
+					`http://127.0.0.1:${port}`,
+					`http://localhost:${port}`,
+				]);
 				res.setHeader("Cache-Control", "no-store");
 				res.setHeader("Content-Type", "application/json");
-				if (req.method !== "POST" || !origin || !allowed.has(origin) ||
-					!req.headers["content-type"]?.startsWith("application/json")) {
+				if (
+					req.method !== "POST" ||
+					!origin ||
+					!allowed.has(origin) ||
+					!req.headers["content-type"]?.startsWith("application/json")
+				) {
 					res.statusCode = 403;
-					res.end(JSON.stringify({ detail: "This origin cannot use desktop controls." }));
+					res.end(
+						JSON.stringify({
+							detail: "This origin cannot use desktop controls.",
+						}),
+					);
 					return;
 				}
 				try {
@@ -239,7 +252,8 @@ export function desktopProxyPlugin(): Plugin {
 					}
 					const result = await requestDesktop(
 						JSON.parse(Buffer.concat(chunks).toString("utf-8")),
-						process.env.LOCAL_OPERATOR_DESKTOP_BACKEND_URL || "http://127.0.0.1:1111",
+						process.env.LOCAL_OPERATOR_DESKTOP_BACKEND_URL ||
+							"http://127.0.0.1:1111",
 						process.env.LOCAL_OPERATOR_DESKTOP_TOKEN || null,
 					);
 					res.end(JSON.stringify(result));

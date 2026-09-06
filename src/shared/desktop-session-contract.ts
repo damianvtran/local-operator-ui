@@ -2,6 +2,40 @@
 // Owner state revisions and HTTP semantic receipt cursors are independent. See
 // docs/desktop-controls.md before implementing replay or notifications.
 export type CanonicalSessionId = string;
+export type CompletionAttention = {
+	conversation_id: string;
+	completion_token: string | null;
+	anchor_id: string | null;
+	kind: "complete" | "error" | "interrupted" | null;
+	unseen: boolean;
+	revision: [number, number];
+	/** False for a live owner that has not negotiated completion receipts. */
+	supported?: boolean;
+};
+export function mergeCompletionAttention(
+	current: CompletionAttention | undefined,
+	incoming: CompletionAttention | undefined,
+	sessionId: string,
+): CompletionAttention | undefined {
+	if (
+		!incoming ||
+		incoming.conversation_id !== `session/${sessionId}` ||
+		!Array.isArray(incoming.revision) ||
+		incoming.revision.length !== 2 ||
+		!incoming.revision.every((n) => Number.isSafeInteger(n) && n >= 0)
+	)
+		return current;
+	// These clocks survive owner/server epochs; an old snapshot or delayed ACK
+	// can never make a newer completion, or an already-observed read, disappear.
+	if (
+		current?.conversation_id === incoming.conversation_id &&
+		(incoming.revision[0] < current.revision[0] ||
+			incoming.revision[1] < current.revision[1])
+	)
+		return current;
+	return incoming;
+}
+
 export type CanonicalModel = {
 	provider: string;
 	model_id: string;
@@ -24,6 +58,7 @@ export type PendingDesktopGate = {
 	question_total: number;
 };
 export type CanonicalFrontendState = {
+	attention?: CompletionAttention;
 	state_version: number;
 	session_id: CanonicalSessionId;
 	epoch: string;
@@ -104,6 +139,7 @@ export type DesktopSessionFrame =
 			}
 	  >
 	| Receipt<"snapshot", DesktopSnapshot>
+	| Receipt<"attention", CompletionAttention>
 	| Receipt<
 			"frontend.update",
 			{

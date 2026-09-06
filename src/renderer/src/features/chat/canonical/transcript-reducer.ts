@@ -43,6 +43,8 @@ export type TranscriptRecord =
 	  }
 	| {
 			kind: "assistant";
+			/** Only a full durable history read certifies the actual ending. */
+			complete?: boolean;
 			id: string;
 			ts: number;
 			text: string;
@@ -70,6 +72,8 @@ export type TranscriptRecord =
 	  }
 	| {
 			kind: "notice";
+			/** A durable completion marker, not an arbitrary renderer notice. */
+			complete?: boolean;
 			id: string;
 			ts: number;
 			text: string;
@@ -193,6 +197,28 @@ function durableRecord(
 	if (entry.type === "compaction") {
 		return { kind: "compaction", id: entry.id, ts, text: "Context compacted" };
 	}
+	if (
+		entry.type === "custom" &&
+		payload.custom_type === "completion_attention"
+	) {
+		const details = (payload.details ?? {}) as Record<string, unknown>;
+		if (
+			typeof details.anchor === "string" &&
+			(details.kind === "error" || details.kind === "interrupted")
+		) {
+			// Preserve the marker's durable position. Appending an old failure at
+			// the current retry tail would misrepresent which outcome was viewed.
+			return {
+				kind: "notice",
+				id: details.anchor,
+				ts,
+				complete: true,
+				text:
+					details.kind === "error" ? "Stopped with an error" : "Interrupted",
+				level: details.kind === "error" ? "error" : "warning",
+			};
+		}
+	}
 	if (entry.type !== "message") return null;
 	const kind = String(payload.kind ?? "message");
 	if (kind === "custom") {
@@ -251,6 +277,7 @@ function durableRecord(
 			id: entry.id,
 			ts,
 			text,
+			complete: true,
 			streaming: false,
 			stopReason: (payload.stop_reason as string | null) ?? null,
 			error: Boolean(payload.is_error),
@@ -731,5 +758,74 @@ export function appendLocalNote(
 		ts: now,
 		text,
 		level,
+	});
+}
+
+/**
+ * Give a crash-recovered outcome a row, so it can be read at all.
+ *
+ * The normal settle path writes a `completion_attention` transcript entry and
+ * `durableRecord` renders it. Crash recovery does not: `bootstrap_transcript`
+ * republishes an `interrupted` completion from the `attention_started` journal
+ * with anchor `completion-<token>`, and that entry never exists because the
+ * turn that would have written it is exactly the one that died.
+ *
+ * Without a row carrying the anchor, the view finds nothing to hit-test and the
+ * conversation stays unread forever while the user is looking straight at it —
+ * self-healing only if some later turn completes, which for a finished
+ * conversation may be never. The TUI already synthesizes this notice
+ * (`tui/app.py::_poll_completion_attention`); this is the same guard for the
+ * surface that decides what is renderable on desktop.
+ *
+ * `unseen` gates CREATION only. The row is itself ackable, so it acknowledges
+ * itself within about half a second — and because the receipt writes only to the
+ * store and never adds a transcript entry, nothing durable replaces it. Deriving
+ * its continued existence from `unseen` therefore made "Interrupted" appear and
+ * then vanish under the user, permanently: reopening the conversation the next
+ * day showed no trace that the run was ever interrupted. It also disagreed with
+ * the TUI, whose `_append_block(NoticeBlock)` survives the receipt, so the two
+ * surfaces rendered different transcripts for the same conversation — the exact
+ * divergence this feature exists to remove. `remembered` carries the anchors
+ * already synthesized for the mounted conversation so the row's LIFETIME matches
+ * the TUI's: reading an outcome marks it read, it does not delete it.
+ */
+export function withRecoveredOutcome(
+	state: TranscriptState,
+	attention:
+		| {
+				anchor_id?: string | null;
+				kind?: string | null;
+				unseen?: boolean;
+				conversation_id?: string;
+		  }
+		| null
+		| undefined,
+	streaming: boolean,
+	remembered?: Set<string>,
+): TranscriptState {
+	const anchor = attention?.anchor_id;
+	const kind = attention?.kind;
+	if (
+		!anchor ||
+		(kind !== "error" && kind !== "interrupted") ||
+		// Mirrors the TUI's retry guard: a historical failure must not be
+		// inserted at the tail of a retry that is already running.
+		streaming ||
+		state.index.has(anchor) ||
+		// Already read AND never shown here: the outcome was acknowledged on
+		// another surface, so this conversation has no row to keep alive.
+		(!attention?.unseen && !remembered?.has(anchor))
+	)
+		return state;
+	remembered?.add(anchor);
+	return upsert(state, {
+		kind: "notice",
+		id: anchor,
+		// The recovered outcome has no timestamp of its own, so it sorts at the
+		// tail where the durable rows it follows already are.
+		ts: state.records.at(-1)?.ts ?? Date.now(),
+		complete: true,
+		text: kind === "error" ? "Stopped with an error" : "Interrupted",
+		level: kind === "error" ? "error" : "warning",
 	});
 }
