@@ -24,6 +24,15 @@ export type CanonicalSessionRow = {
 	cwd?: string | null;
 	updated_at?: number | null;
 	agent_id?: string | null;
+	/**
+	 * The session's most recent assistant reply, from the canonical transcript.
+	 *
+	 * The conversation list used to render the legacy agent record's
+	 * `last_message`, which canonical sessions never write -- so a conversation
+	 * with a full transcript on disk was labelled "No messages yet" (design
+	 * D19). The transcript is the authority for both the title and this.
+	 */
+	preview?: string | null;
 	[key: string]: unknown;
 };
 
