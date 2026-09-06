@@ -672,6 +672,40 @@ export const SettingsPage: FC = () => {
 	// Combine loading states
 	const isLoading = isConfigLoading || isAuthLoading;
 
+	// The error branch below is only reachable if the config query actually
+	// settles. The renderer transport now bounds every desktop control, so a
+	// stalled request rejects instead of pending forever -- but the spinner is
+	// still the LAST state a user sees when something upstream of it stalls, and
+	// an unrecoverable spinner leaves them with nothing to do but relaunch. So
+	// the error state is preferred over the spinner once the config query has
+	// failed, rather than being gated behind it: `isAuthLoading` alone must not
+	// hold the page on a spinner when the settings it is loading can no longer
+	// arrive. That ordering is what makes the recovery affordance reachable.
+	if (configError) {
+		return (
+			<div className="flex h-full w-full items-center justify-center bg-canvas p-6">
+				<Alert variant="danger" className="w-full max-w-xl">
+					<div className="flex items-center justify-between gap-3">
+						<span>
+							Could not load your settings. The Local Operator server may not be
+							running. {configError.message}
+						</span>
+						{/* Same recovery the providers grid offers: re-ask the backend in
+						    place, so a transient stall does not cost a relaunch. */}
+						<Button
+							variant="secondary"
+							size="sm"
+							className="shrink-0"
+							onClick={() => void refetch()}
+						>
+							Retry
+						</Button>
+					</div>
+				</Alert>
+			</div>
+		);
+	}
+
 	if (isLoading) {
 		return (
 			<div className="flex h-full w-full items-center justify-center bg-canvas">
@@ -680,12 +714,12 @@ export const SettingsPage: FC = () => {
 		);
 	}
 
-	if (configError || !config) {
+	if (!config) {
 		return (
 			<div className="flex h-full w-full items-center justify-center bg-canvas p-6">
 				<Alert variant="danger" className="w-full max-w-xl">
 					Could not load your settings. The Local Operator server may not be
-					running. {configError?.message}
+					running.
 				</Alert>
 			</div>
 		);
