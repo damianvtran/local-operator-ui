@@ -26,6 +26,7 @@ import {
 import { useDebouncedValue } from "@shared/hooks/use-debounced-value";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import { cn } from "@shared/lib/utils";
+import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { formatMessageDateTime } from "@shared/utils/date-utils";
 import { Bot, MessageCircleOff } from "lucide-react";
@@ -64,6 +65,15 @@ type ChatSidebarItemProps = {
 	formatMessageDateTime: (date: string) => string;
 	truncateMessage: (message?: string, maxLength?: number) => string;
 	index: number;
+	/**
+	 * The last reply from this agent's CANONICAL session, when it has one.
+	 *
+	 * Preferred over `agent.last_message`, which only the legacy execution path
+	 * ever writes: a canonical session keeps its conversation in its own
+	 * transcript, so every such row read "No messages yet" while displaying the
+	 * timestamp of the message it was denying (design D19).
+	 */
+	sessionPreview?: string;
 };
 
 const ChatSidebarItem: FC<ChatSidebarItemProps> = ({
@@ -78,7 +88,11 @@ const ChatSidebarItem: FC<ChatSidebarItemProps> = ({
 	formatMessageDateTime,
 	truncateMessage,
 	index,
+	sessionPreview,
 }) => {
+	// One authority per row, canonical first: the transcript is where a
+	// canonical session's conversation actually lives.
+	const lastMessage = sessionPreview || agent.last_message;
 	return (
 		<li className="group relative">
 			<button
@@ -120,14 +134,14 @@ const ChatSidebarItem: FC<ChatSidebarItemProps> = ({
 						)}
 					</span>
 
-					{agent.last_message ? (
+					{lastMessage ? (
 						<Tooltip
-							content={truncateMessage(agent.last_message, 500)}
+							content={truncateMessage(lastMessage, 500)}
 							side="bottom"
 							align="start"
 						>
 							<span className="block min-h-[18px] w-full truncate text-meta text-ink-muted">
-								{truncateMessage(agent.last_message, 40)}
+								{truncateMessage(lastMessage, 40)}
 							</span>
 						</Tooltip>
 					) : (
@@ -188,6 +202,10 @@ const areChatSidebarItemsEqual = (
 		prev.agent.name === next.agent.name &&
 		prev.agent.last_message === next.agent.last_message &&
 		prev.agent.last_message_datetime === next.agent.last_message_datetime &&
+		// Compared explicitly, like every other displayed field: this list uses a
+		// hand-written comparator, so a preview arriving from the canonical
+		// session list would otherwise never repaint the row it belongs to.
+		prev.sessionPreview === next.sessionPreview &&
 		prev.onSelectConversation === next.onSelectConversation &&
 		prev.onNavigateToAgentSettings === next.onNavigateToAgentSettings &&
 		prev.onExportAgent === next.onExportAgent &&
@@ -265,6 +283,31 @@ const ChatSidebarComponent: FC<ChatSidebarProps> = ({
 			? selectedConversation
 			: undefined,
 	);
+
+	// Agent id -> the last reply of the CANONICAL session bound to it.
+	//
+	// The list is agent-backed while the conversation is canonical, so the two
+	// are joined through the binding the store already maintains. Without this
+	// the row falls back to `agent.last_message`, which only the legacy path
+	// writes -- the "No messages yet" on conversations that plainly have them
+	// (design D19).
+	const canonicalSessions = useCanonicalSessionsStore(
+		(state) => state.sessions,
+	);
+	const sessionByAgentId = useCanonicalSessionsStore(
+		(state) => state.sessionByAgent,
+	);
+	const previewByAgent = useMemo(() => {
+		const previews: Record<string, string> = {};
+		const bySession = new Map(
+			canonicalSessions.map((row) => [row.session_id, row]),
+		);
+		for (const [agentId, sessionId] of Object.entries(sessionByAgentId)) {
+			const preview = bySession.get(sessionId)?.preview;
+			if (typeof preview === "string" && preview) previews[agentId] = preview;
+		}
+		return previews;
+	}, [canonicalSessions, sessionByAgentId]);
 
 	// Memoize combinedAgents to stabilize its reference for hook dependencies
 	const combinedAgents = useMemo(() => {
@@ -505,6 +548,7 @@ const ChatSidebarComponent: FC<ChatSidebarProps> = ({
 								formatMessageDateTime={formatMessageDateTime}
 								truncateMessage={truncateMessage}
 								index={index}
+								sessionPreview={previewByAgent[agent.id]}
 							/>
 						))}
 					</ul>
