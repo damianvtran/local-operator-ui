@@ -38,6 +38,28 @@ export function registerDesktopIPC(
 	}
 	ipcMain.handle("desktop-request", (event, input: unknown) => {
 		authorize(event);
+		if (
+			input !== null &&
+			typeof input === "object" &&
+			"op" in input &&
+			input.op === "sessions.seen"
+		) {
+			// Renderer visibility is necessary but cannot prove native foreground.
+			// Enforce this on the shared typed request entry so no alternate IPC
+			// caller can bypass it. Watch leases remain notification routing only.
+			const owner = window();
+			if (
+				!owner ||
+				owner.isDestroyed() ||
+				!owner.isVisible() ||
+				owner.isMinimized() ||
+				!owner.isFocused()
+			) {
+				throw new Error(
+					"View this completion in the foreground before marking it read.",
+				);
+			}
+		}
 		return request(input);
 	});
 	// `/exit`: the window closes through the ordinary close path, so the
