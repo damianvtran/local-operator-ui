@@ -217,6 +217,18 @@ function createWindow(): BrowserWindow {
 		},
 	});
 
+	// Renderer warnings and errors reach a durable file, not just devTools.
+	// devTools are off outside `pnpm dev`, so a `console.warn` in a shipped
+	// build previously landed nowhere a user could send us — which made the
+	// receipt-backoff diagnostic unreadable on the machines where it matters.
+	// Only warning (2) and error (3) are forwarded; info and debug would make
+	// the log unusable for the failures it exists to explain.
+	mainWindow.webContents.on("console-message", (_event, level, message) => {
+		if (level < 2) return;
+		const write = level >= 3 ? logger.error : logger.warn;
+		write.call(logger, `[renderer] ${message}`, LogFileType.BACKEND);
+	});
+
 	mainWindow.on("ready-to-show", () => {
 		mainWindow.show();
 	});

@@ -484,12 +484,25 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	// synthesized here rather than in the stream reducer: this is the layer that
 	// decides what is renderable, and an anchor with nothing to hit-test is an
 	// unread badge the user can never clear.
+	// Anchors already synthesized for THIS conversation. Held in a ref because
+	// the row must outlive the `unseen` flag that created it (see
+	// `withRecoveredOutcome`), and reset per conversation so one session's
+	// recovered outcome can never paint into another's transcript.
+	const recovered = useRef<{ session: string | null; anchors: Set<string> }>({
+		session: null,
+		anchors: new Set(),
+	});
+	const sessionId = frontend?.session_id ?? null;
+	if (recovered.current.session !== sessionId) {
+		recovered.current = { session: sessionId, anchors: new Set() };
+	}
 	const painted = useMemo(
 		() =>
 			withRecoveredOutcome(
 				transcript,
 				frontend?.attention,
 				Boolean(frontend?.streaming),
+				recovered.current.anchors,
 			),
 		[transcript, frontend?.attention, frontend?.streaming],
 	);

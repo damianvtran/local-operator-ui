@@ -776,6 +776,18 @@ export function appendLocalNote(
  * conversation may be never. The TUI already synthesizes this notice
  * (`tui/app.py::_poll_completion_attention`); this is the same guard for the
  * surface that decides what is renderable on desktop.
+ *
+ * `unseen` gates CREATION only. The row is itself ackable, so it acknowledges
+ * itself within about half a second — and because the receipt writes only to the
+ * store and never adds a transcript entry, nothing durable replaces it. Deriving
+ * its continued existence from `unseen` therefore made "Interrupted" appear and
+ * then vanish under the user, permanently: reopening the conversation the next
+ * day showed no trace that the run was ever interrupted. It also disagreed with
+ * the TUI, whose `_append_block(NoticeBlock)` survives the receipt, so the two
+ * surfaces rendered different transcripts for the same conversation — the exact
+ * divergence this feature exists to remove. `remembered` carries the anchors
+ * already synthesized for the mounted conversation so the row's LIFETIME matches
+ * the TUI's: reading an outcome marks it read, it does not delete it.
  */
 export function withRecoveredOutcome(
 	state: TranscriptState,
@@ -789,19 +801,23 @@ export function withRecoveredOutcome(
 		| null
 		| undefined,
 	streaming: boolean,
+	remembered?: Set<string>,
 ): TranscriptState {
 	const anchor = attention?.anchor_id;
 	const kind = attention?.kind;
 	if (
 		!anchor ||
-		!attention?.unseen ||
 		(kind !== "error" && kind !== "interrupted") ||
 		// Mirrors the TUI's retry guard: a historical failure must not be
 		// inserted at the tail of a retry that is already running.
 		streaming ||
-		state.index.has(anchor)
+		state.index.has(anchor) ||
+		// Already read AND never shown here: the outcome was acknowledged on
+		// another surface, so this conversation has no row to keep alive.
+		(!attention?.unseen && !remembered?.has(anchor))
 	)
 		return state;
+	remembered?.add(anchor);
 	return upsert(state, {
 		kind: "notice",
 		id: anchor,

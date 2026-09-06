@@ -29,6 +29,7 @@ const {
 	applyLiveSeed,
 	clearTranscript,
 	dropLiveRecords,
+	withRecoveredOutcome,
 } = reducer;
 
 const assistant = (id, text) => ({
@@ -333,4 +334,141 @@ test("throughput: 5000 deltas over a 400-row transcript stays sub-millisecond pe
 	);
 	assert.ok(perDelta < 1, `per-delta cost ${perDelta}ms`);
 	assert.equal(state.records.at(-1).text.length, n);
+});
+
+// --- crash-recovered outcomes -------------------------------------------------
+//
+// `withRecoveredOutcome` is the only producer of the row for an outcome that
+// crash recovery republished without a durable `completion_attention` entry.
+// It fixes an unclearable unread badge, so it is exactly the function that must
+// not itself be untested.
+
+const ANCHOR = "completion-1f8f5be8-0000-4000-8000-00000000000a";
+const seeded = () =>
+	applyHistoryPage(EMPTY_TRANSCRIPT, {
+		entries: [
+			{
+				id: "u1",
+				ts: 1,
+				type: "message",
+				payload: { role: "user", message: "hi" },
+			},
+		],
+		has_more: false,
+		cursor_missing: false,
+	});
+const attention = (overrides = {}) => ({
+	anchor_id: ANCHOR,
+	kind: "interrupted",
+	unseen: true,
+	conversation_id: "session/123456abcdef",
+	...overrides,
+});
+const rowFor = (state) => state.records.find((record) => record.id === ANCHOR);
+
+test("a crash-recovered outcome is rendered at its own anchor, and is ackable", () => {
+	const state = withRecoveredOutcome(seeded(), attention(), false, new Set());
+	const row = rowFor(state);
+	assert.equal(row.kind, "notice");
+	assert.equal(row.text, "Interrupted");
+	assert.equal(row.level, "warning");
+	// Without this the view has nothing to hit-test and the badge never clears.
+	assert.equal(row.complete, true);
+	assert.equal(
+		rowFor(
+			withRecoveredOutcome(
+				seeded(),
+				attention({ kind: "error" }),
+				false,
+				new Set(),
+			),
+		).text,
+		"Stopped with an error",
+	);
+});
+
+test("the recovered row survives its own acknowledgement", () => {
+	// The row is ackable, so it acknowledges itself within ~500 ms, and the
+	// receipt writes only to the store -- no durable row ever replaces it.
+	// Deriving its existence from `unseen` made "Interrupted" vanish under the
+	// user and stay gone, disagreeing with the TUI, whose notice persists.
+	const remembered = new Set();
+	assert.ok(
+		rowFor(withRecoveredOutcome(seeded(), attention(), false, remembered)),
+	);
+	const afterAck = withRecoveredOutcome(
+		seeded(),
+		attention({ unseen: false }),
+		false,
+		remembered,
+	);
+	assert.ok(rowFor(afterAck), "the outcome disappeared once it was read");
+});
+
+test("an outcome already read elsewhere does not appear in a conversation that never showed it", () => {
+	// Opening a conversation whose outcome was acknowledged on the phone must
+	// not resurrect a notice this surface never displayed.
+	const state = withRecoveredOutcome(
+		seeded(),
+		attention({ unseen: false }),
+		false,
+		new Set(),
+	);
+	assert.equal(rowFor(state), undefined);
+});
+
+test("a historical failure is not inserted at the tail of a running retry", () => {
+	// The TUI's own guard: while a retry is streaming, an older outcome must not
+	// be painted as though it were the current one.
+	assert.equal(
+		rowFor(withRecoveredOutcome(seeded(), attention(), true, new Set())),
+		undefined,
+	);
+});
+
+test("synthesis is idempotent and never overwrites a real durable row", () => {
+	const remembered = new Set();
+	const once = withRecoveredOutcome(seeded(), attention(), false, remembered);
+	const twice = withRecoveredOutcome(once, attention(), false, remembered);
+	assert.equal(
+		twice.records.filter((record) => record.id === ANCHOR).length,
+		1,
+	);
+	assert.equal(twice, once, "a second apply must not rebuild the state");
+
+	// An anchor colliding with a durable id leaves that row untouched.
+	const collides = applyHistoryPage(EMPTY_TRANSCRIPT, {
+		entries: [
+			{
+				id: ANCHOR,
+				ts: 1,
+				type: "message",
+				payload: { role: "user", message: "real" },
+			},
+		],
+		has_more: false,
+		cursor_missing: false,
+	});
+	assert.equal(
+		rowFor(withRecoveredOutcome(collides, attention(), false, new Set())).kind,
+		"user",
+	);
+});
+
+test("only error and interrupted outcomes are synthesized", () => {
+	for (const kind of ["complete", null, undefined, "weird"]) {
+		assert.equal(
+			rowFor(
+				withRecoveredOutcome(seeded(), attention({ kind }), false, new Set()),
+			),
+			undefined,
+			String(kind),
+		);
+	}
+	for (const missing of [null, undefined, {}, { anchor_id: null }]) {
+		assert.equal(
+			rowFor(withRecoveredOutcome(seeded(), missing, false, new Set())),
+			undefined,
+		);
+	}
 });
