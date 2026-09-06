@@ -17,16 +17,42 @@ export type {
 export async function desktopRequest(
 	request: DesktopRequest,
 ): Promise<DesktopResponse> {
-	if (window.api?.desktop) return window.api.desktop.request(request);
+	// A rejected IPC call or a dead dev proxy means the request never reached a
+	// backend, so there is no HTTP status to report. That is `status: null` --
+	// stated here rather than left to fall out of a failed `instanceof` check in
+	// the banner, which is how it happened to work before.
+	if (window.api?.desktop) {
+		try {
+			return await window.api.desktop.request(request);
+		} catch (cause) {
+			throw new DesktopControlError(
+				null,
+				"Desktop controls could not reach the backend process.",
+				cause,
+			);
+		}
+	}
 	// The development server implements the same operation vocabulary and keeps
 	// its bearer server-side. Production never injects a VITE/browser token.
-	const response = await fetch("/__desktop", {
-		method: "POST",
-		headers: { "Content-Type": "application/json" },
-		body: JSON.stringify(request),
-	});
+	let response: Response;
+	try {
+		response = await fetch("/__desktop", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify(request),
+		});
+	} catch (cause) {
+		throw new DesktopControlError(
+			null,
+			"Desktop controls could not reach the backend process.",
+			cause,
+		);
+	}
 	if (!response.ok)
-		throw new Error("Desktop controls need a compatible backend connection.");
+		throw new DesktopControlError(
+			response.status,
+			"Desktop controls need a compatible backend connection.",
+		);
 	return response.json();
 }
 
@@ -38,12 +64,35 @@ export async function desktopRequest(
  * all three, offering an "Update backend" action that fixes only one of them.
  */
 export class DesktopControlError extends Error {
-	readonly status: number;
+	/**
+	 * The HTTP status, or `null` when the request never produced one.
+	 *
+	 * `null` is a REAL state, not an absence: the IPC call rejected, or the
+	 * transport returned no response at all, so the backend was never reached.
+	 * It is typed and set here rather than left to a caller's `instanceof`
+	 * fallback, because the banner reads exactly this field to tell "the
+	 * backend is old" (404) from "it is not running" (null/503) from "this app
+	 * cannot authenticate" (401/403). A transport failure previously surfaced
+	 * as a bare `Error`, which carried no status and only landed on
+	 * "unreachable" because the `instanceof` check failed and the status
+	 * defaulted to null -- the right answer reached by accident, and one that
+	 * would have broken silently the moment that default changed.
+	 */
+	readonly status: number | null;
 
-	constructor(status: number, message: string) {
+	/**
+	 * The underlying transport failure, when there was one.
+	 *
+	 * Carried explicitly rather than through `Error.cause`: this project targets
+	 * ES2020, where that option does not exist.
+	 */
+	readonly cause?: unknown;
+
+	constructor(status: number | null, message: string, cause?: unknown) {
 		super(message);
 		this.name = "DesktopControlError";
 		this.status = status;
+		this.cause = cause;
 	}
 }
 

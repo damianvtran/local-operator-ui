@@ -79,6 +79,12 @@ export const BackendCompatibilityBanner = () => {
 	// The probe's HTTP status is what separates "old" from "not running" from
 	// "cannot authenticate". 404 is the only one an update fixes: the route is
 	// absent, so this backend predates the contract.
+	//
+	// `null` means the request produced no status at all -- the transport failed
+	// and no backend was reached -- which reads as unreachable below. The
+	// transport now RAISES that state as a typed `DesktopControlError` with
+	// `status: null`, so this is a stated fact rather than the fallback for an
+	// unrecognised error type.
 	const status =
 		capabilities.error instanceof DesktopControlError
 			? capabilities.error.status
