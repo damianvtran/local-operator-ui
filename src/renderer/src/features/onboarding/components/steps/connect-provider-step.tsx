@@ -8,16 +8,46 @@
  */
 
 import { ProviderGrid } from "@features/providers/provider-grid";
+import { useDesktopProviders } from "@shared/api/local-operator/desktop-hooks";
+import { Alert } from "@shared/components/ui";
+import { hasConnectedProvider } from "@shared/hooks/first-time-user";
 import type { FC } from "react";
+import { useMemo } from "react";
 
 export const ConnectProviderStep: FC = () => {
+	const providers = useDesktopProviders(true);
+	// Onboarding only opens when no provider is connected, so this list is
+	// normally empty on arrival. It fills when the user signs in on this step
+	// and returns to the grid, or steps Back here from a later step -- and
+	// then the step must say so, because the grid alone reads as a request
+	// to sign in to something the user is already signed in to.
+	const connected = useMemo(
+		() =>
+			(providers.data ?? [])
+				.filter((provider) => hasConnectedProvider([provider]))
+				.map((provider) => provider.name),
+		[providers.data],
+	);
+
 	return (
 		<div className="flex flex-col gap-5">
 			<p className="text-body text-ink-muted">
 				Pick the service your agents will think with. You can add or change
 				providers later in Settings.
 			</p>
+			{connected.length > 0 && (
+				<Alert variant="success">
+					Signed in to {formatList(connected)}. Nothing more is needed here:
+					choose Next to continue, or connect another provider below.
+				</Alert>
+			)}
 			<ProviderGrid />
 		</div>
 	);
 };
+
+/** "A", "A and B", "A, B and C" -- the app's copy is English sentence case. */
+function formatList(names: string[]): string {
+	if (names.length <= 1) return names.join("");
+	return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+}
