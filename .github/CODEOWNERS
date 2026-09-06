@@ -1,0 +1,18 @@
+# Code owners for local-operator-ui.
+#
+# Unlike the backend repository, `main` here has no ruleset requiring a
+# code-owner review at the time of writing. This file is therefore about
+# review ROUTING, not about unblocking merges: GitHub requests these owners
+# automatically on every PR, so the right people see a change without anyone
+# remembering to add them by hand. It also means that if a code-owner rule is
+# ever switched on for this repository, it resolves against a real list from
+# the start rather than matching nobody -- the failure that forced every
+# backend PR through an admin bypass in September 2026.
+#
+# Keep this list to people who can actually approve. A handle that is not a
+# collaborator with write access is silently ignored by GitHub -- the line
+# looks correct and matches nobody. Verify a new entry against
+# `gh api repos/damianvtran/local-operator-ui/collaborators`.
+
+# Default owners for everything in the repository.
+* @damianvtran @bbqben
