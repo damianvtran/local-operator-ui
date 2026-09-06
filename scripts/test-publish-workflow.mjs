@@ -100,6 +100,14 @@ for (const [label, output, exitCode] of [["exists", "0.14.1", 0], ["absent", "",
     }));
   }
 }
+test("electron pins move together across the npm and installer channels", () => {
+  // electron-builder never reads optionalDependencies, so without the explicit
+  // build.electronVersion the installers silently take whatever is in
+  // node_modules. Two declarations, one runtime: fail if they drift.
+  assert.equal(pkg.build.electronVersion, pkg.optionalDependencies.electron);
+  assert.match(pkg.optionalDependencies.electron, /^\d+\.\d+\.\d+$/, "the pin must be exact, not a range");
+});
+
 const preflight = step("preflight-macos", "Check required secrets");
 const signingEnv = { NOTARIZE: workflow.env.NOTARIZE, ...Object.fromEntries(Object.keys(preflight.env).map((k) => [k, "fixture-secret-value-never-log"])) };
 test("signing preflight accepts complete credentials", () => assert.equal(shell(preflight.run, signingEnv).status, 0));
