@@ -31,6 +31,7 @@
 
 import { Spinner } from "@shared/components/common/spinner";
 import { Button } from "@shared/components/ui/button";
+import { useCompletionView } from "@shared/hooks/use-completion-view";
 import { cn } from "@shared/lib/utils";
 import {
 	CircleAlert,
@@ -48,7 +49,10 @@ import {
 	useRef,
 	useState,
 } from "react";
-import type { PendingDesktopGate } from "../../../../../shared/desktop-session-contract";
+import type {
+	CanonicalFrontendState,
+	PendingDesktopGate,
+} from "../../../../../shared/desktop-session-contract";
 import { MarkdownRenderer } from "../components/markdown-renderer";
 import { ErrorBlock } from "../components/message-item/error-block";
 import {
@@ -59,7 +63,11 @@ import { MessageTimestamp } from "../components/message-item/message-timestamp";
 import { OutputBlock } from "../components/message-item/output-block";
 import { AgentQuestion, TraceLine } from "../components/trace";
 import { TraceGlyph } from "../components/trace/trace-rail";
-import type { TranscriptRecord, TranscriptState } from "./transcript-reducer";
+import {
+	type TranscriptRecord,
+	type TranscriptState,
+	withRecoveredOutcome,
+} from "./transcript-reducer";
 
 /** Opts prose into the ~72-character measure defined in `markdown.css`. */
 const MEASURE = "lo-measured";
@@ -67,6 +75,7 @@ const WINDOW = 60;
 const WINDOW_STEP = 60;
 
 export type CanonicalTranscriptProps = {
+	frontend?: CanonicalFrontendState | null;
 	transcript: TranscriptState;
 	gate: PendingDesktopGate | null;
 	/** The owner is generating and nothing has painted yet for this turn. */
@@ -441,6 +450,17 @@ const TranscriptRow = memo(function TranscriptRow({
 	return (
 		<div
 			data-record-id={record.id}
+			data-completion-anchor={record.id}
+			// Only `"true"` is ever queried, so the attribute is omitted rather
+			// than emitted as `"false"` on every row of a long transcript.
+			data-completion-complete={
+				"complete" in record &&
+				record.complete === true &&
+				(record.kind !== "assistant" ||
+					(!record.streaming && Boolean(record.text)))
+					? "true"
+					: undefined
+			}
 			className={cn(GAP[row.gap][isSmallView ? 1 : 0])}
 		>
 			{body}
@@ -449,6 +469,7 @@ const TranscriptRow = memo(function TranscriptRow({
 });
 
 export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
+	frontend,
 	transcript,
 	gate,
 	waiting,
@@ -459,12 +480,43 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	status,
 	error,
 }) => {
+	// A crash-recovered outcome has no durable row of its own, so it is
+	// synthesized here rather than in the stream reducer: this is the layer that
+	// decides what is renderable, and an anchor with nothing to hit-test is an
+	// unread badge the user can never clear.
+	// Anchors already synthesized for THIS conversation. Held in a ref because
+	// the row must outlive the `unseen` flag that created it (see
+	// `withRecoveredOutcome`), and reset per conversation so one session's
+	// recovered outcome can never paint into another's transcript.
+	const recovered = useRef<{ session: string | null; anchors: Set<string> }>({
+		session: null,
+		anchors: new Set(),
+	});
+	const sessionId = frontend?.session_id ?? null;
+	if (recovered.current.session !== sessionId) {
+		recovered.current = { session: sessionId, anchors: new Set() };
+	}
+	const painted = useMemo(
+		() =>
+			withRecoveredOutcome(
+				transcript,
+				frontend?.attention,
+				Boolean(frontend?.streaming),
+				recovered.current.anchors,
+			),
+		[transcript, frontend?.attention, frontend?.streaming],
+	);
+	useCompletionView(
+		frontend,
+		status === "live" && !waiting && !loadingOlder,
+		containerRef,
+	);
 	const previousRows = useRef<Row[]>([]);
 	const rows = useMemo(() => {
-		const next = buildRows(transcript.records, previousRows.current);
+		const next = buildRows(painted.records, previousRows.current);
 		previousRows.current = next;
 		return next;
-	}, [transcript.records]);
+	}, [painted.records]);
 	// Windowing: newest rows first. The window widens when the reader nears the
 	// top, and resets when the transcript is replaced (session switch/clear).
 	const [windowSize, setWindowSize] = useState(WINDOW);

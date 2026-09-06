@@ -279,6 +279,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 									/* Messages container */
 									canonical ? (
 										<CanonicalTranscript
+											frontend={canonical.view.frontend}
 											transcript={canonical.view.transcript}
 											gate={canonical.view.frontend?.pending_gate ?? null}
 											waiting={canonical.busy}
