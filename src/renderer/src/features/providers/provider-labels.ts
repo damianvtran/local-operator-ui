@@ -55,6 +55,14 @@ export function primaryMethod(
  */
 export type ProviderReadiness = {
 	label: string;
+	/**
+	 * The full statement when `label` had to be short. The badge cannot wrap
+	 * or shrink (it is `whitespace-nowrap` by contract), and a 300px card
+	 * cannot hold a provider name beside a seven-word badge -- the two
+	 * overlapped and the badge clipped at the card edge. The grid renders
+	 * this as the badge's `title` so the long form is still reachable.
+	 */
+	detail?: string;
 	tone: "success" | "neutral";
 	/** Grouping bucket, shared with the model picker so both surfaces agree. */
 	group: "Ready to use" | "Needs a running server" | "Needs sign-in";
@@ -70,7 +78,8 @@ export function providerReadiness(provider: {
 	// is checkable; "Connected" was not.
 	if (provider.local || provider.credential_optional) {
 		return {
-			label: "No key needed - needs a running server",
+			label: "No key needed",
+			detail: "No key needed - needs a running server",
 			tone: "neutral",
 			group: "Needs a running server",
 		};
