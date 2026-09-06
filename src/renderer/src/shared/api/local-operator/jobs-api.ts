@@ -49,12 +49,10 @@ export const JobsApi = {
 	 * @param jobId - The ID of the job to cancel
 	 * @returns Promise resolving to the cancellation response
 	 */
-	async cancelJob(baseUrl: string, jobId: string): Promise<CRUDResponse> {
-		const response = await fetch(`${baseUrl}/v1/jobs/${jobId}`, {
-			method: "DELETE",
-			headers: {
-				Accept: "application/json",
-			},
+	async cancelJob(_baseUrl: string, jobId: string): Promise<CRUDResponse> {
+		const response = await desktopControlResponse({
+			op: "legacy.job.cancel",
+			jobId,
 		});
 
 		if (!response.ok) {

@@ -230,9 +230,19 @@ test("gated legacy reads travel the authenticated contract, not a bare fetch", a
 	// put in the query string.
 	const agentId = "fixture-agent";
 	for (const [operation, path, method] of [
-		[{ op: "legacy.agents.list", page: 2, perPage: 25 }, "/v1/agents?page=2&per_page=25", "GET"],
 		[
-			{ op: "legacy.agents.list", page: 1, perPage: 10, name: "qa", direction: "desc" },
+			{ op: "legacy.agents.list", page: 2, perPage: 25 },
+			"/v1/agents?page=2&per_page=25",
+			"GET",
+		],
+		[
+			{
+				op: "legacy.agents.list",
+				page: 1,
+				perPage: 10,
+				name: "qa",
+				direction: "desc",
+			},
 			"/v1/agents?page=1&per_page=10&name=qa&direction=desc",
 			"GET",
 		],
@@ -253,11 +263,20 @@ test("gated legacy reads travel the authenticated contract, not a bare fetch", a
 		// The provider/sort/direction the model list actually builds. Dropping
 		// them would silently widen every filtered list to the whole catalogue.
 		[
-			{ op: "legacy.models", provider: "openai", sort: "name", direction: "ascending" },
+			{
+				op: "legacy.models",
+				provider: "openai",
+				sort: "name",
+				direction: "ascending",
+			},
 			"/v1/models?provider=openai&sort=name&direction=ascending",
 			"GET",
 		],
-		[{ op: "auth.probe", provider: "ollama" }, "/v1/auth/providers/ollama/probe", "POST"],
+		[
+			{ op: "auth.probe", provider: "ollama" },
+			"/v1/auth/providers/ollama/probe",
+			"POST",
+		],
 	]) {
 		assert.equal((await requestDesktop(operation, url, token)).status, 200);
 		const actual = seen.at(-1);
@@ -281,12 +300,216 @@ test("gated legacy reads travel the authenticated contract, not a bare fetch", a
 	assert.equal(seen.length, count);
 });
 
+test("the schedules surface travels the authenticated contract with its body intact", async () => {
+	// Review round 3 reproduced an unauthenticated cross-origin POST that
+	// persisted an ACTIVE schedule -- a prompt the user's own agent later runs.
+	// The whole family is gated now, so every one of these must carry the
+	// main-owned bearer, and the write bodies must arrive unmangled: a dropped
+	// `is_active` or `interval` silently reschedules the user's automation.
+	const agentId = "fixture-agent";
+	const scheduleId = "fixture-schedule";
+	const create = {
+		prompt: "summarize my inbox",
+		interval: 30,
+		unit: "minutes",
+		is_active: true,
+		one_time: false,
+	};
+	for (const [operation, path, method, body] of [
+		[
+			{ op: "legacy.schedules.list", page: 2, perPage: 25 },
+			"/v1/schedules?page=2&per_page=25",
+			"GET",
+		],
+		[
+			{ op: "legacy.agent.schedules.list", agentId, page: 1, perPage: 10 },
+			`/v1/agents/${agentId}/schedules?page=1&per_page=10`,
+			"GET",
+		],
+		[
+			{ op: "legacy.agent.schedule.create", agentId, schedule: create },
+			`/v1/agents/${agentId}/schedules`,
+			"POST",
+			create,
+		],
+		[
+			{ op: "legacy.schedule.get", scheduleId },
+			`/v1/schedules/${scheduleId}`,
+			"GET",
+		],
+		[
+			{
+				op: "legacy.schedule.edit",
+				scheduleId,
+				schedule: { prompt: "changed", is_active: false },
+			},
+			`/v1/schedules/${scheduleId}`,
+			"PATCH",
+			{ prompt: "changed", is_active: false },
+		],
+		[
+			{ op: "legacy.schedule.remove", scheduleId },
+			`/v1/schedules/${scheduleId}`,
+			"DELETE",
+		],
+	]) {
+		assert.equal((await requestDesktop(operation, url, token)).status, 200);
+		const actual = seen.at(-1);
+		assert.equal(actual.path, path);
+		assert.equal(actual.method, method);
+		assert.equal(actual.authorization, `Bearer ${token}`);
+		if (body) assert.deepEqual(JSON.parse(actual.body), body);
+	}
+
+	// The vocabulary stays closed here too: no traversal through a schedule id,
+	// no unit the backend enum does not have, no extra key smuggled into a body
+	// the server would accept.
+	const count = seen.length;
+	for (const input of [
+		{ op: "legacy.schedule.get", scheduleId: "../../v1/config" },
+		{
+			op: "legacy.agent.schedule.create",
+			agentId: "../config",
+			schedule: create,
+		},
+		{
+			op: "legacy.agent.schedule.create",
+			agentId,
+			schedule: { ...create, unit: "fortnights" },
+		},
+		{
+			op: "legacy.agent.schedule.create",
+			agentId,
+			schedule: { ...create, agent_id: "someone-else" },
+		},
+		{
+			op: "legacy.agent.schedule.create",
+			agentId,
+			schedule: { prompt: "no interval" },
+		},
+		{ op: "legacy.schedules.list", perPage: 10000 },
+	])
+		assert.equal((await requestDesktop(input, url, token)).status, 422);
+	assert.equal(seen.length, count);
+});
+
+test("every remaining gated legacy call travels the contract, not a bare fetch", async () => {
+	// `apiConfig.baseUrl` points AT THE BACKEND, so these did not pass through
+	// the main-process relay at all: in managed mode they went out with no
+	// bearer and 401'd. QA clicked "New agent" in the live app and got 401
+	// (review round 3, Q7). Each must now reach its real path and method with
+	// the main-owned bearer, and the write bodies must arrive unmangled.
+	const agentId = "fixture-agent";
+	const key = "API_TOKEN";
+	const agent = { name: "new agent", security_prompt: "be careful" };
+	for (const [operation, path, method, body] of [
+		[{ op: "legacy.agent.create", agent }, "/v1/agents", "POST", agent],
+		[
+			{ op: "legacy.agent.update", agentId, update: { name: "renamed" } },
+			`/v1/agents/${agentId}`,
+			"PATCH",
+			{ name: "renamed" },
+		],
+		[{ op: "legacy.agent.delete", agentId }, `/v1/agents/${agentId}`, "DELETE"],
+		[
+			{ op: "legacy.agent.conversation.clear", agentId },
+			`/v1/agents/${agentId}/conversation`,
+			"DELETE",
+		],
+		[
+			{ op: "legacy.agent.systemPrompt.get", agentId },
+			`/v1/agents/${agentId}/system-prompt`,
+			"GET",
+		],
+		[
+			{
+				op: "legacy.agent.systemPrompt.update",
+				agentId,
+				systemPrompt: "be terse",
+			},
+			`/v1/agents/${agentId}/system-prompt`,
+			"PUT",
+			{ system_prompt: "be terse" },
+		],
+		[
+			{ op: "legacy.agent.download", agentId },
+			`/v1/agents/${agentId}/download`,
+			"GET",
+		],
+		[
+			{ op: "legacy.agent.variables.list", agentId },
+			`/v1/agents/${agentId}/execution-variables`,
+			"GET",
+		],
+		[
+			{
+				op: "legacy.agent.variables.create",
+				agentId,
+				variable: { key, value: "v" },
+			},
+			`/v1/agents/${agentId}/execution-variables`,
+			"POST",
+			{ key, value: "v" },
+		],
+		[
+			{ op: "legacy.agent.variables.get", agentId, key },
+			`/v1/agents/${agentId}/execution-variables/${key}`,
+			"GET",
+		],
+		[
+			{
+				op: "legacy.agent.variables.update",
+				agentId,
+				key,
+				variable: { value: "w" },
+			},
+			`/v1/agents/${agentId}/execution-variables/${key}`,
+			"PATCH",
+			{ value: "w" },
+		],
+		[
+			{ op: "legacy.agent.variables.delete", agentId, key },
+			`/v1/agents/${agentId}/execution-variables/${key}`,
+			"DELETE",
+		],
+		[{ op: "legacy.job.cancel", jobId: "job-1" }, "/v1/jobs/job-1", "DELETE"],
+	]) {
+		assert.equal((await requestDesktop(operation, url, token)).status, 200);
+		const actual = seen.at(-1);
+		assert.equal(actual.path, path);
+		assert.equal(actual.method, method);
+		assert.equal(actual.authorization, `Bearer ${token}`);
+		if (body) assert.deepEqual(JSON.parse(actual.body), body);
+	}
+
+	// The variable key lands in the PATH, so a permissive value would let the
+	// renderer address a route it was never given an operation for.
+	const count = seen.length;
+	for (const input of [
+		{
+			op: "legacy.agent.variables.get",
+			agentId,
+			key: "../../../v1/credentials",
+		},
+		{ op: "legacy.agent.variables.delete", agentId, key: "a/b" },
+		{ op: "legacy.agent.update", agentId: "../config", update: {} },
+		{ op: "legacy.job.cancel", jobId: "../agents" },
+		{ op: "legacy.agent.create", agent: {}, extra: "smuggled" },
+	])
+		assert.equal((await requestDesktop(input, url, token)).status, 422);
+	assert.equal(seen.length, count);
+});
+
 test("control catalogues, lifecycle, MCP and Radient use closed main-owned transport", async () => {
 	const sessionId = "123456abcdef";
 	const requestId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 	for (const [operation, path, method] of [
 		[{ op: "legacy.models" }, "/v1/models", "GET"],
-		[{ op: "legacy.agent.upload", agentId: "fixture-agent" }, "/v1/agents/fixture-agent/upload", "POST"],
+		[
+			{ op: "legacy.agent.upload", agentId: "fixture-agent" },
+			"/v1/agents/fixture-agent/upload",
+			"POST",
+		],
 		[{ op: "commands.list" }, "/v1/desktop/commands", "GET"],
 		[
 			{ op: "commands.entities", sessionId, command: "team", name: "test" },
