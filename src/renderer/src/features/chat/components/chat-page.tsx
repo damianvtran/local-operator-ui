@@ -1,5 +1,8 @@
 import { createLocalOperatorClient } from "@shared/api/local-operator";
-import { desktopResult } from "@shared/api/local-operator/desktop-api";
+import {
+	desktopResult,
+	isServerUnreachable,
+} from "@shared/api/local-operator/desktop-api";
 import {
 	desktopFeatureEnabled,
 	useDesktopCapabilities,
@@ -136,6 +139,9 @@ export const ChatPage: FC<ChatProps> = () => {
 	const getLastAgentId = useAgentSelectionStore(
 		(state) => state.getLastAgentId,
 	);
+	const clearAgentFromAllPages = useAgentSelectionStore(
+		(state) => state.clearAgentFromAllPages,
+	);
 
 	// Use the agent ID from URL or the last selected agent ID
 	const effectiveAgentId = agentId || getLastAgentId("chat");
@@ -230,11 +236,24 @@ export const ChatPage: FC<ChatProps> = () => {
 		isLoading: isLoadingMessages,
 		isError,
 		error,
+		isAgentNotFound,
 		isFetchingMore,
 		hasMoreMessages,
 		messagesContainerRef, // Get the ref from the hook
 		refetch,
 	} = useConversationMessages(conversationId);
+
+	// A persisted selection that the backend no longer knows is a stale
+	// pointer, not an error: the agent was deleted, or the config dir changed
+	// under the app. Drop it so the page falls back to the agent list instead
+	// of a dead-end banner. Only the remembered id is dropped -- an explicit
+	// URL to a missing agent still reports that it is missing, because there
+	// the user asked for it by name.
+	useEffect(() => {
+		if (isAgentNotFound && !agentId && effectiveAgentId) {
+			clearAgentFromAllPages(effectiveAgentId);
+		}
+	}, [isAgentNotFound, agentId, effectiveAgentId, clearAgentFromAllPages]);
 
 	// Get the addMessage function from the chat store
 	const addMessage = useChatStore((state) => state.addMessage);
@@ -840,7 +859,24 @@ Store messages: ${JSON.stringify(getMessages(conversationId || ""), null, 2)}`;
 		}
 
 		if (isError) {
-			return <ErrorView message={error?.message || ""} />;
+			if (isAgentNotFound) {
+				// Reached only via a direct URL (the persisted case has already
+				// cleared itself above). The server answered, so the "local
+				// server" copy would be a false claim here.
+				return (
+					<PlaceholderView
+						title="This agent no longer exists"
+						description="It may have been deleted, or the app is using a different data folder. Pick another agent from the sidebar."
+						directionText="Choose an agent from the list"
+					/>
+				);
+			}
+			return (
+				<ErrorView
+					message={error?.message || ""}
+					serverUnreachable={isServerUnreachable(error)}
+				/>
+			);
 		}
 
 		return (
