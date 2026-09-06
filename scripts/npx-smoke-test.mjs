@@ -30,12 +30,33 @@
  */
 
 import { spawn } from "node:child_process";
-import { copyFileSync, mkdtempSync, rmSync } from "node:fs";
+import { copyFileSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { basename, join, resolve } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const READY_MARKER = "LOCAL_OPERATOR_UI_READY";
 const BYTECODE_ERROR = "cachedDataRejected";
+
+// The app prints the marker and the Electron it is running on as one line.
+// Requiring trailing whitespace means a version still arriving in a later chunk
+// cannot be matched half-written.
+const READY_LINE = /LOCAL_OPERATOR_UI_READY electron=(\S+)\s/;
+
+// Assert the EXACT pin here, not the major the wrapper tolerates. Issue #88 was
+// an unintended Electron resolved from the surrounding environment, and nothing
+// asserted which runtime actually ran, so the check could pass an artifact on a
+// runtime nobody tested. CI controls its own install, so anything other than the
+// pin means resolution did not do what the package says it does. The launch-time
+// wrapper deliberately only warns on a mismatched major (see
+// bin/local-operator-ui.js): a user with a working app should not be blocked,
+// but a release artifact gets no such latitude.
+const PINNED_ELECTRON = JSON.parse(
+	readFileSync(
+		join(dirname(fileURLToPath(import.meta.url)), "..", "package.json"),
+		"utf8",
+	),
+).optionalDependencies.electron;
 
 // npx must install Electron (~100MB) before it can run anything, so the budget
 // covers a cold download on a CI runner, not just app startup.
@@ -127,8 +148,24 @@ const capture = (stream, sink) => {
 				false,
 				`FAIL: the app rejected its own precompiled bytecode (${BYTECODE_ERROR}).\nThe npm tarball must ship plain JS, not .jsc built against one Electron build.`,
 			);
-		} else if (output.includes(READY_MARKER)) {
-			finish(true, `PASS: the app started and reported ${READY_MARKER}.`);
+			return;
+		}
+
+		// Deciding here rather than on exit is load-bearing on macOS: a main process
+		// that dies on the bytecode loader raises a modal dialog and never exits, so
+		// waiting for close means waiting out the full timeout.
+		const ready = output.match(READY_LINE);
+		if (!ready) return;
+		if (ready[1] === PINNED_ELECTRON) {
+			finish(
+				true,
+				`PASS: the app started on Electron ${ready[1]} and reported ${READY_MARKER}.`,
+			);
+		} else {
+			finish(
+				false,
+				`FAIL: the app started on Electron ${ready[1]}, but this package pins ${PINNED_ELECTRON}.\nThe tarball resolved a runtime it was never tested against; that is the shape of issue #88.`,
+			);
 		}
 	});
 };
@@ -150,6 +187,16 @@ child.on("error", (err) => {
 // the app is supposed to announce readiness, and silence means it never got
 // far enough to try.
 child.on("close", (code, signal) => {
+	// A bare marker with no version means the app is older than the version
+	// assertion, not that it failed to start. Say which of the two happened so the
+	// next reader does not go looking for a startup bug that is not there.
+	if (output.includes(READY_MARKER)) {
+		finish(
+			false,
+			`FAIL: the app reported ${READY_MARKER} without an electron= version (exit code ${code}, signal ${signal}).\nThe tarball predates the runtime-version assertion, so which Electron ran cannot be verified.`,
+		);
+		return;
+	}
 	finish(
 		false,
 		`FAIL: the app never reported ${READY_MARKER} (exit code ${code}, signal ${signal}).`,
