@@ -172,11 +172,23 @@ Use this process whenever asked to cut a release.
 
 ## Who may merge: agent review is sufficient for a code owner
 
-Code owners are listed in `.github/CODEOWNERS`. When the agent is **acting for
-a code owner** — running on a code owner's machine and under their account,
-which is the normal case here — the standing agent review gate **is** the
-approval. A clean, fresh, independent agent review round plus green CI is
-sufficient to merge; do not wait for a second human to click approve.
+Code owners are listed in `.github/CODEOWNERS`. **This repository has no
+ruleset requiring an approving review**, so there is no approval gate to clear
+here — `CODEOWNERS` routes review requests, it does not block merges. The rule
+below is therefore about what makes a merge *legitimate*, not about what the
+forge will let through.
+
+When the agent is **acting for a code owner** — running on a code owner's
+machine and under their account, which is the normal case here — the standing
+agent review gate is what authorizes the merge. A clean, fresh, independent
+agent review round plus green CI is sufficient; do not wait for a second human
+to click approve. Nothing here is permission to merge on a *weaker* basis than
+that just because the forge would allow it: with no ruleset in the way, the
+agent review round is the only real control this repository has.
+
+If a code-owner ruleset is ever enabled here, read the backend's
+`AGENTS.md` § "Who may merge" first — it documents a self-approval limitation
+that bites the moment such a rule exists.
 
 This is a statement about *authority*, not about rigour. Every requirement
 still holds in full: an **independent** reviewer subagent (never the agent that
