@@ -11,19 +11,22 @@
  * two data sources and the onboarding store to it.
  */
 
+import { CredentialsApi } from "@shared/api/local-operator";
 import {
 	desktopFeatureEnabled,
 	useDesktopCapabilities,
 	useDesktopProviders,
 } from "@shared/api/local-operator/desktop-hooks";
+import { apiConfig } from "@shared/config";
 import { useOnboardingStore } from "@shared/store/onboarding-store";
+import { useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
 import {
 	type CensusInput,
 	type LegacyCredentialsInput,
 	decideFirstTimeUser,
 } from "./first-time-user";
-import { useCredentials } from "./use-credentials";
+import { useConnectivityGate } from "./use-connectivity-gate";
 
 /**
  * Hook to check if the user is a first-time user and activate onboarding if needed
@@ -36,7 +39,23 @@ export const useCheckFirstTimeUser = () => {
 	// Only fetched once the backend has advertised the census; asking an older
 	// backend would 404 and the fallback below handles that case anyway.
 	const providers = useDesktopProviders(censusEnabled);
-	const credentials = useCredentials();
+	const { shouldEnableQuery } = useConnectivityGate();
+	// The desktop bearer transport 503s every non-capabilities op when this
+	// app did not start the backend. Unmanaged `/v1/credentials` is open,
+	// so the first-run fallback reads it directly rather than through
+	// `useCredentials()`. Never fetch this while the census is advertised:
+	// a 5xx there must stay pending (MINOR-1), not invent first_time from
+	// an empty env-file list.
+	const openCredentials = useQuery({
+		queryKey: ["open-credentials"],
+		enabled:
+			!censusEnabled &&
+			!capabilities.isPending &&
+			shouldEnableQuery({ bypassInternetCheck: true }),
+		queryFn: () => CredentialsApi.listOpenCredentials(apiConfig.baseUrl),
+		staleTime: 5000,
+		retry: false,
+	});
 	const {
 		isModalComplete: isOnboardingComplete,
 		isModalActive: isOnboardingActive,
@@ -53,18 +72,19 @@ export const useCheckFirstTimeUser = () => {
 	} else if (providers.isSuccess) {
 		census = { status: "ready", providers: providers.data };
 	} else if (providers.isError) {
-		// The backend advertised the census and then failed to serve it. That
-		// is not "no providers"; leave it to the legacy probe rather than
-		// invent an answer.
-		census = { status: "unavailable" };
+		// Advertised and then 5xx'd. Not "old backend", not "no providers".
+		census = { status: "failed" };
 	} else {
 		census = { status: "loading" };
 	}
 
 	let legacy: LegacyCredentialsInput;
-	if (credentials.isSuccess && credentials.data) {
-		legacy = { status: "ready", keys: credentials.data.keys };
-	} else if (credentials.isError) {
+	if (censusEnabled || capabilities.isPending) {
+		// Census path owns the decision; the open list is not consulted.
+		legacy = { status: "loading" };
+	} else if (openCredentials.isSuccess && openCredentials.data) {
+		legacy = { status: "ready", keys: openCredentials.data.keys };
+	} else if (openCredentials.isError) {
 		legacy = { status: "error" };
 	} else {
 		// Includes the connectivity-gated "pending, never fetching" shape: the

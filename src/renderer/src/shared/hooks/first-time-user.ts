@@ -2,7 +2,7 @@
  * The first-time-user decision, as a pure function.
  *
  * Kept free of React and of the query hooks so the rule can be exercised by
- * `scripts/first-time-user.test.mjs` with the exact inputs the hook feeds it,
+ * `scripts/provider-state.test.mjs` with the exact inputs the hook feeds it,
  * and so the hook stays a thin adapter with nothing of its own to get wrong.
  *
  * Why the provider census and not the legacy `/v1/credentials` key list: that
@@ -32,6 +32,12 @@ export type CensusInput =
 	| { status: "loading" }
 	/** The backend predates the census, or the app is not paired to it. */
 	| { status: "unavailable" }
+	/**
+	 * The backend advertised the census and then failed to serve it. That is
+	 * not "no providers" and not "old backend": inventing first_time here
+	 * would open setup over a signed-in machine whose census 5xx'd.
+	 */
+	| { status: "failed" }
 	| { status: "ready"; providers: CensusProvider[] };
 
 export type LegacyCredentialsInput =
@@ -64,16 +70,21 @@ export function decideFirstTimeUser(input: {
 	if (input.onboardingComplete) return "returning";
 
 	if (input.census.status === "loading") return "pending";
+	if (input.census.status === "failed") return "pending";
 	if (input.census.status === "ready") {
 		return hasConnectedProvider(input.census.providers)
 			? "returning"
 			: "first_time";
 	}
 
-	// Older backend: fall back to the key list so it still onboards. A probe
-	// that failed is a backend that is not answering, and setup cannot run
-	// against a backend that is not answering either -- the connectivity
-	// banner owns that fact, so this stays undecided rather than guessing.
+	// Census not offered (old or unmanaged backend): the open credentials
+	// list is the only source that does not go through the desktop bearer,
+	// which 503s every non-capabilities op without a token. Empty keys is
+	// first-time; a key means they have already set something up.
+	// A probe that failed is a backend that is not answering, and setup
+	// cannot run against a backend that is not answering either -- the
+	// connectivity banner owns that fact, so this stays undecided rather
+	// than guessing.
 	if (input.legacy.status !== "ready") return "pending";
 	return input.legacy.keys.length === 0 ? "first_time" : "returning";
 }

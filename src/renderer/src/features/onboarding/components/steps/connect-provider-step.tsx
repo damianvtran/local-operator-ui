@@ -9,7 +9,7 @@
 
 import { ProviderGrid } from "@features/providers/provider-grid";
 import { useDesktopProviders } from "@shared/api/local-operator/desktop-hooks";
-import { Alert } from "@shared/components/ui";
+import { Alert, AlertDescription, AlertTitle } from "@shared/components/ui";
 import { hasConnectedProvider } from "@shared/hooks/first-time-user";
 import type { FC } from "react";
 import { useMemo } from "react";
@@ -31,15 +31,24 @@ export const ConnectProviderStep: FC = () => {
 
 	return (
 		<div className="flex flex-col gap-5">
-			<p className="text-body text-ink-muted">
-				Pick the service your agents will think with. You can add or change
-				providers later in Settings.
-			</p>
-			{connected.length > 0 && (
-				<Alert variant="success">
-					Signed in to {formatList(connected)}. Nothing more is needed here:
-					choose Next to continue, or connect another provider below.
-				</Alert>
+			{connected.length > 0 ? (
+				<>
+					<p className="text-body text-ink-muted">
+						You can add another provider, or choose Next.
+					</p>
+					<Alert variant="success">
+						<AlertTitle>Signed in to {formatList(connected)}</AlertTitle>
+						<AlertDescription>
+							Nothing more is needed here: choose Next to continue, or connect
+							another provider below.
+						</AlertDescription>
+					</Alert>
+				</>
+			) : (
+				<p className="text-body text-ink-muted">
+					Pick the service your agents will think with. You can add or change
+					providers later in Settings.
+				</p>
 			)}
 			<ProviderGrid />
 		</div>

@@ -90,6 +90,37 @@ export function providerReadiness(provider: {
 	return { label: "Needs sign-in", tone: "neutral", group: "Needs sign-in" };
 }
 
+/**
+ * Whether the hosting picker may offer this provider without a "requires
+ * additional credentials" warning. Same fact the grid uses: anything that
+ * would not say "Needs sign-in" (signed in, or a local server that needs
+ * none). A second predicate here is how the picker drifted onto the env
+ * file and labelled Anthropic unusable while the grid said Signed in.
+ */
+export function hostingProviderSelectable(provider: {
+	local: boolean;
+	credential_optional: boolean;
+	has_credential: boolean;
+	configured: boolean;
+}): boolean {
+	return providerReadiness(provider).group !== "Needs sign-in";
+}
+
+/** Census ids the hosting picker may offer. Same predicate as the grid. */
+export function readyHostingIds(
+	census: Array<
+		{
+			id: string;
+		} & Parameters<typeof hostingProviderSelectable>[0]
+	>,
+): Set<string> {
+	return new Set(
+		census
+			.filter((provider) => hostingProviderSelectable(provider))
+			.map((provider) => provider.id),
+	);
+}
+
 /** Terminal states after which polling an auth operation must stop. */
 export function isTerminalAuthState(state: AuthOperation["state"]): boolean {
 	return (

@@ -866,7 +866,7 @@ Store messages: ${JSON.stringify(getMessages(conversationId || ""), null, 2)}`;
 				return (
 					<PlaceholderView
 						title="This agent no longer exists"
-						description="It may have been deleted, or the app is now pointed at a different Local Operator home. Pick another agent from the sidebar."
+						description="It may have been deleted, or the app is using a different data folder. Pick another agent from the sidebar."
 						directionText="Choose an agent from the list"
 					/>
 				);

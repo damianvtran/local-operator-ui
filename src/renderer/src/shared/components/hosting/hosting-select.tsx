@@ -5,10 +5,16 @@
  * Filters available options based on user credentials.
  */
 
+import { readyHostingIds } from "@features/providers/provider-labels";
+import {
+	desktopFeatureEnabled,
+	useDesktopCapabilities,
+	useDesktopProviders,
+} from "@shared/api/local-operator/desktop-hooks";
 import { useCredentials, useModels } from "@shared/hooks";
 import { Server } from "lucide-react";
 import type { FC } from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import {
 	type HostingProvider,
 	getAvailableHostingProviders,
@@ -84,7 +90,9 @@ export const HostingSelect: FC<HostingSelectProps> = ({
 	allowCustom = true,
 	allowDefault = true,
 }) => {
-	// Get user credentials
+	const capabilities = useDesktopCapabilities();
+	const censusEnabled = desktopFeatureEnabled(capabilities.data, "auth");
+	const census = useDesktopProviders(censusEnabled);
 	const { data: credentialsData } = useCredentials();
 	const userCredentials = useMemo(
 		() => credentialsData?.keys || [],
@@ -93,43 +101,22 @@ export const HostingSelect: FC<HostingSelectProps> = ({
 
 	const [isSubmitting, setIsSubmitting] = useState(false);
 
-	// Refs to track credential fetch attempts and prevent excessive re-renders
-	const credentialFetchAttemptsRef = useRef<number>(0);
-	const MAX_CREDENTIAL_FETCH_ATTEMPTS = 3;
-	const lastCredentialFetchTimeRef = useRef<number | null>(null);
-	const CREDENTIAL_FETCH_THROTTLE = 2000; // 2 seconds
-
-	// Get available hosting providers based on user credentials
 	const availableHostingProviders = useMemo(() => {
-		if (!filterByCredentials) {
-			return getHostingProviders();
+		const all = getHostingProviders();
+		if (!filterByCredentials) return all;
+		if (censusEnabled) {
+			// Advertised census owns this filter even while it is still loading
+			// or has 5xx'd: falling through to the env-file list is Q3.
+			if (!census.data) return all;
+			const ready = readyHostingIds(census.data);
+			return all.filter((provider) => ready.has(provider.id));
 		}
-
-		// Prevent excessive credential fetches
-		if (credentialFetchAttemptsRef.current >= MAX_CREDENTIAL_FETCH_ATTEMPTS) {
-			console.warn(
-				`Exceeded maximum credential fetch attempts (${MAX_CREDENTIAL_FETCH_ATTEMPTS})`,
-			);
-			// Return all providers if we've exceeded the maximum attempts
-			return getHostingProviders();
-		}
-
-		// Add throttling to prevent rapid successive calls
-		const now = Date.now();
-		if (
-			lastCredentialFetchTimeRef.current &&
-			now - lastCredentialFetchTimeRef.current < CREDENTIAL_FETCH_THROTTLE
-		) {
-			// If we've fetched recently, use the last result
-			return getHostingProviders();
-		}
-
-		// Track credential fetch attempts and time
-		credentialFetchAttemptsRef.current += 1;
-		lastCredentialFetchTimeRef.current = now;
-
+		// Unmanaged / old backends have no census; the env-file list is the
+		// only remaining source. Never mix it with a live census: that is
+		// how Anthropic showed "Requires additional credentials" while the
+		// grid said Signed in.
 		return getAvailableHostingProviders(userCredentials);
-	}, [userCredentials, filterByCredentials]);
+	}, [filterByCredentials, censusEnabled, census.data, userCredentials]);
 
 	// Convert hosting providers to autocomplete options
 	const hostingOptions: HostingOption[] = useMemo(() => {
@@ -240,12 +227,6 @@ export const HostingSelect: FC<HostingSelectProps> = ({
 		);
 	}, [value, hostingOptions, allowDefault, availableHostingProviders.length]);
 
-	// Reset credential fetch attempts when component mounts
-	useEffect(() => {
-		credentialFetchAttemptsRef.current = 0;
-	}, []);
-
-	// Get access to the models refresh function
 	const { refreshModels } = useModels();
 
 	// Persist a hosting id and pull the model list that belongs to it. The
@@ -254,8 +235,6 @@ export const HostingSelect: FC<HostingSelectProps> = ({
 	const save = async (hostingId: string) => {
 		try {
 			setIsSubmitting(true);
-			// Reset credential fetch attempts when hosting provider changes
-			credentialFetchAttemptsRef.current = 0;
 
 			await onSave(hostingId);
 

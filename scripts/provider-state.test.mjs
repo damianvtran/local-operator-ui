@@ -23,7 +23,13 @@ const bundle = await build({
 	write: false,
 	tsconfig: "tsconfig.web.json",
 });
-const { providerReadiness, decideFirstTimeUser, hasConnectedProvider } =
+const {
+	providerReadiness,
+	decideFirstTimeUser,
+	hasConnectedProvider,
+	hostingProviderSelectable,
+	readyHostingIds,
+} =
 	await import(
 		`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 	);
@@ -155,6 +161,54 @@ test("first-time decision: older backend falls back to the legacy key list", () 
 			legacy: { status: "ready", keys: ["OPENAI_API_KEY"] },
 		}),
 		"returning",
+	);
+});
+
+test("first-time decision: advertised census that 5xx'd stays pending", () => {
+	// MINOR-1: empty keys must not invent first_time when the census was
+	// offered and then failed. That is a new backend, not an unmanaged one.
+	assert.equal(
+		decideFirstTimeUser({
+			onboardingComplete: false,
+			census: { status: "failed" },
+			legacy: { status: "ready", keys: [] },
+		}),
+		"pending",
+	);
+	assert.equal(
+		decideFirstTimeUser({
+			onboardingComplete: false,
+			census: { status: "failed" },
+			legacy: { status: "error" },
+		}),
+		"pending",
+	);
+});
+
+test("hosting picker agrees with the census, not the env-file key list", () => {
+	const ready = readyHostingIds(census);
+	assert.equal(ready.has("anthropic"), true);
+	assert.equal(ready.has("openai"), true);
+	assert.equal(ready.has("google"), false);
+	assert.equal(ready.has("ollama"), true);
+	// Env-only credential (has_credential, nothing stored) is still selectable.
+	assert.equal(
+		hostingProviderSelectable({
+			local: false,
+			credential_optional: false,
+			configured: true,
+			has_credential: true,
+		}),
+		true,
+	);
+	assert.equal(
+		hostingProviderSelectable({
+			local: false,
+			credential_optional: false,
+			configured: false,
+			has_credential: false,
+		}),
+		false,
 	);
 });
 
