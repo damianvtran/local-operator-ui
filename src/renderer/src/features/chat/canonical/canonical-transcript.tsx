@@ -301,14 +301,31 @@ const NoticeRow = memo(function NoticeRow({
 	const label =
 		record.kind === "custom" ? record.customType.replace(/_/g, " ") : undefined;
 	// Notices are machine voice at the trace tier: one quiet line, the body
-	// (when long) behind the same disclosure idiom as a tool's output.
-	const long = record.text.length > 160 || record.text.includes("\n");
+	// (when genuinely long) behind the same disclosure idiom as a tool's output.
+	//
+	// "Long" means a multi-paragraph body worth collapsing, NOT an ordinary
+	// sentence. A notice that is not long renders through `verbOverride`, which
+	// `TraceRow` clipped inside a `truncate` span with no disclosure to open --
+	// so a 100-160 char notice lost its tail with no way to recover it short of
+	// devtools. Every actionable cold-start reason lands there once the renderer
+	// prefixes "The message was not sent: " (115-146 chars), and the half that
+	// was cut is the INSTRUCTION: "…Connect one in Settings > Providers, then
+	// send th…" (QA Q6).
+	//
+	// The fix is to let those wrap in place rather than to hide them behind a
+	// chevron: a notice the user must ACT on should not require a click to
+	// read, and collapsing it merely trades a clipped sentence for an invisible
+	// one. The disclosure is kept for text that is actually bulky.
+	const long = record.text.length > 400 || record.text.includes("\n");
 	return (
 		<MessageContainer isUser={false} isSmallView={isSmallView}>
 			<TraceLine
 				verbOverride={label ?? (long ? "Notice" : record.text)}
 				narration={label && !long ? record.text : undefined}
 				failed={level === "error"}
+				// The row carries the whole message when it is not collapsed, so
+				// it must not be clipped to the rail width.
+				wrap={!long}
 				glyph={<Icon />}
 				details={
 					long ? (
