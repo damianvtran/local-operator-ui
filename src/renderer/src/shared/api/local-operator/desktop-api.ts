@@ -14,6 +14,19 @@ export type {
 	ProviderMethod,
 } from "../../../../../shared/desktop-contract";
 
+/**
+ * How long the renderer waits for ANY desktop control before calling it dead.
+ *
+ * Deliberately longer than the main process's own 20s `fetch` deadline in
+ * `desktop-transport.ts`, so a backend that answers slowly is still reported by
+ * the layer that actually knows the HTTP status. This bound only covers the
+ * case main can never report: the IPC round trip itself never settling.
+ *
+ * It does NOT cover `desktopMedia`, whose transport allows 120s for speech and
+ * agent-ZIP transfers; that path is bounded separately and is not routed here.
+ */
+const DESKTOP_REQUEST_TIMEOUT_MS = 30000;
+
 export async function desktopRequest(
 	request: DesktopRequest,
 ): Promise<DesktopResponse> {
@@ -23,8 +36,21 @@ export async function desktopRequest(
 	// the banner, which is how it happened to work before.
 	if (window.api?.desktop) {
 		try {
-			return await window.api.desktop.request(request);
+			// `ipcRenderer.invoke` settles only when main replies. Main's own fetch
+			// deadline covers a backend that accepts and never answers, but nothing
+			// covers main never replying at all -- a handler that throws before
+			// responding, a crashed or unresponsive main process, or a renderer that
+			// outlives its backend service. A `file://` renderer has no network stack
+			// in this path either, so there is no ambient timeout to fall back on and
+			// the promise stays pending forever. React Query cannot help: `retry`
+			// needs a settled rejection, so a request that never settles never
+			// retries and never reaches an error state. Every caller then sits on
+			// `isLoading` permanently, which is what issue 89 saw as a Settings
+			// spinner that never resolves. Bound it here, once, so every desktop
+			// control fails honestly instead of hanging.
+			return await withDeadline(window.api.desktop.request(request));
 		} catch (cause) {
+			if (cause instanceof DesktopControlError) throw cause;
 			throw new DesktopControlError(
 				null,
 				"Desktop controls could not reach the backend process.",
@@ -54,6 +80,36 @@ export async function desktopRequest(
 			"Desktop controls need a compatible backend connection.",
 		);
 	return response.json();
+}
+
+/**
+ * Reject with the transport's own unreachable state once the deadline passes.
+ *
+ * `status: null` is the same fact the catch blocks above report -- no backend
+ * was reached and there is no HTTP status -- so the compatibility banner reads
+ * a stalled control as "not answering" rather than "needs an update". The
+ * pending IPC promise is left to settle or not on its own; there is no way to
+ * cancel an `invoke`, and abandoning it is exactly the point.
+ */
+function withDeadline(
+	pending: Promise<DesktopResponse>,
+): Promise<DesktopResponse> {
+	let timer: ReturnType<typeof setTimeout>;
+	return Promise.race([
+		pending,
+		new Promise<never>((_, reject) => {
+			timer = setTimeout(
+				() =>
+					reject(
+						new DesktopControlError(
+							null,
+							"Desktop controls could not reach the backend process.",
+						),
+					),
+				DESKTOP_REQUEST_TIMEOUT_MS,
+			);
+		}),
+	]).finally(() => clearTimeout(timer));
 }
 
 /**
