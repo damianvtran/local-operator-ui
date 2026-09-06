@@ -10,17 +10,35 @@ import tsconfigPaths from "vite-tsconfig-paths";
 import { replaceBackendConfigPlugin } from "./scripts/vite-plugins/replace-backend-config";
 import { desktopProxyPlugin } from "./scripts/vite-plugins/desktop-proxy";
 
+// V8 bytecode is tied to the exact Electron (V8) version that produced it, so a
+// .jsc built here is only loadable by an Electron we control. That holds for the
+// electron-builder installers, which bundle their own pinned runtime, but NOT for
+// the npm tarball: `npx local-operator-ui` resolves Electron through the
+// surrounding environment (@electron-toolkit/utils declares an `electron: >=13`
+// peer, so npm happily installs the latest major), and a newer V8 rejects our
+// bytecode with `cachedDataRejected` before the app ever loads. See issue #88.
+//
+// So bytecode is opt-out for the packaged desktop builds and off for the npm
+// build. `pnpm build` still emits bytecode; the npm publish path sets
+// LOCAL_OPERATOR_UI_NO_BYTECODE=true to emit plain JS that any supported
+// Electron can execute.
+const emitBytecode = process.env.LOCAL_OPERATOR_UI_NO_BYTECODE !== "true";
+
+// bytecodePlugin() returns a plugin object; dropping it entirely (rather than
+// passing an option) is what makes electron-vite emit ordinary .js.
+const bytecodePlugins = emitBytecode ? [bytecodePlugin()] : [];
+
 export default defineConfig({
 	assetsInclude: ["**/*.sh", "**/*.ps1"],
 	main: {
 		plugins: [
 			externalizeDepsPlugin(),
-			bytecodePlugin(),
+			...bytecodePlugins,
 			replaceBackendConfigPlugin(),
 		],
 	},
 	preload: {
-		plugins: [externalizeDepsPlugin(), bytecodePlugin()],
+		plugins: [externalizeDepsPlugin(), ...bytecodePlugins],
 	},
 	renderer: {
 		resolve: {

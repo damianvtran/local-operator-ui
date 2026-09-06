@@ -52,12 +52,15 @@
     "start": "electron-vite preview",
     "dev": "npx dotenv-cli -e .env -- bash -c 'export $(grep -v '^#' .env | xargs) && electron-vite dev'",
     "build": "electron-vite build",
+    "prebuild:npm": "rm -rf out/main out/preload",
+    "build:npm": "LOCAL_OPERATOR_UI_NO_BYTECODE=true electron-vite build",
+    "postbuild:npm": "chmod +x ./bin/local-operator-ui.js",
     "postbuild": "chmod +x ./bin/local-operator-ui.js",
     "lint": "pnpm biome check src",
     "lint:fix": "pnpm biome check --write src",
     "format": "pnpm biome format src",
     "format:fix": "pnpm biome format --write src",
-    "prepublishOnly": "pnpm run build",
+    "prepack": "pnpm run build:npm",
     "check-types:main": "tsc --noEmit -p tsconfig.node.json",
     "check-types:renderer": "tsc --noEmit -p tsconfig.app.json",
     "check-types": "pnpm run check-types:main && pnpm run check-types:renderer",
@@ -147,6 +150,10 @@
     "zod": "^3.24.2",
     "zustand": "^5.0.3"
   },
+  "//electron-pin": "Two pins, one runtime, and they must move together. optionalDependencies.electron is what the npm/npx channel installs and what bin/local-operator-ui.js checks at launch; build.electronVersion is what electron-builder packages into the installers. electron-builder does NOT read optionalDependencies (findFromPackageMetadata inspects devDependencies then dependencies only), so without the explicit build.electronVersion it silently falls back to whatever electron happens to sit in node_modules, and a bump against a stale tree keeps building the old runtime. Bump both, or scripts/test-publish-workflow.mjs fails.",
+  "optionalDependencies": {
+    "electron": "35.5.1"
+  },
   "devDependencies": {
     "@babel/helpers": "^7.26.10",
     "@babel/runtime": "^7.26.10",
@@ -169,7 +176,6 @@
     "@vitejs/plugin-react": "^4.3.4",
     "dotenv": "^16.5.0",
     "dotenv-cli": "^8.0.0",
-    "electron": "^35.5.1",
     "electron-builder": "^26.0.12",
     "electron-vite": "^3.0.0",
     "esbuild": "^0.25.1",
@@ -192,6 +198,7 @@
   },
   "build": {
     "appId": "com.local-operator",
+    "electronVersion": "35.5.1",
     "productName": "Local Operator",
     "copyright": "Copyright \u00a9 2025 Radient Inc.",
     "asar": true,
@@ -199,7 +206,8 @@
       "out/**/*",
       "bin/**/*",
       "LICENSE",
-      "README.md"
+      "README.md",
+      "!node_modules/electron/**/*"
     ],
     "directories": {
       "output": "dist",
