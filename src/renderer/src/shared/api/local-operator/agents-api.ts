@@ -2,6 +2,7 @@
  * Local Operator API - Agents Endpoints
  */
 import {
+	DesktopControlError,
 	desktopControlResponse,
 	desktopMedia,
 	mediaError,
@@ -193,7 +194,14 @@ export const AgentsApi = {
 		});
 
 		if (!response.ok) {
-			throw new Error(
+			// Carries the status, not just a message with the number in it: the
+			// chat page has to tell "this agent no longer exists" (404, a normal
+			// event after a delete or a config-dir switch) from "the backend did
+			// not answer", and only the first should clear the persisted
+			// selection. Matching "404" inside the text is how `useAgent` does
+			// it, and that is the fragile pattern this avoids repeating.
+			throw new DesktopControlError(
+				response.status,
 				`Get agent execution history request failed: ${response.status} ${response.statusText}`,
 			);
 		}

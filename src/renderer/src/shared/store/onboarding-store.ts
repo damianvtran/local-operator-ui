@@ -117,6 +117,25 @@ export const useOnboardingStore = create<OnboardingState>()(
 		}),
 		{
 			name: "onboarding-storage",
+			// `isModalActive` is a session fact, not a preference: it is derived
+			// on every launch from whether a provider is connected. Persisting
+			// it meant one launch that (wrongly) opened setup pinned the modal
+			// open on every later launch, even after the decision was fixed --
+			// which is exactly how 0.15.0 users who saw onboarding once would
+			// keep seeing it. Only the completion flags and the step persist.
+			partialize: (state) => ({
+				isModalComplete: state.isModalComplete,
+				isTourComplete: state.isTourComplete,
+				currentStep: state.currentStep,
+			}),
+			// A 0.15.0 install already wrote `isModalActive: true`; partialize
+			// stops new writes but rehydration would still merge the old value
+			// in, so it is dropped here too.
+			merge: (persisted, current) => {
+				const { isModalActive: _stale, ...rest } = (persisted ??
+					{}) as Partial<OnboardingState>;
+				return { ...current, ...rest };
+			},
 			onRehydrateStorage: () => (state, error) => {
 				if (error) {
 					console.error("Failed to rehydrate onboarding store:", error);

@@ -7,6 +7,13 @@ import type { FC } from "react";
  */
 type ErrorViewProps = {
 	message: string;
+	/**
+	 * The backend never answered. Only then may the copy say "once the local
+	 * server is running": with the server up and refusing (401, 500, ...) that
+	 * clause is a false claim about the user's machine, and a not-found is
+	 * handled by the page before this view is reached.
+	 */
+	serverUnreachable?: boolean;
 };
 
 /**
@@ -29,7 +36,17 @@ type ErrorViewProps = {
  * which is exactly the case the Alert primitive leaves to its callers. The
  * ground is `canvas`, the same as the conversation it replaces.
  */
-export const ErrorView: FC<ErrorViewProps> = ({ message }) => {
+export const ErrorView: FC<ErrorViewProps> = ({
+	message,
+	serverUnreachable = false,
+}) => {
+	const description = serverUnreachable
+		? message
+			? `${message} The agent's history is safe — try again once the local server is running.`
+			: "The local server did not answer. The agent's history is safe — try again once it is running."
+		: message
+			? `${message} The agent's history is safe — try again in a moment.`
+			: "The local server returned an error. The agent's history is safe — try again in a moment.";
 	return (
 		<div
 			className={cn(
@@ -38,11 +55,7 @@ export const ErrorView: FC<ErrorViewProps> = ({ message }) => {
 		>
 			<Alert variant="danger" role="alert" className={cn("max-w-[480px]")}>
 				<AlertTitle>Could not load this conversation</AlertTitle>
-				<AlertDescription>
-					{message
-						? `${message} The agent's history is safe — try again once the local server is running.`
-						: "The local server did not answer. The agent's history is safe — try again once it is running."}
-				</AlertDescription>
+				<AlertDescription>{description}</AlertDescription>
 			</Alert>
 		</div>
 	);

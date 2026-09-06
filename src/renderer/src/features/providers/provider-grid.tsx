@@ -136,31 +136,49 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 				</div>
 			) : (
 				<ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-					{filtered.map((provider) => (
-						<li key={provider.id}>
-							<button
-								type="button"
-								onClick={() => setSelectedId(provider.id)}
-								className={cn(
-									"flex w-full flex-col gap-2 rounded-md border border-control bg-surface p-4 text-left",
-									"transition-colors duration-base ease-out-quart hover:bg-elevated",
-								)}
-							>
-								<span className="flex items-center justify-between gap-2">
-									<span className="text-body text-ink">{provider.name}</span>
-									{/* States the credential fact, which this census actually
+					{filtered.map((provider) => {
+						const readiness = providerReadiness(provider);
+						return (
+							<li key={provider.id}>
+								<button
+									type="button"
+									onClick={() => setSelectedId(provider.id)}
+									className={cn(
+										"flex w-full flex-col gap-2 rounded-md border border-control bg-surface p-4 text-left",
+										"transition-colors duration-base ease-out-quart hover:bg-elevated",
+									)}
+								>
+									{/*
+									 * Name above badge, always. They used to share one row
+									 * with `justify-between`; the badge is `shrink-0
+									 * whitespace-nowrap` by contract and the name had no
+									 * `min-w-0`, so on a ~230px card (two columns in the
+									 * 560px dialog) the two fought for the line -- the name
+									 * ran under the badge and the badge clipped at the card
+									 * edge. Wrapping only when needed left a grid where
+									 * neighbouring cards differed in layout, so every card
+									 * stacks the same way and the columns stay aligned.
+									 * 4px between name and badge is the within-component
+									 * tier; the 8px card gap separates the method line.
+									 */}
+									<span className="flex flex-col items-start gap-1">
+										<span className="min-w-0 text-body text-ink">
+											{provider.name}
+										</span>
+										{/* States the credential fact, which this census actually
 									    knows. It used to render `configured` as "Connected",
 									    asserting a reachability nothing had checked. */}
-									<Badge variant={providerReadiness(provider).tone}>
-										{providerReadiness(provider).label}
-									</Badge>
-								</span>
-								<span className="text-meta text-ink-dim">
-									{providerMethodLabel(provider.auth_methods, provider.local)}
-								</span>
-							</button>
-						</li>
-					))}
+										<Badge variant={readiness.tone} title={readiness.detail}>
+											{readiness.label}
+										</Badge>
+									</span>
+									<span className="text-meta text-ink-dim">
+										{providerMethodLabel(provider.auth_methods, provider.local)}
+									</span>
+								</button>
+							</li>
+						);
+					})}
 				</ul>
 			)}
 		</div>

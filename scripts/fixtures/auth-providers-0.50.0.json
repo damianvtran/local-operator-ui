@@ -1,0 +1,543 @@
+{
+ "status": 200,
+ "message": "Provider controls retrieved.",
+ "result": {
+  "providers": [
+   {
+    "id": "openai",
+    "name": "OpenAI (ChatGPT Plus/Pro)",
+    "auth_methods": [
+     {
+      "id": "openai",
+      "label": "OpenAI (ChatGPT Plus/Pro)",
+      "kind": "browser",
+      "method_id": "openai",
+      "requires_secret_input": false,
+      "paste_fallback": false
+     },
+     {
+      "id": "openai-device",
+      "label": "OpenAI (ChatGPT device code)",
+      "kind": "device",
+      "method_id": "openai-device",
+      "requires_secret_input": false,
+      "paste_fallback": false
+     },
+     {
+      "id": "openai",
+      "method_id": "openai:api-key",
+      "label": "API key",
+      "kind": "api_key",
+      "requires_secret_input": true,
+      "paste_fallback": false
+     }
+    ],
+    "storage_id": "openai",
+    "search_aliases": [
+     "gpt",
+     "chatgpt",
+     "codex"
+    ],
+    "login_kind": "browser",
+    "accepts_api_key": true,
+    "local": false,
+    "credential_name": "OPENAI_API_KEY",
+    "paste_required": false,
+    "paste_supported": false,
+    "configured": true,
+    "credential_optional": false,
+    "has_credential": true,
+    "stored_credentials": 1,
+    "base_url": "https://api.openai.com/v1"
+   },
+   {
+    "id": "anthropic",
+    "name": "Anthropic (Claude Pro/Max)",
+    "auth_methods": [
+     {
+      "id": "anthropic",
+      "label": "Anthropic (Claude Pro/Max)",
+      "kind": "browser",
+      "method_id": "anthropic",
+      "requires_secret_input": false,
+      "paste_fallback": true
+     },
+     {
+      "id": "anthropic",
+      "method_id": "anthropic:api-key",
+      "label": "API key",
+      "kind": "api_key",
+      "requires_secret_input": true,
+      "paste_fallback": false
+     }
+    ],
+    "storage_id": "anthropic",
+    "search_aliases": [
+     "claude",
+     "sonnet",
+     "opus",
+     "haiku"
+    ],
+    "login_kind": "browser",
+    "accepts_api_key": true,
+    "local": false,
+    "credential_name": null,
+    "paste_required": false,
+    "paste_supported": true,
+    "configured": true,
+    "credential_optional": false,
+    "has_credential": true,
+    "stored_credentials": 5,
+    "base_url": "https://api.anthropic.com"
+   },
+   {
+    "id": "kimi",
+    "name": "Kimi (Moonshot)",
+    "auth_methods": [
+     {
+      "id": "kimi",
+      "label": "Kimi (Moonshot)",
+      "kind": "device",
+      "method_id": "kimi",
+      "requires_secret_input": false,
+      "paste_fallback": false
+     },
+     {
+      "id": "kimi",
+      "method_id": "kimi:api-key",
+      "label": "API key",
+      "kind": "api_key",
+      "requires_secret_input": true,
+      "paste_fallback": false
+     }
+    ],
+    "storage_id": "kimi",
+    "search_aliases": [
+     "moonshot",
+     "k2",
+     "k3"
+    ],
+    "login_kind": "device",
+    "accepts_api_key": true,
+    "local": false,
+    "credential_name": "KIMI_API_KEY",
+    "paste_required": false,
+    "paste_supported": false,
+    "configured": true,
+    "credential_optional": false,
+    "has_credential": true,
+    "stored_credentials": 1,
+    "base_url": "https://api.moonshot.cn/v1"
+   },
+   {
+    "id": "xai",
+    "name": "xAI (Grok API key)",
+    "auth_methods": [
+     {
+      "id": "xai",
+      "label": "xAI (Grok API key)",
+      "kind": "api_key",
+      "method_id": "xai",
+      "requires_secret_input": true,
+      "paste_fallback": false
+     },
+     {
+      "id": "xai-oauth",
+      "label": "xAI (Grok OAuth)",
+      "kind": "device",
+      "method_id": "xai-oauth",
+      "requires_secret_input": false,
+      "paste_fallback": false
+     }
+    ],
+    "storage_id": "xai",
+    "search_aliases": [
+     "grok"
+    ],
+    "login_kind": "api_key",
+    "accepts_api_key": true,
+    "local": false,
+    "credential_name": "XAI_API_KEY",
+    "paste_required": true,
+    "paste_supported": true,
+    "configured": true,
+    "credential_optional": false,
+    "has_credential": true,
+    "stored_credentials": 1,
+    "base_url": "https://api.x.ai/v1"
+   },
+   {
+    "id": "deepseek",
+    "name": "DeepSeek",
+    "auth_methods": [
+     {
+      "id": "deepseek",
+      "label": "DeepSeek",
+      "kind": "api_key",
+      "method_id": "deepseek",
+      "requires_secret_input": true,
+      "paste_fallback": false
+     }
+    ],
+    "storage_id": "deepseek",
+    "search_aliases": [
+     "ds"
+    ],
+    "login_kind": "api_key",
+    "accepts_api_key": true,
+    "local": false,
+    "credential_name": "DEEPSEEK_API_KEY",
+    "paste_required": true,
+    "paste_supported": true,
+    "configured": true,
+    "credential_optional": false,
+    "has_credential": true,
+    "stored_credentials": 1,
+    "base_url": "https://api.deepseek.com/v1"
+   },
+   {
+    "id": "zai",
+    "name": "Z.AI (GLM API key)",
+    "auth_methods": [
+     {
+      "id": "zai",
+      "label": "Z.AI (GLM API key)",
+      "kind": "api_key",
+      "method_id": "zai",
+      "requires_secret_input": true,
+      "paste_fallback": false
+     },
+     {
+      "id": "zai-oauth",
+      "label": "Z.AI (GLM browser sign-in)",
+      "kind": "browser",
+      "method_id": "zai-oauth",
+      "requires_secret_input": false,
+      "paste_fallback": true
+     }
+    ],
+    "storage_id": "zai",
+    "search_aliases": [
+     "glm",
+     "zhipu",
+     "bigmodel",
+     "z-ai"
+    ],
+    "login_kind": "api_key",
+    "accepts_api_key": true,
+    "local": false,
+    "credential_name": "ZAI_API_KEY",
+    "paste_required": true,
+    "paste_supported": true,
+    "configured": true,
+    "credential_optional": false,
+    "has_credential": true,
+    "stored_credentials": 1,
+    "base_url": "https://api.z.ai/api/coding/paas/v4"
+   },
+   {
+    "id": "google",
+    "name": "Google (Gemini)",
+    "auth_methods": [
+     {
+      "id": "google",
+      "label": "Google (Gemini)",
+      "kind": "api_key",
+      "method_id": "google",
+      "requires_secret_input": true,
+      "paste_fallback": false
+     }
+    ],
+    "storage_id": "google",
+    "search_aliases": [
+     "gemini",
+     "vertex",
+     "aistudio"
+    ],
+    "login_kind": "api_key",
+    "accepts_api_key": true,
+    "local": false,
+    "credential_name": "GOOGLE_AI_STUDIO_API_KEY",
+    "paste_required": true,
+    "paste_supported": true,
+    "configured": false,
+    "credential_optional": false,
+    "has_credential": false,
+    "stored_credentials": 0,
+    "base_url": "https://generativelanguage.googleapis.com"
+   },
+   {
+    "id": "mistral",
+    "name": "Mistral AI",
+    "auth_methods": [
+     {
+      "id": "mistral",
+      "label": "Mistral AI",
+      "kind": "api_key",
+      "method_id": "mistral",
+      "requires_secret_input": true,
+      "paste_fallback": false
+     }
+    ],
+    "storage_id": "mistral",
+    "search_aliases": [
+     "codestral",
+     "magistral"
+    ],
+    "login_kind": "api_key",
+    "accepts_api_key": true,
+    "local": false,
+    "credential_name": "MISTRAL_API_KEY",
+    "paste_required": true,
+    "paste_supported": true,
+    "configured": false,
+    "credential_optional": false,
+    "has_credential": false,
+    "stored_credentials": 0,
+    "base_url": "https://api.mistral.ai/v1"
+   },
+   {
+    "id": "lmstudio",
+    "name": "LM Studio",
+    "auth_methods": [],
+    "storage_id": "lmstudio",
+    "search_aliases": [
+     "local",
+     "self-hosted"
+    ],
+    "login_kind": null,
+    "accepts_api_key": false,
+    "local": true,
+    "credential_name": null,
+    "paste_required": false,
+    "paste_supported": false,
+    "configured": true,
+    "credential_optional": true,
+    "has_credential": false,
+    "stored_credentials": 0,
+    "base_url": "http://localhost:1234/v1"
+   },
+   {
+    "id": "ollama",
+    "name": "Ollama",
+    "auth_methods": [],
+    "storage_id": "ollama",
+    "search_aliases": [
+     "local",
+     "self-hosted"
+    ],
+    "login_kind": null,
+    "accepts_api_key": false,
+    "local": true,
+    "credential_name": null,
+    "paste_required": false,
+    "paste_supported": false,
+    "configured": true,
+    "credential_optional": true,
+    "has_credential": false,
+    "stored_credentials": 0,
+    "base_url": "http://localhost:11434/v1"
+   },
+   {
+    "id": "vllm",
+    "name": "vLLM",
+    "auth_methods": [],
+    "storage_id": "vllm",
+    "search_aliases": [
+     "local",
+     "self-hosted"
+    ],
+    "login_kind": null,
+    "accepts_api_key": false,
+    "local": true,
+    "credential_name": null,
+    "paste_required": false,
+    "paste_supported": false,
+    "configured": true,
+    "credential_optional": true,
+    "has_credential": false,
+    "stored_credentials": 0,
+    "base_url": "http://localhost:8000/v1"
+   },
+   {
+    "id": "llamacpp",
+    "name": "llama.cpp",
+    "auth_methods": [],
+    "storage_id": "llamacpp",
+    "search_aliases": [
+     "local",
+     "self-hosted"
+    ],
+    "login_kind": null,
+    "accepts_api_key": false,
+    "local": true,
+    "credential_name": null,
+    "paste_required": false,
+    "paste_supported": false,
+    "configured": true,
+    "credential_optional": true,
+    "has_credential": false,
+    "stored_credentials": 0,
+    "base_url": "http://localhost:8080/v1"
+   },
+   {
+    "id": "openai-compatible",
+    "name": "OpenAI-compatible",
+    "auth_methods": [],
+    "storage_id": "openai-compatible",
+    "search_aliases": [
+     "local",
+     "self-hosted"
+    ],
+    "login_kind": null,
+    "accepts_api_key": false,
+    "local": true,
+    "credential_name": null,
+    "paste_required": false,
+    "paste_supported": false,
+    "configured": true,
+    "credential_optional": true,
+    "has_credential": false,
+    "stored_credentials": 0,
+    "base_url": ""
+   },
+   {
+    "id": "openrouter",
+    "name": "OpenRouter",
+    "auth_methods": [
+     {
+      "id": "openrouter",
+      "label": "OpenRouter",
+      "kind": "api_key",
+      "method_id": "openrouter",
+      "requires_secret_input": true,
+      "paste_fallback": false
+     }
+    ],
+    "storage_id": "openrouter",
+    "search_aliases": [
+     "or",
+     "router"
+    ],
+    "login_kind": "api_key",
+    "accepts_api_key": true,
+    "local": false,
+    "credential_name": "OPENROUTER_API_KEY",
+    "paste_required": true,
+    "paste_supported": true,
+    "configured": true,
+    "credential_optional": false,
+    "has_credential": true,
+    "stored_credentials": 1,
+    "base_url": "https://openrouter.ai/api/v1"
+   },
+   {
+    "id": "radient",
+    "name": "Radient",
+    "auth_methods": [
+     {
+      "id": "radient",
+      "label": "Radient",
+      "kind": "browser",
+      "method_id": "radient",
+      "requires_secret_input": false,
+      "paste_fallback": false
+     },
+     {
+      "id": "radient-key",
+      "label": "Radient (API key)",
+      "kind": "api_key",
+      "method_id": "radient-key",
+      "requires_secret_input": true,
+      "paste_fallback": false
+     }
+    ],
+    "storage_id": "radient",
+    "search_aliases": [
+     "radient-oauth"
+    ],
+    "login_kind": "browser",
+    "accepts_api_key": true,
+    "local": false,
+    "credential_name": "RADIENT_API_KEY",
+    "paste_required": false,
+    "paste_supported": false,
+    "configured": true,
+    "credential_optional": false,
+    "has_credential": true,
+    "stored_credentials": 1,
+    "base_url": "https://api.radienthq.com/v1"
+   },
+   {
+    "id": "alibaba",
+    "name": "Alibaba Cloud (Qwen)",
+    "auth_methods": [
+     {
+      "id": "alibaba",
+      "label": "Alibaba Cloud (Qwen)",
+      "kind": "api_key",
+      "method_id": "alibaba",
+      "requires_secret_input": true,
+      "paste_fallback": false
+     }
+    ],
+    "storage_id": "alibaba",
+    "search_aliases": [
+     "qwen",
+     "dashscope",
+     "tongyi"
+    ],
+    "login_kind": "api_key",
+    "accepts_api_key": true,
+    "local": false,
+    "credential_name": "ALIBABA_CLOUD_API_KEY",
+    "paste_required": true,
+    "paste_supported": true,
+    "configured": false,
+    "credential_optional": false,
+    "has_credential": false,
+    "stored_credentials": 0,
+    "base_url": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
+   },
+   {
+    "id": "alibaba-token-plan",
+    "name": "QwenCloud Token Plan",
+    "auth_methods": [
+     {
+      "id": "alibaba-token-plan",
+      "label": "QwenCloud Token Plan",
+      "kind": "api_key",
+      "method_id": "alibaba-token-plan",
+      "requires_secret_input": true,
+      "paste_fallback": false
+     },
+     {
+      "id": "alibaba-token-plan-oauth",
+      "label": "QwenCloud Token Plan (usage OAuth)",
+      "kind": "device",
+      "method_id": "alibaba-token-plan-oauth",
+      "requires_secret_input": true,
+      "paste_fallback": false
+     }
+    ],
+    "storage_id": "alibaba-token-plan",
+    "search_aliases": [
+     "token-plan",
+     "tokenplan",
+     "qwencloud"
+    ],
+    "login_kind": "api_key",
+    "accepts_api_key": true,
+    "local": false,
+    "credential_name": "ALIBABA_TOKEN_PLAN_API_KEY",
+    "paste_required": true,
+    "paste_supported": true,
+    "configured": true,
+    "credential_optional": false,
+    "has_credential": true,
+    "stored_credentials": 3,
+    "base_url": "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1"
+   }
+  ]
+ }
+}

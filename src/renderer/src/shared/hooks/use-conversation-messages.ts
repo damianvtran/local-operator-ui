@@ -8,6 +8,7 @@
 
 import type { Message } from "@features/chat/types";
 import { createLocalOperatorClient } from "@shared/api/local-operator";
+import { isAgentNotFound } from "@shared/api/local-operator/desktop-api";
 import type { AgentExecutionRecord } from "@shared/api/local-operator/types";
 import { apiConfig } from "@shared/config";
 import { useChatStore } from "@shared/store/chat-store";
@@ -172,6 +173,9 @@ export const useConversationMessages = (
 		staleTime: 15 * 1000,
 		refetchOnWindowFocus: false,
 		refetchOnMount: false,
+		// An agent that is gone stays gone; re-asking only delays the page's
+		// recovery from a stale selection by another round trip.
+		retry: (count, error) => !isAgentNotFound(error) && count < 1,
 		queryFn: async ({ pageParam }) => {
 			try {
 				// If no conversation ID, return empty result
@@ -232,12 +236,18 @@ export const useConversationMessages = (
 					hasMore: result.page < totalPages,
 				};
 			} catch (error) {
-				const errorMessage =
-					error instanceof Error
-						? error.message
-						: "An unknown error occurred while fetching conversation messages";
+				// A missing agent is a normal event (deleted, config dir switched,
+				// reinstalled) that the chat page resolves by dropping the stale
+				// selection. A toast for it would announce an error that the user
+				// never sees a trace of once the page has recovered.
+				if (!isAgentNotFound(error)) {
+					const errorMessage =
+						error instanceof Error
+							? error.message
+							: "An unknown error occurred while fetching conversation messages";
 
-				showErrorToast(errorMessage);
+					showErrorToast(errorMessage);
+				}
 				throw error;
 			}
 		},
@@ -475,6 +485,8 @@ export const useConversationMessages = (
 		isLoading,
 		isError,
 		error,
+		/** The backend answered and said this agent does not exist. */
+		isAgentNotFound: isAgentNotFound(error),
 		isFetchingMore: isFetchingNextPage,
 		hasMoreMessages: pagination.hasMore,
 		fetchMoreMessages: fetchNextPage,

@@ -110,6 +110,27 @@ export async function desktopResult<T>(request: DesktopRequest): Promise<T> {
 	return envelope?.result as T;
 }
 
+/**
+ * Whether a history failure means the agent itself is gone, as opposed to
+ * the backend being unreachable or refusing. Reads the typed status rather
+ * than the message text, so a future rewording cannot break it.
+ */
+export function isAgentNotFound(error: unknown): boolean {
+	return error instanceof DesktopControlError && error.status === 404;
+}
+
+/**
+ * Whether the failure is the backend not answering at all, which is the one
+ * case where "try again once the local server is running" is true. Same
+ * reading of the status as the compatibility banner: `null` is a transport
+ * that never produced a response, 503 is the relay saying it could not.
+ * Anything else is the server answering, and that copy would be false.
+ */
+export function isServerUnreachable(error: unknown): boolean {
+	if (!(error instanceof DesktopControlError)) return false;
+	return error.status === null || error.status === 503;
+}
+
 export async function desktopControlResponse(
 	request: DesktopRequest,
 ): Promise<Response> {
