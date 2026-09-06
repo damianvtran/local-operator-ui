@@ -63,7 +63,11 @@ import { MessageTimestamp } from "../components/message-item/message-timestamp";
 import { OutputBlock } from "../components/message-item/output-block";
 import { AgentQuestion, TraceLine } from "../components/trace";
 import { TraceGlyph } from "../components/trace/trace-rail";
-import type { TranscriptRecord, TranscriptState } from "./transcript-reducer";
+import {
+	type TranscriptRecord,
+	type TranscriptState,
+	withRecoveredOutcome,
+} from "./transcript-reducer";
 
 /** Opts prose into the ~72-character measure defined in `markdown.css`. */
 const MEASURE = "lo-measured";
@@ -447,13 +451,15 @@ const TranscriptRow = memo(function TranscriptRow({
 		<div
 			data-record-id={record.id}
 			data-completion-anchor={record.id}
+			// Only `"true"` is ever queried, so the attribute is omitted rather
+			// than emitted as `"false"` on every row of a long transcript.
 			data-completion-complete={
 				"complete" in record &&
 				record.complete === true &&
 				(record.kind !== "assistant" ||
 					(!record.streaming && Boolean(record.text)))
 					? "true"
-					: "false"
+					: undefined
 			}
 			className={cn(GAP[row.gap][isSmallView ? 1 : 0])}
 		>
@@ -474,6 +480,19 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	status,
 	error,
 }) => {
+	// A crash-recovered outcome has no durable row of its own, so it is
+	// synthesized here rather than in the stream reducer: this is the layer that
+	// decides what is renderable, and an anchor with nothing to hit-test is an
+	// unread badge the user can never clear.
+	const painted = useMemo(
+		() =>
+			withRecoveredOutcome(
+				transcript,
+				frontend?.attention,
+				Boolean(frontend?.streaming),
+			),
+		[transcript, frontend?.attention, frontend?.streaming],
+	);
 	useCompletionView(
 		frontend,
 		status === "live" && !waiting && !loadingOlder,
@@ -481,10 +500,10 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	);
 	const previousRows = useRef<Row[]>([]);
 	const rows = useMemo(() => {
-		const next = buildRows(transcript.records, previousRows.current);
+		const next = buildRows(painted.records, previousRows.current);
 		previousRows.current = next;
 		return next;
-	}, [transcript.records]);
+	}, [painted.records]);
 	// Windowing: newest rows first. The window widens when the reader nears the
 	// top, and resets when the transcript is replaced (session switch/clear).
 	const [windowSize, setWindowSize] = useState(WINDOW);

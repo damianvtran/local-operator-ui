@@ -7,6 +7,13 @@ import type { CanonicalFrontendState } from "../../../../shared/desktop-session-
  * Capture canonical identity and completion together; navigation retires this
  * attempt, and main independently checks the actual BrowserWindow at admission.
  */
+
+/** Poll cadence while the completion has not been acknowledged. */
+const CHECK_MS = 500;
+/** Consecutive failures before the retry cadence starts backing off. */
+const FAILURES_BEFORE_BACKOFF = 3;
+/** Ceiling on the backed-off cadence: ~1 attempt/minute, not ~7,200/hour. */
+const MAX_BACKOFF_MS = 60_000;
 export function useCompletionView(
 	frontend: CanonicalFrontendState | null | undefined,
 	ready: boolean,
@@ -33,6 +40,15 @@ export function useCompletionView(
 		let cancelled = false;
 		let pending = false;
 		let acknowledged = false;
+		let failures = 0;
+		let nextAttempt = 0;
+		let timer = 0;
+		const stop = () => {
+			if (timer) {
+				clearInterval(timer);
+				timer = 0;
+			}
+		};
 		const check = () => {
 			if (
 				cancelled ||
@@ -40,7 +56,8 @@ export function useCompletionView(
 				acknowledged ||
 				document.visibilityState !== "visible" ||
 				!document.hasFocus() ||
-				useCanonicalSessionsStore.getState().activeSessionId !== sessionId
+				useCanonicalSessionsStore.getState().activeSessionId !== sessionId ||
+				Date.now() < nextAttempt
 			)
 				return;
 			const element = root.current?.querySelector<HTMLElement>(
@@ -65,21 +82,46 @@ export function useCompletionView(
 			void desktopResult({ op: "sessions.seen", sessionId, completionToken })
 				.then(() => {
 					acknowledged = true;
+					// Nothing left to attempt for this completion; a new one
+					// re-runs the effect with a fresh token.
+					stop();
 				})
-				.catch(() => {
+				.catch((error: unknown) => {
 					// No optimistic clear. A rejected native-focus check or stale
 					// token leaves authoritative state intact and permits a retry.
+					//
+					// Backed off and logged ONCE at the threshold because the
+					// failing cases are persistent, not transient: a backend that
+					// predates the receipt route, a wedged store, a window state
+					// the native gate keeps refusing. At a flat cadence that is
+					// thousands of silent IPC round trips an hour with nothing in
+					// the renderer rendering `attention` to explain them.
+					failures += 1;
+					if (failures === FAILURES_BEFORE_BACKOFF) {
+						console.warn(
+							`[attention] could not mark ${sessionId} read after ${failures} attempts; backing off`,
+							error,
+						);
+					}
+					if (failures >= FAILURES_BEFORE_BACKOFF) {
+						nextAttempt =
+							Date.now() +
+							Math.min(
+								MAX_BACKOFF_MS,
+								CHECK_MS * 2 ** (failures - FAILURES_BEFORE_BACKOFF + 1),
+							);
+					}
 				})
 				.finally(() => {
 					pending = false;
 				});
 		};
 		const frame = requestAnimationFrame(check);
-		const timer = window.setInterval(check, 500);
+		timer = window.setInterval(check, CHECK_MS);
 		return () => {
 			cancelled = true;
 			cancelAnimationFrame(frame);
-			clearInterval(timer);
+			stop();
 		};
 	}, [
 		ready,

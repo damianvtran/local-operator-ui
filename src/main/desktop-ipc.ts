@@ -12,6 +12,52 @@ import { trustedDesktopFrame } from "./desktop-transport";
 
 const OPERATION_ID = /^[a-zA-Z0-9_-]{1,128}$/;
 
+/**
+ * Wrap a desktop request sender so a read receipt requires native foreground.
+ *
+ * Applied to the sender ITSELF rather than inside the renderer IPC handler,
+ * because `DesktopNotifier` holds its own reference to the same underlying
+ * sender and calls it directly. Guarding only the IPC entry would leave that
+ * path unguarded — harmless while the notifier emits nothing but
+ * `sessions.watch`, but it is exactly how a future main-process caller would
+ * acquire an ungated `sessions.seen`.
+ *
+ * The renderer's own visibility test cannot establish this: an occluded,
+ * hidden or minimized window still reports `visibilityState === "visible"` and
+ * can hold document focus. Only main can see the real window.
+ */
+export function guardForegroundReceipts(
+	window: () => BrowserWindow | null,
+	send: (input: unknown) => Promise<DesktopResponse>,
+): (input: unknown) => Promise<DesktopResponse> {
+	return (input: unknown) => {
+		if (
+			input !== null &&
+			typeof input === "object" &&
+			"op" in input &&
+			input.op === "sessions.seen"
+		) {
+			const owner = window();
+			if (
+				!owner ||
+				owner.isDestroyed() ||
+				!owner.isVisible() ||
+				owner.isMinimized() ||
+				!owner.isFocused()
+			) {
+				// Not user-facing copy: the renderer treats a refusal as "not read
+				// yet" and retries, so this text only ever reaches a log.
+				return Promise.reject(
+					new Error(
+						"View this completion in the foreground before marking it read.",
+					),
+				);
+			}
+		}
+		return send(input);
+	};
+}
+
 export function registerDesktopIPC(
 	window: () => BrowserWindow | null,
 	expectedUrl: string,
@@ -36,31 +82,14 @@ export function registerDesktopIPC(
 			throw new Error("This window cannot use desktop controls.");
 		}
 	}
+	// Guarded here as well as at the sender: `registerDesktopIPC` is called with
+	// the raw sender in some hosts (and in the contract tests), so the receipt
+	// gate must not depend on the caller having wrapped it. Double application is
+	// idempotent — the second check simply passes.
+	const guarded = guardForegroundReceipts(window, request);
 	ipcMain.handle("desktop-request", (event, input: unknown) => {
 		authorize(event);
-		if (
-			input !== null &&
-			typeof input === "object" &&
-			"op" in input &&
-			input.op === "sessions.seen"
-		) {
-			// Renderer visibility is necessary but cannot prove native foreground.
-			// Enforce this on the shared typed request entry so no alternate IPC
-			// caller can bypass it. Watch leases remain notification routing only.
-			const owner = window();
-			if (
-				!owner ||
-				owner.isDestroyed() ||
-				!owner.isVisible() ||
-				owner.isMinimized() ||
-				!owner.isFocused()
-			) {
-				throw new Error(
-					"View this completion in the foreground before marking it read.",
-				);
-			}
-		}
-		return request(input);
+		return guarded(input);
 	});
 	// `/exit`: the window closes through the ordinary close path, so the
 	// renderer's `beforeunload` guard and macOS keep-alive behaviour apply

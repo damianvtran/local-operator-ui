@@ -34,10 +34,14 @@ const bundle = await build({
 		},
 	],
 });
-const { requestDesktop, trustedDesktopFrame, registerDesktopIPC } =
-	await import(
-		`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
-	);
+const {
+	requestDesktop,
+	trustedDesktopFrame,
+	registerDesktopIPC,
+	guardForegroundReceipts,
+} = await import(
+	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
+);
 let server;
 let url;
 const seen = [];
@@ -803,7 +807,7 @@ test("a read receipt is admitted only by an actually foreground native window", 
 	]) {
 		Object.assign(state, { visible: true, minimized: false, focused: true });
 		Object.assign(state, background);
-		assert.throws(
+		await assert.rejects(
 			() => invoke(event, receipt),
 			/foreground/,
 			JSON.stringify(background),
@@ -880,4 +884,57 @@ test("receipt revisions converge monotonically across reconnects and reordering"
 		);
 	}
 	assert.deepEqual(merge(at(2, 2), undefined), [2, 2]);
+});
+
+test("the receipt gate rides the sender, so a non-IPC main caller cannot bypass it", async () => {
+	// `DesktopNotifier` holds its own reference to the same underlying sender
+	// and calls it directly, so a gate living only inside the `desktop-request`
+	// IPC handler would not cover it. Not exploitable while the notifier emits
+	// only `sessions.watch` — but it is precisely how a future main-process
+	// caller would acquire an ungated `sessions.seen`.
+	const state = { visible: false, minimized: true, focused: false };
+	const owner = {
+		isDestroyed: () => false,
+		isVisible: () => state.visible,
+		isMinimized: () => state.minimized,
+		isFocused: () => state.focused,
+	};
+	const calls = [];
+	const guarded = guardForegroundReceipts(
+		() => owner,
+		async (input) => {
+			calls.push(input);
+			return { status: 200, body: { result: {} } };
+		},
+	);
+	const receipt = {
+		op: "sessions.seen",
+		sessionId: "123456abcdef",
+		completionToken: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+	};
+
+	// A background window is refused even though this never touches ipcMain.
+	await assert.rejects(() => guarded(receipt), /foreground/);
+	assert.equal(calls.length, 0);
+
+	// The notifier's own traffic is unaffected: a lease is not a read, and it
+	// legitimately reports presence from a background window.
+	await guarded({
+		op: "sessions.watch",
+		sessionId: "123456abcdef",
+		subscriptionId: "a".repeat(32),
+		visible: false,
+		canNotify: true,
+	});
+	assert.equal(calls.length, 1);
+
+	Object.assign(state, { visible: true, minimized: false, focused: true });
+	await guarded(receipt);
+	assert.equal(calls.length, 2);
+
+	// Double application (sender-wrapped AND registered through the IPC entry)
+	// must stay idempotent rather than double-refusing a legitimate receipt.
+	const twice = guardForegroundReceipts(() => owner, guarded);
+	await twice(receipt);
+	assert.equal(calls.length, 3);
 });

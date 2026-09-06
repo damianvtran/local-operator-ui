@@ -22,7 +22,7 @@ import {
 } from "./backend";
 import { backendConfig } from "./backend/config";
 import { LogFileType, logger } from "./backend/logger";
-import { registerDesktopIPC } from "./desktop-ipc";
+import { guardForegroundReceipts, registerDesktopIPC } from "./desktop-ipc";
 import { DesktopNotifier } from "./desktop-notifier";
 import { UpdateService } from "./update-service";
 
@@ -377,10 +377,15 @@ app
 			optimizer.watchWindowShortcuts(window);
 		});
 
-		const desktopNotifier = new DesktopNotifier(
+		// One guarded sender for every main-process caller, so a read receipt
+		// requires a genuinely foreground window no matter which path emits it.
+		// The notifier holds its own reference to this sender, so guarding only
+		// the renderer IPC entry would leave that path ungated.
+		const sendDesktop = guardForegroundReceipts(
 			() => mainWindow,
 			(input) => backendService.requestDesktop(input),
 		);
+		const desktopNotifier = new DesktopNotifier(() => mainWindow, sendDesktop);
 		backendService.observeStream((sessionId, data) => {
 			try {
 				desktopNotifier.observe(sessionId, JSON.parse(data));
@@ -392,7 +397,7 @@ app
 			() => mainWindow,
 			process.env.ELECTRON_RENDERER_URL ||
 				pathToFileURL(join(__dirname, "../renderer/index.html")).href,
-			(input) => backendService.requestDesktop(input),
+			sendDesktop,
 			() => backendService.getStreamRelay(),
 			(input, bytes) => backendService.requestDesktopMedia(input, bytes),
 			desktopNotifier,

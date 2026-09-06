@@ -760,3 +760,56 @@ export function appendLocalNote(
 		level,
 	});
 }
+
+/**
+ * Give a crash-recovered outcome a row, so it can be read at all.
+ *
+ * The normal settle path writes a `completion_attention` transcript entry and
+ * `durableRecord` renders it. Crash recovery does not: `bootstrap_transcript`
+ * republishes an `interrupted` completion from the `attention_started` journal
+ * with anchor `completion-<token>`, and that entry never exists because the
+ * turn that would have written it is exactly the one that died.
+ *
+ * Without a row carrying the anchor, the view finds nothing to hit-test and the
+ * conversation stays unread forever while the user is looking straight at it —
+ * self-healing only if some later turn completes, which for a finished
+ * conversation may be never. The TUI already synthesizes this notice
+ * (`tui/app.py::_poll_completion_attention`); this is the same guard for the
+ * surface that decides what is renderable on desktop.
+ */
+export function withRecoveredOutcome(
+	state: TranscriptState,
+	attention:
+		| {
+				anchor_id?: string | null;
+				kind?: string | null;
+				unseen?: boolean;
+				conversation_id?: string;
+		  }
+		| null
+		| undefined,
+	streaming: boolean,
+): TranscriptState {
+	const anchor = attention?.anchor_id;
+	const kind = attention?.kind;
+	if (
+		!anchor ||
+		!attention?.unseen ||
+		(kind !== "error" && kind !== "interrupted") ||
+		// Mirrors the TUI's retry guard: a historical failure must not be
+		// inserted at the tail of a retry that is already running.
+		streaming ||
+		state.index.has(anchor)
+	)
+		return state;
+	return upsert(state, {
+		kind: "notice",
+		id: anchor,
+		// The recovered outcome has no timestamp of its own, so it sorts at the
+		// tail where the durable rows it follows already are.
+		ts: state.records.at(-1)?.ts ?? Date.now(),
+		complete: true,
+		text: kind === "error" ? "Stopped with an error" : "Interrupted",
+		level: kind === "error" ? "error" : "warning",
+	});
+}

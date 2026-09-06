@@ -118,6 +118,9 @@ export function useCanonicalSessionStream(
 	// Mutable side-channel for the frame pump; React state is the published,
 	// coalesced view. Frames arriving between renders collect here.
 	const pending = useRef<DesktopSessionFrame[]>([]);
+	// Read outside the React updater (see the flush comment), so the painted set
+	// is tracked here rather than through the view state itself.
+	const paintedIds = useRef<TranscriptState["index"]>(EMPTY_TRANSCRIPT.index);
 	const receiptRef = useRef<{ epoch: string; seq: number } | null>(null);
 	const reconnectRef = useRef<{ epoch?: string; afterSeq?: number }>({});
 	const generationRef = useRef(0);
@@ -145,14 +148,23 @@ export function useCanonicalSessionStream(
 			// so an empty page; a replaced cursor reports cursor_missing. Both are
 			// the contract's "reconcile through /history" case: the authoritative
 			// tail is fetched once per snapshot and merged durable-wins.
-			const needsReconcile = frames.some(
-				(frame) =>
-					frame.type === "attention" ||
-					(frame.type === "snapshot" &&
-						(frame.payload.frontend.snapshot.attention?.completion_token !=
-							null ||
+			// An attention frame only justifies a refetch when it names an anchor
+			// the transcript has not painted: the backend publishes one after
+			// every successful ACK, so reconciling on all of them spent a
+			// 100-entry history fetch on a frame where only `unseen` changed.
+			const paintedAnchor = (anchor: string | null | undefined) =>
+				anchor != null && paintedIds.current.has(anchor);
+			const needsReconcile = frames.some((frame) =>
+				frame.type === "attention"
+					? !paintedAnchor(frame.payload.anchor_id)
+					: frame.type === "snapshot" &&
+						((frame.payload.frontend.snapshot.attention?.completion_token !=
+							null &&
+							!paintedAnchor(
+								frame.payload.frontend.snapshot.attention?.anchor_id,
+							)) ||
 							frame.payload.history.cursor_missing ||
-							frame.payload.history.entries.length === 0)),
+							frame.payload.history.entries.length === 0),
 			);
 			performance.mark("lop:transcript:flush:start");
 
@@ -325,6 +337,7 @@ export function useCanonicalSessionStream(
 					"lop:transcript:flush:start",
 					"lop:transcript:flush:end",
 				);
+				paintedIds.current = next.transcript.index;
 				return next;
 			});
 			if (needsReconcile) {
@@ -421,6 +434,9 @@ export function useCanonicalSessionStream(
 	useEffect(() => {
 		reconnectRef.current = {};
 		receiptRef.current = null;
+		// The transcript is replaced below, so a previous session's anchors must
+		// not suppress the first reconcile of the new one.
+		paintedIds.current = EMPTY_TRANSCRIPT.index;
 		setView((current) => ({
 			...current,
 			frontend: null,
