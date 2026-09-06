@@ -31,6 +31,7 @@
 
 import { Spinner } from "@shared/components/common/spinner";
 import { Button } from "@shared/components/ui/button";
+import { useCompletionView } from "@shared/hooks/use-completion-view";
 import { cn } from "@shared/lib/utils";
 import {
 	CircleAlert,
@@ -48,7 +49,10 @@ import {
 	useRef,
 	useState,
 } from "react";
-import type { PendingDesktopGate } from "../../../../../shared/desktop-session-contract";
+import type {
+	CanonicalFrontendState,
+	PendingDesktopGate,
+} from "../../../../../shared/desktop-session-contract";
 import { MarkdownRenderer } from "../components/markdown-renderer";
 import { ErrorBlock } from "../components/message-item/error-block";
 import {
@@ -67,6 +71,7 @@ const WINDOW = 60;
 const WINDOW_STEP = 60;
 
 export type CanonicalTranscriptProps = {
+	frontend?: CanonicalFrontendState | null;
 	transcript: TranscriptState;
 	gate: PendingDesktopGate | null;
 	/** The owner is generating and nothing has painted yet for this turn. */
@@ -441,6 +446,15 @@ const TranscriptRow = memo(function TranscriptRow({
 	return (
 		<div
 			data-record-id={record.id}
+			data-completion-anchor={record.id}
+			data-completion-complete={
+				"complete" in record &&
+				record.complete === true &&
+				(record.kind !== "assistant" ||
+					(!record.streaming && Boolean(record.text)))
+					? "true"
+					: "false"
+			}
 			className={cn(GAP[row.gap][isSmallView ? 1 : 0])}
 		>
 			{body}
@@ -449,6 +463,7 @@ const TranscriptRow = memo(function TranscriptRow({
 });
 
 export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
+	frontend,
 	transcript,
 	gate,
 	waiting,
@@ -459,6 +474,11 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	status,
 	error,
 }) => {
+	useCompletionView(
+		frontend,
+		status === "live" && !waiting && !loadingOlder,
+		containerRef,
+	);
 	const previousRows = useRef<Row[]>([]);
 	const rows = useMemo(() => {
 		const next = buildRows(transcript.records, previousRows.current);

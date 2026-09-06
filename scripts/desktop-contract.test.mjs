@@ -188,6 +188,16 @@ test("canonical session operations preserve identity, arguments and main-owned a
 			"POST",
 			{ subscription_id: "a".repeat(32), visible: false, can_notify: true },
 		],
+		[
+			{
+				op: "sessions.seen",
+				sessionId,
+				completionToken: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+			},
+			`/${sessionId}/seen`,
+			"POST",
+			{ completion_token: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb" },
+		],
 	]) {
 		assert.equal((await requestDesktop(operation, url, token)).status, 200);
 		const actual = seen.at(-1);
@@ -209,6 +219,21 @@ test("canonical session operations preserve identity, arguments and main-owned a
 			text: "hello",
 		},
 		{ op: "sessions.command", sessionId, requestId, command: "goal extra" },
+		// A receipt carries a completion token and nothing else: a timestamp or a
+		// bodyless call is what let a background tab acknowledge an unseen result.
+		{ op: "sessions.seen", sessionId },
+		{ op: "sessions.seen", sessionId, completionToken: "now" },
+		{
+			op: "sessions.seen",
+			sessionId: "../config",
+			completionToken: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+		},
+		{
+			op: "sessions.seen",
+			sessionId,
+			completionToken: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+			seenAt: 123,
+		},
 		{
 			op: "sessions.watch",
 			sessionId,
@@ -724,4 +749,135 @@ test("IPC rejects other frames and opens only backend-returned authorization onc
 	await assert.rejects(() => open(event, "https://evil.example"));
 	frame.url = "https://evil.example";
 	assert.throws(() => invoke(event, { op: "settings.list" }));
+});
+
+test("a read receipt is admitted only by an actually foreground native window", async () => {
+	// Renderer visibility cannot prove native foreground: an occluded, hidden or
+	// minimized window still reports `visibilityState === "visible"` and can
+	// still hold document focus. Main owns the real BrowserWindow, so this is
+	// the only place the claim can be checked -- and it is enforced on the
+	// shared typed request door so no alternate caller can route around it.
+	globalThis.__desktopHandlers = new Map();
+	const frame = { url: "file:///app/index.html" };
+	const contents = { mainFrame: frame };
+	const state = {
+		destroyed: false,
+		visible: true,
+		minimized: false,
+		focused: true,
+	};
+	const owner = {
+		webContents: contents,
+		isDestroyed: () => state.destroyed,
+		isVisible: () => state.visible,
+		isMinimized: () => state.minimized,
+		isFocused: () => state.focused,
+	};
+	const calls = [];
+	registerDesktopIPC(
+		() => owner,
+		"file:///app/index.html",
+		async (request) => {
+			calls.push(request);
+			return { status: 200, body: { result: { unseen: false } } };
+		},
+	);
+	const invoke = globalThis.__desktopHandlers.get("desktop-request");
+	const event = { sender: contents, senderFrame: frame };
+	const receipt = {
+		op: "sessions.seen",
+		sessionId: "123456abcdef",
+		completionToken: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+	};
+
+	await invoke(event, receipt);
+	assert.equal(calls.length, 1, "a focused, visible window may acknowledge");
+
+	// Every individual negative must refuse on its own: a background window is
+	// unfocused, an occluded/hidden one is not visible, and a minimized one can
+	// report both while showing the user nothing.
+	for (const background of [
+		{ focused: false },
+		{ visible: false },
+		{ minimized: true },
+	]) {
+		Object.assign(state, { visible: true, minimized: false, focused: true });
+		Object.assign(state, background);
+		assert.throws(
+			() => invoke(event, receipt),
+			/foreground/,
+			JSON.stringify(background),
+		);
+	}
+	assert.equal(calls.length, 1, "no background state reached the backend");
+
+	// The gate is specific to receipts. Ordinary control traffic from a
+	// background window is legitimate and must not be broken by it.
+	Object.assign(state, { visible: false, minimized: true, focused: false });
+	await invoke(event, { op: "settings.list" });
+	assert.equal(calls.at(-1).op, "settings.list");
+
+	Object.assign(state, { visible: true, minimized: false, focused: true });
+	await invoke(event, receipt);
+	assert.equal(
+		calls.length,
+		3,
+		"the receipt is admitted again once foreground",
+	);
+});
+
+test("receipt revisions converge monotonically across reconnects and reordering", async () => {
+	// Owner epochs restart; the receipt clock does not. Frames arrive reordered
+	// after a reconnect, and a snapshot captured before an acknowledgement can
+	// land after it -- so applying whatever arrived last would resurrect an
+	// already-read result or, worse, hide a newer unread one.
+	const contract = await build({
+		stdin: {
+			contents: 'export * from "./src/shared/desktop-session-contract";',
+			resolveDir: process.cwd(),
+		},
+		bundle: true,
+		format: "esm",
+		platform: "node",
+		write: false,
+	});
+	const { mergeCompletionAttention } = await import(
+		`data:text/javascript;base64,${Buffer.from(contract.outputFiles[0].text).toString("base64")}`
+	);
+	const sessionId = "123456abcdef";
+	const at = (published, acknowledged, extra = {}) => ({
+		conversation_id: `session/${sessionId}`,
+		completion_token: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+		anchor_id: "result-1",
+		kind: "complete",
+		unseen: published > acknowledged,
+		revision: [published, acknowledged],
+		supported: true,
+		...extra,
+	});
+	const merge = (current, incoming) =>
+		mergeCompletionAttention(current, incoming, sessionId)?.revision;
+
+	assert.deepEqual(merge(undefined, at(2, 1)), [2, 1]);
+	assert.deepEqual(merge(at(1, 1), at(2, 1)), [2, 1]);
+	assert.deepEqual(merge(at(2, 1), at(2, 2)), [2, 2]);
+	// Neither clock may run backwards, whichever direction the staleness is in.
+	assert.deepEqual(merge(at(2, 2), at(1, 1)), [2, 2]);
+	assert.deepEqual(merge(at(2, 2), at(2, 1)), [2, 2]);
+	// Identity is namespaced: a persistent agent conversation and an unrelated
+	// session are different authorities even when the trailing id matches.
+	for (const foreign of [
+		{ conversation_id: "session/ffffffffffff" },
+		{ conversation_id: `agent/${sessionId}` },
+		{ revision: ["x", 1] },
+		{ revision: [-1, 0] },
+		{ revision: [3] },
+	]) {
+		assert.deepEqual(
+			merge(at(2, 2), at(9, 9, foreign)),
+			[2, 2],
+			JSON.stringify(foreign),
+		);
+	}
+	assert.deepEqual(merge(at(2, 2), undefined), [2, 2]);
 });

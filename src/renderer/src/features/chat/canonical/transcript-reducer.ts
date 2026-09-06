@@ -43,6 +43,8 @@ export type TranscriptRecord =
 	  }
 	| {
 			kind: "assistant";
+			/** Only a full durable history read certifies the actual ending. */
+			complete?: boolean;
 			id: string;
 			ts: number;
 			text: string;
@@ -70,6 +72,8 @@ export type TranscriptRecord =
 	  }
 	| {
 			kind: "notice";
+			/** A durable completion marker, not an arbitrary renderer notice. */
+			complete?: boolean;
 			id: string;
 			ts: number;
 			text: string;
@@ -193,6 +197,28 @@ function durableRecord(
 	if (entry.type === "compaction") {
 		return { kind: "compaction", id: entry.id, ts, text: "Context compacted" };
 	}
+	if (
+		entry.type === "custom" &&
+		payload.custom_type === "completion_attention"
+	) {
+		const details = (payload.details ?? {}) as Record<string, unknown>;
+		if (
+			typeof details.anchor === "string" &&
+			(details.kind === "error" || details.kind === "interrupted")
+		) {
+			// Preserve the marker's durable position. Appending an old failure at
+			// the current retry tail would misrepresent which outcome was viewed.
+			return {
+				kind: "notice",
+				id: details.anchor,
+				ts,
+				complete: true,
+				text:
+					details.kind === "error" ? "Stopped with an error" : "Interrupted",
+				level: details.kind === "error" ? "error" : "warning",
+			};
+		}
+	}
 	if (entry.type !== "message") return null;
 	const kind = String(payload.kind ?? "message");
 	if (kind === "custom") {
@@ -251,6 +277,7 @@ function durableRecord(
 			id: entry.id,
 			ts,
 			text,
+			complete: true,
 			streaming: false,
 			stopReason: (payload.stop_reason as string | null) ?? null,
 			error: Boolean(payload.is_error),

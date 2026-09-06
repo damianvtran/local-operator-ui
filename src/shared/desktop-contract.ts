@@ -121,6 +121,13 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 		.strict(),
 	z
 		.object({
+			op: z.literal("sessions.seen"),
+			sessionId,
+			completionToken: z.string().uuid(),
+		})
+		.strict(),
+	z
+		.object({
 			op: z.literal("sessions.watch"),
 			sessionId,
 			subscriptionId: z.string().regex(/^[a-f0-9]{32}$/),
@@ -750,6 +757,12 @@ export function desktopEndpoint(request: DesktopRequest): {
 					approved: request.approved,
 					question_index: request.questionIndex,
 				},
+			};
+		case "sessions.seen":
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/seen`,
+				method: "POST",
+				body: { completion_token: request.completionToken },
 			};
 		case "sessions.watch":
 			return {
