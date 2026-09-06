@@ -31,7 +31,7 @@ import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { formatMessageDateTime } from "@shared/utils/date-utils";
 import { Bot, MessageCircleOff } from "lucide-react";
 import type { ChangeEvent, FC } from "react";
-import { memo, useCallback, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 /**
@@ -297,6 +297,28 @@ const ChatSidebarComponent: FC<ChatSidebarProps> = ({
 	const sessionByAgentId = useCanonicalSessionsStore(
 		(state) => state.sessionByAgent,
 	);
+	const fetchSessions = useCanonicalSessionsStore(
+		(state) => state.fetchSessions,
+	);
+	/*
+	 * Fill the store the join above reads from.
+	 *
+	 * `createSession`/`bindSession` write only `{session_id, agent_id}` rows --
+	 * identity, no transcript-derived fields -- and only `sessionByAgent` and
+	 * `activeSessionId` are persisted. So without this the preview join had
+	 * nothing to join AGAINST in the shipped app: every row fell back to the
+	 * legacy `agent.last_message` and rendered "No messages yet", which is the
+	 * D19 symptom the backend `preview` was added to cure.
+	 *
+	 * This calls the store's own `sessions.list` rather than introducing a
+	 * second cache: the picker's React Query copy is a different surface with a
+	 * different shape, and two caches of the same list is how they drift.
+	 * Re-run when the agent page changes, because that is when the set of rows
+	 * needing a preview changes.
+	 */
+	useEffect(() => {
+		void fetchSessions();
+	}, [fetchSessions]);
 	const previewByAgent = useMemo(() => {
 		const previews: Record<string, string> = {};
 		const bySession = new Map(
