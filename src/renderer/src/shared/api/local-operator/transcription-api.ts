@@ -1,6 +1,7 @@
 /**
  * Local Operator API - Transcription Endpoints
  */
+import { desktopMedia, mediaError } from "./desktop-api";
 import type {
 	CRUDResponse,
 	CreateTranscriptionParams,
@@ -22,45 +23,31 @@ export const TranscriptionApi = {
 	 * @throws Will throw an error if the request fails.
 	 */
 	async createTranscription(
-		baseUrl: string,
+		_baseUrl: string,
 		params: CreateTranscriptionParams,
 	): Promise<CRUDResponse<RadientTranscriptionResponseData>> {
-		const formData = new FormData();
-		formData.append("file", params.file);
-		if (params.model !== undefined) formData.append("model", params.model);
-		if (params.prompt !== undefined) formData.append("prompt", params.prompt);
+		// Multipart is rebuilt by the relay from bytes plus string fields; the
+		// renderer never assembles an authenticated request itself.
+		const fields: Record<string, string> = {};
+		if (params.model !== undefined) fields.model = params.model;
+		if (params.prompt !== undefined) fields.prompt = params.prompt;
 		if (params.response_format !== undefined)
-			formData.append("response_format", params.response_format);
+			fields.response_format = params.response_format;
 		if (params.temperature !== undefined)
-			formData.append("temperature", params.temperature.toString());
-		if (params.language !== undefined)
-			formData.append("language", params.language);
-		if (params.provider !== undefined)
-			formData.append("provider", params.provider);
-
-		const response = await fetch(`${baseUrl}/v1/transcriptions`, {
-			method: "POST",
-			body: formData,
-			// Content-Type for FormData is set automatically by the browser, including the boundary.
-			// Ensure 'Accept' header is set if the server expects it, though for FormData it's often not strictly needed for the request itself.
-			// However, for consistency with other API calls and to ensure JSON error responses are handled:
-			headers: {
-				Accept: "application/json",
+			fields.temperature = params.temperature.toString();
+		if (params.language !== undefined) fields.language = params.language;
+		if (params.provider !== undefined) fields.provider = params.provider;
+		const bytes = new Uint8Array(await params.file.arrayBuffer());
+		const result = await desktopMedia(
+			{
+				op: "transcription.create",
+				fileName: params.file.name || "audio",
+				mimeType: params.file.type || "application/octet-stream",
+				fields,
 			},
-		});
-
-		if (!response.ok) {
-			let errorDetail = `Transcription request failed: ${response.status} ${response.statusText}`;
-			try {
-				const errorData = await response.json();
-				// Assuming error responses follow the CRUDResponse structure or have a 'detail' field
-				errorDetail = errorData.message || errorData.detail || errorDetail;
-			} catch (_) {
-				// Ignore if response is not JSON or parsing fails
-			}
-			throw new Error(errorDetail);
-		}
-
-		return response.json();
+			bytes,
+		);
+		if (result.kind !== "json") throw mediaError(result);
+		return result.body as CRUDResponse<RadientTranscriptionResponseData>;
 	},
 };

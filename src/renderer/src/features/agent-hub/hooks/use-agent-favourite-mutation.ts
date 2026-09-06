@@ -2,7 +2,6 @@ import {
 	favouriteAgent,
 	unfavouriteAgent,
 } from "@shared/api/radient/agents-api";
-import { apiConfig } from "@shared/config";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { agentFavouriteCountKeys } from "./use-agent-favourite-count-query";
@@ -21,7 +20,7 @@ type UseAgentFavouriteMutationParams = {
  */
 export const useAgentFavouriteMutation = () => {
 	const queryClient = useQueryClient();
-	const { sessionToken, isAuthenticated } = useRadientAuth();
+	const { isAuthenticated } = useRadientAuth();
 
 	const mutation = useMutation<
 		unknown, // Type of data returned by mutationFn
@@ -29,7 +28,7 @@ export const useAgentFavouriteMutation = () => {
 		UseAgentFavouriteMutationParams // Type of variables passed to mutationFn
 	>({
 		mutationFn: async ({ agentId, isCurrentlyFavourited }) => {
-			if (!isAuthenticated || !sessionToken) {
+			if (!isAuthenticated) {
 				throw new Error(
 					"Authentication required to favourite/unfavourite an agent.",
 				);
@@ -40,14 +39,10 @@ export const useAgentFavouriteMutation = () => {
 
 			if (isCurrentlyFavourited) {
 				// If currently favourited, perform unfavourite action
-				return unfavouriteAgent(
-					apiConfig.radientBaseUrl,
-					agentId,
-					sessionToken,
-				);
+				return unfavouriteAgent(agentId);
 			}
 			// If not currently favourited, perform favourite action
-			return favouriteAgent(apiConfig.radientBaseUrl, agentId, sessionToken);
+			return favouriteAgent(agentId);
 		},
 		onSuccess: (_, variables) => {
 			// Invalidate the specific agent's favourite status query

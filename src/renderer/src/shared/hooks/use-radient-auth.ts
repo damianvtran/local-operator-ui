@@ -35,14 +35,13 @@ export const useRadientAuth = () => {
 	// Use the React Query-based hook for Radient user information
 	const {
 		user: radientUser,
-		session,
 		isLoading,
 		error,
 		isAuthenticated,
 		hasLocalSession,
+		unavailable,
 		signOut,
 		refreshUser,
-		refreshToken,
 	} = useRadientUserQuery();
 
 	// Determine the overall authStatus
@@ -104,10 +103,9 @@ export const useRadientAuth = () => {
 					}
 				: null,
 
-		// Session token for API calls
-		sessionToken: session?.accessToken,
-		session,
-		refreshToken,
+		// The backend cannot serve Radient (older backend): show an update state
+		// rather than an empty sign-in prompt.
+		unavailable,
 
 		// Actions
 		refreshUser,

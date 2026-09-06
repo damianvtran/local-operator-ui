@@ -2,9 +2,77 @@ import { electronAPI } from "@electron-toolkit/preload";
 import { contextBridge, ipcRenderer } from "electron";
 import type { ProgressInfo, UpdateInfo } from "electron-updater";
 import type { BackendUpdateInfo } from "../main/update-service";
+import type {
+	DesktopMediaRequest,
+	DesktopRequest,
+} from "../shared/desktop-contract";
 
 // Custom APIs for renderer
 const api = {
+	desktop: {
+		request: (request: DesktopRequest) =>
+			ipcRenderer.invoke("desktop-request", request),
+		openAuthorization: (operationId: string, reopen = false) =>
+			ipcRenderer.invoke("desktop-open-authorization", operationId, reopen),
+		media: (request: DesktopMediaRequest, bytes: Uint8Array | null) =>
+			ipcRenderer.invoke("desktop-media", request, bytes),
+		watchHeartbeat: (args: {
+			sessionId: string;
+			subscriptionId: string;
+			visible: boolean;
+			focused: boolean;
+		}) => ipcRenderer.invoke("desktop-watch-heartbeat", args),
+		closeWindow: () => ipcRenderer.invoke("desktop-close-window"),
+		onOpenConversation: (callback: (sessionId: string) => void) => {
+			const handler = (_event: unknown, payload: { sessionId?: unknown }) => {
+				if (typeof payload?.sessionId === "string") callback(payload.sessionId);
+			};
+			ipcRenderer.on("desktop-open-conversation", handler);
+			return () => {
+				ipcRenderer.removeListener("desktop-open-conversation", handler);
+			};
+		},
+		stream: {
+			subscribe: (
+				args: { sessionId: string; epoch?: string; afterSeq?: number },
+				onEvent: (event: {
+					streamId: string;
+					kind: "data" | "error" | "end";
+					data?: string;
+					detail?: string;
+				}) => void,
+			): { streamId: Promise<string>; dispose: () => void } => {
+				const streamIdPromise = ipcRenderer
+					.invoke("desktop-stream-subscribe", args)
+					.then((handle: { streamId: string }) => handle.streamId);
+				const handler = (
+					_event: unknown,
+					frame: {
+						streamId: string;
+						kind: "data" | "error" | "end";
+						data?: string;
+						detail?: string;
+					},
+				) => {
+					// Frames are scoped to their own subscription: a late frame from
+					// a dead stream must not land on a new one's consumer.
+					void streamIdPromise.then((streamId) => {
+						if (frame.streamId === streamId) onEvent(frame);
+					});
+				};
+				ipcRenderer.on("desktop-stream-event", handler);
+				return {
+					streamId: streamIdPromise,
+					dispose: () => {
+						ipcRenderer.removeListener("desktop-stream-event", handler);
+						void streamIdPromise.then((streamId) =>
+							ipcRenderer.invoke("desktop-stream-unsubscribe", streamId),
+						);
+					},
+				};
+			},
+		},
+	},
 	// Add methods to open files and URLs
 	openFile: (filePath: string) => ipcRenderer.invoke("open-file", filePath),
 	readFile: (filePath: string, encoding?: BufferEncoding) =>
@@ -13,17 +81,6 @@ const api = {
 	openExternal: (url: string) => ipcRenderer.invoke("open-external", url),
 	showItemInFolder: (filePath: string) =>
 		ipcRenderer.invoke("show-item-in-folder", filePath),
-
-	// Session storage methods
-	session: {
-		getSession: () => ipcRenderer.invoke("get-session"),
-		storeSession: (
-			accessToken: string,
-			expiry: number,
-			refreshToken?: string,
-		) => ipcRenderer.invoke("store-session", accessToken, expiry, refreshToken),
-		clearSession: () => ipcRenderer.invoke("clear-session"),
-	},
 
 	// System information
 	systemInfo: {
@@ -128,35 +185,6 @@ const api = {
 		},
 	},
 
-	// --- OAuth Methods ---
-	oauth: {
-		login: (provider: "google" | "microsoft") =>
-			ipcRenderer.invoke("oauth-login", provider),
-		logout: () => ipcRenderer.invoke("oauth-logout"),
-		getStatus: () => ipcRenderer.invoke("oauth-get-status"),
-		requestAdditionalGoogleScopes: (
-			scopes: string[], // Added
-		) => ipcRenderer.invoke("oauth-request-additional-scopes", scopes), // Added
-		// Listener for status updates from the main process
-		onStatusUpdate: (
-			callback: (status: {
-				loggedIn: boolean;
-				provider: "google" | "microsoft" | null;
-				accessToken?: string;
-				idToken?: string;
-				expiry?: number;
-				error?: string;
-			}) => void,
-		) => {
-			const handler = (_event, status) => callback(status);
-			ipcRenderer.on("oauth-status-update", handler);
-			// Return a cleanup function to remove the listener
-			return () => {
-				ipcRenderer.removeListener("oauth-status-update", handler);
-			};
-		},
-	},
-
 	/** Opens a native dialog to select a directory */
 	selectDirectory: (): Promise<string | undefined> =>
 		ipcRenderer.invoke("select-directory"),
@@ -202,9 +230,6 @@ const api = {
 			}
 			return undefined;
 		},
-		// Add function to check if provider auth is configured in the backend
-		checkProviderAuthEnabled: (): Promise<boolean> =>
-			ipcRenderer.invoke("ipc-check-provider-auth"),
 	},
 };
 

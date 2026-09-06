@@ -1,6 +1,6 @@
 import { TranscriptionApi } from "@shared/api/local-operator/transcription-api";
 import type { AgentDetails } from "@shared/api/local-operator/types";
-import { Button, Tooltip } from "@shared/components/ui";
+import { Button, Skeleton, Tooltip } from "@shared/components/ui";
 import { apiConfig } from "@shared/config/api-config";
 import { useRadientCredentialProbe } from "@shared/hooks/use-credentials";
 import { useMessageInput } from "@shared/hooks/use-message-input";
@@ -26,7 +26,7 @@ import {
 	useRef,
 	useState,
 } from "react";
-import type { ClipboardEvent, FormEvent } from "react";
+import type { ClipboardEvent, FormEvent, KeyboardEvent } from "react";
 import { v4 as uuidv4 } from "uuid";
 import type { Message } from "../types/message";
 import { AttachmentsPreview } from "./attachments-preview";
@@ -34,6 +34,13 @@ import { AudioRecordingIndicator } from "./audio-recording-indicator";
 import { DirectoryIndicator } from "./directory-indicator";
 import { ReplyPreview } from "./reply-preview";
 import { ScrollToBottomButton } from "./scroll-to-bottom-button";
+import {
+	type SlashCommandMeta,
+	SlashSuggestionsPopup,
+	completeSlashToken,
+	handleSlashKeyDown,
+	useSlashCommands,
+} from "./slash-commands";
 import { WaveformAnimation } from "./waveform-animation";
 
 /**
@@ -47,10 +54,26 @@ type MessageInputProps = {
 	currentJobId?: string | null;
 	onCancelJob?: (jobId: string) => void;
 	isFarFromBottom?: boolean;
+	/** New messages landed while the reader was scrolled up. */
+	hasNewActivity?: boolean;
 	scrollToBottom?: () => void;
+	/**
+	 * Canonical-session stop control. Unlike the legacy job cancel, a turn in
+	 * flight does NOT disable the composer: typing during a turn steers it, and
+	 * a pending gate is answered here. So the stop button sits beside Send
+	 * rather than replacing it, and only while the owner is actually working.
+	 */
+	canonicalStop?: { active: boolean; onStop: () => void };
 	initialSuggestions?: string[];
 	agentData?: AgentDetails | null;
 	isSmallView?: boolean;
+	/**
+	 * History has not resolved yet, so "no messages" is not yet a FACT.
+	 * The empty state is a claim about the conversation; making it before the
+	 * transcript loads is how a populated chat flashed "no messages yet" and
+	 * then repainted (design D7).
+	 */
+	isHydrating?: boolean;
 };
 
 const EMPTY_REPLIES: Reply[] = [];
@@ -107,10 +130,13 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			currentJobId,
 			onCancelJob,
 			isFarFromBottom = false,
+			hasNewActivity = false,
 			scrollToBottom = () => {},
+			canonicalStop,
 			initialSuggestions,
 			agentData,
 			isSmallView = false,
+			isHydrating = false,
 		},
 		ref,
 	) => {
@@ -215,6 +241,36 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			onSubmit,
 			scrollToBottom,
 		});
+
+		// Slash completion reads the caret position, so it lives above the
+		// textarea's own onChange rather than deriving position from the value.
+		const [caret, setCaret] = useState(0);
+		const slash = useSlashCommands(newMessage, caret);
+		const slashListId = slash.listId;
+		const handleSlashPick = useCallback(
+			(command: SlashCommandMeta) => {
+				setNewMessage(
+					completeSlashToken(
+						newMessage,
+						slash.tokenEnd,
+						command.name,
+						command.arguments,
+					),
+				);
+				slash.close();
+			},
+			[newMessage, slash, setNewMessage],
+		);
+		const handleComposerKeyDown = useCallback(
+			(event: KeyboardEvent<HTMLTextAreaElement>) => {
+				if (handleSlashKeyDown(event, slash, handleSlashPick)) {
+					event.preventDefault();
+					return;
+				}
+				handleKeyDown(event);
+			},
+			[slash, handleSlashPick, handleKeyDown],
+		);
 
 		useImperativeHandle(ref, () => ({
 			focusInput: () => {
@@ -335,7 +391,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 
 		useEffect(() => {
 			if (isRecording) {
-				const handleKeyDown = (event: KeyboardEvent) => {
+				const handleKeyDown = (event: globalThis.KeyboardEvent) => {
 					if (event.key === "Enter") {
 						event.preventDefault();
 						handleConfirmRecording();
@@ -345,7 +401,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					}
 				};
 
-				const handleKeyUp = (event: KeyboardEvent) => {
+				const handleKeyUp = (event: globalThis.KeyboardEvent) => {
 					if (event.code === "Space") {
 						event.preventDefault();
 						handleConfirmRecording();
@@ -511,9 +567,16 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 						COMPOSER_BOX,
 						isSmallView ? "gap-2 rounded-md p-2" : "gap-3 rounded-frame p-4",
 						"w-full max-w-full sm:max-w-[90%] md:max-w-[900px]",
+						// The slash popup anchors above this box without shifting it.
+						"relative",
 					)}
 					data-tour-tag="chat-input-textarea"
 				>
+					<SlashSuggestionsPopup
+						state={slash}
+						onPick={handleSlashPick}
+						anchorRef={textareaRef}
+					/>
 					{replies.length > 0 && (
 						<ReplyPreview replies={replies} onRemoveReply={handleRemoveReply} />
 					)}
@@ -550,12 +613,26 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 								isInputDisabled ? "Agent is busy" : "Ask me for help"
 							}
 							value={newMessage}
-							onChange={(e) => setNewMessage(e.target.value)}
-							onKeyDown={handleKeyDown}
+							onChange={(e) => {
+								setNewMessage(e.target.value);
+								setCaret(e.target.selectionStart);
+							}}
+							onSelect={(e) =>
+								setCaret((e.target as HTMLTextAreaElement).selectionStart)
+							}
+							onKeyDown={handleComposerKeyDown}
 							onPaste={handlePaste}
 							rows={1}
 							disabled={isInputDisabled}
 							aria-label="Message"
+							role="combobox"
+							aria-expanded={slash.open}
+							aria-controls={slash.open ? slashListId : undefined}
+							aria-activedescendant={
+								slash.open && slash.matches[slash.active]
+									? `${slashListId}-${slash.matches[slash.active].name}`
+									: undefined
+							}
 						/>
 					)}
 
@@ -648,6 +725,21 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 									</Tooltip>
 								</>
 							)}
+							{canonicalStop?.active && (
+								<Tooltip content="Stop this session's current work">
+									<span>
+										<Button
+											variant="danger"
+											size={isSmallView ? "icon-sm" : "icon"}
+											type="button"
+											onClick={canonicalStop.onStop}
+											aria-label="Stop"
+										>
+											<Square aria-hidden="true" />
+										</Button>
+									</span>
+								</Tooltip>
+							)}
 							{isLoading && currentJobId ? (
 								<Tooltip content="Stop agent">
 									<span>
@@ -687,7 +779,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					</div>
 				</div>
 
-				{messages.length === 0 && !isSmallView && (
+				{messages.length === 0 && !isHydrating && !isSmallView && (
 					<div className="mx-auto mt-6 w-full max-w-full sm:max-w-[90%] md:max-w-[900px]">
 						{/* Neutral chips. Twelve accent-washed pills was the accent
 						 * budget spent four times over on the one screen that has no
@@ -721,7 +813,28 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					isSmallView ? "px-1 pb-1 pt-0.5" : "px-4 pb-4 pt-2",
 				)}
 			>
-				{messages.length === 0 && !isSmallView ? (
+				{messages.length === 0 && isHydrating && !isSmallView ? (
+					// Hydrating: we do not yet know whether this conversation is
+					// empty, so neither the greeting nor a transcript can be
+					// asserted. Suppressing the greeting alone left the pane BLANK
+					// (design D22) -- correct but mute, and on a slow or remote
+					// backend that blankness is the whole first impression. A
+					// skeleton in the greeting's own place says "loading" without
+					// claiming which of the two answers is coming.
+					<div className="flex w-full flex-col items-center justify-center gap-6 p-4">
+						{/* `<output>` rather than a div with role="status": it carries
+						 * the same implicit live-region semantics as a native element,
+						 * which is what the a11y lint asks for. */}
+						<output
+							className="flex w-full flex-col items-center gap-3"
+							aria-label="Loading conversation"
+						>
+							<Skeleton className="h-7 w-64" />
+							<span className="sr-only">Loading conversation…</span>
+						</output>
+						{inputContent}
+					</div>
+				) : messages.length === 0 && !isSmallView ? (
 					<div className="flex w-full flex-col items-center justify-center gap-6 p-4">
 						<h2 className="text-center text-ink text-title">
 							What can I help you with today?
@@ -735,6 +848,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					visible={isFarFromBottom}
 					onClick={scrollToBottom}
 					bottomDistance={isSmallView ? 120 : 160}
+					hasNewActivity={hasNewActivity}
 				/>
 			</div>
 		);

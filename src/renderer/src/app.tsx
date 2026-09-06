@@ -9,6 +9,7 @@ import { CommandPalette } from "@features/command-palette/components/command-pal
 import { OnboardingModal } from "@features/onboarding";
 import { OnboardingProvider } from "@features/onboarding/components/onboarding-provider";
 
+import { BackendCompatibilityBanner } from "@shared/components/common/backend-compatibility-banner";
 import { ConnectivityBanner } from "@shared/components/common/connectivity-banner";
 import { CreateAgentDialog } from "@shared/components/common/create-agent-dialog";
 import { LowCreditsDialog } from "@shared/components/common/low-credits-dialog";
@@ -18,6 +19,7 @@ import { UpdateNotification } from "@shared/components/common/update-notificatio
 import { SidebarNavigation } from "@shared/components/navigation/sidebar-navigation";
 import { useCheckFirstTimeUser } from "@shared/hooks/use-check-first-time-user";
 import { useLowCreditsDialog } from "@shared/hooks/use-low-credits-dialog";
+import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 
 // The other five routes are split out so a cold start neither downloads nor
@@ -94,6 +96,22 @@ const App: FC = () => {
 		};
 	}, [toggleCommandPalette]);
 
+	// A notification click names a canonical conversation; opening it is the
+	// whole effect. Any pending gate stays pending until an explicit in-app
+	// answer, so a stray click can never approve anything.
+	const setActiveSession = useCanonicalSessionsStore(
+		(state) => state.setActiveSession,
+	);
+	useEffect(() => {
+		const unsubscribe = window.api?.desktop?.onOpenConversation?.(
+			(sessionId) => {
+				setActiveSession(sessionId);
+				navigate("/chat");
+			},
+		);
+		return () => unsubscribe?.();
+	}, [navigate, setActiveSession]);
+
 	return (
 		<OnboardingProvider>
 			<div className="flex h-screen overflow-hidden">
@@ -104,6 +122,8 @@ const App: FC = () => {
 				<OnboardingModal open={isOnboardingActive} />
 
 				<ConnectivityBanner />
+
+				<BackendCompatibilityBanner />
 
 				<UpdateNotification />
 

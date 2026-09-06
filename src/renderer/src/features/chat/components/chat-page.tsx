@@ -1,17 +1,26 @@
 import { createLocalOperatorClient } from "@shared/api/local-operator";
+import { desktopResult } from "@shared/api/local-operator/desktop-api";
+import {
+	desktopFeatureEnabled,
+	useDesktopCapabilities,
+} from "@shared/api/local-operator/desktop-hooks";
 import { JobsApi } from "@shared/api/local-operator/jobs-api";
 import type { JobStatus } from "@shared/api/local-operator/types";
 import { ChatLayout } from "@shared/components/common/chat-layout";
 import { apiConfig } from "@shared/config";
 import { useAgent } from "@shared/hooks/use-agents";
+import { useCanonicalSessionStream } from "@shared/hooks/use-canonical-session";
 import { useConfig } from "@shared/hooks/use-config";
 import { useConversationMessages } from "@shared/hooks/use-conversation-messages";
+import { useDesktopWatchLease } from "@shared/hooks/use-desktop-watch-lease";
 import { useJobPolling } from "@shared/hooks/use-job-polling";
 import { useAgentRouteParam } from "@shared/hooks/use-route-params";
 import { useScrollToBottom } from "@shared/hooks/use-scroll-to-bottom";
 import { terminateStreamingMessages } from "@shared/hooks/use-streaming-message";
 import { useAgentSelectionStore } from "@shared/store/agent-selection-store";
+import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { useChatStore } from "@shared/store/chat-store";
+import { useConversationInputStore } from "@shared/store/conversation-input-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { isDevelopmentMode } from "@shared/utils/env-utils";
 import { showErrorToast } from "@shared/utils/toast-manager";
@@ -25,12 +34,60 @@ import React, {
 import type { FC } from "react";
 import { useNavigate } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
+import { PickerOutlet } from "../pickers/picker-registry";
 import type { Message } from "../types/message";
 import { ChatContent } from "./chat-content";
 import { ChatSidebar } from "./chat-sidebar";
 import { ErrorView } from "./error-view";
 import type { MessageInputHandle } from "./message-input";
 import { PlaceholderView } from "./placeholder-view";
+import { useSlashDispatch } from "./slash-dispatch";
+
+const IMAGE_MIME_BY_EXT: Record<
+	string,
+	"image/png" | "image/jpeg" | "image/gif" | "image/webp"
+> = {
+	png: "image/png",
+	jpg: "image/jpeg",
+	jpeg: "image/jpeg",
+	gif: "image/gif",
+	webp: "image/webp",
+};
+
+/**
+ * Canonical admission carries images inline as `{data_b64, mime_type}`. The
+ * composer holds attachments as paths or data URLs; only image types the
+ * runtime accepts are encoded, anything else is left out rather than
+ * refused (the JSON transport budget is 256 KiB, see the backend contract).
+ */
+const IMAGE_DATA_URL = /^data:(image\/(png|jpeg|gif|webp));base64,(.+)$/;
+const FILE_SCHEME = /^file:\/\//;
+
+async function encodeImageAttachments(attachments: string[]) {
+	const images: {
+		data_b64: string;
+		mime_type: (typeof IMAGE_MIME_BY_EXT)[string];
+	}[] = [];
+	for (const attachment of attachments) {
+		const dataUrl = IMAGE_DATA_URL.exec(attachment);
+		if (dataUrl) {
+			images.push({
+				data_b64: dataUrl[3],
+				mime_type: dataUrl[1] as (typeof IMAGE_MIME_BY_EXT)[string],
+			});
+			continue;
+		}
+		const ext = attachment.split(".").pop()?.toLowerCase() ?? "";
+		const mime = IMAGE_MIME_BY_EXT[ext];
+		if (!mime || !window.api?.readFile) continue;
+		const read = await window.api.readFile(
+			attachment.replace(FILE_SCHEME, ""),
+			"base64",
+		);
+		if (read.success) images.push({ data_b64: read.data, mime_type: mime });
+	}
+	return images.slice(0, 8);
+}
 
 /**
  * Props for the ChatPage component
@@ -85,6 +142,28 @@ export const ChatPage: FC<ChatProps> = () => {
 	const conversationId = effectiveAgentId || undefined;
 	const selectedConversation = effectiveAgentId || undefined;
 
+	// Canonical session identity. The agent id is a profile reference; the
+	// conversation the backend runs is a canonical 12-hex session id. Each
+	// agent maps to one canonical session that is created once and reopened
+	// on every later visit, so identity survives restarts and the watcher.
+	const capabilities = useDesktopCapabilities();
+	const canonicalEnabled =
+		desktopFeatureEnabled(capabilities.data, "commands") &&
+		desktopFeatureEnabled(capabilities.data, "lifecycle");
+	const sessionByAgent = useCanonicalSessionsStore(
+		(state) => state.sessionByAgent,
+	);
+	const createSession = useCanonicalSessionsStore(
+		(state) => state.createSession,
+	);
+	const setActiveSession = useCanonicalSessionsStore(
+		(state) => state.setActiveSession,
+	);
+	const bindSession = useCanonicalSessionsStore((state) => state.bindSession);
+	const canonicalSessionId = conversationId
+		? sessionByAgent[conversationId]
+		: undefined;
+
 	// In production mode, always use "chat" tab
 	const [activeTab, setActiveTab] = useState<"chat" | "raw">("chat");
 
@@ -108,6 +187,43 @@ export const ChatPage: FC<ChatProps> = () => {
 	// Fetch agent details for the current conversation
 	const { data: agentData } = useAgent(conversationId);
 
+	// Bind the agent to a canonical session once its working directory is
+	// known. Creation is idempotent per agent through the store's mapping;
+	// re-mounting reopens the same identity rather than minting another.
+	const creatingSessionRef = useRef<string | null>(null);
+	useEffect(() => {
+		if (!canonicalEnabled || !conversationId || !agentData) return;
+		if (canonicalSessionId) {
+			setActiveSession(canonicalSessionId);
+			return;
+		}
+		if (creatingSessionRef.current === conversationId) return;
+		creatingSessionRef.current = conversationId;
+		const cwd = agentData.current_working_directory || "~";
+		void createSession(cwd, conversationId).finally(() => {
+			if (creatingSessionRef.current === conversationId) {
+				creatingSessionRef.current = null;
+			}
+		});
+	}, [
+		canonicalEnabled,
+		conversationId,
+		agentData,
+		canonicalSessionId,
+		createSession,
+		setActiveSession,
+	]);
+
+	// Canonical stream over the authenticated relay, plus the watch lease it
+	// keys off. A terminal canonical event is what resolves the legacy
+	// "Waiting to start" latch: the job poller can miss a fast failure, but
+	// the canonical stream always reports the turn boundary.
+	const canonical = useCanonicalSessionStream(
+		canonicalSessionId,
+		canonicalEnabled && Boolean(canonicalSessionId),
+	);
+	useDesktopWatchLease(canonicalSessionId, canonical.subscriptionId);
+
 	// Only fetch messages if we have a valid conversation ID
 	const {
 		messages,
@@ -122,6 +238,12 @@ export const ChatPage: FC<ChatProps> = () => {
 
 	// Get the addMessage function from the chat store
 	const addMessage = useChatStore((state) => state.addMessage);
+	const getCurrentInput = useConversationInputStore(
+		(state) => state.getCurrentInput,
+	);
+	const setCurrentInput = useConversationInputStore(
+		(state) => state.setCurrentInput,
+	);
 
 	// Use the job polling hook
 	const {
@@ -136,6 +258,42 @@ export const ChatPage: FC<ChatProps> = () => {
 		addMessage,
 	});
 
+	// Canonical transcript mode: once the agent is bound to a canonical
+	// session and the stream is live, the conversation is painted from the
+	// backend's durable history + live events and prompts are admitted through
+	// `sessions.message`. The legacy job/message path below stays only for a
+	// backend that predates the desktop contract (capabilities fail closed).
+	const canonicalMode = canonicalEnabled && Boolean(canonicalSessionId);
+	const canonicalBusy =
+		canonicalMode &&
+		(canonical.frontend?.streaming === true ||
+			canonical.transcript.records.some(
+				(record) =>
+					(record.kind === "assistant" && record.streaming) ||
+					(record.kind === "tool" && record.phase !== "done"),
+			));
+	// Admission pending: the composer disables between POST and the owner's
+	// `message_start` echo so a double Enter cannot admit twice.
+	const [admitting, setAdmitting] = useState(false);
+
+	// Resolve the busy latch from the canonical stream. Each terminal event
+	// is consumed once (tracked by generation) so an old terminal does not
+	// clear a later turn's loading state.
+	const lastTerminalRef = useRef<string | null>(null);
+	useEffect(() => {
+		const marker = canonical.terminal
+			? `${canonical.receipt?.epoch ?? ""}:${canonical.receipt?.seq ?? 0}:${canonical.terminal}`
+			: null;
+		if (!marker || marker === lastTerminalRef.current) return;
+		lastTerminalRef.current = marker;
+		if (
+			canonical.terminal === "agent_end" ||
+			canonical.terminal === "turn_end"
+		) {
+			setIsLoading(false);
+		}
+	}, [canonical.terminal, canonical.receipt, setIsLoading]);
+
 	// Use custom hook to track scroll position and show/hide scroll button
 	// Pass the messagesContainerRef to the hook to ensure it tracks the correct container
 	const { isFarFromBottom, scrollToBottom } = useScrollToBottom(
@@ -146,6 +304,27 @@ export const ChatPage: FC<ChatProps> = () => {
 
 	// Create a ref for the messages end element (for backwards compatibility)
 	const messagesEndRef = useRef<HTMLDivElement>(null);
+
+	// "New activity" instead of autoscroll: when messages grow while the
+	// reader is scrolled up, flag it and let them choose to jump. Cleared
+	// the moment they are back near the bottom.
+	const [hasNewActivity, setHasNewActivity] = useState(false);
+	const seenMessageCountRef = useRef(messages.length);
+	useEffect(() => {
+		if (messages.length > seenMessageCountRef.current && isFarFromBottom) {
+			setHasNewActivity(true);
+		}
+		seenMessageCountRef.current = messages.length;
+	}, [messages.length, isFarFromBottom]);
+	useEffect(() => {
+		if (!isFarFromBottom) setHasNewActivity(false);
+	}, [isFarFromBottom]);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: reset on conversation change only
+	useEffect(() => {
+		// A new conversation starts with nothing unread.
+		setHasNewActivity(false);
+		seenMessageCountRef.current = 0;
+	}, [conversationId]);
 
 	// Update the last selected agent ID when the agent ID changes
 	// Force scroll to bottom only when switching to a new conversation
@@ -307,9 +486,159 @@ export const ChatPage: FC<ChatProps> = () => {
 	// Memoized function to handle sending a new message
 	const { data: configData } = useConfig();
 
+	// Slash submissions are dispatched to the desktop command control, never
+	// admitted as model chat. The backend rejects slash text on /messages with
+	// 422 — intercepting here is what makes `/settings` navigate instead of
+	// failing against a missing model key one API round-trip later.
+	const rebindSession = useCallback(
+		(nextSessionId: string) => {
+			if (!conversationId) return;
+			bindSession(conversationId, nextSessionId);
+		},
+		[conversationId, bindSession],
+	);
+	// A send that never reached the backend must hand the user's words back.
+	// The composer reads its draft from the conversation input store on every
+	// value change, so writing there restores the text in place -- no second
+	// source of draft state, and it survives the navigation the failure might
+	// prompt. Attachments are deliberately NOT re-attached: the composer holds
+	// them as `Attachment` records and only their paths reach this callback, so
+	// re-adding them here would invent metadata; the note says what happened and
+	// the files are still on disk.
+	const restoreDraft = useCallback(
+		(content: string, _attachments: string[]) => {
+			if (!conversationId) return;
+			// Only when the composer is empty: the user may already be typing the
+			// next thing, and overwriting that would repeat the very defect this
+			// fixes.
+			if (getCurrentInput(conversationId).trim()) return;
+			setCurrentInput(conversationId, content);
+		},
+		[conversationId, getCurrentInput, setCurrentInput],
+	);
+
+	// Notes land in the transcript the user is LOOKING at. In canonical mode the
+	// view is painted from `canonical.view`, so a system row written into the
+	// legacy chat store goes to a surface nobody renders -- which is how a failed
+	// send lost both the message and its error (QA Q1, and UX U5 from the picker
+	// path). Same rule as `useSlashDispatch`'s own `note`, kept identical on
+	// purpose: one way to say something to the user, not two.
+	const note = useCallback(
+		(text: string, error = false) => {
+			if (canonicalMode && canonicalSessionId) {
+				canonical.addNote(text, error ? "error" : "info");
+				return;
+			}
+			if (!conversationId) return;
+			addMessage(conversationId, {
+				id: uuidv4(),
+				role: "system",
+				message: text,
+				timestamp: new Date(),
+				status: error ? "error" : undefined,
+			});
+		},
+		[
+			addMessage,
+			canonical.addNote,
+			canonicalMode,
+			canonicalSessionId,
+			conversationId,
+		],
+	);
+
+	const { dispatch: handleSlashDispatch, picker } = useSlashDispatch({
+		sessionId: canonicalSessionId,
+		addMessage: (message) => {
+			if (conversationId) addMessage(conversationId, message);
+		},
+		canonical,
+		rebind: rebindSession,
+	});
+
 	const handleSendMessage = useCallback(
 		async (content: string, attachments: string[]) => {
 			if (!conversationId) return;
+
+			// A leading slash is a command, full stop. Dispatch consumes it and
+			// nothing below (model job creation) runs for it.
+			if (await handleSlashDispatch(content)) return;
+
+			if (canonicalMode && canonicalSessionId) {
+				// Canonical admission. 200 means the owner ADMITTED the prompt, not
+				// that the model answered: the transcript paints the user row from
+				// the owner's own `message_start` echo (keyed by this request id),
+				// so nothing optimistic is inserted here to be deduplicated later.
+				// A pending gate is answered through the answers route instead of
+				// being admitted as a new prompt the owner would queue.
+				const gate = canonical.frontend?.pending_gate ?? null;
+				const requestId = uuidv4();
+				setAdmitting(true);
+				try {
+					if (gate && canonical.ownerEpoch) {
+						const trimmed = content.trim().toLowerCase();
+						if (gate.kind === "approval") {
+							const yes = ["y", "yes", "approve", "ok", "allow"].includes(
+								trimmed,
+							);
+							const no = ["n", "no", "deny", "reject", "cancel"].includes(
+								trimmed,
+							);
+							if (!yes && !no) {
+								note("Reply yes or no to answer the approval request.", true);
+								// The prompt was never sent, so it is still the user's to
+								// edit rather than something to retype from memory.
+								restoreDraft(content, attachments);
+								return;
+							}
+							await desktopResult({
+								op: "sessions.answer",
+								sessionId: canonicalSessionId,
+								epoch: canonical.ownerEpoch,
+								requestId: gate.request_id,
+								approved: yes,
+							});
+						} else {
+							await desktopResult({
+								op: "sessions.answer",
+								sessionId: canonicalSessionId,
+								epoch: canonical.ownerEpoch,
+								requestId: gate.request_id,
+								value: content,
+								questionIndex: gate.question_index,
+							});
+						}
+						return;
+					}
+					const images = await encodeImageAttachments(attachments);
+					await desktopResult({
+						op: "sessions.message",
+						sessionId: canonicalSessionId,
+						requestId,
+						text: content,
+						images: images.length > 0 ? images : undefined,
+						// Steer rather than queue when the owner is mid-turn: that is
+						// what typing during a turn means in the terminal too.
+						mode: canonicalBusy ? "steer" : "prompt",
+					});
+					requestAnimationFrame(() => scrollToBottom());
+				} catch (error) {
+					note(
+						`The message was not sent: ${
+							error instanceof Error ? error.message : "the backend refused it"
+						}`,
+						true,
+					);
+					// The composer clears on submit, so a failed admission used to
+					// DESTROY the typed prompt outright. Hand it back instead: the
+					// user's words are theirs, and a failure is not consent to lose
+					// them.
+					restoreDraft(content, attachments);
+				} finally {
+					setAdmitting(false);
+				}
+				return;
+			}
 
 			// Create a new user message
 			const userMessage: Message = {
@@ -420,8 +749,53 @@ export const ChatPage: FC<ChatProps> = () => {
 			setCurrentJobId,
 			configData,
 			scrollToBottom,
+			handleSlashDispatch,
+			canonicalMode,
+			canonicalSessionId,
+			canonicalBusy,
+			canonical.frontend?.pending_gate,
+			canonical.ownerEpoch,
+			note,
+			restoreDraft,
 		],
 	);
+
+	// `/stop`-equivalent for the composer's stop button in canonical mode: the
+	// canonical stop control ends the session's current work through the
+	// owner's own protocol (never the legacy job cancel).
+	const handleCanonicalStop = useCallback(async () => {
+		if (!canonicalSessionId || !conversationId) return;
+		try {
+			const result = await desktopResult<{
+				data: { results?: { session_id: string; status: string }[] };
+			}>({
+				op: "sessions.stop",
+				requestId: uuidv4(),
+				targets: [canonicalSessionId],
+				confirmed: true,
+			});
+			const status = result.data?.results?.[0]?.status ?? "stop_requested";
+			addMessage(conversationId, {
+				id: uuidv4(),
+				role: "system",
+				message:
+					status === "already_stopped"
+						? "Nothing was running."
+						: "Stop requested. The session ends its current work.",
+				timestamp: new Date(),
+			});
+		} catch (error) {
+			addMessage(conversationId, {
+				id: uuidv4(),
+				role: "system",
+				message: `Stop was not accepted: ${
+					error instanceof Error ? error.message : "the backend refused it"
+				}`,
+				timestamp: new Date(),
+				status: "error",
+			});
+		}
+	}, [canonicalSessionId, conversationId, addMessage]);
 
 	// Memoize the raw information content to prevent re-rendering
 	const rawInfoContent = useMemo(() => {
@@ -484,6 +858,7 @@ Store messages: ${JSON.stringify(getMessages(conversationId || ""), null, 2)}`;
 				isLoadingMessages={isLoadingMessages}
 				isFetchingMore={isFetchingMore}
 				isFarFromBottom={isFarFromBottom}
+				hasNewActivity={hasNewActivity}
 				jobStatus={jobStatus as JobStatus | null}
 				currentExecution={currentExecution}
 				messagesContainerRef={messagesContainerRef}
@@ -496,20 +871,33 @@ Store messages: ${JSON.stringify(getMessages(conversationId || ""), null, 2)}`;
 				agentData={agentData}
 				refetch={refetch}
 				messageInputRef={messageInputRef}
+				canonical={
+					canonicalMode
+						? {
+								view: canonical,
+								busy: canonicalBusy || admitting,
+								onStop: handleCanonicalStop,
+							}
+						: undefined
+				}
 			/>
 		);
 	};
 
 	return (
-		<ChatLayout
-			sidebar={
-				<ChatSidebar
-					selectedConversation={selectedConversation}
-					onSelectConversation={handleSelectConversation}
-					onNavigateToAgentSettings={handleNavigateToAgentSettings}
-				/>
-			}
-			content={renderContent()}
-		/>
+		<>
+			<ChatLayout
+				sidebar={
+					<ChatSidebar
+						selectedConversation={selectedConversation}
+						onSelectConversation={handleSelectConversation}
+						onNavigateToAgentSettings={handleNavigateToAgentSettings}
+					/>
+				}
+				content={renderContent()}
+			/>
+			{/* The one picker host for slash destinations; null when idle. */}
+			<PickerOutlet context={picker} />
+		</>
 	);
 };

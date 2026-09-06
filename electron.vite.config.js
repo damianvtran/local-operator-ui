@@ -8,6 +8,7 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import tsconfigPaths from "vite-tsconfig-paths";
 import { replaceBackendConfigPlugin } from "./scripts/vite-plugins/replace-backend-config";
+import { desktopProxyPlugin } from "./scripts/vite-plugins/desktop-proxy";
 
 export default defineConfig({
 	assetsInclude: ["**/*.sh", "**/*.ps1"],
@@ -37,7 +38,7 @@ export default defineConfig({
 		// tailwindcss() must run for BOTH renderer html entries (index.html and
 		// installer.html); it is a renderer-level plugin, so registering it here
 		// covers both inputs declared below.
-		plugins: [react(), tailwindcss(), tsconfigPaths()],
+		plugins: [react(), tailwindcss(), tsconfigPaths(), desktopProxyPlugin()],
 		input: {
 			index: resolve(__dirname, "src/renderer/index.html"),
 			installer: resolve(__dirname, "src/renderer/installer.html"),

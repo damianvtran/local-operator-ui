@@ -1,58 +1,36 @@
+import { desktopMedia, mediaError } from "./desktop-api";
 import type { AgentSpeechRequest, SpeechRequest } from "./types";
 
+/**
+ * Speech synthesis through the authenticated media relay. The managed backend
+ * requires the desktop bearer on these routes, which only main (or the dev
+ * server proxy) can attach; the `baseUrl` parameter is kept for signature
+ * compatibility with the hooks that call this and is no longer used.
+ */
 export const SpeechApi = {
-	/**
-	 * Generates speech from text.
-	 * @param baseUrl - The base URL of the API.
-	 * @param request - The speech request details.
-	 * @returns A promise that resolves to the audio data as a Blob.
-	 */
-	create: async (baseUrl: string, request: SpeechRequest): Promise<Blob> => {
-		const response = await fetch(`${baseUrl}/v1/tools/speech`, {
-			method: "POST",
-			headers: {
-				"Content-Type": "application/json",
-			},
-			body: JSON.stringify(request),
-		});
-
-		if (!response.ok) {
-			const errorText = await response.text();
-			throw new Error(
-				`Failed to generate speech: ${response.status} ${errorText}`,
-			);
-		}
-
-		return response.blob();
+	create: async (_baseUrl: string, request: SpeechRequest): Promise<Blob> => {
+		const result = await desktopMedia(
+			{ op: "speech.create", request: request as Record<string, unknown> },
+			null,
+		);
+		if (result.kind !== "bytes") throw mediaError(result);
+		return new Blob([result.data as BlobPart], { type: result.mimeType });
 	},
 
-	/**
-	 * Generates speech from an agent's last message.
-	 * @param baseUrl - The base URL of the API.
-	 * @param agentId - The ID of the agent.
-	 * @param request - The speech request details.
-	 * @returns A promise that resolves to the audio data as a Blob.
-	 */
 	createForAgent: async (
-		baseUrl: string,
+		_baseUrl: string,
 		agentId: string,
 		request: AgentSpeechRequest,
 	): Promise<Blob> => {
-		const response = await fetch(`${baseUrl}/v1/agents/${agentId}/speech`, {
-			method: "POST",
-			headers: {
-				"Content-Type": "application/json",
+		const result = await desktopMedia(
+			{
+				op: "speech.agent",
+				agentId,
+				request: request as Record<string, unknown>,
 			},
-			body: JSON.stringify(request),
-		});
-
-		if (!response.ok) {
-			const errorText = await response.text();
-			throw new Error(
-				`Failed to generate speech: ${response.status} ${errorText}`,
-			);
-		}
-
-		return response.blob();
+			null,
+		);
+		if (result.kind !== "bytes") throw mediaError(result);
+		return new Blob([result.data as BlobPart], { type: result.mimeType });
 	},
 };

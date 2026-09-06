@@ -157,21 +157,74 @@ const json = (body: unknown) =>
  */
 const BACKEND_ORIGIN = new URL(apiConfig.baseUrl).origin;
 
+/*
+ * `/__desktop` answers with the transport's own envelope -- `{status, body}`,
+ * where `body` is the backend's CRUD payload -- not with the payload directly.
+ * `desktopControlResponse` rebuilds a `Response` from those two fields, so a
+ * stub that returns the bare payload yields a 200 whose result is `undefined`
+ * and renders as an empty list rather than an error.
+ */
+const desktop = (body: unknown) => json({ status: 200, body });
+
+const scheduleListBody = {
+	status: 200,
+	message: "ok",
+	result: {
+		schedules: SCHEDULES,
+		total: SCHEDULES.length,
+		page: 1,
+		per_page: 50,
+	},
+};
+
+const agentListBody = {
+	status: 200,
+	message: "ok",
+	result: {
+		agents: AGENTS,
+		total: AGENTS.length,
+		page: 1,
+		per_page: 50,
+	},
+};
+
 const installFetchStub = () => {
 	const original = window.fetch;
 	window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
 		const url = typeof input === "string" ? input : input.toString();
+		/*
+		 * The schedules family is gated in managed mode, so the page reaches it
+		 * through the desktop contract: one POST to `/__desktop` carrying an
+		 * `op`, not a GET at the REST path. Routing on the op is what keeps this
+		 * story honest -- matching only `/v1/schedules` left the list spinning
+		 * forever, because nothing the page sends looks like that any more.
+		 */
+		if (url.includes("/__desktop")) {
+			const request = JSON.parse(String(init?.body ?? "{}"));
+			const op = request.op;
+			if (
+				op === "legacy.schedules.list" ||
+				op === "legacy.agent.schedules.list"
+			)
+				return desktop(scheduleListBody);
+			if (op === "legacy.agent.get")
+				return desktop({
+					status: 200,
+					message: "ok",
+					result:
+						AGENTS.find((candidate) => candidate.id === request.agentId) ??
+						AGENTS[0],
+				});
+			if (op === "legacy.agents.list") return desktop(agentListBody);
+			/*
+			 * Same reasoning as the unrouted REST paths below: an op this story
+			 * has not thought about must fail loudly here rather than reach a
+			 * real backend or resolve as a silently empty success.
+			 */
+			throw new TypeError("Load failed");
+		}
 		if (url.includes("/v1/schedules")) {
-			return json({
-				status: 200,
-				message: "ok",
-				result: {
-					schedules: SCHEDULES,
-					total: SCHEDULES.length,
-					page: 1,
-					per_page: 50,
-				},
-			});
+			return json(scheduleListBody);
 		}
 		const agentMatch = AGENT_BY_ID.exec(url);
 		if (agentMatch) {
@@ -179,16 +232,7 @@ const installFetchStub = () => {
 			return json({ status: 200, message: "ok", result: agent ?? AGENTS[0] });
 		}
 		if (url.includes("/v1/agents")) {
-			return json({
-				status: 200,
-				message: "ok",
-				result: {
-					agents: AGENTS,
-					total: AGENTS.length,
-					page: 1,
-					per_page: 50,
-				},
-			});
+			return json(agentListBody);
 		}
 		/*
 		 * Unrouted backend paths fail here rather than reaching the network,

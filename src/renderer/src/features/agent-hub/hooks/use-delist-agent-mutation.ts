@@ -1,5 +1,4 @@
 import { deleteAgent } from "@shared/api/radient/agents-api";
-import { apiConfig } from "@shared/config";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -18,7 +17,7 @@ type DelistAgentVariables = {
 export const useDelistAgentMutation = () => {
 	const queryClient = useQueryClient();
 	const navigate = useNavigate();
-	const { sessionToken } = useRadientAuth(); // Use sessionToken
+	const { isAuthenticated } = useRadientAuth();
 	// Removed enqueueSnackbar
 
 	const mutation = useMutation<
@@ -27,15 +26,15 @@ export const useDelistAgentMutation = () => {
 		DelistAgentVariables // Type of variables passed to mutate
 	>({
 		mutationFn: async ({ agentId }: DelistAgentVariables) => {
-			if (!sessionToken) {
-				// Check sessionToken
+			if (!isAuthenticated) {
+				// Check the account is signed in
 				throw new Error("Authentication required to delist an agent.");
 			}
 			if (!agentId) {
 				throw new Error("Agent ID is required to delist.");
 			}
 			// Call the API function to delete the agent
-			return deleteAgent(apiConfig.radientBaseUrl, agentId, sessionToken); // Use sessionToken
+			return deleteAgent(agentId);
 		},
 		onSuccess: (_, variables) => {
 			showSuccessToast("Agent delisted"); // Use toast.success

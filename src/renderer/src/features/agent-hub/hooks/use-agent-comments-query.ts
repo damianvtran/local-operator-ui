@@ -3,7 +3,6 @@ import type {
 	AgentComment,
 	PaginatedResponse,
 } from "@shared/api/radient/types";
-import { apiConfig } from "@shared/config";
 import { useQuery } from "@tanstack/react-query";
 
 // Query keys for agent comments
@@ -39,10 +38,7 @@ export const useAgentCommentsQuery = ({
 			if (!agentId) {
 				throw new Error("Agent ID is required to fetch comments.");
 			}
-			const response = await listAgentComments(
-				apiConfig.radientBaseUrl,
-				agentId,
-			);
+			const response = await listAgentComments(agentId);
 			return response.result;
 		},
 		enabled: !!agentId && enabled,

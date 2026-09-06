@@ -20,11 +20,19 @@ export enum LocalOperatorStartupMode {
 }
 
 import { type ChildProcess, exec, spawn } from "node:child_process";
+import { randomBytes } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import { app, dialog as electronDialog } from "electron";
+import type { DesktopResponse } from "../../shared/desktop-contract";
+import {
+	type DesktopMediaResponse,
+	requestDesktopMedia,
+} from "../desktop-media";
+import { DesktopStreamRelay } from "../desktop-stream";
+import { requestDesktop } from "../desktop-transport";
 import { backendConfig } from "./config";
 import { LogFileType, logger } from "./logger";
 
@@ -52,6 +60,56 @@ export class BackendServiceManager {
 	private exitPromise: Promise<void> | null = null;
 	private exitResolve: (() => void) | null = null;
 	private shellEnv: Record<string, string | undefined> = {};
+	// External/dev backends may be explicitly paired through main's environment.
+	// Managed starts always rotate this; it is never exposed by preload or logs.
+	private desktopToken: string | null =
+		process.env.LOCAL_OPERATOR_DESKTOP_TOKEN || null;
+
+	/** Authenticated SSE relay for canonical session events. Recreated when the
+	 * backend URL rotates (external-backend discovery) so streams cannot pin a
+	 * stale origin. */
+	private streamRelay: DesktopStreamRelay | null = null;
+	private streamRelayUrl = "";
+	/** Survives relay recreation so notifications never silently detach
+	 * when the backend URL rotates. */
+	private streamObserver: ((sessionId: string, data: string) => void) | null =
+		null;
+
+	getStreamRelay(): DesktopStreamRelay {
+		if (!this.streamRelay || this.streamRelayUrl !== this.backendUrl) {
+			this.streamRelay?.dispose();
+			this.streamRelay = new DesktopStreamRelay(
+				this.backendUrl,
+				this.desktopToken,
+			);
+			this.streamRelay.observe(this.streamObserver);
+			this.streamRelayUrl = this.backendUrl;
+		}
+		return this.streamRelay;
+	}
+
+	observeStream(
+		observer: ((sessionId: string, data: string) => void) | null,
+	): void {
+		this.streamObserver = observer;
+		this.streamRelay?.observe(observer);
+	}
+
+	requestDesktop(input: unknown): Promise<DesktopResponse> {
+		return requestDesktop(input, this.backendUrl, this.desktopToken);
+	}
+
+	requestDesktopMedia(
+		input: unknown,
+		bytes: Uint8Array | null,
+	): Promise<DesktopMediaResponse> {
+		return requestDesktopMedia(
+			input,
+			bytes,
+			this.backendUrl,
+			this.desktopToken,
+		);
+	}
 	private isAppClosing = false; // Flag to track when the app is being closed
 	private isAutoUpdating = false; // Flag to track when an autoupdate is in progress
 	private shutdownTimeoutMs = {
@@ -527,6 +585,7 @@ export class BackendServiceManager {
 		}
 
 		// No external backend, start our own
+		this.desktopToken = randomBytes(32).toString("hex");
 		try {
 			// Check if local-operator command exists globally
 			if (await this.checkLocalOperatorExists()) {
@@ -554,7 +613,10 @@ export class BackendServiceManager {
 				this.process = spawn(cmd, args, {
 					detached: false, // Ensure process is not detached from parent
 					stdio: "pipe",
-					env: this.shellEnv, // Use shell environment variables
+					env: {
+						...this.shellEnv,
+						LOCAL_OPERATOR_DESKTOP_TOKEN: this.desktopToken,
+					},
 					// On Windows, we need to create a new process group to ensure proper termination
 					...(process.platform === "win32" ? { windowsHide: true } : {}),
 				});
@@ -629,7 +691,10 @@ export class BackendServiceManager {
 				this.process = spawn(cmd, args, {
 					detached: false, // Ensure process is not detached from parent
 					stdio: "pipe",
-					env: this.shellEnv, // Use shell environment variables
+					env: {
+						...this.shellEnv,
+						LOCAL_OPERATOR_DESKTOP_TOKEN: this.desktopToken,
+					},
 					// On Windows, we need to create a new process group to ensure proper termination
 					...(process.platform === "win32" ? { windowsHide: true } : {}),
 				});

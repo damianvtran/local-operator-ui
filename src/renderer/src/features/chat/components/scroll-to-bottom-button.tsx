@@ -24,6 +24,13 @@ type ScrollToBottomButtonProps = {
 	className?: string;
 
 	bottomDistance?: number;
+
+	/**
+	 * True when messages arrived while the reader was scrolled up. The
+	 * button grows a label so the reader learns there is something new
+	 * without the transcript moving under them.
+	 */
+	hasNewActivity?: boolean;
 };
 
 /**
@@ -39,6 +46,7 @@ export const ScrollToBottomButton: FC<ScrollToBottomButtonProps> = ({
 	onClick,
 	className,
 	bottomDistance = 160,
+	hasNewActivity = false,
 }) => {
 	const handleClick = useCallback(() => {
 		onClick();
@@ -57,13 +65,16 @@ export const ScrollToBottomButton: FC<ScrollToBottomButtonProps> = ({
 		>
 			<Button
 				variant="secondary"
-				size="icon"
+				size={hasNewActivity ? "sm" : "icon"}
 				className="pointer-events-auto rounded-full shadow-overlay"
-				aria-label="Scroll to bottom"
+				aria-label={
+					hasNewActivity ? "New activity, scroll to bottom" : "Scroll to bottom"
+				}
 				onClick={handleClick}
 				tabIndex={visible ? 0 : -1}
 			>
 				<ArrowDown aria-hidden="true" />
+				{hasNewActivity ? "New activity" : null}
 			</Button>
 		</div>
 	);

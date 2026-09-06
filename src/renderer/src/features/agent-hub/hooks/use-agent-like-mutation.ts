@@ -1,5 +1,4 @@
 import { likeAgent, unlikeAgent } from "@shared/api/radient/agents-api";
-import { apiConfig } from "@shared/config";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { agentLikeCountKeys } from "./use-agent-like-count-query";
@@ -18,7 +17,7 @@ type UseAgentLikeMutationParams = {
  */
 export const useAgentLikeMutation = () => {
 	const queryClient = useQueryClient();
-	const { sessionToken, isAuthenticated } = useRadientAuth();
+	const { isAuthenticated } = useRadientAuth();
 
 	const mutation = useMutation<
 		unknown, // Type of data returned by mutationFn
@@ -26,7 +25,7 @@ export const useAgentLikeMutation = () => {
 		UseAgentLikeMutationParams // Type of variables passed to mutationFn
 	>({
 		mutationFn: async ({ agentId, isCurrentlyLiked }) => {
-			if (!isAuthenticated || !sessionToken) {
+			if (!isAuthenticated) {
 				throw new Error("Authentication required to like/unlike an agent.");
 			}
 			if (!agentId) {
@@ -35,10 +34,10 @@ export const useAgentLikeMutation = () => {
 
 			if (isCurrentlyLiked) {
 				// If currently liked, perform unlike action
-				return unlikeAgent(apiConfig.radientBaseUrl, agentId, sessionToken);
+				return unlikeAgent(agentId);
 			}
 			// If not currently liked, perform like action
-			return likeAgent(apiConfig.radientBaseUrl, agentId, sessionToken);
+			return likeAgent(agentId);
 		},
 		onSuccess: (_, variables) => {
 			// Invalidate the specific agent's like status query

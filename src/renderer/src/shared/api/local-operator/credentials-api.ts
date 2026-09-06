@@ -1,6 +1,7 @@
 /**
  * Local Operator API - Credentials Endpoints
  */
+import { desktopControlResponse } from "./desktop-api";
 import type {
 	CRUDResponse,
 	CredentialListResult,
@@ -19,14 +20,9 @@ export const CredentialsApi = {
 	 * @returns Promise resolving to the credentials list response
 	 */
 	async listCredentials(
-		baseUrl: string,
+		_baseUrl: string,
 	): Promise<CRUDResponse<CredentialListResult>> {
-		const response = await fetch(`${baseUrl}/v1/credentials`, {
-			method: "GET",
-			headers: {
-				Accept: "application/json",
-			},
-		});
+		const response = await desktopControlResponse({ op: "credentials.list" });
 
 		if (!response.ok) {
 			throw new Error(
@@ -46,16 +42,13 @@ export const CredentialsApi = {
 	 * @returns Promise resolving to the update response
 	 */
 	async updateCredential(
-		baseUrl: string,
+		_baseUrl: string,
 		credentialUpdate: CredentialUpdate,
 	): Promise<CRUDResponse> {
-		const response = await fetch(`${baseUrl}/v1/credentials`, {
-			method: "PATCH",
-			headers: {
-				"Content-Type": "application/json",
-				Accept: "application/json",
-			},
-			body: JSON.stringify(credentialUpdate),
+		const response = await desktopControlResponse({
+			op: "credentials.update",
+			key: credentialUpdate.key,
+			value: credentialUpdate.value,
 		});
 
 		if (!response.ok) {
