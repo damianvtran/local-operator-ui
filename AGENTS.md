@@ -169,3 +169,33 @@ Use this process whenever asked to cut a release.
 - If the user asks for a release bump, execute the full workflow end-to-end unless told otherwise.
 - If there are unrelated uncommitted changes, do not discard them; proceed carefully and scope your commit.
 - Keep release notes aligned with prior repository style and include a compare-link changelog.
+
+## Who may merge: agent review is sufficient for a code owner
+
+Code owners are listed in `.github/CODEOWNERS`. When the agent is **acting for
+a code owner** — running on a code owner's machine and under their account,
+which is the normal case here — the standing agent review gate **is** the
+approval. A clean, fresh, independent agent review round plus green CI is
+sufficient to merge; do not wait for a second human to click approve.
+
+This is a statement about *authority*, not about rigour. Every requirement
+still holds in full: an **independent** reviewer subagent (never the agent that
+wrote the code), rounds repeated until no blocker or major remains, review
+freshness against the current head, QA evidence from the real running surface,
+and a design/UX round for anything user-visible — which, in this repository, is
+most changes. Merging is authorized by the review being genuinely clean, never
+by the merger being entitled to it.
+
+Two things this does not license:
+
+- **Never approve your own work to satisfy the rule.** The author and the
+  reviewer must be different agents. GitHub cannot tell them apart, because
+  every agent here pushes as the same account — so this separation is a
+  discipline the agents keep, not one the forge enforces.
+- **`--admin` stays a last resort, and stays disclosed.** If a bypass is ever
+  genuinely necessary, say plainly on the PR and in the release notes that the
+  merge bypassed rather than cleared review. A tag that implies a review it
+  never had is the failure this section exists to prevent.
+
+An agent that is **not** acting for a code owner prepares the PR, records the
+review rounds, and hands it to an owner to merge.
