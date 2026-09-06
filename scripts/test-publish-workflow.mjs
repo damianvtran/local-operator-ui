@@ -100,6 +100,46 @@ for (const [label, output, exitCode] of [["exists", "0.14.1", 0], ["absent", "",
     }));
   }
 }
+// The .jsc guard must gate the PUBLISH path, not just ci.yml. ci.yml triggers
+// on push to main/dev-*, so it protects the branch; a workflow_dispatch repair
+// or a tag from a commit whose CI never ran reaches npm publish ungated.
+// Run the real step's shell against real tarballs, both directions.
+for (const [label, entries, expected] of [
+  ["real npm-channel tarball", ["package/out/main/index.js", "package/bin/local-operator-ui.js"], 0],
+  ["synthetic bytecode tarball", ["package/out/main/index.js", "package/out/main/index.jsc"], 1],
+]) {
+  test(`publish-path bytecode guard rejects ${label}: actual shell gate`, () => sandbox((dir) => {
+    mkdirSync(join(dir, "package", "out", "main"), { recursive: true });
+    mkdirSync(join(dir, "package", "bin"), { recursive: true });
+    for (const entry of entries) writeFileSync(join(dir, entry), "// fixture\n");
+    // `npm pack` is stubbed so the gate is tested against a known tarball rather
+    // than a real 100MB+ build; the assertion under test is the tar|grep, and it
+    // reads whatever npm pack left on disk either way.
+    const tarball = "local-operator-ui-0.14.1.tgz";
+    spawnSync("tar", ["czf", tarball, ...entries.map((e) => e.replace(/^package\//, ""))], { cwd: join(dir, "package") });
+    spawnSync("mv", [join(dir, "package", tarball), dir]);
+    writeFileSync(join(dir, "npm"), "#!/bin/sh\nexit 0\n", { mode: 0o755 });
+    const result = shell(step("npm-publish", "Pack and assert the tarball ships no V8 bytecode").run, { PATH: `${dir}:${process.env.PATH}`, GITHUB_OUTPUT: join(dir, "outputs") }, dir);
+    assert.equal(result.status, expected, `${label}: ${result.stdout}${result.stderr}`);
+    if (expected === 0) {
+      assert.equal(readFileSync(join(dir, "outputs"), "utf8").trim(), `tarball=${tarball}`);
+    } else {
+      assert.match(result.stdout, /\.jsc/);
+    }
+    console.log(`PUBLISH_GUARD ${label}: exit ${result.status}`);
+  }));
+}
+test("publish uses the asserted tarball, never a fresh unpacked build", () => {
+  // `npm publish` with no argument re-runs prepack and ships an artifact the
+  // step above never saw. The tarball reference is what ties the two together.
+  const publish = step("npm-publish", "Publish to npm");
+  assert.match(publish.run, /npm publish "\$\{TARBALL\}" --provenance/);
+  assert.equal(publish.env.TARBALL, "${{ steps.pack.outputs.tarball }}");
+  assert.equal(step("npm-publish", "Pack and assert the tarball ships no V8 bytecode").id, "pack");
+  // Both steps must share the publish gate, or the pack step runs when the
+  // publish step does not and vice versa.
+  assert.equal(step("npm-publish", "Pack and assert the tarball ships no V8 bytecode").if, publish.if);
+});
 test("electron pins move together across the npm and installer channels", () => {
   // electron-builder never reads optionalDependencies, so without the explicit
   // build.electronVersion the installers silently take whatever is in
