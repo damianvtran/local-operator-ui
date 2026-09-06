@@ -1,6 +1,6 @@
 import { TranscriptionApi } from "@shared/api/local-operator/transcription-api";
 import type { AgentDetails } from "@shared/api/local-operator/types";
-import { Button, Tooltip } from "@shared/components/ui";
+import { Button, Skeleton, Tooltip } from "@shared/components/ui";
 import { apiConfig } from "@shared/config/api-config";
 import { useRadientCredentialProbe } from "@shared/hooks/use-credentials";
 import { useMessageInput } from "@shared/hooks/use-message-input";
@@ -813,7 +813,28 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					isSmallView ? "px-1 pb-1 pt-0.5" : "px-4 pb-4 pt-2",
 				)}
 			>
-				{messages.length === 0 && !isHydrating && !isSmallView ? (
+				{messages.length === 0 && isHydrating && !isSmallView ? (
+					// Hydrating: we do not yet know whether this conversation is
+					// empty, so neither the greeting nor a transcript can be
+					// asserted. Suppressing the greeting alone left the pane BLANK
+					// (design D22) -- correct but mute, and on a slow or remote
+					// backend that blankness is the whole first impression. A
+					// skeleton in the greeting's own place says "loading" without
+					// claiming which of the two answers is coming.
+					<div className="flex w-full flex-col items-center justify-center gap-6 p-4">
+						{/* `<output>` rather than a div with role="status": it carries
+						 * the same implicit live-region semantics as a native element,
+						 * which is what the a11y lint asks for. */}
+						<output
+							className="flex w-full flex-col items-center gap-3"
+							aria-label="Loading conversation"
+						>
+							<Skeleton className="h-7 w-64" />
+							<span className="sr-only">Loading conversation…</span>
+						</output>
+						{inputContent}
+					</div>
+				) : messages.length === 0 && !isSmallView ? (
 					<div className="flex w-full flex-col items-center justify-center gap-6 p-4">
 						<h2 className="text-center text-ink text-title">
 							What can I help you with today?
