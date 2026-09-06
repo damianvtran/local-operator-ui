@@ -17,7 +17,11 @@ import { Search, X } from "lucide-react";
 import type { FC } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { ProviderDetail } from "./provider-detail";
-import { providerMethodLabel, providerReadiness } from "./provider-labels";
+import {
+	providerLoadErrorMessage,
+	providerMethodLabel,
+	providerReadiness,
+} from "./provider-labels";
 
 const SEARCH_THRESHOLD = 6;
 
@@ -71,9 +75,7 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 		return (
 			<Alert variant="warning">
 				<div className="flex items-center justify-between gap-3">
-					<span>
-						Providers could not be loaded. The backend may need an update.
-					</span>
+					<span>{providerLoadErrorMessage(providers.error)}</span>
 					{/* A load error is transient; Retry re-asks the backend. */}
 					<Button
 						variant="secondary"

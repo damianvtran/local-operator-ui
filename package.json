@@ -61,7 +61,7 @@
     "check-types:main": "tsc --noEmit -p tsconfig.node.json",
     "check-types:renderer": "tsc --noEmit -p tsconfig.app.json",
     "check-types": "pnpm run check-types:main && pnpm run check-types:renderer",
-    "test:desktop": "node --test scripts/desktop-contract.test.mjs scripts/transcript-reducer.test.mjs",
+    "test:desktop": "node --test scripts/desktop-contract.test.mjs scripts/transcript-reducer.test.mjs scripts/desktop-renderer-transport.test.mjs scripts/provider-grid-error-copy.test.mjs",
     "check-themes": "node scripts/generate-theme-css.mjs --check && node scripts/contrast-contract.mjs",
     "check-evidence": "node scripts/check-evidence.mjs",
     "check-edit-diffs": "node scripts/check-edit-diffs.mjs",
