@@ -738,19 +738,46 @@ export const SettingsPage: FC = () => {
 
 	if (isLoading) {
 		return (
-			<div className="flex h-full w-full flex-col items-center justify-center gap-3 bg-canvas">
-				<Spinner size="lg" label="Loading settings" />
+			/*
+			 * One live region around the whole waiting stack, so the caption IS the
+			 * announcement when it appears.
+			 *
+			 * The caption previously sat outside the spinner's own `role="status"`,
+			 * so a screen-reader user heard "Loading settings" once at mount and
+			 * then nothing for up to 30s -- while a sighted user got a visible state
+			 * change at 4s telling them the app was alive. Under
+			 * `prefers-reduced-motion` the global cap freezes the ring, so that user
+			 * had no liveness signal at all. The text whose entire purpose is "you
+			 * cannot tell waiting from hung" was reaching only the users who could
+			 * already tell.
+			 *
+			 * `label` drops off the `Spinner` once the caption paints, per the
+			 * component's own contract: standalone spinner -> pass `label`; spinner
+			 * beside its own caption -> omit it, or the same fact is announced
+			 * twice.
+			 */
+			// biome-ignore lint/a11y/useSemanticElements: there is no semantic element for a polite live region; role=status on the container is the pattern.
+			<div
+				role="status"
+				className="flex h-full w-full flex-col items-center justify-center gap-3 bg-canvas"
+			>
+				<Spinner
+					size="lg"
+					label={isSlowLoad ? undefined : "Loading settings"}
+				/>
 				{/* A bounded wait is still a silent one. Until the deadline expires
 				    this spinner is pixel-identical to the unrecoverable spinner of
 				    issue 89, so a user cannot tell "waiting" from "hung" and gives
-				    up before the error state they were promised can render. Saying
-				    what is being waited on, and that it will end, is the difference
-				    between a slow app and a broken one. Only after the threshold:
-				    on a healthy load this never paints. */}
+				    up before the error state they were promised can render. Only
+				    after the threshold: on a healthy load this never paints.
+
+				    The copy states an event in the user's terms and what they get,
+				    rather than narrating the app's control flow ("This will stop and
+				    offer a retry"), which made the machinery the subject. */}
 				{isSlowLoad && (
 					<p className="max-w-sm text-center text-body-sm text-ink-muted">
-						Still waiting for the Local Operator server. This will stop and
-						offer a retry if it does not respond.
+						The Local Operator server is taking longer than usual to answer. If
+						it does not respond, you will be able to retry from here.
 					</p>
 				)}
 			</div>
