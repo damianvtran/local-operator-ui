@@ -63,6 +63,37 @@ const REQUIRED_MODE = 0o4755;
 const SETUID_BIT = 0o4000;
 
 /**
+ * Every stat and every mutation in this file goes through a descriptor opened
+ * with O_NOFOLLOW, and this is the single most security-sensitive decision here.
+ *
+ * WHY: the repair runs as root during `sudo npm install -g`, and `chownSync`,
+ * `chmodSync` and `statSync` all FOLLOW symlinks (there is no lchmod on Linux).
+ * If the helper path is a symlink, a path-based repair applies `root:root 4755`
+ * to the link's TARGET -- so a crafted dependency that drops a link to, say,
+ * /usr/bin/env turns this postinstall into a root setuid primitive it can aim.
+ * The path itself is safe (it is built with path.join from __dirname, never from
+ * package metadata), but the CONTENT of node_modules is not a trust boundary
+ * during an install: dependency postinstalls run alongside ours.
+ *
+ * Opening once and operating on the fd closes the TOCTOU window in the same
+ * move: without it we stat a path and then chown that path, and the file can be
+ * swapped in between. Holding the descriptor means the thing we inspected is
+ * provably the thing we modify.
+ *
+ * KNOWN LIMIT, stated rather than implied: O_NOFOLLOW only refuses a symlink as
+ * the FINAL path component. An attacker who can replace an intermediate
+ * directory inside our own node_modules/electron/dist with a link is not
+ * defeated by this. That is accepted -- defending it needs a resolved-directory
+ * walk (openat/O_DIRECTORY per component), which Node does not expose -- and the
+ * final component is the one an npm-installed package can actually place.
+ */
+const OPEN_NOFOLLOW = fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW;
+
+// A refused O_NOFOLLOW open reports ELOOP on Linux and macOS; BSDs use EMLINK.
+// Both mean the same thing here: the final component is a symlink.
+const isSymlinkRefusal = (err) => err.code === "ELOOP" || err.code === "EMLINK";
+
+/**
  * Chromium's acceptance rule for the helper, as a pure predicate over the two
  * stat fields it depends on.
  *
@@ -88,35 +119,64 @@ const resolveSandboxHelper = (electronBinaryPath) => {
 };
 
 /**
- * Read the helper's ownership and permissions.
+ * Read the helper's ownership and permissions from a descriptor, never by path.
  *
  * `needsRepair` is true only when the file exists and is not already
  * root-owned-setuid, so a helper that is absent (not a Linux install, optional
  * dependency skipped) is never reported as broken. Any stat failure degrades to
  * "nothing to say" rather than throwing: this is a diagnostic, and a diagnostic
  * must never be the reason the app fails to start.
+ *
+ * `unsafe` is the third state, distinct from both: the path exists but is a
+ * symlink or is not a regular file. It reports `needsRepair: false` because the
+ * repair must refuse it (see OPEN_NOFOLLOW) and because the chown/chmod guidance
+ * would send the user to "fix" permissions on someone else's file.
  */
 const inspectSandboxHelper = (helperPath) => {
 	if (!helperPath) {
 		return { exists: false, needsRepair: false };
 	}
-	let stats;
+	let fd;
 	try {
-		stats = fs.statSync(helperPath);
-	} catch {
+		fd = fs.openSync(helperPath, OPEN_NOFOLLOW);
+	} catch (err) {
+		if (isSymlinkRefusal(err)) {
+			return {
+				exists: true,
+				path: helperPath,
+				unsafe: true,
+				needsRepair: false,
+			};
+		}
 		return { exists: false, needsRepair: false };
 	}
-	const mode = stats.mode & 0o7777;
-	const isSetuidRoot = isHelperHealthy(stats.uid, mode);
-	return {
-		exists: true,
-		path: helperPath,
-		uid: stats.uid,
-		gid: stats.gid,
-		mode,
-		isSetuidRoot,
-		needsRepair: !isSetuidRoot,
-	};
+	try {
+		const stats = fs.fstatSync(fd);
+		if (!stats.isFile()) {
+			// A fifo or device in the helper's place is not something to chmod 4755.
+			return {
+				exists: true,
+				path: helperPath,
+				unsafe: true,
+				needsRepair: false,
+			};
+		}
+		const mode = stats.mode & 0o7777;
+		const isSetuidRoot = isHelperHealthy(stats.uid, mode);
+		return {
+			exists: true,
+			path: helperPath,
+			uid: stats.uid,
+			gid: stats.gid,
+			mode,
+			isSetuidRoot,
+			needsRepair: !isSetuidRoot,
+		};
+	} catch {
+		return { exists: false, needsRepair: false };
+	} finally {
+		fs.closeSync(fd);
+	}
 };
 
 /**
@@ -130,25 +190,51 @@ const inspectSandboxHelper = (helperPath) => {
  * repair it, the launcher's post-mortem guidance covers the case.
  */
 const repairSandboxHelper = (helperPath) => {
-	const state = inspectSandboxHelper(helperPath);
-	if (!state.exists) {
+	if (!helperPath) {
 		return { outcome: "absent" };
 	}
-	if (!state.needsRepair) {
-		return { outcome: "already-correct", path: helperPath };
+	let fd;
+	try {
+		fd = fs.openSync(helperPath, OPEN_NOFOLLOW);
+	} catch (err) {
+		// Refusing a symlink is a REFUSAL, not a failure to find the file: the
+		// caller must be able to tell "nothing to repair" from "something is in the
+		// way that we will not chmod as root".
+		if (isSymlinkRefusal(err)) {
+			return { outcome: "unsafe", path: helperPath };
+		}
+		return { outcome: "absent" };
 	}
 	try {
-		// chown first: chmod's setuid bit is cleared by a subsequent chown, so the
-		// reverse order silently produces a 0755 file and a "success" report.
-		fs.chownSync(helperPath, 0, 0);
-		fs.chmodSync(helperPath, REQUIRED_MODE);
+		// Everything below reads and mutates THIS descriptor. Re-deriving state from
+		// the path here would reopen the TOCTOU window the fd exists to close.
+		const before = fs.fstatSync(fd);
+		if (!before.isFile()) {
+			return { outcome: "unsafe", path: helperPath };
+		}
+		if (isHelperHealthy(before.uid, before.mode & 0o7777)) {
+			return { outcome: "already-correct", path: helperPath };
+		}
+		try {
+			// chown first: chmod's setuid bit is cleared by a subsequent chown, so the
+			// reverse order silently produces a 0755 file and a "success" report.
+			fs.fchownSync(fd, 0, 0);
+			fs.fchmodSync(fd, REQUIRED_MODE);
+		} catch (err) {
+			return { outcome: "not-permitted", path: helperPath, error: err };
+		}
+		// Re-stat rather than trusting the syscalls returned without throwing. This
+		// is the check that catches the ordering inversion above in production: a
+		// chmod-then-chown pair succeeds and still leaves 0755.
+		const after = fs.fstatSync(fd);
+		return isHelperHealthy(after.uid, after.mode & 0o7777)
+			? { outcome: "repaired", path: helperPath }
+			: { outcome: "not-permitted", path: helperPath };
 	} catch (err) {
 		return { outcome: "not-permitted", path: helperPath, error: err };
+	} finally {
+		fs.closeSync(fd);
 	}
-	const after = inspectSandboxHelper(helperPath);
-	return after.isSetuidRoot
-		? { outcome: "repaired", path: helperPath }
-		: { outcome: "not-permitted", path: helperPath };
 };
 
 const OPT_OUT_NOTE = (command) => [
@@ -185,8 +271,13 @@ const rootGuidance = (command) => [
  * complaint in issue #91 is that the user is told what is wrong without being
  * told what to type.
  */
+// POSIX single-quote escaping: end the quoted run, emit a literal quote, start
+// a new one. Copy-paste guidance whose whole point is being pasteable must
+// survive an install path like /home/o'brien/.npm-global.
+const shellQuote = (value) => `'${String(value).replace(/'/g, "'\\''")}'`;
+
 const sandboxHelperGuidance = (state, command) => {
-	const quoted = `'${state.path}'`;
+	const quoted = shellQuote(state.path);
 	const current = `${state.uid}:${state.gid} ${state.mode.toString(8).padStart(4, "0")}`;
 	return [
 		"Local Operator UI exited before it could start, and its Chromium sandbox",
@@ -216,6 +307,58 @@ const sandboxHelperGuidance = (state, command) => {
  * aborted on startup reported success to the shell, to scripts, and to CI. The
  * conventional 128+n encoding preserves which signal it was.
  */
+/**
+ * Signals that mean "the user (or their service manager) stopped us", never
+ * "we could not start". The launcher forwards SIGINT and SIGTERM to the child,
+ * so a plain Ctrl+C arrives here as code null + SIGINT.
+ */
+const USER_INITIATED_SIGNALS = new Set([
+	"SIGINT",
+	"SIGTERM",
+	"SIGHUP",
+	"SIGQUIT",
+]);
+
+/**
+ * How long after spawn a death can still plausibly be a startup abort.
+ *
+ * The sandbox FATAL is raised during Chromium's zygote setup, before any window
+ * exists -- measured at well under a second in node:22-bookworm. Ten seconds is
+ * a deliberately loose bound around that: generous enough for a slow or loaded
+ * machine, far short of any session a user would call "it was running".
+ */
+const STARTUP_WINDOW_MS = 10_000;
+
+/**
+ * Did the child fail to START, as opposed to exiting non-zero after running?
+ *
+ * WHY THIS IS NOT `code !== 0`: the post-mortem below prints "your sandbox
+ * helper is misconfigured" and tells the user to chmod 4755. On the exact
+ * configuration this fix sets out to protect -- a working 0755 install using the
+ * unprivileged user-namespace sandbox -- the helper is PERMANENTLY in the state
+ * the guidance keys on, so any non-zero exit misdiagnoses. `code !== 0` is also
+ * true for `code === null`, which is every signal death including Ctrl+C: the
+ * user quits an app that ran fine for an hour and is told to fix its
+ * permissions. That is precisely the "sends the reader to diagnose the wrong
+ * thing" failure the postinstall's own comments are careful to avoid.
+ *
+ * Two independent narrowings, either of which alone is enough to acquit:
+ * a deliberate stop signal is never a startup failure whenever it arrives, and
+ * a process that lived past the startup window demonstrably started.
+ */
+const isStartupFailure = ({ code, signal, elapsedMs }) => {
+	if (signal && USER_INITIATED_SIGNALS.has(signal)) {
+		return false;
+	}
+	if (typeof elapsedMs === "number" && elapsedMs >= STARTUP_WINDOW_MS) {
+		return false;
+	}
+	if (code === 0) {
+		return false;
+	}
+	return typeof code === "number" || Boolean(signal);
+};
+
 const exitCodeFor = (code, signal) => {
 	if (typeof code === "number") {
 		return code;
@@ -264,7 +407,14 @@ const ensureElectronDist = (packageRoot) => {
 		return false;
 	}
 	const distDir = path.join(packageRoot, "node_modules", "electron", "dist");
-	if (fs.existsSync(path.join(distDir, "chrome-sandbox"))) {
+	// Key the fast path on the SAME marker electron's own isInstalled() uses
+	// (dist/version) as well as the helper. Keying on chrome-sandbox alone let a
+	// partially-extracted dist/ that happens to contain the helper report a
+	// healthy install, so we would skip the installer that would have repaired it.
+	if (
+		fs.existsSync(path.join(distDir, "version")) &&
+		fs.existsSync(path.join(distDir, "chrome-sandbox"))
+	) {
 		return true;
 	}
 	// Inherit nothing on stdout: the download prints a progress bar that would
@@ -284,7 +434,9 @@ const ensureElectronDist = (packageRoot) => {
 
 module.exports = {
 	REQUIRED_MODE,
+	STARTUP_WINDOW_MS,
 	isHelperHealthy,
+	isStartupFailure,
 	ensureElectronDist,
 	resolveSandboxHelper,
 	inspectSandboxHelper,

@@ -26,7 +26,17 @@ const process = require("node:process");
 
 // Silence is the contract on non-Linux: the helper is a Linux-only artifact, so
 // there is nothing to repair and nothing worth printing on a Mac.
-if (process.platform !== "linux") {
+//
+// LOCAL_OPERATOR_UI_FORCE_POSTINSTALL exists so the test suite can reach the
+// repair path on a macOS developer machine and on CI's ubuntu runner alike.
+// Without it the only assertion this script's test could make on darwin was
+// "exit 0", which it satisfies by returning here before doing anything -- a
+// vacuous test that passed while the whole body was mutated away. It is read
+// only, never written by us, and namespaced so it cannot be set by accident.
+if (
+	process.platform !== "linux" &&
+	process.env.LOCAL_OPERATOR_UI_FORCE_POSTINSTALL !== "1"
+) {
 	process.exit(0);
 }
 
@@ -56,6 +66,20 @@ const main = () => {
 		"chrome-sandbox",
 	);
 	const result = repairSandboxHelper(helper);
+
+	if (result.outcome === "unsafe") {
+		// The helper path is a symlink or not a regular file. We refuse to chown
+		// and chmod 4755 through it as root -- that would apply the setuid bit to
+		// whatever the link points at (see the O_NOFOLLOW note in linux-sandbox.js).
+		// Say so loudly: this is not a normal install state, and it is the one case
+		// here that warrants suspicion rather than a shrug.
+		console.log(
+			"local-operator-ui: refusing to modify the Chromium sandbox helper" +
+				" because it is not a regular file (possible symlink). Nothing was" +
+				" changed. Please report this.",
+		);
+		return;
+	}
 
 	if (result.outcome === "not-permitted") {
 		// Distinguish the two ways this branch is reached. An unprivileged install

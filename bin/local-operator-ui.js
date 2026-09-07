@@ -80,21 +80,35 @@ try {
 } catch (err) {
 	// Version metadata is unreadable while the binary itself resolved. Nothing
 	// actionable to assert, and the app is more useful started than blocked.
-	console.warn(`Warning: could not verify the Electron version: ${err.message}`);
+	console.warn(
+		`Warning: could not verify the Electron version: ${err.message}`,
+	);
 }
 
 const {
 	resolveSandboxHelper,
 	inspectSandboxHelper,
+	isStartupFailure,
 	rootGuidance,
 	sandboxHelperGuidance,
 	exitCodeFor,
 } = require("./linux-sandbox.js");
 
-// How the user invoked us, for guidance that can be copied verbatim. argv[1] is
-// the absolute path to this script when run through a shim, so prefer the plain
-// command name a global install puts on PATH.
-const invokedAs = "local-operator-ui";
+// How the user invoked us, for guidance that can be copied verbatim.
+//
+// A global install puts `local-operator-ui` on PATH and that is the name to
+// echo back. But `npx local-operator-ui` and a local ./node_modules/.bin/ run
+// reach this file through a shim whose basename is still ours, so use argv[1]'s
+// basename when it resolves to something other than the bare script path --
+// otherwise we hand a user without a global install a command that will not
+// resolve for them.
+const invokedAs = (() => {
+	const fromArgv =
+		typeof process.argv[1] === "string" ? path.basename(process.argv[1]) : "";
+	// Strip a .js suffix: the shim is the extensionless name on PATH.
+	const name = fromArgv.replace(/\.[cm]?js$/, "");
+	return name === "" ? "local-operator-ui" : name;
+})();
 
 // Linux preflight: running as root ALWAYS aborts, whatever the sandbox helper's
 // mode (measured — a correctly 4755 helper does not help root). Because it
@@ -138,6 +152,10 @@ const child = spawn(electronPath, [appPath], {
 });
 
 // Handle process exit
+// Wall-clock reference for the startup-failure window below. Taken immediately
+// after spawn so the measurement covers the child's whole life.
+const spawnedAt = Date.now();
+
 child.on("close", (code, signal) => {
 	// A missing setuid bit is NOT predictable as a failure: Chromium falls back to
 	// the unprivileged user-namespace sandbox and starts normally where the kernel
@@ -146,11 +164,19 @@ child.on("close", (code, signal) => {
 	// therefore refuse installs that work today, and the /proc indicators cannot
 	// see a seccomp filter that blocks the syscall.
 	//
-	// So diagnose after the fact instead: the app has already failed, and the
-	// helper is in the state known to cause exactly this. That ordering makes a
-	// false positive on a working install impossible.
-	const failed = code !== 0;
-	if (failed && process.platform === "linux") {
+	// So diagnose after the fact instead: the app has already failed to START,
+	// and the helper is in the state known to cause exactly this.
+	//
+	// "Failed to start" is narrower than "did not exit zero", and the difference
+	// is user-visible: on a working 0755 userns install the helper sits
+	// permanently in the state this guidance keys on, so a plain Ctrl+C would
+	// otherwise be answered with "run sudo chmod 4755". See isStartupFailure.
+	const failedToStart = isStartupFailure({
+		code,
+		signal,
+		elapsedMs: Date.now() - spawnedAt,
+	});
+	if (failedToStart && process.platform === "linux") {
 		const helper = inspectSandboxHelper(resolveSandboxHelper(electronPath));
 		if (helper.exists && helper.needsRepair) {
 			console.error("");
