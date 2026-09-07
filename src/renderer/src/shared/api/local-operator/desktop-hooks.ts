@@ -12,6 +12,7 @@
  */
 
 import { useQuery } from "@tanstack/react-query";
+import { retryDesktopQuery } from "./backend-error";
 import { desktopResult } from "./desktop-api";
 import type { DesktopCapabilities, DesktopProvider } from "./desktop-api";
 
@@ -84,6 +85,11 @@ export function useDesktopProviders(enabled: boolean) {
 			}).then((result) => result.providers),
 		enabled,
 		staleTime: 30_000,
-		retry: 1,
+		// Same reasoning as `useConfig`: a `status: null` failure already spent
+		// the transport's whole deadline learning nothing, so retrying it doubles
+		// the wait to ~60s without a chance of a different answer. A failure that
+		// carries a status came from a backend that answered and is still worth
+		// one retry.
+		retry: retryDesktopQuery,
 	});
 }

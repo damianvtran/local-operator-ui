@@ -19,7 +19,11 @@
  * describes stay gated on `desktopFeatureEnabled` individually.
  */
 
-import { DesktopControlError } from "@shared/api/local-operator/desktop-api";
+import {
+	backendCompatibilityMessage,
+	backendErrorKind,
+	backendUpdateIsRemedy,
+} from "@shared/api/local-operator/backend-error";
 import {
 	desktopKeys,
 	useDesktopCapabilities,
@@ -77,35 +81,24 @@ export const BackendCompatibilityBanner = () => {
 	if (data?.desktop_available && missing.length === 0) return null;
 
 	// The probe's HTTP status is what separates "old" from "not running" from
-	// "cannot authenticate". 404 is the only one an update fixes: the route is
-	// absent, so this backend predates the contract.
-	//
-	// `null` means the request produced no status at all -- the transport failed
-	// and no backend was reached -- which reads as unreachable below. The
-	// transport now RAISES that state as a typed `DesktopControlError` with
-	// `status: null`, so this is a stated fact rather than the fallback for an
-	// unrecognised error type.
-	const status =
-		capabilities.error instanceof DesktopControlError
-			? capabilities.error.status
-			: null;
-	const outdated = Boolean(!data && status === 404);
-	const unreachable = Boolean(!data && (status === null || status === 503));
-	const unauthorized = Boolean(!data && (status === 401 || status === 403));
+	// "cannot authenticate", and the providers grid reads the same field to reach
+	// the same conclusion. Both now go through the shared classification so they
+	// cannot answer that question differently: the grid's own two-way split used
+	// to send a 401 user to a backend install this banner deliberately withholds.
+	const kind = backendErrorKind(capabilities.error);
+	const answered = Boolean(data);
 
 	const canUpdate = Boolean(window.api?.updater?.updateBackend);
-	const message = unreachable
-		? "The backend is not answering. Provider sign-in, settings, slash commands and MCP management need it running. Retry once it has started."
-		: unauthorized
-			? "This app cannot authenticate to the running backend, so protected controls are unavailable. Restart the app so it starts and pairs with its own backend."
-			: outdated
-				? "This backend is older than the app expects. Provider sign-in, settings, slash commands and MCP management stay off until it is updated."
-				: unpaired
-					? "This app is not paired with the running backend, so protected controls are unavailable. Restart the app so it can manage its own backend."
-					: `The backend is missing ${missing.join(", ")} support. Update it to enable those surfaces.`;
+	const message = backendCompatibilityMessage({
+		kind,
+		unpaired,
+		missing,
+		answered,
+	});
 	// Offered only where it is the actual remedy. A backend that is down or
 	// refusing this app's bearer is not fixed by installing a newer one.
-	const offerUpdate = canUpdate && !unpaired && !unreachable && !unauthorized;
+	const offerUpdate =
+		canUpdate && backendUpdateIsRemedy({ kind, unpaired, answered });
 
 	return (
 		<div className="fixed inset-x-0 top-0 z-2100 w-full">

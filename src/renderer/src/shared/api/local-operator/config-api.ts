@@ -1,7 +1,7 @@
 /**
  * Local Operator API - Configuration Endpoints
  */
-import { desktopControlResponse } from "./desktop-api";
+import { DesktopControlError, desktopControlResponse } from "./desktop-api";
 import type {
 	CRUDResponse,
 	ConfigResponse,
@@ -9,6 +9,33 @@ import type {
 	SystemPromptResponse,
 	SystemPromptUpdate,
 } from "./types";
+
+/**
+ * Fail with the HTTP status preserved, so callers can classify the failure.
+ *
+ * These calls used to throw a plain `Error`, which discards the status. Every
+ * consumer that classified one therefore fell to `backendErrorKind`'s
+ * `status: null` default and concluded "nothing answered" -- so Settings told a
+ * user whose server was running and refusing its bearer (401) that the server
+ * "may not be running", and offered no restart. That is the same wrong-remedy
+ * defect this change set removes from the providers grid, on the page issue 89
+ * is named after. `DesktopControlError` is the type the shared classifier
+ * reads, and it is the only thing that makes the classification real rather
+ * than defaulted.
+ *
+ * The message stays technical on purpose: it is the debugging detail behind
+ * the failure and reaches logs and `error.message`, never a rendered sentence.
+ * Surfaces render `backendLoadErrorMessage`, which speaks in the user's terms.
+ */
+function desktopConfigFailure(
+	operation: string,
+	response: { status: number; statusText: string },
+): DesktopControlError {
+	return new DesktopControlError(
+		response.status,
+		`${operation} request failed: ${response.status} ${response.statusText}`,
+	);
+}
 
 /**
  * Config API client for the Local Operator API
@@ -25,9 +52,7 @@ export const ConfigApi = {
 		const response = await desktopControlResponse({ op: "config.get" });
 
 		if (!response.ok) {
-			throw new Error(
-				`Get config request failed: ${response.status} ${response.statusText}`,
-			);
+			throw desktopConfigFailure("Get config", response);
 		}
 
 		return response.json() as Promise<CRUDResponse<ConfigResponse>>;
@@ -51,9 +76,7 @@ export const ConfigApi = {
 		});
 
 		if (!response.ok) {
-			throw new Error(
-				`Update config request failed: ${response.status} ${response.statusText}`,
-			);
+			throw desktopConfigFailure("Update config", response);
 		}
 
 		return response.json() as Promise<CRUDResponse<ConfigResponse>>;
@@ -77,9 +100,7 @@ export const ConfigApi = {
 		}
 
 		if (!response.ok) {
-			throw new Error(
-				`Get system prompt request failed: ${response.status} ${response.statusText}`,
-			);
+			throw desktopConfigFailure("Get system prompt", response);
 		}
 
 		return response.json() as Promise<CRUDResponse<SystemPromptResponse>>;
@@ -103,9 +124,7 @@ export const ConfigApi = {
 		});
 
 		if (!response.ok) {
-			throw new Error(
-				`Update system prompt request failed: ${response.status} ${response.statusText}`,
-			);
+			throw desktopConfigFailure("Update system prompt", response);
 		}
 
 		return response.json() as Promise<CRUDResponse<SystemPromptResponse>>;

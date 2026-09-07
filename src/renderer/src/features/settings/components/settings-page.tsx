@@ -1,5 +1,6 @@
 import { useOnboardingTour } from "@features/onboarding/hooks/use-onboarding-tour";
 import { ProviderGrid } from "@features/providers/provider-grid";
+import { backendLoadErrorMessage } from "@shared/api/local-operator/backend-error";
 import type { ConfigUpdate } from "@shared/api/local-operator/types";
 import { EditableField } from "@shared/components/common/editable-field";
 import { PageHeader } from "@shared/components/common/page-header";
@@ -13,6 +14,7 @@ import { Alert, Button, Skeleton } from "@shared/components/ui";
 import { useConfig } from "@shared/hooks/use-config";
 import { useCredentials } from "@shared/hooks/use-credentials";
 import { useCreditBalance } from "@shared/hooks/use-credit-balance";
+import { useElapsedSince } from "@shared/hooks/use-elapsed-since";
 import { useModels } from "@shared/hooks/use-models";
 import { useRadientUserQuery } from "@shared/hooks/use-radient-user-query";
 import { useUpdateConfig } from "@shared/hooks/use-update-config";
@@ -326,6 +328,7 @@ export const SettingsPage: FC = () => {
 	const {
 		data: config,
 		isLoading: isConfigLoading,
+		isFetching: isConfigFetching,
 		error: configError,
 		refetch,
 	} = useConfig();
@@ -671,21 +674,125 @@ export const SettingsPage: FC = () => {
 
 	// Combine loading states
 	const isLoading = isConfigLoading || isAuthLoading;
+	// Well inside the transport's 30s deadline, so the explanation appears while
+	// the user is still deciding whether the app is stuck rather than after they
+	// have concluded it is.
+	const isSlowLoad = useElapsedSince(isLoading, 4000);
 
-	if (isLoading) {
+	// The error branch below is only reachable if the config query actually
+	// settles. The renderer transport now bounds every desktop control, so a
+	// stalled request rejects instead of pending forever -- but the spinner is
+	// still the LAST state a user sees when something upstream of it stalls, and
+	// an unrecoverable spinner leaves them with nothing to do but relaunch. So
+	// the error state is preferred over the spinner once the config query has
+	// failed, rather than being gated behind it: `isAuthLoading` alone must not
+	// hold the page on a spinner when the settings it is loading can no longer
+	// arrive. That ordering is what makes the recovery affordance reachable.
+	if (configError) {
 		return (
-			<div className="flex h-full w-full items-center justify-center bg-canvas">
-				<Spinner size="lg" label="Loading settings" />
+			<div className="flex h-full w-full items-center justify-center bg-canvas p-6">
+				{/* `warning`, matching the providers grid: one fault must not render
+				    at two severities depending on which screen reports it, and a
+				    failure with a Retry beside it has cost the user nothing. The rule
+				    is stated beside the shared copy in `backend-error.ts`. */}
+				<Alert variant="warning" className="w-full max-w-xl">
+					<div className="flex items-center justify-between gap-3">
+						{/* Classified from the SAME error the banner above reads, so this
+						    page can no longer say the server "may not be running" while
+						    the banner says it is offline -- or tell a 401 user to wait for
+						    a server that is already running and refusing this app's
+						    bearer. The raw exception ("Get config request failed: 503")
+						    used to render here; it names a function, a transport verb and
+						    an integer, none of which change what the user does next, so it
+						    stays on `error.message` for logs and support and out of the
+						    sentence. */}
+						<span>
+							{backendLoadErrorMessage(
+								"Your settings could not be loaded.",
+								configError,
+							)}
+						</span>
+						{/* Same recovery the providers grid offers: re-ask the server in
+						    place, so a transient stall does not cost a relaunch.
+
+						    `isFetching`, not `isLoading`: refetching an ERRORED query
+						    leaves `status: "error"`, so `isLoading` stays false and this
+						    branch keeps rendering for the transport's whole 30s deadline.
+						    Without a pending state the frame is pixel-identical after the
+						    click -- issue 89's own "I cannot tell whether this is working
+						    or hung", one click downstream of its fix. */}
+						<Button
+							variant="secondary"
+							size="sm"
+							className="shrink-0"
+							onClick={() => void refetch()}
+							disabled={isConfigFetching}
+						>
+							{isConfigFetching ? "Retrying" : "Retry"}
+						</Button>
+					</div>
+				</Alert>
 			</div>
 		);
 	}
 
-	if (configError || !config) {
+	if (isLoading) {
+		return (
+			/*
+			 * One live region around the whole waiting stack, so the caption IS the
+			 * announcement when it appears.
+			 *
+			 * The caption previously sat outside the spinner's own `role="status"`,
+			 * so a screen-reader user heard "Loading settings" once at mount and
+			 * then nothing for up to 30s -- while a sighted user got a visible state
+			 * change at 4s telling them the app was alive. Under
+			 * `prefers-reduced-motion` the global cap freezes the ring, so that user
+			 * had no liveness signal at all. The text whose entire purpose is "you
+			 * cannot tell waiting from hung" was reaching only the users who could
+			 * already tell.
+			 *
+			 * `label` drops off the `Spinner` once the caption paints, per the
+			 * component's own contract: standalone spinner -> pass `label`; spinner
+			 * beside its own caption -> omit it, or the same fact is announced
+			 * twice.
+			 */
+			// biome-ignore lint/a11y/useSemanticElements: there is no semantic element for a polite live region; role=status on the container is the pattern.
+			<div
+				role="status"
+				className="flex h-full w-full flex-col items-center justify-center gap-3 bg-canvas"
+			>
+				<Spinner
+					size="lg"
+					label={isSlowLoad ? undefined : "Loading settings"}
+				/>
+				{/* A bounded wait is still a silent one. Until the deadline expires
+				    this spinner is pixel-identical to the unrecoverable spinner of
+				    issue 89, so a user cannot tell "waiting" from "hung" and gives
+				    up before the error state they were promised can render. Only
+				    after the threshold: on a healthy load this never paints.
+
+				    The copy states an event in the user's terms and what they get,
+				    rather than narrating the app's control flow ("This will stop and
+				    offer a retry"), which made the machinery the subject. */}
+				{isSlowLoad && (
+					<p className="max-w-sm text-center text-body-sm text-ink-muted">
+						The Local Operator server is taking longer than usual to answer. If
+						it does not respond, you will be able to retry from here.
+					</p>
+				)}
+			</div>
+		);
+	}
+
+	if (!config) {
 		return (
 			<div className="flex h-full w-full items-center justify-center bg-canvas p-6">
-				<Alert variant="danger" className="w-full max-w-xl">
-					Could not load your settings. The Local Operator server may not be
-					running. {configError?.message}
+				{/* Settled with no error and no config: nothing classified it, so
+				    there is no status to advise on and no remedy to assert. Same
+				    discipline as the classifier's `unknown` -- state the failure and
+				    stop rather than guessing an action that may not fix it. */}
+				<Alert variant="warning" className="w-full max-w-xl">
+					Your settings could not be loaded.
 				</Alert>
 			</div>
 		);

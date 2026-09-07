@@ -17,7 +17,11 @@ import { Search, X } from "lucide-react";
 import type { FC } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { ProviderDetail } from "./provider-detail";
-import { providerMethodLabel, providerReadiness } from "./provider-labels";
+import {
+	providerLoadErrorMessage,
+	providerMethodLabel,
+	providerReadiness,
+} from "./provider-labels";
 
 const SEARCH_THRESHOLD = 6;
 
@@ -71,16 +75,23 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 		return (
 			<Alert variant="warning">
 				<div className="flex items-center justify-between gap-3">
-					<span>
-						Providers could not be loaded. The backend may need an update.
-					</span>
-					{/* A load error is transient; Retry re-asks the backend. */}
+					<span>{providerLoadErrorMessage(providers.error)}</span>
+					{/* A load error is transient; Retry re-asks the server.
+
+					    `isFetching`, not `isLoading`: a refetch of an already-errored
+					    query keeps `status: "error"`, so this branch (evaluated after
+					    `isLoading`) keeps winning and the frame would not change for
+					    the transport's whole deadline. A recovery affordance that does
+					    not acknowledge the click is the one users press four times and
+					    then relaunch. */}
 					<Button
 						variant="secondary"
 						size="sm"
+						className="shrink-0"
 						onClick={() => void providers.refetch()}
+						disabled={providers.isFetching}
 					>
-						Retry
+						{providers.isFetching ? "Retrying" : "Retry"}
 					</Button>
 				</div>
 			</Alert>
