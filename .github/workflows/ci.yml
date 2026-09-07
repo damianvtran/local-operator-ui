@@ -179,25 +179,36 @@ jobs:
     # which Electron the consuming environment resolves and on the arch of the
     # bytecode we shipped; the previous Linux-only check never saw it.
     #
-    # The launch step is macOS-only because the packaged app genuinely cannot
-    # start for a non-root user on Linux after an npm install, and this check is
-    # what found it. Electron's postinstall does not chmod 4755 its
-    # chrome-sandbox helper and npm strips setuid bits by design, so the file
-    # lands root:root 0755 and Chromium aborts with
-    # "The SUID sandbox helper binary was found, but is not configured
-    # correctly". Reproduced in node:22-bookworm from a plain `npm install -g`
-    # of a fixed tarball as a non-root user, outside any npx cache, so it is a
-    # real product defect on the Linux npm channel and not an artifact of CI or
-    # of issue #88. Running as root fails differently
-    # ("Running as root without --no-sandbox is not supported").
+    # The launch step stays macOS-only, and issue #91 did NOT change that. The
+    # reason is specific and worth stating, because #91 does fix the Linux npm
+    # channel for the way users actually install it.
     #
-    # Deliberately NOT fixed here with --no-sandbox or ELECTRON_DISABLE_SANDBOX.
-    # Either would turn this leg green while leaving users just as broken, which
-    # is the same vacuous-check failure this whole job exists to undo, and
-    # shipping a browser engine with its sandbox off is a security-posture
-    # decision that does not belong in a packaging fix. Tracked as issue #91; the
-    # honest position is that this package does not currently support the Linux
-    # npm channel. Restore this leg to the launch step when #91 is fixed.
+    # #91 restores the setuid bit on Electron's chrome-sandbox helper from the
+    # package's postinstall, which works whenever the install has the privilege
+    # to do it -- i.e. the ordinary `sudo npm install -g`. Verified end to end in
+    # node:22-bookworm: helper lands root:root 4755 and the app reaches
+    # LOCAL_OPERATOR_UI_READY as a non-root user with the sandbox ENABLED.
+    #
+    # This job does not install that way. scripts/npx-smoke-test.mjs runs `npx`
+    # as the unprivileged runner user, so the postinstall's chown/chmod is
+    # correctly refused and the helper stays 0755 -- the one case #91 explicitly
+    # cannot repair. Measured on that exact path: the launcher now exits non-zero
+    # with the chown/chmod commands instead of a Chromium FATAL, which is the
+    # intended behaviour and still a failed launch. Whether it could launch
+    # anyway depends on the runner kernel permitting the unprivileged
+    # user-namespace sandbox, which Ubuntu 24.04 restricts by default via
+    # AppArmor and which was not verifiable from this machine.
+    #
+    # So enabling this leg would assert one of two dishonest things: that an
+    # unprivileged npx install is the supported Linux path (it is not -- the
+    # supported path is a privileged global install), or a green light bought
+    # with --no-sandbox / ELECTRON_DISABLE_SANDBOX. The second is the vacuous
+    # check this whole job exists to undo, and turning the Chromium sandbox off
+    # is a security-posture decision we do not make for users.
+    #
+    # To cover Linux honestly this leg would need to install the tarball with
+    # sudo and launch as a non-root user under xvfb, which is a different shape
+    # from `npx` and is left as follow-up work rather than bolted on here.
     name: NPX Sanity Check (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
@@ -248,8 +259,8 @@ jobs:
           fi
           echo 'No .jsc files in the npm tarball.'
 
-      # macOS only: see the note on this job for why the Linux launch is
-      # excluded rather than forced green with --no-sandbox.
+      # macOS only: see the note on this job for why the Linux launch is still
+      # excluded after #91 rather than forced green with --no-sandbox.
       - name: Install and run with npx
         if: runner.os == 'macOS'
         run: |
