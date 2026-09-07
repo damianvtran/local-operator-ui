@@ -5,7 +5,10 @@
  * Filters available options based on user credentials.
  */
 
-import { readyHostingIds } from "@features/providers/provider-labels";
+import {
+	hostingCensusFailureHelperText,
+	selectableHostingProviders,
+} from "@features/providers/provider-labels";
 import {
 	desktopFeatureEnabled,
 	useDesktopCapabilities,
@@ -101,22 +104,38 @@ export const HostingSelect: FC<HostingSelectProps> = ({
 
 	const [isSubmitting, setIsSubmitting] = useState(false);
 
+	/**
+	 * The census in the three states the picker distinguishes.
+	 *
+	 * `data` outranks `isError` deliberately: a refetch that fails while an
+	 * earlier census is still cached means we DID find out, once, and the
+	 * cached answer is better evidence than no answer. Only a census that has
+	 * never delivered a payload is `failed`.
+	 */
+	const censusState = useMemo(() => {
+		if (census.data)
+			return { status: "ready" as const, providers: census.data };
+		if (census.isError) return { status: "failed" as const };
+		return { status: "loading" as const };
+	}, [census.data, census.isError]);
+	const censusFailed = censusEnabled && censusState.status === "failed";
+
 	const availableHostingProviders = useMemo(() => {
 		const all = getHostingProviders();
 		if (!filterByCredentials) return all;
 		if (censusEnabled) {
-			// Advertised census owns this filter even while it is still loading
-			// or has 5xx'd: falling through to the env-file list is Q3.
-			if (!census.data) return all;
-			const ready = readyHostingIds(census.data);
-			return all.filter((provider) => ready.has(provider.id));
+			// Advertised census owns this filter. Suppressing it while the census
+			// LOADS is deliberate; doing the same when it FAILED offered every
+			// provider on no evidence at all, which is issue 93. The three-state
+			// rule lives beside the grid's predicate so neither can drift.
+			return selectableHostingProviders(all, censusState);
 		}
 		// Unmanaged / old backends have no census; the env-file list is the
 		// only remaining source. Never mix it with a live census: that is
 		// how Anthropic showed "Requires additional credentials" while the
 		// grid said Signed in.
 		return getAvailableHostingProviders(userCredentials);
-	}, [filterByCredentials, censusEnabled, census.data, userCredentials]);
+	}, [filterByCredentials, censusEnabled, censusState, userCredentials]);
 
 	// Convert hosting providers to autocomplete options
 	const hostingOptions: HostingOption[] = useMemo(() => {
@@ -147,11 +166,16 @@ export const HostingSelect: FC<HostingSelectProps> = ({
 		) {
 			const customProvider = getHostingProviderById(value);
 			if (customProvider) {
-				// If it's a known provider but not available with current credentials
+				// If it's a known provider but not available with current credentials.
+				// The suffix is an assertion about the user's credentials, so it is
+				// withheld when the census failed: there the provider is missing from
+				// the list because nothing answered, not because anything was checked.
 				options.push({
 					id: customProvider.id,
 					name: customProvider.name,
-					description: `${customProvider.description} (Requires additional credentials)`,
+					description: censusFailed
+						? customProvider.description
+						: `${customProvider.description} (Requires additional credentials)`,
 					provider: customProvider,
 				});
 			} else if (allowCustom) {
@@ -173,7 +197,13 @@ export const HostingSelect: FC<HostingSelectProps> = ({
 		}
 
 		return options;
-	}, [availableHostingProviders, value, allowCustom, allowDefault]);
+	}, [
+		availableHostingProviders,
+		value,
+		allowCustom,
+		allowDefault,
+		censusFailed,
+	]);
 
 	/*
 	 * "No hosting providers available" under a select that is displaying
@@ -184,6 +214,20 @@ export const HostingSelect: FC<HostingSelectProps> = ({
 	 * telling them their own setting does not exist.
 	 */
 	const helperText = useMemo(() => {
+		/*
+		 * A failed census empties the list for a reason that has nothing to do
+		 * with the user's credentials, so it gets the reason rather than the
+		 * add-credentials prompt -- which would send someone to Settings to fix
+		 * a server that is not answering. It is also shown when a value IS set,
+		 * unlike the empty-credentials line: it does not contradict the row
+		 * above (the setting still exists), it explains why the list beneath is
+		 * empty, and without it an unreachable server reads as a broken control.
+		 *
+		 * The sentence is the grid's, verbatim, from the shared classifier.
+		 */
+		if (filterByCredentials && censusFailed) {
+			return hostingCensusFailureHelperText(census.error);
+		}
 		if (
 			filterByCredentials &&
 			availableHostingProviders.length === 0 &&
@@ -197,6 +241,8 @@ export const HostingSelect: FC<HostingSelectProps> = ({
 		filterByCredentials,
 		emptyHelperText,
 		value,
+		censusFailed,
+		census.error,
 	]);
 
 	// Find the current selected option
@@ -255,10 +301,17 @@ export const HostingSelect: FC<HostingSelectProps> = ({
 		}
 	};
 
-	// Disable if no credentials and default not allowed
+	// Disable if no credentials and default not allowed.
+	//
+	// A failed census is exempt. The list is empty there because nothing
+	// answered, not because the user has no credentials, and disabling the
+	// control would strand a user whose server is down with no way to type a
+	// provider they know they have -- turning "we could not find out" into a
+	// lockout, which is the same overreach as offering everything, inverted.
 	const isDisabled =
 		!allowDefault &&
 		filterByCredentials &&
+		!censusFailed &&
 		availableHostingProviders.length === 0 &&
 		!hostingOptions.some((opt) => opt.id === value && value !== "");
 

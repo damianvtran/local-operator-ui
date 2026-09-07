@@ -29,13 +29,17 @@ const {
 	hasConnectedProvider,
 	hostingProviderSelectable,
 	readyHostingIds,
-} =
-	await import(
-		`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
-	);
+	selectableHostingProviders,
+	hostingCensusFailureHelperText,
+	providerLoadErrorMessage,
+} = await import(
+	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
+);
 
 const census = JSON.parse(
-	readFileSync(new URL("./fixtures/auth-providers-0.50.0.json", import.meta.url)),
+	readFileSync(
+		new URL("./fixtures/auth-providers-0.50.0.json", import.meta.url),
+	),
 ).result.providers;
 
 test("real 0.50.0 census renders 'Signed in' for every provider with a credential", () => {
@@ -112,7 +116,10 @@ test("first-time decision: only local providers configured -> first time", () =>
 			// The legacy list is IGNORED once the census has answered: on a real
 			// machine it held Google/AWS/Radient keys and still meant nothing
 			// about model providers.
-			legacy: { status: "ready", keys: ["GOOGLE_ACCESS_TOKEN", "AWS_ACCESS_KEY_ID"] },
+			legacy: {
+				status: "ready",
+				keys: ["GOOGLE_ACCESS_TOKEN", "AWS_ACCESS_KEY_ID"],
+			},
 		}),
 		"first_time",
 	);
@@ -209,6 +216,90 @@ test("hosting picker agrees with the census, not the env-file key list", () => {
 			has_credential: false,
 		}),
 		false,
+	);
+});
+
+// The manifest rows the picker filters. Only `id` is read, so the three ids
+// below stand for "selectable", "not selectable" and "local" in the fixture.
+const manifest = [
+	{ id: "anthropic" },
+	{ id: "openai" },
+	{ id: "google" },
+	{ id: "ollama" },
+];
+const ids = (rows) => rows.map((row) => row.id);
+
+test("hosting picker: a LOADING census suppresses filtering", () => {
+	// The one state in which an unfiltered list is correct: the answer is
+	// moments away and blanking a populated control reads as it breaking.
+	assert.deepEqual(
+		ids(selectableHostingProviders(manifest, { status: "loading" })),
+		["anthropic", "openai", "google", "ollama"],
+	);
+});
+
+test("hosting picker: a READY census filters to what the grid calls ready", () => {
+	assert.deepEqual(
+		ids(
+			selectableHostingProviders(manifest, {
+				status: "ready",
+				providers: census,
+			}),
+		),
+		// google is "Needs sign-in" in the fixture; ollama is a local server.
+		["anthropic", "openai", "ollama"],
+	);
+});
+
+test("hosting picker: a FAILED census offers nothing, not everything", () => {
+	// Issue 93. The failed and loading states used to be one branch, so a
+	// census that 5xx'd offered every provider on no evidence -- "we could not
+	// find out" rendered as "yes", the same defect the onboarding gate fixed
+	// by resolving a failed census to pending rather than first_time.
+	assert.deepEqual(
+		ids(selectableHostingProviders(manifest, { status: "failed" })),
+		[],
+	);
+	// Stated as the three-way distinction the fix is about, so a regression
+	// that re-merges failure into either neighbour fails here by name.
+	const loading = ids(
+		selectableHostingProviders(manifest, { status: "loading" }),
+	);
+	const ready = ids(
+		selectableHostingProviders(manifest, {
+			status: "ready",
+			providers: census,
+		}),
+	);
+	const failed = ids(
+		selectableHostingProviders(manifest, { status: "failed" }),
+	);
+	assert.notDeepEqual(failed, loading);
+	assert.notDeepEqual(failed, ready);
+	assert.equal(loading.length > ready.length, true);
+	assert.equal(failed.length, 0);
+});
+
+test("hosting picker: the failure line is the grid's sentence, verbatim", () => {
+	// The picker must not go silent on failure -- an empty control with no
+	// reason is a dead end -- and it must not invent a fourth wording for the
+	// backend being unreachable. Asserting by string equality against the
+	// selector the grid renders is what makes the two surfaces provably agree.
+	for (const error of [
+		new Error("boom"),
+		Object.assign(new Error("stalled"), { status: null }),
+		Object.assign(new Error("refused"), { status: 503 }),
+	]) {
+		assert.equal(
+			hostingCensusFailureHelperText(error),
+			providerLoadErrorMessage(error),
+		);
+	}
+	// And it is a real sentence, not an empty string that would render as no
+	// helper text at all.
+	assert.match(
+		hostingCensusFailureHelperText(new Error("boom")),
+		/^Providers could not be loaded\./,
 	);
 });
 
