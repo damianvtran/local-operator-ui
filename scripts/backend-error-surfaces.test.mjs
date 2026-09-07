@@ -602,3 +602,127 @@ test("settings renders the classifier's sentence rather than its own", async () 
 		);
 	}
 });
+
+test("the settings Retry is wired to the query that actually failed", async () => {
+	// Reviewer M2. Test 4(b) proves the frame changes while a capabilities
+	// refetch is in flight, but it drives its own QueryObserver rather than the
+	// button -- so collapsing this onClick to a bare `void query.refetch()`,
+	// which reintroduces the inert gated Retry, passed the entire suite. The
+	// click and the capabilities query were never connected by any assertion.
+	//
+	// Asserted on the source for the same reason the grid's `isFetching` guard
+	// is (provider-grid-error-copy.test.mjs): `renderToStaticMarkup` does not
+	// dispatch events, so the handler's BODY is unreachable to a rendered test
+	// here, and the wiring is the whole finding.
+	const { readFile } = await import("node:fs/promises");
+	const source = await readFile(
+		"src/renderer/src/features/settings/components/backend-settings-section.tsx",
+		"utf8",
+	);
+	const rendered = source.replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, "");
+
+	assert.ok(
+		/capabilities\.isError[\s\S]{0,80}capabilities\.refetch\(\)/.test(rendered),
+		"the settings Retry no longer refetches capabilities on the gated path, so the click cannot fix the fault that gated it",
+	);
+	// The other half: the ungated path must still re-ask the settings query
+	// itself, or a failure of this query alone would have no retry at all.
+	assert.ok(
+		rendered.includes("query.refetch()"),
+		"the settings Retry no longer refetches the settings query",
+	);
+	// The M1 fix is a single expression that a later edit could quietly
+	// simplify back into the regression. The rendered test above catches that,
+	// but only while it keeps reaching the state it seeds; this says the intent
+	// out loud at the source.
+	assert.ok(
+		/capabilities\.data \? null : capabilities\.error/.test(rendered),
+		"a capabilities error is fatal again even when capabilities still holds data",
+	);
+});
+
+test("a failed background capabilities refetch does not blank a loaded settings page", async () => {
+	// Reviewer M1. React Query keeps `data` and `error` set together after a
+	// failed refetch of a query that had already succeeded, so a capabilities
+	// error is NOT on its own evidence that the section has nothing to render.
+	// Gating the error branch on `capabilities.error` alone therefore replaced a
+	// fully-loaded page with "the server is not answering" whenever a background
+	// refetch failed -- and `staleTime: 60_000` + `refetchOnWindowFocus` means
+	// alt-tabbing back after a minute is enough to reach it.
+	//
+	// The cost is data loss, not just a wrong frame: `BackendSettingRow` holds
+	// each draft in local `useState`, and this file's header promises drafts
+	// survive failures. Unmounting the section destroys typed-but-unsaved edits.
+	//
+	// Every other test here seeds capabilities failure with NO prior success, so
+	// `capabilities.data` is undefined in all of them -- which is why the whole
+	// suite stayed green over this. The success-then-failure seeding below is
+	// the entire point of this case.
+	const client = newClient();
+	client.setQueryData(backendSettingsKeys.all, {
+		sections: [{ name: "General" }],
+		settings: [
+			{
+				key: "a.b",
+				label: "A",
+				help: "h",
+				section: "General",
+				value: "1",
+				type: "string",
+			},
+		],
+	});
+
+	let capabilitiesMode = "ok";
+	const capabilities = new QueryObserver(client, {
+		queryKey: desktopKeys.capabilities,
+		retry: false,
+		staleTime: 60_000,
+		queryFn: () => {
+			if (capabilitiesMode === "ok")
+				return Promise.resolve({
+					desktop_available: true,
+					features: { settings: 1 },
+				});
+			return Promise.reject(new Error("boom"));
+		},
+	});
+	const unsubscribe = capabilities.subscribe(() => {});
+	await new Promise((resolve) => setTimeout(resolve, 40));
+
+	const healthy = text(renderBackendSettings(client));
+	assert.match(healthy, /Use default/, "the seeded healthy frame never loaded");
+
+	capabilitiesMode = "fail";
+	await capabilities.refetch();
+
+	// The precondition the finding rests on. If a refetch ever stops preserving
+	// data alongside the error, this test silently stops covering M1 -- which is
+	// exactly how the regression survived 41 green tests.
+	const state = capabilities.getCurrentResult();
+	assert.equal(state.status, "error", "capabilities did not reach an error");
+	assert.ok(
+		state.data,
+		"capabilities dropped its data on a failed refetch; this test no longer covers M1",
+	);
+
+	const afterFailure = text(renderBackendSettings(client));
+	assert.doesNotMatch(
+		afterFailure,
+		/Your settings could not be loaded\./,
+		"a background capabilities failure blanked a loaded settings page, destroying unsaved row drafts",
+	);
+	assert.match(
+		afterFailure,
+		/Use default/,
+		"the settings rows are gone after a background capabilities failure",
+	);
+	assert.equal(
+		afterFailure,
+		healthy,
+		"a background capabilities failure changed the loaded settings frame",
+	);
+
+	unsubscribe();
+	client.clear();
+});

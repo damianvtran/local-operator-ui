@@ -143,7 +143,17 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 	// Whichever query actually failed carries the status worth classifying:
 	// capabilities failing is why this one never ran, so its error is the real
 	// diagnosis rather than the absence of data it produced downstream.
-	const loadError = capabilities.error ?? query.error;
+	//
+	// Only when it left NO data behind, though. React Query keeps `data` and
+	// `error` set together after a failed refetch of a query that had already
+	// succeeded, so a capabilities error is not by itself evidence that this
+	// section has nothing to render. Treating it as fatal regardless replaced a
+	// fully-loaded page with an error banner on any background refetch failure
+	// -- reachable by alt-tabbing back after `staleTime` (60s) lapses -- and
+	// unmounting the rows destroys the unsaved drafts the header promises will
+	// survive failures.
+	const loadError =
+		(capabilities.data ? null : capabilities.error) ?? query.error;
 	if (loadError || !settings || !filtered) {
 		const retrying = capabilities.isFetching || query.isFetching;
 		return (
@@ -166,8 +176,12 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 						size="sm"
 						className="shrink-0"
 						onClick={() => {
-							// Capabilities gate this query, so re-asking only the gated one
-							// would leave it disabled and the click inert.
+							// Retry what actually broke. On the gated path capabilities are
+							// the fault and the reason this query never ran, so re-asking
+							// only the gated query would re-fail against the same unfixed
+							// cause without ever retrying it. (`refetch()` on a disabled
+							// query does fire its queryFn -- measured on query-core 5.73.3 --
+							// so the click would not be inert, merely pointless.)
 							if (capabilities.isError) void capabilities.refetch();
 							else void query.refetch();
 						}}
