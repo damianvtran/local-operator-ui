@@ -12,6 +12,7 @@
  * BackendSettingRow for that contract.
  */
 
+import { backendLoadErrorMessage } from "@shared/api/local-operator/backend-error";
 import { desktopResult } from "@shared/api/local-operator/desktop-api";
 import type {
 	BackendSetting,
@@ -115,13 +116,23 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 	if (capabilities.data && !enabled) {
 		return (
 			<Alert variant="warning">
-				Searchable backend settings need a newer Local Operator backend. Update
-				the backend and restart the app to manage these settings here.
+				Searchable settings need a newer Local Operator server. Update the
+				server and restart the app to manage these settings here.
 			</Alert>
 		);
 	}
 
-	if (query.isLoading) {
+	/*
+	 * This query is `enabled` only once capabilities negotiate, and a DISABLED
+	 * React Query reports `isLoading: false` with no data -- so while
+	 * capabilities are still in flight, and permanently once they FAIL, this
+	 * section fell through the loading gate into its error branch. It then
+	 * rendered its own hand-written "the backend may need an update", the one
+	 * remedy that cannot fix an unreachable or unauthenticated server, directly
+	 * beneath a banner saying the opposite. Gating on the capabilities query
+	 * too is what makes the states below mean what they say.
+	 */
+	if (query.isLoading || capabilities.isLoading) {
 		return (
 			<div className="flex h-40 items-center justify-center">
 				<Spinner size="lg" label="Loading settings" />
@@ -129,19 +140,40 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 		);
 	}
 
-	if (query.isError || !settings || !filtered) {
+	// Whichever query actually failed carries the status worth classifying:
+	// capabilities failing is why this one never ran, so its error is the real
+	// diagnosis rather than the absence of data it produced downstream.
+	const loadError = capabilities.error ?? query.error;
+	if (loadError || !settings || !filtered) {
+		const retrying = capabilities.isFetching || query.isFetching;
 		return (
 			<Alert variant="warning">
 				<div className="flex items-center justify-between gap-3">
+					{/* Same classifier, same remedy sentence as the compatibility banner
+					    and the providers grid. Nothing about this surface makes its
+					    diagnosis of the server different from theirs. */}
 					<span>
-						Settings could not be loaded. The backend may need an update.
+						{backendLoadErrorMessage(
+							"Your settings could not be loaded.",
+							loadError,
+						)}
 					</span>
+					{/* `isFetching` on both, because either query may be the one
+					    in flight; an errored query keeps `status: "error"` through its
+					    refetch, so without this the click changes nothing on screen. */}
 					<Button
 						variant="secondary"
 						size="sm"
-						onClick={() => void query.refetch()}
+						className="shrink-0"
+						onClick={() => {
+							// Capabilities gate this query, so re-asking only the gated one
+							// would leave it disabled and the click inert.
+							if (capabilities.isError) void capabilities.refetch();
+							else void query.refetch();
+						}}
+						disabled={retrying}
 					>
-						Retry
+						{retrying ? "Retrying" : "Retry"}
 					</Button>
 				</div>
 			</Alert>
