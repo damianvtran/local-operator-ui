@@ -80,6 +80,18 @@ const SETUID_BIT = 0o4000;
  * swapped in between. Holding the descriptor means the thing we inspected is
  * provably the thing we modify.
  *
+ * WHY O_NONBLOCK IS PART OF THIS, and it is not decoration: `open(2)` on a FIFO
+ * with O_RDONLY BLOCKS UNTIL A WRITER APPEARS. That is plain POSIX open
+ * semantics and has nothing to do with O_NOFOLLOW, which refuses only symlinks.
+ * So a dependency that drops a FIFO at the helper path -- a file it can create
+ * as easily as a symlink -- makes `sudo npm install -g` hang FOREVER, with no
+ * timeout and no failure, and the path is reachable: ensureElectronDist()
+ * fast-paths on existsSync(chrome-sandbox), which a FIFO satisfies. Measured:
+ * both entry points had to be SIGKILLed after 8s without this flag and return in
+ * ~1ms with it. O_NONBLOCK is a no-op on the regular file we actually expect, so
+ * it costs nothing on the healthy path; it only turns "wait indefinitely" into
+ * "open it and let the fstat below refuse it as not a regular file".
+ *
  * KNOWN LIMIT, stated rather than implied: O_NOFOLLOW only refuses a symlink as
  * the FINAL path component. An attacker who can replace an intermediate
  * directory inside our own node_modules/electron/dist with a link is not
@@ -87,7 +99,8 @@ const SETUID_BIT = 0o4000;
  * walk (openat/O_DIRECTORY per component), which Node does not expose -- and the
  * final component is the one an npm-installed package can actually place.
  */
-const OPEN_NOFOLLOW = fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW;
+const OPEN_NOFOLLOW =
+	fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW | fs.constants.O_NONBLOCK;
 
 // A refused O_NOFOLLOW open reports ELOOP on Linux and macOS; BSDs use EMLINK.
 // Both mean the same thing here: the final component is a symlink.
@@ -308,16 +321,32 @@ const sandboxHelperGuidance = (state, command) => {
  * conventional 128+n encoding preserves which signal it was.
  */
 /**
- * Signals that mean "the user (or their service manager) stopped us", never
- * "we could not start". The launcher forwards SIGINT and SIGTERM to the child,
- * so a plain Ctrl+C arrives here as code null + SIGINT.
+ * Signals that mean "a fatal precondition check killed us", which is how a
+ * Chromium sandbox abort actually terminates.
+ *
+ * This is an ALLOWLIST, and that direction is the point. The previous version
+ * asked "is this NOT a deliberate stop?", which acquits Ctrl+C but still
+ * convicts every other early death -- including an app that ran its own code and
+ * chose an exit status. QA reproduced exactly that: with the sandbox provably
+ * not implicated (userns working, so the app reached its own `exit(42)`), the
+ * launcher still printed the full chown/chmod guidance. Asking instead "does
+ * this death look like a failed CHECK?" is what separates the two.
+ *
+ * Chromium's LOG(FATAL) raises the debugger trap rather than returning a status,
+ * so the sandbox abort arrives as code null + SIGTRAP -- measured in
+ * node:22-bookworm, and reported by a shell as 133 (128+5). SIGABRT and SIGILL
+ * are the same class of deliberate self-kill on a failed check and are included
+ * so the rule is not pinned to one Chromium build's trap instruction.
+ *
+ * NOT included, deliberately: SIGSEGV and SIGBUS (a memory fault is a genuine
+ * crash, not a misconfigured helper), and ANY numeric exit code. A numeric code
+ * means the process got far enough to decide one, and the zygote abort never
+ * does. The asymmetry is what settles the borderline: a false positive tells a
+ * working install to run two sudo commands that change nothing, while a false
+ * negative merely leaves the user with Chromium's own message -- the state
+ * before this file existed.
  */
-const USER_INITIATED_SIGNALS = new Set([
-	"SIGINT",
-	"SIGTERM",
-	"SIGHUP",
-	"SIGQUIT",
-]);
+const ABORT_SIGNALS = new Set(["SIGTRAP", "SIGABRT", "SIGILL"]);
 
 /**
  * How long after spawn a death can still plausibly be a startup abort.
@@ -342,21 +371,16 @@ const STARTUP_WINDOW_MS = 10_000;
  * permissions. That is precisely the "sends the reader to diagnose the wrong
  * thing" failure the postinstall's own comments are careful to avoid.
  *
- * Two independent narrowings, either of which alone is enough to acquit:
- * a deliberate stop signal is never a startup failure whenever it arrives, and
- * a process that lived past the startup window demonstrably started.
+ * Two conditions, BOTH required: the death has the shape of a fatal check (see
+ * ABORT_SIGNALS -- a deliberate stop signal and an ordinary numeric exit are
+ * both excluded by it), and it happened inside the startup window, since a
+ * process that lived past it demonstrably started.
  */
-const isStartupFailure = ({ code, signal, elapsedMs }) => {
-	if (signal && USER_INITIATED_SIGNALS.has(signal)) {
+const isStartupFailure = ({ signal, elapsedMs }) => {
+	if (!signal || !ABORT_SIGNALS.has(signal)) {
 		return false;
 	}
-	if (typeof elapsedMs === "number" && elapsedMs >= STARTUP_WINDOW_MS) {
-		return false;
-	}
-	if (code === 0) {
-		return false;
-	}
-	return typeof code === "number" || Boolean(signal);
+	return typeof elapsedMs !== "number" || elapsedMs < STARTUP_WINDOW_MS;
 };
 
 const exitCodeFor = (code, signal) => {

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import {
 	chmodSync,
 	lstatSync,
@@ -11,6 +12,7 @@ import {
 	writeFileSync,
 } from "node:fs";
 import { createRequire } from "node:module";
+import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, test } from "node:test";
@@ -393,6 +395,104 @@ test("a non-regular file in the helper's place is refused", () => {
 	assert.equal(inspectSandboxHelper(dir).needsRepair, false);
 });
 
+// `timeout` matters here but is NOT the real backstop, and the difference is
+// worth stating: openSync blocking on a FIFO is a SYNCHRONOUS block, so the
+// runner's timer cannot fire to fail the test -- the whole process wedges. The
+// timeout only helps if a future regression blocks asynchronously. What actually
+// survives the sync case is the mutation battery's out-of-process spawnSync
+// timeout, which kills the wedged interpreter (see M21).
+test(
+	"a FIFO in the helper's place is refused WITHOUT blocking",
+	{ timeout: 15_000 },
+	(t) => {
+		// WHY A FIFO SPECIFICALLY, and why the directory case above does not cover it:
+		// "non-regular file" is not one behaviour. A directory OPENS instantly and is
+		// then rejected by the isFile() check, so it exercises the rejection and
+		// nothing else. A FIFO does not even reach that check -- open(2) with O_RDONLY
+		// BLOCKS UNTIL A WRITER APPEARS, so before O_NONBLOCK both entry points hung
+		// indefinitely and had to be SIGKILLed. Picking the one member of the class
+		// that happens to behave like the passing case is how that defect shipped
+		// through a 20-mutation battery; this test is the other member.
+		//
+		// It is reachable in production: ensureElectronDist() fast-paths on
+		// existsSync(chrome-sandbox), which a FIFO satisfies, so a dependency dropping
+		// one there hangs `sudo npm install -g` forever with no timeout.
+		const fifo = join(scratch, "helper-is-a-fifo");
+		const made = spawnSync("mkfifo", [fifo]);
+		if (made.status !== 0) {
+			// Windows has no mkfifo. Skip rather than fail: the guard is a POSIX one.
+			t.skip("mkfifo unavailable on this platform");
+			return;
+		}
+
+		// The assertion that would have caught the hang is that these RETURN AT ALL.
+		// A wall-clock bound is the only way to express "did not block forever", so it
+		// is set for catastrophe (2s against a measured ~1ms) rather than for
+		// precision -- it cannot flake on a loaded machine, and an indefinite block
+		// fails it by never completing.
+		const started = Date.now();
+		assert.equal(inspectSandboxHelper(fifo).needsRepair, false);
+		assert.equal(inspectSandboxHelper(fifo).unsafe, true);
+		assert.equal(repairSandboxHelper(fifo).outcome, "unsafe");
+		const elapsed = Date.now() - started;
+		assert.ok(
+			elapsed < 2_000,
+			`opening a FIFO must not block: took ${elapsed}ms (O_NONBLOCK missing?)`,
+		);
+	},
+);
+
+test("every member of the not-a-regular-file class is refused promptly", () => {
+	// THE GENERALISATION, and the reason this exists as well as the two tests
+	// above: "non-regular file" is a CLASS whose members do not agree, so testing
+	// one of them proves only that one. Measured, they land in three different
+	// places -- a directory and a FIFO open and are refused by isFile() as
+	// `unsafe`; a socket fails open() with ENXIO and an unreadable file with
+	// EACCES, so both take the catch and are reported `absent`.
+	//
+	// That divergence is TOLERATED rather than asserted away, because the property
+	// the repair depends on is the same for all four and is what is asserted here:
+	// none is ever reported repairable, root never chowns or chmods any of them,
+	// and none blocks. `absent` and `unsafe` differ only in the message, and
+	// neither leads to a mutation.
+	const members = {
+		directory: (p) => mkdirSync(p),
+		fifo: (p) => spawnSync("mkfifo", [p]),
+		socket: (p) => {
+			const server = createServer();
+			server.listen(p);
+			server.close();
+		},
+		unreadable: (p) => {
+			writeFileSync(p, "#!/bin/true\n");
+			chmodSync(p, 0o000);
+		},
+	};
+	for (const [kind, make] of Object.entries(members)) {
+		const p = join(scratch, `class-${kind}`);
+		try {
+			make(p);
+		} catch {
+			continue; // platform cannot create this member; the others still assert.
+		}
+		const started = Date.now();
+		const inspected = inspectSandboxHelper(p);
+		const repaired = repairSandboxHelper(p);
+		const elapsed = Date.now() - started;
+		assert.equal(
+			inspected.needsRepair,
+			false,
+			`${kind}: must never be offered for repair`,
+		);
+		assert.notEqual(
+			repaired.outcome,
+			"repaired",
+			`${kind}: root must not have mutated it`,
+		);
+		assert.ok(elapsed < 2_000, `${kind}: blocked for ${elapsed}ms`);
+	}
+});
+
 // --------------------------------------------------------------------------
 // chown-before-chmod ordering. Previously excused as "needs root"; it does not.
 // The shipped module calls through the shared `fs` module object, so spying on
@@ -495,22 +595,29 @@ test("Ctrl+C is never diagnosed as a sandbox startup failure", () => {
 	// "your sandbox helper is misconfigured; sudo chmod 4755" to a user whose
 	// app had been running fine -- on the 0755 userns install this design exists
 	// to keep working, where the helper is permanently in the flagged state.
-	assert.equal(
-		isStartupFailure({ code: null, signal: "SIGINT", elapsedMs: 5 }),
-		false,
-	);
-	assert.equal(
-		isStartupFailure({ code: null, signal: "SIGTERM", elapsedMs: 5 }),
-		false,
-	);
+	//
+	// EVERY member of the class, not one representative. The FIFO defect got
+	// through a 20-mutation battery because the "non-regular file" test picked the
+	// one member that behaves like the passing case, so the classes in this file
+	// are now enumerated rather than sampled.
+	for (const signal of ["SIGINT", "SIGTERM", "SIGHUP", "SIGQUIT"]) {
+		assert.equal(
+			isStartupFailure({ code: null, signal, elapsedMs: 5 }),
+			false,
+			`${signal} is a deliberate stop, never a startup failure`,
+		);
+	}
 });
 
 test("an app that ran for a while is never diagnosed as a startup failure", () => {
 	// A crash an hour in is not the sandbox helper: the app demonstrably started.
+	// The window is the SECOND condition, so it must be shown to bite on a death
+	// that would otherwise qualify -- an abort signal, not merely a numeric code
+	// the signal rule already rejects for a different reason.
 	assert.equal(
 		isStartupFailure({
-			code: 1,
-			signal: null,
+			code: null,
+			signal: "SIGTRAP",
 			elapsedMs: STARTUP_WINDOW_MS + 1,
 		}),
 		false,
@@ -521,18 +628,48 @@ test("an app that ran for a while is never diagnosed as a startup failure", () =
 	);
 });
 
+test("an app that chose its own exit status is not blamed on the sandbox", () => {
+	// QA's Q2 repro, verbatim. The sandbox was provably NOT implicated: userns was
+	// working (proven by the app reaching its own process.exit(42)) and the 0755
+	// helper was harmless, yet the launcher printed the full chown/chmod guidance.
+	//
+	// This is the case a timing-plus-nonzero-code rule cannot get right, and it is
+	// the population the fix exists to protect -- an unprivileged userns install
+	// where the helper is PERMANENTLY in the flagged state, so every fast non-zero
+	// exit for the rest of its life is misdiagnosed. A numeric exit code means the
+	// process got far enough to pick one; the zygote abort never does.
+	assert.equal(
+		isStartupFailure({ code: 42, signal: null, elapsedMs: 1200 }),
+		false,
+	);
+	// Same shape at the codes a real app is most likely to use.
+	assert.equal(
+		isStartupFailure({ code: 1, signal: null, elapsedMs: 80 }),
+		false,
+	);
+	assert.equal(
+		isStartupFailure({ code: 2, signal: null, elapsedMs: 5 }),
+		false,
+	);
+});
+
 test("the Chromium sandbox FATAL still IS diagnosed", () => {
-	// The case the guidance exists for: an immediate signal death at startup.
-	// Measured shape -- code null, SIGTRAP, within milliseconds of spawn.
+	// The case the guidance exists for: an immediate fatal-check death at startup.
+	// Measured shape -- code null, SIGTRAP, within milliseconds of spawn, because
+	// Chromium's LOG(FATAL) raises the debugger trap rather than returning.
 	assert.equal(
 		isStartupFailure({ code: null, signal: "SIGTRAP", elapsedMs: 120 }),
 		true,
 	);
-	// And a fast non-zero exit is still worth diagnosing.
-	assert.equal(
-		isStartupFailure({ code: 1, signal: null, elapsedMs: 80 }),
-		true,
-	);
+	// Not pinned to one build's trap instruction: the same deliberate self-kill.
+	// Enumerated for the same reason as the stop signals above.
+	for (const signal of ["SIGTRAP", "SIGABRT", "SIGILL"]) {
+		assert.equal(
+			isStartupFailure({ code: null, signal, elapsedMs: 300 }),
+			true,
+			`${signal} is a fatal-check death and IS diagnosable`,
+		);
+	}
 	// A clean exit never is, however fast.
 	assert.equal(
 		isStartupFailure({ code: 0, signal: null, elapsedMs: 5 }),
@@ -543,6 +680,17 @@ test("the Chromium sandbox FATAL still IS diagnosed", () => {
 		isStartupFailure({ code: null, signal: null, elapsedMs: 5 }),
 		false,
 	);
+	// A memory fault is a genuine crash, not a misconfigured helper. Excluded on
+	// purpose: the asymmetry is that a false positive sends a working install to
+	// run two sudo commands that change nothing, while a false negative leaves the
+	// user with Chromium's own message -- the state before this file existed.
+	for (const signal of ["SIGSEGV", "SIGBUS", "SIGFPE", "SIGKILL"]) {
+		assert.equal(
+			isStartupFailure({ code: null, signal, elapsedMs: 200 }),
+			false,
+			`${signal} is a crash or an external kill, not a sandbox misconfiguration`,
+		);
+	}
 });
 
 test("guidance quotes a path containing an apostrophe so it can be pasted", () => {

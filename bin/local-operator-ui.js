@@ -167,12 +167,15 @@ child.on("close", (code, signal) => {
 	// So diagnose after the fact instead: the app has already failed to START,
 	// and the helper is in the state known to cause exactly this.
 	//
-	// "Failed to start" is narrower than "did not exit zero", and the difference
-	// is user-visible: on a working 0755 userns install the helper sits
-	// permanently in the state this guidance keys on, so a plain Ctrl+C would
-	// otherwise be answered with "run sudo chmod 4755". See isStartupFailure.
+	// "Failed to start" is much narrower than "did not exit zero", and the
+	// difference is user-visible: on a working 0755 userns install the helper sits
+	// permanently in the state this guidance keys on, so ANY other reason for a
+	// non-zero exit -- Ctrl+C, a crash on quit, or the app choosing its own status
+	// -- would otherwise be answered with "run sudo chmod 4755". Only a fatal-check
+	// signal death inside the startup window qualifies; `code` is deliberately not
+	// consulted, because a process that chose an exit status got past the zygote.
+	// See isStartupFailure.
 	const failedToStart = isStartupFailure({
-		code,
 		signal,
 		elapsedMs: Date.now() - spawnedAt,
 	});

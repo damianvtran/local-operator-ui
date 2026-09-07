@@ -150,8 +150,8 @@ const MUTATIONS = [
 		id: "M16",
 		note: "SECURITY: O_NOFOLLOW dropped (symlink followed again)",
 		file: "bin/linux-sandbox.js",
-		from: "const OPEN_NOFOLLOW = fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW;",
-		to: "const OPEN_NOFOLLOW = fs.constants.O_RDONLY;",
+		from: "\tfs.constants.O_RDONLY | fs.constants.O_NOFOLLOW | fs.constants.O_NONBLOCK;",
+		to: "\tfs.constants.O_RDONLY | fs.constants.O_NONBLOCK;",
 	},
 	{
 		id: "M17",
@@ -168,18 +168,39 @@ const MUTATIONS = [
 		to: "",
 	},
 	{
-		id: "M19",
-		note: "post-mortem fires on any non-zero exit (Ctrl+C misdiagnosis)",
+		id: "M21",
+		// The defect this reproduces shipped THROUGH this battery: M18 removed the
+		// isFile() guard and was killed by a test whose non-regular file was a
+		// DIRECTORY -- which opens instantly. A FIFO does not, so the blocking-open
+		// hole was invisible to both. Mutating the flags is what proves the FIFO
+		// case asserts something the directory case cannot.
+		note: "O_NONBLOCK dropped (a FIFO helper hangs the install forever)",
 		file: "bin/linux-sandbox.js",
-		from: "\tif (signal && USER_INITIATED_SIGNALS.has(signal)) {\n\t\treturn false;\n\t}",
-		to: "",
+		from: "\tfs.constants.O_RDONLY | fs.constants.O_NOFOLLOW | fs.constants.O_NONBLOCK;",
+		to: "\tfs.constants.O_RDONLY | fs.constants.O_NOFOLLOW;",
+	},
+	{
+		id: "M19",
+		note: "post-mortem fires on any non-zero exit (Ctrl+C / exit(42) misdiagnosis)",
+		file: "bin/linux-sandbox.js",
+		from: "\tif (!signal || !ABORT_SIGNALS.has(signal)) {\n\t\treturn false;\n\t}",
+		to: "\tif (code === 0) {\n\t\treturn false;\n\t}",
 	},
 	{
 		id: "M20",
 		note: "startup window ignored (an hour-old crash blamed on the sandbox)",
 		file: "bin/linux-sandbox.js",
-		from: '\tif (typeof elapsedMs === "number" && elapsedMs >= STARTUP_WINDOW_MS) {\n\t\treturn false;\n\t}',
-		to: "",
+		from: '\treturn typeof elapsedMs !== "number" || elapsedMs < STARTUP_WINDOW_MS;',
+		to: "\treturn true;",
+	},
+	{
+		id: "M22",
+		// The allowlist must be a real discriminator, not a formality: widening it
+		// to any signal readmits SIGSEGV and (via the launcher forwarding it) SIGINT.
+		note: "abort allowlist widened to any signal (crash/Ctrl+C readmitted)",
+		file: "bin/linux-sandbox.js",
+		from: "\tif (!signal || !ABORT_SIGNALS.has(signal)) {",
+		to: "\tif (!signal) {",
 	},
 ];
 
@@ -231,9 +252,28 @@ for (const mutation of selected) {
 		const run = spawnSync(
 			process.execPath,
 			["--test", join(scratch, "scripts", "linux-sandbox.test.mjs")],
-			{ encoding: "utf8", cwd: scratch },
+			{
+				encoding: "utf8",
+				cwd: scratch,
+				// A mutant can HANG rather than fail -- M21 restores a blocking open(2)
+				// on a FIFO, which wedges the interpreter synchronously where the test
+				// runner's own timer can never fire. Without a bound here the battery
+				// waits forever and reports nothing, so the mutation that matters most
+				// is the one that silences it. SIGKILL because a wedged process inside
+				// a blocking syscall need not honour SIGTERM.
+				timeout: 60_000,
+				killSignal: "SIGKILL",
+			},
 		);
+		// A timeout kill is a KILL, not a survival: the suite did not pass, it never
+		// finished. status is null in that case, so testing `!== 0` would wrongly
+		// read it as a pass on some platforms.
 		const passed = run.status === 0;
+		if (run.signal) {
+			console.log(
+				`   (${mutation.id} killed by ${run.signal} -- suite hung; counted as killed)`,
+			);
+		}
 		if (passed) {
 			survivors.push(mutation);
 		}
