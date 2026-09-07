@@ -9,9 +9,12 @@
  */
 
 import {
-	type AuthOperation,
-	DesktopControlError,
-	type ProviderMethod,
+	BACKEND_ERROR_REMEDY,
+	backendErrorKind,
+} from "@shared/api/local-operator/backend-error";
+import type {
+	AuthOperation,
+	ProviderMethod,
 } from "@shared/api/local-operator/desktop-api";
 
 export function providerMethodLabel(
@@ -91,6 +94,18 @@ export function providerReadiness(provider: {
 	return { label: "Needs sign-in", tone: "neutral", group: "Needs sign-in" };
 }
 
+/** What the grid says the backend is doing, per classified outcome. */
+const PROVIDER_LOAD_DIAGNOSIS = {
+	unreachable: "The backend is not answering.",
+	unauthorized: "This app cannot authenticate to the running backend.",
+	outdated: "The backend may need an update.",
+	// No remedy is asserted for a status we have not established one for. The
+	// previous fallback WAS the update sentence, so every unmatched status --
+	// including a 500 from a backend that is running and current -- was answered
+	// with a several-minute install.
+	unknown: "",
+} as const;
+
 /**
  * Whether the hosting picker may offer this provider without a "requires
  * additional credentials" warning. Same fact the grid uses: anything that
@@ -125,24 +140,25 @@ export function readyHostingIds(
 /**
  * What to tell the user when the provider list fails to load.
  *
- * The grid used to assert "the backend may need an update" for every error,
- * including a backend that was not running at all. That is the wrong remedy:
- * updating cannot start a stopped process, and it sends the user through a
- * several-minute install to arrive back at the same failure. This draws the
- * same distinction the compatibility banner already draws from the same field,
- * so the two surfaces never disagree about what is wrong.
- *
- * 404 is the only status an update fixes: the route is absent, so the backend
- * predates the desktop contract. `null` means no backend was reached (rejected
- * IPC, dead dev proxy, or the transport's stalled-request deadline) and 503 is
- * the main process's own "could not complete this request". Any other status
- * keeps the generic sentence rather than guessing at a remedy.
+ * The remedy comes from the shared classification rather than a second `if`
+ * over the same status field, because the grid and the compatibility banner
+ * previously disagreed: at 401/403 the banner said restart-and-re-pair and
+ * withheld its update button, while the grid's two-way split dropped those
+ * statuses into its `else` and told the user to install a newer backend --
+ * which cannot fix a bearer the running backend refuses. Both surfaces now end
+ * on the identical remedy sentence from `BACKEND_ERROR_REMEDY`; only the
+ * diagnosis is phrased for this surface, which speaks about providers rather
+ * than about the whole app.
  */
 export function providerLoadErrorMessage(error: unknown): string {
-	const status = error instanceof DesktopControlError ? error.status : null;
-	return status === null || status === 503
-		? "Providers could not be loaded. The backend is not answering. Retry once it has started."
-		: "Providers could not be loaded. The backend may need an update.";
+	const kind = backendErrorKind(error);
+	return [
+		"Providers could not be loaded.",
+		PROVIDER_LOAD_DIAGNOSIS[kind],
+		BACKEND_ERROR_REMEDY[kind],
+	]
+		.filter(Boolean)
+		.join(" ");
 }
 
 /** Terminal states after which polling an auth operation must stop. */
