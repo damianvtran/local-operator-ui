@@ -1,5 +1,6 @@
 import { useOnboardingTour } from "@features/onboarding/hooks/use-onboarding-tour";
 import { ProviderGrid } from "@features/providers/provider-grid";
+import { backendLoadErrorMessage } from "@shared/api/local-operator/backend-error";
 import type { ConfigUpdate } from "@shared/api/local-operator/types";
 import { EditableField } from "@shared/components/common/editable-field";
 import { PageHeader } from "@shared/components/common/page-header";
@@ -327,6 +328,7 @@ export const SettingsPage: FC = () => {
 	const {
 		data: config,
 		isLoading: isConfigLoading,
+		isFetching: isConfigFetching,
 		error: configError,
 		refetch,
 	} = useConfig();
@@ -689,21 +691,44 @@ export const SettingsPage: FC = () => {
 	if (configError) {
 		return (
 			<div className="flex h-full w-full items-center justify-center bg-canvas p-6">
-				<Alert variant="danger" className="w-full max-w-xl">
+				{/* `warning`, matching the providers grid: one fault must not render
+				    at two severities depending on which screen reports it, and a
+				    failure with a Retry beside it has cost the user nothing. The rule
+				    is stated beside the shared copy in `backend-error.ts`. */}
+				<Alert variant="warning" className="w-full max-w-xl">
 					<div className="flex items-center justify-between gap-3">
+						{/* Classified from the SAME error the banner above reads, so this
+						    page can no longer say the server "may not be running" while
+						    the banner says it is offline -- or tell a 401 user to wait for
+						    a server that is already running and refusing this app's
+						    bearer. The raw exception ("Get config request failed: 503")
+						    used to render here; it names a function, a transport verb and
+						    an integer, none of which change what the user does next, so it
+						    stays on `error.message` for logs and support and out of the
+						    sentence. */}
 						<span>
-							Could not load your settings. The Local Operator server may not be
-							running. {configError.message}
+							{backendLoadErrorMessage(
+								"Your settings could not be loaded.",
+								configError,
+							)}
 						</span>
-						{/* Same recovery the providers grid offers: re-ask the backend in
-						    place, so a transient stall does not cost a relaunch. */}
+						{/* Same recovery the providers grid offers: re-ask the server in
+						    place, so a transient stall does not cost a relaunch.
+
+						    `isFetching`, not `isLoading`: refetching an ERRORED query
+						    leaves `status: "error"`, so `isLoading` stays false and this
+						    branch keeps rendering for the transport's whole 30s deadline.
+						    Without a pending state the frame is pixel-identical after the
+						    click -- issue 89's own "I cannot tell whether this is working
+						    or hung", one click downstream of its fix. */}
 						<Button
 							variant="secondary"
 							size="sm"
 							className="shrink-0"
 							onClick={() => void refetch()}
+							disabled={isConfigFetching}
 						>
-							Retry
+							{isConfigFetching ? "Retrying" : "Retry"}
 						</Button>
 					</div>
 				</Alert>
@@ -735,9 +760,12 @@ export const SettingsPage: FC = () => {
 	if (!config) {
 		return (
 			<div className="flex h-full w-full items-center justify-center bg-canvas p-6">
-				<Alert variant="danger" className="w-full max-w-xl">
-					Could not load your settings. The Local Operator server may not be
-					running.
+				{/* Settled with no error and no config: nothing classified it, so
+				    there is no status to advise on and no remedy to assert. Same
+				    discipline as the classifier's `unknown` -- state the failure and
+				    stop rather than guessing an action that may not fix it. */}
+				<Alert variant="warning" className="w-full max-w-xl">
+					Your settings could not be loaded.
 				</Alert>
 			</div>
 		);
