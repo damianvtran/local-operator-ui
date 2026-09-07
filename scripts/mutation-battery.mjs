@@ -215,20 +215,76 @@ const applyOnce = (source, from, to, last) => {
 	return source.slice(0, idx) + to + source.slice(idx + from.length);
 };
 
+/**
+ * The identical spawn used for the baseline and for every mutant, so "the
+ * baseline is green" is a statement about the same command that later reports
+ * kills -- a guard that ran the suite a different way could pass while the
+ * battery's own runs all failed for an unrelated reason.
+ */
+const runSuite = (scratch) =>
+	spawnSync(
+		process.execPath,
+		["--test", join(scratch, "scripts", "linux-sandbox.test.mjs")],
+		{
+			encoding: "utf8",
+			cwd: scratch,
+			// A mutant can HANG rather than fail -- M21 restores a blocking open(2)
+			// on a FIFO, which wedges the interpreter synchronously where the test
+			// runner's own timer can never fire. Without a bound here the battery
+			// waits forever and reports nothing, so the mutation that matters most
+			// is the one that silences it. SIGKILL because a wedged process inside
+			// a blocking syscall need not honour SIGTERM.
+			timeout: 60_000,
+			killSignal: "SIGKILL",
+		},
+	);
+
+const stage = () => {
+	const scratch = mkdtempSync(join(tmpdir(), "lo-mutation-"));
+	for (const dir of ["bin", "scripts"]) {
+		cpSync(join(repoRoot, dir), join(scratch, dir), { recursive: true });
+	}
+	return scratch;
+};
+
 const requested = process.argv.slice(2);
 const selected = requested.length
 	? MUTATIONS.filter((m) => requested.includes(m.id))
 	: MUTATIONS;
 
+// BASELINE GATE. A mutant counts as "killed" when the suite FAILS against it, so
+// if the suite already fails UNMUTATED then every mutant is killed vacuously and
+// the battery reports a perfect score while asserting nothing. Not hypothetical:
+// as root the suite was red and the battery reported 22/22 killed and exited 0,
+// including M8 -- the disclosed EQUIVALENT mutant that must always survive.
+// Refuse to report at all rather than report success, because this battery is
+// the change's central evidence and a silently vacuous one is worse than none.
+// Exit 2, distinct from the 1 used for real survivors: "did not measure" is a
+// different answer from "measured, and something survived".
+const baselineScratch = stage();
+try {
+	const baseline = runSuite(baselineScratch);
+	if (baseline.status !== 0) {
+		const euid =
+			typeof process.geteuid === "function" ? process.geteuid() : "n/a";
+		console.error(
+			`REFUSING TO RUN: the UNMUTATED suite does not pass, so every mutant would be reported killed vacuously. Fix the suite first.
+  baseline status=${baseline.status} signal=${baseline.signal} euid=${euid}
+--- baseline output ---
+${baseline.stdout ?? ""}${baseline.stderr ?? ""}`,
+		);
+		process.exit(2);
+	}
+} finally {
+	rmSync(baselineScratch, { recursive: true, force: true });
+}
+
 const survivors = [];
 const broken = [];
 
 for (const mutation of selected) {
-	const scratch = mkdtempSync(join(tmpdir(), "lo-mutation-"));
+	const scratch = stage();
 	try {
-		for (const dir of ["bin", "scripts"]) {
-			cpSync(join(repoRoot, dir), join(scratch, dir), { recursive: true });
-		}
 		const target = join(scratch, mutation.file);
 		const original = readFileSync(target, "utf8");
 		const mutated = applyOnce(
@@ -249,29 +305,23 @@ for (const mutation of selected) {
 		}
 		writeFileSync(target, mutated);
 
-		const run = spawnSync(
-			process.execPath,
-			["--test", join(scratch, "scripts", "linux-sandbox.test.mjs")],
-			{
-				encoding: "utf8",
-				cwd: scratch,
-				// A mutant can HANG rather than fail -- M21 restores a blocking open(2)
-				// on a FIFO, which wedges the interpreter synchronously where the test
-				// runner's own timer can never fire. Without a bound here the battery
-				// waits forever and reports nothing, so the mutation that matters most
-				// is the one that silences it. SIGKILL because a wedged process inside
-				// a blocking syscall need not honour SIGTERM.
-				timeout: 60_000,
-				killSignal: "SIGKILL",
-			},
-		);
+		const run = runSuite(scratch);
 		// A timeout kill is a KILL, not a survival: the suite did not pass, it never
-		// finished. status is null in that case, so testing `!== 0` would wrongly
-		// read it as a pass on some platforms.
+		// finished. status is null in that case, and `null === 0` is false, so this
+		// counts it as a kill; the tempting `run.status !== 0` would be true for the
+		// same null and would also count it -- correct here by accident, but wrong
+		// the moment the sense is flipped. Test the pass explicitly.
 		const passed = run.status === 0;
+		// Distinguish OUR timeout from someone else's kill. Both are correctly
+		// counted as kills, but on a shared box the OOM killer is live, and
+		// reporting an external SIGKILL as "suite hung" sends the reader after a
+		// hang that never happened. Node sets error.code to ETIMEDOUT only for the
+		// timeout above; an external kill carries no code.
 		if (run.signal) {
 			console.log(
-				`   (${mutation.id} killed by ${run.signal} -- suite hung; counted as killed)`,
+				run.error?.code === "ETIMEDOUT"
+					? `   (${mutation.id} killed by ${run.signal} -- suite hung past the timeout; counted as killed)`
+					: `   (${mutation.id} killed by ${run.signal} from OUTSIDE the battery (not our timeout -- OOM killer?); counted as killed)`,
 			);
 		}
 		if (passed) {
@@ -295,4 +345,25 @@ if (survivors.length) {
 		console.log(`  ${s.id}  ${s.note}`);
 	}
 }
+
+// CANARY. M8 is a disclosed EQUIVALENT mutant -- the outer catch reconstructs the
+// identical result object, so no test can distinguish it and it MUST survive. It
+// is therefore the one mutant whose expected outcome is known independently of
+// the suite, which makes it a free end-to-end check that the battery still
+// discriminates at all: if the canary dies, the run measured nothing, whatever
+// the score says. The baseline gate above catches the known cause of that (a red
+// suite); this catches the ones nobody has thought of yet. Only meaningful when
+// M8 was actually selected, so a subset run stays usable.
+if (
+	selected.some((m) => m.id === "M8") &&
+	!survivors.some((s) => s.id === "M8")
+) {
+	console.error(
+		`
+REFUSING TO REPORT: M8 is a known equivalent mutant and MUST survive, but it was counted as killed.
+The battery is not discriminating, so the score above is meaningless. Investigate before trusting any result.`,
+	);
+	process.exit(2);
+}
+
 process.exit(survivors.length || broken.length ? 1 : 0);

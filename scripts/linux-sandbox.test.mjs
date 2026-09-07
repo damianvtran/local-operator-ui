@@ -445,16 +445,27 @@ test(
 test("every member of the not-a-regular-file class is refused promptly", () => {
 	// THE GENERALISATION, and the reason this exists as well as the two tests
 	// above: "non-regular file" is a CLASS whose members do not agree, so testing
-	// one of them proves only that one. Measured, they land in three different
+	// one of them proves only that one. Measured, they land in two different
 	// places -- a directory and a FIFO open and are refused by isFile() as
-	// `unsafe`; a socket fails open() with ENXIO and an unreadable file with
-	// EACCES, so both take the catch and are reported `absent`.
+	// `unsafe`; a socket fails open() with ENXIO, so it takes the catch and is
+	// reported `absent`.
 	//
 	// That divergence is TOLERATED rather than asserted away, because the property
-	// the repair depends on is the same for all four and is what is asserted here:
-	// none is ever reported repairable, root never chowns or chmods any of them,
-	// and none blocks. `absent` and `unsafe` differ only in the message, and
+	// the repair depends on is the same for all three and is what is asserted
+	// here: none is ever reported repairable, root never chowns or chmods any of
+	// them, and none blocks. `absent` and `unsafe` differ only in the message, and
 	// neither leads to a mutation.
+	//
+	// DO NOT re-add a mode-000 "unreadable" member here. It was one, and it was a
+	// category error: an unreadable file is a REGULAR file that happens to fail
+	// open(2) with EACCES, so it is not in this class at all. Its membership was
+	// only ever true-looking unprivileged -- root bypasses EACCES, opens it, finds
+	// a regular file and correctly REPAIRS it, so the shared invariant above is
+	// false for it as root. `sudo npm install -g` is this code's actual context,
+	// so an assertion that only holds unprivileged is an assertion that does not
+	// hold where it matters. Repairing a mode-000 regular file at the helper path
+	// is the right behaviour (that is what a broken download looks like), and the
+	// regular-file paths are covered by the health and repair tests above.
 	const members = {
 		directory: (p) => mkdirSync(p),
 		fifo: (p) => spawnSync("mkfifo", [p]),
@@ -462,10 +473,6 @@ test("every member of the not-a-regular-file class is refused promptly", () => {
 			const server = createServer();
 			server.listen(p);
 			server.close();
-		},
-		unreadable: (p) => {
-			writeFileSync(p, "#!/bin/true\n");
-			chmodSync(p, 0o000);
 		},
 	};
 	for (const [kind, make] of Object.entries(members)) {
