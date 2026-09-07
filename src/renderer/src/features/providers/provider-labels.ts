@@ -8,6 +8,7 @@
  * sign-in for providers that have no such flow.
  */
 
+import { backendLoadErrorMessage } from "@shared/api/local-operator/backend-error";
 import type {
 	AuthOperation,
 	ProviderMethod,
@@ -119,6 +120,26 @@ export function readyHostingIds(
 			.filter((provider) => hostingProviderSelectable(provider))
 			.map((provider) => provider.id),
 	);
+}
+
+/**
+ * What to tell the user when the provider list fails to load.
+ *
+ * The diagnosis and the remedy both come from the shared classification rather
+ * than a second `if` over the same status field, because the grid and the
+ * compatibility banner previously disagreed: at 401/403 the banner said
+ * restart-and-re-pair and withheld its update button, while the grid's two-way
+ * split dropped those statuses into its `else` and told the user to install a
+ * newer server -- which cannot fix a bearer the running one refuses.
+ *
+ * This surface's only contribution is the lead sentence, because it speaks
+ * about providers rather than about the whole app. The grid used to own a
+ * private diagnosis table beside the shared remedy, which let the two halves
+ * of one sentence drift apart in wording and in confidence; keeping the split
+ * at "scope" rather than at "diagnosis" is what stops that.
+ */
+export function providerLoadErrorMessage(error: unknown): string {
+	return backendLoadErrorMessage("Providers could not be loaded.", error);
 }
 
 /** Terminal states after which polling an auth operation must stop. */
