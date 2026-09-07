@@ -56,6 +56,7 @@
     "build:npm": "LOCAL_OPERATOR_UI_NO_BYTECODE=true electron-vite build",
     "postbuild:npm": "chmod +x ./bin/local-operator-ui.js",
     "postbuild": "chmod +x ./bin/local-operator-ui.js",
+    "postinstall": "node ./bin/postinstall.js",
     "lint": "pnpm biome check src",
     "lint:fix": "pnpm biome check --write src",
     "format": "pnpm biome format src",

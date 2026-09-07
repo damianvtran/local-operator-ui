@@ -83,6 +83,41 @@ try {
 	console.warn(`Warning: could not verify the Electron version: ${err.message}`);
 }
 
+const {
+	resolveSandboxHelper,
+	inspectSandboxHelper,
+	rootGuidance,
+	sandboxHelperGuidance,
+	exitCodeFor,
+} = require("./linux-sandbox.js");
+
+// How the user invoked us, for guidance that can be copied verbatim. argv[1] is
+// the absolute path to this script when run through a shim, so prefer the plain
+// command name a global install puts on PATH.
+const invokedAs = "local-operator-ui";
+
+// Linux preflight: running as root ALWAYS aborts, whatever the sandbox helper's
+// mode (measured — a correctly 4755 helper does not help root). Because it
+// depends only on the effective uid, it is decidable here, so the user gets an
+// explanation instead of Chromium's
+// "[FATAL:electron_main_delegate.cc(288)] Running as root without --no-sandbox
+// is not supported", which says nothing about what to do next.
+//
+// The user's own ELECTRON_DISABLE_SANDBOX opt-out must still be honoured: they
+// have made the security decision explicitly, and blocking them here would
+// override it. We never set that variable ourselves. See bin/linux-sandbox.js.
+if (
+	process.platform === "linux" &&
+	typeof process.getuid === "function" &&
+	process.getuid() === 0 &&
+	process.env.ELECTRON_DISABLE_SANDBOX !== "1"
+) {
+	for (const line of rootGuidance(invokedAs)) {
+		console.error(line);
+	}
+	process.exit(1);
+}
+
 // Get the path to the main.js file
 const appPath = path.join(__dirname, "../out/main/index.js");
 
@@ -103,8 +138,32 @@ const child = spawn(electronPath, [appPath], {
 });
 
 // Handle process exit
-child.on("close", (code) => {
-	process.exit(code);
+child.on("close", (code, signal) => {
+	// A missing setuid bit is NOT predictable as a failure: Chromium falls back to
+	// the unprivileged user-namespace sandbox and starts normally where the kernel
+	// allows it (measured — the same container reaches readiness with the helper
+	// still at 0755 once seccomp permits unshare). Checking before launch would
+	// therefore refuse installs that work today, and the /proc indicators cannot
+	// see a seccomp filter that blocks the syscall.
+	//
+	// So diagnose after the fact instead: the app has already failed, and the
+	// helper is in the state known to cause exactly this. That ordering makes a
+	// false positive on a working install impossible.
+	const failed = code !== 0;
+	if (failed && process.platform === "linux") {
+		const helper = inspectSandboxHelper(resolveSandboxHelper(electronPath));
+		if (helper.exists && helper.needsRepair) {
+			console.error("");
+			for (const line of sandboxHelperGuidance(helper, invokedAs)) {
+				console.error(line);
+			}
+		}
+	}
+
+	// A Chromium FATAL terminates by signal, so `code` is null here and the old
+	// `process.exit(code)` reported success (Node coerces null to 0) for an app
+	// that never started. Map a signal death onto the conventional 128+n.
+	process.exit(exitCodeFor(code, signal));
 });
 
 // Handle errors
