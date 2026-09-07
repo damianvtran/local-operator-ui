@@ -76,13 +76,22 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 			<Alert variant="warning">
 				<div className="flex items-center justify-between gap-3">
 					<span>{providerLoadErrorMessage(providers.error)}</span>
-					{/* A load error is transient; Retry re-asks the backend. */}
+					{/* A load error is transient; Retry re-asks the server.
+
+					    `isFetching`, not `isLoading`: a refetch of an already-errored
+					    query keeps `status: "error"`, so this branch (evaluated after
+					    `isLoading`) keeps winning and the frame would not change for
+					    the transport's whole deadline. A recovery affordance that does
+					    not acknowledge the click is the one users press four times and
+					    then relaunch. */}
 					<Button
 						variant="secondary"
 						size="sm"
+						className="shrink-0"
 						onClick={() => void providers.refetch()}
+						disabled={providers.isFetching}
 					>
-						Retry
+						{providers.isFetching ? "Retrying" : "Retry"}
 					</Button>
 				</div>
 			</Alert>
