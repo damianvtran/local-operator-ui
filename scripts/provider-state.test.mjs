@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { readFile } from "node:fs/promises";
 import { test } from "node:test";
 import { build } from "esbuild";
 
@@ -30,6 +31,7 @@ const {
 	hostingProviderSelectable,
 	readyHostingIds,
 	selectableHostingProviders,
+	hostingCensusStateFrom,
 	hostingCensusFailureHelperText,
 	providerLoadErrorMessage,
 } = await import(
@@ -300,6 +302,80 @@ test("hosting picker: the failure line is the grid's sentence, verbatim", () => 
 	assert.match(
 		hostingCensusFailureHelperText(new Error("boom")),
 		/^Providers could not be loaded\./,
+	);
+});
+
+test("hosting picker: a failed REFETCH keeps the cached census, it does not blank", () => {
+	// Issue 92's shape, in the state no single-flag test reaches: react-query
+	// sets `data` and `isError` TOGETHER when a refetch fails over a successful
+	// query. Reading `isError` first resolves that to `failed`, which empties a
+	// fully-loaded picker the moment a background poll 5xx's -- a control that
+	// was working blanking itself while the user looks at it.
+	//
+	// This is the assertion that fails when the two checks in
+	// `hostingCensusStateFrom` are swapped. Before it existed, that swap kept
+	// every test in this repo green.
+	const refetchFailed = hostingCensusStateFrom({
+		data: census,
+		isError: true,
+	});
+	assert.equal(refetchFailed.status, "ready");
+	assert.deepEqual(
+		ids(selectableHostingProviders(manifest, refetchFailed)),
+		// Identical to a clean READY census: the failure changes nothing, because
+		// the cached answer is still the best evidence we have.
+		["anthropic", "openai", "ollama"],
+	);
+
+	// The other two states, so a regression cannot satisfy the above by
+	// collapsing everything to `ready`.
+	assert.equal(
+		hostingCensusStateFrom({ data: undefined, isError: true }).status,
+		"failed",
+	);
+	assert.equal(
+		hostingCensusStateFrom({ data: undefined, isError: false }).status,
+		"loading",
+	);
+	assert.equal(
+		hostingCensusStateFrom({ data: census, isError: false }).status,
+		"ready",
+	);
+});
+
+test("hosting picker: the component routes BOTH decisions through the shared selectors", async () => {
+	// Round-1 MAJOR-1: the three tests above assert the selectors, and test 12
+	// compares a one-line forwarder against the function it forwards to -- true
+	// by construction, for every input. None of that notices the PICKER dropping
+	// the selectors and hardcoding its own answer, which is precisely the drift
+	// this PR claims to prevent. Mutation-proved: hardcoding the helper string in
+	// `hosting-select.tsx` left 22/22 passing before this assertion existed.
+	//
+	// Same shape as the guard on the grid side in
+	// `provider-grid-error-copy.test.mjs`, which is already proven to fail under
+	// the equivalent mutation. Asserted on the source because the alternative --
+	// rendering the React component -- needs a DOM these node:test files do not
+	// have, and the property under test is which function the component calls.
+	const picker = await readFile(
+		"src/renderer/src/shared/components/hosting/hosting-select.tsx",
+		"utf8",
+	);
+	assert.ok(
+		picker.includes("hostingCensusFailureHelperText(census.error)"),
+		"hosting-select no longer routes its failure copy through hostingCensusFailureHelperText, so it can drift from the grid's sentence",
+	);
+	assert.ok(
+		picker.includes("selectableHostingProviders(all, censusState)"),
+		"hosting-select no longer routes its option list through selectableHostingProviders, so it can drift from the grid's readiness predicate",
+	);
+	assert.ok(
+		picker.includes("hostingCensusStateFrom("),
+		"hosting-select no longer derives its census state through hostingCensusStateFrom, so the data-before-isError ordering is unguarded again",
+	);
+	// The failure sentence must not be restated as a literal beside the call.
+	assert.ok(
+		!picker.includes("Providers could not be loaded"),
+		"hosting-select hardcodes the grid's failure sentence instead of calling the shared selector",
 	);
 });
 

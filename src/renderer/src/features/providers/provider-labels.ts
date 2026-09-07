@@ -139,6 +139,30 @@ export type HostingCensusState<P> =
 	| { status: "ready"; providers: P[] };
 
 /**
+ * Reduce a census query's flags to the three states the picker distinguishes.
+ *
+ * `data` outranks `isError` deliberately: a refetch that fails while an earlier
+ * census is still cached means we DID find out, once, and the cached answer is
+ * better evidence than no answer. Only a census that has NEVER delivered a
+ * payload is `failed`. Swapping those two checks blanks a fully-loaded picker
+ * the moment a background refetch 5xx's, which is the shape of issue 92.
+ *
+ * This lives here rather than inline in the component because that ordering is
+ * the entire defence against re-shipping 92, and an invariant protected only by
+ * a comment is how 92 shipped in the first place. As a pure function it is
+ * assertable over `{ data, isError }` set TOGETHER -- the state no behavioural
+ * test of either flag alone can reach.
+ */
+export function hostingCensusStateFrom<P>(census: {
+	data?: P[] | undefined;
+	isError: boolean;
+}): HostingCensusState<P> {
+	if (census.data) return { status: "ready", providers: census.data };
+	if (census.isError) return { status: "failed" };
+	return { status: "loading" };
+}
+
+/**
  * Which hosting providers the picker may offer, given the census state.
  *
  * The three states have three different answers, and conflating the last two

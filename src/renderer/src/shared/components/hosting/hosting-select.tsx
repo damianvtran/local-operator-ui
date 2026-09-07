@@ -7,6 +7,7 @@
 
 import {
 	hostingCensusFailureHelperText,
+	hostingCensusStateFrom,
 	selectableHostingProviders,
 } from "@features/providers/provider-labels";
 import {
@@ -107,17 +108,16 @@ export const HostingSelect: FC<HostingSelectProps> = ({
 	/**
 	 * The census in the three states the picker distinguishes.
 	 *
-	 * `data` outranks `isError` deliberately: a refetch that fails while an
-	 * earlier census is still cached means we DID find out, once, and the
-	 * cached answer is better evidence than no answer. Only a census that has
-	 * never delivered a payload is `failed`.
+	 * The `data`-before-`isError` ordering that keeps a cached census alive
+	 * through a failed refetch lives in `hostingCensusStateFrom`, beside the
+	 * selector that consumes it, so that ordering is unit-assertable over both
+	 * flags set at once rather than being protected by a comment in a component.
 	 */
-	const censusState = useMemo(() => {
-		if (census.data)
-			return { status: "ready" as const, providers: census.data };
-		if (census.isError) return { status: "failed" as const };
-		return { status: "loading" as const };
-	}, [census.data, census.isError]);
+	const censusState = useMemo(
+		() =>
+			hostingCensusStateFrom({ data: census.data, isError: census.isError }),
+		[census.data, census.isError],
+	);
 	const censusFailed = censusEnabled && censusState.status === "failed";
 
 	const availableHostingProviders = useMemo(() => {
