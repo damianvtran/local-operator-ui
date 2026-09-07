@@ -80,7 +80,56 @@ try {
 } catch (err) {
 	// Version metadata is unreadable while the binary itself resolved. Nothing
 	// actionable to assert, and the app is more useful started than blocked.
-	console.warn(`Warning: could not verify the Electron version: ${err.message}`);
+	console.warn(
+		`Warning: could not verify the Electron version: ${err.message}`,
+	);
+}
+
+const {
+	resolveSandboxHelper,
+	inspectSandboxHelper,
+	isStartupFailure,
+	rootGuidance,
+	sandboxHelperGuidance,
+	exitCodeFor,
+} = require("./linux-sandbox.js");
+
+// How the user invoked us, for guidance that can be copied verbatim.
+//
+// A global install puts `local-operator-ui` on PATH and that is the name to
+// echo back. But `npx local-operator-ui` and a local ./node_modules/.bin/ run
+// reach this file through a shim whose basename is still ours, so use argv[1]'s
+// basename when it resolves to something other than the bare script path --
+// otherwise we hand a user without a global install a command that will not
+// resolve for them.
+const invokedAs = (() => {
+	const fromArgv =
+		typeof process.argv[1] === "string" ? path.basename(process.argv[1]) : "";
+	// Strip a .js suffix: the shim is the extensionless name on PATH.
+	const name = fromArgv.replace(/\.[cm]?js$/, "");
+	return name === "" ? "local-operator-ui" : name;
+})();
+
+// Linux preflight: running as root ALWAYS aborts, whatever the sandbox helper's
+// mode (measured — a correctly 4755 helper does not help root). Because it
+// depends only on the effective uid, it is decidable here, so the user gets an
+// explanation instead of Chromium's
+// "[FATAL:electron_main_delegate.cc(288)] Running as root without --no-sandbox
+// is not supported", which says nothing about what to do next.
+//
+// The user's own ELECTRON_DISABLE_SANDBOX opt-out must still be honoured: they
+// have made the security decision explicitly, and blocking them here would
+// override it. We never set that variable ourselves. See bin/linux-sandbox.js.
+if (
+	process.platform === "linux" &&
+	typeof process.getuid === "function" &&
+	process.getuid() === 0 &&
+	process.env.ELECTRON_DISABLE_SANDBOX !== "1"
+) {
+	for (const line of rootGuidance(invokedAs)) {
+		console.error(line);
+	}
+	process.exit(1);
 }
 
 // Get the path to the main.js file
@@ -103,8 +152,47 @@ const child = spawn(electronPath, [appPath], {
 });
 
 // Handle process exit
-child.on("close", (code) => {
-	process.exit(code);
+// Wall-clock reference for the startup-failure window below. Taken immediately
+// after spawn so the measurement covers the child's whole life.
+const spawnedAt = Date.now();
+
+child.on("close", (code, signal) => {
+	// A missing setuid bit is NOT predictable as a failure: Chromium falls back to
+	// the unprivileged user-namespace sandbox and starts normally where the kernel
+	// allows it (measured — the same container reaches readiness with the helper
+	// still at 0755 once seccomp permits unshare). Checking before launch would
+	// therefore refuse installs that work today, and the /proc indicators cannot
+	// see a seccomp filter that blocks the syscall.
+	//
+	// So diagnose after the fact instead: the app has already failed to START,
+	// and the helper is in the state known to cause exactly this.
+	//
+	// "Failed to start" is much narrower than "did not exit zero", and the
+	// difference is user-visible: on a working 0755 userns install the helper sits
+	// permanently in the state this guidance keys on, so ANY other reason for a
+	// non-zero exit -- Ctrl+C, a crash on quit, or the app choosing its own status
+	// -- would otherwise be answered with "run sudo chmod 4755". Only a fatal-check
+	// signal death inside the startup window qualifies; `code` is deliberately not
+	// consulted, because a process that chose an exit status got past the zygote.
+	// See isStartupFailure.
+	const failedToStart = isStartupFailure({
+		signal,
+		elapsedMs: Date.now() - spawnedAt,
+	});
+	if (failedToStart && process.platform === "linux") {
+		const helper = inspectSandboxHelper(resolveSandboxHelper(electronPath));
+		if (helper.exists && helper.needsRepair) {
+			console.error("");
+			for (const line of sandboxHelperGuidance(helper, invokedAs)) {
+				console.error(line);
+			}
+		}
+	}
+
+	// A Chromium FATAL terminates by signal, so `code` is null here and the old
+	// `process.exit(code)` reported success (Node coerces null to 0) for an app
+	// that never started. Map a signal death onto the conventional 128+n.
+	process.exit(exitCodeFor(code, signal));
 });
 
 // Handle errors
