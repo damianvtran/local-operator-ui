@@ -65,6 +65,81 @@ jobs:
           node scripts/test-validate-release.mjs
           node --test scripts/test-release-safety.mjs scripts/test-publish-workflow.mjs
 
+  test:
+    # The desktop test suite -- the regression guards for issues 87, 92 and 93,
+    # every one of which is the same defect class (a surface treating "we could
+    # not find out" as an answer).
+    #
+    # This job exists because until it did, `pnpm test:desktop` ran in NO
+    # workflow: the whole suite was local-only, so three consecutive fixes in
+    # one defect class landed with their guards unenforced on every subsequent
+    # PR. A guard nothing runs is indistinguishable from no guard, which is the
+    # failure this suite is largely about.
+    #
+    # `--frozen-lockfile` is what keeps the invocation CI-safe. Running
+    # `pnpm test:desktop` on a cold tree makes pnpm resolve first, and that
+    # resolution is what writes an `allowBuilds:` block into
+    # `pnpm-workspace.yaml`; installing explicitly and frozen beforehand means
+    # the test step only runs node, and pnpm fails loudly rather than mutating
+    # the lockfile if either file is out of date.
+    name: Desktop Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: '10'
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run desktop tests
+        run: pnpm test:desktop
+
+      # A job that silently runs zero tests is the same vacuous check this job
+      # was added to undo, and it is the likeliest way this one rots: a renamed
+      # script or a glob that matches nothing still exits 0. Assert the suite
+      # actually executed a plausible number of tests, and that none failed.
+      - name: Assert the suite actually ran
+        run: |
+          pnpm test:desktop 2>&1 | tee /tmp/desktop-tests.log
+          PASS=$(grep -E '^# pass ' /tmp/desktop-tests.log | awk '{print $3}')
+          FAIL=$(grep -E '^# fail ' /tmp/desktop-tests.log | awk '{print $3}')
+          echo "desktop suite: pass=$PASS fail=$FAIL"
+          if [ -z "$PASS" ] || [ "$PASS" -lt 60 ]; then
+            echo "Desktop suite reported $PASS passing tests; expected at least 60."
+            echo "Either tests were dropped or the runner matched no files."
+            exit 1
+          fi
+          if [ "$FAIL" != "0" ]; then
+            echo "Desktop suite reported $FAIL failing tests."
+            exit 1
+          fi
+
+      # The suite must not mutate tracked files. `pnpm test:desktop` on a cold
+      # tree has been observed writing an `allowBuilds:` block into
+      # pnpm-workspace.yaml via pnpm's own resolution, which would land in a
+      # later commit as unexplained churn.
+      - name: Assert the run left the tree clean
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "Desktop tests modified tracked files:"
+            git status --porcelain
+            git diff
+            exit 1
+          fi
+          echo "Working tree clean after the desktop suite."
+
   audit:
     name: Security Audit
     runs-on: ubuntu-latest

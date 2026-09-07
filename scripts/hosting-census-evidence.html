@@ -1,0 +1,27 @@
+<!doctype html>
+<!--
+  Evidence harness for the hosting picker's census states (issue 93).
+
+  Mounts the SHIPPED `HostingSelect` and the SHIPPED `ProviderGrid` side by
+  side, behind a REAL desktop bridge (an injected `window.api.desktop`), so
+  `desktopRequest` takes the Electron IPC branch that actually ships rather
+  than the browser-dev `/__desktop` HTTP branch, which classifies its failures
+  differently.
+
+  Both surfaces are captured against the SAME injected fault, because the
+  property under test is that they agree: the picker must not offer a provider
+  the grid is simultaneously unable to vouch for.
+
+  Not part of the app or the test suite: a capture surface, run by hand with
+  `pnpm vite --config scripts/hosting-census-evidence.vite.mjs`.
+-->
+<html lang="en" data-theme="localOperatorDark">
+	<head>
+		<meta charset="UTF-8" />
+		<title>Hosting picker census states</title>
+	</head>
+	<body>
+		<div id="root"></div>
+		<script type="module" src="/scripts/hosting-census-evidence.tsx"></script>
+	</body>
+</html>

@@ -123,6 +123,94 @@ export function readyHostingIds(
 }
 
 /**
+ * What the picker knows about the census, in the three states it can be in.
+ *
+ * Shaped like `CensusInput` in `first-time-user.ts` on purpose: both surfaces
+ * decide from the same three facts, and the defect this exists to fix was the
+ * picker collapsing two of them into one. There is no `unavailable` member
+ * because a backend that never advertised the census does not reach this
+ * function at all -- the picker falls to the env-file key list there, which is
+ * the same `unavailable` branch `decideFirstTimeUser` takes.
+ */
+export type HostingCensusState<P> =
+	| { status: "loading" }
+	/** The backend advertised the census and then failed to serve it. */
+	| { status: "failed" }
+	| { status: "ready"; providers: P[] };
+
+/**
+ * Reduce a census query's flags to the three states the picker distinguishes.
+ *
+ * `data` outranks `isError` deliberately: a refetch that fails while an earlier
+ * census is still cached means we DID find out, once, and the cached answer is
+ * better evidence than no answer. Only a census that has NEVER delivered a
+ * payload is `failed`. Swapping those two checks blanks a fully-loaded picker
+ * the moment a background refetch 5xx's, which is the shape of issue 92.
+ *
+ * This lives here rather than inline in the component because that ordering is
+ * the entire defence against re-shipping 92, and an invariant protected only by
+ * a comment is how 92 shipped in the first place. As a pure function it is
+ * assertable over `{ data, isError }` set TOGETHER -- the state no behavioural
+ * test of either flag alone can reach.
+ */
+export function hostingCensusStateFrom<P>(census: {
+	data?: P[] | undefined;
+	isError: boolean;
+}): HostingCensusState<P> {
+	if (census.data) return { status: "ready", providers: census.data };
+	if (census.isError) return { status: "failed" };
+	return { status: "loading" };
+}
+
+/**
+ * Which hosting providers the picker may offer, given the census state.
+ *
+ * The three states have three different answers, and conflating the last two
+ * is issue 93:
+ *
+ * - **loading** -- filtering is suppressed and every provider is offered. The
+ *   census is about to answer, and blanking a populated control for the length
+ *   of one request reads as the list breaking. This is the ONLY state in which
+ *   an unfiltered list is correct.
+ * - **ready** -- the census owns the filter, using the same predicate the
+ *   onboarding grid uses, so the two surfaces cannot disagree about a provider.
+ * - **failed** -- nothing from the census. A census that did not answer is not
+ *   evidence that a provider is usable, and offering all of them turns "we
+ *   could not find out" into "yes". That is the same defect class the
+ *   onboarding gate fixed by resolving a failed census to `pending` rather
+ *   than `first_time`.
+ *
+ * The failed case deliberately does NOT disable the control or drop the value
+ * the user already has -- see `hostingCensusFailureHelperText` and the
+ * `isDisabled` gate in `hosting-select.tsx`. Refusing to assert a provider is
+ * ready is honest; locking the user out of a control because we could not find
+ * out is the same overreach in the other direction.
+ */
+export function selectableHostingProviders<
+	P extends { id: string } & Parameters<typeof hostingProviderSelectable>[0],
+	T extends { id: string },
+>(all: T[], census: HostingCensusState<P>): T[] {
+	if (census.status === "loading") return all;
+	if (census.status === "failed") return [];
+	const ready = readyHostingIds(census.providers);
+	return all.filter((provider) => ready.has(provider.id));
+}
+
+/**
+ * Why the picker is offering nothing, when the reason is a failed census.
+ *
+ * Routed through the SAME selector the onboarding grid renders in its error
+ * alert, rather than a picker-private sentence, so the two surfaces report one
+ * fault in one set of words and point at one remedy. That agreement is
+ * assertable by string equality in `scripts/provider-state.test.mjs`, which is
+ * the property issue 93 is about: an empty picker beside a grid explaining why
+ * is a dead end only if the picker stays silent.
+ */
+export function hostingCensusFailureHelperText(error: unknown): string {
+	return providerLoadErrorMessage(error);
+}
+
+/**
  * What to tell the user when the provider list fails to load.
  *
  * The diagnosis and the remedy both come from the shared classification rather
