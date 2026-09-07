@@ -753,14 +753,13 @@ test("ensureElectronDist's fast path requires electron's own install marker", ()
 	);
 });
 
-test("the postinstall stays silent on non-Linux platforms", () => {
-	// M14: deleting the platform guard survived, because nothing asserted the
-	// macOS/Windows contract -- silence, and no attempt to touch a helper that
-	// does not exist there. Assert it WITHOUT the force flag, which is the only
-	// way to observe the guard itself.
-	const { spawnSync } = require("node:child_process");
-	const script = new URL("../bin/postinstall.js", import.meta.url).pathname;
-	const root = join(scratch, "guard-install");
+// Build a package root shaped like a real install -- our bin/ beside a
+// node_modules/electron carrying install.js, dist/version and a 0755
+// dist/chrome-sandbox -- so ensureElectronDist takes its fast path and
+// repairSandboxHelper is actually reached. Shared by the two platform-guard
+// tests below, which differ only in the platform the script observes.
+const guardInstallAt = (name) => {
+	const root = join(scratch, name);
 	const dist = join(root, "node_modules", "electron", "dist");
 	mkdirSync(dist, { recursive: true });
 	mkdirSync(join(root, "bin"), { recursive: true });
@@ -775,6 +774,22 @@ test("the postinstall stays silent on non-Linux platforms", () => {
 	const helper = join(dist, "chrome-sandbox");
 	writeFileSync(helper, "#!/bin/true\n");
 	chmodSync(helper, 0o755);
+	return { root, helper };
+};
+
+test("the postinstall stays silent on non-Linux platforms", () => {
+	// M14: deleting the platform guard survived, because nothing asserted the
+	// macOS/Windows contract -- silence, and no attempt to touch a helper that
+	// does not exist there. Assert it WITHOUT the force flag, which is the only
+	// way to observe the guard itself.
+	//
+	// This test can only observe the guard on a real non-Linux host; on Linux it
+	// is a no-op by construction, which is exactly the hole the companion test
+	// below fills. Keep both: this one proves the contract on the platform where
+	// it genuinely applies, and cannot be satisfied by a simulation.
+	const { spawnSync } = require("node:child_process");
+	const script = new URL("../bin/postinstall.js", import.meta.url).pathname;
+	const { root, helper } = guardInstallAt("guard-install");
 
 	const result = spawnSync(
 		process.execPath,
@@ -787,7 +802,7 @@ test("the postinstall stays silent on non-Linux platforms", () => {
 
 	assert.equal(result.status, 0);
 	if (process.platform === "linux") {
-		return; // the guard is a no-op here by design; asserted above instead
+		return; // the guard is a no-op here by design; the next test covers Linux
 	}
 	assert.equal(
 		result.stdout,
@@ -796,4 +811,87 @@ test("the postinstall stays silent on non-Linux platforms", () => {
 	);
 	assert.equal(statSync(helper).mode & 0o7777, 0o755, "and touch nothing");
 	assert.equal(script.endsWith("postinstall.js"), true);
+});
+
+test("the platform guard is observed ON Linux, not only on a Mac", () => {
+	// WHY THIS EXISTS, and it is a finding about the battery as much as the code:
+	// M14 (deleting the platform guard) was reported killed at 21/22 -- but that
+	// was measured on macOS, where the test above can see the guard. On Linux the
+	// same mutant SURVIVED, because the test above returns early there and nothing
+	// else asserts the guard. As root on Linux it was worse than unasserted: the
+	// suite was red, so the battery counted M14 as a vacuous kill. The score was
+	// silently platform-dependent, and the baseline gate in mutation-battery.mjs
+	// is what made that visible. This test closes it on the platform this whole
+	// change is about.
+	//
+	// HOW, without touching bin/: process.platform is an own property with
+	// `configurable: true`, and bin/postinstall.js reads it through
+	// require("node:process"), which returns that same process object. So a
+	// --require preload can redefine it BEFORE the script's top-level guard runs.
+	// Nothing in bin/ is aware of this and no test hook was added to shipped code
+	// -- the preload is an ordinary Node facility applied from outside.
+	const { spawnSync } = require("node:child_process");
+	const { root, helper } = guardInstallAt("guard-install-linux");
+	const preload = join(root, "fake-darwin.cjs");
+	writeFileSync(
+		preload,
+		'Object.defineProperty(process, "platform", { value: "darwin" });\n',
+	);
+
+	// Control FIRST: on real Linux, with the guard falling through, the script
+	// must reach the repair. Without this the assertion below is satisfied by any
+	// script that does nothing at all -- which is precisely how M14 survived.
+	const control = spawnSync(
+		process.execPath,
+		[join(root, "bin", "postinstall.js")],
+		{
+			encoding: "utf8",
+			env: { ...process.env, LOCAL_OPERATOR_UI_FORCE_POSTINSTALL: "0" },
+		},
+	);
+	assert.equal(control.status, 0, control.stderr);
+	const asRoot = process.getuid?.() === 0;
+	const repaired = statSync(helper).mode & 0o7777;
+	if (process.platform === "linux" && asRoot) {
+		// Root is the postinstall's real context (`sudo npm install -g`), and the
+		// repair is observable in the mode bits.
+		assert.equal(
+			repaired,
+			0o4755,
+			"control: on Linux as root the body must run and set the setuid bit",
+		);
+	} else if (process.platform === "linux") {
+		// Unprivileged the chown cannot succeed, so arrival is proved by the
+		// message instead -- it exists nowhere else and the guard cannot produce it.
+		assert.match(
+			control.stdout,
+			/not running as root/,
+			"control: on Linux the body must run and report it could not chown",
+		);
+	}
+
+	chmodSync(helper, 0o755);
+
+	// Now the guard itself: with the platform reported as darwin, the script must
+	// return before doing anything -- silent, and the helper untouched.
+	const guarded = spawnSync(
+		process.execPath,
+		["--require", preload, join(root, "bin", "postinstall.js")],
+		{
+			encoding: "utf8",
+			env: { ...process.env, LOCAL_OPERATOR_UI_FORCE_POSTINSTALL: "0" },
+		},
+	);
+
+	assert.equal(guarded.status, 0, guarded.stderr);
+	assert.equal(
+		guarded.stdout,
+		"",
+		"with the platform reported as darwin the script must print nothing",
+	);
+	assert.equal(
+		statSync(helper).mode & 0o7777,
+		0o755,
+		"and must not touch the helper: deleting the platform guard makes this 4755",
+	);
 });
