@@ -99,8 +99,12 @@ test("the grid and the banner agree on the remedy for every status", () => {
 			unpaired: false,
 			answered: false,
 		});
-		const gridSaysUpdate = /update the backend|may need an update/i.test(grid);
-		const bannerSaysUpdate = /update|older than the app expects/i.test(banner);
+		// Matches the remedy's imperative and the diagnosis that licenses it. The
+		// diagnosis lost its "may" hedge (design D9) and the noun is now "server"
+		// everywhere (D7), so both spellings are the current shipped copy.
+		const gridSaysUpdate =
+			/update the server|older than this app expects/i.test(grid);
+		const bannerSaysUpdate = /update|older than this app expects/i.test(banner);
 		assert.equal(
 			gridSaysUpdate,
 			updateIsRemedy,
@@ -136,8 +140,11 @@ test("a rejected bearer is never told to install a newer backend", () => {
 test("an unreachable backend is reported as offline, not as needing an update", () => {
 	// `status: null` is what the transport raises when no backend was reached:
 	// a rejected IPC call, a dead dev proxy, or the stalled-request deadline.
+	// The remedy names an action the USER can take. "Retry once it has started."
+	// asked them to wait for an event they cannot cause, on the most common of
+	// the five conditions, while the app starts the server itself (design D5).
 	const OFFLINE =
-		"Providers could not be loaded. The backend is not answering. Retry once it has started.";
+		"Providers could not be loaded. The Local Operator server is not answering. Restart the app so it can start its own server.";
 	assert.equal(
 		providerLoadErrorMessage(new DesktopControlError(null, "unreachable")),
 		OFFLINE,
@@ -157,7 +164,7 @@ test("a capability-missing backend is the only case told to update", () => {
 	// contract. That is the one state a backend update actually repairs.
 	assert.equal(
 		providerLoadErrorMessage(new DesktopControlError(404, "no route")),
-		"Providers could not be loaded. The backend may need an update. Update the backend and try again.",
+		"Providers could not be loaded. The Local Operator server is older than this app expects. Update the server and try again.",
 	);
 });
 
@@ -185,6 +192,15 @@ test("both surfaces render the selected message rather than a hardcoded string",
 		!grid.includes("may need an update"),
 		"provider-grid still hardcodes the update copy",
 	);
+	// The grid's Retry must reflect the in-flight refetch. Asserted on the
+	// source because the flag is the whole finding: `isLoading` is false during
+	// a refetch of an errored query, so a component that reached for it would
+	// render an unchanged frame while passing any behavioural test that only
+	// checked for a disabled attribute somewhere.
+	assert.ok(
+		grid.includes("providers.isFetching"),
+		"provider-grid's Retry no longer reflects the in-flight refetch",
+	);
 
 	const banner = await readFile(
 		"src/renderer/src/shared/components/common/backend-compatibility-banner.tsx",
@@ -198,7 +214,72 @@ test("both surfaces render the selected message rather than a hardcoded string",
 		"the banner no longer routes its copy through backendCompatibilityMessage",
 	);
 	assert.ok(
-		!banner.includes("older than the app expects"),
+		!banner.includes("older than this app expects"),
 		"the banner re-inlined its copy instead of sharing the classification",
 	);
+});
+
+test("no surface asks the user to wait for an event they cannot cause", () => {
+	// Design D5. Every remedy must name a user action; "Retry once it has
+	// started" named an event with no agent, on the most common condition of the
+	// five, while the unauthorized string beside it says the app starts the
+	// server itself. `unknown` is the deliberate empty: no established remedy,
+	// so no sentence at all.
+	for (const [kind, remedy] of Object.entries(BACKEND_ERROR_REMEDY)) {
+		if (kind === "unknown") {
+			assert.equal(remedy, "", "unknown must assert no remedy");
+			continue;
+		}
+		assert.match(
+			remedy,
+			/^(Restart|Update) /,
+			`the ${kind} remedy "${remedy}" does not open with an action the user takes`,
+		);
+	}
+});
+
+test("one process, one name: no shipped sentence calls it 'the backend'", () => {
+	// Design D7. Three names for one process, two of them on screen together --
+	// the connectivity banner says "The server", these said "the backend". A PR
+	// whose purpose is that two surfaces stop contradicting each other must not
+	// leave them naming the subject differently in one viewport. "backend"
+	// survives only on the update BUTTON, which names an installable artifact.
+	const sentences = [
+		...Object.values(BACKEND_ERROR_REMEDY),
+		...STATUSES.map(({ status }) =>
+			bannerMessage(new DesktopControlError(status, "probe")),
+		),
+		...STATUSES.map(({ status }) =>
+			providerLoadErrorMessage(new DesktopControlError(status, "probe")),
+		),
+		backendCompatibilityMessage({
+			kind: "unknown",
+			unpaired: true,
+			missing: [],
+			answered: true,
+		}),
+		backendCompatibilityMessage({
+			kind: "unknown",
+			unpaired: false,
+			missing: ["settings"],
+			answered: true,
+		}),
+	];
+	for (const sentence of sentences) {
+		assert.doesNotMatch(
+			sentence,
+			/backend/i,
+			`"${sentence}" still calls the server "backend"`,
+		);
+	}
+});
+
+test("the outdated banner sentence has no dangling referent", () => {
+	// Design D4: extracting the remedy into the shared trailing sentence left
+	// "stay off until then" pointing at nothing -- the sentence before it names
+	// no time and no event. The consequence is now bound to the diagnosis.
+	const banner = bannerMessage(new DesktopControlError(404, "no route"));
+	assert.doesNotMatch(banner, /until then/);
+	assert.match(banner, /older than this app expects, so /);
+	assert.ok(banner.endsWith(BACKEND_ERROR_REMEDY.outdated));
 });

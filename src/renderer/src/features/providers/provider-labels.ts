@@ -8,10 +8,7 @@
  * sign-in for providers that have no such flow.
  */
 
-import {
-	BACKEND_ERROR_REMEDY,
-	backendErrorKind,
-} from "@shared/api/local-operator/backend-error";
+import { backendLoadErrorMessage } from "@shared/api/local-operator/backend-error";
 import type {
 	AuthOperation,
 	ProviderMethod,
@@ -94,18 +91,6 @@ export function providerReadiness(provider: {
 	return { label: "Needs sign-in", tone: "neutral", group: "Needs sign-in" };
 }
 
-/** What the grid says the backend is doing, per classified outcome. */
-const PROVIDER_LOAD_DIAGNOSIS = {
-	unreachable: "The backend is not answering.",
-	unauthorized: "This app cannot authenticate to the running backend.",
-	outdated: "The backend may need an update.",
-	// No remedy is asserted for a status we have not established one for. The
-	// previous fallback WAS the update sentence, so every unmatched status --
-	// including a 500 from a backend that is running and current -- was answered
-	// with a several-minute install.
-	unknown: "",
-} as const;
-
 /**
  * Whether the hosting picker may offer this provider without a "requires
  * additional credentials" warning. Same fact the grid uses: anything that
@@ -140,25 +125,21 @@ export function readyHostingIds(
 /**
  * What to tell the user when the provider list fails to load.
  *
- * The remedy comes from the shared classification rather than a second `if`
- * over the same status field, because the grid and the compatibility banner
- * previously disagreed: at 401/403 the banner said restart-and-re-pair and
- * withheld its update button, while the grid's two-way split dropped those
- * statuses into its `else` and told the user to install a newer backend --
- * which cannot fix a bearer the running backend refuses. Both surfaces now end
- * on the identical remedy sentence from `BACKEND_ERROR_REMEDY`; only the
- * diagnosis is phrased for this surface, which speaks about providers rather
- * than about the whole app.
+ * The diagnosis and the remedy both come from the shared classification rather
+ * than a second `if` over the same status field, because the grid and the
+ * compatibility banner previously disagreed: at 401/403 the banner said
+ * restart-and-re-pair and withheld its update button, while the grid's two-way
+ * split dropped those statuses into its `else` and told the user to install a
+ * newer server -- which cannot fix a bearer the running one refuses.
+ *
+ * This surface's only contribution is the lead sentence, because it speaks
+ * about providers rather than about the whole app. The grid used to own a
+ * private diagnosis table beside the shared remedy, which let the two halves
+ * of one sentence drift apart in wording and in confidence; keeping the split
+ * at "scope" rather than at "diagnosis" is what stops that.
  */
 export function providerLoadErrorMessage(error: unknown): string {
-	const kind = backendErrorKind(error);
-	return [
-		"Providers could not be loaded.",
-		PROVIDER_LOAD_DIAGNOSIS[kind],
-		BACKEND_ERROR_REMEDY[kind],
-	]
-		.filter(Boolean)
-		.join(" ");
+	return backendLoadErrorMessage("Providers could not be loaded.", error);
 }
 
 /** Terminal states after which polling an auth operation must stop. */

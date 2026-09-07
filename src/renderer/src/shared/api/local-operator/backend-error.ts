@@ -66,13 +66,82 @@ export function backendErrorKind(error: unknown): BackendErrorKind {
  * `unknown` carries no remedy because we have not established one; a surface
  * renders its diagnosis alone rather than guessing. That is the status-neutral
  * fallback the two-way split lacked.
+ *
+ * Every sentence here names something the USER can do. `unreachable` used to
+ * read "Retry once it has started.", which is the most common of the five
+ * conditions and the only one that asked the user to wait for an event they
+ * have no way to cause -- while the `unauthorized` sentence beside it states
+ * plainly that the app starts the server itself (design D5). Restarting the
+ * app is the action that actually reaches the stated outcome.
+ *
+ * ## The noun is "the Local Operator server"
+ *
+ * One process, one name. These sentences render alongside the connectivity
+ * banner ("The server is offline.") and the providers header, and a viewport
+ * previously showed "server" and "backend" naming the same process (design
+ * D7). "backend" is the implementation's word; branding.md section 8 forbids a
+ * jargon noun where an everyday one works. Full name on a surface's first
+ * mention, "the server" thereafter -- which is why the diagnosis strings below
+ * carry the long form and these remedies carry the short one.
+ *
+ * The "Update backend" BUTTON keeps its label: it names a distinct installable
+ * artifact rather than the running process, and it is a control, not prose.
  */
 export const BACKEND_ERROR_REMEDY: Record<BackendErrorKind, string> = {
-	unreachable: "Retry once it has started.",
-	unauthorized: "Restart the app so it starts and pairs with its own backend.",
-	outdated: "Update the backend and try again.",
+	unreachable: "Restart the app so it can start its own server.",
+	unauthorized: "Restart the app so it starts and pairs with its own server.",
+	outdated: "Update the server and try again.",
 	unknown: "",
 };
+
+/**
+ * What each outcome says the server is doing, in the user's terms.
+ *
+ * Split from the remedy because a surface pairs its OWN lead sentence ("Your
+ * settings could not be loaded.", "Providers could not be loaded.") with this
+ * shared middle and the shared remedy above. The scope differs per surface;
+ * the diagnosis and the action must not.
+ *
+ * Empty for `unknown`, for the same reason the remedy is: a status we cannot
+ * advise on gets the surface's lead sentence and nothing more.
+ */
+export const BACKEND_ERROR_DIAGNOSIS: Record<BackendErrorKind, string> = {
+	unreachable: "The Local Operator server is not answering.",
+	unauthorized:
+		"This app cannot authenticate to the running Local Operator server.",
+	// "may need an update" hedged while the sentence after it issued a command
+	// (design D9). 404 on the desktop route is not a "may": it is the ONLY
+	// status an update repairs, and the confidence of the diagnosis has to match
+	// the confidence of the imperative.
+	outdated: "The Local Operator server is older than this app expects.",
+	unknown: "",
+};
+
+/**
+ * The sentence a surface renders when a load failed because of the server.
+ *
+ * `lead` is the only per-surface part -- what could not be loaded, in that
+ * surface's scope. Everything after it is shared, so two surfaces reporting
+ * one fault cannot describe it differently or point at different actions.
+ * That agreement is the whole point of this module, and routing every surface
+ * through one function is what makes it structural rather than a convention.
+ *
+ * ## Severity: these are `warning`, not `danger`
+ *
+ * Every surface that renders this string offers a Retry beside it, and none of
+ * the four outcomes has lost the user anything. Settings previously rendered
+ * `danger` while the providers grid rendered `warning` for the same underlying
+ * fact, so the hue encoded which screen you were on rather than how bad it was
+ * (design D8). branding.md section 2 authors four separable semantics so a user
+ * can read severity off hue; `danger` here is reserved for a failure the user
+ * cannot recover from in place.
+ */
+export function backendLoadErrorMessage(lead: string, error: unknown): string {
+	const kind = backendErrorKind(error);
+	return [lead, BACKEND_ERROR_DIAGNOSIS[kind], BACKEND_ERROR_REMEDY[kind]]
+		.filter(Boolean)
+		.join(" ");
+}
 
 /**
  * Whether installing a newer backend is actually the remedy.
@@ -130,18 +199,22 @@ export function backendCompatibilityMessage(input: {
 	const { kind, unpaired, missing, answered } = input;
 	if (!answered) {
 		if (kind === "unreachable")
-			return `The backend is not answering. Provider sign-in, settings, slash commands and MCP management need it running. ${BACKEND_ERROR_REMEDY.unreachable}`;
+			return `${BACKEND_ERROR_DIAGNOSIS.unreachable} Provider sign-in, settings, slash commands and MCP management need it running. ${BACKEND_ERROR_REMEDY.unreachable}`;
 		if (kind === "unauthorized")
-			return `This app cannot authenticate to the running backend, so protected controls are unavailable. ${BACKEND_ERROR_REMEDY.unauthorized}`;
+			// "protected controls are unavailable" was jargon two sentences away
+			// from this file's own plain list of the same surfaces (design D10).
+			return `This app cannot authenticate to the running Local Operator server, so provider sign-in, settings, slash commands and MCP management are unavailable. ${BACKEND_ERROR_REMEDY.unauthorized}`;
 		if (kind === "outdated")
-			// The trailing clause was "stay off until it is updated", which said
-			// the remedy in a second set of words. Ending on the shared sentence
-			// instead is what lets a test assert the two surfaces agree by string
-			// rather than by a human reading both and judging them equivalent.
-			return `This backend is older than the app expects. Provider sign-in, settings, slash commands and MCP management stay off until then. ${BACKEND_ERROR_REMEDY.outdated}`;
+			// The trailing clause read "stay off until then", whose antecedent left
+			// with the remedy when it was extracted into the shared sentence --
+			// nothing before it named a time or an event (design D4). Binding the
+			// consequence to the diagnosis with "so" removes the dangling referent
+			// rather than restating the remedy in a second set of words, which is
+			// what lets a test assert the two surfaces agree by string.
+			return `The Local Operator server is older than this app expects, so provider sign-in, settings, slash commands and MCP management are off. ${BACKEND_ERROR_REMEDY.outdated}`;
 	}
 	if (unpaired)
-		return "This app is not paired with the running backend, so protected controls are unavailable. Restart the app so it can manage its own backend.";
+		return "This app is not paired with the running Local Operator server, so provider sign-in, settings, slash commands and MCP management are unavailable. Restart the app so it can manage its own server.";
 	if (!answered)
 		// Nothing answered and the status matched no case we can advise on. The
 		// old fallback claimed the backend was "missing" every negotiated feature
@@ -149,8 +222,8 @@ export function backendCompatibilityMessage(input: {
 		// install, so a backend that was running, current and merely erroring got
 		// the same several-minute remedy as one that predates the contract. State
 		// the failure and stop.
-		return "Provider sign-in, settings, slash commands and MCP management are unavailable because the backend did not answer as expected.";
-	return `The backend is missing ${missing.join(", ")} support. Update it to enable those surfaces.`;
+		return "Provider sign-in, settings, slash commands and MCP management are unavailable because the Local Operator server did not answer as expected.";
+	return `The Local Operator server is missing ${missing.join(", ")} support. Update it to enable those surfaces.`;
 }
 
 /**
