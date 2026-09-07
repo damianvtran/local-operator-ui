@@ -14,7 +14,10 @@
  */
 
 import { ProviderGrid } from "@features/providers/provider-grid";
-import { BackendSettingsSection } from "@features/settings/components/backend-settings-section";
+import {
+	BackendSettingsSection,
+	backendSettingsKeys,
+} from "@features/settings/components/backend-settings-section";
 import { desktopResult } from "@shared/api/local-operator/desktop-api";
 import { desktopKeys } from "@shared/api/local-operator/desktop-hooks";
 import { Spinner } from "@shared/components/common/spinner";
@@ -142,12 +145,64 @@ const settings503 = newClient();
 const settings404 = newClient();
 const providersIdle = newClient();
 const providersRetrying = newClient();
+const settingsRetryLabel = newClient();
+const settingsRetrySpinner = newClient();
 
 await seedCapabilities(settings401, 401);
 await seedCapabilities(settings503, 503);
 await seedCapabilities(settings404, 404);
 await seedProviders(providersIdle, 503);
 await seedProviders(providersRetrying, 503);
+
+/*
+ * D1 takes TWO shapes on the settings section, and both are captured because
+ * only a rendered pair settles whether each one is visibly distinct from the
+ * frame the user just clicked out of.
+ *
+ * (a) The settings list loaded once, so its refetch keeps `status: "error"`
+ *     and the error branch keeps winning. Nothing but the button can change,
+ *     which is exactly why the button has to.
+ * (b) Capabilities never succeeded, so re-asking them resets that query to
+ *     pending and the section returns to its spinner. A different branch
+ *     renders entirely.
+ */
+settingsRetryLabel.setQueryData(desktopKeys.capabilities, {
+	desktop_available: true,
+	features: { settings: 1 },
+});
+// Seed a successful list, THEN fail its refetch: holding data is what keeps
+// `status: "error"` across the retry, and so what makes the label reachable.
+settingsRetryLabel.setQueryData(backendSettingsKeys.all, {
+	sections: [{ name: "General" }],
+	settings: [
+		{
+			key: "web_search.enabled",
+			label: "Web search",
+			help: "Allow agents to search the web.",
+			section: "General",
+			value: "true",
+			type: "boolean",
+			scope: "live",
+		},
+	],
+});
+bridgeStatus = 503;
+await settingsRetryLabel
+	.fetchQuery({
+		queryKey: backendSettingsKeys.all,
+		queryFn: () => desktopResult({ op: "settings.list" }),
+		retry: false,
+	})
+	.catch(() => undefined);
+hangingOps.add("settings.list");
+void settingsRetryLabel.refetchQueries({ queryKey: backendSettingsKeys.all });
+
+await seedCapabilities(settingsRetrySpinner, 401);
+hangingOps.add("capabilities");
+void settingsRetrySpinner.refetchQueries({
+	queryKey: desktopKeys.capabilities,
+});
+await new Promise((resolve) => setTimeout(resolve, 60));
 
 // Left in flight: this panel IS the frame a user sees after clicking Retry.
 // Releasing the hang early would let the query settle and repaint the idle
@@ -216,6 +271,20 @@ createRoot(document.getElementById("root") as HTMLElement).render(
 				client={providersRetrying}
 			>
 				<ProviderGrid />
+			</Panel>
+			<Panel
+				title="Settings Retry mid-flight (a) — the list had loaded, so only the button can change"
+				note="Refetch keeps status='error', so the error branch keeps winning: disabled, labelled 'Retrying'."
+				client={settingsRetryLabel}
+			>
+				<BackendSettingsSection />
+			</Panel>
+			<Panel
+				title="Settings Retry mid-flight (b) — capabilities never loaded, so the whole branch changes"
+				note="Re-asking resets the gating query to pending: the section returns to its spinner, a different frame from the alert just clicked."
+				client={settingsRetrySpinner}
+			>
+				<BackendSettingsSection />
 			</Panel>
 			<section className="flex flex-col gap-2">
 				<h2 className="text-body-sm text-ink">
