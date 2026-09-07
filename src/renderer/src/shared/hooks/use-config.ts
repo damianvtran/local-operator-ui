@@ -9,6 +9,7 @@ import {
 	type ConfigResponse,
 	createLocalOperatorClient,
 } from "@shared/api/local-operator";
+import { retryDesktopQuery } from "@shared/api/local-operator/backend-error";
 import { apiConfig } from "@shared/config";
 import { useQuery } from "@tanstack/react-query";
 
@@ -48,5 +49,14 @@ export const useConfig = () => {
 		refetchOnWindowFocus: false,
 		// Prevent stale time to avoid unnecessary refetches
 		staleTime: 5000,
+		// This is the query in issue 89's title, and it inherited the client's
+		// `retry: 1`. When the desktop transport's deadline rejects, that default
+		// re-waits the ENTIRE deadline a second time -- 30s, then 30s again --
+		// which is 60s of unbroken spinner before the error state can render. The
+		// deadline already means "we waited the whole budget and nothing came
+		// back"; asking again on a path known to be dead cannot learn more. A
+		// failure that carries a real HTTP status came from a backend that DID
+		// answer, so it keeps the retry.
+		retry: retryDesktopQuery,
 	});
 };

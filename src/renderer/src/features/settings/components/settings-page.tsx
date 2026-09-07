@@ -13,6 +13,7 @@ import { Alert, Button, Skeleton } from "@shared/components/ui";
 import { useConfig } from "@shared/hooks/use-config";
 import { useCredentials } from "@shared/hooks/use-credentials";
 import { useCreditBalance } from "@shared/hooks/use-credit-balance";
+import { useElapsedSince } from "@shared/hooks/use-elapsed-since";
 import { useModels } from "@shared/hooks/use-models";
 import { useRadientUserQuery } from "@shared/hooks/use-radient-user-query";
 import { useUpdateConfig } from "@shared/hooks/use-update-config";
@@ -671,6 +672,10 @@ export const SettingsPage: FC = () => {
 
 	// Combine loading states
 	const isLoading = isConfigLoading || isAuthLoading;
+	// Well inside the transport's 30s deadline, so the explanation appears while
+	// the user is still deciding whether the app is stuck rather than after they
+	// have concluded it is.
+	const isSlowLoad = useElapsedSince(isLoading, 4000);
 
 	// The error branch below is only reachable if the config query actually
 	// settles. The renderer transport now bounds every desktop control, so a
@@ -708,8 +713,21 @@ export const SettingsPage: FC = () => {
 
 	if (isLoading) {
 		return (
-			<div className="flex h-full w-full items-center justify-center bg-canvas">
+			<div className="flex h-full w-full flex-col items-center justify-center gap-3 bg-canvas">
 				<Spinner size="lg" label="Loading settings" />
+				{/* A bounded wait is still a silent one. Until the deadline expires
+				    this spinner is pixel-identical to the unrecoverable spinner of
+				    issue 89, so a user cannot tell "waiting" from "hung" and gives
+				    up before the error state they were promised can render. Saying
+				    what is being waited on, and that it will end, is the difference
+				    between a slow app and a broken one. Only after the threshold:
+				    on a healthy load this never paints. */}
+				{isSlowLoad && (
+					<p className="max-w-sm text-center text-body-sm text-ink-muted">
+						Still waiting for the Local Operator server. This will stop and
+						offer a retry if it does not respond.
+					</p>
+				)}
 			</div>
 		);
 	}
