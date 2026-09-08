@@ -20,6 +20,7 @@ import {
 	Circle,
 	CircleAlert,
 	Clock,
+	HelpCircle,
 	List,
 	LoaderCircle,
 	MessageSquare,
@@ -45,6 +46,9 @@ type Props = {
 const rowStyle =
 	"flex h-8 min-w-0 items-center gap-1 rounded-md px-1 text-body-sm leading-5 hover:bg-elevated focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2";
 
+/** Resting codes that legitimately render as a plain ring; see `Status`. */
+const KNOWN_RESTING = new Set(["idle", "recent"]);
+
 function Status({ row }: { row: CanonicalSessionRow }) {
 	const code = row.status?.code;
 	const Icon =
@@ -63,7 +67,13 @@ function Status({ row }: { row: CanonicalSessionRow }) {
 							? Clock
 							: code === "attached"
 								? MessageSquare
-								: Circle;
+								: // `idle`/`recent` are ordinary resting states and keep the plain
+									// ring. Anything else is a code this build does not know, so it
+									// must not be normalised into looking like "Recent" — a backend
+									// newer than the UI would silently misreport state.
+									KNOWN_RESTING.has(code ?? "")
+									? Circle
+									: HelpCircle;
 	const ink =
 		code === "busy"
 			? "text-info motion-safe:animate-spin"
@@ -316,7 +326,9 @@ export function ChatSidebar({
 				<ChevronRight className="size-3.5" />
 			)}
 			<span className="flex-1 text-left">{label}</span>
-			{count !== undefined && (
+			{/* A zero badge next to a group that already says it is empty is the
+			    same fact twice; only a non-zero count carries information. */}
+			{Boolean(count) && (
 				<span className="text-meta tabular-nums">{count}</span>
 			)}
 		</button>
@@ -427,7 +439,7 @@ export function ChatSidebar({
 					</p>
 				)}
 				{showList && (
-					<div className={cn("space-y-4", stale && "opacity-60")}>
+					<div className={cn("space-y-4 pb-2", stale && "opacity-60")}>
 						<section>
 							{heading("agents", "Agents", true)}
 							{(query || isOpen("agents", true)) && (
@@ -467,73 +479,89 @@ export function ChatSidebar({
 								</>
 							)}
 						</section>
-						<section>
-							<button
-								type="button"
-								data-chat-row
-								className={cn(rowStyle, "w-full", all && "bg-accent-wash")}
-								aria-pressed={all}
-								onClick={() => setAll((value) => !value)}
-							>
-								<List className="size-4" />
-								<span className="flex-1 text-left">All chats</span>
-								{/* The three global counts read as one set, so this must honour
-								    the active filter exactly as Active/Previous do. */}
-								<span className="text-meta tabular-nums">
-									{matching.length}
-								</span>
-							</button>
-						</section>
-						{all ? (
-							<section>{matching.map((row) => sessionRow(row))}</section>
-						) : (
-							<>
-								<section>
-									{heading(
-										"active",
-										"Active chats",
-										true,
-										matching.filter((row) => row.active).length,
-									)}
-									{(query || isOpen("active", true)) &&
-										(matching.some((row) => row.active) ? (
-											matching
-												.filter((row) => row.active)
-												.map((row) => sessionRow(row))
-										) : (
-											<p className="px-2 text-meta text-ink-muted">
-												Nothing running right now.
-											</p>
-										))}
-								</section>
-								<section>
-									{heading(
-										"previous",
-										"Previous chats",
-										false,
-										matching.filter((row) => !row.active).length,
-									)}
-									{(query || isOpen("previous")) &&
-										matching
-											.filter((row) => !row.active)
-											.map((row) => sessionRow(row))}
-								</section>
-							</>
-						)}
-						{!sessions.length && !loading && (
-							<p className="text-meta text-ink-muted">
-								No chats yet. Choose an agent, team or New chat.
-							</p>
-						)}
-						{truncated && (
-							<p className="text-meta text-ink-muted">
-								Showing up to 500 chats. Older chats remain available in the
-								terminal.
-							</p>
-						)}
 					</div>
 				)}
 			</div>
+			{/* The global partition is NAVIGATION, not a peer of the entity lists.
+			    Sharing one scroll flow pushed Previous below the fold at 16+ sessions
+			    and its disclosure became easy to miss, so it is pinned below the
+			    scrolling entity region and owns its own scroll area. */}
+			{showList && (
+				<div
+					className={cn(
+						"mt-2 max-h-[45%] shrink-0 space-y-4 overflow-y-auto border-t border-hairline pt-2",
+						stale && "opacity-60",
+					)}
+				>
+					<section>
+						<button
+							type="button"
+							data-chat-row
+							className={cn(rowStyle, "w-full", all && "bg-accent-wash")}
+							aria-pressed={all}
+							onClick={() => setAll((value) => !value)}
+						>
+							<List className="size-4" />
+							<span className="flex-1 text-left">All chats</span>
+							{/* The three global counts read as one set, so this must honour
+							    the active filter exactly as Active/Previous do. A zero badge
+							    beside the "No chats yet" sentence just repeats it. */}
+							{matching.length > 0 && (
+								<span className="text-meta tabular-nums">
+									{matching.length}
+								</span>
+							)}
+						</button>
+					</section>
+					{all ? (
+						<section>{matching.map((row) => sessionRow(row))}</section>
+					) : (
+						<>
+							<section>
+								{heading(
+									"active",
+									"Active chats",
+									true,
+									matching.filter((row) => row.active).length,
+								)}
+								{(query || isOpen("active", true)) &&
+									(matching.some((row) => row.active) ? (
+										matching
+											.filter((row) => row.active)
+											.map((row) => sessionRow(row))
+									) : (
+										<p className="px-2 text-meta text-ink-muted">
+											Nothing running right now.
+										</p>
+									))}
+							</section>
+							<section>
+								{heading(
+									"previous",
+									"Previous chats",
+									false,
+									matching.filter((row) => !row.active).length,
+								)}
+								{(query || isOpen("previous")) &&
+									matching
+										.filter((row) => !row.active)
+										.map((row) => sessionRow(row))}
+							</section>
+						</>
+					)}
+					{!sessions.length && !loading && (
+						<p className="text-meta text-ink-muted">
+							No chats yet. Choose an agent, team or New chat.
+						</p>
+					)}
+					{truncated && (
+						<p className="text-meta text-ink-muted">
+							Showing up to 500 chats. Older chats remain available in the
+							terminal.
+						</p>
+					)}
+				</div>
+			)}
 			{(error || profiles.error || teams.error) && (
 				<div role="alert" className="pt-2 text-meta text-danger">
 					<p>{error || profiles.error?.message || teams.error?.message}</p>
