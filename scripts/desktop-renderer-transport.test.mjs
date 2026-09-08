@@ -86,3 +86,26 @@ test("a desktop control that answers is returned unchanged", async () => {
 		body: { result: { hosting: "openai" } },
 	});
 });
+
+test("structured profile repair conflict retains its category and actionable text", async () => {
+	const message = "Choose an available profile or detach it before sending.";
+	const { desktopResult, DesktopControlError } = await loadTransport(
+		async () => ({
+			status: 409,
+			body: { detail: { code: "unresolved_attachment", message } },
+		}),
+	);
+	await assert.rejects(
+		desktopResult({
+			op: "sessions.message",
+			sessionId: "111111111111",
+			requestId: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+			text: "retained draft",
+		}),
+		(error) =>
+			error instanceof DesktopControlError &&
+			error.status === 409 &&
+			error.code === "unresolved_attachment" &&
+			error.message === message,
+	);
+});

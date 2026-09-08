@@ -84,7 +84,10 @@ type ChatContentProps = {
 	messagesEndRef: React.RefObject<HTMLDivElement>;
 	scrollToBottom: () => void;
 	rawInfoContent: string;
-	onSendMessage: (content: string, attachments: string[]) => void;
+	onSendMessage: (
+		content: string,
+		attachments: string[],
+	) => undefined | boolean | Promise<undefined | boolean>;
 	currentJobId: string | null;
 	onCancelJob: (jobId: string) => void;
 	agentData?: AgentDetails | null;
@@ -98,6 +101,7 @@ type ChatContentProps = {
 	canonical?: {
 		view: CanonicalSessionHandle;
 		busy: boolean;
+		admitting?: boolean;
 		onStop: () => void;
 	};
 };
@@ -263,11 +267,13 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							onOpenOptions={onOpenOptions}
 						/>
 						{/* Chat Options Sidebar */}
-						<ChatOptionsSidebar
-							open={isOptionsSidebarOpen}
-							onClose={onCloseOptions}
-							agentId={agentId}
-						/>
+						{!canonical && (
+							<ChatOptionsSidebar
+								open={isOptionsSidebarOpen}
+								onClose={onCloseOptions}
+								agentId={agentId}
+							/>
+						)}
 						{/* Tabs for chat and raw - only shown in development mode */}
 						{showTabs && (
 							<ChatTabs activeTab={activeTab} onChange={onTabChange} />
@@ -319,7 +325,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								ref={messageInputRef}
 								onSendMessage={onSendMessage}
 								initialSuggestions={DEFAULT_MESSAGE_SUGGESTIONS}
-								isLoading={canonical ? false : isLoading}
+								isLoading={canonical ? Boolean(canonical.admitting) : isLoading}
 								conversationId={agentId}
 								messages={
 									canonical

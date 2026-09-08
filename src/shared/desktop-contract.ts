@@ -21,6 +21,55 @@ const sessionImage = z
 		mime_type: z.enum(["image/png", "image/jpeg", "image/gif", "image/webp"]),
 	})
 	.strict();
+const profileName = z
+	.string()
+	.min(1)
+	.max(128)
+	.refine(
+		(name) =>
+			name !== "." &&
+			name !== ".." &&
+			!name.includes("/") &&
+			!name.includes("\\") &&
+			[...name].every(
+				(character) =>
+					character.charCodeAt(0) >= 32 && character.charCodeAt(0) !== 127,
+			),
+	);
+const target = z
+	.object({ kind: z.enum(["agent", "team"]), name: profileName })
+	.strict();
+const profileFields = z
+	.object({
+		kind: z.enum(["role", "specialist"]).optional(),
+		description: z.string().max(8000).optional(),
+		instructions: z.string().max(8000).optional(),
+		tools: z.array(z.string().min(1).max(128)).max(256).optional(),
+		effort: z.string().max(64).optional(),
+		delegate: z.boolean().optional(),
+	})
+	.strict();
+const teamFields = z
+	.object({
+		name: z.string().min(1).max(64).optional(),
+		description: z.string().max(8000).optional(),
+		manager: profileName.optional(),
+		members: z
+			.array(
+				z
+					.object({
+						role: profileName,
+						count: z.number().int().min(1).max(16),
+						kind: z.enum(["agent", "team"]),
+					})
+					.strict(),
+			)
+			.max(128)
+			.optional(),
+		instructions: z.string().max(8000).optional(),
+		project: z.string().max(8000).optional(),
+	})
+	.strict();
 const chains = z.record(z.array(z.string().max(1024)).max(100));
 // Mirrors ScheduleUnit in the renderer's api/local-operator/types.ts and the
 // backend's ScheduleUnit enum. Enumerated rather than free text so the value
@@ -63,6 +112,47 @@ const configUpdate = z
 // The renderer selects an operation; it never supplies a URL, method or headers.
 export const desktopRequestSchema = z.discriminatedUnion("op", [
 	z.object({ op: z.literal("capabilities") }).strict(),
+	z.object({ op: z.literal("profiles.list") }).strict(),
+	z.object({ op: z.literal("profiles.get"), name: profileName }).strict(),
+	z
+		.object({ op: z.literal("profiles.install"), name: profileName, requestId })
+		.strict(),
+	z
+		.object({
+			op: z.literal("profiles.create"),
+			name: profileName,
+			requestId,
+			fields: profileFields.extend({
+				description: z.string().max(8000),
+				instructions: z.string().min(1).max(8000),
+			}),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("profiles.update"),
+			name: profileName,
+			requestId,
+			fields: profileFields,
+		})
+		.strict(),
+	z.object({ op: z.literal("teams.list") }).strict(),
+	z.object({ op: z.literal("teams.get"), name: profileName }).strict(),
+	z
+		.object({
+			op: z.literal("teams.create"),
+			requestId,
+			fields: teamFields.extend({ name: z.string().min(1).max(64) }),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("teams.update"),
+			name: profileName,
+			requestId,
+			fields: teamFields,
+		})
+		.strict(),
 	z
 		.object({
 			op: z.literal("sessions.list"),
@@ -74,6 +164,7 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 			op: z.literal("sessions.create"),
 			requestId,
 			cwd: z.string().min(1).max(4096),
+			target: target.optional(),
 		})
 		.strict(),
 	z.object({ op: z.literal("sessions.get"), sessionId }).strict(),
@@ -698,6 +789,54 @@ export function desktopEndpoint(request: DesktopRequest): {
 	switch (request.op) {
 		case "capabilities":
 			return { path: "/v1/capabilities", method: "GET" };
+		case "profiles.list":
+			return { path: "/v1/desktop/profiles", method: "GET" };
+		case "profiles.get":
+			return {
+				path: `/v1/desktop/profiles/${encodeURIComponent(request.name)}`,
+				method: "GET",
+			};
+		case "profiles.install":
+			return {
+				path: "/v1/desktop/profiles/install",
+				method: "POST",
+				body: { request_id: request.requestId, name: request.name },
+			};
+		case "profiles.create":
+			return {
+				path: "/v1/desktop/profiles",
+				method: "POST",
+				body: {
+					request_id: request.requestId,
+					name: request.name,
+					...request.fields,
+				},
+			};
+		case "profiles.update":
+			return {
+				path: `/v1/desktop/profiles/${encodeURIComponent(request.name)}`,
+				method: "PATCH",
+				body: { request_id: request.requestId, ...request.fields },
+			};
+		case "teams.list":
+			return { path: "/v1/desktop/teams", method: "GET" };
+		case "teams.get":
+			return {
+				path: `/v1/desktop/teams/${encodeURIComponent(request.name)}`,
+				method: "GET",
+			};
+		case "teams.create":
+			return {
+				path: "/v1/desktop/teams",
+				method: "POST",
+				body: { request_id: request.requestId, ...request.fields },
+			};
+		case "teams.update":
+			return {
+				path: `/v1/desktop/teams/${encodeURIComponent(request.name)}`,
+				method: "PATCH",
+				body: { request_id: request.requestId, ...request.fields },
+			};
 		case "sessions.list":
 			return {
 				path: `/v1/desktop/sessions?limit=${request.limit ?? 100}`,
@@ -707,7 +846,11 @@ export function desktopEndpoint(request: DesktopRequest): {
 			return {
 				path: "/v1/desktop/sessions",
 				method: "POST",
-				body: { request_id: request.requestId, cwd: request.cwd },
+				body: {
+					request_id: request.requestId,
+					cwd: request.cwd,
+					...(request.target ? { target: request.target } : {}),
+				},
 			};
 		case "sessions.get":
 			return {

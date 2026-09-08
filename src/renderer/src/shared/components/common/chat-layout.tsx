@@ -21,7 +21,12 @@ type ChatLayoutProps = {
  * reason — the inline style always overrode it.
  */
 export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
-	const sidebarWidth = useUiPreferencesStore((s) => s.chatSidebarWidth);
+	// Clamp pre-refactor saved widths at the render boundary without rewriting
+	// persisted sessions or discarding the rest of the user preferences.
+	const savedWidth = useUiPreferencesStore((s) => s.chatSidebarWidth);
+	const sidebarWidth = Number.isFinite(savedWidth)
+		? Math.min(360, Math.max(240, savedWidth))
+		: 280;
 	const setSidebarWidth = useUiPreferencesStore((s) => s.setChatSidebarWidth);
 	const restoreDefaultSidebarWidth = useUiPreferencesStore(
 		(s) => s.restoreDefaultChatSidebarWidth,
@@ -35,8 +40,8 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 			<ResizableDivider
 				sidebarWidth={sidebarWidth}
 				onSidebarWidthChange={setSidebarWidth}
-				minWidth={180}
-				maxWidth={600}
+				minWidth={240}
+				maxWidth={360}
 				onDoubleClick={restoreDefaultSidebarWidth}
 			/>
 			<div className="h-full grow overflow-hidden">{content}</div>

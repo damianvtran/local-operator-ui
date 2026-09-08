@@ -1,197 +1,434 @@
-/**
- * Canonical desktop session store.
- *
- * Conversations in this app are canonical session records (12-hex session
- * IDs) owned by the backend's desktop session API, not agent profiles. An
- * agent ID is a profile reference a session may carry; it is never the
- * session identity. The store keeps the list, the active session, and the
- * agent->session mapping so list/create/open/reopen preserve identity across
- * restarts and watcher updates never invent a second row for the same
- * session.
- *
- * Rows are merged by session_id: a watcher refresh that returns the same
- * session must update the existing row in place, never append a duplicate,
- * and must not steal the active selection or scroll a reading user.
- */
-
+/** Canonical sessions are the only conversation identities. Profile names stage
+ * drafts; the legacy agent mapping is retained only to resolve old deep links. */
 import { desktopResult } from "@shared/api/local-operator/desktop-api";
+import type { ChatTarget } from "@shared/api/local-operator/profile-hooks";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import {
+	type CompletionAttention,
+	type SessionBinding,
+	type SessionCatalogueStatus,
+	mergeCompletionAttention,
+} from "../../../../shared/desktop-session-contract";
 
 export type CanonicalSessionRow = {
 	session_id: string;
 	title?: string | null;
 	cwd?: string | null;
 	updated_at?: number | null;
-	agent_id?: string | null;
-	/**
-	 * The session's most recent assistant reply, from the canonical transcript.
-	 *
-	 * The conversation list used to render the legacy agent record's
-	 * `last_message`, which canonical sessions never write -- so a conversation
-	 * with a full transcript on disk was labelled "No messages yet" (design
-	 * D19). The transcript is the authority for both the title and this.
-	 */
 	preview?: string | null;
+	attention?: CompletionAttention;
+	live_state?: string;
+	pending?: string | null;
+	active?: boolean;
+	status?: SessionCatalogueStatus;
+	binding?: SessionBinding;
 	[key: string]: unknown;
 };
-
-/** Backend list row: `{id, name, mtime, ...}` (extra fields allowed). */
-type BackendSessionRow = {
+type BackendSessionRow = Omit<CanonicalSessionRow, "session_id"> & {
 	id: string;
 	name: string;
 	mtime: number;
-	[key: string]: unknown;
+};
+export type ChatDraft = {
+	key: string;
+	target?: ChatTarget;
+	createRequestId: string;
+	admissionRequestId: string;
+	sessionId?: string;
+	pending?: boolean;
+	error?: string;
+	errorCode?: string;
+	submittedText?: string;
+	submittedAttachments?: string[];
+	submittedImages?: ChatImage[];
+	submittedMode?: "prompt" | "steer";
+	/**
+	 * True only once an admission request has actually been ISSUED, i.e. its
+	 * outcome is genuinely unknown to us. This is what the unchanged-payload
+	 * guard keys on: a send that failed BEFORE admission (session creation
+	 * refused, provider unconfigured) admitted nothing, so holding the composer
+	 * to that exact text would lock a conversation over a failure we know did
+	 * not land. Only a request that may already be executing must be retried
+	 * byte-for-byte.
+	 */
+	admissionAttempted?: boolean;
+};
+export type ChatImage = {
+	data_b64: string;
+	mime_type: "image/png" | "image/jpeg" | "image/gif" | "image/webp";
 };
 
-function fromBackend(row: BackendSessionRow): CanonicalSessionRow {
-	const { id, name, mtime, ...rest } = row;
-	return { ...rest, session_id: id, title: name, updated_at: mtime };
+/**
+ * Which draft a chat view owns. A staged draft is keyed by its own key, but once
+ * a session exists `draftKey` is null and the send draft lives under
+ * `send:<id>` — reading only `draftKey` there left a failed send's retained text
+ * unreachable. It lives here, beside the drafts it addresses, so the rule is
+ * exercised by the store tests rather than duplicated in an untested component.
+ */
+export function draftIdentityFor(
+	draftKey: string | null,
+	sessionId: string | null | undefined,
+): string | null {
+	return draftKey ?? (sessionId ? `send:${sessionId}` : null);
 }
 
+/** Create and admission are intentionally separate receipts. A response lost
+ * between them retains its exact IDs and payload; retry never reallocates or
+ * deletes work that may already have been admitted by the owner. */
+export async function admitChatDraft(
+	key: string,
+	input: {
+		text: string;
+		attachments: string[];
+		images: ChatImage[];
+		mode: "prompt" | "steer";
+		cwd: string;
+	},
+	sessionId?: string,
+): Promise<string | null> {
+	const store = useCanonicalSessionsStore.getState();
+	const previous = store.drafts[key];
+	if (previous?.pending) return null;
+	if (
+		previous?.admissionAttempted &&
+		previous.submittedText !== undefined &&
+		(previous.submittedText !== input.text ||
+			JSON.stringify(previous.submittedAttachments) !==
+				JSON.stringify(input.attachments) ||
+			// Images are payload identity too. Comparing only text/attachments let a
+			// retry that added an image pass the guard and then silently send the
+			// FIRST attempt's images, dropping the new one with no error.
+			JSON.stringify(previous.submittedImages ?? []) !==
+				JSON.stringify(input.images))
+	) {
+		throw new Error(
+			"The previous send has not been confirmed. Retry it unchanged, or discard it to send something different.",
+		);
+	}
+	const draft: ChatDraft = previous ?? {
+		key,
+		createRequestId: crypto.randomUUID(),
+		admissionRequestId: crypto.randomUUID(),
+	};
+	// `mode` MUST be pinned once an admission has been issued, even though it
+	// reads like a delivery instruction rather than payload. The server keys its
+	// receipt on a sha256 of the WHOLE request body, `mode` included
+	// (desktop_receipts.py), and raises ReceiptConflict -> HTTP 409 when a retry
+	// of the same requestId hashes differently. So the lost-response case (turn
+	// admitted, response never arrived, session now streaming, UI recomputes
+	// busy=true) would retry as "steer", 409 forever, and report a failure for a
+	// message that actually landed. Pinning keeps the retry an idempotent replay.
+	const images = draft.admissionAttempted
+		? (draft.submittedImages ?? input.images)
+		: input.images;
+	const mode = draft.admissionAttempted
+		? (draft.submittedMode ?? input.mode)
+		: input.mode;
+	store.updateDraft(key, {
+		...draft,
+		pending: true,
+		submittedText: input.text,
+		submittedAttachments: input.attachments,
+		submittedImages: images,
+		submittedMode: mode,
+		error: undefined,
+	});
+	try {
+		let id = sessionId ?? draft.sessionId;
+		if (!id) {
+			id =
+				(await store.createSession(
+					input.cwd,
+					draft.target,
+					draft.createRequestId,
+				)) ?? undefined;
+			if (!id)
+				throw new Error(
+					useCanonicalSessionsStore.getState().error ?? "Chat could not start.",
+				);
+			store.updateDraft(key, { sessionId: id });
+		}
+		// From here the outcome is unknowable on failure: the owner may have
+		// admitted the command before the response was lost.
+		store.updateDraft(key, { admissionAttempted: true });
+		await desktopResult({
+			op: "sessions.message",
+			sessionId: id,
+			requestId: draft.admissionRequestId,
+			text: input.text,
+			images: images.length ? images : undefined,
+			mode,
+		});
+		store.finishDraft(key, id);
+		return id;
+	} catch (error) {
+		store.updateDraft(key, {
+			pending: false,
+			errorCode:
+				error instanceof Error &&
+				"code" in error &&
+				typeof error.code === "string"
+					? error.code
+					: undefined,
+			error:
+				error instanceof Error
+					? error.message
+					: "The send could not be confirmed.",
+		});
+		throw error;
+	}
+}
 type CanonicalSessionsState = {
 	sessions: CanonicalSessionRow[];
 	activeSessionId: string | null;
-	/** Agent profile -> canonical session mapping, so reopening an agent's
-	 * conversation resumes the same session identity instead of creating a
-	 * new one per launch. */
+	activeDraftKey: string | null;
+	drafts: Record<string, ChatDraft>;
 	sessionByAgent: Record<string, string>;
+	pendingSessionId: string | null;
 	loading: boolean;
+	truncated: boolean;
 	error: string | null;
-	fetchSessions: () => Promise<void>;
-	createSession: (cwd: string, agentId?: string) => Promise<string | null>;
+	cwd: string;
+	setCwd: (cwd: string) => void;
+	fetchSessions: (limit?: number) => Promise<void>;
+	createSession: (
+		cwd: string,
+		target?: ChatTarget,
+		requestId?: string,
+	) => Promise<string | null>;
 	setActiveSession: (sessionId: string | null) => void;
-	/** Point an agent at an existing canonical session (resume/fork/new). The
-	 * previous binding is dropped, not deleted: the old session stays in the
-	 * list and any running owner keeps working. */
-	bindSession: (agentId: string, sessionId: string) => void;
-	/** Merge one row from a watcher/stream update without duplicating or
-	 * reordering the list. */
+	openSession: (sessionId: string) => Promise<boolean>;
+	cancelOpen: () => void;
+	stageDraft: (target?: ChatTarget, fresh?: boolean) => string;
+	updateDraft: (key: string, patch: Partial<ChatDraft>) => void;
+	finishDraft: (key: string, sessionId: string) => void;
+	/**
+	 * Abandon a stuck send. The retained payload is the user's own text, so the
+	 * only safe owner of that decision is the user: we drop our claim that the
+	 * next send must match it, and never touch the session or its transcript.
+	 */
+	discardDraft: (key: string) => void;
+	bindSession: (legacyAgentId: string, sessionId: string) => void;
 	upsertSession: (row: CanonicalSessionRow) => void;
 };
 
-function mergeRows(
+function mergeRow(
+	current: CanonicalSessionRow | undefined,
+	incoming: CanonicalSessionRow,
+): CanonicalSessionRow {
+	return {
+		...current,
+		...incoming,
+		attention: mergeCompletionAttention(
+			current?.attention,
+			incoming.attention,
+			incoming.session_id,
+		),
+	};
+}
+/** Full list responses replace membership; a disappeared row is not immortal.
+ * Stream updates use upsert separately and never imply a complete inventory. */
+export function replaceSessionRows(
 	current: CanonicalSessionRow[],
 	incoming: CanonicalSessionRow[],
 ): CanonicalSessionRow[] {
 	const byId = new Map(current.map((row) => [row.session_id, row]));
-	for (const row of incoming) {
-		byId.set(row.session_id, { ...byId.get(row.session_id), ...row });
-	}
-	// Preserve the incoming order for rows the backend returned; rows it did
-	// not return keep their previous relative order at the tail.
-	const ordered: CanonicalSessionRow[] = [];
-	const seen = new Set<string>();
-	for (const row of incoming) {
-		const merged = byId.get(row.session_id);
-		if (merged && !seen.has(row.session_id)) {
-			ordered.push(merged);
-			seen.add(row.session_id);
-		}
-	}
-	for (const row of current) {
-		if (!seen.has(row.session_id)) ordered.push(row);
-	}
-	return ordered;
+	return [
+		...new Map(
+			incoming.map((row) => [
+				row.session_id,
+				mergeRow(byId.get(row.session_id), row),
+			]),
+		).values(),
+	];
 }
-
+let navigationGeneration = 0;
+let refreshGeneration = 0;
 export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 	persist(
 		(set, get) => ({
 			sessions: [],
 			activeSessionId: null,
+			activeDraftKey: null,
+			drafts: {},
 			sessionByAgent: {},
+			pendingSessionId: null,
 			loading: false,
+			truncated: false,
 			error: null,
-
-			fetchSessions: async () => {
+			cwd: "~",
+			setCwd: (cwd) => set({ cwd }),
+			fetchSessions: async (limit = 500) => {
+				const generation = ++refreshGeneration;
 				set({ loading: true, error: null });
 				try {
 					const result = await desktopResult<{
 						sessions: BackendSessionRow[];
-					}>({ op: "sessions.list" });
+						truncated?: boolean;
+					}>({ op: "sessions.list", limit });
+					if (generation !== refreshGeneration) return;
+					const rows = result.sessions.map(({ id, name, mtime, ...rest }) => ({
+						...rest,
+						session_id: id,
+						title: name,
+						updated_at: mtime,
+					}));
 					set((state) => ({
-						sessions: mergeRows(
-							state.sessions,
-							(result.sessions ?? []).map(fromBackend),
-						),
+						sessions: replaceSessionRows(state.sessions, rows),
 						loading: false,
+						truncated: result.truncated === true,
 					}));
 				} catch (error) {
-					set({
-						loading: false,
-						error:
-							error instanceof Error
-								? error.message
-								: "The conversation list could not be loaded.",
-					});
+					if (generation === refreshGeneration)
+						set({
+							loading: false,
+							error:
+								error instanceof Error
+									? error.message
+									: "Chats could not refresh. Retry to reconnect.",
+						});
 				}
 			},
-
-			createSession: async (cwd, agentId) => {
+			createSession: async (cwd, target, requestId = crypto.randomUUID()) => {
 				try {
-					const result = await desktopResult<{ session_id: string }>({
+					const result = await desktopResult<{
+						session_id: string;
+						binding: CanonicalSessionRow["binding"];
+					}>({
 						op: "sessions.create",
-						requestId: crypto.randomUUID(),
+						requestId,
 						cwd,
+						...(target ? { target } : {}),
 					});
-					const row: CanonicalSessionRow = {
+					get().upsertSession({
 						session_id: result.session_id,
 						cwd,
-						agent_id: agentId ?? null,
-					};
-					set((state) => ({
-						sessions: mergeRows(state.sessions, [row]),
-						activeSessionId: result.session_id,
-						sessionByAgent: agentId
-							? { ...state.sessionByAgent, [agentId]: result.session_id }
-							: state.sessionByAgent,
-					}));
+						binding: result.binding,
+					});
 					return result.session_id;
 				} catch (error) {
 					set({
 						error:
 							error instanceof Error
 								? error.message
-								: "The conversation could not be created.",
+								: "Chat could not start. Retry with the same draft.",
 					});
-					return null;
+					throw error;
 				}
 			},
-
-			setActiveSession: (sessionId) => set({ activeSessionId: sessionId }),
-
-			bindSession: (agentId, sessionId) =>
-				set((state) => ({
-					activeSessionId: sessionId,
-					sessionByAgent: { ...state.sessionByAgent, [agentId]: sessionId },
-					sessions: mergeRows(state.sessions, [
-						{ session_id: sessionId, agent_id: agentId },
-					]),
-				})),
-
-			upsertSession: (row) => {
-				const { sessions, activeSessionId } = get();
-				const existing = sessions.find(
-					(candidate) => candidate.session_id === row.session_id,
-				);
-				// A watcher update for the already-active session must not disturb
-				// selection; a new row is appended without becoming active.
-				set({
-					sessions: mergeRows(sessions, [row]),
-					activeSessionId: existing ? activeSessionId : activeSessionId,
-				});
+			setActiveSession: (activeSessionId) => {
+				++navigationGeneration;
+				set({ activeSessionId, activeDraftKey: null, pendingSessionId: null });
 			},
+			openSession: async (sessionId) => {
+				const generation = ++navigationGeneration;
+				set({ pendingSessionId: sessionId, error: null });
+				try {
+					// A candidate read does not acknowledge output or switch the current view.
+					// Only a successful latest intent commits; failed reads keep outgoing work.
+					await desktopResult({ op: "sessions.get", sessionId });
+					if (generation !== navigationGeneration) return false;
+					set({
+						activeSessionId: sessionId,
+						activeDraftKey: null,
+						pendingSessionId: null,
+					});
+					return true;
+				} catch (error) {
+					if (generation === navigationGeneration)
+						set({
+							pendingSessionId: null,
+							error:
+								error instanceof Error
+									? error.message
+									: "Chat could not open. Retry.",
+						});
+					return false;
+				}
+			},
+			cancelOpen: () => {
+				++navigationGeneration;
+				set({ pendingSessionId: null });
+			},
+			stageDraft: (target, fresh = false) => {
+				++navigationGeneration;
+				const key =
+					!fresh && target
+						? `draft:${target.kind}:${target.name}`
+						: `draft:${crypto.randomUUID()}`;
+				const existing = get().drafts[key];
+				set((state) => ({
+					activeDraftKey: key,
+					pendingSessionId: null,
+					error: null,
+					drafts: {
+						...state.drafts,
+						[key]: existing ?? {
+							key,
+							target,
+							createRequestId: crypto.randomUUID(),
+							admissionRequestId: crypto.randomUUID(),
+						},
+					},
+				}));
+				return key;
+			},
+			updateDraft: (key, patch) =>
+				set((state) => ({
+					drafts: {
+						...state.drafts,
+						[key]: { ...state.drafts[key], ...patch },
+					},
+				})),
+			finishDraft: (key, sessionId) =>
+				set((state) => {
+					const drafts = { ...state.drafts };
+					delete drafts[key];
+					return {
+						drafts,
+						...(state.activeDraftKey === key
+							? { activeDraftKey: null, activeSessionId: sessionId }
+							: {}),
+					};
+				}),
+			discardDraft: (key) =>
+				set((state) => {
+					const drafts = { ...state.drafts };
+					delete drafts[key];
+					return { drafts };
+				}),
+			bindSession: (_legacyAgentId, sessionId) =>
+				get().setActiveSession(sessionId),
+			upsertSession: (row) =>
+				set((state) => {
+					const present = state.sessions.some(
+						(item) => item.session_id === row.session_id,
+					);
+					return {
+						sessions: present
+							? state.sessions.map((item) =>
+									item.session_id === row.session_id
+										? mergeRow(item, row)
+										: item,
+								)
+							: [...state.sessions, row],
+					};
+				}),
 		}),
 		{
 			name: "canonical-sessions-storage",
-			// Only the identity mapping persists: the list and active selection
-			// are re-read from the backend on launch, but the agent -> session
-			// binding is what keeps a reopened agent on the same canonical
-			// conversation instead of minting a new one per launch.
 			partialize: (state) => ({
 				sessionByAgent: state.sessionByAgent,
 				activeSessionId: state.activeSessionId,
+				activeDraftKey: state.activeDraftKey,
+				cwd: state.cwd,
+				drafts: Object.fromEntries(
+					Object.entries(state.drafts).map(([key, draft]) => [
+						key,
+						{ ...draft, pending: false },
+					]),
+				),
 			}),
 		},
 	),
