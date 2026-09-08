@@ -59,6 +59,20 @@ export type ChatImage = {
 	mime_type: "image/png" | "image/jpeg" | "image/gif" | "image/webp";
 };
 
+/**
+ * Which draft a chat view owns. A staged draft is keyed by its own key, but once
+ * a session exists `draftKey` is null and the send draft lives under
+ * `send:<id>` — reading only `draftKey` there left a failed send's retained text
+ * unreachable. It lives here, beside the drafts it addresses, so the rule is
+ * exercised by the store tests rather than duplicated in an untested component.
+ */
+export function draftIdentityFor(
+	draftKey: string | null,
+	sessionId: string | null | undefined,
+): string | null {
+	return draftKey ?? (sessionId ? `send:${sessionId}` : null);
+}
+
 /** Create and admission are intentionally separate receipts. A response lost
  * between them retains its exact IDs and payload; retry never reallocates or
  * deletes work that may already have been admitted by the owner. */
@@ -97,19 +111,27 @@ export async function admitChatDraft(
 		createRequestId: crypto.randomUUID(),
 		admissionRequestId: crypto.randomUUID(),
 	};
-	// Deliberately NOT pinned to the first attempt. The guard above already
-	// holds the payload identical across a retry, and `mode` is a delivery
-	// instruction rather than payload: a send that first failed while the
-	// session was idle must steer, not queue a new turn, once it is streaming.
-	// A genuinely duplicate admission is deduped by `admissionRequestId`.
-	const images = input.images;
-	const mode = input.mode;
+	// `mode` MUST be pinned once an admission has been issued, even though it
+	// reads like a delivery instruction rather than payload. The server keys its
+	// receipt on a sha256 of the WHOLE request body, `mode` included
+	// (desktop_receipts.py), and raises ReceiptConflict -> HTTP 409 when a retry
+	// of the same requestId hashes differently. So the lost-response case (turn
+	// admitted, response never arrived, session now streaming, UI recomputes
+	// busy=true) would retry as "steer", 409 forever, and report a failure for a
+	// message that actually landed. Pinning keeps the retry an idempotent replay.
+	const images = draft.admissionAttempted
+		? (draft.submittedImages ?? input.images)
+		: input.images;
+	const mode = draft.admissionAttempted
+		? (draft.submittedMode ?? input.mode)
+		: input.mode;
 	store.updateDraft(key, {
 		...draft,
 		pending: true,
 		submittedText: input.text,
 		submittedAttachments: input.attachments,
 		submittedImages: images,
+		submittedMode: mode,
 		error: undefined,
 	});
 	try {

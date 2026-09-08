@@ -70,8 +70,11 @@ function Status({ row }: { row: CanonicalSessionRow }) {
 								: // `idle`/`recent` are ordinary resting states and keep the plain
 									// ring. Anything else is a code this build does not know, so it
 									// must not be normalised into looking like "Recent" — a backend
-									// newer than the UI would silently misreport state.
-									KNOWN_RESTING.has(code ?? "")
+									// newer than the UI would silently misreport state. An ABSENT
+									// status is a different case: a locally created row carries none
+									// until the next fetch, and the label already reads "Recent", so
+									// treating it as unknown made the icon contradict the label.
+									KNOWN_RESTING.has(code ?? "recent")
 									? Circle
 									: HelpCircle;
 	const ink =

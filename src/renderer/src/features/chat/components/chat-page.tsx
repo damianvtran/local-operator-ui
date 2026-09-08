@@ -10,6 +10,7 @@ import { useDesktopWatchLease } from "@shared/hooks/use-desktop-watch-lease";
 import { useScrollToBottom } from "@shared/hooks/use-scroll-to-bottom";
 import {
 	admitChatDraft,
+	draftIdentityFor,
 	useCanonicalSessionsStore,
 } from "@shared/store/canonical-sessions-store";
 import { useEffect, useRef, useState } from "react";
@@ -85,11 +86,7 @@ function SessionPanel({
 	const input = useRef<MessageInputHandle>(null);
 	const container = useRef<HTMLDivElement>(null);
 	const end = useRef<HTMLDivElement>(null);
-	// An existing session's send draft is keyed `send:<id>`, NOT by draftKey
-	// (which is null once a session exists). Reading only the staged draft left
-	// a failed send's retained text unreachable, so the user could neither see
-	// nor clear the text the guard was holding them to.
-	const draftIdentity = draftKey ?? (sessionId ? `send:${sessionId}` : null);
+	const draftIdentity = draftIdentityFor(draftKey, sessionId);
 	const draft = useCanonicalSessionsStore((state) =>
 		draftIdentity ? state.drafts[draftIdentity] : undefined,
 	);
@@ -161,7 +158,9 @@ function SessionPanel({
 		attachments: string[],
 	): Promise<boolean> => {
 		const store = useCanonicalSessionsStore.getState();
-		const key = draftKey ?? `send:${sessionId}`;
+		// Same identity the view reads, so a send can never address a different
+		// draft than the one whose retained text and Discard control are shown.
+		const key = draftIdentityFor(draftKey, sessionId) ?? `send:${sessionId}`;
 		const previous = store.drafts[key];
 		if (pendingNavigation || sendLock.current || previous?.pending)
 			return false;
@@ -260,12 +259,23 @@ function SessionPanel({
 			? `New chat with ${loadedTarget}`
 			: "New chat"
 		: canonical.frontend?.conversation_title || "Untitled chat";
-	const loaded = [
-		canonical.frontend?.active_agent,
-		canonical.frontend?.active_team,
-	]
-		.filter(Boolean)
-		.join(" · ");
+	// active_agent/active_team come from the LIVE stream, so a cold session (no
+	// running owner) reports nulls and the header fell back to the cwd, naming
+	// nothing. The catalogue row's binding is the durable answer and is already
+	// what the sidebar groups by, so it is the fallback rather than a second
+	// source of truth: live values still win while an owner is attached.
+	const boundRow = useCanonicalSessionsStore((state) =>
+		sessionId
+			? state.sessions.find((row) => row.session_id === sessionId)
+			: undefined,
+	);
+	const loaded =
+		[canonical.frontend?.active_agent, canonical.frontend?.active_team]
+			.filter(Boolean)
+			.join(" · ") ||
+		[boundRow?.binding?.agent, boundRow?.binding?.team]
+			.filter(Boolean)
+			.join(" · ");
 	const view = !sessionId
 		? { ...canonical, status: "live" as const, error: null }
 		: canonical;

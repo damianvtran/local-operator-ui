@@ -49,6 +49,7 @@ const {
 	useCanonicalSessionsStore: store,
 	replaceSessionRows,
 	admitChatDraft,
+	draftIdentityFor,
 	desktopRequestSchema,
 } = module;
 function reset() {
@@ -142,14 +143,9 @@ test("create success plus admission failure retries exact same session and paylo
 		1,
 	);
 	const messages = calls.filter((request) => request.op === "sessions.message");
-	// Admission identity and payload must be replayed byte-for-byte; `mode` is a
-	// delivery instruction and deliberately follows the CURRENT session state, so
-	// a retry against a now-streaming session steers rather than queueing (F2).
-	assert.deepEqual(
-		{ ...messages[1], mode: undefined },
-		{ ...firstMessage, mode: undefined },
-	);
-	assert.equal(messages[1].mode, "steer");
+	// The whole admission — `mode` included — is the server's receipt fingerprint,
+	// so a retry of the same requestId must be byte-identical or it 409s (F3).
+	assert.deepEqual(messages[1], firstMessage);
 	assert.equal(store.getState().activeSessionId, "222222222222");
 	assert.equal(store.getState().drafts[key], undefined);
 });
@@ -228,26 +224,79 @@ test("only an issued admission pins the payload, and a discard always frees it",
 	assert.ok(await admitChatDraft(fresh, { ...input, text: "different" }));
 });
 
-test("a retry after a streaming turn begins steers instead of queueing", async () => {
+test("a lost admission response replays idempotently instead of conflicting", async () => {
 	reset();
-	let failAdmission = true;
+	// Models the REAL receipt store: DesktopReceipts fingerprints a sha256 of the
+	// whole request body (`mode` included) and raises ReceiptConflict -> HTTP 409
+	// when the same requestId arrives hashing differently. A stub that accepts
+	// unconditionally cannot observe this, which is exactly how the previous
+	// version of this test asserted behaviour the real server rejects.
+	const receipts = new Map();
+	let dropResponse = true;
 	globalThis.__canonicalRequest = async (request) => {
 		calls.push(request);
 		if (request.op === "sessions.create")
 			return { session_id: "222222222222", binding: null };
-		if (failAdmission) throw new Error("provider unavailable");
-		return { status: "admitted" };
+		const { requestId, ...body } = request;
+		const fingerprint = JSON.stringify(body, Object.keys(body).sort());
+		const seen = receipts.get(requestId);
+		if (seen && seen.fingerprint !== fingerprint)
+			throw new Error("Request ID was already used with different input");
+		if (seen) return { ...seen.result, replayed: true };
+		const result = { status: "admitted" };
+		receipts.set(requestId, { fingerprint, result });
+		// The turn IS admitted server-side; only the response is lost, which is
+		// what leaves the UI believing the send failed while the session streams.
+		if (dropResponse) throw new Error("connection reset");
+		return result;
 	};
 	const key = store.getState().stageDraft({ kind: "agent", name: "reviewer" });
 	await assert.rejects(
 		admitChatDraft(key, { ...input, mode: "prompt" }),
-		/provider unavailable/,
+		/connection reset/,
 	);
-	failAdmission = false;
+	dropResponse = false;
+	// The session is now streaming, so the composer recomputes busy -> "steer".
+	// The retry must still replay the ORIGINAL fingerprint, or it 409s forever
+	// and reports a failure for a message that already landed (F3).
 	await admitChatDraft(key, { ...input, mode: "steer" });
 	const admissions = calls.filter((call) => call.op === "sessions.message");
-	assert.equal(admissions.at(-1).mode, "steer");
 	assert.equal(admissions[0].requestId, admissions.at(-1).requestId);
+	assert.equal(admissions.at(-1).mode, "prompt");
+	assert.deepEqual(admissions.at(-1), admissions[0]);
+	assert.equal(store.getState().drafts[key], undefined);
+});
+
+test("an existing session's retained draft stays reachable after a failed send", () => {
+	reset();
+	// F1's reachability half was manual-only: reverting this rule left every test
+	// green because no test mounts chat-page.tsx. The rule lives in the store so
+	// the guard sits on the code the view actually calls.
+	assert.equal(
+		draftIdentityFor("draft:agent:reviewer", null),
+		"draft:agent:reviewer",
+	);
+	// The staged key wins while it exists, so a first send does not orphan its
+	// own pending draft the moment the session id arrives.
+	assert.equal(
+		draftIdentityFor("draft:agent:reviewer", "222222222222"),
+		"draft:agent:reviewer",
+	);
+	// An existing session has no staged key; without this the retained text and
+	// its Discard control are unreachable and the composer stays locked.
+	assert.equal(draftIdentityFor(null, "222222222222"), "send:222222222222");
+	assert.equal(draftIdentityFor(null, null), null);
+	store.getState().updateDraft("send:222222222222", {
+		key: "send:222222222222",
+		createRequestId: "c",
+		admissionRequestId: "a",
+		submittedText: "held text",
+		admissionAttempted: true,
+	});
+	const identity = draftIdentityFor(null, "222222222222");
+	assert.equal(store.getState().drafts[identity].submittedText, "held text");
+	store.getState().discardDraft(identity);
+	assert.equal(store.getState().drafts[identity], undefined);
 });
 
 test("typed repair failures retain the canonical draft and error category", async () => {
