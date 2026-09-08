@@ -143,24 +143,39 @@ export class DesktopControlError extends Error {
 	 * ES2020, where that option does not exist.
 	 */
 	readonly cause?: unknown;
+	/** Vetted backend rejection category, distinct from connectivity status. */
+	readonly code?: string;
 
-	constructor(status: number | null, message: string, cause?: unknown) {
+	constructor(
+		status: number | null,
+		message: string,
+		cause?: unknown,
+		code?: string,
+	) {
 		super(message);
 		this.name = "DesktopControlError";
 		this.status = status;
 		this.cause = cause;
+		this.code = code;
 	}
 }
 
 export async function desktopResult<T>(request: DesktopRequest): Promise<T> {
 	const response = await desktopRequest(request);
-	const envelope = response.body as { result?: T; detail?: string } | null;
+	const envelope = response.body as {
+		result?: T;
+		detail?: string | { code?: string; message?: string };
+	} | null;
 	if (response.status < 200 || response.status >= 300) {
 		throw new DesktopControlError(
 			response.status,
 			typeof envelope?.detail === "string"
 				? envelope.detail
-				: "This backend does not support the requested desktop control. Update the backend and try again.",
+				: typeof envelope?.detail?.message === "string"
+					? envelope.detail.message
+					: "This backend does not support the requested desktop control. Update the backend and try again.",
+			undefined,
+			typeof envelope?.detail === "object" ? envelope.detail?.code : undefined,
 		);
 	}
 	return envelope?.result as T;

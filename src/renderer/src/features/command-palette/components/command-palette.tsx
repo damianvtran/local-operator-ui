@@ -152,7 +152,6 @@ export const CommandPalette: FC = () => {
 		isCanvasOpen,
 		setCanvasOpen,
 		isCreateAgentDialogOpen,
-		openCreateAgentDialog,
 		closeCreateAgentDialog,
 	} = useUiPreferencesStore();
 
@@ -205,12 +204,8 @@ export const CommandPalette: FC = () => {
 
 	const handleCreateAgent = useCallback(() => {
 		closeCommandPalette();
-		// Navigate to chat page first if not already there
-		// This navigation logic might be better handled by the dialog itself or a dedicated service
-		// For now, let's keep it simple and open the dialog.
-		// Navigation to /chat if not there can be a separate concern or handled by where the dialog leads.
-		openCreateAgentDialog(); // Use global action
-	}, [closeCommandPalette, openCreateAgentDialog]);
+		navigate("/agents?create=agent");
+	}, [closeCommandPalette, navigate]);
 
 	const handleClearConversation = useCallback(() => {
 		// This will now open the confirmation dialog

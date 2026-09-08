@@ -2,6 +2,22 @@
 // Owner state revisions and HTTP semantic receipt cursors are independent. See
 // docs/desktop-controls.md before implementing replay or notifications.
 export type CanonicalSessionId = string;
+/** Returned by session_catalogue version 2. The backend owns status precedence,
+ * active/previous partition and order; clients must not infer them from read state. */
+export type SessionCatalogueStatus = { code: string; label: string };
+export type SessionBinding = { agent: string | null; team: string | null };
+export type SessionCatalogueRow = {
+	id: CanonicalSessionId;
+	name: string;
+	mtime: number;
+	preview: string;
+	live_state: string;
+	pending: string | null;
+	active: boolean;
+	status: SessionCatalogueStatus;
+	binding: SessionBinding;
+	attention?: CompletionAttention;
+};
 export type CompletionAttention = {
 	conversation_id: string;
 	completion_token: string | null;

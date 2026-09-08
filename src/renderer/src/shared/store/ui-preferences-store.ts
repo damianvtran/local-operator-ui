@@ -165,7 +165,7 @@ type UiPreferencesState = {
  * Default values for canvas and chat sidebar widths
  */
 const DEFAULT_CANVAS_WIDTH = 800;
-const DEFAULT_CHAT_SIDEBAR_WIDTH = 260;
+const DEFAULT_CHAT_SIDEBAR_WIDTH = 280;
 
 export const useUiPreferencesStore = create<UiPreferencesState>()(
 	persist(
@@ -247,7 +247,7 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 
 			setChatSidebarWidth: (width: number) => {
 				set({
-					chatSidebarWidth: width,
+					chatSidebarWidth: Math.min(360, Math.max(240, width)),
 				});
 			},
 

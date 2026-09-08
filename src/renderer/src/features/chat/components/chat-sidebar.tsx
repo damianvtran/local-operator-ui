@@ -1,608 +1,487 @@
-import { UploadAgentDialog } from "@features/agents/components/upload-agent-dialog";
-import type { AgentDetails } from "@shared/api/local-operator/types";
 import {
-	AgentOptionsMenu,
-	CompactPagination,
-	ImportAgentDialog,
-	SidebarHeader,
-} from "@shared/components/common";
-import { Spinner } from "@shared/components/common/spinner";
+	desktopFeatureEnabled,
+	useDesktopCapabilities,
+} from "@shared/api/local-operator/desktop-hooks";
 import {
-	Alert,
-	AlertDescription,
-	Avatar,
-	AvatarFallback,
-	Button,
-	Tooltip,
-	TooltipProvider,
-} from "@shared/components/ui";
-import {
-	useAgent,
-	useAgents,
-	useClearAgentConversation,
-	useExportAgent,
-	usePaginationParams,
-} from "@shared/hooks";
-import { useDebouncedValue } from "@shared/hooks/use-debounced-value";
-import { useRadientAuth } from "@shared/hooks/use-radient-auth";
+	type ChatTarget,
+	useProfiles,
+	useTeams,
+} from "@shared/api/local-operator/profile-hooks";
 import { cn } from "@shared/lib/utils";
-import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
-import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
-import { formatMessageDateTime } from "@shared/utils/date-utils";
-import { Bot, MessageCircleOff } from "lucide-react";
-import type { ChangeEvent, FC } from "react";
-import { memo, useCallback, useEffect, useMemo, useState } from "react";
+import {
+	type CanonicalSessionRow,
+	useCanonicalSessionsStore,
+} from "@shared/store/canonical-sessions-store";
+import {
+	Bot,
+	Check,
+	ChevronDown,
+	ChevronRight,
+	Circle,
+	CircleAlert,
+	Clock,
+	List,
+	LoaderCircle,
+	MessageSquare,
+	MoreHorizontal,
+	Pause,
+	Plus,
+	Users,
+} from "lucide-react";
+import { type KeyboardEvent, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-/**
- * The rows truncate, so a tooltip is the only way to read a long name or
- * message preview. The delay keeps them quiet while the pointer merely
- * crosses the list.
- */
-const ROW_TOOLTIP_DELAY_MS = 1200;
-
-/**
- * Props for the ChatSidebar component
- */
-type ChatSidebarProps = {
-	/** Currently selected conversation ID */
+type Props = {
 	selectedConversation?: string;
-	/** Callback for when a conversation is selected */
 	onSelectConversation: (id: string) => void;
-	/** Callback for navigating to agent settings */
-	onNavigateToAgentSettings?: (agentId: string) => void;
+	onStageDraft: (target?: ChatTarget, fresh?: boolean) => void;
 };
+const rowStyle =
+	"flex h-8 min-w-0 items-center gap-1 rounded-md px-1 text-body-sm leading-5 hover:bg-elevated focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2";
 
-type ChatSidebarItemProps = {
-	agent: AgentDetails;
-	isSelected: boolean;
-	onSelectConversation: (agentId: string) => void;
-	onNavigateToAgentSettings?: (agentId: string) => void;
-	onExportAgent: (agentId: string) => void;
-	onClearAgentConversation: (agentId: string) => void;
-	onAgentDeleted: (deletedAgentId: string) => void;
-	onUploadAgentToHub: (agent: AgentDetails) => void;
-	formatMessageDateTime: (date: string) => string;
-	truncateMessage: (message?: string, maxLength?: number) => string;
-	index: number;
-	/**
-	 * The last reply from this agent's CANONICAL session, when it has one.
-	 *
-	 * Preferred over `agent.last_message`, which only the legacy execution path
-	 * ever writes: a canonical session keeps its conversation in its own
-	 * transcript, so every such row read "No messages yet" while displaying the
-	 * timestamp of the message it was denying (design D19).
-	 */
-	sessionPreview?: string;
-};
-
-const ChatSidebarItem: FC<ChatSidebarItemProps> = ({
-	agent,
-	isSelected,
-	onSelectConversation,
-	onNavigateToAgentSettings,
-	onExportAgent,
-	onClearAgentConversation,
-	onAgentDeleted,
-	onUploadAgentToHub,
-	formatMessageDateTime,
-	truncateMessage,
-	index,
-	sessionPreview,
-}) => {
-	// One authority per row, canonical first: the transcript is where a
-	// canonical session's conversation actually lives.
-	const lastMessage = sessionPreview || agent.last_message;
+function Status({ row }: { row: CanonicalSessionRow }) {
+	const code = row.status?.code;
+	const Icon =
+		code === "busy"
+			? LoaderCircle
+			: code === "approval" ||
+					code === "answer" ||
+					code === "wedged" ||
+					code === "error"
+				? CircleAlert
+				: code === "interrupted" || code === "dormant"
+					? Pause
+					: code === "complete"
+						? Check
+						: code === "scheduled"
+							? Clock
+							: code === "attached"
+								? MessageSquare
+								: Circle;
+	const ink =
+		code === "busy"
+			? "text-info motion-safe:animate-spin"
+			: code === "error" || code === "wedged"
+				? "text-danger"
+				: code === "approval" || code === "answer" || code === "interrupted"
+					? "text-warning"
+					: code === "complete"
+						? "text-success"
+						: "text-ink-dim";
 	return (
-		<li className="group relative">
-			<button
-				type="button"
-				onClick={() => onSelectConversation(agent.id)}
-				// Matched by `use-onboarding-tour.ts`, which also clicks it — the tag
-				// must stay on the button, and the value is fixed.
-				data-tour-tag={`agent-list-item-button-${index}`}
-				// The selected row is styled *and* announced: colour alone leaves a
-				// screen reader with no way to tell which conversation is open.
-				aria-current={isSelected ? "true" : undefined}
-				className={cn(
-					"flex w-full items-center gap-3 rounded-md px-2 py-1 pr-9 text-left",
-					"transition-colors duration-fast ease-out-quart",
-					isSelected ? "bg-accent-wash" : "hover:bg-elevated",
-				)}
-			>
-				<Avatar className="size-9 shrink-0">
-					<AvatarFallback>
-						<Bot size={18} aria-hidden={true} />
-					</AvatarFallback>
-				</Avatar>
-				<span className="relative isolate min-w-0 flex-1 overflow-hidden">
-					<span className="relative flex w-full items-center gap-2 overflow-hidden">
-						<Tooltip content={agent.name} side="top" align="start">
-							<span className="mb-0.5 min-w-0 flex-1 truncate font-semibold text-body-sm text-ink">
-								{agent.name}
-							</span>
-						</Tooltip>
-						{agent.last_message_datetime && (
-							/* No `title`: this span is `pointer-events-none`, so it is never
-							   the hit target and a native tooltip has nothing to trigger on.
-							   The attribute sat here looking like the exact timestamp was
-							   recoverable when it never was. The row already opens a real
-							   tooltip on the agent name beside it. */
-							<span className="pointer-events-none ml-2 flex shrink-0 items-center text-meta text-ink-dim">
-								{formatMessageDateTime(agent.last_message_datetime)}
-							</span>
-						)}
-					</span>
-
-					{lastMessage ? (
-						<Tooltip
-							content={truncateMessage(lastMessage, 500)}
-							side="bottom"
-							align="start"
-						>
-							<span className="block min-h-[18px] w-full truncate text-meta text-ink-muted">
-								{truncateMessage(lastMessage, 40)}
-							</span>
-						</Tooltip>
-					) : (
-						<span className="flex min-h-[18px] items-center gap-1 truncate text-meta italic text-ink-dim">
-							<MessageCircleOff size={12} aria-hidden={true} />
-							<span>No messages yet</span>
-						</span>
-					)}
-				</span>
-			</button>
-			<div
-				className={cn(
-					"pointer-events-none absolute top-0 right-1 flex h-full items-center",
-					"opacity-0 transition-opacity duration-fast ease-out-quart",
-					"group-hover:pointer-events-auto group-hover:opacity-100",
-					"group-focus-within:pointer-events-auto group-focus-within:opacity-100",
-				)}
-			>
-				<Tooltip content="Agent options">
-					<span>
-						<AgentOptionsMenu
-							agentId={agent.id}
-							agentName={agent.name}
-							isAgentsPage={false}
-							onViewAgentSettings={
-								onNavigateToAgentSettings
-									? () => onNavigateToAgentSettings(agent.id)
-									: undefined
-							}
-							onExportAgent={() => onExportAgent(agent.id)}
-							onClearConversation={() => onClearAgentConversation(agent.id)}
-							onAgentDeleted={onAgentDeleted}
-							onUploadAgentToHub={() => onUploadAgentToHub(agent)}
-							buttonSx={{
-								width: 24,
-								height: 24,
-								borderRadius: "6px",
-								display: "flex",
-								justifyContent: "center",
-								alignItems: "center",
-							}}
-						/>
-					</span>
-				</Tooltip>
-			</div>
-		</li>
+		<span
+			className="flex size-4 shrink-0"
+			title={row.status?.label ?? "Recent"}
+		>
+			<Icon className={cn("size-4", ink)} aria-hidden="true" />
+			<span className="sr-only">{row.status?.label ?? "Recent"}</span>
+		</span>
 	);
-};
+}
 
-const areChatSidebarItemsEqual = (
-	prev: Readonly<ChatSidebarItemProps>,
-	next: Readonly<ChatSidebarItemProps>,
-): boolean => {
-	return (
-		prev.isSelected === next.isSelected &&
-		prev.index === next.index &&
-		prev.agent.id === next.agent.id &&
-		prev.agent.name === next.agent.name &&
-		prev.agent.last_message === next.agent.last_message &&
-		prev.agent.last_message_datetime === next.agent.last_message_datetime &&
-		// Compared explicitly, like every other displayed field: this list uses a
-		// hand-written comparator, so a preview arriving from the canonical
-		// session list would otherwise never repaint the row it belongs to.
-		prev.sessionPreview === next.sessionPreview &&
-		prev.onSelectConversation === next.onSelectConversation &&
-		prev.onNavigateToAgentSettings === next.onNavigateToAgentSettings &&
-		prev.onExportAgent === next.onExportAgent &&
-		prev.onClearAgentConversation === next.onClearAgentConversation &&
-		prev.onAgentDeleted === next.onAgentDeleted &&
-		prev.onUploadAgentToHub === next.onUploadAgentToHub &&
-		prev.formatMessageDateTime === next.formatMessageDateTime &&
-		prev.truncateMessage === next.truncateMessage
-	);
-};
-
-const MemoizedChatSidebarItem = memo(ChatSidebarItem, areChatSidebarItemsEqual);
-
-/**
- * Chat Sidebar Component
- *
- * Displays a list of agents with search, create, and delete functionality
- * Uses React Router for navigation
- */
-const ChatSidebarComponent: FC<ChatSidebarProps> = ({
+export function ChatSidebar({
 	selectedConversation,
 	onSelectConversation,
-	onNavigateToAgentSettings,
-}) => {
-	const [searchQuery, setSearchQuery] = useState("");
-	const openCreateAgentDialog = useUiPreferencesStore(
-		(state) => state.openCreateAgentDialog,
-	);
-	const debouncedSearchQuery = useDebouncedValue(searchQuery.trim(), 250);
-	const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
-	const perPage = 50;
-
-	// Upload to Hub dialog state
-	const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
-	const [uploadAgent, setUploadAgent] = useState<AgentDetails | null>(null);
-	const [uploadValidationIssues, setUploadValidationIssues] = useState<
-		string[]
-	>([]);
-	const { isAuthenticated } = useRadientAuth();
-
-	// Navigation
+	onStageDraft,
+}: Props) {
 	const navigate = useNavigate();
-
-	// Export agent mutation
-	const exportAgentMutation = useExportAgent();
-
-	// Clear conversation mutation
-	const clearConversationMutation = useClearAgentConversation();
-
-	// Use the pagination hook to get and set the page from URL
-	const { page, setPage } = usePaginationParams();
-
-	const {
-		data: agentListResult,
-		isLoading,
-		isError,
-		refetch,
-	} = useAgents(
-		page,
-		perPage,
-		0,
-		debouncedSearchQuery || undefined,
-		"last_message_datetime",
-		"desc",
+	const capabilities = useDesktopCapabilities();
+	const ready = desktopFeatureEnabled(
+		capabilities.data,
+		"session_catalogue",
+		2,
 	);
-
-	// Extract agents and total count from the result
-	const agents = agentListResult?.agents || [];
-	const totalAgents = agentListResult?.total || 0;
-
-	// Fetch details for the selected agent if it's not in the current list
-	const { data: selectedAgentDetails } = useAgent(
-		// Only fetch if selectedConversation exists and is not found in the current agents list
-		selectedConversation && !agents.find((a) => a.id === selectedConversation)
-			? selectedConversation
-			: undefined,
+	const profiles = useProfiles(
+		ready && desktopFeatureEnabled(capabilities.data, "profile_catalogue"),
 	);
-
-	// Agent id -> the last reply of the CANONICAL session bound to it.
-	//
-	// The list is agent-backed while the conversation is canonical, so the two
-	// are joined through the binding the store already maintains. Without this
-	// the row falls back to `agent.last_message`, which only the legacy path
-	// writes -- the "No messages yet" on conversations that plainly have them
-	// (design D19).
-	const canonicalSessions = useCanonicalSessionsStore(
-		(state) => state.sessions,
+	const teams = useTeams(
+		ready && desktopFeatureEnabled(capabilities.data, "team_catalogue"),
 	);
-	const sessionByAgentId = useCanonicalSessionsStore(
-		(state) => state.sessionByAgent,
-	);
-	const fetchSessions = useCanonicalSessionsStore(
-		(state) => state.fetchSessions,
-	);
-	/*
-	 * Fill the store the join above reads from.
-	 *
-	 * `createSession`/`bindSession` write only `{session_id, agent_id}` rows --
-	 * identity, no transcript-derived fields -- and only `sessionByAgent` and
-	 * `activeSessionId` are persisted. So without this the preview join had
-	 * nothing to join AGAINST in the shipped app: every row fell back to the
-	 * legacy `agent.last_message` and rendered "No messages yet", which is the
-	 * D19 symptom the backend `preview` was added to cure.
-	 *
-	 * This calls the store's own `sessions.list` rather than introducing a
-	 * second cache: the picker's React Query copy is a different surface with a
-	 * different shape, and two caches of the same list is how they drift.
-	 * Re-run when the agent page changes, because that is when the set of rows
-	 * needing a preview changes.
-	 */
+	const sessions = useCanonicalSessionsStore((s) => s.sessions);
+	const fetchSessions = useCanonicalSessionsStore((s) => s.fetchSessions);
+	const loading = useCanonicalSessionsStore((s) => s.loading);
+	const error = useCanonicalSessionsStore((s) => s.error);
+	const truncated = useCanonicalSessionsStore((s) => s.truncated);
+	const activeDraftKey = useCanonicalSessionsStore((s) => s.activeDraftKey);
+	const drafts = useCanonicalSessionsStore((s) => s.drafts);
+	const pendingId = useCanonicalSessionsStore((s) => s.pendingSessionId);
+	const [query, setQuery] = useState("");
+	const [all, setAll] = useState(false);
+	const [expanded, setExpanded] = useState<Record<string, boolean>>(() => {
+		try {
+			return JSON.parse(
+				localStorage.getItem("chat-sidebar-disclosures") ?? "{}",
+			);
+		} catch {
+			return {};
+		}
+	});
+	const isOpen = (key: string, initial = false) => expanded[key] ?? initial;
+	const toggle = (key: string, initial = false) =>
+		setExpanded((current) => ({
+			...current,
+			[key]: !(current[key] ?? initial),
+		}));
 	useEffect(() => {
+		localStorage.setItem("chat-sidebar-disclosures", JSON.stringify(expanded));
+	}, [expanded]);
+	useEffect(() => {
+		if (!ready) return;
 		void fetchSessions();
-	}, [fetchSessions]);
-	const previewByAgent = useMemo(() => {
-		const previews: Record<string, string> = {};
-		const bySession = new Map(
-			canonicalSessions.map((row) => [row.session_id, row]),
+		const timer = window.setInterval(() => {
+			if (document.visibilityState === "visible") void fetchSessions();
+		}, 5000);
+		return () => window.clearInterval(timer);
+	}, [ready, fetchSessions]);
+	const matching = useMemo(
+		() =>
+			sessions.filter((row) =>
+				`${row.title ?? ""} ${row.binding?.agent ?? ""} ${row.binding?.team ?? ""}`
+					.toLocaleLowerCase()
+					.includes(query.toLocaleLowerCase()),
+			),
+		[sessions, query],
+	);
+	const children = (kind: ChatTarget["kind"], name: string) =>
+		matching.filter((row) =>
+			kind === "team"
+				? row.binding?.team === name
+				: !row.binding?.team && row.binding?.agent === name,
 		);
-		for (const [agentId, sessionId] of Object.entries(sessionByAgentId)) {
-			const preview = bySession.get(sessionId)?.preview;
-			if (typeof preview === "string" && preview) previews[agentId] = preview;
-		}
-		return previews;
-	}, [canonicalSessions, sessionByAgentId]);
-
-	// Memoize combinedAgents to stabilize its reference for hook dependencies
-	const combinedAgents = useMemo(() => {
-		const combined = [...agents];
-		if (
-			selectedAgentDetails &&
-			!combined.find((a) => a.id === selectedAgentDetails.id)
-		) {
-			// Add the selected agent if it's not already in the list
-			combined.push(selectedAgentDetails);
-		}
-		return combined;
-	}, [agents, selectedAgentDetails]);
-
-	const handlePageChange = useCallback(
-		(_event: ChangeEvent<unknown>, value: number) => {
-			setPage(value);
-		},
-		[setPage],
-	);
-
-	const handleSelectConversation = useCallback(
-		(agentId: string) => {
-			onSelectConversation(agentId);
-		},
-		[onSelectConversation],
-	);
-
-	const handleOpenImportDialog = useCallback(() => {
-		setIsImportDialogOpen(true);
-	}, []);
-
-	const handleCloseImportDialog = useCallback(() => {
-		setIsImportDialogOpen(false);
-	}, []);
-
-	const handleExportAgent = useCallback(
-		async (agentId: string) => {
-			try {
-				const blob = await exportAgentMutation.mutateAsync(agentId);
-
-				// Get the agent name for the filename (check combined list)
-				const agent = combinedAgents.find((a) => a.id === agentId);
-				const agentName = agent
-					? agent.name.replace(/\s+/g, "-").toLowerCase()
-					: agentId;
-
-				// Create a download link
-				const url = URL.createObjectURL(blob);
-				const a = document.createElement("a");
-				a.href = url;
-				a.download = `${agentName}-export.zip`;
-				document.body.appendChild(a);
-				a.click();
-
-				// Clean up
-				URL.revokeObjectURL(url);
-				document.body.removeChild(a);
-			} catch (error) {
-				console.error("Failed to export agent:", error);
-			}
-		},
-		[combinedAgents, exportAgentMutation], // Use combinedAgents
-	);
-
-	const getAgentUploadValidationIssues = useCallback(
-		(agent: AgentDetails | null): string[] => {
-			if (!agent) return ["No agent selected."];
-			const issues: string[] = [];
-			if (!agent.name || agent.name.trim() === "")
-				issues.push("Name is required.");
-			if (!agent.description || agent.description.trim() === "")
-				issues.push("Description is required.");
-			const hasCategory = agent.categories && agent.categories.length > 0;
-			if (!hasCategory) issues.push("At least one category is required.");
-			return issues;
-		},
-		[],
-	); // Empty dependency array as it doesn't rely on component scope variables that change
-
-	const handleOpenUploadDialog = useCallback(
-		(agent: AgentDetails) => {
-			setUploadAgent(agent);
-			setUploadValidationIssues(getAgentUploadValidationIssues(agent));
-			setIsUploadDialogOpen(true);
-		},
-		[getAgentUploadValidationIssues],
-	);
-
-	const handleCloseUploadDialog = useCallback(() => {
-		setIsUploadDialogOpen(false);
-		setUploadAgent(null);
-		setUploadValidationIssues([]);
-	}, []);
-
-	const handleConfirmUpload = useCallback(() => {
-		// Implement actual upload logic here if needed
-		handleCloseUploadDialog();
-	}, [handleCloseUploadDialog]);
-
-	const handleAgentCreated = useCallback(
-		(agentId: string) => {
-			// Fetch the agent details to get the full agent object
-			const fetchAndSelectAgent = async () => {
-				try {
-					// Refetch the agents list to update the UI
-					const result = await refetch();
-
-					// Get the updated agents list from the refetch result
-					const updatedAgentList = result.data?.agents || [];
-
-					// Find the newly created agent in the updated list
-					const createdAgent = updatedAgentList.find(
-						(agent: AgentDetails) => agent.id === agentId,
-					);
-
-					// Select the newly created agent if found
-					if (createdAgent) {
-						onSelectConversation(agentId);
-					} else {
-						// If the agent wasn't found in the updated list, still select it
-						// The agent details will be fetched when needed
-						onSelectConversation(agentId);
-					}
-				} catch (error) {
-					console.error("Error fetching agent details:", error);
-					// Still select the agent even if there was an error
-					onSelectConversation(agentId);
-				}
-			};
-
-			fetchAndSelectAgent();
-		},
-		[onSelectConversation, refetch],
-	);
-
-	const handleClearAgentConversation = useCallback(
-		(agentId: string) => {
-			clearConversationMutation.mutate({ agentId });
-		},
-		[clearConversationMutation],
-	);
-
-	const handleAgentDeleted = useCallback(
-		(deletedAgentId: string) => {
-			if (selectedConversation === deletedAgentId) {
-				onSelectConversation(""); // Clear selection if the deleted agent was selected
-			}
-			refetch(); // Refetch the agent list
-			navigate("/chat"); // Navigate to the main chat page
-		},
-		[selectedConversation, onSelectConversation, refetch, navigate],
-	);
-
-	const handleUploadAgentToHub = useCallback(
-		(agent: AgentDetails) => {
-			handleOpenUploadDialog(agent);
-		},
-		[handleOpenUploadDialog], // handleOpenUploadDialog is stable as it's not in deps array of its own useCallback
-	);
-
-	const truncateMessage = useCallback((message?: string, maxLength = 60) => {
-		if (!message) return "";
-		return message.length > maxLength
-			? `${message.substring(0, maxLength)}...`
-			: message;
-	}, []);
-
-	return (
-		<div
-			className="flex h-full w-full flex-col overflow-hidden border-hairline border-r bg-surface"
-			data-tour-tag="agent-list-panel"
-		>
-			<SidebarHeader
-				title="Agents"
-				searchQuery={searchQuery}
-				onSearchChange={(query) => setSearchQuery(query)}
-				onNewAgentClick={openCreateAgentDialog}
-				onImportAgentClick={handleOpenImportDialog}
-				importAgentTooltip="Import an agent from a ZIP file"
-			/>
-
-			{isLoading ? (
-				<div className="flex flex-1 items-center justify-center">
-					{/* Nothing beside it says what is loading, so the spinner names itself. */}
-					<Spinner size="lg" label="Loading agents" />
-				</div>
-			) : isError ? (
-				<Alert
-					variant="danger"
-					// Appears in response to a failed fetch rather than sitting on the
-					// panel from the start, so it announces itself.
-					role="alert"
-					// `w-auto` overrides the primitive's `w-full`, which would
-					// overflow the column by the margin's 32px.
-					className="m-4 w-auto"
-				>
-					<AlertDescription>
-						Failed to load agents. Please try again.
-					</AlertDescription>
-					<Button
-						variant="ghost"
-						size="sm"
-						className="self-start"
-						onClick={() => refetch()}
-					>
-						Retry
-					</Button>
-				</Alert>
-			) : combinedAgents.length === 0 && !isLoading ? ( // Check combinedAgents and isLoading
-				<p className="p-6 text-center text-body-sm text-ink-muted">
-					{searchQuery ? "No agents match your search" : "No agents found"}
-				</p>
-			) : (
-				<TooltipProvider
-					delayDuration={ROW_TOOLTIP_DELAY_MS}
-					skipDelayDuration={0}
-				>
-					{/*
-					 * `min-h-0` so the list scrolls inside the flex column instead of
-					 * pushing the pagination out of the panel.
-					 */}
-					<ul className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto py-2">
-						{combinedAgents.map((agent, index) => (
-							<MemoizedChatSidebarItem
-								key={agent.id}
-								agent={agent}
-								isSelected={
-									selectedConversation === agent.id ||
-									selectedAgentDetails?.id === agent.id
-								}
-								onSelectConversation={handleSelectConversation}
-								onNavigateToAgentSettings={onNavigateToAgentSettings}
-								onExportAgent={handleExportAgent}
-								onClearAgentConversation={handleClearAgentConversation}
-								onAgentDeleted={handleAgentDeleted}
-								onUploadAgentToHub={handleUploadAgentToHub}
-								formatMessageDateTime={formatMessageDateTime}
-								truncateMessage={truncateMessage}
-								index={index}
-								sessionPreview={previewByAgent[agent.id]}
-							/>
-						))}
-					</ul>
-				</TooltipProvider>
+	const draft = activeDraftKey ? drafts[activeDraftKey] : undefined;
+	const sessionRow = (row: CanonicalSessionRow, nested = false) => (
+		<button
+			key={row.session_id}
+			type="button"
+			data-chat-row
+			data-child={nested || undefined}
+			className={cn(
+				rowStyle,
+				"w-full text-left",
+				nested && "pl-7",
+				selectedConversation === row.session_id &&
+					!activeDraftKey &&
+					"bg-accent-wash text-ink",
+				row.attention?.unseen && "font-semibold",
 			)}
-
-			<ImportAgentDialog
-				open={isImportDialogOpen}
-				onClose={handleCloseImportDialog}
-				onAgentImported={handleAgentCreated}
-			/>
-
-			{totalAgents > 0 && (
-				<CompactPagination
-					page={page}
-					count={Math.max(1, Math.ceil(totalAgents / perPage))}
-					onChange={(newPage) =>
-						handlePageChange({} as ChangeEvent<unknown>, newPage)
-					}
+			aria-current={
+				selectedConversation === row.session_id && !activeDraftKey
+					? "page"
+					: undefined
+			}
+			title={`${row.title || "Untitled chat"}: ${row.status?.label ?? "Recent"}${row.attention?.unseen ? ", unread" : ""}`}
+			onClick={() => onSelectConversation(row.session_id)}
+		>
+			<Status row={row} />
+			<span className="min-w-0 flex-1 truncate">
+				{row.title || "Untitled chat"}
+			</span>
+			{pendingId === row.session_id && (
+				<LoaderCircle
+					className="size-4 shrink-0 motion-safe:animate-spin"
+					aria-label="Opening chat"
 				/>
 			)}
-
-			<UploadAgentDialog
-				open={isUploadDialogOpen}
-				onClose={handleCloseUploadDialog}
-				agentName={uploadAgent?.name || ""}
-				isAuthenticated={isAuthenticated}
-				onConfirmUpload={handleConfirmUpload}
-				validationIssues={uploadValidationIssues}
-			/>
-		</div>
+		</button>
 	);
-};
-
-export const ChatSidebar = memo(ChatSidebarComponent);
+	const entity = (kind: ChatTarget["kind"], name: string) => {
+		const rows = children(kind, name);
+		const key = `${kind}:${name}`;
+		const open = Boolean(query) || isOpen(key);
+		if (
+			query &&
+			!name.toLocaleLowerCase().includes(query.toLocaleLowerCase()) &&
+			!rows.length
+		)
+			return null;
+		const Icon = kind === "team" ? Users : Bot;
+		return (
+			<div key={key} data-entity>
+				<div
+					className={cn(
+						"flex h-8 items-center gap-1 rounded-md",
+						draft?.target?.kind === kind &&
+							draft.target.name === name &&
+							"bg-accent-wash",
+					)}
+				>
+					<button
+						type="button"
+						data-disclosure
+						aria-label={`${open ? "Collapse" : "Expand"} ${name} chats`}
+						aria-expanded={open}
+						className="flex size-6 shrink-0 items-center justify-center rounded-md hover:bg-elevated"
+						onClick={() => toggle(key)}
+					>
+						{open ? (
+							<ChevronDown className="size-3.5" />
+						) : (
+							<ChevronRight className="size-3.5" />
+						)}
+					</button>
+					<button
+						type="button"
+						data-chat-row
+						data-entity-name
+						className={cn(rowStyle, "flex-1 text-left")}
+						onClick={() => onStageDraft({ kind, name })}
+						title={`New chat with ${name}`}
+					>
+						<Icon className="size-4 shrink-0" />
+						<span className="min-w-0 flex-1 truncate">{name}</span>
+						<span className="text-meta tabular-nums text-ink-dim">
+							{rows.length || ""}
+						</span>
+					</button>
+					<button
+						type="button"
+						className="flex size-6 shrink-0 items-center justify-center rounded-md hover:bg-elevated"
+						aria-label={`Manage ${name}`}
+						onClick={() =>
+							navigate(`/agents?kind=${kind}&name=${encodeURIComponent(name)}`)
+						}
+					>
+						<MoreHorizontal className="size-4" />
+					</button>
+				</div>
+				{open && (
+					<div>
+						{rows.map((row) => sessionRow(row, true))}
+						{!rows.length && (
+							<p className="py-1 pl-7 text-meta text-ink-dim">No chats yet</p>
+						)}
+					</div>
+				)}
+			</div>
+		);
+	};
+	const heading = (
+		key: string,
+		label: string,
+		initial: boolean,
+		count?: number,
+	) => (
+		<button
+			type="button"
+			data-chat-row
+			className="flex h-7 w-full items-center gap-1 rounded-md px-1 text-body-sm font-medium text-ink-muted hover:bg-elevated"
+			aria-expanded={query ? true : isOpen(key, initial)}
+			onClick={() => toggle(key, initial)}
+		>
+			{query || isOpen(key, initial) ? (
+				<ChevronDown className="size-3.5" />
+			) : (
+				<ChevronRight className="size-3.5" />
+			)}
+			<span className="flex-1 text-left">{label}</span>
+			{count !== undefined && (
+				<span className="text-meta tabular-nums">{count}</span>
+			)}
+		</button>
+	);
+	const keyDown = (event: KeyboardEvent<HTMLElement>) => {
+		const target = event.target as HTMLElement;
+		if (target.tagName === "INPUT") {
+			if (event.key === "Escape") {
+				setQuery("");
+				target.blur();
+			}
+			return;
+		}
+		const rows = [
+			...event.currentTarget.querySelectorAll<HTMLElement>("[data-chat-row]"),
+		];
+		const index = rows.indexOf(target);
+		const next =
+			event.key === "ArrowDown"
+				? Math.min(rows.length - 1, index + 1)
+				: event.key === "ArrowUp"
+					? Math.max(0, index - 1)
+					: event.key === "Home"
+						? 0
+						: event.key === "End"
+							? rows.length - 1
+							: -1;
+		if (next >= 0) {
+			event.preventDefault();
+			rows[next]?.focus();
+			return;
+		}
+		const group = target.closest("[data-entity]");
+		const disclosure =
+			group?.querySelector<HTMLButtonElement>("[data-disclosure]");
+		if (event.key === "ArrowRight" && disclosure) {
+			event.preventDefault();
+			if (disclosure.getAttribute("aria-expanded") === "false")
+				disclosure.click();
+			else group?.querySelector<HTMLElement>("[data-child]")?.focus();
+		}
+		if (event.key === "ArrowLeft" && disclosure) {
+			event.preventDefault();
+			if (target.hasAttribute("data-child"))
+				group?.querySelector<HTMLElement>("[data-entity-name]")?.focus();
+			else if (disclosure.getAttribute("aria-expanded") === "true")
+				disclosure.click();
+		}
+	};
+	return (
+		<nav
+			aria-label="Chats"
+			className="flex h-full min-h-0 flex-col bg-surface p-2 text-ink"
+			onKeyDown={keyDown}
+		>
+			<div className="flex h-8 items-center justify-between px-1">
+				<h2 className="text-body-sm font-medium">Chats</h2>
+				<button
+					type="button"
+					className="rounded-md p-1 hover:bg-elevated"
+					aria-label="New chat"
+					disabled={!ready}
+					onClick={() => onStageDraft(undefined, true)}
+				>
+					<Plus className="size-4" />
+				</button>
+			</div>
+			<input
+				aria-label="Search chats and agents"
+				placeholder="Search chats and agents"
+				className="my-2 h-8 w-full rounded-md border border-control bg-surface px-2 text-body-sm"
+				value={query}
+				onChange={(event) => setQuery(event.target.value)}
+			/>
+			<div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-1">
+				{capabilities.isLoading && (
+					<p aria-live="polite" className="text-meta text-ink-muted">
+						Connecting to chats…
+					</p>
+				)}
+				{capabilities.error && (
+					<p role="alert" className="text-body-sm text-danger">
+						{capabilities.error.message}
+					</p>
+				)}
+				{capabilities.data && !ready && (
+					<p role="alert" className="text-body-sm text-warning">
+						Update the backend to use canonical chats. Existing histories are
+						unchanged.
+					</p>
+				)}
+				{ready && (
+					<>
+						<section>
+							{heading("agents", "Agents", true)}
+							{(query || isOpen("agents", true)) && (
+								<>
+									{profiles.isLoading && (
+										<p aria-live="polite" className="text-meta text-ink-muted">
+											Loading agents…
+										</p>
+									)}
+									{profiles.data?.map((profile) =>
+										entity("agent", profile.name),
+									)}
+									<button
+										type="button"
+										className={cn(rowStyle, "w-full text-ink-muted")}
+										onClick={() => navigate("/agents?create=agent")}
+									>
+										<Plus className="size-4" />
+										Create agent
+									</button>
+								</>
+							)}
+						</section>
+						<section>
+							{heading("teams", "Teams", true)}
+							{(query || isOpen("teams", true)) && (
+								<>
+									{teams.data?.map((team) => entity("team", team.name))}
+									<button
+										type="button"
+										className={cn(rowStyle, "w-full text-ink-muted")}
+										onClick={() => navigate("/agents?create=team")}
+									>
+										<Plus className="size-4" />
+										Create team
+									</button>
+								</>
+							)}
+						</section>
+						<section>
+							<button
+								type="button"
+								data-chat-row
+								className={cn(rowStyle, "w-full", all && "bg-accent-wash")}
+								aria-pressed={all}
+								onClick={() => setAll((value) => !value)}
+							>
+								<List className="size-4" />
+								<span className="flex-1 text-left">All chats</span>
+								<span className="text-meta tabular-nums">
+									{sessions.length}
+								</span>
+							</button>
+						</section>
+						{all ? (
+							<section>{matching.map((row) => sessionRow(row))}</section>
+						) : (
+							<>
+								<section>
+									{heading(
+										"active",
+										"Active chats",
+										true,
+										matching.filter((row) => row.active).length,
+									)}
+									{(query || isOpen("active", true)) &&
+										matching
+											.filter((row) => row.active)
+											.map((row) => sessionRow(row))}
+								</section>
+								<section>
+									{heading(
+										"previous",
+										"Previous chats",
+										false,
+										matching.filter((row) => !row.active).length,
+									)}
+									{(query || isOpen("previous")) &&
+										matching
+											.filter((row) => !row.active)
+											.map((row) => sessionRow(row))}
+								</section>
+							</>
+						)}
+						{!sessions.length && !loading && (
+							<p className="text-meta text-ink-muted">
+								No chats yet. Choose an agent, team or New chat.
+							</p>
+						)}
+						{truncated && (
+							<p className="text-meta text-ink-muted">
+								Showing up to 500 chats. Older chats remain available in the
+								terminal.
+							</p>
+						)}
+					</>
+				)}
+			</div>
+			{(error || profiles.error || teams.error) && (
+				<div role="alert" className="pt-2 text-meta text-danger">
+					<p>{error || profiles.error?.message || teams.error?.message}</p>
+					<button
+						type="button"
+						className="mt-1 underline"
+						onClick={() => {
+							void fetchSessions();
+							void profiles.refetch();
+							void teams.refetch();
+						}}
+					>
+						Retry refresh
+					</button>
+				</div>
+			)}
+		</nav>
+	);
+}
