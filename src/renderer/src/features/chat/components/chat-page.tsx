@@ -160,7 +160,8 @@ function SessionPanel({
 		const store = useCanonicalSessionsStore.getState();
 		// Same identity the view reads, so a send can never address a different
 		// draft than the one whose retained text and Discard control are shown.
-		const key = draftIdentityFor(draftKey, sessionId) ?? `send:${sessionId}`;
+		const key = draftIdentityFor(draftKey, sessionId);
+		if (!key) return false;
 		const previous = store.drafts[key];
 		if (pendingNavigation || sendLock.current || previous?.pending)
 			return false;

@@ -187,6 +187,42 @@ test("ambiguous create retains request ID and duplicate concurrent sends allocat
 	assert.equal(calls.length, 3);
 });
 
+test("a send that never reached admission carries the user's NEW images", async () => {
+	reset();
+	// Every other test sends `images: []`, so pinning images unconditionally --
+	// the original F2 defect -- was invisible to the suite: stale [] and fresh []
+	// are indistinguishable. Non-empty, DIFFERENT images are what make the two
+	// behaviours separable, so this is the only test that can observe it.
+	const stale = [{ data_b64: "AAA", mime_type: "image/png" }];
+	const replacement = [{ data_b64: "BBB", mime_type: "image/png" }];
+	let failCreate = true;
+	globalThis.__canonicalRequest = async (request) => {
+		calls.push(request);
+		if (request.op === "sessions.create") {
+			// The create fails, so NOTHING is admitted and no receipt exists: the
+			// user is free to change the message, images included.
+			if (failCreate) throw new Error("session could not start");
+			return { session_id: "222222222222", binding: null };
+		}
+		return { status: "admitted" };
+	};
+	const key = store.getState().stageDraft({ kind: "agent", name: "reviewer" });
+	await assert.rejects(
+		admitChatDraft(key, { ...input, images: stale }),
+		/session could not start/,
+	);
+	assert.ok(!store.getState().drafts[key].admissionAttempted);
+	failCreate = false;
+	await admitChatDraft(key, {
+		...input,
+		text: "different",
+		images: replacement,
+	});
+	const sent = calls.filter((call) => call.op === "sessions.message").at(-1);
+	assert.deepEqual(sent.images, replacement);
+	assert.equal(sent.text, "different");
+});
+
 test("only an issued admission pins the payload, and a discard always frees it", async () => {
 	reset();
 	let failAdmission = true;
