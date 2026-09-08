@@ -43,6 +43,16 @@ export type ChatDraft = {
 	submittedAttachments?: string[];
 	submittedImages?: ChatImage[];
 	submittedMode?: "prompt" | "steer";
+	/**
+	 * True only once an admission request has actually been ISSUED, i.e. its
+	 * outcome is genuinely unknown to us. This is what the unchanged-payload
+	 * guard keys on: a send that failed BEFORE admission (session creation
+	 * refused, provider unconfigured) admitted nothing, so holding the composer
+	 * to that exact text would lock a conversation over a failure we know did
+	 * not land. Only a request that may already be executing must be retried
+	 * byte-for-byte.
+	 */
+	admissionAttempted?: boolean;
 };
 export type ChatImage = {
 	data_b64: string;
@@ -67,13 +77,19 @@ export async function admitChatDraft(
 	const previous = store.drafts[key];
 	if (previous?.pending) return null;
 	if (
-		previous?.submittedText !== undefined &&
+		previous?.admissionAttempted &&
+		previous.submittedText !== undefined &&
 		(previous.submittedText !== input.text ||
 			JSON.stringify(previous.submittedAttachments) !==
-				JSON.stringify(input.attachments))
+				JSON.stringify(input.attachments) ||
+			// Images are payload identity too. Comparing only text/attachments let a
+			// retry that added an image pass the guard and then silently send the
+			// FIRST attempt's images, dropping the new one with no error.
+			JSON.stringify(previous.submittedImages ?? []) !==
+				JSON.stringify(input.images))
 	) {
 		throw new Error(
-			"The previous send has not been confirmed. Retry it unchanged or reconcile its session before sending different input.",
+			"The previous send has not been confirmed. Retry it unchanged, or discard it to send something different.",
 		);
 	}
 	const draft: ChatDraft = previous ?? {
@@ -81,15 +97,19 @@ export async function admitChatDraft(
 		createRequestId: crypto.randomUUID(),
 		admissionRequestId: crypto.randomUUID(),
 	};
-	const images = draft.submittedImages ?? input.images;
-	const mode = draft.submittedMode ?? input.mode;
+	// Deliberately NOT pinned to the first attempt. The guard above already
+	// holds the payload identical across a retry, and `mode` is a delivery
+	// instruction rather than payload: a send that first failed while the
+	// session was idle must steer, not queue a new turn, once it is streaming.
+	// A genuinely duplicate admission is deduped by `admissionRequestId`.
+	const images = input.images;
+	const mode = input.mode;
 	store.updateDraft(key, {
 		...draft,
 		pending: true,
 		submittedText: input.text,
 		submittedAttachments: input.attachments,
 		submittedImages: images,
-		submittedMode: mode,
 		error: undefined,
 	});
 	try {
@@ -107,6 +127,9 @@ export async function admitChatDraft(
 				);
 			store.updateDraft(key, { sessionId: id });
 		}
+		// From here the outcome is unknowable on failure: the owner may have
+		// admitted the command before the response was lost.
+		store.updateDraft(key, { admissionAttempted: true });
 		await desktopResult({
 			op: "sessions.message",
 			sessionId: id,
@@ -158,6 +181,12 @@ type CanonicalSessionsState = {
 	stageDraft: (target?: ChatTarget, fresh?: boolean) => string;
 	updateDraft: (key: string, patch: Partial<ChatDraft>) => void;
 	finishDraft: (key: string, sessionId: string) => void;
+	/**
+	 * Abandon a stuck send. The retained payload is the user's own text, so the
+	 * only safe owner of that decision is the user: we drop our claim that the
+	 * next send must match it, and never touch the session or its transcript.
+	 */
+	discardDraft: (key: string) => void;
 	bindSession: (legacyAgentId: string, sessionId: string) => void;
 	upsertSession: (row: CanonicalSessionRow) => void;
 };
@@ -340,6 +369,12 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 							? { activeDraftKey: null, activeSessionId: sessionId }
 							: {}),
 					};
+				}),
+			discardDraft: (key) =>
+				set((state) => {
+					const drafts = { ...state.drafts };
+					delete drafts[key];
+					return { drafts };
 				}),
 			bindSession: (_legacyAgentId, sessionId) =>
 				get().setActiveSession(sessionId),

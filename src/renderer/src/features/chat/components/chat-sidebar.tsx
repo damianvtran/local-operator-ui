@@ -28,7 +28,13 @@ import {
 	Plus,
 	Users,
 } from "lucide-react";
-import { type KeyboardEvent, useEffect, useMemo, useState } from "react";
+import {
+	type KeyboardEvent,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import { useNavigate } from "react-router-dom";
 
 type Props = {
@@ -91,6 +97,15 @@ export function ChatSidebar({
 		"session_catalogue",
 		2,
 	);
+	// Losing the backend mid-session must not look like an empty catalogue. Once
+	// the sidebar has been ready we keep its structure and last-known rows
+	// mounted through a capability error, marked stale, instead of replacing the
+	// whole list with a bare error paragraph the user cannot act on.
+	const searchRef = useRef<HTMLInputElement>(null);
+	const wasReady = useRef(false);
+	if (ready) wasReady.current = true;
+	const stale = Boolean(capabilities.error) && wasReady.current;
+	const showList = ready || stale;
 	const profiles = useProfiles(
 		ready && desktopFeatureEnabled(capabilities.data, "profile_catalogue"),
 	);
@@ -149,6 +164,22 @@ export function ChatSidebar({
 				: !row.binding?.team && row.binding?.agent === name,
 		);
 	const draft = activeDraftKey ? drafts[activeDraftKey] : undefined;
+	const bindingName = (row: CanonicalSessionRow) =>
+		row.binding?.team || row.binding?.agent || "";
+	// A first send that failed after allocation but before admission leaves a real
+	// but empty session. It is NOT hidden — it exists on the backend and hiding it
+	// would make the list lie — but an unfinished draft still holding its id is
+	// proof it never carried a message, so say so instead of showing it as an
+	// ordinary untitled chat.
+	const unstarted = useMemo(
+		() =>
+			new Set(
+				Object.values(drafts)
+					.filter((item) => item.sessionId)
+					.map((item) => item.sessionId as string),
+			),
+		[drafts],
+	);
 	const sessionRow = (row: CanonicalSessionRow, nested = false) => (
 		<button
 			key={row.session_id}
@@ -169,12 +200,23 @@ export function ChatSidebar({
 					? "page"
 					: undefined
 			}
-			title={`${row.title || "Untitled chat"}: ${row.status?.label ?? "Recent"}${row.attention?.unseen ? ", unread" : ""}`}
+			title={`${row.title || "Untitled chat"}${bindingName(row) ? ` (${bindingName(row)})` : ""}: ${row.status?.label ?? "Recent"}${row.attention?.unseen ? ", unread" : ""}`}
 			onClick={() => onSelectConversation(row.session_id)}
 		>
 			<Status row={row} />
 			<span className="min-w-0 flex-1 truncate">
 				{row.title || "Untitled chat"}
+				{/* In a flat list nothing else names the profile answering, so two
+				    untitled chats on different agents were indistinguishable. Nested
+				    rows already inherit the identity from their parent. */}
+				{!nested && bindingName(row) && (
+					<span className="ml-1 text-meta text-ink-muted">
+						· {bindingName(row)}
+					</span>
+				)}
+				{unstarted.has(row.session_id) && (
+					<span className="ml-1 text-meta text-ink-muted">· Not sent yet</span>
+				)}
 			</span>
 			{pendingId === row.session_id && (
 				<LoaderCircle
@@ -288,6 +330,13 @@ export function ChatSidebar({
 			}
 			return;
 		}
+		// Arrow navigation was a one-way trip: nothing returned focus to the
+		// search field, so a keyboard user who entered the list was stranded there.
+		if (event.key === "Escape") {
+			event.preventDefault();
+			searchRef.current?.focus();
+			return;
+		}
 		const rows = [
 			...event.currentTarget.querySelectorAll<HTMLElement>("[data-chat-row]"),
 		];
@@ -343,6 +392,7 @@ export function ChatSidebar({
 				</button>
 			</div>
 			<input
+				ref={searchRef}
 				aria-label="Search chats and agents"
 				placeholder="Search chats and agents"
 				className="my-2 h-8 w-full rounded-md border border-control bg-surface px-2 text-body-sm"
@@ -356,18 +406,28 @@ export function ChatSidebar({
 					</p>
 				)}
 				{capabilities.error && (
-					<p role="alert" className="text-body-sm text-danger">
-						{capabilities.error.message}
-					</p>
+					<div role="alert" className="space-y-1 text-body-sm text-danger">
+						<p>
+							{capabilities.error.message}
+							{stale ? " Showing the last chats loaded." : ""}
+						</p>
+						<button
+							type="button"
+							className="underline"
+							onClick={() => void capabilities.refetch()}
+						>
+							Retry
+						</button>
+					</div>
 				)}
-				{capabilities.data && !ready && (
+				{capabilities.data && !ready && !capabilities.error && (
 					<p role="alert" className="text-body-sm text-warning">
 						Update the backend to use canonical chats. Existing histories are
 						unchanged.
 					</p>
 				)}
-				{ready && (
-					<>
+				{showList && (
+					<div className={cn("space-y-4", stale && "opacity-60")}>
 						<section>
 							{heading("agents", "Agents", true)}
 							{(query || isOpen("agents", true)) && (
@@ -417,8 +477,10 @@ export function ChatSidebar({
 							>
 								<List className="size-4" />
 								<span className="flex-1 text-left">All chats</span>
+								{/* The three global counts read as one set, so this must honour
+								    the active filter exactly as Active/Previous do. */}
 								<span className="text-meta tabular-nums">
-									{sessions.length}
+									{matching.length}
 								</span>
 							</button>
 						</section>
@@ -434,9 +496,15 @@ export function ChatSidebar({
 										matching.filter((row) => row.active).length,
 									)}
 									{(query || isOpen("active", true)) &&
-										matching
-											.filter((row) => row.active)
-											.map((row) => sessionRow(row))}
+										(matching.some((row) => row.active) ? (
+											matching
+												.filter((row) => row.active)
+												.map((row) => sessionRow(row))
+										) : (
+											<p className="px-2 text-meta text-ink-muted">
+												Nothing running right now.
+											</p>
+										))}
 								</section>
 								<section>
 									{heading(
@@ -463,7 +531,7 @@ export function ChatSidebar({
 								terminal.
 							</p>
 						)}
-					</>
+					</div>
 				)}
 			</div>
 			{(error || profiles.error || teams.error) && (

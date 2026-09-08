@@ -106,6 +106,21 @@ function ProfileEditor({
 				name: profile.name,
 				requestId: crypto.randomUUID(),
 			});
+			// Install is idempotent and is NOT a restore of whatever is on screen.
+			// The form was seeded from the BUILTIN, and installing does not change
+			// the name, so without re-seeding from the authoritative result an Edit
+			// would start from stale text and Save would overwrite the installed
+			// role's real instructions.
+			setEditing(false);
+			setExtending(false);
+			request.current = null;
+			setName(result.name);
+			setKind(result.kind);
+			setDescription(result.description ?? "");
+			setInstructions(result.instructions ?? "");
+			setTools(result.tools?.join(", ") ?? "");
+			setEffort(result.effort ?? "inherit");
+			setDelegate(result.delegate ?? false);
 			onSaved(result.name);
 		} catch (error) {
 			setError(
@@ -180,6 +195,12 @@ function ProfileEditor({
 					{error}
 				</p>
 			)}
+			{!editing && profile?.source === "builtin" && (
+				<p id="builtin-readonly" className="text-body-sm text-ink-muted">
+					Built-in agents are read-only. Install this one to edit it, or Extend
+					it to start a separate agent from its instructions.
+				</p>
+			)}
 			<form onSubmit={save} className="space-y-4">
 				<fieldset disabled={!editing || pending} className="space-y-4">
 					<label className="block space-y-1 text-body-sm">
@@ -189,6 +210,9 @@ function ProfileEditor({
 							value={name}
 							disabled={!fresh}
 							required
+							aria-describedby={
+								profile?.source === "builtin" ? "builtin-readonly" : undefined
+							}
 							onChange={(event) => setName(event.target.value)}
 						/>
 					</label>
@@ -637,7 +661,10 @@ export function AgentsPage() {
 						/>
 					) : (
 						<ProfileEditor
-							key={name}
+							/* Identity is name AND source: installing does not rename a
+							   profile, so keying on name alone kept the builtin-seeded form
+							   mounted across builtin -> installed. */
+							key={`${name}:${(detail.data as ReusableProfile).source}`}
 							profile={detail.data as ReusableProfile}
 							creating={false}
 							onSaved={saved}

@@ -85,8 +85,13 @@ function SessionPanel({
 	const input = useRef<MessageInputHandle>(null);
 	const container = useRef<HTMLDivElement>(null);
 	const end = useRef<HTMLDivElement>(null);
+	// An existing session's send draft is keyed `send:<id>`, NOT by draftKey
+	// (which is null once a session exists). Reading only the staged draft left
+	// a failed send's retained text unreachable, so the user could neither see
+	// nor clear the text the guard was holding them to.
+	const draftIdentity = draftKey ?? (sessionId ? `send:${sessionId}` : null);
 	const draft = useCanonicalSessionsStore((state) =>
-		draftKey ? state.drafts[draftKey] : undefined,
+		draftIdentity ? state.drafts[draftIdentity] : undefined,
 	);
 	const cwd = useCanonicalSessionsStore((state) => state.cwd);
 	const setCwd = useCanonicalSessionsStore((state) => state.setCwd);
@@ -279,9 +284,35 @@ function SessionPanel({
 				</label>
 			)}
 			{(sendError || draft?.error) && (
-				<p role="alert" className="px-4 py-2 text-body-sm text-danger">
-					{sendError || draft?.error} Your draft is retained.
-				</p>
+				<div role="alert" className="px-4 py-2 text-body-sm text-danger">
+					<p>
+						{sendError || draft?.error}{" "}
+						{draft?.submittedText
+							? "Your message is kept below \u2014 send it again, or discard it to write something else."
+							: "Your draft is retained."}
+					</p>
+					{draft?.submittedText && (
+						<div className="mt-2 space-y-2">
+							<p className="whitespace-pre-wrap rounded-md border border-control bg-surface px-2 py-1 text-body-sm text-ink">
+								{draft.submittedText}
+							</p>
+							<button
+								type="button"
+								className="underline"
+								onClick={() => {
+									if (draftIdentity)
+										useCanonicalSessionsStore
+											.getState()
+											.discardDraft(draftIdentity);
+									setSendError(null);
+									setSendErrorCode(undefined);
+								}}
+							>
+								Discard unsent message
+							</button>
+						</div>
+					)}
+				</div>
 			)}
 			{(sendErrorCode ?? draft?.errorCode) === "unresolved_attachment" && (
 				<div className="flex gap-2 px-4 pb-2 text-body-sm">
@@ -347,6 +378,9 @@ function SessionPanel({
 					onTabChange={setTab}
 					agentName={title}
 					description={
+						// `loaded` names the agent/team actually answering; without it an
+						// opened chat showed only a cwd and the user could not tell which
+						// profile was in force.
 						loaded ||
 						(draftKey
 							? "The session starts when you send your first message."

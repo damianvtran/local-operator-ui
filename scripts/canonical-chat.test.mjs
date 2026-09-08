@@ -142,7 +142,14 @@ test("create success plus admission failure retries exact same session and paylo
 		1,
 	);
 	const messages = calls.filter((request) => request.op === "sessions.message");
-	assert.deepEqual(messages[1], firstMessage);
+	// Admission identity and payload must be replayed byte-for-byte; `mode` is a
+	// delivery instruction and deliberately follows the CURRENT session state, so
+	// a retry against a now-streaming session steers rather than queueing (F2).
+	assert.deepEqual(
+		{ ...messages[1], mode: undefined },
+		{ ...firstMessage, mode: undefined },
+	);
+	assert.equal(messages[1].mode, "steer");
 	assert.equal(store.getState().activeSessionId, "222222222222");
 	assert.equal(store.getState().drafts[key], undefined);
 });
@@ -174,11 +181,73 @@ test("ambiguous create retains request ID and duplicate concurrent sends allocat
 			(call) => call.op === "sessions.create" && call.requestId === request,
 		),
 	);
+	// Creation never succeeded, so NOTHING was admitted: changing the text is
+	// safe and must not be refused. Locking here is what bricked a conversation
+	// after a single 503 (F1).
+	await assert.rejects(
+		admitChatDraft(key, { ...input, text: "different" }),
+		/indeterminate/,
+	);
+	assert.equal(calls.length, 3);
+});
+
+test("only an issued admission pins the payload, and a discard always frees it", async () => {
+	reset();
+	let failAdmission = true;
+	globalThis.__canonicalRequest = async (request) => {
+		calls.push(request);
+		if (request.op === "sessions.create")
+			return { session_id: "222222222222", binding: null };
+		if (failAdmission) throw new Error("provider unavailable");
+		return { status: "admitted" };
+	};
+	const key = store.getState().stageDraft({ kind: "agent", name: "reviewer" });
+	await assert.rejects(admitChatDraft(key, input), /provider unavailable/);
+	// The admission WAS issued, so its outcome is unknown and the payload is
+	// pinned until the user resolves it.
+	assert.equal(store.getState().drafts[key].admissionAttempted, true);
 	await assert.rejects(
 		admitChatDraft(key, { ...input, text: "different" }),
 		/not been confirmed/,
 	);
-	assert.equal(calls.length, 2);
+	// Adding an image is a payload change too and must not be silently dropped.
+	await assert.rejects(
+		admitChatDraft(key, {
+			...input,
+			images: [{ data_b64: "x", mime_type: "image/png" }],
+		}),
+		/not been confirmed/,
+	);
+	// The escape hatch: discarding frees the composer for good.
+	store.getState().discardDraft(key);
+	assert.equal(store.getState().drafts[key], undefined);
+	failAdmission = false;
+	const fresh = store
+		.getState()
+		.stageDraft({ kind: "agent", name: "reviewer" });
+	assert.ok(await admitChatDraft(fresh, { ...input, text: "different" }));
+});
+
+test("a retry after a streaming turn begins steers instead of queueing", async () => {
+	reset();
+	let failAdmission = true;
+	globalThis.__canonicalRequest = async (request) => {
+		calls.push(request);
+		if (request.op === "sessions.create")
+			return { session_id: "222222222222", binding: null };
+		if (failAdmission) throw new Error("provider unavailable");
+		return { status: "admitted" };
+	};
+	const key = store.getState().stageDraft({ kind: "agent", name: "reviewer" });
+	await assert.rejects(
+		admitChatDraft(key, { ...input, mode: "prompt" }),
+		/provider unavailable/,
+	);
+	failAdmission = false;
+	await admitChatDraft(key, { ...input, mode: "steer" });
+	const admissions = calls.filter((call) => call.op === "sessions.message");
+	assert.equal(admissions.at(-1).mode, "steer");
+	assert.equal(admissions[0].requestId, admissions.at(-1).requestId);
 });
 
 test("typed repair failures retain the canonical draft and error category", async () => {
