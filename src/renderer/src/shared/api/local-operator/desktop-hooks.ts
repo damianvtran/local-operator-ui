@@ -56,6 +56,9 @@ export type DesktopFeature =
 	| "settings"
 	| "commands"
 	| "catalogues"
+	| "profile_catalogue"
+	| "team_catalogue"
+	| "session_catalogue"
 	| "lifecycle"
 	| "mcp"
 	| "radient";
@@ -70,9 +73,10 @@ export type DesktopFeature =
 export function desktopFeatureEnabled(
 	capabilities: DesktopCapabilities | null | undefined,
 	feature: DesktopFeature,
+	minimumVersion = 1,
 ): boolean {
 	if (!capabilities || !capabilities.desktop_available) return false;
-	return (capabilities.features?.[feature] ?? 0) >= 1;
+	return (capabilities.features?.[feature] ?? 0) >= minimumVersion;
 }
 
 /** Canonical provider registry rows, including aliases folded into methods. */

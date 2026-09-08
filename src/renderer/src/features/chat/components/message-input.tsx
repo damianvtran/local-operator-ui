@@ -47,7 +47,10 @@ import { WaveformAnimation } from "./waveform-animation";
  * Props for the MessageInput component
  */
 type MessageInputProps = {
-	onSendMessage: (content: string, attachments: string[]) => void;
+	onSendMessage: (
+		content: string,
+		attachments: string[],
+	) => undefined | boolean | Promise<undefined | boolean>;
 	isLoading: boolean;
 	conversationId?: string;
 	messages: Message[];
@@ -203,7 +206,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		}, [initialSuggestions]);
 
 		const onSubmit = useMemo(
-			() => (message: string) => {
+			() => async (message: string) => {
 				let messageWithReplies = message;
 				if (replies.length > 0) {
 					const replyContent = replies
@@ -211,10 +214,11 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 						.join("\n");
 					messageWithReplies = `${replyContent}\n${message}`;
 				}
-				onSendMessage(
+				const accepted = await onSendMessage(
 					messageWithReplies,
 					attachments.map((a) => a.path),
 				);
+				if (accepted === false) return false;
 				if (conversationId) {
 					clearReplies(conversationId);
 					clearAttachments(conversationId);
@@ -525,12 +529,13 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			}
 		};
 
-		const handleSuggestionClick = (suggestion: string) => {
+		const handleSuggestionClick = async (suggestion: string) => {
 			if (isInputDisabled) return;
-			onSendMessage(
+			const accepted = await onSendMessage(
 				suggestion,
 				attachments.map((a) => a.path),
 			);
+			if (accepted === false) return;
 			if (conversationId) {
 				clearAttachments(conversationId);
 			}
@@ -659,7 +664,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 									</Button>
 								</span>
 							</Tooltip>
-							{conversationId && (
+							{conversationId && !canonicalStop && (
 								<DirectoryIndicator
 									agentId={conversationId}
 									currentWorkingDirectory={agentData?.current_working_directory}

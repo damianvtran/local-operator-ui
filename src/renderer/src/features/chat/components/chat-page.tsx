@@ -1,51 +1,27 @@
-import { createLocalOperatorClient } from "@shared/api/local-operator";
-import {
-	desktopResult,
-	isServerUnreachable,
-} from "@shared/api/local-operator/desktop-api";
+import { desktopResult } from "@shared/api/local-operator/desktop-api";
 import {
 	desktopFeatureEnabled,
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
-import { JobsApi } from "@shared/api/local-operator/jobs-api";
-import type { JobStatus } from "@shared/api/local-operator/types";
+import type { ChatTarget } from "@shared/api/local-operator/profile-hooks";
 import { ChatLayout } from "@shared/components/common/chat-layout";
-import { apiConfig } from "@shared/config";
-import { useAgent } from "@shared/hooks/use-agents";
 import { useCanonicalSessionStream } from "@shared/hooks/use-canonical-session";
-import { useConfig } from "@shared/hooks/use-config";
-import { useConversationMessages } from "@shared/hooks/use-conversation-messages";
 import { useDesktopWatchLease } from "@shared/hooks/use-desktop-watch-lease";
-import { useJobPolling } from "@shared/hooks/use-job-polling";
-import { useAgentRouteParam } from "@shared/hooks/use-route-params";
 import { useScrollToBottom } from "@shared/hooks/use-scroll-to-bottom";
-import { terminateStreamingMessages } from "@shared/hooks/use-streaming-message";
-import { useAgentSelectionStore } from "@shared/store/agent-selection-store";
-import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
-import { useChatStore } from "@shared/store/chat-store";
-import { useConversationInputStore } from "@shared/store/conversation-input-store";
-import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
-import { isDevelopmentMode } from "@shared/utils/env-utils";
-import { showErrorToast } from "@shared/utils/toast-manager";
-import React, {
-	useState,
-	useMemo,
-	useEffect,
-	useCallback,
-	useRef,
-} from "react";
-import type { FC } from "react";
-import { useNavigate } from "react-router-dom";
-import { v4 as uuidv4 } from "uuid";
+import {
+	admitChatDraft,
+	draftIdentityFor,
+	useCanonicalSessionsStore,
+} from "@shared/store/canonical-sessions-store";
+import { useEffect, useRef, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { PickerOutlet } from "../pickers/picker-registry";
-import type { Message } from "../types/message";
 import { ChatContent } from "./chat-content";
 import { ChatSidebar } from "./chat-sidebar";
-import { ErrorView } from "./error-view";
 import type { MessageInputHandle } from "./message-input";
-import { PlaceholderView } from "./placeholder-view";
 import { useSlashDispatch } from "./slash-dispatch";
 
+const SESSION_ID = /^[a-f0-9]{12}$/;
 const IMAGE_MIME_BY_EXT: Record<
 	string,
 	"image/png" | "image/jpeg" | "image/gif" | "image/webp"
@@ -92,848 +68,501 @@ async function encodeImageAttachments(attachments: string[]) {
 	return images.slice(0, 8);
 }
 
-/**
- * Props for the ChatPage component
- * No props needed as we use React Router hooks internally
- */
-type ChatProps = Record<string, never>;
-
-/**
- * Chat Page Component
- *
- * Displays the chat interface with a sidebar for agent selection and a main area for messages
- * Uses React Router for navigation and state management
- */
-export const ChatPage: FC<ChatProps> = () => {
-	const didAutoScrollRef = React.useRef(false);
-	const messageInputRef = useRef<MessageInputHandle>(null);
-	// Get agent ID from URL parameters using custom hook
-	const { agentId, navigateToAgent } = useAgentRouteParam();
-	const navigate = useNavigate();
-	const isCanvasOpen = useUiPreferencesStore((state) => state.isCanvasOpen);
-	const setCanvasOpen = useUiPreferencesStore((state) => state.setCanvasOpen);
-
-	useEffect(() => {
-		const handleKeyDown = (event: KeyboardEvent) => {
-			if (
-				event.key === "c" &&
-				(event.metaKey || event.ctrlKey) &&
-				event.shiftKey
-			) {
-				event.preventDefault();
-				setCanvasOpen(!isCanvasOpen);
-			}
-		};
-
-		document.addEventListener("keydown", handleKeyDown);
-
-		return () => {
-			document.removeEventListener("keydown", handleKeyDown);
-		};
-	}, [isCanvasOpen, setCanvasOpen]);
-
-	// Get agent selection store functions
-	const setLastChatAgentId = useAgentSelectionStore(
-		(state) => state.setLastChatAgentId,
+/** Each displayed identity owns its stream and composer. A candidate open is
+ * prepared by the store first; changing rows never stops the outgoing runtime. */
+function SessionPanel({
+	identity,
+	draftKey,
+	sessionId,
+	pendingNavigation,
+}: {
+	identity: string;
+	draftKey: string | null;
+	sessionId?: string;
+	pendingNavigation: boolean;
+}) {
+	const canonical = useCanonicalSessionStream(sessionId, Boolean(sessionId));
+	useDesktopWatchLease(sessionId, canonical.subscriptionId);
+	const input = useRef<MessageInputHandle>(null);
+	const container = useRef<HTMLDivElement>(null);
+	const end = useRef<HTMLDivElement>(null);
+	const draftIdentity = draftIdentityFor(draftKey, sessionId);
+	const draft = useCanonicalSessionsStore((state) =>
+		draftIdentity ? state.drafts[draftIdentity] : undefined,
 	);
-	const getLastAgentId = useAgentSelectionStore(
-		(state) => state.getLastAgentId,
-	);
-	const clearAgentFromAllPages = useAgentSelectionStore(
-		(state) => state.clearAgentFromAllPages,
-	);
-
-	// Use the agent ID from URL or the last selected agent ID
-	const effectiveAgentId = agentId || getLastAgentId("chat");
-	const conversationId = effectiveAgentId || undefined;
-	const selectedConversation = effectiveAgentId || undefined;
-
-	// Canonical session identity. The agent id is a profile reference; the
-	// conversation the backend runs is a canonical 12-hex session id. Each
-	// agent maps to one canonical session that is created once and reopened
-	// on every later visit, so identity survives restarts and the watcher.
-	const capabilities = useDesktopCapabilities();
-	const canonicalEnabled =
-		desktopFeatureEnabled(capabilities.data, "commands") &&
-		desktopFeatureEnabled(capabilities.data, "lifecycle");
-	const sessionByAgent = useCanonicalSessionsStore(
-		(state) => state.sessionByAgent,
-	);
-	const createSession = useCanonicalSessionsStore(
-		(state) => state.createSession,
-	);
-	const setActiveSession = useCanonicalSessionsStore(
-		(state) => state.setActiveSession,
-	);
-	const bindSession = useCanonicalSessionsStore((state) => state.bindSession);
-	const canonicalSessionId = conversationId
-		? sessionByAgent[conversationId]
-		: undefined;
-
-	// In production mode, always use "chat" tab
-	const [activeTab, setActiveTab] = useState<"chat" | "raw">("chat");
-
-	// Force "chat" tab in production mode
-	useEffect(() => {
-		if (!isDevelopmentMode() && activeTab !== "chat") {
-			setActiveTab("chat");
-		}
-	}, [activeTab]);
-	const [isOptionsSidebarOpen, setIsOptionsSidebarOpen] = useState(false);
-
-	// Initialize the API client (memoized to prevent recreation on every render)
-	const apiClient = useMemo(
-		() => createLocalOperatorClient(apiConfig.baseUrl),
-		[],
-	);
-
-	// Get the chat store functions
-	const getMessages = useChatStore((state) => state.getMessages);
-
-	// Fetch agent details for the current conversation
-	const { data: agentData } = useAgent(conversationId);
-
-	// Bind the agent to a canonical session once its working directory is
-	// known. Creation is idempotent per agent through the store's mapping;
-	// re-mounting reopens the same identity rather than minting another.
-	const creatingSessionRef = useRef<string | null>(null);
-	useEffect(() => {
-		if (!canonicalEnabled || !conversationId || !agentData) return;
-		if (canonicalSessionId) {
-			setActiveSession(canonicalSessionId);
-			return;
-		}
-		if (creatingSessionRef.current === conversationId) return;
-		creatingSessionRef.current = conversationId;
-		const cwd = agentData.current_working_directory || "~";
-		void createSession(cwd, conversationId).finally(() => {
-			if (creatingSessionRef.current === conversationId) {
-				creatingSessionRef.current = null;
-			}
-		});
-	}, [
-		canonicalEnabled,
-		conversationId,
-		agentData,
-		canonicalSessionId,
-		createSession,
-		setActiveSession,
-	]);
-
-	// Canonical stream over the authenticated relay, plus the watch lease it
-	// keys off. A terminal canonical event is what resolves the legacy
-	// "Waiting to start" latch: the job poller can miss a fast failure, but
-	// the canonical stream always reports the turn boundary.
-	const canonical = useCanonicalSessionStream(
-		canonicalSessionId,
-		canonicalEnabled && Boolean(canonicalSessionId),
-	);
-	useDesktopWatchLease(canonicalSessionId, canonical.subscriptionId);
-
-	// Only fetch messages if we have a valid conversation ID
-	const {
-		messages,
-		isLoading: isLoadingMessages,
-		isError,
-		error,
-		isAgentNotFound,
-		isFetchingMore,
-		hasMoreMessages,
-		messagesContainerRef, // Get the ref from the hook
-		refetch,
-	} = useConversationMessages(conversationId);
-
-	// A persisted selection that the backend no longer knows is a stale
-	// pointer, not an error: the agent was deleted, or the config dir changed
-	// under the app. Drop it so the page falls back to the agent list instead
-	// of a dead-end banner. Only the remembered id is dropped -- an explicit
-	// URL to a missing agent still reports that it is missing, because there
-	// the user asked for it by name.
-	useEffect(() => {
-		if (isAgentNotFound && !agentId && effectiveAgentId) {
-			clearAgentFromAllPages(effectiveAgentId);
-		}
-	}, [isAgentNotFound, agentId, effectiveAgentId, clearAgentFromAllPages]);
-
-	// Get the addMessage function from the chat store
-	const addMessage = useChatStore((state) => state.addMessage);
-	const getCurrentInput = useConversationInputStore(
-		(state) => state.getCurrentInput,
-	);
-	const setCurrentInput = useConversationInputStore(
-		(state) => state.setCurrentInput,
-	);
-
-	// Use the job polling hook
-	const {
-		currentJobId,
-		setCurrentJobId,
-		jobStatus,
-		isLoading,
-		setIsLoading,
-		currentExecution,
-	} = useJobPolling({
-		conversationId,
-		addMessage,
-	});
-
-	// Canonical transcript mode: once the agent is bound to a canonical
-	// session and the stream is live, the conversation is painted from the
-	// backend's durable history + live events and prompts are admitted through
-	// `sessions.message`. The legacy job/message path below stays only for a
-	// backend that predates the desktop contract (capabilities fail closed).
-	const canonicalMode = canonicalEnabled && Boolean(canonicalSessionId);
-	const canonicalBusy =
-		canonicalMode &&
-		(canonical.frontend?.streaming === true ||
-			canonical.transcript.records.some(
-				(record) =>
-					(record.kind === "assistant" && record.streaming) ||
-					(record.kind === "tool" && record.phase !== "done"),
-			));
-	// Admission pending: the composer disables between POST and the owner's
-	// `message_start` echo so a double Enter cannot admit twice.
+	const cwd = useCanonicalSessionsStore((state) => state.cwd);
+	const setCwd = useCanonicalSessionsStore((state) => state.setCwd);
 	const [admitting, setAdmitting] = useState(false);
-
-	// Resolve the busy latch from the canonical stream. Each terminal event
-	// is consumed once (tracked by generation) so an old terminal does not
-	// clear a later turn's loading state.
-	const lastTerminalRef = useRef<string | null>(null);
-	useEffect(() => {
-		const marker = canonical.terminal
-			? `${canonical.receipt?.epoch ?? ""}:${canonical.receipt?.seq ?? 0}:${canonical.terminal}`
-			: null;
-		if (!marker || marker === lastTerminalRef.current) return;
-		lastTerminalRef.current = marker;
-		if (
-			canonical.terminal === "agent_end" ||
-			canonical.terminal === "turn_end"
-		) {
-			setIsLoading(false);
-		}
-	}, [canonical.terminal, canonical.receipt, setIsLoading]);
-
-	// Use custom hook to track scroll position and show/hide scroll button
-	// Pass the messagesContainerRef to the hook to ensure it tracks the correct container
+	const sendLock = useRef(false);
+	const lastCatalogueState = useRef("");
+	const [sendError, setSendError] = useState<string | null>(null);
+	const [sendErrorCode, setSendErrorCode] = useState<string | undefined>();
+	const [options, setOptions] = useState(false);
+	const [tab, setTab] = useState<"chat" | "raw">("chat");
 	const { isFarFromBottom, scrollToBottom } = useScrollToBottom(
 		50,
-		messagesContainerRef,
-		messages.length,
+		container,
+		canonical.transcript.records.length,
 	);
-
-	// Create a ref for the messages end element (for backwards compatibility)
-	const messagesEndRef = useRef<HTMLDivElement>(null);
-
-	// "New activity" instead of autoscroll: when messages grow while the
-	// reader is scrolled up, flag it and let them choose to jump. Cleared
-	// the moment they are back near the bottom.
-	const [hasNewActivity, setHasNewActivity] = useState(false);
-	const seenMessageCountRef = useRef(messages.length);
-	useEffect(() => {
-		if (messages.length > seenMessageCountRef.current && isFarFromBottom) {
-			setHasNewActivity(true);
-		}
-		seenMessageCountRef.current = messages.length;
-	}, [messages.length, isFarFromBottom]);
-	useEffect(() => {
-		if (!isFarFromBottom) setHasNewActivity(false);
-	}, [isFarFromBottom]);
-	// biome-ignore lint/correctness/useExhaustiveDependencies: reset on conversation change only
-	useEffect(() => {
-		// A new conversation starts with nothing unread.
-		setHasNewActivity(false);
-		seenMessageCountRef.current = 0;
-	}, [conversationId]);
-
-	// Update the last selected agent ID when the agent ID changes
-	// Force scroll to bottom only when switching to a new conversation
-	// Also, focus the input if the agentId has changed (intentional navigation)
-	useEffect(() => {
-		if (agentId) {
-			const previousAgentId = previousConversationIdRef.current;
-			setLastChatAgentId(agentId);
-
-			// Only scroll if we have a new conversation with loaded messages
-			if (!isLoadingMessages && messages.length > 0) {
-				const prevMessages = getMessages(agentId);
-				if (!prevMessages || prevMessages.length === 0) {
-					scrollToBottom();
-				}
-			}
-
-			// Focus input if agentId changed and it's not the initial load
-			if (previousAgentId && previousAgentId !== agentId) {
-				Promise.resolve().then(() => {
-					messageInputRef.current?.focusInput();
-				});
-			}
-		}
-	}, [
-		agentId,
-		setLastChatAgentId,
-		isLoadingMessages,
-		messages.length,
-		scrollToBottom,
-		getMessages,
-	]);
-
-	// Reset auto-scroll flag when conversation changes
-	// biome-ignore lint/correctness/useExhaustiveDependencies: only trigger on agentId change
-	useEffect(() => {
-		didAutoScrollRef.current = false;
-	}, [agentId]);
-
-	// Scroll to bottom when switching conversations or when messages load
-	// biome-ignore lint/correctness/useExhaustiveDependencies: messagesContainerRef.current is used but we don't want to re-run on every ref change
-	useEffect(() => {
-		// Reset auto-scroll flag when conversation changes
-		if (agentId !== previousConversationIdRef.current) {
-			didAutoScrollRef.current = false;
-			previousConversationIdRef.current = agentId;
-		}
-
-		// Scroll to bottom once after messages load and focus input
-		if (
-			!didAutoScrollRef.current &&
-			agentId &&
-			!isLoadingMessages &&
-			messages.length > 0
-		) {
-			// Immediately scroll to bottom (scrollTop = 0 in column-reverse)
-			if (messagesContainerRef.current) {
-				messagesContainerRef.current.scrollTop = 0;
-			}
-			// Focus the input after messages are loaded and scrolled
-			Promise.resolve().then(() => {
-				messageInputRef.current?.focusInput();
+	const busy = canonical.frontend?.streaming === true;
+	const navigate = useNavigate();
+	const rebind = (id: string) => {
+		void useCanonicalSessionsStore
+			.getState()
+			.openSession(id)
+			.then((ok) => {
+				if (ok) navigate(`/chat/${id}`);
 			});
-			didAutoScrollRef.current = true; // Mark that auto scroll and focus has happened
-		}
-	}, [agentId, isLoadingMessages, messages.length, scrollToBottom]); // Added scrollToBottom as it's used indirectly via didAutoScrollRef logic
-
-	// Reference to track previous conversation ID
-	const previousConversationIdRef = useRef<string | undefined>(undefined);
-
-	const handleOpenOptions = useCallback(() => {
-		setIsOptionsSidebarOpen(true);
-	}, []);
-
-	const handleCloseOptions = useCallback(() => {
-		setIsOptionsSidebarOpen(false);
-	}, []);
-
-	// Handle selecting a conversation
-	const handleSelectConversation = useCallback(
-		(id: string) => {
-			setLastChatAgentId(id);
-			navigateToAgent(id, "chat");
-		},
-		[setLastChatAgentId, navigateToAgent],
-	);
-
-	// Handle navigating to agent settings
-	const handleNavigateToAgentSettings = useCallback(
-		(agentId: string) => {
-			navigate(`/agents/${agentId}`);
-		},
-		[navigate],
-	);
-
-	// Handle job cancellation
-	const handleCancelJob = useCallback(
-		async (jobId: string) => {
-			if (!jobId) return;
-
-			let cancelError: unknown = null;
-			try {
-				await JobsApi.cancelJob(apiConfig.baseUrl, jobId);
-			} catch (error) {
-				console.error("Error cancelling job:", error);
-				cancelError = error;
-			}
-
-			// The local teardown runs whether or not the backend accepted the
-			// cancel. The user asked to stop, so the UI has to read as stopped:
-			// bailing out on a rejected request left the stream armed, which kept
-			// the composer disabled and the reconnect effect re-firing every
-			// 1600ms for the rest of the session with no way for the user back
-			// out — the cancel button appeared to do nothing, permanently.
-			//
-			// The backend no longer sends frames for a cancelled job, but nothing
-			// tells the client the stream was over: the store never marks it
-			// complete and the socket stays open. Marking the stream finished is
-			// what actually stops it — it stands the reconnect guard down, closes
-			// the socket, and lets the message settle into its final rendered
-			// state.
-			if (conversationId) {
-				terminateStreamingMessages(conversationId);
-			}
-
-			// Clear the current job ID and loading state
-			setCurrentJobId(null);
-			setIsLoading(false);
-
-			if (cancelError) {
-				// Said plainly rather than as a clean cancel: the local stream is
-				// down but the server never acknowledged, so the agent may still
-				// be working and the user needs to know that before they retry.
-				showErrorToast(
-					`Stopped locally, but the server did not confirm the cancellation: ${
-						cancelError instanceof Error ? cancelError.message : "unknown error"
-					}. The agent may still be running.`,
-				);
-			}
-
-			// Record the outcome in the transcript so it survives the toast.
-			if (conversationId) {
-				const outcomeMessage: Message = {
-					id: Date.now().toString(),
-					role: "system",
-					message: cancelError
-						? "Stopped by user. The server did not confirm the cancellation, so the agent may still be running."
-						: "Job cancelled by user.",
-					timestamp: new Date(),
-					status: cancelError ? "error" : undefined,
-				};
-
-				addMessage(conversationId, outcomeMessage);
-			}
-		},
-		[addMessage, conversationId, setCurrentJobId, setIsLoading],
-	);
-
-	// Memoized function to handle sending a new message
-	const { data: configData } = useConfig();
-
-	// Slash submissions are dispatched to the desktop command control, never
-	// admitted as model chat. The backend rejects slash text on /messages with
-	// 422 — intercepting here is what makes `/settings` navigate instead of
-	// failing against a missing model key one API round-trip later.
-	const rebindSession = useCallback(
-		(nextSessionId: string) => {
-			if (!conversationId) return;
-			bindSession(conversationId, nextSessionId);
-		},
-		[conversationId, bindSession],
-	);
-	// A send that never reached the backend must hand the user's words back.
-	// The composer reads its draft from the conversation input store on every
-	// value change, so writing there restores the text in place -- no second
-	// source of draft state, and it survives the navigation the failure might
-	// prompt. Attachments are deliberately NOT re-attached: the composer holds
-	// them as `Attachment` records and only their paths reach this callback, so
-	// re-adding them here would invent metadata; the note says what happened and
-	// the files are still on disk.
-	const restoreDraft = useCallback(
-		(content: string, _attachments: string[]) => {
-			if (!conversationId) return;
-			// Only when the composer is empty: the user may already be typing the
-			// next thing, and overwriting that would repeat the very defect this
-			// fixes.
-			if (getCurrentInput(conversationId).trim()) return;
-			setCurrentInput(conversationId, content);
-		},
-		[conversationId, getCurrentInput, setCurrentInput],
-	);
-
-	// Notes land in the transcript the user is LOOKING at. In canonical mode the
-	// view is painted from `canonical.view`, so a system row written into the
-	// legacy chat store goes to a surface nobody renders -- which is how a failed
-	// send lost both the message and its error (QA Q1, and UX U5 from the picker
-	// path). Same rule as `useSlashDispatch`'s own `note`, kept identical on
-	// purpose: one way to say something to the user, not two.
-	const note = useCallback(
-		(text: string, error = false) => {
-			if (canonicalMode && canonicalSessionId) {
-				canonical.addNote(text, error ? "error" : "info");
-				return;
-			}
-			if (!conversationId) return;
-			addMessage(conversationId, {
-				id: uuidv4(),
-				role: "system",
-				message: text,
-				timestamp: new Date(),
-				status: error ? "error" : undefined,
-			});
-		},
-		[
-			addMessage,
-			canonical.addNote,
-			canonicalMode,
-			canonicalSessionId,
-			conversationId,
-		],
-	);
-
-	const { dispatch: handleSlashDispatch, picker } = useSlashDispatch({
-		sessionId: canonicalSessionId,
-		addMessage: (message) => {
-			if (conversationId) addMessage(conversationId, message);
-		},
-		canonical,
-		rebind: rebindSession,
-	});
-
-	const handleSendMessage = useCallback(
-		async (content: string, attachments: string[]) => {
-			if (!conversationId) return;
-
-			// A leading slash is a command, full stop. Dispatch consumes it and
-			// nothing below (model job creation) runs for it.
-			if (await handleSlashDispatch(content)) return;
-
-			if (canonicalMode && canonicalSessionId) {
-				// Canonical admission. 200 means the owner ADMITTED the prompt, not
-				// that the model answered: the transcript paints the user row from
-				// the owner's own `message_start` echo (keyed by this request id),
-				// so nothing optimistic is inserted here to be deduplicated later.
-				// A pending gate is answered through the answers route instead of
-				// being admitted as a new prompt the owner would queue.
-				const gate = canonical.frontend?.pending_gate ?? null;
-				const requestId = uuidv4();
-				setAdmitting(true);
-				try {
-					if (gate && canonical.ownerEpoch) {
-						const trimmed = content.trim().toLowerCase();
-						if (gate.kind === "approval") {
-							const yes = ["y", "yes", "approve", "ok", "allow"].includes(
-								trimmed,
-							);
-							const no = ["n", "no", "deny", "reject", "cancel"].includes(
-								trimmed,
-							);
-							if (!yes && !no) {
-								note("Reply yes or no to answer the approval request.", true);
-								// The prompt was never sent, so it is still the user's to
-								// edit rather than something to retype from memory.
-								restoreDraft(content, attachments);
-								return;
-							}
-							await desktopResult({
-								op: "sessions.answer",
-								sessionId: canonicalSessionId,
-								epoch: canonical.ownerEpoch,
-								requestId: gate.request_id,
-								approved: yes,
-							});
-						} else {
-							await desktopResult({
-								op: "sessions.answer",
-								sessionId: canonicalSessionId,
-								epoch: canonical.ownerEpoch,
-								requestId: gate.request_id,
-								value: content,
-								questionIndex: gate.question_index,
-							});
-						}
-						return;
-					}
-					const images = await encodeImageAttachments(attachments);
-					await desktopResult({
-						op: "sessions.message",
-						sessionId: canonicalSessionId,
-						requestId,
-						text: content,
-						images: images.length > 0 ? images : undefined,
-						// Steer rather than queue when the owner is mid-turn: that is
-						// what typing during a turn means in the terminal too.
-						mode: canonicalBusy ? "steer" : "prompt",
-					});
-					requestAnimationFrame(() => scrollToBottom());
-				} catch (error) {
-					note(
-						`The message was not sent: ${
-							error instanceof Error ? error.message : "the backend refused it"
-						}`,
-						true,
-					);
-					// The composer clears on submit, so a failed admission used to
-					// DESTROY the typed prompt outright. Hand it back instead: the
-					// user's words are theirs, and a failure is not consent to lose
-					// them.
-					restoreDraft(content, attachments);
-				} finally {
-					setAdmitting(false);
-				}
-				return;
-			}
-
-			// Create a new user message
-			const userMessage: Message = {
-				id: uuidv4(),
-				role: "user",
-				message: content,
-				timestamp: new Date(),
-				files: attachments.length > 0 ? attachments : undefined,
-			};
-
-			// Add user message to chat store
-			addMessage(conversationId, userMessage);
-
-			// Scroll to bottom immediately after adding the message
-			// This ensures the user sees their message right away
-			requestAnimationFrame(() => {
-				scrollToBottom();
-			});
-
-			// Set loading state
-			setIsLoading(true);
-
-			try {
-				// Prepare options from agent settings
-				const options = {
-					temperature: agentData?.temperature,
-					top_p: agentData?.top_p,
-					top_k: agentData?.top_k,
-					max_tokens: agentData?.max_tokens,
-					stop: agentData?.stop,
-					frequency_penalty: agentData?.frequency_penalty,
-					presence_penalty: agentData?.presence_penalty,
-					seed: agentData?.seed,
-				};
-
-				// Filter out undefined values
-				const filteredOptions = Object.fromEntries(
-					Object.entries(options).filter(
-						([_, value]) => value !== undefined && value !== null,
-					),
-				);
-
-				const resolvedHosting =
-					!agentData?.hosting ||
-					agentData.hosting === "default" ||
-					agentData.hosting.trim() === ""
-						? configData?.values.hosting || ""
-						: agentData.hosting;
-
-				const resolvedModel =
-					!agentData?.model ||
-					agentData.model === "default" ||
-					agentData.model.trim() === ""
-						? configData?.values.model_name || ""
-						: agentData.model;
-
-				const jobDetails = await apiClient.chat.processAgentChatAsync(
-					conversationId,
-					{
-						hosting: resolvedHosting,
-						model: resolvedModel,
-						prompt: content,
-						persist_conversation: true,
-						user_message_id: userMessage.id,
-						options:
-							Object.keys(filteredOptions).length > 0
-								? filteredOptions
-								: undefined,
-						attachments: attachments.length > 0 ? attachments : undefined,
-					},
-				);
-
-				if (jobDetails.result?.id) {
-					setCurrentJobId(jobDetails.result.id);
-				} else {
-					console.error("Job details missing ID:", jobDetails);
-					throw new Error("Failed to get job ID from response");
-				}
-			} catch (error) {
-				console.error("Error sending message:", error);
-
-				let errorDetails = "Unknown error occurred";
-				if (error instanceof Error) {
-					errorDetails = `${error.message}\n${error.stack || ""}`;
-				} else if (typeof error === "object" && error !== null) {
-					errorDetails = JSON.stringify(error, null, 2);
-				}
-
-				const errorMessage: Message = {
-					id: Date.now().toString(),
-					role: "assistant",
-					message: "Sorry, there was an error processing your request.",
-					stderr: errorDetails,
-					timestamp: new Date(),
-					status: "error",
-				};
-
-				addMessage(conversationId, errorMessage);
-				setIsLoading(false);
-			}
-		},
-		[
-			conversationId,
-			addMessage,
-			setIsLoading,
-			agentData,
-			apiClient,
-			setCurrentJobId,
-			configData,
-			scrollToBottom,
-			handleSlashDispatch,
-			canonicalMode,
-			canonicalSessionId,
-			canonicalBusy,
-			canonical.frontend?.pending_gate,
-			canonical.ownerEpoch,
-			note,
-			restoreDraft,
-		],
-	);
-
-	// `/stop`-equivalent for the composer's stop button in canonical mode: the
-	// canonical stop control ends the session's current work through the
-	// owner's own protocol (never the legacy job cancel).
-	const handleCanonicalStop = useCallback(async () => {
-		if (!canonicalSessionId || !conversationId) return;
-		try {
-			const result = await desktopResult<{
-				data: { results?: { session_id: string; status: string }[] };
-			}>({
-				op: "sessions.stop",
-				requestId: uuidv4(),
-				targets: [canonicalSessionId],
-				confirmed: true,
-			});
-			const status = result.data?.results?.[0]?.status ?? "stop_requested";
-			addMessage(conversationId, {
-				id: uuidv4(),
-				role: "system",
-				message:
-					status === "already_stopped"
-						? "Nothing was running."
-						: "Stop requested. The session ends its current work.",
-				timestamp: new Date(),
-			});
-		} catch (error) {
-			addMessage(conversationId, {
-				id: uuidv4(),
-				role: "system",
-				message: `Stop was not accepted: ${
-					error instanceof Error ? error.message : "the backend refused it"
-				}`,
-				timestamp: new Date(),
-				status: "error",
-			});
-		}
-	}, [canonicalSessionId, conversationId, addMessage]);
-
-	// Memoize the raw information content to prevent re-rendering
-	const rawInfoContent = useMemo(() => {
-		if (!conversationId) return "";
-
-		return `Conversation ID: ${conversationId}
-Messages count: ${messages.length}
-Has more messages: ${hasMoreMessages ? "Yes" : "No"}
-Loading more: ${isFetchingMore ? "Yes" : "No"}
-Current job ID: ${currentJobId || "None"}
-Job status: ${jobStatus || "None"}
-Is loading: ${isLoading ? "Yes" : "No"}
-Store messages: ${JSON.stringify(getMessages(conversationId || ""), null, 2)}`;
-	}, [
-		conversationId,
-		messages.length,
-		hasMoreMessages,
-		isFetchingMore,
-		currentJobId,
-		jobStatus,
-		isLoading,
-		getMessages,
-	]);
-
-	// Handle tab change - only allow changing tabs in development mode
-	const handleTabChange = useCallback((newTab: "chat" | "raw") => {
-		if (isDevelopmentMode()) {
-			setActiveTab(newTab);
-		}
-	}, []);
-
-	// Render the appropriate content based on the state
-	const renderContent = () => {
-		if (!conversationId) {
-			return (
-				<PlaceholderView
-					title="No agent selected"
-					description="Select an agent from the sidebar to start a conversation."
-					directionText="Choose an agent from the list"
-				/>
-			);
-		}
-
-		if (isError) {
-			if (isAgentNotFound) {
-				// Reached only via a direct URL (the persisted case has already
-				// cleared itself above). The server answered, so the "local
-				// server" copy would be a false claim here.
-				return (
-					<PlaceholderView
-						title="This agent no longer exists"
-						description="It may have been deleted, or the app is using a different data folder. Pick another agent from the sidebar."
-						directionText="Choose an agent from the list"
-					/>
-				);
-			}
-			return (
-				<ErrorView
-					message={error?.message || ""}
-					serverUnreachable={isServerUnreachable(error)}
-				/>
-			);
-		}
-
-		return (
-			<ChatContent
-				activeTab={activeTab}
-				onTabChange={handleTabChange}
-				agentName={agentData?.name || ""}
-				description={agentData?.description || "Conversation with this agent"}
-				onOpenOptions={handleOpenOptions}
-				isOptionsSidebarOpen={isOptionsSidebarOpen}
-				onCloseOptions={handleCloseOptions}
-				agentId={conversationId}
-				messages={messages}
-				isLoading={isLoading}
-				isLoadingMessages={isLoadingMessages}
-				isFetchingMore={isFetchingMore}
-				isFarFromBottom={isFarFromBottom}
-				hasNewActivity={hasNewActivity}
-				jobStatus={jobStatus as JobStatus | null}
-				currentExecution={currentExecution}
-				messagesContainerRef={messagesContainerRef}
-				messagesEndRef={messagesEndRef}
-				scrollToBottom={scrollToBottom}
-				rawInfoContent={rawInfoContent}
-				onSendMessage={handleSendMessage}
-				currentJobId={currentJobId}
-				onCancelJob={handleCancelJob}
-				agentData={agentData}
-				refetch={refetch}
-				messageInputRef={messageInputRef}
-				canonical={
-					canonicalMode
-						? {
-								view: canonical,
-								busy: canonicalBusy || admitting,
-								onStop: handleCanonicalStop,
-							}
-						: undefined
-				}
-			/>
-		);
 	};
-
-	return (
-		<>
-			<ChatLayout
-				sidebar={
-					<ChatSidebar
-						selectedConversation={selectedConversation}
-						onSelectConversation={handleSelectConversation}
-						onNavigateToAgentSettings={handleNavigateToAgentSettings}
-					/>
-				}
-				content={renderContent()}
-			/>
-			{/* The one picker host for slash destinations; null when idle. */}
-			<PickerOutlet context={picker} />
-		</>
+	const { dispatch, picker } = useSlashDispatch({
+		sessionId,
+		canonical,
+		rebind,
+		addMessage: (message) => canonical.addNote(message.message ?? ""),
+	});
+	useEffect(() => {
+		if (draftKey) input.current?.focusInput();
+	}, [draftKey]);
+	useEffect(() => {
+		if (!sessionId || !canonical.frontend) return;
+		// Only metadata comes from the stream. Membership/order remain list-owned,
+		// and attention merges by the durable revision rather than arrival time.
+		const store = useCanonicalSessionsStore.getState();
+		if (!store.sessions.some((row) => row.session_id === sessionId)) return;
+		store.upsertSession({
+			session_id: sessionId,
+			title: canonical.frontend.conversation_title,
+			attention: canonical.frontend.attention,
+		});
+	}, [sessionId, canonical.frontend]);
+	useEffect(() => {
+		const marker = JSON.stringify([
+			sessionId,
+			canonical.frontend?.streaming,
+			canonical.frontend?.attention?.unseen,
+			canonical.frontend?.active_agent,
+			canonical.frontend?.active_team,
+		]);
+		if (!sessionId || marker === lastCatalogueState.current) return;
+		lastCatalogueState.current = marker;
+		void useCanonicalSessionsStore.getState().fetchSessions();
+	}, [
+		sessionId,
+		canonical.frontend?.streaming,
+		canonical.frontend?.attention?.unseen,
+		canonical.frontend?.active_agent,
+		canonical.frontend?.active_team,
+	]);
+	const send = async (
+		content: string,
+		attachments: string[],
+	): Promise<boolean> => {
+		const store = useCanonicalSessionsStore.getState();
+		// Same identity the view reads, so a send can never address a different
+		// draft than the one whose retained text and Discard control are shown.
+		const key = draftIdentityFor(draftKey, sessionId);
+		if (!key) return false;
+		const previous = store.drafts[key];
+		if (pendingNavigation || sendLock.current || previous?.pending)
+			return false;
+		sendLock.current = true;
+		setAdmitting(true);
+		setSendError(null);
+		setSendErrorCode(undefined);
+		try {
+			if (await dispatch(content)) return true;
+			if (!draftKey && !sessionId) return false;
+			const gate = canonical.frontend?.pending_gate;
+			if (gate && canonical.ownerEpoch && sessionId) {
+				if (gate.kind === "approval") {
+					const value = content.trim().toLowerCase();
+					const yes = ["y", "yes", "approve", "ok", "allow"].includes(value);
+					if (!yes && !["n", "no", "deny", "reject", "cancel"].includes(value))
+						throw new Error("Reply yes or no to answer the approval request.");
+					await desktopResult({
+						op: "sessions.answer",
+						sessionId,
+						epoch: canonical.ownerEpoch,
+						requestId: gate.request_id,
+						approved: yes,
+					});
+				} else
+					await desktopResult({
+						op: "sessions.answer",
+						sessionId,
+						epoch: canonical.ownerEpoch,
+						requestId: gate.request_id,
+						value: content,
+						questionIndex: gate.question_index,
+					});
+				return true;
+			}
+			const images = await encodeImageAttachments(attachments);
+			const id = await admitChatDraft(
+				key,
+				{
+					text: content,
+					attachments,
+					images,
+					mode: busy ? "steer" : "prompt",
+					cwd,
+				},
+				sessionId,
+			);
+			if (!id) return false;
+			if (
+				draftKey &&
+				useCanonicalSessionsStore.getState().activeSessionId === id
+			)
+				navigate(`/chat/${id}`, { replace: true });
+			void store.fetchSessions();
+			return true;
+		} catch (error) {
+			const message =
+				error instanceof Error
+					? error.message
+					: "The send could not be confirmed. Retry this draft.";
+			setSendError(message);
+			setSendErrorCode(
+				error instanceof Error &&
+					"code" in error &&
+					typeof error.code === "string"
+					? error.code
+					: undefined,
+			);
+			return false;
+		} finally {
+			sendLock.current = false;
+			setAdmitting(false);
+		}
+	};
+	const stop = () => {
+		if (sessionId)
+			void desktopResult({
+				op: "sessions.command",
+				sessionId,
+				requestId: crypto.randomUUID(),
+				command: "stop",
+			}).catch((error) =>
+				setSendError(
+					error instanceof Error
+						? error.message
+						: "Stop could not be confirmed.",
+				),
+			);
+	};
+	const loadedTarget =
+		canonical.frontend?.active_team ||
+		canonical.frontend?.active_agent ||
+		draft?.target?.name;
+	const title = draftKey
+		? loadedTarget
+			? `New chat with ${loadedTarget}`
+			: "New chat"
+		: canonical.frontend?.conversation_title || "Untitled chat";
+	// active_agent/active_team come from the LIVE stream, so a cold session (no
+	// running owner) reports nulls and the header fell back to the cwd, naming
+	// nothing. The catalogue row's binding is the durable answer and is already
+	// what the sidebar groups by, so it is the fallback rather than a second
+	// source of truth: live values still win while an owner is attached.
+	const boundRow = useCanonicalSessionsStore((state) =>
+		sessionId
+			? state.sessions.find((row) => row.session_id === sessionId)
+			: undefined,
 	);
-};
+	const loaded =
+		[canonical.frontend?.active_agent, canonical.frontend?.active_team]
+			.filter(Boolean)
+			.join(" · ") ||
+		[boundRow?.binding?.agent, boundRow?.binding?.team]
+			.filter(Boolean)
+			.join(" · ");
+	const view = !sessionId
+		? { ...canonical, status: "live" as const, error: null }
+		: canonical;
+	return (
+		<div className="flex h-full min-h-0 flex-col">
+			{draftKey && (
+				<label className="flex items-center gap-2 border-b border-hairline px-4 py-2 text-meta text-ink-muted">
+					Working directory
+					<input
+						aria-label="New chat working directory"
+						className="min-w-0 flex-1 rounded-md border border-control bg-surface px-2 py-1 text-ink"
+						value={cwd}
+						disabled={Boolean(draft?.sessionId) || admitting}
+						onChange={(event) => setCwd(event.target.value)}
+					/>
+				</label>
+			)}
+			{(sendError || draft?.error) && (
+				<div role="alert" className="px-4 py-2 text-body-sm text-danger">
+					<p>
+						{sendError || draft?.error}{" "}
+						{draft?.submittedText
+							? "Your message is kept below \u2014 send it again, or discard it to write something else."
+							: "Your draft is retained."}
+					</p>
+					{draft?.submittedText && (
+						<div className="mt-2 space-y-2">
+							<p className="whitespace-pre-wrap rounded-md border border-control bg-surface px-2 py-1 text-body-sm text-ink">
+								{draft.submittedText}
+							</p>
+							<button
+								type="button"
+								className="underline"
+								onClick={() => {
+									if (draftIdentity)
+										useCanonicalSessionsStore
+											.getState()
+											.discardDraft(draftIdentity);
+									setSendError(null);
+									setSendErrorCode(undefined);
+								}}
+							>
+								Discard unsent message
+							</button>
+						</div>
+					)}
+				</div>
+			)}
+			{(sendErrorCode ?? draft?.errorCode) === "unresolved_attachment" && (
+				<div className="flex gap-2 px-4 pb-2 text-body-sm">
+					<button
+						type="button"
+						className="underline"
+						onClick={() => void dispatch("/agent")}
+					>
+						Choose agent
+					</button>
+					<button
+						type="button"
+						className="underline"
+						onClick={() => void dispatch("/team")}
+					>
+						Choose team
+					</button>
+				</div>
+			)}
+			{(sendErrorCode ?? draft?.errorCode) ===
+				"profile_registry_unavailable" && (
+				<button
+					type="button"
+					className="self-start px-4 pb-2 text-body-sm underline"
+					onClick={() => navigate("/agents")}
+				>
+					Manage agents
+				</button>
+			)}
+			{options && (
+				<div className="flex flex-wrap gap-2 border-b border-hairline px-4 py-2 text-body-sm">
+					{[
+						"model",
+						"agent",
+						"team",
+						"rename",
+						"resume",
+						"fork",
+						"new",
+						"settings",
+					].map((command) => (
+						<button
+							key={command}
+							type="button"
+							className="rounded-md px-2 py-1 hover:bg-elevated"
+							onClick={() => {
+								setOptions(false);
+								void dispatch(`/${command}`);
+							}}
+						>
+							{command === "agent"
+								? "Choose agent"
+								: command === "team"
+									? "Choose team"
+									: command.charAt(0).toUpperCase() + command.slice(1)}
+						</button>
+					))}
+				</div>
+			)}
+			<div className="min-h-0 flex-1">
+				<ChatContent
+					activeTab={tab}
+					onTabChange={setTab}
+					agentName={title}
+					description={
+						// `loaded` names the agent/team actually answering; without it an
+						// opened chat showed only a cwd and the user could not tell which
+						// profile was in force.
+						loaded ||
+						(draftKey
+							? "The session starts when you send your first message."
+							: canonical.frontend?.cwd || "Canonical chat")
+					}
+					onOpenOptions={() => setOptions((value) => !value)}
+					isOptionsSidebarOpen={false}
+					onCloseOptions={() => setOptions(false)}
+					agentId={identity}
+					messages={[]}
+					isLoading={false}
+					isLoadingMessages={false}
+					isFetchingMore={canonical.loadingOlder}
+					isFarFromBottom={isFarFromBottom}
+					messagesContainerRef={container}
+					messagesEndRef={end}
+					scrollToBottom={scrollToBottom}
+					rawInfoContent={JSON.stringify(canonical.frontend, null, 2)}
+					onSendMessage={send}
+					currentJobId={null}
+					onCancelJob={stop}
+					messageInputRef={input}
+					canonical={{
+						view,
+						busy,
+						admitting: admitting || pendingNavigation,
+						onStop: stop,
+					}}
+				/>
+			</div>
+			<PickerOutlet context={picker} />
+		</div>
+	);
+}
+
+export function ChatPage() {
+	const { agentId: routeIdentity } = useParams<{ agentId?: string }>();
+	const navigate = useNavigate();
+	const capabilities = useDesktopCapabilities();
+	const enabled = desktopFeatureEnabled(
+		capabilities.data,
+		"session_catalogue",
+		2,
+	);
+	const active = useCanonicalSessionsStore((state) => state.activeSessionId);
+	const draftKey = useCanonicalSessionsStore((state) => state.activeDraftKey);
+	const draft = useCanonicalSessionsStore((state) =>
+		draftKey ? state.drafts[draftKey] : undefined,
+	);
+	const pending = useCanonicalSessionsStore((state) => state.pendingSessionId);
+	const error = useCanonicalSessionsStore((state) => state.error);
+	const [routeError, setRouteError] = useState<string | null>(null);
+	useEffect(() => {
+		if (!enabled || !routeIdentity) return;
+		const store = useCanonicalSessionsStore.getState();
+		const id = SESSION_ID.test(routeIdentity)
+			? routeIdentity
+			: store.sessionByAgent[routeIdentity];
+		if (!id) {
+			setRouteError(
+				"This legacy link has no canonical chat. Its saved history is unchanged.",
+			);
+			return;
+		}
+		setRouteError(null);
+		if (store.activeSessionId !== id || store.activeDraftKey)
+			void store.openSession(id);
+	}, [enabled, routeIdentity]);
+	useEffect(() => {
+		const keydown = (event: KeyboardEvent) => {
+			if (
+				event.key === "Escape" &&
+				useCanonicalSessionsStore.getState().pendingSessionId
+			) {
+				event.preventDefault();
+				useCanonicalSessionsStore.getState().cancelOpen();
+			}
+		};
+		window.addEventListener("keydown", keydown);
+		return () => window.removeEventListener("keydown", keydown);
+	}, []);
+	const stage = (target?: ChatTarget, fresh?: boolean) => {
+		useCanonicalSessionsStore.getState().stageDraft(target, fresh);
+		setRouteError(null);
+		navigate("/chat");
+	};
+	const select = (id: string) => {
+		void useCanonicalSessionsStore
+			.getState()
+			.openSession(id)
+			.then((ok) => {
+				if (ok) {
+					setRouteError(null);
+					navigate(`/chat/${id}`);
+				}
+			});
+	};
+	const id = draftKey ? draft?.sessionId : (active ?? undefined);
+	const identity = draftKey ?? id;
+	return (
+		<ChatLayout
+			sidebar={
+				<ChatSidebar
+					selectedConversation={active ?? undefined}
+					onSelectConversation={select}
+					onStageDraft={stage}
+				/>
+			}
+			content={
+				<div className="flex h-full min-h-0 flex-col">
+					{pending && (
+						<p aria-live="polite" className="px-4 py-2 text-body-sm text-info">
+							Opening chat…{" "}
+							<button
+								type="button"
+								onClick={() =>
+									useCanonicalSessionsStore.getState().cancelOpen()
+								}
+							>
+								Cancel
+							</button>
+						</p>
+					)}
+					{(routeError || error) && (
+						<p role="alert" className="px-4 py-2 text-body-sm text-danger">
+							{routeError || error}
+						</p>
+					)}
+					{!enabled ? (
+						<div className="p-6 text-body text-ink-muted">
+							{capabilities.isLoading
+								? "Connecting to the backend…"
+								: capabilities.error
+									? capabilities.error.message
+									: "Update the backend to use canonical chats. Your existing histories are unchanged."}
+							<button
+								type="button"
+								className="ml-2 underline"
+								onClick={() => void capabilities.refetch()}
+							>
+								Retry
+							</button>
+						</div>
+					) : identity ? (
+						<div className="min-h-0 flex-1">
+							<SessionPanel
+								key={identity}
+								identity={identity}
+								draftKey={draftKey}
+								sessionId={id}
+								pendingNavigation={Boolean(pending)}
+							/>
+						</div>
+					) : (
+						<div className="p-6">
+							<h1 className="text-title">Start a chat</h1>
+							<p className="mt-2 text-body text-ink-muted">
+								Choose an agent or team, or start a new chat. Nothing starts
+								until you send.
+							</p>
+							<button
+								type="button"
+								className="mt-4 rounded-md border border-control px-3 py-2"
+								onClick={() => stage(undefined, true)}
+							>
+								New chat
+							</button>
+						</div>
+					)}
+				</div>
+			}
+		/>
+	);
+}

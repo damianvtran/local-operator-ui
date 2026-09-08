@@ -11,7 +11,9 @@ import { useConversationInputStore } from "../store/conversation-input-store";
  */
 type UseMessageInputOptions = {
 	conversationId?: string;
-	onSubmit?: (message: string) => void;
+	onSubmit?: (
+		message: string,
+	) => undefined | boolean | Promise<undefined | boolean>;
 	scrollToBottom?: () => void;
 };
 
@@ -160,12 +162,20 @@ export const useMessageInput = ({
 		[conversationId, setCurrentInput, resetCurrentHistoryIndex],
 	);
 
-	// Handle form submission
-	const handleSubmit = useCallback(() => {
-		if (!inputValue.trim() || !conversationId) return;
-		onSubmit?.(inputValue);
+	const submittingRef = useRef(false);
+	// Admission, not the keypress, retires a draft. A failed or ambiguous send
+	// must keep its text and attachments, including across navigation/remounts.
+	const handleSubmit = useCallback(async () => {
+		if (!inputValue.trim() || !conversationId || submittingRef.current) return;
+		submittingRef.current = true;
+		try {
+			if ((await onSubmit?.(inputValue)) === false) return;
+		} finally {
+			submittingRef.current = false;
+		}
+
 		addSubmittedMessage(conversationId, inputValue);
-		setInputValue("");
+		if (initializedRef.current === conversationId) setInputValue("");
 		// Cleared BEFORE the store write so a synchronous restore inside
 		// `onSubmit` is not immediately overwritten by this submit's own clear.
 		lastPushedRef.current = "";
