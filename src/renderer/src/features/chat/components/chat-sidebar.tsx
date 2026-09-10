@@ -24,6 +24,7 @@ import {
 	List,
 	LoaderCircle,
 	MessageSquare,
+	MessageSquarePlus,
 	MoreHorizontal,
 	Pause,
 	Plus,
@@ -254,7 +255,7 @@ export function ChatSidebar({
 			<div key={key} data-entity>
 				<div
 					className={cn(
-						"flex h-8 items-center gap-1 rounded-md",
+						"group flex h-8 items-center gap-1 rounded-md",
 						draft?.target?.kind === kind &&
 							draft.target.name === name &&
 							"bg-accent-wash",
@@ -274,16 +275,39 @@ export function ChatSidebar({
 							<ChevronRight className="size-3.5" />
 						)}
 					</button>
+					{/* Clicking the name has always staged a draft, but nothing on the
+					    row said so, so the primary action of the whole sidebar was
+					    invisible and went unused. The glyph is the label for that
+					    existing action, NOT a second control: putting it inside the same
+					    button keeps one click target for one outcome, adds no tab stop,
+					    and leaves the arrow-key traversal in `keyDown` untouched. Its
+					    slot is reserved at rest rather than inserted on hover, because a
+					    row that reflows under the pointer is worse than no affordance —
+					    only `opacity` changes, which is also what keeps this inside
+					    § Motion's rule that nothing lifts, scales or translates on hover.
+					    `group-focus-within` is what makes it reachable without a mouse. */}
 					<button
 						type="button"
 						data-chat-row
 						data-entity-name
 						className={cn(rowStyle, "flex-1 text-left")}
 						onClick={() => onStageDraft({ kind, name })}
+						// The visible label is the bare name, which says who but not what
+						// pressing it does. The accessible name states the action and still
+						// contains the visible label, so voice control keeps working.
+						aria-label={`New chat with ${name}`}
 						title={`New chat with ${name}`}
 					>
 						<Icon className="size-4 shrink-0" />
 						<span className="min-w-0 flex-1 truncate">{name}</span>
+						<MessageSquarePlus
+							className={cn(
+								"size-4 shrink-0 text-ink-muted opacity-0",
+								"transition-opacity duration-fast ease-out-quart",
+								"group-hover:opacity-100 group-focus-within:opacity-100",
+							)}
+							aria-hidden="true"
+						/>
 						<span className="text-meta tabular-nums text-ink-dim">
 							{rows.length || ""}
 						</span>
@@ -394,17 +418,13 @@ export function ChatSidebar({
 			className="flex h-full min-h-0 flex-col bg-surface p-2 text-ink"
 			onKeyDown={keyDown}
 		>
-			<div className="flex h-8 items-center justify-between px-1">
+			{/* The header once carried a 16px `Plus` for the same action the "New
+			    chat" row below now names in words. Two controls firing one action at
+			    two sizes in one panel reads as an accident, and the small one was the
+			    reported defect — it was the only entry point and users did not find
+			    it. The named row replaces it rather than joining it. */}
+			<div className="flex h-8 items-center px-1">
 				<h2 className="text-body-sm font-medium">Chats</h2>
-				<button
-					type="button"
-					className="rounded-md p-1 hover:bg-elevated"
-					aria-label="New chat"
-					disabled={!ready}
-					onClick={() => onStageDraft(undefined, true)}
-				>
-					<Plus className="size-4" />
-				</button>
 			</div>
 			<input
 				ref={searchRef}
@@ -514,6 +534,39 @@ export function ChatSidebar({
 									{matching.length}
 								</span>
 							)}
+						</button>
+						{/* Sits inside the All chats section so it holds the same place
+						    — under the toggle, above whatever the toggle reveals — in
+						    both the flat list and the Active/Previous split. Deliberately
+						    a plain `rowStyle` row and not a `heading()`: a chevron would
+						    promise something to expand. Disabled tracks `ready` because
+						    staging a draft needs the session catalogue that gate covers. */}
+						<button
+							type="button"
+							// Only a focusable row is a stop in the arrow ring. `keyDown`
+							// moves by calling `.focus()` on the next `[data-chat-row]`, and
+							// a disabled button silently refuses it — which would strand a
+							// keyboard user here in the stale state, where the list still
+							// renders but the catalogue gate is shut.
+							data-chat-row={ready || undefined}
+							className={cn(
+								rowStyle,
+								"w-full disabled:text-ink-disabled disabled:hover:bg-transparent",
+								// Marked current on the same terms as an entity row: an
+								// untargeted draft is the one THIS row stages. A draft
+								// carrying a target belongs to its entity row, which is
+								// already highlighting itself, and two rows claiming the
+								// same draft would misreport where the user is.
+								Boolean(activeDraftKey) && !draft?.target && "bg-accent-wash",
+							)}
+							aria-current={
+								activeDraftKey && !draft?.target ? "page" : undefined
+							}
+							disabled={!ready}
+							onClick={() => onStageDraft(undefined, true)}
+						>
+							<Plus className="size-4" />
+							<span className="flex-1 text-left">New chat</span>
 						</button>
 					</section>
 					{all ? (

@@ -223,9 +223,30 @@ const main = () => {
 	const manifestPath = join(EVIDENCE, "manifest.json");
 	if (existsSync(manifestPath)) {
 		const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
-		if (manifest.frames !== files.length) {
+		/*
+		 * `frames` is the SWEEP's own count, and it stays that way.
+		 *
+		 * Not every frame in this tree comes from `capture-evidence.mjs`. A
+		 * surface whose claim is a pointer hover or a click that changes state
+		 * cannot be photographed from Storybook, so those sets are captured
+		 * from the running app and committed alongside the sweep. Folding them
+		 * into `frames` would make the sweep's count - and with it its `head`,
+		 * `srcTree` and `capturedAt`, which a reader uses to decide whether the
+		 * set is current - describe frames it never took.
+		 *
+		 * So each such set declares itself in `supplementary` with its own
+		 * provenance, and the total is checked against the sum. A directory
+		 * that appears on disk without saying where it came from still fails,
+		 * which is the property this check exists for.
+		 */
+		const extra = manifest.supplementary ?? [];
+		const expected =
+			manifest.frames + extra.reduce((sum, set) => sum + set.frames, 0);
+		if (expected !== files.length) {
+			const parts = [`${manifest.frames} from the sweep`];
+			for (const set of extra) parts.push(`${set.frames} from ${set.path}`);
 			failures.push(
-				`manifest.json claims ${manifest.frames} frames; ${files.length} are on disk`,
+				`manifest.json accounts for ${expected} frames (${parts.join(", ")}); ${files.length} are on disk`,
 			);
 		}
 	}
