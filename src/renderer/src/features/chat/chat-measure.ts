@@ -47,3 +47,30 @@ export const CHAT_COLUMN_CONTAINER = "@container/chatcol";
  */
 export const CHAT_MEASURE =
 	"w-full @min-[750px]/chatcol:max-w-[900px] @min-[750px]/chatcol:mx-auto";
+
+/**
+ * The horizontal inset the shared measure resolves against, for the composer
+ * band. `px-6` is 24px, and 24px is not a taste choice: it is exactly what the
+ * transcript above insets its content by -- its own `p-4` (16px) PLUS the 8px
+ * scrollbar gutter it reserves with `[scrollbar-gutter:stable_both-edges]`.
+ * The composer is not a scroll container and reserves no gutter, so matching
+ * the TOTAL is the only way the two content boxes share one outer edge.
+ *
+ * ## Why this is a constant and not a per-breakpoint choice
+ *
+ * The band used to compact this to `px-1` in the small view while the
+ * transcript kept its 24px, which put the composer 20px outside the
+ * transcript on BOTH edges below a 600px column -- the same double-edge
+ * defect the shared measure was introduced to remove (design round 2, D10),
+ * just larger and only at narrow widths. It survived review because the
+ * evidence for the original fix was captured at ONE viewport (1380), where
+ * the two rules happen to agree.
+ *
+ * So the horizontal inset is deliberately OUTSIDE the small-view ternary that
+ * still compacts the band's VERTICAL padding: vertical space is scarce on a
+ * short window and compacting it costs nothing, whereas the horizontal inset
+ * is a shared edge and compacting one side of it is a misalignment. If a
+ * future change compacts this, it must compact the transcript's `p-4` and its
+ * gutter in the same commit, or the edges part again.
+ */
+export const CHAT_COLUMN_INSET = "px-6";

@@ -28,7 +28,11 @@ import {
 } from "react";
 import type { ClipboardEvent, FormEvent, KeyboardEvent } from "react";
 import { v4 as uuidv4 } from "uuid";
-import { CHAT_COLUMN_CONTAINER, CHAT_MEASURE } from "../chat-measure";
+import {
+	CHAT_COLUMN_CONTAINER,
+	CHAT_COLUMN_INSET,
+	CHAT_MEASURE,
+} from "../chat-measure";
 import type { Message } from "../types/message";
 import { AttachmentsPreview } from "./attachments-preview";
 import { AudioRecordingIndicator } from "./audio-recording-indicator";
@@ -712,9 +716,20 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					 * send — before the suggestion chips added a dozen more. Send is
 					 * the primary action and keeps it; the two secondary tools are
 					 * neutral until you reach for them. */}
-					<div className="flex items-center justify-between gap-2">
-						{/* Left side: attachment button */}
-						<div className="flex items-center gap-1">
+					<div className="flex min-w-0 items-center justify-between gap-2">
+						{/*
+						 * Left side: attachment button and the working-directory chip.
+						 *
+						 * `min-w-0` on this group AND on the row above it: a flex item's
+						 * automatic minimum size is its CONTENT, so an intermediate
+						 * wrapper that does not opt out of it refuses to shrink and the
+						 * `min-w-0` further down never gets the chance to apply. With the
+						 * canvas panel open the chat column collapses to its 220px floor
+						 * and the chip's 260px cap alone drove the row 97px past the
+						 * column's right edge (design round 2, D11); the chip carries the
+						 * shrink, but only these two ancestors can let it happen.
+						 */}
+						<div className="flex min-w-0 items-center gap-1">
 							<Tooltip content="Attach file">
 								<span>
 									<Button
@@ -948,13 +963,13 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					// cap whatever new content grows, where it grows.
 					CHAT_COLUMN_CONTAINER,
 					"flex w-full shrink-0 flex-col items-center justify-center bg-surface",
-					// `px-6` (24px), not `px-4`: the transcript above insets its content
-					// by its own 16px padding PLUS the 8px scrollbar gutter it reserves,
-					// so an equal 16px here left the two columns 8px apart at the right
-					// edge (1356 vs 1364) while their centres matched exactly. Matching
-					// the total inset is what gives the shared measure one outer edge
-					// instead of two that nearly agree.
-					isSmallView ? "px-1 pb-1 pt-0.5" : "px-6 pb-4 pt-2",
+					// The horizontal inset is the SHARED one and is the same at every
+					// width, because it is half of a shared edge: see
+					// `CHAT_COLUMN_INSET`. Only the VERTICAL padding compacts in the
+					// small view -- vertical space is what a short window is short of,
+					// and compacting it moves no edge the transcript also owns.
+					CHAT_COLUMN_INSET,
+					isSmallView ? "pb-1 pt-0.5" : "pb-4 pt-2",
 				)}
 			>
 				{messages.length === 0 && isHydrating && !isSmallView ? (

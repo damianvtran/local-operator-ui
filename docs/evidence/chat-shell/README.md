@@ -19,6 +19,25 @@ with real tool rows. The 12-theme sweep is deliberately **not** regenerated
 here; these are `localOperatorDark` only, which is the default theme and the one
 the reported screenshot was taken in.
 
+**How the transcript in the populated frames was produced (round 2).** The
+agent prose is real rendered prose, not a mock: the transcript is seeded
+directly into the session's `transcript.jsonl` and the app renders it from
+disk. Rendering a transcript needs **no model call**, so the populated state is
+reachable without an LLM credential - which round 1 wrongly treated as a
+blocker. The seeded rows were checked against what the backend's own writer
+emits (`encode_message_payload`), and a transcript written by that writer
+renders to byte-identical geometry, so the fixture is a state production
+actually reaches rather than a harness-only shape.
+
+**Every frame in this set asserts its own state before it is written.** The
+capture refuses to save a "populated" frame that shows the greeting, or an
+"empty" frame that contains agent prose. Round 2's D9 was exactly that failure
+- four frames were one empty-state capture while the prose called two of them a
+conversation - and the cause was persisted client state (drafts, last-opened
+session) rehydrating across runs. The captures now clear that state, wait for
+the session to report its row count instead of sleeping a fixed interval, and
+record an md5 per frame.
+
 **What these frames do not prove:** the packaged/notarised build (this is the
 dev main process, not an installed app), native dialogs, auto-update, or any
 theme other than `localOperatorDark`. The canvas-open frame is 2x scale; the
@@ -32,15 +51,23 @@ rest are 1x.
 | [after-empty-1380-frame2.png](after-empty-1380-frame2.png) | Bar gone, ground uniform, header reads as a header, and the working-directory chip sits in the composer toolbar beside the attach button showing `~`. |
 | [before-empty-1000-frame2.png](before-empty-1000-frame2.png) / [after-empty-1000-frame2.png](after-empty-1000-frame2.png) | Same pair at 1000x800. The before header renders 61.4px here against 46.5px at 1380 - the same declared bar, two different heights. |
 | [before-empty-760-frame2.png](before-empty-760-frame2.png) / [after-empty-760-frame2.png](after-empty-760-frame2.png) | Same pair at 760x800, the narrowest width sampled. |
-| [before-populated-1380-frame2.png](before-populated-1380-frame2.png) / [after-populated-1380-frame2.png](after-populated-1380-frame2.png) | A real conversation. The user bubble ("Continue") gains a visible edge; the read-only chip appears in the composer. |
+| [before-populated-1380-frame2.png](before-populated-1380-frame2.png) / [after-populated-1380-frame2.png](after-populated-1380-frame2.png) | A real conversation: two agent paragraphs, a tool row, and the user's "Continue" bubble. The bubble gains a visible edge; the read-only chip appears in the composer. **Recaptured in round 2** - see "D9" below. |
 | [before-populated-1000-frame2.png](before-populated-1000-frame2.png) / [after-populated-1000-frame2.png](after-populated-1000-frame2.png) | Same pair at 1000x800. |
-| [after-canvas-open-1380.png](after-canvas-open-1380.png) | Canvas panel open. **Recaptured in round 1** - see "D1: the canvas-open frame was wrong" below. |
+| [after-canvas-open-1380.png](after-canvas-open-1380.png) | Canvas panel open. **Recaptured in round 2**: the working-directory chip now truncates at the panel edge instead of hanging 97px past it (D11). |
+| [d4-before-1380.png](d4-before-1380.png) | The prose block left-anchored, as shipped: 40px of space on its left against 245px on its right. Compare with `after-populated-1380-frame1.png`, which is the same state with the fix applied. |
 
-`*-frame1.png` and `*-frame2.png` are consecutive captures about 1.2s apart. In
-every pair the chat column is byte-identical between the two; the only pixels
-that differ are the sidebar's spinning "working" status glyphs, which are live
-session activity rather than layout settling. Measured with ImageMagick, the
-worst pair differs by 635 of 1,203,360 pixels (0.05%), all inside the sidebar.
+`*-frame1.png` and `*-frame2.png` are consecutive captures about 1.2s apart, and
+in this set each pair is **byte-identical** - captured under
+`Emulation.setFocusEmulationEnabled`, where the sidebar's spinning "working"
+glyphs are not animating. That is the reflow claim in its strongest form: the
+first frame and the settled frame are the same bytes, so there is no motion for
+a user to see.
+
+A `frame1`/`frame2` pair being identical is the POINT of that pair. What round
+2's D9 caught was different and is what must never recur: the `populated` and
+`empty` frames being identical **to each other**, i.e. two different states
+photographed as one. Those are now distinct - the four 1380 frames are 2
+distinct images (one per state) rather than 1.
 
 ## The numbers behind the pictures
 
@@ -169,6 +196,19 @@ The cause is a 450px-minimum canvas plus a 220px-minimum chat column plus a
 900px-preferred transcript demanding more width than the row has; fixing it
 means giving the canvas a shrink policy, which is a separate change to the
 canvas panel and outside this slice.
+
+**Round 2 confirms the chip is not the cause.** D11 suspected the chip's 260px
+cap of driving this number. With the chip fixed and no longer overhanging, the
+row still measures 140px of overflow at 1380, and the overflow GROWS as the
+window narrows (420px at 1100, 760px at 760) because the canvas keeps its fixed
+800px width while the row shrinks. The chip contributed the clipped-mid-path
+appearance, not the overflow.
+
+**Theme token spread (round 2, D12) - noted, not changed.** The header rule is
+drawn 1.15x apart across themes: `iceberg` 3.65:1 against `localOperatorDark`'s
+4.18:1, with `tokyoNight` (3.69) and `obsidian` (3.72) also low. Every theme
+clears the 3:1 structural floor, so nothing is out of contract and no palette
+token is changed here; it is recorded for the next pass over the palettes.
 
 ## Reproducing
 
@@ -309,9 +349,100 @@ window the chat column collapses to its 220px floor while `md:` is still
 active, so `md:max-w-[900px]` was being applied to a 220px column. The
 container query asks the width of the column instead of the window.
 
-At 1000px and 760px the composer is 20px wider than the transcript column;
-that is the pre-existing `isSmallView` path (the chat column is under 550px, so
-the band uses its dense `px-1` padding), not the measure.
+At 1000px and 760px the composer was 20px wider than the transcript column on
+each side. Round 1 recorded that as "the pre-existing `isSmallView` path, not
+the measure" and left it. **Round 2's D10 is right that this was the wrong
+call:** it is the same double-edge defect the shared token was introduced to
+remove, just larger and only at narrow widths, and the reason it survived is
+that the evidence for the fix was captured at ONE viewport. It is fixed below.
+
+## D10: the measure bound at 1380 and nowhere narrow
+
+The round-1 claim (`[524..1356]` for both, delta 0) is true at 1380 and was
+verified again here. It was not true across the range: below a 600px column the
+transcript kept its 24px inset (its own `p-4` plus the 8px scrollbar gutter it
+reserves) while the composer band switched to `px-1`, so the composer sat 20px
+outside the transcript on both edges.
+
+The horizontal inset is now a named constant, `CHAT_COLUMN_INSET`, applied to
+the band at every width; only the band's VERTICAL padding still compacts in the
+small view, because vertical space is what a short window is short of and
+compacting it moves no edge the transcript also owns.
+
+Measured in the running app, transcript measure column against composer box,
+with the probe verified against a positive and a negative control first
+(`before-measure-round2.json`, `after-measure-round2.json`):
+
+| viewport | column | left delta before | right delta before | after |
+| --- | --- | --- | --- | --- |
+| 1380x872 | 832 | 0 | 0 | 0 / 0 |
+| 1250x872 | 702 | 0 | 0 | 0 / 0 |
+| 1100x872 | 552 | 0 | 0 | 0 / 0 |
+| 1000x800 | 452 | **-20** | **+20** | **0 / 0** |
+| 900x800 | 352 | **-20** | **+20** | **0 / 0** |
+| 760x800 | 212 | **-20** | **+20** | **0 / 0** |
+
+## D4: the prose block, decided with real prose on screen
+
+Round 1 deferred the prose left edge for want of "real agent prose to
+photograph". That premise was false - a transcript renders from disk - so the
+question is settled here with the prose rendered rather than reasoned about.
+
+Measured at 1380 (`d4-before-1380.png`), the prose block sat 40px from the
+column's left edge and stopped 245px short on the right: a 6.1:1 split, and the
+only element in the column that was neither full-width nor centred. Its optical
+centre was 102.6px left of the column's centre. At 1600 the split is 40:313.
+
+**The specced remediation was tested and rejected on measurement.** Moving the
+prose to the content edge (removing the 40px avatar gutter) makes the reported
+asymmetry *worse*, not better - 0:285 rather than 40:245, with the block 142.6px
+off centre instead of 102.6px - because the gutter was never the dominant term.
+The 62ch reading cap is: it holds the prose to 546.7px inside an 832px column,
+and all of the leftover was being placed on one side. Removing the gutter with
+the avatar still absolutely positioned also puts the avatar on top of the first
+line; that collision was confirmed with a probe proven able to go red first.
+
+What is applied instead is `margin-inline: auto` on the capped block, beside the
+cap in `markdown.css`. The leftover is split evenly, so the block sits in the
+middle of the space it owns:
+
+| viewport | space L / R before | off centre before | after | off centre after |
+| --- | --- | --- | --- | --- |
+| 1600 | 40 / 313.3 | 136.6 | 196.6 / 156.6 | **-20** |
+| 1380 | 40 / 245.3 | 102.6 | 162.6 / 122.6 | **-20** |
+| 1180 | 40 / 45.3 | 2.6 | 62.6 / 22.6 | **-20** |
+| 1100 | 40 / 0 | -20 | 40 / 0 | -20 |
+| 1000 and below | 0 / 0 | 0 | 0 / 0 | 0 (cap does not bind) |
+
+The residual 20px is half the 40px avatar gutter: the block is centred in the
+row's content box rather than in the scroller. Removing that last 20px means
+giving the avatar a flex slot instead of an absolute one, which is a change to
+every agent row's box model and is deliberately not bundled here.
+
+## D11: the chip overhung its own column
+
+With the canvas panel open the chat column collapses to its 220px floor. The
+chip's `max-w-65` is a 260px ceiling, and with nothing permitting it to shrink
+the chip kept that width and hung 97px past the column's right edge, clipped
+mid-path.
+
+The fix is `min-w-0 shrink` on the chip and on the two toolbar wrappers above
+it - a flex item's automatic minimum size is its content, so an intermediate
+wrapper that does not opt out refuses to shrink and a `min-w-0` further down
+never applies. Measured with the canvas open at 1380: chip right edge 97px past
+the column, now 27px inside it.
+
+`min-w-24` is a deliberate floor. With `min-w-0` alone the chip collapsed to
+46px, at which point the path span was ellipsised to zero width and the control
+showed a folder glyph and nothing else - failing quietly rather than loudly. At
+96px a readable leading fragment plus the ellipsis survives, and the full path
+stays in the chip's `aria-label` and its menu.
+
+The 140px row overflow this chip was credited with is **not** the chip: with the
+chip fixed the row still measures `clientWidth 880, scrollWidth 1020`. The
+overflow is the canvas panel's own fixed 800px width, which grows as the window
+narrows (760px of overflow at a 760px viewport). That is a pre-existing canvas
+shrink-policy question, out of scope here and recorded in "Not fixed here".
 
 ## Chip states (U2 / D2)
 

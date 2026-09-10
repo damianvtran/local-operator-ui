@@ -119,8 +119,15 @@ const TRIGGER_PATH_TRUNCATES_AT = 28;
  * whether the COMPOSER TOOLBAR has room, so the container is declared there
  * (`CHAT_COLUMN_CONTAINER` on the composer band) and this element only has to
  * avoid introducing a nearer one.
+ *
+ * `shrink` alongside `min-w-0`: a flex item's floor is its CONTENT, not zero,
+ * so `min-w-0` alone only permits shrinking below that floor -- it does not
+ * make this item yield when the row is over budget. With the canvas panel open
+ * the chat column collapses to its 220px floor, and without `shrink` the chip
+ * kept its full width and hung 97px past the column's right edge, clipped
+ * mid-path (design round 2, D11).
  */
-const CHIP_WRAPPER = "ml-2 flex min-w-0 items-center";
+const CHIP_WRAPPER = "ml-2 flex min-w-0 shrink items-center";
 
 /**
  * The chip's box, shared by all three states so they differ only where they
@@ -133,9 +140,23 @@ const CHIP_WRAPPER = "ml-2 flex min-w-0 items-center";
  * tighter than the space around it, which is the ratio the button sizes are
  * built on (8/4, 12/6, 16/8) and which the truncating span's own box was
  * defeating.
+ *
+ * `max-w-65` is a CEILING, not a width: it caps the chip on a wide toolbar and
+ * says nothing about a narrow one. `min-w-0 shrink` is what makes the ceiling
+ * yield to a column narrower than it, so the path truncates AT the panel edge
+ * rather than past it.
+ *
+ * `min-w-24` is the FLOOR that keeps truncation meaningful. Shrinking is only
+ * an improvement while some of the path survives: with `min-w-0` alone the
+ * chip collapsed to 46px in the canvas-open column, at which point the path
+ * span was ellipsised to ZERO width and the control showed a folder glyph and
+ * nothing else. A chip that has shrunk out of its own content is not more
+ * honest than one that overhangs -- it just fails quietly instead of loudly.
+ * 96px keeps a readable leading fragment plus the ellipsis, and the full path
+ * stays reachable through the chip's `aria-label` and its menu.
  */
 const CHIP_BOX =
-	"inline-flex h-8 max-w-65 items-center gap-1.5 rounded-sm px-3 text-body-sm";
+	"inline-flex h-8 max-w-65 min-w-24 shrink items-center gap-1.5 rounded-sm px-3 text-body-sm";
 
 /**
  * The same box for the two states that really are buttons.
@@ -147,7 +168,8 @@ const CHIP_BOX =
  * pair to be visibly tighter than the space around it; shrink-wrapping the
  * box is what makes the 6px gap the eye actually sees.
  */
-const CHIP_BOX_INTERACTIVE = "w-fit max-w-65 justify-start gap-1.5";
+const CHIP_BOX_INTERACTIVE =
+	"w-fit max-w-65 min-w-24 shrink justify-start gap-1.5";
 
 /**
  * The word the deleted full-width bar used to carry.
