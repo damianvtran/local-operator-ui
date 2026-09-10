@@ -208,10 +208,17 @@ export const MessagesView: FC<MessagesViewProps> = React.memo(
 		return (
 			<div
 				className={cn(
-					"relative flex items-center justify-center bg-canvas",
+					// `bg-surface` for the same reason as the canonical composer band:
+					// this sits inside the surface-coloured chat column, so `bg-canvas`
+					// stepped the ground the wrong way. `min-h-0` rather than `h-full`
+					// so this flex child is bounded by the column instead of declaring a
+					// base equal to the whole container - the legacy twin of the
+					// canonical transcript fix, changed together so this path does not
+					// quietly keep the defect.
+					"relative flex items-center justify-center bg-surface",
 					collapsed
 						? "h-0 grow-0 overflow-hidden"
-						: "h-full grow overflow-auto",
+						: "min-h-0 grow overflow-auto",
 				)}
 			>
 				{/* Fixed position loading indicator for fetching more messages */}
@@ -255,7 +262,7 @@ export const MessagesView: FC<MessagesViewProps> = React.memo(
 						"relative flex w-full flex-col-reverse will-change-[scroll-position] [overflow-anchor:auto] [transform:translateZ(0)]",
 						collapsed
 							? "h-0 grow-0 overflow-hidden p-0"
-							: "h-full grow overflow-auto p-4",
+							: "min-h-0 grow overflow-auto p-4",
 					)}
 				>
 					{isLoadingMessages && !messages.length ? (

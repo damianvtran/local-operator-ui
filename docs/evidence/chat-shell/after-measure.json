@@ -1,0 +1,78 @@
+{
+ "populated-1380": {
+  "win": {
+   "w": 1380,
+   "h": 872
+  },
+  "docDelta": 0,
+  "transcriptScrollbarW": 16,
+  "edges": [
+   {
+    "label": "transcript inner (900px measure)",
+    "left": 504,
+    "right": 1356,
+    "width": 852,
+    "centre": 930
+   },
+   {
+    "label": "agent prose (62ch)",
+    "left": 544,
+    "right": 1090.7,
+    "width": 546.7,
+    "centre": 817.4
+   },
+   {
+    "label": "user bubble",
+    "left": 1263.9,
+    "right": 1356,
+    "width": 92.1,
+    "centre": 1309.9
+   },
+   {
+    "label": "composer box",
+    "left": 496,
+    "right": 1364,
+    "width": 868,
+    "centre": 930
+   }
+  ]
+ },
+ "populated-1000": {
+  "win": {
+   "w": 1000,
+   "h": 800
+  },
+  "docDelta": 0,
+  "transcriptScrollbarW": 16,
+  "edges": [
+   {
+    "label": "transcript inner (900px measure)",
+    "left": 504,
+    "right": 976,
+    "width": 472,
+    "centre": 740
+   },
+   {
+    "label": "agent prose (62ch)",
+    "left": 504,
+    "right": 976,
+    "width": 472,
+    "centre": 740
+   },
+   {
+    "label": "user bubble",
+    "left": 891.9,
+    "right": 976,
+    "width": 84.1,
+    "centre": 933.9
+   },
+   {
+    "label": "composer box",
+    "left": 484,
+    "right": 996,
+    "width": 512,
+    "centre": 740
+   }
+  ]
+ }
+}

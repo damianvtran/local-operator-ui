@@ -277,21 +277,68 @@
 }
 
 /*
- * Reading measure.
+ * Reading measure — ONE shared box for every block in an answer.
  *
- * The message column is 900px wide because tables, code and diagrams need the
- * room. Prose does not: at 900px a paragraph runs past 100 characters a line,
- * roughly a third longer than any reading pane worth copying allows, and the
- * eye loses the line return. Capping the *text* elements rather than the
- * container is what lets both be true at once — a `<pre>` or a `<table>` in
- * the same message still spans the full column.
+ * The message column is 900px wide because tables, code and diagrams want
+ * the room. Prose does not: at 900px a paragraph runs past 100 characters a
+ * line, roughly a third longer than any reading pane worth copying allows,
+ * and the eye loses the line return.
  *
- * `ch` resolves against each element's own font, so the cap tracks the type
- * step automatically instead of being a pixel value that goes stale.
+ * The cap and the centring sit on the `.lo-markdown` ROOT, never on the
+ * blocks inside it. Two rounds of review taught this the hard way, and both
+ * defects came from putting the measure somewhere smaller than the whole
+ * rendered answer:
+ *
+ *  - On each block, `62ch` resolves against that block's OWN font, so it is a
+ *    different pixel width per type step — 546.7px at the body step, 624.8px
+ *    at the heading step, 781px at the title — and centring each block
+ *    independently gave each one a different left edge: h2 hung 39.1px left
+ *    of its own body text, h1 117.1px, dragging its full-width border-bottom
+ *    off-axis with it (code review round 3, R1).
+ *  - Excluding `<pre>`/`<table>` from the cap left them on the column edge
+ *    while the prose centred, so one mixed message started its code block
+ *    122.6px left of the paragraph around it at 1380 (156.6px at 1600), and
+ *    the column showed four different left edges. In a coding-agent UI mixed
+ *    prose and code is the common case, not an edge case (design round 3,
+ *    D13).
+ *
+ * On the root, `ch` resolves ONCE against the root's own body-size font, so
+ * headings, prose, lists, blockquotes, code and tables all inherit one box
+ * and therefore one left edge, at every type step. Code wraps inside the
+ * measure rather than being excluded from it: `pre-wrap` is already how a
+ * long line renders wherever the column is narrower than the cap — every
+ * window below ~1000px — so this extends an existing behaviour to wide
+ * windows instead of introducing a second one.
+ *
+ * ## Why the measured block is CENTRED in its row (design round 2, D4)
+ *
+ * The cap is a maximum, so on a wide window the prose is narrower than the
+ * column it lives in and the leftover has to go somewhere. Left-anchoring it
+ * put ALL of the leftover on one side: measured at 1380 with real agent prose,
+ * 40px of space on the left against 245px on the right, a 6.1:1 split that
+ * reads as "the text is shoved left" -- which is exactly the report this PR
+ * exists to answer. At 1600 it is 40 against 313.
+ *
+ * `margin-inline: auto` splits the leftover evenly instead, so the block sits
+ * in the middle of the space it actually owns. Measured effect on the prose
+ * block's offset from the column centre: 136.6px -> 20px at 1600, 102.6px ->
+ * 20px at 1380, and unchanged at 1100 and below where the cap stops binding
+ * and there is no leftover to distribute.
+ *
+ * The residual 20px is not slack: it is half the 40px avatar gutter the agent
+ * row is indented by, so the block is centred in the row's content box rather
+ * than in the scroller. Removing that residual means restructuring the row so
+ * the avatar takes a flex slot -- see `message-container.tsx`, which records
+ * why that is deliberately not done here (the naive `pl-0` puts the avatar on
+ * top of the first line, measured).
+ *
+ * Applied to the root of the rendered answer, so `<pre>` and `<table>` ride
+ * the same box as the prose — see the reading-measure comment above for why
+ * excluding them was the round-3 defect, not the design.
  */
-.lo-measured .lo-markdown > :is(p, ul, ol, blockquote, h1, h2, h3, h4, h5, h6),
-.lo-measured .lo-stream-tail {
+.lo-measured .lo-markdown {
 	max-width: 62ch;
+	margin-inline: auto;
 }
 
 /*

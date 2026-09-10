@@ -29,6 +29,17 @@ type RecentDirectoriesState = {
 	addRecentDirectory: (path: string) => void;
 
 	/**
+	 * Remove a single directory from the list.
+	 *
+	 * The list is a suggestion surface, so a bad entry costs something every
+	 * time the menu opens rather than once when it was added. Without a way to
+	 * prune it, one typo is permanent.
+	 *
+	 * @param path - The directory path to forget
+	 */
+	removeRecentDirectory: (path: string) => void;
+
+	/**
 	 * Clear all recent directories
 	 */
 	clearRecentDirectories: () => void;
@@ -66,6 +77,14 @@ export const useRecentDirectoriesStore = create<RecentDirectoriesState>()(
 						recentDirectories: newRecentDirectories,
 					};
 				});
+			},
+
+			removeRecentDirectory: (path: string) => {
+				set((state) => ({
+					recentDirectories: state.recentDirectories.filter(
+						(dir) => dir !== path,
+					),
+				}));
 			},
 
 			clearRecentDirectories: () => {

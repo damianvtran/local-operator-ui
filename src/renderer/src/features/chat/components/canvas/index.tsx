@@ -55,6 +55,14 @@ type CanvasProps = {
 	agentId?: string;
 
 	/**
+	 * The session's working directory, for the create-file dialog to state
+	 * where a new file will land. Threaded from the canonical stream rather
+	 * than looked up here: `agentId` is a session id or draft key, so the
+	 * legacy agents list cannot answer this question.
+	 */
+	currentWorkingDirectory?: string;
+
+	/**
 	 * The conversation ID for the current chat context
 	 */
 	conversationId?: string;
@@ -197,6 +205,7 @@ const CanvasComponent: FC<CanvasProps> = ({
 	onCloseDocument,
 	conversationId,
 	agentId,
+	currentWorkingDirectory,
 }) => {
 	const [isCreateFileDialogOpen, setCreateFileDialogOpen] = useState(false);
 	const [isCreatingFile, setIsCreatingFile] = useState(false);
@@ -495,7 +504,7 @@ const CanvasComponent: FC<CanvasProps> = ({
 					onClose={() => setCreateFileDialogOpen(false)}
 					onSave={handleCreateFile}
 					isSaving={isCreatingFile}
-					agentId={agentId}
+					currentWorkingDirectory={currentWorkingDirectory}
 				/>
 			)}
 		</section>

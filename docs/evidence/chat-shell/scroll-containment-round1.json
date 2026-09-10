@@ -1,0 +1,26 @@
+[
+ {
+  "route": "chat",
+  "modalsOpen": 0,
+  "hisBuild": {
+   "delta": 1099,
+   "scrolledTo": 1099
+  },
+  "thisBranch": {
+   "delta": 0,
+   "scrolledTo": 0
+  }
+ },
+ {
+  "route": "settings",
+  "modalsOpen": 0,
+  "hisBuild": {
+   "delta": 3742,
+   "scrolledTo": 3742
+  },
+  "thisBranch": {
+   "delta": 0,
+   "scrolledTo": 0
+  }
+ }
+]

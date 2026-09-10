@@ -1,0 +1,89 @@
+{
+ "scroller": null,
+ "rows": [
+  {
+   "rootLeft": 796.6,
+   "rootWidth": 546.7,
+   "maxWidth": "546.738px",
+   "marginLeft": "156.633px",
+   "marginRight": "156.633px",
+   "kids": [
+    {
+     "tag": "h2",
+     "left": 796.6,
+     "width": 546.7
+    },
+    {
+     "tag": "p",
+     "left": 796.6,
+     "width": 546.7
+    },
+    {
+     "tag": "h1",
+     "left": 796.6,
+     "width": 546.7
+    },
+    {
+     "tag": "p",
+     "left": 796.6,
+     "width": 546.7
+    },
+    {
+     "tag": "ul",
+     "left": 796.6,
+     "width": 546.7
+    },
+    {
+     "tag": "ol",
+     "left": 796.6,
+     "width": 546.7
+    },
+    {
+     "tag": "blockquote",
+     "left": 796.6,
+     "width": 546.7
+    },
+    {
+     "tag": "pre",
+     "left": 796.6,
+     "width": 546.7
+    },
+    {
+     "tag": "table",
+     "left": 796.6,
+     "width": 546.7
+    },
+    {
+     "tag": "p",
+     "left": 796.6,
+     "width": 546.7
+    }
+   ]
+  },
+  {
+   "rootLeft": 796.6,
+   "rootWidth": 546.7,
+   "maxWidth": "546.738px",
+   "marginLeft": "156.633px",
+   "marginRight": "156.633px",
+   "kids": [
+    {
+     "tag": "p",
+     "left": 796.6,
+     "width": 546.7
+    }
+   ]
+  }
+ ],
+ "toolRow": {
+  "left": 682,
+  "text": "Searched"
+ },
+ "composer": {
+  "left": 600,
+  "width": 900
+ },
+ "userBubble": {
+  "left": 1407.9
+ }
+}

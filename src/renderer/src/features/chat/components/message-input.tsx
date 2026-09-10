@@ -28,6 +28,11 @@ import {
 } from "react";
 import type { ClipboardEvent, FormEvent, KeyboardEvent } from "react";
 import { v4 as uuidv4 } from "uuid";
+import {
+	CHAT_COLUMN_CONTAINER,
+	CHAT_COLUMN_INSET,
+	CHAT_MEASURE,
+} from "../chat-measure";
 import type { Message } from "../types/message";
 import { AttachmentsPreview } from "./attachments-preview";
 import { AudioRecordingIndicator } from "./audio-recording-indicator";
@@ -69,6 +74,16 @@ type MessageInputProps = {
 	canonicalStop?: { active: boolean; onStop: () => void };
 	initialSuggestions?: string[];
 	agentData?: AgentDetails | null;
+	/**
+	 * Working directory for this conversation, and the way to change it.
+	 *
+	 * `onChangeCwd` is present only while the session is still a draft: a cwd is
+	 * fixed at `sessions.create` and the backend exposes no way to move a live
+	 * one, so the chip renders read-only once the session exists rather than
+	 * offering a control that cannot succeed.
+	 */
+	cwd?: string;
+	onChangeCwd?: (cwd: string) => void;
 	isSmallView?: boolean;
 	/**
 	 * History has not resolved yet, so "no messages" is not yet a FACT.
@@ -138,11 +153,18 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			canonicalStop,
 			initialSuggestions,
 			agentData,
+			cwd,
+			onChangeCwd,
 			isSmallView = false,
 			isHydrating = false,
 		},
 		ref,
 	) => {
+		/*
+		 * The canonical session's cwd is the answer where there is one; the legacy
+		 * agent record is the fallback so the old backend path keeps its chip.
+		 */
+		const cwdToShow = cwd ?? agentData?.current_working_directory;
 		const removeReply = useConversationInputStore((state) => state.removeReply);
 		const clearReplies = useConversationInputStore(
 			(state) => state.clearReplies,
@@ -571,28 +593,76 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					className={cn(
 						COMPOSER_BOX,
 						isSmallView ? "gap-2 rounded-md p-2" : "gap-3 rounded-frame p-4",
-						"w-full max-w-full sm:max-w-[90%] md:max-w-[900px]",
+						CHAT_MEASURE,
 						// The slash popup anchors above this box without shifting it.
 						"relative",
 					)}
 					data-tour-tag="chat-input-textarea"
 				>
+					{/*
+					 * The popup is a CHILD of this box and renders `absolute
+					 * bottom-full`, i.e. deliberately outside the box's content area,
+					 * above it. It is NOT portaled, unlike the Radix menus and
+					 * tooltips: those get their portal AND their positioning from
+					 * Popper, whereas this list is anchored to one element that never
+					 * moves relative to its own containing block, so `bottom-full` on a
+					 * `relative` parent is the whole positioning story and a portal
+					 * would mean hand-rolling anchor tracking on scroll and resize --
+					 * more machinery, and a mechanism this codebase has nowhere else
+					 * (`createPortal` appears in no renderer file).
+					 *
+					 * The cost of staying unportaled is that ANY ancestor which
+					 * establishes a vertical clipping context erases it, with no
+					 * symptom other than an invisible list, because the overflow is on
+					 * the far side of the scroller's origin so there is nothing to
+					 * scroll to. That is exactly what an `overflow-y-auto` on the
+					 * composer band did (round 2, R1). Keep every bound between here
+					 * and the band on the popup's SIBLINGS, never on its ancestors.
+					 */}
 					<SlashSuggestionsPopup
 						state={slash}
 						onPick={handleSlashPick}
 						anchorRef={textareaRef}
 					/>
-					{replies.length > 0 && (
-						<ReplyPreview replies={replies} onRemoveReply={handleRemoveReply} />
-					)}
-					{attachments.length > 0 && (
-						<AttachmentsPreview
-							attachments={attachments.map((a) => a.path)}
-							onRemoveAttachment={(index) =>
-								handleRemoveAttachment(attachments[index].id)
-							}
-							disabled={isInputDisabled || isRecording || isTranscribing}
-						/>
+					{(replies.length > 0 || attachments.length > 0) && (
+						/*
+						 * The previews carry their own bound, on a SIBLING of the popup
+						 * rather than on an ancestor of it.
+						 *
+						 * These two are the composer's only unbounded content: attachment
+						 * tiles are 100px each and wrap, and replies stack, so a dozen
+						 * attachments grew the band past the window and took the send
+						 * controls off the bottom with nothing left to scroll them back
+						 * (measured: 40 tiles + 10 replies made the band 1126px in an
+						 * 872px viewport, send button off screen). Bounding them HERE
+						 * bounds the band as a consequence -- 377px at every load -- so
+						 * the band needs no max-height of its own and therefore no
+						 * scroller, which is what keeps the slash popup above it
+						 * reachable.
+						 *
+						 * This is the pattern the textarea below already uses
+						 * (`max-h-28` plus its own `overflow-y-auto`): each growable part
+						 * of the composer caps itself and scrolls internally, so no
+						 * wrapper has to clip on behalf of its children. ~240px shows two
+						 * full rows of tiles before scrolling.
+						 */
+						<div className="max-h-[240px] shrink-0 overflow-y-auto">
+							{replies.length > 0 && (
+								<ReplyPreview
+									replies={replies}
+									onRemoveReply={handleRemoveReply}
+								/>
+							)}
+							{attachments.length > 0 && (
+								<AttachmentsPreview
+									attachments={attachments.map((a) => a.path)}
+									onRemoveAttachment={(index) =>
+										handleRemoveAttachment(attachments[index].id)
+									}
+									disabled={isInputDisabled || isRecording || isTranscribing}
+								/>
+							)}
+						</div>
 					)}
 
 					{isRecording ? (
@@ -646,9 +716,20 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					 * send — before the suggestion chips added a dozen more. Send is
 					 * the primary action and keeps it; the two secondary tools are
 					 * neutral until you reach for them. */}
-					<div className="flex items-center justify-between gap-2">
-						{/* Left side: attachment button */}
-						<div className="flex items-center gap-1">
+					<div className="flex min-w-0 items-center justify-between gap-2">
+						{/*
+						 * Left side: attachment button and the working-directory chip.
+						 *
+						 * `min-w-0` on this group AND on the row above it: a flex item's
+						 * automatic minimum size is its CONTENT, so an intermediate
+						 * wrapper that does not opt out of it refuses to shrink and the
+						 * `min-w-0` further down never gets the chance to apply. With the
+						 * canvas panel open the chat column collapses to its 220px floor
+						 * and the chip's 260px cap alone drove the row 97px past the
+						 * column's right edge (design round 2, D11); the chip carries the
+						 * shrink, but only these two ancestors can let it happen.
+						 */}
+						<div className="flex min-w-0 items-center gap-1">
 							<Tooltip content="Attach file">
 								<span>
 									<Button
@@ -664,10 +745,39 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 									</Button>
 								</span>
 							</Tooltip>
-							{conversationId && !canonicalStop && (
+							{/*
+							 * Gated on whether a directory is KNOWN, not on whether it is
+							 * truthy, and not on the session being idle.
+							 *
+							 * Two unsatisfiable-condition bugs in the same three lines,
+							 * one after the other. The original `!canonicalStop` gate
+							 * could never be true in the canonical chat - the stop
+							 * control is passed unconditionally - so the chip was
+							 * unreachable from v0.16.0 even though it was still mounted
+							 * here. Replacing it with `{cwdToShow && ...}` then made the
+							 * chip able to DELETE ITSELF: `""` is a legal value of the
+							 * staged cwd, it is falsy, and this chip is the only writer
+							 * of `state.cwd` now the full-width bar is gone. So clearing
+							 * the field unmounted the one control that could set it
+							 * again, and `cwd` is persisted, so the app came back from a
+							 * restart still with no chip - unrecoverable without
+							 * devtools.
+							 *
+							 * `!== undefined` is the honest question: undefined means "no
+							 * directory is known for this conversation", which is the one
+							 * case with nothing to render. An empty string means "known,
+							 * and empty" - a state the chip has an affordance for, and
+							 * the reason its `unset` branch is reachable again.
+							 */}
+							{cwdToShow !== undefined && (
 								<DirectoryIndicator
-									agentId={conversationId}
-									currentWorkingDirectory={agentData?.current_working_directory}
+									currentWorkingDirectory={cwdToShow}
+									onChangeDirectory={onChangeCwd}
+									readOnlyReason={
+										onChangeCwd
+											? undefined
+											: "Working directory is set when the session starts and cannot be changed afterwards. Start a new chat to use a different folder."
+									}
 								/>
 							)}
 						</div>
@@ -785,7 +895,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				</div>
 
 				{messages.length === 0 && !isHydrating && !isSmallView && (
-					<div className="mx-auto mt-6 w-full max-w-full sm:max-w-[90%] md:max-w-[900px]">
+					<div className={cn("mt-6", CHAT_MEASURE)}>
 						{/* Neutral chips. Twelve accent-washed pills was the accent
 						 * budget spent four times over on the one screen that has no
 						 * content to compete with them; as quiet outlines they read as
@@ -814,9 +924,72 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		return (
 			<div
 				className={cn(
-					"flex w-full shrink-0 grow flex-col items-center justify-center bg-canvas",
-					isSmallView ? "px-1 pb-1 pt-0.5" : "px-4 pb-4 pt-2",
+					// `bg-surface`, not `bg-canvas`. `canvas` is the PAGE ground and
+					// `surface` is the panel ground, so painting canvas inside the
+					// surface-coloured chat column ran the elevation step backwards and
+					// read as a hole punched through the panel to the page behind it.
+					// On an empty chat this band holds the greeting, the composer and
+					// the suggestion chips, so it covered most of the column - which is
+					// the "large empty space with the wrong background colour". The
+					// composer box keeps its own `border-control` edge (floored at 3:1
+					// on all four grounds), so it stays legible without the band.
+					//
+					// `shrink-0` alone: `grow` on the same element contradicted it and
+					// became actively harmful once the transcript stopped declaring
+					// `h-full`, because the band would then claim the column's free
+					// space instead of leaving it to the transcript.
+					//
+					// That reasoning holds ONLY while a transcript exists to leave the
+					// space to. With no messages there is nothing above this band but
+					// an empty scroller, and `shrink-0` then pinned the greeting,
+					// composer and chips to the bottom of the column under a large dark
+					// void -- the operator's report. So the vertical behaviour is
+					// conditional on the same fact that decides which content renders:
+					// empty means `grow` (claim the column, `justify-center` centres the
+					// group), non-empty means `shrink-0` (natural height at the bottom).
+					// The transcript yields its own `grow` on the same condition, so the
+					// two never split the free space between them.
+					//
+					// `data-lo-composer-band` is the band's stable identity. The
+					// slash-popup guard in scripts/canonical-chat.test.mjs used to find
+					// this element by `shrink-0 + bg-surface`, which the conditional
+					// below makes state-dependent; an attribute that does not move with
+					// the layout is what keeps that guard aimed at the band.
+					//
+					// NO `max-height` and NO `overflow` on this element, deliberately.
+					//
+					// `shrink-0` inside a now-`overflow-hidden` column really is
+					// unbounded, and round 1 bounded it here with `max-h-[70%]` plus
+					// `overflow-y-auto`. The bound was right and the scroller was a
+					// blocker (round 2, R1): the slash popup is `absolute bottom-full`
+					// inside this band and is not portaled, so a vertical clipping
+					// context here erased it -- 8/8 hit-testable rows to 0/8 with an
+					// ordinary transcript, and unrecoverable by scrolling because
+					// `bottom-full` puts the overflow above the scroller's origin
+					// (`scrollHeight === clientHeight`, so `maxScroll` is 0).
+					//
+					// What decides that is the BAND'S height, not the window's: on an
+					// empty chat the greeting and chips make the band tall enough to
+					// contain the popup, which is why the defect hid from a check that
+					// only looked at the empty screen.
+					//
+					// The bound now lives on the previews inside the composer box, which
+					// are the only unbounded content and are SIBLINGS of the popup, so
+					// the band ends up bounded (377px at every load measured) without
+					// any ancestor of the popup clipping. Do not re-add a bound here:
+					// cap whatever new content grows, where it grows.
+					CHAT_COLUMN_CONTAINER,
+					"flex w-full flex-col items-center justify-center bg-surface",
+					messages.length === 0 ? "grow" : "shrink-0",
+					// The horizontal inset is the SHARED one and is the same at every
+					// width, because it is half of a shared edge: see
+					// `CHAT_COLUMN_INSET`. Only the VERTICAL padding compacts in the
+					// small view -- vertical space is what a short window is short of,
+					// and compacting it moves no edge the transcript also owns.
+					CHAT_COLUMN_INSET,
+					isSmallView ? "pb-1 pt-0.5" : "pb-4 pt-2",
 				)}
+				data-lo-composer-band={true}
 			>
 				{messages.length === 0 && isHydrating && !isSmallView ? (
 					// Hydrating: we do not yet know whether this conversation is
@@ -826,7 +999,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					// backend that blankness is the whole first impression. A
 					// skeleton in the greeting's own place says "loading" without
 					// claiming which of the two answers is coming.
-					<div className="flex w-full flex-col items-center justify-center gap-6 p-4">
+					<div className="flex w-full flex-col items-center justify-center gap-6 py-4">
 						{/* `<output>` rather than a div with role="status": it carries
 						 * the same implicit live-region semantics as a native element,
 						 * which is what the a11y lint asks for. */}
@@ -840,7 +1013,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 						{inputContent}
 					</div>
 				) : messages.length === 0 && !isSmallView ? (
-					<div className="flex w-full flex-col items-center justify-center gap-6 p-4">
+					<div className="flex w-full flex-col items-center justify-center gap-6 py-4">
 						<h2 className="text-center text-ink text-title">
 							What can I help you with today?
 						</h2>

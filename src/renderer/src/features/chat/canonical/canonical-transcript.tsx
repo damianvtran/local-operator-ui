@@ -54,6 +54,7 @@ import type {
 	CanonicalFrontendState,
 	PendingDesktopGate,
 } from "../../../../../shared/desktop-session-contract";
+import { CHAT_COLUMN_CONTAINER, CHAT_MEASURE } from "../chat-measure";
 import { MarkdownRenderer } from "../components/markdown-renderer";
 import { ErrorBlock } from "../components/message-item/error-block";
 import {
@@ -117,7 +118,14 @@ const UserRow = memo(function UserRow({
 			<div className="group relative flex w-full justify-end">
 				<div
 					className={cn(
-						"relative rounded-frame border border-hairline bg-surface text-ink break-words",
+						// `border-control`, not `hairline`. The bubble is `bg-surface` on
+						// a `bg-surface` column, so this border is its ONLY edge - and
+						// because the agent side has no bubble at all, that edge is also
+						// the whole visual distinction between the two speakers.
+						// Removing it would lose information, which is the contract's own
+						// test for a structural boundary, so it takes the role with the
+						// 3:1 floor rather than the decorative one with no floor.
+						"relative rounded-frame border border-control bg-surface text-ink break-words",
 						isSmallView ? "max-w-[92%] px-3 py-2" : "max-w-[75%] px-4 py-3",
 					)}
 				>
@@ -537,6 +545,26 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	);
 	const hidden = total - visible.length;
 
+	/*
+	 * An empty transcript must not claim the column's free space.
+	 *
+	 * This scroller carries `grow` so it absorbs the leftover height between
+	 * the header and the composer. With rows in it that is the whole point.
+	 * With NO rows it is an empty box that still votes for all the free space,
+	 * and the composer band below -- which renders the greeting, the composer
+	 * and the suggestion chips on exactly that condition -- is left pinned to
+	 * the bottom under a large dark void.
+	 *
+	 * So the two are decided by one fact: when there is nothing to scroll, this
+	 * element collapses out of the vertical layout and the band grows into the
+	 * column and centres its group instead. `records` rather than `rows`
+	 * because a record that renders to no row is still nothing to scroll.
+	 *
+	 * The legacy twin (`MessagesView`) already does this with its `collapsed`
+	 * branch; the two paths change together so neither keeps the defect.
+	 */
+	const collapsed = transcript.records.length === 0;
+
 	useEffect(() => {
 		const container = containerRef.current;
 		if (!container || hidden <= 0) return;
@@ -658,7 +686,26 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			ref={containerRef}
 			data-lo-canonical-transcript={true}
 			className={cn(
-				"relative flex h-full w-full grow flex-col-reverse overflow-auto p-4 will-change-[scroll-position] [overflow-anchor:auto] [transform:translateZ(0)]",
+				// `min-h-0`, not `h-full`: this is the flex child that must absorb
+				// the column's leftover height. `h-full` resolves its flex base to
+				// the FULL container height, so the base sum overshot the container
+				// by the header plus the composer and the deficit was taken out of
+				// the header - which is why the header rendered a different height
+				// depending on how tall the composer happened to be.
+				//
+				// `scrollbar-gutter: stable both-edges` because this is the scroll
+				// container and the composer below it is not. An 8px scrollbar takes
+				// its width off the right of THIS content box only, so `mx-auto`
+				// centred the transcript 4px left of the composer - a permanent
+				// misalignment between the two elements the eye most wants aligned.
+				// Reserving the gutter on both edges restores a symmetric content
+				// box: measured in the running app, the centre delta goes 4px -> 0.
+				// `stable` alone would reserve only the right edge and keep it.
+				CHAT_COLUMN_CONTAINER,
+				"relative flex w-full flex-col-reverse [scrollbar-gutter:stable_both-edges] will-change-[scroll-position] [overflow-anchor:auto] [transform:translateZ(0)]",
+				collapsed
+					? "h-0 grow-0 overflow-hidden p-0"
+					: "min-h-0 grow overflow-auto p-4",
 			)}
 		>
 			{perf && (
@@ -666,7 +713,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 					{perf}
 				</span>
 			)}
-			<div className="mx-auto flex w-full max-w-[900px] flex-col sm:max-w-[90%] md:max-w-[900px]">
+			<div className={cn("flex flex-col", CHAT_MEASURE)}>
 				{/* Older rows: durable pages, then the local window. */}
 				{(transcript.hasMore || hidden > 0) && (
 					<div className="mb-4 flex justify-center">
