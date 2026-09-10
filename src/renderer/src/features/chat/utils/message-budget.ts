@@ -15,6 +15,7 @@
 
 import {
 	DESKTOP_MESSAGE_BUDGET_BYTES,
+	DESKTOP_MESSAGE_MAX_CHARS,
 	desktopEndpoint,
 } from "../../../../../shared/desktop-contract";
 import type { WireImage } from "./bound-image";
@@ -56,32 +57,82 @@ export function messageBodyBytes(text: string, images: WireImage[]): number {
  * sentence whose job is "this is too big by roughly this much".
  */
 export function formatByteSize(bytes: number): string {
-	if (bytes >= 1_000_000) return `${(bytes / 1_000_000).toFixed(1)} MB`;
+	// The MB branch starts at 999_500, not 1_000_000: `Math.round(999_500/1000)`
+	// is 1000, so the KB branch would otherwise print "1000 KB" - a unit that
+	// never appears anywhere else and reads as a ladder of 999 KB -> 1000 KB ->
+	// 1.0 MB (review round 1, F7). Rounding up to "1.0 MB" is what a person
+	// expects, and this is the refusal sentence's only number.
+	if (bytes >= 999_500) return `${(bytes / 1_000_000).toFixed(1)} MB`;
 	return `${Math.round(bytes / 1000)} KB`;
+}
+
+/**
+ * The refusal sentence for an over-budget slash command, or null when it fits.
+ *
+ * `sessions.command` shares the message budget (it is in `MESSAGE_OPS`) and
+ * its `args` field accepts up to 200,000 characters of user-typed text, but
+ * nothing weighed it before admission - the only guard was main's untargeted
+ * backstop, which is the same schema-wider-than-its-check asymmetry this
+ * change set out to remove (review round 1, F8).
+ *
+ * Separate from `messageBudgetRefusal` because the remedy differs: a command
+ * has no images to drop and cannot be split across two sends, so the advice is
+ * to shorten it or send the text as a message instead.
+ */
+export function commandBudgetRefusal(
+	command: string,
+	args: string,
+	budget: number = DESKTOP_MESSAGE_BUDGET_BYTES,
+): string | null {
+	const target = desktopEndpoint({
+		op: "sessions.command",
+		sessionId: MEASUREMENT_SESSION_ID,
+		requestId: MEASUREMENT_REQUEST_ID,
+		command,
+		args,
+	});
+	const total = new TextEncoder().encode(JSON.stringify(target.body)).length;
+	if (total <= budget) return null;
+	return `This command is ${formatByteSize(total)}, more than the ${formatByteSize(budget)} one command can carry. Shorten it, or put the text in a message instead.`;
 }
 
 /**
  * The refusal sentence for an over-budget message, or null when it fits.
  *
- * Two sentences because the remedy differs: images can be sent separately,
- * text has to be split. Both name what happened, what it means, and what to
- * do, in that order - `docs/branding.md` § 8. Neither quotes a status code or
- * an exception, because neither is something the user can act on.
+ * Sentences differ because the remedy differs: images can be sent separately,
+ * text has to be split. All of them name what happened, what it means, and
+ * what to do, in that order - `docs/branding.md` § 8. None quotes a status
+ * code or an exception, because neither is something the user can act on.
  */
 export function messageBudgetRefusal(
 	text: string,
 	images: WireImage[],
 	budget: number = DESKTOP_MESSAGE_BUDGET_BYTES,
 ): string | null {
+	// The CHARACTER ceiling is weighed first and separately, because it binds on
+	// inputs the byte budget lets through: 400,000 characters of prose is ~400 KB
+	// against an 880,000-byte budget, so the pre-flight passed it and the schema
+	// parse inside `requestDesktop` refused it with "Invalid desktop operation." -
+	// a sentence naming nothing actionable, for someone whose only mistake was
+	// pasting a long document (review round 1, Q-2). Counted in JS characters
+	// because that is what `z.string().max()` counts, so this check and the one it
+	// front-runs agree on every input rather than only on ASCII.
+	if (text.length > DESKTOP_MESSAGE_MAX_CHARS) {
+		return `This message is ${text.length.toLocaleString()} characters, more than the ${DESKTOP_MESSAGE_MAX_CHARS.toLocaleString()} one message can carry. Split it across two messages.`;
+	}
 	const total = messageBodyBytes(text, images);
 	if (total <= budget) return null;
 	const limit = formatByteSize(budget);
-	if (images.length) {
-		// Attribute the overflow to the images when there are any: they are what
-		// the user can remove, and after the downscale ladder has already run,
-		// images large enough to still overflow are the dominant term.
-		const imageBytes = total - messageBodyBytes(text, []);
+	const textBytes = messageBodyBytes(text, []);
+	const imageBytes = total - textBytes;
+	// Attribute the overflow to whichever term actually DOMINATES it, not to
+	// "there is at least one image". Branching on `images.length` alone told a
+	// user with 950,000 chars of text and one 100-byte thumbnail to "remove an
+	// image" to save "0 KB" - advice that cannot work (review round 1, F6).
+	// Images stay the preferred remedy on a tie, since removing one is the
+	// cheaper action than splitting prose.
+	if (images.length && imageBytes >= textBytes) {
 		return `These images total ${formatByteSize(imageBytes)}, more than the ${limit} one message can carry. Remove an image, or send them in a second message.`;
 	}
-	return `This message is ${formatByteSize(total)} of text, more than the ${limit} one message can carry. Split it across two messages.`;
+	return `This message is ${formatByteSize(textBytes)} of text, more than the ${limit} one message can carry. Split it across two messages.`;
 }

@@ -180,28 +180,58 @@ async function loadImageBounding() {
 			close() {},
 		};
 	};
+	// Models the two canvas behaviours that decide whether a transparent PNG
+	// survives the JPEG rung, because a mock that omits them cannot see the
+	// class of bug where it goes black:
+	//
+	//   1. A fresh backing store is rgba(0,0,0,0) - transparent BLACK, not white.
+	//   2. JPEG has no alpha channel, so encoding flattens every pixel against
+	//      whatever RGB sits underneath it.
+	//
+	// `fillStyle`/`fillRect` are therefore real here rather than no-ops: they are
+	// what the JPEG rung uses to put white under the image, and a mock that
+	// silently ignored them would report a passing flatten that never happened.
 	globalThis.OffscreenCanvas = class {
 		constructor(width, height) {
 			this.width = width;
 			this.height = height;
+			this.__fill = null;
+			this.__pendingFill = null;
 		}
 		getContext() {
+			const canvas = this;
 			return {
+				set fillStyle(value) {
+					canvas.__pendingFill = value;
+				},
+				get fillStyle() {
+					return canvas.__pendingFill;
+				},
+				// Only a whole-canvas fill is modelled; that is all the ladder does.
+				fillRect: () => {
+					canvas.__fill = canvas.__pendingFill;
+				},
 				drawImage: (bitmap, _x, _y, width, height) => {
-					this.__source = bitmap.__bytes;
-					this.width = width;
-					this.height = height;
+					canvas.__source = bitmap.__bytes;
+					canvas.width = width;
+					canvas.height = height;
 				},
 			};
 		}
 		async convertToBlob({ type, quality }) {
-			const pipeline = sharp(this.__source).resize(this.width, this.height);
-			const bytes =
-				type === "image/jpeg"
-					? await pipeline
-							.jpeg({ quality: Math.round((quality ?? 0.85) * 100) })
-							.toBuffer()
-					: await pipeline.png().toBuffer();
+			let pipeline = sharp(this.__source).resize(this.width, this.height);
+			if (type === "image/jpeg") {
+				// Flatten onto the backing store: the fill when one was applied,
+				// transparent black otherwise.
+				pipeline = pipeline.flatten({ background: this.__fill ?? "#000000" });
+				const bytes = await pipeline
+					.jpeg({ quality: Math.round((quality ?? 0.85) * 100) })
+					.toBuffer();
+				return new Blob([bytes], { type });
+			}
+			if (this.__fill)
+				pipeline = pipeline.flatten({ background: this.__fill });
+			const bytes = await pipeline.png().toBuffer();
 			return new Blob([bytes], { type });
 		}
 	};
@@ -246,6 +276,140 @@ test("an animated GIF is exempt, because a canvas re-encode would flatten it", a
 	const { boundImageForWire } = await loadImageBounding();
 	const gif = { data_b64: "R0lGODlhAQABAAAAACw=", mime_type: "image/gif" };
 	assert.deepEqual(await boundImageForWire(gif), gif);
+});
+
+/**
+ * A macOS window screenshot: opaque detailed content inside a margin that
+ * stays transparent, the way Cmd-Shift-4 + Space captures rounded corners and
+ * a drop shadow. RGBA, and the transparent margin is what the JPEG rung has to
+ * flatten onto WHITE rather than the canvas's transparent black.
+ */
+async function windowShotPng(width, height, margin) {
+	const pixels = Buffer.alloc(width * height * 4, 0);
+	for (let y = 0; y < height; y += 1) {
+		for (let x = 0; x < width; x += 1) {
+			const index = (y * width + x) * 4;
+			const inside =
+				x >= margin &&
+				x < width - margin &&
+				y >= margin &&
+				y < height - margin;
+			if (!inside) continue;
+			// Detailed content so PNG cannot win the candidate race and the JPEG
+			// rung is genuinely exercised.
+			const noise = ((x * 7 + y * 13) % 61) - 30;
+			pixels[index] = 200 + noise;
+			pixels[index + 1] = 205 + noise;
+			pixels[index + 2] = 212 + noise;
+			pixels[index + 3] = 255;
+		}
+	}
+	return sharp(pixels, { raw: { width, height, channels: 4 } })
+		.png()
+		.toBuffer();
+}
+
+test("a transparent screenshot re-encoded to JPEG flattens onto white, not black", async () => {
+	const { boundImageForWire } = await loadImageBounding();
+	// The macOS window paste this ladder exists to support. Forced onto the
+	// JPEG rung the way the overflow ladder forces it.
+	const png = await windowShotPng(1400, 1000, 40);
+	const bounded = await boundImageForWire(
+		{ data_b64: png.toString("base64"), mime_type: "image/png" },
+		512,
+		0.6,
+	);
+	assert.equal(
+		bounded.mime_type,
+		"image/jpeg",
+		"fixture must reach the JPEG rung or this test proves nothing",
+	);
+	const { data, info } = await sharp(Buffer.from(bounded.data_b64, "base64"))
+		.ensureAlpha()
+		.raw()
+		.toBuffer({ resolveWithObject: true });
+	const pixel = (x, y) => {
+		const index = (y * info.width + x) * info.channels;
+		return [data[index], data[index + 1], data[index + 2]];
+	};
+	// A fresh canvas is transparent BLACK, so an unflattened encode returns 0
+	// here and the user's screenshot arrives with black corners.
+	assert.ok(
+		pixel(2, 2)[0] > 200,
+		`the transparent margin must flatten to white, got ${pixel(2, 2)}`,
+	);
+	assert.ok(
+		pixel(Math.floor(info.width / 2), Math.floor(info.height / 2))[0] > 140,
+		"opaque content must survive the flatten",
+	);
+});
+
+test("a PNG that stays on the PNG rung keeps its transparency", async () => {
+	const { boundImageForWire } = await loadImageBounding();
+	// The flatten must be confined to the JPEG rung: PNG carries alpha, and
+	// flattening it there would destroy transparency the wire can represent.
+	const png = await windowShotPng(300, 200, 20);
+	const bounded = await boundImageForWire({
+		data_b64: png.toString("base64"),
+		mime_type: "image/png",
+	});
+	if (bounded.mime_type !== "image/png") return;
+	const meta = await sharp(Buffer.from(bounded.data_b64, "base64")).metadata();
+	assert.ok(meta.hasAlpha, "the PNG rung must not flatten alpha away");
+});
+
+test("bounding never returns an image larger than the one it was given", async () => {
+	const { boundImageForWire, base64ByteLength } = await loadImageBounding();
+	// An already-compressed photo over the edge limit: the downscaled PNG
+	// re-encode routinely exceeds the source JPEG, and a larger payload can push
+	// an otherwise-sendable message into refusal.
+	for (const [width, height, quality] of [
+		[1400, 1000, 55],
+		[1200, 1024, 40],
+		[1300, 980, 50],
+	]) {
+		const source = await sharp(await screenshotPng(width, height))
+			.jpeg({ quality })
+			.toBuffer();
+		const bounded = await boundImageForWire({
+			data_b64: source.toString("base64"),
+			mime_type: "image/jpeg",
+		});
+		assert.ok(
+			base64ByteLength(bounded.data_b64) <= source.byteLength,
+			`${width}x${height} q${quality} grew: ${source.byteLength} -> ${base64ByteLength(bounded.data_b64)}`,
+		);
+	}
+});
+
+test("a set of images that already fits is never made larger by the ladder", async () => {
+	const { boundImagesForBudget, messageBodyBytes } = await loadImageBounding();
+	// Modest photos that fit as pasted. An exhausted ladder used to return its
+	// LAST rung rather than the smallest set seen, which could hand back
+	// something bigger than the input - and so refuse a message that would have
+	// sent.
+	const images = [];
+	for (let index = 0; index < 6; index += 1) {
+		const source = await sharp(await screenshotPng(1100 + index * 40, 900))
+			.jpeg({ quality: 50 })
+			.toBuffer();
+		images.push({
+			data_b64: source.toString("base64"),
+			mime_type: "image/jpeg",
+		});
+	}
+	const text = "word ".repeat(50);
+	const measure = (candidate) => messageBodyBytes(text, candidate);
+	const budget = Math.floor(measure(images) * 1.05);
+	const fitted = await boundImagesForBudget(images, budget, measure);
+	assert.ok(
+		measure(fitted) <= measure(images),
+		`the ladder returned a larger set: ${measure(images)} -> ${measure(fitted)}`,
+	);
+	assert.ok(
+		measure(fitted) <= budget,
+		"a set that already fit must still fit afterwards",
+	);
 });
 
 test("several bounded screenshots that still overflow step the whole set down until the message fits", async () => {
@@ -295,13 +459,91 @@ test("the refusal copy names the real sizes and the remedy that matches the over
 		/^These images total 2\.4 MB, more than the 880 KB one message can carry\. Remove an image, or send them in a second message\.$/,
 	);
 
-	const overText = messageBudgetRefusal("x".repeat(1100000), []);
+	// A BYTE-budget text overflow, which is a different fact from a character-cap
+	// overflow and gets a different sentence. Reaching it needs text that is
+	// heavy in bytes while still legal by character count: a C0 control escapes
+	// to a 6-byte `\uXXXX` sequence, so 200,000 NULs is ~1.2 MB of body inside a
+	// 200,000-character cap. (Text that is merely LONG hits the character cap
+	// first - see the next test - which is why "x".repeat(1_100_000) no longer
+	// reaches this branch.)
+	const overText = messageBudgetRefusal("\u0000".repeat(200_000), []);
 	assert.match(
 		overText,
-		/^This message is 1\.1 MB of text, more than the 880 KB one message can carry\. Split it across two messages\.$/,
+		/^This message is 1\.2 MB of text, more than the 880 KB one message can carry\. Split it across two messages\.$/,
 	);
 	// The two sentences differ because the remedies differ: images can go in a
 	// second message, text has to be split.
 	assert.ok(!overImages.includes("Split it"));
 	assert.ok(!overText.includes("Remove an image"));
+});
+
+test("an over-long paste is refused in characters, the unit the schema caps", async () => {
+	const { messageBudgetRefusal } = await loadImageBounding();
+	// The gap this closes: the schema caps `text` at 200,000 CHARACTERS while the
+	// pre-flight weighed only bytes, so an ASCII paste between 200,001 chars and
+	// the byte budget passed pre-flight and died in main's `safeParse` as a 422
+	// "Invalid desktop operation." - which then latched the draft, because the
+	// un-latch was keyed on 413 alone (round 1, Q-2 / R1).
+	assert.equal(messageBudgetRefusal("x".repeat(200_000), []), null);
+	const refusal = messageBudgetRefusal("x".repeat(200_001), []);
+	assert.ok(refusal, "one character past the schema cap must be refused locally");
+	// Characters, because that is the ceiling that binds - naming bytes here
+	// would tell the user to shed 0 KB from a message that is only 200 KB.
+	assert.match(
+		refusal,
+		/^This message is 200,001 characters, more than the 200,000 one message can carry\. Split it across two messages\.$/,
+	);
+	// A plain long paste is the reachable case: a pasted log is well under the
+	// byte budget and still over the character cap.
+	assert.match(
+		messageBudgetRefusal("x".repeat(400_000), []),
+		/^This message is 400,000 characters, more than the 200,000 one message can carry\. Split it across two messages\.$/,
+	);
+});
+
+test("a text-dominant overflow says to split the text even when an image is attached", async () => {
+	const { messageBudgetRefusal } = await loadImageBounding();
+	// Attributing every overflow to the images because there is at least one
+	// produced advice that cannot work: "These images total 0 KB ... Remove an
+	// image" saves nothing when the text is what does not fit.
+	const thumbnail = [{ data_b64: "A".repeat(120), mime_type: "image/png" }];
+	const refusal = messageBudgetRefusal("x".repeat(950_000), thumbnail);
+	assert.ok(
+		refusal.includes("Split it across two messages"),
+		`text-dominant overflow must advise splitting, got: ${refusal}`,
+	);
+	assert.ok(!refusal.includes("Remove an image"));
+	assert.ok(!refusal.includes("0 KB"), "never advise removing 0 KB of images");
+});
+
+test("formatByteSize never prints a KB value that should have rounded to 1 MB", async () => {
+	const { formatByteSize } = await loadImageBounding();
+	// `Math.round(999500 / 1000)` is 1000, so the KB branch used to print
+	// "1000 KB" - a unit that appears nowhere else, in the refusal sentence's
+	// only number.
+	assert.equal(formatByteSize(999_499), "999 KB");
+	assert.equal(formatByteSize(999_500), "1.0 MB");
+	assert.equal(formatByteSize(1_000_000), "1.0 MB");
+	for (let bytes = 990_000; bytes < 1_010_000; bytes += 137)
+		assert.ok(
+			!formatByteSize(bytes).startsWith("1000 "),
+			`${bytes} rendered as ${formatByteSize(bytes)}`,
+		);
+});
+
+test("an oversize slash command is refused before admission, like a message", async () => {
+	const { commandBudgetRefusal } = await loadImageBounding();
+	// `sessions.command` shares the message budget and its `args` field accepts
+	// 200,000 characters, but nothing weighed it before admission.
+	assert.equal(commandBudgetRefusal("login", "openai"), null);
+	const refusal = commandBudgetRefusal("login", "x".repeat(900_000));
+	assert.ok(refusal, "an over-budget command must be refused locally");
+	assert.ok(
+		!/\b(413|error|exception)\b/i.test(refusal),
+		`the sentence must name no status code: ${refusal}`,
+	);
+	assert.ok(
+		refusal.includes("one command can carry"),
+		`the sentence must be about a command: ${refusal}`,
+	);
 });

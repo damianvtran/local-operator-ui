@@ -168,19 +168,29 @@ export async function admitChatDraft(
 	} catch (error) {
 		store.updateDraft(key, {
 			pending: false,
-			// A 413 on this path is OUR OWN transport guard, which weighs the body and
-			// returns before it ever calls `fetch` (`src/main/desktop-transport.ts`).
-			// The backend cannot produce one: uvicorn enforces no body limit and the
-			// frame validator maps its refusal to 409. So nothing was admitted and we
-			// know it with certainty - which is exactly the case the flag's own
-			// contract above says it must NOT cover.
+			// 413 and 422 on this path are both OUR OWN refusals, raised before
+			// `fetch` is ever called (`src/main/desktop-transport.ts`): 422 is the
+			// `safeParse` of our own schema, which precedes the request, and 413 is
+			// the byte-budget guard immediately after it. The backend can produce
+			// neither - uvicorn enforces no body limit and the frame validator maps
+			// its refusal to 409. So nothing was admitted and we know it with
+			// certainty, which is exactly the case the flag's own contract above says
+			// it must NOT cover.
+			//
+			// 422 is listed because the schema caps `text` in CHARACTERS while the
+			// pre-flight weighs BYTES: a long ASCII paste can satisfy the byte budget
+			// and still fail the schema, so a 422 reaches here for a message whose
+			// only fault is length (round 1, R1). The pre-flight now refuses that
+			// case up front, but the latch must not depend on one guard being
+			// exhaustive - anything we refuse locally has admitted nothing.
 			//
 			// Latching here was a trap with no exit: the banner said "send it again",
 			// the unchanged-payload guard then refused any edit, and images are part
 			// of that identity check - so the one action that would make the message
 			// fit, removing a screenshot, was the one action forbidden. The only way
 			// out was discarding the message.
-			...(error instanceof DesktopControlError && error.status === 413
+			...(error instanceof DesktopControlError &&
+			(error.status === 413 || error.status === 422)
 				? { admissionAttempted: false }
 				: {}),
 			errorCode:

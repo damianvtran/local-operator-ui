@@ -98,7 +98,31 @@ export function base64ByteLength(data: string): number {
 	return Math.floor((data.length * 3) / 4) - padding;
 }
 
+/**
+ * Base64 conversion, native where the engine has it.
+ *
+ * `Uint8Array.fromBase64`/`toBase64` are a single memcpy-speed pass in the
+ * engine; the hand-rolled loops below are a JS-level pass PER BYTE, and this
+ * runs on the renderer's MAIN THREAD inside the send path - an 8.5 MB
+ * screenshot spends the whole conversion with the composer frozen (review
+ * round 1, F4).
+ *
+ * The loops stay as the fallback rather than being deleted: the shipped
+ * Electron is 35.x, whose Chromium 134 predates these methods (Chrome 140), so
+ * today the fallback is the path that actually runs and the native branch is
+ * what an Electron bump switches on for free. Typed as optional members
+ * because the DOM lib this project compiles against does not declare them yet.
+ */
+type Base64Capable = {
+	fromBase64?: (data: string) => Uint8Array;
+};
+type Base64Encodable = {
+	toBase64?: () => string;
+};
+
 function toBytes(data_b64: string): Uint8Array {
+	const native = (Uint8Array as unknown as Base64Capable).fromBase64;
+	if (typeof native === "function") return native.call(Uint8Array, data_b64);
 	const binary = atob(data_b64);
 	const bytes = new Uint8Array(binary.length);
 	for (let index = 0; index < binary.length; index += 1)
@@ -107,6 +131,8 @@ function toBytes(data_b64: string): Uint8Array {
 }
 
 function toBase64(bytes: Uint8Array): string {
+	const native = (bytes as unknown as Base64Encodable).toBase64;
+	if (typeof native === "function") return native.call(bytes);
 	// Chunked because `String.fromCharCode(...bytes)` on a multi-hundred-KB
 	// image overflows the argument stack.
 	let binary = "";
@@ -135,42 +161,67 @@ async function reEncode(
 	const context = canvas.getContext("2d");
 	if (!context) return null;
 	context.drawImage(bitmap, 0, 0, width, height);
-	const candidates: WireImage[] = [];
+	// Candidates are compared as RAW bytes and only the winner is base64-encoded.
+	// Encoding each candidate to compare them did the expensive conversion up to
+	// three times per rung and threw all but one away, on the main thread inside
+	// the send path (review round 1, F4). Base64 is a fixed 4/3 expansion, so raw
+	// length orders the candidates identically to encoded length.
+	const candidates: { bytes: Uint8Array; mime_type: WireImageMime }[] = [];
 	// PNG first: screenshots are the case that matters here and PNG keeps small
 	// UI text legible where JPEG rings it. JPEG is the fallback rung, taken only
 	// when the PNG is still too big, exactly as `imaging.py:479-483` orders it.
 	const png = await canvas.convertToBlob({ type: "image/png" });
 	const pngBytes = new Uint8Array(await png.arrayBuffer());
 	if (pngBytes.byteLength <= IMAGE_MAX_BYTES)
-		candidates.push({ data_b64: toBase64(pngBytes), mime_type: "image/png" });
+		candidates.push({ bytes: pngBytes, mime_type: "image/png" });
 	if (pngBytes.byteLength > IMAGE_MAX_BYTES || quality < IMAGE_JPEG_QUALITY) {
-		const jpeg = await canvas.convertToBlob({ type: "image/jpeg", quality });
+		// JPEG has no alpha channel, so every transparent pixel is flattened
+		// against whatever RGB sits beneath it. A fresh OffscreenCanvas backing
+		// store is rgba(0,0,0,0) - transparent BLACK - so encoding the canvas
+		// above straight to JPEG turns a macOS window screenshot's rounded
+		// corners and drop shadow black, which is the single most common paste
+		// this ladder exists to support. The backend flattens onto white for
+		// exactly this reason (`imaging.py:628-636`, `flat_mode` / `fill =
+		// (255, 255, 255)`); this is the port of that step, which the comment
+		// above citing `imaging.py:479-483` omitted.
+		//
+		// A SEPARATE canvas rather than a fill on the one above: the PNG
+		// candidate must keep its alpha, and filling before `drawImage` would
+		// flatten it for both codecs.
+		const flat = new OffscreenCanvas(width, height);
+		const flatContext = flat.getContext("2d");
+		if (!flatContext) return null;
+		flatContext.fillStyle = "#ffffff";
+		flatContext.fillRect(0, 0, width, height);
+		flatContext.drawImage(bitmap, 0, 0, width, height);
+		const jpeg = await flat.convertToBlob({ type: "image/jpeg", quality });
 		const jpegBytes = new Uint8Array(await jpeg.arrayBuffer());
-		candidates.push({
-			data_b64: toBase64(jpegBytes),
-			mime_type: "image/jpeg",
-		});
+		candidates.push({ bytes: jpegBytes, mime_type: "image/jpeg" });
 		if (
 			pngBytes.byteLength > IMAGE_MAX_BYTES &&
 			jpegBytes.byteLength > pngBytes.byteLength
 		)
-			candidates.push({ data_b64: toBase64(pngBytes), mime_type: "image/png" });
+			candidates.push({ bytes: pngBytes, mime_type: "image/png" });
 	}
-	let best: WireImage | null = null;
+	let best: { bytes: Uint8Array; mime_type: WireImageMime } | null = null;
 	let bestBytes = Number.POSITIVE_INFINITY;
 	for (const candidate of candidates) {
-		const bytes = base64ByteLength(candidate.data_b64);
-		if (bytes < bestBytes) {
+		if (candidate.bytes.byteLength < bestBytes) {
 			best = candidate;
-			bestBytes = bytes;
+			bestBytes = candidate.bytes.byteLength;
 		}
 	}
-	// A re-encode that grew the file bought nothing but loss. Keep the original
-	// unless we actually shrank the dimensions, in which case the smaller
-	// picture is the point even if the codec was unkind about it.
+	// A re-encode that grew the file bought nothing but loss - and a larger
+	// payload can push an otherwise-sendable message into refusal, so "we shrank
+	// the dimensions" is not a good enough reason to keep it. The guard is
+	// therefore unconditional: the previous `&& scale === 1` conjunct disabled it
+	// for every image over `maxEdge`, letting a re-encoded photo come back at up
+	// to 2x its original size (review round 1, F2). This restores what the module
+	// docstring already claims: "a candidate is kept only when it is smaller than
+	// what it replaces".
 	if (!best) return null;
-	if (bestBytes >= originalBytes && scale === 1) return original;
-	return best;
+	if (bestBytes >= originalBytes) return original;
+	return { data_b64: toBase64(best.bytes), mime_type: best.mime_type };
 }
 
 /**
@@ -187,36 +238,69 @@ export async function boundImageForWire(
 	maxEdge: number = IMAGE_MAX_EDGE,
 	quality: number = IMAGE_JPEG_QUALITY,
 ): Promise<WireImage> {
-	if (!RE_ENCODABLE.has(image.mime_type)) return image;
+	const decoded = await decodeForWire(image);
+	if (!decoded) return image;
+	try {
+		return await boundDecodedImage(image, decoded, maxEdge, quality);
+	} finally {
+		decoded.close();
+	}
+}
+
+/**
+ * Decode `image` once, or null when it must be passed through untouched.
+ *
+ * Split out of `boundImageForWire` so the overflow ladder can decode ONE time
+ * per image and reuse the bitmap across every rung. Previously each rung called
+ * `boundImageForWire`, which re-decoded the full-resolution original - up to
+ * four `atob` + `createImageBitmap` passes over an 8.5 MB screenshot, all on
+ * the renderer's main thread (review round 1, F4).
+ *
+ * Null covers all three pass-through cases (non-re-encodable, no canvas
+ * platform, undecodable bytes) so the callers stay single-branch.
+ */
+async function decodeForWire(image: WireImage): Promise<ImageBitmap | null> {
+	if (!RE_ENCODABLE.has(image.mime_type)) return null;
 	if (
 		typeof createImageBitmap !== "function" ||
 		typeof OffscreenCanvas !== "function"
 	)
-		return image;
-	const originalBytes = base64ByteLength(image.data_b64);
+		return null;
 	try {
-		const bitmap = await createImageBitmap(
+		return await createImageBitmap(
 			new Blob([toBytes(image.data_b64) as BlobPart], {
 				type: image.mime_type,
 			}),
 		);
-		try {
-			// Verbatim when already in bounds. No re-encode can improve an image
-			// sent at native size, and PNG round-tripping routinely grows it
-			// (`imaging.py:469-473` makes the same call for the same reason).
-			if (
-				Math.max(bitmap.width, bitmap.height) <= maxEdge &&
-				originalBytes <= IMAGE_MAX_BYTES &&
-				quality >= IMAGE_JPEG_QUALITY
-			)
-				return image;
-			return (
-				(await reEncode(bitmap, image, originalBytes, maxEdge, quality)) ??
-				image
-			);
-		} finally {
-			bitmap.close();
-		}
+	} catch {
+		// A decoder that refuses yields the original: the budget check downstream
+		// is what guarantees correctness, and a failed optimisation must never
+		// lose the user's attachment.
+		return null;
+	}
+}
+
+/** Bound an already-decoded image. The caller owns `bitmap` and closes it. */
+async function boundDecodedImage(
+	image: WireImage,
+	bitmap: ImageBitmap,
+	maxEdge: number,
+	quality: number,
+): Promise<WireImage> {
+	const originalBytes = base64ByteLength(image.data_b64);
+	try {
+		// Verbatim when already in bounds. No re-encode can improve an image
+		// sent at native size, and PNG round-tripping routinely grows it
+		// (`imaging.py:469-473` makes the same call for the same reason).
+		if (
+			Math.max(bitmap.width, bitmap.height) <= maxEdge &&
+			originalBytes <= IMAGE_MAX_BYTES &&
+			quality >= IMAGE_JPEG_QUALITY
+		)
+			return image;
+		return (
+			(await reEncode(bitmap, image, originalBytes, maxEdge, quality)) ?? image
+		);
 	} catch {
 		return image;
 	}
@@ -236,20 +320,61 @@ export async function boundImagesForBudget(
 	measure: (images: WireImage[]) => number,
 ): Promise<WireImage[]> {
 	if (!images.length) return images;
-	const bounded = await Promise.all(
-		images.map((image) => boundImageForWire(image)),
+	// Decode ONCE per image and reuse the bitmaps across every rung. The ladder
+	// re-encodes from the originals (see OVERFLOW_LADDER), which used to mean
+	// re-decoding them too - up to four full-resolution decodes per image on the
+	// renderer's main thread (review round 1, F4).
+	const decoded = await Promise.all(
+		images.map((image) => decodeForWire(image)),
 	);
-	if (measure(bounded) <= budget) return bounded;
-	let best = bounded;
-	for (const step of OVERFLOW_LADDER) {
-		const stepped = await Promise.all(
-			// From the ORIGINALS, never from the previous rung: see OVERFLOW_LADDER.
-			images.map((image) =>
-				boundImageForWire(image, step.maxEdge, step.quality),
-			),
+	try {
+		return await walkOverflowLadder(images, decoded, budget, measure);
+	} finally {
+		for (const bitmap of decoded) bitmap?.close();
+	}
+}
+
+/** The rung walk itself, with every image already decoded. */
+async function walkOverflowLadder(
+	images: WireImage[],
+	decoded: (ImageBitmap | null)[],
+	budget: number,
+	measure: (images: WireImage[]) => number,
+): Promise<WireImage[]> {
+	const boundAll = (maxEdge: number, quality: number) =>
+		Promise.all(
+			images.map((image, index) => {
+				const bitmap = decoded[index];
+				return bitmap
+					? boundDecodedImage(image, bitmap, maxEdge, quality)
+					: Promise.resolve(image);
+			}),
 		);
-		best = stepped;
-		if (measure(stepped) <= budget) return stepped;
+	const bounded = await boundAll(IMAGE_MAX_EDGE, IMAGE_JPEG_QUALITY);
+	if (measure(bounded) <= budget) return bounded;
+	// `best` is the SMALLEST set seen, not the latest one tried. Overwriting it
+	// per rung returned the last rung's output even when an earlier one (or the
+	// input itself) was smaller, so an exhausted ladder could hand the caller a
+	// set strictly worse than what it was given (review round 1, F3).
+	//
+	// The originals seed the comparison because bounding is an optimisation, not
+	// an obligation: if every rung is bigger than what the user pasted, what the
+	// user pasted is the right answer.
+	let best = images;
+	let bestBytes = measure(images);
+	const consider = (candidate: WireImage[]): number => {
+		const bytes = measure(candidate);
+		if (bytes < bestBytes) {
+			best = candidate;
+			bestBytes = bytes;
+		}
+		return bytes;
+	};
+	consider(bounded);
+	for (const step of OVERFLOW_LADDER) {
+		// From the ORIGINALS, never from the previous rung: see OVERFLOW_LADDER.
+		const stepped = await boundAll(step.maxEdge, step.quality);
+		if (consider(stepped) <= budget) return stepped;
 	}
 	// Still over. The caller refuses with the real numbers rather than dropping
 	// an attachment the user chose to include.

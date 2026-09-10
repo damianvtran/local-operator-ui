@@ -1,4 +1,5 @@
 import {
+	DESKTOP_REQUEST_TOO_LARGE_DETAIL,
 	type DesktopResponse,
 	desktopEndpoint,
 	desktopRequestByteBudget,
@@ -41,9 +42,11 @@ export async function requestDesktop(
 			body &&
 			Buffer.byteLength(body) > desktopRequestByteBudget(request.op)
 		) {
+			// Names an action even though it cannot name a size: "too large" alone
+			// told the user what happened but not what to do (review round 1, Q-3).
 			return {
 				status: 413,
-				body: { detail: "This message is too large to send in one request." },
+				body: { detail: DESKTOP_REQUEST_TOO_LARGE_DETAIL },
 			};
 		}
 		const response = await fetch(new URL(target.path, backendUrl), {

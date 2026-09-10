@@ -34,6 +34,7 @@ import type { PickerContext } from "../pickers/destination-pickers";
 import { DESTINATIONS } from "../pickers/picker-registry";
 import { isNativeAction } from "../pickers/use-picker-backend";
 import type { Message } from "../types/message";
+import { commandBudgetRefusal } from "../utils/message-budget";
 import type { SlashCommandMeta } from "./slash-commands";
 
 type SlashDispatchOptions = {
@@ -220,13 +221,22 @@ export function useSlashDispatch({
 			// `/login <x>` and `/logout <x>` are validated by the backend against
 			// the provider registry; `/credential <x>` is refused so a secret can
 			// never land in command text. Everything else posts as typed.
+			const commandArgs = spec.name === "credential" ? "" : args;
+			// Weighed before admission for the same reason a message is: `args`
+			// accepts 200,000 characters, and main's backstop 413 can only say "too
+			// large" once the text is already gone from the composer.
+			const refusal = commandBudgetRefusal(spec.name, commandArgs);
+			if (refusal) {
+				note(refusal, true);
+				return true;
+			}
 			try {
 				const receipt = await desktopResult<DesktopCommandReceipt>({
 					op: "sessions.command",
 					sessionId,
 					requestId: uuidv4(),
 					command: spec.name,
-					args: spec.name === "credential" ? "" : args,
+					args: commandArgs,
 				});
 				const result = receipt.result;
 				if (isNativeAction(result)) {

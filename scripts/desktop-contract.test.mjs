@@ -8,7 +8,7 @@ import { build } from "esbuild";
 const bundle = await build({
 	stdin: {
 		contents:
-			'export * from "./src/main/desktop-transport"; export * from "./src/main/desktop-ipc"; export {desktopRequestByteBudget, MAX_DESKTOP_REQUEST_BYTES} from "./src/shared/desktop-contract";',
+			'export * from "./src/main/desktop-transport"; export * from "./src/main/desktop-ipc"; export {desktopRequestByteBudget, MAX_DESKTOP_REQUEST_BYTES, MAX_DESKTOP_ENVELOPE_BYTES, MAX_DESKTOP_ENVELOPE_OVERHEAD_BYTES, DESKTOP_REQUEST_TOO_LARGE_DETAIL} from "./src/shared/desktop-contract";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -41,6 +41,9 @@ const {
 	guardForegroundReceipts,
 	desktopRequestByteBudget,
 	MAX_DESKTOP_REQUEST_BYTES,
+	MAX_DESKTOP_ENVELOPE_BYTES,
+	MAX_DESKTOP_ENVELOPE_OVERHEAD_BYTES,
+	DESKTOP_REQUEST_TOO_LARGE_DETAIL,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
@@ -950,6 +953,17 @@ test("byte budgets are per operation, and message ops get the backend's real hea
 	// envelope headroom. Only the ops that carry images get it.
 	assert.equal(desktopRequestByteBudget("sessions.message"), 880000);
 	assert.equal(desktopRequestByteBudget("sessions.command"), 880000);
+	// `sessions.fork` declares the same 200,000-char text field as
+	// `sessions.message`, so it belongs in the same tier; on the control budget
+	// it 413'd a fork message the schema promised to accept (round 1, R3).
+	assert.equal(desktopRequestByteBudget("sessions.fork"), 880000);
+	// Sized to its OWN schema, which declares 1,000,000 characters. Any smaller
+	// number is a pipe narrower than the promise in front of it - the exact
+	// asymmetry this contract exists to prevent (round 1, R3).
+	assert.equal(
+		desktopRequestByteBudget("legacy.agent.systemPrompt.update"),
+		1100000,
+	);
 	// Control ops move fixed-shape fields and must stay tight: a wider budget
 	// there buys nothing and widens what an untrusted renderer can push.
 	assert.equal(desktopRequestByteBudget("config.update"), 262144);
@@ -957,8 +971,27 @@ test("byte budgets are per operation, and message ops get the backend's real hea
 	assert.equal(desktopRequestByteBudget("capabilities"), 262144);
 	// The dev proxy bounds a streamed read by this before the op is knowable,
 	// then defers to the per-op refusal. It must cover the widest budget or it
-	// truncates a legal message before anything can classify it.
-	assert.equal(MAX_DESKTOP_REQUEST_BYTES, 880000);
+	// truncates a legal request before anything can classify it - so this is
+	// asserted as a RELATIONSHIP, not a literal, because pinning the literal is
+	// what would silently re-narrow the read when a tier is added.
+	for (const op of [
+		"sessions.message",
+		"sessions.command",
+		"sessions.fork",
+		"legacy.agent.systemPrompt.update",
+		"config.update",
+	])
+		assert.ok(
+			MAX_DESKTOP_REQUEST_BYTES >= desktopRequestByteBudget(op),
+			`the streamed read bound must cover ${op}`,
+		);
+	assert.equal(MAX_DESKTOP_REQUEST_BYTES, 1100000);
+	// The proxy weighs the ENVELOPE, which is wider than any body budget.
+	assert.ok(MAX_DESKTOP_ENVELOPE_BYTES > MAX_DESKTOP_REQUEST_BYTES);
+	assert.equal(
+		MAX_DESKTOP_ENVELOPE_BYTES,
+		MAX_DESKTOP_REQUEST_BYTES + MAX_DESKTOP_ENVELOPE_OVERHEAD_BYTES,
+	);
 });
 
 test("a message just under the budget is sent and just over is refused before any HTTP", async () => {
@@ -966,9 +999,10 @@ test("a message just under the budget is sent and just over is refused before an
 	const requestId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 	const budget = desktopRequestByteBudget("sessions.message");
 	const text = "Five screenshots and a long question.";
-	// Reach the budget with an IMAGE, because that is the only way to reach it:
-	// `text` is schema-capped at 200,000 chars, so the payloads this budget
-	// exists for are always attachment-carrying. Measure the envelope rather
+	// Reach the budget with an IMAGE, because that is the ordinary way to reach
+	// it. (Not the ONLY way: JSON escaping makes a C0 control 6 bytes, so 200,000
+	// NULs is ~1.2 MB inside the 200,000-char cap. The guard refuses that too;
+	// the point here is the attachment-carrying case.) Measure the envelope rather
 	// than hardcoding it, so a field added to the body cannot silently move the
 	// boundary this test claims to pin.
 	const envelope = Buffer.byteLength(
@@ -1001,10 +1035,10 @@ test("a message just under the budget is sent and just over is refused before an
 	// believes they sent.
 	const over = await requestDesktop(message(budget + 1), url, token);
 	assert.equal(over.status, 413);
-	assert.equal(
-		over.body.detail,
-		"This message is too large to send in one request.",
-	);
+	assert.equal(over.body.detail, DESKTOP_REQUEST_TOO_LARGE_DETAIL);
+	// The backstop cannot name a size, so it must at least name an action -
+	// "too large" with no remedy is an unfinished error (review round 1, Q-3).
+	assert.match(over.body.detail, /Remove an image, or split the text/);
 	assert.equal(seen.length, count + 1, "the refused body must never reach HTTP");
 });
 

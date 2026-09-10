@@ -513,6 +513,41 @@ test("a pre-admission size refusal does not latch, so the user can drop an image
 	);
 });
 
+test("a schema refusal of our own does not latch either, so a long paste can be shortened", async () => {
+	reset();
+	// The 422 sibling of the case above, and the one that made the trap reachable
+	// by a single paste: the schema caps `text` in CHARACTERS while the pre-flight
+	// weighed BYTES, so an over-long ASCII paste passed pre-flight and failed
+	// `safeParse` in main - which returns 422 BEFORE any fetch, exactly like the
+	// 413 guard. Keying the un-latch on 413 alone pinned the draft, and the user
+	// was told to "retry unchanged" a message that could never succeed unchanged.
+	let refuse = true;
+	globalThis.__canonicalRequest = async (request) => {
+		calls.push(request);
+		if (request.op === "sessions.create")
+			return { session_id: "222222222222", binding: null };
+		if (refuse) throw new DesktopControlError(422, "Invalid desktop operation.");
+		return { status: "admitted" };
+	};
+	const key = store.getState().stageDraft({ kind: "agent", name: "reviewer" });
+	await assert.rejects(
+		admitChatDraft(key, { ...input, text: "x".repeat(200_001) }),
+		/Invalid desktop operation/,
+	);
+	assert.equal(
+		store.getState().drafts[key].admissionAttempted,
+		false,
+		"a schema refusal never reached the backend and must not pin the payload",
+	);
+
+	// The remedy: shorten the text and send. Under the old predicate this was
+	// refused with "Retry it unchanged", with no exit but Discard.
+	refuse = false;
+	assert.ok(await admitChatDraft(key, { ...input, text: "shortened" }));
+	const sent = calls.filter((call) => call.op === "sessions.message").at(-1);
+	assert.equal(sent.text, "shortened", "the EDITED text is what ships");
+});
+
 test("a genuinely issued admission still latches, because its outcome is unknown", async () => {
 	reset();
 	// The complement, and the reason the fix reads the STATUS rather than

@@ -314,7 +314,7 @@ function SessionPanel({
 		? { ...canonical, status: "live" as const, error: null }
 		: canonical;
 	return (
-		<div className="flex h-full min-h-0 flex-col">
+		<div className={cn("flex h-full min-h-0 flex-col")}>
 			{draftKey && (
 				<label
 					className={cn(
@@ -342,7 +342,7 @@ function SessionPanel({
 							: "Your draft is retained."}
 					</p>
 					{draft?.submittedText && (
-						<div className="mt-2 space-y-2">
+						<div className={cn("mt-2 space-y-2")}>
 							<p
 								className={cn(
 									"whitespace-pre-wrap rounded-md border border-control bg-surface px-2 py-1 text-body-sm text-ink",
@@ -352,7 +352,7 @@ function SessionPanel({
 							</p>
 							<button
 								type="button"
-								className="underline"
+								className={cn("underline")}
 								onClick={() => {
 									if (draftIdentity)
 										useCanonicalSessionsStore
@@ -369,17 +369,17 @@ function SessionPanel({
 				</div>
 			)}
 			{(sendErrorCode ?? draft?.errorCode) === "unresolved_attachment" && (
-				<div className="flex gap-2 px-4 pb-2 text-body-sm">
+				<div className={cn("flex gap-2 px-4 pb-2 text-body-sm")}>
 					<button
 						type="button"
-						className="underline"
+						className={cn("underline")}
 						onClick={() => void dispatch("/agent")}
 					>
 						Choose agent
 					</button>
 					<button
 						type="button"
-						className="underline"
+						className={cn("underline")}
 						onClick={() => void dispatch("/team")}
 					>
 						Choose team
@@ -390,14 +390,18 @@ function SessionPanel({
 				"profile_registry_unavailable" && (
 				<button
 					type="button"
-					className="self-start px-4 pb-2 text-body-sm underline"
+					className={cn("self-start px-4 pb-2 text-body-sm underline")}
 					onClick={() => navigate("/agents")}
 				>
 					Manage agents
 				</button>
 			)}
 			{options && (
-				<div className="flex flex-wrap gap-2 border-b border-hairline px-4 py-2 text-body-sm">
+				<div
+					className={cn(
+						"flex flex-wrap gap-2 border-b border-hairline px-4 py-2 text-body-sm",
+					)}
+				>
 					{[
 						"model",
 						"agent",
@@ -411,7 +415,7 @@ function SessionPanel({
 						<button
 							key={command}
 							type="button"
-							className="rounded-md px-2 py-1 hover:bg-elevated"
+							className={cn("rounded-md px-2 py-1 hover:bg-elevated")}
 							onClick={() => {
 								setOptions(false);
 								void dispatch(`/${command}`);
@@ -426,7 +430,7 @@ function SessionPanel({
 					))}
 				</div>
 			)}
-			<div className="min-h-0 flex-1">
+			<div className={cn("min-h-0 flex-1")}>
 				<ChatContent
 					activeTab={tab}
 					onTabChange={setTab}
@@ -544,9 +548,12 @@ export function ChatPage() {
 				/>
 			}
 			content={
-				<div className="flex h-full min-h-0 flex-col">
+				<div className={cn("flex h-full min-h-0 flex-col")}>
 					{pending && (
-						<p aria-live="polite" className="px-4 py-2 text-body-sm text-info">
+						<p
+							aria-live="polite"
+							className={cn("px-4 py-2 text-body-sm text-info")}
+						>
 							Opening chat…{" "}
 							<button
 								type="button"
@@ -559,12 +566,15 @@ export function ChatPage() {
 						</p>
 					)}
 					{(routeError || error) && (
-						<p role="alert" className="px-4 py-2 text-body-sm text-danger">
+						<p
+							role="alert"
+							className={cn("px-4 py-2 text-body-sm text-danger")}
+						>
 							{routeError || error}
 						</p>
 					)}
 					{!enabled ? (
-						<div className="p-6 text-body text-ink-muted">
+						<div className={cn("p-6 text-body text-ink-muted")}>
 							{capabilities.isLoading
 								? "Connecting to the backend…"
 								: capabilities.error
@@ -572,14 +582,14 @@ export function ChatPage() {
 									: "Update the backend to use canonical chats. Your existing histories are unchanged."}
 							<button
 								type="button"
-								className="ml-2 underline"
+								className={cn("ml-2 underline")}
 								onClick={() => void capabilities.refetch()}
 							>
 								Retry
 							</button>
 						</div>
 					) : identity ? (
-						<div className="min-h-0 flex-1">
+						<div className={cn("min-h-0 flex-1")}>
 							<SessionPanel
 								key={identity}
 								identity={identity}
@@ -589,15 +599,17 @@ export function ChatPage() {
 							/>
 						</div>
 					) : (
-						<div className="p-6">
-							<h1 className="text-title">Start a chat</h1>
-							<p className="mt-2 text-body text-ink-muted">
+						<div className={cn("p-6")}>
+							<h1 className={cn("text-title")}>Start a chat</h1>
+							<p className={cn("mt-2 text-body text-ink-muted")}>
 								Choose an agent or team, or start a new chat. Nothing starts
 								until you send.
 							</p>
 							<button
 								type="button"
-								className="mt-4 rounded-md border border-control px-3 py-2"
+								className={cn(
+									"mt-4 rounded-md border border-control px-3 py-2",
+								)}
 								onClick={() => stage(undefined, true)}
 							>
 								New chat
