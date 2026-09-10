@@ -168,14 +168,26 @@ export async function admitChatDraft(
 	} catch (error) {
 		store.updateDraft(key, {
 			pending: false,
-			// 413 and 422 on this path are both OUR OWN refusals, raised before
-			// `fetch` is ever called (`src/main/desktop-transport.ts`): 422 is the
-			// `safeParse` of our own schema, which precedes the request, and 413 is
-			// the byte-budget guard immediately after it. The backend can produce
-			// neither - uvicorn enforces no body limit and the frame validator maps
-			// its refusal to 409. So nothing was admitted and we know it with
-			// certainty, which is exactly the case the flag's own contract above says
-			// it must NOT cover.
+			// 413 and 422 on this path both mean the message was refused BEFORE
+			// anything was admitted, which is exactly the case the flag's own
+			// contract above says it must NOT cover.
+			//
+			// Ours are raised before `fetch` is ever called
+			// (`src/main/desktop-transport.ts`): 422 is the `safeParse` of our own
+			// schema, which precedes the request, and 413 is the byte-budget guard
+			// immediately after it. 413 can ONLY be ours - uvicorn enforces no body
+			// limit and the frame validator maps its own refusal to 409.
+			//
+			// 422 is different and the earlier claim here that the backend "can
+			// produce neither" was FALSE: `desktop_sessions.py` raises 422 directly
+			// (unknown command, invalid loop) and pydantic answers 422 for any
+			// malformed body before the route runs - an empty message and a
+			// 900,001-byte body both return one (round 2, Q-8). Un-latching is still
+			// correct for those, because a validation refusal is decided before the
+			// prompt is admitted to the session, so no work started either way. The
+			// reason to un-latch is "nothing was admitted", not "the status could
+			// only have come from us", and an inaccurate claim about a limit is how
+			// the original bug survived review.
 			//
 			// 422 is listed because the schema caps `text` in CHARACTERS while the
 			// pre-flight weighs BYTES: a long ASCII paste can satisfy the byte budget

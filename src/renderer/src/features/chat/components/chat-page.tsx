@@ -194,7 +194,14 @@ function SessionPanel({
 		setSendError(null);
 		setSendErrorCode(undefined);
 		try {
-			if (await dispatch(content)) return true;
+			// Three outcomes, not two. `consumed` retires the draft the way a sent
+			// message does; `retained` means the line WAS a command and was refused
+			// before it ran, so the composer must keep the text - returning false
+			// here is what `use-message-input.ts:172` reads to leave it in place
+			// (round 2, Q-7). Only `not-a-command` falls through to the model path.
+			const dispatched = await dispatch(content);
+			if (dispatched === "consumed") return true;
+			if (dispatched === "retained") return false;
 			if (!draftKey && !sessionId) return false;
 			const gate = canonical.frontend?.pending_gate;
 			if (gate && canonical.ownerEpoch && sessionId) {

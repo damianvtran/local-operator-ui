@@ -63,3 +63,19 @@ the backend wall, while still being schema-legal by character count. Verified
 refused at 413. The shipped guard already handles it, but the claim itself is
 false and is part of why the byte budget and the character cap have to be
 checked independently rather than one being inferred from the other.
+
+## These PNGs are deliberately outside the themed-frame gate
+
+`pnpm check-evidence` walks `.webp` only, and asserts that a frame NAMED for a
+theme is a picture of that theme — it exists to catch a Storybook frame that
+rendered a spinner instead of the app. The frames here (and in `../round-2/`)
+are scenario captures of a transport refusal, not theme frames: nothing in
+`overflow-result.png` names a palette, so converting them to `.webp` would make
+the gate fail with "no palette named overflow-result" rather than pass, while
+lossily recompressing screenshots whose entire value is the legible refusal
+sentence inside them.
+
+So the gate does not cover these, by construction rather than by oversight, and
+that is disclosed here rather than silently worked around. What asserts their
+content is this README and a reader opening them. Teaching the gate about PNG
+scenario evidence generally is worth doing, and is not this PR's job.

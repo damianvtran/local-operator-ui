@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import { test } from "node:test";
 import { build } from "esbuild";
 
@@ -137,6 +138,32 @@ const imageBundle = await build({
 });
 
 /**
+ * The shared contract itself, for the copy that is chosen per op.
+ *
+ * Bundled separately from `imageBundle` because it is main-process/shared code
+ * with no renderer canvas involved, and driving it through the image bundle
+ * would tie an assertion about a sentence to whether sharp is installed.
+ */
+let contractBundle;
+async function loadDesktopContract() {
+	contractBundle ??= await build({
+		stdin: {
+			contents: 'export * from "./src/shared/desktop-contract";',
+			resolveDir: process.cwd(),
+		},
+		bundle: true,
+		format: "esm",
+		platform: "neutral",
+		mainFields: ["module", "main"],
+		conditions: ["import"],
+		write: false,
+	});
+	return import(
+		`data:text/javascript;base64,${Buffer.from(contractBundle.outputFiles[0].text).toString("base64")}#${Math.random()}`
+	);
+}
+
+/**
  * A real PNG shaped like an app screenshot: flat sidebar and titlebar panels, a
  * light canvas, dense antialiased text rows, and a low-amplitude dither.
  *
@@ -272,10 +299,100 @@ test("an image already within bounds is forwarded byte-for-byte, never re-encode
 	assert.deepEqual(await boundImageForWire(original), original);
 });
 
+/**
+ * A real animated GIF89a with `frames` frames, hand-encoded.
+ *
+ * Hand-encoded because sharp 0.33.5 cannot JOIN frames, so the repo's own
+ * generator emits a single-frame GIF - against which "the ladder does not
+ * flatten an animation" is not a property any test could observe. A refactor of
+ * the `RE_ENCODABLE` exemption would have destroyed every animation and passed
+ * CI (round 2). Each frame is a flat 2-colour square, alternating, which is all
+ * the property needs: what matters is that N frames go in and N come out.
+ *
+ * The LZW stream is the trivial one - clear code, one literal per pixel, EOI -
+ * at a 3-bit code width, which is legal for a 2-entry palette and avoids
+ * needing a real compressor here.
+ */
+function animatedGif(frames, size = 4) {
+	const bytes = [];
+	const push = (...values) => bytes.push(...values);
+	push(0x47, 0x49, 0x46, 0x38, 0x39, 0x61); // "GIF89a"
+	push(size, 0x00, size, 0x00); // logical screen size
+	push(0xf0, 0x00, 0x00); // global colour table, 2 entries
+	push(0x00, 0x00, 0x00, 0xff, 0xff, 0xff); // black, white
+	// NETSCAPE2.0 application extension: loop forever. Present because it is
+	// what makes decoders report this as an ANIMATION rather than a still.
+	push(
+		0x21, 0xff, 0x0b, 0x4e, 0x45, 0x54, 0x53, 0x43, 0x41, 0x50, 0x45, 0x32,
+		0x2e, 0x30, 0x03, 0x01, 0x00, 0x00, 0x00,
+	);
+	for (let frame = 0; frame < frames; frame += 1) {
+		push(0x21, 0xf9, 0x04, 0x00, 0x0a, 0x00, 0x00, 0x00); // 100 ms delay
+		push(0x2c, 0x00, 0x00, 0x00, 0x00, size, 0x00, size, 0x00, 0x00);
+		const colour = frame % 2;
+		push(0x02); // LZW minimum code size
+		const clearCode = 4;
+		const endCode = 5;
+		const width = 3;
+		let register = 0;
+		let held = 0;
+		const stream = [];
+		const emit = (code) => {
+			register |= code << held;
+			held += width;
+			while (held >= 8) {
+				stream.push(register & 0xff);
+				register >>= 8;
+				held -= 8;
+			}
+		};
+		emit(clearCode);
+		for (let pixel = 0; pixel < size * size; pixel += 1) emit(colour);
+		emit(endCode);
+		if (held) stream.push(register & 0xff);
+		for (let at = 0; at < stream.length; at += 255) {
+			const chunk = stream.slice(at, at + 255);
+			push(chunk.length, ...chunk);
+		}
+		push(0x00); // block terminator
+	}
+	push(0x3b); // trailer
+	return Buffer.from(bytes);
+}
+
 test("an animated GIF is exempt, because a canvas re-encode would flatten it", async () => {
 	const { boundImageForWire } = await loadImageBounding();
 	const gif = { data_b64: "R0lGODlhAQABAAAAACw=", mime_type: "image/gif" };
 	assert.deepEqual(await boundImageForWire(gif), gif);
+});
+
+test("a multi-frame GIF keeps every frame, at the tightest rung", async () => {
+	const { boundImageForWire } = await loadImageBounding();
+	// The exemption is only worth having if it preserves the ANIMATION, and the
+	// test above cannot see that: its fixture is a single 1x1 frame, so a
+	// refactor that dropped GIF from `RE_ENCODABLE` would flatten every
+	// animation to one frame and still pass. This asserts the property itself.
+	// 320px, not a token 4px square: a re-encode of a tiny GIF is BIGGER than the
+	// original, so the never-grow guard hands the original back and the animation
+	// survives for a reason that has nothing to do with the exemption. Measured -
+	// with a 4px fixture, dropping GIF from `RE_ENCODABLE` still passed. At this
+	// size the mutant collapses all 8 frames into a 112-byte PNG still.
+	const gif = animatedGif(8, 320);
+	const before = await sharp(gif, { animated: true }).metadata();
+	assert.equal(before.pages, 8, "the fixture itself must be an animation");
+	// The tightest rung, so no argument can be made that the ladder was simply
+	// not reached: a re-encode here would return a single 64px still.
+	const bounded = await boundImageForWire(
+		{ data_b64: gif.toString("base64"), mime_type: "image/gif" },
+		64,
+		0.5,
+	);
+	assert.equal(bounded.mime_type, "image/gif");
+	const after = await sharp(Buffer.from(bounded.data_b64, "base64"), {
+		animated: true,
+	}).metadata();
+	assert.equal(after.pages, 8, "every frame must survive the ladder");
+	assert.deepEqual(after.delay, before.delay, "frame timing must survive too");
 });
 
 /**
@@ -283,6 +400,19 @@ test("an animated GIF is exempt, because a canvas re-encode would flatten it", a
  * stays transparent, the way Cmd-Shift-4 + Space captures rounded corners and
  * a drop shadow. RGBA, and the transparent margin is what the JPEG rung has to
  * flatten onto WHITE rather than the canvas's transparent black.
+ *
+ * The interior carries the same dense antialiased text rows as `screenshotPng`
+ * and sits at a MID-TONE, and both properties are load-bearing rather than
+ * decoration:
+ *
+ *   - Dense detail is what makes a downscaled PNG genuinely SMALLER than the
+ *     source. A smooth interior compresses so well that the re-encode grows,
+ *     the never-grow guard hands the original straight back, and a test on the
+ *     result is then asserting on its own input (round 2, M1).
+ *   - A mid-tone interior is what makes "the content survived" distinguishable
+ *     from "everything was flattened to white". A near-white interior passes a
+ *     brightness assertion whether the flatten was correctly confined to the
+ *     transparent margin or wrongly applied to the whole image.
  */
 async function windowShotPng(width, height, margin) {
 	const pixels = Buffer.alloc(width * height * 4, 0);
@@ -297,10 +427,14 @@ async function windowShotPng(width, height, margin) {
 			if (!inside) continue;
 			// Detailed content so PNG cannot win the candidate race and the JPEG
 			// rung is genuinely exercised.
-			const noise = ((x * 7 + y * 13) % 61) - 30;
-			pixels[index] = 200 + noise;
-			pixels[index + 1] = 205 + noise;
-			pixels[index + 2] = 212 + noise;
+			let value = 140 + (((x * 7 + y * 13) % 61) - 30);
+			const row = ((y - margin) / 22) | 0;
+			const inRow = (y - margin) % 22;
+			if (inRow < 13 && (x * 7919 + row * 104729) % 11 < 6)
+				value = 60 + ((x * 31 + y * 17) % 90);
+			pixels[index] = Math.max(0, Math.min(255, value));
+			pixels[index + 1] = Math.max(0, Math.min(255, value + 5));
+			pixels[index + 2] = Math.max(0, Math.min(255, value + 12));
 			pixels[index + 3] = 255;
 		}
 	}
@@ -338,9 +472,29 @@ test("a transparent screenshot re-encoded to JPEG flattens onto white, not black
 		pixel(2, 2)[0] > 200,
 		`the transparent margin must flatten to white, got ${pixel(2, 2)}`,
 	);
+	// Compared against the SOURCE centre rather than against a brightness floor.
+	// A floor cannot tell "the opaque content survived" from "the whole image was
+	// flattened to white", because white passes any floor - so a mutant that
+	// filled the shared canvas, destroying the image, would satisfy it. The
+	// fixture's interior is a mid-tone precisely so the two answers are far apart.
+	const source = await sharp(png)
+		.resize(info.width, info.height)
+		.ensureAlpha()
+		.raw()
+		.toBuffer({ resolveWithObject: true });
+	const centre = (buffer, meta) => {
+		const index =
+			(Math.floor(meta.height / 2) * meta.width + Math.floor(meta.width / 2)) *
+			meta.channels;
+		return [buffer[index], buffer[index + 1], buffer[index + 2]];
+	};
+	const got = centre(data, info);
+	const want = centre(source.data, source.info);
+	// 40/255 absorbs JPEG q0.6 plus a 2.7x downscale; a white flatten would put
+	// this channel at 255, more than 100 away from the mid-tone source.
 	assert.ok(
-		pixel(Math.floor(info.width / 2), Math.floor(info.height / 2))[0] > 140,
-		"opaque content must survive the flatten",
+		Math.abs(got[0] - want[0]) < 40,
+		`opaque content must survive the flatten: got ${got}, source ${want}`,
 	);
 });
 
@@ -348,14 +502,46 @@ test("a PNG that stays on the PNG rung keeps its transparency", async () => {
 	const { boundImageForWire } = await loadImageBounding();
 	// The flatten must be confined to the JPEG rung: PNG carries alpha, and
 	// flattening it there would destroy transparency the wire can represent.
-	const png = await windowShotPng(300, 200, 20);
-	const bounded = await boundImageForWire({
-		data_b64: png.toString("base64"),
-		mime_type: "image/png",
-	});
-	if (bounded.mime_type !== "image/png") return;
-	const meta = await sharp(Buffer.from(bounded.data_b64, "base64")).metadata();
+	//
+	// The fixture is OVERSIZE and the assertions below check that it was actually
+	// RE-ENCODED, because this test previously used a 300x200 image that took the
+	// verbatim passthrough - no canvas was ever constructed and the output was
+	// byte-identical to the input, so it asserted `hasAlpha` on its own fixture.
+	// A mutant that filled the SHARED canvas white, destroying alpha on every
+	// rung, survived it silently (round 2, M1).
+	const png = await windowShotPng(2000, 1400, 60);
+	const input = { data_b64: png.toString("base64"), mime_type: "image/png" };
+	const bounded = await boundImageForWire(input, 512);
+	assert.equal(
+		bounded.mime_type,
+		"image/png",
+		"fixture must stay on the PNG rung or this test proves nothing",
+	);
+	assert.notEqual(
+		bounded.data_b64,
+		input.data_b64,
+		"fixture must be re-encoded, not passed through: asserting on the input proves nothing",
+	);
+	const decoded = Buffer.from(bounded.data_b64, "base64");
+	const meta = await sharp(decoded).metadata();
 	assert.ok(meta.hasAlpha, "the PNG rung must not flatten alpha away");
+	assert.ok(
+		meta.width <= 512 && meta.height <= 512,
+		`re-encode must have gone through the resize, got ${meta.width}x${meta.height}`,
+	);
+	// `hasAlpha` only says a channel exists; a white fill would keep the channel
+	// and set every pixel opaque. The transparent margin must still be
+	// TRANSPARENT for the flatten to have been confined to the JPEG rung.
+	const { data, info } = await sharp(decoded)
+		.ensureAlpha()
+		.raw()
+		.toBuffer({ resolveWithObject: true });
+	const alphaAt = (x, y) => data[(y * info.width + x) * info.channels + 3];
+	assert.equal(
+		alphaAt(2, 2),
+		0,
+		"the transparent margin must stay transparent on the PNG rung",
+	);
 });
 
 test("bounding never returns an image larger than the one it was given", async () => {
@@ -382,7 +568,56 @@ test("bounding never returns an image larger than the one it was given", async (
 	}
 });
 
-test("a set of images that already fits is never made larger by the ladder", async () => {
+test("the ladder returns the smallest set BY THE MEASURE IT WAS GIVEN, not the last rung", async () => {
+	const { boundImagesForBudget } = await loadImageBounding();
+	// `best`-as-minimum is a DEFENSIVE invariant, and testing it needs a rung
+	// that actually inflates. Against real bytes none does - the rungs descend in
+	// both edge and quality and the per-image never-grow guard caps each one at
+	// its original - so `best = stepped` per rung is behaviourally EQUIVALENT to
+	// the shipped code on every real image, and no fixture of real photographs
+	// can distinguish them (measured: 150 randomised trials, 0 differences,
+	// against a positive control that differed in 44).
+	//
+	// The contract is nonetheless "the smallest set by the caller's measure",
+	// because `measure` is supplied by the caller - only it knows the true wire
+	// cost, and a future envelope could price a smaller image higher (a rung that
+	// switches PNG to JPEG changes the mime string's length too). So the
+	// condition is injected through the one seam that admits it, which is what
+	// makes the invariant testable rather than merely asserted in a comment.
+	const images = [
+		{ data_b64: (await screenshotPng(1600, 1200)).toString("base64"), mime_type: "image/png" },
+	];
+	const seen = [];
+	// Non-monotonic in raw size: the SMALLEST candidates are priced highest, so
+	// the tightest rung the ladder ends on is the worst answer by this measure
+	// and an earlier one is the true minimum.
+	// The threshold must sit ABOVE the tightest rung's real output or the pricing
+	// never fires and the measure stays monotonic - at which point this test
+	// passes against the mutant too, which is the exact vacuity being repaired.
+	// The assertion below fails loudly if that ever stops holding.
+	const measure = (candidate) => {
+		const raw = candidate.reduce((n, i) => n + i.data_b64.length, 0);
+		const priced = raw < 100_000 ? 5_000_000 + raw : raw;
+		seen.push(priced);
+		return priced;
+	};
+	// Unreachable, so the ladder exhausts and must fall back to `best`.
+	const fitted = await boundImagesForBudget(images, 1_000, measure);
+	const best = Math.min(...seen);
+	// The pricing must actually have inverted the ordering, or the measure is
+	// monotonic and this test cannot tell the minimum from the last rung.
+	assert.ok(
+		seen.at(-1) > best,
+		`the fixture must price the LAST rung above the minimum, got last=${seen.at(-1)} min=${best}`,
+	);
+	assert.equal(
+		measure(fitted),
+		best,
+		`an exhausted ladder must return the minimum it saw (${best}), not the last rung`,
+	);
+});
+
+test("the overflow ladder returns the smallest set it saw, never the last rung", async () => {
 	const { boundImagesForBudget, messageBodyBytes } = await loadImageBounding();
 	// Modest photos that fit as pasted. An exhausted ladder used to return its
 	// LAST rung rather than the smallest set seen, which could hand back
@@ -400,15 +635,16 @@ test("a set of images that already fits is never made larger by the ladder", asy
 	}
 	const text = "word ".repeat(50);
 	const measure = (candidate) => messageBodyBytes(text, candidate);
-	const budget = Math.floor(measure(images) * 1.05);
+	// BELOW the originals, so the overflow ladder is entered and the
+	// `best`-as-minimum logic this test names actually runs. With a budget ABOVE
+	// the originals `boundImagesForBudget` returned at its first fit check before
+	// the ladder loop, and a mutant that assigned `best = stepped` per rung -
+	// the exact F3 regression - survived silently (round 2, M1).
+	const budget = Math.floor(measure(images) * 0.5);
 	const fitted = await boundImagesForBudget(images, budget, measure);
 	assert.ok(
 		measure(fitted) <= measure(images),
 		`the ladder returned a larger set: ${measure(images)} -> ${measure(fitted)}`,
-	);
-	assert.ok(
-		measure(fitted) <= budget,
-		"a set that already fit must still fit afterwards",
 	);
 });
 
@@ -545,5 +781,147 @@ test("an oversize slash command is refused before admission, like a message", as
 	assert.ok(
 		refusal.includes("one command can carry"),
 		`the sentence must be about a command: ${refusal}`,
+	);
+});
+
+test("a slash command over the CHARACTER cap is refused with the sized sentence", async () => {
+	const { commandBudgetRefusal } = await loadImageBounding();
+	// The character cap binds on inputs the byte budget admits: 400,000 ASCII
+	// characters is ~400 KB against an 880,000-byte budget. The message path was
+	// given both ceilings and the command path only the byte one, so the same
+	// paste after a slash still died in `requestDesktop`'s schema parse as
+	// "Invalid desktop operation." - R1's failure mode, one op over (round 2,
+	// Q-7 / N1).
+	assert.equal(
+		commandBudgetRefusal("theme", "x".repeat(200_000)),
+		null,
+		"exactly the schema cap must be admitted",
+	);
+	const refusal = commandBudgetRefusal("theme", "x".repeat(200_001));
+	assert.match(
+		refusal,
+		/^This command is 200,001 characters, more than the 200,000 one command can carry\. Shorten it, or put the text in a message instead\.$/,
+	);
+	// Characters are counted BEFORE bytes, so the sentence names the ceiling that
+	// actually binds. 200,001 kanji is legal by characters and ~600 KB, well
+	// inside the byte budget; the same count of NULs escapes to ~1.2 MB and is
+	// the byte branch. Getting the order wrong tells a user to shorten prose that
+	// is not what the transport refused.
+	assert.match(
+		commandBudgetRefusal("theme", "\u3042".repeat(200_001)),
+		/200,001 characters/,
+	);
+	assert.match(
+		commandBudgetRefusal("theme", "\u0000".repeat(150_000)),
+		/^This command is [\d.]+ (KB|MB), more than the 880 KB one command can carry\./,
+	);
+});
+
+test("a refused slash command reports RETAINED, so the composer keeps the draft", async () => {
+	// The other half of Q-7, and the half that lost user data: the character cap
+	// was missing AND the failure path discarded the paste. `dispatch` used to
+	// answer a boolean, in which `true` meant "consumed" - the same answer a
+	// SUCCESSFUL command gives - so a command refused before it ran retired the
+	// draft exactly like one that had run. `use-message-input.ts:172` clears the
+	// composer on anything but `false`, so 200,001 characters went to nothing.
+	//
+	// Asserted against the shipped source rather than a rendered hook, because
+	// what broke was which VALUE each branch returns; React adds nothing to that.
+	// The mapping this pins is the contract `chat-page.tsx` switches on.
+	const source = await readFile(
+		"src/renderer/src/features/chat/components/slash-dispatch.ts",
+		"utf8",
+	);
+	const outcomes = [...source.matchAll(/return "(consumed|retained|not-a-command)";/g)]
+		.map((match) => match[1]);
+	assert.ok(
+		outcomes.includes("retained"),
+		"a refused command must have an outcome distinct from a consumed one",
+	);
+	// The budget refusal and the transport failure are the two branches where the
+	// command did NOT run. Both must retain; anything else is the data loss.
+	const refusalBranch = source.slice(
+		source.indexOf("const refusal = commandBudgetRefusal("),
+	);
+	assert.match(
+		refusalBranch.slice(0, refusalBranch.indexOf("}")),
+		/return "retained";/s,
+	);
+	const catchBranch = source.slice(source.lastIndexOf("} catch (error) {"));
+	assert.match(catchBranch, /return "retained";/);
+
+	// And the consumer must translate `retained` into the `false` that keeps the
+	// text. A dispatch that reports honestly into a caller that ignores it is the
+	// same bug one file over.
+	const page = await readFile(
+		"src/renderer/src/features/chat/components/chat-page.tsx",
+		"utf8",
+	);
+	assert.match(page, /if \(dispatched === "retained"\) return false;/);
+	assert.match(page, /if \(dispatched === "consumed"\) return true;/);
+});
+
+test("an oversize fork message is refused before the request, in the fork's own words", async () => {
+	const { forkBudgetRefusal } = await loadImageBounding();
+	// `sessions.fork` was moved onto the message budget in round 1 but never
+	// given a pre-flight, so its own 200,000-character cap still surfaced through
+	// the picker as "The fork was not created: Invalid desktop operation."
+	// (round 2, N2).
+	assert.equal(forkBudgetRefusal("continue from here"), null);
+	const refusal = forkBudgetRefusal("x".repeat(200_001));
+	assert.match(refusal, /^This first message is 200,001 characters,/);
+	// The fork picker has no images and no second message to split across, so
+	// the message copy would name two remedies that do not exist there.
+	assert.ok(!refusal.includes("Remove an image"));
+	assert.ok(!refusal.includes("Split it across two messages"));
+	assert.ok(refusal.includes("send it in the new conversation instead"));
+});
+
+test("an oversize agent system prompt is refused in the editor's own words", async () => {
+	const { systemPromptBudgetRefusal } = await loadImageBounding();
+	// Round 1 sized this op's budget to its schema but added no pre-flight, so an
+	// oversize prompt hit main's untargeted backstop and read "Remove an image,
+	// or split the text across two messages" inside the agent system-prompt
+	// editor - three claims all false there (round 2, N4).
+	assert.equal(systemPromptBudgetRefusal("You are a helpful agent."), null);
+	assert.equal(
+		systemPromptBudgetRefusal("x".repeat(900_000)),
+		null,
+		"a long but legal prompt must still save",
+	);
+	const refusal = systemPromptBudgetRefusal("\u0000".repeat(200_000));
+	assert.ok(refusal, "a prompt past the byte budget must be refused locally");
+	assert.match(refusal, /^This system prompt is [\d.]+ MB, more than the 1\.1 MB/);
+	assert.ok(!refusal.includes("message"));
+	assert.ok(!refusal.includes("Remove an image"));
+});
+
+test("the backstop 413 speaks the language of the surface it fired on", async () => {
+	// The pre-flights above are the sized checks; this is the sentence for the
+	// paths they do not cover. One string for every op meant the system-prompt
+	// editor and the fork picker both showed message-and-image copy.
+	const { desktopRequestTooLargeDetail } = await loadDesktopContract();
+	assert.match(
+		desktopRequestTooLargeDetail("sessions.message"),
+		/Remove an image, or split the text across two messages\.$/,
+	);
+	const prompt = desktopRequestTooLargeDetail(
+		"legacy.agent.systemPrompt.update",
+	);
+	assert.match(prompt, /^This system prompt is too large to save/);
+	assert.ok(!prompt.includes("image"));
+	assert.ok(!prompt.includes("message"));
+	assert.match(
+		desktopRequestTooLargeDetail("sessions.fork"),
+		/^This first message is too large to send with the fork\./,
+	);
+	assert.match(
+		desktopRequestTooLargeDetail("sessions.command"),
+		/^This command is too large to send in one request\./,
+	);
+	// A control op names the form, not prose it does not carry.
+	assert.match(
+		desktopRequestTooLargeDetail("settings.edit"),
+		/^This request is too large to send\. Shorten the text in this form\.$/,
 	);
 });

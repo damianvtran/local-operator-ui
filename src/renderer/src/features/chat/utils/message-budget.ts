@@ -16,6 +16,8 @@
 import {
 	DESKTOP_MESSAGE_BUDGET_BYTES,
 	DESKTOP_MESSAGE_MAX_CHARS,
+	DESKTOP_SYSTEM_PROMPT_BUDGET_BYTES,
+	DESKTOP_SYSTEM_PROMPT_MAX_CHARS,
 	desktopEndpoint,
 } from "../../../../../shared/desktop-contract";
 import type { WireImage } from "./bound-image";
@@ -84,6 +86,18 @@ export function commandBudgetRefusal(
 	args: string,
 	budget: number = DESKTOP_MESSAGE_BUDGET_BYTES,
 ): string | null {
+	// Both ceilings, characters first, for the same reason `messageBudgetRefusal`
+	// weighs both: `args` is declared `z.string().max(DESKTOP_MESSAGE_MAX_CHARS)`,
+	// so a 400,000-character paste after a slash satisfies the byte budget and is
+	// still refused by the schema parse inside `requestDesktop` with "Invalid
+	// desktop operation." - the exact unactionable sentence this change exists to
+	// remove, left standing on the sibling op when the message path was fixed
+	// (round 2, Q-7 / N1). Characters are counted in JS units because that is what
+	// `z.string().max()` counts, so this check and the one it front-runs agree on
+	// every input rather than only on ASCII.
+	if (args.length > DESKTOP_MESSAGE_MAX_CHARS) {
+		return `This command is ${args.length.toLocaleString()} characters, more than the ${DESKTOP_MESSAGE_MAX_CHARS.toLocaleString()} one command can carry. Shorten it, or put the text in a message instead.`;
+	}
 	const target = desktopEndpoint({
 		op: "sessions.command",
 		sessionId: MEASUREMENT_SESSION_ID,
@@ -94,6 +108,72 @@ export function commandBudgetRefusal(
 	const total = new TextEncoder().encode(JSON.stringify(target.body)).length;
 	if (total <= budget) return null;
 	return `This command is ${formatByteSize(total)}, more than the ${formatByteSize(budget)} one command can carry. Shorten it, or put the text in a message instead.`;
+}
+
+/**
+ * The refusal sentence for an over-budget agent system prompt, or null when it
+ * fits.
+ *
+ * The budget for `legacy.agent.systemPrompt.update` was sized to its own
+ * 1,000,000-character schema in round 1, but no pre-flight was added, so a
+ * prompt heavy in escaped characters still reached main's backstop - and read
+ * there as "Remove an image, or split the text across two messages" inside the
+ * agent system-prompt editor, where none of those three things exist (round 2,
+ * N4). The backstop copy is now scoped per op as well; this is the sized half,
+ * which only a pre-flight can give because only here are the numbers still
+ * known.
+ *
+ * Bytes only, with no character branch: unlike the message ops the byte budget
+ * (1,100,000) is BELOW the declared character cap (1,000,000 chars, which can
+ * serialize to six times that), so bytes are what bind first on every input and
+ * a character check could never fire.
+ */
+export function systemPromptBudgetRefusal(
+	systemPrompt: string,
+	budget: number = DESKTOP_SYSTEM_PROMPT_BUDGET_BYTES,
+): string | null {
+	if (systemPrompt.length > DESKTOP_SYSTEM_PROMPT_MAX_CHARS) {
+		return `This system prompt is ${systemPrompt.length.toLocaleString()} characters, more than the ${DESKTOP_SYSTEM_PROMPT_MAX_CHARS.toLocaleString()} one agent can carry. Shorten it.`;
+	}
+	const total = new TextEncoder().encode(
+		JSON.stringify({ system_prompt: systemPrompt }),
+	).length;
+	if (total <= budget) return null;
+	return `This system prompt is ${formatByteSize(total)}, more than the ${formatByteSize(budget)} one agent can carry. Shorten it.`;
+}
+
+/**
+ * The refusal sentence for an over-budget fork message, or null when it fits.
+ *
+ * `sessions.fork` carries the same 200,000-character text field as
+ * `sessions.message` to the same session, and round 1 moved it onto the same
+ * byte budget - but nothing weighed it before the request, so its own character
+ * cap still died in `requestDesktop`'s `safeParse` as a bare "Invalid desktop
+ * operation." surfaced through the picker as "The fork was not created" (round
+ * 2, N2).
+ *
+ * Its own sentence rather than `messageBudgetRefusal`'s because the remedy is
+ * different again: the fork's first message is optional, so the cheapest fix is
+ * to send it in the new conversation once the fork exists, and "split it across
+ * two messages" describes an affordance the picker does not have.
+ */
+export function forkBudgetRefusal(
+	message: string,
+	budget: number = DESKTOP_MESSAGE_BUDGET_BYTES,
+): string | null {
+	if (message.length > DESKTOP_MESSAGE_MAX_CHARS) {
+		return `This first message is ${message.length.toLocaleString()} characters, more than the ${DESKTOP_MESSAGE_MAX_CHARS.toLocaleString()} one message can carry. Shorten it, or send it in the new conversation instead.`;
+	}
+	const target = desktopEndpoint({
+		op: "sessions.fork",
+		sessionId: MEASUREMENT_SESSION_ID,
+		requestId: MEASUREMENT_REQUEST_ID,
+		message,
+		boundary: "next_safe",
+	});
+	const total = new TextEncoder().encode(JSON.stringify(target.body)).length;
+	if (total <= budget) return null;
+	return `This first message is ${formatByteSize(total)}, more than the ${formatByteSize(budget)} one message can carry. Shorten it, or send it in the new conversation instead.`;
 }
 
 /**

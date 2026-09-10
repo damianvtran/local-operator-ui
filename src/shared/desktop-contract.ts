@@ -35,6 +35,16 @@ const sessionImage = z
  * so the two ceilings bind on different inputs and neither implies the other.
  */
 export const DESKTOP_MESSAGE_MAX_CHARS = 200_000;
+
+/**
+ * Longest `systemPrompt` the agent system-prompt op accepts, in JS CHARACTERS.
+ *
+ * Declared here beside `DESKTOP_MESSAGE_MAX_CHARS` and referenced by the schema
+ * below rather than repeated as a literal, because the editor now pre-flights
+ * against it: a cap the check and the schema state separately is a cap they can
+ * state differently, which is the drift this file exists to prevent.
+ */
+export const DESKTOP_SYSTEM_PROMPT_MAX_CHARS = 1_000_000;
 const profileName = z
 	.string()
 	.min(1)
@@ -372,7 +382,7 @@ export const desktopRequestSchema = z.discriminatedUnion("op", [
 		.object({
 			op: z.literal("legacy.agent.systemPrompt.update"),
 			agentId: id,
-			systemPrompt: z.string().max(1_000_000),
+			systemPrompt: z.string().max(DESKTOP_SYSTEM_PROMPT_MAX_CHARS),
 		})
 		.strict(),
 	z.object({ op: z.literal("legacy.agent.download"), agentId: id }).strict(),
@@ -657,9 +667,11 @@ export type DesktopResponse = { status: number; body: unknown };
  * Message-carrying ops get the larger budget because they carry user prose and
  * inline images. Every remaining op moves fixed-shape control fields whose
  * widest declared string is 64,000 characters (`instructions.update`,
- * `legacy.schedule.edit`), so the tight budget there is a real boundary on a
- * malformed or hostile renderer payload rather than a limit any legitimate
- * request approaches.
+ * `legacy.schedule.edit` and `legacy.agent.schedule.create` — all three, since
+ * a list that names only some of the ops at the limit invites the next reader
+ * to assume the unnamed one is narrower), so the tight budget there is a real
+ * boundary on a malformed or hostile renderer payload rather than a limit any
+ * legitimate request approaches.
  *
  * That claim used to read "the widest is a 32768-char credential" and was
  * FALSE, which is how this file reproduced next door the exact asymmetry it
@@ -782,6 +794,41 @@ export const DESKTOP_REQUEST_TOO_LARGE_DETAIL =
 	"This message is too large to send in one request. Remove an image, or split the text across two messages.";
 
 /**
+ * The same backstop sentence, scoped to the SURFACE the op belongs to.
+ *
+ * One sentence for every op was wrong wherever the op is not a chat message.
+ * `legacy.agent.systemPrompt.update` is reachable from the agent system-prompt
+ * editor, and a user who saved a long prompt there read "This message is too
+ * large to send in one request. Remove an image, or split the text across two
+ * messages." - three claims that are all false in that surface: it is not a
+ * message, there are no images, and a system prompt is one field that cannot be
+ * split across two of anything (round 2, N4).
+ *
+ * This is the backstop, so it still cannot name a SIZE - by the time a body
+ * reaches `requestDesktop` the op is all that is left. What it can do is name a
+ * remedy that exists on the surface the user is looking at. Sized copy comes
+ * from the renderer's pre-flight, which runs before admission where the numbers
+ * are still known.
+ *
+ * `DESKTOP_REQUEST_TOO_LARGE_DETAIL` remains the message-tier sentence and the
+ * streaming dev proxy's answer, because that proxy bounds its READ before the
+ * JSON is parsed and so genuinely cannot know which op it is refusing.
+ */
+export function desktopRequestTooLargeDetail(op: DesktopRequest["op"]): string {
+	if (op === "legacy.agent.systemPrompt.update")
+		return "This system prompt is too large to save in one request. Shorten it.";
+	if (op === "sessions.fork")
+		return "This first message is too large to send with the fork. Shorten it, or send it in the new conversation instead.";
+	if (op === "sessions.command")
+		return "This command is too large to send in one request. Shorten it, or put the text in a message instead.";
+	if (MESSAGE_OPS.has(op)) return DESKTOP_REQUEST_TOO_LARGE_DETAIL;
+	// Control ops move fixed-shape fields; reaching this means a field far past
+	// anything a legitimate UI submits, so the sentence names the field rather
+	// than a remedy that assumes prose.
+	return "This request is too large to send. Shorten the text in this form.";
+}
+
+/**
  * The largest ENVELOPE the dev proxy may read before refusing outright.
  *
  * Distinct from `MAX_DESKTOP_REQUEST_BYTES`, which bounds the op BODY. Only
@@ -800,6 +847,16 @@ export const MAX_DESKTOP_ENVELOPE_BYTES =
  * stays as the untargeted backstop it always was.
  */
 export const DESKTOP_MESSAGE_BUDGET_BYTES = DESKTOP_MESSAGE_BYTE_BUDGET;
+
+/**
+ * The system-prompt budget, exported for the same reason: the agent
+ * system-prompt editor now runs its own pre-flight, and a second copy of the
+ * number is how the pipe and the schema drifted apart in the first place. The
+ * character cap it is weighed beside is `DESKTOP_SYSTEM_PROMPT_MAX_CHARS`,
+ * declared at the top of this file with the schema that reads it.
+ */
+export const DESKTOP_SYSTEM_PROMPT_BUDGET_BYTES =
+	DESKTOP_SYSTEM_PROMPT_BYTE_BUDGET;
 export type DesktopStreamEvent = {
 	streamId: string;
 	kind: "data" | "error" | "end";

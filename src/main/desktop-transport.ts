@@ -1,9 +1,9 @@
 import {
-	DESKTOP_REQUEST_TOO_LARGE_DETAIL,
 	type DesktopResponse,
 	desktopEndpoint,
 	desktopRequestByteBudget,
 	desktopRequestSchema,
+	desktopRequestTooLargeDetail,
 } from "../shared/desktop-contract";
 
 export async function requestDesktop(
@@ -44,9 +44,12 @@ export async function requestDesktop(
 		) {
 			// Names an action even though it cannot name a size: "too large" alone
 			// told the user what happened but not what to do (review round 1, Q-3).
+			// Scoped to the op because the remedy is surface-specific: advising a
+			// user in the agent system-prompt editor to "remove an image" named
+			// nothing that exists there (round 2, N4).
 			return {
 				status: 413,
-				body: { detail: DESKTOP_REQUEST_TOO_LARGE_DETAIL },
+				body: { detail: desktopRequestTooLargeDetail(request.op) },
 			};
 		}
 		const response = await fetch(new URL(target.path, backendUrl), {

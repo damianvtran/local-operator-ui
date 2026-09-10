@@ -24,6 +24,7 @@ import {
 	mkdtempSync,
 	readFileSync,
 	rmSync,
+	symlinkSync,
 	writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -37,7 +38,20 @@ const repoRoot = fileURLToPath(new URL("..", import.meta.url));
  * from/to: a literal substitution that must match exactly once, so a mutation
  * silently becoming a no-op after a refactor is reported rather than counted as
  * a kill.
+ * suite: which test file must catch it, defaulting to the sandbox suite. Named
+ * per mutation rather than running everything, because a mutant is only
+ * evidence about the suite that OWNS the property it breaks - and running the
+ * full matrix per mutant costs minutes for assertions that cannot fire.
+ * stage: which top-level directories the mutant's suite needs copied.
  */
+const SANDBOX_SUITE = "scripts/linux-sandbox.test.mjs";
+const SANDBOX_DIRS = ["bin", "scripts"];
+const RENDERER_SUITE = "scripts/desktop-renderer-transport.test.mjs";
+// The renderer suite bundles the shipped modules with esbuild from `src/`, so
+// the mutant only takes effect if `src` is staged with it - a battery that
+// copied only `scripts` would compile the UNMUTATED file and report every
+// mutant killed or survived for the wrong reason.
+const RENDERER_DIRS = ["bin", "scripts", "src"];
 const MUTATIONS = [
 	{
 		id: "M1",
@@ -193,6 +207,80 @@ const MUTATIONS = [
 		from: '\treturn typeof elapsedMs !== "number" || elapsedMs < STARTUP_WINDOW_MS;',
 		to: "\treturn true;",
 	},
+	// --- added in remediation round 2: the image ladder's own invariants ---
+	//
+	// Round 2 found two of round 1's nine new regression tests VACUOUS: they
+	// passed against the pre-fix file because their fixtures never reached the
+	// code under test, and two mutants - flatten-everything and last-rung -
+	// survived a 16-test green suite silently. These four are that battery,
+	// checked in for the same reason the sandbox ones are: the transcript of a
+	// battery in a PR comment is not re-runnable, and the fixture is where this
+	// change has twice been weakest.
+	{
+		id: "B1",
+		note: "JPEG rung stops flattening onto white (transparent corners go black)",
+		file: "src/renderer/src/features/chat/utils/bound-image.ts",
+		from: '\t\tflatContext.fillStyle = "#ffffff";\n\t\tflatContext.fillRect(0, 0, width, height);',
+		to: "",
+		suite: RENDERER_SUITE,
+		stage: RENDERER_DIRS,
+	},
+	{
+		id: "B2",
+		// The specific NEW defect round 1 warned the fix against introducing: a
+		// flatten applied to the shared canvas destroys PNG alpha on every rung.
+		// It survived round 1's suite because the PNG-alpha test's fixture took the
+		// verbatim passthrough and never encoded anything.
+		note: "SHARED canvas is flattened, so PNG alpha is destroyed on every rung",
+		file: "src/renderer/src/features/chat/utils/bound-image.ts",
+		from: "	context.drawImage(bitmap, 0, 0, width, height);",
+		to: '\tcontext.fillStyle = "#ffffff";\n\tcontext.fillRect(0, 0, width, height);\n\tcontext.drawImage(bitmap, 0, 0, width, height);',
+		suite: RENDERER_SUITE,
+		stage: RENDERER_DIRS,
+	},
+	{
+		id: "B3",
+		note: "never-grow guard disabled while downscaling (F2: payload inflates)",
+		file: "src/renderer/src/features/chat/utils/bound-image.ts",
+		from: "	if (bestBytes >= originalBytes) return original;",
+		to: "	if (bestBytes >= originalBytes && scale === 1) return original;",
+		suite: RENDERER_SUITE,
+		stage: RENDERER_DIRS,
+	},
+	{
+		id: "B4",
+		// F3's regression: `best` becomes the LAST rung tried rather than the
+		// smallest set seen, so an exhausted ladder can return something bigger
+		// than its own input. Survived round 1's suite because the test that names
+		// this logic set a budget ABOVE the originals and returned before the loop.
+		note: "ladder keeps the LAST rung instead of the smallest set (F3)",
+		file: "src/renderer/src/features/chat/utils/bound-image.ts",
+		from: "		if (consider(stepped) <= budget) return stepped;",
+		to: "\t\tconst steppedBytes = consider(stepped);\n\t\tbest = stepped;\n\t\tif (steppedBytes <= budget) return stepped;",
+		suite: RENDERER_SUITE,
+		stage: RENDERER_DIRS,
+	},
+	{
+		id: "B5",
+		// The command char cap (round 2, Q-7). The byte check alone admitted a
+		// 400,000-character paste, which then died in the schema parse as "Invalid
+		// desktop operation." with the user's draft already discarded.
+		note: "command pre-flight drops the character cap (Q-7 re-opens)",
+		file: "src/renderer/src/features/chat/utils/message-budget.ts",
+		from: "	if (args.length > DESKTOP_MESSAGE_MAX_CHARS) {",
+		to: "	if (false) {",
+		suite: RENDERER_SUITE,
+		stage: RENDERER_DIRS,
+	},
+	{
+		id: "B6",
+		note: "GIF loses its exemption, so animations are flattened to one frame",
+		file: "src/renderer/src/features/chat/utils/bound-image.ts",
+		from: '\t"image/webp",\n]);',
+		to: '\t"image/webp",\n\t"image/gif",\n]);',
+		suite: RENDERER_SUITE,
+		stage: RENDERER_DIRS,
+	},
 	{
 		id: "M22",
 		// The allowlist must be a real discriminator, not a formality: widening it
@@ -221,10 +309,13 @@ const applyOnce = (source, from, to, last) => {
  * kills -- a guard that ran the suite a different way could pass while the
  * battery's own runs all failed for an unrelated reason.
  */
-const runSuite = (scratch) =>
+const runSuite = (scratch, suite = SANDBOX_SUITE) =>
+	// TAP explicitly: node's DEFAULT reporter is `spec`, whose output carries no
+	// `not ok <n> - <name>` lines, so naming which test caught a mutant silently
+	// found nothing and every kill was reported as unattributed (round 2).
 	spawnSync(
 		process.execPath,
-		["--test", join(scratch, "scripts", "linux-sandbox.test.mjs")],
+		["--test", "--test-reporter=tap", join(scratch, suite)],
 		{
 			encoding: "utf8",
 			cwd: scratch,
@@ -234,15 +325,29 @@ const runSuite = (scratch) =>
 			// waits forever and reports nothing, so the mutation that matters most
 			// is the one that silences it. SIGKILL because a wedged process inside
 			// a blocking syscall need not honour SIGTERM.
-			timeout: 60_000,
+			// The renderer suite bundles and drives real codecs, so it needs longer
+			// than the sandbox one; 60 s would report every renderer mutant as a hang.
+			timeout: suite === SANDBOX_SUITE ? 60_000 : 300_000,
 			killSignal: "SIGKILL",
 		},
 	);
 
-const stage = () => {
+const stage = (dirs = SANDBOX_DIRS) => {
 	const scratch = mkdtempSync(join(tmpdir(), "lo-mutation-"));
-	for (const dir of ["bin", "scripts"]) {
+	for (const dir of dirs) {
 		cpSync(join(repoRoot, dir), join(scratch, dir), { recursive: true });
+	}
+	// The renderer suite resolves `sharp` and `esbuild`, and a scratch tree has no
+	// install of its own. Symlinked rather than copied: this branch changes no
+	// dependency, so the shared install resolves the same set, and copying a
+	// node_modules per mutant would cost gigabytes per run.
+	if (dirs.includes("src")) {
+		symlinkSync(
+			join(repoRoot, "node_modules"),
+			join(scratch, "node_modules"),
+			"dir",
+		);
+		cpSync(join(repoRoot, "package.json"), join(scratch, "package.json"));
 	}
 	return scratch;
 };
@@ -261,29 +366,62 @@ const selected = requested.length
 // the change's central evidence and a silently vacuous one is worse than none.
 // Exit 2, distinct from the 1 used for real survivors: "did not measure" is a
 // different answer from "measured, and something survived".
-const baselineScratch = stage();
-try {
-	const baseline = runSuite(baselineScratch);
-	if (baseline.status !== 0) {
-		const euid =
-			typeof process.geteuid === "function" ? process.geteuid() : "n/a";
-		console.error(
-			`REFUSING TO RUN: the UNMUTATED suite does not pass, so every mutant would be reported killed vacuously. Fix the suite first.
+//
+// Gated PER SUITE, because the battery now spans two of them: a green sandbox
+// baseline says nothing about whether the renderer suite passes unmutated, and
+// only the suite that owns a mutant can vacuously "kill" it.
+for (const suite of new Set(selected.map((m) => m.suite ?? SANDBOX_SUITE))) {
+	const dirs = suite === SANDBOX_SUITE ? SANDBOX_DIRS : RENDERER_DIRS;
+	const baselineScratch = stage(dirs);
+	try {
+		const baseline = runSuite(baselineScratch, suite);
+		if (baseline.status !== 0) {
+			const euid =
+				typeof process.geteuid === "function" ? process.geteuid() : "n/a";
+			console.error(
+				`REFUSING TO RUN: the UNMUTATED suite ${suite} does not pass, so every mutant would be reported killed vacuously. Fix the suite first.
   baseline status=${baseline.status} signal=${baseline.signal} euid=${euid}
 --- baseline output ---
 ${baseline.stdout ?? ""}${baseline.stderr ?? ""}`,
-		);
-		process.exit(2);
+			);
+			process.exit(2);
+		}
+	} finally {
+		rmSync(baselineScratch, { recursive: true, force: true });
 	}
-} finally {
-	rmSync(baselineScratch, { recursive: true, force: true });
+}
+
+/**
+ * A one-line summary of what actually changed on disk, for the run log.
+ *
+ * The point is not a readable diff - it is that the NUMBERS come from re-reading
+ * the mutated file, so a mutation that quietly failed to apply cannot be
+ * reported as an applied one.
+ */
+function diffLines(before, after) {
+	const from = before.split("\n");
+	const to = after.split("\n");
+	let head = 0;
+	while (head < from.length && head < to.length && from[head] === to[head])
+		head += 1;
+	let tail = 0;
+	while (
+		tail < from.length - head &&
+		tail < to.length - head &&
+		from[from.length - 1 - tail] === to[to.length - 1 - tail]
+	)
+		tail += 1;
+	const removed = from.length - head - tail;
+	const added = to.length - head - tail;
+	return `line ${head + 1}: -${removed} +${added}`;
 }
 
 const survivors = [];
 const broken = [];
 
 for (const mutation of selected) {
-	const scratch = stage();
+	const suite = mutation.suite ?? SANDBOX_SUITE;
+	const scratch = stage(mutation.stage ?? SANDBOX_DIRS);
 	try {
 		const target = join(scratch, mutation.file);
 		const original = readFileSync(target, "utf8");
@@ -305,7 +443,45 @@ for (const mutation of selected) {
 		}
 		writeFileSync(target, mutated);
 
-		const run = runSuite(scratch);
+		// PROVE THE MUTATION LANDED, in the file the suite will actually read.
+		// `applyOnce` returning a string only says the substitution matched in
+		// memory; this re-reads from disk and reports the changed lines. A mutation
+		// that silently no-ops is indistinguishable from a test correctly passing,
+		// which is the same "cannot fail" defect this battery exists to detect -
+		// one level up (round 2).
+		const onDisk = readFileSync(target, "utf8");
+		if (onDisk === original) {
+			broken.push({ ...mutation, why: "no-op on disk" });
+			console.log(`?? ${mutation.id}  MUTATION DID NOT LAND ON DISK`);
+			continue;
+		}
+		const changedLines = diffLines(original, onDisk);
+		// A mutant that does not PARSE fails every test for the wrong reason and
+		// reads as a kill while having asserted nothing. Only TypeScript sources go
+		// through esbuild here; `node --check` handles the plain-JS ones.
+		const parse = mutation.file.endsWith(".ts")
+			? spawnSync(
+					join(repoRoot, "node_modules", ".bin", "esbuild"),
+					// Compiled to nowhere: the exit code is the whole point, and the
+					// extension already selects the TS loader (an explicit `--loader`
+					// is rejected for file input and would fail EVERY mutant).
+					[target, "--outfile=/dev/null"],
+					{ encoding: "utf8", stdio: ["ignore", "ignore", "pipe"] },
+				)
+			: spawnSync(process.execPath, ["--check", target], {
+					encoding: "utf8",
+					stdio: ["ignore", "ignore", "pipe"],
+				});
+		if (parse.status !== 0) {
+			broken.push({ ...mutation, why: "mutant does not parse" });
+			console.log(
+				`?? ${mutation.id}  MUTANT DOES NOT PARSE - a kill here would be spurious\n${parse.stderr}`,
+			);
+			continue;
+		}
+		console.log(`-- ${mutation.id}  applied (${changedLines}), parses ok`);
+
+		const run = runSuite(scratch, suite);
 		// A timeout kill is a KILL, not a survival: the suite did not pass, it never
 		// finished. status is null in that case, and `null === 0` is false, so this
 		// counts it as a kill; the tempting `run.status !== 0` would be true for the
@@ -330,6 +506,20 @@ for (const mutation of selected) {
 		console.log(
 			`${passed ? "!! SURVIVED" : "ok KILLED  "} ${mutation.id}  ${mutation.note}`,
 		);
+		// WHICH test caught it, not merely that the suite went red. A mutant killed
+		// by an unrelated test - or by an import error the parse check above did not
+		// cover - is not evidence that the property it breaks is guarded, and
+		// "suite went red" cannot tell those apart.
+		if (!passed) {
+			const failed = [
+				...(run.stdout ?? "").matchAll(/^not ok \d+ - (.+)$/gm),
+			].map((match) => match[1].trim());
+			console.log(
+				failed.length
+					? failed.map((name) => `     caught by: ${name}`).join("\n")
+					: "     (no named test failure - the suite failed to RUN, so this kill proves nothing)",
+			);
+		}
 	} finally {
 		rmSync(scratch, { recursive: true, force: true });
 	}

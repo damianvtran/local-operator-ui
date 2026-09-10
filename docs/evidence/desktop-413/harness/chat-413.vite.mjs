@@ -46,7 +46,13 @@ export default defineConfig({
 		desktopProxyPlugin(),
 		electronBridgeShim(),
 	],
-	server: { port: 5199, strictPort: true },
+	// `strictPort` so a busy port FAILS rather than silently serving on another
+	// one and photographing a surface nobody drove. Overridable because this box
+	// runs several agent sessions at once and 5199 may belong to someone else.
+	server: {
+		port: Number(process.env.DESKTOP_413_PORT ?? 5199),
+		strictPort: true,
+	},
 });
 
 /**
